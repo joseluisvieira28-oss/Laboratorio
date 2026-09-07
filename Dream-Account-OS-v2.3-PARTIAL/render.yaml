@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: dream-account-os
+    runtime: docker
+    plan: starter
+    healthCheckPath: /health
+    autoDeployTrigger: commit
+    envVars:
+      - key: DREAM_DB_PATH
+        value: /var/data/dream_account.sqlite3
+      - key: SCAN_INTERVAL_SECONDS
+        value: "60"
+    disk:
+      name: dream-account-data
+      mountPath: /var/data
+      sizeGB: 1
