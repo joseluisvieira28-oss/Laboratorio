@@ -6,6 +6,7 @@ from dream_account.config import Settings
 from dream_account.data_contract import CollectionBatch, DataQuality, NormalizedSnapshot
 from dream_account.database import Journal
 from dream_account.live_engine import DreamAccountEngine
+from dream_account.runtime_service import log_event
 
 
 def snap(symbol, quality=DataQuality.VERIFIED):
@@ -45,6 +46,12 @@ class V23Tests(unittest.TestCase):
             journal = Journal(path)
             row = journal.connection.execute("SELECT symbol,data_quality FROM normalized_snapshots").fetchone()
             self.assertEqual(row, ("BTCUSDT", "VERIFIED")); journal.close()
+
+    def test_structured_logging_has_no_secret_fields(self):
+        with self.assertLogs("dream-account", level="INFO") as captured:
+            log_event("startup", execution="NONEXISTENT")
+        self.assertIn('"event": "startup"', captured.output[0])
+        self.assertNotIn("secret", captured.output[0].lower())
 
 
 if __name__ == "__main__":
