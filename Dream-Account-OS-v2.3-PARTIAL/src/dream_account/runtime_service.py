@@ -1,15 +1,24 @@
 from __future__ import annotations
 
-import json
 import asyncio
+import hashlib
+import hmac
+import json
 import logging
 import os
+import secrets
+import shutil
 import socket
+import sqlite3
 import ssl
+import stat
 import threading
 import time
 import urllib.request
+from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+from urllib.parse import parse_qs, urlsplit
 
 from .collector import MEXCDataCollector
 from .config import Settings
@@ -20,11 +29,125 @@ from .mexc_client import MEXCClient
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 LOGGER = logging.getLogger("dream-account")
-STATE = {"status": "BOOTING", "execution": "NONEXISTENT", "expectancy": "INSUFFICIENT SAMPLE", "scan_iteration": 0}
+RESCUE_ROOT = Path("/var/data")
+RESCUE_DB_NAME = "dream_account.sqlite3"
+RESCUE_MIN_FREE_BYTES = 16 * 1024 * 1024
+RESCUE_TOKEN: str | None = None
+STATE = {
+    "status": "BOOTING",
+    "rescue_mode": False,
+    "collector_paused": False,
+    "execution": "NONEXISTENT",
+    "expectancy": "INSUFFICIENT SAMPLE",
+    "scan_iteration": 0,
+}
 
 
 def log_event(event: str, **fields) -> None:
     LOGGER.info(json.dumps({"timestamp_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "event": event, **fields}, sort_keys=True, default=str))
+
+
+def _disk_usage(root: Path | None = None) -> dict[str, int]:
+    target = root or RESCUE_ROOT
+    usage = shutil.disk_usage(target)
+    return {"total_bytes": usage.total, "used_bytes": usage.used, "free_bytes": usage.free}
+
+
+def _should_enter_rescue_mode(root: Path | None = None) -> bool:
+    return _disk_usage(root)["free_bytes"] < RESCUE_MIN_FREE_BYTES
+
+
+def _activate_rescue_mode(root: Path | None = None) -> None:
+    global RESCUE_TOKEN
+    target = root or RESCUE_ROOT
+    RESCUE_TOKEN = secrets.token_urlsafe(32)
+    usage = _disk_usage(target)
+    STATE.update({
+        "status": "RESCUE_MODE",
+        "rescue_mode": True,
+        "collector_paused": True,
+        "execution": "NONEXISTENT",
+        "top_3": [],
+        "data_coverage": None,
+        "last_error": "Persistent disk free space below rescue threshold",
+        "disk": usage,
+    })
+    # The token is intentionally emitted once to Render's private service log.
+    log_event("rescue_mode_entered", rescue_token=RESCUE_TOKEN, root=str(target), threshold_bytes=RESCUE_MIN_FREE_BYTES, **usage)
+
+
+def _is_authorized(token: str | None) -> bool:
+    return bool(RESCUE_TOKEN and token and hmac.compare_digest(RESCUE_TOKEN, token))
+
+
+def _safe_rescue_file(raw_path: str, root: Path | None = None) -> Path:
+    target_root = (root or RESCUE_ROOT).resolve(strict=True)
+    relative = Path(raw_path)
+    if not raw_path or relative.is_absolute() or any(part in {"", ".", ".."} for part in relative.parts):
+        raise ValueError("invalid path")
+    candidate = target_root
+    for part in relative.parts:
+        candidate = candidate / part
+        if candidate.is_symlink():
+            raise ValueError("symlinks are not allowed")
+    resolved = candidate.resolve(strict=True)
+    try:
+        resolved.relative_to(target_root)
+    except ValueError as exc:
+        raise ValueError("path escapes rescue root") from exc
+    metadata = resolved.stat(follow_symlinks=False)
+    if not stat.S_ISREG(metadata.st_mode):
+        raise ValueError("path is not a regular file")
+    return resolved
+
+
+def _inventory(root: Path | None = None) -> dict:
+    target_root = (root or RESCUE_ROOT).resolve(strict=True)
+    files: list[dict] = []
+    for directory, dirs, names in os.walk(target_root, followlinks=False):
+        base = Path(directory)
+        dirs[:] = sorted(name for name in dirs if not (base / name).is_symlink())
+        for name in sorted(names):
+            path = base / name
+            if path.is_symlink():
+                continue
+            metadata = path.stat(follow_symlinks=False)
+            if not stat.S_ISREG(metadata.st_mode):
+                continue
+            files.append({
+                "path": path.relative_to(target_root).as_posix(),
+                "size_bytes": metadata.st_size,
+                "mtime_utc": datetime.fromtimestamp(metadata.st_mtime, timezone.utc).isoformat().replace("+00:00", "Z"),
+            })
+    return {"root": str(target_root), "disk": _disk_usage(target_root), "files": files}
+
+
+def _sqlite_integrity(root: Path | None = None) -> dict:
+    target_root = root or RESCUE_ROOT
+    database = _safe_rescue_file(RESCUE_DB_NAME, target_root)
+    connection = sqlite3.connect(f"file:{database.as_posix()}?mode=ro", uri=True)
+    try:
+        connection.execute("PRAGMA query_only=ON")
+        journal_mode = connection.execute("PRAGMA journal_mode").fetchone()[0]
+        rows = [row[0] for row in connection.execute("PRAGMA integrity_check").fetchall()]
+        return {
+            "path": database.relative_to(target_root.resolve(strict=True)).as_posix(),
+            "open_mode": "ro",
+            "query_only": True,
+            "journal_mode": journal_mode,
+            "integrity_check": rows,
+            "ok": rows == ["ok"],
+        }
+    finally:
+        connection.close()
+
+
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as source:
+        for chunk in iter(lambda: source.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 async def _ws_handshake(name: str, uri: str) -> dict:
@@ -74,15 +197,73 @@ def infrastructure_diagnostic(client: MEXCClient) -> dict:
 
 
 class HealthHandler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        if self.path not in {"/", "/health"}:
-            self.send_response(404); self.end_headers(); return
-        body = json.dumps(STATE, sort_keys=True, default=str).encode()
-        self.send_response(200 if STATE.get("status") != "CRASHED" else 503)
+    def _json(self, status_code: int, payload: dict) -> None:
+        body = json.dumps(payload, sort_keys=True, default=str).encode()
+        self.send_response(status_code)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
-        self.end_headers(); self.wfile.write(body)
-    def log_message(self, *_): pass
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _query_path(self) -> str:
+        values = parse_qs(urlsplit(self.path).query, keep_blank_values=True).get("path", [])
+        if len(values) != 1:
+            raise ValueError("exactly one path parameter is required")
+        return values[0]
+
+    def do_GET(self):
+        route = urlsplit(self.path).path
+        if route in {"/", "/health"}:
+            self._json(200 if STATE.get("status") != "CRASHED" else 503, STATE)
+            return
+        if not route.startswith("/rescue/"):
+            self._json(404, {"error": "not found"})
+            return
+        if not STATE.get("rescue_mode"):
+            self._json(409, {"error": "rescue mode is not active"})
+            return
+        if not _is_authorized(self.headers.get("X-Rescue-Token")):
+            self._json(401, {"error": "unauthorized"})
+            return
+        try:
+            if route == "/rescue/inventory":
+                self._json(200, _inventory())
+            elif route == "/rescue/sqlite-integrity":
+                result = _sqlite_integrity()
+                self._json(200 if result["ok"] else 503, result)
+            elif route == "/rescue/sha256":
+                path = _safe_rescue_file(self._query_path())
+                self._json(200, {"path": path.relative_to(RESCUE_ROOT.resolve(strict=True)).as_posix(), "sha256": _sha256(path), "size_bytes": path.stat().st_size})
+            elif route == "/rescue/download":
+                path = _safe_rescue_file(self._query_path())
+                file_descriptor = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+                try:
+                    metadata = os.fstat(file_descriptor)
+                    if not stat.S_ISREG(metadata.st_mode):
+                        raise ValueError("path is not a regular file")
+                    safe_name = "".join(c if c.isalnum() or c in "._-" else "_" for c in path.name)
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/octet-stream")
+                    self.send_header("Content-Disposition", f'attachment; filename="{safe_name}"')
+                    self.send_header("Content-Length", str(metadata.st_size))
+                    self.end_headers()
+                    with os.fdopen(file_descriptor, "rb") as source:
+                        file_descriptor = -1
+                        for chunk in iter(lambda: source.read(1024 * 1024), b""):
+                            self.wfile.write(chunk)
+                finally:
+                    if file_descriptor >= 0:
+                        os.close(file_descriptor)
+            else:
+                self._json(404, {"error": "not found"})
+        except (FileNotFoundError, ValueError) as exc:
+            self._json(400, {"error": str(exc)})
+        except Exception as exc:
+            log_event("rescue_endpoint_error", route=route, error=f"{type(exc).__name__}: {exc}")
+            self._json(500, {"error": f"{type(exc).__name__}: {exc}"})
+
+    def log_message(self, *_):
+        pass
 
 
 def collect_once(collector: MEXCDataCollector, engine: DreamAccountEngine, journal: Journal, client: MEXCClient) -> None:
@@ -128,6 +309,16 @@ def main() -> None:
     log_event("startup", port=port, database_path=database_path, execution="NONEXISTENT")
     server = ThreadingHTTPServer(("0.0.0.0", port), HealthHandler)
     threading.Thread(target=server.serve_forever, daemon=True).start()
+
+    if _should_enter_rescue_mode():
+        _activate_rescue_mode()
+        try:
+            while True:
+                time.sleep(3600)
+        finally:
+            server.shutdown()
+        return
+
     settings = Settings(database_path=database_path)
     journal = Journal(settings.database_path)
     log_event("sqlite_initialization", status="PASS", path=database_path)
