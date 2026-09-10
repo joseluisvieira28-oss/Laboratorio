@@ -8,6 +8,7 @@ from random import Random
 from statistics import mean, median
 from typing import Iterable, Mapping
 
+from dream_account.engines import calculate_costs
 from dream_account.models import Candle
 from research.phase_b_signal_formation_v01 import (
     TIMEFRAME_MS,
@@ -50,6 +51,20 @@ class EvaluationMetrics:
     symbol_distribution: dict[str, int]
     contiguous_segment_count: int
     detected_gap_count: int
+
+
+@dataclass(frozen=True)
+class FixedCohortCostMetrics:
+    cost_scenario: str
+    cohort_source: str
+    selected_trade_count: int
+    resolved_trade_count: int
+    unresolved_trade_count: int
+    net_expectancy_r: float | None
+    median_net_r: float | None
+    profit_factor_r: float | None
+    net_rr_below_minimum_count: int
+    net_rr_violation_rate: float | None
 
 
 @dataclass(frozen=True)
@@ -208,6 +223,69 @@ def evaluate_universe(
         detected_gap_count=totals["detected_gap_count"],
     )
     return all_records, metrics
+
+
+def reprice_fixed_cohort(
+    base_selected_records: Iterable[ResearchTradeRecord],
+    alternative_costs: CostAssumptions,
+    *,
+    min_net_rr: float = 2.0,
+) -> FixedCohortCostMetrics:
+    """Reprice the unchanged BASE-selected trade cohort under another cost scenario.
+
+    Signal selection, entry/stop/targets and exit path are intentionally held fixed.
+    This prevents a harsher cost assumption from improving results simply by
+    selecting a different subset of trades. It does not authorize any live trade.
+    """
+
+    alternative_costs.validate()
+    if not isinstance(min_net_rr, (int, float)) or isinstance(min_net_rr, bool) or not isfinite(min_net_rr) or min_net_rr <= 0:
+        raise ValueError("min_net_rr must be a finite positive number")
+
+    records = list(base_selected_records)
+    values: list[float] = []
+    rr_violations = 0
+    resolved_count = 0
+    for record in records:
+        signal = record.signal
+        alt_rr = calculate_costs(
+            entry=signal.entry,
+            stop=signal.stop,
+            target=signal.tp2,
+            fee_pct_each_side=alternative_costs.fee_pct_each_side,
+            spread_pct=alternative_costs.spread_pct,
+            slippage_pct_each_side=alternative_costs.slippage_pct_each_side,
+            funding_pct=0.0,
+        ).net_rr
+        if alt_rr < min_net_rr:
+            rr_violations += 1
+
+        if record.outcome.gross_return_pct is None:
+            continue
+        gross_fraction = record.outcome.gross_return_pct / 100.0
+        stop_fraction = (signal.entry - signal.stop) / signal.entry
+        cost_fraction = alternative_costs.round_trip_cost_pct / 100.0
+        denominator = stop_fraction + cost_fraction
+        if stop_fraction <= 0 or denominator <= 0:
+            raise ValueError("invalid signal risk geometry in fixed cohort")
+        net_r = (gross_fraction - cost_fraction) / denominator
+        if not isfinite(net_r):
+            raise ValueError("non-finite repriced net R encountered")
+        values.append(net_r)
+        resolved_count += 1
+
+    return FixedCohortCostMetrics(
+        cost_scenario=alternative_costs.name,
+        cohort_source="BASE_SENSITIVITY_SELECTED_P00_TRADES",
+        selected_trade_count=len(records),
+        resolved_trade_count=resolved_count,
+        unresolved_trade_count=len(records) - resolved_count,
+        net_expectancy_r=mean(values) if values else None,
+        median_net_r=median(values) if values else None,
+        profit_factor_r=_profit_factor(values),
+        net_rr_below_minimum_count=rr_violations,
+        net_rr_violation_rate=_safe_rate(rr_violations, len(records)),
+    )
 
 
 def _percentile(sorted_values: list[float], probability: float) -> float:
