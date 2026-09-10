@@ -26,6 +26,12 @@ class GateKWindowsSchedulerTests(unittest.TestCase):
         self.assertIn("Remove-Item Env:MEXC_READONLY_ACCESS_KEY", text)
         self.assertIn("Remove-Item Env:MEXC_READONLY_SECRET_KEY", text)
 
+    def test_secure_task_builds_quoted_cmd_commands_without_backslash_escapes(self):
+        text = self.read("gate_k_phase_a_secure_task.ps1")
+        self.assertIn("$batchCommand", text)
+        self.assertIn("$summaryCommand", text)
+        self.assertNotIn('\\"{0}\\"', text)
+
     def test_installer_never_embeds_credentials(self):
         text = self.read("install_gate_k_phase_a_scheduler.ps1")
         self.assertIn("ConvertFrom-SecureString", text)
@@ -43,6 +49,12 @@ class GateKWindowsSchedulerTests(unittest.TestCase):
         self.assertIn("MultipleInstances IgnoreNew", text)
         self.assertIn("WakeToRun", text)
 
+    def test_installer_quotes_runner_path_and_hardens_acl_subject(self):
+        text = self.read("install_gate_k_phase_a_scheduler.ps1")
+        self.assertIn("-File \"{0}\"", text)
+        self.assertIn("${env:USERNAME}:(OI)(CI)F", text)
+        self.assertNotIn('$env:USERNAME:(OI)(CI)F', text)
+
     def test_default_schedule_is_diverse_and_controlled(self):
         text = self.read("install_gate_k_phase_a_scheduler.ps1")
         self.assertIn("'07:30'", text)
@@ -56,6 +68,11 @@ class GateKWindowsSchedulerTests(unittest.TestCase):
         self.assertIn("Unregister-ScheduledTask", text)
         self.assertIn("Existing SQLite evidence and logs were not deleted", text)
         self.assertIn("[switch]$RemoveCredentials", text)
+
+    def test_status_tool_uses_quoted_summary_command(self):
+        text = self.read("show_gate_k_phase_a_scheduler_status.ps1")
+        self.assertIn("$summaryCommand", text)
+        self.assertNotIn('\\"{0}\\"', text)
 
     def test_one_command_wrappers_are_present(self):
         for name in (
