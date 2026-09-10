@@ -51,11 +51,11 @@ try {
     Add-Content -Path $Log -Value ("[{0}] START window={1} cycles={2} interval={3}s" -f (Get-Date -Format o), $Window, $Cycles, $IntervalSeconds)
     Push-Location $Root
     try {
-        & cmd.exe /d /c ('"{0}" {1} {2}' -f $Batch, $Cycles, $IntervalSeconds) 2>&1 | Tee-Object -FilePath $Log -Append
+        & cmd.exe /d /c ('"{0}" {1} {2}' -f $Batch, $Cycles, $IntervalSeconds).Replace('\"','"') 2>&1 | Tee-Object -FilePath $Log -Append
         $ExitCode = $LASTEXITCODE
         if (Test-Path -LiteralPath $Summary) {
             Add-Content -Path $Log -Value "`r`n--- OPERATIONAL SUMMARY ---"
-            & cmd.exe /d /c ('"{0}"' -f $Summary) 2>&1 | Tee-Object -FilePath $Log -Append
+            & cmd.exe /d /c ('"{0}"' -f $Summary).Replace('\"','"') 2>&1 | Tee-Object -FilePath $Log -Append
         }
     }
     finally {
