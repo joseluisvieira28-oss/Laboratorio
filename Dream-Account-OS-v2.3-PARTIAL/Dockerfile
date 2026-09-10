@@ -7,4 +7,4 @@ COPY scripts ./scripts
 RUN pip install --no-cache-dir .
 RUN mkdir -p /var/data
 EXPOSE 8080
-CMD ["sh", "-c", "python /app/scripts/recovery_bootstrap.py & exec dream-account-runtime"]
+CMD ["python", "/app/scripts/runtime_entrypoint.py"]
