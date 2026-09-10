@@ -30,5 +30,6 @@ Write-Host "DPAPI credential files present: $((Test-Path $access) -and (Test-Pat
 
 if (Test-Path -LiteralPath $Summary) {
     Write-Host ''
-    & cmd.exe /d /c ('"{0}"' -f $Summary)
+    $summaryCommand = '"{0}"' -f $Summary
+    & cmd.exe /d /c $summaryCommand
 }
