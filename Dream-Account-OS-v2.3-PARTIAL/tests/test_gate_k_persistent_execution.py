@@ -134,6 +134,35 @@ class GateKPersistentExecutionTests(unittest.TestCase):
             self.assertEqual(len(restarted.unresolved_reconciliation()), 1)
             restarted.close()
 
+    def test_crash_after_adapter_return_before_receipt_commit_requires_reconciliation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = str(Path(directory) / "execution.sqlite3")
+            journal = ExecutionJournal(path)
+            adapter = CountingMockAdapter()
+            coordinator = ShadowExecutionCoordinator(journal, adapter)
+
+            def crash(state):
+                if state is OrderState.ACKNOWLEDGED:
+                    raise RuntimeError("simulated crash after adapter return")
+
+            with self.assertRaisesRegex(RuntimeError, "after adapter return"):
+                coordinator.execute(proposal(), safety(), now_utc=NOW, crash_hook=crash)
+            self.assertEqual(adapter.calls, 1)
+            key = create_shadow_intent(proposal()).idempotency_key
+            self.assertEqual(journal.get_intent(key).state, OrderState.SUBMITTING)
+            self.assertIsNone(journal.get_receipt(key))
+            journal.close()
+
+            restarted = ExecutionJournal(path)
+            new_adapter = CountingMockAdapter()
+            restarted_coordinator = ShadowExecutionCoordinator(restarted, new_adapter)
+            self.assertEqual(restarted_coordinator.reconcile_after_restart(), 1)
+            self.assertEqual(restarted.get_intent(key).state, OrderState.RECONCILIATION_REQUIRED)
+            with self.assertRaises(ReconciliationBlocked):
+                restarted_coordinator.execute(proposal(), safety(), now_utc=NOW)
+            self.assertEqual(new_adapter.calls, 0)
+            restarted.close()
+
     def test_crash_after_durable_receipt_recovers_without_resubmit(self):
         with tempfile.TemporaryDirectory() as directory:
             path = str(Path(directory) / "execution.sqlite3")
