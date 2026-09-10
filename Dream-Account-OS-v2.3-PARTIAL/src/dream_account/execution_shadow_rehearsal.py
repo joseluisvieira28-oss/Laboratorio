@@ -9,22 +9,21 @@ from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Iterable
 
+from .collector import MEXCDataCollector
 from .config import Settings
-from .database import Journal
 from .engines import calculate_costs, score_candidate
 from .execution_coordinator import ShadowExecutionCoordinator
 from .execution_journal import ExecutionJournal
 from .execution_layer import ExecutionMode, MockMEXCExecutionAdapter, SafetyContext, TradeProposal
 from .execution_mexc_reconciliation_probe import load_guarded_client_from_env, run_reconciliation
+from .live_engine import DreamAccountEngine
 from .mexc_client import MEXCClient
 from .models import Candidate
-from .scanner import Scanner
 
 
 SHADOW_REHEARSAL_ENABLE_ENV = "MEXC_SHADOW_REHEARSAL_ENABLE"
 AUTHORITY_ID = "DREAM-ACCOUNT-OS-GATE-K-SHADOW-REHEARSAL-V0.1"
 MAX_SLIPPAGE_BPS_FIXTURE = 25.0
-FIXTURE_RISK_PERCENT = 2.0
 FIXTURE_BALANCE_QUOTE = 56.0
 
 
@@ -161,28 +160,13 @@ def _live_block_counts(candidates: Iterable[Candidate]) -> tuple[int, Counter[st
 
 
 def _execution_fixture_candidate(settings: Settings) -> Candidate:
-    """Create a deterministic infrastructure fixture, not a market claim.
-
-    The geometry is chosen only to exercise the existing scoring/cost/sizing handoff
-    with a candidate that passes the already-existing V2.1 rules. It is never emitted
-    as a real signal and never reaches a network mutation path.
-    """
+    """Deterministic infrastructure fixture, never a market claim or real signal."""
     entry, stop, tp1, tp2 = 100.0, 98.0, 106.0, 108.0
     costs = calculate_costs(entry, stop, tp1, 0.1, 0.05, 0.02)
     candidate = Candidate(
-        "FIXTUREUSDT",
-        "SPOT",
-        entry,
-        20_000_000.0,
-        0.05,
-        {"15m": 0.2, "1h": 0.4, "24h": 1.0},
-        1.8,
-        "RISK_ON_TREND",
-        "BREAKOUT_RETEST",
-        entry,
-        stop,
-        tp1,
-        tp2,
+        "FIXTUREUSDT", "SPOT", entry, 20_000_000.0, 0.05,
+        {"15m": 0.2, "1h": 0.4, "24h": 1.0}, 1.8,
+        "RISK_ON_TREND", "BREAKOUT_RETEST", entry, stop, tp1, tp2,
     )
     candidate.status = "LONG_CANDIDATE"
     score_candidate(candidate, settings, costs.net_rr, catalyst_confirmed=True)
@@ -199,9 +183,9 @@ def _fixture_pipeline() -> tuple[str, bool, str, bool]:
             if not readiness.ready:
                 raise ShadowProposalBlocked("execution fixture not proposal-ready: " + ",".join(readiness.reasons))
 
-            # Preserve the already-tested V2.1 sizing semantics used by test_engines:
-            # 2 percent risk with a balance-capped 56 quote-notional unit fixture.
-            # This intentionally does NOT reinterpret Settings.normal_risk_pct=0.02.
+            # V2.1 test semantics use 2.0 to represent two percent and cap notional
+            # at 56. This fixture only exercises the handoff; it does not reinterpret
+            # Settings.normal_risk_pct=0.02 for real sizing.
             quantity = FIXTURE_BALANCE_QUOTE / float(candidate.entry)
             proposal = build_shadow_proposal(
                 candidate,
@@ -234,24 +218,34 @@ def _fixture_pipeline() -> tuple[str, bool, str, bool]:
             execution_journal.close()
 
 
+def _production_equivalent_market_observation(settings: Settings) -> tuple[str, int, int, int, list[Candidate]]:
+    """Run the same bulk collector + normalized engine path used in production.
+
+    This deliberately keeps regime='UNVERIFIED', matching runtime_service.collect_once.
+    It is observational only and never manufactures setup geometry or sizing.
+    """
+    client = MEXCClient(settings.request_timeout_seconds)
+    collector = MEXCDataCollector(client)
+    engine = DreamAccountEngine(settings)
+    batch = collector.collect_spot()
+    if not batch.gate_passed:
+        return "FAIL_CLOSED", batch.expected_symbols, len(batch.verified), 0, []
+    candidates = engine.evaluate(batch, "UNVERIFIED")
+    deep_pass = len([candidate for candidate in candidates if not candidate.rejection_reasons])
+    return "PASS", batch.expected_symbols, len(batch.verified), deep_pass, candidates
+
+
 def run_shadow_rehearsal() -> ShadowRehearsalReport:
     if os.getenv(SHADOW_REHEARSAL_ENABLE_ENV) != "1":
         raise ShadowProposalBlocked(f"set {SHADOW_REHEARSAL_ENABLE_ENV}=1 for one-shot rehearsal")
 
     settings = Settings()
-    with tempfile.TemporaryDirectory() as directory:
-        live_journal = Journal(os.path.join(directory, "live-scan.sqlite3"))
-        try:
-            live_scan = Scanner(MEXCClient(settings.request_timeout_seconds), settings, live_journal).live_scan()
-        finally:
-            live_journal.close()
+    live_status, pairs_scanned, verified_count, deep_pass, live_candidates = _production_equivalent_market_observation(settings)
+    actionable, reason_counts = _live_block_counts(live_candidates)
 
-    actionable, reason_counts = _live_block_counts(live_scan.candidates)
-
-    # Gate K must not invent quantity/risk or manufacture a signal. Real proposals
-    # are created only when the upstream signal object is complete and a separately
-    # frozen sizing input exists. The current live scanner supplies neither a complete
-    # actionable signal nor a sizing authority, so the live proposal count is zero.
+    # No real proposal may be created until upstream emits a complete trade object
+    # and sizing semantics have a frozen authority. Current production engine does
+    # neither, so real proposal creation remains exactly zero even if candidates exist.
     live_proposals_created = 0
 
     fixture_state, fixture_submitted, fixture_integrity, fixture_replay = _fixture_pipeline()
@@ -263,7 +257,7 @@ def run_shadow_rehearsal() -> ShadowRehearsalReport:
         status = "BLOCKED_EXCHANGE_MUTATION"
     elif fixture_state != "SHADOW_RECORDED" or fixture_integrity != "ok" or not fixture_replay:
         status = "BLOCKED_SHADOW_PIPELINE"
-    elif live_scan.status != "PASS":
+    elif live_status != "PASS":
         status = "BLOCKED_LIVE_DATA"
     elif actionable:
         status = "PASS_SIGNAL_PRESENT_SIZING_NOT_FROZEN"
@@ -272,11 +266,11 @@ def run_shadow_rehearsal() -> ShadowRehearsalReport:
 
     return ShadowRehearsalReport(
         status=status,
-        live_scan_status=live_scan.status,
-        live_pairs_scanned=live_scan.pairs_scanned,
-        live_fast_pass=live_scan.fast_pass,
-        live_deep_pass=live_scan.deep_pass,
-        live_candidate_count=len(live_scan.candidates),
+        live_scan_status=live_status,
+        live_pairs_scanned=pairs_scanned,
+        live_fast_pass=len(live_candidates),
+        live_deep_pass=deep_pass,
+        live_candidate_count=len(live_candidates),
         live_actionable_count=actionable,
         live_trade_proposals_created=live_proposals_created,
         live_block_reason_counts=dict(sorted(reason_counts.items())),
@@ -290,14 +284,16 @@ def run_shadow_rehearsal() -> ShadowRehearsalReport:
         reconciliation_daos_recent_trades=reconciliation.daos_recent_trade_count,
         exchange_mutation_routes=0,
         risk_semantics_note=(
-            "Gate K intentionally does not auto-size real orders. Existing code has Settings.normal_risk_pct=0.02 "
-            "while position_size consumes percent units and V2.1 tests use 2.0 for two percent. This ambiguity must "
-            "be frozen before any live-sizing authority is created."
+            "Historical V2.1 build evidence states CHF 0.84-1.12 normal risk and CHF 1.68 max on CHF 56, while "
+            "position_size consumes percent units and tests use 2.0 for two percent. Current Settings values "
+            "normal_risk_pct=0.02 and exceptional_risk_pct=0.03 therefore require an explicit governance correction "
+            "before any real auto-sizing authority is created. Gate K does not resolve this silently."
         ),
         note=(
-            "Real-market scan is observational. Gate K never manufactures setup/entry/stop/targets/quantity. "
-            "Deterministic infrastructure fixture exercises proposal->validation->journal->idempotency->shadow receipt. "
-            "MEXC reconciliation remains authenticated GET-only."
+            "Real market observation uses the same MEXCDataCollector + DreamAccountEngine path as production with "
+            "regime UNVERIFIED. Gate K never manufactures setup/entry/stop/targets/quantity. Deterministic infrastructure "
+            "fixture exercises proposal->validation->journal->idempotency->shadow receipt. MEXC reconciliation remains "
+            "authenticated GET-only."
         ),
     )
 
