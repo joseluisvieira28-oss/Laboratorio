@@ -72,6 +72,7 @@ class DataAuditManifest:
     close_time_violation_count: int
     declared_range_violation_count: int
     stage_boundary_violation_count: int
+    irregular_interval_count: int
     detected_gap_count: int
     missing_candle_count: int
     contiguous_segment_count: int
@@ -123,6 +124,8 @@ def _is_unsafe_zip_name(name: str) -> bool:
 
 
 def probe_raw_source(path: str | Path) -> SourceProbe:
+    """Fingerprint a raw file and, for ZIPs, list names without interpreting payloads."""
+
     source = Path(path)
     suffix = source.suffix.lower()
     if not source.is_file():
@@ -195,8 +198,7 @@ def _utc_ms(value: str) -> int:
 
 
 def _iso_z_from_ms(value: int) -> str:
-    dt = datetime.fromtimestamp(value / 1000.0, tz=timezone.utc)
-    rendered = dt.isoformat(timespec="milliseconds")
+    rendered = datetime.fromtimestamp(value / 1000.0, tz=timezone.utc).isoformat(timespec="milliseconds")
     return rendered.replace("+00:00", "Z")
 
 
@@ -214,13 +216,14 @@ def _valid_sha256(value: Any) -> bool:
     return True
 
 
-def _preflight_metadata(metadata: dict[str, Any], contract: dict[str, Any]) -> tuple[list[str], dict[str, Any]]:
+def _preflight_metadata(metadata: dict[str, Any], contract: dict[str, Any]) -> tuple[list[str], dict[str, int]]:
+    """Reject locked stages before opening any market-data file."""
+
     reasons: list[str] = []
     required = contract["sidecar_metadata_required"]["required_fields"]
     for field in required:
         if field not in metadata:
             reasons.append(f"MISSING_METADATA_FIELD:{field}")
-
     if reasons:
         return reasons, {}
 
@@ -305,6 +308,7 @@ def _empty_manifest(
         close_time_violation_count=0,
         declared_range_violation_count=0,
         stage_boundary_violation_count=0,
+        irregular_interval_count=0,
         detected_gap_count=0,
         missing_candle_count=0,
         contiguous_segment_count=0,
@@ -319,11 +323,43 @@ def _empty_manifest(
 
 
 def _load_sidecar(path: str | Path) -> tuple[dict[str, Any], str]:
-    metadata_path = Path(path)
-    data = json.loads(metadata_path.read_text(encoding="utf-8"))
+    data = json.loads(Path(path).read_text(encoding="utf-8"))
     if not isinstance(data, dict):
         raise ValueError("sidecar metadata must be a JSON object")
     return data, _metadata_fingerprint(data)
+
+
+def _classify_spacing(rows: list[tuple[int, float, float, float, float, float, int]]) -> tuple[int, int, int, int, list[tuple[str, str, int]]]:
+    """Return irregulars, gaps, missing candles, segments, examples.
+
+    A valid gap must be an exact positive multiple of the frozen 15-minute interval.
+    A 20-minute jump, for example, is not a gap: it is an integrity failure.
+    """
+
+    if not rows:
+        return 0, 0, 0, 0, []
+
+    irregular = 0
+    gaps = 0
+    missing = 0
+    segments = 1
+    examples: list[tuple[str, str, int]] = []
+    for left_row, right_row in zip(rows, rows[1:]):
+        left = left_row[0]
+        right = right_row[0]
+        delta = right - left
+        if delta <= 0 or delta == TIMEFRAME_MS:
+            continue
+        segments += 1
+        if delta > TIMEFRAME_MS and delta % TIMEFRAME_MS == 0:
+            gaps += 1
+            missing_here = delta // TIMEFRAME_MS - 1
+            missing += missing_here
+            if len(examples) < 20:
+                examples.append((_iso_z_from_ms(left), _iso_z_from_ms(right), missing_here))
+        else:
+            irregular += 1
+    return irregular, gaps, missing, segments, examples
 
 
 def audit_canonical_dataset(
@@ -332,47 +368,53 @@ def audit_canonical_dataset(
     *,
     raw_source_path: str | Path | None = None,
 ) -> OfflineAuditPackage:
-    """Audit one discovery dataset without networking and return candles only on PASS.
+    """Audit one frozen discovery dataset and return candles only on integrity PASS.
 
-    Validation/holdout metadata is rejected before the market-data file is opened.
-    V0.1 intentionally supports only the frozen identity canonical CSV adapter.
-    Unknown raw MEXC layouts must first be schema-probed and receive a separate
-    validated adapter amendment.
+    This function performs no network access and no P00 evaluation. Validation and
+    holdout metadata are rejected before the market-data file is opened. V0.1 only
+    accepts the frozen identity canonical CSV adapter; unknown raw MEXC layouts must
+    first be schema-probed and receive a separate validated adapter amendment.
     """
 
     contract = _load_contract()
     try:
         metadata, metadata_fp = _load_sidecar(metadata_path)
     except (OSError, ValueError, json.JSONDecodeError) as exc:
-        manifest = _empty_manifest(
-            contract=contract,
-            status="BLOCKED_METADATA",
-            reasons=(f"INVALID_SIDECAR:{type(exc).__name__}",),
+        return OfflineAuditPackage(
+            manifest=_empty_manifest(
+                contract=contract,
+                status="BLOCKED_METADATA",
+                reasons=(f"INVALID_SIDECAR:{type(exc).__name__}",),
+            ),
+            candles=(),
         )
-        return OfflineAuditPackage(manifest=manifest, candles=())
 
     preflight_reasons, bounds = _preflight_metadata(metadata, contract)
     if preflight_reasons:
-        manifest = _empty_manifest(
-            contract=contract,
-            status="BLOCKED_METADATA",
-            reasons=preflight_reasons,
-            metadata=metadata,
-            metadata_fingerprint=metadata_fp,
+        return OfflineAuditPackage(
+            manifest=_empty_manifest(
+                contract=contract,
+                status="BLOCKED_METADATA",
+                reasons=preflight_reasons,
+                metadata=metadata,
+                metadata_fingerprint=metadata_fp,
+            ),
+            candles=(),
         )
-        return OfflineAuditPackage(manifest=manifest, candles=())
 
     canonical = Path(canonical_path)
     raw_source = Path(raw_source_path) if raw_source_path is not None else canonical
     if not canonical.is_file() or not raw_source.is_file():
-        manifest = _empty_manifest(
-            contract=contract,
-            status="BLOCKED_SOURCE",
-            reasons=("CANONICAL_OR_RAW_SOURCE_NOT_FOUND",),
-            metadata=metadata,
-            metadata_fingerprint=metadata_fp,
+        return OfflineAuditPackage(
+            manifest=_empty_manifest(
+                contract=contract,
+                status="BLOCKED_SOURCE",
+                reasons=("CANONICAL_OR_RAW_SOURCE_NOT_FOUND",),
+                metadata=metadata,
+                metadata_fingerprint=metadata_fp,
+            ),
+            candles=(),
         )
-        return OfflineAuditPackage(manifest=manifest, candles=())
 
     raw_sha, _ = file_sha256(raw_source)
     canonical_sha, canonical_size = file_sha256(canonical)
@@ -450,6 +492,7 @@ def audit_canonical_dataset(
                     if not all(isfinite(value) for value in numeric):
                         non_finite += 1
                         continue
+
                     if open_time in seen:
                         duplicate_count += 1
                     seen.add(open_time)
@@ -482,6 +525,8 @@ def audit_canonical_dataset(
     except (OSError, UnicodeError, csv.Error):
         header_reason = "CSV_READ_FAILURE"
 
+    irregular, gap_count, missing_candle_count, contiguous_segments, gap_examples = _classify_spacing(rows)
+
     reasons: list[str] = []
     if header_reason:
         reasons.append(header_reason)
@@ -507,23 +552,8 @@ def audit_canonical_dataset(
         reasons.append("DECLARED_RANGE_VIOLATIONS")
     if stage_boundary_violations:
         reasons.append("FORBIDDEN_STAGE_TIMESTAMPS")
-
-    gap_count = 0
-    missing_candle_count = 0
-    contiguous_segments = 0
-    gap_examples: list[tuple[str, str, int]] = []
-    if rows:
-        contiguous_segments = 1
-        ordered_times = [row[0] for row in rows]
-        for left, right in zip(ordered_times, ordered_times[1:]):
-            delta = right - left
-            if delta > TIMEFRAME_MS:
-                gap_count += 1
-                contiguous_segments += 1
-                missing = delta // TIMEFRAME_MS - 1 if delta % TIMEFRAME_MS == 0 else 0
-                missing_candle_count += max(missing, 0)
-                if len(gap_examples) < 20:
-                    gap_examples.append((_iso_z_from_ms(left), _iso_z_from_ms(right), max(missing, 0)))
+    if irregular:
+        reasons.append("IRREGULAR_INTERVAL_SPACING")
 
     blocked = bool(reasons)
     status = "BLOCKED_DATA_INTEGRITY" if blocked else ("PASS_WITH_GAPS" if gap_count else "PASS")
@@ -534,8 +564,6 @@ def audit_canonical_dataset(
             for open_time, open_price, high, low, close, volume, close_time in rows
         )
 
-    first_time = _iso_z_from_ms(rows[0][0]) if rows else None
-    last_time = _iso_z_from_ms(rows[-1][0]) if rows else None
     provisional = DataAuditManifest(
         contract_version=str(contract["version"]),
         status=status,
@@ -551,8 +579,8 @@ def audit_canonical_dataset(
         canonical_file_sha256=canonical_sha,
         canonical_byte_size=canonical_size,
         row_count=len(rows),
-        first_open_time_utc=first_time,
-        last_open_time_utc=last_time,
+        first_open_time_utc=_iso_z_from_ms(rows[0][0]) if rows else None,
+        last_open_time_utc=_iso_z_from_ms(rows[-1][0]) if rows else None,
         duplicate_open_time_count=duplicate_count,
         out_of_order_count=out_of_order_count,
         malformed_row_count=malformed,
@@ -563,6 +591,7 @@ def audit_canonical_dataset(
         close_time_violation_count=close_time_violations,
         declared_range_violation_count=declared_range_violations,
         stage_boundary_violation_count=stage_boundary_violations,
+        irregular_interval_count=irregular,
         detected_gap_count=gap_count,
         missing_candle_count=missing_candle_count,
         contiguous_segment_count=contiguous_segments,
