@@ -6,6 +6,7 @@ from dream_account.config import Settings
 from dream_account.execution_coordinator import ShadowExecutionCoordinator
 from dream_account.execution_journal import ExecutionJournal
 from dream_account.execution_layer import MockMEXCExecutionAdapter, SafetyContext
+from dream_account.engines import calculate_costs, total_risk_position_size
 from dream_account.execution_shadow_rehearsal import (
     ShadowProposalBlocked,
     _execution_fixture_candidate,
@@ -66,11 +67,13 @@ class GateKShadowRehearsalTests(unittest.TestCase):
     def test_full_shadow_handoff_is_idempotent_and_never_submits(self):
         candidate = _execution_fixture_candidate(Settings())
         now = datetime.now(timezone.utc)
+        costs = calculate_costs(candidate.entry, candidate.stop, candidate.tp1, 0.1, 0.05, 0.02)
+        sizing = total_risk_position_size(56, 1.0, candidate.entry, candidate.stop, costs.estimated_cost_pct, 56)
         proposal = build_shadow_proposal(
             candidate,
-            quantity=0.56,
+            quantity=sizing["position_notional_chf"] / candidate.entry,
             max_slippage_bps=25.0,
-            risk_allocation_id="FIXTURE-RISK-2PCT-BALANCE-CAPPED",
+            risk_allocation_id="FIXTURE-RISK-V2-NORMAL-TOTAL-RISK",
             created_at=now,
         )
         safety = SafetyContext(
@@ -102,7 +105,7 @@ class GateKShadowRehearsalTests(unittest.TestCase):
         candidate = _execution_fixture_candidate(Settings())
         proposal = build_shadow_proposal(
             candidate,
-            quantity=0.56,
+            quantity=0.25,
             max_slippage_bps=25.0,
             risk_allocation_id="TEST",
         )

@@ -11,7 +11,7 @@ from typing import Iterable
 
 from .collector import MEXCDataCollector
 from .config import Settings
-from .engines import calculate_costs, score_candidate
+from .engines import calculate_costs, score_candidate, total_risk_position_size
 from .execution_coordinator import ShadowExecutionCoordinator
 from .execution_journal import ExecutionJournal
 from .execution_layer import ExecutionMode, MockMEXCExecutionAdapter, SafetyContext, TradeProposal
@@ -183,15 +183,23 @@ def _fixture_pipeline() -> tuple[str, bool, str, bool]:
             if not readiness.ready:
                 raise ShadowProposalBlocked("execution fixture not proposal-ready: " + ",".join(readiness.reasons))
 
-            # V2.1 test semantics use 2.0 to represent two percent and cap notional
-            # at 56. This fixture only exercises the handoff; it does not reinterpret
-            # Settings.normal_risk_pct=0.02 for real sizing.
-            quantity = FIXTURE_BALANCE_QUOTE / float(candidate.entry)
+            costs = calculate_costs(
+                float(candidate.entry), float(candidate.stop), float(candidate.tp1), 0.1, 0.05, 0.02
+            )
+            sizing = total_risk_position_size(
+                FIXTURE_BALANCE_QUOTE,
+                settings.normal_risk_pct,
+                float(candidate.entry),
+                float(candidate.stop),
+                costs.estimated_cost_pct,
+                FIXTURE_BALANCE_QUOTE,
+            )
+            quantity = float(sizing["position_notional_chf"]) / float(candidate.entry)
             proposal = build_shadow_proposal(
                 candidate,
                 quantity=quantity,
                 max_slippage_bps=MAX_SLIPPAGE_BPS_FIXTURE,
-                risk_allocation_id="FIXTURE-RISK-2PCT-BALANCE-CAPPED",
+                risk_allocation_id="FIXTURE-RISK-V2-NORMAL-TOTAL-RISK",
             )
             safety = SafetyContext(
                 market_data_timestamp_utc=proposal.created_at_utc,
@@ -244,8 +252,8 @@ def run_shadow_rehearsal() -> ShadowRehearsalReport:
     actionable, reason_counts = _live_block_counts(live_candidates)
 
     # No real proposal may be created until upstream emits a complete trade object
-    # and sizing semantics have a frozen authority. Current production engine does
-    # neither, so real proposal creation remains exactly zero even if candidates exist.
+    # with complete exchange/cost/precision inputs. Current production engine does
+    # not emit that complete object, so real proposal creation remains exactly zero.
     live_proposals_created = 0
 
     fixture_state, fixture_submitted, fixture_integrity, fixture_replay = _fixture_pipeline()
@@ -260,7 +268,7 @@ def run_shadow_rehearsal() -> ShadowRehearsalReport:
     elif live_status != "PASS":
         status = "BLOCKED_LIVE_DATA"
     elif actionable:
-        status = "PASS_SIGNAL_PRESENT_SIZING_NOT_FROZEN"
+        status = "PASS_SIGNAL_PRESENT_NO_COMPLETE_TRADE_OBJECT"
     else:
         status = "PASS_NO_ACTIONABLE_LIVE_SIGNAL"
 
@@ -284,10 +292,9 @@ def run_shadow_rehearsal() -> ShadowRehearsalReport:
         reconciliation_daos_recent_trades=reconciliation.daos_recent_trade_count,
         exchange_mutation_routes=0,
         risk_semantics_note=(
-            "Historical V2.1 build evidence states CHF 0.84-1.12 normal risk and CHF 1.68 max on CHF 56, while "
-            "position_size consumes percent units and tests use 2.0 for two percent. Current Settings values "
-            "normal_risk_pct=0.02 and exceptional_risk_pct=0.03 therefore require an explicit governance correction "
-            "before any real auto-sizing authority is created. Gate K does not resolve this silently."
+            "Prospective Numerical Risk Policy V2 uses percentage points: NORMAL=1.0 and DEFENSIVE=0.5; A+ does not "
+            "increase risk. Total projected risk includes bounded costs and remains capital-capped. This shadow "
+            "rehearsal does not create live-derived proposals or authorize real execution."
         ),
         note=(
             "Real market observation uses the same MEXCDataCollector + DreamAccountEngine path as production with "
