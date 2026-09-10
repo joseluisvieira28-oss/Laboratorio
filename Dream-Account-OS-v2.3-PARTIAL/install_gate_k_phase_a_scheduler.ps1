@@ -38,9 +38,9 @@ $secretSecure = ConvertTo-SecureString $env:MEXC_READONLY_SECRET_KEY -AsPlainTex
 $accessSecure | ConvertFrom-SecureString | Set-Content -LiteralPath $accessPath -Encoding UTF8 -NoNewline
 $secretSecure | ConvertFrom-SecureString | Set-Content -LiteralPath $secretPath -Encoding UTF8 -NoNewline
 
-# Restrict the DPAPI ciphertext files to the current Windows user and SYSTEM where possible.
 try {
-    & icacls.exe $SecretDir /inheritance:r /grant:r "$env:USERNAME:(OI)(CI)F" 'SYSTEM:(OI)(CI)F' | Out-Null
+    & icacls.exe $SecretDir /inheritance:r /grant:r "${env:USERNAME}:(OI)(CI)F" 'SYSTEM:(OI)(CI)F' | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "icacls returned exit code $LASTEXITCODE" }
 } catch {
     throw "Could not harden scheduler credential directory ACLs: $($_.Exception.Message)"
 }
@@ -59,8 +59,8 @@ foreach ($window in $windows) {
     $taskName = "DreamAccountOS-GateK-PhaseA-$($window.Name)"
     $todayAt = [DateTime]::Today.Add([TimeSpan]::Parse($window.Time))
     $trigger = New-ScheduledTaskTrigger -Daily -At $todayAt
-    $args = '-NoProfile -NonInteractive -ExecutionPolicy Bypass -File "{0}" -Window {1} -Cycles {2} -IntervalSeconds {3}' -f $Runner, $window.Name, $Cycles, $IntervalSeconds
-    $action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument $args -WorkingDirectory $Root
+    $arguments = '-NoProfile -NonInteractive -ExecutionPolicy Bypass -File "{0}" -Window {1} -Cycles {2} -IntervalSeconds {3}' -f $Runner, $window.Name, $Cycles, $IntervalSeconds
+    $action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument $arguments -WorkingDirectory $Root
     Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Description 'Gate K Phase A SHADOW / READ-ONLY observation window. No exchange mutation or live trading.' -Force | Out-Null
 }
 
