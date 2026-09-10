@@ -110,6 +110,13 @@
       "interpretation": "Severe sensitivity; diagnostic only."
     }
   ],
+  "cost_sensitivity_policy": {
+    "trade_cohort_source": "BASE_SENSITIVITY_SELECTED_P00_TRADES",
+    "alternative_cost_scenarios_reselect_trades": false,
+    "alternative_cost_scenarios_reprice_same_geometry_and_exit_path": true,
+    "report_alternative_net_rr_violation_rate": true,
+    "reason": "Holding the BASE-selected cohort fixed prevents a higher-cost scenario from looking artificially better merely by dropping tighter-risk trades."
+  },
   "rr_cost_constraint": {
     "formula": "for gross target mR, stop fraction s and round-trip cost fraction c: net_RR=(m*s-c)/(s+c)",
     "net_rr_ge_2_condition": "(m-2)*s >= 3*c",
@@ -118,13 +125,33 @@
   },
   "data_contract": {
     "source": "MEXC_OFFICIAL_HISTORICAL_SPOT_DATA_ONLY",
+    "official_bulk_download_page": "https://www.mexc.com/market-data-download",
+    "official_rest_fallback": "GET /api/v3/klines",
     "cross_exchange_backfill_allowed": false,
     "timezone": "UTC",
     "timeframe": "15m",
     "symbols": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "DOGEUSDT"],
-    "discovery": {"start": "2022-01-01T00:00:00Z", "end": "2024-12-31T23:59:59Z"},
-    "validation": {"start": "2025-01-01T00:00:00Z", "end": "2025-12-31T23:59:59Z"},
-    "final_holdout": {"start": "2026-01-01T00:00:00Z", "status": "LOCKED_UNTIL_SEPARATE_UNLOCK_AFTER_DISCOVERY_AND_VALIDATION_PASS"},
+    "discovery": {
+      "start": "2022-01-01T00:00:00Z",
+      "end": "2024-12-31T23:59:59Z",
+      "status": "AUTHORIZED_RESEARCH_WINDOW"
+    },
+    "validation": {
+      "start": "2025-01-01T00:00:00Z",
+      "end": "2025-12-31T23:59:59Z",
+      "status": "LOCKED_UNTIL_DISCOVERY_SURVIVES"
+    },
+    "final_holdout": {
+      "start": "2026-01-01T00:00:00Z",
+      "status": "LOCKED_UNTIL_SEPARATE_UNLOCK_AFTER_DISCOVERY_AND_VALIDATION_PASS"
+    },
+    "stage_access_sequence": [
+      "Fetch/read/analyze discovery 2022-2024 only.",
+      "Do not fetch, download, read, summarize, chart, or inspect 2025 validation before P00 discovery is machine-classified SURVIVES.",
+      "If discovery is INSUFFICIENT_SAMPLE or NO_EDGE, stop; do not use 2025 to rescue the hypothesis.",
+      "After unchanged P00 discovery SURVIVES, 2025 may be unlocked for validation without parameter changes.",
+      "2026 remains locked until unchanged P00 passes both stages and a separate explicit holdout unlock is authorized."
+    ],
     "listing_and_missing_data": "No synthetic pre-listing history and no candle interpolation. Split at missing intervals; no setup may span a data gap.",
     "open_candles": "EXCLUDED"
   },
@@ -158,14 +185,16 @@
     "stop_gap_rate",
     "cost_scenario",
     "signal_frequency_per_30d",
-    "symbol_distribution"
+    "symbol_distribution",
+    "fixed_cohort_stress_net_expectancy_R",
+    "fixed_cohort_stress_net_rr_violation_rate"
   ],
   "uncertainty": {
     "bootstrap": "UTC_CALENDAR_DAY_BLOCK_BOOTSTRAP",
     "bootstrap_repetitions": 5000,
     "bootstrap_seed": 230911,
     "confidence_interval": 0.95,
-    "target_metric": "net_expectancy_R",
+    "target_metric": "BASE_SENSITIVITY net_expectancy_R on BASE-selected P00 cohort",
     "note": "All trades from a sampled UTC day are resampled together to preserve within-day clustering."
   },
   "decision_policy": {
@@ -173,22 +202,23 @@
     "discovery_min_resolved_trades": 100,
     "validation_min_resolved_trades": 30,
     "discovery_survives_only_if": [
-      "resolved_trade_count >= 100",
+      "BASE-selected resolved_trade_count >= 100",
       "BASE_SENSITIVITY net_expectancy_R > 0",
       "BASE_SENSITIVITY profit_factor_R > 1",
       "95% day-block-bootstrap lower bound for BASE_SENSITIVITY net_expectancy_R > 0",
-      "STRESS net_expectancy_R > 0"
+      "fixed-cohort STRESS net_expectancy_R > 0"
     ],
     "validation_survives_only_if": [
-      "resolved_trade_count >= 30",
+      "BASE-selected resolved_trade_count >= 30",
       "BASE_SENSITIVITY net_expectancy_R > 0",
       "BASE_SENSITIVITY profit_factor_R > 1",
       "95% day-block-bootstrap lower bound for BASE_SENSITIVITY net_expectancy_R > 0",
-      "STRESS net_expectancy_R > 0"
+      "fixed-cohort STRESS net_expectancy_R > 0"
     ],
-    "insufficient_sample": "If minimum resolved-trade count is not met, classify INSUFFICIENT_SAMPLE rather than extend/tune opportunistically.",
+    "insufficient_sample": "If minimum BASE-selected resolved-trade count is not met, classify INSUFFICIENT_SAMPLE rather than extend/tune opportunistically.",
     "no_edge": "If a required survival condition fails, classify NO_EDGE for P00 at that stage. Do not promote a sensitivity profile as replacement.",
-    "holdout_unlock": "Requires separate explicit authorization after unchanged P00 passes both discovery and validation.",
+    "validation_unlock": "2025 validation is inaccessible until unchanged P00 is machine-classified SURVIVES on discovery.",
+    "holdout_unlock": "2026 requires separate explicit authorization after unchanged P00 passes both discovery and validation.",
     "no_early_stop_for_good_results": true,
     "no_parameter_change_inside_stage": true
   },
