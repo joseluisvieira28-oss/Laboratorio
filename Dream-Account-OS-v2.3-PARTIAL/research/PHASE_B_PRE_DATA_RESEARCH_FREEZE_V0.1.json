@@ -155,6 +155,18 @@
     "listing_and_missing_data": "No synthetic pre-listing history and no candle interpolation. Split at missing intervals; no setup may span a data gap.",
     "open_candles": "EXCLUDED"
   },
+  "offline_ingest_contract": {
+    "contract_file": "PHASE_B_OFFLINE_DATA_INGEST_FREEZE_V0.1.json",
+    "status": "FROZEN_BEFORE_FIRST_REAL_DATA_INGEST",
+    "raw_mexc_adapter_status": "NOT_FROZEN_PENDING_REAL_OFFICIAL_SAMPLE",
+    "canonical_schema": "CANONICAL_KLINE_CSV_V0.1",
+    "first_real_file_action": "FINGERPRINT_AND_SCHEMA_PROBE_ONLY_UNLESS_ALREADY_CANONICAL",
+    "validation_2025_market_data_access": false,
+    "holdout_2026_market_data_access": false,
+    "irregular_interval_spacing_allowed": false,
+    "p00_evaluator_wiring": false,
+    "rule": "No dataset may reach P00 unless the offline ingest manifest is PASS or PASS_WITH_GAPS under the frozen ingest contract. Unknown raw MEXC schemas fail closed until a separately validated adapter is frozen."
+  },
   "trade_sampling_contract": {
     "one_active_research_trade_per_symbol": true,
     "new_same_symbol_signal_while_active": "IGNORE",
