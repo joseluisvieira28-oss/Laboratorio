@@ -89,6 +89,11 @@ class ShadowExecutionCoordinator:
             crash_hook(OrderState.SUBMITTING)
 
         receipt = self.adapter.submit(proposal, intent)
+        # This hook models the dangerous future-live boundary where an adapter may
+        # have returned but its receipt has not yet been durably committed.
+        if crash_hook is not None:
+            crash_hook(OrderState.ACKNOWLEDGED)
+
         if receipt.submitted_to_exchange:
             self.journal.transition(
                 intent.idempotency_key,
