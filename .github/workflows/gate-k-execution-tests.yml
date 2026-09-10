@@ -21,23 +21,46 @@ jobs:
       - run: python -m pip install -e .
       - run: python -m unittest discover -s tests -v
       - run: python -m compileall -q src tests
-      - name: Prove Gate K execution modules have no live-order HTTP primitives
+      - name: Prove Gate K execution modules are network-mutation free
         run: |
           python - <<'PY'
+          import ast
           from pathlib import Path
+
           files = sorted(Path('src/dream_account').glob('execution*.py'))
-          forbidden = [
-              'requests.post(', 'requests.put(', 'requests.patch(', 'requests.delete(',
-              'urllib.request.request(', 'httpx.post(', 'httpx.put(', 'httpx.delete(',
-              'aiohttp.post(', 'aiohttp.put(', 'aiohttp.delete(',
-          ]
+          forbidden_call_attrs = {'post', 'put', 'patch', 'delete'}
+          forbidden_write_only_paths = {
+              '/api/v3/order/test',
+              '/api/v3/batchOrders',
+              '/api/v3/capital/withdraw',
+              '/api/v3/capital/transfer',
+          }
           hits = []
+
           for path in files:
-              text = path.read_text(encoding='utf-8').lower()
-              for token in forbidden:
-                  if token in text:
-                      hits.append(f'{path}:{token}')
+              text = path.read_text(encoding='utf-8')
+              tree = ast.parse(text, filename=str(path))
+              for node in ast.walk(tree):
+                  if isinstance(node, ast.Call):
+                      func = node.func
+                      if isinstance(func, ast.Attribute) and func.attr.lower() in forbidden_call_attrs:
+                          hits.append(f'{path}:{node.lineno}:forbidden method {func.attr}')
+                      name = func.id if isinstance(func, ast.Name) else (
+                          func.attr if isinstance(func, ast.Attribute) else ''
+                      )
+                      if name == 'Request':
+                          method_kw = next((kw.value for kw in node.keywords if kw.arg == 'method'), None)
+                          if not (
+                              isinstance(method_kw, ast.Constant)
+                              and isinstance(method_kw.value, str)
+                              and method_kw.value.upper() == 'GET'
+                          ):
+                              hits.append(f'{path}:{node.lineno}:urllib Request is not statically GET-only')
+                  if isinstance(node, ast.Constant) and isinstance(node.value, str):
+                      if node.value in forbidden_write_only_paths:
+                          hits.append(f'{path}:{node.lineno}:write-only endpoint literal {node.value}')
+
           if hits:
-              raise SystemExit(f'forbidden live network primitives found: {hits}')
-          print(f'PASS: scanned {len(files)} Gate K execution modules; no direct live-order HTTP primitive')
+              raise SystemExit('Gate K network-mutation guard failed: ' + '; '.join(hits))
+          print(f'PASS: AST-scanned {len(files)} Gate K execution modules; GET-only network boundary enforced')
           PY
