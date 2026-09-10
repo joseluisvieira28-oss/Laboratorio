@@ -5,7 +5,6 @@ import sqlite3
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
 
 from .execution_layer import ExecutionMode, OrderIntent, OrderState, ShadowReceipt, TradeProposal
 
@@ -156,12 +155,7 @@ def _receipt_payload(receipt: ShadowReceipt) -> str:
 
 
 class ExecutionJournal:
-    """Durable execution state for Gate K.
-
-    This journal is intentionally independent from the market-data Journal. It can
-    be tested, deleted, or recovered without changing strategy state. It contains
-    no exchange/network code.
-    """
+    """Durable execution state for Gate K, with no exchange/network code."""
 
     def __init__(self, path: str):
         self.path = Path(path)
@@ -253,8 +247,7 @@ class ExecutionJournal:
             return current
         if current.state in TERMINAL_STATES:
             raise InvalidExecutionTransition(f"terminal state {current.state.value} cannot transition")
-        allowed = ALLOWED_TRANSITIONS.get(current.state, set())
-        if to_state not in allowed:
+        if to_state not in ALLOWED_TRANSITIONS.get(current.state, set()):
             raise InvalidExecutionTransition(f"{current.state.value} -> {to_state.value} is not allowed")
         now = _now()
         with self.connection:
@@ -303,11 +296,7 @@ class ExecutionJournal:
         return [(OrderState(a), OrderState(b), reason) for a, b, reason in rows]
 
     def reconcile_after_restart(self) -> list[IntentRecord]:
-        """Fail closed on states where an external side effect could be uncertain.
-
-        Gate K has no real side effect, but modelling this boundary now prevents a
-        later live adapter from blindly retrying after a crash.
-        """
+        """Resolve proven shadow receipts; fail closed on every uncertain boundary."""
         placeholders = ",".join("?" for _ in UNCERTAIN_AFTER_RESTART)
         rows = self.connection.execute(
             f"SELECT idempotency_key FROM execution_intents WHERE state IN ({placeholders}) ORDER BY idempotency_key",
@@ -315,7 +304,15 @@ class ExecutionJournal:
         ).fetchall()
         updated: list[IntentRecord] = []
         for (key,) in rows:
-            updated.append(self.transition(key, OrderState.RECONCILIATION_REQUIRED, "restart_uncertain_boundary"))
+            receipt = self.get_receipt(key)
+            if (
+                receipt is not None
+                and receipt.state is OrderState.SHADOW_RECORDED
+                and not receipt.submitted_to_exchange
+            ):
+                updated.append(self.transition(key, OrderState.SHADOW_RECORDED, "restart_durable_shadow_receipt"))
+            else:
+                updated.append(self.transition(key, OrderState.RECONCILIATION_REQUIRED, "restart_uncertain_boundary"))
         return updated
 
     def unresolved_reconciliation(self) -> list[IntentRecord]:
