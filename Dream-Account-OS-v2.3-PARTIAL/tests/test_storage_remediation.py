@@ -1,6 +1,11 @@
+import json
 import os
+import sqlite3
+import subprocess
+import sys
 import tempfile
 import unittest
+from pathlib import Path
 from unittest import mock
 
 from dream_account.data_contract import DataQuality, NormalizedSnapshot
@@ -52,15 +57,15 @@ class StorageRemediationTests(unittest.TestCase):
             self.assertEqual(result["deleted_rows"], 15)
             journal.close()
 
-    def test_prune_keeps_exact_newest_rows_even_with_id_gaps(self):
+    def test_prune_handles_gapped_row_ids(self):
         with tempfile.TemporaryDirectory() as directory:
             journal = Journal(f"{directory}/db.sqlite3")
-            journal.record_snapshots([snap(i) for i in range(10)])
-            journal.connection.execute("DELETE FROM normalized_snapshots WHERE id IN (7, 8)")
+            journal.record_snapshots([snap(i) for i in range(20)])
+            journal.connection.execute("DELETE FROM normalized_snapshots WHERE id IN (4,18,19)")
             journal.connection.commit()
             result = journal.prune_normalized_snapshots(5)
             ids = [row[0] for row in journal.connection.execute("SELECT id FROM normalized_snapshots ORDER BY id")]
-            self.assertEqual(ids, [4, 5, 6, 9, 10])
+            self.assertEqual(ids, [14, 15, 16, 17, 20])
             self.assertEqual(result["rows"], 5)
             journal.close()
 
@@ -83,6 +88,52 @@ class StorageRemediationTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 journal.prune_normalized_snapshots(0)
             journal.close()
+
+    def test_compaction_candidate_preserves_non_snapshot_tables_and_exact_newest_rows(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "source.sqlite3"
+            destination = root / "candidate.sqlite3"
+            report_path = root / "report.json"
+            journal = Journal(str(source))
+            journal.record_scan("2026-01-01T00:00:00Z", "TEST", "PASS", "RANGE", {"x": 1})
+            journal.record_signal("sig-1", "2026-01-01T00:00:00Z", "BTCUSDT", "SETUP", "A", {"y": 2})
+            journal.record_snapshots([snap(i) for i in range(20)])
+            journal.connection.execute("DELETE FROM normalized_snapshots WHERE id IN (4,18,19)")
+            journal.connection.commit()
+            source_ids = [row[0] for row in journal.connection.execute("SELECT id FROM normalized_snapshots ORDER BY id DESC LIMIT 5")]
+            journal.close()
+
+            completed = subprocess.run(
+                [
+                    sys.executable,
+                    "scripts/compact_rescue_database.py",
+                    str(source),
+                    str(destination),
+                    "--max-snapshots",
+                    "5",
+                    "--report",
+                    str(report_path),
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(completed.returncode, 0, completed.stderr or completed.stdout)
+            report = json.loads(report_path.read_text(encoding="utf-8"))
+            self.assertEqual(report["status"], "PASS")
+            self.assertTrue(report["source_unchanged"])
+            self.assertEqual(report["candidate_snapshot_rows"], 5)
+            self.assertEqual(report["non_snapshot_count_mismatches"], {})
+            self.assertEqual(report["schema_mismatches"], {})
+
+            candidate = sqlite3.connect(destination)
+            candidate_ids = [row[0] for row in candidate.execute("SELECT id FROM normalized_snapshots ORDER BY id DESC")]
+            self.assertEqual(candidate_ids, source_ids)
+            self.assertEqual(candidate.execute("SELECT COUNT(*) FROM market_scans").fetchone()[0], 1)
+            self.assertEqual(candidate.execute("SELECT COUNT(*) FROM signals").fetchone()[0], 1)
+            self.assertEqual(candidate.execute("PRAGMA integrity_check").fetchall(), [("ok",)])
+            candidate.close()
 
     def test_operational_constants_are_capacity_only(self):
         self.assertEqual(MAX_OPERATIONAL_SNAPSHOTS, 500_000)
