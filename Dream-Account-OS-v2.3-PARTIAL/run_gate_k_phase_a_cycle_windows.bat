@@ -1,5 +1,5 @@
 @echo off
-setlocal EnableExtensions
+setlocal EnableExtensions EnableDelayedExpansion
 
 REM Gate K Phase A — local one-shot launcher
 REM SHADOW / READ-ONLY only. This file never contains credentials.
@@ -12,21 +12,29 @@ if NOT "%MEXC_READONLY_SCOPE_ATTESTED%"=="1" goto :missing_scope
 if NOT "%MEXC_READONLY_RECONCILE_ENABLE%"=="1" goto :missing_reconcile
 if NOT "%MEXC_SHADOW_REHEARSAL_ENABLE%"=="1" goto :missing_shadow
 
+REM The project uses a src/ layout. Ensure the package is importable without
+REM requiring the operator to preconfigure PYTHONPATH manually.
+if defined PYTHONPATH (
+  set "PYTHONPATH=%CD%\src;%PYTHONPATH%"
+) else (
+  set "PYTHONPATH=%CD%\src"
+)
+
 if not exist "gate_k_phase_a_evidence" mkdir "gate_k_phase_a_evidence"
 set "JOURNAL=%CD%\gate_k_phase_a_evidence\phase_a_campaign.sqlite3"
 set "RECEIPT=%CD%\gate_k_phase_a_evidence\latest_cycle_receipt.json"
 
 where py >nul 2>nul
-if %ERRORLEVEL%==0 (
+if !ERRORLEVEL!==0 (
   py -3 -m dream_account.execution_phase_a_campaign_runner --journal "%JOURNAL%" --output "%RECEIPT%"
-  set "RC=%ERRORLEVEL%"
+  set "RC=!ERRORLEVEL!"
   goto :finish
 )
 
 where python >nul 2>nul
-if %ERRORLEVEL%==0 (
+if !ERRORLEVEL!==0 (
   python -m dream_account.execution_phase_a_campaign_runner --journal "%JOURNAL%" --output "%RECEIPT%"
-  set "RC=%ERRORLEVEL%"
+  set "RC=!ERRORLEVEL!"
   goto :finish
 )
 
@@ -51,11 +59,11 @@ exit /b 2
 
 :finish
 echo.
-if "%RC%"=="0" (
+if "!RC!"=="0" (
   echo Gate K Phase A cycle completed without a blocking condition.
   echo Journal: %JOURNAL%
   echo Receipt: %RECEIPT%
 ) else (
-  echo Gate K Phase A cycle BLOCKED or failed closed. Exit code: %RC%
+  echo Gate K Phase A cycle BLOCKED or failed closed. Exit code: !RC!
 )
-exit /b %RC%
+exit /b !RC!
