@@ -31,7 +31,9 @@ logging.basicConfig(level=logging.INFO, format="%(message)s")
 LOGGER = logging.getLogger("dream-account")
 RESCUE_ROOT = Path("/var/data")
 RESCUE_DB_NAME = "dream_account.sqlite3"
-RESCUE_MIN_FREE_BYTES = 16 * 1024 * 1024
+RESCUE_MIN_FREE_BYTES = 128 * 1024 * 1024
+MAX_OPERATIONAL_SNAPSHOTS = 500_000
+FORCE_MAINTENANCE_ENV = "DREAM_FORCE_MAINTENANCE"
 RESCUE_TOKEN: str | None = None
 STATE = {
     "status": "BOOTING",
@@ -41,6 +43,10 @@ STATE = {
     "expectancy": "INSUFFICIENT SAMPLE",
     "scan_iteration": 0,
 }
+
+
+class RescueRequired(RuntimeError):
+    pass
 
 
 def log_event(event: str, **fields) -> None:
@@ -53,15 +59,24 @@ def _disk_usage(root: Path | None = None) -> dict[str, int]:
     return {"total_bytes": usage.total, "used_bytes": usage.used, "free_bytes": usage.free}
 
 
+def _maintenance_forced() -> bool:
+    return os.getenv(FORCE_MAINTENANCE_ENV, "").strip().lower() in {"1", "true", "yes", "on"}
+
+
 def _should_enter_rescue_mode(root: Path | None = None) -> bool:
-    return _disk_usage(root)["free_bytes"] < RESCUE_MIN_FREE_BYTES
+    return _maintenance_forced() or _disk_usage(root)["free_bytes"] < RESCUE_MIN_FREE_BYTES
 
 
-def _activate_rescue_mode(root: Path | None = None) -> None:
+def _activate_rescue_mode(root: Path | None = None, reason: str | None = None) -> None:
     global RESCUE_TOKEN
     target = root or RESCUE_ROOT
     RESCUE_TOKEN = secrets.token_urlsafe(32)
     usage = _disk_usage(target)
+    state_reason = reason or (
+        f"Maintenance forced by {FORCE_MAINTENANCE_ENV}"
+        if _maintenance_forced()
+        else "Persistent disk free space below rescue threshold"
+    )
     STATE.update({
         "status": "RESCUE_MODE",
         "rescue_mode": True,
@@ -69,11 +84,20 @@ def _activate_rescue_mode(root: Path | None = None) -> None:
         "execution": "NONEXISTENT",
         "top_3": [],
         "data_coverage": None,
-        "last_error": "Persistent disk free space below rescue threshold",
+        "last_error": state_reason,
         "disk": usage,
     })
     # The token is intentionally emitted once to Render's private service log.
-    log_event("rescue_mode_entered", rescue_token=RESCUE_TOKEN, root=str(target), threshold_bytes=RESCUE_MIN_FREE_BYTES, **usage)
+    log_event("rescue_mode_entered", rescue_token=RESCUE_TOKEN, root=str(target), reason=state_reason,
+              threshold_bytes=RESCUE_MIN_FREE_BYTES, **usage)
+
+
+def _require_storage_headroom(root: Path | None = None) -> None:
+    if _maintenance_forced():
+        raise RescueRequired(f"Maintenance forced by {FORCE_MAINTENANCE_ENV}")
+    usage = _disk_usage(root)
+    if usage["free_bytes"] < RESCUE_MIN_FREE_BYTES:
+        raise RescueRequired("Persistent disk free space below rescue threshold")
 
 
 def _is_authorized(token: str | None) -> bool:
@@ -267,12 +291,14 @@ class HealthHandler(BaseHTTPRequestHandler):
 
 
 def collect_once(collector: MEXCDataCollector, engine: DreamAccountEngine, journal: Journal, client: MEXCClient) -> None:
+    _require_storage_headroom()
     STATE["scan_iteration"] += 1
     iteration = STATE["scan_iteration"]
     log_event("collector_start", scan=iteration)
     batch = collector.collect_spot()
-    for snapshot in batch.snapshots:
-        journal.record_snapshot(snapshot)
+    _require_storage_headroom()
+    persisted = journal.record_snapshots(batch.snapshots)
+    storage = journal.prune_normalized_snapshots(MAX_OPERATIONAL_SNAPSHOTS)
     candidates = engine.evaluate(batch, "UNVERIFIED") if batch.gate_passed else []
     eligible = [x for x in candidates if x.tier in {"A", "A+"} and not x.rejection_reasons]
     diagnostic = infrastructure_diagnostic(client) if iteration == 1 or iteration % 10 == 0 else STATE.get("connectivity", {})
@@ -294,12 +320,15 @@ def collect_once(collector: MEXCDataCollector, engine: DreamAccountEngine, journ
         "paper_signals": counts.get("signals", 0),
         "paper_open": journal.connection.execute("SELECT COUNT(*) FROM paper_trades WHERE closed_at IS NULL").fetchone()[0],
         "paper_closed": journal.connection.execute("SELECT COUNT(*) FROM paper_trades WHERE closed_at IS NOT NULL").fetchone()[0],
+        "snapshot_storage": {**storage, "persisted_this_scan": persisted, "max_rows": MAX_OPERATIONAL_SNAPSHOTS},
+        "disk": _disk_usage(),
     })
     event = "snapshot_completion" if batch.gate_passed else "fail_closed"
     health = batch.source_health.get("api.mexc.com", {})
     log_event(event, scan=iteration, mexc_rest="OK" if batch.gate_passed else "FAIL", verified=len(batch.verified), expected=batch.expected_symbols,
               coverage=batch.coverage_pct, latency_p95_ms=health.get("latency_p95_ms"), a_plus=sum(x.tier == "A+" for x in eligible),
-              a=sum(x.tier == "A" for x in eligible), paper_open=STATE["paper_open"], result="NO TRADE" if not eligible else "WATCH")
+              a=sum(x.tier == "A" for x in eligible), paper_open=STATE["paper_open"], snapshot_rows=storage["rows"],
+              reusable_bytes=storage["reusable_bytes"], result="NO TRADE" if not eligible else "WATCH")
 
 
 def main() -> None:
@@ -329,10 +358,15 @@ def main() -> None:
         while True:
             try:
                 collect_once(collector, engine, journal, client)
+            except RescueRequired as exc:
+                _activate_rescue_mode(reason=str(exc))
+                break
             except Exception as exc:
                 STATE.update({"status": "FAIL_CLOSED", "last_error": f"{type(exc).__name__}: {exc}", "top_3": []})
                 log_event("fail_closed", error=f"{type(exc).__name__}: {exc}")
             time.sleep(interval)
+        while STATE.get("rescue_mode"):
+            time.sleep(3600)
     finally:
         journal.close(); server.shutdown()
 

@@ -1,0 +1,25 @@
+name: Storage remediation tests
+
+on:
+  push:
+    branches:
+      - dream-account-storage-remediation-v1
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e .
+      - run: python -m unittest discover -s tests -v
+      - run: python -m compileall -q src scripts tests
+      - run: docker build -t dream-account-storage-remediation .
+      - run: docker run --rm --entrypoint sh dream-account-storage-remediation -c 'test -f /app/scripts/compact_rescue_database.py && test -f /app/scripts/recovery_bootstrap.py && python -m compileall -q /app/src /app/scripts && python /app/scripts/recovery_bootstrap.py'

@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import sqlite3
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable
 
 
 SCHEMA = """
@@ -46,14 +46,89 @@ class Journal:
         self.connection.execute("INSERT INTO system_events(observed_at,level,event_type,detail) VALUES(?,?,?,?)", (observed_at, level, event_type, detail))
         self.connection.commit()
 
-    def record_snapshot(self, snapshot: Any) -> None:
+    @staticmethod
+    def _snapshot_row(snapshot: Any) -> tuple[Any, ...]:
         payload = snapshot.as_dict()
+        return (
+            snapshot.timestamp_utc,
+            snapshot.source,
+            snapshot.symbol,
+            snapshot.market_type,
+            snapshot.data_quality.value,
+            json.dumps(payload, sort_keys=True, default=str),
+        )
+
+    def record_snapshot(self, snapshot: Any) -> None:
+        """Compatibility path for one snapshot; production runtime uses record_snapshots."""
         self.connection.execute(
             "INSERT INTO normalized_snapshots(observed_at,source,symbol,market_type,data_quality,payload) VALUES(?,?,?,?,?,?)",
-            (snapshot.timestamp_utc, snapshot.source, snapshot.symbol, snapshot.market_type,
-             snapshot.data_quality.value, json.dumps(payload, sort_keys=True, default=str)),
+            self._snapshot_row(snapshot),
         )
         self.connection.commit()
+
+    def record_snapshots(self, snapshots: Iterable[Any]) -> int:
+        """Persist one market scan as a single SQLite transaction.
+
+        This changes persistence efficiency only. It does not alter the normalized
+        snapshot contract or any strategy/scoring input.
+        """
+        rows = [self._snapshot_row(snapshot) for snapshot in snapshots]
+        if not rows:
+            return 0
+        with self.connection:
+            self.connection.executemany(
+                "INSERT INTO normalized_snapshots(observed_at,source,symbol,market_type,data_quality,payload) VALUES(?,?,?,?,?,?)",
+                rows,
+            )
+        return len(rows)
+
+    def snapshot_storage_stats(self) -> dict[str, int]:
+        row = self.connection.execute(
+            "SELECT COUNT(*), COALESCE(MIN(id),0), COALESCE(MAX(id),0) FROM normalized_snapshots"
+        ).fetchone()
+        page_size = int(self.connection.execute("PRAGMA page_size").fetchone()[0])
+        page_count = int(self.connection.execute("PRAGMA page_count").fetchone()[0])
+        freelist_count = int(self.connection.execute("PRAGMA freelist_count").fetchone()[0])
+        return {
+            "rows": int(row[0]),
+            "min_id": int(row[1]),
+            "max_id": int(row[2]),
+            "page_size": page_size,
+            "page_count": page_count,
+            "freelist_count": freelist_count,
+            "database_bytes": page_size * page_count,
+            "reusable_bytes": page_size * freelist_count,
+        }
+
+    def prune_normalized_snapshots(self, max_rows: int) -> dict[str, int]:
+        """Bound operational raw snapshots while keeping exactly the newest row IDs.
+
+        SQLite freed pages are intentionally left on the freelist for reuse. This
+        routine never VACUUMs the live database. The cutoff is resolved from the
+        actual ordered row IDs so prior gaps cannot cause under-retention.
+        """
+        if max_rows < 1:
+            raise ValueError("max_rows must be >= 1")
+        before = self.snapshot_storage_stats()
+        if before["rows"] <= max_rows:
+            return {**before, "deleted_rows": 0, "max_rows": max_rows}
+        anchor = self.connection.execute(
+            "SELECT id FROM normalized_snapshots ORDER BY id DESC LIMIT 1 OFFSET ?",
+            (max_rows - 1,),
+        ).fetchone()
+        if anchor is None:
+            raise RuntimeError("snapshot retention anchor could not be resolved")
+        oldest_kept_id = int(anchor[0])
+        with self.connection:
+            cursor = self.connection.execute(
+                "DELETE FROM normalized_snapshots WHERE id < ?", (oldest_kept_id,)
+            )
+        after = self.snapshot_storage_stats()
+        return {
+            **after,
+            "deleted_rows": int(cursor.rowcount if cursor.rowcount >= 0 else before["rows"] - after["rows"]),
+            "max_rows": max_rows,
+        }
 
     def counts(self) -> dict[str, int]:
         tables = ["market_scans", "candidates", "signals", "paper_trades"]
