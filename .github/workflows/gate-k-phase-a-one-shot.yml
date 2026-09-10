@@ -1,0 +1,105 @@
+name: Gate K Phase A one-shot observation
+
+on:
+  push:
+    branches:
+      - dream-account-gate-k-execution-layer-v0.1
+    paths:
+      - '.github/workflows/gate-k-phase-a-one-shot.yml'
+
+permissions:
+  contents: read
+
+env:
+  MEXC_READONLY_SCOPE_ATTESTED: '1'
+  MEXC_READONLY_RECONCILE_ENABLE: '1'
+  MEXC_SHADOW_REHEARSAL_ENABLE: '1'
+  MEXC_READONLY_ACCESS_KEY: ${{ secrets.MEXC_READONLY_ACCESS_KEY }}
+  MEXC_READONLY_SECRET_KEY: ${{ secrets.MEXC_READONLY_SECRET_KEY }}
+  GATE_K_OBSERVATION_JOURNAL: /tmp/gate-k-phase-a-observations.sqlite3
+
+jobs:
+  observe:
+    if: contains(github.event.head_commit.message, '[gate-k-phase-a-one-shot]')
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install Gate K branch
+        run: python -m pip install -e .
+      - name: Re-prove execution boundary is GET-only
+        run: |
+          python - <<'PY'
+          import ast
+          from pathlib import Path
+          files = sorted(Path('src/dream_account').glob('execution*.py'))
+          hits = []
+          for path in files:
+              tree = ast.parse(path.read_text(encoding='utf-8'), filename=str(path))
+              for node in ast.walk(tree):
+                  if not isinstance(node, ast.Call):
+                      continue
+                  func = node.func
+                  if isinstance(func, ast.Attribute) and func.attr.lower() in {'post','put','patch','delete'}:
+                      hits.append(f'{path}:{node.lineno}:{func.attr}')
+                  name = func.id if isinstance(func, ast.Name) else (func.attr if isinstance(func, ast.Attribute) else '')
+                  if name == 'Request':
+                      method_kw = next((kw.value for kw in node.keywords if kw.arg == 'method'), None)
+                      if not (isinstance(method_kw, ast.Constant) and isinstance(method_kw.value, str) and method_kw.value.upper() == 'GET'):
+                          hits.append(f'{path}:{node.lineno}:non-GET urllib Request')
+          if hits:
+              raise SystemExit('BLOCKED: network mutation primitive detected: ' + '; '.join(hits))
+          print(f'PASS: {len(files)} execution modules are GET-only')
+          PY
+      - name: Require read-only secrets without revealing values
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$MEXC_READONLY_ACCESS_KEY" || { echo 'BLOCKED: access-key secret missing'; exit 2; }
+          test -n "$MEXC_READONLY_SECRET_KEY" || { echo 'BLOCKED: secret-key secret missing'; exit 2; }
+          echo 'PASS: read-only secrets present; values not printed'
+      - name: Run exactly one real-market Phase A observation
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m dream_account.execution_shadow_rehearsal > /tmp/gate-k-shadow-rehearsal.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          payload = json.loads(Path('/tmp/gate-k-shadow-rehearsal.json').read_text(encoding='utf-8'))
+          if not str(payload.get('status','')).startswith('PASS_'):
+              raise SystemExit('BLOCKED: shadow observation status not PASS')
+          if payload.get('exchange_mutation_routes') != 0:
+              raise SystemExit('BLOCKED: exchange mutation route invariant failed')
+          if payload.get('fixture_submitted_to_exchange') is not False:
+              raise SystemExit('BLOCKED: fixture claims exchange submission')
+          if payload.get('live_trade_proposals_created') != 0:
+              raise SystemExit('BLOCKED: live TradeProposal created')
+          if payload.get('reconciliation_status') != 'PASS_CLEAN':
+              raise SystemExit('BLOCKED: reconciliation not PASS_CLEAN')
+          observation = payload.get('phase_a_observation', {})
+          if observation.get('exchange_mutation_routes') != 0:
+              raise SystemExit('BLOCKED: observation mutation route invariant failed')
+          if observation.get('submitted_to_exchange') is not False:
+              raise SystemExit('BLOCKED: observation claims exchange submission')
+          if observation.get('live_trade_proposals_created') != 0:
+              raise SystemExit('BLOCKED: observation live TradeProposal count nonzero')
+          print(json.dumps(payload, sort_keys=True))
+          PY
+      - name: Preserve sanitized Phase A evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate-k-phase-a-one-shot-${{ github.run_id }}
+          path: |
+            /tmp/gate-k-shadow-rehearsal.json
+            /tmp/gate-k-phase-a-observations.sqlite3
+          retention-days: 90
+      - name: Final safety statement
+        run: |
+          echo 'PASS: one controlled Gate K Phase A observation completed.'
+          echo 'No order, cancel, amend, transfer, withdraw, or other exchange mutation was implemented or authorized.'
