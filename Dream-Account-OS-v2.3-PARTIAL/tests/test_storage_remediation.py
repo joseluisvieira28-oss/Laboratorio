@@ -1,3 +1,4 @@
+import hashlib
 import json
 import os
 import sqlite3
@@ -103,6 +104,7 @@ class StorageRemediationTests(unittest.TestCase):
             journal.connection.commit()
             source_ids = [row[0] for row in journal.connection.execute("SELECT id FROM normalized_snapshots ORDER BY id DESC LIMIT 5")]
             journal.close()
+            expected_sha = hashlib.sha256(source.read_bytes()).hexdigest()
 
             completed = subprocess.run(
                 [
@@ -114,6 +116,8 @@ class StorageRemediationTests(unittest.TestCase):
                     "5",
                     "--report",
                     str(report_path),
+                    "--expected-source-sha256",
+                    expected_sha,
                 ],
                 check=False,
                 capture_output=True,
@@ -123,6 +127,8 @@ class StorageRemediationTests(unittest.TestCase):
             report = json.loads(report_path.read_text(encoding="utf-8"))
             self.assertEqual(report["status"], "PASS")
             self.assertTrue(report["source_unchanged"])
+            self.assertTrue(report["expected_source_sha256_match"])
+            self.assertEqual(report["expected_source_sha256"], expected_sha)
             self.assertEqual(report["source_nonempty_sidecars"], {})
             self.assertNotEqual(report["source_journal_mode"], "wal")
             self.assertEqual(report["candidate_snapshot_rows"], 5)
@@ -136,6 +142,32 @@ class StorageRemediationTests(unittest.TestCase):
             self.assertEqual(candidate.execute("SELECT COUNT(*) FROM signals").fetchone()[0], 1)
             self.assertEqual(candidate.execute("PRAGMA integrity_check").fetchall(), [("ok",)])
             candidate.close()
+
+    def test_compaction_rejects_wrong_expected_source_sha(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "source.sqlite3"
+            destination = root / "candidate.sqlite3"
+            journal = Journal(str(source))
+            journal.record_snapshots([snap(i) for i in range(3)])
+            journal.close()
+
+            completed = subprocess.run(
+                [
+                    sys.executable,
+                    "scripts/compact_rescue_database.py",
+                    str(source),
+                    str(destination),
+                    "--expected-source-sha256",
+                    "0" * 64,
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            self.assertNotEqual(completed.returncode, 0)
+            self.assertIn("source SHA-256 mismatch", completed.stderr + completed.stdout)
+            self.assertFalse(destination.exists())
 
     def test_compaction_refuses_nonempty_wal_sidecar(self):
         with tempfile.TemporaryDirectory() as directory:
