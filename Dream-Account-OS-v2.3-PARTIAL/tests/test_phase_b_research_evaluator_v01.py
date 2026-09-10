@@ -10,6 +10,7 @@ from research.phase_b_research_evaluator_v01 import (
     day_block_bootstrap_expectancy,
     evaluate_symbol,
     evaluate_universe,
+    reprice_fixed_cohort,
     split_contiguous_segments,
 )
 from research.phase_b_signal_formation_v01 import (
@@ -139,6 +140,31 @@ class PhaseBResearchEvaluatorTests(unittest.TestCase):
         self.assertGreaterEqual(metrics.net_rr_rejected_count, 1)
         self.assertEqual(metrics.selected_trade_count, 0)
 
+    def test_fixed_cohort_repricing_never_reselects_trades(self):
+        records, base_metrics = evaluate_universe({"BTCUSDT": base_series()}, parameters(), costs())
+        stress = CostAssumptions("STRESS", 0.05, 0.10, 0.05)
+        repriced = reprice_fixed_cohort(records, stress, min_net_rr=2.0)
+        self.assertEqual(repriced.cohort_source, "BASE_SENSITIVITY_SELECTED_P00_TRADES")
+        self.assertEqual(repriced.selected_trade_count, base_metrics.selected_trade_count)
+        self.assertEqual(repriced.resolved_trade_count, base_metrics.resolved_trade_count)
+        self.assertLess(repriced.net_expectancy_r, base_metrics.net_expectancy_r)
+
+    def test_fixed_cohort_reports_stress_rr_violation_without_dropping_trade(self):
+        records, _ = evaluate_universe({"BTCUSDT": base_series()}, parameters(), costs())
+        severe = CostAssumptions("SEVERE", 0.05, 0.20, 0.10)
+        repriced = reprice_fixed_cohort(records, severe, min_net_rr=2.0)
+        self.assertEqual(repriced.selected_trade_count, len(records))
+        self.assertGreaterEqual(repriced.net_rr_below_minimum_count, 0)
+        self.assertIsNotNone(repriced.net_rr_violation_rate)
+
+    def test_fixed_cohort_empty_input_uses_explicit_undefined_metrics(self):
+        stress = CostAssumptions("STRESS", 0.05, 0.10, 0.05)
+        repriced = reprice_fixed_cohort([], stress)
+        self.assertEqual(repriced.selected_trade_count, 0)
+        self.assertIsNone(repriced.net_expectancy_r)
+        self.assertIsNone(repriced.profit_factor_r)
+        self.assertIsNone(repriced.net_rr_violation_rate)
+
     def test_day_block_bootstrap_is_deterministic(self):
         base_signal = signal_for()
         template = simulate_outcome(base_signal, base_series(), costs(), max_holding_bars=2)
@@ -181,6 +207,14 @@ class PhaseBResearchEvaluatorTests(unittest.TestCase):
         self.assertFalse(authority["exchange_mutation_authorized"])
         self.assertEqual(data["data_contract"]["final_holdout"]["status"], "LOCKED_UNTIL_SEPARATE_UNLOCK_AFTER_DISCOVERY_AND_VALIDATION_PASS")
 
+    def test_validation_is_physically_locked_until_discovery_survives(self):
+        data = json.loads(MANIFEST.read_text(encoding="utf-8"))
+        self.assertEqual(data["data_contract"]["validation"]["status"], "LOCKED_UNTIL_DISCOVERY_SURVIVES")
+        sequence = " ".join(data["data_contract"]["stage_access_sequence"]).lower()
+        self.assertIn("do not fetch", sequence)
+        self.assertIn("2025", sequence)
+        self.assertIn("machine-classified survives", sequence)
+
     def test_manifest_primary_profile_is_unique_and_sensitivities_cannot_replace_it(self):
         data = json.loads(MANIFEST.read_text(encoding="utf-8"))
         self.assertEqual(data["primary_hypothesis"]["profile_id"], "P00_PRIMARY")
@@ -195,6 +229,13 @@ class PhaseBResearchEvaluatorTests(unittest.TestCase):
         for scenario in data["cost_scenarios"]:
             total = 2 * scenario["fee_pct_each_side"] + scenario["spread_pct"] + 2 * scenario["slippage_pct_each_side"]
             self.assertAlmostEqual(total, scenario["round_trip_cost_pct"])
+
+    def test_manifest_holds_cost_sensitivity_cohort_fixed(self):
+        data = json.loads(MANIFEST.read_text(encoding="utf-8"))
+        policy = data["cost_sensitivity_policy"]
+        self.assertEqual(policy["trade_cohort_source"], "BASE_SENSITIVITY_SELECTED_P00_TRADES")
+        self.assertFalse(policy["alternative_cost_scenarios_reselect_trades"])
+        self.assertTrue(policy["alternative_cost_scenarios_reprice_same_geometry_and_exit_path"])
 
     def test_manifest_forbids_cross_exchange_backfill_and_interpolation(self):
         data = json.loads(MANIFEST.read_text(encoding="utf-8"))
