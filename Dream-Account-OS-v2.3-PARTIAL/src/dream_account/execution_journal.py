@@ -40,6 +40,13 @@ CREATE TABLE IF NOT EXISTS execution_transitions(
 );
 CREATE INDEX IF NOT EXISTS idx_execution_intents_state ON execution_intents(state);
 CREATE INDEX IF NOT EXISTS idx_execution_transitions_key ON execution_transitions(idempotency_key, id);
+CREATE TABLE IF NOT EXISTS phase_a_observations(
+    observation_id TEXT PRIMARY KEY,
+    fingerprint TEXT NOT NULL,
+    payload TEXT NOT NULL,
+    observed_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_phase_a_observations_time ON phase_a_observations(observed_at);
 """
 
 
@@ -126,6 +133,10 @@ class ProposalConflict(ExecutionJournalError):
     pass
 
 
+class ObservationConflict(ExecutionJournalError):
+    pass
+
+
 @dataclass(frozen=True)
 class IntentRecord:
     idempotency_key: str
@@ -170,6 +181,27 @@ class ExecutionJournal:
 
     def integrity_check(self) -> list[str]:
         return [row[0] for row in self.connection.execute("PRAGMA integrity_check").fetchall()]
+
+    def record_phase_a_observation(self, observation_id: str, fingerprint: str, payload: dict) -> None:
+        serialized = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+        existing = self.connection.execute(
+            "SELECT fingerprint,payload FROM phase_a_observations WHERE observation_id=?", (observation_id,)
+        ).fetchone()
+        if existing is not None:
+            if existing != (fingerprint, serialized):
+                raise ObservationConflict("observation_id already exists with different immutable evidence")
+            return
+        with self.connection:
+            self.connection.execute(
+                "INSERT INTO phase_a_observations(observation_id,fingerprint,payload,observed_at) VALUES(?,?,?,?)",
+                (observation_id, fingerprint, serialized, payload["observed_at_utc"]),
+            )
+
+    def phase_a_observations(self) -> list[dict]:
+        rows = self.connection.execute(
+            "SELECT payload FROM phase_a_observations ORDER BY observed_at,observation_id"
+        ).fetchall()
+        return [json.loads(row[0]) for row in rows]
 
     def record_proposal(self, proposal: TradeProposal) -> None:
         payload = _proposal_payload(proposal)

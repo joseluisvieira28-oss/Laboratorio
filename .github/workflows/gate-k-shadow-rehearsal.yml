@@ -12,6 +12,7 @@ env:
   MEXC_SHADOW_REHEARSAL_ENABLE: '1'
   MEXC_READONLY_ACCESS_KEY: ${{ secrets.MEXC_READONLY_ACCESS_KEY }}
   MEXC_READONLY_SECRET_KEY: ${{ secrets.MEXC_READONLY_SECRET_KEY }}
+  GATE_K_OBSERVATION_JOURNAL: /tmp/gate-k-phase-a-observations.sqlite3
 
 jobs:
   rehearse:
@@ -73,7 +74,7 @@ jobs:
               'fixture_journal_integrity','fixture_idempotent_replay','reconciliation_status',
               'reconciliation_symbols_queried','reconciliation_daos_open_orders',
               'reconciliation_daos_recent_trades','exchange_mutation_routes','risk_semantics_note',
-              'note','fingerprint'
+              'phase_a_observation','aggregate_metrics','note','fingerprint'
           }
           unexpected = sorted(set(payload) - allowed)
           if unexpected:
@@ -92,8 +93,21 @@ jobs:
               raise SystemExit('BLOCKED: MEXC read-only reconciliation not clean')
           if payload.get('live_trade_proposals_created') != 0:
               raise SystemExit('BLOCKED: Gate K real sizing is not frozen; live proposal creation forbidden')
+          observation = payload.get('phase_a_observation', {})
+          if observation.get('exchange_mutation_routes') != 0 or observation.get('submitted_to_exchange') is not False:
+              raise SystemExit('BLOCKED: Phase A observation safety invariant failed')
+          if observation.get('live_trade_proposals_created') != 0:
+              raise SystemExit('BLOCKED: live TradeProposal recorded')
           print(json.dumps(payload, sort_keys=True))
           PY
+      - name: Preserve sanitized Phase A evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate-k-phase-a-observation-${{ github.run_id }}
+          path: |
+            /tmp/gate-k-shadow-rehearsal.json
+            /tmp/gate-k-phase-a-observations.sqlite3
+          retention-days: 90
       - name: Final safety statement
         run: |
           echo 'PASS: Gate K shadow rehearsal completed.'
