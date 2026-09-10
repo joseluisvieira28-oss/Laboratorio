@@ -1,0 +1,128 @@
+name: Phase B signal research tests
+
+on:
+  push:
+    branches:
+      - dream-account-phase-b-signal-research-v0.1
+
+permissions:
+  contents: read
+
+jobs:
+  research-safety-and-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install project
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+
+      - name: Prove Phase B branch is research-only
+        env:
+          PHASE_B_BASE_SHA: 258786a8006948513526e5b265bc2c4e27e8bee3
+        run: |
+          python - <<'PY'
+          import os
+          import subprocess
+
+          base = os.environ['PHASE_B_BASE_SHA']
+          changed = subprocess.check_output(
+              ['git', 'diff', '--name-only', f'{base}...HEAD'],
+              text=True,
+          ).splitlines()
+          allowed_exact = {'.github/workflows/phase-b-signal-research-tests.yml'}
+          allowed_prefixes = (
+              'Dream-Account-OS-v2.3-PARTIAL/research/',
+              'Dream-Account-OS-v2.3-PARTIAL/tests/test_phase_b_',
+          )
+          forbidden = [
+              path for path in changed
+              if path not in allowed_exact and not path.startswith(allowed_prefixes)
+          ]
+          if forbidden:
+              raise SystemExit('Phase B isolation guard failed: ' + ', '.join(forbidden))
+          print(f'PASS: {len(changed)} Phase B changes are isolated to research/tests/workflow')
+          PY
+
+      - name: Run full inherited and Phase B unit suite
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python -m unittest discover -s tests -v
+
+      - name: Compile source tests and research
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python -m compileall -q src tests research
+
+      - name: Prove research modules have no network or exchange mutation primitives
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python - <<'PY'
+          import ast
+          from pathlib import Path
+
+          forbidden_import_roots = {
+              'requests', 'urllib', 'websockets', 'socket', 'http', 'subprocess'
+          }
+          forbidden_call_attrs = {
+              'post', 'put', 'patch', 'delete', 'urlopen', 'connect', 'send'
+          }
+          forbidden_endpoint_literals = {
+              '/api/v3/order',
+              '/api/v3/order/test',
+              '/api/v3/batchOrders',
+              '/api/v3/capital/withdraw',
+              '/api/v3/capital/transfer',
+          }
+          hits = []
+          files = sorted(Path('research').glob('*.py'))
+          for path in files:
+              tree = ast.parse(path.read_text(encoding='utf-8'), filename=str(path))
+              for node in ast.walk(tree):
+                  if isinstance(node, ast.Import):
+                      for alias in node.names:
+                          root = alias.name.split('.')[0]
+                          if root in forbidden_import_roots:
+                              hits.append(f'{path}:{node.lineno}:forbidden import {alias.name}')
+                  elif isinstance(node, ast.ImportFrom):
+                      root = (node.module or '').split('.')[0]
+                      if root in forbidden_import_roots:
+                          hits.append(f'{path}:{node.lineno}:forbidden import {node.module}')
+                  elif isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
+                      if node.func.attr.lower() in forbidden_call_attrs:
+                          hits.append(f'{path}:{node.lineno}:forbidden call {node.func.attr}')
+                  elif isinstance(node, ast.Constant) and isinstance(node.value, str):
+                      if node.value in forbidden_endpoint_literals:
+                          hits.append(f'{path}:{node.lineno}:forbidden endpoint {node.value}')
+          if hits:
+              raise SystemExit('Phase B research network/mutation guard failed: ' + '; '.join(hits))
+          print(f'PASS: AST-scanned {len(files)} research modules; offline-only boundary enforced')
+          PY
+
+      - name: Verify pre-data holdout and no-live flags
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          manifest = json.loads(Path('research/PHASE_B_PRE_DATA_RESEARCH_FREEZE_V0.1.json').read_text(encoding='utf-8'))
+          authority = manifest['authority_boundary']
+          assert manifest['status'] == 'RESEARCH_ONLY_NOT_LIVE_AUTHORITY'
+          assert authority['phase_b_live_integration_authorized'] is False
+          assert authority['real_trading_authorized'] is False
+          assert authority['exchange_mutation_authorized'] is False
+          assert manifest['data_contract']['final_holdout']['status'].startswith('LOCKED_')
+          assert manifest['decision_policy']['primary_profile_only'] == 'P00_PRIMARY'
+          assert manifest['sensitivity_policy']['may_replace_primary_after_results'] is False
+          print('PASS: research authority boundary and 2026 holdout lock are intact')
+          PY
