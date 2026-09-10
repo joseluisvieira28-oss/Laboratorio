@@ -6,7 +6,6 @@ import unittest
 from urllib.parse import parse_qsl, urlsplit
 
 from dream_account.execution_mexc_readonly import (
-    MEXC_SPOT_BASE,
     MEXCSpotReadOnlyClient,
     ReadOnlyMEXCError,
     ReadOnlyPolicyViolation,
@@ -113,7 +112,10 @@ class GateKMEXCReadOnlyTests(unittest.TestCase):
             MEXCSpotReadOnlyClient("a", "b", recv_window_ms=5001)
 
     def test_signed_get_uses_hmac_sha256_and_api_key_header(self):
-        client, transport = self.client()
+        client, transport = self.client({
+            "/api/v3/time": {"serverTime": 1_000_000},
+            "/api/v3/account": ACCOUNT,
+        })
         client.sync_clock()
         client.account()
         path, query, headers, timeout = transport.calls[-1]
