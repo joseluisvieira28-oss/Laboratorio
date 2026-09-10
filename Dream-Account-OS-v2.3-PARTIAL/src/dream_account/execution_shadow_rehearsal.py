@@ -9,9 +9,9 @@ from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Iterable
 
-from .cli import fixture_scan
 from .config import Settings
 from .database import Journal
+from .engines import calculate_costs, score_candidate
 from .execution_coordinator import ShadowExecutionCoordinator
 from .execution_journal import ExecutionJournal
 from .execution_layer import ExecutionMode, MockMEXCExecutionAdapter, SafetyContext, TradeProposal
@@ -25,6 +25,7 @@ SHADOW_REHEARSAL_ENABLE_ENV = "MEXC_SHADOW_REHEARSAL_ENABLE"
 AUTHORITY_ID = "DREAM-ACCOUNT-OS-GATE-K-SHADOW-REHEARSAL-V0.1"
 MAX_SLIPPAGE_BPS_FIXTURE = 25.0
 FIXTURE_RISK_PERCENT = 2.0
+FIXTURE_BALANCE_QUOTE = 56.0
 
 
 class ShadowProposalBlocked(RuntimeError):
@@ -159,25 +160,49 @@ def _live_block_counts(candidates: Iterable[Candidate]) -> tuple[int, Counter[st
     return actionable, reasons
 
 
+def _execution_fixture_candidate(settings: Settings) -> Candidate:
+    """Create a deterministic infrastructure fixture, not a market claim.
+
+    The geometry is chosen only to exercise the existing scoring/cost/sizing handoff
+    with a candidate that passes the already-existing V2.1 rules. It is never emitted
+    as a real signal and never reaches a network mutation path.
+    """
+    entry, stop, tp1, tp2 = 100.0, 98.0, 106.0, 108.0
+    costs = calculate_costs(entry, stop, tp1, 0.1, 0.05, 0.02)
+    candidate = Candidate(
+        "FIXTUREUSDT",
+        "SPOT",
+        entry,
+        20_000_000.0,
+        0.05,
+        {"15m": 0.2, "1h": 0.4, "24h": 1.0},
+        1.8,
+        "RISK_ON_TREND",
+        "BREAKOUT_RETEST",
+        entry,
+        stop,
+        tp1,
+        tp2,
+    )
+    candidate.status = "LONG_CANDIDATE"
+    score_candidate(candidate, settings, costs.net_rr, catalyst_confirmed=True)
+    return candidate
+
+
 def _fixture_pipeline() -> tuple[str, bool, str, bool]:
     settings = Settings()
     with tempfile.TemporaryDirectory() as directory:
-        scan_journal = Journal(os.path.join(directory, "fixture-scan.sqlite3"))
         execution_journal = ExecutionJournal(os.path.join(directory, "execution.sqlite3"))
         try:
-            fixture = fixture_scan(settings, scan_journal)
-            if not fixture.candidates:
-                raise ShadowProposalBlocked("fixture produced no candidate")
-            candidate = fixture.candidates[0]
+            candidate = _execution_fixture_candidate(settings)
             readiness = candidate_readiness(candidate)
             if not readiness.ready:
-                raise ShadowProposalBlocked("fixture candidate not proposal-ready: " + ",".join(readiness.reasons))
+                raise ShadowProposalBlocked("execution fixture not proposal-ready: " + ",".join(readiness.reasons))
 
-            # Preserve the already-tested V2.1 fixture sizing semantics exactly:
-            # 2% risk and balance-capped 56 quote-notional units. This is a Gate K
-            # pipeline rehearsal only; it does not resolve the config-unit ambiguity
-            # between Settings.normal_risk_pct=0.02 and the position_size(percent) API.
-            quantity = 56.0 / float(candidate.entry)
+            # Preserve the already-tested V2.1 sizing semantics used by test_engines:
+            # 2 percent risk with a balance-capped 56 quote-notional unit fixture.
+            # This intentionally does NOT reinterpret Settings.normal_risk_pct=0.02.
+            quantity = FIXTURE_BALANCE_QUOTE / float(candidate.entry)
             proposal = build_shadow_proposal(
                 candidate,
                 quantity=quantity,
@@ -207,7 +232,6 @@ def _fixture_pipeline() -> tuple[str, bool, str, bool]:
             )
         finally:
             execution_journal.close()
-            scan_journal.close()
 
 
 def run_shadow_rehearsal() -> ShadowRehearsalReport:
@@ -225,9 +249,9 @@ def run_shadow_rehearsal() -> ShadowRehearsalReport:
     actionable, reason_counts = _live_block_counts(live_scan.candidates)
 
     # Gate K must not invent quantity/risk or manufacture a signal. Real proposals
-    # are created only when the frozen upstream signal object is complete and a
-    # separately frozen sizing input exists. The current live scanner does not
-    # provide such sizing, so this real-market rehearsal records zero live proposals.
+    # are created only when the upstream signal object is complete and a separately
+    # frozen sizing input exists. The current live scanner supplies neither a complete
+    # actionable signal nor a sizing authority, so the live proposal count is zero.
     live_proposals_created = 0
 
     fixture_state, fixture_submitted, fixture_integrity, fixture_replay = _fixture_pipeline()
@@ -237,6 +261,8 @@ def run_shadow_rehearsal() -> ShadowRehearsalReport:
         status = "BLOCKED_RECONCILIATION"
     elif fixture_submitted:
         status = "BLOCKED_EXCHANGE_MUTATION"
+    elif fixture_state != "SHADOW_RECORDED" or fixture_integrity != "ok" or not fixture_replay:
+        status = "BLOCKED_SHADOW_PIPELINE"
     elif live_scan.status != "PASS":
         status = "BLOCKED_LIVE_DATA"
     elif actionable:
@@ -265,12 +291,12 @@ def run_shadow_rehearsal() -> ShadowRehearsalReport:
         exchange_mutation_routes=0,
         risk_semantics_note=(
             "Gate K intentionally does not auto-size real orders. Existing code has Settings.normal_risk_pct=0.02 "
-            "while position_size consumes percent units and V2.1 fixture tests use 2.0. This ambiguity must be frozen "
-            "before any live-sizing authority is created."
+            "while position_size consumes percent units and V2.1 tests use 2.0 for two percent. This ambiguity must "
+            "be frozen before any live-sizing authority is created."
         ),
         note=(
             "Real-market scan is observational. Gate K never manufactures setup/entry/stop/targets/quantity. "
-            "Deterministic fixture exercises proposal->validation->journal->idempotency->shadow receipt. "
+            "Deterministic infrastructure fixture exercises proposal->validation->journal->idempotency->shadow receipt. "
             "MEXC reconciliation remains authenticated GET-only."
         ),
     )
