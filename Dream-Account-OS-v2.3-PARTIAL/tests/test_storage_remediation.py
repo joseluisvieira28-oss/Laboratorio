@@ -52,6 +52,18 @@ class StorageRemediationTests(unittest.TestCase):
             self.assertEqual(result["deleted_rows"], 15)
             journal.close()
 
+    def test_prune_keeps_exact_newest_rows_even_with_id_gaps(self):
+        with tempfile.TemporaryDirectory() as directory:
+            journal = Journal(f"{directory}/db.sqlite3")
+            journal.record_snapshots([snap(i) for i in range(10)])
+            journal.connection.execute("DELETE FROM normalized_snapshots WHERE id IN (7, 8)")
+            journal.connection.commit()
+            result = journal.prune_normalized_snapshots(5)
+            ids = [row[0] for row in journal.connection.execute("SELECT id FROM normalized_snapshots ORDER BY id")]
+            self.assertEqual(ids, [4, 5, 6, 9, 10])
+            self.assertEqual(result["rows"], 5)
+            journal.close()
+
     def test_prune_does_not_touch_non_snapshot_tables(self):
         with tempfile.TemporaryDirectory() as directory:
             journal = Journal(f"{directory}/db.sqlite3")
