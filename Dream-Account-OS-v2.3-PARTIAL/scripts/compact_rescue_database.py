@@ -78,13 +78,27 @@ def build_candidate(source_path: Path, destination_path: Path, max_snapshots: in
         raise ValueError("source and destination must be different files")
     destination_path.parent.mkdir(parents=True, exist_ok=True)
 
+    wal_path = Path(str(source_path) + "-wal")
+    shm_path = Path(str(source_path) + "-shm")
+    nonempty_sidecars = {
+        str(path): path.stat().st_size
+        for path in (wal_path, shm_path)
+        if path.exists() and path.stat().st_size > 0
+    }
+    if nonempty_sidecars:
+        raise RuntimeError(f"non-empty SQLite WAL/SHM sidecar detected: {nonempty_sidecars}")
+
     source_hash_before = sha256(source_path)
     source = sqlite3.connect(f"file:{source_path.resolve().as_posix()}?mode=ro", uri=True)
     source.execute("PRAGMA query_only=ON")
     source_integrity = integrity(source)
+    source_journal_mode = str(source.execute("PRAGMA journal_mode").fetchone()[0]).lower()
     if source_integrity != ["ok"]:
         source.close()
         raise RuntimeError(f"source integrity failed: {source_integrity}")
+    if source_journal_mode == "wal":
+        source.close()
+        raise RuntimeError("source is in WAL mode; refuse compaction until a stable checkpointed source is frozen")
 
     source_tables = table_names(source)
     source_counts = {name: table_count(source, name) for name in source_tables}
@@ -184,6 +198,8 @@ def build_candidate(source_path: Path, destination_path: Path, max_snapshots: in
         "source_sha256_after": source_hash_after,
         "source_unchanged": source_hash_before == source_hash_after,
         "source_integrity_check": source_integrity,
+        "source_journal_mode": source_journal_mode,
+        "source_nonempty_sidecars": nonempty_sidecars,
         "destination": str(destination_path),
         "destination_size_bytes": destination_path.stat().st_size,
         "destination_sha256": destination_hash,
