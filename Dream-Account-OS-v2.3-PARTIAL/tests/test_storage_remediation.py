@@ -123,6 +123,8 @@ class StorageRemediationTests(unittest.TestCase):
             report = json.loads(report_path.read_text(encoding="utf-8"))
             self.assertEqual(report["status"], "PASS")
             self.assertTrue(report["source_unchanged"])
+            self.assertEqual(report["source_nonempty_sidecars"], {})
+            self.assertNotEqual(report["source_journal_mode"], "wal")
             self.assertEqual(report["candidate_snapshot_rows"], 5)
             self.assertEqual(report["non_snapshot_count_mismatches"], {})
             self.assertEqual(report["schema_mismatches"], {})
@@ -134,6 +136,26 @@ class StorageRemediationTests(unittest.TestCase):
             self.assertEqual(candidate.execute("SELECT COUNT(*) FROM signals").fetchone()[0], 1)
             self.assertEqual(candidate.execute("PRAGMA integrity_check").fetchall(), [("ok",)])
             candidate.close()
+
+    def test_compaction_refuses_nonempty_wal_sidecar(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "source.sqlite3"
+            destination = root / "candidate.sqlite3"
+            journal = Journal(str(source))
+            journal.record_snapshots([snap(i) for i in range(3)])
+            journal.close()
+            Path(str(source) + "-wal").write_bytes(b"not-a-stable-checkpoint")
+
+            completed = subprocess.run(
+                [sys.executable, "scripts/compact_rescue_database.py", str(source), str(destination)],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            self.assertNotEqual(completed.returncode, 0)
+            self.assertIn("sidecar", completed.stderr + completed.stdout)
+            self.assertFalse(destination.exists())
 
     def test_operational_constants_are_capacity_only(self):
         self.assertEqual(MAX_OPERATIONAL_SNAPSHOTS, 500_000)
