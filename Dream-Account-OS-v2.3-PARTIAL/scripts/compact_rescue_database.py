@@ -67,7 +67,8 @@ def copy_query_rows(source: sqlite3.Connection, destination: sqlite3.Connection,
     return copied
 
 
-def build_candidate(source_path: Path, destination_path: Path, max_snapshots: int) -> dict:
+def build_candidate(source_path: Path, destination_path: Path, max_snapshots: int,
+                    expected_source_sha256: str | None = None) -> dict:
     if max_snapshots < 1:
         raise ValueError("max_snapshots must be >= 1")
     if not source_path.is_file():
@@ -89,6 +90,11 @@ def build_candidate(source_path: Path, destination_path: Path, max_snapshots: in
         raise RuntimeError(f"non-empty SQLite WAL/SHM sidecar detected: {nonempty_sidecars}")
 
     source_hash_before = sha256(source_path)
+    if expected_source_sha256 and source_hash_before.lower() != expected_source_sha256.strip().lower():
+        raise RuntimeError(
+            f"source SHA-256 mismatch: expected {expected_source_sha256.strip().lower()} got {source_hash_before.lower()}"
+        )
+
     source = sqlite3.connect(f"file:{source_path.resolve().as_posix()}?mode=ro", uri=True)
     source.execute("PRAGMA query_only=ON")
     source_integrity = integrity(source)
@@ -183,12 +189,17 @@ def build_candidate(source_path: Path, destination_path: Path, max_snapshots: in
 
     source_hash_after = sha256(source_path)
     destination_hash = sha256(destination_path)
+    expected_match = (
+        expected_source_sha256 is None
+        or source_hash_before.lower() == expected_source_sha256.strip().lower()
+    )
     status = (
         destination_integrity == ["ok"]
         and not mismatches
         and not schema_mismatches
         and int(snapshot_ids[2]) == keep
         and source_hash_before == source_hash_after
+        and expected_match
     )
     return {
         "status": "PASS" if status else "FAIL",
@@ -197,6 +208,8 @@ def build_candidate(source_path: Path, destination_path: Path, max_snapshots: in
         "source_sha256_before": source_hash_before,
         "source_sha256_after": source_hash_after,
         "source_unchanged": source_hash_before == source_hash_after,
+        "expected_source_sha256": expected_source_sha256.strip().lower() if expected_source_sha256 else None,
+        "expected_source_sha256_match": expected_match,
         "source_integrity_check": source_integrity,
         "source_journal_mode": source_journal_mode,
         "source_nonempty_sidecars": nonempty_sidecars,
@@ -225,10 +238,16 @@ def main() -> int:
     parser.add_argument("destination", type=Path)
     parser.add_argument("--max-snapshots", type=int, default=MAX_OPERATIONAL_SNAPSHOTS)
     parser.add_argument("--report", type=Path)
+    parser.add_argument("--expected-source-sha256")
     args = parser.parse_args()
 
     try:
-        report = build_candidate(args.source, args.destination, args.max_snapshots)
+        report = build_candidate(
+            args.source,
+            args.destination,
+            args.max_snapshots,
+            expected_source_sha256=args.expected_source_sha256,
+        )
     except (ValueError, FileNotFoundError, FileExistsError, RuntimeError) as exc:
         raise SystemExit(str(exc))
     output = json.dumps(report, indent=2, sort_keys=True)
