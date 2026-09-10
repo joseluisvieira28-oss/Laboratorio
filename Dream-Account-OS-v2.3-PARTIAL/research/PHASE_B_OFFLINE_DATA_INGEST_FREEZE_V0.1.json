@@ -111,6 +111,28 @@
     "gap_handling": "REPORT_AND_SPLIT_LATER_NEVER_INTERPOLATE",
     "empty_dataset_action": "BLOCKED_EMPTY_DATASET"
   },
+  "schema_probe": {
+    "status": "AUTHORIZED_STRUCTURE_ONLY_BEFORE_ADAPTER_FREEZE",
+    "purpose": "Identify raw container/header shape without exposing market values or evaluating outcomes.",
+    "sha256_required": true,
+    "plain_csv_header_probe_allowed": true,
+    "plain_csv_first_data_row_field_count_allowed": true,
+    "plain_csv_first_data_row_values_may_be_returned": false,
+    "zip_central_directory_listing_allowed": true,
+    "zip_text_entry_header_probe_allowed": true,
+    "zip_text_entry_first_data_row_field_count_allowed": true,
+    "zip_text_entry_market_values_may_be_returned": false,
+    "json_top_level_shape_probe_allowed": true,
+    "json_market_values_may_be_returned": false,
+    "max_header_line_bytes": 65536,
+    "max_zip_entries_reported": 100,
+    "max_zip_text_entries_probed": 10,
+    "max_zip_entry_uncompressed_bytes_for_header_probe": 10485760,
+    "path_traversal_entries_blocked": true,
+    "encrypted_zip_entries_blocked": true,
+    "adapter_activation_from_probe_alone": false,
+    "p00_evaluation_allowed": false
+  },
   "determinism": {
     "canonical_json": "UTF8_SORT_KEYS_COMPACT_SEPARATORS",
     "dataset_manifest_fingerprint": "SHA256_CANONICAL_JSON_EXCLUDING_SELF_FINGERPRINT",
@@ -122,7 +144,8 @@
     "zip_contents_are_not_promoted_to_CANONICAL_without_validated_adapter": true,
     "path_traversal_entries_blocked": true,
     "archive_entry_names_may_be_listed_for_schema_probe": true,
-    "archive_payload_interpretation_before_adapter_freeze": false
+    "header_only_text_probe_allowed_under_schema_probe_limits": true,
+    "archive_market_value_interpretation_before_adapter_freeze": false
   },
   "mexc_2022_availability": {
     "status": "UNRESOLVED",
@@ -134,6 +157,6 @@
       "PASS_WITH_GAPS"
     ],
     "p00_evaluator_wiring_in_this_release": false,
-    "first_real_file_action": "FINGERPRINT_AND_SCHEMA_PROBE_ONLY_UNLESS_ALREADY_CANONICAL"
+    "first_real_file_action": "FINGERPRINT_AND_STRUCTURE_ONLY_SCHEMA_PROBE_UNLESS_ALREADY_CANONICAL"
   }
 }
