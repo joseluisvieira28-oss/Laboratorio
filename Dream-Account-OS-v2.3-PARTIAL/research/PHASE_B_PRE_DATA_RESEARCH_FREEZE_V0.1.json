@@ -1,0 +1,206 @@
+{
+  "document_type": "PHASE_B_PRE_DATA_RESEARCH_FREEZE",
+  "version": "0.1",
+  "status": "RESEARCH_ONLY_NOT_LIVE_AUTHORITY",
+  "created_utc": "2026-09-10",
+  "authority_boundary": {
+    "historical_signal_geometry_recovered": false,
+    "classification": "NEW_PROSPECTIVE_RESEARCH_GOVERNANCE",
+    "phase_a_unchanged": true,
+    "phase_b_live_integration_authorized": false,
+    "micro_live_authorized": false,
+    "real_trading_authorized": false,
+    "main_merge_authorized": false,
+    "render_deploy_authorized": false,
+    "exchange_mutation_authorized": false
+  },
+  "research_family": {
+    "setup_id": "PBR01_BREAKOUT_RETEST_LONG",
+    "market_type": "SPOT",
+    "direction": "LONG_ONLY",
+    "timeframe": "15m",
+    "rationale": "Prospective V0.1 is long-only because current Numerical Risk Policy V2 is Spot 1x with no leverage. One timeframe minimizes degrees of freedom."
+  },
+  "primary_hypothesis": {
+    "profile_id": "P00_PRIMARY",
+    "role": "ONLY_PROFILE_ELIGIBLE_FOR_PROMOTION_DECISION",
+    "parameters": {
+      "lookback_bars": 96,
+      "atr_length": 14,
+      "zone_atr_fraction": 0.25,
+      "retest_window_bars": 2,
+      "stop_atr_fraction": 0.25,
+      "tp1_r_multiple": 1.0,
+      "tp1_execution_role": "INFORMATIONAL_MILESTONE_ONLY_NO_PARTIAL_EXIT",
+      "tp2_r_multiple": 3.0,
+      "min_net_rr": 2.0,
+      "max_holding_bars": 96,
+      "require_bullish_breakout_body": true
+    },
+    "signal_rules": {
+      "level_source": "MAX_HIGH_OF_STRICTLY_PRIOR_CLOSED_LOOKBACK_CANDLES",
+      "atr_source": "ATR14_FROM_STRICTLY_PRIOR_CLOSED_CANDLES",
+      "zone_high": "resistance",
+      "zone_low": "resistance - 0.25 * ATR_before_breakout",
+      "breakout": "closed candle close > resistance AND close >= open",
+      "retest": "within next 2 closed candles, first zone touch is decisive; low must remain >= zone_low and close >= zone_high",
+      "failed_retest": "first zone touch closing below zone_high OR any low below zone_low before confirmation invalidates setup",
+      "entry": "next closed-series candle open after defended retest confirmation",
+      "pre_entry_cancellation": "if next entry open < zone_high, cancel",
+      "stop": "zone_low - 0.25 * ATR_before_breakout",
+      "tp1": "entry + 1.0R",
+      "tp2": "entry + 3.0R",
+      "funding": "ZERO_FOR_SPOT",
+      "catalyst": "NOT_REQUIRED_FOR_RESEARCH_ONLY; LIVE CATALYST POLICY REMAINS BLOCKED",
+      "no_lookahead": true
+    }
+  },
+  "sensitivity_profiles": [
+    {"profile_id": "P01_LOOKBACK_48", "change_only": {"lookback_bars": 48}},
+    {"profile_id": "P02_LOOKBACK_192", "change_only": {"lookback_bars": 192}},
+    {"profile_id": "P03_ZONE_010_ATR", "change_only": {"zone_atr_fraction": 0.10}},
+    {"profile_id": "P04_ZONE_040_ATR", "change_only": {"zone_atr_fraction": 0.40}},
+    {"profile_id": "P05_RETEST_1", "change_only": {"retest_window_bars": 1}},
+    {"profile_id": "P06_RETEST_4", "change_only": {"retest_window_bars": 4}},
+    {"profile_id": "P07_STOP_010_ATR", "change_only": {"stop_atr_fraction": 0.10}},
+    {"profile_id": "P08_STOP_050_ATR", "change_only": {"stop_atr_fraction": 0.50}},
+    {"profile_id": "P09_TP2_25R", "change_only": {"tp2_r_multiple": 2.5}},
+    {"profile_id": "P10_TP2_35R", "change_only": {"tp2_r_multiple": 3.5}},
+    {"profile_id": "P11_HOLD_48", "change_only": {"max_holding_bars": 48}},
+    {"profile_id": "P12_HOLD_192", "change_only": {"max_holding_bars": 192}}
+  ],
+  "sensitivity_policy": {
+    "method": "ONE_FACTOR_AT_A_TIME",
+    "may_replace_primary_after_results": false,
+    "may_be_selected_as_winner": false,
+    "purpose": "ROBUSTNESS_DIAGNOSTICS_ONLY",
+    "parameter_tuning_after_outcome_inspection": false
+  },
+  "cost_scenarios": [
+    {
+      "name": "FEE_FLOOR",
+      "fee_pct_each_side": 0.05,
+      "spread_pct": 0.00,
+      "slippage_pct_each_side": 0.00,
+      "round_trip_cost_pct": 0.10,
+      "interpretation": "Research lower-bound sensitivity, not a claim of historical realized cost."
+    },
+    {
+      "name": "BASE_SENSITIVITY",
+      "fee_pct_each_side": 0.05,
+      "spread_pct": 0.05,
+      "slippage_pct_each_side": 0.025,
+      "round_trip_cost_pct": 0.20,
+      "interpretation": "Pre-registered sensitivity assumption, not a claim of historical realized spread/slippage."
+    },
+    {
+      "name": "STRESS",
+      "fee_pct_each_side": 0.05,
+      "spread_pct": 0.10,
+      "slippage_pct_each_side": 0.05,
+      "round_trip_cost_pct": 0.30,
+      "interpretation": "Stress sensitivity."
+    },
+    {
+      "name": "SEVERE",
+      "fee_pct_each_side": 0.05,
+      "spread_pct": 0.20,
+      "slippage_pct_each_side": 0.10,
+      "round_trip_cost_pct": 0.50,
+      "interpretation": "Severe sensitivity; diagnostic only."
+    }
+  ],
+  "rr_cost_constraint": {
+    "formula": "for gross target mR, stop fraction s and round-trip cost fraction c: net_RR=(m*s-c)/(s+c)",
+    "net_rr_ge_2_condition": "(m-2)*s >= 3*c",
+    "implication_for_primary_3R": "stop_fraction >= 3 * cost_fraction to retain net_RR >= 2",
+    "purpose": "structural feasibility check, not historical outcome tuning"
+  },
+  "data_contract": {
+    "source": "MEXC_OFFICIAL_HISTORICAL_SPOT_DATA_ONLY",
+    "cross_exchange_backfill_allowed": false,
+    "timezone": "UTC",
+    "timeframe": "15m",
+    "symbols": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "DOGEUSDT"],
+    "discovery": {"start": "2022-01-01T00:00:00Z", "end": "2024-12-31T23:59:59Z"},
+    "validation": {"start": "2025-01-01T00:00:00Z", "end": "2025-12-31T23:59:59Z"},
+    "final_holdout": {"start": "2026-01-01T00:00:00Z", "status": "LOCKED_UNTIL_SEPARATE_UNLOCK_AFTER_DISCOVERY_AND_VALIDATION_PASS"},
+    "listing_and_missing_data": "No synthetic pre-listing history and no candle interpolation. Split at missing intervals; no setup may span a data gap.",
+    "open_candles": "EXCLUDED"
+  },
+  "trade_sampling_contract": {
+    "one_active_research_trade_per_symbol": true,
+    "new_same_symbol_signal_while_active": "IGNORE",
+    "cross_symbol_overlap": "ALLOWED_FOR_SIGNAL_LEVEL_RESEARCH_ONLY",
+    "portfolio_equity_or_portfolio_drawdown_claims": false,
+    "reason": "Portfolio capital allocation is not yet frozen and must not be invented."
+  },
+  "ohlc_execution_semantics": {
+    "entry": "NEXT_BAR_OPEN_AFTER_CONFIRMATION",
+    "tp1_partial_exit": false,
+    "stop_gap": "EXIT_AT_ADVERSE_OPEN_IF_OPEN_BELOW_STOP",
+    "favorable_gap_above_tp2": "CAP_EXIT_AT_TP2",
+    "same_bar_stop_and_tp2": "STOP_FIRST_CONSERVATIVE",
+    "same_bar_ambiguity_rate_must_be_reported": true,
+    "time_exit": "AFTER_MAX_HOLDING_COMPLETED_BARS_EXIT_AT_NEXT_BAR_OPEN",
+    "missing_next_bar_for_time_exit": "UNRESOLVED_END_OF_DATA"
+  },
+  "primary_metrics": [
+    "resolved_trade_count",
+    "net_expectancy_R",
+    "median_net_R",
+    "win_rate",
+    "profit_factor_R",
+    "loss_rate",
+    "tp1_reach_rate",
+    "same_bar_ambiguity_rate",
+    "time_exit_rate",
+    "stop_gap_rate",
+    "cost_scenario",
+    "signal_frequency_per_30d",
+    "symbol_distribution"
+  ],
+  "uncertainty": {
+    "bootstrap": "UTC_CALENDAR_DAY_BLOCK_BOOTSTRAP",
+    "bootstrap_repetitions": 5000,
+    "bootstrap_seed": 230911,
+    "confidence_interval": 0.95,
+    "target_metric": "net_expectancy_R",
+    "note": "All trades from a sampled UTC day are resampled together to preserve within-day clustering."
+  },
+  "decision_policy": {
+    "primary_profile_only": "P00_PRIMARY",
+    "discovery_min_resolved_trades": 100,
+    "validation_min_resolved_trades": 30,
+    "discovery_survives_only_if": [
+      "resolved_trade_count >= 100",
+      "BASE_SENSITIVITY net_expectancy_R > 0",
+      "BASE_SENSITIVITY profit_factor_R > 1",
+      "95% day-block-bootstrap lower bound for BASE_SENSITIVITY net_expectancy_R > 0",
+      "STRESS net_expectancy_R > 0"
+    ],
+    "validation_survives_only_if": [
+      "resolved_trade_count >= 30",
+      "BASE_SENSITIVITY net_expectancy_R > 0",
+      "BASE_SENSITIVITY profit_factor_R > 1",
+      "95% day-block-bootstrap lower bound for BASE_SENSITIVITY net_expectancy_R > 0",
+      "STRESS net_expectancy_R > 0"
+    ],
+    "insufficient_sample": "If minimum resolved-trade count is not met, classify INSUFFICIENT_SAMPLE rather than extend/tune opportunistically.",
+    "no_edge": "If a required survival condition fails, classify NO_EDGE for P00 at that stage. Do not promote a sensitivity profile as replacement.",
+    "holdout_unlock": "Requires separate explicit authorization after unchanged P00 passes both discovery and validation.",
+    "no_early_stop_for_good_results": true,
+    "no_parameter_change_inside_stage": true
+  },
+  "live_blockers_remaining": [
+    "Phase A completion under its independent contract",
+    "live regime-validation integration",
+    "live liquidity-validation integration",
+    "live catalyst policy or explicit catalyst-not-required authority",
+    "verified symbol fee/spread/slippage inputs",
+    "verified exchange precision/minimum inputs",
+    "risk state and allocation integration",
+    "TradingView/Python geometry parity after research contract is frozen",
+    "separate Phase B live-shadow authorization"
+  ]
+}
