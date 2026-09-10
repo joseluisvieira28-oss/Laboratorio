@@ -101,20 +101,27 @@ class Journal:
         }
 
     def prune_normalized_snapshots(self, max_rows: int) -> dict[str, int]:
-        """Bound operational raw snapshots while keeping the newest row IDs.
+        """Bound operational raw snapshots while keeping exactly the newest row IDs.
 
         SQLite freed pages are intentionally left on the freelist for reuse. This
-        routine never VACUUMs the live database.
+        routine never VACUUMs the live database. The cutoff is resolved from the
+        actual ordered row IDs so prior gaps cannot cause under-retention.
         """
         if max_rows < 1:
             raise ValueError("max_rows must be >= 1")
         before = self.snapshot_storage_stats()
         if before["rows"] <= max_rows:
             return {**before, "deleted_rows": 0, "max_rows": max_rows}
-        cutoff_id = before["max_id"] - max_rows
+        anchor = self.connection.execute(
+            "SELECT id FROM normalized_snapshots ORDER BY id DESC LIMIT 1 OFFSET ?",
+            (max_rows - 1,),
+        ).fetchone()
+        if anchor is None:
+            raise RuntimeError("snapshot retention anchor could not be resolved")
+        oldest_kept_id = int(anchor[0])
         with self.connection:
             cursor = self.connection.execute(
-                "DELETE FROM normalized_snapshots WHERE id <= ?", (cutoff_id,)
+                "DELETE FROM normalized_snapshots WHERE id < ?", (oldest_kept_id,)
             )
         after = self.snapshot_storage_stats()
         return {
