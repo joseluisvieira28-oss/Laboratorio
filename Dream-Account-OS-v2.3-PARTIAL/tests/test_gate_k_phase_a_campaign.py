@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import unittest
 from datetime import datetime, timedelta, timezone
+from tempfile import TemporaryDirectory
+from pathlib import Path
 
 from dream_account.execution_journal import ExecutionJournal
 from dream_account.execution_phase_a_campaign import record_and_summarize_cycle, summarize_campaign
@@ -29,86 +32,80 @@ def _obs(index: int, day_offset: int = 0, **overrides):
     return build_phase_a_observation(**base)
 
 
-def test_campaign_is_insufficient_before_100_cycles_and_7_days():
-    summary = summarize_campaign([_obs(1)])
-    assert summary.status == "INSUFFICIENT_EVIDENCE"
-    assert summary.successful_cycles == 1
-    assert summary.calendar_days_observed == 1
-    assert summary.remaining_successful_cycles == 99
-    assert summary.remaining_calendar_days == 6
+class GateKPhaseACampaignTests(unittest.TestCase):
+    def test_campaign_is_insufficient_before_100_cycles_and_7_days(self):
+        summary = summarize_campaign([_obs(1)])
+        self.assertEqual(summary.status, "INSUFFICIENT_EVIDENCE")
+        self.assertEqual(summary.successful_cycles, 1)
+        self.assertEqual(summary.calendar_days_observed, 1)
+        self.assertEqual(summary.remaining_successful_cycles, 99)
+        self.assertEqual(summary.remaining_calendar_days, 6)
+
+    def test_campaign_pass_requires_both_cycle_and_calendar_day_thresholds(self):
+        records = [_obs(i, day_offset=i % 7) for i in range(100)]
+        summary = summarize_campaign(records)
+        self.assertEqual(summary.status, "PASS")
+        self.assertEqual(summary.successful_cycles, 100)
+        self.assertEqual(summary.calendar_days_observed, 7)
+        self.assertEqual(summary.remaining_successful_cycles, 0)
+        self.assertEqual(summary.remaining_calendar_days, 0)
+
+    def test_campaign_does_not_pass_100_cycles_on_one_day(self):
+        summary = summarize_campaign([_obs(i) for i in range(100)])
+        self.assertEqual(summary.status, "INSUFFICIENT_EVIDENCE")
+        self.assertEqual(summary.successful_cycles, 100)
+        self.assertEqual(summary.calendar_days_observed, 1)
+
+    def test_mutation_route_blocks_campaign(self):
+        summary = summarize_campaign([_obs(1, exchange_mutation_routes=1)])
+        self.assertEqual(summary.status, "BLOCKED")
+        self.assertIn("exchange_mutation_route_present", summary.blocking_reasons)
+
+    def test_exchange_submission_claim_blocks_campaign(self):
+        summary = summarize_campaign([_obs(1, submitted_to_exchange=True)])
+        self.assertEqual(summary.status, "BLOCKED")
+        self.assertIn("exchange_submission_claim_present", summary.blocking_reasons)
+
+    def test_live_trade_proposal_blocks_campaign(self):
+        summary = summarize_campaign([_obs(1, live_trade_proposals_created=1)])
+        self.assertEqual(summary.status, "BLOCKED")
+        self.assertIn("live_trade_proposal_present", summary.blocking_reasons)
+
+    def test_unexplained_daos_activity_blocks_campaign(self):
+        summary = summarize_campaign([_obs(1, reconciliation_daos_open_orders=1)])
+        self.assertEqual(summary.status, "BLOCKED")
+        self.assertIn("unexpected_daos_open_order_activity", summary.blocking_reasons)
+
+    def test_campaign_fingerprint_is_deterministic(self):
+        records = [_obs(1), _obs(2, day_offset=1)]
+        a = summarize_campaign(records)
+        b = summarize_campaign(reversed(records))
+        self.assertEqual(a.fingerprint, b.fingerprint)
+
+    def test_changed_evidence_changes_campaign_fingerprint(self):
+        a = summarize_campaign([_obs(1)])
+        b = summarize_campaign([_obs(1, verified_symbols=9)])
+        self.assertNotEqual(a.fingerprint, b.fingerprint)
+
+    def test_record_and_summarize_is_idempotent(self):
+        with TemporaryDirectory() as directory:
+            journal = ExecutionJournal(str(Path(directory) / "phase-a.sqlite3"))
+            try:
+                observation = _obs(1)
+                first = record_and_summarize_cycle(journal, observation)
+                second = record_and_summarize_cycle(journal, observation)
+                self.assertEqual(first.fingerprint, second.fingerprint)
+                self.assertEqual(len(journal.phase_a_observations()), 1)
+                self.assertEqual(journal.integrity_check(), ["ok"])
+            finally:
+                journal.close()
+
+    def test_empty_campaign_is_explicitly_insufficient_and_metrics_undefined(self):
+        summary = summarize_campaign([])
+        self.assertEqual(summary.status, "INSUFFICIENT_EVIDENCE")
+        self.assertIsNone(summary.aggregate_metrics["DataCoverageRate"]["value"])
+        self.assertIsNone(summary.aggregate_metrics["SafetyIntegrityRate"]["value"])
 
 
-def test_campaign_pass_requires_both_cycle_and_calendar_day_thresholds():
-    records = []
-    for i in range(100):
-        records.append(_obs(i, day_offset=i % 7))
-    summary = summarize_campaign(records)
-    assert summary.status == "PASS"
-    assert summary.successful_cycles == 100
-    assert summary.calendar_days_observed == 7
-    assert summary.remaining_successful_cycles == 0
-    assert summary.remaining_calendar_days == 0
-
-
-def test_campaign_does_not_pass_100_cycles_on_one_day():
-    summary = summarize_campaign([_obs(i) for i in range(100)])
-    assert summary.status == "INSUFFICIENT_EVIDENCE"
-    assert summary.successful_cycles == 100
-    assert summary.calendar_days_observed == 1
-
-
-def test_mutation_route_blocks_campaign():
-    summary = summarize_campaign([_obs(1, exchange_mutation_routes=1)])
-    assert summary.status == "BLOCKED"
-    assert "exchange_mutation_route_present" in summary.blocking_reasons
-
-
-def test_exchange_submission_claim_blocks_campaign():
-    summary = summarize_campaign([_obs(1, submitted_to_exchange=True)])
-    assert summary.status == "BLOCKED"
-    assert "exchange_submission_claim_present" in summary.blocking_reasons
-
-
-def test_live_trade_proposal_blocks_campaign():
-    summary = summarize_campaign([_obs(1, live_trade_proposals_created=1)])
-    assert summary.status == "BLOCKED"
-    assert "live_trade_proposal_present" in summary.blocking_reasons
-
-
-def test_unexplained_daos_activity_blocks_campaign():
-    summary = summarize_campaign([_obs(1, reconciliation_daos_open_orders=1)])
-    assert summary.status == "BLOCKED"
-    assert "unexpected_daos_open_order_activity" in summary.blocking_reasons
-
-
-def test_campaign_fingerprint_is_deterministic():
-    records = [_obs(1), _obs(2, day_offset=1)]
-    a = summarize_campaign(records)
-    b = summarize_campaign(reversed(records))
-    assert a.fingerprint == b.fingerprint
-
-
-def test_changed_evidence_changes_campaign_fingerprint():
-    a = summarize_campaign([_obs(1)])
-    b = summarize_campaign([_obs(1, verified_symbols=9)])
-    assert a.fingerprint != b.fingerprint
-
-
-def test_record_and_summarize_is_idempotent(tmp_path):
-    journal = ExecutionJournal(str(tmp_path / "phase-a.sqlite3"))
-    try:
-        observation = _obs(1)
-        first = record_and_summarize_cycle(journal, observation)
-        second = record_and_summarize_cycle(journal, observation)
-        assert first.fingerprint == second.fingerprint
-        assert len(journal.phase_a_observations()) == 1
-        assert journal.integrity_check() == ["ok"]
-    finally:
-        journal.close()
-
-
-def test_empty_campaign_is_explicitly_insufficient_and_metrics_undefined():
-    summary = summarize_campaign([])
-    assert summary.status == "INSUFFICIENT_EVIDENCE"
-    assert summary.aggregate_metrics["DataCoverageRate"]["value"] is None
-    assert summary.aggregate_metrics["SafetyIntegrityRate"]["value"] is None
+if __name__ == "__main__":
+    unittest.main()
