@@ -14,29 +14,109 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Pre-data fingerprint diagnostic only
+
+      - name: Verify frozen H04 authority before market data
         run: |
           cd Dream-Account-OS-v2.3-PARTIAL
           python -m pip install -e .
+          python -m compileall -q research
           python - <<'PY'
           import json, hashlib
           from pathlib import Path
           from research.phase_b_h04_binance_daily_manifest_v01 import build_h04_manifest_receipt, FREEZE_FINGERPRINT
           from research.phase_b_h04_discovery_runner_v01 import EXPECTED_AUTHORIZATION_FINGERPRINT, EXPECTED_MANIFEST_FINGERPRINT
           freeze=json.loads(Path('research/PHASE_B_H04_POSITIVE_TAKER_FLOW_PERSISTENCE_PROSPECTIVE_FREEZE_V0.1.json').read_text())
-          unsigned=dict(freeze); supplied=unsigned.pop('fingerprint')
-          recomputed=hashlib.sha256(json.dumps(unsigned,sort_keys=True,separators=(',',':'),ensure_ascii=False).encode()).hexdigest()
+          fu=dict(freeze); supplied=fu.pop('fingerprint')
+          recomputed=hashlib.sha256(json.dumps(fu,sort_keys=True,separators=(',',':'),ensure_ascii=False).encode()).hexdigest()
           auth=json.loads(Path('research/PHASE_B_H04_BINANCE_DATA_ACCESS_AUTHORIZATION_V0.1.json').read_text())
           au=dict(auth); auth_supplied=au.pop('fingerprint')
           auth_recomputed=hashlib.sha256(json.dumps(au,sort_keys=True,separators=(',',':'),ensure_ascii=False).encode()).hexdigest()
           manifest=build_h04_manifest_receipt()
-          print('FREEZE_SUPPLIED', supplied)
-          print('FREEZE_MODULE_EXPECTED', FREEZE_FINGERPRINT)
-          print('FREEZE_RECOMPUTED', recomputed)
-          print('AUTH_SUPPLIED', auth_supplied)
-          print('AUTH_RUNNER_EXPECTED', EXPECTED_AUTHORIZATION_FINGERPRINT)
-          print('AUTH_RECOMPUTED', auth_recomputed)
-          print('MANIFEST_RUNTIME', manifest['fingerprint'])
-          print('MANIFEST_RUNNER_EXPECTED', EXPECTED_MANIFEST_FINGERPRINT)
-          raise SystemExit('PRE_DATA_DIAGNOSTIC_STOP_NO_MARKET_DATA_ACCESSED')
+          checks=[
+            supplied==FREEZE_FINGERPRINT==recomputed,
+            auth_supplied==EXPECTED_AUTHORIZATION_FINGERPRINT==auth_recomputed,
+            manifest['fingerprint']==EXPECTED_MANIFEST_FINGERPRINT,
+            auth['required_bindings']['h04_prospective_freeze_fingerprint']==FREEZE_FINGERPRINT,
+            auth['required_bindings']['manifest_fingerprint']==EXPECTED_MANIFEST_FINGERPRINT,
+            auth['market_data_access_authorized'] is True,
+            auth['network_download_authorized'] is True,
+            auth['offline_evaluation_authorized'] is True,
+            auth['mexc_2025_09_through_2025_12_authorized'] is False,
+            auth['holdout_2026_authorized'] is False,
+            auth['exchange_mutation_authorized'] is False,
+            auth['live_trading_authorized'] is False,
+            auth['main_merge_authorized'] is False,
+            auth['render_deploy_authorized'] is False,
+          ]
+          if not all(checks): raise SystemExit('H04 PRE-DATA AUTHORITY BLOCK')
+          print('H04 PRE-DATA AUTHORITY PASS')
+          print('FREEZE', FREEZE_FINGERPRINT)
+          print('AUTH', EXPECTED_AUTHORIZATION_FINGERPRINT)
+          print('MANIFEST', EXPECTED_MANIFEST_FINGERPRINT)
           PY
+
+      - name: Acquire official Binance H04 corpus
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python - <<'PY'
+          from concurrent.futures import ThreadPoolExecutor, as_completed
+          import json, time
+          from pathlib import Path
+          from urllib.error import HTTPError, URLError
+          from urllib.request import Request, urlopen
+          from research.phase_b_h04_binance_daily_manifest_v01 import expected_h04_daily_objects, EXPECTED_ARCHIVE_COUNT
+          root=Path('research/local_data/h04_binance_raw'); root.mkdir(parents=True,exist_ok=True)
+          out=Path('research/local_data/h04_binance_output'); out.mkdir(parents=True,exist_ok=True)
+          tasks=[]
+          for item in expected_h04_daily_objects():
+              d=root/item['symbol']; d.mkdir(parents=True,exist_ok=True)
+              tasks.append((item['archive_url'],d/item['archive_filename']))
+              tasks.append((item['checksum_url'],d/(item['archive_filename']+'.CHECKSUM')))
+          def one(task):
+              url,path=task; last=None
+              for attempt in range(1,5):
+                  try:
+                      req=Request(url,headers={'User-Agent':'DreamAccountOS-H04-Research/0.1'})
+                      with urlopen(req,timeout=45) as r:
+                          if r.status!=200: raise RuntimeError(f'HTTP {r.status}')
+                          data=r.read()
+                      if not data: raise RuntimeError('empty response')
+                      path.write_bytes(data); return str(path),len(data),None
+                  except (HTTPError,URLError,TimeoutError,OSError,RuntimeError) as e:
+                      last=f'{type(e).__name__}: {e}'
+                      if attempt<4: time.sleep(min(2**attempt,8))
+              return str(path),0,last
+          failures=[]; total=0; completed=0
+          with ThreadPoolExecutor(max_workers=24) as pool:
+              futures=[pool.submit(one,t) for t in tasks]
+              for f in as_completed(futures):
+                  path,size,error=f.result(); completed+=1; total+=size
+                  if error: failures.append({'path':path,'error':error})
+                  if completed%500==0 or completed==len(tasks): print(f'H04 acquisition {completed}/{len(tasks)} failures={len(failures)}')
+          receipt={'document_type':'PHASE_B_H04_BINANCE_NETWORK_ACQUISITION_RECEIPT','version':'0.1','source':'OFFICIAL_BINANCE_PUBLIC_DATA_ONLY','expected_archives':EXPECTED_ARCHIVE_COUNT,'expected_checksums':EXPECTED_ARCHIVE_COUNT,'expected_files_total':EXPECTED_ARCHIVE_COUNT*2,'files_downloaded':completed-len(failures),'total_bytes_downloaded':total,'failure_count':len(failures),'first_failures':failures[:20],'mexc_validation_2025_09_through_2025_12_accessed':False,'holdout_2026_accessed':False,'exchange_mutation_performed':False,'live_trading_performed':False}
+          (out/'h04_network_acquisition_receipt.json').write_text(json.dumps(receipt,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(receipt,indent=2,sort_keys=True))
+          if failures: raise SystemExit(f'H04 acquisition failed closed with {len(failures)} failed files')
+          PY
+
+      - name: Run frozen H04 Discovery
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          set -o pipefail
+          python -m research.phase_b_h04_discovery_runner_v01 \
+            research/local_data/h04_binance_raw \
+            research/local_data/h04_binance_output/latest_h04_discovery_receipt.json \
+            research/PHASE_B_H04_BINANCE_DATA_ACCESS_AUTHORIZATION_V0.1.json \
+            | tee research/local_data/h04_binance_output/h04_runner_stdout.txt
+
+      - name: Upload H04 scientific receipts only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: h04-binance-discovery-receipts-${{ github.sha }}
+          path: |
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/h04_binance_output/h04_network_acquisition_receipt.json
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/h04_binance_output/latest_h04_discovery_receipt.json
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/h04_binance_output/h04_runner_stdout.txt
+          if-no-files-found: warn
+          retention-days: 14
