@@ -4,6 +4,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 LAUNCHER = ROOT / "research" / "probe_phase_b_mexc_source_windows.bat"
+LOCAL_DATA_GITIGNORE = ROOT / "research" / "local_data" / ".gitignore"
 
 
 class PhaseBMEXCSchemaProbeWindowsLauncherTests(unittest.TestCase):
@@ -46,6 +47,14 @@ class PhaseBMEXCSchemaProbeWindowsLauncherTests(unittest.TestCase):
         self.assertIn('> "%RECEIPT_FILE%"', text)
         self.assertIn('type "%RECEIPT_FILE%"', text)
         self.assertIn("Sanitized schema-probe receipt saved to:", text)
+
+    def test_local_probe_evidence_directory_is_git_ignored(self):
+        self.assertTrue(LOCAL_DATA_GITIGNORE.is_file())
+        rules = LOCAL_DATA_GITIGNORE.read_text(encoding="utf-8").splitlines()
+        self.assertIn("*", rules)
+        self.assertIn("!.gitignore", rules)
+        launcher = LAUNCHER.read_text(encoding="utf-8")
+        self.assertIn("%SCRIPT_DIR%local_data\\intake", launcher)
 
     def test_launcher_explicitly_states_no_p00_on_block_and_success(self):
         text = LAUNCHER.read_text(encoding="utf-8").lower()
