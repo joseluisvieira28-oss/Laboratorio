@@ -20,6 +20,7 @@ set "DECLARED_START=%~5"
 set "DECLARED_END=%~6"
 set "EVIDENCE_DIR=%SCRIPT_DIR%local_data\intake"
 set "AUDIT_RECEIPT=%EVIDENCE_DIR%\latest_adapter_bound_audit.json"
+set "PYTHONPATH=%PROJECT_ROOT%\src;%PROJECT_ROOT%;%PYTHONPATH%"
 
 if not exist "%EVIDENCE_DIR%" mkdir "%EVIDENCE_DIR%"
 
