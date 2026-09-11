@@ -17,7 +17,9 @@ from research.phase_b_mexc_bulk_csv_adapter_v01 import adapt_mexc_bulk_csv, writ
 DISCOVERY_MIN_MONTH = "2022-01"
 DISCOVERY_MAX_MONTH = "2024-12"
 PASS_ADAPTER = "PASS_ADAPTER_ONLY"
-PASS_AUDIT = {"PASS_ADAPTER_BOUND_AUDIT"}
+PASS_AUDIT = {"PASS_ADAPTER_BOUND_AUDIT", "PASS_WITH_GAPS_ADAPTER_BOUND_AUDIT"}
+PASS_MONTH_STATUSES = {"PASS_MONTH", "PASS_MONTH_WITH_GAPS"}
+PASS_CORPUS_STATUSES = {"PASS_CORPUS_AUDIT_ONLY", "PASS_CORPUS_AUDIT_ONLY_WITH_GAPS"}
 TIMEFRAME_MS = 900_000
 MEXC_BULK_MONTH_PARTITION_OFFSET_HOURS = 8
 MEXC_BULK_MONTH_PARTITION_TIMEZONE = "UTC+08:00"
@@ -53,8 +55,12 @@ class DiscoveryCorpusManifest:
     expected_month_count: int
     passed_month_count: int
     total_row_count: int
+    months_with_gaps_count: int
+    total_detected_gap_count: int
+    total_missing_candle_count: int
     months: tuple[CorpusMonthReceipt, ...]
     source_partition_timezone: str
+    gap_handling: str
     utc_discovery_boundary_reconciliation_required: bool
     p00_evaluation_performed: bool
     network_access_performed: bool
@@ -153,10 +159,14 @@ def _empty_manifest(*, status: str, reasons: list[str], symbol: str, start_month
         start_month=start_month,
         end_month=end_month,
         expected_month_count=expected_month_count,
-        passed_month_count=sum(1 for item in months if item.status == "PASS_MONTH"),
+        passed_month_count=sum(1 for item in months if item.status in PASS_MONTH_STATUSES),
         total_row_count=sum(item.row_count for item in months),
+        months_with_gaps_count=sum(1 for item in months if item.status == "PASS_MONTH_WITH_GAPS"),
+        total_detected_gap_count=sum(item.detected_gap_count for item in months),
+        total_missing_candle_count=sum(item.missing_candle_count for item in months),
         months=months,
         source_partition_timezone=MEXC_BULK_MONTH_PARTITION_TIMEZONE,
+        gap_handling="REPORT_AND_SPLIT_LATER_NEVER_INTERPOLATE",
         utc_discovery_boundary_reconciliation_required=True,
         p00_evaluation_performed=False,
         network_access_performed=False,
@@ -172,6 +182,10 @@ def build_discovery_corpus(raw_dir: str | Path, output_dir: str | Path, *, symbo
     This is an offline data-integrity operation only. It does not evaluate P00,
     contact MEXC, perform exchange mutations, interpolate candles, or unlock 2025/2026.
     All expected monthly files must be present before any market-data file is read.
+
+    Valid exact-multiple 15m gaps are allowed by the frozen ingest contract. They
+    are preserved, counted, and handed forward only as explicit split boundaries;
+    they are never interpolated or silently repaired. Irregular spacing still blocks.
 
     Month labels are audited against the observed MEXC bulk-file UTC+08:00 source
     partition. This source-partition rule is NOT authorization to change the frozen
@@ -256,10 +270,21 @@ def build_discovery_corpus(raw_dir: str | Path, output_dir: str | Path, *, symbo
             month_reasons.extend(manifest.reasons or ("ADAPTER_BOUND_AUDIT_NOT_PASS",))
 
         expected_rows = calendar.monthrange(nominal_month.year, nominal_month.month)[1] * 96
-        if manifest.row_count != expected_rows or manifest.returned_candle_count != expected_rows:
-            month_reasons.append("MONTH_ROW_COUNT_MISMATCH")
-        if manifest.detected_gap_count != 0 or manifest.missing_candle_count != 0:
-            month_reasons.append("MONTH_HAS_GAPS")
+        has_valid_gaps = manifest.status == "PASS_WITH_GAPS_ADAPTER_BOUND_AUDIT"
+        if has_valid_gaps:
+            gap_accounting_matches = (
+                manifest.detected_gap_count > 0
+                and manifest.missing_candle_count > 0
+                and manifest.row_count == manifest.returned_candle_count
+                and expected_rows - manifest.row_count == manifest.missing_candle_count
+            )
+            if not gap_accounting_matches:
+                month_reasons.append("VALID_GAP_ACCOUNTING_MISMATCH")
+        else:
+            if manifest.row_count != expected_rows or manifest.returned_candle_count != expected_rows:
+                month_reasons.append("MONTH_ROW_COUNT_MISMATCH")
+            if manifest.detected_gap_count != 0 or manifest.missing_candle_count != 0:
+                month_reasons.append("UNEXPECTED_GAP_METADATA_WITH_PASS_AUDIT")
 
         first_open, last_open = _read_first_last_open_time(canonical_path)
         expected_first = int(partition_start_utc.timestamp() * 1000)
@@ -271,7 +296,13 @@ def build_discovery_corpus(raw_dir: str | Path, output_dir: str | Path, *, symbo
         if not last_match:
             month_reasons.append("MONTH_END_BOUNDARY_MISMATCH")
 
-        month_status = "PASS_MONTH" if not month_reasons else "BLOCKED_MONTH"
+        if month_reasons:
+            month_status = "BLOCKED_MONTH"
+        elif has_valid_gaps:
+            month_status = "PASS_MONTH_WITH_GAPS"
+        else:
+            month_status = "PASS_MONTH"
+
         month_receipts.append(
             CorpusMonthReceipt(
                 month=month,
@@ -291,17 +322,23 @@ def build_discovery_corpus(raw_dir: str | Path, output_dir: str | Path, *, symbo
                 reasons=tuple(sorted(set(month_reasons))),
             )
         )
-        if month_status != "PASS_MONTH":
+        if month_status == "BLOCKED_MONTH":
             break
 
     corpus_reasons: list[str] = []
     if len(month_receipts) != len(months):
         corpus_reasons.append("CORPUS_STOPPED_EARLY")
     for item in month_receipts:
-        if item.status != "PASS_MONTH":
+        if item.status not in PASS_MONTH_STATUSES:
             corpus_reasons.extend(f"{item.month}:{reason}" for reason in item.reasons)
 
-    status = "PASS_CORPUS_AUDIT_ONLY" if not corpus_reasons and len(month_receipts) == len(months) else "BLOCKED_CORPUS"
+    if corpus_reasons or len(month_receipts) != len(months):
+        status = "BLOCKED_CORPUS"
+    elif any(item.status == "PASS_MONTH_WITH_GAPS" for item in month_receipts):
+        status = "PASS_CORPUS_AUDIT_ONLY_WITH_GAPS"
+    else:
+        status = "PASS_CORPUS_AUDIT_ONLY"
+
     return _empty_manifest(
         status=status,
         reasons=corpus_reasons,
@@ -333,7 +370,7 @@ def _main() -> int:
     if args.receipt:
         write_manifest(args.receipt, result)
     print(json.dumps(asdict(result), indent=2, sort_keys=True))
-    return 0 if result.status == "PASS_CORPUS_AUDIT_ONLY" else 2
+    return 0 if result.status in PASS_CORPUS_STATUSES else 2
 
 
 if __name__ == "__main__":
