@@ -183,8 +183,11 @@ class PhaseBMEXCBulkCsvAdapterTests(unittest.TestCase):
             source.write_text(raw_text([raw_row(0), raw_row(1)]), encoding="utf-8")
             a = adapt_mexc_bulk_csv(source, first)
             b = adapt_mexc_bulk_csv(source, second)
+            first_hash = sha256(first)
+            second_hash = sha256(second)
+
         self.assertEqual(a.canonical_sha256, b.canonical_sha256)
-        self.assertEqual(sha256(first), sha256(second))
+        self.assertEqual(first_hash, second_hash)
         # File name is deliberately part of the receipt, so full receipt fingerprints differ.
         self.assertNotEqual(a.fingerprint, b.fingerprint)
         self.assertEqual(a.mapping_fingerprint, b.mapping_fingerprint)
