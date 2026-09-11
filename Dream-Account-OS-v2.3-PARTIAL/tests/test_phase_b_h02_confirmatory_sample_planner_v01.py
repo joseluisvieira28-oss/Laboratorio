@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from pathlib import Path
 import unittest
 
 from research.phase_b_h02_confirmatory_sample_planner_v01 import (
@@ -11,6 +12,7 @@ from research.phase_b_h02_confirmatory_sample_planner_v01 import (
 
 
 UNIVERSE = ("BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "DOGEUSDT")
+PREFLIGHT_PATH = Path(__file__).resolve().parents[1] / "research" / "PHASE_B_H02_CONFIRMATORY_DATA_ADEQUACY_PREFLIGHT_V0.1.json"
 
 
 def months(start: str, end: str) -> list[str]:
@@ -111,6 +113,22 @@ class PhaseBH02ConfirmatorySamplePlannerTests(unittest.TestCase):
         self.assertTrue(
             payload["sample_adequacy_fail_closed_policy"]["never_use_2026_to_rescue_sample_size"]
         )
+
+    def test_metadata_only_preflight_closes_primary_h02_route_without_outcome_classification(self):
+        payload = json.loads(PREFLIGHT_PATH.read_text(encoding="utf-8"))
+        self.assertEqual(payload["status"], "DATA_INADEQUATE_UNDER_FROZEN_H02_SOURCE_UNIVERSE")
+        self.assertEqual(payload["frozen_primary_route_test"]["current_visible_common_contiguous_months_ending_2023_01"], 0)
+        self.assertFalse(payload["frozen_primary_route_test"]["calendar_coverage_gate_met"])
+        self.assertEqual(
+            payload["frozen_primary_route_test"]["result"],
+            "DO_NOT_OPEN_CONFIRMATORY_CANDLES_H02_DATA_INADEQUATE",
+        )
+        self.assertTrue(payload["interpretation"]["this_is_not_no_edge"])
+        self.assertFalse(payload["interpretation"]["h02_confirmatory_edge_test_performed"])
+        self.assertFalse(payload["authority_boundary"]["2025_09_through_2025_12_access_performed"])
+        self.assertFalse(payload["authority_boundary"]["2026_access_performed"])
+        self.assertTrue(payload["forbidden_rescues"]["lower_minimum_trade_threshold"])
+        self.assertTrue(payload["forbidden_rescues"]["expand_symbol_universe_inside_h02"])
 
 
 if __name__ == "__main__":
