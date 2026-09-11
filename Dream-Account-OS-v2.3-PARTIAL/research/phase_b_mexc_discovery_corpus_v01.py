@@ -19,6 +19,8 @@ DISCOVERY_MAX_MONTH = "2024-12"
 PASS_ADAPTER = "PASS_ADAPTER_ONLY"
 PASS_AUDIT = {"PASS_ADAPTER_BOUND_AUDIT"}
 TIMEFRAME_MS = 900_000
+MEXC_BULK_MONTH_PARTITION_OFFSET_HOURS = 8
+MEXC_BULK_MONTH_PARTITION_TIMEZONE = "UTC+08:00"
 
 
 @dataclass(frozen=True)
@@ -52,6 +54,8 @@ class DiscoveryCorpusManifest:
     passed_month_count: int
     total_row_count: int
     months: tuple[CorpusMonthReceipt, ...]
+    source_partition_timezone: str
+    utc_discovery_boundary_reconciliation_required: bool
     p00_evaluation_performed: bool
     network_access_performed: bool
     exchange_mutation_performed: bool
@@ -95,6 +99,25 @@ def _next_month_start(month: str) -> datetime:
     return current.replace(year=year, month=next_month, day=1)
 
 
+def _source_partition_bounds(month: str) -> tuple[datetime, datetime]:
+    """Return the observed MEXC bulk-month UTC bounds for a month label.
+
+    Two independent official MEXC BTC/USDT 15m monthly files (2023-02 and
+    2023-03) were observed to begin and end exactly eight hours before UTC
+    calendar-month boundaries while retaining the exact expected monthly row
+    counts. Therefore the vendor month label is treated as a UTC+08:00 source
+    partition for corpus-integrity auditing only.
+
+    This does NOT amend the frozen P00 Discovery UTC research window. A separate
+    pre-P00 boundary-reconciliation decision remains required.
+    """
+
+    offset = timedelta(hours=MEXC_BULK_MONTH_PARTITION_OFFSET_HOURS)
+    partition_start_utc = _month_dt(month) - offset
+    partition_next_start_utc = _next_month_start(month) - offset
+    return partition_start_utc, partition_next_start_utc
+
+
 def _iso_utc(value: datetime) -> str:
     return value.astimezone(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
 
@@ -133,6 +156,8 @@ def _empty_manifest(*, status: str, reasons: list[str], symbol: str, start_month
         passed_month_count=sum(1 for item in months if item.status == "PASS_MONTH"),
         total_row_count=sum(item.row_count for item in months),
         months=months,
+        source_partition_timezone=MEXC_BULK_MONTH_PARTITION_TIMEZONE,
+        utc_discovery_boundary_reconciliation_required=True,
         p00_evaluation_performed=False,
         network_access_performed=False,
         exchange_mutation_performed=False,
@@ -147,6 +172,10 @@ def build_discovery_corpus(raw_dir: str | Path, output_dir: str | Path, *, symbo
     This is an offline data-integrity operation only. It does not evaluate P00,
     contact MEXC, perform exchange mutations, interpolate candles, or unlock 2025/2026.
     All expected monthly files must be present before any market-data file is read.
+
+    Month labels are audited against the observed MEXC bulk-file UTC+08:00 source
+    partition. This source-partition rule is NOT authorization to change the frozen
+    P00 Discovery UTC window; the final UTC boundary reconciliation stays blocked.
     """
 
     raw_root = Path(raw_dir)
@@ -210,10 +239,10 @@ def build_discovery_corpus(raw_dir: str | Path, output_dir: str | Path, *, symbo
             )
             break
 
-        start_dt = _month_dt(month)
-        next_start = _next_month_start(month)
-        declared_start = _iso_utc(start_dt)
-        declared_end = _iso_utc(next_start - timedelta(milliseconds=1))
+        nominal_month = _month_dt(month)
+        partition_start_utc, partition_next_start_utc = _source_partition_bounds(month)
+        declared_start = _iso_utc(partition_start_utc)
+        declared_end = _iso_utc(partition_next_start_utc - timedelta(milliseconds=1))
         audit = audit_adapter_bound_dataset(
             raw_path,
             canonical_path,
@@ -226,15 +255,15 @@ def build_discovery_corpus(raw_dir: str | Path, output_dir: str | Path, *, symbo
         if manifest.status not in PASS_AUDIT:
             month_reasons.extend(manifest.reasons or ("ADAPTER_BOUND_AUDIT_NOT_PASS",))
 
-        expected_rows = calendar.monthrange(start_dt.year, start_dt.month)[1] * 96
+        expected_rows = calendar.monthrange(nominal_month.year, nominal_month.month)[1] * 96
         if manifest.row_count != expected_rows or manifest.returned_candle_count != expected_rows:
             month_reasons.append("MONTH_ROW_COUNT_MISMATCH")
         if manifest.detected_gap_count != 0 or manifest.missing_candle_count != 0:
             month_reasons.append("MONTH_HAS_GAPS")
 
         first_open, last_open = _read_first_last_open_time(canonical_path)
-        expected_first = int(start_dt.timestamp() * 1000)
-        expected_last = int((next_start - timedelta(milliseconds=TIMEFRAME_MS)).timestamp() * 1000)
+        expected_first = int(partition_start_utc.timestamp() * 1000)
+        expected_last = int((partition_next_start_utc - timedelta(milliseconds=TIMEFRAME_MS)).timestamp() * 1000)
         first_match = first_open == expected_first
         last_match = last_open == expected_last
         if not first_match:
