@@ -4,7 +4,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 LAUNCHER = ROOT / "research" / "adapt_phase_b_mexc_source_windows.bat"
-GITIGNORE = ROOT / "research" / ".gitignore"
+LOCAL_DATA_GITIGNORE = ROOT / "research" / "local_data" / ".gitignore"
 
 
 class PhaseBMEXCBulkCsvAdapterWindowsLauncherTests(unittest.TestCase):
@@ -41,8 +41,11 @@ class PhaseBMEXCBulkCsvAdapterWindowsLauncherTests(unittest.TestCase):
         self.assertIn("no p00 evaluation was run", self.text)
 
     def test_local_intake_directory_is_git_ignored(self):
-        ignore = GITIGNORE.read_text(encoding="utf-8").lower()
-        self.assertIn("local_data/", ignore)
+        self.assertTrue(LOCAL_DATA_GITIGNORE.is_file())
+        rules = LOCAL_DATA_GITIGNORE.read_text(encoding="utf-8").splitlines()
+        self.assertIn("*", rules)
+        self.assertIn("!.gitignore", rules)
+        self.assertIn("local_data\\intake", self.text)
 
 
 if __name__ == "__main__":
