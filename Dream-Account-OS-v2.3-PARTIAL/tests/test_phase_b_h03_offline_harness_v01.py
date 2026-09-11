@@ -4,13 +4,17 @@ import csv
 from datetime import datetime, timezone
 from hashlib import sha256
 from io import BytesIO, StringIO
-from types import SimpleNamespace
+import json
+from pathlib import Path
 import unittest
 from unittest.mock import patch
 import zipfile
 
 from dream_account.models import Candle
-from research.phase_b_h03_binance_offline_adapter_v01 import adapt_binance_daily_archive_bytes
+from research.phase_b_h03_binance_offline_adapter_v01 import (
+    CLOSE_TIME_AMENDMENT_FINGERPRINT,
+    adapt_binance_daily_archive_bytes,
+)
 from research.phase_b_h03_research_evaluator_v01 import BASE_COHORT_SOURCE, evaluate_h03_symbol
 from research.phase_b_h03_stage_classifier_v01 import classify_h03_binance_discovery
 from research.phase_b_research_evaluator_v01 import BootstrapInterval, EvaluationMetrics, FixedCohortCostMetrics
@@ -18,13 +22,21 @@ from research.phase_b_signal_formation_v01 import CostAssumptions, ResearchParam
 
 
 TF = 900_000
+ROOT = Path(__file__).resolve().parents[1]
+AMENDMENT_PATH = ROOT / "research" / "PHASE_B_H03_BINANCE_ADAPTER_CLOSE_TIME_AMENDMENT_V0.1.json"
 
 
 def ms(y: int, m: int, d: int, h: int, minute: int = 0) -> int:
     return int(datetime(y, m, d, h, minute, tzinfo=timezone.utc).timestamp() * 1000)
 
 
-def build_zip(day: str = "2021-02-01", *, omit_index: int | None = None, bad_close_index: int | None = None) -> tuple[str, bytes, str]:
+def build_zip(
+    day: str = "2021-02-01",
+    *,
+    omit_index: int | None = None,
+    bad_close_index: int | None = None,
+    early_close_index: int | None = None,
+) -> tuple[str, bytes, str]:
     start = ms(2021, 2, 1, 0)
     text = StringIO()
     writer = csv.writer(text, lineterminator="\n")
@@ -32,7 +44,11 @@ def build_zip(day: str = "2021-02-01", *, omit_index: int | None = None, bad_clo
         if i == omit_index:
             continue
         ot = start + i * TF
-        ct = ot + TF - 1 + (1 if i == bad_close_index else 0)
+        ct = ot + TF - 1
+        if i == bad_close_index:
+            ct += 1
+        if i == early_close_index:
+            ct -= 5_000
         writer.writerow([ot, "100", "102", "99", "101", "10", ct, "1000", "5", "6", "600", "0"])
     member = f"BTCUSDT-15m-{day}.csv"
     filename = f"BTCUSDT-15m-{day}.zip"
@@ -78,52 +94,34 @@ def make_signal(entry_time: int, fingerprint: str) -> SignalGeometry:
 
 def metrics(*, count: int, expectancy: float | None, pf: float | None) -> EvaluationMetrics:
     return EvaluationMetrics(
-        cost_scenario="BASE_SENSITIVITY",
-        raw_geometry_count=count,
-        net_rr_rejected_count=0,
-        selected_trade_count=count,
-        overlap_skipped_count=0,
-        unresolved_trade_count=0,
-        resolved_trade_count=count,
-        net_expectancy_r=expectancy,
-        median_net_r=expectancy,
-        win_rate=0.5 if count else None,
-        loss_rate=0.5 if count else None,
-        profit_factor_r=pf,
-        tp1_reach_rate=0.5 if count else None,
+        cost_scenario="BASE_SENSITIVITY", raw_geometry_count=count,
+        net_rr_rejected_count=0, selected_trade_count=count, overlap_skipped_count=0,
+        unresolved_trade_count=0, resolved_trade_count=count,
+        net_expectancy_r=expectancy, median_net_r=expectancy,
+        win_rate=0.5 if count else None, loss_rate=0.5 if count else None,
+        profit_factor_r=pf, tp1_reach_rate=0.5 if count else None,
         same_bar_ambiguity_rate=0.0 if count else None,
-        time_exit_rate=0.0 if count else None,
-        stop_gap_rate=0.0 if count else None,
+        time_exit_rate=0.0 if count else None, stop_gap_rate=0.0 if count else None,
         signal_frequency_per_30d=5.0 if count else None,
         symbol_distribution={"BTCUSDT": count} if count else {},
-        contiguous_segment_count=1,
-        detected_gap_count=0,
+        contiguous_segment_count=1, detected_gap_count=0,
     )
 
 
 def stress(*, count: int, expectancy: float | None) -> FixedCohortCostMetrics:
     return FixedCohortCostMetrics(
-        cost_scenario="STRESS",
-        cohort_source=BASE_COHORT_SOURCE,
-        selected_trade_count=count,
-        resolved_trade_count=count,
-        unresolved_trade_count=0,
-        net_expectancy_r=expectancy,
-        median_net_r=expectancy,
+        cost_scenario="STRESS", cohort_source=BASE_COHORT_SOURCE,
+        selected_trade_count=count, resolved_trade_count=count, unresolved_trade_count=0,
+        net_expectancy_r=expectancy, median_net_r=expectancy,
         profit_factor_r=1.2 if expectancy is not None else None,
-        net_rr_below_minimum_count=0,
-        net_rr_violation_rate=0.0 if count else None,
+        net_rr_below_minimum_count=0, net_rr_violation_rate=0.0 if count else None,
     )
 
 
 def bootstrap(lower: float | None) -> BootstrapInterval:
     return BootstrapInterval(
-        method="UTC_CALENDAR_DAY_BLOCK_BOOTSTRAP",
-        repetitions=5000,
-        seed=230911,
-        confidence=0.95,
-        sample_days=100,
-        lower=lower,
+        method="UTC_CALENDAR_DAY_BLOCK_BOOTSTRAP", repetitions=5000, seed=230911,
+        confidence=0.95, sample_days=100, lower=lower,
         point_estimate=0.2 if lower is not None else None,
         upper=0.4 if lower is not None else None,
         undefined_reason=None if lower is not None else "undefined",
@@ -131,6 +129,17 @@ def bootstrap(lower: float | None) -> BootstrapInterval:
 
 
 class PhaseBH03OfflineHarnessTests(unittest.TestCase):
+    def test_close_time_amendment_fingerprint_is_deterministic_and_pre_outcome(self):
+        payload = json.loads(AMENDMENT_PATH.read_text(encoding="utf-8"))
+        supplied = payload.pop("fingerprint")
+        recomputed = sha256(json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")).hexdigest()
+        self.assertEqual(supplied, CLOSE_TIME_AMENDMENT_FINGERPRINT)
+        self.assertEqual(recomputed, CLOSE_TIME_AMENDMENT_FINGERPRINT)
+        self.assertFalse(payload["authority_basis"]["first_outcome_evaluation_completed"])
+        self.assertFalse(payload["authority_basis"]["performance_metrics_inspected"])
+        self.assertEqual(payload["trigger"]["close_time_violations"], 22)
+        self.assertEqual(payload["trigger"]["open_alignment_violations"], 0)
+
     def test_binance_daily_archive_checksum_schema_and_15m_integrity_pass(self):
         filename, raw, checksum = build_zip()
         result = adapt_binance_daily_archive_bytes(
@@ -142,6 +151,7 @@ class PhaseBH03OfflineHarnessTests(unittest.TestCase):
         self.assertEqual(result.row_count, 96)
         self.assertEqual(len(result.candles), 96)
         self.assertEqual(result.detected_gap_count, 0)
+        self.assertEqual(result.source_close_time_anomaly_count, 0)
 
     def test_bad_checksum_fails_before_zip_payload_is_promoted(self):
         filename, raw, _ = build_zip()
@@ -166,14 +176,30 @@ class PhaseBH03OfflineHarnessTests(unittest.TestCase):
         self.assertEqual(result.missing_candle_count, 1)
         self.assertEqual(len(result.candles), 95)
 
-    def test_close_time_violation_blocks_all_candles(self):
+    def test_early_source_close_time_is_reported_and_only_metadata_is_canonicalized(self):
+        filename, raw, checksum = build_zip(early_close_index=10)
+        result = adapt_binance_daily_archive_bytes(
+            symbol="BTCUSDT", day="2021-02-01", archive_filename=filename,
+            archive_bytes=raw, checksum_text=checksum,
+        )
+        self.assertEqual(result.status, "PASS_BINANCE_DAILY")
+        self.assertEqual(result.source_close_time_anomaly_count, 1)
+        candle = result.candles[10]
+        self.assertEqual(candle.open, 100.0)
+        self.assertEqual(candle.high, 102.0)
+        self.assertEqual(candle.low, 99.0)
+        self.assertEqual(candle.close, 101.0)
+        self.assertEqual(candle.volume, 10.0)
+        self.assertEqual(candle.close_time, candle.open_time + TF - 1)
+
+    def test_source_close_time_past_canonical_boundary_still_blocks_all_candles(self):
         filename, raw, checksum = build_zip(bad_close_index=10)
         result = adapt_binance_daily_archive_bytes(
             symbol="BTCUSDT", day="2021-02-01", archive_filename=filename,
             archive_bytes=raw, checksum_text=checksum,
         )
         self.assertEqual(result.status, "BLOCKED_BINANCE_DAILY_INTEGRITY")
-        self.assertIn("CLOSE_TIME_VIOLATION", result.reasons)
+        self.assertIn("SOURCE_CLOSE_TIME_EXCEEDS_CANONICAL_BOUNDARY", result.reasons)
         self.assertEqual(result.candles, ())
 
     def test_session_rejection_occurs_before_overlap_selection(self):
