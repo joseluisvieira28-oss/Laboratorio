@@ -4,6 +4,7 @@ import argparse
 import csv
 import hashlib
 import json
+import stat
 from dataclasses import asdict, dataclass, replace
 from pathlib import Path, PurePosixPath
 from typing import Any
@@ -16,6 +17,9 @@ MAX_HEADER_LINE_BYTES = 65_536
 MAX_ZIP_ENTRIES_REPORTED = 100
 MAX_ZIP_TEXT_ENTRIES_PROBED = 10
 MAX_ZIP_ENTRY_UNCOMPRESSED_BYTES = 10_485_760
+MAX_ZIP_ENTRY_COUNT = 10_000
+MAX_ZIP_TOTAL_UNCOMPRESSED_BYTES = 536_870_912
+MAX_ZIP_COMPRESSION_RATIO = 200.0
 
 
 @dataclass(frozen=True)
@@ -68,6 +72,19 @@ def _unsafe_zip_name(name: str) -> bool:
     return path.is_absolute() or normalized.startswith("/") or ".." in path.parts
 
 
+def _zip_info_is_symlink(info: ZipInfo) -> bool:
+    mode = (info.external_attr >> 16) & 0xFFFF
+    return stat.S_IFMT(mode) == stat.S_IFLNK
+
+
+def _zip_entry_has_suspicious_compression_ratio(info: ZipInfo) -> bool:
+    if info.is_dir() or info.file_size <= 0:
+        return False
+    if info.compress_size <= 0:
+        return True
+    return (info.file_size / info.compress_size) > MAX_ZIP_COMPRESSION_RATIO
+
+
 def _parse_csv_structure(first_line: bytes, second_line: bytes) -> tuple[tuple[str, ...], int | None, bool]:
     header_text = first_line.decode("utf-8-sig").rstrip("\r\n")
     header = tuple(next(csv.reader([header_text]))) if header_text else ()
@@ -104,8 +121,12 @@ def _probe_zip_entry(archive: ZipFile, info: ZipInfo) -> EntrySchemaProbe:
     suffix = Path(info.filename).suffix.lower()
     if info.flag_bits & 0x1:
         return EntrySchemaProbe(info.filename, info.file_size, suffix, (), None, None, None, "ENCRYPTED_ZIP_ENTRY")
+    if _zip_info_is_symlink(info):
+        return EntrySchemaProbe(info.filename, info.file_size, suffix, (), None, None, None, "ZIP_SYMLINK_ENTRY")
     if info.file_size > MAX_ZIP_ENTRY_UNCOMPRESSED_BYTES:
         return EntrySchemaProbe(info.filename, info.file_size, suffix, (), None, None, None, "ZIP_ENTRY_TOO_LARGE_FOR_HEADER_PROBE")
+    if _zip_entry_has_suspicious_compression_ratio(info):
+        return EntrySchemaProbe(info.filename, info.file_size, suffix, (), None, None, None, "ZIP_SUSPICIOUS_COMPRESSION_RATIO")
 
     try:
         with archive.open(info, "r") as handle:
@@ -137,8 +158,24 @@ def probe_raw_schema(path: str | Path) -> RawSchemaProbe:
     suffix = source.suffix.lower()
     if not source.is_file():
         provisional = RawSchemaProbe(
-            "BLOCKED_SCHEMA_PROBE", source.name, suffix, None, None, (), None, None, None,
-            None, (), False, (), ("SOURCE_FILE_NOT_FOUND",), False, False, False, ""
+            status="BLOCKED_SCHEMA_PROBE",
+            file_name=source.name,
+            suffix=suffix,
+            byte_size=None,
+            sha256=None,
+            header_fields=(),
+            first_data_field_count=None,
+            canonical_header_match=None,
+            json_top_level_shape=None,
+            zip_entry_count=None,
+            zip_entries_reported=(),
+            zip_entries_truncated=False,
+            zip_text_entries_probed=(),
+            blocked_reasons=("SOURCE_FILE_NOT_FOUND",),
+            market_values_returned=False,
+            p00_evaluation_performed=False,
+            network_access_performed=False,
+            fingerprint="",
         )
         return replace(provisional, fingerprint=_fingerprint(provisional))
 
@@ -176,23 +213,40 @@ def probe_raw_schema(path: str | Path) -> RawSchemaProbe:
             with ZipFile(source, "r") as archive:
                 infos = archive.infolist()
                 zip_entry_count = len(infos)
-                unsafe = sorted(info.filename for info in infos if _unsafe_zip_name(info.filename))
-                if unsafe:
+                names = [info.filename for info in infos]
+
+                if len(infos) > MAX_ZIP_ENTRY_COUNT:
+                    reasons.append("ZIP_TOO_MANY_ENTRIES")
+                if len(set(names)) != len(names):
+                    reasons.append("ZIP_DUPLICATE_ENTRY_NAME")
+                if any(_unsafe_zip_name(name) for name in names):
                     reasons.append("ZIP_PATH_TRAVERSAL_ENTRY")
                 if any(info.flag_bits & 0x1 for info in infos):
                     reasons.append("ENCRYPTED_ZIP_ENTRY")
+                if any(_zip_info_is_symlink(info) for info in infos):
+                    reasons.append("ZIP_SYMLINK_ENTRY")
 
-                sorted_names = tuple(sorted(info.filename for info in infos))
+                total_uncompressed = sum(max(0, info.file_size) for info in infos if not info.is_dir())
+                if total_uncompressed > MAX_ZIP_TOTAL_UNCOMPRESSED_BYTES:
+                    reasons.append("ZIP_TOTAL_UNCOMPRESSED_TOO_LARGE")
+                if any(_zip_entry_has_suspicious_compression_ratio(info) for info in infos):
+                    reasons.append("ZIP_SUSPICIOUS_COMPRESSION_RATIO")
+
+                sorted_names = tuple(sorted(names))
                 zip_entries_reported = sorted_names[:MAX_ZIP_ENTRIES_REPORTED]
                 zip_entries_truncated = len(sorted_names) > MAX_ZIP_ENTRIES_REPORTED
 
-                candidates = [
-                    info for info in sorted(infos, key=lambda item: item.filename)
-                    if not info.is_dir() and Path(info.filename).suffix.lower() in {".csv", ".json"}
-                ][:MAX_ZIP_TEXT_ENTRIES_PROBED]
-                zip_text_entries_probed = tuple(_probe_zip_entry(archive, info) for info in candidates)
-                if any(entry.reason == "ENCRYPTED_ZIP_ENTRY" for entry in zip_text_entries_probed):
-                    reasons.append("ENCRYPTED_ZIP_ENTRY")
+                # Fail closed at the archive boundary. If the central directory itself
+                # violates an archive-safety invariant, do not open any member bytes.
+                if not reasons:
+                    candidates = [
+                        info for info in sorted(infos, key=lambda item: item.filename)
+                        if not info.is_dir() and Path(info.filename).suffix.lower() in {".csv", ".json"}
+                    ][:MAX_ZIP_TEXT_ENTRIES_PROBED]
+                    zip_text_entries_probed = tuple(_probe_zip_entry(archive, info) for info in candidates)
+                    for entry in zip_text_entries_probed:
+                        if entry.reason:
+                            reasons.append(entry.reason)
         except BadZipFile:
             reasons.append("BAD_ZIP_ARCHIVE")
         except OSError:
