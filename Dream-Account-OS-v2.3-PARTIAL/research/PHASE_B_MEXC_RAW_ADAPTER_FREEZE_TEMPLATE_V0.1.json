@@ -1,0 +1,111 @@
+{
+  "document_type": "PHASE_B_MEXC_RAW_ADAPTER_FREEZE_TEMPLATE",
+  "version": "0.1",
+  "status": "TEMPLATE_BLOCKED_PENDING_REAL_OFFICIAL_SAMPLE",
+  "authority_boundary": {
+    "research_only": true,
+    "adapter_executable": false,
+    "p00_evaluation_authorized": false,
+    "validation_2025_access_authorized": false,
+    "holdout_2026_access_authorized": false,
+    "live_integration_authorized": false,
+    "exchange_network_access_authorized": false,
+    "exchange_mutation_authorized": false
+  },
+  "activation_rule": {
+    "may_activate_from_template_alone": false,
+    "requires_real_official_mexc_sample": true,
+    "requires_structure_probe_pass": true,
+    "requires_raw_file_sha256_pin": true,
+    "requires_source_provenance_record": true,
+    "requires_mapping_review_before_any_row_values_are_interpreted": true,
+    "requires_adapter_unit_tests_before_canonical_output": true,
+    "requires_full_ci_pass_before_first_discovery_ingest": true
+  },
+  "source_provenance": {
+    "exchange": "MEXC",
+    "market_type": "SPOT",
+    "authority": "OFFICIAL_MEXC_SOURCE_ONLY",
+    "allowed_source_channels": [
+      "MEXC_MARKET_DATA_DOWNLOAD",
+      "MEXC_PUBLIC_SPOT_REST_KLINES"
+    ],
+    "selected_source_channel": null,
+    "source_url": null,
+    "retrieved_at_utc": null,
+    "raw_source_filename": null,
+    "raw_source_sha256": null,
+    "raw_source_byte_size": null,
+    "archive_member_path": null,
+    "structure_probe_fingerprint": null
+  },
+  "stage_scope": {
+    "allowed_stage": "DISCOVERY",
+    "allowed_start_utc": "2022-01-01T00:00:00Z",
+    "allowed_end_utc": "2024-12-31T23:59:59.999Z",
+    "validation_2025_locked": true,
+    "holdout_2026_locked": true,
+    "cross_exchange_backfill_allowed": false,
+    "synthetic_history_allowed": false
+  },
+  "raw_schema_observation": {
+    "container_type": null,
+    "header_present": null,
+    "raw_header_fields": null,
+    "raw_field_count": null,
+    "row_encoding": null,
+    "timestamp_unit": null,
+    "timezone_semantics": null,
+    "interval_semantics": null,
+    "close_time_semantics": null,
+    "volume_semantics": null,
+    "quote_volume_present": null,
+    "extra_fields": null,
+    "ignored_fields": null
+  },
+  "canonical_mapping": {
+    "target_schema": "CANONICAL_KLINE_CSV_V0.1",
+    "open_time_ms": null,
+    "open": null,
+    "high": null,
+    "low": null,
+    "close": null,
+    "volume": null,
+    "close_time_ms": null,
+    "mapping_complete": false,
+    "unmapped_required_fields_block": true,
+    "unknown_unreviewed_fields_block": true,
+    "silent_field_inference_allowed": false,
+    "silent_unit_conversion_allowed": false,
+    "silent_timezone_conversion_allowed": false,
+    "silent_row_drop_allowed": false,
+    "silent_interpolation_allowed": false
+  },
+  "adapter_validation_requirements": {
+    "sample_hash_is_pinned": true,
+    "exact_raw_schema_is_pinned": true,
+    "timestamp_unit_is_explicitly_verified": true,
+    "15m_interval_semantics_are_explicitly_verified": true,
+    "close_time_semantics_are_explicitly_verified": true,
+    "volume_field_semantics_are_explicitly_verified": true,
+    "canonical_field_count_is_exact": true,
+    "canonical_header_is_exact": true,
+    "canonical_output_passes_offline_integrity_audit": true,
+    "same_input_produces_same_canonical_sha256": true,
+    "malformed_or_changed_raw_schema_fails_closed": true,
+    "forbidden_stage_timestamps_fail_closed": true,
+    "network_client_in_adapter_forbidden": true,
+    "p00_evaluator_wiring_forbidden": true
+  },
+  "freeze_completion_fields": {
+    "adapter_id": null,
+    "adapter_module": null,
+    "adapter_test_module": null,
+    "frozen_against_raw_sha256": null,
+    "frozen_mapping_fingerprint": null,
+    "ci_run_id": null,
+    "ci_head_sha": null,
+    "review_status": "BLOCKED_PENDING_REAL_SAMPLE"
+  },
+  "final_rule": "This template cannot authorize or infer a raw MEXC adapter. Every raw-field mapping, unit, timestamp and ignored field must be filled from a real official MEXC sample and separately validated before canonical output is permitted."
+}
