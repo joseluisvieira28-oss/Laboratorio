@@ -1,0 +1,37 @@
+name: News Shock V0.3A Seed2 Hash Diagnostic
+
+on:
+  push:
+    branches:
+      - dream-account-phase-b-signal-research-v0.1
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/NEWS_SHOCK_LAB_V03A_SEED2_HASH_DIAGNOSTIC_TRIGGER.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  seed2-hash-diagnostic:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compute canonical seed2 fingerprint only
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python - <<'PY'
+          from copy import deepcopy
+          import hashlib, json
+          from pathlib import Path
+          p = Path('research/NEWS_SHOCK_LAB_V03A_REUTERS_CONSENSUS_SEED_TRANCHE02_V0.1.json')
+          raw = json.loads(p.read_text(encoding='utf-8'))
+          supplied = raw.get('fingerprint')
+          unsigned = deepcopy(raw)
+          unsigned.pop('fingerprint', None)
+          calculated = hashlib.sha256(json.dumps(unsigned, sort_keys=True, separators=(',', ':'), ensure_ascii=False).encode()).hexdigest()
+          print(f'SUPPLIED_FINGERPRINT={supplied}')
+          print(f'CALCULATED_FINGERPRINT={calculated}')
+          print(f'MATCH={supplied == calculated}')
+          PY
