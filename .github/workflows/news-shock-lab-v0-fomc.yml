@@ -1,0 +1,106 @@
+name: News Shock Lab V0 FOMC
+
+on:
+  push:
+    branches:
+      - dream-account-phase-b-signal-research-v0.1
+
+jobs:
+  news-shock-v0-fomc:
+    if: ${{ contains(github.event.head_commit.message, '[NEWS V0 RUN]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Verify freeze and compile
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python -m compileall -q research
+          python - <<'PY'
+          import json, hashlib
+          from pathlib import Path
+          p=Path('research/NEWS_SHOCK_LAB_V0_FOMC_EVENT_STUDY_FREEZE.json')
+          x=json.loads(p.read_text()); supplied=x.pop('fingerprint')
+          h=hashlib.sha256(json.dumps(x,sort_keys=True,separators=(',',':'),ensure_ascii=False).encode()).hexdigest()
+          assert supplied=='ca2c9dae37a6e7ca53211388c19e2762a9e9a1640655af74c9560071b9234c78'==h
+          assert x['governance']['no_2026'] is True
+          print('NEWS V0 FREEZE PASS', supplied)
+          PY
+
+      - name: Acquire exact Binance event/control corpus
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python - <<'PY'
+          from concurrent.futures import ThreadPoolExecutor, as_completed
+          from datetime import date,timedelta
+          import json,time
+          from pathlib import Path
+          from urllib.request import Request,urlopen
+          from urllib.error import HTTPError,URLError
+          freeze=json.loads(Path('research/NEWS_SHOCK_LAB_V0_FOMC_EVENT_STUDY_FREEZE.json').read_text())
+          events=set(freeze['event_contract']['events']); days=set(events)
+          for e in events:
+              d=date.fromisoformat(e)
+              for lag in (7,14,21,28):
+                  c=(d-timedelta(days=lag)).isoformat()
+                  if c not in events: days.add(c)
+          symbols=freeze['market_data']['symbols']
+          root=Path('research/local_data/news_v0_fomc_raw'); root.mkdir(parents=True,exist_ok=True)
+          tasks=[]
+          base='https://data.binance.vision/data/spot/daily/klines'
+          for s in symbols:
+              sd=root/s; sd.mkdir(parents=True,exist_ok=True)
+              for day in sorted(days):
+                  fn=f'{s}-1m-{day}.zip'; url=f'{base}/{s}/1m/{fn}'
+                  tasks.append((url,sd/fn)); tasks.append((url+'.CHECKSUM',sd/(fn+'.CHECKSUM')))
+          def one(t):
+              url,path=t; last=None
+              for a in range(1,5):
+                  try:
+                      req=Request(url,headers={'User-Agent':'DreamAccountOS-NewsShockV0/0.1'})
+                      with urlopen(req,timeout=45) as r:
+                          if r.status!=200: raise RuntimeError(f'HTTP {r.status}')
+                          data=r.read()
+                      if not data: raise RuntimeError('empty response')
+                      path.write_bytes(data); return str(path),len(data),None
+                  except (HTTPError,URLError,TimeoutError,OSError,RuntimeError) as exc:
+                      last=f'{type(exc).__name__}: {exc}'
+                      if a<4: time.sleep(min(2**a,8))
+              return str(path),0,last
+          failures=[]; total=0; done=0
+          with ThreadPoolExecutor(max_workers=20) as pool:
+              fs=[pool.submit(one,t) for t in tasks]
+              for f in as_completed(fs):
+                  p,n,e=f.result(); done+=1; total+=n
+                  if e: failures.append({'path':p,'error':e})
+                  if done%100==0 or done==len(tasks): print(f'NEWS V0 acquisition {done}/{len(tasks)} failures={len(failures)}')
+          out=Path('research/local_data/news_v0_fomc_output'); out.mkdir(parents=True,exist_ok=True)
+          receipt={'document_type':'NEWS_SHOCK_LAB_V0_ACQUISITION_RECEIPT','expected_files':len(tasks),'downloaded':done-len(failures),'bytes':total,'failure_count':len(failures),'first_failures':failures[:10],'days':len(days),'symbols':symbols,'holdout_2026_accessed':False}
+          (out/'acquisition_receipt.json').write_text(json.dumps(receipt,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(receipt,indent=2,sort_keys=True))
+          if failures: raise SystemExit(f'acquisition failed closed: {len(failures)} files')
+          PY
+
+      - name: Run frozen historical FOMC event study
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          set -o pipefail
+          python -m research.news_shock_lab_v0_fomc_runner \
+            research/local_data/news_v0_fomc_raw \
+            research/local_data/news_v0_fomc_output/latest_news_v0_fomc_receipt.json \
+            | tee research/local_data/news_v0_fomc_output/runner_stdout.txt
+
+      - name: Upload News Shock V0 receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: news-shock-v0-fomc-${{ github.sha }}
+          path: |
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/news_v0_fomc_output/acquisition_receipt.json
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/news_v0_fomc_output/latest_news_v0_fomc_receipt.json
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/news_v0_fomc_output/runner_stdout.txt
+          if-no-files-found: warn
+          retention-days: 14
