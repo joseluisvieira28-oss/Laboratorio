@@ -1,0 +1,65 @@
+{
+  "document_type": "PHASE_B_H02_CONFIRMATORY_DATA_ADEQUACY_PREFLIGHT",
+  "version": "0.1",
+  "status": "DATA_INADEQUATE_UNDER_FROZEN_H02_SOURCE_UNIVERSE",
+  "frozen_at_utc_date": "2026-09-11",
+  "hypothesis_id": "H02_US_EU_OVERLAP_SESSION_GATE",
+  "bindings": {
+    "h02_prospective_freeze_fingerprint": "b7ccfacd438c9554df9de42e51683d3a6c5d52be3301371f96dd30a6e5b4dbb4",
+    "h02_sample_contract_fingerprint": "8d374ad946e2f7c6124c911fff61a76df9d0195ebe01b4c12b7b56a7640f3bb5"
+  },
+  "evidence_type": "PROVIDER_CATALOG_AND_PREEXISTING_AUTHORITY_METADATA_ONLY",
+  "market_candle_values_read": false,
+  "market_candle_bytes_opened": false,
+  "evidence": {
+    "authority_document_id": "15-cY8wwzSfhPrRJ2a9FbTXjmUBHZ_fd1eWW3EtCIMS0",
+    "preexisting_authority_statement": "Official MEXC Spot historical-market-data documentation states downloadable Spot kline/trading data are available since 01-01-2023. Across all six frozen symbols, the first visible official MEXC 15m monthly bulk partition is 2023-02.",
+    "current_official_market_data_page": "https://www.mexc.com/market-data-download",
+    "current_catalog_observation": "The public page exposes Spot chart Daily/Monthly selectors but does not expose a metadata-only pre-2023 monthly 15m archive through the indexed public page.",
+    "templated_history_page_observation": "MEXC's indexed historical chart template describes recent-18-month candlestick chart data; this does not establish any pre-2023 archive.",
+    "no_official_metadata_found_establishing_common_pre_2023_15m_monthly_files": true
+  },
+  "frozen_primary_route_test": {
+    "required_candidate_end_source_month": "2023-01",
+    "required_selection_rule": "LONGEST_COMMON_CONTIGUOUS_MONTHLY_SUFFIX_ENDING_2023_01_ACROSS_ALL_SIX_FROZEN_SYMBOLS",
+    "minimum_common_contiguous_calendar_months": 24,
+    "current_visible_common_contiguous_months_ending_2023_01": 0,
+    "calendar_coverage_gate_met": false,
+    "result": "DO_NOT_OPEN_CONFIRMATORY_CANDLES_H02_DATA_INADEQUATE"
+  },
+  "interpretation": {
+    "this_is_not_no_edge": true,
+    "this_is_not_a_market_outcome_classification": true,
+    "h02_confirmatory_edge_test_performed": false,
+    "reason": "The frozen H02 design cannot obtain the pre-access independent calendar coverage required for its >=100-trade confirmatory Discovery while preserving official-MEXC-only, exact six-symbol universe, no generation-data reuse, and 2026 holdout lock."
+  },
+  "forbidden_rescues": {
+    "lower_minimum_trade_threshold": true,
+    "reuse_2023_02_through_2025_08_generation_data": true,
+    "promote_2025_09_through_2025_12_to_primary_discovery": true,
+    "open_2026_to_reach_sample_size": true,
+    "expand_symbol_universe_inside_h02": true,
+    "cross_exchange_backfill_inside_h02": true,
+    "interpolate_missing_history": true
+  },
+  "future_reconsideration_rule": {
+    "may_recheck_provider_catalog_metadata_if_official_mexc_adds_or_exposes_older_archives": true,
+    "recheck_must_remain_metadata_only_before_any_market_bytes": true,
+    "sample_contract_may_not_be_weakened_after_this_preflight": true
+  },
+  "next_research_route": {
+    "h02_status": "FROZEN_RULES_UNTESTED_DATA_INADEQUATE",
+    "new_hypothesis_required_for_broader_universe_or_other_exchange": true,
+    "recommended_direction": "DESIGN_NEW_HYPOTHESIS_WITH_OBJECTIVE_PROSPECTIVE_SAMPLE_EXPANSION_WHILE_KEEPING_2026_LOCKED"
+  },
+  "authority_boundary": {
+    "2025_09_through_2025_12_access_performed": false,
+    "2026_access_performed": false,
+    "network_market_download_performed": false,
+    "exchange_mutation_performed": false,
+    "live_trading_authorized": false,
+    "main_merge_authorized": false,
+    "render_deploy_authorized": false,
+    "gate_k_phase_a_unchanged": true
+  }
+}
