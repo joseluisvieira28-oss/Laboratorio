@@ -1,0 +1,95 @@
+{
+  "document_type": "PHASE_B_H03_MICROSTRUCTURE_POSTMORTEM_FREEZE",
+  "version": "0.1",
+  "status": "FROZEN_POSTHOC_HYPOTHESIS_GENERATION_ONLY",
+  "purpose": "Diagnose whether signed aggressive trade-flow persistence distinguishes H03 trades that reached TP1 from those that failed before TP1. This postmortem cannot reclassify, rescue, or tune H03.",
+  "bindings": {
+    "h03_hypothesis_id": "H03_BINANCE_CROSS_VENUE_US_EU_OVERLAP_REPLICATION",
+    "h03_closeout_fingerprint": "4446b74113fd06c59c7c256e066f603cb3dc01c0a6478d2f33f03433ad1db421",
+    "h03_discovery_receipt_fingerprint": "14a4bc14a6d95f9c812d697a41fae1079fa222267fe8b650ff99ff93b9edb299",
+    "h03_archive_set_fingerprint": "82f72e6c6b480579296c7c7e996e627c0d0b0971dd6b52700eadb5e682e46040",
+    "h03_freeze_fingerprint": "0c7c931bd48d4cd696e4a8f3188db64e497716dbc7020eb63db100aecca49fa7"
+  },
+  "data_contract": {
+    "source": "OFFICIAL_BINANCE_PUBLIC_DATA_ONLY",
+    "market_type": "SPOT",
+    "timeframe": "15m",
+    "symbols": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "DOGEUSDT"],
+    "start_utc_inclusive": "2021-02-01T00:00:00.000Z",
+    "end_utc_exclusive": "2023-02-01T00:00:00.000Z",
+    "same_h03_corpus_only": true,
+    "reacquisition_for_reproducible_postmortem_authorized": true,
+    "new_market_period_authorized": false,
+    "mexc_2025_09_through_2025_12_authorized": false,
+    "holdout_2026_authorized": false
+  },
+  "primary_feature": {
+    "name": "BREAKOUT_RETEST_POSITIVE_TAKER_FLOW_PERSISTENCE",
+    "bar_flow_imbalance_formula": "(2 * taker_buy_base_asset_volume - total_base_asset_volume) / total_base_asset_volume",
+    "domain": "[-1,+1] when source fields are valid",
+    "breakout_condition": "breakout_flow_imbalance > 0",
+    "retest_condition": "retest_flow_imbalance > 0",
+    "persistence_condition": "breakout_condition AND retest_condition",
+    "threshold_selection": "ZERO_IS_FIXED_NATURAL_SIGN_BOUNDARY_NO_OPTIMIZATION",
+    "outcome": "TP1_REACHED_BOOLEAN_FROM_ALREADY_CLOSED_H03_OUTCOME"
+  },
+  "primary_diagnostics": {
+    "report": [
+      "n_persistent",
+      "n_nonpersistent",
+      "tp1_rate_persistent",
+      "tp1_rate_nonpersistent",
+      "tp1_rate_difference",
+      "odds_ratio_with_haldane_anscombe_if_needed"
+    ],
+    "inference": {
+      "method": "UTC_CALENDAR_DAY_BLOCK_BOOTSTRAP_OF_TP1_RATE_DIFFERENCE",
+      "repetitions": 5000,
+      "seed": 230911,
+      "confidence": 0.95
+    },
+    "classification_authority": "NONE_POSTHOC_DIAGNOSTIC_ONLY"
+  },
+  "secondary_descriptive_features": {
+    "no_threshold_optimization": true,
+    "features": [
+      "breakout_flow_imbalance",
+      "retest_flow_imbalance",
+      "retest_minus_breakout_flow_imbalance",
+      "breakout_volume_shock_vs_prior_96_bar_median",
+      "retest_volume_shock_vs_prior_96_bar_median",
+      "breakout_trade_count_shock_vs_prior_96_bar_median",
+      "retest_trade_count_shock_vs_prior_96_bar_median",
+      "breakout_avg_trade_size_shock_vs_prior_96_bar_median",
+      "retest_avg_trade_size_shock_vs_prior_96_bar_median"
+    ],
+    "reporting": "TP1_REACHED_VS_NOT_REACHED_AGGREGATE_ONLY",
+    "forbidden_subgroups": [
+      "symbol_selection",
+      "month_selection",
+      "weekday_selection",
+      "hour_selection",
+      "volatility_regime_selection",
+      "best_quartile_search",
+      "best_threshold_search"
+    ]
+  },
+  "interpretation_rules": {
+    "may_generate_h04_candidate": true,
+    "may_reclassify_h03": false,
+    "may_rescue_h03": false,
+    "may_unlock_mexc_validation": false,
+    "may_unlock_2026": false,
+    "may_change_h01_or_h03_management": false,
+    "h04_requires_new_prospective_freeze_before_new_data": true,
+    "positive_result_wording": "hypothesis-generating evidence only, not an edge",
+    "negative_result_wording": "flow-persistence direction not supported strongly enough by this postmortem"
+  },
+  "governance": {
+    "live_trading_authorized": false,
+    "exchange_mutation_authorized": false,
+    "main_merge_authorized": false,
+    "render_deploy_authorized": false
+  },
+  "fingerprint": "192ff38c80df052520969e801de88433dc98b7a1dba31d6cd32dccc7644cce61"
+}
