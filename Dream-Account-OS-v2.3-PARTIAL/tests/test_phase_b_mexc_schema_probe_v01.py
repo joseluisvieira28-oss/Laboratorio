@@ -77,9 +77,10 @@ class PhaseBMEXCRawSchemaProbeTests(unittest.TestCase):
         self.assertEqual(entry.header_fields, ("a", "b", "c", "d"))
         self.assertEqual(entry.first_data_field_count, 4)
         self.assertIsNone(entry.reason)
-        rendered = json.dumps(result, default=lambda item: item.__dict__)
-        self.assertNotIn("111", rendered)
-        self.assertNotIn("222", rendered)
+        self.assertFalse(result.market_values_returned)
+        entry_rendered = json.dumps(entry.__dict__, default=str)
+        self.assertNotIn("111", entry_rendered)
+        self.assertNotIn("222", entry_rendered)
 
     def test_zip_path_traversal_blocks_entire_schema_probe(self):
         with tempfile.TemporaryDirectory() as tmp:
