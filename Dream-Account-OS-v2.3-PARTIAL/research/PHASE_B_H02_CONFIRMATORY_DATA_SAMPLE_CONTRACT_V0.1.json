@@ -1,0 +1,108 @@
+{
+  "document_type": "PHASE_B_H02_CONFIRMATORY_DATA_SAMPLE_CONTRACT",
+  "version": "0.1",
+  "status": "FROZEN_SAMPLE_DESIGN_NO_MARKET_DATA_AUTHORIZED",
+  "frozen_at_utc_date": "2026-09-11",
+  "hypothesis_id": "H02_US_EU_OVERLAP_SESSION_GATE",
+  "family_id": "PBR03_SESSION_GATED_MANAGED_BREAKOUT_RETEST_LONG",
+  "bindings": {
+    "h02_prospective_freeze_fingerprint": "b7ccfacd438c9554df9de42e51683d3a6c5d52be3301371f96dd30a6e5b4dbb4",
+    "h01_prospective_freeze_fingerprint": "5229b820df2fc40036fe064e2b25361f3905b63345732f960eb7d9e457033d0b"
+  },
+  "planning_only_generation_evidence": {
+    "opened_generation_calendar_months": 8,
+    "session_eligible_trades_observed": 34,
+    "observed_session_trade_rate_per_calendar_month": 4.25,
+    "use_for_outcome_classification": false,
+    "use_for_sample_planning_only": true
+  },
+  "contamination_boundary": {
+    "forbidden_for_h02_classification": {
+      "generation_2023_02_through_2024_12": true,
+      "h01_discovery_2025_01_through_2025_08": true
+    },
+    "unopened_2025_09_through_2025_12": "RESERVED_FOR_LATER_TEMPORAL_VALIDATION_ONLY",
+    "holdout_2026": "LOCKED"
+  },
+  "primary_confirmatory_discovery_route": {
+    "source": "OFFICIAL_MEXC_SPOT_HISTORICAL_ONLY",
+    "timeframe": "15m",
+    "universe": [
+      "BTCUSDT",
+      "ETHUSDT",
+      "SOLUSDT",
+      "BNBUSDT",
+      "XRPUSDT",
+      "DOGEUSDT"
+    ],
+    "candidate_period": {
+      "must_end_no_later_than_source_month": "2023-01",
+      "selection_rule": "LONGEST_COMMON_CONTIGUOUS_MONTHLY_SUFFIX_ENDING_2023_01_ACROSS_ALL_SIX_FROZEN_SYMBOLS",
+      "availability_selection_may_use_only_provider_catalog_or_file-existence_metadata": true,
+      "market_candle_values_may_not_be_read_during_availability_planning": true
+    },
+    "calendar_coverage_gate": {
+      "minimum_common_contiguous_calendar_months_before_market_data_access": 24,
+      "rationale": "At the generation planning rate of 4.25 session-eligible trades/month, 24 months projects about 102 trades; this is a planning gate only and does not replace the realized sample threshold."
+    },
+    "realized_sample_gate": {
+      "minimum_resolved_trades": 100,
+      "if_below_minimum": "INSUFFICIENT_SAMPLE",
+      "threshold_may_not_be_reduced_after_access": true
+    },
+    "no_cross_exchange_backfill": true,
+    "no_interpolation": true,
+    "no_universe_expansion_inside_h02": true
+  },
+  "later_temporal_validation_route": {
+    "source_month_start": "2025-09",
+    "source_month_end": "2025-12",
+    "status": "LOCKED_UNTIL_PRIMARY_CONFIRMATORY_DISCOVERY_SURVIVES",
+    "minimum_resolved_trades": 30,
+    "if_below_minimum": "INSUFFICIENT_SAMPLE",
+    "may_not_be_combined_with_generation_data_to_reach_threshold": true,
+    "may_not_be_used_as_primary_discovery_merely_because_pre_2023_data_is_unavailable": true
+  },
+  "decision_policy": {
+    "classifications": [
+      "INSUFFICIENT_SAMPLE",
+      "NO_EDGE",
+      "SURVIVES"
+    ],
+    "survives_requires_all": [
+      "minimum_resolved_trade_count_met",
+      "base_net_expectancy_r_gt_0",
+      "base_profit_factor_r_gt_1",
+      "bootstrap_lower_95_gt_0",
+      "fixed_cohort_stress_net_expectancy_r_gt_0"
+    ],
+    "bootstrap_method": "UTC_CALENDAR_DAY_BLOCK_BOOTSTRAP",
+    "bootstrap_repetitions": 5000,
+    "bootstrap_seed": 230911,
+    "confidence": 0.95,
+    "no_sensitivity_rescue": true,
+    "no_parameter_edits_after_confirmatory_data_access": true
+  },
+  "sample_adequacy_fail_closed_policy": {
+    "if_pre_2023_common_coverage_below_24_months": "DO_NOT_OPEN_CONFIRMATORY_CANDLES_H02_DATA_INADEQUATE",
+    "if_realized_primary_trade_count_below_100": "STOP_INSUFFICIENT_SAMPLE_NO_VALIDATION",
+    "if_primary_does_not_survive": "STOP_NO_VALIDATION",
+    "if_later_validation_trade_count_below_30": "STOP_INSUFFICIENT_SAMPLE",
+    "never_use_2026_to_rescue_sample_size": true,
+    "never_expand_symbols_inside_h02_to_rescue_sample_size": true,
+    "a_broader_universe_requires_new_hypothesis_id": true
+  },
+  "authority_boundary": {
+    "this_file_authorizes_provider_catalog_metadata_only": true,
+    "this_file_authorizes_market_candle_bytes": false,
+    "this_file_authorizes_2025_09_through_2025_12": false,
+    "this_file_authorizes_2026": false,
+    "network_download_authorized": false,
+    "exchange_mutation_authorized": false,
+    "live_trading_authorized": false,
+    "main_merge_authorized": false,
+    "render_deploy_authorized": false,
+    "gate_k_phase_a_unchanged": true
+  },
+  "fingerprint": "8d374ad946e2f7c6124c911fff61a76df9d0195ebe01b4c12b7b56a7640f3bb5"
+}
