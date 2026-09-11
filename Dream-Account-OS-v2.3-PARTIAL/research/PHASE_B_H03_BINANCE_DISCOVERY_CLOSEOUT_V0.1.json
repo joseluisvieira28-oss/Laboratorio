@@ -1,0 +1,110 @@
+{
+  "document_type": "PHASE_B_H03_BINANCE_DISCOVERY_CLOSEOUT",
+  "version": "0.1",
+  "status": "CLOSED_NO_EDGE",
+  "hypothesis_id": "H03_BINANCE_CROSS_VENUE_US_EU_OVERLAP_REPLICATION",
+  "execution": {
+    "repository": "joseluisvieira28-oss/Laboratorio",
+    "branch": "dream-account-phase-b-signal-research-v0.1",
+    "head_sha": "c887477658e03d1426a5405df6fe525f0fb337bd",
+    "workflow_run_id": 34617288981,
+    "workflow_conclusion": "success",
+    "artifact_id": 10270543300,
+    "artifact_sha256": "f401b0a4209c3023198f486204fde7880aa9d89645580eb47b763661fcdb7e1c"
+  },
+  "bindings": {
+    "h03_freeze_fingerprint": "0c7c931bd48d4cd696e4a8f3188db64e497716dbc7020eb63db100aecca49fa7",
+    "data_access_authorization_fingerprint": "3d29d29cf2a10030f4558678814d3782ee6f7b469ae1c33ae7a038fec4e7881d",
+    "manifest_fingerprint": "d6c61428fb54984d13b22fe98294eb5c59f82d4c086ae3120cebeb7998743856",
+    "close_time_adapter_amendment_fingerprint": "338c67b4275143d06dcda887b939e5aff8a683ac03c32beb120584c8e70c5f71",
+    "archive_set_fingerprint": "82f72e6c6b480579296c7c7e996e627c0d0b0971dd6b52700eadb5e682e46040",
+    "discovery_receipt_fingerprint": "14a4bc14a6d95f9c812d697a41fae1079fa222267fe8b650ff99ff93b9edb299",
+    "decision_fingerprint": "8da50fbda348e3526bd019b371d154349a43fa7e86a61bb6b0aba7735e0a74d2"
+  },
+  "corpus": {
+    "source": "OFFICIAL_BINANCE_PUBLIC_DATA_ONLY",
+    "market_type": "SPOT",
+    "timeframe": "15m",
+    "window_start_utc_inclusive": "2021-02-01T00:00:00.000Z",
+    "window_end_utc_exclusive": "2023-02-01T00:00:00.000Z",
+    "symbols": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "DOGEUSDT"],
+    "archives_expected": 4380,
+    "archives_passed": 4380,
+    "checksums_verified": 4380,
+    "source_rows": 420090,
+    "detected_gap_count": 36,
+    "missing_candles_including_day_boundaries": 390,
+    "pre_outcome_source_close_time_anomalies": 22,
+    "open_alignment_violations": 0,
+    "irregular_open_spacing": 0,
+    "duplicate_or_reversed_open_times": 0,
+    "day_boundary_violations": 0
+  },
+  "base": {
+    "raw_geometry_count": 1386,
+    "net_rr_rejected_count": 629,
+    "session_rejected_ready_count": 593,
+    "overlap_skipped_count": 13,
+    "selected_trade_count": 151,
+    "resolved_trade_count": 151,
+    "net_expectancy_r": -0.0824287499136279,
+    "median_net_r": -1.0,
+    "profit_factor_r": 0.8600019884485357,
+    "win_rate": 0.2119205298013245,
+    "loss_rate": 0.7880794701986755,
+    "tp1_reach_rate": 0.4503311258278146,
+    "symbol_distribution": {
+      "BNBUSDT": 22,
+      "BTCUSDT": 18,
+      "DOGEUSDT": 17,
+      "ETHUSDT": 27,
+      "SOLUSDT": 48,
+      "XRPUSDT": 19
+    }
+  },
+  "bootstrap": {
+    "method": "UTC_CALENDAR_DAY_BLOCK_BOOTSTRAP",
+    "repetitions": 5000,
+    "seed": 230911,
+    "confidence": 0.95,
+    "sample_days": 107,
+    "lower": -0.29936057536548993,
+    "point_estimate": -0.0824287499136279,
+    "upper": 0.1307312933926852
+  },
+  "stress_fixed_cohort": {
+    "cost_scenario": "STRESS",
+    "selected_trade_count": 151,
+    "resolved_trade_count": 151,
+    "net_expectancy_r": -0.14323439706004853,
+    "median_net_r": -1.0,
+    "profit_factor_r": 0.7630074779637042,
+    "net_rr_below_minimum_count": 57,
+    "net_rr_violation_rate": 0.37748344370860926
+  },
+  "decision": {
+    "classification": "NO_EDGE",
+    "minimum_required_trades": 100,
+    "failed_conditions": [
+      "base_net_expectancy_not_positive",
+      "base_profit_factor_not_above_1",
+      "base_bootstrap_lower_95_not_positive",
+      "fixed_cohort_stress_expectancy_not_positive"
+    ],
+    "mexc_target_venue_validation_eligible": false,
+    "mexc_target_venue_validation_data_access_authorized": false,
+    "holdout_2026_unlock_eligible": false
+  },
+  "governance": {
+    "h03_closed": true,
+    "no_posthoc_tuning": true,
+    "no_sensitivity_rescue": true,
+    "mexc_2025_09_through_2025_12_remains_locked": true,
+    "holdout_2026_remains_locked": true,
+    "live_trading_authorized": false,
+    "exchange_mutation_authorized": false,
+    "main_merge_authorized": false,
+    "render_deploy_authorized": false
+  },
+  "fingerprint": "4446b74113fd06c59c7c256e066f603cb3dc01c0a6478d2f33f03433ad1db421"
+}
