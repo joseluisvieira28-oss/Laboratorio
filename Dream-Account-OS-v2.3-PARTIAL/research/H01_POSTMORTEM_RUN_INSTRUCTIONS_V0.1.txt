@@ -1,0 +1,33 @@
+H01 DISCOVERY POST-MORTEM V0.1 — LOCAL RUN INSTRUCTIONS
+
+Purpose: descriptive-only analysis of the already-open H01 Discovery corpus.
+H01 remains CLOSED_NO_EDGE. This does not rescue or retune H01 and does not evaluate H02.
+
+From the project root on Windows:
+
+1) Ensure you are on the research branch and fast-forward it:
+   git status
+   git checkout dream-account-phase-b-signal-research-v0.1
+   git pull --ff-only origin dream-account-phase-b-signal-research-v0.1
+
+2) Run the post-mortem:
+   .\research\run_phase_b_h01_postmortem_windows.bat
+
+Expected local inputs already created by the H01 Discovery run:
+   research\local_data\h01_discovery_raw
+   research\local_data\h01_discovery_output
+
+Outputs:
+   research\local_data\h01_discovery_output\h01_postmortem\latest_h01_postmortem_receipt.json
+   research\local_data\h01_discovery_output\h01_postmortem\latest_h01_trade_ledger.csv
+
+Safety locks:
+- H01 CLOSED_NO_EDGE
+- Validation 2025-09..12 LOCKED
+- 2026 LOCKED
+- no network download
+- no exchange mutation
+- no live trading
+- no H02 simulation
+
+If the exact closed H01 run and decision fingerprints do not reproduce, the post-mortem blocks before diagnostics.
