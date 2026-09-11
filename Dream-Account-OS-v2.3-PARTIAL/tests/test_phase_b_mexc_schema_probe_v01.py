@@ -1,8 +1,10 @@
 import json
 from pathlib import Path
+import stat
 import tempfile
 import unittest
-from zipfile import ZipFile
+from unittest.mock import patch
+from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
 
 from research.phase_b_mexc_schema_probe_v01 import (
     EXPECTED_HEADER,
@@ -88,6 +90,58 @@ class PhaseBMEXCRawSchemaProbeTests(unittest.TestCase):
 
         self.assertEqual(result.status, "BLOCKED_SCHEMA_PROBE")
         self.assertIn("ZIP_PATH_TRAVERSAL_ENTRY", result.blocked_reasons)
+        self.assertEqual(result.zip_text_entries_probed, ())
+
+    def test_zip_too_many_entries_blocks_before_member_reads(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "many.zip"
+            with ZipFile(path, "w") as archive:
+                archive.writestr("a.csv", "a\n1\n")
+                archive.writestr("b.csv", "a\n2\n")
+            with patch("research.phase_b_mexc_schema_probe_v01.MAX_ZIP_ENTRY_COUNT", 1):
+                result = probe_raw_schema(path)
+
+        self.assertEqual(result.status, "BLOCKED_SCHEMA_PROBE")
+        self.assertIn("ZIP_TOO_MANY_ENTRIES", result.blocked_reasons)
+        self.assertEqual(result.zip_text_entries_probed, ())
+
+    def test_zip_total_uncompressed_limit_blocks_before_member_reads(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "expanded.zip"
+            with ZipFile(path, "w") as archive:
+                archive.writestr("a.csv", "a\n1234567890\n")
+            with patch("research.phase_b_mexc_schema_probe_v01.MAX_ZIP_TOTAL_UNCOMPRESSED_BYTES", 4):
+                result = probe_raw_schema(path)
+
+        self.assertEqual(result.status, "BLOCKED_SCHEMA_PROBE")
+        self.assertIn("ZIP_TOTAL_UNCOMPRESSED_TOO_LARGE", result.blocked_reasons)
+        self.assertEqual(result.zip_text_entries_probed, ())
+
+    def test_zip_suspicious_compression_ratio_blocks_before_member_reads(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "ratio.zip"
+            with ZipFile(path, "w", compression=ZIP_DEFLATED) as archive:
+                archive.writestr("a.csv", "x" * 20_000)
+            with patch("research.phase_b_mexc_schema_probe_v01.MAX_ZIP_COMPRESSION_RATIO", 2.0):
+                result = probe_raw_schema(path)
+
+        self.assertEqual(result.status, "BLOCKED_SCHEMA_PROBE")
+        self.assertIn("ZIP_SUSPICIOUS_COMPRESSION_RATIO", result.blocked_reasons)
+        self.assertEqual(result.zip_text_entries_probed, ())
+
+    def test_zip_symlink_entry_blocks_before_member_reads(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "symlink.zip"
+            info = ZipInfo("linked.csv")
+            info.create_system = 3
+            info.external_attr = (stat.S_IFLNK | 0o777) << 16
+            with ZipFile(path, "w") as archive:
+                archive.writestr(info, "target.csv")
+            result = probe_raw_schema(path)
+
+        self.assertEqual(result.status, "BLOCKED_SCHEMA_PROBE")
+        self.assertIn("ZIP_SYMLINK_ENTRY", result.blocked_reasons)
+        self.assertEqual(result.zip_text_entries_probed, ())
 
     def test_overlong_csv_header_blocks(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -139,6 +193,11 @@ class PhaseBMEXCRawSchemaProbeTests(unittest.TestCase):
         self.assertFalse(probe["json_market_values_may_be_returned"])
         self.assertFalse(probe["adapter_activation_from_probe_alone"])
         self.assertFalse(probe["p00_evaluation_allowed"])
+        self.assertEqual(probe["max_zip_entry_count"], 10_000)
+        self.assertEqual(probe["max_zip_total_uncompressed_bytes"], 536_870_912)
+        self.assertEqual(probe["max_zip_compression_ratio"], 200.0)
+        self.assertTrue(probe["symlink_zip_entries_blocked"])
+        self.assertTrue(probe["archive_safety_failure_prevents_member_reads"])
 
     def test_probe_source_has_no_network_or_evaluator_wiring(self):
         text = SOURCE.read_text(encoding="utf-8").lower()
