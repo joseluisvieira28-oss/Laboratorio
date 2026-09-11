@@ -6,7 +6,12 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from research.phase_b_mexc_discovery_corpus_v01 import build_discovery_corpus
+from research.phase_b_mexc_discovery_corpus_v01 import (
+    MEXC_BULK_MONTH_PARTITION_OFFSET_HOURS,
+    MEXC_BULK_MONTH_PARTITION_TIMEZONE,
+    _source_partition_bounds,
+    build_discovery_corpus,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -17,7 +22,7 @@ LAUNCHER = ROOT / "research" / "build_phase_b_mexc_discovery_corpus_windows.bat"
 class PhaseBMEXCDiscoveryCorpusTests(unittest.TestCase):
     def _write_feb_2023(self, path: Path, *, skip_index: int | None = None) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
-        start = datetime(2023, 2, 1, tzinfo=timezone.utc)
+        start = datetime(2023, 1, 31, 16, 0, tzinfo=timezone.utc)
         rows = 28 * 96
         with path.open("w", encoding="utf-8", newline="") as handle:
             writer = csv.writer(handle, lineterminator="\n")
@@ -27,6 +32,13 @@ class PhaseBMEXCDiscoveryCorpusTests(unittest.TestCase):
                     continue
                 open_ms = int((start + timedelta(minutes=15 * index)).timestamp() * 1000)
                 writer.writerow((open_ms, "100", "101", "99", "100", "10", "1000", open_ms + 900000))
+
+    def test_observed_vendor_month_partition_is_frozen_to_utc_plus_8(self):
+        start, next_start = _source_partition_bounds("2023-02")
+        self.assertEqual(MEXC_BULK_MONTH_PARTITION_OFFSET_HOURS, 8)
+        self.assertEqual(MEXC_BULK_MONTH_PARTITION_TIMEZONE, "UTC+08:00")
+        self.assertEqual(start, datetime(2023, 1, 31, 16, 0, tzinfo=timezone.utc))
+        self.assertEqual(next_start, datetime(2023, 2, 28, 16, 0, tzinfo=timezone.utc))
 
     def test_complete_month_passes_without_p00_network_or_mutation(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -40,6 +52,8 @@ class PhaseBMEXCDiscoveryCorpusTests(unittest.TestCase):
         self.assertEqual(result.expected_month_count, 1)
         self.assertEqual(result.passed_month_count, 1)
         self.assertEqual(result.total_row_count, 2688)
+        self.assertEqual(result.source_partition_timezone, "UTC+08:00")
+        self.assertTrue(result.utc_discovery_boundary_reconciliation_required)
         self.assertFalse(result.p00_evaluation_performed)
         self.assertFalse(result.network_access_performed)
         self.assertFalse(result.exchange_mutation_performed)
@@ -59,6 +73,7 @@ class PhaseBMEXCDiscoveryCorpusTests(unittest.TestCase):
             self.assertEqual(result.status, "BLOCKED_CORPUS")
             self.assertTrue(any(reason.startswith("MISSING_EXPECTED_MONTH:") for reason in result.reasons))
             self.assertFalse((out / "canonical").exists())
+            self.assertTrue(result.utc_discovery_boundary_reconciliation_required)
 
     def test_2025_is_blocked_before_market_files_are_read(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -96,6 +111,8 @@ class PhaseBMEXCDiscoveryCorpusTests(unittest.TestCase):
             ".delete(",
         ):
             self.assertNotIn(forbidden, text)
+        self.assertIn("utc_discovery_boundary_reconciliation_required", text)
+        self.assertIn("utc+08:00", text)
 
     def test_windows_launcher_has_import_path_and_no_network_or_p00_evaluator(self):
         text = LAUNCHER.read_text(encoding="utf-8").lower()
