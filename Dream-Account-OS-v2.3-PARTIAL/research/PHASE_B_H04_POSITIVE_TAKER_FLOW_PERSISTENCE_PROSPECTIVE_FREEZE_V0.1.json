@@ -1,0 +1,155 @@
+{
+  "authority_boundary": {
+    "exchange_mutation_authorized": false,
+    "gate_k_phase_a_unchanged": true,
+    "live_trading_authorized": false,
+    "main_merge_authorized": false,
+    "render_deploy_authorized": false,
+    "this_file_authorizes_2026": false,
+    "this_file_authorizes_h04_market_data_access": false,
+    "this_file_authorizes_mexc_2025_09_through_2025_12": false,
+    "this_file_authorizes_network_download": false
+  },
+  "cost_policy": {
+    "base": {
+      "fee_pct_each_side": 0.05,
+      "name": "BASE_SENSITIVITY",
+      "round_trip_cost_pct": 0.2,
+      "slippage_pct_each_side": 0.025,
+      "spread_pct": 0.05
+    },
+    "no_cost_optimization": true,
+    "stress": {
+      "fee_pct_each_side": 0.05,
+      "name": "STRESS",
+      "round_trip_cost_pct": 0.3,
+      "slippage_pct_each_side": 0.05,
+      "spread_pct": 0.1
+    }
+  },
+  "data_contract": {
+    "archive": "https://data.binance.vision/",
+    "archive_granularity": "DAILY_ZIP_FILES",
+    "checksum_required": true,
+    "discovery": {
+      "calendar_days": 943,
+      "end_utc_exclusive": "2025-09-01T00:00:00.000Z",
+      "minimum_resolved_h04_trades": 100,
+      "start_utc_inclusive": "2023-02-01T00:00:00.000Z",
+      "status": "LOCKED_PENDING_SEPARATE_EXPLICIT_H04_DATA_ACCESS_AUTHORIZATION"
+    },
+    "final_holdout_2026": "LOCKED",
+    "independence_note": "This Binance interval is untouched for the H04 flow rule. Some calendar regimes overlap prior MEXC research, so a SURVIVES result is prospective evidence but not the final 2026 holdout.",
+    "market_type": "SPOT",
+    "mexc_2025_09_through_2025_12": "LOCKED_NOT_H04_DISCOVERY",
+    "missing_data": "No interpolation; gaps split segments; no setup may span a gap.",
+    "open_candles": "EXCLUDED",
+    "source": "OFFICIAL_BINANCE_PUBLIC_DATA_ONLY",
+    "timeframe": "15m"
+  },
+  "decision_policy": {
+    "classifications": [
+      "INSUFFICIENT_SAMPLE",
+      "NO_EDGE",
+      "SURVIVES"
+    ],
+    "if_any_survival_gate_fails": "NO_EDGE_STOP",
+    "if_below_100": "INSUFFICIENT_SAMPLE_STOP",
+    "minimum_resolved_h04_trades": 100,
+    "no_parameter_edits_after_h04_data_access": true,
+    "no_sensitivity_rescue": true,
+    "survives_requires_all": [
+      "minimum_resolved_h04_trade_count_met",
+      "base_net_expectancy_r_gt_0",
+      "base_profit_factor_r_gt_1",
+      "base_bootstrap_lower_95_gt_0",
+      "fixed_cohort_stress_net_expectancy_r_gt_0",
+      "mechanism_tp1_rate_difference_gt_0",
+      "mechanism_bootstrap_lower_95_gt_0"
+    ]
+  },
+  "family_id": "PBR05_FLOW_PERSISTENCE_SESSION_GATED_MANAGED_BREAKOUT_RETEST_LONG",
+  "fingerprint": "89daddbecb02a827b60fa6efbae5be88ce73088277d451e8bb8fcbf439db532f",
+  "frozen_at_utc_date": "2026-09-11",
+  "future_holdout": {
+    "2026": "REMAINS_LOCKED_DURING_H04_DISCOVERY",
+    "no_automatic_unlock": true,
+    "unlock_condition": "H04_DISCOVERY_SURVIVES_AND_SEPARATE_EXPLICIT_2026_AUTHORIZATION"
+  },
+  "hypothesis_id": "H04_POSITIVE_TAKER_FLOW_PERSISTENCE",
+  "inherited_signal_and_management": {
+    "atr_length": 14,
+    "dst_adjustment": false,
+    "eligible_utc_hours": [
+      13,
+      14,
+      15,
+      16
+    ],
+    "entry_rule": "NEXT_BAR_OPEN_AFTER_DEFENDED_RETEST",
+    "inherit_h01_management_exactly": true,
+    "inherit_h02_session_rule_exactly": true,
+    "inherit_h03_geometry_exactly": true,
+    "lookback_bars": 96,
+    "max_holding_bars": 96,
+    "min_net_rr": 2.0,
+    "partial_exit": false,
+    "protect_after_tp1_next_bar_at_entry_price": true,
+    "require_bullish_breakout_body": true,
+    "retest_window_bars": 2,
+    "session_end_exclusive": "17:00:00",
+    "session_entry_time_basis": "ACTUAL_SIGNAL_ENTRY_OPEN_TIME_UTC",
+    "session_start_inclusive": "13:00:00",
+    "stop_atr_fraction": 0.25,
+    "tp1_r_multiple": 1.0,
+    "tp2_r_multiple": 3.0,
+    "zone_atr_fraction": 0.25
+  },
+  "mechanism_confirmation": {
+    "contemporaneous_counterfactual": "Evaluate the same H03-ready session cohort before flow filtering and compare TP1 reach for flow-persistent vs nonpersistent candidates.",
+    "no_symbol_month_hour_threshold_search": true,
+    "primary_effect": "TP1_RATE_PERSISTENT_MINUS_NONPERSISTENT",
+    "survival_requires_day_block_bootstrap_lower_95_gt_0": true,
+    "survival_requires_effect_gt_0": true
+  },
+  "origin": {
+    "generation_data_eligible_for_h04_classification": false,
+    "h03_closeout_fingerprint": "4446b74113fd06c59c7c256e066f603cb3dc01c0a6478d2f33f03433ad1db421",
+    "h03_postmortem_freeze_fingerprint": "192ff38c80df052520969e801de88433dc98b7a1dba31d6cd32dccc7644cce61",
+    "h03_postmortem_receipt_fingerprint": "65f43d742774049043f417d1eb630aff268315fa1030c66bc7b78ece8513f698",
+    "h03_reclassification_or_rescue_allowed": false,
+    "source": "H03 CLOSED_NO_EDGE microstructure postmortem generated one new hypothesis from already-open Binance data"
+  },
+  "research_question": "On untouched later Binance Spot data, does requiring positive taker-buy flow imbalance on both the breakout bar and defended retest bar improve traction and produce a positive-cost-adjusted edge for the otherwise unchanged H03 signal family?",
+  "single_new_dimension": {
+    "application_order": "GEOMETRY_READY -> SESSION_ELIGIBLE -> FLOW_PERSISTENT -> OVERLAP_SELECTION",
+    "bar_flow_imbalance_formula": "(2 * taker_buy_base_asset_volume - total_base_asset_volume) / total_base_asset_volume",
+    "breakout_condition": "breakout_flow_imbalance > 0",
+    "changes_costs": false,
+    "changes_geometry": false,
+    "changes_management": false,
+    "changes_session_rule": false,
+    "changes_symbol_universe": false,
+    "name": "POSITIVE_TAKER_FLOW_PERSISTENCE",
+    "persistence_condition": "breakout_condition AND retest_condition",
+    "retest_condition": "retest_flow_imbalance > 0",
+    "threshold_selection": "ZERO_IS_FIXED_NATURAL_SIGN_BOUNDARY_NO_OPTIMIZATION",
+    "uses_only_bars_closed_before_entry": true
+  },
+  "status": "FROZEN_RULES_PENDING_SEPARATE_H04_DATA_ACCESS_AUTHORIZATION",
+  "symbol_universe": [
+    "BTCUSDT",
+    "ETHUSDT",
+    "SOLUSDT",
+    "BNBUSDT",
+    "XRPUSDT",
+    "DOGEUSDT"
+  ],
+  "uncertainty": {
+    "confidence": 0.95,
+    "method": "UTC_CALENDAR_DAY_BLOCK_BOOTSTRAP",
+    "repetitions": 5000,
+    "seed": 230911
+  },
+  "version": "0.1"
+}
