@@ -190,15 +190,21 @@ class PhaseBH01DiscoveryRunnerTests(unittest.TestCase):
         self.assertFalse(h01["authority_boundary"]["this_file_authorizes_2025_data_access"])
         self.assertEqual(
             start_ms,
-            int(__import__("datetime").datetime.fromisoformat(
-                EFFECTIVE_START_UTC.replace("Z", "+00:00")
-            ).timestamp() * 1000,
+            int(
+                __import__("datetime").datetime.fromisoformat(
+                    EFFECTIVE_START_UTC.replace("Z", "+00:00")
+                ).timestamp()
+                * 1000
+            ),
         )
         self.assertEqual(
             end_ms,
-            int(__import__("datetime").datetime.fromisoformat(
-                EFFECTIVE_END_UTC.replace("Z", "+00:00")
-            ).timestamp() * 1000,
+            int(
+                __import__("datetime").datetime.fromisoformat(
+                    EFFECTIVE_END_UTC.replace("Z", "+00:00")
+                ).timestamp()
+                * 1000
+            ),
         )
 
     def test_missing_explicit_authorization_blocks_before_market_files(self):
