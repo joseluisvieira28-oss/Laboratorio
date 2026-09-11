@@ -33,21 +33,11 @@ jobs:
           python - <<'PY'
           import os
           import subprocess
-
           base = os.environ['PHASE_B_BASE_SHA']
-          changed = subprocess.check_output(
-              ['git', 'diff', '--name-only', f'{base}...HEAD'],
-              text=True,
-          ).splitlines()
+          changed = subprocess.check_output(['git', 'diff', '--name-only', f'{base}...HEAD'], text=True).splitlines()
           allowed_exact = {'.github/workflows/phase-b-signal-research-tests.yml'}
-          allowed_prefixes = (
-              'Dream-Account-OS-v2.3-PARTIAL/research/',
-              'Dream-Account-OS-v2.3-PARTIAL/tests/test_phase_b_',
-          )
-          forbidden = [
-              path for path in changed
-              if path not in allowed_exact and not path.startswith(allowed_prefixes)
-          ]
+          allowed_prefixes = ('Dream-Account-OS-v2.3-PARTIAL/research/', 'Dream-Account-OS-v2.3-PARTIAL/tests/test_phase_b_')
+          forbidden = [path for path in changed if path not in allowed_exact and not path.startswith(allowed_prefixes)]
           if forbidden:
               raise SystemExit('Phase B isolation guard failed: ' + ', '.join(forbidden))
           print(f'PASS: {len(changed)} Phase B changes are isolated to research/tests/workflow')
@@ -69,20 +59,9 @@ jobs:
           python - <<'PY'
           import ast
           from pathlib import Path
-
-          forbidden_import_roots = {
-              'requests', 'urllib', 'websockets', 'socket', 'http', 'subprocess'
-          }
-          forbidden_call_attrs = {
-              'post', 'put', 'patch', 'delete', 'urlopen', 'connect', 'send'
-          }
-          forbidden_endpoint_literals = {
-              '/api/v3/order',
-              '/api/v3/order/test',
-              '/api/v3/batchOrders',
-              '/api/v3/capital/withdraw',
-              '/api/v3/capital/transfer',
-          }
+          forbidden_import_roots = {'requests', 'urllib', 'websockets', 'socket', 'http', 'subprocess'}
+          forbidden_call_attrs = {'post', 'put', 'patch', 'delete', 'urlopen', 'connect', 'send'}
+          forbidden_endpoint_literals = {'/api/v3/order', '/api/v3/order/test', '/api/v3/batchOrders', '/api/v3/capital/withdraw', '/api/v3/capital/transfer'}
           hits = []
           files = sorted(Path('research').glob('*.py'))
           for path in files:
@@ -90,8 +69,7 @@ jobs:
               for node in ast.walk(tree):
                   if isinstance(node, ast.Import):
                       for alias in node.names:
-                          root = alias.name.split('.')[0]
-                          if root in forbidden_import_roots:
+                          if alias.name.split('.')[0] in forbidden_import_roots:
                               hits.append(f'{path}:{node.lineno}:forbidden import {alias.name}')
                   elif isinstance(node, ast.ImportFrom):
                       root = (node.module or '').split('.')[0]
@@ -100,9 +78,8 @@ jobs:
                   elif isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
                       if node.func.attr.lower() in forbidden_call_attrs:
                           hits.append(f'{path}:{node.lineno}:forbidden call {node.func.attr}')
-                  elif isinstance(node, ast.Constant) and isinstance(node.value, str):
-                      if node.value in forbidden_endpoint_literals:
-                          hits.append(f'{path}:{node.lineno}:forbidden endpoint {node.value}')
+                  elif isinstance(node, ast.Constant) and isinstance(node.value, str) and node.value in forbidden_endpoint_literals:
+                      hits.append(f'{path}:{node.lineno}:forbidden endpoint {node.value}')
           if hits:
               raise SystemExit('Phase B research network/mutation guard failed: ' + '; '.join(hits))
           print(f'PASS: AST-scanned {len(files)} research modules; offline-only boundary enforced')
@@ -114,7 +91,6 @@ jobs:
           python - <<'PY'
           import json
           from pathlib import Path
-
           manifest = json.loads(Path('research/PHASE_B_PRE_DATA_RESEARCH_FREEZE_V0.1.json').read_text(encoding='utf-8'))
           authority = manifest['authority_boundary']
           assert manifest['status'] == 'RESEARCH_ONLY_NOT_LIVE_AUTHORITY'
@@ -130,7 +106,7 @@ jobs:
   h03-authorized-binance-discovery:
     name: H03 authorized Binance Discovery
     needs: research-safety-and-tests
-    if: contains(github.event.head_commit.message, '[H03 RUN]')
+    if: ${{ contains(github.event.head_commit.message, '[H03 RUN]') || contains(github.event.head_commit.message, '[H03 META AUDIT]') }}
     runs-on: ubuntu-latest
     timeout-minutes: 120
     steps:
@@ -152,14 +128,8 @@ jobs:
         run: |
           cd Dream-Account-OS-v2.3-PARTIAL
           python - <<'PY'
-          from research.phase_b_h03_discovery_runner_v01 import (
-              DEFAULT_AUTHORIZATION_PATH,
-              EXPECTED_AUTHORIZATION_FINGERPRINT,
-              EXPECTED_MANIFEST_FINGERPRINT,
-              _load_and_validate_authorization,
-          )
+          from research.phase_b_h03_discovery_runner_v01 import DEFAULT_AUTHORIZATION_PATH, EXPECTED_AUTHORIZATION_FINGERPRINT, EXPECTED_MANIFEST_FINGERPRINT, _load_and_validate_authorization
           from research.phase_b_h03_binance_daily_manifest_v01 import build_h03_manifest_receipt
-
           auth = _load_and_validate_authorization(DEFAULT_AUTHORIZATION_PATH)
           manifest = build_h03_manifest_receipt()
           assert auth['fingerprint'] == EXPECTED_AUTHORIZATION_FINGERPRINT
@@ -184,9 +154,7 @@ jobs:
           import time
           from urllib.error import HTTPError, URLError
           from urllib.request import Request, urlopen
-
           from research.phase_b_h03_binance_daily_manifest_v01 import expected_h03_daily_objects
-
           root = Path('research/local_data/h03_binance_raw')
           root.mkdir(parents=True, exist_ok=True)
           objects = expected_h03_daily_objects()
@@ -196,7 +164,6 @@ jobs:
               symbol_dir.mkdir(parents=True, exist_ok=True)
               tasks.append((item['archive_url'], symbol_dir / item['archive_filename']))
               tasks.append((item['checksum_url'], symbol_dir / (item['archive_filename'] + '.CHECKSUM')))
-
           def download_one(task):
               url, path = task
               last = None
@@ -216,7 +183,6 @@ jobs:
                       if attempt < 4:
                           time.sleep(min(2 ** attempt, 8))
               return str(path), 0, last
-
           failures = []
           total_bytes = 0
           completed = 0
@@ -230,34 +196,103 @@ jobs:
                       failures.append({'path': path, 'error': error})
                   if completed % 500 == 0 or completed == len(tasks):
                       print(f'H03 acquisition progress: {completed}/{len(tasks)} files; failures={len(failures)}')
-
           receipt = {
               'document_type': 'PHASE_B_H03_BINANCE_NETWORK_ACQUISITION_RECEIPT',
-              'version': '0.1',
-              'source': 'OFFICIAL_BINANCE_PUBLIC_DATA_ONLY',
-              'expected_archives': 4380,
-              'expected_checksums': 4380,
-              'expected_files_total': 8760,
-              'files_downloaded': completed - len(failures),
-              'total_bytes_downloaded': total_bytes,
-              'failure_count': len(failures),
-              'first_failures': failures[:20],
-              'mexc_validation_2025_accessed': False,
-              'holdout_2026_accessed': False,
-              'exchange_mutation_performed': False,
-              'live_trading_performed': False,
+              'version': '0.1', 'source': 'OFFICIAL_BINANCE_PUBLIC_DATA_ONLY',
+              'expected_archives': 4380, 'expected_checksums': 4380, 'expected_files_total': 8760,
+              'files_downloaded': completed - len(failures), 'total_bytes_downloaded': total_bytes,
+              'failure_count': len(failures), 'first_failures': failures[:20],
+              'mexc_validation_2025_accessed': False, 'holdout_2026_accessed': False,
+              'exchange_mutation_performed': False, 'live_trading_performed': False,
           }
           out = Path('research/local_data/h03_binance_output')
           out.mkdir(parents=True, exist_ok=True)
-          (out / 'h03_network_acquisition_receipt.json').write_text(
-              json.dumps(receipt, indent=2, sort_keys=True) + '\n', encoding='utf-8'
-          )
+          (out / 'h03_network_acquisition_receipt.json').write_text(json.dumps(receipt, indent=2, sort_keys=True) + '\n', encoding='utf-8')
           print(json.dumps(receipt, indent=2, sort_keys=True))
           if failures:
               raise SystemExit(f'H03 acquisition failed closed with {len(failures)} failed files')
           PY
 
+      - name: Audit H03 timestamp metadata without outcomes
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python - <<'PY'
+          import csv
+          from datetime import datetime, timezone
+          from io import TextIOWrapper
+          import json
+          from pathlib import Path
+          import zipfile
+          from research.phase_b_h03_binance_daily_manifest_v01 import expected_h03_daily_objects
+          timeframe_ms = 15 * 60 * 1000
+          root = Path('research/local_data/h03_binance_raw')
+          total_rows = 0
+          close_time_violations = 0
+          open_alignment_violations = 0
+          irregular_open_spacing = 0
+          duplicate_or_reversed = 0
+          day_boundary_violations = 0
+          examples = []
+          per_symbol_close = {}
+          for item in expected_h03_daily_objects():
+              symbol = item['symbol']
+              day = item['date_utc']
+              path = root / symbol / item['archive_filename']
+              expected_member = item['archive_filename'][:-4] + '.csv'
+              day_start = int(datetime.strptime(day, '%Y-%m-%d').replace(tzinfo=timezone.utc).timestamp() * 1000)
+              day_end = day_start + 86_400_000
+              previous = None
+              with zipfile.ZipFile(path) as zf:
+                  with zf.open(expected_member, 'r') as binary:
+                      reader = csv.reader(TextIOWrapper(binary, encoding='utf-8-sig', newline=''))
+                      for row in reader:
+                          if not row or not row[0].strip().lstrip('-').isdigit():
+                              continue
+                          open_time = int(row[0])
+                          close_time = int(row[6])
+                          total_rows += 1
+                          if open_time % timeframe_ms != 0:
+                              open_alignment_violations += 1
+                          if not day_start <= open_time < day_end:
+                              day_boundary_violations += 1
+                          if previous is not None:
+                              delta = open_time - previous
+                              if delta <= 0:
+                                  duplicate_or_reversed += 1
+                              elif delta % timeframe_ms != 0:
+                                  irregular_open_spacing += 1
+                          previous = open_time
+                          expected_close = open_time + timeframe_ms - 1
+                          if close_time != expected_close:
+                              close_time_violations += 1
+                              per_symbol_close[symbol] = per_symbol_close.get(symbol, 0) + 1
+                              if len(examples) < 30:
+                                  examples.append({
+                                      'symbol': symbol, 'date_utc': day, 'open_time': open_time,
+                                      'close_time': close_time, 'expected_close_time': expected_close,
+                                      'delta_ms': close_time - open_time,
+                                  })
+          receipt = {
+              'document_type': 'PHASE_B_H03_BINANCE_TIMESTAMP_METADATA_AUDIT',
+              'version': '0.1', 'outcomes_evaluated': False,
+              'total_rows': total_rows,
+              'close_time_violations': close_time_violations,
+              'open_alignment_violations': open_alignment_violations,
+              'irregular_open_spacing': irregular_open_spacing,
+              'duplicate_or_reversed_open_times': duplicate_or_reversed,
+              'day_boundary_violations': day_boundary_violations,
+              'per_symbol_close_time_violations': dict(sorted(per_symbol_close.items())),
+              'first_examples': examples,
+              'mexc_validation_2025_accessed': False, 'holdout_2026_accessed': False,
+          }
+          out = Path('research/local_data/h03_binance_output')
+          out.mkdir(parents=True, exist_ok=True)
+          (out / 'h03_timestamp_metadata_audit.json').write_text(json.dumps(receipt, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+          print(json.dumps(receipt, indent=2, sort_keys=True))
+          PY
+
       - name: Run frozen H03 Discovery evaluation
+        if: ${{ contains(github.event.head_commit.message, '[H03 RUN]') }}
         run: |
           cd Dream-Account-OS-v2.3-PARTIAL
           mkdir -p research/local_data/h03_binance_output
@@ -275,6 +310,7 @@ jobs:
           name: h03-binance-discovery-receipts-${{ github.sha }}
           path: |
             Dream-Account-OS-v2.3-PARTIAL/research/local_data/h03_binance_output/h03_network_acquisition_receipt.json
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/h03_binance_output/h03_timestamp_metadata_audit.json
             Dream-Account-OS-v2.3-PARTIAL/research/local_data/h03_binance_output/latest_h03_discovery_receipt.json
             Dream-Account-OS-v2.3-PARTIAL/research/local_data/h03_binance_output/h03_runner_stdout.txt
           if-no-files-found: warn
