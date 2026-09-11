@@ -39,6 +39,14 @@ class PhaseBMEXCSchemaProbeWindowsLauncherTests(unittest.TestCase):
         self.assertIn('%~1', text)
         self.assertIn('pushd "%PROJECT_ROOT%"', text)
 
+    def test_launcher_persists_sanitized_receipt_in_local_intake_directory(self):
+        text = LAUNCHER.read_text(encoding="utf-8")
+        self.assertIn('set "EVIDENCE_DIR=%SCRIPT_DIR%local_data\\intake"', text)
+        self.assertIn('set "RECEIPT_FILE=%EVIDENCE_DIR%\\latest_schema_probe.json"', text)
+        self.assertIn('> "%RECEIPT_FILE%"', text)
+        self.assertIn('type "%RECEIPT_FILE%"', text)
+        self.assertIn("Sanitized schema-probe receipt saved to:", text)
+
     def test_launcher_explicitly_states_no_p00_on_block_and_success(self):
         text = LAUNCHER.read_text(encoding="utf-8").lower()
         self.assertGreaterEqual(text.count("no p00"), 1)
