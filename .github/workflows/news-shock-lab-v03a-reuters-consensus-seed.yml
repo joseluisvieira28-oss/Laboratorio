@@ -1,0 +1,77 @@
+name: News Shock Lab V0.3A Reuters Consensus Seed
+
+on:
+  push:
+    branches:
+      - dream-account-phase-b-signal-research-v0.1
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/NEWS_SHOCK_LAB_V03A_REUTERS_CONSENSUS_SEED_FREEZE_V0.1.json'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/NEWS_SHOCK_LAB_V03A_REUTERS_CONSENSUS_SEED_V0.1.json'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/news_shock_lab_v03a_reuters_consensus_seed.py'
+      - '.github/workflows/news-shock-lab-v03a-reuters-consensus-seed.yml'
+  workflow_dispatch:
+
+jobs:
+  news-shock-v03a-reuters-consensus-seed:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install parser dependency and compile
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python -m pip install beautifulsoup4
+          python -m compileall -q research
+      - name: Verify frozen Reuters seed authority
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python - <<'PY'
+          from research.news_shock_lab_v03a_reuters_consensus_seed import load_authority
+          freeze, seed = load_authority()
+          if freeze['fingerprint'] != '1e99091766126fad3240e0e0cb7125fd191853ae97fdfe55b94d639adb99ee9b':
+              raise SystemExit('NEWS V03A REUTERS FREEZE DRIFT')
+          if seed['fingerprint'] != 'c0fdfc834cd4eb6c8f2186392de2175857c50e7ba71f4cd4bca820695ba79382':
+              raise SystemExit('NEWS V03A REUTERS SEED DRIFT')
+          print('NEWS V03A REUTERS SEED AUTHORITY PASS')
+          PY
+      - name: Rebuild frozen BLS actuals and validate Reuters consensus seed
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          mkdir -p research/local_data/news_v03a_reuters_seed_output
+          set -o pipefail
+          python -m research.news_shock_lab_v03a_reuters_consensus_seed \
+            research/local_data/news_v03a_reuters_seed_output \
+            | tee research/local_data/news_v03a_reuters_seed_output/reuters_seed_stdout.txt
+      - name: Assert two COMPLETE_A and all market outcome guards closed
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root = Path('research/local_data/news_v03a_reuters_seed_output')
+          s = json.loads((root/'consensus_seed_summary.json').read_text())
+          if s['status_counts'] != {'COMPLETE_A': 2, 'CONSENSUS_PROVENANCE_INCOMPLETE': 42}:
+              raise SystemExit(f"NEWS V03A REUTERS STATUS COUNT DRIFT: {s['status_counts']}")
+          if set(s['complete_a_event_ids']) != {'US_CPI_2025-02-12','US_CPI_2025-06-11'}:
+              raise SystemExit('NEWS V03A REUTERS COMPLETE_A IDENTITY DRIFT')
+          for key, value in s['guards'].items():
+              if value is not False:
+                  raise SystemExit(f'NEWS V03A REUTERS OUTCOME GUARD DRIFT: {key}')
+          print('NEWS V03A REUTERS SEED VALIDATION PASS', s['validation_fingerprint'])
+          PY
+      - name: Upload Reuters consensus provenance receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: news-shock-v03a-reuters-consensus-seed-${{ github.sha }}
+          path: |
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/news_v03a_reuters_seed_output/consensus_augmented_manifest.json
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/news_v03a_reuters_seed_output/consensus_validation_receipt.json
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/news_v03a_reuters_seed_output/consensus_seed_summary.json
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/news_v03a_reuters_seed_output/reuters_seed_stdout.txt
+          if-no-files-found: warn
+          retention-days: 30
