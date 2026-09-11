@@ -1,0 +1,85 @@
+name: News Shock Lab V0.3A Reuters Consensus Combined V0.1
+
+on:
+  push:
+    branches:
+      - dream-account-phase-b-signal-research-v0.1
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/NEWS_SHOCK_LAB_V03A_REUTERS_CONSENSUS_SEED_V0.1.json'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/NEWS_SHOCK_LAB_V03A_REUTERS_CONSENSUS_SEED_TRANCHE02_FREEZE_V0.1.json'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/NEWS_SHOCK_LAB_V03A_REUTERS_CONSENSUS_SEED_TRANCHE02_V0.1.json'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/news_shock_lab_v03a_reuters_consensus_combined_v01.py'
+      - '.github/workflows/news-shock-lab-v03a-reuters-consensus-combined-v01.yml'
+  workflow_dispatch:
+
+jobs:
+  news-shock-v03a-reuters-consensus-combined-v01:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install parser dependency and compile
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python -m pip install beautifulsoup4
+          python -m compileall -q research
+      - name: Verify frozen combined Reuters authority
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python - <<'PY'
+          from research.news_shock_lab_v03a_reuters_consensus_combined_v01 import load_authority
+          seed1, freeze2, seed2 = load_authority()
+          if seed1['fingerprint'] != 'c0fdfc834cd4eb6c8f2186392de2175857c50e7ba71f4cd4bca820695ba79382':
+              raise SystemExit('NEWS V03A COMBINED SEED1 DRIFT')
+          if freeze2['fingerprint'] != '2f0ef842f242ec452b5dab7171ab7ce52eafc53494f2cd22131f5cbbd24ad471':
+              raise SystemExit('NEWS V03A COMBINED TRANCHE02 FREEZE DRIFT')
+          if seed2['fingerprint'] != '7995e980a95ebb53656e02816c5606efe76c3ba140c756b3d22ac0b978025edb':
+              raise SystemExit('NEWS V03A COMBINED TRANCHE02 SEED DRIFT')
+          print('NEWS V03A COMBINED REUTERS AUTHORITY PASS')
+          PY
+      - name: Rebuild BLS actuals and validate combined Reuters consensus
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          mkdir -p research/local_data/news_v03a_reuters_combined_v01_output
+          set -o pipefail
+          python -m research.news_shock_lab_v03a_reuters_consensus_combined_v01 \
+            research/local_data/news_v03a_reuters_combined_v01_output \
+            | tee research/local_data/news_v03a_reuters_combined_v01_output/combined_stdout.txt
+      - name: Assert five COMPLETE_A and all outcome guards closed
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root = Path('research/local_data/news_v03a_reuters_combined_v01_output')
+          s = json.loads((root/'combined_summary.json').read_text())
+          expected_counts = {'COMPLETE_A': 5, 'CONSENSUS_PROVENANCE_INCOMPLETE': 39}
+          if s['status_counts'] != expected_counts:
+              raise SystemExit(f"NEWS V03A COMBINED STATUS COUNT DRIFT: {s['status_counts']}")
+          expected_ids = {
+              'US_CPI_2025-02-12', 'US_CPI_2025-04-10', 'US_CPI_2025-06-11',
+              'US_CPI_2025-07-15', 'US_CPI_2025-08-12'
+          }
+          if set(s['complete_a_event_ids']) != expected_ids:
+              raise SystemExit('NEWS V03A COMBINED COMPLETE_A IDENTITY DRIFT')
+          for key, value in s['guards'].items():
+              if value is not False:
+                  raise SystemExit(f'NEWS V03A COMBINED OUTCOME GUARD DRIFT: {key}')
+          print('NEWS V03A COMBINED VALIDATION PASS', s['validation_fingerprint'])
+          PY
+      - name: Upload combined Reuters provenance receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: news-shock-v03a-reuters-consensus-combined-v01-${{ github.sha }}
+          path: |
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/news_v03a_reuters_combined_v01_output/combined_consensus_manifest.json
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/news_v03a_reuters_combined_v01_output/combined_validation_receipt.json
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/news_v03a_reuters_combined_v01_output/combined_summary.json
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/news_v03a_reuters_combined_v01_output/combined_stdout.txt
+          if-no-files-found: warn
+          retention-days: 30
