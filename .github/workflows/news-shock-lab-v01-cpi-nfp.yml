@@ -1,0 +1,158 @@
+name: News Shock Lab V0.1 CPI NFP
+
+on:
+  push:
+    branches:
+      - dream-account-phase-b-signal-research-v0.1
+
+jobs:
+  news-shock-v01-cpi-nfp:
+    if: ${{ contains(github.event.head_commit.message, '[NEWS V01 RUN]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Verify frozen V0.1 authority
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python -m pip install beautifulsoup4
+          python -m compileall -q research
+          python - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+          expected='55bba04ab42e1c457427a9ba87231c6ff4df52e9f0e083e320700618c38b2f70'
+          path=Path('research/NEWS_SHOCK_LAB_V01_CPI_NFP_REPLICATION_FREEZE.json')
+          raw=json.loads(path.read_text())
+          supplied=raw.pop('fingerprint')
+          recomputed=hashlib.sha256(json.dumps(raw,sort_keys=True,separators=(',',':'),ensure_ascii=False).encode()).hexdigest()
+          if supplied!=expected or recomputed!=expected:
+              raise SystemExit('NEWS V0.1 FREEZE FINGERPRINT BLOCK')
+          if raw['governance']['no_2026'] is not True:
+              raise SystemExit('2026 GUARD BLOCK')
+          if raw['governance']['mexc_2025_09_through_2025_12_untouched'] is not True:
+              raise SystemExit('MEXC Q4 GUARD BLOCK')
+          print('NEWS V0.1 FREEZE PASS', expected)
+          PY
+
+      - name: Build official BLS schedule manifest before market access
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          mkdir -p research/local_data/news_v01_output
+          python research/news_shock_lab_v01_bls_schedule.py \
+            research/local_data/news_v01_output/bls_schedule_manifest.json \
+            | tee research/local_data/news_v01_output/bls_schedule_stdout.txt
+
+      - name: Acquire exact official Binance event and control corpus
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python - <<'PY'
+          from concurrent.futures import ThreadPoolExecutor, as_completed
+          import json, time
+          from pathlib import Path
+          from urllib.error import HTTPError, URLError
+          from urllib.request import Request, urlopen
+          from research.news_shock_lab_v01_cpi_nfp_runner import load_manifest, required_days, SYMBOLS
+
+          manifest_path=Path('research/local_data/news_v01_output/bls_schedule_manifest.json')
+          manifest=load_manifest(manifest_path)
+          days=required_days(manifest)
+          if any(day.startswith('2026-') for day in days):
+              raise SystemExit('2026 MARKET DAY GUARD BLOCK')
+          root=Path('research/local_data/news_v01_binance_raw')
+          root.mkdir(parents=True,exist_ok=True)
+          tasks=[]
+          for symbol in SYMBOLS:
+              d=root/symbol
+              d.mkdir(parents=True,exist_ok=True)
+              for day in days:
+                  filename=f'{symbol}-1m-{day}.zip'
+                  url=f'https://data.binance.vision/data/spot/daily/klines/{symbol}/1m/{filename}'
+                  tasks.append((url,d/filename))
+                  tasks.append((url+'.CHECKSUM',d/(filename+'.CHECKSUM')))
+
+          def download_one(task):
+              url,path=task
+              last=None
+              for attempt in range(1,5):
+                  try:
+                      req=Request(url,headers={'User-Agent':'DreamAccountOS-NewsShockV01/0.1'})
+                      with urlopen(req,timeout=45) as response:
+                          if response.status!=200:
+                              raise RuntimeError(f'HTTP {response.status}')
+                          data=response.read()
+                      if not data:
+                          raise RuntimeError('empty response')
+                      path.write_bytes(data)
+                      return str(path),len(data),None
+                  except (HTTPError,URLError,TimeoutError,OSError,RuntimeError) as exc:
+                      last=f'{type(exc).__name__}: {exc}'
+                      if attempt<4:
+                          time.sleep(min(2**attempt,8))
+              return str(path),0,last
+
+          failures=[]
+          downloaded=0
+          total_bytes=0
+          with ThreadPoolExecutor(max_workers=24) as pool:
+              futures=[pool.submit(download_one,t) for t in tasks]
+              for future in as_completed(futures):
+                  path,size,error=future.result()
+                  downloaded+=1
+                  total_bytes+=size
+                  if error:
+                      failures.append({'path':path,'error':error})
+                  if downloaded%250==0 or downloaded==len(tasks):
+                      print(f'NEWS V0.1 acquisition {downloaded}/{len(tasks)} failures={len(failures)}')
+          receipt={
+              'document_type':'NEWS_SHOCK_LAB_V01_BINANCE_ACQUISITION_RECEIPT',
+              'version':'0.1',
+              'status':'PASS' if not failures else 'FAILED_CLOSED',
+              'schedule_manifest_fingerprint':manifest['fingerprint'],
+              'market_days':len(days),
+              'symbols':list(SYMBOLS),
+              'expected_archives':len(days)*len(SYMBOLS),
+              'expected_checksums':len(days)*len(SYMBOLS),
+              'expected_files_total':len(tasks),
+              'files_attempted':downloaded,
+              'failure_count':len(failures),
+              'first_failures':failures[:20],
+              'total_bytes_downloaded':total_bytes,
+              'holdout_2026_accessed':False,
+              'mexc_2025_09_through_2025_12_accessed':False,
+              'exchange_mutation_performed':False,
+              'live_trading_performed':False,
+          }
+          out=Path('research/local_data/news_v01_output/news_v01_acquisition_receipt.json')
+          out.write_text(json.dumps(receipt,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(receipt,indent=2,sort_keys=True))
+          if failures:
+              raise SystemExit(f'NEWS V0.1 acquisition failed closed: {len(failures)} files')
+          PY
+
+      - name: Run frozen CPI NFP historical replication
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          set -o pipefail
+          python research/news_shock_lab_v01_cpi_nfp_runner.py \
+            research/local_data/news_v01_binance_raw \
+            research/local_data/news_v01_output/bls_schedule_manifest.json \
+            research/local_data/news_v01_output/news_v01_cpi_nfp_receipt.json \
+            | tee research/local_data/news_v01_output/news_v01_runner_stdout.txt
+
+      - name: Upload News Shock V0.1 scientific receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: news-shock-v01-cpi-nfp-${{ github.sha }}
+          path: |
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/news_v01_output/bls_schedule_manifest.json
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/news_v01_output/bls_schedule_stdout.txt
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/news_v01_output/news_v01_acquisition_receipt.json
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/news_v01_output/news_v01_cpi_nfp_receipt.json
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/news_v01_output/news_v01_runner_stdout.txt
+          if-no-files-found: warn
+          retention-days: 14
