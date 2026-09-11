@@ -4,6 +4,8 @@ setlocal EnableExtensions
 set "SCRIPT_DIR=%~dp0"
 for %%I in ("%SCRIPT_DIR%..") do set "PROJECT_ROOT=%%~fI"
 set "PYTHONPATH=%PROJECT_ROOT%;%PROJECT_ROOT%\src;%PYTHONPATH%"
+set "EVIDENCE_DIR=%SCRIPT_DIR%local_data\intake"
+set "RECEIPT_FILE=%EVIDENCE_DIR%\latest_schema_probe.json"
 
 if "%~1"=="" (
   echo Usage:
@@ -25,10 +27,23 @@ if errorlevel 1 (
   exit /b 2
 )
 
+if not exist "%EVIDENCE_DIR%" mkdir "%EVIDENCE_DIR%" >nul 2>&1
+if not exist "%EVIDENCE_DIR%" (
+  echo BLOCKED: could not create local intake evidence directory.
+  exit /b 2
+)
+
 pushd "%PROJECT_ROOT%" >nul
-python -m research.phase_b_mexc_schema_probe_v01 "%SOURCE_FILE%"
+python -m research.phase_b_mexc_schema_probe_v01 "%SOURCE_FILE%" > "%RECEIPT_FILE%"
 set "RC=%ERRORLEVEL%"
 popd >nul
+
+if exist "%RECEIPT_FILE%" (
+  type "%RECEIPT_FILE%"
+  echo.
+  echo Sanitized schema-probe receipt saved to:
+  echo   "%RECEIPT_FILE%"
+)
 
 if not "%RC%"=="0" (
   echo.
