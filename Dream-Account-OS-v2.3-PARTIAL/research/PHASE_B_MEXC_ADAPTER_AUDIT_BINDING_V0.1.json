@@ -1,0 +1,70 @@
+{
+  "document_type": "PHASE_B_MEXC_ADAPTER_AUDIT_BINDING",
+  "version": "0.1",
+  "status": "FROZEN_AFTER_REAL_REFERENCE_ADAPTER_PASS",
+  "authority_boundary": {
+    "research_only": true,
+    "p00_evaluation_authorized": false,
+    "validation_2025_access_authorized": false,
+    "holdout_2026_access_authorized": false,
+    "live_integration_authorized": false,
+    "exchange_network_access_authorized": false,
+    "exchange_mutation_authorized": false,
+    "main_merge_authorized": false,
+    "render_deploy_authorized": false
+  },
+  "base_ingest_contract": "PHASE_B_OFFLINE_DATA_INGEST_FREEZE_V0.1.json",
+  "adapter_freeze_contract": "PHASE_B_MEXC_RAW_ADAPTER_FREEZE_V0.1.json",
+  "binding_rule": {
+    "adapter_id": "MEXC_BULK_MIN15_CSV_V0.1",
+    "required_adapter_status": "PASS_ADAPTER_ONLY",
+    "mapping_fingerprint": "1dce3aeb322f6d7415687259ad99099155a3bcba0d4b3b6625643bdb4afe26a1",
+    "canonical_schema": "CANONICAL_KLINE_CSV_V0.1",
+    "timeframe": "15m",
+    "stage": "DISCOVERY",
+    "allowed_symbols": [
+      "BTCUSDT",
+      "ETHUSDT",
+      "SOLUSDT",
+      "BNBUSDT",
+      "XRPUSDT",
+      "DOGEUSDT"
+    ],
+    "discovery_start_utc": "2022-01-01T00:00:00Z",
+    "discovery_end_utc": "2024-12-31T23:59:59.999Z",
+    "raw_hash_must_match_adapter_receipt": true,
+    "raw_filename_must_match_adapter_receipt": true,
+    "canonical_hash_must_match_adapter_receipt": true,
+    "canonical_filename_must_match_adapter_receipt": true,
+    "adapter_receipt_fingerprint_must_verify": true,
+    "adapter_mapping_fingerprint_must_match_freeze": true,
+    "adapter_amount_semantics_must_remain_unauthorized": true,
+    "adapter_receipt_must_show_no_network": true,
+    "adapter_receipt_must_show_no_exchange_mutation": true,
+    "adapter_receipt_must_show_no_p00": true
+  },
+  "audit_handoff": {
+    "method": "PROVENANCE_BIND_THEN_IDENTITY_CANONICAL_AUDIT",
+    "base_auditor_is_not_modified": true,
+    "temporary_identity_sidecar_may_reference_only_the_verified_canonical_file": true,
+    "candles_may_be_returned_only_if_provenance_binding_passes_and_base_audit_status_is_PASS_OR_PASS_WITH_GAPS": true,
+    "p00_evaluator_wiring": false,
+    "network_access": false,
+    "exchange_mutation": false
+  },
+  "real_reference_evidence": {
+    "source_file_name": "BTC_USDT-Min15-2023-02-01.csv",
+    "source_sha256": "31eff305411e5e5589e53b22e47554c9b50208d372322b19422270bfe5766e25",
+    "source_byte_size": 558417,
+    "raw_row_count": 2688,
+    "canonical_file_name": "BTC_USDT-Min15-2023-02-01.canonical.csv",
+    "canonical_sha256": "cca4b190e664179ed577c827cbc03626e6b953c9b6e66785725507e2c2e2feda",
+    "canonical_byte_size": 485709,
+    "adapter_receipt_fingerprint": "3e67873542b28c5243498595ed680d395320b91e9c1661c080f54aebfd67a3f3",
+    "adapter_status": "PASS_ADAPTER_ONLY",
+    "p00_evaluation_performed": false,
+    "network_access_performed": false,
+    "exchange_mutation_performed": false
+  },
+  "final_rule": "This amendment binds a validated offline MEXC adapter receipt to the unchanged canonical integrity auditor. It does not authorize P00, 2025 or 2026 access, live integration, network access, exchange mutation, trading, or any interpretation of the raw amount field."
+}
