@@ -4,7 +4,7 @@ import hashlib, json
 from typing import Any
 
 HYPOTHESIS_ID = "H04_POSITIVE_TAKER_FLOW_PERSISTENCE"
-FREEZE_FINGERPRINT = "89daddbecb02a827b60fa6efbae5be88ce73088277d451e8bb8fcbf439db532f"
+FREEZE_FINGERPRINT = "a7190c9c5ff019521a88d91ce3f60cd2fc0f1d4ec3577458554d5a3c8e670c8f"
 BASE_URL = "https://data.binance.vision/data/spot/daily/klines"
 TIMEFRAME = "15m"
 UNIVERSE = ("BTCUSDT","ETHUSDT","SOLUSDT","BNBUSDT","XRPUSDT","DOGEUSDT")
