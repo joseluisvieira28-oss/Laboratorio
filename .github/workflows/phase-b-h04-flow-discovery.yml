@@ -15,25 +15,38 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Verify frozen H04 authority before market data
+      - name: Verify frozen H04 authority and timestamp amendment before market data
         run: |
           cd Dream-Account-OS-v2.3-PARTIAL
           python -m pip install -e .
           python -m compileall -q research
+          python -m pytest -q tests/test_phase_b_h04_timestamp_units_v01.py
           python - <<'PY'
           import json, hashlib
           from pathlib import Path
           from research.phase_b_h04_binance_daily_manifest_v01 import build_h04_manifest_receipt, FREEZE_FINGERPRINT
+          from research.phase_b_h04_binance_offline_adapter_v01 import TIMESTAMP_UNIT_AMENDMENT_FINGERPRINT
           from research.phase_b_h04_discovery_runner_v01 import EXPECTED_AUTHORIZATION_FINGERPRINT, EXPECTED_MANIFEST_FINGERPRINT
-          freeze=json.loads(Path('research/PHASE_B_H04_POSITIVE_TAKER_FLOW_PERSISTENCE_PROSPECTIVE_FREEZE_V0.1.json').read_text())
-          fu=dict(freeze); supplied=fu.pop('fingerprint')
-          recomputed=hashlib.sha256(json.dumps(fu,sort_keys=True,separators=(',',':'),ensure_ascii=False).encode()).hexdigest()
-          auth=json.loads(Path('research/PHASE_B_H04_BINANCE_DATA_ACCESS_AUTHORIZATION_V0.1.json').read_text())
-          au=dict(auth); auth_supplied=au.pop('fingerprint')
-          auth_recomputed=hashlib.sha256(json.dumps(au,sort_keys=True,separators=(',',':'),ensure_ascii=False).encode()).hexdigest()
+          def verify(path):
+              raw=json.loads(Path(path).read_text())
+              unsigned=dict(raw); supplied=unsigned.pop('fingerprint')
+              recomputed=hashlib.sha256(json.dumps(unsigned,sort_keys=True,separators=(',',':'),ensure_ascii=False).encode()).hexdigest()
+              return raw,supplied,recomputed
+          freeze,freeze_supplied,freeze_recomputed=verify('research/PHASE_B_H04_POSITIVE_TAKER_FLOW_PERSISTENCE_PROSPECTIVE_FREEZE_V0.1.json')
+          amendment,amend_supplied,amend_recomputed=verify('research/PHASE_B_H04_BINANCE_TIMESTAMP_UNIT_ADAPTER_AMENDMENT_V0.1.json')
+          auth,auth_supplied,auth_recomputed=verify('research/PHASE_B_H04_BINANCE_DATA_ACCESS_AUTHORIZATION_V0.1.json')
           manifest=build_h04_manifest_receipt()
           checks=[
-            supplied==FREEZE_FINGERPRINT==recomputed,
+            freeze_supplied==FREEZE_FINGERPRINT==freeze_recomputed,
+            amend_supplied==TIMESTAMP_UNIT_AMENDMENT_FINGERPRINT==amend_recomputed,
+            amendment['status']=='FROZEN_PRE_OUTCOME_FORMAT_NORMALIZATION',
+            amendment['trigger']['outcomes_evaluated'] is False,
+            amendment['normalization']['market_values_changed'] is False,
+            amendment['normalization']['flow_fields_changed'] is False,
+            amendment['normalization']['geometry_changed'] is False,
+            amendment['normalization']['management_changed'] is False,
+            amendment['normalization']['costs_changed'] is False,
+            amendment['normalization']['decision_policy_changed'] is False,
             auth_supplied==EXPECTED_AUTHORIZATION_FINGERPRINT==auth_recomputed,
             manifest['fingerprint']==EXPECTED_MANIFEST_FINGERPRINT,
             auth['required_bindings']['h04_prospective_freeze_fingerprint']==FREEZE_FINGERPRINT,
@@ -51,6 +64,7 @@ jobs:
           if not all(checks): raise SystemExit('H04 PRE-DATA AUTHORITY BLOCK')
           print('H04 PRE-DATA AUTHORITY PASS')
           print('FREEZE', FREEZE_FINGERPRINT)
+          print('TIMESTAMP_AMENDMENT', TIMESTAMP_UNIT_AMENDMENT_FINGERPRINT)
           print('AUTH', EXPECTED_AUTHORIZATION_FINGERPRINT)
           print('MANIFEST', EXPECTED_MANIFEST_FINGERPRINT)
           PY
