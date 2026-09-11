@@ -38,6 +38,12 @@ class PhaseBMEXCAdapterAuditWindowsLauncherTests(unittest.TestCase):
         self.assertIn('--declared-start "%DECLARED_START%"', text)
         self.assertIn('--declared-end "%DECLARED_END%"', text)
 
+    def test_launcher_adds_src_and_project_root_to_pythonpath(self):
+        text = LAUNCHER.read_text(encoding="utf-8")
+        expected = 'set "PYTHONPATH=%PROJECT_ROOT%\\src;%PROJECT_ROOT%;%PYTHONPATH%"'
+        self.assertIn(expected, text)
+        self.assertLess(text.index(expected), text.index("python -m research.phase_b_mexc_adapter_audit_binding_v01"))
+
     def test_launcher_propagates_nonzero_exit_and_states_no_p00(self):
         self.assertIn('set "rc=%errorlevel%"', self.text)
         self.assertIn("exit /b %rc%", self.text)
