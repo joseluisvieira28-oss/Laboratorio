@@ -1,0 +1,131 @@
+{
+  "document_type": "PHASE_B_NEW_HYPOTHESIS_PROSPECTIVE_FREEZE",
+  "version": "0.1",
+  "status": "FROZEN_RULES_PENDING_EXPLICIT_2025_DATA_ACCESS_AUTHORIZATION",
+  "frozen_at_utc_date": "2026-09-11",
+  "hypothesis_id": "H01_PROTECT_AFTER_TP1_NEXT_BAR",
+  "family_id": "PBR02_MANAGED_BREAKOUT_RETEST_LONG",
+  "origin": {
+    "source": "P00 closed NO_EDGE post-mortem plus pre-registered P01-P12 diagnostic matrix",
+    "data_driven_hypothesis_generation": true,
+    "confirmatory_reuse_of_2023_2024_forbidden": true,
+    "no_claim_of_edge_from_generation_data": true
+  },
+  "research_question": "Does next-bar protective stop activation after a +1R touch improve net expectancy without altering P00 signal formation?",
+  "signal_formation": {
+    "inherit_exactly_from_closed_p00": true,
+    "setup_id": "PBR01_BREAKOUT_RETEST_LONG",
+    "timeframe": "15m",
+    "market": "MEXC Spot",
+    "direction": "LONG_ONLY",
+    "lookback_bars": 96,
+    "atr_length": 14,
+    "zone_atr_fraction": 0.25,
+    "retest_window_bars": 2,
+    "entry_rule": "NEXT_BAR_OPEN_AFTER_DEFENDED_RETEST",
+    "stop_atr_fraction": 0.25,
+    "tp1_r_multiple": 1.0,
+    "tp2_r_multiple": 3.0,
+    "min_net_rr": 2.0,
+    "max_holding_bars": 96,
+    "require_bullish_breakout_body": true
+  },
+  "management_change_only": {
+    "name": "PROTECT_AT_ENTRY_AFTER_TP1_TOUCH_NEXT_BAR",
+    "partial_exit": false,
+    "tp1_touch_definition": "BAR_HIGH_GTE_ENTRY_PLUS_1R",
+    "activation_timing": "AT_CLOSE_OF_TP1_TOUCH_BAR_EFFECTIVE_FROM_NEXT_BAR",
+    "protective_stop_price": "ENTRY_PRICE",
+    "protective_stop_is_price_breakeven_not_cost_breakeven": true,
+    "if_stop_and_tp1_touch_same_bar": "STOP_WINS_NO_PROTECTION_ACTIVATION",
+    "if_tp2_and_tp1_touch_same_bar_without_stop": "TP2_EXIT",
+    "if_protective_stop_and_tp2_touch_same_later_bar": "PROTECTIVE_STOP_WINS_CONSERVATIVELY",
+    "adverse_gap_through_protective_stop": "EXIT_AT_ADVERSE_OPEN",
+    "initial_stop_unchanged_until_activation": true,
+    "tp2_unchanged": true,
+    "max_hold_unchanged": true
+  },
+  "cost_policy": {
+    "inherit_p00_cost_scenarios": true,
+    "base_selection": "BASE_SENSITIVITY",
+    "stress_repricing": "FIXED_COHORT_STRESS",
+    "fees_spread_slippage_required": true
+  },
+  "data_contract": {
+    "source": "OFFICIAL_MEXC_SPOT_HISTORICAL_ONLY",
+    "cross_exchange_backfill_allowed": false,
+    "interpolation_allowed": false,
+    "universe": [
+      "BTCUSDT",
+      "ETHUSDT",
+      "SOLUSDT",
+      "BNBUSDT",
+      "XRPUSDT",
+      "DOGEUSDT"
+    ],
+    "generation_data_2023_2024": {
+      "status": "OPENED_FOR_HYPOTHESIS_GENERATION_ONLY",
+      "eligible_for_h01_classification": false
+    },
+    "discovery_2025": {
+      "status": "LOCKED_PENDING_EXPLICIT_DATA_ACCESS_AUTHORIZATION",
+      "source_partition_timezone": "UTC+08:00",
+      "source_partition_start_month": "2025-01",
+      "source_partition_end_month": "2025-08",
+      "effective_start_utc_inclusive": "2025-01-01T00:00:00.000Z",
+      "effective_end_utc_exclusive": "2025-08-31T16:00:00.000Z",
+      "minimum_resolved_trades": 100
+    },
+    "validation_2025": {
+      "status": "PHYSICALLY_LOCKED_UNTIL_H01_DISCOVERY_SURVIVES",
+      "source_partition_timezone": "UTC+08:00",
+      "source_partition_start_month": "2025-09",
+      "source_partition_end_month": "2025-12",
+      "effective_start_utc_inclusive": "2025-09-01T00:00:00.000Z",
+      "effective_end_utc_exclusive": "2025-12-31T16:00:00.000Z",
+      "minimum_resolved_trades": 30
+    },
+    "intentional_unused_boundary_gap": {
+      "start_utc_inclusive": "2025-08-31T16:00:00.000Z",
+      "end_utc_exclusive": "2025-09-01T00:00:00.000Z",
+      "reason": "Preserve whole-provider-partition physical lock between Discovery and Validation under UTC+08 source partitioning."
+    },
+    "final_holdout_2026": {
+      "status": "LOCKED_REQUIRES_DISCOVERY_AND_VALIDATION_SURVIVAL_PLUS_SEPARATE_EXPLICIT_AUTHORIZATION"
+    }
+  },
+  "uncertainty": {
+    "method": "UTC_CALENDAR_DAY_BLOCK_BOOTSTRAP",
+    "repetitions": 5000,
+    "seed": 230911,
+    "confidence": 0.95
+  },
+  "decision_policy": {
+    "classifications": [
+      "INSUFFICIENT_SAMPLE",
+      "NO_EDGE",
+      "SURVIVES"
+    ],
+    "survives_requires_all": [
+      "minimum_resolved_trade_count_met",
+      "base_net_expectancy_r_gt_0",
+      "base_profit_factor_r_gt_1",
+      "bootstrap_lower_95_gt_0",
+      "fixed_cohort_stress_net_expectancy_r_gt_0"
+    ],
+    "no_sensitivity_rescue": true,
+    "no_parameter_edits_after_2025_discovery_access": true
+  },
+  "authority_boundary": {
+    "this_file_authorizes_2025_data_access": false,
+    "live_integration_authorized": false,
+    "phase_b_shadow_authorized": false,
+    "micro_live_authorized": false,
+    "real_trading_authorized": false,
+    "exchange_mutation_authorized": false,
+    "main_merge_authorized": false,
+    "render_deploy_authorized": false,
+    "gate_k_phase_a_unchanged": true
+  },
+  "fingerprint": "5229b820df2fc40036fe064e2b25361f3905b63345732f960eb7d9e457033d0b"
+}
