@@ -128,8 +128,14 @@
     "max_zip_entries_reported": 100,
     "max_zip_text_entries_probed": 10,
     "max_zip_entry_uncompressed_bytes_for_header_probe": 10485760,
+    "max_zip_entry_count": 10000,
+    "max_zip_total_uncompressed_bytes": 536870912,
+    "max_zip_compression_ratio": 200.0,
     "path_traversal_entries_blocked": true,
     "encrypted_zip_entries_blocked": true,
+    "symlink_zip_entries_blocked": true,
+    "duplicate_zip_entry_names_blocked": true,
+    "archive_safety_failure_prevents_member_reads": true,
     "adapter_activation_from_probe_alone": false,
     "p00_evaluation_allowed": false
   },
@@ -143,8 +149,11 @@
   "archive_probe": {
     "zip_contents_are_not_promoted_to_CANONICAL_without_validated_adapter": true,
     "path_traversal_entries_blocked": true,
+    "symlink_entries_blocked": true,
+    "duplicate_entry_names_blocked": true,
     "archive_entry_names_may_be_listed_for_schema_probe": true,
     "header_only_text_probe_allowed_under_schema_probe_limits": true,
+    "archive_member_bytes_must_not_be_opened_after_archive_level_safety_failure": true,
     "archive_market_value_interpretation_before_adapter_freeze": false
   },
   "mexc_2022_availability": {
