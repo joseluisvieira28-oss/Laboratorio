@@ -1,0 +1,47 @@
+{
+  "document_type": "PHASE_B_H04_BINANCE_TIMESTAMP_UNIT_ADAPTER_AMENDMENT",
+  "version": "0.1",
+  "status": "FROZEN_PRE_OUTCOME_FORMAT_NORMALIZATION",
+  "frozen_at_utc_date": "2026-09-11",
+  "hypothesis_id": "H04_POSITIVE_TAKER_FLOW_PERSISTENCE",
+  "trigger": {
+    "workflow_run_id": 34625009854,
+    "failure": "integrity block BTCUSDT 2025-01-01 BLOCKED_BINANCE_DAILY_INTEGRITY ('CLOSE_TIME','TIME')",
+    "outcomes_evaluated": false,
+    "classification_produced": false
+  },
+  "external_source_fact": {
+    "source": "OFFICIAL_BINANCE_PUBLIC_DATA_README",
+    "rule": "SPOT timestamps from 2025-01-01 onwards are in microseconds",
+    "selection_basis": "provider documentation only; no outcome inspection"
+  },
+  "normalization": {
+    "before_2025_01_01": "interpret open_time and close_time as milliseconds",
+    "from_2025_01_01": "interpret open_time and close_time as microseconds",
+    "open_time_ms": "for microsecond rows require source open_time divisible by 1000, then integer-divide by 1000",
+    "source_close_time_audit": "audit close_time in source units against source_open_time + 900000000 - 1 for 15m microsecond rows; pre-2025 audit remains source_open_time + 900000 - 1",
+    "canonical_candle_close_time_ms": "normalized open_time_ms + 900000 - 1",
+    "market_values_changed": false,
+    "flow_fields_changed": false,
+    "geometry_changed": false,
+    "management_changed": false,
+    "costs_changed": false,
+    "decision_policy_changed": false
+  },
+  "rerun_policy": {
+    "restart_entire_h04_discovery_from_first_archive": true,
+    "same_frozen_h04_rules": true,
+    "same_authorized_binance_window": true,
+    "same_symbols": true,
+    "mexc_2025_09_through_2025_12_locked": true,
+    "holdout_2026_locked": true,
+    "no_parameter_edits": true
+  },
+  "governance": {
+    "exchange_mutation_authorized": false,
+    "live_trading_authorized": false,
+    "main_merge_authorized": false,
+    "render_deploy_authorized": false
+  },
+  "fingerprint": "efb5007ac77ff3d87e08f0be9012aba9deaff825557fbc489f802e3948d7602d"
+}
