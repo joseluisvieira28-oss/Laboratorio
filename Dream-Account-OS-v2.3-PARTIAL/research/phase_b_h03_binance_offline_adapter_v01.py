@@ -6,13 +6,18 @@ No file is opened, no network is accessed and no stage is authorized here. Calle
 must supply already-obtained archive bytes plus the corresponding official CHECKSUM
 text. The functions verify checksum, ZIP/member identity, the frozen 12-field Binance
 Spot kline schema and 15m integrity, then return closed Candle objects.
+
+H03 adapter amendment V0.1 freezes a canonical 15m close boundary after a full-corpus,
+pre-outcome metadata audit found 22 isolated source close_time anomalies among 420,090
+rows while every open timestamp remained aligned, ordered and day-bounded. Source
+close_time is still parsed and audited; OHLCV and open_time are never altered.
 """
 
 import csv
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 from hashlib import sha256
-from io import BytesIO, StringIO, TextIOWrapper
+from io import BytesIO, TextIOWrapper
 from math import isfinite
 import re
 import zipfile
@@ -22,21 +27,13 @@ from dream_account.models import Candle
 
 HYPOTHESIS_ID = "H03_BINANCE_CROSS_VENUE_US_EU_OVERLAP_REPLICATION"
 H03_FREEZE_FINGERPRINT = "0c7c931bd48d4cd696e4a8f3188db64e497716dbc7020eb63db100aecca49fa7"
+CLOSE_TIME_AMENDMENT_FINGERPRINT = "338c67b4275143d06dcda887b939e5aff8a683ac03c32beb120584c8e70c5f71"
 TIMEFRAME_MS = 15 * 60 * 1000
 EXPECTED_FIELDS = 12
 EXPECTED_HEADER = (
-    "open_time",
-    "open",
-    "high",
-    "low",
-    "close",
-    "volume",
-    "close_time",
-    "quote_asset_volume",
-    "number_of_trades",
-    "taker_buy_base_asset_volume",
-    "taker_buy_quote_asset_volume",
-    "ignore",
+    "open_time", "open", "high", "low", "close", "volume", "close_time",
+    "quote_asset_volume", "number_of_trades", "taker_buy_base_asset_volume",
+    "taker_buy_quote_asset_volume", "ignore",
 )
 UNIVERSE = ("BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "DOGEUSDT")
 CHECKSUM_RE = re.compile(r"^([0-9a-fA-F]{64})\s+\*?([^\s]+)\s*$")
@@ -60,6 +57,7 @@ class BinanceDailyAdapterResult:
     row_count: int
     detected_gap_count: int
     missing_candle_count: int
+    source_close_time_anomaly_count: int
     candles: tuple[Candle, ...]
     reasons: tuple[str, ...]
 
@@ -94,30 +92,34 @@ def _day_bounds_ms(day: str) -> tuple[int, int]:
 
 def _is_header(row: list[str]) -> bool:
     normalized = tuple(cell.strip().lower().replace(" ", "_") for cell in row)
-    aliases = (
-        "open_time",
-        "open",
-        "high",
-        "low",
-        "close",
-        "volume",
-        "close_time",
-        "quote_asset_volume",
-        "number_of_trades",
-        "taker_buy_base_asset_volume",
-        "taker_buy_quote_asset_volume",
-        "ignore",
+    return normalized == EXPECTED_HEADER
+
+
+def _blocked(
+    *, status: str, symbol: str, day: str, archive_filename: str,
+    archive_sha256: str, checksum_verified: bool, reasons: tuple[str, ...],
+    row_count: int = 0, gap_count: int = 0, missing_count: int = 0,
+    close_time_anomaly_count: int = 0,
+) -> BinanceDailyAdapterResult:
+    return BinanceDailyAdapterResult(
+        status=status,
+        symbol=symbol,
+        date_utc=day,
+        archive_filename=archive_filename,
+        archive_sha256=archive_sha256,
+        checksum_verified=checksum_verified,
+        row_count=row_count,
+        detected_gap_count=gap_count,
+        missing_candle_count=missing_count,
+        source_close_time_anomaly_count=close_time_anomaly_count,
+        candles=(),
+        reasons=reasons,
     )
-    return normalized == aliases
 
 
 def adapt_binance_daily_archive_bytes(
-    *,
-    symbol: str,
-    day: str,
-    archive_filename: str,
-    archive_bytes: bytes,
-    checksum_text: str,
+    *, symbol: str, day: str, archive_filename: str,
+    archive_bytes: bytes, checksum_text: str,
 ) -> BinanceDailyAdapterResult:
     """Verify and adapt one already-obtained Binance daily Spot 15m ZIP in memory."""
 
@@ -130,40 +132,35 @@ def adapt_binance_daily_archive_bytes(
     actual_sha = sha256(raw).hexdigest()
     expected_sha = _parse_checksum(checksum_text, expected)
     if actual_sha != expected_sha:
-        return BinanceDailyAdapterResult(
-            status="BLOCKED_CHECKSUM_MISMATCH",
-            symbol=symbol,
-            date_utc=day,
-            archive_filename=archive_filename,
-            archive_sha256=actual_sha,
-            checksum_verified=False,
-            row_count=0,
-            detected_gap_count=0,
-            missing_candle_count=0,
-            candles=(),
-            reasons=("ARCHIVE_SHA256_MISMATCH",),
+        return _blocked(
+            status="BLOCKED_CHECKSUM_MISMATCH", symbol=symbol, day=day,
+            archive_filename=archive_filename, archive_sha256=actual_sha,
+            checksum_verified=False, reasons=("ARCHIVE_SHA256_MISMATCH",),
         )
 
     expected_member = expected[:-4] + ".csv"
     try:
         zf = zipfile.ZipFile(BytesIO(raw))
     except zipfile.BadZipFile:
-        return BinanceDailyAdapterResult(
-            "BLOCKED_INVALID_ZIP", symbol, day, archive_filename, actual_sha, True,
-            0, 0, 0, (), ("INVALID_ZIP_ARCHIVE",)
+        return _blocked(
+            status="BLOCKED_INVALID_ZIP", symbol=symbol, day=day,
+            archive_filename=archive_filename, archive_sha256=actual_sha,
+            checksum_verified=True, reasons=("INVALID_ZIP_ARCHIVE",),
         )
 
     infos = zf.infolist()
     if len(infos) != 1 or infos[0].filename != expected_member:
-        return BinanceDailyAdapterResult(
-            "BLOCKED_ZIP_MEMBER_IDENTITY", symbol, day, archive_filename, actual_sha, True,
-            0, 0, 0, (), ("UNEXPECTED_ZIP_MEMBER_SET",)
+        return _blocked(
+            status="BLOCKED_ZIP_MEMBER_IDENTITY", symbol=symbol, day=day,
+            archive_filename=archive_filename, archive_sha256=actual_sha,
+            checksum_verified=True, reasons=("UNEXPECTED_ZIP_MEMBER_SET",),
         )
     info = infos[0]
     if info.is_dir() or info.flag_bits & 0x1:
-        return BinanceDailyAdapterResult(
-            "BLOCKED_ZIP_MEMBER_SAFETY", symbol, day, archive_filename, actual_sha, True,
-            0, 0, 0, (), ("DIRECTORY_OR_ENCRYPTED_ZIP_MEMBER",)
+        return _blocked(
+            status="BLOCKED_ZIP_MEMBER_SAFETY", symbol=symbol, day=day,
+            archive_filename=archive_filename, archive_sha256=actual_sha,
+            checksum_verified=True, reasons=("DIRECTORY_OR_ENCRYPTED_ZIP_MEMBER",),
         )
 
     start_ms, end_ms = _day_bounds_ms(day)
@@ -171,6 +168,7 @@ def adapt_binance_daily_archive_bytes(
     reasons: list[str] = []
     seen: set[int] = set()
     previous: int | None = None
+    close_time_anomaly_count = 0
 
     try:
         with zf.open(info, "r") as binary:
@@ -194,7 +192,7 @@ def adapt_binance_daily_archive_bytes(
                     low = float(raw_row[3])
                     close = float(raw_row[4])
                     volume = float(raw_row[5])
-                    close_time = int(raw_row[6])
+                    source_close_time = int(raw_row[6])
                     float(raw_row[7])
                     int(raw_row[8])
                     float(raw_row[9])
@@ -203,6 +201,7 @@ def adapt_binance_daily_archive_bytes(
                 except (TypeError, ValueError, OverflowError):
                     reasons.append("MALFORMED_NUMERIC_FIELD")
                     continue
+
                 numeric = (open_price, high, low, close, volume)
                 if not all(isfinite(value) for value in numeric):
                     reasons.append("NON_FINITE_VALUE")
@@ -218,23 +217,28 @@ def adapt_binance_daily_archive_bytes(
                 previous = open_time
                 if open_time % TIMEFRAME_MS != 0:
                     reasons.append("OPEN_TIME_ALIGNMENT_VIOLATION")
-                if close_time != open_time + TIMEFRAME_MS - 1:
-                    reasons.append("CLOSE_TIME_VIOLATION")
                 if not start_ms <= open_time < end_ms:
                     reasons.append("UTC_DAY_BOUNDARY_VIOLATION")
+
+                canonical_close_time = open_time + TIMEFRAME_MS - 1
+                if source_close_time <= open_time:
+                    reasons.append("SOURCE_CLOSE_TIME_NOT_AFTER_OPEN")
+                elif source_close_time > canonical_close_time:
+                    reasons.append("SOURCE_CLOSE_TIME_EXCEEDS_CANONICAL_BOUNDARY")
+                elif source_close_time != canonical_close_time:
+                    close_time_anomaly_count += 1
+
                 if volume < 0:
                     reasons.append("NEGATIVE_VOLUME")
                 if (
-                    open_price <= 0
-                    or high <= 0
-                    or low <= 0
-                    or close <= 0
-                    or high < max(open_price, close)
-                    or low > min(open_price, close)
-                    or high < low
+                    open_price <= 0 or high <= 0 or low <= 0 or close <= 0
+                    or high < max(open_price, close) or low > min(open_price, close) or high < low
                 ):
                     reasons.append("OHLC_INTEGRITY_VIOLATION")
-                rows.append((open_time, open_price, high, low, close, volume, close_time))
+
+                # Only close-time metadata is normalized. All market values and open_time
+                # are preserved byte-for-value from the official source row.
+                rows.append((open_time, open_price, high, low, close, volume, canonical_close_time))
     except (OSError, UnicodeError, csv.Error, RuntimeError):
         reasons.append("ZIP_CSV_READ_FAILURE")
 
@@ -251,14 +255,17 @@ def adapt_binance_daily_archive_bytes(
 
     unique_reasons = tuple(sorted(set(reasons)))
     if unique_reasons:
-        return BinanceDailyAdapterResult(
-            "BLOCKED_BINANCE_DAILY_INTEGRITY", symbol, day, archive_filename, actual_sha, True,
-            len(rows), gap_count, missing_count, (), unique_reasons
+        return _blocked(
+            status="BLOCKED_BINANCE_DAILY_INTEGRITY", symbol=symbol, day=day,
+            archive_filename=archive_filename, archive_sha256=actual_sha,
+            checksum_verified=True, reasons=unique_reasons, row_count=len(rows),
+            gap_count=gap_count, missing_count=missing_count,
+            close_time_anomaly_count=close_time_anomaly_count,
         )
 
     candles = tuple(
-        Candle(open_time, open_price, high, low, close, volume, close_time, True)
-        for open_time, open_price, high, low, close, volume, close_time in rows
+        Candle(open_time, open_price, high, low, close, volume, canonical_close_time, True)
+        for open_time, open_price, high, low, close, volume, canonical_close_time in rows
     )
     return BinanceDailyAdapterResult(
         status="PASS_BINANCE_DAILY_WITH_GAPS" if gap_count else "PASS_BINANCE_DAILY",
@@ -270,6 +277,7 @@ def adapt_binance_daily_archive_bytes(
         row_count=len(rows),
         detected_gap_count=gap_count,
         missing_candle_count=missing_count,
+        source_close_time_anomaly_count=close_time_anomaly_count,
         candles=candles,
         reasons=(),
     )
