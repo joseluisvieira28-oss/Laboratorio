@@ -1,0 +1,152 @@
+{
+  "document_type": "MACRO_SHOCK_MICROSTRUCTURE_LAB_V01_PROSPECTIVE_RESEARCH_CONTRACT",
+  "version": "0.1",
+  "status": "FROZEN_PRE_HOLDOUT",
+  "purpose": "Test one prospectively frozen hypothesis that scheduled macroeconomic announcements create a temporary price-discovery regime in BTC/ETH in which short-horizon taker-flow persistence contains incremental information about subsequent same-direction price continuation.",
+  "scientific_principle": "Correct infrastructure, never help the hypothesis survive.",
+  "scope": {
+    "assets": ["BTCUSDT", "ETHUSDT"],
+    "venue": "Binance Spot",
+    "event_families": ["US_CPI", "US_NFP", "US_FOMC"],
+    "holdout": "2026_ONLY_AFTER_SEPARATE_EXPLICIT_UNLOCK",
+    "discovery_data_must_not_be_reused_as_validation": true,
+    "mexc_2025_09_through_2025_12_locked": true
+  },
+  "independent_ex_ante_basis": {
+    "mechanism": "Scheduled macro announcements generate abrupt changes in volatility, volume, spreads/liquidity and order flow; external literature supports elevated market-quality effects for roughly the first 30 minutes and a material role for order flow in price discovery.",
+    "directional_surprise_rule": "NOT_USED_AS_PRIMARY_SIGNAL",
+    "reason": "Macro surprise sign has state-dependent mapping through yields, USD and risk sentiment; the primary hypothesis therefore conditions on realized market microstructure rather than forcing a simple CPI/NFP/FOMC direction map.",
+    "time_region": "0_TO_30_MINUTES_AFTER_RELEASE",
+    "reason_time_region": "Chosen from independent literature on announcement microstructure rather than optimized from the laboratory's 2021-2025 outcomes."
+  },
+  "single_primary_hypothesis": {
+    "id": "MSM_H01_FLOW_PERSISTENCE_CONTINUATION",
+    "statement": "Within the first 30 minutes after a scheduled US CPI, NFP or FOMC release, if taker-flow direction is persistent across two consecutive pre-specified subwindows, the subsequent non-overlapping return window is more likely than matched non-event controls to continue in the same direction as the persistent flow.",
+    "primary_predictor": "same_sign_taker_flow_persistence",
+    "primary_outcome": "same_direction_subsequent_return_indicator",
+    "primary_comparison": "event_cases_vs_matched_non_event_controls",
+    "macro_surprise_sign_used_for_trade_direction": false,
+    "secondary_hypotheses_authorized": false
+  },
+  "frozen_windows": {
+    "flow_window_1": "0_to_5_minutes_post_release",
+    "flow_window_2": "5_to_15_minutes_post_release",
+    "outcome_window": "15_to_30_minutes_post_release",
+    "non_overlap_required": true,
+    "rationale": "All windows remain inside the independently justified ~30-minute announcement price-discovery region. The 15-30 outcome horizon avoids selecting the previously observed 15-60 discovery result."
+  },
+  "flow_definition": {
+    "source": "official Binance Spot trade/aggTrade fields sufficient to identify taker side",
+    "signed_notional": "sum(taker_buy_quote_notional) - sum(taker_sell_quote_notional)",
+    "normalized_flow": "signed_notional / total_quote_notional",
+    "sign_rule": {
+      "positive": "normalized_flow > 0",
+      "negative": "normalized_flow < 0",
+      "zero": "normalized_flow == 0"
+    },
+    "persistence_rule": "flow_window_1 and flow_window_2 must both be non-zero and have identical sign",
+    "magnitude_threshold": "NONE",
+    "reason_no_threshold": "Avoid post-outcome tuning and arbitrary cutoffs."
+  },
+  "outcome_definition": {
+    "return": "close_at_30m / close_at_15m - 1",
+    "continuation_success": "sign(outcome_return) equals persistent_flow_sign and outcome_return is non-zero",
+    "zero_return": "failure_for_binary_continuation_metric",
+    "fees_or_slippage_used_in_primary_scientific_metric": false,
+    "reason": "Primary hypothesis tests predictive structure, not yet an executable trading strategy."
+  },
+  "control_contract": {
+    "method": "matched non-event windows",
+    "match_dimensions": ["same_symbol", "same_weekday", "same_UTC_release_clock_time"],
+    "candidate_lags_days": [7, 14, 21, 28, 35, 42, 49, 56],
+    "minimum_valid_controls_per_event_symbol": 4,
+    "exclude_any_control_window_overlapping_a_frozen_macro_event": true,
+    "identical_data_quality_rules_for_event_and_control": true
+  },
+  "primary_statistic": {
+    "name": "continuation_rate_difference",
+    "definition": "P(continuation_success | persistent flow, macro event) - P(continuation_success | persistent flow, matched controls)",
+    "aggregation_unit": "event_symbol_case",
+    "cluster_unit_for_resampling": "event_date",
+    "confidence_interval": "two_sided_95_percent_cluster_bootstrap",
+    "bootstrap_repetitions": 5000,
+    "null_value": 0.0,
+    "multiple_primary_tests": 1
+  },
+  "minimum_sample_contract": {
+    "minimum_resolved_event_symbol_cases_with_persistent_flow": 30,
+    "minimum_distinct_macro_event_dates": 20,
+    "rationale": "This is a one-year holdout with scheduled events, so a 100-event requirement would mechanically force INSUFFICIENT_SAMPLE. The thresholds are frozen before holdout access and apply symmetrically regardless of result."
+  },
+  "classification_contract": {
+    "SURVIVES": {
+      "requirements": [
+        "all data-integrity and governance gates pass",
+        "minimum sample contract is met",
+        "point_estimate_continuation_rate_difference > 0",
+        "95_percent_cluster_bootstrap_CI_lower_bound > 0"
+      ],
+      "meaning": "Predictive microstructure structure survives this holdout. It does NOT by itself authorize live trading."
+    },
+    "NO_EDGE": {
+      "requirements": [
+        "all data-integrity and governance gates pass",
+        "minimum sample contract is met",
+        "SURVIVES criteria are not met"
+      ]
+    },
+    "INSUFFICIENT_SAMPLE": {
+      "requirements": [
+        "data integrity is otherwise adequate",
+        "minimum sample contract is not met"
+      ]
+    },
+    "TECHNICAL_OR_DATA_FAILURE": {
+      "requirements": [
+        "required source data are missing, corrupt, timestamp-inconsistent, or control construction fails contract"
+      ],
+      "rule": "May justify infrastructure repair only; no scientific parameter may be changed to improve the hypothesis."
+    }
+  },
+  "abort_before_outcome_evaluation_if": [
+    "freeze fingerprint mismatch",
+    "any 2026 data were accessed before explicit holdout unlock",
+    "MEXC 2025-09 through 2025-12 were accessed",
+    "event calendar cannot be independently reconstructed from official sources",
+    "required Binance provenance/checksum validation fails",
+    "control adequacy preflight fails",
+    "any outcome-dependent parameter edit is detected",
+    "any secondary symbol, event family, threshold or window is introduced after outcomes are visible"
+  ],
+  "explicitly_forbidden": [
+    "choosing ETH because prior discovery looked stronger",
+    "choosing CPI only because prior discovery looked stronger",
+    "using 15_to_60_minutes because prior discovery showed a favorable continuation rate",
+    "optimizing a flow magnitude threshold",
+    "optimizing surprise thresholds",
+    "switching between continuation and reversal after seeing holdout outcomes",
+    "opening 2026 before a separate explicit holdout authorization",
+    "merging to main",
+    "deploying to Render",
+    "live trading",
+    "exchange mutation"
+  ],
+  "secondary_descriptive_outputs_allowed_after_primary_result_is_locked": [
+    "CPI_vs_NFP_vs_FOMC breakdown",
+    "BTC_vs_ETH breakdown",
+    "0_to_5 and 5_to_15 flow descriptive distributions",
+    "volume and trade-count ratios versus matched controls",
+    "macro-surprise descriptive association"
+  ],
+  "secondary_output_rule": "Descriptive only. No subgroup can change the primary classification and no subgroup result may be promoted to a new edge without a new prospective freeze and untouched data.",
+  "governance": {
+    "holdout_2026_accessed": false,
+    "mexc_2025_09_through_2025_12_accessed": false,
+    "live_trading_authorized": false,
+    "exchange_mutation_authorized": false,
+    "main_merge_authorized": false,
+    "render_deploy_authorized": false
+  },
+  "next_gate": "PRE_HOLDOUT_IMPLEMENTATION_AND_SYNTHETIC_TESTS_ONLY",
+  "stop_condition": "STOP_BEFORE_2026_OUTCOMES_UNTIL_SEPARATE_EXPLICIT_HOLDOUT_UNLOCK"
+}
