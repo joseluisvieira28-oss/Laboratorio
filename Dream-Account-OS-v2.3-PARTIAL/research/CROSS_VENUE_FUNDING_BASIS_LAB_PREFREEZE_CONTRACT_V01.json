@@ -1,0 +1,121 @@
+{
+  "schema_version": "0.1",
+  "lab_id": "CROSS_VENUE_FUNDING_BASIS_LAB_V01",
+  "phase": "PRE_FREEZE",
+  "status": "PRE_FREEZE_CONTRACT_ACTIVE_DISCOVERY_BLOCKED",
+  "authority_commit": "e11dbbe701b61c74a25bed29eb8e3d954dd55af7",
+  "source_matrix_commit": "3baaa1acf9c4f1991885fab8f78daf382acd8b52",
+  "edge_status": "UNPROVEN",
+  "scientific_claim_under_consideration": "A low-turnover, delta-neutral, pre-funded long-Binance-perpetual / short-Hyperliquid-perpetual position may capture a persistent cross-venue funding premium after basis PnL, fees, execution costs, collateral fragmentation, opportunity cost and venue-separate margin risk.",
+  "claim_scope": "STRUCTURAL_CARRY_NOT_DIRECTIONAL_PRICE_PREDICTION",
+  "assets": [
+    {"base": "BTC", "binance_symbol": "BTCUSDT", "hyperliquid_symbol": "BTC"},
+    {"base": "ETH", "binance_symbol": "ETHUSDT", "hyperliquid_symbol": "ETH"}
+  ],
+  "primary_orientation": "LONG_BINANCE_SHORT_HYPERLIQUID",
+  "reverse_orientation": "DIAGNOSTIC_CONTROL_ONLY",
+  "primary_baseline_family": "STATIC_OR_DETERMINISTIC_LOW_TURNOVER_CARRY",
+  "dynamic_threshold_entry_exit": "FORBIDDEN_UNTIL_PRIMARY_BASELINE_CLOSEOUT",
+  "machine_learning": "FORBIDDEN_UNTIL_PRIMARY_BASELINE_CLOSEOUT",
+  "cross_sectional_asset_selection": "FORBIDDEN",
+  "data_partition_policy": {
+    "historical_overlap_with_external_paper": "ADVERSARIAL_REPLICATION_ONLY_NOT_INDEPENDENT_CONFIRMATION",
+    "locked_2026_market_data": "DO_NOT_ACCESS_FOR_THIS_LAB",
+    "MEXC_2025": "OUT_OF_SCOPE_AND_LOCKED",
+    "independent_validation": "MUST_USE_PRE_REGISTERED_UNTOUCHED_DATA_NOT_USED_TO_FORM_OR_REFINE_THE_HYPOTHESIS",
+    "earliest_independent_calendar_year_under_current_governance": 2027,
+    "replication_window_rule": "After provenance audit, use the earliest common full UTC month with unambiguous funding semantics and acceptable coverage for both BTC and ETH across both venues, ending no later than 2025-12-31T23:59:59.999Z. The start date is determined only by source availability/coverage rules, never by carry outcomes.",
+    "fixed_cohort_rule": "BTC and ETH use one common replication window; no symbol-specific start chosen from outcomes.",
+    "extension_rule": "No opportunistic extension after economic outcomes are observed."
+  },
+  "coverage_gates_before_full_freeze": {
+    "funding_records": "All realized settlement records must be timestamped, deduplicated and coverage-audited for each venue/symbol.",
+    "expected_settlement_schedule": "Must be derived from dated venue rules and actual regime changes, not assumed to be permanently 8h or 1h.",
+    "timestamp_standard": "UTC milliseconds internally; source timezone semantics documented.",
+    "duplicates": "Exact duplicates may be canonicalized only by a deterministic pre-registered rule; conflicting duplicates fail closed.",
+    "missing_funding_events": "No interpolation. Missing required events are explicit missingness and may trigger NO_GO if material.",
+    "regime_ambiguity": "Any period with unresolved rate-scaling or settlement-interval semantics is excluded only by a pre-registered provenance rule, never by economic result.",
+    "raw_fingerprint": "SHA-256 over canonical raw-record manifests required before economic evaluation."
+  },
+  "cashflow_specification": {
+    "unit_of_account": "USD-equivalent with venue-native collateral tracked separately",
+    "base_quantity_matching": "For each asset, long and short legs use equal absolute base-asset quantity unless the final freeze documents a venue contract multiplier requiring deterministic conversion.",
+    "binance_long_funding_cashflow": "negative when Binance funding rate is positive; computed from the venue-defined funding notional at the actual settlement timestamp",
+    "hyperliquid_short_funding_cashflow": "positive when Hyperliquid funding rate is positive; computed from venue-defined funding notional at the actual hourly settlement timestamp",
+    "funding_comparison": "Never annualize first. Sum actual settlement cashflows first; APR/APY may only be derived after full economic accounting in an authorized later phase.",
+    "price_pnl": "Track each perp leg separately. Consolidated price PnL is the sum of long-Binance and short-Hyperliquid price PnL and therefore captures cross-venue basis divergence/convergence.",
+    "fees": "Entry and exit fees booked per venue; rebalancing fees booked when the frozen collateral policy causes trades or transfers.",
+    "slippage": "Observed from provenance-quality execution data if available. Otherwise primary executable-return claims remain blocked and only pre-slippage or break-even-slippage diagnostics may be produced in a later authorized phase.",
+    "collateral_fx_basis": "USDT and USDC are distinct ledger assets; 1:1 equivalence may be used only as an explicitly labeled accounting convention with depeg stress tests frozen separately.",
+    "opportunity_cost": "Charged on capital actually immobilized, not merely on net portfolio notional. Primary benchmark candidate is a pre-registered USD risk-free proxy; exact official series must be frozen before economic evaluation."
+  },
+  "ledger_model": {
+    "binance_ledger_required": true,
+    "hyperliquid_ledger_required": true,
+    "consolidated_ledger_required": true,
+    "venue_level_equity_independent": true,
+    "cross_venue_profit_netting_for_liquidation": false,
+    "instantaneous_collateral_transfer": false,
+    "pre_funded_both_venues": true,
+    "one_leg_execution_risk_required_in_stress_model": true
+  },
+  "execution_cost_policy": {
+    "primary_order_style": "TAKER_BASELINE_UNLESS_STRONGER_PRE_REGISTERED_FILL_MODEL_PASSES_PROVENANCE",
+    "vip_discount": false,
+    "referral_discount": false,
+    "bnb_or_token_fee_discount": false,
+    "maker_fill_guarantee": false,
+    "maker_case": "SENSITIVITY_ONLY_UNLESS_QUEUE_AND_FILL_MODEL_IS_FROZEN_FROM_AUDITABLE_DATA",
+    "historical_fee_rule": "Prefer date-matched public base fee schedules. If a material historical fee regime cannot be dated, a full executable historical claim is blocked rather than filled with a favorable guess.",
+    "slippage_rule": "No mid-price fill assumption. No fixed favorable slippage imputation. If L2 is insufficient, record UNOBSERVABLE and calculate only allowed bounded diagnostics after separate authorization."
+  },
+  "margin_and_capital_policy": {
+    "leverage_primary": "PENDING_BEFORE_FULL_FREEZE",
+    "leverage_sensitivities": "PENDING_BEFORE_FULL_FREEZE",
+    "maintenance_margin_regimes": "PENDING_PROVENANCE",
+    "collateral_buffer_policy": "PENDING_BEFORE_FULL_FREEZE",
+    "collateral_rebalancing_policy": "PENDING_BEFORE_FULL_FREEZE",
+    "transfer_latency_model": "PENDING_BEFORE_FULL_FREEZE",
+    "liquidation_handling": "Any venue-level liquidation or forced deleveraging ends that path and books the frozen loss/cost convention; profit at the other venue cannot retroactively prevent it.",
+    "capital_efficiency_denominator": "Must include capital posted on both venues plus frozen reserve/buffer capital."
+  },
+  "stress_families_to_freeze_before_outcomes": [
+    "USDC_USDT_depeg",
+    "funding_interval_change",
+    "funding_rate_sign_reversal",
+    "cross_venue_basis_widening",
+    "one_leg_fill_or_acknowledgement_failure",
+    "API_or_venue_outage",
+    "oracle_or_mark_dislocation",
+    "venue_specific_margin_drawdown",
+    "transfer_delay",
+    "fee_increase",
+    "slippage_increase"
+  ],
+  "pre_freeze_gates": [
+    {"gate": "G01_SCOPE", "status": "PASS", "requirement": "BTC/ETH and primary orientation fixed before own-data outcomes"},
+    {"gate": "G02_PRIMARY_SOURCES", "status": "PASS_PARTIAL", "requirement": "Official funding and mechanism sources identified; historical coverage audit pending"},
+    {"gate": "G03_FUNDING_REGIMES", "status": "PENDING", "requirement": "Date all interval/scaling regime changes"},
+    {"gate": "G04_RAW_PROVENANCE", "status": "PENDING", "requirement": "Acquire/hash/audit raw records without evaluating economics"},
+    {"gate": "G05_CASHFLOW_SEMANTICS", "status": "PASS_SPEC", "requirement": "Settlement-by-settlement accounting specified"},
+    {"gate": "G06_FEES", "status": "PENDING", "requirement": "Date base taker fee regimes or block executable claim"},
+    {"gate": "G07_EXECUTION_DATA", "status": "PENDING", "requirement": "L2/fill provenance passes or execution remains UNOBSERVABLE"},
+    {"gate": "G08_MARGIN_CAPITAL", "status": "PENDING", "requirement": "Freeze leverage, maintenance margin, buffer and rebalancing policy"},
+    {"gate": "G09_OPPORTUNITY_COST", "status": "PENDING", "requirement": "Freeze official benchmark series and accrual convention"},
+    {"gate": "G10_REPLICATION_PARTITION", "status": "PENDING", "requirement": "Freeze deterministic common historical replication window from provenance only"},
+    {"gate": "G11_INDEPENDENT_VALIDATION", "status": "PASS_POLICY", "requirement": "Historical overlap cannot count as independent confirmation; 2026 remains locked"},
+    {"gate": "G12_DISCOVERY_AUTHORIZATION", "status": "BLOCKED", "requirement": "Separate explicit authorization after all material pre-freeze gates pass"}
+  ],
+  "full_freeze_go_condition": "G03,G04,G06,G08,G09,G10 must PASS; G07 must either PASS or be explicitly frozen UNOBSERVABLE with executable-return claims blocked. No economic outcomes may have been inspected to resolve these gates.",
+  "full_freeze_no_go_conditions": [
+    "Cannot reconstruct realized funding cashflows unambiguously for both venues",
+    "Cannot date material funding interval/scaling regimes",
+    "Cannot define venue-separate margin/collateral mechanics without future information",
+    "Historical data require outcome-dependent exclusions",
+    "Required provenance would access locked 2026 outcomes or MEXC locked data",
+    "The candidate requires dynamic tuning before the static low-turnover baseline can be evaluated"
+  ],
+  "later_replication_classification_labels": ["REPLICATION_SUPPORTS_MECHANISM", "REPLICATION_FAILS_MECHANISM", "REPLICATION_INCONCLUSIVE"],
+  "forbidden_later_replication_label": "EDGE_CONFIRMED",
+  "final_note": "A successful historical adversarial replication is only a promotion gate to untouched prospective validation; it is not independent proof of edge."
+}
