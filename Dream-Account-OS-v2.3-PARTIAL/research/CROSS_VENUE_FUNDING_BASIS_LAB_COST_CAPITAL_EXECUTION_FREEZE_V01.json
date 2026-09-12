@@ -1,0 +1,125 @@
+{
+  "schema_version": "0.1",
+  "lab_id": "CROSS_VENUE_FUNDING_BASIS_LAB_V01",
+  "phase": "PRE_FREEZE",
+  "status": "OUTCOME_BLIND_COST_CAPITAL_EXECUTION_FREEZE_ACTIVE",
+  "economic_outcomes_inspected": false,
+  "edge_status": "UNPROVEN",
+  "discovery_authorized": false,
+  "trading_authorized": false,
+  "purpose": "Freeze conservative cost, execution-observability, capital, margin and opportunity-cost rules before any lab economic outcome is evaluated.",
+  "G06_FEES": {
+    "status": "PASS_POLICY_EXECUTABLE_CLAIM_BLOCKED_WITHOUT_DATE_MATCHED_FEE_PROVENANCE",
+    "primary_order_style": "TAKER",
+    "discounts_assumed": false,
+    "vip_tier_assumed": "REGULAR_BASE_ONLY",
+    "referral_discount_assumed": false,
+    "token_fee_discount_assumed": false,
+    "maker_rebate_assumed": false,
+    "binance_usdm_conservative_taker_rate_decimal": "0.00050",
+    "hyperliquid_perps_conservative_taker_rate_decimal": "0.00045",
+    "application_rule": "Charge the frozen one-way taker rate on each venue for every entry, exit and trading rebalance in the mechanism-replication baseline. These constants are conservative research charges, not assertions that they exactly equal every historical fee regime.",
+    "historical_exactness_rule": "A claim of historically executable net return requires dated authoritative fee provenance. If exact historical base fees cannot be dated, executable-return claims remain blocked even when the conservative mechanism replication is run.",
+    "maker_policy": "Maker is diagnostic sensitivity only after a separately frozen queue/fill model from audit-grade data. No guaranteed maker fills.",
+    "favorable_fee_substitution_forbidden": true,
+    "sources": [
+      "https://www.binance.com/en-NG/support/faq/detail/360033544231",
+      "https://hyperliquid.gitbook.io/hyperliquid-docs/trading/fees"
+    ]
+  },
+  "G07_EXECUTION_DATA": {
+    "status": "UNOBSERVABLE_HISTORICALLY_FOR_EXECUTABLE_RETURN_CLAIM",
+    "historical_executable_pnl_authorized": false,
+    "mechanism_replication_authorized_by_this_gate": false,
+    "reason": "Symmetric audit-grade historical execution data across both venues have not been proven. Hyperliquid states its historical archive can be missing and not timely; Binance public historical book data have documented coverage/sampling limitations. No favorable fill imputation is allowed.",
+    "forbidden": [
+      "MID_PRICE_FILL",
+      "FIXED_FAVORABLE_SLIPPAGE_IMPUTATION",
+      "GUARANTEED_MAKER_FILL",
+      "QUEUE_POSITION_INVENTION",
+      "CROSS_VENUE_ATOMIC_FILL_ASSUMPTION"
+    ],
+    "later_allowed_diagnostics_after_separate_authorization": [
+      "PRE_SLIPPAGE_MECHANISM_CARRY",
+      "BREAK_EVEN_SLIPPAGE",
+      "CONSERVATIVE_COST_ENVELOPES"
+    ],
+    "path_to_executable_validation": "Prospective synchronized L2/trade collector on both venues with deterministic fill/slippage rules frozen before outcomes.",
+    "sources": [
+      "https://hyperliquid.gitbook.io/hyperliquid-docs/historical-data",
+      "https://github.com/binance/binance-public-data/issues/380",
+      "https://github.com/binance/binance-public-data/issues/437"
+    ]
+  },
+  "G08_MARGIN_CAPITAL": {
+    "status": "PASS_SPEC_EXECUTABLE_LIQUIDATION_EXACTNESS_REQUIRES_DATE_MATCHED_MARGIN_PROVENANCE",
+    "primary_leverage_per_venue": "2.0x",
+    "diagnostic_leverage_sensitivities": ["1.0x", "3.0x"],
+    "sensitivity_cannot_replace_primary": true,
+    "research_margin_mode": "VENUE_SEPARATE_ISOLATED_EQUIVALENT_LEDGER",
+    "opening_initial_collateral_fraction_of_leg_notional": "0.50",
+    "additional_prefunded_reserve_fraction_of_leg_notional": "0.25",
+    "capital_efficiency_denominator": "BINANCE_INITIAL_COLLATERAL_PLUS_BINANCE_PREFUNDED_RESERVE_PLUS_HYPERLIQUID_INITIAL_COLLATERAL_PLUS_HYPERLIQUID_PREFUNDED_RESERVE",
+    "equal_base_quantity_legs": true,
+    "cross_venue_profit_netting_for_liquidation": false,
+    "instantaneous_cross_venue_transfer": false,
+    "emergency_cross_venue_topup_in_primary_baseline": false,
+    "cross_venue_rebalancing_while_position_open_in_primary_baseline": "NONE",
+    "venue_equity_tracked_independently": true,
+    "funding_and_price_pnl_booked_to_originating_venue_first": true,
+    "liquidation_policy": "Venue-level liquidation/forced deleveraging terminates that path under the frozen loss convention. Profit at the other venue cannot retroactively prevent liquidation.",
+    "exact_historical_liquidation_claim_rule": "Requires authoritative date-matched margin tiers and liquidation rules. Without them, only conservative capital-sufficiency and stress diagnostics are allowed; no claim of exact historical liquidatability.",
+    "hyperliquid_formula_reference": "maintenance_margin = notional_position_value * maintenance_margin_rate - maintenance_deduction; maintenance rate depends on margin tier; current docs state maintenance margin is half the initial margin at maximum leverage.",
+    "sources": [
+      "https://hyperliquid.gitbook.io/hyperliquid-docs/trading/margining",
+      "https://hyperliquid.gitbook.io/hyperliquid-docs/trading/margin-tiers",
+      "https://hyperliquid.gitbook.io/hyperliquid-docs/trading/liquidations"
+    ]
+  },
+  "G09_OPPORTUNITY_COST": {
+    "status": "PASS",
+    "benchmark_series": "DGS3MO",
+    "benchmark_name": "Market Yield on U.S. Treasury Securities at 3-Month Constant Maturity, Quoted on an Investment Basis",
+    "publisher": "Federal Reserve Board via FRED",
+    "frequency": "DAILY",
+    "units": "PERCENT_PER_ANNUM_NOT_SEASONALLY_ADJUSTED",
+    "day_count": "ACT_365",
+    "capital_base": "ACTUALLY_IMMOBILIZED_CAPITAL_AS_DEFINED_BY_G08",
+    "timestamp_rule": "At each accrual timestamp use only the latest DGS3MO observation whose publication/availability timestamp is not after the accrual timestamp. Never backfill from a future observation.",
+    "non_business_day_rule": "Carry forward only the latest previously available observation; no interpolation from future data.",
+    "missing_initial_benchmark_rule": "FAIL_CLOSED_UNTIL_A_PREVIOUSLY_AVAILABLE_OBSERVATION_EXISTS",
+    "benchmark_switch_after_outcomes": false,
+    "source": "https://fred.stlouisfed.org/series/DGS3MO"
+  },
+  "G10_REPLICATION_PARTITION_POLICY": {
+    "status": "PASS_RULE_WINDOW_NOT_YET_MATERIALIZED",
+    "classification": "ADVERSARIAL_REPLICATION_ONLY_NOT_INDEPENDENT_CONFIRMATION",
+    "assets": ["BTC", "ETH"],
+    "venues": ["BINANCE_USDM", "HYPERLIQUID"],
+    "latest_allowed_timestamp": "2025-12-31T23:59:59.999Z",
+    "locked_2026": true,
+    "mexc_2025_out_of_scope_and_locked": true,
+    "window_selection": "Earliest through latest common full UTC months passing provenance for all four funding series. Selection uses timestamps/coverage only and may not inspect funding magnitude, carry, APR, PnL or asset ranking.",
+    "same_window_for_btc_and_eth": true,
+    "outcome_dependent_exclusion_forbidden": true,
+    "opportunistic_extension_forbidden": true,
+    "window_materialization_dependency": "G03_AND_G04_PROVENANCE_RECEIPT_PASS"
+  },
+  "primary_baseline_shape": {
+    "family": "STATIC_LOW_TURNOVER_CARRY",
+    "orientation": "LONG_BINANCE_SHORT_HYPERLIQUID",
+    "dynamic_thresholds": false,
+    "machine_learning": false,
+    "cross_sectional_asset_selection": false,
+    "funding_accounting": "ACTUAL_SETTLEMENT_BY_SETTLEMENT_ONLY",
+    "annualization_before_cashflow_accounting": false
+  },
+  "gate_summary": {
+    "G06_FEES": "PASS_POLICY_EXECUTABLE_CLAIM_BLOCKED_WITHOUT_DATE_MATCHED_FEE_PROVENANCE",
+    "G07_EXECUTION_DATA": "UNOBSERVABLE_HISTORICALLY_FOR_EXECUTABLE_RETURN_CLAIM",
+    "G08_MARGIN_CAPITAL": "PASS_SPEC_EXECUTABLE_LIQUIDATION_EXACTNESS_REQUIRES_DATE_MATCHED_MARGIN_PROVENANCE",
+    "G09_OPPORTUNITY_COST": "PASS",
+    "G10_REPLICATION_PARTITION": "PASS_RULE_WINDOW_NOT_YET_MATERIALIZED"
+  },
+  "scientific_boundary": "This freeze does not establish edge, authorize economic Discovery, authorize paper/live trading, or permit an executable-return claim. G03/G04 provenance and deterministic window materialization remain required before Discovery authorization can be considered."
+}
