@@ -1,0 +1,78 @@
+{
+  "document_type": "MICROSTRUCTURE_PROVENANCE_SHAKEDOWN_TECHNICAL_AMENDMENT",
+  "version": "0.2",
+  "status": "FROZEN_PRE_RETRY",
+  "date": "2026-09-12",
+  "purpose": "Correct only the two technical provenance failures observed in V0.1 without changing any scientific hypothesis, signal, outcome, symbol set, capture duration, or trading policy.",
+  "parent_failure_receipt": "MICROSTRUCTURE_PROVENANCE_SHAKEDOWN_FAILURE_RECEIPT_V01.json",
+  "parent_failed_run": {
+    "run_id": 34692126960,
+    "head_sha": "483ef08f5d67d4ae79f9f6f3ed0c70f849d198a0",
+    "result": "TECHNICAL_PROVENANCE_GATE_FAILURE"
+  },
+  "corrections": {
+    "coinbase_advanced_sequence_model": {
+      "reason": "Captured V0.1 raw data showed sequence_num interleaving products and channels at the connection-envelope level; per-book +1 adjacency therefore produced false gap violations.",
+      "frozen_rule": [
+        "Validate exact +1 sequence continuity across every received Coinbase Advanced connection envelope before channel/product filtering.",
+        "At per-book application level require strictly increasing, non-regressing sequence_num; adjacency is not required because unrelated products/channels can intervene.",
+        "Any genuine connection-level gap or reordering invalidates provenance fail-closed."
+      ],
+      "validated_offline": true
+    },
+    "binance_public_market_data_hosts": {
+      "reason": "V0.1 standard Binance Spot WebSocket returned HTTP 451 on the GitHub-hosted runner before any message was captured.",
+      "old_websocket_host": "stream.binance.com",
+      "new_websocket_host": "data-stream.binance.vision",
+      "old_rest_host": "api.binance.com",
+      "new_rest_host": "data-api.binance.vision",
+      "websocket_port": 443,
+      "rest_method": "GET",
+      "rest_path": "/api/v3/depth",
+      "authentication": false,
+      "justification": "Binance official Spot API documentation designates data-stream.binance.vision and data-api.binance.vision as market-data-only/public endpoints and states that user data streams are unavailable through the market-data-only WebSocket host.",
+      "not_a_bypass": "No VPN, proxy, relay, IP masking, alternate account, or geographic circumvention is authorized or used. If the official market-data-only host is unavailable from the runner, V0.2 must fail closed."
+    }
+  },
+  "unchanged_scope": {
+    "symbols": {
+      "binance_spot": ["BTCUSDT", "ETHUSDT"],
+      "coinbase_advanced_spot": ["BTC-USD", "ETH-USD"]
+    },
+    "capture_seconds": 30,
+    "max_capture_seconds": 90,
+    "binance_streams_per_symbol": ["depth@100ms", "bookTicker", "trade"],
+    "coinbase_channels": ["level2", "market_trades", "heartbeats"],
+    "target_outcomes_evaluated": false,
+    "trading_signals_generated": false
+  },
+  "guards": {
+    "authentication": false,
+    "account_data": false,
+    "exchange_mutation": false,
+    "live_trading": false,
+    "paper_trading": false,
+    "h02_evaluation": false,
+    "mexc_access": false,
+    "main_merge": false,
+    "render_deploy": false,
+    "vpn_or_geo_bypass": false
+  },
+  "classification_policy": {
+    "pass": "Both venues produce non-empty public market-data capture, required books synchronize, Coinbase connection sequence remains continuous, raw segments are hashed, and no guard is violated.",
+    "fail": "Any network/access, sequence, parser, synchronization, storage, or provenance-integrity failure causes PROVENANCE_GATE_FAIL.",
+    "scientific_meaning": "PASS or FAIL is a data/provenance infrastructure result only. It is not evidence for or against a trading edge."
+  },
+  "retry_policy": {
+    "single_execution_only": true,
+    "new_explicit_trigger_required": true,
+    "automatic_retry_forbidden": true,
+    "post_run_stop": "STOP_AFTER_V02_PROVENANCE_RECEIPT"
+  },
+  "forbidden": [
+    "Change symbols, channels, capture duration, or synchronization rules after seeing V0.2 output.",
+    "Open H02, derive signals, measure profitability, or inspect target outcomes from this provenance run.",
+    "Use authenticated endpoints, account endpoints, orders, trading routes, VPNs, proxies, relays, or geographic circumvention.",
+    "Silently fall back to another venue or data source if either frozen venue fails."
+  ]
+}
