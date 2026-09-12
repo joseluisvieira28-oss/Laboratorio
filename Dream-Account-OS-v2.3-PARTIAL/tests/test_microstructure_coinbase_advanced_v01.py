@@ -9,7 +9,7 @@ import microstructure_coinbase_advanced_v01 as ca
 import microstructure_provenance_v01 as mp
 
 
-def l2_message(sequence_num, event_type, updates):
+def l2_message(sequence_num, event_type, updates, product_id="BTC-USD"):
     return {
         "channel": "l2_data",
         "client_id": "",
@@ -17,9 +17,19 @@ def l2_message(sequence_num, event_type, updates):
         "sequence_num": sequence_num,
         "events": [{
             "type": event_type,
-            "product_id": "BTC-USD",
+            "product_id": product_id,
             "updates": updates,
         }],
+    }
+
+
+def heartbeat_message(sequence_num):
+    return {
+        "channel": "heartbeats",
+        "client_id": "",
+        "timestamp": "2026-09-12T10:20:30.123Z",
+        "sequence_num": sequence_num,
+        "events": [{"current_time": "x", "heartbeat_counter": str(sequence_num + 1000)}],
     }
 
 
@@ -47,18 +57,58 @@ class CoinbaseAdvancedV01Tests(unittest.TestCase):
         book.apply_message(upd)
         self.assertEqual(book.book.best_bid, 100.5)
 
-    def test_sequence_gap_fails_closed(self):
+    def test_per_book_sequence_can_skip_when_other_connection_messages_intervene(self):
+        book = ca.AdvancedTradeBook("BTC-USD")
+        book.apply_message(l2_message(5, "snapshot", [
+            {"side": "bid", "event_time": "2026-09-12T10:20:30Z", "price_level": "100", "new_quantity": "1"},
+            {"side": "ask", "event_time": "2026-09-12T10:20:30Z", "price_level": "101", "new_quantity": "1"},
+        ]))
+        book.apply_message(l2_message(10, "update", [
+            {"side": "bid", "event_time": "2026-09-12T10:20:31Z", "price_level": "100", "new_quantity": "2"},
+        ]))
+        self.assertTrue(book.synchronized)
+        self.assertTrue(book.book.valid)
+        self.assertEqual(book.last_sequence_num, 10)
+
+    def test_per_book_sequence_regression_fails_closed(self):
         book = ca.AdvancedTradeBook("BTC-USD")
         book.apply_message(l2_message(5, "snapshot", [
             {"side": "bid", "event_time": "2026-09-12T10:20:30Z", "price_level": "100", "new_quantity": "1"},
             {"side": "ask", "event_time": "2026-09-12T10:20:30Z", "price_level": "101", "new_quantity": "1"},
         ]))
         with self.assertRaises(mp.ProvenanceViolation):
-            book.apply_message(l2_message(7, "update", [
+            book.apply_message(l2_message(4, "update", [
                 {"side": "bid", "event_time": "2026-09-12T10:20:31Z", "price_level": "100", "new_quantity": "2"},
             ]))
         self.assertFalse(book.synchronized)
         self.assertFalse(book.book.valid)
+
+    def test_connection_sequence_tracks_interleaved_messages(self):
+        tracker = ca.AdvancedConnectionSequence()
+        tracker.observe(l2_message(8, "snapshot", [
+            {"side": "bid", "event_time": "2026-09-12T10:20:30Z", "price_level": "100", "new_quantity": "1"},
+            {"side": "ask", "event_time": "2026-09-12T10:20:30Z", "price_level": "101", "new_quantity": "1"},
+        ]))
+        tracker.observe({"channel": "subscriptions", "sequence_num": 9})
+        tracker.observe(l2_message(10, "update", [
+            {"side": "bid", "event_time": "2026-09-12T10:20:31Z", "price_level": "100", "new_quantity": "2"},
+        ]))
+        tracker.observe({"channel": "market_trades", "sequence_num": 11})
+        tracker.observe({"channel": "market_trades", "sequence_num": 12})
+        tracker.observe({"channel": "subscriptions", "sequence_num": 13})
+        tracker.observe({"channel": "subscriptions", "sequence_num": 14})
+        tracker.observe(l2_message(15, "update", [
+            {"side": "ask", "event_time": "2026-09-12T10:20:31Z", "price_level": "101", "new_quantity": "3"},
+        ]))
+        self.assertTrue(tracker.valid)
+        self.assertEqual(tracker.last_sequence_num, 15)
+
+    def test_connection_sequence_gap_fails_closed(self):
+        tracker = ca.AdvancedConnectionSequence()
+        tracker.observe({"channel": "subscriptions", "sequence_num": 5})
+        with self.assertRaises(mp.ProvenanceViolation):
+            tracker.observe({"channel": "l2_data", "sequence_num": 7})
+        self.assertFalse(tracker.valid)
 
     def test_update_before_snapshot_rejected(self):
         book = ca.AdvancedTradeBook("BTC-USD")
@@ -90,13 +140,7 @@ class CoinbaseAdvancedV01Tests(unittest.TestCase):
         self.assertEqual(env.product_ids, ("ETH-USD",))
 
     def test_heartbeat_has_dedicated_stream_type(self):
-        msg = {
-            "channel": "heartbeats",
-            "client_id": "",
-            "timestamp": "2026-09-12T10:20:30.123Z",
-            "sequence_num": 9,
-            "events": [{"current_time": "x", "heartbeat_counter": "3049"}],
-        }
+        msg = heartbeat_message(9)
         env = ca.parse_envelope(msg)
         self.assertEqual(env.stream_type, "HEARTBEAT")
         payload_hash = mp.canonical_payload_hash(msg)
