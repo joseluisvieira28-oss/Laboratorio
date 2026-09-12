@@ -1,0 +1,78 @@
+{
+  "schema_version": "0.1",
+  "lab_id": "CROSS_VENUE_FUNDING_BASIS_LAB_V01",
+  "amendment_id": "CROSS_VENUE_FUNDING_BASIS_HYPERLIQUID_TRANSPORT_V041",
+  "status": "AUTHORIZED_RATE_LIMIT_TRANSPORT_REMEDIATION_DIAGNOSTIC_ONLY",
+  "parent": "CROSS_VENUE_FUNDING_BASIS_PROVENANCE_SLOT_NORMALIZATION_V04",
+  "trigger": {
+    "v04_failure": "HYPERLIQUID_INFO_HTTP_429_TOO_MANY_REQUESTS",
+    "failed_stage": "PROVENANCE_ONLY_PUBLIC_FUNDING_HISTORY_DOWNLOAD",
+    "economic_outcomes_observed": false
+  },
+  "official_rate_limit_basis": {
+    "ip_weight_limit_per_minute": 1200,
+    "generic_info_base_weight": 20,
+    "funding_history_additional_weight": "additional weight per 20 response items",
+    "funding_history_page_size_observed_documented_ecosystem": 500,
+    "frozen_min_seconds_between_hyperliquid_requests": 3.0,
+    "frozen_429_cooldown_seconds": 15.0,
+    "frozen_max_attempts_per_page": 6,
+    "rationale": "At a 500-row page, a conservative weight estimate is 20 + 25 = 45. A 3.0 second cadence is at most 20 such requests/minute, approximately 900 weight/minute, below the documented 1200 weight/minute IP limit before retry headroom."
+  },
+  "scientific_boundary": {
+    "changes_primary_hypothesis": false,
+    "changes_assets": false,
+    "changes_venues": false,
+    "changes_audit_window": false,
+    "changes_slot_normalization": false,
+    "changes_coverage_rule": false,
+    "changes_cost_model": false,
+    "changes_leverage": false,
+    "changes_orientation": false,
+    "authorizes_discovery": false,
+    "authorizes_economic_outcomes": false,
+    "authorizes_trading": false,
+    "authorizes_exchange_mutation": false,
+    "authorizes_authenticated_account_data": false,
+    "authorizes_2026_access": false,
+    "authorizes_mexc_access": false
+  },
+  "transport_policy": {
+    "host": "api.hyperliquid.xyz",
+    "endpoint": "/info",
+    "request_type": "fundingHistory",
+    "authentication": "NONE",
+    "pagination": "ADVANCE_TO_LAST_RETURNED_TIMESTAMP_PLUS_1_MS",
+    "pacing": "DETERMINISTIC_MINIMUM_3_SECONDS_BETWEEN_REQUEST_STARTS",
+    "on_http_429": "WAIT_15_SECONDS_THEN_RETRY_SAME_PAGE_WITHOUT_CURSOR_CHANGE",
+    "on_other_http_or_network_failure": "FAIL_CLOSED_AFTER_BOUNDED_ATTEMPTS",
+    "outcome_dependent_retry_or_pacing": false
+  },
+  "allowed_transport_outputs": [
+    "request_count",
+    "http_429_retry_count",
+    "first_timestamp",
+    "last_timestamp",
+    "record_count",
+    "coverage_receipt"
+  ],
+  "forbidden_outputs": [
+    "funding_rate_average",
+    "funding_spread",
+    "carry",
+    "apr",
+    "apy",
+    "pnl",
+    "sharpe",
+    "profit_factor",
+    "win_rate",
+    "expectancy",
+    "signal",
+    "threshold_optimization",
+    "asset_ranking",
+    "venue_ranking",
+    "best_period_selection"
+  ],
+  "decision_rule": "V0.4.1 may only make the already-authorized Hyperliquid fundingHistory provenance download comply with documented public rate limits. It does not relax any scientific gate and cannot authorize Discovery automatically.",
+  "next_authorization": "NONE_AUTOMATIC"
+}
