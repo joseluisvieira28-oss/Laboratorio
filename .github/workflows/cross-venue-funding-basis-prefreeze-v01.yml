@@ -1,0 +1,141 @@
+name: Cross-Venue Funding Basis Pre-Freeze V0.1
+
+on:
+  push:
+    branches:
+      - dream-account-phase-b-signal-research-v0.1
+
+permissions:
+  contents: read
+
+jobs:
+  funding-basis-prefreeze:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install project
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+          python -m pip install pytest
+
+      - name: Validate pre-freeze authority and contract
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python research/cross_venue_funding_basis_prefreeze_v01.py
+
+      - name: Run pre-freeze invariant tests
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python -m pytest -q tests/test_cross_venue_funding_basis_prefreeze_v01.py
+
+      - name: Compile pre-freeze harness and tests
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python -m py_compile \
+            research/cross_venue_funding_basis_prefreeze_v01.py \
+            tests/test_cross_venue_funding_basis_prefreeze_v01.py
+
+      - name: Prove harness is outcome-blind and network-free
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python - <<'PY'
+          import ast
+          from pathlib import Path
+
+          paths = [
+              Path('research/cross_venue_funding_basis_prefreeze_v01.py'),
+              Path('tests/test_cross_venue_funding_basis_prefreeze_v01.py'),
+          ]
+          forbidden_import_roots = {
+              'requests', 'urllib', 'websockets', 'socket', 'http', 'aiohttp', 'subprocess'
+          }
+          forbidden_call_attrs = {
+              'post', 'put', 'patch', 'delete', 'connect', 'send', 'request', 'urlopen'
+          }
+          hits = []
+          for path in paths:
+              tree = ast.parse(path.read_text(encoding='utf-8'), filename=str(path))
+              for node in ast.walk(tree):
+                  if isinstance(node, ast.Import):
+                      for alias in node.names:
+                          if alias.name.split('.')[0] in forbidden_import_roots:
+                              hits.append(f'{path}:import:{alias.name}:{node.lineno}')
+                  elif isinstance(node, ast.ImportFrom):
+                      root = (node.module or '').split('.')[0]
+                      if root in forbidden_import_roots:
+                          hits.append(f'{path}:importfrom:{node.module}:{node.lineno}')
+                  elif isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
+                      if node.func.attr.lower() in forbidden_call_attrs:
+                          hits.append(f'{path}:call:{node.func.attr}:{node.lineno}')
+          if hits:
+              raise SystemExit('pre-freeze boundary violation: ' + '; '.join(hits))
+          print('PASS: pre-freeze harness contains no network or exchange-mutation primitives')
+          PY
+
+      - name: Prove outcome and trading boundaries remain closed
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          authority = json.loads(Path('research/CROSS_VENUE_FUNDING_BASIS_LAB_PREFREEZE_AUTHORITY_V01.json').read_text())
+          contract = json.loads(Path('research/CROSS_VENUE_FUNDING_BASIS_LAB_PREFREEZE_CONTRACT_V01.json').read_text())
+          assert authority['edge_status'] == 'UNPROVEN'
+          assert authority['discovery_backtest_authorized'] is False
+          assert authority['paper_trading_authorized'] is False
+          assert authority['live_trading_authorized'] is False
+          assert authority['exchange_mutation_authorized'] is False
+          assert authority['authenticated_account_data_authorized'] is False
+          assert contract['data_partition_policy']['locked_2026_market_data'] == 'DO_NOT_ACCESS_FOR_THIS_LAB'
+          assert contract['data_partition_policy']['MEXC_2025'] == 'OUT_OF_SCOPE_AND_LOCKED'
+          gates = {g['gate']: g['status'] for g in contract['pre_freeze_gates']}
+          assert gates['G12_DISCOVERY_AUTHORIZATION'] == 'BLOCKED'
+          print('PASS: outcomes, locked data, Discovery and trading remain blocked')
+          PY
+
+      - name: Emit machine-readable pre-freeze receipt
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python - <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          research = Path('research').resolve()
+          sys.path.insert(0, str(research))
+          import cross_venue_funding_basis_prefreeze_v01 as pf
+
+          receipt = dict(pf.validate_prefreeze_files(research))
+          receipt.update({
+              'classification': 'PREFREEZE_OPERATIONAL_ONLY',
+              'historical_replication_started': False,
+              'economic_outcomes_inspected': False,
+              'discovery_authorized': False,
+              'paper_trading_authorized': False,
+              'live_trading_authorized': False,
+              'exchange_mutation_authorized': False,
+              'locked_2026_accessed': False,
+              'mexc_locked_data_accessed': False,
+          })
+          Path('CROSS_VENUE_FUNDING_BASIS_LAB_PREFREEZE_V01_CI_RECEIPT.json').write_text(
+              json.dumps(receipt, indent=2, sort_keys=True) + '\n',
+              encoding='utf-8',
+          )
+          print(json.dumps(receipt, indent=2, sort_keys=True))
+          PY
+
+      - name: Upload pre-freeze receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: cross-venue-funding-basis-prefreeze-v01-receipt
+          path: Dream-Account-OS-v2.3-PARTIAL/CROSS_VENUE_FUNDING_BASIS_LAB_PREFREEZE_V01_CI_RECEIPT.json
+          if-no-files-found: error
+          retention-days: 30
