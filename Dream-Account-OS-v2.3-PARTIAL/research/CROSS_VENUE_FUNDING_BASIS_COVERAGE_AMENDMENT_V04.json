@@ -1,0 +1,63 @@
+{
+  "schema_version": "0.4",
+  "lab_id": "CROSS_VENUE_FUNDING_BASIS_LAB_V01",
+  "amendment_id": "CROSS_VENUE_FUNDING_BASIS_COVERAGE_AMENDMENT_V04",
+  "status": "AUTHORIZED_PREFREEZE_COVERAGE_SEMANTICS_CORRECTION_ONLY",
+  "purpose": "Materialize one continuous common replication window from timestamp-only slot occupancy after V0.3 proved that millisecond settlement jitter caused false coverage failures and that 2024-08 contains a real missing Hyperliquid hourly settlement slot.",
+  "evidence_basis": {
+    "v03_classification": "SLOT_OCCUPANCY_PROVENANCE_DIAGNOSTIC_ONLY_NOT_ECONOMIC_DISCOVERY",
+    "hyperliquid_missing_slot_utc": "2024-08-15T13:00:00Z",
+    "missing_slot_confirmed_absent_from_fundingHistory_replay": true,
+    "economic_outcomes_seen": false
+  },
+  "scientific_boundary": {
+    "changes_hypothesis": false,
+    "changes_assets": false,
+    "changes_venues": false,
+    "changes_primary_orientation": false,
+    "authorizes_discovery": false,
+    "authorizes_economic_outcomes": false,
+    "authorizes_2026_access": false,
+    "authorizes_mexc_access": false,
+    "authorizes_authenticated_account_data": false,
+    "authorizes_exchange_mutation": false,
+    "authorizes_trading": false,
+    "permits_imputation": false
+  },
+  "coverage_semantics": {
+    "month_complete_rule": "Use V0.3 unique nearest-scheduled-slot occupancy: exact expected slot count, zero missing slots, zero slot collisions, zero boundary-mapped-out records, zero ambiguous half-cadence mappings.",
+    "primary_window_rule": "Among frozen months through 2025-12, choose the earliest common-complete full UTC month such that every subsequent month through 2025-12 is also common-complete across BINANCE_BTCUSDT, BINANCE_ETHUSDT, HYPERLIQUID_BTC and HYPERLIQUID_ETH.",
+    "equivalent_algorithm": "Find the last month on or before 2025-12 that is not common-complete; primary_start is the immediately following calendar month. primary_end is 2025-12. Fail closed if primary_end is not common-complete or if no month remains.",
+    "reason": "A static or deterministic low-turnover carry replication requires one continuous auditable settlement ledger; internal missing settlements cannot be interpolated or silently skipped.",
+    "outcome_dependence": false
+  },
+  "known_provenance_gap": {
+    "month": "2024-08",
+    "venue": "HYPERLIQUID",
+    "assets": ["BTC", "ETH"],
+    "slot_utc": "2024-08-15T13:00:00Z",
+    "treatment": "EXCLUDE_FROM_PRIMARY_CONTIGUOUS_WINDOW_NO_IMPUTATION"
+  },
+  "permitted_outputs": [
+    "common-complete month booleans",
+    "last common-coverage failure month",
+    "primary contiguous start month",
+    "primary contiguous end month",
+    "primary contiguous month count",
+    "coverage fingerprints"
+  ],
+  "forbidden_outputs": [
+    "funding rates",
+    "funding spread",
+    "carry",
+    "APR/APY",
+    "PnL",
+    "Sharpe/Sortino",
+    "win rate",
+    "signals",
+    "threshold optimization",
+    "asset rankings",
+    "economic SURVIVES/NO_EDGE classification"
+  ],
+  "decision_policy": "V0.4 may freeze the provenance-only continuous replication partition. It cannot by itself mark G03/G04/G10 PASS, authorize Discovery, or evaluate economics."
+}
