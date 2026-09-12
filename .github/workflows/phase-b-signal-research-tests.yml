@@ -61,27 +61,40 @@ jobs:
           cd Dream-Account-OS-v2.3-PARTIAL
           python -m compileall -q src tests research
 
-      - name: Prove research modules have no network or exchange mutation primitives
+      - name: Prove research modules have no unauthorized network or exchange mutation primitives
         run: |
           cd Dream-Account-OS-v2.3-PARTIAL
           python - <<'PY'
           import ast
           from pathlib import Path
+
+          # Only these frozen News Shock acquisition modules may use urllib for
+          # public, read-only BLS retrieval. This exception does not permit
+          # exchange endpoints or mutating HTTP primitives anywhere.
+          public_read_network_modules = {
+              Path('research/news_shock_lab_v01_bls_schedule.py'),
+              Path('research/news_shock_lab_v03a_bls_actuals.py'),
+          }
           forbidden_import_roots = {'requests', 'urllib', 'websockets', 'socket', 'http', 'subprocess'}
-          forbidden_call_attrs = {'post', 'put', 'patch', 'delete', 'urlopen', 'connect', 'send'}
-          forbidden_endpoint_literals = {'/api/v3/order', '/api/v3/order/test', '/api/v3/batchOrders', '/api/v3/capital/withdraw', '/api/v3/capital/transfer'}
+          forbidden_call_attrs = {'post', 'put', 'patch', 'delete', 'connect', 'send'}
+          forbidden_endpoint_literals = {
+              '/api/v3/order', '/api/v3/order/test', '/api/v3/batchOrders',
+              '/api/v3/capital/withdraw', '/api/v3/capital/transfer',
+          }
           hits = []
           files = sorted(Path('research').glob('*.py'))
           for path in files:
               tree = ast.parse(path.read_text(encoding='utf-8'), filename=str(path))
+              allow_public_read_network = path in public_read_network_modules
               for node in ast.walk(tree):
                   if isinstance(node, ast.Import):
                       for alias in node.names:
-                          if alias.name.split('.')[0] in forbidden_import_roots:
+                          root = alias.name.split('.')[0]
+                          if root in forbidden_import_roots and not (allow_public_read_network and root == 'urllib'):
                               hits.append(f'{path}:{node.lineno}:forbidden import {alias.name}')
                   elif isinstance(node, ast.ImportFrom):
                       root = (node.module or '').split('.')[0]
-                      if root in forbidden_import_roots:
+                      if root in forbidden_import_roots and not (allow_public_read_network and root == 'urllib'):
                           hits.append(f'{path}:{node.lineno}:forbidden import {node.module}')
                   elif isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
                       if node.func.attr.lower() in forbidden_call_attrs:
@@ -90,7 +103,10 @@ jobs:
                       hits.append(f'{path}:{node.lineno}:forbidden endpoint {node.value}')
           if hits:
               raise SystemExit('Phase B research network/mutation guard failed: ' + '; '.join(hits))
-          print(f'PASS: AST-scanned {len(files)} research modules; offline-only boundary enforced')
+          print(
+              f'PASS: AST-scanned {len(files)} research modules; '
+              'only frozen public-read BLS urllib exceptions allowed; exchange mutation prohibited'
+          )
           PY
 
       - name: Verify pre-data holdout and no-live flags
