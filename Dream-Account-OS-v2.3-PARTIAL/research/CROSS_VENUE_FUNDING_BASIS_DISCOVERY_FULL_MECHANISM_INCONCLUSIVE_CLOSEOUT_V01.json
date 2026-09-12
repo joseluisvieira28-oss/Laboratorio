@@ -1,0 +1,139 @@
+{
+  "schema_version": "0.1",
+  "lab_id": "CROSS_VENUE_FUNDING_BASIS_LAB_V01",
+  "phase": "DISCOVERY",
+  "closeout_id": "CROSS_VENUE_FUNDING_BASIS_DISCOVERY_FULL_MECHANISM_INCONCLUSIVE_CLOSEOUT_V01",
+  "status": "CLOSED",
+  "classification": "REPLICATION_INCONCLUSIVE",
+  "edge_status": "UNPROVEN",
+  "primary_orientation": "LONG_BINANCE_SHORT_HYPERLIQUID",
+  "window": {
+    "start_utc": "2024-09-01T00:00:00.000Z",
+    "end_utc": "2025-12-31T23:59:59.999Z",
+    "assets": ["BTC", "ETH"],
+    "same_window_for_both_assets": true,
+    "locked_2026": true
+  },
+  "reason": "Required Hyperliquid settlement-time oracle-price provenance is materially incomplete in the official asset_ctxs archive at the beginning of the frozen replication window. The frozen full-mechanism contract requires REPLICATION_INCONCLUSIVE when required reference-price or capital-path provenance is unavailable or materially incomplete without permitted deterministic reconstruction.",
+  "run01_rate_carry_screen": {
+    "status": "RUN01_CLOSED",
+    "classification": "DIAGNOSTIC_RATE_CARRY_SCREEN_ONLY_NOT_FULL_MECHANISM_REPLICATION",
+    "btc_hyperliquid_settlement_count": 11688,
+    "eth_hyperliquid_settlement_count": 11688,
+    "expected_full_hour_count_for_487_day_window": 11688,
+    "screen_label": "RATE_CARRY_SCREEN_NOT_POSITIVE_BOTH_ASSETS",
+    "combined_net_screen_return_on_immobilized_capital": "-0.005524074548858447488584474885844748858295",
+    "source_run_receipt_sha256": "2058a0c7023c1468fe761babe62be1e30d4f2c6cb3417040c76e2358f69ae044",
+    "source_run_file_sha256": "54A18E4254041C3B08FA2B827F39F6C0F63510CDC0ED4A627078ECAFDAD74384"
+  },
+  "run02b_basis_component": {
+    "status": "RUN02B_COMPLETE",
+    "classification": "BASIS_PRICE_COMPONENT_DIAGNOSTIC_ONLY_NOT_FULL_MECHANISM_REPLICATION",
+    "btc_basis_return_on_immobilized_capital": "0.000065585133885548852867950269506842197362064145086667",
+    "eth_basis_return_on_immobilized_capital": "-0.00029457074275614717391217811180153893309661522294",
+    "combined_50_50_basis_return_on_immobilized_capital": "-0.00011449280443529916052211392114734836786727553892666",
+    "logical_receipt_sha256": "1fa82d71101e9c070caf309bd8173b41c44285714fc196b7012d638378850fe7",
+    "receipt_file_sha256": "9c19e65cd2c1b86ea7ec4b1cd582cc47516c16ab736dcbcba0854138de00086e",
+    "hyperliquid_boundary_evidence_sha256": "761b1412315386d77a3be56e55ffac42a816a89b5b5d5a3d1bf427095848128a"
+  },
+  "hyperliquid_settlement_oracle_join_freeze": {
+    "freeze_id": "HL_SETTLEMENT_ORACLE_JOIN_FREEZE_V01",
+    "freeze_sha256": "5d2aae0c910f17534a9224e861febcc52bc81c4c64a1e7b18520db4799af2e56",
+    "status": "FROZEN_BEFORE_ASSET_CTXS_ECONOMIC_VALUES",
+    "selection": "EXACT_LOGICAL_SETTLEMENT_HOUR_MATCH_ONLY",
+    "nearest_neighbor": false,
+    "interpolation": false,
+    "forward_fill": false,
+    "backward_fill": false,
+    "tolerance_seconds": 0,
+    "missing_exact_row_rule": "FAIL_CLOSED_INCOMPLETE_PROVENANCE"
+  },
+  "official_asset_ctxs_probe": {
+    "source": "s3://hyperliquid-archive/asset_ctxs/20240901.csv.lz4",
+    "requester_pays_get_count": 1,
+    "request_charged": "requester",
+    "content_length_bytes": 5329628,
+    "etag": "c3e7ff4e4814b892c7378967abe20ce7",
+    "raw_sha256": "84be15acb2a7a02cb9a346c9c37c6f790153b517710ec4f010e9cb8e413ae948",
+    "probe_receipt_sha256": "12e73987aff73896f1945fabb408d755e2d1e74fdd65e372982b5267f3778784",
+    "status": "HL_ASSET_CTXS_SCHEMA_TIMESTAMP_PROBE_FAIL_CLOSED",
+    "economic_values_emitted": false,
+    "economic_values_used_for_selection": false,
+    "total_rows": 143538,
+    "unique_coins": 141,
+    "unexpected_date_rows": 0,
+    "duplicate_exact_time_coin_pairs": 0,
+    "BTC": {
+      "rows": 1018,
+      "distinct_minutes": 1018,
+      "first_timestamp": "2024-09-01T00:00:00Z",
+      "last_timestamp": "2024-09-01T16:58:00Z",
+      "off_grid_rows": 1,
+      "exact_top_of_hour_unique_slots": 17,
+      "required_top_of_hour_slots": 24,
+      "top_of_hour_rule_viable": false
+    },
+    "ETH": {
+      "rows": 1018,
+      "distinct_minutes": 1018,
+      "first_timestamp": "2024-09-01T00:00:00Z",
+      "last_timestamp": "2024-09-01T16:58:00Z",
+      "off_grid_rows": 1,
+      "exact_top_of_hour_unique_slots": 17,
+      "required_top_of_hour_slots": 24,
+      "top_of_hour_rule_viable": false
+    }
+  },
+  "provenance_interpretation": {
+    "funding_settlements_present_for_full_window": true,
+    "settlement_time_oracle_provenance_complete": false,
+    "material_gap_detected_on_first_frozen_day": true,
+    "bulk_asset_ctxs_download_required_to_establish_inconclusive_status": false,
+    "reason_bulk_download_not_required": "One material required-reference-price gap inside the mandatory window is already sufficient to make complete full-mechanism accounting unavailable under the frozen fail-closed rule.",
+    "official_hyperliquid_archive_documented_to_allow_missing_data": true
+  },
+  "forbidden_recovery_actions": [
+    "NEAREST_ORACLE_PRICE",
+    "FORWARD_FILL_ORACLE_PRICE",
+    "BACKWARD_FILL_ORACLE_PRICE",
+    "INTERPOLATE_ORACLE_PRICE",
+    "SUBSTITUTE_MARK_PRICE",
+    "SUBSTITUTE_MID_PRICE",
+    "SUBSTITUTE_L2_MIDPOINT_FOR_FUNDING_NOTIONAL",
+    "THIRD_PARTY_PRICE_SUBSTITUTION_TO_RESCUE_PRIMARY",
+    "DROP_BTC_OR_ETH",
+    "CHANGE_REPLICATION_WINDOW",
+    "USE_2026_MARKET_DATA",
+    "REVERSE_ORIENTATION_AS_RESCUE",
+    "OUTCOME_DRIVEN_TUNING"
+  ],
+  "unresolved_research_only_path": {
+    "name": "OFFICIAL_NODE_HISTORY_NATIVE_ORACLE_PROVENANCE_INVESTIGATION",
+    "candidate_sources": [
+      "s3://hl-mainnet-node-data/explorer_blocks",
+      "s3://hl-mainnet-node-data/replica_cmds"
+    ],
+    "status": "UNPROVEN_FOR_NATIVE_BTC_ETH_ORACLE_RECONSTRUCTION_AT_2024_09_01",
+    "effect_on_closeout": "NONE_UNLESS_A_SEPARATELY_FROZEN_AND_AUDITED_DETERMINISTIC_RECONSTRUCTION_IS_PROVEN_WITHOUT OUTCOME-DRIVEN SOURCE SELECTION",
+    "note": "HIP-3 setOracle actions do not by themselves establish reconstruction of validator-operated native BTC/ETH oracle history."
+  },
+  "full_mechanism_requirements": {
+    "realized_funding": "AVAILABLE_AS_RATE_SCREEN_BUT_NOT COMPLETE_SETTLEMENT_NOTIONAL_CASHFLOW",
+    "cross_venue_basis_price_pnl": "AVAILABLE_AS_RUN02B_DIAGNOSTIC",
+    "frozen_fees": "AVAILABLE",
+    "DGS3MO_opportunity_cost": "AVAILABLE",
+    "venue_separate_capital_diagnostics": "BLOCKED_FROM_COMPLETE_ACCOUNTING_BY_MISSING_SETTLEMENT_ORACLE_PROVENANCE"
+  },
+  "scientific_conclusion": "The primary frozen replication cannot be classified as REPLICATION_SUPPORTS_MECHANISM or REPLICATION_FAILS_MECHANISM because provenance-quality full-mechanism accounting cannot be completed. The correct frozen label is REPLICATION_INCONCLUSIVE. This is not evidence of edge and not evidence of no-edge.",
+  "historical_executable_return_claim_authorized": false,
+  "paper_trading_authorized": false,
+  "live_trading_authorized": false,
+  "exchange_mutation_authorized": false,
+  "merge_to_main_authorized": false,
+  "render_deployment_authorized": false,
+  "tuning_performed": false,
+  "reverse_orientation_computed": false,
+  "asset_dropping_performed": false,
+  "locked_2026_market_data_accessed": false,
+  "next_action": "CLOSE_PRIMARY_REPLICATION_AS_INCONCLUSIVE; OPTIONAL_SEPARATE_SOURCE_PROVENANCE_RESEARCH_MAY_INVESTIGATE_NATIVE_ORACLE_RECONSTRUCTION WITHOUT REOPENING OR RESCUING THE PRIMARY OUTCOME"
+}
