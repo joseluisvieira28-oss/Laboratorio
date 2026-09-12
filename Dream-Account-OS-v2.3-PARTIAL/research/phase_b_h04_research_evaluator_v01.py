@@ -23,10 +23,25 @@ def _pf(v):
     g=sum(x for x in v if x>0); l=-sum(x for x in v if x<0); return None if l<=0 else g/l
 def _rate(n,d): return n/d if d else None
 
+def _required_flow(bar_maps, cache, symbol, open_time, role):
+    key=(symbol,open_time)
+    if key in cache: return cache[key]
+    bar=bar_maps.get(symbol,{}).get(open_time)
+    if bar is None: raise ValueError(f'required H04 flow bar missing symbol={symbol} role={role} open_time={open_time}')
+    try: value=bar.flow_imbalance
+    except ValueError as e: raise ValueError(f'required H04 flow undefined symbol={symbol} role={role} open_time={open_time}: {e}') from e
+    cache[key]=value
+    return value
+
+def _flow_pair(bar_maps, cache, symbol, signal):
+    breakout=_required_flow(bar_maps,cache,symbol,signal.breakout_open_time,'BREAKOUT')
+    retest=_required_flow(bar_maps,cache,symbol,signal.retest_open_time,'RETEST')
+    return breakout,retest
+
 def evaluate_h04_universe(bars_by_symbol:Mapping[str,list], parameters, costs):
-    selected=[]; base_for_mechanism=[]; totals=Counter(); data_times=[]; flow_maps={}
+    selected=[]; base_for_mechanism=[]; totals=Counter(); data_times=[]; bar_maps={}; flow_cache={}
     for symbol in sorted(bars_by_symbol):
-        bars=list(bars_by_symbol[symbol]); candles=[b.candle for b in bars]; flow={b.candle.open_time:b.flow_imbalance for b in bars}; flow_maps[symbol]=flow; data_times.extend(c.open_time for c in candles)
+        bars=list(bars_by_symbol[symbol]); candles=[b.candle for b in bars]; bar_maps[symbol]={b.candle.open_time:b for b in bars}; data_times.extend(c.open_time for c in candles)
         segments,gaps=split_contiguous_segments(candles); totals['contiguous_segment_count']+=len(segments); totals['detected_gap_count']+=gaps
         for seg in segments:
             sigs=derive_signal_geometries(seg,parameters,costs,require_regular_spacing=True); totals['raw_geometry_count']+=len(sigs); totals['net_rr_rejected_count']+=sum(s.geometry_status=='REJECTED_NET_RR' for s in sigs)
@@ -36,7 +51,10 @@ def evaluate_h04_universe(bars_by_symbol:Mapping[str,list], parameters, costs):
                 if active is not None and s.entry_open_time<=active: continue
                 o=simulate_h01_managed_outcome(s,seg,costs,max_holding_bars=parameters.max_holding_bars,require_regular_spacing=True)
                 r=ResearchTradeRecord(symbol=symbol,signal=s,outcome=o); base_for_mechanism.append(r); active=o.exit_open_time if o.exit_open_time is not None else seg[-1].open_time
-            flow_ready=[s for s in sess if flow.get(s.breakout_open_time,-2)>0.0 and flow.get(s.retest_open_time,-2)>0.0]
+            flow_ready=[]
+            for s in sess:
+                breakout_flow,retest_flow=_flow_pair(bar_maps,flow_cache,symbol,s)
+                if breakout_flow>0.0 and retest_flow>0.0: flow_ready.append(s)
             active=None
             for s in flow_ready:
                 if active is not None and s.entry_open_time<=active: totals['overlap_skipped_count']+=1; continue
@@ -48,7 +66,7 @@ def evaluate_h04_universe(bars_by_symbol:Mapping[str,list], parameters, costs):
     m=EvaluationMetrics(cost_scenario=costs.name,raw_geometry_count=totals['raw_geometry_count'],net_rr_rejected_count=totals['net_rr_rejected_count'],selected_trade_count=len(selected),overlap_skipped_count=totals['overlap_skipped_count'],unresolved_trade_count=len(selected)-len(resolved),resolved_trade_count=len(resolved),net_expectancy_r=mean(vals) if vals else None,median_net_r=median(vals) if vals else None,win_rate=_rate(sum(x>0 for x in vals),len(vals)),loss_rate=_rate(sum(x<0 for x in vals),len(vals)),profit_factor_r=_pf(vals),tp1_reach_rate=_rate(sum(r.outcome.tp1_reached for r in resolved),len(resolved)),same_bar_ambiguity_rate=_rate(sum(r.outcome.same_bar_stop_target_ambiguity for r in resolved),len(resolved)),time_exit_rate=_rate(sum(r.outcome.exit_reason=='TIME_EXIT_NEXT_OPEN' for r in resolved),len(resolved)),stop_gap_rate=_rate(sum(r.outcome.exit_reason in {'STOP_GAP','PROTECTIVE_STOP_GAP'} for r in resolved),len(resolved)),signal_frequency_per_30d=(len(selected)/span*30 if span>0 else None),symbol_distribution=dict(sorted(Counter(r.symbol for r in resolved).items())),contiguous_segment_count=totals['contiguous_segment_count'],detected_gap_count=totals['detected_gap_count'])
     p=[]; n=[]
     for r in base_for_mechanism:
-        fm=flow_maps[r.symbol]; persistent=fm[r.signal.breakout_open_time]>0 and fm[r.signal.retest_open_time]>0
+        breakout_flow,retest_flow=_flow_pair(bar_maps,flow_cache,r.symbol,r.signal); persistent=breakout_flow>0 and retest_flow>0
         (p if persistent else n).append(r)
     mech=MechanismMetrics(len(p),len(n),_rate(sum(r.outcome.tp1_reached for r in p),len(p)),_rate(sum(r.outcome.tp1_reached for r in n),len(n)),None)
     if mech.persistent_tp1_rate is not None and mech.nonpersistent_tp1_rate is not None:
