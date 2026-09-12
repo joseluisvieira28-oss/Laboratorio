@@ -45,8 +45,11 @@ jobs:
               'Dream-Account-OS-v2.3-PARTIAL/tests/test_phase_b_',
               'Dream-Account-OS-v2.3-PARTIAL/tests/test_macro_shock_',
               'Dream-Account-OS-v2.3-PARTIAL/tests/test_microstructure_',
+              'Dream-Account-OS-v2.3-PARTIAL/tests/test_news_shock_',
+              'Dream-Account-OS-v2.3-PARTIAL/tests/test_cross_venue_funding_basis_',
               '.github/workflows/news-shock-',
               '.github/workflows/macro-shock-',
+              '.github/workflows/cross-venue-funding-basis-',
           )
           forbidden = [path for path in changed if path not in allowed_exact and not path.startswith(allowed_prefixes)]
           if forbidden:
@@ -71,12 +74,14 @@ jobs:
           import ast
           from pathlib import Path
 
-          # Only these frozen News Shock acquisition modules may use urllib for
-          # public, read-only BLS retrieval. This exception does not permit
-          # exchange endpoints or mutating HTTP primitives anywhere.
+          # These frozen/authorized modules may use urllib for public read-only
+          # provenance or market-data retrieval. This exception never permits
+          # exchange mutation or mutating HTTP primitives.
           public_read_network_modules = {
               Path('research/news_shock_lab_v01_bls_schedule.py'),
               Path('research/news_shock_lab_v03a_bls_actuals.py'),
+              Path('research/news_shock_lab_v03a_discovery_runner_v01.py'),
+              Path('research/cross_venue_funding_basis_provenance_shakedown_v01.py'),
           }
           forbidden_import_roots = {'requests', 'urllib', 'websockets', 'socket', 'http', 'subprocess'}
           forbidden_call_attrs = {'post', 'put', 'patch', 'delete', 'connect', 'send'}
@@ -108,7 +113,7 @@ jobs:
               raise SystemExit('Phase B research network/mutation guard failed: ' + '; '.join(hits))
           print(
               f'PASS: AST-scanned {len(files)} research modules; '
-              'only frozen public-read BLS urllib exceptions allowed; exchange mutation prohibited'
+              'only frozen public-read urllib exceptions allowed; exchange mutation prohibited'
           )
           PY
 
