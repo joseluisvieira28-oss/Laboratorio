@@ -1,0 +1,53 @@
+{
+  "schema_version": "0.5",
+  "lab_id": "CROSS_VENUE_FUNDING_BASIS_LAB_V01",
+  "freeze_id": "CROSS_VENUE_FUNDING_BASIS_REGIME_SEMANTICS_FREEZE_V05",
+  "classification": "REGIME_SEMANTICS_ONLY_NOT_ECONOMIC_DISCOVERY",
+  "status": "REGIME_SEMANTICS_FROZEN",
+  "economic_outcomes_inspected": false,
+  "discovery_authorized": false,
+  "trading_authorized": false,
+  "locked_2026_accessed": false,
+  "mexc_accessed": false,
+  "binance_usdm": {
+    "assets": ["BTCUSDT", "ETHUSDT"],
+    "realized_settlement_source": "GET https://fapi.binance.com/fapi/v1/fundingRate",
+    "default_schedule_in_scope": "8H unless venue rule changes the contract schedule; realized timestamps remain authoritative for actual settlements",
+    "schedule_rule_change": {
+      "effective_utc": "2025-05-02T08:00:00Z",
+      "rule": "If the previous USD-M perpetual funding settlement reaches the funding cap or floor, Binance may adjust settlement frequency from every 8h or 4h to every 1h; once adjusted under this rule it does not revert under the 2025 rule.",
+      "official_source": "https://www.binance.com/en/support/announcement/detail/3243c81a35bd4f0c86a37315c3dc96cc"
+    },
+    "formula_change": {
+      "effective_utc": "2025-09-18T08:01:00Z",
+      "rule": "Funding formula changed to [Average Premium Index + clamp(interest rate - Premium Index, 0.05%, -0.05%)] / (8/N), where N is the funding interval in hours; interest rate is 0.01% except specified contracts outside the BTCUSDT/ETHUSDT scope exception list.",
+      "official_source": "https://www.binance.com/en/support/announcement/detail/c00588a7e8504b3eb28d02a2da00530b"
+    },
+    "audit_rule": "Actual BTCUSDT and ETHUSDT settlement cadence in the frozen replication partition must be inferred from realized funding timestamps and slot occupancy, not assumed from the default schedule."
+  },
+  "hyperliquid": {
+    "assets": ["BTC", "ETH"],
+    "realized_settlement_source": "POST https://api.hyperliquid.xyz/info type=fundingHistory",
+    "schedule": "1H",
+    "formula_semantics": "Published funding formula is expressed on an 8-hour basis and one eighth of the computed rate is paid each hour.",
+    "payment_semantics": "Funding is peer-to-peer and the hourly payment is position_size * oracle_price * funding_rate.",
+    "schedule_and_formula_source": "https://hyperliquid.gitbook.io/hyperliquid-docs/trading/funding",
+    "historical_endpoint_source": "https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/info-endpoint/perpetuals",
+    "audit_rule": "Actual hourly settlements in the frozen replication partition must pass unique scheduled-slot occupancy; missing events are never interpolated."
+  },
+  "frozen_partition_limit": {
+    "latest_allowed_market_timestamp": "2025-12-31T23:59:59.999Z",
+    "2026": "LOCKED",
+    "MEXC_2025": "OUT_OF_SCOPE_AND_LOCKED"
+  },
+  "forbidden": [
+    "funding spread summaries",
+    "carry",
+    "APR/APY",
+    "PnL",
+    "Sharpe/Sortino",
+    "signals",
+    "threshold optimization",
+    "economic classification"
+  ]
+}
