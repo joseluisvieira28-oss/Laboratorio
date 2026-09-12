@@ -5,6 +5,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+# Diagnostic-only CI trigger: no hypothesis, coverage, or economic rule changes.
 ROOT = Path(__file__).resolve().parents[1]
 RESEARCH = ROOT / "research"
 if str(RESEARCH) not in sys.path:
