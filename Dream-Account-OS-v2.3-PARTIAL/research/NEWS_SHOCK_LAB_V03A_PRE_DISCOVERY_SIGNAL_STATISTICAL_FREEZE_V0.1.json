@@ -1,0 +1,161 @@
+{
+  "bindings": {
+    "boundary_receipt_version": "0.7",
+    "combined_manifest_fingerprint": "bb12b7798872b45be78aaf9aa10b53012327fda6399c8a77bd662576502f1a7d",
+    "combined_validation_fingerprint": "dcf1be3085a3d04e6856da65698b25dfa9805291f07d095ac1e60a6b52b19d56",
+    "final_provenance_freeze_fingerprint": "f0a333ad45d37f437fb09171dfa1e34278d908fb38d61d846f5169908248bc21",
+    "parent_provenance_policy_fingerprint": "a78d4933663e687a61f91a548c074239b046c13e96dc059a73ba27828715ee7a"
+  },
+  "document_type": "NEWS_SHOCK_LAB_V03A_PRE_DISCOVERY_SIGNAL_STATISTICAL_FREEZE_V0.1",
+  "economic_screen": {
+    "cost_note": "Fixed symmetric research haircut only; no claim of historical account-specific fees or shorting feasibility.",
+    "gross_signed_return": "signed_direction_multiplier * primary basket return",
+    "live_execution_inference_forbidden": true,
+    "net_signed_return": "gross_signed_return - 0.0020 for non-neutral events; 0 for neutral events",
+    "purpose": "Conservative research-only economic screen; not an execution model and not trading authorization.",
+    "round_trip_cost_bps": 20,
+    "slippage_model": "No favorable fill assumptions. Fixed 20 bps total haircut is the only primary economic cost; 10 and 30 bps may be reported as pre-specified sensitivity diagnostics and cannot rescue failure."
+  },
+  "fingerprint": "53403bbaf28f78bbaa2ef770bf36aef4ef28a83b9f709f221167ff6798f07926",
+  "fingerprint_method": "SHA256_CANONICAL_JSON_SORTED_KEYS_COMPACT_UTF8_EXCLUDING_FINGERPRINT_FIELD",
+  "frozen_at_utc_date": "2026-09-12",
+  "gate_requirement": {
+    "gate_script": "research/news_shock_lab_v03a_prediscovery_gate_v01.py",
+    "market_outcome_access_before_gate_pass": "FORBIDDEN",
+    "required_gate_status": "PASS",
+    "scope_after_pass": "DISCOVERY_2022_2024_ONLY"
+  },
+  "governance": {
+    "holdout_2026_locked": true,
+    "mexc_2025_09_through_2025_12_locked": true,
+    "no_cherry_picking": true,
+    "no_exchange_mutation": true,
+    "no_live_trading": true,
+    "no_main_merge": true,
+    "no_outcome_based_event_symbol_window_or_threshold_selection": true,
+    "no_render_deployment": true,
+    "no_tuning_after_outcomes": true,
+    "research_only": true
+  },
+  "lab_id": "NEWS_SHOCK_LAB_V03A_CPI_SURPRISE",
+  "market_data_freeze": {
+    "bar_interval": "1m",
+    "basket_definition": "arithmetic mean of BTCUSDT and ETHUSDT simple returns",
+    "entry": "open of the 08:31:00 America/New_York 1m candle, after the release candle is fully closed",
+    "individual_assets_role": "robustness diagnostics; cannot rescue a failed primary basket test",
+    "market": "Spot",
+    "missing_data": {
+      "all_exclusions_must_be_logged_before_statistics": true,
+      "event_excluded_only_if_required_entry_or_exit_bar_is_missing_for_either_symbol": true,
+      "fail_closed_if_more_than_10_percent_of_discovery_events_are_missing_required_market_bars": true,
+      "interpolation_forbidden": true
+    },
+    "outlier_policy": {
+      "primary_trimming": "FORBIDDEN",
+      "primary_winsorization": "FORBIDDEN",
+      "robust_median_may_be_reported_as_secondary_diagnostic": true
+    },
+    "primary_asset": "equal-weight BTCUSDT/ETHUSDT return basket",
+    "primary_exit": "open exactly 15 minutes after entry (08:46:00 America/New_York)",
+    "primary_horizon_minutes": 15,
+    "release_candle": "08:30-08:31 candle is forbidden for decision/entry pricing because it contains post-release information",
+    "release_time_local": "08:30:00 America/New_York",
+    "return_definition": "simple return = exit_open / entry_open - 1",
+    "secondary_diagnostic_horizons_minutes": [5, 30, 60],
+    "source": "Official Binance Public Data",
+    "symbols": ["BTCUSDT", "ETHUSDT"],
+    "timezone_normalization": "UTC with event schedule mapped from America/New_York"
+  },
+  "partitions": {
+    "discovery": {
+      "authorization_condition": "ONLY_AFTER_THIS_FREEZE_IS_COMMITTED_AND_STATIC_GATE_PASSES",
+      "event_count": 27,
+      "event_ids": ["US_CPI_2022-02-10","US_CPI_2022-03-10","US_CPI_2022-05-11","US_CPI_2022-06-10","US_CPI_2022-07-13","US_CPI_2022-09-13","US_CPI_2022-11-10","US_CPI_2022-12-13","US_CPI_2023-01-12","US_CPI_2023-04-12","US_CPI_2023-06-13","US_CPI_2023-07-12","US_CPI_2023-08-10","US_CPI_2023-09-13","US_CPI_2023-11-14","US_CPI_2023-12-12","US_CPI_2024-01-11","US_CPI_2024-02-13","US_CPI_2024-03-12","US_CPI_2024-04-10","US_CPI_2024-05-15","US_CPI_2024-06-12","US_CPI_2024-07-11","US_CPI_2024-08-14","US_CPI_2024-09-11","US_CPI_2024-11-13","US_CPI_2024-12-11"],
+      "market_outcomes_authorized_by_this_document": false,
+      "rule": "COMPLETE_A events with release dates 2022-01-01 through 2024-12-31 inclusive"
+    },
+    "locked": {
+      "holdout_2026": "LOCKED_NOT_ACCESSED",
+      "mexc_2025_09_through_2025_12": "LOCKED_NOT_ACCESSED"
+    },
+    "validation": {
+      "event_count": 8,
+      "event_ids": ["US_CPI_2025-01-15","US_CPI_2025-02-12","US_CPI_2025-03-12","US_CPI_2025-04-10","US_CPI_2025-05-13","US_CPI_2025-06-11","US_CPI_2025-07-15","US_CPI_2025-08-12"],
+      "market_outcomes_locked_until_discovery_survives_and_separate_validation_authorization_exists": true,
+      "rule": "COMPLETE_A events with release dates 2025-01-01 through 2025-08-31 inclusive"
+    }
+  },
+  "research_question": "Does a hotter-than-consensus U.S. CPI release predict a negative post-release BTC/ETH response, and a cooler-than-consensus release a positive response, under a fixed outcome-blind event-study rule?",
+  "sequential_access_policy": {
+    "after_discovery_failure": "STOP_AND_CLASSIFY_NO_EDGE_FOR_THIS_FROZEN_HYPOTHESIS",
+    "after_discovery_survival": "CREATE_SEPARATE_VALIDATION_DATA_ACCESS_AUTHORIZATION_BEFORE_OPENING_2025_01_THROUGH_2025_08_MARKET_OUTCOMES",
+    "after_prediscovery_gate_pass": {
+      "discovery_2022_2024_market_outcomes": true,
+      "holdout_2026": false,
+      "mexc_2025_09_through_2025_12": false,
+      "validation_2025_01_through_2025_08_market_outcomes": false
+    },
+    "after_validation_survival": "DO_NOT_OPEN_2026_AUTOMATICALLY; SEPARATE_FUTURE_HOLDOUT_GATE_REQUIRED",
+    "before_gate_pass": {
+      "discovery_market_outcomes": false,
+      "holdout_2026": false,
+      "validation_market_outcomes": false
+    }
+  },
+  "signal_freeze": {
+    "classification": {"COOL": "S < 0", "HOT": "S > 0", "NEUTRAL": "S == 0"},
+    "directional_hypothesis": {"COOL": "positive crypto response", "HOT": "negative crypto response", "NEUTRAL": "no directional position in economic screen"},
+    "formula": "S = (surprise_headline_mom + surprise_headline_yoy + surprise_core_mom + surprise_core_yoy) / 4",
+    "full_sample_standardization_forbidden": true,
+    "magnitude_threshold": "NONE",
+    "no_post_outcome_redefinition": true,
+    "primary_heat_score": "arithmetic mean of the four raw field surprises, in percentage points",
+    "raw_field_surprise": "actual_at_release_t - contemporaneous_consensus",
+    "required_surprise_fields": ["headline_cpi_mom","headline_cpi_yoy","core_cpi_mom","core_cpi_yoy"],
+    "return_based_thresholds_forbidden": true,
+    "signed_direction_multiplier": {"COOL": 1, "HOT": -1, "NEUTRAL": 0}
+  },
+  "statistics_freeze": {
+    "primary_discovery_survival_rule": {
+      "all_required": true,
+      "conditions": [
+        "Spearman rho for S versus primary basket return is < 0",
+        "one-sided permutation p-value <= 0.05",
+        "mean primary net signed return after 20 bps round-trip haircut is > 0",
+        "BTCUSDT and ETHUSDT individual 15-minute Spearman rho estimates are both < 0"
+      ],
+      "secondary_results_cannot_rescue_primary_failure": true
+    },
+    "primary_hypothesis": {
+      "alpha": 0.05,
+      "expected_association": "negative",
+      "permutations": 100000,
+      "random_seed": 20260912,
+      "test": "one-sided Spearman rank correlation permutation test",
+      "unit": "event",
+      "x": "primary CPI heat score S",
+      "y": "15-minute equal-weight BTC/ETH basket return"
+    },
+    "secondary_diagnostics": {
+      "decision_role": "DIAGNOSTIC_ONLY",
+      "horizons_minutes": [5, 30, 60],
+      "multiple_testing": "Holm correction across the three secondary horizon basket tests at family-wise alpha 0.05",
+      "report": ["individual asset effects","median signed return","directional hit rate","10 bps and 30 bps cost sensitivities"]
+    },
+    "validation_rule_if_discovery_survives": {
+      "conditions": [
+        "15-minute basket Spearman rho remains < 0",
+        "one-sided exact/permutation p-value <= 0.10",
+        "mean net signed return after the same 20 bps haircut remains > 0",
+        "directional hit rate is > 0.50"
+      ],
+      "failure_classification": "VALIDATION_FAIL_NO_RESCUE_TUNING",
+      "no_parameter_changes_after_discovery": true,
+      "parameters_must_be_identical_to_discovery": true,
+      "separate_market_data_authorization_required": true,
+      "validation_event_count": 8
+    }
+  },
+  "status": "FROZEN_PRE_OUTCOME_DISCOVERY_CONTRACT",
+  "version": "0.1"
+}

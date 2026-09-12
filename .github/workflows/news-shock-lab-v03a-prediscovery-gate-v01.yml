@@ -1,0 +1,58 @@
+name: News Shock Lab V0.3A Pre-Discovery Gate V0.1
+
+on:
+  push:
+    branches:
+      - dream-account-phase-b-signal-research-v0.1
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/NEWS_SHOCK_LAB_V03A_FINAL_CONSENSUS_PROVENANCE_FREEZE_V0.1.json'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/NEWS_SHOCK_LAB_V03A_PRE_DISCOVERY_SIGNAL_STATISTICAL_FREEZE_V0.1.json'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/news_shock_lab_v03a_prediscovery_gate_v01.py'
+      - '.github/workflows/news-shock-lab-v03a-prediscovery-gate-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  news-shock-v03a-prediscovery-gate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compile gate
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python -m py_compile research/news_shock_lab_v03a_prediscovery_gate_v01.py
+      - name: Verify final provenance and pre-discovery freeze
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          mkdir -p research/local_data/news_v03a_prediscovery_gate_v01
+          python research/news_shock_lab_v03a_prediscovery_gate_v01.py \
+            research/local_data/news_v03a_prediscovery_gate_v01/gate_receipt.json
+      - name: Assert no protected outcome access
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path('research/local_data/news_v03a_prediscovery_gate_v01/gate_receipt.json')
+          r = json.loads(p.read_text())
+          assert r['status'] == 'PASS'
+          assert r['authorized_after_pass'] == 'DISCOVERY_2022_2024_MARKET_OUTCOMES_ONLY'
+          assert 'VALIDATION_2025_01_THROUGH_2025_08' in r['still_locked']
+          assert 'MEXC_2025_09_THROUGH_2025_12' in r['still_locked']
+          assert 'HOLDOUT_2026' in r['still_locked']
+          assert r['live_trading_authorized'] is False
+          assert r['exchange_mutation_authorized'] is False
+          print('NEWS SHOCK V03A PROTECTED OUTCOME GUARDS PASS')
+          PY
+      - name: Upload pre-discovery gate receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: news-shock-v03a-prediscovery-gate-v01-${{ github.sha }}
+          path: Dream-Account-OS-v2.3-PARTIAL/research/local_data/news_v03a_prediscovery_gate_v01/gate_receipt.json
+          if-no-files-found: error
+          retention-days: 30
