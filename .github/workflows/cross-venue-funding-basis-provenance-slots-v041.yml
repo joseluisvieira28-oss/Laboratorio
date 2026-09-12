@@ -1,0 +1,128 @@
+name: Cross-Venue Funding Basis Provenance Slots V0.4.1
+
+on:
+  push:
+    branches:
+      - dream-account-phase-b-signal-research-v0.1
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/CROSS_VENUE_FUNDING_BASIS_HYPERLIQUID_TRANSPORT_V041.json'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/cross_venue_funding_basis_provenance_slots_v041.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_cross_venue_funding_basis_provenance_slots_v041.py'
+      - '.github/workflows/cross-venue-funding-basis-provenance-slots-v041.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  provenance-slots-v041:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run V0.4.1 offline transport tests
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python -m pip install pytest
+          python -m pytest -q tests/test_cross_venue_funding_basis_provenance_slots_v041.py
+
+      - name: Compile V0.4.1 transport remediation
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python -m py_compile research/cross_venue_funding_basis_provenance_slots_v041.py tests/test_cross_venue_funding_basis_provenance_slots_v041.py
+
+      - name: Verify V0.4.1 authority is transport-only
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          a = json.loads(Path('research/CROSS_VENUE_FUNDING_BASIS_HYPERLIQUID_TRANSPORT_V041.json').read_text(encoding='utf-8'))
+          assert a['status'] == 'AUTHORIZED_RATE_LIMIT_TRANSPORT_REMEDIATION_DIAGNOSTIC_ONLY'
+          assert a['trigger']['economic_outcomes_observed'] is False
+          assert a['official_rate_limit_basis']['ip_weight_limit_per_minute'] == 1200
+          assert a['official_rate_limit_basis']['frozen_min_seconds_between_hyperliquid_requests'] == 3.0
+          for key, value in a['scientific_boundary'].items():
+              assert value is False, key
+          assert a['transport_policy']['request_type'] == 'fundingHistory'
+          assert a['transport_policy']['authentication'] == 'NONE'
+          assert a['transport_policy']['outcome_dependent_retry_or_pacing'] is False
+          print('PASS: V0.4.1 modifies public transport pacing only')
+          PY
+
+      - name: Static guard against outcome analysis and mutation
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python - <<'PY'
+          import ast
+          from pathlib import Path
+          p = Path('research/cross_venue_funding_basis_provenance_slots_v041.py')
+          tree = ast.parse(p.read_text(encoding='utf-8'))
+          forbidden_names = {'mean','median','stdev','variance','corr','correlation','sharpe','sortino','profit_factor','win_rate','expectancy'}
+          hits = []
+          for node in ast.walk(tree):
+              if isinstance(node, ast.Name) and node.id.lower() in forbidden_names:
+                  hits.append((node.id, node.lineno))
+              if isinstance(node, ast.Attribute) and node.attr.lower() in {'put','patch','delete'}:
+                  hits.append((node.attr, node.lineno))
+          if hits:
+              raise SystemExit(f'forbidden outcome/mutation primitives: {hits}')
+          text = p.read_text(encoding='utf-8').lower()
+          for marker in ('carry_computed = false','apr_apy_computed = false','pnl_computed = false','signals_computed = false'):
+              if marker not in text:
+                  raise SystemExit(f'missing governance marker: {marker}')
+          print('PASS: V0.4.1 remains outcome-blind and mutation-free')
+          PY
+
+      - name: Run rate-limit-safe nominal-slot provenance diagnostic
+        env:
+          PREFREEZE_PROVENANCE_SLOT_V041_RECEIPT: CROSS_VENUE_FUNDING_BASIS_PROVENANCE_SLOT_V041_RECEIPT.json
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python research/cross_venue_funding_basis_provenance_slots_v041.py
+
+      - name: Verify V0.4.1 receipt and report frozen coverage gate
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r = json.loads(Path('CROSS_VENUE_FUNDING_BASIS_PROVENANCE_SLOT_V041_RECEIPT.json').read_text(encoding='utf-8'))
+          assert r['classification'] == 'PROVENANCE_RATE_LIMIT_REMEDIATION_AND_SLOT_DIAGNOSTIC_ONLY_NOT_ECONOMIC_DISCOVERY'
+          assert r['status'] == 'PASS'
+          assert r['technical_route_status'] == 'PASS_PUBLIC_SOURCES_WITH_RATE_LIMIT_SAFE_HYPERLIQUID_TRANSPORT'
+          assert r['binance_archive_checksums_all_match'] is True
+          assert r['locked_2026_accessed'] is False
+          assert r['mexc_accessed'] is False
+          assert r['authenticated_account_data_used'] is False
+          assert r['exchange_mutation_used'] is False
+          assert r['funding_rate_values_summarized'] is False
+          assert r['economic_fields_summarized'] is False
+          assert r['carry_computed'] is False
+          assert r['apr_apy_computed'] is False
+          assert r['pnl_computed'] is False
+          assert r['signals_computed'] is False
+          assert r['discovery_authorized'] is False
+          assert r['trading_authorized'] is False
+          assert r['audit_end_ms'] < r['locked_2026_start_ms']
+          print('SLOT_GATE_STATUS=' + r['slot_coverage_gate_status'])
+          print('COMMON_FULL_MONTH_COUNT=' + str(r['common_full_month_count']))
+          print('FIRST_COMMON_FULL_MONTH=' + str(r['first_common_full_month']))
+          print('LAST_COMMON_FULL_MONTH=' + str(r['last_common_full_month']))
+          print('HYPERLIQUID_REQUEST_COUNT=' + str(r['hyperliquid_request_count']))
+          print('HYPERLIQUID_429_RETRIES=' + str(r['hyperliquid_http_429_retry_count']))
+          print('PASS: V0.4.1 receipt preserves scientific boundary')
+          PY
+
+      - name: Upload V0.4.1 provenance receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: cross-venue-funding-basis-provenance-slots-v041-receipt
+          path: Dream-Account-OS-v2.3-PARTIAL/CROSS_VENUE_FUNDING_BASIS_PROVENANCE_SLOT_V041_RECEIPT.json
+          if-no-files-found: error
+          retention-days: 30
