@@ -1,0 +1,136 @@
+name: Cross-Venue Funding Basis Provenance Archive V0.3
+
+on:
+  push:
+    branches:
+      - dream-account-phase-b-signal-research-v0.1
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/CROSS_VENUE_FUNDING_BASIS_PROVENANCE_ARCHIVE_REMEDIATION_V03.json'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/cross_venue_funding_basis_provenance_archive_v03.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_cross_venue_funding_basis_provenance_archive_v03.py'
+      - '.github/workflows/cross-venue-funding-basis-provenance-archive-v03.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  provenance-archive-v03:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run V0.3 offline invariant tests
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python -m pip install pytest
+          python -m pytest -q tests/test_cross_venue_funding_basis_provenance_archive_v03.py
+
+      - name: Compile V0.3 provenance remediation
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python -m py_compile research/cross_venue_funding_basis_provenance_archive_v03.py tests/test_cross_venue_funding_basis_provenance_archive_v03.py
+
+      - name: Verify V0.3 authority remains diagnostic only
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path('research/CROSS_VENUE_FUNDING_BASIS_PROVENANCE_ARCHIVE_REMEDIATION_V03.json')
+          a = json.loads(p.read_text(encoding='utf-8'))
+          assert a['status'] == 'AUTHORIZED_PROVENANCE_REMEDIATION_DIAGNOSTIC_ONLY'
+          b = a['scientific_boundary']
+          for key in (
+              'changes_primary_hypothesis', 'changes_assets', 'changes_venues',
+              'changes_audit_window', 'changes_v01_coverage_rule', 'changes_cost_model',
+              'changes_leverage', 'changes_orientation', 'authorizes_discovery',
+              'authorizes_economic_outcomes', 'authorizes_trading',
+              'authorizes_exchange_mutation', 'authorizes_authenticated_account_data',
+              'authorizes_2026_access', 'authorizes_mexc_access',
+          ):
+              assert b[key] is False, key
+          assert a['source_route']['binance']['rest_fallback_allowed'] is False
+          assert a['source_route']['binance']['required_integrity'] == 'SHA256_MATCH'
+          print('PASS: V0.3 authority changes provenance transport only')
+          PY
+
+      - name: Static guard against outcome analysis and exchange mutation
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python - <<'PY'
+          import ast
+          from pathlib import Path
+          p = Path('research/cross_venue_funding_basis_provenance_archive_v03.py')
+          tree = ast.parse(p.read_text(encoding='utf-8'))
+          forbidden_names = {
+              'mean', 'median', 'stdev', 'variance', 'corr', 'correlation',
+              'sharpe', 'sortino', 'profit_factor', 'win_rate', 'expectancy',
+          }
+          hits = []
+          for node in ast.walk(tree):
+              if isinstance(node, ast.Name) and node.id.lower() in forbidden_names:
+                  hits.append((node.id, node.lineno))
+              if isinstance(node, ast.Attribute) and node.attr.lower() in {'put', 'patch', 'delete'}:
+                  hits.append((node.attr, node.lineno))
+          if hits:
+              raise SystemExit(f'forbidden outcome/mutation primitives: {hits}')
+          text = p.read_text(encoding='utf-8').lower()
+          for marker in ('carry_computed = false', 'apr_apy_computed = false', 'pnl_computed = false', 'signals_computed = false'):
+              if marker not in text:
+                  raise SystemExit(f'missing governance marker: {marker}')
+          if '2026-01' in text or '2026-02' in text:
+              raise SystemExit('locked 2026 archive month literal detected')
+          print('PASS: V0.3 code is outcome-blind and mutation-free')
+          PY
+
+      - name: Run checksum-verified public provenance remediation through 2025 only
+        env:
+          PREFREEZE_PROVENANCE_ARCHIVE_V03_RECEIPT: CROSS_VENUE_FUNDING_BASIS_PROVENANCE_ARCHIVE_V03_RECEIPT.json
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python research/cross_venue_funding_basis_provenance_archive_v03.py
+
+      - name: Verify V0.3 diagnostic receipt boundaries
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path('CROSS_VENUE_FUNDING_BASIS_PROVENANCE_ARCHIVE_V03_RECEIPT.json')
+          r = json.loads(p.read_text(encoding='utf-8'))
+          assert r['classification'] == 'PROVENANCE_REMEDIATION_DIAGNOSTIC_ONLY_NOT_ECONOMIC_DISCOVERY'
+          assert r['status'] == 'PASS'
+          assert r['technical_route_status'] == 'PASS_BINANCE_ARCHIVE_CHECKSUM_VERIFIED'
+          assert r['binance_archive_checksums_all_match'] is True
+          assert r['binance_rest_fallback_used'] is False
+          assert r['locked_2026_accessed'] is False
+          assert r['mexc_accessed'] is False
+          assert r['authenticated_account_data_used'] is False
+          assert r['exchange_mutation_used'] is False
+          assert r['funding_rate_values_summarized'] is False
+          assert r['economic_fields_summarized'] is False
+          assert r['carry_computed'] is False
+          assert r['apr_apy_computed'] is False
+          assert r['pnl_computed'] is False
+          assert r['signals_computed'] is False
+          assert r['discovery_authorized'] is False
+          assert r['trading_authorized'] is False
+          assert r['audit_end_ms'] < r['locked_2026_start_ms']
+          print('V01_GATE_STATUS=' + r['v01_gate_status'])
+          print('COMMON_FULL_MONTH_COUNT=' + str(r['common_full_month_count']))
+          print('PASS: V0.3 diagnostic receipt preserves frozen scientific boundary')
+          PY
+
+      - name: Upload V0.3 provenance diagnostic receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: cross-venue-funding-basis-provenance-archive-v03-receipt
+          path: Dream-Account-OS-v2.3-PARTIAL/CROSS_VENUE_FUNDING_BASIS_PROVENANCE_ARCHIVE_V03_RECEIPT.json
+          if-no-files-found: error
+          retention-days: 30
