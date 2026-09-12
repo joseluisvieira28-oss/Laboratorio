@@ -1,0 +1,72 @@
+{
+  "schema_version": "0.1",
+  "lab_id": "CROSS_VENUE_FUNDING_BASIS_LAB_V01",
+  "amendment_id": "CROSS_VENUE_FUNDING_BASIS_PROVENANCE_SLOT_NORMALIZATION_V04",
+  "status": "AUTHORIZED_SOURCE_SEMANTICS_NORMALIZATION_DIAGNOSTIC_ONLY",
+  "trigger": {
+    "v03_technical_route_status": "PASS_BINANCE_ARCHIVE_CHECKSUM_VERIFIED",
+    "v03_v01_gate_status": "FAIL_CLOSED_NO_COMMON_FULL_UTC_MONTH",
+    "diagnosed_non_economic_cause": "RAW_EVENT_TIMESTAMPS_HAVE_SOURCE_SCHEDULING_JITTER_AROUND_NOMINAL_FUNDING_SLOTS",
+    "economic_values_consulted": false
+  },
+  "scientific_boundary": {
+    "changes_primary_hypothesis": false,
+    "changes_assets": false,
+    "changes_venues": false,
+    "changes_audit_window": false,
+    "changes_cost_model": false,
+    "changes_leverage": false,
+    "changes_orientation": false,
+    "authorizes_discovery": false,
+    "authorizes_economic_outcomes": false,
+    "authorizes_trading": false,
+    "authorizes_exchange_mutation": false,
+    "authorizes_authenticated_account_data": false,
+    "authorizes_2026_access": false,
+    "authorizes_mexc_access": false
+  },
+  "source_semantics": {
+    "binance": {
+      "nominal_funding_interval_hours": 8,
+      "basis": "Existing V0.1 frozen 8h cadence; archive metadata funding_interval_hours must equal 8 for every row"
+    },
+    "hyperliquid": {
+      "nominal_funding_interval_hours": 1,
+      "basis": "Hyperliquid documented funding payment cadence is hourly"
+    },
+    "normalization_rule": "Assign each raw event timestamp to the unique nearest nominal UTC funding slot. Assignment fails closed if distance is >= half the nominal interval.",
+    "coverage_rule": "A UTC month is complete only when every expected nominal slot exists exactly once after normalization, with zero missing slots and zero duplicate normalized slots.",
+    "economic_field_use": "FORBIDDEN_FOR_NORMALIZATION_OR_COVERAGE"
+  },
+  "rationale": "The V0.1 raw max-gap test treated millisecond/second publication jitter as missing funding events. V0.4 changes only timestamp semantics from raw wall-clock gap equality to exact nominal-slot occupancy; it does not reduce required event count or permit missing slots.",
+  "allowed_outputs": [
+    "raw_timestamp",
+    "normalized_slot",
+    "slot_jitter_ms",
+    "missing_slot_count",
+    "duplicate_slot_count",
+    "eligible_full_months",
+    "common_eligible_months",
+    "canonical_timestamp_hash",
+    "source_integrity"
+  ],
+  "forbidden_outputs": [
+    "funding_rate_average",
+    "funding_spread",
+    "carry",
+    "apr",
+    "apy",
+    "pnl",
+    "sharpe",
+    "profit_factor",
+    "win_rate",
+    "expectancy",
+    "signal",
+    "threshold_optimization",
+    "asset_ranking",
+    "venue_ranking",
+    "best_period_selection"
+  ],
+  "decision_rule": "PASS requires at least one common full UTC month under exact nominal-slot occupancy across all four frozen series. No Discovery or trading is authorized automatically.",
+  "next_authorization": "NONE_AUTOMATIC"
+}
