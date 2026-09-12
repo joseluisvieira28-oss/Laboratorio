@@ -1,0 +1,91 @@
+name: News Shock Lab V0.3A Consensus Combined V0.9
+
+# Tranche 09: final 2024 exact-clock provenance expansion to 35/44 COMPLETE_A.
+on:
+  push:
+    branches:
+      - dream-account-phase-b-signal-research-v0.1
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/NEWS_SHOCK_LAB_V03A_CONSENSUS_SEED_TRANCHE09_FREEZE_V0.1.json'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/NEWS_SHOCK_LAB_V03A_CONSENSUS_SEED_TRANCHE09_V0.1.json'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/news_shock_lab_v03a_consensus_combined_v09.py'
+      - '.github/workflows/news-shock-lab-v03a-consensus-combined-v09.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  news-shock-v03a-consensus-combined-v09:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install parser dependency and compile
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python -m pip install beautifulsoup4
+          python -m compileall -q research
+      - name: Verify frozen authority chain
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python - <<'PY'
+          from research.news_shock_lab_v03a_consensus_combined_v09 import load_authority
+          *_, freeze9, seed9 = load_authority()
+          assert freeze9['fingerprint'] == '4888605e5b52ad96d85d761d2f7237f6455f7fa9599f152c4b9b52c242cf6df4'
+          assert seed9['fingerprint'] == 'd7ccd125e5c122337d9fab1dcfb0c37834464c4a143d12e5685fab947d74e215'
+          assert freeze9['parent_combined_manifest_fingerprint'] == 'e66b64ab92bdc9be9bfda9f43d31650c4873e9391f2fed234783a30b7853fa82'
+          assert freeze9['parent_validation_fingerprint'] == '40989895b89b3e0a1f2cc9c76edb83c6f8e539a8009d8a7a56e4beff0e0adcaa'
+          assert freeze9['authority']['may_access_mexc_2025_09_through_2025_12'] is False
+          assert freeze9['authority']['may_access_holdout_2026'] is False
+          print('NEWS V03A COMBINED V09 AUTHORITY PASS')
+          PY
+      - name: Rebuild BLS actuals and validate thirty-five consensus events
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          mkdir -p research/local_data/news_v03a_consensus_combined_v09_output
+          set -o pipefail
+          python -m research.news_shock_lab_v03a_consensus_combined_v09 \
+            research/local_data/news_v03a_consensus_combined_v09_output \
+            | tee research/local_data/news_v03a_consensus_combined_v09_output/combined_v09_stdout.txt
+      - name: Assert 35 COMPLETE_A and all outcome guards closed
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root = Path('research/local_data/news_v03a_consensus_combined_v09_output')
+          s = json.loads((root/'combined_v09_summary.json').read_text())
+          expected_counts = {'COMPLETE_A': 35, 'CONSENSUS_PROVENANCE_INCOMPLETE': 9}
+          if s['status_counts'] != expected_counts:
+              raise SystemExit(f"NEWS V03A V09 STATUS COUNT DRIFT: {s['status_counts']}")
+          if s.get('complete_b_count', 0) != 0:
+              raise SystemExit('NEWS V03A V09 UNEXPECTED COMPLETE_B')
+          if len(s['complete_a_event_ids']) != 35:
+              raise SystemExit('NEWS V03A V09 COMPLETE_A COUNT DRIFT')
+          new_ids = ('US_CPI_2024-08-14','US_CPI_2024-09-11')
+          for event_id in new_ids:
+              if event_id not in s['complete_a_event_ids']:
+                  raise SystemExit(f'NEWS V03A V09 NEW EVENT MISSING: {event_id}')
+          for event_id in s['complete_a_event_ids']:
+              if event_id.startswith('US_CPI_2025-09') or event_id.startswith('US_CPI_2025-10') or event_id.startswith('US_CPI_2025-11') or event_id.startswith('US_CPI_2025-12'):
+                  raise SystemExit(f'NEWS V03A V09 LOCKED 2025 HOLDOUT LEAKED IN: {event_id}')
+          for key, value in s['guards'].items():
+              if value is not False:
+                  raise SystemExit(f'NEWS V03A V09 OUTCOME GUARD DRIFT: {key}')
+          print('NEWS V03A COMBINED V09 VALIDATION PASS', s['validation_fingerprint'])
+          PY
+      - name: Upload combined V0.9 provenance receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: news-shock-v03a-consensus-combined-v09-${{ github.sha }}
+          path: |
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/news_v03a_consensus_combined_v09_output/combined_v09_consensus_manifest.json
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/news_v03a_consensus_combined_v09_output/combined_v09_validation_receipt.json
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/news_v03a_consensus_combined_v09_output/combined_v09_summary.json
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/news_v03a_consensus_combined_v09_output/combined_v09_stdout.txt
+          if-no-files-found: warn
+          retention-days: 30

@@ -1,0 +1,171 @@
+from __future__ import annotations
+
+from copy import deepcopy
+import json
+from pathlib import Path
+
+from research import news_shock_lab_v03a_bls_actuals_amend03 as bls
+from research.news_shock_lab_v03a_consensus_combined_v08 import load_authority as load_parent_authority
+from research.news_shock_lab_v03a_consensus_combined_v03 import _load_hashed, _validate_seed
+from research.news_shock_lab_v03a_provenance import EXPECTED_EVENT_COUNT, canonical_hash, validate_manifest_records
+
+ROOT = Path(__file__).parent
+FREEZE9_PATH = ROOT / "NEWS_SHOCK_LAB_V03A_CONSENSUS_SEED_TRANCHE09_FREEZE_V0.1.json"
+SEED9_PATH = ROOT / "NEWS_SHOCK_LAB_V03A_CONSENSUS_SEED_TRANCHE09_V0.1.json"
+
+EXPECTED_FREEZE9 = "4888605e5b52ad96d85d761d2f7237f6455f7fa9599f152c4b9b52c242cf6df4"
+EXPECTED_SEED9 = "d7ccd125e5c122337d9fab1dcfb0c37834464c4a143d12e5685fab947d74e215"
+EXPECTED_PARENT_COMBINED = "e66b64ab92bdc9be9bfda9f43d31650c4873e9391f2fed234783a30b7853fa82"
+EXPECTED_PARENT_VALIDATION = "40989895b89b3e0a1f2cc9c76edb83c6f8e539a8009d8a7a56e4beff0e0adcaa"
+EXPECTED_PROVENANCE_FREEZE = "a78d4933663e687a61f91a548c074239b046c13e96dc059a73ba27828715ee7a"
+EXPECTED_COMPLETE_A = 35
+EXPECTED_INCOMPLETE = 9
+
+
+def load_authority():
+    (
+        seed1, freeze2, seed2, freeze3, seed3, amend4, freeze4, seed4,
+        freeze5, seed5, freeze6, seed6, freeze7, seed7, freeze8, seed8,
+    ) = load_parent_authority()
+    freeze9 = _load_hashed(FREEZE9_PATH, EXPECTED_FREEZE9, "freeze9")
+    seed9 = _load_hashed(SEED9_PATH, EXPECTED_SEED9, "seed9")
+
+    if freeze9["parent_combined_manifest_fingerprint"] != EXPECTED_PARENT_COMBINED:
+        raise PermissionError("freeze9 parent combined manifest mismatch")
+    if freeze9["parent_validation_fingerprint"] != EXPECTED_PARENT_VALIDATION:
+        raise PermissionError("freeze9 parent validation mismatch")
+    if freeze9["parent_provenance_freeze_fingerprint"] != EXPECTED_PROVENANCE_FREEZE:
+        raise PermissionError("freeze9 parent provenance freeze mismatch")
+    if seed9["freeze_fingerprint"] != freeze9["fingerprint"]:
+        raise PermissionError("seed9 freeze mismatch")
+
+    for key in (
+        "may_access_holdout_2026", "may_access_mexc_2025_09_through_2025_12",
+        "may_compute_crypto_returns", "may_compute_profitability", "may_trade_live",
+    ):
+        if freeze9["authority"].get(key) is not False:
+            raise PermissionError(f"freeze9 authority guard drift {key}")
+    for key, value in seed9.get("guards", {}).items():
+        if value is not False:
+            raise PermissionError(f"seed9 guard drift: {key}")
+
+    prior_ids = (
+        set(seed1["events"]) | set(seed2["events"]) | set(seed3["events"])
+        | set(seed4["events"]) | set(seed5["events"]) | set(seed6["events"])
+        | set(seed7["events"]) | set(seed8["events"])
+    )
+    ids9 = set(seed9["events"])
+    if prior_ids & ids9:
+        raise PermissionError("tranche09 overlaps prior consensus seed tranches")
+    if ids9 != set(freeze9["scope"]["event_ids"]):
+        raise PermissionError("seed9 scope mismatch")
+    _validate_seed(seed9, "seed9")
+    return (
+        seed1, freeze2, seed2, freeze3, seed3, amend4, freeze4, seed4,
+        freeze5, seed5, freeze6, seed6, freeze7, seed7, freeze8, seed8,
+        freeze9, seed9,
+    )
+
+
+def build_combined(output_dir: Path):
+    (
+        seed1, freeze2, seed2, freeze3, seed3, amend4, freeze4, seed4,
+        freeze5, seed5, freeze6, seed6, freeze7, seed7, freeze8, seed8,
+        freeze9, seed9,
+    ) = load_authority()
+    output_dir.mkdir(parents=True, exist_ok=True)
+    actual_manifest, _ = bls.collect_actuals(
+        output_dir / "cpi_actual_provenance_manifest.json",
+        output_dir / "actuals_validation_receipt.json",
+    )
+    if actual_manifest["event_count"] != EXPECTED_EVENT_COUNT:
+        raise RuntimeError("event count drift")
+
+    records = deepcopy(actual_manifest["records"])
+    by_id = {r["event_id"]: r for r in records}
+    combined_events = {}
+    for seed in (seed1, seed2, seed3, seed4, seed5, seed6, seed7, seed8, seed9):
+        combined_events.update(seed["events"])
+    if len(combined_events) != EXPECTED_COMPLETE_A:
+        raise RuntimeError(f"combined consensus identity count drift: {len(combined_events)}")
+
+    for event_id, event in combined_events.items():
+        record = by_id.get(event_id)
+        if record is None:
+            raise RuntimeError(f"event missing from BLS manifest: {event_id}")
+        if record["release_at_utc"] != event["release_at_utc"]:
+            raise RuntimeError(f"release timestamp mismatch: {event_id}")
+        record["consensus"] = deepcopy(event["consensus"])
+
+    manifest = {
+        "document_type": "NEWS_SHOCK_LAB_V03A_CPI_CONSENSUS_COMBINED_MANIFEST_V09",
+        "version": "0.3A-v09",
+        "status": "CONSENSUS_TRANCHE09_ATTACHED_VALIDATION_REQUIRED",
+        "bls_parser_amendment_fingerprint": bls.EXPECTED_AMENDMENT_FINGERPRINT,
+        "seed_v01_fingerprint": seed1["fingerprint"],
+        "tranche02_freeze_fingerprint": freeze2["fingerprint"],
+        "tranche02_seed_fingerprint": seed2["fingerprint"],
+        "tranche03_freeze_fingerprint": freeze3["fingerprint"],
+        "tranche03_seed_fingerprint": seed3["fingerprint"],
+        "tranche04_amendment_fingerprint": amend4["fingerprint"],
+        "tranche04_freeze_fingerprint": freeze4["fingerprint"],
+        "tranche04_seed_fingerprint": seed4["fingerprint"],
+        "tranche05_freeze_fingerprint": freeze5["fingerprint"],
+        "tranche05_seed_fingerprint": seed5["fingerprint"],
+        "tranche06_freeze_fingerprint": freeze6["fingerprint"],
+        "tranche06_seed_fingerprint": seed6["fingerprint"],
+        "tranche07_freeze_fingerprint": freeze7["fingerprint"],
+        "tranche07_seed_fingerprint": seed7["fingerprint"],
+        "tranche08_freeze_fingerprint": freeze8["fingerprint"],
+        "tranche08_seed_fingerprint": seed8["fingerprint"],
+        "tranche09_freeze_fingerprint": freeze9["fingerprint"],
+        "tranche09_seed_fingerprint": seed9["fingerprint"],
+        "parent_combined_manifest_fingerprint": EXPECTED_PARENT_COMBINED,
+        "parent_validation_fingerprint": EXPECTED_PARENT_VALIDATION,
+        "records": records,
+        "guards": deepcopy(actual_manifest["guards"]),
+    }
+    manifest["fingerprint"] = canonical_hash(manifest)
+    validation = validate_manifest_records(manifest)
+    counts = validation["status_counts"]
+    expected_counts = {"COMPLETE_A": EXPECTED_COMPLETE_A, "CONSENSUS_PROVENANCE_INCOMPLETE": EXPECTED_INCOMPLETE}
+    if counts != expected_counts:
+        raise RuntimeError(f"status count drift: {counts}")
+    if validation.get("complete_b_count", 0) != 0:
+        raise RuntimeError("unexpected COMPLETE_B")
+    if validation["record_count"] != EXPECTED_EVENT_COUNT:
+        raise RuntimeError("validation record count drift")
+    complete = [r for r in validation["records"] if r["record_status"] == "COMPLETE_A"]
+    if {r["event_id"] for r in complete} != set(combined_events):
+        raise RuntimeError("COMPLETE_A event identity drift")
+    for key, value in validation["guards"].items():
+        if value is not False:
+            raise RuntimeError(f"outcome guard drift: {key}")
+
+    manifest["status"] = "CONSENSUS_VALIDATED_35_COMPLETE_A_9_INCOMPLETE"
+    unsigned = deepcopy(manifest)
+    unsigned.pop("fingerprint", None)
+    manifest["fingerprint"] = canonical_hash(unsigned)
+    (output_dir / "combined_v09_consensus_manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    (output_dir / "combined_v09_validation_receipt.json").write_text(json.dumps(validation, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    summary = {
+        "status": manifest["status"], "event_count": validation["record_count"],
+        "status_counts": counts, "complete_b_count": validation.get("complete_b_count", 0),
+        "complete_a_event_ids": sorted(r["event_id"] for r in complete),
+        "raw_surprises": {r["event_id"]: r["raw_surprises"] for r in complete},
+        "combined_manifest_fingerprint": manifest["fingerprint"],
+        "validation_fingerprint": validation["fingerprint"],
+        "tranche09_freeze_fingerprint": freeze9["fingerprint"],
+        "tranche09_seed_fingerprint": seed9["fingerprint"],
+        "guards": validation["guards"],
+    }
+    (output_dir / "combined_v09_summary.json").write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return manifest, summary
+
+
+if __name__ == "__main__":
+    import sys
+    if len(sys.argv) != 2:
+        raise SystemExit("usage: news_shock_lab_v03a_consensus_combined_v09 <output_dir>")
+    _, summary = build_combined(Path(sys.argv[1]))
+    print(json.dumps(summary, indent=2, sort_keys=True))
