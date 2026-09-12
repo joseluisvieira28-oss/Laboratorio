@@ -1,0 +1,75 @@
+{
+  "document_type": "MICROSTRUCTURE_PROVENANCE_SHAKEDOWN_AUTHORIZATION",
+  "version": "0.1",
+  "status": "AUTHORIZED_PUBLIC_READ_ONLY_PROVENANCE_SHAKEDOWN",
+  "date": "2026-09-12",
+  "branch": "dream-account-phase-b-signal-research-v0.1",
+  "purpose": "Validate public read-only acquisition, schema, continuity, resynchronization, hashing, and storage behavior only. No target-outcome research or trading hypothesis is authorized.",
+  "authorization_scope": {
+    "binance_spot": {
+      "symbols": ["BTCUSDT", "ETHUSDT"],
+      "websocket_host": "stream.binance.com",
+      "websocket_port": 9443,
+      "websocket_scheme": "wss",
+      "streams": ["depth@100ms", "bookTicker", "trade"],
+      "rest_host": "api.binance.com",
+      "rest_scheme": "https",
+      "rest_method": "GET",
+      "rest_path": "/api/v3/depth",
+      "rest_limit": 5000,
+      "authentication": false
+    },
+    "coinbase_advanced_spot": {
+      "products": ["BTC-USD", "ETH-USD"],
+      "websocket_host": "advanced-trade-ws.coinbase.com",
+      "websocket_scheme": "wss",
+      "channels": ["level2", "market_trades", "heartbeats"],
+      "authentication": false,
+      "forbidden_user_host": "advanced-trade-ws-user.coinbase.com"
+    },
+    "max_capture_seconds": 90,
+    "single_run": true,
+    "raw_capture_required": true,
+    "collector_wall_and_monotonic_timestamps_required": true,
+    "sha256_per_message_required": true
+  },
+  "permitted_outputs": [
+    "connection_status",
+    "message_counts",
+    "stream_or_channel_counts",
+    "snapshot_sync_status",
+    "gap_counts",
+    "reconnect_counts",
+    "parse_failure_counts",
+    "book_validity_counts",
+    "timestamp_field_availability",
+    "raw_segment_sha256",
+    "storage_bytes"
+  ],
+  "forbidden_outputs": [
+    "future_returns",
+    "directional_hit_rate",
+    "profitability",
+    "entries",
+    "exits",
+    "stops",
+    "take_profit",
+    "position_size",
+    "survives_or_no_edge_classification",
+    "event_conditioned_trading_performance"
+  ],
+  "guards": {
+    "h02_authorized": false,
+    "target_outcomes_authorized": false,
+    "api_keys_or_secrets_authorized": false,
+    "account_or_user_data_authorized": false,
+    "post_put_patch_delete_authorized": false,
+    "exchange_mutation_authorized": false,
+    "live_trading_authorized": false,
+    "paper_trade_generation_authorized": false,
+    "mexc_2025_09_through_2025_12_authorized": false,
+    "merge_to_main_authorized": false,
+    "render_deploy_authorized": false
+  },
+  "stop_condition": "STOP_AFTER_SINGLE_PUBLIC_READ_ONLY_PROVENANCE_SHAKEDOWN_AND_CLOSEOUT"
+}
