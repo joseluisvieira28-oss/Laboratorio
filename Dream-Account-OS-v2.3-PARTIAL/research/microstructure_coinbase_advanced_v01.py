@@ -2,6 +2,11 @@
 
 No network, credentials, account access, trading, exchange mutation, or target-outcome
 logic exists here. This module implements Amendment 01 of the prospective collector.
+
+Technical correction after the first public provenance shakedown: ``sequence_num`` is
+validated at connection-envelope level, before channel/product filtering. Per-book
+state therefore requires strictly increasing (not necessarily adjacent) envelope
+sequence numbers, because unrelated products/channels can legitimately intervene.
 """
 
 from __future__ import annotations
@@ -68,6 +73,32 @@ class AdvancedEnvelope:
     product_ids: tuple[str, ...]
     payload: Mapping[str, Any]
     source_message_hash_sha256: str
+
+
+class AdvancedConnectionSequence:
+    """Fail-closed connection-level sequence validator.
+
+    The first real shakedown showed sequence numbers interleaving Level2, trades,
+    heartbeats and subscription acknowledgements on one public connection. Continuity
+    must therefore be checked before filtering by channel or product.
+    """
+
+    def __init__(self) -> None:
+        self.last_sequence_num: int | None = None
+        self.valid = True
+        self.invalid_reason: str | None = None
+
+    def observe(self, message: Mapping[str, Any]) -> int:
+        if not self.valid:
+            raise ProvenanceViolation(self.invalid_reason or "connection sequence invalid")
+        msg = _map(message, "message")
+        seq = _seq(msg.get("sequence_num"), "sequence_num")
+        if self.last_sequence_num is not None and seq != self.last_sequence_num + 1:
+            self.valid = False
+            self.invalid_reason = "Advanced Trade connection sequence gap or reordering detected"
+            raise ProvenanceViolation(self.invalid_reason)
+        self.last_sequence_num = seq
+        return seq
 
 
 def parse_envelope(message: Mapping[str, Any]) -> AdvancedEnvelope:
@@ -161,7 +192,7 @@ def l2_updates(event: Mapping[str, Any]) -> list[BookLevelUpdate]:
 
 
 class AdvancedTradeBook:
-    """Per-product Level2 state; fails closed on sequence ambiguity/gap."""
+    """Per-product Level2 state after connection-level sequence validation."""
 
     def __init__(self, product_id: str) -> None:
         if product_id not in PRODUCTS:
@@ -175,10 +206,10 @@ class AdvancedTradeBook:
         env = parse_envelope(message)
         if env.channel != "l2_data":
             raise ProvenanceViolation("l2_data message required")
-        if self.last_sequence_num is not None and env.sequence_num != self.last_sequence_num + 1:
-            self.book._invalidate("Advanced Trade sequence gap detected")
+        if self.last_sequence_num is not None and env.sequence_num <= self.last_sequence_num:
+            self.book._invalidate("Advanced Trade per-book sequence regression detected")
             self.synchronized = False
-            raise ProvenanceViolation("Advanced Trade sequence gap detected")
+            raise ProvenanceViolation("Advanced Trade per-book sequence regression detected")
         matching = [e for e in env.payload["events"] if e.get("product_id") == self.product_id]
         if not matching:
             raise ProvenanceViolation("message contains no event for configured product")
