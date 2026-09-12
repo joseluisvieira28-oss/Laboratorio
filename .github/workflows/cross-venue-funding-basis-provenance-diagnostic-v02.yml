@@ -1,0 +1,77 @@
+name: Cross-Venue Funding Basis Provenance Diagnostic V0.2
+
+on:
+  push:
+    branches:
+      - dream-account-phase-b-signal-research-v0.1
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/cross_venue_funding_basis_provenance_diagnostic_v02.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/CROSS_VENUE_FUNDING_BASIS_PROVENANCE_DIAGNOSTIC_V02_AMENDMENT.json'
+      - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_cross_venue_funding_basis_provenance_diagnostic_v02.py'
+      - '.github/workflows/cross-venue-funding-basis-provenance-diagnostic-v02.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnostic-boundary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run diagnostic offline tests
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python -m pip install pytest
+          python -m pytest -q tests/test_cross_venue_funding_basis_provenance_diagnostic_v02.py
+
+      - name: Compile diagnostic
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python -m py_compile research/cross_venue_funding_basis_provenance_diagnostic_v02.py tests/test_cross_venue_funding_basis_provenance_diagnostic_v02.py
+
+      - name: Static governance guard
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python - <<'PY'
+          import ast
+          import json
+          from pathlib import Path
+
+          script = Path('research/cross_venue_funding_basis_provenance_diagnostic_v02.py')
+          text = script.read_text(encoding='utf-8').lower()
+          tree = ast.parse(text)
+
+          forbidden_calls = {'mean', 'median', 'stdev', 'variance', 'corr', 'correlation', 'sharpe', 'sortino'}
+          hits = []
+          for node in ast.walk(tree):
+              if isinstance(node, ast.Name) and node.id.lower() in forbidden_calls:
+                  hits.append((node.id, node.lineno))
+              if isinstance(node, ast.Attribute) and node.attr.lower() in forbidden_calls | {'put', 'patch', 'delete'}:
+                  hits.append((node.attr, node.lineno))
+          if hits:
+              raise SystemExit(f'forbidden diagnostic primitives: {hits}')
+
+          required_markers = [
+              'funding_rate_values_summarized', 'carry_computed', 'apr_apy_computed',
+              'pnl_computed', 'signals_computed', 'v01_coverage_rule_changed'
+          ]
+          for marker in required_markers:
+              if marker not in text:
+                  raise SystemExit(f'missing governance marker: {marker}')
+
+          amendment = json.loads(Path('research/CROSS_VENUE_FUNDING_BASIS_PROVENANCE_DIAGNOSTIC_V02_AMENDMENT.json').read_text())
+          b = amendment['scientific_boundary']
+          assert b['changes_v01_coverage_rule'] is False
+          assert b['authorizes_discovery'] is False
+          assert b['authorizes_economic_outcomes'] is False
+          assert b['authorizes_trading'] is False
+          assert b['authorizes_2026_access'] is False
+          print('PASS: V0.2 is diagnostic-only and does not relax V0.1')
+          PY
