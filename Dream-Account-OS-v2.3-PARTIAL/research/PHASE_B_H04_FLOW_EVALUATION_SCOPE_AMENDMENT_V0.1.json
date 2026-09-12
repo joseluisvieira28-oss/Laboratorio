@@ -1,0 +1,42 @@
+{
+  "document_type": "PHASE_B_H04_FLOW_EVALUATION_SCOPE_AMENDMENT",
+  "fingerprint": "e9c4dd3bb5266122bbad048e01985495008c8374831cbc38b7e0d30fe204f559",
+  "frozen_at_utc_date": "2026-09-12",
+  "governance": {
+    "exchange_mutation_authorized": false,
+    "live_trading_authorized": false,
+    "main_merge_authorized": false,
+    "render_deploy_authorized": false
+  },
+  "hypothesis_id": "H04_POSITIVE_TAKER_FLOW_PERSISTENCE",
+  "rerun_policy": {
+    "holdout_2026_locked": true,
+    "mexc_2025_09_through_2025_12_locked": true,
+    "no_parameter_edits": true,
+    "restart_entire_h04_discovery_from_first_archive": true,
+    "same_authorized_binance_window": true,
+    "same_frozen_h04_rules": true,
+    "same_symbols": true
+  },
+  "status": "FROZEN_PRE_OUTCOME_TECHNICAL_SCOPE_CORRECTION",
+  "technical_correction": {
+    "after": "flow_imbalance is evaluated only for breakout and retest bars referenced by frozen H04 session-eligible signals and mechanism records",
+    "before": "flow_imbalance was eagerly evaluated for every ingested bar before H04 signal relevance was known",
+    "costs_changed": false,
+    "decision_policy_changed": false,
+    "flow_formula_changed": false,
+    "flow_threshold_changed": false,
+    "geometry_changed": false,
+    "management_changed": false,
+    "market_values_changed": false,
+    "session_gate_changed": false,
+    "zero_volume_imputation": false,
+    "zero_volume_on_required_flow_bar": "FAIL_CLOSED_TECHNICAL_FAILURE"
+  },
+  "trigger": {
+    "classification_produced": false,
+    "failure": "H04_DISCOVERY_FATAL: ValueError: zero volume",
+    "outcomes_evaluated": false
+  },
+  "version": "0.1"
+}
