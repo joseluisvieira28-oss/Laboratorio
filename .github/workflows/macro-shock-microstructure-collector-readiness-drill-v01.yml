@@ -1,0 +1,151 @@
+name: Macro Shock Microstructure Collector Readiness Drill V0.1
+
+on:
+  push:
+    branches:
+      - dream-account-phase-b-signal-research-v0.1
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic-collector-readiness-drill:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install project
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+
+      - name: Verify synthetic-only readiness authority
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          authority = json.loads(
+              Path('research/MICROSTRUCTURE_PROSPECTIVE_COLLECTOR_READINESS_DRILL_AUTHORITY_V01.json')
+              .read_text(encoding='utf-8')
+          )
+          assert authority['status'] == 'AUTHORIZED_SYNTHETIC_OFFLINE_READINESS_DRILL_ONLY'
+          assert authority['scientific_scope'] == 'NON_DIRECTIONAL_MEASUREMENT_INFRASTRUCTURE_ONLY'
+          assert authority['pass_label'] == 'COLLECTOR_OPERATIONAL_READINESS_PASS'
+          assert authority['fail_label'] == 'COLLECTOR_OPERATIONAL_READINESS_FAIL'
+          assert authority['frozen_context']['h02_status'] == 'NOT_AUTHORIZED'
+          assert authority['frozen_context']['target_observation_authorized'] is False
+          assert authority['frozen_context']['complete_official_2027_calendar_frozen'] is False
+          forbidden = set(authority['forbidden_under_this_authority'])
+          for item in (
+              'real target observation',
+              'new live public market capture',
+              'exchange mutation or order placement',
+              'live trading',
+              'H02 creation freeze test rescue or authorization',
+              'reuse of the 2026 holdout',
+              'merge to main',
+              'Render deployment',
+          ):
+              assert item in forbidden
+          print('PASS: authority is synthetic-only, research-only, and fail-closed')
+          PY
+
+      - name: Run readiness drill synthetic unit and integration tests
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python -m unittest -v tests.test_microstructure_collector_readiness_drill_v01
+
+      - name: Compile readiness drill and inherited collector preparation core
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python -m py_compile \
+            research/microstructure_collector_offline_preparation_v01.py \
+            research/microstructure_collector_readiness_drill_v01.py \
+            tests/test_microstructure_collector_readiness_drill_v01.py
+
+      - name: Prove readiness drill has no network or exchange mutation primitives
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python - <<'PY'
+          import ast
+          from pathlib import Path
+
+          paths = [
+              Path('research/microstructure_collector_readiness_drill_v01.py'),
+              Path('tests/test_microstructure_collector_readiness_drill_v01.py'),
+          ]
+          forbidden_import_roots = {'requests', 'urllib', 'websockets', 'socket', 'http', 'subprocess'}
+          forbidden_call_attrs = {'post', 'put', 'patch', 'delete', 'connect', 'send'}
+          hits = []
+          for path in paths:
+              tree = ast.parse(path.read_text(encoding='utf-8'), filename=str(path))
+              for node in ast.walk(tree):
+                  if isinstance(node, ast.Import):
+                      for alias in node.names:
+                          if alias.name.split('.')[0] in forbidden_import_roots:
+                              hits.append(f'{path}:import:{alias.name}:{node.lineno}')
+                  elif isinstance(node, ast.ImportFrom):
+                      root = (node.module or '').split('.')[0]
+                      if root in forbidden_import_roots:
+                          hits.append(f'{path}:importfrom:{node.module}:{node.lineno}')
+                  elif isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
+                      if node.func.attr.lower() in forbidden_call_attrs:
+                          hits.append(f'{path}:call:{node.func.attr}:{node.lineno}')
+          if hits:
+              raise SystemExit('readiness drill boundary violation: ' + '; '.join(hits))
+          print('PASS: synthetic readiness drill contains no network/mutation primitives')
+          PY
+
+      - name: Execute deterministic full readiness drill and emit receipt
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          import shutil
+          import sys
+
+          sys.path.insert(0, str(Path('research').resolve()))
+          import microstructure_collector_readiness_drill_v01 as drill
+
+          root = Path('.ci_synthetic_collector_readiness_drill')
+          if root.exists():
+              shutil.rmtree(root)
+          receipt = drill.run_full_readiness_drill(root)
+          assert receipt['status'] == 'COLLECTOR_OPERATIONAL_READINESS_PASS'
+          assert receipt['deterministic_repeat_equal'] is True
+          assert receipt['operational_checks_pass'] is True
+          assert receipt['mirrored_checks_equal'] is True
+          assert receipt['target_observation_started'] is False
+          assert receipt['target_outcomes_evaluated'] is False
+          assert receipt['directional_signals_generated'] is False
+          assert receipt['h02_status'] == 'NOT_AUTHORIZED'
+          assert receipt['complete_official_2027_calendar_frozen'] is False
+          assert receipt['separate_explicit_target_observation_authorization'] is False
+          assert receipt['live_trading_authorized'] is False
+          assert receipt['exchange_mutation_authorized'] is False
+          assert receipt['mexc_2025_09_through_2025_12_accessed'] is False
+          assert receipt['holdout_2026_reused'] is False
+          assert receipt['scientific_classification'] is None
+          Path('MICROSTRUCTURE_PROSPECTIVE_COLLECTOR_READINESS_DRILL_V01_CI_RECEIPT.json').write_text(
+              json.dumps(receipt, indent=2, sort_keys=True) + '\n',
+              encoding='utf-8',
+          )
+          compact = {k: v for k, v in receipt.items() if k != 'run_a'}
+          print(json.dumps(compact, indent=2, sort_keys=True))
+          PY
+
+      - name: Upload synthetic readiness receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: microstructure-prospective-collector-readiness-drill-v01-receipt
+          path: Dream-Account-OS-v2.3-PARTIAL/MICROSTRUCTURE_PROSPECTIVE_COLLECTOR_READINESS_DRILL_V01_CI_RECEIPT.json
+          if-no-files-found: error
+          retention-days: 30
