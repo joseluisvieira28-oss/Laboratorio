@@ -1,0 +1,72 @@
+{
+  "document_type": "NEWS_SHOCK_LAB_V0_FOMC_DIAGNOSTIC_CLOSEOUT",
+  "version": "0.1",
+  "status": "DIAGNOSTIC_CLOSEOUT_FROZEN",
+  "closed_at_utc_date": "2026-09-12",
+  "lab_id": "NEWS_SHOCK_LAB_V0_FOMC",
+  "authority": {
+    "freeze_fingerprint": "ca2c9dae37a6e7ca53211388c19e2762a9e9a1640655af74c9560071b9234c78",
+    "trigger_commit_sha": "820766e8261a9cb73269e98b9b02e465b5c11dd8",
+    "workflow_run_id": 34683169002,
+    "artifact_id": 10294452502,
+    "artifact_sha256": "549012df7ad93865b8c3a6123cbc98f0003dff2907ec5b875a3f3112e3a0c411",
+    "diagnostic_receipt_fingerprint": "96c5a680fecf2957c4dd8ead242c6940b9eb0495a4de0f750d05548977c77aa0"
+  },
+  "data_integrity": {
+    "official_binance_public_data_only": true,
+    "expected_files": 800,
+    "downloaded_files": 800,
+    "failure_count": 0,
+    "event_count": 40,
+    "symbols": ["BTCUSDT", "ETHUSDT"],
+    "timeframe": "1m",
+    "holdout_2026_accessed": false
+  },
+  "diagnostic_findings": {
+    "event_activity_structure": "SUPPORTED_DIAGNOSTICALLY",
+    "directional_price_structure": "NOT_ESTABLISHED",
+    "flow_persistence": "OBSERVED_NOT_VALIDATED_AS_TRADING_EDGE",
+    "reversal_risk": "MATERIAL",
+    "btc": {
+      "median_volume_ratio_5m": 5.2017,
+      "median_volume_ratio_15m": 3.9029,
+      "median_volume_ratio_60m": 2.8238,
+      "flow_sign_persistence_5m_to_15m": 0.80,
+      "reversal_rate_5m_to_60m": 0.275,
+      "reversal_rate_15m_to_120m": 0.25
+    },
+    "eth": {
+      "median_volume_ratio_5m": 6.1193,
+      "median_volume_ratio_15m": 4.4857,
+      "median_volume_ratio_60m": 3.2230,
+      "flow_sign_persistence_5m_to_15m": 0.85,
+      "reversal_rate_5m_to_60m": 0.30,
+      "reversal_rate_15m_to_120m": 0.25
+    }
+  },
+  "interpretation_boundary": {
+    "meaning_of_structure": "Scheduled FOMC events historically coincide with a repeatable market-activity regime shift in volume, trade intensity, and short-horizon order-flow dynamics. This does not establish a repeatable profitable price direction.",
+    "buy_fomc_rule_validated": false,
+    "sell_fomc_rule_validated": false,
+    "follow_first_move_rule_validated": false,
+    "fade_first_move_rule_validated": false,
+    "flow_sign_as_directional_edge_validated": false,
+    "trading_authorized": false,
+    "classification_authority": "NONE_DIAGNOSTIC_ONLY"
+  },
+  "next_research_boundary": {
+    "cross_event_replication_priority": "CPI_NFP_ROBUST_CONTROLS_V0.2",
+    "future_predictive_hypothesis_requires_separate_prospective_freeze": true,
+    "future_predictive_hypothesis_requires_untouched_validation_data": true,
+    "no_threshold_selection_from_2021_2025_fomc_then_claim_same_sample_validation": true,
+    "no_cherry_pick_eth_or_60m": true,
+    "no_post_outcome_tuning": true
+  },
+  "governance": {
+    "holdout_2026": "LOCKED_NOT_ACCESSED",
+    "no_live_trading": true,
+    "no_exchange_mutation": true,
+    "no_main_merge": true,
+    "no_render_deploy": true
+  }
+}
