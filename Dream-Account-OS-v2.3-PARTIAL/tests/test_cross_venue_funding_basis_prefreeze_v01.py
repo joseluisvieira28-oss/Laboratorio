@@ -31,7 +31,9 @@ def test_full_prefreeze_files_pass_and_keep_discovery_blocked():
 def test_scope_is_exactly_btc_eth_and_orientation_is_fixed():
     authority = _load("CROSS_VENUE_FUNDING_BASIS_LAB_PREFREEZE_AUTHORITY_V01.json")
     assert authority["asset_scope_frozen"] == ["BTC", "ETH"]
-    assert authority["primary_candidate_orientation_frozen"] == "LONG_BINANCE_SHORT_HYPERLIQUID_PERP"
+    assert authority["primary_candidate_orientation_frozen"] == "LONG_BINANCE_PERP_SHORT_HYPERLIQUID_PERP"
+    assert authority["venues"]["binance"]["role_in_primary_baseline"] == "LONG_PERPETUAL"
+    assert authority["venues"]["hyperliquid"]["role_in_primary_baseline"] == "SHORT_PERPETUAL"
     assert authority["symmetric_reverse_orientation"] == "DIAGNOSTIC_CONTROL_ONLY_NOT_ELIGIBLE_TO_RESCUE_PRIMARY"
 
 
