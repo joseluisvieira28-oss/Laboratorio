@@ -1,0 +1,247 @@
+name: Macro Shock Microstructure V0.1 2026 Holdout
+
+on:
+  push:
+    branches:
+      - dream-account-phase-b-signal-research-v0.1
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  holdout-2026:
+    if: ${{ contains(github.event.head_commit.message, '[MSM V01 2026 RUN]') || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Freeze fingerprints and verify authorization
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          root=Path('research')
+          contract=root/'MACRO_SHOCK_MICROSTRUCTURE_LAB_V01_PROSPECTIVE_RESEARCH_CONTRACT.json'
+          auth=root/'MACRO_SHOCK_MICROSTRUCTURE_LAB_V01_2026_HOLDOUT_AUTHORIZATION.json'
+          cal=root/'MACRO_SHOCK_MICROSTRUCTURE_LAB_V01_2026_OFFICIAL_EVENT_CALENDAR.json'
+          c=json.loads(contract.read_text()); a=json.loads(auth.read_text()); k=json.loads(cal.read_text())
+          assert c['status']=='FROZEN_PRE_HOLDOUT'
+          assert c['single_primary_hypothesis']['id']=='MSM_H01_FLOW_PERSISTENCE_CONTINUATION'
+          assert a['status']=='AUTHORIZED_PROSPECTIVE_2026_HOLDOUT'
+          assert a['governance_transition']['holdout_2026_access_authorized'] is True
+          assert len(k['events'])==k['eligible_event_count']==23
+          assert k['maximum_event_symbol_cases_before_persistence_filter']==46
+          fps={
+            'contract_sha256':hashlib.sha256(contract.read_bytes()).hexdigest(),
+            'authorization_sha256':hashlib.sha256(auth.read_bytes()).hexdigest(),
+            'calendar_sha256':hashlib.sha256(cal.read_bytes()).hexdigest(),
+          }
+          (root/'local_data').mkdir(exist_ok=True)
+          Path('research/local_data/msm_v01_freeze_fingerprints.json').write_text(json.dumps(fps,indent=2,sort_keys=True))
+          print(json.dumps(fps,indent=2))
+          PY
+
+      - name: Acquire exact official Binance 1m event/control corpus with checksums
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python - <<'PY'
+          from concurrent.futures import ThreadPoolExecutor,as_completed
+          from datetime import datetime,timedelta,timezone
+          from pathlib import Path
+          from urllib.request import Request,urlopen
+          import hashlib,json,time
+
+          cal=json.loads(Path('research/MACRO_SHOCK_MICROSTRUCTURE_LAB_V01_2026_OFFICIAL_EVENT_CALENDAR.json').read_text())
+          events=[datetime.fromisoformat(x['release_utc'].replace('Z','+00:00')) for x in cal['events']]
+          event_dates={x.date() for x in events}
+          days=set(event_dates)
+          for e in events:
+            for lag in (7,14,21,28,35,42,49,56): days.add((e-timedelta(days=lag)).date())
+          symbols=('BTCUSDT','ETHUSDT')
+          root=Path('research/local_data/msm_v01_2026_raw'); root.mkdir(parents=True,exist_ok=True)
+          base='https://data.binance.vision/data/spot/daily/klines'
+          tasks=[]
+          for s in symbols:
+            sd=root/s; sd.mkdir(exist_ok=True)
+            for d in sorted(days):
+              ds=d.isoformat(); fn=f'{s}-1m-{ds}.zip'
+              tasks.append((s,ds,f'{base}/{s}/1m/{fn}',sd/fn))
+
+          def get(task):
+            s,ds,url,path=task
+            for attempt in range(5):
+              try:
+                req=Request(url,headers={'User-Agent':'Mozilla/5.0 MSM-V01 scientific holdout'})
+                with urlopen(req,timeout=45) as r: data=r.read()
+                reqc=Request(url+'.CHECKSUM',headers={'User-Agent':'Mozilla/5.0 MSM-V01 scientific holdout'})
+                with urlopen(reqc,timeout=30) as r: chk=r.read().decode().strip().split()[0].lower()
+                got=hashlib.sha256(data).hexdigest()
+                if got!=chk: raise RuntimeError(f'checksum mismatch {s} {ds}')
+                path.write_bytes(data)
+                return {'symbol':s,'date':ds,'bytes':len(data),'sha256':got,'checksum':chk,'ok':True}
+              except Exception as exc:
+                if attempt==4: return {'symbol':s,'date':ds,'ok':False,'error':repr(exc)}
+                time.sleep(1.5*(attempt+1))
+
+          rows=[]
+          with ThreadPoolExecutor(max_workers=12) as ex:
+            futs=[ex.submit(get,t) for t in tasks]
+            for f in as_completed(futs): rows.append(f.result())
+          rows.sort(key=lambda x:(x['symbol'],x['date']))
+          failures=[x for x in rows if not x['ok']]
+          receipt={'source':'official Binance public data.binance.vision','interval':'1m','symbols':list(symbols),'unique_dates':len(days),'expected_files':len(tasks),'downloaded_ok':len(rows)-len(failures),'failure_count':len(failures),'files':rows,'mexc_accessed':False,'exchange_mutation':False,'live_trading':False}
+          Path('research/local_data/msm_v01_2026_acquisition_receipt.json').write_text(json.dumps(receipt,indent=2,sort_keys=True))
+          if failures:
+            print(json.dumps(failures[:20],indent=2)); raise SystemExit('FAIL CLOSED: required Binance archive/checksum unavailable')
+          print('ACQUISITION PASS',len(tasks),'files',len(days),'dates')
+          PY
+
+      - name: Preflight timestamps data quality and control adequacy before primary evaluation
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python - <<'PY'
+          import csv,io,json,zipfile
+          from datetime import datetime,timedelta,timezone
+          from pathlib import Path
+          cal=json.loads(Path('research/MACRO_SHOCK_MICROSTRUCTURE_LAB_V01_2026_OFFICIAL_EVENT_CALENDAR.json').read_text())
+          events=[(x['event_id'],x['family'],datetime.fromisoformat(x['release_utc'].replace('Z','+00:00'))) for x in cal['events']]
+          event_ts=[x[2] for x in events]; root=Path('research/local_data/msm_v01_2026_raw')
+          symbols=('BTCUSDT','ETHUSDT'); lags=(7,14,21,28,35,42,49,56)
+
+          def rows_for(s,dt):
+            ds=dt.date().isoformat(); p=root/s/f'{s}-1m-{ds}.zip'
+            with zipfile.ZipFile(p) as z:
+              names=z.namelist(); assert len(names)==1
+              raw=z.read(names[0]).decode()
+            out={}
+            for r in csv.reader(io.StringIO(raw)):
+              if len(r)<11: continue
+              try: ot=int(r[0])
+              except: continue
+              if ot>10**15: ot//=1000
+              out[ot]=r
+            return out
+
+          cache={}
+          def day(s,dt):
+            key=(s,dt.date().isoformat())
+            if key not in cache: cache[key]=rows_for(s,dt)
+            return cache[key]
+
+          def valid_window(s,t):
+            rr=day(s,t); start=int(t.timestamp()*1000)
+            keys=[start+i*60000 for i in range(30)]
+            if any(k not in rr for k in keys): return False
+            for i,k in enumerate(keys):
+              r=rr[k]
+              if len(r)<11: return False
+              close_t=int(r[6]); close_t=close_t//1000 if close_t>10**15 else close_t
+              if close_t != k+59999: return False
+              vals=[float(r[j]) for j in (4,7,10)]
+              if vals[0]<=0 or vals[1]<0 or vals[2]<0 or vals[2]>vals[1]+1e-8: return False
+            return True
+
+          def overlap(candidate):
+            c0,c1=candidate,candidate+timedelta(minutes=30)
+            return any(c0<e+timedelta(minutes=30) and e<c1 for e in event_ts)
+
+          cases=[]; failures=[]
+          for eid,fam,t in events:
+            for s in symbols:
+              if not valid_window(s,t): failures.append({'case':f'{eid}:{s}','reason':'event_window_data_quality'}); continue
+              controls=[]
+              for lag in lags:
+                ct=t-timedelta(days=lag)
+                if overlap(ct): continue
+                if valid_window(s,ct): controls.append(ct.isoformat())
+              if len(controls)<4: failures.append({'case':f'{eid}:{s}','reason':'control_adequacy','valid_controls':len(controls)})
+              cases.append({'event_id':eid,'family':fam,'symbol':s,'release_utc':t.isoformat(),'valid_controls':controls})
+          receipt={'status':'PASS' if not failures else 'FAIL','event_symbol_cases':len(cases),'expected_event_symbol_cases':46,'failures':failures,'cases':cases,'outcomes_evaluated':False}
+          Path('research/local_data/msm_v01_2026_preflight_receipt.json').write_text(json.dumps(receipt,indent=2,sort_keys=True))
+          if failures or len(cases)!=46: raise SystemExit('FAIL CLOSED: preflight/control adequacy failed before outcome evaluation')
+          print('PREFLIGHT PASS: 46/46 event-symbol cases; outcomes still unevaluated')
+          PY
+
+      - name: Execute frozen primary holdout exactly once
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python - <<'PY'
+          import csv,io,json,zipfile,hashlib,sys
+          from datetime import datetime
+          from pathlib import Path
+          sys.path.insert(0,'research')
+          from macro_shock_microstructure_lab_v01 import normalized_taker_flow,persistent_flow_sign,continuation_success,ClusterRecord,cluster_bootstrap_difference,classify
+
+          pre=json.loads(Path('research/local_data/msm_v01_2026_preflight_receipt.json').read_text()); assert pre['status']=='PASS'; assert pre['outcomes_evaluated'] is False
+          root=Path('research/local_data/msm_v01_2026_raw'); cache={}
+          def day(s,t):
+            key=(s,t.date().isoformat())
+            if key in cache:return cache[key]
+            p=root/s/f'{s}-1m-{t.date().isoformat()}.zip'
+            with zipfile.ZipFile(p) as z: raw=z.read(z.namelist()[0]).decode()
+            out={}
+            for r in csv.reader(io.StringIO(raw)):
+              if len(r)<11: continue
+              try: ot=int(r[0])
+              except: continue
+              if ot>10**15: ot//=1000
+              out[ot]=r
+            cache[key]=out; return out
+
+          def evaluate(s,t):
+            rr=day(s,t); start=int(t.timestamp()*1000); rows=[rr[start+i*60000] for i in range(30)]
+            def flow(a,b):
+              total=sum(float(rows[i][7]) for i in range(a,b)); buy=sum(float(rows[i][10]) for i in range(a,b)); sell=total-buy
+              return normalized_taker_flow(buy,sell)
+            f1,f2=flow(0,5),flow(5,15); ps=persistent_flow_sign(f1,f2)
+            if ps==0:return {'persistent':False,'flow1':f1,'flow2':f2}
+            c15=float(rows[14][4]); c30=float(rows[29][4]); success=continuation_success(c15,c30,ps)
+            return {'persistent':True,'flow1':f1,'flow2':f2,'persistent_sign':ps,'close15':c15,'close30':c30,'success':success}
+
+          resolved=[]; technical=[]
+          for case in pre['cases']:
+            t=datetime.fromisoformat(case['release_utc']); ev=evaluate(case['symbol'],t)
+            if not ev['persistent']: continue
+            controls=[]
+            for x in case['valid_controls']:
+              ct=datetime.fromisoformat(x); cv=evaluate(case['symbol'],ct)
+              if cv['persistent']: controls.append({'timestamp':x,**cv})
+            if not controls:
+              technical.append({'case':case,'reason':'no_persistent_flow_control_after_frozen_conditioning'})
+              continue
+            resolved.append({'event_id':case['event_id'],'family':case['family'],'symbol':case['symbol'],'release_utc':case['release_utc'],'event':ev,'persistent_controls':controls})
+
+          if technical:
+            result={'status':'TECHNICAL_OR_DATA_FAILURE','reason':'control construction cannot resolve frozen persistent-flow comparison','technical_failures':technical,'resolved_before_failure':len(resolved)}
+          else:
+            bydate={}
+            for x in resolved:
+              d=x['release_utc'][:10]; q=bydate.setdefault(d,{'e':[],'c':[]}); q['e'].append(x['event']['success']); q['c'].extend(c['success'] for c in x['persistent_controls'])
+            records=[ClusterRecord(d,tuple(v['e']),tuple(v['c'])) for d,v in sorted(bydate.items())]
+            if resolved:
+              point,low,high=cluster_bootstrap_difference(records)
+            else: point=low=high=None
+            cls=classify(data_integrity_pass=True,resolved_event_symbol_cases=len(resolved),distinct_macro_event_dates=len(bydate),point_estimate=point,ci_lower_bound=low)
+            result={'status':'HOLDOUT_COMPLETE','classification':cls.classification,'classification_reason':cls.reason,'resolved_event_symbol_cases':len(resolved),'distinct_macro_event_dates':len(bydate),'point_estimate_continuation_rate_difference':point,'bootstrap_95_ci':[low,high],'bootstrap_repetitions':5000,'resolved_cases':resolved}
+          result['guards']={'mexc_2025_09_through_2025_12_accessed':False,'exchange_mutation':False,'live_trading':False,'main_merge':False,'render_deploy':False}
+          canonical=json.dumps(result,sort_keys=True,separators=(',',':'),ensure_ascii=False).encode(); result['receipt_fingerprint']=hashlib.sha256(canonical).hexdigest()
+          Path('research/local_data/msm_v01_2026_holdout_receipt.json').write_text(json.dumps(result,indent=2,sort_keys=True))
+          print(json.dumps({k:v for k,v in result.items() if k not in ('resolved_cases','technical_failures')},indent=2,sort_keys=True))
+          PY
+
+      - name: Upload immutable holdout receipts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macro-shock-microstructure-v01-2026-holdout-${{ github.sha }}
+          path: |
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/msm_v01_freeze_fingerprints.json
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/msm_v01_2026_acquisition_receipt.json
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/msm_v01_2026_preflight_receipt.json
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/msm_v01_2026_holdout_receipt.json
+          if-no-files-found: error
