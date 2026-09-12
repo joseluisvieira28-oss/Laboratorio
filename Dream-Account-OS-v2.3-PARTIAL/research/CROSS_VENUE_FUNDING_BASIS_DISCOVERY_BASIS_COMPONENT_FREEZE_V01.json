@@ -1,0 +1,80 @@
+{
+  "schema_version": "0.1",
+  "lab_id": "CROSS_VENUE_FUNDING_BASIS_LAB_V01",
+  "phase": "DISCOVERY",
+  "freeze_id": "CROSS_VENUE_FUNDING_BASIS_DISCOVERY_BASIS_COMPONENT_FREEZE_V01",
+  "status": "FROZEN_BEFORE_BASIS_PRICE_OUTCOMES",
+  "authorization_id": "CROSS_VENUE_FUNDING_BASIS_DISCOVERY_AUTHORIZATION_V01",
+  "window": {
+    "entry_candle_open_utc": "2024-09-01T00:00:00.000Z",
+    "exit_candle_open_utc": "2025-12-31T23:00:00.000Z",
+    "exit_candle_close_utc": "2025-12-31T23:59:59.999Z",
+    "interval": "1h",
+    "assets": ["BTC", "ETH"]
+  },
+  "sources": {
+    "binance_usdm": {
+      "endpoint": "GET https://fapi.binance.com/fapi/v1/klines",
+      "symbols": ["BTCUSDT", "ETHUSDT"],
+      "authentication": "PUBLIC_NONE",
+      "entry_field": "OPEN",
+      "exit_field": "CLOSE"
+    },
+    "hyperliquid": {
+      "endpoint": "POST https://api.hyperliquid.xyz/info type=candleSnapshot",
+      "coins": ["BTC", "ETH"],
+      "authentication": "PUBLIC_NONE",
+      "entry_field": "o",
+      "exit_field": "c"
+    }
+  },
+  "sampling_rule": {
+    "entry": "Use exactly the 1h candle whose open timestamp is 2024-09-01T00:00:00.000Z on each venue and asset; use its opening contract price.",
+    "exit": "Use exactly the 1h candle whose open timestamp is 2025-12-31T23:00:00.000Z on each venue and asset; use its closing contract price.",
+    "missing_or_duplicate_boundary_candle": "FAIL_CLOSED",
+    "cross_venue_timestamp_alignment": "EXACT_UTC_CANDLE_OPEN_REQUIRED"
+  },
+  "position_normalization": {
+    "equal_base_quantity": true,
+    "quantity_formula": "q = 2 / (binance_entry_price + hyperliquid_entry_price)",
+    "reason": "This makes combined initial leg notional exactly 2.0 while preserving equal base quantity and venue symmetry.",
+    "binance_entry_notional": "q * binance_entry_price",
+    "hyperliquid_entry_notional": "q * hyperliquid_entry_price",
+    "total_initial_leg_notional": "2.0",
+    "initial_collateral_plus_reserve_fraction_each_leg": "0.75",
+    "normalized_total_immobilized_capital": "1.50"
+  },
+  "price_pnl": {
+    "binance_long": "q * (binance_exit_price - binance_entry_price)",
+    "hyperliquid_short": "q * (hyperliquid_entry_price - hyperliquid_exit_price)",
+    "cross_venue_basis_price_component": "binance_long_price_pnl + hyperliquid_short_price_pnl",
+    "return_on_immobilized_capital": "cross_venue_basis_price_component / 1.50"
+  },
+  "allowed_outputs": [
+    "boundary candle timestamps",
+    "boundary contract prices",
+    "boundary response SHA256 fingerprints",
+    "equal base quantity normalization",
+    "Binance long price PnL component",
+    "Hyperliquid short price PnL component",
+    "cross-venue basis/price PnL component",
+    "basis/price component return on normalized immobilized capital",
+    "equal-capital BTC/ETH combined basis component return"
+  ],
+  "forbidden": [
+    "slippage imputation",
+    "executable-return claim",
+    "APR/APY",
+    "Sharpe/Sortino",
+    "threshold optimization",
+    "dynamic funding chasing",
+    "reverse-orientation rescue",
+    "asset dropping",
+    "2026 market data",
+    "MEXC 2025",
+    "paper trading",
+    "live trading"
+  ],
+  "classification_boundary": "RUN02_IS_BASIS_COMPONENT_DIAGNOSTIC_ONLY. It cannot by itself produce REPLICATION_SUPPORTS_MECHANISM or REPLICATION_FAILS_MECHANISM. Full mechanism accounting still requires a compatible funding-cashflow notional path or must be classified INCONCLUSIVE.",
+  "edge_status": "UNPROVEN"
+}
