@@ -1,0 +1,75 @@
+{
+  "schema_version": "0.1",
+  "lab_id": "CROSS_VENUE_FUNDING_BASIS_LAB_V01",
+  "phase": "DISCOVERY",
+  "freeze_id": "CROSS_VENUE_FUNDING_BASIS_HL_ARCHIVE_RECOVERY_FREEZE_V01",
+  "status": "FROZEN_BEFORE_ARCHIVE_PRICE_OUTCOMES",
+  "purpose": "Recover provenance-quality Hyperliquid historical boundary price evidence after the official candleSnapshot REST endpoint proved retention-limited.",
+  "scientific_boundary": {
+    "changes_replication_window": false,
+    "changes_assets": false,
+    "changes_orientation": false,
+    "authorizes_2026_market_data": false,
+    "authorizes_mexc_2025": false,
+    "authorizes_trading": false,
+    "authorizes_exchange_mutation": false,
+    "authorizes_third_party_price_substitution": false,
+    "authorizes_slippage_imputation": false,
+    "authorizes_tuning": false
+  },
+  "official_source": {
+    "provider": "Hyperliquid",
+    "documentation": "https://hyperliquid.gitbook.io/hyperliquid-docs/historical-data",
+    "bucket": "s3://hyperliquid-archive",
+    "requester_pays": true,
+    "documented_missingness_warning": true,
+    "preferred_dataset": "market_data l2Book",
+    "path_template": "s3://hyperliquid-archive/market_data/[YYYYMMDD]/[hour]/l2Book/[coin].lz4",
+    "coins": ["BTC", "ETH"]
+  },
+  "frozen_boundaries": {
+    "entry_hour_utc": "2024-09-01T00:00:00Z",
+    "exit_hour_utc": "2025-12-31T23:00:00Z",
+    "entry_paths": [
+      "s3://hyperliquid-archive/market_data/20240901/0/l2Book/BTC.lz4",
+      "s3://hyperliquid-archive/market_data/20240901/0/l2Book/ETH.lz4"
+    ],
+    "exit_paths": [
+      "s3://hyperliquid-archive/market_data/20251231/23/l2Book/BTC.lz4",
+      "s3://hyperliquid-archive/market_data/20251231/23/l2Book/ETH.lz4"
+    ]
+  },
+  "selection_rule": {
+    "entry_price_proxy": "Use the first valid full-depth L2 snapshot timestamp at or after 2024-09-01T00:00:00Z; compute native best-bid/best-ask midpoint. Fail closed if no snapshot occurs within the first 60 seconds of the frozen entry hour.",
+    "exit_price_proxy": "Use the last valid full-depth L2 snapshot timestamp at or before 2025-12-31T23:59:59.999Z; compute native best-bid/best-ask midpoint. Fail closed if no snapshot occurs within the final 60 seconds of the frozen exit hour.",
+    "same_rule_btc_eth": true,
+    "economic_outcome_dependence": false,
+    "no_interpolation": true,
+    "no_third_party_rescue": true
+  },
+  "why_l2_midpoint": "The frozen Run02 candle source is no longer retained by the official REST API. Official historical L2 is documented by Hyperliquid and permits deterministic boundary valuation while historical executable-return claims remain blocked under G07.",
+  "allowed_outputs": [
+    "archive file presence",
+    "download byte count",
+    "raw file SHA256",
+    "snapshot count",
+    "selected snapshot timestamp",
+    "best bid",
+    "best ask",
+    "midpoint",
+    "selection distance from frozen boundary"
+  ],
+  "forbidden_outputs": [
+    "slippage imputation",
+    "executable-return claim",
+    "window changes",
+    "asset dropping",
+    "reverse rescue",
+    "2026 market data",
+    "MEXC 2025",
+    "paper trading",
+    "live trading"
+  ],
+  "decision_rule": "If all four official archive files exist and the frozen boundary-selection rules produce unique valid midpoint evidence, Run02 may be re-issued as Run02B with official archive provenance. Otherwise full mechanism replication remains REPLICATION_INCONCLUSIVE unless another official source is prospectively frozen before viewing basis outcomes.",
+  "edge_status": "UNPROVEN"
+}
