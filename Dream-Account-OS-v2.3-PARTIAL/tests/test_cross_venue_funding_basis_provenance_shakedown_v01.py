@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import sys
+import urllib.parse
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -32,6 +34,50 @@ def test_hard_boundary_ends_before_locked_2026():
 def test_frozen_scope_is_btc_eth_only():
     assert mod.BINANCE_SYMBOLS == ("BTCUSDT", "ETHUSDT")
     assert mod.HYPERLIQUID_COINS == ("BTC", "ETH")
+
+
+def test_binance_request_is_exact_public_read_only_funding_history_shape():
+    req = mod.build_binance_funding_request("BTCUSDT", mod.AUDIT_START_MS, mod.AUDIT_END_MS)
+    parsed = urllib.parse.urlsplit(req.full_url)
+    query = urllib.parse.parse_qs(parsed.query)
+    assert req.get_method() == "GET"
+    assert req.data is None
+    assert parsed.scheme == "https"
+    assert parsed.netloc == "fapi.binance.com"
+    assert parsed.path == "/fapi/v1/fundingRate"
+    assert query == {
+        "symbol": ["BTCUSDT"],
+        "startTime": [str(mod.AUDIT_START_MS)],
+        "endTime": [str(mod.AUDIT_END_MS)],
+        "limit": ["1000"],
+    }
+    header_names = {k.lower() for k, _ in req.header_items()}
+    assert "authorization" not in header_names
+    assert "cookie" not in header_names
+    assert "x-api-key" not in header_names
+
+
+def test_hyperliquid_post_is_exact_public_info_query_not_exchange_mutation():
+    req = mod.build_hyperliquid_funding_request("ETH", mod.AUDIT_START_MS, mod.AUDIT_END_MS)
+    parsed = urllib.parse.urlsplit(req.full_url)
+    payload = json.loads(req.data.decode("utf-8"))
+    assert req.get_method() == "POST"
+    assert parsed.scheme == "https"
+    assert parsed.netloc == "api.hyperliquid.xyz"
+    assert parsed.path == "/info"
+    assert parsed.query == ""
+    assert payload == {
+        "type": "fundingHistory",
+        "coin": "ETH",
+        "startTime": mod.AUDIT_START_MS,
+        "endTime": mod.AUDIT_END_MS,
+    }
+    assert set(payload) == {"type", "coin", "startTime", "endTime"}
+    assert not ({"address", "user", "order", "orders", "action", "signature", "nonce", "vaultAddress"} & set(payload))
+    header_names = {k.lower() for k, _ in req.header_items()}
+    assert "authorization" not in header_names
+    assert "cookie" not in header_names
+    assert "x-api-key" not in header_names
 
 
 def test_audit_does_not_summarize_economic_values():

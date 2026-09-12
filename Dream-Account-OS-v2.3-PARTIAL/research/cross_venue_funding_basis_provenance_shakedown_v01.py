@@ -74,23 +74,69 @@ def _request_json(req: urllib.request.Request, *, retries: int = 4) -> Any:
     raise ProvenanceFailure(f"public endpoint request failed after {retries} attempts: {last_error}")
 
 
+def build_binance_funding_request(symbol: str, start_ms: int, end_ms: int) -> urllib.request.Request:
+    """Build the only Binance request shape authorized by this provenance shakedown."""
+    _require(symbol in BINANCE_SYMBOLS, "symbol outside frozen scope")
+    _require(end_ms < LOCKED_2026_START_MS, "locked 2026 access forbidden")
+    params = urllib.parse.urlencode({
+        "symbol": symbol,
+        "startTime": start_ms,
+        "endTime": end_ms,
+        "limit": 1000,
+    })
+    req = urllib.request.Request(
+        f"{BINANCE_BASE}/fapi/v1/fundingRate?{params}",
+        headers={"User-Agent": USER_AGENT},
+        method="GET",
+    )
+    parsed = urllib.parse.urlsplit(req.full_url)
+    _require(req.get_method() == "GET", "Binance provenance request must be GET")
+    _require(parsed.scheme == "https" and parsed.netloc == "fapi.binance.com", "unexpected Binance host")
+    _require(parsed.path == "/fapi/v1/fundingRate", "unexpected Binance endpoint")
+    _require(req.data is None, "Binance provenance GET must not carry a request body")
+    _require("authorization" not in {k.lower() for k, _ in req.header_items()}, "authenticated Binance header forbidden")
+    return req
+
+
+def build_hyperliquid_funding_request(coin: str, start_ms: int, end_ms: int) -> urllib.request.Request:
+    """Build the frozen read-only Hyperliquid /info request.
+
+    Hyperliquid's public info API uses HTTP POST for queries.  POST here is transport
+    semantics only: the target is exactly /info, type is exactly fundingHistory, no
+    account/order/action fields are permitted, and no authentication material is sent.
+    """
+    _require(coin in HYPERLIQUID_COINS, "coin outside frozen scope")
+    _require(end_ms < LOCKED_2026_START_MS, "locked 2026 access forbidden")
+    payload_obj = {
+        "type": "fundingHistory",
+        "coin": coin,
+        "startTime": start_ms,
+        "endTime": end_ms,
+    }
+    _require(set(payload_obj) == {"type", "coin", "startTime", "endTime"}, "unexpected Hyperliquid payload fields")
+    _require(payload_obj["type"] == "fundingHistory", "Hyperliquid request must be fundingHistory")
+    req = urllib.request.Request(
+        HYPERLIQUID_INFO,
+        data=canonical_bytes(payload_obj),
+        headers={"Content-Type": "application/json", "User-Agent": USER_AGENT},
+        method="POST",
+    )
+    parsed = urllib.parse.urlsplit(req.full_url)
+    _require(req.get_method() == "POST", "Hyperliquid info transport must be POST")
+    _require(parsed.scheme == "https" and parsed.netloc == "api.hyperliquid.xyz", "unexpected Hyperliquid host")
+    _require(parsed.path == "/info" and not parsed.query, "unexpected Hyperliquid endpoint")
+    header_names = {k.lower() for k, _ in req.header_items()}
+    _require("authorization" not in header_names and "cookie" not in header_names and "x-api-key" not in header_names, "authenticated Hyperliquid header forbidden")
+    return req
+
+
 def fetch_binance_funding(symbol: str, start_ms: int, end_ms: int) -> list[dict[str, Any]]:
     _require(symbol in BINANCE_SYMBOLS, "symbol outside frozen scope")
     _require(end_ms < LOCKED_2026_START_MS, "locked 2026 access forbidden")
     records: list[dict[str, Any]] = []
     cursor = start_ms
     while cursor <= end_ms:
-        params = urllib.parse.urlencode({
-            "symbol": symbol,
-            "startTime": cursor,
-            "endTime": end_ms,
-            "limit": 1000,
-        })
-        req = urllib.request.Request(
-            f"{BINANCE_BASE}/fapi/v1/fundingRate?{params}",
-            headers={"User-Agent": USER_AGENT},
-            method="GET",
-        )
+        req = build_binance_funding_request(symbol, cursor, end_ms)
         batch = _request_json(req)
         _require(isinstance(batch, list), "unexpected Binance response shape")
         if not batch:
@@ -116,18 +162,7 @@ def fetch_hyperliquid_funding(coin: str, start_ms: int, end_ms: int) -> list[dic
     records: list[dict[str, Any]] = []
     cursor = start_ms
     while cursor <= end_ms:
-        payload = canonical_bytes({
-            "type": "fundingHistory",
-            "coin": coin,
-            "startTime": cursor,
-            "endTime": end_ms,
-        })
-        req = urllib.request.Request(
-            HYPERLIQUID_INFO,
-            data=payload,
-            headers={"Content-Type": "application/json", "User-Agent": USER_AGENT},
-            method="POST",
-        )
+        req = build_hyperliquid_funding_request(coin, cursor, end_ms)
         batch = _request_json(req)
         _require(isinstance(batch, list), "unexpected Hyperliquid response shape")
         if not batch:
@@ -243,8 +278,6 @@ def choose_common_replication_window(series_audits: dict[str, dict[str, Any]]) -
     month_sets = [set(series_audits[sid]["full_months_timestamp_eligible"]) for sid in sorted(expected_ids)]
     common = sorted(set.intersection(*month_sets))
     _require(common, "no common full UTC month passes timestamp-only provenance coverage")
-    # Window selection is availability-only: earliest common eligible month through the
-    # latest common eligible month not later than 2025-12. No rate value is consulted.
     return {
         "first_common_full_month": common[0],
         "last_common_full_month": common[-1],
@@ -310,7 +343,6 @@ def main() -> None:
     output = Path(os.environ.get("PREFREEZE_PROVENANCE_RECEIPT", "CROSS_VENUE_FUNDING_BASIS_PROVENANCE_SHAKEDOWN_V01_RECEIPT.json"))
     receipt = run_audit()
     output.write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    # Do not print per-series records or rate values. The CI log receives only the gate summary.
     print(json.dumps({
         "lab_id": receipt["lab_id"],
         "audit_id": receipt["audit_id"],
