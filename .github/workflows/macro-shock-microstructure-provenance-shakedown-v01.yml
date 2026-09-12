@@ -97,7 +97,7 @@ jobs:
           research = Path('research').resolve()
           sys.path.insert(0, str(research))
           from microstructure_collector_parsers_v01 import BinanceSnapshotBridge
-          from microstructure_coinbase_advanced_v01 import AdvancedTradeBook, parse_envelope
+          from microstructure_coinbase_advanced_v01 import AdvancedConnectionSequence, AdvancedTradeBook, parse_envelope
 
           auth = json.loads((research / 'MICROSTRUCTURE_PROVENANCE_SHAKEDOWN_AUTHORIZATION_V01.json').read_text(encoding='utf-8'))
           assert auth['status'] == 'AUTHORIZED_PUBLIC_READ_ONLY_PROVENANCE_SHAKEDOWN'
@@ -118,7 +118,18 @@ jobs:
               'authenticated_exchange_access_used': False,
               'mexc_accessed': False,
               'binance': {'messages': 0, 'stream_counts': {}, 'snapshots': {}, 'parse_failures': 0, 'sync': {}},
-              'coinbase_advanced': {'messages': 0, 'channel_counts': {}, 'parse_failures': 0, 'sync': {}},
+              'coinbase_advanced': {
+                  'messages': 0,
+                  'channel_counts': {},
+                  'parse_failures': 0,
+                  'connection_sequence': {
+                      'valid': True,
+                      'last_sequence_num': None,
+                      'failures': 0,
+                      'invalid_reason': None,
+                  },
+                  'sync': {},
+              },
               'errors': [],
           }
           binance_messages = []
@@ -249,24 +260,41 @@ jobs:
                       stats['binance']['parse_failures'] += 1
                       stats['binance']['sync'][symbol] = {'synchronized': False, 'error': f'{type(exc).__name__}: {exc}'}
 
+          # Validate Advanced Trade connection-envelope sequence before filtering by channel/product.
+          connection_sequence = AdvancedConnectionSequence()
+          for obj in coinbase_messages:
+              try:
+                  connection_sequence.observe(obj)
+              except Exception as exc:
+                  stats['coinbase_advanced']['connection_sequence']['failures'] += 1
+                  stats['coinbase_advanced']['connection_sequence']['valid'] = False
+                  stats['coinbase_advanced']['connection_sequence']['invalid_reason'] = f'{type(exc).__name__}: {exc}'
+                  if len(stats['errors']) < 20:
+                      stats['errors'].append(f'Coinbase connection sequence {type(exc).__name__}: {exc}')
+                  break
+          stats['coinbase_advanced']['connection_sequence']['last_sequence_num'] = connection_sequence.last_sequence_num
+          if connection_sequence.valid:
+              stats['coinbase_advanced']['connection_sequence']['valid'] = True
+
           # Offline provenance-only Advanced Trade parsing + L2 state check.
           books = {p: AdvancedTradeBook(p) for p in ('BTC-USD','ETH-USD')}
-          for obj in coinbase_messages:
-              if obj.get('channel') not in {'l2_data','market_trades','heartbeats'}:
-                  continue
-              try:
-                  env = parse_envelope(obj)
-                  if env.channel == 'l2_data':
-                      for product in env.product_ids:
-                          if product in books:
-                              books[product].apply_message(obj)
-              except Exception as exc:
-                  stats['coinbase_advanced']['parse_failures'] += 1
-                  if len(stats['errors']) < 20:
-                      stats['errors'].append(f'Coinbase parse {type(exc).__name__}: {exc}')
+          if connection_sequence.valid:
+              for obj in coinbase_messages:
+                  if obj.get('channel') not in {'l2_data','market_trades','heartbeats'}:
+                      continue
+                  try:
+                      env = parse_envelope(obj)
+                      if env.channel == 'l2_data':
+                          for product in env.product_ids:
+                              if product in books:
+                                  books[product].apply_message(obj)
+                  except Exception as exc:
+                      stats['coinbase_advanced']['parse_failures'] += 1
+                      if len(stats['errors']) < 20:
+                          stats['errors'].append(f'Coinbase parse {type(exc).__name__}: {exc}')
           for product, book in books.items():
               stats['coinbase_advanced']['sync'][product] = {
-                  'synchronized': bool(book.synchronized and book.book.valid),
+                  'synchronized': bool(connection_sequence.valid and book.synchronized and book.book.valid),
                   'last_sequence_num': book.last_sequence_num,
                   'invalid_reason': book.book.invalid_reason,
               }
@@ -279,6 +307,8 @@ jobs:
           stats['provenance_gate_result'] = 'PASS' if (
               stats['binance']['messages'] > 0
               and stats['coinbase_advanced']['messages'] > 0
+              and stats['coinbase_advanced']['connection_sequence']['valid']
+              and stats['coinbase_advanced']['connection_sequence']['failures'] == 0
               and all(v.get('synchronized') for v in stats['binance']['sync'].values())
               and all(v.get('synchronized') for v in stats['coinbase_advanced']['sync'].values())
           ) else 'PROVENANCE_GATE_FAIL'
