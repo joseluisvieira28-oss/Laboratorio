@@ -1,0 +1,122 @@
+{
+  "schema_version": "0.1",
+  "lab_id": "CROSS_VENUE_FUNDING_BASIS_LAB_V01",
+  "phase": "PRE_FREEZE",
+  "status": "AUTHORIZED_PRE_FREEZE_ONLY",
+  "authorized_at_utc": "2026-09-12",
+  "purpose": "Determine whether a low-turnover, delta-neutral cross-venue perpetual funding carry between Binance USD-M and Hyperliquid is scientifically testable with outcome-independent provenance, cash-flow accounting, execution-cost, margin, collateral-fragmentation and stress assumptions frozen before Discovery outcomes are evaluated.",
+  "candidate_status": "PROMOTED_FROM_FEASIBILITY_TO_PRE_FREEZE",
+  "edge_status": "UNPROVEN",
+  "discovery_backtest_authorized": false,
+  "paper_trading_authorized": false,
+  "live_trading_authorized": false,
+  "exchange_mutation_authorized": false,
+  "authenticated_account_data_authorized": false,
+  "merge_to_main_authorized": false,
+  "render_deploy_authorized": false,
+  "venues": {
+    "binance": {
+      "market": "USD-M perpetual futures",
+      "symbols": ["BTCUSDT", "ETHUSDT"],
+      "role_in_primary_baseline": "LONG_PERPETUAL",
+      "allowed_data": "public market data only"
+    },
+    "hyperliquid": {
+      "market": "perpetual futures",
+      "symbols": ["BTC", "ETH"],
+      "role_in_primary_baseline": "SHORT_PERPETUAL",
+      "allowed_data": "public market data only"
+    }
+  },
+  "asset_scope_frozen": ["BTC", "ETH"],
+  "primary_candidate_orientation_frozen": "LONG_BINANCE_PERP_SHORT_HYPERLIQUID_PERP",
+  "orientation_rationale": "Frozen prospectively from external mechanism research before evaluating this lab's own economic outcomes; it may not be reversed or selected post hoc to rescue the candidate.",
+  "symmetric_reverse_orientation": "DIAGNOSTIC_CONTROL_ONLY_NOT_ELIGIBLE_TO_RESCUE_PRIMARY",
+  "turnover_policy": "LOW_TURNOVER_STATIC_BASELINE_FIRST",
+  "forbidden_strategy_family": "DYNAMIC_FUNDING_CHASING_OR_THRESHOLD_OPTIMIZATION_BEFORE_PRIMARY_BASELINE_CLOSEOUT",
+  "required_pre_freeze_work": [
+    "funding_mechanism_and_interval_regime_audit",
+    "official_data_provenance_and_coverage_audit",
+    "historical_regime_transition_audit",
+    "settlement_by_settlement_cashflow_specification",
+    "venue_separated_and_consolidated_ledger_specification",
+    "USDT_USDC_collateral_treatment",
+    "fee_regime_freeze",
+    "slippage_and_fill_model_freeze_or_explicit_UNOBSERVABLE_classification",
+    "basis_PnL_specification",
+    "opportunity_cost_specification",
+    "venue_separate_margin_and_liquidation_model",
+    "stress_test_specification",
+    "deterministic_discovery_window_rule_and_holdout_lock",
+    "objective_GO_NO_GO_gates"
+  ],
+  "required_economic_ledger_components": [
+    "realized_funding_cashflows",
+    "entry_fees",
+    "exit_fees",
+    "spread_crossing",
+    "slippage",
+    "basis_PnL",
+    "hedge_mismatch",
+    "rebalancing_cost",
+    "USDT_USDC_basis_or_conversion_effect",
+    "opportunity_cost_of_collateral",
+    "venue_separate_margin_buffer",
+    "liquidation_or_forced_deleveraging_loss_if_triggered",
+    "transfer_or_bridge_cost_when_permitted_by_the_frozen_model"
+  ],
+  "accounting_rules": {
+    "funding": "cashflow_by_actual_settlement_timestamp_and_actual_rate; APR-first comparisons prohibited",
+    "margin": "Binance and Hyperliquid margin states must be modeled independently; global portfolio equity may not rescue a venue-level liquidation",
+    "collateral": "pre-funded on both venues; instantaneous cross-venue collateral transfer prohibited",
+    "maker_fills": "not guaranteed; maker assumptions may only appear as a separately labeled sensitivity unless a prospectively frozen fill model is supported by provenance-quality data",
+    "taker_fees": "conservative baseline unless a stronger outcome-independent execution model is frozen before Discovery",
+    "missing_execution_data": "must remain missing or be classified UNOBSERVABLE; fixed favorable slippage or mid-price fills may not be invented"
+  },
+  "data_governance": {
+    "official_or_primary_sources_preferred": true,
+    "raw_bytes_or_raw_records_hash_required": true,
+    "coverage_and_missingness_receipt_required": true,
+    "provider_regime_changes_must_be_versioned": true,
+    "no_cross_source_synthetic_repair_without_pre_registration": true,
+    "no_outcome_inspection_before_freeze": true,
+    "locked_2026_market_outcomes_must_not_be_used_for_hypothesis_generation_or_parameter_selection": true,
+    "MEXC_2025_locked_data_must_not_be_accessed": true
+  },
+  "forbidden_outputs_during_pre_freeze": [
+    "net_return",
+    "APR_or_APY_of_this_lab_dataset",
+    "Sharpe_or_Sortino",
+    "profit_factor",
+    "hit_rate",
+    "best_symbol",
+    "best_threshold",
+    "optimized_holding_period",
+    "optimized_leverage",
+    "optimized_entry_or_exit",
+    "SURVIVES_or_NO_EDGE_classification",
+    "trading_recommendation"
+  ],
+  "allowed_outputs_during_pre_freeze": [
+    "source_inventory",
+    "coverage_statistics_without_economic_outcomes",
+    "timestamp_and_interval_regime_maps",
+    "schema_validation",
+    "missingness_and_duplicate_receipts",
+    "cashflow_equation_specification",
+    "fee_and_margin_rule tables",
+    "provenance fingerprints",
+    "static test fixtures",
+    "GO_NO_GO readiness decision based only on provenance and model identifiability"
+  ],
+  "stop_conditions": [
+    "official funding settlement history cannot be reconstructed for both venues",
+    "funding timestamps cannot be normalized without ambiguity",
+    "material fee or margin regimes cannot be dated prospectively from primary evidence",
+    "basis or collateral effects required by the contract cannot be represented",
+    "execution-quality data are required for the primary claim but cannot be observed and no conservative non-execution claim remains scientifically meaningful",
+    "any step would require locked 2026 outcomes, MEXC locked data, authenticated account data, exchange mutation, live orders or paper trading"
+  ],
+  "promotion_gate_to_full_freeze": "All pre-freeze provenance, accounting, cost, margin, collateral, execution-data and discovery-partition rules must be explicit, machine-checkable where possible, and frozen before any economic outcome from the lab dataset is evaluated.",
+  "authority_boundary": "This file authorizes specification, provenance and fail-closed infrastructure only. It does not authorize Discovery execution or trading."
+}
