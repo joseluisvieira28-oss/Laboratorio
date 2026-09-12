@@ -7,7 +7,7 @@ from statistics import mean
 import sys
 from research.phase_b_h04_binance_daily_manifest_v01 import EXPECTED_ARCHIVE_COUNT, FREEZE_FINGERPRINT, build_h04_manifest_receipt, expected_h04_daily_objects
 from research.phase_b_h04_binance_offline_adapter_v01 import TIMEFRAME_MS, TIMESTAMP_UNIT_AMENDMENT_FINGERPRINT, adapt_h04_binance_daily_archive_bytes
-from research.phase_b_h04_research_evaluator_v01 import evaluate_h04_universe, reprice_fixed
+from research.phase_b_h04_research_evaluator_v01 import _flow_pair, evaluate_h04_universe, reprice_fixed
 from research.phase_b_h04_stage_classifier_v01 import classify, decision_as_dict
 from research.phase_b_research_evaluator_v01 import day_block_bootstrap_expectancy
 from research.phase_b_signal_formation_v01 import CostAssumptions, ResearchParameters
@@ -16,8 +16,10 @@ HYPOTHESIS_ID="H04_POSITIVE_TAKER_FLOW_PERSISTENCE"
 EXPECTED_AUTHORIZATION_FINGERPRINT="c091bdf34287dd5286fd8a55301cd6984907c5b3b431a92e140ceb7fd6e0b7ab"
 EXPECTED_MANIFEST_FINGERPRINT="b4485d5d0acffe0e6d1607a300cc41fec11b59373a160e5271afd61a4e89719f"
 EXPECTED_TIMESTAMP_UNIT_AMENDMENT_FINGERPRINT="efb5007ac77ff3d87e08f0be9012aba9deaff825557fbc489f802e3948d7602d"
+EXPECTED_FLOW_SCOPE_AMENDMENT_FINGERPRINT="e9c4dd3bb5266122bbad048e01985495008c8374831cbc38b7e0d30fe204f559"
 DEFAULT_AUTHORIZATION_PATH=Path(__file__).with_name("PHASE_B_H04_BINANCE_DATA_ACCESS_AUTHORIZATION_V0.1.json")
 TIMESTAMP_UNIT_AMENDMENT_PATH=Path(__file__).with_name("PHASE_B_H04_BINANCE_TIMESTAMP_UNIT_ADAPTER_AMENDMENT_V0.1.json")
+FLOW_SCOPE_AMENDMENT_PATH=Path(__file__).with_name("PHASE_B_H04_FLOW_EVALUATION_SCOPE_AMENDMENT_V0.1.json")
 BASE_COSTS=CostAssumptions(name="BASE_SENSITIVITY",fee_pct_each_side=0.05,spread_pct=0.05,slippage_pct_each_side=0.025)
 STRESS_COSTS=CostAssumptions(name="STRESS",fee_pct_each_side=0.05,spread_pct=0.10,slippage_pct_each_side=0.05)
 PARAMETERS=ResearchParameters()
@@ -50,12 +52,27 @@ def _load_timestamp_unit_amendment(path=TIMESTAMP_UNIT_AMENDMENT_PATH):
     if rerun.get('mexc_2025_09_through_2025_12_locked') is not True or rerun.get('holdout_2026_locked') is not True: raise PermissionError('H04 protected-data lock drift')
     return raw
 
+def _load_flow_scope_amendment(path=FLOW_SCOPE_AMENDMENT_PATH):
+    raw=json.loads(path.read_text()); supplied=raw.get('fingerprint'); unsigned=dict(raw); unsigned.pop('fingerprint',None)
+    if supplied!=EXPECTED_FLOW_SCOPE_AMENDMENT_FINGERPRINT or _hash(unsigned)!=supplied: raise PermissionError('H04 flow-scope amendment fingerprint mismatch')
+    if raw.get('status')!='FROZEN_PRE_OUTCOME_TECHNICAL_SCOPE_CORRECTION': raise PermissionError('H04 flow-scope amendment status mismatch')
+    trigger=raw.get('trigger') or {}
+    if trigger.get('outcomes_evaluated') is not False or trigger.get('classification_produced') is not False: raise PermissionError('H04 flow-scope amendment was not frozen pre-outcome')
+    correction=raw.get('technical_correction') or {}
+    for key in ('market_values_changed','flow_formula_changed','flow_threshold_changed','geometry_changed','session_gate_changed','management_changed','costs_changed','decision_policy_changed','zero_volume_imputation'):
+        if correction.get(key) is not False: raise PermissionError(f'H04 flow-scope scientific drift: {key}')
+    if correction.get('zero_volume_on_required_flow_bar')!='FAIL_CLOSED_TECHNICAL_FAILURE': raise PermissionError('H04 zero-volume fail-closed drift')
+    rerun=raw.get('rerun_policy') or {}
+    if rerun.get('same_frozen_h04_rules') is not True or rerun.get('same_authorized_binance_window') is not True or rerun.get('same_symbols') is not True or rerun.get('no_parameter_edits') is not True: raise PermissionError('H04 flow-scope rerun-policy drift')
+    if rerun.get('mexc_2025_09_through_2025_12_locked') is not True or rerun.get('holdout_2026_locked') is not True: raise PermissionError('H04 flow-scope protected-data lock drift')
+    return raw
+
 def _mechanism_bootstrap(base_records,bars_by_symbol,reps=5000,seed=230911,confidence=.95):
-    flow={s:{b.candle.open_time:b.flow_imbalance for b in bars} for s,bars in bars_by_symbol.items()}
+    bar_maps={s:{b.candle.open_time:b for b in bars} for s,bars in bars_by_symbol.items()}; flow_cache={}
     byday={}
     for r in base_records:
         day=datetime.fromtimestamp(r.signal.entry_open_time/1000,tz=timezone.utc).date().isoformat()
-        persistent=flow[r.symbol][r.signal.breakout_open_time]>0 and flow[r.symbol][r.signal.retest_open_time]>0
+        breakout_flow,retest_flow=_flow_pair(bar_maps,flow_cache,r.symbol,r.signal); persistent=breakout_flow>0 and retest_flow>0
         byday.setdefault(day,[]).append((persistent,bool(r.outcome.tp1_reached)))
     days=sorted(byday)
     def diff(rows):
@@ -75,7 +92,7 @@ def _mechanism_bootstrap(base_records,bars_by_symbol,reps=5000,seed=230911,confi
     return {'method':'UTC_CALENDAR_DAY_BLOCK_BOOTSTRAP_OF_TP1_RATE_DIFFERENCE','repetitions':reps,'valid_repetitions':len(draws),'sample_days':len(days),'seed':seed,'confidence':confidence,'point_estimate':point,'lower':q(a),'upper':q(1-a)}
 
 def run_h04(raw_root:Path, output_path:Path, authorization_path:Path=DEFAULT_AUTHORIZATION_PATH):
-    auth=_load_auth(authorization_path); amendment=_load_timestamp_unit_amendment(); manifest=build_h04_manifest_receipt()
+    auth=_load_auth(authorization_path); amendment=_load_timestamp_unit_amendment(); flow_scope_amendment=_load_flow_scope_amendment(); manifest=build_h04_manifest_receipt()
     if manifest['fingerprint']!=EXPECTED_MANIFEST_FINGERPRINT: raise PermissionError('manifest fingerprint drift')
     objs=expected_h04_daily_objects(); missing=[]
     for it in objs:
@@ -98,7 +115,7 @@ def run_h04(raw_root:Path, output_path:Path, authorization_path:Path=DEFAULT_AUT
     bootstrap=asdict(day_block_bootstrap_expectancy(records,repetitions=5000,seed=230911,confidence=0.95))
     stress=reprice_fixed(records,STRESS_COSTS,min_net_rr=2.0); mech_boot=_mechanism_bootstrap(base_records,bars)
     decision=classify(metrics,stress,bootstrap,mechanism,mech_boot,minimum=100)
-    body={'document_type':'PHASE_B_H04_BINANCE_DISCOVERY_RECEIPT','version':'0.1','status':'H04_DISCOVERY_COMPLETE','hypothesis_id':HYPOTHESIS_ID,'source':'OFFICIAL_BINANCE_PUBLIC_DATA_ONLY','market_type':'SPOT','timeframe':'15m','window_start_utc_inclusive':'2023-02-01T00:00:00.000Z','window_end_utc_exclusive':'2025-09-01T00:00:00.000Z','symbols':auth['symbols'],'authorization_fingerprint':auth['fingerprint'],'h04_freeze_fingerprint':FREEZE_FINGERPRINT,'manifest_fingerprint':manifest['fingerprint'],'timestamp_unit_adapter_amendment_fingerprint':amendment['fingerprint'],'archive_set_fingerprint':archive_set,'integrity':integrity,'base_metrics':asdict(metrics),'mechanism_metrics':asdict(mechanism),'mechanism_bootstrap':mech_boot,'bootstrap':bootstrap,'fixed_cohort_stress':asdict(stress),'decision':decision_as_dict(decision),'diagnostics':diagnostics,'mexc_validation_2025_09_through_2025_12_accessed':False,'holdout_2026_accessed':False,'exchange_mutation_performed':False,'live_trading_performed':False}
+    body={'document_type':'PHASE_B_H04_BINANCE_DISCOVERY_RECEIPT','version':'0.1','status':'H04_DISCOVERY_COMPLETE','hypothesis_id':HYPOTHESIS_ID,'source':'OFFICIAL_BINANCE_PUBLIC_DATA_ONLY','market_type':'SPOT','timeframe':'15m','window_start_utc_inclusive':'2023-02-01T00:00:00.000Z','window_end_utc_exclusive':'2025-09-01T00:00:00.000Z','symbols':auth['symbols'],'authorization_fingerprint':auth['fingerprint'],'h04_freeze_fingerprint':FREEZE_FINGERPRINT,'manifest_fingerprint':manifest['fingerprint'],'timestamp_unit_adapter_amendment_fingerprint':amendment['fingerprint'],'flow_evaluation_scope_amendment_fingerprint':flow_scope_amendment['fingerprint'],'archive_set_fingerprint':archive_set,'integrity':integrity,'base_metrics':asdict(metrics),'mechanism_metrics':asdict(mechanism),'mechanism_bootstrap':mech_boot,'bootstrap':bootstrap,'fixed_cohort_stress':asdict(stress),'decision':decision_as_dict(decision),'diagnostics':diagnostics,'mexc_validation_2025_09_through_2025_12_accessed':False,'holdout_2026_accessed':False,'exchange_mutation_performed':False,'live_trading_performed':False}
     return _write(output_path,body)
 
 def main(argv=None):
