@@ -1,0 +1,95 @@
+{
+  "schema_version": "0.1",
+  "lab_id": "CROSS_VENUE_FUNDING_BASIS_LAB_V01",
+  "phase": "DISCOVERY",
+  "contract_id": "CROSS_VENUE_FUNDING_BASIS_DISCOVERY_CONTRACT_V01",
+  "status": "FROZEN_BEFORE_DISCOVERY_OUTCOMES",
+  "authorization_id": "CROSS_VENUE_FUNDING_BASIS_DISCOVERY_AUTHORIZATION_V01",
+  "window": {
+    "start_utc": "2024-09-01T00:00:00.000Z",
+    "end_utc": "2025-12-31T23:59:59.999Z",
+    "months": 16,
+    "assets": ["BTC", "ETH"],
+    "same_window_for_both_assets": true
+  },
+  "primary_orientation": "LONG_BINANCE_SHORT_HYPERLIQUID",
+  "cohort_policy": {
+    "assets": ["BTC", "ETH"],
+    "cross_sectional_selection": false,
+    "primary_combined_weighting": "EQUAL_DEPLOYED_CAPITAL_50_50",
+    "one_asset_cannot_be_dropped_after_outcomes": true
+  },
+  "run_01_rate_carry_screen": {
+    "classification": "DIAGNOSTIC_ONLY_NOT_FULL_MECHANISM_REPLICATION",
+    "purpose": "Measure the realized funding component under a constant-notional normalization after frozen entry/exit taker fees and DGS3MO opportunity cost, before historical basis-price provenance is introduced.",
+    "normalization": {
+      "binance_leg_notional": "1.0 USD_EQUIVALENT_CONSTANT_NOTIONAL",
+      "hyperliquid_leg_notional": "1.0 USD_EQUIVALENT_CONSTANT_NOTIONAL",
+      "equal_normalized_leg_notional": true,
+      "binance_initial_collateral_plus_reserve": "0.75",
+      "hyperliquid_initial_collateral_plus_reserve": "0.75",
+      "total_immobilized_capital": "1.50"
+    },
+    "funding_cashflow": {
+      "binance_long": "NEGATIVE_SUM_OF_REALIZED_BINANCE_SETTLEMENT_FUNDING_RATES_TIMES_UNIT_NOTIONAL",
+      "hyperliquid_short": "POSITIVE_SUM_OF_REALIZED_HYPERLIQUID_HOURLY_FUNDING_RATES_TIMES_UNIT_NOTIONAL",
+      "gross_primary": "HYPERLIQUID_SHORT_FUNDING_PLUS_BINANCE_LONG_FUNDING",
+      "annualization_before_cashflow_accounting": false
+    },
+    "fees": {
+      "binance_taker_rate": "0.00050",
+      "hyperliquid_taker_rate": "0.00045",
+      "charged_events": ["ENTRY_BINANCE", "EXIT_BINANCE", "ENTRY_HYPERLIQUID", "EXIT_HYPERLIQUID"],
+      "normalized_total_round_trip_fee": "0.00190",
+      "discounts": false,
+      "maker_rebates": false
+    },
+    "opportunity_cost": {
+      "series": "DGS3MO",
+      "day_count": "ACT_365",
+      "capital_base": "1.50_NORMALIZED_IMMOBILIZED_CAPITAL",
+      "same_day_observation_policy": "USE_LATEST_DATED_OBSERVATION_STRICTLY_BEFORE_EACH_ACCRUAL_DATE",
+      "weekends_holidays": "CARRY_FORWARD_LATEST_PRIOR_OBSERVATION",
+      "missing_prior_observation": "FAIL_CLOSED"
+    },
+    "allowed_outputs": [
+      "settlement counts",
+      "cumulative Binance funding component",
+      "cumulative Hyperliquid funding component",
+      "gross primary funding carry",
+      "frozen fee charge",
+      "opportunity cost",
+      "net normalized rate-carry screen",
+      "net screen return on normalized immobilized capital",
+      "equal-capital BTC/ETH combined screen"
+    ],
+    "forbidden_outputs": ["APR", "APY", "Sharpe", "Sortino", "optimized thresholds", "economic edge confirmation"],
+    "screen_label_rule": "RATE_CARRY_SCREEN_POSITIVE_BOTH_ASSETS only if BTC and ETH both have net normalized rate-carry screen > 0 after frozen fees and opportunity cost; otherwise RATE_CARRY_SCREEN_NOT_POSITIVE_BOTH_ASSETS.",
+    "screen_label_cannot_close_full_replication": true
+  },
+  "full_mechanism_replication": {
+    "status_before_run01": "PENDING_HISTORICAL_PRICE_BASIS_PROVENANCE",
+    "must_include": ["REALIZED_FUNDING", "CROSS_VENUE_BASIS_PRICE_PNL", "FROZEN_FEES", "DGS3MO_OPPORTUNITY_COST", "VENUE_SEPARATE_CAPITAL_DIAGNOSTICS"],
+    "execution_claim": "BLOCKED_G07_UNOBSERVABLE",
+    "slippage": "NOT_IMPUTED",
+    "historical_liquidation_exactness": "BLOCKED_WITHOUT_DATE_MATCHED_MARGIN_PROVENANCE",
+    "classification_labels": ["REPLICATION_SUPPORTS_MECHANISM", "REPLICATION_FAILS_MECHANISM", "REPLICATION_INCONCLUSIVE"],
+    "support_rule": "REPLICATION_SUPPORTS_MECHANISM requires BTC net full-mechanism return > 0, ETH net full-mechanism return > 0, and equal-deployed-capital 50/50 combined net full-mechanism return > 0 under the frozen primary orientation. No asset may be removed after outcomes.",
+    "fail_rule": "REPLICATION_FAILS_MECHANISM if complete provenance-quality full-mechanism accounting is available and the support rule is not met.",
+    "inconclusive_rule": "REPLICATION_INCONCLUSIVE if required basis/reference-price or capital-path provenance is unavailable or materially incomplete without permitted deterministic reconstruction."
+  },
+  "reverse_orientation": {
+    "allowed": "DIAGNOSTIC_ONLY_AFTER_PRIMARY_CLOSEOUT",
+    "cannot_rescue_primary": true
+  },
+  "locked_boundaries": {
+    "2026_market_data": true,
+    "MEXC_2025": true,
+    "paper_trading": true,
+    "live_trading": true,
+    "exchange_mutation": true,
+    "outcome_driven_tuning": true,
+    "opportunistic_window_extension": true
+  },
+  "edge_status": "UNPROVEN"
+}
