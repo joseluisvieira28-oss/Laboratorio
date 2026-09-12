@@ -1,0 +1,61 @@
+{
+  "schema_version": "0.3",
+  "lab_id": "CROSS_VENUE_FUNDING_BASIS_LAB_V01",
+  "amendment_id": "CROSS_VENUE_FUNDING_BASIS_SLOT_DIAGNOSTIC_V03_AMENDMENT",
+  "status": "AUTHORIZED_DIAGNOSTIC_ONLY",
+  "purpose": "Distinguish harmless timestamp jitter from genuinely missing scheduled funding records using timestamp-only nearest-slot occupancy.",
+  "scientific_boundary": {
+    "changes_v01_gate": false,
+    "authorizes_discovery": false,
+    "authorizes_economic_outcomes": false,
+    "authorizes_2026_access": false,
+    "authorizes_mexc_access": false,
+    "authorizes_authenticated_account_data": false,
+    "authorizes_exchange_mutation": false,
+    "authorizes_trading": false
+  },
+  "frozen_scope": {
+    "venues": ["BINANCE_USDM", "HYPERLIQUID"],
+    "assets": ["BTC", "ETH"],
+    "audit_start_utc": "2023-01-01T00:00:00Z",
+    "audit_end_utc": "2025-12-31T23:59:59.999Z",
+    "locked_2026_start_utc": "2026-01-01T00:00:00Z"
+  },
+  "slot_rule": {
+    "binance_btc_eth_cadence_ms": 28800000,
+    "hyperliquid_btc_eth_cadence_ms": 3600000,
+    "mapping": "NEAREST_SCHEDULED_SLOT",
+    "ambiguity": "EXACT_HALF_CADENCE_FAILS",
+    "month_complete_only_if": [
+      "EXPECTED_SLOT_COUNT_EQUALS_RAW_RECORD_COUNT",
+      "ZERO_MISSING_EXPECTED_SLOTS",
+      "ZERO_SLOT_COLLISIONS",
+      "ZERO_BOUNDARY_MAPPED_OUT_RECORDS",
+      "ZERO_AMBIGUOUS_HALF_CADENCE_MAPPINGS"
+    ],
+    "economic_values_used_for_eligibility": false,
+    "profitability_used_for_eligibility": false
+  },
+  "permitted_outputs": [
+    "timestamp counts",
+    "scheduled-slot counts",
+    "missing-slot counts",
+    "collision counts",
+    "timestamp-to-slot offsets",
+    "complete full UTC months",
+    "common complete full UTC months",
+    "timestamp-only SHA256 fingerprints"
+  ],
+  "forbidden_outputs": [
+    "funding-rate summaries",
+    "carry",
+    "APR/APY",
+    "PnL",
+    "Sharpe/Sortino",
+    "signals",
+    "rankings",
+    "optimized thresholds",
+    "economic SURVIVES/NO_EDGE classification"
+  ],
+  "decision_policy": "V0.3 may diagnose whether a scientifically defensible slot-based V0.1 amendment is possible. It cannot itself change V0.1 or authorize Discovery."
+}
