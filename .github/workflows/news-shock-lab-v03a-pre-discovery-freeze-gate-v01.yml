@@ -1,0 +1,65 @@
+name: News Shock Lab V0.3A Pre-Discovery Freeze Gate V0.1
+
+on:
+  push:
+    branches:
+      - dream-account-phase-b-signal-research-v0.1
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/NEWS_SHOCK_LAB_V03A_FINAL_CONSENSUS_PROVENANCE_FREEZE_V0.1.json'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/NEWS_SHOCK_LAB_V03A_PRE_DISCOVERY_SIGNAL_STATISTICAL_FREEZE_V0.1.json'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/news_shock_lab_v03a_pre_discovery_gate_v01.py'
+      - '.github/workflows/news-shock-lab-v03a-pre-discovery-freeze-gate-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  news-shock-v03a-pre-discovery-freeze-gate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Compile pre-discovery gate
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python -m compileall -q research/news_shock_lab_v03a_pre_discovery_gate_v01.py
+
+      - name: Validate final provenance and pre-discovery freeze without market outcomes
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          mkdir -p research/local_data/news_v03a_pre_discovery_gate_v01
+          python -m research.news_shock_lab_v03a_pre_discovery_gate_v01 \
+            research/local_data/news_v03a_pre_discovery_gate_v01/prefreeze_gate_receipt.json
+
+      - name: Assert fail-closed gate receipt
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path('research/local_data/news_v03a_pre_discovery_gate_v01/prefreeze_gate_receipt.json')
+          r = json.loads(p.read_text())
+          assert r['status'] == 'PRE_DISCOVERY_FREEZE_GATE_PASS'
+          assert r['final_provenance_freeze_fingerprint'] == 'dbf8e972076fe98e90a6ed45dac5a091a557e2e24f6391ee790b6de2af49c0e4'
+          assert r['pre_discovery_freeze_fingerprint'] == '945924528dde46a7e596ac77cec32e8deeff62adb42859f7e52abf63b6d5a37f'
+          assert r['market_outcomes_accessed'] is False
+          assert r['crypto_returns_computed'] is False
+          assert r['profitability_computed'] is False
+          assert r['holdout_2026_accessed'] is False
+          assert r['mexc_2025_09_through_2025_12_accessed'] is False
+          assert r['discovery_market_data_access_authorized_by_this_gate'] is False
+          assert r['next_required_authority'] == 'SEPARATE_DISCOVERY_DATA_ACCESS_AUTHORIZATION'
+          print('NEWS SHOCK V03A PRE-DISCOVERY FREEZE GATE PASS', r['fingerprint'])
+          PY
+
+      - name: Upload pre-discovery freeze gate receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: news-shock-v03a-pre-discovery-freeze-gate-${{ github.sha }}
+          path: Dream-Account-OS-v2.3-PARTIAL/research/local_data/news_v03a_pre_discovery_gate_v01/prefreeze_gate_receipt.json
+          if-no-files-found: error
+          retention-days: 30
