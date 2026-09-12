@@ -23,6 +23,7 @@ LAB_ID = "CROSS_VENUE_FUNDING_BASIS_LAB_V01"
 PHASE = "PRE_FREEZE"
 PASS_LABEL = "PREFREEZE_INVARIANTS_PASS_DISCOVERY_BLOCKED"
 FAIL_LABEL = "PREFREEZE_INVARIANTS_FAIL"
+AUTHORITY_PRIMARY_ORIENTATION = "LONG_BINANCE_PERP_SHORT_HYPERLIQUID_PERP"
 PRIMARY_ORIENTATION = "LONG_BINANCE_SHORT_HYPERLIQUID"
 FROZEN_ASSETS = ("BTC", "ETH")
 LOCKED_CALENDAR_YEAR = 2026
@@ -159,7 +160,7 @@ def validate_authority(authority: Mapping[str, Any]) -> None:
     ):
         _require(authority.get(field) is False, f"{field} must remain false")
     _require(tuple(authority.get("asset_scope_frozen", ())) == FROZEN_ASSETS, "asset scope drift")
-    _require(authority.get("primary_candidate_orientation_frozen") == PRIMARY_ORIENTATION, "orientation drift")
+    _require(authority.get("primary_candidate_orientation_frozen") == AUTHORITY_PRIMARY_ORIENTATION, "orientation drift")
     governance = authority.get("data_governance", {})
     _require(governance.get("locked_2026_market_outcomes_must_not_be_used_for_hypothesis_generation_or_parameter_selection") is True, "2026 lock missing")
     _require(governance.get("MEXC_2025_locked_data_must_not_be_accessed") is True, "MEXC lock missing")
