@@ -1,0 +1,64 @@
+{
+  "schema_version": "0.1",
+  "lab_id": "CROSS_VENUE_FUNDING_BASIS_LAB_V01",
+  "probe_id": "HYPERLIQUID_ASSET_CTX_PROVENANCE_PROBE_PLAN_V043",
+  "status": "PRE_REGISTERED_NOT_EXECUTED",
+  "source": "s3://hyperliquid-archive/asset_ctxs/{YYYYMMDD}.csv.lz4",
+  "requester_pays": true,
+  "economic_outcomes_authorized": false,
+  "sample_stage_fixed_dates": [
+    "2023-09-01",
+    "2023-09-16",
+    "2023-10-01",
+    "2024-08-15",
+    "2025-09-18",
+    "2025-12-31"
+  ],
+  "sample_stage_purpose": [
+    "verify object availability",
+    "verify raw compressed SHA-256",
+    "verify CSV schema contains time coin mark_px oracle_px and mid_px",
+    "verify BTC and ETH row presence",
+    "measure distinct-minute timestamp coverage",
+    "measure exact duplicate timestamps",
+    "count zero mark_px rows as a missing-sentinel diagnostic without outputting nonzero price values"
+  ],
+  "full_stage_rule": "Only after sample-stage schema validation, audit every available UTC day needed to cover the provisional replication calendar. Final month eligibility requires full timestamp coverage for both BTC and ETH under a deterministic minute rule; object existence alone is insufficient.",
+  "allowed_outputs": [
+    "object_path",
+    "compressed_sha256",
+    "schema_columns",
+    "required_columns_present",
+    "BTC_row_count",
+    "ETH_row_count",
+    "BTC_distinct_minute_count",
+    "ETH_distinct_minute_count",
+    "duplicate_timestamp_counts",
+    "mark_px_zero_sentinel_counts",
+    "first_timestamp",
+    "last_timestamp",
+    "date_coverage_status"
+  ],
+  "forbidden_outputs": [
+    "raw mark_px",
+    "raw mid_px",
+    "raw oracle_px",
+    "price returns",
+    "basis",
+    "funding values",
+    "carry",
+    "APR",
+    "APY",
+    "PnL",
+    "Sharpe",
+    "signals",
+    "rankings"
+  ],
+  "scientific_boundary": {
+    "discovery_authorized": false,
+    "2026_access_authorized": false,
+    "mexc_access_authorized": false,
+    "exchange_mutation_authorized": false,
+    "trading_authorized": false
+  }
+}

@@ -1,0 +1,88 @@
+name: Cross-Venue Funding Basis Provenance Regime V0.4.2 Amendment 01
+
+on:
+  push:
+    branches:
+      - dream-account-phase-b-signal-research-v0.1
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/CROSS_VENUE_FUNDING_BASIS_PROVENANCE_REGIME_V042_AMENDMENT01.json'
+      - '.github/workflows/cross-venue-funding-basis-provenance-regime-v042-amend01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  provenance-regime-v042-amend01:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Verify Amendment 01 is assertion-only
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          a = json.loads(Path('research/CROSS_VENUE_FUNDING_BASIS_PROVENANCE_REGIME_V042_AMENDMENT01.json').read_text())
+          assert a['economic_outcomes_inspected'] is False
+          assert a['correction']['runner_logic_changed'] is False
+          assert a['correction']['source_logic_changed'] is False
+          assert a['correction']['coverage_rule_changed'] is False
+          assert a['correction']['calendar_selection_rule_changed'] is False
+          assert a['correction']['economic_parameter_changed'] is False
+          assert a['correction']['assertion_only'] is True
+          for k, v in a['scientific_boundary'].items():
+              assert v is False, k
+          print('PASS: Amendment 01 is mechanical assertion correction only')
+          PY
+
+      - name: Run unchanged V0.4.2 diagnostic
+        env:
+          PREFREEZE_PROVENANCE_V042_RECEIPT: CROSS_VENUE_FUNDING_BASIS_PROVENANCE_REGIME_V042_AMEND01_RECEIPT.json
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python research/cross_venue_funding_basis_provenance_regime_v042.py
+
+      - name: Assert corrected provenance scope
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r = json.loads(Path('CROSS_VENUE_FUNDING_BASIS_PROVENANCE_REGIME_V042_AMEND01_RECEIPT.json').read_text())
+          expected_excluded = [
+              '2023-01','2023-02','2023-03','2023-04','2023-05','2023-06','2023-07','2023-08','2024-08'
+          ]
+          assert r['status'] == 'PASS'
+          assert r['common_eligible_month_count'] == 27
+          assert r['common_eligible_months'][0] == '2023-09'
+          assert r['common_eligible_months'][-1] == '2025-12'
+          assert r['provenance_excluded_months'] == expected_excluded
+          assert '2024-08' not in r['common_eligible_months']
+          assert r['binance_historical_interval_metadata']['BTCUSDT']['observed_values_hours'] == [8]
+          assert r['binance_historical_interval_metadata']['ETHUSDT']['observed_values_hours'] == [8]
+          for k in ('locked_2026_accessed','mexc_accessed','authenticated_account_data_used','exchange_mutation_used',
+                    'funding_rate_values_summarized','economic_fields_summarized','carry_computed','apr_apy_computed',
+                    'pnl_computed','signals_computed','discovery_authorized','trading_authorized'):
+              assert r[k] is False, k
+          print('COMMON_MONTHS=27')
+          print('FIRST=2023-09')
+          print('LAST=2025-12')
+          print('INTERNAL_GAP=2024-08')
+          print('PASS: corrected V0.4.2 provenance scope')
+          PY
+
+      - name: Upload Amendment 01 receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cross-venue-funding-basis-provenance-regime-v042-amend01-receipt
+          path: Dream-Account-OS-v2.3-PARTIAL/CROSS_VENUE_FUNDING_BASIS_PROVENANCE_REGIME_V042_AMEND01_RECEIPT.json
+          if-no-files-found: warn
+          retention-days: 30

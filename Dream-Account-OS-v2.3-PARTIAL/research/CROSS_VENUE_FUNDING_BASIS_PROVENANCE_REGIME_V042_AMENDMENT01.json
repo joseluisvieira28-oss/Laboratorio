@@ -1,0 +1,48 @@
+{
+  "schema_version": "0.1",
+  "lab_id": "CROSS_VENUE_FUNDING_BASIS_LAB_V01",
+  "amendment_id": "CROSS_VENUE_FUNDING_BASIS_PROVENANCE_REGIME_V042_AMENDMENT01",
+  "status": "MECHANICAL_ASSERTION_CORRECTION_NO_ECONOMIC_OUTCOME_CHANGE",
+  "parent_commit": "fdcf88721804dce5bb485e0f1cf27365764bda2f",
+  "failed_run_id": 34724931319,
+  "failed_job_id": 103637298006,
+  "economic_outcomes_inspected": false,
+  "diagnostic_execution_result": {
+    "runner_status": "PASS",
+    "common_month_count": 27,
+    "first_common_month": "2023-09",
+    "last_common_month": "2025-12",
+    "actual_provenance_excluded_months": [
+      "2023-01", "2023-02", "2023-03", "2023-04",
+      "2023-05", "2023-06", "2023-07", "2023-08", "2024-08"
+    ]
+  },
+  "failure_cause": "The V0.4.2 workflow assertion incorrectly expected provenance_excluded_months == ['2024-08']. The runner intentionally audits from 2023-01, so 2023-01 through 2023-08 are also correctly excluded before the earliest common full month 2023-09. The 27-month common calendar and the 2024-08 internal gap are unchanged.",
+  "correction": {
+    "runner_logic_changed": false,
+    "source_logic_changed": false,
+    "coverage_rule_changed": false,
+    "calendar_selection_rule_changed": false,
+    "economic_parameter_changed": false,
+    "assertion_only": true,
+    "artifact_upload_if_failure": true
+  },
+  "corrected_assertions": {
+    "common_month_count": 27,
+    "first_common_month": "2023-09",
+    "last_common_month": "2025-12",
+    "excluded_months": [
+      "2023-01", "2023-02", "2023-03", "2023-04",
+      "2023-05", "2023-06", "2023-07", "2023-08", "2024-08"
+    ],
+    "internal_gap_month": "2024-08"
+  },
+  "scientific_boundary": {
+    "authorizes_discovery": false,
+    "authorizes_economic_outcomes": false,
+    "authorizes_2026": false,
+    "authorizes_mexc": false,
+    "authorizes_exchange_mutation": false,
+    "authorizes_trading": false
+  }
+}
