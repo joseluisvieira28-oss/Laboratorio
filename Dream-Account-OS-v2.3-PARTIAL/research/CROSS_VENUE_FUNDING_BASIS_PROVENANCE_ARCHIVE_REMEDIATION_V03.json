@@ -1,0 +1,97 @@
+{
+  "schema_version": "0.1",
+  "lab_id": "CROSS_VENUE_FUNDING_BASIS_LAB_V01",
+  "amendment_id": "CROSS_VENUE_FUNDING_BASIS_PROVENANCE_ARCHIVE_REMEDIATION_V03",
+  "status": "AUTHORIZED_PROVENANCE_REMEDIATION_DIAGNOSTIC_ONLY",
+  "trigger": {
+    "technical_failure": "BINANCE_PUBLIC_REST_HTTP_451_IN_GITHUB_ACTIONS",
+    "affected_original_route": "GET https://fapi.binance.com/fapi/v1/fundingRate",
+    "market_outcome_observed": false
+  },
+  "scientific_boundary": {
+    "changes_primary_hypothesis": false,
+    "changes_assets": false,
+    "changes_venues": false,
+    "changes_audit_window": false,
+    "changes_v01_coverage_rule": false,
+    "changes_cost_model": false,
+    "changes_leverage": false,
+    "changes_orientation": false,
+    "authorizes_discovery": false,
+    "authorizes_economic_outcomes": false,
+    "authorizes_trading": false,
+    "authorizes_exchange_mutation": false,
+    "authorizes_authenticated_account_data": false,
+    "authorizes_2026_access": false,
+    "authorizes_mexc_access": false
+  },
+  "frozen_scope": {
+    "audit_start_utc": "2023-01-01T00:00:00Z",
+    "audit_end_utc": "2025-12-31T23:59:59.999Z",
+    "binance_symbols": ["BTCUSDT", "ETHUSDT"],
+    "hyperliquid_coins": ["BTC", "ETH"]
+  },
+  "source_route": {
+    "binance": {
+      "host": "data.binance.vision",
+      "dataset": "USD-M monthly fundingRate archives",
+      "path_template": "/data/futures/um/monthly/fundingRate/{SYMBOL}/{SYMBOL}-fundingRate-{YYYY-MM}.zip",
+      "integrity_sidecar": "{ZIP_URL}.CHECKSUM",
+      "required_integrity": "SHA256_MATCH",
+      "rest_fallback_allowed": false
+    },
+    "hyperliquid": {
+      "host": "api.hyperliquid.xyz",
+      "endpoint": "/info",
+      "query_type": "fundingHistory",
+      "unchanged_from_v01": true
+    }
+  },
+  "normalization": {
+    "binance_archive_timestamp_field": "calc_time",
+    "canonical_timestamp_field": "fundingTime",
+    "economic_values_may_be_preserved_for_hashing_but_not_summarized": true,
+    "missing_archive_policy": "FAIL_CLOSED_NO_BACKFILL",
+    "schema_drift_policy": "FAIL_CLOSED"
+  },
+  "allowed_outputs": [
+    "archive_url",
+    "checksum_url",
+    "checksum_expected",
+    "checksum_actual",
+    "archive_month",
+    "record_count",
+    "unique_timestamp_count",
+    "first_timestamp",
+    "last_timestamp",
+    "duplicate_timestamp_count",
+    "conflicting_duplicate_timestamp_count",
+    "max_gap_ms",
+    "large_gap_count",
+    "timestamp_interval_histogram",
+    "eligible_full_months",
+    "month_timestamp_coverage_matrix",
+    "common_eligible_months",
+    "canonical_raw_record_sha256",
+    "v01_gate_status"
+  ],
+  "forbidden_outputs": [
+    "funding_rate_average",
+    "funding_spread",
+    "carry",
+    "apr",
+    "apy",
+    "pnl",
+    "sharpe",
+    "profit_factor",
+    "win_rate",
+    "expectancy",
+    "signal",
+    "threshold_optimization",
+    "asset_ranking",
+    "venue_ranking",
+    "best_period_selection"
+  ],
+  "decision_rule": "V0.3 repairs only the public Binance provenance transport after HTTP 451 by using Binance's public checksum-verifiable historical archive. It must not consult or summarize economic values, must not select periods by outcomes, must preserve the frozen V0.1 timestamp-only coverage gate, and must write a diagnostic receipt even when that gate remains closed.",
+  "next_authorization": "NONE_AUTOMATIC"
+}
