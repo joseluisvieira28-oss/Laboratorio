@@ -1,0 +1,60 @@
+{
+  "document_type": "MICROSTRUCTURE_PROVENANCE_SHAKEDOWN_AUTHORIZATION",
+  "version": "0.2",
+  "status": "AUTHORIZED_PUBLIC_READ_ONLY_PROVENANCE_SHAKEDOWN_RETRY",
+  "date": "2026-09-12",
+  "basis": {
+    "user_authorization": "User explicitly authorized any remaining safe work in the current attack.",
+    "technical_amendment": "MICROSTRUCTURE_PROVENANCE_SHAKEDOWN_V02_TECHNICAL_AMENDMENT.json",
+    "parent_failure_receipt": "MICROSTRUCTURE_PROVENANCE_SHAKEDOWN_FAILURE_RECEIPT_V01.json"
+  },
+  "authorization_scope": {
+    "single_run": true,
+    "max_capture_seconds": 90,
+    "planned_capture_seconds": 30,
+    "binance_spot": {
+      "symbols": ["BTCUSDT", "ETHUSDT"],
+      "websocket_host": "data-stream.binance.vision",
+      "websocket_port": 443,
+      "streams_per_symbol": ["depth@100ms", "bookTicker", "trade"],
+      "rest_host": "data-api.binance.vision",
+      "rest_method": "GET",
+      "rest_path": "/api/v3/depth",
+      "rest_limit": 1000,
+      "authentication": false,
+      "market_data_only": true
+    },
+    "coinbase_advanced_spot": {
+      "symbols": ["BTC-USD", "ETH-USD"],
+      "websocket_host": "advanced-trade-ws.coinbase.com",
+      "channels": ["level2", "market_trades", "heartbeats"],
+      "authentication": false,
+      "connection_sequence_validation": "EXACT_PLUS_ONE_BEFORE_FILTERING",
+      "per_book_sequence_validation": "STRICTLY_INCREASING_NONREGRESSING",
+      "forbidden_user_host": "advanced-trade-ws-user.coinbase.com"
+    }
+  },
+  "guards": {
+    "account_data": false,
+    "authenticated_exchange_access": false,
+    "exchange_mutation": false,
+    "live_trading": false,
+    "paper_trading": false,
+    "target_outcomes": false,
+    "h02_evaluation": false,
+    "mexc_2025_09_through_2025_12": false,
+    "main_merge": false,
+    "render_deploy": false,
+    "vpn_proxy_relay_or_geo_bypass": false
+  },
+  "execution_policy": {
+    "explicit_trigger_marker": "[MICROSTRUCTURE SHAKEDOWN V02 RUN]",
+    "automatic_retry": false,
+    "fail_closed": true,
+    "if_binance_official_market_data_host_returns_access_failure": "FAIL_AND_STOP",
+    "if_coinbase_connection_sequence_has_gap_or_reordering": "FAIL_AND_STOP",
+    "if_any_book_fails_to_synchronize": "FAIL_AND_STOP",
+    "post_run_directive": "STOP_AFTER_V02_PROVENANCE_RECEIPT"
+  },
+  "scientific_boundary": "This authorization is for data-source/provenance infrastructure only. It does not authorize H02, signal generation, profitability evaluation, subgroup mining, parameter tuning, or any trading action."
+}
