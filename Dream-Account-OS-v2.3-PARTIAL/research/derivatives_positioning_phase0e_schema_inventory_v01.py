@@ -6,7 +6,8 @@ import gzip
 import hashlib
 import json
 import re
-from collections import Counter, defaultdict
+import zipfile
+from collections import Counter
 from datetime import date
 from pathlib import Path
 from typing import Iterable
@@ -19,21 +20,30 @@ DATE_PATTERNS = (
     re.compile(r"(?<!\d)(20\d{2})[-_](\d{2})[-_](\d{2})(?!\d)"),
     re.compile(r"(?<!\d)(20\d{2})(\d{2})(\d{2})(?!\d)"),
 )
-SUPPORTED_SUFFIXES = (".csv", ".csv.gz")
+SUPPORTED_SUFFIXES = (".csv", ".csv.gz", ".zip")
 TIMESTAMP_FIELD_CANDIDATES = {
     "create_time", "timestamp", "time", "datetime", "date_time", "open_time", "event_time"
 }
+MAX_HEADER_BYTES = 1024 * 1024
 
 
 def _is_supported(path: Path) -> bool:
     n = path.name.lower()
-    return n.endswith(".csv") or n.endswith(".csv.gz")
+    return n.endswith(".csv") or n.endswith(".csv.gz") or n.endswith(".zip")
+
+
+def _is_checksum_sidecar(path: Path) -> bool:
+    return path.name.lower().endswith(".checksum")
 
 
 def _extension_label(path: Path) -> str:
     n = path.name.lower()
     if n.endswith(".csv.gz"):
         return ".csv.gz"
+    if n.endswith(".zip.checksum"):
+        return ".zip.checksum"
+    if n.endswith(".zip"):
+        return ".zip"
     return path.suffix.lower() or "<none>"
 
 
@@ -55,15 +65,47 @@ def infer_date(text: str) -> date | None:
     return None
 
 
-def read_header_only(path: Path) -> list[str]:
-    opener = gzip.open if path.name.lower().endswith(".gz") else open
-    with opener(path, "rt", encoding="utf-8-sig", newline="") as fh:
-        reader = csv.reader(fh)
-        try:
-            row = next(reader)
-        except StopIteration:
-            return []
+def _parse_header_line(raw: bytes, source: str) -> list[str]:
+    if not raw:
+        return []
+    if len(raw) > MAX_HEADER_BYTES:
+        raise ValueError(f"header exceeds {MAX_HEADER_BYTES} bytes: {source}")
+    text = raw.decode("utf-8-sig")
+    try:
+        row = next(csv.reader([text]))
+    except StopIteration:
+        return []
     return [str(x).strip() for x in row]
+
+
+def read_header_only(path: Path) -> list[str]:
+    n = path.name.lower()
+    if n.endswith(".zip"):
+        with zipfile.ZipFile(path, "r") as zf:
+            csv_members = [
+                info for info in zf.infolist()
+                if not info.is_dir() and info.filename.lower().endswith(".csv")
+            ]
+            if len(csv_members) != 1:
+                raise ValueError(
+                    f"eligible ZIP must contain exactly one CSV member; found {len(csv_members)}"
+                )
+            member = csv_members[0]
+            with zf.open(member, "r") as fh:
+                raw = fh.readline(MAX_HEADER_BYTES + 1)
+            return _parse_header_line(raw, f"{path}!{member.filename}")
+
+    if n.endswith(".csv.gz"):
+        with gzip.open(path, "rb") as fh:
+            raw = fh.readline(MAX_HEADER_BYTES + 1)
+        return _parse_header_line(raw, str(path))
+
+    if n.endswith(".csv"):
+        with open(path, "rb") as fh:
+            raw = fh.readline(MAX_HEADER_BYTES + 1)
+        return _parse_header_line(raw, str(path))
+
+    raise ValueError(f"unsupported candidate container: {path.name}")
 
 
 def header_sha(columns: Iterable[str]) -> str:
@@ -88,6 +130,8 @@ def inventory(root: Path) -> dict:
     outside_window_files_skipped = 0
     files_opened_header_only = 0
     data_rows_read = 0
+    recognized_sidecar_count = 0
+    recognized_sidecar_examples: list[str] = []
 
     all_files = []
     for p in root.rglob("*"):
@@ -106,22 +150,34 @@ def inventory(root: Path) -> dict:
         d = infer_date(rel)
         asset = infer_asset(rel)
 
+        if d is not None:
+            if d.year == 2025:
+                forbidden_year_files_seen["2025"] += 1
+            elif d.year == 2026:
+                forbidden_year_files_seen["2026"] += 1
+
+        # CHECKSUM files are provenance metadata, not signal-data candidates.
+        # They are inventoried by name only and never opened in Phase 0E.
+        if _is_checksum_sidecar(p):
+            recognized_sidecar_count += 1
+            if len(recognized_sidecar_examples) < 12:
+                recognized_sidecar_examples.append(rel)
+            continue
+
         if d is None:
             if _is_supported(p):
                 unknown_date_files.append(rel)
             continue
-
-        if d.year == 2025:
-            forbidden_year_files_seen["2025"] += 1
-        elif d.year == 2026:
-            forbidden_year_files_seen["2026"] += 1
 
         if not (START <= d < END_EXCLUSIVE):
             outside_window_files_skipped += 1
             continue
 
         if asset is None:
-            unknown_asset_in_window.append(rel)
+            if _is_supported(p):
+                unknown_asset_in_window.append(rel)
+            else:
+                unsupported_in_window.append(rel)
             continue
 
         if not _is_supported(p):
@@ -171,12 +227,16 @@ def inventory(root: Path) -> dict:
     receipt = {
         "program": "DERIVATIVES POSITIONING LAB",
         "phase": "PHASE0E_SCHEMA_INVENTORY",
-        "version": "0.1",
+        "version": "0.1A",
+        "authority_amendment": "DERIVATIVES_POSITIONING_PHASE0E_ARCHIVE_CONTAINER_AMENDMENT_V01A.json",
         "status": "DP_PHASE0E_PASS_SCHEMA_INVENTORIED" if pass_gate else "DP_PHASE0E_FAIL_CLOSED",
         "root": str(root),
         "allowed_window": "2021-12-01/2025-01-01 exclusive",
+        "supported_candidate_containers": list(SUPPORTED_SUFFIXES),
         "files_seen_excluding_audit_dir": len(all_files),
         "extension_counts": dict(sorted(extension_counts.items())),
+        "recognized_checksum_sidecar_count": recognized_sidecar_count,
+        "recognized_checksum_sidecar_examples": recognized_sidecar_examples,
         "files_opened_header_only": files_opened_header_only,
         "data_rows_read": data_rows_read,
         "forbidden_year_files_seen_but_not_opened": forbidden_year_files_seen,
