@@ -30,13 +30,16 @@ jobs:
             source_audit_gate.py \
             source_audit_gate_authority_reconciled_v01.py \
             source_gate_calendar_day_reconciler_v01.py \
+            source_gate_required_field_guard_v01.py \
             verify_count10000_first_day_trade_ids_v01.py \
             discovery_runner_v01.py \
             test_discovery_runner_v01.py \
             test_source_audit_gate_authority_reconciled_v01.py \
-            test_source_gate_calendar_day_reconciler_v01.py
+            test_source_gate_calendar_day_reconciler_v01.py \
+            test_source_gate_required_field_guard_v01.py
           python3 test_source_audit_gate_authority_reconciled_v01.py
           python3 test_source_gate_calendar_day_reconciler_v01.py
+          python3 test_source_gate_required_field_guard_v01.py
           python3 test_discovery_runner_v01.py
 
       - name: Governance receipt
@@ -44,6 +47,7 @@ jobs:
           echo 'PREFLIGHT ONLY'
           echo 'NO MARKET DATA DOWNLOADED'
           echo 'NO REAL SKEW / NO REAL RETURNS / NO REAL PNL'
+          echo 'REQUIRED-FIELD PRESENCE GUARD TESTED'
           echo 'DISCOVERY RUNNER REQUIRES CANONICAL SOURCE_AUDIT_PASS'
           echo 'DTE 30/120 CALENDAR-DAY BOUNDARIES TESTED'
           echo 'PAGINATION-EQUIVALENCE TOOLS COMPILE'
