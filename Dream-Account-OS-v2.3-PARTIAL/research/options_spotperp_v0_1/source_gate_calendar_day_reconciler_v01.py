@@ -13,7 +13,8 @@ calendar-date differences, audits the exact 2021-04-01..2024-12-31 BTC price-fil
 cutoff when the canonical coverage gate passes, and writes a final source-gate
 receipt. It computes NO skew, signal, forward return, PnL, regression or outcome.
 Annual source-coverage counts are diagnostics only and do not alter the frozen
->=500 total-valid-day decision rule.
+>=500 total-valid-day decision rule. Daily eligible call/put instrument counts are
+persisted as a separate hashed outcome-blind audit artifact.
 """
 
 from __future__ import annotations
@@ -38,6 +39,7 @@ MIN_SIDE = 5
 MIN_VALID_DAYS = 500
 SOURCE_START = dt.date(2021, 4, 1)
 SOURCE_END_EXCLUSIVE = dt.date(2025, 1, 1)
+DAILY_COVERAGE_FILE = "source_gate_calendar_day_daily_coverage.json"
 
 
 def source_calendar_days_by_year() -> dict[str, int]:
@@ -127,10 +129,44 @@ def canonical_calendar_day_coverage(root: Path) -> dict[str, Any]:
             else:
                 counters["moneyness_rejected"] += 1
 
-    valid_days = sorted(
-        day for day in set(calls) | set(puts)
-        if len(calls.get(day, set())) >= MIN_SIDE and len(puts.get(day, set())) >= MIN_SIDE
-    )
+    daily_rows: list[dict[str, Any]] = []
+    d = SOURCE_START
+    while d < SOURCE_END_EXCLUSIVE:
+        day = d.isoformat()
+        call_n = len(calls.get(day, set()))
+        put_n = len(puts.get(day, set()))
+        daily_rows.append({
+            "date": day,
+            "distinct_eligible_calls": call_n,
+            "distinct_eligible_puts": put_n,
+            "valid_min_5_each_side": call_n >= MIN_SIDE and put_n >= MIN_SIDE,
+        })
+        d += dt.timedelta(days=1)
+
+    daily_path = root / DAILY_COVERAGE_FILE
+    daily_payload = {
+        "lab_id": base.LAB_ID,
+        "version": base.VERSION,
+        "stage": "SOURCE_AUDIT_DAILY_ELIGIBLE_INSTRUMENT_COVERAGE_ONLY",
+        "source_start": SOURCE_START.isoformat(),
+        "source_end_inclusive": (SOURCE_END_EXCLUSIVE - dt.timedelta(days=1)).isoformat(),
+        "dte_definition": "calendar_date_difference_days",
+        "dte_min_inclusive": MIN_DTE,
+        "dte_max_inclusive": MAX_DTE,
+        "call_strike_over_index": [CALL_MIN, CALL_MAX],
+        "put_strike_over_index": [PUT_MIN, PUT_MAX],
+        "min_distinct_instruments_per_side": MIN_SIDE,
+        "rows": daily_rows,
+        "skew_values_computed": False,
+        "signals_computed": False,
+        "forward_returns_computed": False,
+        "pnl_computed": False,
+        "holdout_2025_accessed": False,
+        "year_2026_accessed": False,
+    }
+    daily_path.write_text(json.dumps(daily_payload, indent=2, sort_keys=True), encoding="utf-8")
+
+    valid_days = [row["date"] for row in daily_rows if row["valid_min_5_each_side"]]
     valid_days_by_year: dict[str, int] = defaultdict(int)
     for day in valid_days:
         valid_days_by_year[day[:4]] += 1
@@ -155,6 +191,10 @@ def canonical_calendar_day_coverage(root: Path) -> dict[str, Any]:
         },
         "coverage_ratio_by_year": coverage_ratio_by_year,
         "annual_coverage_is_diagnostic_only": True,
+        "daily_coverage_artifact": DAILY_COVERAGE_FILE,
+        "daily_coverage_rows": len(daily_rows),
+        "daily_coverage_sha256": base.sha256_file(daily_path),
+        "daily_coverage_contains_outcomes": False,
         "valid_days_first_10": valid_days[:10],
         "valid_days_last_10": valid_days[-10:],
         "skew_values_computed": False,
