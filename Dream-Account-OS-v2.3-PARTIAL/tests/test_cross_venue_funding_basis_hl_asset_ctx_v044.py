@@ -8,6 +8,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 MOD_PATH = ROOT / "research" / "cross_venue_funding_basis_hl_asset_ctx_v044.py"
+RUNNER_PATH = ROOT / "scripts" / "run_cross_venue_funding_basis_v044_windows.ps1"
+INCIDENT_PATH = ROOT / "research" / "CROSS_VENUE_FUNDING_BASIS_V044_CONTROL_FLOW_INCIDENT_V01.json"
 SPEC = importlib.util.spec_from_file_location("cvfb_v044", MOD_PATH)
 assert SPEC and SPEC.loader
 mod = importlib.util.module_from_spec(SPEC)
@@ -62,10 +64,8 @@ def test_prior_20240901_seed_is_fail_closed_without_economic_reinspection():
 
 def test_coverage_requires_every_day_for_both_assets():
     receipts = []
-    d = date(2023, 9, 1)
     for day in range(1, 31):
         receipts.append(_blank_daily(date(2023, 9, day), full=True))
-    # All later candidate dates are absent, so only September 2023 can pass.
     result = mod.aggregate_coverage(receipts)
     assert result["months"]["2023-09"]["common_full_month"] is True
     assert "2023-09" in result["common_complete_months"]
@@ -91,7 +91,6 @@ def _semantic_day(day: date, scale_rows=0, early=None, late=None):
             for div in mod.CANDIDATE_DIVISORS:
                 k = mod._candidate_key(c, div)
                 sem["scale_candidates"][k]["finite_rows"] = scale_rows
-                # Frozen expected winner: divisor 8. Old clamp is enough in September.
                 sem["scale_candidates"][k]["matches"] = scale_rows if (c == Decimal("0.0003") and div == 8) else 0
     if early:
         sem["early"].update(early)
@@ -137,6 +136,17 @@ def test_semantics_fail_when_neither_dominates_even_with_large_sample():
     result = mod.aggregate_semantics(receipts)
     assert result["semantic_probe_pass"] is False
     assert result["status"] == "FAIL_CLOSED"
+
+
+def test_windows_runner_continuation_is_receipt_driven_after_incident():
+    text = RUNNER_PATH.read_text(encoding="utf-8")
+    assert "if (-not (Run-Semantics))" not in text
+    assert "if (-not (Run-Coverage))" not in text
+    assert "Assert-SemanticReceiptPass" in text
+    assert "$S.semantic_probe_pass -ne $true" in text
+    assert "HARD STOP: Stage B is forbidden because Stage A receipt is FAIL-CLOSED." in text
+    assert "Assert-CoverageReceiptPass" in text
+    assert INCIDENT_PATH.exists()
 
 
 def test_all_economic_flags_stay_false():
