@@ -1,8 +1,20 @@
 {
   "confirmation_asset": "ETH",
+  "data_gate": {
+    "community_endpoint": "https://community-api.coinmetrics.io/v4/timeseries/asset-metrics",
+    "end_time": "2024-12-31",
+    "policy": "If the Coin Metrics Community endpoint does not return both assets with required 2020-2024 daily coverage without authentication, classify DATA_BLOCKED and STOP. Do not fall back to a provider endpoint that exposes 2025/2026.",
+    "required_assets": [
+      "usdt",
+      "usdc"
+    ],
+    "required_frequency": "1d",
+    "required_metric": "SplyCur",
+    "start_time": "2020-01-01"
+  },
   "execution": {
     "base_round_trip_cost_bps": 10,
-    "entry": "Monday 00:00 UTC BTCUSDT spot/perp synthetic directional entry after >=48h availability lag from Saturday cutoff",
+    "entry": "Monday 00:00 UTC BTCUSDT directional entry after >=48h lag from Saturday cutoff",
     "exit": "next Monday 00:00 UTC",
     "overlap": false,
     "stress_round_trip_cost_bps": 20
@@ -11,17 +23,19 @@
   "lab_id": "ONCHAIN-CAPFLOW-001",
   "mve0_pass": [
     "Discovery top-minus-bottom spread > 0 after 10 bps RT",
-    "bootstrap CI not materially dominated by one year/event",
+    "result not dominated by one year/event",
     "at least 3 of 4 discovery years have non-negative spread",
     "20 bps stress does not turn strongly negative",
     "no leakage/provenance failure"
   ],
   "mve1_pass": [
     "Frozen 2025 holdout top-minus-bottom spread > 0 after 10 bps",
-    "same sign in BTC and ETH confirmation or BTC effect strong enough with ETH non-contradictory",
+    "BTC direction is preserved",
+    "ETH is non-contradictory confirmation",
     "no post-result rule changes"
   ],
   "no_2026_access": true,
+  "no_holdout_access_before_mve0": true,
   "no_live_trading": true,
   "no_ml": true,
   "objective": "Test whether stablecoin capital expansion/contraction contains forward information for BTC weekly returns independent of OHLC transformations.",
@@ -33,9 +47,8 @@
   },
   "primary_asset": "BTC",
   "primary_data": {
-    "price": "Binance Spot BTCUSDT official klines",
-    "usdc": "DefiLlama stablecoin/2 historical circulating supply",
-    "usdt": "DefiLlama stablecoin/1 historical circulating supply"
+    "price": "Binance Spot BTCUSDT and ETHUSDT official monthly 1d klines, 2020-01 through 2024-12 only",
+    "stablecoin_supply": "Coin Metrics Community API SplyCur for usdt and usdc with explicit end_time=2024-12-31"
   },
   "primary_metrics": [
     "top-minus-bottom weekly return spread net of base costs",
@@ -52,11 +65,12 @@
     "long": "percentile >= 0.75",
     "normalization": "percentile rank versus trailing 52 weekly observations using past data only",
     "observation_cutoff": "Saturday 00:00 UTC",
-    "raw": "ln((USDT_supply + USDC_supply)_t / (USDT_supply + USDC_supply)_{t-7d})",
+    "raw": "ln((USDT_SplyCur + USDC_SplyCur)_t / (USDT_SplyCur + USDC_SplyCur)_{t-7d})",
     "short": "percentile <= 0.25"
   },
-  "status": "FROZEN_PRE_DISCOVERY",
+  "status": "FROZEN_PRE_DISCOVERY_AMENDED_001",
   "stop": [
+    "Community stablecoin supply data unavailable with explicit cutoff",
     "Discovery net expectancy materially negative",
     "effect driven by one year/week",
     "provider history cannot be snapshotted/reproduced",
@@ -64,5 +78,5 @@
     "data revisions materially alter results",
     "2025 holdout fails; no rescue of this frozen family"
   ],
-  "version": "V0.1"
+  "version": "V0.1A"
 }
