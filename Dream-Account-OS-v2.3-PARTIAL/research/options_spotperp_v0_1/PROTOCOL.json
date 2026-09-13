@@ -1,0 +1,70 @@
+{
+  "active_frontier_family": "ONCHAIN-CAPFLOW-001",
+  "authority_drive_id": "1RtBYsET0t8yFAVDCJV1mEmGCAikMp-UQS0Yd802blBc",
+  "authority_sha256": "138cee737d75d27b43d9f377fc9a77e823e8fb2015f360b300cdc4a16cf67cfa",
+  "costs_bps_round_trip": {
+    "base": 10,
+    "stress": 20
+  },
+  "discovery_window": {
+    "end": "2024-12-31",
+    "start": "2021-04-01"
+  },
+  "governance": [
+    "research_only",
+    "fail_closed",
+    "no_live_trading",
+    "no_exchange_mutation",
+    "no_main_merge",
+    "no_gate_k_changes",
+    "no_render_deploy",
+    "no_post_outcome_tuning",
+    "no_cherry_picking"
+  ],
+  "holdout_2025": "LOCKED",
+  "lab_id": "OPTIONS-SPOTPERP-001",
+  "mve0_pass": {
+    "beta_sign": "positive",
+    "min_valid_days": 500,
+    "net_mean_base_cost": "positive",
+    "one_sided_hac_p_max": 0.1,
+    "profit_factor_base_cost": ">1.00",
+    "single_year_positive_gross_pnl_cap": "<=60%",
+    "year_consistency": ">=3 of 4 non-negative"
+  },
+  "outcome": {
+    "entry": "BTCUSDT spot 00:00 UTC t+1",
+    "exit": "BTCUSDT spot 00:00 UTC t+2",
+    "forward_horizon": "1 day"
+  },
+  "primary_source": {
+    "currency": "BTC",
+    "endpoint": "/api/v2/public/get_last_trades_by_currency_and_time",
+    "host": "history.deribit.com",
+    "kind": "option",
+    "provider": "Deribit"
+  },
+  "signal": {
+    "call_strike_over_index": [
+      1.05,
+      1.2
+    ],
+    "dte_days": [
+      30,
+      120
+    ],
+    "formula": "CALL_IV_t - PUT_IV_t",
+    "instrument_daily_aggregation": "median_transaction_iv",
+    "min_distinct_instruments_per_side": 5,
+    "name": "trade_implied_call_minus_put_skew",
+    "put_strike_over_index": [
+      0.8,
+      0.95
+    ],
+    "side_daily_aggregation": "median_instrument_daily_iv"
+  },
+  "source_audit_only": true,
+  "status": "FROZEN_QUEUED_NOT_AUTHORIZED_FOR_DISCOVERY",
+  "version": "V0.1",
+  "year_2026": "LOCKED"
+}
