@@ -7,8 +7,8 @@ param(
 $ErrorActionPreference = 'Stop'
 
 Write-Host '============================================================'
-Write-Host 'CROSS-VENUE FUNDING/BASIS — HYPERLIQUID ASSET_CTX V0.4.4'
-Write-Host 'PROVENANCE ONLY — REQUESTER PAYS — NO ECONOMIC OUTPUTS'
+Write-Host 'CROSS-VENUE FUNDING/BASIS - HYPERLIQUID ASSET_CTX V0.4.4'
+Write-Host 'PROVENANCE ONLY - REQUESTER PAYS - NO ECONOMIC OUTPUTS'
 Write-Host '============================================================'
 Write-Host "Stage: $Stage"
 Write-Host '2026: FORBIDDEN'
@@ -60,7 +60,7 @@ function Invoke-DayProbe {
     $Stamp = $Date.ToString('yyyyMMdd')
     $Receipt = Join-Path $DailyDir ("asset_ctx_" + $Stamp + '.json')
     if (Test-Path -LiteralPath $Receipt) {
-        Write-Host "$Iso receipt already exists — reusing provenance receipt."
+        Write-Host "$Iso receipt already exists - reusing provenance receipt."
         return
     }
     $Raw = Join-Path $RawDir ("asset_ctxs_" + $Stamp + '.csv.lz4')
@@ -95,7 +95,7 @@ function Get-SemanticDates {
 
 function Run-Semantics {
     Write-Host ''
-    Write-Host '=== STAGE A — OFFICIAL ARCHIVE SEMANTIC IDENTIFICATION ==='
+    Write-Host '=== STAGE A - OFFICIAL ARCHIVE SEMANTIC IDENTIFICATION ==='
     Write-Host 'Authorized requester-pays GETs: fixed 29 dates, except receipts already present.'
     foreach ($d in (Get-SemanticDates)) { Invoke-DayProbe -Date $d }
     $Out = Join-Path $FinalDir 'CROSS_VENUE_FUNDING_BASIS_V044_STAGE_A_SEMANTICS_RECEIPT.json'
@@ -122,7 +122,7 @@ function Seed-PriorPartialDay {
 
 function Run-Coverage {
     Write-Host ''
-    Write-Host '=== STAGE B — FULL CALENDAR COVERAGE SWEEP ==='
+    Write-Host '=== STAGE B - FULL CALENDAR COVERAGE SWEEP ==='
     Write-Host 'Range: 2023-09-01 through 2025-12-31 inclusive'
     Write-Host 'Selection uses timestamps/availability only. Economic outputs remain forbidden.'
     Seed-PriorPartialDay
@@ -137,10 +137,10 @@ function Run-Coverage {
     $Code = $LASTEXITCODE
     Write-Host "Stage B receipt: $Out"
     if ($Code -ne 0) {
-        Write-Host 'FINAL STAGE B GATE: FAIL-CLOSED — ZERO COMMON COMPLETE MONTHS'
+        Write-Host 'FINAL STAGE B GATE: FAIL-CLOSED - ZERO COMMON COMPLETE MONTHS'
         return $false
     }
-    Write-Host 'FINAL STAGE B GATE: PASS — COMMON COMPLETE MONTHS EXIST'
+    Write-Host 'FINAL STAGE B GATE: PASS - COMMON COMPLETE MONTHS EXIST'
     return $true
 }
 
