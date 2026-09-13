@@ -6,6 +6,9 @@ on:
       - options-spotperp-v0.1-source-audit-expiryfix
     paths:
       - '.github/workflows/options-expiryfix-preflight.yml'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1/preflight_expiryfix.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1/source_audit_expiryfix.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1/source_audit_gate_expiryfix.py'
   workflow_dispatch:
 
 permissions:
@@ -19,7 +22,7 @@ jobs:
       - name: Checkout expiry-fix branch
         uses: actions/checkout@v4
 
-      - name: Run outcome-blind expiry correction preflight
+      - name: Run outcome-blind expiry and snapshot preflight
         working-directory: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1
         run: |
           python3 --version
