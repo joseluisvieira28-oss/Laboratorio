@@ -1,0 +1,28 @@
+name: OPTIONS-SPOTPERP-001 Expiry 08:00 Preflight
+
+on:
+  push:
+    branches:
+      - options-spotperp-v0.1-source-audit-expiryfix
+    paths:
+      - '.github/workflows/options-expiryfix-preflight.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout expiry-fix branch
+        uses: actions/checkout@v4
+
+      - name: Run outcome-blind expiry correction preflight
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1
+        run: |
+          python3 --version
+          python3 preflight_expiryfix.py
+          echo 'NO NETWORK / NO MARKET DATA / NO SKEW / NO RETURNS / NO PNL'
+          echo '2025 LOCKED / 2026 LOCKED'
