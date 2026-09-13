@@ -1,0 +1,85 @@
+{
+  "hypothesis_id": "MVE-ADX4H-01",
+  "status": "MVE_1_REPLICATION_READY_PROSPECTIVE_FREEZE",
+  "parent_experiment": "CIGL-ADX-01",
+  "parent_verdict": "DISCOVERY_FAIL_ADX_CLOSED",
+  "parent_1h_may_not_be_rescued": true,
+  "known_generator_diagnostic": {
+    "period": "2022-01-01T00:00:00Z/2023-12-31T23:59:59Z",
+    "timeframe": "4H",
+    "n": 3427,
+    "gross_mean_bps": 14.380272213624052,
+    "net10_mean_bps": 4.380272213624051,
+    "net14_mean_bps": 0.3802722136240515,
+    "pf_net10": 1.0374545559703514,
+    "bootstrap_ci95_net10_mean_bps": [-14.877527180045222, 24.69287499291105],
+    "leave_sol_out_net10_mean_bps": -2.848275804677916,
+    "interpretation": "WEAK_MVE0_GENERATOR_ONLY"
+  },
+  "independent_oos": "2024-01-01T00:00:00Z/2024-12-31T23:59:59Z",
+  "protected": {
+    "2025": "UNOPENED",
+    "2026_onward": "LOCKED"
+  },
+  "universe": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "DOGEUSDT"],
+  "data": {
+    "source": "Binance Data Vision USD-M Futures monthly 1m klines",
+    "checksum": "official monthly .CHECKSUM required",
+    "missing_data": "no fill, interpolation or nearest-neighbor repair"
+  },
+  "bars": {
+    "timeframe": "4H",
+    "minutes_required": 240,
+    "alignment": "UTC left-labelled exact 4H boundaries",
+    "adx_state_after_invalid_bar": "RESET"
+  },
+  "adx": {
+    "style": "Wilder",
+    "length": 14,
+    "threshold": 25.0,
+    "long": "ADX14>=25 AND +DI14>-DI14",
+    "short": "ADX14>=25 AND -DI14>+DI14"
+  },
+  "execution": {
+    "entry": "immediate next 4H bar open",
+    "holding_bars": 4,
+    "exit": "open exactly four completed 4H bars after entry",
+    "one_position_per_asset": true,
+    "base_roundtrip_cost_bps": 10.0,
+    "stress_roundtrip_cost_bps": 14.0,
+    "stop": null,
+    "take_profit": null,
+    "pyramiding": false
+  },
+  "oos_pass_gate": {
+    "min_trades": 150,
+    "net10_mean_bps_gt": 0.0,
+    "pf_net10_gt": 1.0,
+    "max_single_asset_positive_pnl_share": 0.70,
+    "max_single_quarter_positive_pnl_share": 0.70,
+    "on_pass": "MVE_2_OOS_POSITIVE",
+    "on_fail": "CLOSE_PERMANENTLY_NO_RESCUE"
+  },
+  "report_only_not_hard_gates": [
+    "net14_mean_bps",
+    "day_block_bootstrap_ci95",
+    "per_asset_results",
+    "leave_one_asset_out",
+    "quarterly_stability"
+  ],
+  "forbidden": [
+    "change_length",
+    "change_threshold",
+    "select_SOL_or_other_winner_asset",
+    "remove_losing_assets",
+    "change_holding_period",
+    "reduce_costs",
+    "add_filters",
+    "indicator_stacking",
+    "open_2025",
+    "use_2026",
+    "live_trading",
+    "exchange_mutation",
+    "merge_to_main"
+  ]
+}
