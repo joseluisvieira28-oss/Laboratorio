@@ -1,0 +1,74 @@
+name: OPTIONS-SPOTPERP-001 Source Network Probe V0.1
+
+on:
+  push:
+    branches:
+      - options-spotperp-v0.1
+    paths:
+      - '.github/workflows/options-source-audit-network-probe-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-network-probe:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, 'run outcome-blind source network probe')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout exact Options branch
+        uses: actions/checkout@v4
+
+      - name: Record immutable execution context
+        run: |
+          echo "HEAD_SHA=$(git rev-parse HEAD)"
+          echo "BRANCH=${GITHUB_REF_NAME}"
+          test "${GITHUB_REF_NAME}" = "options-spotperp-v0.1"
+
+      - name: Execute one-day outcome-blind source probe
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1
+        shell: bash
+        run: |
+          set +e
+          python3 source_audit_gate.py --probe-days 1 --output source_audit_probe
+          rc=$?
+          set -e
+          echo "PROBE_EXIT_CODE=$rc"
+          test "$rc" -eq 4
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path('source_audit_probe/source_gate_receipt.json')
+          x = json.loads(p.read_text(encoding='utf-8'))
+          assert x['status'] == 'PROBE_ONLY_NO_DECISION', x
+          assert x['skew_values_computed'] is False
+          assert x['signals_computed'] is False
+          assert x['forward_returns_computed'] is False
+          assert x['pnl_computed'] is False
+          assert x['holdout_2025_accessed'] is False
+          assert x['year_2026_accessed'] is False
+          assert x['authority']['authority_sha256'] == '138cee737d75d27b43d9f377fc9a77e823e8fb2015f360b300cdc4a16cf67cfa'
+          print('PROBE_RECEIPT_VALIDATED')
+          print('DERIBIT_PAGES=', x['deribit_audit']['pages'])
+          print('DERIBIT_TRADES=', x['deribit_audit']['trades'])
+          print('SCHEMA_PROVENANCE_PASS=', x['deribit_audit']['schema_and_provenance_pass'])
+          PY
+
+      - name: Governance receipt
+        if: always()
+        run: |
+          echo 'SOURCE PROBE ONLY'
+          echo 'NO SKEW / NO SIGNALS / NO RETURNS / NO PNL'
+          echo 'NO DISCOVERY EXECUTION'
+          echo '2025 LOCKED / 2026 LOCKED'
+          echo 'NO LIVE TRADING / NO EXCHANGE MUTATION'
+
+      - name: Upload probe evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: options-spotperp-001-source-network-probe-v01
+          path: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1/source_audit_probe/
+          if-no-files-found: warn
+          retention-days: 30
