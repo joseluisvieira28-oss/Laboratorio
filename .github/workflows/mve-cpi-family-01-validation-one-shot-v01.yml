@@ -1,0 +1,54 @@
+name: MVE CPI Family 01 — Validation One-Shot V0.1
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validation-one-shot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout authorized research ref
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Require explicit active authorization receipt
+        shell: bash
+        run: |
+          test -f Dream-Account-OS-v2.3-PARTIAL/research/MVE_CPI_FAMILY_01_DATA_ACCESS_AUTHORIZATION_V01.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('Dream-Account-OS-v2.3-PARTIAL/research/MVE_CPI_FAMILY_01_DATA_ACCESS_AUTHORIZATION_V01.json')
+          x=json.loads(p.read_text())
+          assert x['status']=='VALIDATION_2025_01_THROUGH_2025_08_AUTHORIZED_RESEARCH_ONLY'
+          assert x['authorization_active'] is True
+          assert x['hypothesis_id']=='MVE-CPI-FAMILY-01'
+          print('explicit authorization receipt present')
+          PY
+
+      - name: Compile runner before network access
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python -m py_compile research/mve_cpi_family_01_validation_runner_v01.py
+
+      - name: Execute exact authorized validation once
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python research/mve_cpi_family_01_validation_runner_v01.py --output-dir mve_cpi_family_01_validation_output
+
+      - name: Upload immutable research output artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mve-cpi-family-01-validation-v01-${{ github.sha }}
+          path: Dream-Account-OS-v2.3-PARTIAL/mve_cpi_family_01_validation_output/
+          if-no-files-found: error
+          retention-days: 90
