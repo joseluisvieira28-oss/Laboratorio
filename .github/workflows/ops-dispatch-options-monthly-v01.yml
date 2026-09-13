@@ -1,0 +1,30 @@
+name: OPS — Dispatch OPTIONS Monthly Source Audit
+
+on:
+  push:
+    branches:
+      - ops-dispatch-options-20260913
+    paths:
+      - '.github/workflows/ops-dispatch-options-monthly-v01.yml'
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch canonical frozen monthly workflow
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          echo 'Dispatching canonical OPTIONS monthly source audit on options-spotperp-v0.1'
+          gh api \
+            --method POST \
+            -H 'Accept: application/vnd.github+json' \
+            repos/joseluisvieira28-oss/Laboratorio/actions/workflows/options-source-audit-monthly-count10000-v01.yml/dispatches \
+            -f ref='options-spotperp-v0.1'
+          echo 'DISPATCH_REQUEST_ACCEPTED'
+          echo 'No scientific files modified; no 2025/2026 access requested.'
