@@ -1,0 +1,42 @@
+name: CIGL BB 01 - Discovery
+on:
+  push:
+    branches: [classic-indicators-gap-lab-v0.1]
+    paths: ['.github/workflows/cigl-bb-01-discovery.yml']
+permissions:
+  contents: read
+jobs:
+  discovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install pandas numpy
+      - name: Compile frozen runner
+        run: python -m py_compile Dream-Account-OS-v2.3-PARTIAL/research/cigl_bb_01.py
+      - name: Acquire official Binance Discovery only
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p bb_data
+          for S in BTCUSDT ETHUSDT SOLUSDT BNBUSDT XRPUSDT DOGEUSDT; do
+            for Y in 2022 2023; do
+              for M in $(seq -w 1 12); do
+                F="${S}-1m-${Y}-${M}.zip"
+                U="https://data.binance.vision/data/futures/um/monthly/klines/${S}/1m/${F}"
+                curl --fail --retry 4 --retry-delay 2 -sS "$U" -o "bb_data/$F"
+                unzip -tq "bb_data/$F" >/dev/null
+              done
+            done
+          done
+      - name: Execute frozen BB Discovery
+        run: python Dream-Account-OS-v2.3-PARTIAL/research/cigl_bb_01.py --data-root bb_data --out bb_out | tee bb_out_console.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CIGL-BB-01-DISCOVERY-${{ github.sha }}
+          path: |
+            bb_out/
+            bb_out_console.txt
+          retention-days: 30
