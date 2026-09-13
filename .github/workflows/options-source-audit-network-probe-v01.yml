@@ -26,12 +26,18 @@ jobs:
           echo "BRANCH=${GITHUB_REF_NAME}"
           test "${GITHUB_REF_NAME}" = "options-spotperp-v0.1"
 
+      - name: Outcome-blind authority-reconciliation checks
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1
+        run: |
+          python3 -m py_compile source_audit.py source_audit_gate.py source_audit_gate_authority_reconciled_v01.py
+          python3 test_source_audit_gate_authority_reconciled_v01.py
+
       - name: Execute one-day outcome-blind source probe
         working-directory: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1
         shell: bash
         run: |
           set +e
-          python3 source_audit_gate.py --probe-days 1 --output source_audit_probe
+          python3 source_audit_gate_authority_reconciled_v01.py --probe-days 1 --output source_audit_probe
           rc=$?
           set -e
           echo "PROBE_EXIT_CODE=$rc"
@@ -49,10 +55,12 @@ jobs:
           assert x['holdout_2025_accessed'] is False
           assert x['year_2026_accessed'] is False
           assert x['authority']['authority_sha256'] == '138cee737d75d27b43d9f377fc9a77e823e8fb2015f360b300cdc4a16cf67cfa'
+          assert x['deribit_audit']['schema_and_provenance_pass'] is True
           print('PROBE_RECEIPT_VALIDATED')
           print('DERIBIT_PAGES=', x['deribit_audit']['pages'])
           print('DERIBIT_TRADES=', x['deribit_audit']['trades'])
           print('SCHEMA_PROVENANCE_PASS=', x['deribit_audit']['schema_and_provenance_pass'])
+          print('ELIGIBILITY_VALUE_REJECTIONS=', x['deribit_audit']['eligibility_value_rejections'])
           PY
 
       - name: Governance receipt
