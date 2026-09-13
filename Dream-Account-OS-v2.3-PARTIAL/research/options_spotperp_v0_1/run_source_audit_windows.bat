@@ -41,6 +41,10 @@ if "%RC%"=="0" (
   echo See source_audit_data\source_audit_report.json
 ) else if "%RC%"=="4" (
   echo PROBE_ONLY_NO_DECISION
+) else if "%RC%"=="12" (
+  echo EXECUTION_ENVIRONMENT_BLOCKED
+  echo DNS/network/transport problem only - NOT a scientific source verdict.
+  echo See source_audit_data\source_audit_report.json if present.
 ) else (
   echo SOURCE_AUDIT_BLOCKED
   echo See source_audit_data\source_audit_report.json if present.
