@@ -1,0 +1,135 @@
+name: ONCHAIN-CAPFLOW-001 Data Gates V0.1A
+
+on:
+  push:
+    branches:
+      - onchain-capflow-v0.1
+    paths:
+      - '.github/workflows/onchain-capflow-data-gates-v01a.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: onchain-capflow-001-data-gates-v01a
+  cancel-in-progress: false
+
+jobs:
+  data-gates-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/onchain_capflow_v0_1
+    steps:
+      - name: Checkout frozen branch
+        uses: actions/checkout@v4
+        with:
+          ref: onchain-capflow-v0.1
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Governance guardrail
+        run: |
+          set -euo pipefail
+          echo 'ONCHAIN-CAPFLOW-001 V0.1A — DATA GATES ONLY'
+          echo 'Research-only | no live trading | no exchange mutation'
+          echo 'Allowed raw-data period: 2020-01-01 through 2024-12-31'
+          echo '2025 holdout LOCKED | 2026+ LOCKED | Discovery NOT AUTHORIZED'
+          test ! -e discovery.py
+          python -m py_compile acquire_data.py audit_data.py
+
+      - name: Run Gate A and Gate B — source gate, acquisition, hashing
+        id: acquire
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          rm -rf data
+          python acquire_data.py --output ./data 2>&1 | tee acquisition.log
+
+      - name: Run Gate C — data audit only
+        id: audit
+        if: steps.acquire.outcome == 'success'
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          python audit_data.py --data ./data 2>&1 | tee audit.log
+
+      - name: Write execution receipt
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root = Path('data')
+          gate = None
+          audit = None
+          try:
+              gate = json.loads((root/'data_gate_status.json').read_text())
+          except Exception:
+              pass
+          try:
+              audit = json.loads((root/'data_audit_report.json').read_text())
+          except Exception:
+              pass
+          status = 'EXECUTION_ENVIRONMENT_OR_ACQUISITION_BLOCKED'
+          if gate and gate.get('status') != 'PASS':
+              status = gate.get('status', status)
+          elif audit:
+              status = 'DATA_AUDIT_PASS' if audit.get('status') == 'PASS' else 'DATA_AUDIT_BLOCKED'
+          elif gate and gate.get('status') == 'PASS':
+              status = 'RAW_ACQUISITION_OR_AUDIT_INCOMPLETE'
+          receipt = {
+              'lab_id': 'ONCHAIN-CAPFLOW-001',
+              'version': 'V0.1A',
+              'stage': 'DATA_GATES_ONLY',
+              'classification': status,
+              'protocol_sha256': '1c6c66b7188694bcc2d62cb83ee050a023fba7f97388bc87933ed668d3392b65',
+              'holdout_2025_accessed': False,
+              'locked_2026_accessed': False,
+              'outcome_metrics_computed': False,
+              'discovery_executed': False,
+              'live_trading_authorized': False,
+              'exchange_mutation_authorized': False,
+              'data_gate': gate,
+              'data_audit_status': audit.get('status') if audit else None,
+          }
+          Path('execution_receipt.json').write_text(json.dumps(receipt, indent=2, sort_keys=True))
+          print(json.dumps(receipt, indent=2, sort_keys=True))
+          PY
+
+      - name: Upload gate evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: onchain-capflow-001-data-gates-v01a
+          path: |
+            Dream-Account-OS-v2.3-PARTIAL/research/onchain_capflow_v0_1/data/data_gate_status.json
+            Dream-Account-OS-v2.3-PARTIAL/research/onchain_capflow_v0_1/data/raw_manifest.json
+            Dream-Account-OS-v2.3-PARTIAL/research/onchain_capflow_v0_1/data/data_audit_report.json
+            Dream-Account-OS-v2.3-PARTIAL/research/onchain_capflow_v0_1/acquisition.log
+            Dream-Account-OS-v2.3-PARTIAL/research/onchain_capflow_v0_1/audit.log
+            Dream-Account-OS-v2.3-PARTIAL/research/onchain_capflow_v0_1/execution_receipt.json
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Final gate verdict
+        if: always()
+        run: |
+          python - <<'PY'
+          import json, sys
+          from pathlib import Path
+          p = Path('execution_receipt.json')
+          if not p.exists():
+              print('BLOCKED: no execution receipt')
+              sys.exit(2)
+          r = json.loads(p.read_text())
+          print('FINAL_CLASSIFICATION=' + r['classification'])
+          sys.exit(0 if r['classification'] == 'DATA_AUDIT_PASS' else 2)
+          PY
