@@ -1,0 +1,128 @@
+name: ONCHAIN-CAPFLOW-001 Discovery V0.1A
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: onchain-capflow-001-discovery-v01a
+  cancel-in-progress: false
+
+jobs:
+  discovery-2021-2024-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: bash
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/onchain_capflow_v0_1
+    steps:
+      - name: Checkout selected frozen ref
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Governance and implementation freeze guard
+        run: |
+          set -euo pipefail
+          echo 'ONCHAIN-CAPFLOW-001 V0.1A — DISCOVERY 2021–2024 ONLY'
+          echo 'No live trading | no exchange mutation | 2025 LOCKED | 2026+ LOCKED'
+          echo "Selected ref: ${GITHUB_REF_NAME}"
+          test "${GITHUB_REF_NAME}" = 'onchain-capflow-v0.1-discovery-freeze'
+          test "$(sha256sum discovery.py | awk '{print $1}')" = '9f271a74fca8ccdac52331b836b2ebf01a472362ace39a5175727cb878c87865'
+          python pre_run_review.py
+
+      - name: Download byte-identical audited raw snapshot
+        uses: actions/download-artifact@v4
+        with:
+          name: onchain-capflow-001-raw-snapshot-v01a
+          path: Dream-Account-OS-v2.3-PARTIAL/research/onchain_capflow_v0_1
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 34765354492
+
+      - name: Verify raw snapshot identity before outcomes
+        run: |
+          set -euo pipefail
+          test -f data/raw_manifest.json
+          ACTUAL="$(sha256sum data/raw_manifest.json | awk '{print $1}')"
+          EXPECTED='a45ceb4248c9438dfafc6580627fc399fccfafb0ec208cb87024412ca8f08794'
+          echo "raw_manifest expected=${EXPECTED}"
+          echo "raw_manifest actual=${ACTUAL}"
+          test "${ACTUAL}" = "${EXPECTED}"
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          m=json.loads(Path('data/raw_manifest.json').read_text())
+          assert m['protocol_sha256']=='1c6c66b7188694bcc2d62cb83ee050a023fba7f97388bc87933ed668d3392b65'
+          assert m['holdout_accessed'] is False
+          assert m['locked_2026_accessed'] is False
+          assert len(m['entries']) == 121
+          print('RAW_SNAPSHOT_GATE_PASS')
+          PY
+
+      - name: Execute frozen Discovery 2021–2024
+        run: |
+          set -euo pipefail
+          rm -rf discovery_output
+          python discovery.py \
+            --data ./data \
+            --output ./discovery_output \
+            --i-understand-this-computes-outcomes | tee discovery_execution.log
+
+      - name: Assert holdout firewall in result
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('discovery_output/discovery_report.json')
+          assert p.exists(), 'missing discovery_report.json'
+          r=json.loads(p.read_text())
+          assert r['stage']=='DISCOVERY_2021_2024'
+          assert r['status'] in {'MVE0_PASS','MVE0_FAIL'}
+          assert r['holdout_2025_accessed'] is False
+          assert r['locked_2026_accessed'] is False
+          assert r['live_trading_authorized'] is False
+          assert r['exchange_mutation_authorized'] is False
+          print('DISCOVERY_RESULT=' + r['status'])
+          print('HOLDOUT_FIREWALL_PASS')
+          PY
+
+      - name: Upload immutable Discovery evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: onchain-capflow-001-discovery-v01a
+          path: |
+            Dream-Account-OS-v2.3-PARTIAL/research/onchain_capflow_v0_1/discovery_output/discovery_report.json
+            Dream-Account-OS-v2.3-PARTIAL/research/onchain_capflow_v0_1/discovery_output/weekly_records.csv
+            Dream-Account-OS-v2.3-PARTIAL/research/onchain_capflow_v0_1/discovery_execution.log
+            Dream-Account-OS-v2.3-PARTIAL/research/onchain_capflow_v0_1/pre_run_review_receipt.json
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Final workflow classification
+        if: always()
+        run: |
+          python - <<'PY'
+          import json, sys
+          from pathlib import Path
+          p=Path('discovery_output/discovery_report.json')
+          if not p.exists():
+              print('FINAL_CLASSIFICATION=DISCOVERY_BLOCKED_NO_REPORT')
+              sys.exit(2)
+          r=json.loads(p.read_text())
+          status=r.get('status')
+          print('FINAL_CLASSIFICATION=' + str(status))
+          # MVE0_FAIL is a valid scientific conclusion, not an execution failure.
+          sys.exit(0 if status in {'MVE0_PASS','MVE0_FAIL'} else 2)
+          PY
