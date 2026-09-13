@@ -1,0 +1,8 @@
+{
+  "lab":"CLASSIC_INDICATORS_GAP_LAB_V0.1","experiment_id":"CIGL-OBV-01","status":"PRE_DISCOVERY_FROZEN","live_execution":false,
+  "market_data":{"provider":"Binance Data Vision","market":"USD-M Futures","raw_interval":"1m","volume":"base_volume","symbols":["BTCUSDT","ETHUSDT","SOLUSDT","BNBUSDT","XRPUSDT","DOGEUSDT"],"discovery":"2022-2023","internal_oos":"2024","protected_final_holdout":"2025","locked":"2026 onward"},
+  "obv":{"definition":"add volume if close>previous close; subtract volume if close<previous close; unchanged if equal","baseline":"SMA20 of OBV","primary_timeframe":"1H","robustness_only_timeframe":"4H","long":"previous OBV <= previous OBV_SMA20 AND current OBV > current OBV_SMA20","short":"previous OBV >= previous OBV_SMA20 AND current OBV < current OBV_SMA20","orientation":"flow_trend_crossover","gap_policy":"OBV state restarts at zero after incomplete bar; signal requires consecutive complete bars and valid SMA20"},
+  "execution":{"entry":"next_bar_open","holding_bars":4,"base_roundtrip_cost_bps":10.0,"stress_roundtrip_cost_bps":14.0,"one_position_per_asset":true},
+  "phase_gates":{"discovery_1h":{"min_trades":300,"net10_mean_bps_gt":0.0,"profit_factor_gt":1.0},"validation_2024_1h":{"min_trades":150,"net10_mean_bps_gt":0.0,"profit_factor_gt":1.0,"max_single_asset_positive_pnl_share":0.70,"max_single_quarter_positive_pnl_share":0.70}},
+  "forbidden":["baseline_tuning","divergence_hindsight","indicator_stacking","winner_asset_selection","cost_rescue","4H_rescue_of_failed_1H","opening_2024_after_failed_discovery","opening_2025","opening_2026","merge_to_main","live_trading","exchange_mutation"]
+}
