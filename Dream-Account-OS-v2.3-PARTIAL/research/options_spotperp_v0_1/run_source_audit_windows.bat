@@ -2,9 +2,9 @@
 setlocal
 cd /d "%~dp0"
 
-echo OPTIONS-SPOTPERP-001 - SOURCE AUDIT V0.1
-echo =========================================
-echo Research-only. No outcomes. No PnL. No 2025/2026.
+echo OPTIONS-SPOTPERP-001 - FINAL SOURCE/DATA GATE V0.1
+echo ===================================================
+echo Research-only. No skew. No signals. No returns. No PnL. No 2025/2026.
 echo.
 
 where py >nul 2>&1
@@ -31,23 +31,24 @@ if errorlevel 1 (
 )
 
 echo.
-echo Running full frozen source audit...
-%PY% source_audit.py --output ".\source_audit_data"
+echo Running final frozen source/data gate...
+%PY% source_audit_gate.py --output ".\source_audit_data"
 set "RC=%errorlevel%"
 
 echo.
 if "%RC%"=="0" (
   echo SOURCE_AUDIT_PASS
-  echo See source_audit_data\source_audit_report.json
+  echo Final receipt: source_audit_data\source_gate_receipt.json
 ) else if "%RC%"=="4" (
   echo PROBE_ONLY_NO_DECISION
+  echo Final receipt: source_audit_data\source_gate_receipt.json
 ) else if "%RC%"=="12" (
   echo EXECUTION_ENVIRONMENT_BLOCKED
   echo DNS/network/transport problem only - NOT a scientific source verdict.
-  echo See source_audit_data\source_audit_report.json if present.
+  echo Final receipt: source_audit_data\source_gate_receipt.json if present.
 ) else (
   echo SOURCE_AUDIT_BLOCKED
-  echo See source_audit_data\source_audit_report.json if present.
+  echo Final receipt: source_audit_data\source_gate_receipt.json if present.
 )
 
 exit /b %RC%
