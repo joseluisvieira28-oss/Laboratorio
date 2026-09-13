@@ -1,4 +1,4 @@
-name: Derivatives Positioning Phase 0E Schema Inventory V0.1
+name: Derivatives Positioning Phase 0E Schema Inventory V0.1A
 
 on:
   push:
@@ -6,6 +6,7 @@ on:
       - dream-account-phase-b-signal-research-v0.1
     paths:
       - 'Dream-Account-OS-v2.3-PARTIAL/research/DERIVATIVES_POSITIONING_PHASE0E_SCHEMA_INVENTORY_FREEZE_V01.json'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/DERIVATIVES_POSITIONING_PHASE0E_ARCHIVE_CONTAINER_AMENDMENT_V01A.json'
       - 'Dream-Account-OS-v2.3-PARTIAL/research/derivatives_positioning_phase0e_schema_inventory_v01.py'
       - 'Dream-Account-OS-v2.3-PARTIAL/research/run_derivatives_positioning_phase0e_windows.bat'
       - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_derivatives_positioning_phase0e_schema_inventory_v01.py'
@@ -36,17 +37,26 @@ jobs:
           python - <<'PY'
           import json
           from pathlib import Path
-          p = Path('Dream-Account-OS-v2.3-PARTIAL/research/DERIVATIVES_POSITIONING_PHASE0E_SCHEMA_INVENTORY_FREEZE_V01.json')
-          d = json.loads(p.read_text())
-          assert d['status'] == 'FROZEN_PRE_LOCAL_SCHEMA_ACCESS'
-          assert d['allowed_window']['end_exclusive'] == '2025-01-01'
-          assert d['forbidden_data']['2025'] is True
-          assert d['forbidden_data']['2026'] is True
-          assert d['forbidden_data']['outcomes'] is True
-          assert d['forbidden_data']['returns'] is True
-          assert d['forbidden_data']['pnl'] is True
-          assert d['next_gate_if_pass'] == 'PHASE0F_FIELD_SEMANTIC_AND_UNIT_FREEZE_PRE_OUTCOME'
-          print('Phase 0E authority boundary: PASS')
+          root = Path('Dream-Account-OS-v2.3-PARTIAL/research')
+          base = json.loads((root / 'DERIVATIVES_POSITIONING_PHASE0E_SCHEMA_INVENTORY_FREEZE_V01.json').read_text())
+          amendment = json.loads((root / 'DERIVATIVES_POSITIONING_PHASE0E_ARCHIVE_CONTAINER_AMENDMENT_V01A.json').read_text())
+          assert base['status'] == 'FROZEN_PRE_LOCAL_SCHEMA_ACCESS'
+          assert base['allowed_window']['end_exclusive'] == '2025-01-01'
+          assert base['forbidden_data']['2025'] is True
+          assert base['forbidden_data']['2026'] is True
+          assert base['forbidden_data']['outcomes'] is True
+          assert base['forbidden_data']['returns'] is True
+          assert base['forbidden_data']['pnl'] is True
+          assert base['next_gate_if_pass'] == 'PHASE0F_FIELD_SEMANTIC_AND_UNIT_FREEZE_PRE_OUTCOME'
+          assert amendment['status'] == 'FROZEN_TECHNICAL_REMEDIATION_ONLY'
+          assert amendment['scientific_scope_change'] is False
+          assert amendment['economic_scope_change'] is False
+          assert amendment['outcome_access_change'] is False
+          assert amendment['allowed_container_amendment']['add_zip_archives'] is True
+          assert amendment['unchanged_guards']['2025_forbidden'] is True
+          assert amendment['unchanged_guards']['2026_forbidden'] is True
+          assert amendment['unchanged_guards']['outcomes_forbidden'] is True
+          print('Phase 0E authority + V0.1A technical amendment boundary: PASS')
           PY
 
       - name: Verify launcher is local read-only research only
