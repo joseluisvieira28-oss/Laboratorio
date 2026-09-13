@@ -1,0 +1,33 @@
+name: OPTIONS-SPOTPERP-001 Source Audit Preflight V0.1
+
+on:
+  push:
+    branches:
+      - options-spotperp-v0.1
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1/**'
+      - '.github/workflows/options-source-audit-preflight-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout queued Options branch
+        uses: actions/checkout@v4
+
+      - name: Outcome-blind static preflight
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1
+        run: |
+          python3 --version
+          python3 preflight_source_audit.py
+
+      - name: Governance receipt
+        run: |
+          echo 'PREFLIGHT ONLY'
+          echo 'NO MARKET DATA DOWNLOADED'
+          echo 'NO SKEW / NO SIGNALS / NO RETURNS / NO PNL'
+          echo '2025 LOCKED / 2026 LOCKED'
