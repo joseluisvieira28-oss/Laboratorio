@@ -1,0 +1,212 @@
+name: OPTIONS-SPOTPERP-001 Equivalent 10000-Count Source Audit V0.1
+
+on:
+  push:
+    branches:
+      - options-spotperp-v0.1
+    paths:
+      - '.github/workflows/options-source-audit-accelerated-count10000-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  equivalent-fast-source-audit:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, 'execute equivalent 10000-count source audit')
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    steps:
+      - name: Checkout isolated Options branch
+        uses: actions/checkout@v4
+
+      - name: Bind authority and compile outcome-blind tooling
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1
+        run: |
+          echo "HEAD_SHA=$(git rev-parse HEAD)"
+          echo "BRANCH=${GITHUB_REF_NAME}"
+          test "${GITHUB_REF_NAME}" = "options-spotperp-v0.1"
+          python3 preflight_source_audit.py
+          python3 -m py_compile \
+            source_audit.py \
+            source_audit_count10000_v01.py \
+            source_audit_gate.py \
+            source_audit_gate_authority_reconciled_v01.py \
+            source_gate_calendar_day_reconciler_v01.py \
+            test_source_audit_gate_authority_reconciled_v01.py \
+            test_source_gate_calendar_day_reconciler_v01.py
+          python3 test_source_audit_gate_authority_reconciled_v01.py
+          python3 test_source_gate_calendar_day_reconciler_v01.py
+
+      - name: Prove 10000-count equivalence on previously audited one-day probe
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1
+        shell: bash
+        run: |
+          set +e
+          python3 source_audit_count10000_v01.py --probe-days 1 --output count10000_probe
+          rc=$?
+          set -e
+          echo "COUNT10000_PROBE_EXIT_CODE=$rc"
+          test "$rc" -eq 4
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          import source_audit_gate as gate
+          from source_audit_gate_authority_reconciled_v01 import reclassify_raw_audit
+
+          root = Path('count10000_probe')
+          manifest = json.loads((root/'source_manifest.json').read_text())
+          report = json.loads((root/'source_audit_report.json').read_text())
+          raw = reclassify_raw_audit(gate.audit_deribit_raw(root, True))
+
+          # Baseline is the already-audited 2021-04-01 probe from runs
+          # 34770439668 / 34770581446 using count=1000.
+          assert manifest['probe_mode'] is True
+          assert manifest['source_fetch_complete'] is True
+          assert manifest['holdout_accessed'] is False
+          assert manifest['locked_2026_accessed'] is False
+          assert report['outcome_metrics_computed'] is False
+          assert raw['schema_and_provenance_pass'] is True
+          assert raw['trades'] == 7149, raw
+          assert raw['iv_invalid'] == 32, raw
+          assert raw['index_price_invalid'] == 0, raw
+          assert raw['mark_price_invalid'] == 2, raw
+          assert report['audit']['eligible_trade_count'] == 181, report['audit']
+          assert raw['pages'] == 1, raw
+          print('COUNT10000_EQUIVALENCE_PROBE_PASS')
+          print('TRADES=7149 | IV_INVALID=32 | INDEX_INVALID=0 | MARK_INVALID=2 | ELIGIBLE=181')
+          print('COUNT1000_BASELINE_PAGES=10 | COUNT10000_PAGES=1')
+          print('NO SKEW / NO SIGNALS / NO RETURNS / NO PNL')
+          PY
+
+      - name: Execute full frozen Deribit acquisition with official count 10000
+        id: acquisition
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1
+        shell: bash
+        run: |
+          set +e
+          python3 source_audit_count10000_v01.py --output source_audit_data
+          rc=$?
+          set -e
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          echo "ACQUISITION_EXIT_CODE=$rc"
+          test "$rc" -eq 0 -o "$rc" -eq 2 -o "$rc" -eq 12
+
+      - name: Validate acquisition firewalls and completeness receipt
+        if: always() && steps.acquisition.outputs.rc != '' && steps.acquisition.outputs.rc != '12'
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          m=json.loads(Path('source_audit_data/source_manifest.json').read_text())
+          r=json.loads(Path('source_audit_data/source_audit_report.json').read_text())
+          assert m['probe_mode'] is False
+          assert m['source_fetch_complete'] is True, m
+          assert m['holdout_accessed'] is False
+          assert m['locked_2026_accessed'] is False
+          assert r['outcome_metrics_computed'] is False
+          assert r['audit']['skew_values_computed'] is False
+          assert r['audit']['forward_returns_computed'] is False
+          assert r['audit']['pnl_computed'] is False
+          print('FULL_RAW_ACQUISITION_COMPLETE')
+          print('RAW_PAGES=', len(m['raw_pages']))
+          print('TOTAL_TRADES=', r['audit']['total_trades'])
+          print('OLD_FRACTIONAL_DTE_VALID_DAYS_DIAGNOSTIC_ONLY=', r['audit']['valid_signal_coverage_days'])
+          PY
+
+      - name: Execute canonical calendar-day Source/Data Gate
+        id: canonical
+        if: always() && steps.acquisition.outputs.rc != '' && steps.acquisition.outputs.rc != '12'
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1
+        shell: bash
+        run: |
+          set +e
+          python3 source_gate_calendar_day_reconciler_v01.py --input source_audit_data
+          rc=$?
+          set -e
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          echo "CANONICAL_EXIT_CODE=$rc"
+          test "$rc" -eq 0 -o "$rc" -eq 2 -o "$rc" -eq 12
+
+      - name: Validate canonical receipt and reveal source-only diagnostics
+        if: always() && steps.canonical.outputs.rc != ''
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1
+        env:
+          CANONICAL_RC: ${{ steps.canonical.outputs.rc }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          rc=int(os.environ['CANONICAL_RC'])
+          x=json.loads(Path('source_audit_data/source_gate_calendar_day_reconciled_receipt.json').read_text())
+          expected={0:'SOURCE_AUDIT_PASS',2:'SOURCE_AUDIT_BLOCKED',12:'EXECUTION_ENVIRONMENT_BLOCKED'}[rc]
+          assert x['status']==expected,(rc,x['status'])
+          assert x['authority']['authority_sha256']=='138cee737d75d27b43d9f377fc9a77e823e8fb2015f360b300cdc4a16cf67cfa'
+          assert x['skew_values_computed'] is False
+          assert x['signals_computed'] is False
+          assert x['forward_returns_computed'] is False
+          assert x['pnl_computed'] is False
+          assert x['holdout_2025_accessed'] is False
+          assert x['year_2026_accessed'] is False
+          c=x.get('calendar_day_coverage_audit') or {}
+          print('CANONICAL_STATUS=',x['status'])
+          print('VALID_DAYS_TOTAL=',c.get('valid_signal_coverage_days'))
+          print('VALID_DAYS_BY_YEAR=',c.get('valid_signal_coverage_days_by_year'))
+          print('COVERAGE_RATIO_BY_YEAR=',c.get('coverage_ratio_by_year'))
+          print('MIN_REQUIRED=',c.get('min_required_valid_days'))
+          print('ELIGIBLE_TRADE_ROWS=',c.get('eligible_trade_rows'))
+          print('BTC_PRICE_AUDIT=',x.get('btc_price_audit'))
+          print('NO OUTCOMES / NO SKEW / NO RETURNS / NO PNL')
+          print('2025 LOCKED / 2026 LOCKED')
+          PY
+
+      - name: Upload canonical decision receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: options-spotperp-001-count10000-canonical-receipts-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1/source_audit_data/source_manifest.json
+            Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1/source_audit_data/source_audit_report.json
+            Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1/source_audit_data/source_gate_calendar_day_reconciled_receipt.json
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Upload raw provenance evidence
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: options-spotperp-001-count10000-raw-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1/source_audit_data/raw/
+            Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1/source_audit_data/raw_binance_btcusdt_1d/
+          if-no-files-found: warn
+          compression-level: 0
+          retention-days: 30
+
+      - name: Governance receipt
+        if: always()
+        run: |
+          echo 'SOURCE/DATA AUDIT ONLY — EQUIVALENT OFFICIAL PAGE SIZE 10000'
+          echo 'NO DISCOVERY / NO SKEW / NO SIGNALS / NO RETURNS / NO PNL'
+          echo '2025 LOCKED / 2026 LOCKED'
+          echo 'NO LIVE TRADING / NO EXCHANGE MUTATION'
+
+      - name: Enforce classified final state
+        if: always()
+        env:
+          ACQ_RC: ${{ steps.acquisition.outputs.rc }}
+          CANONICAL_RC: ${{ steps.canonical.outputs.rc }}
+        run: |
+          if [ "$ACQ_RC" = "12" ]; then
+            echo 'EXECUTION_ENVIRONMENT_BLOCKED_DURING_ACQUISITION'
+            exit 12
+          fi
+          case "$CANONICAL_RC" in
+            0) echo 'SOURCE_AUDIT_PASS'; exit 0 ;;
+            2) echo 'SOURCE_AUDIT_BLOCKED'; exit 2 ;;
+            12) echo 'EXECUTION_ENVIRONMENT_BLOCKED'; exit 12 ;;
+            *) echo "UNEXPECTED_STATE ACQ=$ACQ_RC CANONICAL=$CANONICAL_RC"; exit 99 ;;
+          esac
