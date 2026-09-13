@@ -1,0 +1,131 @@
+name: OPTIONS-SPOTPERP-001 Calendar-Day Source Audit Reconcile V0.1
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  reconcile-calendar-day-source-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout current isolated Options branch
+        uses: actions/checkout@v4
+
+      - name: Bind frozen authority and reconciler tests
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1
+        run: |
+          echo "HEAD_SHA=$(git rev-parse HEAD)"
+          python3 preflight_source_audit.py
+          python3 -m py_compile \
+            source_audit_gate.py \
+            source_audit_gate_authority_reconciled_v01.py \
+            source_gate_calendar_day_reconciler_v01.py \
+            test_source_audit_gate_authority_reconciled_v01.py \
+            test_source_gate_calendar_day_reconciler_v01.py
+          python3 test_source_audit_gate_authority_reconciled_v01.py
+          python3 test_source_gate_calendar_day_reconciler_v01.py
+
+      - name: Download source-audit decision receipts from acquisition run
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: 34770637063
+          name: options-spotperp-001-source-audit-receipts-34770637063-1
+          path: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1/source_audit_data
+
+      - name: Download raw provenance bytes from acquisition run
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: 34770637063
+          name: options-spotperp-001-source-audit-raw-34770637063-1
+          path: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1/source_audit_data
+
+      - name: Verify downloaded raw acquisition exists
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1
+        run: |
+          test -f source_audit_data/source_manifest.json
+          test -f source_audit_data/source_audit_report.json
+          test -d source_audit_data/raw
+          echo "RAW_PAGE_COUNT=$(find source_audit_data/raw -type f -name 'response_*.json.gz' | wc -l)"
+
+      - name: Execute canonical calendar-day reconciliation only
+        id: reconcile
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1
+        shell: bash
+        run: |
+          set +e
+          python3 source_gate_calendar_day_reconciler_v01.py --input source_audit_data
+          rc=$?
+          set -e
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          echo "RECONCILE_EXIT_CODE=$rc"
+          test "$rc" -eq 0 -o "$rc" -eq 2 -o "$rc" -eq 12
+
+      - name: Validate canonical receipt and firewalls
+        if: always() && steps.reconcile.outputs.rc != ''
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1
+        env:
+          RECONCILE_RC: ${{ steps.reconcile.outputs.rc }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          rc = int(os.environ['RECONCILE_RC'])
+          p = Path('source_audit_data/source_gate_calendar_day_reconciled_receipt.json')
+          x = json.loads(p.read_text(encoding='utf-8'))
+          expected = {0:'SOURCE_AUDIT_PASS', 2:'SOURCE_AUDIT_BLOCKED', 12:'EXECUTION_ENVIRONMENT_BLOCKED'}[rc]
+          assert x['status'] == expected, (rc, x['status'])
+          assert x['stage'] == 'FINAL_SOURCE_DATA_GATE_CALENDAR_DAY_RECONCILED'
+          assert x['authority']['authority_sha256'] == '138cee737d75d27b43d9f377fc9a77e823e8fb2015f360b300cdc4a16cf67cfa'
+          assert x['skew_values_computed'] is False
+          assert x['signals_computed'] is False
+          assert x['forward_returns_computed'] is False
+          assert x['pnl_computed'] is False
+          assert x['holdout_2025_accessed'] is False
+          assert x['year_2026_accessed'] is False
+          print('CANONICAL_STATUS=', x['status'])
+          cov=x.get('calendar_day_coverage_audit') or {}
+          print('VALID_SIGNAL_COVERAGE_DAYS=', cov.get('valid_signal_coverage_days'))
+          print('MIN_REQUIRED_VALID_DAYS=', cov.get('min_required_valid_days'))
+          print('DTE_DEFINITION=', cov.get('dte_definition'))
+          print('ELIGIBLE_TRADE_ROWS=', cov.get('eligible_trade_rows'))
+          print('BTC_PRICE_AUDIT=', x.get('btc_price_audit'))
+          print('NO OUTCOMES / NO SKEW / NO RETURNS / NO PNL')
+          print('2025 LOCKED / 2026 LOCKED')
+          PY
+
+      - name: Upload canonical reconciliation receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: options-spotperp-001-calendar-day-source-gate-${{ github.run_id }}-${{ github.run_attempt }}
+          path: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1/source_audit_data/source_gate_calendar_day_reconciled_receipt.json
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Governance receipt
+        if: always()
+        run: |
+          echo 'CANONICAL SOURCE-GATE RECONCILIATION ONLY'
+          echo 'NO DISCOVERY / NO SKEW / NO SIGNALS / NO RETURNS / NO PNL'
+          echo '2025 LOCKED / 2026 LOCKED'
+          echo 'NO LIVE TRADING / NO EXCHANGE MUTATION'
+
+      - name: Enforce classified canonical state
+        if: always() && steps.reconcile.outputs.rc != ''
+        env:
+          RECONCILE_RC: ${{ steps.reconcile.outputs.rc }}
+        run: |
+          case "$RECONCILE_RC" in
+            0) echo 'SOURCE_AUDIT_PASS'; exit 0 ;;
+            2) echo 'SOURCE_AUDIT_BLOCKED'; exit 2 ;;
+            12) echo 'EXECUTION_ENVIRONMENT_BLOCKED'; exit 12 ;;
+            *) echo "UNEXPECTED_EXIT=$RECONCILE_RC"; exit 99 ;;
+          esac
