@@ -1,0 +1,33 @@
+{
+  "document_type": "MVE_CPI_FAMILY_01_DATA_ACCESS_AUTHORIZATION_TEMPLATE_V01",
+  "version": "0.1",
+  "hypothesis_id": "MVE-CPI-FAMILY-01",
+  "status": "TEMPLATE_NOT_AUTHORIZED",
+  "authorization_active": false,
+  "purpose": "Fail-closed template for a future explicit one-shot protected-data authorization. This file does not authorize downloads or outcome access.",
+  "allowed_only_after": [
+    "MVE_CPI_FAMILY_01_PROSPECTIVE_FREEZE_V01_FINGERPRINTED",
+    "VALIDATION_RUNNER_IMPLEMENTED_SEPARATELY_FROM_HISTORICAL_DISCOVERY_RUNNER",
+    "UNIT_AND_PREFLIGHT_GUARDS_PASS_WITHOUT_PROTECTED_OUTCOME_ACCESS",
+    "EXPECTED_BRANCH_AND_SOURCE_AUTHORITY_VERIFIED"
+  ],
+  "future_authorized_scope_if_activated": {
+    "market_type": "SPOT",
+    "symbols": ["BTCUSDT", "ETHUSDT"],
+    "timeframe": "1m",
+    "period": "2025-01_THROUGH_2025-08",
+    "events": "EXACT_CPI_EVENT_SET_FROM_HISTORICAL_V03A_PROSPECTIVE_VALIDATION_AUTHORITY_ONLY",
+    "entry": "08:31_AMERICA_NEW_YORK_OPEN",
+    "exit": "08:45_AMERICA_NEW_YORK_OPEN",
+    "cost_bps_round_trip": 10
+  },
+  "always_forbidden": {
+    "2025_09_through_2025_12": true,
+    "2026_and_later": true,
+    "alternate_assets": true,
+    "alternate_windows": true,
+    "exchange_mutation": true,
+    "live_trading": true
+  },
+  "activation_rule": "DO_NOT_EDIT_TO_AUTHORIZED_CASUALLY. CREATE_A_SEPARATE_EXPLICIT_AUTHORIZATION_RECEIPT_AFTER_PREFLIGHT_PASS."
+}
