@@ -1,0 +1,96 @@
+name: Cross-Venue Funding Basis HL Asset Ctx Provenance V0.4.4
+
+on:
+  push:
+    branches:
+      - dream-account-phase-b-signal-research-v0.1
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/CROSS_VENUE_FUNDING_BASIS_DATASET_EXPOSURE_LEDGER_V01.json'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/CROSS_VENUE_FUNDING_BASIS_HL_ASSET_CTX_PROVENANCE_V044.json'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/cross_venue_funding_basis_hl_asset_ctx_v044.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_cross_venue_funding_basis_hl_asset_ctx_v044.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/scripts/run_cross_venue_funding_basis_v044_windows.ps1'
+      - '.github/workflows/cross-venue-funding-basis-hl-asset-ctx-v044.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  v044-offline-authority-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install offline test dependencies
+        run: python -m pip install pytest lz4
+
+      - name: Run V0.4.4 tests
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python -m pytest -q tests/test_cross_venue_funding_basis_hl_asset_ctx_v044.py
+
+      - name: Compile V0.4.4 parser
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python -m py_compile research/cross_venue_funding_basis_hl_asset_ctx_v044.py
+
+      - name: Verify frozen authority and exposure ledger
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          a = json.loads(Path('research/CROSS_VENUE_FUNDING_BASIS_HL_ASSET_CTX_PROVENANCE_V044.json').read_text())
+          l = json.loads(Path('research/CROSS_VENUE_FUNDING_BASIS_DATASET_EXPOSURE_LEDGER_V01.json').read_text())
+          assert a['status'] == 'AUTHORIZED_OFFICIAL_ARCHIVE_PROVENANCE_ONLY_DISCOVERY_BLOCKED'
+          assert a['semantic_probe_freeze']['candidate_clamps'] == ['0.0003','0.0005']
+          assert a['semantic_probe_freeze']['candidate_scale_divisors'] == [1,8]
+          assert a['semantic_probe_freeze']['absolute_match_tolerance'] == '1e-12'
+          assert a['candidate_calendar']['first_date_utc'] == '2023-09-01'
+          assert a['candidate_calendar']['last_date_utc'] == '2025-12-31'
+          assert a['candidate_calendar']['2026_forbidden'] is True
+          for k, v in a['scientific_boundary'].items():
+              assert v is False, k
+          r2 = next(x for x in l['records'] if x['exposure_id'] == 'CVFB_RUN02B_BASIS_PRICE_COMPONENT')
+          assert r2['outcomes_viewed'] is True
+          assert r2['entry_utc'] == '2024-09-01T00:00:00Z'
+          assert r2['exit_utc'] == '2025-12-31T23:00:00Z'
+          p = next(x for x in l['records'] if x['exposure_id'] == 'HL_ASSET_CTXS_SCHEMA_PROBE_20240901')
+          assert p['economic_values_viewed'] is False
+          assert p['observed_structure']['BTC_distinct_minutes'] == 1018
+          assert p['observed_structure']['ETH_distinct_minutes'] == 1018
+          print('PASS: V0.4.4 authority + contamination ledger frozen')
+          PY
+
+      - name: Verify seeded prior partial day remains fail-closed
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python research/cross_venue_funding_basis_hl_asset_ctx_v044.py seed-prior-20240901 --out /tmp/v044_seed.json
+          python - <<'PY'
+          import json
+          r=json.load(open('/tmp/v044_seed.json'))
+          assert r['target_assets']['BTC']['full_day'] is False
+          assert r['target_assets']['ETH']['full_day'] is False
+          assert r['economic_fields_reinspected'] is False
+          assert r['economic_values_output'] is False
+          print('PASS: prior partial day reused without economic reinspection')
+          PY
+
+      - name: Static no-live-trading boundary
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          a=json.loads(Path('research/CROSS_VENUE_FUNDING_BASIS_HL_ASSET_CTX_PROVENANCE_V044.json').read_text())
+          assert a['scientific_boundary']['authorizes_trading'] is False
+          assert a['scientific_boundary']['authorizes_exchange_mutation'] is False
+          assert a['scientific_boundary']['authorizes_2026'] is False
+          print('PASS: no trading / no mutation / no 2026')
+          PY
