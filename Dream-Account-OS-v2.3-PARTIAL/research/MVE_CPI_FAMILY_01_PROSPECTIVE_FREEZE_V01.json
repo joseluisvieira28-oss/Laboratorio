@@ -1,0 +1,83 @@
+{
+  "document_type": "MVE_CPI_FAMILY_01_PROSPECTIVE_FREEZE_V01",
+  "version": "0.1",
+  "status": "FROZEN_PRE_AUTHORIZATION",
+  "frozen_utc_date": "2026-09-13",
+  "hypothesis_id": "MVE-CPI-FAMILY-01",
+  "historical_parent": {
+    "lab_id": "NEWS_SHOCK_LAB_V03A_CPI_SURPRISE",
+    "historical_verdict": "NO_EDGE_STOP_IMMUTABLE",
+    "authority_file": "Dream-Account-OS-v2.3-PARTIAL/research/NEWS_SHOCK_LAB_V03A_PRE_DISCOVERY_SIGNAL_STATISTICAL_FREEZE_V0.1.json",
+    "closeout_file": "Dream-Account-OS-v2.3-PARTIAL/research/NEWS_SHOCK_LAB_V03A_DISCOVERY_FINAL_CLOSEOUT_RECEIPT_V0.1.json",
+    "new_hypothesis_does_not_rescue_parent": true
+  },
+  "market_scope": {
+    "source": "OFFICIAL_BINANCE_PUBLIC_DATA_ONLY",
+    "market_type": "SPOT",
+    "timeframe": "1m",
+    "symbols": ["BTCUSDT", "ETHUSDT"],
+    "entry": "OPEN_OF_08:31_AMERICA_NEW_YORK_1M_CANDLE",
+    "exit": "OPEN_OF_08:45_AMERICA_NEW_YORK_1M_CANDLE",
+    "fixed_round_trip_cost_bps": 10
+  },
+  "signal": {
+    "source": "CPI_ACTUAL_VS_CONSENSUS",
+    "cooler_than_consensus_expected_crypto_direction": "UP",
+    "hotter_than_consensus_expected_crypto_direction": "DOWN",
+    "neutral_events_primary_directional_test": "EXCLUDED",
+    "event_labels_must_be_copied_from_historical_authority_not_reconstructed_from_market_outcomes": true
+  },
+  "protected_validation": {
+    "start_month": "2025-01",
+    "end_month": "2025-08",
+    "total_cpi_events": 8,
+    "directional_events": 7,
+    "neutral_events": 1,
+    "status": "LOCKED_NOT_AUTHORIZED_BY_THIS_FREEZE",
+    "later_2025": "LOCKED",
+    "year_2026_and_later": "LOCKED"
+  },
+  "asset_pass_criteria": {
+    "mean_aligned_net_bps_gt": 0,
+    "median_aligned_gross_bps_gt": 0,
+    "minimum_positive_aligned_gross_directional_events": 5,
+    "directional_event_denominator": 7,
+    "p_value_gate_required": false,
+    "reason_no_p_value_gate": "REUSES_ORIGINAL_PROSPECTIVE_LOW_N_VALIDATION_CONTRACT"
+  },
+  "family_pass": {
+    "rule": "BOTH_BTCUSDT_AND_ETHUSDT_MUST_PASS_ALL_ASSET_CRITERIA",
+    "pass_classification": "MVE_1_OOS_POSITIVE",
+    "fail_classification": "MVE_CLOSED_NO_EDGE",
+    "data_integrity_failure_classification": "MVE_INCOMPLETE_STOP"
+  },
+  "mandatory_report_only_diagnostics": [
+    "PER_EVENT_GROSS_AND_NET_ALIGNED_BPS",
+    "LEAVE_ONE_OUT_MEAN_NET_BPS",
+    "LARGEST_EVENT_CONTRIBUTION",
+    "TOP3_EVENT_CONTRIBUTION",
+    "BTC_ETH_SAME_SIGN_DIAGNOSTIC"
+  ],
+  "forbidden_rescues": [
+    "ETH_ONLY_SELECTION",
+    "BTC_ONLY_SELECTION",
+    "ALTERNATE_ASSETS",
+    "ALTERNATE_ENTRY_OR_EXIT",
+    "ALTERNATE_HOLDING_WINDOW",
+    "COST_REDUCTION",
+    "SURPRISE_MAGNITUDE_THRESHOLD_SEARCH",
+    "REGIME_OR_SUBPERIOD_SEARCH",
+    "OUTLIER_DELETION_OR_WINSORIZATION",
+    "OPEN_2025_09_TO_2025_12_TO_RESCUE",
+    "OPEN_2026_TO_RESCUE"
+  ],
+  "governance": {
+    "data_access_authorized": false,
+    "live_trading_authorized": false,
+    "exchange_mutation_authorized": false,
+    "main_merge_authorized": false,
+    "render_deploy_authorized": false,
+    "post_pass_route": "SHADOW_OR_PAPER_DESIGN_ONLY",
+    "post_fail_route": "CLOSE_NO_RETUNE_MOVE_TO_NEXT_MVE_QUEUE_ITEM"
+  }
+}
