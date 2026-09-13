@@ -1,0 +1,80 @@
+{
+  "contract": "DISCOVERY_IMPLEMENTATION_FREEZE_002",
+  "date": "2026-09-13",
+  "execution": {
+    "base_cost_per_active_leg": 0.001,
+    "discovery_trade_rule": "Entry Monday must be >=2021-01-01 and exit Monday must be <=2024-12-31. Any position requiring 2025 price data is excluded and 2025 remains unopened.",
+    "entry": "Monday 00:00 UTC Binance Spot daily open, exactly 2 calendar days after Saturday cutoff",
+    "exit": "Next Monday 00:00 UTC Binance Spot daily open",
+    "missing_required_timestamp": "fail-closed implementation/data error; no imputation",
+    "return": "simple return P_exit/P_entry - 1",
+    "stress_cost_per_active_leg": 0.002
+  },
+  "holdout_2025_access": false,
+  "immutability": "No value in this contract may change after Discovery outcome execution. Any change requires a new prospective version and cannot rescue V0.1A.",
+  "lab_id": "ONCHAIN-CAPFLOW-001",
+  "locked_2026_access": false,
+  "metrics": {
+    "block_bootstrap": {
+      "block_length_weeks": 4,
+      "ci": [
+        0.025,
+        0.975
+      ],
+      "method": "circular moving-block resampling of chronological weekly records; recompute spread in each sample",
+      "resamples": 10000,
+      "seed": 20260913,
+      "target": "base net top-minus-bottom spread"
+    },
+    "directional_gross_trade_return": "LONG: +r; SHORT: -r; FLAT excluded from trade metrics",
+    "directional_net_trade_return_base": "directional gross - 0.001",
+    "directional_net_trade_return_stress": "directional gross - 0.002",
+    "max_drawdown": "maximum peak-to-trough drawdown of compounded active-trade equity using base net directional returns",
+    "mean_median_profit_factor": "computed on active directional net trade returns",
+    "newey_west": {
+      "lag": 4,
+      "series": "chronological base net directional active-trade returns",
+      "t_stat": "mean divided by HAC standard error of mean using Bartlett weights"
+    },
+    "profit_factor": "sum(positive net active-trade returns)/abs(sum(negative net active-trade returns)); +inf if no losses and positive gains",
+    "single_week_dominance": "largest positive base-net directional trade return divided by sum of positive base-net directional trade returns",
+    "top_bottom_gross_spread": "mean(BTC simple returns on LONG weeks) - mean(BTC simple returns on SHORT weeks)",
+    "top_bottom_net_spread_base": "gross spread - 2*0.001; two-leg sort spread, each leg pays frozen 10 bps round trip",
+    "top_bottom_net_spread_stress": "gross spread - 2*0.002; two-leg sort spread, each leg pays frozen 20 bps round trip",
+    "year_assignment": "entry Monday UTC year",
+    "year_dominance": "largest positive yearly cumulative base-net directional PnL divided by sum of positive yearly cumulative base-net directional PnL",
+    "year_spread": "within each Discovery year, gross top-bottom spread minus 2*0.001"
+  },
+  "mve0_operational_pass": {
+    "at_least_3_of_4_years_non_negative_base_net_spread": true,
+    "base_net_top_bottom_spread_gt_0": true,
+    "btc_primary_only": "BTC alone determines MVE-0. ETH is reported as confirmation and cannot rescue BTC.",
+    "provenance_timestamp_leakage_failure": false,
+    "single_week_dominance_max": 0.25,
+    "stress_net_top_bottom_spread_min": -0.001,
+    "stress_strongly_negative_definition": "stress net top-bottom spread < -0.001 (-10 bps/week) is strongly negative",
+    "year_dominance_max": 0.6
+  },
+  "raw_snapshot_artifact_id": 10320630407,
+  "raw_snapshot_run_id": 34765354492,
+  "reporting_only_not_extra_gate": [
+    "Newey-West t-stat",
+    "block-bootstrap 95% CI",
+    "profit factor",
+    "max drawdown",
+    "mean/median net return",
+    "win rate"
+  ],
+  "required_raw_manifest_sha256": "a45ceb4248c9438dfafc6580627fc399fccfafb0ec208cb87024412ca8f08794",
+  "scientific_protocol_sha256": "1c6c66b7188694bcc2d62cb83ee050a023fba7f97388bc87933ed668d3392b65",
+  "signal": {
+    "flat": "otherwise",
+    "history": "Exactly 52 prior Saturday raw-growth observations, excluding current Saturday. Current week invalid unless all 52 prior values exist.",
+    "long": "percentile >= 0.75",
+    "percentile": "(count(history < g_t) + 0.5*count(history == g_t))/52",
+    "raw_growth": "ln(S_t/S_t_minus_7d) at Saturday 00:00 UTC",
+    "short": "percentile <= 0.25",
+    "supply_value": "Exact UTC calendar-date SplyCur for USDT plus USDC; no interpolation or carry-forward."
+  },
+  "version": "V0.1A"
+}
