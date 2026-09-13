@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
-"""Outcome-blind preflight for the Deribit 08:00 UTC expiry interpretation fix."""
+"""Outcome-blind preflight for expiry and deterministic raw snapshot corrections."""
 from __future__ import annotations
 
 import datetime as dt
+import gzip
 import py_compile
+import tempfile
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -32,7 +34,19 @@ def main() -> int:
     midnight_trade = dt.datetime(2021, 5, 26, 0, 0, 0, tzinfo=UTC)
     assert (expiry - midnight_trade).total_seconds() / 86400.0 > 30.0
 
+    # Canonical raw snapshot requirement: identical provider response bytes must
+    # produce byte-identical gzip files and must round-trip to the original body.
+    body = b'{"stable":true,"source":"deribit"}'
+    with tempfile.TemporaryDirectory() as td:
+        p1 = Path(td) / "a.json.gz"
+        p2 = Path(td) / "b.json.gz"
+        fixed.write_gz(p1, body)
+        fixed.write_gz(p2, body)
+        assert p1.read_bytes() == p2.read_bytes(), "gzip bytes are not deterministic"
+        assert gzip.decompress(p1.read_bytes()) == body
+
     print("OPTIONS_EXPIRY_0800_PREFLIGHT_PASS")
+    print("DETERMINISTIC_GZIP_PREFLIGHT_PASS")
     print("NO NETWORK | NO MARKET DATA | NO SKEW | NO RETURNS | NO PNL")
     return 0
 
