@@ -25,6 +25,13 @@ echo.
 echo [GATE A+B] Data source gate, frozen acquisition and SHA256 manifest...
 python acquire_data.py --output .\data
 set ACQ=%ERRORLEVEL%
+if "%ACQ%"=="12" (
+  echo.
+  echo STOP: EXECUTION_ENVIRONMENT_BLOCKED.
+  echo This is a DNS/network/transport problem, NOT a scientific DATA_BLOCKED verdict.
+  echo Review .\data\data_gate_status.json if present, fix connectivity, then re-run unchanged.
+  exit /b 12
+)
 if not "%ACQ%"=="0" (
   echo.
   echo STOP: acquisition/data-source gate did not PASS. Exit code %ACQ%.
