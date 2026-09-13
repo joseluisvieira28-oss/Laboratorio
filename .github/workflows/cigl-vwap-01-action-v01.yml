@@ -1,0 +1,40 @@
+name: CIGL VWAP 01 — Frozen Action V0.1
+
+on:
+  push:
+    branches: [cigl-vwap-01-action-v01]
+    paths:
+      - '.github/workflows/cigl-vwap-01-action-v01.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  frozen-action:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Assert frozen strategy bytes
+        shell: bash
+        run: |
+          test "$(git hash-object Dream-Account-OS-v2.3-PARTIAL/research/classic_indicators_gap_v01.py)" = "21398ba193d10d465c10b392e1dc8461270a0491"
+          test "$(git hash-object Dream-Account-OS-v2.3-PARTIAL/research/CLASSIC_INDICATORS_GAP_LAB_V01_PROTOCOL.json)" = "0ac36b01d682064576b6d1279d26a1d7056c780f"
+          echo 'Frozen strategy/protocol byte identity PASS'
+      - name: Install isolated research dependencies
+        run: python -m pip install --disable-pip-version-check numpy pandas zstandard
+      - name: Execute discovery-first fail-closed action
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL/research
+          python cigl_vwap_01_action_orchestrator_v01.py --work ../outputs/CIGL_VWAP_01_ACTION_V01
+      - name: Upload immutable research receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cigl-vwap-01-action-v01-${{ github.sha }}
+          path: Dream-Account-OS-v2.3-PARTIAL/outputs/CIGL_VWAP_01_ACTION_V01/outputs/
+          if-no-files-found: error
+          retention-days: 90
