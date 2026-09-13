@@ -24,10 +24,10 @@ jobs:
         shell: bash
         working-directory: Dream-Account-OS-v2.3-PARTIAL/research/onchain_capflow_v0_1
     steps:
-      - name: Checkout frozen branch
+      - name: Checkout exact audited gate commit
         uses: actions/checkout@v4
         with:
-          ref: onchain-capflow-v0.1
+          ref: 0bab66a0883c3604bb5f00512bb4ca7c495cb0bf
           fetch-depth: 1
 
       - name: Set up Python
@@ -42,6 +42,8 @@ jobs:
           echo 'Research-only | no live trading | no exchange mutation'
           echo 'Allowed raw-data period: 2020-01-01 through 2024-12-31'
           echo '2025 holdout LOCKED | 2026+ LOCKED | Discovery NOT AUTHORIZED'
+          echo 'Reproduction code SHA: 0bab66a0883c3604bb5f00512bb4ca7c495cb0bf'
+          test "$(git rev-parse HEAD)" = '0bab66a0883c3604bb5f00512bb4ca7c495cb0bf'
           test ! -e discovery.py
           python -m py_compile acquire_data.py audit_data.py
 
@@ -77,6 +79,7 @@ jobs:
               'expected_raw_manifest_sha256': expected,
               'actual_raw_manifest_sha256': actual,
               'status': status,
+              'reproduction_code_sha': '0bab66a0883c3604bb5f00512bb4ca7c495cb0bf',
               'meaning': 'PASS means all 121 raw entry hashes/bytes metadata exactly reproduce the first audited outcome-blind acquisition manifest.'
           }
           Path('snapshot_identity.json').write_text(json.dumps(receipt, indent=2, sort_keys=True))
@@ -123,6 +126,7 @@ jobs:
               'stage': 'DATA_GATES_AND_RAW_SNAPSHOT_PRESERVATION_ONLY',
               'classification': status,
               'protocol_sha256': '1c6c66b7188694bcc2d62cb83ee050a023fba7f97388bc87933ed668d3392b65',
+              'reproduction_code_sha': '0bab66a0883c3604bb5f00512bb4ca7c495cb0bf',
               'holdout_2025_accessed': False,
               'locked_2026_accessed': False,
               'outcome_metrics_computed': False,
