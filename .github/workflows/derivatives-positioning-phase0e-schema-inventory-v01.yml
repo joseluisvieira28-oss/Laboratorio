@@ -1,0 +1,62 @@
+name: Derivatives Positioning Phase 0E Schema Inventory V0.1
+
+on:
+  push:
+    branches:
+      - dream-account-phase-b-signal-research-v0.1
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/DERIVATIVES_POSITIONING_PHASE0E_SCHEMA_INVENTORY_FREEZE_V01.json'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/derivatives_positioning_phase0e_schema_inventory_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/run_derivatives_positioning_phase0e_windows.bat'
+      - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_derivatives_positioning_phase0e_schema_inventory_v01.py'
+      - '.github/workflows/derivatives-positioning-phase0e-schema-inventory-v01.yml'
+  workflow_dispatch:
+
+jobs:
+  phase0e-offline-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Compile Phase 0E inventory
+        run: |
+          python -m py_compile Dream-Account-OS-v2.3-PARTIAL/research/derivatives_positioning_phase0e_schema_inventory_v01.py
+
+      - name: Run Phase 0E tests
+        run: |
+          python -m pip install pytest
+          pytest -q Dream-Account-OS-v2.3-PARTIAL/tests/test_derivatives_positioning_phase0e_schema_inventory_v01.py
+
+      - name: Verify freeze and safety boundary
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path('Dream-Account-OS-v2.3-PARTIAL/research/DERIVATIVES_POSITIONING_PHASE0E_SCHEMA_INVENTORY_FREEZE_V01.json')
+          d = json.loads(p.read_text())
+          assert d['status'] == 'FROZEN_PRE_LOCAL_SCHEMA_ACCESS'
+          assert d['allowed_window']['end_exclusive'] == '2025-01-01'
+          assert d['forbidden_data']['2025'] is True
+          assert d['forbidden_data']['2026'] is True
+          assert d['forbidden_data']['outcomes'] is True
+          assert d['forbidden_data']['returns'] is True
+          assert d['forbidden_data']['pnl'] is True
+          assert d['next_gate_if_pass'] == 'PHASE0F_FIELD_SEMANTIC_AND_UNIT_FREEZE_PRE_OUTCOME'
+          print('Phase 0E authority boundary: PASS')
+          PY
+
+      - name: Verify launcher is local read-only research only
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('Dream-Account-OS-v2.3-PARTIAL/research/run_derivatives_positioning_phase0e_windows.bat')
+          text = p.read_text(encoding='utf-8').lower()
+          assert 'derivatives_positioning_phase0e_schema_inventory_v01.py' in text
+          for forbidden in ('curl ', 'invoke-webrequest', 'git push', 'mexc', 'binance', 'hyperliquid'):
+              assert forbidden not in text
+          print('Phase 0E launcher boundary: PASS')
+          PY
