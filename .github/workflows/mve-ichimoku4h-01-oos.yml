@@ -1,0 +1,49 @@
+name: MVE-ICHIMOKU4H-01 - 2024 OOS
+
+on:
+  push:
+    branches: [classic-indicators-gap-lab-v0.1]
+permissions:
+  contents: read
+env:
+  PYTHONUNBUFFERED: "1"
+jobs:
+  mve-ichimoku4h-01-oos:
+    if: contains(github.event.head_commit.message, '[MVE ICHIMOKU4H RUN]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    defaults:
+      run:
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+    steps:
+      - name: Checkout frozen research branch
+        uses: actions/checkout@v4
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: Dream-Account-OS-v2.3-PARTIAL/pyproject.toml
+      - name: Install isolated research dependencies
+        run: python -m pip install --upgrade pip pandas numpy
+      - name: Compile frozen MVE Ichimoku4H code
+        run: |
+          python -m py_compile research/classic_indicators_gap_v01.py
+          python -m py_compile research/classic_indicators_gap_vwap_data_vision_v01.py
+          python -m py_compile research/classic_indicators_gap_ichimoku_v01.py
+          python -m py_compile research/mve_ichimoku4h_01_oos_runner.py
+      - name: Run deterministic pre-market 4H self-test
+        run: python research/mve_ichimoku4h_01_oos_runner.py --freeze research/MVE_ICHIMOKU4H_01_ACTION_FREEZE.json --self-test
+      - name: Execute MVE-ICHIMOKU4H-01 frozen 2024 OOS exactly once
+        run: |
+          rm -rf research/local_data/mve_ichimoku4h_01_oos_output
+          mkdir -p research/local_data/mve_ichimoku4h_01_oos_output
+          python research/mve_ichimoku4h_01_oos_runner.py --freeze research/MVE_ICHIMOKU4H_01_ACTION_FREEZE.json --out research/local_data/mve_ichimoku4h_01_oos_output 2>&1 | tee research/local_data/mve_ichimoku4h_01_oos_output/MVE_ICHIMOKU4H_01_STDOUT.txt
+      - name: Upload immutable research outputs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: MVE-ICHIMOKU4H-01-${{ github.sha }}
+          path: Dream-Account-OS-v2.3-PARTIAL/research/local_data/mve_ichimoku4h_01_oos_output/
+          if-no-files-found: warn
+          retention-days: 30
