@@ -78,6 +78,15 @@ jobs:
           name: options-spotperp-001-monthly-raw-${{ inputs.monthly_raw_run_id }}-1
           path: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1/source_audit_data
 
+      - name: Download monthly source receipts for immutable raw binding
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: ${{ inputs.monthly_raw_run_id }}
+          name: options-spotperp-001-monthly-final-receipts-${{ inputs.monthly_raw_run_id }}-1
+          path: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1/source_audit_data
+
       - name: Bind final Source Gate to exact immutable monthly raw snapshot
         working-directory: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1
         run: |
@@ -135,8 +144,6 @@ jobs:
           assert cov['daily_coverage_contains_outcomes'] is False
           assert r['btc_price_audit']['exact_discovery_cutoff_verified'] is True
 
-          # Install only the latest-code authorization receipts onto the exact
-          # immutable monthly raw snapshot after byte-binding manifest/report.
           shutil.copy2(gate/'source_gate_calendar_day_reconciled_receipt.json', raw/'source_gate_calendar_day_reconciled_receipt.json')
           shutil.copy2(gate/'source_gate_calendar_day_daily_coverage.json', raw/'source_gate_calendar_day_daily_coverage.json')
           field_guard=gate/'source_gate_required_field_guard_receipt.json'
