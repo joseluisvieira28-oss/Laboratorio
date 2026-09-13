@@ -2,6 +2,11 @@ name: MVE CPI Family 01 — Validation One-Shot V0.1
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - mve-cpi-family-01-action-once-v01
+    paths:
+      - .github/workflows/mve-cpi-family-01-validation-one-shot-v01.yml
 
 permissions:
   contents: read
@@ -19,6 +24,13 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Verify frozen tested code bytes before any network access
+        shell: bash
+        run: |
+          test "$(git hash-object Dream-Account-OS-v2.3-PARTIAL/research/mve_cpi_family_01_validation_runner_v01.py)" = "06685395105435e042b6109ba38756ae5c4b9c0a"
+          test "$(git hash-object Dream-Account-OS-v2.3-PARTIAL/tests/test_mve_cpi_family_01_validation_runner_v01.py)" = "01c9da9058bfdc7b10460bf8ee84c74c24f25459"
+          test "$(git hash-object Dream-Account-OS-v2.3-PARTIAL/research/MVE_CPI_FAMILY_01_PROSPECTIVE_FREEZE_V01.json)" = "5b6a98c8eba93cccbc7efa9b9e0caebd789ca437"
+
       - name: Require explicit active authorization receipt
         shell: bash
         run: |
@@ -31,7 +43,10 @@ jobs:
           assert x['status']=='VALIDATION_2025_01_THROUGH_2025_08_AUTHORIZED_RESEARCH_ONLY'
           assert x['authorization_active'] is True
           assert x['hypothesis_id']=='MVE-CPI-FAMILY-01'
-          print('explicit authorization receipt present')
+          assert x['tested_source_head_sha']=='cdca36a1dd9157dfd801a50b575f012dcb7dfd6f'
+          assert x['freeze_file_sha256']=='2130338cfe4910a0044da29962b5709a3d05b0bae1b1328adc1de57f11c7c0a6'
+          assert x['authorized_scope']['execution_count']=='ONE_SHOT'
+          print('explicit one-shot authorization receipt present and bound to tested source')
           PY
 
       - name: Compile runner before network access
