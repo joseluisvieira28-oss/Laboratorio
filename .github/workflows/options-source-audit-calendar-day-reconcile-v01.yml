@@ -10,56 +10,75 @@ permissions:
 jobs:
   reconcile-calendar-day-source-gate:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 120
     steps:
       - name: Checkout current isolated Options branch
         uses: actions/checkout@v4
 
-      - name: Bind frozen authority and reconciler tests
+      - name: Bind frozen authority and final reconciler tests
         working-directory: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1
         run: |
           echo "HEAD_SHA=$(git rev-parse HEAD)"
+          test "${GITHUB_REF_NAME}" = "options-spotperp-v0.1"
           python3 preflight_source_audit.py
           python3 -m py_compile \
             source_audit_gate.py \
             source_audit_gate_authority_reconciled_v01.py \
             source_gate_calendar_day_reconciler_v01.py \
+            verify_count10000_first_day_trade_ids_v01.py \
+            discovery_runner_v01.py \
+            test_discovery_runner_v01.py \
             test_source_audit_gate_authority_reconciled_v01.py \
             test_source_gate_calendar_day_reconciler_v01.py
           python3 test_source_audit_gate_authority_reconciled_v01.py
           python3 test_source_gate_calendar_day_reconciler_v01.py
+          python3 test_discovery_runner_v01.py
 
-      - name: Download source-audit decision receipts from acquisition run
+      - name: Verify accelerated acquisition run metadata
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          test "$(gh api repos/joseluisvieira28-oss/Laboratorio/actions/runs/34771221555 --jq .head_branch)" = "options-spotperp-v0.1"
+          test "$(gh api repos/joseluisvieira28-oss/Laboratorio/actions/runs/34771221555 --jq .path)" = ".github/workflows/options-source-audit-accelerated-count10000-v01.yml"
+          conclusion="$(gh api repos/joseluisvieira28-oss/Laboratorio/actions/runs/34771221555 --jq .conclusion)"
+          echo "ACQUISITION_RUN_CONCLUSION=$conclusion"
+          test "$conclusion" = "success"
+
+      - name: Download accelerated decision receipts
         uses: actions/download-artifact@v4
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           repository: joseluisvieira28-oss/Laboratorio
-          run-id: 34770637063
-          name: options-spotperp-001-source-audit-receipts-34770637063-1
+          run-id: 34771221555
+          name: options-spotperp-001-count10000-canonical-receipts-34771221555-1
           path: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1/source_audit_data
 
-      - name: Download raw provenance bytes from acquisition run
+      - name: Download accelerated raw provenance bytes
         uses: actions/download-artifact@v4
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           repository: joseluisvieira28-oss/Laboratorio
-          run-id: 34770637063
-          name: options-spotperp-001-source-audit-raw-34770637063-1
+          run-id: 34771221555
+          name: options-spotperp-001-count10000-raw-34771221555-1
           path: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1/source_audit_data
 
-      - name: Verify downloaded raw acquisition exists
+      - name: Verify downloaded acquisition and first-day pagination equivalence
         working-directory: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1
         run: |
           test -f source_audit_data/source_manifest.json
           test -f source_audit_data/source_audit_report.json
           test -d source_audit_data/raw
+          test -d source_audit_data/raw_binance_btcusdt_1d
+          python3 verify_count10000_first_day_trade_ids_v01.py --input source_audit_data
           echo "RAW_PAGE_COUNT=$(find source_audit_data/raw -type f -name 'response_*.json.gz' | wc -l)"
 
-      - name: Execute canonical calendar-day reconciliation only
+      - name: Execute final canonical calendar-day reconciliation only
         id: reconcile
         working-directory: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1
         shell: bash
         run: |
+          rm -f source_audit_data/source_gate_calendar_day_reconciled_receipt.json
+          rm -f source_audit_data/source_gate_calendar_day_daily_coverage.json
           set +e
           python3 source_gate_calendar_day_reconciler_v01.py --input source_audit_data
           rc=$?
@@ -68,14 +87,14 @@ jobs:
           echo "RECONCILE_EXIT_CODE=$rc"
           test "$rc" -eq 0 -o "$rc" -eq 2 -o "$rc" -eq 12
 
-      - name: Validate canonical receipt and firewalls
+      - name: Validate final canonical receipt and firewalls
         if: always() && steps.reconcile.outputs.rc != ''
         working-directory: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1
         env:
           RECONCILE_RC: ${{ steps.reconcile.outputs.rc }}
         run: |
           python3 - <<'PY'
-          import json, os
+          import json, os, hashlib
           from pathlib import Path
           rc = int(os.environ['RECONCILE_RC'])
           p = Path('source_audit_data/source_gate_calendar_day_reconciled_receipt.json')
@@ -90,30 +109,45 @@ jobs:
           assert x['pnl_computed'] is False
           assert x['holdout_2025_accessed'] is False
           assert x['year_2026_accessed'] is False
-          print('CANONICAL_STATUS=', x['status'])
           cov=x.get('calendar_day_coverage_audit') or {}
+          if cov:
+              assert cov.get('dte_definition') == 'calendar_date_difference_days'
+              daily = Path('source_audit_data/source_gate_calendar_day_daily_coverage.json')
+              assert daily.exists()
+              sha=hashlib.sha256(daily.read_bytes()).hexdigest()
+              assert sha == cov.get('daily_coverage_sha256'), (sha, cov.get('daily_coverage_sha256'))
+              assert cov.get('daily_coverage_rows') == 1371
+              assert cov.get('daily_coverage_contains_outcomes') is False
+          print('FINAL_CANONICAL_STATUS=', x['status'])
           print('VALID_SIGNAL_COVERAGE_DAYS=', cov.get('valid_signal_coverage_days'))
+          print('VALID_DAYS_BY_YEAR=', cov.get('valid_signal_coverage_days_by_year'))
+          print('COVERAGE_RATIO_BY_YEAR=', cov.get('coverage_ratio_by_year'))
           print('MIN_REQUIRED_VALID_DAYS=', cov.get('min_required_valid_days'))
-          print('DTE_DEFINITION=', cov.get('dte_definition'))
           print('ELIGIBLE_TRADE_ROWS=', cov.get('eligible_trade_rows'))
+          print('DAILY_COVERAGE_SHA256=', cov.get('daily_coverage_sha256'))
           print('BTC_PRICE_AUDIT=', x.get('btc_price_audit'))
           print('NO OUTCOMES / NO SKEW / NO RETURNS / NO PNL')
           print('2025 LOCKED / 2026 LOCKED')
           PY
 
-      - name: Upload canonical reconciliation receipt
+      - name: Upload final canonical reconciliation package
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: options-spotperp-001-calendar-day-source-gate-${{ github.run_id }}-${{ github.run_attempt }}
-          path: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1/source_audit_data/source_gate_calendar_day_reconciled_receipt.json
+          name: options-spotperp-001-final-source-gate-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1/source_audit_data/source_manifest.json
+            Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1/source_audit_data/source_audit_report.json
+            Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1/source_audit_data/source_gate_calendar_day_reconciled_receipt.json
+            Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1/source_audit_data/source_gate_calendar_day_daily_coverage.json
           if-no-files-found: warn
           retention-days: 90
 
       - name: Governance receipt
         if: always()
         run: |
-          echo 'CANONICAL SOURCE-GATE RECONCILIATION ONLY'
+          echo 'FINAL CANONICAL SOURCE-GATE RECONCILIATION ONLY'
+          echo 'SOURCE RAW RUN=34771221555'
           echo 'NO DISCOVERY / NO SKEW / NO SIGNALS / NO RETURNS / NO PNL'
           echo '2025 LOCKED / 2026 LOCKED'
           echo 'NO LIVE TRADING / NO EXCHANGE MUTATION'
