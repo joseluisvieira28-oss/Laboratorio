@@ -1,0 +1,78 @@
+{
+  "schema_version": "0.1",
+  "ledger_id": "CROSS_VENUE_FUNDING_BASIS_DATASET_EXPOSURE_LEDGER_V01",
+  "lab_id": "CROSS_VENUE_FUNDING_BASIS_LAB_V01",
+  "economic_mechanism_id": "CROSS_VENUE_PERP_FUNDING_BASIS_STATIC_CARRY",
+  "information_family": "CROSS_VENUE_FUNDING_BASIS_RELATIVE_VALUE",
+  "purpose": "Machine-readable record of material prior dataset exposure. Historical diagnostics are preserved and cannot be relabeled as virgin Discovery.",
+  "records": [
+    {
+      "exposure_id": "CVFB_RUN02B_BASIS_PRICE_COMPONENT",
+      "exposure_type": "ECONOMIC_DIAGNOSTIC_OUTCOME_VIEWED",
+      "datasets_exposed": [
+        "BINANCE_USDM_BTCUSDT_BOUNDARY_PRICE",
+        "BINANCE_USDM_ETHUSDT_BOUNDARY_PRICE",
+        "HYPERLIQUID_BTC_BOUNDARY_PRICE",
+        "HYPERLIQUID_ETH_BOUNDARY_PRICE"
+      ],
+      "assets": ["BTC", "ETH"],
+      "entry_utc": "2024-09-01T00:00:00Z",
+      "exit_utc": "2025-12-31T23:00:00Z",
+      "outcomes_viewed": true,
+      "classification_at_time": "BASIS_PRICE_COMPONENT_DIAGNOSTIC_ONLY_NOT_FULL_MECHANISM_REPLICATION",
+      "edge_status_at_time": "UNPROVEN",
+      "receipt_sha256_reported": "1fa82d71101e9c070caf309bd8173b41c44285714fc196b7012d638378850fe7",
+      "governance_effect": "The exact boundary-price component and any aggregate using those viewed boundary outcomes are not virgin Discovery evidence. Future work must label overlap as contaminated/adversarial replication, or use a separately frozen non-overlapping confirmatory design."
+    },
+    {
+      "exposure_id": "HL_ASSET_CTXS_SCHEMA_PROBE_20240901",
+      "exposure_type": "PROVENANCE_ONLY_NO_ECONOMIC_VALUES_VIEWED",
+      "dataset": "s3://hyperliquid-archive/asset_ctxs/20240901.csv.lz4",
+      "date_utc": "2024-09-01",
+      "assets": ["BTC", "ETH"],
+      "raw_sha256_reported": "84be15acb2a7a02cb9a346c9c37c6f790153b517710ec4f010e9cb8e413ae948",
+      "probe_receipt_sha256_reported": "12e73987aff73896f1945fabb408d755e2d1e74fdd65e372982b5267f3778784",
+      "join_freeze_sha256_reported": "5d2aae0c910f17534a9224e861febcc52bc81c4c64a1e7b18520db4799af2e56",
+      "economic_values_viewed": false,
+      "structural_result": "FAIL_CLOSED_PARTIAL_DAY",
+      "observed_structure": {
+        "csv_header_verified": true,
+        "total_rows": 143538,
+        "unique_coin_count": 141,
+        "duplicate_exact_time_coin_pairs": 0,
+        "BTC_distinct_minutes": 1018,
+        "ETH_distinct_minutes": 1018,
+        "BTC_exact_top_of_hour_unique_slots": 17,
+        "ETH_exact_top_of_hour_unique_slots": 17,
+        "expected_minutes_per_full_day": 1440,
+        "expected_top_of_hour_slots_per_full_day": 24
+      },
+      "governance_effect": "September 2024 cannot be presumed asset_ctx-complete. V0.4.4 must independently apply its frozen month-completeness rule. This provenance observation does not itself expose funding, premium, mark, oracle, carry or PnL values."
+    },
+    {
+      "exposure_id": "CVFB_V043_API_SEMANTICS",
+      "exposure_type": "SEMANTIC_PROVENANCE_COUNTERS_ONLY",
+      "source": "HYPERLIQUID_FUNDING_HISTORY_API",
+      "status": "FAIL_CLOSED_SEMANTICS_UNRESOLVED",
+      "economic_values_viewed": false,
+      "workflow_run_id": 34725362349,
+      "workflow_job_id": 103638429814,
+      "governance_effect": "Historical API semantic reconstruction failed. Preserve failure; do not relax thresholds or reuse API semantics as if proven."
+    },
+    {
+      "exposure_id": "CVFB_V043A_API_SEMANTICS",
+      "exposure_type": "SEMANTIC_PROVENANCE_COUNTERS_ONLY",
+      "source": "HYPERLIQUID_FUNDING_HISTORY_API",
+      "status": "FAIL_CLOSED_SEMANTICS_UNRESOLVED",
+      "economic_values_viewed": false,
+      "workflow_run_id": 34749982463,
+      "workflow_job_id": 103704656059,
+      "artifact_id": 10314709517,
+      "governance_effect": "Eight-asset panel also failed with ample discriminating rows. No further API rescue by changing windows, assets, tolerance, formula candidates or thresholds is authorized."
+    }
+  ],
+  "global_rule": "No future closeout may describe the full 2024-09-01 to 2025-12-31 boundary-price path as outcome-virgin. Exposure is information-family specific and must be carried into Discovery/Validation labels.",
+  "trading_authorized": false,
+  "2026_locked": true,
+  "mexc_2025_locked": true
+}
