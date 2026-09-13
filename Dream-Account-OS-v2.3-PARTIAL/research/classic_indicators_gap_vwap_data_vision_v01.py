@@ -48,7 +48,7 @@ COLS = ["open_time", "open", "high", "low", "close", "volume"]
 
 
 def fetch_bytes(url: str, retries: int = 4) -> bytes:
-    if "/2025-" in url or "/2026-" in url or "/2027-" in url:
+    if any(f"/{year}-" in url for year in range(2025, 2031)):
         raise RuntimeError(f"Protected-period URL blocked: {url}")
     last = None
     for attempt in range(retries):
@@ -56,7 +56,7 @@ def fetch_bytes(url: str, retries: int = 4) -> bytes:
             req = urllib.request.Request(url, headers={"User-Agent": "CIGL-VWAP-01/1.0"})
             with urllib.request.urlopen(req, timeout=90) as r:
                 return r.read()
-        except Exception as exc:  # network failures must be explicit
+        except Exception as exc:
             last = exc
             if attempt + 1 < retries:
                 time.sleep(2 ** attempt)
@@ -152,7 +152,6 @@ def make_trades_strict(hourly: pd.DataFrame, symbol: str) -> pd.DataFrame:
         exit_pos = entry_pos + HOLD_BARS
         if entry_pos <= next_free_entry_pos or exit_pos >= len(h):
             continue
-        # Four completed holding bars must exist and be valid. No gap bridging.
         if not bool(h["hour_ok"].iloc[entry_pos:exit_pos].fillna(False).all()):
             continue
         entry_t, exit_t = idx[entry_pos], idx[exit_pos]
@@ -202,26 +201,25 @@ def json_safe(x):
         return {k: json_safe(v) for k, v in x.items()}
     if isinstance(x, list):
         return [json_safe(v) for v in x]
-    if isinstance(x, (np.integer,)): return int(x)
-    if isinstance(x, (np.floating,)): return float(x)
+    if isinstance(x, np.integer):
+        return int(x)
+    if isinstance(x, np.floating):
+        return float(x)
     return x
 
 
 def write_summary(path: Path, closeout: dict) -> None:
     d = closeout["discovery_summary"]
     lines = [
-        "# CIGL-VWAP-01 — CLOSEOUT",
-        "",
-        f"Status: **{closeout['status']}**",
-        "",
+        "# CIGL-VWAP-01 — CLOSEOUT", "",
+        f"Status: **{closeout['status']}**", "",
         "## Discovery 2022–2023",
         f"- Trades: {d.get('n')}",
         f"- Gross mean: {d.get('gross_mean_bps')} bps",
         f"- NET10 mean: {d.get('net10_mean_bps')} bps",
         f"- NET14 mean: {d.get('net14_mean_bps')} bps",
         f"- PF NET10: {d.get('pf_net10')}",
-        f"- Gate pass: {closeout['discovery_gate']['pass']}",
-        "",
+        f"- Gate pass: {closeout['discovery_gate']['pass']}", "",
         f"2024 opened: **{closeout['opened_2024']}**",
         "2025 accessed: **False**",
         "2026 accessed: **False**",
@@ -239,6 +237,25 @@ def write_summary(path: Path, closeout: dict) -> None:
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
+def assert_protocol(protocol: dict) -> None:
+    if protocol.get("lab") != "CLASSIC_INDICATORS_GAP_LAB_V0.1":
+        raise RuntimeError("Protocol lab identity mismatch")
+    if protocol.get("status") != "PRE_DISCOVERY_FROZEN":
+        raise RuntimeError("Protocol is not PRE_DISCOVERY_FROZEN")
+    if "CIGL-VWAP-01" not in protocol.get("families", []):
+        raise RuntimeError("VWAP family missing from frozen protocol")
+    if protocol.get("splits", {}).get("discovery") != "2022-01-01T00:00:00Z/2023-12-31T23:59:59Z":
+        raise RuntimeError("Protocol Discovery window mismatch")
+    common = protocol.get("common_execution", {})
+    if common.get("primary_timeframe") != "1H" or common.get("holding_bars") != 4:
+        raise RuntimeError("Frozen execution semantics mismatch")
+    if common.get("base_roundtrip_cost_bps") != 10 or common.get("stress_roundtrip_cost_bps") != 14:
+        raise RuntimeError("Frozen cost model mismatch")
+    gate = protocol.get("phase_gates", {}).get("discovery", {})
+    if gate.get("min_trades") != 300 or gate.get("net10_mean_bps_gt") != 0 or gate.get("profit_factor_gt") != 1.0:
+        raise RuntimeError("Frozen Discovery gate mismatch")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", type=Path, required=True)
@@ -247,11 +264,7 @@ def main() -> int:
     args.out.mkdir(parents=True, exist_ok=True)
     protocol_bytes = args.protocol.read_bytes()
     protocol = json.loads(protocol_bytes)
-    # Minimal authority assertions: fail closed if protocol identity/gates changed unexpectedly.
-    if protocol.get("experiment_id") != "CIGL-VWAP-01":
-        raise RuntimeError("Protocol experiment_id mismatch")
-    if protocol.get("market_data", {}).get("discovery") != "2022-01-01..2023-12-31":
-        raise RuntimeError("Protocol Discovery window mismatch")
+    assert_protocol(protocol)
 
     provenance: list[dict] = []
     discovery_trades = evaluate_phase(DISCOVERY_MONTHS, "DISCOVERY", provenance)
@@ -259,7 +272,6 @@ def main() -> int:
     dsum = summarize(discovery_trades)
     dgate = discovery_gate(dsum)
     opened_2024 = bool(dgate["pass"])
-    validation_trades = None
     vsum = None
     vgate = None
 
@@ -274,7 +286,7 @@ def main() -> int:
         print("DISCOVERY GATE FAIL — 2024 remains unopened", flush=True)
         status = "DISCOVERY_FAIL_VWAP_CLOSED"
 
-    closeout = {
+    closeout = json_safe({
         "lab": "CLASSIC_INDICATORS_GAP_LAB_V0.1",
         "experiment_id": "CIGL-VWAP-01",
         "status": status,
@@ -290,8 +302,7 @@ def main() -> int:
         "live_trading": False,
         "exchange_mutation": False,
         "post_result_parameter_change": False,
-    }
-    closeout = json_safe(closeout)
+    })
     (args.out / "CIGL_VWAP_01_CLOSEOUT.json").write_text(json.dumps(closeout, indent=2, sort_keys=True), encoding="utf-8")
     (args.out / "CIGL_VWAP_01_DATA_PROVENANCE.json").write_text(json.dumps(json_safe(provenance), indent=2, sort_keys=True), encoding="utf-8")
     write_summary(args.out / "CIGL_VWAP_01_SUMMARY.md", closeout)
