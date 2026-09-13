@@ -1,0 +1,66 @@
+{
+  "lab_id": "OPTIONS-SPOTPERP-001",
+  "version": "V0.1",
+  "stage": "PRE_OUTCOME_IMPLEMENTATION_FREEZE",
+  "frozen_before_real_discovery_outcomes": true,
+  "authority_drive_id": "1RtBYsET0t8yFAVDCJV1mEmGCAikMp-UQS0Yd802blBc",
+  "authority_sha256": "138cee737d75d27b43d9f377fc9a77e823e8fb2015f360b300cdc4a16cf67cfa",
+  "discovery_window": {
+    "start": "2021-04-01",
+    "end": "2024-12-31"
+  },
+  "runner_git_blob": "1295295c11cd3b0590f84fea544612e3fa1487ca",
+  "test_git_blob": "6728fab6402b87549eb4970ea938a683617f18ab",
+  "signal_and_outcome": {
+    "skew": "CALL_IV_t - PUT_IV_t",
+    "position": {
+      "skew_gt_0": "LONG",
+      "skew_lt_0": "SHORT",
+      "skew_eq_0_or_invalid": "FLAT"
+    },
+    "entry": "BTCUSDT spot open at 00:00 UTC on t+1",
+    "exit": "BTCUSDT spot open at 00:00 UTC on t+2",
+    "forward_return": "ln(exit/entry)",
+    "late_2024_rule": "signals whose t+1 or t+2 would require 2025 are not evaluable; no 2025 price may complete a Discovery outcome"
+  },
+  "inference": {
+    "regression": "R_t+1 = alpha + beta*SKEW_t + error_t",
+    "expected_beta_sign": "positive",
+    "hac_lags": 7,
+    "hac_kernel": "Bartlett",
+    "hac_weight": "w_l = 1 - l/(L+1)",
+    "small_sample_correction": false,
+    "p_value": "one-sided asymptotic normal tail for beta > 0",
+    "threshold": 0.10
+  },
+  "economics": {
+    "base_round_trip_cost_bps_per_entered_position": 10,
+    "stress_round_trip_cost_bps_per_entered_position": 20,
+    "flat_days_pay_cost": false,
+    "profit_factor": "sum positive net trade bps / absolute sum negative net trade bps",
+    "annual_bucket_key": "signal_date calendar year",
+    "year_consistency": ">=3 of 4 calendar-year buckets have non-negative net mean expectancy; 2021 is Apr-Dec available sample",
+    "criterion_f_semantics": {
+      "text_authority": "No single calendar year contributes more than 60% of total positive gross PnL.",
+      "implementation": "For each calendar year, compute that year's total aligned gross PnL across entered trades. Define positive annual gross contribution as max(0, annual gross PnL). Total positive gross PnL is the sum of those positive annual contributions. Criterion F is max positive annual contribution / total positive annual contributions <= 0.60. If total positive annual contribution is zero, criterion F fails.",
+      "reason_for_freeze": "The authority separately requires annual contribution reporting and phrases criterion F as a calendar-year contribution cap. This implementation is frozen before real Discovery outcomes to prevent post-outcome reinterpretation."
+    },
+    "cumulative_net_return": "diagnostic only; exp(sum(net_bps/10000))-1",
+    "max_drawdown": "diagnostic only on cumulative net log-return path"
+  },
+  "mve0_required_gates": [
+    "A >=500 evaluable valid signal days",
+    "B beta>0 and one-sided HAC p<=0.10",
+    "C net mean expectancy at 10bps >0",
+    "D profit factor at 10bps >1.00",
+    "E >=3 of 4 calendar-year buckets non-negative net mean",
+    "F no calendar year >60% of total positive annual gross PnL contributions",
+    "G provenance/timestamp/leakage/coverage pass"
+  ],
+  "stress_20bps_is_pass_gate": false,
+  "post_outcome_changes_prohibited": true,
+  "holdout_2025": "LOCKED_UNTIL_MVE0_PASS_AND_DRIVE_CLOSEOUT",
+  "year_2026": "LOCKED",
+  "live_trading": false,
+  "exchange_mutation": false
+}
