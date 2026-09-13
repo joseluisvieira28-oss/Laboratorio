@@ -1,0 +1,97 @@
+name: Cross-Venue Funding Basis Semantic Identification V0.4.3A
+
+on:
+  push:
+    branches:
+      - dream-account-phase-b-signal-research-v0.1
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/CROSS_VENUE_FUNDING_BASIS_SEMANTIC_IDENTIFICATION_REMEDIATION_V043A.json'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/cross_venue_funding_basis_semantic_identification_v043a.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_cross_venue_funding_basis_semantic_identification_v043a.py'
+      - '.github/workflows/cross-venue-funding-basis-semantic-identification-v043a.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  semantic-identification-v043a:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run V0.4.3A offline governance tests
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python -m pip install pytest
+          python -m pytest -q tests/test_cross_venue_funding_basis_semantic_identification_v043a.py
+
+      - name: Compile V0.4.3A probe
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python -m py_compile research/cross_venue_funding_basis_semantic_identification_v043a.py
+
+      - name: Verify remediation is identification-only and pre-outcome
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          a = json.loads(Path('research/CROSS_VENUE_FUNDING_BASIS_SEMANTIC_IDENTIFICATION_REMEDIATION_V043A.json').read_text())
+          assert a['economic_outcomes_inspected'] is False
+          assert a['edge_status'] == 'UNPROVEN'
+          assert a['parent_failure_preserved']['status'] == 'FAIL_CLOSED_SEMANTICS_UNRESOLVED'
+          f = a['semantic_probe_freeze']
+          assert f['assets'] == ['BTC','ETH','ARB','AVAX','SOL','MATIC','LINK','ATOM']
+          assert f['candidate_clamps'] == ['0.0003','0.0005']
+          assert f['candidate_scale_divisors'] == [1,8]
+          assert f['absolute_match_tolerance'] == '1e-12'
+          for k, v in a['scientific_boundary'].items():
+              assert v is False, k
+          print('PASS: V0.4.3A is frozen semantic-identification remediation only')
+          PY
+
+      - name: Run fixed V0.4.3A semantic probe
+        env:
+          PREFREEZE_V043A_RECEIPT: CROSS_VENUE_FUNDING_BASIS_V043A_RECEIPT.json
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python research/cross_venue_funding_basis_semantic_identification_v043a.py
+
+      - name: Summarize receipt without economic values
+        if: always()
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path('CROSS_VENUE_FUNDING_BASIS_V043A_RECEIPT.json')
+          if not p.exists():
+              print('RECEIPT_MISSING=true')
+              raise SystemExit(0)
+          r = json.loads(p.read_text())
+          s = r['hyperliquid_funding_semantics']
+          print('STATUS=' + r['status'])
+          print('SEMANTIC_PASS=' + str(s['semantic_probe_pass']))
+          print('SCALE_PASS=' + str(s['hourly_scale_pass']))
+          print('CLAMP_PASS=' + str(s['clamp_transition_pass']))
+          print('EARLY_DISCRIMINATING=' + str(s['early_clamp_discriminating_summary']['discriminating_rows']))
+          print('LATE_DISCRIMINATING=' + str(s['late_clamp_discriminating_summary']['discriminating_rows']))
+          print('G03=' + r['gate_interpretation']['G03'])
+          print('G04=' + r['gate_interpretation']['G04'])
+          print('G12=' + r['gate_interpretation']['G12'])
+          PY
+
+      - name: Upload V0.4.3A receipt even on fail-closed
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cross-venue-funding-basis-v043a-receipt
+          path: Dream-Account-OS-v2.3-PARTIAL/CROSS_VENUE_FUNDING_BASIS_V043A_RECEIPT.json
+          if-no-files-found: warn
+          retention-days: 30
