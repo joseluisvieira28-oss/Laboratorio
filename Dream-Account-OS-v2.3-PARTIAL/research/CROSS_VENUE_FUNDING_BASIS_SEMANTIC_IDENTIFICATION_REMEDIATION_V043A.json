@@ -1,0 +1,93 @@
+{
+  "schema_version": "0.1",
+  "lab_id": "CROSS_VENUE_FUNDING_BASIS_LAB_V01",
+  "amendment_id": "CROSS_VENUE_FUNDING_BASIS_SEMANTIC_IDENTIFICATION_REMEDIATION_V043A",
+  "phase": "PRE_FREEZE",
+  "status": "AUTHORIZED_SEMANTIC_IDENTIFICATION_REMEDIATION_ONLY_DISCOVERY_BLOCKED",
+  "economic_outcomes_inspected": false,
+  "edge_status": "UNPROVEN",
+  "parent_failure_preserved": {
+    "workflow_run_id": 34725362349,
+    "workflow_job_id": 103638429814,
+    "head_sha": "b9b940387b81e22b5547e464243c6ef5787908cc",
+    "status": "FAIL_CLOSED_SEMANTICS_UNRESOLVED",
+    "binance_common_full_mark_months": 27,
+    "hyperliquid_semantics": false,
+    "scientific_interpretation": "V0.4.3 remains a historical fail-closed semantic-identification result. It is not NO_EDGE and is not overwritten by this remediation."
+  },
+  "reason_for_remediation": "The unresolved item is a venue-level historical field-semantics identification question, not a strategy-return question. V0.4.3 used BTC and ETH only. An independently specified venue-level panel can increase the number of discriminating rows without changing any candidate formula, date window, threshold, economic rule, strategy asset, or outcome gate.",
+  "external_diagnostic_lead": {
+    "source": "https://github.com/alpenmilch411/hyperliquid-archive-notes",
+    "authority": "NON_AUTHORITATIVE_DIAGNOSTIC_LEAD_ONLY",
+    "may_be_imported_as_fact_without_reproduction": false,
+    "use_in_this_amendment": "Only the pre-specified asset panel is imported as a sampling design. Historical semantic claims still must be reproduced by this lab."
+  },
+  "semantic_probe_freeze": {
+    "assets": ["BTC", "ETH", "ARB", "AVAX", "SOL", "MATIC", "LINK", "ATOM"],
+    "fixed_windows_utc": {
+      "hourly_scale_check": ["2023-09-01T00:00:00Z", "2023-09-07T23:59:59Z"],
+      "early_clamp_check": ["2023-12-01T00:00:00Z", "2023-12-11T22:59:59Z"],
+      "late_clamp_check": ["2023-12-11T23:00:00Z", "2023-12-22T23:59:59Z"]
+    },
+    "interest_8h": "0.0001",
+    "candidate_clamps": ["0.0003", "0.0005"],
+    "candidate_scale_divisors": [1, 8],
+    "absolute_match_tolerance": "1e-12",
+    "scale_pass_rule": {
+      "best_divisor_8_match_ratio_min": 0.95,
+      "minimum_margin_over_best_divisor_1": 0.50
+    },
+    "clamp_transition_pass_rule": {
+      "minimum_discriminating_rows_each_era": 10,
+      "minimum_correct_era_match_ratio": 0.75,
+      "early_old_matches_must_exceed_new": true,
+      "late_new_matches_must_exceed_old": true
+    },
+    "no_outcome_dependent_asset_exclusion": true,
+    "no_asset_ranking": true,
+    "no_parameter_changes_after_probe": true
+  },
+  "allowed_internal_fields": ["time", "fundingRate", "premium"],
+  "allowed_outputs": [
+    "row_count_by_window_and_asset",
+    "finite_semantic_row_count",
+    "candidate_formula_match_counts",
+    "candidate_formula_match_ratios",
+    "discriminating_row_counts",
+    "detected_scale_label",
+    "detected_clamp_label",
+    "semantic_probe_pass_fail"
+  ],
+  "forbidden_outputs": [
+    "raw fundingRate values",
+    "raw premium values",
+    "funding sign distribution",
+    "funding magnitude distribution",
+    "cross-venue funding spread",
+    "carry",
+    "APR",
+    "APY",
+    "PnL",
+    "Sharpe",
+    "asset ranking",
+    "period ranking",
+    "signal"
+  ],
+  "scientific_boundary": {
+    "authorizes_discovery": false,
+    "authorizes_strategy_economic_evaluation": false,
+    "authorizes_cross_venue_rate_comparison": false,
+    "authorizes_price_or_mark_value_output": false,
+    "authorizes_carry": false,
+    "authorizes_pnl": false,
+    "authorizes_2026": false,
+    "authorizes_mexc": false,
+    "authorizes_authenticated_account_data": false,
+    "authorizes_exchange_mutation": false,
+    "authorizes_trading": false
+  },
+  "post_probe_rule": {
+    "if_pass": "Close only the Hyperliquid semantic component of G03. G04 and G10 remain blocked until Hyperliquid asset_ctx provenance and final calendar materialization are completed.",
+    "if_fail": "Classify semantic provenance as unresolved and stop this historical economic path. Do not change formula candidates, thresholds, windows, or assets to rescue the result."
+  }
+}
