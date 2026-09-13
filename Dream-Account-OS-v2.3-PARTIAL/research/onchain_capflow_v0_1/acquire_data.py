@@ -33,6 +33,10 @@ END_YEAR, END_MONTH = 2024, 12
 HOLDOUT_START = dt.datetime(2025, 1, 1, tzinfo=dt.timezone.utc)
 
 
+class ExecutionEnvironmentBlocked(RuntimeError):
+    """Transport/DNS/timeout failure. Not a scientific DATA_BLOCKED verdict."""
+
+
 @dataclass(frozen=True)
 class DownloadSpec:
     name: str
@@ -51,6 +55,8 @@ def sha256_file(path: Path) -> str:
 def request_bytes(url: str, retries: int = 3) -> bytes:
     req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
     last_error: Exception | None = None
+    last_environment_error = False
+
     for attempt in range(1, retries + 1):
         try:
             with urllib.request.urlopen(req, timeout=60) as resp:
@@ -61,21 +67,55 @@ def request_bytes(url: str, retries: int = 3) -> bytes:
             if not body:
                 raise RuntimeError("empty response")
             return body
-        except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, RuntimeError) as e:
+        except urllib.error.HTTPError as e:
+            # The remote source answered but did not serve the requested object.
+            # This is a source/data gate problem, not a local DNS/transport problem.
             last_error = e
-            if attempt < retries:
-                time.sleep(1.5 * attempt)
-    raise RuntimeError(f"request failed after {retries} attempts: {url}: {last_error}")
+            last_environment_error = False
+        except (urllib.error.URLError, TimeoutError, OSError) as e:
+            last_error = e
+            last_environment_error = True
+        except RuntimeError as e:
+            last_error = e
+            last_environment_error = False
+
+        if attempt < retries:
+            time.sleep(1.5 * attempt)
+
+    if last_environment_error:
+        raise ExecutionEnvironmentBlocked(
+            f"network/transport request failed after {retries} attempts: {url}: {last_error}"
+        )
+    raise RuntimeError(
+        f"source request failed after {retries} attempts: {url}: {last_error}"
+    )
 
 
 def validate_community_url(url: str) -> None:
     parsed = urllib.parse.urlparse(url)
     if parsed.scheme != "https" or parsed.hostname != COMMUNITY_HOST:
         raise RuntimeError(f"FAIL-CLOSED: unexpected Coin Metrics pagination host: {url}")
+
     query = urllib.parse.parse_qs(parsed.query)
     end_values = query.get("end_time", [])
-    if not end_values or end_values[-1] != STABLECOIN_END:
+    if not end_values:
         raise RuntimeError(f"FAIL-CLOSED: pagination URL lost frozen end_time: {url}")
+
+    frozen_raw = end_values[-1]
+    if frozen_raw == STABLECOIN_END:
+        return
+
+    # Some providers canonicalize an equivalent date to an ISO timestamp.
+    # Accept only a timestamp that remains inside the frozen final UTC day.
+    try:
+        frozen_end = parse_iso_time(frozen_raw)
+    except Exception as e:
+        raise RuntimeError(
+            f"FAIL-CLOSED: unparseable pagination end_time {frozen_raw!r}: {url}"
+        ) from e
+
+    if frozen_end.date() != dt.date(2024, 12, 31) or frozen_end >= HOLDOUT_START:
+        raise RuntimeError(f"FAIL-CLOSED: pagination URL changed frozen end_time: {url}")
 
 
 def first_coinmetrics_url() -> str:
@@ -226,27 +266,34 @@ def main() -> int:
     print("ONCHAIN-CAPFLOW-001 — ACQUISITION V0.1A")
     print("Research-only | explicit 2020-2024 cutoff | no outcomes")
 
+    entries: list[dict] = []
     try:
-        entries = acquire_coinmetrics(root)
+        entries.extend(acquire_coinmetrics(root))
+
+        specs = build_binance_specs()
+        for i, spec in enumerate(specs, start=1):
+            dest = root / spec.relative_path
+            print(
+                f"[{i}/{len(specs)}] "
+                f"{'GET' if args.force or not dest.exists() else 'KEEP'} {spec.name}"
+            )
+            download_file(spec.url, dest, args.force)
+            entries.append({
+                "name": spec.name,
+                "url": spec.url,
+                "relative_path": spec.relative_path,
+                "bytes": dest.stat().st_size,
+                "sha256": sha256_file(dest),
+            })
+    except ExecutionEnvironmentBlocked as e:
+        write_gate(root, "EXECUTION_ENVIRONMENT_BLOCKED", str(e))
+        print(f"EXECUTION_ENVIRONMENT_BLOCKED: {e}")
+        print("This is NOT a scientific DATA_BLOCKED verdict.")
+        return 12
     except Exception as e:
         write_gate(root, "DATA_BLOCKED", str(e))
         print(f"DATA_BLOCKED: {e}")
         return 3
-
-    write_gate(root, "PASS", "Coin Metrics Community returned both frozen stablecoin series without holdout timestamps.")
-
-    specs = build_binance_specs()
-    for i, spec in enumerate(specs, start=1):
-        dest = root / spec.relative_path
-        print(f"[{i}/{len(specs)}] {'GET' if args.force or not dest.exists() else 'KEEP'} {spec.name}")
-        download_file(spec.url, dest, args.force)
-        entries.append({
-            "name": spec.name,
-            "url": spec.url,
-            "relative_path": spec.relative_path,
-            "bytes": dest.stat().st_size,
-            "sha256": sha256_file(dest),
-        })
 
     manifest = {
         "lab_id": "ONCHAIN-CAPFLOW-001",
@@ -258,7 +305,16 @@ def main() -> int:
         "locked_2026_accessed": False,
         "entries": entries,
     }
-    manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8")
+    manifest_path.write_text(
+        json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8"
+    )
+
+    write_gate(
+        root,
+        "PASS",
+        "All frozen Coin Metrics and Binance Vision raw inputs were acquired "
+        "without holdout timestamps; SHA256 manifest written.",
+    )
     print(f"PASS: wrote {manifest_path}")
     return 0
 
