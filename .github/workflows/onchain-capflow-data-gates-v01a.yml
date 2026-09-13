@@ -38,7 +38,7 @@ jobs:
       - name: Governance guardrail
         run: |
           set -euo pipefail
-          echo 'ONCHAIN-CAPFLOW-001 V0.1A — DATA GATES ONLY'
+          echo 'ONCHAIN-CAPFLOW-001 V0.1A — DATA GATES + RAW SNAPSHOT PRESERVATION ONLY'
           echo 'Research-only | no live trading | no exchange mutation'
           echo 'Allowed raw-data period: 2020-01-01 through 2024-12-31'
           echo '2025 holdout LOCKED | 2026+ LOCKED | Discovery NOT AUTHORIZED'
@@ -61,6 +61,29 @@ jobs:
           set -o pipefail
           python audit_data.py --data ./data 2>&1 | tee audit.log
 
+      - name: Verify byte-identical audited raw snapshot manifest
+        id: snapshot
+        if: steps.acquire.outcome == 'success'
+        continue-on-error: true
+        run: |
+          python - <<'PY'
+          import hashlib, json, sys
+          from pathlib import Path
+          expected = 'a45ceb4248c9438dfafc6580627fc399fccfafb0ec208cb87024412ca8f08794'
+          p = Path('data/raw_manifest.json')
+          actual = hashlib.sha256(p.read_bytes()).hexdigest() if p.exists() else None
+          status = 'PASS' if actual == expected else 'MISMATCH'
+          receipt = {
+              'expected_raw_manifest_sha256': expected,
+              'actual_raw_manifest_sha256': actual,
+              'status': status,
+              'meaning': 'PASS means all 121 raw entry hashes/bytes metadata exactly reproduce the first audited outcome-blind acquisition manifest.'
+          }
+          Path('snapshot_identity.json').write_text(json.dumps(receipt, indent=2, sort_keys=True))
+          print(json.dumps(receipt, indent=2, sort_keys=True))
+          sys.exit(0 if status == 'PASS' else 4)
+          PY
+
       - name: Write execution receipt
         if: always()
         run: |
@@ -70,6 +93,7 @@ jobs:
           root = Path('data')
           gate = None
           audit = None
+          snapshot = None
           try:
               gate = json.loads((root/'data_gate_status.json').read_text())
           except Exception:
@@ -78,17 +102,25 @@ jobs:
               audit = json.loads((root/'data_audit_report.json').read_text())
           except Exception:
               pass
+          try:
+              snapshot = json.loads(Path('snapshot_identity.json').read_text())
+          except Exception:
+              pass
           status = 'EXECUTION_ENVIRONMENT_OR_ACQUISITION_BLOCKED'
           if gate and gate.get('status') != 'PASS':
               status = gate.get('status', status)
-          elif audit:
-              status = 'DATA_AUDIT_PASS' if audit.get('status') == 'PASS' else 'DATA_AUDIT_BLOCKED'
+          elif audit and audit.get('status') != 'PASS':
+              status = 'DATA_AUDIT_BLOCKED'
+          elif not snapshot or snapshot.get('status') != 'PASS':
+              status = 'RAW_SNAPSHOT_HASH_MISMATCH'
+          elif audit and audit.get('status') == 'PASS':
+              status = 'DATA_AUDIT_PASS_RAW_SNAPSHOT_IDENTICAL'
           elif gate and gate.get('status') == 'PASS':
               status = 'RAW_ACQUISITION_OR_AUDIT_INCOMPLETE'
           receipt = {
               'lab_id': 'ONCHAIN-CAPFLOW-001',
               'version': 'V0.1A',
-              'stage': 'DATA_GATES_ONLY',
+              'stage': 'DATA_GATES_AND_RAW_SNAPSHOT_PRESERVATION_ONLY',
               'classification': status,
               'protocol_sha256': '1c6c66b7188694bcc2d62cb83ee050a023fba7f97388bc87933ed668d3392b65',
               'holdout_2025_accessed': False,
@@ -99,25 +131,28 @@ jobs:
               'exchange_mutation_authorized': False,
               'data_gate': gate,
               'data_audit_status': audit.get('status') if audit else None,
+              'raw_snapshot_identity': snapshot,
           }
           Path('execution_receipt.json').write_text(json.dumps(receipt, indent=2, sort_keys=True))
           print(json.dumps(receipt, indent=2, sort_keys=True))
           PY
 
-      - name: Upload gate evidence
+      - name: Upload durable raw snapshot and gate evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: onchain-capflow-001-data-gates-v01a
+          name: onchain-capflow-001-raw-snapshot-v01a
           path: |
+            Dream-Account-OS-v2.3-PARTIAL/research/onchain_capflow_v0_1/data/raw/**
             Dream-Account-OS-v2.3-PARTIAL/research/onchain_capflow_v0_1/data/data_gate_status.json
             Dream-Account-OS-v2.3-PARTIAL/research/onchain_capflow_v0_1/data/raw_manifest.json
             Dream-Account-OS-v2.3-PARTIAL/research/onchain_capflow_v0_1/data/data_audit_report.json
             Dream-Account-OS-v2.3-PARTIAL/research/onchain_capflow_v0_1/acquisition.log
             Dream-Account-OS-v2.3-PARTIAL/research/onchain_capflow_v0_1/audit.log
+            Dream-Account-OS-v2.3-PARTIAL/research/onchain_capflow_v0_1/snapshot_identity.json
             Dream-Account-OS-v2.3-PARTIAL/research/onchain_capflow_v0_1/execution_receipt.json
-          if-no-files-found: warn
-          retention-days: 30
+          if-no-files-found: error
+          retention-days: 90
 
       - name: Final gate verdict
         if: always()
@@ -131,5 +166,5 @@ jobs:
               sys.exit(2)
           r = json.loads(p.read_text())
           print('FINAL_CLASSIFICATION=' + r['classification'])
-          sys.exit(0 if r['classification'] == 'DATA_AUDIT_PASS' else 2)
+          sys.exit(0 if r['classification'] == 'DATA_AUDIT_PASS_RAW_SNAPSHOT_IDENTICAL' else 2)
           PY
