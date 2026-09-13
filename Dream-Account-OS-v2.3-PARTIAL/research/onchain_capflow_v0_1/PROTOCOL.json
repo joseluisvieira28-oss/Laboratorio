@@ -1,0 +1,68 @@
+{
+  "confirmation_asset": "ETH",
+  "execution": {
+    "base_round_trip_cost_bps": 10,
+    "entry": "Monday 00:00 UTC BTCUSDT spot/perp synthetic directional entry after >=48h availability lag from Saturday cutoff",
+    "exit": "next Monday 00:00 UTC",
+    "overlap": false,
+    "stress_round_trip_cost_bps": 20
+  },
+  "frequency": "weekly_non_overlapping",
+  "lab_id": "ONCHAIN-CAPFLOW-001",
+  "mve0_pass": [
+    "Discovery top-minus-bottom spread > 0 after 10 bps RT",
+    "bootstrap CI not materially dominated by one year/event",
+    "at least 3 of 4 discovery years have non-negative spread",
+    "20 bps stress does not turn strongly negative",
+    "no leakage/provenance failure"
+  ],
+  "mve1_pass": [
+    "Frozen 2025 holdout top-minus-bottom spread > 0 after 10 bps",
+    "same sign in BTC and ETH confirmation or BTC effect strong enough with ETH non-contradictory",
+    "no post-result rule changes"
+  ],
+  "no_2026_access": true,
+  "no_live_trading": true,
+  "no_ml": true,
+  "objective": "Test whether stablecoin capital expansion/contraction contains forward information for BTC weekly returns independent of OHLC transformations.",
+  "periods": {
+    "discovery": "2021-01-01/2024-12-31",
+    "holdout": "2025-01-01/2025-12-31",
+    "locked": "2026-01-01 onward",
+    "warmup": "2020-01-01/2020-12-31"
+  },
+  "primary_asset": "BTC",
+  "primary_data": {
+    "price": "Binance Spot BTCUSDT official klines",
+    "usdc": "DefiLlama stablecoin/2 historical circulating supply",
+    "usdt": "DefiLlama stablecoin/1 historical circulating supply"
+  },
+  "primary_metrics": [
+    "top-minus-bottom weekly return spread net of base costs",
+    "mean and median net return",
+    "Newey-West t-stat",
+    "block-bootstrap 95% CI",
+    "profit factor",
+    "max drawdown",
+    "year-by-year sign consistency",
+    "single-period dominance check"
+  ],
+  "signal": {
+    "flat": "otherwise",
+    "long": "percentile >= 0.75",
+    "normalization": "percentile rank versus trailing 52 weekly observations using past data only",
+    "observation_cutoff": "Saturday 00:00 UTC",
+    "raw": "ln((USDT_supply + USDC_supply)_t / (USDT_supply + USDC_supply)_{t-7d})",
+    "short": "percentile <= 0.25"
+  },
+  "status": "FROZEN_PRE_DISCOVERY",
+  "stop": [
+    "Discovery net expectancy materially negative",
+    "effect driven by one year/week",
+    "provider history cannot be snapshotted/reproduced",
+    "signal availability timestamp cannot be defended",
+    "data revisions materially alter results",
+    "2025 holdout fails; no rescue of this frozen family"
+  ],
+  "version": "V0.1"
+}
