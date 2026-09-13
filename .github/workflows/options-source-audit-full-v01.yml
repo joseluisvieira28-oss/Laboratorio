@@ -1,0 +1,135 @@
+name: OPTIONS-SPOTPERP-001 Full Source Audit V0.1
+
+on:
+  push:
+    branches:
+      - options-spotperp-v0.1
+    paths:
+      - '.github/workflows/options-source-audit-full-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  full-source-audit:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, 'execute frozen full source audit')
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    steps:
+      - name: Checkout exact Options branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Bind to successfully probed research bytes
+        run: |
+          echo "HEAD_SHA=$(git rev-parse HEAD)"
+          echo "BRANCH=${GITHUB_REF_NAME}"
+          test "${GITHUB_REF_NAME}" = "options-spotperp-v0.1"
+          # This workflow commit must not alter the exact research implementation
+          # that passed the reconciled network/schema probe at e6021b39....
+          git diff --quiet e6021b39e0d5934dcfc4973231415e817bce1370 HEAD -- Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1/
+          echo 'RESEARCH_BYTES_MATCH_SUCCESSFUL_PROBE_HEAD'
+
+      - name: Outcome-blind static and reconciliation checks
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1
+        run: |
+          python3 preflight_source_audit.py
+          python3 -m py_compile source_audit.py source_audit_gate.py source_audit_gate_authority_reconciled_v01.py
+          python3 test_source_audit_gate_authority_reconciled_v01.py
+
+      - name: Execute frozen full source/data audit
+        id: audit
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1
+        shell: bash
+        run: |
+          set +e
+          python3 source_audit_gate_authority_reconciled_v01.py --output source_audit_data
+          rc=$?
+          set -e
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          echo "SOURCE_AUDIT_EXIT_CODE=$rc"
+          test "$rc" -eq 0 -o "$rc" -eq 2 -o "$rc" -eq 12
+
+      - name: Validate receipt and firewalls
+        if: always() && steps.audit.outputs.rc != ''
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1
+        env:
+          AUDIT_RC: ${{ steps.audit.outputs.rc }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          rc = int(os.environ['AUDIT_RC'])
+          p = Path('source_audit_data/source_gate_receipt.json')
+          x = json.loads(p.read_text(encoding='utf-8'))
+          expected = {0:'SOURCE_AUDIT_PASS', 2:'SOURCE_AUDIT_BLOCKED', 12:'EXECUTION_ENVIRONMENT_BLOCKED'}[rc]
+          assert x['status'] == expected, (rc, x['status'])
+          assert x['skew_values_computed'] is False
+          assert x['signals_computed'] is False
+          assert x['forward_returns_computed'] is False
+          assert x['pnl_computed'] is False
+          assert x['holdout_2025_accessed'] is False
+          assert x['year_2026_accessed'] is False
+          assert x['authority']['authority_sha256'] == '138cee737d75d27b43d9f377fc9a77e823e8fb2015f360b300cdc4a16cf67cfa'
+          print('FINAL_STATUS=', x['status'])
+          if x.get('deribit_audit'):
+              d=x['deribit_audit']
+              print('DERIBIT_PAGES=', d.get('pages'))
+              print('DERIBIT_TRADES=', d.get('trades'))
+              print('VALID_SIGNAL_COVERAGE_DAYS=', d.get('underlying_valid_signal_coverage_days'))
+              print('MIN_REQUIRED_VALID_DAYS=', d.get('underlying_min_required_valid_days'))
+              print('SCHEMA_PROVENANCE_PASS=', d.get('schema_and_provenance_pass'))
+              print('ELIGIBILITY_VALUE_REJECTIONS=', d.get('eligibility_value_rejections'))
+          if x.get('btc_price_audit'):
+              print('BTC_PRICE_AUDIT=', x['btc_price_audit'])
+          print('NO OUTCOMES / NO SKEW / NO RETURNS / NO PNL')
+          print('2025 LOCKED / 2026 LOCKED')
+          PY
+
+      - name: Upload decision receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: options-spotperp-001-source-audit-receipts-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1/source_audit_data/source_gate_receipt.json
+            Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1/source_audit_data/source_audit_report.json
+            Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1/source_audit_data/source_manifest.json
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Upload raw provenance evidence
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: options-spotperp-001-source-audit-raw-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1/source_audit_data/raw/
+            Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1/source_audit_data/raw_binance_btcusdt_1d/
+          if-no-files-found: warn
+          compression-level: 0
+          retention-days: 30
+
+      - name: Governance receipt
+        if: always()
+        run: |
+          echo 'FULL SOURCE/DATA AUDIT ONLY'
+          echo 'NO DISCOVERY OUTCOME COMPUTATION'
+          echo 'NO SKEW / NO SIGNALS / NO RETURNS / NO PNL'
+          echo '2025 LOCKED / 2026 LOCKED'
+          echo 'NO LIVE TRADING / NO EXCHANGE MUTATION'
+
+      - name: Enforce classified exit state
+        if: always() && steps.audit.outputs.rc != ''
+        env:
+          AUDIT_RC: ${{ steps.audit.outputs.rc }}
+        run: |
+          case "$AUDIT_RC" in
+            0) echo 'SOURCE_AUDIT_PASS'; exit 0 ;;
+            2) echo 'SOURCE_AUDIT_BLOCKED'; exit 2 ;;
+            12) echo 'EXECUTION_ENVIRONMENT_BLOCKED'; exit 12 ;;
+            *) echo "UNEXPECTED_EXIT=$AUDIT_RC"; exit 99 ;;
+          esac
