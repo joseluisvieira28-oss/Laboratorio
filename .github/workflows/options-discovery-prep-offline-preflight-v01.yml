@@ -1,0 +1,52 @@
+name: OPTIONS-SPOTPERP-001 Discovery Prep Offline Preflight V0.1
+
+on:
+  push:
+    branches:
+      - options-spotperp-discovery-prep-v01
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1/discovery_core_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1/test_discovery_core_v01.py'
+      - '.github/workflows/options-discovery-prep-offline-preflight-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-discovery-prep:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout isolated prep branch
+        uses: actions/checkout@v4
+
+      - name: Verify isolated branch
+        run: |
+          test "${GITHUB_REF_NAME}" = "options-spotperp-discovery-prep-v01"
+          echo "HEAD_SHA=$(git rev-parse HEAD)"
+
+      - name: Compile and run synthetic-only tests
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1
+        run: |
+          python3 -m py_compile discovery_core_v01.py test_discovery_core_v01.py
+          python3 test_discovery_core_v01.py
+
+      - name: Fail if Discovery core contains network or process execution routes
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1
+        shell: bash
+        run: |
+          if grep -En '(^|[[:space:]])(import|from)[[:space:]]+(urllib|requests|httpx|socket|subprocess|aiohttp|websocket)' discovery_core_v01.py; then
+            echo 'FAIL-CLOSED: network/process import detected in prep-only core'
+            exit 1
+          fi
+          echo 'OFFLINE_CORE_STATIC_GATE_PASS'
+
+      - name: Governance receipt
+        run: |
+          echo 'DISCOVERY PREP ONLY'
+          echo 'NO REAL MARKET DATA READ'
+          echo 'NO NETWORK'
+          echo 'NO SKEW FROM REAL DATA / NO REAL RETURNS / NO REAL PNL'
+          echo 'SOURCE_AUDIT_PASS STILL REQUIRED BEFORE DISCOVERY EXECUTION'
+          echo '2025 LOCKED / 2026 LOCKED'
+          echo 'NO LIVE TRADING / NO EXCHANGE MUTATION'
