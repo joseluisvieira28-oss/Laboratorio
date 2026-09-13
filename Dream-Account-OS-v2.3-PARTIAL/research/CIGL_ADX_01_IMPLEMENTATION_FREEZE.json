@@ -1,0 +1,117 @@
+{
+  "lab": "CLASSIC_INDICATORS_GAP_LAB_V0.1",
+  "experiment_id": "CIGL-ADX-01",
+  "status": "PRE_OUTCOME_IMPLEMENTATION_FROZEN",
+  "date": "2026-09-13",
+  "production_impact": "NONE",
+  "live_execution": false,
+  "source": {
+    "provider": "Binance Data Vision",
+    "market": "USD-M Futures",
+    "raw_interval": "1m",
+    "checksum_policy": "VERIFY_OFFICIAL_MONTHLY_CHECKSUM_BEFORE_PARSE",
+    "symbols": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "DOGEUSDT"]
+  },
+  "splits": {
+    "discovery": "2022-01-01T00:00:00Z/2023-12-31T23:59:59Z",
+    "internal_oos": "2024-01-01T00:00:00Z/2024-12-31T23:59:59Z",
+    "protected_final_holdout": "2025-01-01T00:00:00Z/2025-12-31T23:59:59Z",
+    "locked": "2026-01-01T00:00:00Z onward"
+  },
+  "bars": {
+    "primary": "1H",
+    "robustness_only": "4H",
+    "alignment": "UTC left-labelled exact clock boundaries",
+    "valid_1h_requires_minutes": 60,
+    "valid_4h_requires_minutes": 240,
+    "missing_data": "NO_FILL_NO_INTERPOLATION_NO_NEAREST_NEIGHBOR",
+    "adx_state_after_invalid_bar": "RESET; smoothing may not bridge a missing/invalid bar"
+  },
+  "adx": {
+    "style": "Wilder",
+    "length": 14,
+    "threshold": 25.0,
+    "tr": "max(high-low, abs(high-prev_close), abs(low-prev_close))",
+    "plus_dm": "up_move if up_move>down_move and up_move>0 else 0",
+    "minus_dm": "down_move if down_move>up_move and down_move>0 else 0",
+    "initial_wilder_smoothing": "sum of first 14 valid directional periods in a contiguous segment",
+    "recursive_wilder_smoothing": "prev_smoothed - prev_smoothed/14 + current_raw",
+    "plus_di": "100 * smoothed_plus_dm / smoothed_tr",
+    "minus_di": "100 * smoothed_minus_dm / smoothed_tr",
+    "dx": "100 * abs(plus_di-minus_di)/(plus_di+minus_di)",
+    "first_adx": "arithmetic mean of first 14 valid DX values",
+    "recursive_adx": "(prev_adx*13 + current_dx)/14"
+  },
+  "signal": {
+    "long": "completed bar ADX14>=25 AND +DI14>-DI14",
+    "short": "completed bar ADX14>=25 AND -DI14>+DI14",
+    "signal_repeats": "condition may signal on each completed eligible bar when no same-asset position is active",
+    "filters": "NONE"
+  },
+  "execution": {
+    "entry": "next valid timeframe bar open",
+    "holding_bars": 4,
+    "exit": "open exactly four completed timeframe bars after entry",
+    "holding_path": "all four holding bars must be complete/valid; no gap bridging",
+    "one_position_per_asset": true,
+    "base_roundtrip_cost_bps": 10.0,
+    "stress_roundtrip_cost_bps": 14.0,
+    "stop": null,
+    "take_profit": null,
+    "trailing": null,
+    "pyramiding": false
+  },
+  "evaluation": {
+    "primary_unit": "pooled equal-weight trade set across six assets on 1H",
+    "per_asset": "diagnostic only; may not rescue failed pooled family",
+    "robustness_4h": "diagnostic only; may not rescue failed 1H primary",
+    "required_metrics": [
+      "trade_count",
+      "gross_mean_median_bps",
+      "net10_mean_median_bps",
+      "net14_mean_bps",
+      "win_rate_net10",
+      "profit_factor_net10",
+      "max_cumulative_drawdown_bps",
+      "quarterly_stability",
+      "per_asset_contribution",
+      "leave_one_asset_out_net10",
+      "day_block_bootstrap_ci95",
+      "positive_pnl_concentration"
+    ]
+  },
+  "phase_gates": {
+    "discovery_1h": {
+      "min_trades": 300,
+      "net10_mean_bps_gt": 0.0,
+      "profit_factor_gt": 1.0,
+      "on_fail": "CLOSE_ADX_WITHOUT_OPENING_2024"
+    },
+    "validation_2024_1h": {
+      "min_trades": 150,
+      "net10_mean_bps_gt": 0.0,
+      "profit_factor_gt": 1.0,
+      "max_single_asset_positive_pnl_share": 0.70,
+      "max_single_quarter_positive_pnl_share": 0.70
+    }
+  },
+  "forbidden": [
+    "change_adx_length_after_outcomes",
+    "change_adx_threshold_after_outcomes",
+    "add_ema_filter",
+    "add_vwap_filter",
+    "add_breakout_filter",
+    "add_momentum_filter",
+    "add_volume_filter",
+    "indicator_stacking",
+    "winner_asset_selection",
+    "cost_reduction_rescue",
+    "use_4h_to_rescue_failed_1h",
+    "open_2024_after_failed_discovery",
+    "access_2025_or_2026",
+    "future_information",
+    "merge_to_main",
+    "live_trading",
+    "exchange_mutation"
+  ]
+}
