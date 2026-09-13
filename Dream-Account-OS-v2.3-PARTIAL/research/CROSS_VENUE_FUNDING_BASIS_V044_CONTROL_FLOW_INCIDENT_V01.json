@@ -1,0 +1,53 @@
+{
+  "schema_version": "0.1",
+  "incident_id": "CROSS_VENUE_FUNDING_BASIS_V044_CONTROL_FLOW_INCIDENT_V01",
+  "lab_id": "CROSS_VENUE_FUNDING_BASIS_LAB_V01",
+  "observed_date": "2026-09-13",
+  "component": "run_cross_venue_funding_basis_v044_windows.ps1",
+  "classification": "TECHNICAL_FAILURE_FAIL_CLOSED_BYPASS",
+  "severity": "HIGH_GOVERNANCE_NO_LIVE_TRADING_IMPACT",
+  "trigger": {
+    "stage_a_console_verdict": "FINAL STAGE A GATE: FAIL-CLOSED",
+    "stage_b_executed_after_stage_a_failure": true,
+    "runner_final_exit_code": 0,
+    "runner_final_pass_message": true
+  },
+  "root_cause": {
+    "description": "Run-Semantics invoked a Python command that wrote a JSON summary to stdout and then returned $false. PowerShell therefore emitted a multi-item success-stream collection (JSON string plus false). The expression if (-not (Run-Semantics)) evaluated the non-empty collection as truthy, so the intended abort did not execute.",
+    "affected_pattern": "boolean return value mixed with unsuppressed success-stream output from external commands",
+    "stage_b_same_pattern_present": true
+  },
+  "scientific_disposition": {
+    "stage_a_semantic_gate": "FAIL_CLOSED_AUTHORITATIVE",
+    "stage_a_receipt_remains_valid": true,
+    "stage_b_coverage_gate": "EXECUTED_OUT_OF_ORDER_NOT_AUTHORIZING_DISCOVERY",
+    "overall_v044_status": "FAIL_CLOSED_SEMANTIC_GATE_PLUS_CONTROL_FLOW_INCIDENT",
+    "discovery_authorized": false,
+    "economic_freeze_authorized": false,
+    "semantic_rescue_rerun_authorized": false,
+    "threshold_changes_authorized": false,
+    "asset_changes_authorized": false,
+    "date_changes_authorized": false,
+    "formula_changes_authorized": false
+  },
+  "exposure_effect": {
+    "stage_b_calendar_inspected": "2023-09-01..2025-12-31",
+    "source": "s3://hyperliquid-archive/asset_ctxs/YYYYMMDD.csv.lz4",
+    "raw_economic_values_output_to_user": false,
+    "carry_computed": false,
+    "basis_return_computed": false,
+    "pnl_computed": false,
+    "signals_computed": false,
+    "2026_accessed": false,
+    "governance_note": "The full archive calendar was programmatically inspected for structural provenance despite Stage A failure. This exposure must be preserved in the dataset ledger and cannot be relabeled as never-accessed. It does not convert Stage B into valid scientific promotion evidence."
+  },
+  "required_remediation": [
+    "Gate continuation by reading the persisted Stage A receipt field semantic_probe_pass rather than by function truthiness.",
+    "Gate final success by reading the persisted Stage B receipt status/common_complete_month_count.",
+    "Add regression checks preventing Stage B continuation after a failed Stage A receipt.",
+    "Preserve all existing receipts; do not delete or rewrite the failed Stage A receipt."
+  ],
+  "trading_authorized": false,
+  "exchange_mutation_authorized": false,
+  "2026_authorized": false
+}
