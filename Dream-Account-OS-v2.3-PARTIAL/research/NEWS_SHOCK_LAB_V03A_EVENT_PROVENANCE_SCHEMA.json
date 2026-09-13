@@ -1,0 +1,591 @@
+{
+  "$id": "NEWS_SHOCK_LAB_V03A_EVENT_PROVENANCE_SCHEMA",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "actual_provenance": {
+      "additionalProperties": false,
+      "properties": {
+        "alfred_corroboration": {
+          "additionalProperties": false,
+          "properties": {
+            "evidence_note": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "source_url": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "status": {
+              "enum": [
+                "NOT_CHECKED",
+                "CORROBORATED",
+                "UNAVAILABLE",
+                "MISMATCH_REVIEW_REQUIRED"
+              ]
+            },
+            "vintage_date": {
+              "format": "date",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "status",
+            "source_url",
+            "vintage_date",
+            "evidence_note"
+          ],
+          "type": "object"
+        },
+        "bls_content_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "bls_release_url": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "bls_retrieved_at_utc": {
+          "format": "date-time",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "bls_release_url",
+        "bls_retrieved_at_utc",
+        "bls_content_sha256",
+        "alfred_corroboration"
+      ],
+      "type": "object"
+    },
+    "actuals": {
+      "additionalProperties": false,
+      "properties": {
+        "core_cpi_mom": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "core_cpi_yoy": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "headline_cpi_mom": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "headline_cpi_yoy": {
+          "type": [
+            "number",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "headline_cpi_mom",
+        "headline_cpi_yoy",
+        "core_cpi_mom",
+        "core_cpi_yoy"
+      ],
+      "type": "object"
+    },
+    "consensus": {
+      "additionalProperties": false,
+      "properties": {
+        "core_cpi_mom": {
+          "additionalProperties": false,
+          "properties": {
+            "consensus_statistic": {
+              "enum": [
+                "median",
+                "mean",
+                "average",
+                "consensus",
+                "unspecified"
+              ]
+            },
+            "evidence_note": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "pre_release_gate_pass": {
+              "type": "boolean"
+            },
+            "provenance_grade": {
+              "enum": [
+                "A",
+                "B",
+                "INCOMPLETE"
+              ]
+            },
+            "published_at_utc": {
+              "format": "date-time",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "retrieved_at_utc": {
+              "format": "date-time",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "source_publisher": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "source_title": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "source_url": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "unit": {
+              "enum": [
+                "percent",
+                "percentage_points"
+              ]
+            },
+            "value": {
+              "type": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "value",
+            "unit",
+            "source_publisher",
+            "source_url",
+            "source_title",
+            "published_at_utc",
+            "retrieved_at_utc",
+            "consensus_statistic",
+            "evidence_note",
+            "pre_release_gate_pass",
+            "provenance_grade"
+          ],
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "core_cpi_yoy": {
+          "additionalProperties": false,
+          "properties": {
+            "consensus_statistic": {
+              "enum": [
+                "median",
+                "mean",
+                "average",
+                "consensus",
+                "unspecified"
+              ]
+            },
+            "evidence_note": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "pre_release_gate_pass": {
+              "type": "boolean"
+            },
+            "provenance_grade": {
+              "enum": [
+                "A",
+                "B",
+                "INCOMPLETE"
+              ]
+            },
+            "published_at_utc": {
+              "format": "date-time",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "retrieved_at_utc": {
+              "format": "date-time",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "source_publisher": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "source_title": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "source_url": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "unit": {
+              "enum": [
+                "percent",
+                "percentage_points"
+              ]
+            },
+            "value": {
+              "type": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "value",
+            "unit",
+            "source_publisher",
+            "source_url",
+            "source_title",
+            "published_at_utc",
+            "retrieved_at_utc",
+            "consensus_statistic",
+            "evidence_note",
+            "pre_release_gate_pass",
+            "provenance_grade"
+          ],
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "headline_cpi_mom": {
+          "additionalProperties": false,
+          "properties": {
+            "consensus_statistic": {
+              "enum": [
+                "median",
+                "mean",
+                "average",
+                "consensus",
+                "unspecified"
+              ]
+            },
+            "evidence_note": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "pre_release_gate_pass": {
+              "type": "boolean"
+            },
+            "provenance_grade": {
+              "enum": [
+                "A",
+                "B",
+                "INCOMPLETE"
+              ]
+            },
+            "published_at_utc": {
+              "format": "date-time",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "retrieved_at_utc": {
+              "format": "date-time",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "source_publisher": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "source_title": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "source_url": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "unit": {
+              "enum": [
+                "percent",
+                "percentage_points"
+              ]
+            },
+            "value": {
+              "type": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "value",
+            "unit",
+            "source_publisher",
+            "source_url",
+            "source_title",
+            "published_at_utc",
+            "retrieved_at_utc",
+            "consensus_statistic",
+            "evidence_note",
+            "pre_release_gate_pass",
+            "provenance_grade"
+          ],
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "headline_cpi_yoy": {
+          "additionalProperties": false,
+          "properties": {
+            "consensus_statistic": {
+              "enum": [
+                "median",
+                "mean",
+                "average",
+                "consensus",
+                "unspecified"
+              ]
+            },
+            "evidence_note": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "pre_release_gate_pass": {
+              "type": "boolean"
+            },
+            "provenance_grade": {
+              "enum": [
+                "A",
+                "B",
+                "INCOMPLETE"
+              ]
+            },
+            "published_at_utc": {
+              "format": "date-time",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "retrieved_at_utc": {
+              "format": "date-time",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "source_publisher": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "source_title": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "source_url": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "unit": {
+              "enum": [
+                "percent",
+                "percentage_points"
+              ]
+            },
+            "value": {
+              "type": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "value",
+            "unit",
+            "source_publisher",
+            "source_url",
+            "source_title",
+            "published_at_utc",
+            "retrieved_at_utc",
+            "consensus_statistic",
+            "evidence_note",
+            "pre_release_gate_pass",
+            "provenance_grade"
+          ],
+          "type": [
+            "object",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "headline_cpi_mom",
+        "headline_cpi_yoy",
+        "core_cpi_mom",
+        "core_cpi_yoy"
+      ],
+      "type": "object"
+    },
+    "event_id": {
+      "pattern": "^US_CPI_[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+      "type": "string"
+    },
+    "event_type": {
+      "const": "US_CPI"
+    },
+    "missing_reasons": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array",
+      "uniqueItems": true
+    },
+    "raw_surprises": {
+      "additionalProperties": false,
+      "properties": {
+        "core_cpi_mom": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "core_cpi_yoy": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "headline_cpi_mom": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "headline_cpi_yoy": {
+          "type": [
+            "number",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "headline_cpi_mom",
+        "headline_cpi_yoy",
+        "core_cpi_mom",
+        "core_cpi_yoy"
+      ],
+      "type": "object"
+    },
+    "record_fingerprint": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "record_status": {
+      "enum": [
+        "COMPLETE_A",
+        "COMPLETE_B",
+        "CONSENSUS_PROVENANCE_INCOMPLETE",
+        "ACTUAL_PROVENANCE_INCOMPLETE",
+        "REVIEW_REQUIRED"
+      ]
+    },
+    "reference_month": {
+      "pattern": "^[0-9]{4}-[0-9]{2}$",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "release_at_utc": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "release_date_local": {
+      "format": "date",
+      "type": "string"
+    },
+    "release_timezone": {
+      "const": "America/New_York"
+    }
+  },
+  "required": [
+    "event_id",
+    "event_type",
+    "reference_month",
+    "release_date_local",
+    "release_timezone",
+    "release_at_utc",
+    "actuals",
+    "actual_provenance",
+    "consensus",
+    "raw_surprises",
+    "record_status",
+    "missing_reasons",
+    "record_fingerprint"
+  ],
+  "title": "News Shock Lab V0.3A CPI Event Provenance Record",
+  "type": "object"
+}

@@ -1,0 +1,39 @@
+{
+  "document_type": "DERIVATIVES_POSITIONING_PHASE0E_ARCHIVE_CONTAINER_AMENDMENT",
+  "version": "0.1A",
+  "status": "FROZEN_TECHNICAL_REMEDIATION_ONLY",
+  "parent_authority": "DERIVATIVES_POSITIONING_PHASE0E_SCHEMA_INVENTORY_FREEZE_V01.json",
+  "trigger": "First local Phase 0E receipt showed zero in-window headers because the corpus stores daily metrics as ZIP archives with .zip.CHECKSUM sidecars, while V0.1 only recognized .csv and .csv.gz containers.",
+  "scientific_scope_change": false,
+  "economic_scope_change": false,
+  "outcome_access_change": false,
+  "allowed_container_amendment": {
+    "add_zip_archives": true,
+    "zip_rule": "For an eligible in-window archive, require exactly one non-directory CSV member and read only that member's first physical line as the header. Do not parse any data row.",
+    "checksum_sidecars": ".zip.CHECKSUM files are provenance metadata; inventory/count them but do not classify them as candidate signal files and do not open their contents in Phase 0E."
+  },
+  "unchanged_guards": {
+    "allowed_assets": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "DOGEUSDT"],
+    "allowed_window_start_inclusive": "2021-12-01",
+    "allowed_window_end_exclusive": "2025-01-01",
+    "2025_forbidden": true,
+    "2026_forbidden": true,
+    "outcomes_forbidden": true,
+    "returns_forbidden": true,
+    "pnl_forbidden": true,
+    "profitability_forbidden": true,
+    "threshold_selection_forbidden": true,
+    "signal_ranking_forbidden": true,
+    "parameter_optimization_forbidden": true,
+    "live_trading_forbidden": true,
+    "exchange_mutation_forbidden": true
+  },
+  "fail_closed_conditions_added": [
+    "eligible ZIP contains zero CSV members",
+    "eligible ZIP contains more than one CSV member",
+    "eligible ZIP cannot expose a decodable non-empty first line",
+    "eligible ZIP is corrupt or unreadable"
+  ],
+  "next_gate_if_pass": "PHASE0F_FIELD_SEMANTIC_AND_UNIT_FREEZE_PRE_OUTCOME",
+  "next_gate_if_fail": "TECHNICAL_OR_DATA_REMEDIATION_ONLY_NO_OUTCOMES"
+}

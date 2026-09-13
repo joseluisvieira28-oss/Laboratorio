@@ -1,0 +1,331 @@
+name: Macro Shock Microstructure Provenance Shakedown V0.1
+
+on:
+  push:
+    branches:
+      - dream-account-phase-b-signal-research-v0.1
+
+permissions:
+  contents: read
+
+jobs:
+  implementation-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install project
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+      - name: Verify frozen shakedown authorization
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path('research/MICROSTRUCTURE_PROVENANCE_SHAKEDOWN_AUTHORIZATION_V01.json')
+          a = json.loads(p.read_text(encoding='utf-8'))
+          assert a['status'] == 'AUTHORIZED_PUBLIC_READ_ONLY_PROVENANCE_SHAKEDOWN'
+          assert a['authorization_scope']['max_capture_seconds'] <= 90
+          assert a['authorization_scope']['single_run'] is True
+          b = a['authorization_scope']['binance_spot']
+          c = a['authorization_scope']['coinbase_advanced_spot']
+          assert b['websocket_host'] == 'stream.binance.com'
+          assert b['rest_host'] == 'api.binance.com'
+          assert b['rest_method'] == 'GET'
+          assert b['rest_path'] == '/api/v3/depth'
+          assert b['authentication'] is False
+          assert c['websocket_host'] == 'advanced-trade-ws.coinbase.com'
+          assert c['authentication'] is False
+          assert c['forbidden_user_host'] == 'advanced-trade-ws-user.coinbase.com'
+          guards = a['guards']
+          assert all(v is False for v in guards.values())
+          assert set(a['authorization_scope']['coinbase_advanced_spot']['channels']) == {'level2','market_trades','heartbeats'}
+          print('PASS: exact bounded public-read shakedown authority verified')
+          PY
+      - name: Run offline provenance and venue parser tests
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python -m unittest -v \
+            tests.test_microstructure_provenance_v01 \
+            tests.test_microstructure_collector_parsers_v01 \
+            tests.test_microstructure_coinbase_advanced_v01
+      - name: Compile provenance modules
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python -m py_compile \
+            research/microstructure_provenance_v01.py \
+            research/microstructure_collector_parsers_v01.py \
+            research/microstructure_coinbase_advanced_v01.py
+
+  public-readonly-shakedown:
+    needs: implementation-gate
+    if: ${{ contains(github.event.head_commit.message, '[MICROSTRUCTURE SHAKEDOWN RUN]') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install bounded collector dependencies
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python -m pip install --upgrade pip
+          python -m pip install -e . 'websockets>=12,<16'
+      - name: Run single bounded public read-only provenance shakedown
+        env:
+          PYTHONUNBUFFERED: '1'
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python - <<'PY'
+          import asyncio
+          import hashlib
+          import json
+          from pathlib import Path
+          import sys
+          import time
+          from urllib.parse import urlencode
+          from urllib.request import Request, urlopen
+
+          import websockets
+
+          research = Path('research').resolve()
+          sys.path.insert(0, str(research))
+          from microstructure_collector_parsers_v01 import BinanceSnapshotBridge
+          from microstructure_coinbase_advanced_v01 import AdvancedConnectionSequence, AdvancedTradeBook, parse_envelope
+
+          auth = json.loads((research / 'MICROSTRUCTURE_PROVENANCE_SHAKEDOWN_AUTHORIZATION_V01.json').read_text(encoding='utf-8'))
+          assert auth['status'] == 'AUTHORIZED_PUBLIC_READ_ONLY_PROVENANCE_SHAKEDOWN'
+          assert all(v is False for v in auth['guards'].values())
+          duration = min(30, int(auth['authorization_scope']['max_capture_seconds']))
+          out = research / 'local_data' / 'microstructure_shakedown_v01'
+          out.mkdir(parents=True, exist_ok=True)
+          bpath = out / 'binance_raw.jsonl'
+          cpath = out / 'coinbase_advanced_raw.jsonl'
+
+          stats = {
+              'document_type': 'MICROSTRUCTURE_PROVENANCE_SHAKEDOWN_RECEIPT',
+              'version': '0.1',
+              'capture_seconds': duration,
+              'target_outcomes_evaluated': False,
+              'trading_signals_generated': False,
+              'exchange_mutation_performed': False,
+              'authenticated_exchange_access_used': False,
+              'mexc_accessed': False,
+              'binance': {'messages': 0, 'stream_counts': {}, 'snapshots': {}, 'parse_failures': 0, 'sync': {}},
+              'coinbase_advanced': {
+                  'messages': 0,
+                  'channel_counts': {},
+                  'parse_failures': 0,
+                  'connection_sequence': {
+                      'valid': True,
+                      'last_sequence_num': None,
+                      'failures': 0,
+                      'invalid_reason': None,
+                  },
+                  'sync': {},
+              },
+              'errors': [],
+          }
+          binance_messages = []
+          coinbase_messages = []
+
+          def persist(path, venue, source, raw):
+              wall_ns = time.time_ns()
+              mono_ns = time.monotonic_ns()
+              raw_bytes = raw.encode('utf-8')
+              row = {
+                  'venue': venue,
+                  'source': source,
+                  'collector_wall_ns': wall_ns,
+                  'collector_monotonic_ns': mono_ns,
+                  'sha256': hashlib.sha256(raw_bytes).hexdigest(),
+                  'raw': raw,
+              }
+              with path.open('a', encoding='utf-8') as f:
+                  f.write(json.dumps(row, separators=(',', ':'), ensure_ascii=False) + '\n')
+
+          def fetch_snapshot(symbol):
+              scope = auth['authorization_scope']['binance_spot']
+              assert scope['rest_method'] == 'GET'
+              q = urlencode({'symbol': symbol, 'limit': scope['rest_limit']})
+              url = f"https://{scope['rest_host']}{scope['rest_path']}?{q}"
+              req = Request(url, method='GET', headers={'User-Agent': 'DreamAccountOS-Provenance-Shakedown/0.1'})
+              with urlopen(req, timeout=15) as r:
+                  if r.status != 200:
+                      raise RuntimeError(f'Binance snapshot HTTP {r.status}')
+                  text = r.read().decode('utf-8')
+              obj = json.loads(text)
+              persist(bpath, 'BINANCE_SPOT', f'REST_DEPTH_SNAPSHOT:{symbol}', text)
+              return obj
+
+          async def capture_binance():
+              streams = []
+              for s in ('btcusdt', 'ethusdt'):
+                  streams.extend((f'{s}@depth@100ms', f'{s}@bookTicker', f'{s}@trade'))
+              uri = 'wss://stream.binance.com:9443/stream?streams=' + '/'.join(streams)
+              async with websockets.connect(uri, ping_interval=20, ping_timeout=20, max_size=16*1024*1024) as ws:
+                  started = time.monotonic()
+                  snapshot_tasks = None
+                  while time.monotonic() - started < duration:
+                      timeout = min(2.0, duration - (time.monotonic() - started))
+                      if timeout <= 0:
+                          break
+                      try:
+                          raw = await asyncio.wait_for(ws.recv(), timeout=timeout)
+                      except asyncio.TimeoutError:
+                          continue
+                      if not isinstance(raw, str):
+                          raw = raw.decode('utf-8')
+                      persist(bpath, 'BINANCE_SPOT', 'WSS_COMBINED', raw)
+                      obj = json.loads(raw)
+                      binance_messages.append(obj)
+                      stats['binance']['messages'] += 1
+                      stream = str(obj.get('stream', 'UNKNOWN'))
+                      stats['binance']['stream_counts'][stream] = stats['binance']['stream_counts'].get(stream, 0) + 1
+                      if snapshot_tasks is None and stats['binance']['messages'] >= 5:
+                          snapshot_tasks = {
+                              s: asyncio.create_task(asyncio.to_thread(fetch_snapshot, s))
+                              for s in ('BTCUSDT', 'ETHUSDT')
+                          }
+                  if snapshot_tasks is None:
+                      snapshot_tasks = {s: asyncio.create_task(asyncio.to_thread(fetch_snapshot, s)) for s in ('BTCUSDT','ETHUSDT')}
+                  snapshots = {s: await t for s, t in snapshot_tasks.items()}
+                  stats['binance']['snapshots'] = {s: {'lastUpdateId': v.get('lastUpdateId')} for s,v in snapshots.items()}
+                  return snapshots
+
+          async def capture_coinbase():
+              uri = 'wss://advanced-trade-ws.coinbase.com'
+              products = ['BTC-USD', 'ETH-USD']
+              async with websockets.connect(uri, ping_interval=20, ping_timeout=20, max_size=16*1024*1024) as ws:
+                  for channel in ('level2', 'market_trades', 'heartbeats'):
+                      await ws.send(json.dumps({'type': 'subscribe', 'product_ids': products, 'channel': channel}, separators=(',', ':')))
+                  started = time.monotonic()
+                  while time.monotonic() - started < duration:
+                      timeout = min(2.0, duration - (time.monotonic() - started))
+                      if timeout <= 0:
+                          break
+                      try:
+                          raw = await asyncio.wait_for(ws.recv(), timeout=timeout)
+                      except asyncio.TimeoutError:
+                          continue
+                      if not isinstance(raw, str):
+                          raw = raw.decode('utf-8')
+                      persist(cpath, 'COINBASE_ADVANCED_SPOT', 'WSS_PUBLIC', raw)
+                      obj = json.loads(raw)
+                      coinbase_messages.append(obj)
+                      stats['coinbase_advanced']['messages'] += 1
+                      ch = str(obj.get('channel', obj.get('type', 'UNKNOWN')))
+                      stats['coinbase_advanced']['channel_counts'][ch] = stats['coinbase_advanced']['channel_counts'].get(ch, 0) + 1
+
+          async def main():
+              results = await asyncio.gather(capture_binance(), capture_coinbase(), return_exceptions=True)
+              snapshots = None
+              for r in results:
+                  if isinstance(r, Exception):
+                      stats['errors'].append(f'{type(r).__name__}: {r}')
+                  elif isinstance(r, dict) and 'BTCUSDT' in r:
+                      snapshots = r
+              return snapshots
+
+          snapshots = asyncio.run(main())
+
+          # Offline provenance-only Binance synchronization check.
+          if snapshots:
+              for symbol in ('BTCUSDT', 'ETHUSDT'):
+                  bridge = BinanceSnapshotBridge()
+                  try:
+                      bridge.load_snapshot(snapshots[symbol], symbol)
+                      depth = [m['data'] for m in binance_messages if str(m.get('stream','')).startswith(symbol.lower()+'@depth')]
+                      bridged = False
+                      for d in depth:
+                          if not bridged:
+                              accepted = bridge.apply_first_buffered(d)
+                              if accepted:
+                                  bridged = True
+                          else:
+                              bridge.apply_next(d)
+                      stats['binance']['sync'][symbol] = {
+                          'synchronized': bool(bridged and bridge.synchronized and bridge.book.valid),
+                          'depth_messages_seen': len(depth),
+                          'last_update_id': bridge.book.last_sequence_end,
+                          'invalid_reason': bridge.book.invalid_reason,
+                      }
+                  except Exception as exc:
+                      stats['binance']['parse_failures'] += 1
+                      stats['binance']['sync'][symbol] = {'synchronized': False, 'error': f'{type(exc).__name__}: {exc}'}
+
+          # Validate Advanced Trade connection-envelope sequence before filtering by channel/product.
+          connection_sequence = AdvancedConnectionSequence()
+          for obj in coinbase_messages:
+              try:
+                  connection_sequence.observe(obj)
+              except Exception as exc:
+                  stats['coinbase_advanced']['connection_sequence']['failures'] += 1
+                  stats['coinbase_advanced']['connection_sequence']['valid'] = False
+                  stats['coinbase_advanced']['connection_sequence']['invalid_reason'] = f'{type(exc).__name__}: {exc}'
+                  if len(stats['errors']) < 20:
+                      stats['errors'].append(f'Coinbase connection sequence {type(exc).__name__}: {exc}')
+                  break
+          stats['coinbase_advanced']['connection_sequence']['last_sequence_num'] = connection_sequence.last_sequence_num
+          if connection_sequence.valid:
+              stats['coinbase_advanced']['connection_sequence']['valid'] = True
+
+          # Offline provenance-only Advanced Trade parsing + L2 state check.
+          books = {p: AdvancedTradeBook(p) for p in ('BTC-USD','ETH-USD')}
+          if connection_sequence.valid:
+              for obj in coinbase_messages:
+                  if obj.get('channel') not in {'l2_data','market_trades','heartbeats'}:
+                      continue
+                  try:
+                      env = parse_envelope(obj)
+                      if env.channel == 'l2_data':
+                          for product in env.product_ids:
+                              if product in books:
+                                  books[product].apply_message(obj)
+                  except Exception as exc:
+                      stats['coinbase_advanced']['parse_failures'] += 1
+                      if len(stats['errors']) < 20:
+                          stats['errors'].append(f'Coinbase parse {type(exc).__name__}: {exc}')
+          for product, book in books.items():
+              stats['coinbase_advanced']['sync'][product] = {
+                  'synchronized': bool(connection_sequence.valid and book.synchronized and book.book.valid),
+                  'last_sequence_num': book.last_sequence_num,
+                  'invalid_reason': book.book.invalid_reason,
+              }
+
+          for label, path in (('binance', bpath), ('coinbase_advanced', cpath)):
+              data = path.read_bytes() if path.exists() else b''
+              stats[label]['storage_bytes'] = len(data)
+              stats[label]['raw_segment_sha256'] = hashlib.sha256(data).hexdigest() if data else None
+
+          stats['provenance_gate_result'] = 'PASS' if (
+              stats['binance']['messages'] > 0
+              and stats['coinbase_advanced']['messages'] > 0
+              and stats['coinbase_advanced']['connection_sequence']['valid']
+              and stats['coinbase_advanced']['connection_sequence']['failures'] == 0
+              and all(v.get('synchronized') for v in stats['binance']['sync'].values())
+              and all(v.get('synchronized') for v in stats['coinbase_advanced']['sync'].values())
+          ) else 'PROVENANCE_GATE_FAIL'
+          receipt_path = out / 'microstructure_provenance_shakedown_receipt.json'
+          receipt_path.write_text(json.dumps(stats, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+          print(json.dumps(stats, indent=2, sort_keys=True))
+          if stats['provenance_gate_result'] != 'PASS':
+              raise SystemExit('Public read-only provenance shakedown failed closed')
+          PY
+      - name: Upload provenance shakedown receipts and raw segments
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: microstructure-provenance-shakedown-${{ github.sha }}
+          path: |
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/microstructure_shakedown_v01/microstructure_provenance_shakedown_receipt.json
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/microstructure_shakedown_v01/binance_raw.jsonl
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/microstructure_shakedown_v01/coinbase_advanced_raw.jsonl
+          if-no-files-found: warn
+          retention-days: 7

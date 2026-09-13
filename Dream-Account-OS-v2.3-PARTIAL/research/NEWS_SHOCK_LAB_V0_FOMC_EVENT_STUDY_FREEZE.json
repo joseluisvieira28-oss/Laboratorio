@@ -1,0 +1,73 @@
+{
+  "document_type": "NEWS_SHOCK_LAB_V0_FOMC_EVENT_STUDY_FREEZE",
+  "version": "0.1",
+  "status": "FROZEN_DIAGNOSTIC_ONLY_PENDING_DATA_ACCESS",
+  "frozen_at_utc_date": "2026-09-11",
+  "lab_id": "NEWS_SHOCK_LAB_V0_FOMC",
+  "purpose": "Measure pre-event positioning, immediate direction, reversal, volatility, volume and taker-flow response around scheduled FOMC statements without authorizing trading.",
+  "event_contract": {
+    "source": "FEDERAL_RESERVE_OFFICIAL_FOMC_CALENDAR_AND_STATEMENTS",
+    "event_type": "REGULARLY_SCHEDULED_FOMC_POLICY_STATEMENT",
+    "release_time": "14:00 America/New_York on second meeting day",
+    "press_conference_time": "14:30 America/New_York",
+    "exclude_unscheduled_events": true,
+    "exclude_notation_votes": true,
+    "years": [2021, 2022, 2023, 2024, 2025],
+    "events": [
+      "2021-01-27", "2021-03-17", "2021-04-28", "2021-06-16", "2021-07-28", "2021-09-22", "2021-11-03", "2021-12-15",
+      "2022-01-26", "2022-03-16", "2022-05-04", "2022-06-15", "2022-07-27", "2022-09-21", "2022-11-02", "2022-12-14",
+      "2023-02-01", "2023-03-22", "2023-05-03", "2023-06-14", "2023-07-26", "2023-09-20", "2023-11-01", "2023-12-13",
+      "2024-01-31", "2024-03-20", "2024-05-01", "2024-06-12", "2024-07-31", "2024-09-18", "2024-11-07", "2024-12-18",
+      "2025-01-29", "2025-03-19", "2025-05-07", "2025-06-18", "2025-07-30", "2025-09-17", "2025-10-29", "2025-12-10"
+    ]
+  },
+  "market_data": {
+    "source": "OFFICIAL_BINANCE_PUBLIC_DATA_ONLY",
+    "market_type": "SPOT",
+    "symbols": ["BTCUSDT", "ETHUSDT"],
+    "timeframe": "1m",
+    "checksum_required": true,
+    "timestamp_policy": "Normalize official Binance Spot timestamps to milliseconds; 2025+ public files may use microseconds.",
+    "holdout_2026": "LOCKED_NOT_ACCESSED"
+  },
+  "windows_minutes": {
+    "pre": [-60, -15, -5],
+    "post_from_release": [5, 15, 30, 60, 120, 240],
+    "press_conference_window": [30, 90]
+  },
+  "primary_outputs": [
+    "signed_return_each_post_window",
+    "absolute_return_each_post_window",
+    "direction_up_down_flat_each_post_window",
+    "pre_event_return_minus60_to_0",
+    "pre_event_return_minus15_to_0",
+    "pre_event_return_minus5_to_0",
+    "event_volume_ratio_vs_prior_four_same_weekday_time_controls",
+    "event_trade_count_ratio_vs_controls",
+    "event_taker_flow_imbalance",
+    "flow_persistence_first5_to_first15_minutes",
+    "reversal_sign_5m_vs_60m",
+    "reversal_sign_15m_vs_120m"
+  ],
+  "control_contract": {
+    "matched_control_days": "same weekday at same New York clock time, 7/14/21/28 days before event",
+    "exclude_any_control_that_is_itself_fomc_event": true,
+    "no_parameter_search": true
+  },
+  "interpretation": {
+    "classification_authority": "NONE_DIAGNOSTIC_ONLY",
+    "may_create_future_hypothesis": true,
+    "may_authorize_trading": false,
+    "may_define_directional_rule_from_this_run": false,
+    "positive_result_wording": "historical event-study evidence only",
+    "negative_result_wording": "no stable historical event structure found under frozen diagnostics"
+  },
+  "governance": {
+    "no_live_trading": true,
+    "no_exchange_mutation": true,
+    "no_main_merge": true,
+    "no_render_deploy": true,
+    "no_2026": true
+  },
+  "fingerprint": "ca2c9dae37a6e7ca53211388c19e2762a9e9a1640655af74c9560071b9234c78"
+}

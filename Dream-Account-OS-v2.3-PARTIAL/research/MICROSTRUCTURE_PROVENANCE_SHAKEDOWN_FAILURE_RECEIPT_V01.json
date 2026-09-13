@@ -1,0 +1,83 @@
+{
+  "document_type": "MICROSTRUCTURE_PROVENANCE_SHAKEDOWN_FAILURE_RECEIPT",
+  "version": "0.1",
+  "status": "TECHNICAL_PROVENANCE_GATE_FAILURE",
+  "run": {
+    "workflow": "Macro Shock Microstructure Provenance Shakedown V0.1",
+    "run_id": 34692126960,
+    "implementation_gate_job_id": 103549127135,
+    "public_readonly_shakedown_job_id": 103549145791,
+    "head_sha": "483ef08f5d67d4ae79f9f6f3ed0c70f849d198a0",
+    "artifact_id": 10297825620,
+    "artifact_name": "microstructure-provenance-shakedown-483ef08f5d67d4ae79f9f6f3ed0c70f849d198a0",
+    "artifact_zip_sha256": "b30f75caf78a1d70ba051c2f480efb31ffa77216f08bef74f6b90cb7efba4522"
+  },
+  "implementation_gate": "PASS",
+  "global_research_safety": {
+    "run_id": 34692126974,
+    "job_id": 103549127280,
+    "status": "PASS"
+  },
+  "capture": {
+    "seconds": 30,
+    "provenance_gate_result": "PROVENANCE_GATE_FAIL",
+    "target_outcomes_evaluated": false,
+    "trading_signals_generated": false,
+    "exchange_mutation_performed": false,
+    "authenticated_exchange_access_used": false,
+    "mexc_accessed": false
+  },
+  "binance": {
+    "messages": 0,
+    "storage_bytes": 0,
+    "raw_segment_sha256": null,
+    "parse_failures": 0,
+    "failure": "WebSocket handshake rejected with HTTP 451 on GitHub-hosted Azure runner",
+    "classification": "RUNNER_NETWORK_OR_GEO_ACCESS_FAILURE",
+    "scientific_interpretation": "No Binance microstructure provenance conclusion is permitted from this run."
+  },
+  "coinbase_advanced": {
+    "messages": 1137,
+    "storage_bytes": 9095411,
+    "raw_segment_sha256": "088d968a5d69711bebed30f7534b7afc06e01cb2e11a110cbf9eac3257f8ff4f",
+    "channel_counts": {
+      "heartbeats": 30,
+      "l2_data": 1000,
+      "market_trades": 104,
+      "subscriptions": 3
+    },
+    "parse_failures": 991,
+    "btc_usd_last_sequence_num_before_invalidation": 8,
+    "eth_usd_last_sequence_num_before_invalidation": 4,
+    "failure": "Per-product order-book state machine incorrectly required consecutive envelope sequence_num values despite the captured connection sequence interleaving products and channels.",
+    "raw_evidence_examples": [
+      "l2_data sequence 8 BTC-USD",
+      "subscriptions sequence 9",
+      "l2_data sequence 10 BTC-USD",
+      "market_trades sequences 11 and 12",
+      "subscriptions sequences 13 and 14",
+      "l2_data sequence 15 BTC-USD"
+    ],
+    "classification": "PARSER_SEQUENCE_MODEL_DEFECT",
+    "scientific_interpretation": "The 991 parser violations are not evidence of 991 dropped Level2 messages; they are artifacts of the incorrect per-book consecutive-sequence assumption."
+  },
+  "technical_correction_policy": {
+    "allowed": [
+      "Correct Coinbase sequence validation so connection-level continuity is checked before channel/product filtering.",
+      "Require monotonic non-regressing sequence observations at per-book application level rather than +1 adjacency when unrelated messages intervene.",
+      "Add synthetic tests reproducing captured cross-channel/cross-product interleaving.",
+      "Document Binance HTTP 451 as infrastructure/access failure and evaluate an independently authorized collection venue/runner path."
+    ],
+    "forbidden": [
+      "Re-run the single-run shakedown under the existing authorization.",
+      "Open H02 or evaluate target outcomes.",
+      "Tune a trading hypothesis.",
+      "Use authenticated exchange endpoints.",
+      "Create or mutate exchange orders.",
+      "Access locked MEXC Sep-Dec 2025 data.",
+      "Merge main or deploy Render."
+    ]
+  },
+  "retry_status": "NOT_AUTHORIZED_UNDER_SINGLE_RUN_V01",
+  "stop_directive": "FIX_TECHNICAL_PROVENANCE_INFRASTRUCTURE_OFFLINE_ONLY_THEN_REQUIRE_SEPARATE_RETRY_AUTHORIZATION"
+}

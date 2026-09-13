@@ -1,0 +1,98 @@
+{
+  "allowed_outputs": [
+    "timestamp_counts",
+    "normalized_slot_counts",
+    "timestamp_interval_histograms",
+    "funding_interval_hours_metadata_values",
+    "missing_nominal_slot_ids",
+    "duplicate_nominal_slot_ids",
+    "eligible_full_months",
+    "common_eligible_months",
+    "provenance_excluded_months",
+    "contiguous_eligible_blocks",
+    "canonical_timestamp_hashes",
+    "G03_status",
+    "G04_status",
+    "G10_materialization_candidate"
+  ],
+  "amendment_id": "CROSS_VENUE_FUNDING_BASIS_PROVENANCE_REGIME_DIAGNOSTIC_V042",
+  "decision_rule": "PASS_G03_G04 requires Binance BTCUSDT and ETHUSDT historical interval metadata to remain exactly 8h across the audited records, Hyperliquid to remain governed by the documented hourly schedule, source integrity to pass, and missing nominal slots to be explicit with no interpolation. G10 may then materialize all common passing full months only. No Discovery is authorized automatically.",
+  "forbidden_outputs": [
+    "funding_rate_average",
+    "funding_rate_magnitude",
+    "funding_spread",
+    "carry",
+    "apr",
+    "apy",
+    "pnl",
+    "sharpe",
+    "profit_factor",
+    "win_rate",
+    "expectancy",
+    "signal",
+    "threshold_optimization",
+    "asset_ranking",
+    "venue_ranking",
+    "best_period_selection"
+  ],
+  "frozen_regime_sources": {
+    "binance_default_rule": {
+      "fact": "Default perpetual funding interval is 8 hours at 00:00, 08:00 and 16:00 UTC; contract-specific intervals may be adjusted.",
+      "source": "https://www.binance.com/en/support/faq/detail/360033525031"
+    },
+    "binance_dynamic_adjustment_rule_effective_2025_05_02": {
+      "effective_utc": "2025-05-02T08:00:00Z",
+      "fact": "If the previous settlement reaches the cap/floor, eligible USD-M perpetual funding settlement frequency can change from 8h/4h to 1h; no separate announcement is required for each automatic adjustment.",
+      "published_utc": "2025-04-25T12:30:00Z",
+      "source": "https://www.binance.com/en/support/announcement/detail/3243c81a35bd4f0c86a37315c3dc96cc"
+    },
+    "hyperliquid_hourly_rule": {
+      "fact": "Funding is paid every hour; the published formula is expressed on an 8-hour basis and one eighth is paid each hour.",
+      "source": "https://hyperliquid.gitbook.io/hyperliquid-docs/trading/funding"
+    }
+  },
+  "g04_missingness_rule": {
+    "exact_missing_nominal_slot_ids_may_be_reported": true,
+    "interpolation_forbidden": true,
+    "known_v041_result_must_not_be_relaxed": "2024-08 remains excluded if V0.4.2 reproduces the same missingness.",
+    "month_eligibility": "A month is eligible only if every expected nominal slot exists exactly once in all four series under V0.4 normalization."
+  },
+  "g10_preoutcome_interpretation": {
+    "best_period_selection_forbidden": true,
+    "outcome_dependent_period_selection": false,
+    "rationale": "This is the least-selective reading of 'common full UTC months passing provenance': it includes every passing month and makes no choice between competing contiguous blocks.",
+    "replication_calendar_definition": "Use the ordered set of ALL common full UTC months that pass the already-frozen G03/G04 provenance rules. A failed month is excluded by provenance only; later eligible months are not discarded merely to force contiguity."
+  },
+  "historical_regime_reconstruction_rule": {
+    "binance": "Use only the checksum-verified historical archive field funding_interval_hours plus timestamp occupancy. For BTCUSDT and ETHUSDT, any historical row whose interval metadata is not exactly 8 hours fails G03 closed. This rule does not inspect fundingRate magnitude or cap/floor outcomes.",
+    "economic_values_forbidden": true,
+    "hyperliquid": "Use the frozen official hourly rule plus normalized hourly timestamp occupancy. Missing observations are missingness, never evidence of a different settlement regime and never interpolated."
+  },
+  "lab_id": "CROSS_VENUE_FUNDING_BASIS_LAB_V01",
+  "next_authorization": "NONE_AUTOMATIC",
+  "schema_version": "0.1",
+  "scientific_boundary": {
+    "authorizes_2026_access": false,
+    "authorizes_authenticated_account_data": false,
+    "authorizes_discovery": false,
+    "authorizes_economic_outcomes": false,
+    "authorizes_exchange_mutation": false,
+    "authorizes_mexc_access": false,
+    "authorizes_trading": false,
+    "changes_assets": false,
+    "changes_audit_window": false,
+    "changes_cost_model": false,
+    "changes_leverage": false,
+    "changes_orientation": false,
+    "changes_primary_hypothesis": false,
+    "changes_venues": false
+  },
+  "status": "AUTHORIZED_PROVENANCE_REGIME_AND_MISSING_SLOT_DIAGNOSTIC_ONLY",
+  "trigger": {
+    "economic_outcomes_observed": false,
+    "known_provenance_gap_month": "2024-08",
+    "reason": "G03 requires dated funding-interval regime reconstruction and G04 requires explicit missingness; V0.4.2 exposes only timestamp/interval provenance and exact missing nominal slot identifiers.",
+    "v041_common_full_month_count": 27,
+    "v041_status": "PASS"
+  }
+}

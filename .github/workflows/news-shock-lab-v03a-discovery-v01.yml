@@ -1,0 +1,139 @@
+name: News Shock Lab V0.3A Frozen Discovery V0.1
+
+on:
+  push:
+    branches:
+      - dream-account-phase-b-signal-research-v0.1
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/news_shock_lab_v03a_discovery_runner_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_news_shock_lab_v03a_discovery_runner_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/NEWS_SHOCK_LAB_V03A_FINAL_CONSENSUS_PROVENANCE_FREEZE_V0.1.json'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/NEWS_SHOCK_LAB_V03A_PRE_DISCOVERY_SIGNAL_STATISTICAL_FREEZE_V0.1.json'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/NEWS_SHOCK_LAB_V03A_DISCOVERY_DATA_ACCESS_AUTHORIZATION_V0.1.json'
+      - '.github/workflows/news-shock-lab-v03a-discovery-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  news-shock-v03a-frozen-discovery-v01:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Compile and run frozen Discovery unit guards
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python -m pip install pytest
+          python -m py_compile research/news_shock_lab_v03a_discovery_runner_v01.py
+          python -m pytest -q tests/test_news_shock_lab_v03a_discovery_runner_v01.py
+
+      - name: Execute authorized frozen Discovery 2022-2024 only
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          rm -rf research/local_data/news_v03a_discovery_v01_output
+          mkdir -p research/local_data/news_v03a_discovery_v01_output
+          set -o pipefail
+          python -m research.news_shock_lab_v03a_discovery_runner_v01 \
+            research/local_data/news_v03a_discovery_v01_output \
+            | tee research/local_data/news_v03a_discovery_v01_output/discovery_stdout.txt
+
+      - name: Assert frozen closeout and protected-data guards
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+
+          root = Path('research/local_data/news_v03a_discovery_v01_output')
+
+          def load_hashed(name):
+              obj = json.loads((root / name).read_text())
+              supplied = obj.pop('fingerprint')
+              actual = hashlib.sha256(
+                  json.dumps(obj, sort_keys=True, separators=(',', ':'), ensure_ascii=False).encode('utf-8')
+              ).hexdigest()
+              if supplied != actual:
+                  raise SystemExit(f'OUTPUT FINGERPRINT DRIFT: {name}: {supplied} != {actual}')
+              obj['fingerprint'] = supplied
+              return obj
+
+          source = load_hashed('discovery_source_manifest.json')
+          returns = load_hashed('discovery_event_returns.json')
+          results = load_hashed('discovery_results.json')
+          closeout = load_hashed('discovery_closeout.json')
+
+          if source['status'] != 'DISCOVERY_SOURCE_DATA_INTEGRITY_PASS':
+              raise SystemExit('SOURCE INTEGRITY DID NOT PASS')
+          if source['event_count'] != 27 or source['archive_count'] != 54:
+              raise SystemExit('DISCOVERY SOURCE CARDINALITY DRIFT')
+          if any(int(row['day'][:4]) >= 2025 for row in source['archives']):
+              raise SystemExit('PROTECTED YEAR LEAKED INTO DISCOVERY SOURCE MANIFEST')
+          if {row['symbol'] for row in source['archives']} != {'BTCUSDT', 'ETHUSDT'}:
+              raise SystemExit('ALTERNATE ASSET LEAKED INTO DISCOVERY SOURCE MANIFEST')
+          if not all(row['checksum_verified'] is True for row in source['archives']):
+              raise SystemExit('CHECKSUM GATE DID NOT PASS FOR ALL ARCHIVES')
+
+          if returns['event_count'] != 27 or returns['directional_event_count'] != 21 or returns['neutral_event_count'] != 6:
+              raise SystemExit('DISCOVERY EVENT COUNT DRIFT')
+
+          allowed = {
+              'NO_EDGE_STOP',
+              'NO_ROBUST_CROSS_ASSET_EDGE_STOP',
+              'DISCOVERY_SURVIVES_ELIGIBLE_FOR_SEPARATE_2025_VALIDATION_AUTHORIZATION',
+          }
+          if results['decision'] not in allowed or closeout['decision'] != results['decision']:
+              raise SystemExit('UNFROZEN DISCOVERY DECISION')
+          if results['primary_test']['unique_assignment_count'] != 352716:
+              raise SystemExit('EXACT PERMUTATION COUNT DRIFT')
+          for symbol in ('BTCUSDT', 'ETHUSDT'):
+              asset = results['assets'][symbol]
+              if asset['exact_assignment_count'] != 352716:
+                  raise SystemExit(f'{symbol} EXACT ENUMERATION COUNT DRIFT')
+              if set(asset['criteria']) != {
+                  'exact_one_sided_p_lte_0_05',
+                  'mean_aligned_net_bps_gt_0',
+                  'median_aligned_gross_bps_gt_0',
+                  'every_leave_one_out_mean_aligned_net_bps_gt_0',
+              }:
+                  raise SystemExit(f'{symbol} SURVIVAL CRITERIA DRIFT')
+
+          gov = results['governance']
+          protected = (
+              'validation_2025_accessed',
+              'mexc_2025_09_through_2025_12_accessed',
+              'holdout_2026_accessed',
+              'live_trading_authorized',
+              'exchange_mutation_authorized',
+          )
+          if any(gov[key] is not False for key in protected):
+              raise SystemExit('PROTECTED DATA/AUTHORITY GUARD DRIFT')
+          if closeout['validation_2025_market_data_access_authorized'] is not False:
+              raise SystemExit('VALIDATION ACCESS WAS IMPROPERLY AUTHORIZED')
+          if closeout['mexc_2025_09_through_2025_12_access_authorized'] is not False:
+              raise SystemExit('MEXC HOLDOUT WAS IMPROPERLY AUTHORIZED')
+          if closeout['holdout_2026_access_authorized'] is not False:
+              raise SystemExit('2026 HOLDOUT WAS IMPROPERLY AUTHORIZED')
+
+          print('NEWS SHOCK V03A FROZEN DISCOVERY CLOSEOUT PASS')
+          print('DECISION', results['decision'])
+          print('RESULTS_FINGERPRINT', results['fingerprint'])
+          print('CLOSEOUT_FINGERPRINT', closeout['fingerprint'])
+          PY
+
+      - name: Upload frozen Discovery evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: news-shock-v03a-frozen-discovery-v01-${{ github.sha }}
+          path: |
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/news_v03a_discovery_v01_output/*
+          if-no-files-found: error
+          retention-days: 30

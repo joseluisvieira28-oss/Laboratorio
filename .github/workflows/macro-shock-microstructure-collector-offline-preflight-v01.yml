@@ -1,0 +1,122 @@
+name: Macro Shock Microstructure Collector Offline Preflight V0.1
+
+on:
+  push:
+    branches:
+      - dream-account-phase-b-signal-research-v0.1
+
+permissions:
+  contents: read
+
+jobs:
+  offline-collector-preparation-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install project
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+
+      - name: Verify exact offline preparation authority
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          authority = json.loads(
+              Path('research/MICROSTRUCTURE_PROSPECTIVE_COLLECTOR_OFFLINE_PREPARATION_AUTHORITY_V01.json')
+              .read_text(encoding='utf-8')
+          )
+          assert authority['status'] == 'AUTHORIZED_OFFLINE_PRE_OBSERVATION_INFRASTRUCTURE_ONLY'
+          assert authority['scientific_scope'] == 'NON_DIRECTIONAL_MEASUREMENT_INFRASTRUCTURE_ONLY'
+          assert authority['frozen_context']['h02_status'] == 'NOT_AUTHORIZED'
+          assert authority['frozen_context']['target_observation_authorized'] is False
+          assert authority['stop_condition'] == (
+              'STOP_AFTER_OFFLINE_COLLECTOR_PREPARATION_AND_CI_'
+              'AT_CALENDAR_AND_EXPLICIT_OBSERVATION_AUTHORIZATION_GATE'
+          )
+          forbidden = set(authority['forbidden_under_this_authority'])
+          required_forbidden_fragments = {
+              'real target observation',
+              'new live public market capture',
+              'live trading',
+              'H02 creation freeze test or rescue',
+              'merge to main',
+              'Render deployment',
+          }
+          assert required_forbidden_fragments <= forbidden
+          print('PASS: offline collector authority is exact and target observation remains blocked')
+          PY
+
+      - name: Run offline collector synthetic tests
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python -m unittest -v tests.test_microstructure_collector_offline_preparation_v01
+
+      - name: Compile offline collector preparation core
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python -m py_compile research/microstructure_collector_offline_preparation_v01.py
+
+      - name: Prove module has no network or exchange mutation primitives
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python - <<'PY'
+          import ast
+          from pathlib import Path
+
+          path = Path('research/microstructure_collector_offline_preparation_v01.py')
+          tree = ast.parse(path.read_text(encoding='utf-8'), filename=str(path))
+          forbidden_import_roots = {'requests', 'urllib', 'websockets', 'socket', 'http', 'subprocess'}
+          forbidden_call_attrs = {'post', 'put', 'patch', 'delete', 'connect', 'send'}
+          hits = []
+          for node in ast.walk(tree):
+              if isinstance(node, ast.Import):
+                  for alias in node.names:
+                      if alias.name.split('.')[0] in forbidden_import_roots:
+                          hits.append(f'import:{alias.name}:{node.lineno}')
+              elif isinstance(node, ast.ImportFrom):
+                  root = (node.module or '').split('.')[0]
+                  if root in forbidden_import_roots:
+                      hits.append(f'importfrom:{node.module}:{node.lineno}')
+              elif isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
+                  if node.func.attr.lower() in forbidden_call_attrs:
+                      hits.append(f'call:{node.func.attr}:{node.lineno}')
+          if hits:
+              raise SystemExit('offline collector boundary violation: ' + '; '.join(hits))
+          print('PASS: offline collector preparation core contains no network/mutation primitives')
+          PY
+
+      - name: Emit fail-closed preflight receipt
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+          import sys
+
+          sys.path.insert(0, str(Path('research').resolve()))
+          from microstructure_collector_offline_preparation_v01 import preflight_gate
+
+          implementation = Path('research/microstructure_collector_offline_preparation_v01.py').read_bytes()
+          contract = Path('research/MACRO_SHOCK_MICROSTRUCTURE_STATE_LAB_V01_NON_DIRECTIONAL_PROSPECTIVE_MEASUREMENT_CONTRACT.md').read_bytes()
+          receipt = preflight_gate(
+              implementation_fingerprint=hashlib.sha256(implementation).hexdigest(),
+              contract_fingerprint=hashlib.sha256(contract).hexdigest(),
+              complete_official_2027_calendar_frozen=False,
+              separate_explicit_target_observation_authorization=False,
+          )
+          assert receipt['status'] == 'OFFLINE_READY_TARGET_OBSERVATION_BLOCKED'
+          assert receipt['target_observation_may_start'] is False
+          assert receipt['h02_status'] == 'NOT_AUTHORIZED'
+          print(json.dumps(receipt, indent=2, sort_keys=True))
+          PY

@@ -1,0 +1,69 @@
+{
+  "document_type": "PHASE_B_MEXC_MONTH_PARTITION_AMENDMENT",
+  "version": "0.1",
+  "status": "FROZEN_AFTER_TWO_REAL_OFFICIAL_MONTH_OBSERVATIONS",
+  "authority_boundary": {
+    "research_only": true,
+    "corpus_integrity_audit_authorized": true,
+    "p00_evaluation_authorized": false,
+    "validation_2025_access_authorized": false,
+    "holdout_2026_access_authorized": false,
+    "live_integration_authorized": false,
+    "exchange_network_access_authorized": false,
+    "exchange_mutation_authorized": false,
+    "cross_exchange_backfill_authorized": false,
+    "interpolation_authorized": false
+  },
+  "observed_official_mexc_evidence": [
+    {
+      "source_file_name": "BTC_USDT-Min15-2023-02-01.csv",
+      "row_count": 2688,
+      "expected_row_count": 2688,
+      "first_open_offset_from_utc_calendar_month_hours": -8,
+      "last_open_offset_from_utc_calendar_month_hours": -8
+    },
+    {
+      "source_file_name": "BTC_USDT-Min15-2023-03-01.csv",
+      "row_count": 2976,
+      "expected_row_count": 2976,
+      "first_open_offset_from_utc_calendar_month_hours": -8,
+      "last_open_offset_from_utc_calendar_month_hours": -8
+    }
+  ],
+  "frozen_source_partition_rule": {
+    "timezone": "UTC+08:00",
+    "offset_hours": 8,
+    "month_label_interpretation": "A MEXC bulk monthly label YYYY-MM is treated as the calendar month in UTC+08:00 for corpus-integrity auditing.",
+    "partition_start_utc_rule": "UTC calendar month start minus 8 hours",
+    "partition_next_start_utc_rule": "next UTC calendar month start minus 8 hours",
+    "expected_first_open_rule": "partition_start_utc",
+    "expected_last_open_rule": "partition_next_start_utc minus 15 minutes",
+    "expected_rows_rule": "calendar days in labeled UTC+08:00 month multiplied by 96",
+    "scope": "CORPUS_INTEGRITY_AUDIT_ONLY"
+  },
+  "discovery_boundary_conflict": {
+    "frozen_research_window_remains": "2022-01-01T00:00:00Z through 2024-12-31T23:59:59.999Z",
+    "source_partition_and_research_utc_window_are_not_identical": true,
+    "example_2024_12_last_open_utc": "2024-12-31T15:45:00Z",
+    "remaining_2024_utc_tail_hours": 8,
+    "remaining_2024_utc_tail_would_reside_in_vendor_file_label": "2025-01",
+    "access_to_2025_labeled_source_is_authorized": false,
+    "silent_redefinition_of_discovery_window_is_authorized": false,
+    "utc_discovery_boundary_reconciliation_required_before_p00": true
+  },
+  "required_pre_p00_decision": {
+    "status": "BLOCKED_PENDING_SEPARATE_FREEZE",
+    "allowed_future_resolution_types": [
+      "formally redefine Discovery boundaries to the audited vendor-partition window before any P00 execution",
+      "or establish a separately authorized boundary-extraction method that preserves the 2025 validation lock"
+    ],
+    "forbidden": [
+      "opening a 2025-labeled file under current authority",
+      "using another exchange to rescue missing boundary candles",
+      "interpolating missing candles",
+      "silently dropping or adding boundary candles",
+      "running P00 before boundary reconciliation is frozen"
+    ]
+  },
+  "final_rule": "The observed UTC+08:00 MEXC bulk-month partition is authoritative for offline corpus-integrity auditing only. It does not alter the frozen P00 Discovery UTC window, unlock 2025 or 2026, authorize P00, or permit cross-exchange rescue/interpolation."
+}

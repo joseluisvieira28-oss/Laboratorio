@@ -1,0 +1,149 @@
+{
+  "document_type": "PHASE_B_NEW_HYPOTHESIS_PROSPECTIVE_FREEZE",
+  "version": "0.1",
+  "status": "FROZEN_RULES_PENDING_SEPARATE_H03_DATA_ACCESS_AUTHORIZATION",
+  "frozen_at_utc_date": "2026-09-11",
+  "hypothesis_id": "H03_BINANCE_CROSS_VENUE_US_EU_OVERLAP_REPLICATION",
+  "family_id": "PBR04_CROSS_VENUE_SESSION_GATED_MANAGED_BREAKOUT_RETEST_LONG",
+  "origin": {
+    "source": "H01 closed NO_EDGE post-mortem generated H02 session hypothesis; H02 strict MEXC confirmatory route closed DATA_INADEQUATE before outcome testing",
+    "h02_rule_fingerprint": "b7ccfacd438c9554df9de42e51683d3a6c5d52be3301371f96dd30a6e5b4dbb4",
+    "h02_confirmatory_sample_contract_fingerprint": "8d374ad946e2f7c6124c911fff61a76df9d0195ebe01b4c12b7b56a7640f3bb5",
+    "generation_data_eligible_for_h03_classification": false,
+    "no_claim_of_edge_from_h01_or_h02_generation_data": true,
+    "h03_is_not_cross_exchange_backfill_for_h01_or_h02": true,
+    "h03_is_new_cross_venue_replication_hypothesis": true
+  },
+  "research_question": "Does the frozen 13:00-17:00 UTC session-gated H01 signal/management rule show positive net expectancy on an independent Binance Spot six-symbol corpus from 2021-02-01 through 2023-01-31, before any MEXC generation data used to formulate the session hypothesis?",
+  "inherited_signal_and_management": {
+    "inherit_h01_signal_formation_exactly": true,
+    "inherit_h01_management_exactly": true,
+    "h01_freeze_fingerprint": "5229b820df2fc40036fe064e2b25361f3905b63345732f960eb7d9e457033d0b",
+    "lookback_bars": 96,
+    "atr_length": 14,
+    "zone_atr_fraction": 0.25,
+    "retest_window_bars": 2,
+    "entry_rule": "NEXT_BAR_OPEN_AFTER_DEFENDED_RETEST",
+    "stop_atr_fraction": 0.25,
+    "tp1_r_multiple": 1.0,
+    "tp2_r_multiple": 3.0,
+    "min_net_rr": 2.0,
+    "max_holding_bars": 96,
+    "require_bullish_breakout_body": true,
+    "protect_after_tp1_next_bar_at_entry_price": true,
+    "partial_exit": false
+  },
+  "session_rule": {
+    "inherit_h02_session_rule_exactly": true,
+    "entry_time_basis": "ACTUAL_SIGNAL_ENTRY_OPEN_TIME_UTC",
+    "start_inclusive": "13:00:00",
+    "end_exclusive": "17:00:00",
+    "eligible_utc_hours": [13, 14, 15, 16],
+    "timezone": "UTC",
+    "dst_adjustment": false
+  },
+  "single_new_dimension": {
+    "name": "INDEPENDENT_CROSS_VENUE_REPLICATION",
+    "generation_target_venue": "MEXC Spot",
+    "confirmatory_replication_venue": "Binance Spot",
+    "changes_signal_geometry": false,
+    "changes_management": false,
+    "changes_session_rule": false,
+    "changes_symbol_universe": false,
+    "changes_scoring": false,
+    "reason": "H02 could not obtain an independent pre-generation MEXC sample under its frozen six-symbol/source constraints; a new hypothesis ID is required to test the same session mechanism on an independent venue rather than weakening H02."
+  },
+  "symbol_universe": [
+    "BTCUSDT",
+    "ETHUSDT",
+    "SOLUSDT",
+    "BNBUSDT",
+    "XRPUSDT",
+    "DOGEUSDT"
+  ],
+  "data_contract": {
+    "source": "OFFICIAL_BINANCE_PUBLIC_DATA_ONLY",
+    "archive": "https://data.binance.vision/",
+    "market_type": "SPOT",
+    "timeframe": "15m",
+    "archive_granularity": "DAILY_ZIP_FILES",
+    "checksum_required": true,
+    "source_endpoint_semantics": "ARCHIVED_KLINES_DERIVED_FROM_BINANCE_GET_API_V3_KLINES",
+    "confirmatory_discovery": {
+      "start_utc_inclusive": "2021-02-01T00:00:00.000Z",
+      "end_utc_exclusive": "2023-02-01T00:00:00.000Z",
+      "calendar_months": 24,
+      "minimum_resolved_trades": 100,
+      "status": "LOCKED_PENDING_SEPARATE_EXPLICIT_H03_DATA_ACCESS_AUTHORIZATION"
+    },
+    "rationale_for_daily_archive": "Use official daily archives prospectively to avoid depending on monthly archive rows where historical monthly-vs-daily/API discrepancies have been reported. No data-value inspection was used to choose winners or parameters.",
+    "listing_and_missing_data": "No synthetic pre-listing history and no candle interpolation. Missing/irregular intervals split segments; no setup may span a gap.",
+    "open_candles": "EXCLUDED",
+    "mexc_2025_09_through_2025_12": "LOCKED_NOT_H03_DISCOVERY",
+    "final_holdout_2026": "LOCKED",
+    "cross_exchange_backfill_inside_prior_hypotheses": false
+  },
+  "cost_policy": {
+    "use_existing_phase_b_cost_scenarios_unchanged": true,
+    "base_selection": {
+      "name": "BASE_SENSITIVITY",
+      "fee_pct_each_side": 0.05,
+      "spread_pct": 0.05,
+      "slippage_pct_each_side": 0.025,
+      "round_trip_cost_pct": 0.2
+    },
+    "fixed_cohort_stress": {
+      "name": "STRESS",
+      "fee_pct_each_side": 0.05,
+      "spread_pct": 0.1,
+      "slippage_pct_each_side": 0.05,
+      "round_trip_cost_pct": 0.3
+    },
+    "reason": "Do not optimize fees/spread/slippage for Binance after proposing cross-venue replication; preserve the pre-registered Phase B research burden and target-venue relevance. These are sensitivity assumptions, not claims of realized Binance costs."
+  },
+  "uncertainty": {
+    "method": "UTC_CALENDAR_DAY_BLOCK_BOOTSTRAP",
+    "repetitions": 5000,
+    "seed": 230911,
+    "confidence": 0.95
+  },
+  "decision_policy": {
+    "classifications": [
+      "INSUFFICIENT_SAMPLE",
+      "NO_EDGE",
+      "SURVIVES"
+    ],
+    "survives_requires_all": [
+      "minimum_resolved_trade_count_met",
+      "base_net_expectancy_r_gt_0",
+      "base_profit_factor_r_gt_1",
+      "bootstrap_lower_95_gt_0",
+      "fixed_cohort_stress_net_expectancy_r_gt_0"
+    ],
+    "minimum_resolved_trades": 100,
+    "no_sensitivity_rescue": true,
+    "no_parameter_edits_after_h03_data_access": true,
+    "if_below_100": "INSUFFICIENT_SAMPLE_STOP",
+    "if_any_survival_gate_fails": "NO_EDGE_STOP"
+  },
+  "future_target_venue_validation": {
+    "mexc_2025_09_through_2025_12": "REMAINS_LOCKED_DURING_H03_BINANCE_DISCOVERY",
+    "unlock_condition": "H03_BINANCE_DISCOVERY_SURVIVES_AND_SEPARATE_EXPLICIT_MEXC_VALIDATION_AUTHORIZATION",
+    "minimum_resolved_trades_if_later_authorized": 30,
+    "no_rule_or_parameter_change_before_target_venue_validation": true,
+    "if_below_30": "INSUFFICIENT_SAMPLE_STOP"
+  },
+  "authority_boundary": {
+    "this_file_authorizes_h03_market_data_access": false,
+    "this_file_authorizes_network_download": false,
+    "this_file_authorizes_mexc_2025_09_through_2025_12": false,
+    "this_file_authorizes_2026": false,
+    "exchange_mutation_authorized": false,
+    "live_trading_authorized": false,
+    "phase_b_shadow_authorized": false,
+    "main_merge_authorized": false,
+    "render_deploy_authorized": false,
+    "gate_k_phase_a_unchanged": true
+  },
+  "fingerprint": "0c7c931bd48d4cd696e4a8f3188db64e497716dbc7020eb63db100aecca49fa7"
+}

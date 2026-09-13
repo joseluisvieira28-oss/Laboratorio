@@ -1,0 +1,58 @@
+{
+  "document_type": "MACRO_SHOCK_MICROSTRUCTURE_LAB_V01_2026_HOLDOUT_AUTHORIZATION",
+  "version": "0.1",
+  "authorized_at_utc": "2026-09-12T09:50:00Z",
+  "authority": "Explicit user authorization in ChatGPT conversation on 2026-09-12",
+  "status": "AUTHORIZED_PROSPECTIVE_2026_HOLDOUT",
+  "research_contract": "MACRO_SHOCK_MICROSTRUCTURE_LAB_V01_PROSPECTIVE_RESEARCH_CONTRACT.json",
+  "hypothesis_id": "MSM_H01_FLOW_PERSISTENCE_CONTINUATION",
+  "authorization_scope": {
+    "calendar_reconstruction": "official US BLS and Federal Reserve sources only",
+    "market_source": "official Binance public Spot data only",
+    "assets": ["BTCUSDT", "ETHUSDT"],
+    "event_families": ["US_CPI", "US_NFP", "US_FOMC"],
+    "holdout_period_start_utc": "2026-01-01T00:00:00Z",
+    "holdout_period_end_rule": "Only events whose official release timestamp is strictly before execution time may be evaluated; no future event outcome may be manufactured or inferred.",
+    "single_execution_rule": "After calendar, provenance, checksum, timestamp and control-adequacy preflight pass, execute the frozen primary statistic once on all then-available eligible 2026 events.",
+    "classification": ["SURVIVES", "NO_EDGE", "INSUFFICIENT_SAMPLE", "TECHNICAL_OR_DATA_FAILURE"]
+  },
+  "immutability": {
+    "scientific_contract_may_change_after_unlock": false,
+    "windows_may_change": false,
+    "assets_may_change": false,
+    "event_families_may_change": false,
+    "flow_threshold_may_be_added": false,
+    "continuation_may_switch_to_reversal": false,
+    "minimum_sample_may_change": false,
+    "classification_thresholds_may_change": false,
+    "bootstrap_repetitions_may_change": false
+  },
+  "required_preflight": [
+    "research contract content fingerprint recorded before market acquisition",
+    "official 2026 CPI/NFP/FOMC calendar reconstructed and frozen",
+    "all evaluated events strictly precede execution time",
+    "Binance source provenance recorded",
+    "Binance checksum or archive-integrity validation passes for every required file",
+    "event and control windows use identical data-quality rules",
+    "minimum four valid matched controls available per evaluated event-symbol case before outcome evaluation",
+    "no MEXC 2025-09 through 2025-12 access",
+    "no exchange mutation path",
+    "no live trading path"
+  ],
+  "fail_closed_rule": "Any preflight or integrity failure returns TECHNICAL_OR_DATA_FAILURE or stops before outcome evaluation as required by the frozen contract. Infrastructure may be repaired, but scientific parameters may not be altered to help the hypothesis survive.",
+  "explicitly_not_authorized": [
+    "parameter tuning",
+    "subgroup selection to replace the primary result",
+    "MEXC 2025-09 through 2025-12",
+    "live trading",
+    "exchange mutation",
+    "merge to main",
+    "Render deployment"
+  ],
+  "governance_transition": {
+    "holdout_2026_access_authorized": true,
+    "holdout_2026_outcomes_seen_at_authorization_creation": false,
+    "market_acquisition_may_begin_after_this_commit": true
+  },
+  "principle": "Correct infrastructure, never help the hypothesis survive."
+}

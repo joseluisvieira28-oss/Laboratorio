@@ -1,0 +1,87 @@
+name: News Shock Lab V0.3A Consensus Combined V0.4
+
+# Corrected Tranche 04: provenance-only expansion to 15/44 COMPLETE_A; no market outcomes authorized
+on:
+  push:
+    branches:
+      - dream-account-phase-b-signal-research-v0.1
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/NEWS_SHOCK_LAB_V03A_CONSENSUS_SEED_TRANCHE04_AMEND01_V0.1.json'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/NEWS_SHOCK_LAB_V03A_CONSENSUS_SEED_TRANCHE04_FREEZE_V0.2.json'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/NEWS_SHOCK_LAB_V03A_CONSENSUS_SEED_TRANCHE04_V0.2.json'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/news_shock_lab_v03a_consensus_combined_v04.py'
+      - '.github/workflows/news-shock-lab-v03a-consensus-combined-v04.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  news-shock-v03a-consensus-combined-v04:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install parser dependency and compile
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python -m pip install beautifulsoup4
+          python -m compileall -q research
+      - name: Verify corrected frozen authority chain
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python - <<'PY'
+          from research.news_shock_lab_v03a_consensus_combined_v04 import load_authority
+          *_, amend4, freeze4, seed4 = load_authority()
+          assert amend4['fingerprint'] == '74fa51103bc5fc40b633e154e1f7b88848f7c827ffb4cac7db9889f6f8efccc8'
+          assert freeze4['fingerprint'] == '5073bd6bc23d78bf44fd130c95b26ddfcff8a6b25f4cd34d31ad78f81a8aa748'
+          assert seed4['fingerprint'] == 'b3bb3450fa955252517bbb524abed32a3de88456bc420317941171476d75859b'
+          assert freeze4['parent_combined_manifest_fingerprint'] == 'bbe69cdf1909dda75343685ee62ef8173c7314067e1a07059ab22781692e1b89'
+          assert freeze4['parent_validation_fingerprint'] == '118980f25cb888423c9a50427be22891f6172cf489b7c7a15297b53a336ed881'
+          assert 'US_CPI_2024-10-10' not in seed4['events']
+          print('NEWS V03A COMBINED V04 AUTHORITY PASS')
+          PY
+      - name: Rebuild BLS actuals and validate fifteen consensus events
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          mkdir -p research/local_data/news_v03a_consensus_combined_v04_output
+          set -o pipefail
+          python -m research.news_shock_lab_v03a_consensus_combined_v04 \
+            research/local_data/news_v03a_consensus_combined_v04_output \
+            | tee research/local_data/news_v03a_consensus_combined_v04_output/combined_v04_stdout.txt
+      - name: Assert 15 COMPLETE_A and all outcome guards closed
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root = Path('research/local_data/news_v03a_consensus_combined_v04_output')
+          s = json.loads((root/'combined_v04_summary.json').read_text())
+          expected_counts = {'COMPLETE_A': 15, 'CONSENSUS_PROVENANCE_INCOMPLETE': 29}
+          if s['status_counts'] != expected_counts:
+              raise SystemExit(f"NEWS V03A V04 STATUS COUNT DRIFT: {s['status_counts']}")
+          if s.get('complete_b_count', 0) != 0:
+              raise SystemExit('NEWS V03A V04 UNEXPECTED COMPLETE_B')
+          if len(s['complete_a_event_ids']) != 15:
+              raise SystemExit('NEWS V03A V04 COMPLETE_A COUNT DRIFT')
+          if 'US_CPI_2024-10-10' in s['complete_a_event_ids']:
+              raise SystemExit('NEWS V03A V04 AMBIGUOUS OCTOBER EVENT RE-ENTERED')
+          for key, value in s['guards'].items():
+              if value is not False:
+                  raise SystemExit(f'NEWS V03A V04 OUTCOME GUARD DRIFT: {key}')
+          print('NEWS V03A COMBINED V04 VALIDATION PASS', s['validation_fingerprint'])
+          PY
+      - name: Upload combined V0.4 provenance receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: news-shock-v03a-consensus-combined-v04-${{ github.sha }}
+          path: |
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/news_v03a_consensus_combined_v04_output/combined_v04_consensus_manifest.json
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/news_v03a_consensus_combined_v04_output/combined_v04_validation_receipt.json
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/news_v03a_consensus_combined_v04_output/combined_v04_summary.json
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/news_v03a_consensus_combined_v04_output/combined_v04_stdout.txt
+          if-no-files-found: warn
+          retention-days: 30

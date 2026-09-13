@@ -1,0 +1,97 @@
+{
+  "document_type": "PHASE_B_MEXC_RAW_ADAPTER_FREEZE",
+  "version": "0.1",
+  "status": "FROZEN_MAPPING_PENDING_REAL_SAMPLE_RUNTIME_VALIDATION",
+  "authority_boundary": {
+    "research_only": true,
+    "p00_evaluation_authorized": false,
+    "validation_2025_access_authorized": false,
+    "holdout_2026_access_authorized": false,
+    "live_integration_authorized": false,
+    "exchange_network_access_authorized": false,
+    "exchange_mutation_authorized": false
+  },
+  "adapter_id": "MEXC_BULK_MIN15_CSV_V0.1",
+  "reference_sample": {
+    "source_channel": "MEXC_MARKET_DATA_DOWNLOAD",
+    "market_type": "SPOT",
+    "pair": "BTCUSDT",
+    "timeframe": "15m",
+    "raw_source_filename": "BTC_USDT-Min15-2023-02-01.csv",
+    "raw_source_sha256": "31eff305411e5e5589e53b22e47554c9b50208d372322b19422270bfe5766e25",
+    "raw_source_byte_size": 558417,
+    "structure_probe_fingerprint": "37f97d142b649bc681d5b0b12c59c6ee211b71631a6437ffe92600e055bdab7a",
+    "semantic_probe_fingerprint": "bc17cdf25e2e533e6bec9f4f167d7694cccb496ae98c73e9552912652f92da37"
+  },
+  "raw_schema": {
+    "container": "CSV",
+    "header_exact": [
+      "open_time",
+      "open",
+      "high",
+      "low",
+      "close",
+      "volume",
+      "amount",
+      "close_time"
+    ],
+    "field_count": 8,
+    "timestamp_representation": "INTEGER_DECIMAL_STRING",
+    "timestamp_digit_width": 13,
+    "timestamp_unit": "UNIX_MILLISECONDS",
+    "open_time_alignment_ms": 900000,
+    "close_time_relation": "close_time = open_time + 900000",
+    "amount_semantics_authorized": false
+  },
+  "canonical_mapping": {
+    "target_schema": "CANONICAL_KLINE_CSV_V0.1",
+    "target_header": [
+      "open_time_ms",
+      "open",
+      "high",
+      "low",
+      "close",
+      "volume",
+      "close_time_ms"
+    ],
+    "open_time_ms": "raw.open_time",
+    "open": "raw.open",
+    "high": "raw.high",
+    "low": "raw.low",
+    "close": "raw.close",
+    "volume": "raw.volume",
+    "close_time_ms": "raw.close_time - 1",
+    "amount": "IGNORED_AFTER_NUMERIC_PARSE_VALIDATION",
+    "market_value_rounding_or_reformatting_allowed": false,
+    "row_drop_allowed": false,
+    "interpolation_allowed": false,
+    "sorting_or_reordering_allowed": false
+  },
+  "input_fail_closed_rules": {
+    "header_must_match_exactly": true,
+    "every_nonblank_row_must_have_exactly_8_fields": true,
+    "timestamps_must_be_13_digit_integer_milliseconds": true,
+    "open_time_must_align_to_15m_utc_grid": true,
+    "raw_close_time_must_equal_open_time_plus_900000_ms": true,
+    "open_times_must_be_strictly_increasing": true,
+    "open_time_delta_must_be_positive_multiple_of_900000_ms": true,
+    "ohlcv_and_amount_must_be_finite_numeric_strings": true,
+    "unknown_schema_blocks": true,
+    "partial_output_on_failure_allowed": false
+  },
+  "provenance_rule": {
+    "reference_sample_hash_pins_mapping_evidence_not_all_future_files": true,
+    "every_input_file_must_receive_its_own_sha256": true,
+    "every_canonical_output_must_receive_its_own_sha256": true,
+    "adapter_receipt_required_before_future_audit_handoff": true,
+    "amount_must_not_be_promoted_to_a_strategy_or_risk_field_without_separate_freeze": true
+  },
+  "runtime_unlock_rule": {
+    "synthetic_ci_pass_required": true,
+    "real_reference_sample_adapter_run_required": true,
+    "real_reference_sample_sha256_must_match": true,
+    "real_reference_sample_adapter_receipt_required": true,
+    "p00_remains_locked_after_adapter_runtime_validation": true
+  },
+  "final_rule": "This adapter only normalizes the frozen official MEXC bulk 15m CSV layout to the canonical research CSV. It does not authorize P00 evaluation, 2025/2026 access, live integration, network access, exchange mutation, or any interpretation of the raw amount field."
+}

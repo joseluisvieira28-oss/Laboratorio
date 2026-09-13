@@ -1,0 +1,97 @@
+name: News Shock Lab V0.3A CPI Provenance
+
+on:
+  push:
+    branches:
+      - dream-account-phase-b-signal-research-v0.1
+
+jobs:
+  news-shock-v03a-provenance:
+    if: ${{ contains(github.event.head_commit.message, '[NEWS V03A MANIFEST]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Verify frozen V0.3A provenance authority
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python -m pip install beautifulsoup4
+          python -m compileall -q research
+          python - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+          expected='a78d4933663e687a61f91a548c074239b046c13e96dc059a73ba27828715ee7a'
+          p=Path('research/NEWS_SHOCK_LAB_V03A_CPI_SURPRISE_DATA_PROVENANCE_FREEZE.json')
+          raw=json.loads(p.read_text())
+          supplied=raw.pop('fingerprint')
+          recomputed=hashlib.sha256(json.dumps(raw,sort_keys=True,separators=(',',':'),ensure_ascii=False).encode()).hexdigest()
+          if supplied!=expected or recomputed!=expected:
+              raise SystemExit('NEWS V0.3A FREEZE FINGERPRINT BLOCK')
+          if raw['analysis_authority']['may_compute_crypto_returns_in_this_stage'] is not False:
+              raise SystemExit('NEWS V0.3A MARKET OUTCOME AUTHORITY BLOCK')
+          if raw['analysis_authority']['may_compute_profitability_in_this_stage'] is not False:
+              raise SystemExit('NEWS V0.3A PROFITABILITY AUTHORITY BLOCK')
+          if raw['rates_layer']['fred_dgs2_daily_as_intraday_confirmation']!='FORBIDDEN':
+              raise SystemExit('NEWS V0.3A DGS2 INTRADAY PROXY BLOCK')
+          for key in ('exchange_mutation_authorized','live_trading_authorized','main_merge_authorized','render_deploy_authorized','holdout_2026_authorized','mexc_2025_09_through_2025_12_authorized'):
+              if raw['governance'][key] is not False:
+                  raise SystemExit(f'NEWS V0.3A GOVERNANCE BLOCK {key}')
+          print('NEWS V0.3A FREEZE PASS',expected)
+          PY
+
+      - name: Build official BLS CPI provenance slots only
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          mkdir -p research/local_data/news_v03a_output
+          set -o pipefail
+          python -m research.news_shock_lab_v03a_provenance slots \
+            research/local_data/news_v03a_output/cpi_event_slots.json \
+            | tee research/local_data/news_v03a_output/slot_builder_stdout.txt
+
+      - name: Validate blank provenance state without market outcomes
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          set -o pipefail
+          python -m research.news_shock_lab_v03a_provenance validate \
+            research/local_data/news_v03a_output/cpi_event_slots.json \
+            research/local_data/news_v03a_output/provenance_validation_receipt.json \
+            | tee research/local_data/news_v03a_output/provenance_validator_stdout.txt
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          slots=json.loads(Path('research/local_data/news_v03a_output/cpi_event_slots.json').read_text())
+          receipt=json.loads(Path('research/local_data/news_v03a_output/provenance_validation_receipt.json').read_text())
+          if slots['selection']['event_count']!=44 or len(slots['records'])!=44:
+              raise SystemExit('NEWS V0.3A EVENT COUNT BLOCK')
+          if slots['selection']['start_date_inclusive']!='2022-01-01' or slots['selection']['end_date_inclusive']!='2025-08-31':
+              raise SystemExit('NEWS V0.3A WINDOW BLOCK')
+          if any(r['release_date_local'].startswith('2026-') for r in slots['records']):
+              raise SystemExit('NEWS V0.3A 2026 EVENT BLOCK')
+          if receipt['record_count']!=44:
+              raise SystemExit('NEWS V0.3A RECEIPT COUNT BLOCK')
+          if receipt['complete_a_count']!=0 or receipt['complete_b_count']!=0:
+              raise SystemExit('NEWS V0.3A BLANK MANIFEST FALSE-COMPLETE BLOCK')
+          for key,value in receipt['guards'].items():
+              if value is not False:
+                  raise SystemExit(f'NEWS V0.3A GUARD BLOCK {key}')
+          print('NEWS V0.3A PROVENANCE-ONLY MANIFEST PASS')
+          print('SLOTS_FINGERPRINT',slots['fingerprint'])
+          print('RECEIPT_FINGERPRINT',receipt['fingerprint'])
+          PY
+
+      - name: Upload V0.3A provenance-only receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: news-shock-v03a-provenance-${{ github.sha }}
+          path: |
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/news_v03a_output/cpi_event_slots.json
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/news_v03a_output/slot_builder_stdout.txt
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/news_v03a_output/provenance_validation_receipt.json
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/news_v03a_output/provenance_validator_stdout.txt
+          if-no-files-found: warn
+          retention-days: 30

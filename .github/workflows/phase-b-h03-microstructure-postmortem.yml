@@ -1,0 +1,116 @@
+name: H03 microstructure postmortem
+
+on:
+  push:
+    branches:
+      - dream-account-phase-b-signal-research-v0.1
+
+permissions:
+  contents: read
+
+jobs:
+  h03-flow-postmortem:
+    if: ${{ contains(github.event.head_commit.message, '[H03 FLOW PM]') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install project and compile frozen postmortem
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+          python -m py_compile research/phase_b_h03_microstructure_postmortem_v01.py
+
+      - name: Verify postmortem authority and closed H03
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+          expected = '192ff38c80df052520969e801de88433dc98b7a1dba31d6cd32dccc7644cce61'
+          freeze = json.loads(Path('research/PHASE_B_H03_MICROSTRUCTURE_POSTMORTEM_FREEZE_V0.1.json').read_text())
+          supplied = freeze.pop('fingerprint')
+          actual = hashlib.sha256(json.dumps(freeze, sort_keys=True, separators=(',', ':'), ensure_ascii=False).encode()).hexdigest()
+          assert supplied == expected == actual
+          assert freeze['status'] == 'FROZEN_POSTHOC_HYPOTHESIS_GENERATION_ONLY'
+          assert freeze['data_contract']['same_h03_corpus_only'] is True
+          assert freeze['data_contract']['new_market_period_authorized'] is False
+          assert freeze['data_contract']['mexc_2025_09_through_2025_12_authorized'] is False
+          assert freeze['data_contract']['holdout_2026_authorized'] is False
+          closeout = json.loads(Path('research/PHASE_B_H03_BINANCE_DISCOVERY_CLOSEOUT_V0.1.json').read_text())
+          assert closeout['status'] == 'CLOSED_NO_EDGE'
+          assert closeout['fingerprint'] == '4446b74113fd06c59c7c256e066f603cb3dc01c0a6478d2f33f03433ad1db421'
+          print('PASS: H03 remains closed; postmortem is hypothesis-generation only')
+          PY
+
+      - name: Reacquire exact already-opened H03 Binance corpus
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python - <<'PY'
+          from concurrent.futures import ThreadPoolExecutor, as_completed
+          from pathlib import Path
+          import time
+          from urllib.error import HTTPError, URLError
+          from urllib.request import Request, urlopen
+          from research.phase_b_h03_binance_daily_manifest_v01 import expected_h03_daily_objects
+
+          root = Path('research/local_data/h03_flow_postmortem_raw')
+          root.mkdir(parents=True, exist_ok=True)
+          tasks=[]
+          for item in expected_h03_daily_objects():
+              d=root/item['symbol']; d.mkdir(parents=True, exist_ok=True)
+              tasks.append((item['archive_url'], d/item['archive_filename']))
+              tasks.append((item['checksum_url'], d/(item['archive_filename']+'.CHECKSUM')))
+
+          def get(task):
+              url,path=task; last=None
+              for attempt in range(1,5):
+                  try:
+                      req=Request(url, headers={'User-Agent':'DreamAccountOS-H03-Flow-Postmortem/0.1'})
+                      with urlopen(req, timeout=45) as response:
+                          if response.status != 200: raise RuntimeError(f'HTTP {response.status}')
+                          data=response.read()
+                      if not data: raise RuntimeError('empty response')
+                      path.write_bytes(data); return None
+                  except (HTTPError, URLError, TimeoutError, OSError, RuntimeError) as exc:
+                      last=f'{type(exc).__name__}: {exc}'
+                      if attempt<4: time.sleep(min(2**attempt,8))
+              return (str(path),last)
+
+          failures=[]
+          with ThreadPoolExecutor(max_workers=24) as pool:
+              futures=[pool.submit(get,t) for t in tasks]
+              for f in as_completed(futures):
+                  err=f.result()
+                  if err: failures.append(err)
+          print(f'acquired={len(tasks)-len(failures)}/{len(tasks)} failures={len(failures)}')
+          if failures: raise SystemExit(f'FAIL CLOSED: {failures[:10]}')
+          PY
+
+      - name: Run frozen H03 flow postmortem
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          mkdir -p research/local_data/h03_flow_postmortem_output
+          python -m research.phase_b_h03_microstructure_postmortem_v01 \
+            research/local_data/h03_flow_postmortem_raw \
+            research/local_data/h03_flow_postmortem_output/h03_flow_postmortem_receipt.json \
+            | tee research/local_data/h03_flow_postmortem_output/h03_flow_postmortem_stdout.txt
+
+      - name: Upload scientific receipt only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: h03-flow-postmortem-${{ github.sha }}
+          path: |
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/h03_flow_postmortem_output/h03_flow_postmortem_receipt.json
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/h03_flow_postmortem_output/h03_flow_postmortem_stdout.txt
+          if-no-files-found: warn
+          retention-days: 14

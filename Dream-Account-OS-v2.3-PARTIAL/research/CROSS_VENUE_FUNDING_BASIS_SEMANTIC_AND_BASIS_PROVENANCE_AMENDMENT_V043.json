@@ -1,0 +1,153 @@
+{
+  "schema_version": "0.1",
+  "lab_id": "CROSS_VENUE_FUNDING_BASIS_LAB_V01",
+  "amendment_id": "CROSS_VENUE_FUNDING_BASIS_SEMANTIC_AND_BASIS_PROVENANCE_AMENDMENT_V043",
+  "phase": "PRE_FREEZE",
+  "status": "AUTHORIZED_SEMANTIC_AND_BASIS_PROVENANCE_ONLY_DISCOVERY_BLOCKED",
+  "economic_outcomes_inspected": false,
+  "edge_status": "UNPROVEN",
+  "reason": "The primary claim requires both correctly-scaled realized funding cashflows and cross-venue basis price PnL. V0.4.2 audits funding timestamp cadence and missingness only; it must not be interpreted as closing all of G03/G04 or materializing the final replication calendar before basis-price provenance is audited.",
+  "supersession_rules": {
+    "v042_g03_interpretation": "V0.4.2 PASS may establish BTCUSDT/ETHUSDT Binance interval metadata and Hyperliquid hourly timestamp cadence only. Full G03 remains pending until rate-scaling/calculation-regime semantics are documented for the eligible period.",
+    "v042_g04_interpretation": "V0.4.2 PASS may establish funding-series raw provenance only. Full G04 remains pending until mark/basis source coverage is audited for both venues and both assets.",
+    "v042_g10_interpretation": "The V0.4.2 all-common-funding-month calendar is provisional. Final G10 is the deterministic intersection of all material source-coverage gates, including basis-price provenance."
+  },
+  "known_binance_regime_events": [
+    {
+      "effective_utc": "2025-05-02T08:00:00Z",
+      "source": "https://www.binance.com/en/support/announcement/detail/3243c81a35bd4f0c86a37315c3dc96cc",
+      "fact": "USD-M perpetual contracts can automatically move from 8h/4h settlement to 1h after a settlement reaches its cap/floor; no separate announcement is required for each automatic adjustment.",
+      "lab_rule": "Historical per-row funding_interval_hours metadata and timestamp occupancy, not the default schedule, determine whether BTCUSDT/ETHUSDT actually changed cadence."
+    },
+    {
+      "effective_utc": "2025-09-18T08:01:00Z",
+      "source": "https://www.binance.com/en/support/announcement/detail/c00588a7e8504b3eb28d02a2da00530b",
+      "fact": "Binance changed the funding formula to divide the 8-hour formula by (8/N), where N is the funding interval, and changed the perpetual mark-price Price-2 moving-average basis from 1 minute to 30 seconds.",
+      "btc_eth_8h_scaling_implication": "If V0.4.2 independently establishes N=8 for BTCUSDT and ETHUSDT, the formula divisor is 1, so the realized 8h settlement-rate scale remains one rate per 8h settlement. The regime boundary is nevertheless retained and must not be erased.",
+      "mark_price_implication": "Historical mark-price observations remain direct observations but cross a documented calculation-regime boundary that must be recorded in later diagnostics."
+    }
+  ],
+  "hyperliquid_official_current_semantics": {
+    "source": "https://hyperliquid.gitbook.io/hyperliquid-docs/trading/funding",
+    "facts": [
+      "funding is paid every hour",
+      "the published funding formula is expressed on an 8-hour basis and one eighth is paid each hour",
+      "funding payment notional uses oracle price",
+      "funding is peer-to-peer"
+    ],
+    "historical_change_log_available": false
+  },
+  "hyperliquid_non_authoritative_regime_leads_to_test_not_import": {
+    "source": "https://github.com/alpenmilch411/hyperliquid-archive-notes",
+    "authority": "NON_AUTHORITATIVE_DIAGNOSTIC_LEAD_ONLY",
+    "may_be_imported_as_lab_fact_without_reproduction": false,
+    "fixed_leads": [
+      {
+        "claim": "fundingHistory switched from an 8-hour-rate scale to hourly scale at 2023-06-08T01:00:00Z",
+        "lab_relevance": "before the provisional funding replication start of 2023-09, but must be excluded from any assumption of all-history scale stability"
+      },
+      {
+        "claim": "the funding-formula clamp widened from 0.0003 to 0.0005 at 2023-12-11T23:00:00Z",
+        "lab_relevance": "inside the provisional replication period and therefore requires a fixed-window semantic-only reproduction before full G03 closure"
+      },
+      {
+        "claim": "some historical asset_ctx fields encode absence as 0.0 and archive days can contain missing/extra minute structure",
+        "lab_relevance": "basis-price provenance must treat zero/missing and minute coverage explicitly rather than accepting a naive CSV parse"
+      }
+    ]
+  },
+  "semantic_probe_authorization": {
+    "purpose": "Validate field scale/formula semantics only, never strategy economics.",
+    "hyperliquid_public_endpoint": "POST https://api.hyperliquid.xyz/info type=fundingHistory",
+    "assets": ["BTC", "ETH"],
+    "fixed_windows_utc": {
+      "hourly_scale_check": ["2023-09-01T00:00:00Z", "2023-09-07T23:59:59Z"],
+      "early_clamp_check": ["2023-12-01T00:00:00Z", "2023-12-11T22:59:59Z"],
+      "late_clamp_check": ["2023-12-11T23:00:00Z", "2023-12-22T23:59:59Z"]
+    },
+    "candidate_semantics_fixed_before_probe": {
+      "interest_8h": "0.0001",
+      "candidate_clamps": ["0.0003", "0.0005"],
+      "candidate_scale_divisors": [1, 8]
+    },
+    "allowed_internal_fields": ["time", "fundingRate", "premium"],
+    "allowed_outputs": [
+      "row_count",
+      "finite_semantic_row_count",
+      "candidate_formula_match_counts",
+      "candidate_formula_match_ratios",
+      "detected_scale_label",
+      "detected_clamp_label",
+      "semantic_probe_pass_fail"
+    ],
+    "forbidden_outputs": [
+      "raw fundingRate values",
+      "raw premium values",
+      "funding sign distribution",
+      "funding magnitude distribution",
+      "cross-venue funding spread",
+      "carry",
+      "APR",
+      "APY",
+      "PnL",
+      "Sharpe",
+      "asset ranking",
+      "period ranking",
+      "signal"
+    ]
+  },
+  "basis_price_provenance": {
+    "required_for_primary_claim": true,
+    "binance": {
+      "authority": "OFFICIAL_PUBLIC_ARCHIVE",
+      "source": "https://github.com/binance/binance-public-data",
+      "dataset": "USD-M monthly markPriceKlines 1m for BTCUSDT and ETHUSDT with CHECKSUM sidecars",
+      "audit_rule": "Download and checksum every candidate month, parse timestamp column only, and require deterministic minute coverage. Price values remain opaque until separate Discovery authorization."
+    },
+    "hyperliquid": {
+      "authority": "OFFICIAL_HYPERLIQUID_ARCHIVE",
+      "source": "s3://hyperliquid-archive/asset_ctxs/{YYYYMMDD}.csv.lz4",
+      "documentation": "https://hyperliquid.gitbook.io/hyperliquid-docs/historical-data",
+      "requester_pays": true,
+      "audit_rule": "Before economic use, independently verify exact schema, BTC/ETH minute coverage, duplicate/off-grid behavior, mark-price missing sentinels, raw object fingerprints and calendar coverage. Do not infer completeness from object existence alone.",
+      "numeric_price_output_before_discovery": false
+    }
+  },
+  "calendar_materialization_rule": {
+    "final_calendar_definition": "Ordered set of every full UTC month that simultaneously passes funding-regime semantics, funding raw provenance, Binance mark-price provenance, Hyperliquid asset-context mark-price provenance, and all other material frozen source gates for BOTH BTC and ETH.",
+    "same_calendar_btc_eth": true,
+    "no_symbol_specific_window": true,
+    "no_best_contiguous_block_selection": true,
+    "no_outcome_dependent_exclusion": true,
+    "later_months_survive_an_earlier_provenance_gap": true,
+    "latest_allowed_month": "2025-12",
+    "2026_locked": true,
+    "mexc_locked": true
+  },
+  "gate_state_after_this_amendment_before_new_receipts": {
+    "G03_FUNDING_REGIMES": "PARTIAL_PENDING_SEMANTIC_PROBE_AND_V042_RECEIPT",
+    "G04_RAW_PROVENANCE": "PARTIAL_PENDING_BASIS_PRICE_PROVENANCE",
+    "G10_REPLICATION_PARTITION": "PROVISIONAL_PENDING_INTERSECTION_OF_ALL_MATERIAL_SOURCE_COVERAGE",
+    "G12_DISCOVERY_AUTHORIZATION": "BLOCKED"
+  },
+  "scientific_boundary": {
+    "authorizes_discovery": false,
+    "authorizes_strategy_economic_evaluation": false,
+    "authorizes_cross_venue_rate_comparison": false,
+    "authorizes_price_or_mark_value_output": false,
+    "authorizes_carry": false,
+    "authorizes_pnl": false,
+    "authorizes_2026": false,
+    "authorizes_mexc": false,
+    "authorizes_authenticated_account_data": false,
+    "authorizes_exchange_mutation": false,
+    "authorizes_trading": false
+  },
+  "next_actions": [
+    "Complete V0.4.2 receipt without promoting its partial gates beyond this amendment.",
+    "Run fixed-window Hyperliquid semantic probe.",
+    "Audit Binance markPriceKlines timestamp coverage without reading price values.",
+    "Prepare requester-pays Hyperliquid asset_ctx schema/coverage probe; execute only with authorized AWS credentials and no price-value output.",
+    "Only after all source gates pass, create final provenance/calendar freeze and updated prefreeze gate."
+  ]
+}

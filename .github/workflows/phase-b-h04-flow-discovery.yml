@@ -1,0 +1,153 @@
+name: H04 flow-persistence discovery
+
+on:
+  push:
+    branches:
+      - dream-account-phase-b-signal-research-v0.1
+
+jobs:
+  h04-flow-discovery:
+    if: ${{ contains(github.event.head_commit.message, '[H04 RUN]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Verify frozen H04 authority and technical amendments before market data
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python -m pip install -e .
+          python -m pip install pytest
+          python -m compileall -q research
+          python -m pytest -q tests/test_phase_b_h04_timestamp_units_v01.py tests/test_phase_b_h04_flow_scope_v01.py
+          python - <<'PY'
+          import json, hashlib
+          from pathlib import Path
+          from research.phase_b_h04_binance_daily_manifest_v01 import build_h04_manifest_receipt, FREEZE_FINGERPRINT
+          from research.phase_b_h04_binance_offline_adapter_v01 import TIMESTAMP_UNIT_AMENDMENT_FINGERPRINT
+          from research.phase_b_h04_discovery_runner_v01 import EXPECTED_AUTHORIZATION_FINGERPRINT, EXPECTED_MANIFEST_FINGERPRINT, EXPECTED_FLOW_SCOPE_AMENDMENT_FINGERPRINT
+          def verify(path):
+              raw=json.loads(Path(path).read_text())
+              unsigned=dict(raw); supplied=unsigned.pop('fingerprint')
+              recomputed=hashlib.sha256(json.dumps(unsigned,sort_keys=True,separators=(',',':'),ensure_ascii=False).encode()).hexdigest()
+              return raw,supplied,recomputed
+          freeze,freeze_supplied,freeze_recomputed=verify('research/PHASE_B_H04_POSITIVE_TAKER_FLOW_PERSISTENCE_PROSPECTIVE_FREEZE_V0.1.json')
+          amendment,amend_supplied,amend_recomputed=verify('research/PHASE_B_H04_BINANCE_TIMESTAMP_UNIT_ADAPTER_AMENDMENT_V0.1.json')
+          flow_scope,flow_scope_supplied,flow_scope_recomputed=verify('research/PHASE_B_H04_FLOW_EVALUATION_SCOPE_AMENDMENT_V0.1.json')
+          auth,auth_supplied,auth_recomputed=verify('research/PHASE_B_H04_BINANCE_DATA_ACCESS_AUTHORIZATION_V0.1.json')
+          manifest=build_h04_manifest_receipt()
+          checks=[
+            freeze_supplied==FREEZE_FINGERPRINT==freeze_recomputed,
+            amend_supplied==TIMESTAMP_UNIT_AMENDMENT_FINGERPRINT==amend_recomputed,
+            amendment['status']=='FROZEN_PRE_OUTCOME_FORMAT_NORMALIZATION',
+            amendment['trigger']['outcomes_evaluated'] is False,
+            amendment['normalization']['market_values_changed'] is False,
+            amendment['normalization']['flow_fields_changed'] is False,
+            amendment['normalization']['geometry_changed'] is False,
+            amendment['normalization']['management_changed'] is False,
+            amendment['normalization']['costs_changed'] is False,
+            amendment['normalization']['decision_policy_changed'] is False,
+            flow_scope_supplied==EXPECTED_FLOW_SCOPE_AMENDMENT_FINGERPRINT==flow_scope_recomputed,
+            flow_scope['status']=='FROZEN_PRE_OUTCOME_TECHNICAL_SCOPE_CORRECTION',
+            flow_scope['trigger']['outcomes_evaluated'] is False,
+            flow_scope['trigger']['classification_produced'] is False,
+            flow_scope['technical_correction']['zero_volume_imputation'] is False,
+            flow_scope['technical_correction']['zero_volume_on_required_flow_bar']=='FAIL_CLOSED_TECHNICAL_FAILURE',
+            flow_scope['technical_correction']['market_values_changed'] is False,
+            flow_scope['technical_correction']['flow_formula_changed'] is False,
+            flow_scope['technical_correction']['flow_threshold_changed'] is False,
+            flow_scope['technical_correction']['geometry_changed'] is False,
+            flow_scope['technical_correction']['session_gate_changed'] is False,
+            flow_scope['technical_correction']['management_changed'] is False,
+            flow_scope['technical_correction']['costs_changed'] is False,
+            flow_scope['technical_correction']['decision_policy_changed'] is False,
+            auth_supplied==EXPECTED_AUTHORIZATION_FINGERPRINT==auth_recomputed,
+            manifest['fingerprint']==EXPECTED_MANIFEST_FINGERPRINT,
+            auth['required_bindings']['h04_prospective_freeze_fingerprint']==FREEZE_FINGERPRINT,
+            auth['required_bindings']['manifest_fingerprint']==EXPECTED_MANIFEST_FINGERPRINT,
+            auth['market_data_access_authorized'] is True,
+            auth['network_download_authorized'] is True,
+            auth['offline_evaluation_authorized'] is True,
+            auth['mexc_2025_09_through_2025_12_authorized'] is False,
+            auth['holdout_2026_authorized'] is False,
+            auth['exchange_mutation_authorized'] is False,
+            auth['live_trading_authorized'] is False,
+            auth['main_merge_authorized'] is False,
+            auth['render_deploy_authorized'] is False,
+          ]
+          if not all(checks): raise SystemExit('H04 PRE-DATA AUTHORITY BLOCK')
+          print('H04 PRE-DATA AUTHORITY PASS')
+          print('FREEZE', FREEZE_FINGERPRINT)
+          print('TIMESTAMP_AMENDMENT', TIMESTAMP_UNIT_AMENDMENT_FINGERPRINT)
+          print('FLOW_SCOPE_AMENDMENT', EXPECTED_FLOW_SCOPE_AMENDMENT_FINGERPRINT)
+          print('AUTH', EXPECTED_AUTHORIZATION_FINGERPRINT)
+          print('MANIFEST', EXPECTED_MANIFEST_FINGERPRINT)
+          PY
+
+      - name: Acquire official Binance H04 corpus
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python - <<'PY'
+          from concurrent.futures import ThreadPoolExecutor, as_completed
+          import json, time
+          from pathlib import Path
+          from urllib.error import HTTPError, URLError
+          from urllib.request import Request, urlopen
+          from research.phase_b_h04_binance_daily_manifest_v01 import expected_h04_daily_objects, EXPECTED_ARCHIVE_COUNT
+          root=Path('research/local_data/h04_binance_raw'); root.mkdir(parents=True,exist_ok=True)
+          out=Path('research/local_data/h04_binance_output'); out.mkdir(parents=True,exist_ok=True)
+          tasks=[]
+          for item in expected_h04_daily_objects():
+              d=root/item['symbol']; d.mkdir(parents=True,exist_ok=True)
+              tasks.append((item['archive_url'],d/item['archive_filename']))
+              tasks.append((item['checksum_url'],d/(item['archive_filename']+'.CHECKSUM')))
+          def one(task):
+              url,path=task; last=None
+              for attempt in range(1,5):
+                  try:
+                      req=Request(url,headers={'User-Agent':'DreamAccountOS-H04-Research/0.1'})
+                      with urlopen(req,timeout=45) as r:
+                          if r.status!=200: raise RuntimeError(f'HTTP {r.status}')
+                          data=r.read()
+                      if not data: raise RuntimeError('empty response')
+                      path.write_bytes(data); return str(path),len(data),None
+                  except (HTTPError,URLError,TimeoutError,OSError,RuntimeError) as e:
+                      last=f'{type(e).__name__}: {e}'
+                      if attempt<4: time.sleep(min(2**attempt,8))
+              return str(path),0,last
+          failures=[]; total=0; completed=0
+          with ThreadPoolExecutor(max_workers=24) as pool:
+              futures=[pool.submit(one,t) for t in tasks]
+              for f in as_completed(futures):
+                  path,size,error=f.result(); completed+=1; total+=size
+                  if error: failures.append({'path':path,'error':error})
+                  if completed%500==0 or completed==len(tasks): print(f'H04 acquisition {completed}/{len(tasks)} failures={len(failures)}')
+          receipt={'document_type':'PHASE_B_H04_BINANCE_NETWORK_ACQUISITION_RECEIPT','version':'0.1','source':'OFFICIAL_BINANCE_PUBLIC_DATA_ONLY','expected_archives':EXPECTED_ARCHIVE_COUNT,'expected_checksums':EXPECTED_ARCHIVE_COUNT,'expected_files_total':EXPECTED_ARCHIVE_COUNT*2,'files_downloaded':completed-len(failures),'total_bytes_downloaded':total,'failure_count':len(failures),'first_failures':failures[:20],'mexc_validation_2025_09_through_2025_12_accessed':False,'holdout_2026_accessed':False,'exchange_mutation_performed':False,'live_trading_performed':False}
+          (out/'h04_network_acquisition_receipt.json').write_text(json.dumps(receipt,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(receipt,indent=2,sort_keys=True))
+          if failures: raise SystemExit(f'H04 acquisition failed closed with {len(failures)} failed files')
+          PY
+
+      - name: Run frozen H04 Discovery
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          set -o pipefail
+          python -m research.phase_b_h04_discovery_runner_v01 \
+            research/local_data/h04_binance_raw \
+            research/local_data/h04_binance_output/latest_h04_discovery_receipt.json \
+            research/PHASE_B_H04_BINANCE_DATA_ACCESS_AUTHORIZATION_V0.1.json \
+            | tee research/local_data/h04_binance_output/h04_runner_stdout.txt
+
+      - name: Upload H04 scientific receipts only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: h04-binance-discovery-receipts-${{ github.sha }}
+          path: |
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/h04_binance_output/h04_network_acquisition_receipt.json
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/h04_binance_output/latest_h04_discovery_receipt.json
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/h04_binance_output/h04_runner_stdout.txt
+          if-no-files-found: warn
+          retention-days: 14

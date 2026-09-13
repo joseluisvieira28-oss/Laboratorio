@@ -1,0 +1,87 @@
+name: News Shock Lab V0.3A BLS Actuals
+
+on:
+  push:
+    branches:
+      - dream-account-phase-b-signal-research-v0.1
+
+jobs:
+  news-shock-v03a-bls-actuals:
+    if: ${{ contains(github.event.head_commit.message, '[NEWS V03A ACTUALS]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Verify frozen V0.3A actual-only authority
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python -m pip install beautifulsoup4
+          python -m compileall -q research
+          python - <<'PY'
+          from research.news_shock_lab_v03a_provenance import load_freeze
+          freeze=load_freeze()
+          if freeze['analysis_authority']['may_compute_crypto_returns_in_this_stage'] is not False:
+              raise SystemExit('NEWS V0.3A MARKET OUTCOME AUTHORITY BLOCK')
+          if freeze['analysis_authority']['may_compute_profitability_in_this_stage'] is not False:
+              raise SystemExit('NEWS V0.3A PROFITABILITY AUTHORITY BLOCK')
+          if freeze['official_actual_policy']['primary_source']!='U.S. Bureau of Labor Statistics archived CPI news release for the specific release date':
+              raise SystemExit('NEWS V0.3A PRIMARY ACTUAL SOURCE DRIFT')
+          if freeze['official_actual_policy']['future_revisions_forbidden'] is not True:
+              raise SystemExit('NEWS V0.3A FUTURE REVISION GUARD DRIFT')
+          print('NEWS V0.3A ACTUAL-ONLY AUTHORITY PASS')
+          PY
+
+      - name: Collect all consecutive BLS archived CPI first-release actuals
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          mkdir -p research/local_data/news_v03a_actuals_output
+          set -o pipefail
+          python -m research.news_shock_lab_v03a_bls_actuals \
+            research/local_data/news_v03a_actuals_output/cpi_actual_provenance_manifest.json \
+            research/local_data/news_v03a_actuals_output/actuals_validation_receipt.json \
+            | tee research/local_data/news_v03a_actuals_output/bls_actuals_stdout.txt
+
+      - name: Assert no market outcomes and no false consensus completion
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          m=json.loads(Path('research/local_data/news_v03a_actuals_output/cpi_actual_provenance_manifest.json').read_text())
+          v=json.loads(Path('research/local_data/news_v03a_actuals_output/actuals_validation_receipt.json').read_text())
+          if m['event_count']!=44 or len(m['records'])!=44 or len(m['source_receipts'])!=44:
+              raise SystemExit('NEWS V0.3A ACTUALS EVENT COUNT BLOCK')
+          if v['record_count']!=44:
+              raise SystemExit('NEWS V0.3A ACTUAL VALIDATION COUNT BLOCK')
+          if v['status_counts'].get('ACTUAL_PROVENANCE_INCOMPLETE',0)!=0:
+              raise SystemExit('NEWS V0.3A ACTUAL PROVENANCE INCOMPLETE BLOCK')
+          if v['complete_a_count']!=0 or v['complete_b_count']!=0:
+              raise SystemExit('NEWS V0.3A FALSE CONSENSUS COMPLETE BLOCK')
+          if v['status_counts'].get('CONSENSUS_PROVENANCE_INCOMPLETE',0)!=44:
+              raise SystemExit('NEWS V0.3A EXPECTED CONSENSUS-GATED STATE BLOCK')
+          for guards in (m['guards'],v['guards']):
+              for key,value in guards.items():
+                  if value is not False:
+                      raise SystemExit(f'NEWS V0.3A GUARD BLOCK {key}')
+          if any(r['release_date_local'].startswith('2026-') for r in m['records']):
+              raise SystemExit('NEWS V0.3A 2026 RECORD BLOCK')
+          print('NEWS V0.3A BLS ACTUALS PASS')
+          print('ACTUAL_MANIFEST_FINGERPRINT',m['fingerprint'])
+          print('VALIDATION_FINGERPRINT',v['fingerprint'])
+          PY
+
+      - name: Upload V0.3A BLS actual provenance receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: news-shock-v03a-bls-actuals-${{ github.sha }}
+          path: |
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/news_v03a_actuals_output/cpi_actual_provenance_manifest.json
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/news_v03a_actuals_output/actuals_validation_receipt.json
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/news_v03a_actuals_output/bls_actuals_stdout.txt
+          if-no-files-found: warn
+          retention-days: 30

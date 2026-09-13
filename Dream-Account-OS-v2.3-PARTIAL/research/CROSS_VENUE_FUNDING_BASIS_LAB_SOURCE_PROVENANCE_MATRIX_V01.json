@@ -1,0 +1,128 @@
+{
+  "schema_version": "0.1",
+  "lab_id": "CROSS_VENUE_FUNDING_BASIS_LAB_V01",
+  "phase": "PRE_FREEZE",
+  "authority_commit": "e11dbbe701b61c74a25bed29eb8e3d954dd55af7",
+  "status": "SOURCE_INVENTORY_FROZEN_PENDING_DATA_AUDIT",
+  "retrieved_context_date_utc": "2026-09-12",
+  "scope": ["BTC", "ETH"],
+  "venues": ["Binance USD-M", "Hyperliquid"],
+  "sources": [
+    {
+      "source_id": "BINANCE_USDM_FUNDING_RATE_HISTORY",
+      "provider": "Binance",
+      "authority": "OFFICIAL_DEVELOPER_DOCUMENTATION",
+      "market": "USD-M perpetual futures",
+      "endpoint": "GET https://fapi.binance.com/fapi/v1/fundingRate",
+      "documentation": "https://developers.binance.com/docs/derivatives/usds-margined-futures/market-data/rest-api/Get-Funding-Rate-History",
+      "required_fields": ["symbol", "fundingTime", "fundingRate", "markPrice"],
+      "role": "realized funding settlements",
+      "authentication": "PUBLIC_MARKET_DATA",
+      "pre_freeze_use": "PROVENANCE_AND_SCHEMA_ONLY",
+      "outcome_evaluation_allowed": false
+    },
+    {
+      "source_id": "BINANCE_USDM_FUNDING_INFO",
+      "provider": "Binance",
+      "authority": "OFFICIAL_DEVELOPER_DOCUMENTATION",
+      "market": "USD-M perpetual futures",
+      "endpoint": "GET https://fapi.binance.com/fapi/v1/fundingInfo",
+      "documentation": "https://developers.binance.com/docs/derivatives/usds-margined-futures/market-data/rest-api/Get-Funding-Rate-Info",
+      "required_fields": ["symbol", "adjustedFundingRateCap", "adjustedFundingRateFloor", "fundingIntervalHours"],
+      "role": "current adjusted funding interval and cap/floor state",
+      "authentication": "PUBLIC_MARKET_DATA",
+      "limitation": "current state alone does not reconstruct historical interval changes; dated official announcements or independently archived primary records are required for historical regime dating",
+      "pre_freeze_use": "REGIME_PROVENANCE",
+      "outcome_evaluation_allowed": false
+    },
+    {
+      "source_id": "BINANCE_USDM_MARK_INDEX_PREMIUM",
+      "provider": "Binance",
+      "authority": "OFFICIAL_DEVELOPER_DOCUMENTATION",
+      "market": "USD-M perpetual futures",
+      "endpoint_family": ["GET /fapi/v1/premiumIndex", "GET /fapi/v1/markPriceKlines", "GET /fapi/v1/premiumIndexKlines"],
+      "documentation": "https://developers.binance.com/docs/derivatives/usds-margined-futures/market-data/rest-api/Mark-Price",
+      "role": "mark/index/premium and basis-state reconstruction where historically available",
+      "authentication": "PUBLIC_MARKET_DATA",
+      "pre_freeze_use": "PROVENANCE_AND_AVAILABILITY_ONLY",
+      "outcome_evaluation_allowed": false
+    },
+    {
+      "source_id": "BINANCE_FUNDING_INTERVAL_ANNOUNCEMENTS",
+      "provider": "Binance",
+      "authority": "OFFICIAL_EXCHANGE_NOTICES",
+      "examples_verified": [
+        "https://www.binance.com/en/support/announcement/detail/e4445d0389ce4defa6009021fcf6ee46",
+        "https://www.binance.com/en/support/announcement/detail/aff73212559d4951945600e973240c52"
+      ],
+      "role": "date funding settlement frequency rule changes when API current-state data are insufficient",
+      "pre_freeze_use": "REGIME_DATING_ONLY",
+      "outcome_evaluation_allowed": false
+    },
+    {
+      "source_id": "HYPERLIQUID_FUNDING_HISTORY",
+      "provider": "Hyperliquid",
+      "authority": "OFFICIAL_DOCUMENTATION",
+      "market": "perpetual futures",
+      "endpoint": "POST https://api.hyperliquid.xyz/info with type=fundingHistory",
+      "documentation": "https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/info-endpoint/perpetuals",
+      "required_fields": ["coin", "fundingRate", "premium", "time"],
+      "role": "realized historical funding observations",
+      "authentication": "PUBLIC_INFO_ENDPOINT_NO_ACCOUNT_DATA_REQUIRED",
+      "pre_freeze_use": "PROVENANCE_AND_SCHEMA_ONLY",
+      "outcome_evaluation_allowed": false
+    },
+    {
+      "source_id": "HYPERLIQUID_FUNDING_MECHANISM",
+      "provider": "Hyperliquid",
+      "authority": "OFFICIAL_DOCUMENTATION",
+      "documentation": "https://hyperliquid.gitbook.io/hyperliquid-docs/trading/funding",
+      "frozen_mechanism_facts": [
+        "funding is paid every hour",
+        "published formula is expressed on an 8-hour basis and one eighth is paid each hour",
+        "premium is based on impact-price difference relative to the oracle price",
+        "funding payments are peer-to-peer"
+      ],
+      "role": "settlement-cashflow semantics",
+      "outcome_evaluation_allowed": false
+    },
+    {
+      "source_id": "HYPERLIQUID_FEES",
+      "provider": "Hyperliquid",
+      "authority": "OFFICIAL_DOCUMENTATION",
+      "documentation": "https://hyperliquid.gitbook.io/hyperliquid-docs/trading/fees",
+      "role": "fee-tier and maker/taker rule provenance",
+      "rule": "No referral discount, VIP assumption or maker rebate may be used in the primary baseline unless prospectively frozen from auditable rules before Discovery.",
+      "outcome_evaluation_allowed": false
+    },
+    {
+      "source_id": "HYPERLIQUID_HISTORICAL_L2_AND_FILLS",
+      "provider": "Hyperliquid",
+      "authority": "OFFICIAL_DOCUMENTATION",
+      "role": "execution-quality provenance candidate",
+      "critical_limitation": "official documentation warns historical data may be missing and timely updates are not guaranteed; coverage audit is mandatory before any execution claim",
+      "pre_freeze_use": "AVAILABILITY_AND_COVERAGE_AUDIT_ONLY",
+      "outcome_evaluation_allowed": false
+    }
+  ],
+  "external_evidence_not_authoritative_for_lab_outcomes": [
+    {
+      "source": "Tony Lau, The Funding Carry and a Cross-Venue Spread on Perpetual Futures, SSRN 6993978, posted 2026-07-17",
+      "role": "EXTERNAL_HYPOTHESIS_MOTIVATION_AND_FALSIFICATION_TARGET",
+      "reported_claims_may_not_be_imported_as_lab_results": true,
+      "replication_required": true
+    }
+  ],
+  "provenance_gates": {
+    "funding_settlement_history_both_venues": "PENDING",
+    "historical_interval_regimes": "PENDING",
+    "mark_index_basis_history": "PENDING",
+    "fee_regime_history": "PENDING",
+    "historical_execution_quality": "PENDING",
+    "raw_record_hashes": "PENDING",
+    "coverage_missingness_duplicates": "PENDING",
+    "timestamp_normalization": "PENDING"
+  },
+  "fail_closed_rule": "Any required source that cannot be dated, hashed, coverage-audited or semantically normalized remains PENDING/UNOBSERVABLE and may not be silently imputed or replaced with favorable assumptions.",
+  "economic_outcomes_inspected": false
+}

@@ -1,0 +1,58 @@
+{
+  "document_type": "PHASE_B_H03_BINANCE_ADAPTER_CLOSE_TIME_AMENDMENT",
+  "version": "0.1",
+  "status": "FROZEN_PRE_OUTCOME_EVALUATION",
+  "frozen_at_utc_date": "2026-09-11",
+  "hypothesis_id": "H03_BINANCE_CROSS_VENUE_US_EU_OVERLAP_REPLICATION",
+  "authority_basis": {
+    "h03_freeze_fingerprint": "0c7c931bd48d4cd696e4a8f3188db64e497716dbc7020eb63db100aecca49fa7",
+    "h03_data_access_authorization_fingerprint": "3d29d29cf2a10030f4558678814d3782ee6f7b469ae1c33ae7a038fec4e7881d",
+    "first_outcome_evaluation_completed": false,
+    "performance_metrics_inspected": false
+  },
+  "trigger": {
+    "initial_integrity_block": "CLOSE_TIME_VIOLATION",
+    "full_corpus_metadata_audit_rows": 420090,
+    "close_time_violations": 22,
+    "open_alignment_violations": 0,
+    "irregular_open_spacing": 0,
+    "duplicate_or_reversed_open_times": 0,
+    "day_boundary_violations": 0,
+    "outcomes_evaluated_during_audit": false
+  },
+  "amended_mapping": {
+    "source_open_time": "PRESERVE_EXACTLY",
+    "source_ohlcv": "PRESERVE_EXACTLY",
+    "source_close_time": "AUDIT_AND_RECORD_BUT_DO_NOT_USE_AS_CANONICAL_BAR_BOUNDARY",
+    "canonical_close_time": "open_time + 900000 - 1",
+    "reason": "H03 is frozen to exact 15m bars and all source open timestamps remain aligned, ordered, and day-bounded. Historical source close_time metadata has 22 isolated anomalies across 420090 rows, while close_time is not a market price input. Canonicalizing only this metadata field preserves deterministic 15m bar semantics without changing OHLCV, open_time, signal rules, management, costs, or thresholds.",
+    "source_close_time_must_still_be_integer": true,
+    "source_close_time_must_be_greater_than_open_time": true,
+    "source_close_time_must_be_less_than_or_equal_to_canonical_close_time": true,
+    "close_time_anomaly_count_must_be_reported": true
+  },
+  "unchanged": {
+    "symbol_universe": true,
+    "discovery_window": true,
+    "timeframe_15m": true,
+    "h01_signal_geometry": true,
+    "h01_management": true,
+    "h02_session_gate": true,
+    "base_costs": true,
+    "stress_costs": true,
+    "minimum_resolved_trades_100": true,
+    "bootstrap_5000_seed_230911_confidence_095": true,
+    "survival_conditions": true,
+    "no_interpolation": true,
+    "gap_segmentation": true
+  },
+  "locks": {
+    "mexc_2025_09_through_2025_12_authorized": false,
+    "holdout_2026_authorized": false,
+    "exchange_mutation_authorized": false,
+    "live_trading_authorized": false,
+    "main_merge_authorized": false,
+    "render_deploy_authorized": false
+  },
+  "fingerprint": "338c67b4275143d06dcda887b939e5aff8a683ac03c32beb120584c8e70c5f71"
+}

@@ -1,0 +1,171 @@
+{
+  "schema_version": "0.1",
+  "lab_id": "CROSS_VENUE_FUNDING_BASIS_LAB_V01",
+  "amendment_id": "CROSS_VENUE_FUNDING_BASIS_HL_ASSET_CTX_PROVENANCE_V044",
+  "phase": "PRE_DISCOVERY_PROVENANCE",
+  "status": "AUTHORIZED_OFFICIAL_ARCHIVE_PROVENANCE_ONLY_DISCOVERY_BLOCKED",
+  "economic_outcomes_inspected_before_this_amendment": true,
+  "economic_exposure_authority": "CROSS_VENUE_FUNDING_BASIS_DATASET_EXPOSURE_LEDGER_V01",
+  "edge_status": "UNPROVEN",
+  "reason": "V0.4.3 and V0.4.3A failed to identify historical Hyperliquid semantics from fundingHistory API rows. This amendment does not relax those probes. It switches provenance to Hyperliquid's official requester-pays asset_ctx archive, where the per-minute funding/premium/mark/oracle context is directly published, and separately audits calendar completeness.",
+  "preserved_failures": [
+    "V0.4.3 FAIL_CLOSED_SEMANTICS_UNRESOLVED",
+    "V0.4.3A FAIL_CLOSED_SEMANTICS_UNRESOLVED"
+  ],
+  "source": {
+    "provider": "HYPERLIQUID_OFFICIAL_REQUESTER_PAYS_ARCHIVE",
+    "bucket": "hyperliquid-archive",
+    "daily_key_template": "asset_ctxs/{YYYYMMDD}.csv.lz4",
+    "request_payer": "requester",
+    "authenticated_exchange_account_data": false
+  },
+  "expected_schema_exact": [
+    "time",
+    "coin",
+    "funding",
+    "open_interest",
+    "prev_day_px",
+    "day_ntl_vlm",
+    "premium",
+    "oracle_px",
+    "mark_px",
+    "mid_px",
+    "impact_bid_px",
+    "impact_ask_px"
+  ],
+  "candidate_calendar": {
+    "first_date_utc": "2023-09-01",
+    "last_date_utc": "2025-12-31",
+    "assets_for_strategy_provenance": ["BTC", "ETH"],
+    "same_months_required_for_btc_and_eth": true,
+    "2026_forbidden": true,
+    "outcome_dependent_date_exclusion_forbidden": true
+  },
+  "two_stage_transport": {
+    "stage_A_semantics": {
+      "purpose": "Reproduce source-field semantics from official archive before paying for the full calendar sweep.",
+      "dates": [
+        "2023-09-01","2023-09-02","2023-09-03","2023-09-04","2023-09-05","2023-09-06","2023-09-07",
+        "2023-12-01","2023-12-02","2023-12-03","2023-12-04","2023-12-05","2023-12-06","2023-12-07","2023-12-08","2023-12-09","2023-12-10","2023-12-11",
+        "2023-12-12","2023-12-13","2023-12-14","2023-12-15","2023-12-16","2023-12-17","2023-12-18","2023-12-19","2023-12-20","2023-12-21","2023-12-22"
+      ],
+      "progression_rule": "Stage B is authorized only if Stage A semantic gate passes. This stopping rule depends only on source semantics/provenance, never on carry, basis, PnL or asset performance."
+    },
+    "stage_B_calendar_coverage": {
+      "purpose": "Audit every candidate UTC day for BTC/ETH structural and settlement-reference completeness.",
+      "dates": "EVERY_UTC_DAY_2023-09-01_THROUGH_2025-12-31_INCLUSIVE",
+      "reuse_stage_A_daily_receipts": true,
+      "known_prior_2024-09-01_receipt_may_be_seeded": true,
+      "known_prior_2024-09-01_rule": "If seeded, its exact reported hashes and structural counts must match the exposure ledger. Do not invent economic fields."
+    }
+  },
+  "semantic_probe_freeze": {
+    "fixed_panel": ["BTC", "ETH", "ARB", "AVAX", "SOL", "MATIC", "LINK", "ATOM"],
+    "archive_field": "funding",
+    "premium_field": "premium",
+    "premium_validity_rule": "Use a row only when impact_bid_px > 0 and impact_ask_px > 0; a literal premium of zero is allowed and is not missing by itself.",
+    "interest_8h": "0.0001",
+    "candidate_clamps": ["0.0003", "0.0005"],
+    "candidate_scale_divisors": [1, 8],
+    "absolute_match_tolerance": "1e-12",
+    "formula": "expected = (premium + clamp(0.0001 - premium, -C, +C)) / divisor",
+    "hourly_scale_window": ["2023-09-01T00:00:00Z", "2023-09-07T23:59:59Z"],
+    "early_clamp_window": ["2023-12-01T00:00:00Z", "2023-12-11T22:59:59Z"],
+    "late_clamp_window": ["2023-12-11T23:00:00Z", "2023-12-22T23:59:59Z"],
+    "scale_pass_rule": {
+      "best_divisor_8_match_ratio_min": 0.95,
+      "minimum_margin_over_best_divisor_1": 0.50
+    },
+    "clamp_transition_pass_rule": {
+      "minimum_discriminating_rows_each_era": 10,
+      "minimum_correct_era_match_ratio": 0.75,
+      "early_old_matches_must_exceed_new": true,
+      "late_new_matches_must_exceed_old": true
+    },
+    "no_parameter_changes_after_probe": true,
+    "no_outcome_dependent_asset_exclusion": true
+  },
+  "coverage_freeze": {
+    "coverage_unit": "DISTINCT_UTC_MINUTE_BUCKETS_PER_ASSET_PER_DAY",
+    "raw_row_count_is_not_coverage": true,
+    "extra_off_grid_rows_inside_an_already_covered_minute_are_allowed": true,
+    "duplicate_exact_time_coin_pair_rule": "FAIL_DAY",
+    "wrong_utc_date_row_rule": "FAIL_DAY",
+    "expected_distinct_minutes_per_full_day": 1440,
+    "settlement_reference_rule": {
+      "logical_settlement_hour": "UTC_HOUR_FLOOR_OF_FUNDING_HISTORY_TIMESTAMP",
+      "required_asset_ctx_timestamp": "EXACT_UTC_TOP_OF_HOUR",
+      "nearest_neighbor": false,
+      "interpolation": false,
+      "forward_fill": false,
+      "backward_fill": false,
+      "tolerance_seconds": 0,
+      "unique_row_required": true,
+      "mark_px_must_be_positive": true,
+      "oracle_px_must_be_positive": true,
+      "expected_settlement_ready_hours_per_full_day": 24
+    },
+    "full_day_rule": "For each of BTC and ETH: exactly 1440 distinct minute buckets plus 24 unique exact top-of-hour rows with positive mark_px and oracle_px, and no structural failure.",
+    "full_month_rule": "Every calendar day in that UTC month must be a full day for BOTH BTC and ETH. One failed or unavailable day fails the month.",
+    "common_month_rule": "Month is eligible only when BOTH BTC and ETH pass the full_month_rule.",
+    "month_selection_uses_economic_values": false
+  },
+  "allowed_internal_fields": [
+    "time","coin","funding","premium","impact_bid_px","impact_ask_px","mark_px","oracle_px"
+  ],
+  "allowed_outputs": [
+    "schema_match",
+    "raw_bytes",
+    "raw_sha256",
+    "date",
+    "row_count",
+    "duplicate_exact_time_coin_count",
+    "wrong_date_row_count",
+    "distinct_minute_count_by_target_asset",
+    "exact_top_of_hour_count_by_target_asset",
+    "settlement_ready_hour_count_by_target_asset",
+    "semantic_candidate_match_counts_and_ratios",
+    "semantic_discriminating_counts",
+    "full_day_pass_fail",
+    "full_month_pass_fail",
+    "common_complete_month_list"
+  ],
+  "forbidden_outputs": [
+    "raw funding values",
+    "raw premium values",
+    "raw mark_px values",
+    "raw oracle_px values",
+    "funding sign distribution",
+    "funding magnitude distribution",
+    "cross-venue funding spread",
+    "basis return",
+    "carry",
+    "APR",
+    "APY",
+    "PnL",
+    "Sharpe",
+    "asset performance ranking",
+    "signal"
+  ],
+  "economic_claim_boundary": {
+    "historical_executable_return_claim_authorized": false,
+    "reason": "Symmetric audit-grade historical execution/fill data remain unavailable under G07. Passing V0.4.4 can authorize only a separately frozen mechanism replication / pre-slippage economics stage, never a claim of exact executable historical return."
+  },
+  "post_v044_rule": {
+    "if_stage_A_fails": "STOP historical archive semantic path as DATA_INADEQUATE_OR_SEMANTICS_UNRESOLVED. Do not rescue by changing thresholds, panel, formula, windows or tolerance.",
+    "if_stage_A_passes_and_stage_B_finds_common_months": "Materialize G04/G10 calendar from coverage only, then freeze the economic mechanism-replication contract before any new economic output is opened.",
+    "if_stage_B_has_zero_common_months": "Classify DATA_INADEQUATE and stop historical mechanism replication.",
+    "contaminated_boundary_rule": "Any mechanism result using the previously viewed 2024-09-01 / 2025-12-31 boundary prices must be labeled contaminated/adversarial replication rather than virgin Discovery."
+  },
+  "scientific_boundary": {
+    "authorizes_discovery": false,
+    "authorizes_strategy_economic_evaluation": false,
+    "authorizes_cross_venue_rate_comparison": false,
+    "authorizes_carry": false,
+    "authorizes_pnl": false,
+    "authorizes_2026": false,
+    "authorizes_mexc": false,
+    "authorizes_exchange_mutation": false,
+    "authorizes_trading": false
+  }
+}

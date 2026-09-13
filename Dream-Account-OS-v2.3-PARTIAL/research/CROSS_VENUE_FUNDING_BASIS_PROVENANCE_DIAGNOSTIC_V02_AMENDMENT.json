@@ -1,0 +1,58 @@
+{
+  "schema_version": "0.1",
+  "lab_id": "CROSS_VENUE_FUNDING_BASIS_LAB_V01",
+  "amendment_id": "CROSS_VENUE_FUNDING_BASIS_PROVENANCE_DIAGNOSTIC_V02",
+  "status": "AUTHORIZED_DIAGNOSTIC_ONLY",
+  "reason": "The frozen V0.1 provenance shakedown fetched and audited all four public funding series but failed closed before writing a receipt because no common full UTC month passed its timestamp-only coverage rule.",
+  "scientific_boundary": {
+    "changes_primary_hypothesis": false,
+    "changes_assets": false,
+    "changes_venues": false,
+    "changes_audit_window": false,
+    "changes_v01_coverage_rule": false,
+    "authorizes_discovery": false,
+    "authorizes_economic_outcomes": false,
+    "authorizes_trading": false,
+    "authorizes_exchange_mutation": false,
+    "authorizes_authenticated_account_data": false,
+    "authorizes_2026_access": false,
+    "authorizes_mexc_access": false
+  },
+  "frozen_scope": {
+    "audit_start_utc": "2023-01-01T00:00:00Z",
+    "audit_end_utc": "2025-12-31T23:59:59.999Z",
+    "binance_symbols": ["BTCUSDT", "ETHUSDT"],
+    "hyperliquid_coins": ["BTC", "ETH"]
+  },
+  "allowed_outputs": [
+    "record_count",
+    "unique_timestamp_count",
+    "first_timestamp",
+    "last_timestamp",
+    "duplicate_timestamp_count",
+    "conflicting_duplicate_timestamp_count",
+    "max_gap_ms",
+    "large_gap_count",
+    "timestamp_interval_histogram",
+    "eligible_full_months",
+    "month_timestamp_coverage_matrix",
+    "common_eligible_months",
+    "canonical_raw_record_sha256"
+  ],
+  "forbidden_outputs": [
+    "funding_rate_average",
+    "funding_spread",
+    "carry",
+    "apr",
+    "apy",
+    "pnl",
+    "sharpe",
+    "win_rate",
+    "signal",
+    "threshold_optimization",
+    "asset_ranking",
+    "venue_ranking",
+    "best_period_selection"
+  ],
+  "decision_rule": "V0.2 is diagnostic only. It may identify why V0.1 has no common timestamp-eligible month. Any correction must be justified as source-semantics or infrastructure repair without consulting economic values. The frozen V0.1 gate is not relaxed by this amendment."
+}

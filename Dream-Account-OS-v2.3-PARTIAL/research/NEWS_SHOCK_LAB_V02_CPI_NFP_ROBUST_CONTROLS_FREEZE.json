@@ -1,0 +1,138 @@
+{
+  "control_contract": {
+    "candidate_lags_days": [
+      7,
+      14,
+      21,
+      28,
+      35,
+      42,
+      49,
+      56
+    ],
+    "control_aggregation_for_volume_and_trade_count": "ARITHMETIC_MEAN_OF_ALL_VALID_CONTROLS",
+    "exclude_any_candidate_that_is_any_CPI_or_Employment_Situation_event_in_manifest": true,
+    "invalid_if_any_required_timestamp_missing": true,
+    "minimum_valid_controls": 4,
+    "no_interpolation": true,
+    "no_outcome_based_control_selection": true,
+    "no_synthetic_candles": true,
+    "same_weekday_same_new_york_clock_time": true,
+    "use_all_valid_candidates": true
+  },
+  "document_type": "NEWS_SHOCK_LAB_V02_CPI_NFP_ROBUST_CONTROLS_FREEZE",
+  "event_contract": {
+    "event_count_total": 112,
+    "event_counts": {
+      "CPI": 56,
+      "NFP": 56
+    },
+    "event_manifest_unchanged": true,
+    "event_window": {
+      "end": "2025-08-31",
+      "start": "2021-01-01"
+    },
+    "release_time": "08:30 AM America/New_York",
+    "schedule_manifest_fingerprint": "baececa93f922a71d328373c94109652c911deae6ae03e76ea4e23d3f8d90560"
+  },
+  "fingerprint": "92370dcfb389e2f3cae1c434bfb77dabe254c5514741bfd731fca6ecf3e23796",
+  "frozen_at_utc_date": "2026-09-11",
+  "governance": {
+    "exchange_mutation_authorized": false,
+    "holdout_2026_authorized": false,
+    "live_trading_authorized": false,
+    "main_merge_authorized": false,
+    "mexc_2025_09_through_2025_12_authorized": false,
+    "render_deploy_authorized": false
+  },
+  "interpretation": {
+    "classification_authority": "NONE_DIAGNOSTIC_ONLY",
+    "may_authorize_trading": false,
+    "may_define_directional_rule_from_this_run": false,
+    "may_generate_future_hypothesis": true,
+    "no_best_event_type_window_symbol_or_subperiod_cherry_pick": true,
+    "positive_result_wording": "historical diagnostic evidence only, not a trading edge"
+  },
+  "lab_id": "NEWS_SHOCK_LAB_V02_CPI_NFP_ROBUST_CONTROLS",
+  "market_data": {
+    "archive_granularity": "DAILY_ZIP_FILES",
+    "checksum_required": true,
+    "control_days_may_precede_event_window": true,
+    "earliest_permitted_control_date": "2020-11-01",
+    "holdout_2026": "LOCKED_NOT_ACCESSED",
+    "market_type": "SPOT",
+    "source": "OFFICIAL_BINANCE_PUBLIC_DATA_ONLY",
+    "symbols": [
+      "BTCUSDT",
+      "ETHUSDT"
+    ],
+    "timeframe": "1m",
+    "timestamp_policy": "Normalize official Binance Spot timestamps to milliseconds; 2025+ public files may use microseconds."
+  },
+  "metadata_preflight": {
+    "any_event_symbol_with_fewer_than_four_valid_controls": "DATA_INADEQUATE_STOP",
+    "event_day_missing_required_timestamp": "DATA_INADEQUATE_STOP",
+    "inspect_only_timestamps_and_file_integrity_not_prices_returns_volume_trade_count_or_flow": true,
+    "must_run_before_outcome_evaluation": true,
+    "preflight_pass_required_to_authorize_diagnostic_evaluation": true
+  },
+  "metrics": {
+    "includes": [
+      "signed_return_each_post_window",
+      "absolute_return_each_post_window",
+      "incremental_return_5_to_15",
+      "incremental_return_15_to_60",
+      "incremental_return_15_to_120",
+      "pre_event_returns",
+      "event_volume_ratio_vs_controls",
+      "event_trade_count_ratio_vs_controls",
+      "event_taker_flow_imbalance",
+      "flow_direction_alignment_first5_and_first15",
+      "initial_direction_continuation_on_incremental_future_returns",
+      "reversal_metrics"
+    ],
+    "unchanged_from_v01": true
+  },
+  "origin": {
+    "failed_runs": [
+      34628755436,
+      34629238870
+    ],
+    "outcome_values_inspected": false,
+    "reason": "V0.1 failed closed because the fixed four-week matched-control pool could leave fewer than three complete non-event controls. V0.2 changes only the control availability design before any valid receipt is produced.",
+    "v01_control_gap_amendment_fingerprint": "bc729693b5d16624053e9a105193e7f9fbadd49cdb770c62fa12bb20d2c2bae1",
+    "v01_freeze_fingerprint": "55bba04ab42e1c457427a9ba87231c6ff4df52e9f0e083e320700618c38b2f70",
+    "v01_manifest_fingerprint": "baececa93f922a71d328373c94109652c911deae6ae03e76ea4e23d3f8d90560",
+    "valid_scientific_receipt_produced": false
+  },
+  "status": "FROZEN_DIAGNOSTIC_ONLY_PENDING_METADATA_PREFLIGHT",
+  "version": "0.2",
+  "windows_minutes": {
+    "incremental_future": [
+      [
+        5,
+        15
+      ],
+      [
+        15,
+        60
+      ],
+      [
+        15,
+        120
+      ]
+    ],
+    "post_from_release": [
+      5,
+      15,
+      30,
+      60,
+      120
+    ],
+    "pre": [
+      -60,
+      -15,
+      -5
+    ]
+  }
+}

@@ -1,0 +1,113 @@
+{
+  "document_type": "NEWS_SHOCK_LAB_V01_CPI_NFP_REPLICATION_FREEZE",
+  "version": "0.1",
+  "status": "FROZEN_DIAGNOSTIC_ONLY_PENDING_DATA_ACCESS",
+  "frozen_at_utc_date": "2026-09-11",
+  "lab_id": "NEWS_SHOCK_LAB_V01_CPI_NFP",
+  "purpose": "Replicate the FOMC news-shock event-study design on scheduled U.S. CPI and Employment Situation releases, measuring volatility, direction, pre-positioning, taker flow, continuation and reversal without authorizing trading.",
+  "event_contract": {
+    "authority": "U.S. Bureau of Labor Statistics official annual release calendars",
+    "source_urls": [
+      "https://www.bls.gov/schedule/2021/home.htm",
+      "https://www.bls.gov/schedule/2022/home.htm",
+      "https://www.bls.gov/schedule/2023/home.htm",
+      "https://www.bls.gov/schedule/2024/home.htm",
+      "https://www.bls.gov/schedule/2025/home.htm"
+    ],
+    "event_types": [
+      "Consumer Price Index",
+      "Employment Situation"
+    ],
+    "release_time_required": "08:30 AM America/New_York",
+    "start_date_inclusive": "2021-01-01",
+    "end_date_inclusive": "2025-08-31",
+    "expected_events_per_type": 56,
+    "expected_total_events": 112,
+    "selection_rule": "Select only official calendar rows whose release name begins exactly with Consumer Price Index or Employment Situation and whose listed time is 08:30 AM; no outcome-based exclusions.",
+    "schedule_manifest_must_be_persisted": true,
+    "no_2026": true
+  },
+  "market_data": {
+    "source": "OFFICIAL_BINANCE_PUBLIC_DATA_ONLY",
+    "market_type": "SPOT",
+    "symbols": [
+      "BTCUSDT",
+      "ETHUSDT"
+    ],
+    "timeframe": "1m",
+    "archive_granularity": "DAILY_ZIP_FILES",
+    "checksum_required": true,
+    "timestamp_policy": "Normalize official Binance Spot timestamps to milliseconds; 2025+ public files may use microseconds.",
+    "holdout_2026": "LOCKED_NOT_ACCESSED"
+  },
+  "windows_minutes": {
+    "pre": [
+      -60,
+      -15,
+      -5
+    ],
+    "post_from_release": [
+      5,
+      15,
+      30,
+      60,
+      120
+    ],
+    "incremental_future": [
+      [
+        5,
+        15
+      ],
+      [
+        15,
+        60
+      ],
+      [
+        15,
+        120
+      ]
+    ]
+  },
+  "primary_outputs": [
+    "signed_return_each_post_window",
+    "absolute_return_each_post_window",
+    "incremental_return_5_to_15",
+    "incremental_return_15_to_60",
+    "incremental_return_15_to_120",
+    "direction_each_post_window",
+    "pre_event_returns",
+    "event_volume_ratio_vs_prior_four_same_weekday_time_controls",
+    "event_trade_count_ratio_vs_controls",
+    "event_taker_flow_imbalance",
+    "flow_direction_alignment_first5_and_first15",
+    "initial_5m_direction_continuation_5_to_15",
+    "initial_15m_direction_continuation_15_to_60",
+    "initial_15m_direction_continuation_15_to_120",
+    "reversal_5m_vs_60m",
+    "reversal_15m_vs_120m"
+  ],
+  "control_contract": {
+    "matched_control_days": "same weekday at same New York clock time, 7/14/21/28 days before event",
+    "exclude_any_control_that_is_any_CPI_or_Employment_Situation_event_in_manifest": true,
+    "minimum_valid_controls": 3,
+    "no_parameter_search": true
+  },
+  "interpretation": {
+    "classification_authority": "NONE_DIAGNOSTIC_ONLY",
+    "may_create_future_hypothesis": true,
+    "may_authorize_trading": false,
+    "may_define_directional_rule_from_this_run": false,
+    "no_best_event_type_or_window_cherry_pick": true,
+    "positive_result_wording": "historical replication evidence only",
+    "negative_result_wording": "no stable cross-event historical structure found under frozen diagnostics"
+  },
+  "governance": {
+    "no_live_trading": true,
+    "no_exchange_mutation": true,
+    "no_main_merge": true,
+    "no_render_deploy": true,
+    "no_2026": true,
+    "mexc_2025_09_through_2025_12_untouched": true
+  },
+  "fingerprint": "55bba04ab42e1c457427a9ba87231c6ff4df52e9f0e083e320700618c38b2f70"
+}

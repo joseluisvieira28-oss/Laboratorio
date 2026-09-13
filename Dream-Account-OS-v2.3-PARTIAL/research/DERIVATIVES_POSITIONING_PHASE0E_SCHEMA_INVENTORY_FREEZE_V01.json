@@ -1,0 +1,67 @@
+{
+  "document_type": "DERIVATIVES_POSITIONING_PHASE0E_SCHEMA_INVENTORY_FREEZE",
+  "version": "0.1",
+  "status": "FROZEN_PRE_LOCAL_SCHEMA_ACCESS",
+  "purpose": "Inventory only file identity, header/schema structure, asset/date coverage and timestamp-field presence for the Derivatives Positioning corpus before any semantic mapping or outcome computation.",
+  "information_family": "DERIVATIVES_POSITIONING_STATE",
+  "economic_mechanism_id": "DP_UNASSIGNED_PRE_SEMANTIC_GATE",
+  "input_root_default": "C:/Users/José/Desktop/DERIVATIVES_POSITIONING_DATA_V0.1",
+  "allowed_assets": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "DOGEUSDT"],
+  "allowed_window": {
+    "start_inclusive": "2021-12-01",
+    "end_exclusive": "2025-01-01"
+  },
+  "forbidden_data": {
+    "2025": true,
+    "2026": true,
+    "outcomes": true,
+    "returns": true,
+    "pnl": true,
+    "profitability": true,
+    "threshold_selection": true,
+    "signal_ranking": true,
+    "parameter_optimization": true
+  },
+  "allowed_operations": [
+    "recursive file listing",
+    "asset and date inference from relative path/file name",
+    "file extension counting",
+    "read CSV/CSV.GZ header row only for in-window files with identifiable asset and date",
+    "header SHA256",
+    "schema variant counting",
+    "column-name inventory",
+    "timestamp-field-name presence checks",
+    "file-size and file-count metadata",
+    "machine-readable receipt generation"
+  ],
+  "explicitly_forbidden_operations": [
+    "read data rows beyond the header",
+    "compute or print signal values",
+    "compute crypto returns",
+    "compute future outcomes",
+    "compute correlations with price outcomes",
+    "choose or rank fields by predictive performance",
+    "open any file whose inferred date is 2025 or 2026",
+    "open any candidate data file whose date cannot be identified from its path",
+    "interpolate missing observations",
+    "merge to main",
+    "live trading",
+    "exchange mutation"
+  ],
+  "phase0d_binding": {
+    "required_status": "DP_PHASE0D_PASS_WITH_DETERMINISTIC_DEDUPE",
+    "canonical_normalization": "sort by create_time; identical duplicate create_time rows may keep first; never interpolate missing 5m slots; construct decision windows only with every required native 5m observation present"
+  },
+  "pass_contract": {
+    "all_six_assets_present": true,
+    "at_least_one_in_window_file_per_asset": true,
+    "zero_in_window_candidate_files_with_unknown_asset": true,
+    "zero_opened_2025_files": true,
+    "zero_opened_2026_files": true,
+    "zero_data_rows_read": true,
+    "all_opened_files_have_nonempty_header": true,
+    "receipt_outcomes_calculated": false
+  },
+  "next_gate_if_pass": "PHASE0F_FIELD_SEMANTIC_AND_UNIT_FREEZE_PRE_OUTCOME",
+  "next_gate_if_fail": "TECHNICAL_OR_DATA_REMEDIATION_ONLY_NO_OUTCOMES"
+}

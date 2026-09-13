@@ -1,0 +1,84 @@
+{
+  "document_type": "PHASE_B_DISCOVERY_WINDOW_AMENDMENT",
+  "version": "0.1",
+  "status": "FROZEN_BEFORE_FIRST_P00_OUTCOME_EVALUATION",
+  "created_utc": "2026-09-11",
+  "authority_boundary": {
+    "research_only": true,
+    "p00_discovery_evaluation_authorized_after_preflight": true,
+    "validation_2025_access_authorized": false,
+    "holdout_2026_access_authorized": false,
+    "live_integration_authorized": false,
+    "exchange_network_access_authorized": false,
+    "exchange_mutation_authorized": false,
+    "main_merge_authorized": false,
+    "render_deploy_authorized": false
+  },
+  "reason_for_amendment": {
+    "original_discovery": "2022-01-01T00:00:00Z through 2024-12-31T23:59:59Z",
+    "official_mexc_documentation": "MEXC Spot historical market-data documentation states downloadable Spot kline/trading data are available since 01-01-2023.",
+    "observed_bulk_availability": "For every frozen symbol, the first visible official MEXC 15m monthly bulk file is the 2023-02 partition.",
+    "cross_exchange_backfill": "FORBIDDEN",
+    "outcome_inspection_before_amendment": false,
+    "rule": "The boundary is amended prospectively because the originally frozen 2022 source window cannot be supplied by the authorized official MEXC bulk source and no alternate exchange may be used."
+  },
+  "frozen_universe": [
+    "BTCUSDT",
+    "ETHUSDT",
+    "SOLUSDT",
+    "BNBUSDT",
+    "XRPUSDT",
+    "DOGEUSDT"
+  ],
+  "source_contract": {
+    "exchange": "MEXC",
+    "market_type": "SPOT",
+    "timeframe": "15m",
+    "raw_source": "OFFICIAL_MEXC_MONTHLY_BULK_CSV_ONLY",
+    "source_partition_timezone": "UTC+08:00",
+    "source_partition_start_month": "2023-02",
+    "source_partition_end_month": "2024-12",
+    "expected_partition_count_per_symbol": 23,
+    "canonical_time_basis": "UTC",
+    "interpolation_allowed": false,
+    "valid_gap_policy": "REPORT_SPLIT_NEVER_INTERPOLATE",
+    "cross_exchange_backfill_allowed": false
+  },
+  "effective_discovery_window": {
+    "start_utc_inclusive": "2023-02-01T00:00:00.000Z",
+    "end_utc_exclusive": "2024-12-31T16:00:00.000Z",
+    "rationale_start": "The MEXC 2023-02 provider partition starts at 2023-01-31T16:00:00Z because provider month labels use UTC+08:00. The first 32 fifteen-minute candles are outside the amended UTC Discovery window and MUST be excluded before P00 evaluation.",
+    "rationale_end": "The MEXC 2024-12 provider partition ends at 2024-12-31T16:00:00Z. The remaining 8 UTC hours of calendar 2024 belong to provider partition 2025-01. Reading that partition before Discovery SURVIVES would violate the physical 2025 validation lock, so those hours are prospectively excluded.",
+    "first_partition_leading_candles_excluded_per_symbol": 32,
+    "2025_partition_read_required": false,
+    "boundary_extension_after_outcomes_allowed": false
+  },
+  "preflight_requirements": {
+    "all_six_symbols_required": true,
+    "all_23_partitions_per_symbol_required": true,
+    "allowed_corpus_statuses": [
+      "PASS_CORPUS_AUDIT_ONLY",
+      "PASS_CORPUS_AUDIT_ONLY_WITH_GAPS"
+    ],
+    "raw_to_canonical_provenance_required": true,
+    "valid_gaps_must_be_split": true,
+    "setup_may_span_gap": false,
+    "p00_parameters_must_equal_pre_data_freeze": true,
+    "base_cost_scenario": "BASE_SENSITIVITY",
+    "stress_cost_scenario": "STRESS",
+    "bootstrap_repetitions": 5000,
+    "bootstrap_seed": 230911,
+    "bootstrap_confidence": 0.95,
+    "classifier": "INSUFFICIENT_SAMPLE_OR_NO_EDGE_OR_SURVIVES",
+    "network_access": false,
+    "exchange_mutation": false
+  },
+  "anti_peek": {
+    "2025_validation": "LOCKED_UNTIL_UNCHANGED_P00_DISCOVERY_SURVIVES",
+    "2026_holdout": "LOCKED_UNTIL_UNCHANGED_P00_PASSES_DISCOVERY_AND_VALIDATION_AND_SEPARATE_UNLOCK",
+    "p00_sensitivity_may_replace_primary": false,
+    "opportunistic_sample_extension_after_outcomes": false,
+    "parameter_change_after_outcomes": false
+  },
+  "final_rule": "After this amendment and a green six-symbol preflight, one offline P00_PRIMARY Discovery outcome run is authorized over the exact effective UTC window above. The run may classify Discovery only. It may not read 2025/2026, submit orders, mutate an exchange, authorize live trading, merge to main, or deploy to Render."
+}

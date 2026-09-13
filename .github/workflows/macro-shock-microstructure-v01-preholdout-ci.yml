@@ -1,0 +1,98 @@
+name: Macro Shock Microstructure V0.1 Pre-Holdout CI
+
+on:
+  push:
+    branches:
+      - dream-account-phase-b-signal-research-v0.1
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/macro_shock_microstructure_lab_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_macro_shock_microstructure_lab_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/MACRO_SHOCK_MICROSTRUCTURE_LAB_V01_PROSPECTIVE_RESEARCH_CONTRACT.json'
+      - '.github/workflows/macro-shock-microstructure-v01-preholdout-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  preholdout-synthetic-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Compile frozen implementation
+        run: |
+          python -m py_compile Dream-Account-OS-v2.3-PARTIAL/research/macro_shock_microstructure_lab_v01.py
+
+      - name: Run synthetic/unit regression suite
+        run: |
+          python Dream-Account-OS-v2.3-PARTIAL/tests/test_macro_shock_microstructure_lab_v01.py -v
+
+      - name: Fail-closed network and exchange mutation guard
+        run: |
+          python - <<'PY'
+          import ast
+          from pathlib import Path
+
+          p = Path('Dream-Account-OS-v2.3-PARTIAL/research/macro_shock_microstructure_lab_v01.py')
+          text = p.read_text(encoding='utf-8')
+          tree = ast.parse(text)
+          banned_import_roots = {
+              'requests', 'urllib', 'httpx', 'aiohttp', 'websocket', 'websockets',
+              'ccxt', 'binance', 'mexc', 'socket'
+          }
+          for node in ast.walk(tree):
+              if isinstance(node, ast.Import):
+                  for alias in node.names:
+                      root = alias.name.split('.')[0]
+                      assert root not in banned_import_roots, f'banned network/exchange import: {alias.name}'
+              if isinstance(node, ast.ImportFrom) and node.module:
+                  root = node.module.split('.')[0]
+                  assert root not in banned_import_roots, f'banned network/exchange import: {node.module}'
+
+          lower = text.lower()
+          banned_tokens = [
+              'api.binance.com', 'fapi.binance.com', 'mexc.com',
+              'create_order', 'place_order', 'cancel_order',
+              'requests.get', 'requests.post', 'urllib.request',
+          ]
+          for token in banned_tokens:
+              assert token not in lower, f'banned token present: {token}'
+          print('PASS: implementation core is offline and contains no exchange mutation path')
+          PY
+
+      - name: Verify frozen contract and pre-holdout governance
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          contract_path = Path('Dream-Account-OS-v2.3-PARTIAL/research/MACRO_SHOCK_MICROSTRUCTURE_LAB_V01_PROSPECTIVE_RESEARCH_CONTRACT.json')
+          c = json.loads(contract_path.read_text(encoding='utf-8'))
+
+          assert c['status'] == 'FROZEN_PRE_HOLDOUT'
+          assert c['single_primary_hypothesis']['id'] == 'MSM_H01_FLOW_PERSISTENCE_CONTINUATION'
+          assert c['scope']['assets'] == ['BTCUSDT', 'ETHUSDT']
+          assert c['scope']['event_families'] == ['US_CPI', 'US_NFP', 'US_FOMC']
+          assert c['frozen_windows']['flow_window_1'] == '0_to_5_minutes_post_release'
+          assert c['frozen_windows']['flow_window_2'] == '5_to_15_minutes_post_release'
+          assert c['frozen_windows']['outcome_window'] == '15_to_30_minutes_post_release'
+          assert c['flow_definition']['magnitude_threshold'] == 'NONE'
+          assert c['primary_statistic']['bootstrap_repetitions'] == 5000
+          assert c['minimum_sample_contract']['minimum_resolved_event_symbol_cases_with_persistent_flow'] == 30
+          assert c['minimum_sample_contract']['minimum_distinct_macro_event_dates'] == 20
+          assert c['governance']['holdout_2026_accessed'] is False
+          assert c['governance']['mexc_2025_09_through_2025_12_accessed'] is False
+          assert c['governance']['live_trading_authorized'] is False
+          assert c['governance']['exchange_mutation_authorized'] is False
+          assert c['next_gate'] == 'PRE_HOLDOUT_IMPLEMENTATION_AND_SYNTHETIC_TESTS_ONLY'
+          assert c['stop_condition'] == 'STOP_BEFORE_2026_OUTCOMES_UNTIL_SEPARATE_EXPLICIT_HOLDOUT_UNLOCK'
+          print('PASS: frozen scientific contract unchanged; 2026 remains locked')
+          PY

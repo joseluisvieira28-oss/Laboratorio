@@ -1,0 +1,171 @@
+{
+  "document_type": "PHASE_B_OFFLINE_DATA_INGEST_FREEZE",
+  "version": "0.1",
+  "status": "FROZEN_BEFORE_FIRST_REAL_DATA_INGEST",
+  "authority_boundary": {
+    "research_only": true,
+    "phase_a_unchanged": true,
+    "p00_outcome_evaluation_authorized_by_this_contract": false,
+    "live_integration_authorized": false,
+    "exchange_network_access_authorized": false,
+    "exchange_mutation_authorized": false,
+    "main_merge_authorized": false,
+    "render_deploy_authorized": false
+  },
+  "source_policy": {
+    "exchange": "MEXC",
+    "market_type": "SPOT",
+    "authority": "OFFICIAL_MEXC_SOURCE_ONLY",
+    "cross_exchange_backfill_allowed": false,
+    "synthetic_history_allowed": false,
+    "interpolation_allowed": false,
+    "raw_source_format_assumption": "NONE",
+    "raw_mexc_adapter_status": "NOT_FROZEN_PENDING_REAL_OFFICIAL_SAMPLE",
+    "unknown_raw_schema_action": "BLOCKED_UNKNOWN_SCHEMA"
+  },
+  "canonical_schema": {
+    "schema_id": "CANONICAL_KLINE_CSV_V0.1",
+    "adapter_id_currently_allowed": "IDENTITY_CANONICAL_KLINE_CSV_V0.1",
+    "header_exact": [
+      "open_time_ms",
+      "open",
+      "high",
+      "low",
+      "close",
+      "volume",
+      "close_time_ms"
+    ],
+    "timestamp_unit": "UNIX_MILLISECONDS",
+    "timezone": "UTC",
+    "timeframe": "15m",
+    "timeframe_ms": 900000,
+    "close_time_rule": "close_time_ms = open_time_ms + 899999",
+    "open_time_alignment_rule": "open_time_ms mod 900000 = 0",
+    "numeric_rules": {
+      "finite_only": true,
+      "open_high_low_close_strictly_positive": true,
+      "volume_nonnegative": true,
+      "high_gte_max_open_close": true,
+      "low_lte_min_open_close": true,
+      "high_gte_low": true
+    }
+  },
+  "sidecar_metadata_required": {
+    "schema_version": "PHASE_B_DATASET_SIDECAR_V0.1",
+    "required_fields": [
+      "schema_version",
+      "source_exchange",
+      "market_type",
+      "source_authority",
+      "stage",
+      "symbol",
+      "timeframe",
+      "declared_start_utc",
+      "declared_end_utc",
+      "raw_source_filename",
+      "raw_source_sha256",
+      "canonical_schema",
+      "adapter_id"
+    ],
+    "source_exchange": "MEXC",
+    "market_type": "SPOT",
+    "source_authority": "OFFICIAL_MEXC_SOURCE_ONLY",
+    "canonical_schema": "CANONICAL_KLINE_CSV_V0.1"
+  },
+  "stage_lock": {
+    "currently_unlocked_stage": "DISCOVERY",
+    "discovery_start_utc": "2022-01-01T00:00:00Z",
+    "discovery_end_utc": "2024-12-31T23:59:59.999Z",
+    "validation_2025_status": "PHYSICALLY_LOCKED_BEFORE_MARKET_DATA_FILE_OPEN_UNTIL_P00_DISCOVERY_SURVIVES",
+    "holdout_2026_status": "PHYSICALLY_LOCKED_BEFORE_MARKET_DATA_FILE_OPEN_UNTIL_SEPARATE_EXPLICIT_UNLOCK",
+    "forbidden_stage_action": "BLOCK_METADATA_BEFORE_READING_MARKET_DATA_BYTES",
+    "mislabeled_forbidden_timestamp_action": "BLOCK_DATASET_AND_RETURN_NO_CANDLES"
+  },
+  "discovery_universe": {
+    "timeframe": "15m",
+    "symbols": [
+      "BTCUSDT",
+      "ETHUSDT",
+      "SOLUSDT",
+      "BNBUSDT",
+      "XRPUSDT",
+      "DOGEUSDT"
+    ]
+  },
+  "integrity_audit": {
+    "sha256_required": true,
+    "strict_header_required": true,
+    "strictly_increasing_open_time_required": true,
+    "duplicate_open_times_allowed": false,
+    "out_of_order_rows_allowed": false,
+    "malformed_rows_allowed": false,
+    "ohlc_violations_allowed": false,
+    "timestamp_alignment_violations_allowed": false,
+    "close_time_violations_allowed": false,
+    "declared_range_violations_allowed": false,
+    "stage_boundary_violations_allowed": false,
+    "irregular_interval_spacing_allowed": false,
+    "irregular_interval_action": "BLOCKED_DATA_INTEGRITY:IRREGULAR_INTERVAL_SPACING",
+    "valid_gap_definition": "positive open-time delta greater than 900000 ms and exactly divisible by 900000 ms",
+    "gaps_allowed": true,
+    "gap_handling": "REPORT_AND_SPLIT_LATER_NEVER_INTERPOLATE",
+    "empty_dataset_action": "BLOCKED_EMPTY_DATASET"
+  },
+  "schema_probe": {
+    "status": "AUTHORIZED_STRUCTURE_ONLY_BEFORE_ADAPTER_FREEZE",
+    "purpose": "Identify raw container/header shape without exposing market values or evaluating outcomes.",
+    "sha256_required": true,
+    "plain_csv_header_probe_allowed": true,
+    "plain_csv_first_data_row_field_count_allowed": true,
+    "plain_csv_first_data_row_values_may_be_returned": false,
+    "zip_central_directory_listing_allowed": true,
+    "zip_text_entry_header_probe_allowed": true,
+    "zip_text_entry_first_data_row_field_count_allowed": true,
+    "zip_text_entry_market_values_may_be_returned": false,
+    "json_top_level_shape_probe_allowed": true,
+    "json_market_values_may_be_returned": false,
+    "max_header_line_bytes": 65536,
+    "max_zip_entries_reported": 100,
+    "max_zip_text_entries_probed": 10,
+    "max_zip_entry_uncompressed_bytes_for_header_probe": 10485760,
+    "max_zip_entry_count": 10000,
+    "max_zip_total_uncompressed_bytes": 536870912,
+    "max_zip_compression_ratio": 200.0,
+    "path_traversal_entries_blocked": true,
+    "encrypted_zip_entries_blocked": true,
+    "symlink_zip_entries_blocked": true,
+    "duplicate_zip_entry_names_blocked": true,
+    "archive_safety_failure_prevents_member_reads": true,
+    "adapter_activation_from_probe_alone": false,
+    "p00_evaluation_allowed": false
+  },
+  "determinism": {
+    "canonical_json": "UTF8_SORT_KEYS_COMPACT_SEPARATORS",
+    "dataset_manifest_fingerprint": "SHA256_CANONICAL_JSON_EXCLUDING_SELF_FINGERPRINT",
+    "raw_file_fingerprint": "SHA256_RAW_BYTES",
+    "canonical_file_fingerprint": "SHA256_RAW_BYTES",
+    "timestamps_rendered": "UTC_ISO8601_Z"
+  },
+  "archive_probe": {
+    "zip_contents_are_not_promoted_to_CANONICAL_without_validated_adapter": true,
+    "path_traversal_entries_blocked": true,
+    "symlink_entries_blocked": true,
+    "duplicate_entry_names_blocked": true,
+    "archive_entry_names_may_be_listed_for_schema_probe": true,
+    "header_only_text_probe_allowed_under_schema_probe_limits": true,
+    "archive_member_bytes_must_not_be_opened_after_archive_level_safety_failure": true,
+    "archive_market_value_interpretation_before_adapter_freeze": false
+  },
+  "mexc_2022_availability": {
+    "status": "UNRESOLVED",
+    "rule": "Do not cross-exchange backfill. If official MEXC Spot 2022 data cannot be obtained, amend the discovery boundary prospectively before the first P00 outcome evaluation and document the reason."
+  },
+  "handoff_rule": {
+    "candles_may_be_returned_to_research_code_only_when_audit_status": [
+      "PASS",
+      "PASS_WITH_GAPS"
+    ],
+    "p00_evaluator_wiring_in_this_release": false,
+    "first_real_file_action": "FINGERPRINT_AND_STRUCTURE_ONLY_SCHEMA_PROBE_UNLESS_ALREADY_CANONICAL"
+  }
+}
