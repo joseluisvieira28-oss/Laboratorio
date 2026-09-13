@@ -1,0 +1,48 @@
+name: Classic Indicators Gap Lab V0.1 - Stochastic
+
+on:
+  push:
+    branches: [classic-indicators-gap-lab-v0.1]
+permissions:
+  contents: read
+env:
+  PYTHONUNBUFFERED: "1"
+jobs:
+  cigl-stoch-01:
+    if: contains(github.event.head_commit.message, '[CIGL STOCH RUN]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    defaults:
+      run:
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+    steps:
+      - name: Checkout frozen research branch
+        uses: actions/checkout@v4
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: Dream-Account-OS-v2.3-PARTIAL/pyproject.toml
+      - name: Install isolated research dependencies
+        run: python -m pip install --upgrade pip pandas numpy
+      - name: Compile frozen Stochastic research code
+        run: |
+          python -m py_compile research/classic_indicators_gap_v01.py
+          python -m py_compile research/classic_indicators_gap_vwap_data_vision_v01.py
+          python -m py_compile research/classic_indicators_gap_stoch_v01.py
+      - name: Run deterministic pre-market Stochastic self-test
+        run: python research/classic_indicators_gap_stoch_v01.py --freeze research/CIGL_STOCH_01_IMPLEMENTATION_FREEZE.json --self-test
+      - name: Execute CIGL-STOCH-01 with phase firewall
+        run: |
+          rm -rf research/local_data/cigl_stoch_v01_output
+          mkdir -p research/local_data/cigl_stoch_v01_output
+          python research/classic_indicators_gap_stoch_v01.py --freeze research/CIGL_STOCH_01_IMPLEMENTATION_FREEZE.json --out research/local_data/cigl_stoch_v01_output 2>&1 | tee research/local_data/cigl_stoch_v01_output/CIGL_STOCH_01_STDOUT.txt
+      - name: Upload immutable research outputs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CIGL-STOCH-01-${{ github.sha }}
+          path: Dream-Account-OS-v2.3-PARTIAL/research/local_data/cigl_stoch_v01_output/
+          if-no-files-found: warn
+          retention-days: 30
