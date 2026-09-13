@@ -1,0 +1,70 @@
+name: OPTIONS-SPOTPERP-001 Source Probe V0.1
+
+on:
+  push:
+    branches:
+      - options-spotperp-source-audit-action-v01
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  source-probe-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        shell: bash
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1
+    steps:
+      - name: Checkout exact source-audit implementation
+        uses: actions/checkout@v4
+        with:
+          ref: 438a083785505b6e19ad7502ef41a33c611ec682
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Governance guard
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = '438a083785505b6e19ad7502ef41a33c611ec682'
+          test "$(git hash-object source_audit.py)" = 'a611f9cf0e5afb450ea58eb1284da0122779290e'
+          echo 'SOURCE PROBE ONLY | NO skew | NO forward returns | NO PnL | NO 2025/2026'
+
+      - name: Run 3-day connectivity and schema probe
+        run: |
+          set +e
+          python source_audit.py --probe-days 3 --output source_audit_probe | tee source_probe.log
+          rc=${PIPESTATUS[0]}
+          set -e
+          test "$rc" -eq 4
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('source_audit_probe/source_audit_report.json')
+          assert p.exists()
+          r=json.loads(p.read_text())
+          assert r['status']=='PROBE_ONLY_NO_DECISION'
+          assert r['outcome_metrics_computed'] is False
+          assert r['holdout_accessed'] is False
+          assert r['locked_2026_accessed'] is False
+          print('SOURCE_PROBE_PASS_NO_DECISION')
+          PY
+
+      - name: Upload probe evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: options-spotperp-001-source-probe-v01
+          path: |
+            Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1/source_audit_probe/source_audit_report.json
+            Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1/source_audit_probe/source_manifest.json
+            Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1/source_audit_probe/raw/*.json.gz
+            Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1/source_probe.log
+          if-no-files-found: warn
+          retention-days: 30
