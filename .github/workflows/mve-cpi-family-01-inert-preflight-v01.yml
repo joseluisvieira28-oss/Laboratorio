@@ -1,0 +1,44 @@
+name: MVE CPI Family 01 — Inert Preflight V0.1
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inert-preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact prep branch
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Assert active protected-data authorization is absent
+        shell: bash
+        run: |
+          test ! -f Dream-Account-OS-v2.3-PARTIAL/research/MVE_CPI_FAMILY_01_DATA_ACCESS_AUTHORIZATION_V01.json
+
+      - name: Install test dependency only
+        run: python -m pip install --disable-pip-version-check pytest
+
+      - name: Compile validation runner
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          python -m py_compile research/mve_cpi_family_01_validation_runner_v01.py
+
+      - name: Run inert unit guards only
+        run: |
+          cd Dream-Account-OS-v2.3-PARTIAL
+          pytest -q tests/test_mve_cpi_family_01_validation_runner_v01.py
+
+      - name: Governance assertion
+        shell: bash
+        run: |
+          echo 'PASS means code/guards compile without protected outcome access.'
+          echo 'This workflow does not authorize or execute 2025 market-data acquisition.'
