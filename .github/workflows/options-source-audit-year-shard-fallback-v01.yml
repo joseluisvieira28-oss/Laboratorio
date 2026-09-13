@@ -1,0 +1,200 @@
+name: OPTIONS-SPOTPERP-001 Year-Shard Source Audit Fallback V0.1
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  acquire-year:
+    strategy:
+      fail-fast: false
+      matrix:
+        year: [2021, 2022, 2023, 2024]
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - name: Checkout isolated Options branch
+        uses: actions/checkout@v4
+
+      - name: Outcome-blind shard preflight
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1
+        run: |
+          python3 preflight_source_audit.py
+          python3 -m py_compile source_audit.py source_audit_year_shard_v01.py
+          echo "YEAR=${{ matrix.year }}"
+          echo 'NO SKEW / NO RETURNS / NO PNL / 2025+ FAIL-CLOSED'
+
+      - name: Acquire frozen year shard
+        id: shard
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1
+        shell: bash
+        run: |
+          set +e
+          python3 source_audit_year_shard_v01.py --year ${{ matrix.year }} --output year_${{ matrix.year }}
+          rc=$?
+          set -e
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          # A year shard may return 2 because the global >=500-day rule is not
+          # evaluated per shard. Raw completeness is validated independently next.
+          test "$rc" -eq 0 -o "$rc" -eq 2
+
+      - name: Validate shard raw completeness only
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          y='${{ matrix.year }}'
+          root=Path('year_'+y)
+          m=json.loads((root/'source_manifest.json').read_text())
+          r=json.loads((root/'source_audit_report.json').read_text())
+          assert m['probe_mode'] is False
+          assert m['source_fetch_complete'] is True
+          assert m['holdout_accessed'] is False
+          assert m['locked_2026_accessed'] is False
+          assert r['outcome_metrics_computed'] is False
+          assert r['audit']['skew_values_computed'] is False
+          assert r['audit']['forward_returns_computed'] is False
+          assert r['audit']['pnl_computed'] is False
+          print('YEAR_SHARD_RAW_COMPLETE=',y)
+          print('RAW_PAGES=',len(m['raw_pages']))
+          print('TOTAL_TRADES=',r['audit']['total_trades'])
+          PY
+
+      - name: Upload immutable year shard
+        uses: actions/upload-artifact@v4
+        with:
+          name: options-spotperp-year-${{ matrix.year }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1/year_${{ matrix.year }}/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+
+  merge-and-gate:
+    needs: acquire-year
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - name: Checkout latest isolated Options branch
+        uses: actions/checkout@v4
+
+      - name: Latest outcome-blind gate preflight
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1
+        run: |
+          python3 preflight_source_audit.py
+          python3 -m py_compile \
+            merge_source_audit_year_shards_v01.py \
+            source_gate_required_field_guard_v01.py \
+            source_gate_calendar_day_reconciler_v01.py
+          python3 test_source_gate_required_field_guard_v01.py
+          python3 test_source_gate_calendar_day_reconciler_v01.py
+
+      - name: Download 2021 shard
+        uses: actions/download-artifact@v4
+        with:
+          name: options-spotperp-year-2021-${{ github.run_id }}-${{ github.run_attempt }}
+          path: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1/year_shards/2021
+      - name: Download 2022 shard
+        uses: actions/download-artifact@v4
+        with:
+          name: options-spotperp-year-2022-${{ github.run_id }}-${{ github.run_attempt }}
+          path: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1/year_shards/2022
+      - name: Download 2023 shard
+        uses: actions/download-artifact@v4
+        with:
+          name: options-spotperp-year-2023-${{ github.run_id }}-${{ github.run_attempt }}
+          path: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1/year_shards/2023
+      - name: Download 2024 shard
+        uses: actions/download-artifact@v4
+        with:
+          name: options-spotperp-year-2024-${{ github.run_id }}-${{ github.run_attempt }}
+          path: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1/year_shards/2024
+
+      - name: Merge immutable non-overlapping shards
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1
+        run: |
+          python3 merge_source_audit_year_shards_v01.py --shards-root year_shards --output source_audit_data
+
+      - name: Required-field presence guard
+        id: fields
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1
+        shell: bash
+        run: |
+          set +e
+          python3 source_gate_required_field_guard_v01.py --input source_audit_data
+          rc=$?
+          set -e
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          test "$rc" -eq 0 -o "$rc" -eq 2
+
+      - name: Latest canonical calendar-day global Source/Data Gate
+        id: canonical
+        if: steps.fields.outputs.rc == '0'
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1
+        shell: bash
+        run: |
+          set +e
+          python3 source_gate_calendar_day_reconciler_v01.py --input source_audit_data
+          rc=$?
+          set -e
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          test "$rc" -eq 0 -o "$rc" -eq 2 -o "$rc" -eq 12
+
+      - name: Validate global protected-period firewall
+        if: always()
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('source_audit_data')
+          m=json.loads((root/'source_manifest.json').read_text())
+          assert m['holdout_accessed'] is False and m['locked_2026_accessed'] is False
+          assert m['requested_period']=={'start':'2021-04-01T00:00:00+00:00','end_exclusive':'2025-01-01T00:00:00+00:00'}
+          if (root/'source_gate_calendar_day_reconciled_receipt.json').exists():
+              x=json.loads((root/'source_gate_calendar_day_reconciled_receipt.json').read_text())
+              assert x['holdout_2025_accessed'] is False and x['year_2026_accessed'] is False
+              assert x['skew_values_computed'] is False and x['forward_returns_computed'] is False and x['pnl_computed'] is False
+              print('GLOBAL_SOURCE_STATUS=',x['status'])
+              print('VALID_DAYS=',(x.get('calendar_day_coverage_audit') or {}).get('valid_signal_coverage_days'))
+          print('2025 UNOPENED / 2026 LOCKED / NO DISCOVERY')
+          PY
+
+      - name: Upload fallback global source-gate package
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: options-spotperp-001-year-shard-global-gate-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1/source_audit_data/source_manifest.json
+            Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1/source_audit_data/source_audit_report.json
+            Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1/source_audit_data/source_year_shard_merge_receipt.json
+            Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1/source_audit_data/source_gate_required_field_guard_receipt.json
+            Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1/source_audit_data/source_gate_calendar_day_reconciled_receipt.json
+            Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1/source_audit_data/source_gate_calendar_day_daily_coverage.json
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Governance receipt
+        if: always()
+        run: |
+          echo 'FALLBACK SOURCE/DATA AUDIT ONLY'
+          echo 'YEAR SHARDS ARE NON-OVERLAPPING FROZEN SOURCE WINDOWS'
+          echo 'NO DISCOVERY / NO SKEW / NO RETURNS / NO PNL'
+          echo '2025 LOCKED / 2026 LOCKED / NO LIVE TRADING'
+
+      - name: Enforce classified global state
+        if: always()
+        env:
+          FIELD_RC: ${{ steps.fields.outputs.rc }}
+          CANONICAL_RC: ${{ steps.canonical.outputs.rc }}
+        run: |
+          if [ "$FIELD_RC" = "2" ]; then exit 2; fi
+          case "$CANONICAL_RC" in
+            0) exit 0 ;;
+            2) exit 2 ;;
+            12) exit 12 ;;
+            *) exit 99 ;;
+          esac
