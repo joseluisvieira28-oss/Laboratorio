@@ -1,0 +1,25 @@
+name: OPS — Cancel Duplicate OPTIONS Monthly Run
+
+on:
+  push:
+    branches:
+      - ops-dispatch-options-20260913
+    paths:
+      - '.github/workflows/ops-cancel-duplicate-options-monthly.yml'
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  cancel-duplicate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cancel non-canonical duplicate only
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh api --method POST repos/joseluisvieira28-oss/Laboratorio/actions/runs/34778928091/cancel
+          echo 'CANCEL_REQUEST_SENT_FOR_DUPLICATE_RUN=34778928091'
+          echo 'CANONICAL_MONTHLY_RUN_REMAINS=34778911131'
