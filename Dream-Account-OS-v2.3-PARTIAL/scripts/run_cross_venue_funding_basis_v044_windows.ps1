@@ -20,8 +20,9 @@ $AppRoot = Split-Path -Parent $PSScriptRoot
 $Probe = Join-Path $AppRoot 'research\cross_venue_funding_basis_hl_asset_ctx_v044.py'
 $Authority = Join-Path $AppRoot 'research\CROSS_VENUE_FUNDING_BASIS_HL_ASSET_CTX_PROVENANCE_V044.json'
 $Ledger = Join-Path $AppRoot 'research\CROSS_VENUE_FUNDING_BASIS_DATASET_EXPOSURE_LEDGER_V01.json'
+$Incident = Join-Path $AppRoot 'research\CROSS_VENUE_FUNDING_BASIS_V044_CONTROL_FLOW_INCIDENT_V01.json'
 
-foreach ($P in @($Probe,$Authority,$Ledger)) {
+foreach ($P in @($Probe,$Authority,$Ledger,$Incident)) {
     if (-not (Test-Path -LiteralPath $P)) { throw "FAIL-CLOSED: missing required file: $P" }
 }
 
@@ -30,6 +31,9 @@ $RawDir = Join-Path $WorkDir 'raw_transient'
 $DailyDir = Join-Path $WorkDir 'daily_receipts'
 $FinalDir = Join-Path $WorkDir 'final_receipts'
 New-Item -ItemType Directory -Force -Path $RawDir,$DailyDir,$FinalDir | Out-Null
+
+$SemanticReceipt = Join-Path $FinalDir 'CROSS_VENUE_FUNDING_BASIS_V044_STAGE_A_SEMANTICS_RECEIPT.json'
+$CoverageReceipt = Join-Path $FinalDir 'CROSS_VENUE_FUNDING_BASIS_V044_STAGE_B_COVERAGE_RECEIPT.json'
 
 if (-not (Get-Command aws -ErrorAction SilentlyContinue)) { throw 'FAIL-CLOSED: AWS CLI not found.' }
 
@@ -43,7 +47,7 @@ if (Get-Command py -ErrorAction SilentlyContinue) {
     throw 'FAIL-CLOSED: Python 3 not found.'
 }
 
-& $PythonExe @PythonPrefix -c 'import lz4.frame' 2>$null
+& $PythonExe @PythonPrefix -c 'import lz4.frame' 2>$null | Out-Null
 if ($LASTEXITCODE -ne 0) { throw 'FAIL-CLOSED: Python package lz4 missing. Run: py -3 -m pip install lz4' }
 
 # Harmless read-only credential check. No bucket listing is performed.
@@ -71,13 +75,13 @@ function Invoke-DayProbe {
     $AwsExit = $LASTEXITCODE
     if ($AwsExit -ne 0 -or -not (Test-Path -LiteralPath $Raw)) {
         if (Test-Path -LiteralPath $Raw) { Remove-Item -Force -LiteralPath $Raw }
-        & $PythonExe @PythonPrefix $Probe missing-day --date $Iso --reason 'AWS_GET_FAILED_OR_OBJECT_UNAVAILABLE' --out $Receipt
+        & $PythonExe @PythonPrefix $Probe missing-day --date $Iso --reason 'AWS_GET_FAILED_OR_OBJECT_UNAVAILABLE' --out $Receipt | Out-Host
         if ($LASTEXITCODE -ne 0) { throw "FAIL-CLOSED: unable to write missing-day receipt for $Iso" }
         Write-Warning "$Iso unavailable; fail-closed daily receipt recorded."
         return
     }
     try {
-        & $PythonExe @PythonPrefix $Probe inspect-day --file $Raw --date $Iso --out $Receipt
+        & $PythonExe @PythonPrefix $Probe inspect-day --file $Raw --date $Iso --out $Receipt | Out-Host
         if ($LASTEXITCODE -ne 0) { throw "Day parser failed closed for $Iso" }
     } finally {
         Remove-Item -Force -LiteralPath $Raw -ErrorAction SilentlyContinue
@@ -98,23 +102,34 @@ function Run-Semantics {
     Write-Host '=== STAGE A - OFFICIAL ARCHIVE SEMANTIC IDENTIFICATION ==='
     Write-Host 'Authorized requester-pays GETs: fixed 29 dates, except receipts already present.'
     foreach ($d in (Get-SemanticDates)) { Invoke-DayProbe -Date $d }
-    $Out = Join-Path $FinalDir 'CROSS_VENUE_FUNDING_BASIS_V044_STAGE_A_SEMANTICS_RECEIPT.json'
-    & $PythonExe @PythonPrefix $Probe aggregate-semantics --receipt-dir $DailyDir --out $Out
+    & $PythonExe @PythonPrefix $Probe aggregate-semantics --receipt-dir $DailyDir --out $SemanticReceipt | Out-Host
     $Code = $LASTEXITCODE
-    Write-Host "Stage A receipt: $Out"
+    Write-Host "Stage A receipt: $SemanticReceipt"
     if ($Code -ne 0) {
         Write-Host 'FINAL STAGE A GATE: FAIL-CLOSED'
         Write-Host 'Do NOT run coverage. Do NOT alter formula, assets, dates, tolerance or thresholds.'
+    } else {
+        Write-Host 'FINAL STAGE A GATE: PASS'
+    }
+}
+
+function Assert-SemanticReceiptPass {
+    if (-not (Test-Path -LiteralPath $SemanticReceipt)) {
+        Write-Host 'FAIL-CLOSED: Stage A receipt missing.'
         return $false
     }
-    Write-Host 'FINAL STAGE A GATE: PASS'
+    $S = Get-Content -LiteralPath $SemanticReceipt -Raw | ConvertFrom-Json
+    if ($S.semantic_probe_pass -ne $true -or $S.status -ne 'PASS') {
+        Write-Host 'FAIL-CLOSED: persisted Stage A receipt is not PASS.'
+        return $false
+    }
     return $true
 }
 
 function Seed-PriorPartialDay {
     $Receipt = Join-Path $DailyDir 'asset_ctx_20240901.json'
     if (-not (Test-Path -LiteralPath $Receipt)) {
-        & $PythonExe @PythonPrefix $Probe seed-prior-20240901 --out $Receipt
+        & $PythonExe @PythonPrefix $Probe seed-prior-20240901 --out $Receipt | Out-Host
         if ($LASTEXITCODE -ne 0) { throw 'FAIL-CLOSED: unable to seed prior 2024-09-01 provenance.' }
         Write-Host 'Seeded prior authorized 2024-09-01 partial-day provenance; no duplicate AWS GET.'
     }
@@ -132,35 +147,52 @@ function Run-Coverage {
         Invoke-DayProbe -Date $d
         $d = $d.AddDays(1)
     }
-    $Out = Join-Path $FinalDir 'CROSS_VENUE_FUNDING_BASIS_V044_STAGE_B_COVERAGE_RECEIPT.json'
-    & $PythonExe @PythonPrefix $Probe aggregate-coverage --receipt-dir $DailyDir --out $Out
+    & $PythonExe @PythonPrefix $Probe aggregate-coverage --receipt-dir $DailyDir --out $CoverageReceipt | Out-Host
     $Code = $LASTEXITCODE
-    Write-Host "Stage B receipt: $Out"
+    Write-Host "Stage B receipt: $CoverageReceipt"
     if ($Code -ne 0) {
         Write-Host 'FINAL STAGE B GATE: FAIL-CLOSED - ZERO COMMON COMPLETE MONTHS'
+    } else {
+        Write-Host 'FINAL STAGE B GATE: PASS - COMMON COMPLETE MONTHS EXIST'
+    }
+}
+
+function Assert-CoverageReceiptPass {
+    if (-not (Test-Path -LiteralPath $CoverageReceipt)) {
+        Write-Host 'FAIL-CLOSED: Stage B receipt missing.'
         return $false
     }
-    Write-Host 'FINAL STAGE B GATE: PASS - COMMON COMPLETE MONTHS EXIST'
+    $C = Get-Content -LiteralPath $CoverageReceipt -Raw | ConvertFrom-Json
+    if ($C.status -ne 'PASS_COMMON_MONTHS_EXIST' -or [int]$C.common_complete_month_count -le 0) {
+        Write-Host 'FAIL-CLOSED: persisted Stage B receipt is not PASS.'
+        return $false
+    }
     return $true
 }
 
 if ($Stage -eq 'SEMANTIC') {
-    if (-not (Run-Semantics)) { exit 2 }
+    Run-Semantics
+    if (-not (Assert-SemanticReceiptPass)) { exit 2 }
     exit 0
 }
 
 if ($Stage -eq 'COVERAGE') {
-    $SemanticReceipt = Join-Path $FinalDir 'CROSS_VENUE_FUNDING_BASIS_V044_STAGE_A_SEMANTICS_RECEIPT.json'
-    if (-not (Test-Path -LiteralPath $SemanticReceipt)) { throw 'FAIL-CLOSED: Stage A PASS receipt required before COVERAGE.' }
-    $S = Get-Content -LiteralPath $SemanticReceipt -Raw | ConvertFrom-Json
-    if ($S.semantic_probe_pass -ne $true) { throw 'FAIL-CLOSED: Stage A semantic gate is not PASS.' }
-    if (-not (Run-Coverage)) { exit 3 }
+    if (-not (Assert-SemanticReceiptPass)) {
+        throw 'FAIL-CLOSED: persisted Stage A PASS receipt required before COVERAGE.'
+    }
+    Run-Coverage
+    if (-not (Assert-CoverageReceiptPass)) { exit 3 }
     exit 0
 }
 
 if ($Stage -eq 'ALL') {
-    if (-not (Run-Semantics)) { exit 2 }
-    if (-not (Run-Coverage)) { exit 3 }
+    Run-Semantics
+    if (-not (Assert-SemanticReceiptPass)) {
+        Write-Host 'HARD STOP: Stage B is forbidden because Stage A receipt is FAIL-CLOSED.'
+        exit 2
+    }
+    Run-Coverage
+    if (-not (Assert-CoverageReceiptPass)) { exit 3 }
     Write-Host ''
     Write-Host '============================================================'
     Write-Host 'V0.4.4 PROVENANCE COMPLETE'
