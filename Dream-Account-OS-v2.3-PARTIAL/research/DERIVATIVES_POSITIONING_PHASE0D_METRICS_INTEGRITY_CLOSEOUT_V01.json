@@ -1,0 +1,36 @@
+{
+  "document_type": "DERIVATIVES_POSITIONING_PHASE0D_METRICS_INTEGRITY_CLOSEOUT",
+  "version": "0.1",
+  "status": "DP_PHASE0D_PASS_WITH_DETERMINISTIC_DEDUPE",
+  "source": "user-executed local audit receipt",
+  "common_window": "2021-12-01/2025-01-01 exclusive",
+  "native_cadence": "5m",
+  "expected_points_per_full_day": 288,
+  "global_duplicate_timestamp_groups": 0,
+  "global_conflicting_duplicate_groups": 0,
+  "minimum_clean_day_share_after_dedupe": 0.9902395740905058,
+  "per_asset_summary": {
+    "BTCUSDT": {"files":1127,"full_5m_days":1119,"clean_share":0.9929015084294588,"missing_5m_slots_total":137,"off_grid_days":0},
+    "ETHUSDT": {"files":1127,"full_5m_days":1119,"clean_share":0.9929015084294588,"missing_5m_slots_total":137,"off_grid_days":0},
+    "SOLUSDT": {"files":1127,"full_5m_days":1116,"clean_share":0.9902395740905058,"missing_5m_slots_total":157,"off_grid_days":1},
+    "BNBUSDT": {"files":1127,"full_5m_days":1118,"clean_share":0.9920141969831411,"missing_5m_slots_total":143,"off_grid_days":1},
+    "XRPUSDT": {"files":1127,"full_5m_days":1118,"clean_share":0.9920141969831411,"missing_5m_slots_total":138,"off_grid_days":0},
+    "DOGEUSDT": {"files":1127,"full_5m_days":1119,"clean_share":0.9929015084294588,"missing_5m_slots_total":137,"off_grid_days":0}
+  },
+  "canonical_normalization_freeze": {
+    "sort_by": "create_time",
+    "duplicate_rule": "for duplicate create_time rows, require all signal fields identical then keep first",
+    "missing_slot_rule": "never interpolate missing 5m slots",
+    "decision_window_rule": "construct a decision bar/window only when every required native 5m observation is present"
+  },
+  "guards": {
+    "outcomes_calculated": false,
+    "2025_accessed": false,
+    "2026_accessed": false,
+    "live_trading_authorized": false,
+    "exchange_mutation_authorized": false,
+    "merge_to_main_authorized": false,
+    "render_deploy_authorized": false
+  },
+  "next_action": "LOCATE_AND_EXECUTE_NEXT_PRE_OUTCOME_DERIVATIVES_POSITIONING_GATE_WITHOUT_OPENING_2025_OR_2026"
+}
