@@ -40,6 +40,16 @@ jobs:
           cd Dream-Account-OS-v2.3-PARTIAL
           python -m py_compile research/cross_venue_funding_basis_hl_asset_ctx_v044.py
 
+      - name: Verify Windows runner is ASCII-only
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('Dream-Account-OS-v2.3-PARTIAL/scripts/run_cross_venue_funding_basis_v044_windows.ps1')
+          b = p.read_bytes()
+          assert all(x < 128 for x in b), 'PowerShell runner contains non-ASCII bytes; Windows PowerShell 5.1 compatibility would be unsafe'
+          print('PASS: Windows V0.4.4 PowerShell runner is ASCII-only')
+          PY
+
       - name: Parse Windows runner with PowerShell AST
         shell: pwsh
         run: |
@@ -51,7 +61,7 @@ jobs:
             $errors | ForEach-Object { Write-Error $_.Message }
             exit 1
           }
-          Write-Host 'PASS: Windows V0.4.4 PowerShell runner parses cleanly'
+          Write-Host 'PASS: Windows V0.4.4 PowerShell runner parses cleanly under PowerShell Core'
 
       - name: Verify frozen authority and exposure ledger
         run: |
@@ -107,3 +117,25 @@ jobs:
           assert a['scientific_boundary']['authorizes_2026'] is False
           print('PASS: no trading / no mutation / no 2026')
           PY
+
+  v044-windows-powershell51-parse:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Parse runner with Windows PowerShell 5.1
+        shell: powershell
+        run: |
+          $path = Resolve-Path 'Dream-Account-OS-v2.3-PARTIAL/scripts/run_cross_venue_funding_basis_v044_windows.ps1'
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile($path, [ref]$tokens, [ref]$errors) | Out-Null
+          if ($PSVersionTable.PSVersion.Major -ne 5) {
+            throw "Expected Windows PowerShell 5.x, got $($PSVersionTable.PSVersion)"
+          }
+          if ($errors.Count -gt 0) {
+            $errors | ForEach-Object { Write-Error $_.Message }
+            exit 1
+          }
+          Write-Host "PASS: runner parses cleanly under Windows PowerShell $($PSVersionTable.PSVersion)"
