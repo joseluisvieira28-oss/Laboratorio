@@ -1,13 +1,12 @@
-# ONCHAIN-CAPFLOW-001 — V0.1
+# ONCHAIN-CAPFLOW-001 — V0.1A
 
-Status: `FROZEN_PRE_DISCOVERY`
+Status: `FROZEN_PRE_DISCOVERY_AMENDED_001`
 
 Protocol SHA256:
 
-`65611c79d95e433be5dc0d9c5d4e8de19066bcbb8addc736dc875dba6d1926cf`
+`1c6c66b7188694bcc2d62cb83ee050a023fba7f97388bc87933ed668d3392b65`
 
-This directory implements only the **data acquisition and data-audit gate** for the frozen
-On-Chain / Capital Flow MVE.
+This directory implements only the **data-source gate, acquisition and data-audit gate** for the frozen On-Chain / Capital Flow MVE.
 
 It does **not**:
 - access 2025 or 2026 outcome data;
@@ -20,8 +19,14 @@ It does **not**:
 ## Frozen data inputs
 
 Capital-flow proxy:
-- DefiLlama `https://stablecoins.llama.fi/stablecoin/1` (USDT)
-- DefiLlama `https://stablecoins.llama.fi/stablecoin/2` (USDC)
+- Coin Metrics Community API
+- assets: `usdt,usdc`
+- metric: `SplyCur`
+- frequency: `1d`
+- explicit `start_time=2020-01-01`
+- explicit `end_time=2024-12-31`
+
+**Fail-closed data gate:** if the Community API does not return both USDT and USDC with the required historical coverage, the run stops as `DATA_BLOCKED`. It must not fall back to an endpoint that exposes the 2025 holdout or 2026 locked period.
 
 Market data:
 - Binance Vision Spot monthly `1d` klines
@@ -29,7 +34,7 @@ Market data:
 - `ETHUSDT`
 - January 2020 through December 2024 only
 
-The acquisition script refuses to download 2025+ archives.
+The acquisition code rejects 2025+ timestamps and validates that Coin Metrics pagination retains the frozen end date.
 
 ## Run
 
@@ -41,12 +46,16 @@ python audit_data.py --data .\data
 ```
 
 Expected outputs:
+- `data/data_gate_status.json`
 - `data/raw/...`
 - `data/raw_manifest.json`
 - `data/data_audit_report.json`
 
-Only if `data_audit_report.json` says `"status": "PASS"` may a separate Discovery
-implementation be created and run.
+Only if `data_audit_report.json` says `"status": "PASS"` may a separate Discovery implementation be created and run.
+
+## Amendment 001
+
+The first frozen draft referenced DefiLlama individual stablecoin endpoints. Before any acquisition or outcome inspection, we identified that those endpoints return the complete historical series through the present and would therefore expose locked 2025/2026 observations. The source was amended prospectively to the Coin Metrics Community timeseries endpoint with an explicit 2024-12-31 cutoff. Signal, assets, thresholds, costs, Discovery period and holdout rules were not changed.
 
 ## Governance
 
