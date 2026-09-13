@@ -1,0 +1,92 @@
+name: OPTIONS-SPOTPERP-001 Source Data Audit V0.1
+
+on:
+  push:
+    branches:
+      - options-spotperp-v0.1-source-audit-freeze
+    paths:
+      - '.github/workflows/options-source-audit-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    steps:
+      - name: Checkout frozen source-audit branch
+        uses: actions/checkout@v4
+
+      - name: Blind preflight before network access
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1
+        run: |
+          python3 --version
+          python3 preflight_source_audit.py
+
+      - name: Execute frozen source/data audit only
+        id: audit
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1
+        shell: bash
+        run: |
+          set +e
+          python3 source_audit_gate.py --output source_audit_data
+          rc=$?
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          echo "SOURCE_AUDIT_EXIT_CODE=$rc"
+          exit 0
+
+      - name: Governance firewall assertion
+        if: always()
+        shell: bash
+        run: |
+          echo 'SOURCE AUDIT ONLY'
+          echo 'NO SKEW / NO SIGNALS / NO FORWARD RETURNS / NO PNL'
+          echo '2025 LOCKED / 2026 LOCKED'
+          test -f Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1/source_audit_data/source_gate_receipt.json
+          python3 - <<'PY'
+          import json
+          p='Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1/source_audit_data/source_gate_receipt.json'
+          r=json.load(open(p,encoding='utf-8'))
+          assert r['skew_values_computed'] is False
+          assert r['signals_computed'] is False
+          assert r['forward_returns_computed'] is False
+          assert r['pnl_computed'] is False
+          assert r['holdout_2025_accessed'] is False
+          assert r['year_2026_accessed'] is False
+          print('GOVERNANCE_FIREWALL_PASS')
+          print('STATUS='+str(r.get('status')))
+          PY
+
+      - name: Upload source-audit receipts only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: options-spotperp-001-source-audit-v01-receipts
+          if-no-files-found: warn
+          retention-days: 90
+          path: |
+            Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1/source_audit_data/source_gate_receipt.json
+            Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1/source_audit_data/source_manifest.json
+            Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1/source_audit_data/source_audit_report.json
+
+      - name: Preserve scientific terminal classification
+        if: always()
+        shell: bash
+        run: |
+          rc='${{ steps.audit.outputs.rc }}'
+          echo "Frozen source-audit exit code: $rc"
+          if [ "$rc" = "0" ]; then
+            echo 'SOURCE_AUDIT_PASS'
+            exit 0
+          elif [ "$rc" = "12" ]; then
+            echo 'EXECUTION_ENVIRONMENT_BLOCKED'
+            exit 12
+          elif [ "$rc" = "4" ]; then
+            echo 'PROBE_ONLY_NO_DECISION'
+            exit 4
+          else
+            echo 'SOURCE_AUDIT_BLOCKED'
+            exit 2
+          fi
