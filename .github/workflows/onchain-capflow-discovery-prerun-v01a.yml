@@ -1,0 +1,54 @@
+name: ONCHAIN-CAPFLOW-001 Discovery Pre-Run Review V0.1A
+
+on:
+  push:
+    branches:
+      - onchain-capflow-v0.1
+    paths:
+      - '.github/workflows/onchain-capflow-discovery-prerun-v01a.yml'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/onchain_capflow_v0_1/DISCOVERY_CONTRACT.json'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/onchain_capflow_v0_1/discovery.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/onchain_capflow_v0_1/pre_run_review.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  static-synthetic-review-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        shell: bash
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/onchain_capflow_v0_1
+    steps:
+      - name: Checkout review commit
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Governance guardrail
+        run: |
+          set -euo pipefail
+          echo 'PRE-RUN STATIC/SYNTHETIC REVIEW ONLY'
+          echo 'No raw snapshot download. No Discovery outcomes. No 2025/2026.'
+          test ! -d data
+          test ! -d discovery_output
+
+      - name: Run frozen pre-run review
+        run: |
+          set -euo pipefail
+          python pre_run_review.py
+
+      - name: Upload pre-run receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: onchain-capflow-001-discovery-prerun-v01a
+          path: Dream-Account-OS-v2.3-PARTIAL/research/onchain_capflow_v0_1/pre_run_review_receipt.json
+          if-no-files-found: error
+          retention-days: 90
