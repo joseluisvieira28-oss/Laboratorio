@@ -40,6 +40,19 @@ jobs:
           cd Dream-Account-OS-v2.3-PARTIAL
           python -m py_compile research/cross_venue_funding_basis_hl_asset_ctx_v044.py
 
+      - name: Parse Windows runner with PowerShell AST
+        shell: pwsh
+        run: |
+          $path = Resolve-Path 'Dream-Account-OS-v2.3-PARTIAL/scripts/run_cross_venue_funding_basis_v044_windows.ps1'
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile($path, [ref]$tokens, [ref]$errors) | Out-Null
+          if ($errors.Count -gt 0) {
+            $errors | ForEach-Object { Write-Error $_.Message }
+            exit 1
+          }
+          Write-Host 'PASS: Windows V0.4.4 PowerShell runner parses cleanly'
+
       - name: Verify frozen authority and exposure ledger
         run: |
           cd Dream-Account-OS-v2.3-PARTIAL
