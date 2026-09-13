@@ -12,6 +12,8 @@ re-verifies their hashes/provenance, recomputes ONLY eligibility coverage using
 calendar-date differences, audits the exact 2021-04-01..2024-12-31 BTC price-file
 cutoff when the canonical coverage gate passes, and writes a final source-gate
 receipt. It computes NO skew, signal, forward return, PnL, regression or outcome.
+Annual source-coverage counts are diagnostics only and do not alter the frozen
+>=500 total-valid-day decision rule.
 """
 
 from __future__ import annotations
@@ -34,6 +36,17 @@ CALL_MIN, CALL_MAX = 1.05, 1.20
 PUT_MIN, PUT_MAX = 0.80, 0.95
 MIN_SIDE = 5
 MIN_VALID_DAYS = 500
+SOURCE_START = dt.date(2021, 4, 1)
+SOURCE_END_EXCLUSIVE = dt.date(2025, 1, 1)
+
+
+def source_calendar_days_by_year() -> dict[str, int]:
+    out: dict[str, int] = defaultdict(int)
+    d = SOURCE_START
+    while d < SOURCE_END_EXCLUSIVE:
+        out[str(d.year)] += 1
+        d += dt.timedelta(days=1)
+    return dict(out)
 
 
 def canonical_calendar_day_coverage(root: Path) -> dict[str, Any]:
@@ -78,6 +91,9 @@ def canonical_calendar_day_coverage(root: Path) -> dict[str, Any]:
             except Exception as exc:
                 raise RuntimeError(f"structural row parse failure in {path.name}: {exc}") from exc
 
+            if trade_time.date() < SOURCE_START or trade_time.date() >= SOURCE_END_EXCLUSIVE:
+                raise RuntimeError(f"trade outside frozen source window: {trade_time.isoformat()}")
+
             try:
                 iv = float(row["iv"])
                 if not math.isfinite(iv) or iv <= 0:
@@ -115,6 +131,15 @@ def canonical_calendar_day_coverage(root: Path) -> dict[str, Any]:
         day for day in set(calls) | set(puts)
         if len(calls.get(day, set())) >= MIN_SIDE and len(puts.get(day, set())) >= MIN_SIDE
     )
+    valid_days_by_year: dict[str, int] = defaultdict(int)
+    for day in valid_days:
+        valid_days_by_year[day[:4]] += 1
+    calendar_days_by_year = source_calendar_days_by_year()
+    coverage_ratio_by_year = {
+        year: round(valid_days_by_year.get(year, 0) / days, 6)
+        for year, days in calendar_days_by_year.items()
+    }
+
     return {
         **counters,
         "dte_definition": "calendar_date_difference_days",
@@ -124,6 +149,12 @@ def canonical_calendar_day_coverage(root: Path) -> dict[str, Any]:
         "valid_signal_coverage_days": len(valid_days),
         "min_required_valid_days": MIN_VALID_DAYS,
         "coverage_pass": len(valid_days) >= MIN_VALID_DAYS,
+        "calendar_days_by_year": calendar_days_by_year,
+        "valid_signal_coverage_days_by_year": {
+            year: valid_days_by_year.get(year, 0) for year in calendar_days_by_year
+        },
+        "coverage_ratio_by_year": coverage_ratio_by_year,
+        "annual_coverage_is_diagnostic_only": True,
         "valid_days_first_10": valid_days[:10],
         "valid_days_last_10": valid_days[-10:],
         "skew_values_computed": False,
