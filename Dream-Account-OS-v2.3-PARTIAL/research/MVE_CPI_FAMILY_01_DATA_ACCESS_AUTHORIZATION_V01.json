@@ -1,0 +1,71 @@
+{
+  "document_type": "MVE_CPI_FAMILY_01_DATA_ACCESS_AUTHORIZATION_V01",
+  "version": "0.1",
+  "hypothesis_id": "MVE-CPI-FAMILY-01",
+  "status": "VALIDATION_2025_01_THROUGH_2025_08_AUTHORIZED_RESEARCH_ONLY",
+  "authorization_active": true,
+  "authorized_utc_date": "2026-09-13",
+  "purpose": "Explicit one-shot protected-data authorization after inert preflight PASS. Research validation only; no trading or exchange mutation.",
+  "tested_source_head_sha": "cdca36a1dd9157dfd801a50b575f012dcb7dfd6f",
+  "tested_runner_blob_sha": "06685395105435e042b6109ba38756ae5c4b9c0a",
+  "tested_unit_guard_blob_sha": "01c9da9058bfdc7b10460bf8ee84c74c24f25459",
+  "preflight": {
+    "python_compile": "PASS",
+    "unit_guards": "5_PASSED",
+    "protected_market_outcomes_accessed": false,
+    "runner_sha256": "0b2c42615d7303fae87690af6f30bd927bfc490d1de4e506581ed426f5577f0c",
+    "unit_guard_sha256": "b2ab36f1474ef3b0892e9571de2ae29990d2efa393de0474d1584c4cc9e56e95"
+  },
+  "freeze_file_sha256": "2130338cfe4910a0044da29962b5709a3d05b0bae1b1328adc1de57f11c7c0a6",
+  "freeze_blob_sha": "5b6a98c8eba93cccbc7efa9b9e0caebd789ca437",
+  "historical_pre_discovery_fingerprint": "945924528dde46a7e596ac77cec32e8deeff62adb42859f7e52abf63b6d5a37f",
+  "historical_closeout_fingerprint": "2d94b1bbccf4f994bdc10a73449e6ce3580df53e38f52343ab0633ae8db571d0",
+  "authorized_scope": {
+    "source": "OFFICIAL_BINANCE_PUBLIC_DATA_ONLY",
+    "market_type": "SPOT",
+    "symbols": ["BTCUSDT", "ETHUSDT"],
+    "timeframe": "1m",
+    "period": "2025-01-01_THROUGH_2025-08-31",
+    "event_ids": [
+      "US_CPI_2025-01-15",
+      "US_CPI_2025-02-12",
+      "US_CPI_2025-03-12",
+      "US_CPI_2025-04-10",
+      "US_CPI_2025-05-13",
+      "US_CPI_2025-06-11",
+      "US_CPI_2025-07-15",
+      "US_CPI_2025-08-12"
+    ],
+    "entry": "OPEN_OF_08:31_AMERICA_NEW_YORK_1M_CANDLE",
+    "exit": "OPEN_OF_08:45_AMERICA_NEW_YORK_1M_CANDLE",
+    "fixed_round_trip_cost_bps": 10,
+    "execution_count": "ONE_SHOT"
+  },
+  "pass_contract": {
+    "both_assets_required": true,
+    "directional_event_count": 7,
+    "neutral_event_count": 1,
+    "per_asset": {
+      "mean_aligned_net_bps_gt": 0,
+      "median_aligned_gross_bps_gt": 0,
+      "minimum_positive_aligned_gross_events": "5_OF_7"
+    },
+    "p_value_gate": "NONE_LOW_N_AS_PRE_SPECIFIED"
+  },
+  "still_locked": {
+    "2025_09_through_2025_12": true,
+    "2026_and_later": true,
+    "alternate_assets": true,
+    "alternate_entry_or_exit": true,
+    "alternate_holding_window": true,
+    "cost_change": true,
+    "surprise_magnitude_threshold_search": true,
+    "regime_or_subperiod_search": true,
+    "outlier_deletion_or_winsorization": true,
+    "exchange_mutation": true,
+    "live_trading": true,
+    "main_merge": true,
+    "render_deploy": true
+  },
+  "post_run_rule": "NO_RETUNE_NO_RESCUE. IF FAMILY PASS, ROUTE ONLY TO SHADOW_OR_PAPER_DESIGN. IF FAMILY FAIL, CLOSE MVE-CPI-FAMILY-01 AND MOVE TO NEXT QUEUE ITEM."
+}
