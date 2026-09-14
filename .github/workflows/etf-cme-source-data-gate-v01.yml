@@ -1,0 +1,32 @@
+name: ETF-CME-INSTFLOW-001 Source Data Gate V0.1
+
+on:
+  push:
+    branches:
+      - etf-cme-institutional-flow-v0.1
+    paths:
+      - 'labs/ETF_CME_INSTITUTIONAL_FLOW_001/**'
+      - '.github/workflows/etf-cme-source-data-gate-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-data-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout isolated ETF+CME branch
+        uses: actions/checkout@v4
+      - name: Compile outcome-blind gate
+        run: python -m py_compile labs/ETF_CME_INSTITUTIONAL_FLOW_001/cftc_source_gate_v01.py
+      - name: Execute frozen CFTC 133741 source/data gate
+        run: python labs/ETF_CME_INSTITUTIONAL_FLOW_001/cftc_source_gate_v01.py
+      - name: Upload immutable source/data receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: etf-cme-instflow-001-source-data-gate-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/etf_cme_source_gate_v01/
+          retention-days: 90
