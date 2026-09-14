@@ -1,0 +1,48 @@
+name: ETH Staking Flow Source Gate
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'research/eth_staking_flow/**'
+      - '.github/workflows/eth-staking-flow-source-gate.yml'
+permissions:
+  contents: read
+jobs:
+  source-data-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Enforce protected-year and outcome firewall
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -RIE --exclude='ETH_STAKING_FLOW_001_PRE_DISCOVERY_AUTHORITY_V0_1.md' 'price|return|pnl|2025|2026' research/eth_staking_flow/source_gate.py; then
+            echo "Forbidden outcome/protected-year token found in executable"
+            exit 1
+          fi
+      - name: Run outcome-blind source gate
+        run: python3 research/eth_staking_flow/source_gate.py
+      - name: Verify receipt firewall
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          p='artifacts/eth_staking_flow_source_gate/closeout_receipt.json'
+          x=json.load(open(p))
+          assert x['2025_accessed'] is False
+          assert x['2026_accessed'] is False
+          assert x['price_values_opened'] is False
+          assert x['returns_computed'] is False
+          assert x['pnl_computed'] is False
+          assert x['performance_statistics_computed'] is False
+          assert x['classification'] in {
+            'SOURCE_DATA_PASS','SOURCE_AUTH_BLOCKED','SOURCE_ACQUISITION_TECHNICAL_FAILURE',
+            'DATA_FAILURE','PROVENANCE_FAILURE','INSUFFICIENT_SAMPLE'}
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ETH-STAKING-FLOW-001-source-data-gate
+          path: artifacts/eth_staking_flow_source_gate
+          if-no-files-found: error
+          retention-days: 90
