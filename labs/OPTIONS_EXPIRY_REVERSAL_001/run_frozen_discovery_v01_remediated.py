@@ -2,12 +2,13 @@
 """Pre-outcome technical remediation wrapper for OPTIONS-EXPIRY-REVERSAL-001.
 
 Scientific logic remains in run_frozen_discovery_v01.py unchanged.
-This wrapper replaces only BTC price acquisition with a deterministic same-source
-fallback: official Binance Vision monthly BTCUSDT Spot 1m archive first, then
-official daily BTCUSDT Spot 1m archive for any protected date missing one or more
-of the four exact required minute opens. Both paths require official CHECKSUMs.
+This wrapper applies only two pre-outcome operational remediations:
+1) official Binance Vision monthly BTCUSDT Spot 1m archive first, then official
+   daily BTCUSDT Spot 1m archive for any missing exact required minute opens;
+2) exclude the independently documented Binance Spot market closure on
+   2021-09-29 before any return is constructed.
 
-No interpolation. No alternative exchange. No date dropping. No 2025/2026.
+No interpolation. No alternative exchange. No unfrozen date dropping. No 2025/2026.
 """
 from __future__ import annotations
 
@@ -24,8 +25,12 @@ from pathlib import Path
 
 RUNNER_PATH = Path("labs/OPTIONS_EXPIRY_REVERSAL_001/run_frozen_discovery_v01.py")
 REMEDIATION_PATH = Path("labs/OPTIONS_EXPIRY_REVERSAL_001/PRE_OUTCOME_TECHNICAL_REMEDIATION_001.md")
+MARKET_CLOSURE_PATH = Path("labs/OPTIONS_EXPIRY_REVERSAL_001/PRE_OUTCOME_MARKET_CLOSURE_EXCLUSION_001.md")
 INITIAL_FAILED_RUN_ID = 34900018454
+SECOND_FAILED_RUN_ID = 34900340495
 DAILY_BASE = "https://data.binance.vision/data/spot/daily/klines/BTCUSDT/1m"
+MARKET_CLOSURE_DATES = {dt.date(2021, 9, 29)}
+EXPECTED_ROWS_AFTER_CLOSURE = 1339
 
 
 def sha256_file(path: Path) -> str:
@@ -46,6 +51,8 @@ def load_original():
 
 
 def acquire_prices_with_daily_fallback(mod, target_dates: set[dt.date], out: Path):
+    if target_dates & MARKET_CLOSURE_DATES:
+        raise RuntimeError("market-closure date leaked into price acquisition target")
     prices: dict[dt.date, dict[str, float]] = {d: {} for d in target_dates}
     archives: list[dict] = []
 
@@ -197,24 +204,42 @@ def acquire_prices_with_daily_fallback(mod, target_dates: set[dt.date], out: Pat
     archives.append({
         "technical_remediation": "BINANCE_DAILY_FALLBACK_V01",
         "initial_failed_run_id": INITIAL_FAILED_RUN_ID,
+        "second_failed_run_id": SECOND_FAILED_RUN_ID,
         "dates_requiring_daily_fallback": [d.isoformat() for d in sorted(missing_before)],
         "fallback_date_count": len(missing_before),
+        "market_closure_excluded_dates": [d.isoformat() for d in sorted(MARKET_CLOSURE_DATES)],
         "no_interpolation": True,
         "no_alternative_exchange": True,
-        "no_date_dropping": True,
+        "no_unfrozen_date_dropping": True,
     })
     return prices, archives
 
 
 def main() -> int:
-    if not RUNNER_PATH.exists() or not REMEDIATION_PATH.exists():
-        raise RuntimeError("frozen runner/remediation authority missing")
+    for p in (RUNNER_PATH, REMEDIATION_PATH, MARKET_CLOSURE_PATH):
+        if not p.exists():
+            raise RuntimeError(f"frozen runner/remediation authority missing: {p}")
     mod = load_original()
 
-    def patched(target_dates, out):
+    original_load_source = mod.load_source
+
+    def patched_load_source(source_root):
+        rows, receipt, csv_path, receipt_path = original_load_source(source_root)
+        closure_rows = [r for r in rows if r["date"] in MARKET_CLOSURE_DATES]
+        if len(closure_rows) != len(MARKET_CLOSURE_DATES):
+            raise RuntimeError("frozen market-closure date not present exactly once in source rows")
+        rows = [r for r in rows if r["date"] not in MARKET_CLOSURE_DATES]
+        if len(rows) != EXPECTED_ROWS_AFTER_CLOSURE:
+            raise RuntimeError(
+                f"unexpected evaluable row count after frozen market closure: {len(rows)}"
+            )
+        return rows, receipt, csv_path, receipt_path
+
+    def patched_acquire(target_dates, out):
         return acquire_prices_with_daily_fallback(mod, target_dates, out)
 
-    mod.acquire_prices = patched
+    mod.load_source = patched_load_source
+    mod.acquire_prices = patched_acquire
     rc = int(mod.main())
     if rc != 0:
         return rc
@@ -224,13 +249,19 @@ def main() -> int:
     if not receipt_path.exists():
         raise RuntimeError("Discovery completed without receipt")
     receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+    if receipt.get("rows") != EXPECTED_ROWS_AFTER_CLOSURE:
+        raise RuntimeError("final receipt row count does not reflect frozen market closure")
     receipt["technical_remediation"] = {
-        "id": "BINANCE_DAILY_FALLBACK_V01",
-        "authority_file": str(REMEDIATION_PATH),
-        "authority_sha256": sha256_file(REMEDIATION_PATH),
+        "id": "BINANCE_DAILY_FALLBACK_V01_PLUS_MARKET_CLOSURE_EXCLUSION_001",
+        "daily_fallback_authority_file": str(REMEDIATION_PATH),
+        "daily_fallback_authority_sha256": sha256_file(REMEDIATION_PATH),
+        "market_closure_authority_file": str(MARKET_CLOSURE_PATH),
+        "market_closure_authority_sha256": sha256_file(MARKET_CLOSURE_PATH),
+        "market_closure_excluded_dates": [d.isoformat() for d in sorted(MARKET_CLOSURE_DATES)],
         "initial_failed_run_id": INITIAL_FAILED_RUN_ID,
-        "initial_failure_classification": "TECHNICAL_FAILURE_PREOUTCOME",
-        "outcomes_computed_in_initial_failed_run": False,
+        "second_failed_run_id": SECOND_FAILED_RUN_ID,
+        "prior_failure_classification": "TECHNICAL_FAILURE_PREOUTCOME",
+        "outcomes_computed_in_prior_failed_runs": False,
     }
     receipt_path.write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print("FINAL_REMEDIATED_DISCOVERY_RECEIPT")
