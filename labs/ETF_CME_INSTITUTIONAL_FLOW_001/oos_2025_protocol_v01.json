@@ -1,0 +1,64 @@
+{
+  "lab_id": "ETF-CME-INSTFLOW-001",
+  "replication_id": "ETF-CME-INSTFLOW-001-OOS-2025-V0.1",
+  "status": "FROZEN_PRE_OUTCOME",
+  "authority_drive_id": "1QUXHug1sRfiBryXOb-nxyL-_0CzbPK5sA6DqjyqnUFg",
+  "governance": {
+    "research_only": true,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "merge_to_main": false,
+    "render_deployment": false,
+    "post_outcome_tuning": false,
+    "cherry_picking": false,
+    "open_2025_for_this_replication_only": true,
+    "open_2026": false
+  },
+  "source": {
+    "cftc_dataset_id": "6dca-aqww",
+    "cftc_contract_code": "133741",
+    "cftc_report": "Legacy Futures Only",
+    "oos_as_of_start": "2025-01-01",
+    "oos_as_of_end": "2025-12-31",
+    "prior_state_row_allowed": "immediately preceding 2024 CFTC row only",
+    "btc_source": "Binance Vision BTCUSDT spot 1d monthly files",
+    "btc_start": "2025-01-01",
+    "btc_end": "2025-12-31"
+  },
+  "signal": {
+    "net_noncommercial": "noncommercial_long - noncommercial_short",
+    "delta_net_noncommercial": "net_noncommercial_t - net_noncommercial_t_minus_1",
+    "definition": "delta_net_noncommercial / open_interest_t",
+    "expected_beta_sign": "positive",
+    "threshold": 0,
+    "zscore": false,
+    "winsorization": false,
+    "regime_filter": false,
+    "alternate_cot_category": false
+  },
+  "availability": {
+    "information_safe_time": "as_of_date + 8 calendar days at 00:00 UTC",
+    "entry": "first BTCUSDT 00:00 UTC price at_or_after information_safe_time",
+    "exit": "entry + 7 calendar days at 00:00 UTC",
+    "latest_allowed_outcome_timestamp": "2025-12-31T23:59:59Z",
+    "rows_requiring_2026_outcome": "exclude_before_outcome_computation"
+  },
+  "economic_strategy": {
+    "position_positive_signal": 1,
+    "position_negative_signal": -1,
+    "position_zero_signal": 0,
+    "base_roundtrip_cost_bps": 10,
+    "stress_roundtrip_cost_bps": 20
+  },
+  "v2_path2_oos_pass": {
+    "minimum_evaluable_weeks": 40,
+    "base_net_mean_positive": true,
+    "base_profit_factor_gte": 1.0,
+    "max_single_trade_share_positive_gross_pnl": 0.40,
+    "clean_provenance": true,
+    "no_leakage": true,
+    "no_fatal_execution_or_data_pathology": true,
+    "hac_p_reported_diagnostic_only": true,
+    "stress_20bps_diagnostic_only": true
+  }
+}
