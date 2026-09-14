@@ -1,0 +1,31 @@
+name: STABLECOIN-EXCHANGE-FLOW-001 Ethereum RPC Multi Source Gate V0.2
+
+on:
+  push:
+    branches:
+      - stablecoin-exchange-flow-v0.1
+    paths:
+      - 'labs/STABLECOIN_EXCHANGE_FLOW_001/ethereum_rpc_multi_source_gate_v02.py'
+      - '.github/workflows/stablecoin-exchange-flow-rpc-multi-gate-v02.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  rpc-multi-source-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile multi-provider RPC gate
+        run: python -m py_compile labs/STABLECOIN_EXCHANGE_FLOW_001/ethereum_rpc_multi_source_gate_v02.py
+      - name: Execute protected historical log gate
+        run: python labs/STABLECOIN_EXCHANGE_FLOW_001/ethereum_rpc_multi_source_gate_v02.py
+      - name: Upload immutable receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stablecoin-exchange-flow-001-rpc-multi-gate-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/stablecoin_exchange_flow_rpc_multi_gate_v02/
+          retention-days: 90
