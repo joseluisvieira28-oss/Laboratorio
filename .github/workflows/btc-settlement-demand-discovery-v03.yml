@@ -1,0 +1,96 @@
+name: BTC Settlement Demand V0.3 Discovery
+
+on:
+  push:
+    branches:
+      - btc-settlement-demand-v0.3-discovery
+    paths:
+      - .github/btc-settlement-demand-discovery-v03.trigger
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  one-shot-discovery:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout frozen branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Frozen contract and implementation preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${GITHUB_REF_NAME}" = "btc-settlement-demand-v0.3-discovery"
+          AUTH='research/btc_settlement_demand/BTC_SETTLEMENT_DEMAND_001_DISCOVERY_AUTHORITY_V0_3.md'
+          RUNNER='research/btc_settlement_demand/discovery_v03.py'
+          echo '18a45507ac36e15a5824043b46e7a4f43e377cc2775e54893e88b26395b12c7e  '"$AUTH" | sha256sum -c -
+          grep -q 'MVE_ID: BSD-WOW7D-1D-001' "$AUTH"
+          grep -q 'Entry = BTCUSDT daily OPEN at 00:00 UTC on t+2.' "$AUTH"
+          grep -q 'Exit  = BTCUSDT daily OPEN at 00:00 UTC on t+3.' "$AUTH"
+          grep -q 'SOURCE_ARTIFACT_ID = 10355248843' "$RUNNER"
+          grep -q 'DISCOVERY_ENTRY_END = date(2024,12,30)' "$RUNNER"
+          grep -q 'BOOTSTRAP_SEED = 20260914' "$RUNNER"
+          if grep -Eqi '2025-[0-9]{2}|2026-[0-9]{2}' "$RUNNER"; then
+            echo 'Protected-period literal month found in runner.'
+            exit 41
+          fi
+          python -m py_compile "$RUNNER"
+          echo 'FROZEN IMPLEMENTATION PREFLIGHT: PASS'
+
+      - name: Bind exact source evidence before outcomes
+        id: preflight
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python research/btc_settlement_demand/discovery_v03.py --preflight-only
+
+      - name: Execute one-shot 2018-2024 Discovery
+        id: discovery
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set +e
+          python research/btc_settlement_demand/discovery_v03.py --discovery
+          code=$?
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Upload immutable Discovery evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: btc-settlement-demand-v03-discovery-${{ github.run_id }}
+          path: btc_settlement_demand_discovery_v03_out/
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Enforce terminal scientific result
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          code='${{ steps.discovery.outputs.exit_code }}'
+          test -n "$code" || { echo 'Missing Discovery exit code'; exit 42; }
+          if [ "$code" = '0' ]; then
+            echo 'DISCOVERY_PASS_CANDIDATE'
+            exit 0
+          fi
+          if [ "$code" = '3' ]; then
+            echo 'DISCOVERY_FAIL_NO_PROMOTION'
+            exit 3
+          fi
+          echo "Discovery infrastructure/data/provenance failure code=$code"
+          exit "$code"
