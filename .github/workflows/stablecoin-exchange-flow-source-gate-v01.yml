@@ -1,0 +1,38 @@
+name: STABLECOIN-EXCHANGE-FLOW-001 Source Provenance Gate V0.1
+
+on:
+  push:
+    branches:
+      - stablecoin-exchange-flow-v0.1
+    paths:
+      - 'labs/STABLECOIN_EXCHANGE_FLOW_001/**'
+      - '.github/workflows/stablecoin-exchange-flow-source-gate-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-provenance-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout isolated branch
+        uses: actions/checkout@v4
+      - name: Verify outcome firewall
+        run: |
+          set -euo pipefail
+          test -f labs/STABLECOIN_EXCHANGE_FLOW_001/PRE_SOURCE_PROTOCOL_V0.1.md
+          test -f labs/STABLECOIN_EXCHANGE_FLOW_001/coinmetrics_source_gate_v01.py
+          ! grep -R --line-number -E 'BTCUSDT|ETHUSDT|price|return|pnl' labs/STABLECOIN_EXCHANGE_FLOW_001/coinmetrics_source_gate_v01.py | grep -v -E 'btc_market_data_accessed|returns_computed|pnl_computed' || true
+      - name: Compile gate
+        run: python -m py_compile labs/STABLECOIN_EXCHANGE_FLOW_001/coinmetrics_source_gate_v01.py
+      - name: Execute outcome-blind source provenance gate
+        run: python labs/STABLECOIN_EXCHANGE_FLOW_001/coinmetrics_source_gate_v01.py
+      - name: Upload immutable receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stablecoin-exchange-flow-001-source-gate-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/stablecoin_exchange_flow_source_gate_v01/
+          retention-days: 90
