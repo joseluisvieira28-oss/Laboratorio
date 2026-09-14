@@ -1,0 +1,50 @@
+name: DEFI-LENDING-002 Aave V2 Source Probe V0.1
+
+on:
+  push:
+    branches: [defi-lending-v0.1]
+    paths:
+      - '.github/defi-lending-aave-source-probe.trigger'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/defi_lending_v0_1
+    steps:
+      - name: Checkout frozen branch
+        uses: actions/checkout@v4
+      - name: Verify outcome-blind probe
+        run: |
+          test "${GITHUB_REF_NAME}" = "defi-lending-v0.1"
+          python3 -m py_compile source_probe_aave_v2_v01.py
+          echo 'SOURCE PROBE ONLY / NO SIGNAL / NO BTC / NO RETURNS / NO PNL / 2025 LOCKED / 2026 LOCKED'
+      - name: Probe official Aave V2 subgraph route
+        id: probe
+        shell: bash --noprofile --norc -e -o pipefail {0}
+        run: |
+          set +e
+          python3 source_probe_aave_v2_v01.py
+          rc=$?
+          set -e
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          test "$rc" -eq 0 -o "$rc" -eq 2
+      - name: Upload immutable probe evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: defi-lending-002-aave-source-probe-${{ github.run_id }}-${{ github.run_attempt }}
+          path: Dream-Account-OS-v2.3-PARTIAL/research/defi_lending_v0_1/aave_source_probe_output/
+          if-no-files-found: error
+          retention-days: 90
+      - name: Enforce probe classification
+        env:
+          PROBE_RC: ${{ steps.probe.outputs.rc }}
+        run: |
+          if [ "$PROBE_RC" = "0" ]; then echo 'SOURCE_PROBE_PASS'; exit 0; fi
+          echo 'SOURCE_AUTH_OR_ENDPOINT_BLOCKED'; exit 2
