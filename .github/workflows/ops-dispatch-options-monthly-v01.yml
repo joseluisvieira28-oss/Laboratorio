@@ -1,7 +1,8 @@
-name: OPS — Dispatch OPTIONS Finalizer Canonical Raw
+name: OPS — Dispatch OPTIONS Canonical Discovery
 
 # Ops-only dispatcher. Pushes on this isolated branch only and dispatches the
-# already-frozen scientific finalizer against the canonical monthly raw run.
+# already-frozen scientific Discovery against the canonical final Source Gate
+# and canonical immutable monthly raw run.
 on:
   push:
     branches:
@@ -17,18 +18,20 @@ jobs:
   dispatch:
     runs-on: ubuntu-latest
     steps:
-      - name: Dispatch canonical OPTIONS finalizer
+      - name: Dispatch canonical OPTIONS Discovery
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          echo 'Dispatching canonical OPTIONS finalizer on options-spotperp-v0.1'
+          echo 'Dispatching canonical OPTIONS Discovery on options-spotperp-v0.1'
+          echo 'source_gate_run_id=34811277716'
           echo 'monthly_raw_run_id=34778911131'
           gh api \
             --method POST \
             -H 'Accept: application/vnd.github+json' \
-            repos/joseluisvieira28-oss/Laboratorio/actions/workflows/options-source-audit-finalize-monthly-raw-v01.yml/dispatches \
+            repos/joseluisvieira28-oss/Laboratorio/actions/workflows/options-discovery-one-shot-v01.yml/dispatches \
             -f ref='options-spotperp-v0.1' \
+            -f inputs[source_gate_run_id]='34811277716' \
             -f inputs[monthly_raw_run_id]='34778911131'
-          echo 'FINALIZER_DISPATCH_REQUEST_ACCEPTED'
+          echo 'DISCOVERY_DISPATCH_REQUEST_ACCEPTED'
           echo 'Ops-only mutation; no scientific files modified; no 2025/2026 access requested.'
