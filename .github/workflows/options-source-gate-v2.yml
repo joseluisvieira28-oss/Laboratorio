@@ -1,0 +1,169 @@
+name: OPTIONS-SPOTPERP-001 Source Gate Semantics V2 Canonical Audit
+
+on:
+  push:
+    branches:
+      - options-spotperp-v0.1-source-gate-v2-run
+    paths:
+      - '.github/options-source-gate-v2.trigger'
+
+permissions:
+  contents: read
+
+env:
+  LAB_DIR: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1
+  OUT_DIR: source_audit_data_v2
+
+jobs:
+  source-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    steps:
+      - name: Checkout source-gate V2 branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Prove trigger commit changed no research bytes
+        run: |
+          set -euo pipefail
+          test -n "$(git rev-parse HEAD^)"
+          changed="$(git diff --name-only HEAD^ HEAD)"
+          printf 'TRIGGER_COMMIT_CHANGED_FILES:\n%s\n' "$changed"
+          test "$changed" = '.github/options-source-gate-v2.trigger'
+          git rev-parse HEAD^ | tee FROZEN_RESEARCH_COMMIT.txt
+          git rev-parse HEAD | tee EXECUTION_TRIGGER_COMMIT.txt
+          echo 'TRIGGER_ONLY_COMMIT_PASS'
+
+      - name: Record immutable execution identity
+        run: |
+          set -euo pipefail
+          printf '%s\n' 'OPTIONS-SPOTPERP-001' > LAB_ID.txt
+          printf '%s\n' '138cee737d75d27b43d9f377fc9a77e823e8fb2015f360b300cdc4a16cf67cfa' > AUTHORITY_SHA256.txt
+          printf '%s\n' 'SOURCE_GATE_SEMANTICS_V2_PROSPECTIVE_2026-09-14' > SOURCE_GATE_POLICY_ID.txt
+          echo '2025 LOCKED / 2026 LOCKED / NO LIVE TRADING / NO EXCHANGE MUTATION'
+
+      - name: Blind preflight before network access
+        working-directory: ${{ env.LAB_DIR }}
+        run: |
+          set -euo pipefail
+          python3 --version
+          python3 preflight_expiryfix.py
+          python3 preflight_source_gate_v2.py
+          echo 'NO NETWORK IN PREFLIGHT / NO SKEW / NO RETURNS / NO PNL'
+
+      - name: Execute source-gate V2 audit only
+        id: audit
+        working-directory: ${{ env.LAB_DIR }}
+        run: |
+          set +e
+          python3 source_audit_gate_v2.py --output "${{ github.workspace }}/${OUT_DIR}"
+          rc=$?
+          echo "audit_rc=$rc" >> "$GITHUB_OUTPUT"
+          echo "SOURCE_AUDIT_RETURN_CODE=$rc"
+          exit 0
+
+      - name: Governance firewall assertion
+        if: always()
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path('source_audit_data_v2/source_gate_receipt.json')
+          if not p.exists():
+              raise SystemExit('FAIL-CLOSED: source_gate_receipt.json missing')
+          r = json.loads(p.read_text())
+          required_false = [
+              'skew_values_computed', 'signals_computed', 'forward_returns_computed',
+              'pnl_computed', 'holdout_2025_accessed', 'year_2026_accessed'
+          ]
+          bad = {k: r.get(k) for k in required_false if r.get(k) is not False}
+          if bad:
+              raise SystemExit(f'FAIL-CLOSED governance firewall: {bad}')
+          status = r.get('status')
+          if status not in {'SOURCE_AUDIT_PASS','SOURCE_AUDIT_BLOCKED','EXECUTION_ENVIRONMENT_BLOCKED'}:
+              raise SystemExit(f'FAIL-CLOSED unexpected source-gate status: {status!r}')
+          d = r.get('deribit_audit') or {}
+          if d.get('source_gate_semantics_policy_id') != 'SOURCE_GATE_SEMANTICS_V2_PROSPECTIVE_2026-09-14':
+              raise SystemExit('FAIL-CLOSED: V2 source-gate policy id missing')
+          print('GOVERNANCE_FIREWALL_PASS')
+          print('SOURCE_GATE_SEMANTICS_V2_BOUND')
+          print('NO SKEW | NO SIGNALS | NO RETURNS | NO PNL | 2025 LOCKED | 2026 LOCKED')
+          PY
+
+      - name: Build deterministic canonical raw snapshot
+        if: steps.audit.outputs.audit_rc == '0'
+        run: |
+          set -euo pipefail
+          SNAP=canonical_options_source_snapshot_v2
+          rm -rf "$SNAP"
+          mkdir -p "$SNAP/data" "$SNAP/code"
+          cp -a "$OUT_DIR/raw" "$SNAP/data/deribit_raw"
+          cp -a "$OUT_DIR/raw_binance_btcusdt_1d" "$SNAP/data/binance_btcusdt_1d_raw"
+          cp "$OUT_DIR/source_manifest.json" "$SNAP/data/"
+          cp "$OUT_DIR/source_audit_report.json" "$SNAP/data/"
+          cp "$OUT_DIR/source_gate_receipt.json" "$SNAP/data/"
+          cp "$LAB_DIR/PROTOCOL.json" "$SNAP/code/"
+          cp "$LAB_DIR/source_audit.py" "$SNAP/code/"
+          cp "$LAB_DIR/source_audit_expiryfix.py" "$SNAP/code/"
+          cp "$LAB_DIR/source_audit_gate.py" "$SNAP/code/"
+          cp "$LAB_DIR/source_audit_gate_expiryfix.py" "$SNAP/code/"
+          cp "$LAB_DIR/source_audit_gate_v2.py" "$SNAP/code/"
+          cp "$LAB_DIR/preflight_expiryfix.py" "$SNAP/code/"
+          cp "$LAB_DIR/preflight_source_gate_v2.py" "$SNAP/code/"
+          cp FROZEN_RESEARCH_COMMIT.txt EXECUTION_TRIGGER_COMMIT.txt LAB_ID.txt AUTHORITY_SHA256.txt SOURCE_GATE_POLICY_ID.txt "$SNAP/"
+          (
+            cd "$SNAP"
+            find . -type f ! -name CANONICAL_FILE_SHA256.txt -print0 | sort -z | xargs -0 sha256sum > CANONICAL_FILE_SHA256.txt
+          )
+          tar --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner \
+              -cf OPTIONS-SPOTPERP-001_SOURCE_AUDIT_V2_CANONICAL_RAW.tar "$SNAP"
+          sha256sum OPTIONS-SPOTPERP-001_SOURCE_AUDIT_V2_CANONICAL_RAW.tar \
+              | tee OPTIONS-SPOTPERP-001_SOURCE_AUDIT_V2_CANONICAL_RAW.tar.sha256
+          echo 'CANONICAL_RAW_SNAPSHOT_V2_BUILT'
+
+      - name: Upload canonical PASS raw snapshot
+        if: steps.audit.outputs.audit_rc == '0'
+        uses: actions/upload-artifact@v4
+        with:
+          name: options-spotperp-001-source-audit-v2-canonical-raw
+          compression-level: 0
+          if-no-files-found: error
+          path: |
+            OPTIONS-SPOTPERP-001_SOURCE_AUDIT_V2_CANONICAL_RAW.tar
+            OPTIONS-SPOTPERP-001_SOURCE_AUDIT_V2_CANONICAL_RAW.tar.sha256
+            source_audit_data_v2/source_gate_receipt.json
+            source_audit_data_v2/source_audit_report.json
+            source_audit_data_v2/source_manifest.json
+
+      - name: Upload non-PASS receipts
+        if: steps.audit.outputs.audit_rc != '0'
+        uses: actions/upload-artifact@v4
+        with:
+          name: options-spotperp-001-source-audit-v2-nonpass-receipts
+          if-no-files-found: warn
+          path: |
+            source_audit_data_v2/source_gate_receipt.json
+            source_audit_data_v2/source_audit_report.json
+            source_audit_data_v2/source_manifest.json
+
+      - name: Preserve scientific terminal classification
+        if: always()
+        run: |
+          rc='${{ steps.audit.outputs.audit_rc }}'
+          echo "CANONICAL_SOURCE_AUDIT_V2_RC=$rc"
+          case "$rc" in
+            0)
+              echo 'SOURCE_AUDIT_PASS — V2 semantics; Discovery remains a separate gate.'
+              exit 0
+              ;;
+            12)
+              echo 'EXECUTION_ENVIRONMENT_BLOCKED — not a scientific data/edge failure.'
+              exit 12
+              ;;
+            *)
+              echo 'SOURCE_AUDIT_BLOCKED — do not open Discovery.'
+              exit 2
+              ;;
+          esac
