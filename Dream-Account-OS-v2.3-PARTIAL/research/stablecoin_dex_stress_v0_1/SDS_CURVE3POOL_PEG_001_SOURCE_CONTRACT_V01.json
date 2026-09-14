@@ -1,0 +1,77 @@
+{
+  "lab": "STABLECOIN-DEX-STRESS-001",
+  "mve_id": "SDS-CURVE3POOL-PEG-001",
+  "status": "FROZEN_PRE_OUTCOME_SOURCE_GATE_ONLY",
+  "authority_drive_id": "1tpKn1KCwY02_T2cJtClwh6d-6DgdbakhlQFtV2IzF7U",
+  "source_recon_drive_id": "1vrZLifBVjEuXVBlfNu7sfc_Z78zdRGao7CQKPRcOasc",
+  "anti_duplication": "NOT_DUPLICATE_PLANNED_ONLY",
+  "curve_3pool": {
+    "chain_id": 1,
+    "swap_address": "0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7",
+    "coins": [
+      {"id": 0, "symbol": "DAI", "decimals": 18},
+      {"id": 1, "symbol": "USDC", "decimals": 6},
+      {"id": 2, "symbol": "USDT", "decimals": 6}
+    ],
+    "event": "TokenExchange(address indexed buyer,int128 sold_id,uint256 tokens_sold,int128 bought_id,uint256 tokens_bought)"
+  },
+  "source_formula": {
+    "sold_norm": "tokens_sold / 10^decimals[sold_id]",
+    "bought_norm": "tokens_bought / 10^decimals[bought_id]",
+    "nominal_notional": "(sold_norm + bought_norm) / 2",
+    "abs_log_deviation": "abs(ln(bought_norm / sold_norm))",
+    "daily_stress": "sum(nominal_notional * abs_log_deviation) / sum(nominal_notional) over UTC day"
+  },
+  "signal": {
+    "discovery_start": "2021-01-01",
+    "discovery_end": "2024-12-31",
+    "threshold": "80th percentile of previous 90 complete UTC daily STRESS observations, excluding current day",
+    "position": "SHORT ETH if STRESS_t > threshold_t; otherwise NO_TRADE",
+    "expected_relation": "negative",
+    "entry": "next UTC day 00:00",
+    "exit": "following UTC day 00:00",
+    "base_cost_bps": 10,
+    "stress_cost_bps": 20
+  },
+  "source_gate": {
+    "primary_rpc": "https://public.1rpc.io/eth",
+    "secondary_transport_fallback": "https://ethereum-rpc.publicnode.com",
+    "rpc_methods": ["eth_chainId", "eth_getCode", "eth_getLogs", "eth_getBlockByNumber"],
+    "eth_price_values_allowed": false,
+    "returns_allowed": false,
+    "pnl_allowed": false,
+    "performance_statistics_allowed": false,
+    "access_2025_allowed": false,
+    "access_2026_allowed": false
+  },
+  "valid_source_gate_classifications": [
+    "SOURCE_DATA_PASS",
+    "SOURCE_AUTH_BLOCKED",
+    "SOURCE_ACQUISITION_TECHNICAL_FAILURE",
+    "DATA_FAILURE",
+    "PROVENANCE_FAILURE",
+    "INSUFFICIENT_SAMPLE",
+    "NOT_TESTED"
+  ],
+  "discovery_promotion_gates": {
+    "n_trades_min": 150,
+    "mean_net10_gt_0": true,
+    "profit_factor_net10_gt_1": true,
+    "median_gross_gt_0": true,
+    "bootstrap_one_sided_p_lt": 0.10,
+    "bootstrap_block_length_trades": 7,
+    "bootstrap_resamples": 9999,
+    "bootstrap_seed": 20260914,
+    "min_nonnegative_years_2021_2024": 3,
+    "max_single_positive_year_gross_share": 0.60
+  },
+  "governance": {
+    "research_only": true,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "merge_to_main": false,
+    "deployment": false,
+    "post_outcome_tuning": false,
+    "discovery_trigger_authorized": false
+  }
+}
