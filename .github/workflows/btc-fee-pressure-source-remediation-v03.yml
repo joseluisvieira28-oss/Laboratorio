@@ -1,0 +1,109 @@
+name: BTC Fee Pressure Source Remediation Gate V0.3
+on:
+  push:
+    branches: [btc-fee-pressure-v0.3-source-remediation-chunked]
+    paths:
+      - '.github/workflows/btc-fee-pressure-source-remediation-v03.yml'
+permissions:
+  contents: read
+jobs:
+  shard:
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        shard: [0, 1, 2, 3]
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fail-closed preflight
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = "btc-fee-pressure-v0.3-source-remediation-chunked"
+          python3 -m py_compile research/btc_fee_pressure/source_remediation_chunk_v03.py
+          python3 -m py_compile research/btc_fee_pressure/source_remediation_merge_v03.py
+          ! grep -Eq 'api\.binance|api\.coinbase|market-price|fee-estimates|sendtransaction' research/btc_fee_pressure/source_remediation_chunk_v03.py research/btc_fee_pressure/source_remediation_merge_v03.py
+          echo "AUTHORITY DRIVE RECEIPT 1SetlZMVpXCpXdtF9NfRT4fhP3oswKVZq08eF3yE-Td4"
+          echo "V0.2 RUN 34865314520 = SOURCE_ACQUISITION_TECHNICAL_FAILURE_TIMEOUT"
+          echo "NO OUTCOMES | NO PRICES | 2025/2026 LOCKED | MAX_PARALLEL=1"
+      - name: Execute V0.3 source shard
+        env:
+          BFP_SHARD_INDEX: ${{ matrix.shard }}
+          BFP_OUT: btc_fee_pressure_v03_chunk_${{ matrix.shard }}
+        run: python3 research/btc_fee_pressure/source_remediation_chunk_v03.py
+      - name: Preserve shard evidence
+        if: always()
+        env:
+          S: ${{ matrix.shard }}
+        run: |
+          set -euo pipefail
+          d="btc_fee_pressure_v03_chunk_${S}"
+          mkdir -p "$d"
+          cp research/btc_fee_pressure/source_remediation_chunk_v03.py "$d/"
+          cp research/btc_fee_pressure/BTC_FEE_PRESSURE_001_SOURCE_REMEDIATION_AUTHORITY_V0_3.md "$d/"
+          printf '%s\n' "$GITHUB_SHA" > "$d/commit.txt"
+          sha256sum research/btc_fee_pressure/source_remediation_chunk_v03.py > "$d/code.sha256"
+          find "$d" -type f -print0 | sort -z | xargs -0 sha256sum > "$d/all_files.sha256"
+          tar --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner -cf "${d}.tar" "$d"
+          sha256sum "${d}.tar" | tee "${d}.tar.sha256"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: BTC-FEE-PRESSURE-001-v03-chunk-${{ matrix.shard }}
+          path: |
+            btc_fee_pressure_v03_chunk_${{ matrix.shard }}/
+            btc_fee_pressure_v03_chunk_${{ matrix.shard }}.tar
+            btc_fee_pressure_v03_chunk_${{ matrix.shard }}.tar.sha256
+          retention-days: 90
+          if-no-files-found: error
+
+  merge:
+    needs: shard
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download all V0.3 shard artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: BTC-FEE-PRESSURE-001-v03-chunk-*
+          path: v03_chunks
+          merge-multiple: false
+      - name: Fail-closed merge preflight
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = "btc-fee-pressure-v0.3-source-remediation-chunked"
+          test "$(find v03_chunks -name chunk_manifest.json | wc -l)" -eq 4
+          python3 -m py_compile research/btc_fee_pressure/source_remediation_merge_v03.py
+          echo "NO DISCOVERY | NO PRICES | NO RETURNS | NO PNL | 2025/2026 LOCKED"
+      - name: Execute V0.3 source merge gate
+        env:
+          BFP_CHUNKS_ROOT: v03_chunks
+          BFP_OUT: btc_fee_pressure_source_remediation_v03_final
+        run: python3 research/btc_fee_pressure/source_remediation_merge_v03.py
+      - name: Preserve final source evidence
+        if: always()
+        run: |
+          set -euo pipefail
+          d="btc_fee_pressure_source_remediation_v03_final"
+          mkdir -p "$d"
+          cp research/btc_fee_pressure/source_remediation_merge_v03.py "$d/"
+          cp research/btc_fee_pressure/BTC_FEE_PRESSURE_001_SOURCE_REMEDIATION_AUTHORITY_V0_3.md "$d/"
+          cp research/btc_fee_pressure/BTC_FEE_PRESSURE_001_SOURCE_REMEDIATION_V0_2_TIMEOUT_CLOSEOUT.md "$d/"
+          printf '%s\n' "$GITHUB_SHA" > "$d/commit.txt"
+          find v03_chunks -name chunk_manifest.json -print0 | sort -z | xargs -0 sha256sum > "$d/chunk_manifests.sha256" || true
+          find "$d" -type f -print0 | sort -z | xargs -0 sha256sum > "$d/all_files.sha256"
+          tar --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner -cf "${d}.tar" "$d"
+          sha256sum "${d}.tar" | tee "${d}.tar.sha256"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: BTC-FEE-PRESSURE-001-source-remediation-v03-final
+          path: |
+            btc_fee_pressure_source_remediation_v03_final/
+            btc_fee_pressure_source_remediation_v03_final.tar
+            btc_fee_pressure_source_remediation_v03_final.tar.sha256
+          retention-days: 90
+          if-no-files-found: error
