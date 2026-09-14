@@ -1,0 +1,38 @@
+name: STABLECOIN-EXCHANGE-FLOW-001 Frozen Discovery V0.1
+on:
+  push:
+    branches: [stablecoin-exchange-flow-v0.1]
+    paths:
+      - 'labs/STABLECOIN_EXCHANGE_FLOW_001/AUTHORIZE_FROZEN_DISCOVERY_001.txt'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  frozen-discovery:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify explicit source-pass authorization marker
+        run: |
+          set -euo pipefail
+          test -f labs/STABLECOIN_EXCHANGE_FLOW_001/AUTHORIZE_FROZEN_DISCOVERY_001.txt
+          grep -q '^SOURCE_RUN_ID=34896944142$' labs/STABLECOIN_EXCHANGE_FLOW_001/AUTHORIZE_FROZEN_DISCOVERY_001.txt
+          grep -q '^SOURCE_CLASSIFICATION=SOURCE_DATASET_PASS$' labs/STABLECOIN_EXCHANGE_FLOW_001/AUTHORIZE_FROZEN_DISCOVERY_001.txt
+          python -m py_compile labs/STABLECOIN_EXCHANGE_FLOW_001/run_frozen_discovery_v01.py
+      - name: Download immutable source dataset artifact
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: 34896944142
+          name: stablecoin-exchange-flow-001-source-dataset-34896944142-1
+          path: source_artifact
+      - name: Execute one-shot frozen Discovery
+        run: python labs/STABLECOIN_EXCHANGE_FLOW_001/run_frozen_discovery_v01.py
+      - name: Upload immutable Discovery evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: stablecoin-exchange-flow-001-discovery-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/stablecoin_exchange_flow_discovery_v01/
+          retention-days: 90
