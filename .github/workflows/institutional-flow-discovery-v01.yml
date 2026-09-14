@@ -1,0 +1,85 @@
+name: INSTITUTIONAL-FLOW-001 Discovery V0.1
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - institutional-flow-v0.1
+    paths:
+      - '.github/institutional-flow-discovery.trigger'
+
+permissions:
+  contents: read
+
+jobs:
+  discovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout frozen branch
+        uses: actions/checkout@v4
+
+      - name: Verify frozen pre-outcome package
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/institutional_flow_v0_1
+        run: |
+          test "${GITHUB_REF_NAME}" = "institutional-flow-v0.1"
+          python3 -m py_compile source_audit_cftc_tff_v01.py publication_timing_audit_v01.py run_if_cftc_001_discovery_v01.py
+          echo "53fd510c6ae125019aa7c259bc002d14dc91769742c2bfacbe450cb7e02bc739  IF_CFTC_001_DISCOVERY_CONTRACT_V01.json" | sha256sum -c -
+          echo "fc6e445ee243d36f6ccced7e7494466ce6f8dd45cbbbd158f5e9dbb8683e4e2d  run_if_cftc_001_discovery_v01.py" | sha256sum -c -
+          echo 'PRE-OUTCOME PACKAGE VERIFIED / 2025 LOCKED / 2026 LOCKED'
+
+      - name: Rebuild and verify frozen CFTC source ledger
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/institutional_flow_v0_1
+        run: |
+          python3 source_audit_cftc_tff_v01.py
+          test "$(sha256sum source_audit_output/CFTC_TFF_BTC_133741_SOURCE_LEDGER_V01.csv | cut -d' ' -f1)" = "a53879c7555f0946a72f502f7ba33c645d3c033ee8f40eb8d8f32c1c0372090c"
+
+      - name: Rebuild frozen publication timing calendar
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/institutional_flow_v0_1
+        run: |
+          python3 publication_timing_audit_v01.py
+          test "$(sha256sum PUBLICATION_TIMING_POLICY_V01.json | cut -d' ' -f1)" = "442eb0dd2f81878d8328cc970eab519aef1edb581a43566a328cc01c83030065"
+
+      - name: Execute one-shot Discovery
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/institutional_flow_v0_1
+        run: python3 run_if_cftc_001_discovery_v01.py
+
+      - name: Validate protected-period firewall
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/institutional_flow_v0_1
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('discovery_output/IF_CFTC_001_DISCOVERY_RESULT_V01.json')
+          x=json.loads(p.read_text())
+          assert x['holdout_2025_accessed'] is False
+          assert x['year_2026_accessed'] is False
+          assert x['live_trading_authorized'] is False
+          assert x['post_outcome_tuning_authorized'] is False
+          assert x['contract_sha256']=='53fd510c6ae125019aa7c259bc002d14dc91769742c2bfacbe450cb7e02bc739'
+          assert x['source_ledger_sha256']=='a53879c7555f0946a72f502f7ba33c645d3c033ee8f40eb8d8f32c1c0372090c'
+          assert x['publication_timing_policy_sha256']=='442eb0dd2f81878d8328cc970eab519aef1edb581a43566a328cc01c83030065'
+          print('DISCOVERY_FIREWALL_PASS')
+          print('CLASSIFICATION=',x['classification'])
+          print('N=',x['n_trades'])
+          print('NET10_BPS=',x['net10_mean_bps'])
+          print('PROMOTION_PASS=',x['promotion_pass'])
+          print('2025 ACCESSED: NO / 2026 ACCESSED: NO / LIVE: NO')
+          PY
+
+      - name: Upload immutable Discovery evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: institutional-flow-001-discovery-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            Dream-Account-OS-v2.3-PARTIAL/research/institutional_flow_v0_1/IF_CFTC_001_DISCOVERY_CONTRACT_V01.json
+            Dream-Account-OS-v2.3-PARTIAL/research/institutional_flow_v0_1/PUBLICATION_TIMING_POLICY_V01.json
+            Dream-Account-OS-v2.3-PARTIAL/research/institutional_flow_v0_1/source_audit_output/CFTC_TFF_SOURCE_AUDIT_V01.json
+            Dream-Account-OS-v2.3-PARTIAL/research/institutional_flow_v0_1/source_audit_output/CFTC_TFF_BTC_133741_SOURCE_LEDGER_V01.csv
+            Dream-Account-OS-v2.3-PARTIAL/research/institutional_flow_v0_1/source_audit_output/CFTC_PUBLICATION_TIMING_AUDIT_V01.json
+            Dream-Account-OS-v2.3-PARTIAL/research/institutional_flow_v0_1/source_audit_output/CFTC_PUBLICATION_EVENT_CALENDAR_V01.json
+            Dream-Account-OS-v2.3-PARTIAL/research/institutional_flow_v0_1/discovery_output/IF_CFTC_001_DISCOVERY_RESULT_V01.json
+            Dream-Account-OS-v2.3-PARTIAL/research/institutional_flow_v0_1/discovery_output/IF_CFTC_001_TRADES_V01.csv
+            Dream-Account-OS-v2.3-PARTIAL/research/institutional_flow_v0_1/discovery_output/IF_CFTC_001_BINANCE_ARCHIVE_MANIFEST_V01.json
+          if-no-files-found: error
+          retention-days: 90
