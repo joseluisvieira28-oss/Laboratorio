@@ -1,0 +1,63 @@
+name: STABLECOIN-EXCHANGE-FLOW-001 Frozen Discovery V0.2 Evidence Chain
+
+on:
+  push:
+    branches: [stablecoin-exchange-flow-v0.1]
+    paths:
+      - 'labs/STABLECOIN_EXCHANGE_FLOW_001/AUTHORIZE_FROZEN_DISCOVERY_CHAIN_001.txt'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  frozen-discovery-evidence-chain:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify explicit evidence-chain authorization marker
+        run: |
+          set -euo pipefail
+          MARKER=labs/STABLECOIN_EXCHANGE_FLOW_001/AUTHORIZE_FROZEN_DISCOVERY_CHAIN_001.txt
+          test -f "$MARKER"
+          grep -qx 'LAB_ID=STABLECOIN-EXCHANGE-FLOW-001' "$MARKER"
+          grep -qx 'MVE_ID=SEF-BINANCE-PUBLIC-USDT-ETH-1D-001' "$MARKER"
+          grep -qx 'ORIGINAL_SOURCE_RUN_ID=34896944142' "$MARKER"
+          grep -qx 'ORIGINAL_SOURCE_CLASSIFICATION=DATA_FAILURE' "$MARKER"
+          grep -qx 'QA_REMEDIATION_RUN_ID=34897999268' "$MARKER"
+          grep -qx 'QA_REMEDIATION_CLASSIFICATION=SOURCE_DATASET_PASS' "$MARKER"
+          grep -qx 'DISCOVERY_AUTHORIZED=YES' "$MARKER"
+          test -f labs/STABLECOIN_EXCHANGE_FLOW_001/FINAL_PRE_DISCOVERY_PROTOCOL_V0.1.md
+          test -f labs/STABLECOIN_EXCHANGE_FLOW_001/PRE_DISCOVERY_TECHNICAL_AMENDMENT_002_QA_REMEDIATION_CHAIN.md
+          python -m py_compile labs/STABLECOIN_EXCHANGE_FLOW_001/run_frozen_discovery_v01.py
+
+      - name: Download immutable original source dataset artifact
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: 34896944142
+          name: stablecoin-exchange-flow-001-source-dataset-34896944142-1
+          path: source_artifact
+
+      - name: Download immutable QA remediation artifact
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: 34897999268
+          name: stablecoin-exchange-flow-001-source-qa-remediation-34897999268-1
+          path: qa_artifact
+
+      - name: Execute one-shot frozen Discovery
+        run: python labs/STABLECOIN_EXCHANGE_FLOW_001/run_frozen_discovery_v01.py
+
+      - name: Upload immutable Discovery evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stablecoin-exchange-flow-001-discovery-chain-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/stablecoin_exchange_flow_discovery_v01/
+          retention-days: 90
