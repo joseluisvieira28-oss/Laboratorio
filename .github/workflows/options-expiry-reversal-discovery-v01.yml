@@ -30,12 +30,18 @@ jobs:
           grep -qx 'DISCOVERY_AUTHORIZED=YES' "$MARKER"
           grep -qx 'FORBIDDEN_2025=YES' "$MARKER"
           grep -qx 'FORBIDDEN_2026=YES' "$MARKER"
+          grep -qx 'PREOUTCOME_TECHNICAL_REMEDIATION=BINANCE_DAILY_FALLBACK_V01' "$MARKER"
+          grep -qx 'INITIAL_FAILED_RUN_ID=34900018454' "$MARKER"
           test -f labs/OPTIONS_EXPIRY_REVERSAL_001/FROZEN_PRE_SOURCE_PROTOCOL_V0.1.md
           test -f labs/OPTIONS_EXPIRY_REVERSAL_001/PRE_OUTCOME_EXECUTION_SEMANTICS_V0.1.md
+          test -f labs/OPTIONS_EXPIRY_REVERSAL_001/PRE_OUTCOME_TECHNICAL_REMEDIATION_001.md
           test -f labs/OPTIONS_EXPIRY_REVERSAL_001/run_frozen_discovery_v01.py
+          test -f labs/OPTIONS_EXPIRY_REVERSAL_001/run_frozen_discovery_v01_remediated.py
           python -m py_compile labs/OPTIONS_EXPIRY_REVERSAL_001/run_frozen_discovery_v01.py
+          python -m py_compile labs/OPTIONS_EXPIRY_REVERSAL_001/run_frozen_discovery_v01_remediated.py
           echo "PROTOCOL_SHA256=$(sha256sum labs/OPTIONS_EXPIRY_REVERSAL_001/FROZEN_PRE_SOURCE_PROTOCOL_V0.1.md | awk '{print $1}')"
           echo "SEMANTICS_SHA256=$(sha256sum labs/OPTIONS_EXPIRY_REVERSAL_001/PRE_OUTCOME_EXECUTION_SEMANTICS_V0.1.md | awk '{print $1}')"
+          echo "REMEDIATION_SHA256=$(sha256sum labs/OPTIONS_EXPIRY_REVERSAL_001/PRE_OUTCOME_TECHNICAL_REMEDIATION_001.md | awk '{print $1}')"
 
       - name: Verify exact immutable source run and artifact
         env:
@@ -68,9 +74,9 @@ jobs:
           print('NUMPY_VERSION='+numpy.__version__)
           PY
 
-      - name: Execute one-shot frozen Discovery
+      - name: Execute one-shot frozen Discovery with pre-outcome source remediation
         run: |
-          python labs/OPTIONS_EXPIRY_REVERSAL_001/run_frozen_discovery_v01.py \
+          python labs/OPTIONS_EXPIRY_REVERSAL_001/run_frozen_discovery_v01_remediated.py \
             source_artifact artifacts/options_expiry_reversal_discovery_v01
 
       - name: Upload immutable Discovery evidence
@@ -85,6 +91,7 @@ jobs:
       - name: Governance receipt
         if: always()
         run: |
-          echo 'ONE-SHOT DISCOVERY / PROTECTED 2021-05-02..2024-12-31'
+          echo 'ONE-SHOT DISCOVERY CONTINUATION AFTER TECHNICAL_FAILURE_PREOUTCOME'
+          echo 'SCIENTIFIC LOGIC UNCHANGED / SAME BINANCE SPOT BTCUSDT 1M / DAILY FALLBACK ONLY FOR MISSING EXACT POINTS'
           echo '2025 LOCKED / 2026 LOCKED'
           echo 'NO LIVE TRADING / NO EXCHANGE MUTATION / NO POST-OUTCOME TUNING'
