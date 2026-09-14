@@ -1,0 +1,51 @@
+name: ETF-CME-INSTFLOW-001 Forward Shadow Q4 2026 V0.1
+
+on:
+  push:
+    branches:
+      - etf-cme-institutional-flow-v0.1
+    paths:
+      - 'labs/ETF_CME_INSTITUTIONAL_FLOW_001/forward_shadow_q4_2026_protocol_v01.json'
+      - 'labs/ETF_CME_INSTITUTIONAL_FLOW_001/forward_shadow_q4_2026_checkpoint_v01.py'
+      - '.github/workflows/etf-cme-forward-shadow-q4-2026-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  prospective-source-checkpoint:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout isolated ETF+CME branch
+        uses: actions/checkout@v4
+
+      - name: Bind frozen prospective protocol and compile
+        run: |
+          python -m json.tool labs/ETF_CME_INSTITUTIONAL_FLOW_001/forward_shadow_q4_2026_protocol_v01.json >/dev/null
+          python -m py_compile labs/ETF_CME_INSTITUTIONAL_FLOW_001/forward_shadow_q4_2026_checkpoint_v01.py
+
+      - name: Execute prospective source-only checkpoint
+        run: python labs/ETF_CME_INSTITUTIONAL_FLOW_001/forward_shadow_q4_2026_checkpoint_v01.py
+
+      - name: Validate governance firewalls
+        run: |
+          python - <<'PY'
+          import json
+          p='artifacts/etf_cme_forward_shadow_q4_2026_v01/forward_shadow_checkpoint_receipt.json'
+          r=json.load(open(p))
+          assert r['pre_freeze_2026_outcomes_accessed'] is False
+          assert r['new_market_outcomes_accessed'] is False
+          assert r['live_trading'] is False
+          assert r['exchange_mutation'] is False
+          assert r['post_outcome_tuning'] is False
+          assert r['tier_effect']=='NONE_AUTOMATIC'
+          print(r['classification'])
+          PY
+
+      - name: Upload immutable prospective checkpoint
+        uses: actions/upload-artifact@v4
+        with:
+          name: etf-cme-instflow-001-forward-shadow-q4-2026-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/etf_cme_forward_shadow_q4_2026_v01/
+          retention-days: 90
