@@ -1,6 +1,7 @@
-name: OPS — Dispatch OPTIONS Monthly Source Audit
+name: OPS — Dispatch OPTIONS Finalizer Canonical Raw
 
-# Second isolated ops-only push to trigger the already-present dispatcher.
+# Ops-only dispatcher. Pushes on this isolated branch only and dispatches the
+# already-frozen scientific finalizer against the canonical monthly raw run.
 on:
   push:
     branches:
@@ -16,16 +17,18 @@ jobs:
   dispatch:
     runs-on: ubuntu-latest
     steps:
-      - name: Dispatch canonical frozen monthly workflow
+      - name: Dispatch canonical OPTIONS finalizer
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          echo 'Dispatching canonical OPTIONS monthly source audit on options-spotperp-v0.1'
+          echo 'Dispatching canonical OPTIONS finalizer on options-spotperp-v0.1'
+          echo 'monthly_raw_run_id=34778911131'
           gh api \
             --method POST \
             -H 'Accept: application/vnd.github+json' \
-            repos/joseluisvieira28-oss/Laboratorio/actions/workflows/options-source-audit-monthly-count10000-v01.yml/dispatches \
-            -f ref='options-spotperp-v0.1'
-          echo 'DISPATCH_REQUEST_ACCEPTED'
-          echo 'No scientific files modified; no 2025/2026 access requested.'
+            repos/joseluisvieira28-oss/Laboratorio/actions/workflows/options-source-audit-finalize-monthly-raw-v01.yml/dispatches \
+            -f ref='options-spotperp-v0.1' \
+            -f inputs[monthly_raw_run_id]='34778911131'
+          echo 'FINALIZER_DISPATCH_REQUEST_ACCEPTED'
+          echo 'Ops-only mutation; no scientific files modified; no 2025/2026 access requested.'
