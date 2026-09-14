@@ -47,7 +47,9 @@ N; candidate signals; accepted/suppressed overlap; mean/median gross bps; mean N
 Median gross, NET20 and drawdown are diagnostics, not hidden rescue gates.
 
 ## Terminal states
-DISCOVERY_PASS_CANDIDATE; DISCOVERY_FAIL_NO_PROMOTION; TECHNICAL_FAILURE_PREOUTCOME; DATA_FAILURE; PROVENANCE_FAILURE.
+DISCOVERY_PASS_CANDIDATE; DISCOVERY_FAIL_NO_PROMOTION; TECHNICAL_FAILURE_PREOUTCOME; TECHNICAL_FAILURE_POSTOUTCOME; DATA_FAILURE; PROVENANCE_FAILURE.
+
+`TECHNICAL_FAILURE_POSTOUTCOME` is reserved for transport/infrastructure failure after market access has begun and must never be collapsed into DATA_FAILURE or NO_EDGE.
 
 ## No-rescue rule
 If this exact MVE fails, do not invert it, move percentile/lookback/definition, alter LONG direction, entry/hold/overlap/costs, remove years, add filters, switch exchange/source or select favorable subperiods under this MVE ID. Materially different mechanism => new MVE ID + new prospective authority.
