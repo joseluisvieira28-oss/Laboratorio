@@ -1,0 +1,25 @@
+name: BTC Fee Pressure Authority V0.2 Receipt
+on:
+  push:
+    branches: [btc-fee-pressure-v0.2-source-remediation]
+    paths:
+      - '.github/workflows/btc-fee-pressure-authority-v02.yml'
+permissions:
+  contents: read
+jobs:
+  authority-receipt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          set -euo pipefail
+          mkdir authority_receipt
+          cp research/btc_fee_pressure/BTC_FEE_PRESSURE_001_SOURCE_REMEDIATION_AUTHORITY_V0_2.md authority_receipt/
+          sha256sum authority_receipt/* | tee authority_receipt/SHA256SUMS.txt
+          printf '%s\n' "$GITHUB_SHA" > authority_receipt/commit.txt
+          echo "PRE-ACQUISITION AUTHORITY ONLY | NO NETWORK SOURCE CALL | NO OUTCOMES"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BTC-FEE-PRESSURE-001-source-remediation-authority-v02
+          path: authority_receipt/
+          retention-days: 90
