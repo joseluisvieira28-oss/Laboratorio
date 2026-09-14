@@ -1,0 +1,99 @@
+name: MINER-STRESS-001 One-Shot Discovery V0.1
+
+on:
+  push:
+    branches:
+      - miner-stress-v0.1
+    paths:
+      - '.github/miner-stress-discovery.trigger'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  discovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout isolated miner branch
+        uses: actions/checkout@v4
+
+      - name: Verify explicit one-shot authorization and frozen bytes
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/miner_stress_v0_1
+        run: |
+          test "${GITHUB_REF_NAME}" = "miner-stress-v0.1"
+          test "${GITHUB_RUN_ATTEMPT}" = "1"
+          grep -Fxq "lab=MINER-STRESS-001" ../../../.github/miner-stress-discovery.trigger
+          grep -Fxq "mve=MS-HASHDIFF-7D-001" ../../../.github/miner-stress-discovery.trigger
+          grep -Fxq "mode=ONE_SHOT_DISCOVERY" ../../../.github/miner-stress-discovery.trigger
+          grep -Fxq "outcome_authorization=EXPLICIT_USER_AUTHORIZATION" ../../../.github/miner-stress-discovery.trigger
+          grep -Fxq "source_gate_run=34843651246" ../../../.github/miner-stress-discovery.trigger
+          grep -Fxq "2025=LOCKED" ../../../.github/miner-stress-discovery.trigger
+          grep -Fxq "2026=LOCKED" ../../../.github/miner-stress-discovery.trigger
+          grep -Fxq "live=NO" ../../../.github/miner-stress-discovery.trigger
+          grep -Fxq "rerun_for_outcome_improvement=FORBIDDEN" ../../../.github/miner-stress-discovery.trigger
+          echo "8e23918e1529cb39cb02f9f2e0e7020f74cf37c8fd5be93d2c1ecafc91c21dd5  MS_HASHDIFF_7D_001_DISCOVERY_CONTRACT_V01.json" | sha256sum -c -
+          echo "b62a019120bf5edd4d57f58ac36fec93c16e6df15a52f8a6669f8da9f50eae07  run_ms_hashdiff_7d_001_discovery_v01.py" | sha256sum -c -
+          python3 -m py_compile miner_stress_discovery_preflight_v01.py run_ms_hashdiff_7d_001_discovery_v01.py
+          echo "ONE_SHOT_AUTHORIZATION_GATE_PASS / 2025 LOCKED / 2026 LOCKED"
+
+      - name: Download exact Source Gate artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: miner-stress-001-source-audit-34843651246-1
+          path: Dream-Account-OS-v2.3-PARTIAL/research/miner_stress_v0_1/source_gate_package
+          github-token: ${{ github.token }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: 34843651246
+
+      - name: Re-run outcome-blind preflight before outcomes
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/miner_stress_v0_1
+        run: |
+          python3 miner_stress_discovery_preflight_v01.py
+          grep -q '"classification": "PREOUTCOME_PREFLIGHT_PASS"' preflight_output/MINER_STRESS_001_DISCOVERY_PREFLIGHT_V01.json
+          echo "PREOUTCOME_PREFLIGHT_RECONFIRMED"
+
+      - name: Execute frozen one-shot Discovery
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/miner_stress_v0_1
+        env:
+          MS_DISCOVERY_AUTHORIZATION: AUTHORIZED_ONE_SHOT
+        run: python3 run_ms_hashdiff_7d_001_discovery_v01.py
+
+      - name: Validate scientific closeout and firewalls
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/miner_stress_v0_1
+        run: |
+          python3 - <<'PY'
+          import json
+          x=json.load(open('discovery_output/MS_HASHDIFF_7D_001_DISCOVERY_RESULT_V01.json'))
+          assert x['contract_sha256']=='8e23918e1529cb39cb02f9f2e0e7020f74cf37c8fd5be93d2c1ecafc91c21dd5'
+          assert x['source_gate_run_id']==34843651246
+          assert x['source_gate_artifact_id']==10346619793
+          assert x['holdout_2025_accessed'] is False
+          assert x['year_2026_accessed'] is False
+          assert x['live_trading_authorized'] is False
+          assert x['exchange_mutation_authorized'] is False
+          assert x['post_outcome_tuning_authorized'] is False
+          assert x['classification'] in ('MVE0_SURVIVES_DISCOVERY','DISCOVERY_FAIL_NO_PROMOTION')
+          print('DISCOVERY_FIREWALL_PASS')
+          print('CLASSIFICATION=',x['classification'])
+          print('N=',x['n_trades'])
+          print('NET10_BPS=',x['net10_mean_bps'])
+          print('PF10=',x['profit_factor_net10'])
+          print('BOOTSTRAP_P_NONPOS=',x['bootstrap_p_mean_nonpositive'])
+          print('PROMOTION_PASS=',x['promotion_pass'])
+          print('2025 ACCESSED: NO / 2026 ACCESSED: NO / LIVE: NO')
+          PY
+
+      - name: Upload immutable Discovery evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: miner-stress-001-discovery-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            Dream-Account-OS-v2.3-PARTIAL/research/miner_stress_v0_1/MS_HASHDIFF_7D_001_DISCOVERY_CONTRACT_V01.json
+            Dream-Account-OS-v2.3-PARTIAL/research/miner_stress_v0_1/preflight_output/MINER_STRESS_001_DISCOVERY_PREFLIGHT_V01.json
+            Dream-Account-OS-v2.3-PARTIAL/research/miner_stress_v0_1/discovery_output/MS_HASHDIFF_7D_001_DISCOVERY_RESULT_V01.json
+            Dream-Account-OS-v2.3-PARTIAL/research/miner_stress_v0_1/discovery_output/MS_HASHDIFF_7D_001_TRADES_V01.csv
+            Dream-Account-OS-v2.3-PARTIAL/research/miner_stress_v0_1/discovery_output/MS_HASHDIFF_7D_001_BINANCE_ARCHIVE_MANIFEST_V01.json
+          if-no-files-found: error
+          retention-days: 90

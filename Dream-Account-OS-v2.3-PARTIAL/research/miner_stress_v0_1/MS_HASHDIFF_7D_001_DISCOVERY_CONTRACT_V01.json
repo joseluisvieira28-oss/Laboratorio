@@ -1,0 +1,79 @@
+{
+  "annual_assignment": "entry calendar year",
+  "authority_drive_id": "1wovZvbXAF8ytEu8Py3SJBvMaY3c61fOl5nk-cTwC4mU",
+  "bootstrap": {
+    "block_length_trades": 7,
+    "ci": [
+      0.025,
+      0.975
+    ],
+    "method": "circular moving-block bootstrap of trade-level NET10 mean",
+    "reason": "7-day overlapping holding horizon; frozen before BTC outcome values are opened",
+    "resamples": 9999,
+    "seed": 20260914
+  },
+  "costs_round_trip_bps": {
+    "base": 10,
+    "low": 6,
+    "stress": 20
+  },
+  "execution": {
+    "entry": "signal_date + 1 calendar day at 00:00 UTC",
+    "exit": "entry + 7 calendar days at 00:00 UTC",
+    "hold_calendar_days": 7,
+    "nearest_neighbor_repair": false,
+    "price_authority": "Binance Data Vision BTCUSDT spot 1d open exact UTC daily bars",
+    "price_window_end": "2024-12-31",
+    "price_window_start": "2018-01-01"
+  },
+  "exchange_mutation": false,
+  "frozen_date": "2026-09-14",
+  "holdout_2025": "LOCKED",
+  "lab": "MINER-STRESS-001",
+  "live_trading": false,
+  "merge_to_main": false,
+  "mve_id": "MS-HASHDIFF-7D-001",
+  "positive_year_contribution_definition": "max(annual gross sum bps, 0) divided by sum of max(annual gross sum bps, 0) across years",
+  "post_outcome_tuning": false,
+  "promotion_gate": {
+    "2025_unopened": true,
+    "2026_unopened": true,
+    "bootstrap_one_sided_p_mean_net10_le_zero_lt": 0.1,
+    "calendar_years_nonnegative_net10_min": 4,
+    "last4_2021_2024_nonnegative_net10_min": 3,
+    "mean_net10_gt_bps": 0,
+    "median_gross_gt_bps": 0,
+    "n_trades_min": 500,
+    "profit_factor_net10_gt": 1.0,
+    "provenance_timestamp_firewall": "PASS",
+    "single_positive_year_gross_contribution_max": 0.6
+  },
+  "rerun_for_outcome_improvement": false,
+  "signal": {
+    "formula": "S_t = (R_t / R_{t-7 calendar days}) - 1",
+    "lag_calendar_days": 7,
+    "long_if": "S_t > 0",
+    "no_inversion": true,
+    "no_smoothing": true,
+    "no_thresholds": true,
+    "no_trade_if": "S_t == 0 or required source value missing",
+    "ratio": "R_t = HASHRATE_t / DIFFICULTY_t",
+    "short_if": "S_t < 0"
+  },
+  "source_gate": {
+    "artifact_id": 10346619793,
+    "artifact_name": "miner-stress-001-source-audit-34843651246-1",
+    "artifact_zip_sha256": "aec20674d16b48d1909b6bcdf11fbda77a3c9c2b6c4a163bb2fd8963e5d382fd",
+    "btc_coverage_sha256": "49ca04d5a6b6a00fc479434d011bb0052269e13c14b7066496185ee387bde1cc",
+    "difficulty_raw_sha256": "a55850ca080be668198eea6db4b7e7f0209024bda38c87743265e248f544b6b1",
+    "expected_common_daily_rows": 2557,
+    "expected_end": "2024-12-31",
+    "expected_start": "2018-01-01",
+    "hash_rate_raw_sha256": "3695b487061b67cede624496ca599d271b669031e23a7921382d0209cf2596d3",
+    "run_id": 34843651246,
+    "source_audit_sha256": "e0fe71240a6ce3f62eeeb18bd47a48e5d943dc51cd6fbbf3a2885bcfd419cf10"
+  },
+  "status": "FROZEN_PRE_OUTCOME_IMPLEMENTATION",
+  "version": "DISCOVERY_IMPL_V0.1",
+  "year_2026": "LOCKED"
+}

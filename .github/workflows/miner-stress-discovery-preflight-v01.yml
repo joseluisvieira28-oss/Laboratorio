@@ -1,0 +1,71 @@
+name: MINER-STRESS-001 Discovery Preflight V0.1
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - miner-stress-v0.1
+    paths:
+      - '.github/miner-stress-discovery-preflight.trigger'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout isolated miner branch
+        uses: actions/checkout@v4
+
+      - name: Verify frozen implementation bytes
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/miner_stress_v0_1
+        run: |
+          test "${GITHUB_REF_NAME}" = "miner-stress-v0.1"
+          echo "8e23918e1529cb39cb02f9f2e0e7020f74cf37c8fd5be93d2c1ecafc91c21dd5  MS_HASHDIFF_7D_001_DISCOVERY_CONTRACT_V01.json" | sha256sum -c -
+          echo "b62a019120bf5edd4d57f58ac36fec93c16e6df15a52f8a6669f8da9f50eae07  run_ms_hashdiff_7d_001_discovery_v01.py" | sha256sum -c -
+          python3 -m py_compile miner_stress_discovery_preflight_v01.py run_ms_hashdiff_7d_001_discovery_v01.py
+          if MS_DISCOVERY_AUTHORIZATION= python3 run_ms_hashdiff_7d_001_discovery_v01.py 2>locked.txt; then
+            echo "FAIL: discovery runner unexpectedly unlocked"
+            exit 2
+          fi
+          grep -q "DISCOVERY_LOCKED" locked.txt
+          echo "DISCOVERY_RUNNER_LOCK_TEST_PASS"
+
+      - name: Download exact Source Gate artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: miner-stress-001-source-audit-34843651246-1
+          path: Dream-Account-OS-v2.3-PARTIAL/research/miner_stress_v0_1/source_gate_package
+          github-token: ${{ github.token }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: 34843651246
+
+      - name: Execute outcome-blind preflight
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/miner_stress_v0_1
+        run: |
+          python3 miner_stress_discovery_preflight_v01.py
+          python3 - <<'PY'
+          import json
+          x=json.load(open('preflight_output/MINER_STRESS_001_DISCOVERY_PREFLIGHT_V01.json'))
+          assert x['classification']=='PREOUTCOME_PREFLIGHT_PASS'
+          assert x['btc_price_values_opened'] is False
+          assert x['btc_returns_computed'] is False
+          assert x['pnl_computed'] is False
+          assert x['holdout_2025_accessed'] is False
+          assert x['year_2026_accessed'] is False
+          assert x['structural_signal_dates_before_zero_signal_rule']==2542
+          print('PREOUTCOME_FIREWALL_PASS')
+          PY
+
+      - name: Upload preflight evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: miner-stress-001-discovery-preflight-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            Dream-Account-OS-v2.3-PARTIAL/research/miner_stress_v0_1/MS_HASHDIFF_7D_001_DISCOVERY_CONTRACT_V01.json
+            Dream-Account-OS-v2.3-PARTIAL/research/miner_stress_v0_1/preflight_output/MINER_STRESS_001_DISCOVERY_PREFLIGHT_V01.json
+          if-no-files-found: error
+          retention-days: 90
