@@ -1,0 +1,216 @@
+name: OPTIONS-SPOTPERP-002 Confirmation 2025 V0.1
+
+on:
+  push:
+    branches:
+      - options-spotperp-002-tier1-2025-v01
+    paths:
+      - .github/workflows/options-spotperp-002-confirmation-2025-v01.yml
+      - Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_2/**
+      - Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  confirmation-2025-one-shot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - name: Checkout isolated confirmation branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Governance and authority binding
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_2
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${GITHUB_REF_NAME}" = "options-spotperp-002-tier1-2025-v01"
+          AUTHORITY_COMMIT='6f47b388b2c7e0a19df41200472e50caed4f58a6'
+          AUTHORITY_FILE='OPTIONS_SPOTPERP_002_CONFIRMATION_AUTHORITY_V01.md'
+          git cat-file -e "${AUTHORITY_COMMIT}^{commit}"
+          CURRENT_SHA="$(sha256sum "$AUTHORITY_FILE" | awk '{print $1}')"
+          FROZEN_SHA="$(git show "${AUTHORITY_COMMIT}:Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_2/${AUTHORITY_FILE}" | sha256sum | awk '{print $1}')"
+          test "$CURRENT_SHA" = "$FROZEN_SHA"
+          grep -q 'PROSPECTIVELY FROZEN BEFORE 2025 OOS ACCESS' "$AUTHORITY_FILE"
+          grep -q '2026 remains LOCKED' "$AUTHORITY_FILE"
+          grep -q 'one-shot OOS' "$AUTHORITY_FILE"
+          python3 -m py_compile confirmation_source_acquire_2025_v01.py confirmation_runner_2025_v01.py
+          echo "AUTHORITY_COMMIT=$AUTHORITY_COMMIT"
+          echo "AUTHORITY_SHA256=$CURRENT_SHA"
+          echo 'GOVERNANCE_FIREWALL_PASS=true'
+          echo '2025_AUTHORIZED_BY_FROZEN_AUTHORITY=true'
+          echo '2026_LOCKED=true'
+          echo 'LIVE_TRADING=false'
+          echo 'EXCHANGE_MUTATION=false'
+
+      - name: Acquire 2025 source and run Source/Data Gate only
+        id: source_gate
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_2
+        shell: bash
+        run: |
+          set +e
+          rm -rf confirmation_source_2025
+          python3 confirmation_source_acquire_2025_v01.py --output confirmation_source_2025
+          rc=$?
+          set -e
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          status='TECHNICAL_FAILURE'
+          if [ -f confirmation_source_2025/confirmation_source_manifest.json ]; then
+            status="$(python3 - <<'PY'
+          import json
+          from pathlib import Path
+          print(json.loads(Path('confirmation_source_2025/confirmation_source_manifest.json').read_text())['status'])
+          PY
+          )"
+          fi
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          echo "SOURCE_GATE_EXIT_CODE=$rc"
+          echo "SOURCE_GATE_STATUS=$status"
+          # A scientific OOS computation is forbidden unless this exact status is PASS.
+          if [ "$status" != 'SOURCE_AUDIT_PASS' ]; then
+            mkdir -p confirmation_source_2025
+            python3 - <<'PY'
+          import json, pathlib
+          p=pathlib.Path('confirmation_source_2025/workflow_terminal_receipt.json')
+          if not p.exists():
+              p.write_text(json.dumps({
+                  'lab_id':'OPTIONS-SPOTPERP-002',
+                  'stage':'CONFIRMATION_2025_SOURCE_GATE',
+                  'classification':'SOURCE_OR_DATA_BLOCKED_OR_TECHNICAL_FAILURE',
+                  'oos_outcomes_computed':False,
+                  'year_2026_accessed':False,
+                  'live_trading_authorized':False,
+                  'exchange_mutation_authorized':False
+              },indent=2,sort_keys=True))
+          PY
+          fi
+
+      - name: Validate Source/Data Gate firewall
+        if: steps.source_gate.outputs.status == 'SOURCE_AUDIT_PASS'
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_2
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('confirmation_source_2025')
+          m=json.loads((root/'confirmation_source_manifest.json').read_text())
+          a=json.loads((root/'confirmation_source_audit_report.json').read_text())
+          assert m['status']=='SOURCE_AUDIT_PASS'
+          assert a['status']=='SOURCE_AUDIT_PASS'
+          assert m['authority_commit']=='6f47b388b2c7e0a19df41200472e50caed4f58a6'
+          assert m['confirmation_2025_authorized'] is True
+          assert m['confirmation_2025_accessed'] is True
+          assert m['year_2026_accessed'] is False
+          assert m['source_fetch_complete'] is True
+          assert len(m['btc_price_raw_archives'])==13
+          for k in ('skew_values_computed','signals_computed','forward_returns_computed','pnl_computed'):
+              assert m[k] is False
+          assert a['outcome_metrics_computed'] is False
+          print('SOURCE_AUDIT_PASS')
+          print('GOVERNANCE_FIREWALL_PASS=true')
+          print('NO_OUTCOMES_BEFORE_SOURCE_PASS=true')
+          print('2026_LOCKED=true')
+          PY
+
+      - name: Execute frozen 2025 OOS confirmation exactly once
+        id: oos
+        if: steps.source_gate.outputs.status == 'SOURCE_AUDIT_PASS'
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_2
+        shell: bash
+        run: |
+          set +e
+          rm -rf confirmation_output_2025
+          python3 confirmation_runner_2025_v01.py --source-root confirmation_source_2025 --output confirmation_output_2025
+          rc=$?
+          set -e
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          echo "OOS_EXIT_CODE=$rc"
+          test "$rc" -eq 0 -o "$rc" -eq 3 -o "$rc" -eq 5
+
+      - name: Validate terminal scientific classification
+        if: steps.source_gate.outputs.status == 'SOURCE_AUDIT_PASS'
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_2
+        env:
+          OOS_RC: ${{ steps.oos.outputs.rc }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          p=Path('confirmation_output_2025/OPTIONS_SPOTPERP_002_CONFIRMATION_2025_CLOSEOUT_V01.json')
+          x=json.loads(p.read_text())
+          rc=int(os.environ['OOS_RC'])
+          expected={0:'OOS_REPLICATED',3:'OOS_FAILED',5:'INSUFFICIENT_SAMPLE'}[rc]
+          assert x['classification']==expected
+          assert x['authority_commit']=='6f47b388b2c7e0a19df41200472e50caed4f58a6'
+          assert x['candidate_regime']=='UP_LOW'
+          assert x['year_2026_accessed'] is False
+          assert x['live_trading_authorized'] is False
+          assert x['exchange_mutation_authorized'] is False
+          assert x['tier1_automatic'] is False
+          print('TERMINAL_CLASSIFICATION=',x['classification'])
+          print('REGIME_OBSERVATIONS=',x['regime_observations'])
+          print('REGRESSION=',x['regression'])
+          print('BASE_10BPS=',x['base_10bps'])
+          print('STRESS_20BPS=',x['stress_20bps'])
+          print('GATES=',x['gates'])
+          print('2026_LOCKED=true')
+          print('LIVE_TRADING=false')
+          PY
+
+      - name: Write immutable run identity
+        if: always()
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_2
+        run: |
+          mkdir -p confirmation_run_receipts
+          {
+            echo "repository=${GITHUB_REPOSITORY}"
+            echo "branch=${GITHUB_REF_NAME}"
+            echo "head_sha=${GITHUB_SHA}"
+            echo "run_id=${GITHUB_RUN_ID}"
+            echo "run_attempt=${GITHUB_RUN_ATTEMPT}"
+            echo "authority_commit=6f47b388b2c7e0a19df41200472e50caed4f58a6"
+            echo "source_status=${{ steps.source_gate.outputs.status }}"
+            echo "source_rc=${{ steps.source_gate.outputs.rc }}"
+            echo "oos_rc=${{ steps.oos.outputs.rc }}"
+            echo "2026_accessed=false"
+            echo "live_trading=false"
+            echo "exchange_mutation=false"
+          } > confirmation_run_receipts/run_identity.txt
+
+      - name: Upload source receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: options-spotperp-002-confirmation-source-receipts-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_2/confirmation_source_2025/confirmation_source_manifest.json
+            Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_2/confirmation_source_2025/confirmation_source_audit_report.json
+            Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_2/confirmation_source_2025/workflow_terminal_receipt.json
+            Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_2/confirmation_run_receipts/run_identity.txt
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Upload frozen OOS closeout
+        if: steps.source_gate.outputs.status == 'SOURCE_AUDIT_PASS'
+        uses: actions/upload-artifact@v4
+        with:
+          name: options-spotperp-002-confirmation-2025-v01-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_2/confirmation_output_2025/OPTIONS_SPOTPERP_002_CONFIRMATION_2025_CLOSEOUT_V01.json
+            Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_2/confirmation_output_2025/OPTIONS_SPOTPERP_002_CONFIRMATION_2025_LEDGER_V01.csv
+            Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_2/confirmation_run_receipts/run_identity.txt
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Governance terminal
+        if: always()
+        run: |
+          echo 'OPTIONS-SPOTPERP-002 / 2025 CONFIRMATION ONLY'
+          echo 'SOURCE GATE BEFORE OUTCOMES / FAIL-CLOSED'
+          echo 'NO 2026 / NO LIVE TRADING / NO EXCHANGE MUTATION / NO MERGE TO MAIN'
+          echo 'NO PARAMETER OR SUBPERIOD RESCUE'
