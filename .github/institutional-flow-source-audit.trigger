@@ -1,8 +1,8 @@
 authorized_source_data_audit=2026-09-14
-attempt=3
+attempt=4
 lab=INSTITUTIONAL-FLOW-001
 mode=SOURCE_DATA_AUDIT_ONLY
-correction=OPTIONAL_FIELD_NAME_ONLY
+purpose=SOURCE_LEDGER_PLUS_NON_TUESDAY_DATES
 btc_returns=NO
 pnl=NO
 holdout_2025=LOCKED
