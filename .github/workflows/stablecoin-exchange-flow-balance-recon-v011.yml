@@ -1,0 +1,26 @@
+name: STABLECOIN-EXCHANGE-FLOW-001 Balance Recon V0.1.1
+on:
+  push:
+    branches: [stablecoin-exchange-flow-v0.1]
+    paths:
+      - 'labs/STABLECOIN_EXCHANGE_FLOW_001/usdt_balance_transfer_reconciliation_gate_v01.py'
+      - '.github/workflows/stablecoin-exchange-flow-balance-recon-v011.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  balance-transfer-reconciliation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile gate
+        run: python -m py_compile labs/STABLECOIN_EXCHANGE_FLOW_001/usdt_balance_transfer_reconciliation_gate_v01.py
+      - name: Execute corrected protected reconciliation
+        run: python labs/STABLECOIN_EXCHANGE_FLOW_001/usdt_balance_transfer_reconciliation_gate_v01.py
+      - name: Upload immutable receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: stablecoin-exchange-flow-001-balance-recon-v011-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/stablecoin_exchange_flow_balance_recon_v01/
+          retention-days: 90
