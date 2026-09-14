@@ -14,7 +14,7 @@ OUT.mkdir(exist_ok=True)
 select = ','.join([
     'id','market_and_exchange_names','report_date_as_yyyy_mm_dd','yyyy_report_week_ww',
     'contract_market_name','cftc_contract_market_code','commodity_name','open_interest_all',
-    'asset_mgr_positions_long','asset_mgr_positions_short','asset_mgr_positions_spread_all'
+    'asset_mgr_positions_long','asset_mgr_positions_short'
 ])
 where=(f"cftc_contract_market_code='{CODE}' AND "
        f"report_date_as_yyyy_mm_dd between '{START}' and '{END}'")
