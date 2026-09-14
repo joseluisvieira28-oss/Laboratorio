@@ -19,16 +19,17 @@ jobs:
       - name: Checkout institutional-flow branch
         uses: actions/checkout@v4
 
-      - name: Verify isolated branch and compile outcome-blind audit
+      - name: Verify isolated branch and compile outcome-blind audits
         working-directory: Dream-Account-OS-v2.3-PARTIAL/research/institutional_flow_v0_1
         run: |
           echo "HEAD_SHA=$(git rev-parse HEAD)"
           test "${GITHUB_REF_NAME}" = "institutional-flow-v0.1"
-          python3 -m py_compile source_audit_cftc_tff_v01.py price_coverage_audit_binance_v01.py
+          python3 -m py_compile source_audit_cftc_tff_v01.py publication_timing_audit_v01.py price_coverage_audit_binance_v01.py
+          test -f PUBLICATION_TIMING_POLICY_V01.json
           echo 'SOURCE AUDIT ONLY / NO BTC RETURNS / NO PNL / 2025 LOCKED / 2026 LOCKED'
 
       - name: Execute frozen CFTC TFF structural source audit
-        id: audit
+        id: structural
         working-directory: Dream-Account-OS-v2.3-PARTIAL/research/institutional_flow_v0_1
         shell: bash
         run: |
@@ -37,53 +38,88 @@ jobs:
           rc=$?
           set -e
           echo "rc=$rc" >> "$GITHUB_OUTPUT"
-          test "$rc" -eq 0 -o "$rc" -eq 2
+          test "$rc" -eq 0
 
-      - name: Validate source firewall
+      - name: Execute frozen publication timing audit
+        id: timing
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/institutional_flow_v0_1
+        shell: bash
+        run: |
+          set +e
+          python3 publication_timing_audit_v01.py
+          rc=$?
+          set -e
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          test "$rc" -eq 0
+
+      - name: Execute Binance timestamp-only price coverage audit
+        id: price
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/institutional_flow_v0_1
+        shell: bash
+        run: |
+          set +e
+          python3 price_coverage_audit_binance_v01.py
+          rc=$?
+          set -e
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          test "$rc" -eq 0
+
+      - name: Validate final protected-period and outcome firewall
         if: always()
         working-directory: Dream-Account-OS-v2.3-PARTIAL/research/institutional_flow_v0_1
         run: |
           python3 - <<'PY'
           import json
           from pathlib import Path
-          p=Path('source_audit_output/CFTC_TFF_SOURCE_AUDIT_V01.json')
-          assert p.exists(), p
-          x=json.loads(p.read_text())
-          assert x['outcomes_computed'] is False
-          assert x['btc_returns_computed'] is False
-          assert x['pnl_computed'] is False
-          assert x['holdout_2025_accessed'] is False
-          assert x['year_2026_accessed'] is False
-          assert x['live_trading_authorized'] is False
-          assert x['structural_status'] in ('SOURCE_DATA_STRUCTURAL_PASS','SOURCE_DATA_BLOCKED')
-          print('FIREWALL_PASS')
-          print('STRUCTURAL_STATUS=',x['structural_status'])
-          print('OVERALL_STATUS=',x['status'])
-          print('ROWS=',x['rows'])
-          print('UNIQUE_DATES=',x['unique_dates'])
-          print('NON_TUESDAY_REPORT_DATES=',x['non_tuesday_report_dates'])
-          print('SOURCE_LEDGER_SHA256=',x['source_ledger_sha256'])
+          a=json.loads(Path('source_audit_output/CFTC_TFF_SOURCE_AUDIT_V01.json').read_text())
+          t=json.loads(Path('source_audit_output/CFTC_PUBLICATION_TIMING_AUDIT_V01.json').read_text())
+          p=json.loads(Path('source_audit_output/BINANCE_BTCUSDT_PRICE_COVERAGE_V01.json').read_text())
+          assert a['structural_status']=='SOURCE_DATA_STRUCTURAL_PASS'
+          assert t['publication_timing_gate_pass'] is True
+          assert p['coverage_pass'] is True
+          assert t['exit_max'] <= '2024-12-31'
+          assert p['date_max']=='2024-12-31'
+          for x in (a,t,p):
+              assert x.get('btc_returns_computed',x.get('returns_computed')) is False
+              assert x['pnl_computed'] is False
+              assert x['holdout_2025_accessed'] is False
+              assert x['year_2026_accessed'] is False
+          assert p['price_values_evaluated'] is False
+          print('FINAL_SOURCE_DATA_FIREWALL_PASS')
+          print('CFTC_ROWS=',a['rows'])
+          print('CFTC_LEDGER_SHA256=',a['source_ledger_sha256'])
+          print('TIMING_ELIGIBLE_BEFORE_SIGNAL_DELTA=',t['eligible_events_before_signal_delta'])
+          print('TIMING_EXCLUDED=',t['excluded_events'])
+          print('TIMING_EXCLUDED_BY_REASON=',t['excluded_by_reason'])
+          print('PRICE_DAILY_ROWS=',p['daily_rows'])
+          print('PRICE_ARCHIVES=',p['monthly_archives'])
           print('NO BTC RETURNS / NO PNL / 2025 LOCKED / 2026 LOCKED')
           PY
 
-      - name: Upload immutable structural source audit
+      - name: Upload immutable full source gate package
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: institutional-flow-001-structural-source-audit-${{ github.run_id }}-${{ github.run_attempt }}
+          name: institutional-flow-001-full-source-gate-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
+            Dream-Account-OS-v2.3-PARTIAL/research/institutional_flow_v0_1/PUBLICATION_TIMING_POLICY_V01.json
             Dream-Account-OS-v2.3-PARTIAL/research/institutional_flow_v0_1/source_audit_output/CFTC_TFF_SOURCE_AUDIT_V01.json
             Dream-Account-OS-v2.3-PARTIAL/research/institutional_flow_v0_1/source_audit_output/CFTC_TFF_BTC_133741_SOURCE_LEDGER_V01.csv
+            Dream-Account-OS-v2.3-PARTIAL/research/institutional_flow_v0_1/source_audit_output/CFTC_PUBLICATION_TIMING_AUDIT_V01.json
+            Dream-Account-OS-v2.3-PARTIAL/research/institutional_flow_v0_1/source_audit_output/CFTC_PUBLICATION_EVENT_CALENDAR_V01.json
+            Dream-Account-OS-v2.3-PARTIAL/research/institutional_flow_v0_1/source_audit_output/BINANCE_BTCUSDT_PRICE_COVERAGE_V01.json
+            Dream-Account-OS-v2.3-PARTIAL/research/institutional_flow_v0_1/source_audit_output/BINANCE_BTCUSDT_1D_ARCHIVE_MANIFEST_V01.json
           if-no-files-found: error
           retention-days: 90
 
-      - name: Enforce structural classified state
+      - name: Enforce final source gate state
         if: always()
         env:
-          RC: ${{ steps.audit.outputs.rc }}
+          SRC: ${{ steps.structural.outputs.rc }}
+          TIMING: ${{ steps.timing.outputs.rc }}
+          PRICE: ${{ steps.price.outputs.rc }}
         run: |
-          case "$RC" in
-            0) echo 'SOURCE_DATA_STRUCTURAL_PASS_TIMING_AND_PRICE_PENDING'; exit 0 ;;
-            2) echo 'SOURCE_DATA_BLOCKED'; exit 2 ;;
-            *) echo "UNEXPECTED_STATE RC=$RC"; exit 99 ;;
-          esac
+          if [ "$SRC" = "0" ] && [ "$TIMING" = "0" ] && [ "$PRICE" = "0" ]; then
+            echo 'SOURCE_DATA_PASS'; exit 0
+          fi
+          echo "SOURCE_DATA_BLOCKED SRC=$SRC TIMING=$TIMING PRICE=$PRICE"; exit 2
