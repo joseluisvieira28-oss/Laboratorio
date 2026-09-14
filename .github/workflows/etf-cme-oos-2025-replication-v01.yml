@@ -1,0 +1,64 @@
+name: ETF-CME-INSTFLOW-001 2025 OOS Replication V0.1
+
+on:
+  push:
+    branches:
+      - etf-cme-institutional-flow-v0.1
+    paths:
+      - 'labs/ETF_CME_INSTITUTIONAL_FLOW_001/oos_2025_protocol_v01.json'
+      - 'labs/ETF_CME_INSTITUTIONAL_FLOW_001/oos_2025_replication_v01.py'
+      - '.github/workflows/etf-cme-oos-2025-replication-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  oos-2025-one-shot:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout isolated ETF+CME branch
+        uses: actions/checkout@v4
+      - name: Bind frozen 2025 protocol and compile
+        run: |
+          python -m json.tool labs/ETF_CME_INSTITUTIONAL_FLOW_001/oos_2025_protocol_v01.json >/dev/null
+          python -m py_compile labs/ETF_CME_INSTITUTIONAL_FLOW_001/oos_2025_replication_v01.py
+      - name: Download exact 2025 Source Data Gate package
+        uses: actions/download-artifact@v4
+        with:
+          name: etf-cme-instflow-001-oos-2025-source-gate-34814938876-1
+          run-id: 34814938876
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: source_gate
+      - name: Verify exact source gate authorization
+        run: |
+          python - <<'PY'
+          import json
+          r=json.load(open('source_gate/source_data_gate_receipt.json'))
+          assert r['status']=='SOURCE_DATA_GATE_PASS'
+          assert r['cftc']['raw_sha256']=='37b9eb204e9631b7696da5aaa13fad4809cd5e35c6f5957d04c07242fe407220'
+          assert r['btc']['combined_archive_sha256']=='b7a9fbb4b9bb8051bd10dbdfee415877ef5fc81fc4593595e938f0a45abd1d80'
+          assert r['year_2026_accessed'] is False
+          assert r['outcomes_computed'] is False
+          PY
+      - name: Execute frozen independent 2025 OOS exactly once
+        run: python labs/ETF_CME_INSTITUTIONAL_FLOW_001/oos_2025_replication_v01.py
+      - name: Validate protected-period and governance firewalls
+        run: |
+          python - <<'PY'
+          import json
+          p=json.load(open('artifacts/etf_cme_oos_2025_replication_v01/oos_2025_closeout.json'))
+          assert p['year_2025_accessed'] is True
+          assert p['year_2026_accessed'] is False
+          assert p['live_trading'] is False
+          assert p['exchange_mutation'] is False
+          assert p['post_outcome_tuning'] is False
+          print(p['classification'])
+          PY
+      - name: Upload immutable 2025 OOS closeout
+        uses: actions/upload-artifact@v4
+        with:
+          name: etf-cme-instflow-001-oos-2025-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/etf_cme_oos_2025_replication_v01/
+          retention-days: 90
