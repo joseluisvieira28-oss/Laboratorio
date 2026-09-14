@@ -1,0 +1,53 @@
+name: ETF-CME-INSTFLOW-001 Discovery One-Shot V0.1
+
+on:
+  push:
+    branches:
+      - etf-cme-institutional-flow-v0.1
+    paths:
+      - 'labs/ETF_CME_INSTITUTIONAL_FLOW_001/discovery_v01.py'
+      - '.github/workflows/etf-cme-discovery-one-shot-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  discovery-one-shot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout isolated ETF+CME branch
+        uses: actions/checkout@v4
+      - name: Bind frozen protocol and compile
+        run: |
+          python -m json.tool labs/ETF_CME_INSTITUTIONAL_FLOW_001/protocol_v0.1.json >/dev/null
+          python -m py_compile labs/ETF_CME_INSTITUTIONAL_FLOW_001/discovery_v01.py
+      - name: Download exact canonical Source Data Gate package
+        uses: actions/download-artifact@v4
+        with:
+          name: etf-cme-instflow-001-source-data-gate-34814165080-1
+          run-id: 34814165080
+          github-token: ${{ github.token }}
+          path: source_gate
+      - name: Execute frozen Discovery exactly once
+        run: python labs/ETF_CME_INSTITUTIONAL_FLOW_001/discovery_v01.py
+      - name: Validate protected-period firewalls
+        run: |
+          python - <<'PY'
+          import json
+          p=json.load(open('artifacts/etf_cme_discovery_v01/discovery_closeout.json'))
+          assert p['year_2025_accessed'] is False
+          assert p['year_2026_accessed'] is False
+          assert p['live_trading'] is False
+          assert p['exchange_mutation'] is False
+          print(p['classification'])
+          PY
+      - name: Upload immutable Discovery closeout
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: etf-cme-instflow-001-discovery-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/etf_cme_discovery_v01/
+          retention-days: 90
