@@ -1,0 +1,17 @@
+name: STABLECOIN-EXCHANGE-FLOW-001 MEV Batch Probe V0.1
+on:
+  push:
+    branches: [stablecoin-exchange-flow-v0.1]
+    paths:
+      - 'labs/STABLECOIN_EXCHANGE_FLOW_001/mev_batch_balance_probe_v01.py'
+      - '.github/workflows/stablecoin-exchange-flow-mev-batch-probe-v01.yml'
+permissions:
+  contents: read
+jobs:
+  mev-batch-source-probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - run: python -m py_compile labs/STABLECOIN_EXCHANGE_FLOW_001/mev_batch_balance_probe_v01.py
+      - run: python labs/STABLECOIN_EXCHANGE_FLOW_001/mev_batch_balance_probe_v01.py
