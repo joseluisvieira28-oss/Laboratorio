@@ -1,0 +1,98 @@
+name: MACRO-TRANSMISSION-001 Source Audit V0.1
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - macro-transmission-v0.1
+    paths:
+      - '.github/macro-transmission-source-audit.trigger'
+
+permissions:
+  contents: read
+
+jobs:
+  source-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout frozen branch
+        uses: actions/checkout@v4
+
+      - name: Verify outcome-blind package
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/macro_transmission_v0_1
+        run: |
+          test "${GITHUB_REF_NAME}" = "macro-transmission-v0.1"
+          python3 -m py_compile source_audit_macro_v01.py price_coverage_audit_binance_v01.py
+          echo 'SOURCE AUDIT ONLY / NO SIGNAL / NO BTC PRICES / NO RETURNS / NO PNL / 2025 LOCKED / 2026 LOCKED'
+
+      - name: Audit macro source coverage and timing
+        id: macro
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/macro_transmission_v0_1
+        shell: bash
+        run: |
+          set +e
+          python3 source_audit_macro_v01.py
+          rc=$?
+          set -e
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          test "$rc" -eq 0 -o "$rc" -eq 2
+
+      - name: Audit Binance timestamp-only coverage
+        id: btc
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/macro_transmission_v0_1
+        shell: bash
+        run: |
+          set +e
+          python3 price_coverage_audit_binance_v01.py
+          rc=$?
+          set -e
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          test "$rc" -eq 0 -o "$rc" -eq 2
+
+      - name: Validate firewall
+        if: always()
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/macro_transmission_v0_1
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          m=json.loads(Path('source_audit_output/MACRO_SOURCE_AUDIT_V01.json').read_text())
+          b=json.loads(Path('source_audit_output/BINANCE_BTCUSDT_PRICE_COVERAGE_V01.json').read_text())
+          assert m['macro_signal_computed'] is False
+          assert m['btc_price_values_evaluated'] is False
+          assert m['btc_returns_computed'] is False and m['pnl_computed'] is False
+          assert b['price_values_evaluated'] is False and b['returns_computed'] is False and b['pnl_computed'] is False
+          for x in (m,b):
+              assert x['holdout_2025_accessed'] is False and x['year_2026_accessed'] is False
+          print('SOURCE_FIREWALL_PASS')
+          print('PAIRED_VALID=',m['paired_valid_dates'])
+          print('BTC_DAILY_ROWS=',b['daily_rows'])
+          print('2025 LOCKED / 2026 LOCKED / NO OUTCOMES')
+          PY
+
+      - name: Upload immutable source gate evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: macro-transmission-001-source-gate-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            Dream-Account-OS-v2.3-PARTIAL/research/macro_transmission_v0_1/source_audit_output/MACRO_SOURCE_AUDIT_V01.json
+            Dream-Account-OS-v2.3-PARTIAL/research/macro_transmission_v0_1/source_audit_output/MACRO_SOURCE_MANIFEST_V01.json
+            Dream-Account-OS-v2.3-PARTIAL/research/macro_transmission_v0_1/source_audit_output/DGS2_20180401_20241230.csv
+            Dream-Account-OS-v2.3-PARTIAL/research/macro_transmission_v0_1/source_audit_output/NASDAQCOM_20180401_20241230.csv
+            Dream-Account-OS-v2.3-PARTIAL/research/macro_transmission_v0_1/source_audit_output/BINANCE_BTCUSDT_PRICE_COVERAGE_V01.json
+            Dream-Account-OS-v2.3-PARTIAL/research/macro_transmission_v0_1/source_audit_output/BINANCE_BTCUSDT_1D_ARCHIVE_MANIFEST_V01.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Enforce source gate classification
+        if: always()
+        env:
+          MACRO_RC: ${{ steps.macro.outputs.rc }}
+          BTC_RC: ${{ steps.btc.outputs.rc }}
+        run: |
+          if [ "$MACRO_RC" = "0" ] && [ "$BTC_RC" = "0" ]; then
+            echo 'SOURCE_DATA_PASS'; exit 0
+          fi
+          echo "SOURCE_DATA_BLOCKED MACRO_RC=$MACRO_RC BTC_RC=$BTC_RC"; exit 2
