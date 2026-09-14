@@ -1,6 +1,7 @@
 lab=MINER-STRESS-001
 mve=MS-HASHDIFF-7D-001
 mode=PREOUTCOME_PREFLIGHT_ONLY
+technical_attempt=2
 source_gate_run=34843651246
 source_gate_artifact=10346619793
 2025=LOCKED
