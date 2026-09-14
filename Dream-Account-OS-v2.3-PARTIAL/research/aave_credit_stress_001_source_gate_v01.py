@@ -1,8 +1,19 @@
 #!/usr/bin/env python3
 from __future__ import annotations
-import json, urllib.request, urllib.error, hashlib
+import json, urllib.request, urllib.error, hashlib, os
 
-RPC_CANDIDATES=['https://ethereum-rpc.publicnode.com','https://public.1rpc.io/eth','https://eth.drpc.org','https://eth.llamarpc.com']
+# Optional authenticated archival transport. The URL is supplied only through a
+# GitHub Actions secret and is never printed into receipts/logs.
+ARCHIVE_RPC_URL=os.environ.get('AAVE_ARCHIVE_RPC_URL','').strip()
+RPC_CANDIDATES=[]
+if ARCHIVE_RPC_URL:
+    RPC_CANDIDATES.append(('AUTHENTICATED_ARCHIVE_RPC',ARCHIVE_RPC_URL))
+RPC_CANDIDATES += [
+    ('PUBLICNODE','https://ethereum-rpc.publicnode.com'),
+    ('1RPC','https://public.1rpc.io/eth'),
+    ('DRPC_PUBLIC','https://eth.drpc.org'),
+    ('LLAMARPC','https://eth.llamarpc.com'),
+]
 POOL='0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2'
 TOPIC0='0x804c9b842b2748a22bb64b345453a3de7ca54a6ca45ce00d415894979e22897a'
 TOPIC1='0x000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'
@@ -21,10 +32,10 @@ def rpc_on(endpoint, method, params):
     if 'error' in obj: raise RuntimeError(f"rpc error {method}: {obj['error']}")
     return obj['result']
 
-def get_logs_exact_window(endpoint,a,b):
-    # Preserve the exact frozen [a,b] window and topics while respecting
+def get_logs_exact_window(label,endpoint,a,b):
+    # Preserve the exact frozen [a,b] window and topics while respecting known
     # provider transport caps. This changes request partitioning only.
-    max_span=50 if '1rpc.io' in endpoint else (b-a+1)
+    max_span=50 if label=='1RPC' else (b-a+1)
     logs=[]
     cur=a
     while cur<=b:
@@ -42,14 +53,14 @@ def head(url):
     except Exception as e:
         return {'ok':False,'error':type(e).__name__+': '+str(e)}
 
-def probe_endpoint(endpoint):
-    out={'endpoint':endpoint}
+def probe_endpoint(label,endpoint):
+    out={'endpoint_label':label}
     chain=rpc_on(endpoint,'eth_chainId',[]); out['chain_id']=chain
     code=rpc_on(endpoint,'eth_getCode',[POOL,'latest']); out['pool_code_nonempty']=bool(code and code!='0x')
     probes=[]
     for q,a,b in WINDOWS:
         ba=rpc_on(endpoint,'eth_getBlockByNumber',[hex(a),False]); bb=rpc_on(endpoint,'eth_getBlockByNumber',[hex(b),False])
-        logs=get_logs_exact_window(endpoint,a,b)
+        logs=get_logs_exact_window(label,endpoint,a,b)
         structural=[]
         for x in logs:
             structural.append({'blockNumber_present':bool(x.get('blockNumber')),'transactionHash_present':bool(x.get('transactionHash')),'logIndex_present':x.get('logIndex') is not None,'topics_count':len(x.get('topics',[])),'data_present':bool(x.get('data'))})
@@ -58,20 +69,20 @@ def probe_endpoint(endpoint):
     return out
 
 def main():
-    receipt={'lab':'AAVE-CREDIT-STRESS-001','phase':'SOURCE_PROVENANCE_GATE_ONLY','economic_values_decoded':False,'btc_returns_computed':False,'regression_computed':False,'pnl_computed':False,'2025_accessed':False,'2026_accessed':False,'live_trading':False,'exchange_mutation':False,'rpc_attempts':[]}
+    receipt={'lab':'AAVE-CREDIT-STRESS-001','phase':'SOURCE_PROVENANCE_GATE_ONLY','economic_values_decoded':False,'btc_returns_computed':False,'regression_computed':False,'pnl_computed':False,'2025_accessed':False,'2026_accessed':False,'live_trading':False,'exchange_mutation':False,'authenticated_archive_rpc_configured':bool(ARCHIVE_RPC_URL),'rpc_attempts':[]}
     chosen=None
-    for endpoint in RPC_CANDIDATES:
+    for label,endpoint in RPC_CANDIDATES:
         try:
-            probe=probe_endpoint(endpoint); receipt['rpc_attempts'].append({'endpoint':endpoint,'status':'SUCCESS'})
+            probe=probe_endpoint(label,endpoint); receipt['rpc_attempts'].append({'endpoint_label':label,'status':'SUCCESS'})
             chosen=probe; break
         except Exception as e:
-            receipt['rpc_attempts'].append({'endpoint':endpoint,'status':'FAIL','error':type(e).__name__+': '+str(e)})
+            receipt['rpc_attempts'].append({'endpoint_label':label,'status':'FAIL','error':type(e).__name__+': '+str(e)})
     try:
         receipt['binance']=[{'url':u,**head(u)} for u in BINANCE]
         if chosen is None:
             cls='SOURCE_ACQUISITION_TECHNICAL_FAILURE'
         else:
-            receipt['rpc_selected']=chosen['endpoint']; receipt['chain_id']=chosen['chain_id']; receipt['pool_code_nonempty']=chosen['pool_code_nonempty']; receipt['quarter_probes']=chosen['quarter_probes']
+            receipt['rpc_selected']=chosen['endpoint_label']; receipt['chain_id']=chosen['chain_id']; receipt['pool_code_nonempty']=chosen['pool_code_nonempty']; receipt['quarter_probes']=chosen['quarter_probes']
             healthy = chosen['chain_id']=='0x1' and chosen['pool_code_nonempty'] and all(x['ok'] for x in receipt['binance'])
             valid_quarters=sum(1 for p in chosen['quarter_probes'] if p['matching_log_count']>0 and all(all(v for k,v in s.items() if k!='topics_count') and s['topics_count']>=2 for s in p['structural_records']))
             receipt['valid_quarter_probes']=valid_quarters
