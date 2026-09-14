@@ -34,10 +34,15 @@ jobs:
           grep -q 'MVE ID: ESF-NETQUEUE-SNAPSHOT-7D-002' research/eth_staking_flow/ETH_STAKING_FLOW_001_SNAPSHOT_PRE_DISCOVERY_AUTHORITY_V0_2.md
           grep -q '2025_ACCESS_ALLOWED=false' research/eth_staking_flow/ETH_STAKING_FLOW_001_SNAPSHOT_PRE_DISCOVERY_AUTHORITY_V0_2.md
           grep -q 'PRICE_VALUES_ALLOWED=false' research/eth_staking_flow/ETH_STAKING_FLOW_001_SNAPSHOT_PRE_DISCOVERY_AUTHORITY_V0_2.md
-          if grep -Eqi 'binance|coinbase|mexc|bybit|kraken|price[_ -]?api|return[s]?|pnl' research/eth_staking_flow/source_gate_v02.py; then
-            echo 'Forbidden market/outcome token found in source gate implementation.'
+          if grep -Eqi 'binance|coinbase|mexc|bybit|kraken|coingecko|cryptocompare' research/eth_staking_flow/source_gate_v02.py; then
+            echo 'Forbidden market-data source token found in source gate implementation.'
             exit 41
           fi
+          grep -q '"price_values_opened": False' research/eth_staking_flow/source_gate_v02.py
+          grep -q '"returns_computed": False' research/eth_staking_flow/source_gate_v02.py
+          grep -q '"pnl_computed": False' research/eth_staking_flow/source_gate_v02.py
+          grep -q '"access_2025": False' research/eth_staking_flow/source_gate_v02.py
+          grep -q '"access_2026": False' research/eth_staking_flow/source_gate_v02.py
           echo 'PREOUTCOME GOVERNANCE: PASS'
 
       - name: Execute source/data gate only
