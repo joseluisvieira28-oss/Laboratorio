@@ -1,0 +1,81 @@
+name: INSTITUTIONAL-FLOW-001 Source Audit V0.1
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout institutional-flow branch
+        uses: actions/checkout@v4
+
+      - name: Verify isolated branch and compile outcome-blind audit
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/institutional_flow_v0_1
+        run: |
+          echo "HEAD_SHA=$(git rev-parse HEAD)"
+          test "${GITHUB_REF_NAME}" = "institutional-flow-v0.1"
+          python3 -m py_compile source_audit_cftc_tff_v01.py
+          echo 'SOURCE AUDIT ONLY / NO BTC RETURNS / NO PNL / 2025 LOCKED / 2026 LOCKED'
+
+      - name: Execute frozen CFTC TFF source audit
+        id: audit
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/institutional_flow_v0_1
+        shell: bash
+        run: |
+          set +e
+          python3 source_audit_cftc_tff_v01.py
+          rc=$?
+          set -e
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          test "$rc" -eq 0 -o "$rc" -eq 2
+
+      - name: Validate protected-period firewalls
+        if: always()
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/institutional_flow_v0_1
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('source_audit_output/CFTC_TFF_SOURCE_AUDIT_V01.json')
+          assert p.exists(), p
+          x=json.loads(p.read_text())
+          assert x['outcomes_computed'] is False
+          assert x['btc_returns_computed'] is False
+          assert x['pnl_computed'] is False
+          assert x['holdout_2025_accessed'] is False
+          assert x['year_2026_accessed'] is False
+          assert x['live_trading_authorized'] is False
+          print('FIREWALL_PASS')
+          print('STATUS=',x['status'])
+          print('ROWS=',x['rows'])
+          print('UNIQUE_DATES=',x['unique_dates'])
+          print('DATE_MIN=',x['date_min'])
+          print('DATE_MAX=',x['date_max'])
+          print('GAPS_GT_14_DAYS=',len(x['gaps_gt_14_days']))
+          print('NO BTC RETURNS / NO PNL / 2025 LOCKED / 2026 LOCKED')
+          PY
+
+      - name: Upload immutable source audit receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: institutional-flow-001-source-audit-${{ github.run_id }}-${{ github.run_attempt }}
+          path: Dream-Account-OS-v2.3-PARTIAL/research/institutional_flow_v0_1/source_audit_output/CFTC_TFF_SOURCE_AUDIT_V01.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Enforce classified state
+        if: always()
+        env:
+          RC: ${{ steps.audit.outputs.rc }}
+        run: |
+          case "$RC" in
+            0) echo 'SOURCE_DATA_PASS'; exit 0 ;;
+            2) echo 'SOURCE_DATA_BLOCKED'; exit 2 ;;
+            *) echo "UNEXPECTED_STATE RC=$RC"; exit 99 ;;
+          esac
