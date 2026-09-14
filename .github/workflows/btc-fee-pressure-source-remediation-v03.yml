@@ -1,0 +1,53 @@
+name: BTC Fee Pressure Source Remediation Gate V0.3
+on:
+  push:
+    branches: [btc-fee-pressure-v0.3-source-remediation]
+    paths:
+      - '.github/workflows/btc-fee-pressure-source-remediation-v03.yml'
+permissions:
+  contents: read
+jobs:
+  source-remediation-v03:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fail-closed V0.3 preflight
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = "btc-fee-pressure-v0.3-source-remediation"
+          python3 -m py_compile research/btc_fee_pressure/source_remediation_gate_v03.py
+          ! grep -Eq 'api\.binance|api\.coinbase|market-price|fee-estimates|sendtransaction' research/btc_fee_pressure/source_remediation_gate_v03.py
+          grep -Fq 'BFP-TOTALFEES-7D-001' research/btc_fee_pressure/BTC_FEE_PRESSURE_001_SOURCE_REMEDIATION_AUTHORITY_V0_3.md
+          grep -Fq 'Drive authority ID: `1Q1M6qpDJ73wwxZtNgyfBxLCbhmUmRsrSmFVtbUTHx78`' research/btc_fee_pressure/BTC_FEE_PRESSURE_001_SOURCE_REMEDIATION_AUTHORITY_V0_3.md
+          echo "TECHNICAL REMEDIATION ONLY | SCIENTIFIC MVE UNCHANGED"
+          echo "NO OUTCOMES | NO PRICES | 2025/2026 LOCKED"
+      - name: Execute V0.3 source remediation
+        env:
+          BFP_OUT: btc_fee_pressure_source_remediation_v03_artifact
+          BFP_WORKERS: '16'
+          BFP_HTTP_TIMEOUT: '30'
+          BFP_RETRIES: '5'
+        run: python3 research/btc_fee_pressure/source_remediation_gate_v03.py
+      - name: Preserve immutable evidence
+        if: always()
+        run: |
+          set -euo pipefail
+          mkdir -p btc_fee_pressure_source_remediation_v03_artifact
+          cp research/btc_fee_pressure/source_remediation_gate_v03.py btc_fee_pressure_source_remediation_v03_artifact/
+          cp research/btc_fee_pressure/BTC_FEE_PRESSURE_001_SOURCE_REMEDIATION_AUTHORITY_V0_3.md btc_fee_pressure_source_remediation_v03_artifact/
+          sha256sum research/btc_fee_pressure/source_remediation_gate_v03.py > btc_fee_pressure_source_remediation_v03_artifact/code.sha256
+          printf '%s\n' "$GITHUB_SHA" > btc_fee_pressure_source_remediation_v03_artifact/commit.txt
+          find btc_fee_pressure_source_remediation_v03_artifact -type f -print0 | sort -z | xargs -0 sha256sum > btc_fee_pressure_source_remediation_v03_artifact/all_files.sha256
+          tar --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner -cf btc_fee_pressure_source_remediation_v03_artifact.tar btc_fee_pressure_source_remediation_v03_artifact
+          sha256sum btc_fee_pressure_source_remediation_v03_artifact.tar | tee btc_fee_pressure_source_remediation_v03_artifact.tar.sha256
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: BTC-FEE-PRESSURE-001-source-remediation-v03
+          path: |
+            btc_fee_pressure_source_remediation_v03_artifact/
+            btc_fee_pressure_source_remediation_v03_artifact.tar
+            btc_fee_pressure_source_remediation_v03_artifact.tar.sha256
+          retention-days: 90
+          if-no-files-found: error
