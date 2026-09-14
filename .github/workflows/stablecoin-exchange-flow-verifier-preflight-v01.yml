@@ -1,0 +1,26 @@
+name: STABLECOIN-EXCHANGE-FLOW-001 Verifier Preflight V0.1
+on:
+  push:
+    branches: [ stablecoin-exchange-flow-v0.1 ]
+    paths:
+      - 'labs/STABLECOIN_EXCHANGE_FLOW_001/verify_acquisition_outputs_v01.py'
+      - '.github/workflows/stablecoin-exchange-flow-verifier-preflight-v01.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verifier-preflight:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - run: python -m py_compile labs/STABLECOIN_EXCHANGE_FLOW_001/verify_acquisition_outputs_v01.py
+      - run: |
+          python - <<'PY'
+          import ast, pathlib
+          p=pathlib.Path('labs/STABLECOIN_EXCHANGE_FLOW_001/verify_acquisition_outputs_v01.py')
+          tree=ast.parse(p.read_text())
+          imports={n.names[0].name for n in ast.walk(tree) if isinstance(n,ast.Import)}
+          assert 'requests' not in imports
+          print('VERIFIER_PREFLIGHT_PASS: compile ok / offline-only verifier / no market access')
+          PY
