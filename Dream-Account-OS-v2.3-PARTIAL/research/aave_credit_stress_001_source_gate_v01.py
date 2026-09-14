@@ -21,6 +21,19 @@ def rpc_on(endpoint, method, params):
     if 'error' in obj: raise RuntimeError(f"rpc error {method}: {obj['error']}")
     return obj['result']
 
+def get_logs_exact_window(endpoint,a,b):
+    # Preserve the exact frozen [a,b] window and topics while respecting
+    # provider transport caps. This changes request partitioning only.
+    max_span=50 if '1rpc.io' in endpoint else (b-a+1)
+    logs=[]
+    cur=a
+    while cur<=b:
+        end=min(cur+max_span-1,b)
+        part=rpc_on(endpoint,'eth_getLogs',[{'address':POOL,'fromBlock':hex(cur),'toBlock':hex(end),'topics':[TOPIC0,TOPIC1]}])
+        logs.extend(part)
+        cur=end+1
+    return logs
+
 def head(url):
     req=urllib.request.Request(url,method='HEAD',headers={'user-agent':'AAVE-CREDIT-STRESS-001/0.1'})
     try:
@@ -36,7 +49,7 @@ def probe_endpoint(endpoint):
     probes=[]
     for q,a,b in WINDOWS:
         ba=rpc_on(endpoint,'eth_getBlockByNumber',[hex(a),False]); bb=rpc_on(endpoint,'eth_getBlockByNumber',[hex(b),False])
-        logs=rpc_on(endpoint,'eth_getLogs',[{'address':POOL,'fromBlock':hex(a),'toBlock':hex(b),'topics':[TOPIC0,TOPIC1]}])
+        logs=get_logs_exact_window(endpoint,a,b)
         structural=[]
         for x in logs:
             structural.append({'blockNumber_present':bool(x.get('blockNumber')),'transactionHash_present':bool(x.get('transactionHash')),'logIndex_present':x.get('logIndex') is not None,'topics_count':len(x.get('topics',[])),'data_present':bool(x.get('data'))})
