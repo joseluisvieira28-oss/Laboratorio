@@ -18,9 +18,12 @@ jobs:
           set -euo pipefail
           test -f labs/STABLECOIN_EXCHANGE_FLOW_001/AUTHORIZE_FROZEN_DISCOVERY_001.txt
           grep -q '^SOURCE_RUN_ID=34896944142$' labs/STABLECOIN_EXCHANGE_FLOW_001/AUTHORIZE_FROZEN_DISCOVERY_001.txt
+          grep -q '^SOURCE_QA_REMEDIATION_RUN_ID=34897999268$' labs/STABLECOIN_EXCHANGE_FLOW_001/AUTHORIZE_FROZEN_DISCOVERY_001.txt
           grep -q '^SOURCE_CLASSIFICATION=SOURCE_DATASET_PASS$' labs/STABLECOIN_EXCHANGE_FLOW_001/AUTHORIZE_FROZEN_DISCOVERY_001.txt
+          grep -q '^SOURCE_CSV_SHA256=726da5681b1f135e8e69a95cd6b11296aaa6e344de857376b9271cabdd48804a$' labs/STABLECOIN_EXCHANGE_FLOW_001/AUTHORIZE_FROZEN_DISCOVERY_001.txt
+          grep -q '^QA_COMPARISON_SHA256=3ea784058ba5cd5599d1b29d24d53157874a0a1eb48fda1968ea4fecdcb0961e$' labs/STABLECOIN_EXCHANGE_FLOW_001/AUTHORIZE_FROZEN_DISCOVERY_001.txt
           python -m py_compile labs/STABLECOIN_EXCHANGE_FLOW_001/run_frozen_discovery_v01.py
-      - name: Download immutable source dataset artifact
+      - name: Download immutable original source dataset artifact
         uses: actions/download-artifact@v4
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -28,6 +31,14 @@ jobs:
           run-id: 34896944142
           name: stablecoin-exchange-flow-001-source-dataset-34896944142-1
           path: source_artifact
+      - name: Download immutable source QA remediation artifact
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: 34897999268
+          name: stablecoin-exchange-flow-001-source-qa-remediation-34897999268-1
+          path: qa_artifact
       - name: Execute one-shot frozen Discovery
         run: python labs/STABLECOIN_EXCHANGE_FLOW_001/run_frozen_discovery_v01.py
       - name: Upload immutable Discovery evidence
