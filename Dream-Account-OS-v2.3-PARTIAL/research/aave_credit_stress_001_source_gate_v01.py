@@ -2,7 +2,7 @@
 from __future__ import annotations
 import json, urllib.request, urllib.error, hashlib
 
-RPC_CANDIDATES=['https://ethereum-rpc.publicnode.com','https://eth.llamarpc.com']
+RPC_CANDIDATES=['https://ethereum-rpc.publicnode.com','https://public.1rpc.io/eth','https://eth.drpc.org','https://eth.llamarpc.com']
 POOL='0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2'
 TOPIC0='0x804c9b842b2748a22bb64b345453a3de7ca54a6ca45ce00d415894979e22897a'
 TOPIC1='0x000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'
