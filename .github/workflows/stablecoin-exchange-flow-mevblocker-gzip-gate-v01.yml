@@ -1,0 +1,23 @@
+name: STABLECOIN-EXCHANGE-FLOW-001 MEV Blocker Gzip Gate V0.1
+on:
+  push:
+    branches: [ stablecoin-exchange-flow-v0.1 ]
+    paths:
+      - 'labs/STABLECOIN_EXCHANGE_FLOW_001/mevblocker_gzip_gate_v01.py'
+      - '.github/workflows/stablecoin-exchange-flow-mevblocker-gzip-gate-v01.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  gzip-gate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - run: python -m py_compile labs/STABLECOIN_EXCHANGE_FLOW_001/mevblocker_gzip_gate_v01.py
+      - run: python labs/STABLECOIN_EXCHANGE_FLOW_001/mevblocker_gzip_gate_v01.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stablecoin-exchange-flow-001-gzip-gate-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/stablecoin_exchange_flow_mevblocker_gzip_gate_v01/
+          retention-days: 90
