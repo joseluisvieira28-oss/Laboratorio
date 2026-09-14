@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 
 FRED_SERIES = ["DGS2", "DTWEXBGS", "NASDAQCOM"]
 FRED_BASE = "https://fred.stlouisfed.org/graph/fredgraph.csv?id="
+FRED_RANGE = "&cosd=2018-01-01&coed=2024-12-31"
 BINANCE_BASE = "https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1d"
 MONTHS = [f"{y}-{m:02d}" for y in range(2019, 2025) for m in range(1,13)]
 END_EXCLUSIVE_MS = int(datetime(2025,1,1,tzinfo=timezone.utc).timestamp()*1000)
@@ -21,7 +22,7 @@ def get(url: str) -> bytes:
 
 
 def audit_fred(series: str) -> dict:
-    raw = get(FRED_BASE + series)
+    raw = get(FRED_BASE + series + FRED_RANGE)
     text = raw.decode("utf-8-sig")
     rows = list(csv.reader(io.StringIO(text)))
     if not rows or len(rows[0]) < 2:
@@ -77,14 +78,10 @@ def audit_binance_month(ym: str) -> dict:
 
 def main():
     fred=[audit_fred(s) for s in FRED_SERIES]
-    # Coverage requirement: source history begins no later than 2019-01-01 and contains data through 2024.
     for a in fred:
         if a["first_date"] > "2019-01-01" or a["last_date"] < "2024-12-01":
             raise RuntimeError(f"insufficient FRED coverage: {a}")
     btc=[audit_binance_month(m) for m in MONTHS]
-    all_ts=[]
-    for a in btc:
-        all_ts.extend(range(0))  # intentionally no price/value retention
     expected=72
     if len(btc)!=expected:
         raise RuntimeError(f"expected {expected} BTC monthly archives, got {len(btc)}")
