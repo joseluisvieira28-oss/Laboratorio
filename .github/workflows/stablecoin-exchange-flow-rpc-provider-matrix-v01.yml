@@ -1,0 +1,29 @@
+name: STABLECOIN-EXCHANGE-FLOW-001 RPC Provider Matrix V0.1
+
+on:
+  push:
+    branches: [ stablecoin-exchange-flow-v0.1 ]
+    paths:
+      - 'labs/STABLECOIN_EXCHANGE_FLOW_001/ethereum_rpc_provider_matrix_v01.py'
+      - '.github/workflows/stablecoin-exchange-flow-rpc-provider-matrix-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  provider-matrix:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile provider matrix
+        run: python -m py_compile labs/STABLECOIN_EXCHANGE_FLOW_001/ethereum_rpc_provider_matrix_v01.py
+      - name: Execute protected archive RPC provider matrix
+        run: python labs/STABLECOIN_EXCHANGE_FLOW_001/ethereum_rpc_provider_matrix_v01.py
+      - name: Upload immutable receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: stablecoin-exchange-flow-001-rpc-provider-matrix-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/stablecoin_exchange_flow_rpc_provider_matrix_v01/
+          retention-days: 90
