@@ -41,6 +41,21 @@ Execute the frozen MVE exactly as written in `PRE_DISCOVERY_PROTOCOL_V0.1.md`:
 - costs: BASE10 and STRESS20 bps round trip;
 - all frozen promotion gates remain unchanged.
 
+## Pre-outcome implementation semantics
+
+These mechanics are frozen before any BTC price source is opened:
+
+- asymptotic one-sided HAC p-value uses the standard normal distribution for `beta < 0`;
+- Newey-West uses Bartlett weights through lag 5 with an intercept and the frozen signal as the sole regressor;
+- evaluable observation count includes all valid signals with valid 2024 entry and exit prices, including an exact-zero signal if one occurs;
+- an exact-zero signal is FLAT in the companion strategy, incurs no trading cost and contributes zero strategy return;
+- Profit Factor is `sum(positive net returns) / abs(sum(negative net returns))`; if there are no negative net returns it is reported as infinity;
+- calendar-quarter and calendar-month attribution use the FINRA signal trade date `t`, not the BTC exit date;
+- the quarterly gate uses aggregate BASE10 net strategy return by signal-date quarter;
+- the monthly concentration gate first aggregates gross strategy return by signal-date month, then considers positive months only; the largest positive month's gross aggregate divided by the sum of positive-month gross aggregates must be <= 0.35;
+- leave-one-month-out diagnostics remove all events whose FINRA signal date belongs to the omitted month and recompute regression and companion summary without changing any rule;
+- Binance source is limited to the twelve BTCUSDT spot monthly 1d archives for calendar 2024; no 2025 or 2026 archive may be requested.
+
 ## Firewalls
 
 - 2025 source/outcome access is FORBIDDEN.
