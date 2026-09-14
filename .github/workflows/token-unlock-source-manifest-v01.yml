@@ -5,12 +5,13 @@ on:
     branches:
       - token-unlock-event-001-source-gate-v01
     paths:
-      - 'Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001/**'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001/build_6mv_candidate_manifest_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001/SOURCE_QUARANTINE_ADDENDUM_V01.md'
       - '.github/workflows/token-unlock-source-manifest-v01.yml'
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   source-manifest:
@@ -19,6 +20,8 @@ jobs:
     steps:
       - name: Checkout scientific branch
         uses: actions/checkout@v4
+        with:
+          ref: token-unlock-event-001-source-gate-v01
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -35,11 +38,14 @@ jobs:
           set -euo pipefail
           OUT='Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001/source_probe_output_v02'
           test -f "$OUT/TUE_6MV_CANDIDATE_RECEIPT_V01.json"
+          test -f "$OUT/TUE_6MV_CANDIDATE_MANIFEST_2023_2024_V01.json"
           python - <<'PY'
           import json
+          from datetime import date
           from pathlib import Path
-          p=Path('Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001/source_probe_output_v02/TUE_6MV_CANDIDATE_RECEIPT_V01.json')
-          r=json.loads(p.read_text())
+          out=Path('Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001/source_probe_output_v02')
+          r=json.loads((out/'TUE_6MV_CANDIDATE_RECEIPT_V01.json').read_text())
+          rows=json.loads((out/'TUE_6MV_CANDIDATE_MANIFEST_2023_2024_V01.json').read_text())
           g=r['guards']
           assert g['future_event_rows_serialized'] is False
           assert g['price_data_accessed'] is False
@@ -49,8 +55,28 @@ jobs:
           assert g['year_2025_market_data_accessed'] is False
           assert g['year_2026_market_data_accessed'] is False
           assert r['source_gate_pass'] is False
+          assert all(date.fromisoformat(x['scheduled_date_utc']) <= date(2024,12,31) for x in rows)
+          assert all(int(x['known_lead_days']) >= 30 for x in rows)
+          assert all(x['outcome_data_accessed'] is False for x in rows)
           print('GUARDS_PASS')
           PY
+
+      - name: Persist filtered source-only outputs on scientific branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          OUT='Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001/source_probe_output_v02'
+          git add "$OUT/TUE_6MV_CANDIDATE_RECEIPT_V01.json" \
+                  "$OUT/TUE_6MV_CANDIDATE_MANIFEST_2023_2024_V01.json" \
+                  "$OUT/TUE_6MV_CANDIDATE_MANIFEST_2023_2024_V01.csv"
+          if git diff --cached --quiet; then
+            echo 'No output changes to persist.'
+          else
+            git commit -m 'TOKEN-UNLOCK-EVENT-001: persist filtered source manifest [skip ci]'
+            git push origin HEAD:token-unlock-event-001-source-gate-v01
+          fi
 
       - name: Upload source-only receipt and manifest
         uses: actions/upload-artifact@v4
