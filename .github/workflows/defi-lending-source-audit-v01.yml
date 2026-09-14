@@ -1,0 +1,78 @@
+name: DEFI-LENDING-001 Source Audit V0.1
+
+on:
+  push:
+    branches: [defi-lending-v0.1]
+    paths:
+      - '.github/defi-lending-source-audit.trigger'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/defi_lending_v0_1
+    steps:
+      - name: Checkout frozen branch
+        uses: actions/checkout@v4
+      - name: Verify outcome-blind package
+        run: |
+          test "${GITHUB_REF_NAME}" = "defi-lending-v0.1"
+          python3 -m py_compile source_audit_compound_cusdc_v01.py price_coverage_audit_binance_v01.py
+          echo 'SOURCE AUDIT ONLY / SIGNAL NOT COMPUTED / NO BTC PRICE VALUES / NO RETURNS / NO PNL / 2025 LOCKED / 2026 LOCKED'
+      - name: Audit Compound cUSDC historical source
+        id: compound
+        shell: bash --noprofile --norc -e -o pipefail {0}
+        run: |
+          set +e
+          python3 source_audit_compound_cusdc_v01.py
+          rc=$?
+          set -e
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          test "$rc" -eq 0 -o "$rc" -eq 2
+      - name: Audit Binance timestamp-only coverage
+        id: btc
+        shell: bash --noprofile --norc -e -o pipefail {0}
+        run: |
+          set +e
+          python3 price_coverage_audit_binance_v01.py
+          rc=$?
+          set -e
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          test "$rc" -eq 0 -o "$rc" -eq 2
+      - name: Validate firewall
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          c=json.loads(Path('source_audit_output/COMPOUND_CUSDC_SOURCE_AUDIT_V01.json').read_text())
+          b=json.loads(Path('source_audit_output/BINANCE_BTCUSDT_PRICE_COVERAGE_V01.json').read_text())
+          assert c['signal_computed'] is False
+          assert c['btc_price_values_evaluated'] is False and c['btc_returns_computed'] is False and c['pnl_computed'] is False
+          assert b['price_values_evaluated'] is False and b['returns_computed'] is False and b['pnl_computed'] is False
+          for x in (c,b):
+              assert x['holdout_2025_accessed'] is False and x['year_2026_accessed'] is False
+          print('SOURCE_FIREWALL_PASS')
+          PY
+      - name: Upload immutable source gate evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: defi-lending-001-source-gate-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            Dream-Account-OS-v2.3-PARTIAL/research/defi_lending_v0_1/source_audit_output/
+          if-no-files-found: error
+          retention-days: 90
+      - name: Enforce source gate classification
+        env:
+          COMPOUND_RC: ${{ steps.compound.outputs.rc }}
+          BTC_RC: ${{ steps.btc.outputs.rc }}
+        run: |
+          if [ "$COMPOUND_RC" = "0" ] && [ "$BTC_RC" = "0" ]; then
+            echo 'SOURCE_DATA_PASS'; exit 0
+          fi
+          echo "SOURCE_DATA_BLOCKED COMPOUND_RC=$COMPOUND_RC BTC_RC=$BTC_RC"; exit 2
