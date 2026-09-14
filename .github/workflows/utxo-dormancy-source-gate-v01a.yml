@@ -1,0 +1,47 @@
+name: UTXO Dormancy Source Data Gate V0.1A
+on:
+  push:
+    branches: [utxo-dormancy-v0.1]
+    paths:
+      - '.github/workflows/utxo-dormancy-source-gate-v01a.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source-data-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Enforce frozen branch and no-outcome scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = "utxo-dormancy-v0.1"
+          ! grep -Eiq 'PriceUSD|ReferenceRate|binance|coinbase|returns|pnl' research/utxo_dormancy/source_data_gate.py
+          echo "OUTCOME-BLIND PREFLIGHT PASS"
+          echo "2025 LOCKED | 2026 LOCKED | NO MARKET PRICES | NO RETURNS | NO PNL"
+      - name: Run source/data gate
+        env:
+          UD_OUT: utxo_dormancy_source_gate_artifact
+        run: python3 research/utxo_dormancy/source_data_gate.py
+      - name: Preserve code and deterministic evidence manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp research/utxo_dormancy/source_data_gate.py utxo_dormancy_source_gate_artifact/
+          cp research/utxo_dormancy/UTXO_DORMANCY_001_SOURCE_DATA_AUTHORITY_CORRECTION_V0_1A.md utxo_dormancy_source_gate_artifact/
+          sha256sum research/utxo_dormancy/source_data_gate.py > utxo_dormancy_source_gate_artifact/code.sha256
+          printf '%s\n' "$GITHUB_SHA" > utxo_dormancy_source_gate_artifact/commit.txt
+          find utxo_dormancy_source_gate_artifact -type f -print0 | sort -z | xargs -0 sha256sum > utxo_dormancy_source_gate_artifact/all_files.sha256
+          tar --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner -cf utxo_dormancy_source_gate_artifact.tar utxo_dormancy_source_gate_artifact
+          sha256sum utxo_dormancy_source_gate_artifact.tar > utxo_dormancy_source_gate_artifact.tar.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: UTXO-DORMANCY-001-source-data-gate-v01a
+          path: |
+            utxo_dormancy_source_gate_artifact/
+            utxo_dormancy_source_gate_artifact.tar
+            utxo_dormancy_source_gate_artifact.tar.sha256
+          if-no-files-found: error
+          retention-days: 90
