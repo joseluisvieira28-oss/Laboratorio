@@ -1,0 +1,102 @@
+name: BTC Settlement Demand V0.3 Discovery Bindfix
+
+on:
+  push:
+    branches:
+      - btc-settlement-demand-v0.3-discovery-bindfix
+    paths:
+      - .github/btc-settlement-demand-discovery-v03-bindfix.trigger
+
+permissions:
+  contents: read
+
+jobs:
+  one-shot-discovery-bindfix:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout frozen remediation branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Trigger-only mutation firewall
+        shell: bash
+        run: |
+          set -euo pipefail
+          changed="$(git diff --name-only HEAD^ HEAD)"
+          test "$changed" = '.github/btc-settlement-demand-discovery-v03-bindfix.trigger' || {
+            echo 'Trigger commit changed files beyond the authorized marker:'
+            printf '%s\n' "$changed"
+            exit 40
+          }
+          echo 'TRIGGER-ONLY FIREWALL: PASS'
+
+      - name: Frozen authority and remediation preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${GITHUB_REF_NAME}" = "btc-settlement-demand-v0.3-discovery-bindfix"
+          AUTH='research/btc_settlement_demand/BTC_SETTLEMENT_DEMAND_001_DISCOVERY_AUTHORITY_V0_3.md'
+          BASE='research/btc_settlement_demand/discovery_v03.py'
+          FIX='research/btc_settlement_demand/discovery_v03_bindfix.py'
+          MAN='research/btc_settlement_demand/frozen_source_v02/source_manifest.json'
+          echo '18a45507ac36e15a5824043b46e7a4f43e377cc2775e54893e88b26395b12c7e  '"$AUTH" | sha256sum -c -
+          echo '108525b5d3c3f331f8aef4dbcfcec05c8ab0221ba7c8cbc179d8c944c239b9cd  '"$MAN" | sha256sum -c -
+          grep -q 'MVE_ID: BSD-WOW7D-1D-001' "$AUTH"
+          grep -q 'BINDING_ROUTE_ID = "BSD-SOURCE-BIND-REM-001"' "$FIX"
+          grep -q 'timespan": "2921days"' "$FIX"
+          grep -q 'SOURCE_RAW_SHA256' "$FIX"
+          grep -q 'DISCOVERY_ENTRY_END = date(2024,12,30)' "$BASE"
+          grep -q 'BOOTSTRAP_SEED = 20260914' "$BASE"
+          python -m py_compile "$BASE" "$FIX"
+          echo 'FROZEN SCIENTIFIC AUTHORITY + TECHNICAL REMEDIATION PREFLIGHT: PASS'
+
+      - name: Rebind exact canonical source before outcomes
+        id: preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          python research/btc_settlement_demand/discovery_v03_bindfix.py --preflight-only
+
+      - name: Execute one-shot 2018-2024 Discovery
+        id: discovery
+        shell: bash
+        run: |
+          set +e
+          python research/btc_settlement_demand/discovery_v03_bindfix.py --discovery
+          code=$?
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Upload immutable Discovery evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: btc-settlement-demand-v03-bindfix-discovery-${{ github.run_id }}
+          path: btc_settlement_demand_discovery_v03_out/
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Enforce terminal scientific result
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          code='${{ steps.discovery.outputs.exit_code }}'
+          test -n "$code" || { echo 'Missing Discovery exit code'; exit 42; }
+          if [ "$code" = '0' ]; then
+            echo 'DISCOVERY_PASS_CANDIDATE'
+            exit 0
+          fi
+          if [ "$code" = '3' ]; then
+            echo 'DISCOVERY_FAIL_NO_PROMOTION'
+            exit 3
+          fi
+          echo "Discovery infrastructure/data/provenance failure code=$code"
+          exit "$code"
