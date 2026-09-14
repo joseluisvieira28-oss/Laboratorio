@@ -1,0 +1,42 @@
+{
+  "lab": "INSTITUTIONAL-FLOW-001",
+  "mve_id": "IF-CFTC-001",
+  "version": "DISCOVERY_V0.1",
+  "status": "FROZEN_PRE_OUTCOME",
+  "authorized_date": "2026-09-14",
+  "source_dataset": "CFTC TFF Futures Only gpe5-46if, CME Bitcoin code 133741",
+  "signal": "delta of (AssetManagerLong-AssetManagerShort)/OpenInterest from report t-1 to t",
+  "signal_predecessor_rule": "trade report t only when report t and the immediately preceding chronological CFTC report are both publication-timing eligible; no bridge across excluded reports",
+  "direction": "LONG if delta>0; SHORT if delta<0; no trade if delta=0",
+  "entry": "00:00 UTC first Tuesday after public availability per frozen publication timing policy",
+  "hold_days": 7,
+  "price_authority": "Binance Data Vision BTCUSDT spot 1d open",
+  "cost_bps_round_trip": [6,10,20],
+  "primary_cost_bps": 10,
+  "sample_end": "2024-12-31",
+  "holdout_2025": "LOCKED",
+  "year_2026": "FORBIDDEN",
+  "promotion_gate": {
+    "n_min": 200,
+    "mean_net10_gt_bps": 0,
+    "profit_factor_net10_gt": 1,
+    "median_gross_gt_bps": 0,
+    "calendar_years_nonnegative_net10_min": 4,
+    "last4_discovery_years_nonnegative_net10_min": 3,
+    "single_year_positive_gross_contribution_max": 0.60,
+    "provenance_timestamp_firewall": "PASS",
+    "2025_unopened": true,
+    "2026_unopened": true
+  },
+  "bootstrap": {
+    "method": "iid trade bootstrap of mean NET10 bps, 9999 resamples",
+    "seed": 20260914,
+    "ci": [0.025,0.975],
+    "diagnostic_only": true
+  },
+  "source_ledger_sha256_expected": "a53879c7555f0946a72f502f7ba33c645d3c033ee8f40eb8d8f32c1c0372090c",
+  "publication_timing_policy_sha256_expected": "442eb0dd2f81878d8328cc970eab519aef1edb581a43566a328cc01c83030065",
+  "post_outcome_tuning": false,
+  "live_trading": false,
+  "exchange_mutation": false
+}
