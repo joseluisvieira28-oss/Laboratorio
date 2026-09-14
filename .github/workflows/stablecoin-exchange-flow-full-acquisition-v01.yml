@@ -1,0 +1,36 @@
+name: STABLECOIN-EXCHANGE-FLOW-001 Full Acquisition V0.1
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  full-acquisition:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: stablecoin-exchange-flow-v0.1
+      - name: Verify frozen acquisition authority
+        run: |
+          set -euo pipefail
+          test -f labs/STABLECOIN_EXCHANGE_FLOW_001/DATA_ACQUISITION_PROTOCOL_V0.1.md
+          test -f labs/STABLECOIN_EXCHANGE_FLOW_001/SOURCE_ONLY_AMENDMENT_001_BLOCKTIMESTAMP.md
+          test -f labs/STABLECOIN_EXCHANGE_FLOW_001/SOURCE_PROVENANCE_DECISION_V0.1.md
+          grep -q 'SOURCE_CROSSCHECK_EXACT_PASS' labs/STABLECOIN_EXCHANGE_FLOW_001/SOURCE_PROVENANCE_DECISION_V0.1.md
+          grep -q 'FULL_ACQUISITION_AUTHORIZED' labs/STABLECOIN_EXCHANGE_FLOW_001/SOURCE_PROVENANCE_DECISION_V0.1.md
+      - name: Compile acquisition
+        run: python -m py_compile labs/STABLECOIN_EXCHANGE_FLOW_001/acquire_binance_public_usdt_flow_v01.py
+      - name: Execute protected source acquisition only
+        run: python labs/STABLECOIN_EXCHANGE_FLOW_001/acquire_binance_public_usdt_flow_v01.py
+      - name: Upload immutable acquisition artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stablecoin-exchange-flow-001-full-acquisition-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/stablecoin_exchange_flow_acquisition_v01/
+          retention-days: 90
+          if-no-files-found: warn
