@@ -1,0 +1,53 @@
+name: ETF-CME-INSTFLOW-001 Tier1 Readiness V0.1
+
+on:
+  push:
+    branches: [etf-cme-institutional-flow-v0.1]
+    paths:
+      - 'labs/ETF_CME_INSTITUTIONAL_FLOW_001/tier1_readiness_protocol_v01.json'
+      - 'labs/ETF_CME_INSTITUTIONAL_FLOW_001/tier1_readiness_audit_v01.py'
+      - '.github/workflows/etf-cme-tier1-readiness-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  readiness-audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout isolated ETF+CME branch
+        uses: actions/checkout@v4
+      - name: Bind frozen readiness protocol and compile
+        run: |
+          python -m json.tool labs/ETF_CME_INSTITUTIONAL_FLOW_001/tier1_readiness_protocol_v01.json >/dev/null
+          python -m py_compile labs/ETF_CME_INSTITUTIONAL_FLOW_001/tier1_readiness_audit_v01.py
+      - name: Download immutable 2025 OOS artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: etf-cme-instflow-001-oos-2025-34815006815-1
+          run-id: 34815006815
+          github-token: ${{ github.token }}
+          path: oos_input
+      - name: Execute frozen Tier1 readiness diagnostic
+        run: python labs/ETF_CME_INSTITUTIONAL_FLOW_001/tier1_readiness_audit_v01.py
+      - name: Validate governance firewalls
+        run: |
+          python - <<'PY'
+          import json
+          p=json.load(open('artifacts/etf_cme_tier1_readiness_v01/tier1_readiness_receipt.json'))
+          assert p['tier1_promotion_from_this_study'] is False
+          assert p['new_market_outcomes_accessed'] is False
+          assert p['year_2026_accessed'] is False
+          assert p['live_trading'] is False
+          assert p['exchange_mutation'] is False
+          assert p['post_outcome_optimization'] is False
+          print(p['classification'])
+          PY
+      - name: Upload immutable readiness receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: etf-cme-instflow-001-tier1-readiness-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/etf_cme_tier1_readiness_v01/
+          retention-days: 90
