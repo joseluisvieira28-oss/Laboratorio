@@ -1,0 +1,96 @@
+{
+  "id": "MVE-ADX4H-01-TIER1-CONFIRMATION-V0.1",
+  "status": "FROZEN_PRE_2025_NO_DATA_ACCESS",
+  "freeze_date": "2026-09-14",
+  "authority": {
+    "drive_protocol_id": "1WO2W_oMXgmhflb4fSMDBI_I-4K7mcDgzAuL3jqISf5A",
+    "parent_experiment": "CIGL-ADX-01",
+    "candidate": "MVE-ADX4H-01",
+    "prior_oos_classification": "MVE-2 OOS POSITIVE / V2 TIER 2 PROMOTED CANDIDATE — HIGH FRAGILITY",
+    "source_head": "61205c7fa207c5705d275e89a92cb1e235c6d223",
+    "frozen_blobs": {
+      "classic_indicators_gap_v01.py": "21398ba193d10d465c10b392e1dc8461270a0491",
+      "CLASSIC_INDICATORS_GAP_LAB_V01_PROTOCOL.json": "0ac36b01d682064576b6d1279d26a1d7056c780f",
+      "cigl_adx_01_action_v01.py": "bd8cd57e3ea7b25df1eab5a4c8c80fbe7fd5694c"
+    }
+  },
+  "rule": {
+    "universe": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "DOGEUSDT"],
+    "venue": "Binance USD-M Futures",
+    "source": "official monthly 1m archives with provider CHECKSUM verification",
+    "timeframe": "4H",
+    "indicator": "canonical Wilder ADX/DMI",
+    "length": 14,
+    "threshold": 25,
+    "long": "ADX14 >= 25 and +DI14 > -DI14 on completed 4H bar",
+    "short": "ADX14 >= 25 and -DI14 > +DI14 on completed 4H bar",
+    "entry": "immediate next 4H bar open",
+    "exit": "open exactly four completed 4H bars after entry",
+    "same_asset_overlap": "one active same-asset position at a time",
+    "base_round_trip_cost_bps": 10.0,
+    "stress_round_trip_cost_bps": 14.0,
+    "parameter_changes_after_outcomes": false,
+    "asset_selection_after_outcomes": false,
+    "additional_filters_after_outcomes": false
+  },
+  "confirmatory_window": {
+    "start": "2025-01-01T00:00:00Z",
+    "end_exclusive": "2026-01-01T00:00:00Z",
+    "data_access_authorized": false,
+    "single_open_only": true,
+    "reuse_2024_as_confirmatory": false,
+    "open_2026": false
+  },
+  "sample_policy": {
+    "minimum_resolved_trades": 1000,
+    "below_minimum": "INSUFFICIENT_SAMPLE_FOR_TIER1",
+    "may_lower_after_access": false,
+    "may_extend_into_2026": false
+  },
+  "primary_gates": {
+    "A_provenance_integrity_all_6x12": true,
+    "B_n_ge": 1000,
+    "C_pooled_net10_mean_bps_gt": 0.0,
+    "D_pooled_pf_net10_gt": 1.0,
+    "E_bootstrap_day_net10_ci95_low_gt": 0.0,
+    "F_positive_quarters_min_of_4": 3,
+    "G_positive_assets_min_of_6": 4,
+    "H_positive_leave_one_asset_out_min_of_6": 5,
+    "I_max_asset_positive_net10_pnl_share_le": 0.40,
+    "J_max_quarter_positive_net10_pnl_share_le": 0.50,
+    "K_exact_frozen_rule_bytes_required": true
+  },
+  "stress_reporting": {
+    "net14_required_to_report": true,
+    "pf14_required_to_report": true,
+    "net14_nonpositive": "HIGH_FRAGILITY_FLAG_NOT_AUTOMATIC_KILL_UNDER_V2"
+  },
+  "risk_boundary": {
+    "prior_cumulative_bps_drawdown_is_portfolio_drawdown": false,
+    "portfolio_claim_requires_separate_prospective_contract": true,
+    "portfolio_contract_must_freeze": [
+      "capital allocation",
+      "cross-asset overlap treatment",
+      "simultaneous-position limits",
+      "per-trade risk",
+      "leverage",
+      "mark-to-market accounting",
+      "drawdown semantics"
+    ]
+  },
+  "classification": {
+    "all_gates_pass": "TIER1_CONFIRMATION_ELIGIBLE_RESEARCH_ONLY",
+    "provenance_failure": "PROVENANCE_OR_DATA_FAILURE_NOT_NO_EDGE",
+    "n_below_1000": "INSUFFICIENT_SAMPLE_FOR_TIER1",
+    "economic_failure": "CONFIRMATION_FAIL_APPLY_FROZEN_PROMOTION_POLICY_V2",
+    "robustness_failure": "NO_TIER1_REMAIN_TIER2_FRAGILE_OR_DOWNGRADE_BY_V2"
+  },
+  "locks": {
+    "2025_market_data_access": false,
+    "2026_market_data_access": false,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "main_merge": false,
+    "render_deploy": false
+  }
+}
