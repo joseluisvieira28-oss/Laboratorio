@@ -1,0 +1,49 @@
+name: ETF-CME-INSTFLOW-001 2025 OOS Source Data Gate V0.1
+
+on:
+  push:
+    branches:
+      - etf-cme-institutional-flow-v0.1
+    paths:
+      - 'labs/ETF_CME_INSTITUTIONAL_FLOW_001/oos_2025_protocol_v01.json'
+      - 'labs/ETF_CME_INSTITUTIONAL_FLOW_001/oos_2025_source_gate_v01.py'
+      - '.github/workflows/etf-cme-oos-2025-source-gate-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-data-gate-2025:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout isolated ETF+CME branch
+        uses: actions/checkout@v4
+      - name: Bind frozen 2025 protocol and compile
+        run: |
+          python -m json.tool labs/ETF_CME_INSTITUTIONAL_FLOW_001/oos_2025_protocol_v01.json >/dev/null
+          python -m py_compile labs/ETF_CME_INSTITUTIONAL_FLOW_001/oos_2025_source_gate_v01.py
+      - name: Execute frozen 2025 OOS source/data gate
+        run: python labs/ETF_CME_INSTITUTIONAL_FLOW_001/oos_2025_source_gate_v01.py
+      - name: Validate outcome firewall
+        if: always()
+        run: |
+          python - <<'PY'
+          import json, os
+          p='artifacts/etf_cme_oos_2025_source_gate_v01/source_data_gate_receipt.json'
+          if not os.path.exists(p): raise SystemExit('missing source gate receipt')
+          r=json.load(open(p))
+          assert r['outcomes_computed'] is False
+          assert r['returns_computed'] is False
+          assert r['pnl_computed'] is False
+          assert r['signal_values_computed'] is False
+          assert r['year_2026_accessed'] is False
+          print(r['status'])
+          PY
+      - name: Upload immutable 2025 source gate package
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: etf-cme-instflow-001-oos-2025-source-gate-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/etf_cme_oos_2025_source_gate_v01/
+          retention-days: 90
