@@ -1,0 +1,31 @@
+name: STABLECOIN-EXCHANGE-FLOW-001 Source Dataset V0.1
+on:
+  push:
+    branches: [stablecoin-exchange-flow-v0.1]
+    paths:
+      - 'labs/STABLECOIN_EXCHANGE_FLOW_001/build_daily_usdt_basket_source_v01.py'
+      - 'labs/STABLECOIN_EXCHANGE_FLOW_001/FINAL_PRE_DISCOVERY_PROTOCOL_V0.1.md'
+      - 'labs/STABLECOIN_EXCHANGE_FLOW_001/PRE_DISCOVERY_TECHNICAL_AMENDMENT_001_BOUNDARY_SEARCH.md'
+      - '.github/workflows/stablecoin-exchange-flow-source-dataset-v01.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source-dataset-gate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify no outcome imports/endpoints in source builder
+        run: |
+          set -euo pipefail
+          python -m py_compile labs/STABLECOIN_EXCHANGE_FLOW_001/build_daily_usdt_basket_source_v01.py
+          ! grep -nE 'BTCUSDT|fapi|klines|2025|2026' labs/STABLECOIN_EXCHANGE_FLOW_001/build_daily_usdt_basket_source_v01.py | grep -vE "access_2025|access_2026|year>=2025|no BTC price|2025 or 2026" || true
+      - name: Build protected source dataset and run independent QA
+        run: python labs/STABLECOIN_EXCHANGE_FLOW_001/build_daily_usdt_basket_source_v01.py
+      - name: Upload immutable source dataset receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: stablecoin-exchange-flow-001-source-dataset-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/stablecoin_exchange_flow_daily_source_v01/
+          retention-days: 90
