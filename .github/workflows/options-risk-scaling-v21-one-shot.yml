@@ -1,0 +1,148 @@
+name: OPTIONS-SPOTPERP-001 V2.1 Risk Scaling One-Shot
+
+on:
+  push:
+    branches: [options-spotperp-risk-v2-1]
+    paths: [.github/workflows/options-risk-scaling-v21-one-shot.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  risk-scaling-one-shot:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1
+    steps:
+      - name: Checkout isolated V2.1 branch
+        uses: actions/checkout@v4
+
+      - name: Outcome-blind preflight and synthetic tests
+        run: |
+          test "${GITHUB_REF_NAME}" = "options-spotperp-risk-v2-1"
+          python3 preflight_source_audit.py
+          python3 -m py_compile risk_scaling_v21_runner.py test_risk_scaling_v21.py
+          python3 test_risk_scaling_v21.py
+          python3 - <<'PY'
+          import json
+          f=json.load(open('RISK_SCALING_V21_FREEZE.json'))
+          assert f['status']=='FROZEN_PRE_OUTCOME'
+          assert f['parent_discovery_run_id']==34858777691
+          assert f['parent_final_source_gate_run_id']==34856557581
+          assert f['parent_monthly_raw_run_id']==34778928091
+          assert f['protected_periods']=={'2025':'LOCKED','2026':'LOCKED'}
+          assert f['live_trading_authorized'] is False
+          assert f['exchange_mutation_authorized'] is False
+          print('V21_FREEZE_PREFLIGHT_PASS')
+          print('NO REAL MARKET OUTCOMES OPENED IN PREFLIGHT')
+          PY
+
+      - name: Download corrected final Source Gate
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: 34856557581
+          name: options-spotperp-001-final-latest-source-gate-34856557581-1
+          path: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1/final_source_gate_data
+
+      - name: Download immutable corrected monthly raw
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: 34778928091
+          name: options-spotperp-001-monthly-raw-34778928091-2
+          path: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1/source_audit_data
+
+      - name: Download immutable monthly receipts
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: 34778928091
+          name: options-spotperp-001-monthly-final-receipts-34778928091-2
+          path: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1/source_audit_data
+
+      - name: Bind exact raw snapshot to corrected final Source Gate
+        run: |
+          python3 - <<'PY'
+          import hashlib,json,shutil
+          from pathlib import Path
+          raw=Path('source_audit_data'); gate=Path('final_source_gate_data')
+          def sha(p): return hashlib.sha256(p.read_bytes()).hexdigest()
+          assert sha(raw/'source_manifest.json')==sha(gate/'source_manifest.json')
+          assert sha(raw/'source_audit_report.json')==sha(gate/'source_audit_report.json')
+          r=json.loads((gate/'source_gate_calendar_day_reconciled_receipt.json').read_text())
+          assert r['status']=='SOURCE_AUDIT_PASS'
+          assert r['authority']['authority_sha256']=='138cee737d75d27b43d9f377fc9a77e823e8fb2015f360b300cdc4a16cf67cfa'
+          assert r['holdout_2025_accessed'] is False and r['year_2026_accessed'] is False
+          assert r['skew_values_computed'] is False and r['signals_computed'] is False
+          assert r['forward_returns_computed'] is False and r['pnl_computed'] is False
+          shutil.copy2(gate/'source_gate_calendar_day_reconciled_receipt.json',raw/'source_gate_calendar_day_reconciled_receipt.json')
+          shutil.copy2(gate/'source_gate_calendar_day_daily_coverage.json',raw/'source_gate_calendar_day_daily_coverage.json')
+          fg=gate/'source_gate_required_field_guard_receipt.json'
+          if fg.exists(): shutil.copy2(fg,raw/'source_gate_required_field_guard_receipt.json')
+          print('V21_AUTHORIZATION_BINDING_PASS')
+          print('2025 LOCKED / 2026 LOCKED')
+          PY
+
+      - name: Execute frozen V2.1 exactly once
+        id: execute
+        shell: bash --noprofile --norc -e -o pipefail {0}
+        run: |
+          rm -rf risk_scaling_v21_output
+          set +e
+          python3 risk_scaling_v21_runner.py --source-root source_audit_data --output risk_scaling_v21_output
+          rc=$?
+          set -e
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          echo "V21_EXIT_CODE=$rc"
+          test "$rc" -eq 0 -o "$rc" -eq 3
+
+      - name: Validate V2.1 scientific closeout and firewalls
+        env:
+          V21_RC: ${{ steps.execute.outputs.rc }}
+        run: |
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          rc=int(os.environ['V21_RC'])
+          p=Path('risk_scaling_v21_output/OPTIONS_SPOTPERP_001_RISK_SCALING_V21_CLOSEOUT.json')
+          x=json.loads(p.read_text())
+          assert x['parent_discovery_run_id']==34858777691
+          assert x['parent_final_source_gate_run_id']==34856557581
+          assert x['parent_monthly_raw_run_id']==34778928091
+          assert x['holdout_2025_accessed'] is False and x['year_2026_accessed'] is False
+          assert x['live_trading_authorized'] is False and x['exchange_mutation_authorized'] is False
+          if rc==0: assert x['classification']=='RISK_SCALING_DEV_SURVIVES'
+          elif rc==3: assert x['classification']=='RISK_SCALING_DEV_FAIL'
+          else: raise AssertionError(rc)
+          assert Path('risk_scaling_v21_output/OPTIONS_SPOTPERP_001_RISK_SCALING_V21_LEDGER.csv').exists()
+          print('SCIENTIFIC_CLASSIFICATION=',x['classification'])
+          print('BASE_10BPS=',x['base_10bps'])
+          print('STRESS_20BPS=',x['stress_20bps'])
+          print('NONNEGATIVE_YEARS=',x['nonnegative_years'])
+          print('GATES=',x['gates'])
+          print('2025 UNOPENED / 2026 LOCKED / NO LIVE TRADING')
+          PY
+
+      - name: Upload immutable V2.1 closeout
+        uses: actions/upload-artifact@v4
+        with:
+          name: options-spotperp-001-risk-scaling-v21-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1/risk_scaling_v21_output/OPTIONS_SPOTPERP_001_RISK_SCALING_V21_CLOSEOUT.json
+            Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1/risk_scaling_v21_output/OPTIONS_SPOTPERP_001_RISK_SCALING_V21_LEDGER.csv
+          retention-days: 90
+          if-no-files-found: error
+
+      - name: Governance closeout
+        run: |
+          echo 'V2.1 DEVELOPMENT-ONLY / 2021-2024 ONLY'
+          echo 'NO 2025 / NO 2026 / NO LIVE TRADING / NO EXCHANGE MUTATION'
+          echo 'NO PARAMETER RESCUE / NO SUBGROUP RESCUE'
+          echo 'SURVIVAL DOES NOT ITSELF AUTHORIZE TIER 2 OR OOS ACCESS'
