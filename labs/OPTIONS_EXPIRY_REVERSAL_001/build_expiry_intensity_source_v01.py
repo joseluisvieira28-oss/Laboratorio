@@ -2,7 +2,8 @@
 """Build the protected trade-derived expiry-intensity source series.
 
 Reads ONLY immutable Deribit BTC option-trade raw pages from the prior
-OPTIONS-SPOTPERP-001 source artifact plus its source-gate receipts.
+OPTIONS-SPOTPERP-001 monthly-raw artifact. Provenance/manifest evidence is read
+ONLY from the separate immutable final source-gate artifact.
 
 No BTC price data, no returns, no PnL, no 2025/2026.
 """
@@ -52,12 +53,10 @@ def locate_unique(root: Path, filename: str) -> Path:
 
 
 def locate_deribit_raw(root: Path) -> Path:
-    # Deliberately match only a directory whose basename is exactly 'raw'.
-    # Never traverse raw_binance_btcusdt_1d or any other price directory.
-    candidates = []
-    for p in root.rglob("raw"):
-        if p.is_dir() and any(p.glob("*.json.gz")):
-            candidates.append(p)
+    # Deliberately accept ONLY a directory whose basename is exactly 'raw'.
+    # The old artifact also contains raw_binance_btcusdt_1d; that directory is
+    # never traversed by this program.
+    candidates = [p for p in root.rglob("raw") if p.is_dir() and any(p.glob("*.json.gz"))]
     if len(candidates) != 1:
         raise RuntimeError(f"expected exactly one Deribit raw directory under {root}, found {len(candidates)}")
     return candidates[0]
@@ -78,7 +77,7 @@ def settlement_source_date(ts: dt.datetime) -> dt.date | None:
     """Map a trade to the settlement date whose source window contains it.
 
     Window for settlement d: [d-1 08:00, d 07:30). Trades in [07:30,08:00)
-    are intentionally excluded from the source classifier.
+    are deliberately excluded from the source classifier.
     """
     tod = ts.timetz().replace(tzinfo=None)
     if tod < dt.time(7, 30):
@@ -118,10 +117,8 @@ def main() -> int:
     out.mkdir(parents=True, exist_ok=True)
 
     raw_dir = locate_deribit_raw(source_root)
-    manifest_path = locate_unique(source_root, "source_manifest.json")
-    report_path = locate_unique(source_root, "source_audit_report.json")
-    gate_manifest_path = locate_unique(gate_root, "source_manifest.json")
-    gate_report_path = locate_unique(gate_root, "source_audit_report.json")
+    manifest_path = locate_unique(gate_root, "source_manifest.json")
+    report_path = locate_unique(gate_root, "source_audit_report.json")
     gate_receipt_path = locate_unique(gate_root, "source_gate_calendar_day_reconciled_receipt.json")
     protocol_path = Path("labs/OPTIONS_EXPIRY_REVERSAL_001/FROZEN_PRE_SOURCE_PROTOCOL_V0.1.md")
     if not protocol_path.exists():
@@ -131,12 +128,18 @@ def main() -> int:
     report = json.loads(report_path.read_text(encoding="utf-8"))
     gate = json.loads(gate_receipt_path.read_text(encoding="utf-8"))
 
+    # Validate the old source authority without touching its bundled BTC price
+    # archives. The raw Deribit bytes are bound by exact per-page hashes below.
+    if manifest.get("lab_id") != "OPTIONS-SPOTPERP-001":
+        raise RuntimeError("unexpected prior manifest lab id")
     if manifest.get("source_fetch_complete") is not True or manifest.get("probe_mode") is not False:
         raise RuntimeError("prior immutable source corpus is not a complete full source acquisition")
     if manifest.get("holdout_accessed") is not False or manifest.get("locked_2026_accessed") is not False:
         raise RuntimeError("prior immutable source corpus violated protected-period flags")
-    if report.get("outcome_metrics_computed") is not False:
-        raise RuntimeError("prior source report unexpectedly contains outcomes")
+    if manifest.get("status") != "SOURCE_AUDIT_PASS":
+        raise RuntimeError(f"prior manifest not PASS: {manifest.get('status')}")
+    if report.get("status") != "SOURCE_AUDIT_PASS" or report.get("outcome_metrics_computed") is not False:
+        raise RuntimeError("prior source report is not source-only PASS")
     audit = report.get("audit") or {}
     if audit.get("forward_returns_computed") is not False or audit.get("pnl_computed") is not False:
         raise RuntimeError("prior source report unexpectedly contains return/PnL outcomes")
@@ -144,10 +147,30 @@ def main() -> int:
         raise RuntimeError(f"prior latest-code source gate is not PASS: {gate.get('status')}")
     if gate.get("holdout_2025_accessed") is not False or gate.get("year_2026_accessed") is not False:
         raise RuntimeError("prior latest-code source gate violated protected-period flags")
-    if sha256_file(manifest_path) != sha256_file(gate_manifest_path):
-        raise RuntimeError("raw artifact source_manifest does not match final source-gate copy")
-    if sha256_file(report_path) != sha256_file(gate_report_path):
-        raise RuntimeError("raw artifact source_audit_report does not match final source-gate copy")
+    if gate.get("forward_returns_computed") is not False or gate.get("pnl_computed") is not False:
+        raise RuntimeError("prior latest-code gate unexpectedly contains outcomes")
+
+    # Bind the 2,093 downloaded Deribit pages to the immutable manifest. This is
+    # the source-level equivalent of validating the ZIP digest, but at the exact
+    # files consumed by this new MVE.
+    raw_pages = manifest.get("raw_pages")
+    if not isinstance(raw_pages, list) or not raw_pages:
+        raise RuntimeError("prior manifest raw_pages missing")
+    local_pages = {p.name: p for p in raw_dir.glob("*.json.gz")}
+    if len(local_pages) != len(raw_pages):
+        raise RuntimeError(f"raw page count mismatch local={len(local_pages)} manifest={len(raw_pages)}")
+    manifest_names = {str(r.get("page")) for r in raw_pages}
+    if set(local_pages) != manifest_names:
+        raise RuntimeError("raw page filename set does not match immutable manifest")
+    raw_hash_failures = []
+    for rec in raw_pages:
+        name = str(rec["page"])
+        actual = sha256_file(local_pages[name])
+        expected = str(rec["sha256"])
+        if actual != expected:
+            raw_hash_failures.append({"page": name, "expected": expected, "actual": actual})
+    if raw_hash_failures:
+        raise RuntimeError(f"raw page hash failures: {raw_hash_failures[:3]}")
 
     total_volume: dict[dt.date, float] = defaultdict(float)
     expiring_volume: dict[dt.date, float] = defaultdict(float)
@@ -260,6 +283,8 @@ def main() -> int:
         "source_artifact_name": "options-spotperp-001-monthly-raw-34774293327-1",
         "known_source_artifact_zip_sha256": "bcccd53db114221c948feaff5a8691f0710b7045e7dcac441c250c09eb443cda",
         "resolved_deribit_raw_dir_relative": str(raw_dir.relative_to(source_root)),
+        "raw_page_count": len(local_pages),
+        "raw_page_manifest_hash_pass": not raw_hash_failures,
         "source_manifest_sha256": sha256_file(manifest_path),
         "source_report_sha256": sha256_file(report_path),
         "prior_source_gate_receipt_sha256": sha256_file(gate_receipt_path),
