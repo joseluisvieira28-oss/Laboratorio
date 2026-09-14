@@ -1,0 +1,10 @@
+lab=MINER-STRESS-001
+mve=MS-HASHDIFF-7D-001
+mode=PREOUTCOME_PREFLIGHT_ONLY
+source_gate_run=34843651246
+source_gate_artifact=10346619793
+2025=LOCKED
+2026=LOCKED
+outcomes=FORBIDDEN
+live=NO
+exchange_mutation=NO
