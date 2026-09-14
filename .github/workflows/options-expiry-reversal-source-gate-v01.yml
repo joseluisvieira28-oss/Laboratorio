@@ -1,0 +1,128 @@
+name: OPTIONS-EXPIRY-REVERSAL-001 Source Gate V0.1
+
+on:
+  push:
+    branches: [options-expiry-reversal-v0.1]
+    paths:
+      - 'labs/OPTIONS_EXPIRY_REVERSAL_001/FROZEN_PRE_SOURCE_PROTOCOL_V0.1.md'
+      - 'labs/OPTIONS_EXPIRY_REVERSAL_001/build_expiry_intensity_source_v01.py'
+      - '.github/workflows/options-expiry-reversal-source-gate-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  source-gate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify frozen source authority
+        run: |
+          set -euo pipefail
+          test "${GITHUB_REF_NAME}" = "options-expiry-reversal-v0.1"
+          test -f labs/OPTIONS_EXPIRY_REVERSAL_001/FROZEN_PRE_SOURCE_PROTOCOL_V0.1.md
+          test -f labs/OPTIONS_EXPIRY_REVERSAL_001/build_expiry_intensity_source_v01.py
+          python -m py_compile labs/OPTIONS_EXPIRY_REVERSAL_001/build_expiry_intensity_source_v01.py
+          grep -q '2025 and 2026 must remain inaccessible' labs/OPTIONS_EXPIRY_REVERSAL_001/FROZEN_PRE_SOURCE_PROTOCOL_V0.1.md
+          grep -q 'No BTC price, return, PnL' labs/OPTIONS_EXPIRY_REVERSAL_001/FROZEN_PRE_SOURCE_PROTOCOL_V0.1.md
+          echo "PROTOCOL_SHA256=$(sha256sum labs/OPTIONS_EXPIRY_REVERSAL_001/FROZEN_PRE_SOURCE_PROTOCOL_V0.1.md | awk '{print $1}')"
+
+      - name: Verify exact prior immutable run identities and artifact digest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          test "$(gh api repos/${GITHUB_REPOSITORY}/actions/runs/34774293327 --jq .head_branch)" = "options-spotperp-v0.1"
+          test "$(gh api repos/${GITHUB_REPOSITORY}/actions/runs/34774293327 --jq .path)" = ".github/workflows/options-source-audit-monthly-count10000-v01.yml"
+          test "$(gh api repos/${GITHUB_REPOSITORY}/actions/runs/34774293327 --jq .status)" = "completed"
+          test "$(gh api repos/${GITHUB_REPOSITORY}/actions/runs/34774293327 --jq .conclusion)" = "success"
+          DIGEST=$(gh api repos/${GITHUB_REPOSITORY}/actions/runs/34774293327/artifacts --jq '.artifacts[] | select(.name=="options-spotperp-001-monthly-raw-34774293327-1") | .digest')
+          test "$DIGEST" = "sha256:bcccd53db114221c948feaff5a8691f0710b7045e7dcac441c250c09eb443cda"
+          test "$(gh api repos/${GITHUB_REPOSITORY}/actions/runs/34784590423 --jq .head_branch)" = "options-spotperp-v0.1"
+          test "$(gh api repos/${GITHUB_REPOSITORY}/actions/runs/34784590423 --jq .path)" = ".github/workflows/options-source-audit-finalize-monthly-raw-v01.yml"
+          test "$(gh api repos/${GITHUB_REPOSITORY}/actions/runs/34784590423 --jq .conclusion)" = "success"
+          echo "IMMUTABLE_PRIOR_SOURCE_CHAIN_VERIFIED"
+
+      - name: Download immutable Deribit raw source artifact
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: 34774293327
+          name: options-spotperp-001-monthly-raw-34774293327-1
+          path: source_artifact
+
+      - name: Download prior latest-code source gate artifact
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: 34784590423
+          name: options-spotperp-001-final-latest-source-gate-34784590423-1
+          path: source_gate_artifact
+
+      - name: Build protected expiry-intensity source series
+        run: |
+          python labs/OPTIONS_EXPIRY_REVERSAL_001/build_expiry_intensity_source_v01.py \
+            source_artifact source_gate_artifact artifacts/options_expiry_reversal_source_v01
+
+      - name: Enforce source classification without opening outcomes
+        id: classify
+        shell: bash
+        run: |
+          set +e
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('artifacts/options_expiry_reversal_source_v01/SOURCE_DATASET_RECEIPT.json')
+          x=json.loads(p.read_text())
+          assert x['btc_market_data_accessed'] is False
+          assert x['btc_returns_computed'] is False
+          assert x['pnl_computed'] is False
+          assert x['open_interest_accessed'] is False
+          assert x['gamma_exposure_computed'] is False
+          assert x['access_2025'] is False and x['access_2026'] is False
+          print('CLASSIFICATION=',x['classification'])
+          print('EVALUABLE_DAYS=',x['evaluable_days'])
+          print('HIGH_PRESSURE_DAYS=',x['high_pressure_days'])
+          print('HIGH_BY_YEAR=',x['high_pressure_days_by_year'])
+          if x['classification']=='SOURCE_DATASET_PASS': raise SystemExit(0)
+          if x['classification']=='INSUFFICIENT_SAMPLE': raise SystemExit(2)
+          raise SystemExit(3)
+          PY
+          rc=$?
+          set -e
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          test "$rc" -eq 0 -o "$rc" -eq 2 -o "$rc" -eq 3
+
+      - name: Upload immutable source-gate evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: options-expiry-reversal-001-source-gate-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/options_expiry_reversal_source_v01/
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Governance receipt
+        if: always()
+        run: |
+          echo 'SOURCE ONLY / NO BTC MARKET OUTCOMES / NO RETURNS / NO PNL'
+          echo 'NO OI / NO GEX FABRICATION'
+          echo '2025 LOCKED / 2026 LOCKED / NO LIVE TRADING'
+
+      - name: Enforce fail-closed terminal state
+        if: always()
+        env:
+          RC: ${{ steps.classify.outputs.rc }}
+        run: |
+          case "$RC" in
+            0) echo 'SOURCE_DATASET_PASS'; exit 0 ;;
+            2) echo 'INSUFFICIENT_SAMPLE'; exit 2 ;;
+            3) echo 'DATA_FAILURE'; exit 3 ;;
+            *) echo "UNEXPECTED_SOURCE_STATE=$RC"; exit 99 ;;
+          esac
