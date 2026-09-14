@@ -25,7 +25,8 @@ jobs:
           test "${GITHUB_REF_NAME}" = "institutional-flow-v0.1"
           python3 -m py_compile source_audit_cftc_tff_v01.py publication_timing_audit_v01.py run_if_cftc_001_discovery_v01.py
           echo "53fd510c6ae125019aa7c259bc002d14dc91769742c2bfacbe450cb7e02bc739  IF_CFTC_001_DISCOVERY_CONTRACT_V01.json" | sha256sum -c -
-          echo "fc6e445ee243d36f6ccced7e7494466ce6f8dd45cbbbd158f5e9dbb8683e4e2d  run_if_cftc_001_discovery_v01.py" | sha256sum -c -
+          test "$(git hash-object run_if_cftc_001_discovery_v01.py)" = "4cf00427184572e3d6e23d7d7b90c47cb35d5035"
+          echo "RUNNER_SHA256=$(sha256sum run_if_cftc_001_discovery_v01.py | cut -d' ' -f1)"
           echo 'PRE-OUTCOME PACKAGE VERIFIED / 2025 LOCKED / 2026 LOCKED'
 
       - name: Rebuild and verify frozen CFTC source ledger
