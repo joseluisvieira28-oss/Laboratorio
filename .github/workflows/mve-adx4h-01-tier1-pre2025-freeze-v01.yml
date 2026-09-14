@@ -1,0 +1,29 @@
+name: MVE ADX4H 01 — Tier1 Pre-2025 Freeze V0.1
+
+on:
+  push:
+    branches: [mve-adx4h-01-tier1-freeze-v01]
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/MVE_ADX4H_01_TIER1_CONFIRMATION_PRE2025_FREEZE_V01.json'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/mve_adx4h_01_tier1_pre2025_guard_v01.py'
+      - '.github/workflows/mve-adx4h-01-tier1-pre2025-freeze-v01.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  pre2025-freeze-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Assert no network primitive in guard
+        shell: bash
+        run: |
+          ! grep -Eq 'urllib|requests|aiohttp|httpx|socket' Dream-Account-OS-v2.3-PARTIAL/research/mve_adx4h_01_tier1_pre2025_guard_v01.py
+      - name: Compile pre-2025 guard
+        run: python -m py_compile Dream-Account-OS-v2.3-PARTIAL/research/mve_adx4h_01_tier1_pre2025_guard_v01.py
+      - name: Execute fail-closed pre-2025 guard
+        run: python Dream-Account-OS-v2.3-PARTIAL/research/mve_adx4h_01_tier1_pre2025_guard_v01.py
