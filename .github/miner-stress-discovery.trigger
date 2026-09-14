@@ -1,0 +1,9 @@
+lab=MINER-STRESS-001
+mve=MS-HASHDIFF-7D-001
+mode=ONE_SHOT_DISCOVERY
+outcome_authorization=EXPLICIT_USER_AUTHORIZATION
+source_gate_run=34843651246
+2025=LOCKED
+2026=LOCKED
+live=NO
+rerun_for_outcome_improvement=FORBIDDEN
