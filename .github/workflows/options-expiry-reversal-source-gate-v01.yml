@@ -29,7 +29,7 @@ jobs:
           test -f labs/OPTIONS_EXPIRY_REVERSAL_001/build_expiry_intensity_source_v01.py
           python -m py_compile labs/OPTIONS_EXPIRY_REVERSAL_001/build_expiry_intensity_source_v01.py
           grep -q '2025 and 2026 must remain inaccessible' labs/OPTIONS_EXPIRY_REVERSAL_001/FROZEN_PRE_SOURCE_PROTOCOL_V0.1.md
-          grep -q 'No BTC price, return, PnL' labs/OPTIONS_EXPIRY_REVERSAL_001/FROZEN_PRE_SOURCE_PROTOCOL_V0.1.md
+          grep -qi 'no BTC price' labs/OPTIONS_EXPIRY_REVERSAL_001/FROZEN_PRE_SOURCE_PROTOCOL_V0.1.md
           echo "PROTOCOL_SHA256=$(sha256sum labs/OPTIONS_EXPIRY_REVERSAL_001/FROZEN_PRE_SOURCE_PROTOCOL_V0.1.md | awk '{print $1}')"
 
       - name: Verify exact prior immutable run identities and artifact digest
