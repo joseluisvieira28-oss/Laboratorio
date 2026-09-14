@@ -1,0 +1,168 @@
+name: OPS — Retry OPTIONS-SPOTPERP-002 2025 OOS Timestamp Correction
+
+on:
+  push:
+    branches:
+      - ops-dispatch-options-20260913
+    paths:
+      - '.github/workflows/ops-options-oos-confirmation-timestamp-retry-v01.yml'
+
+permissions:
+  contents: read
+
+env:
+  CHILD_REF: options-spotperp-regime-v0.2
+  COMPAT_HEAD: b0c65d70b63262b0777d3f82527b8d310609122c
+  AUTHORITY_COMMIT: 6f47b388b2c7e0a19df41200472e50caed4f58a6
+
+jobs:
+  confirmation-2025-retry:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - name: Checkout exact corrected child head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.CHILD_REF }}
+
+      - name: Prove technical-only correction boundary
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_2
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$COMPAT_HEAD"
+          test "$(git hash-object confirmation_source_acquire_2025_v01.py)" = "f9849013d3b5df973b30264612bd3cc568cf9f35"
+          test "$(git hash-object confirmation_runner_2025_v01.py)" = "7350b8c9c82789192fbb1c2437de05005a6d1409"
+          test "$(git hash-object OPTIONS_SPOTPERP_002_CONFIRMATION_AUTHORITY_V01.md)" = "0542cdff1627423a960b72584fdeb77ff26924a3"
+          python3 -m py_compile \
+            binance_timestamp_normalizer_v01.py \
+            confirmation_source_acquire_2025_v01.py \
+            confirmation_source_acquire_2025_compat_v01.py \
+            confirmation_runner_2025_v01.py \
+            confirmation_runner_2025_compat_v01.py
+          python3 binance_timestamp_normalizer_v01.py
+          echo 'TECHNICAL_ONLY_CORRECTION_BOUNDARY_PASS'
+          echo 'UP_LOW ONLY / BASE 10BPS / STRESS 20BPS DIAGNOSTIC / 2026 LOCKED'
+
+      - name: Acquire authorized 2025 source with timestamp compatibility
+        id: source
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_2
+        shell: bash
+        run: |
+          rm -rf confirmation_source_2025
+          set +e
+          python3 confirmation_source_acquire_2025_compat_v01.py --output confirmation_source_2025
+          rc=$?
+          set -e
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          echo "SOURCE_EXIT_CODE=$rc"
+          test "$rc" -eq 0 -o "$rc" -eq 2
+
+      - name: Validate source-only firewalls
+        if: always() && steps.source.outputs.rc != ''
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_2
+        env:
+          SOURCE_RC: ${{ steps.source.outputs.rc }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          root=Path('confirmation_source_2025')
+          mp=root/'confirmation_source_manifest.json'; rp=root/'confirmation_source_audit_report.json'
+          assert mp.exists() and rp.exists()
+          m=json.loads(mp.read_text()); r=json.loads(rp.read_text())
+          expected='SOURCE_AUDIT_PASS' if int(os.environ['SOURCE_RC'])==0 else 'SOURCE_AUDIT_BLOCKED'
+          assert m['status']==expected and r['status']==expected
+          assert m['authority_commit']=='6f47b388b2c7e0a19df41200472e50caed4f58a6'
+          assert m['confirmation_2025_authorized'] is True
+          assert m['confirmation_2025_accessed'] is True
+          assert m['year_2026_accessed'] is False
+          assert m['skew_values_computed'] is False
+          assert m['signals_computed'] is False
+          assert m['forward_returns_computed'] is False
+          assert m['pnl_computed'] is False
+          assert r['outcome_metrics_computed'] is False
+          for e in m['btc_price_raw_archives']:
+              assert e.get('timestamp_unit_normalized_to')=='milliseconds'
+          print('SOURCE_CLASSIFICATION=',expected)
+          print('VALID_SOURCE_DAYS=',r['audit']['valid_signal_coverage_days'])
+          print('2025 SOURCE ONLY / 2026 LOCKED / NO OUTCOMES')
+          PY
+
+      - name: Execute exact frozen one-shot 2025 OOS Confirmation
+        id: oos
+        if: steps.source.outputs.rc == '0'
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_2
+        shell: bash
+        run: |
+          rm -rf confirmation_output_2025
+          set +e
+          python3 confirmation_runner_2025_compat_v01.py \
+            --source-root confirmation_source_2025 \
+            --output confirmation_output_2025
+          rc=$?
+          set -e
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          echo "OOS_EXIT_CODE=$rc"
+          test "$rc" -eq 0 -o "$rc" -eq 3 -o "$rc" -eq 5
+
+      - name: Validate immutable OOS closeout
+        if: steps.source.outputs.rc == '0'
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_2
+        env:
+          OOS_RC: ${{ steps.oos.outputs.rc }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          p=Path('confirmation_output_2025/OPTIONS_SPOTPERP_002_CONFIRMATION_2025_CLOSEOUT_V01.json')
+          assert p.exists()
+          x=json.loads(p.read_text())
+          expected={0:'OOS_REPLICATED',3:'OOS_FAILED',5:'INSUFFICIENT_SAMPLE'}[int(os.environ['OOS_RC'])]
+          assert x['classification']==expected
+          assert x['authority_commit']=='6f47b388b2c7e0a19df41200472e50caed4f58a6'
+          assert x['candidate_regime']=='UP_LOW'
+          assert x['year_2026_accessed'] is False
+          assert x['live_trading_authorized'] is False
+          assert x['exchange_mutation_authorized'] is False
+          assert x['tier1_automatic'] is False
+          print('SCIENTIFIC_CLASSIFICATION=',x['classification'])
+          print('REGIME_OBSERVATIONS=',x['regime_observations'])
+          print('REGRESSION=',x['regression'])
+          print('BASE_10BPS=',x['base_10bps'])
+          print('STRESS_20BPS=',x['stress_20bps'])
+          print('GATES=',x['gates'])
+          print('2026 LOCKED / NO LIVE TRADING / NO EXCHANGE MUTATION')
+          PY
+
+      - name: Upload source receipts
+        if: always() && steps.source.outputs.rc != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: options-spotperp-002-confirmation-2025-source-retry-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_2/confirmation_source_2025/confirmation_source_manifest.json
+            Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_2/confirmation_source_2025/confirmation_source_audit_report.json
+            Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_2/OPTIONS_SPOTPERP_002_CONFIRMATION_AUTHORITY_V01.md
+            Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_2/OPTIONS_SPOTPERP_002_CONFIRMATION_TECHNICAL_CORRECTION_V01.md
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Upload immutable OOS closeout
+        if: steps.source.outputs.rc == '0'
+        uses: actions/upload-artifact@v4
+        with:
+          name: options-spotperp-002-confirmation-2025-oos-retry-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_2/confirmation_output_2025/OPTIONS_SPOTPERP_002_CONFIRMATION_2025_CLOSEOUT_V01.json
+            Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_2/confirmation_output_2025/OPTIONS_SPOTPERP_002_CONFIRMATION_2025_LEDGER_V01.csv
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Governance closeout
+        if: always()
+        run: |
+          echo 'OPTIONS-SPOTPERP-002 2025 OOS TECHNICAL-CORRECTION RETRY'
+          echo 'SCIENTIFIC SPECIFICATION UNCHANGED'
+          echo 'UP_LOW ONLY / BASE 10BPS / STRESS 20BPS DIAGNOSTIC'
+          echo '2026 LOCKED / NO TUNING / NO CHERRY-PICKING'
+          echo 'NO LIVE TRADING / NO EXCHANGE MUTATION / NO MERGE TO MAIN'
