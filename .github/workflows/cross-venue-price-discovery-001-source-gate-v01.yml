@@ -1,0 +1,28 @@
+name: CVPD-001 Source Gate V0.1
+on:
+  push:
+    branches: [cross-venue-price-discovery-001-v01]
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/cross_venue_price_discovery_001_source_gate_v01.py'
+      - '.github/workflows/cross-venue-price-discovery-001-source-gate-v01.yml'
+permissions:
+  contents: read
+jobs:
+  source-gate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile
+        run: python -m py_compile Dream-Account-OS-v2.3-PARTIAL/research/cross_venue_price_discovery_001_source_gate_v01.py
+      - name: Assert outcome-blind boundary
+        shell: bash
+        run: |
+          f='Dream-Account-OS-v2.3-PARTIAL/research/cross_venue_price_discovery_001_source_gate_v01.py'
+          ! grep -Eq 'pct_change|profit_factor|sharpe|position_size|place_order|create_order' "$f"
+          grep -q "2025_accessed.*False" "$f"
+          grep -q "2026_accessed.*False" "$f"
+      - name: Execute provenance-only source gate
+        run: python Dream-Account-OS-v2.3-PARTIAL/research/cross_venue_price_discovery_001_source_gate_v01.py
