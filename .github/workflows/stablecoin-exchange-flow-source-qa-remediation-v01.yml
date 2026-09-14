@@ -1,0 +1,37 @@
+name: STABLECOIN-EXCHANGE-FLOW-001 Source QA Remediation V0.1
+on:
+  push:
+    branches: [stablecoin-exchange-flow-v0.1]
+    paths:
+      - 'labs/STABLECOIN_EXCHANGE_FLOW_001/remediate_source_qa_with_mev_batch_v01.py'
+      - '.github/workflows/stablecoin-exchange-flow-source-qa-remediation-v01.yml'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  source-qa-remediation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify remediation is source-only
+        run: |
+          set -euo pipefail
+          python -m py_compile labs/STABLECOIN_EXCHANGE_FLOW_001/remediate_source_qa_with_mev_batch_v01.py
+          ! grep -nE 'BTCUSDT|fapi|klines' labs/STABLECOIN_EXCHANGE_FLOW_001/remediate_source_qa_with_mev_batch_v01.py
+      - name: Download immutable original source artifact
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: 34896944142
+          name: stablecoin-exchange-flow-001-source-dataset-34896944142-1
+          path: source_artifact
+      - name: Execute fixed QA subset with batched transport
+        run: python labs/STABLECOIN_EXCHANGE_FLOW_001/remediate_source_qa_with_mev_batch_v01.py
+      - name: Upload immutable remediation receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: stablecoin-exchange-flow-001-source-qa-remediation-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/stablecoin_exchange_flow_source_qa_remediation_v01/
+          retention-days: 90
