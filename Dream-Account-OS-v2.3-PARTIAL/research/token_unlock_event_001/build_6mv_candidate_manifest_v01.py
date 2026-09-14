@@ -4,10 +4,8 @@ import ast
 import calendar
 import csv
 import hashlib
-import io
 import json
 import urllib.request
-from collections import defaultdict
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
@@ -24,6 +22,12 @@ ALLOWED_FREQ = {"weekly", "monthly", "quarterly", "annually"}
 OUT_DIR = Path(__file__).resolve().parent / "source_probe_output_v02"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
+# The immutable upstream file contains one literal Markdown/backtick typo in the
+# Aptos allocation line. This exact, value-preserving correction is the only
+# source sanitization authorized. Any drift in count fails closed.
+KNOWN_BAD = '"allocation": 385217360,``'
+KNOWN_GOOD = '"allocation": 385217360,'
+
 
 def fetch_source() -> tuple[str, str]:
     req = urllib.request.Request(SOURCE_URL, headers={"User-Agent": "CryptoLab-SourceGate/1.0"})
@@ -31,6 +35,16 @@ def fetch_source() -> tuple[str, str]:
         raw = r.read()
     sha = hashlib.sha256(raw).hexdigest()
     return raw.decode("utf-8"), sha
+
+
+def sanitize_known_source_typo(src: str) -> tuple[str, int]:
+    count = src.count(KNOWN_BAD)
+    if count != 1:
+        raise RuntimeError(f"known upstream syntax typo count drifted: expected=1 observed={count}")
+    fixed = src.replace(KNOWN_BAD, KNOWN_GOOD)
+    if "``" in fixed:
+        raise RuntimeError("unexpected backtick syntax artifact remains after exact sanitization")
+    return fixed, count
 
 
 def extract_literal_dicts(src: str) -> dict[str, dict]:
@@ -53,7 +67,6 @@ def extract_literal_dicts(src: str) -> dict[str, dict]:
 
 
 def parse_date(s: str) -> date:
-    # Source pipeline uses pandas' default parsing for MM-DD-YYYY strings.
     return datetime.strptime(s, "%m-%d-%Y").date()
 
 
@@ -78,11 +91,7 @@ def step_date(d: date, frequency: str) -> date:
 
 
 def source_semantic_events(row: dict) -> list[tuple[date, float, str]]:
-    """Reproduce the 6MV vesting engine's discrete release semantics without market data.
-
-    Returns (date, token_amount, event_component_kind). Daily schedules are excluded upstream.
-    The source's cliff alignment is intentionally reproduced from utils/daily_charts.py.
-    """
+    """Reproduce the 6MV vesting engine's discrete release semantics without market data."""
     start = parse_date(row["start"])
     end = parse_date(row["end"])
     allocation = float(row["allocation"])
@@ -114,10 +123,6 @@ def source_semantic_events(row: dict) -> list[tuple[date, float, str]]:
         cliff_amount = 0.0
 
     vest_amount = (allocation - cliff_amount) / (len(vest_dates) - 1) if len(vest_dates) > 1 else 0.0
-
-    # Reproduce source list alignment: cliff_list is prepended to an allocation list
-    # indexed against the original start date. TGE adjustment removes one day when
-    # an immediate explicit cliff amount exists.
     tge_adjustment = 1 if cliff_amount and cliff == 0 else 0
     n_regular_days = max(0, vest_length - cliff - tge_adjustment)
     values = []
@@ -148,7 +153,8 @@ def source_semantic_events(row: dict) -> list[tuple[date, float, str]]:
 
 
 def main() -> None:
-    src, source_sha256 = fetch_source()
+    raw_src, source_sha256 = fetch_source()
+    src, typo_count = sanitize_known_source_typo(raw_src)
     dicts = extract_literal_dicts(src)
 
     aggregate: dict[tuple[str, date], dict] = {}
@@ -204,11 +210,9 @@ def main() -> None:
         rows.append(rec)
     rows.sort(key=lambda r: (r["scheduled_date_utc"], r["token_id"]))
 
-    # Hard output guard: nothing after 2024 may be serialized.
     for r in rows:
         d = date.fromisoformat(r["scheduled_date_utc"])
-        assert d <= MAX_EVENT_DATE
-        assert d >= MIN_EVENT_DATE
+        assert MIN_EVENT_DATE <= d <= MAX_EVENT_DATE
         assert r["known_lead_days"] >= 30
         assert r["outcome_data_accessed"] is False
 
@@ -219,7 +223,6 @@ def main() -> None:
     manifest_path = OUT_DIR / "TUE_6MV_CANDIDATE_MANIFEST_2023_2024_V01.json"
     manifest_path.write_text(json.dumps(rows, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
-    # CSV contains only <=2024 candidate source fields; no price/outcome fields exist.
     csv_path = OUT_DIR / "TUE_6MV_CANDIDATE_MANIFEST_2023_2024_V01.csv"
     fields = [
         "token_id", "scheduled_date_utc", "scheduled_unlock_tokens", "component_count",
@@ -239,6 +242,11 @@ def main() -> None:
         "source_repo": SOURCE_REPO,
         "source_commit": SOURCE_COMMIT,
         "source_sha256": source_sha256,
+        "source_syntax_sanitization": {
+            "authorized_exact_typo_count": typo_count,
+            "economic_value_changed": False,
+            "fail_closed_on_drift": True
+        },
         "known_at_utc": KNOWN_AT.isoformat().replace("+00:00", "Z"),
         "min_candidate_event_date": MIN_EVENT_DATE.isoformat(),
         "max_candidate_event_date": MAX_EVENT_DATE.isoformat(),
@@ -246,6 +254,7 @@ def main() -> None:
         "candidate_events": len(rows),
         "candidate_components": candidate_component_count,
         "distinct_tokens": len(distinct_tokens),
+        "token_ids": distinct_tokens,
         "calendar_years": years,
         "cliff_events": cliff_events,
         "source_schedules_parsed": source_schedule_count,
