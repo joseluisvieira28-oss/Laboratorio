@@ -1,0 +1,61 @@
+name: TOKEN-UNLOCK-EVENT-001 Source Manifest V0.1
+
+on:
+  push:
+    branches:
+      - token-unlock-event-001-source-gate-v01
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001/**'
+      - '.github/workflows/token-unlock-source-manifest-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-manifest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout scientific branch
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Build quarantined source-only candidate manifest
+        run: |
+          python Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001/build_6mv_candidate_manifest_v01.py
+
+      - name: Guard forbidden outcome artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT='Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001/source_probe_output_v02'
+          test -f "$OUT/TUE_6MV_CANDIDATE_RECEIPT_V01.json"
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001/source_probe_output_v02/TUE_6MV_CANDIDATE_RECEIPT_V01.json')
+          r=json.loads(p.read_text())
+          g=r['guards']
+          assert g['future_event_rows_serialized'] is False
+          assert g['price_data_accessed'] is False
+          assert g['returns_computed'] is False
+          assert g['pnl_computed'] is False
+          assert g['profit_factor_computed'] is False
+          assert g['year_2025_market_data_accessed'] is False
+          assert g['year_2026_market_data_accessed'] is False
+          assert r['source_gate_pass'] is False
+          print('GUARDS_PASS')
+          PY
+
+      - name: Upload source-only receipt and manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: token-unlock-event-001-source-manifest-v01
+          path: Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001/source_probe_output_v02/
+          if-no-files-found: error
+          retention-days: 30
