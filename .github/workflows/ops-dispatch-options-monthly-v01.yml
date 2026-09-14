@@ -1,8 +1,5 @@
-name: OPS — Dispatch OPTIONS Canonical Discovery
+name: OPS — Execute OPTIONS-SPOTPERP-002 Regime Discovery
 
-# Ops-only dispatcher. Pushes on this isolated branch only and dispatches the
-# already-frozen scientific Discovery against the canonical final Source Gate
-# and canonical immutable monthly raw run.
 on:
   push:
     branches:
@@ -12,26 +9,155 @@ on:
 
 permissions:
   contents: read
-  actions: write
+  actions: read
 
 jobs:
-  dispatch:
+  regime-discovery:
     runs-on: ubuntu-latest
+    timeout-minutes: 120
     steps:
-      - name: Dispatch canonical OPTIONS Discovery
+      - name: Checkout frozen child branch
+        uses: actions/checkout@v4
+        with:
+          ref: options-spotperp-regime-v0.2
+
+      - name: Verify child authority and run synthetic tests only
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_2
+        run: |
+          set -euo pipefail
+          echo "CHILD_HEAD_SHA=$(git rev-parse HEAD)"
+          test -f OPTIONS_SPOTPERP_002_REGIME_AUTHORITY_V01.md
+          python3 -m py_compile regime_discovery_runner_v02.py test_regime_discovery_runner_v02.py
+          python3 test_regime_discovery_runner_v02.py
+          echo 'NO REAL OUTCOMES OPENED IN PREFLIGHT'
+
+      - name: Verify exact canonical source-chain metadata
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          echo 'Dispatching canonical OPTIONS Discovery on options-spotperp-v0.1'
-          echo 'source_gate_run_id=34811277716'
-          echo 'monthly_raw_run_id=34778911131'
-          gh api \
-            --method POST \
-            -H 'Accept: application/vnd.github+json' \
-            repos/joseluisvieira28-oss/Laboratorio/actions/workflows/options-discovery-one-shot-v01.yml/dispatches \
-            -f ref='options-spotperp-v0.1' \
-            -f inputs[source_gate_run_id]='34811277716' \
-            -f inputs[monthly_raw_run_id]='34778911131'
-          echo 'DISCOVERY_DISPATCH_REQUEST_ACCEPTED'
-          echo 'Ops-only mutation; no scientific files modified; no 2025/2026 access requested.'
+          RAW=34778911131
+          GATE=34811277716
+          test "$(gh api repos/joseluisvieira28-oss/Laboratorio/actions/runs/$RAW --jq .head_branch)" = "options-spotperp-v0.1"
+          test "$(gh api repos/joseluisvieira28-oss/Laboratorio/actions/runs/$RAW --jq .path)" = ".github/workflows/options-source-audit-monthly-count10000-v01.yml"
+          test "$(gh api repos/joseluisvieira28-oss/Laboratorio/actions/runs/$RAW --jq .status)" = "completed"
+          test "$(gh api repos/joseluisvieira28-oss/Laboratorio/actions/runs/$RAW --jq .conclusion)" = "success"
+          test "$(gh api repos/joseluisvieira28-oss/Laboratorio/actions/runs/$GATE --jq .head_branch)" = "options-spotperp-v0.1"
+          test "$(gh api repos/joseluisvieira28-oss/Laboratorio/actions/runs/$GATE --jq .path)" = ".github/workflows/options-source-audit-finalize-monthly-raw-v01.yml"
+          test "$(gh api repos/joseluisvieira28-oss/Laboratorio/actions/runs/$GATE --jq .status)" = "completed"
+          test "$(gh api repos/joseluisvieira28-oss/Laboratorio/actions/runs/$GATE --jq .conclusion)" = "success"
+          echo 'CANONICAL_CHAIN_METADATA_PASS'
+
+      - name: Download canonical final Source Gate
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: 34811277716
+          name: options-spotperp-001-final-latest-source-gate-34811277716-1
+          path: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_2/final_source_gate_data
+
+      - name: Download canonical immutable monthly raw
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: 34778911131
+          name: options-spotperp-001-monthly-raw-34778911131-1
+          path: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_2/source_audit_data
+
+      - name: Download canonical monthly receipts
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: 34778911131
+          name: options-spotperp-001-monthly-final-receipts-34778911131-1
+          path: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_2/source_audit_data
+
+      - name: Bind final Source Gate to exact immutable raw
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_2
+        run: |
+          python3 - <<'PY'
+          import hashlib,json,shutil
+          from pathlib import Path
+          raw=Path('source_audit_data'); gate=Path('final_source_gate_data')
+          def sha(p): return hashlib.sha256(p.read_bytes()).hexdigest()
+          for p in [raw/'source_manifest.json',raw/'source_audit_report.json',gate/'source_manifest.json',gate/'source_audit_report.json',gate/'source_gate_calendar_day_reconciled_receipt.json',gate/'source_gate_calendar_day_daily_coverage.json']:
+              assert p.exists(), p
+          assert sha(raw/'source_manifest.json') == sha(gate/'source_manifest.json')
+          assert sha(raw/'source_audit_report.json') == sha(gate/'source_audit_report.json')
+          r=json.loads((gate/'source_gate_calendar_day_reconciled_receipt.json').read_text())
+          assert r['status']=='SOURCE_AUDIT_PASS'
+          assert r['holdout_2025_accessed'] is False and r['year_2026_accessed'] is False
+          assert r['skew_values_computed'] is False and r['signals_computed'] is False
+          assert r['forward_returns_computed'] is False and r['pnl_computed'] is False
+          shutil.copy2(gate/'source_gate_calendar_day_reconciled_receipt.json', raw/'source_gate_calendar_day_reconciled_receipt.json')
+          shutil.copy2(gate/'source_gate_calendar_day_daily_coverage.json', raw/'source_gate_calendar_day_daily_coverage.json')
+          fg=gate/'source_gate_required_field_guard_receipt.json'
+          if fg.exists(): shutil.copy2(fg, raw/'source_gate_required_field_guard_receipt.json')
+          print('OPTIONS_SPOTPERP_002_AUTHORIZATION_GATE_PASS')
+          print('2025 LOCKED / 2026 LOCKED')
+          PY
+
+      - name: Execute frozen regime Discovery once
+        id: discovery
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_2
+        shell: bash
+        run: |
+          rm -rf discovery_output
+          set +e
+          python3 regime_discovery_runner_v02.py --source-root source_audit_data --output discovery_output
+          rc=$?
+          set -e
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          echo "REGIME_DISCOVERY_EXIT_CODE=$rc"
+          test "$rc" -eq 0 -o "$rc" -eq 3 -o "$rc" -eq 4
+
+      - name: Validate child closeout firewalls
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_2
+        env:
+          RC: ${{ steps.discovery.outputs.rc }}
+        run: |
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          x=json.loads(Path('discovery_output/OPTIONS_SPOTPERP_002_REGIME_DISCOVERY_CLOSEOUT_V01.json').read_text())
+          rc=int(os.environ['RC'])
+          expected={0:'CANDIDATE_NEAR_EDGE',3:'DISCOVERY_FAIL_NO_CANDIDATE',4:'CONTEXT_DEPENDENT'}[rc]
+          assert x['classification']==expected
+          assert x['canonical_monthly_raw_run_id']==34778911131
+          assert x['canonical_final_source_gate_run_id']==34811277716
+          assert x['parent_result_preserved']=='DISCOVERY_FAIL_NO_PROMOTION'
+          assert x['holdout_2025_accessed'] is False
+          assert x['year_2026_accessed'] is False
+          assert x['live_trading_authorized'] is False
+          assert x['exchange_mutation_authorized'] is False
+          print('SCIENTIFIC_CLASSIFICATION=',x['classification'])
+          print('SELECTED_CANDIDATE_REGIME=',x['selected_candidate_regime'])
+          for k,v in x['regimes'].items():
+              print('REGIME',k,'N',v['n'],'ELIGIBLE',v['discovery_eligible'],'CORE',v['core_near_edge'])
+              print('GATES',v['gates'])
+              print('REGRESSION',v['regression'])
+              print('BASE_10BPS',v['base_10bps'])
+              print('STRESS_20BPS',v['stress_20bps'])
+          print('2025 UNOPENED / 2026 LOCKED / NO LIVE TRADING')
+          PY
+
+      - name: Upload immutable child Discovery closeout
+        uses: actions/upload-artifact@v4
+        with:
+          name: options-spotperp-002-regime-discovery-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_2/discovery_output/OPTIONS_SPOTPERP_002_REGIME_DISCOVERY_CLOSEOUT_V01.json
+            Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_2/discovery_output/OPTIONS_SPOTPERP_002_REGIME_DISCOVERY_LEDGER_V01.csv
+            Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_2/OPTIONS_SPOTPERP_002_REGIME_AUTHORITY_V01.md
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Governance closeout
+        run: |
+          echo 'OPTIONS-SPOTPERP-002 CHILD DISCOVERY ONLY'
+          echo 'PARENT RESULT PRESERVED'
+          echo '2025 LOCKED / 2026 LOCKED'
+          echo 'NO LIVE TRADING / NO EXCHANGE MUTATION / NO PARAMETER RESCUE'
