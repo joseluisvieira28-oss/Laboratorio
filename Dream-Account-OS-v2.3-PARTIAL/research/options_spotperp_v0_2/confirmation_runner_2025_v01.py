@@ -20,6 +20,13 @@ BASE_COST=10.0; STRESS_COST=20.0; MIN_ENTERED=80
 def sha(p:Path): return hashlib.sha256(p.read_bytes()).hexdigest()
 def med(xs): return float(statistics.median(xs))
 
+def binance_spot_timestamp_to_ms(value:int)->int:
+    if 1_000_000_000_000 <= value < 10_000_000_000_000:
+        return value
+    if 1_000_000_000_000_000 <= value < 10_000_000_000_000_000:
+        return value//1000
+    raise RuntimeError(f'SOURCE_OR_DATA_BLOCKED: unexpected Binance timestamp magnitude {value}')
+
 def load_manifest(root:Path):
     p=root/'confirmation_source_manifest.json'; r=root/'confirmation_source_audit_report.json'
     if not p.exists() or not r.exists(): raise RuntimeError('SOURCE_OR_DATA_BLOCKED: confirmation source receipts missing')
@@ -69,7 +76,8 @@ def load_btc(root:Path,m):
             with zf.open(members[0]) as fh:
                 for row in csv.reader(io.TextIOWrapper(fh,encoding='utf-8')):
                     if not row: continue
-                    d=dt.datetime.fromtimestamp(int(row[0])/1000,tz=dt.timezone.utc).date()
+                    ts_ms=binance_spot_timestamp_to_ms(int(row[0]))
+                    d=dt.datetime.fromtimestamp(ts_ms/1000,tz=dt.timezone.utc).date()
                     if d.year>=2026: raise RuntimeError('SOURCE_OR_DATA_BLOCKED: 2026 BTC row')
                     op=float(row[1])
                     if not(math.isfinite(op) and op>0): raise RuntimeError('SOURCE_OR_DATA_BLOCKED: invalid BTC open')
