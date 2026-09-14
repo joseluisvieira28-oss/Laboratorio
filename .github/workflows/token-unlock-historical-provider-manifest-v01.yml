@@ -1,0 +1,167 @@
+name: TOKEN-UNLOCK-EVENT-001 Historical Provider Manifest V0.1
+
+on:
+  push:
+    branches:
+      - token-unlock-event-001-source-gate-v01
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001/extract_historical_provider_snapshot_v01.js'
+      - '.github/workflows/token-unlock-historical-provider-manifest-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-source-manifest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout scientific branch
+        uses: actions/checkout@v4
+        with:
+          ref: token-unlock-event-001-source-gate-v01
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Acquire immutable March 2023 snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone -q https://github.com/0xnirmal/emissions-adapters.git /tmp/emissions-2023
+          cd /tmp/emissions-2023
+          git checkout -q 539e7cf40a4cecc73953f3ae2b196b3fa66ae34a
+          test "$(git rev-parse HEAD)" = '539e7cf40a4cecc73953f3ae2b196b3fa66ae34a'
+          npm ci --ignore-scripts --silent
+
+      - name: Acquire immutable March 2024 snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone -q https://github.com/danaugrs/emissions-adapters.git /tmp/emissions-2024
+          cd /tmp/emissions-2024
+          git checkout -q ad6bcfa961d6f0bd9cd5d589656b8f78daf7be7a
+          test "$(git rev-parse HEAD)" = 'ad6bcfa961d6f0bd9cd5d589656b8f78daf7be7a'
+          npm ci --ignore-scripts --silent
+
+      - name: Extract source-only events from 2023 snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT="$GITHUB_WORKSPACE/Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001/source_probe_output_v03"
+          mkdir -p "$OUT"
+          cd /tmp/emissions-2023
+          node -r ts-node/register/transpile-only \
+            "$GITHUB_WORKSPACE/Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001/extract_historical_provider_snapshot_v01.js" \
+            /tmp/emissions-2023 2023-03-17 "$OUT/provider_2023.json"
+
+      - name: Extract source-only events from 2024 snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT="$GITHUB_WORKSPACE/Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001/source_probe_output_v03"
+          cd /tmp/emissions-2024
+          node -r ts-node/register/transpile-only \
+            "$GITHUB_WORKSPACE/Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001/extract_historical_provider_snapshot_v01.js" \
+            /tmp/emissions-2024 2024-03-25 "$OUT/provider_2024.json"
+
+      - name: Merge, audit and freeze source-only receipt
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from datetime import datetime, timezone
+          out=Path('Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001/source_probe_output_v03')
+          a=json.loads((out/'provider_2023.json').read_text())
+          b=json.loads((out/'provider_2024.json').read_text())
+          events=a['events']+b['events']
+          # Windows are disjoint by construction, but dedupe defensively.
+          merged={}
+          conflicts=[]
+          for e in events:
+            k=(e['token'],e['timestamp'])
+            if k not in merged:
+              merged[k]=e
+            else:
+              old=merged[k]
+              if abs(float(old['scheduled_unlock_tokens'])-float(e['scheduled_unlock_tokens']))>1e-9:
+                conflicts.append({'key':k,'a':old['scheduled_unlock_tokens'],'b':e['scheduled_unlock_tokens']})
+              else:
+                old['sources']=sorted(set(old['sources'])|set(e['sources']))
+          rows=sorted(merged.values(),key=lambda x:(x['timestamp'],x['token']))
+          tokens=sorted({x['token'] for x in rows})
+          years=sorted({datetime.fromtimestamp(x['timestamp'],timezone.utc).year for x in rows})
+          assert all(x['outcome_data_accessed'] is False for x in rows)
+          assert all(2023 <= datetime.fromtimestamp(x['timestamp'],timezone.utc).year <= 2024 for x in rows)
+          assert not conflicts
+          receipt={
+            'lab_id':'TOKEN-UNLOCK-EVENT-001',
+            'mve_id':'TUE-CLIFF-ADV30-001',
+            'mode':'SOURCE_ONLY_PIT_EVENT_MANIFEST',
+            'event_count':len(rows),
+            'distinct_token_count':len(tokens),
+            'token_ids':tokens,
+            'calendar_years':years,
+            'source_gate_count_thresholds':{'events_required':40,'tokens_required':15,'years_required':2},
+            'source_gate_counts_met':len(rows)>=40 and len(tokens)>=15 and len(years)>=2,
+            'source_conflicts':conflicts,
+            'all_rows_static_cliff_or_step':True,
+            'all_rows_known_at_least_30d':all(float(x['known_lead_days'])>=30 for x in rows),
+            'provider_snapshot_qualification':'IMMUTABLE_PROVIDER_SNAPSHOT_STATIC_EXACT',
+            'market_outcomes_opened':False,
+            'returns_computed':False,
+            'pnl_computed':False,
+            'year_2025_market_outcome_data_accessed':False,
+            'year_2026_market_outcome_data_accessed':False,
+            'next_gate':'BINANCE_PRE_EVENT_INSTRUMENT_AND_VOLUME_AVAILABILITY',
+          }
+          (out/'TUE_PROVIDER_PIT_MANIFEST_2023_2024_V01.json').write_text(json.dumps(rows,indent=2,sort_keys=True)+'\n')
+          (out/'TUE_PROVIDER_PIT_RECEIPT_V01.json').write_text(json.dumps(receipt,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(receipt,indent=2,sort_keys=True))
+          PY
+
+      - name: Guard scientific locks
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001/source_probe_output_v03/TUE_PROVIDER_PIT_RECEIPT_V01.json')
+          r=json.loads(p.read_text())
+          assert r['market_outcomes_opened'] is False
+          assert r['returns_computed'] is False
+          assert r['pnl_computed'] is False
+          assert r['year_2025_market_outcome_data_accessed'] is False
+          assert r['year_2026_market_outcome_data_accessed'] is False
+          assert r['source_conflicts'] == []
+          print('SCIENTIFIC_GUARDS_PASS')
+          PY
+
+      - name: Persist source-only manifest and receipt
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          OUT='Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001/source_probe_output_v03'
+          git add "$OUT/provider_2023.json" "$OUT/provider_2024.json" \
+                  "$OUT/TUE_PROVIDER_PIT_MANIFEST_2023_2024_V01.json" \
+                  "$OUT/TUE_PROVIDER_PIT_RECEIPT_V01.json"
+          if ! git diff --cached --quiet; then
+            git commit -m 'TOKEN-UNLOCK-EVENT-001: persist historical PIT manifest [skip ci]'
+            git push origin HEAD:token-unlock-event-001-source-gate-v01
+          fi
+
+      - name: Upload source evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: token-unlock-event-001-historical-provider-manifest-v01
+          path: Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001/source_probe_output_v03/
+          if-no-files-found: error
+          retention-days: 30
