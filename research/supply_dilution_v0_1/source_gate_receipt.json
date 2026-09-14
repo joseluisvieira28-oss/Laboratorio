@@ -1,0 +1,40 @@
+{
+  "lab_id": "SUPPLY-DILUTION-001",
+  "mve_id": "SD-DILUTION-12W-001",
+  "stage": "SOURCE_DATA_GATE_ONLY",
+  "authority_drive_id": "1zYDqxWHmFvfHKhy4oJ2RQL4urWD2odrKhWNeCK2cUuA",
+  "authority_status": "FROZEN_PRE_OUTCOME_SOURCE_PROVENANCE_ONLY",
+  "discovery_window_target": "2021-01-01/2024-12-31",
+  "holdout_2025_accessed": false,
+  "year_2026_accessed": false,
+  "returns_computed": false,
+  "pnl_computed": false,
+  "profit_factor_computed": false,
+  "hit_rate_computed": false,
+  "signal_direction_changed": false,
+  "signal_definition": "weekly realized dilution rate = percentage change in circulating supply over preceding 12 weeks; higher dilution bearish relative to lower dilution",
+  "source_findings": {
+    "coingecko_historical_price_market_cap": "DOCUMENTED",
+    "coingecko_historical_circulating_supply": "DOCUMENTED_PRO_ENDPOINT",
+    "coingecko_circulating_supply_data_available_from": "2019-06-22",
+    "cryptorank_historical_circulating_supply": "DOCUMENTED_AUTHENTICATED_PAID_ENDPOINT",
+    "cryptorank_historical_active_inactive_state_filter": "DOCUMENTED_AUTHENTICATED_PAID_ENDPOINT",
+    "cryptorank_vesting_unlock_history": "DOCUMENTED_AUTHENTICATED_PAID_ENDPOINT",
+    "anti_survivorship_free_reconstruction": "NOT_PROVEN",
+    "point_in_time_supply_versioning": "NOT_PROVEN_WITH_FREE_UNAUTHENTICATED_ROUTE",
+    "minimum_100_assets_or_2000_asset_weeks": "NOT_PROVEN"
+  },
+  "terminal_classification": "SOURCE_AUTH_BLOCKED",
+  "scientific_status": "UNRESOLVED_NO_OUTCOME_COMPUTED",
+  "detail": "The mechanism remains scientifically untested. Official/documented providers expose the needed historical circulating-supply and historical-universe primitives, but the routes verified in this gate require authenticated/paid access and the free unauthenticated route does not prove anti-survivorship point-in-time reconstruction for the frozen 2021-2024 universe. Do not substitute a current-survivor universe or infer historical eligibility after outcomes.",
+  "next_authorized_step": "Either obtain authorized access to a provider that can supply historical circulating supply plus reconstructible active/inactive universe semantics for 2021-2024, or freeze a separate source protocol around an independently archived academic/provider dataset before any return outcomes are opened. Discovery remains closed.",
+  "governance": {
+    "research_only": true,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "merge_to_main": false,
+    "render_deployment": false,
+    "discovery_authorized": false
+  },
+  "recorded_at": "2026-09-14"
+}
