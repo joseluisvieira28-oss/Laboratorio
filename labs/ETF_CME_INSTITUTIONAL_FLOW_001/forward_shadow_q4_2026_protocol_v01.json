@@ -1,0 +1,62 @@
+{
+  "lab": "ETF-CME-INSTFLOW-001",
+  "study_id": "ETF-CME-INSTFLOW-001-FORWARD-SHADOW-Q4-2026-V0.1",
+  "status": "FROZEN_PRE_OUTCOME",
+  "frozen_at": "2026-09-14T12:20:00Z",
+  "purpose": "prospective forward validation after Tier1 readiness fragility; not a Tier1 promotion by itself",
+  "governance": {
+    "research_only": true,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "orders": false,
+    "merge_to_main": false,
+    "post_outcome_tuning": false,
+    "pre_2026_09_15_market_outcomes_forbidden": true
+  },
+  "source": {
+    "cftc_dataset_id": "6dca-aqww",
+    "contract_code": "133741",
+    "btc_source": "Binance Vision BTCUSDT spot 1d official archives"
+  },
+  "prospective_window": {
+    "first_allowed_as_of": "2026-09-15",
+    "last_allowed_as_of": "2026-12-15",
+    "latest_allowed_exit": "2026-12-31",
+    "target_max_weeks": 14,
+    "minimum_evaluable_weeks": 12
+  },
+  "signal": {
+    "definition": "delta(non-commercial long - non-commercial short) / open_interest_t",
+    "expected_sign": "positive",
+    "thresholds": "none",
+    "zscore": false,
+    "winsorization": false,
+    "regime_filter": false,
+    "alternate_cot_category": false
+  },
+  "timing": {
+    "entry": "first BTCUSDT spot 00:00 UTC daily open at or after as_of_Tuesday + 8 calendar days",
+    "exit": "entry + 7 calendar days"
+  },
+  "costs": {
+    "base_roundtrip_bps": 10,
+    "stress_roundtrip_bps": 20
+  },
+  "frozen_success_criteria": {
+    "minimum_evaluable_weeks": 12,
+    "base_net_mean_gt_0": true,
+    "base_profit_factor_gte_1": true,
+    "stress20_net_mean_gte_0": true,
+    "stress20_profit_factor_gte_1": true,
+    "expected_beta_sign_positive": true,
+    "leave_one_trade_out_min_base_net_mean_gt_0": true,
+    "max_single_trade_share_positive_gross_pnl_lte": 0.40,
+    "max_additive_drawdown_abs_lt": 0.50
+  },
+  "classification": {
+    "pass": "FORWARD_SHADOW_PASS",
+    "fail": "FORWARD_SHADOW_FAIL",
+    "insufficient": "FORWARD_SHADOW_INSUFFICIENT_SAMPLE"
+  },
+  "tier_effect": "NONE_AUTOMATIC; Tier 2 remains unchanged regardless of this study alone"
+}
