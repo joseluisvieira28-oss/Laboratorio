@@ -1,0 +1,68 @@
+name: ETH Staking Flow V0.2 Source Gate
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - eth-staking-flow-v0.2
+    paths:
+      - '.github/eth-staking-flow-v02-source-gate.trigger'
+
+permissions:
+  contents: read
+
+jobs:
+  source-data-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout frozen branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Governance preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${GITHUB_REF_NAME}" = "eth-staking-flow-v0.2"
+          grep -q 'MVE ID: ESF-NETQUEUE-SNAPSHOT-7D-002' research/eth_staking_flow/ETH_STAKING_FLOW_001_SNAPSHOT_PRE_DISCOVERY_AUTHORITY_V0_2.md
+          grep -q '2025_ACCESS_ALLOWED=false' research/eth_staking_flow/ETH_STAKING_FLOW_001_SNAPSHOT_PRE_DISCOVERY_AUTHORITY_V0_2.md
+          grep -q 'PRICE_VALUES_ALLOWED=false' research/eth_staking_flow/ETH_STAKING_FLOW_001_SNAPSHOT_PRE_DISCOVERY_AUTHORITY_V0_2.md
+          if grep -Eqi 'binance|coinbase|mexc|bybit|kraken|price[_ -]?api|return[s]?|pnl' research/eth_staking_flow/source_gate_v02.py; then
+            echo 'Forbidden market/outcome token found in source gate implementation.'
+            exit 41
+          fi
+          echo 'PREOUTCOME GOVERNANCE: PASS'
+
+      - name: Execute source/data gate only
+        id: gate
+        shell: bash
+        run: |
+          set +e
+          python research/eth_staking_flow/source_gate_v02.py
+          code=$?
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Upload immutable source-gate evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eth-staking-flow-v02-source-gate-${{ github.run_id }}
+          path: eth_staking_flow_v02_source_gate_out/
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Enforce gate result
+        if: always()
+        shell: bash
+        run: |
+          code='${{ steps.gate.outputs.exit_code }}'
+          test -n "$code" || { echo 'Missing source gate exit code'; exit 42; }
+          exit "$code"
