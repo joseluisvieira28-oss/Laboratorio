@@ -33,6 +33,20 @@ def months():
         cur=nxt
 
 
+def binance_spot_timestamp_to_ms(value: int) -> tuple[int, str]:
+    """Normalize Binance public SPOT archive timestamps without changing source-time semantics.
+
+    Binance public SPOT archives use milliseconds before 2025-01-01 and
+    microseconds from 2025-01-01 onward. Fail closed on any unexpected order
+    of magnitude instead of guessing.
+    """
+    if 1_000_000_000_000 <= value < 10_000_000_000_000:
+        return value, 'milliseconds'
+    if 1_000_000_000_000_000 <= value < 10_000_000_000_000_000:
+        return value // 1000, 'microseconds'
+    raise RuntimeError(f'FAIL-CLOSED: unexpected Binance SPOT timestamp magnitude: {value}')
+
+
 def download_binance(out: Path):
     d=out/'raw_binance_btcusdt_1d'; d.mkdir(parents=True,exist_ok=True)
     entries=[]
@@ -50,10 +64,19 @@ def download_binance(out: Path):
                     s=line.decode('utf-8').strip()
                     if s: rows.append(s)
             if not rows: raise RuntimeError(f'empty Binance archive: {name}')
-            first_ms=int(rows[0].split(',')[0]); last_ms=int(rows[-1].split(',')[0])
+            first_raw=int(rows[0].split(',')[0]); last_raw=int(rows[-1].split(',')[0])
+            first_ms, first_unit=binance_spot_timestamp_to_ms(first_raw)
+            last_ms, last_unit=binance_spot_timestamp_to_ms(last_raw)
+            if first_unit != last_unit:
+                raise RuntimeError(f'FAIL-CLOSED: mixed Binance timestamp units inside archive: {name}')
             if dt.datetime.fromtimestamp(last_ms/1000,tz=UTC).year>=2026:
                 raise RuntimeError('FAIL-CLOSED: 2026 Binance row present')
-        entries.append({'file':name,'url':url,'sha256':sha256_file(p),'bytes':p.stat().st_size,'first_open_ms':first_ms,'last_open_ms':last_ms})
+        entries.append({
+            'file':name,'url':url,'sha256':sha256_file(p),'bytes':p.stat().st_size,
+            'timestamp_unit':first_unit,
+            'first_open_raw':first_raw,'last_open_raw':last_raw,
+            'first_open_ms':first_ms,'last_open_ms':last_ms,
+        })
     return entries
 
 
