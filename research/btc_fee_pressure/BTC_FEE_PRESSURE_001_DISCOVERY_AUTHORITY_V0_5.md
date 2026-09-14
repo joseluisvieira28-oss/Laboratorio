@@ -34,7 +34,7 @@ Write and SHA256-hash the complete accepted signal/trade-date list before any ma
 raw_return = exit_open / entry_open - 1; gross_bps = 10000 * raw_return. NET10 = gross_bps - 10 bps [PRIMARY]. NET20 = gross_bps - 20 bps [STRESS]. Costs once per accepted trade.
 
 ## Frozen statistics
-N; candidate signals; accepted/suppressed overlap; mean/median gross bps; mean NET10/NET20; NET10 PF and win rate; per-year N and mean NET10; 10,000 bootstrap resamples of mean NET10 with seed 20260914; bootstrap p(mean NET10 <= 0); 95% CI; maximum positive-year gross contribution share; cumulative NET10 and max drawdown diagnostics.
+Report N; candidate signal count; accepted/suppressed overlap counts; mean and median gross bps; mean NET10 and NET20; NET10 profit factor; NET10 win rate; per-calendar-year N and mean NET10, assigning each trade to `entry_day` year; bootstrap distribution of mean NET10 with seed 20260914 and 10,000 resamples; bootstrap p(mean NET10 <= 0); Type-7 95% bootstrap CI; maximum positive-year gross contribution share defined as max(positive annual gross-bps sum) / sum(all positive annual gross-bps sums); cumulative NET10 and max drawdown in chronological accepted-trade order as diagnostics. A year with zero accepted trades cannot count as a non-negative year for promotion.
 
 ## Promotion gates — all required
 1. N >= 50 accepted non-overlapping trades.
