@@ -1,0 +1,24 @@
+name: STABLECOIN-EXCHANGE-FLOW-001 Source Crosscheck 2024-11-11 V0.1
+on:
+  push:
+    branches: [ stablecoin-exchange-flow-v0.1 ]
+    paths:
+      - 'labs/STABLECOIN_EXCHANGE_FLOW_001/source_crosscheck_20241111_v01.py'
+      - '.github/workflows/stablecoin-exchange-flow-source-crosscheck-20241111-v01.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source-crosscheck-2024:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - run: python -m py_compile labs/STABLECOIN_EXCHANGE_FLOW_001/source_crosscheck_20241111_v01.py
+      - name: Execute late protected full-day source crosscheck
+        run: python labs/STABLECOIN_EXCHANGE_FLOW_001/source_crosscheck_20241111_v01.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stablecoin-exchange-flow-001-source-crosscheck-20241111-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/stablecoin_exchange_flow_source_crosscheck_20241111_v01/
+          retention-days: 90
