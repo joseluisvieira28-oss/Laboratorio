@@ -1,0 +1,51 @@
+name: MINER-STRESS-001 Source Audit V0.1
+on:
+  push:
+    branches: [miner-stress-v0.1]
+    paths:
+      - '.github/miner-stress-source-audit.trigger'
+jobs:
+  source-audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Checkout frozen branch
+        uses: actions/checkout@v4
+      - name: Verify outcome-blind package
+        run: |
+          test "${GITHUB_REF_NAME}" = "miner-stress-v0.1"
+          python3 -m py_compile Dream-Account-OS-v2.3-PARTIAL/research/miner_stress_v0_1/source_audit_miner_v01.py Dream-Account-OS-v2.3-PARTIAL/research/miner_stress_v0_1/price_coverage_binance_v01.py
+          echo 'SOURCE AUDIT ONLY / NO SIGNAL / NO BTC PRICES / NO RETURNS / NO PNL / 2025 LOCKED / 2026 LOCKED'
+      - name: Audit public miner source
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/miner_stress_v0_1
+        run: python3 source_audit_miner_v01.py
+      - name: Audit Binance timestamp-only coverage
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/miner_stress_v0_1
+        run: python3 price_coverage_binance_v01.py
+      - name: Enforce full source gate
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/miner_stress_v0_1
+        run: |
+          python3 - <<'PY'
+          import json
+          a=json.load(open('source_audit_output/MINER_STRESS_001_SOURCE_AUDIT_V01.json'))
+          b=json.load(open('source_audit_output/MINER_STRESS_001_BTC_COVERAGE_V01.json'))
+          assert a['structural_pass'] is True and b['coverage_pass'] is True
+          assert a['miner_signal_computed'] is False
+          assert a['btc_price_values_evaluated'] is False and b['btc_price_values_evaluated'] is False
+          assert a['btc_returns_computed'] is False and b['btc_returns_computed'] is False
+          assert a['pnl_computed'] is False and b['pnl_computed'] is False
+          assert a['holdout_2025_accessed'] is False and b['holdout_2025_accessed'] is False
+          assert a['year_2026_accessed'] is False and b['year_2026_accessed'] is False
+          print('SOURCE_DATA_PASS')
+          print('2025 ACCESSED: NO / 2026 ACCESSED: NO / OUTCOMES: NO')
+          PY
+      - name: Upload immutable source evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: miner-stress-001-source-audit-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            Dream-Account-OS-v2.3-PARTIAL/research/miner_stress_v0_1/source_audit_output/MINER_STRESS_001_SOURCE_AUDIT_V01.json
+            Dream-Account-OS-v2.3-PARTIAL/research/miner_stress_v0_1/source_audit_output/MINER_STRESS_001_BTC_COVERAGE_V01.json
+            Dream-Account-OS-v2.3-PARTIAL/research/miner_stress_v0_1/source_audit_output/hash_rate_raw.json
+            Dream-Account-OS-v2.3-PARTIAL/research/miner_stress_v0_1/source_audit_output/difficulty_raw.json
+          if-no-files-found: error
