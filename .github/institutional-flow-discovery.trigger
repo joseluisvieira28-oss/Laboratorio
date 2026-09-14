@@ -1,0 +1,10 @@
+authorized=2026-09-14
+lab=INSTITUTIONAL-FLOW-001
+mve=IF-CFTC-001
+mode=ONE_SHOT_DISCOVERY
+contract_sha256=53fd510c6ae125019aa7c259bc002d14dc91769742c2bfacbe450cb7e02bc739
+runner_sha256=fc6e445ee243d36f6ccced7e7494466ce6f8dd45cbbbd158f5e9dbb8683e4e2d
+2025=LOCKED
+2026=FORBIDDEN
+live=NO
+rerun_for_outcome_improvement=FORBIDDEN
