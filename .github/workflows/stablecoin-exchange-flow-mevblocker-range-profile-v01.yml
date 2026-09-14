@@ -1,0 +1,29 @@
+name: STABLECOIN-EXCHANGE-FLOW-001 MEV Blocker Range Profile V0.1
+
+on:
+  push:
+    branches: [ stablecoin-exchange-flow-v0.1 ]
+    paths:
+      - 'labs/STABLECOIN_EXCHANGE_FLOW_001/mevblocker_range_profile_v01.py'
+      - '.github/workflows/stablecoin-exchange-flow-mevblocker-range-profile-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  range-profile:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile range profile
+        run: python -m py_compile labs/STABLECOIN_EXCHANGE_FLOW_001/mevblocker_range_profile_v01.py
+      - name: Execute protected range profile
+        run: python labs/STABLECOIN_EXCHANGE_FLOW_001/mevblocker_range_profile_v01.py
+      - name: Upload receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: stablecoin-exchange-flow-001-mevblocker-range-profile-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/stablecoin_exchange_flow_mevblocker_range_profile_v01/
+          retention-days: 90
