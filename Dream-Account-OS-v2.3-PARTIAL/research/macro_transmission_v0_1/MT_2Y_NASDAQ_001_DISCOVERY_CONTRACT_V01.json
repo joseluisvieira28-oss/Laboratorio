@@ -1,0 +1,48 @@
+{
+  "lab": "MACRO-TRANSMISSION-001",
+  "mve_id": "MT-2Y-NASDAQ-001",
+  "version": "DISCOVERY_V0.1",
+  "status": "FROZEN_PRE_OUTCOME",
+  "authorized_date": "2026-09-14",
+  "discovery_input_start": "2018-04-01",
+  "discovery_input_end": "2024-12-30",
+  "latest_exit": "2024-12-31",
+  "signal": {
+    "long": "NASDAQ_return_t > 0 AND DGS2_change_t < 0",
+    "short": "NASDAQ_return_t < 0 AND DGS2_change_t > 0",
+    "otherwise": "NO_TRADE",
+    "previous_observation_binding": "immediately preceding chronological paired-valid U.S. business-day observation; no forward fill, nearest-neighbor repair, or bridging across a missing value in either series"
+  },
+  "execution": {
+    "entry": "00:00 UTC next calendar day after macro day t",
+    "exit": "00:00 UTC one calendar day after entry",
+    "price_authority": "Binance Data Vision BTCUSDT spot 1d open"
+  },
+  "costs_round_trip_bps": [6, 10, 20],
+  "primary_cost_bps": 10,
+  "promotion_gate_all_required": {
+    "n_min": 500,
+    "mean_net10_gt_0": true,
+    "profit_factor_net10_gt_1": true,
+    "median_gross_gt_0": true,
+    "calendar_years_nonnegative_net10_min": 4,
+    "years_2021_2024_nonnegative_net10_min": 3,
+    "max_single_calendar_year_share_positive_gross_pnl": 0.60,
+    "provenance_timestamp_firewall_pass": true,
+    "holdout_2025_unopened": true,
+    "year_2026_unopened": true
+  },
+  "bootstrap": {"method": "iid_trade_mean_net10", "resamples": 9999, "seed": 20260914, "ci": 0.95, "promotion_gate": false},
+  "expected_source_sha256": {
+    "DGS2_20180401_20241230.csv": "53a303586b55ad5792cf78a9c8b88d3a94d2db1ed28c1a63a8c5106e978ceccc",
+    "NASDAQCOM_20180401_20241230.csv": "b3e58baa6cebf9e05a200909fbcd90a3e3ea8fdaf8ad8b735e16d9663c9bd7c2"
+  },
+  "source_gate_run": 34814146638,
+  "source_gate_artifact_id": 10335267773,
+  "source_gate_artifact_sha256": "8b41a9a19140de5eb77708668e042b290920eeaf5f069bb363e6a1c4508b687c",
+  "holdout_2025": "LOCKED",
+  "year_2026": "FORBIDDEN",
+  "live_trading": false,
+  "exchange_mutation": false,
+  "post_outcome_tuning": false
+}
