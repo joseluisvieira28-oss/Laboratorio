@@ -1,0 +1,135 @@
+name: BTC Fee Pressure Discovery V0.5
+
+on:
+  push:
+    branches: [btc-fee-pressure-v0.5-discovery]
+    paths:
+      - '.github/workflows/btc-fee-pressure-discovery-v05.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  select:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fail-closed pre-outcome preflight
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = "btc-fee-pressure-v0.5-discovery"
+          python3 -m py_compile research/btc_fee_pressure/select_signals_v05.py
+          python3 -m py_compile research/btc_fee_pressure/run_discovery_v05.py
+          test -f research/btc_fee_pressure/BTC_FEE_PRESSURE_001_DISCOVERY_AUTHORITY_V0_5.md
+          ! grep -Eq 'api\.binance|api\.coinbase|sendtransaction|POST |PUT |PATCH |DELETE ' research/btc_fee_pressure/select_signals_v05.py research/btc_fee_pressure/run_discovery_v05.py
+          echo "DISCOVERY AUTHORITY DRIVE 1zKdIasUa8ask7R_vlbf-3TBsDSC1x4EeyH6r9oMWRZE"
+          echo "V0.4 SOURCE RUN 34886378068 / ARTIFACT 10365390379 / SOURCE_DATA_PASS"
+          echo "NO MARKET ACCESS IN SELECT JOB | 2025/2026 LOCKED"
+
+      - name: Download canonical V0.4 source artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: BTC-FEE-PRESSURE-001-source-remediation-v04-final
+          path: source_v04
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: 34886378068
+          github-token: ${{ github.token }}
+
+      - name: Freeze outcome-blind trade selection
+        env:
+          BFP_SOURCE_ROOT: source_v04
+          BFP_SELECTION_OUT: bfp_v05_selection
+        run: python3 research/btc_fee_pressure/select_signals_v05.py
+
+      - name: Verify selection seal
+        run: |
+          set -euo pipefail
+          test "$(python3 -c 'import json; print(json.load(open("bfp_v05_selection/preoutcome_status.json"))["status"])')" = "SELECTION_PASS"
+          (cd bfp_v05_selection && sha256sum -c selected_trades.sha256)
+          (cd bfp_v05_selection && sha256sum -c selection_manifest.sha256)
+          ! grep -Eq '2025|2026' bfp_v05_selection/selected_trades.json
+          echo "PRE-OUTCOME SELECTION SEALED; BTC PRICE VALUES STILL UNOPENED"
+
+      - name: Preserve pre-outcome selection evidence
+        if: always()
+        run: |
+          set -euo pipefail
+          d=bfp_v05_selection
+          mkdir -p "$d"
+          cp research/btc_fee_pressure/select_signals_v05.py "$d/" || true
+          cp research/btc_fee_pressure/BTC_FEE_PRESSURE_001_DISCOVERY_AUTHORITY_V0_5.md "$d/" || true
+          printf '%s\n' "$GITHUB_SHA" > "$d/commit.txt"
+          find "$d" -type f -print0 | sort -z | xargs -0 sha256sum > "$d/all_files.sha256"
+          tar --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner -cf "${d}.tar" "$d"
+          sha256sum "${d}.tar" | tee "${d}.tar.sha256"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: BTC-FEE-PRESSURE-001-v05-preoutcome-selection
+          path: |
+            bfp_v05_selection/
+            bfp_v05_selection.tar
+            bfp_v05_selection.tar.sha256
+          retention-days: 90
+          if-no-files-found: error
+
+  discovery:
+    needs: select
+    if: needs.select.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download sealed pre-outcome selection
+        uses: actions/download-artifact@v4
+        with:
+          name: BTC-FEE-PRESSURE-001-v05-preoutcome-selection
+          path: selection_artifact
+
+      - name: Fail-closed Discovery preflight
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = "btc-fee-pressure-v0.5-discovery"
+          python3 -m py_compile research/btc_fee_pressure/run_discovery_v05.py
+          test "$(find selection_artifact -name selected_trades.json | wc -l)" -eq 1
+          test "$(find selection_artifact -name selection_manifest.json | wc -l)" -eq 1
+          while IFS= read -r -d '' f; do (cd "$(dirname "$f")" && sha256sum -c "$(basename "$f")"); done < <(find selection_artifact -name selected_trades.sha256 -print0)
+          ! grep -Eq '2025|2026' "$(find selection_artifact -name selected_trades.json | head -1)"
+          echo "SEALED SELECTION VERIFIED; MARKET OUTCOME ACCESS NOW AUTHORIZED FOR SELECTED 2021-2024 DATES ONLY"
+
+      - name: Execute one-shot Discovery outcomes
+        env:
+          BFP_SELECTION_ROOT: selection_artifact
+          BFP_DISCOVERY_OUT: bfp_v05_discovery
+        run: python3 research/btc_fee_pressure/run_discovery_v05.py
+
+      - name: Preserve Discovery evidence
+        if: always()
+        run: |
+          set -euo pipefail
+          d=bfp_v05_discovery
+          mkdir -p "$d"
+          cp research/btc_fee_pressure/run_discovery_v05.py "$d/" || true
+          cp research/btc_fee_pressure/BTC_FEE_PRESSURE_001_DISCOVERY_AUTHORITY_V0_5.md "$d/" || true
+          printf '%s\n' "$GITHUB_SHA" > "$d/commit.txt"
+          find selection_artifact -name selected_trades.sha256 -exec cp {} "$d/source_selected_trades.sha256" \; || true
+          find selection_artifact -name selection_manifest.sha256 -exec cp {} "$d/source_selection_manifest.sha256" \; || true
+          find "$d" -type f -print0 | sort -z | xargs -0 sha256sum > "$d/all_files.sha256"
+          tar --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner -cf "${d}.tar" "$d"
+          sha256sum "${d}.tar" | tee "${d}.tar.sha256"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: BTC-FEE-PRESSURE-001-v05-discovery-final
+          path: |
+            bfp_v05_discovery/
+            bfp_v05_discovery.tar
+            bfp_v05_discovery.tar.sha256
+          retention-days: 90
+          if-no-files-found: error
