@@ -1,4 +1,4 @@
-name: BTC Fee Pressure Source Remediation Gate V0.2
+name: BTC Fee Pressure Source Remediation Gate V0.2 Chunked
 on:
   push:
     branches: [btc-fee-pressure-v0.2-source-remediation]
@@ -7,9 +7,30 @@ on:
 permissions:
   contents: read
 jobs:
-  source-remediation:
+  acquire:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 110
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        include:
+          - {chunk: 2021Q1, start: 1609459200, end: 1617235199}
+          - {chunk: 2021Q2, start: 1617235200, end: 1625097599}
+          - {chunk: 2021Q3, start: 1625097600, end: 1633046399}
+          - {chunk: 2021Q4, start: 1633046400, end: 1640995199}
+          - {chunk: 2022Q1, start: 1640995200, end: 1648771199}
+          - {chunk: 2022Q2, start: 1648771200, end: 1656633599}
+          - {chunk: 2022Q3, start: 1656633600, end: 1664582399}
+          - {chunk: 2022Q4, start: 1664582400, end: 1672531199}
+          - {chunk: 2023Q1, start: 1672531200, end: 1680307199}
+          - {chunk: 2023Q2, start: 1680307200, end: 1688169599}
+          - {chunk: 2023Q3, start: 1688169600, end: 1696118399}
+          - {chunk: 2023Q4, start: 1696118400, end: 1704067199}
+          - {chunk: 2024Q1, start: 1704067200, end: 1711929599}
+          - {chunk: 2024Q2, start: 1711929600, end: 1719791999}
+          - {chunk: 2024Q3, start: 1719792000, end: 1727740799}
+          - {chunk: 2024Q4, start: 1727740800, end: 1735689599}
     steps:
       - uses: actions/checkout@v4
       - name: Fail-closed preflight
@@ -17,16 +38,62 @@ jobs:
           set -euo pipefail
           test "$GITHUB_REF_NAME" = "btc-fee-pressure-v0.2-source-remediation"
           python3 -m py_compile research/btc_fee_pressure/source_remediation_gate_v02.py
-          ! grep -Eq 'api\.binance|api\.coinbase|market-price|fee-estimates|sendtransaction' research/btc_fee_pressure/source_remediation_gate_v02.py
+          ! grep -Eiq 'binance|coinbase|market.?price|fee.?estimates|sendtransaction' research/btc_fee_pressure/source_remediation_gate_v02.py
+          grep -Fq 'GLOBAL_END=1735689599' research/btc_fee_pressure/source_remediation_gate_v02.py
           echo "AUTHORITY DRIVE RECEIPT 1wBQMMqYK5zy7t5kj0Et6iIbfs2N22cbU"
           echo "NO OUTCOMES | NO PRICES | 2025/2026 LOCKED"
-      - name: Execute V0.2 source remediation
-        env:
-          BFP_OUT: btc_fee_pressure_source_remediation_artifact
-        run: python3 research/btc_fee_pressure/source_remediation_gate_v02.py
-      - name: Preserve evidence
+      - name: Restore resumable checkpoint
+        uses: actions/cache/restore@v4
+        with:
+          path: work/${{ matrix.chunk }}
+          key: bfp-v02-${{ matrix.chunk }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            bfp-v02-${{ matrix.chunk }}-
+      - name: Acquire canonical block chunk
+        run: |
+          python3 research/btc_fee_pressure/source_remediation_gate_v02.py acquire \
+            --chunk "${{ matrix.chunk }}" \
+            --start-ts "${{ matrix.start }}" \
+            --end-ts "${{ matrix.end }}" \
+            --out "work/${{ matrix.chunk }}" \
+            --max-seconds 5400
+      - name: Save resumable checkpoint
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: work/${{ matrix.chunk }}
+          key: bfp-v02-${{ matrix.chunk }}-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Preserve chunk evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: BTC-FEE-PRESSURE-001-v02-${{ matrix.chunk }}
+          path: work/${{ matrix.chunk }}/
+          retention-days: 90
+          if-no-files-found: error
+  finalize:
+    if: always()
+    needs: acquire
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download all chunk evidence
+        uses: actions/download-artifact@v4
+        with:
+          pattern: BTC-FEE-PRESSURE-001-v02-*
+          path: chunks
+      - name: Finalize source/data gate
+        run: |
+          python3 research/btc_fee_pressure/source_remediation_gate_v02.py finalize \
+            --chunks chunks \
+            --out btc_fee_pressure_source_remediation_artifact \
+            --expected-chunks 16
+      - name: Preserve authority, code and hashes
+        if: always()
         run: |
           set -euo pipefail
+          mkdir -p btc_fee_pressure_source_remediation_artifact
           cp research/btc_fee_pressure/source_remediation_gate_v02.py btc_fee_pressure_source_remediation_artifact/
           cp research/btc_fee_pressure/BTC_FEE_PRESSURE_001_SOURCE_REMEDIATION_AUTHORITY_V0_2.md btc_fee_pressure_source_remediation_artifact/
           sha256sum research/btc_fee_pressure/source_remediation_gate_v02.py > btc_fee_pressure_source_remediation_artifact/code.sha256
@@ -34,9 +101,11 @@ jobs:
           find btc_fee_pressure_source_remediation_artifact -type f -print0 | sort -z | xargs -0 sha256sum > btc_fee_pressure_source_remediation_artifact/all_files.sha256
           tar --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner -cf btc_fee_pressure_source_remediation_artifact.tar btc_fee_pressure_source_remediation_artifact
           sha256sum btc_fee_pressure_source_remediation_artifact.tar | tee btc_fee_pressure_source_remediation_artifact.tar.sha256
-      - uses: actions/upload-artifact@v4
+      - name: Upload final gate evidence
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
-          name: BTC-FEE-PRESSURE-001-source-remediation-v02
+          name: BTC-FEE-PRESSURE-001-source-remediation-v02-final
           path: |
             btc_fee_pressure_source_remediation_artifact/
             btc_fee_pressure_source_remediation_artifact.tar
