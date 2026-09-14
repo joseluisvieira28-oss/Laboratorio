@@ -1,0 +1,43 @@
+name: ETF-SHORTFLOW-001 FINRA Source Data Gate V0.1
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - etf-shortflow-v0.1
+    paths:
+      - 'labs/ETF_SHORTFLOW_001/**'
+      - '.github/workflows/etf-shortflow-source-gate-v01.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  source-data-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout isolated ETF short-flow branch
+        uses: actions/checkout@v4
+
+      - name: Verify protected-period literals
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f labs/ETF_SHORTFLOW_001/PRE_DISCOVERY_PROTOCOL_V0.1.md
+          test -f labs/ETF_SHORTFLOW_001/finra_source_gate_v01.py
+          ! grep -R --line-number -E '2025|2026' labs/ETF_SHORTFLOW_001/finra_source_gate_v01.py | grep -v -E 'access_2025|access_2026|PROTECTED_PERIOD' || true
+
+      - name: Compile outcome-blind FINRA source gate
+        run: python -m py_compile labs/ETF_SHORTFLOW_001/finra_source_gate_v01.py
+
+      - name: Execute frozen FINRA 2024 Source/Data Gate
+        run: python labs/ETF_SHORTFLOW_001/finra_source_gate_v01.py
+
+      - name: Upload immutable source/data receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: etf-shortflow-001-source-data-gate-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/etf_shortflow_source_gate_v01/
+          retention-days: 90
