@@ -1,0 +1,95 @@
+name: OPTIONS-SPOTPERP-001 Schema Remediation Diagnostic
+
+on:
+  push:
+    branches:
+      - options-spotperp-v0.1-schema-diagnostic
+    paths:
+      - '.github/options-schema-remediation-diagnostic.trigger'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  LAB_DIR: Dream-Account-OS-v2.3-PARTIAL/research/options_spotperp_v0_1
+  OUT_DIR: schema_diag_data
+
+jobs:
+  schema-diagnostic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    steps:
+      - name: Checkout diagnostic branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Governance identity
+        run: |
+          set -euo pipefail
+          echo 'OPTIONS-SPOTPERP-001 / SOURCE_SCHEMA_REMEDIATION_DIAGNOSTIC'
+          echo 'NO SKEW | NO SIGNALS | NO RETURNS | NO PNL | 2025 LOCKED | 2026 LOCKED'
+
+      - name: Blind preflight
+        working-directory: ${{ env.LAB_DIR }}
+        run: |
+          set -euo pipefail
+          python3 preflight_expiryfix.py
+
+      - name: Acquire frozen-window source audit corpus only
+        working-directory: ${{ env.LAB_DIR }}
+        run: |
+          set -euo pipefail
+          python3 source_audit_expiryfix.py --output "${{ github.workspace }}/${OUT_DIR}"
+
+      - name: Run outcome-blind schema diagnostic
+        working-directory: ${{ env.LAB_DIR }}
+        run: |
+          set -euo pipefail
+          python3 schema_remediation_diagnostic.py --root "${{ github.workspace }}/${OUT_DIR}"
+
+      - name: Governance firewall assertion
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path('schema_diag_data/schema_remediation_diagnostic_receipt.json')
+          if not p.exists():
+              raise SystemExit('FAIL-CLOSED: diagnostic receipt missing')
+          r = json.loads(p.read_text())
+          g = r.get('governance', {})
+          required_false = [
+              'skew_values_computed', 'signals_computed', 'forward_returns_computed',
+              'pnl_computed', 'holdout_2025_accessed', 'year_2026_accessed'
+          ]
+          bad = {k: g.get(k) for k in required_false if g.get(k) is not False}
+          if bad:
+              raise SystemExit(f'FAIL-CLOSED governance firewall: {bad}')
+          if r.get('status') != 'DIAGNOSTIC_COMPLETE':
+              raise SystemExit(f"FAIL-CLOSED diagnostic status: {r.get('status')!r}")
+          print('GOVERNANCE_FIREWALL_PASS')
+          print('DISCOVERY_REMAINS_CLOSED')
+          PY
+
+      - name: Upload diagnostic receipts only
+        uses: actions/upload-artifact@v4
+        with:
+          name: options-spotperp-001-schema-remediation-diagnostic-v01
+          if-no-files-found: error
+          path: |
+            schema_diag_data/schema_remediation_diagnostic_receipt.json
+            schema_diag_data/source_audit_report.json
+            schema_diag_data/source_manifest.json
+
+      - name: Terminal diagnostic classification
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          r = json.loads(Path('schema_diag_data/schema_remediation_diagnostic_receipt.json').read_text())
+          print('TERMINAL_CLASSIFICATION=' + str(r.get('terminal_classification')))
+          print('NEXT_STEP=' + str(r.get('next_step')))
+          PY
