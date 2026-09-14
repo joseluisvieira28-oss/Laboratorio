@@ -1,0 +1,31 @@
+name: STABLECOIN-EXCHANGE-FLOW-001 Catalog Probe V0.1
+
+on:
+  push:
+    branches:
+      - stablecoin-exchange-flow-v0.1
+    paths:
+      - 'labs/STABLECOIN_EXCHANGE_FLOW_001/cryptodata_catalog_probe_v01.py'
+      - '.github/workflows/stablecoin-exchange-flow-catalog-probe-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  catalog-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile catalog probe
+        run: python -m py_compile labs/STABLECOIN_EXCHANGE_FLOW_001/cryptodata_catalog_probe_v01.py
+      - name: Execute protected monthly catalog probe
+        run: python labs/STABLECOIN_EXCHANGE_FLOW_001/cryptodata_catalog_probe_v01.py
+      - name: Upload immutable receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stablecoin-exchange-flow-001-catalog-probe-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/stablecoin_exchange_flow_catalog_probe_v01/
+          retention-days: 90
