@@ -1,0 +1,51 @@
+name: ETF-SHORTFLOW-001 One-Shot Discovery V0.1
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - etf-shortflow-v0.1
+    paths:
+      - '.github/workflows/etf-shortflow-discovery-one-shot-v01.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  discovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout isolated ETF short-flow branch
+        uses: actions/checkout@v4
+
+      - name: Verify frozen authority files
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f labs/ETF_SHORTFLOW_001/PRE_DISCOVERY_PROTOCOL_V0.1.md
+          test -f labs/ETF_SHORTFLOW_001/DISCOVERY_AUTHORIZATION_V0.1.md
+          test -f labs/ETF_SHORTFLOW_001/finra_source_gate_v01.py
+          test -f labs/ETF_SHORTFLOW_001/discovery_v01.py
+          grep -F 'AUTHORIZED FOR EXACTLY ONE 2024 DISCOVERY EXECUTION' labs/ETF_SHORTFLOW_001/DISCOVERY_AUTHORIZATION_V0.1.md
+
+      - name: Compile frozen runners
+        run: |
+          python -m py_compile labs/ETF_SHORTFLOW_001/finra_source_gate_v01.py
+          python -m py_compile labs/ETF_SHORTFLOW_001/discovery_v01.py
+
+      - name: Regenerate frozen FINRA Source Data Gate
+        run: python labs/ETF_SHORTFLOW_001/finra_source_gate_v01.py
+
+      - name: Execute exact one-shot 2024 Discovery
+        run: python labs/ETF_SHORTFLOW_001/discovery_v01.py
+
+      - name: Upload immutable Discovery evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: etf-shortflow-001-discovery-v01-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            artifacts/etf_shortflow_source_gate_v01/
+            artifacts/etf_shortflow_discovery_v01/
+          retention-days: 90
