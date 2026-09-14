@@ -1,0 +1,71 @@
+name: MACRO-TRANSMISSION-001 Discovery V0.1
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - macro-transmission-v0.1
+    paths:
+      - '.github/macro-transmission-discovery.trigger'
+
+permissions:
+  contents: read
+
+jobs:
+  discovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout frozen branch
+        uses: actions/checkout@v4
+
+      - name: Verify frozen pre-outcome package
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/macro_transmission_v0_1
+        run: |
+          test "${GITHUB_REF_NAME}" = "macro-transmission-v0.1"
+          python3 -m py_compile source_audit_macro_v01.py run_mt_2y_nasdaq_001_discovery_v01.py
+          test "$(git hash-object MT_2Y_NASDAQ_001_DISCOVERY_CONTRACT_V01.json)" = "b401ef4eb069b64f334d5f7e81108310d50661ad"
+          test "$(git hash-object run_mt_2y_nasdaq_001_discovery_v01.py)" = "a913a78e5193734efd3410d3addfdc7f16a8b75e"
+          echo 'PRE-OUTCOME PACKAGE VERIFIED / 2025 LOCKED / 2026 LOCKED'
+
+      - name: Revalidate frozen macro source authority
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/macro_transmission_v0_1
+        run: |
+          python3 source_audit_macro_v01.py
+          test "$(sha256sum source_audit_output/DGS2_20180401_20241230.csv | cut -d' ' -f1)" = "53a303586b55ad5792cf78a9c8b88d3a94d2db1ed28c1a63a8c5106e978ceccc"
+          test "$(sha256sum source_audit_output/NASDAQCOM_20180401_20241230.csv | cut -d' ' -f1)" = "b3e58baa6cebf9e05a200909fbcd90a3e3ea8fdaf8ad8b735e16d9663c9bd7c2"
+
+      - name: Execute authorized one-shot Discovery
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/macro_transmission_v0_1
+        run: python3 run_mt_2y_nasdaq_001_discovery_v01.py
+
+      - name: Validate protected-period firewall
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/macro_transmission_v0_1
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          x=json.loads(Path('discovery_output/MT_2Y_NASDAQ_001_DISCOVERY_RESULT_V01.json').read_text())
+          assert x['holdout_2025_accessed'] is False
+          assert x['year_2026_accessed'] is False
+          assert x['live_trading_authorized'] is False
+          assert x['post_outcome_tuning_authorized'] is False
+          print('DISCOVERY_FIREWALL_PASS')
+          print('CLASSIFICATION=',x['classification'])
+          print('N=',x['n_trades'])
+          print('NET10_BPS=',x['net10_mean_bps'])
+          print('PROMOTION_PASS=',x['promotion_pass'])
+          print('2025 ACCESSED: NO / 2026 ACCESSED: NO / LIVE: NO')
+          PY
+
+      - name: Upload immutable Discovery evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: macro-transmission-001-discovery-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            Dream-Account-OS-v2.3-PARTIAL/research/macro_transmission_v0_1/MT_2Y_NASDAQ_001_DISCOVERY_CONTRACT_V01.json
+            Dream-Account-OS-v2.3-PARTIAL/research/macro_transmission_v0_1/discovery_output/MT_2Y_NASDAQ_001_DISCOVERY_RESULT_V01.json
+            Dream-Account-OS-v2.3-PARTIAL/research/macro_transmission_v0_1/discovery_output/MT_2Y_NASDAQ_001_TRADES_V01.csv
+            Dream-Account-OS-v2.3-PARTIAL/research/macro_transmission_v0_1/discovery_output/MT_2Y_NASDAQ_001_BINANCE_ARCHIVE_MANIFEST_V01.json
+          if-no-files-found: error
+          retention-days: 90
