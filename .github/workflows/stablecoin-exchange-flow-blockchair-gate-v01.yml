@@ -1,0 +1,38 @@
+name: STABLECOIN-EXCHANGE-FLOW-001 Binance Basket Source Gate V0.1
+
+on:
+  push:
+    branches:
+      - stablecoin-exchange-flow-v0.1
+    paths:
+      - 'labs/STABLECOIN_EXCHANGE_FLOW_001/SOURCE_REMEDIATION_001_BINANCE_PUBLIC_BASKET.md'
+      - 'labs/STABLECOIN_EXCHANGE_FLOW_001/blockchair_source_gate_v01.py'
+      - '.github/workflows/stablecoin-exchange-flow-blockchair-gate-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  blockchair-source-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout isolated branch
+        uses: actions/checkout@v4
+      - name: Verify source-only authority
+        run: |
+          set -euo pipefail
+          test -f labs/STABLECOIN_EXCHANGE_FLOW_001/SOURCE_REMEDIATION_001_BINANCE_PUBLIC_BASKET.md
+          test -f labs/STABLECOIN_EXCHANGE_FLOW_001/blockchair_source_gate_v01.py
+      - name: Compile source gate
+        run: python -m py_compile labs/STABLECOIN_EXCHANGE_FLOW_001/blockchair_source_gate_v01.py
+      - name: Execute protected-period Blockchair feasibility gate
+        run: python labs/STABLECOIN_EXCHANGE_FLOW_001/blockchair_source_gate_v01.py
+      - name: Upload immutable receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stablecoin-exchange-flow-001-blockchair-gate-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/stablecoin_exchange_flow_blockchair_gate_v01/
+          retention-days: 90
