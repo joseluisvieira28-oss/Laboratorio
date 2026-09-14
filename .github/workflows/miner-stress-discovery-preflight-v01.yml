@@ -24,8 +24,10 @@ jobs:
         working-directory: Dream-Account-OS-v2.3-PARTIAL/research/miner_stress_v0_1
         run: |
           test "${GITHUB_REF_NAME}" = "miner-stress-v0.1"
-          echo "8e23918e1529cb39cb02f9f2e0e7020f74cf37c8fd5be93d2c1ecafc91c21dd5  MS_HASHDIFF_7D_001_DISCOVERY_CONTRACT_V01.json" | sha256sum -c -
-          echo "b62a019120bf5edd4d57f58ac36fec93c16e6df15a52f8a6669f8da9f50eae07  run_ms_hashdiff_7d_001_discovery_v01.py" | sha256sum -c -
+          test "$(git hash-object MS_HASHDIFF_7D_001_DISCOVERY_CONTRACT_V01.json)" = "d4aa0b1ba6ac2b5cb8298be455c2efd1c3318013"
+          test "$(git hash-object run_ms_hashdiff_7d_001_discovery_v01.py)" = "9e37731afd355b6d3b4ddc8814b82038b80e536f"
+          echo "CONTRACT_SHA256=$(sha256sum MS_HASHDIFF_7D_001_DISCOVERY_CONTRACT_V01.json | cut -d' ' -f1)"
+          echo "RUNNER_SHA256=$(sha256sum run_ms_hashdiff_7d_001_discovery_v01.py | cut -d' ' -f1)"
           python3 -m py_compile miner_stress_discovery_preflight_v01.py run_ms_hashdiff_7d_001_discovery_v01.py
           if MS_DISCOVERY_AUTHORIZATION= python3 run_ms_hashdiff_7d_001_discovery_v01.py 2>locked.txt; then
             echo "FAIL: discovery runner unexpectedly unlocked"
@@ -57,6 +59,7 @@ jobs:
           assert x['holdout_2025_accessed'] is False
           assert x['year_2026_accessed'] is False
           assert x['structural_signal_dates_before_zero_signal_rule']==2542
+          print('CONTRACT_SHA256_RECEIPT=',x['contract_sha256'])
           print('PREOUTCOME_FIREWALL_PASS')
           PY
 
