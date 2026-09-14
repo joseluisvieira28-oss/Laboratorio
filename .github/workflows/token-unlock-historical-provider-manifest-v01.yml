@@ -35,7 +35,8 @@ jobs:
           cd /tmp/emissions-2023
           git checkout -q 539e7cf40a4cecc73953f3ae2b196b3fa66ae34a
           test "$(git rev-parse HEAD)" = '539e7cf40a4cecc73953f3ae2b196b3fa66ae34a'
-          npm ci --ignore-scripts --silent
+          npm ci --include=dev --ignore-scripts --silent
+          test -x ./node_modules/.bin/ts-node
 
       - name: Acquire immutable March 2024 snapshot
         shell: bash
@@ -45,7 +46,8 @@ jobs:
           cd /tmp/emissions-2024
           git checkout -q ad6bcfa961d6f0bd9cd5d589656b8f78daf7be7a
           test "$(git rev-parse HEAD)" = 'ad6bcfa961d6f0bd9cd5d589656b8f78daf7be7a'
-          npm ci --ignore-scripts --silent
+          npm ci --include=dev --ignore-scripts --silent
+          test -x ./node_modules/.bin/ts-node
 
       - name: Extract source-only events from 2023 snapshot
         shell: bash
@@ -54,7 +56,7 @@ jobs:
           OUT="$GITHUB_WORKSPACE/Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001/source_probe_output_v03"
           mkdir -p "$OUT"
           cd /tmp/emissions-2023
-          node -r ts-node/register/transpile-only \
+          ./node_modules/.bin/ts-node --transpile-only \
             "$GITHUB_WORKSPACE/Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001/extract_historical_provider_snapshot_v01.js" \
             /tmp/emissions-2023 2023-03-17 "$OUT/provider_2023.json"
 
@@ -64,7 +66,7 @@ jobs:
           set -euo pipefail
           OUT="$GITHUB_WORKSPACE/Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001/source_probe_output_v03"
           cd /tmp/emissions-2024
-          node -r ts-node/register/transpile-only \
+          ./node_modules/.bin/ts-node --transpile-only \
             "$GITHUB_WORKSPACE/Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001/extract_historical_provider_snapshot_v01.js" \
             /tmp/emissions-2024 2024-03-25 "$OUT/provider_2024.json"
 
@@ -80,13 +82,10 @@ jobs:
           a=json.loads((out/'provider_2023.json').read_text())
           b=json.loads((out/'provider_2024.json').read_text())
           events=a['events']+b['events']
-          # Windows are disjoint by construction, but dedupe defensively.
-          merged={}
-          conflicts=[]
+          merged={}; conflicts=[]
           for e in events:
             k=(e['token'],e['timestamp'])
-            if k not in merged:
-              merged[k]=e
+            if k not in merged: merged[k]=e
             else:
               old=merged[k]
               if abs(float(old['scheduled_unlock_tokens'])-float(e['scheduled_unlock_tokens']))>1e-9:
@@ -100,24 +99,16 @@ jobs:
           assert all(2023 <= datetime.fromtimestamp(x['timestamp'],timezone.utc).year <= 2024 for x in rows)
           assert not conflicts
           receipt={
-            'lab_id':'TOKEN-UNLOCK-EVENT-001',
-            'mve_id':'TUE-CLIFF-ADV30-001',
-            'mode':'SOURCE_ONLY_PIT_EVENT_MANIFEST',
-            'event_count':len(rows),
-            'distinct_token_count':len(tokens),
-            'token_ids':tokens,
-            'calendar_years':years,
+            'lab_id':'TOKEN-UNLOCK-EVENT-001','mve_id':'TUE-CLIFF-ADV30-001',
+            'mode':'SOURCE_ONLY_PIT_EVENT_MANIFEST','event_count':len(rows),
+            'distinct_token_count':len(tokens),'token_ids':tokens,'calendar_years':years,
             'source_gate_count_thresholds':{'events_required':40,'tokens_required':15,'years_required':2},
             'source_gate_counts_met':len(rows)>=40 and len(tokens)>=15 and len(years)>=2,
-            'source_conflicts':conflicts,
-            'all_rows_static_cliff_or_step':True,
+            'source_conflicts':conflicts,'all_rows_static_cliff_or_step':True,
             'all_rows_known_at_least_30d':all(float(x['known_lead_days'])>=30 for x in rows),
             'provider_snapshot_qualification':'IMMUTABLE_PROVIDER_SNAPSHOT_STATIC_EXACT',
-            'market_outcomes_opened':False,
-            'returns_computed':False,
-            'pnl_computed':False,
-            'year_2025_market_outcome_data_accessed':False,
-            'year_2026_market_outcome_data_accessed':False,
+            'market_outcomes_opened':False,'returns_computed':False,'pnl_computed':False,
+            'year_2025_market_outcome_data_accessed':False,'year_2026_market_outcome_data_accessed':False,
             'next_gate':'BINANCE_PRE_EVENT_INSTRUMENT_AND_VOLUME_AVAILABILITY',
           }
           (out/'TUE_PROVIDER_PIT_MANIFEST_2023_2024_V01.json').write_text(json.dumps(rows,indent=2,sort_keys=True)+'\n')
