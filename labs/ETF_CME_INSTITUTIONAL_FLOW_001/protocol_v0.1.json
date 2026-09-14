@@ -1,0 +1,75 @@
+{
+  "lab_id": "ETF-CME-INSTFLOW-001",
+  "protocol_version": "V0.1",
+  "status": "FROZEN_OUTCOME_BLIND",
+  "governance": {
+    "research_only": true,
+    "fail_closed": true,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "post_outcome_tuning": false,
+    "cherry_picking": false,
+    "open_2025": false,
+    "open_2026": false,
+    "etf_overlay_in_mve0": false
+  },
+  "source": {
+    "provider": "CFTC",
+    "report": "Commitments of Traders - Legacy Futures Only",
+    "market": "BITCOIN - CHICAGO MERCANTILE EXCHANGE",
+    "cftc_contract_code": "133741",
+    "sample_start_as_of": "2018-01-01",
+    "sample_end_as_of": "2024-12-31"
+  },
+  "signal": {
+    "net_noncommercial": "noncommercial_long - noncommercial_short",
+    "delta_net_noncommercial": "net_noncommercial_t - net_noncommercial_t_minus_1",
+    "definition": "delta_net_noncommercial / open_interest_t",
+    "expected_beta_sign": "positive",
+    "threshold": 0,
+    "zscore": false,
+    "winsorization": false,
+    "regime_filter": false
+  },
+  "availability": {
+    "rule": "as_of_date + 8 calendar days at 00:00 UTC",
+    "late_release_policy": "exclude_or_fail_closed_before_outcomes"
+  },
+  "outcome": {
+    "instrument": "BTCUSDT_spot",
+    "entry": "first 00:00 UTC daily price at_or_after information_safe_time",
+    "exit": "entry + 7 calendar days at 00:00 UTC",
+    "return": "exit_price / entry_price - 1",
+    "latest_allowed_timestamp": "2024-12-31T23:59:59Z"
+  },
+  "inference": {
+    "model": "forward_7d_return = alpha + beta * signal + error",
+    "test": "one_sided_beta_gt_0",
+    "standard_errors": "HAC_Newey_West",
+    "hac_lag_weeks": 2
+  },
+  "economic_strategy": {
+    "position_positive_signal": 1,
+    "position_negative_signal": -1,
+    "position_zero_signal": 0,
+    "base_roundtrip_cost_bps": 10,
+    "stress_roundtrip_cost_bps": 20
+  },
+  "mve0_promotion": {
+    "minimum_evaluable_weeks": 300,
+    "beta_positive": true,
+    "one_sided_hac_p_max": 0.10,
+    "base_net_mean_positive": true,
+    "base_profit_factor_gt": 1.0,
+    "minimum_nonnegative_years_out_of_7": 5,
+    "max_single_year_share_of_positive_gross_pnl": 0.40,
+    "stress_20bps_is_diagnostic_only": true
+  },
+  "pre_outcome_gate": {
+    "required": true,
+    "forbid_signal_return_relationship": true,
+    "forbid_regression": true,
+    "forbid_strategy_pnl": true,
+    "forbid_2025_2026_fetch": true
+  }
+}
