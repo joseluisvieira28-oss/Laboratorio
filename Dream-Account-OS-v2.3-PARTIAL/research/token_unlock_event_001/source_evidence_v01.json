@@ -1,0 +1,93 @@
+{
+  "lab_id": "TOKEN-UNLOCK-EVENT-001",
+  "mve_id": "TUE-CLIFF-ADV30-001",
+  "mode": "SOURCE_GATE_ONLY",
+  "outcomes_opened": false,
+  "year_2025_opened": false,
+  "year_2026_opened": false,
+  "sources": [
+    {
+      "id": "binance_public_data",
+      "role": "pre_event_liquidity_denominator",
+      "source_class": "official_exchange_archive",
+      "url": "https://github.com/binance/binance-public-data",
+      "historical_2021_2024_route": true,
+      "base_asset_volume_field": true,
+      "integrity_checksum_route": true,
+      "provides_unlock_events": false,
+      "pit_event_schedule_proof": false,
+      "assessment": "PASS_FOR_VOLUME_ROUTE_ONLY"
+    },
+    {
+      "id": "tokenomist_current",
+      "role": "event_discovery",
+      "source_class": "aggregator",
+      "url": "https://tokenomist.ai",
+      "historical_event_views": true,
+      "version_labels_visible_currently": true,
+      "historical_asof_snapshot_proven": false,
+      "current_api_history_sufficient_for_2021_2024_as_of_2026_09": false,
+      "pit_event_schedule_proof": false,
+      "assessment": "PIT_RISK_DISCOVERY_ONLY"
+    },
+    {
+      "id": "cryptorank_unlock_api",
+      "role": "event_discovery",
+      "source_class": "aggregator",
+      "url": "https://api.cryptorank.io",
+      "auth_or_paid_access_required": true,
+      "historical_schedule_versioning_proven": false,
+      "pit_event_schedule_proof": false,
+      "assessment": "AUTH_PLUS_PIT_RISK"
+    },
+    {
+      "id": "defillama_unlocks",
+      "role": "event_discovery_and_contract_notes",
+      "source_class": "aggregator_plus_onchain_notes",
+      "url": "https://defillama.com/unlocks",
+      "unlock_api_pro_access_required": true,
+      "current_pages_can_reference_onchain_sources": true,
+      "historical_asof_snapshot_proven": false,
+      "pit_event_schedule_proof": false,
+      "assessment": "PIT_RISK_DISCOVERY_ONLY"
+    },
+    {
+      "id": "kim_2026_replication",
+      "role": "academic_replication_candidate_manifest",
+      "source_class": "public_academic_replication",
+      "url": "https://github.com/gameworkerkim/vibe-investing/tree/main/01.Trading%20Strategy/Token%20unlock%2072h%20shock%20analysis%20",
+      "events_reported": 52,
+      "reported_window": "2023-2025",
+      "event_metadata_public": true,
+      "provenance_notes_public": true,
+      "event_sources_retrieved_ex_post": true,
+      "per_event_contemporaneous_known_at_evidence_preserved": false,
+      "whole_event_file_safe_under_2025_lock": false,
+      "pit_event_schedule_proof": false,
+      "assessment": "USEFUL_CANDIDATE_INDEX_NOT_PIT_AUTHORITY"
+    },
+    {
+      "id": "epfl_kurovskiy_2025",
+      "role": "external_prior_and_source_methodology",
+      "source_class": "doctoral_thesis",
+      "url": "https://infoscience.epfl.ch/handle/20.500.14299/240566",
+      "events_reported": 872,
+      "through": "2024-08-01",
+      "project_sources_documented": true,
+      "machine_readable_event_replication_dataset_found": false,
+      "sample_top500_asof_2024_08": true,
+      "pit_event_schedule_proof": false,
+      "assessment": "EXTERNAL_PRIOR_NOT_SOURCE_DATA"
+    },
+    {
+      "id": "primary_project_or_contract_evidence",
+      "role": "required_event_authority",
+      "source_class": "primary",
+      "url": null,
+      "can_prove_pre_event_known_at": true,
+      "systematic_2021_2024_manifest_currently_built": false,
+      "eligible_events_with_complete_pit_receipts": 0,
+      "assessment": "REQUIRED_BUT_NOT_YET_ASSEMBLED"
+    }
+  ]
+}
