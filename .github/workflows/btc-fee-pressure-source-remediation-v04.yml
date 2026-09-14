@@ -1,0 +1,83 @@
+name: BTC Fee Pressure Source Remediation Gate V0.4
+on:
+  push:
+    branches: [btc-fee-pressure-v0.4-boundary-normalization]
+    paths:
+      - '.github/workflows/btc-fee-pressure-source-remediation-v04.yml'
+permissions:
+  contents: read
+jobs:
+  boundary-normalization:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fail-closed code preflight
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = "btc-fee-pressure-v0.4-boundary-normalization"
+          python3 -m py_compile research/btc_fee_pressure/source_remediation_boundary_v04.py
+          ! grep -Eq 'import urllib|urlopen|http\.client|requests\.' research/btc_fee_pressure/source_remediation_boundary_v04.py
+          ! grep -Eq 'api\.binance|api\.coinbase|market-price|fee-estimates|sendtransaction' research/btc_fee_pressure/source_remediation_boundary_v04.py
+          echo "AUTHORITY DRIVE RECEIPT 1cgaqmcxXT6t9R1MMrzTcqQeQEFbIDp-yb3rkOK88egA"
+          echo "SOURCE REUSE ONLY: V0.3 RUN 34880810011"
+          echo "NO DISCOVERY | NO PRICES | NO RETURNS | NO PNL | 2025/2026 LOCKED"
+
+      - name: Download exact V0.3 source artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: BTC-FEE-PRESSURE-001-v03-chunk-*
+          path: v03_chunks
+          merge-multiple: false
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: 34880810011
+          github-token: ${{ github.token }}
+
+      - name: Fail-closed source lineage preflight
+        env:
+          SOURCE_HEAD: 41fbbd23bbf0de3bc39965c9532c57febacb4a53
+        run: |
+          set -euo pipefail
+          test "$(find v03_chunks -name chunk_manifest.json | wc -l)" -eq 4
+          test "$(find v03_chunks -name commit.txt | wc -l)" -eq 4
+          while IFS= read -r -d '' f; do
+            test "$(tr -d '\r\n' < "$f")" = "$SOURCE_HEAD"
+          done < <(find v03_chunks -name commit.txt -print0)
+          while IFS= read -r -d '' s; do
+            (cd "$(dirname "$s")" && sha256sum -c "$(basename "$s")")
+          done < <(find v03_chunks -name '*.tar.sha256' -print0)
+          echo "V0.3 ARTIFACT LINEAGE PASS"
+
+      - name: Execute V0.4 boundary normalization source gate
+        env:
+          BFP_V03_CHUNKS_ROOT: v03_chunks
+          BFP_OUT: btc_fee_pressure_source_remediation_v04_final
+        run: python3 research/btc_fee_pressure/source_remediation_boundary_v04.py
+
+      - name: Preserve V0.4 evidence
+        if: always()
+        run: |
+          set -euo pipefail
+          d="btc_fee_pressure_source_remediation_v04_final"
+          mkdir -p "$d"
+          cp research/btc_fee_pressure/source_remediation_boundary_v04.py "$d/"
+          cp research/btc_fee_pressure/BTC_FEE_PRESSURE_001_SOURCE_REMEDIATION_AUTHORITY_V0_4.md "$d/"
+          cp research/btc_fee_pressure/BTC_FEE_PRESSURE_001_SOURCE_REMEDIATION_V0_3_CLOSEOUT.md "$d/"
+          printf '%s\n' "$GITHUB_SHA" > "$d/commit.txt"
+          find v03_chunks -name chunk_manifest.json -print0 | sort -z | xargs -0 sha256sum > "$d/source_chunk_manifests.sha256" || true
+          find v03_chunks -name commit.txt -print0 | sort -z | xargs -0 sha256sum > "$d/source_commit_receipts.sha256" || true
+          find "$d" -type f -print0 | sort -z | xargs -0 sha256sum > "$d/all_files.sha256"
+          tar --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner -cf "${d}.tar" "$d"
+          sha256sum "${d}.tar" | tee "${d}.tar.sha256"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: BTC-FEE-PRESSURE-001-source-remediation-v04-final
+          path: |
+            btc_fee_pressure_source_remediation_v04_final/
+            btc_fee_pressure_source_remediation_v04_final.tar
+            btc_fee_pressure_source_remediation_v04_final.tar.sha256
+          retention-days: 90
+          if-no-files-found: error
