@@ -3,11 +3,11 @@ import hashlib, json, math, urllib.error, urllib.parse, urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 
-FAMILY_ID="BTC-SETTLEMENT-DEMAND-001"; SOURCE_GATE_ID="BSD-TXCOUNT-001"
-AUTHORITY_COMMIT="18197f383eb9571dece91e9037c0b6634e68a136"
-DRIVE_AUTHORITY_ID="1NQGome0r0gRpwjG3iPGlyqh_ltfx_74I"
+FAMILY_ID="BTC-SETTLEMENT-DEMAND-001"; SOURCE_GATE_ID="BSD-TXCOUNT-002"
+AUTHORITY_COMMIT="6e23b0df54db10e96294403c3d7c33460168bb4a"
+DRIVE_AUTHORITY_ID="1zSEtz0CWJAyV9CEF5JQHEF7QrJmf8dFV"
 ENDPOINT="https://api.blockchain.info/charts/n-transactions"
-START="2017-01-01"; TIMESPAN="2922days"
+START="2017-01-01"; TIMESPAN="2921days"
 WINDOW_START=datetime(2017,1,1,tzinfo=timezone.utc); WINDOW_END=datetime(2024,12,31,23,59,59,tzinfo=timezone.utc)
 MIN_UNIQUE_DAYS=2500; MIN_YEARS=7
 OUT=Path("btc_settlement_demand_source_gate_out"); OUT.mkdir(parents=True,exist_ok=True)
