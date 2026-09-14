@@ -1,0 +1,10 @@
+authorized=2026-09-14
+lab=MACRO-TRANSMISSION-001
+mve=MT-2Y-NASDAQ-001
+mode=ONE_SHOT_DISCOVERY
+source_gate_run=34814146638
+source_gate_artifact_id=10335267773
+2025=LOCKED
+2026=FORBIDDEN
+live=NO
+rerun_for_outcome_improvement=FORBIDDEN
