@@ -1,0 +1,49 @@
+name: BTC Fee Pressure Source Data Gate V0.1
+on:
+  push:
+    branches: [btc-fee-pressure-v0.1]
+    paths:
+      - '.github/workflows/btc-fee-pressure-source-gate-v01.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source-data-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Outcome-blind preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = "btc-fee-pressure-v0.1"
+          grep -q 'charts/transaction-fees' research/btc_fee_pressure/source_data_gate.py
+          ! grep -Eq 'transaction-fees-usd|market-price|api\.binance|api\.coinbase|sendTransaction' research/btc_fee_pressure/source_data_gate.py
+          python3 -m py_compile research/btc_fee_pressure/source_data_gate.py
+          echo "PREFLIGHT PASS | FEES ONLY | NO MARKET PRICES | NO RETURNS | NO PNL"
+          echo "2025 LOCKED | 2026 LOCKED | RESEARCH ONLY"
+      - name: Execute frozen source/data gate
+        env:
+          BFP_OUT: btc_fee_pressure_source_gate_artifact
+        run: python3 research/btc_fee_pressure/source_data_gate.py
+      - name: Preserve deterministic evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp research/btc_fee_pressure/source_data_gate.py btc_fee_pressure_source_gate_artifact/
+          cp research/btc_fee_pressure/BTC_FEE_PRESSURE_001_PRE_DISCOVERY_AUTHORITY_V0_1.md btc_fee_pressure_source_gate_artifact/
+          sha256sum research/btc_fee_pressure/source_data_gate.py > btc_fee_pressure_source_gate_artifact/code.sha256
+          printf '%s\n' "$GITHUB_SHA" > btc_fee_pressure_source_gate_artifact/commit.txt
+          find btc_fee_pressure_source_gate_artifact -type f -print0 | sort -z | xargs -0 sha256sum > btc_fee_pressure_source_gate_artifact/all_files.sha256
+          tar --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner -cf btc_fee_pressure_source_gate_artifact.tar btc_fee_pressure_source_gate_artifact
+          sha256sum btc_fee_pressure_source_gate_artifact.tar | tee btc_fee_pressure_source_gate_artifact.tar.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BTC-FEE-PRESSURE-001-source-data-gate-v01
+          path: |
+            btc_fee_pressure_source_gate_artifact/
+            btc_fee_pressure_source_gate_artifact.tar
+            btc_fee_pressure_source_gate_artifact.tar.sha256
+          if-no-files-found: error
+          retention-days: 90
