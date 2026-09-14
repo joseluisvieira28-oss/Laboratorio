@@ -1,0 +1,23 @@
+name: STABLECOIN-EXCHANGE-FLOW-001 Blockchair Range Access V0.1
+on:
+  push:
+    branches: [ stablecoin-exchange-flow-v0.1 ]
+    paths:
+      - 'labs/STABLECOIN_EXCHANGE_FLOW_001/blockchair_range_access_probe_v01.py'
+      - '.github/workflows/stablecoin-exchange-flow-blockchair-range-access-v01.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  range-access:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - run: python -m py_compile labs/STABLECOIN_EXCHANGE_FLOW_001/blockchair_range_access_probe_v01.py
+      - run: python labs/STABLECOIN_EXCHANGE_FLOW_001/blockchair_range_access_probe_v01.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stablecoin-exchange-flow-001-blockchair-range-access-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/stablecoin_exchange_flow_blockchair_range_access_probe_v01/
+          retention-days: 90
