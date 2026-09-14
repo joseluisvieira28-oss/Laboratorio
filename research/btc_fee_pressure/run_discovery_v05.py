@@ -38,11 +38,16 @@ market_outcomes_opened = False
 
 def fail(status: str, reason: str, extra: dict | None = None):
     payload = {
-        "lab": LAB, "mve": MVE, "status": status, "reason": reason,
+        "lab": LAB,
+        "mve": MVE,
+        "status": status,
+        "reason": reason,
         "market_access_started": market_access_started,
         "market_outcomes_opened": market_outcomes_opened,
-        "access_2025": False, "access_2026": False,
-        "live_trading": False, "exchange_mutation": False,
+        "access_2025": False,
+        "access_2026": False,
+        "live_trading": False,
+        "exchange_mutation": False,
     }
     if extra:
         payload.update(extra)
@@ -56,7 +61,10 @@ def get(url: str, retries: int = 4) -> tuple[int, dict[str, str], bytes]:
     last = None
     for attempt in range(retries):
         try:
-            req = urllib.request.Request(url, headers={"User-Agent": "Laboratorio-Research-Discovery/0.5", "Accept": "*/*"})
+            req = urllib.request.Request(url, headers={
+                "User-Agent": "Laboratorio-Research-Discovery/0.5",
+                "Accept": "*/*",
+            })
             with urllib.request.urlopen(req, timeout=45) as r:
                 return r.status, dict(r.headers.items()), r.read()
         except urllib.error.HTTPError as e:
@@ -85,7 +93,7 @@ def type7(xs: list[float], p: float) -> float:
     return float(ys[lo] * (1 - w) + ys[hi] * w)
 
 
-# -------- pre-outcome binding --------
+# ---------- PRE-OUTCOME BINDING ----------
 sel_files = list(ROOT.rglob("selected_trades.json"))
 sha_files = list(ROOT.rglob("selected_trades.sha256"))
 man_files = list(ROOT.rglob("selection_manifest.json"))
@@ -130,8 +138,9 @@ for row in trades:
     required_days.add(e)
     required_days.add(x)
 
-# -------- market acquisition --------
+# ---------- MARKET ACQUISITION ----------
 market_access_started = True
+
 
 def fetch_day(day: dt.date):
     ds = day.isoformat()
@@ -144,11 +153,23 @@ def fetch_day(day: dt.date):
         cs_status, cs_headers, cs_body = get(checksum_url)
         z_status, z_headers, z_body = get(zip_url)
     except Exception as e:
-        return {"day": ds, "kind": "TECHNICAL_FAILURE_POSTOUTCOME", "reason": f"transport:{type(e).__name__}:{e}"}
+        return {
+            "day": ds,
+            "kind": "TECHNICAL_FAILURE_POSTOUTCOME",
+            "reason": f"transport:{type(e).__name__}:{e}",
+        }
     if cs_status != 200 or z_status != 200:
         if cs_status in (404, 410) or z_status in (404, 410):
-            return {"day": ds, "kind": "DATA_FAILURE", "reason": f"market_http:checksum={cs_status},zip={z_status}"}
-        return {"day": ds, "kind": "TECHNICAL_FAILURE_POSTOUTCOME", "reason": f"market_http:checksum={cs_status},zip={z_status}"}
+            return {
+                "day": ds,
+                "kind": "DATA_FAILURE",
+                "reason": f"market_http:checksum={cs_status},zip={z_status}",
+            }
+        return {
+            "day": ds,
+            "kind": "TECHNICAL_FAILURE_POSTOUTCOME",
+            "reason": f"market_http:checksum={cs_status},zip={z_status}",
+        }
     try:
         checksum_text = cs_body.decode("utf-8", errors="strict").strip()
         expected = checksum_text.split()[0].lower()
@@ -156,7 +177,13 @@ def fetch_day(day: dt.date):
             raise ValueError("checksum_schema")
         observed = hashlib.sha256(z_body).hexdigest()
         if observed != expected:
-            return {"day": ds, "kind": "PROVENANCE_FAILURE", "reason": "checksum_mismatch", "expected": expected, "observed": observed}
+            return {
+                "day": ds,
+                "kind": "PROVENANCE_FAILURE",
+                "reason": "checksum_mismatch",
+                "expected": expected,
+                "observed": observed,
+            }
         with zipfile.ZipFile(io.BytesIO(z_body), "r") as zf:
             files = [n for n in zf.namelist() if not n.endswith("/")]
             if len(files) != 1:
@@ -171,15 +198,30 @@ def fetch_day(day: dt.date):
             raise ValueError("open_price")
         stamp = dt.datetime.fromtimestamp(open_time / 1000.0, tz=dt.timezone.utc)
         if stamp.date() != day or stamp.time() != dt.time(0, 0):
-            return {"day": ds, "kind": "PROVENANCE_FAILURE", "reason": f"open_time_mismatch:{stamp.isoformat()}"}
+            return {
+                "day": ds,
+                "kind": "PROVENANCE_FAILURE",
+                "reason": f"open_time_mismatch:{stamp.isoformat()}",
+            }
         return {
-            "day": ds, "kind": "PASS", "open": open_price, "open_time": open_time,
-            "zip_sha256": observed, "checksum_sha256": hashlib.sha256(cs_body).hexdigest(),
-            "zip_bytes": z_body, "checksum_bytes": cs_body,
-            "zip_headers": z_headers, "checksum_headers": cs_headers,
+            "day": ds,
+            "kind": "PASS",
+            "open": open_price,
+            "open_time": open_time,
+            "zip_sha256": observed,
+            "checksum_sha256": hashlib.sha256(cs_body).hexdigest(),
+            "zip_bytes": z_body,
+            "checksum_bytes": cs_body,
+            "zip_headers": z_headers,
+            "checksum_headers": cs_headers,
         }
     except (zipfile.BadZipFile, UnicodeDecodeError, ValueError, KeyError, IndexError) as e:
-        return {"day": ds, "kind": "DATA_FAILURE", "reason": f"market_schema:{type(e).__name__}:{e}"}
+        return {
+            "day": ds,
+            "kind": "DATA_FAILURE",
+            "reason": f"market_schema:{type(e).__name__}:{e}",
+        }
+
 
 results = []
 with concurrent.futures.ThreadPoolExecutor(max_workers=8) as ex:
@@ -187,29 +229,51 @@ with concurrent.futures.ThreadPoolExecutor(max_workers=8) as ex:
     for fut in concurrent.futures.as_completed(futs):
         results.append(fut.result())
 
+# A PASS result means a market open was already parsed, even if a different request failed.
+market_outcomes_opened = any(r.get("kind") == "PASS" for r in results)
 bad = [r for r in results if r.get("kind") != "PASS"]
 if bad:
-    order = {"PROVENANCE_FAILURE": 0, "TECHNICAL_FAILURE_POSTOUTCOME": 1, "DATA_FAILURE": 2}
+    order = {
+        "PROVENANCE_FAILURE": 0,
+        "TECHNICAL_FAILURE_POSTOUTCOME": 1,
+        "DATA_FAILURE": 2,
+    }
     bad.sort(key=lambda r: order.get(r.get("kind"), 9))
-    fail(bad[0]["kind"], bad[0]["reason"], {"market_failures": [{k: v for k, v in r.items() if k not in ("zip_bytes", "checksum_bytes", "zip_headers", "checksum_headers")} for r in bad[:20]]})
+    fail(
+        bad[0]["kind"],
+        bad[0]["reason"],
+        {
+            "market_failures": [
+                {k: v for k, v in r.items() if k not in (
+                    "zip_bytes", "checksum_bytes", "zip_headers", "checksum_headers"
+                )}
+                for r in bad[:20]
+            ]
+        },
+    )
 
 opens = {}
 market_receipts = []
 for r in sorted(results, key=lambda x: x["day"]):
-    market_outcomes_opened = True
     day_dir = RAW / r["day"]
     day_dir.mkdir(parents=True, exist_ok=True)
     name = f"BTCUSDT-1d-{r['day']}.zip"
     (day_dir / name).write_bytes(r["zip_bytes"])
     (day_dir / (name + ".CHECKSUM")).write_bytes(r["checksum_bytes"])
-    (day_dir / "headers.json").write_text(json.dumps({"zip": r["zip_headers"], "checksum": r["checksum_headers"]}, sort_keys=True, indent=2) + "\n")
+    (day_dir / "headers.json").write_text(
+        json.dumps({"zip": r["zip_headers"], "checksum": r["checksum_headers"]}, sort_keys=True, indent=2) + "\n"
+    )
     opens[r["day"]] = r["open"]
     market_receipts.append({
-        "day": r["day"], "open_time": r["open_time"], "open": r["open"],
-        "zip_sha256": r["zip_sha256"], "checksum_sha256": r["checksum_sha256"],
+        "day": r["day"],
+        "open_time": r["open_time"],
+        "open": r["open"],
+        "zip_sha256": r["zip_sha256"],
+        "checksum_sha256": r["checksum_sha256"],
     })
+market_outcomes_opened = True
 
-# -------- returns --------
+# ---------- RETURNS ----------
 trade_rows = []
 for row in trades:
     ep = opens.get(row["entry_day"])
@@ -234,6 +298,7 @@ for row in trades:
 N = len(trade_rows)
 if N == 0:
     fail("DISCOVERY_FAIL_NO_PROMOTION", "zero_trades", {"N": 0})
+
 gross = [r["gross_bps"] for r in trade_rows]
 net10s = [r["net10_bps"] for r in trade_rows]
 net20s = [r["net20_bps"] for r in trade_rows]
@@ -243,7 +308,18 @@ mean_net10 = statistics.fmean(net10s)
 mean_net20 = statistics.fmean(net20s)
 pos_sum = sum(x for x in net10s if x > 0)
 neg_sum = -sum(x for x in net10s if x < 0)
-pf10 = math.inf if neg_sum == 0 and pos_sum > 0 else (pos_sum / neg_sum if neg_sum > 0 else 0.0)
+if neg_sum > 0:
+    pf10_numeric = pos_sum / neg_sum
+    pf10_display: float | str = pf10_numeric
+    pf_gate = pf10_numeric > 1.0
+elif pos_sum > 0:
+    pf10_numeric = None
+    pf10_display = "INF"
+    pf_gate = True
+else:
+    pf10_numeric = 0.0
+    pf10_display = 0.0
+    pf_gate = False
 win10 = sum(1 for x in net10s if x > 0) / N
 
 years = {}
@@ -254,12 +330,15 @@ for y in (2021, 2022, 2023, 2024):
         "mean_net10_bps": statistics.fmean([r["net10_bps"] for r in ys]) if ys else None,
         "gross_sum_bps": sum(r["gross_bps"] for r in ys),
     }
-nonnegative_years = sum(1 for y in years.values() if y["N"] > 0 and y["mean_net10_bps"] is not None and y["mean_net10_bps"] >= 0)
+nonnegative_years = sum(
+    1 for y in years.values()
+    if y["N"] > 0 and y["mean_net10_bps"] is not None and y["mean_net10_bps"] >= 0
+)
 positive_gross_year_sums = [y["gross_sum_bps"] for y in years.values() if y["gross_sum_bps"] > 0]
-if positive_gross_year_sums:
-    concentration = max(positive_gross_year_sums) / sum(positive_gross_year_sums)
-else:
-    concentration = 1.0
+concentration = (
+    max(positive_gross_year_sums) / sum(positive_gross_year_sums)
+    if positive_gross_year_sums else 1.0
+)
 
 rng = random.Random(SEED)
 boot = []
@@ -281,7 +360,7 @@ for x in net10s:
 gates = {
     "N_ge_50": N >= 50,
     "mean_NET10_gt_0": mean_net10 > 0,
-    "PF10_gt_1": pf10 > 1.0,
+    "PF10_gt_1": pf_gate,
     "years_nonnegative_ge_3": nonnegative_years >= 3,
     "bootstrap_p_le_0_20": p_nonpos <= 0.20,
     "positive_year_concentration_le_0_70": concentration <= 0.70,
@@ -294,7 +373,9 @@ gates = {
 verdict = "DISCOVERY_PASS_CANDIDATE" if all(gates.values()) else "DISCOVERY_FAIL_NO_PROMOTION"
 
 summary = {
-    "lab": LAB, "mve": MVE, "run_id": os.environ.get("GITHUB_RUN_ID", "local"),
+    "lab": LAB,
+    "mve": MVE,
+    "run_id": os.environ.get("GITHUB_RUN_ID", "local"),
     "verdict": verdict,
     "candidate_signal_count": selection_manifest.get("candidate_signal_count"),
     "accepted_trade_count": N,
@@ -303,7 +384,7 @@ summary = {
     "median_gross_bps": median_gross,
     "mean_NET10_bps": mean_net10,
     "mean_NET20_bps": mean_net20,
-    "PF_NET10": pf10,
+    "PF_NET10": pf10_display,
     "win_rate_NET10": win10,
     "years": years,
     "nonnegative_year_count": nonnegative_years,
@@ -328,6 +409,7 @@ summary = {
     "live_trading": False,
     "exchange_mutation": False,
 }
+
 (OUT / "trades.json").write_text(json.dumps(trade_rows, sort_keys=True, indent=2) + "\n")
 (OUT / "market_receipts.json").write_text(json.dumps(market_receipts, sort_keys=True, indent=2) + "\n")
 (OUT / "discovery_summary.json").write_text(json.dumps(summary, sort_keys=True, indent=2, allow_nan=False) + "\n")
@@ -335,12 +417,26 @@ summary = {
 for fn in ("trades.json", "market_receipts.json", "discovery_summary.json"):
     p = OUT / fn
     (OUT / (fn + ".sha256")).write_text(hashlib.sha256(p.read_bytes()).hexdigest() + f"  {fn}\n")
-print(json.dumps({k: summary[k] for k in (
-    "verdict", "candidate_signal_count", "accepted_trade_count", "suppressed_overlap_count",
-    "mean_gross_bps", "median_gross_bps", "mean_NET10_bps", "mean_NET20_bps",
-    "PF_NET10", "win_rate_NET10", "nonnegative_year_count",
-    "bootstrap_p_mean_NET10_le_0", "bootstrap_ci95_NET10_bps",
-    "max_positive_year_gross_contribution_share", "cumulative_NET10_bps",
-    "max_drawdown_NET10_bps", "gates"
-)}, sort_keys=True, allow_nan=False))
+
+print(json.dumps({
+    k: summary[k] for k in (
+        "verdict",
+        "candidate_signal_count",
+        "accepted_trade_count",
+        "suppressed_overlap_count",
+        "mean_gross_bps",
+        "median_gross_bps",
+        "mean_NET10_bps",
+        "mean_NET20_bps",
+        "PF_NET10",
+        "win_rate_NET10",
+        "nonnegative_year_count",
+        "bootstrap_p_mean_NET10_le_0",
+        "bootstrap_ci95_NET10_bps",
+        "max_positive_year_gross_contribution_share",
+        "cumulative_NET10_bps",
+        "max_drawdown_NET10_bps",
+        "gates",
+    )
+}, sort_keys=True, allow_nan=False))
 sys.exit(0)
