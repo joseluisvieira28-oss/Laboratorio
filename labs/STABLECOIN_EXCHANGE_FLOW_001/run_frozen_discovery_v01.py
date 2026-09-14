@@ -173,6 +173,7 @@ def main():
     full_year_deep_negative=any(cal_stats.get(yr,{}).get('mean_net14_bps',0)<-10 for yr in ('2023','2024'))
     mean10=sum(n10)/len(n10) if n10 else float('nan'); mean14=sum(n14)/len(n14) if n14 else float('nan')
     pf14=profit_factor(n14)
+    pf14_receipt=pf14 if math.isfinite(pf14) else 'INF'
     primary_pass=(beta>0 and p<0.05)
     economic_pass=(mean10>0 and mean14>0 and pf14>1.0)
     stability_pass=(nonneg>=2 and not full_year_deep_negative)
@@ -193,15 +194,17 @@ def main():
     receipt={
       'lab_id':LAB,'mve_id':MVE,'classification':classification,'economic_classification':economic_classification,'promotion_candidate':promotion,
       'n':len(obs),'active_strategy_n':len(active),'primary':{'alpha_return':alpha,'beta_return_per_1bn_usdt':beta,'beta_bps_per_1bn_usdt':beta*10000,'bootstrap_method':'restricted-null circular moving-block residual bootstrap','bootstrap_block_days':BOOT_BLOCK,'bootstrap_reps':BOOT_REPS,'seed':SEED,'one_sided_p_beta_le_0':p,'bootstrap_beta_ge_observed_count':boot_ge,'pass':primary_pass},
-      'economic':{'mean_gross_bps':sum(gross)/len(gross) if gross else None,'mean_net10_bps':mean10,'mean_net14_bps':mean14,'profit_factor_net14':pf14,'pass':economic_pass},
+      'economic':{'mean_gross_bps':sum(gross)/len(gross) if gross else None,'mean_net10_bps':mean10,'mean_net14_bps':mean14,'profit_factor_net14':pf14_receipt,'pass':economic_pass},
       'stability':{'calendar_net14':cal_stats,'nonnegative_calendar_partitions':nonneg,'full_year_deep_negative':full_year_deep_negative,'pass':stability_pass},
       'promotion_gates':{'beta_positive':beta>0,'bootstrap_p_lt_0_05':p<0.05,'mean_net10_positive':mean10>0,'mean_net14_positive':mean14>0,'pf_net14_gt_1':pf14>1.0,'calendar_stability':stability_pass},
       'source_receipt_sha256':file_sha(source_receipt_path),'source_csv_sha256':file_sha(source_csv_path),'protocol_sha256':file_sha(protocol),'technical_amendment_sha256':file_sha(amendment),'observations_sha256':file_sha(obs_path),'binance_manifest_sha256':file_sha(manifest_path),
       'binance_files':len(manifests),'binance_month_start':'2022-11','binance_month_end':'2024-12','binance_checksums_verified':True,
       'access_2025':False,'access_2026':False,'live_trading':False,'exchange_mutation':False,'post_outcome_tuning':False,
+      'technical_note':'profit_factor_net14 serializes positive infinity as string INF only; promotion comparison uses the numeric value and is unchanged',
     }
     (OUT/'DISCOVERY_RECEIPT.json').write_text(json.dumps(receipt,indent=2,sort_keys=True,allow_nan=False)+'\n')
-    closeout=f'''# {LAB} — MVE0 DISCOVERY CLOSEOUT\n\n**MVE:** `{MVE}`  \n**CLASSIFICATION:** `{classification}`  \n**PROMOTION:** `{str(promotion).upper()}`\n\n## Frozen primary test\n\n- N: {len(obs)}\n- beta: {beta*10000:.6f} bps BTC return per +$1bn USDT basket net flow\n- one-sided 7-day block-bootstrap p: {p:.8f}\n- primary pass: {primary_pass}\n\n## Companion economic test\n\n- mean gross: {receipt['economic']['mean_gross_bps']:.6f} bps/trade\n- mean NET10: {mean10:.6f} bps/trade\n- mean NET14: {mean14:.6f} bps/trade\n- PF NET14: {pf14:.6f}\n- economic pass: {economic_pass}\n\n## Stability\n\n```json\n{json.dumps(cal_stats,indent=2,sort_keys=True)}\n```\n\n## Governance\n\n2025 accessed: NO  \n2026 accessed: NO  \nLive trading: NO  \nExchange mutation: NO  \nPost-outcome tuning: NO\n\nExact MVE outcome is final under the frozen protocol.\n'''
+    pf14_display='INF' if not math.isfinite(pf14) else f'{pf14:.6f}'
+    closeout=f'''# {LAB} — MVE0 DISCOVERY CLOSEOUT\n\n**MVE:** `{MVE}`  \n**CLASSIFICATION:** `{classification}`  \n**PROMOTION:** `{str(promotion).upper()}`\n\n## Frozen primary test\n\n- N: {len(obs)}\n- beta: {beta*10000:.6f} bps BTC return per +$1bn USDT basket net flow\n- one-sided 7-day block-bootstrap p: {p:.8f}\n- primary pass: {primary_pass}\n\n## Companion economic test\n\n- mean gross: {receipt['economic']['mean_gross_bps']:.6f} bps/trade\n- mean NET10: {mean10:.6f} bps/trade\n- mean NET14: {mean14:.6f} bps/trade\n- PF NET14: {pf14_display}\n- economic pass: {economic_pass}\n\n## Stability\n\n```json\n{json.dumps(cal_stats,indent=2,sort_keys=True)}\n```\n\n## Governance\n\n2025 accessed: NO  \n2026 accessed: NO  \nLive trading: NO  \nExchange mutation: NO  \nPost-outcome tuning: NO\n\nExact MVE outcome is final under the frozen protocol.\n'''
     (OUT/'DISCOVERY_CLOSEOUT.md').write_text(closeout,encoding='utf-8')
     print(json.dumps(receipt,indent=2,sort_keys=True,allow_nan=False))
     return 0
