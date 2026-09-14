@@ -1,0 +1,79 @@
+name: BTC Settlement Demand V0.1 Source Gate
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - btc-settlement-demand-v0.1
+    paths:
+      - '.github/btc-settlement-demand-source-gate.trigger'
+
+permissions:
+  contents: read
+
+jobs:
+  source-data-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout frozen branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Governance and syntax preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${GITHUB_REF_NAME}" = "btc-settlement-demand-v0.1"
+          AUTH='research/btc_settlement_demand/BTC_SETTLEMENT_DEMAND_001_SOURCE_DATA_AUTHORITY_V0_1.md'
+          SCRIPT='research/btc_settlement_demand/source_gate.py'
+          grep -q 'FAMILY_ID: BTC-SETTLEMENT-DEMAND-001' "$AUTH"
+          grep -q 'SOURCE_GATE_ID: BSD-TXCOUNT-001' "$AUTH"
+          grep -q 'SOURCE_START: 2017-01-01T00:00:00Z' "$AUTH"
+          grep -q 'SOURCE_END: 2024-12-31T23:59:59Z' "$AUTH"
+          grep -q 'ENDPOINT="https://api.blockchain.info/charts/n-transactions"' "$SCRIPT"
+          grep -q 'TIMESPAN="2922days"' "$SCRIPT"
+          grep -q '"price_values_opened":False' "$SCRIPT"
+          grep -q '"returns_computed":False' "$SCRIPT"
+          grep -q '"pnl_computed":False' "$SCRIPT"
+          grep -q '"access_2025":False' "$SCRIPT"
+          grep -q '"access_2026":False' "$SCRIPT"
+          if grep -Eqi 'binance|coinbase|bybit|kraken|coingecko|market-price|market_price_usd' "$SCRIPT"; then
+            echo 'Forbidden market-data token found in source-gate implementation.'
+            exit 41
+          fi
+          python -m py_compile "$SCRIPT"
+          echo 'PREOUTCOME GOVERNANCE + SYNTAX: PASS'
+
+      - name: Execute Source/Data Gate only
+        id: gate
+        shell: bash
+        run: |
+          set +e
+          python research/btc_settlement_demand/source_gate.py
+          code=$?
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Upload immutable source-gate evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: btc-settlement-demand-v01-source-gate-${{ github.run_id }}
+          path: btc_settlement_demand_source_gate_out/
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Enforce gate result
+        if: always()
+        shell: bash
+        run: |
+          code='${{ steps.gate.outputs.exit_code }}'
+          test -n "$code" || { echo 'Missing source-gate exit code'; exit 42; }
+          exit "$code"
