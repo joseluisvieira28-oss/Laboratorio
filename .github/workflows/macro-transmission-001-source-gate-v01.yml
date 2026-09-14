@@ -1,0 +1,28 @@
+name: MACRO TRANSMISSION 001 — Source Gate V0.1
+
+on:
+  push:
+    branches: [macro-transmission-001-v01]
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/macro_transmission_001_source_gate_v01.py'
+      - '.github/workflows/macro-transmission-001-source-gate-v01.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  source-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile source gate
+        run: python -m py_compile Dream-Account-OS-v2.3-PARTIAL/research/macro_transmission_001_source_gate_v01.py
+      - name: Assert source gate contains no BTC return or PnL implementation
+        shell: bash
+        run: |
+          ! grep -Eq 'net10|net20|profit_factor|gross_bps|log\(|pct_change|shift\(' Dream-Account-OS-v2.3-PARTIAL/research/macro_transmission_001_source_gate_v01.py
+      - name: Execute outcome-blind source gate
+        run: python Dream-Account-OS-v2.3-PARTIAL/research/macro_transmission_001_source_gate_v01.py
