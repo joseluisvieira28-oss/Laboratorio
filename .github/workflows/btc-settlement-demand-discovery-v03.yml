@@ -19,12 +19,24 @@ jobs:
       - name: Checkout frozen branch
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          fetch-depth: 2
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+
+      - name: Trigger-only mutation firewall
+        shell: bash
+        run: |
+          set -euo pipefail
+          changed="$(git diff --name-only HEAD^ HEAD)"
+          test "$changed" = '.github/btc-settlement-demand-discovery-v03.trigger' || {
+            echo 'Trigger commit changed files beyond the authorized marker:'
+            printf '%s\n' "$changed"
+            exit 40
+          }
+          echo 'TRIGGER-ONLY FIREWALL: PASS'
 
       - name: Frozen contract and implementation preflight
         shell: bash
