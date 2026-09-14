@@ -1,0 +1,48 @@
+{
+  "lab_id": "OPTIONS-SPOTPERP-001",
+  "version": "V2.1",
+  "status": "FROZEN_PRE_OUTCOME",
+  "program": "CRYPTO NEAR-DIAMONDS RECOVERY PROGRAM — V2",
+  "policy_id": "ND-PROMOTION-POLICY-V2.0-FROZEN-2026-09-14",
+  "drive_freeze_id": "1KRA8pKZ96CkCwFzgZX3twIS_CBPfq5vOyy51ClqKau4",
+  "parent_discovery_run_id": 34858777691,
+  "parent_final_source_gate_run_id": 34856557581,
+  "parent_monthly_raw_run_id": 34778928091,
+  "parent_discovery_commit": "b04333d42362183dc33f784964d9275b3ea906fb",
+  "parent_authority_sha256": "138cee737d75d27b43d9f377fc9a77e823e8fb2015f360b300cdc4a16cf67cfa",
+  "window": {"start": "2021-04-01", "end": "2024-12-31"},
+  "protected_periods": {"2025": "LOCKED", "2026": "LOCKED"},
+  "signal": "CALL_IV_MINUS_PUT_IV",
+  "direction": {"positive": "LONG", "negative": "SHORT"},
+  "entry": "BTCUSDT spot 00:00 UTC t+1",
+  "exit": "BTCUSDT spot 00:00 UTC t+2",
+  "base_cost_bps_full_notional": 10.0,
+  "stress_cost_bps_full_notional": 20.0,
+  "risk_scaling": {
+    "rv_window_daily_log_returns": 20,
+    "baseline": "expanding median of all valid RV20 observations through signal date t",
+    "minimum_valid_rv20_history": 60,
+    "weight": "min(1.0, expanding_median_rv20_t / rv20_t)",
+    "max_weight": 1.0,
+    "leverage_above_one": false,
+    "additional_filters": false
+  },
+  "survival_gates": {
+    "A_provenance_leakage_pass": true,
+    "B_scaled_trades_min": 300,
+    "C_average_executed_notional_min": 0.40,
+    "D_net10_mean_gt_bps": 0.0,
+    "E_pf10_gt": 1.0,
+    "F_cumulative_net10_return_gt": 0.05,
+    "G_max_drawdown_gte": -0.50,
+    "H_nonnegative_years_min": 3,
+    "I_single_year_positive_gross_pnl_share_lte": 0.60
+  },
+  "no_rescue": [
+    "parameter", "estimator", "window", "floor", "cap", "cost", "subgroup", "direction", "asset", "horizon"
+  ],
+  "live_trading_authorized": false,
+  "exchange_mutation_authorized": false,
+  "main_merge_authorized": false,
+  "render_deployment_authorized": false
+}
