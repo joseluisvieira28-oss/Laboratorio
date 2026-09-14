@@ -8,7 +8,7 @@ ROOT=Path(__file__).resolve().parent
 SRC=ROOT/'source_gate_package'
 OUT=ROOT/'discovery_output'
 CONTRACT=ROOT/'MS_HASHDIFF_7D_001_DISCOVERY_CONTRACT_V01.json'
-EXPECTED_CONTRACT_SHA256='8e23918e1529cb39cb02f9f2e0e7020f74cf37c8fd5be93d2c1ecafc91c21dd5'
+EXPECTED_CONTRACT_SHA256='a761fee0a59d5aee013d7e42ae42e429e884a2976bae404b823471a3c468d6e4'
 BASE='https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1d'
 START=date(2018,1,1); END=date(2024,12,31)
 
