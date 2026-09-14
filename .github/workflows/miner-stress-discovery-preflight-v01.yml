@@ -25,9 +25,8 @@ jobs:
         run: |
           test "${GITHUB_REF_NAME}" = "miner-stress-v0.1"
           test "$(git hash-object MS_HASHDIFF_7D_001_DISCOVERY_CONTRACT_V01.json)" = "d4aa0b1ba6ac2b5cb8298be455c2efd1c3318013"
-          test "$(git hash-object run_ms_hashdiff_7d_001_discovery_v01.py)" = "9e37731afd355b6d3b4ddc8814b82038b80e536f"
-          echo "CONTRACT_SHA256=$(sha256sum MS_HASHDIFF_7D_001_DISCOVERY_CONTRACT_V01.json | cut -d' ' -f1)"
-          echo "RUNNER_SHA256=$(sha256sum run_ms_hashdiff_7d_001_discovery_v01.py | cut -d' ' -f1)"
+          test "$(git hash-object run_ms_hashdiff_7d_001_discovery_v01.py)" = "b0861e9574c373d07e44e3df627f1bd3e979c6a1"
+          echo "a761fee0a59d5aee013d7e42ae42e429e884a2976bae404b823471a3c468d6e4  MS_HASHDIFF_7D_001_DISCOVERY_CONTRACT_V01.json" | sha256sum -c -
           python3 -m py_compile miner_stress_discovery_preflight_v01.py run_ms_hashdiff_7d_001_discovery_v01.py
           if MS_DISCOVERY_AUTHORIZATION= python3 run_ms_hashdiff_7d_001_discovery_v01.py 2>locked.txt; then
             echo "FAIL: discovery runner unexpectedly unlocked"
@@ -53,13 +52,13 @@ jobs:
           import json
           x=json.load(open('preflight_output/MINER_STRESS_001_DISCOVERY_PREFLIGHT_V01.json'))
           assert x['classification']=='PREOUTCOME_PREFLIGHT_PASS'
+          assert x['contract_sha256']=='a761fee0a59d5aee013d7e42ae42e429e884a2976bae404b823471a3c468d6e4'
           assert x['btc_price_values_opened'] is False
           assert x['btc_returns_computed'] is False
           assert x['pnl_computed'] is False
           assert x['holdout_2025_accessed'] is False
           assert x['year_2026_accessed'] is False
           assert x['structural_signal_dates_before_zero_signal_rule']==2542
-          print('CONTRACT_SHA256_RECEIPT=',x['contract_sha256'])
           print('PREOUTCOME_FIREWALL_PASS')
           PY
 
