@@ -44,6 +44,25 @@ def sha256_file(path: Path) -> str:
     return h.hexdigest()
 
 
+def locate_unique(root: Path, filename: str) -> Path:
+    matches = [p for p in root.rglob(filename) if p.is_file()]
+    if len(matches) != 1:
+        raise RuntimeError(f"expected exactly one {filename} under {root}, found {len(matches)}")
+    return matches[0]
+
+
+def locate_deribit_raw(root: Path) -> Path:
+    # Deliberately match only a directory whose basename is exactly 'raw'.
+    # Never traverse raw_binance_btcusdt_1d or any other price directory.
+    candidates = []
+    for p in root.rglob("raw"):
+        if p.is_dir() and any(p.glob("*.json.gz")):
+            candidates.append(p)
+    if len(candidates) != 1:
+        raise RuntimeError(f"expected exactly one Deribit raw directory under {root}, found {len(candidates)}")
+    return candidates[0]
+
+
 def parse_expiry_date(name: str) -> dt.date:
     parts = name.split("-")
     if len(parts) != 4 or parts[0] != "BTC" or parts[3] not in {"C", "P"}:
@@ -98,18 +117,15 @@ def main() -> int:
     out = Path(sys.argv[3]) if len(sys.argv) > 3 else Path("artifacts/options_expiry_reversal_source_v01")
     out.mkdir(parents=True, exist_ok=True)
 
-    raw_dir = source_root / "raw"
-    manifest_path = source_root / "source_manifest.json"
-    report_path = source_root / "source_audit_report.json"
-    gate_manifest_path = gate_root / "source_manifest.json"
-    gate_report_path = gate_root / "source_audit_report.json"
-    gate_receipt_path = gate_root / "source_gate_calendar_day_reconciled_receipt.json"
+    raw_dir = locate_deribit_raw(source_root)
+    manifest_path = locate_unique(source_root, "source_manifest.json")
+    report_path = locate_unique(source_root, "source_audit_report.json")
+    gate_manifest_path = locate_unique(gate_root, "source_manifest.json")
+    gate_report_path = locate_unique(gate_root, "source_audit_report.json")
+    gate_receipt_path = locate_unique(gate_root, "source_gate_calendar_day_reconciled_receipt.json")
     protocol_path = Path("labs/OPTIONS_EXPIRY_REVERSAL_001/FROZEN_PRE_SOURCE_PROTOCOL_V0.1.md")
-
-    required = [manifest_path, report_path, gate_manifest_path, gate_report_path, gate_receipt_path, protocol_path]
-    for p in required:
-        if not p.exists():
-            raise RuntimeError(f"missing required evidence: {p}")
+    if not protocol_path.exists():
+        raise RuntimeError(f"missing frozen protocol: {protocol_path}")
 
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     report = json.loads(report_path.read_text(encoding="utf-8"))
@@ -173,7 +189,6 @@ def main() -> int:
         if d is None:
             excluded_settlement_window += 1
             continue
-        # We only need source support through the frozen 2024 signal end.
         if d < dt.date(2021, 4, 1) or d > SIGNAL_END:
             outside_signal_support += 1
             continue
@@ -185,9 +200,8 @@ def main() -> int:
     if timestamp_violations or parse_failures or invalid_amount:
         classification = "DATA_FAILURE"
     else:
-        classification = "SOURCE_DATASET_PASS"  # may be downgraded by sample gate below
+        classification = "SOURCE_DATASET_PASS"
 
-    # Build every settlement date from the first fully-supported source day.
     base_start = dt.date(2021, 4, 2)
     base_rows: dict[dt.date, dict[str, Any]] = {}
     for d in date_range(base_start, SIGNAL_END):
@@ -245,6 +259,7 @@ def main() -> int:
         "source_gate_run_id": SOURCE_GATE_RUN_ID,
         "source_artifact_name": "options-spotperp-001-monthly-raw-34774293327-1",
         "known_source_artifact_zip_sha256": "bcccd53db114221c948feaff5a8691f0710b7045e7dcac441c250c09eb443cda",
+        "resolved_deribit_raw_dir_relative": str(raw_dir.relative_to(source_root)),
         "source_manifest_sha256": sha256_file(manifest_path),
         "source_report_sha256": sha256_file(report_path),
         "prior_source_gate_receipt_sha256": sha256_file(gate_receipt_path),
