@@ -1,0 +1,46 @@
+{
+  "lab": "INSTITUTIONAL-FLOW-001",
+  "version": "V0.1",
+  "frozen_before_outcomes": true,
+  "normal_rule": "CFTC COT positions are normally Tuesday as-of and published Friday 15:30 ET; entry is 00:00 UTC on the first Tuesday after public availability.",
+  "normal_rule_source": "https://www.cftc.gov/MarketReports/CommitmentsofTraders/index.htm",
+  "special_announcement_source": "https://www.cftc.gov/MarketReports/CommitmentsofTraders/HistoricalSpecialAnnouncements/index.htm",
+  "shutdown_schedule_source": "https://www.cftc.gov/PressRoom/PressReleases/7864-19",
+  "fail_closed_exclusion_ranges": [
+    {
+      "report_date_start": "2018-12-24",
+      "report_date_end": "2019-02-26",
+      "reason": "2018-2019 federal shutdown backlog; publication occurred after the frozen normal Tuesday entry for these reports"
+    },
+    {
+      "report_date_start": "2023-01-31",
+      "report_date_end": "2023-03-14",
+      "reason": "ION cyber incident backlog; CFTC explicitly delayed and sequentially reissued these reports after their frozen normal Tuesday entry"
+    }
+  ],
+  "release_date_overrides": [
+    {
+      "report_date": "2020-12-21",
+      "release_date": "2020-12-28",
+      "reason": "CFTC historical special announcement; Monday report and Monday publication due federal holiday"
+    },
+    {
+      "report_date": "2021-06-15",
+      "release_date": "2021-06-21",
+      "reason": "CFTC historical special announcement; Juneteenth observance delayed Friday release to Monday"
+    }
+  ],
+  "known_monday_asof_dates": [
+    "2018-12-24",
+    "2018-12-31",
+    "2020-12-21",
+    "2023-07-03"
+  ],
+  "monday_asof_default_rule": "If not in an exclusion or explicit release override, use the same-week Friday normal publication rule; this applies to 2023-07-03 and does not move the frozen Tuesday entry earlier than public availability.",
+  "protected_period_rule": "An event is ineligible if its frozen entry or seven-calendar-day exit is after 2024-12-31. No 2025 price is fetched or used.",
+  "custom_post_outcome_shift_allowed": false,
+  "btc_returns_computed": false,
+  "pnl_computed": false,
+  "holdout_2025_accessed": false,
+  "year_2026_accessed": false
+}
