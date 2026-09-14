@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-import csv, io, json, urllib.parse, urllib.request
+import json, urllib.parse, urllib.request, urllib.error
 from collections import Counter
-from datetime import date, datetime
+from datetime import datetime
 from pathlib import Path
 
 DATASET='gpe5-46if'
@@ -14,18 +14,20 @@ OUT.mkdir(exist_ok=True)
 select = ','.join([
     'id','market_and_exchange_names','report_date_as_yyyy_mm_dd','yyyy_report_week_ww',
     'contract_market_name','cftc_contract_market_code','commodity_name','open_interest_all',
-    'asset_mgr_positions_long','asset_mgr_positions_short','asset_mgr_positions_spread_all',
-    'lev_money_positions_long_all','lev_money_positions_short_all'
+    'asset_mgr_positions_long','asset_mgr_positions_short','asset_mgr_positions_spread_all'
 ])
-query=(f"SELECT {select} WHERE cftc_contract_market_code='{CODE}' "
-       f"AND report_date_as_yyyy_mm_dd between '{START}' and '{END}' "
-       f"ORDER BY report_date_as_yyyy_mm_dd")
-params=urllib.parse.urlencode({'pageNumber':1,'pageSize':5000,'query':query})
-url=f'https://publicreporting.cftc.gov/api/v3/views/{DATASET}/query.csv?{params}'
-req=urllib.request.Request(url,headers={'User-Agent':'INSTITUTIONAL-FLOW-001-source-audit/0.1'})
-with urllib.request.urlopen(req,timeout=120) as r:
-    raw=r.read()
-rows=list(csv.DictReader(io.StringIO(raw.decode('utf-8-sig'))))
+where=(f"cftc_contract_market_code='{CODE}' AND "
+       f"report_date_as_yyyy_mm_dd between '{START}' and '{END}'")
+params=urllib.parse.urlencode({'$select':select,'$where':where,'$order':'report_date_as_yyyy_mm_dd','$limit':5000})
+url=f'https://publicreporting.cftc.gov/resource/{DATASET}.json?{params}'
+req=urllib.request.Request(url,headers={'User-Agent':'INSTITUTIONAL-FLOW-001-source-audit/0.1','Accept':'application/json'})
+try:
+    with urllib.request.urlopen(req,timeout=120) as r:
+        rows=json.loads(r.read().decode('utf-8'))
+except urllib.error.HTTPError as e:
+    body=e.read().decode('utf-8','replace')
+    print('CFTC_HTTP_ERROR',e.code,body[:4000])
+    raise
 
 required=['id','report_date_as_yyyy_mm_dd','cftc_contract_market_code','open_interest_all','asset_mgr_positions_long','asset_mgr_positions_short']
 missing_fields=[f for f in required if rows and f not in rows[0]]
@@ -56,6 +58,7 @@ report={
  'lab':'INSTITUTIONAL-FLOW-001',
  'mode':'SOURCE_DATA_AUDIT_ONLY',
  'dataset':DATASET,
+ 'source_url_base':f'https://publicreporting.cftc.gov/resource/{DATASET}.json',
  'cftc_contract_market_code':CODE,
  'requested_window':{'start':'2018-01-01','end':'2024-12-31'},
  'rows':len(rows),
@@ -74,7 +77,7 @@ report={
  'sample_gate_pass':len(set(dates))>=250,
  'field_gate_pass':not missing_fields and not null_required and not nonpos_oi and not code_bad,
  'uniqueness_gate_pass':not dup_dates and not dup_ids,
- 'publication_timing_rule':'CFTC reports Tuesday positions, generally published Friday 15:30 ET; actual holiday-shift release dates require schedule-aware handling before Discovery.',
+ 'publication_timing_rule':'CFTC reports Tuesday positions, generally published Friday 15:30 ET; holiday-shift release dates must be schedule-aware before Discovery execution.',
  'outcomes_computed':False,
  'btc_returns_computed':False,
  'pnl_computed':False,
