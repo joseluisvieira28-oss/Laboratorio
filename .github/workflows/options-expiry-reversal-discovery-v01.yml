@@ -1,0 +1,90 @@
+name: OPTIONS-EXPIRY-REVERSAL-001 Frozen Discovery V0.1
+
+on:
+  push:
+    branches: [options-expiry-reversal-v0.1]
+    paths:
+      - 'labs/OPTIONS_EXPIRY_REVERSAL_001/AUTHORIZE_FROZEN_DISCOVERY_001.txt'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  frozen-discovery:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify explicit one-shot authorization and frozen authority
+        run: |
+          set -euo pipefail
+          MARKER=labs/OPTIONS_EXPIRY_REVERSAL_001/AUTHORIZE_FROZEN_DISCOVERY_001.txt
+          test -f "$MARKER"
+          grep -qx 'LAB_ID=OPTIONS-EXPIRY-REVERSAL-001' "$MARKER"
+          grep -qx 'MVE_ID=OER-BTC-EXPIRY-INTENSITY-30M-001' "$MARKER"
+          grep -qx 'SOURCE_RUN_ID=34899455218' "$MARKER"
+          grep -qx 'SOURCE_CLASSIFICATION=SOURCE_DATASET_PASS' "$MARKER"
+          grep -qx 'SOURCE_ARTIFACT_DIGEST=sha256:ca1e77088a0b9d46d481d7737047b8117ceab3ad728f3266657970ae54a269be' "$MARKER"
+          grep -qx 'DISCOVERY_AUTHORIZED=YES' "$MARKER"
+          grep -qx 'FORBIDDEN_2025=YES' "$MARKER"
+          grep -qx 'FORBIDDEN_2026=YES' "$MARKER"
+          test -f labs/OPTIONS_EXPIRY_REVERSAL_001/FROZEN_PRE_SOURCE_PROTOCOL_V0.1.md
+          test -f labs/OPTIONS_EXPIRY_REVERSAL_001/PRE_OUTCOME_EXECUTION_SEMANTICS_V0.1.md
+          test -f labs/OPTIONS_EXPIRY_REVERSAL_001/run_frozen_discovery_v01.py
+          python -m py_compile labs/OPTIONS_EXPIRY_REVERSAL_001/run_frozen_discovery_v01.py
+          echo "PROTOCOL_SHA256=$(sha256sum labs/OPTIONS_EXPIRY_REVERSAL_001/FROZEN_PRE_SOURCE_PROTOCOL_V0.1.md | awk '{print $1}')"
+          echo "SEMANTICS_SHA256=$(sha256sum labs/OPTIONS_EXPIRY_REVERSAL_001/PRE_OUTCOME_EXECUTION_SEMANTICS_V0.1.md | awk '{print $1}')"
+
+      - name: Verify exact immutable source run and artifact
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          test "$(gh api repos/${GITHUB_REPOSITORY}/actions/runs/34899455218 --jq .head_branch)" = "options-expiry-reversal-v0.1"
+          test "$(gh api repos/${GITHUB_REPOSITORY}/actions/runs/34899455218 --jq .path)" = ".github/workflows/options-expiry-reversal-source-gate-v01.yml"
+          test "$(gh api repos/${GITHUB_REPOSITORY}/actions/runs/34899455218 --jq .status)" = "completed"
+          test "$(gh api repos/${GITHUB_REPOSITORY}/actions/runs/34899455218 --jq .conclusion)" = "success"
+          DIGEST=$(gh api repos/${GITHUB_REPOSITORY}/actions/runs/34899455218/artifacts --jq '.artifacts[] | select(.name=="options-expiry-reversal-001-source-gate-34899455218-1") | .digest')
+          test "$DIGEST" = "sha256:ca1e77088a0b9d46d481d7737047b8117ceab3ad728f3266657970ae54a269be"
+          echo 'SOURCE_RUN_AND_DIGEST_VERIFIED'
+
+      - name: Download immutable SOURCE_DATASET_PASS artifact
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: 34899455218
+          name: options-expiry-reversal-001-source-gate-34899455218-1
+          path: source_artifact
+
+      - name: Freeze numerical runtime
+        run: |
+          python -m pip install --disable-pip-version-check --only-binary=:all: 'numpy==2.1.3'
+          python - <<'PY'
+          import numpy
+          assert numpy.__version__ == '2.1.3'
+          print('NUMPY_VERSION='+numpy.__version__)
+          PY
+
+      - name: Execute one-shot frozen Discovery
+        run: |
+          python labs/OPTIONS_EXPIRY_REVERSAL_001/run_frozen_discovery_v01.py \
+            source_artifact artifacts/options_expiry_reversal_discovery_v01
+
+      - name: Upload immutable Discovery evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: options-expiry-reversal-001-discovery-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/options_expiry_reversal_discovery_v01/
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Governance receipt
+        if: always()
+        run: |
+          echo 'ONE-SHOT DISCOVERY / PROTECTED 2021-05-02..2024-12-31'
+          echo '2025 LOCKED / 2026 LOCKED'
+          echo 'NO LIVE TRADING / NO EXCHANGE MUTATION / NO POST-OUTCOME TUNING'
