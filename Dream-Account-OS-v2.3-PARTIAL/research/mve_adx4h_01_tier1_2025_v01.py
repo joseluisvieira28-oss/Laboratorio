@@ -51,8 +51,8 @@ def parse_archive(symbol: str, ym: str) -> tuple[pd.DataFrame, dict]:
         b = z.read(csvs[0])
     cols = ["open_time","open","high","low","close","volume","close_time","qav","trades","tb_base","tb_quote","ignore"]
     df = pd.read_csv(io.BytesIO(b), header=None, names=cols)
-    if not np.issubdtype(df["open_time"].dtype, np.number):
-        df = df[pd.to_numeric(df["open_time"], errors="coerce").notna()].copy()
+    numeric_open_time = pd.to_numeric(df["open_time"], errors="coerce")
+    df = df[numeric_open_time.notna()].copy()
     for c in ["open_time","open","high","low","close","volume"]:
         df[c] = pd.to_numeric(df[c], errors="coerce")
     if df[["open_time","open","high","low","close","volume"]].isna().any().any():
