@@ -1,0 +1,67 @@
+name: TOKEN-UNLOCK-EVENT-001 Provider Binance Route Gate V0.1
+
+on:
+  push:
+    branches:
+      - token-unlock-event-001-source-gate-v01
+    paths:
+      - '.github/workflows/token-unlock-provider-binance-route-gate-v01.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  source-route-gate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout exact branch
+        uses: actions/checkout@v4
+        with:
+          ref: token-unlock-event-001-source-gate-v01
+
+      - name: Verify frozen source-only authorities
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001'
+          test -f "$BASE/PRE_SOURCE_PROTOCOL_V01.md"
+          test -f "$BASE/TOKEN_IDENTITY_MAP_V01.json"
+          test -f "$BASE/source_probe_output_v03/TUE_PROVIDER_PIT_MANIFEST_2023_2024_V01.json"
+          test -f "$BASE/provider_binance_route_gate_v01.py"
+          grep -q 'FROZEN_PRE_ROUTE_CHECK' "$BASE/TOKEN_IDENTITY_MAP_V01.json"
+          grep -q '2025: LOCKED' "$BASE/PRE_SOURCE_PROTOCOL_V01.md"
+          grep -q '2026: LOCKED' "$BASE/PRE_SOURCE_PROTOCOL_V01.md"
+
+      - name: Compile route gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m py_compile Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001/provider_binance_route_gate_v01.py
+
+      - name: Execute checksum-metadata-only route gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          python Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001/provider_binance_route_gate_v01.py
+
+      - name: Static guard against outcome access
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT='Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001/source_probe_output_v04/TUE_PROVIDER_BINANCE_ROUTE_GATE_V01.json'
+          test -f "$OUT"
+          grep -q '"market_price_values_opened": false' "$OUT"
+          grep -q '"returns_computed": false' "$OUT"
+          grep -q '"pnl_computed": false' "$OUT"
+          grep -q '"year_2025_opened": false' "$OUT"
+          grep -q '"year_2026_opened": false' "$OUT"
+          grep -q '"kline_zip_downloaded": false' "$OUT"
+
+      - name: Upload immutable route-gate evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: token-unlock-event-001-provider-binance-route-gate-${{ github.run_id }}-${{ github.run_attempt }}
+          path: Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001/source_probe_output_v04/
+          retention-days: 90
+          if-no-files-found: error
