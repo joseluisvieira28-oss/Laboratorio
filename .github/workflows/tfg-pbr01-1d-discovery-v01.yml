@@ -1,0 +1,119 @@
+name: TFG PBR01 1D Frozen Discovery
+
+on:
+  push:
+    branches:
+      - tf-gap-pbr01-1d-v0.1
+    paths:
+      - '.github/workflows/tfg-pbr01-1d-discovery-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  discovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+    steps:
+      - name: Checkout frozen 1D research branch
+        uses: actions/checkout@v4
+        with:
+          ref: tf-gap-pbr01-1d-v0.1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Verify frozen source artifact metadata before download
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python - <<'PY'
+          import json, os, urllib.request
+          expected_id=10419067320
+          expected_digest='sha256:7b2562af14983d0344c9a28e81e9c1866f2e5e9dfafe94203da9a4ca1ffa36cb'
+          req=urllib.request.Request(
+              f'https://api.github.com/repos/joseluisvieira28-oss/Laboratorio/actions/artifacts/{expected_id}',
+              headers={'Authorization':f'Bearer {os.environ["GH_TOKEN"]}','Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'},
+          )
+          with urllib.request.urlopen(req,timeout=30) as r:
+              d=json.load(r)
+          assert d['id']==expected_id, d.get('id')
+          assert d['name']=='tfg-pbr01-1d-exact-parent-corpus', d.get('name')
+          assert d.get('digest')==expected_digest, (d.get('digest'),expected_digest)
+          assert d.get('expired') is False
+          print('FROZEN_ARTIFACT_METADATA=PASS')
+          PY
+
+      - name: Download exact prospectively frozen parent corpus artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: tfg-pbr01-1d-exact-parent-corpus
+          path: Dream-Account-OS-v2.3-PARTIAL/research/local_data/tfg_pbr01_1d_source_artifact
+          github-token: ${{ github.token }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: 35025382064
+
+      - name: Verify source binding and six parent manifests
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          b=json.loads(Path('research/timeframe_gap/TFG_PBR01_1D_001_EXACT_PARENT_CORPUS_BINDING_V0.1.json').read_text())
+          assert b['status']=='FROZEN_EXACT_PARENT_CORPUS_BEFORE_ANY_1D_OUTCOME_EVALUATION'
+          assert b['artifact_id']==10419067320
+          assert b['artifact_digest']=='sha256:7b2562af14983d0344c9a28e81e9c1866f2e5e9dfafe94203da9a4ca1ffa36cb'
+          root=Path('research/local_data/tfg_pbr01_1d_source_artifact')
+          expected=b['parent_corpus_fingerprint_by_symbol']
+          for s,fp in expected.items():
+              d=json.loads((root/'tfg_pbr01_1d_manifests'/f'{s}_MANIFEST.json').read_text())
+              assert d['fingerprint']==fp,(s,d['fingerprint'],fp)
+              assert d['status']=='PASS_CORPUS_AUDIT_ONLY_WITH_GAPS'
+              assert d['total_row_count']==67183
+          print('SIX_PARENT_MANIFESTS=PASS')
+          PY
+
+      - name: Frozen daily aggregation and engine self-test
+        run: |
+          export PYTHONPATH="$PWD/src:$PWD:${PYTHONPATH:-}"
+          python -m research.tfg_pbr01_1d_discovery_runner_v01 --self-test
+
+      - name: Execute frozen 1D Discovery only
+        id: discovery
+        continue-on-error: true
+        run: |
+          export PYTHONPATH="$PWD/src:$PWD:${PYTHONPATH:-}"
+          mkdir -p research/local_data/tfg_pbr01_1d_discovery
+          set +e
+          python -m research.tfg_pbr01_1d_discovery_runner_v01 \
+            --canonical-dir research/local_data/tfg_pbr01_1d_source_artifact/tfg_pbr01_1d_canonical \
+            --manifest-dir research/local_data/tfg_pbr01_1d_source_artifact/tfg_pbr01_1d_manifests \
+            --binding research/timeframe_gap/TFG_PBR01_1D_001_EXACT_PARENT_CORPUS_BINDING_V0.1.json \
+            --output-dir research/local_data/tfg_pbr01_1d_discovery
+          rc=$?
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Upload Discovery receipt and ledger
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfg-pbr01-1d-discovery-result
+          path: |
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/tfg_pbr01_1d_discovery/TFG_PBR01_1D_DISCOVERY_RECEIPT_V0.1.json
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/tfg_pbr01_1d_discovery/TFG_PBR01_1D_DISCOVERY_LEDGER_V0.1.json
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Fail closed on technical or data gate failure
+        if: steps.discovery.outputs.rc != '0'
+        run: |
+          echo '1D Discovery did not produce a scientific classification. 2025/2026 remain locked.'
+          exit 1
