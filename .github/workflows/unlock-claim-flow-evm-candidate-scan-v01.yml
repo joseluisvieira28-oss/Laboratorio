@@ -6,6 +6,7 @@ on:
       - unlock-claim-flow-001-source-gate-v01
     paths:
       - 'Dream-Account-OS-v2.3-PARTIAL/research/unlock_claim_flow_001/build_evm_candidate_scan_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/unlock_claim_flow_001/build_wallet_provenance_priority_v01.py'
       - '.github/workflows/unlock-claim-flow-evm-candidate-scan-v01.yml'
   workflow_dispatch:
 
@@ -26,6 +27,7 @@ jobs:
         run: |
           set -euo pipefail
           python Dream-Account-OS-v2.3-PARTIAL/research/unlock_claim_flow_001/build_evm_candidate_scan_v01.py
+          python Dream-Account-OS-v2.3-PARTIAL/research/unlock_claim_flow_001/build_wallet_provenance_priority_v01.py
 
       - name: Guard forbidden outcomes
         run: |
@@ -33,17 +35,19 @@ jobs:
           python - <<'PY'
           import json
           from pathlib import Path
-          p=Path('Dream-Account-OS-v2.3-PARTIAL/research/unlock_claim_flow_001/source_gate_evidence/evm_candidate_scan_v01/UCF_EVM_CANDIDATE_RECEIPT_V01.json')
-          r=json.loads(p.read_text())
-          g=r['guards']
-          assert not g['claim_flow_accessed']
-          assert not g['market_prices_accessed']
-          assert not g['returns_computed']
-          assert not g['pnl_computed']
-          assert not g['year_2025_opened']
-          assert not g['year_2026_opened']
-          assert not g['live_trading']
-          assert not g['exchange_mutation']
+          base=Path('Dream-Account-OS-v2.3-PARTIAL/research/unlock_claim_flow_001/source_gate_evidence/evm_candidate_scan_v01')
+          for name in ['UCF_EVM_CANDIDATE_RECEIPT_V01.json','UCF_ALLOCATION_PRIORITY_RECEIPT_V01.json']:
+              r=json.loads((base/name).read_text())
+              g=r['guards']
+              assert not g['market_prices_accessed']
+              assert not g['returns_computed']
+              assert not g['pnl_computed']
+              assert not g['year_2025_opened']
+              assert not g['year_2026_opened']
+          r=json.loads((base/'UCF_EVM_CANDIDATE_RECEIPT_V01.json').read_text())
+          assert not r['guards']['claim_flow_accessed']
+          assert not r['guards']['live_trading']
+          assert not r['guards']['exchange_mutation']
           assert not r['source_gate_pass']
           print('SOURCE_ONLY_GUARDS_PASS')
           PY
@@ -56,6 +60,6 @@ jobs:
           OUT='Dream-Account-OS-v2.3-PARTIAL/research/unlock_claim_flow_001/source_gate_evidence/evm_candidate_scan_v01'
           git add "$OUT"
           if ! git diff --cached --quiet; then
-            git commit -m 'UNLOCK-CLAIM-FLOW-001: persist EVM candidate receipt [skip ci]'
+            git commit -m 'UNLOCK-CLAIM-FLOW-001: persist EVM source-only receipts [skip ci]'
             git push origin HEAD:unlock-claim-flow-001-source-gate-v01
           fi
