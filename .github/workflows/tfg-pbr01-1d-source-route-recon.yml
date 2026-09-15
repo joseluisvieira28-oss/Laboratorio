@@ -1,0 +1,71 @@
+name: TFG PBR01 1D Source Route Recon
+
+on:
+  push:
+    branches:
+      - tf-gap-pbr01-1d-v0.1
+    paths:
+      - '.github/workflows/tfg-pbr01-1d-source-route-recon.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  recon:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: bash
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+    steps:
+      - name: Checkout frozen research branch
+        uses: actions/checkout@v4
+        with:
+          ref: tf-gap-pbr01-1d-v0.1
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install metadata-only recon dependency
+        run: python -m pip install --disable-pip-version-check requests
+      - name: Verify 1D activation firewall
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('research/timeframe_gap/TFG_PBR01_1D_001_ACTIVATION_V0.1.json')
+          d=json.loads(p.read_text())
+          assert d['experiment_id']=='TFG-PBR01-1D-001'
+          assert d['current_state']=='ACTIVE_SOURCE_RECOVERY_OUTCOME_BLIND'
+          assert d['authorization_scope']['validation_2025'] is False
+          assert d['authorization_scope']['holdout_2026'] is False
+          assert d['authorization_scope']['live_trading'] is False
+          print('ACTIVATION_FIREWALL=PASS')
+          PY
+      - name: Recon official MEXC historical download route metadata only
+        id: recon
+        continue-on-error: true
+        run: |
+          mkdir -p research/local_data/tfg_pbr01_1d_source_recon
+          set +e
+          python -m research.timeframe_gap.tfg_pbr01_1d_mexc_source_route_recon_v01 \
+            --receipt research/local_data/tfg_pbr01_1d_source_recon/TFG_PBR01_1D_MEXC_SOURCE_ROUTE_RECON_V0.1.json
+          rc=$?
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Upload recon receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfg-pbr01-1d-source-route-recon
+          path: Dream-Account-OS-v2.3-PARTIAL/research/local_data/tfg_pbr01_1d_source_recon/TFG_PBR01_1D_MEXC_SOURCE_ROUTE_RECON_V0.1.json
+          if-no-files-found: error
+          retention-days: 14
+      - name: Fail closed if recon blocked
+        if: steps.recon.outputs.rc != '0'
+        run: |
+          echo 'Source-route recon blocked. No outcome was evaluated.'
+          exit 1
