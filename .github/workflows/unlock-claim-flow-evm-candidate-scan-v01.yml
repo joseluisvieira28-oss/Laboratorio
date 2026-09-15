@@ -1,0 +1,61 @@
+name: UNLOCK-CLAIM-FLOW-001 EVM Candidate Scan V0.1
+
+on:
+  push:
+    branches:
+      - unlock-claim-flow-001-source-gate-v01
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/unlock_claim_flow_001/build_evm_candidate_scan_v01.py'
+      - '.github/workflows/unlock-claim-flow-evm-candidate-scan-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  source-only-scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout scientific branch
+        uses: actions/checkout@v4
+        with:
+          ref: unlock-claim-flow-001-source-gate-v01
+
+      - name: Run EVM identity candidate scan
+        run: |
+          set -euo pipefail
+          python Dream-Account-OS-v2.3-PARTIAL/research/unlock_claim_flow_001/build_evm_candidate_scan_v01.py
+
+      - name: Guard forbidden outcomes
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('Dream-Account-OS-v2.3-PARTIAL/research/unlock_claim_flow_001/source_gate_evidence/evm_candidate_scan_v01/UCF_EVM_CANDIDATE_RECEIPT_V01.json')
+          r=json.loads(p.read_text())
+          g=r['guards']
+          assert not g['claim_flow_accessed']
+          assert not g['market_prices_accessed']
+          assert not g['returns_computed']
+          assert not g['pnl_computed']
+          assert not g['year_2025_opened']
+          assert not g['year_2026_opened']
+          assert not g['live_trading']
+          assert not g['exchange_mutation']
+          assert not r['source_gate_pass']
+          print('SOURCE_ONLY_GUARDS_PASS')
+          PY
+
+      - name: Persist source-only evidence
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          OUT='Dream-Account-OS-v2.3-PARTIAL/research/unlock_claim_flow_001/source_gate_evidence/evm_candidate_scan_v01'
+          git add "$OUT"
+          if ! git diff --cached --quiet; then
+            git commit -m 'UNLOCK-CLAIM-FLOW-001: persist EVM candidate receipt [skip ci]'
+            git push origin HEAD:unlock-claim-flow-001-source-gate-v01
+          fi
