@@ -1,0 +1,105 @@
+name: DLI Mechanism Discovery V0.1
+
+on:
+  push:
+    branches:
+      - derivatives-leverage-intensity-v0.1
+
+permissions:
+  contents: write
+
+jobs:
+  mechanism-discovery:
+    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout scientific branch
+        uses: actions/checkout@v4
+        with:
+          ref: derivatives-leverage-intensity-v0.1
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install numerical dependency
+        run: python -m pip install --disable-pip-version-check numpy==2.1.3
+
+      - name: Authority and static preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/derivatives_leverage_intensity_001'
+          python -m py_compile "$BASE/discovery_runner_v01.py"
+          python - <<'PY'
+          import json
+          base='Dream-Account-OS-v2.3-PARTIAL/research/derivatives_leverage_intensity_001'
+          p=json.load(open(base+'/FINAL_PRE_DISCOVERY_PROTOCOL_V01.json'))
+          s=json.load(open(base+'/source_evidence/DLI_SOURCE_DATA_GATE_V01.json'))
+          assert p['status']=='FROZEN_FINAL_PRE_DISCOVERY_OUTCOME_BLIND'
+          assert p['classification_scope']=='MECHANISM_DISCOVERY_NOT_EXECUTABLE_TRADING_STRATEGY'
+          assert p['predictor']['lookback_completed_utc_days']==180
+          assert '144th order statistic' in p['predictor']['threshold_rule']
+          assert p['controls_and_model']['hac_lags']==7
+          assert p['bootstrap']['block_length_days']==7
+          assert p['bootstrap']['replications']==5000
+          assert p['bootstrap']['seed']==230911
+          assert p['promotion_gate']['minimum_eligible_observations']==1000
+          assert p['promotion_gate']['minimum_event_observations']==150
+          assert p['protected_period']['2025_access'] is False
+          assert p['protected_period']['2026_access'] is False
+          assert p['hard_firewalls']['pnl_computation'] is False
+          assert p['hard_firewalls']['strategy_performance_backtest'] is False
+          assert s['classification']=='SOURCE_DATA_PASS'
+          assert s['expected_archives_total']==96
+          assert s['verified_archive_count']==96
+          assert s['failed_archive_count']==0
+          PY
+          ! grep -Eqi '2025-|2026-|profit.factor|sharpe|position_size|order\(' "$BASE/discovery_runner_v01.py"
+
+      - name: Run frozen mechanism Discovery
+        run: |
+          set -euo pipefail
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/derivatives_leverage_intensity_001'
+          python "$BASE/discovery_runner_v01.py"
+          test -f "$BASE/discovery_evidence/DLI_DISCOVERY_RESULT_V01.json"
+
+      - name: Audit result firewalls and classification
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          p='Dream-Account-OS-v2.3-PARTIAL/research/derivatives_leverage_intensity_001/discovery_evidence/DLI_DISCOVERY_RESULT_V01.json'
+          d=json.load(open(p)); g=d['guards']
+          assert d['classification'] in {'MECHANISM_SURVIVES_DISCOVERY','NO_PREDICTIVE_VOLATILITY_EDGE','INSUFFICIENT_SAMPLE','TECHNICAL_OR_DATA_FAILURE'}
+          assert d['source_revalidation']['archives_revalidated']==96
+          assert d['source_revalidation']['all_archive_sha256_equal_frozen_source_receipt'] is True
+          assert d['source_revalidation']['all_current_official_checksums_passed'] is True
+          assert g['market_price_values_opened'] is True
+          assert g['price_fields_used']==['spot_high','spot_low']
+          assert g['directional_returns_computed'] is False
+          assert g['close_to_close_returns_computed'] is False
+          assert g['pnl_computed'] is False
+          assert g['transaction_costs_applied'] is False
+          assert g['strategy_performance_backtest'] is False
+          assert g['year_2025_opened'] is False
+          assert g['year_2026_opened'] is False
+          assert g['live_trading'] is False
+          assert g['exchange_mutation'] is False
+          print(json.dumps(d,indent=2,sort_keys=True))
+          PY
+
+      - name: Persist immutable Discovery closeout to branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/derivatives_leverage_intensity_001'
+          git config user.name 'crypto-lab-dli-bot'
+          git config user.email 'crypto-lab-dli-bot@users.noreply.github.com'
+          git add "$BASE/discovery_evidence/DLI_DISCOVERY_RESULT_V01.json"
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'DERIVATIVES-LEVERAGE-INTENSITY-001: Discovery closeout [skip ci]'
+          git pull --rebase origin derivatives-leverage-intensity-v0.1
+          git push origin HEAD:derivatives-leverage-intensity-v0.1
