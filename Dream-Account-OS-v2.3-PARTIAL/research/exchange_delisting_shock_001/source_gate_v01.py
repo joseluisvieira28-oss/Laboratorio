@@ -123,7 +123,7 @@ def main():
     candidates={}; list_pages=0; list_error=None
     try:
         for p in range(1,201):
-            raw,j=get_json(LIST,{'type':1,'pageNo':p,'pageSize':100})
+            raw,j=get_json(LIST,{'type':1,'catalogId':161,'pageNo':p,'pageSize':50})
             arts=find_articles(j); list_pages=p
             if not arts: break
             for a in arts:
@@ -166,7 +166,6 @@ def main():
         except Exception as e:
             detail_failures[code]=type(e).__name__+':'+str(e)
 
-    # Same impending delist: keep first public announcement for symbol+cessation timestamp.
     qualified.sort(key=lambda x:(x['publication_timestamp_utc'],x['token_symbol']))
     dedup=[]; seen=set()
     for e in qualified:
