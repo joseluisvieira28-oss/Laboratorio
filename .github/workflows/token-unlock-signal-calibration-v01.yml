@@ -70,7 +70,6 @@ jobs:
         run: |
           set -euo pipefail
           BASE='Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001'
-          FILE="$BASE/signal_evidence/TUE_UNLOCK_PRESSURE_CALIBRATION_V01.json"
           python - <<'PY'
           import hashlib,json
           from pathlib import Path
@@ -82,6 +81,7 @@ jobs:
           PY
           git config user.name 'crypto-lab-signal-freeze-bot'
           git config user.email 'crypto-lab-signal-freeze-bot@users.noreply.github.com'
+          git pull --rebase origin token-unlock-event-001-source-gate-v01
           git add "$BASE/signal_evidence/TUE_UNLOCK_PRESSURE_CALIBRATION_V01.json" "$BASE/signal_evidence/TUE_UNLOCK_PRESSURE_THRESHOLD_FREEZE_V01.json"
           git commit -m 'TOKEN-UNLOCK-EVENT-001: freeze signal-only pressure threshold [skip ci]'
           git push origin HEAD:token-unlock-event-001-source-gate-v01
