@@ -1,0 +1,117 @@
+name: PLS Frozen Discovery OOS V0.1
+
+on:
+  push:
+    branches:
+      - perpetual-launch-shock-v0.1-source-gate
+
+permissions:
+  contents: write
+
+jobs:
+  frozen-discovery-oos:
+    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout scientific branch
+        uses: actions/checkout@v4
+        with:
+          ref: perpetual-launch-shock-v0.1-source-gate
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Frozen protocol and static preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/perpetual_launch_shock_001'
+          python -m py_compile "$BASE/discovery_oos_runner_v01.py"
+          python - <<'PY'
+          import json
+          base='Dream-Account-OS-v2.3-PARTIAL/research/perpetual_launch_shock_001'
+          p=json.load(open(base+'/FINAL_PRE_DISCOVERY_PROTOCOL_V01.json'))
+          s=json.load(open(base+'/source_evidence/PLS_SOURCE_DATA_GATE_V01.json'))
+          assert p['status']=='FROZEN_FINAL_PRE_DISCOVERY_OUTCOME_BLIND'
+          assert p['mechanism_mve_id']=='PLS-MECH-SPOTRV-001'
+          assert p['strategy_mve_id']=='PLS-OOS-ORBREAKOUT-001'
+          assert p['sequential_design']['discovery_year']==2023
+          assert p['sequential_design']['oos_year']==2024
+          assert p['sequential_design']['if_discovery_fails']=='STOP_KEEP_2024_UNOPENED'
+          assert p['mve_a']['pre_window_minutes']==360
+          assert p['mve_a']['post_window_minutes']==360
+          assert p['mve_a']['promotion_gate']['minimum_eligible_events']==60
+          assert p['mve_a']['bootstrap']['replications']==5000
+          assert p['mve_a']['bootstrap']['seed']==150926
+          assert p['mve_b']['opening_range_minutes']==60
+          assert p['mve_b']['entry_search_minutes']==360
+          assert p['mve_b']['hold_minutes']==360
+          assert p['mve_b']['costs_bps']['BASE']==60.0
+          assert p['mve_b']['costs_bps']['STRESS']==160.0
+          assert p['mve_b']['promotion_gate']['minimum_eligible_events']==60
+          assert p['mve_b']['promotion_gate']['minimum_executed_pair_trades']==40
+          assert p['mve_b']['bootstrap']['replications']==5000
+          assert p['mve_b']['bootstrap']['seed']==150927
+          assert p['data_provenance']['year_2025_access'] is False
+          assert p['data_provenance']['year_2026_access'] is False
+          assert p['hard_firewalls']['live_trading'] is False
+          assert p['hard_firewalls']['exchange_mutation'] is False
+          assert p['hard_firewalls']['merge_to_main'] is False
+          def source_pass(x):
+              if isinstance(x,dict): return x.get('classification')=='SOURCE_DATA_PASS' or any(source_pass(v) for v in x.values())
+              if isinstance(x,list): return any(source_pass(v) for v in x)
+              return False
+          assert source_pass(s)
+          PY
+
+      - name: Run one-shot sequential Discovery and conditional OOS
+        run: |
+          set -euo pipefail
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/perpetual_launch_shock_001'
+          python "$BASE/discovery_oos_runner_v01.py"
+          test -f "$BASE/discovery_evidence/PLS_DISCOVERY_OOS_RESULT_V01.json"
+
+      - name: Audit closeout firewalls and classification
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          p='Dream-Account-OS-v2.3-PARTIAL/research/perpetual_launch_shock_001/discovery_evidence/PLS_DISCOVERY_OOS_RESULT_V01.json'
+          d=json.load(open(p)); g=d['guards']
+          allowed={'NO_CAUSAL_LAUNCH_INTENSITY_EDGE','INSUFFICIENT_DISCOVERY_SAMPLE','NO_EXECUTABLE_OOS_EDGE','INSUFFICIENT_OOS_SAMPLE','OOS_EXECUTABLE_EDGE_SURVIVES','TECHNICAL_OR_DATA_FAILURE'}
+          assert d['final_classification'] in allowed
+          assert g['year_2025_archive_requested'] is False
+          assert g['year_2026_archive_requested'] is False
+          assert g['year_2025_market_values_opened'] is False
+          assert g['year_2026_market_values_opened'] is False
+          assert g['live_trading'] is False
+          assert g['exchange_mutation'] is False
+          assert g['orders'] is False
+          assert g['alerts_or_webhooks'] is False
+          assert g['post_outcome_tuning'] is False
+          if d.get('mve_a',{}).get('classification')!='MECHANISM_SURVIVES_DISCOVERY':
+              assert g['mve_b_2024_market_values_opened'] is False
+              assert d['mve_b']['classification']=='NOT_OPENED_DISCOVERY_GATE_FAILED'
+          print(json.dumps({
+              'final_classification':d['final_classification'],
+              'mve_a':d.get('mve_a',{}).get('classification'),
+              'mve_b':d.get('mve_b',{}).get('classification'),
+              'guards':g
+          },indent=2,sort_keys=True))
+          PY
+
+      - name: Persist immutable closeout receipt
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/perpetual_launch_shock_001'
+          git config user.name 'crypto-lab-pls-bot'
+          git config user.email 'crypto-lab-pls-bot@users.noreply.github.com'
+          git add "$BASE/discovery_evidence/PLS_DISCOVERY_OOS_RESULT_V01.json"
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'PERPETUAL-LAUNCH-SHOCK-001: frozen Discovery OOS closeout [skip ci]'
+          git pull --rebase origin perpetual-launch-shock-v0.1-source-gate
+          git push origin HEAD:perpetual-launch-shock-v0.1-source-gate
