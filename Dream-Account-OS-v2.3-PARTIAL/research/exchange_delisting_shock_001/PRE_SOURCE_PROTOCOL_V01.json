@@ -1,0 +1,101 @@
+{
+  "lab_id": "EXCHANGE-DELISTING-SHOCK-001",
+  "mve_id": "EDS-BINANCE-FULLTOKEN-001",
+  "status": "FROZEN_PRE_SOURCE_OUTCOME_BLIND",
+  "drive_authority_id": "1sjNPeWovbiI5mD4TeouwfaDu3URIlMhuaQt0FpHuZiw",
+  "branch": "exchange-delisting-shock-v0.1",
+  "anti_duplication": {
+    "drive_exact_duplicate_found": false,
+    "github_exact_duplicate_found": false,
+    "file_library_exact_duplicate_found": false,
+    "classification": "NOT_DUPLICATE_NEW_MECHANISM"
+  },
+  "economic_hypothesis": {
+    "mechanism": "A Binance full-token delisting announcement creates a public finite loss-of-market-access window and forced holder migration before all spot trading pairs cease.",
+    "expected_direction": "NEGATIVE_TOKEN_PERFORMANCE_AFTER_ANNOUNCEMENT",
+    "inverse_rescue_allowed": false
+  },
+  "event_universe": {
+    "publication_start_utc": "2023-01-01T00:00:00Z",
+    "publication_end_utc": "2024-12-31T23:59:59Z",
+    "primary_source": "OFFICIAL_BINANCE_SUPPORT_ONLY",
+    "include_rule": "Announcement must explicitly state Binance will delist the token and cease trading on all trading pairs for that token.",
+    "exclude": [
+      "ordinary spot-pair removals where token remains available on Binance Spot",
+      "margin-only delistings",
+      "futures-only delistings",
+      "earn/staking/pay/convert-only removals",
+      "regional or fiat pair changes",
+      "Binance Alpha removals",
+      "announcements without explicit all-pairs cessation timestamp"
+    ],
+    "multi_token_announcement": "ONE_TOKEN_EVENT_PER_TOKEN",
+    "repeat_or_amended_announcement": "FIRST_QUALIFYING_PUBLIC_ANNOUNCEMENT_ONLY",
+    "post_market_behavior_filtering": false
+  },
+  "required_source_fields": [
+    "official_article_code_or_url",
+    "article_title",
+    "publication_timestamp_utc",
+    "token_name_and_symbol",
+    "all_pairs_cessation_timestamp_utc",
+    "all_pairs_cessation_text_evidence",
+    "exact_trading_pairs_when_available",
+    "article_content_sha256"
+  ],
+  "source_event_gate": {
+    "minimum_qualified_token_events": 30,
+    "minimum_distinct_tokens": 15,
+    "required_calendar_years": [2023, 2024],
+    "exact_publication_timestamp_required": true,
+    "exact_all_pairs_cessation_timestamp_required": true,
+    "third_party_field_substitution": false,
+    "failure_if_minimums_not_met": "INSUFFICIENT_SOURCE_SAMPLE"
+  },
+  "market_route_preflight": {
+    "source": "BINANCE_DATA_VISION_SPOT_OFFICIAL_ARCHIVES",
+    "pair": "SYMBOLUSDT",
+    "interval": "1h",
+    "metadata_only": true,
+    "checksum_route_only": true,
+    "entry_boundary_definition_for_route_only": "FIRST_WHOLE_UTC_HOUR_AT_LEAST_60_MINUTES_AFTER_PUBLICATION",
+    "terminal_boundary_definition_for_route_only": "SCHEDULED_ALL_PAIRS_CESSATION_TIMESTAMP",
+    "minimum_route_qualified_token_events": 30,
+    "minimum_route_qualified_distinct_tokens": 15,
+    "required_calendar_years": [2023, 2024],
+    "cross_exchange_backfill": false,
+    "synthetic_interpolation": false,
+    "ohlc_value_access": false,
+    "return_access": false,
+    "pnl_access": false
+  },
+  "protected_period": {
+    "2025_access": false,
+    "2026_access": false,
+    "late_2024_event_requiring_2025_market_route": "PROTECTED_EXCLUSION_NO_2025_REQUEST"
+  },
+  "post_source_rule": {
+    "source_data_pass_authorizes_discovery": false,
+    "final_pre_discovery_protocol_required": true,
+    "must_freeze_before_any_price_value": [
+      "price_granularity",
+      "entry_price_definition",
+      "terminal_price_definition",
+      "benchmark",
+      "cost_model",
+      "statistical_inference",
+      "sample_minimums",
+      "promotion_gates"
+    ]
+  },
+  "hard_firewalls": {
+    "market_outcomes": false,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "merge_to_main": false,
+    "render_deployment": false,
+    "post_outcome_tuning": false,
+    "cherry_picking": false
+  },
+  "authorization": "SOURCE_DATA_GATE_ONLY_DISCOVERY_PROHIBITED"
+}
