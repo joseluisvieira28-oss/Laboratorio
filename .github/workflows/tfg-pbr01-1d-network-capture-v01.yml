@@ -1,0 +1,55 @@
+name: TFG PBR01 1D MEXC Network Metadata Capture
+
+on:
+  push:
+    branches:
+      - tf-gap-pbr01-1d-v0.1
+    paths:
+      - '.github/workflows/tfg-pbr01-1d-network-capture-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        shell: bash
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tf-gap-pbr01-1d-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Playwright
+        run: |
+          python -m pip install --disable-pip-version-check playwright
+          python -m playwright install --with-deps chromium
+      - name: Verify protected-data firewall
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          d=json.loads(Path('research/timeframe_gap/TFG_PBR01_1D_001_ACTIVATION_V0.1.json').read_text())
+          assert d['current_state']=='ACTIVE_SOURCE_RECOVERY_OUTCOME_BLIND'
+          assert not d['authorization_scope']['validation_2025']
+          assert not d['authorization_scope']['holdout_2026']
+          assert not d['authorization_scope']['exchange_mutation']
+          print('FIREWALL=PASS')
+          PY
+      - name: Capture anonymous page network metadata only
+        run: |
+          mkdir -p research/local_data/tfg_pbr01_1d_network_capture
+          python -m research.timeframe_gap.tfg_pbr01_1d_mexc_network_capture_v01 \
+            --receipt research/local_data/tfg_pbr01_1d_network_capture/TFG_PBR01_1D_MEXC_NETWORK_METADATA_V0.1.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tfg-pbr01-1d-mexc-network-metadata
+          path: Dream-Account-OS-v2.3-PARTIAL/research/local_data/tfg_pbr01_1d_network_capture/TFG_PBR01_1D_MEXC_NETWORK_METADATA_V0.1.json
+          retention-days: 14
