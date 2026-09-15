@@ -1,0 +1,144 @@
+name: TFG Extreme MR 30M Frozen Discovery V02
+
+on:
+  push:
+    branches:
+      - tf-gap-extreme-mr-30m-v0.1
+    paths:
+      - '.github/workflows/tfg-extreme-mr-30m-discovery-v02.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  discovery:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout frozen Extreme MR 30m branch
+        uses: actions/checkout@v4
+        with:
+          ref: tf-gap-extreme-mr-30m-v0.1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Verify freeze and separate Discovery authority
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          f=json.loads(Path('research/timeframe_gap/TFG_EXTREME_MR_30M_001_FREEZE.json').read_text())
+          a=json.loads(Path('research/timeframe_gap/TFG_EXTREME_MR_30M_001_DISCOVERY_AUTHORITY_V0.1.json').read_text())
+          assert f['experiment_id']=='TFG-EXTREME-MR-30M-001'
+          assert f['status']=='FROZEN_BEFORE_ANY_EXPERIMENT_OUTCOME_EVALUATION'
+          assert f['lineage']['this_experiment_is_historical_replication'] is False
+          assert a['status']=='ARMED_AFTER_FREEZE_BEFORE_OUTCOMES'
+          assert a['freeze_commit']=='87282552603309bef42383a70c14f7ee931423e8'
+          assert a['authorized']['discovery_2023_02_to_2024_12'] is True
+          assert a['not_authorized']['validation_2025'] is True
+          assert a['not_authorized']['holdout_2026'] is True
+          assert a['not_authorized']['post_outcome_tuning'] is True
+          print('FREEZE_AND_AUTHORITY=PASS')
+          PY
+
+      - name: Run corrected pre-outcome synthetic plumbing test
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: |
+          export PYTHONPATH="$PWD:${PYTHONPATH:-}"
+          python tests/test_tfg_extreme_mr_30m_v02.py
+
+      - name: Verify frozen source artifact metadata before download
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python - <<'PY'
+          import json, os, urllib.request
+          b=json.loads(open('research/timeframe_gap/TFG_EXTREME_MR_30M_001_SOURCE_BINDING_V0.1.json').read())
+          req=urllib.request.Request(
+              f"https://api.github.com/repos/joseluisvieira28-oss/Laboratorio/actions/artifacts/{b['artifact_id']}",
+              headers={'Authorization':f"Bearer {os.environ['GH_TOKEN']}",'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'},
+          )
+          with urllib.request.urlopen(req,timeout=30) as r:
+              d=json.load(r)
+          assert d['id']==b['artifact_id']
+          assert d['name']==b['artifact_name']
+          assert d.get('digest')==b['artifact_digest'],(d.get('digest'),b['artifact_digest'])
+          assert d.get('expired') is False
+          print('FROZEN_ARTIFACT_METADATA=PASS')
+          PY
+
+      - name: Download exact audited MEXC parent corpus artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: tfg-pbr01-1d-exact-parent-corpus
+          path: Dream-Account-OS-v2.3-PARTIAL/research/local_data/tfg_extreme_mr_30m_source_artifact
+          github-token: ${{ github.token }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: 35025382064
+
+      - name: Verify six frozen parent manifests before canonical rebuild
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          b=json.loads(Path('research/timeframe_gap/TFG_EXTREME_MR_30M_001_SOURCE_BINDING_V0.1.json').read_text())
+          root=Path('research/local_data/tfg_extreme_mr_30m_source_artifact')
+          for s,fp in b['parent_corpus_fingerprint_by_symbol'].items():
+              d=json.loads((root/'tfg_pbr01_1d_manifests'/f'{s}_MANIFEST.json').read_text())
+              assert d['fingerprint']==fp,(s,d['fingerprint'],fp)
+              assert d['status']=='PASS_CORPUS_AUDIT_ONLY_WITH_GAPS'
+              assert d['total_row_count']==67183
+          print('SIX_FROZEN_MANIFESTS=PASS')
+          PY
+
+      - name: Rebuild canonical layer with unchanged historical Phase-B adapter
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: |
+          export PYTHONPATH="$PWD/src:$PWD:${PYTHONPATH:-}"
+          RAW=research/local_data/tfg_extreme_mr_30m_source_artifact/tfg_pbr01_1d_raw
+          OUT=research/local_data/tfg_extreme_mr_30m_canonical
+          MAN=research/local_data/tfg_extreme_mr_30m_rebuilt_manifests
+          mkdir -p "$OUT" "$MAN"
+          for s in BTCUSDT ETHUSDT SOLUSDT BNBUSDT XRPUSDT DOGEUSDT; do
+            python -m research.phase_b_mexc_discovery_corpus_v01 \
+              "$RAW" --output-dir "$OUT" --symbol "$s" --start-month 2023-02 --end-month 2024-12 \
+              --receipt "$MAN/${s}_MANIFEST.json" > "$MAN/${s}_STDOUT.json"
+          done
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          b=json.loads(Path('research/timeframe_gap/TFG_EXTREME_MR_30M_001_SOURCE_BINDING_V0.1.json').read_text())
+          for s,fp in b['parent_corpus_fingerprint_by_symbol'].items():
+              d=json.loads(Path(f'research/local_data/tfg_extreme_mr_30m_rebuilt_manifests/{s}_MANIFEST.json').read_text())
+              assert d['fingerprint']==fp,(s,d['fingerprint'],fp)
+          files=list(Path('research/local_data/tfg_extreme_mr_30m_canonical/canonical').glob('*.canonical.csv'))
+          assert len(files)==138,len(files)
+          print('REBUILT_CANONICAL_IDENTITY=PASS files=138')
+          PY
+
+      - name: Execute frozen Extreme MR 30m Discovery only
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: |
+          export PYTHONPATH="$PWD:${PYTHONPATH:-}"
+          mkdir -p research/local_data/tfg_extreme_mr_30m_discovery
+          python -m research.tfg_extreme_mr_30m_discovery_runner_v01 \
+            --canonical-dir research/local_data/tfg_extreme_mr_30m_canonical/canonical \
+            --manifest-dir research/local_data/tfg_extreme_mr_30m_rebuilt_manifests \
+            --binding research/timeframe_gap/TFG_EXTREME_MR_30M_001_SOURCE_BINDING_V0.1.json \
+            --output-dir research/local_data/tfg_extreme_mr_30m_discovery
+
+      - name: Upload frozen Discovery receipt and ledger
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfg-extreme-mr-30m-discovery-result-v02
+          path: |
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/tfg_extreme_mr_30m_discovery/TFG_EXTREME_MR_30M_DISCOVERY_RECEIPT_V0.1.json
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/tfg_extreme_mr_30m_discovery/TFG_EXTREME_MR_30M_DISCOVERY_LEDGER_V0.1.json
+          if-no-files-found: error
+          retention-days: 14
