@@ -1,0 +1,149 @@
+name: TOKEN-UNLOCK-EVENT-001 Full Static Binance Route Gate V0.1
+
+on:
+  push:
+    branches:
+      - token-unlock-event-001-source-gate-v01
+    paths:
+      - '.github/workflows/token-unlock-full-static-binance-route-gate-v01.yml'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001/FULL_STATIC_TOKEN_IDENTITY_MAP_V01.json'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001/build_full_static_identity_manifest_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001/full_static_binance_route_gate_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001/extract_full_static_provider_coverage_v01.js'
+
+permissions:
+  contents: read
+
+jobs:
+  full-static-route-gate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout scientific branch
+        uses: actions/checkout@v4
+        with:
+          ref: token-unlock-event-001-source-gate-v01
+
+      - name: Verify frozen authorities and source-only guards
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001'
+          FREEZE="$BASE/FULL_STATIC_COVERAGE_QUALIFICATION_FREEZE_V01.json"
+          IDENTITY="$BASE/FULL_STATIC_TOKEN_IDENTITY_MAP_V01.json"
+          EXTRACT="$BASE/extract_full_static_provider_coverage_v01.js"
+          BUILD="$BASE/build_full_static_identity_manifest_v01.py"
+          ROUTE="$BASE/full_static_binance_route_gate_v01.py"
+          test "$(sha256sum "$FREEZE" | awk '{print $1}')" = 'f7a818f21d4494cfba877f85d9a3f7de8216d824589a0d221e90fcb152a1b567'
+          test "$(git hash-object "$IDENTITY")" = 'd273247ad5558abc122674f6587b906aa7640f9b'
+          node --check "$EXTRACT"
+          python -m py_compile "$BUILD" "$ROUTE"
+          grep -q 'FROZEN_PRE_FULL_STATIC_ROUTE_CHECK' "$IDENTITY"
+          grep -q 'post_route_symbol_remapping.*false' "$IDENTITY"
+          grep -q 'year_2025_opened.*false' "$IDENTITY"
+          grep -q 'year_2026_opened.*false' "$IDENTITY"
+          grep -q 'kline_zip_downloaded.*False' "$ROUTE"
+          grep -q 'market_price_values_opened.*False' "$ROUTE"
+          grep -q 'returns_computed.*False' "$ROUTE"
+          grep -q 'pnl_computed.*False' "$ROUTE"
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Acquire exact immutable March 2023 snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone -q https://github.com/0xnirmal/emissions-adapters.git /tmp/emissions-2023
+          cd /tmp/emissions-2023
+          git checkout -q 539e7cf40a4cecc73953f3ae2b196b3fa66ae34a
+          test "$(git rev-parse HEAD)" = '539e7cf40a4cecc73953f3ae2b196b3fa66ae34a'
+          npm ci --omit=dev --ignore-scripts --silent
+          npm install --no-save --ignore-scripts --silent typescript@4.9.5
+
+      - name: Acquire exact immutable March 2024 snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone -q https://github.com/danaugrs/emissions-adapters.git /tmp/emissions-2024
+          cd /tmp/emissions-2024
+          git checkout -q ad6bcfa961d6f0bd9cd5d589656b8f78daf7be7a
+          test "$(git rev-parse HEAD)" = 'ad6bcfa961d6f0bd9cd5d589656b8f78daf7be7a'
+          npm ci --omit=dev --ignore-scripts --silent
+          npm install --no-save --ignore-scripts --silent typescript@4.9.5
+
+      - name: Materialize frozen full-static source coverage
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE="$GITHUB_WORKSPACE/Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001"
+          OUT="$BASE/source_probe_output_v06"
+          mkdir -p "$OUT"
+          node "$BASE/extract_full_static_provider_coverage_v01.js" /tmp/emissions-2023 2023-03-17 "$BASE/FULL_STATIC_COVERAGE_QUALIFICATION_FREEZE_V01.json" "$OUT/FULL_STATIC_PROVIDER_2023_V01.json"
+          node "$BASE/extract_full_static_provider_coverage_v01.js" /tmp/emissions-2024 2024-03-25 "$BASE/FULL_STATIC_COVERAGE_QUALIFICATION_FREEZE_V01.json" "$OUT/FULL_STATIC_PROVIDER_2024_V01.json"
+
+      - name: Build frozen identity manifest before route check
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001'
+          python "$BASE/build_full_static_identity_manifest_v01.py" "$BASE/source_probe_output_v06/FULL_STATIC_PROVIDER_2023_V01.json" "$BASE/source_probe_output_v06/FULL_STATIC_PROVIDER_2024_V01.json"
+          python - <<'PY'
+          import json
+          p='Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001/source_probe_output_v07/TUE_FULL_STATIC_IDENTITY_MANIFEST_V01.json'
+          d=json.load(open(p))
+          r=d['receipt']
+          assert r['classification']=='PASS_IDENTITY_PREFREEZE'
+          assert r['deduplicated_event_count']==332
+          assert r['distinct_tokens']==35
+          assert r['years']==[2023,2024]
+          assert r['cross_snapshot_conflict_count']==0
+          assert r['guards']['binance_route_checked'] is False
+          assert r['guards']['market_prices_accessed'] is False
+          assert r['guards']['returns_computed'] is False
+          assert r['guards']['pnl_computed'] is False
+          assert r['guards']['year_2025_opened'] is False
+          assert r['guards']['year_2026_opened'] is False
+          PY
+
+      - name: Check Binance pre-event archive routes using CHECKSUM metadata only
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001'
+          python "$BASE/full_static_binance_route_gate_v01.py"
+
+      - name: Audit source gate guards
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          p='Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001/source_probe_output_v08/TUE_FULL_STATIC_BINANCE_ROUTE_GATE_V01.json'
+          d=json.load(open(p)); r=d['receipt']; g=r['guards']
+          assert r['identity_manifest_event_count']==332
+          assert g['binance_checksum_metadata_only'] is True
+          assert g['kline_zip_downloaded'] is False
+          assert g['market_price_values_opened'] is False
+          assert g['returns_computed'] is False
+          assert g['pnl_computed'] is False
+          assert g['profit_factor_computed'] is False
+          assert g['year_2025_opened'] is False
+          assert g['year_2026_opened'] is False
+          assert g['live_trading'] is False
+          assert g['exchange_mutation'] is False
+          print(json.dumps(r, indent=2, sort_keys=True))
+          PY
+
+      - name: Upload immutable source-only gate evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: token-unlock-event-001-full-static-route-gate-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001/source_probe_output_v06/
+            Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001/source_probe_output_v07/
+            Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001/source_probe_output_v08/
+          retention-days: 90
+          if-no-files-found: error
