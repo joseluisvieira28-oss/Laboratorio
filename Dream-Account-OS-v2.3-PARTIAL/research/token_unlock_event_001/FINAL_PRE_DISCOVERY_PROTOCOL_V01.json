@@ -1,0 +1,154 @@
+{
+  "lab_id": "TOKEN-UNLOCK-EVENT-001",
+  "mve_id": "TUE-CLIFF-ADV30-001",
+  "status": "FROZEN_PRE_DISCOVERY_OUTCOME_BLIND",
+  "frozen_at_stage": "AFTER_SOURCE_DATA_FEASIBLE_BEFORE_ANY_FORWARD_RETURN_OR_PNL_ACCESS",
+  "source_gate_authority": {
+    "branch": "token-unlock-event-001-source-gate-v01",
+    "evidence_commit": "bfceb846ca0f88efeea9f7359648bc04ff800d27",
+    "receipt_path": "Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001/source_gate_evidence/full_static_latest/TUE_FULL_STATIC_BINANCE_ROUTE_GATE_V01.json",
+    "classification": "SOURCE_DATA_FEASIBLE",
+    "identity_manifest_event_count": 332,
+    "qualified_event_count": 282,
+    "qualified_distinct_tokens": 23,
+    "qualified_calendar_years": [2023, 2024],
+    "minimums": {"events": 40, "tokens": 15, "calendar_years": 2},
+    "identity_manifest_fingerprint_sha256": "2d7ca9c389a0665b9c4b893cdbe5c768c04db6bfefa503c6fd0cd0fa34f658a1"
+  },
+  "economic_hypothesis": {
+    "mechanism": "Discrete unlocks create newly transferable supply. Larger scheduled releases relative to recent causal spot absorption capacity should be associated with weaker event-window returns.",
+    "frozen_direction": "HIGHER_UNLOCK_PRESSURE_EXPECTS_WEAKER_RETURN",
+    "inverse_rescue_allowed": false
+  },
+  "event_construction": {
+    "input": "ONLY route-qualified SOURCE_DATA_FEASIBLE events from the frozen source-gate receipt",
+    "same_token_same_utc_calendar_day": "SUM_UNLOCK_TOKEN_AMOUNTS_INTO_ONE_COMPOSITE_EVENT",
+    "composite_event_date": "UTC calendar date of the constituent scheduled timestamps",
+    "composite_anchor_timestamp": "earliest constituent scheduled timestamp on that UTC date",
+    "cross_day_event_merging": false,
+    "post_outcome_event_filtering": false
+  },
+  "causal_signal_calibration": {
+    "entry_day": "UTC_DATE(EVENT)_MINUS_7_DAYS",
+    "entry_timestamp": "00:00:00Z on entry_day",
+    "volume_window": "30 completed UTC daily bars immediately preceding entry_day; entry_day and all later rows forbidden in calibration",
+    "volume_source": "Binance Spot official historical archives, SYMBOLUSDT, base-asset Volume",
+    "unlock_pressure_days": "composite_scheduled_unlock_tokens / mean(base_asset_volume over frozen 30 completed pre-entry UTC days)",
+    "pressure_transform_for_mechanism_test": "log1p(unlock_pressure_days)",
+    "high_pressure_threshold_rule": "67th percentile of unlock_pressure_days over the final causal-signal-resolved Discovery composite-event set",
+    "quantile_method": "linear interpolation",
+    "threshold_must_be_persisted_before_forward_outcome_access": true,
+    "threshold_post_outcome_change_forbidden": true,
+    "signal_calibration_may_access_pre_entry_market_rows_only": true,
+    "forward_price_or_return_access_during_calibration": false,
+    "minimum_signal_resolved_events": 100,
+    "minimum_signal_resolved_tokens": 15,
+    "minimum_signal_resolved_calendar_years": 2,
+    "failure_state_if_below_minimums": "INSUFFICIENT_SAMPLE"
+  },
+  "discovery_execution_semantics": {
+    "primary_action": "SPOT_AVOIDANCE_RELATIVE_TO_CONTINUOUS_HOLDING; no short or borrow assumption",
+    "high_pressure_rule": "unlock_pressure_days >= frozen signal-only 67th-percentile threshold",
+    "entry": "sell/stand aside at SYMBOLUSDT daily open 00:00Z on UTC_DATE(EVENT)-7 days",
+    "exit": "re-enter at SYMBOLUSDT daily open 00:00Z on UTC_DATE(EVENT)+8 days",
+    "window_interpretation": "single fixed 15-calendar-day open-to-open avoidance window covering anticipation and post-release absorption",
+    "alternative_horizons_for_promotion": false,
+    "overlapping_high_pressure_windows_same_token": "UNION into one continuous avoidance episode for economic PnL; transact once at first entry and once at final exit",
+    "event_level_mechanism_observations": "remain event-level; dependence handled by token-cluster inference",
+    "borrow_or_shortability_required": false,
+    "cross_exchange_backfill": false,
+    "missing_data_interpolation": false
+  },
+  "market_data": {
+    "source": "Binance Spot official historical Data Vision archives",
+    "pair": "SYMBOLUSDT",
+    "interval": "1d",
+    "integrity": "CHECKSUM required for every archive used",
+    "btc_benchmark": "BTCUSDT same open-to-open timestamps",
+    "archive_absence_rule": "fail closed for affected event/episode; no substitute venue",
+    "availability_exclusions_must_be_receipted_before_outcome_values_are_evaluated": true,
+    "2025_access": false,
+    "2026_access": false,
+    "late_2024_event_rule": "exclude if any required signal, entry, exit or benchmark row would require 2025 data; do not truncate the window"
+  },
+  "cost_model": {
+    "base_roundtrip_bps": 30.0,
+    "base_interpretation": "10 bps spot fee plus 5 bps execution/slippage allowance per side",
+    "stress_roundtrip_bps": 60.0,
+    "stress_interpretation": "10 bps fee plus 20 bps execution/slippage allowance per side",
+    "vip_discount_or_rebate": false,
+    "cost_reduction_rescue": false
+  },
+  "outcomes": {
+    "token_simple_return": "exit_open / entry_open - 1",
+    "gross_avoidance_return": "1 - exit_open / entry_open",
+    "base_net_avoidance_return": "gross_avoidance_return - 0.0030",
+    "stress_net_avoidance_return": "gross_avoidance_return - 0.0060",
+    "token_log_return": "ln(exit_open / entry_open)",
+    "btc_log_return": "ln(BTC_exit_open / BTC_entry_open)",
+    "btc_adjusted_log_return": "token_log_return - btc_log_return"
+  },
+  "inference": {
+    "primary_mechanism_model": "OLS btc_adjusted_log_return ~ 1 + log1p(unlock_pressure_days)",
+    "primary_beta_expected_sign": "NEGATIVE",
+    "standard_errors": "cluster robust by token",
+    "primary_mechanism_pass": "beta < 0 and two-sided 95% confidence interval upper bound < 0",
+    "supporting_rank_test": "Spearman(unlock_pressure_days, btc_adjusted_log_return) expected negative; reported but not sufficient alone",
+    "bootstrap": {
+      "method": "token-cluster bootstrap",
+      "replications": 5000,
+      "seed": 230915,
+      "confidence_level": 0.95
+    }
+  },
+  "discovery_minimums": {
+    "final_resolved_composite_events": 100,
+    "final_distinct_tokens": 15,
+    "calendar_years": 2,
+    "high_pressure_event_observations": 40,
+    "high_pressure_distinct_tokens": 10
+  },
+  "promotion_gate_all_required": [
+    "all Discovery minimums pass",
+    "primary mechanism regression beta is negative with 95% CI upper bound below zero",
+    "high-pressure mean BASE net avoidance return > 0",
+    "high-pressure mean STRESS net avoidance return > 0",
+    "token-cluster bootstrap 95% lower bound of high-pressure STRESS mean net avoidance return > 0",
+    "high-pressure mean BTC-adjusted log return < 0",
+    "token-cluster bootstrap 95% upper bound of high-pressure mean BTC-adjusted log return < 0",
+    "2023 high-pressure BASE mean net avoidance return >= 0",
+    "2024 high-pressure BASE mean net avoidance return >= 0",
+    "largest single token share of high-pressure event observations <= 0.35"
+  ],
+  "discovery_classification": {
+    "SURVIVES_DISCOVERY": "every promotion gate passes",
+    "NO_EDGE": "sample/data gates pass but one or more statistical/economic promotion gates fail",
+    "INSUFFICIENT_SAMPLE": "any frozen sample minimum fails",
+    "DATA_FAILURE": "required official archives or checksum integrity fail after frozen availability rules",
+    "TECHNICAL_FAILURE": "implementation failure before a scientific verdict"
+  },
+  "protected_period": {
+    "2025": "LOCKED; may be opened only after SURVIVES_DISCOVERY and separate explicit protocol authorization",
+    "2026": "LOCKED/FORBIDDEN"
+  },
+  "hard_prohibitions": [
+    "no threshold change after forward outcomes",
+    "no alternative entry/exit horizon rescue",
+    "no sign inversion",
+    "no recipient-category rescue",
+    "no winner-token filtering",
+    "no bull/bear filter rescue",
+    "no cross-exchange backfill",
+    "no cost reduction rescue",
+    "no 2025 or 2026 access in Discovery",
+    "no live trading",
+    "no exchange mutation",
+    "no merge to main",
+    "no Render deployment"
+  ],
+  "authorization": {
+    "signal_only_calibration_authorized_after_this_freeze_commit": true,
+    "forward_outcome_access_authorized_before_numeric_threshold_persisted": false,
+    "Discovery_outcomes_authorized_only_after_threshold_receipt_is_persisted_and_static_guards_pass": true
+  }
+}
