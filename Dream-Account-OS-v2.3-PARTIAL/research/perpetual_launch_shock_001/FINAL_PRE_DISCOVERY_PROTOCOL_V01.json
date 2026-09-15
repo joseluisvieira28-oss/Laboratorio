@@ -1,0 +1,77 @@
+{
+  "lab_id": "PERPETUAL-LAUNCH-SHOCK-001",
+  "source_mve_id": "PLS-BINANCE-USDTM-LAUNCH-001",
+  "mechanism_mve_id": "PLS-MECH-SPOTRV-001",
+  "strategy_mve_id": "PLS-OOS-ORBREAKOUT-001",
+  "status": "FROZEN_FINAL_PRE_DISCOVERY_OUTCOME_BLIND",
+  "drive_protocol_id": "1Tmw6WlvgTRSxLk7f-zWrxn7iQJCfofwml9z21IE5Yrg",
+  "source_receipt": {
+    "path": "Dream-Account-OS-v2.3-PARTIAL/research/perpetual_launch_shock_001/source_evidence/PLS_SOURCE_DATA_GATE_V01.json",
+    "required_classification": "SOURCE_DATA_PASS",
+    "qualified_events": 170,
+    "qualified_year_counts": {"2023": 83, "2024": 87}
+  },
+  "economic_mechanism": "The first Binance USD-M USDT perpetual for a token with an already-existing exact-symbol Binance Spot USDT market adds leverage, short-sale access, hedging, arbitrage and a new price-discovery venue. The prospective claim is token-specific short-horizon expansion in informed trading and realized movement, not a universal bullish or bearish direction.",
+  "sequential_design": {
+    "discovery_year": 2023,
+    "oos_year": 2024,
+    "oos_access_condition": "ALL_MVE_A_PROMOTION_GATES_PASS",
+    "if_discovery_fails": "STOP_KEEP_2024_UNOPENED"
+  },
+  "mve_a": {
+    "id": "PLS-MECH-SPOTRV-001",
+    "universe": "All 2023 source-qualified launches with complete exact-symbol Spot USDT and BTCUSDT Spot 1m bars for required windows.",
+    "event_time": "Frozen futures first_open_time from Source Gate receipt.",
+    "pre_window_minutes": 360,
+    "post_window_minutes": 360,
+    "token_rv": "sum squared one-minute log close-to-close returns within each window",
+    "btc_rv": "same on BTCUSDT Spot over identical UTC windows",
+    "primary_statistic": "ln(token_RV_post/token_RV_pre)-ln(BTC_RV_post/BTC_RV_pre)",
+    "secondary_statistic": "ln(token_quote_volume_post/token_quote_volume_pre)-ln(BTC_quote_volume_post/BTC_quote_volume_pre)",
+    "directional_return_hypothesis": false,
+    "promotion_gate": {
+      "minimum_eligible_events": 60,
+      "mean_excess_log_rv_ratio_gt_zero": true,
+      "cluster_bootstrap_rv_ci95_lower_gt_zero": true,
+      "median_excess_log_rv_ratio_gt_zero": true,
+      "minimum_fraction_positive_excess_log_rv_ratio": 0.55,
+      "mean_excess_log_quote_volume_ratio_gt_zero": true,
+      "cluster_bootstrap_volume_ci95_lower_gt_zero": true,
+      "all_conditions_required": true
+    },
+    "bootstrap": {"cluster": "UTC_LAUNCH_DATE", "replications": 5000, "seed": 150926, "confidence_level": 0.95},
+    "classifications": {"pass": "MECHANISM_SURVIVES_DISCOVERY", "fail": "NO_CAUSAL_LAUNCH_INTENSITY_EDGE", "insufficient": "INSUFFICIENT_DISCOVERY_SAMPLE", "technical_or_data": "TECHNICAL_OR_DATA_FAILURE"}
+  },
+  "mve_b": {
+    "id": "PLS-OOS-ORBREAKOUT-001",
+    "oos_year": 2024,
+    "instrument": "Equal-USD-notional market-neutral pair: token USD-M perpetual versus BTCUSDT USD-M perpetual.",
+    "opening_range_minutes": 60,
+    "entry_search_minutes": 360,
+    "trigger": "First completed token-perpetual 1m close strictly outside first-60m high/low opening range.",
+    "direction": "Above opening-range high => LONG token / SHORT BTC; below opening-range low => SHORT token / LONG BTC.",
+    "entry": "Next one-minute bar open on both legs after trigger.",
+    "no_trigger": "No trade; event return zero.",
+    "hold_minutes": 360,
+    "exit": "Open of bar exactly 360 minutes after entry on both legs.",
+    "gross_pair_return_bps": "direction*10000*(ln(token_exit/token_entry)-ln(BTC_exit/BTC_entry))",
+    "costs_bps": {"BASE": 60.0, "STRESS": 160.0, "scope": "all-in completed pair trade including both legs, entry/exit, taker fees, ordinary slippage and funding reserve"},
+    "promotion_gate": {
+      "minimum_eligible_events": 60,
+      "minimum_executed_pair_trades": 40,
+      "mean_stress_net_all_eligible_gt_zero": true,
+      "cluster_bootstrap_stress_mean_ci95_lower_gt_zero": true,
+      "median_stress_net_executed_gt_zero": true,
+      "minimum_stress_hit_rate_executed": 0.52,
+      "minimum_stress_profit_factor_executed": 1.20,
+      "mean_base_net_all_eligible_gt_zero": true,
+      "all_conditions_required": true
+    },
+    "bootstrap": {"cluster": "UTC_ENTRY_DATE", "replications": 5000, "seed": 150927, "confidence_level": 0.95},
+    "classifications": {"pass": "OOS_EXECUTABLE_EDGE_SURVIVES", "fail": "NO_EXECUTABLE_OOS_EDGE", "insufficient": "INSUFFICIENT_OOS_SAMPLE", "technical_or_data": "TECHNICAL_OR_DATA_FAILURE"}
+  },
+  "overlap": {"one_event_per_exact_symbol": true, "concurrent_cross_symbol_events_retained": true, "dependence_handling": "UTC-date cluster bootstrap", "post_outcome_deoverlap_prohibited": true},
+  "data_provenance": {"authority": "Binance Data Vision historical archives", "all_zip_downloads_require_official_checksum": true, "year_2025_access": false, "year_2026_access": false, "source_event_identity_mutation": false},
+  "prohibited_rescues": ["No alternative mechanism windows", "No alternate volatility metric", "No alternate opening-range window", "No alternate entry-search window", "No alternate hold", "No cost reduction", "No winner-token subset", "No bullish/bearish direction search after outcomes", "No 2025/2026 access"],
+  "hard_firewalls": {"research_only": true, "live_trading": false, "exchange_mutation": false, "orders": false, "alerts_or_webhooks": false, "merge_to_main": false, "render_deployment": false, "post_outcome_tuning": false, "cherry_picking": false}
+}
