@@ -1,0 +1,111 @@
+{
+  "document_type": "TIMEFRAME_GAP_EXPERIMENT_FREEZE",
+  "experiment_id": "TFG-VWAP-30M-001",
+  "version": "0.1",
+  "created_utc_date": "2026-09-15",
+  "status": "PREFROZEN_NOT_EXECUTED",
+  "parent_hypothesis": {
+    "experiment_id": "CIGL-VWAP-01",
+    "family": "DAILY_UTC_VWAP_RECLAIM_LOSS_CONTINUATION",
+    "parent_signal_timeframe": "1H",
+    "parent_verdict": "CLOSED_NO_ECONOMIC_EDGE_IN_DISCOVERY",
+    "parent_protocol_branch": "classic-indicators-gap-lab-v0.1",
+    "parent_protocol_path": "Dream-Account-OS-v2.3-PARTIAL/research/CLASSIC_INDICATORS_GAP_LAB_V01_PROTOCOL.json",
+    "parent_protocol_blob_sha": "0ac36b01d682064576b6d1279d26a1d7056c780f",
+    "parent_strategy_path": "Dream-Account-OS-v2.3-PARTIAL/research/classic_indicators_gap_v01.py",
+    "parent_strategy_blob_sha": "21398ba193d10d465c10b392e1dc8461270a0491",
+    "parent_verdict_may_not_be_changed": true
+  },
+  "scientific_question": "Does causal daily UTC VWAP reclaim/loss continuation exhibit positive net expectancy when the signal is observed on completed 30m candles while preserving the parent's 4-hour economic holding horizon?",
+  "timeframe_transformation": {
+    "target_signal_timeframe": "30m",
+    "policy": "SIGNAL_RESOLUTION_ONLY_WITH_ECONOMIC_HOLD_INVARIANT",
+    "parent_holding_horizon": "4h",
+    "target_holding_bars": 8,
+    "target_holding_horizon": "4h",
+    "rationale": "VWAP is intraday and the parent hold is an outcome horizon distinct from signal resolution. Preserving four clock-hours changes only signal granularity rather than signal granularity and economic horizon simultaneously.",
+    "alternative_hold_lengths_allowed": false
+  },
+  "market": {
+    "provider": "Binance",
+    "market": "USD-M Futures",
+    "raw_interval": "1m",
+    "symbols": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "DOGEUSDT"],
+    "timezone": "UTC",
+    "source_authority": "H180-0001 normalized canonical layer",
+    "canonical_fingerprint": "51952d966395e34a0390e1da3063b999c4de68d00a3e0e965e27f6ee58ed01f3",
+    "raw_monthly_fingerprint": "e62523e28ab87da27e1aa0f992e94d1b4be461a00ef1d7a1ce807a3740348e8a"
+  },
+  "vwap_rule": {
+    "reset": "00:00 UTC daily",
+    "typical_price": "(high+low+close)/3",
+    "weight": "base_volume",
+    "calculation": "CAUSAL_FROM_COMPLETED_1M_ROWS_ONLY",
+    "long": "previous completed 30m close <= previous causal daily VWAP AND current completed 30m close > current causal daily VWAP",
+    "short": "previous completed 30m close >= previous causal daily VWAP AND current completed 30m close < current causal daily VWAP",
+    "orientation": "continuation_reclaim_loss",
+    "filters": null
+  },
+  "execution": {
+    "entry": "NEXT_30M_BAR_OPEN",
+    "holding_bars": 8,
+    "holding_horizon": "4h",
+    "base_roundtrip_cost_bps": 10,
+    "stress_roundtrip_cost_bps": 14,
+    "one_position_per_asset": true,
+    "pyramiding": false,
+    "stop": null,
+    "take_profit": null,
+    "trailing": null
+  },
+  "data_stages": {
+    "discovery": {
+      "start": "2022-01-01T00:00:00Z",
+      "end": "2023-12-31T23:59:59Z",
+      "status": "AUTHORIZED_AFTER_PROVENANCE_PREFLIGHT_ONLY"
+    },
+    "internal_oos_2024": {
+      "start": "2024-01-01T00:00:00Z",
+      "end": "2024-12-31T23:59:59Z",
+      "status": "LOCKED_UNTIL_DISCOVERY_SURVIVES"
+    },
+    "protected_2025": {"status": "LOCKED"},
+    "locked_2026_onward": {"status": "LOCKED"}
+  },
+  "discovery_gate": {
+    "min_trades": 300,
+    "net10_mean_bps_gt": 0,
+    "profit_factor_gt": 1.0,
+    "on_fail": "CLOSE_EXPERIMENT_WITHOUT_OPENING_2024"
+  },
+  "validation_2024_gate": {
+    "min_trades": 150,
+    "net10_mean_bps_gt": 0,
+    "profit_factor_gt": 1.0,
+    "max_single_asset_positive_pnl_share": 0.70,
+    "max_single_quarter_positive_pnl_share": 0.70
+  },
+  "degrees_of_freedom_lock": {
+    "vwap_reset_change": false,
+    "vwap_weight_change": false,
+    "holding_horizon_change": false,
+    "cost_change": false,
+    "asset_selection": false,
+    "indicator_filters": false,
+    "session_filters": false,
+    "post_result_threshold_changes": false
+  },
+  "governance": {
+    "research_only": true,
+    "fail_closed": true,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "merge_to_main": false,
+    "render_deploy": false,
+    "2024_access_before_discovery_pass": false,
+    "2025_access": false,
+    "2026_access": false,
+    "workflow_trigger_authorized": false,
+    "outcome_computation_authorized_by_this_file": false
+  }
+}
