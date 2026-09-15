@@ -12,7 +12,7 @@ on:
       - 'Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001/extract_full_static_provider_coverage_v01.js'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   full-static-route-gate:
@@ -93,8 +93,7 @@ jobs:
           python - <<'PY'
           import json
           p='Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001/source_probe_output_v07/TUE_FULL_STATIC_IDENTITY_MANIFEST_V01.json'
-          d=json.load(open(p))
-          r=d['receipt']
+          d=json.load(open(p)); r=d['receipt']
           assert r['classification']=='PASS_IDENTITY_PREFREEZE'
           assert r['deduplicated_event_count']==332
           assert r['distinct_tokens']==35
@@ -137,6 +136,32 @@ jobs:
           print(json.dumps(r, indent=2, sort_keys=True))
           PY
 
+      - name: Persist source-only receipts on scientific branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001'
+          DEST="$BASE/source_gate_evidence/full_static_latest"
+          mkdir -p "$DEST"
+          cp "$BASE/source_probe_output_v07/TUE_FULL_STATIC_IDENTITY_MANIFEST_V01.json" "$DEST/TUE_FULL_STATIC_IDENTITY_MANIFEST_V01.json"
+          cp "$BASE/source_probe_output_v08/TUE_FULL_STATIC_BINANCE_ROUTE_GATE_V01.json" "$DEST/TUE_FULL_STATIC_BINANCE_ROUTE_GATE_V01.json"
+          python - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+          d=Path('Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001/source_gate_evidence/full_static_latest')
+          files={p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(d.glob('*.json'))}
+          (d/'EVIDENCE_DIGESTS_V01.json').write_text(json.dumps({'lab_id':'TOKEN-UNLOCK-EVENT-001','mode':'SOURCE_ONLY','files_sha256':files,'market_outcomes_opened':False,'year_2025_opened':False,'year_2026_opened':False},indent=2,sort_keys=True)+'\n')
+          PY
+          git config user.name 'crypto-lab-source-gate-bot'
+          git config user.email 'crypto-lab-source-gate-bot@users.noreply.github.com'
+          git add "$DEST"
+          if git diff --cached --quiet; then
+            echo 'Source-only evidence already identical; nothing to commit.'
+          else
+            git commit -m 'TOKEN-UNLOCK-EVENT-001: persist full-static source gate evidence [skip ci]'
+            git push origin HEAD:token-unlock-event-001-source-gate-v01
+          fi
+
       - name: Upload immutable source-only gate evidence
         uses: actions/upload-artifact@v4
         with:
@@ -145,5 +170,6 @@ jobs:
             Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001/source_probe_output_v06/
             Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001/source_probe_output_v07/
             Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001/source_probe_output_v08/
+            Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001/source_gate_evidence/full_static_latest/
           retention-days: 90
           if-no-files-found: error
