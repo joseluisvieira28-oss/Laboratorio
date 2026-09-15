@@ -259,11 +259,19 @@ def freeze_snapshot(
     buys = [t for t in relevant_trades if t["side"] == "buy"]
     sells = [t for t in relevant_trades if t["side"] == "sell"]
 
-    curve_deltas = [
-        int(t["curve_lamport_delta"])
-        for t in relevant_trades
-        if t.get("curve_lamport_delta") is not None
-    ]
+    # A transaction can contain more than one Pump instruction for the same mint.
+    # The bonding-curve lamport delta is transaction-level, so count it once per
+    # (slot, tx_index, signature, mint) to avoid double-counting turnover.
+    curve_delta_by_tx: Dict[Tuple[Any, ...], int] = {}
+    for t in relevant_trades:
+        if t.get("curve_lamport_delta") is None:
+            continue
+        key = (t["slot"], t["transaction_index"], t["signature"], t["mint"])
+        value = int(t["curve_lamport_delta"])
+        if key in curve_delta_by_tx and curve_delta_by_tx[key] != value:
+            raise RuntimeError(f"CURVE_DELTA_INCONSISTENT key={key}")
+        curve_delta_by_tx[key] = value
+    curve_deltas = list(curve_delta_by_tx.values())
     gross_curve_turnover = sum(abs(x) for x in curve_deltas)
     net_curve_inflow = sum(curve_deltas)
 
