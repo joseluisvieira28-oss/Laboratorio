@@ -1,0 +1,98 @@
+name: TFG VWAP 15M Source Recovery
+
+on:
+  push:
+    branches:
+      - tf-gap-vwap-15m-v0.1
+    paths:
+      - '.github/workflows/tfg-vwap-15m-source-recovery.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-recovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    defaults:
+      run:
+        shell: bash
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+
+    steps:
+      - name: Checkout frozen research branch
+        uses: actions/checkout@v4
+        with:
+          ref: tf-gap-vwap-15m-v0.1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install technical dependency only
+        run: python -m pip install --disable-pip-version-check zstandard
+
+      - name: Verify frozen authority before source access
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path('research/timeframe_gap/TFG_VWAP_15M_001_SOURCE_RECOVERY_AMENDMENT_V0.1.json')
+          d = json.loads(p.read_text(encoding='utf-8'))
+          assert d['experiment_id'] == 'TFG-VWAP-15M-001'
+          assert d['status'] == 'FROZEN_BEFORE_REACQUISITION_AND_BEFORE_ANY_VWAP_15M_OUTCOME'
+          assert d['allowed_source']['provider'] == 'Binance'
+          assert d['allowed_source']['market'] == 'USD-M Futures'
+          assert d['allowed_source']['host'] == 'data.binance.vision'
+          assert d['allowed_source']['months'][0] == '2022-01'
+          assert d['allowed_source']['months'][-1] == '2023-12'
+          assert len(d['allowed_source']['months']) == 24
+          assert d['forbidden']['2024_market_data'] is True
+          assert d['forbidden']['2025_market_data'] is True
+          assert d['forbidden']['2026_or_later_market_data'] is True
+          assert d['forbidden']['outcome_evaluation'] is True
+          assert d['outcome_evaluation_authorized'] is False
+          print('AUTHORITY_GATE=PASS')
+          PY
+
+      - name: Official Binance 2022-2023 reacquisition and H180 normalization
+        id: recover
+        continue-on-error: true
+        run: |
+          mkdir -p research/local_data/tfg_vwap_15m_reacquired_raw
+          mkdir -p research/local_data/tfg_vwap_15m_recovered_normalized
+          mkdir -p research/local_data/tfg_vwap_15m_source_gate
+          set +e
+          python -m research.timeframe_gap.tfg_vwap_15m_reacquire_and_normalize_v01 \
+            --raw-root research/local_data/tfg_vwap_15m_reacquired_raw \
+            --normalized-dir research/local_data/tfg_vwap_15m_recovered_normalized \
+            --receipt research/local_data/tfg_vwap_15m_source_gate/TFG_VWAP_15M_OFFICIAL_REACQUISITION_NORMALIZATION_V0.1.json
+          rc=$?
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Upload audit receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfg-vwap-15m-source-recovery-receipt
+          path: Dream-Account-OS-v2.3-PARTIAL/research/local_data/tfg_vwap_15m_source_gate/TFG_VWAP_15M_OFFICIAL_REACQUISITION_NORMALIZATION_V0.1.json
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload reconstructed Discovery normalized packages on PASS
+        if: steps.recover.outputs.rc == '0'
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfg-vwap-15m-recovered-normalized-discovery
+          path: Dream-Account-OS-v2.3-PARTIAL/research/local_data/tfg_vwap_15m_recovered_normalized/H180-0001_NORMALIZED_*.zip
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Preserve fail-closed workflow status
+        if: steps.recover.outputs.rc != '0'
+        run: |
+          echo "Source recovery did not pass; no outcome execution is authorized."
+          exit 1
