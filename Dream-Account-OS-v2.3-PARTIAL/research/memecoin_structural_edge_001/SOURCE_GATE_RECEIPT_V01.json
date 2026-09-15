@@ -1,0 +1,66 @@
+{
+  "lab": "MSEL-001",
+  "version": "0.1",
+  "date": "2026-09-15",
+  "status": "SOURCE_GATE_IN_PROGRESS",
+  "governance": {
+    "research_only": true,
+    "fail_closed": true,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "merge_to_main": false,
+    "post_outcome_tuning": false
+  },
+  "sources": [
+    {
+      "id": "pumpfun_official_docs",
+      "role": "mechanics_and_fee_authority",
+      "status": "PASS_FOR_MECHANICS",
+      "notes": "Authoritative for bonding-curve mechanics, automatic graduation and current fee schedule. Historical fee reconstruction still required by timestamp."
+    },
+    {
+      "id": "memetrans_2026",
+      "role": "feature_taxonomy_and_external_risk_evidence",
+      "status": "QUARANTINE_AS_UNIVERSE",
+      "notes": "Strong feature taxonomy and bundle-level evidence, but universe contains only successfully migrated launches. Cannot serve as sole all-launch Killer Filter universe because of survivorship selection."
+    },
+    {
+      "id": "red_pump_2026_v1_4",
+      "role": "large_launch_metadata_universe",
+      "status": "QUARANTINE_OUTCOME_LABELS",
+      "notes": "v1.4 corrigendum confirms effective observer visibility of only minutes due to top-50 newest buffer. 0.198% is a fast-window lower bound, not a 24h graduation rate. TIMEOUT cannot be used as clean 24h negative label."
+    },
+    {
+      "id": "red_cohort_2026_v1_1_1",
+      "role": "persistent_wallet_cohort_catalogue",
+      "status": "PASS_AS_RESEARCH_INPUT_WITH_CONTROLS",
+      "notes": "Useful for repeated early-wallet structure. Real cohort association with buyer flow was weaker than activity-matched placebo lift, so repeated-wallet membership alone is not causal evidence and requires temporal construction plus launch-quality controls."
+    },
+    {
+      "id": "catching_the_rug_2026",
+      "role": "external_early_rug_detection_evidence",
+      "status": "PASS_AS_EXTERNAL_EVIDENCE_ONLY",
+      "notes": "Reports robust first-five-minute classification on 6.4M Solana tokens and domain-shift effects across PumpFun/Raydium. Must independently reproduce labels, sampling and execution assumptions before treating as edge."
+    },
+    {
+      "id": "meme_coin_factories_2026",
+      "role": "manipulation_taxonomy",
+      "status": "PASS_AS_MECHANISM_EVIDENCE",
+      "notes": "Large-scale pump.fun study identifies wash trading, creator address obfuscation, coordinated sells, copycats and social manipulation; motivates manipulation-specific controls in feature engineering."
+    },
+    {
+      "id": "helius_rpc",
+      "role": "candidate_historical_transaction_reconstruction",
+      "status": "CANDIDATE_NEEDS_ACCESS_TEST",
+      "notes": "Current docs recommend getTransactionsForAddress/getTransaction for new integrations; Enhanced Transactions remains available but is deprecated for new parser development. Need cost/rate-limit/coverage test before binding the lab."
+    }
+  ],
+  "blocking_questions": [
+    "Which source can provide or reconstruct ALL launches with transaction-complete T+5m snapshots?",
+    "Can +24h outcomes be reconstructed independently from the same source without observer-window truncation?",
+    "Can creator/wallet history be computed strictly as-of each launch without future leakage?",
+    "Can historical fee, slippage and latency assumptions be timestamp-correct?",
+    "Can wallet clustering be built using only links known before each decision time?"
+  ],
+  "next_gate": "DATA_SOURCE_BENCHMARK_V01"
+}
