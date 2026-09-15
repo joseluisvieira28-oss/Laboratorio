@@ -1,0 +1,48 @@
+{
+  "lab_id": "TOKEN-UNLOCK-EVENT-001",
+  "mve_id": "TUE-CLIFF-ADV30-001",
+  "status": "FROZEN_PRE_ROUTE_CHECK",
+  "purpose": "Freeze provider-adapter project/token identity before Binance instrument-route testing. Mapping is source-identity based only and must not be changed after route results are observed.",
+  "provider_adapter_to_symbol": {
+    "apecoin.ts": "APE",
+    "aptos.ts": "APT",
+    "arbitrum.ts": "ARB",
+    "celestia.ts": "TIA",
+    "cyberConnect.ts": "CYBER",
+    "dydx.ts": "DYDX",
+    "forta.ts": "FORT",
+    "gmt.ts": "GMT",
+    "immutable.ts": "IMX",
+    "liquity.ts": "LQTY",
+    "optimism.ts": "OP",
+    "pendle.ts": "PENDLE",
+    "perpetual-protocol.ts": "PERP",
+    "pyth.ts": "PYTH",
+    "starknet.ts": "STRK",
+    "sui.ts": "SUI"
+  },
+  "identity_rules": {
+    "provider_adapter_filename_is_project_identity": true,
+    "celestia_raw_token_metadata_may_be_malformed_but_adapter_identity_is_TIA": true,
+    "liquity_2023_snapshot_events_are_quarantined": true,
+    "liquity_2023_quarantine_reason": "2023 snapshot token metadata resolves to LUSD while the target vesting-token identity for the Liquity unlock schedule is LQTY; do not silently relabel ambiguous rows.",
+    "unknown_adapter": "QUARANTINE",
+    "post_result_symbol_remapping": false
+  },
+  "six_mv_candidate_mapping": {
+    "aptos": "APT",
+    "nym": "NYM",
+    "project-galaxy": "GAL",
+    "stepn": "GMT"
+  },
+  "six_mv_status": "CANDIDATE_ONLY_NOT_USED_IN_PROVIDER_ROUTE_GATE_V01_BECAUSE_TIMING_PRECISION_IS_CALENDAR_DATE_ONLY",
+  "guards": {
+    "market_prices_accessed": false,
+    "returns_computed": false,
+    "pnl_computed": false,
+    "year_2025_opened": false,
+    "year_2026_opened": false,
+    "live_trading": false,
+    "exchange_mutation": false
+  }
+}
