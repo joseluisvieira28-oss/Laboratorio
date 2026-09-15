@@ -1,0 +1,95 @@
+name: TOKEN-UNLOCK-EVENT-001 Signal Calibration V0.1
+
+on:
+  push:
+    branches:
+      - token-unlock-event-001-source-gate-v01
+    paths:
+      - '.github/workflows/token-unlock-signal-calibration-v01.yml'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001/FINAL_PRE_DISCOVERY_PROTOCOL_V01.json'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001/calibrate_unlock_pressure_v01.py'
+
+permissions:
+  contents: write
+
+jobs:
+  calibrate-signal-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout scientific branch
+        uses: actions/checkout@v4
+        with:
+          ref: token-unlock-event-001-source-gate-v01
+
+      - name: Verify frozen protocol and outcome-blind guards
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001'
+          test "$(git hash-object "$BASE/FINAL_PRE_DISCOVERY_PROTOCOL_V01.json")" = '143483883d33055a98ecc2ee666d73d4754a6b2c'
+          python -m py_compile "$BASE/calibrate_unlock_pressure_v01.py"
+          grep -q "forward_event_window_prices_accessed.*False" "$BASE/calibrate_unlock_pressure_v01.py"
+          grep -q "returns_computed.*False" "$BASE/calibrate_unlock_pressure_v01.py"
+          grep -q "pnl_computed.*False" "$BASE/calibrate_unlock_pressure_v01.py"
+          grep -q "year_2025_opened.*False" "$BASE/calibrate_unlock_pressure_v01.py"
+          grep -q "year_2026_opened.*False" "$BASE/calibrate_unlock_pressure_v01.py"
+
+      - name: Run causal pre-entry signal calibration only
+        shell: bash
+        run: |
+          set -euo pipefail
+          python Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001/calibrate_unlock_pressure_v01.py
+
+      - name: Audit calibration receipt
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          p='Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001/signal_evidence/TUE_UNLOCK_PRESSURE_CALIBRATION_V01.json'
+          d=json.load(open(p)); r=d['receipt']; g=r['guards']
+          assert r['classification']=='SIGNAL_CALIBRATION_PASS'
+          assert r['signal_resolved_events']>=100
+          assert r['signal_resolved_tokens']>=15
+          assert len(r['signal_resolved_years'])>=2
+          assert r['high_pressure_events']>=40
+          assert r['high_pressure_tokens']>=10
+          assert r['frozen_high_pressure_threshold_unlock_pressure_days'] is not None
+          assert g['only_pre_entry_rows_accessed'] is True
+          assert g['forward_event_window_prices_accessed'] is False
+          assert g['returns_computed'] is False
+          assert g['pnl_computed'] is False
+          assert g['year_2025_opened'] is False
+          assert g['year_2026_opened'] is False
+          print(json.dumps(r,indent=2,sort_keys=True))
+          PY
+
+      - name: Persist threshold before any forward-outcome workflow exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001'
+          FILE="$BASE/signal_evidence/TUE_UNLOCK_PRESSURE_CALIBRATION_V01.json"
+          python - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          p=Path('Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001/signal_evidence/TUE_UNLOCK_PRESSURE_CALIBRATION_V01.json')
+          d=json.loads(p.read_text())
+          receipt={'lab_id':'TOKEN-UNLOCK-EVENT-001','mve_id':'TUE-CLIFF-ADV30-001','classification':d['receipt']['classification'],'threshold':d['receipt']['frozen_high_pressure_threshold_unlock_pressure_days'],'calibration_file_sha256':hashlib.sha256(p.read_bytes()).hexdigest(),'forward_outcomes_opened':False,'returns_computed':False,'pnl_computed':False,'year_2025_opened':False,'year_2026_opened':False}
+          q=p.parent/'TUE_UNLOCK_PRESSURE_THRESHOLD_FREEZE_V01.json'
+          q.write_text(json.dumps(receipt,indent=2,sort_keys=True)+'\n')
+          PY
+          git config user.name 'crypto-lab-signal-freeze-bot'
+          git config user.email 'crypto-lab-signal-freeze-bot@users.noreply.github.com'
+          git add "$BASE/signal_evidence/TUE_UNLOCK_PRESSURE_CALIBRATION_V01.json" "$BASE/signal_evidence/TUE_UNLOCK_PRESSURE_THRESHOLD_FREEZE_V01.json"
+          git commit -m 'TOKEN-UNLOCK-EVENT-001: freeze signal-only pressure threshold [skip ci]'
+          git push origin HEAD:token-unlock-event-001-source-gate-v01
+
+      - name: Upload calibration evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: token-unlock-event-001-signal-calibration-${{ github.run_id }}-${{ github.run_attempt }}
+          path: Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001/signal_evidence/
+          retention-days: 90
+          if-no-files-found: error
