@@ -13,7 +13,7 @@ from dream_account.models import Candle
 from research.phase_b_mexc_discovery_corpus_v01 import PASS_CORPUS_STATUSES, build_discovery_corpus
 from research.phase_b_research_evaluator_v01 import day_block_bootstrap_expectancy
 from research.phase_b_signal_formation_v01 import CostAssumptions
-from research.tfg_pbr01_4h_v01 import LAB_ID, ResearchParameters4H, aggregate_15m_to_4h, classify_discovery_4h, evaluate_universe_4h, records_as_dict_4h, reprice_fixed_cohort_4h
+from research.tfg_pbr01_4h_v01 import FOUR_H_MS, LAB_ID, ResearchParameters4H, aggregate_15m_to_4h, classify_discovery_4h, evaluate_universe_4h, records_as_dict_4h, reprice_fixed_cohort_4h
 
 ROOT = Path(__file__).resolve().parents[1]
 FREEZE_PATH = ROOT / "research" / "TFG_PBR01_4H_PROSPECTIVE_FREEZE_V0.1.json"
@@ -23,6 +23,13 @@ END_MONTH = "2024-12"
 DISCOVERY_START = "2023-02-01T00:00:00.000Z"
 DISCOVERY_END = "2024-12-31T16:00:00.000Z"
 CANONICAL_HEADER = ("open_time_ms", "open", "high", "low", "close", "volume", "close_time_ms")
+EXPECTED_BASE_SCENARIO = "BASE_SENSITIVITY"
+EXPECTED_STRESS_SCENARIO = "STRESS"
+EXPECTED_STRESS_COHORT = "BASE_SENSITIVITY_SELECTED_TFG_PBR01_4H_TRADES"
+EXPECTED_BOOTSTRAP_METHOD = "UTC_CALENDAR_DAY_BLOCK_BOOTSTRAP"
+EXPECTED_BOOTSTRAP_REPETITIONS = 5000
+EXPECTED_BOOTSTRAP_SEED = 230911
+EXPECTED_BOOTSTRAP_CONFIDENCE = 0.95
 
 
 @dataclass(frozen=True)
@@ -79,6 +86,14 @@ def _load_freeze() -> dict[str, Any]:
     d = payload["discovery"]
     if d["start_utc_inclusive"] != DISCOVERY_START or d["end_utc_exclusive"] != DISCOVERY_END or d["minimum_resolved_trades"] != 100:
         raise ValueError("Discovery contract mismatch")
+    costs = payload["costs"]
+    if costs["cohort_selection"] != EXPECTED_BASE_SCENARIO or costs["BASE_SENSITIVITY_round_trip_pct"] != 0.20 or costs["STRESS_round_trip_pct"] != 0.30:
+        raise ValueError("cost contract mismatch")
+    uncertainty = payload["uncertainty"]
+    expected_uncertainty = {"method": EXPECTED_BOOTSTRAP_METHOD, "repetitions": EXPECTED_BOOTSTRAP_REPETITIONS, "seed": EXPECTED_BOOTSTRAP_SEED, "confidence": EXPECTED_BOOTSTRAP_CONFIDENCE}
+    for key, value in expected_uncertainty.items():
+        if uncertainty.get(key) != value:
+            raise ValueError(f"uncertainty contract mismatch:{key}")
     if payload["final_holdout"]["access_allowed_now"] is not False or not payload["future_validation"]["status"].startswith("LOCKED_"):
         raise ValueError("future data firewall mismatch")
     return payload
@@ -117,11 +132,26 @@ def _load_canonical(path: Path, start_ms: int, end_ms: int) -> list[Candle]:
 
 
 def _base_costs() -> CostAssumptions:
-    return CostAssumptions(name="BASE_SENSITIVITY", fee_pct_each_side=0.05, spread_pct=0.05, slippage_pct_each_side=0.025)
+    return CostAssumptions(name=EXPECTED_BASE_SCENARIO, fee_pct_each_side=0.05, spread_pct=0.05, slippage_pct_each_side=0.025)
 
 
 def _stress_costs() -> CostAssumptions:
-    return CostAssumptions(name="STRESS", fee_pct_each_side=0.05, spread_pct=0.10, slippage_pct_each_side=0.05)
+    return CostAssumptions(name=EXPECTED_STRESS_SCENARIO, fee_pct_each_side=0.05, spread_pct=0.10, slippage_pct_each_side=0.05)
+
+
+def _validate_gate_inputs(base_metrics: Any, stress: Any, bootstrap: Any) -> None:
+    if base_metrics.cost_scenario != EXPECTED_BASE_SCENARIO:
+        raise ValueError("base scenario identity mismatch")
+    if stress.cost_scenario != EXPECTED_STRESS_SCENARIO or stress.cohort_source != EXPECTED_STRESS_COHORT:
+        raise ValueError("stress fixed-cohort identity mismatch")
+    if stress.selected_trade_count != base_metrics.selected_trade_count or stress.resolved_trade_count != base_metrics.resolved_trade_count:
+        raise ValueError("stress cohort count mismatch")
+    if bootstrap.method != EXPECTED_BOOTSTRAP_METHOD:
+        raise ValueError("bootstrap method mismatch")
+    if bootstrap.repetitions != EXPECTED_BOOTSTRAP_REPETITIONS or bootstrap.seed != EXPECTED_BOOTSTRAP_SEED:
+        raise ValueError("bootstrap repetitions/seed mismatch")
+    if abs(float(bootstrap.confidence) - EXPECTED_BOOTSTRAP_CONFIDENCE) > 1e-12:
+        raise ValueError("bootstrap confidence mismatch")
 
 
 def run(raw_dir: str | Path, output_dir: str | Path) -> TFG4HReceipt:
@@ -131,6 +161,7 @@ def run(raw_dir: str | Path, output_dir: str | Path) -> TFG4HReceipt:
         return _blocked(f"FREEZE_BINDING:{type(exc).__name__}:{exc}")
     raw_root, output_root = Path(raw_dir), Path(output_dir)
     start_ms, end_ms = _parse_ms(DISCOVERY_START), _parse_ms(DISCOVERY_END)
+    expected_last_4h_open = end_ms - FOUR_H_MS
     corpus_status: dict[str, str] = {}
     source_counts: dict[str, int] = {}
     for symbol in FROZEN_UNIVERSE:
@@ -152,10 +183,10 @@ def run(raw_dir: str | Path, output_dir: str | Path) -> TFG4HReceipt:
             series_15m.extend(_load_canonical(path, start_ms, end_ms))
         if not series_15m:
             return _blocked(f"EMPTY_DISCOVERY_SERIES:{symbol}")
-        possible = len({c.open_time - (c.open_time % (4 * 60 * 60 * 1000)) for c in series_15m})
+        possible = len({c.open_time - (c.open_time % FOUR_H_MS) for c in series_15m})
         derived = aggregate_15m_to_4h(series_15m)
         incomplete_total += max(0, possible - len(derived))
-        if not derived or derived[0].open_time != start_ms or derived[-1].open_time >= end_ms:
+        if not derived or derived[0].open_time != start_ms or derived[-1].open_time != expected_last_4h_open:
             return _blocked(f"4H_BOUNDARY_OR_COVERAGE_FAILURE:{symbol}")
         derived_by_symbol[symbol], derived_counts[symbol] = derived, len(derived)
 
@@ -165,7 +196,8 @@ def run(raw_dir: str | Path, output_dir: str | Path) -> TFG4HReceipt:
     # FIRST 4H OUTCOME INSPECTION POINT.
     base_records, base_metrics = evaluate_universe_4h(derived_by_symbol, parameters, base_costs)
     stress = reprice_fixed_cohort_4h(base_records, stress_costs, min_net_rr=parameters.min_net_rr)
-    bootstrap = day_block_bootstrap_expectancy(base_records, repetitions=5000, seed=230911, confidence=0.95)
+    bootstrap = day_block_bootstrap_expectancy(base_records, repetitions=EXPECTED_BOOTSTRAP_REPETITIONS, seed=EXPECTED_BOOTSTRAP_SEED, confidence=EXPECTED_BOOTSTRAP_CONFIDENCE)
+    _validate_gate_inputs(base_metrics, stress, bootstrap)
     decision = classify_discovery_4h(base_metrics, stress, bootstrap)
 
     output_root.mkdir(parents=True, exist_ok=True)
