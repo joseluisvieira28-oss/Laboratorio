@@ -1,0 +1,146 @@
+{
+  "document_type": "TIMEFRAME_GAP_EXPERIMENT_FREEZE",
+  "experiment_id": "TFG-PBR01-1D-001",
+  "version": "0.1",
+  "created_utc_date": "2026-09-15",
+  "status": "PREFROZEN_NOT_EXECUTED",
+  "priority": 5,
+  "parent_hypothesis": {
+    "setup_id": "PBR01_BREAKOUT_RETEST_LONG",
+    "profile_id": "P00_PRIMARY",
+    "parent_timeframe": "15m",
+    "parent_verdict": "CLOSED_NO_EDGE",
+    "parent_freeze_path": "Dream-Account-OS-v2.3-PARTIAL/research/PHASE_B_PRE_DATA_RESEARCH_FREEZE_V0.1.json",
+    "parent_freeze_blob_sha": "216651324a80c46998feed6850321da88e81cfe8",
+    "parent_closeout_path": "Dream-Account-OS-v2.3-PARTIAL/research/PHASE_B_P00_DISCOVERY_CLOSEOUT_V0.1.json",
+    "parent_closeout_blob_sha": "0693dd4cf335cb955c1cfed5dedc9d472703edbf",
+    "parent_verdict_may_not_be_changed": true
+  },
+  "scientific_question": "Does the exact PBR01 candle-count geometry exhibit positive net expectancy when formed on completed UTC 1D candles instead of completed 15m candles?",
+  "timeframe_transformation": {
+    "target_timeframe": "1D",
+    "policy": "BAR_COUNT_INVARIANT",
+    "source_interval": "15m",
+    "source_candles_per_target_bar": 96,
+    "utc_bucket": "00:00:00Z through 23:59:59.999Z",
+    "complete_bucket_required": true,
+    "incomplete_or_gapped_bucket": "DROP_WHOLE_1D_BUCKET_AND_SPLIT_CONTINUITY",
+    "rationale": "The parent hypothesis is defined explicitly in candle counts. Preserving those counts avoids post-hoc clock-time normalization and tests the same chart-coordinate geometry at daily resolution.",
+    "clock_time_invariance_claimed": false,
+    "parameter_rescaling_allowed": false
+  },
+  "market": {
+    "provider": "MEXC",
+    "market_type": "SPOT",
+    "direction": "LONG_ONLY",
+    "symbols": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "DOGEUSDT"],
+    "timezone": "UTC",
+    "source": "EXACT_PARENT_P00_MEXC_OFFICIAL_HISTORICAL_SPOT_CORPUS_ONLY",
+    "cross_exchange_backfill_allowed": false,
+    "synthetic_prelisting_history_allowed": false,
+    "interpolation_allowed": false,
+    "known_parent_source_rows_per_symbol": 67183,
+    "known_parent_effective_15m_candles_per_symbol": 67151,
+    "known_parent_total_detected_gaps": 36,
+    "known_parent_total_missing_15m_candles": 102,
+    "reference_source_file": "BTC_USDT-Min15-2023-02-01.csv",
+    "reference_source_sha256": "31eff305411e5e5589e53b22e47554c9b50208d372322b19422270bfe5766e25"
+  },
+  "parameters": {
+    "lookback_bars": 96,
+    "atr_length": 14,
+    "zone_atr_fraction": 0.25,
+    "retest_window_bars": 2,
+    "stop_atr_fraction": 0.25,
+    "tp1_r_multiple": 1.0,
+    "tp1_execution_role": "INFORMATIONAL_MILESTONE_ONLY_NO_PARTIAL_EXIT",
+    "tp2_r_multiple": 3.0,
+    "min_net_rr": 2.0,
+    "max_holding_bars": 96,
+    "require_bullish_breakout_body": true
+  },
+  "signal_rules": {
+    "level_source": "MAX_HIGH_OF_STRICTLY_PRIOR_CLOSED_1D_LOOKBACK_CANDLES",
+    "atr_source": "ATR14_FROM_STRICTLY_PRIOR_CLOSED_1D_CANDLES",
+    "zone_high": "resistance",
+    "zone_low": "resistance - 0.25 * ATR_before_breakout",
+    "breakout": "closed 1D candle close > resistance AND close >= open",
+    "retest": "within next 2 closed 1D candles, first zone touch is decisive; low must remain >= zone_low and close >= zone_high",
+    "failed_retest": "first zone touch closing below zone_high OR any low below zone_low before confirmation invalidates setup",
+    "entry": "next 1D candle open after defended retest confirmation",
+    "pre_entry_cancellation": "if next entry open < zone_high, cancel",
+    "stop": "zone_low - 0.25 * ATR_before_breakout",
+    "tp1": "entry + 1.0R",
+    "tp2": "entry + 3.0R",
+    "no_lookahead": true
+  },
+  "execution_semantics": {
+    "one_active_research_trade_per_symbol": true,
+    "new_same_symbol_signal_while_active": "IGNORE",
+    "stop_gap": "EXIT_AT_ADVERSE_OPEN_IF_OPEN_BELOW_STOP",
+    "favorable_gap_above_tp2": "CAP_EXIT_AT_TP2",
+    "same_bar_stop_and_tp2": "STOP_FIRST_CONSERVATIVE",
+    "time_exit": "AFTER_96_COMPLETED_1D_BARS_EXIT_AT_NEXT_1D_BAR_OPEN",
+    "missing_next_bar_for_time_exit": "UNRESOLVED_END_OF_DATA"
+  },
+  "cost_scenarios": [
+    {"name": "FEE_FLOOR", "round_trip_cost_pct": 0.10},
+    {"name": "BASE_SENSITIVITY", "round_trip_cost_pct": 0.20},
+    {"name": "STRESS", "round_trip_cost_pct": 0.30},
+    {"name": "SEVERE", "round_trip_cost_pct": 0.50}
+  ],
+  "data_stages": {
+    "discovery": {
+      "source_start": "2023-02-01T00:00:00Z",
+      "source_end_exclusive": "2024-12-31T16:00:00Z",
+      "daily_aggregation_rule": "ONLY_COMPLETE_UTC_DAYS_FROM_ALREADY_OPEN_PARENT_DISCOVERY_CORPUS",
+      "classification": "EXPLORATORY_TIMEFRAME_EXTENSION_ON_PREVIOUSLY_OPEN_DATA",
+      "status": "AUTHORIZED_ONLY_AFTER_EXACT_PARENT_CORPUS_PROVENANCE_GATE_AND_QUEUE_TURN",
+      "minimum_resolved_trades": 100
+    },
+    "validation_2025": {"status": "LOCKED_UNTIL_DISCOVERY_SURVIVES_AND_SEPARATE_EXPLICIT_AUTHORIZATION"},
+    "holdout_2026": {"status": "LOCKED_REQUIRES_SEPARATE_EXPLICIT_AUTHORIZATION"}
+  },
+  "uncertainty": {
+    "bootstrap": "UTC_CALENDAR_DAY_BLOCK_BOOTSTRAP",
+    "bootstrap_repetitions": 5000,
+    "bootstrap_seed": 230911,
+    "confidence_interval": 0.95
+  },
+  "discovery_survival_gate": [
+    "BASE-selected resolved_trade_count >= 100",
+    "BASE_SENSITIVITY net_expectancy_R > 0",
+    "BASE_SENSITIVITY profit_factor_R > 1",
+    "95% day-block-bootstrap lower bound for BASE_SENSITIVITY net_expectancy_R > 0",
+    "fixed-cohort STRESS net_expectancy_R > 0"
+  ],
+  "degrees_of_freedom_lock": {
+    "sensitivity_profiles_executed": false,
+    "parameter_tuning_after_outcomes": false,
+    "asset_selection_after_outcomes": false,
+    "sample_threshold_reduction_after_outcomes": false,
+    "clock_time_rescaling_after_outcomes": false,
+    "session_filter": null,
+    "trend_filter": null,
+    "volume_filter": null,
+    "indicator_stack": null
+  },
+  "anti_duplication_receipt": {
+    "google_drive_exact_equivalent_found": false,
+    "github_exact_equivalent_found": false,
+    "file_library_exact_equivalent_found": false,
+    "generic_breakout_retest_scanners_treated_as_equivalent": false
+  },
+  "governance": {
+    "research_only": true,
+    "fail_closed": true,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "merge_to_main": false,
+    "render_deploy": false,
+    "2025_access": false,
+    "2026_access": false,
+    "workflow_trigger_authorized": false,
+    "outcome_computation_authorized_by_this_file": false
+  }
+}
