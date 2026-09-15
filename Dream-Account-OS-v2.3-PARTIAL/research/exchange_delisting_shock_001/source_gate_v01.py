@@ -93,13 +93,30 @@ def li_items(body):
         if mm: items.append((mm.group(2),mm.group(1).strip(' -•')))
     return items
 
+def intro_token_items(text):
+    out=[]
+    m=re.search(
+        r'(?is)cease\s+trading\s+on\s+all(?:\s+spot)?\s+trading\s+pairs.*?'
+        r'following\s+token(?:\(s\)|s)?\s+at\s+20\d\d-\d\d-\d\d\s+\d\d:\d\d\s*\(UTC\)\s*:\s*'
+        r'(.*?)(?:Please\s+note\s*:|Please\s+note)',
+        text,
+    )
+    if not m:
+        return out
+    seg=m.group(1)
+    for mm in re.finditer(r'(?m)^\s*([^()\n]{1,100}?)\s*\(([A-Z0-9]{2,15})\)\s*$', seg):
+        name=mm.group(1).strip(' -•\t')
+        if name:
+            out.append((mm.group(2),name))
+    return out
+
 def exact_pairs(text):
-    m=re.search(r'(?is)exact trading pairs being removed are\s*:\s*(.*?)(?:All trade orders|To view your assets|Deposits of|Withdrawals of|Binance Margin|Binance Convert|$)', text)
+    m=re.search(r'(?is)exact\s+trading\s+pairs\s+being\s+removed\s+are\s*:\s*(.*?)(?:All\s+trade\s+orders|To\s+view\s+your\s+assets|Deposits\s+of|Withdrawals\s+of|Binance\s+Margin|Binance\s+Convert|$)', text)
     if not m: return []
     return sorted(set(re.findall(r'\b[A-Z0-9]{2,20}/[A-Z0-9]{2,20}\b',m.group(1))))
 
 def delist_ts(text):
-    m=re.search(r'(?is)cease trading on all trading pairs.{0,450}?\bat\s*(20\d\d-\d\d-\d\d)\s+(\d\d:\d\d)\s*\(UTC\)',text)
+    m=re.search(r'(?is)cease\s+trading\s+on\s+all(?:\s+spot)?\s+trading\s+pairs.{0,700}?\bat\s*(20\d\d-\d\d-\d\d)\s+(\d\d:\d\d)\s*\(UTC\)',text)
     if not m: return None
     return datetime.strptime(m.group(1)+' '+m.group(2),'%Y-%m-%d %H:%M').replace(tzinfo=timezone.utc)
 
@@ -142,19 +159,26 @@ def main():
             title=str(d.get('title') or a.get('title') or '')
             body=str(d.get('body') or '')
             txt=textify(body)
-            stop=delist_ts(txt); pairs=exact_pairs(txt); names=dict(li_items(body))
+            stop=delist_ts(txt); pairs=exact_pairs(txt)
+            names=dict(li_items(body))
+            for sym,name in intro_token_items(txt):
+                names.setdefault(sym,name)
             if pub is None or not (START<=pub<=END): continue
             if stop is None:
                 rejected.append({'article_code':code,'title':title,'reason':'NO_EXACT_ALL_PAIRS_CESSATION_TIMESTAMP'}); continue
-            bases=sorted(set(x.split('/')[0] for x in pairs))
-            if not bases:
+            if not pairs:
                 rejected.append({'article_code':code,'title':title,'reason':'NO_EXACT_TRADING_PAIR_SECTION'}); continue
             digest=hashlib.sha256(raw).hexdigest()
-            evidence=re.search(r'(?is)(.{0,120}cease trading on all trading pairs.{0,450}?\(UTC\))',txt)
+            evidence=re.search(r'(?is)(.{0,120}cease\s+trading\s+on\s+all(?:\s+spot)?\s+trading\s+pairs.{0,700}?\(UTC\))',txt)
             evtext=re.sub(r'\s+',' ',evidence.group(1)).strip() if evidence else None
-            for sym in bases:
-                if sym not in names:
-                    rejected.append({'article_code':code,'symbol':sym,'title':title,'reason':'TOKEN_NAME_NOT_EXACTLY_RESOLVED'}); continue
+            pair_symbols=set()
+            for pair in pairs:
+                left,right=pair.split('/',1)
+                pair_symbols.add(left); pair_symbols.add(right)
+            syms=sorted(sym for sym in names if sym in pair_symbols)
+            if not syms:
+                rejected.append({'article_code':code,'title':title,'reason':'NO_TOKEN_SYMBOL_EXACTLY_RESOLVED_FROM_ARTICLE'}); continue
+            for sym in syms:
                 qualified.append({
                     'article_code':code,'official_url':f'https://www.binance.com/en/support/announcement/detail/{code}',
                     'title':title,'publication_timestamp_utc':pub.isoformat().replace('+00:00','Z'),
