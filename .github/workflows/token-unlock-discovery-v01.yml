@@ -1,0 +1,128 @@
+name: TOKEN-UNLOCK-EVENT-001 Discovery V0.1
+
+on:
+  push:
+    branches:
+      - token-unlock-event-001-source-gate-v01
+    paths:
+      - '.github/workflows/token-unlock-discovery-v01.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  discovery-one-shot:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout scientific branch
+        uses: actions/checkout@v4
+        with:
+          ref: token-unlock-event-001-source-gate-v01
+
+      - name: Verify immutable pre-Discovery authorities
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001'
+          test "$(git hash-object "$BASE/FINAL_PRE_DISCOVERY_PROTOCOL_V01.json")" = '143483883d33055a98ecc2ee666d73d4754a6b2c'
+          test "$(git hash-object "$BASE/signal_evidence/TUE_UNLOCK_PRESSURE_CALIBRATION_V01.json")" = '07bfe7ce6cb19db178b3edb27c4e57fcb54c6d8c'
+          test "$(git hash-object "$BASE/signal_evidence/TUE_UNLOCK_PRESSURE_THRESHOLD_FREEZE_V01.json")" = '38d83218387cad4bfbdc4e7a664c55a7800b3ab3'
+          test "$(git hash-object "$BASE/run_discovery_v01.py")" = '433f12cccbdc91b115482fce9556778d8d127213'
+          python -m py_compile "$BASE/run_discovery_v01.py"
+          python - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          b=Path('Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001')
+          t=json.loads((b/'signal_evidence/TUE_UNLOCK_PRESSURE_THRESHOLD_FREEZE_V01.json').read_text())
+          c=b/'signal_evidence/TUE_UNLOCK_PRESSURE_CALIBRATION_V01.json'
+          p=json.loads((b/'FINAL_PRE_DISCOVERY_PROTOCOL_V01.json').read_text())
+          assert t['classification']=='SIGNAL_CALIBRATION_PASS'
+          assert t['threshold']==1.735808924238034
+          assert hashlib.sha256(c.read_bytes()).hexdigest()==t['calibration_file_sha256']=='21afa04a06a96ad71aa69507762549357694d1e3b44c847e7c0985f43d339cb1'
+          assert t['forward_outcomes_opened'] is False
+          assert t['returns_computed'] is False and t['pnl_computed'] is False
+          assert t['year_2025_opened'] is False and t['year_2026_opened'] is False
+          assert p['authorization']['Discovery_outcomes_authorized_only_after_threshold_receipt_is_persisted_and_static_guards_pass'] is True
+          assert p['protected_period']['2026']=='LOCKED/FORBIDDEN'
+          PY
+
+      - name: Execute frozen Discovery exactly once
+        shell: bash
+        run: |
+          set +e
+          python Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001/run_discovery_v01.py
+          rc=$?
+          echo "DISCOVERY_RC=$rc" >> "$GITHUB_ENV"
+          if [ "$rc" -ne 0 ] && [ "$rc" -ne 5 ]; then
+            echo "Unexpected technical/data execution failure rc=$rc"
+            exit "$rc"
+          fi
+          exit 0
+
+      - name: Audit scientific receipt and firewalls
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          b=Path('Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001/discovery_evidence')
+          p=json.loads((b/'TUE_DISCOVERY_AVAILABILITY_PREFLIGHT_V01.json').read_text())
+          r=json.loads((b/'TUE_DISCOVERY_RESULT_V01.json').read_text())
+          pg=p['receipt']['guards']
+          assert pg['market_price_values_opened'] is False
+          assert pg['returns_computed'] is False and pg['pnl_computed'] is False
+          assert pg['year_2025_opened'] is False and pg['year_2026_opened'] is False
+          classification=r.get('receipt',r).get('classification')
+          assert classification in {'SURVIVES_DISCOVERY','NO_EDGE','INSUFFICIENT_SAMPLE','DATA_FAILURE','TECHNICAL_FAILURE'}
+          if 'receipt' in r:
+            g=r['receipt']['guards']
+            assert g['threshold_changed_after_outcomes'] is False
+            assert g['alternative_horizon_opened'] is False
+            assert g['year_2025_opened'] is False and g['year_2026_opened'] is False
+            assert g['live_trading'] is False and g['exchange_mutation'] is False
+          print(json.dumps({'classification':classification,'availability_preflight':p['receipt'],'receipt':r.get('receipt')},indent=2,sort_keys=True))
+          PY
+
+      - name: Persist Discovery evidence and closeout authority
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001'
+          python - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          b=Path('Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001')
+          result=b/'discovery_evidence/TUE_DISCOVERY_RESULT_V01.json'
+          pre=b/'discovery_evidence/TUE_DISCOVERY_AVAILABILITY_PREFLIGHT_V01.json'
+          d=json.loads(result.read_text()); cls=d.get('receipt',d).get('classification')
+          close={
+            'lab_id':'TOKEN-UNLOCK-EVENT-001','mve_id':'TUE-CLIFF-ADV30-001','classification':cls,
+            'result_sha256':hashlib.sha256(result.read_bytes()).hexdigest(),
+            'availability_preflight_sha256':hashlib.sha256(pre.read_bytes()).hexdigest(),
+            'protocol_git_blob_sha':'143483883d33055a98ecc2ee666d73d4754a6b2c',
+            'threshold_git_blob_sha':'38d83218387cad4bfbdc4e7a664c55a7800b3ab3',
+            'threshold':1.735808924238034,
+            'post_outcome_tuning_performed':False,'year_2025_opened':False,'year_2026_opened':False,
+            'live_trading':False,'exchange_mutation':False,
+            'next_action':('STOP_DISCOVERY_AND_REQUIRE_SEPARATE_EXPLICIT_2025_VALIDATION_AUTHORIZATION' if cls=='SURVIVES_DISCOVERY' else 'CLOSE_EXACT_TESTED_MVE_NO_RESCUE')
+          }
+          (b/'DISCOVERY_CLOSEOUT_OFFICIAL_V01.json').write_text(json.dumps(close,indent=2,sort_keys=True)+'\n')
+          PY
+          git config user.name 'crypto-lab-discovery-bot'
+          git config user.email 'crypto-lab-discovery-bot@users.noreply.github.com'
+          git pull --rebase origin token-unlock-event-001-source-gate-v01
+          git add "$BASE/discovery_evidence/TUE_DISCOVERY_AVAILABILITY_PREFLIGHT_V01.json" "$BASE/discovery_evidence/TUE_DISCOVERY_RESULT_V01.json" "$BASE/DISCOVERY_CLOSEOUT_OFFICIAL_V01.json"
+          git commit -m 'TOKEN-UNLOCK-EVENT-001: Discovery closeout [skip ci]'
+          git push origin HEAD:token-unlock-event-001-source-gate-v01
+
+      - name: Upload immutable Discovery evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: token-unlock-event-001-discovery-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001/discovery_evidence/
+            Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001/DISCOVERY_CLOSEOUT_OFFICIAL_V01.json
+          retention-days: 90
+          if-no-files-found: error
