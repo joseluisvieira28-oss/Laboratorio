@@ -80,6 +80,30 @@ jobs:
           print('SIX_PARENT_MANIFESTS=PASS')
           PY
 
+      - name: Rebuild canonical layer from frozen raw artifact with unchanged Phase-B adapter
+        run: |
+          export PYTHONPATH="$PWD/src:$PWD:${PYTHONPATH:-}"
+          RAW=research/local_data/tfg_pbr01_1d_source_artifact/tfg_pbr01_1d_raw
+          OUT=research/local_data/tfg_pbr01_1d_discovery_canonical
+          MAN=research/local_data/tfg_pbr01_1d_rebuilt_manifests
+          mkdir -p "$OUT" "$MAN"
+          for s in BTCUSDT ETHUSDT SOLUSDT BNBUSDT XRPUSDT DOGEUSDT; do
+            python -m research.phase_b_mexc_discovery_corpus_v01 \
+              "$RAW" --output-dir "$OUT" --symbol "$s" --start-month 2023-02 --end-month 2024-12 \
+              --receipt "$MAN/${s}_MANIFEST.json" > "$MAN/${s}_STDOUT.json"
+          done
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          b=json.loads(Path('research/timeframe_gap/TFG_PBR01_1D_001_EXACT_PARENT_CORPUS_BINDING_V0.1.json').read_text())
+          for s,fp in b['parent_corpus_fingerprint_by_symbol'].items():
+              d=json.loads(Path(f'research/local_data/tfg_pbr01_1d_rebuilt_manifests/{s}_MANIFEST.json').read_text())
+              assert d['fingerprint']==fp,(s,d['fingerprint'],fp)
+          files=list(Path('research/local_data/tfg_pbr01_1d_discovery_canonical/canonical').glob('*.canonical.csv'))
+          assert len(files)==138,len(files)
+          print('REBUILT_CANONICAL_IDENTITY=PASS files=138')
+          PY
+
       - name: Frozen daily aggregation and engine self-test
         run: |
           export PYTHONPATH="$PWD/src:$PWD:${PYTHONPATH:-}"
@@ -93,8 +117,8 @@ jobs:
           mkdir -p research/local_data/tfg_pbr01_1d_discovery
           set +e
           python -m research.tfg_pbr01_1d_discovery_runner_v01 \
-            --canonical-dir research/local_data/tfg_pbr01_1d_source_artifact/tfg_pbr01_1d_canonical \
-            --manifest-dir research/local_data/tfg_pbr01_1d_source_artifact/tfg_pbr01_1d_manifests \
+            --canonical-dir research/local_data/tfg_pbr01_1d_discovery_canonical/canonical \
+            --manifest-dir research/local_data/tfg_pbr01_1d_rebuilt_manifests \
             --binding research/timeframe_gap/TFG_PBR01_1D_001_EXACT_PARENT_CORPUS_BINDING_V0.1.json \
             --output-dir research/local_data/tfg_pbr01_1d_discovery
           rc=$?
