@@ -6,6 +6,7 @@ on:
       - token-unlock-event-001-source-gate-v01
     paths:
       - '.github/workflows/token-unlock-full-static-provider-qualification-v01.yml'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001/extract_full_static_provider_coverage_v01.js'
 
 permissions:
   contents: read
@@ -30,6 +31,13 @@ jobs:
           test "$(sha256sum "$FREEZE" | awk '{print $1}')" = 'f7a818f21d4494cfba877f85d9a3f7de8216d824589a0d221e90fcb152a1b567'
           node --check "$EXTRACT"
           grep -q "SOURCE_ONLY_NETWORK_BLOCK" "$EXTRACT"
+          grep -q "TYPESCRIPT_AST_STATIC_ONLY_NO_ADAPTER_IMPORT" "$EXTRACT"
+          grep -q "candidate_modules_executed: false" "$EXTRACT"
+          grep -q "static_ast_only: true" "$EXTRACT"
+          if grep -Fq 'require(full)' "$EXTRACT"; then
+            echo 'Forbidden candidate-module execution regression detected'
+            exit 1
+          fi
           grep -q "identity_resolution_complete: false" "$EXTRACT"
           grep -q "binance_route_checked: false" "$EXTRACT"
           grep -q "year_2025_opened: false" "$EXTRACT"
@@ -51,8 +59,8 @@ jobs:
           git checkout -q 539e7cf40a4cecc73953f3ae2b196b3fa66ae34a
           test "$(git rev-parse HEAD)" = '539e7cf40a4cecc73953f3ae2b196b3fa66ae34a'
           npm ci --omit=dev --ignore-scripts --silent
-          npm install --no-save --ignore-scripts --silent ts-node@10.9.1 typescript@4.9.5
-          test -x ./node_modules/.bin/ts-node
+          npm install --no-save --ignore-scripts --silent typescript@4.9.5
+          test -d ./node_modules/typescript
 
       - name: Acquire exact immutable March 2024 snapshot and dependencies
         shell: bash
@@ -63,8 +71,8 @@ jobs:
           git checkout -q ad6bcfa961d6f0bd9cd5d589656b8f78daf7be7a
           test "$(git rev-parse HEAD)" = 'ad6bcfa961d6f0bd9cd5d589656b8f78daf7be7a'
           npm ci --omit=dev --ignore-scripts --silent
-          npm install --no-save --ignore-scripts --silent ts-node@10.9.1 typescript@4.9.5
-          test -x ./node_modules/.bin/ts-node
+          npm install --no-save --ignore-scripts --silent typescript@4.9.5
+          test -d ./node_modules/typescript
 
       - name: Materialize full frozen 2023 static coverage source-only
         shell: bash
@@ -73,9 +81,7 @@ jobs:
           BASE="$GITHUB_WORKSPACE/Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001"
           OUT="$BASE/source_probe_output_v06"
           mkdir -p "$OUT"
-          cd /tmp/emissions-2023
-          ./node_modules/.bin/ts-node --transpile-only \
-            "$BASE/extract_full_static_provider_coverage_v01.js" \
+          node "$BASE/extract_full_static_provider_coverage_v01.js" \
             /tmp/emissions-2023 2023-03-17 \
             "$BASE/FULL_STATIC_COVERAGE_QUALIFICATION_FREEZE_V01.json" \
             "$OUT/FULL_STATIC_PROVIDER_2023_V01.json"
@@ -86,9 +92,7 @@ jobs:
           set -euo pipefail
           BASE="$GITHUB_WORKSPACE/Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001"
           OUT="$BASE/source_probe_output_v06"
-          cd /tmp/emissions-2024
-          ./node_modules/.bin/ts-node --transpile-only \
-            "$BASE/extract_full_static_provider_coverage_v01.js" \
+          node "$BASE/extract_full_static_provider_coverage_v01.js" \
             /tmp/emissions-2024 2024-03-25 \
             "$BASE/FULL_STATIC_COVERAGE_QUALIFICATION_FREEZE_V01.json" \
             "$OUT/FULL_STATIC_PROVIDER_2024_V01.json"
@@ -113,7 +117,10 @@ jobs:
             assert r['exact_timestamp_rows_only'] is True
             assert r['identity_resolution_complete'] is False
             assert r['binance_route_checked'] is False
+            assert r['source_evaluation_mode'] == 'TYPESCRIPT_AST_STATIC_ONLY_NO_ADAPTER_IMPORT'
             assert g['runtime_network_block_installed'] is True
+            assert g['candidate_modules_executed'] is False
+            assert g['static_ast_only'] is True
             assert g['dynamic_functions_executed'] is False
             assert g['market_data_accessed'] is False
             assert g['price_data_accessed'] is False
@@ -126,6 +133,7 @@ jobs:
             assert g['exchange_mutation'] is False
             allowed={'INCLUDED_RAW_IDENTITY_PENDING','NO_ELIGIBLE_STATIC_EVENT_IN_WINDOW','DYNAMIC_OR_CONTINUOUS_ONLY','IDENTITY_AMBIGUOUS','SOURCE_CONFLICT','TECHNICAL_FAILURE'}
             assert all(x['disposition'] in allowed for x in d['statuses'])
+            assert all(x.get('candidate_module_executed') is False for x in d['statuses'])
           summary={
             'lab_id':'TOKEN-UNLOCK-EVENT-001','mve_id':'TUE-CLIFF-ADV30-001',
             'mode':'SOURCE_ONLY_FULL_STATIC_COVERAGE_QUALIFICATION_V01',
@@ -133,6 +141,7 @@ jobs:
             'total_frozen_candidate_statuses':len(a['statuses'])+len(b['statuses']),
             'total_raw_identity_events':len(a['events'])+len(b['events']),
             'binance_route_checked':False,'identity_resolution_complete':False,
+            'candidate_modules_executed':False,'static_ast_only':True,
             'market_outcomes_opened':False,'returns_computed':False,'pnl_computed':False,
             'year_2025_opened':False,'year_2026_opened':False,
             'next_action':'Freeze complete identity resolution for every included raw adapter before any Binance route check.'
