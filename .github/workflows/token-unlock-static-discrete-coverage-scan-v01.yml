@@ -1,0 +1,81 @@
+name: TOKEN-UNLOCK-EVENT-001 Static Discrete Coverage Scan V0.1
+
+on:
+  push:
+    branches:
+      - token-unlock-event-001-source-gate-v01
+    paths:
+      - '.github/workflows/token-unlock-static-discrete-coverage-scan-v01.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  static-coverage-scan:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout lab branch
+        uses: actions/checkout@v4
+        with:
+          ref: token-unlock-event-001-source-gate-v01
+
+      - name: Verify scanner guards
+        shell: bash
+        run: |
+          set -euo pipefail
+          SCAN='Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001/scan_historical_provider_static_discrete_v01.py'
+          python -m py_compile "$SCAN"
+          grep -q 'protocol_modules_executed.*False' "$SCAN"
+          grep -q 'schedule_rows_evaluated.*False' "$SCAN"
+          grep -q 'year_2025_opened.*False' "$SCAN"
+          grep -q 'year_2026_opened.*False' "$SCAN"
+          grep -q 'returns_computed.*False' "$SCAN"
+          grep -q 'pnl_computed.*False' "$SCAN"
+
+      - name: Acquire exact immutable snapshots only
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/tue-snapshots
+          git clone --filter=blob:none --no-checkout https://github.com/0xnirmal/emissions-adapters.git /tmp/tue-snapshots/s2023
+          git -C /tmp/tue-snapshots/s2023 checkout --detach 539e7cf40a4cecc73953f3ae2b196b3fa66ae34a
+          test "$(git -C /tmp/tue-snapshots/s2023 rev-parse HEAD)" = '539e7cf40a4cecc73953f3ae2b196b3fa66ae34a'
+
+          git clone --filter=blob:none --no-checkout https://github.com/danaugrs/emissions-adapters.git /tmp/tue-snapshots/s2024
+          git -C /tmp/tue-snapshots/s2024 checkout --detach ad6bcfa961d6f0bd9cd5d589656b8f78daf7be7a
+          test "$(git -C /tmp/tue-snapshots/s2024 rev-parse HEAD)" = 'ad6bcfa961d6f0bd9cd5d589656b8f78daf7be7a'
+
+      - name: Run text-only full protocol coverage scan
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001'
+          OUT="$BASE/source_probe_output_v05"
+          mkdir -p "$OUT"
+          python "$BASE/scan_historical_provider_static_discrete_v01.py" /tmp/tue-snapshots/s2023 2023-03-17 "$OUT/TUE_STATIC_DISCRETE_COVERAGE_2023_V01.json"
+          python "$BASE/scan_historical_provider_static_discrete_v01.py" /tmp/tue-snapshots/s2024 2024-03-25 "$OUT/TUE_STATIC_DISCRETE_COVERAGE_2024_V01.json"
+
+      - name: Fail closed on guard drift
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT='Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001/source_probe_output_v05'
+          for f in "$OUT"/*.json; do
+            grep -q '"protocol_modules_executed": false' "$f"
+            grep -q '"schedule_rows_evaluated": false' "$f"
+            grep -q '"binance_accessed": false' "$f"
+            grep -q '"market_data_accessed": false' "$f"
+            grep -q '"returns_computed": false' "$f"
+            grep -q '"pnl_computed": false' "$f"
+            grep -q '"year_2025_opened": false' "$f"
+            grep -q '"year_2026_opened": false' "$f"
+          done
+
+      - name: Upload coverage-only evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: token-unlock-event-001-static-discrete-coverage-${{ github.run_id }}-${{ github.run_attempt }}
+          path: Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001/source_probe_output_v05/
+          retention-days: 90
+          if-no-files-found: error
