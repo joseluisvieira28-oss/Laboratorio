@@ -1,0 +1,100 @@
+{
+  "document_type": "TIMEFRAME_GAP_DISCOVERY_CLOSEOUT",
+  "experiment_id": "TFG-PBR01-1D-001",
+  "version": "0.1",
+  "closeout_date": "2026-09-15",
+  "classification": "INSUFFICIENT_SAMPLE",
+  "scientific_status": "CLOSED_DISCOVERY_VALIDATION_NOT_UNLOCKED",
+  "source_identity": {
+    "reference_file_sha256_match": true,
+    "exact_parent_corpus_identity_gate": "PASS",
+    "source_recovery_run_id": 35025382064,
+    "source_artifact_id": 10419067320,
+    "source_artifact_digest": "sha256:7b2562af14983d0344c9a28e81e9c1866f2e5e9dfafe94203da9a4ca1ffa36cb",
+    "source_rows_per_symbol": 67183,
+    "effective_15m_candles_per_symbol": 67151,
+    "derived_1d_bars_per_symbol": 697,
+    "total_incomplete_1d_buckets": 18
+  },
+  "discovery_execution": {
+    "successful_run_id": 35025962875,
+    "result_artifact_id": 10419866168,
+    "result_artifact_digest": "sha256:ca672fa00a4ece1ea2de58154a54bfb767bcf6c07f762b6bd7b35d4c37492eeb",
+    "outcome_evaluation_performed": true,
+    "validation_2025_access_performed": false,
+    "holdout_2026_access_performed": false
+  },
+  "technical_execution_note": {
+    "first_run_id": 35025869694,
+    "status": "BLOCKED_PRE_OUTCOME_TECHNICAL_PATH_ERROR",
+    "reason": "canonical files were not included at the initially assumed artifact path",
+    "outcome_evaluation_performed": false,
+    "correction_scope": "rebuild unchanged canonical layer from the already frozen raw artifact and correct read path only",
+    "scientific_parameters_changed": false
+  },
+  "base_metrics": {
+    "raw_geometry_count": 19,
+    "net_rr_rejected_count": 0,
+    "selected_trade_count": 14,
+    "resolved_trade_count": 14,
+    "overlap_skipped_count": 5,
+    "unresolved_trade_count": 0,
+    "net_expectancy_r": 0.36714959503853806,
+    "median_net_r": -1.0,
+    "win_rate": 0.35714285714285715,
+    "loss_rate": 0.6428571428571429,
+    "profit_factor_r": 1.5711215922821704,
+    "tp1_reach_rate": 0.7142857142857143,
+    "same_bar_ambiguity_rate": 0.0,
+    "time_exit_rate": 0.0,
+    "stop_gap_rate": 0.0,
+    "signal_frequency_per_30d": 0.6008583690987125,
+    "symbol_distribution": {
+      "BNBUSDT": 2,
+      "BTCUSDT": 1,
+      "DOGEUSDT": 1,
+      "ETHUSDT": 5,
+      "SOLUSDT": 5
+    }
+  },
+  "bootstrap": {
+    "method": "UTC_CALENDAR_DAY_BLOCK_BOOTSTRAP",
+    "repetitions": 5000,
+    "seed": 230911,
+    "confidence": 0.95,
+    "sample_days": 14,
+    "lower": -0.45989906892994464,
+    "point_estimate": 0.36714959503853806,
+    "upper": 1.4501285675058724
+  },
+  "fixed_cohort_stress_metrics": {
+    "selected_trade_count": 14,
+    "resolved_trade_count": 14,
+    "net_expectancy_r": 0.33865537266144174,
+    "median_net_r": -1.0,
+    "profit_factor_r": 1.5267972463622428,
+    "net_rr_below_minimum_count": 0,
+    "net_rr_violation_rate": 0.0
+  },
+  "decision": {
+    "minimum_required_trades": 100,
+    "resolved_trade_count": 14,
+    "failed_conditions": ["resolved_trade_count_below_100"],
+    "decision_fingerprint": "bf9a20e33d7bba4259fbd4158f44f71dedb5cae797a6ed18d58bcd24dbc828a1",
+    "receipt_fingerprint": "1315bf98612fbb1d7cfb0a77934f3665520038d9fd9d0db89a6f202965470421",
+    "validation_unlock_eligible": false,
+    "live_authorized": false
+  },
+  "interpretation_guardrail": "Positive BASE/STRESS point estimates are descriptive only. The exact experiment remains INSUFFICIENT_SAMPLE because 14 resolved trades is below the prospectively frozen minimum of 100; the bootstrap interval crosses zero substantially. Do not promote, validate, extend the Discovery window, lower the sample threshold, select assets, or tune parameters based on these outcomes.",
+  "governance": {
+    "open_2025": false,
+    "open_2026": false,
+    "post_outcome_tuning": false,
+    "opportunistic_extension": false,
+    "asset_selection": false,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "merge_to_main": false,
+    "render_deploy": false
+  }
+}
