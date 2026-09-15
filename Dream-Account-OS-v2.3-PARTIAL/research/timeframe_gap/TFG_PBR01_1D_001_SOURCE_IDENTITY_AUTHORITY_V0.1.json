@@ -1,0 +1,64 @@
+{
+  "document_type": "TFG_PBR01_1D_SOURCE_IDENTITY_AUTHORITY",
+  "experiment_id": "TFG-PBR01-1D-001",
+  "version": "0.1",
+  "created_date": "2026-09-15",
+  "status": "FROZEN_BEFORE_MASS_REACQUISITION_AND_BEFORE_ANY_1D_OUTCOME_EVALUATION",
+  "official_source": {
+    "provider": "MEXC",
+    "market": "SPOT",
+    "source_interval": "15m",
+    "bulk_partition_timezone": "UTC+08:00",
+    "start_month": "2023-02",
+    "end_month": "2024-12",
+    "symbols": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "DOGEUSDT"],
+    "expected_months_per_symbol": 23,
+    "expected_total_source_files": 138
+  },
+  "reference_byte_identity_gate": {
+    "github_actions_run_id": 35025058583,
+    "artifact_id": 10418763099,
+    "file_name": "BTC_USDT-Min15-2023-02-01.csv",
+    "expected_sha256": "31eff305411e5e5589e53b22e47554c9b50208d372322b19422270bfe5766e25",
+    "observed_sha256": "31eff305411e5e5589e53b22e47554c9b50208d372322b19422270bfe5766e25",
+    "observed_byte_count": 558417,
+    "status": "PASS_REFERENCE_FILE_BYTE_IDENTITY_GATE"
+  },
+  "expected_parent_corpus_fingerprint_by_symbol": {
+    "BTCUSDT": "fba38a205b911fad0494b86174ef06a2d04a5908b0617a27efb74f067f8cf1d9",
+    "ETHUSDT": "5a6433eb8703a9bcd0714fc6485ccc965cf754941ee6c69981158a7f11f36b7f",
+    "SOLUSDT": "db013d47799b99a7c827740cf03c8e7e27b08c317097836143c855f1a51dde9b",
+    "BNBUSDT": "ec43c0ab51dbf80fcde273c7d817b7cf9995e1614dfa5c05de4f664b9880437a",
+    "XRPUSDT": "9b15ebea40555f5d6def5aab65cc5485db8120e0a6fa74f53ac4bb981a004427",
+    "DOGEUSDT": "786a0129a2a7c9b58e2a465383d4849cedc3192e2c24bf8e4474ee709a3323fe"
+  },
+  "expected_parent_aggregate_identity": {
+    "source_rows_per_symbol": 67183,
+    "effective_15m_candles_per_symbol_after_frozen_utc_boundary_reconciliation": 67151,
+    "total_detected_gap_count": 36,
+    "total_missing_candle_count": 102,
+    "months_with_gaps_per_symbol": 2
+  },
+  "mass_reacquisition_gate": {
+    "require_all_138_files_present": true,
+    "require_original_phase_b_adapter_auditor": true,
+    "require_exact_six_corpus_fingerprint_match": true,
+    "require_expected_aggregate_gap_structure": true,
+    "on_any_mismatch": "SOURCE_VERSION_DRIFT_BLOCK_AND_DELETE_REACQUIRED_CORPUS_ARTIFACT_FROM_SCIENTIFIC_USE"
+  },
+  "firewall": {
+    "pbr01_outcome_evaluation_performed": false,
+    "validation_2025_market_bytes_accessed": false,
+    "holdout_2026_market_bytes_accessed": false,
+    "cross_exchange_backfill": false,
+    "api_candle_substitution": false,
+    "synthetic_fill": false,
+    "interpolation": false,
+    "exchange_mutation": false,
+    "orders_submitted": false,
+    "live_trading": false,
+    "merge_to_main": false,
+    "render_deploy": false
+  },
+  "next_authorized_action": "OFFICIAL_MEXC_138_FILE_REACQUISITION_AND_PARENT_CORPUS_IDENTITY_AUDIT_ONLY"
+}
