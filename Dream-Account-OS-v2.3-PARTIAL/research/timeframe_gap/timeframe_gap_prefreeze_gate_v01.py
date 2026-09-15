@@ -16,6 +16,14 @@ MANIFEST = HERE / "TIMEFRAME_GAP_CAMPAIGN_PREFREEZE_V0.1.json"
 PBR_1H = HERE / "TFG_PBR01_1H_001_FREEZE.json"
 VWAP_15M = HERE / "TFG_VWAP_15M_001_FREEZE.json"
 VWAP_30M = HERE / "TFG_VWAP_30M_001_FREEZE.json"
+VWAP_PROVENANCE_AMENDMENT = HERE / "TFG_VWAP_PROVENANCE_AMENDMENT_01.json"
+VWAP_PROVENANCE_PREFLIGHT = HERE / "tfg_vwap_provenance_preflight_v01.py"
+VWAP_PROVENANCE_STATIC_GATE = HERE / "tfg_vwap_provenance_static_gate_v01.py"
+
+HISTORICAL_H180_BUNDLE_FP = "51952d966395e34a0390e1da3063b999c4de68d00a3e0e965e27f6ee58ed01f3"
+ACTIVE_H180_BUNDLE_FP_V2 = "ff8b787d3b27e8daf80574ee35251836c2893e1f7c8eb32b5b6531edabbb1b42"
+H180_MONTHLY_RAW_FP = "e62523e28ab87da27e1aa0f992e94d1b4be461a00ef1d7a1ce807a3740348e8a"
+H180_PROVENANCE_MANIFEST_SHA256 = "14ad215a99d367fdd7dd393cd533aa7c83d78b2dee036ee140dd9c7a1f49c8b3"
 
 
 class FreezeGateError(RuntimeError):
@@ -115,11 +123,48 @@ def _validate_vwap(path: Path, experiment_id: str, target_tf: str, hold_bars: in
     _require(ex.get("holding_horizon") == "4h", f"{experiment_id}: execution horizon changed")
     _require(ex.get("base_roundtrip_cost_bps") == 10, f"{experiment_id}: base cost changed")
     _require(ex.get("stress_roundtrip_cost_bps") == 14, f"{experiment_id}: stress cost changed")
+    market = d.get("market", {})
+    _require(market.get("canonical_fingerprint") == HISTORICAL_H180_BUNDLE_FP,
+             f"{experiment_id}: historical parent fingerprint changed or relabelled")
+    _require(market.get("raw_monthly_fingerprint") == H180_MONTHLY_RAW_FP,
+             f"{experiment_id}: raw source fingerprint changed")
     stages = d.get("data_stages", {})
+    _require(stages.get("discovery", {}).get("status") == "AUTHORIZED_AFTER_PROVENANCE_PREFLIGHT_ONLY",
+             f"{experiment_id}: Discovery provenance gate changed")
     _require(stages.get("internal_oos_2024", {}).get("status") == "LOCKED_UNTIL_DISCOVERY_SURVIVES",
              f"{experiment_id}: 2024 gate changed")
     _require(stages.get("protected_2025", {}).get("status") == "LOCKED", f"{experiment_id}: 2025 lock changed")
     _require(stages.get("locked_2026_onward", {}).get("status") == "LOCKED", f"{experiment_id}: 2026 lock changed")
+
+
+def validate_vwap_provenance_amendment() -> None:
+    d = _load(VWAP_PROVENANCE_AMENDMENT)
+    _require(d.get("document_type") == "TIMEFRAME_GAP_VWAP_PROVENANCE_AMENDMENT",
+             "VWAP provenance amendment type changed")
+    _require(d.get("amendment_id") == "TFG-VWAP-PROVENANCE-AMEND-01",
+             "VWAP provenance amendment ID changed")
+    _require(d.get("status") == "FROZEN_BEFORE_ANY_TFG_VWAP_OUTCOME_EVALUATION",
+             "VWAP provenance amendment must remain pre-outcome")
+    _require(d.get("applies_to") == ["TFG-VWAP-15M-001", "TFG-VWAP-30M-001"],
+             "VWAP provenance amendment scope changed")
+    _require(d.get("historical_h180_bundle_fingerprint") == HISTORICAL_H180_BUNDLE_FP,
+             "historical H180 bundle fingerprint changed")
+    _require(d.get("active_h180_bundle_fingerprint_v2") == ACTIVE_H180_BUNDLE_FP_V2,
+             "active H180 bundle fingerprint V2 changed")
+    _require(d.get("monthly_raw_fingerprint") == H180_MONTHLY_RAW_FP,
+             "H180 raw monthly fingerprint changed")
+    _require(d.get("provenance_manifest_sha256") == H180_PROVENANCE_MANIFEST_SHA256,
+             "H180 provenance-manifest hash changed")
+    _require(d.get("normalized_candles_changed_by_h180_amendment") is False,
+             "normalized-candle immutability claim changed")
+    _require(d.get("event_mask_changed_by_h180_amendment") is True,
+             "H180 event-mask amendment semantics changed")
+    _require(d.get("outcome_computation_authorized") is False,
+             "provenance amendment may not authorize outcomes")
+    _require(d.get("workflow_trigger_authorized") is False,
+             "provenance amendment may not authorize workflows")
+    _require(VWAP_PROVENANCE_PREFLIGHT.exists(), "VWAP provenance preflight checker missing")
+    _require(VWAP_PROVENANCE_STATIC_GATE.exists(), "VWAP provenance static gate missing")
 
 
 def validate_all() -> None:
@@ -127,6 +172,7 @@ def validate_all() -> None:
     validate_pbr_1h()
     _validate_vwap(VWAP_15M, "TFG-VWAP-15M-001", "15m", 16)
     _validate_vwap(VWAP_30M, "TFG-VWAP-30M-001", "30m", 8)
+    validate_vwap_provenance_amendment()
 
 
 if __name__ == "__main__":
