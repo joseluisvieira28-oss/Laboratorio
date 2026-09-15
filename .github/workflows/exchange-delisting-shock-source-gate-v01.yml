@@ -1,0 +1,106 @@
+name: EXCHANGE-DELISTING-SHOCK-001 Source Data Gate V0.1
+
+on:
+  push:
+    branches:
+      - exchange-delisting-shock-v0.1
+    paths:
+      - '.github/workflows/exchange-delisting-shock-source-gate-v01.yml'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/exchange_delisting_shock_001/PRE_SOURCE_PROTOCOL_V01.json'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/exchange_delisting_shock_001/source_gate_v01.py'
+
+permissions:
+  contents: write
+
+jobs:
+  source-data-gate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout scientific branch
+        uses: actions/checkout@v4
+        with:
+          ref: exchange-delisting-shock-v0.1
+
+      - name: Governance and static preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/exchange_delisting_shock_001'
+          python -m py_compile "$BASE/source_gate_v01.py"
+          python - <<'PY'
+          import json
+          p='Dream-Account-OS-v2.3-PARTIAL/research/exchange_delisting_shock_001/PRE_SOURCE_PROTOCOL_V01.json'
+          d=json.load(open(p))
+          assert d['status']=='FROZEN_PRE_SOURCE_OUTCOME_BLIND'
+          assert d['authorization']=='SOURCE_DATA_GATE_ONLY_DISCOVERY_PROHIBITED'
+          assert d['source_event_gate']['minimum_qualified_token_events']==30
+          assert d['source_event_gate']['minimum_distinct_tokens']==15
+          assert d['market_route_preflight']['ohlc_value_access'] is False
+          assert d['market_route_preflight']['return_access'] is False
+          assert d['market_route_preflight']['pnl_access'] is False
+          assert d['protected_period']['2025_access'] is False
+          assert d['protected_period']['2026_access'] is False
+          assert d['hard_firewalls']['live_trading'] is False
+          assert d['hard_firewalls']['exchange_mutation'] is False
+          PY
+          ! grep -Eqi 'zipfile|csv\.reader|pandas|profit.factor|sharpe' "$BASE/source_gate_v01.py"
+
+      - name: Run source and metadata-only market-route gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/exchange_delisting_shock_001'
+          set +e
+          python "$BASE/source_gate_v01.py"
+          rc=$?
+          set -e
+          echo "SOURCE_GATE_RC=$rc" >> "$GITHUB_ENV"
+          test -f "$BASE/source_evidence/EDS_SOURCE_DATA_GATE_V01.json"
+
+      - name: Audit receipt firewalls
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          p='Dream-Account-OS-v2.3-PARTIAL/research/exchange_delisting_shock_001/source_evidence/EDS_SOURCE_DATA_GATE_V01.json'
+          d=json.load(open(p)); r=d['receipt']; g=r['guards']
+          assert r['classification'] in {'SOURCE_DATA_PASS','INSUFFICIENT_SOURCE_SAMPLE','INSUFFICIENT_MARKET_ROUTE_SAMPLE','SOURCE_ACCESS_BLOCKED'}
+          assert g['market_price_values_opened'] is False
+          assert g['returns_computed'] is False
+          assert g['pnl_computed'] is False
+          assert g['year_2025_opened'] is False
+          assert g['year_2026_opened'] is False
+          assert g['live_trading'] is False
+          assert g['exchange_mutation'] is False
+          if r['classification']=='SOURCE_DATA_PASS':
+              assert r['qualified_token_events']>=30
+              assert r['qualified_distinct_tokens']>=15
+              assert {2023,2024}.issubset(set(r['qualified_years']))
+              assert r['route_qualified_token_events']>=30
+              assert r['route_qualified_distinct_tokens']>=15
+              assert {2023,2024}.issubset(set(r['route_qualified_years']))
+          print(json.dumps(r,indent=2,sort_keys=True))
+          PY
+
+      - name: Persist immutable source-gate receipt to branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/exchange_delisting_shock_001'
+          git config user.name 'crypto-lab-source-gate-bot'
+          git config user.email 'crypto-lab-source-gate-bot@users.noreply.github.com'
+          git pull --rebase origin exchange-delisting-shock-v0.1
+          git add "$BASE/source_evidence/EDS_SOURCE_DATA_GATE_V01.json"
+          git diff --cached --quiet && exit 0
+          git commit -m 'EXCHANGE-DELISTING-SHOCK-001: source gate receipt [skip ci]'
+          git push origin HEAD:exchange-delisting-shock-v0.1
+
+      - name: Upload source evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: exchange-delisting-shock-source-gate-${{ github.run_id }}-${{ github.run_attempt }}
+          path: Dream-Account-OS-v2.3-PARTIAL/research/exchange_delisting_shock_001/source_evidence/
+          retention-days: 90
+          if-no-files-found: error
