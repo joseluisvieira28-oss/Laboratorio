@@ -1,0 +1,81 @@
+{
+  "document_type": "TIMEFRAME_GAP_SOURCE_RECOVERY_AMENDMENT",
+  "experiment_id": "TFG-VWAP-15M-001",
+  "version": "0.1",
+  "created_date": "2026-09-15",
+  "status": "FROZEN_BEFORE_REACQUISITION_AND_BEFORE_ANY_VWAP_15M_OUTCOME",
+  "reason": "The previously audited H180 normalized ZIP packages and H180 raw outer archives are no longer present on the local PC. Filename-only recovery diagnostics found zero exact normalized packages and zero raw outer archives. This amendment permits only deterministic source recovery from the same official provider and exact frozen Discovery period before any outcome evaluation.",
+  "allowed_source": {
+    "provider": "Binance",
+    "market": "USD-M Futures",
+    "host": "data.binance.vision",
+    "path_family": "/data/futures/um/monthly/klines/<SYMBOL>/1m/<SYMBOL>-1m-<YYYY-MM>.zip",
+    "integrity_sidecar": "<archive>.CHECKSUM",
+    "symbols": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "DOGEUSDT"],
+    "months": ["2022-01", "2022-02", "2022-03", "2022-04", "2022-05", "2022-06", "2022-07", "2022-08", "2022-09", "2022-10", "2022-11", "2022-12", "2023-01", "2023-02", "2023-03", "2023-04", "2023-05", "2023-06", "2023-07", "2023-08", "2023-09", "2023-10", "2023-11", "2023-12"],
+    "request_method": "GET_ONLY",
+    "authentication": false,
+    "monthly_archive_count": 144,
+    "checksum_sidecar_count": 144
+  },
+  "historical_h180_reproduction_constraints": {
+    "normalization_version": "H180-NORM-1.0.0",
+    "normalization_script_sha256": "8f7b0e0b7582f982f69d231d98a0bed0df7e48b30e622f427cb50cdc8bf579fb",
+    "historical_canonical_fingerprint": "51952d966395e34a0390e1da3063b999c4de68d00a3e0e965e27f6ee58ed01f3",
+    "historical_raw_fingerprint_full_2022_2025": "e62523e28ab87da27e1aa0f992e94d1b4be461a00ef1d7a1ce807a3740348e8a",
+    "source_fields_preserved": 12,
+    "provenance_columns_appended": ["symbol", "interval", "source_archive", "source_csv", "provider_sha256", "source_local_sha256"],
+    "compression": "Zstandard level 6 deterministic single-thread frame with checksum",
+    "imputation": false,
+    "interpolation": false,
+    "synthetic_rows": false,
+    "deduplication": false,
+    "row_order_change": false
+  },
+  "discovery_structure_gate": {
+    "period_start_utc": "2022-01-01T00:00:00Z",
+    "period_end_exclusive_utc": "2024-01-01T00:00:00Z",
+    "expected_total_rows": 6292800,
+    "expected_rows_by_symbol": {
+      "BTCUSDT": 1051200,
+      "ETHUSDT": 1051200,
+      "SOLUSDT": 1044000,
+      "BNBUSDT": 1051200,
+      "XRPUSDT": 1044000,
+      "DOGEUSDT": 1051200
+    },
+    "expected_missing_minutes_total": 14400,
+    "expected_gaps": [
+      {"symbol": "SOLUSDT", "start_ms": 1645833600000, "end_exclusive_ms": 1646092800000, "missing_minutes": 4320},
+      {"symbol": "SOLUSDT", "start_ms": 1648771200000, "end_exclusive_ms": 1648944000000, "missing_minutes": 2880},
+      {"symbol": "XRPUSDT", "start_ms": 1645833600000, "end_exclusive_ms": 1646092800000, "missing_minutes": 4320},
+      {"symbol": "XRPUSDT", "start_ms": 1648771200000, "end_exclusive_ms": 1648944000000, "missing_minutes": 2880}
+    ],
+    "duplicate_timestamps": 0,
+    "invalid_schema_rows": 0,
+    "checksum_failures": 0
+  },
+  "drift_rule": "If current official Binance monthly archives do not reproduce the frozen Discovery row counts and exact historical H180 gap windows, classify SOURCE_VERSION_DRIFT_BLOCKED and stop before any VWAP signal or outcome calculation. Do not fill, delete, interpolate, or otherwise alter provider rows to force historical equivalence.",
+  "fingerprint_rule": "If and only if all 144 provider CHECKSUMs pass and the frozen Discovery structure gate passes, create the 24-month normalized Discovery members with the original H180 normalization contract, compute a new exact Discovery-only source/member fingerprint, and STOP. That fingerprint must be committed prospectively before any VWAP 15m outcome evaluation.",
+  "forbidden": {
+    "2024_market_data": true,
+    "2025_market_data": true,
+    "2026_or_later_market_data": true,
+    "daily_archive_fallback": true,
+    "rest_api_fallback": true,
+    "alternative_provider": true,
+    "cross_exchange_backfill": true,
+    "synthetic_history": true,
+    "outcome_evaluation": true,
+    "vwap_signal_calculation": true,
+    "return_calculation": true,
+    "pnl_calculation": true,
+    "post_outcome_tuning": true,
+    "live_trading": true,
+    "exchange_mutation": true,
+    "orders": true,
+    "merge_to_main": true,
+    "render_deploy": true
+  },
+  "outcome_evaluation_authorized": false
+}
