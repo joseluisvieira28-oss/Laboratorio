@@ -1,0 +1,115 @@
+{
+  "document_type": "TIMEFRAME_GAP_DISCOVERY_CLOSEOUT",
+  "experiment_id": "TFG-EMA-PULLBACK-1D-001",
+  "version": "0.1",
+  "closeout_date": "2026-09-15",
+  "classification": "INSUFFICIENT_SAMPLE",
+  "scientific_status": "CLOSED_DISCOVERY_VALIDATION_NOT_UNLOCKED",
+  "lineage": {
+    "historical_reference": "SIMPLE_TRADING_LAB_V0.1_EMA_PULLBACK",
+    "historical_exact_rule_recovery": "SOURCE_RULE_RECOVERY_BLOCKED",
+    "historical_verdict_changed": false,
+    "this_experiment_is_historical_replication": false,
+    "this_experiment_identity": "NEW_PROSPECTIVE_1D_HYPOTHESIS",
+    "historical_positive_diagnostic_assets_not_selected": ["SOL_4H", "DOGE_4H"]
+  },
+  "source_identity": {
+    "exact_parent_corpus_identity_gate": "PASS",
+    "source_artifact_id": 10419067320,
+    "source_artifact_digest": "sha256:7b2562af14983d0344c9a28e81e9c1866f2e5e9dfafe94203da9a4ca1ffa36cb",
+    "source_rows_per_symbol": 67183,
+    "effective_15m_candles_per_symbol": 67151,
+    "derived_1d_bars_per_symbol": 697,
+    "total_incomplete_1d_buckets": 18
+  },
+  "discovery_execution": {
+    "successful_run_id": 35027570485,
+    "result_artifact_id": 10419913862,
+    "result_artifact_digest": "sha256:75f58177d18c6e51ea1dfb83c5eb0513c04ab1f85d172b9ae91307dfc3ba30e5",
+    "outcome_evaluation_performed": true,
+    "validation_2025_access_performed": false,
+    "holdout_2026_access_performed": false
+  },
+  "frozen_rule_summary": {
+    "timeframe": "1D_UTC",
+    "ema_fast": 20,
+    "ema_slow": 50,
+    "trend_rule": "EMA20 > EMA50",
+    "prior_position_rule": "previous close > previous EMA20",
+    "pullback_rule": "signal low <= signal EMA20",
+    "reclaim_rule": "signal close >= signal EMA20",
+    "signal_body_rule": "signal close > signal open",
+    "entry": "next 1D open",
+    "stop": "signal low - 0.25 ATR14",
+    "target": "2R",
+    "max_hold_bars": 20,
+    "base_round_trip_cost_pct": 0.20,
+    "stress_round_trip_cost_pct": 0.30,
+    "minimum_resolved_trades": 100
+  },
+  "base_metrics": {
+    "raw_trigger_count": 104,
+    "pre_entry_cancelled_count": 0,
+    "selected_trade_count": 75,
+    "resolved_trade_count": 71,
+    "unresolved_trade_count": 4,
+    "overlap_skipped_count": 29,
+    "net_expectancy_r": 0.1538061081279758,
+    "median_net_r": -1.0,
+    "win_rate": 0.4084507042253521,
+    "loss_rate": 0.5915492957746479,
+    "profit_factor_r": 1.2689762795059198,
+    "target_reach_rate": 0.38028169014084506,
+    "same_bar_ambiguity_rate": 0.0,
+    "time_exit_rate": 0.056338028169014086,
+    "stop_gap_rate": 0.0,
+    "signal_frequency_per_30d": 3.218884120171674,
+    "symbol_distribution": {
+      "BNBUSDT": 12,
+      "BTCUSDT": 10,
+      "DOGEUSDT": 11,
+      "ETHUSDT": 12,
+      "SOLUSDT": 16,
+      "XRPUSDT": 10
+    }
+  },
+  "bootstrap": {
+    "method": "UTC_CALENDAR_DAY_BLOCK_BOOTSTRAP",
+    "repetitions": 5000,
+    "seed": 230911,
+    "confidence": 0.95,
+    "sample_days": 58,
+    "lower": -0.17082075768049523,
+    "point_estimate": 0.1538061081279758,
+    "upper": 0.5032177629261336
+  },
+  "fixed_cohort_stress_metrics": {
+    "selected_trade_count": 75,
+    "resolved_trade_count": 71,
+    "unresolved_trade_count": 4,
+    "net_expectancy_r": 0.13254331266322222,
+    "median_net_r": -1.0,
+    "profit_factor_r": 1.2317201110403944
+  },
+  "decision": {
+    "minimum_required_trades": 100,
+    "resolved_trade_count": 71,
+    "failed_conditions": ["resolved_trade_count_below_100"],
+    "decision_fingerprint": "deb401601a5d3b4b7ca01a9912508635cdd611eaac382cf20c3ef9d2c3e93859",
+    "receipt_fingerprint": "dd7a3c9d8178e5652191f7009052eff39a35fd9f2e11e716727f3bfe9dd101fb",
+    "validation_unlock_eligible": false,
+    "live_authorized": false
+  },
+  "interpretation_guardrail": "Positive BASE and STRESS point estimates are descriptive only. The exact experiment remains INSUFFICIENT_SAMPLE because 71 resolved trades is below the prospectively frozen minimum of 100 and the 95% bootstrap interval crosses zero. Do not promote, validate, extend the Discovery window, lower the sample threshold, select assets, or tune EMA/ATR/entry/stop/target/hold rules from these outcomes.",
+  "governance": {
+    "open_2025": false,
+    "open_2026": false,
+    "post_outcome_tuning": false,
+    "opportunistic_extension": false,
+    "asset_selection": false,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "merge_to_main": false,
+    "render_deploy": false
+  }
+}
