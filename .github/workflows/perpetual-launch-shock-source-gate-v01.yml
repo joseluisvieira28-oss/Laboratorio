@@ -1,0 +1,103 @@
+name: PLS Source Data Gate V0.1
+
+on:
+  push:
+    branches:
+      - perpetual-launch-shock-v0.1-source-gate
+
+permissions:
+  contents: write
+
+jobs:
+  source-data-gate:
+    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout scientific branch
+        uses: actions/checkout@v4
+        with:
+          ref: perpetual-launch-shock-v0.1-source-gate
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Frozen authority preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/perpetual_launch_shock_001'
+          python -m py_compile "$BASE/source_gate_v01.py"
+          python - <<'PY'
+          import json
+          p=json.load(open('Dream-Account-OS-v2.3-PARTIAL/research/perpetual_launch_shock_001/PRE_SOURCE_PROTOCOL_V01.json'))
+          assert p['lab_id']=='PERPETUAL-LAUNCH-SHOCK-001'
+          assert p['mve_id']=='PLS-BINANCE-USDTM-LAUNCH-001'
+          assert p['status']=='FROZEN_PRE_SOURCE_OUTCOME_BLIND'
+          assert p['source']['boundary_month']=='2022-12'
+          assert p['source']['research_years']==[2023,2024]
+          assert p['source']['current_exchange_info_allowed'] is False
+          assert p['source']['binance_cms_pagination_allowed'] is False
+          m=p['source_minimums']
+          assert m['qualified_launch_events']==50
+          assert m['distinct_exact_symbols']==40
+          assert m['qualified_events_2023']==15
+          assert m['qualified_events_2024']==15
+          assert p['protected_period']['year_2025_access'] is False
+          assert p['protected_period']['year_2026_access'] is False
+          assert p['hard_firewalls']['live_trading'] is False
+          assert p['hard_firewalls']['exchange_mutation'] is False
+          assert p['hard_firewalls']['merge_to_main'] is False
+          PY
+
+      - name: Execute frozen Source Data Gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/perpetual_launch_shock_001'
+          python "$BASE/source_gate_v01.py"
+          test -f "$BASE/source_evidence/PLS_SOURCE_DATA_GATE_V01.json"
+
+      - name: Audit classification and firewalls
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          p='Dream-Account-OS-v2.3-PARTIAL/research/perpetual_launch_shock_001/source_evidence/PLS_SOURCE_DATA_GATE_V01.json'
+          d=json.load(open(p)); r=d['receipt']; g=r['guards']
+          allowed={'SOURCE_DATA_PASS','SOURCE_ACCESS_BLOCKED','TECHNICAL_OR_DATA_FAILURE','INSUFFICIENT_SOURCE_SAMPLE'}
+          assert r['classification'] in allowed
+          assert g['market_price_values_parsed'] is False
+          assert g['ohlc_parsed'] is False
+          assert g['returns_computed'] is False
+          assert g['pnl_computed'] is False
+          assert g['current_exchange_info_opened'] is False
+          assert g['binance_cms_opened'] is False
+          assert g['year_2025_archive_requested'] is False
+          assert g['year_2026_archive_requested'] is False
+          assert g['live_trading'] is False
+          assert g['exchange_mutation'] is False
+          if r['classification']=='SOURCE_DATA_PASS':
+              assert r['qualified_launch_events']>=50
+              assert r['qualified_distinct_exact_symbols']>=40
+              assert r['qualified_year_counts']['2023']>=15
+              assert r['qualified_year_counts']['2024']>=15
+          print(json.dumps(r,indent=2,sort_keys=True))
+          PY
+
+      - name: Persist immutable Source Gate receipt
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/perpetual_launch_shock_001'
+          git config user.name 'crypto-lab-pls-bot'
+          git config user.email 'crypto-lab-pls-bot@users.noreply.github.com'
+          git add "$BASE/source_evidence/PLS_SOURCE_DATA_GATE_V01.json"
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'PERPETUAL-LAUNCH-SHOCK-001: Source Gate closeout [skip ci]'
+          git pull --rebase origin perpetual-launch-shock-v0.1-source-gate
+          git push origin HEAD:perpetual-launch-shock-v0.1-source-gate
