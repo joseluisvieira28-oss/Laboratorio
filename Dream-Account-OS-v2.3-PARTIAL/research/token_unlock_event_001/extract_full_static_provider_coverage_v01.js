@@ -53,8 +53,13 @@ if (new Set(candidates).size !== candidates.length) throw new Error('duplicate f
 const minTs = cfg.knownAt + 30 * 86400;
 const maxTs = Date.parse('2024-12-31T23:59:59Z') / 1000;
 
+/*
+ * Defense in depth. Candidate adapter modules are NEVER required/imported by this
+ * extractor. The network block stays installed so a future regression fails closed.
+ * SOURCE_ONLY_NETWORK_BLOCK
+ */
 function blockedNetwork() {
-  throw new Error('SOURCE_ONLY_NETWORK_BLOCK: adapter attempted runtime network access');
+  throw new Error('SOURCE_ONLY_NETWORK_BLOCK: runtime network access forbidden');
 }
 global.fetch = blockedNetwork;
 http.request = blockedNetwork;
@@ -65,6 +70,315 @@ https.get = blockedNetwork;
 function sha256(buf) {
   return crypto.createHash('sha256').update(buf).digest('hex');
 }
+
+const typescriptPath = path.join(root, 'node_modules', 'typescript');
+if (!fs.existsSync(typescriptPath)) throw new Error(`typescript dependency missing: ${typescriptPath}`);
+const ts = require(typescriptPath);
+
+function loadPeriodToSeconds() {
+  const p = path.join(root, 'utils', 'time.ts');
+  if (!fs.existsSync(p)) throw new Error(`missing source time authority ${p}`);
+  const raw = fs.readFileSync(p, 'utf8');
+  const keys = ['year', 'month', 'week', 'day', 'hour', 'minute'];
+  const out = {};
+  for (const key of keys) {
+    const m = raw.match(new RegExp(`\\b${key}\\s*:\\s*([0-9_]+)\\b`));
+    if (!m) throw new Error(`periodToSeconds.${key} not statically recoverable`);
+    out[key] = Number(m[1].replace(/_/g, ''));
+    if (!Number.isFinite(out[key]) || out[key] <= 0) throw new Error(`bad periodToSeconds.${key}`);
+  }
+  return {values: out, sha256: sha256(Buffer.from(raw, 'utf8'))};
+}
+const timeAuthority = loadPeriodToSeconds();
+const PERIOD = Object.freeze(timeAuthority.values);
+const PERIOD_MARKER = Object.freeze({__periodToSeconds: true});
+const UNSUPPORTED = Symbol('UNSUPPORTED');
+
+function isUnsupported(v) {
+  return v === UNSUPPORTED;
+}
+function nodeTextNumber(node, sourceFile) {
+  const raw = node.getText(sourceFile).replace(/_/g, '');
+  const v = Number(raw);
+  return Number.isFinite(v) ? v : UNSUPPORTED;
+}
+function propertyNameText(name, sourceFile) {
+  if (!name) return null;
+  if (ts.isIdentifier(name) || ts.isPrivateIdentifier(name)) return name.text;
+  if (ts.isStringLiteralLike(name) || ts.isNumericLiteral(name)) return String(name.text);
+  if (ts.isComputedPropertyName(name)) {
+    const v = evalExpr(name.expression, new Map(), sourceFile, new Set());
+    return (typeof v === 'string' || typeof v === 'number') ? String(v) : null;
+  }
+  return null;
+}
+function unwrap(node) {
+  let n = node;
+  while (n && (
+    ts.isParenthesizedExpression(n) ||
+    ts.isAsExpression(n) ||
+    ts.isTypeAssertionExpression(n) ||
+    ts.isNonNullExpression(n)
+  )) n = n.expression;
+  return n;
+}
+function parseStaticDate(s, format) {
+  if (typeof s !== 'string') return UNSUPPORTED;
+  if (!format) {
+    let text = s;
+    if (/^\d{4}-\d{2}-\d{2}T/.test(text) && !/[zZ]|[+-]\d\d:\d\d$/.test(text)) text += 'Z';
+    const ms = Date.parse(text);
+    return Number.isFinite(ms) ? Math.floor(ms / 1000) : UNSUPPORTED;
+  }
+  const f = String(format).toLowerCase();
+  const val = String(s);
+  const read = (k) => {
+    const a = f.indexOf(k);
+    const b = f.lastIndexOf(k);
+    return a >= 0 && b >= a ? val.substring(a, b + 1) : '';
+  };
+  let y = read('y'), m = read('m'), d = read('d');
+  if (y.length === 2) y = `20${y}`;
+  if (m.length === 1) m = `0${m}`;
+  if (d.length === 1) d = `0${d}`;
+  if (!/^\d{4}$/.test(y) || !/^\d{2}$/.test(m) || !/^\d{2}$/.test(d)) return UNSUPPORTED;
+  const ms = Date.parse(`${y}-${m}-${d}T00:00:00Z`);
+  return Number.isFinite(ms) ? Math.floor(ms / 1000) : UNSUPPORTED;
+}
+
+function collectBindings(sourceFile) {
+  const bindings = new Map();
+  let defaultExport = null;
+  for (const stmt of sourceFile.statements) {
+    if (ts.isVariableStatement(stmt)) {
+      for (const decl of stmt.declarationList.declarations) {
+        if (ts.isIdentifier(decl.name) && decl.initializer) {
+          bindings.set(decl.name.text, {kind: 'expr', node: decl.initializer});
+        }
+      }
+    } else if (ts.isFunctionDeclaration(stmt) && stmt.name) {
+      bindings.set(stmt.name.text, {kind: 'function', node: stmt});
+    } else if (ts.isExportAssignment(stmt) && !stmt.isExportEquals) {
+      defaultExport = stmt.expression;
+    }
+  }
+  return {bindings, defaultExport};
+}
+
+function binaryOp(kind, a, b) {
+  switch (kind) {
+    case ts.SyntaxKind.PlusToken: return (typeof a === 'number' && typeof b === 'number') || (typeof a === 'string' && typeof b === 'string') ? a + b : UNSUPPORTED;
+    case ts.SyntaxKind.MinusToken: return typeof a === 'number' && typeof b === 'number' ? a - b : UNSUPPORTED;
+    case ts.SyntaxKind.AsteriskToken: return typeof a === 'number' && typeof b === 'number' ? a * b : UNSUPPORTED;
+    case ts.SyntaxKind.SlashToken: return typeof a === 'number' && typeof b === 'number' && b !== 0 ? a / b : UNSUPPORTED;
+    case ts.SyntaxKind.PercentToken: return typeof a === 'number' && typeof b === 'number' && b !== 0 ? a % b : UNSUPPORTED;
+    case ts.SyntaxKind.AsteriskAsteriskToken: return typeof a === 'number' && typeof b === 'number' ? a ** b : UNSUPPORTED;
+    default: return UNSUPPORTED;
+  }
+}
+
+function evalFunction(fnNode, args, localEnv, sourceFile, stack) {
+  const env = new Map(localEnv);
+  const params = fnNode.parameters || [];
+  for (let i = 0; i < params.length; i++) {
+    const p = params[i];
+    if (!ts.isIdentifier(p.name)) return UNSUPPORTED;
+    env.set(p.name.text, {kind: 'value', value: i < args.length ? args[i] : undefined});
+  }
+  const body = fnNode.body;
+  if (!body) return UNSUPPORTED;
+  if (!ts.isBlock(body)) return evalExpr(body, env, sourceFile, stack);
+
+  for (const stmt of body.statements) {
+    if (ts.isVariableStatement(stmt)) {
+      for (const decl of stmt.declarationList.declarations) {
+        if (!ts.isIdentifier(decl.name) || !decl.initializer) return UNSUPPORTED;
+        env.set(decl.name.text, {kind: 'expr', node: decl.initializer});
+      }
+      continue;
+    }
+    if (ts.isReturnStatement(stmt) && stmt.expression) {
+      return evalExpr(stmt.expression, env, sourceFile, stack);
+    }
+    if (!ts.isEmptyStatement(stmt)) return UNSUPPORTED;
+  }
+  return UNSUPPORTED;
+}
+
+function evalExpr(inputNode, localEnv, sourceFile, stack) {
+  let node = unwrap(inputNode);
+  if (!node) return UNSUPPORTED;
+
+  if (ts.isNumericLiteral(node)) return nodeTextNumber(node, sourceFile);
+  if (ts.isStringLiteralLike(node)) return node.text;
+  if (node.kind === ts.SyntaxKind.TrueKeyword) return true;
+  if (node.kind === ts.SyntaxKind.FalseKeyword) return false;
+  if (node.kind === ts.SyntaxKind.NullKeyword) return null;
+
+  if (ts.isTemplateExpression(node)) {
+    let out = node.head.text;
+    for (const span of node.templateSpans) {
+      const v = evalExpr(span.expression, localEnv, sourceFile, stack);
+      if (!['string', 'number', 'boolean'].includes(typeof v)) return UNSUPPORTED;
+      out += String(v) + span.literal.text;
+    }
+    return out;
+  }
+  if (ts.isNoSubstitutionTemplateLiteral(node)) return node.text;
+
+  if (ts.isIdentifier(node)) {
+    if (node.text === 'periodToSeconds') return PERIOD_MARKER;
+    const entry = localEnv.get(node.text) || currentBindings.get(node.text);
+    if (!entry) return UNSUPPORTED;
+    if (entry.kind === 'value') return entry.value;
+    if (entry.kind === 'function') return {__staticFunction: true, node: entry.node, env: localEnv};
+    if (entry.kind === 'expr') {
+      const key = entry;
+      if (stack.has(key)) return UNSUPPORTED;
+      stack.add(key);
+      const v = evalExpr(entry.node, localEnv, sourceFile, stack);
+      stack.delete(key);
+      return v;
+    }
+    return UNSUPPORTED;
+  }
+
+  if (ts.isPropertyAccessExpression(node)) {
+    const obj = evalExpr(node.expression, localEnv, sourceFile, stack);
+    if (obj === PERIOD_MARKER) return Object.prototype.hasOwnProperty.call(PERIOD, node.name.text) ? PERIOD[node.name.text] : {__periodMethod: node.name.text};
+    if (obj && typeof obj === 'object' && !Array.isArray(obj) && Object.prototype.hasOwnProperty.call(obj, node.name.text)) return obj[node.name.text];
+    return UNSUPPORTED;
+  }
+
+  if (ts.isElementAccessExpression(node)) {
+    const obj = evalExpr(node.expression, localEnv, sourceFile, stack);
+    const key = evalExpr(node.argumentExpression, localEnv, sourceFile, stack);
+    if ((Array.isArray(obj) || (obj && typeof obj === 'object')) && (typeof key === 'string' || typeof key === 'number')) {
+      return Object.prototype.hasOwnProperty.call(obj, key) ? obj[key] : UNSUPPORTED;
+    }
+    return UNSUPPORTED;
+  }
+
+  if (ts.isPrefixUnaryExpression(node)) {
+    const v = evalExpr(node.operand, localEnv, sourceFile, stack);
+    if (typeof v !== 'number') return UNSUPPORTED;
+    if (node.operator === ts.SyntaxKind.MinusToken) return -v;
+    if (node.operator === ts.SyntaxKind.PlusToken) return +v;
+    return UNSUPPORTED;
+  }
+
+  if (ts.isBinaryExpression(node)) {
+    const a = evalExpr(node.left, localEnv, sourceFile, stack);
+    const b = evalExpr(node.right, localEnv, sourceFile, stack);
+    if (isUnsupported(a) || isUnsupported(b)) return UNSUPPORTED;
+    return binaryOp(node.operatorToken.kind, a, b);
+  }
+
+  if (ts.isConditionalExpression(node)) {
+    const cond = evalExpr(node.condition, localEnv, sourceFile, stack);
+    if (typeof cond !== 'boolean') return UNSUPPORTED;
+    return evalExpr(cond ? node.whenTrue : node.whenFalse, localEnv, sourceFile, stack);
+  }
+
+  if (ts.isArrayLiteralExpression(node)) {
+    const out = [];
+    for (const el of node.elements) {
+      if (ts.isSpreadElement(el)) {
+        const v = evalExpr(el.expression, localEnv, sourceFile, stack);
+        if (!Array.isArray(v)) return UNSUPPORTED;
+        out.push(...v);
+      } else {
+        out.push(evalExpr(el, localEnv, sourceFile, stack));
+      }
+    }
+    return out;
+  }
+
+  if (ts.isObjectLiteralExpression(node)) {
+    const out = {};
+    for (const prop of node.properties) {
+      if (ts.isPropertyAssignment(prop)) {
+        const key = propertyNameText(prop.name, sourceFile);
+        if (key === null) return UNSUPPORTED;
+        out[key] = evalExpr(prop.initializer, localEnv, sourceFile, stack);
+      } else if (ts.isShorthandPropertyAssignment(prop)) {
+        out[prop.name.text] = evalExpr(prop.name, localEnv, sourceFile, stack);
+      } else if (ts.isSpreadAssignment(prop)) {
+        const v = evalExpr(prop.expression, localEnv, sourceFile, stack);
+        if (!v || typeof v !== 'object' || Array.isArray(v) || isUnsupported(v)) return UNSUPPORTED;
+        Object.assign(out, v);
+      } else if (ts.isMethodDeclaration(prop)) {
+        const key = propertyNameText(prop.name, sourceFile);
+        if (key === null) return UNSUPPORTED;
+        out[key] = UNSUPPORTED;
+      } else {
+        return UNSUPPORTED;
+      }
+    }
+    return out;
+  }
+
+  if (ts.isArrowFunction(node) || ts.isFunctionExpression(node)) {
+    return {__staticFunction: true, node, env: localEnv};
+  }
+
+  if (ts.isCallExpression(node)) {
+    const args = node.arguments.map(a => evalExpr(a, localEnv, sourceFile, stack));
+    if (args.some(isUnsupported)) return UNSUPPORTED;
+
+    if (ts.isIdentifier(node.expression)) {
+      const name = node.expression.text;
+      if (name === 'manualCliff') {
+        if (args.length < 2 || !args.slice(0, 2).every(Number.isFinite)) return UNSUPPORTED;
+        return {type: 'cliff', start: args[0], amount: args[1]};
+      }
+      if (name === 'manualStep') {
+        if (args.length < 4 || !args.slice(0, 4).every(Number.isFinite)) return UNSUPPORTED;
+        return {type: 'step', start: args[0], stepDuration: args[1], steps: args[2], amount: args[3]};
+      }
+      if (name === 'readableToSeconds') return parseStaticDate(args[0]);
+      if (name === 'stringToTimestamp') return parseStaticDate(args[0], args[1]);
+      if (name === 'normalizeTime') {
+        if (typeof args[0] === 'number') return args[0];
+        return parseStaticDate(args[0], args[1]);
+      }
+      if (name === 'Number') {
+        const v = Number(args[0]);
+        return Number.isFinite(v) ? v : UNSUPPORTED;
+      }
+      const fn = evalExpr(node.expression, localEnv, sourceFile, stack);
+      if (fn && fn.__staticFunction) return evalFunction(fn.node, args, fn.env || localEnv, sourceFile, stack);
+      return UNSUPPORTED;
+    }
+
+    if (ts.isPropertyAccessExpression(node.expression)) {
+      const owner = evalExpr(node.expression.expression, localEnv, sourceFile, stack);
+      const method = node.expression.name.text;
+      if (owner === PERIOD_MARKER && ['months', 'weeks', 'years', 'days'].includes(method)) {
+        if (args.length !== 1 || !Number.isFinite(args[0])) return UNSUPPORTED;
+        const unit = method.slice(0, -1);
+        return PERIOD[unit] * args[0];
+      }
+      if (ts.isIdentifier(node.expression.expression) && node.expression.expression.text === 'Math') {
+        const x = args[0];
+        if (!Number.isFinite(x)) return UNSUPPORTED;
+        if (method === 'floor') return Math.floor(x);
+        if (method === 'ceil') return Math.ceil(x);
+        if (method === 'round') return Math.round(x);
+        if (method === 'trunc') return Math.trunc(x);
+        return UNSUPPORTED;
+      }
+      if (Array.isArray(owner) && method === 'map' && args.length === 1 && args[0] && args[0].__staticFunction) {
+        return owner.map((v, i) => evalFunction(args[0].node, [v, i, owner], args[0].env || localEnv, sourceFile, stack));
+      }
+      return UNSUPPORTED;
+    }
+    return UNSUPPORTED;
+  }
+
+  return UNSUPPORTED;
+}
+
 function flattenStatic(value) {
   if (Array.isArray(value)) return value.flat(Infinity);
   return [value];
@@ -79,7 +393,7 @@ function asSources(protocol) {
   const raw = protocol && protocol.meta && protocol.meta.sources !== undefined
     ? protocol.meta.sources
     : protocol && protocol.sources;
-  return Array.isArray(raw) ? raw.map(String).filter(Boolean) : [];
+  return Array.isArray(raw) ? raw.filter(x => typeof x === 'string' && x).map(String) : [];
 }
 function tokenRaw(protocol) {
   return protocol && protocol.meta && protocol.meta.token !== undefined
@@ -87,6 +401,7 @@ function tokenRaw(protocol) {
     : protocol && protocol.token;
 }
 
+let currentBindings = new Map();
 const statuses = [];
 const rawRows = [];
 
@@ -109,58 +424,72 @@ for (const file of candidates) {
     static_other_objects_seen: 0,
     dynamic_sections_skipped: 0,
     eligible_event_rows_emitted: 0,
+    static_ast_only: true,
+    candidate_module_executed: false,
   };
 
   try {
     if (!fs.existsSync(full)) throw new Error(`missing frozen source file ${full}`);
     const raw = fs.readFileSync(full);
     status.adapter_sha256 = sha256(raw);
-
-    let loaded = require(full);
-    const protocol = loaded && loaded.default !== undefined ? loaded.default : loaded;
-    if (!protocol || typeof protocol !== 'object') {
+    const sourceText = raw.toString('utf8');
+    const sourceFile = ts.createSourceFile(full, sourceText, ts.ScriptTarget.ES2020, true, ts.ScriptKind.TS);
+    const parsed = collectBindings(sourceFile);
+    currentBindings = parsed.bindings;
+    if (!parsed.defaultExport) {
       status.disposition = 'TECHNICAL_FAILURE';
-      status.reason = 'MODULE_DID_NOT_EXPORT_OBJECT';
+      status.reason = 'NO_DEFAULT_EXPORT';
+      statuses.push(status);
+      continue;
+    }
+    const protocol = evalExpr(parsed.defaultExport, new Map(), sourceFile, new Set());
+    if (!protocol || typeof protocol !== 'object' || Array.isArray(protocol) || isUnsupported(protocol)) {
+      status.disposition = 'TECHNICAL_FAILURE';
+      status.reason = 'DEFAULT_EXPORT_NOT_STATIC_OBJECT';
       statuses.push(status);
       continue;
     }
 
     const tr = tokenRaw(protocol);
-    status.token_raw = tr === undefined || tr === null ? null : String(tr);
+    status.token_raw = tr === undefined || tr === null || isUnsupported(tr) ? null : String(tr);
     status.sources = asSources(protocol);
 
     const rowsBefore = rawRows.length;
     for (const [section, rawValue] of Object.entries(protocol)) {
-      if (['meta', 'token', 'sources', 'categories', 'documented'].includes(section)) continue;
-      if (typeof rawValue === 'function') {
+      if (['meta', 'token', 'sources', 'categories', 'documented', 'protocolId', 'protocolIds', 'notes'].includes(section)) continue;
+      if (isUnsupported(rawValue) || (rawValue && rawValue.__staticFunction)) {
         status.dynamic_sections_skipped += 1;
         continue;
       }
       for (const r of flattenStatic(rawValue)) {
+        if (isUnsupported(r) || (r && r.__staticFunction)) {
+          status.dynamic_sections_skipped += 1;
+          continue;
+        }
         if (!r || typeof r !== 'object') continue;
 
         if (r.type === 'cliff') {
           status.static_cliff_objects_seen += 1;
-          const ts = Number(r.start);
+          const tsValue = Number(r.start);
           const amount = Number(r.amount);
-          if (!Number.isFinite(ts) || !Number.isFinite(amount)) {
+          if (!Number.isFinite(tsValue) || !Number.isFinite(amount)) {
             throw new Error(`BAD_STATIC_CLIFF:${section}`);
           }
-          if (amount <= 0 || ts < minTs || ts > maxTs) continue;
+          if (amount <= 0 || tsValue < minTs || tsValue > maxTs) continue;
           rawRows.push({
             snapshot,
             adapter_id: adapterId,
             file,
             adapter_sha256: status.adapter_sha256,
             token_raw: status.token_raw,
-            timestamp: ts,
-            scheduled_at_utc: new Date(ts * 1000).toISOString(),
+            timestamp: tsValue,
+            scheduled_at_utc: new Date(tsValue * 1000).toISOString(),
             amount,
             section,
             kind: 'cliff',
             sources: status.sources,
             known_at_utc: new Date(cfg.knownAt * 1000).toISOString(),
-            known_lead_days: (ts - cfg.knownAt) / 86400,
+            known_lead_days: (tsValue - cfg.knownAt) / 86400,
             source_repo: cfg.repo,
             source_commit: cfg.commit,
           });
@@ -173,24 +502,24 @@ for (const file of candidates) {
           if (![start, duration, steps, amount].every(Number.isFinite)) {
             throw new Error(`BAD_STATIC_STEP:${section}`);
           }
-          if (amount <= 0 || steps <= 0 || duration <= 0) continue;
+          if (amount <= 0 || steps <= 0 || duration <= 0 || !Number.isInteger(steps)) continue;
           for (let i = 0; i < steps; i++) {
-            const ts = start + (i + 1) * duration;
-            if (ts < minTs || ts > maxTs) continue;
+            const tsValue = start + (i + 1) * duration;
+            if (tsValue < minTs || tsValue > maxTs) continue;
             rawRows.push({
               snapshot,
               adapter_id: adapterId,
               file,
               adapter_sha256: status.adapter_sha256,
               token_raw: status.token_raw,
-              timestamp: ts,
-              scheduled_at_utc: new Date(ts * 1000).toISOString(),
+              timestamp: tsValue,
+              scheduled_at_utc: new Date(tsValue * 1000).toISOString(),
               amount,
               section,
               kind: 'step',
               sources: status.sources,
               known_at_utc: new Date(cfg.knownAt * 1000).toISOString(),
-              known_lead_days: (ts - cfg.knownAt) / 86400,
+              known_lead_days: (tsValue - cfg.knownAt) / 86400,
               source_repo: cfg.repo,
               source_commit: cfg.commit,
             });
@@ -296,8 +625,12 @@ const receipt = {
   exact_timestamp_rows_only: true,
   identity_resolution_complete: false,
   binance_route_checked: false,
+  source_evaluation_mode: 'TYPESCRIPT_AST_STATIC_ONLY_NO_ADAPTER_IMPORT',
+  time_authority_sha256: timeAuthority.sha256,
   guards: {
     runtime_network_block_installed: true,
+    candidate_modules_executed: false,
+    static_ast_only: true,
     dynamic_functions_executed: false,
     market_data_accessed: false,
     price_data_accessed: false,
