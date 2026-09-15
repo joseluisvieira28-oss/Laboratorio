@@ -1,0 +1,46 @@
+{
+  "lab_id": "EXCHANGE-DELISTING-SHOCK-001",
+  "mve_id": "EDS-BINANCE-FULLTOKEN-001",
+  "status": "FROZEN_SOURCE_REMEDIATION_ONLY",
+  "authorization": "SOURCE_DATA_GATE_ONLY_DISCOVERY_PROHIBITED",
+  "historical_v01": {
+    "branch": "exchange-delisting-shock-v0.1",
+    "run_id": 34979744256,
+    "classification_observed_in_job_log": "INSUFFICIENT_SOURCE_SAMPLE",
+    "candidate_title_count": 42,
+    "qualified_token_events": 0,
+    "qualified_distinct_tokens": 0,
+    "receipt_persistence_failure": "git pull --rebase attempted before staging generated receipt",
+    "scientific_interpretation": "NOT_NO_EDGE_SOURCE_EXTRACTION_REMEDIATION_ALLOWED_OUTCOME_BLIND"
+  },
+  "v02_changes_allowed": [
+    "accept Binance wording 'all spot trading pairs' as semantically equivalent full-token delist wording",
+    "extract token name-symbol bullets from newline-preserved CMS text when literal li tags are absent",
+    "persist generated receipt by committing before rebase/push",
+    "add parser diagnostics and rejection counts"
+  ],
+  "scientific_invariants_unchanged": {
+    "event_definition": "Binance full-token spot delisting announcement that ceases all trading pairs for the token",
+    "exclude_pair_only_removals": true,
+    "source_window_start_utc": "2023-01-01T00:00:00Z",
+    "source_window_end_utc": "2024-12-31T23:59:59Z",
+    "minimum_qualified_token_events": 30,
+    "minimum_distinct_tokens": 15,
+    "required_years": [2023, 2024],
+    "market_route": "Binance Spot SYMBOLUSDT 1h Data Vision checksum metadata only",
+    "market_route_minimum_events": 30,
+    "market_route_minimum_distinct_tokens": 15,
+    "entry_boundary_rule": "ceil_hour(publication_timestamp_plus_1h)",
+    "discovery_authorized": false,
+    "market_price_value_access": false,
+    "returns_authorized": false,
+    "pnl_authorized": false,
+    "year_2025_access": false,
+    "year_2026_access": false,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "merge_to_main": false,
+    "post_outcome_tuning": false
+  },
+  "routing": "RUN_V02_SOURCE_DATA_GATE_ONCE_THEN_PRESERVE_CLASSIFICATION_WITHOUT_WEAKENING"
+}
