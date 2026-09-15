@@ -1,0 +1,79 @@
+{
+  "lab_id": "PERPETUAL-LAUNCH-SHOCK-001",
+  "mve_id": "PLS-BINANCE-USDTM-LAUNCH-001",
+  "status": "FROZEN_PRE_SOURCE_OUTCOME_BLIND",
+  "authority_drive_id": "1vymGk1ukapttXMb-1JXxL0mhxnOr2RcLlvSsmmMUBps",
+  "scientific_question": "Does the introduction or re-introduction of a Binance USD-M USDT perpetual contract create a reproducible market-microstructure regime change for a token that already has an exact same-symbol Binance Spot USDT market?",
+  "economic_mechanism": "A new perpetual market changes leverage access, short-sale access, hedging capacity, informed-trading capacity, liquidity competition and price discovery. No bullish or bearish return direction is assumed at Source Gate.",
+  "source": {
+    "primary_authority": "Binance Data Vision historical archive",
+    "universe_route": "S3 delimiter-only CommonPrefixes enumeration at data/futures/um/monthly/klines/",
+    "boundary_month": "2022-12",
+    "research_years": [2023, 2024],
+    "futures_market": "USD-M",
+    "quote_asset": "USDT",
+    "interval": "1m",
+    "spot_mapping": "exact same symbol only",
+    "current_exchange_info_allowed": false,
+    "binance_cms_pagination_allowed": false
+  },
+  "event_construction": {
+    "event_timestamp": "first open_time in earliest available in-window USD-M 1m monthly archive",
+    "boundary_rule": "exclude symbols with a December 2022 USD-M 1m monthly archive; later in-window appearance is treated as introduction or re-introduction",
+    "spot_preexistence_rule": "exact same-symbol Spot USDT archive evidence must prove Spot availability strictly before futures event timestamp",
+    "one_event_per_exact_symbol": true,
+    "synthetic_prefix_mapping_allowed": false,
+    "manual_alias_rescue_allowed": false
+  },
+  "source_minimums": {
+    "qualified_launch_events": 50,
+    "distinct_exact_symbols": 40,
+    "qualified_events_2023": 15,
+    "qualified_events_2024": 15,
+    "all_qualifying_zip_checksums_must_pass": true,
+    "all_qualifying_spot_routes_must_preexist": true
+  },
+  "source_only_fields": [
+    "symbol",
+    "archive identity",
+    "official checksum",
+    "computed sha256",
+    "first open_time",
+    "spot route preexistence timestamp evidence"
+  ],
+  "prohibited_at_source_gate": [
+    "OHLC parsing",
+    "return calculation",
+    "range calculation",
+    "PnL",
+    "funding",
+    "open interest",
+    "taker flow",
+    "outcome inspection",
+    "post-source aliasing",
+    "threshold weakening"
+  ],
+  "protected_period": {
+    "year_2025_access": false,
+    "year_2026_access": false,
+    "no_2025_2026_archive_paths": true,
+    "no_2025_2026_article_metadata": true
+  },
+  "classifications": [
+    "SOURCE_DATA_PASS",
+    "SOURCE_ACCESS_BLOCKED",
+    "TECHNICAL_OR_DATA_FAILURE",
+    "INSUFFICIENT_SOURCE_SAMPLE"
+  ],
+  "post_gate_rule": "If SOURCE_DATA_PASS, STOP before outcomes and freeze a separate final pre-Discovery protocol. If not PASS, preserve the exact classification and do not lower minimums.",
+  "hard_firewalls": {
+    "live_trading": false,
+    "exchange_mutation": false,
+    "orders": false,
+    "alerts_or_webhooks": false,
+    "pnl": false,
+    "merge_to_main": false,
+    "render_deployment": false,
+    "post_outcome_tuning": false
+  }
+}
