@@ -1,0 +1,31 @@
+name: MSEL-001 T5 Account Map V02 Synthetic
+
+on:
+  push:
+    branches:
+      - memecoin-structural-edge-v0.1
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/memecoin_structural_edge_001/pilot/collect_t5_forensics_blockscan_free.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/memecoin_structural_edge_001/pilot/collect_t5_forensics_blockscan_free_v02.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/memecoin_structural_edge_001/pilot/test_t5_accountmap_v02.py'
+      - '.github/workflows/msel-t5-accountmap-v02-synthetic.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/memecoin_structural_edge_001/pilot
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile collectors
+        run: python -m py_compile collect_t5_forensics_blockscan_free.py collect_t5_forensics_blockscan_free_v02.py test_t5_accountmap_v02.py
+      - name: Run account-map synthetic guard
+        run: python test_t5_accountmap_v02.py
