@@ -1,0 +1,40 @@
+name: TFG PBR01 1D Source Route Context V02
+
+on:
+  push:
+    branches:
+      - tf-gap-pbr01-1d-v0.1
+    paths:
+      - '.github/workflows/tfg-pbr01-1d-source-route-context-v02.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  recon:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: bash
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tf-gap-pbr01-1d-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check requests
+      - name: Endpoint context recon only
+        run: |
+          mkdir -p research/local_data/tfg_pbr01_1d_source_recon_v02
+          python -m research.timeframe_gap.tfg_pbr01_1d_mexc_source_route_recon_v01 \
+            --receipt research/local_data/tfg_pbr01_1d_source_recon_v02/TFG_PBR01_1D_MEXC_SOURCE_ROUTE_CONTEXT_V0.2.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tfg-pbr01-1d-source-route-context-v02
+          path: Dream-Account-OS-v2.3-PARTIAL/research/local_data/tfg_pbr01_1d_source_recon_v02/TFG_PBR01_1D_MEXC_SOURCE_ROUTE_CONTEXT_V0.2.json
+          retention-days: 14
