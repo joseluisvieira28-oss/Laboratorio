@@ -1,0 +1,35 @@
+{
+  "schema_version": "TFG_PRIORITY_QUEUE_V0.1",
+  "status": "ORDER_FROZEN_BEFORE_TFG_PBR01_4H_OUTCOME",
+  "date_utc": "2026-09-15",
+  "mission": "Attack material strategy x timeframe coverage gaps one at a time without reopening closed hypotheses or changing priority because of interim outcomes.",
+  "governance": {
+    "one_primary_attack_at_a_time": true,
+    "each_attack_requires_own_pre_outcome_freeze": true,
+    "closed_parent_verdicts_remain_immutable": true,
+    "no_result_based_queue_reordering": true,
+    "integrity_or_true_duplication_can_skip_an_item": true,
+    "skip_requires_written_reason_before_next_outcome": true,
+    "no_2026_access": true,
+    "no_live_trading": true,
+    "no_exchange_mutation": true,
+    "no_merge_to_main": true
+  },
+  "queue": [
+    {"rank": 1, "attack_id": "TFG-PBR01-4H-001", "strategy": "Breakout + Retest / exact P00 geometry", "timeframe": "4H", "priority": "VERY_HIGH", "state": "ACTIVE_FROZEN"},
+    {"rank": 2, "attack_id": "TFG-PBR01-1H-001", "strategy": "Breakout + Retest / exact P00 geometry", "timeframe": "1H", "priority": "HIGH", "state": "QUEUED_NOT_YET_DETAILED"},
+    {"rank": 3, "attack_id": "TFG-VWAP-15M-001", "strategy": "VWAP reclaim/loss", "timeframe": "15m", "priority": "HIGH", "state": "QUEUED_RULE_RECOVERY_REQUIRED"},
+    {"rank": 4, "attack_id": "TFG-VWAP-30M-001", "strategy": "VWAP reclaim/loss", "timeframe": "30m", "priority": "HIGH", "state": "QUEUED_RULE_RECOVERY_REQUIRED"},
+    {"rank": 5, "attack_id": "TFG-PBR01-1D-001", "strategy": "Breakout + Retest / exact P00 geometry", "timeframe": "1D", "priority": "MEDIUM", "state": "QUEUED"},
+    {"rank": 6, "attack_id": "TFG-EMA-PULLBACK-1D-001", "strategy": "EMA Pullback", "timeframe": "1D", "priority": "MEDIUM", "state": "QUEUED_ANTI_DUP_CHECK_REQUIRED"},
+    {"rank": 7, "attack_id": "TFG-DONCHIAN-1D-001", "strategy": "Donchian Breakout", "timeframe": "1D", "priority": "MEDIUM", "state": "QUEUED_ANTI_DUP_CHECK_REQUIRED"},
+    {"rank": 8, "attack_id": "TFG-ATR-IMPULSE-4H-001", "strategy": "ATR Impulse", "timeframe": "4H", "priority": "MEDIUM_LOW", "state": "QUEUED_RULE_RECOVERY_REQUIRED"},
+    {"rank": 9, "attack_id": "TFG-OBV-4H-001", "strategy": "OBV-SMA20", "timeframe": "4H", "priority": "MEDIUM_LOW", "state": "QUEUED_RULE_RECOVERY_REQUIRED"},
+    {"rank": 10, "attack_id": "TFG-EXTREME-MR-30M-001", "strategy": "Extreme Mean Reversion", "timeframe": "30m", "priority": "LOW_MEDIUM", "state": "QUEUED_ANTI_DUP_CHECK_REQUIRED"}
+  ],
+  "separate_future_lab_not_in_this_queue": {
+    "name": "STRUCTURAL_LEVELS_LAB",
+    "scope": ["support bounce", "resistance rejection", "previous-day high/low", "previous-week high/low", "swing high/low", "multiple-touch zones", "support-resistance role reversal", "HTF level to LTF reaction"],
+    "reason": "These are new strategy definitions, not simple timeframe transports, and must remain scientifically separate."
+  }
+}

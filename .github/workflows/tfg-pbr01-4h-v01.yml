@@ -1,0 +1,48 @@
+name: TFG PBR01 4H V0.1
+
+on:
+  pull_request:
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/TFG_PBR01_4H_PROSPECTIVE_FREEZE_V0.1.json'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/TFG_PRIORITY_QUEUE_V0.1.json'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/tfg_pbr01_4h_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/tfg_pbr01_4h_discovery_runner_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_tfg_pbr01_4h_v01.py'
+      - '.github/workflows/tfg-pbr01-4h-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-governance-and-unit-tests:
+    runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: src:.
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compile new TFG modules
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: |
+          python -m py_compile research/tfg_pbr01_4h_v01.py
+          python -m py_compile research/tfg_pbr01_4h_discovery_runner_v01.py
+          python -m py_compile tests/test_tfg_pbr01_4h_v01.py
+      - name: Run isolated TFG tests
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: python -m unittest tests.test_tfg_pbr01_4h_v01 -v
+      - name: Static no-live/no-network scan
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          paths = [Path('research/tfg_pbr01_4h_v01.py'), Path('research/tfg_pbr01_4h_discovery_runner_v01.py')]
+          forbidden = ['requests.', 'httpx.', 'urllib.request', 'create_order', 'place_order', 'cancel_order', 'webhook', '2026-']
+          text = '\n'.join(p.read_text(encoding='utf-8') for p in paths).lower()
+          found = [token for token in forbidden if token.lower() in text]
+          if found:
+              raise SystemExit(f'forbidden capability/token found: {found}')
+          print('NO_LIVE_NO_NETWORK_SCAN_PASS')
+          PY

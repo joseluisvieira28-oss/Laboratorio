@@ -1,0 +1,165 @@
+{
+  "schema_version": "TFG_PBR01_4H_PROSPECTIVE_FREEZE_V0.1",
+  "status": "FROZEN_BEFORE_ANY_4H_OUTCOME_EVALUATION",
+  "date_utc": "2026-09-15",
+  "lab_id": "TFG-PBR01-4H-001",
+  "family_id": "PBR05_TIMEFRAME_TRANSPORT_BREAKOUT_RETEST_LONG_4H",
+  "mode": "RESEARCH_ONLY_EXPLORATORY_DISCOVERY",
+  "scientific_position": {
+    "parent_hypothesis": "P00_PRIMARY / PBR01_BREAKOUT_RETEST_LONG",
+    "parent_verdict": "CLOSED_NO_EDGE",
+    "parent_verdict_immutable": true,
+    "relationship": "NEW_PROSPECTIVE_TIMEFRAME_EXTENSION_AFTER_PARENT_OUTCOME",
+    "not_a_parent_rescue": true,
+    "not_independent_confirmation": true,
+    "question": "Does the exact frozen P00 breakout/retest geometry exhibit economically positive and statistically stable behaviour when transported from 15m bars to completed 4H UTC bars without changing any non-timeframe trading parameter?",
+    "only_intended_strategy_change": "TIMEFRAME_15M_TO_4H"
+  },
+  "anti_duplication": {
+    "drive_file_library_github_checked": true,
+    "canonical_pbr01_4h_test_found": false,
+    "generic_ced_htf_range_breakouts_are_not_equivalent": true,
+    "reason": "PBR01 requires breakout close, bounded defended retest, next-bar-open entry, explicit ATR zone/stop, 3R target and net-RR gating; prior HTF range-breakout labs did not test this exact geometry."
+  },
+  "source_contract": {
+    "venue": "MEXC_SPOT",
+    "direction": "LONG_ONLY",
+    "raw_research_source": "EXISTING_AUDITED_OFFICIAL_MEXC_15M_CANONICAL_CORPUS",
+    "symbols": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "DOGEUSDT"],
+    "input_timeframe": "15m",
+    "derived_timeframe": "4h",
+    "time_basis": "UTC",
+    "cross_exchange_backfill_allowed": false,
+    "interpolation_allowed": false,
+    "synthetic_missing_candles_allowed": false,
+    "open_or_incomplete_candles_allowed": false
+  },
+  "aggregation_15m_to_4h": {
+    "bucket_anchor_utc_hours": [0, 4, 8, 12, 16, 20],
+    "required_15m_candles_per_bucket": 16,
+    "require_exact_contiguous_15m_spacing": true,
+    "require_all_16_closed_candles": true,
+    "open": "FIRST_15M_OPEN",
+    "high": "MAX_15M_HIGH",
+    "low": "MIN_15M_LOW",
+    "close": "LAST_15M_CLOSE",
+    "volume": "SUM_15M_VOLUME",
+    "open_time": "UTC_4H_BUCKET_START",
+    "close_time": "LAST_15M_CLOSE_TIME",
+    "incomplete_or_gapped_bucket": "DATA_UNAVAILABLE_DROP_BUCKET_AND_SPLIT_CONTIGUITY",
+    "setup_may_span_gap": false
+  },
+  "primary_parameters": {
+    "timeframe": "4h",
+    "lookback_bars": 96,
+    "atr_length": 14,
+    "zone_atr_fraction": 0.25,
+    "retest_window_bars": 2,
+    "stop_atr_fraction": 0.25,
+    "tp1_r_multiple": 1.0,
+    "tp1_management": "INFORMATIONAL_ONLY_NO_PARTIAL_EXIT",
+    "tp2_r_multiple": 3.0,
+    "minimum_net_rr": 2.0,
+    "max_holding_bars": 96,
+    "require_bullish_breakout_body": true,
+    "parameter_transport_semantics": "SAME_NUMERIC_BAR_COUNTS_AS_P00_NOT_WALL_CLOCK_NORMALIZED"
+  },
+  "geometry": {
+    "resistance": "MAX_HIGH_OF_STRICTLY_PRIOR_96_COMPLETED_4H_BARS",
+    "atr": "ATR14_FROM_STRICTLY_PRIOR_COMPLETED_4H_BARS",
+    "zone_high": "RESISTANCE",
+    "zone_low": "RESISTANCE_MINUS_0.25_ATR",
+    "breakout": "COMPLETED_4H_CLOSE_GT_RESISTANCE_AND_CLOSE_GTE_OPEN",
+    "wick_only": "NO_SIGNAL",
+    "retest": "WITHIN_NEXT_2_COMPLETED_4H_BARS_FIRST_ZONE_TOUCH_IS_DECISIVE",
+    "defended_retest": "LOW_GTE_ZONE_LOW_AND_LOW_LTE_ZONE_HIGH_AND_CLOSE_GTE_ZONE_HIGH",
+    "pre_confirmation_low_below_zone_low": "INVALIDATE",
+    "first_zone_touch_close_below_zone_high": "INVALIDATE",
+    "entry": "NEXT_4H_BAR_OPEN_AFTER_DEFENDED_RETEST",
+    "entry_open_below_zone_high": "CANCEL",
+    "stop": "ZONE_LOW_MINUS_0.25_ATR_BEFORE_BREAKOUT",
+    "tp1": "ENTRY_PLUS_1R",
+    "tp2": "ENTRY_PLUS_3R",
+    "future_information_allowed": false
+  },
+  "trade_sampling_and_ohlc": {
+    "one_active_trade_per_symbol": true,
+    "same_symbol_signal_while_active": "IGNORE",
+    "cross_symbol_overlap": "ALLOWED_SIGNAL_LEVEL_ONLY",
+    "stop_and_tp2_same_bar": "STOP_WINS",
+    "adverse_gap_through_stop": "EXIT_AT_ADVERSE_OPEN",
+    "favorable_gap_above_tp2": "CAP_AT_TP2",
+    "max_hold_exit": "NEXT_BAR_OPEN",
+    "missing_next_bar_at_time_exit": "UNRESOLVED_END_OF_DATA"
+  },
+  "costs": {
+    "cohort_selection": "BASE_SENSITIVITY",
+    "BASE_SENSITIVITY_round_trip_pct": 0.20,
+    "BASE_components": {
+      "fee_pct_each_side": 0.05,
+      "spread_pct": 0.05,
+      "slippage_pct_each_side": 0.025
+    },
+    "STRESS_round_trip_pct": 0.30,
+    "STRESS_components": {
+      "fee_pct_each_side": 0.05,
+      "spread_pct": 0.10,
+      "slippage_pct_each_side": 0.05
+    },
+    "stress_reprices_same_base_selected_cohort": true,
+    "fee_reduction_rescue_allowed": false
+  },
+  "discovery": {
+    "source_status": "ALREADY_OPEN_PARENT_DISCOVERY_CORPUS_REUSED_AS_EXPLORATORY_DATA_ONLY",
+    "start_utc_inclusive": "2023-02-01T00:00:00.000Z",
+    "end_utc_exclusive": "2024-12-31T16:00:00.000Z",
+    "minimum_resolved_trades": 100,
+    "below_minimum": "INSUFFICIENT_SAMPLE",
+    "no_opportunistic_extension": true
+  },
+  "uncertainty": {
+    "method": "UTC_CALENDAR_DAY_BLOCK_BOOTSTRAP",
+    "repetitions": 5000,
+    "seed": 230911,
+    "confidence": 0.95
+  },
+  "discovery_survival_policy": {
+    "all_required": true,
+    "minimum_sample_met": true,
+    "base_net_expectancy_r_gt": 0.0,
+    "base_profit_factor_r_gt": 1.0,
+    "bootstrap_lower_95_bound_gt": 0.0,
+    "fixed_cohort_stress_net_expectancy_r_gt": 0.0,
+    "failure": "NO_EDGE",
+    "no_sensitivity_rescue": true,
+    "no_parameter_edits_after_outcomes": true
+  },
+  "future_validation": {
+    "status": "LOCKED_UNTIL_4H_DISCOVERY_SURVIVES_AND_SEPARATE_EXPLICIT_AUTHORIZATION",
+    "preferred_unopened_target_venue_period": {
+      "start_utc_inclusive": "2025-09-01T00:00:00.000Z",
+      "end_utc_exclusive": "2025-12-31T16:00:00.000Z",
+      "minimum_resolved_trades": 30
+    },
+    "note": "2025-01 through 2025-08 was already opened for the separate H01 line and is not reserved as virgin validation for this new 4H extension."
+  },
+  "final_holdout": {
+    "period": "2026_PLUS",
+    "status": "LOCKED",
+    "access_allowed_now": false,
+    "separate_explicit_authorization_required": true
+  },
+  "hard_firewalls": {
+    "live_trading": false,
+    "exchange_mutation": false,
+    "orders": false,
+    "alerts_or_webhooks": false,
+    "merge_to_main": false,
+    "render_deployment": false,
+    "post_outcome_tuning": false,
+    "cherry_picking_assets_or_periods": false,
+    "p00_reclassification": false
+  },
+  "stop_rule": "STOP_AFTER_4H_DISCOVERY_CLASSIFICATION. DO_NOT_OPEN_VALIDATION_OR_2026_AUTOMATICALLY.",
+  "next_priority_if_closed": "TFG-PBR01-1H-001 remains next in the predeclared timeframe-gap queue; its exact protocol must be frozen before its own outcomes are inspected."
+}
