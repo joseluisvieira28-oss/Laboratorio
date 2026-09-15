@@ -1,0 +1,54 @@
+{
+  "document_type": "TIMEFRAME_GAP_DISCOVERY_CLOSEOUT",
+  "experiment_id": "TFG-VWAP-30M-001",
+  "version": "0.1",
+  "closeout_date": "2026-09-15",
+  "classification": "NO_EDGE",
+  "source_binding": {
+    "frozen_discovery_source_member_fingerprint": "aa6083e8302fde760a1b78340d8b15f34d3e469f0726b4418d8d1a95b75b6b24",
+    "source_artifact_run_id": 35020214067,
+    "source_artifact_id": 10417870434
+  },
+  "discovery_execution": {
+    "github_actions_run_id": 35022092922,
+    "result_artifact_id": 10417064509,
+    "result_artifact_digest": "sha256:98fd6bd3afc04db742e239a9d369e10119706dd06a437c19824cd58e1d229d84",
+    "period": "2022-01-01 through 2023-12-31 UTC",
+    "resolved_trades": 12820,
+    "minimum_required_trades": 300,
+    "sample_gate_pass": true
+  },
+  "metrics": {
+    "gross_mean_bps": -5.721305892537438,
+    "net10_mean_bps": -15.721305892537435,
+    "net14_mean_bps": -19.721305892537437,
+    "profit_factor_net10": 0.7365453980797395,
+    "profit_factor_net14": 0.6818871743862239,
+    "win_rate_net10": 0.42886115444617784,
+    "bootstrap_day_net10_mean_ci95_low_bps": -20.292272992339313,
+    "bootstrap_day_net10_mean_ci95_high_bps": -11.268694765381676
+  },
+  "robustness_diagnostics": {
+    "all_six_assets_net10_negative": true,
+    "all_six_assets_pf_net10_below_1": true,
+    "all_eight_calendar_quarters_net10_negative": true
+  },
+  "failed_frozen_gates": [
+    "net10_mean_bps_gt_0",
+    "profit_factor_net10_gt_1"
+  ],
+  "firewalls": {
+    "internal_oos_2024_access_performed": false,
+    "internal_oos_2024_unlock_eligible": false,
+    "protected_2025_access_performed": false,
+    "locked_2026_access_performed": false,
+    "exchange_mutation_performed": false,
+    "orders_submitted": false,
+    "live_trading_authorized": false,
+    "merge_to_main_authorized": false,
+    "render_deploy_authorized": false,
+    "post_outcome_tuning_authorized": false
+  },
+  "decision": "Close exact TFG-VWAP-30M-001 hypothesis. Do not open 2024. Do not rescue by changing VWAP rule, costs, holding horizon, universe, filters, direction, or thresholds.",
+  "next_action": "Advance to next predeclared independent timeframe-gap queue item; do not reopen TFG-VWAP-15M-001 or TFG-VWAP-30M-001."
+}
