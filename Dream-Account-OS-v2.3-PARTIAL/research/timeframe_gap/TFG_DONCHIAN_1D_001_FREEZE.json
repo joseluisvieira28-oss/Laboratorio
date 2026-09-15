@@ -1,0 +1,132 @@
+{
+  "document_type": "TIMEFRAME_GAP_NEW_PROSPECTIVE_HYPOTHESIS_FREEZE",
+  "experiment_id": "TFG-DONCHIAN-1D-001",
+  "version": "0.1",
+  "created_utc_date": "2026-09-16",
+  "status": "FROZEN_BEFORE_ANY_EXPERIMENT_OUTCOME_EVALUATION",
+  "repository": "joseluisvieira28-oss/Laboratorio",
+  "branch": "tf-gap-donchian-1d-v0.1",
+  "scientific_question": "Does a simple long-only 20-day Donchian closing breakout on complete UTC daily crypto spot candles produce positive net expectancy after frozen realistic costs?",
+  "lineage": {
+    "historical_reference": "SIMPLE_TRADING_LAB_V0.1_DONCHIAN_BREAKOUT",
+    "historical_scope": "1H_AND_4H_ONLY",
+    "historical_exact_rule_recovery": "SOURCE_RULE_RECOVERY_BLOCKED",
+    "historical_verdict_immutable": true,
+    "this_experiment_is_historical_replication": false,
+    "this_experiment_identity": "NEW_PROSPECTIVE_1D_HYPOTHESIS",
+    "historical_positive_diagnostic_assets_not_selected": ["DOGE_4H", "BNB_4H", "SOL_4H", "XRP_4H"],
+    "anti_cherry_pick_universe_rule": "FULL_SIX_ASSET_UNIVERSE_REQUIRED"
+  },
+  "market": {
+    "exchange": "MEXC_SPOT",
+    "direction": "LONG_ONLY",
+    "source_timeframe": "15m",
+    "derived_timeframe": "1D_UTC",
+    "universe": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "DOGEUSDT"]
+  },
+  "daily_aggregation": {
+    "rule": "EXACTLY_96_CONTIGUOUS_15M_CANDLES_PER_UTC_DAY",
+    "bucket_anchor": "00:00:00_UTC",
+    "open": "FIRST",
+    "high": "MAX",
+    "low": "MIN",
+    "close": "LAST",
+    "volume": "SUM",
+    "incomplete_bucket": "DROP",
+    "continuity_break": "SPLIT_SEGMENT",
+    "interpolation": false,
+    "synthetic_history": false
+  },
+  "indicator_definition": {
+    "donchian_lookback_complete_days": 20,
+    "upper_channel_rule": "MAX_HIGH_OF_PREVIOUS_20_COMPLETE_1D_BARS_EXCLUDING_SIGNAL_BAR",
+    "atr_length": 14,
+    "atr_method": "WILDER_RMA_TRUE_RANGE"
+  },
+  "signal_rules": {
+    "breakout": "signal_close > prior_20_day_high",
+    "entry": "NEXT_COMPLETE_1D_BAR_OPEN",
+    "stop": "signal_low - 0.25 * ATR14_signal",
+    "target": "entry + 3.0 * (entry - stop)",
+    "pre_entry_cancel": "CANCEL_IF_ENTRY_LE_STOP_OR_NONPOSITIVE_RISK",
+    "filters": []
+  },
+  "execution_semantics": {
+    "one_active_trade_per_symbol": true,
+    "pyramiding": false,
+    "max_holding_bars": 40,
+    "max_hold_exit": "NEXT_BAR_OPEN_AFTER_40_ENTRY_BARS_IF_AVAILABLE",
+    "same_bar_stop_target": "STOP_WINS",
+    "adverse_gap_through_stop": "EXIT_AT_BAR_OPEN",
+    "favorable_gap_over_target": "CAP_EXIT_AT_TARGET",
+    "stop_loss": true,
+    "fixed_profit_target": true,
+    "trailing_stop": false
+  },
+  "costs": {
+    "BASE_round_trip_pct": 0.20,
+    "STRESS_round_trip_pct": 0.30,
+    "net_r_formula": "(gross_return_fraction - round_trip_cost_fraction) / (initial_risk_fraction + round_trip_cost_fraction)",
+    "stress_cohort": "SAME_BASE_SELECTED_TRADES"
+  },
+  "discovery": {
+    "start_utc_inclusive": "2023-02-01T00:00:00.000Z",
+    "end_utc_exclusive": "2024-12-31T16:00:00.000Z",
+    "minimum_resolved_trades": 100,
+    "bootstrap": {
+      "method": "UTC_CALENDAR_DAY_BLOCK_BOOTSTRAP",
+      "repetitions": 5000,
+      "seed": 230911,
+      "confidence": 0.95
+    },
+    "survival_gates_all_required": [
+      "resolved_trade_count >= 100",
+      "BASE_net_expectancy_R > 0",
+      "BASE_profit_factor_R > 1",
+      "bootstrap_lower_95 > 0",
+      "fixed_cohort_STRESS_net_expectancy_R > 0"
+    ],
+    "classification_precedence": {
+      "resolved_trade_count_below_100": "INSUFFICIENT_SAMPLE",
+      "sample_passes_but_any_economic_or_bootstrap_gate_fails": "NO_EDGE",
+      "all_gates_pass": "SURVIVES"
+    }
+  },
+  "source_binding": {
+    "artifact_name": "tfg-pbr01-1d-exact-parent-corpus",
+    "artifact_id": 10419067320,
+    "artifact_digest": "sha256:7b2562af14983d0344c9a28e81e9c1866f2e5e9dfafe94203da9a4ca1ffa36cb",
+    "expected_source_files": 138,
+    "effective_15m_candles_per_symbol": 67151,
+    "expected_derived_1d_bars_per_symbol": 697,
+    "parent_corpus_fingerprint_by_symbol": {
+      "BTCUSDT": "fba38a205b911fad0494b86174ef06a2d04a5908b0617a27efb74f067f8cf1d9",
+      "ETHUSDT": "5a6433eb8703a9bcd0714fc6485ccc965cf754941ee6c69981158a7f11f36b7f",
+      "SOLUSDT": "db013d47799b99a7c827740cf03c8e7e27b08c317097836143c855f1a51dde9b",
+      "BNBUSDT": "ec43c0ab51dbf80fcde273c7d817b7cf9995e1614dfa5c05de4f664b9880437a",
+      "XRPUSDT": "9b15ebea40555f5d6def5aab65cc5485db8120e0a6fa74f53ac4bb981a004427",
+      "DOGEUSDT": "786a0129a2a7c9b58e2a465383d4849cedc3192e2c24bf8e4474ee709a3323fe"
+    }
+  },
+  "protected_data": {
+    "validation_2025": "LOCKED_NOT_AUTHORIZED",
+    "holdout_2026": "LOCKED_NOT_AUTHORIZED"
+  },
+  "governance": {
+    "research_only": true,
+    "fail_closed": true,
+    "2025_access": false,
+    "2026_access": false,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "orders": false,
+    "alerts_or_webhooks": false,
+    "merge_to_main": false,
+    "render_deploy": false,
+    "post_outcome_tuning": false,
+    "opportunistic_extension": false,
+    "asset_selection": false,
+    "sample_threshold_reduction": false,
+    "parameter_change_after_outcomes": false
+  }
+}
