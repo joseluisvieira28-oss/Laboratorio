@@ -1,0 +1,56 @@
+{
+  "document_type": "TIMEFRAME_GAP_EXPERIMENT_ACTIVATION",
+  "experiment_id": "TFG-VWAP-15M-001",
+  "version": "0.1",
+  "activation_date": "2026-09-15",
+  "authority": "USER_EXPLICIT_NEXT_STEP_EXECUTE_A_FUNDO",
+  "freeze_path": "Dream-Account-OS-v2.3-PARTIAL/research/timeframe_gap/TFG_VWAP_15M_001_FREEZE.json",
+  "freeze_blob_sha": "de00864a54030b83077e2e3d475970eaa749136b",
+  "provenance_amendment_path": "Dream-Account-OS-v2.3-PARTIAL/research/timeframe_gap/TFG_VWAP_PROVENANCE_AMENDMENT_01.json",
+  "provenance_amendment_blob_sha": "1a92cbd1990b82bd0afdc5ecee77806ebdb74100",
+  "queue_position": 3,
+  "prior_queue_items": [
+    {"experiment_id": "TFG-PBR01-4H-001", "classification": "INSUFFICIENT_SAMPLE", "validation_unlocked": false},
+    {"experiment_id": "TFG-PBR01-1H-001", "classification": "SOURCE_ACCESS_BLOCKED", "outcome_evaluation_performed": false}
+  ],
+  "authorization_scope": {
+    "source_data_gate": true,
+    "discovery_2022_2023_after_source_fingerprint_freeze": true,
+    "internal_oos_2024": false,
+    "protected_2025": false,
+    "locked_2026_onward": false,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "merge_to_main": false,
+    "render_deploy": false,
+    "post_outcome_tuning": false
+  },
+  "scientific_lock": {
+    "signal_timeframe": "15m",
+    "vwap_reset": "00:00 UTC daily",
+    "typical_price": "(high+low+close)/3",
+    "weight": "base_volume",
+    "signal_orientation": "continuation_reclaim_loss",
+    "entry": "NEXT_15M_BAR_OPEN",
+    "holding_bars": 16,
+    "holding_horizon": "4h",
+    "base_roundtrip_cost_bps": 10,
+    "stress_roundtrip_cost_bps": 14,
+    "min_discovery_trades": 300,
+    "filters": null
+  },
+  "data_lock": {
+    "source": "H180-0001 normalized Binance USD-M Futures 1m canonical layer",
+    "historical_h180_bundle_fingerprint": "51952d966395e34a0390e1da3063b999c4de68d00a3e0e965e27f6ee58ed01f3",
+    "active_h180_bundle_fingerprint_v2": "ff8b787d3b27e8daf80574ee35251836c2893e1f7c8eb32b5b6531edabbb1b42",
+    "monthly_raw_fingerprint": "e62523e28ab87da27e1aa0f992e94d1b4be461a00ef1d7a1ce807a3740348e8a",
+    "discovery_start": "2022-01-01T00:00:00Z",
+    "discovery_end": "2023-12-31T23:59:59Z",
+    "2024_access": false,
+    "2025_access": false,
+    "2026_access": false,
+    "discovery_member_fingerprint": null
+  },
+  "source_fingerprint_rule": "Before any outcome evaluation, hash the exact normalized 2022-01 through 2023-12 members for all six symbols and commit the resulting aggregate discovery_member_fingerprint. Discovery runner must fail closed while this field is null or if current bytes differ.",
+  "outcome_evaluation_authorized_now": false
+}
