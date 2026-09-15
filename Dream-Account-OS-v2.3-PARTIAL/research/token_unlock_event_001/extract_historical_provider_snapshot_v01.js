@@ -10,7 +10,7 @@ const configs = {
   '2023-03-17': {
     knownAt: 1679071439,
     minTs: 1679071439 + 30 * 86400,
-    maxTs: Date.parse('2023-12-31T23:59:59Z') / 1000,
+    maxTs: Date.parse('2024-12-31T23:59:59Z') / 1000,
     repo: '0xnirmal/emissions-adapters',
     commit: '539e7cf40a4cecc73953f3ae2b196b3fa66ae34a',
     protocols: {
@@ -56,15 +56,29 @@ for (const [file, allowed] of Object.entries(cfg.protocols)) {
   const full = path.join(root, 'protocols', file);
   if (!fs.existsSync(full)) throw new Error(`missing frozen source file ${full}`);
   const protocol = require(full).default;
-  if (!protocol || !protocol.meta || !protocol.meta.token) throw new Error(`missing token metadata ${file}`);
-  const token = String(protocol.meta.token);
-  const sources = Array.isArray(protocol.meta.sources) ? protocol.meta.sources.map(String) : [];
+  if (!protocol || typeof protocol !== 'object') throw new Error(`invalid protocol object ${file}`);
+
+  // Historical emissions-adapters snapshots use both metadata layouts:
+  // newer adapters may expose protocol.meta.{token,sources}, while older
+  // immutable snapshots expose top-level protocol.{token,sources}.
+  // This compatibility resolution changes no economic value or schedule rule.
+  const tokenRaw = protocol.meta && protocol.meta.token !== undefined
+    ? protocol.meta.token
+    : protocol.token;
+  const sourcesRaw = protocol.meta && protocol.meta.sources !== undefined
+    ? protocol.meta.sources
+    : protocol.sources;
+  if (tokenRaw === undefined || tokenRaw === null || String(tokenRaw).trim() === '') {
+    throw new Error(`missing token metadata ${file}`);
+  }
+  const token = String(tokenRaw);
+  const sources = Array.isArray(sourcesRaw) ? sourcesRaw.map(String) : [];
   if (sources.length === 0) throw new Error(`no provenance URL ${file}`);
   sourceFiles.push({file, token, sources});
 
   const allowedSet = allowed === '*' ? null : new Set(allowed);
   for (const [section, rawValue] of Object.entries(protocol)) {
-    if (['meta', 'categories', 'documented'].includes(section)) continue;
+    if (['meta', 'token', 'sources', 'categories', 'documented'].includes(section)) continue;
     if (allowedSet && !allowedSet.has(section)) continue;
     if (typeof rawValue === 'function') continue;
     const values = (Array.isArray(rawValue) ? rawValue.flat(Infinity) : [rawValue]);
