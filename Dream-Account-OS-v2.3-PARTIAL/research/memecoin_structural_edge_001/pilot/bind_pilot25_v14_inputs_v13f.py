@@ -10,6 +10,11 @@ Purpose:
 - authorize V14 Pilot25 economic evaluation only if every frozen hash/state matches.
 
 This binder does not compute prices, returns, labels, slice statistics, or a verdict.
+
+Technical note:
+- repository Markdown authority is hashed in canonical LF-normalized UTF-8 form so
+  Windows CRLF working-tree conversion cannot create a false scientific mismatch;
+- generated local data artefacts retain exact byte-level hashing.
 """
 from __future__ import annotations
 import hashlib
@@ -31,6 +36,12 @@ EXPECTED_ENTRY_COVERAGE = 25
 def sha(p: pathlib.Path) -> str:
     return hashlib.sha256(p.read_bytes()).hexdigest()
 
+def canonical_lf_sha(p: pathlib.Path) -> str:
+    # read_text uses universal-newline translation; re-encoding therefore hashes
+    # the canonical LF text regardless of CRLF materialization in a Windows checkout.
+    text = p.read_text(encoding="utf-8")
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
 def j(p: pathlib.Path):
     return json.loads(p.read_text(encoding="utf-8"))
 
@@ -45,6 +56,11 @@ def exact(p, expected, label):
     actual = sha(p)
     if actual != expected:
         raise RuntimeError(f"{label}_HASH_MISMATCH expected={expected} actual={actual}")
+
+def exact_canonical_text_lf(p, expected, label):
+    actual = canonical_lf_sha(p)
+    if actual != expected:
+        raise RuntimeError(f"{label}_CANONICAL_LF_HASH_MISMATCH expected={expected} actual={actual}")
 
 def main() -> int:
     here = pathlib.Path(__file__).resolve().parent
@@ -71,7 +87,7 @@ def main() -> int:
     exact(v11x_p, EXPECTED_V11_MATRIX_SHA, "V11_MATRIX")
     exact(v11r_p, EXPECTED_V11_RISK_SHA, "V11_RISK")
     exact(v12_p, EXPECTED_V12_PREFLIGHT_SHA, "V12_PREFLIGHT")
-    exact(v12a_p, EXPECTED_V12A_DOC_SHA, "V12A_DOC")
+    exact_canonical_text_lf(v12a_p, EXPECTED_V12A_DOC_SHA, "V12A_DOC")
     exact(v13_p, EXPECTED_V13_MANIFEST_SHA, "V13_MANIFEST")
     exact(v13d_p, EXPECTED_V13D_MANIFEST_SHA, "V13D_MANIFEST")
     exact(v13e_p, EXPECTED_V13E_MANIFEST_SHA, "V13E_MANIFEST")
@@ -112,6 +128,9 @@ def main() -> int:
         if v13e.get(k) is not False:
             raise RuntimeError(f"V13E_OUTCOME_LOCK_FAILURE field={k}")
 
+    v12a_local_raw_sha = sha(v12a_p)
+    v12a_canonical_sha = canonical_lf_sha(v12a_p)
+
     binding = {
         "artifact": "MSEL_PILOT25_V14_INPUT_BINDING_V13F",
         "pilot_only": True,
@@ -122,6 +141,8 @@ def main() -> int:
         "source_v11_risk_order_sha256": EXPECTED_V11_RISK_SHA,
         "source_v12_preflight_sha256": EXPECTED_V12_PREFLIGHT_SHA,
         "source_v12a_document_sha256": EXPECTED_V12A_DOC_SHA,
+        "source_v12a_document_canonical_lf_sha256": v12a_canonical_sha,
+        "source_v12a_document_local_bytes_sha256": v12a_local_raw_sha,
         "source_v13_manifest_sha256": EXPECTED_V13_MANIFEST_SHA,
         "source_v13d_manifest_sha256": EXPECTED_V13D_MANIFEST_SHA,
         "source_v13e_manifest_sha256": EXPECTED_V13E_MANIFEST_SHA,
@@ -144,7 +165,8 @@ def main() -> int:
     print("entry authority: V12A T+5 Pump curve gross 0.01 SOL")
     print("entry coverage: 25/25")
     print(f"sealed future transactions: {EXPECTED_FUTURE_TX}")
-    print(f"V12A document sha256: {EXPECTED_V12A_DOC_SHA}")
+    print(f"V12A canonical-LF sha256: {v12a_canonical_sha}")
+    print(f"V12A local-byte sha256: {v12a_local_raw_sha}")
     print(f"V13D manifest sha256: {EXPECTED_V13D_MANIFEST_SHA}")
     print(f"V13E manifest sha256: {EXPECTED_V13E_MANIFEST_SHA}")
     print(f"binding sha256: {bsha}")
