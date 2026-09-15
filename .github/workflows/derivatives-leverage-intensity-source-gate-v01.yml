@@ -1,0 +1,131 @@
+name: DERIVATIVES-LEVERAGE-INTENSITY-001 Source Data Gate V0.1
+
+on:
+  push:
+    branches:
+      - derivatives-leverage-intensity-v0.1
+    paths:
+      - '.github/workflows/derivatives-leverage-intensity-source-gate-v01.yml'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/derivatives_leverage_intensity_001/PRE_SOURCE_PROTOCOL_V01.json'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/derivatives_leverage_intensity_001/source_gate_v01.py'
+
+permissions:
+  contents: write
+
+jobs:
+  source-data-gate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout scientific branch
+        uses: actions/checkout@v4
+        with:
+          ref: derivatives-leverage-intensity-v0.1
+
+      - name: Governance and static preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/derivatives_leverage_intensity_001'
+          python -m py_compile "$BASE/source_gate_v01.py"
+          python - <<'PY'
+          import json
+          p='Dream-Account-OS-v2.3-PARTIAL/research/derivatives_leverage_intensity_001/PRE_SOURCE_PROTOCOL_V01.json'
+          d=json.load(open(p))
+          assert d['status']=='FROZEN_PRE_SOURCE_OUTCOME_BLIND'
+          assert d['authorization']=='SOURCE_DATA_GATE_ONLY_DISCOVERY_PROHIBITED'
+          s=d['source_contract']; g=d['guards']
+          assert s['start_utc'].startswith('2021-01-01')
+          assert s['end_utc'].startswith('2024-12-31')
+          assert s['expected_days']==1461
+          assert s['expected_archives_total']==96
+          assert s['allowed_row_fields']==['open_time','quote_asset_volume']
+          assert s['ohlc_price_fields_authorized'] is False
+          assert s['ratio_values_authorized_to_persist_or_inspect'] is False
+          assert g['market_price_values_opened'] is False
+          assert g['returns_computed'] is False
+          assert g['pnl_computed'] is False
+          assert g['year_2025_opened'] is False
+          assert g['year_2026_opened'] is False
+          assert g['live_trading'] is False
+          assert g['exchange_mutation'] is False
+          PY
+          ! grep -Eqi 'profit.factor|sharpe|drawdown|market.order|create.order|requests\.(post|put|patch|delete)' "$BASE/source_gate_v01.py"
+          ! grep -Eq 'row\[[1-6]\]' "$BASE/source_gate_v01.py"
+
+      - name: Run source data gate only
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/derivatives_leverage_intensity_001'
+          set +e
+          python "$BASE/source_gate_v01.py"
+          rc=$?
+          set -e
+          echo "SOURCE_GATE_RC=$rc" >> "$GITHUB_ENV"
+          test -f "$BASE/source_evidence/DLI_SOURCE_DATA_GATE_V01.json"
+
+      - name: Audit receipt firewalls
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          p='Dream-Account-OS-v2.3-PARTIAL/research/derivatives_leverage_intensity_001/source_evidence/DLI_SOURCE_DATA_GATE_V01.json'
+          d=json.load(open(p)); g=d['guards']
+          assert d['classification'] in {'SOURCE_DATA_PASS','SOURCE_ACCESS_BLOCKED','PROVENANCE_FAILURE','DATA_FAILURE'}
+          assert g['ohlc_price_fields_used'] is False
+          assert g['market_price_values_opened'] is False
+          assert g['returns_computed'] is False
+          assert g['pnl_computed'] is False
+          assert g['performance_statistics_computed'] is False
+          assert g['ratio_values_persisted_or_inspected'] is False
+          assert g['year_2025_opened'] is False
+          assert g['year_2026_opened'] is False
+          assert g['live_trading'] is False
+          assert g['exchange_mutation'] is False
+          if d['classification']=='SOURCE_DATA_PASS':
+              assert d['verified_archive_count']==96
+              assert d['failed_archive_count']==0
+              assert d['identical_utc_date_sets'] is True
+              assert d['ratio_finite_count_only']==1461
+              for v in ('spot','futures_um'):
+                  x=d['venue_diagnostics'][v]
+                  assert x['row_count']==1461
+                  assert x['unique_day_count']==1461
+                  assert x['duplicate_day_count']==0
+                  assert x['missing_day_count']==0
+                  assert x['outside_window_day_count']==0
+                  assert x['all_quote_asset_volume_positive_finite'] is True
+          print(json.dumps({
+              'classification':d['classification'],
+              'verified_archive_count':d['verified_archive_count'],
+              'failed_archive_count':d['failed_archive_count'],
+              'venue_diagnostics':d['venue_diagnostics'],
+              'identical_utc_date_sets':d['identical_utc_date_sets'],
+              'ratio_finite_count_only':d['ratio_finite_count_only'],
+              'guards':g
+          },indent=2,sort_keys=True))
+          PY
+
+      - name: Persist immutable source receipt
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/derivatives_leverage_intensity_001'
+          git config user.name 'crypto-lab-source-gate-bot'
+          git config user.email 'crypto-lab-source-gate-bot@users.noreply.github.com'
+          git add "$BASE/source_evidence/DLI_SOURCE_DATA_GATE_V01.json"
+          git diff --cached --quiet && exit 0
+          git commit -m 'DERIVATIVES-LEVERAGE-INTENSITY-001: source gate receipt [skip ci]'
+          git pull --rebase origin derivatives-leverage-intensity-v0.1
+          git push origin HEAD:derivatives-leverage-intensity-v0.1
+
+      - name: Upload source evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: derivatives-leverage-intensity-source-gate-${{ github.run_id }}-${{ github.run_attempt }}
+          path: Dream-Account-OS-v2.3-PARTIAL/research/derivatives_leverage_intensity_001/source_evidence/
+          retention-days: 90
+          if-no-files-found: error
