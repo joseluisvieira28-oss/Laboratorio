@@ -1,0 +1,103 @@
+{
+  "lab_id": "DERIVATIVES-LEVERAGE-INTENSITY-001",
+  "mve_id": "DLI-BTC-FUTSPOT-TURNOVER-001",
+  "status": "FROZEN_FINAL_PRE_DISCOVERY_OUTCOME_BLIND",
+  "classification_scope": "MECHANISM_DISCOVERY_NOT_EXECUTABLE_TRADING_STRATEGY",
+  "scientific_question": "Does an unusually derivatives-dominant BTC turnover day predict a larger next-UTC-day BTC spot realized range after controlling for current-day range clustering?",
+  "economic_mechanism": "A higher USD-M futures-to-spot turnover ratio is treated as a derivatives/leverage/speculation intensity state variable. The prospective directional claim is volatility expansion, not bullish or bearish price direction.",
+  "source_authority": {
+    "receipt_path": "Dream-Account-OS-v2.3-PARTIAL/research/derivatives_leverage_intensity_001/source_evidence/DLI_SOURCE_DATA_GATE_V01.json",
+    "required_classification": "SOURCE_DATA_PASS",
+    "expected_archives": 96,
+    "expected_days_per_venue": 1461,
+    "source_window_start_utc": "2021-01-01",
+    "source_window_end_utc": "2024-12-31",
+    "venues": ["Binance Spot BTCUSDT", "Binance USD-M Futures BTCUSDT"],
+    "archive_provenance_rule": "Every Discovery archive must pass the current official .CHECKSUM and its ZIP SHA-256 must exactly equal the already-frozen source-gate archive_manifest SHA-256 for the same venue/month."
+  },
+  "predictor": {
+    "raw_ratio": "futures_quote_asset_volume_t / spot_quote_asset_volume_t",
+    "transform": "natural_log",
+    "lookback_completed_utc_days": 180,
+    "threshold_rule": "Sort the immediately previous 180 completed log-ratio values ascending; threshold is the 144th order statistic (1-indexed), i.e. sorted_previous_180[143]. Current day t is excluded from threshold formation.",
+    "event_rule": "event_t = 1 iff log_ratio_t >= threshold_t; otherwise 0",
+    "warmup_rule": "No event classification before 180 completed prior UTC days exist.",
+    "signal_availability": "Only after UTC day t is fully complete."
+  },
+  "primary_outcome": {
+    "metric": "10000 * ln(spot_high_t_plus_1 / spot_low_t_plus_1)",
+    "name": "next_day_realized_log_range_bps",
+    "direction_expected": "HIGHER_ON_EVENT_DAYS",
+    "same_day_outcome_prohibited": true
+  },
+  "controls_and_model": {
+    "dependent_variable": "ln(next_day_realized_log_range_bps)",
+    "regressors": [
+      "intercept",
+      "event_indicator_t",
+      "ln(current_day_realized_log_range_bps)",
+      "calendar_year_2022_dummy",
+      "calendar_year_2023_dummy",
+      "calendar_year_2024_dummy"
+    ],
+    "calendar_year_2021": "reference category",
+    "estimator": "OLS",
+    "inference": "Newey-West HAC covariance",
+    "hac_lags": 7,
+    "confidence_level": 0.95
+  },
+  "raw_comparison": {
+    "event_mean_metric": "mean(next_day_realized_log_range_bps | event_t=1)",
+    "control_mean_metric": "mean(next_day_realized_log_range_bps | event_t=0)",
+    "difference": "event_mean - control_mean"
+  },
+  "bootstrap": {
+    "method": "moving contiguous block bootstrap over the eligible chronological day sequence",
+    "block_length_days": 7,
+    "replications": 5000,
+    "seed": 230911,
+    "confidence_level": 0.95,
+    "statistic": "event_mean_next_day_range_bps - control_mean_next_day_range_bps"
+  },
+  "promotion_gate": {
+    "minimum_eligible_observations": 1000,
+    "minimum_event_observations": 150,
+    "event_beta_must_be_positive": true,
+    "event_beta_hac_95pct_lower_bound_must_exceed_zero": true,
+    "raw_event_mean_must_exceed_control_mean": true,
+    "block_bootstrap_mean_difference_95pct_lower_bound_must_exceed_zero": true,
+    "minimum_calendar_years_with_positive_event_minus_control_difference": 3,
+    "calendar_years_assessed": [2021, 2022, 2023, 2024],
+    "all_conditions_required": true
+  },
+  "classification": {
+    "pass": "MECHANISM_SURVIVES_DISCOVERY",
+    "fail": "NO_PREDICTIVE_VOLATILITY_EDGE",
+    "insufficient": "INSUFFICIENT_SAMPLE",
+    "technical_or_data": "TECHNICAL_OR_DATA_FAILURE"
+  },
+  "post_result_rule": "STOP after Discovery classification. A surviving mechanism does not authorize a trading strategy, transaction-cost backtest, 2025/2026 access, or threshold/horizon tuning. Any executable volatility strategy must be a separately named MVE with a new prospective freeze and untouched validation data.",
+  "prohibited_rescues": [
+    "No bullish/bearish direction search",
+    "No alternate ratio thresholds",
+    "No alternate lookbacks",
+    "No alternate outcome horizons",
+    "No asset substitution",
+    "No funding/OI/taker/indicator filter addition after outcomes",
+    "No transaction-cost or PnL interpretation in this mechanism MVE"
+  ],
+  "protected_period": {
+    "2025_access": false,
+    "2026_access": false
+  },
+  "hard_firewalls": {
+    "live_trading": false,
+    "exchange_mutation": false,
+    "orders": false,
+    "alerts_or_webhooks": false,
+    "pnl_computation": false,
+    "strategy_performance_backtest": false,
+    "merge_to_main": false,
+    "render_deployment": false
+  }
+}
