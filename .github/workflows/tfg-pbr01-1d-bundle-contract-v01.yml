@@ -1,0 +1,40 @@
+name: TFG PBR01 1D MEXC Bundle Contract
+
+on:
+  push:
+    branches:
+      - tf-gap-pbr01-1d-v0.1
+    paths:
+      - '.github/workflows/tfg-pbr01-1d-bundle-contract-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: bash
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tf-gap-pbr01-1d-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check requests
+      - name: Inspect public dynamic bundle only
+        run: |
+          mkdir -p research/local_data/tfg_pbr01_1d_bundle_contract
+          python -m research.timeframe_gap.tfg_pbr01_1d_inspect_currency_bundle_v01 \
+            --receipt research/local_data/tfg_pbr01_1d_bundle_contract/TFG_PBR01_1D_MEXC_BUNDLE_CONTRACT_V0.1.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tfg-pbr01-1d-mexc-bundle-contract
+          path: Dream-Account-OS-v2.3-PARTIAL/research/local_data/tfg_pbr01_1d_bundle_contract/TFG_PBR01_1D_MEXC_BUNDLE_CONTRACT_V0.1.json
+          retention-days: 14
