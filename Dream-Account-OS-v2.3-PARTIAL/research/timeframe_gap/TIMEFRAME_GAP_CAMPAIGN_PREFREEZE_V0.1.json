@@ -1,0 +1,66 @@
+{
+  "document_type": "TIMEFRAME_GAP_CAMPAIGN_PREFREEZE",
+  "version": "0.1",
+  "created_utc_date": "2026-09-15",
+  "status": "OUTCOME_BLIND_PREPARATION_ONLY",
+  "repository": "joseluisvieira28-oss/Laboratorio",
+  "preparation_branch": "tf-gap-queue-prep-v0.1",
+  "governance": {
+    "research_only": true,
+    "fail_closed": true,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "merge_to_main": false,
+    "render_deploy": false,
+    "post_outcome_tuning": false,
+    "cherry_picking": false,
+    "2025_access": false,
+    "2026_access": false,
+    "closed_parent_verdicts_remain_closed": true
+  },
+  "scientific_question": "Do strategy-specific timeframe gaps contain reproducible economic edge when the timeframe transformation is prospectively frozen before outcomes?",
+  "anti_selection_bias_rule": "Sibling timeframe hypotheses are frozen as independent experiment IDs before any sibling outcome may be used to select, retune, reorder, or redefine another sibling.",
+  "queue": [
+    {
+      "priority": 1,
+      "experiment_id": "TFG-PBR01-4H-001",
+      "family": "PBR01_BREAKOUT_RETEST_LONG",
+      "timeframe": "4H",
+      "status": "PRIORITY_ONE_PENDING_PC_OR_SEPARATE_WORKSTREAM",
+      "modified_in_this_branch": false
+    },
+    {
+      "priority": 2,
+      "experiment_id": "TFG-PBR01-1H-001",
+      "family": "PBR01_BREAKOUT_RETEST_LONG",
+      "timeframe": "1H",
+      "status": "PREFROZEN_NOT_EXECUTED",
+      "contract": "TFG_PBR01_1H_001_FREEZE.json"
+    },
+    {
+      "priority": 3,
+      "experiment_id": "TFG-VWAP-15M-001",
+      "family": "DAILY_UTC_VWAP_RECLAIM_LOSS_CONTINUATION",
+      "timeframe": "15m",
+      "status": "PREFROZEN_NOT_EXECUTED",
+      "contract": "TFG_VWAP_15M_001_FREEZE.json"
+    },
+    {
+      "priority": 4,
+      "experiment_id": "TFG-VWAP-30M-001",
+      "family": "DAILY_UTC_VWAP_RECLAIM_LOSS_CONTINUATION",
+      "timeframe": "30m",
+      "status": "PREFROZEN_NOT_EXECUTED",
+      "contract": "TFG_VWAP_30M_001_FREEZE.json"
+    }
+  ],
+  "execution_policy": {
+    "run_one_at_a_time": true,
+    "next_experiment_may_not_be_changed_after_previous_result": true,
+    "no_new_filters_after_outcomes": true,
+    "no_winner_asset_selection": true,
+    "no_cost_reduction_rescue": true,
+    "no_protected_phase_open_after_failed_gate": true,
+    "no_workflow_trigger_created_by_this_prefreeze": true
+  }
+}
