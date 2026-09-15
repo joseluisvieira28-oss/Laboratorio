@@ -1,0 +1,73 @@
+{
+  "lab_id": "DERIVATIVES-LEVERAGE-INTENSITY-001",
+  "mve_id": "DLI-BTC-FUTSPOT-TURNOVER-001",
+  "status": "FROZEN_PRE_SOURCE_OUTCOME_BLIND",
+  "authorization": "SOURCE_DATA_GATE_ONLY_DISCOVERY_PROHIBITED",
+  "anti_duplication": {
+    "drive_exact_duplicate_found": false,
+    "github_exact_duplicate_found": false,
+    "file_library_exact_duplicate_found": false,
+    "distinct_from": [
+      "futures_spot_basis_dislocation",
+      "funding_only",
+      "open_interest_only",
+      "taker_flow",
+      "liquidation_context"
+    ]
+  },
+  "source_contract": {
+    "symbol": "BTCUSDT",
+    "interval": "1d",
+    "start_utc": "2021-01-01T00:00:00Z",
+    "end_utc": "2024-12-31T23:59:59Z",
+    "expected_days": 1461,
+    "expected_months_per_venue": 48,
+    "expected_archives_total": 96,
+    "venues": {
+      "spot": "https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1d/BTCUSDT-1d-YYYY-MM.zip",
+      "futures_um": "https://data.binance.vision/data/futures/um/monthly/klines/BTCUSDT/1d/BTCUSDT-1d-YYYY-MM.zip"
+    },
+    "checksum_suffix": ".CHECKSUM",
+    "allowed_row_fields": ["open_time", "quote_asset_volume"],
+    "close_time_allowed_for_continuity_only": true,
+    "ohlc_price_fields_authorized": false,
+    "ratio_values_authorized_to_persist_or_inspect": false
+  },
+  "source_data_gate": {
+    "require_all_96_archives": true,
+    "require_all_96_checksums": true,
+    "require_exact_checksum_match": true,
+    "require_spot_unique_days": 1461,
+    "require_futures_unique_days": 1461,
+    "require_identical_utc_date_sets": true,
+    "require_zero_duplicates": true,
+    "require_zero_missing_days": true,
+    "require_zero_outside_window_rows": true,
+    "require_all_quote_asset_volume_numeric_finite_positive": true,
+    "permit_only_ratio_finiteness_check": true,
+    "year_2025_access": false,
+    "year_2026_access": false
+  },
+  "classification_policy": {
+    "all_gates_pass": "SOURCE_DATA_PASS",
+    "archive_or_auth_unavailable": "SOURCE_ACCESS_BLOCKED",
+    "checksum_or_provenance_mismatch": "PROVENANCE_FAILURE",
+    "malformed_incomplete_duplicate_or_missing_history": "DATA_FAILURE",
+    "no_source_failure_may_be_relabelled_no_edge": true
+  },
+  "guards": {
+    "market_price_values_opened": false,
+    "returns_computed": false,
+    "pnl_computed": false,
+    "performance_statistics_computed": false,
+    "year_2025_opened": false,
+    "year_2026_opened": false,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "merge_to_main": false,
+    "render_deployment": false,
+    "post_outcome_tuning": false,
+    "cherry_picking": false
+  },
+  "post_source_rule": "SOURCE_DATA_PASS_DOES_NOT_AUTHORIZE_DISCOVERY; freeze FINAL_PRE_DISCOVERY_PROTOCOL before any BTC market price, future return, PnL, threshold, horizon or directional test"
+}
