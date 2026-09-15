@@ -31,6 +31,10 @@ if not defined RAW_DIR (
   exit /b 2
 )
 
+rem Normalize the discovered directory to remove the trailing backslash.
+rem This prevents Windows argv quoting from consuming the following --output-dir argument.
+for %%I in ("%RAW_DIR%.") do set "RAW_DIR=%%~fI"
+
 echo Found corpus candidate:
 echo   %RAW_DIR%
 echo.
