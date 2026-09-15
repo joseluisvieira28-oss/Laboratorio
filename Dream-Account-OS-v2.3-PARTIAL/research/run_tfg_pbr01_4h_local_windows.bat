@@ -10,14 +10,14 @@ set "OUTPUT_DIR=%PROJECT_ROOT%\research\local_data\tfg_pbr01_4h"
 echo [TFG-PBR01-4H-001] Locating original MEXC corpus...
 
 for /r "%PROJECT_ROOT%\research\local_data" %%F in ("%REF_FILE%") do (
-  if /I "%%~nxF"=="%REF_FILE%" if not defined RAW_DIR set "RAW_DIR=%%~dpF"
+  if exist "%%~fF" if /I "%%~nxF"=="%REF_FILE%" if not defined RAW_DIR set "RAW_DIR=%%~dpF"
 )
 
 if not defined RAW_DIR (
   for %%D in ("%USERPROFILE%\Desktop" "%USERPROFILE%\Documents" "%USERPROFILE%\Downloads" "%USERPROFILE%\OneDrive") do (
     if exist "%%~D" (
       for /f "usebackq delims=" %%F in (`powershell -NoProfile -Command "$p=Get-ChildItem -LiteralPath '%%~D' -Filter '%REF_FILE%' -File -Recurse -ErrorAction SilentlyContinue ^| Select-Object -First 1 -ExpandProperty FullName; if($p){$p}"`) do (
-        if not defined RAW_DIR set "RAW_DIR=%%~dpF"
+        if exist "%%~fF" if not defined RAW_DIR set "RAW_DIR=%%~dpF"
       )
     )
   )
@@ -31,9 +31,7 @@ if not defined RAW_DIR (
   exit /b 2
 )
 
-rem Normalize the discovered directory to remove the trailing backslash.
-rem This prevents Windows argv quoting from consuming the following --output-dir argument.
-for %%I in ("%RAW_DIR%.") do set "RAW_DIR=%%~fI"
+if "%RAW_DIR:~-1%"=="\" set "RAW_DIR=%RAW_DIR:~0,-1%"
 
 echo Found corpus candidate:
 echo   %RAW_DIR%
