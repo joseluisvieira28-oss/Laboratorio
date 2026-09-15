@@ -1,0 +1,150 @@
+name: TOKEN-UNLOCK-EVENT-001 Full Static Provider Qualification V0.1
+
+on:
+  push:
+    branches:
+      - token-unlock-event-001-source-gate-v01
+    paths:
+      - '.github/workflows/token-unlock-full-static-provider-qualification-v01.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  qualify-full-static-coverage:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout scientific branch
+        uses: actions/checkout@v4
+        with:
+          ref: token-unlock-event-001-source-gate-v01
+
+      - name: Verify frozen authority and extractor guards
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001'
+          FREEZE="$BASE/FULL_STATIC_COVERAGE_QUALIFICATION_FREEZE_V01.json"
+          EXTRACT="$BASE/extract_full_static_provider_coverage_v01.js"
+          test "$(sha256sum "$FREEZE" | awk '{print $1}')" = 'f7a818f21d4494cfba877f85d9a3f7de8216d824589a0d221e90fcb152a1b567'
+          node --check "$EXTRACT"
+          grep -q "SOURCE_ONLY_NETWORK_BLOCK" "$EXTRACT"
+          grep -q "identity_resolution_complete: false" "$EXTRACT"
+          grep -q "binance_route_checked: false" "$EXTRACT"
+          grep -q "year_2025_opened: false" "$EXTRACT"
+          grep -q "year_2026_opened: false" "$EXTRACT"
+          grep -q "returns_computed: false" "$EXTRACT"
+          grep -q "pnl_computed: false" "$EXTRACT"
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Acquire exact immutable March 2023 snapshot and dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone -q https://github.com/0xnirmal/emissions-adapters.git /tmp/emissions-2023
+          cd /tmp/emissions-2023
+          git checkout -q 539e7cf40a4cecc73953f3ae2b196b3fa66ae34a
+          test "$(git rev-parse HEAD)" = '539e7cf40a4cecc73953f3ae2b196b3fa66ae34a'
+          npm ci --omit=dev --ignore-scripts --silent
+          npm install --no-save --ignore-scripts --silent ts-node@10.9.1 typescript@4.9.5
+          test -x ./node_modules/.bin/ts-node
+
+      - name: Acquire exact immutable March 2024 snapshot and dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone -q https://github.com/danaugrs/emissions-adapters.git /tmp/emissions-2024
+          cd /tmp/emissions-2024
+          git checkout -q ad6bcfa961d6f0bd9cd5d589656b8f78daf7be7a
+          test "$(git rev-parse HEAD)" = 'ad6bcfa961d6f0bd9cd5d589656b8f78daf7be7a'
+          npm ci --omit=dev --ignore-scripts --silent
+          npm install --no-save --ignore-scripts --silent ts-node@10.9.1 typescript@4.9.5
+          test -x ./node_modules/.bin/ts-node
+
+      - name: Materialize full frozen 2023 static coverage source-only
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE="$GITHUB_WORKSPACE/Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001"
+          OUT="$BASE/source_probe_output_v06"
+          mkdir -p "$OUT"
+          cd /tmp/emissions-2023
+          ./node_modules/.bin/ts-node --transpile-only \
+            "$BASE/extract_full_static_provider_coverage_v01.js" \
+            /tmp/emissions-2023 2023-03-17 \
+            "$BASE/FULL_STATIC_COVERAGE_QUALIFICATION_FREEZE_V01.json" \
+            "$OUT/FULL_STATIC_PROVIDER_2023_V01.json"
+
+      - name: Materialize full frozen 2024 static coverage source-only
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE="$GITHUB_WORKSPACE/Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001"
+          OUT="$BASE/source_probe_output_v06"
+          cd /tmp/emissions-2024
+          ./node_modules/.bin/ts-node --transpile-only \
+            "$BASE/extract_full_static_provider_coverage_v01.js" \
+            /tmp/emissions-2024 2024-03-25 \
+            "$BASE/FULL_STATIC_COVERAGE_QUALIFICATION_FREEZE_V01.json" \
+            "$OUT/FULL_STATIC_PROVIDER_2024_V01.json"
+
+      - name: Audit coverage completeness and scientific guards
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          out=Path('Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001/source_probe_output_v06')
+          a=json.loads((out/'FULL_STATIC_PROVIDER_2023_V01.json').read_text())
+          b=json.loads((out/'FULL_STATIC_PROVIDER_2024_V01.json').read_text())
+          assert a['receipt']['frozen_candidate_count'] == 33
+          assert b['receipt']['frozen_candidate_count'] == 123
+          assert a['receipt']['candidate_status_count'] == 33
+          assert b['receipt']['candidate_status_count'] == 123
+          for d in (a,b):
+            r=d['receipt']
+            g=r['guards']
+            assert r['exact_timestamp_rows_only'] is True
+            assert r['identity_resolution_complete'] is False
+            assert r['binance_route_checked'] is False
+            assert g['runtime_network_block_installed'] is True
+            assert g['dynamic_functions_executed'] is False
+            assert g['market_data_accessed'] is False
+            assert g['price_data_accessed'] is False
+            assert g['returns_computed'] is False
+            assert g['pnl_computed'] is False
+            assert g['profit_factor_computed'] is False
+            assert g['year_2025_opened'] is False
+            assert g['year_2026_opened'] is False
+            assert g['live_trading'] is False
+            assert g['exchange_mutation'] is False
+            allowed={'INCLUDED_RAW_IDENTITY_PENDING','NO_ELIGIBLE_STATIC_EVENT_IN_WINDOW','DYNAMIC_OR_CONTINUOUS_ONLY','IDENTITY_AMBIGUOUS','SOURCE_CONFLICT','TECHNICAL_FAILURE'}
+            assert all(x['disposition'] in allowed for x in d['statuses'])
+          summary={
+            'lab_id':'TOKEN-UNLOCK-EVENT-001','mve_id':'TUE-CLIFF-ADV30-001',
+            'mode':'SOURCE_ONLY_FULL_STATIC_COVERAGE_QUALIFICATION_V01',
+            'snapshot_2023':a['receipt'],'snapshot_2024':b['receipt'],
+            'total_frozen_candidate_statuses':len(a['statuses'])+len(b['statuses']),
+            'total_raw_identity_events':len(a['events'])+len(b['events']),
+            'binance_route_checked':False,'identity_resolution_complete':False,
+            'market_outcomes_opened':False,'returns_computed':False,'pnl_computed':False,
+            'year_2025_opened':False,'year_2026_opened':False,
+            'next_action':'Freeze complete identity resolution for every included raw adapter before any Binance route check.'
+          }
+          (out/'TUE_FULL_STATIC_PROVIDER_QUALIFICATION_RECEIPT_V01.json').write_text(json.dumps(summary,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(summary,indent=2,sort_keys=True))
+          PY
+
+      - name: Upload source-only qualification evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: token-unlock-event-001-full-static-provider-qualification-${{ github.run_id }}-${{ github.run_attempt }}
+          path: Dream-Account-OS-v2.3-PARTIAL/research/token_unlock_event_001/source_probe_output_v06/
+          retention-days: 90
+          if-no-files-found: error
