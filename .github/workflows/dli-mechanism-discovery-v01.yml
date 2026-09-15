@@ -38,6 +38,7 @@ jobs:
           base='Dream-Account-OS-v2.3-PARTIAL/research/derivatives_leverage_intensity_001'
           p=json.load(open(base+'/FINAL_PRE_DISCOVERY_PROTOCOL_V01.json'))
           s=json.load(open(base+'/source_evidence/DLI_SOURCE_DATA_GATE_V01.json'))
+          runner=open(base+'/discovery_runner_v01.py', encoding='utf-8').read()
           assert p['status']=='FROZEN_FINAL_PRE_DISCOVERY_OUTCOME_BLIND'
           assert p['classification_scope']=='MECHANISM_DISCOVERY_NOT_EXECUTABLE_TRADING_STRATEGY'
           assert p['predictor']['lookback_completed_utc_days']==180
@@ -56,8 +57,10 @@ jobs:
           assert s['expected_archives_total']==96
           assert s['verified_archive_count']==96
           assert s['failed_archive_count']==0
+          assert 'range(2021, 2025)' in runner
+          assert "if '/2025-' in zip_url or '/2026-' in zip_url" in runner
           PY
-          ! grep -Eqi '2025-|2026-|profit.factor|sharpe|position_size|order\(' "$BASE/discovery_runner_v01.py"
+          ! grep -Eqi 'profit.factor|sharpe|position_size|order\(' "$BASE/discovery_runner_v01.py"
 
       - name: Run frozen mechanism Discovery
         run: |
