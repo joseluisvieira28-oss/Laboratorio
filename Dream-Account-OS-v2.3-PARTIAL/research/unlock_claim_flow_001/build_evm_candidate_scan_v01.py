@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-from collections import Counter
+from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -67,11 +67,27 @@ def main() -> None:
     years = sorted({datetime.fromtimestamp(x["timestamp"], timezone.utc).year for x in out})
     max_share = max(by_symbol.values()) / len(out) if out else 1.0
 
+    identities = defaultdict(set)
+    for x in out:
+        identities[x["symbol"]].add((x["chain"], x["token_address"]))
+    token_contracts = {}
+    token_identity_conflicts = {}
+    for symbol, vals in sorted(identities.items()):
+        ordered = sorted(vals)
+        if len(ordered) == 1:
+            chain, address = ordered[0]
+            token_contracts[symbol] = {"chain": chain, "address": address}
+        else:
+            token_identity_conflicts[symbol] = [
+                {"chain": chain, "address": address} for chain, address in ordered
+            ]
+
     preliminary_counts_met = (
         len(out) >= 40
         and len(by_symbol) >= 8
         and years == [2023, 2024]
         and max_share <= 0.25
+        and not token_identity_conflicts
     )
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -91,6 +107,8 @@ def main() -> None:
         "candidate_years": years,
         "candidate_chain_counts": dict(sorted(by_chain.items())),
         "candidate_token_event_counts": dict(sorted(by_symbol.items())),
+        "token_contracts": token_contracts,
+        "token_identity_conflicts": token_identity_conflicts,
         "largest_token_share": max_share,
         "preliminary_count_and_concentration_gates_met": preliminary_counts_met,
         "wallet_provenance_final_count": 0,
