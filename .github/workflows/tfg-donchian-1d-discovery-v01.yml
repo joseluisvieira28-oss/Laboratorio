@@ -1,0 +1,160 @@
+name: TFG Donchian 1D Frozen Discovery
+
+on:
+  push:
+    branches:
+      - tf-gap-donchian-1d-v0.1
+    paths:
+      - '.github/workflows/tfg-donchian-1d-discovery-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  discovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+    steps:
+      - name: Checkout frozen Donchian 1D branch
+        uses: actions/checkout@v4
+        with:
+          ref: tf-gap-donchian-1d-v0.1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Verify freeze and separate Discovery authority
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          f=json.loads(Path('research/timeframe_gap/TFG_DONCHIAN_1D_001_FREEZE.json').read_text())
+          a=json.loads(Path('research/timeframe_gap/TFG_DONCHIAN_1D_001_DISCOVERY_AUTHORITY_V0.1.json').read_text())
+          assert f['experiment_id']=='TFG-DONCHIAN-1D-001'
+          assert f['status']=='FROZEN_BEFORE_ANY_EXPERIMENT_OUTCOME_EVALUATION'
+          assert f['lineage']['this_experiment_is_historical_replication'] is False
+          assert a['status']=='ARMED_AFTER_FREEZE_BEFORE_OUTCOMES'
+          assert a['freeze_commit']=='8fdc194a31ab4d064241ce0f04fba55e36009b53'
+          assert a['authorized']['discovery_2023_02_to_2024_12'] is True
+          assert a['not_authorized']['validation_2025'] is True
+          assert a['not_authorized']['holdout_2026'] is True
+          assert a['not_authorized']['post_outcome_tuning'] is True
+          print('FREEZE_AND_AUTHORITY=PASS')
+          PY
+
+      - name: Run frozen engine synthetic unit tests
+        run: |
+          export PYTHONPATH="$PWD:${PYTHONPATH:-}"
+          python tests/test_tfg_donchian_1d_v01.py
+          python -m research.tfg_donchian_1d_discovery_runner_v01 --self-test
+
+      - name: Verify frozen source artifact metadata before download
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python - <<'PY'
+          import json, os, urllib.request
+          b=json.loads(open('research/timeframe_gap/TFG_DONCHIAN_1D_001_SOURCE_BINDING_V0.1.json').read())
+          expected_id=b['artifact_id']
+          expected_digest=b['artifact_digest']
+          req=urllib.request.Request(
+              f'https://api.github.com/repos/joseluisvieira28-oss/Laboratorio/actions/artifacts/{expected_id}',
+              headers={'Authorization':f'Bearer {os.environ["GH_TOKEN"]}','Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'},
+          )
+          with urllib.request.urlopen(req,timeout=30) as r:
+              d=json.load(r)
+          assert d['id']==expected_id
+          assert d['name']=='tfg-pbr01-1d-exact-parent-corpus'
+          assert d.get('digest')==expected_digest,(d.get('digest'),expected_digest)
+          assert d.get('expired') is False
+          print('FROZEN_ARTIFACT_METADATA=PASS')
+          PY
+
+      - name: Download exact audited MEXC parent corpus artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: tfg-pbr01-1d-exact-parent-corpus
+          path: Dream-Account-OS-v2.3-PARTIAL/research/local_data/tfg_donchian_1d_source_artifact
+          github-token: ${{ github.token }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: 35025382064
+
+      - name: Verify six frozen parent manifests before canonical rebuild
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          b=json.loads(Path('research/timeframe_gap/TFG_DONCHIAN_1D_001_SOURCE_BINDING_V0.1.json').read_text())
+          root=Path('research/local_data/tfg_donchian_1d_source_artifact')
+          for s,fp in b['parent_corpus_fingerprint_by_symbol'].items():
+              d=json.loads((root/'tfg_pbr01_1d_manifests'/f'{s}_MANIFEST.json').read_text())
+              assert d['fingerprint']==fp,(s,d['fingerprint'],fp)
+              assert d['status']=='PASS_CORPUS_AUDIT_ONLY_WITH_GAPS'
+              assert d['total_row_count']==67183
+          print('SIX_FROZEN_MANIFESTS=PASS')
+          PY
+
+      - name: Rebuild canonical layer with unchanged historical Phase-B adapter
+        run: |
+          export PYTHONPATH="$PWD/src:$PWD:${PYTHONPATH:-}"
+          RAW=research/local_data/tfg_donchian_1d_source_artifact/tfg_pbr01_1d_raw
+          OUT=research/local_data/tfg_donchian_1d_canonical
+          MAN=research/local_data/tfg_donchian_1d_rebuilt_manifests
+          mkdir -p "$OUT" "$MAN"
+          for s in BTCUSDT ETHUSDT SOLUSDT BNBUSDT XRPUSDT DOGEUSDT; do
+            python -m research.phase_b_mexc_discovery_corpus_v01 \
+              "$RAW" --output-dir "$OUT" --symbol "$s" --start-month 2023-02 --end-month 2024-12 \
+              --receipt "$MAN/${s}_MANIFEST.json" > "$MAN/${s}_STDOUT.json"
+          done
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          b=json.loads(Path('research/timeframe_gap/TFG_DONCHIAN_1D_001_SOURCE_BINDING_V0.1.json').read_text())
+          for s,fp in b['parent_corpus_fingerprint_by_symbol'].items():
+              d=json.loads(Path(f'research/local_data/tfg_donchian_1d_rebuilt_manifests/{s}_MANIFEST.json').read_text())
+              assert d['fingerprint']==fp,(s,d['fingerprint'],fp)
+          files=list(Path('research/local_data/tfg_donchian_1d_canonical/canonical').glob('*.canonical.csv'))
+          assert len(files)==138,len(files)
+          print('REBUILT_CANONICAL_IDENTITY=PASS files=138')
+          PY
+
+      - name: Execute frozen Donchian 1D Discovery only
+        id: discovery
+        continue-on-error: true
+        run: |
+          export PYTHONPATH="$PWD:${PYTHONPATH:-}"
+          mkdir -p research/local_data/tfg_donchian_1d_discovery
+          set +e
+          python -m research.tfg_donchian_1d_discovery_runner_v01 \
+            --canonical-dir research/local_data/tfg_donchian_1d_canonical/canonical \
+            --manifest-dir research/local_data/tfg_donchian_1d_rebuilt_manifests \
+            --binding research/timeframe_gap/TFG_DONCHIAN_1D_001_SOURCE_BINDING_V0.1.json \
+            --output-dir research/local_data/tfg_donchian_1d_discovery
+          rc=$?
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Upload frozen Discovery receipt and ledger
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfg-donchian-1d-discovery-result
+          path: |
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/tfg_donchian_1d_discovery/TFG_DONCHIAN_1D_DISCOVERY_RECEIPT_V0.1.json
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/tfg_donchian_1d_discovery/TFG_DONCHIAN_1D_DISCOVERY_LEDGER_V0.1.json
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Fail closed on technical or data gate failure
+        if: steps.discovery.outputs.rc != '0'
+        run: |
+          echo 'Donchian 1D Discovery did not produce a scientific classification. 2025/2026 remain locked.'
+          exit 1
