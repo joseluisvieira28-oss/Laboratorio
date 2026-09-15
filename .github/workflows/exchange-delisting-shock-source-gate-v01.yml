@@ -91,10 +91,10 @@ jobs:
           BASE='Dream-Account-OS-v2.3-PARTIAL/research/exchange_delisting_shock_001'
           git config user.name 'crypto-lab-source-gate-bot'
           git config user.email 'crypto-lab-source-gate-bot@users.noreply.github.com'
-          git pull --rebase origin exchange-delisting-shock-v0.1
           git add "$BASE/source_evidence/EDS_SOURCE_DATA_GATE_V01.json"
           git diff --cached --quiet && exit 0
           git commit -m 'EXCHANGE-DELISTING-SHOCK-001: source gate receipt [skip ci]'
+          git pull --rebase origin exchange-delisting-shock-v0.1
           git push origin HEAD:exchange-delisting-shock-v0.1
 
       - name: Upload source evidence
