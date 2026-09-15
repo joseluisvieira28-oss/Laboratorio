@@ -1,0 +1,46 @@
+{
+  "document_type": "TIMEFRAME_GAP_SOURCE_CLOSEOUT",
+  "experiment_id": "TFG-PBR01-1H-001",
+  "version": "0.1",
+  "closeout_date": "2026-09-15",
+  "classification": "SOURCE_ACCESS_BLOCKED",
+  "stage": "PRE_OUTCOME_SOURCE_DATA_GATE",
+  "freeze_commit": "3447043398ef2fda4ac1272cc213f57329ace657",
+  "frozen_discovery_window": {
+    "start_utc": "2022-01-01T00:00:00Z",
+    "end_utc": "2024-12-31T23:59:59Z"
+  },
+  "local_inventory": {
+    "expected_source_file_count": 216,
+    "present_source_file_count": 138,
+    "missing_source_file_count": 78,
+    "missing_months_per_symbol": 13,
+    "first_present_month": "2023-02",
+    "last_present_month": "2024-12"
+  },
+  "official_route_probe": {
+    "source": "MEXC_PUBLIC_SPOT_KLINES_GET_ONLY",
+    "requests": 12,
+    "http_200_count": 12,
+    "nonempty_response_count": 0,
+    "exact_boundary_open_found_count": 0,
+    "returned_2025_or_later": false,
+    "status": "SOURCE_ROUTE_PROBE_FAILED"
+  },
+  "external_source_constraint": {
+    "official_historical_market_data_documentation": "MEXC states Spot historical market-data downloads are provided since 2023-01-01",
+    "cross_exchange_backfill_allowed": false,
+    "window_reduction_allowed": false,
+    "synthetic_history_allowed": false,
+    "interpolation_allowed": false
+  },
+  "scientific_interpretation": "No 1H trade outcome, expectancy, PnL, win rate, profit factor, or bootstrap statistic was inspected. This is not NO_EDGE and not INSUFFICIENT_SAMPLE. The exact 1H hypothesis remains scientifically unevaluated because its frozen source window cannot be reproduced from the authorized MEXC-only source route.",
+  "outcome_evaluation_performed": false,
+  "validation_2025_access_performed": false,
+  "holdout_2026_access_performed": false,
+  "live_trading": false,
+  "exchange_mutation": false,
+  "orders_submitted": false,
+  "merge_to_main_authorized": false,
+  "next_queue_item": "TFG-VWAP-15M-001"
+}

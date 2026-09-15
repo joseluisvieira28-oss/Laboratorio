@@ -1,0 +1,37 @@
+{
+  "document_type": "SOURCE_ROUTE_PROBE_AUTHORITY",
+  "experiment_id": "TFG-PBR01-1H-001",
+  "version": "0.1",
+  "created_date": "2026-09-15",
+  "status": "FROZEN_BEFORE_SOURCE_ROUTE_PROBE",
+  "purpose": "Test whether the frozen MEXC-only source route can provide the missing historical boundary timestamps before any 1H outcome evaluation.",
+  "allowed_request": {
+    "method": "GET",
+    "host": "api.mexc.com",
+    "path": "/api/v3/klines",
+    "interval": "15m",
+    "symbols": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "DOGEUSDT"],
+    "probe_open_times_ms": [1640995200000, 1735688700000],
+    "maximum_requests": 12,
+    "authentication": false
+  },
+  "forbidden": {
+    "post": true,
+    "put": true,
+    "patch": true,
+    "delete": true,
+    "orders": true,
+    "account_endpoints": true,
+    "private_endpoints": true,
+    "timestamps_2025_or_later": true,
+    "return_calculation": true,
+    "pnl_calculation": true,
+    "trade_outcome_evaluation": true,
+    "validation_2025": true,
+    "holdout_2026": true
+  },
+  "pass_rule": "All 12 probes must return the exact requested open timestamp and no returned timestamp may be 2025-01-01T00:00:00Z or later.",
+  "failure_classification": "SOURCE_ROUTE_PROBE_FAILED",
+  "no_hypothesis_change": true,
+  "no_parameter_change": true
+}
