@@ -1,4 +1,4 @@
-import hashlib, html, json, re, time, urllib.parse, urllib.request
+import hashlib, html, json, re, time, unicodedata, urllib.parse, urllib.request
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -83,7 +83,10 @@ def textify(s):
     s=re.sub(r'(?i)<br\s*/?>|</p>|</li>|</h\d>', '\n', s)
     s=re.sub(r'<[^>]+>', ' ', s)
     s=html.unescape(s).replace('\xa0',' ')
-    return re.sub(r'[ \t]+',' ',s)
+    s=unicodedata.normalize('NFKC',s)
+    s=''.join(ch for ch in s if unicodedata.category(ch)!='Cf')
+    s=re.sub(r'[ \t\r\f\v]+',' ',s)
+    return s
 
 def li_items(body):
     items=[]
@@ -93,32 +96,51 @@ def li_items(body):
         if mm: items.append((mm.group(2),mm.group(1).strip(' -•')))
     return items
 
-def intro_token_items(text):
-    out=[]
-    m=re.search(
-        r'(?is)cease\s+trading\s+on\s+all(?:\s+spot)?\s+trading\s+pairs.*?'
-        r'following\s+token(?:\(s\)|s)?\s+at\s+20\d\d-\d\d-\d\d\s+\d\d:\d\d\s*\(UTC\)\s*:\s*'
-        r'(.*?)(?:Please\s+note\s*:|Please\s+note)',
-        text,
-    )
-    if not m:
-        return out
-    seg=m.group(1)
-    for mm in re.finditer(r'(?m)^\s*([^()\n]{1,100}?)\s*\(([A-Z0-9]{2,15})\)\s*$', seg):
-        name=mm.group(1).strip(' -•\t')
-        if name:
-            out.append((mm.group(2),name))
-    return out
+def title_symbols(title):
+    m=re.search(r'(?i)^Binance Will Delist\s+(.+?)\s+on\s+(20\d\d-\d\d-\d\d)\s*$',title.strip())
+    if not m: return [],None
+    raw=m.group(1).replace(' and ',', ')
+    syms=[]
+    for part in raw.split(','):
+        s=part.strip()
+        if re.fullmatch(r'[A-Z0-9]{2,15}',s): syms.append(s)
+    return syms,m.group(2)
 
 def exact_pairs(text):
     m=re.search(r'(?is)exact\s+trading\s+pairs\s+being\s+removed\s+are\s*:\s*(.*?)(?:All\s+trade\s+orders|To\s+view\s+your\s+assets|Deposits\s+of|Withdrawals\s+of|Binance\s+Margin|Binance\s+Convert|$)', text)
     if not m: return []
     return sorted(set(re.findall(r'\b[A-Z0-9]{2,20}/[A-Z0-9]{2,20}\b',m.group(1))))
 
-def delist_ts(text):
-    m=re.search(r'(?is)cease\s+trading\s+on\s+all(?:\s+spot)?\s+trading\s+pairs.{0,700}?\bat\s*(20\d\d-\d\d-\d\d)\s+(\d\d:\d\d)\s*\(UTC\)',text)
-    if not m: return None
-    return datetime.strptime(m.group(1)+' '+m.group(2),'%Y-%m-%d %H:%M').replace(tzinfo=timezone.utc)
+def full_delist_anchor(text):
+    return re.search(r'(?is)delist\s+and\s+cease\s+trading\s+on\s+all(?:\s+spot)?\s+trading\s+pairs',text)
+
+def delist_ts(text,title):
+    anchor=full_delist_anchor(text)
+    syms,title_date=title_symbols(title)
+    if not anchor or not title_date: return None
+    tail=text[anchor.start():anchor.start()+1800]
+    stamps=[]
+    for m in re.finditer(r'(20\d\d-\d\d-\d\d)\s+(\d\d:\d\d)\s*\(UTC\)',tail,re.I):
+        stamps.append((m.group(1),m.group(2),m.start()))
+    same=[x for x in stamps if x[0]==title_date]
+    if not same: return None
+    date,time_s,_=same[0]
+    return datetime.strptime(date+' '+time_s,'%Y-%m-%d %H:%M').replace(tzinfo=timezone.utc)
+
+def token_names(body,text,title):
+    names=dict(li_items(body))
+    anchor=full_delist_anchor(text)
+    if anchor:
+        tail=text[anchor.start():anchor.start()+1800]
+        stop=re.search(r'(?is)Please\s+note\s*:?',tail)
+        seg=tail[:stop.start()] if stop else tail
+        for m in re.finditer(r'(?m)^\s*([^()\n]{1,100}?)\s*\(([A-Z0-9]{2,15})\)\s*$',seg):
+            name=m.group(1).strip(' -•\t')
+            if name: names.setdefault(m.group(2),name)
+    syms,_=title_symbols(title)
+    for sym in syms:
+        names.setdefault(sym,None)
+    return names
 
 def ceil_hour(dt):
     x=dt.replace(minute=0,second=0,microsecond=0)
@@ -159,30 +181,33 @@ def main():
             title=str(d.get('title') or a.get('title') or '')
             body=str(d.get('body') or '')
             txt=textify(body)
-            stop=delist_ts(txt); pairs=exact_pairs(txt)
-            names=dict(li_items(body))
-            for sym,name in intro_token_items(txt):
-                names.setdefault(sym,name)
             if pub is None or not (START<=pub<=END): continue
+            if not full_delist_anchor(txt):
+                rejected.append({'article_code':code,'title':title,'reason':'NO_FULL_TOKEN_DELIST_PHRASE'}); continue
+            stop=delist_ts(txt,title)
             if stop is None:
-                rejected.append({'article_code':code,'title':title,'reason':'NO_EXACT_ALL_PAIRS_CESSATION_TIMESTAMP'}); continue
+                rejected.append({'article_code':code,'title':title,'reason':'NO_TITLE_BOUND_CESSATION_TIMESTAMP'}); continue
+            pairs=exact_pairs(txt)
             if not pairs:
                 rejected.append({'article_code':code,'title':title,'reason':'NO_EXACT_TRADING_PAIR_SECTION'}); continue
-            digest=hashlib.sha256(raw).hexdigest()
-            evidence=re.search(r'(?is)(.{0,120}cease\s+trading\s+on\s+all(?:\s+spot)?\s+trading\s+pairs.{0,700}?\(UTC\))',txt)
-            evtext=re.sub(r'\s+',' ',evidence.group(1)).strip() if evidence else None
+            names=token_names(body,txt,title)
+            title_syms,_=title_symbols(title)
+            if not title_syms:
+                rejected.append({'article_code':code,'title':title,'reason':'NO_TITLE_SYMBOL_SET'}); continue
             pair_symbols=set()
             for pair in pairs:
-                left,right=pair.split('/',1)
-                pair_symbols.add(left); pair_symbols.add(right)
-            syms=sorted(sym for sym in names if sym in pair_symbols)
+                left,right=pair.split('/',1); pair_symbols.add(left); pair_symbols.add(right)
+            syms=[sym for sym in title_syms if sym in pair_symbols]
             if not syms:
-                rejected.append({'article_code':code,'title':title,'reason':'NO_TOKEN_SYMBOL_EXACTLY_RESOLVED_FROM_ARTICLE'}); continue
+                rejected.append({'article_code':code,'title':title,'reason':'TITLE_SYMBOLS_NOT_IN_EXACT_PAIR_SECTION'}); continue
+            digest=hashlib.sha256(raw).hexdigest()
+            anchor=full_delist_anchor(txt)
+            evtext=re.sub(r'\s+',' ',txt[anchor.start():anchor.start()+900]).strip() if anchor else None
             for sym in syms:
                 qualified.append({
                     'article_code':code,'official_url':f'https://www.binance.com/en/support/announcement/detail/{code}',
                     'title':title,'publication_timestamp_utc':pub.isoformat().replace('+00:00','Z'),
-                    'token_symbol':sym,'token_name':names[sym],
+                    'token_symbol':sym,'token_name':names.get(sym),
                     'all_pairs_cessation_timestamp_utc':stop.isoformat().replace('+00:00','Z'),
                     'all_pairs_text_evidence':evtext,'exact_pairs':pairs,
                     'has_usdt_pair':f'{sym}/USDT' in pairs,'article_response_sha256':digest
@@ -200,7 +225,7 @@ def main():
 
     years=sorted(set(int(e['publication_timestamp_utc'][:4]) for e in qualified))
     tokens=sorted(set(e['token_symbol'] for e in qualified))
-    source_pass=len(qualified)>=30 and len(tokens)>=15 and set([2023,2024]).issubset(years)
+    source_pass=len(qualified)>=30 and len(tokens)>=15 and {2023,2024}.issubset(years)
 
     route=[]; protected=[]
     if source_pass:
@@ -218,7 +243,7 @@ def main():
     rq=[r for r in route if r.get('qualified')]
     rq_tokens=sorted(set(r['symbol'] for r in rq))
     rq_years=sorted(set(int(next(e for e in qualified if e['article_code']==r['article_code'] and e['token_symbol']==r['symbol'])['publication_timestamp_utc'][:4]) for r in rq)) if rq else []
-    route_pass=len(rq)>=30 and len(rq_tokens)>=15 and set([2023,2024]).issubset(rq_years)
+    route_pass=len(rq)>=30 and len(rq_tokens)>=15 and {2023,2024}.issubset(rq_years)
 
     if list_error and not candidates: classification='SOURCE_ACCESS_BLOCKED'
     elif not source_pass: classification='INSUFFICIENT_SOURCE_SAMPLE'
