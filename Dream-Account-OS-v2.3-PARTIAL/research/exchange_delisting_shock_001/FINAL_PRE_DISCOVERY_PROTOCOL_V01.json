@@ -1,111 +1,33 @@
 {
   "lab_id": "EXCHANGE-DELISTING-SHOCK-001",
   "mve_id": "EDS-BINANCE-FULLTOKEN-001",
-  "status": "FROZEN_FINAL_PRE_DISCOVERY_OUTCOME_BLIND",
-  "authorization": "PRE_DISCOVERY_FREEZE_ONLY_DISCOVERY_PROHIBITED",
+  "status": "INVALIDATED_PREOUTCOME_CONFLICT_WITH_CANONICAL_DRIVE_CLOSEOUT",
+  "authorization": "NONE_DO_NOT_EXECUTE",
   "branch": "exchange-delisting-shock-v0.1",
-  "parent_pre_source_protocol": "Dream-Account-OS-v2.3-PARTIAL/research/exchange_delisting_shock_001/PRE_SOURCE_PROTOCOL_V01.json",
-  "source_gate_binding": {
-    "receipt_path": "Dream-Account-OS-v2.3-PARTIAL/research/exchange_delisting_shock_001/source_evidence/EDS_SOURCE_DATA_GATE_V01.json",
-    "receipt_blob_sha": "756686f88ddea926e8b9227ad8b8313b96ccf85f",
-    "receipt_commit_sha": "720f8876deba825f3655541f9fd2191159a77a9e",
-    "classification": "SOURCE_DATA_PASS",
-    "qualified_token_events": 49,
-    "qualified_distinct_tokens": 49,
-    "route_qualified_token_events": 38,
-    "route_qualified_distinct_tokens": 38,
-    "qualified_years": [2023, 2024],
-    "route_qualified_years": [2023, 2024],
-    "event_set_rule": "Use only events already route-qualified in the bound source receipt; no additions, substitutions, exclusions, venue switches, or post-market filtering after this freeze."
+  "invalidated_before_any_market_outcome": true,
+  "canonical_authority": {
+    "drive_document_id": "1sjNPeWovbiI5mD4TeouwfaDu3URIlMhuaQt0FpHuZiw",
+    "canonical_final_source_classification": "INSUFFICIENT_SOURCE_SAMPLE",
+    "canonical_closeout_rule": "Exact source contract closed. No V0.4 parser weakening, source-field relaxation, threshold reduction, third-party substitution, cross-exchange backfill or outcome rescue is authorized.",
+    "required_field_preserved_by_canonical_contract": "token name and symbol"
   },
-  "scientific_question": "Do official Binance full-token delisting announcements predict negative token performance between a causal post-publication entry boundary and the final tradable spot boundary, beyond contemporaneous BTC market movement?",
-  "expected_direction": "NEGATIVE_TOKEN_PERFORMANCE_AFTER_ANNOUNCEMENT",
-  "discovery_scope": {
-    "publication_years": [2023, 2024],
-    "protected_2025": true,
-    "protected_2026": true,
-    "price_source": "BINANCE_DATA_VISION_SPOT_OFFICIAL_ARCHIVES",
-    "token_pair": "SYMBOLUSDT",
-    "benchmark_pair": "BTCUSDT",
-    "interval": "1h",
-    "cross_exchange_backfill": false,
-    "synthetic_interpolation": false
+  "reason_for_invalidation": {
+    "non_authoritative_receipt_commit": "720f8876deba825f3655541f9fd2191159a77a9e",
+    "non_authoritative_receipt_blob_sha": "756686f88ddea926e8b9227ad8b8313b96ccf85f",
+    "observed_non_authoritative_classification": "SOURCE_DATA_PASS",
+    "governance_breach_detected": "The post-closeout parser admitted token-events with token_name=null by relying on title symbol plus trading-pair cross-check. The frozen original source contract required exact official token name + symbol and the canonical Drive closeout explicitly prohibited any further parser weakening/source-field relaxation.",
+    "scientific_effect": "The apparent SOURCE_DATA_PASS is invalid scientific evidence and must not authorize Discovery or overwrite the canonical INSUFFICIENT_SOURCE_SAMPLE closeout."
   },
-  "timing": {
-    "publication_time": "Official Binance publication timestamp from the bound source receipt.",
-    "entry_timestamp": "FIRST_WHOLE_UTC_HOUR_AT_LEAST_60_MINUTES_AFTER_PUBLICATION",
-    "entry_price": "OPEN of the 1h SYMBOLUSDT bar whose open timestamp equals entry_timestamp.",
-    "terminal_timestamp": "SCHEDULED_ALL_PAIRS_CESSATION_TIMESTAMP from the bound source receipt.",
-    "terminal_price": "CLOSE of the last complete 1h SYMBOLUSDT bar ending at or before terminal_timestamp. If no exact causal bar exists, fail that event closed as DATA_FAILURE_EVENT; do not substitute another venue or interpolate.",
-    "benchmark_entry_price": "BTCUSDT 1h OPEN at the same entry_timestamp.",
-    "benchmark_terminal_price": "BTCUSDT 1h CLOSE at the same terminal boundary rule.",
-    "overlap_policy": "Each token-event is evaluated once. Multiple tokens in one Binance announcement remain separate token outcomes but share one announcement cluster for inference."
-  },
-  "outcomes": {
-    "primary": "BTC_ADJUSTED_LOG_RETURN = log(token_terminal/token_entry) - log(btc_terminal/btc_entry)",
-    "secondary_raw": "TOKEN_LOG_RETURN = log(token_terminal/token_entry)",
-    "descriptive_only": [
-      "simple token return",
-      "simple BTC return",
-      "holding duration hours",
-      "event direction sign"
-    ],
-    "no_intraperiod_horizon_scan": true,
-    "no_alternate_entry_scan": true,
-    "no_alternate_terminal_scan": true
-  },
-  "cost_model": {
-    "discovery_claim_type": "PREDICTIVE_EVENT_STUDY_ONLY_NOT_TRADING_PNL",
-    "spot_short_execution_assumed": false,
-    "trading_costs_applied_to_primary_outcome": false,
-    "reason": "Binance Spot price history establishes the predictive event effect but does not by itself establish a historically executable short vehicle. A margin/perpetual execution study with borrow/funding/slippage/fees requires a separate prospective MVE if this predictive Discovery survives.",
-    "no_zero_cost_trading_edge_claim": true
-  },
-  "statistical_inference": {
-    "unit_of_economic_observation": "TOKEN_EVENT",
-    "dependence_cluster": "OFFICIAL_BINANCE_ANNOUNCEMENT_ARTICLE_CODE",
-    "bootstrap": "CLUSTER_BOOTSTRAP_BY_ANNOUNCEMENT_WITH_REPLACEMENT",
-    "bootstrap_repetitions": 10000,
-    "bootstrap_seed": 230911,
-    "confidence_level": 0.95,
-    "directional_test": "For negative expected direction, the two-sided 95% confidence interval upper bound of the mean BTC-adjusted log return must be strictly below zero.",
-    "jackknife": "Leave-one-announcement-cluster-out mean BTC-adjusted log return must remain below zero for every cluster.",
-    "no_token_level_iid_bootstrap": true
-  },
-  "sample_minimums": {
-    "minimum_route_qualified_token_events": 30,
-    "minimum_distinct_tokens": 15,
-    "required_calendar_years": [2023, 2024],
-    "sample_reduction_after_outcome": false
-  },
-  "promotion_gates": {
-    "all_required": true,
-    "gates": [
-      "N_ROUTE_QUALIFIED_TOKEN_EVENTS >= 30",
-      "DISTINCT_TOKENS >= 15",
-      "MEAN_RAW_TOKEN_LOG_RETURN < 0",
-      "MEAN_BTC_ADJUSTED_LOG_RETURN < 0",
-      "MEDIAN_BTC_ADJUSTED_LOG_RETURN < 0",
-      "CLUSTER_BOOTSTRAP_95PCT_CI_UPPER_MEAN_BTC_ADJUSTED_LOG_RETURN < 0",
-      "MEAN_BTC_ADJUSTED_LOG_RETURN_2023 < 0",
-      "MEAN_BTC_ADJUSTED_LOG_RETURN_2024 < 0",
-      "LEAVE_ONE_ANNOUNCEMENT_CLUSTER_OUT_MEAN_BTC_ADJUSTED_LOG_RETURN < 0_FOR_EVERY_CLUSTER",
-      "SOURCE_BINDING_EXACT_PASS",
-      "TIMING_FIREWALL_PASS",
-      "PROTECTED_PERIOD_FIREWALL_PASS"
-    ],
-    "pass_classification": "PREDICTIVE_EDGE_SURVIVES_EXECUTION_UNPROVEN",
-    "fail_classification": "DISCOVERY_FAIL_NO_PROMOTION",
-    "execution_note": "A predictive pass is not a tradable diamond. It only authorizes consideration of a separate prospective executable-short MVE; it does not authorize 2025/2026 or live trading."
-  },
-  "failure_taxonomy": {
-    "missing_or_invalid_required_price_bytes": "DATA_FAILURE_OR_INSUFFICIENT_SAMPLE_AS_APPLICABLE_NOT_NO_EDGE",
-    "statistical_or_economic_gate_failure_with_valid_data": "DISCOVERY_FAIL_NO_PROMOTION",
-    "source_identity_mismatch": "PROVENANCE_FAILURE",
-    "technical_runner_failure_before_outcome": "TECHNICAL_FAILURE_PREOUTCOME"
+  "historical_preservation": {
+    "source_receipt_is_preserved_as_non_authoritative_technical_output": true,
+    "original_canonical_closeout_remains_unchanged": true,
+    "failed_or_blocked_state_rewritten": false
   },
   "hard_firewalls": {
-    "discovery_execution_authorized_by_this_file": false,
+    "discovery_execution_authorized": false,
+    "market_price_values_opened": false,
+    "returns_computed": false,
+    "pnl_computed": false,
     "2025_access": false,
     "2026_access": false,
     "live_trading": false,
@@ -113,11 +35,7 @@
     "merge_to_main": false,
     "render_deployment": false,
     "post_outcome_tuning": false,
-    "inverse_rescue": false,
-    "threshold_rescue": false,
-    "horizon_rescue": false,
-    "asset_cherry_picking": false,
-    "cost_rescue": false
+    "rescue_authorized": false
   },
-  "next_authorized_action": "Build and audit an outcome-blind Discovery runner against this exact freeze. Do not execute market outcomes until separate explicit authorization is given."
+  "routing": "EDS-BINANCE-FULLTOKEN-001 remains CLOSED at Source/Data Gate as INSUFFICIENT_SOURCE_SAMPLE. Any future exchange-delisting mechanism must be materially new, receive a new MVE ID and new prospective source authority, and may not reuse this invalidated post-closeout relaxation as evidence."
 }
