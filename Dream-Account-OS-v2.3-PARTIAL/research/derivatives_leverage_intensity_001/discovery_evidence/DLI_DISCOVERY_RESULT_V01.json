@@ -1,0 +1,89 @@
+{
+  "all_promotion_conditions_pass": false,
+  "bootstrap": {
+    "ci95_lower": -38.83115431298552,
+    "ci95_upper": 41.21192987925997,
+    "median": -0.04296842546409607,
+    "replications_requested": 5000,
+    "replications_valid": 5000
+  },
+  "classification": "NO_PREDICTIVE_VOLATILITY_EDGE",
+  "guards": {
+    "alerts_or_webhooks": false,
+    "close_to_close_returns_computed": false,
+    "directional_returns_computed": false,
+    "exchange_mutation": false,
+    "live_trading": false,
+    "market_price_values_opened": true,
+    "orders": false,
+    "pnl_computed": false,
+    "price_fields_used": [
+      "spot_high",
+      "spot_low"
+    ],
+    "strategy_performance_backtest": false,
+    "transaction_costs_applied": false,
+    "year_2025_opened": false,
+    "year_2026_opened": false
+  },
+  "lab_id": "DERIVATIVES-LEVERAGE-INTENSITY-001",
+  "mode": "FROZEN_MECHANISM_DISCOVERY_ONLY",
+  "mve_id": "DLI-BTC-FUTSPOT-TURNOVER-001",
+  "positive_calendar_year_count": 3,
+  "post_result_rule": "STOP after Discovery classification. A surviving mechanism does not authorize a trading strategy, transaction-cost backtest, 2025/2026 access, or threshold/horizon tuning. Any executable volatility strategy must be a separately named MVE with a new prospective freeze and untouched validation data.",
+  "primary_model": {
+    "event_beta_hac_ci95_lower": -0.01019803948388387,
+    "event_beta_hac_ci95_upper": 0.11433515529081828,
+    "event_beta_hac_se": 0.03176867213640361,
+    "event_beta_log_next_range": 0.052068557903467205,
+    "hac_lags": 7
+  },
+  "promotion_gate_checks": {
+    "block_bootstrap_mean_difference_ci95_lower_gt_zero": false,
+    "event_beta_hac_ci95_lower_gt_zero": false,
+    "event_beta_positive": true,
+    "minimum_eligible_observations": true,
+    "minimum_event_observations": true,
+    "minimum_positive_calendar_years": true,
+    "raw_event_mean_gt_control_mean": true
+  },
+  "raw_comparison": {
+    "control_mean_next_day_range_bps": 428.1367514109886,
+    "event_mean_next_day_range_bps": 429.0907291569519,
+    "event_minus_control_bps": 0.9539777459633001
+  },
+  "sample": {
+    "control_observations": 967,
+    "eligible_observations": 1280,
+    "event_observations": 313,
+    "first_eligible_signal_day": "2021-06-30",
+    "last_eligible_signal_day": "2024-12-30"
+  },
+  "source_revalidation": {
+    "all_archive_sha256_equal_frozen_source_receipt": true,
+    "all_current_official_checksums_passed": true,
+    "archives_revalidated": 96
+  },
+  "year_differences": {
+    "2021": {
+      "control_n": 147,
+      "event_minus_control_bps": 21.208337626403136,
+      "event_n": 38
+    },
+    "2022": {
+      "control_n": 316,
+      "event_minus_control_bps": 124.51989521552576,
+      "event_n": 49
+    },
+    "2023": {
+      "control_n": 254,
+      "event_minus_control_bps": 10.596539137940283,
+      "event_n": 111
+    },
+    "2024": {
+      "control_n": 250,
+      "event_minus_control_bps": -17.35646577575983,
+      "event_n": 115
+    }
+  }
+}
