@@ -1,0 +1,122 @@
+{
+  "document_type": "TIMEFRAME_GAP_DISCOVERY_CLOSEOUT",
+  "experiment_id": "TFG-EXTREME-MR-30M-001",
+  "version": "0.1",
+  "closeout_date": "2026-09-16",
+  "classification": "NO_EDGE",
+  "scientific_status": "CLOSED_DISCOVERY_VALIDATION_NOT_UNLOCKED",
+  "lineage": {
+    "historical_reference": "SIMPLE_TRADING_LAB_V0.1_EXTREME_MEAN_REVERSION",
+    "historical_exact_rule_recovery": "SOURCE_RULE_RECOVERY_BLOCKED",
+    "historical_verdict_changed": false,
+    "this_experiment_is_historical_replication": false,
+    "this_experiment_identity": "NEW_PROSPECTIVE_30M_HYPOTHESIS",
+    "historical_positive_diagnostic_assets_not_selected": ["DOGE_4H"]
+  },
+  "source_identity": {
+    "exact_parent_corpus_identity_gate": "PASS",
+    "source_artifact_id": 10419067320,
+    "source_artifact_digest": "sha256:7b2562af14983d0344c9a28e81e9c1866f2e5e9dfafe94203da9a4ca1ffa36cb",
+    "source_rows_per_symbol": 67183,
+    "effective_15m_candles_per_symbol": 67151,
+    "derived_30m_bars_per_symbol": 33573,
+    "total_incomplete_30m_buckets": 30
+  },
+  "execution_history": {
+    "pre_outcome_technical_run_id": 35032034864,
+    "pre_outcome_technical_failure": "SYNTHETIC_FIXTURE_DID_NOT_CREATE_AN_ELIGIBLE_ENTRY",
+    "pre_outcome_market_data_downloaded": false,
+    "pre_outcome_market_outcomes_evaluated": false,
+    "fixture_only_correction_commit": "4a255131f82160d18b0bded4e7679656874d2544",
+    "successful_run_id": 35032142138,
+    "result_artifact_id": 10421608698,
+    "result_artifact_digest": "sha256:0189ab4174106c0f64578248fcfb6f4cc2f9349ab14d43598c8d64431e596484",
+    "outcome_evaluation_performed": true,
+    "validation_2025_access_performed": false,
+    "holdout_2026_access_performed": false
+  },
+  "frozen_rule_summary": {
+    "timeframe": "30M_UTC",
+    "ema_length": 20,
+    "atr_length": 14,
+    "extreme_rule": "signal_close <= EMA20_signal - 1.5 * ATR14_signal",
+    "direction": "LONG_ONLY",
+    "entry": "next 30m open",
+    "stop": "signal low - 0.25 ATR14",
+    "target": "signal EMA20",
+    "max_hold_bars": 16,
+    "base_round_trip_cost_pct": 0.20,
+    "stress_round_trip_cost_pct": 0.30,
+    "minimum_resolved_trades": 300
+  },
+  "base_metrics": {
+    "raw_trigger_count": 19890,
+    "pre_entry_cancelled_count": 0,
+    "selected_trade_count": 9692,
+    "resolved_trade_count": 9692,
+    "unresolved_trade_count": 0,
+    "overlap_skipped_count": 10198,
+    "net_expectancy_r": -0.3080092346763369,
+    "median_net_r": -1.0,
+    "win_rate": 0.27827073875361125,
+    "loss_rate": 0.7217292612463888,
+    "profit_factor_r": 0.5631311295327229,
+    "target_reach_rate": 0.20810978126289723,
+    "same_bar_ambiguity_rate": 0.004023937267849773,
+    "time_exit_rate": 0.09224102352455633,
+    "stop_gap_rate": 0.0001031778786628147,
+    "symbol_distribution": {
+      "BNBUSDT": 1744,
+      "BTCUSDT": 1511,
+      "DOGEUSDT": 1594,
+      "ETHUSDT": 1547,
+      "SOLUSDT": 1806,
+      "XRPUSDT": 1490
+    }
+  },
+  "bootstrap": {
+    "method": "UTC_CALENDAR_DAY_BLOCK_BOOTSTRAP",
+    "repetitions": 5000,
+    "seed": 230911,
+    "confidence": 0.95,
+    "sample_days": 647,
+    "lower": -0.3439543630547021,
+    "point_estimate": -0.3080092346763369,
+    "upper": -0.27150000749303305
+  },
+  "fixed_cohort_stress_metrics": {
+    "selected_trade_count": 9692,
+    "resolved_trade_count": 9692,
+    "unresolved_trade_count": 0,
+    "net_expectancy_r": -0.39609650189371925,
+    "median_net_r": -1.0,
+    "profit_factor_r": 0.43971564801469953
+  },
+  "decision": {
+    "minimum_required_trades": 300,
+    "resolved_trade_count": 9692,
+    "failed_conditions": [
+      "base_net_expectancy_not_positive",
+      "base_profit_factor_not_above_1",
+      "bootstrap_lower_95_not_positive",
+      "fixed_cohort_stress_expectancy_not_positive"
+    ],
+    "decision_fingerprint": "33c6b4d14dee2fec2fe8deacf58430526b8cdb486f4c4ee5feb8723304726b05",
+    "receipt_fingerprint": "b7c62a9de9b96d2639e6d3407681ef5c5c40876ed4682b2c25497adae1ae01fa",
+    "validation_unlock_eligible": false,
+    "live_authorized": false
+  },
+  "interpretation_guardrail": "This exact 30m long-only EMA20-minus-1.5ATR mean-reversion hypothesis is closed NO_EDGE. The large resolved sample, negative BASE expectancy, PF below 1, fully negative 95% bootstrap interval, and more negative fixed-cohort STRESS expectancy do not support validation. Do not tune the threshold, EMA/ATR lengths, direction, stop, target, hold, costs, universe or Discovery window from these outcomes. Any materially different hypothesis requires a new experiment ID and prospective freeze.",
+  "governance": {
+    "open_2025": false,
+    "open_2026": false,
+    "post_outcome_tuning": false,
+    "opportunistic_extension": false,
+    "asset_selection": false,
+    "sample_threshold_reduction": false,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "merge_to_main": false,
+    "render_deploy": false
+  }
+}
