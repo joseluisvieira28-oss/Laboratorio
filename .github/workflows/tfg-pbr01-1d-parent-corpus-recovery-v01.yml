@@ -1,0 +1,129 @@
+name: TFG PBR01 1D Parent Corpus Recovery
+
+on:
+  push:
+    branches:
+      - tf-gap-pbr01-1d-v0.1
+    paths:
+      - '.github/workflows/tfg-pbr01-1d-parent-corpus-recovery-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tf-gap-pbr01-1d-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install source-gate dependencies
+        run: |
+          python -m pip install --disable-pip-version-check playwright
+          python -m playwright install --with-deps chromium
+      - name: Verify prospectively frozen source identity authority
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('research/timeframe_gap/TFG_PBR01_1D_001_SOURCE_IDENTITY_AUTHORITY_V0.1.json')
+          d=json.loads(p.read_text())
+          assert d['status']=='FROZEN_BEFORE_MASS_REACQUISITION_AND_BEFORE_ANY_1D_OUTCOME_EVALUATION'
+          assert d['reference_byte_identity_gate']['status']=='PASS_REFERENCE_FILE_BYTE_IDENTITY_GATE'
+          assert d['reference_byte_identity_gate']['expected_sha256']==d['reference_byte_identity_gate']['observed_sha256']
+          assert d['official_source']['expected_total_source_files']==138
+          assert d['firewall']['validation_2025_market_bytes_accessed'] is False
+          assert d['firewall']['holdout_2026_market_bytes_accessed'] is False
+          print('SOURCE_IDENTITY_AUTHORITY=PASS')
+          PY
+      - name: Reacquire exactly 138 official MEXC bulk CSV files
+        id: reacquire
+        continue-on-error: true
+        run: |
+          mkdir -p research/local_data/tfg_pbr01_1d_raw research/local_data/tfg_pbr01_1d_receipts
+          set +e
+          python -m research.timeframe_gap.tfg_pbr01_1d_reacquire_parent_corpus_v01 \
+            --raw-dir research/local_data/tfg_pbr01_1d_raw \
+            --receipt research/local_data/tfg_pbr01_1d_receipts/TFG_PBR01_1D_REACQUISITION_RECEIPT_V0.1.json
+          rc=$?
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Fail closed if raw reacquisition blocked
+        if: steps.reacquire.outputs.rc != '0'
+        run: |
+          echo 'Official MEXC 138-file reacquisition blocked. No corpus parsing or PBR outcome permitted.'
+          exit 1
+      - name: Reproduce unchanged historical Phase-B corpus audits
+        run: |
+          export PYTHONPATH="$PWD/src:$PWD:${PYTHONPATH:-}"
+          mkdir -p research/local_data/tfg_pbr01_1d_canonical research/local_data/tfg_pbr01_1d_manifests
+          for s in BTCUSDT ETHUSDT SOLUSDT BNBUSDT XRPUSDT DOGEUSDT; do
+            python -m research.phase_b_mexc_discovery_corpus_v01 \
+              research/local_data/tfg_pbr01_1d_raw \
+              --output-dir research/local_data/tfg_pbr01_1d_canonical \
+              --symbol "$s" --start-month 2023-02 --end-month 2024-12 \
+              --receipt "research/local_data/tfg_pbr01_1d_manifests/${s}_MANIFEST.json" \
+              > "research/local_data/tfg_pbr01_1d_manifests/${s}_STDOUT.json"
+          done
+      - name: Require exact six parent corpus fingerprints and aggregate gap identity
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          auth=json.loads(Path('research/timeframe_gap/TFG_PBR01_1D_001_SOURCE_IDENTITY_AUTHORITY_V0.1.json').read_text())
+          expected=auth['expected_parent_corpus_fingerprint_by_symbol']
+          rows={}; gaps={}; missing={}; observed={}; statuses={}; months_gap={}
+          for s,fp in expected.items():
+              p=Path(f'research/local_data/tfg_pbr01_1d_manifests/{s}_MANIFEST.json')
+              d=json.loads(p.read_text())
+              observed[s]=d['fingerprint']; statuses[s]=d['status']; rows[s]=d['total_row_count']
+              gaps[s]=d['total_detected_gap_count']; missing[s]=d['total_missing_candle_count']; months_gap[s]=d['months_with_gaps_count']
+              assert d['status']=='PASS_CORPUS_AUDIT_ONLY_WITH_GAPS', (s,d['status'])
+              assert d['fingerprint']==fp, (s,d['fingerprint'],fp)
+              assert d['total_row_count']==67183, (s,d['total_row_count'])
+              assert d['months_with_gaps_count']==2, (s,d['months_with_gaps_count'])
+          assert sum(gaps.values())==36, gaps
+          assert sum(missing.values())==102, missing
+          receipt={
+            'status':'PASS_EXACT_PARENT_CORPUS_IDENTITY_GATE',
+            'lab_id':'TFG-PBR01-1D-001',
+            'observed_corpus_fingerprint_by_symbol':observed,
+            'expected_corpus_fingerprint_by_symbol':expected,
+            'corpus_status_by_symbol':statuses,
+            'source_row_count_by_symbol':rows,
+            'detected_gap_count_by_symbol':gaps,
+            'missing_candle_count_by_symbol':missing,
+            'months_with_gaps_by_symbol':months_gap,
+            'total_detected_gap_count':sum(gaps.values()),
+            'total_missing_candle_count':sum(missing.values()),
+            'pbr01_outcome_evaluation_performed':False,
+            'validation_2025_market_bytes_accessed':False,
+            'holdout_2026_market_bytes_accessed':False,
+            'exchange_mutation_performed':False,
+            'orders_submitted':False,
+            'next_required_action':'FREEZE_RECOVERED_CORPUS_ARTIFACT_DIGEST_BEFORE_1D_OUTCOME_EVALUATION'
+          }
+          Path('research/local_data/tfg_pbr01_1d_receipts/TFG_PBR01_1D_PARENT_CORPUS_IDENTITY_GATE_V0.1.json').write_text(json.dumps(receipt,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(receipt,indent=2,sort_keys=True))
+          PY
+      - name: Upload recovered exact parent corpus and audit receipts
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfg-pbr01-1d-exact-parent-corpus
+          path: |
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/tfg_pbr01_1d_raw/*.csv
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/tfg_pbr01_1d_canonical/*.canonical.csv
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/tfg_pbr01_1d_manifests/*.json
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/tfg_pbr01_1d_receipts/*.json
+          if-no-files-found: error
+          retention-days: 14
