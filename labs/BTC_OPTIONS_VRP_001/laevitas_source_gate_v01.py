@@ -69,42 +69,27 @@ def deref(root, ref):
 
 
 def collect_properties(root, node, out=None, depth=0, seen_refs=None):
-    """Walk the response schema generically, including nested wrappers and $refs.
-
-    This is an engineering-only remediation of the original schema inspector: the
-    scientific source, dates, required fields, pass criteria and all firewalls are
-    unchanged.
-    """
     if out is None:
         out = set()
     if seen_refs is None:
         seen_refs = set()
     if depth > 20:
         return out
-
     if isinstance(node, list):
         for item in node:
             collect_properties(root, item, out, depth + 1, seen_refs)
         return out
-
     if not isinstance(node, dict):
         return out
-
     ref = node.get("$ref")
     if isinstance(ref, str) and ref.startswith("#/") and ref not in seen_refs:
         seen_refs.add(ref)
         target = deref(root, ref)
         if target is not None:
             collect_properties(root, target, out, depth + 1, seen_refs)
-
     props = node.get("properties")
     if isinstance(props, dict):
         out.update(props.keys())
-
-    # Generic traversal is intentional: OpenAPI response models can place the row
-    # schema below wrapper properties such as data/items or composition objects.
-    # Starting from the endpoint's own 200-response schema keeps this scoped to
-    # that endpoint while avoiding false negatives from nested model shapes.
     for key, value in node.items():
         if key == "$ref":
             continue
@@ -113,13 +98,55 @@ def collect_properties(root, node, out=None, depth=0, seen_refs=None):
     return out
 
 
-def response_properties(openapi, op):
+def collect_documented_keys(root, node, out=None, depth=0, seen_refs=None):
+    """Collect literal field names from schema AND inline OpenAPI examples.
+
+    Laevitas documents some 200 responses as inline examples rather than a typed
+    row schema. This engineering-only reader is scoped to the endpoint's own
+    200-response content; it does not alter source, dates, required fields or any
+    scientific/outcome/payment firewall.
+    """
+    if out is None:
+        out = set()
+    if seen_refs is None:
+        seen_refs = set()
+    if depth > 24:
+        return out
+    if isinstance(node, list):
+        for item in node:
+            collect_documented_keys(root, item, out, depth + 1, seen_refs)
+        return out
+    if not isinstance(node, dict):
+        return out
+    out.update(str(k) for k in node.keys())
+    ref = node.get("$ref")
+    if isinstance(ref, str) and ref.startswith("#/") and ref not in seen_refs:
+        seen_refs.add(ref)
+        target = deref(root, ref)
+        if target is not None:
+            collect_documented_keys(root, target, out, depth + 1, seen_refs)
+    for key, value in node.items():
+        if key == "$ref":
+            continue
+        if isinstance(value, (dict, list)):
+            collect_documented_keys(root, value, out, depth + 1, seen_refs)
+    return out
+
+
+def response_content(openapi, op):
     if not op:
-        return set()
+        return {}
     resp = (op.get("responses") or {}).get("200") or {}
-    content = (resp.get("content") or {}).get("application/json") or {}
-    schema = content.get("schema") or {}
-    return collect_properties(openapi, schema)
+    return (resp.get("content") or {}).get("application/json") or {}
+
+
+def response_properties(openapi, op):
+    content = response_content(openapi, op)
+    return collect_properties(openapi, content.get("schema") or {})
+
+
+def response_documented_fields(openapi, op):
+    return collect_documented_keys(openapi, response_content(openapi, op))
 
 
 def build_query(op, when_iso):
@@ -209,6 +236,7 @@ for path in required_paths:
         "present": op is not None,
         "parameters": param_names(op),
         "response_properties": sorted(response_properties(openapi, op)),
+        "response_documented_fields": sorted(response_documented_fields(openapi, op)),
     }
 
 probes = []
@@ -218,10 +246,10 @@ for d in auth["probe_dates"]:
         if op:
             probes.append(probe_endpoint(base, path, op, d))
 
-required_fields = auth["required_quote_fields"]
-level1_props = set(path_info.get("/api/v1/options/level1", {}).get("response_properties", []))
-snapshot_props = set(path_info.get("/api/v1/options/snapshot", {}).get("response_properties", []))
-schema_quote_fields_proven = set(required_fields).issubset(level1_props) or set(required_fields).issubset(snapshot_props)
+required_fields = set(auth["required_quote_fields"])
+level1_fields = set(path_info.get("/api/v1/options/level1", {}).get("response_documented_fields", []))
+snapshot_fields = set(path_info.get("/api/v1/options/snapshot", {}).get("response_documented_fields", []))
+schema_quote_fields_proven = required_fields.issubset(level1_fields) or required_fields.issubset(snapshot_fields)
 historical_selector_proven = False
 for path in ("/api/v1/options/snapshot", "/api/v1/options/level1"):
     names = {p.get("name") for p in path_info.get(path, {}).get("parameters", [])}
@@ -253,7 +281,7 @@ result = {
     "lab_id": auth["lab_id"],
     "source_mve_id": auth["source_mve_id"],
     "classification": classification,
-    "technical_remediation_of_run": 35077276351,
+    "technical_remediation_of_runs": [35077276351, 35077515821],
     "scientific_rules_changed": False,
     "public_openapi": {k: v for k, v in openapi_rec.items() if k != "json"},
     "public_x402": {k: v for k, v in x402_rec.items() if k != "json"},
