@@ -1,0 +1,151 @@
+name: PMD-001 Cross-Date V04
+
+on:
+  push:
+    branches:
+      - pumpfun-migration-direction-v0.1
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/RUN_CROSSDATE_V04.trigger'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  crossdate-row:
+    strategy:
+      fail-fast: false
+      max-parallel: 10
+      matrix:
+        index: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19]
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Checkout scientific branch
+        uses: actions/checkout@v4
+        with:
+          ref: pumpfun-migration-direction-v0.1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip duckdb huggingface_hub requests solders pytz
+
+      - name: Syntax checks
+        run: |
+          python -m py_compile \
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/build_source_rebuild_manifest_v01.py \
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/build_crossdate_probe20_manifest_v01.py \
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/source_rebuild_helius_v01.py \
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/source_rebuild_block_first_v03.py \
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/aggregate_crossdate_v04.py
+
+      - name: Rebuild frozen 1,012-candidate outcome-blind manifest
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001
+        run: |
+          python build_source_rebuild_manifest_v01.py \
+            --data-dir pmd_source_rebuild_manifest_data \
+            --out pmd_source_rebuild_manifest_v01.jsonl \
+            --receipt pmd_source_rebuild_manifest_v01_receipt.json
+          test ! -e pmd_source_rebuild_manifest_data/postgard_outcomes.parquet
+
+      - name: Rebuild deterministic 20-date manifest
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001
+        run: |
+          python build_crossdate_probe20_manifest_v01.py \
+            --manifest pmd_source_rebuild_manifest_v01.jsonl \
+            --out pmd_crossdate_probe20_manifest_v01.jsonl \
+            --receipt pmd_crossdate_probe20_manifest_v01_receipt.json
+
+      - name: Execute mandatory Cross-Date V0.4 row
+        continue-on-error: true
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001
+        run: |
+          python source_rebuild_block_first_v03.py \
+            --manifest pmd_crossdate_probe20_manifest_v01.jsonl \
+            --out-dir pmd_crossdate_v04_row_${{ matrix.index }} \
+            --rpc-url https://api.mainnet-beta.solana.com \
+            --source-name solana_public_rpc_crossdate_v04_sharded \
+            --start ${{ matrix.index }} \
+            --limit 1 \
+            --block-batch-size 4 \
+            --store-full-blocks
+
+      - name: Assert outcome wall
+        if: always()
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001
+        run: |
+          test ! -e pmd_source_rebuild_manifest_data/postgard_outcomes.parquet
+
+      - name: Upload mandatory row evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: PMD-001-crossdate-v04-row-${{ matrix.index }}
+          if-no-files-found: warn
+          retention-days: 30
+          compression-level: 9
+          path: |
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/pmd_crossdate_v04_row_${{ matrix.index }}/source_rebuild_summary.jsonl
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/pmd_crossdate_v04_row_${{ matrix.index }}/block_hash_ledger.jsonl
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/pmd_crossdate_v04_row_${{ matrix.index }}/raw/*.jsonl
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/pmd_crossdate_v04_row_${{ matrix.index }}/blocks/**/*.json.gz
+
+  crossdate-aggregate:
+    needs: crossdate-row
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout scientific branch
+        uses: actions/checkout@v4
+        with:
+          ref: pumpfun-migration-direction-v0.1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download all 20 mandatory row artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: PMD-001-crossdate-v04-row-*
+          path: all-crossdate-v04
+          merge-multiple: false
+
+      - name: Aggregate Cross-Date V0.4
+        continue-on-error: true
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001
+        run: |
+          python aggregate_crossdate_v04.py \
+            --input-root "$GITHUB_WORKSPACE/all-crossdate-v04" \
+            --out-dir "$GITHUB_WORKSPACE/pmd_crossdate_v04_aggregate"
+
+      - name: Assert aggregate remains pre-outcome
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('pmd_crossdate_v04_aggregate/pmd_crossdate_v04_receipt.json')
+          if p.exists():
+              r=json.loads(p.read_text(encoding='utf-8'))
+              assert r['economic_outcomes_opened'] is False
+              print(json.dumps(r,indent=2,sort_keys=True))
+          else:
+              print({'verdict':'BLOCK_FIRST_CROSSDATE_V04_TECHNICAL_INCOMPLETE','receipt_missing':True})
+          PY
+
+      - name: Upload Cross-Date V0.4 aggregate
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: PMD-001-crossdate-v04-aggregate
+          if-no-files-found: warn
+          retention-days: 30
+          path: pmd_crossdate_v04_aggregate/
