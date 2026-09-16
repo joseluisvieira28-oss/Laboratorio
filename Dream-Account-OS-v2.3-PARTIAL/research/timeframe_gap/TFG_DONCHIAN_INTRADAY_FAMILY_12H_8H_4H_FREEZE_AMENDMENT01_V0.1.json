@@ -1,0 +1,24 @@
+{
+  "experiment_id": "TFG-DONCHIAN-INTRADAY-FAMILY-12H-8H-4H-V0.1",
+  "amendment_id": "W1_FULL_PATH_ELIGIBILITY_AND_SOURCE_BOUNDARY",
+  "status": "FROZEN_BEFORE_ANY_MEXC_12H_8H_4H_OUTCOME_EVALUATION",
+  "reason": "Clarify deterministic full-path eligibility and the audited MEXC bulk UTC+08 monthly packaging boundary before any sibling outcome calculation.",
+  "clarifications": {
+    "W1_eligibility": "A scored signal is eligible only if its next-bar entry plus the cell's full frozen max-hold duration is strictly before 2025-01-01T00:00:00Z. Later signals are right-censored and never scored.",
+    "W2_eligibility": "Unchanged: full frozen max-hold path must fit strictly before 2026-01-01T00:00:00Z.",
+    "W3_eligibility": "Unchanged: full frozen max-hold path must fit strictly before 2026-08-31T00:00:00Z.",
+    "bulk_packaging": "MEXC monthly files may begin/end at 16:00 UTC because partitions are packaged on UTC+08 calendar boundaries; all research windows and derived 12H/8H/4H bars are canonical UTC and source rows are filtered by their embedded UTC timestamps.",
+    "duplicate_filename_policy": "If duplicate-named source copies are present and SHA256-identical, retain one. Any non-identical duplicate for the same asset/month/timeframe is a source failure before outcomes.",
+    "derived_bar_policy": "A derived bar is retained only when every expected 15-minute timestamp is present exactly once. No fill or interpolation."
+  },
+  "scientific_rule_changed": false,
+  "timeframes_changed": false,
+  "lookbacks_changed": false,
+  "atr_lengths_changed": false,
+  "stop_changed": false,
+  "target_changed": false,
+  "max_hold_changed": false,
+  "costs_changed": false,
+  "gates_changed": false,
+  "outcomes_evaluated_before_amendment": false
+}
