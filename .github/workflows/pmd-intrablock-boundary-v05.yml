@@ -6,6 +6,7 @@ on:
       - pumpfun-migration-direction-v0.1
     paths:
       - 'Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/RUN_INTRABLOCK_BOUNDARY_V05.trigger'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/RUN_INTRABLOCK_BOUNDARY_V051.trigger'
   workflow_dispatch:
 
 permissions:
@@ -36,7 +37,8 @@ jobs:
             Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/build_crossdate_probe20_manifest_v01.py \
             Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/source_rebuild_helius_v01.py \
             Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/source_rebuild_block_first_v03.py \
-            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/intrablock_boundary_probe_v05.py
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/intrablock_boundary_probe_v05.py \
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/intrablock_boundary_probe_v051.py
 
       - name: Rebuild frozen outcome-blind manifests
         working-directory: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001
@@ -51,16 +53,17 @@ jobs:
             --out pmd_crossdate_probe20_manifest_v01.jsonl \
             --receipt pmd_crossdate_probe20_manifest_v01_receipt.json
 
-      - name: Execute exact on-chain boundary feasibility probe
+      - name: Execute exact on-chain boundary feasibility probe V0.5.1
         id: probe
         continue-on-error: true
         working-directory: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001
         run: |
-          python intrablock_boundary_probe_v05.py \
+          python intrablock_boundary_probe_v051.py \
             --crossdate-manifest pmd_crossdate_probe20_manifest_v01.jsonl \
-            --out-dir pmd_intrablock_boundary_probe_v05 \
+            --full-manifest pmd_source_rebuild_manifest_v01.jsonl \
+            --out-dir pmd_intrablock_boundary_probe_v051 \
             --rpc-url https://api.mainnet-beta.solana.com \
-            --source-name solana_public_rpc_intrablock_boundary_v05 \
+            --source-name solana_public_rpc_intrablock_boundary_v051 \
             --block-batch-size 4
 
       - name: Assert outcome wall and classify
@@ -71,9 +74,9 @@ jobs:
           python - <<'PY'
           import json
           from pathlib import Path
-          p=Path('pmd_intrablock_boundary_probe_v05/intrablock_boundary_probe_v05_receipt.json')
+          p=Path('pmd_intrablock_boundary_probe_v051/intrablock_boundary_probe_v051_receipt.json')
           if not p.exists():
-              print(json.dumps({'lab':'PMD-001','stage':'INTRABLOCK_BOUNDARY_FEASIBILITY_V05','economic_outcomes_opened':False,'verdict':'TECHNICAL_NO_RECEIPT'}))
+              print(json.dumps({'lab':'PMD-001','stage':'INTRABLOCK_BOUNDARY_FEASIBILITY_V051','economic_outcomes_opened':False,'verdict':'TECHNICAL_NO_RECEIPT'}))
           else:
               r=json.loads(p.read_text(encoding='utf-8'))
               assert r['economic_outcomes_opened'] is False
@@ -82,17 +85,17 @@ jobs:
               print(json.dumps(r,indent=2,sort_keys=True))
           PY
 
-      - name: Upload V0.5 source-only forensic evidence
+      - name: Upload V0.5.1 source-only forensic evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: PMD-001-intrablock-boundary-v05
+          name: PMD-001-intrablock-boundary-v051
           if-no-files-found: warn
           retention-days: 30
           compression-level: 9
           path: |
             Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/pmd_source_rebuild_manifest_v01_receipt.json
             Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/pmd_crossdate_probe20_manifest_v01_receipt.json
-            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/pmd_intrablock_boundary_probe_v05/*.json
-            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/pmd_intrablock_boundary_probe_v05/*.jsonl
-            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/pmd_intrablock_boundary_probe_v05/blocks/**/*.json.gz
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/pmd_intrablock_boundary_probe_v051/*.json
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/pmd_intrablock_boundary_probe_v051/*.jsonl
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/pmd_intrablock_boundary_probe_v051/blocks/**/*.json.gz
