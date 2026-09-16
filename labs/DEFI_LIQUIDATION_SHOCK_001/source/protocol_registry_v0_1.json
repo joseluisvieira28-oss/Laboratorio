@@ -90,10 +90,40 @@
           "encoding": "anchor_discriminator_8",
           "prefix_hex": "4b2377f7bf128b02",
           "reference_only": true
+        },
+        {
+          "name": "liquidate_spot",
+          "encoding": "anchor_discriminator_8",
+          "prefix_hex": "6b00802923e5fb12",
+          "reference_only": true
+        },
+        {
+          "name": "liquidate_borrow_for_perp_pnl",
+          "encoding": "anchor_discriminator_8",
+          "prefix_hex": "a911205acf94d11b",
+          "reference_only": true
+        },
+        {
+          "name": "liquidate_perp_pnl_for_deposit",
+          "encoding": "anchor_discriminator_8",
+          "prefix_hex": "ed4bc6ebe9ba4b23",
+          "reference_only": true
+        },
+        {
+          "name": "liquidate_spot_with_swap_begin",
+          "encoding": "anchor_discriminator_8",
+          "prefix_hex": "0c2bb0539cfb750d",
+          "reference_only": true
+        },
+        {
+          "name": "liquidate_spot_with_swap_end",
+          "encoding": "anchor_discriminator_8",
+          "prefix_hex": "8e58a3a0df4b37e1",
+          "reference_only": true
         }
       ],
       "historical_decoder_authoritative": false,
-      "notes": "Drift has multiple liquidation instruction families. This registry does not claim liquidate_perp alone is a complete liquidation census. Full historical IDL mapping is required."
+      "notes": "Reference family expanded to known Drift liquidation instruction names. Anchor discriminators are deterministic from global:<instruction_name>, but historical existence/completeness still requires version mapping. Bankruptcy flows remain separate and are not silently counted as liquidation events."
     }
   ],
   "governance": {
