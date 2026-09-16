@@ -1,0 +1,47 @@
+name: PMD-001 Pre-outcome Profile V0.1
+
+on:
+  push:
+    branches: [pumpfun-migration-direction-v0.1]
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/preoutcome_profile_v01.py'
+      - '.github/workflows/pmd001-preoutcome-profile-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  coverage-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: python -m pip install 'huggingface_hub[hf_xet]>=0.34' 'duckdb>=1.3,<2'
+      - name: Run outcome-blind coverage profile
+        env:
+          HF_HUB_DISABLE_TELEMETRY: '1'
+        run: |
+          mkdir -p artifacts
+          python Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/preoutcome_profile_v01.py \
+            --data-dir "$RUNNER_TEMP/pmd001_profile" \
+            --out artifacts/pmd_preoutcome_profile_v01.json | tee artifacts/pmd_preoutcome_profile_v01.log
+      - name: Assert outcome file absent
+        if: always()
+        run: |
+          if find "$RUNNER_TEMP/pmd001_profile" -name 'postgard_outcomes.parquet' -print -quit | grep -q .; then
+            echo 'Forbidden outcome file detected.'
+            exit 1
+          fi
+      - name: Upload profile receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pmd001-preoutcome-profile-v01
+          path: artifacts/
+          if-no-files-found: error
+          retention-days: 30
