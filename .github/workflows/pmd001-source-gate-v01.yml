@@ -1,0 +1,58 @@
+name: PMD-001 Source Gate V0.1
+
+on:
+  push:
+    branches:
+      - pumpfun-migration-direction-v0.1
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/**'
+      - '.github/workflows/pmd001-source-gate-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout research branch
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install source-gate dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install 'huggingface_hub[hf_xet]>=0.34' 'pyarrow>=18,<22'
+
+      - name: Run fail-closed pre-outcome source gate
+        env:
+          HF_HUB_DISABLE_TELEMETRY: '1'
+        run: |
+          mkdir -p artifacts
+          python Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/source_gate_v01.py \
+            --data-dir "$RUNNER_TEMP/pmd001_data" \
+            --receipt artifacts/pmd_source_gate_v01_receipt.json | tee artifacts/pmd_source_gate_v01_log.txt
+
+      - name: Assert outcome file was never acquired
+        if: always()
+        run: |
+          if find "$RUNNER_TEMP/pmd001_data" -name 'postgard_outcomes.parquet' -print -quit | grep -q .; then
+            echo 'Forbidden outcome file detected.'
+            exit 1
+          fi
+          echo 'Outcome file absent: PASS'
+
+      - name: Upload source-gate receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pmd001-source-gate-v01
+          path: artifacts/
+          if-no-files-found: error
+          retention-days: 30
