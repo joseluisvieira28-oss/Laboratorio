@@ -1,0 +1,62 @@
+{
+  "replication_id": "BOER-V2-PATH2-2024-001",
+  "governing_policy_id": "ND-PROMOTION-POLICY-V2.0-FROZEN-2026-09-14",
+  "status": "FINAL_POLICY_RECONCILIATION_NO_NEW_OUTCOMES",
+  "raw_execution_result_preserved": "BOER_V2_PATH2_2024_RESULT_V01.json",
+  "raw_path2_classification_preserved": "V2_PATH2_FAIL__APPLY_FROZEN_POLICY_WITHOUT_RESCUE",
+  "implementation_label_note": "The raw runner also emitted TIER_4_REJECTED_FOR_TESTED_IMPLEMENTATION / STONE_AFTER_INDEPENDENT_OOS. That derived label is not the governing policy adjudication because the frozen Path-2 contract required APPLY_FROZEN_POLICY_WITHOUT_RESCUE after a gate failure; it did not mandate automatic Tier 4.",
+  "observed_2024_metrics": {
+    "resolved_trades": 12,
+    "base_mean_net_return": 0.0007614285729475419,
+    "base_mean_net_bps": 7.614285729475419,
+    "base_profit_factor": 1.444077336212841,
+    "base_wins": 7,
+    "base_win_rate": 0.5833333333333334,
+    "stress_mean_net_return": -0.0002385714270524585,
+    "stress_mean_net_bps": -2.385714270524585,
+    "minimum_leave_one_trade_out_base_mean": -0.00030631347410313154,
+    "minimum_leave_one_trade_out_base_mean_bps": -3.0631347410313155
+  },
+  "path2_frozen_gate_result": {
+    "passed": [
+      "resolved_trades_min",
+      "base_mean_net_return_gt_zero",
+      "base_profit_factor_min",
+      "base_wins_min"
+    ],
+    "failed": [
+      "stress_mean_net_return_gt_zero",
+      "minimum_leave_one_trade_out_base_mean_gt_zero"
+    ],
+    "support_path_2_pass": false
+  },
+  "policy_v2_adjudication": {
+    "tier2": false,
+    "tier2_reason": "Independent 2024 base-cost economics were positive, but the prospectively frozen Path-2 no-major-concentration and stress gates failed; therefore Support Path 2 is not satisfied.",
+    "tier4": false,
+    "tier4_reason": "The independent 2024 block is not materially negative at frozen base costs and PF is not materially below 1. The expected relationship remains positive on average. Therefore the explicit Tier-4 rejection conditions are not established by this block.",
+    "tier3": true,
+    "tier3_reason": "Positive average economics with weak leave-one-out stability and cost fragility fits the frozen Tier-3 watchlist definition.",
+    "final_v2_classification": "TIER_3_WATCHLIST_WEAK_CANDIDATE",
+    "operational_label": "NOT_QUASE_DIAMANTE"
+  },
+  "historical_parent_classification_preserved": "DISCOVERY_NO_EDGE",
+  "no_rescue": true,
+  "next_action": "Do not open 2025/2026 for rescue. Any future work must be a materially new prospectively frozen mechanism, not a retune of this implementation.",
+  "guards": {
+    "new_market_outcomes_accessed_by_reconciliation": false,
+    "year_2025_market_data_requested": false,
+    "year_2026_market_data_requested": false,
+    "signal_changed": false,
+    "costs_changed": false,
+    "timing_changed": false,
+    "horizon_changed": false,
+    "event_exclusions_added": false,
+    "post_outcome_tuning": false,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "orders": false,
+    "merge_to_main": false,
+    "render_deployment": false
+  }
+}
