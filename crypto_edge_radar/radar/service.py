@@ -53,6 +53,7 @@ class PublicShadowService:
     def run_cycle(self) -> tuple[int, dict[str, Any]]:
         self.cycle_no += 1
         started = _utc_now()
+        configured_provider = getattr(self.engine.feed, "provider", "UNKNOWN_PUBLIC_PROVIDER")
         try:
             result = self.engine.run_cycle()
             self.consecutive_failures = 0
@@ -60,6 +61,7 @@ class PublicShadowService:
                 "service": "CRYPTO_EDGE_RADAR",
                 "version": "0.2",
                 "mode": "PUBLIC_SHADOW_ONLY",
+                "provider": result["provider"],
                 "health": "OK",
                 "cycle": self.cycle_no,
                 "started_at_utc": started,
@@ -73,7 +75,10 @@ class PublicShadowService:
             status["heartbeat_receipt"] = heartbeat
             self._publish_status(status)
             if result["valid_signals"]:
-                self.notifier.emit("VALID_SHADOW_SIGNAL", {"signals": result["valid_signals"]})
+                self.notifier.emit(
+                    "VALID_SHADOW_SIGNAL",
+                    {"provider": result["provider"], "signals": result["valid_signals"]},
+                )
             return 0, status
         except Exception as exc:
             self.consecutive_failures += 1
@@ -81,6 +86,7 @@ class PublicShadowService:
                 "service": "CRYPTO_EDGE_RADAR",
                 "version": "0.2",
                 "mode": "PUBLIC_SHADOW_ONLY",
+                "provider": configured_provider,
                 "health": "FAIL_CLOSED",
                 "cycle": self.cycle_no,
                 "started_at_utc": started,
