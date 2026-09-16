@@ -1,0 +1,46 @@
+name: WHALE-CEX-NETFLOW-001 Source Gate V0.1
+
+on:
+  push:
+    branches: [whale-cex-netflow-v0.1]
+    paths:
+      - '.github/workflows/whale-cex-netflow-source-gate-v01.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  source-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: whale-cex-netflow-v0.1
+      - name: Verify frozen authority
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          a=json.load(open('labs/WHALE_CEX_NETFLOW_001/SOURCE_AUTHORITY_V0.1.json'))
+          assert a['outcomes_authorized'] is False
+          assert a['btc_prices_authorized'] is False
+          assert a['access_2025_authorized'] is False
+          assert a['access_2026_authorized'] is False
+          assert a['allow_non_pit_substitution'] is False
+          assert a['allow_manual_wallet_labels'] is False
+          print('SOURCE_AUTHORITY_PASS')
+          PY
+      - name: Compile source-only runner
+        run: python -m py_compile labs/WHALE_CEX_NETFLOW_001/source_gate_v01.py
+      - name: Execute source-only gate
+        env:
+          GLASSNODE_API_KEY: ${{ secrets.GLASSNODE_API_KEY }}
+        run: python labs/WHALE_CEX_NETFLOW_001/source_gate_v01.py
+      - name: Upload source evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: whale-cex-netflow-source-gate-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/whale_cex_netflow_source_v01/
+          retention-days: 90
