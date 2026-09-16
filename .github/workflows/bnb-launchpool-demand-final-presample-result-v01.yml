@@ -1,0 +1,109 @@
+name: BNB Launchpool Demand Final Presample Result V0.1
+
+on:
+  push:
+    branches:
+      - bnb-launchpool-demand-final-holdout-pre2022-v01
+    paths:
+      - '.github/workflows/bnb-launchpool-demand-final-presample-result-v01.yml'
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  final-presample-one-shot:
+    if: ${{ contains(github.event.head_commit.message, 'execute frozen final presample one-shot') && !contains(github.event.head_commit.message, '[skip ci]') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout final presample branch
+        uses: actions/checkout@v4
+        with:
+          ref: bnb-launchpool-demand-final-holdout-pre2022-v01
+          fetch-depth: 1
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Preflight immutable binding
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          B='Dream-Account-OS-v2.3-PARTIAL/research/bnb_launchpool_demand_001'
+          python -m py_compile "$B/final_presample/final_presample_runner_v01.py"
+          DIGEST="$(gh api repos/${GITHUB_REPOSITORY}/actions/artifacts/10467734255 --jq '.digest')"
+          test "$DIGEST" = 'sha256:51f7b09d78bb90410983e37f1b19f2f5e8b2498619a35bc0052c5ca8b8980dd9'
+          python - <<'PY'
+          import json
+          b='Dream-Account-OS-v2.3-PARTIAL/research/bnb_launchpool_demand_001'
+          f=json.load(open(b+'/BNB_LAUNCHPOOL_DEMAND_001_FINAL_PRESAMPLE_HOLDOUT_FREEZE_V0.1.json'))
+          x=json.load(open(b+'/final_presample/BNB_LAUNCHPOOL_DEMAND_001_FINAL_PRESAMPLE_EXECUTION_BINDING_V0.1.json'))
+          s=json.load(open(b+'/final_presample/source_gate_v01/BNB_LAUNCHPOOL_DEMAND_001_FINAL_PRESAMPLE_SOURCE_GATE_V0.1.json'))
+          m=json.load(open(b+'/final_presample/market_source_v01/BNB_LAUNCHPOOL_DEMAND_001_FINAL_PRESAMPLE_MARKET_SOURCE_V0.1.json'))
+          assert f['status']=='FROZEN_BEFORE_PRESAMPLE_SOURCE_ENUMERATION_OR_MARKET_OUTCOME_ACCESS'
+          assert x['status']=='FROZEN_POST_SOURCE_AUDIT_PRE_PRICE_OPEN'
+          assert s['classification']=='SOURCE_DATA_PASS' and s['recovered_count']==30
+          assert m['classification']=='MARKET_SOURCE_DATA_PASS' and m['selected_trade_paths']==27
+          assert x['source_gate']['canonical_event_manifest_sha256']=='07d9e8cd5532df81b129ace36aabbf8a0512d8d87b259a77b57ef97d58718e01'
+          assert x['market_source']['archive_manifest_sha256']=='23437dd16b24c11710e31f145a2d7d88b5bf84085268e6e4af3c4deaad70939d'
+          assert x['market_source']['market_source_artifact_id']==10467734255
+          assert x['guards']['presample_price_opened_before_binding'] is False
+          assert x['guards']['new_2025_market_access'] is False and x['guards']['access_2026_market'] is False
+          assert x['guards']['live_trading_authorized'] is False
+          PY
+      - name: Download immutable market-source artifact
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          DEST="$RUNNER_TEMP/blp_final_presample_market_source"
+          mkdir -p "$DEST"
+          gh run download 35147813097 --repo "$GITHUB_REPOSITORY" --name 'bnb-launchpool-demand-final-presample-market-source-35147813097-1' --dir "$DEST"
+          COUNT="$(find "$DEST" -type f -name 'BNBBTC-15m-*.zip' | wc -l | tr -d ' ')"
+          test "$COUNT" = '15'
+      - name: Execute frozen final presample result once
+        shell: bash
+        env:
+          BLP_FINAL_PRESAMPLE_MARKET_SOURCE_DIR: ${{ runner.temp }}/blp_final_presample_market_source
+        run: |
+          set -euo pipefail
+          B='Dream-Account-OS-v2.3-PARTIAL/research/bnb_launchpool_demand_001'
+          python "$B/final_presample/final_presample_runner_v01.py"
+          python - <<'PY'
+          import json
+          p='Dream-Account-OS-v2.3-PARTIAL/research/bnb_launchpool_demand_001/final_presample/result_v01/BNB_LAUNCHPOOL_DEMAND_001_FINAL_PRESAMPLE_RESULT_V0.1.json'
+          d=json.load(open(p))
+          allowed={
+            'TIER_2_PROMOTED_CANDIDATE_QUASE_DIAMANTE',
+            'TIER_3_WATCHLIST_REMAINS_HISTORICAL_RESCUE_CLOSED',
+            'NON_SCIENTIFIC_BLOCKED_TIER3_REMAINS'
+          }
+          assert d['classification'] in allowed, d['classification']
+          assert d['new_2025_market_access'] is False
+          assert d['access_2026_market'] is False
+          assert d['live_trading_authorized'] is False
+          assert d['historical_rescue_closed'] is True
+          print(json.dumps({k:d.get(k) for k in ['classification','resolved_trades','economics','bootstrap_base_mean_bps','calendar_base','risk','failed_promotion_gates']},indent=2))
+          PY
+      - name: Upload immutable final presample evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: bnb-launchpool-demand-final-presample-result-${{ github.run_id }}-${{ github.run_attempt }}
+          path: Dream-Account-OS-v2.3-PARTIAL/research/bnb_launchpool_demand_001/final_presample/result_v01/
+          retention-days: 90
+          if-no-files-found: error
+      - name: Persist canonical final presample closeout bytes
+        shell: bash
+        run: |
+          set -euo pipefail
+          B='Dream-Account-OS-v2.3-PARTIAL/research/bnb_launchpool_demand_001'
+          git config user.name 'crypto-lab-bnb-launchpool-bot'
+          git config user.email 'crypto-lab-bnb-launchpool-bot@users.noreply.github.com'
+          git add "$B/final_presample/result_v01/BNB_LAUNCHPOOL_DEMAND_001_FINAL_PRESAMPLE_RESULT_V0.1.json" "$B/final_presample/result_v01/BNB_LAUNCHPOOL_DEMAND_001_FINAL_PRESAMPLE_LEDGER_V0.1.json"
+          git commit -m 'BNB-LAUNCHPOOL-DEMAND-001: canonical final presample closeout [skip ci]'
+          git pull --rebase origin bnb-launchpool-demand-final-holdout-pre2022-v01
+          git push origin HEAD:bnb-launchpool-demand-final-holdout-pre2022-v01
