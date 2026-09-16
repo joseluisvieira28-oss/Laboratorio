@@ -1,0 +1,76 @@
+{
+  "experiment_id": "TFG-DONCHIAN-1D-RAPID-VALIDATION-V0.2",
+  "parent_shadow": "TFG-DONCHIAN-1D-FORWARD-SHADOW-V0.1",
+  "status": "FROZEN_BEFORE_2026_PROTECTED_OUTCOME_ACCESS",
+  "purpose": "Accelerate validation without changing the trading rule that passed 2025 OOS. V0.1 remains immutable evidence; V0.2 changes only the validation sequence and stopping rule.",
+  "trading_rule_unchanged": {
+    "universe": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "DOGEUSDT"],
+    "side": "LONG_ONLY",
+    "timeframe": "1D_UTC",
+    "donchian_lookback_complete_days": 20,
+    "atr_length": 14,
+    "signal": "daily_close > max_high_of_prior_20_complete_daily_bars",
+    "entry": "next_daily_open",
+    "stop": "signal_low - 0.25 * ATR14_signal",
+    "target_r": 3.0,
+    "max_holding_bars": 40,
+    "time_exit": "next_daily_open_after_40_held_daily_bars",
+    "one_active_position_per_symbol": true,
+    "same_bar_stop_target": "STOP_FIRST_CONSERVATIVE",
+    "base_round_trip_cost_pct": 0.20,
+    "stress_round_trip_cost_pct": 0.30
+  },
+  "stage_a_protected_2026": {
+    "window_start_utc": "2026-01-01T00:00:00Z",
+    "window_end_utc": "2026-09-01T00:00:00Z",
+    "access_policy": "ONE_SHOT_ONLY_AFTER_THIS_FREEZE",
+    "source": "OFFICIAL_MEXC_SPOT_MIN15_ONLY",
+    "cross_exchange_backfill": false,
+    "parameter_changes_after_open": false,
+    "gates": {
+      "minimum_resolved_trades": 20,
+      "base_net_expectancy_r_gt": 0.0,
+      "base_profit_factor_gt": 1.0,
+      "stress_net_expectancy_r_gt": 0.0,
+      "stress_profit_factor_gt": 1.0,
+      "max_single_symbol_positive_net_r_share_lte": 0.70,
+      "unresolved_execution_paths_eq": 0,
+      "bootstrap": "REPORT_DIAGNOSTIC_NOT_GATE"
+    },
+    "fail_action": "STOP_RAPID_PATH_NO_RESCUE"
+  },
+  "stage_b_forward_operational_shadow": {
+    "opens_only_if_stage_a_passes": true,
+    "forward_only_from_existing_shadow_freeze": true,
+    "minimum_resolved_forward_trades": 10,
+    "economic_gates": {
+      "base_net_expectancy_r_gt": 0.0,
+      "base_profit_factor_gt": 1.0,
+      "stress_net_expectancy_r_gt": 0.0,
+      "stress_profit_factor_gt": 1.0,
+      "unresolved_execution_paths_eq": 0,
+      "rule_deviations_eq": 0
+    },
+    "purpose": "Operational implementation confirmation, not a replacement historical backtest."
+  },
+  "promotion_logic": {
+    "required": [
+      "2025_OOS_ALREADY_PASSED",
+      "STAGE_A_2026_PROTECTED_PASSES",
+      "STAGE_B_10_FORWARD_TRADES_PASSES"
+    ],
+    "live_trading_automatically_authorized": false,
+    "next_state_if_all_pass": "READINESS_AUDIT_ELIGIBLE"
+  },
+  "governance": {
+    "v01_shadow_evidence_preserved": true,
+    "no_retroactive_reclassification_of_v01": true,
+    "no_parameter_tuning": true,
+    "no_asset_selection": true,
+    "no_cost_reduction_rescue": true,
+    "no_threshold_change_after_2026_open": true,
+    "no_live_orders": true,
+    "no_exchange_mutation": true,
+    "no_merge_to_main": true
+  }
+}
