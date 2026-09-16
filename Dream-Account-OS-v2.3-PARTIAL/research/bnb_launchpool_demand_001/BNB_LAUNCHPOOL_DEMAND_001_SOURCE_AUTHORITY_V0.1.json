@@ -1,0 +1,77 @@
+{
+  "lab_id": "BNB-LAUNCHPOOL-DEMAND-001",
+  "source_gate_id": "BLP-BNB-OFFICIAL-ANNOUNCEMENTS-001",
+  "status": "FROZEN_SOURCE_ONLY_PRE_OUTCOME",
+  "freeze_date": "2026-09-16",
+  "authority": "USER_EXPLICIT_DEEP_ATTACK",
+  "economic_mechanism": "A Binance Launchpool announcement that explicitly enables BNB staking/locking creates a new short-lived utility and opportunity-cost incentive to acquire or retain BNB before the farming window. The primary future mechanism test, if separately frozen after Source/Data PASS, will ask whether BNB outperforms BTC after the public announcement. No market-return outcome is authorized by this source authority.",
+  "anti_duplication": {
+    "github_query": "Launchpool BNB staking announcement",
+    "google_drive_query": "Launchpool BNB staking announcement edge",
+    "matching_formal_lab_found": false,
+    "excluded_adjacent_families": [
+      "generic OHLC or indicator momentum",
+      "token listing / memecoin launch behavior",
+      "perpetual contract launch shock",
+      "token unlock/dilution",
+      "funding/OI/carry",
+      "generic exchange flow"
+    ]
+  },
+  "source_contract": {
+    "provider": "Binance",
+    "source_type": "official Binance Support Launchpool announcement pages only",
+    "language_preference": "English canonical page when available",
+    "population_start_inclusive": "2022-10-31T00:00:00Z",
+    "population_end_exclusive": "2025-01-01T00:00:00Z",
+    "project_number_start": 31,
+    "project_number_end": 63,
+    "reason_for_bounds": "Official page confirms Launchpool #31 HFT was published 2022-10-31; official page confirms #63 BIO was published 2024-12-23. The bounded project-number sequence permits an auditable completeness gate without touching 2025/2026 announcements.",
+    "required_event_fields": [
+      "launchpool_project_number",
+      "token_symbol",
+      "official_announcement_url",
+      "published_timestamp_utc",
+      "farming_start_timestamp_utc",
+      "bnb_pool_present",
+      "bnb_reward_amount_if_stated",
+      "bnb_reward_share_if_stated",
+      "announcement_page_content_hash"
+    ],
+    "event_inclusion": "Official announcement explicitly identifies a Binance Launchpool project within project numbers 31 through 63 and explicitly offers BNB staking or locking in a supported pool.",
+    "event_exclusion": "Launchpad, HODLer Airdrops, Megadrop, listing-only announcements, or Launchpool projects with no explicit BNB pool.",
+    "published_time_rule": "Use the original 'Published on' timestamp shown by Binance, never a later 'Updated on' timestamp.",
+    "simultaneous_announcements": "Preserve every project as a source event; a later mechanism protocol must prospectively define timestamp clustering before any market outcomes are opened.",
+    "no_2025_2026_metadata_traversal": true
+  },
+  "source_pass_gates": {
+    "all_project_numbers_31_through_63_accounted_for": true,
+    "every_included_event_has_official_binance_support_page": true,
+    "every_included_event_has_original_publication_timestamp": true,
+    "every_included_event_has_explicit_bnb_pool_evidence": true,
+    "zero_duplicate_project_numbers": true,
+    "zero_unresolved_numbering_gaps": true,
+    "zero_2025_2026_source_pages_opened": true,
+    "minimum_included_events": 25
+  },
+  "after_source_pass_only": {
+    "required_next_step": "Create a separate prospective mechanism-discovery freeze before opening any BNB or BTC market price field.",
+    "candidate_primary_question_not_yet_authorized": "Does BNB/BTC have positive post-announcement return after BNB-enabled Launchpool announcements?",
+    "market_outcomes_authorized": false,
+    "price_fields_authorized": false,
+    "returns_authorized": false,
+    "pnl_authorized": false
+  },
+  "governance": {
+    "research_only": true,
+    "fail_closed": true,
+    "no_live_trading": true,
+    "no_exchange_mutation": true,
+    "no_orders": true,
+    "no_alerts_webhooks": true,
+    "no_merge_to_main": true,
+    "no_post_outcome_tuning": true,
+    "access_2025": false,
+    "access_2026": false
+  }
+}
