@@ -1,0 +1,7 @@
+authorized_by_user=2026-09-16
+lab=PMD-001
+stage=CHAIN_EXACT_CROSSDATE_V071_REUSE
+source_run_reused=35132853202
+outcomes_opened=false
+same_frozen_20_rows=true
+threshold=20_of_20
