@@ -1,0 +1,160 @@
+{
+  "document_type": "INDEPENDENT_NONOVERLAPPING_TEMPORAL_REPLICATION_FREEZE",
+  "experiment_id": "TFG-EMA-PULLBACK-1D-BINANCE-PREPERIOD-001",
+  "version": "0.1",
+  "created_utc_date": "2026-09-16",
+  "status": "FROZEN_BEFORE_ANY_REPLICATION_OUTCOME_EVALUATION",
+  "parent_experiment": {
+    "experiment_id": "TFG-EMA-PULLBACK-1D-001",
+    "branch": "tf-gap-ema-pullback-1d-v0.1",
+    "terminal_classification": "INSUFFICIENT_SAMPLE",
+    "parent_period": "2023-02-01 through 2024-12-31",
+    "parent_provider": "MEXC_SPOT",
+    "parent_resolved_trades": 71,
+    "parent_base_net_expectancy_r": 0.1538061081,
+    "parent_base_profit_factor_r": 1.2689763,
+    "parent_stress_net_expectancy_r": 0.1325433127,
+    "parent_bootstrap_95_lower_r": -0.17082,
+    "parent_bootstrap_95_upper_r": 0.50322,
+    "parent_2025_access": false,
+    "parent_2026_access": false
+  },
+  "scientific_question": "Does the exact prospectively frozen EMA20/EMA50 daily pullback-and-reclaim geometry retain positive after-cost expectancy in a non-overlapping earlier Binance Spot period, without changing any trading rule?",
+  "replication_type": "ROBUSTNESS_REPLICATION_NOT_FORWARD_OOS",
+  "independence": {
+    "time_overlap_with_parent": false,
+    "venue_same_as_parent": false,
+    "parent_venue": "MEXC_SPOT",
+    "replication_venue": "BINANCE_SPOT",
+    "pool_with_parent_for_classification": false,
+    "purpose": "TEST_TEMPORAL_AND_VENUE_ROBUSTNESS; DO_NOT_MANUFACTURE_MINIMUM_SAMPLE"
+  },
+  "market": {
+    "provider": "BINANCE_DATA_VISION",
+    "market_type": "SPOT",
+    "direction": "LONG_ONLY",
+    "symbols": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "DOGEUSDT"],
+    "timezone": "UTC",
+    "source_interval": "15m",
+    "target_timeframe": "1D",
+    "source_candles_per_target_bar": 96,
+    "complete_bucket_required": true,
+    "incomplete_or_gapped_bucket": "DROP_WHOLE_1D_BUCKET_AND_SPLIT_CONTINUITY",
+    "cross_exchange_backfill_allowed": false,
+    "synthetic_history_allowed": false,
+    "interpolation_allowed": false
+  },
+  "source_authority": {
+    "base_url": "https://data.binance.vision/data/spot/monthly/klines",
+    "checksum_policy": "REQUIRE_AND_VERIFY_PUBLISHED_CHECKSUM_FOR_EACH_ACCEPTED_MONTHLY_ARCHIVE",
+    "source_start_month": "2021-01",
+    "source_end_month": "2022-12",
+    "expected_months_per_symbol": 24,
+    "expected_archive_count": 144,
+    "source_window_start_utc_inclusive": "2021-01-01T00:00:00.000Z",
+    "source_window_end_utc_exclusive": "2023-01-01T00:00:00.000Z",
+    "2023_access": false,
+    "2024_access": false,
+    "2025_access": false,
+    "2026_access": false
+  },
+  "indicator_definition": {
+    "ema_fast_length": 20,
+    "ema_slow_length": 50,
+    "ema_formula": "alpha=2/(length+1); seed at first available length-bar point with SMA(length), then recursive EMA on each subsequent close",
+    "atr_length": 14,
+    "atr_formula": "WILDER_TRUE_RANGE; first ATR is arithmetic mean of first 14 true ranges with true range=max(high-low,abs(high-prev_close),abs(low-prev_close)); subsequent ATR=((prior_ATR*13)+TR)/14"
+  },
+  "signal_rules": {
+    "evaluation_time": "AFTER_SIGNAL_1D_CANDLE_CLOSE_ONLY",
+    "trend": "EMA20_signal > EMA50_signal",
+    "prior_position": "previous_1D_close > previous_1D_EMA20",
+    "pullback_touch": "signal_low <= EMA20_signal",
+    "reclaim": "signal_close >= EMA20_signal",
+    "bullish_signal_body": "signal_close > signal_open",
+    "entry": "NEXT_1D_CANDLE_OPEN",
+    "pre_entry_cancel": "cancel if next open <= frozen stop; no other entry filter",
+    "stop": "signal_low - 0.25 * ATR14_signal",
+    "target": "entry + 2.0 * (entry - stop)",
+    "no_lookahead": true
+  },
+  "execution_semantics": {
+    "one_active_research_trade_per_symbol": true,
+    "new_same_symbol_signal_while_active": "IGNORE",
+    "adverse_gap_through_stop": "EXIT_AT_CANDLE_OPEN",
+    "favorable_gap_above_target": "CAP_EXIT_AT_TARGET",
+    "same_bar_stop_and_target": "STOP_FIRST_CONSERVATIVE",
+    "max_holding_bars": 20,
+    "time_exit": "AFTER_20_COMPLETED_HELD_1D_BARS_EXIT_AT_NEXT_1D_BAR_OPEN",
+    "missing_next_bar_for_time_exit": "UNRESOLVED_END_OF_DATA"
+  },
+  "costs": {
+    "BASE_round_trip_pct": 0.20,
+    "STRESS_round_trip_pct": 0.30,
+    "SEVERE_informational_round_trip_pct": 0.50,
+    "net_r_definition": "(gross_return_fraction - round_trip_cost_fraction) / (initial_stop_risk_fraction + round_trip_cost_fraction)",
+    "cohort_selection": "BASE",
+    "stress_policy": "REPRICE_THE_EXACT_BASE_SELECTED_COHORT_WITH_NO_RESELECTION"
+  },
+  "sample_gate": {
+    "minimum_resolved_trades": 100,
+    "opportunistic_extension_allowed": false,
+    "pooling_with_parent_allowed": false,
+    "below_minimum_classification": "INSUFFICIENT_SAMPLE"
+  },
+  "uncertainty": {
+    "method": "UTC_CALENDAR_DAY_BLOCK_BOOTSTRAP",
+    "repetitions": 5000,
+    "seed": 230911,
+    "confidence": 0.95
+  },
+  "replication_survival_gate": [
+    "BASE resolved_trade_count >= 100",
+    "BASE net_expectancy_R > 0",
+    "BASE profit_factor_R > 1",
+    "95% day-block-bootstrap lower bound for BASE net_expectancy_R > 0",
+    "fixed-cohort STRESS net_expectancy_R > 0"
+  ],
+  "classification_policy": {
+    "if_resolved_below_100": "INSUFFICIENT_SAMPLE",
+    "if_resolved_at_least_100_and_all_survival_gates_pass": "REPLICATION_SURVIVES",
+    "if_resolved_at_least_100_and_any_economic_or_uncertainty_gate_fails": "REPLICATION_FAIL",
+    "interpretation": "A failure here is robustness evidence about this exact geometry; it does not rewrite the parent historical classification."
+  },
+  "protected_data": {
+    "2023": "LOCKED_NOT_NEEDED_FOR_THIS_REPLICATION",
+    "2024": "LOCKED_NOT_NEEDED_FOR_THIS_REPLICATION",
+    "2025": "LOCKED",
+    "2026": "LOCKED"
+  },
+  "degrees_of_freedom_lock": {
+    "parameter_tuning_after_outcomes": false,
+    "asset_selection_after_outcomes": false,
+    "sample_threshold_reduction_after_outcomes": false,
+    "period_extension_after_outcomes": false,
+    "extra_indicator_filter_after_outcomes": false,
+    "session_filter": null,
+    "volume_filter": null,
+    "rsi_filter": null,
+    "ema_slope_filter": null,
+    "short_side": false
+  },
+  "governance": {
+    "research_only": true,
+    "fail_closed": true,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "orders": false,
+    "alerts_webhooks": false,
+    "merge_to_main": false,
+    "render_deploy": false,
+    "post_outcome_tuning": false,
+    "cherry_picking": false,
+    "rescue": false,
+    "2023_access": false,
+    "2024_access": false,
+    "2025_access": false,
+    "2026_access": false,
+    "stop_after_terminal_classification": true
+  }
+}
