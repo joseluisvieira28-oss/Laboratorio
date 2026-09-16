@@ -1,0 +1,29 @@
+{
+  "experiment_id": "TFG-DONCHIAN-INTRADAY-FAMILY-12H-8H-4H-V0.1",
+  "amendment_id": "HISTORICAL_SOURCE_GAP_FAIL_CLOSED_SEGMENTATION",
+  "status": "FROZEN_BEFORE_ANY_MEXC_12H_8H_4H_OUTCOME_EVALUATION",
+  "trigger": "First execution attempt stopped at the source continuity gate before signal generation or outcome evaluation because the already-audited historical MEXC parent corpus contains sparse 15-minute gaps.",
+  "policy": {
+    "raw_source_gaps_allowed": true,
+    "raw_gap_fill": false,
+    "interpolation": false,
+    "cross_exchange_backfill": false,
+    "derived_bar_requirement": "Every retained 12H/8H/4H bar must contain every expected 15-minute timestamp exactly once.",
+    "incomplete_derived_bar_action": "DROP_BAR",
+    "indicator_state_across_gap": "RESET_AT_EACH_DERIVED_TIMEFRAME_GAP",
+    "signal_generation": "Signals may be generated only inside a contiguous derived-bar segment with sufficient local lookback and ATR warmup.",
+    "trade_path": "A scored trade must have its complete frozen max-hold execution path inside the same contiguous derived-bar segment and inside the window boundary; otherwise it is right-censored and not scored.",
+    "gap_reporting": "Report raw gap counts, dropped derived bars, contiguous segment counts and any affected signals for every asset/cell."
+  },
+  "consistency": "This matches the parent corpus fail-closed principle: gaps are preserved and split, never filled or hidden.",
+  "scientific_signal_rule_changed": false,
+  "timeframes_changed": false,
+  "lookbacks_changed": false,
+  "atr_lengths_changed": false,
+  "stop_changed": false,
+  "target_changed": false,
+  "max_hold_changed": false,
+  "costs_changed": false,
+  "decision_gates_changed": false,
+  "outcomes_evaluated_before_amendment": false
+}
