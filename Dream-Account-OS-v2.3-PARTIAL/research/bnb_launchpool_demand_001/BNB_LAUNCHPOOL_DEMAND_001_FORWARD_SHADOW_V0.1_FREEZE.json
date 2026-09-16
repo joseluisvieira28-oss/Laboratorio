@@ -1,0 +1,100 @@
+{
+  "lab_id": "BNB-LAUNCHPOOL-DEMAND-001",
+  "mve_id": "BLP-BNBBTC-24H-001",
+  "protocol_id": "BNB-LAUNCHPOOL-DEMAND-001-FORWARD-SHADOW-V0.1",
+  "status": "FROZEN_BEFORE_ANY_POST_FREEZE_EVENT_OR_MARKET_OUTCOME_ACCESS",
+  "freeze_date_utc": "2026-09-16",
+  "prospective_boundary": "Only official Binance Launchpool announcements with canonical publication timestamps strictly after the Git commit timestamp that first contains this freeze file are eligible. No backfill of announcements at or before that commit timestamp is permitted.",
+  "authority": "USER_EXPLICIT_CONTINUE_WITH_ALL_RESEARCH_ONLY",
+  "governing_policy": {
+    "program": "CRYPTO NEAR-DIAMONDS RECOVERY PROGRAM — V2",
+    "policy_id": "ND-PROMOTION-POLICY-V2.0-FROZEN-2026-09-14",
+    "current_classification": "TIER_3_WATCHLIST_REMAINS_HISTORICAL_RESCUE_CLOSED",
+    "target": "TIER_2_PROMOTED_CANDIDATE_QUASE_DIAMANTE",
+    "support_path": "PATH_2_GENUINELY_INDEPENDENT_REPLICATION"
+  },
+  "immutable_history": {
+    "discovery_2023_2024": {"n": 31, "base_mean_net_bps": 88.86645271051405, "base_pf": 2.2103965201989317, "classification": "DISCOVERY_FAIL_NO_PROMOTION"},
+    "oos_2025": {"n": 8, "base_mean_net_bps": 57.61738289284739, "base_pf": 2.5477530555582852, "only_failed_gate": "max_single_trade_share_of_total_positive_base_net_lte_0_40"},
+    "presample_projects_1_30": {"n": 27, "base_mean_net_bps": 76.85262218405485, "base_pf": 1.3921284076859368, "only_failed_gate": "max_single_trade_share_of_total_positive_base_net_lte_0_40", "classification": "TIER_3_WATCHLIST_REMAINS_HISTORICAL_RESCUE_CLOSED"},
+    "historical_rescue_closed": true
+  },
+  "eligible_event_definition": {
+    "source": "official Binance Support Launchpool announcement only",
+    "must_be_new_post_freeze": true,
+    "must_explicitly_show_bnb_staking_locking_or_farming_pool": true,
+    "duplicates_reposts_and_non_launchpool_products_excluded": true,
+    "event_identity": "canonical Binance article code plus canonical publication timestamp"
+  },
+  "execution_rule_unchanged": {
+    "side": "LONG_BNBBTC",
+    "cluster_rule": "Adjacent eligible announcements separated by <=60 minutes belong to one information cluster; signal time is earliest canonical publication timestamp.",
+    "entry": "first fully available 15-minute BNBBTC bar open whose timestamp is strictly greater than signal_time",
+    "hold": "24 hours from entry timestamp",
+    "exit": "BNBBTC 15-minute bar open exactly 24 hours after entry timestamp",
+    "one_active_trade": true,
+    "overlap_rule": "If a later cluster entry is strictly earlier than the active trade exit, suppress the later signal; no delayed replacement or stacking.",
+    "stop": null,
+    "target": null,
+    "leverage": "NONE",
+    "pair": "BNBBTC SPOT",
+    "interval": "15m",
+    "round_trip_cost_base_bps": 20.0,
+    "round_trip_cost_stress_bps": 30.0
+  },
+  "source_contract": {
+    "event_source": "official Binance Support/CMS public read-only pages or endpoints",
+    "market_source": "public read-only Binance Spot BNBBTC 15m data; provider archive/checksum preferred when available, otherwise public read-only klines with full timestamp/path audit",
+    "no_api_keys": true,
+    "no_authenticated_exchange_endpoints": true,
+    "fail_closed_on_missing_or_ambiguous_event_timestamp": true,
+    "fail_closed_on_missing_entry_or_exit_bar": true
+  },
+  "forward_checkpoints": {
+    "report_only_checkpoint_resolved_trades": 10,
+    "promotion_decision_resolved_trades": 25,
+    "no_early_promotion": true
+  },
+  "tier2_path2_gates_all_required_at_25_resolved": {
+    "source_provenance_clean_and_reproducible": true,
+    "no_leakage_hindsight_or_post_outcome_selection": true,
+    "resolved_trades_gte": 25,
+    "base_mean_net_bps_gt_zero": true,
+    "base_profit_factor_gte_one": true,
+    "expected_sign_correct_long_bnbbtc": true,
+    "max_single_trade_share_of_total_positive_base_net_lte": 0.40,
+    "unresolved_selected_execution_paths": 0,
+    "source_rule_deviations": 0,
+    "trading_rule_deviations": 0,
+    "missed_eligible_events": 0,
+    "duplicate_event_count": 0,
+    "fatal_execution_or_risk_pathology": false
+  },
+  "report_only": {
+    "stress_30bps": true,
+    "event_level_bootstrap_5000_seed": 160931,
+    "median": true,
+    "win_rate": true,
+    "compounded_return_and_drawdown": true,
+    "calendar_subperiods": true,
+    "leave_one_trade_out": true
+  },
+  "decision_rule": {
+    "at_10_resolved": "REPORT_ONLY_NO_TIER_CHANGE",
+    "all_25_trade_path2_gates_pass": "TIER_2_PROMOTED_CANDIDATE_QUASE_DIAMANTE_FORWARD_PATH2_PASS",
+    "any_25_trade_gate_fail": "TIER_3_WATCHLIST_REMAINS_FORWARD_REPLICATION_FAIL",
+    "source_or_execution_failure": "NON_SCIENTIFIC_BLOCKED_TIER3_REMAINS"
+  },
+  "no_rescue": "After any forward outcome is observed, do not alter horizon, pair, direction, clustering, event subset, costs, entry/exit, threshold, sample target, concentration gate, or promotion criteria. No historical data may be reopened to rescue the forward result.",
+  "governance": {
+    "research_only": true,
+    "no_live_trading": true,
+    "no_exchange_mutation": true,
+    "no_orders": true,
+    "no_wallets": true,
+    "no_alerts_or_webhooks": true,
+    "no_merge_to_main": true,
+    "no_deployment": true,
+    "fail_closed": true
+  }
+}
