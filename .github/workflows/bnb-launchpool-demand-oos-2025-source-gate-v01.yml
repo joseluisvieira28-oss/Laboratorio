@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   source-gate:
-    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
+    if: ${{ contains(github.event.head_commit.message, 'execute frozen 2025 source gate') && !contains(github.event.head_commit.message, '[skip ci]') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -54,7 +54,6 @@ jobs:
           assert d['clean_events']==8
           assert d['market_prices_opened'] is False and d['returns_computed'] is False and d['pnl_computed'] is False
           assert d['access_2026_market'] is False
-          print(d['canonical_event_manifest_sha256'])
           PY
       - name: Upload immutable source evidence
         uses: actions/upload-artifact@v4
