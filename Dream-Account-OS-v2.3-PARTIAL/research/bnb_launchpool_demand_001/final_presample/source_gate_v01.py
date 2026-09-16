@@ -6,7 +6,7 @@ HERE=Path(__file__).resolve().parent
 ROOT=HERE.parent
 FREEZE=ROOT/'BNB_LAUNCHPOOL_DEMAND_001_FINAL_PRESAMPLE_HOLDOUT_FREEZE_V0.1.json'
 OUTDIR=HERE/'source_gate_v01'; RAW=OUTDIR/'raw'; OUT=OUTDIR/'BNB_LAUNCHPOOL_DEMAND_001_FINAL_PRESAMPLE_SOURCE_GATE_V0.1.json'
-LIST='https://www.binance.com/bapi/composite/v1/public/cms/article/list/query?type=1&catalogId=48&pageNo={}&pageSize=100'
+LIST='https://www.binance.com/bapi/composite/v1/public/cms/article/list/query?type=1&catalogId=48&pageNo={}&pageSize=20'
 DETAIL='https://www.binance.com/bapi/composite/v1/public/cms/article/detail/query?articleCode={}'
 UA={'User-Agent':'Mozilla/5.0 BNB-LAUNCHPOOL-DEMAND-001-FINAL-HOLDOUT/1.0','Accept':'application/json,text/plain,*/*'}
 HEX=re.compile(r'^[0-9a-fA-F]{32}$')
@@ -71,7 +71,7 @@ def main():
     assert f['status']=='FROZEN_BEFORE_PRESAMPLE_SOURCE_ENUMERATION_OR_MARKET_OUTCOME_ACCESS'
     OUTDIR.mkdir(parents=True,exist_ok=True); RAW.mkdir(parents=True,exist_ok=True)
     candidates={}; pages=[]; earliest=None
-    for p in range(1,121):
+    for p in range(1,401):
         body=get(LIST.format(p)); obj=json.loads(body.decode())
         found=0
         for d in walk_dicts(obj):
