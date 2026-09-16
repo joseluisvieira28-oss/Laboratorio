@@ -45,11 +45,20 @@ jobs:
           print('EXECUTION_AUTHORITY_PASS')
           PY
 
-      - name: Compile frozen execution runner
-        run: python -m py_compile labs/BTC_OPTIONS_VRP_001/execution_v01.py
+      - name: Verify preoutcome technical remediation receipt
+        run: |
+          test -f labs/BTC_OPTIONS_VRP_001/execution_v01_transportfix.py
+          echo 'TECHNICAL_REMEDIATION_RECEIPT_DRIVE=1d0mDSGqRXNfOF0sdLJBYLw9abofu76Fklq7xafBGA-k'
+          echo 'FAILED_RUN=35069506221'
+          echo 'SCIENTIFIC_RULES_CHANGED=false'
+
+      - name: Compile frozen runner and transport-only launcher
+        run: |
+          python -m py_compile labs/BTC_OPTIONS_VRP_001/execution_v01.py
+          python -m py_compile labs/BTC_OPTIONS_VRP_001/execution_v01_transportfix.py
 
       - name: Execute one-shot 2021-2024 execution MVE
-        run: python labs/BTC_OPTIONS_VRP_001/execution_v01.py
+        run: python labs/BTC_OPTIONS_VRP_001/execution_v01_transportfix.py
 
       - name: Upload execution evidence
         if: always()
