@@ -1,0 +1,75 @@
+{
+  "experiment_id": "CAPITULATION-REVERSION-001",
+  "status": "CLOSED_DATA_OR_TECHNICAL_FAILURE_NOT_NO_EDGE",
+  "freeze_commit": "8a4191cb59e9cac4942819a29a7606b05f3640de",
+  "window_semantics_amendment_commit": "de84b865aa3d0c268f2259747afde049e96ffd7b",
+  "serialization_correction_commit": "fb9737104f81bad61eea8d4096a71c89b2c65ad3",
+  "classification_correction_commit": "7113dbf72d2677492380cd603a6a69ec325f4beb",
+  "frozen_rule": "4H long mean reversion after current close-to-close log-return z <= -2.50 versus previous 60 returns AND current 4H volume >= 1.50x previous-20 median; entry next 4H open; stop signal low - 0.50 ATR14; target 1.50R; max hold 6x4H; MEXC Spot six frozen assets; 0.20% base / 0.30% stress round-trip costs.",
+  "source": {
+    "required_monthly_min15_partitions": 258,
+    "provider": "MEXC",
+    "market": "SPOT",
+    "source_family": "official bulk Min15 only",
+    "observed_common_gap_episodes": [
+      "2023-07-09 around 02:15-03:00 UTC",
+      "2024-07-05 around 18:45-23:45 UTC"
+    ],
+    "unresolved_execution_paths": {"W1": 5, "W2": 0, "W3": 3},
+    "canonical_source_manifest_sha256": "55da816e276e3fd38b41d24228b83c36ae30fd84e4c1ad5d83bdd5968ad6d75b"
+  },
+  "resolved_trade_diagnostics": {
+    "W1_2023_2024": {
+      "n": 247,
+      "base_expectancy_r": -0.1515135059577975,
+      "base_pf": 0.7342359699917922,
+      "stress_expectancy_r": -0.20582835148277812,
+      "stress_pf": 0.6587579893894462,
+      "bootstrap_95": [-0.34500895671274473, 0.038819096342170234],
+      "calendar_2023_base_expectancy_r": -0.07761105954955207,
+      "calendar_2024_base_expectancy_r": -0.20988572812083195
+    },
+    "W2_2025": {
+      "n": 238,
+      "base_expectancy_r": -0.2695145710385303,
+      "base_pf": 0.6007663396850116,
+      "stress_expectancy_r": -0.328280322301802,
+      "stress_pf": 0.5401391430240657,
+      "bootstrap_95_report_only": [-0.46718362096800536, -0.0603399718996112]
+    },
+    "W3_2026_to_Aug31": {
+      "n": 141,
+      "base_expectancy_r": -0.32311788466656133,
+      "base_pf": 0.5331845474627702,
+      "stress_expectancy_r": -0.40318252419296663,
+      "stress_pf": 0.45849143635272355,
+      "bootstrap_95_report_only": [-0.6172575026965522, 0.004363951815380849]
+    }
+  },
+  "interpretation": {
+    "canonical_classification": "DATA_OR_TECHNICAL_FAILURE_NOT_NO_EDGE",
+    "reason": "Frozen governance requires zero unresolved execution paths and gives source/execution ambiguity precedence over an economic verdict.",
+    "economic_diagnostic": "Among 626 resolved trades across all three windows, economics are negative in every window, every 2023/2024 calendar subperiod, under base and stress costs, and all 2025/2026 assets are negative in aggregate. This provides no empirical support for the frozen capitulation-reversion MVE, but it is not relabeled NO_EDGE because source-path ambiguity remains.",
+    "promotion": false,
+    "forward_shadow_eligible": false,
+    "micro_live_eligible": false,
+    "live_trading_authorized": false,
+    "rescue_allowed": false
+  },
+  "artifact_hashes": {
+    "ledger_sha256": "1f1898d85239f7feb94627b57a80a7d43a3548c462db7728bea1f4fbd6acac1c",
+    "receipt_sha256": "bde7589acf9faa7b636198426b983dc76e4db5aab5baba96f559e57421702a2e",
+    "technical_runner_sha256": "89a723e7249e9f5142397b492d9fa134172bf71a7563dc268c68167251c7a688"
+  },
+  "governance": {
+    "no_post_outcome_tuning": true,
+    "no_threshold_rescue": true,
+    "no_timeframe_rescue": true,
+    "no_asset_selection": true,
+    "no_cost_rescue": true,
+    "no_source_family_rescue": true,
+    "no_live_orders": true,
+    "no_exchange_mutation": true,
+    "no_merge_to_main": true
+  }
+}
