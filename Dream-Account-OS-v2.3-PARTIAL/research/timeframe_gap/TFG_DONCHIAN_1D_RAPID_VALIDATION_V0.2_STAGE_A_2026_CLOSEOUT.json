@@ -1,0 +1,59 @@
+{
+  "experiment_id": "TFG-DONCHIAN-1D-RAPID-VALIDATION-V0.2",
+  "stage": "A_PROTECTED_2026_ONE_SHOT",
+  "status": "STAGE_A_2026_PROTECTED_FAIL",
+  "source": {
+    "family": "OFFICIAL_MEXC_SPOT_MIN15_BULK",
+    "zip_sha256": "c584c5b8d7ed50eaf44a5e4c0e25525c7e396f95c4f3b9d40efe76b86e8072e6",
+    "partitions": 48,
+    "assets": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "DOGEUSDT"],
+    "protected_window_start": "2026-01-01T00:00:00Z",
+    "protected_window_end_exclusive_after_pre-outcome_source-boundary-amendment": "2026-08-31T00:00:00Z",
+    "source_boundary_amendment_commit": "bb317d07b3e432e464b98343f96b8c8e6f6fdadf"
+  },
+  "frozen_rule_unchanged": {
+    "timeframe": "1D_UTC",
+    "donchian_lookback": 20,
+    "atr_length": 14,
+    "stop": "signal_low - 0.25 * ATR14_signal",
+    "target_r": 3.0,
+    "max_holding_bars": 40,
+    "base_round_trip_cost_pct": 0.20,
+    "stress_round_trip_cost_pct": 0.30
+  },
+  "result": {
+    "selected_trades": 30,
+    "resolved_trades": 30,
+    "unresolved_execution_paths": 0,
+    "base_net_expectancy_r": -0.5078522823033301,
+    "base_profit_factor": 0.3905772612360039,
+    "base_win_rate": 0.16666666666666666,
+    "base_total_net_r": -15.235568469099903,
+    "stress_net_expectancy_r": -0.5166784109918056,
+    "stress_profit_factor": 0.3799859068098334,
+    "bootstrap_95": [-0.9406739623586186, 0.15086285107326092],
+    "target_reach_rate": 0.10,
+    "max_single_symbol_positive_net_r_share": 0.33981033264525173
+  },
+  "failed_conditions": [
+    "base_net_expectancy_not_positive",
+    "base_profit_factor_not_above_1",
+    "stress_net_expectancy_not_positive",
+    "stress_profit_factor_not_above_1"
+  ],
+  "decision": {
+    "rapid_path_continues": false,
+    "stage_b_execution_certification_open": false,
+    "micro_live_eligible": false,
+    "live_trading_authorized": false,
+    "fail_action": "STOP_NO_RESCUE"
+  },
+  "governance": {
+    "post_outcome_tuning": false,
+    "asset_selection": false,
+    "cost_reduction_rescue": false,
+    "2026_09_accessed": false,
+    "live_orders": false,
+    "exchange_mutation": false
+  }
+}
