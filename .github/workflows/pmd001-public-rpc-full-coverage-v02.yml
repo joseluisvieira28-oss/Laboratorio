@@ -1,0 +1,84 @@
+name: PMD-001 Public RPC Full Coverage V0.2
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - pumpfun-migration-direction-source-rebuild-v0.2
+    paths:
+      - '.github/workflows/pmd001-public-rpc-full-coverage-v02.yml'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/public_rpc_full_coverage_shard_v02.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/aggregate_public_rpc_full_coverage_v02.py'
+
+permissions:
+  contents: read
+
+env:
+  HF_HUB_DISABLE_TELEMETRY: '1'
+  PMD_SOLANA_RPC_URL: 'https://api.mainnet.solana.com'
+
+jobs:
+  coverage-shard:
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install 'huggingface_hub[hf_xet]>=0.34' 'duckdb>=1.2,<2' 'pyarrow>=18,<22' 'pytz>=2025.2'
+      - name: Run outcome-blind coverage shard
+        run: |
+          python Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/public_rpc_full_coverage_shard_v02.py \
+            --shard-index '${{ matrix.shard }}' --shard-count 4 --max-pages 20
+      - name: Assert forbidden outcome file absent
+        if: always()
+        run: |
+          if find artifacts -name 'postgard_outcomes.parquet' -print -quit | grep -q .; then exit 1; fi
+          echo 'Outcome file absent: PASS'
+      - name: Upload shard evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pmd001-public-rpc-coverage-shard-${{ matrix.shard }}
+          path: artifacts/pmd001_public_rpc_full_coverage_v02/shard_*/
+          if-no-files-found: error
+          retention-days: 30
+
+  aggregate:
+    needs: coverage-shard
+    if: always() && needs.coverage-shard.result == 'success'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download all shard evidence
+        uses: actions/download-artifact@v4
+        with:
+          pattern: pmd001-public-rpc-coverage-shard-*
+          path: downloaded_shards
+          merge-multiple: false
+      - name: Aggregate source census
+        run: |
+          python Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/aggregate_public_rpc_full_coverage_v02.py \
+            --root downloaded_shards --out-dir artifacts/pmd001_public_rpc_full_coverage_v02_aggregate
+      - name: Assert outcomes remain sealed
+        run: |
+          if find . -name 'postgard_outcomes.parquet' -print -quit | grep -q .; then exit 1; fi
+          echo 'Outcome file absent: PASS'
+      - name: Upload aggregate receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: pmd001-public-rpc-full-coverage-v02-aggregate
+          path: artifacts/pmd001_public_rpc_full_coverage_v02_aggregate/
+          if-no-files-found: error
+          retention-days: 30
