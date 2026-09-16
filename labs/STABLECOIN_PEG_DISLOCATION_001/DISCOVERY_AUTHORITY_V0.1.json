@@ -1,0 +1,156 @@
+{
+  "lab_id": "STABLECOIN-PEG-DISLOCATION-001",
+  "mve_id": "SPD-USDCUSDT-CROSS25-H60-001",
+  "status": "FROZEN_PRE_DISCOVERY",
+  "date_frozen": "2026-09-16",
+  "branch": "stablecoin-peg-dislocation-v0.1",
+  "source_authority": {
+    "source_gate_id": "SPD-USDCUSDT-SOURCE-002",
+    "classification": "SOURCE_DATA_PASS",
+    "run_id": 35090831268,
+    "artifact_id": 10444241239,
+    "artifact_sha256": "8f406f233bd1a84f215b8377d10abb9c1add206dfc4449d18a28d8b1932234c2",
+    "source_manifest_sha256": "020018f4cb2a3392aee6c353a818997b227b4e9917ef8495afce6a2a1100102f"
+  },
+  "mechanism": "Direct CEX relative stablecoin peg-dislocation mean reversion around fixed parity 1.0000.",
+  "source": {
+    "venue": "Binance Spot",
+    "symbol": "USDCUSDT",
+    "interval": "1m",
+    "archive_granularity": "daily",
+    "base_url": "https://data.binance.vision/data/spot/daily/klines/USDCUSDT/1m",
+    "monthly_fallback_allowed": false,
+    "third_party_substitution_allowed": false,
+    "verify_every_download_against_companion_checksum": true
+  },
+  "active_segments": [
+    ["2021-01-01", "2022-09-26"],
+    ["2023-03-11", "2024-12-31"]
+  ],
+  "economic_excluded_dates": ["2022-09-26", "2023-03-11"],
+  "protected_periods": {
+    "access_2025": false,
+    "access_2026": false
+  },
+  "peg_reference": 1.0,
+  "threshold": {
+    "bps": 25,
+    "absolute_ratio": 0.0025,
+    "lower": 0.9975,
+    "upper": 1.0025,
+    "event_semantics": "first_cross_only_from_inside_band"
+  },
+  "events": {
+    "lower": "close[t-1] > 0.9975 and close[t] <= 0.9975",
+    "upper": "close[t-1] < 1.0025 and close[t] >= 1.0025",
+    "direction_lower": 1,
+    "direction_upper": -1,
+    "direction_semantics": "mean_reversion",
+    "short_semantics": "sell prefunded USDC inventory versus USDT; no borrowing assumption"
+  },
+  "execution": {
+    "signal_price": "completed_1m_close_t",
+    "entry_price": "open_t_plus_1",
+    "exit_price": "open_t_plus_61",
+    "hold_minutes": 60,
+    "non_overlap_global": true,
+    "missing_entry_or_exit": "exclude_pre_performance",
+    "target": null,
+    "stop": null
+  },
+  "returns": {
+    "gross_return": "direction * (exit_open / entry_open - 1)",
+    "gross_bps_multiplier": 10000,
+    "base_cost_bps_roundtrip": 20,
+    "stress_cost_bps_roundtrip": 30,
+    "base_net_bps": "gross_bps - 20",
+    "stress_net_bps": "gross_bps - 30",
+    "segment_specific_fee_reduction_allowed": false
+  },
+  "sample_gate": {
+    "min_executable_n": 50,
+    "min_distinct_utc_calendar_weeks": 20,
+    "min_distinct_calendar_years": 3,
+    "failure_classification": "DISCOVERY_INSUFFICIENT_SAMPLE"
+  },
+  "statistics_if_sample_passes": [
+    "N",
+    "long_n",
+    "short_n",
+    "mean_gross_bps",
+    "median_gross_bps",
+    "mean_base_net_bps",
+    "median_base_net_bps",
+    "mean_stress_net_bps",
+    "median_stress_net_bps",
+    "positive_fraction_base",
+    "positive_fraction_stress",
+    "profit_factor_base",
+    "profit_factor_stress",
+    "cumulative_additive_base_return",
+    "cumulative_additive_stress_return",
+    "max_additive_drawdown_base",
+    "worst_base_episode_bps",
+    "p05_base_episode_bps",
+    "yearly_counts_and_mean_base",
+    "monthly_positive_gross_concentration",
+    "single_event_positive_gross_concentration"
+  ],
+  "inference": {
+    "method": "complete_utc_calendar_week_cluster_bootstrap",
+    "target": "mean_base_net_bps",
+    "alternative": "greater_than_zero",
+    "resamples": 10000,
+    "seed": 20260916,
+    "alpha": 0.05,
+    "report_percentile_95_ci": true
+  },
+  "promotion_gates": {
+    "sample_n_pass": "N >= 50",
+    "weeks_pass": "distinct_event_weeks >= 20",
+    "years_pass": "distinct_event_years >= 3",
+    "mean_base_positive": "mean_base_net_bps > 0",
+    "pf_base": "profit_factor_base > 1.0",
+    "bootstrap_p": "one_sided_p < 0.05",
+    "bootstrap_lower": "bootstrap_ci_lower > 0",
+    "mean_stress_positive": "mean_stress_net_bps > 0",
+    "pf_stress": "profit_factor_stress > 1.0",
+    "median_gross_positive": "median_gross_bps > 0",
+    "calendar_stability": "at least 2 represented years nonnegative base mean; 2024 nonnegative if represented",
+    "month_positive_gross_concentration": "<= 0.40",
+    "single_event_positive_gross_concentration": "<= 0.15",
+    "provenance_and_firewall_clean": true
+  },
+  "classifications": {
+    "sample_fail": "DISCOVERY_INSUFFICIENT_SAMPLE",
+    "economic_or_statistical_fail": "DISCOVERY_FAIL_NO_PROMOTION",
+    "all_gates_pass": "DISCOVERY_PASS_CANDIDATE_REQUIRES_SEPARATE_VALIDATION"
+  },
+  "forbidden_post_outcome_rescues": [
+    "threshold_change",
+    "hold_change",
+    "target_or_stop_addition",
+    "threshold_sweep",
+    "alternate_peg_anchor",
+    "side_selection",
+    "cost_reduction",
+    "segment_or_year_selection",
+    "boundary_date_reinstatement",
+    "regime_filter",
+    "volatility_filter",
+    "volume_or_liquidity_filter",
+    "machine_learning_or_nonlinear_rescue",
+    "2025_access",
+    "2026_access"
+  ],
+  "firewalls": {
+    "live_trading": false,
+    "orders": false,
+    "exchange_mutation": false,
+    "alerts": false,
+    "webhooks": false,
+    "merge_main": false,
+    "deployment": false,
+    "post_outcome_tuning": false
+  }
+}
