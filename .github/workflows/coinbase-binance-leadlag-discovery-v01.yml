@@ -1,0 +1,91 @@
+name: CBLL Discovery V0.1
+
+on:
+  push:
+    branches:
+      - coinbase-binance-leadlag-v0.1
+
+permissions:
+  contents: write
+
+jobs:
+  discovery:
+    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout frozen scientific branch
+        uses: actions/checkout@v4
+        with:
+          ref: coinbase-binance-leadlag-v0.1
+          fetch-depth: 1
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Frozen protocol preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/coinbase_binance_leadlag_001'
+          python -m py_compile "$BASE/discovery_runner_v01.py"
+          python - <<'PY'
+          import json
+          p=json.load(open('Dream-Account-OS-v2.3-PARTIAL/research/coinbase_binance_leadlag_001/FROZEN_PROTOCOL_V01.json'))
+          assert p['lab_id']=='COINBASE-BINANCE-LEADLAG-001'
+          assert p['mve_id']=='CBLL-USDT-5M-Z3-001'
+          assert p['status']=='FROZEN_PRE_OUTCOME'
+          assert p['universe']['assets']==['BTC','ETH']
+          assert p['universe']['timeframe_minutes']==5
+          assert p['signal']['rolling_window_bars']==2016
+          assert p['signal']['threshold']==3.0
+          assert p['strategy']['direction']=='LONG_ONLY'
+          assert p['strategy']['stop_fraction']==0.01
+          assert p['strategy']['target_fraction']==0.02
+          assert p['strategy']['max_hold_bars']==12
+          assert p['strategy']['base_round_trip_cost_fraction']==0.002
+          assert p['strategy']['stress_round_trip_cost_fraction']==0.003
+          assert p['discovery']['period']=='2022-2023'
+          assert p['data']['no_2024_access_before_discovery_classification'] is True
+          assert p['data']['no_2025_access'] is True
+          assert p['data']['no_2026_access'] is True
+          assert p['hard_firewalls']['live_trading'] is False
+          assert p['hard_firewalls']['exchange_mutation'] is False
+          assert p['hard_firewalls']['merge_to_main'] is False
+          PY
+      - name: Execute one-shot frozen Discovery
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/coinbase_binance_leadlag_001'
+          python "$BASE/discovery_runner_v01.py"
+          test -f "$BASE/discovery_evidence/CBLL_DISCOVERY_RESULT_V01.json"
+      - name: Audit classification and protected-period guards
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          f='Dream-Account-OS-v2.3-PARTIAL/research/coinbase_binance_leadlag_001/discovery_evidence/CBLL_DISCOVERY_RESULT_V01.json'
+          d=json.load(open(f)); c=d['classification']; g=d['guards']
+          assert c in {'SOURCE_ACCESS_BLOCKED','DATA_FAILURE','INSUFFICIENT_SAMPLE','DISCOVERY_NO_EDGE','DISCOVERY_SURVIVES'}
+          assert g['year_2024_opened'] is False
+          assert g['year_2025_opened'] is False
+          assert g['year_2026_opened'] is False
+          assert g['live_trading'] is False
+          assert g['exchange_mutation'] is False
+          assert g['orders'] is False
+          print(json.dumps({k:d.get(k) for k in ['classification','reason','coverage','signal_counts','base_metrics','stress_metrics','bootstrap_daily','by_year','by_asset','max_positive_month_share','minimum_leave_one_trade_out_mean_net_R','promotion_gates','guards']},indent=2,sort_keys=True))
+          PY
+      - name: Persist immutable Discovery receipt
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/coinbase_binance_leadlag_001'
+          git config user.name 'crypto-lab-cbll-bot'
+          git config user.email 'crypto-lab-cbll-bot@users.noreply.github.com'
+          git add "$BASE/discovery_evidence/CBLL_DISCOVERY_RESULT_V01.json"
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'COINBASE-BINANCE-LEADLAG-001: Discovery closeout [skip ci]'
+          git pull --rebase origin coinbase-binance-leadlag-v0.1
+          git push origin HEAD:coinbase-binance-leadlag-v0.1
