@@ -1,4 +1,4 @@
-name: TFG Donchian 1D Frozen 2025 OOS V0.1C1 60m Enum
+name: TFG Donchian 1D Frozen 2025 OOS V0.1C2 500-Bar Pagination
 
 on:
   push:
@@ -13,7 +13,7 @@ permissions:
   actions: read
 
 jobs:
-  oos_2025_v01c1:
+  oos_2025_v01c2:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     defaults:
@@ -31,11 +31,11 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Compile and verify frozen authority plus pre-outcome 60m enum fix
+      - name: Compile and verify frozen authority plus pre-outcome pagination fix
         run: |
           export PYTHONPATH="$PWD:${PYTHONPATH:-}"
-          python -m py_compile research/tfg_donchian_1d_oos_2025_runner_v01c1.py
-          python -m research.tfg_donchian_1d_oos_2025_runner_v01c1 --self-test
+          python -m py_compile research/tfg_donchian_1d_oos_2025_runner_v01c2.py
+          python -m research.tfg_donchian_1d_oos_2025_runner_v01c2 --self-test
 
       - name: Verify exact parent source artifact metadata
         env:
@@ -102,10 +102,10 @@ jobs:
         continue-on-error: true
         run: |
           export PYTHONPATH="$PWD:${PYTHONPATH:-}"
-          OUT=research/local_data/tfg_donchian_1d_oos_2025_v01c1
+          OUT=research/local_data/tfg_donchian_1d_oos_2025_v01c2
           mkdir -p "$OUT"
           set +e
-          python -m research.tfg_donchian_1d_oos_2025_runner_v01c1 \
+          python -m research.tfg_donchian_1d_oos_2025_runner_v01c2 \
             --parent-canonical-dir research/local_data/tfg_donchian_1d_oos_parent_dec/canonical \
             --output-dir "$OUT"
           rc=$?
@@ -116,19 +116,19 @@ jobs:
           fi
           exit 0
 
-      - name: Upload frozen OOS V0.1C1 receipt and ledger
+      - name: Upload frozen OOS V0.1C2 receipt and ledger
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: tfg-donchian-1d-2025-oos-v01c1-result
+          name: tfg-donchian-1d-2025-oos-v01c2-result
           path: |
-            Dream-Account-OS-v2.3-PARTIAL/research/local_data/tfg_donchian_1d_oos_2025_v01c1/TFG_DONCHIAN_1D_2025_OOS_RECEIPT_V0.1C.json
-            Dream-Account-OS-v2.3-PARTIAL/research/local_data/tfg_donchian_1d_oos_2025_v01c1/TFG_DONCHIAN_1D_2025_OOS_LEDGER_V0.1C.json
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/tfg_donchian_1d_oos_2025_v01c2/TFG_DONCHIAN_1D_2025_OOS_RECEIPT_V0.1C.json
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/tfg_donchian_1d_oos_2025_v01c2/TFG_DONCHIAN_1D_2025_OOS_LEDGER_V0.1C.json
           if-no-files-found: warn
           retention-days: 30
 
       - name: Fail closed on non-scientific blocker
         if: steps.oos.outputs.rc != '0'
         run: |
-          echo 'OOS V0.1C1 blocked by source/technical/data gate. No scientific negative conclusion and no shadow promotion.'
+          echo 'OOS V0.1C2 blocked by source/technical/data gate. No scientific negative conclusion and no shadow promotion.'
           exit 1
