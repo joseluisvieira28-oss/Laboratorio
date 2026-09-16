@@ -1,0 +1,109 @@
+{
+  "experiment_id": "TFG-DONCHIAN-1D-AGGRESSIVE-READINESS-V0.3",
+  "parent_rapid_validation": "TFG-DONCHIAN-1D-RAPID-VALIDATION-V0.2",
+  "status": "FROZEN_BEFORE_2026_PROTECTED_OUTCOME_ACCESS",
+  "purpose": "Reach a real-capital micro-pilot faster without altering the trading rule that passed Discovery and 2025 OOS. This protocol accelerates validation sequence, not signal geometry.",
+  "evidence_preserved": {
+    "discovery": "PRESERVED",
+    "oos_2025": "PRESERVED",
+    "forward_shadow_v01": "PRESERVED",
+    "rapid_validation_v02": "PRESERVED",
+    "no_retroactive_reclassification": true
+  },
+  "trading_rule_unchanged": {
+    "universe": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "DOGEUSDT"],
+    "side": "LONG_ONLY",
+    "venue_family": "MEXC_SPOT",
+    "timeframe": "1D_UTC",
+    "donchian_lookback_complete_days": 20,
+    "atr_length": 14,
+    "signal": "daily_close > max_high_of_prior_20_complete_daily_bars",
+    "entry": "next_daily_open",
+    "stop": "signal_low - 0.25 * ATR14_signal",
+    "target_r": 3.0,
+    "max_holding_bars": 40,
+    "time_exit": "next_daily_open_after_40_held_daily_bars",
+    "one_active_position_per_symbol": true,
+    "same_bar_stop_target": "STOP_FIRST_CONSERVATIVE",
+    "base_round_trip_cost_pct": 0.20,
+    "stress_round_trip_cost_pct": 0.30
+  },
+  "stage_a_protected_2026": {
+    "inherits_v02_without_change": true,
+    "window_start_utc": "2026-01-01T00:00:00Z",
+    "window_end_utc": "2026-09-01T00:00:00Z",
+    "source": "OFFICIAL_MEXC_SPOT_MIN15_ONLY",
+    "access_policy": "ONE_SHOT_ONLY_AFTER_FREEZE",
+    "minimum_resolved_trades": 20,
+    "economic_gates": {
+      "base_net_expectancy_r_gt": 0.0,
+      "base_profit_factor_gt": 1.0,
+      "stress_net_expectancy_r_gt": 0.0,
+      "stress_profit_factor_gt": 1.0,
+      "max_single_symbol_positive_net_r_share_lte": 0.70,
+      "unresolved_execution_paths_eq": 0
+    },
+    "fail_action": "STOP_NO_RESCUE"
+  },
+  "stage_b_execution_certification": {
+    "opens_only_if_stage_a_passes": true,
+    "minimum_post_freeze_eligible_signals_processed": 3,
+    "outcome_gate": false,
+    "required": [
+      "NO_MISSED_ELIGIBLE_SIGNAL",
+      "NO_DUPLICATE_SIGNAL",
+      "NEXT_OPEN_ENTRY_SEMANTICS_MATCH",
+      "STOP_TARGET_TIME_EXIT_SEMANTICS_MATCH",
+      "NO_RULE_DEVIATION",
+      "NO_DATA_GAP_AFFECTING_SIGNAL_BAR"
+    ],
+    "purpose": "Operational certification only. The edge estimate comes from prior research evidence, not three outcomes."
+  },
+  "stage_c_micro_live_eligibility": {
+    "opens_only_if_stage_a_and_b_pass": true,
+    "real_capital": true,
+    "automatic_order_submission": false,
+    "manual_or_separately_authorized_execution_only": true,
+    "initial_risk_per_trade_pct_equity": 0.10,
+    "max_aggregate_open_risk_pct_equity": 0.30,
+    "leverage": "NONE",
+    "instrument": "SPOT_ONLY",
+    "same_frozen_signal_rule": true,
+    "kill_switches": [
+      "CUMULATIVE_MICRO_LIVE_R_LTE_-3R",
+      "ANY_RULE_DEVIATION",
+      "ANY_MISSED_OR_DUPLICATE_ELIGIBLE_SIGNAL",
+      "ANY_SOURCE_OR_DAILY_BAR_INTEGRITY_FAILURE",
+      "ANY_EXECUTION_PATH_NOT_RECONCILABLE_TO_THE_FROZEN_RULE"
+    ],
+    "scale_review_after_resolved_micro_live_trades": 10,
+    "scale_review_economic_gates": {
+      "base_net_expectancy_r_gt": 0.0,
+      "profit_factor_gt": 1.0,
+      "unresolved_execution_paths_eq": 0,
+      "rule_deviations_eq": 0
+    },
+    "next_risk_step_if_review_passes_pct_equity": 0.25,
+    "full_size_not_authorized_by_this_protocol": true
+  },
+  "parallel_acceleration": {
+    "donchian_12h_sibling_allowed": true,
+    "requires_separate_prefreeze_before_any_2026_outcomes": true,
+    "cannot_rescue_or_reclassify_1d": true,
+    "same_2026_min15_source_can_be_reused_for_derivation_if_source_identity_passes": true,
+    "donchian_6h_revival_forbidden": true
+  },
+  "required_data": {
+    "stage_a": "6 assets x Jan-Aug 2026 official MEXC Spot Min15 files = 48 monthly partitions",
+    "warmup": "December 2025 already available from the completed 2025 source bundle",
+    "stage_b_and_c": "forward MEXC Spot data from post-freeze sessions"
+  },
+  "governance": {
+    "no_parameter_tuning": true,
+    "no_asset_selection": true,
+    "no_cost_reduction_rescue": true,
+    "no_2026_threshold_change_after_open": true,
+    "no_merge_to_main": true,
+    "no_full_size_live_deployment": true
+  }
+}
