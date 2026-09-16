@@ -33,6 +33,8 @@ MIN_RESOLVED = 100
 BOOTSTRAP_REPS = 5000
 BOOTSTRAP_SEED = 230911
 BOOTSTRAP_CONFIDENCE = 0.95
+FIFTEEN_MIN_MS = 15 * 60 * 1000
+REMEDIATION = "DROP_NONSTANDARD_CLOSE_TIME_ROWS_AS_INELIGIBLE_INCOMPLETE_15M_PER_FROZEN_GAP_RULE"
 
 
 def ms(iso: str) -> int:
@@ -64,6 +66,8 @@ def load_manifest(source_root: Path) -> dict:
         raise RuntimeError("SOURCE_OR_DATA_BLOCKED: source gate not PASS")
     if m.get("lab_id") != LAB_ID or m.get("authority_commit") != AUTHORITY_COMMIT:
         raise RuntimeError("SOURCE_OR_DATA_BLOCKED: authority identity mismatch")
+    if m.get("technical_remediation") != REMEDIATION:
+        raise RuntimeError("SOURCE_OR_DATA_BLOCKED: remediation identity mismatch")
     if tuple(m.get("symbols", [])) != SYMBOLS:
         raise RuntimeError("SOURCE_OR_DATA_BLOCKED: universe mismatch")
     if m.get("accepted_archive_count") != 138 or m.get("required_archive_count") != 138:
@@ -83,6 +87,7 @@ def load_symbol(source_root: Path, manifest: dict, symbol: str) -> list[Candle]:
     if len(entries) != 23:
         raise RuntimeError(f"SOURCE_OR_DATA_BLOCKED: {symbol} expected 23 archives")
     seen: set[int] = set()
+    dropped_incomplete = 0
     for e in entries:
         path = source_root / "raw" / e["file"]
         if not path.is_file() or sha256_path(path) != e["sha256"]:
@@ -98,10 +103,19 @@ def load_symbol(source_root: Path, manifest: dict, symbol: str) -> list[Candle]:
                     t = int(row[0])
                     if not (start <= t < end):
                         continue
+                    if t % FIFTEEN_MIN_MS != 0:
+                        raise RuntimeError(f"SOURCE_OR_DATA_BLOCKED: unaligned open_time {symbol} {t}")
                     if t in seen:
                         raise RuntimeError(f"SOURCE_OR_DATA_BLOCKED: duplicate candle {symbol} {t}")
                     seen.add(t)
-                    rows.append(Candle(t, float(row[1]), float(row[2]), float(row[3]), float(row[4]), float(row[5]), int(row[6]), True))
+                    close_t = int(row[6])
+                    if close_t != t + FIFTEEN_MIN_MS - 1:
+                        dropped_incomplete += 1
+                        continue
+                    rows.append(Candle(t, float(row[1]), float(row[2]), float(row[3]), float(row[4]), float(row[5]), close_t, True))
+    expected_drop = int(manifest.get("ineligible_incomplete_15m_rows_by_symbol", {}).get(symbol, -1))
+    if dropped_incomplete != expected_drop:
+        raise RuntimeError(f"SOURCE_OR_DATA_BLOCKED: incomplete-row reconciliation {symbol} expected={expected_drop} got={dropped_incomplete}")
     rows.sort(key=lambda c: c.open_time)
     if not rows:
         raise RuntimeError(f"SOURCE_OR_DATA_BLOCKED: empty filtered series {symbol}")
@@ -167,11 +181,13 @@ def run(source_root: Path, output: Path) -> int:
         "stage": "CROSS_VENUE_ROBUSTNESS_REPLICATION",
         "classification": classification,
         "authority_commit": AUTHORITY_COMMIT,
+        "source_remediation": REMEDIATION,
         "venue": "BINANCE_SPOT",
         "comparison_venue": "MEXC_SPOT",
         "not_temporal_oos": True,
         "window": {"start": DISCOVERY_START, "end_exclusive": DISCOVERY_END},
-        "source_15m_count_by_symbol": source_counts,
+        "source_eligible_15m_count_by_symbol": source_counts,
+        "source_ineligible_incomplete_15m_rows_by_symbol": manifest["ineligible_incomplete_15m_rows_by_symbol"],
         "derived_4h_count_by_symbol": derived_counts,
         "incomplete_4h_bucket_count_by_symbol": incomplete,
         "base_20bps": base,
