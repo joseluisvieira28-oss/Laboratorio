@@ -4,6 +4,12 @@ on:
   push:
     branches:
       - bnb-launchpool-demand-final-holdout-pre2022-v01
+    paths:
+      - '.github/workflows/bnb-launchpool-demand-final-presample-source-v01.yml'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/bnb_launchpool_demand_001/BNB_LAUNCHPOOL_DEMAND_001_FINAL_PRESAMPLE_HOLDOUT_FREEZE_V0.1.json'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/bnb_launchpool_demand_001/BNB_LAUNCHPOOL_DEMAND_001_FINAL_PRESAMPLE_SOURCE_ROUTE_AMENDMENT_V0.1.json'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/bnb_launchpool_demand_001/BNB_LAUNCHPOOL_DEMAND_001_FINAL_PRESAMPLE_SOURCE_SEED_V0.1.json'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/bnb_launchpool_demand_001/final_presample/source_gate_v01.py'
 
 permissions:
   contents: write
@@ -29,9 +35,13 @@ jobs:
           python -m py_compile "$B/final_presample/source_gate_v01.py"
           python - <<'PY'
           import json
-          p='Dream-Account-OS-v2.3-PARTIAL/research/bnb_launchpool_demand_001/BNB_LAUNCHPOOL_DEMAND_001_FINAL_PRESAMPLE_HOLDOUT_FREEZE_V0.1.json'
-          d=json.load(open(p))
+          b='Dream-Account-OS-v2.3-PARTIAL/research/bnb_launchpool_demand_001'
+          d=json.load(open(b+'/BNB_LAUNCHPOOL_DEMAND_001_FINAL_PRESAMPLE_HOLDOUT_FREEZE_V0.1.json'))
+          a=json.load(open(b+'/BNB_LAUNCHPOOL_DEMAND_001_FINAL_PRESAMPLE_SOURCE_ROUTE_AMENDMENT_V0.1.json'))
+          s=json.load(open(b+'/BNB_LAUNCHPOOL_DEMAND_001_FINAL_PRESAMPLE_SOURCE_SEED_V0.1.json'))
           assert d['status']=='FROZEN_BEFORE_PRESAMPLE_SOURCE_ENUMERATION_OR_MARKET_OUTCOME_ACCESS'
+          assert a['status']=='FROZEN_BEFORE_ANY_PRESAMPLE_MARKET_PRICE_OR_RETURN_ACCESS'
+          assert s['status']=='FROZEN_BEFORE_ANY_PRESAMPLE_MARKET_PRICE_OR_RETURN_ACCESS'
           assert d['execution_rule_unchanged']['side']=='LONG_BNBBTC'
           assert d['execution_rule_unchanged']['hold']=='24 hours from entry timestamp'
           assert d['execution_rule_unchanged']['round_trip_cost_base_bps']==20.0
@@ -49,9 +59,12 @@ jobs:
           import json
           p='Dream-Account-OS-v2.3-PARTIAL/research/bnb_launchpool_demand_001/final_presample/source_gate_v01/BNB_LAUNCHPOOL_DEMAND_001_FINAL_PRESAMPLE_SOURCE_GATE_V0.1.json'
           d=json.load(open(p))
+          assert d['classification']=='SOURCE_DATA_PASS', d['classification']
+          assert d['recovered_count']==30 and d['unique_validated_articles']==27
+          assert d['missing_project_numbers']==[] and d['detail_failures']==[]
           assert d['market_prices_opened'] is False and d['returns_computed'] is False and d['pnl_computed'] is False
           assert d['new_2025_market_access'] is False and d['access_2026_market'] is False
-          print(json.dumps({k:d[k] for k in ['classification','recovered_count','missing_project_numbers','ineligible_project_numbers','canonical_event_manifest_sha256']},indent=2))
+          print(json.dumps({k:d[k] for k in ['classification','recovered_count','unique_validated_articles','canonical_event_manifest_sha256']},indent=2))
           PY
       - uses: actions/upload-artifact@v4
         with:
