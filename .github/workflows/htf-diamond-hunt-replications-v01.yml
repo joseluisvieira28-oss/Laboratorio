@@ -1,0 +1,119 @@
+name: HTF Diamond Hunt Exact Replications V0.1
+
+on:
+  push:
+    branches:
+      - htf-diamond-hunt-v0.1
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/htf_diamond_hunt/REPLICATION_RUN_TRIGGER_V0.1.txt'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  exact-replications:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout research branch with historical objects
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Verify campaign/source/implementation authority before source artifact
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=Path('research/htf_diamond_hunt')
+          f=json.loads((r/'HTF_DIAMOND_HUNT_001_CAMPAIGN_FREEZE_V0.1.json').read_text())
+          b=json.loads((r/'HTF_DIAMOND_HUNT_001_SOURCE_BINDING_V0.1.json').read_text())
+          i=json.loads((r/'HTF_DIAMOND_HUNT_001_IMPLEMENTATION_AUTHORITY_V0.1.json').read_text())
+          assert f['status']=='FROZEN_PRE_OUTCOME'
+          assert f['execution_order'][:3]==['DH-01','DH-04','DH-07']
+          assert b['status']=='FROZEN_EXACT_SOURCE_BEFORE_ANY_CAMPAIGN_OUTCOME'
+          assert b['artifact_id']==10434938955
+          assert b['source_fingerprint']=='08402ecb8931e42a0766370f55e46adc3de02474ce3a6128f4b2cdd89bb4ac78'
+          assert i['status']=='FROZEN_IMPLEMENTATION_AUTHORITY_PRE_OUTCOME'
+          assert i['historical_authority_commit']=='62422965b23e91671f6720b818bb26686b9d5bd2'
+          print('AUTHORITY_GATE_PASS')
+          PY
+
+      - name: Verify historical blob identities before materialization
+        shell: bash
+        run: |
+          set -euo pipefail
+          H=62422965b23e91671f6720b818bb26686b9d5bd2
+          test "$(git rev-parse "$H:Dream-Account-OS-v2.3-PARTIAL/research/tfg_donchian_1d_discovery_runner_v01.py")" = ca2515ee40e62ed5543db0f6d27d69533e0f22ce
+          test "$(git rev-parse "$H:Dream-Account-OS-v2.3-PARTIAL/research/tfg_ema_pullback_1d_discovery_runner_v01.py")" = 4624b4338d3ef6d8a1c9face4bd611ac24b48241
+          test "$(git rev-parse "$H:Dream-Account-OS-v2.3-PARTIAL/research/tfg_pbr01_4h_v01.py")" = c67e0c16cdd887a907b4be3fd7e562cce870680a
+          test "$(git rev-parse "$H:Dream-Account-OS-v2.3-PARTIAL/research/tfg_pbr01_4h_discovery_runner_v01.py")" = d7ea040091c2703b089081191bb84fecb5db8f5d
+          echo HISTORICAL_BLOB_GATE_PASS
+
+      - name: Materialize exact historical strategy implementation stack
+        shell: bash
+        run: |
+          set -euo pipefail
+          H=62422965b23e91671f6720b818bb26686b9d5bd2
+          git checkout "$H" -- \
+            Dream-Account-OS-v2.3-PARTIAL/dream_account \
+            Dream-Account-OS-v2.3-PARTIAL/research/tfg_ema_pullback_1d_discovery_runner_v01.py \
+            Dream-Account-OS-v2.3-PARTIAL/research/tfg_donchian_1d_discovery_runner_v01.py \
+            Dream-Account-OS-v2.3-PARTIAL/research/tfg_pbr01_4h_v01.py \
+            Dream-Account-OS-v2.3-PARTIAL/research/phase_b_research_evaluator_v01.py \
+            Dream-Account-OS-v2.3-PARTIAL/research/phase_b_signal_formation_v01.py
+          echo HISTORICAL_STACK_MATERIALIZED
+
+      - name: Compile exact modules and campaign wrapper
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: |
+          python -m py_compile \
+            research/tfg_ema_pullback_1d_discovery_runner_v01.py \
+            research/tfg_donchian_1d_discovery_runner_v01.py \
+            research/tfg_pbr01_4h_v01.py \
+            research/htf_diamond_hunt/htf_diamond_hunt_replications_v01.py
+
+      - name: Download exact frozen source artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: HTF_DIAMOND_HUNT_001_SOURCE_V01
+          path: Dream-Account-OS-v2.3-PARTIAL/research/local_data/htf_diamond_hunt_source_v01
+          github-token: ${{ github.token }}
+          run-id: 35068227095
+
+      - name: Reverify exact source bytes before first outcome
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: |
+          python - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          root=Path('research/local_data/htf_diamond_hunt_source_v01')
+          bind=json.loads(Path('research/htf_diamond_hunt/HTF_DIAMOND_HUNT_001_SOURCE_BINDING_V0.1.json').read_text())
+          rec=json.loads((root/'HTF_DIAMOND_HUNT_001_SOURCE_GATE_V0.1.json').read_text())
+          assert rec['status']=='SOURCE_DATA_PASS'
+          assert rec['source_fingerprint']==bind['source_fingerprint']
+          assert rec['outcome_evaluation_performed'] is False
+          for sym,x in bind['canonical_15m'].items():
+              p=root/'canonical_15m'/f'{sym}_15m.csv'
+              assert hashlib.sha256(p.read_bytes()).hexdigest()==x['sha256']
+          print('SOURCE_BYTE_REBIND_PASS')
+          PY
+
+      - name: Run DH-01 DH-04 DH-07 exact independent replications
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: python research/htf_diamond_hunt/htf_diamond_hunt_replications_v01.py research/local_data/htf_diamond_hunt_source_v01
+
+      - name: Upload exact-replication evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: HTF_DIAMOND_HUNT_001_REPLICATIONS_V01
+          path: Dream-Account-OS-v2.3-PARTIAL/research/local_data/htf_diamond_hunt_replications_v01/
+          if-no-files-found: error
+          retention-days: 90
