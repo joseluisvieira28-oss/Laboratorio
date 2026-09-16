@@ -56,6 +56,8 @@ jobs:
         run: mkdir -p ci_artifacts
       - name: Real public-data bounded soak — 3 cycles
         run: python -m radar service --interval 5 --max-cycles 3
+      - name: Capture ETF-CME current public-source trap
+        run: python -m radar etf-cme-signal > ci_artifacts/etf_cme_current_signal.json
       - name: Verify evidence chain
         run: python -m radar verify-evidence
       - name: Verify final heartbeat and zero runtime-promoted strategies
@@ -72,7 +74,7 @@ jobs:
           assert len(status['universe']) == 5, status
           print(json.dumps(status, sort_keys=True))
           PY
-      - name: Upload public shadow receipt
+      - name: Upload public shadow and source-trap receipts
         if: always()
         uses: actions/upload-artifact@v4
         with:
