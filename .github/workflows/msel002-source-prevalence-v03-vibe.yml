@@ -1,0 +1,46 @@
+name: MSEL-002 Source Prevalence V0.3 Vibe
+
+on:
+  push:
+    branches:
+      - memecoin-metadata-duplication-v0.1
+    paths:
+      - '.github/workflows/msel002-source-prevalence-v03-vibe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-prevalence-v03-vibe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Execute frozen source/prevalence collector on archive-proven Vibe RPC
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/memecoin_metadata_duplication_002/source
+        env:
+          MSEL_RPC_URL: 'https://public.rpc.solanavibestation.com'
+          MSEL002_OUT_DIR: 'data/onchain_identity_source_v03_vibe'
+          MSEL_TX_BATCH_SIZE: '10'
+          MSEL_RPS_DELAY: '0.20'
+          MSEL_RPC_RETRIES: '7'
+          MSEL_ITEM_RETRIES: '12'
+          MSEL_ITEM_BACKOFF_START: '2.0'
+          MSEL_ITEM_BACKOFF_CAP: '30.0'
+        run: |
+          set -o pipefail
+          python collect_onchain_identity_prevalence_v02.py | tee source_prevalence_receipt_v03_vibe.txt
+      - name: Upload frozen source/prevalence evidence V0.3 Vibe
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: msel002-source-prevalence-v03-vibe
+          path: |
+            Dream-Account-OS-v2.3-PARTIAL/research/memecoin_metadata_duplication_002/source/data/onchain_identity_source_v03_vibe/
+            Dream-Account-OS-v2.3-PARTIAL/research/memecoin_metadata_duplication_002/source/source_prevalence_receipt_v03_vibe.txt
+          if-no-files-found: warn
+          retention-days: 30
