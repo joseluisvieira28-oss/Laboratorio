@@ -11,6 +11,7 @@ from .engine import RadarEngine
 from .market import BinancePublicFeed, BinanceSpotPublicFeed
 from .service import PublicShadowService, read_status
 from .strategy import StrategyRegistry
+from .strategies.etf_cme_source import current_signal_receipt
 
 
 def build_feed(settings: Settings):
@@ -55,6 +56,10 @@ def main(argv: list[str] | None = None) -> int:
 
     sub.add_parser("status", help="read latest persisted service health status")
     sub.add_parser("verify-evidence", help="verify the local evidence hash chain")
+    sub.add_parser(
+        "etf-cme-signal",
+        help="fetch the latest public CFTC rows and evaluate the exact frozen ETF-CME signal",
+    )
 
     risk_budget = sub.add_parser(
         "risk-budget", help="print default launch risk amounts for an account equity"
@@ -87,6 +92,14 @@ def main(argv: list[str] | None = None) -> int:
                     sort_keys=True,
                 )
             )
+            return 0
+        except Exception as exc:
+            print(json.dumps({"status": "FAIL_CLOSED", "error": str(exc)}, sort_keys=True))
+            return 2
+
+    if args.command == "etf-cme-signal":
+        try:
+            print(json.dumps(current_signal_receipt(), sort_keys=True))
             return 0
         except Exception as exc:
             print(json.dumps({"status": "FAIL_CLOSED", "error": str(exc)}, sort_keys=True))
