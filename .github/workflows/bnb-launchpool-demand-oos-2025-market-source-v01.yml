@@ -1,0 +1,77 @@
+name: BNB Launchpool Demand 2025 OOS Market Source V0.1
+
+on:
+  push:
+    branches:
+      - bnb-launchpool-demand-v2-oos-2025-v01
+
+permissions:
+  contents: write
+
+jobs:
+  market-source:
+    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout OOS branch
+        uses: actions/checkout@v4
+        with:
+          ref: bnb-launchpool-demand-v2-oos-2025-v01
+          fetch-depth: 1
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Preflight frozen source pass
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/bnb_launchpool_demand_001'
+          python -m py_compile "$BASE/oos_2025/market_source_audit_v01.py"
+          python - <<'PY'
+          import json
+          b='Dream-Account-OS-v2.3-PARTIAL/research/bnb_launchpool_demand_001'
+          f=json.load(open(b+'/BNB_LAUNCHPOOL_DEMAND_001_V2_OOS_2025_FREEZE_V0.1.json'))
+          s=json.load(open(b+'/oos_2025/source_gate_v01/BNB_LAUNCHPOOL_DEMAND_001_OOS_2025_SOURCE_GATE_V0.1.json'))
+          assert f['status']=='FROZEN_PRE_2025_SOURCE_AND_MARKET_OUTCOME_ACCESS'
+          assert s['classification']=='SOURCE_DATA_PASS' and s['clean_events']==8
+          assert s['canonical_event_manifest_sha256']=='437a5f1d3ec591d801ccc951911252888374544394f4f5def35f9660534979b4'
+          assert s['market_prices_opened'] is False
+          PY
+      - name: Execute outcome-blind market source audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/bnb_launchpool_demand_001'
+          python "$BASE/oos_2025/market_source_audit_v01.py"
+          python - <<'PY'
+          import json
+          p='Dream-Account-OS-v2.3-PARTIAL/research/bnb_launchpool_demand_001/oos_2025/market_source_v01/BNB_LAUNCHPOOL_DEMAND_001_OOS_2025_MARKET_SOURCE_V0.1.json'
+          d=json.load(open(p))
+          assert d['classification']=='MARKET_SOURCE_DATA_PASS', d['classification']
+          assert d['archive_count']==12
+          assert d['selected_trade_paths']>=8
+          assert d['execution_path_failures']==[]
+          assert d['market_price_values_opened'] is False and d['open_parsed'] is False and d['returns_computed'] is False
+          assert d['access_2026_market'] is False
+          print(json.dumps({k:d[k] for k in ['classification','archive_count','selected_trade_paths','suppressed_trade_paths','right_edge_unresolved','archive_manifest_sha256']},indent=2))
+          PY
+      - name: Upload immutable 2025 market source evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: bnb-launchpool-demand-001-oos-2025-market-source-${{ github.run_id }}-${{ github.run_attempt }}
+          path: Dream-Account-OS-v2.3-PARTIAL/research/bnb_launchpool_demand_001/oos_2025/market_source_v01/
+          retention-days: 90
+          if-no-files-found: error
+      - name: Persist market source receipt
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/bnb_launchpool_demand_001'
+          git config user.name 'crypto-lab-bnb-launchpool-bot'
+          git config user.email 'crypto-lab-bnb-launchpool-bot@users.noreply.github.com'
+          git add "$BASE/oos_2025/market_source_v01/BNB_LAUNCHPOOL_DEMAND_001_OOS_2025_MARKET_SOURCE_V0.1.json"
+          git commit -m 'BNB-LAUNCHPOOL-DEMAND-001: 2025 OOS MARKET_SOURCE_DATA_PASS [skip ci]'
+          git pull --rebase origin bnb-launchpool-demand-v2-oos-2025-v01
+          git push origin HEAD:bnb-launchpool-demand-v2-oos-2025-v01
