@@ -1,0 +1,68 @@
+{
+  "lab_id": "BTC-OPTIONS-VRP-001",
+  "mve_id": "OVRP-EXEC-ATM30-7D-STATICDELTA-001",
+  "authority_drive_id": "1s3C_EdlxPa7_kKJEEfYXaP0PQTI9O42AQtYqL4zmDOM",
+  "source_receipt_drive_id": "158J-s52hP5awb5GF2RNkV1WHMCZHzgeoe2sVSzWzpAM",
+  "date": "2026-09-16",
+  "research_only": true,
+  "strategy_outcomes_authorized": true,
+  "access_2025_authorized": false,
+  "access_2026_authorized": false,
+  "live_trading_authorized": false,
+  "exchange_mutation_authorized": false,
+  "merge_to_main_authorized": false,
+  "anchors": {
+    "first_date": "2021-04-01",
+    "last_date": "2024-11-28",
+    "weekday": "Thursday",
+    "hour_utc": 8,
+    "step_days": 7,
+    "expected_count": 192
+  },
+  "option_entry_window_hours": 4,
+  "option_exit_window_hours": 4,
+  "hold_days": 7,
+  "dte_min_days": 25.0,
+  "dte_max_days": 35.0,
+  "target_dte_days": 30.0,
+  "option_amount_per_leg": 0.1,
+  "collateral_btc": 1.0,
+  "static_delta": {
+    "risk_free_rate": 0.0,
+    "iv_rule": "mean_call_put_entry_iv",
+    "spot_rule": "mean_call_put_entry_index_price",
+    "hedge_instrument": "BTC-PERPETUAL",
+    "hedge_window_minutes": 30,
+    "round_usd_notional": 10.0,
+    "no_intraweek_rehedge": true
+  },
+  "fees": {
+    "option_underlying_fee": 0.0003,
+    "option_premium_cap_fraction": 0.125,
+    "perpetual_taker_rate": 0.0005
+  },
+  "stress": {
+    "option_adverse_ticks_each_side": 1,
+    "perpetual_adverse_slippage_bps_each_side": 2.5,
+    "fee_multiplier": 1.25
+  },
+  "minimum_executable_n": 120,
+  "bootstrap": {
+    "replications": 5000,
+    "seed": 230911,
+    "block_observations": 4,
+    "ci": 0.95
+  },
+  "promotion_gates": {
+    "mean_base_net_gt_0": true,
+    "base_pf_gt": 1.0,
+    "bootstrap_lower_gt_0": true,
+    "nonnegative_years_gte": 3,
+    "mean_stress_net_gt_0": true,
+    "stress_pf_gt": 1.0,
+    "worst_base_return_gt": -0.10,
+    "base_max_drawdown_lte": 0.20,
+    "max_positive_year_contribution_share_lte": 0.60,
+    "protected_period_clean": true
+  }
+}
