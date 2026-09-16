@@ -10,6 +10,8 @@ from radar.strategy import StrategyRegistry
 
 
 class FakeFeed:
+    provider = "TEST_PUBLIC_PROVIDER"
+
     def all_market_snapshots(self):
         return {
             symbol: MarketSnapshot(
@@ -41,6 +43,7 @@ class EngineTests(unittest.TestCase):
                 registry=StrategyRegistry.empty(),
             )
             result = engine.run_cycle()
+            self.assertEqual(result["provider"], "TEST_PUBLIC_PROVIDER")
             self.assertEqual(result["universe"], list(CORE5))
             self.assertEqual(result["registered_strategies"], 0)
             self.assertEqual(result["valid_signals"], [])
