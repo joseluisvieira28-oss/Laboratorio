@@ -1,0 +1,81 @@
+{
+  "lab_id": "BNB-LAUNCHPOOL-DEMAND-001",
+  "mve_id": "BLP-BNBBTC-24H-001",
+  "status": "POST_OUTCOME_DIAGNOSTIC_ONLY_NO_PROMOTION_IMPACT",
+  "created_utc_date": "2026-09-16",
+  "purpose": "Quantify the already-opened historical evidence across three disjoint event sets without changing any historical verdict, gate, signal, horizon, cost, pair or tier.",
+  "promotion_impact": "NONE",
+  "inputs": {
+    "presample_projects_1_30": {
+      "n": 27,
+      "base_total_net_bps": 2075.020798969481,
+      "base_mean_net_bps": 76.85262218405485,
+      "base_profit_factor": 1.3921284076859368,
+      "max_single_trade_base_net_bps": 3536.6161489296387,
+      "max_single_trade_identity": "Launchpool #17 DODO, signal 2021-02-18T10:00:14.525000Z",
+      "classification": "TIER_3_WATCHLIST_REMAINS_HISTORICAL_RESCUE_CLOSED"
+    },
+    "discovery_projects_31_plus_2022_2024": {
+      "n": 31,
+      "base_total_net_bps": 2754.860034025936,
+      "base_mean_net_bps": 88.86645271051405,
+      "base_profit_factor": 2.2103965201989317,
+      "classification": "DISCOVERY_FAIL_NO_PROMOTION"
+    },
+    "oos_2025": {
+      "n": 8,
+      "base_total_net_bps": 460.9390631427791,
+      "base_mean_net_bps": 57.61738289284739,
+      "base_profit_factor": 2.5477530555582852,
+      "max_single_trade_base_net_bps": 409.45690672963497,
+      "max_single_trade_identity": "Launchpool #64 RED, signal 2025-02-25T09:11:14Z",
+      "classification": "TIER_3_WATCHLIST_REMAINS"
+    }
+  },
+  "diagnostic_pool_all_three_opened_blocks": {
+    "resolved_trades": 66,
+    "base_total_net_bps": 5290.819896138196,
+    "base_mean_net_bps": 80.16393782027569,
+    "base_profit_factor": 1.6726618887474114,
+    "largest_known_single_positive_trade_base_net_bps": 3536.6161489296387,
+    "largest_known_single_positive_trade_share_of_pooled_positive_base_net": 0.2688150677361331,
+    "interpretation": "Aggregate sign and PF remain positive when the three already-opened blocks are pooled, and the historically largest trade is below 40% of pooled positive PnL. This pooled concentration is post-outcome and MUST NOT be used to override the frozen per-replication concentration failures."
+  },
+  "leave_one_block_out_diagnostic": {
+    "omit_presample_projects_1_30": {
+      "n": 39,
+      "base_total_net_bps": 3215.799097168715,
+      "base_mean_net_bps": 82.45638710689013,
+      "base_profit_factor": 2.249431551547414
+    },
+    "omit_discovery": {
+      "n": 35,
+      "base_total_net_bps": 2535.95986211226,
+      "base_mean_net_bps": 72.45599606035029,
+      "base_profit_factor": 1.4537007643391795
+    },
+    "omit_oos_2025": {
+      "n": 58,
+      "base_total_net_bps": 4829.880832995417,
+      "base_mean_net_bps": 83.27380746543822,
+      "base_profit_factor": 1.6382243504470286
+    }
+  },
+  "scientific_interpretation": {
+    "supported": [
+      "The expected LONG BNBBTC sign is positive in all three aggregate historical blocks after the frozen 20 bps base cost.",
+      "Every leave-one-block-out pooled diagnostic remains base-net positive with PF > 1.",
+      "The recurring blocker is not aggregate sign but concentration/tail dependence in two independent replications: 2025 concentration 53.96% and presample concentration 48.01%, both above the frozen 40% gate.",
+      "2020 itself was negative while 2021 dominated the presample block, so temporal instability remains material."
+    ],
+    "not_supported": [
+      "This diagnostic does not promote the candidate to Tier 2.",
+      "It does not reopen historical rescue.",
+      "It does not authorize a new horizon, event filter, regime filter, asset/pair change, cost change or trade deletion.",
+      "It does not authorize live trading."
+    ],
+    "current_scientific_state": "TIER_3_WATCHLIST_REMAINS_HISTORICAL_RESCUE_CLOSED__FORWARD_ONLY"
+  },
+  "next_valid_evidence": "Only genuinely prospective post-freeze Launchpool events under BNB-LAUNCHPOOL-DEMAND-001-FORWARD-SHADOW-V0.1 can change the tier.",
+  "live_trading_authorized": false
+}
