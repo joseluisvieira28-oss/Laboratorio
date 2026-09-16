@@ -1,13 +1,11 @@
 name: PMD-001 Signature Ceiling V01
 
 on:
-  workflow_run:
-    workflows:
-      - PMD-001 Block-First Cross-Date Access V02
-    types:
-      - completed
+  push:
     branches:
       - pumpfun-migration-direction-v0.1
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/RUN_SIGNATURE_CEILING_V01.trigger'
   workflow_dispatch:
 
 permissions:
@@ -16,7 +14,6 @@ permissions:
 
 jobs:
   signature-ceiling:
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 90
     outputs:
