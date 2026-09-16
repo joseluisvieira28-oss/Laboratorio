@@ -6,7 +6,9 @@ It reconstructs raw Solana transaction evidence for the mint-specific Pump
 bonding-curve PDA over [T0-300s, T0).
 
 Input JSONL: one object per candidate with at least {"mint": ..., "t0": ...}.
-Credential: HELIUS_API_KEY environment variable only; never written to disk.
+Production source: Helius archival RPC using HELIUS_API_KEY from environment.
+A generic --rpc-url is allowed only for outcome-blind source-access probes.
+Credentials are never written to disk.
 
 Dependencies:
     pip install requests solders
@@ -22,7 +24,7 @@ import random
 import sys
 import time
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 import requests
 from solders.pubkey import Pubkey
@@ -56,8 +58,9 @@ def bonding_curve_pda(mint: str) -> str:
 
 
 class Rpc:
-    def __init__(self, api_key: str, timeout: int = 45):
-        self.url = f"https://mainnet.helius-rpc.com/?api-key={api_key}"
+    def __init__(self, url: str, source_name: str, timeout: int = 45):
+        self.url = url
+        self.source_name = source_name
         self.timeout = timeout
         self.session = requests.Session()
         self.counter = 0
@@ -195,7 +198,6 @@ def collect_one(rpc: Rpc, row: dict[str, Any], raw_dir: Path) -> dict[str, Any]:
         if page_count > 100:
             raise RuntimeError(f"pagination safety stop for {mint}")
 
-    # Deduplicate signature metadata deterministically.
     by_sig: dict[str, dict[str, Any]] = {}
     conflicts = 0
     for x in all_sigs:
@@ -233,6 +235,7 @@ def collect_one(rpc: Rpc, row: dict[str, Any], raw_dir: Path) -> dict[str, Any]:
             "lab": "PMD-001",
             "stage": "SOURCE_REBUILD_V01",
             "outcomes_opened": False,
+            "source_name": rpc.source_name,
             "mint": mint,
             "t0": row["t0"],
             "bonding_curve_pda": pda,
@@ -249,8 +252,6 @@ def collect_one(rpc: Rpc, row: dict[str, Any], raw_dir: Path) -> dict[str, Any]:
         for rec in raw_records:
             f.write(json.dumps(rec, sort_keys=True, ensure_ascii=False) + "\n")
 
-    # Null blockTime in pages that overlap the target boundary prevents a strict
-    # completeness proof; fail closed rather than assuming they are out of window.
     complete = (
         conflicts == 0
         and missing_bodies == 0
@@ -261,6 +262,7 @@ def collect_one(rpc: Rpc, row: dict[str, Any], raw_dir: Path) -> dict[str, Any]:
         "lab": "PMD-001",
         "stage": "SOURCE_REBUILD_V01",
         "outcomes_opened": False,
+        "source_name": rpc.source_name,
         "mint": mint,
         "t0": row["t0"],
         "bonding_curve_pda": pda,
@@ -286,12 +288,20 @@ def main() -> int:
     ap.add_argument("--out-dir", default="pmd_source_rebuild_v01")
     ap.add_argument("--start", type=int, default=0)
     ap.add_argument("--limit", type=int, default=0, help="0 = all remaining rows")
+    ap.add_argument("--rpc-url", default=None, help="generic RPC endpoint for source-access probes only")
+    ap.add_argument("--source-name", default=None)
     args = ap.parse_args()
 
-    api_key = os.environ.get("HELIUS_API_KEY")
-    if not api_key:
-        print("HELIUS_API_KEY is required; credential must not be committed", file=sys.stderr)
-        return 3
+    if args.rpc_url:
+        rpc_url = args.rpc_url
+        source_name = args.source_name or "generic_rpc_probe"
+    else:
+        api_key = os.environ.get("HELIUS_API_KEY")
+        if not api_key:
+            print("HELIUS_API_KEY is required for the primary archival source; credential must not be committed", file=sys.stderr)
+            return 3
+        rpc_url = f"https://mainnet.helius-rpc.com/?api-key={api_key}"
+        source_name = "helius_archival_rpc"
 
     rows = load_manifest(Path(args.manifest))
     if args.start < 0 or args.start >= len(rows):
@@ -304,9 +314,8 @@ def main() -> int:
     raw_dir = out_dir / "raw"
     raw_dir.mkdir(parents=True, exist_ok=True)
     summary_path = out_dir / "source_rebuild_summary.jsonl"
-    rpc = Rpc(api_key)
+    rpc = Rpc(rpc_url, source_name)
 
-    # Resume by mint from append-only summary.
     done = set()
     if summary_path.exists():
         with summary_path.open("r", encoding="utf-8") as f:
@@ -327,6 +336,7 @@ def main() -> int:
                     "lab": "PMD-001",
                     "stage": "SOURCE_REBUILD_V01",
                     "outcomes_opened": False,
+                    "source_name": source_name,
                     "mint": row["mint"],
                     "t0": row["t0"],
                     "source_complete": False,
@@ -335,7 +345,7 @@ def main() -> int:
             sf.write(json.dumps(res, sort_keys=True, ensure_ascii=False) + "\n")
             sf.flush()
             print(json.dumps({k: res.get(k) for k in (
-                "mint", "source_complete", "in_window_signatures",
+                "source_name", "mint", "source_complete", "in_window_signatures",
                 "valid_target_pump_transactions", "collector_error") if k in res},
                 sort_keys=True))
 
@@ -343,6 +353,7 @@ def main() -> int:
         "lab": "PMD-001",
         "stage": "SOURCE_REBUILD_V01",
         "outcomes_opened": False,
+        "source_name": source_name,
         "attempted_this_run": attempted,
         "rpc_request_counter": rpc.counter,
         "summary_path": str(summary_path),
