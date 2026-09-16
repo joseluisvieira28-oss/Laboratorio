@@ -1,0 +1,102 @@
+{
+  "registry_version": "1.0",
+  "as_of_utc": "2026-09-16T21:30:00Z",
+  "governance": "AGGRESSIVE_DEPLOYMENT_POLICY_V1",
+  "candidates": [
+    {
+      "strategy_id": "ETF-CME-INSTFLOW-001",
+      "scientific_tier": 2,
+      "scientific_status": "PROMOTED_CANDIDATE_FRAGILE",
+      "deployment_state": "MICRO_LIVE_CANDIDATE_PENDING_ADAPTER_AND_RISK_CONTRACT",
+      "shadow_allowed": true,
+      "micro_live_allowed_now": false,
+      "source_branch": "etf-cme-institutional-flow-v0.1",
+      "frozen_source": "CFTC Legacy Futures Only BITCOIN CME contract 133741",
+      "frozen_signal": "delta(noncommercial_long - noncommercial_short) / open_interest",
+      "direction_rule": "positive=LONG BTC; negative=SHORT BTC; zero=FLAT",
+      "information_rule": "as_of_date + 8 calendar days at 00:00 UTC",
+      "historical_outcome_instrument": "BTCUSDT spot",
+      "historical_hold": "7 calendar days",
+      "base_cost_bps_round_trip": 10,
+      "stress_cost_bps_round_trip": 20,
+      "fragility_flags": [
+        "Tier-1 readiness passed 9/10 only",
+        "leave-one-trade-out minimum base-net mean failed",
+        "break-even round-trip cost approximately 21.20 bps",
+        "additive max drawdown approximately -35.43%",
+        "one influential trade can make leave-one-out mean negative"
+      ],
+      "blocking_gates": [
+        "deterministic radar adapter not yet bound to CFTC source",
+        "execution venue/instrument for real-money implementation not frozen",
+        "strategy-specific maximum-loss/sizing model not frozen"
+      ]
+    },
+    {
+      "strategy_id": "BNB-LAUNCHPOOL-DEMAND-001",
+      "scientific_tier": 3,
+      "scientific_status": "WATCHLIST_FORWARD_SHADOW",
+      "deployment_state": "SHADOW_ONLY",
+      "shadow_allowed": true,
+      "micro_live_allowed_now": false,
+      "reason": "Repeated positive historical economics but failed frozen concentration gate; forward evidence still pending."
+    },
+    {
+      "strategy_id": "HTF-DH03-12H",
+      "scientific_tier": null,
+      "scientific_status": "SECONDARY_EXACT_RULE_FORWARD_HOLDOUT_SURVIVOR",
+      "deployment_state": "DIAGNOSTIC_SHADOW_ONLY",
+      "shadow_allowed": true,
+      "micro_live_allowed_now": false,
+      "reason": "Secondary candidate survived Phase 5 but cannot replace the prospectively designated primary after outcomes."
+    },
+    {
+      "strategy_id": "MVE-ADX4H-01",
+      "scientific_tier": 4,
+      "scientific_status": "REJECTED_STONE_AFTER_2025_CONFIRMATION",
+      "deployment_state": "BLOCKED",
+      "shadow_allowed": false,
+      "micro_live_allowed_now": false
+    },
+    {
+      "strategy_id": "OPTIONS-SPOTPERP-002-UP_LOW",
+      "scientific_tier": 4,
+      "scientific_status": "REJECTED_OOS_FAILED",
+      "deployment_state": "BLOCKED",
+      "shadow_allowed": false,
+      "micro_live_allowed_now": false
+    },
+    {
+      "strategy_id": "CPI-SURPRISE-V0.3A",
+      "scientific_tier": 4,
+      "scientific_status": "REJECTED_AFTER_INDEPENDENT_OOS",
+      "deployment_state": "BLOCKED",
+      "shadow_allowed": false,
+      "micro_live_allowed_now": false
+    },
+    {
+      "strategy_id": "F08-RESIDUAL-RELATIVE-STRENGTH",
+      "scientific_tier": 4,
+      "scientific_status": "REJECTED_AFTER_2025_OOS",
+      "deployment_state": "BLOCKED",
+      "shadow_allowed": false,
+      "micro_live_allowed_now": false
+    },
+    {
+      "strategy_id": "ICHIMOKU-4H-MVE",
+      "scientific_tier": 4,
+      "scientific_status": "REJECTED_AFTER_2024_OOS",
+      "deployment_state": "BLOCKED",
+      "shadow_allowed": false,
+      "micro_live_allowed_now": false
+    },
+    {
+      "strategy_id": "SPOT-PERP-CARRY-V0.1",
+      "scientific_tier": 4,
+      "scientific_status": "REJECTED_OOS_NET_NEGATIVE",
+      "deployment_state": "BLOCKED",
+      "shadow_allowed": false,
+      "micro_live_allowed_now": false
+    }
+  ]
+}
