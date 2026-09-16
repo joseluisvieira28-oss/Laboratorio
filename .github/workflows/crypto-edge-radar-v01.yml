@@ -44,6 +44,7 @@ jobs:
       RADAR_DB: ci_artifacts/radar_evidence.sqlite3
       RADAR_STATUS: ci_artifacts/radar_status.json
       RADAR_NOTIFICATIONS: ci_artifacts/radar_notifications.jsonl
+      RADAR_PROVIDER: binance_spot_public
       RADAR_UNIVERSE_MODE: core5
     steps:
       - uses: actions/checkout@v4
@@ -64,6 +65,7 @@ jobs:
           status = json.loads(Path('ci_artifacts/radar_status.json').read_text())
           assert status['health'] == 'OK', status
           assert status['cycle'] == 3, status
+          assert status['provider'] == 'BINANCE_SPOT_DATA_API_PUBLIC', status
           assert status['registered_strategies'] == 0, status
           assert status['valid_signal_count'] == 0, status
           assert len(status['universe']) == 5, status
