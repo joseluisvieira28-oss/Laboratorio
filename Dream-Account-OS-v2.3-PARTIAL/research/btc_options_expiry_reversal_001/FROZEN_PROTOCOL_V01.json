@@ -1,0 +1,111 @@
+{
+  "lab_id": "BTC-OPTIONS-EXPIRY-REVERSAL-001",
+  "mve_id": "BOER-BINANCE-PERP-4H2H-001",
+  "status": "FROZEN_PRE_SOURCE_OUTCOME_BLIND",
+  "frozen_at_utc": "2026-09-16T00:00:00Z",
+  "mechanism": {
+    "claim": "A deterministic BTC monthly options-expiry timestamp may temporarily concentrate hedging, pinning, settlement and expiry-related flows. If those flows contribute to the pre-expiry move, their release after expiry may create short-horizon mean reversion.",
+    "important_limit": "This MVE does NOT claim historical dealer gamma or open-interest state. No historical gamma/OI reconstruction is used. A positive result would establish only a calendar-expiry reversal effect under this exact rule.",
+    "event_clock": "Deribit BTC monthly options expiry: last Friday of each calendar month at 08:00 UTC.",
+    "external_rule_authority": [
+      "Deribit Contract Introduction Policy: monthly options expire on the last Friday of each calendar month at 08:00 UTC"
+    ]
+  },
+  "universe": {
+    "signal_and_execution_instrument": "BINANCE USD-M BTCUSDT perpetual",
+    "event_asset": "BTC",
+    "frequency": "1m"
+  },
+  "source": {
+    "market_data": "Official Binance Data Vision USD-M monthly 1m BTCUSDT archives with official CHECKSUM files",
+    "allowed_market_years": [2021, 2022, 2023, 2024],
+    "discovery_event_years": [2021, 2022, 2023],
+    "independent_validation_event_year": 2024,
+    "protected_years": [2025, 2026]
+  },
+  "event_definition": {
+    "expiry_time_utc": "08:00:00 on the last Friday of each calendar month",
+    "pre_move_start_bar_open_utc": "04:00",
+    "pre_move_last_bar_open_utc": "07:59",
+    "entry_bar_open_utc": "08:05",
+    "exit_bar_open_utc": "10:05",
+    "entry_delay_minutes_after_expiry": 5,
+    "holding_minutes": 120,
+    "scheduled_events_per_year": 12
+  },
+  "strategy": {
+    "pre_return": "close(07:59) / open(04:00) - 1",
+    "direction": "If pre_return > 0, SHORT at 08:05 open. If pre_return < 0, LONG at 08:05 open. If exactly zero, event is unresolved and excluded.",
+    "gross_trade_return": "direction_sign * (exit_open_10_05 / entry_open_08_05 - 1), where LONG=+1 and SHORT=-1",
+    "base_round_trip_cost_fraction": 0.0015,
+    "stress_round_trip_cost_fraction": 0.0025,
+    "funding": "No funding payment modelled because the frozen 08:05-10:05 holding window does not cross Binance's standard 8-hour funding timestamps.",
+    "stop_loss": null,
+    "take_profit": null,
+    "position_overlap": "Impossible under monthly event spacing",
+    "threshold_tuning": "NONE; every non-zero pre_return event is traded"
+  },
+  "source_gate": {
+    "expected_archives": 48,
+    "expected_events": 48,
+    "required_events_per_year": 12,
+    "official_checksum_required": true,
+    "required_event_open_times_present": ["04:00", "07:59", "08:05", "10:05"],
+    "price_fields_must_remain_closed": true
+  },
+  "discovery": {
+    "years": [2021, 2022, 2023],
+    "scheduled_events": 36,
+    "resolved_trade_floor": 34,
+    "minimum_long_trades": 8,
+    "minimum_short_trades": 8,
+    "bootstrap_repetitions": 10000,
+    "bootstrap_seed": 881321,
+    "promotion_gates_all_required": {
+      "base_mean_net_return_gt_zero": true,
+      "stress_mean_net_return_gt_zero": true,
+      "base_win_rate_min": 0.55,
+      "base_mean_bootstrap_95pct_ci_lower_gt_zero": true,
+      "positive_calendar_years_min": 2,
+      "long_trade_floor_pass": true,
+      "short_trade_floor_pass": true
+    }
+  },
+  "independent_validation": {
+    "year": 2024,
+    "status": "LOCKED_UNTIL_DISCOVERY_SURVIVES",
+    "scheduled_events": 12,
+    "rules": "Exactly identical signal, timing, costs and calculations as Discovery",
+    "pass_gates_all_required": {
+      "resolved_trades_min": 11,
+      "base_mean_net_return_gt_zero": true,
+      "stress_mean_net_return_gt_zero": true,
+      "base_wins_min": 7
+    }
+  },
+  "hard_firewalls": {
+    "no_post_outcome_tuning": true,
+    "no_event_exclusion_after_outcomes": true,
+    "no_interpolation": true,
+    "no_missing_bar_substitution": true,
+    "no_2024_price_open_until_discovery_survives": true,
+    "no_2025_market_data": true,
+    "no_2026_market_data": true,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "orders": false,
+    "alerts_or_webhooks": false,
+    "merge_to_main": false,
+    "render_deployment": false
+  },
+  "classification_order": [
+    "SOURCE_ACCESS_BLOCKED",
+    "TECHNICAL_FAILURE",
+    "DATA_FAILURE",
+    "INSUFFICIENT_EVALUABLE_SAMPLE",
+    "DISCOVERY_NO_EDGE",
+    "DISCOVERY_SURVIVES",
+    "VALIDATION_FAIL",
+    "INDEPENDENT_VALIDATION_SURVIVES"
+  ]
+}
