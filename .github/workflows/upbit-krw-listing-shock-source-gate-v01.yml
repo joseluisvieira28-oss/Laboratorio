@@ -1,0 +1,102 @@
+name: UKLS Source Gate V0.1
+
+on:
+  push:
+    branches:
+      - upbit-krw-listing-shock-v0.1
+
+permissions:
+  contents: write
+
+jobs:
+  source-gate:
+    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout frozen scientific branch
+        uses: actions/checkout@v4
+        with:
+          ref: upbit-krw-listing-shock-v0.1
+          fetch-depth: 1
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Frozen authority preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/upbit_krw_listing_shock_001'
+          python -m py_compile "$BASE/source_gate_v01.py"
+          python - <<'PY'
+          import json
+          p=json.load(open('Dream-Account-OS-v2.3-PARTIAL/research/upbit_krw_listing_shock_001/FROZEN_PROTOCOL_V01.json'))
+          assert p['lab_id']=='UPBIT-KRW-LISTING-SHOCK-001'
+          assert p['mve_id']=='UKLS-UPBIT-KRW-BINANCE-SPOT-001'
+          assert p['status']=='FROZEN_PRE_SOURCE_OUTCOME_BLIND'
+          assert p['official_event_source']['market_required']=='KRW'
+          assert p['source_gate']['qualified_events_min']==30
+          assert p['source_gate']['distinct_symbols_min']==25
+          assert p['source_gate']['events_2023_min']==10
+          assert p['source_gate']['events_2024_min']==10
+          s=p['strategy_prefreeze']
+          assert s['execution_venue']=='Binance Spot exact SYMBOLUSDT'
+          assert s['direction']=='LONG_ONLY'
+          assert s['entry_delay_minutes']==5
+          assert s['stop_fraction']==0.03
+          assert s['target_fraction']==0.06
+          assert s['max_hold_minutes']==360
+          assert s['base_round_trip_cost_fraction']==0.002
+          assert s['stress_round_trip_cost_fraction']==0.003
+          assert p['independent_validation']['year']==2025 and p['independent_validation']['status']=='LOCKED'
+          assert p['protected_holdout']['year']==2026 and p['protected_holdout']['status']=='LOCKED'
+          assert p['hard_firewalls']['live_trading'] is False
+          assert p['hard_firewalls']['exchange_mutation'] is False
+          assert p['hard_firewalls']['merge_to_main'] is False
+          PY
+      - name: Execute outcome-blind source gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/upbit_krw_listing_shock_001'
+          python "$BASE/source_gate_v01.py"
+          test -f "$BASE/source_evidence/UKLS_SOURCE_GATE_V01.json"
+      - name: Audit source classification and firewalls
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          f='Dream-Account-OS-v2.3-PARTIAL/research/upbit_krw_listing_shock_001/source_evidence/UKLS_SOURCE_GATE_V01.json'
+          d=json.load(open(f)); r=d['receipt']; g=r['guards']
+          assert r['classification'] in {'SOURCE_DATA_PASS','INSUFFICIENT_SOURCE_SAMPLE','SOURCE_ACCESS_BLOCKED','TECHNICAL_FAILURE','DATA_FAILURE'}
+          assert g['upbit_2025_2026_titles_serialized'] is False
+          assert g['binance_2025_market_data_requested'] is False
+          assert g['binance_2026_market_data_requested'] is False
+          assert g['market_price_values_parsed'] is False
+          assert g['ohlcv_parsed'] is False
+          assert g['returns_computed'] is False
+          assert g['pnl_computed'] is False
+          assert g['live_trading'] is False
+          assert g['exchange_mutation'] is False
+          assert g['orders'] is False
+          if r['classification']=='SOURCE_DATA_PASS':
+              assert r['qualified_events']>=30
+              assert r['qualified_distinct_symbols']>=25
+              assert r['qualified_year_counts'].get('2023',0)>=10
+              assert r['qualified_year_counts'].get('2024',0)>=10
+          print(json.dumps(r,indent=2,sort_keys=True,ensure_ascii=False))
+          PY
+      - name: Persist immutable source receipt
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/upbit_krw_listing_shock_001'
+          git config user.name 'crypto-lab-ukls-bot'
+          git config user.email 'crypto-lab-ukls-bot@users.noreply.github.com'
+          git add "$BASE/source_evidence/UKLS_SOURCE_GATE_V01.json"
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'UPBIT-KRW-LISTING-SHOCK-001: Source Gate closeout [skip ci]'
+          git pull --rebase origin upbit-krw-listing-shock-v0.1
+          git push origin HEAD:upbit-krw-listing-shock-v0.1
