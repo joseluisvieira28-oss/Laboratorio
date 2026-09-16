@@ -1,0 +1,36 @@
+name: MSEL-002 Source S1 Code Audit
+
+on:
+  push:
+    branches:
+      - memecoin-metadata-duplication-v0.1
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/memecoin_metadata_duplication_002/source/audit_source_code_s1.py'
+      - '.github/workflows/msel002-source-s1.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-s1:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download and verify only authorized source/docs
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/memecoin_metadata_duplication_002/source
+        run: python audit_source_code_s1.py | tee s1_receipt.txt
+      - name: Upload S1 code audit
+        uses: actions/upload-artifact@v4
+        with:
+          name: msel002-source-s1-code-audit
+          path: |
+            Dream-Account-OS-v2.3-PARTIAL/research/memecoin_metadata_duplication_002/source/data/s1_source_code/
+            Dream-Account-OS-v2.3-PARTIAL/research/memecoin_metadata_duplication_002/source/data/source_code_audit_s1_v01.json
+            Dream-Account-OS-v2.3-PARTIAL/research/memecoin_metadata_duplication_002/source/s1_receipt.txt
+          if-no-files-found: error
+          retention-days: 30
