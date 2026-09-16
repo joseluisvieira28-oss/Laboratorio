@@ -1,0 +1,66 @@
+{
+  "lab_id": "BTC-OPTIONS-EXPIRY-REVERSAL-001",
+  "parent_mve_id": "BOER-BINANCE-PERP-4H2H-001",
+  "replication_id": "BOER-V2-PATH2-2024-001",
+  "status": "FROZEN_PRE_2024_OUTCOME_ACCESS",
+  "governing_policy_id": "ND-PROMOTION-POLICY-V2.0-FROZEN-2026-09-14",
+  "purpose": "Attempt V2 Support Path 2 using the untouched calendar-2024 independent block without changing the candidate signal after Discovery outcomes.",
+  "historical_parent_classification": "DISCOVERY_NO_EDGE",
+  "current_v2_classification": "TIER_3_WATCHLIST_WEAK_CANDIDATE",
+  "source_authority": {
+    "venue": "Binance USD-M BTCUSDT perpetual",
+    "market_data": "Official Binance Data Vision monthly 1m BTCUSDT archives with official CHECKSUM files",
+    "replication_year": 2024,
+    "source_gate_status": "Already source-qualified outcome-blind in BOER fifth-shot source gate; 12/12 2024 event timestamps present",
+    "price_fields_status": "LOCKED_UNOPENED"
+  },
+  "rules_immutable_from_parent": {
+    "event_clock": "Deribit BTC monthly options expiry: last Friday of each calendar month at 08:00 UTC",
+    "pre_move_start_bar_open_utc": "04:00",
+    "pre_move_last_bar_open_utc": "07:59",
+    "direction": "If pre_return > 0 SHORT; if pre_return < 0 LONG; exact zero unresolved",
+    "entry_bar_open_utc": "08:05",
+    "exit_bar_open_utc": "10:05",
+    "holding_minutes": 120,
+    "base_round_trip_cost_fraction": 0.0015,
+    "stress_round_trip_cost_fraction": 0.0025,
+    "threshold_tuning": "NONE",
+    "stop_loss": null,
+    "take_profit": null,
+    "event_exclusion_after_outcome": "FORBIDDEN"
+  },
+  "scheduled_events": 12,
+  "path2_pass_gates_all_required": {
+    "resolved_trades_min": 11,
+    "base_mean_net_return_gt_zero": true,
+    "base_profit_factor_min": 1.0,
+    "stress_mean_net_return_gt_zero": true,
+    "base_wins_min": 7,
+    "minimum_leave_one_trade_out_base_mean_gt_zero": true
+  },
+  "concentration_rule_rationale": "Minimum leave-one-trade-out base mean > 0 is the prospective no-single-event-dependence gate. It avoids choosing an arbitrary concentration percentage after observing Discovery and directly tests whether any one OOS event is necessary for positive average economics.",
+  "decision_rule": {
+    "if_all_gates_pass": "V2_SUPPORT_PATH_2_PASS__TIER_2_PROMOTED_CANDIDATE_QUASE_DIAMANTE",
+    "if_any_gate_fails_with_evaluable_sample": "V2_PATH2_FAIL__APPLY_FROZEN_POLICY_WITHOUT_RESCUE",
+    "if_sample_below_floor": "INSUFFICIENT_SAMPLE",
+    "if_source_or_technical_failure": "Preserve non-scientific failure class; do not infer edge/no-edge"
+  },
+  "hard_firewalls": {
+    "2024_outcome_access_requires_separate_explicit_authorization": true,
+    "no_2024_outcome_access_by_this_freeze": true,
+    "no_2025_market_data": true,
+    "no_2026_market_data": true,
+    "no_signal_change": true,
+    "no_cost_change": true,
+    "no_timing_change": true,
+    "no_horizon_change": true,
+    "no_event_exclusion": true,
+    "no_post_outcome_tuning": true,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "orders": false,
+    "alerts_or_webhooks": false,
+    "merge_to_main": false,
+    "render_deployment": false
+  }
+}
