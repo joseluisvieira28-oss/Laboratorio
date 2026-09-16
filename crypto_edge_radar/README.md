@@ -1,28 +1,32 @@
-# CRYPTO EDGE RADAR V0.1
+# CRYPTO EDGE RADAR V0.2
 
-Status: **SHADOW INFRASTRUCTURE ONLY**  
-Branch: `crypto-edge-radar-v0.1`  
+Status: **PUBLIC SHADOW INFRASTRUCTURE ONLY**  
+Development branch: `crypto-edge-radar-v0.1`  
+Draft PR: `#22`  
 Live trading: **FORBIDDEN**  
 Authenticated exchange APIs: **FORBIDDEN**  
 Order creation / cancellation / mutation: **NOT IMPLEMENTED**
 
 ## Purpose
 
-Build the smallest strategy-agnostic real-time monitoring layer that can receive a future Crypto Lab strategy **only after that strategy has been prospectively promoted to shadow**.
+Provide a strategy-agnostic public market monitoring service that can run continuously and accept a future Crypto Lab strategy **only after prospectively governed promotion to shadow**.
 
-The radar does **not** discover edges, tune parameters, rescue rejected candidates, rank research hypotheses, or decide that a strategy is production-ready. The laboratory remains the authority for research and promotion.
+The radar does not discover edges, tune rules, rescue rejected candidates, auto-promote strategies, or authorize capital. Research governance remains upstream and authoritative.
 
-## V0.1 scope
+## Current capability
 
 - Binance USD-M public market-data GET endpoints only.
 - Core universe: BTCUSDT, ETHUSDT, SOLUSDT, BNBUSDT, XRPUSDT.
-- Optional `liquid` discovery mode can observe a broader USDT-perpetual universe by 24h quote volume, but observation does not authorize trading.
-- Strategy registry is empty by default.
-- Only adapters with promotion status `PROMOTED_SHADOW` may emit a `VALID_SIGNAL`.
-- Non-promoted adapters are hard-blocked even if their internal rule returns LONG/SHORT.
-- Append-only SQLite evidence log with SHA-256 hash chaining.
-- One-shot and polling-loop CLI modes.
-- No dashboard, notifications, webhooks, API keys, positions, balances, orders, or exchange mutation in V0.1.
+- Optional `liquid` observation universe using frozen 24h quote-volume and max-symbol filters.
+- Empty strategy registry by default.
+- Only `PROMOTED_SHADOW` adapters may emit `VALID_SIGNAL`.
+- SQLite evidence log with SHA-256 payload hashes and chained event hashes.
+- Heartbeat event persisted after each successful service cycle.
+- Atomic JSON health/status file.
+- Local JSONL notification sink for service failures and future valid shadow signals.
+- Bounded service mode for CI soak tests and unbounded service mode for a future authorized host.
+- `status` and `verify-evidence` commands.
+- No dashboard, webhooks, API keys, balances, positions, orders, cancels, amendments, or exchange mutation.
 
 ## Scientific firewall
 
@@ -35,16 +39,16 @@ STRATEGY ADAPTER REGISTRY
    |
    | promotion_status == PROMOTED_SHADOW
    v
-REAL-TIME RADAR
+PUBLIC SHADOW SERVICE
    |
-   +--> market observation
-   +--> deterministic signal evaluation
-   +--> evidence log
+   +--> public market observation
+   +--> deterministic evaluation
+   +--> heartbeat/status
+   +--> evidence chain
+   +--> local notification sink
    |
    X  no order path exists
 ```
-
-A rejected or merely interesting strategy must remain outside the promoted registry. Historical labels are not sufficient.
 
 ## Run locally
 
@@ -53,52 +57,47 @@ Requires Python 3.11+ and no third-party runtime packages.
 ```bash
 cd crypto_edge_radar
 python -m radar once
-python -m radar loop --interval 30
+python -m radar service --interval 30
+python -m radar service --interval 5 --max-cycles 3
+python -m radar status
+python -m radar verify-evidence
 ```
 
-Optional environment variables:
+Environment variables:
 
 ```bash
 RADAR_DB=radar_evidence.sqlite3
+RADAR_STATUS=radar_status.json
+RADAR_NOTIFICATIONS=radar_notifications.jsonl
 RADAR_UNIVERSE_MODE=core5          # core5 | liquid
 RADAR_MAX_SYMBOLS=50
 RADAR_MIN_QUOTE_VOLUME=50000000
 RADAR_HTTP_TIMEOUT=10
 ```
 
-## V0.1 outputs
+## Health semantics
 
-Each cycle records an immutable-style evidence event containing:
+Successful service cycles publish `health=OK`, cycle number, selected universe, registered strategy count, valid signal count and the evidence receipt.
 
-- UTC timestamp;
-- universe mode and selected symbols;
-- observed public market snapshot;
-- strategy evaluation decisions;
-- payload hash;
-- previous-chain hash;
-- new chain hash.
+Any market-data/evaluation failure publishes `health=FAIL_CLOSED`, emits no valid signal, records the failure when persistence is available and writes a local failure notification. Service intervals below five seconds are rejected.
 
-No event is equivalent to an order.
+## Notifications
+
+V0.2 deliberately uses a local JSONL sink rather than Telegram, email, Discord or webhooks. External delivery is a later transport layer and must not create an exchange-order path. A future `VALID_SHADOW_SIGNAL` notification is informational/paper-only unless a separate governance phase explicitly authorizes something else.
+
+## Real public-data validation
+
+CI contains two gates:
+
+1. offline compile + unit/safety tests;
+2. a bounded three-cycle soak using real Binance public USD-M data, followed by evidence-chain verification and assertions that the final heartbeat is healthy, the Core5 is present, the strategy registry is empty and valid-signal count is zero.
+
+The bounded CI soak proves the public path; it is **not** represented as a 24/7 deployment.
 
 ## Promotion contract
 
-A future strategy adapter must provide:
+A future strategy adapter must have immutable identity and explicit prospective `PROMOTED_SHADOW` status from its own research authority package. `RESEARCH`, `CANDIDATE`, `REJECTED`, `CLOSED`, unknown and missing promotion states fail closed.
 
-- immutable `strategy_id`;
-- explicit `promotion_status`;
-- deterministic evaluation from supplied market data;
-- frozen signal timeframe and rule identity in its own authority package;
-- no network calls to private/authenticated endpoints;
-- no side effects other than returning a signal decision.
+## Current strategy state
 
-V0.1 accepts only:
-
-```text
-PROMOTED_SHADOW
-```
-
-for valid shadow signals. `RESEARCH`, `CANDIDATE`, `REJECTED`, `CLOSED`, unknown values and missing metadata fail closed.
-
-## Current state
-
-No strategy is bundled as promoted in V0.1. This is intentional. The radar infrastructure can be validated independently while the Crypto Lab continues searching for a strategy that actually passes its scientific gates.
+No strategy is bundled as promoted. This is intentional: the radar can mature operationally while the Crypto Lab continues hunting for an edge that actually survives the scientific gates.
