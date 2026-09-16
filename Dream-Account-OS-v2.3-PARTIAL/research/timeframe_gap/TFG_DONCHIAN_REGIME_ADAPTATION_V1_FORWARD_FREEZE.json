@@ -1,0 +1,61 @@
+{
+  "experiment_id": "TFG-DONCHIAN-REGIME-ADAPTATION-V1-FORWARD",
+  "parent": "TFG-DONCHIAN-REGIME-ADAPTATION-V1",
+  "status": "FROZEN_PROSPECTIVE_FORWARD_ONLY",
+  "authority": "USER_EXPLICIT_ATTACK_REGIME_ADAPTATION",
+  "historical_candidate_closeout_commit": "bc51076389a9f29d85e44d89a5477e301c304a2d",
+  "strategy": {
+    "timeframe": "12H",
+    "direction": "LONG_ONLY",
+    "donchian_lookback_complete_bars": 40,
+    "atr_length": 28,
+    "entry": "next 12H open",
+    "stop": "signal low - 0.25*ATR28",
+    "target_r": 3.0,
+    "max_hold_bars": 80,
+    "one_active_trade_per_symbol": true,
+    "base_round_trip_cost_pct": 0.20,
+    "stress_round_trip_cost_pct": 0.30,
+    "universe": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "DOGEUSDT"]
+  },
+  "regime_gate": {
+    "snapshot": "most recent fully closed UTC daily bar strictly before signal close",
+    "conditions_all_required": [
+      "BTC close > BTC SMA200",
+      "BTC SMA200 > BTC SMA200 20 complete days earlier",
+      "at least 4 of 6 frozen assets close > own SMA100"
+    ],
+    "missing_state": "NO_TRADE"
+  },
+  "forward_start": {
+    "no_backfill_before_this_freeze": true,
+    "first_eligible_signal": "first D12 signal closing strictly after this forward-freeze commit whose regime snapshot is available and ON",
+    "historical_September_2026_before_freeze": "FORBIDDEN_AS_FORWARD_EVIDENCE"
+  },
+  "readiness_gate": {
+    "minimum_resolved_filtered_forward_trades": 10,
+    "base_expectancy_r_gt": 0.0,
+    "base_profit_factor_gt": 1.0,
+    "stress_expectancy_r_gt": 0.0,
+    "stress_profit_factor_gt": 1.0,
+    "unresolved_execution_paths_eq": 0,
+    "rule_deviations_eq": 0,
+    "missed_eligible_signals_eq": 0,
+    "duplicate_signals_eq": 0,
+    "bootstrap": "REPORT_ONLY",
+    "live_trading_automatically_authorized": false,
+    "next_state_if_pass": "MICRO_LIVE_RISK_REVIEW_ELIGIBLE"
+  },
+  "governance": {
+    "paper_shadow_only_until_readiness_gate": true,
+    "no_parameter_tuning": true,
+    "no_regime_threshold_tuning": true,
+    "no_asset_selection": true,
+    "no_timeframe_substitution": true,
+    "no_cost_rescue": true,
+    "no_retroactive_signal_inclusion": true,
+    "no_live_orders": true,
+    "no_exchange_mutation": true,
+    "no_merge_to_main": true
+  }
+}
