@@ -1,0 +1,141 @@
+{
+  "lab_id": "BNB-LAUNCHPOOL-DEMAND-001",
+  "mve_id": "BLP-BNBBTC-24H-001",
+  "protocol_id": "BNB-LAUNCHPOOL-DEMAND-001-V2-OOS-2025-V0.1",
+  "status": "FROZEN_PRE_2025_SOURCE_AND_MARKET_OUTCOME_ACCESS",
+  "freeze_date_utc": "2026-09-16",
+  "authority": "USER_EXPLICIT_START_ATTACK",
+  "governing_policy": {
+    "program": "CRYPTO NEAR-DIAMONDS RECOVERY PROGRAM — V2",
+    "policy_id": "ND-PROMOTION-POLICY-V2.0-FROZEN-2026-09-14",
+    "current_v2_classification": "TIER_3_WATCHLIST_NEAR_DIAMOND_CANDIDATE",
+    "historical_primary_verdict_immutable": "DISCOVERY_FAIL_NO_PROMOTION",
+    "promotion_target": "TIER_2_PROMOTED_CANDIDATE_QUASE_DIAMANTE",
+    "support_path": "PATH_2_GENUINELY_INDEPENDENT_OOS_REPLICATION"
+  },
+  "parent_evidence_binding": {
+    "sealed_parent_branch": "bnb-launchpool-demand-v0.1",
+    "sealed_parent_head": "46104f6057701abf6b7c6330263f94f0557fcb42",
+    "parent_discovery_run": 35131509738,
+    "parent_discovery_artifact": 10461432431,
+    "parent_discovery_artifact_sha256": "2eacf1493bc564159a193380084334b22ca71461a2d6bfcc61ff07b4d6fe0b11",
+    "parent_discovery_ledger_sha256": "a380d7e185f9e354b6d04824e52208fef1d3e391318d07d9f34ef32b63b384cc",
+    "parent_source_event_manifest_sha256": "f0bd730090c09d59e8ef6b558cc923fcface3c5568e44f7765a67181b2fe43d1",
+    "parent_market_archive_manifest_sha256": "da0f1928b40e2185dfd2cefe09654d2c90be6b0ca1964e6e3b80fe25431d4fc4",
+    "parent_rule_source": "FINAL_PRE_DISCOVERY_PROTOCOL_V0.1.json"
+  },
+  "protected_period": {
+    "event_publication_start_inclusive_utc": "2025-01-01T00:00:00Z",
+    "event_publication_end_exclusive_utc": "2026-01-01T00:00:00Z",
+    "right_edge_rule": "An event is evaluable only if its frozen 24h exit-open timestamp is strictly earlier than 2026-01-01T00:00:00Z. Any later event remains SOURCE_EVENT_RIGHT_EDGE_UNRESOLVED and is not used for economics.",
+    "2026_market_outcomes_forbidden": true
+  },
+  "source_population_contract": {
+    "provider": "Binance",
+    "source_type": "official Binance Support Launchpool announcement pages only",
+    "inclusion": "Official announcement published in calendar 2025 explicitly identifies a Binance Launchpool project and explicitly offers BNB staking or locking in a supported pool.",
+    "exclusion": "Launchpad, HODLer Airdrops, Megadrop, listing-only announcements, Simple Earn campaigns, or Launchpool announcements without explicit BNB staking/locking.",
+    "publication_timestamp_rule": "Use original Binance CMS publishDate / Published on timestamp, never later updated timestamp.",
+    "source_discovery_allowed_after_freeze": true,
+    "market_prices_forbidden_during_source_discovery": true,
+    "returns_forbidden_during_source_discovery": true,
+    "pnl_forbidden_during_source_discovery": true,
+    "required_event_fields": [
+      "launchpool_project_number_if_stated",
+      "token_symbol",
+      "official_announcement_url",
+      "article_code",
+      "published_timestamp_utc",
+      "bnb_pool_present",
+      "announcement_page_content_hash"
+    ],
+    "completeness_rule": "Search/reconcile all official Binance Support Launchpool announcements published in calendar 2025. Contiguous project numbering, when present, is used as a completeness diagnostic but not as the sole inclusion authority.",
+    "duplicate_rule": "Deduplicate by canonical Binance article code; distinct official articles remain distinct source events until the frozen clustering rule is applied."
+  },
+  "market_data_contract": {
+    "provider": "Binance Data Vision",
+    "market": "SPOT",
+    "symbol": "BNBBTC",
+    "interval": "15m",
+    "allowed_months": "2025-01 through 2025-12 only",
+    "official_checksum_required": true,
+    "zip_crc_required": true,
+    "timestamp_audit_before_price_open": true,
+    "price_fields_allowed_after_source_and_timestamp_gate_pass": ["open"],
+    "high_low_close_volume_forbidden": true,
+    "2026_archive_forbidden": true
+  },
+  "execution_rule_unchanged": {
+    "side": "LONG_BNBBTC",
+    "cluster_rule": "Adjacent eligible announcements separated by <=60 minutes belong to one information cluster; cluster signal time is earliest canonical publication timestamp.",
+    "entry": "first 15-minute BNBBTC bar open whose timestamp is strictly greater than signal_time",
+    "hold": "24 hours from entry timestamp",
+    "exit": "BNBBTC 15-minute bar open exactly 24 hours after entry timestamp",
+    "one_active_trade": true,
+    "overlap_rule": "If a later cluster entry timestamp is strictly earlier than active trade exit timestamp, suppress later signal; no stacking, replacement or delayed entry.",
+    "stop": null,
+    "target": null,
+    "leverage": "NONE",
+    "round_trip_cost_base_bps": 20.0,
+    "round_trip_cost_stress_bps": 30.0,
+    "gross_return": "exit_open / entry_open - 1",
+    "base_net_bps": "gross_bps - 20",
+    "stress_net_bps": "gross_bps - 30"
+  },
+  "oos_statistics": {
+    "primary_unit": "selected non-overlapping information-cluster trade",
+    "minimum_resolved_trades_for_path2_assessment": 8,
+    "profit_factor": "sum positive base-net bps / absolute sum negative base-net bps; +inf if no negative trades",
+    "bootstrap": {
+      "type": "event_level_nonparametric_bootstrap_of_base_net_mean_bps",
+      "replications": 5000,
+      "seed": 160925,
+      "confidence_interval": 0.95,
+      "role": "REPORT_ONLY_FOR_V2_PATH2_UNLESS_OTHER_FROZEN_GATE_EXPLICITLY_REFERENCES_IT"
+    },
+    "concentration": "maximum single-trade share of total positive BASE net contribution",
+    "stress": "reported as fragility; stress failure alone does not automatically fail Tier 2 under V2 if BASE remains positive and realistic"
+  },
+  "v2_path2_promotion_gates_all_required": {
+    "source_provenance_clean_and_reproducible": true,
+    "no_leakage_hindsight_or_post_outcome_selection": true,
+    "minimum_resolved_trades": 8,
+    "base_mean_net_bps_gt_zero": true,
+    "base_profit_factor_gte_one": true,
+    "expected_sign_correct_long_bnbbtc": true,
+    "max_single_trade_share_of_total_positive_base_net_lte": 0.40,
+    "unresolved_selected_execution_paths": 0,
+    "source_rule_deviations": 0,
+    "trading_rule_deviations": 0,
+    "fatal_execution_or_risk_pathology": false
+  },
+  "decision_rule": {
+    "all_required_gates_pass": "TIER_2_PROMOTED_CANDIDATE_QUASE_DIAMANTE_PATH2_PASS",
+    "adequate_sample_but_base_economics_fail": "TIER_4_REJECTED_STONE_FOR_TESTED_2025_REPLICATION",
+    "adequate_sample_positive_but_other_path2_gate_fail": "TIER_3_WATCHLIST_REMAINS",
+    "resolved_below_minimum": "INSUFFICIENT_OOS_SAMPLE_TIER3_REMAINS",
+    "source_or_execution_failure": "NON_SCIENTIFIC_BLOCKED_NO_TIER_DEMOTION"
+  },
+  "forbidden_after_outcome": {
+    "direction_inversion": true,
+    "hold_period_change": true,
+    "cluster_window_change": true,
+    "cost_reduction": true,
+    "event_deletion": true,
+    "subperiod_selection": true,
+    "pair_substitution": true,
+    "stop_target_overlay": true,
+    "project_subgroup_selection": true,
+    "2026_rescue": true
+  },
+  "governance": {
+    "research_only": true,
+    "fail_closed": true,
+    "no_live_trading": true,
+    "no_exchange_mutation": true,
+    "no_orders": true,
+    "no_alerts_webhooks": true,
+    "no_merge_to_main": true,
+    "no_deployment": true
+  }
+}
