@@ -1,0 +1,42 @@
+{
+  "lab_id": "BNB-LAUNCHPOOL-DEMAND-001",
+  "protocol_id": "BNB-LAUNCHPOOL-DEMAND-001-FINAL-PRESAMPLE-HOLDOUT-V0.1",
+  "amendment_id": "FINAL-PRESAMPLE-SOURCE-ROUTE-AMENDMENT-V0.1",
+  "status": "FROZEN_BEFORE_ANY_PRESAMPLE_MARKET_PRICE_OR_RETURN_ACCESS",
+  "date_utc": "2026-09-16",
+  "reason": "The frozen Binance CMS catalog pagination route produced only technical HTTP failures (first invalid pageSize=100, then HTTP 429 rate limiting) before any presample market price, return, PnL, or trade outcome was opened. Replace brute-force catalog pagination with a finite canonical article-code seed and validate every seed against the official Binance article-detail CMS endpoint. This is a source-route repair only.",
+  "scientific_rules_unchanged": true,
+  "trading_rules_unchanged": true,
+  "promotion_gates_unchanged": true,
+  "population_unchanged": "Launchpool project numbers 1 through 30 inclusive",
+  "source_authority_unchanged": "Official Binance Support announcement detail content remains the final inclusion authority.",
+  "technical_route": {
+    "seed_file": "BNB_LAUNCHPOOL_DEMAND_001_FINAL_PRESAMPLE_SOURCE_SEED_V0.1.json",
+    "seed_role": "Discovery aid only. Each unique article code MUST be fetched from the official Binance public article-detail CMS endpoint and independently validated before market data may be opened.",
+    "validation_requirements": [
+      "All integers 1..30 appear exactly once across seed project_numbers",
+      "Official detail response is retrievable and preserved byte-for-byte",
+      "Official detail content identifies Binance Launchpool",
+      "Official detail content contains BNB",
+      "Official detail content contains staking/locking/farming semantics",
+      "Expected token symbol(s) are present in official content",
+      "Original official publishDate/releaseDate is extracted from detail response",
+      "No market-price source is touched until all source validation passes"
+    ],
+    "combined_announcement_rule": "A single official article may canonically cover multiple numbered Launchpool projects. Such an article is fetched once and expands to project-level source records sharing the same canonical publication timestamp and raw-response hash."
+  },
+  "contamination_state": {
+    "presample_market_price_values_opened": false,
+    "presample_returns_computed": false,
+    "presample_pnl_computed": false,
+    "new_2025_market_access": false,
+    "access_2026_market": false
+  },
+  "forbidden": [
+    "Adding or deleting a numbered project after seeing BNBBTC outcomes",
+    "Changing side, hold, costs, cluster rule, pair, or gates",
+    "Using any market-price result to adjudicate source inclusion",
+    "Opening 2025 or 2026 as rescue",
+    "Opening another historical rescue if this final holdout fails"
+  ]
+}
