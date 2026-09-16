@@ -1,0 +1,75 @@
+{
+  "experiment_id": "TFG-DONCHIAN-1D-FORWARD-SHADOW-V0.1",
+  "parent_experiment_id": "TFG-DONCHIAN-1D-001-OOS2025-V0.1",
+  "status": "FROZEN_FORWARD_ONLY_BEFORE_FIRST_SHADOW_SIGNAL",
+  "activation_basis": {
+    "oos_classification": "OOS_CONFIRMATION_SURVIVES_SHADOW_ELIGIBLE",
+    "oos_resolved_trades": 40,
+    "oos_base_expectancy_r": 0.3510844126190423,
+    "oos_base_profit_factor": 1.5851406876984038,
+    "oos_stress_expectancy_r": 0.32752041728938985,
+    "oos_stress_profit_factor": 1.5458673621489831,
+    "oos_bootstrap_95": [-0.42734831807066687, 1.1005416049451395],
+    "bootstrap_lower_positive": false
+  },
+  "frozen_rule": {
+    "universe": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "DOGEUSDT"],
+    "side": "LONG_ONLY",
+    "timeframe": "1D_UTC",
+    "donchian_lookback_complete_days": 20,
+    "atr_length": 14,
+    "signal": "daily_close > max_high_of_prior_20_complete_daily_bars",
+    "entry": "next_daily_open",
+    "stop": "signal_low - 0.25 * ATR14_signal",
+    "target_r": 3.0,
+    "max_holding_bars": 40,
+    "time_exit": "next_daily_open_after_40_held_daily_bars",
+    "one_active_position_per_symbol": true,
+    "same_bar_stop_target": "STOP_FIRST_CONSERVATIVE",
+    "base_round_trip_cost_pct": 0.20,
+    "stress_round_trip_cost_pct": 0.30
+  },
+  "shadow_start": {
+    "policy": "FORWARD_ONLY_FROM_FREEZE_COMMIT",
+    "first_signal_bar_eligible": "the first UTC daily bar that closes strictly after this freeze commit",
+    "first_possible_entry": "the next UTC daily open after an eligible post-freeze signal",
+    "historical_2026_trade_backfill": false,
+    "historical_2026_outcome_evaluation": false,
+    "indicator_warmup": "minimum prior complete daily bars may be read only to initialize Donchian20 and ATR14 state; they may not be scored as shadow trades"
+  },
+  "reporting": {
+    "unit": "R",
+    "account_sizing": "NONE_RESEARCH_SHADOW",
+    "paper_orders_only": true,
+    "live_orders": false,
+    "exchange_mutation": false,
+    "record_every_eligible_signal": true,
+    "record_skipped_overlap": true,
+    "record_base_and_stress_costs": true,
+    "record_rule_deviation": true
+  },
+  "readiness_gate": {
+    "minimum_resolved_shadow_trades": 30,
+    "base_net_expectancy_r_gt": 0.0,
+    "base_profit_factor_gt": 1.0,
+    "stress_net_expectancy_r_gt": 0.0,
+    "stress_profit_factor_gt": 1.0,
+    "max_single_symbol_positive_net_r_share_lte": 0.70,
+    "unresolved_execution_paths_eq": 0,
+    "rule_deviations_eq": 0,
+    "bootstrap": "REPORT_DIAGNOSTIC_NOT_GATE",
+    "live_trading_authorized_by_gate": false
+  },
+  "governance": {
+    "no_parameter_tuning": true,
+    "no_asset_selection": true,
+    "no_cost_reduction_rescue": true,
+    "no_retroactive_signal_inclusion": true,
+    "no_2026_backtest": true,
+    "no_live_trading": true,
+    "no_orders": true,
+    "no_exchange_mutation": true,
+    "no_merge_to_main": true,
+    "failed_shadow_remains_failed": true
+  }
+}
