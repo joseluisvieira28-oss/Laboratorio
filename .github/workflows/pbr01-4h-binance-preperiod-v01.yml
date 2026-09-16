@@ -1,0 +1,202 @@
+name: PBR01 4H Binance Pre-Period V0.1
+
+on:
+  push:
+    branches: [pbr01-4h-binance-preperiod-v0.1]
+    paths:
+      - .github/workflows/pbr01-4h-binance-preperiod-v01.yml
+      - Dream-Account-OS-v2.3-PARTIAL/research/TFG_PBR01_4H_BINANCE_PREPERIOD_FREEZE_V0.1.json
+      - Dream-Account-OS-v2.3-PARTIAL/research/tfg_pbr01_4h_binance_preperiod_source_v01.py
+      - Dream-Account-OS-v2.3-PARTIAL/research/tfg_pbr01_4h_binance_preperiod_runner_v01.py
+      - Dream-Account-OS-v2.3-PARTIAL/research/tfg_pbr01_4h_v01.py
+      - Dream-Account-OS-v2.3-PARTIAL/research/phase_b_research_evaluator_v01.py
+      - Dream-Account-OS-v2.3-PARTIAL/research/phase_b_signal_formation_v01.py
+      - Dream-Account-OS-v2.3-PARTIAL/src/dream_account/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  preperiod-replication:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout isolated research branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Governance and frozen authority binding
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${GITHUB_REF_NAME}" = "pbr01-4h-binance-preperiod-v0.1"
+          AUTHORITY_COMMIT='bd22cd68765f73f4a644a3bb93515f8f0b406634'
+          AUTHORITY_PATH='Dream-Account-OS-v2.3-PARTIAL/research/TFG_PBR01_4H_BINANCE_PREPERIOD_FREEZE_V0.1.json'
+          git cat-file -e "${AUTHORITY_COMMIT}^{commit}"
+          current="$(sha256sum "$AUTHORITY_PATH" | awk '{print $1}')"
+          frozen="$(git show "${AUTHORITY_COMMIT}:${AUTHORITY_PATH}" | sha256sum | awk '{print $1}')"
+          test "$current" = "$frozen"
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('Dream-Account-OS-v2.3-PARTIAL/research/TFG_PBR01_4H_BINANCE_PREPERIOD_FREEZE_V0.1.json').read_text())
+          assert p['status']=='FROZEN_BEFORE_ANY_BINANCE_PREPERIOD_OUTCOME_EVALUATION'
+          assert p['scientific_position']['not_sample_extension_to_reach_100'] is True
+          assert p['scientific_position']['no_pooling_with_prior_88_trades_for_classification'] is True
+          assert p['source_contract']['required_month_count_per_symbol']==25
+          assert p['replication_window']['start_utc_inclusive']=='2021-01-01T00:00:00.000Z'
+          assert p['replication_window']['end_utc_exclusive']=='2023-02-01T00:00:00.000Z'
+          assert p['replication_window']['minimum_resolved_trades']==100
+          assert p['costs']['BASE_SENSITIVITY_round_trip_pct']==0.20
+          assert p['costs']['STRESS_round_trip_pct']==0.30
+          assert p['protected_data']['year_2025_access_allowed'] is False
+          assert p['protected_data']['year_2026_access_allowed'] is False
+          print('FROZEN_AUTHORITY_PASS')
+          PY
+          python3 -m py_compile \
+            Dream-Account-OS-v2.3-PARTIAL/research/tfg_pbr01_4h_binance_preperiod_source_v01.py \
+            Dream-Account-OS-v2.3-PARTIAL/research/tfg_pbr01_4h_binance_preperiod_runner_v01.py
+          echo '2025_LOCKED=true'
+          echo '2026_LOCKED=true'
+          echo 'LIVE_TRADING=false'
+          echo 'EXCHANGE_MUTATION=false'
+
+      - name: Acquire frozen pre-period source and run Source/Data Gate only
+        id: source
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        shell: bash
+        run: |
+          set +e
+          rm -rf research/pbr01_4h_binance_preperiod_source_v01
+          python3 research/tfg_pbr01_4h_binance_preperiod_source_v01.py --output research/pbr01_4h_binance_preperiod_source_v01
+          rc=$?
+          set -e
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          status='TECHNICAL_FAILURE'
+          if [ -f research/pbr01_4h_binance_preperiod_source_v01/TFG_PBR01_4H_BINANCE_PREPERIOD_SOURCE_MANIFEST_V0.1.json ]; then
+            status="$(python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('research/pbr01_4h_binance_preperiod_source_v01/TFG_PBR01_4H_BINANCE_PREPERIOD_SOURCE_MANIFEST_V0.1.json')
+          print(json.loads(p.read_text())['status'])
+          PY
+          )"
+          fi
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          echo "SOURCE_GATE_STATUS=$status"
+          echo "SOURCE_GATE_RC=$rc"
+
+      - name: Validate Source/Data firewall
+        if: steps.source.outputs.status == 'SOURCE_AUDIT_PASS'
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          x=json.loads(Path('research/pbr01_4h_binance_preperiod_source_v01/TFG_PBR01_4H_BINANCE_PREPERIOD_SOURCE_MANIFEST_V0.1.json').read_text())
+          assert x['status']=='SOURCE_AUDIT_PASS'
+          assert x['authority_commit']=='bd22cd68765f73f4a644a3bb93515f8f0b406634'
+          assert x['accepted_archive_count']==150 and x['required_archive_count']==150
+          assert all(v==25 for v in x['accepted_months_by_symbol'].values())
+          assert x['year_2025_accessed'] is False and x['year_2026_accessed'] is False
+          assert x['outcomes_computed'] is False and x['signals_computed'] is False and x['pnl_computed'] is False
+          print('SOURCE_AUDIT_PASS')
+          print('NO_OUTCOME_BEFORE_SOURCE_PASS=true')
+          PY
+
+      - name: Execute frozen pre-period replication exactly once
+        id: preperiod
+        if: steps.source.outputs.status == 'SOURCE_AUDIT_PASS'
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        shell: bash
+        run: |
+          set +e
+          rm -rf research/pbr01_4h_binance_preperiod_output_v01
+          PYTHONPATH=src:. python3 research/tfg_pbr01_4h_binance_preperiod_runner_v01.py \
+            --source-root research/pbr01_4h_binance_preperiod_source_v01 \
+            --output research/pbr01_4h_binance_preperiod_output_v01
+          rc=$?
+          set -e
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          test "$rc" -eq 0 -o "$rc" -eq 3 -o "$rc" -eq 5
+          echo "PREPERIOD_RC=$rc"
+
+      - name: Validate terminal scientific classification
+        if: steps.source.outputs.status == 'SOURCE_AUDIT_PASS'
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        env:
+          PREPERIOD_RC: ${{ steps.preperiod.outputs.rc }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          p=Path('research/pbr01_4h_binance_preperiod_output_v01/TFG_PBR01_4H_BINANCE_PREPERIOD_CLOSEOUT_V0.1.json')
+          x=json.loads(p.read_text())
+          rc=int(os.environ['PREPERIOD_RC'])
+          expected={0:'PREPERIOD_REPLICATED',3:'PREPERIOD_NOT_REPLICATED',5:'INSUFFICIENT_SAMPLE'}[rc]
+          assert x['classification']==expected
+          assert x['authority_commit']=='bd22cd68765f73f4a644a3bb93515f8f0b406634'
+          assert x['pooled_with_prior_xvenue_for_classification'] is False
+          assert x['year_2025_accessed'] is False and x['year_2026_accessed'] is False
+          assert x['live_trading_authorized'] is False and x['exchange_mutation_authorized'] is False
+          print('TERMINAL_CLASSIFICATION=',x['classification'])
+          print('BASE_20BPS=',x['base_20bps'])
+          print('STRESS_30BPS=',x['stress_30bps'])
+          print('BOOTSTRAP=',x['bootstrap'])
+          print('FAILED_CONDITIONS=',x['failed_conditions'])
+          PY
+
+      - name: Write immutable run identity
+        if: always()
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: |
+          mkdir -p research/pbr01_4h_binance_preperiod_run_receipts_v01
+          {
+            echo "repository=${GITHUB_REPOSITORY}"
+            echo "branch=${GITHUB_REF_NAME}"
+            echo "head_sha=${GITHUB_SHA}"
+            echo "run_id=${GITHUB_RUN_ID}"
+            echo "run_attempt=${GITHUB_RUN_ATTEMPT}"
+            echo "authority_commit=bd22cd68765f73f4a644a3bb93515f8f0b406634"
+            echo "source_status=${{ steps.source.outputs.status }}"
+            echo "source_rc=${{ steps.source.outputs.rc }}"
+            echo "preperiod_rc=${{ steps.preperiod.outputs.rc }}"
+            echo "2025_accessed=false"
+            echo "2026_accessed=false"
+            echo "live_trading=false"
+            echo "exchange_mutation=false"
+          } > research/pbr01_4h_binance_preperiod_run_receipts_v01/run_identity.txt
+
+      - name: Upload source receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pbr01-4h-binance-preperiod-source-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            Dream-Account-OS-v2.3-PARTIAL/research/pbr01_4h_binance_preperiod_source_v01/TFG_PBR01_4H_BINANCE_PREPERIOD_SOURCE_MANIFEST_V0.1.json
+            Dream-Account-OS-v2.3-PARTIAL/research/pbr01_4h_binance_preperiod_run_receipts_v01/run_identity.txt
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Upload pre-period closeout
+        if: steps.source.outputs.status == 'SOURCE_AUDIT_PASS'
+        uses: actions/upload-artifact@v4
+        with:
+          name: pbr01-4h-binance-preperiod-closeout-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            Dream-Account-OS-v2.3-PARTIAL/research/pbr01_4h_binance_preperiod_output_v01/TFG_PBR01_4H_BINANCE_PREPERIOD_CLOSEOUT_V0.1.json
+            Dream-Account-OS-v2.3-PARTIAL/research/pbr01_4h_binance_preperiod_output_v01/TFG_PBR01_4H_BINANCE_PREPERIOD_LEDGER_V0.1.json
+            Dream-Account-OS-v2.3-PARTIAL/research/pbr01_4h_binance_preperiod_run_receipts_v01/run_identity.txt
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Governance terminal
+        if: always()
+        run: |
+          echo 'PBR01 4H / BINANCE PRE-PERIOD REPLICATION ONLY'
+          echo 'NOT FORWARD OOS / NO POOLING WITH PRIOR 88 FOR GATE PASSING'
+          echo 'NO 2025 / NO 2026 / NO LIVE TRADING / NO EXCHANGE MUTATION / NO MERGE TO MAIN'
+          echo 'NO PARAMETER, ASSET OR SUBPERIOD RESCUE'
