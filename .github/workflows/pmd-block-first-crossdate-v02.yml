@@ -75,6 +75,8 @@ jobs:
           assert len(rows)==20
           assert all(r.get('outcomes_opened') is False for r in rows)
           assert all(r.get('timestamp_precision_amendment_applied') is True for r in rows)
+          assert all(r.get('retrieval_timestamp_evidence_complete') is True for r in rows)
+          assert all(r.get('full_blocks_persisted') is True for r in rows)
           complete=sum(bool(r.get('source_complete')) for r in rows)
           target=sum(bool(r.get('feature_source_eligible')) for r in rows)
           dates=len({str(r['t0'])[:10] for r in rows})
@@ -92,6 +94,8 @@ jobs:
               'same_second_signatures_quarantined_total':sum(int(r.get('same_second_signatures_quarantined') or 0) for r in rows),
               'summary_sha256':hashlib.sha256(p.read_bytes()).hexdigest(),
               'timestamp_precision_amendment_applied':True,
+              'retrieval_timestamp_evidence_complete':True,
+              'full_blocks_persisted':True,
               'verdict':verdict,'full_population_gate_run':False,
               'economic_outcomes_opened':False,
           }
