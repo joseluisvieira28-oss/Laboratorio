@@ -1,0 +1,61 @@
+name: BTC-OPTIONS-VRP-001 Execution MVE V0.1
+
+on:
+  push:
+    branches:
+      - btc-options-vrp-execution-v0.1
+
+permissions:
+  contents: read
+
+concurrency:
+  group: btc-options-vrp-execution-v01
+  cancel-in-progress: false
+
+jobs:
+  execution:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: btc-options-vrp-execution-v0.1
+
+      - name: Verify frozen execution authority
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          a=json.load(open('labs/BTC_OPTIONS_VRP_001/EXECUTION_AUTHORITY_V0.1.json'))
+          assert a['mve_id']=='OVRP-EXEC-ATM30-7D-STATICDELTA-001'
+          assert a['authority_drive_id']=='1s3C_EdlxPa7_kKJEEfYXaP0PQTI9O42AQtYqL4zmDOM'
+          assert a['source_receipt_drive_id']=='158J-s52hP5awb5GF2RNkV1WHMCZHzgeoe2sVSzWzpAM'
+          assert a['strategy_outcomes_authorized'] is True
+          assert a['access_2025_authorized'] is False
+          assert a['access_2026_authorized'] is False
+          assert a['live_trading_authorized'] is False
+          assert a['exchange_mutation_authorized'] is False
+          assert a['merge_to_main_authorized'] is False
+          assert a['anchors']['expected_count']==192
+          assert a['minimum_executable_n']==120
+          assert a['bootstrap']['replications']==5000
+          assert a['bootstrap']['seed']==230911
+          assert a['bootstrap']['block_observations']==4
+          print('EXECUTION_AUTHORITY_PASS')
+          PY
+
+      - name: Compile frozen execution runner
+        run: python -m py_compile labs/BTC_OPTIONS_VRP_001/execution_v01.py
+
+      - name: Execute one-shot 2021-2024 execution MVE
+        run: python labs/BTC_OPTIONS_VRP_001/execution_v01.py
+
+      - name: Upload execution evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: btc-options-vrp-execution-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/btc_options_vrp_execution_v01/
+          retention-days: 90
+          if-no-files-found: warn
