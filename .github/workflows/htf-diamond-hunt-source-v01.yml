@@ -1,0 +1,80 @@
+name: HTF Diamond Hunt Source Gate V0.1
+
+on:
+  push:
+    branches:
+      - htf-diamond-hunt-v0.1
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/htf_diamond_hunt/SOURCE_RUN_TRIGGER_V0.1.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  source-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Checkout research branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Verify frozen campaign before network access
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('research/htf_diamond_hunt/HTF_DIAMOND_HUNT_001_CAMPAIGN_FREEZE_V0.1.json')
+          d=json.loads(p.read_text())
+          assert d['campaign_id']=='HTF-DIAMOND-HUNT-001'
+          assert d['status']=='FROZEN_PRE_OUTCOME'
+          ds=d['independent_replication_dataset']
+          assert ds['provider']=='Binance public data'
+          assert ds['market']=='Spot'
+          assert ds['raw_interval']=='1m'
+          assert ds['allowed_source_years']==[2021,2022]
+          assert ds['forbidden_source_years']==[2023,2024,2025,2026]
+          assert d['execution_order']==['DH-01','DH-04','DH-07','DH-02','DH-03','DH-05','DH-06']
+          print('CAMPAIGN_FREEZE_GATE_PASS')
+          PY
+
+      - name: Compile source gate
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: python -m py_compile research/htf_diamond_hunt/htf_diamond_hunt_source_gate_v01.py
+
+      - name: Run outcome-blind source gate
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: python research/htf_diamond_hunt/htf_diamond_hunt_source_gate_v01.py
+
+      - name: Verify receipt remains outcome-blind
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('research/local_data/htf_diamond_hunt_source_v01/HTF_DIAMOND_HUNT_001_SOURCE_GATE_V0.1.json')
+          d=json.loads(p.read_text())
+          assert d['status']=='SOURCE_DATA_PASS'
+          assert d['monthly_archive_count']==144
+          assert d['provider_checksum_verified_count']==144
+          assert d['outcome_evaluation_performed'] is False
+          assert d['market_return_calculation_performed'] is False
+          assert d['signal_calculation_performed'] is False
+          assert all(d[f'access_{y}_performed'] is False for y in (2023,2024,2025,2026))
+          print('SOURCE_RECEIPT_OUTCOME_BLIND_PASS', d['source_fingerprint'])
+          PY
+
+      - name: Upload frozen source artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: HTF_DIAMOND_HUNT_001_SOURCE_V01
+          path: Dream-Account-OS-v2.3-PARTIAL/research/local_data/htf_diamond_hunt_source_v01/
+          if-no-files-found: error
+          retention-days: 90
