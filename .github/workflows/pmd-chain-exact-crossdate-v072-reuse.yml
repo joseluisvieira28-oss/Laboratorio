@@ -1,0 +1,133 @@
+name: PMD-001 Chain-Exact Cross-Date V072 Reuse Sharded
+
+on:
+  push:
+    branches:
+      - pumpfun-migration-direction-v0.1
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/RUN_CHAIN_EXACT_CROSSDATE_V072_REUSE.trigger'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  reuse-row:
+    strategy:
+      fail-fast: false
+      max-parallel: 10
+      matrix:
+        index: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19]
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout scientific branch
+        uses: actions/checkout@v4
+        with:
+          ref: pumpfun-migration-direction-v0.1
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip requests solders
+      - name: Syntax checks
+        run: |
+          python -m py_compile \
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/chain_boundary_semantics_v07.py \
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/crossdate_evidence_reuse_v071.py \
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/crossdate_evidence_reuse_v072_row.py
+      - name: Download exact frozen V0.6 row artifact
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: 35132853202
+          name: PMD-001-chain-exact-v06-row-${{ matrix.index }}
+          path: frozen-row/PMD-001-chain-exact-v06-row-${{ matrix.index }}
+      - name: Reconstruct deterministic V0.7.2 row
+        continue-on-error: true
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001
+        run: |
+          python crossdate_evidence_reuse_v072_row.py \
+            --artifact-dir "$GITHUB_WORKSPACE/frozen-row/PMD-001-chain-exact-v06-row-${{ matrix.index }}" \
+            --out-dir "$GITHUB_WORKSPACE/pmd_v072_row_${{ matrix.index }}" \
+            --rpc-url https://api.mainnet-beta.solana.com \
+            --source-name solana_public_rpc_chain_exact_crossdate_v072_reuse \
+            --block-batch-size 4
+      - name: Assert row remains pre-outcome
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          import os
+          idx=os.environ['IDX']
+          p=Path(f'pmd_v072_row_{idx}/v072_row_receipt.json')
+          if p.exists():
+              r=json.loads(p.read_text()); assert r['outcomes_opened'] is False; assert r['scientific_verdict_authority'] is False; print(json.dumps(r,indent=2,sort_keys=True))
+          else:
+              print(json.dumps({'stage':'CHAIN_EXACT_CROSSDATE_V072_REUSE_ROW','outcomes_opened':False,'receipt_missing':True}))
+          PY
+        env:
+          IDX: ${{ matrix.index }}
+      - name: Upload compact row receipt and gap evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: PMD-001-chain-exact-v072-reuse-row-${{ matrix.index }}
+          if-no-files-found: warn
+          retention-days: 30
+          compression-level: 9
+          path: |
+            pmd_v072_row_${{ matrix.index }}/v072_row_receipt.json
+            pmd_v072_row_${{ matrix.index }}/gap_block_ledger.jsonl
+            pmd_v072_row_${{ matrix.index }}/gap_blocks/**/*.json.gz
+
+  reuse-aggregate:
+    needs: reuse-row
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout scientific branch
+        uses: actions/checkout@v4
+        with:
+          ref: pumpfun-migration-direction-v0.1
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download all mandatory V0.7.2 row receipts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: PMD-001-chain-exact-v072-reuse-row-*
+          path: all-v072-rows
+          merge-multiple: false
+      - name: Aggregate exact 20-row V0.7.2 gate
+        continue-on-error: true
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001
+        run: |
+          python aggregate_crossdate_evidence_reuse_v072.py \
+            --input-root "$GITHUB_WORKSPACE/all-v072-rows" \
+            --out-dir "$GITHUB_WORKSPACE/pmd_chain_exact_crossdate_v072_reuse"
+      - name: Assert aggregate remains pre-outcome
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('pmd_chain_exact_crossdate_v072_reuse/chain_exact_crossdate_v072_reuse_receipt.json')
+          if p.exists():
+              r=json.loads(p.read_text()); assert r['economic_outcomes_opened'] is False; print(json.dumps(r,indent=2,sort_keys=True))
+          else:
+              print(json.dumps({'verdict':'CHAIN_EXACT_CROSSDATE_V072_REUSE_TECHNICAL_INCOMPLETE','economic_outcomes_opened':False,'receipt_missing':True}))
+          PY
+      - name: Upload V0.7.2 aggregate receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: PMD-001-chain-exact-crossdate-v072-reuse-aggregate
+          retention-days: 30
+          path: pmd_chain_exact_crossdate_v072_reuse/
