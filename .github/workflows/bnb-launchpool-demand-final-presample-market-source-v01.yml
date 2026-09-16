@@ -1,0 +1,81 @@
+name: BNB Launchpool Demand Final Presample Market Source V0.1
+
+on:
+  push:
+    branches:
+      - bnb-launchpool-demand-final-holdout-pre2022-v01
+    paths:
+      - '.github/workflows/bnb-launchpool-demand-final-presample-market-source-v01.yml'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/bnb_launchpool_demand_001/final_presample/market_source_audit_v01.py'
+
+permissions:
+  contents: write
+
+jobs:
+  market-source:
+    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout final presample branch
+        uses: actions/checkout@v4
+        with:
+          ref: bnb-launchpool-demand-final-holdout-pre2022-v01
+          fetch-depth: 1
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Preflight immutable source pass
+        shell: bash
+        run: |
+          set -euo pipefail
+          B='Dream-Account-OS-v2.3-PARTIAL/research/bnb_launchpool_demand_001'
+          python -m py_compile "$B/final_presample/market_source_audit_v01.py"
+          python - <<'PY'
+          import json
+          b='Dream-Account-OS-v2.3-PARTIAL/research/bnb_launchpool_demand_001'
+          f=json.load(open(b+'/BNB_LAUNCHPOOL_DEMAND_001_FINAL_PRESAMPLE_HOLDOUT_FREEZE_V0.1.json'))
+          s=json.load(open(b+'/final_presample/source_gate_v01/BNB_LAUNCHPOOL_DEMAND_001_FINAL_PRESAMPLE_SOURCE_GATE_V0.1.json'))
+          assert f['status']=='FROZEN_BEFORE_PRESAMPLE_SOURCE_ENUMERATION_OR_MARKET_OUTCOME_ACCESS'
+          assert s['classification']=='SOURCE_DATA_PASS'
+          assert s['recovered_count']==30 and s['unique_validated_articles']==27
+          assert s['canonical_event_manifest_sha256']=='07d9e8cd5532df81b129ace36aabbf8a0512d8d87b259a77b57ef97d58718e01'
+          assert s['market_prices_opened'] is False and s['returns_computed'] is False and s['pnl_computed'] is False
+          assert s['new_2025_market_access'] is False and s['access_2026_market'] is False
+          PY
+      - name: Execute outcome-blind market-source audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          B='Dream-Account-OS-v2.3-PARTIAL/research/bnb_launchpool_demand_001'
+          python "$B/final_presample/market_source_audit_v01.py"
+          python - <<'PY'
+          import json
+          p='Dream-Account-OS-v2.3-PARTIAL/research/bnb_launchpool_demand_001/final_presample/market_source_v01/BNB_LAUNCHPOOL_DEMAND_001_FINAL_PRESAMPLE_MARKET_SOURCE_V0.1.json'
+          d=json.load(open(p))
+          assert d['classification']=='MARKET_SOURCE_DATA_PASS', d
+          assert d['selected_trade_paths']>=25
+          assert d['execution_path_failures']==[] and d['technical_failures']==[]
+          assert d['market_price_values_opened'] is False and d['open_parsed'] is False and d['returns_computed'] is False
+          assert d['new_2025_market_access'] is False and d['access_2026_market'] is False
+          print(json.dumps({k:d[k] for k in ['classification','archive_count','event_clusters','selected_trade_paths','suppressed_trade_paths','archive_manifest_sha256']},indent=2))
+          PY
+      - name: Upload immutable market-source evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: bnb-launchpool-demand-final-presample-market-source-${{ github.run_id }}-${{ github.run_attempt }}
+          path: Dream-Account-OS-v2.3-PARTIAL/research/bnb_launchpool_demand_001/final_presample/market_source_v01/
+          retention-days: 90
+          if-no-files-found: error
+      - name: Persist market-source receipt only
+        shell: bash
+        run: |
+          set -euo pipefail
+          B='Dream-Account-OS-v2.3-PARTIAL/research/bnb_launchpool_demand_001'
+          git config user.name 'crypto-lab-bnb-launchpool-bot'
+          git config user.email 'crypto-lab-bnb-launchpool-bot@users.noreply.github.com'
+          git add "$B/final_presample/market_source_v01/BNB_LAUNCHPOOL_DEMAND_001_FINAL_PRESAMPLE_MARKET_SOURCE_V0.1.json"
+          git commit -m 'BNB-LAUNCHPOOL-DEMAND-001: final presample MARKET_SOURCE_DATA_PASS [skip ci]'
+          git pull --rebase origin bnb-launchpool-demand-final-holdout-pre2022-v01
+          git push origin HEAD:bnb-launchpool-demand-final-holdout-pre2022-v01
