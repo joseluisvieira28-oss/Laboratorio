@@ -1,0 +1,90 @@
+name: BNB Launchpool Demand Market Source V0.1
+
+on:
+  push:
+    branches:
+      - bnb-launchpool-demand-v0.1
+
+permissions:
+  contents: write
+
+jobs:
+  market-source-audit:
+    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout scientific branch
+        uses: actions/checkout@v4
+        with:
+          ref: bnb-launchpool-demand-v0.1
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Preflight frozen Discovery and source PASS
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/bnb_launchpool_demand_001'
+          python -m py_compile "$BASE/market_source_audit_v01.py"
+          python - <<'PY'
+          import json
+          b='Dream-Account-OS-v2.3-PARTIAL/research/bnb_launchpool_demand_001'
+          p=json.load(open(b+'/FINAL_PRE_DISCOVERY_PROTOCOL_V0.1.json'))
+          s=json.load(open(b+'/source_validation_v02/BNB_LAUNCHPOOL_DEMAND_001_SOURCE_VALIDATION_V0.2.json'))
+          assert p['status']=='FROZEN_PRE_MARKET_OUTCOME'
+          assert p['mve_id']=='BLP-BNBBTC-24H-001'
+          assert s['classification']=='SOURCE_DATA_PASS'
+          assert s['canonical_event_manifest_sha256']==p['source_gate']['canonical_event_manifest_sha256']
+          assert p['market_data_contract']['year_2025_forbidden'] is True
+          assert p['market_data_contract']['year_2026_forbidden'] is True
+          assert p['governance']['no_live_trading'] is True
+          PY
+
+      - name: Execute outcome-blind market source audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/bnb_launchpool_demand_001'
+          python "$BASE/market_source_audit_v01.py"
+          python - <<'PY'
+          import json
+          p='Dream-Account-OS-v2.3-PARTIAL/research/bnb_launchpool_demand_001/market_source_v01/BNB_LAUNCHPOOL_DEMAND_001_MARKET_SOURCE_AUDIT_V0.1.json'
+          d=json.load(open(p)); g=d['guards']
+          assert d['classification']=='MARKET_SOURCE_DATA_PASS', d['classification']
+          assert d['archive_count']==27
+          assert d['event_clusters']==32
+          assert d['selected_trade_paths']==31
+          assert d['suppressed_trade_paths']==1
+          assert len(d['execution_path_failures'])==0
+          assert g['market_price_values_opened'] is False
+          assert g['open_parsed'] is False
+          assert g['high_parsed'] is False and g['low_parsed'] is False and g['close_parsed'] is False and g['volume_parsed'] is False
+          assert g['returns_computed'] is False and g['pnl_computed'] is False
+          assert g['year_2025_requested'] is False and g['year_2026_requested'] is False
+          print(json.dumps({k:d[k] for k in ['classification','archive_count','event_clusters','selected_trade_paths','suppressed_trade_paths','archive_manifest_sha256']},indent=2))
+          PY
+
+      - name: Upload immutable market source evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: bnb-launchpool-demand-001-market-source-${{ github.run_id }}-${{ github.run_attempt }}
+          path: Dream-Account-OS-v2.3-PARTIAL/research/bnb_launchpool_demand_001/market_source_v01/
+          retention-days: 90
+          if-no-files-found: error
+
+      - name: Persist market source PASS receipt
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/bnb_launchpool_demand_001'
+          git config user.name 'crypto-lab-bnb-launchpool-bot'
+          git config user.email 'crypto-lab-bnb-launchpool-bot@users.noreply.github.com'
+          git add "$BASE/market_source_v01/BNB_LAUNCHPOOL_DEMAND_001_MARKET_SOURCE_AUDIT_V0.1.json"
+          git commit -m 'BNB-LAUNCHPOOL-DEMAND-001: MARKET_SOURCE_DATA_PASS [skip ci]'
+          git pull --rebase origin bnb-launchpool-demand-v0.1
+          git push origin HEAD:bnb-launchpool-demand-v0.1
