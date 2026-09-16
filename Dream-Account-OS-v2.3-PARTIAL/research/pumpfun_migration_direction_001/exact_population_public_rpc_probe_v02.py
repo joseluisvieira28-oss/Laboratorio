@@ -122,7 +122,7 @@ def build_exact_manifest(paths: dict[str, Path]) -> list[dict[str, Any]]:
              min(p.snapshot_time) FILTER (
                WHERE p.pair_address=b.pool_address AND NOT p.incomplete_data AND p.has_native_price
                  AND p.snapshot_time >= b.t0 + INTERVAL 15 SECOND
-                 AND p.snapshot_time <= b.t0 + INTERVAL 60 SECOND
+                 AND p.snapshot_time <= b.t0 + INTERVAL 90 SECOND
              ) AS entry_ts
       FROM base b LEFT JOIN post_meta p USING(mint)
       GROUP BY b.mint,b.t0,b.pool_address,b.bonding_curve_key,b.top10_pct_suspect
@@ -135,7 +135,7 @@ def build_exact_manifest(paths: dict[str, Path]) -> list[dict[str, Any]]:
                WHERE p.mint=c.mint AND p.pair_address=c.pool_address
                  AND c.entry_ts IS NOT NULL AND NOT p.incomplete_data AND p.has_native_price
                  AND p.snapshot_time >= c.entry_ts + INTERVAL 300 SECOND
-                 AND p.snapshot_time <= c.entry_ts + INTERVAL 330 SECOND
+                 AND p.snapshot_time <= c.entry_ts + INTERVAL 420 SECOND
              ) AS has_exit
       FROM post_cov c
     """)
