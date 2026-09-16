@@ -1,0 +1,1 @@
+At completion of the prospective V2 Path-2 freeze, no 2024 price field has been opened by the adjudication or freeze sequence. The immutable parent evidence still records `year_2024_price_fields_opened=false`.
