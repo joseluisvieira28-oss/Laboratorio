@@ -1,0 +1,36 @@
+name: ETF-CREATION-FLOW-001 Source Feasibility V0.2
+on:
+  push:
+    branches: [etf-creation-flow-v0.1]
+    paths:
+      - 'labs/ETF_CREATION_FLOW_001/SOURCE_FEASIBILITY_REMEDIATION_V0.2.md'
+      - 'labs/ETF_CREATION_FLOW_001/source_probe_v02.py'
+      - '.github/workflows/etf-creation-flow-source-probe-v02.yml'
+jobs:
+  source-probe-v02:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: etf-creation-flow-v0.1
+      - name: Verify frozen V0.2 source remediation
+        run: |
+          set -euo pipefail
+          test -f labs/ETF_CREATION_FLOW_001/SOURCE_FEASIBILITY_REMEDIATION_V0.2.md
+          test -f labs/ETF_CREATION_FLOW_001/source_probe_v02.py
+          grep -q 'fileType=json&tab=all' labs/ETF_CREATION_FLOW_001/SOURCE_FEASIBILITY_REMEDIATION_V0.2.md
+          grep -q 'No BTC market data' labs/ETF_CREATION_FLOW_001/SOURCE_FEASIBILITY_REMEDIATION_V0.2.md
+      - name: Compile V0.2 probe
+        run: python -m py_compile labs/ETF_CREATION_FLOW_001/source_probe_v02.py
+      - name: Execute official historical JSON probe only
+        run: python labs/ETF_CREATION_FLOW_001/source_probe_v02.py
+      - name: Upload immutable V0.2 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: etf-creation-flow-001-source-probe-v02-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/etf_creation_flow_source_probe_v02/
+          retention-days: 90
+          if-no-files-found: warn
