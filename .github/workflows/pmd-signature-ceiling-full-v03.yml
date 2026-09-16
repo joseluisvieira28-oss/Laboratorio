@@ -1,0 +1,241 @@
+name: PMD-001 Ceiling and Full Source Gate V03
+
+on:
+  push:
+    branches:
+      - pumpfun-migration-direction-v0.1
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/RUN_FULL_SOURCE_GATE_V03.trigger'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  signature-ceiling:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    outputs:
+      viable: ${{ steps.classify.outputs.viable }}
+      verdict: ${{ steps.classify.outputs.verdict }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pumpfun-migration-direction-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip duckdb huggingface_hub requests solders pytz
+      - name: Syntax checks
+        run: |
+          python -m py_compile \
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/build_source_rebuild_manifest_v01.py \
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/source_rebuild_helius_v01.py \
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/signature_ceiling_audit_v01.py \
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/source_rebuild_block_first_v03.py
+      - name: Rebuild frozen manifest
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001
+        run: |
+          python build_source_rebuild_manifest_v01.py \
+            --data-dir pmd_source_rebuild_manifest_data \
+            --out pmd_source_rebuild_manifest_v01.jsonl \
+            --receipt pmd_source_rebuild_manifest_v01_receipt.json
+          test ! -e pmd_source_rebuild_manifest_data/postgard_outcomes.parquet
+      - name: Execute full-population signature ceiling
+        id: ceiling
+        continue-on-error: true
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001
+        run: |
+          python signature_ceiling_audit_v01.py \
+            --manifest pmd_source_rebuild_manifest_v01.jsonl \
+            --out-dir pmd_signature_ceiling_v01 \
+            --rpc-url https://api.mainnet-beta.solana.com \
+            --source-name solana_public_rpc_signature_ceiling \
+            --pace-seconds 0.40
+      - name: Classify ceiling
+        id: classify
+        if: always()
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001
+        run: |
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          p=Path('pmd_signature_ceiling_v01/signature_ceiling_receipt.json')
+          if not p.exists():
+              verdict='TECHNICAL_NO_RECEIPT'; viable='false'
+          else:
+              r=json.loads(p.read_text())
+              assert r['economic_outcomes_opened'] is False
+              assert r['population_rows']==1012
+              assert r['minimum_viable_rows']==1000
+              verdict=r['verdict']
+              viable='true' if verdict=='SIGNATURE_CEILING_VIABLE' else 'false'
+              print(json.dumps(r,indent=2,sort_keys=True))
+          with open(os.environ['GITHUB_OUTPUT'],'a') as f:
+              f.write(f'verdict={verdict}\nviable={viable}\n')
+          print('PMD-001 SIGNATURE CEILING:',verdict)
+          PY
+      - name: Upload ceiling evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: PMD-001-signature-ceiling-v03-pipeline
+          if-no-files-found: warn
+          retention-days: 30
+          path: |
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/pmd_source_rebuild_manifest_v01_receipt.json
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/pmd_signature_ceiling_v01/signature_ceiling_details.jsonl
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/pmd_signature_ceiling_v01/signature_ceiling_receipt.json
+
+  block-first-v03-shard:
+    needs: signature-ceiling
+    if: ${{ needs.signature-ceiling.outputs.viable == 'true' }}
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        include:
+          - start: 0
+            limit: 253
+          - start: 253
+            limit: 253
+          - start: 506
+            limit: 253
+          - start: 759
+            limit: 253
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pumpfun-migration-direction-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip duckdb huggingface_hub requests solders pytz
+      - name: Rebuild frozen manifest
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001
+        run: |
+          python build_source_rebuild_manifest_v01.py \
+            --data-dir pmd_source_rebuild_manifest_data \
+            --out pmd_source_rebuild_manifest_v01.jsonl \
+            --receipt pmd_source_rebuild_manifest_v01_receipt.json
+          test ! -e pmd_source_rebuild_manifest_data/postgard_outcomes.parquet
+      - name: Execute V0.3 shard
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001
+        run: |
+          python source_rebuild_block_first_v03.py \
+            --manifest pmd_source_rebuild_manifest_v01.jsonl \
+            --out-dir pmd_full_block_first_v03_${{ matrix.start }} \
+            --rpc-url https://api.mainnet-beta.solana.com \
+            --source-name solana_public_rpc_block_first_v03_full_gate \
+            --start ${{ matrix.start }} --limit ${{ matrix.limit }} \
+            --block-batch-size 4
+      - name: Assert shard contract
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('pmd_full_block_first_v03_${{ matrix.start }}')
+          rows=[json.loads(x) for x in (root/'source_rebuild_summary.jsonl').read_text().splitlines() if x.strip()]
+          assert len(rows)==${{ matrix.limit }}
+          assert all(r.get('outcomes_opened') is False for r in rows)
+          assert all(r.get('timestamp_precision_amendment_applied') is True for r in rows)
+          assert all(r.get('block_transport')=='json_rpc_batch_getBlock_json_with_individual_remediation' or r.get('collector_error') for r in rows)
+          for r in rows:
+              if r.get('source_complete'):
+                  assert r.get('retrieval_timestamp_evidence_complete') is True
+          print(json.dumps({'rows':len(rows),'complete':sum(bool(r.get('source_complete')) for r in rows),'eligible':sum(bool(r.get('feature_source_eligible')) for r in rows),'errors':sum(bool(r.get('collector_error')) for r in rows)},sort_keys=True))
+          PY
+      - name: Upload shard compact evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: PMD-001-v03-summary-${{ matrix.start }}
+          if-no-files-found: warn
+          retention-days: 30
+          path: |
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/pmd_full_block_first_v03_${{ matrix.start }}/source_rebuild_summary.jsonl
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/pmd_full_block_first_v03_${{ matrix.start }}/block_hash_ledger.jsonl
+      - name: Upload shard transaction evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: PMD-001-v03-transactions-${{ matrix.start }}
+          if-no-files-found: warn
+          retention-days: 30
+          compression-level: 9
+          path: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/pmd_full_block_first_v03_${{ matrix.start }}/raw/*.jsonl
+
+  aggregate-source-gate:
+    needs:
+      - signature-ceiling
+      - block-first-v03-shard
+    if: ${{ always() && needs.signature-ceiling.outputs.viable == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Download shard summaries
+        uses: actions/download-artifact@v4
+        with:
+          pattern: PMD-001-v03-summary-*
+          path: all-summaries
+          merge-multiple: false
+      - name: Aggregate frozen Source Gate
+        run: |
+          python - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          files=sorted(Path('all-summaries').rglob('source_rebuild_summary.jsonl'))
+          rows=[]
+          for p in files:
+              rows.extend(json.loads(x) for x in p.read_text().splitlines() if x.strip())
+          mints=[r.get('mint') for r in rows]
+          unique=len(set(mints)); duplicates=len(mints)-unique
+          complete=sum(bool(r.get('source_complete')) for r in rows)
+          eligible_rows=[r for r in rows if r.get('feature_source_eligible')]
+          eligible=len(eligible_rows)
+          eligible_dates=len({str(r.get('t0'))[:10] for r in eligible_rows if r.get('t0')})
+          errors=sum(bool(r.get('collector_error')) for r in rows)
+          ordered=sorted(eligible_rows,key=lambda r:(str(r.get('t0')),str(r.get('mint'))))
+          n=len(ordered); d=int(n*.60); v=int(n*.20); h=n-d-v
+          all_safe=all(r.get('timestamp_precision_amendment_applied') is True for r in rows)
+          complete_retrieval=all((not r.get('source_complete')) or r.get('retrieval_timestamp_evidence_complete') is True for r in rows)
+          if len(rows)!=1012 or unique!=1012 or duplicates!=0:
+              verdict='SOURCE_REBUILD_TECHNICAL_INCOMPLETE'
+          elif eligible>=1000 and eligible_dates>=20 and v>=200 and h>=200 and all_safe and complete_retrieval:
+              verdict='SOURCE_REBUILD_GATE_PASS'
+          else:
+              verdict='SOURCE_REBUILD_INSUFFICIENT_SAMPLE'
+          canon='\n'.join(json.dumps(r,sort_keys=True,separators=(',',':')) for r in sorted(rows,key=lambda r:(str(r.get('t0')),str(r.get('mint')))))+'\n'
+          Path('pmd_full_source_gate_v03_rows.jsonl').write_text(canon)
+          receipt={
+              'lab':'PMD-001','stage':'FULL_SOURCE_REBUILD_GATE_V03_BATCH_JSON',
+              'economic_outcomes_opened':False,
+              'population_expected':1012,'population_rows':len(rows),'unique_mints':unique,'duplicate_mints':duplicates,
+              'source_complete_mints':complete,'feature_source_eligible_mints':eligible,'minimum_viable_mints':1000,
+              'eligible_distinct_dates':eligible_dates,'minimum_distinct_dates':20,
+              'frozen_discovery_count':d,'frozen_validation_count':v,'frozen_holdout_count':h,
+              'minimum_validation_count':200,'minimum_holdout_count':200,
+              'technical_error_rows':errors,'timestamp_precision_amendment_applied_all':all_safe,
+              'retrieval_timestamp_evidence_complete_for_source_complete':complete_retrieval,
+              'block_transport':'json_rpc_batch_getBlock_json_with_individual_remediation','block_batch_size':4,
+              'rows_sha256':hashlib.sha256(canon.encode()).hexdigest(),'verdict':verdict,
+          }
+          Path('pmd_full_source_gate_v03_receipt.json').write_text(json.dumps(receipt,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(receipt,indent=2,sort_keys=True))
+          PY
+      - name: Upload final Source Gate receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: PMD-001-full-source-gate-v03
+          if-no-files-found: error
+          retention-days: 30
+          path: |
+            pmd_full_source_gate_v03_rows.jsonl
+            pmd_full_source_gate_v03_receipt.json
