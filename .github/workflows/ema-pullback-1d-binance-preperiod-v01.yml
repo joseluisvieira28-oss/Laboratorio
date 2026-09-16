@@ -1,0 +1,117 @@
+name: EMA Pullback 1D Binance Preperiod V0.1
+
+on:
+  push:
+    branches:
+      - ema-pullback-1d-binance-preperiod-v0.1
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/TFG_EMA_PULLBACK_1D_BINANCE_PREPERIOD_FREEZE_V0.1.json'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/tfg_ema_pullback_1d_binance_preperiod_source_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/tfg_ema_pullback_1d_binance_preperiod_runner_v01.py'
+      - '.github/workflows/ema-pullback-1d-binance-preperiod-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  replication:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      PYTHONPATH: Dream-Account-OS-v2.3-PARTIAL
+    steps:
+      - name: Checkout frozen branch
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Assert frozen authority and protected-period locks
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('Dream-Account-OS-v2.3-PARTIAL/research/TFG_EMA_PULLBACK_1D_BINANCE_PREPERIOD_FREEZE_V0.1.json')
+          d=json.loads(p.read_text())
+          assert d['status']=='FROZEN_BEFORE_ANY_REPLICATION_OUTCOME_EVALUATION'
+          assert d['source_authority']['source_start_month']=='2021-01'
+          assert d['source_authority']['source_end_month']=='2022-12'
+          assert d['sample_gate']['minimum_resolved_trades']==100
+          assert d['sample_gate']['opportunistic_extension_allowed'] is False
+          assert d['sample_gate']['pooling_with_parent_allowed'] is False
+          for y in ('2023_access','2024_access','2025_access','2026_access'):
+              assert d['source_authority'][y] is False
+          assert d['governance']['post_outcome_tuning'] is False
+          assert d['governance']['rescue'] is False
+          print('FROZEN_AUTHORITY_PASS')
+          PY
+
+      - name: Run inherited exact-engine unit tests
+        run: |
+          python -m unittest Dream-Account-OS-v2.3-PARTIAL/tests/test_tfg_ema_pullback_1d_v01.py
+
+      - name: Build checksum-verified Binance 2021-2022 source
+        run: |
+          python Dream-Account-OS-v2.3-PARTIAL/research/tfg_ema_pullback_1d_binance_preperiod_source_v01.py \
+            --output-dir artifacts/ema_binance_preperiod_source_v01
+
+      - name: Assert source gate and no protected-period access
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('artifacts/ema_binance_preperiod_source_v01/SOURCE_RECEIPT.json')
+          d=json.loads(p.read_text())
+          assert d['classification']=='SOURCE_READY'
+          assert d['accepted_archive_count']==144
+          for y in ('2023','2024','2025','2026'):
+              assert d[f'accessed_{y}'] is False
+          assert d['outcome_evaluation_performed'] is False
+          assert d['exchange_mutation_performed'] is False
+          print('SOURCE_GATE_PASS')
+          PY
+
+      - name: Execute frozen non-overlapping replication
+        run: |
+          python Dream-Account-OS-v2.3-PARTIAL/research/tfg_ema_pullback_1d_binance_preperiod_runner_v01.py \
+            --source-dir artifacts/ema_binance_preperiod_source_v01 \
+            --output-dir artifacts/ema_binance_preperiod_output_v01
+
+      - name: Validate terminal governance
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('artifacts/ema_binance_preperiod_output_v01/TFG_EMA_PULLBACK_1D_BINANCE_PREPERIOD_CLOSEOUT_V0.1.json')
+          d=json.loads(p.read_text())
+          assert d['classification'] in {'INSUFFICIENT_SAMPLE','REPLICATION_SURVIVES','REPLICATION_FAIL'}
+          assert d['pool_with_parent_for_classification'] is False
+          assert all(v is False for v in d['protected_period_access'].values())
+          assert d['live_trading'] is False
+          assert d['exchange_mutation'] is False
+          assert d['orders'] is False
+          assert d['merge_to_main'] is False
+          assert d['post_outcome_tuning'] is False
+          assert d['rescue'] is False
+          assert d['terminal_stop'] is True
+          print('TERMINAL_GOVERNANCE_PASS')
+          PY
+
+      - name: Upload source evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: ema-pullback-1d-binance-preperiod-source-v01
+          path: artifacts/ema_binance_preperiod_source_v01/
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Upload closeout
+        uses: actions/upload-artifact@v4
+        with:
+          name: ema-pullback-1d-binance-preperiod-closeout-v01
+          path: artifacts/ema_binance_preperiod_output_v01/
+          retention-days: 30
+          if-no-files-found: error
