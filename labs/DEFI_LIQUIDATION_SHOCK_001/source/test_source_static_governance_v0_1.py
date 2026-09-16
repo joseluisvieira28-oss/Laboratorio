@@ -26,12 +26,15 @@ EXPECTED_PROGRAMS = {
 EXPECTED_TABLE = "bigquery-public-data.crypto_solana_mainnet_us.Instructions"
 
 
-def sql_table_refs(sql: str) -> set[str]:
-    return set(re.findall(r"`([^`]+)`", sql))
-
-
 def sql_without_comments(sql: str) -> str:
     return "\n".join(line for line in sql.splitlines() if not line.lstrip().startswith("--"))
+
+
+def sql_table_refs(sql: str) -> set[str]:
+    # Comments can legitimately mention backticked field names such as `data`.
+    # Only executable SQL is relevant to the source-table firewall.
+    body = sql_without_comments(sql)
+    return set(re.findall(r"`([^`]+)`", body))
 
 
 def main() -> int:
@@ -54,9 +57,9 @@ def main() -> int:
     }
 
     for name, sql in (("coverage", COVERAGE_SQL), ("census", CENSUS_SQL)):
+        body = sql_without_comments(sql)
         refs = sql_table_refs(sql)
         assert refs == {EXPECTED_TABLE}, (name, refs)
-        body = sql_without_comments(sql)
         assert "2021-01-01T00:00:00Z" in body
         assert EXPECTED_SQL_END in body
         for program_id in EXPECTED_PROGRAMS:
@@ -74,13 +77,6 @@ def main() -> int:
         (p["program_id"], e["prefix_hex"].lower())
         for p in protocols for e in p["reference_liquidation_encodings"]
     }
-    census_pairs = set()
-    for program_id in EXPECTED_PROGRAMS:
-        for prefix in re.findall(r"'([0-9a-fA-F]{2,16})'\s*,\s*'(?:native_u8_tag|anchor_discriminator_8)'", CENSUS_SQL):
-            # Associate through literal occurrence on the same SELECT line/chunk below.
-            pass
-    # Stronger direct inclusion/exclusion check: every frozen prefix is present,
-    # and the total unique literal prefix set equals the registry set.
     expected_prefixes = {prefix for _, prefix in registry_prefixes}
     literal_prefixes = set(re.findall(r"'([0-9a-f]{2}|[0-9a-f]{16})'", CENSUS_SQL.lower()))
     assert expected_prefixes <= literal_prefixes
