@@ -1,0 +1,45 @@
+{
+  "lab_id": "BTC-DVOL-FUTURES-TERMSTRUCTURE-001",
+  "source_gate_id": "DVOL-TS-SOURCE-001",
+  "status": "PRE_SOURCE_FROZEN",
+  "date_frozen": "2026-09-16",
+  "branch": "btc-dvol-futures-termstructure-v0.1",
+  "scientific_scope": "Source-only reconnaissance for Deribit BTC DVOL futures term-structure/convergence research. This is a new mechanism family and is not a rescue or substitute execution of BTC-OPTIONS-VRP-001.",
+  "economic_mechanism": "DVOL futures are linear futures on the BTC DVOL implied-volatility index and settle to a TWAP of DVOL. A future study may test futures-vs-index basis/term-structure convergence, but no outcome or trading rule is authorized in this source gate.",
+  "source_window": {
+    "start": "2023-03-27T00:00:00Z",
+    "end": "2024-12-31T23:59:59Z"
+  },
+  "protected_periods": ["2025", "2026"],
+  "primary_source": "Deribit official history API / official instrument metadata",
+  "source_only_questions": [
+    "Can historical BTC DVOL futures instruments be identified prospectively from official Deribit data?",
+    "Can bounded historical public trade tape be recovered for multiple fixed 2023-2024 probe windows?",
+    "Do recovered records contain instrument_name, timestamp, price, amount, direction, index_price and mark_price where applicable?",
+    "Can creation/expiration/settlement metadata be recovered for the exact discovered instruments?",
+    "Is historical trade density sufficient to justify freezing a separate discovery MVE before opening any convergence outcomes?"
+  ],
+  "fixed_probe_windows_utc": [
+    ["2023-06-14T07:00:00Z", "2023-06-14T10:00:00Z"],
+    ["2023-09-13T07:00:00Z", "2023-09-13T10:00:00Z"],
+    ["2024-03-13T07:00:00Z", "2024-03-13T10:00:00Z"],
+    ["2024-09-11T07:00:00Z", "2024-09-11T10:00:00Z"]
+  ],
+  "forbidden_in_source_gate": [
+    "strategy PnL",
+    "future-vs-index convergence returns",
+    "threshold selection",
+    "directional optimization",
+    "post-outcome tuning",
+    "2025 access",
+    "2026 access",
+    "live trading",
+    "exchange mutation",
+    "merge to main"
+  ],
+  "classification_rules": {
+    "pass": "SOURCE_DATA_PASS",
+    "insufficient_or_unavailable": "SOURCE_DATA_INSUFFICIENT_OR_BLOCKED",
+    "technical_failure": "SOURCE_ACQUISITION_TECHNICAL_FAILURE"
+  }
+}
