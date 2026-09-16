@@ -1,0 +1,58 @@
+{
+  "lab_id": "BTC-DVOL-FUTURES-TERMSTRUCTURE-001",
+  "incident_id": "DVOL-TS-PROTECTED-PERIOD-BREACH-001",
+  "date": "2026-09-16",
+  "invalid_run": {
+    "github_run_id": 35086441402,
+    "job_id": 104762252700,
+    "head_sha": "b78768b4280213f2fb053617e473df2aa0b157c4",
+    "classification": "VOID_NONCANONICAL_PROTECTED_PERIOD_SOURCE_ACCESS",
+    "canonical_scientific_status": "VOID"
+  },
+  "cause": "The V0.1 source runner used unbounded live Deribit index-chart range=all and delivery-price queries. Those responses exposed timestamps/dates from protected 2025 and 2026 even though no economic levels, returns, basis, convergence or PnL were retained or computed.",
+  "firewall_truth_for_invalid_run": {
+    "access_2025": true,
+    "access_2026": true,
+    "economic_values_from_protected_periods_retained": false,
+    "strategy_pnl_opened": false,
+    "convergence_outcomes_opened": false,
+    "live_trading": false,
+    "exchange_mutation": false
+  },
+  "permitted_learning_from_void_run": "Transport/source-engineering only: unbounded current index-chart and delivery-price routes are unsafe for protected-period source work and must not be used in this gate.",
+  "forbidden_learning_from_void_run": [
+    "using observed DVOL trade counts to change probe windows",
+    "using observed empty windows to choose replacement dates",
+    "changing aggregate density threshold",
+    "changing field coverage thresholds",
+    "changing instrument prefix/filter",
+    "opening any price, basis, convergence, return or PnL outcome"
+  ],
+  "frozen_scientific_contract_unchanged": {
+    "fixed_probe_windows": [
+      ["2023-06-14T07:00:00Z", "2023-06-14T10:00:00Z"],
+      ["2023-09-13T07:00:00Z", "2023-09-13T10:00:00Z"],
+      ["2024-03-13T07:00:00Z", "2024-03-13T10:00:00Z"],
+      ["2024-09-11T07:00:00Z", "2024-09-11T10:00:00Z"]
+    ],
+    "minimum_aggregate_btcdvol_trades": 12,
+    "minimum_unique_btcdvol_instruments_per_probe_window": 1,
+    "core_field_coverage": 1.0,
+    "aux_field_coverage": 0.9,
+    "exact_metadata_success_rate": 1.0
+  },
+  "authorized_remediation": {
+    "runner": "source_gate_v02_protectedfix.py",
+    "allowed_sources": [
+      "bounded history.deribit.com public/get_last_trades_by_currency_and_time using only the four frozen 2023-2024 windows",
+      "exact get_instrument metadata lookup only for instruments discovered inside those bounded windows"
+    ],
+    "removed_sources": [
+      "unbounded get_index_chart_data range=all",
+      "unbounded get_delivery_prices"
+    ],
+    "index_source_note": "Standalone DVOL-index or settlement-history coverage is not authorized or required to decide this trade-tape source-density gate. Any later study requiring a standalone DVOL series must pass a separate bounded source gate before Discovery.",
+    "protected_access_required_for_canonical_rerun": {"access_2025": false, "access_2026": false}
+  },
+  "governance": "The remediation is transport/source-scope only. It may not alter the frozen source-density decision rules or rescue the gate based on the void run's observations."
+}
