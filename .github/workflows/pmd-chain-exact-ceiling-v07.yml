@@ -1,0 +1,125 @@
+name: PMD-001 Chain-Exact Ceiling V07
+
+on:
+  push:
+    branches:
+      - pumpfun-migration-direction-v0.1
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/RUN_CHAIN_EXACT_CEILING_V07.trigger'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  prepare-manifest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pumpfun-migration-direction-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --upgrade pip huggingface_hub duckdb
+      - name: Rebuild frozen 1,012-row manifest
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001
+        run: |
+          python build_source_rebuild_manifest_v01.py \
+            --data-dir "$GITHUB_WORKSPACE/pmd_ceiling_manifest_data" \
+            --out "$GITHUB_WORKSPACE/pmd_source_rebuild_manifest_v01.jsonl" \
+            --receipt "$GITHUB_WORKSPACE/pmd_source_rebuild_manifest_v01_receipt.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PMD-001-v07-ceiling-manifest
+          retention-days: 30
+          path: |
+            pmd_source_rebuild_manifest_v01.jsonl
+            pmd_source_rebuild_manifest_v01_receipt.json
+
+  ceiling-shards:
+    needs: prepare-manifest
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        include:
+          - shard: 0
+            start: 0
+            limit: 253
+          - shard: 1
+            start: 253
+            limit: 253
+          - shard: 2
+            start: 506
+            limit: 253
+          - shard: 3
+            start: 759
+            limit: 253
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pumpfun-migration-direction-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --upgrade pip requests solders huggingface_hub duckdb
+      - uses: actions/download-artifact@v4
+        with:
+          name: PMD-001-v07-ceiling-manifest
+          path: ceiling-manifest
+      - name: Run chain-exact ceiling shard
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001
+        run: |
+          python chain_exact_ceiling_v07.py \
+            --manifest "$GITHUB_WORKSPACE/ceiling-manifest/pmd_source_rebuild_manifest_v01.jsonl" \
+            --out-dir "$GITHUB_WORKSPACE/pmd_ceiling_shard_${{ matrix.shard }}" \
+            --start ${{ matrix.start }} \
+            --limit ${{ matrix.limit }} \
+            --rpc-url https://api.mainnet-beta.solana.com \
+            --source-name solana_public_rpc_chain_exact_ceiling_v07 \
+            --pace-seconds 0.10
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: PMD-001-chain-exact-ceiling-v07-shard-${{ matrix.shard }}
+          retention-days: 30
+          path: pmd_ceiling_shard_${{ matrix.shard }}/
+
+  aggregate:
+    needs: ceiling-shards
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pumpfun-migration-direction-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: PMD-001-chain-exact-ceiling-v07-shard-*
+          path: ceiling-shards
+          merge-multiple: false
+      - name: Aggregate ceiling
+        continue-on-error: true
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001
+        run: |
+          python aggregate_chain_exact_ceiling_v07.py \
+            --input-root "$GITHUB_WORKSPACE/ceiling-shards" \
+            --out-dir "$GITHUB_WORKSPACE/pmd_ceiling_v07_aggregate"
+      - name: Print receipt
+        if: always()
+        run: cat pmd_ceiling_v07_aggregate/chain_exact_ceiling_v07_receipt.json || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: PMD-001-chain-exact-ceiling-v07-aggregate
+          retention-days: 30
+          path: pmd_ceiling_v07_aggregate/
