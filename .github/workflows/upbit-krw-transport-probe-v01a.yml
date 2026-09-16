@@ -1,0 +1,69 @@
+name: UKLS Transport Probe V0.1A
+
+on:
+  push:
+    branches:
+      - upbit-krw-listing-shock-v0.1
+
+permissions:
+  contents: read
+
+jobs:
+  transport-probe:
+    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify frozen transport authority
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          p=json.load(open('Dream-Account-OS-v2.3-PARTIAL/research/upbit_krw_listing_shock_001/TRANSPORT_REMEDIATION_AUTHORITY_V01A.json'))
+          assert p['status']=='FROZEN_TRANSPORT_ONLY_PRE_ENUMERATION'
+          assert p['parent_source_result']=='SOURCE_ACCESS_BLOCKED_HTTP_403'
+          PY
+      - name: Probe ordinary unauthenticated browser transport only
+        shell: bash
+        run: |
+          set -euo pipefail
+          UA='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36'
+          curl -L --fail-with-body --silent --show-error --max-time 30 \
+            -A "$UA" \
+            -H 'accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8' \
+            -H 'accept-language: ko-KR,ko;q=0.9,en-US;q=0.7,en;q=0.5' \
+            -c /tmp/upbit.cookies \
+            'https://upbit.com/service_center/notice' \
+            -o /tmp/upbit_landing.html || true
+          CODE=$(curl --silent --show-error --max-time 30 \
+            -A "$UA" \
+            -H 'accept: application/json, text/plain, */*' \
+            -H 'accept-language: ko-KR,ko;q=0.9,en-US;q=0.7,en;q=0.5' \
+            -H 'origin: https://upbit.com' \
+            -H 'referer: https://upbit.com/' \
+            -H 'sec-fetch-dest: empty' \
+            -H 'sec-fetch-mode: cors' \
+            -H 'sec-fetch-site: same-site' \
+            -b /tmp/upbit.cookies \
+            -o /tmp/upbit_api.json \
+            -w '%{http_code}' \
+            'https://api-manager.upbit.com/api/v1/announcements?os=web&page=1&per_page=30&category=trade')
+          echo "API_HTTP_CODE=$CODE"
+          python - <<'PY'
+          import hashlib,json,pathlib
+          p=pathlib.Path('/tmp/upbit_api.json')
+          raw=p.read_bytes() if p.exists() else b''
+          print('API_BYTES='+str(len(raw)))
+          print('API_SHA256='+hashlib.sha256(raw).hexdigest())
+          try:
+              d=json.loads(raw)
+          except Exception as e:
+              print('JSON_SCHEMA_PASS=false')
+              raise SystemExit(2)
+          ok=isinstance(d,dict) and isinstance(d.get('data'),dict) and isinstance(d['data'].get('notices'),list)
+          print('JSON_SCHEMA_PASS='+str(ok).lower())
+          if not ok: raise SystemExit(3)
+          print('NOTICE_COUNT='+str(len(d['data']['notices'])))
+          PY
+          test "$CODE" = '200'
