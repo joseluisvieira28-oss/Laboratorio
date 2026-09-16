@@ -1,0 +1,25 @@
+{
+  "lab_id": "UPBIT-KRW-LISTING-SHOCK-001",
+  "remediation_id": "UKLS-TRANSPORT-V01A",
+  "status": "FROZEN_TRANSPORT_ONLY_PRE_ENUMERATION",
+  "parent_source_result": "SOURCE_ACCESS_BLOCKED_HTTP_403",
+  "allowed_changes_only": [
+    "Use a standard browser User-Agent and normal browser request headers.",
+    "Bootstrap a normal unauthenticated Upbit web session and retain ordinary response cookies.",
+    "Use curl instead of urllib for HTTP transport if required."
+  ],
+  "forbidden_changes": [
+    "No proxy rotation, CAPTCHA bypass, authentication, private API, scraping-evasion service, or access-control circumvention.",
+    "No parser change.",
+    "No source minimum change.",
+    "No date-window change.",
+    "No strategy-rule change.",
+    "No market price or outcome access."
+  ],
+  "probe": {
+    "landing_url": "https://upbit.com/service_center/notice",
+    "api_url": "https://api-manager.upbit.com/api/v1/announcements?os=web&page=1&per_page=30&category=trade",
+    "success": "HTTP 200 plus JSON data.notices list",
+    "failure": "Any persistent non-200 or schema failure closes this GitHub-hosted official route as SOURCE_ACCESS_BLOCKED"
+  }
+}
