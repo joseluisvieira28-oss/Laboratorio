@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   market-source:
-    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
+    if: ${{ contains(github.event.head_commit.message, 'execute frozen 2025 market source audit') && !contains(github.event.head_commit.message, '[skip ci]') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -55,7 +55,6 @@ jobs:
           assert d['execution_path_failures']==[]
           assert d['market_price_values_opened'] is False and d['open_parsed'] is False and d['returns_computed'] is False
           assert d['access_2026_market'] is False
-          print(json.dumps({k:d[k] for k in ['classification','archive_count','selected_trade_paths','suppressed_trade_paths','right_edge_unresolved','archive_manifest_sha256']},indent=2))
           PY
       - name: Upload immutable 2025 market source evidence
         uses: actions/upload-artifact@v4
