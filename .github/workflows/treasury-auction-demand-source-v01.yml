@@ -1,0 +1,46 @@
+name: TREASURY-AUCTION-DEMAND-001 Source Gate V0.1
+
+on:
+  push:
+    branches: [treasury-auction-demand-v0.1]
+    paths:
+      - '.github/workflows/treasury-auction-demand-source-v01.yml'
+      - 'labs/TREASURY_AUCTION_DEMAND_001/source_gate_v01.py'
+      - 'labs/TREASURY_AUCTION_DEMAND_001/PRE_SOURCE_AUTHORITY_V0.1.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-gate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: treasury-auction-demand-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pinned dependency
+        run: python -m pip install --disable-pip-version-check requests==2.32.3
+      - name: Verify frozen authority and compile
+        run: |
+          set -euo pipefail
+          test -f labs/TREASURY_AUCTION_DEMAND_001/PRE_SOURCE_AUTHORITY_V0.1.md
+          python -m py_compile labs/TREASURY_AUCTION_DEMAND_001/source_gate_v01.py
+      - name: Execute source-only gate 2021-2024
+        run: |
+          set -euo pipefail
+          python labs/TREASURY_AUCTION_DEMAND_001/source_gate_v01.py | tee tad_source_receipt_v01.txt
+      - name: Upload immutable source evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: treasury-auction-demand-source-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            artifacts/treasury_auction_demand_source_v01/
+            tad_source_receipt_v01.txt
+          retention-days: 90
+          if-no-files-found: warn
