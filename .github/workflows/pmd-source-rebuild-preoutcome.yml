@@ -62,7 +62,7 @@ jobs:
           print('PMD-001 PUBLIC SOURCE MANIFEST GATE PASS')
           PY
 
-      - name: Probe earliest candidate against public Solana RPC
+      - name: Probe earliest candidate against public Solana RPC with getBlock remediation
         working-directory: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001
         run: |
           python source_rebuild_helius_v01.py \
@@ -70,7 +70,8 @@ jobs:
             --out-dir pmd_public_rpc_probe_v01 \
             --start 0 --limit 1 \
             --rpc-url https://api.mainnet-beta.solana.com \
-            --source-name solana_public_rpc_probe
+            --source-name solana_public_rpc_probe \
+            --block-remediate-missing
           cat pmd_public_rpc_probe_v01/source_rebuild_summary.jsonl
 
       - name: Classify public-RPC probe without changing scientific gate
@@ -101,3 +102,4 @@ jobs:
             Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/pmd_source_rebuild_manifest_v01_receipt.json
             Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/pmd_public_rpc_probe_v01/source_rebuild_summary.jsonl
             Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/pmd_public_rpc_probe_v01/raw/*.jsonl
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/pmd_public_rpc_probe_v01/block_evidence/**/*.json.gz
