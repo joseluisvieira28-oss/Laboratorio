@@ -1,13 +1,13 @@
 {
-  "registry_version": "1.0",
-  "as_of_utc": "2026-09-16T21:30:00Z",
+  "registry_version": "1.1",
+  "as_of_utc": "2026-09-16T21:35:00Z",
   "governance": "AGGRESSIVE_DEPLOYMENT_POLICY_V1",
   "candidates": [
     {
       "strategy_id": "ETF-CME-INSTFLOW-001",
       "scientific_tier": 2,
       "scientific_status": "PROMOTED_CANDIDATE_FRAGILE",
-      "deployment_state": "MICRO_LIVE_CANDIDATE_PENDING_ADAPTER_AND_RISK_CONTRACT",
+      "deployment_state": "MICRO_LIVE_CANDIDATE_PENDING_SOURCE_BINDING_AND_RISK_CONTRACT",
       "shadow_allowed": true,
       "micro_live_allowed_now": false,
       "source_branch": "etf-cme-institutional-flow-v0.1",
@@ -19,6 +19,8 @@
       "historical_hold": "7 calendar days",
       "base_cost_bps_round_trip": 10,
       "stress_cost_bps_round_trip": 20,
+      "radar_signal_rule_implemented": true,
+      "radar_live_source_binding_implemented": false,
       "fragility_flags": [
         "Tier-1 readiness passed 9/10 only",
         "leave-one-trade-out minimum base-net mean failed",
@@ -27,7 +29,7 @@
         "one influential trade can make leave-one-out mean negative"
       ],
       "blocking_gates": [
-        "deterministic radar adapter not yet bound to CFTC source",
+        "pure deterministic signal trap exists but live CFTC source binding is not yet wired into radar runtime",
         "execution venue/instrument for real-money implementation not frozen",
         "strategy-specific maximum-loss/sizing model not frozen"
       ]
@@ -42,6 +44,15 @@
       "reason": "Repeated positive historical economics but failed frozen concentration gate; forward evidence still pending."
     },
     {
+      "strategy_id": "BTC-OPTIONS-EXPIRY-REVERSAL-001",
+      "scientific_tier": 3,
+      "scientific_status": "WATCHLIST_WEAK_CANDIDATE",
+      "deployment_state": "SHADOW_ONLY",
+      "shadow_allowed": true,
+      "micro_live_allowed_now": false,
+      "reason": "Independent 2024 base economics remained positive but stress economics and minimum leave-one-trade-out stability failed."
+    },
+    {
       "strategy_id": "HTF-DH03-12H",
       "scientific_tier": null,
       "scientific_status": "SECONDARY_EXACT_RULE_FORWARD_HOLDOUT_SURVIVOR",
@@ -49,6 +60,15 @@
       "shadow_allowed": true,
       "micro_live_allowed_now": false,
       "reason": "Secondary candidate survived Phase 5 but cannot replace the prospectively designated primary after outcomes."
+    },
+    {
+      "strategy_id": "HTF-DONCHIAN-DH02-6H",
+      "scientific_tier": null,
+      "scientific_status": "SHADOW_READINESS_FAIL_2026_PROTECTED_BLOCK",
+      "deployment_state": "BLOCKED",
+      "shadow_allowed": false,
+      "micro_live_allowed_now": false,
+      "reason": "Protected 2026 shadow block produced materially negative base and stress economics; production path closed for tested implementation."
     },
     {
       "strategy_id": "MVE-ADX4H-01",
