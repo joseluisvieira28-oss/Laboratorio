@@ -1,0 +1,38 @@
+name: BTC DVOL Futures Source Gate V0.2 Protected Fix
+
+on:
+  push:
+    branches:
+      - btc-dvol-futures-termstructure-v0.1
+    paths:
+      - 'labs/BTC_DVOL_FUTURES_TERMSTRUCTURE_001/source_gate_v02_protectedfix.py'
+      - 'labs/BTC_DVOL_FUTURES_TERMSTRUCTURE_001/PROTECTED_PERIOD_BREACH_REMEDIATION_V0.1.json'
+      - '.github/workflows/btc-dvol-futures-source-v02.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-gate-protected:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependency
+        run: python -m pip install --disable-pip-version-check requests==2.32.3
+      - name: Compile guard
+        run: python -m py_compile labs/BTC_DVOL_FUTURES_TERMSTRUCTURE_001/source_gate_v02_protectedfix.py
+      - name: Execute canonical protected-period-safe source gate
+        run: python labs/BTC_DVOL_FUTURES_TERMSTRUCTURE_001/source_gate_v02_protectedfix.py
+      - name: Upload source receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: btc-dvol-futures-source-v02-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/btc_dvol_futures_termstructure_source_v02/
+          if-no-files-found: error
+          retention-days: 90
