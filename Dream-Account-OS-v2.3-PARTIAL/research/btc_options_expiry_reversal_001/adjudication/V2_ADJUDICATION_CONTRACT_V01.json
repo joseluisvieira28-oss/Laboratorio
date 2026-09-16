@@ -1,0 +1,63 @@
+{
+  "lab_id": "BTC-OPTIONS-EXPIRY-REVERSAL-001",
+  "mve_id": "BOER-BINANCE-PERP-4H2H-001",
+  "adjudication_id": "BOER-V2-ADJUDICATION-001",
+  "status": "FROZEN_DERIVED_METRICS_ONLY_NO_NEW_MARKET_OUTCOMES",
+  "governing_policy_id": "ND-PROMOTION-POLICY-V2.0-FROZEN-2026-09-14",
+  "parent_result_path": "Dream-Account-OS-v2.3-PARTIAL/research/btc_options_expiry_reversal_001/evidence/BOER_FINAL_RESULT_V01.json",
+  "historical_parent_classification_must_remain": "DISCOVERY_NO_EDGE",
+  "market_data_access": "FORBIDDEN",
+  "allowed_input": "Only the immutable 36 resolved Discovery trade records already persisted in BOER_FINAL_RESULT_V01.json plus FROZEN_PROTOCOL_V01.json",
+  "protected_holdouts": {
+    "2024": "MUST_REMAIN_UNOPENED",
+    "2025": "LOCKED",
+    "2026": "LOCKED"
+  },
+  "tier2_hard_eligibility": {
+    "A": "Provenance clean and reproducible",
+    "B": "No leakage hindsight outcome-driven parameter selection or cherry-picking",
+    "C": "Sample adequate under frozen mechanism",
+    "D": "Base mean net expectancy > 0 and profit factor >= 1.00",
+    "E": "Expected reversal relationship/sign correct in aggregate",
+    "F": "No fatal execution/risk pathology; if both available, max drawdown >50% AND cumulative net <5% blocks Tier 2",
+    "G": "Evidence not solely a post-hoc selected asset regime quarter horizon or subgroup"
+  },
+  "support_path_assessed": "PATH_1_STATISTICAL_ONLY",
+  "support_path_1": {
+    "equivalent_primary_statistic": "one-sided 90% percentile-bootstrap lower bound of frozen base-net mean",
+    "reason_for_method": "Direct one-sided equivalent of the original prospectively frozen percentile bootstrap; no alternative test family is selected post-outcome",
+    "bootstrap_repetitions": 10000,
+    "bootstrap_seed": 881321,
+    "pass_rule": "one_sided_90pct_lower_bound > 0 AND at least 50% of major temporal blocks positive",
+    "major_temporal_blocks": "calendar years 2021, 2022, 2023"
+  },
+  "derived_risk_diagnostics": {
+    "profit_factor": "sum positive base-net returns / absolute sum negative base-net returns",
+    "cumulative_net_additive": "sum base-net trade returns",
+    "cumulative_net_compounded": "product(1 + base-net trade return) - 1",
+    "max_drawdown_compounded": "maximum peak-to-trough drawdown of sequential compounded equity curve",
+    "max_single_trade_share_of_positive_net": "largest positive base-net return / total positive base-net returns",
+    "minimum_leave_one_trade_out_mean": "minimum base-net mean after removing each one trade in turn"
+  },
+  "classification_rule": {
+    "tier2": "All A-G hard eligibility true AND Path 1 support true",
+    "tier3": "Clean usable evidence but Tier 2 support fails without Tier 4 rejection evidence",
+    "tier4": "Only if V2 rejection conditions are actually established",
+    "tier1": "NOT_ASSESSED; no independent/OOS replication is opened by this adjudication"
+  },
+  "hard_firewalls": {
+    "no_new_market_data": true,
+    "no_2024_price_access": true,
+    "no_2025_market_data": true,
+    "no_2026_market_data": true,
+    "no_signal_change": true,
+    "no_cost_change": true,
+    "no_event_exclusion": true,
+    "no_post_outcome_parameter_change": true,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "orders": false,
+    "merge_to_main": false,
+    "render_deployment": false
+  }
+}
