@@ -1,0 +1,71 @@
+name: PMD-001 Exploratory Outcomes V08
+
+on:
+  push:
+    branches:
+      - pumpfun-migration-direction-v0.1
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/RUN_EXPLORATORY_OUTCOMES_V08.trigger'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  exploratory-outcomes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout scientific branch
+        uses: actions/checkout@v4
+        with:
+          ref: pumpfun-migration-direction-v0.1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip huggingface_hub pandas pyarrow numpy
+
+      - name: Syntax check
+        run: python -m py_compile Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/exploratory_outcome_audit_v08.py
+
+      - name: Download frozen V0.7 boundary evidence
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: 35149070013
+          name: PMD-001-v07-offline-boundary-readjudication
+          path: v07-boundary-evidence
+
+      - name: Open authorized exploratory outcomes
+        continue-on-error: true
+        run: |
+          python Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/exploratory_outcome_audit_v08.py \
+            --boundary-rows "$GITHUB_WORKSPACE/v07-boundary-evidence/v07_offline_boundary_rows.jsonl" \
+            --data-dir "$GITHUB_WORKSPACE/pmd_v08_data" \
+            --out-dir "$GITHUB_WORKSPACE/pmd_v08_outcomes"
+
+      - name: Print outcome receipt
+        if: always()
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('pmd_v08_outcomes/v08_exploratory_outcome_summary.json')
+          if p.exists():
+              print(p.read_text())
+          else:
+              raise SystemExit('V0.8 summary missing')
+          PY
+
+      - name: Upload exploratory outcome evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: PMD-001-exploratory-outcomes-v08
+          retention-days: 30
+          path: pmd_v08_outcomes/
