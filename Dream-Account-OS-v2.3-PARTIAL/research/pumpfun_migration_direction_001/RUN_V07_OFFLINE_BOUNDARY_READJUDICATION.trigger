@@ -1,0 +1,5 @@
+source_run_id=35132853202
+mode=offline_full_block_parser_readjudication
+outcomes_opened=false
+parser=migrate+migrate_v2
+scientific_source_gate_authority=false
