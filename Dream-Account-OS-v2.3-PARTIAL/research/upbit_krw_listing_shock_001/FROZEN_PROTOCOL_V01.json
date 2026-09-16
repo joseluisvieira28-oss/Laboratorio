@@ -1,0 +1,150 @@
+{
+  "lab_id": "UPBIT-KRW-LISTING-SHOCK-001",
+  "mve_id": "UKLS-UPBIT-KRW-BINANCE-SPOT-001",
+  "status": "FROZEN_PRE_SOURCE_OUTCOME_BLIND",
+  "freeze_date_utc": "2026-09-16",
+  "scientific_question": "When Upbit publicly announces first-time KRW market support for a token that has already traded on Binance Spot USDT for at least 24 hours, does a positive access/liquidity shock remain exploitable on Binance after a realistic five-minute delay?",
+  "economic_mechanism": {
+    "expected_direction": "POSITIVE",
+    "strategy_direction": "LONG_ONLY",
+    "rationale": "A first-time Upbit KRW market adds direct Korean-fiat access and a large exchange-specific demand/liquidity venue to an already price-discovered token. Cross-market segmentation can delay full transmission of the access shock. The experiment tests residual continuation after the public announcement rather than instantaneous reaction or the later Upbit trading-open print.",
+    "materially_distinct_from_prior": [
+      "Not generic price momentum or indicator mining.",
+      "Not Binance perpetual launch shock: the causal event is new Korean fiat-market access on another exchange.",
+      "Not exchange delisting: the shock is access expansion, not forced access removal.",
+      "Not generic cross-venue lead-lag: the event is a public, timestamped structural listing announcement."
+    ]
+  },
+  "official_event_source": {
+    "provider": "Upbit Korea",
+    "list_endpoint": "https://api-manager.upbit.com/api/v1/announcements",
+    "detail_endpoint_template": "https://api-manager.upbit.com/api/v1/announcements/{NOTICE_ID}?os=web",
+    "list_query": {"os": "web", "category": "trade", "per_page": 30},
+    "event_window_utc_start": "2023-01-01T00:00:00Z",
+    "event_window_utc_end_exclusive": "2025-01-01T00:00:00Z",
+    "pagination_rule": "Pagination may traverse current/recent announcement-list metadata only to reach the frozen 2023-2024 window. Out-of-window titles/bodies must not be serialized into evidence. No 2025/2026 market prices may be opened.",
+    "qualifying_title_phrases": ["신규 거래지원 안내", "신규 거래 지원 안내"],
+    "market_required": "KRW",
+    "parser_contract": {
+      "pattern_A": "One or more title segments NAME(SYMBOL)(MARKET-LIST containing 마켓); qualify each segment only when its own market list contains KRW.",
+      "pattern_B": "Exactly one NAME(SYMBOL) plus one separate parenthesized MARKET-LIST containing 마켓; pair them only when there is exactly one symbol candidate.",
+      "ambiguous_or_unparsed": "REJECT",
+      "no_manual_event_addition_after_enumeration": true
+    }
+  },
+  "binance_route": {
+    "provider": "Binance public Data Vision",
+    "venue": "Binance Spot",
+    "pair": "exact SYMBOLUSDT",
+    "archive_template": "data/spot/monthly/klines/{SYMBOL}USDT/1m/{SYMBOL}USDT-1m-{YYYY-MM}.zip",
+    "checksum_required": true,
+    "event_month_archive_required": true,
+    "minimum_preexistence_hours": 24,
+    "preexistence_proof": "First timestamp only from event-month archive; if necessary, first timestamp only from immediately previous monthly archive. OHLCV fields remain forbidden in Source Gate.",
+    "exclude_symbol_prefixes": ["1000", "10000", "1000000"]
+  },
+  "event_universe": {
+    "one_event_per_symbol": true,
+    "event_selection": "chronologically first qualifying Upbit KRW-support announcement per exact symbol within 2023-2024",
+    "exact_symbol_regex": "^[A-Z0-9]{2,20}$",
+    "asset_selection_after_outcomes": false
+  },
+  "source_gate": {
+    "qualified_events_min": 30,
+    "distinct_symbols_min": 25,
+    "events_2023_min": 10,
+    "events_2024_min": 10,
+    "price_fields_parsed": false,
+    "returns_computed": false,
+    "pnl_computed": false,
+    "pass_classification": "SOURCE_DATA_PASS",
+    "below_minimum_classification": "INSUFFICIENT_SOURCE_SAMPLE"
+  },
+  "strategy_prefreeze": {
+    "execution_venue": "Binance Spot exact SYMBOLUSDT",
+    "direction": "LONG_ONLY",
+    "signal_time": "official Upbit announcement listed_at converted to UTC",
+    "entry_delay_minutes": 5,
+    "entry": "open of first complete Binance 1m bar whose open_time is >= signal_time + 5 minutes",
+    "stop_fraction": 0.03,
+    "target_fraction": 0.06,
+    "target_r": 2.0,
+    "max_hold_minutes": 360,
+    "one_position_per_symbol": true,
+    "reentry": false,
+    "same_bar_stop_target": "STOP_FIRST",
+    "gap_stop_fill": "next observable bar open if it is already below stop; otherwise stop price",
+    "gap_target_fill": "target price; never a more favorable gap fill",
+    "time_exit": "close of last complete 1m bar in the 360-minute hold window",
+    "base_round_trip_cost_fraction": 0.0020,
+    "stress_round_trip_cost_fraction": 0.0030,
+    "leverage": false
+  },
+  "discovery": {
+    "event_years": [2023, 2024],
+    "open_price_outcomes_only_after_source_data_pass": true,
+    "sample_floor_evaluable": 25,
+    "bootstrap": {"unit": "event/trade", "resamples": 10000, "seed": 20260916, "interval": 0.95},
+    "promotion_gates_all_required": {
+      "evaluable_trades_gte": 25,
+      "base_mean_net_R_gt": 0.0,
+      "base_profit_factor_gt": 1.15,
+      "bootstrap_95_lower_mean_net_R_gt": 0.0,
+      "stress_mean_net_R_gt": 0.0,
+      "stress_profit_factor_gt": 1.0,
+      "positive_years_required": 2,
+      "max_single_event_share_positive_R_lte": 0.25,
+      "minimum_leave_one_event_out_mean_net_R_gt": 0.0,
+      "execution_unresolved_eq": 0,
+      "source_integrity_failures_eq": 0
+    }
+  },
+  "independent_validation": {
+    "year": 2025,
+    "status": "LOCKED",
+    "open_only_if_discovery_survives": true,
+    "rules_identical": true,
+    "sample_floor_evaluable": 10,
+    "gates_all_required": {
+      "base_mean_net_R_gt": 0.0,
+      "base_profit_factor_gt": 1.0,
+      "stress_mean_net_R_gt": 0.0,
+      "max_single_event_share_positive_R_lte": 0.35,
+      "execution_unresolved_eq": 0,
+      "source_integrity_failures_eq": 0
+    }
+  },
+  "protected_holdout": {
+    "year": 2026,
+    "status": "LOCKED",
+    "open_only_after_independent_validation_survives": true,
+    "no_partial_period_rescue": true
+  },
+  "classifications": [
+    "SOURCE_DATA_PASS",
+    "INSUFFICIENT_SOURCE_SAMPLE",
+    "SOURCE_ACCESS_BLOCKED",
+    "TECHNICAL_FAILURE",
+    "DATA_FAILURE",
+    "INSUFFICIENT_EVALUABLE_SAMPLE",
+    "DISCOVERY_NO_EDGE",
+    "DISCOVERY_SURVIVES",
+    "INDEPENDENT_VALIDATION_FAIL",
+    "INDEPENDENT_VALIDATION_SURVIVES"
+  ],
+  "hard_firewalls": {
+    "research_only": true,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "orders": false,
+    "post_put_patch_delete_exchange": false,
+    "merge_to_main": false,
+    "render_deployment": false,
+    "post_outcome_tuning": false,
+    "asset_rescue": false,
+    "timeframe_rescue": false,
+    "cost_rescue": false,
+    "source_threshold_rescue": false,
+    "failed_hypothesis_rewrite": false
+  }
+}
