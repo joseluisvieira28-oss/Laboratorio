@@ -1,0 +1,31 @@
+name: PMD-001 V09 Feature Schema Probe
+
+on:
+  push:
+    branches:
+      - pumpfun-migration-direction-v0.1
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/RUN_V09_SCHEMA_PROBE.trigger'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  schema-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pumpfun-migration-direction-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --upgrade pip huggingface_hub pyarrow
+      - run: python Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/exploratory_feature_schema_probe_v09.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PMD-001-v09-feature-schema-probe
+          retention-days: 30
+          path: pmd_v09_schema_probe.json
