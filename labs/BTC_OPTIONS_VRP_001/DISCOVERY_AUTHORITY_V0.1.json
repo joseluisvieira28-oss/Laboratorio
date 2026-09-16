@@ -1,0 +1,55 @@
+{
+  "lab_id": "BTC-OPTIONS-VRP-001",
+  "mve_id": "OVRP-DVOL-RV30-001",
+  "authority_drive_id": "1n1Km2cHBgmImpIWxJoIJd98rWNx-NAei_akTFM_vzPU",
+  "source_receipt_drive_id": "1GK9hlKrH88Za0e6KG8MpQgyxiiqETpnIgIv4gM9tgfk",
+  "source_gate_run_id": 35064961896,
+  "research_only": true,
+  "discovery_outcomes_authorized": true,
+  "strategy_pnl_authorized": false,
+  "forward_directional_returns_authorized": false,
+  "access_2025_authorized": false,
+  "access_2026_authorized": false,
+  "live_trading_authorized": false,
+  "exchange_mutation_authorized": false,
+  "merge_to_main_authorized": false,
+  "source_binding": {
+    "deribit_dvol_ledger_sha256": "36a56f57411d187a97413f47a53cedb4afad7a0812a09f35d6a67483c6704cd7",
+    "binance_timestamp_manifest_sha256": "a38782c5867d1b5dc538fe4b0a23f521775855e8dca4ff86679c241f0f7ddbbf"
+  },
+  "period": {
+    "start_date": "2021-04-01",
+    "end_date": "2024-12-31"
+  },
+  "observation_schedule": {
+    "anchor_date": "2021-04-01",
+    "cadence_days": 7,
+    "future_window_days": 30,
+    "minimum_n": 190
+  },
+  "definitions": {
+    "iv30": "Deribit BTC DVOL 1D candle close for date t, annualized vol percent",
+    "rv30": "100*sqrt((365/30)*sum_{i=1..30}(ln(C[t+i]/C[t+i-1])^2))",
+    "vrp": "iv30^2-rv30^2",
+    "vol_gap": "iv30-rv30"
+  },
+  "statistics": {
+    "hac_lag_weekly_observations": 5,
+    "bootstrap_replications": 5000,
+    "bootstrap_block_observations": 5,
+    "bootstrap_seed": 230911
+  },
+  "promotion_gates": {
+    "mean_vrp_gt_0": true,
+    "median_vrp_gt_0": true,
+    "positive_fraction_gte": 0.55,
+    "hac_95_lower_gt_0": true,
+    "bootstrap_95_lower_gt_0": true,
+    "nonnegative_years_2021_2024_gte": 3,
+    "year_2023_nonnegative": true,
+    "year_2024_nonnegative": true,
+    "exact_source_binding_required": true,
+    "protected_period_access_forbidden": true
+  },
+  "post_rule": "No rescue by cadence, annualization, DVOL OHLC field, RV estimator, threshold, regime, sample, year, lag, block length, sign inversion, or strategy substitution."
+}
