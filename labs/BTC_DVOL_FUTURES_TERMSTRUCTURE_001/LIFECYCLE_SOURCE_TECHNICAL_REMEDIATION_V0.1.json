@@ -1,0 +1,23 @@
+{
+  "lab_id": "BTC-DVOL-FUTURES-TERMSTRUCTURE-001",
+  "source_gate_id": "DVOL-TS-LIFECYCLE-SOURCE-001",
+  "date": "2026-09-16",
+  "failed_run": {
+    "github_run_id": 35087414533,
+    "job_id": 104765411619,
+    "head_sha": "340b5ca600d430e860c565f29db1d9f3b657525b",
+    "classification": "LIFECYCLE_SOURCE_ACQUISITION_TECHNICAL_FAILURE"
+  },
+  "failure_point": "The first deterministic Wednesday candidate was rejected by archived get_instrument with JSON-RPC code -32602, message 'Invalid params', data.reason='wrong format', data.param='instrument_name'. No accepted contract metadata and no lifecycle trade payload had been acquired before failure.",
+  "authorized_transport_interpretation": "For the deterministic Wednesday candidate enumeration only, an exact get_instrument error with code -32602 AND data.param='instrument_name' AND data.reason='wrong format' is treated as a nonexistent-candidate miss, equivalent to instrument-not-found. It is not accepted as a contract and does not enter any threshold denominator.",
+  "why_scientific_contract_is_unchanged": "The calendar candidate list, exact naming rule, acceptance metadata conditions, source thresholds, trade endpoint, contract-life bounds and all outcome firewalls remain unchanged. This only maps a provider-specific negative exact-lookup response to the prospectively defined candidate-miss state.",
+  "forbidden_changes": [
+    "do not alter candidate Wednesday dates",
+    "do not add observed instrument dates manually",
+    "do not lower source viability thresholds",
+    "do not change qualifying-contract definition",
+    "do not access 2025 or 2026",
+    "do not open price, direction, basis, convergence, return or PnL outcomes"
+  ],
+  "canonical_rerun_requirement": "A new commit must patch only candidate-miss handling and rerun the same DVOL-TS-LIFECYCLE-SOURCE-001 authority."
+}
