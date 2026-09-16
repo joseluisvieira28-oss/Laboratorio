@@ -127,6 +127,7 @@ def main() -> int:
     with out_path.open("w", encoding="utf-8") as f:
         for values in rows:
             obj = dict(zip(cols, values))
+            t0_date = str(obj["t0"])[:10]
             # Preserve only timing/identity metadata; never price values.
             serial = {
                 "lab": "PMD-001",
@@ -139,7 +140,7 @@ def main() -> int:
                 "top10_pct_suspect": bool(obj["top10_pct_suspect"]) if obj["top10_pct_suspect"] is not None else False,
                 "entry_ts_meta_only": str(obj["entry_ts"]),
                 "exit_ts_meta_only": str(obj["exit_ts"]),
-                "regime_post_2026_07_04": str(obj["t0"]).startswith(("2026-07-05","2026-07-06","2026-07-07","2026-07-08","2026-07-09","2026-07-10","2026-07-11","2026-07-12","2026-07-13","2026-07-14")),
+                "regime_on_or_after_2026_07_04": t0_date >= "2026-07-04",
             }
             f.write(json.dumps(serial, sort_keys=True, default=str) + "\n")
 
