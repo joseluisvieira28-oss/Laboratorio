@@ -1,0 +1,46 @@
+name: USD-NET-LIQUIDITY-001 Discovery V0.1
+
+on:
+  push:
+    branches: [usd-net-liquidity-v0.1]
+    paths:
+      - '.github/workflows/usd-net-liquidity-discovery-v01.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  discovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: usd-net-liquidity-v0.1
+      - name: Verify prospective Discovery authority
+        run: |
+          set -euo pipefail
+          test -f labs/USD_NET_LIQUIDITY_001/DISCOVERY_AUTHORITY_V0.1.json
+          test -f labs/USD_NET_LIQUIDITY_001/discovery_v01.py
+          python - <<'PY'
+          import json
+          p='labs/USD_NET_LIQUIDITY_001/DISCOVERY_AUTHORITY_V0.1.json'
+          a=json.load(open(p))
+          assert a['discovery_authorized'] is True
+          assert a['source_classification']=='SOURCE_DATA_PASS'
+          assert a['oos_2025_authorized'] is False
+          assert a['access_2026_authorized'] is False
+          assert a['post_outcome_tuning'] is False
+          print('DISCOVERY_AUTHORITY_PASS')
+          PY
+      - name: Compile frozen runner
+        run: python -m py_compile labs/USD_NET_LIQUIDITY_001/discovery_v01.py
+      - name: Execute one-shot Discovery 2018-2024 only
+        run: python labs/USD_NET_LIQUIDITY_001/discovery_v01.py
+      - name: Upload immutable Discovery evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: usd-net-liquidity-001-discovery-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/usd_net_liquidity_discovery_v01/
+          retention-days: 90
