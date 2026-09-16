@@ -1,0 +1,73 @@
+name: BNB Launchpool Demand Final Presample Source V0.1
+
+on:
+  push:
+    branches:
+      - bnb-launchpool-demand-final-holdout-pre2022-v01
+
+permissions:
+  contents: write
+
+jobs:
+  source-gate:
+    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: bnb-launchpool-demand-final-holdout-pre2022-v01
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Preflight freeze
+        shell: bash
+        run: |
+          set -euo pipefail
+          B='Dream-Account-OS-v2.3-PARTIAL/research/bnb_launchpool_demand_001'
+          python -m py_compile "$B/final_presample/source_gate_v01.py"
+          python - <<'PY'
+          import json
+          p='Dream-Account-OS-v2.3-PARTIAL/research/bnb_launchpool_demand_001/BNB_LAUNCHPOOL_DEMAND_001_FINAL_PRESAMPLE_HOLDOUT_FREEZE_V0.1.json'
+          d=json.load(open(p))
+          assert d['status']=='FROZEN_BEFORE_PRESAMPLE_SOURCE_ENUMERATION_OR_MARKET_OUTCOME_ACCESS'
+          assert d['execution_rule_unchanged']['side']=='LONG_BNBBTC'
+          assert d['execution_rule_unchanged']['hold']=='24 hours from entry timestamp'
+          assert d['execution_rule_unchanged']['round_trip_cost_base_bps']==20.0
+          assert d['execution_rule_unchanged']['round_trip_cost_stress_bps']==30.0
+          assert d['path2_gates_all_required']['minimum_resolved_trades']==25
+          assert d['stop_rule'].startswith('After this holdout is opened')
+          PY
+      - name: Execute outcome-blind source enumeration
+        shell: bash
+        run: |
+          set -euo pipefail
+          B='Dream-Account-OS-v2.3-PARTIAL/research/bnb_launchpool_demand_001'
+          python "$B/final_presample/source_gate_v01.py"
+          python - <<'PY'
+          import json
+          p='Dream-Account-OS-v2.3-PARTIAL/research/bnb_launchpool_demand_001/final_presample/source_gate_v01/BNB_LAUNCHPOOL_DEMAND_001_FINAL_PRESAMPLE_SOURCE_GATE_V0.1.json'
+          d=json.load(open(p))
+          assert d['market_prices_opened'] is False and d['returns_computed'] is False and d['pnl_computed'] is False
+          assert d['new_2025_market_access'] is False and d['access_2026_market'] is False
+          print(json.dumps({k:d[k] for k in ['classification','recovered_count','missing_project_numbers','ineligible_project_numbers','canonical_event_manifest_sha256']},indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bnb-launchpool-demand-final-presample-source-${{ github.run_id }}-${{ github.run_attempt }}
+          path: Dream-Account-OS-v2.3-PARTIAL/research/bnb_launchpool_demand_001/final_presample/source_gate_v01/
+          retention-days: 90
+          if-no-files-found: error
+      - name: Persist source receipt
+        shell: bash
+        run: |
+          set -euo pipefail
+          B='Dream-Account-OS-v2.3-PARTIAL/research/bnb_launchpool_demand_001'
+          git config user.name 'crypto-lab-bnb-launchpool-bot'
+          git config user.email 'crypto-lab-bnb-launchpool-bot@users.noreply.github.com'
+          git add "$B/final_presample/source_gate_v01/BNB_LAUNCHPOOL_DEMAND_001_FINAL_PRESAMPLE_SOURCE_GATE_V0.1.json"
+          git add "$B/final_presample/source_gate_v01/raw" || true
+          git commit -m 'BNB-LAUNCHPOOL-DEMAND-001: final presample source gate closeout [skip ci]' || true
+          git pull --rebase origin bnb-launchpool-demand-final-holdout-pre2022-v01
+          git push origin HEAD:bnb-launchpool-demand-final-holdout-pre2022-v01
