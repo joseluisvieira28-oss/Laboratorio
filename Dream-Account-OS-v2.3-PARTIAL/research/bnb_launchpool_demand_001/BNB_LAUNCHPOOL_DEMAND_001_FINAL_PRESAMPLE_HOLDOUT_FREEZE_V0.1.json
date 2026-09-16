@@ -1,0 +1,109 @@
+{
+  "lab_id": "BNB-LAUNCHPOOL-DEMAND-001",
+  "mve_id": "BLP-BNBBTC-24H-001",
+  "protocol_id": "BNB-LAUNCHPOOL-DEMAND-001-FINAL-PRESAMPLE-HOLDOUT-V0.1",
+  "status": "FROZEN_BEFORE_PRESAMPLE_SOURCE_ENUMERATION_OR_MARKET_OUTCOME_ACCESS",
+  "freeze_date_utc": "2026-09-16",
+  "authority": "USER_EXPLICIT_CONTINUE_ATTACK_UNTIL_END",
+  "purpose": "One final historically untouched, temporally independent pre-Discovery replication using Binance Launchpool projects 1 through 30. This is the last historical promotion attempt for this exact MVE. It may not modify the Discovery or 2025 OOS rules and may not be followed by another historical rescue if it fails.",
+  "governing_policy": {
+    "program": "CRYPTO NEAR-DIAMONDS RECOVERY PROGRAM — V2",
+    "policy_id": "ND-PROMOTION-POLICY-V2.0-FROZEN-2026-09-14",
+    "current_classification": "TIER_3_WATCHLIST_NEAR_DIAMOND_CANDIDATE",
+    "target": "TIER_2_PROMOTED_CANDIDATE_QUASE_DIAMANTE",
+    "support_path": "PATH_2_GENUINELY_INDEPENDENT_REPLICATION"
+  },
+  "evidence_binding": {
+    "sealed_discovery_head": "46104f6057701abf6b7c6330263f94f0557fcb42",
+    "sealed_2025_oos_head": "6ace8c59ef64f7c2606f6567f45956dd807842b8",
+    "discovery_result": "DISCOVERY_FAIL_NO_PROMOTION",
+    "discovery_n": 31,
+    "discovery_base_mean_net_bps": 88.86645271051405,
+    "discovery_base_pf": 2.2103965201989317,
+    "oos_2025_result": "TIER_3_WATCHLIST_REMAINS",
+    "oos_2025_n": 8,
+    "oos_2025_base_mean_net_bps": 57.61738289284739,
+    "oos_2025_base_pf": 2.5477530555582852,
+    "oos_2025_only_failed_gate": "max_single_trade_share_of_total_positive_base_net_lte_0_40"
+  },
+  "protected_population": {
+    "launchpool_project_numbers": "1 through 30 inclusive",
+    "temporal_relationship": "strictly before Discovery project #31",
+    "source_provider": "official Binance Support announcements only",
+    "inclusion": "Official Binance Launchpool project #1-#30 with explicit BNB staking/locking pool evidence.",
+    "exclusion": "Any non-Launchpool product, duplicate/repost, project outside #1-#30, or official project announcement without explicit BNB staking/locking.",
+    "completeness_gate": "Every integer project number 1..30 must be accounted for exactly once as eligible or explicitly ineligible with official-page evidence before market prices may be opened.",
+    "source_enumeration_route": "Binance public CMS announcement feed catalogId=48 may be paginated outcome-blindly, then every candidate must be validated through the official article-detail CMS endpoint and canonical support URL.",
+    "source_enumeration_stop": "Stop pagination only after all project numbers 1..30 are recovered and validated, or after the feed reaches articles older than 2020-08-01 with no unresolved project number; otherwise fail closed.",
+    "market_prices_forbidden_during_source_enumeration": true,
+    "returns_forbidden_during_source_enumeration": true,
+    "pnl_forbidden_during_source_enumeration": true
+  },
+  "execution_rule_unchanged": {
+    "side": "LONG_BNBBTC",
+    "cluster_rule": "Adjacent eligible announcements separated by <=60 minutes belong to one information cluster; signal time is earliest canonical publication timestamp.",
+    "entry": "first 15-minute BNBBTC bar open whose timestamp is strictly greater than signal_time",
+    "hold": "24 hours from entry timestamp",
+    "exit": "BNBBTC 15-minute bar open exactly 24 hours after entry timestamp",
+    "one_active_trade": true,
+    "overlap_rule": "If a later cluster entry is strictly earlier than the active trade exit, suppress the later signal; no delayed replacement or stacking.",
+    "stop": null,
+    "target": null,
+    "leverage": "NONE",
+    "round_trip_cost_base_bps": 20.0,
+    "round_trip_cost_stress_bps": 30.0,
+    "pair": "BNBBTC SPOT",
+    "interval": "15m"
+  },
+  "market_data_contract": {
+    "provider": "Binance Data Vision",
+    "symbol": "BNBBTC",
+    "interval": "15m",
+    "months": "Only months required by the validated #1-#30 execution paths; no 2023, 2024, 2025, or 2026 archives may be requested.",
+    "official_checksum_required": true,
+    "zip_crc_required": true,
+    "timestamp_audit_before_open_values": true,
+    "only_open_field_may_be_parsed_after_source_and_timestamp_pass": true,
+    "high_low_close_volume_forbidden": true
+  },
+  "path2_gates_all_required": {
+    "minimum_resolved_trades": 25,
+    "source_provenance_clean_and_reproducible": true,
+    "no_leakage_hindsight_or_post_outcome_selection": true,
+    "base_mean_net_bps_gt_zero": true,
+    "base_profit_factor_gte_one": true,
+    "expected_sign_correct_long_bnbbtc": true,
+    "max_single_trade_share_of_total_positive_base_net_lte": 0.40,
+    "unresolved_selected_execution_paths": 0,
+    "source_rule_deviations": 0,
+    "trading_rule_deviations": 0,
+    "fatal_execution_or_risk_pathology": false
+  },
+  "report_only": {
+    "stress_30bps": true,
+    "event_level_bootstrap_5000_seed": 160930,
+    "calendar_subperiods": true,
+    "median": true,
+    "win_rate": true,
+    "compounded_return_and_drawdown": true
+  },
+  "decision_rule": {
+    "all_path2_gates_pass": "TIER_2_PROMOTED_CANDIDATE_QUASE_DIAMANTE",
+    "any_path2_gate_fail_with_clean_adequate_sample": "TIER_3_WATCHLIST_REMAINS_HISTORICAL_RESCUE_CLOSED",
+    "source_or_execution_failure": "NON_SCIENTIFIC_BLOCKED_TIER3_REMAINS",
+    "insufficient_sample": "TIER_3_WATCHLIST_REMAINS_HISTORICAL_RESCUE_CLOSED"
+  },
+  "stop_rule": "After this holdout is opened, no other historical period, alternate horizon, pair, direction, clustering rule, event subset, cost assumption, stop/target overlay or parameter variant may be used to promote this MVE. If Tier 2 is not earned here, only genuinely future prospective evidence may change the classification.",
+  "governance": {
+    "research_only": true,
+    "fail_closed": true,
+    "no_live_trading": true,
+    "no_exchange_mutation": true,
+    "no_orders": true,
+    "no_alerts_or_webhooks": true,
+    "no_merge_to_main": true,
+    "no_deployment": true,
+    "no_new_2025_market_access": true,
+    "no_2026_market_access": true
+  }
+}
