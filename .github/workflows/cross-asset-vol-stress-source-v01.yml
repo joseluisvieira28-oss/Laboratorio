@@ -1,0 +1,36 @@
+name: CROSS-ASSET-VOL-STRESS-001 Source Gate V0.1
+on:
+  push:
+    branches: [cross-asset-vol-stress-v0.1]
+    paths:
+      - 'labs/CROSS_ASSET_VOL_STRESS_001/SOURCE_GATE_V0.1.md'
+      - 'labs/CROSS_ASSET_VOL_STRESS_001/source_gate_v01.py'
+      - '.github/workflows/cross-asset-vol-stress-source-v01.yml'
+jobs:
+  source-gate:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: cross-asset-vol-stress-v0.1
+      - name: Verify frozen source contract
+        run: |
+          set -euo pipefail
+          test -f labs/CROSS_ASSET_VOL_STRESS_001/SOURCE_GATE_V0.1.md
+          test -f labs/CROSS_ASSET_VOL_STRESS_001/source_gate_v01.py
+          grep -q '2018, 2019, 2020, 2021, 2022, 2023, 2024' labs/CROSS_ASSET_VOL_STRESS_001/SOURCE_GATE_V0.1.md
+          grep -q 'no URL/request for 2025 or 2026' labs/CROSS_ASSET_VOL_STRESS_001/SOURCE_GATE_V0.1.md
+      - name: Compile source gate
+        run: python -m py_compile labs/CROSS_ASSET_VOL_STRESS_001/source_gate_v01.py
+      - name: Execute Cboe source gate only
+        run: python labs/CROSS_ASSET_VOL_STRESS_001/source_gate_v01.py
+      - name: Upload immutable source evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cross-asset-vol-stress-001-source-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/cross_asset_vol_stress_source_v01/
+          retention-days: 90
+          if-no-files-found: warn
