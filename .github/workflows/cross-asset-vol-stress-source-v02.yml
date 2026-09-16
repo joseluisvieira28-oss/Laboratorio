@@ -1,0 +1,36 @@
+name: CROSS-ASSET-VOL-STRESS-001 Source Gate V0.2
+on:
+  push:
+    branches: [cross-asset-vol-stress-v0.1]
+    paths:
+      - 'labs/CROSS_ASSET_VOL_STRESS_001/SOURCE_GATE_REMEDIATION_V0.2.md'
+      - 'labs/CROSS_ASSET_VOL_STRESS_001/source_gate_v02.py'
+      - '.github/workflows/cross-asset-vol-stress-source-v02.yml'
+jobs:
+  source-gate-v02:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: cross-asset-vol-stress-v0.1
+      - name: Verify frozen V0.2 remediation
+        run: |
+          set -euo pipefail
+          test -f labs/CROSS_ASSET_VOL_STRESS_001/SOURCE_GATE_REMEDIATION_V0.2.md
+          test -f labs/CROSS_ASSET_VOL_STRESS_001/source_gate_v02.py
+          grep -q 'www-api.cboe.com' labs/CROSS_ASSET_VOL_STRESS_001/SOURCE_GATE_REMEDIATION_V0.2.md
+          grep -q 'No BTC market data' labs/CROSS_ASSET_VOL_STRESS_001/SOURCE_GATE_REMEDIATION_V0.2.md
+      - name: Compile V0.2 source gate
+        run: python -m py_compile labs/CROSS_ASSET_VOL_STRESS_001/source_gate_v02.py
+      - name: Execute official Cboe API source gate only
+        run: python labs/CROSS_ASSET_VOL_STRESS_001/source_gate_v02.py
+      - name: Upload immutable V0.2 source evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cross-asset-vol-stress-001-source-v02-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/cross_asset_vol_stress_source_v02/
+          retention-days: 90
+          if-no-files-found: warn
