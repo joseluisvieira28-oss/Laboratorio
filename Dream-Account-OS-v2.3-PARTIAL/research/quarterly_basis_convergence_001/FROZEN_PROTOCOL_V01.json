@@ -1,0 +1,181 @@
+{
+  "lab_id": "QUARTERLY-BASIS-CONVERGENCE-001",
+  "mve_id": "QBC-BINANCE-USDM-7D-001",
+  "status": "FROZEN_PRE_SOURCE_OUTCOME_BLIND",
+  "freeze_date_utc": "2026-09-16",
+  "research_question": "Does the mechanically finite life of Binance USD-M BTC/ETH quarterly delivery futures create a robust, executable delta-neutral basis-convergence edge when the dated future is sufficiently rich seven days before expiry?",
+  "economic_mechanism": {
+    "type": "FIXED_EXPIRY_BASIS_CONVERGENCE",
+    "rationale": "A dated futures contract must converge toward its settlement reference as expiry approaches. When a quarterly future trades at a sufficiently positive premium to spot seven days before expiry, a fully collateralized long-spot/short-future pair can harvest convergence without requiring a directional BTC or ETH forecast. This is structurally different from perpetual cash-and-carry because there is a known terminal date and no perpetual funding leg.",
+    "materially_distinct_from_prior": [
+      "Not the previously tested spot-perpetual carry implementation; this uses dated quarterly delivery futures with fixed expiry.",
+      "No perpetual funding-rate dependence.",
+      "No directional long/short crypto forecast.",
+      "No indicator, momentum, taker-flow, OI, macro-surprise, or listing-event rescue."
+    ]
+  },
+  "universe": {
+    "assets": ["BTC", "ETH"],
+    "spot_pairs": ["BTCUSDT", "ETHUSDT"],
+    "dated_future_regex": "^(BTC|ETH)USDT_(21|22|23|24)[0-9]{4}$",
+    "contract_type": "Binance USD-M quarterly delivery futures",
+    "valid_expiry_months": [3, 6, 9, 12],
+    "expiry_rule": "Contract suffix date must be the last Friday of its calendar quarter month; expiry timestamp is 08:00:00 UTC on that date.",
+    "asset_selection_after_outcomes": false
+  },
+  "source": {
+    "provider": "Binance public Data Vision",
+    "s3_endpoint": "https://s3-ap-northeast-1.amazonaws.com/data.binance.vision",
+    "data_endpoint": "https://data.binance.vision",
+    "futures_root": "data/futures/um/monthly/klines/",
+    "spot_root": "data/spot/monthly/klines/",
+    "granularity": "1m",
+    "source_years": [2021, 2022, 2023, 2024],
+    "discovery_expiry_years": [2021, 2022, 2023],
+    "independent_validation_expiry_year": 2024,
+    "protected_years": [2025, 2026],
+    "checksum_required": true,
+    "source_gate_price_fields_forbidden": true
+  },
+  "timing": {
+    "signal_snapshot": "expiry minus 7 calendar days at 07:59 UTC close, using the last complete 1m bar strictly before entry",
+    "entry": "expiry minus 7 calendar days at 08:00 UTC open on both spot and dated-future legs",
+    "forced_exit": "expiry date at 07:45 UTC open on both legs, fifteen minutes before 08:00 UTC expiry",
+    "final_10_minutes_never_opened_as_new_position": true
+  },
+  "source_gate": {
+    "qualified_contract_routes_min": 30,
+    "qualified_btc_routes_min": 15,
+    "qualified_eth_routes_min": 15,
+    "qualified_routes_2021_min": 7,
+    "qualified_routes_2022_min": 7,
+    "qualified_routes_2023_min": 7,
+    "qualified_routes_2024_min": 7,
+    "required_per_route": [
+      "official futures monthly 1m archive covering snapshot, entry and forced-exit timestamps",
+      "official exact spot monthly 1m archive covering snapshot, entry and forced-exit timestamps",
+      "provider checksum matches downloaded archive SHA256",
+      "only timestamp column may be parsed at Source Gate"
+    ],
+    "pass_classification": "SOURCE_DATA_PASS",
+    "below_minimum_classification": "INSUFFICIENT_SOURCE_SAMPLE"
+  },
+  "strategy": {
+    "pair": "LONG_SPOT_SHORT_DATED_FUTURE",
+    "leverage": false,
+    "collateral_assumption": "Spot notional N fully funded plus independent USDT collateral of at least N reserved for the short futures leg; no capital efficiency assumption is used for promotion.",
+    "signal_basis": "future_snapshot_close / spot_snapshot_close - 1",
+    "minimum_entry_basis_fraction": 0.007,
+    "entry_if": "signal_basis >= 0.007",
+    "spot_leg": "long exact Binance Spot SYMBOLUSDT at frozen entry open",
+    "future_leg": "short equal USD notional of exact quarterly contract at frozen entry open",
+    "notional_matching": "Both legs use equal initial USD notional N at entry.",
+    "target_basis_fraction": 0.001,
+    "target_rule": "After each complete 1m bar, if close_basis <= 0.001, exit both legs at next minute open.",
+    "basis_stop_additive_fraction": 0.015,
+    "stop_rule": "After each complete 1m bar, if close_basis >= entry_signal_basis + 0.015, exit both legs at next minute open.",
+    "same_bar_target_stop": "If both target and stop predicates are simultaneously true on one completed bar, STOP_FIRST.",
+    "forced_exit_rule": "If neither target nor stop has executed earlier, exit both legs at the frozen 07:45 UTC forced-exit open.",
+    "one_trade_per_contract": true,
+    "reentry": false,
+    "base_pair_round_trip_cost_fraction_of_single_leg_notional": 0.003,
+    "stress_pair_round_trip_cost_fraction_of_single_leg_notional": 0.005,
+    "cost_rationale": "Base assumes 20 bps spot round-trip plus 10 bps futures round-trip on single-leg notional N; stress increases total pair cost to 50 bps.",
+    "gross_pair_return_on_N": "spot_exit/spot_entry - 1 + (future_entry - future_exit)/future_entry",
+    "net_pair_return_on_N": "gross_pair_return_on_N - pair_round_trip_cost_fraction",
+    "fully_collateralized_capital_return": "net_pair_return_on_N / 2",
+    "missing_execution_bar": "DATA_FAILURE_OR_EXECUTION_UNRESOLVED; never interpolate or use favorable substitute"
+  },
+  "discovery": {
+    "expiry_years": [2021, 2022, 2023],
+    "nominal_contract_routes": 24,
+    "sample_floor_resolved_trades": 12,
+    "asset_trade_floor": 4,
+    "traded_years_min": 2,
+    "positive_years_min": 2,
+    "bootstrap": {
+      "unit": "trade/event",
+      "resamples": 10000,
+      "seed": 20260916,
+      "interval": 0.95
+    },
+    "promotion_gates_all_required": {
+      "resolved_trades_gte": 12,
+      "btc_trades_gte": 4,
+      "eth_trades_gte": 4,
+      "traded_years_gte": 2,
+      "positive_years_gte": 2,
+      "base_mean_net_pair_return_gt": 0.0,
+      "base_profit_factor_gt": 1.25,
+      "bootstrap_95_lower_mean_net_pair_return_gt": 0.0,
+      "stress_mean_net_pair_return_gt": 0.0,
+      "stress_profit_factor_gt": 1.0,
+      "btc_mean_net_pair_return_gt": 0.0,
+      "eth_mean_net_pair_return_gt": 0.0,
+      "max_single_contract_share_positive_net_pnl_lte": 0.30,
+      "minimum_leave_one_contract_out_mean_net_pair_return_gt": 0.0,
+      "execution_unresolved_eq": 0,
+      "source_integrity_failures_eq": 0
+    }
+  },
+  "independent_validation": {
+    "expiry_year": 2024,
+    "status": "LOCKED_UNTIL_DISCOVERY_SURVIVES",
+    "rules_identical": true,
+    "sample_floor_resolved_trades": 4,
+    "gates_all_required": {
+      "resolved_trades_gte": 4,
+      "base_mean_net_pair_return_gt": 0.0,
+      "base_profit_factor_gt": 1.0,
+      "stress_mean_net_pair_return_gt": 0.0,
+      "max_single_contract_share_positive_net_pnl_lte": 0.50,
+      "execution_unresolved_eq": 0,
+      "source_integrity_failures_eq": 0
+    }
+  },
+  "protected_holdout": {
+    "year_2025": "LOCKED",
+    "year_2026": "LOCKED",
+    "open_only_under_new_prospective_authority_after_2024_validation_survives": true,
+    "no_partial_period_rescue": true
+  },
+  "execution_stress_if_validation_survives": {
+    "required_before_shadow": [
+      "reconfirm base and 50 bps stress costs",
+      "leave-one-contract-out stability",
+      "asset concentration",
+      "year/quarter concentration",
+      "bar-gap and execution-path audit",
+      "full-collateral capital-return reporting",
+      "liquidation/margin operational review before any micro-live consideration"
+    ]
+  },
+  "classifications": [
+    "SOURCE_DATA_PASS",
+    "INSUFFICIENT_SOURCE_SAMPLE",
+    "SOURCE_ACCESS_BLOCKED",
+    "TECHNICAL_FAILURE",
+    "DATA_FAILURE",
+    "INSUFFICIENT_EVALUABLE_SAMPLE",
+    "DISCOVERY_NO_EDGE",
+    "DISCOVERY_SURVIVES",
+    "INDEPENDENT_VALIDATION_FAIL",
+    "INDEPENDENT_VALIDATION_SURVIVES"
+  ],
+  "hard_firewalls": {
+    "research_only": true,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "orders": false,
+    "post_put_patch_delete_exchange": false,
+    "merge_to_main": false,
+    "render_deployment": false,
+    "post_outcome_tuning": false,
+    "asset_rescue": false,
+    "timeframe_rescue": false,
+    "threshold_rescue": false,
+    "cost_rescue": false,
+    "horizon_rescue": false,
+    "failed_hypothesis_rewrite": false
+  }
+}
