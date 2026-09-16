@@ -5,6 +5,7 @@ import json
 import sys
 
 from .config import Settings
+from .deployment import RiskLimits, stop_based_position_size
 from .evidence import EvidenceStore
 from .engine import RadarEngine
 from .market import BinancePublicFeed, BinanceSpotPublicFeed
@@ -42,7 +43,9 @@ def run_once(engine: RadarEngine) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="CRYPTO EDGE RADAR V0.2 — public shadow only")
+    parser = argparse.ArgumentParser(
+        description="CRYPTO EDGE RADAR V0.3 — public shadow + advisory deployment prep"
+    )
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("once", help="run one public-data observation cycle")
 
@@ -53,7 +56,42 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("status", help="read latest persisted service health status")
     sub.add_parser("verify-evidence", help="verify the local evidence hash chain")
 
+    risk_budget = sub.add_parser(
+        "risk-budget", help="print default launch risk amounts for an account equity"
+    )
+    risk_budget.add_argument("--equity", type=float, required=True)
+
+    position_size = sub.add_parser(
+        "position-size",
+        help="advisory stop-based size; valid only for a frozen bounded-loss model",
+    )
+    position_size.add_argument("--equity", type=float, required=True)
+    position_size.add_argument("--entry", type=float, required=True)
+    position_size.add_argument("--stop", type=float, required=True)
+
     args = parser.parse_args(argv)
+
+    if args.command == "risk-budget":
+        try:
+            print(json.dumps(RiskLimits().money_budgets(args.equity), sort_keys=True))
+            return 0
+        except Exception as exc:
+            print(json.dumps({"status": "FAIL_CLOSED", "error": str(exc)}, sort_keys=True))
+            return 2
+
+    if args.command == "position-size":
+        try:
+            print(
+                json.dumps(
+                    stop_based_position_size(args.equity, args.entry, args.stop),
+                    sort_keys=True,
+                )
+            )
+            return 0
+        except Exception as exc:
+            print(json.dumps({"status": "FAIL_CLOSED", "error": str(exc)}, sort_keys=True))
+            return 2
+
     engine, settings = build_engine()
 
     if args.command == "once":
