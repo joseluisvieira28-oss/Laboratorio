@@ -1,117 +1,21 @@
 name: BNB Launchpool Demand Discovery V0.1
 
 on:
-  push:
-    branches:
-      - bnb-launchpool-demand-v0.1
+  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
   actions: read
 
 jobs:
-  discovery-one-shot:
-    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
+  sealed-discovery-v01:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
     steps:
-      - name: Checkout scientific branch
-        uses: actions/checkout@v4
-        with:
-          ref: bnb-launchpool-demand-v0.1
-          fetch-depth: 1
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-
-      - name: Preflight frozen protocol and immutable market source
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Discovery is sealed
         run: |
-          set -euo pipefail
-          BASE='Dream-Account-OS-v2.3-PARTIAL/research/bnb_launchpool_demand_001'
-          python -m py_compile "$BASE/discovery_runner_v01.py"
-          DIGEST="$(gh api repos/${GITHUB_REPOSITORY}/actions/artifacts/10460668190 --jq '.digest')"
-          test "$DIGEST" = 'sha256:06ab4dee2c8db98a2e19a4d41636afaa71b0c6f6b6eac6b545535b5f28984dbf'
-          python - <<'PY'
-          import json
-          b='Dream-Account-OS-v2.3-PARTIAL/research/bnb_launchpool_demand_001'
-          p=json.load(open(b+'/FINAL_PRE_DISCOVERY_PROTOCOL_V0.1.json'))
-          t=json.load(open(b+'/PRE_DISCOVERY_TECHNICAL_AMENDMENT_V0.1.json'))
-          m=json.load(open(b+'/market_source_v01/BNB_LAUNCHPOOL_DEMAND_001_MARKET_SOURCE_AUDIT_V0.1.json'))
-          assert p['status']=='FROZEN_PRE_MARKET_OUTCOME'
-          assert t['status']=='FROZEN_BEFORE_ANY_PRICE_VALUE_IS_PARSED'
-          assert p['mve_id']==t['mve_id']=='BLP-BNBBTC-24H-001'
-          assert m['classification']=='MARKET_SOURCE_DATA_PASS'
-          assert m['archive_manifest_sha256']=='da0f1928b40e2185dfd2cefe09654d2c90be6b0ca1964e6e3b80fe25431d4fc4'
-          assert m['selected_trade_paths']==31
-          assert p['post_result_rules']['2025_remains_locked'] is True
-          assert p['post_result_rules']['2026_remains_locked'] is True
-          assert p['governance']['no_live_trading'] is True
-          PY
-
-      - name: Download immutable canonical market-source artifact
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          DEST="$RUNNER_TEMP/blp_market_source"
-          mkdir -p "$DEST"
-          gh run download 35131193961 --repo "$GITHUB_REPOSITORY" --name 'bnb-launchpool-demand-001-market-source-35131193961-1' --dir "$DEST"
-          COUNT="$(find "$DEST" -type f -name 'BNBBTC-15m-*.zip' | wc -l | tr -d ' ')"
-          test "$COUNT" = '27'
-
-      - name: Execute one-shot frozen Discovery
-        shell: bash
-        env:
-          BLP_MARKET_SOURCE_DIR: ${{ runner.temp }}/blp_market_source
-        run: |
-          set -euo pipefail
-          BASE='Dream-Account-OS-v2.3-PARTIAL/research/bnb_launchpool_demand_001'
-          python "$BASE/discovery_runner_v01.py"
-          python - <<'PY'
-          import json
-          p='Dream-Account-OS-v2.3-PARTIAL/research/bnb_launchpool_demand_001/discovery_v01/BNB_LAUNCHPOOL_DEMAND_001_DISCOVERY_RESULT_V0.1.json'
-          d=json.load(open(p)); g=d['guards']
-          assert d['classification'] in {'DISCOVERY_SURVIVES_OOS_ELIGIBLE','DISCOVERY_FAIL_NO_PROMOTION','INSUFFICIENT_SAMPLE','SOURCE_OR_EXECUTION_FAILURE'}
-          assert g['high_parsed'] is False and g['low_parsed'] is False and g['close_parsed'] is False and g['volume_parsed'] is False
-          assert g['year_2025_requested'] is False and g['year_2026_requested'] is False
-          assert g['live_trading'] is False and g['exchange_mutation'] is False and g['orders'] is False
-          assert d['access_2025'] is False and d['access_2026'] is False
-          assert d['live_trading_authorized'] is False
-          if d['classification'] != 'SOURCE_OR_EXECUTION_FAILURE':
-              assert d['resolved_trades']==31
-          print(json.dumps({
-              'classification':d['classification'],
-              'resolved_trades':d.get('resolved_trades'),
-              'promotion':d.get('promotion'),
-              'economics':d.get('economics'),
-              'bootstrap':d.get('bootstrap_base_mean_bps'),
-              'calendar_base':d.get('calendar_base'),
-              'failed_promotion_gates':d.get('failed_promotion_gates'),
-          },indent=2))
-          PY
-
-      - name: Upload immutable Discovery evidence
-        uses: actions/upload-artifact@v4
-        with:
-          name: bnb-launchpool-demand-001-discovery-${{ github.run_id }}-${{ github.run_attempt }}
-          path: Dream-Account-OS-v2.3-PARTIAL/research/bnb_launchpool_demand_001/discovery_v01/
-          retention-days: 90
-          if-no-files-found: error
-
-      - name: Persist canonical Discovery closeout
-        shell: bash
-        run: |
-          set -euo pipefail
-          BASE='Dream-Account-OS-v2.3-PARTIAL/research/bnb_launchpool_demand_001'
-          git config user.name 'crypto-lab-bnb-launchpool-bot'
-          git config user.email 'crypto-lab-bnb-launchpool-bot@users.noreply.github.com'
-          git add "$BASE/discovery_v01/BNB_LAUNCHPOOL_DEMAND_001_DISCOVERY_RESULT_V0.1.json" "$BASE/discovery_v01/BNB_LAUNCHPOOL_DEMAND_001_DISCOVERY_LEDGER_V0.1.json"
-          git commit -m 'BNB-LAUNCHPOOL-DEMAND-001: canonical Discovery closeout [skip ci]'
-          git pull --rebase origin bnb-launchpool-demand-v0.1
-          git push origin HEAD:bnb-launchpool-demand-v0.1
+          echo 'Canonical run: 35131509738'
+          echo 'Canonical artifact: 10461432431'
+          echo 'Artifact SHA256: 2eacf1493bc564159a193380084334b22ca71461a2d6bfcc61ff07b4d6fe0b11'
+          echo 'Classification: DISCOVERY_FAIL_NO_PROMOTION'
+          echo 'Reason: only bootstrap 95% CI lower > 0 gate failed.'
+          echo 'No rerun, retune, 2025/2026 rescue, or live promotion under this MVE.'
