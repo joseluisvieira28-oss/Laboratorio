@@ -1,0 +1,31 @@
+{
+  "experiment_id": "TFG-DONCHIAN-FINE-SCALE-3H-2H-1H-V0.1",
+  "status": "COMPLETE_NO_CELL_PASSES_ALL_WINDOWS",
+  "freeze_commit": "0ebd9f47f94851a6f301d980f5e3082096c57c93",
+  "source": {"provider":"MEXC","market":"SPOT","raw_interval":"15m","unique_monthly_partitions":258,"gap_policy":"PRESERVE_NO_FILL_DROP_INCOMPLETE_RESET_STATE"},
+  "results": {
+    "D3": {
+      "W1": {"n":209,"expectancy_r":0.251320,"pf":1.379735,"stress_expectancy_r":0.211128,"stress_pf":1.318993,"bootstrap_95":[-0.028938,0.529513],"pass":false,"failed":["bootstrap_lower_95_not_positive"]},
+      "W2_2025": {"n":96,"expectancy_r":0.391171,"pf":1.625874,"stress_expectancy_r":0.343758,"stress_pf":1.550013,"pass":true},
+      "W3_2026": {"n":45,"expectancy_r":-0.518047,"pf":0.402254,"stress_expectancy_r":-0.539307,"stress_pf":0.377723,"bootstrap_95":[-0.860495,-0.056892],"pass":false},
+      "promotion":"FAIL_NO_RESCUE"
+    },
+    "D2": {
+      "W1": {"n":204,"expectancy_r":0.204874,"pf":1.304649,"stress_expectancy_r":0.164373,"stress_pf":1.244409,"bootstrap_95":[-0.056699,0.469988],"pass":false,"failed":["bootstrap_lower_95_not_positive"]},
+      "W2_2025": {"n":106,"expectancy_r":0.179689,"pf":1.264542,"stress_expectancy_r":0.135205,"stress_pf":1.199052,"pass":true},
+      "W3_2026": {"n":56,"expectancy_r":-0.421683,"pf":0.497569,"stress_expectancy_r":-0.448713,"stress_pf":0.465363,"bootstrap_95":[-0.747527,-0.046842],"pass":false},
+      "promotion":"FAIL_NO_RESCUE"
+    },
+    "D1H": {
+      "W1": {"n":278,"expectancy_r":0.111234,"pf":1.160896,"stress_expectancy_r":0.063668,"stress_pf":1.092090,"bootstrap_95":[-0.108245,0.332738],"pass":false,"failed":["bootstrap_lower_95_not_positive"]},
+      "W2_2025": {"n":140,"expectancy_r":0.208030,"pf":1.316568,"stress_expectancy_r":0.144016,"stress_pf":1.219155,"pass":true},
+      "W3_2026": {"n":67,"expectancy_r":-0.520066,"pf":0.399234,"stress_expectancy_r":-0.543852,"stress_pf":0.371757,"bootstrap_95":[-0.820036,-0.203789],"pass":false},
+      "promotion":"FAIL_NO_RESCUE"
+    }
+  },
+  "interpretation": "The recent-regime failure is not fixed by increasing signal frequency. Every tested pure clock-time Donchian scale from 1H through 12H is negative in 2026, while the higher scales were positive through 2025. This closes pure timeframe scaling as a rescue path.",
+  "next_scientific_frontier": "A materially different mechanism or a prospectively defined regime-adaptation experiment is required. Further timeframe slicing on the same 2026 path is prohibited as post-outcome rescue.",
+  "micro_live_eligible": false,
+  "live_trading_authorized": false,
+  "governance": {"no_post_outcome_tuning":true,"no_timeframe_rescue":true,"no_asset_selection":true,"no_live_orders":true,"no_exchange_mutation":true,"no_merge_to_main":true}
+}
