@@ -62,12 +62,42 @@ jobs:
           print('PMD-001 PUBLIC SOURCE MANIFEST GATE PASS')
           PY
 
-      - name: Upload pre-outcome manifest evidence
+      - name: Probe earliest candidate against public Solana RPC
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001
+        run: |
+          python source_rebuild_helius_v01.py \
+            --manifest pmd_source_rebuild_manifest_v01.jsonl \
+            --out-dir pmd_public_rpc_probe_v01 \
+            --start 0 --limit 1 \
+            --rpc-url https://api.mainnet-beta.solana.com \
+            --source-name solana_public_rpc_probe
+          cat pmd_public_rpc_probe_v01/source_rebuild_summary.jsonl
+
+      - name: Classify public-RPC probe without changing scientific gate
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001
+        run: |
+          python - <<'PY'
+          import json
+          p='pmd_public_rpc_probe_v01/source_rebuild_summary.jsonl'
+          rows=[json.loads(x) for x in open(p) if x.strip()]
+          assert len(rows)==1
+          r=rows[0]
+          assert r['outcomes_opened'] is False
+          if r.get('source_complete') and int(r.get('valid_target_pump_transactions') or 0)>0:
+              print('PMD-001 PUBLIC RPC ARCHIVAL PROBE: USABLE_CANDIDATE_SOURCE')
+          else:
+              print('PMD-001 PUBLIC RPC ARCHIVAL PROBE: NOT_ESTABLISHED')
+              print(json.dumps(r,sort_keys=True))
+          PY
+
+      - name: Upload pre-outcome source evidence
         uses: actions/upload-artifact@v4
         with:
-          name: PMD-001-source-rebuild-manifest-v01
+          name: PMD-001-source-rebuild-preoutcome-v01
           if-no-files-found: error
           retention-days: 30
           path: |
             Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/pmd_source_rebuild_manifest_v01.jsonl
             Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/pmd_source_rebuild_manifest_v01_receipt.json
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/pmd_public_rpc_probe_v01/source_rebuild_summary.jsonl
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/pmd_public_rpc_probe_v01/raw/*.jsonl
