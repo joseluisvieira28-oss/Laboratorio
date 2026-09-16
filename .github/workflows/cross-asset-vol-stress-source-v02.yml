@@ -21,7 +21,7 @@ jobs:
           test -f labs/CROSS_ASSET_VOL_STRESS_001/SOURCE_GATE_REMEDIATION_V0.2.md
           test -f labs/CROSS_ASSET_VOL_STRESS_001/source_gate_v02.py
           grep -q 'www-api.cboe.com' labs/CROSS_ASSET_VOL_STRESS_001/SOURCE_GATE_REMEDIATION_V0.2.md
-          grep -q 'No BTC market data' labs/CROSS_ASSET_VOL_STRESS_001/SOURCE_GATE_REMEDIATION_V0.2.md
+          grep -qi 'no BTC market data' labs/CROSS_ASSET_VOL_STRESS_001/SOURCE_GATE_REMEDIATION_V0.2.md
       - name: Compile V0.2 source gate
         run: python -m py_compile labs/CROSS_ASSET_VOL_STRESS_001/source_gate_v02.py
       - name: Execute official Cboe API source gate only
