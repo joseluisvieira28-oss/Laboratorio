@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 HERE=Path(__file__).resolve().parent
-ROOT=HERE.parent.parent
+ROOT=HERE.parent
 FREEZE=ROOT/'BNB_LAUNCHPOOL_DEMAND_001_FINAL_PRESAMPLE_HOLDOUT_FREEZE_V0.1.json'
 OUTDIR=HERE/'source_gate_v01'; RAW=OUTDIR/'raw'; OUT=OUTDIR/'BNB_LAUNCHPOOL_DEMAND_001_FINAL_PRESAMPLE_SOURCE_GATE_V0.1.json'
 LIST='https://www.binance.com/bapi/composite/v1/public/cms/article/list/query?type=1&catalogId=48&pageNo={}&pageSize=100'
@@ -82,7 +82,6 @@ def main():
             candidates.setdefault(code,{'article_code':code,'title':t,'feed_published_utc':dt})
             if dt and (earliest is None or dt<earliest): earliest=dt
         pages.append({'page':p,'launchpool_candidates':found,'sha256':hashlib.sha256(body).hexdigest(),'earliest_seen_utc':earliest})
-        # Do not rely on an early stop unless all 1..30 are already validated later.
         if p>=20 and found==0 and earliest and earliest<'2020-08-01T00:00:00Z': break
     recovered={}; detail_fail=[]
     for code,c in sorted(candidates.items()):
@@ -93,7 +92,6 @@ def main():
             if not 1<=n<=30: continue
             low=txt.lower()
             bnb=bool(re.search(r'\bbnb\b',low)); stake=any(w in low for w in ('stake','staking','lock','locking','farm','farming'))
-            # Extract authoritative publishDate from any dict recursively.
             pdt=None
             for d in walk_dicts(o):
                 for k in ('publishDate','releaseDate'):
