@@ -1,0 +1,50 @@
+name: BTC-OPTIONS-VRP-001 Laevitas Source Gate V0.1
+
+on:
+  push:
+    branches:
+      - btc-options-vrp-laevitas-source-v0.1
+    paths:
+      - 'labs/BTC_OPTIONS_VRP_001/LAEVITAS_SOURCE_AUTHORITY_V0.1.json'
+      - 'labs/BTC_OPTIONS_VRP_001/laevitas_source_gate_v01.py'
+      - '.github/workflows/btc-options-vrp-laevitas-source-gate-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-gate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: btc-options-vrp-laevitas-source-v0.1
+
+      - name: Verify frozen source authority
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          a=json.load(open('labs/BTC_OPTIONS_VRP_001/LAEVITAS_SOURCE_AUTHORITY_V0.1.json'))
+          assert a['source_mve_id']=='OVRP-EXEC-BBO-LAEVITAS-001-SOURCE'
+          assert a['authority_drive_id']=='1RLS3L8jg7ix3w3Abr0PGIDCudagm065Bms0eOG1o9ls'
+          for k in ['outcomes_authorized','strategy_pnl_authorized','payment_authorized','wallet_signature_authorized','api_subscription_authorized','access_2025_authorized','access_2026_authorized','live_trading_authorized','exchange_mutation_authorized','merge_to_main_authorized']:
+              assert a[k] is False, k
+          print('LAEVITAS_SOURCE_AUTHORITY_PASS')
+          PY
+
+      - name: Compile source-only runner
+        run: python -m py_compile labs/BTC_OPTIONS_VRP_001/laevitas_source_gate_v01.py
+
+      - name: Execute outcome-blind Laevitas source gate
+        run: python labs/BTC_OPTIONS_VRP_001/laevitas_source_gate_v01.py
+
+      - name: Upload source evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: btc-options-vrp-laevitas-source-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/btc_options_vrp_laevitas_source_gate_v01/
+          retention-days: 90
