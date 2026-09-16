@@ -29,10 +29,13 @@ jobs:
           p=Path('research/htf_diamond_hunt')
           f=json.loads((p/'HTF_DIAMOND_HUNT_001_PHASE2_VALIDATION_FREEZE_V0.1.json').read_text())
           b=json.loads((p/'HTF_DIAMOND_HUNT_001_PHASE2_SOURCE_BINDING_V0.1.json').read_text())
+          a=json.loads((p/'HTF_DIAMOND_HUNT_001_PHASE2_TECHNICAL_AMENDMENT_01.json').read_text())
           assert f['status']=='FROZEN_BEFORE_PHASE2_SOURCE_ACCESS_OR_OUTCOMES'
           assert [x['cell_id'] for x in f['cells']]==['DH-02-V1','DH-03-V1']
           assert b['status']=='FROZEN_EXACT_PHASE2_SOURCE_BEFORE_VALIDATION_OUTCOMES'
           assert b['source_run_id']==35072596130
+          assert a['status']=='TECHNICAL_CORRECTION_FROZEN_PRE_OUTCOME'
+          assert a['scientific_design_changed'] is False and a['outcomes_opened'] is False
           print('PHASE2_AUTHORITY_BINDING_GATE_PASS')
           PY
       - name: Compile validation stack
@@ -64,6 +67,8 @@ jobs:
           PY
       - name: Run both frozen Donchian validation siblings
         working-directory: Dream-Account-OS-v2.3-PARTIAL
+        env:
+          PYTHONPATH: ${{ github.workspace }}/Dream-Account-OS-v2.3-PARTIAL
         run: python research/htf_diamond_hunt/htf_diamond_hunt_phase2_validation_v01.py research/local_data/htf_diamond_hunt_phase2_source_v01
       - name: Upload Phase2 validation evidence
         uses: actions/upload-artifact@v4
