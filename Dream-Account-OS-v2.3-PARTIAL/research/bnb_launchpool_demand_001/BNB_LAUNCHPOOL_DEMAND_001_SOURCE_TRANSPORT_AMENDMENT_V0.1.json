@@ -1,0 +1,59 @@
+{
+  "lab_id": "BNB-LAUNCHPOOL-DEMAND-001",
+  "amendment_id": "BLP-SOURCE-TRANSPORT-AMENDMENT-V0.1",
+  "status": "FROZEN_BEFORE_TRANSPORT_EXECUTION_AND_BEFORE_ANY_MARKET_OUTCOME",
+  "parent_source_authority_commit": "602851a6cc0ad73ee200461c828346a466f2c1ec",
+  "purpose": "Resolve the byte-archive requirement using a machine-readable representation of the same fixed official Binance Support article identities without traversing announcement lists, current exchange metadata, 2025 pages, or 2026 pages.",
+  "transport": {
+    "provider_domain": "www.binance.com",
+    "route_template": "https://www.binance.com/bapi/composite/v1/public/cms/article/detail/query?articleCode={fixed_article_code}",
+    "route_scope": "DETAIL_ONLY_FIXED_CODES",
+    "article_codes_source": "The 33 already-reconstructed official Support detail URLs for Launchpool project numbers 31 through 63 in BNB_LAUNCHPOOL_DEMAND_001_SOURCE_RECON_V0.1.json",
+    "pagination_allowed": false,
+    "catalog_or_list_endpoint_allowed": false,
+    "search_endpoint_allowed": false,
+    "current_launchpool_page_allowed": false,
+    "current_exchange_info_allowed": false,
+    "protected_period_metadata_traversal_allowed": false,
+    "fallback_transport_allowed_in_this_amendment": false
+  },
+  "byte_archive_contract": {
+    "preserve_exact_response_bytes_for_each_fixed_article_code": true,
+    "compute_sha256_per_response": true,
+    "compute_ordered_manifest_sha256": true,
+    "store_raw_responses_as_workflow_artifact": true,
+    "commit_only_receipt_and_manifest_summary": true,
+    "http_redirect_to_generic_announcement_page_is_failure": true,
+    "non_json_or_empty_response_is_failure": true
+  },
+  "content_integrity_contract": {
+    "expected_event_count": 33,
+    "expected_project_number_range": [31, 63],
+    "expected_article_code_uniqueness": true,
+    "publication_timestamp_rule": "When the response exposes a parseable original release/publish timestamp, it must equal the prospectively reconstructed official Published-on timestamp for that event. Missing or contradictory original publication metadata fails closed.",
+    "bnb_evidence_rule": "The official article content must contain BNB and farming/staking/locking/Launchpool language sufficient to support the frozen event inclusion rule.",
+    "project_identity_rule": "The response must identify the expected token symbol and Launchpool context for the fixed article code.",
+    "zero_2025_2026_source_requests": true
+  },
+  "classifications": {
+    "all_33_clean": "SOURCE_DATA_PASS",
+    "transport_http_or_access_failure": "SOURCE_ACCESS_BLOCKED",
+    "content_identity_or_timestamp_mismatch": "DATA_INTEGRITY_FAILURE",
+    "sample_below_25_after_fail_closed_exclusions": "INSUFFICIENT_SOURCE_SAMPLE"
+  },
+  "hard_firewalls": {
+    "market_price_fields": false,
+    "bnb_price": false,
+    "btc_price": false,
+    "returns": false,
+    "pnl": false,
+    "2025_source_pages": false,
+    "2026_source_pages": false,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "orders": false,
+    "alerts_or_webhooks": false,
+    "merge_to_main": false,
+    "post_outcome_tuning": false
+  }
+}
