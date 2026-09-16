@@ -4,7 +4,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-Write-Host "DEFI-LIQUIDATION-SHOCK-001 — RAW VALIDATION SAMPLE V0.1"
+Write-Host "DEFI-LIQUIDATION-SHOCK-001 - RAW VALIDATION SAMPLE V0.1"
 Write-Host "READ-ONLY / SOURCE-ONLY / OUTCOME-BLIND"
 
 $expectedSha = "B58AF58B0229969D38625CC2C4E138742477B1633D3FC06F3FA6B328064D5BDC"
@@ -28,7 +28,7 @@ if ($actualSha -ne $expectedSha) {
 Write-Host "CSV SHA-256 verified: $actualSha"
 
 if (-not $env:HELIUS_API_KEY -and -not $env:DLS_RPC_URL) {
-    throw "Set HELIUS_API_KEY locally (or DLS_RPC_URL). Never paste the secret into chat/GitHub."
+    throw "HELIUS_API_KEY or DLS_RPC_URL is not set. Keep credentials local."
 }
 
 Write-Host "[1/4] Running network-free source collector tests..."
@@ -60,4 +60,4 @@ Write-Host "Evidence folder: $out"
 Write-Host "Evidence ZIP:    $zip"
 Write-Host "SHA-256:         $($hash.Hash)"
 Write-Host ""
-Write-Host "Upload the ZIP to this Crypto conversation or Drive. Share the ZIP/hash only — never the Helius key."
+Write-Host "Upload the ZIP to this Crypto conversation or Drive. Share the ZIP/hash only - never the Helius key."
