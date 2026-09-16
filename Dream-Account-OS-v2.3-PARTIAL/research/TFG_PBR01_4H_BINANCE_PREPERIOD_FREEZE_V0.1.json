@@ -1,0 +1,141 @@
+{
+  "schema_version": "TFG_PBR01_4H_BINANCE_PREPERIOD_FREEZE_V0.1",
+  "status": "FROZEN_BEFORE_ANY_BINANCE_PREPERIOD_OUTCOME_EVALUATION",
+  "date_utc": "2026-09-16",
+  "lab_id": "TFG-PBR01-4H-BINANCE-PREPERIOD-001",
+  "parent_lab_id": "TFG-PBR01-4H-001",
+  "prior_xvenue_lab_id": "TFG-PBR01-4H-XVENUE-BINANCE-001",
+  "family_id": "PBR05_TIMEFRAME_TRANSPORT_BREAKOUT_RETEST_LONG_4H",
+  "mode": "RESEARCH_ONLY_NONOVERLAPPING_TEMPORAL_PREPERIOD_REPLICATION",
+  "scientific_position": {
+    "purpose": "Test whether the exact frozen PBR01 4H geometry on Binance Spot is also economically positive in a non-overlapping earlier historical block.",
+    "not_forward_oos": true,
+    "nonoverlapping_with_binance_xvenue_2023_2024": true,
+    "not_parent_rescue": true,
+    "not_sample_extension_to_reach_100": true,
+    "no_pooling_with_prior_88_trades_for_classification": true,
+    "no_parameter_change": true,
+    "venue_unchanged": "BINANCE_SPOT",
+    "interpretation_if_positive": "Independent non-overlapping pre-period robustness evidence only; does not by itself authorize live trading or substitute for future prospective OOS.",
+    "interpretation_if_negative": "Exact pre-period temporal transport not replicated; no post-outcome asset/subperiod/parameter rescue."
+  },
+  "source_contract": {
+    "venue": "BINANCE_SPOT",
+    "direction": "LONG_ONLY",
+    "provider": "BINANCE_DATA_VISION_PUBLIC_ARCHIVES",
+    "archive_family": "spot/monthly/klines/{SYMBOL}/15m/{SYMBOL}-15m-{YYYY-MM}.zip",
+    "symbols": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "DOGEUSDT"],
+    "input_timeframe": "15m",
+    "derived_timeframe": "4h",
+    "time_basis": "UTC",
+    "months": ["2021-01", "2023-01"],
+    "required_month_count_per_symbol": 25,
+    "cross_exchange_backfill_allowed": false,
+    "interpolation_allowed": false,
+    "synthetic_missing_candles_allowed": false,
+    "open_or_incomplete_candles_allowed": false,
+    "source_gate_before_outcomes": true
+  },
+  "aggregation_15m_to_4h": {
+    "bucket_anchor_utc_hours": [0, 4, 8, 12, 16, 20],
+    "required_15m_candles_per_bucket": 16,
+    "require_exact_contiguous_15m_spacing": true,
+    "require_all_16_closed_candles": true,
+    "open": "FIRST_15M_OPEN",
+    "high": "MAX_15M_HIGH",
+    "low": "MIN_15M_LOW",
+    "close": "LAST_15M_CLOSE",
+    "volume": "SUM_15M_VOLUME",
+    "incomplete_or_gapped_bucket": "DROP_BUCKET_AND_SPLIT_CONTIGUITY",
+    "setup_may_span_gap": false
+  },
+  "primary_parameters": {
+    "timeframe": "4h",
+    "lookback_bars": 96,
+    "atr_length": 14,
+    "zone_atr_fraction": 0.25,
+    "retest_window_bars": 2,
+    "stop_atr_fraction": 0.25,
+    "tp1_r_multiple": 1.0,
+    "tp1_management": "INFORMATIONAL_ONLY_NO_PARTIAL_EXIT",
+    "tp2_r_multiple": 3.0,
+    "minimum_net_rr": 2.0,
+    "max_holding_bars": 96,
+    "require_bullish_breakout_body": true
+  },
+  "geometry": {
+    "resistance": "MAX_HIGH_OF_STRICTLY_PRIOR_96_COMPLETED_4H_BARS",
+    "atr": "ATR14_FROM_STRICTLY_PRIOR_COMPLETED_4H_BARS",
+    "zone_high": "RESISTANCE",
+    "zone_low": "RESISTANCE_MINUS_0.25_ATR",
+    "breakout": "COMPLETED_4H_CLOSE_GT_RESISTANCE_AND_CLOSE_GTE_OPEN",
+    "wick_only": "NO_SIGNAL",
+    "retest": "WITHIN_NEXT_2_COMPLETED_4H_BARS_FIRST_ZONE_TOUCH_IS_DECISIVE",
+    "defended_retest": "LOW_GTE_ZONE_LOW_AND_LOW_LTE_ZONE_HIGH_AND_CLOSE_GTE_ZONE_HIGH",
+    "pre_confirmation_low_below_zone_low": "INVALIDATE",
+    "first_zone_touch_close_below_zone_high": "INVALIDATE",
+    "entry": "NEXT_4H_BAR_OPEN_AFTER_DEFENDED_RETEST",
+    "entry_open_below_zone_high": "CANCEL",
+    "stop": "ZONE_LOW_MINUS_0.25_ATR",
+    "tp2": "ENTRY_PLUS_3R"
+  },
+  "trade_sampling_and_ohlc": {
+    "one_active_trade_per_symbol": true,
+    "same_symbol_signal_while_active": "IGNORE",
+    "cross_symbol_overlap": "ALLOWED_SIGNAL_LEVEL_ONLY",
+    "stop_and_tp2_same_bar": "STOP_WINS",
+    "adverse_gap_through_stop": "EXIT_AT_ADVERSE_OPEN",
+    "favorable_gap_above_tp2": "CAP_AT_TP2",
+    "max_hold_exit": "NEXT_BAR_OPEN"
+  },
+  "costs": {
+    "cohort_selection": "BASE_SENSITIVITY",
+    "BASE_SENSITIVITY_round_trip_pct": 0.20,
+    "BASE_components": {"fee_pct_each_side": 0.05, "spread_pct": 0.05, "slippage_pct_each_side": 0.025},
+    "STRESS_round_trip_pct": 0.30,
+    "STRESS_components": {"fee_pct_each_side": 0.05, "spread_pct": 0.10, "slippage_pct_each_side": 0.05},
+    "stress_reprices_same_base_selected_cohort": true,
+    "fee_reduction_rescue_allowed": false
+  },
+  "replication_window": {
+    "start_utc_inclusive": "2021-01-01T00:00:00.000Z",
+    "end_utc_exclusive": "2023-02-01T00:00:00.000Z",
+    "minimum_resolved_trades": 100,
+    "below_minimum": "INSUFFICIENT_SAMPLE",
+    "no_opportunistic_extension": true,
+    "classification_must_use_this_block_alone": true
+  },
+  "uncertainty": {
+    "method": "UTC_CALENDAR_DAY_BLOCK_BOOTSTRAP",
+    "repetitions": 5000,
+    "seed": 230911,
+    "confidence": 0.95
+  },
+  "adjudication": {
+    "all_required_for_preperiod_replication": true,
+    "base_net_expectancy_r_gt": 0.0,
+    "base_profit_factor_r_gt": 1.0,
+    "bootstrap_lower_95_bound_gt": 0.0,
+    "fixed_cohort_stress_net_expectancy_r_gt": 0.0,
+    "pass_classification": "PREPERIOD_REPLICATED",
+    "economic_fail_classification": "PREPERIOD_NOT_REPLICATED",
+    "insufficient_sample_classification": "INSUFFICIENT_SAMPLE",
+    "source_failure_is_non_economic": true
+  },
+  "protected_data": {
+    "year_2025_access_allowed": false,
+    "year_2026_access_allowed": false,
+    "future_temporal_validation_requires_separate_authority": true
+  },
+  "hard_firewalls": {
+    "live_trading": false,
+    "exchange_mutation": false,
+    "orders": false,
+    "alerts_or_webhooks": false,
+    "merge_to_main": false,
+    "render_deployment": false,
+    "post_outcome_tuning": false,
+    "cherry_picking_assets_or_periods": false
+  },
+  "stop_rule": "STOP_AFTER_PREPERIOD_CLASSIFICATION. DO NOT POOL WITH PRIOR 88 TRADES FOR GATE PASSING. DO NOT OPEN 2025 OR 2026 AUTOMATICALLY."
+}
