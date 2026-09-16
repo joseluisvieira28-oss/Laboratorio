@@ -1,0 +1,78 @@
+name: PMD-001 Chain-Exact Cross-Date V071 Reuse
+
+on:
+  push:
+    branches:
+      - pumpfun-migration-direction-v0.1
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/RUN_CHAIN_EXACT_CROSSDATE_V071_REUSE.trigger'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  reuse-crossdate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout scientific branch
+        uses: actions/checkout@v4
+        with:
+          ref: pumpfun-migration-direction-v0.1
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip requests solders
+      - name: Syntax checks
+        run: |
+          python -m py_compile \
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/chain_boundary_semantics_v07.py \
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/crossdate_evidence_reuse_v071.py
+      - name: Download frozen V0.6 full-block evidence
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: 35132853202
+          pattern: PMD-001-chain-exact-v06-row-*
+          path: frozen-v06
+          merge-multiple: false
+      - name: Reconstruct exact V0.7 windows using verified reused blocks plus minimal gap fetch
+        continue-on-error: true
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001
+        run: |
+          python crossdate_evidence_reuse_v071.py \
+            --input-root "$GITHUB_WORKSPACE/frozen-v06" \
+            --out-dir "$GITHUB_WORKSPACE/pmd_chain_exact_crossdate_v071_reuse" \
+            --rpc-url https://api.mainnet-beta.solana.com \
+            --source-name solana_public_rpc_chain_exact_crossdate_v071_reuse \
+            --block-batch-size 4
+      - name: Assert source-only verdict
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('pmd_chain_exact_crossdate_v071_reuse/chain_exact_crossdate_v071_reuse_receipt.json')
+          if p.exists():
+              r=json.loads(p.read_text()); assert r['economic_outcomes_opened'] is False; print(json.dumps(r,indent=2,sort_keys=True))
+          else:
+              print(json.dumps({'verdict':'CHAIN_EXACT_CROSSDATE_V071_REUSE_TECHNICAL_INCOMPLETE','receipt_missing':True,'economic_outcomes_opened':False}))
+          PY
+      - name: Upload compact V0.7.1 receipt and gap evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: PMD-001-chain-exact-crossdate-v071-reuse
+          if-no-files-found: warn
+          retention-days: 30
+          compression-level: 9
+          path: |
+            pmd_chain_exact_crossdate_v071_reuse/chain_exact_crossdate_v071_reuse_rows.jsonl
+            pmd_chain_exact_crossdate_v071_reuse/chain_exact_crossdate_v071_reuse_receipt.json
+            pmd_chain_exact_crossdate_v071_reuse/gap_block_ledger.jsonl
+            pmd_chain_exact_crossdate_v071_reuse/gap_blocks/**/*.json.gz
