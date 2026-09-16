@@ -5,12 +5,19 @@ PRE-OUTCOME / SOURCE-ONLY.
 
 This census does NOT fetch post-migration prices or outcomes. It reconstructs the
 already-frozen 1,012 source-executable manifest from metadata/nullness only, then
-asks whether the bonding-curve account has successful Solana signatures strictly
-inside [T0-300s, T0), [T0-60s, T0), and [T0-30s, T0).
+applies the frozen V0.2A redundant lookup hierarchy uniformly:
 
-A missing observation is never treated as zero demand unless the address history
-was traversed far enough to cross the lower time boundary. Provider failures and
-pagination caps are classified as unresolved source coverage.
+1) bonding-curve history first;
+2) traverse far enough to cross T0-300s;
+3) if curve coverage is unresolved or has no successful signature in
+   [T0-300s,T0), query mint history as a redundant transaction index;
+4) anchor mint history before the nearest curve-index transaction at/after T0
+   when such an anchor is available;
+5) union/deduplicate signatures;
+6) only successful signatures with blockTime < T0 can enter source counts.
+
+A missing observation is never treated as zero demand unless at least one index
+establishes a bounded complete source window. Outcomes remain sealed.
 """
 from __future__ import annotations
 
@@ -28,6 +35,54 @@ import exact_population_public_rpc_probe_v02 as core  # noqa: E402
 
 def write_jsonl(path: Path, rows: list[dict[str, Any]]) -> str:
     return core.write_jsonl(path, rows)
+
+
+def query_history(address: str, t0: int, max_pages: int, before: str | None = None) -> tuple[list[dict[str, Any]], bool, str | None, int]:
+    out: list[dict[str, Any]] = []
+    pages = 0
+    error: str | None = None
+    boundary_resolved = False
+    cursor = before
+    while pages < max_pages:
+        cfg: dict[str, Any] = {"commitment": "finalized", "limit": core.SIG_LIMIT}
+        if cursor:
+            cfg["before"] = cursor
+        try:
+            obj = core.rpc("getSignaturesForAddress", [address, cfg])
+        except Exception as exc:
+            error = repr(exc)
+            break
+        pages += 1
+        batch = obj.get("result") or []
+        if not isinstance(batch, list):
+            error = "SIGNATURE_RESULT_SHAPE_FAILURE"
+            break
+        out.extend(batch)
+        if not batch:
+            boundary_resolved = True
+            break
+        times = [int(x["blockTime"]) for x in batch if isinstance(x, dict) and x.get("blockTime") is not None]
+        if times and min(times) < t0 - 300:
+            boundary_resolved = True
+            break
+        cursor = batch[-1].get("signature") if isinstance(batch[-1], dict) else None
+        if not cursor:
+            boundary_resolved = True
+            break
+        time.sleep(0.18)
+    return out, boundary_resolved, error, pages
+
+
+def successful_pre(sigs: list[dict[str, Any]], t0: int, seconds: int) -> set[str]:
+    return {
+        str(x["signature"])
+        for x in sigs
+        if isinstance(x, dict)
+        and x.get("signature")
+        and x.get("err") is None
+        and x.get("blockTime") is not None
+        and t0 - seconds <= int(x["blockTime"]) < t0
+    }
 
 
 def main() -> int:
@@ -49,105 +104,125 @@ def main() -> int:
         manifest = core.build_exact_manifest(paths)
     except Exception as exc:
         receipt = {
-            "lab":"PMD-001","stage":"PUBLIC_RPC_FULL_COVERAGE_SHARD_V02",
-            "shard_index":args.shard_index,"shard_count":args.shard_count,
-            "classification":"FULL_CENSUS_MANIFEST_BUILD_FAILURE","detail":repr(exc),
-            "outcomes_opened":False,"forbidden_outcome_file_acquired":False,
+            "lab": "PMD-001", "stage": "PUBLIC_RPC_FULL_COVERAGE_SHARD_V02A",
+            "shard_index": args.shard_index, "shard_count": args.shard_count,
+            "classification": "FULL_CENSUS_MANIFEST_BUILD_FAILURE", "detail": repr(exc),
+            "outcomes_opened": False, "forbidden_outcome_file_acquired": False,
         }
-        core.write_json(root/"receipt.json", receipt)
-        print(json.dumps(receipt,indent=2,sort_keys=True)); return 2
+        core.write_json(root / "receipt.json", receipt)
+        print(json.dumps(receipt, indent=2, sort_keys=True))
+        return 2
 
-    targets = [(idx,row) for idx,row in enumerate(manifest) if idx % args.shard_count == args.shard_index]
+    targets = [(idx, row) for idx, row in enumerate(manifest) if idx % args.shard_count == args.shard_index]
     audit: list[dict[str, Any]] = []
     provider_errors = 0
     pagination_caps = 0
     missing_curve_keys = 0
+    fallback_queries = 0
+    fallback_recovered_zero_curve_cases = 0
 
-    for local_rank,(manifest_index,row) in enumerate(targets,1):
+    for local_rank, (manifest_index, row) in enumerate(targets, 1):
         curve = row.get("bonding_curve_key")
+        mint = row.get("mint")
+        t0 = int(row["t0_epoch"])
         if not curve:
             missing_curve_keys += 1
             audit.append({
-                "manifest_index":manifest_index,"mint":row["mint"],"t0_epoch":row["t0_epoch"],
-                "n300":None,"n60":None,"n30":None,"pages":0,"history_boundary_resolved":False,
-                "classification":"MISSING_BONDING_CURVE_KEY",
+                "manifest_index": manifest_index, "mint": mint, "migration_date": row.get("migration_date"), "t0_epoch": t0,
+                "n300": None, "n60": None, "n30": None,
+                "curve_pages": 0, "mint_pages": 0, "need_mint_fallback": False,
+                "curve_boundary_resolved": False, "mint_boundary_resolved": False, "history_boundary_resolved": False,
+                "classification": "MISSING_BONDING_CURVE_KEY", "error": "MISSING_BONDING_CURVE_KEY",
             })
             continue
 
-        before = None
-        pages = 0
-        all_sigs: list[dict[str, Any]] = []
-        error: str | None = None
-        boundary_resolved = False
-        while pages < args.max_pages:
-            cfg: dict[str, Any] = {"commitment":"finalized","limit":core.SIG_LIMIT}
-            if before:
-                cfg["before"] = before
-            try:
-                obj = core.rpc("getSignaturesForAddress", [curve, cfg])
-            except Exception as exc:
-                error = repr(exc); provider_errors += 1; break
-            pages += 1
-            batch = obj.get("result") or []
-            if not isinstance(batch,list):
-                error="SIGNATURE_RESULT_SHAPE_FAILURE"; provider_errors += 1; break
-            all_sigs.extend(batch)
-            if not batch:
-                boundary_resolved = True
-                break
-            times = [int(x["blockTime"]) for x in batch if isinstance(x,dict) and x.get("blockTime") is not None]
-            if times and min(times) < row["t0_epoch"] - 300:
-                boundary_resolved = True
-                break
-            before = batch[-1].get("signature") if isinstance(batch[-1],dict) else None
-            if not before:
-                boundary_resolved = True
-                break
-            time.sleep(0.18)
+        curve_sigs, curve_boundary, curve_error, curve_pages = query_history(curve, t0, args.max_pages)
+        if curve_error:
+            provider_errors += 1
+        curve300 = successful_pre(curve_sigs, t0, 300) if curve_boundary else set()
+        need_fallback = (not curve_boundary) or (not curve300)
 
-        if not boundary_resolved and error is None:
+        mint_sigs: list[dict[str, Any]] = []
+        mint_boundary = False
+        mint_error: str | None = None
+        mint_pages = 0
+        anchor: str | None = None
+        if need_fallback:
+            fallback_queries += 1
+            at_or_after = [
+                x for x in curve_sigs
+                if isinstance(x, dict) and x.get("signature") and x.get("blockTime") is not None and int(x["blockTime"]) >= t0
+            ]
+            if at_or_after:
+                at_or_after.sort(key=lambda x: (int(x["blockTime"]), str(x["signature"])))
+                anchor = str(at_or_after[0]["signature"])
+            if mint:
+                mint_sigs, mint_boundary, mint_error, mint_pages = query_history(str(mint), t0, args.max_pages, anchor)
+                if mint_error:
+                    provider_errors += 1
+
+        resolved = curve_boundary or mint_boundary
+        if not curve_boundary and curve_error is None:
             pagination_caps += 1
-            error = "PAGINATION_CAP_BEFORE_T0_MINUS_300_BOUNDARY"
+        if need_fallback and mint and not mint_boundary and mint_error is None:
+            pagination_caps += 1
 
-        good = [
-            x for x in all_sigs
-            if isinstance(x,dict) and x.get("signature") and x.get("err") is None
-            and x.get("blockTime") is not None and int(x["blockTime"]) < row["t0_epoch"]
-        ]
-        n300 = sum(row["t0_epoch"]-300 <= int(x["blockTime"]) < row["t0_epoch"] for x in good) if boundary_resolved else None
-        n60 = sum(row["t0_epoch"]-60 <= int(x["blockTime"]) < row["t0_epoch"] for x in good) if boundary_resolved else None
-        n30 = sum(row["t0_epoch"]-30 <= int(x["blockTime"]) < row["t0_epoch"] for x in good) if boundary_resolved else None
-        times_all = [int(x["blockTime"]) for x in all_sigs if isinstance(x,dict) and x.get("blockTime") is not None]
+        if resolved:
+            curve300_all = successful_pre(curve_sigs, t0, 300)
+            mint300_all = successful_pre(mint_sigs, t0, 300)
+            curve60_all = successful_pre(curve_sigs, t0, 60)
+            mint60_all = successful_pre(mint_sigs, t0, 60)
+            curve30_all = successful_pre(curve_sigs, t0, 30)
+            mint30_all = successful_pre(mint_sigs, t0, 30)
+            union300 = curve300_all | mint300_all
+            union60 = curve60_all | mint60_all
+            union30 = curve30_all | mint30_all
+            if need_fallback and not curve300_all and union300:
+                fallback_recovered_zero_curve_cases += 1
+            n300, n60, n30 = len(union300), len(union60), len(union30)
+        else:
+            n300 = n60 = n30 = None
+
+        error_parts = [x for x in (curve_error, mint_error) if x]
         audit.append({
-            "manifest_index":manifest_index,"mint":row["mint"],"migration_date":row["migration_date"],
-            "t0_epoch":row["t0_epoch"],"bonding_curve_key":curve,"pages":pages,
-            "signatures_total_returned":len(all_sigs),"oldest_returned_block_time":min(times_all) if times_all else None,
-            "history_boundary_resolved":boundary_resolved,"n300":n300,"n60":n60,"n30":n30,
-            "classification":"RESOLVED" if boundary_resolved else "UNRESOLVED","error":error,
+            "manifest_index": manifest_index, "mint": mint, "migration_date": row.get("migration_date"),
+            "t0_epoch": t0, "bonding_curve_key": curve,
+            "need_mint_fallback": need_fallback, "migration_anchor_signature": anchor,
+            "curve_pages": curve_pages, "mint_pages": mint_pages,
+            "curve_boundary_resolved": curve_boundary, "mint_boundary_resolved": mint_boundary,
+            "history_boundary_resolved": resolved,
+            "curve_n300": len(successful_pre(curve_sigs, t0, 300)) if curve_boundary else None,
+            "mint_n300": len(successful_pre(mint_sigs, t0, 300)) if mint_boundary else None,
+            "n300": n300, "n60": n60, "n30": n30,
+            "classification": "RESOLVED" if resolved else "UNRESOLVED",
+            "error": " | ".join(error_parts) if error_parts else None,
         })
+
         if local_rank % 25 == 0:
             print(f"shard={args.shard_index} progress={local_rank}/{len(targets)}")
         time.sleep(0.18)
 
-    audit_sha = write_jsonl(root/"coverage_audit.jsonl", audit)
-    resolved = [r for r in audit if r.get("classification") == "RESOLVED"]
+    audit_sha = write_jsonl(root / "coverage_audit.jsonl", audit)
+    resolved_rows = [r for r in audit if r.get("classification") == "RESOLVED"]
     receipt = {
-        "lab":"PMD-001","stage":"PUBLIC_RPC_FULL_COVERAGE_SHARD_V02",
-        "shard_index":args.shard_index,"shard_count":args.shard_count,
-        "exact_executable_population":len(manifest),"target_rows":len(targets),
-        "resolved_rows":len(resolved),"unresolved_rows":len(audit)-len(resolved),
-        "rows_with_any_300":sum((r.get("n300") or 0)>0 for r in resolved),
-        "rows_with_any_60":sum((r.get("n60") or 0)>0 for r in resolved),
-        "rows_with_any_30":sum((r.get("n30") or 0)>0 for r in resolved),
-        "provider_errors":provider_errors,"pagination_caps":pagination_caps,
-        "missing_curve_keys":missing_curve_keys,"audit_sha256":audit_sha,
-        "classification":"CENSUS_SHARD_COMPLETE" if provider_errors==0 and pagination_caps==0 and missing_curve_keys==0 else "CENSUS_SHARD_COMPLETE_WITH_UNRESOLVED_SOURCE",
-        "outcomes_opened":False,"forbidden_outcome_file_acquired":False,
+        "lab": "PMD-001", "stage": "PUBLIC_RPC_FULL_COVERAGE_SHARD_V02A",
+        "shard_index": args.shard_index, "shard_count": args.shard_count,
+        "exact_executable_population": len(manifest), "target_rows": len(targets),
+        "resolved_rows": len(resolved_rows), "unresolved_rows": len(audit) - len(resolved_rows),
+        "rows_with_any_300": sum((r.get("n300") or 0) > 0 for r in resolved_rows),
+        "rows_with_any_60": sum((r.get("n60") or 0) > 0 for r in resolved_rows),
+        "rows_with_any_30": sum((r.get("n30") or 0) > 0 for r in resolved_rows),
+        "fallback_queries": fallback_queries,
+        "fallback_recovered_zero_curve_cases": fallback_recovered_zero_curve_cases,
+        "provider_errors": provider_errors, "pagination_caps": pagination_caps,
+        "missing_curve_keys": missing_curve_keys, "audit_sha256": audit_sha,
+        "classification": "CENSUS_SHARD_COMPLETE" if (len(resolved_rows) == len(audit) and missing_curve_keys == 0) else "CENSUS_SHARD_COMPLETE_WITH_UNRESOLVED_SOURCE",
+        "outcomes_opened": False, "forbidden_outcome_file_acquired": False,
     }
-    core.write_json(root/"receipt.json",receipt)
-    print(json.dumps(receipt,indent=2,sort_keys=True))
-    # Provider/coverage incompleteness is scientific evidence, not a workflow crash.
+    core.write_json(root / "receipt.json", receipt)
+    print(json.dumps(receipt, indent=2, sort_keys=True))
     return 0
+
 
 if __name__ == "__main__":
     raise SystemExit(main())
