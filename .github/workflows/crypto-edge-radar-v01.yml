@@ -1,4 +1,4 @@
-name: CRYPTO EDGE RADAR V0.1 CI
+name: CRYPTO EDGE RADAR V0.2 CI + PUBLIC SOAK
 
 on:
   push:
@@ -33,3 +33,47 @@ jobs:
         run: python -m compileall radar tests
       - name: Unit tests
         run: python -m unittest discover -s tests -v
+
+  public-shadow-soak:
+    needs: offline-safety-tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: crypto_edge_radar
+    env:
+      RADAR_DB: ci_artifacts/radar_evidence.sqlite3
+      RADAR_STATUS: ci_artifacts/radar_status.json
+      RADAR_NOTIFICATIONS: ci_artifacts/radar_notifications.jsonl
+      RADAR_UNIVERSE_MODE: core5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Prepare artifact directory
+        run: mkdir -p ci_artifacts
+      - name: Real public-data bounded soak — 3 cycles
+        run: python -m radar service --interval 5 --max-cycles 3
+      - name: Verify evidence chain
+        run: python -m radar verify-evidence
+      - name: Verify final heartbeat and zero promoted strategies
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          status = json.loads(Path('ci_artifacts/radar_status.json').read_text())
+          assert status['health'] == 'OK', status
+          assert status['cycle'] == 3, status
+          assert status['registered_strategies'] == 0, status
+          assert status['valid_signal_count'] == 0, status
+          assert len(status['universe']) == 5, status
+          print(json.dumps(status, sort_keys=True))
+          PY
+      - name: Upload public shadow receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: crypto-edge-radar-v02-public-shadow-receipt
+          path: crypto_edge_radar/ci_artifacts/
+          if-no-files-found: warn
+          retention-days: 14
