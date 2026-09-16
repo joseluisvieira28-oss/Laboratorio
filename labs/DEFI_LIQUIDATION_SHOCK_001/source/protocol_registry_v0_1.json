@@ -1,0 +1,106 @@
+{
+  "registry_version": "V0.1",
+  "lab_id": "DEFI-LIQUIDATION-SHOCK-001",
+  "status": "REFERENCE_ONLY_UNTIL_HISTORICAL_VALIDATION",
+  "source_window_utc": {
+    "start": "2021-01-01T00:00:00Z",
+    "end": "2024-12-31T23:59:59Z"
+  },
+  "protocols": [
+    {
+      "protocol": "save_solend",
+      "family": "lending",
+      "program_id": "So1endDq2YkqhipRh3WViPa8hdiSpxWy6z3Z6tMCpAo",
+      "program_id_evidence": {
+        "repository": "solendprotocol/public",
+        "commit": "b3b46ffbc2f5162b6e5680dd3cad1042c2eb3f8e",
+        "path": "solend-sdk/src/core/constants.ts"
+      },
+      "reference_liquidation_encodings": [
+        {
+          "name": "LiquidateObligation",
+          "encoding": "native_u8_tag",
+          "prefix_hex": "0c",
+          "evidence_path": "solend-sdk/src/instructions/instruction.ts"
+        },
+        {
+          "name": "LiquidateObligationAndRedeemReserveCollateral",
+          "encoding": "native_u8_tag",
+          "prefix_hex": "11",
+          "evidence_path": "solend-sdk/src/instructions/liquidateObligationAndRedeemReserveCollateral.ts"
+        }
+      ],
+      "historical_decoder_authoritative": false,
+      "notes": "Production program and liquidation enum/instruction are pinned to the cited public commit; applicability must still be proven across each historical interval."
+    },
+    {
+      "protocol": "marginfi_v2",
+      "family": "lending",
+      "program_id": "MFv2hWf31Z9kbCa1snEPYctwafyhdvnV7FZnsebVacA",
+      "program_id_evidence": {
+        "repository": "0dotxyz/marginfi-v2",
+        "commit": "35b5c66aa6897c43e7199bd6c598134041e89f99",
+        "path": "id-crate/src/lib.rs"
+      },
+      "reference_liquidation_encodings": [
+        {
+          "name": "lending_account_liquidate",
+          "encoding": "anchor_discriminator_8",
+          "prefix_hex": "d6a997d5fba756db",
+          "evidence_repository": "mrgnlabs/mrgn-ts",
+          "evidence_commit": "adcfdae468b784ed264976d4fe44722fb0b60903",
+          "evidence_path": "packages/marginfi-client-v2/src/idl/marginfi_0.1.7.json"
+        }
+      ],
+      "historical_decoder_authoritative": false,
+      "notes": "Program upgrades and later start/end liquidation flows require historical version mapping before event authority."
+    },
+    {
+      "protocol": "kamino_lend",
+      "family": "lending",
+      "program_id": "KLend2g3cP87fffoy8q1mQqGKjrxjC8boSyAYavgmjD",
+      "program_id_evidence": {
+        "repository": "Kamino-Finance/klend-sdk",
+        "commit": "38845294447623f6de3afc9dec29875f959f6f48",
+        "path": "src/@codegen/klend/programId.ts"
+      },
+      "reference_liquidation_encodings": [
+        {
+          "name": "liquidateObligationAndRedeemReserveCollateral",
+          "encoding": "anchor_discriminator_8",
+          "prefix_hex": "b1479acce2854a37",
+          "evidence_path": "src/@codegen/klend/instructions/liquidateObligationAndRedeemReserveCollateral.ts"
+        }
+      ],
+      "historical_decoder_authoritative": false,
+      "notes": "Reference is current generated SDK code. Historical deployment/IDL version applicability must be pinned before counting events."
+    },
+    {
+      "protocol": "drift_v2",
+      "family": "perps_spot_margin",
+      "program_id": "dRiftyHA39MWEi3m9aunc5MzRF1JYuBsbn6VPcn33UH",
+      "program_id_evidence": {
+        "repository": "0dotxyz/marginfi-v2",
+        "commit": "35b5c66aa6897c43e7199bd6c598134041e89f99",
+        "path": "idls-complete/drift.json"
+      },
+      "reference_liquidation_encodings": [
+        {
+          "name": "liquidate_perp",
+          "encoding": "anchor_discriminator_8",
+          "prefix_hex": "4b2377f7bf128b02",
+          "reference_only": true
+        }
+      ],
+      "historical_decoder_authoritative": false,
+      "notes": "Drift has multiple liquidation instruction families. This registry does not claim liquidate_perp alone is a complete liquidation census. Full historical IDL mapping is required."
+    }
+  ],
+  "governance": {
+    "outcomes_opened": false,
+    "prices_queried": false,
+    "returns_computed": false,
+    "pnl_computed": false,
+    "protocol_winner_selected": false
+  }
+}
