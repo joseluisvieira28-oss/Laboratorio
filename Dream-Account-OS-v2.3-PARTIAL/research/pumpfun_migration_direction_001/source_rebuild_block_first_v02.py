@@ -9,13 +9,15 @@ from those block responses.
 
 Storage policy:
 - target/signature transaction bodies are preserved in per-mint raw JSONL;
-- every fetched block gets a compact canonical SHA-256 ledger entry;
+- every fetched block gets a compact canonical SHA-256 ledger entry including
+  provider, blockTime and retrieval timestamp;
 - full block payload persistence is optional (--store-full-blocks), allowing the
   full-population gate to remain storage-bounded without changing source logic.
 """
 from __future__ import annotations
 
 import argparse
+import datetime as dt
 import gzip
 import hashlib
 import json
@@ -31,6 +33,10 @@ from source_rebuild_helius_v01 import (
 
 WINDOW_SECONDS = 300
 SIG_LIMIT = 1000
+
+
+def utc_now() -> str:
+    return dt.datetime.now(dt.timezone.utc).isoformat()
 
 
 def find_matches(block: Any, signature: str) -> list[Any]:
@@ -104,6 +110,8 @@ def collect_one(rpc: Rpc, row: dict[str, Any], root: Path, store_full_blocks: bo
     slots = sorted({int(x["slot"]) for x in safe if x.get("slot") is not None})
 
     blocks = {}
+    block_shas = {}
+    block_retrieved_at = {}
     block_errors = 0
     block_ledger = root / "block_hash_ledger.jsonl"
     block_dir = root / "blocks" / mint
@@ -111,6 +119,7 @@ def collect_one(rpc: Rpc, row: dict[str, Any], root: Path, store_full_blocks: bo
         block_dir.mkdir(parents=True, exist_ok=True)
     with block_ledger.open("a", encoding="utf-8") as ledger:
         for slot in slots:
+            retrieved_at = utc_now()
             try:
                 block = rpc.get_block(slot)
                 if not isinstance(block, dict):
@@ -121,6 +130,8 @@ def collect_one(rpc: Rpc, row: dict[str, Any], root: Path, store_full_blocks: bo
                 block_errors += 1
             blocks[slot] = block
             block_sha = sha256_json(block)
+            block_shas[slot] = block_sha
+            block_retrieved_at[slot] = retrieved_at
             ledger.write(json.dumps({
                 "lab": "PMD-001",
                 "stage": "BLOCK_FIRST_REBUILD_V02_SAFE_CUTOFF",
@@ -128,8 +139,10 @@ def collect_one(rpc: Rpc, row: dict[str, Any], root: Path, store_full_blocks: bo
                 "source_name": rpc.source_name,
                 "mint": mint,
                 "slot": slot,
+                "block_time": block.get("blockTime") if isinstance(block, dict) else None,
+                "retrieved_at_utc": retrieved_at,
                 "canonical_block_sha256": block_sha,
-                "block_error": block.get("_rpc_error"),
+                "block_error": block.get("_rpc_error") if isinstance(block, dict) else "nonobject_block",
                 "full_block_persisted": bool(store_full_blocks),
             }, sort_keys=True, ensure_ascii=False) + "\n")
             ledger.flush()
@@ -141,6 +154,8 @@ def collect_one(rpc: Rpc, row: dict[str, Any], root: Path, store_full_blocks: bo
                     "source_name": rpc.source_name,
                     "mint": mint,
                     "slot": slot,
+                    "block_time": block.get("blockTime") if isinstance(block, dict) else None,
+                    "retrieved_at_utc": retrieved_at,
                     "block": block,
                     "canonical_sha256": block_sha,
                 }
@@ -187,6 +202,8 @@ def collect_one(rpc: Rpc, row: dict[str, Any], root: Path, store_full_blocks: bo
                 "same_second_quarantined": True,
                 "bonding_curve_pda": pda,
                 "signature_meta": meta,
+                "source_block_sha256": block_shas.get(slot),
+                "source_block_retrieved_at_utc": block_retrieved_at.get(slot),
                 "feature_eligible_by_time": True,
                 "target_pump_mint_pda_present": is_target,
                 "transaction": tx,
@@ -203,6 +220,8 @@ def collect_one(rpc: Rpc, row: dict[str, Any], root: Path, store_full_blocks: bo
         and duplicate_matches == 0
         and len(slots) > 0
         and len(safe) > 0
+        and all(block_retrieved_at.get(s) for s in slots)
+        and all(block_shas.get(s) for s in slots)
     )
     feature_source_eligible = bool(complete and successful_target > 0)
     return {
@@ -234,6 +253,7 @@ def collect_one(rpc: Rpc, row: dict[str, Any], root: Path, store_full_blocks: bo
         "source_complete": complete,
         "feature_source_eligible": feature_source_eligible,
         "timestamp_precision_amendment_applied": True,
+        "retrieval_timestamp_evidence_complete": bool(slots) and all(block_retrieved_at.get(s) for s in slots),
         "full_blocks_persisted": bool(store_full_blocks),
         "raw_file": str(raw_path),
         "raw_file_sha256": hashlib.sha256(raw_path.read_bytes()).hexdigest(),
@@ -288,6 +308,7 @@ def main() -> int:
                     "source_complete": False,
                     "feature_source_eligible": False,
                     "timestamp_precision_amendment_applied": True,
+                    "retrieval_timestamp_evidence_complete": False,
                     "collector_error": f"{type(exc).__name__}: {exc}",
                 }
             sf.write(json.dumps(res, sort_keys=True, ensure_ascii=False) + "\n")
@@ -296,7 +317,7 @@ def main() -> int:
                 "mint", "source_complete", "feature_source_eligible",
                 "safe_in_window_signatures", "same_second_signatures_quarantined",
                 "unique_safe_in_window_slots", "successful_target_pump_transactions",
-                "collector_error"
+                "retrieval_timestamp_evidence_complete", "collector_error"
             ) if k in res}, sort_keys=True))
 
     print(json.dumps({
