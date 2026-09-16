@@ -1,0 +1,45 @@
+name: PMD-001 Mint Index Fallback Probe V0.2A
+
+on:
+  push:
+    branches:
+      - pumpfun-migration-direction-source-rebuild-v0.2
+    paths:
+      - '.github/workflows/pmd001-mint-index-fallback-probe-v02a.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fallback-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      PMD_SOLANA_RPC_URL: 'https://api.mainnet.solana.com'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install source-only dependencies
+        run: pip install duckdb huggingface_hub
+      - name: Execute frozen outcome-blind fallback probe
+        run: |
+          set -o pipefail
+          python Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/mint_index_fallback_probe_v02a.py | tee pmd001_mint_index_fallback_v02a_receipt.txt
+      - name: Assert forbidden economic outcome file absent
+        run: |
+          if find . -name 'postgard_outcomes.parquet' -print -quit | grep -q .; then exit 1; fi
+          echo 'Outcome file absent: PASS'
+      - name: Upload outcome-blind probe evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pmd001-mint-index-fallback-probe-v02a
+          path: |
+            artifacts/pmd001_mint_index_fallback_probe_v02a/
+            pmd001_mint_index_fallback_v02a_receipt.txt
+          if-no-files-found: warn
+          retention-days: 30
