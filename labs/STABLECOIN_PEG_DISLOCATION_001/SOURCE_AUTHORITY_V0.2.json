@@ -1,0 +1,84 @@
+{
+  "lab_id": "STABLECOIN-PEG-DISLOCATION-001",
+  "source_gate_id": "SPD-USDCUSDT-SOURCE-002",
+  "status": "FROZEN_PRE_SOURCE_REMEDIATION",
+  "date_frozen": "2026-09-16",
+  "parent_v01_classification": "SOURCE_DATA_INCOMPLETE",
+  "parent_v01_run_id": 35090219195,
+  "repository": "joseluisvieira28-oss/Laboratorio",
+  "branch": "stablecoin-peg-dislocation-v0.1",
+  "remediation_scope": "Source calendar/probe correction only, justified by official Binance venue status before economic outcomes.",
+  "official_venue_status": {
+    "trading_ceased_utc": "2022-09-26T03:00:00Z",
+    "trading_reopened_utc": "2023-03-11T14:00:00Z",
+    "fully_inactive_utc_dates_start": "2022-09-27",
+    "fully_inactive_utc_dates_end": "2023-03-10",
+    "fully_inactive_day_count": 165
+  },
+  "canonical_source": {
+    "venue": "Binance Spot",
+    "symbol": "USDCUSDT",
+    "interval": "1m",
+    "archive_granularity": "daily",
+    "base_url": "https://data.binance.vision/data/spot/daily/klines/USDCUSDT/1m",
+    "zip_pattern": "USDCUSDT-1m-YYYY-MM-DD.zip",
+    "checksum_suffix": ".CHECKSUM",
+    "monthly_archives_allowed": false,
+    "third_party_substitution_allowed": false
+  },
+  "venue_active_calendar": {
+    "segment_a_start": "2021-01-01",
+    "segment_a_end": "2022-09-26",
+    "segment_b_start": "2023-03-11",
+    "segment_b_end": "2024-12-31",
+    "expected_active_days": 1296,
+    "access_2025_allowed": false,
+    "access_2026_allowed": false
+  },
+  "boundary_day_rule": "2022-09-26 and 2023-03-11 remain source-calendar days despite partial trading sessions; any later economic treatment requires a separate prospective Discovery contract.",
+  "probe_dates": [
+    "2021-01-15",
+    "2021-07-15",
+    "2022-01-15",
+    "2022-07-15",
+    "2023-03-15",
+    "2023-07-15",
+    "2024-01-15",
+    "2024-07-15"
+  ],
+  "source_gate_rules": {
+    "check_all_active_daily_zip_urls": true,
+    "check_all_active_checksum_urls": true,
+    "download_full_data_only_for_probe_dates": true,
+    "expected_kline_columns": 12,
+    "minimum_probe_rows": 1000,
+    "emit_ohlc_values": false,
+    "compute_peg_deviation": false,
+    "compute_returns": false,
+    "compute_forward_convergence": false,
+    "compute_pnl": false,
+    "compute_signal_counts": false,
+    "compute_extrema": false
+  },
+  "pass_gate": {
+    "active_daily_zip_reachable": 1296,
+    "active_daily_checksum_valid": 1296,
+    "valid_probe_archives": 8,
+    "access_2025": false,
+    "access_2026": false,
+    "economic_outcomes_opened": false
+  },
+  "stop_rule": "SOURCE_DATA_PASS proves source feasibility only. Separate prospective PRE-DISCOVERY authority is mandatory before any economic calculation.",
+  "firewalls": {
+    "discovery": false,
+    "strategy_pnl": false,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "orders": false,
+    "alerts": false,
+    "webhooks": false,
+    "merge_main": false,
+    "render_deploy": false,
+    "post_outcome_tuning": false
+  }
+}
