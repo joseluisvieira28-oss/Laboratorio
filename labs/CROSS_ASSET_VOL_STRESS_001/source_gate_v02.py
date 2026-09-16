@@ -35,7 +35,6 @@ def fetch_year(year:int)->tuple[bytes,str]:
 
 def normalize_date(v)->str:
     s=str(v or '').strip()
-    # Provider may use YYYY-MM-DD or timestamp-like values.
     m=re.search(r'(20\d{2})-(\d{2})-(\d{2})',s)
     if m:
         return '-'.join(m.groups())
@@ -59,8 +58,6 @@ def parse_price(v)->float:
     return x
 
 def response_data(obj):
-    # Current frontend contract uses top-level data; retain a narrow compatibility
-    # for a provider wrapper that nests the same object under result.
     if isinstance(obj,dict) and isinstance(obj.get('data'),list):
         return obj['data']
     if isinstance(obj,dict) and isinstance(obj.get('data'),dict):
@@ -95,7 +92,6 @@ for y in YEARS:
     except Exception as e:
         raise RuntimeError(f'JSON_PARSE_FAILURE:{y}:{type(e).__name__}')
 
-    # If provider exposes selectedYear/year, it must not contradict the requested year.
     selected=None
     if isinstance(obj,dict):
         for k in ('selectedYear','selected_year','year'):
@@ -168,12 +164,21 @@ checks={
     'access_2025':False,'access_2026':False,
     'btc_market_data_accessed':False,'returns_computed':False,'pnl_computed':False
 }
-classification='SOURCE_DATA_PASS' if all(v is True for v in checks.values()) else 'SOURCE_DATA_FAILURE'
+source_gates_pass=(
+    checks['no_conflicting_same_date_values'] is True and
+    checks['each_year_ge_45'] is True and
+    checks['total_ge_320'] is True and
+    checks['access_2025'] is False and
+    checks['access_2026'] is False and
+    checks['btc_market_data_accessed'] is False and
+    checks['returns_computed'] is False and
+    checks['pnl_computed'] is False
+)
+classification='SOURCE_DATA_PASS' if source_gates_pass else 'SOURCE_DATA_FAILURE'
 
 header=['date','settlement','symbols','frequencies','calculation_methods']
 lines=[','.join(header)]
 for r in canonical:
-    # Values are provider identifiers without commas in expected schema; JSON-encode list fields to avoid ambiguity.
     lines.append(','.join([
         r['date'],f"{r['settlement']:.10f}",
         json.dumps(r['symbols'],separators=(':', ';')).replace(',', ';'),
