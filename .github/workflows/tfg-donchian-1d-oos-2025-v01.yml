@@ -1,4 +1,4 @@
-name: TFG Donchian 1D Frozen 2025 OOS
+name: TFG Donchian 1D Frozen 2025 OOS V0.1B 15m Source
 
 on:
   push:
@@ -13,7 +13,7 @@ permissions:
   actions: read
 
 jobs:
-  oos_2025:
+  oos_2025_v01b:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     defaults:
@@ -31,11 +31,11 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Compile and verify frozen pre-outcome authority
+      - name: Compile and verify frozen authority plus pre-outcome source correction
         run: |
           export PYTHONPATH="$PWD:${PYTHONPATH:-}"
-          python -m py_compile research/tfg_donchian_1d_oos_2025_runner_v01.py
-          python -m research.tfg_donchian_1d_oos_2025_runner_v01 --self-test
+          python -m py_compile research/tfg_donchian_1d_oos_2025_runner_v01b.py
+          python -m research.tfg_donchian_1d_oos_2025_runner_v01b --self-test
 
       - name: Verify exact parent source artifact metadata
         env:
@@ -82,7 +82,7 @@ jobs:
           print('PARENT_MANIFEST_AUTHORITY=PASS')
           PY
 
-      - name: Rebuild only December 2024 canonical overlap reference
+      - name: Rebuild only December 2024 canonical 15m overlap reference
         run: |
           export PYTHONPATH="$PWD/src:$PWD:${PYTHONPATH:-}"
           RAW=research/local_data/tfg_donchian_1d_oos_parent/tfg_pbr01_1d_raw
@@ -95,40 +95,40 @@ jobs:
               --receipt "$MAN/${s}_MANIFEST.json" > "$MAN/${s}_STDOUT.json"
           done
           test "$(find "$OUT/canonical" -name '*.canonical.csv' | wc -l)" -eq 6
-          echo 'DECEMBER_2024_CANONICAL_REFERENCE=PASS'
+          echo 'DECEMBER_2024_CANONICAL_15M_REFERENCE=PASS'
 
-      - name: Execute one-shot 2025 OOS after source-equivalence gate
+      - name: Execute one-shot 2025 OOS with exact pre-2025 15m equivalence gate
         id: oos
         continue-on-error: true
         run: |
           export PYTHONPATH="$PWD:${PYTHONPATH:-}"
-          OUT=research/local_data/tfg_donchian_1d_oos_2025
+          OUT=research/local_data/tfg_donchian_1d_oos_2025_v01b
           mkdir -p "$OUT"
           set +e
-          python -m research.tfg_donchian_1d_oos_2025_runner_v01 \
+          python -m research.tfg_donchian_1d_oos_2025_runner_v01b \
             --parent-canonical-dir research/local_data/tfg_donchian_1d_oos_parent_dec/canonical \
             --output-dir "$OUT"
           rc=$?
           echo "rc=$rc" >> "$GITHUB_OUTPUT"
           echo "OOS_RUNNER_RC=$rc"
-          if [ -f "$OUT/TFG_DONCHIAN_1D_2025_OOS_RECEIPT_V0.1.json" ]; then
-            cat "$OUT/TFG_DONCHIAN_1D_2025_OOS_RECEIPT_V0.1.json"
+          if [ -f "$OUT/TFG_DONCHIAN_1D_2025_OOS_RECEIPT_V0.1B.json" ]; then
+            cat "$OUT/TFG_DONCHIAN_1D_2025_OOS_RECEIPT_V0.1B.json"
           fi
           exit 0
 
-      - name: Upload frozen OOS receipt and ledger
+      - name: Upload frozen OOS V0.1B receipt and ledger
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: tfg-donchian-1d-2025-oos-result
+          name: tfg-donchian-1d-2025-oos-v01b-result
           path: |
-            Dream-Account-OS-v2.3-PARTIAL/research/local_data/tfg_donchian_1d_oos_2025/TFG_DONCHIAN_1D_2025_OOS_RECEIPT_V0.1.json
-            Dream-Account-OS-v2.3-PARTIAL/research/local_data/tfg_donchian_1d_oos_2025/TFG_DONCHIAN_1D_2025_OOS_LEDGER_V0.1.json
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/tfg_donchian_1d_oos_2025_v01b/TFG_DONCHIAN_1D_2025_OOS_RECEIPT_V0.1B.json
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/tfg_donchian_1d_oos_2025_v01b/TFG_DONCHIAN_1D_2025_OOS_LEDGER_V0.1B.json
           if-no-files-found: warn
           retention-days: 30
 
       - name: Fail closed on non-scientific blocker
         if: steps.oos.outputs.rc != '0'
         run: |
-          echo 'OOS blocked by source/technical/data gate. No scientific negative conclusion and no shadow promotion.'
+          echo 'OOS V0.1B blocked by source/technical/data gate. No scientific negative conclusion and no shadow promotion.'
           exit 1
