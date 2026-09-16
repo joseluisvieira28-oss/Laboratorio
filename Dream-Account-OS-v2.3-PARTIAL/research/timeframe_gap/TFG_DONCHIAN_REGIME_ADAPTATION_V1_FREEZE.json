@@ -1,0 +1,138 @@
+{
+  "experiment_id": "TFG-DONCHIAN-REGIME-ADAPTATION-V1",
+  "status": "FROZEN_BEFORE_ANY_REGIME_FILTERED_OUTCOME_EVALUATION",
+  "freeze_date": "2026-09-16",
+  "authority": "USER_EXPLICIT_ATTACK_REGIME_ADAPTATION",
+  "scientific_purpose": "Test whether a simple causal market-wide bull-regime gate can preserve the established long-only Donchian edge in favorable periods while avoiding deployment in hostile regimes, without tuning the underlying Donchian geometry.",
+  "contamination_statement": "Unfiltered Donchian outcomes for 2026-01 through 2026-08 are already known from prior experiments. Therefore 2026 is NOT a pristine holdout for this new regime-adaptation hypothesis. It is diagnostic stress evidence only and cannot by itself authorize live trading. The first genuinely prospective confirmation period begins strictly after this freeze.",
+  "source": {
+    "provider": "MEXC",
+    "market": "SPOT",
+    "raw_interval": "15m official bulk files only",
+    "universe": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "DOGEUSDT"],
+    "available_historical_span": "2023-02-01T00:00:00Z through 2026-08-31T00:00:00Z",
+    "no_cross_exchange_backfill": true,
+    "no_interpolation": true,
+    "complete_underlying_15m_required": true,
+    "derived_daily_anchor": "UTC"
+  },
+  "primary_strategy": {
+    "cell_id": "D12_REGIME_PRIMARY",
+    "lineage": "HTF-DH03-DONCHIAN-12H-001 / TFG-DONCHIAN-INTRADAY-FAMILY D12",
+    "timeframe": "12H",
+    "direction": "LONG_ONLY",
+    "donchian_lookback_complete_bars": 40,
+    "atr_length": 28,
+    "signal": "12H close > max high of previous 40 complete 12H bars",
+    "entry": "next 12H open",
+    "stop": "signal low - 0.25*ATR28",
+    "target_r": 3.0,
+    "max_hold_bars": 80,
+    "one_active_trade_per_symbol": true,
+    "base_round_trip_cost_pct": 0.20,
+    "stress_round_trip_cost_pct": 0.30
+  },
+  "regime_gate": {
+    "name": "BROAD_BULL_PARTICIPATION_GATE_V1",
+    "economic_logic": "Long-only breakout persistence is expected to be strongest when the market has positive long-horizon drift and broad participation rather than isolated asset strength.",
+    "causal_snapshot": "Use only the most recent fully closed UTC daily bar strictly before the 12H signal close.",
+    "all_conditions_required": [
+      "BTC daily close > BTC SMA200",
+      "BTC SMA200 today > BTC SMA200 20 complete days earlier",
+      "at least 4 of the 6 frozen assets have daily close > their own SMA100"
+    ],
+    "thresholds_frozen": {
+      "btc_sma_length": 200,
+      "btc_sma_slope_lag_days": 20,
+      "breadth_sma_length": 100,
+      "breadth_min_assets": 4,
+      "breadth_universe_size": 6
+    },
+    "no_trade_if_regime_state_missing": true,
+    "no_asset_specific_regime_override": true,
+    "no_volatility_threshold": true,
+    "no_adx_threshold": true,
+    "no_parameter_search": true
+  },
+  "diagnostic_siblings": {
+    "cells": ["D8", "D4"],
+    "same_regime_gate_exactly": true,
+    "cannot_rescue_primary": true,
+    "purpose": "Check scale consistency only; D12 is the sole promotion cell."
+  },
+  "windows": {
+    "W1_PRE2025_VALIDATION": {
+      "scored_entry_start_utc": "2023-09-01T00:00:00Z",
+      "scored_entry_end_exclusive_utc": "2025-01-01T00:00:00Z",
+      "reason_for_start": "Allow causal SMA200 plus 20-day slope initialization from the February 2023 source start."
+    },
+    "W2_2025_TEMPORAL_VALIDATION": {
+      "scored_entry_start_utc": "2025-01-01T00:00:00Z",
+      "scored_entry_end_exclusive_utc": "2026-01-01T00:00:00Z"
+    },
+    "W3_2026_DIAGNOSTIC_ONLY": {
+      "scored_entry_start_utc": "2026-01-01T00:00:00Z",
+      "scored_entry_end_exclusive_utc": "2026-08-31T00:00:00Z",
+      "promotion_gate": false,
+      "reason": "Parent 2026 outcomes were already observed before this regime experiment was conceived."
+    }
+  },
+  "primary_promotion_gates": {
+    "W1": {
+      "minimum_resolved_filtered_trades": 50,
+      "minimum_trade_retention_vs_unfiltered": 0.30,
+      "base_expectancy_r_gt": 0.0,
+      "base_profit_factor_gt": 1.0,
+      "stress_expectancy_r_gt": 0.0,
+      "stress_profit_factor_gt": 1.0,
+      "bootstrap_lower_95_gt": 0.0,
+      "unresolved_execution_paths_eq": 0
+    },
+    "W2": {
+      "minimum_resolved_filtered_trades": 20,
+      "minimum_trade_retention_vs_unfiltered": 0.30,
+      "base_expectancy_r_gt": 0.0,
+      "base_profit_factor_gt": 1.0,
+      "stress_expectancy_r_gt": 0.0,
+      "stress_profit_factor_gt": 1.0,
+      "max_single_symbol_positive_r_share_lte": 0.70,
+      "unresolved_execution_paths_eq": 0,
+      "bootstrap": "REPORT_ONLY"
+    },
+    "W3": {
+      "diagnostics": [
+        "filtered_trade_count",
+        "trade_retention",
+        "base_expectancy_r",
+        "base_profit_factor",
+        "base_total_r",
+        "stress_expectancy_r",
+        "stress_profit_factor",
+        "loss_avoidance_vs_unfiltered_total_r",
+        "regime_on_fraction_of_calendar_days"
+      ],
+      "cannot_authorize_live": true
+    }
+  },
+  "promotion_logic": {
+    "primary_must_pass_W1_and_W2": true,
+    "W3_is_diagnostic_only": true,
+    "diagnostic_siblings_cannot_rescue_primary": true,
+    "next_state_if_primary_passes": "REGIME_ADAPTATION_CANDIDATE_FORWARD_ONLY",
+    "prospective_confirmation_required_after_freeze": true,
+    "live_trading_automatically_authorized": false
+  },
+  "governance": {
+    "no_change_to_donchian_rule": true,
+    "no_regime_threshold_tuning_after_outcomes": true,
+    "no_alternative_gate_rescue": true,
+    "no_asset_selection": true,
+    "no_timeframe_winner_selection": true,
+    "no_cost_reduction_rescue": true,
+    "no_partial_window_rescue": true,
+    "no_live_orders": true,
+    "no_exchange_mutation": true,
+    "no_merge_to_main": true,
+    "report_primary_and_all_diagnostic_siblings": true
+  }
+}
