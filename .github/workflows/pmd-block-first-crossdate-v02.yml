@@ -63,7 +63,8 @@ jobs:
             --manifest pmd_crossdate_probe20_manifest_v01.jsonl \
             --out-dir pmd_block_first_crossdate_v02 \
             --rpc-url https://api.mainnet-beta.solana.com \
-            --source-name solana_public_rpc_block_first_safe_cutoff
+            --source-name solana_public_rpc_block_first_safe_cutoff \
+            --store-full-blocks
 
       - name: Classify safe-cutoff cross-date access only
         working-directory: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001
@@ -77,7 +78,7 @@ jobs:
           assert all(r.get('outcomes_opened') is False for r in rows)
           assert all(r.get('timestamp_precision_amendment_applied') is True for r in rows)
           complete=sum(bool(r.get('source_complete')) for r in rows)
-          target=sum(bool(r.get('source_complete')) and int(r.get('valid_target_pump_transactions') or 0)>0 for r in rows)
+          target=sum(bool(r.get('feature_source_eligible')) for r in rows)
           dates=len({str(r['t0'])[:10] for r in rows})
           if complete==20 and target==20 and dates==20:
               verdict='BLOCK_FIRST_CROSSDATE_V02_PASS'
@@ -88,7 +89,7 @@ jobs:
           receipt={
               'lab':'PMD-001','stage':'BLOCK_FIRST_CROSSDATE_ACCESS_V02_SAFE_CUTOFF',
               'outcomes_opened':False,'probe_rows':len(rows),'distinct_dates':dates,
-              'source_complete_mints':complete,'target_evidence_mints':target,
+              'source_complete_mints':complete,'feature_source_eligible_mints':target,
               'source_incomplete_mints':20-complete,
               'same_second_signatures_quarantined_total':sum(int(r.get('same_second_signatures_quarantined') or 0) for r in rows),
               'summary_sha256':hashlib.sha256(p.read_bytes()).hexdigest(),
@@ -112,6 +113,7 @@ jobs:
             Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/pmd_crossdate_probe20_manifest_v01.jsonl
             Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/pmd_crossdate_probe20_manifest_v01_receipt.json
             Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/pmd_block_first_crossdate_v02/source_rebuild_summary.jsonl
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/pmd_block_first_crossdate_v02/block_hash_ledger.jsonl
             Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/pmd_block_first_crossdate_v02/raw/*.jsonl
             Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/pmd_block_first_crossdate_v02/blocks/**/*.json.gz
             Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/pmd_block_first_crossdate_v02_receipt.json
