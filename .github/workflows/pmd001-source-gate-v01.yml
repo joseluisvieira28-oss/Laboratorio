@@ -34,6 +34,7 @@ jobs:
         env:
           HF_HUB_DISABLE_TELEMETRY: '1'
         run: |
+          set -o pipefail
           mkdir -p artifacts
           python Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/source_gate_v01.py \
             --data-dir "$RUNNER_TEMP/pmd001_data" \
