@@ -7,16 +7,24 @@ import sys
 from .config import Settings
 from .evidence import EvidenceStore
 from .engine import RadarEngine
-from .market import BinancePublicFeed
+from .market import BinancePublicFeed, BinanceSpotPublicFeed
 from .service import PublicShadowService, read_status
 from .strategy import StrategyRegistry
+
+
+def build_feed(settings: Settings):
+    if settings.provider == "binance_usdm":
+        return BinancePublicFeed(timeout=settings.http_timeout)
+    if settings.provider == "binance_spot_public":
+        return BinanceSpotPublicFeed(timeout=settings.http_timeout)
+    raise ValueError(f"unsupported provider: {settings.provider}")
 
 
 def build_engine() -> tuple[RadarEngine, Settings]:
     settings = Settings.from_env()
     engine = RadarEngine(
         settings=settings,
-        feed=BinancePublicFeed(timeout=settings.http_timeout),
+        feed=build_feed(settings),
         store=EvidenceStore(settings.db_path),
         registry=StrategyRegistry.empty(),
     )
