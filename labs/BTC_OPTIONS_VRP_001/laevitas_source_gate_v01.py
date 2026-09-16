@@ -56,38 +56,60 @@ def param_names(op):
     return names
 
 
-def resolve_ref(root, node, depth=0):
-    if depth > 8:
-        return node
-    if isinstance(node, dict) and "$ref" in node:
-        ref = node["$ref"]
-        if isinstance(ref, str) and ref.startswith("#/"):
-            cur = root
-            for part in ref[2:].split("/"):
-                cur = cur.get(part, {}) if isinstance(cur, dict) else {}
-            return resolve_ref(root, cur, depth + 1)
-    return node
+def deref(root, ref):
+    if not isinstance(ref, str) or not ref.startswith("#/"):
+        return None
+    cur = root
+    for part in ref[2:].split("/"):
+        part = part.replace("~1", "/").replace("~0", "~")
+        if not isinstance(cur, dict) or part not in cur:
+            return None
+        cur = cur[part]
+    return cur
 
 
-def collect_properties(root, node, out=None, depth=0):
+def collect_properties(root, node, out=None, depth=0, seen_refs=None):
+    """Walk the response schema generically, including nested wrappers and $refs.
+
+    This is an engineering-only remediation of the original schema inspector: the
+    scientific source, dates, required fields, pass criteria and all firewalls are
+    unchanged.
+    """
     if out is None:
         out = set()
-    if depth > 12:
+    if seen_refs is None:
+        seen_refs = set()
+    if depth > 20:
         return out
-    node = resolve_ref(root, node, depth)
-    if isinstance(node, dict):
-        props = node.get("properties")
-        if isinstance(props, dict):
-            out.update(props.keys())
-            for v in props.values():
-                collect_properties(root, v, out, depth + 1)
-        for key in ("items", "allOf", "oneOf", "anyOf"):
-            v = node.get(key)
-            if isinstance(v, list):
-                for item in v:
-                    collect_properties(root, item, out, depth + 1)
-            elif isinstance(v, dict):
-                collect_properties(root, v, out, depth + 1)
+
+    if isinstance(node, list):
+        for item in node:
+            collect_properties(root, item, out, depth + 1, seen_refs)
+        return out
+
+    if not isinstance(node, dict):
+        return out
+
+    ref = node.get("$ref")
+    if isinstance(ref, str) and ref.startswith("#/") and ref not in seen_refs:
+        seen_refs.add(ref)
+        target = deref(root, ref)
+        if target is not None:
+            collect_properties(root, target, out, depth + 1, seen_refs)
+
+    props = node.get("properties")
+    if isinstance(props, dict):
+        out.update(props.keys())
+
+    # Generic traversal is intentional: OpenAPI response models can place the row
+    # schema below wrapper properties such as data/items or composition objects.
+    # Starting from the endpoint's own 200-response schema keeps this scoped to
+    # that endpoint while avoiding false negatives from nested model shapes.
+    for key, value in node.items():
+        if key == "$ref":
+            continue
+        if isinstance(value, (dict, list)):
+            collect_properties(root, value, out, depth + 1, seen_refs)
     return out
 
 
@@ -231,6 +253,8 @@ result = {
     "lab_id": auth["lab_id"],
     "source_mve_id": auth["source_mve_id"],
     "classification": classification,
+    "technical_remediation_of_run": 35077276351,
+    "scientific_rules_changed": False,
     "public_openapi": {k: v for k, v in openapi_rec.items() if k != "json"},
     "public_x402": {k: v for k, v in x402_rec.items() if k != "json"},
     "path_info": path_info,
