@@ -1,0 +1,45 @@
+{
+  "document_type": "PRE_OUTCOME_SOURCE_SANITATION_AMENDMENT",
+  "experiment_id": "TFG-EMA-PULLBACK-1D-BINANCE-PREPERIOD-001",
+  "version": "0.1A",
+  "created_utc_date": "2026-09-16",
+  "status": "FROZEN_BEFORE_ANY_REPLICATION_OUTCOME_EVALUATION",
+  "trigger": "Checksum-verified Binance Data Vision source contained at least one historical 15m row whose close_time was not open_time + 900000 - 1. The initial source build failed before outcome evaluation.",
+  "observed_pre_outcome_example": {
+    "symbol": "BTCUSDT",
+    "open_time_ms": 1613014200000,
+    "observed_close_time_ms": 1613014854773,
+    "expected_close_time_ms": 1613015099999
+  },
+  "remediation": {
+    "policy": "REJECT_NONCANONICAL_15M_ROW_FROM_SOURCE_TRANSFORM",
+    "row_is_not_retimed": true,
+    "row_is_not_interpolated": true,
+    "row_is_not_synthesized": true,
+    "daily_effect": "THE_UTC_DAY_CONTAINING_A_REJECTED_OR_MISSING_15M_ROW FAILS THE 96-CANDLE COMPLETE-BUCKET REQUIREMENT AND IS DROPPED WHOLE; CONTINUITY SPLITS AROUND THE GAP",
+    "cross_exchange_backfill": false
+  },
+  "unchanged": [
+    "population/universe",
+    "2021-2022 source window",
+    "EMA20/EMA50/ATR14 definitions",
+    "signal rules",
+    "entry/stop/target",
+    "2R target",
+    "20-day max hold",
+    "20bp BASE and 30bp STRESS costs",
+    "minimum 100 resolved trades",
+    "bootstrap method/seed",
+    "no pooling with parent",
+    "no 2023/2024/2025/2026 access",
+    "no live trading or exchange mutation"
+  ],
+  "outcomes_opened_before_amendment": false,
+  "economic_results_observed_before_amendment": false,
+  "governance": {
+    "research_only": true,
+    "fail_closed": true,
+    "post_outcome_tuning": false,
+    "rescue": false
+  }
+}
