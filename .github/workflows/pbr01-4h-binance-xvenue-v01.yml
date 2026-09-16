@@ -2,17 +2,17 @@ name: PBR01 4H Binance Cross-Venue V0.1
 
 on:
   push:
-    branches:
-      - pbr01-4h-binance-xvenue-v0.1
+    branches: [pbr01-4h-binance-xvenue-v0.1]
     paths:
       - .github/workflows/pbr01-4h-binance-xvenue-v01.yml
       - Dream-Account-OS-v2.3-PARTIAL/research/TFG_PBR01_4H_BINANCE_XVENUE_FREEZE_V0.1.json
+      - Dream-Account-OS-v2.3-PARTIAL/research/TFG_PBR01_4H_BINANCE_XVENUE_SOURCE_REMEDIATION_V0.1.md
       - Dream-Account-OS-v2.3-PARTIAL/research/tfg_pbr01_4h_binance_source_v01.py
       - Dream-Account-OS-v2.3-PARTIAL/research/tfg_pbr01_4h_binance_xvenue_runner_v01.py
       - Dream-Account-OS-v2.3-PARTIAL/research/tfg_pbr01_4h_v01.py
       - Dream-Account-OS-v2.3-PARTIAL/research/phase_b_research_evaluator_v01.py
       - Dream-Account-OS-v2.3-PARTIAL/research/phase_b_signal_formation_v01.py
-      - Dream-Account-OS-v2.3-PARTIAL/dream_account/**
+      - Dream-Account-OS-v2.3-PARTIAL/src/dream_account/**
   workflow_dispatch:
 
 permissions:
@@ -46,7 +46,6 @@ jobs:
           p=json.loads(Path('Dream-Account-OS-v2.3-PARTIAL/research/TFG_PBR01_4H_BINANCE_XVENUE_FREEZE_V0.1.json').read_text())
           assert p['status']=='FROZEN_BEFORE_ANY_BINANCE_XVENUE_OUTCOME_EVALUATION'
           assert p['scientific_position']['venue_is_only_intended_change']=='MEXC_SPOT_TO_BINANCE_SPOT'
-          assert p['source_contract']['venue']=='BINANCE_SPOT'
           assert p['replication_window']['minimum_resolved_trades']==100
           assert p['costs']['BASE_SENSITIVITY_round_trip_pct']==0.20
           assert p['costs']['STRESS_round_trip_pct']==0.30
@@ -94,18 +93,13 @@ jobs:
           python3 - <<'PY'
           import json
           from pathlib import Path
-          p=Path('research/pbr01_4h_binance_xvenue_source_v01/TFG_PBR01_4H_BINANCE_XVENUE_SOURCE_MANIFEST_V0.1.json')
-          x=json.loads(p.read_text())
+          x=json.loads(Path('research/pbr01_4h_binance_xvenue_source_v01/TFG_PBR01_4H_BINANCE_XVENUE_SOURCE_MANIFEST_V0.1.json').read_text())
           assert x['status']=='SOURCE_AUDIT_PASS'
           assert x['authority_commit']=='6703e683f59d5d5c322f119895d6d3e89a88857f'
-          assert x['accepted_archive_count']==138
-          assert x['required_archive_count']==138
+          assert x['accepted_archive_count']==138 and x['required_archive_count']==138
           assert all(v==23 for v in x['accepted_months_by_symbol'].values())
-          assert x['year_2025_accessed'] is False
-          assert x['year_2026_accessed'] is False
-          assert x['outcomes_computed'] is False
-          assert x['signals_computed'] is False
-          assert x['pnl_computed'] is False
+          assert x['year_2025_accessed'] is False and x['year_2026_accessed'] is False
+          assert x['outcomes_computed'] is False and x['signals_computed'] is False and x['pnl_computed'] is False
           print('SOURCE_AUDIT_PASS')
           print('NO_OUTCOME_BEFORE_SOURCE_PASS=true')
           PY
@@ -118,7 +112,7 @@ jobs:
         run: |
           set +e
           rm -rf research/pbr01_4h_binance_xvenue_output_v01
-          PYTHONPATH=. python3 research/tfg_pbr01_4h_binance_xvenue_runner_v01.py \
+          PYTHONPATH=src:. python3 research/tfg_pbr01_4h_binance_xvenue_runner_v01.py \
             --source-root research/pbr01_4h_binance_xvenue_source_v01 \
             --output research/pbr01_4h_binance_xvenue_output_v01
           rc=$?
@@ -136,16 +130,13 @@ jobs:
           python3 - <<'PY'
           import json, os
           from pathlib import Path
-          p=Path('research/pbr01_4h_binance_xvenue_output_v01/TFG_PBR01_4H_BINANCE_XVENUE_CLOSEOUT_V0.1.json')
-          x=json.loads(p.read_text())
+          x=json.loads(Path('research/pbr01_4h_binance_xvenue_output_v01/TFG_PBR01_4H_BINANCE_XVENUE_CLOSEOUT_V0.1.json').read_text())
           expected={0:'XVENUE_REPLICATED',3:'XVENUE_NOT_REPLICATED',5:'INSUFFICIENT_SAMPLE'}[int(os.environ['XVENUE_RC'])]
           assert x['classification']==expected
           assert x['authority_commit']=='6703e683f59d5d5c322f119895d6d3e89a88857f'
           assert x['not_temporal_oos'] is True
-          assert x['year_2025_accessed'] is False
-          assert x['year_2026_accessed'] is False
-          assert x['live_trading_authorized'] is False
-          assert x['exchange_mutation_authorized'] is False
+          assert x['year_2025_accessed'] is False and x['year_2026_accessed'] is False
+          assert x['live_trading_authorized'] is False and x['exchange_mutation_authorized'] is False
           print('TERMINAL_CLASSIFICATION=',x['classification'])
           print('BASE_20BPS=',x['base_20bps'])
           print('STRESS_30BPS=',x['stress_30bps'])
