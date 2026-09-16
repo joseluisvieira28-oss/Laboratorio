@@ -1,0 +1,92 @@
+name: PMD-001 Signature Ceiling V01
+
+on:
+  workflow_run:
+    workflows:
+      - PMD-001 Block-First Cross-Date Access V01
+    types:
+      - completed
+    branches:
+      - pumpfun-migration-direction-v0.1
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  signature-ceiling:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout scientific branch
+        uses: actions/checkout@v4
+        with:
+          ref: pumpfun-migration-direction-v0.1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip duckdb huggingface_hub requests solders pytz
+
+      - name: Syntax checks
+        run: |
+          python -m py_compile \
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/build_source_rebuild_manifest_v01.py \
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/source_rebuild_helius_v01.py \
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/signature_ceiling_audit_v01.py
+
+      - name: Rebuild frozen 1,012-candidate outcome-blind manifest
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001
+        run: |
+          python build_source_rebuild_manifest_v01.py \
+            --data-dir pmd_source_rebuild_manifest_data \
+            --out pmd_source_rebuild_manifest_v01.jsonl \
+            --receipt pmd_source_rebuild_manifest_v01_receipt.json
+          test ! -e pmd_source_rebuild_manifest_data/postgard_outcomes.parquet
+
+      - name: Execute full-population signature ceiling with safe cutoff
+        id: ceiling
+        continue-on-error: true
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001
+        run: |
+          python signature_ceiling_audit_v01.py \
+            --manifest pmd_source_rebuild_manifest_v01.jsonl \
+            --out-dir pmd_signature_ceiling_v01 \
+            --rpc-url https://api.mainnet-beta.solana.com \
+            --source-name solana_public_rpc_signature_ceiling \
+            --pace-seconds 0.40
+
+      - name: Classify ceiling without opening outcomes
+        if: always()
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('pmd_signature_ceiling_v01/signature_ceiling_receipt.json')
+          if not p.exists():
+              print('PMD-001 SIGNATURE CEILING: TECHNICAL_NO_RECEIPT')
+              raise SystemExit(0)
+          r=json.loads(p.read_text())
+          assert r['economic_outcomes_opened'] is False
+          assert r['population_rows'] == 1012
+          assert r['minimum_viable_rows'] == 1000
+          print('PMD-001 SIGNATURE CEILING:', r['verdict'])
+          print(json.dumps(r, indent=2, sort_keys=True))
+          PY
+
+      - name: Upload source-only ceiling evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: PMD-001-signature-ceiling-v01
+          if-no-files-found: warn
+          retention-days: 30
+          path: |
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/pmd_source_rebuild_manifest_v01_receipt.json
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/pmd_signature_ceiling_v01/signature_ceiling_details.jsonl
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/pmd_signature_ceiling_v01/signature_ceiling_receipt.json
