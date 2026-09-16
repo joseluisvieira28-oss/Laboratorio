@@ -1,0 +1,140 @@
+{
+  "experiment_id": "CAPITULATION-REVERSION-001",
+  "status": "FROZEN_BEFORE_OUTCOME_EVALUATION",
+  "freeze_date": "2026-09-16",
+  "authority": "USER_EXPLICIT_DEEP_ATTACK",
+  "research_question": "Do extreme 4H downside shocks accompanied by abnormal spot volume produce a short-horizon long mean-reversion edge after realistic costs?",
+  "economic_mechanism": "A sufficiently large negative standardized return with contemporaneous volume expansion may represent temporary forced selling, liquidation spillover, panic or liquidity overshoot. If price impact temporarily exceeds information content, the next bars may mean-revert. The hypothesis is explicitly short-horizon and is not trend-following.",
+  "novelty_check": {
+    "github_search_terms": ["mean reversion", "capitulation", "reversal", "liquidation"],
+    "google_drive_search_terms": ["mean reversion", "capitulation", "reversal", "liquidation"],
+    "matching_existing_lab_found": false,
+    "note": "No matching existing lab was found before this freeze."
+  },
+  "venue": {
+    "provider": "MEXC",
+    "market": "SPOT",
+    "raw_interval": "15m official bulk files only",
+    "derived_timeframe": "4H_UTC",
+    "universe": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "DOGEUSDT"],
+    "no_cross_exchange_backfill": true,
+    "no_interpolation": true,
+    "complete_15m_bars_per_4h_bar": 16,
+    "gap_policy": "DROP_INCOMPLETE_4H_BAR_AND_RESET_INDICATOR_STATE_NO_FILL"
+  },
+  "primary_cell": {
+    "cell_id": "CR4H-Z25-V15-R15-H6",
+    "direction": "LONG_ONLY",
+    "signal_return": "current complete 4H log close-to-close return",
+    "return_reference_window": "previous 60 complete 4H log close-to-close returns, excluding current signal return",
+    "zscore_definition": "(current_log_return - mean(previous_60_log_returns)) / sample_std(previous_60_log_returns)",
+    "shock_condition": "zscore <= -2.50",
+    "volume_condition": "current complete 4H base-asset volume >= 1.50 * median(volume of previous 20 complete 4H bars)",
+    "all_signal_conditions_required": true,
+    "entry": "next complete 4H bar open",
+    "atr_length": 14,
+    "atr_definition": "Wilder true range ATR on complete 4H bars, ATR14 available at signal close and includes signal bar",
+    "stop": "signal_low - 0.50 * ATR14_signal",
+    "risk_unit_r": "entry_price - stop_price before costs",
+    "target": "entry_price + 1.50R",
+    "target_r": 1.5,
+    "max_hold_complete_4h_bars": 6,
+    "time_exit": "open of the next 4H bar immediately after 6 held complete 4H bars if neither stop nor target has resolved the trade",
+    "one_active_trade_per_symbol": true,
+    "overlapping_raw_signals_while_active": "COUNT_DIAGNOSTIC_ONLY_NOT_ENTERED",
+    "same_bar_stop_and_target": "STOP_FIRST_CONSERVATIVE",
+    "adverse_gap_below_stop": "exit_at_bar_open_if_open_below_stop_else_stop",
+    "favorable_gap_above_target": "target_capped_at_target",
+    "base_round_trip_cost_pct_notional": 0.20,
+    "stress_round_trip_cost_pct_notional": 0.30,
+    "net_r_conversion": "gross price PnL divided by initial price risk minus round-trip notional cost divided by initial price risk"
+  },
+  "windows": {
+    "W1_DISCOVERY_REPLICATION": {
+      "warmup_start_utc": "2023-02-01T00:00:00Z",
+      "scored_entry_start_utc": "2023-03-01T00:00:00Z",
+      "scored_entry_end_exclusive_utc": "2025-01-01T00:00:00Z",
+      "role": "initial mechanism test across 2023-2024"
+    },
+    "W2_2025_TEMPORAL_VALIDATION": {
+      "warmup_start_utc": "2024-12-01T00:00:00Z",
+      "scored_entry_start_utc": "2025-01-01T00:00:00Z",
+      "scored_entry_end_exclusive_utc": "2026-01-01T00:00:00Z",
+      "eligibility": "entry plus full 6-bar max-hold path must be available before window end",
+      "role": "independent temporal validation"
+    },
+    "W3_2026_RECENT_REGIME": {
+      "warmup_start_utc": "2025-12-01T00:00:00Z",
+      "scored_entry_start_utc": "2026-01-01T00:00:00Z",
+      "data_end_exclusive_utc": "2026-09-01T00:00:00Z",
+      "eligibility": "entry plus full 6-bar max-hold path must be available before data end",
+      "role": "recent-regime robustness",
+      "holdout_note": "The 2026 market path has been seen in other strategy families, so this is exact-rule outcome-unopened but not claimed as pristine researcher-blind market data."
+    }
+  },
+  "bootstrap": {
+    "method": "UTC entry-day block bootstrap of resolved trades",
+    "replicates": 5000,
+    "seed": 260916,
+    "reported_interval": "95% percentile interval of mean net R"
+  },
+  "frozen_gates": {
+    "W1": {
+      "minimum_resolved_trades": 80,
+      "base_expectancy_r_gt": 0.0,
+      "base_profit_factor_gt": 1.0,
+      "stress_expectancy_r_gt": 0.0,
+      "stress_profit_factor_gt": 1.0,
+      "bootstrap_lower_95_gt": 0.0,
+      "calendar_2023_base_expectancy_gt": 0.0,
+      "calendar_2024_base_expectancy_gt": 0.0,
+      "max_single_symbol_positive_net_r_share_lte": 0.50,
+      "all_leave_one_asset_out_base_expectancy_gt": 0.0,
+      "unresolved_execution_paths_eq": 0,
+      "source_rule_deviations_eq": 0
+    },
+    "W2": {
+      "minimum_resolved_trades": 30,
+      "base_expectancy_r_gt": 0.0,
+      "base_profit_factor_gt": 1.0,
+      "stress_expectancy_r_gt": 0.0,
+      "stress_profit_factor_gt": 1.0,
+      "max_single_symbol_positive_net_r_share_lte": 0.50,
+      "unresolved_execution_paths_eq": 0,
+      "source_rule_deviations_eq": 0,
+      "bootstrap": "REPORT_ONLY"
+    },
+    "W3": {
+      "minimum_resolved_trades": 20,
+      "base_expectancy_r_gt": 0.0,
+      "base_profit_factor_gt": 1.0,
+      "stress_expectancy_r_gt": 0.0,
+      "stress_profit_factor_gt": 1.0,
+      "max_single_symbol_positive_net_r_share_lte": 0.50,
+      "unresolved_execution_paths_eq": 0,
+      "source_rule_deviations_eq": 0,
+      "bootstrap": "REPORT_ONLY"
+    }
+  },
+  "classification": {
+    "pass_all_three_windows": "FORWARD_SHADOW_ELIGIBLE",
+    "sample_below_floor": "INSUFFICIENT_SAMPLE_NO_RESCUE",
+    "economic_gate_failure": "NO_EDGE_FOR_FROZEN_MVE_NO_RESCUE",
+    "source_or_execution_ambiguity": "DATA_OR_TECHNICAL_FAILURE_NOT_NO_EDGE"
+  },
+  "governance": {
+    "research_only": true,
+    "fail_closed": true,
+    "no_post_outcome_parameter_tuning": true,
+    "no_threshold_search": true,
+    "no_timeframe_rescue": true,
+    "no_asset_selection": true,
+    "no_cost_reduction_rescue": true,
+    "no_partial_window_rescue": true,
+    "no_live_orders": true,
+    "no_exchange_mutation": true,
+    "no_merge_to_main": true,
+    "failed_hypothesis_remains_failed": true,
+    "real_capital_automatically_authorized": false
+  }
+}
