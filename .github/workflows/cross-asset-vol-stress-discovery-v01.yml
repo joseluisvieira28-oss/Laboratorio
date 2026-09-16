@@ -38,7 +38,7 @@ jobs:
           python -m py_compile labs/CROSS_ASSET_VOL_STRESS_001/discovery_v01.py
           python -m py_compile labs/CROSS_ASSET_VOL_STRESS_001/test_discovery_v01.py
       - name: Run outcome-blind self-tests
-        run: python labs/CROSS_ASSET_VOL_STRESS_001/test_discovery_v01.py
+        run: PYTHONPATH="$GITHUB_WORKSPACE" python labs/CROSS_ASSET_VOL_STRESS_001/test_discovery_v01.py
       - name: Execute one-shot Discovery 2018-2024 only
         run: python labs/CROSS_ASSET_VOL_STRESS_001/discovery_v01.py
       - name: Upload immutable Discovery evidence
