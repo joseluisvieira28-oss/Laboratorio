@@ -1,0 +1,61 @@
+{
+  "lab_id": "BNB-LAUNCHPOOL-DEMAND-001",
+  "mve_id": "BLP-BNBBTC-24H-001",
+  "amendment_id": "BLP-PRE-DISCOVERY-TECHNICAL-AMENDMENT-V0.1",
+  "status": "FROZEN_BEFORE_ANY_PRICE_VALUE_IS_PARSED",
+  "purpose": "Specify deterministic implementation details that were not numerically explicit in the parent protocol. No economic rule, event selection, horizon, cost, or promotion threshold changes.",
+  "market_source_binding": {
+    "run_id": 35131193961,
+    "artifact_id": 10460668190,
+    "artifact_zip_sha256": "06ab4dee2c8db98a2e19a4d41636afaa71b0c6f6b6eac6b545535b5f28984dbf",
+    "archive_manifest_sha256": "da0f1928b40e2185dfd2cefe09654d2c90be6b0ca1964e6e3b80fe25431d4fc4",
+    "required_classification": "MARKET_SOURCE_DATA_PASS",
+    "required_selected_trade_paths": 31
+  },
+  "price_parse_rule": {
+    "allowed_csv_fields": ["open_time", "open"],
+    "all_other_csv_fields_must_remain_unparsed": true,
+    "source_bytes": "Use the immutable raw BNBBTC ZIPs from canonical market-source artifact 10460668190. Every ZIP SHA256 must match the committed market-source manifest before parsing any open value.",
+    "required_entry_exit_match": "Every frozen selected entry and exit timestamp must map to exactly one 15-minute row. Any missing or duplicate price row fails closed before economic classification."
+  },
+  "statistics": {
+    "bps_scale": 10000.0,
+    "gross_bps_formula": "10000 * (exit_open / entry_open - 1)",
+    "base_net_bps_formula": "gross_bps - 20",
+    "stress_net_bps_formula": "gross_bps - 30",
+    "mean": "arithmetic mean across resolved selected trades",
+    "median": "standard sample median; for even N average the two central observations",
+    "profit_factor": "sum(max(net_bps,0)) / abs(sum(min(net_bps,0))); +Infinity only if denominator is zero and positive numerator exists",
+    "win_rate": "fraction of net_bps strictly greater than zero",
+    "calendar_assignment": "entry timestamp UTC year",
+    "positive_contribution_concentration": "max positive BASE net_bps divided by sum positive BASE net_bps; 1.0 if exactly one positive trade; null if no positive trades",
+    "bootstrap": {
+      "sample_size_per_replication": "N resolved selected trades",
+      "sampling": "iid event-level draws with replacement from BASE net_bps",
+      "replications": 5000,
+      "seed": 160916,
+      "statistic": "arithmetic mean BASE net_bps",
+      "ci_method": "sorted bootstrap means with linear-interpolated empirical quantiles at p=0.025 and p=0.975 using index h=(B-1)*p, lower=floor(h), upper=ceil(h), interpolation weight=h-floor(h)"
+    }
+  },
+  "gate_semantics": {
+    "strict_gt_zero": ["base_mean_net_bps", "stress_mean_net_bps", "base_median_net_bps", "bootstrap_ci95_lower_base_mean", "calendar_2023_base_mean_net_bps", "calendar_2024_base_mean_net_bps"],
+    "strict_gt_one": ["base_profit_factor", "stress_profit_factor"],
+    "concentration_lte": 0.40,
+    "all_gates_required": true,
+    "no_rounding_before_gate_evaluation": true
+  },
+  "firewalls": {
+    "no_2025": true,
+    "no_2026": true,
+    "no_high_low_close_volume": true,
+    "no_alternative_horizon": true,
+    "no_alternative_cost": true,
+    "no_direction_inversion": true,
+    "no_event_deletion": true,
+    "no_live_trading": true,
+    "no_exchange_mutation": true,
+    "no_orders": true,
+    "no_merge_to_main": true
+  }
+}
