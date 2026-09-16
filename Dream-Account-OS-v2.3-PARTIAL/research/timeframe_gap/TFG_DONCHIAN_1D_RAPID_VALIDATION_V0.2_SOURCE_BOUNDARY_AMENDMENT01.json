@@ -1,0 +1,38 @@
+{
+  "amendment_id": "TFG-DONCHIAN-1D-RAPID-VALIDATION-V0.2-SOURCE-BOUNDARY-AMENDMENT01",
+  "parent_experiment_id": "TFG-DONCHIAN-1D-RAPID-VALIDATION-V0.2",
+  "status": "FROZEN_BEFORE_ANY_2026_PRICE_OUTCOME_CALCULATION",
+  "reason": "Timestamp-only source audit of the official MEXC Spot Min15 monthly bulk files showed provider month boundaries at UTC+08:00. The 2026-08 bulk partition ends at 2026-08-31T15:45:00Z, so completing the originally planned 2026-08-31 UTC daily bar through 2026-09-01T00:00:00Z would require opening the 2026-09 provider partition. To avoid unnecessary protected-data extension and preserve exact official bulk-source lineage, Stage A ends at the last fully observable UTC day using only the frozen Jan-Aug source package.",
+  "source_audit": {
+    "zip_name": "BTC_USDT-Min15-2026-01-01.zip",
+    "zip_sha256": "c584c5b8d7ed50eaf44a5e4c0e25525c7e396f95c4f3b9d40efe76b86e8072e6",
+    "expected_partitions": 48,
+    "observed_partitions": 48,
+    "assets": ["BTC", "ETH", "SOL", "BNB", "XRP", "DOGE"],
+    "months": ["2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06", "2026-07", "2026-08"],
+    "price_outcomes_calculated_before_amendment": false,
+    "trade_signals_calculated_before_amendment": false,
+    "pnl_calculated_before_amendment": false
+  },
+  "technical_boundary_change": {
+    "old_window_end_exclusive": "2026-09-01T00:00:00Z",
+    "new_window_end_exclusive": "2026-08-31T00:00:00Z",
+    "complete_utc_days_retained": 242,
+    "excluded_partial_boundary_day": "2026-08-31",
+    "scientific_signal_rule_changed": false,
+    "universe_changed": false,
+    "costs_changed": false,
+    "minimum_resolved_trade_gate_changed": false,
+    "economic_gates_changed": false,
+    "source_family_changed": false
+  },
+  "binding_rules": {
+    "use_official_mexc_spot_min15_bulk_only": true,
+    "warmup_may_use_official_2025_12_bulk_plus_2026_01_boundary_rows": true,
+    "score_entries_only_if_entry_open_time_gte": "2026-01-01T00:00:00Z",
+    "score_entries_only_if_full_40_day_path_is_observable_before": "2026-08-31T00:00:00Z",
+    "no_2026_09_source_access": true,
+    "no_parameter_tuning_after_outcomes": true,
+    "fail_action": "STOP_RAPID_PATH_NO_RESCUE"
+  }
+}
