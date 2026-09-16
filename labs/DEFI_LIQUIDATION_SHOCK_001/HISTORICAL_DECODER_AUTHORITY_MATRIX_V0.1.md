@@ -57,9 +57,16 @@ Reference discriminator:
 - `liquidateObligationAndRedeemReserveCollateral`
 - Anchor 8-byte prefix `b1479acce2854a37`
 
-The current official open-source program/SDK confirms the mainnet program and instruction, but publication/release evidence currently inspected does not itself prove the exact 2023-2024 deployment intervals.
+Historical public-repository boundary now pinned outcome-blind:
 
-Current classification: `REFERENCE_ONLY_PENDING_HISTORICAL_VERSION_MAP`.
+- the official `Kamino-Finance/klend-sdk` repository returns no commits at or before 2024-08-31 in the currently available public history;
+- the earliest public commit found in the repository history is `fdffe6b6115e254020af2bb52fa1ed8e3b73f438`, dated 2024-09-26;
+- that commit contains `src/idl_codegen/instructions/liquidateObligationAndRedeemReserveCollateral.ts`;
+- the instruction builder in that commit encodes identifier bytes `[177, 71, 154, 188, 226, 133, 74, 55]`, i.e. hex `b1479acce2854a37`, matching the pre-registered reference discriminator.
+
+This establishes public-source decoder evidence no later than 2024-09-26. It does NOT prove that the same instruction/version was active on-chain before that date, and it provides no authority to back-apply the current decoder to 2023 or 2024-01-01 through 2024-09-25. Earlier intervals remain fail-closed until independently pinned from historical source or chain evidence.
+
+Current classification: `PUBLIC_REPO_DECODER_SUPPORTED_FROM_2024-09-26; EARLIER_INTERVAL_PENDING_HISTORICAL_VERSION_MAP`.
 
 ## Drift V2
 
