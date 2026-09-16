@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import importlib.util
 import pathlib
+import sys
 
 HERE = pathlib.Path(__file__).resolve().parent
 
@@ -14,6 +15,7 @@ def load(name: str, filename: str):
     if spec is None or spec.loader is None:
         raise RuntimeError(f"FAILED_TO_LOAD {filename}")
     mod = importlib.util.module_from_spec(spec)
+    sys.modules[name] = mod
     spec.loader.exec_module(mod)
     return mod
 
