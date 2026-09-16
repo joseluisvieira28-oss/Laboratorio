@@ -1,0 +1,48 @@
+name: TREASURY-AUCTION-DEMAND-001 Discovery V0.1
+
+on:
+  push:
+    branches: [treasury-auction-demand-v0.1]
+    paths:
+      - '.github/workflows/treasury-auction-demand-discovery-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  discovery:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: treasury-auction-demand-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pinned dependency
+        run: python -m pip install --disable-pip-version-check requests==2.32.3
+      - name: Verify frozen authorities and compile
+        run: |
+          set -euo pipefail
+          test -f labs/TREASURY_AUCTION_DEMAND_001/PRE_DISCOVERY_AUTHORITY_V0.1.md
+          test -f labs/TREASURY_AUCTION_DEMAND_001/DISCOVERY_IMPLEMENTATION_FREEZE_V0.1.md
+          test -f labs/TREASURY_AUCTION_DEMAND_001/SOURCE_GATE_CLOSEOUT_V0.1.md
+          python -m py_compile labs/TREASURY_AUCTION_DEMAND_001/source_gate_v01.py
+          python -m py_compile labs/TREASURY_AUCTION_DEMAND_001/discovery_v01.py
+      - name: Execute frozen one-shot Discovery 2021-2023 only
+        run: |
+          set -euo pipefail
+          python labs/TREASURY_AUCTION_DEMAND_001/discovery_v01.py | tee tad_discovery_receipt_v01.txt
+      - name: Upload immutable Discovery evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: treasury-auction-demand-discovery-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            artifacts/treasury_auction_demand_discovery_v01/
+            artifacts/treasury_auction_demand_source_v01/
+            tad_discovery_receipt_v01.txt
+          retention-days: 90
+          if-no-files-found: warn
