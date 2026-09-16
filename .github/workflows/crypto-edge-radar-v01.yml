@@ -1,0 +1,29 @@
+name: CRYPTO EDGE RADAR V0.1 CI
+
+on:
+  push:
+    branches:
+      - crypto-edge-radar-v0.1
+    paths:
+      - 'crypto_edge_radar/**'
+      - '.github/workflows/crypto-edge-radar-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-safety-tests:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: crypto_edge_radar
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile
+        run: python -m compileall radar tests
+      - name: Unit tests
+        run: python -m unittest discover -s tests -v
