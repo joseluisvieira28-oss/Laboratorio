@@ -1,0 +1,74 @@
+name: HTF Diamond Hunt Phase2 Validation V0.1
+
+on:
+  push:
+    branches:
+      - htf-diamond-hunt-v0.1
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/htf_diamond_hunt/PHASE2_VALIDATION_RUN_TRIGGER_V0.1.txt'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  validate-family:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify Phase2 authority and binding before source artifact
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('research/htf_diamond_hunt')
+          f=json.loads((p/'HTF_DIAMOND_HUNT_001_PHASE2_VALIDATION_FREEZE_V0.1.json').read_text())
+          b=json.loads((p/'HTF_DIAMOND_HUNT_001_PHASE2_SOURCE_BINDING_V0.1.json').read_text())
+          assert f['status']=='FROZEN_BEFORE_PHASE2_SOURCE_ACCESS_OR_OUTCOMES'
+          assert [x['cell_id'] for x in f['cells']]==['DH-02-V1','DH-03-V1']
+          assert b['status']=='FROZEN_EXACT_PHASE2_SOURCE_BEFORE_VALIDATION_OUTCOMES'
+          assert b['source_run_id']==35072596130
+          print('PHASE2_AUTHORITY_BINDING_GATE_PASS')
+          PY
+      - name: Compile validation stack
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: |
+          python -m py_compile research/htf_diamond_hunt/htf_diamond_hunt_scale_transfers_v01.py research/htf_diamond_hunt/htf_diamond_hunt_phase2_validation_v01.py
+      - name: Download exact frozen Phase2 source artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: HTF_DIAMOND_HUNT_001_PHASE2_SOURCE_V01
+          path: Dream-Account-OS-v2.3-PARTIAL/research/local_data/htf_diamond_hunt_phase2_source_v01
+          github-token: ${{ github.token }}
+          run-id: 35072596130
+      - name: Reverify Phase2 source bytes before validation outcomes
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: |
+          python - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          p=Path('research/htf_diamond_hunt'); src=Path('research/local_data/htf_diamond_hunt_phase2_source_v01')
+          b=json.loads((p/'HTF_DIAMOND_HUNT_001_PHASE2_SOURCE_BINDING_V0.1.json').read_text())
+          r=json.loads((src/'HTF_DIAMOND_HUNT_001_PHASE2_SOURCE_GATE_V0.1.json').read_text())
+          assert r['status']=='SOURCE_DATA_PASS' and r['source_fingerprint']==b['source_fingerprint']
+          assert r['outcome_evaluation_performed'] is False
+          for y in (2021,2022,2023,2024,2025,2026): assert r[f'access_{y}_performed'] is False
+          for s,x in b['canonical_15m'].items():
+              q=src/'canonical_15m'/f'{s}_15m.csv'; assert hashlib.sha256(q.read_bytes()).hexdigest()==x['sha256']
+          print('PHASE2_SOURCE_REBIND_PASS')
+          PY
+      - name: Run both frozen Donchian validation siblings
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: python research/htf_diamond_hunt/htf_diamond_hunt_phase2_validation_v01.py research/local_data/htf_diamond_hunt_phase2_source_v01
+      - name: Upload Phase2 validation evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: HTF_DIAMOND_HUNT_001_PHASE2_VALIDATION_V01
+          path: Dream-Account-OS-v2.3-PARTIAL/research/local_data/htf_diamond_hunt_phase2_validation_v01/
+          if-no-files-found: error
+          retention-days: 90
