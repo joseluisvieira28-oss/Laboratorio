@@ -1,0 +1,138 @@
+{
+  "lab_id": "COINBASE-BINANCE-LEADLAG-001",
+  "mve_id": "CBLL-USDT-5M-Z3-001",
+  "status": "FROZEN_PRE_OUTCOME",
+  "freeze_date_utc": "2026-09-16",
+  "research_question": "Does an unusually large positive 5-minute Coinbase-vs-Binance return divergence in the same USDT-quoted BTC or ETH market predict a tradable next-bar catch-up on Binance Spot after realistic costs?",
+  "economic_mechanism": {
+    "direction": "LONG_ONLY",
+    "expected_sign": "POSITIVE_BINANCE_CATCHUP",
+    "rationale": "Fragmented crypto spot venues can temporarily incorporate information at different speeds. A large positive Coinbase return relative to the simultaneous Binance return may identify a localized information/demand impulse that subsequently transmits to Binance. Exact USDT quote matching removes the primary USD-vs-USDT level-basis confound.",
+    "not_a_claim": "Coinbase is not assumed to lead at all times; only pre-specified extreme positive relative-return events are tested.",
+    "distinct_from_prior": [
+      "Not cross-asset BTC-to-alt lead-lag.",
+      "Not generic session overlap or calendar effect.",
+      "Not taker-flow persistence, funding, OI, carry, macro, Donchian, or indicator rescue."
+    ]
+  },
+  "universe": {
+    "assets": ["BTC", "ETH"],
+    "coinbase_products": ["BTC-USDT", "ETH-USDT"],
+    "binance_symbols": ["BTCUSDT", "ETHUSDT"],
+    "execution_venue": "Binance Spot",
+    "signal_venue": "Coinbase Exchange + Binance Spot",
+    "timeframe_minutes": 5,
+    "no_asset_selection_after_outcomes": true,
+    "no_timeframe_selection_after_outcomes": true
+  },
+  "data": {
+    "coinbase_source": "official Coinbase Exchange REST product candles",
+    "coinbase_endpoint": "https://api.exchange.coinbase.com/products/{product_id}/candles",
+    "coinbase_granularity_seconds": 300,
+    "binance_source": "official Binance Data Vision monthly spot klines",
+    "binance_path": "data/spot/monthly/klines/{SYMBOL}/5m/{SYMBOL}-5m-{YYYY-MM}.zip",
+    "discovery_start": "2022-01-01T00:00:00Z",
+    "discovery_end": "2023-12-31T23:59:59Z",
+    "independent_validation_year": 2024,
+    "protected_holdout_years": [2025, 2026],
+    "no_2024_access_before_discovery_classification": true,
+    "no_2025_access": true,
+    "no_2026_access": true
+  },
+  "signal": {
+    "bar_return": "close/open - 1 for each synchronized 5-minute bar",
+    "divergence": "Coinbase_bar_return - Binance_bar_return",
+    "rolling_window_bars": 2016,
+    "rolling_window_description": "prior 7 calendar days at 5-minute frequency",
+    "standardization": "z = (current_divergence - mean(prior 2016 divergences)) / sample_std(prior 2016 divergences)",
+    "threshold": 3.0,
+    "threshold_rule": "signal only when z >= 3.0",
+    "missing_bar_rule": "no signal if either venue lacks the synchronized bar or if the full prior rolling window is unavailable",
+    "no_outcome_conditioning": true
+  },
+  "strategy": {
+    "direction": "LONG_ONLY",
+    "entry": "Binance next 5-minute bar open immediately after the completed signal bar",
+    "stop_fraction": 0.0100,
+    "target_fraction": 0.0200,
+    "max_hold_bars": 12,
+    "max_hold_minutes": 60,
+    "one_position_per_asset": true,
+    "signals_while_position_open": "IGNORE",
+    "reentry_after_exit": true,
+    "same_bar_stop_target": "STOP_FIRST",
+    "gap_stop_fill": "bar open if open <= stop, otherwise stop price",
+    "gap_target_fill": "target price even if bar opens above target",
+    "time_exit": "close of 12th bar after entry if stop/target not hit",
+    "base_round_trip_cost_fraction": 0.0020,
+    "stress_round_trip_cost_fraction": 0.0030,
+    "slippage_is_included_in_cost_assumption": true
+  },
+  "discovery": {
+    "period": "2022-2023",
+    "sample_floor_resolved_trades": 100,
+    "bootstrap": {
+      "unit": "UTC calendar day block",
+      "resamples": 10000,
+      "seed": 20260916,
+      "interval": 0.95
+    },
+    "promotion_gates_all_required": {
+      "resolved_trades_gte": 100,
+      "base_mean_net_R_gt": 0.0,
+      "base_profit_factor_gt": 1.10,
+      "bootstrap_95_lower_mean_daily_portfolio_R_gt": 0.0,
+      "stress_mean_net_R_gt": 0.0,
+      "stress_profit_factor_gt": 1.0,
+      "calendar_year_2022_mean_net_R_gt": 0.0,
+      "calendar_year_2023_mean_net_R_gt": 0.0,
+      "btc_only_mean_net_R_gt": 0.0,
+      "eth_only_mean_net_R_gt": 0.0,
+      "max_positive_month_share_lte": 0.25,
+      "minimum_leave_one_trade_out_mean_net_R_gt": 0.0,
+      "source_integrity_failures_eq": 0,
+      "execution_unresolved_eq": 0
+    }
+  },
+  "independent_validation": {
+    "year": 2024,
+    "open_only_if_discovery_passes": true,
+    "rules_identical": true,
+    "sample_floor_resolved_trades": 40,
+    "gates_all_required": {
+      "base_mean_net_R_gt": 0.0,
+      "base_profit_factor_gt": 1.0,
+      "stress_mean_net_R_gt": 0.0,
+      "btc_only_mean_net_R_gt": 0.0,
+      "eth_only_mean_net_R_gt": 0.0,
+      "max_positive_month_share_lte": 0.35,
+      "source_integrity_failures_eq": 0,
+      "execution_unresolved_eq": 0
+    }
+  },
+  "classifications": [
+    "SOURCE_ACCESS_BLOCKED",
+    "TECHNICAL_FAILURE",
+    "DATA_FAILURE",
+    "INSUFFICIENT_SAMPLE",
+    "DISCOVERY_NO_EDGE",
+    "DISCOVERY_SURVIVES",
+    "INDEPENDENT_VALIDATION_FAIL",
+    "INDEPENDENT_VALIDATION_SURVIVES"
+  ],
+  "hard_firewalls": {
+    "research_only": true,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "orders": false,
+    "post_put_patch_delete_exchange": false,
+    "merge_to_main": false,
+    "render_deployment": false,
+    "post_outcome_tuning": false,
+    "asset_rescue": false,
+    "timeframe_rescue": false,
+    "threshold_rescue": false,
+    "cost_rescue": false,
+    "failed_hypothesis_rewrite": false
+  }
+}
