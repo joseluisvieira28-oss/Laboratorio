@@ -1,0 +1,118 @@
+name: BTC Options Expiry Reversal V0.1
+
+on:
+  push:
+    branches:
+      - btc-options-expiry-reversal-v0.1
+
+permissions:
+  contents: write
+
+jobs:
+  fifth-shot:
+    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Checkout frozen branch
+        uses: actions/checkout@v4
+        with:
+          ref: btc-options-expiry-reversal-v0.1
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Frozen protocol preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/btc_options_expiry_reversal_001'
+          python -m py_compile "$BASE/one_shot_runner_v01.py"
+          python - <<'PY'
+          import json
+          p=json.load(open('Dream-Account-OS-v2.3-PARTIAL/research/btc_options_expiry_reversal_001/FROZEN_PROTOCOL_V01.json'))
+          assert p['lab_id']=='BTC-OPTIONS-EXPIRY-REVERSAL-001'
+          assert p['mve_id']=='BOER-BINANCE-PERP-4H2H-001'
+          assert p['status']=='FROZEN_PRE_SOURCE_OUTCOME_BLIND'
+          assert p['source']['discovery_event_years']==[2021,2022,2023]
+          assert p['source']['independent_validation_event_year']==2024
+          assert p['source']['protected_years']==[2025,2026]
+          assert p['event_definition']['entry_delay_minutes_after_expiry']==5
+          assert p['event_definition']['holding_minutes']==120
+          assert p['strategy']['base_round_trip_cost_fraction']==0.0015
+          assert p['strategy']['stress_round_trip_cost_fraction']==0.0025
+          assert p['discovery']['scheduled_events']==36
+          assert p['discovery']['resolved_trade_floor']==34
+          assert p['discovery']['bootstrap_repetitions']==10000
+          assert p['independent_validation']['status']=='LOCKED_UNTIL_DISCOVERY_SURVIVES'
+          assert p['hard_firewalls']['no_post_outcome_tuning'] is True
+          assert p['hard_firewalls']['no_2024_price_open_until_discovery_survives'] is True
+          assert p['hard_firewalls']['no_2025_market_data'] is True
+          assert p['hard_firewalls']['no_2026_market_data'] is True
+          assert p['hard_firewalls']['live_trading'] is False
+          assert p['hard_firewalls']['exchange_mutation'] is False
+          assert p['hard_firewalls']['merge_to_main'] is False
+          PY
+
+      - name: Execute source gate Discovery and conditional 2024 validation
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/btc_options_expiry_reversal_001'
+          python "$BASE/one_shot_runner_v01.py"
+          test -f "$BASE/evidence/BOER_FINAL_RESULT_V01.json"
+
+      - name: Audit final classification and firewalls
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          f='Dream-Account-OS-v2.3-PARTIAL/research/btc_options_expiry_reversal_001/evidence/BOER_FINAL_RESULT_V01.json'
+          d=json.load(open(f)); g=d['guards']
+          allowed={
+            'SOURCE_ACCESS_BLOCKED','TECHNICAL_FAILURE','DATA_FAILURE',
+            'INSUFFICIENT_EVALUABLE_SAMPLE','DISCOVERY_NO_EDGE','DISCOVERY_SURVIVES',
+            'VALIDATION_FAIL','INDEPENDENT_VALIDATION_SURVIVES'
+          }
+          assert d['classification'] in allowed
+          assert g['source_gate_market_price_values_parsed'] is False
+          assert g['year_2025_market_data_requested'] is False
+          assert g['year_2026_market_data_requested'] is False
+          assert g['live_trading'] is False
+          assert g['exchange_mutation'] is False
+          assert g['orders'] is False
+          assert g['alerts_or_webhooks'] is False
+          assert g['merge_to_main'] is False
+          assert g['render_deployment'] is False
+          if d['classification'] in {'SOURCE_ACCESS_BLOCKED','TECHNICAL_FAILURE','DATA_FAILURE','INSUFFICIENT_EVALUABLE_SAMPLE','DISCOVERY_NO_EDGE'}:
+              assert g['year_2024_price_fields_opened'] is False
+          if d['classification'] in {'VALIDATION_FAIL','INDEPENDENT_VALIDATION_SURVIVES'}:
+              assert g['year_2024_price_fields_opened'] is True
+          print(json.dumps({
+            'classification': d['classification'],
+            'reason': d.get('reason'),
+            'source_receipt': d.get('source_receipt'),
+            'discovery_summary': (d.get('discovery') or {}).get('summary'),
+            'discovery_gates': (d.get('discovery') or {}).get('gates'),
+            'validation_summary': (d.get('validation') or {}).get('summary') if d.get('validation') else None,
+            'validation_gates': (d.get('validation') or {}).get('gates') if d.get('validation') else None,
+            'guards': g,
+          },indent=2,sort_keys=True))
+          PY
+
+      - name: Persist immutable fifth-shot result
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/btc_options_expiry_reversal_001'
+          git config user.name 'crypto-lab-boer-bot'
+          git config user.email 'crypto-lab-boer-bot@users.noreply.github.com'
+          git add "$BASE/evidence/BOER_FINAL_RESULT_V01.json"
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'BTC-OPTIONS-EXPIRY-REVERSAL-001: fifth-shot closeout [skip ci]'
+          git pull --rebase origin btc-options-expiry-reversal-v0.1
+          git push origin HEAD:btc-options-expiry-reversal-v0.1
