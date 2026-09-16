@@ -69,7 +69,8 @@ def validate_archive(data: bytes, symbol: str, month: str) -> dict:
             raise RuntimeError(f"archive member count !=1 {symbol} {month}")
         with zf.open(members[0]) as fh:
             reader = csv.reader(io.TextIOWrapper(fh, encoding="utf-8"))
-            count = 0
+            count = completed_count = incomplete_count = 0
+            incomplete_examples: list[dict] = []
             first = last = prev = None
             for row in reader:
                 if not row:
@@ -84,19 +85,37 @@ def validate_archive(data: bytes, symbol: str, month: str) -> dict:
                     raise RuntimeError(f"invalid kline row {symbol} {month}: {exc}") from exc
                 if not (month_start_ms <= ts < month_end_ms):
                     raise RuntimeError(f"timestamp outside month {symbol} {month}: {ts}")
-                if ts % FIFTEEN_MIN_MS != 0 or close_ts != ts + FIFTEEN_MIN_MS - 1:
-                    raise RuntimeError(f"15m timestamp alignment failure {symbol} {month}: {ts}")
+                if ts % FIFTEEN_MIN_MS != 0:
+                    raise RuntimeError(f"unaligned 15m open_time {symbol} {month}: {ts}")
                 if min(o, h, l, c) <= 0 or v < 0 or h < max(o, c, l) or l > min(o, c, h):
                     raise RuntimeError(f"OHLCV failure {symbol} {month}: {ts}")
                 if prev is not None and ts <= prev:
                     raise RuntimeError(f"non-increasing timestamp {symbol} {month}: {ts}")
+                expected_close = ts + FIFTEEN_MIN_MS - 1
+                if close_ts != expected_close:
+                    incomplete_count += 1
+                    if len(incomplete_examples) < 10:
+                        incomplete_examples.append({
+                            "open_time_ms": ts,
+                            "raw_close_time_ms": close_ts,
+                            "expected_close_time_ms": expected_close,
+                        })
+                else:
+                    completed_count += 1
                 first = ts if first is None else first
                 last = ts
                 prev = ts
                 count += 1
             if count == 0:
                 raise RuntimeError(f"empty archive {symbol} {month}")
-    return {"row_count": count, "first_open_time_ms": first, "last_open_time_ms": last}
+    return {
+        "row_count": count,
+        "completed_15m_row_count": completed_count,
+        "ineligible_incomplete_15m_rows": incomplete_count,
+        "incomplete_row_examples": incomplete_examples,
+        "first_open_time_ms": first,
+        "last_open_time_ms": last,
+    }
 
 
 def run(output: Path) -> int:
@@ -134,18 +153,20 @@ def run(output: Path) -> int:
                     "sha256": actual,
                     **meta,
                 })
-                print("SOURCE_OK", symbol, month, meta["row_count"])
+                print("SOURCE_OK", symbol, month, meta["row_count"], "INELIGIBLE_INCOMPLETE=", meta["ineligible_incomplete_15m_rows"])
             except (urllib.error.URLError, RuntimeError, zipfile.BadZipFile, OSError) as exc:
                 errors.append(f"{symbol}:{month}:{type(exc).__name__}:{exc}")
                 print("SOURCE_FAIL", errors[-1])
     required = len(SYMBOLS) * len(months(START_MONTH, END_MONTH))
     by_symbol = {s: sum(1 for e in entries if e["symbol"] == s) for s in SYMBOLS}
+    incomplete_by_symbol = {s: sum(int(e["ineligible_incomplete_15m_rows"]) for e in entries if e["symbol"] == s) for s in SYMBOLS}
     status = "SOURCE_AUDIT_PASS" if not errors and len(entries) == required and all(n == 23 for n in by_symbol.values()) else "SOURCE_OR_DATA_BLOCKED"
     manifest = {
         "lab_id": LAB_ID,
         "stage": "BINANCE_XVENUE_SOURCE_GATE",
         "status": status,
         "authority_commit": AUTHORITY_COMMIT,
+        "technical_remediation": "DROP_NONSTANDARD_CLOSE_TIME_ROWS_AS_INELIGIBLE_INCOMPLETE_15M_PER_FROZEN_GAP_RULE",
         "provider": "BINANCE_DATA_VISION_PUBLIC_ARCHIVES",
         "venue": "BINANCE_SPOT",
         "interval": INTERVAL,
@@ -155,6 +176,7 @@ def run(output: Path) -> int:
         "required_archive_count": required,
         "accepted_archive_count": len(entries),
         "accepted_months_by_symbol": by_symbol,
+        "ineligible_incomplete_15m_rows_by_symbol": incomplete_by_symbol,
         "accessed_years": sorted(accessed_years),
         "year_2025_accessed": False,
         "year_2026_accessed": False,
@@ -169,6 +191,7 @@ def run(output: Path) -> int:
     (output / "TFG_PBR01_4H_BINANCE_XVENUE_SOURCE_MANIFEST_V0.1.json").write_text(json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8")
     print("SOURCE_GATE_STATUS=", status)
     print("ACCEPTED_ARCHIVES=", len(entries), "/", required)
+    print("INELIGIBLE_INCOMPLETE_BY_SYMBOL=", incomplete_by_symbol)
     print("2025_ACCESSED=false")
     print("2026_ACCESSED=false")
     return 0 if status == "SOURCE_AUDIT_PASS" else 4
