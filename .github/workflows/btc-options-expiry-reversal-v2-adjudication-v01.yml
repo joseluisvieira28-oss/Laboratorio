@@ -1,0 +1,86 @@
+name: BTC Options Expiry Reversal V2 Adjudication V0.1
+
+on:
+  push:
+    branches:
+      - btc-options-expiry-reversal-v0.1
+
+permissions:
+  contents: write
+
+jobs:
+  adjudicate:
+    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout adjudication branch
+        uses: actions/checkout@v4
+        with:
+          ref: btc-options-expiry-reversal-v0.1
+          fetch-depth: 1
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Derived-metrics-only preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/btc_options_expiry_reversal_001'
+          python -m py_compile "$BASE/adjudication/v2_adjudicate_v01.py"
+          python - <<'PY'
+          import json
+          base='Dream-Account-OS-v2.3-PARTIAL/research/btc_options_expiry_reversal_001'
+          c=json.load(open(base+'/adjudication/V2_ADJUDICATION_CONTRACT_V01.json'))
+          r=json.load(open(base+'/evidence/BOER_FINAL_RESULT_V01.json'))
+          assert c['status']=='FROZEN_DERIVED_METRICS_ONLY_NO_NEW_MARKET_OUTCOMES'
+          assert c['governing_policy_id']=='ND-PROMOTION-POLICY-V2.0-FROZEN-2026-09-14'
+          assert r['classification']=='DISCOVERY_NO_EDGE'
+          assert r['guards']['year_2024_price_fields_opened'] is False
+          assert r['guards']['year_2025_market_data_requested'] is False
+          assert r['guards']['year_2026_market_data_requested'] is False
+          PY
+      - name: Execute V2 adjudication on immutable Discovery only
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/btc_options_expiry_reversal_001'
+          python "$BASE/adjudication/v2_adjudicate_v01.py"
+          test -f "$BASE/adjudication/BOER_V2_ADJUDICATION_RESULT_V01.json"
+      - name: Audit policy and firewalls
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          f='Dream-Account-OS-v2.3-PARTIAL/research/btc_options_expiry_reversal_001/adjudication/BOER_V2_ADJUDICATION_RESULT_V01.json'
+          d=json.load(open(f)); g=d['guards']
+          assert d['historical_parent_classification_preserved']=='DISCOVERY_NO_EDGE'
+          assert d['v2_classification'] in {'TIER_2_PROMOTED_CANDIDATE','TIER_3_WATCHLIST_WEAK_CANDIDATE'}
+          assert g['new_market_data_accessed'] is False
+          assert g['year_2024_price_fields_opened'] is False
+          assert g['year_2025_market_data_requested'] is False
+          assert g['year_2026_market_data_requested'] is False
+          assert g['signal_changed'] is False
+          assert g['costs_changed'] is False
+          assert g['event_exclusions_added'] is False
+          assert g['live_trading'] is False
+          assert g['exchange_mutation'] is False
+          assert g['orders'] is False
+          assert g['merge_to_main'] is False
+          assert g['render_deployment'] is False
+          print(json.dumps(d, indent=2, sort_keys=True))
+          PY
+      - name: Persist immutable adjudication result
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/btc_options_expiry_reversal_001'
+          git config user.name 'crypto-lab-boer-v2-bot'
+          git config user.email 'crypto-lab-boer-v2-bot@users.noreply.github.com'
+          git add "$BASE/adjudication/BOER_V2_ADJUDICATION_RESULT_V01.json"
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'BTC-OPTIONS-EXPIRY-REVERSAL-001: V2 adjudication closeout [skip ci]'
+          git pull --rebase origin btc-options-expiry-reversal-v0.1
+          git push origin HEAD:btc-options-expiry-reversal-v0.1
