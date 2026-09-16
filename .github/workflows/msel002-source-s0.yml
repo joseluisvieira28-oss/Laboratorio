@@ -1,0 +1,35 @@
+name: MSEL-002 Source S0 Metadata Audit
+
+on:
+  push:
+    branches:
+      - memecoin-metadata-duplication-v0.1
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/memecoin_metadata_duplication_002/**'
+      - '.github/workflows/msel002-source-s0.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-s0:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Audit public deposit metadata only
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/memecoin_metadata_duplication_002/source
+        run: python audit_public_deposit_s0.py | tee s0_receipt.txt
+      - name: Upload S0 inventory only
+        uses: actions/upload-artifact@v4
+        with:
+          name: msel002-source-s0-inventory
+          path: |
+            Dream-Account-OS-v2.3-PARTIAL/research/memecoin_metadata_duplication_002/source/data/source_inventory_s0_v01.json
+            Dream-Account-OS-v2.3-PARTIAL/research/memecoin_metadata_duplication_002/source/s0_receipt.txt
+          if-no-files-found: error
+          retention-days: 30
