@@ -1,0 +1,96 @@
+name: QBC Source Gate V0.1
+
+on:
+  push:
+    branches:
+      - quarterly-basis-convergence-v0.1
+
+permissions:
+  contents: write
+
+jobs:
+  source-gate:
+    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout frozen branch
+        uses: actions/checkout@v4
+        with:
+          ref: quarterly-basis-convergence-v0.1
+          fetch-depth: 1
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Frozen authority preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/quarterly_basis_convergence_001'
+          python -m py_compile "$BASE/source_gate_v01.py"
+          python - <<'PY'
+          import json
+          p=json.load(open('Dream-Account-OS-v2.3-PARTIAL/research/quarterly_basis_convergence_001/FROZEN_PROTOCOL_V01.json'))
+          assert p['lab_id']=='QUARTERLY-BASIS-CONVERGENCE-001'
+          assert p['mve_id']=='QBC-BINANCE-USDM-7D-001'
+          assert p['status']=='FROZEN_PRE_SOURCE_OUTCOME_BLIND'
+          assert p['universe']['assets']==['BTC','ETH']
+          assert p['source']['discovery_expiry_years']==[2021,2022,2023]
+          assert p['source']['independent_validation_expiry_year']==2024
+          assert p['source_gate']['qualified_contract_routes_min']==30
+          s=p['strategy']
+          assert s['minimum_entry_basis_fraction']==0.007
+          assert s['target_basis_fraction']==0.001
+          assert s['basis_stop_additive_fraction']==0.015
+          assert s['base_pair_round_trip_cost_fraction_of_single_leg_notional']==0.003
+          assert s['stress_pair_round_trip_cost_fraction_of_single_leg_notional']==0.005
+          assert p['hard_firewalls']['live_trading'] is False
+          assert p['hard_firewalls']['exchange_mutation'] is False
+          assert p['hard_firewalls']['merge_to_main'] is False
+          PY
+      - name: Execute outcome-blind source gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/quarterly_basis_convergence_001'
+          python "$BASE/source_gate_v01.py"
+          test -f "$BASE/source_evidence/QBC_SOURCE_GATE_V01.json"
+      - name: Audit source classification and firewalls
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          f='Dream-Account-OS-v2.3-PARTIAL/research/quarterly_basis_convergence_001/source_evidence/QBC_SOURCE_GATE_V01.json'
+          d=json.load(open(f));r=d['receipt'];g=r['guards']
+          assert r['classification'] in {'SOURCE_DATA_PASS','INSUFFICIENT_SOURCE_SAMPLE','SOURCE_ACCESS_BLOCKED','TECHNICAL_FAILURE','DATA_FAILURE'}
+          assert g['market_price_values_parsed'] is False
+          assert g['ohlcv_parsed'] is False
+          assert g['basis_computed'] is False
+          assert g['returns_computed'] is False
+          assert g['pnl_computed'] is False
+          assert g['year_2025_market_data_requested'] is False
+          assert g['year_2026_market_data_requested'] is False
+          assert g['live_trading'] is False
+          assert g['exchange_mutation'] is False
+          if r['classification']=='SOURCE_DATA_PASS':
+              assert r['qualified_contract_routes']>=30
+              assert r['qualified_asset_counts'].get('BTC',0)>=15
+              assert r['qualified_asset_counts'].get('ETH',0)>=15
+              for y in ('2021','2022','2023','2024'):
+                  assert r['qualified_year_counts'].get(y,0)>=7
+          print(json.dumps(r,indent=2,sort_keys=True))
+          PY
+      - name: Persist immutable source receipt
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/quarterly_basis_convergence_001'
+          git config user.name 'crypto-lab-qbc-bot'
+          git config user.email 'crypto-lab-qbc-bot@users.noreply.github.com'
+          git add "$BASE/source_evidence/QBC_SOURCE_GATE_V01.json"
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'QUARTERLY-BASIS-CONVERGENCE-001: Source Gate closeout [skip ci]'
+          git pull --rebase origin quarterly-basis-convergence-v0.1
+          git push origin HEAD:quarterly-basis-convergence-v0.1
