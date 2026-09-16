@@ -1,0 +1,28 @@
+{
+  "lab_id": "BTC-DVOL-FUTURES-TERMSTRUCTURE-001",
+  "source_gate_id": "DVOL-TS-LIFECYCLE-SOURCE-001",
+  "status": "PRE_ACQUISITION_TECHNICAL_SPEC_FROZEN",
+  "date_frozen": "2026-09-16",
+  "definitions": {
+    "calendar_candidate_enumeration": "Every UTC Wednesday date from 2023-03-29 through 2024-12-25 inclusive, with no outcome-driven omissions or additions.",
+    "candidate_name_format": "BTCDVOL_USDC-DDMMMYY with English uppercase 3-letter month abbreviation.",
+    "nonexistent_exact_instrument": "An exact get_instrument API error indicating instrument not found is a deterministic candidate miss and is not counted as a provider/source technical failure.",
+    "accepted_contract": "Exact metadata result whose returned instrument_name equals the requested candidate; kind=future; price_index=btcdvol_usdc; creation_timestamp >= 2023-03-27T00:00:00Z; expiration_timestamp < 2025-01-01T00:00:00Z.",
+    "ordinary_public_trade": "A deduplicated exact-instrument historical trade with both block_trade_id and combo_id absent or null.",
+    "active_utc_day": "UTC calendar date containing >=1 ordinary public trade for that contract.",
+    "aggregate_active_contract_days": "Sum of unique active UTC day counts across confirmed contracts. A date active in two different contracts counts twice because contracts are separate source episodes.",
+    "qualifying_contract": "Confirmed contract with >=20 ordinary public trades and >=5 unique active UTC days over its exact listed life.",
+    "calendar_quarter_for_coverage": "UTC calendar quarter containing the contract expiration_timestamp.",
+    "core_field_coverage": "Across ordinary public trades only: present-and-non-null cells divided by ordinary_trade_count * number_of_required_core_fields.",
+    "aux_field_coverage": "Across ordinary public trades only: present-and-non-null cells divided by ordinary_trade_count * number_of_required_aux_fields.",
+    "metadata_integrity_rate": "Accepted exact contracts whose returned metadata satisfies all acceptance conditions divided by accepted exact contracts. Nonexistent candidate misses are excluded from this denominator.",
+    "first_last_trade_timestamps": "Minimum and maximum timestamp among ordinary public trades for a contract; source coverage metadata only, not an economic outcome."
+  },
+  "transport_rules": {
+    "http_retries": "Maximum 3 attempts for 429 or 5xx/network exceptions with deterministic waits 1s, 2s, 4s. Other API errors fail closed except exact instrument-not-found candidate misses.",
+    "slice_boundary_validation": "Every retained trade timestamp must lie within the exact accepted contract creation-expiration bounds and before 2025-01-01T00:00:00Z; otherwise fail closed.",
+    "raw_payload_policy": "Do not write raw trade payloads to artifacts. Preserve per-request SHA-256, byte count, bounded timestamps and returned row count only.",
+    "economic_value_policy": "Trade prices, amounts, directions, index_price values and mark_price values may be inspected only for field presence during source acquisition and must not be written, aggregated, ranked or statistically analyzed."
+  },
+  "scientific_thresholds": "Unchanged from LIFECYCLE_SOURCE_AUTHORITY_V0.1.json."
+}
