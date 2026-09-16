@@ -21,6 +21,14 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Fetch exact historical PBR branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin tf-gap-pbr01-4h-v0.1 --no-tags
+          test "$(git rev-parse origin/tf-gap-pbr01-4h-v0.1)" = 6cbf17e00a314d7f39b09d3d046ddd2ec71680dc
+          echo PBR_BRANCH_COMMIT_GATE_PASS
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -36,6 +44,7 @@ jobs:
           f=json.loads((r/'HTF_DIAMOND_HUNT_001_CAMPAIGN_FREEZE_V0.1.json').read_text())
           b=json.loads((r/'HTF_DIAMOND_HUNT_001_SOURCE_BINDING_V0.1.json').read_text())
           i=json.loads((r/'HTF_DIAMOND_HUNT_001_IMPLEMENTATION_AUTHORITY_V0.1.json').read_text())
+          a=json.loads((r/'HTF_DIAMOND_HUNT_001_IMPLEMENTATION_AUTHORITY_AMENDMENT_01.json').read_text())
           assert f['status']=='FROZEN_PRE_OUTCOME'
           assert f['execution_order'][:3]==['DH-01','DH-04','DH-07']
           assert b['status']=='FROZEN_EXACT_SOURCE_BEFORE_ANY_CAMPAIGN_OUTCOME'
@@ -43,38 +52,50 @@ jobs:
           assert b['source_fingerprint']=='08402ecb8931e42a0766370f55e46adc3de02474ce3a6128f4b2cdd89bb4ac78'
           assert i['status']=='FROZEN_IMPLEMENTATION_AUTHORITY_PRE_OUTCOME'
           assert i['historical_authority_commit']=='62422965b23e91671f6720b818bb26686b9d5bd2'
+          assert a['status']=='FROZEN_DEPENDENCY_PROVENANCE_CORRECTION_PRE_OUTCOME'
+          assert a['scientific_design_changed'] is False
+          assert a['outcomes_opened_before_amendment'] is False
+          assert a['dh07_pbr_authority']['commit']=='6cbf17e00a314d7f39b09d3d046ddd2ec71680dc'
+          assert a['dh07_pbr_authority']['package_root']=='Dream-Account-OS-v2.3-PARTIAL/src'
           print('AUTHORITY_GATE_PASS')
           PY
 
-      - name: Verify historical blob identities before materialization
+      - name: Verify historical strategy identities before materialization
         shell: bash
         run: |
           set -euo pipefail
           H=62422965b23e91671f6720b818bb26686b9d5bd2
+          PBRH=6cbf17e00a314d7f39b09d3d046ddd2ec71680dc
           test "$(git rev-parse "$H:Dream-Account-OS-v2.3-PARTIAL/research/tfg_donchian_1d_discovery_runner_v01.py")" = ca2515ee40e62ed5543db0f6d27d69533e0f22ce
           test "$(git rev-parse "$H:Dream-Account-OS-v2.3-PARTIAL/research/tfg_ema_pullback_1d_discovery_runner_v01.py")" = 4624b4338d3ef6d8a1c9face4bd611ac24b48241
-          test "$(git rev-parse "$H:Dream-Account-OS-v2.3-PARTIAL/research/tfg_pbr01_4h_v01.py")" = c67e0c16cdd887a907b4be3fd7e562cce870680a
-          test "$(git rev-parse "$H:Dream-Account-OS-v2.3-PARTIAL/research/tfg_pbr01_4h_discovery_runner_v01.py")" = d7ea040091c2703b089081191bb84fecb5db8f5d
-          echo HISTORICAL_BLOB_GATE_PASS
+          git cat-file -e "$PBRH:Dream-Account-OS-v2.3-PARTIAL/research/tfg_pbr01_4h_v01.py"
+          git cat-file -e "$PBRH:Dream-Account-OS-v2.3-PARTIAL/research/phase_b_research_evaluator_v01.py"
+          git cat-file -e "$PBRH:Dream-Account-OS-v2.3-PARTIAL/research/phase_b_signal_formation_v01.py"
+          git cat-file -e "$PBRH:Dream-Account-OS-v2.3-PARTIAL/src/dream_account/models.py"
+          git cat-file -e "$PBRH:Dream-Account-OS-v2.3-PARTIAL/src/dream_account/engines.py"
+          echo "PBR_CORE_BLOB=$(git rev-parse "$PBRH:Dream-Account-OS-v2.3-PARTIAL/research/tfg_pbr01_4h_v01.py")"
+          echo HISTORICAL_IDENTITY_GATE_PASS
 
-      - name: Materialize exact historical strategy implementation stack
+      - name: Materialize exact historical strategy implementation stacks
         shell: bash
         run: |
           set -euo pipefail
           H=62422965b23e91671f6720b818bb26686b9d5bd2
+          PBRH=6cbf17e00a314d7f39b09d3d046ddd2ec71680dc
           git checkout "$H" -- \
-            dream_account \
             Dream-Account-OS-v2.3-PARTIAL/research/tfg_ema_pullback_1d_discovery_runner_v01.py \
-            Dream-Account-OS-v2.3-PARTIAL/research/tfg_donchian_1d_discovery_runner_v01.py \
+            Dream-Account-OS-v2.3-PARTIAL/research/tfg_donchian_1d_discovery_runner_v01.py
+          git checkout "$PBRH" -- \
+            Dream-Account-OS-v2.3-PARTIAL/src/dream_account \
             Dream-Account-OS-v2.3-PARTIAL/research/tfg_pbr01_4h_v01.py \
             Dream-Account-OS-v2.3-PARTIAL/research/phase_b_research_evaluator_v01.py \
             Dream-Account-OS-v2.3-PARTIAL/research/phase_b_signal_formation_v01.py
-          echo HISTORICAL_STACK_MATERIALIZED
+          echo HISTORICAL_STACKS_MATERIALIZED
 
       - name: Compile exact modules and campaign wrapper
         working-directory: Dream-Account-OS-v2.3-PARTIAL
         env:
-          PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/Dream-Account-OS-v2.3-PARTIAL
+          PYTHONPATH: ${{ github.workspace }}/Dream-Account-OS-v2.3-PARTIAL/src:${{ github.workspace }}/Dream-Account-OS-v2.3-PARTIAL
         run: |
           python -m py_compile \
             research/tfg_ema_pullback_1d_discovery_runner_v01.py \
@@ -111,7 +132,7 @@ jobs:
       - name: Run DH-01 DH-04 DH-07 exact independent replications
         working-directory: Dream-Account-OS-v2.3-PARTIAL
         env:
-          PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/Dream-Account-OS-v2.3-PARTIAL
+          PYTHONPATH: ${{ github.workspace }}/Dream-Account-OS-v2.3-PARTIAL/src:${{ github.workspace }}/Dream-Account-OS-v2.3-PARTIAL
         run: python research/htf_diamond_hunt/htf_diamond_hunt_replications_v01.py research/local_data/htf_diamond_hunt_source_v01
 
       - name: Upload exact-replication evidence
