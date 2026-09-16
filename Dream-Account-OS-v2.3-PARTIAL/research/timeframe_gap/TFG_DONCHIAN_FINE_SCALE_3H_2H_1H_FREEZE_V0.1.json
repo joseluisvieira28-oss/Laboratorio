@@ -1,0 +1,27 @@
+{
+  "experiment_id": "TFG-DONCHIAN-FINE-SCALE-3H-2H-1H-V0.1",
+  "status": "FROZEN_BEFORE_ANY_3H_2H_1H_OUTCOME_EVALUATION",
+  "freeze_date": "2026-09-16",
+  "authority": "USER_EXPLICIT_ATTACK_12H_8H_4H_AND_WHATEVER_REQUIRED",
+  "scientific_position": "This is a new fine-scale frontier extension after the 12H/8H/4H family closeout. It does not rescue or reclassify failed higher-timeframe cells. Rules are pure clock-time scaling of the original 20d/14d/40d Donchian geometry, frozen before fine-scale outcomes.",
+  "venue": {"provider":"MEXC","market":"SPOT","source_interval":"15m official bulk","universe":["BTCUSDT","ETHUSDT","SOLUSDT","BNBUSDT","XRPUSDT","DOGEUSDT"],"derived_bar_anchor":"UTC","no_fill":true,"no_cross_exchange_backfill":true},
+  "cells": [
+    {"cell_id":"D3","timeframe":"3H","lookback_complete_bars":160,"atr_length":112,"max_hold_bars":320,"signal":"close > max high prior 160 complete bars","entry":"next 3H open","stop":"signal low - 0.25*ATR112","target_r":3.0},
+    {"cell_id":"D2","timeframe":"2H","lookback_complete_bars":240,"atr_length":168,"max_hold_bars":480,"signal":"close > max high prior 240 complete bars","entry":"next 2H open","stop":"signal low - 0.25*ATR168","target_r":3.0},
+    {"cell_id":"D1H","timeframe":"1H","lookback_complete_bars":480,"atr_length":336,"max_hold_bars":960,"signal":"close > max high prior 480 complete bars","entry":"next 1H open","stop":"signal low - 0.25*ATR336","target_r":3.0}
+  ],
+  "execution": {"direction":"LONG_ONLY","one_active_trade_per_symbol":true,"same_bar_stop_target":"STOP_FIRST_CONSERVATIVE","base_round_trip_cost_pct":0.20,"stress_round_trip_cost_pct":0.30,"time_exit":"next bar open after frozen max hold"},
+  "source_gap_policy": {"raw_gaps_preserved":true,"incomplete_derived_bars_dropped":true,"indicator_state_resets_at_derived_gap":true,"full_trade_path_must_remain_in_same_contiguous_segment":true},
+  "windows": {
+    "W1_REPLICATION":{"warmup_start":"2023-02-01T00:00:00Z","scored_entry_start":"2023-03-01T00:00:00Z","end_exclusive":"2025-01-01T00:00:00Z","full_path_required":true},
+    "W2_2025":{"warmup_start":"2024-12-01T00:00:00Z","scored_entry_start":"2025-01-01T00:00:00Z","end_exclusive":"2026-01-01T00:00:00Z","full_path_required":true},
+    "W3_2026":{"warmup_start":"2025-12-01T00:00:00Z","scored_entry_start":"2026-01-01T00:00:00Z","end_exclusive":"2026-08-31T00:00:00Z","full_path_required":true,"note":"specific fine-scale outcomes unopened before this freeze; market path itself is not pristine because adjacent timeframe studies were already run"}
+  },
+  "gates": {
+    "W1":{"minimum_resolved":100,"base_expectancy_gt":0,"base_pf_gt":1,"bootstrap_lower_95_gt":0,"stress_expectancy_gt":0,"stress_pf_gt":1,"unresolved_eq":0},
+    "W2":{"minimum_resolved":50,"base_expectancy_gt":0,"base_pf_gt":1,"stress_expectancy_gt":0,"stress_pf_gt":1,"max_single_symbol_positive_r_share_lte":0.70,"unresolved_eq":0},
+    "W3":{"minimum_resolved":25,"base_expectancy_gt":0,"base_pf_gt":1,"stress_expectancy_gt":0,"stress_pf_gt":1,"max_single_symbol_positive_r_share_lte":0.70,"unresolved_eq":0}
+  },
+  "promotion": {"must_pass_all_three_windows":true,"passing_cell_state":"FORWARD_EXECUTION_CERTIFICATION_ELIGIBLE","real_capital_automatic":false,"no_post_outcome_winner_tuning":true,"report_all_cells":true},
+  "governance": {"no_parameter_tuning":true,"no_asset_selection":true,"no_cost_rescue":true,"no_threshold_change":true,"failed_cell_remains_failed":true,"no_live_orders":true,"no_exchange_mutation":true,"no_merge_to_main":true}
+}
