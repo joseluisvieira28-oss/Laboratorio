@@ -1,0 +1,101 @@
+name: BNB Launchpool Demand Source Archive V0.1
+
+on:
+  push:
+    branches:
+      - bnb-launchpool-demand-v0.1
+
+permissions:
+  contents: write
+
+jobs:
+  source-archive-gate:
+    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout scientific branch
+        uses: actions/checkout@v4
+        with:
+          ref: bnb-launchpool-demand-v0.1
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Frozen source transport preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/bnb_launchpool_demand_001'
+          python -m py_compile "$BASE/source_archive_gate_v01.py"
+          python - <<'PY'
+          import json
+          base='Dream-Account-OS-v2.3-PARTIAL/research/bnb_launchpool_demand_001'
+          a=json.load(open(base+'/BNB_LAUNCHPOOL_DEMAND_001_SOURCE_AUTHORITY_V0.1.json'))
+          m=json.load(open(base+'/BNB_LAUNCHPOOL_DEMAND_001_SOURCE_TRANSPORT_AMENDMENT_V0.1.json'))
+          r=json.load(open(base+'/BNB_LAUNCHPOOL_DEMAND_001_SOURCE_RECON_V0.1.json'))
+          assert a['status']=='FROZEN_SOURCE_ONLY_PRE_OUTCOME'
+          assert m['status']=='FROZEN_BEFORE_TRANSPORT_EXECUTION_AND_BEFORE_ANY_MARKET_OUTCOME'
+          assert m['transport']['route_scope']=='DETAIL_ONLY_FIXED_CODES'
+          assert m['transport']['pagination_allowed'] is False
+          assert m['transport']['catalog_or_list_endpoint_allowed'] is False
+          assert m['transport']['search_endpoint_allowed'] is False
+          assert m['transport']['protected_period_metadata_traversal_allowed'] is False
+          assert [e['n'] for e in r['events']]==list(range(31,64))
+          assert len(r['events'])==33
+          assert a['governance']['access_2025'] is False
+          assert a['governance']['access_2026'] is False
+          assert a['governance']['no_live_trading'] is True
+          PY
+
+      - name: Execute frozen source archive gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/bnb_launchpool_demand_001'
+          python "$BASE/source_archive_gate_v01.py"
+          test -f "$BASE/source_archive_v01/BNB_LAUNCHPOOL_DEMAND_001_SOURCE_ARCHIVE_RECEIPT_V0.1.json"
+
+      - name: Audit firewalls and classification
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          p='Dream-Account-OS-v2.3-PARTIAL/research/bnb_launchpool_demand_001/source_archive_v01/BNB_LAUNCHPOOL_DEMAND_001_SOURCE_ARCHIVE_RECEIPT_V0.1.json'
+          d=json.load(open(p)); g=d['guards']
+          assert d['classification'] in {'SOURCE_DATA_PASS','SOURCE_ACCESS_BLOCKED','DATA_INTEGRITY_FAILURE','INSUFFICIENT_SOURCE_SAMPLE'}
+          assert d['market_outcomes_opened'] is False
+          assert d['access_2025'] is False and d['access_2026'] is False
+          for k in ['market_price_fields_opened','bnb_price_opened','btc_price_opened','returns_computed','pnl_computed','catalog_or_list_endpoint_opened','search_endpoint_opened','current_launchpool_page_opened','current_exchange_info_opened','year_2025_source_page_requested','year_2026_source_page_requested','live_trading','exchange_mutation','orders','alerts_or_webhooks','merge_to_main']:
+              assert g[k] is False, (k,g[k])
+          if d['classification']=='SOURCE_DATA_PASS':
+              assert d['clean_events']==33
+              assert d['transport_failures']==0
+              assert d['integrity_failures']==0
+          print(json.dumps({k:d[k] for k in ['classification','clean_events','transport_failures','integrity_failures','ordered_manifest_sha256']},indent=2))
+          PY
+
+      - name: Upload immutable raw source archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: bnb-launchpool-demand-001-source-archive-${{ github.run_id }}-${{ github.run_attempt }}
+          path: Dream-Account-OS-v2.3-PARTIAL/research/bnb_launchpool_demand_001/source_archive_v01/
+          retention-days: 90
+          if-no-files-found: error
+
+      - name: Persist source archive receipt
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/bnb_launchpool_demand_001'
+          git config user.name 'crypto-lab-bnb-launchpool-bot'
+          git config user.email 'crypto-lab-bnb-launchpool-bot@users.noreply.github.com'
+          git add "$BASE/source_archive_v01/BNB_LAUNCHPOOL_DEMAND_001_SOURCE_ARCHIVE_RECEIPT_V0.1.json"
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'BNB-LAUNCHPOOL-DEMAND-001: source archive closeout [skip ci]'
+          git pull --rebase origin bnb-launchpool-demand-v0.1
+          git push origin HEAD:bnb-launchpool-demand-v0.1
