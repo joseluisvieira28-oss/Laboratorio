@@ -3,12 +3,15 @@
 
 Reads only the frozen source manifest and standard Solana signature metadata.
 No transaction bodies, post-migration prices or economic outcomes are read.
+Applies TIMESTAMP_PRECISION_CUTOFF_AMENDMENT_V01: the entire integer second
+containing T0 is quarantined from feature/source-ceiling eligibility.
 """
 from __future__ import annotations
 
 import argparse
 import hashlib
 import json
+import math
 import os
 import sys
 import time
@@ -31,7 +34,7 @@ def sha256_file(p:Path)->str:
 
 
 def audit_one(rpc:Rpc,row:dict)->dict:
-    mint=row['mint']; t0=parse_ts(row['t0']); lo=t0-WINDOW; pda=bonding_curve_pda(mint)
+    mint=row['mint']; t0=parse_ts(row['t0']); lo=t0-WINDOW; safe_cutoff=float(math.floor(t0)); pda=bonding_curve_pda(mint)
     before=None; pages=0; all_rows=[]; crossed=False; exhausted=False; null_time=False
     try:
         while True:
@@ -51,7 +54,8 @@ def audit_one(rpc:Rpc,row:dict)->dict:
             if pages>100: raise RuntimeError('pagination safety stop')
     except Exception as exc:
         return {'mint':mint,'t0':row['t0'],'bonding_curve_pda':pda,'source_complete':False,
-                'collector_error':f'{type(exc).__name__}: {exc}','outcomes_opened':False}
+                'collector_error':f'{type(exc).__name__}: {exc}','outcomes_opened':False,
+                'safe_cutoff_unix_second':safe_cutoff}
 
     by_sig={}; conflicts=0
     for x in all_rows:
@@ -59,14 +63,16 @@ def audit_one(rpc:Rpc,row:dict)->dict:
         if not sig: continue
         if sig in by_sig and by_sig[sig]!=x: conflicts+=1
         else: by_sig[sig]=x
-    inwin=[x for x in by_sig.values() if x.get('blockTime') is not None and lo<=float(x['blockTime'])<t0]
-    success=[x for x in inwin if x.get('err') is None]
+    safe_inwin=[x for x in by_sig.values() if x.get('blockTime') is not None and lo<=float(x['blockTime'])<safe_cutoff]
+    same_second=[x for x in by_sig.values() if x.get('blockTime') is not None and float(x['blockTime'])==safe_cutoff]
+    success=[x for x in safe_inwin if x.get('err') is None]
     complete=(conflicts==0 and not null_time and (crossed or exhausted))
     return {
-        'lab':'PMD-001','stage':'SIGNATURE_CEILING_AUDIT_V01','outcomes_opened':False,
-        'mint':mint,'t0':row['t0'],'bonding_curve_pda':pda,'signature_pages':pages,
-        'signatures_unique_seen':len(by_sig),'in_window_signatures':len(inwin),
-        'successful_in_window_signatures':len(success),'signature_conflicts':conflicts,
+        'lab':'PMD-001','stage':'SIGNATURE_CEILING_AUDIT_V01_SAFE_CUTOFF','outcomes_opened':False,
+        'mint':mint,'t0':row['t0'],'safe_cutoff_unix_second':safe_cutoff,
+        'same_second_quarantined':len(same_second),'bonding_curve_pda':pda,'signature_pages':pages,
+        'signatures_unique_seen':len(by_sig),'safe_in_window_signatures':len(safe_inwin),
+        'successful_safe_in_window_signatures':len(success),'signature_conflicts':conflicts,
         'null_block_time_seen':null_time,'crossed_lower_bound':crossed,'history_exhausted':exhausted,
         'source_complete':complete,
     }
@@ -103,13 +109,14 @@ def main()->int:
             f.write(json.dumps(r,sort_keys=True,ensure_ascii=False)+'\n'); f.flush()
             if i%25==0:
                 print(json.dumps({'audited':i,'complete':sum(bool(x.get('source_complete')) for x in audited),
-                                  'with_success':sum(bool(x.get('source_complete')) and int(x.get('successful_in_window_signatures') or 0)>0 for x in audited)},sort_keys=True))
+                                  'with_success':sum(bool(x.get('source_complete')) and int(x.get('successful_safe_in_window_signatures') or 0)>0 for x in audited)},sort_keys=True))
             if args.pace_seconds>0: time.sleep(args.pace_seconds)
 
     complete=[r for r in audited if r.get('source_complete')]
-    with_success=[r for r in complete if int(r.get('successful_in_window_signatures') or 0)>0]
+    with_success=[r for r in complete if int(r.get('successful_safe_in_window_signatures') or 0)>0]
     incomplete=[r for r in audited if not r.get('source_complete')]
     dates_success=len({str(r['t0'])[:10] for r in with_success})
+    quarantined=sum(int(r.get('same_second_quarantined') or 0) for r in audited)
     if incomplete:
         verdict='SIGNATURE_CEILING_UNRESOLVED'
     elif len(with_success)>=MIN_VIABLE:
@@ -117,13 +124,15 @@ def main()->int:
     else:
         verdict='SIGNATURE_CEILING_INSUFFICIENT'
     receipt={
-        'lab':'PMD-001','stage':'SIGNATURE_CEILING_AUDIT_V01','outcomes_opened':False,
+        'lab':'PMD-001','stage':'SIGNATURE_CEILING_AUDIT_V01_SAFE_CUTOFF','outcomes_opened':False,
         'source_name':source,'manifest_sha256':EXPECTED_MANIFEST_SHA,'population_rows':len(rows),
         'source_complete_rows':len(complete),'source_incomplete_rows':len(incomplete),
-        'rows_with_successful_in_window_signature':len(with_success),
-        'distinct_dates_with_successful_in_window_signature':dates_success,
+        'rows_with_successful_safe_in_window_signature':len(with_success),
+        'distinct_dates_with_successful_safe_in_window_signature':dates_success,
+        'same_second_signatures_quarantined_total':quarantined,
         'minimum_viable_rows':MIN_VIABLE,'verdict':verdict,
         'details_sha256':sha256_file(details),'rpc_request_counter':rpc.counter,
+        'timestamp_precision_amendment_applied':True,
         'full_block_gate_run':False,'economic_outcomes_opened':False,
     }
     (out/'signature_ceiling_receipt.json').write_text(json.dumps(receipt,indent=2,sort_keys=True)+'\n',encoding='utf-8')
