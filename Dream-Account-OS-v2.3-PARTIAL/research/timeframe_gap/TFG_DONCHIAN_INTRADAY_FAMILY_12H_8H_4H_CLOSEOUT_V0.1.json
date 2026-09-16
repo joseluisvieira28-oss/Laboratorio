@@ -1,0 +1,57 @@
+{
+  "experiment_id": "TFG-DONCHIAN-INTRADAY-FAMILY-12H-8H-4H-V0.1",
+  "status": "COMPLETE_NO_CELL_PASSES_ALL_WINDOWS",
+  "freeze_commit": "4c4d3b5d655630f65e37aaa202958228c137e97e",
+  "pre_outcome_amendment_commits": [
+    "18c166b9d9eb7b5c98f70534214b3eda9a70c1c0",
+    "03065f9d0f30a0a7ed342e2fe4a068d7d508fd39"
+  ],
+  "source": {
+    "provider": "MEXC",
+    "market": "SPOT",
+    "raw_interval": "15m",
+    "unique_monthly_partitions": 258,
+    "assets": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "DOGEUSDT"],
+    "source_span": "2023-02-01T00:00:00Z through 2026-08-31T00:00:00Z",
+    "gap_policy": "PRESERVE_GAPS_DROP_INCOMPLETE_DERIVED_BARS_RESET_STATE_NO_FILL"
+  },
+  "results": {
+    "D12": {
+      "rule": "12H Donchian40 ATR28 stop0.25ATR target3R maxhold80",
+      "W1_2023_03_to_2024": {"n":124,"base_expectancy_r":0.553145,"base_pf":1.987360,"win_rate":0.4355,"stress_expectancy_r":0.519593,"stress_pf":1.927428,"bootstrap_95":[0.162776,0.924347],"pass":true},
+      "W2_2025": {"n":60,"base_expectancy_r":0.425136,"base_pf":1.689410,"win_rate":0.3833,"stress_expectancy_r":0.391819,"stress_pf":1.635381,"bootstrap_95":[-0.126441,0.991598],"pass":true},
+      "W3_2026_to_Aug31": {"n":35,"base_expectancy_r":-0.533511,"base_pf":0.377571,"win_rate":0.1429,"stress_expectancy_r":-0.548883,"stress_pf":0.359637,"bootstrap_95":[-0.947707,0.021424],"pass":false,"failed":["base_expectancy_not_positive","base_pf_not_above_1","stress_expectancy_not_positive","stress_pf_not_above_1"]},
+      "promotion": "FAIL_NO_RESCUE"
+    },
+    "D8": {
+      "rule": "8H Donchian60 ATR42 stop0.25ATR target3R maxhold120",
+      "W1_2023_03_to_2024": {"n":133,"base_expectancy_r":0.625438,"base_pf":2.101748,"win_rate":0.4286,"stress_expectancy_r":0.587822,"stress_pf":2.035443,"bootstrap_95":[0.244139,1.015525],"pass":true},
+      "W2_2025": {"n":65,"base_expectancy_r":0.590627,"base_pf":2.037588,"win_rate":0.4308,"stress_expectancy_r":0.545973,"stress_pf":1.959141,"bootstrap_95":[0.015529,1.126285],"pass":true},
+      "W3_2026_to_Aug31": {"n":35,"base_expectancy_r":-0.614527,"base_pf":0.297675,"win_rate":0.1143,"stress_expectancy_r":-0.623178,"stress_pf":0.287894,"bootstrap_95":[-0.987055,-0.064120],"pass":false,"failed":["base_expectancy_not_positive","base_pf_not_above_1","stress_expectancy_not_positive","stress_pf_not_above_1"]},
+      "promotion": "FAIL_NO_RESCUE"
+    },
+    "D4": {
+      "rule": "4H Donchian120 ATR84 stop0.25ATR target3R maxhold240",
+      "W1_2023_03_to_2024": {"n":166,"base_expectancy_r":0.316417,"base_pf":1.490102,"win_rate":0.3494,"stress_expectancy_r":0.282672,"stress_pf":1.437801,"bootstrap_95":[0.005960,0.623661],"pass":true},
+      "W2_2025": {"n":84,"base_expectancy_r":0.243987,"base_pf":1.365980,"win_rate":0.3333,"stress_expectancy_r":0.204369,"stress_pf":1.306553,"bootstrap_95":[-0.234395,0.728887],"pass":true},
+      "W3_2026_to_Aug31": {"n":47,"base_expectancy_r":-0.387946,"base_pf":0.532475,"win_rate":0.1702,"stress_expectancy_r":-0.415658,"stress_pf":0.499078,"bootstrap_95":[-0.813046,0.190685],"pass":false,"failed":["base_expectancy_not_positive","base_pf_not_above_1","stress_expectancy_not_positive","stress_pf_not_above_1"]},
+      "promotion": "FAIL_NO_RESCUE"
+    }
+  },
+  "family_interpretation": {
+    "2023_2025": "All three clock-time-scaled siblings are economically positive and pass their frozen W1/W2 gates. D8 is particularly strong through 2025, but no winner is selected post-outcome.",
+    "2026": "All three independently fail the same four economic gates in the recent regime. This cross-timeframe concordance is evidence of regime dependence rather than a single-timeframe implementation defect.",
+    "micro_live_eligible": false,
+    "execution_certification_open": false,
+    "live_trading_authorized": false
+  },
+  "governance": {
+    "post_outcome_tuning": false,
+    "timeframe_rescue": false,
+    "asset_selection": false,
+    "cost_reduction_rescue": false,
+    "live_orders": false,
+    "exchange_mutation": false,
+    "no_merge_to_main": true
+  }
+}
