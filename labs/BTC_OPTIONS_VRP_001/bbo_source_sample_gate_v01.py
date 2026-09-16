@@ -10,27 +10,31 @@ OUT = Path("artifacts/btc_options_vrp_bbo_source_sample_gate_v01")
 OUT.mkdir(parents=True, exist_ok=True)
 META_URL = "https://api.tardis.dev/v1/exchanges/deribit"
 BASE = "https://datasets.tardis.dev/v1/deribit"
-UA = "SRC-Crypto-Lab/1.0"
+UA = "Mozilla/5.0 (compatible; SRC-Crypto-Lab/1.0; +research-source-gate)"
 
 
 def fetch_json(url, timeout=30):
-    req = urllib.request.Request(url, headers={"User-Agent": UA})
+    req = urllib.request.Request(url, headers={"User-Agent": UA, "Accept": "application/json,*/*"})
     with urllib.request.urlopen(req, timeout=timeout) as r:
         raw = r.read()
         return json.loads(raw.decode("utf-8")), hashlib.sha256(raw).hexdigest(), int(r.status)
 
 
 def probe_prefix(url, n=2, timeout=30):
-    req = urllib.request.Request(url, headers={"User-Agent": UA, "Range": f"bytes=0-{n-1}"})
+    # Transport-only remediation after run 35072200202: do NOT use HTTP Range.
+    # Tardis documents anonymous first-day samples, while the Range probe was
+    # rejected by the edge with 403. A normal GET is opened, only n bytes are
+    # read, and the connection is immediately closed. No market values are parsed.
+    req = urllib.request.Request(url, headers={"User-Agent": UA, "Accept": "application/gzip,application/octet-stream,*/*"})
     try:
         with urllib.request.urlopen(req, timeout=timeout) as r:
             b = r.read(n)
             return {
                 "url": url,
+                "transport": "NORMAL_GET_PREFIX_ONLY",
                 "status": int(r.status),
                 "prefix_hex": b.hex(),
                 "content_type": r.headers.get("Content-Type"),
-                "content_range": r.headers.get("Content-Range"),
                 "content_length": r.headers.get("Content-Length"),
                 "gzip_magic": b[:2] == b"\x1f\x8b",
                 "error": None,
@@ -39,10 +43,10 @@ def probe_prefix(url, n=2, timeout=30):
         body = e.read(256)
         return {
             "url": url,
+            "transport": "NORMAL_GET_PREFIX_ONLY",
             "status": int(e.code),
             "prefix_hex": body[:n].hex(),
             "content_type": e.headers.get("Content-Type") if e.headers else None,
-            "content_range": e.headers.get("Content-Range") if e.headers else None,
             "content_length": e.headers.get("Content-Length") if e.headers else None,
             "gzip_magic": False,
             "error": f"HTTPError:{e.code}",
@@ -50,10 +54,10 @@ def probe_prefix(url, n=2, timeout=30):
     except Exception as e:
         return {
             "url": url,
+            "transport": "NORMAL_GET_PREFIX_ONLY",
             "status": None,
             "prefix_hex": "",
             "content_type": None,
-            "content_range": None,
             "content_length": None,
             "gzip_magic": False,
             "error": repr(e),
@@ -87,6 +91,8 @@ result = {
     "lab_id": auth["lab_id"],
     "source_mve_id": auth["source_mve_id"],
     "classification": None,
+    "technical_remediation_of_run": 35072200202,
+    "scientific_rules_changed": False,
     "metadata": None,
     "sample_probes": [],
     "nonfree_probe": None,
@@ -146,7 +152,11 @@ if meta_ok and all_samples_ok:
 elif not meta_ok:
     result["classification"] = "SOURCE_SCHEMA_NOT_PROVEN"
 else:
-    result["classification"] = "SOURCE_SAMPLE_ACCESS_BLOCKED_OR_INCOMPLETE"
+    sample_statuses = sorted({v.get("status") for row in result["sample_probes"] for v in row["datasets"].values()}, key=lambda x: (-1 if x is None else x))
+    if sample_statuses == [403] or (403 in sample_statuses and all(x in (None, 403) for x in sample_statuses)):
+        result["classification"] = "SOURCE_SAMPLE_TRANSPORT_BLOCKED_AT_RUNNER"
+    else:
+        result["classification"] = "SOURCE_SAMPLE_ACCESS_BLOCKED_OR_INCOMPLETE"
 
 result["sample_gate_pass"] = result["classification"].startswith("SOURCE_SAMPLE_GATE_PASS")
 result["full_history_anonymous"] = nonfree_status in (200, 206)
