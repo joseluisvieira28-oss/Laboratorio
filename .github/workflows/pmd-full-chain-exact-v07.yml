@@ -1,0 +1,229 @@
+name: PMD-001 Full Chain-Exact Source V07
+
+on:
+  push:
+    branches:
+      - pumpfun-migration-direction-v0.1
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/RUN_FULL_CHAIN_EXACT_V07.trigger'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  ceiling-shard:
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        start: [0, 253, 506, 759]
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - name: Checkout scientific branch
+        uses: actions/checkout@v4
+        with:
+          ref: pumpfun-migration-direction-v0.1
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip duckdb huggingface_hub requests solders pytz
+      - name: Syntax checks
+        run: |
+          python -m py_compile \
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/build_source_rebuild_manifest_v01.py \
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/chain_boundary_semantics_v07.py \
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/chain_exact_ceiling_v06.py \
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/chain_exact_ceiling_v061.py \
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/chain_exact_ceiling_v07.py
+      - name: Rebuild frozen 1,012-row manifest
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001
+        run: |
+          python build_source_rebuild_manifest_v01.py --data-dir pmd_source_rebuild_manifest_data --out pmd_source_rebuild_manifest_v01.jsonl --receipt pmd_source_rebuild_manifest_v01_receipt.json
+          test ! -e pmd_source_rebuild_manifest_data/postgard_outcomes.parquet
+      - name: Execute deterministic V0.7 ceiling shard
+        continue-on-error: true
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001
+        run: |
+          python chain_exact_ceiling_v07.py \
+            --manifest pmd_source_rebuild_manifest_v01.jsonl \
+            --out-dir pmd_chain_exact_ceiling_v07_${{ matrix.start }} \
+            --rpc-url https://api.mainnet-beta.solana.com \
+            --source-name solana_public_rpc_chain_exact_ceiling_v07 \
+            --start ${{ matrix.start }} --limit 253 --pace-seconds 0.15
+      - name: Assert outcome wall
+        if: always()
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001
+        run: test ! -e pmd_source_rebuild_manifest_data/postgard_outcomes.parquet
+      - name: Upload ceiling shard evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: PMD-001-chain-exact-ceiling-v07-${{ matrix.start }}
+          if-no-files-found: warn
+          retention-days: 30
+          path: |
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/pmd_chain_exact_ceiling_v07_${{ matrix.start }}/chain_exact_ceiling_details.jsonl
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/pmd_chain_exact_ceiling_v07_${{ matrix.start }}/chain_exact_ceiling_shard_receipt.json
+
+  ceiling-aggregate:
+    needs: ceiling-shard
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      viable: ${{ steps.classify.outputs.viable }}
+    steps:
+      - name: Checkout scientific branch
+        uses: actions/checkout@v4
+        with:
+          ref: pumpfun-migration-direction-v0.1
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download all ceiling shards
+        uses: actions/download-artifact@v4
+        with:
+          pattern: PMD-001-chain-exact-ceiling-v07-*
+          path: all-ceiling-v07
+          merge-multiple: false
+      - name: Aggregate exact 1,012-row ceiling
+        continue-on-error: true
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001
+        run: |
+          python aggregate_chain_exact_ceiling_v07.py --input-root "$GITHUB_WORKSPACE/all-ceiling-v07" --out-dir "$GITHUB_WORKSPACE/pmd_chain_exact_ceiling_v07_aggregate"
+      - name: Classify ceiling authorization
+        id: classify
+        if: always()
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          p=Path('pmd_chain_exact_ceiling_v07_aggregate/chain_exact_ceiling_v07_receipt.json')
+          viable=False
+          if p.exists():
+              r=json.loads(p.read_text()); assert r['economic_outcomes_opened'] is False
+              viable=r.get('verdict')=='CHAIN_EXACT_CEILING_V07_VIABLE'
+              print(json.dumps(r,indent=2,sort_keys=True))
+          else:
+              print(json.dumps({'verdict':'CHAIN_EXACT_CEILING_V07_UNRESOLVED','receipt_missing':True,'economic_outcomes_opened':False}))
+          with open(os.environ['GITHUB_OUTPUT'],'a') as f: f.write(f"viable={'true' if viable else 'false'}\n")
+          PY
+      - name: Upload aggregate ceiling receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: PMD-001-chain-exact-ceiling-v07-aggregate
+          retention-days: 30
+          path: pmd_chain_exact_ceiling_v07_aggregate/
+
+  full-shard:
+    needs: ceiling-aggregate
+    if: ${{ needs.ceiling-aggregate.outputs.viable == 'true' }}
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        start: [0, 253, 506, 759]
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - name: Checkout scientific branch
+        uses: actions/checkout@v4
+        with:
+          ref: pumpfun-migration-direction-v0.1
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip duckdb huggingface_hub requests solders pytz
+      - name: Syntax checks
+        run: |
+          python -m py_compile \
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/build_source_rebuild_manifest_v01.py \
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/chain_boundary_semantics_v07.py \
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/source_rebuild_chain_exact_v06.py \
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/source_rebuild_chain_exact_v07.py
+      - name: Rebuild frozen 1,012-row manifest
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001
+        run: |
+          python build_source_rebuild_manifest_v01.py --data-dir pmd_source_rebuild_manifest_data --out pmd_source_rebuild_manifest_v01.jsonl --receipt pmd_source_rebuild_manifest_v01_receipt.json
+          test ! -e pmd_source_rebuild_manifest_data/postgard_outcomes.parquet
+      - name: Execute deterministic full chain-exact V0.7 shard
+        continue-on-error: true
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001
+        run: |
+          python source_rebuild_chain_exact_v07.py \
+            --manifest pmd_source_rebuild_manifest_v01.jsonl \
+            --full-manifest pmd_source_rebuild_manifest_v01.jsonl \
+            --out-dir pmd_chain_exact_full_v07_${{ matrix.start }} \
+            --rpc-url https://api.mainnet-beta.solana.com \
+            --source-name solana_public_rpc_chain_exact_full_v07 \
+            --start ${{ matrix.start }} --limit 253 --block-batch-size 4
+      - name: Assert outcome wall
+        if: always()
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001
+        run: test ! -e pmd_source_rebuild_manifest_data/postgard_outcomes.parquet
+      - name: Upload compact full-source evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: PMD-001-chain-exact-full-v07-${{ matrix.start }}
+          if-no-files-found: warn
+          retention-days: 30
+          compression-level: 9
+          path: |
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/pmd_chain_exact_full_v07_${{ matrix.start }}/source_rebuild_summary.jsonl
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/pmd_chain_exact_full_v07_${{ matrix.start }}/block_hash_ledger.jsonl
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/pmd_chain_exact_full_v07_${{ matrix.start }}/raw/*.jsonl
+
+  source-gate:
+    needs: [ceiling-aggregate, full-shard]
+    if: ${{ always() && needs.ceiling-aggregate.outputs.viable == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout scientific branch
+        uses: actions/checkout@v4
+        with:
+          ref: pumpfun-migration-direction-v0.1
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download all full-source shards
+        uses: actions/download-artifact@v4
+        with:
+          pattern: PMD-001-chain-exact-full-v07-*
+          path: all-full-v07
+          merge-multiple: false
+      - name: Aggregate final V0.7 Source Gate
+        continue-on-error: true
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001
+        run: |
+          python aggregate_chain_exact_source_gate_v07.py --input-root "$GITHUB_WORKSPACE/all-full-v07" --out-dir "$GITHUB_WORKSPACE/pmd_chain_exact_source_gate_v07"
+      - name: Assert final receipt remains pre-outcome
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('pmd_chain_exact_source_gate_v07/chain_exact_source_gate_v07_receipt.json')
+          if p.exists():
+              r=json.loads(p.read_text()); assert r['economic_outcomes_opened'] is False; print(json.dumps(r,indent=2,sort_keys=True))
+          else:
+              print(json.dumps({'verdict':'CHAIN_EXACT_SOURCE_GATE_V07_TECHNICAL_INCOMPLETE','receipt_missing':True,'economic_outcomes_opened':False}))
+          PY
+      - name: Upload final Source Gate receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: PMD-001-chain-exact-source-gate-v07
+          retention-days: 30
+          path: pmd_chain_exact_source_gate_v07/
