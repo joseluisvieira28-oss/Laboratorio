@@ -1,0 +1,126 @@
+{
+  "lab_id": "BNB-LAUNCHPOOL-DEMAND-001",
+  "mve_id": "BLP-BNBBTC-24H-001",
+  "status": "FROZEN_PRE_MARKET_OUTCOME",
+  "freeze_date": "2026-09-16",
+  "source_gate": {
+    "classification": "SOURCE_DATA_PASS",
+    "canonical_commit": "6d7feeb9eff3f39079e68f3c6485e71b2f7f4700",
+    "canonical_event_manifest_sha256": "f0bd730090c09d59e8ef6b558cc923fcface3c5568e44f7765a67181b2fe43d1",
+    "canonical_event_count": 33,
+    "source_validation_run": 35130851491,
+    "source_validation_artifact": 10461236604
+  },
+  "economic_hypothesis": "A public Binance Launchpool announcement that offers BNB staking/locking creates short-lived incremental utility and opportunity-cost demand for BNB. If economically material, BNB should outperform BTC after the announcement. The executable primary test therefore uses the BNBBTC spot pair rather than a generic BNBUSD direction.",
+  "event_selection": {
+    "input_events": 33,
+    "sort": "ascending canonical Binance CMS publishDate UTC",
+    "cluster_rule": "Adjacent announcements separated by <=60 minutes belong to the same information cluster. Each cluster produces at most one candidate signal at the earliest announcement timestamp.",
+    "expected_clusters_from_source_only_timestamps": 32,
+    "known_source_only_multi_event_cluster": [36, 37],
+    "one_active_trade": true,
+    "overlap_rule": "If a later cluster's computed entry timestamp is strictly earlier than the active trade's frozen exit timestamp, suppress the later signal. No replacement, stacking, or delayed entry.",
+    "expected_selected_trades_from_source_only_timestamps": 31,
+    "known_source_only_suppressed_project_number": 59,
+    "selection_uses_market_prices": false
+  },
+  "market_data_contract": {
+    "provider": "Binance Data Vision",
+    "market": "SPOT",
+    "symbol": "BNBBTC",
+    "interval": "15m",
+    "monthly_archive_start": "2022-10",
+    "monthly_archive_end": "2024-12",
+    "expected_monthly_archives": 27,
+    "archive_url_template": "https://data.binance.vision/data/spot/monthly/klines/BNBBTC/15m/BNBBTC-15m-{YYYY-MM}.zip",
+    "checksum_required": true,
+    "zip_crc_required": true,
+    "timestamp_audit_before_price_open": true,
+    "price_fields_allowed_only_after_source_audit_pass": ["open"],
+    "high_low_close_volume_forbidden": true,
+    "year_2025_forbidden": true,
+    "year_2026_forbidden": true
+  },
+  "execution_rule": {
+    "side": "LONG_BNBBTC",
+    "signal_time": "earliest canonical publishDate UTC in each 60-minute information cluster",
+    "entry": "first 15-minute BNBBTC bar open whose timestamp is strictly greater than signal_time",
+    "hold": "24 hours from entry timestamp",
+    "exit": "BNBBTC 15-minute bar open exactly 24 hours after entry timestamp",
+    "stop": null,
+    "target": null,
+    "leverage": "NONE",
+    "position_stacking": false,
+    "round_trip_cost_base_bps": 20.0,
+    "round_trip_cost_stress_bps": 30.0,
+    "gross_return": "simple return = exit_open / entry_open - 1",
+    "base_net_bps": "gross_bps - 20",
+    "stress_net_bps": "gross_bps - 30"
+  },
+  "source_audit_gate": {
+    "all_27_archives_present": true,
+    "all_official_checksums_match": true,
+    "all_zip_crc_clean": true,
+    "all_timestamp_rows_parseable": true,
+    "zero_duplicate_timestamps": true,
+    "all_selected_entry_timestamps_present": true,
+    "all_selected_exit_timestamps_present": true,
+    "zero_execution_path_gaps": true,
+    "market_price_values_opened_during_audit": false
+  },
+  "discovery_statistics": {
+    "primary_unit": "selected non-overlapping information-cluster trade",
+    "bootstrap": {
+      "type": "event_level_nonparametric_bootstrap_of_base_net_mean_bps",
+      "replications": 5000,
+      "seed": 160916,
+      "confidence_interval": 0.95
+    },
+    "profit_factor": "sum positive net bps / absolute sum negative net bps; +inf if no negative trades",
+    "calendar_stability": "2023 and 2024 evaluated separately; 2022 partial is diagnostic only because it contains one source event"
+  },
+  "promotion_gates_all_required": {
+    "minimum_resolved_trades": 25,
+    "base_mean_net_bps_gt_zero": true,
+    "base_profit_factor_gt_one": true,
+    "stress_mean_net_bps_gt_zero": true,
+    "stress_profit_factor_gt_one": true,
+    "base_median_net_bps_gt_zero": true,
+    "bootstrap_95_ci_lower_base_mean_gt_zero": true,
+    "calendar_2023_base_mean_net_gt_zero": true,
+    "calendar_2024_base_mean_net_gt_zero": true,
+    "max_single_trade_share_of_total_positive_base_net_lte": 0.40,
+    "unresolved_execution_paths": 0,
+    "source_rule_deviations": 0,
+    "trading_rule_deviations": 0
+  },
+  "classifications": {
+    "source_audit_fail": "SOURCE_OR_EXECUTION_FAILURE",
+    "resolved_below_25": "INSUFFICIENT_SAMPLE",
+    "any_economic_or_stability_gate_fail": "DISCOVERY_FAIL_NO_PROMOTION",
+    "all_promotion_gates_pass": "DISCOVERY_SURVIVES_OOS_ELIGIBLE"
+  },
+  "post_result_rules": {
+    "no_direction_inversion": true,
+    "no_horizon_rescue": true,
+    "no_cluster_window_rescue": true,
+    "no_cost_rescue": true,
+    "no_event_deletion": true,
+    "no_subperiod_selection": true,
+    "no_alternative_pair_rescue": true,
+    "no_stop_target_overlay_rescue": true,
+    "if_pass_2025_requires_new_preoutcome_oos_freeze": true,
+    "2025_remains_locked": true,
+    "2026_remains_locked": true
+  },
+  "governance": {
+    "research_only": true,
+    "fail_closed": true,
+    "no_live_trading": true,
+    "no_exchange_mutation": true,
+    "no_orders": true,
+    "no_alerts_webhooks": true,
+    "no_merge_to_main": true,
+    "no_deployment": true
+  }
+}
