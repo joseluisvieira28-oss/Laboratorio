@@ -1,0 +1,58 @@
+name: BTC-OPTIONS-VRP-001 Execution Source Gate V0.1
+
+on:
+  push:
+    branches:
+      - btc-options-vrp-execution-v0.1
+
+permissions:
+  contents: read
+
+concurrency:
+  group: btc-options-vrp-execution-source-v01
+  cancel-in-progress: false
+
+jobs:
+  source-gate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: btc-options-vrp-execution-v0.1
+
+      - name: Verify frozen source authority
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          a=json.load(open('labs/BTC_OPTIONS_VRP_001/EXECUTION_SOURCE_AUTHORITY_V0.1.json'))
+          assert a['source_feasibility_only'] is True
+          assert a['strategy_pnl_authorized'] is False
+          assert a['trade_returns_authorized'] is False
+          assert a['directional_btc_returns_authorized'] is False
+          assert a['parameter_tuning_authorized'] is False
+          assert a['access_2025_authorized'] is False
+          assert a['access_2026_authorized'] is False
+          assert a['live_trading_authorized'] is False
+          assert a['exchange_mutation_authorized'] is False
+          assert a['unbounded_instrument_catalog_allowed'] is False
+          assert a['delivery_price_source_required'] is False
+          print('EXECUTION_SOURCE_AUTHORITY_PASS')
+          PY
+
+      - name: Compile source-only runner
+        run: python -m py_compile labs/BTC_OPTIONS_VRP_001/execution_source_gate_v01.py
+
+      - name: Execute outcome-blind source gate
+        run: python labs/BTC_OPTIONS_VRP_001/execution_source_gate_v01.py
+
+      - name: Upload source evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: btc-options-vrp-execution-source-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/btc_options_vrp_execution_source_v01/
+          retention-days: 90
+          if-no-files-found: warn
