@@ -1,0 +1,35 @@
+{
+  "protocol_id": "BNB-LAUNCHPOOL-DEMAND-001-FORWARD-SHADOW-V0.1",
+  "branch": "bnb-launchpool-demand-forward-shadow-v01",
+  "freeze_commit_sha": "34d35904bc097bd3ab5c420f97f0c12c62a802f8",
+  "boundary_utc": "2026-09-16T20:51:23Z",
+  "state_file": "Dream-Account-OS-v2.3-PARTIAL/research/bnb_launchpool_demand_001/forward_shadow_v01/BNB_LAUNCHPOOL_DEMAND_001_FORWARD_STATE_V0.1.json",
+  "iteration_contract": [
+    "Read freeze, boundary and current state first.",
+    "Search only official Binance Support/CMS public read-only sources for new Launchpool announcements strictly after boundary_utc.",
+    "Validate canonical article code, publication timestamp and explicit BNB staking/locking/farming pool evidence before eligibility.",
+    "Never use pre-boundary announcements, duplicates, reposts or non-Launchpool products.",
+    "Cluster eligible announcements within <=60 minutes and select earliest canonical timestamp.",
+    "If a selected cluster overlaps an active 24h paper trade, suppress it exactly as frozen.",
+    "For a selected non-overlapping event, record paper entry as the first BNBBTC 15m bar open strictly after signal timestamp; record exit at the bar open exactly 24h later.",
+    "Use only public read-only market data; no API keys, orders, wallets, authenticated endpoints, alerts, webhooks or exchange mutation.",
+    "Fail closed if event provenance, entry bar, exit bar, timestamps or data continuity are ambiguous or missing.",
+    "Persist state append-only by event identity; never rewrite a resolved trade except to correct a proven byte/technical transcription error with an explicit audit trail.",
+    "At 10 resolved trades compute report-only checkpoint; no tier change.",
+    "At 25 resolved trades evaluate exactly the frozen Tier-2 Path-2 gates; no tuning or rescue."
+  ],
+  "notify_only_on": [
+    "new eligible official Launchpool event",
+    "new paper trade selected or overlap-suppressed",
+    "paper trade resolution",
+    "source or execution failure",
+    "10-trade report-only checkpoint",
+    "25-trade promotion verdict"
+  ],
+  "governance": {
+    "research_only": true,
+    "live_trading_authorized": false,
+    "exchange_mutation": false,
+    "main_merge": false
+  }
+}
