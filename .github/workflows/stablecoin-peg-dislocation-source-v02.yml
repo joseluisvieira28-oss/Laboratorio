@@ -1,0 +1,39 @@
+name: Stablecoin Peg Dislocation Source Gate V0.2
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - stablecoin-peg-dislocation-v0.1
+    paths:
+      - 'labs/STABLECOIN_PEG_DISLOCATION_001/SOURCE_AUTHORITY_V0.2.json'
+      - 'labs/STABLECOIN_PEG_DISLOCATION_001/source_gate_v02.py'
+      - '.github/workflows/stablecoin-peg-dislocation-source-v02.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  source_gate_v02:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Execute outcome-blind venue-aware source/data gate V0.2
+        run: python labs/STABLECOIN_PEG_DISLOCATION_001/source_gate_v02.py
+
+      - name: Upload immutable V0.2 source-gate evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stablecoin-peg-dislocation-source-v02-${{ github.run_id }}-${{ github.run_attempt }}
+          path: stablecoin_peg_source_gate_v02_artifact/
+          if-no-files-found: warn
+          retention-days: 90
