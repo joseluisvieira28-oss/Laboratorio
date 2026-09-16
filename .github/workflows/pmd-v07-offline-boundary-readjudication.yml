@@ -1,0 +1,69 @@
+name: PMD-001 V07 Offline Boundary Re-adjudication
+
+on:
+  push:
+    branches:
+      - pumpfun-migration-direction-v0.1
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/RUN_V07_OFFLINE_BOUNDARY_READJUDICATION.trigger'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  readjudicate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout scientific branch
+        uses: actions/checkout@v4
+        with:
+          ref: pumpfun-migration-direction-v0.1
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip requests solders
+      - name: Syntax checks
+        run: |
+          python -m py_compile \
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/chain_boundary_semantics_v07.py \
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/offline_boundary_readjudication_v07.py
+      - name: Download frozen V0.6 full-block artifacts
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: 35132853202
+          pattern: PMD-001-chain-exact-v06-row-*
+          path: frozen-v06
+          merge-multiple: false
+      - name: Re-adjudicate boundary parser coverage offline
+        continue-on-error: true
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001
+        run: |
+          python offline_boundary_readjudication_v07.py \
+            --input-root "$GITHUB_WORKSPACE/frozen-v06" \
+            --out-dir "$GITHUB_WORKSPACE/pmd_v07_offline_boundary_readjudication"
+      - name: Assert source-only receipt
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('pmd_v07_offline_boundary_readjudication/v07_offline_boundary_receipt.json')
+          if p.exists():
+              r=json.loads(p.read_text()); assert r['economic_outcomes_opened'] is False; assert r['scientific_source_gate_authority'] is False; print(json.dumps(r,indent=2,sort_keys=True))
+          else:
+              print(json.dumps({'verdict':'V07_OFFLINE_BOUNDARY_TECHNICAL_INCOMPLETE','economic_outcomes_opened':False}))
+          PY
+      - name: Upload compact re-adjudication receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: PMD-001-v07-offline-boundary-readjudication
+          retention-days: 30
+          path: pmd_v07_offline_boundary_readjudication/
