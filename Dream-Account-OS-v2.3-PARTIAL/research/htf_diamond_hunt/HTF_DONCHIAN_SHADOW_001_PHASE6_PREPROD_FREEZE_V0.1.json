@@ -1,0 +1,121 @@
+{
+  "experiment_id": "HTF-DONCHIAN-SHADOW-001",
+  "parent_campaign_id": "HTF-DIAMOND-HUNT-001",
+  "phase": "PHASE_6_PREPRODUCTION_SHADOW",
+  "freeze_date": "2026-09-16",
+  "status": "FROZEN_PRE_2026_DATA_ACCESS",
+  "authority": "USER_EXPLICIT_ADVANCE_TO_NEXT_PHASE",
+  "purpose": "Convert the prospectively tested Donchian 6H candidate into a fail-closed paper/shadow production candidate without changing the signal, without placing orders, and without opening protected 2026 market outcomes until a separate explicit data-access authorization is persisted.",
+  "immutable_parent_authority": {
+    "branch_head": "760464159acd3b3025d59fa5916fc2e2db5a6367",
+    "phase5_freeze_file": "HTF_DIAMOND_HUNT_001_PHASE5_FORWARD_HOLDOUT_FREEZE_V0.1.json",
+    "phase5_closeout_file": "HTF_DIAMOND_HUNT_001_PHASE5_CLOSEOUT_V0.1.json",
+    "phase5_primary": "DH-02-HO1",
+    "phase5_primary_classification": "EXACT_RULE_FORWARD_HOLDOUT_FAIL",
+    "phase5_campaign_classification": "NO_RESEARCH_GRADE_PROMOTION",
+    "phase5_failed_condition": "bootstrap_lower_95_not_positive",
+    "historical_verdict_must_not_be_rewritten": true
+  },
+  "near_diamonds_v2_interpretation": {
+    "classification": "TIER_2_PROMOTED_CANDIDATE_STATISTICAL_FRAGILITY",
+    "basis": "Frozen Near-Diamonds V2 support path based on clean reproducible positive OOS/forward economics with adequate sample and no material concentration pathology; this classification does not overwrite the stricter Phase 5 research-grade-diamond failure.",
+    "live_trading_authorized": false
+  },
+  "primary_shadow_candidate": {
+    "cell_id": "DH-02-HO1",
+    "timeframe": "6H",
+    "direction": "LONG_ONLY",
+    "symbols": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "DOGEUSDT"],
+    "donchian_lookback_complete_bars": 80,
+    "atr_length": 56,
+    "entry": "next 6H open",
+    "stop": "signal low minus 0.25*ATR56",
+    "target_r": 3.0,
+    "max_hold_bars": 160,
+    "one_active_trade_per_symbol": true,
+    "base_round_trip_cost_pct": 0.20,
+    "stress_round_trip_cost_pct": 0.30,
+    "funding_model": "IDENTICAL_TO_PHASE4_AND_PHASE5",
+    "minute_path_resolution": "IDENTICAL_TO_PHASE4_AND_PHASE5"
+  },
+  "secondary_family_cell": {
+    "cell_id": "DH-03-HO1",
+    "status": "HISTORICAL_SECONDARY_ONLY",
+    "may_generate_primary_shadow_orders": false,
+    "may_rescue_primary": false,
+    "may_trigger_timeframe_substitution": false,
+    "note": "The 12H cell survived Phase 5 but was prospectively secondary; it is preserved as family evidence only and cannot replace the frozen 6H primary in this shadow phase."
+  },
+  "shadow_execution_contract": {
+    "mode": "PAPER_SHADOW_ONLY",
+    "virtual_risk_unit_per_trade": 1.0,
+    "real_capital_allocation": 0,
+    "authenticated_exchange_api_allowed": false,
+    "api_keys_allowed": false,
+    "order_submission_allowed": false,
+    "order_cancel_allowed": false,
+    "position_mutation_allowed": false,
+    "alerts_or_webhooks_allowed": false,
+    "public_read_only_market_data_only_after_authorization": true,
+    "all_hypothetical_entries_exits_and_funding_must_be_reproducible": true,
+    "duplicate_signal_guard_required": true,
+    "one_active_trade_per_symbol_guard_required": true,
+    "fail_closed_on_missing_or_ambiguous_price_path": true,
+    "fail_closed_on_source_version_or_checksum_mismatch": true
+  },
+  "protected_data_gate": {
+    "2025_access_authorized_by_this_freeze": false,
+    "2026_access_authorized_by_this_freeze": false,
+    "required_before_2026_market_access": "separate persisted explicit user authorization tied to this exact frozen protocol",
+    "pre_authorization_allowed_actions": [
+      "code creation",
+      "unit tests with synthetic fixtures only",
+      "authority/hash verification",
+      "static workflow validation",
+      "no-outcome preflight"
+    ]
+  },
+  "operational_shadow_readiness_gates": {
+    "minimum_elapsed_calendar_days": 60,
+    "minimum_resolved_shadow_trades": 30,
+    "signal_rule_deviations": 0,
+    "duplicate_hypothetical_entries": 0,
+    "unresolved_execution_paths": 0,
+    "unreconciled_source_gaps": 0,
+    "base_expectancy_r": ">0",
+    "base_profit_factor": ">1",
+    "stress_expectancy_r": ">0",
+    "maximum_single_symbol_positive_net_r_share": 0.70,
+    "maximum_single_quarter_positive_net_r_share": 0.70,
+    "note": "These are pre-production shadow-readiness gates, not a Tier-1 scientific confirmation and not live-trading authorization."
+  },
+  "required_outputs": [
+    "append-only signal ledger",
+    "append-only hypothetical trade ledger",
+    "funding ledger",
+    "source provenance receipt",
+    "daily health receipt",
+    "weekly shadow summary",
+    "gate status snapshot"
+  ],
+  "promotion_boundary": {
+    "shadow_gate_pass_means": "eligible for a separately frozen capital-allocation/risk review only",
+    "shadow_gate_pass_does_not_mean": "live trading authorized",
+    "live_trading_requires_new_protocol": true,
+    "post_outcome_parameter_changes_forbidden": true,
+    "asset_selection_forbidden": true,
+    "timeframe_substitution_forbidden": true
+  },
+  "governance": {
+    "research_only": true,
+    "fail_closed": true,
+    "no_live_trading": true,
+    "no_exchange_mutation": true,
+    "no_orders": true,
+    "no_alerts_webhooks": true,
+    "no_merge_to_main": true,
+    "no_render_deploy": true,
+    "no_post_outcome_tuning": true,
+    "no_cherry_picking": true
+  }
+}

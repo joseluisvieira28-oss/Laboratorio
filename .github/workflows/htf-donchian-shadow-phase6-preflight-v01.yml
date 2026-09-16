@@ -1,0 +1,65 @@
+name: HTF Donchian Shadow Phase6 Preflight V0.1
+
+on:
+  push:
+    branches: [ htf-donchian-shadow-v0.1 ]
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/htf_diamond_hunt/**'
+      - '.github/workflows/htf-donchian-shadow-phase6-preflight-v01.yml'
+  pull_request:
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/htf_diamond_hunt/**'
+      - '.github/workflows/htf-donchian-shadow-phase6-preflight-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  phase6-preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout research branch
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Compile preflight
+        run: |
+          python -m py_compile Dream-Account-OS-v2.3-PARTIAL/research/htf_diamond_hunt/htf_donchian_shadow_phase6_preflight_v01.py
+
+      - name: Run fail-closed no-outcome preflight
+        run: |
+          python Dream-Account-OS-v2.3-PARTIAL/research/htf_diamond_hunt/htf_donchian_shadow_phase6_preflight_v01.py
+
+      - name: Assert preflight performed no market access
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path('Dream-Account-OS-v2.3-PARTIAL/research/htf_diamond_hunt/phase6_preflight_artifacts/HTF_DONCHIAN_SHADOW_001_PHASE6_PREFLIGHT_RECEIPT_V0.1.json')
+          x = json.loads(p.read_text())
+          assert x['classification'] == 'PREFLIGHT_PASS'
+          assert x['market_data_access_performed'] is False
+          assert x['2025_access_performed'] is False
+          assert x['2026_access_performed'] is False
+          assert x['signal_calculation_performed'] is False
+          assert x['return_calculation_performed'] is False
+          assert x['live_trading_performed'] is False
+          assert x['exchange_mutation_performed'] is False
+          assert x['orders_created'] is False
+          assert x['verified']['2026_still_locked'] is True
+          print('PHASE6_PREFLIGHT_FIREWALL_PASS')
+          PY
+
+      - name: Upload preflight receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: HTF_DONCHIAN_SHADOW_001_PHASE6_PREFLIGHT_V01
+          path: Dream-Account-OS-v2.3-PARTIAL/research/htf_diamond_hunt/phase6_preflight_artifacts/HTF_DONCHIAN_SHADOW_001_PHASE6_PREFLIGHT_RECEIPT_V0.1.json
+          if-no-files-found: error
+          retention-days: 30
