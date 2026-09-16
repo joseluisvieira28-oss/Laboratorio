@@ -1,0 +1,67 @@
+{
+  "lab_id": "BNB-LAUNCHPOOL-DEMAND-001",
+  "protocol_id": "BNB-LAUNCHPOOL-DEMAND-001-FINAL-PRESAMPLE-HOLDOUT-V0.1",
+  "binding_id": "FINAL-PRESAMPLE-EXECUTION-BINDING-V0.1",
+  "status": "FROZEN_POST_SOURCE_AUDIT_PRE_PRICE_OPEN",
+  "date_utc": "2026-09-16",
+  "source_gate": {
+    "classification": "SOURCE_DATA_PASS",
+    "canonical_event_manifest_sha256": "07d9e8cd5532df81b129ace36aabbf8a0512d8d87b259a77b57ef97d58718e01",
+    "project_events": 30,
+    "unique_official_articles": 27,
+    "source_run_id": 35147469972,
+    "source_artifact_id": 10467930279,
+    "source_artifact_zip_sha256": "cbbb15b0e500a56490d54728beb312a365a6a77ff41b9b9ea55a0a493b373ef7"
+  },
+  "market_source": {
+    "classification": "MARKET_SOURCE_DATA_PASS",
+    "archive_manifest_sha256": "23437dd16b24c11710e31f145a2d7d88b5bf84085268e6e4af3c4deaad70939d",
+    "archive_count": 15,
+    "selected_trade_paths": 27,
+    "suppressed_trade_paths": 0,
+    "market_source_run_id": 35147813097,
+    "market_source_artifact_id": 10467734255,
+    "market_source_artifact_zip_sha256": "51f7b09d78bb90410983e37f1b19f2f5e8b2498619a35bc0052c5ca8b8980dd9"
+  },
+  "execution_rule": {
+    "side": "LONG_BNBBTC",
+    "entry": "first 15-minute BNBBTC bar open strictly greater than signal_time",
+    "hold_hours": 24,
+    "exit": "BNBBTC 15-minute bar open exactly 24 hours after entry",
+    "cluster_window_minutes": 60,
+    "one_active_trade": true,
+    "base_round_trip_cost_bps": 20.0,
+    "stress_round_trip_cost_bps": 30.0,
+    "leverage": "NONE"
+  },
+  "promotion_gates": {
+    "minimum_resolved_trades": 25,
+    "base_mean_net_bps_gt_zero": true,
+    "base_profit_factor_gte_one": true,
+    "expected_sign_correct_long_bnbbtc": true,
+    "max_single_trade_share_of_total_positive_base_net_lte": 0.40,
+    "source_provenance_clean_and_reproducible": true,
+    "no_leakage_hindsight_or_post_outcome_selection": true,
+    "unresolved_selected_execution_paths": 0,
+    "source_rule_deviations": 0,
+    "trading_rule_deviations": 0,
+    "fatal_execution_or_risk_pathology": false
+  },
+  "report_only": {
+    "bootstrap_replications": 5000,
+    "bootstrap_seed": 160930,
+    "stress_cost_bps": 30.0,
+    "median": true,
+    "win_rate": true,
+    "calendar_subperiods": true,
+    "compounded_return_and_drawdown": true
+  },
+  "guards": {
+    "presample_price_opened_before_binding": false,
+    "presample_return_computed_before_binding": false,
+    "new_2025_market_access": false,
+    "access_2026_market": false,
+    "live_trading_authorized": false,
+    "post_outcome_historical_rescue_allowed": false
+  }
+}
