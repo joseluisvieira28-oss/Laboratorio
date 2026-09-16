@@ -1,0 +1,77 @@
+name: MSEL-002 RPC Archive Matrix V0.1
+
+on:
+  push:
+    branches:
+      - memecoin-metadata-duplication-v0.1
+    paths:
+      - '.github/workflows/msel002-rpc-archive-matrix-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  archive-smoke:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - provider: solana-official-mainnet
+            rpc_url: https://api.mainnet.solana.com
+          - provider: vibe-station
+            rpc_url: https://public.rpc.solanavibestation.com
+          - provider: leorpc
+            rpc_url: https://solana.leorpc.com/?api_key=FREE
+          - provider: magicblock
+            rpc_url: https://rpc.magicblock.app/mainnet
+          - provider: onfinality
+            rpc_url: https://solana.api.onfinality.io/public
+          - provider: pocket
+            rpc_url: https://solana.api.pocket.network/
+          - provider: uniblock
+            rpc_url: https://api.uniblock.dev/uni/v1/json-rpc?chainId=solana
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Historical coverage smoke
+        env:
+          PROVIDER: ${{ matrix.provider }}
+          RPC_URL: ${{ matrix.rpc_url }}
+          FROZEN_ANCHOR_SIGNATURE: '3CnQ7Gga54oEffaoJPWfN5BsRtC4RpgCemDfQ6QXVGC9SgPkk4Ak1K4mL1CvqufCR1okrURkbymhSSBcFQoW2DgE'
+          FROZEN_ANCHOR_SLOT: '364991552'
+          FROZEN_ANCHOR_TIME: '1757144339'
+        run: |
+          python - <<'PY'
+          import json, os, urllib.request, urllib.error
+          url = os.environ['RPC_URL']
+          provider = os.environ['PROVIDER']
+          sig = os.environ['FROZEN_ANCHOR_SIGNATURE']
+          slot = int(os.environ['FROZEN_ANCHOR_SLOT'])
+          expected_time = int(os.environ['FROZEN_ANCHOR_TIME'])
+
+          def rpc(method, params, rid):
+              payload = json.dumps({'jsonrpc':'2.0','id':rid,'method':method,'params':params}, separators=(',',':')).encode()
+              req = urllib.request.Request(url, data=payload, headers={'Content-Type':'application/json','User-Agent':'MSEL-002-archive-matrix/0.1'}, method='POST')
+              try:
+                  with urllib.request.urlopen(req, timeout=60) as resp:
+                      raw = resp.read()
+              except urllib.error.HTTPError as e:
+                  detail = e.read().decode('utf-8', errors='replace')[:500]
+                  raise SystemExit(f'{provider} HTTP_{e.code} {detail}')
+              obj = json.loads(raw)
+              if obj.get('error') is not None:
+                  raise SystemExit(f'{provider} RPC_ERROR method={method} error={obj["error"]}')
+              return obj.get('result')
+
+          bt = rpc('getBlockTime', [slot], 1)
+          if bt != expected_time:
+              raise SystemExit(f'{provider} BLOCKTIME_MISMATCH got={bt} expected={expected_time}')
+          tx = rpc('getTransaction', [sig, {'encoding':'json','maxSupportedTransactionVersion':0,'commitment':'finalized'}], 2)
+          if not isinstance(tx, dict):
+              raise SystemExit(f'{provider} HISTORICAL_TRANSACTION_UNAVAILABLE')
+          if int(tx.get('slot', -1)) != slot or int(tx.get('blockTime', -1)) != expected_time:
+              raise SystemExit(f'{provider} TX_BOUNDARY_MISMATCH slot={tx.get("slot")} time={tx.get("blockTime")}')
+          print(f'ARCHIVE_SMOKE_PASS provider={provider} slot={slot} blockTime={bt}')
+          print('NO PREVALENCE ROWS / NO ECONOMIC OUTCOMES OPENED')
+          PY
