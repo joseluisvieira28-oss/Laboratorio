@@ -1,0 +1,18 @@
+{
+  "experiment_id": "CAPITULATION-REVERSION-001-TECHNICAL-SERIALIZATION-CORRECTION-V0.1",
+  "status": "POST_COMPUTE_TECHNICAL_CORRECTION_NO_SCIENTIFIC_CHANGE",
+  "parent_freeze_commit": "8a4191cb59e9cac4942819a29a7606b05f3640de",
+  "window_semantics_amendment_commit": "de84b865aa3d0c268f2259747afde049e96ffd7b",
+  "failed_runner_sha256": "cfa10730c3950c00668ed89a2a32958818fa5f0858b1b5b6828d3b50bf1d1d91",
+  "failure": "The frozen computation completed trade/outcome calculations in memory, wrote the source manifest and ledger, then failed while serializing the final receipt because one exit-reason count was a numpy.int64 and json.dump(allow_nan=false) cannot serialize numpy scalar integers.",
+  "authorized_correction": "Rerun the identical frozen computation with serialization-only conversion of numpy scalar values to native JSON-compatible Python int/float types. No strategy rule, threshold, window, source rule, execution assumption, cost, gate, sample, trade selection, or outcome calculation may change.",
+  "governance": {
+    "post_outcome_parameter_change": false,
+    "post_outcome_gate_change": false,
+    "post_outcome_source_change": false,
+    "post_outcome_trade_selection_change": false,
+    "technical_rerun_only": true,
+    "no_rescue": true,
+    "no_live_trading": true
+  }
+}
