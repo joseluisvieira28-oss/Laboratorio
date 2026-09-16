@@ -1,0 +1,86 @@
+name: SLAS Source Gate V0.1
+
+on:
+  push:
+    branches:
+      - spot-listing-access-shock-v0.1
+
+permissions:
+  contents: write
+
+jobs:
+  source-gate:
+    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout frozen scientific branch
+        uses: actions/checkout@v4
+        with:
+          ref: spot-listing-access-shock-v0.1
+          fetch-depth: 1
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Frozen authority preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/spot_listing_access_shock_001'
+          python -m py_compile "$BASE/source_gate_v01.py"
+          python - <<'PY'
+          import json
+          p=json.load(open('Dream-Account-OS-v2.3-PARTIAL/research/spot_listing_access_shock_001/FROZEN_PROTOCOL_V01.json'))
+          assert p['lab_id']=='SPOT-LISTING-ACCESS-SHOCK-001'
+          assert p['mve_id']=='SLAS-BINANCE-SPOT-AFTER-PERP-001'
+          assert p['status']=='FROZEN_PRE_OUTCOME'
+          assert p['source']['discovery_years']==[2023,2024]
+          assert p['source']['independent_validation_year']==2025
+          assert p['source']['protected_holdout_year']==2026
+          assert p['source_gate']['qualified_events_min']==25
+          assert p['strategy']['entry_delay_minutes']==15
+          assert p['strategy']['base_round_trip_cost_fraction']==0.002
+          assert p['strategy']['stress_round_trip_cost_fraction']==0.003
+          assert p['hard_firewalls']['live_trading'] is False
+          assert p['hard_firewalls']['exchange_mutation'] is False
+          assert p['hard_firewalls']['merge_to_main'] is False
+          PY
+      - name: Execute outcome-blind source gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/spot_listing_access_shock_001'
+          python "$BASE/source_gate_v01.py"
+          test -f "$BASE/source_evidence/SLAS_SOURCE_GATE_V01.json"
+      - name: Audit source classification and firewalls
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          f='Dream-Account-OS-v2.3-PARTIAL/research/spot_listing_access_shock_001/source_evidence/SLAS_SOURCE_GATE_V01.json'
+          d=json.load(open(f)); r=d['receipt']; g=r['guards']
+          assert r['classification'] in {'SOURCE_DATA_PASS','SOURCE_ACCESS_BLOCKED','TECHNICAL_FAILURE','INSUFFICIENT_SOURCE_SAMPLE'}
+          assert g['market_price_values_parsed'] is False
+          assert g['ohlc_parsed'] is False
+          assert g['returns_computed'] is False
+          assert g['pnl_computed'] is False
+          assert g['year_2025_requested'] is False
+          assert g['year_2026_requested'] is False
+          assert g['live_trading'] is False
+          assert g['exchange_mutation'] is False
+          print(json.dumps(r,indent=2,sort_keys=True))
+          PY
+      - name: Persist source receipt
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/spot_listing_access_shock_001'
+          git config user.name 'crypto-lab-slas-bot'
+          git config user.email 'crypto-lab-slas-bot@users.noreply.github.com'
+          git add "$BASE/source_evidence/SLAS_SOURCE_GATE_V01.json"
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'SPOT-LISTING-ACCESS-SHOCK-001: Source Gate closeout [skip ci]'
+          git pull --rebase origin spot-listing-access-shock-v0.1
+          git push origin HEAD:spot-listing-access-shock-v0.1
