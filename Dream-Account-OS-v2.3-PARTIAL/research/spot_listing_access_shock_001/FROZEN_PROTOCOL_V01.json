@@ -1,0 +1,137 @@
+{
+  "lab_id": "SPOT-LISTING-ACCESS-SHOCK-001",
+  "mve_id": "SLAS-BINANCE-SPOT-AFTER-PERP-001",
+  "status": "FROZEN_PRE_OUTCOME",
+  "freeze_date_utc": "2026-09-16",
+  "research_question": "When an exact Binance Spot TOKENUSDT market begins trading after the exact Binance USD-M TOKENUSDT perpetual has already traded for at least 24 hours, does the added spot-access/liquidity shock create a reproducible positive continuation in the pre-existing perpetual after a realistic 15-minute execution delay?",
+  "economic_mechanism": {
+    "direction": "LONG_ONLY",
+    "expected_sign": "POSITIVE",
+    "rationale": "Adding an exact USDT spot market broadens non-leveraged access and liquidity for a token already price-discovered in derivatives. Cross-listing/access expansion can reduce segmentation and attract incremental demand. The test asks whether any incremental positive pressure remains after the first 15 minutes, not whether the launch produces an instantaneous pump.",
+    "distinct_from_prior": [
+      "PERPETUAL-LAUNCH-SHOCK-001 tested the opposite market-ordering: futures introduced after spot and did not test this reverse spot-after-perp continuation trade.",
+      "This is not generic momentum, taker-flow persistence, funding, OI, carry, macro surprise, Donchian, or indicator rescue."
+    ]
+  },
+  "source": {
+    "provider": "Binance public Data Vision",
+    "spot_path": "data/spot/monthly/klines/{SYMBOL}/1m/{SYMBOL}-1m-{YYYY-MM}.zip",
+    "futures_path": "data/futures/um/monthly/klines/{SYMBOL}/1m/{SYMBOL}-1m-{YYYY-MM}.zip",
+    "funding_path": "data/futures/um/monthly/fundingRate/{SYMBOL}/{SYMBOL}-fundingRate-{YYYY-MM}.zip",
+    "discovery_years": [2023, 2024],
+    "independent_validation_year": 2025,
+    "protected_holdout_year": 2026,
+    "event_definition": "first observable open_time of the exact Spot SYMBOL 1m archive within 2023-2024, provided the exact USD-M perpetual SYMBOL has an observable first open_time at least 24 hours earlier",
+    "no_current_exchange_info": true,
+    "no_announcement_timestamp_needed": true,
+    "no_2025_access_before_discovery_pass": true,
+    "no_2026_access_before_independent_validation_pass": true
+  },
+  "universe": {
+    "quote": "USDT",
+    "exact_symbol_match_required": true,
+    "symbol_regex": "^[A-Z0-9]{2,40}USDT$",
+    "exclude_multiplier_prefixes": ["1000", "10000", "1000000"],
+    "minimum_perp_age_before_spot_event_hours": 24,
+    "one_event_per_exact_symbol": true,
+    "no_asset_selection_after_outcomes": true
+  },
+  "source_gate": {
+    "qualified_events_min": 25,
+    "distinct_symbols_min": 25,
+    "events_2023_min": 5,
+    "events_2024_min": 5,
+    "classification_if_below_minimum": "INSUFFICIENT_SOURCE_SAMPLE",
+    "market_price_values_must_remain_unparsed_until_gate_pass": true
+  },
+  "strategy": {
+    "venue": "Binance USD-M perpetual futures",
+    "direction": "LONG_ONLY",
+    "signal_timestamp": "qualified exact Spot TOKENUSDT first open_time",
+    "entry_delay_minutes": 15,
+    "entry": "open of first complete perpetual 1m bar with open_time >= signal_timestamp + 15 minutes",
+    "volatility_reference": "simple arithmetic mean True Range of the 60 complete perpetual 1m bars ending strictly before signal_timestamp",
+    "risk_distance": "3.0 * pre_event_ATR60_absolute",
+    "stop": "entry_price - risk_distance",
+    "target": "entry_price + 2.0 * risk_distance",
+    "target_r": 2.0,
+    "max_hold_minutes": 360,
+    "one_position_per_symbol": true,
+    "reentry": false,
+    "base_round_trip_cost_fraction": 0.0020,
+    "stress_round_trip_cost_fraction": 0.0030,
+    "funding": "include every official funding payment timestamp falling strictly after entry and at or before exit using position-side cashflow sign",
+    "same_bar_stop_target": "STOP_FIRST",
+    "gap_stop_fill": "next observable open if already below stop; otherwise stop price",
+    "gap_target_fill": "target price, never a more favorable gap price",
+    "right_censoring": "event excluded from evaluable cohort if full pre-event ATR window, entry bar, or full max-hold execution path is unavailable"
+  },
+  "discovery": {
+    "period": "2023-01-01 through 2024-12-31 UTC event timestamps",
+    "sample_floor_evaluable": 20,
+    "bootstrap": {
+      "unit": "event/trade",
+      "resamples": 10000,
+      "seed": 20260916,
+      "interval": 0.95
+    },
+    "promotion_gates_all_required": {
+      "evaluable_trades_gte": 20,
+      "base_mean_net_R_gt": 0.0,
+      "base_profit_factor_gt": 1.10,
+      "bootstrap_95_lower_mean_net_R_gt": 0.0,
+      "stress_mean_net_R_gt": 0.0,
+      "stress_profit_factor_gt": 1.0,
+      "positive_calendar_years_required": 2,
+      "max_single_event_share_positive_R_lte": 0.25,
+      "minimum_leave_one_event_out_mean_net_R_gt": 0.0,
+      "execution_unresolved_eq": 0,
+      "source_integrity_failures_eq": 0
+    }
+  },
+  "independent_validation": {
+    "year": 2025,
+    "open_only_if_discovery_passes": true,
+    "rules_identical": true,
+    "sample_floor_evaluable": 8,
+    "gates_all_required": {
+      "base_mean_net_R_gt": 0.0,
+      "base_profit_factor_gt": 1.0,
+      "stress_mean_net_R_gt": 0.0,
+      "max_single_event_share_positive_R_lte": 0.35,
+      "execution_unresolved_eq": 0,
+      "source_integrity_failures_eq": 0
+    }
+  },
+  "protected_holdout": {
+    "year": 2026,
+    "status": "LOCKED",
+    "open_only_if_independent_validation_passes": true,
+    "no_partial_period_rescue": true
+  },
+  "classifications": [
+    "SOURCE_ACCESS_BLOCKED",
+    "TECHNICAL_FAILURE",
+    "DATA_FAILURE",
+    "INSUFFICIENT_SOURCE_SAMPLE",
+    "INSUFFICIENT_EVALUABLE_SAMPLE",
+    "DISCOVERY_NO_EDGE",
+    "DISCOVERY_SURVIVES",
+    "INDEPENDENT_VALIDATION_FAIL",
+    "INDEPENDENT_VALIDATION_SURVIVES"
+  ],
+  "hard_firewalls": {
+    "research_only": true,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "orders": false,
+    "post_put_patch_delete_exchange": false,
+    "merge_to_main": false,
+    "render_deployment": false,
+    "post_outcome_tuning": false,
+    "asset_rescue": false,
+    "timeframe_rescue": false,
+    "cost_rescue": false,
+    "failed_hypothesis_rewrite": false
+  }
+}
