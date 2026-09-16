@@ -1,0 +1,68 @@
+{
+  "validation_id": "HTF-DH02-VALIDATION-001",
+  "status": "FROZEN_BEFORE_ANY_VALIDATION_OUTCOME",
+  "frozen_date": "2026-09-16",
+  "lineage": {
+    "campaign": "HTF-DIAMOND-HUNT-001",
+    "discovery_cell": "DH-02",
+    "discovery_classification": "SURVIVES",
+    "discovery_period": "2021-01-01 through 2022-12-31",
+    "discovery_venue": "Binance Spot",
+    "rule_change_after_discovery": false
+  },
+  "rule": {
+    "direction": "LONG_ONLY",
+    "signal_timeframe": "6H",
+    "donchian_lookback_complete_bars": 80,
+    "atr_length": 56,
+    "trigger": "signal close strictly above maximum high of previous 80 complete 6H bars",
+    "entry": "next 6H open",
+    "stop": "signal low minus 0.25*ATR56",
+    "target_r": 3.0,
+    "max_hold_bars": 160,
+    "time_exit": "next open after max holding horizon",
+    "same_bar_stop_wins": true,
+    "one_active_trade_per_symbol": true
+  },
+  "universe": ["BTCUSDT","ETHUSDT","SOLUSDT","BNBUSDT","XRPUSDT","DOGEUSDT"],
+  "source": {
+    "provider": "Binance public data",
+    "market": "Spot",
+    "raw_interval": "1m",
+    "validation_start_utc": "2023-01-01T00:00:00Z",
+    "validation_end_utc_exclusive": "2025-01-01T00:00:00Z",
+    "allowed_source_years": [2023, 2024],
+    "forbidden_source_years": [2025, 2026],
+    "monthly_archives": 144,
+    "provider_checksum_required_for_every_archive": true,
+    "no_alternate_provider": true,
+    "no_synthetic_fill": true,
+    "no_interpolation": true
+  },
+  "costs": {"BASE_round_trip_pct":0.20,"STRESS_round_trip_pct":0.30},
+  "validation_gates": {
+    "minimum_resolved_trades": 100,
+    "base_expectancy_r": ">0",
+    "base_profit_factor": ">1",
+    "bootstrap_lower_95": ">0",
+    "stress_expectancy_r": ">0",
+    "maximum_single_symbol_positive_pnl_share": 0.70,
+    "maximum_single_quarter_positive_pnl_share": 0.70
+  },
+  "bootstrap": {"repetitions":5000,"seed":230911,"unit":"UTC_ENTRY_DAY_BLOCK","confidence":0.95},
+  "governance": {
+    "research_only": true,
+    "2025_access": false,
+    "2026_access": false,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "orders": false,
+    "alerts_webhooks": false,
+    "merge_to_main": false,
+    "render_deploy": false,
+    "post_outcome_tuning": false,
+    "threshold_change_after_validation": false,
+    "asset_selection_after_validation": false
+  },
+  "failure_policy": "Any failed gate closes this exact validation without rescue. Passing all gates permits only a validated-research-candidate label, not live trading."
+}
