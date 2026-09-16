@@ -1,0 +1,92 @@
+name: PMD-001 Provider Qualification V01
+
+on:
+  push:
+    branches:
+      - pumpfun-migration-direction-v0.1
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/RUN_PROVIDER_QUALIFICATION_V01.trigger'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  provider-probe:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - provider: solanatracker_public
+            rpc: https://rpc.solanatracker.io/public
+          - provider: pocket_public
+            rpc: https://solana.api.pocket.network
+          - provider: nodeflare_public
+            rpc: https://rpc.nodeflare.app/solana/public
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout scientific branch
+        uses: actions/checkout@v4
+        with:
+          ref: pumpfun-migration-direction-v0.1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip duckdb huggingface_hub requests solders pytz
+
+      - name: Rebuild frozen outcome-blind manifest
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001
+        run: |
+          python build_source_rebuild_manifest_v01.py \
+            --data-dir pmd_source_rebuild_manifest_data \
+            --out pmd_source_rebuild_manifest_v01.jsonl \
+            --receipt pmd_source_rebuild_manifest_v01_receipt.json
+          test ! -e pmd_source_rebuild_manifest_data/postgard_outcomes.parquet
+
+      - name: Probe frozen earliest candidate using V0.3
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001
+        run: |
+          python source_rebuild_block_first_v03.py \
+            --manifest pmd_source_rebuild_manifest_v01.jsonl \
+            --out-dir pmd_provider_probe_${{ matrix.provider }} \
+            --rpc-url '${{ matrix.rpc }}' \
+            --source-name '${{ matrix.provider }}' \
+            --start 0 --limit 1 \
+            --block-batch-size 4 \
+            --store-full-blocks
+
+      - name: Classify source access only
+        if: always()
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('pmd_provider_probe_${{ matrix.provider }}')
+          p=root/'source_rebuild_summary.jsonl'
+          if not p.exists():
+              print({'provider':'${{ matrix.provider }}','verdict':'TECHNICAL_NO_SUMMARY','outcomes_opened':False})
+              raise SystemExit(0)
+          rows=[json.loads(x) for x in p.read_text().splitlines() if x.strip()]
+          r=rows[0]
+          verdict='PROVIDER_PROBE_SOURCE_COMPLETE' if r.get('source_complete') and r.get('feature_source_eligible') else 'PROVIDER_PROBE_NOT_QUALIFIED'
+          print(json.dumps({'provider':'${{ matrix.provider }}','verdict':verdict,'mint':r.get('mint'),'source_complete':r.get('source_complete'),'feature_source_eligible':r.get('feature_source_eligible'),'safe_in_window_signatures':r.get('safe_in_window_signatures'),'blocks_requested':r.get('blocks_requested'),'block_errors':r.get('block_errors'),'outcomes_opened':False},indent=2,sort_keys=True))
+          PY
+
+      - name: Upload provider probe evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: PMD-001-provider-probe-${{ matrix.provider }}
+          if-no-files-found: warn
+          retention-days: 30
+          path: |
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/pmd_provider_probe_${{ matrix.provider }}/source_rebuild_summary.jsonl
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/pmd_provider_probe_${{ matrix.provider }}/block_hash_ledger.jsonl
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/pmd_provider_probe_${{ matrix.provider }}/raw/*.jsonl
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/pmd_provider_probe_${{ matrix.provider }}/blocks/**/*.json.gz
