@@ -1,0 +1,117 @@
+name: PMD-001 Block-First Cross-Date Access V02
+
+on:
+  workflow_run:
+    workflows:
+      - PMD-001 Block-First Cross-Date Access V01
+    types:
+      - completed
+    branches:
+      - pumpfun-migration-direction-v0.1
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  crossdate-source-access-v02:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout scientific branch
+        uses: actions/checkout@v4
+        with:
+          ref: pumpfun-migration-direction-v0.1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip duckdb huggingface_hub requests solders pytz
+
+      - name: Syntax checks
+        run: |
+          python -m py_compile \
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/build_source_rebuild_manifest_v01.py \
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/build_crossdate_probe20_manifest_v01.py \
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/source_rebuild_helius_v01.py \
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/source_rebuild_block_first_v02.py
+
+      - name: Rebuild frozen 1,012-candidate outcome-blind manifest
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001
+        run: |
+          python build_source_rebuild_manifest_v01.py \
+            --data-dir pmd_source_rebuild_manifest_data \
+            --out pmd_source_rebuild_manifest_v01.jsonl \
+            --receipt pmd_source_rebuild_manifest_v01_receipt.json
+          test ! -e pmd_source_rebuild_manifest_data/postgard_outcomes.parquet
+
+      - name: Freeze deterministic one-per-date probe manifest
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001
+        run: |
+          python build_crossdate_probe20_manifest_v01.py \
+            --manifest pmd_source_rebuild_manifest_v01.jsonl \
+            --out pmd_crossdate_probe20_manifest_v01.jsonl \
+            --receipt pmd_crossdate_probe20_manifest_v01_receipt.json
+
+      - name: Execute block-first V0.2 safe-cutoff public-RPC source audit
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001
+        run: |
+          python source_rebuild_block_first_v02.py \
+            --manifest pmd_crossdate_probe20_manifest_v01.jsonl \
+            --out-dir pmd_block_first_crossdate_v02 \
+            --rpc-url https://api.mainnet-beta.solana.com \
+            --source-name solana_public_rpc_block_first_safe_cutoff
+
+      - name: Classify safe-cutoff cross-date access only
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001
+        run: |
+          python - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          p=Path('pmd_block_first_crossdate_v02/source_rebuild_summary.jsonl')
+          rows=[json.loads(x) for x in p.read_text(encoding='utf-8').splitlines() if x.strip()]
+          assert len(rows)==20
+          assert all(r.get('outcomes_opened') is False for r in rows)
+          assert all(r.get('timestamp_precision_amendment_applied') is True for r in rows)
+          complete=sum(bool(r.get('source_complete')) for r in rows)
+          target=sum(bool(r.get('source_complete')) and int(r.get('valid_target_pump_transactions') or 0)>0 for r in rows)
+          dates=len({str(r['t0'])[:10] for r in rows})
+          if complete==20 and target==20 and dates==20:
+              verdict='BLOCK_FIRST_CROSSDATE_V02_PASS'
+          elif complete>0 and target>0:
+              verdict='BLOCK_FIRST_CROSSDATE_V02_PARTIAL'
+          else:
+              verdict='BLOCK_FIRST_CROSSDATE_V02_FAIL'
+          receipt={
+              'lab':'PMD-001','stage':'BLOCK_FIRST_CROSSDATE_ACCESS_V02_SAFE_CUTOFF',
+              'outcomes_opened':False,'probe_rows':len(rows),'distinct_dates':dates,
+              'source_complete_mints':complete,'target_evidence_mints':target,
+              'source_incomplete_mints':20-complete,
+              'same_second_signatures_quarantined_total':sum(int(r.get('same_second_signatures_quarantined') or 0) for r in rows),
+              'summary_sha256':hashlib.sha256(p.read_bytes()).hexdigest(),
+              'timestamp_precision_amendment_applied':True,
+              'verdict':verdict,'full_population_gate_run':False,
+              'economic_outcomes_opened':False,
+          }
+          Path('pmd_block_first_crossdate_v02_receipt.json').write_text(json.dumps(receipt,indent=2,sort_keys=True)+'\n',encoding='utf-8')
+          print(json.dumps(receipt,indent=2,sort_keys=True))
+          PY
+
+      - name: Upload source-only V0.2 cross-date evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: PMD-001-block-first-crossdate-v02
+          if-no-files-found: warn
+          retention-days: 30
+          path: |
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/pmd_source_rebuild_manifest_v01_receipt.json
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/pmd_crossdate_probe20_manifest_v01.jsonl
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/pmd_crossdate_probe20_manifest_v01_receipt.json
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/pmd_block_first_crossdate_v02/source_rebuild_summary.jsonl
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/pmd_block_first_crossdate_v02/raw/*.jsonl
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/pmd_block_first_crossdate_v02/blocks/**/*.json.gz
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/pmd_block_first_crossdate_v02_receipt.json
