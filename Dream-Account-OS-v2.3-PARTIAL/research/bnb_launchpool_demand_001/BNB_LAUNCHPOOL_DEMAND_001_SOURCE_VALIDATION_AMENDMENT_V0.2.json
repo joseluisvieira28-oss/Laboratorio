@@ -1,0 +1,82 @@
+{
+  "lab_id": "BNB-LAUNCHPOOL-DEMAND-001",
+  "amendment_id": "BLP-SOURCE-VALIDATION-AMENDMENT-V0.2",
+  "status": "FROZEN_POST_SOURCE_BYTES_PRE_MARKET_OUTCOME",
+  "purpose": "Correct two V0.1 source-validation overconstraints without changing the event population, source bytes, source transport, economic hypothesis, or opening any market outcome.",
+  "v01_evidence_preserved": {
+    "run_id": 35130468861,
+    "artifact_id": 10461865222,
+    "artifact_zip_sha256": "7625170ac651c073cab094a22811559b6ebf2c28ee3a4459eb58127225953dcc",
+    "receipt_commit": "3c802f8",
+    "ordered_manifest_sha256": "d62635da1dd3793dd386512b961105c1e28ab2bdbbe3fedf204939c41b42dc6a",
+    "classification": "DATA_INTEGRITY_FAILURE",
+    "transport_failures": 0,
+    "clean_under_v01_overconstraints": 2,
+    "integrity_failures_under_v01_overconstraints": 31
+  },
+  "observed_source_only_fact_pattern": {
+    "fixed_articles_requested": 33,
+    "http_200_json_responses": 33,
+    "article_code_present": 33,
+    "launchpool_present": 33,
+    "bnb_present": 33,
+    "staking_or_locking_language_present": 33,
+    "expected_symbol_present": 33,
+    "publication_timestamp_same_minute_as_recon": 33,
+    "publication_timestamp_exact_second_match_to_minute_rounded_recon": 2,
+    "maximum_positive_second_offset_from_recon_minute": 58,
+    "project_number_text_present": 32,
+    "project_number_text_missing": [32]
+  },
+  "correction_1_timestamp_precision": {
+    "v01_overconstraint": "V0.1 required exact-second equality between the Binance CMS publishDate and a reconnaissance timestamp previously serialized only to minute precision.",
+    "parent_authority_requirement": "Every event must have an original public publication timestamp; it did not require a lower-precision reconnaissance rendering to be authoritative at the second level.",
+    "v02_rule": "The official Binance CMS data.publishDate full-second UTC value becomes the canonical event timestamp. The earlier reconnaissance timestamp is treated as a minute-precision preview and must equal floor_to_minute(CMS publishDate).",
+    "market_outcome_dependency": false
+  },
+  "correction_2_project_number_text": {
+    "v01_overconstraint": "V0.1 additionally required the ordinal project number to appear literally inside every article response.",
+    "parent_authority_requirement": "All project numbers 31 through 63 must be accounted for with zero duplicate numbers and zero unresolved numbering gaps; it did not require each article body to literally restate its number.",
+    "v02_rule": "Project-number completeness is validated by the frozen one-to-one 31..63 mapping in the pre-outcome reconnaissance. Article-body identity requires fixed article code, Launchpool context, expected symbol, BNB, and staking/locking/farming language; literal ordinal text is diagnostic only.",
+    "market_outcome_dependency": false
+  },
+  "v02_source_pass_gates": {
+    "event_count_exactly_33": true,
+    "project_numbers_exactly_31_through_63_once_each": true,
+    "transport_failures_zero": true,
+    "all_article_codes_unique": true,
+    "all_fixed_article_codes_present_in_official_response": true,
+    "all_launchpool_context_present": true,
+    "all_expected_symbols_present": true,
+    "all_bnb_present": true,
+    "all_staking_or_locking_or_farming_language_present": true,
+    "all_cms_publish_dates_parseable": true,
+    "all_recon_minutes_equal_floor_to_minute_cms_publish_date": true,
+    "all_raw_response_sha256_present": true,
+    "immutable_v01_artifact_digest_matches_pinned_value": true,
+    "access_2025": false,
+    "access_2026": false
+  },
+  "allowed_classifications": [
+    "SOURCE_DATA_PASS",
+    "SOURCE_VALIDATION_REMEDIATION_FAIL"
+  ],
+  "after_source_pass_only": {
+    "next_step": "Freeze a separate event-mechanism Discovery protocol before opening BNBBTC or any other market price field.",
+    "market_outcomes_authorized_by_this_amendment": false
+  },
+  "governance": {
+    "research_only": true,
+    "no_refetch_required": true,
+    "no_event_addition_or_removal": true,
+    "no_market_price_access": true,
+    "no_returns": true,
+    "no_pnl": true,
+    "no_2025": true,
+    "no_2026": true,
+    "no_live_trading": true,
+    "no_exchange_mutation": true,
+    "no_orders": true,
+    "no_merge_to_main": true
+  }
+}
