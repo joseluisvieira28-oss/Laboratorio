@@ -1,0 +1,134 @@
+name: TFG Donchian 1D Frozen 2025 OOS V0.1B 15m Source
+
+on:
+  push:
+    branches:
+      - tfg-donchian-1d-oos-2025-v01
+    paths:
+      - '.github/workflows/tfg-donchian-1d-oos-2025-v01b.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  oos_2025_v01b:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+    steps:
+      - name: Checkout isolated OOS branch
+        uses: actions/checkout@v4
+        with:
+          ref: tfg-donchian-1d-oos-2025-v01
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Compile and verify frozen authority plus pre-outcome source correction
+        run: |
+          export PYTHONPATH="$PWD:${PYTHONPATH:-}"
+          python -m py_compile research/tfg_donchian_1d_oos_2025_runner_v01b.py
+          python -m research.tfg_donchian_1d_oos_2025_runner_v01b --self-test
+
+      - name: Verify exact parent source artifact metadata
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python - <<'PY'
+          import json, os, urllib.request
+          expected_id=10419067320
+          expected_digest='sha256:7b2562af14983d0344c9a28e81e9c1866f2e5e9dfafe94203da9a4ca1ffa36cb'
+          req=urllib.request.Request(
+              f'https://api.github.com/repos/joseluisvieira28-oss/Laboratorio/actions/artifacts/{expected_id}',
+              headers={'Authorization':f'Bearer {os.environ["GH_TOKEN"]}','Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'},
+          )
+          with urllib.request.urlopen(req,timeout=30) as r:
+              d=json.load(r)
+          assert d['id']==expected_id
+          assert d['name']=='tfg-pbr01-1d-exact-parent-corpus'
+          assert d.get('digest')==expected_digest,(d.get('digest'),expected_digest)
+          assert d.get('expired') is False
+          print('PARENT_ARTIFACT_AUTHORITY=PASS')
+          PY
+
+      - name: Download exact audited parent MEXC corpus
+        uses: actions/download-artifact@v4
+        with:
+          name: tfg-pbr01-1d-exact-parent-corpus
+          path: Dream-Account-OS-v2.3-PARTIAL/research/local_data/tfg_donchian_1d_oos_parent
+          github-token: ${{ github.token }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: 35025382064
+
+      - name: Verify six parent corpus manifests
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          b=json.loads(Path('research/timeframe_gap/TFG_DONCHIAN_1D_001_SOURCE_BINDING_V0.1.json').read_text())
+          root=Path('research/local_data/tfg_donchian_1d_oos_parent')
+          for s,fp in b['parent_corpus_fingerprint_by_symbol'].items():
+              d=json.loads((root/'tfg_pbr01_1d_manifests'/f'{s}_MANIFEST.json').read_text())
+              assert d['fingerprint']==fp,(s,d['fingerprint'],fp)
+              assert d['status']=='PASS_CORPUS_AUDIT_ONLY_WITH_GAPS'
+              assert d['total_row_count']==67183
+          print('PARENT_MANIFEST_AUTHORITY=PASS')
+          PY
+
+      - name: Rebuild only December 2024 canonical 15m overlap reference
+        run: |
+          export PYTHONPATH="$PWD/src:$PWD:${PYTHONPATH:-}"
+          RAW=research/local_data/tfg_donchian_1d_oos_parent/tfg_pbr01_1d_raw
+          OUT=research/local_data/tfg_donchian_1d_oos_parent_dec
+          MAN=research/local_data/tfg_donchian_1d_oos_parent_dec_manifests
+          mkdir -p "$OUT" "$MAN"
+          for s in BTCUSDT ETHUSDT SOLUSDT BNBUSDT XRPUSDT DOGEUSDT; do
+            python -m research.phase_b_mexc_discovery_corpus_v01 \
+              "$RAW" --output-dir "$OUT" --symbol "$s" --start-month 2024-12 --end-month 2024-12 \
+              --receipt "$MAN/${s}_MANIFEST.json" > "$MAN/${s}_STDOUT.json"
+          done
+          test "$(find "$OUT/canonical" -name '*.canonical.csv' | wc -l)" -eq 6
+          echo 'DECEMBER_2024_CANONICAL_15M_REFERENCE=PASS'
+
+      - name: Execute one-shot 2025 OOS with exact pre-2025 15m equivalence gate
+        id: oos
+        continue-on-error: true
+        run: |
+          export PYTHONPATH="$PWD:${PYTHONPATH:-}"
+          OUT=research/local_data/tfg_donchian_1d_oos_2025_v01b
+          mkdir -p "$OUT"
+          set +e
+          python -m research.tfg_donchian_1d_oos_2025_runner_v01b \
+            --parent-canonical-dir research/local_data/tfg_donchian_1d_oos_parent_dec/canonical \
+            --output-dir "$OUT"
+          rc=$?
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          echo "OOS_RUNNER_RC=$rc"
+          if [ -f "$OUT/TFG_DONCHIAN_1D_2025_OOS_RECEIPT_V0.1B.json" ]; then
+            cat "$OUT/TFG_DONCHIAN_1D_2025_OOS_RECEIPT_V0.1B.json"
+          fi
+          exit 0
+
+      - name: Upload frozen OOS V0.1B receipt and ledger
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfg-donchian-1d-2025-oos-v01b-result
+          path: |
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/tfg_donchian_1d_oos_2025_v01b/TFG_DONCHIAN_1D_2025_OOS_RECEIPT_V0.1B.json
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/tfg_donchian_1d_oos_2025_v01b/TFG_DONCHIAN_1D_2025_OOS_LEDGER_V0.1B.json
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Fail closed on non-scientific blocker
+        if: steps.oos.outputs.rc != '0'
+        run: |
+          echo 'OOS V0.1B blocked by source/technical/data gate. No scientific negative conclusion and no shadow promotion.'
+          exit 1
