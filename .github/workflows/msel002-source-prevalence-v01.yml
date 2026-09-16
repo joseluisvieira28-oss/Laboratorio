@@ -1,0 +1,41 @@
+name: MSEL-002 Source Prevalence V0.1
+
+on:
+  push:
+    branches:
+      - memecoin-metadata-duplication-v0.1
+    paths:
+      - '.github/workflows/msel002-source-prevalence-v01.yml'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/memecoin_metadata_duplication_002/source/collect_onchain_identity_prevalence_v01.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-prevalence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Execute frozen source/prevalence collector
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/memecoin_metadata_duplication_002/source
+        env:
+          MSEL_RPS_DELAY: '0.30'
+          MSEL_RPC_RETRIES: '7'
+        run: |
+          set -o pipefail
+          python collect_onchain_identity_prevalence_v01.py | tee source_prevalence_receipt.txt
+      - name: Upload frozen source/prevalence evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: msel002-source-prevalence-v01
+          path: |
+            Dream-Account-OS-v2.3-PARTIAL/research/memecoin_metadata_duplication_002/source/data/onchain_identity_source_v01/
+            Dream-Account-OS-v2.3-PARTIAL/research/memecoin_metadata_duplication_002/source/source_prevalence_receipt.txt
+          if-no-files-found: warn
+          retention-days: 30
