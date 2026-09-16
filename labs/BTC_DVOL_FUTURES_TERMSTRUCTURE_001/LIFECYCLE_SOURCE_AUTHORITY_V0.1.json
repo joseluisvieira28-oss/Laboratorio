@@ -1,0 +1,85 @@
+{
+  "lab_id": "BTC-DVOL-FUTURES-TERMSTRUCTURE-001",
+  "source_gate_id": "DVOL-TS-LIFECYCLE-SOURCE-001",
+  "status": "PRE_ACQUISITION_FROZEN",
+  "date_frozen": "2026-09-16",
+  "scientific_question": "Does the complete pre-2025 listed-life population of BTC DVOL futures contain enough ordinary public trade observations, independent contract episodes and active trading days to justify a separately governed Discovery MVE?",
+  "relationship_to_prior_gate": "Materially different source-feasibility question. DVOL-TS-SOURCE-001 is closed as fixed-window data-insufficient and is not rescued or modified here.",
+  "official_product_assumptions_used_for_source_discovery": {
+    "instrument_pattern": "BTCDVOL_USDC-DDMMMYY",
+    "expiry_weekday": "Wednesday",
+    "expiry_time_utc": "08:00:00",
+    "listed_population_model": "one monthly contract; exact archived metadata is scientific authority for whether a generated candidate actually existed"
+  },
+  "candidate_instrument_discovery": {
+    "method": "Generate every UTC Wednesday date from 2023-03-29 through 2024-12-25 inclusive; format BTCDVOL_USDC-DDMMMYY; query exact archived get_instrument for each candidate. This calendar enumeration is fixed before acquisition and does not use observed trades to choose dates.",
+    "candidate_start": "2023-03-29",
+    "candidate_end": "2024-12-25",
+    "candidate_weekday": "Wednesday",
+    "metadata_endpoint": "https://history.deribit.com/api/v2/public/get_instrument",
+    "accept_exact_metadata_only_if": {
+      "kind": "future",
+      "price_index": "btcdvol_usdc",
+      "instrument_name_prefix": "BTCDVOL_USDC-",
+      "creation_timestamp_on_or_after": "2023-03-27T00:00:00Z",
+      "expiration_timestamp_before": "2025-01-01T00:00:00Z"
+    },
+    "nonexistent_candidate": "candidate miss, not technical failure"
+  },
+  "lifecycle_trade_acquisition": {
+    "endpoint": "https://history.deribit.com/api/v2/public/get_last_trades_by_instrument_and_time",
+    "bounds": "exact accepted instrument creation_timestamp through expiration_timestamp, clipped only to 2023-03-27T00:00:00Z through 2024-12-31T23:59:59.999Z",
+    "slice_rule": "deterministic 24-hour UTC slices; count=1000 sorting=asc; recursively bisect exactly-1000 slices until each leaf is below 1000 or <=1 second, otherwise technical failure",
+    "dedupe_key": "trade_id",
+    "ordinary_public_trade_rule": "Exclude records carrying a non-null block_trade_id or combo_id from liquidity counts. No direction, price, index level, mark level or amount distribution is summarized.",
+    "required_core_fields": ["instrument_name", "timestamp", "price", "amount", "direction"],
+    "required_aux_fields": ["index_price", "mark_price"]
+  },
+  "retained_source_metrics_only": [
+    "confirmed exact contract count",
+    "instrument names and creation/expiration timestamps",
+    "ordinary public trade count per contract",
+    "unique UTC active-trading-day count per contract",
+    "first and last ordinary trade timestamps per contract",
+    "aggregate unique contract-day count",
+    "calendar-quarter coverage of qualifying contracts",
+    "core/aux field-presence coverage",
+    "request byte counts and SHA-256 receipts"
+  ],
+  "source_viability_gates_frozen": {
+    "minimum_confirmed_contracts": 12,
+    "qualifying_contract_definition": {
+      "minimum_ordinary_public_trades": 20,
+      "minimum_unique_active_utc_days": 5
+    },
+    "minimum_qualifying_contracts": 8,
+    "minimum_aggregate_active_contract_days": 80,
+    "minimum_distinct_calendar_quarters_among_qualifying_contracts": 6,
+    "core_field_coverage_minimum": 1.0,
+    "aux_field_coverage_minimum": 0.9,
+    "exact_metadata_integrity_rate": 1.0
+  },
+  "threshold_rationale_frozen": "The gate requires roughly one year of independent monthly-contract clusters (>=12), a majority subset with repeat ordinary trading across >=5 distinct days (>=8 contracts), >=80 aggregate contract-days, and broad regime coverage across >=6 calendar quarters. These are source adequacy requirements only and do not encode a desired economic result.",
+  "classifications": {
+    "pass": "LIFECYCLE_SOURCE_DATA_PASS",
+    "insufficient": "LIFECYCLE_SOURCE_DATA_INSUFFICIENT",
+    "technical_failure": "LIFECYCLE_SOURCE_ACQUISITION_TECHNICAL_FAILURE"
+  },
+  "stop_rule": "If any frozen source-viability gate fails, stop with LIFECYCLE_SOURCE_DATA_INSUFFICIENT. Do not lower thresholds, replace contracts, choose denser subperiods, widen into 2025/2026, or open economic outcomes under this gate ID.",
+  "firewalls": {
+    "retain_trade_price_values": false,
+    "retain_trade_amount_values": false,
+    "summarize_direction": false,
+    "retain_index_or_mark_levels": false,
+    "compute_basis": false,
+    "compute_convergence": false,
+    "compute_returns": false,
+    "compute_pnl": false,
+    "access_2025": false,
+    "access_2026": false,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "merge_to_main": false
+  },
+  "post_pass_rule": "Even on LIFECYCLE_SOURCE_DATA_PASS, STOP. A separate pre-Discovery authority must freeze any economic signal, timing, settlement/index source, costs and statistical gates before basis or convergence values are opened."
+}
