@@ -71,9 +71,11 @@ def main() -> int:
     archive_receipts: list[dict] = []
     symbol_receipts: dict[str, dict] = {}
     accepted = 0
+    total_rejected_noncanonical_close = 0
 
     for symbol in SYMBOLS:
         rows: dict[int, tuple[int, str, str, str, str, str, int]] = {}
+        symbol_rejected_noncanonical_close = 0
         for month in month_list:
             filename = f"{symbol}-{INTERVAL}-{month}.zip"
             url = f"{BASE}/{symbol}/{INTERVAL}/{filename}"
@@ -92,6 +94,7 @@ def main() -> int:
                 raw = zf.read(names[0]).decode("utf-8")
 
             parsed = 0
+            archive_rejected_noncanonical_close = 0
             reader = csv.reader(io.StringIO(raw))
             for r in reader:
                 if not r:
@@ -106,7 +109,13 @@ def main() -> int:
                 if t % FIFTEEN_MIN_MS != 0:
                     raise RuntimeError(f"OPEN_TIME_ALIGNMENT:{symbol}:{t}")
                 if close_t != t + FIFTEEN_MIN_MS - 1:
-                    raise RuntimeError(f"CLOSE_TIME_ALIGNMENT:{symbol}:{t}:{close_t}")
+                    # Frozen pre-outcome amendment V0.1A: reject the row; never retime,
+                    # interpolate, synthesize, or cross-venue backfill it. The inherited
+                    # 96-candle UTC-day completeness rule will drop the whole affected day.
+                    archive_rejected_noncanonical_close += 1
+                    symbol_rejected_noncanonical_close += 1
+                    total_rejected_noncanonical_close += 1
+                    continue
                 o, h, l, c, v = r[1], r[2], r[3], r[4], r[5]
                 vals = [float(o), float(h), float(l), float(c), float(v)]
                 if min(vals[:4]) <= 0 or vals[4] < 0:
@@ -128,6 +137,7 @@ def main() -> int:
                 "published_sha256": expected,
                 "observed_sha256": observed,
                 "parsed_rows_in_window": parsed,
+                "rejected_noncanonical_close_time_rows": archive_rejected_noncanonical_close,
                 "accepted": True,
             })
             accepted += 1
@@ -150,12 +160,13 @@ def main() -> int:
             "first_open_time_ms": ordered[0][0] if ordered else None,
             "last_open_time_ms": ordered[-1][0] if ordered else None,
             "detected_15m_gap_transitions": gaps,
+            "rejected_noncanonical_close_time_rows": symbol_rejected_noncanonical_close,
             "canonical_csv_sha256": canonical_hash(path),
         }
 
     receipt = {
         "lab": LAB_ID,
-        "stage": "BINANCE_PREPERIOD_SOURCE_V01",
+        "stage": "BINANCE_PREPERIOD_SOURCE_V01A",
         "classification": "SOURCE_READY" if accepted == 144 else "SOURCE_INCOMPLETE",
         "provider": "BINANCE_DATA_VISION",
         "market": "SPOT",
@@ -167,6 +178,9 @@ def main() -> int:
         "source_window_end_ms_exclusive": END_MS,
         "expected_archive_count": 144,
         "accepted_archive_count": accepted,
+        "sanitation_amendment": "TFG_EMA_PULLBACK_1D_BINANCE_PREPERIOD_SOURCE_AMENDMENT_V0.1A",
+        "sanitation_policy": "REJECT_NONCANONICAL_15M_CLOSE_TIME_ROW_THEN_DROP_INCOMPLETE_UTC_DAY_IN_INHERITED_AGGREGATOR",
+        "total_rejected_noncanonical_close_time_rows": total_rejected_noncanonical_close,
         "archive_receipts": archive_receipts,
         "symbol_receipts": symbol_receipts,
         "accessed_2023": False,
@@ -183,7 +197,11 @@ def main() -> int:
     print(json.dumps({
         "classification": receipt["classification"],
         "accepted_archive_count": accepted,
+        "total_rejected_noncanonical_close_time_rows": total_rejected_noncanonical_close,
         "symbol_rows": {k: v["rows"] for k, v in symbol_receipts.items()},
+        "symbol_rejected_noncanonical_close_time_rows": {
+            k: v["rejected_noncanonical_close_time_rows"] for k, v in symbol_receipts.items()
+        },
         "accessed_2023": False,
         "accessed_2024": False,
         "accessed_2025": False,
