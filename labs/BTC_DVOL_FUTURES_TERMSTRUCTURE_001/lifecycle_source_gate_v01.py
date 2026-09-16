@@ -41,7 +41,17 @@ def request(path, params, allow_instrument_miss=False):
             if err:
                 msg=str(err.get('message','')).lower() if isinstance(err,dict) else str(err).lower()
                 code=err.get('code') if isinstance(err,dict) else None
-                miss = allow_instrument_miss and (code in (11050,10004) or ('instrument' in msg and ('not found' in msg or 'invalid' in msg)))
+                data=err.get('data') if isinstance(err,dict) else None
+                provider_wrong_format_miss=(
+                    code == -32602 and isinstance(data,dict)
+                    and str(data.get('param','')).lower() == 'instrument_name'
+                    and str(data.get('reason','')).lower() == 'wrong format'
+                )
+                miss = allow_instrument_miss and (
+                    code in (11050,10004)
+                    or ('instrument' in msg and ('not found' in msg or 'invalid' in msg))
+                    or provider_wrong_format_miss
+                )
                 if miss:
                     return None, {'endpoint':path,'status':r.status_code,'sha256':digest,'http_bytes':len(raw),'candidate_miss':True}
                 raise RuntimeError(f'API error {path} status={r.status_code} sha256={digest} error={err}')
@@ -75,7 +85,6 @@ def discover_contracts():
         creation=rec.get('creation_timestamp'); expiry=rec.get('expiration_timestamp')
         valid=(rec.get('instrument_name')==name and rec.get('kind')=='future' and rec.get('price_index')=='btcdvol_usdc' and isinstance(creation,(int,float)) and isinstance(expiry,(int,float)) and int(creation)>=LOWER_MS and int(expiry)<PROTECTED_MS)
         if not valid:
-            # Existing but nonconforming exact metadata is retained as an integrity rejection, never silently accepted.
             accepted.append({'instrument_name':name,'accepted':False,'rejection':'EXACT_METADATA_ACCEPTANCE_FAIL','creation_timestamp':creation,'expiration_timestamp':expiry,'kind':rec.get('kind'),'price_index':rec.get('price_index')})
             continue
         accepted.append({'instrument_name':name,'accepted':True,'creation_timestamp':int(creation),'expiration_timestamp':int(expiry),'kind':'future','price_index':'btcdvol_usdc','contract_size':rec.get('contract_size'),'min_trade_amount':rec.get('min_trade_amount'),'tick_size':rec.get('tick_size')})
@@ -120,7 +129,6 @@ def acquire_life(meta):
     core_den=max(1,len(ordinary)*len(CORE)); aux_den=max(1,len(ordinary)*len(AUX))
     core_present=sum(1 for x in ordinary for k in CORE if x.get(k) is not None)
     aux_present=sum(1 for x in ordinary for k in AUX if x.get(k) is not None)
-    # Prices, amounts, directions, index levels and mark levels are intentionally discarded here.
     return {
       'instrument_name':name,
       'creation_timestamp':start,
@@ -168,7 +176,6 @@ def main():
           'metadata_integrity_rate_ge_min':metadata_integrity>=g['exact_metadata_integrity_rate']
         }
         classification='LIFECYCLE_SOURCE_DATA_PASS' if all(checks.values()) else 'LIFECYCLE_SOURCE_DATA_INSUFFICIENT'
-        # Strip cell counters from per-contract user-facing result after aggregate calculation; no economic values exist either way.
         clean=[]
         for x in lives:
             y={k:v for k,v in x.items() if k not in ('core_field_present_cells','core_field_total_cells','aux_field_present_cells','aux_field_total_cells')}
