@@ -1,0 +1,39 @@
+name: Stablecoin Peg Dislocation Discovery V0.1
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - stablecoin-peg-dislocation-v0.1
+    paths:
+      - 'labs/STABLECOIN_PEG_DISLOCATION_001/DISCOVERY_AUTHORITY_V0.1.json'
+      - 'labs/STABLECOIN_PEG_DISLOCATION_001/discovery_v01.py'
+      - '.github/workflows/stablecoin-peg-dislocation-discovery-v01.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  discovery_v01:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout frozen branch
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Execute one-shot frozen Discovery
+        run: python labs/STABLECOIN_PEG_DISLOCATION_001/discovery_v01.py
+
+      - name: Upload immutable Discovery evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stablecoin-peg-dislocation-discovery-${{ github.run_id }}-${{ github.run_attempt }}
+          path: stablecoin_peg_discovery_v01_artifact/
+          if-no-files-found: warn
+          retention-days: 90
