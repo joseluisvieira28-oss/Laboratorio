@@ -1,0 +1,56 @@
+name: MSEL-002 PublicNode Archive Smoke V0.1
+
+on:
+  push:
+    branches:
+      - memecoin-metadata-duplication-v0.1
+    paths:
+      - '.github/workflows/msel002-publicnode-archive-smoke-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  archive-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Probe frozen-window historical coverage only
+        env:
+          RPC_URL: 'https://solana-rpc.publicnode.com'
+          FROZEN_ANCHOR_SIGNATURE: '3CnQ7Gga54oEffaoJPWfN5BsRtC4RpgCemDfQ6QXVGC9SgPkk4Ak1K4mL1CvqufCR1okrURkbymhSSBcFQoW2DgE'
+          FROZEN_ANCHOR_SLOT: '364991552'
+          FROZEN_ANCHOR_TIME: '1757144339'
+        run: |
+          python - <<'PY'
+          import json, os, urllib.request
+
+          url = os.environ['RPC_URL']
+          sig = os.environ['FROZEN_ANCHOR_SIGNATURE']
+          slot = int(os.environ['FROZEN_ANCHOR_SLOT'])
+          expected_time = int(os.environ['FROZEN_ANCHOR_TIME'])
+
+          def rpc(method, params, rid):
+              payload = json.dumps({'jsonrpc':'2.0','id':rid,'method':method,'params':params}, separators=(',',':')).encode()
+              req = urllib.request.Request(url, data=payload, headers={'Content-Type':'application/json','User-Agent':'MSEL-002-archive-smoke/0.1'}, method='POST')
+              with urllib.request.urlopen(req, timeout=60) as resp:
+                  obj = json.loads(resp.read())
+              if obj.get('error') is not None:
+                  raise SystemExit(f'RPC_ERROR method={method} error={obj["error"]}')
+              return obj.get('result')
+
+          bt = rpc('getBlockTime', [slot], 1)
+          if bt != expected_time:
+              raise SystemExit(f'BLOCKTIME_MISMATCH got={bt} expected={expected_time}')
+
+          tx = rpc('getTransaction', [sig, {'encoding':'json','maxSupportedTransactionVersion':0,'commitment':'finalized'}], 2)
+          if not isinstance(tx, dict):
+              raise SystemExit('HISTORICAL_TRANSACTION_UNAVAILABLE')
+          if int(tx.get('slot', -1)) != slot or int(tx.get('blockTime', -1)) != expected_time:
+              raise SystemExit(f'TX_BOUNDARY_MISMATCH slot={tx.get("slot")} time={tx.get("blockTime")}')
+
+          print('PUBLICNODE_ARCHIVE_SMOKE_PASS')
+          print(f'slot={slot} blockTime={bt} historical_tx=present')
+          print('NO PREVALENCE ROWS / NO ECONOMIC OUTCOMES OPENED')
+          PY
