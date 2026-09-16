@@ -1,0 +1,99 @@
+name: BNB Launchpool Demand 2025 OOS Result V0.1
+
+on:
+  push:
+    branches:
+      - bnb-launchpool-demand-v2-oos-2025-v01
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  oos-one-shot:
+    if: ${{ contains(github.event.head_commit.message, 'execute frozen one-shot 2025 OOS') && !contains(github.event.head_commit.message, '[skip ci]') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout OOS branch
+        uses: actions/checkout@v4
+        with:
+          ref: bnb-launchpool-demand-v2-oos-2025-v01
+          fetch-depth: 1
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Preflight immutable binding
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/bnb_launchpool_demand_001'
+          python -m py_compile "$BASE/oos_2025/oos_runner_v01.py"
+          DIGEST="$(gh api repos/${GITHUB_REPOSITORY}/actions/artifacts/10464554979 --jq '.digest')"
+          test "$DIGEST" = 'sha256:f777558a3643c3411868ab7b49bce2fcb1c728a2a8d317b8d47deb4e8c575fcd'
+          python - <<'PY'
+          import json
+          b='Dream-Account-OS-v2.3-PARTIAL/research/bnb_launchpool_demand_001'
+          f=json.load(open(b+'/BNB_LAUNCHPOOL_DEMAND_001_V2_OOS_2025_FREEZE_V0.1.json'))
+          x=json.load(open(b+'/oos_2025/BNB_LAUNCHPOOL_DEMAND_001_OOS_2025_EXECUTION_BINDING_V0.1.json'))
+          s=json.load(open(b+'/oos_2025/source_gate_v01/BNB_LAUNCHPOOL_DEMAND_001_OOS_2025_SOURCE_GATE_V0.1.json'))
+          m=json.load(open(b+'/oos_2025/market_source_v01/BNB_LAUNCHPOOL_DEMAND_001_OOS_2025_MARKET_SOURCE_V0.1.json'))
+          assert f['status']=='FROZEN_PRE_2025_SOURCE_AND_MARKET_OUTCOME_ACCESS'
+          assert x['status']=='FROZEN_POST_SOURCE_AUDIT_PRE_PRICE_OPEN'
+          assert s['classification']=='SOURCE_DATA_PASS'
+          assert m['classification']=='MARKET_SOURCE_DATA_PASS'
+          assert m['selected_trade_paths']==8
+          assert x['market_source']['archive_manifest_sha256']=='699215ba13055b12dae4b01be09c9535066d5ef3bc7bcd314b1787358915dacf'
+          assert x['no_2026_market_access'] is True
+          assert x['live_trading_authorized'] is False
+          PY
+      - name: Download immutable market-source artifact
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          DEST="$RUNNER_TEMP/blp_2025_market_source"
+          mkdir -p "$DEST"
+          gh run download 35141584819 --repo "$GITHUB_REPOSITORY" --name 'bnb-launchpool-demand-001-oos-2025-market-source-35141584819-1' --dir "$DEST"
+          COUNT="$(find "$DEST" -type f -name 'BNBBTC-15m-2025-*.zip' | wc -l | tr -d ' ')"
+          test "$COUNT" = '12'
+      - name: Execute frozen OOS once
+        shell: bash
+        env:
+          BLP_2025_MARKET_SOURCE_DIR: ${{ runner.temp }}/blp_2025_market_source
+        run: |
+          set -euo pipefail
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/bnb_launchpool_demand_001'
+          python "$BASE/oos_2025/oos_runner_v01.py"
+          python - <<'PY'
+          import json
+          p='Dream-Account-OS-v2.3-PARTIAL/research/bnb_launchpool_demand_001/oos_2025/oos_result_v01/BNB_LAUNCHPOOL_DEMAND_001_OOS_2025_RESULT_V0.1.json'
+          d=json.load(open(p))
+          allowed={'TIER_2_PROMOTED_CANDIDATE_QUASE_DIAMANTE_PATH2_PASS','TIER_4_REJECTED_STONE_FOR_TESTED_2025_REPLICATION','TIER_3_WATCHLIST_REMAINS','INSUFFICIENT_OOS_SAMPLE_TIER3_REMAINS','NON_SCIENTIFIC_BLOCKED_NO_TIER_DEMOTION'}
+          assert d['classification'] in allowed
+          assert d['access_2026_market'] is False
+          assert d['live_trading_authorized'] is False
+          print(json.dumps({k:d.get(k) for k in ['classification','resolved_trades','economics','bootstrap_base_mean_bps','risk','failed_promotion_gates']},indent=2))
+          PY
+      - name: Upload immutable OOS evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: bnb-launchpool-demand-001-oos-2025-result-${{ github.run_id }}-${{ github.run_attempt }}
+          path: Dream-Account-OS-v2.3-PARTIAL/research/bnb_launchpool_demand_001/oos_2025/oos_result_v01/
+          retention-days: 90
+          if-no-files-found: error
+      - name: Persist canonical OOS closeout bytes
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/bnb_launchpool_demand_001'
+          git config user.name 'crypto-lab-bnb-launchpool-bot'
+          git config user.email 'crypto-lab-bnb-launchpool-bot@users.noreply.github.com'
+          git add "$BASE/oos_2025/oos_result_v01/BNB_LAUNCHPOOL_DEMAND_001_OOS_2025_RESULT_V0.1.json" "$BASE/oos_2025/oos_result_v01/BNB_LAUNCHPOOL_DEMAND_001_OOS_2025_LEDGER_V0.1.json"
+          git commit -m 'BNB-LAUNCHPOOL-DEMAND-001: canonical 2025 OOS closeout [skip ci]'
+          git pull --rebase origin bnb-launchpool-demand-v2-oos-2025-v01
+          git push origin HEAD:bnb-launchpool-demand-v2-oos-2025-v01
