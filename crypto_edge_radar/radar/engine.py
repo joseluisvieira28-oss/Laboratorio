@@ -1,11 +1,8 @@
 from __future__ import annotations
 
-from dataclasses import asdict
-from typing import Iterable
-
 from .config import CORE5, Settings
 from .evidence import EvidenceStore
-from .market import BinancePublicFeed, MarketDataError
+from .market import MarketDataError
 from .models import MarketSnapshot
 from .strategy import StrategyRegistry, enforce_promotion_gate
 
@@ -14,7 +11,7 @@ class RadarEngine:
     def __init__(
         self,
         settings: Settings,
-        feed: BinancePublicFeed,
+        feed,
         store: EvidenceStore,
         registry: StrategyRegistry,
     ) -> None:
@@ -54,8 +51,10 @@ class RadarEngine:
         snapshots = self.feed.all_market_snapshots()
         universe = self._select_universe(snapshots)
         selected = self.feed.subset(snapshots, universe)
+        provider = getattr(self.feed, "provider", "UNKNOWN_PUBLIC_PROVIDER")
 
         market_payload = {
+            "provider": provider,
             "mode": self.settings.universe_mode,
             "symbols": list(universe),
             "snapshots": {k: v.to_dict() for k, v in selected.items()},
@@ -68,6 +67,7 @@ class RadarEngine:
             for symbol in universe:
                 decision = enforce_promotion_gate(adapter, selected[symbol])
                 item = decision.to_dict()
+                item["market_provider"] = provider
                 decisions.append(item)
                 if decision.valid_signal:
                     valid_signals.append(item)
@@ -75,6 +75,7 @@ class RadarEngine:
         decision_receipt = self.store.append(
             "STRATEGY_EVALUATION",
             {
+                "market_provider": provider,
                 "registered_strategies": [a.strategy_id for a in self.registry.adapters],
                 "decision_count": len(decisions),
                 "valid_signal_count": len(valid_signals),
@@ -84,6 +85,7 @@ class RadarEngine:
 
         return {
             "status": "OK",
+            "provider": provider,
             "universe": list(universe),
             "registered_strategies": len(self.registry.adapters),
             "valid_signals": valid_signals,
