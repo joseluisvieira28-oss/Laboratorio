@@ -1,0 +1,57 @@
+name: BTC-OPTIONS-VRP-001 Laevitas Paid Runner Preflight V0.1
+
+on:
+  push:
+    branches:
+      - btc-options-vrp-laevitas-source-v0.1
+    paths:
+      - 'labs/BTC_OPTIONS_VRP_001/laevitas_paid_micro_probe_v01.mjs'
+      - 'labs/BTC_OPTIONS_VRP_001/LAEVITAS_PAID_MICRO_PROBE_AUTHORITY_V0.1.json'
+      - 'labs/BTC_OPTIONS_VRP_001/LAEVITAS_X402_CHALLENGE_FROZEN_V0.1.json'
+      - '.github/workflows/btc-options-vrp-laevitas-paid-micro-probe-v01.yml'
+      - '.github/workflows/btc-options-vrp-laevitas-paid-runner-preflight-v01.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: btc-options-vrp-laevitas-source-v0.1
+
+      - name: Node syntax check only
+        run: node --check labs/BTC_OPTIONS_VRP_001/laevitas_paid_micro_probe_v01.mjs
+
+      - name: Install exact pinned client dependencies without secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm init -y >/dev/null 2>&1
+          npm install --no-save --ignore-scripts \
+            @x402/fetch@2.26.0 \
+            @x402/evm@2.26.0 \
+            @x402/svm@2.26.0 \
+            viem@2.48.11 \
+            @solana/kit@5.1.0 \
+            @scure/base@1.2.6
+
+      - name: Verify required x402 imports only — never execute paid runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module - <<'JS'
+          import { x402Client, x402HTTPClient, wrapFetchWithPayment } from '@x402/fetch';
+          import { registerExactEvmScheme } from '@x402/evm/exact/client';
+          import { registerExactSvmScheme } from '@x402/svm/exact/client';
+          import { privateKeyToAccount } from 'viem/accounts';
+          import { createKeyPairSignerFromBytes } from '@solana/kit';
+          import { base58 } from '@scure/base';
+          for (const x of [x402Client, x402HTTPClient, wrapFetchWithPayment, registerExactEvmScheme, registerExactSvmScheme, privateKeyToAccount, createKeyPairSignerFromBytes, base58]) {
+            if (!x) throw new Error('REQUIRED_IMPORT_MISSING');
+          }
+          console.log('LAEVITAS_PAID_RUNNER_IMPORT_PREFLIGHT_PASS');
+          JS
