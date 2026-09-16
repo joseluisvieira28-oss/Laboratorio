@@ -1,0 +1,25 @@
+{
+  "experiment_id": "CAPITULATION-REVERSION-001-WINDOW-SEMANTICS-AMENDMENT-V0.1",
+  "parent_freeze_commit": "8a4191cb59e9cac4942819a29a7606b05f3640de",
+  "status": "FROZEN_BEFORE_OUTCOME_EVALUATION",
+  "purpose": "Remove window-boundary and right-edge ambiguity before any trade outcome is calculated.",
+  "semantics": {
+    "window_membership_timestamp": "entry_time_utc",
+    "entry_time_definition": "the UTC open timestamp of the complete 4H bar immediately after the signal bar closes",
+    "window_start": "entry_time must be >= scored_entry_start_utc",
+    "window_end": "entry_time must be < scored_entry_end_exclusive_utc or data_end_exclusive_utc as applicable",
+    "full_path_requirement": "entry_time + 24 hours (six complete 4H held bars) must be <= the window/data end boundary; otherwise the candidate is RIGHT_EDGE_INELIGIBLE and is excluded before outcome inspection",
+    "right_edge_ineligible_is_not_unresolved_execution_path": true,
+    "no_cross_window_resolution": true,
+    "no_forced_partial_exit_at_window_end": true,
+    "signals_before_window_start": "warmup only and never scored",
+    "signals_whose_next_open_entry_falls_outside_window": "not scored"
+  },
+  "governance": {
+    "no_outcomes_opened_before_this_amendment": true,
+    "no_parameter_change": true,
+    "no_gate_change": true,
+    "no_source_change": true,
+    "no_rescue": true
+  }
+}
