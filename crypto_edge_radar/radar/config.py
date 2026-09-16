@@ -30,6 +30,8 @@ def _float_env(name: str, default: float) -> float:
 @dataclass(frozen=True)
 class Settings:
     db_path: str = "radar_evidence.sqlite3"
+    status_path: str = "radar_status.json"
+    notification_path: str = "radar_notifications.jsonl"
     universe_mode: str = "core5"
     max_symbols: int = 50
     min_quote_volume: float = 50_000_000.0
@@ -44,6 +46,10 @@ class Settings:
             )
         return cls(
             db_path=os.getenv("RADAR_DB", "radar_evidence.sqlite3"),
+            status_path=os.getenv("RADAR_STATUS", "radar_status.json"),
+            notification_path=os.getenv(
+                "RADAR_NOTIFICATIONS", "radar_notifications.jsonl"
+            ),
             universe_mode=mode,
             max_symbols=_int_env("RADAR_MAX_SYMBOLS", 50),
             min_quote_volume=_float_env("RADAR_MIN_QUOTE_VOLUME", 50_000_000.0),
