@@ -1,0 +1,59 @@
+{
+  "lab_id": "BTC-DVOL-FUTURES-TERMSTRUCTURE-001",
+  "source_gate_id": "DVOL-TS-SOURCE-001",
+  "status": "PRE_ACQUISITION_ADDENDUM_FROZEN",
+  "date_frozen": "2026-09-16",
+  "purpose": "Make the source-feasibility decision rule explicit before any historical DVOL-futures trade payload is inspected. No economic outcome, basis, convergence return or strategy PnL is authorized.",
+  "trade_discovery_route": {
+    "primary_endpoint": "https://history.deribit.com/api/v2/public/get_last_trades_by_currency_and_time",
+    "params": {"currency": "USDC", "kind": "future", "count": 1000, "sorting": "asc"},
+    "filter_rule": "instrument_name starts with BTCDVOL_USDC-",
+    "bounded_window_rule": "Only the four fixed SOURCE_AUTHORITY_V0.1 windows may be queried.",
+    "slice_rule": "Each fixed 3-hour window is queried in deterministic 15-minute slices. If a slice returns exactly 1000 records, recursively bisect that slice until each leaf is below 1000 records or the leaf width is <= 1 second; failure to resolve an overflow is technical failure.",
+    "dedupe_key": "trade_id"
+  },
+  "instrument_metadata_route": {
+    "primary_endpoint": "https://history.deribit.com/api/v2/public/get_instrument",
+    "fallback_endpoint": "https://www.deribit.com/api/v2/public/get_instrument",
+    "fallback_allowed_only_for_exact_discovered_instrument": true
+  },
+  "index_source_checks": {
+    "index_name": "btcdvol_usdc",
+    "chart_endpoint": "https://www.deribit.com/api/v2/public/get_index_chart_data",
+    "chart_range": "all",
+    "delivery_endpoint": "https://www.deribit.com/api/v2/public/get_delivery_prices",
+    "retained_from_index_sources": "timestamps/dates and coverage counts only; no DVOL levels or delivery-price values"
+  },
+  "source_density_pass_rule": {
+    "all_four_probe_windows_nonempty": true,
+    "minimum_aggregate_btcdvol_trades_across_four_windows": 12,
+    "minimum_unique_btcdvol_instruments_per_probe_window": 1,
+    "core_trade_fields": ["instrument_name", "timestamp", "price", "amount", "direction"],
+    "minimum_core_field_coverage": 1.0,
+    "aux_trade_fields": ["index_price", "mark_price"],
+    "minimum_aux_field_coverage": 0.90,
+    "exact_instrument_metadata_success_rate": 1.0,
+    "required_metadata_fields": ["instrument_name", "kind", "creation_timestamp", "expiration_timestamp", "contract_size", "min_trade_amount", "tick_size", "price_index"],
+    "btcdvol_index_historical_coverage_must_include_2023_and_2024": true,
+    "delivery_price_dates_must_include_at_least_one_pre_2025_btcdvol_record": true
+  },
+  "classifications": {
+    "pass": "SOURCE_DATA_PASS",
+    "data_insufficient": "SOURCE_DATA_INSUFFICIENT_OR_BLOCKED",
+    "technical_failure": "SOURCE_ACQUISITION_TECHNICAL_FAILURE"
+  },
+  "firewalls": {
+    "retain_trade_prices": false,
+    "retain_index_levels": false,
+    "retain_delivery_prices": false,
+    "compute_basis": false,
+    "compute_convergence": false,
+    "compute_returns": false,
+    "compute_pnl": false,
+    "access_2025": false,
+    "access_2026": false,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "merge_to_main": false
+  }
+}
