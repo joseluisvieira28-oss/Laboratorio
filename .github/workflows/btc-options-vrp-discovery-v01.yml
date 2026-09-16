@@ -1,0 +1,44 @@
+name: BTC-OPTIONS-VRP-001 Discovery V0.1
+
+on:
+  push:
+    branches:
+      - btc-options-vrp-v0.1
+    paths:
+      - '.github/btc-options-vrp-discovery.trigger'
+
+permissions:
+  contents: read
+
+jobs:
+  discovery:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: btc-options-vrp-v0.1
+      - name: Verify frozen Discovery authority
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          a=json.load(open('labs/BTC_OPTIONS_VRP_001/DISCOVERY_AUTHORITY_V0.1.json'))
+          assert a['discovery_outcomes_authorized'] is True
+          assert a['strategy_pnl_authorized'] is False
+          assert a['forward_directional_returns_authorized'] is False
+          assert a['access_2025_authorized'] is False
+          assert a['access_2026_authorized'] is False
+          assert a['source_binding']['deribit_dvol_ledger_sha256']=='36a56f57411d187a97413f47a53cedb4afad7a0812a09f35d6a67483c6704cd7'
+          assert a['source_binding']['binance_timestamp_manifest_sha256']=='a38782c5867d1b5dc538fe4b0a23f521775855e8dca4ff86679c241f0f7ddbbf'
+          print('DISCOVERY_AUTHORITY_PASS')
+          PY
+      - name: Compile frozen runner
+        run: python -m py_compile labs/BTC_OPTIONS_VRP_001/discovery_v01.py
+      - name: Execute one-shot Discovery
+        run: python labs/BTC_OPTIONS_VRP_001/discovery_v01.py
+      - name: Upload Discovery evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: btc-options-vrp-discovery-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/btc_options_vrp_discovery_v01/
+          retention-days: 90
