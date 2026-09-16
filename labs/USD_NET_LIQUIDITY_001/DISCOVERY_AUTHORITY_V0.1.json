@@ -1,0 +1,63 @@
+{
+  "lab_id": "USD-NET-LIQUIDITY-001",
+  "mve_id": "UNL-FED-TGA-RRP-W1-001",
+  "status": "DISCOVERY_AUTHORIZED_AFTER_SOURCE_DATA_PASS",
+  "source_run_id": 35057983243,
+  "source_job_id": 104672070247,
+  "source_artifact_id": 10431177900,
+  "source_artifact_zip_sha256": "d70d5315d1e7d807dc4e8fb1d59fd16a72ea144605d8e867d367898871d1f7e2",
+  "drive_source_archive_id": "1khP9fKe8UP9SePWX3f_WI2zs90f910cy",
+  "source_classification": "SOURCE_DATA_PASS",
+  "source_window": {
+    "start": "2017-12-27",
+    "end": "2024-12-18"
+  },
+  "expected_source_sha256": {
+    "WALCL": "f9fbf97ef2d7528b0740457046fcf9d68f9ada73ef65975ca4388c4f7340d060",
+    "WDTGAL": "c8cf69cc94a50f65fbd31ef4cc640fa07d77f197d257d9d823f551b7c82c9ee4",
+    "RRPONTSYD": "c7baab35063f36e75b2361cc1c78c16091bfd595af93bc76672a4f54724f5e72",
+    "aligned": "7706003c6cd99f0b4a44140a0db8e03967722b44e3e4be58a745d5af23751219",
+    "weekly_deltas": "b13bdabe229da799f49ef0563fe7085b9cf70ea85d1ecbed5318bc8ef2ce8728",
+    "manifest": "7682546fe60eab1a8237bdd33d9b7f2abac038aeff1542c2b811252419bc3c7a"
+  },
+  "expected_source_shape": {
+    "aligned_wednesdays": 359,
+    "weekly_deltas": 358,
+    "first_aligned": "2017-12-27",
+    "last_aligned": "2024-12-18"
+  },
+  "signal": "sign(one_week_change(WALCL-WDTGAL-1000*RRPONTSYD))",
+  "entry": "Friday 00:00 UTC open following signal Wednesday",
+  "exit": "next Friday 00:00 UTC open",
+  "hold_calendar_days": 7,
+  "cost_bps_primary": 10,
+  "cost_bps_stress": 20,
+  "discovery_entry_start": "2018-01-05",
+  "discovery_entry_end": "2024-12-20",
+  "latest_exit": "2024-12-27",
+  "btc_source": "Binance Data Vision Spot BTCUSDT 1d monthly ZIP + CHECKSUM",
+  "btc_allowed_month_start": "2018-01",
+  "btc_allowed_month_end": "2024-12",
+  "bootstrap": {
+    "repetitions": 5000,
+    "seed": 230911,
+    "block_weeks": 4,
+    "confidence": 0.95
+  },
+  "promotion_gates": {
+    "min_trades": 300,
+    "mean_net10_gt_0": true,
+    "profit_factor_net10_gt_1": true,
+    "bootstrap_95_lower_mean_net10_gt_0": true,
+    "nonnegative_calendar_years_2018_2024_min": 5,
+    "nonnegative_calendar_years_2021_2024_min": 3,
+    "provenance_firewalls_pass": true
+  },
+  "discovery_authorized": true,
+  "oos_2025_authorized": false,
+  "access_2026_authorized": false,
+  "live_trading": false,
+  "exchange_mutation": false,
+  "merge_to_main": false,
+  "post_outcome_tuning": false
+}
