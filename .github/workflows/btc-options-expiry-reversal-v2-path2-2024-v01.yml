@@ -1,0 +1,106 @@
+name: BTC Options Expiry Reversal V2 Path2 2024 V0.1
+
+on:
+  push:
+    branches:
+      - btc-options-expiry-reversal-v2-path2-2024-v01
+    paths:
+      - '.github/workflows/btc-options-expiry-reversal-v2-path2-2024-v01.yml'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/btc_options_expiry_reversal_001/adjudication/v2_path2_2024_runner_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/btc_options_expiry_reversal_001/adjudication/V2_PATH2_REPLICATION_2024_FREEZE_V01.json'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/btc_options_expiry_reversal_001/adjudication/AUTHORIZATION_2024_OPEN_2026-09-16.md'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  path2-2024:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout protected replication branch
+        uses: actions/checkout@v4
+        with:
+          ref: btc-options-expiry-reversal-v2-path2-2024-v01
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Preflight frozen authority
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/btc_options_expiry_reversal_001/adjudication'
+          python -m py_compile "$BASE/v2_path2_2024_runner_v01.py"
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          b=Path('Dream-Account-OS-v2.3-PARTIAL/research/btc_options_expiry_reversal_001/adjudication')
+          f=json.load(open(b/'V2_PATH2_REPLICATION_2024_FREEZE_V01.json'))
+          assert f['status']=='FROZEN_PRE_2024_OUTCOME_ACCESS'
+          assert f['replication_id']=='BOER-V2-PATH2-2024-001'
+          assert f['source_authority']['replication_year']==2024
+          assert f['path2_pass_gates_all_required']=={
+              'resolved_trades_min': 11,
+              'base_mean_net_return_gt_zero': True,
+              'base_profit_factor_min': 1.0,
+              'stress_mean_net_return_gt_zero': True,
+              'base_wins_min': 7,
+              'minimum_leave_one_trade_out_base_mean_gt_zero': True,
+          }
+          assert (b/'AUTHORIZATION_2024_OPEN_2026-09-16.md').exists()
+          PY
+
+      - name: Execute frozen independent 2024 replication
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/btc_options_expiry_reversal_001/adjudication'
+          python "$BASE/v2_path2_2024_runner_v01.py"
+          test -f "$BASE/BOER_V2_PATH2_2024_RESULT_V01.json"
+
+      - name: Audit firewalls and classification
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          p='Dream-Account-OS-v2.3-PARTIAL/research/btc_options_expiry_reversal_001/adjudication/BOER_V2_PATH2_2024_RESULT_V01.json'
+          d=json.load(open(p)); g=d['guards']
+          assert g['year_2025_market_data_requested'] is False
+          assert g['year_2026_market_data_requested'] is False
+          assert g['signal_changed'] is False
+          assert g['costs_changed'] is False
+          assert g['timing_changed'] is False
+          assert g['horizon_changed'] is False
+          assert g['event_exclusions_added'] is False
+          assert g['interpolation_or_substitution'] is False
+          assert g['live_trading'] is False
+          assert g['exchange_mutation'] is False
+          assert g['orders'] is False
+          assert g['alerts_or_webhooks'] is False
+          assert g['merge_to_main'] is False
+          assert g['render_deployment'] is False
+          assert d['classification'] in {
+            'V2_SUPPORT_PATH_2_PASS__TIER_2_PROMOTED_CANDIDATE_QUASE_DIAMANTE',
+            'V2_PATH2_FAIL__APPLY_FROZEN_POLICY_WITHOUT_RESCUE',
+            'INSUFFICIENT_SAMPLE','SOURCE_ACCESS_BLOCKED','DATA_FAILURE','TECHNICAL_FAILURE'
+          }
+          print(json.dumps(d, indent=2, sort_keys=True))
+          PY
+
+      - name: Persist one-shot result before interpretation
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/btc_options_expiry_reversal_001/adjudication'
+          git config user.name 'crypto-lab-boer-path2-bot'
+          git config user.email 'crypto-lab-boer-path2-bot@users.noreply.github.com'
+          git add "$BASE/BOER_V2_PATH2_2024_RESULT_V01.json"
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'BTC-OPTIONS-EXPIRY-REVERSAL-001: 2024 Path 2 closeout [skip ci]'
+          git pull --rebase origin btc-options-expiry-reversal-v2-path2-2024-v01
+          git push origin HEAD:btc-options-expiry-reversal-v2-path2-2024-v01
