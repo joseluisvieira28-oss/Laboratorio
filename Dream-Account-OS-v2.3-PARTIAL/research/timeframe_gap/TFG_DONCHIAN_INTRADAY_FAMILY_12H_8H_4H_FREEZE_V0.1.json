@@ -1,0 +1,154 @@
+{
+  "experiment_id": "TFG-DONCHIAN-INTRADAY-FAMILY-12H-8H-4H-V0.1",
+  "status": "FROZEN_BEFORE_ANY_MEXC_12H_8H_4H_OUTCOME_EVALUATION",
+  "freeze_date": "2026-09-16",
+  "authority": "USER_EXPLICIT_AGGRESSIVE_ATTACK_12H_8H_4H",
+  "purpose": "Aggressively test clock-time-scaled Donchian siblings without changing the economic geometry that generated the 1D edge candidate. All three siblings are frozen and reported; no post-outcome timeframe tuning or threshold rescue is allowed.",
+  "lineage": {
+    "parent": "TFG-DONCHIAN-1D-001",
+    "existing_12h_reference": "HTF-DH03-DONCHIAN-12H-001",
+    "existing_12h_rule_is_reused_exactly": true,
+    "8h_and_4h_are_new_clock_time_scale_transfers": true,
+    "one_day_economic_geometry": {
+      "lookback_days": 20,
+      "atr_days": 14,
+      "max_hold_days": 40,
+      "target_r": 3.0,
+      "stop_atr_fraction": 0.25
+    }
+  },
+  "venue": {
+    "provider": "MEXC",
+    "market": "SPOT",
+    "source_interval": "15m official bulk files only",
+    "universe": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "DOGEUSDT"],
+    "no_cross_exchange_backfill": true,
+    "no_interpolation": true,
+    "complete_underlying_15m_required_for_each_derived_bar": true,
+    "derived_bar_anchor": "UTC"
+  },
+  "cells": [
+    {
+      "cell_id": "D12",
+      "priority": 1,
+      "timeframe": "12H",
+      "lookback_complete_bars": 40,
+      "atr_length": 28,
+      "max_hold_bars": 80,
+      "signal": "close > max_high_previous_40_complete_12H_bars",
+      "entry": "next_12H_open",
+      "stop": "signal_low - 0.25*ATR28",
+      "target_r": 3.0,
+      "one_active_trade_per_symbol": true
+    },
+    {
+      "cell_id": "D8",
+      "priority": 2,
+      "timeframe": "8H",
+      "lookback_complete_bars": 60,
+      "atr_length": 42,
+      "max_hold_bars": 120,
+      "signal": "close > max_high_previous_60_complete_8H_bars",
+      "entry": "next_8H_open",
+      "stop": "signal_low - 0.25*ATR42",
+      "target_r": 3.0,
+      "one_active_trade_per_symbol": true
+    },
+    {
+      "cell_id": "D4",
+      "priority": 3,
+      "timeframe": "4H",
+      "lookback_complete_bars": 120,
+      "atr_length": 84,
+      "max_hold_bars": 240,
+      "signal": "close > max_high_previous_120_complete_4H_bars",
+      "entry": "next_4H_open",
+      "stop": "signal_low - 0.25*ATR84",
+      "target_r": 3.0,
+      "one_active_trade_per_symbol": true
+    }
+  ],
+  "execution": {
+    "same_bar_stop_target": "STOP_FIRST_CONSERVATIVE",
+    "adverse_gap_long": "exit_at_open_if_open_below_stop_else_stop",
+    "favorable_gap_long": "target_capped_at_target",
+    "time_exit": "next_bar_open_after_max_hold_complete_bars",
+    "base_round_trip_cost_pct": 0.20,
+    "stress_round_trip_cost_pct": 0.30
+  },
+  "windows": {
+    "W1_REPLICATION": {
+      "warmup_start_utc": "2023-02-01T00:00:00Z",
+      "scored_entry_start_utc": "2023-03-01T00:00:00Z",
+      "scored_entry_end_exclusive_utc": "2025-01-01T00:00:00Z",
+      "role": "cross_venue_replication_and_new_sibling_discovery"
+    },
+    "W2_2025": {
+      "warmup_start_utc": "2024-12-01T00:00:00Z",
+      "scored_entry_start_utc": "2025-01-01T00:00:00Z",
+      "data_end_exclusive_utc": "2026-01-01T00:00:00Z",
+      "eligibility": "entry_plus_full_max_hold_must_be_strictly_before_data_end",
+      "role": "temporal_validation"
+    },
+    "W3_2026": {
+      "warmup_start_utc": "2025-12-01T00:00:00Z",
+      "scored_entry_start_utc": "2026-01-01T00:00:00Z",
+      "data_end_exclusive_utc": "2026-08-31T00:00:00Z",
+      "eligibility": "entry_plus_full_max_hold_must_be_strictly_before_data_end",
+      "role": "recent_regime_robustness",
+      "note": "The 2026 market path was already accessed for the 1D experiment, but no D12/D8/D4 outcomes were evaluated before this freeze. Therefore W3 is outcome-unopened for these siblings but is not claimed as a pristine market-data-blind holdout."
+    }
+  },
+  "gates": {
+    "W1": {
+      "minimum_resolved_trades": 100,
+      "base_expectancy_r_gt": 0.0,
+      "base_profit_factor_gt": 1.0,
+      "bootstrap_lower_95_gt": 0.0,
+      "stress_expectancy_r_gt": 0.0,
+      "stress_profit_factor_gt": 1.0,
+      "unresolved_execution_paths_eq": 0
+    },
+    "W2": {
+      "minimum_resolved_trades": 40,
+      "base_expectancy_r_gt": 0.0,
+      "base_profit_factor_gt": 1.0,
+      "stress_expectancy_r_gt": 0.0,
+      "stress_profit_factor_gt": 1.0,
+      "max_single_symbol_positive_r_share_lte": 0.70,
+      "unresolved_execution_paths_eq": 0,
+      "bootstrap": "REPORT_ONLY"
+    },
+    "W3": {
+      "minimum_resolved_trades": 20,
+      "base_expectancy_r_gt": 0.0,
+      "base_profit_factor_gt": 1.0,
+      "stress_expectancy_r_gt": 0.0,
+      "stress_profit_factor_gt": 1.0,
+      "max_single_symbol_positive_r_share_lte": 0.70,
+      "unresolved_execution_paths_eq": 0,
+      "bootstrap": "REPORT_ONLY"
+    }
+  },
+  "promotion": {
+    "cell_must_pass_all_three_windows": true,
+    "priority_order_if_multiple_cells_pass": ["D12", "D8", "D4"],
+    "priority_is_frozen_before_outcomes": true,
+    "no_post_outcome_winner_selection": true,
+    "passing_cell_next_state": "EXECUTION_CERTIFICATION_ELIGIBLE",
+    "execution_certification_required_before_real_capital": true,
+    "real_capital_automatically_authorized": false
+  },
+  "governance": {
+    "no_parameter_tuning": true,
+    "no_timeframe_parameter_rescue": true,
+    "no_asset_selection": true,
+    "no_cost_reduction_rescue": true,
+    "no_partial_window_rescue": true,
+    "no_live_orders_during_research": true,
+    "no_exchange_mutation": true,
+    "no_merge_to_main": true,
+    "report_all_three_cells": true,
+    "failed_cell_remains_failed": true
+  }
+}
