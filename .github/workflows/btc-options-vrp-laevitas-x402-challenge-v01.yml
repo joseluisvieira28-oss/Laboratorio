@@ -1,0 +1,59 @@
+name: BTC-OPTIONS-VRP-001 Laevitas x402 Challenge V0.1
+
+on:
+  push:
+    branches:
+      - btc-options-vrp-laevitas-source-v0.1
+    paths:
+      - 'labs/BTC_OPTIONS_VRP_001/LAEVITAS_PAID_MICRO_PROBE_AUTHORITY_V0.1.json'
+      - 'labs/BTC_OPTIONS_VRP_001/laevitas_x402_challenge_probe_v01.py'
+      - '.github/workflows/btc-options-vrp-laevitas-x402-challenge-v01.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: btc-options-vrp-laevitas-x402-challenge-v01
+  cancel-in-progress: false
+
+jobs:
+  challenge-probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: btc-options-vrp-laevitas-source-v0.1
+
+      - name: Verify paid micro-probe authority without paying
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          a=json.load(open('labs/BTC_OPTIONS_VRP_001/LAEVITAS_PAID_MICRO_PROBE_AUTHORITY_V0.1.json'))
+          assert a['authority_drive_id']=='1ubeAsxZjdSi-78zZLGY8LT_1mhoWeaE7fkwDz6zD7b8'
+          assert a['payment_authorized'] is True
+          assert a['provider_payment_cap_usdc']==0.10
+          assert a['max_bundle_purchases']==1
+          assert a['outcomes_authorized'] is False
+          assert a['strategy_pnl_authorized'] is False
+          assert a['access_2025_authorized'] is False
+          assert a['access_2026_authorized'] is False
+          print('PAID_MICRO_AUTHORITY_PREPAY_PASS')
+          PY
+
+      - name: Compile unpaid challenge probe
+        run: python -m py_compile labs/BTC_OPTIONS_VRP_001/laevitas_x402_challenge_probe_v01.py
+
+      - name: Capture x402 challenge only — no payment or signature
+        run: python labs/BTC_OPTIONS_VRP_001/laevitas_x402_challenge_probe_v01.py
+
+      - name: Upload challenge evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: btc-options-vrp-laevitas-x402-challenge-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/btc_options_vrp_laevitas_x402_challenge_v01/
+          retention-days: 90
+          if-no-files-found: warn
