@@ -15,7 +15,9 @@ The radar does not discover edges, tune rules, rescue rejected candidates, auto-
 
 ## Current capability
 
-- Binance USD-M public market-data GET endpoints only.
+- Explicit public market provider identity on every market/evaluation/health record.
+- Default provider: Binance USD-M public market data.
+- Infrastructure-validation provider: Binance market-data-only Spot endpoint (`data-api.binance.vision`).
 - Core universe: BTCUSDT, ETHUSDT, SOLUSDT, BNBUSDT, XRPUSDT.
 - Optional `liquid` observation universe using frozen 24h quote-volume and max-symbol filters.
 - Empty strategy registry by default.
@@ -28,12 +30,18 @@ The radar does not discover edges, tune rules, rescue rejected candidates, auto-
 - `status` and `verify-evidence` commands.
 - No dashboard, webhooks, API keys, balances, positions, orders, cancels, amendments, or exchange mutation.
 
+## Provider firewall
+
+The Spot market-data provider exists only so infrastructure can be validated from environments where the USD-M host is geographically unavailable. It is **not** interchangeable with futures data for a strategy.
+
+A future strategy adapter must bind to the exact market/provider family authorized by its research package. A strategy validated on USD-M futures cannot silently run on Spot data.
+
 ## Scientific firewall
 
 ```text
 RESEARCH LAB
    |
-   | explicit prospective promotion
+   | explicit prospective promotion + provider identity
    v
 STRATEGY ADAPTER REGISTRY
    |
@@ -41,7 +49,7 @@ STRATEGY ADAPTER REGISTRY
    v
 PUBLIC SHADOW SERVICE
    |
-   +--> public market observation
+   +--> allowlisted public market observation
    +--> deterministic evaluation
    +--> heartbeat/status
    +--> evidence chain
@@ -69,7 +77,8 @@ Environment variables:
 RADAR_DB=radar_evidence.sqlite3
 RADAR_STATUS=radar_status.json
 RADAR_NOTIFICATIONS=radar_notifications.jsonl
-RADAR_UNIVERSE_MODE=core5          # core5 | liquid
+RADAR_PROVIDER=binance_usdm          # binance_usdm | binance_spot_public
+RADAR_UNIVERSE_MODE=core5            # core5 | liquid
 RADAR_MAX_SYMBOLS=50
 RADAR_MIN_QUOTE_VOLUME=50000000
 RADAR_HTTP_TIMEOUT=10
@@ -77,7 +86,7 @@ RADAR_HTTP_TIMEOUT=10
 
 ## Health semantics
 
-Successful service cycles publish `health=OK`, cycle number, selected universe, registered strategy count, valid signal count and the evidence receipt.
+Successful service cycles publish `health=OK`, provider, cycle number, selected universe, registered strategy count, valid signal count and the evidence receipt.
 
 Any market-data/evaluation failure publishes `health=FAIL_CLOSED`, emits no valid signal, records the failure when persistence is available and writes a local failure notification. Service intervals below five seconds are rejected.
 
@@ -90,13 +99,15 @@ V0.2 deliberately uses a local JSONL sink rather than Telegram, email, Discord o
 CI contains two gates:
 
 1. offline compile + unit/safety tests;
-2. a bounded three-cycle soak using real Binance public USD-M data, followed by evidence-chain verification and assertions that the final heartbeat is healthy, the Core5 is present, the strategy registry is empty and valid-signal count is zero.
+2. a bounded three-cycle soak using real public Binance market data, followed by evidence-chain verification and assertions that the final heartbeat is healthy, provider identity is explicit, the Core5 is present, the strategy registry is empty and valid-signal count is zero.
+
+The first USD-M soak from the GitHub Central US runner correctly failed closed on HTTP 451 geographic access restriction. CI then moved to Binance's official market-data-only Spot base endpoint for infrastructure validation; that does not authorize a Spot strategy or substitute Spot for futures research.
 
 The bounded CI soak proves the public path; it is **not** represented as a 24/7 deployment.
 
 ## Promotion contract
 
-A future strategy adapter must have immutable identity and explicit prospective `PROMOTED_SHADOW` status from its own research authority package. `RESEARCH`, `CANDIDATE`, `REJECTED`, `CLOSED`, unknown and missing promotion states fail closed.
+A future strategy adapter must have immutable identity, exact provider/market family and explicit prospective `PROMOTED_SHADOW` status from its own research authority package. `RESEARCH`, `CANDIDATE`, `REJECTED`, `CLOSED`, unknown and missing promotion states fail closed.
 
 ## Current strategy state
 
