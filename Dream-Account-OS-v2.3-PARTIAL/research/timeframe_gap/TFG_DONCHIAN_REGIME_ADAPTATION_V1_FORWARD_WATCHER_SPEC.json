@@ -1,0 +1,86 @@
+{
+  "watcher_id": "TFG-DONCHIAN-REGIME-V1-FORWARD-WATCHER",
+  "status": "FROZEN_BEFORE_FIRST_WATCHER_EVALUATION",
+  "created_utc": "2026-09-16T15:58:00Z",
+  "parent_forward_freeze_commit": "b2325b97bbc8090e9702526a6abdaa5c830bba10",
+  "parent_forward_freeze_path": "Dream-Account-OS-v2.3-PARTIAL/research/timeframe_gap/TFG_DONCHIAN_REGIME_ADAPTATION_V1_FORWARD_FREEZE.json",
+  "source_binding": {
+    "provider": "MEXC",
+    "market": "SPOT",
+    "access": "PUBLIC_UNAUTHENTICATED_READ_ONLY_REST",
+    "base_url": "https://api.mexc.com",
+    "kline_endpoint": "GET /api/v3/klines",
+    "raw_interval_for_signal_and_execution": "15m",
+    "daily_interval_for_regime_state": "1d",
+    "symbols": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "DOGEUSDT"],
+    "pagination": "Use startTime/endTime and limit<=1000 as needed; never truncate required warmup or trade path.",
+    "bar_policy": "Only fully closed UTC bars are admissible. Aggregate 15m into exact UTC 12H bars [00:00,12:00) and [12:00,24:00). Missing or incomplete underlying 15m makes the derived bar unavailable and forces NO_ACTION.",
+    "no_api_key": true,
+    "no_authenticated_endpoint": true,
+    "no_order_endpoint": true,
+    "no_exchange_mutation": true
+  },
+  "strategy": {
+    "timeframe": "12H_UTC",
+    "direction": "LONG_ONLY",
+    "donchian_lookback_complete_bars": 40,
+    "atr_length": 28,
+    "entry": "next 12H open",
+    "stop": "signal low - 0.25*ATR28",
+    "target_r": 3.0,
+    "max_hold_bars": 80,
+    "one_active_trade_per_symbol": true,
+    "same_bar_stop_target": "STOP_FIRST_CONSERVATIVE",
+    "base_round_trip_cost_pct": 0.20,
+    "stress_round_trip_cost_pct": 0.30
+  },
+  "regime_gate": {
+    "snapshot": "most recent fully closed UTC daily bar strictly before signal close",
+    "all_required": [
+      "BTC close > BTC SMA200",
+      "BTC SMA200 > BTC SMA200 20 complete days earlier",
+      "at least 4 of 6 frozen assets close > own SMA100"
+    ],
+    "missing_state": "NO_TRADE"
+  },
+  "forward_boundary": {
+    "freeze_commit_time_utc": "2026-09-16T15:16:53Z",
+    "no_backfill_before_freeze": true,
+    "first_eligible_signal_close": "first fully closed 12H bar whose close timestamp is strictly after 2026-09-16T15:16:53Z and whose regime gate is ON"
+  },
+  "schedule": {
+    "evaluation_offsets": ["00:10Z", "12:10Z"],
+    "reason": "evaluate ten minutes after each UTC 12H close"
+  },
+  "persistence": {
+    "state_path": "Dream-Account-OS-v2.3-PARTIAL/research/timeframe_gap/TFG_DONCHIAN_REGIME_ADAPTATION_V1_FORWARD_WATCH_STATE.json",
+    "append_only_trade_identity": "symbol + signal_close_utc",
+    "duplicate_signals_forbidden": true,
+    "missed_eligible_signals_forbidden": true
+  },
+  "readiness": {
+    "minimum_resolved_filtered_forward_trades": 10,
+    "base_expectancy_r_gt": 0.0,
+    "base_profit_factor_gt": 1.0,
+    "stress_expectancy_r_gt": 0.0,
+    "stress_profit_factor_gt": 1.0,
+    "unresolved_execution_paths_eq": 0,
+    "rule_deviations_eq": 0,
+    "bootstrap": "REPORT_ONLY",
+    "next_state_if_pass": "MICRO_LIVE_RISK_REVIEW_ELIGIBLE",
+    "live_trading_automatically_authorized": false
+  },
+  "governance": {
+    "paper_shadow_only": true,
+    "no_live_orders": true,
+    "no_exchange_mutation": true,
+    "no_parameter_tuning": true,
+    "no_regime_threshold_tuning": true,
+    "no_asset_selection": true,
+    "no_timeframe_substitution": true,
+    "no_cost_rescue": true,
+    "no_retroactive_signal_inclusion": true,
+    "no_merge_to_main": true,
+    "fail_closed_on_source_or_state_error": true
+  }
+}
