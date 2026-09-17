@@ -1,0 +1,37 @@
+name: AAVE Liquidation Overhang 001 — SQD Boundary Probe
+
+on:
+  push:
+    branches:
+      - aave-liquidation-overhang-v0.1
+    paths:
+      - research/aave_liquidation_overhang/sqd_boundary_semantics_probe.py
+      - .github/workflows/aave-liquidation-overhang-sqd-boundary-probe.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sqd-boundary-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout frozen research branch
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: pip install --disable-pip-version-check requests 'eth-hash[pycryptodome]'
+      - name: Probe SQD block-boundary semantics
+        run: python research/aave_liquidation_overhang/sqd_boundary_semantics_probe.py
+      - name: Upload boundary receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: AAVE_LIQUIDATION_OVERHANG_001_SQD_BOUNDARY_PROBE
+          path: sqd_boundary_probe_output/AAVE_LIQUIDATION_OVERHANG_001_SQD_BOUNDARY_PROBE.json
+          if-no-files-found: warn
+          retention-days: 30
