@@ -1,0 +1,128 @@
+{
+  "document_id": "PROP_COMPAT_001_SOURCE_RULE_GATE_CLOSEOUT_V0.1",
+  "campaign_id": "PROP-COMPAT-001",
+  "closed_on": "2026-09-17",
+  "status": "SOURCE_RULE_GATE_CLOSED_FAIL_CLOSED_NO_EXACT_SIMULATION_READY_PATH",
+  "scope": "Closeout of all legitimate pre-risk-grid work achievable under current evidence/access. This is not the final compatibility closeout requested for a surviving Setup x Prop Program x Risk Size combination.",
+  "governance": {
+    "research_only": true,
+    "live_trading": false,
+    "orders_created": false,
+    "exchange_mutation": false,
+    "wallets_used": false,
+    "challenge_purchased": false,
+    "private_api_connected": false,
+    "webhooks_created": false,
+    "setup_rules_changed": false,
+    "risk_grid_run": false,
+    "prop_replay_run": false,
+    "correlation_stress_run": false,
+    "cost_stress_run": false,
+    "monte_carlo_run": false,
+    "post_outcome_tuning": false,
+    "merge_to_main": false
+  },
+  "phase_0_setup_state": {
+    "TFG-DONCHIAN-1D-001": {
+      "scientific_state_reconstructed": true,
+      "official_status": "OOS_CONFIRMATION_SURVIVES_SHADOW_ELIGIBLE",
+      "exact_final_trade_ledger_recovered": false,
+      "blocker": "Final V0.1D local ledger fingerprint is documented but the final trade-by-trade bytes were not retained in accessible GitHub Actions artifacts, Drive search, current Project/Library retrieval, or repository contents. Aggregate OOS closeout remains valid but is insufficient for exact prop replay.",
+      "classification_for_prop_campaign_now": "BLOCKED"
+    },
+    "DH-03-HO1": {
+      "scientific_state_reconstructed": true,
+      "official_status": "EXACT_RULE_FORWARD_HOLDOUT_SURVIVES",
+      "exact_trade_ledger_recovered": true,
+      "trade_ledger_sha256": "ec4e5dbc8d95a73d4eb9db55f4e1c0f264dba7eb724cbb7424f2c034a3a7eebd",
+      "selected_rows": 148,
+      "resolved_rows": 146,
+      "minute_source_chain_reproducible": true,
+      "classification_for_prop_campaign_now": "SOURCE_READY_RULE_APPLICATION_BLOCKED"
+    }
+  },
+  "phase_1_rulebook": {
+    "base_freeze": "PROP_COMPAT_001_PROP_RULEBOOK_FREEZE_V0.1",
+    "amendments": [
+      "PROP_COMPAT_001_PROP_RULEBOOK_AMENDMENT_V0.2",
+      "PROP_COMPAT_001_PROP_RULEBOOK_AMENDMENT_V0.3",
+      "PROP_COMPAT_001_PROP_RULEBOOK_AMENDMENT_V0.4",
+      "PROP_COMPAT_001_PROP_RULEBOOK_AMENDMENT_V0.5",
+      "PROP_COMPAT_001_PROP_RULEBOOK_AMENDMENT_V0.6",
+      "PROP_COMPAT_001_PROP_RULEBOOK_AMENDMENT_V0.7"
+    ],
+    "simulation_ready_exact_paths": [],
+    "program_status": {
+      "HYROTRADER_ONE_STEP_SWING_CLEO": {
+        "classification": "BLOCKED",
+        "reason": "Rule mechanics substantially frozen, but exact historical B-Book fills and exact historical prop funding debit equivalence are not authoritative. A non-decisional proxy has been frozen separately.",
+        "proxy_freeze": "PROP_COMPAT_001_HYRO_DH03_PROXY_REPLAY_FREEZE_V0.1"
+      },
+      "KRAKEN_PROP": {
+        "classification": "BLOCKED",
+        "reason": "Material conflict between current Kraken support funding cadence and current Breakout legal swap wording/timing, plus no authoritative historical executable bid/ask/liquidity fill stream for the setup replay windows."
+      },
+      "FTMO_2STEP_SWING": {
+        "classification": "BLOCKED",
+        "reason": "DH-03 exact 2023-2024 replay cannot preserve the six-symbol frozen universe because BNBUSD and SOLUSD were introduced by FTMO only in July 2025; historical dynamic swaps/spreads are also not frozen."
+      },
+      "KRAKEN_FUNDED": {
+        "classification": "BLOCKED",
+        "reason": "Current Kraken support and current Breakout legal agreements provide materially conflicting max-loss/daily-loss mechanics; product is mobile-only/1x/market-order-oriented without advanced order types needed to assume exact persistent Donchian stop/target execution."
+      }
+    }
+  },
+  "phase_2_trade_replay": {
+    "DH-03-HO1": {
+      "source_chain_validation": "PASS",
+      "exact_trade_ledger_validation": "PASS",
+      "structural_precheck": "PASS_WITH_MATERIAL_FLAGS",
+      "material_flags": [
+        "maximum six simultaneous positions",
+        "two portfolio-wide gaps between resolved exits exceed Hyro's 30-day inactivity threshold: 45.8722d and 31.3299d",
+        "Hyro minimum-day notional rule is sizing-sensitive; median DH-03 stop width implies about 0.30% account risk per 1R to reach 5% notional"
+      ]
+    },
+    "TFG-DONCHIAN-1D-001": {
+      "source_chain_validation": "AGGREGATE_CLOSEOUT_ONLY",
+      "exact_trade_ledger_validation": "BLOCKED_MISSING_FINAL_LEDGER_BYTES"
+    }
+  },
+  "phase_3_risk_grid": {
+    "freeze": "PROP_COMPAT_001_RISK_GRID_FREEZE_V0.1",
+    "grid_pct_per_1R": [0.10, 0.15, 0.20, 0.25, 0.30],
+    "status": "NOT_RUN_LOCKED",
+    "unlock_condition": "At least one exact prop rulebook/execution translation must become simulation-ready without choosing favorable interpretations after outcomes."
+  },
+  "proxy_research": {
+    "hyro_dh03_proxy": {
+      "freeze": "PROP_COMPAT_001_HYRO_DH03_PROXY_REPLAY_FREEZE_V0.1",
+      "status": "FROZEN_NOT_RUN",
+      "decisional_authority": false,
+      "permitted_role": "Future screening for obvious incompatibility only; cannot produce PROP-COMPAT-PASS or CONDITIONAL-PASS."
+    }
+  },
+  "current_compatibility_matrix_before_risk_grid": {
+    "DH-03-HO1_x_HYROTRADER_ONE_STEP_SWING_CLEO": "BLOCKED",
+    "DH-03-HO1_x_KRAKEN_PROP": "BLOCKED",
+    "DH-03-HO1_x_FTMO_2STEP_SWING": "BLOCKED",
+    "DH-03-HO1_x_KRAKEN_FUNDED": "BLOCKED",
+    "TFG-DONCHIAN-1D-001_x_ALL_PROGRAMS": "BLOCKED_AT_EXACT_TRADE_REPLAY_SOURCE_RECOVERY"
+  },
+  "campaign_decision_now": {
+    "scientifically_compatible_combination_identified": false,
+    "PROP_COMPAT_PASS_exists": false,
+    "CONDITIONAL_PASS_exists": false,
+    "challenge_purchase": "DO_NOT_PURCHASE",
+    "reason": "No Setup x Prop Program path has passed the mandatory source/rule/execution gate required before the official risk grid. Running risk sizing, cost stress, Monte Carlo or final compatibility ranking now would violate the campaign's own fail-closed governance."
+  },
+  "reopen_requirements": [
+    "HYRO: authoritative historical/current prop-account funding debit semantics plus defensible CLEO execution/fill history or formal execution model sufficient for exact replay",
+    "KRAKEN PROP: authoritative clarification reconciling support vs governing legal funding cadence/charge mechanics and a defensible historical executable price/spread/liquidity layer",
+    "KRAKEN FUNDED: authoritative legal/support reconciliation of MDL/MDD/max-loss rules and proof of execution equivalence for frozen stop/target semantics",
+    "FTMO: no exact DH-03 2023-2024 six-symbol replay is possible unless FTMO provides historical instruments that actually existed then; changing the universe is prohibited",
+    "TFG: recover or deterministically regenerate the exact final V0.1D trade ledger and match documented local ledger fingerprint before prop replay"
+  ],
+  "legitimate_work_exhausted_under_current_evidence": true,
+  "next_action_policy": "Wait for new authoritative evidence/source recovery. Do not run the official risk grid, prop emulation, cost stress, Monte Carlo, buy a challenge, or touch live trading until an exact path is unblocked."
+}
