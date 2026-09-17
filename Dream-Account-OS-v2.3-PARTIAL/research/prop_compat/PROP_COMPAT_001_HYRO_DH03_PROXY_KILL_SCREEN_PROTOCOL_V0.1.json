@@ -1,0 +1,126 @@
+{
+  "document_id": "PROP_COMPAT_001_HYRO_DH03_PROXY_KILL_SCREEN_PROTOCOL_V0.1",
+  "campaign_id": "PROP-COMPAT-001A",
+  "parent_campaign": "PROP-COMPAT-001",
+  "frozen_on": "2026-09-17",
+  "status": "FROZEN_BEFORE_PROXY_OUTCOMES",
+  "setup_id": "DH-03-HO1",
+  "prop_program": "HYROTRADER_ONE_STEP_SWING_CLEO",
+  "authority_chain": [
+    "PROP_COMPAT_001_HYRO_DH03_PROXY_REPLAY_FREEZE_V0.1",
+    "PROP_COMPAT_001_PROP_RULEBOOK_AMENDMENT_V0.6",
+    "PROP_COMPAT_001_RISK_GRID_FREEZE_V0.1",
+    "DH-03-HO1 frozen Phase5 exact-rule ledger/source binding"
+  ],
+  "purpose": "Non-decisional kill-screen only. Detect obvious incompatibility or absence of obvious proxy breach. This protocol cannot produce PROP-COMPAT-PASS, CONDITIONAL-PASS, challenge purchase authorization or live-trading authorization.",
+  "governance": {
+    "research_only": true,
+    "proxy_outcomes_opened_before_freeze": false,
+    "official_phase3_risk_grid_run": false,
+    "proxy_grid_uses_same_frozen_values_without_winner_selection": true,
+    "setup_rules_changed": false,
+    "symbol_drops": false,
+    "time_period_selection": false,
+    "post_outcome_rule_changes": false,
+    "challenge_purchase": false,
+    "live_trading": false,
+    "merge_to_main": false
+  },
+  "source": {
+    "execution_artifact_run_id": 35080622854,
+    "execution_artifact_id": 10439998204,
+    "execution_artifact_digest": "sha256:d35786888d0e29e158d257233c567260d7da95268cdde251b0d49eb505a86149",
+    "ledger_file": "DH-03-HO1_LEDGER.json",
+    "ledger_sha256": "ec4e5dbc8d95a73d4eb9db55f4e1c0f264dba7eb724cbb7424f2c034a3a7eebd",
+    "phase5_source_run_id": 35076213767,
+    "phase5_source_artifact_id": 10438795414,
+    "phase5_source_artifact_digest": "sha256:d84cc2f9117519568fa1a8d276217550da82ddffffc2df37c195a95787dda752",
+    "source_fingerprint": "d1a95d51d99eba0bd5f66e91d75ddcd175f7a84d954ba28a44c2dcd39ef4c5cb",
+    "minute_archives": "Use only exact Binance USD-M 1m URLs and SHA-256 values frozen in the Phase5 source gate; download only symbol-months intersecting resolved DH-03 positions; every downloaded archive must hash-match before use.",
+    "unresolved_trade_policy": "Exclude the two execution-path-unresolved rows exactly as in the official Phase5 resolved metrics; do not impute exits."
+  },
+  "proxy_grid_pct_equity_per_1R": [0.10, 0.15, 0.20, 0.25, 0.30],
+  "account_model": {
+    "initial_balance_units": 100.0,
+    "risk_basis": "CURRENT_ACCOUNT_EQUITY_AT_ENTRY_BEFORE_NEW_ENTRY_COST",
+    "position_notional": "risk_amount / initial_risk_fraction",
+    "one_active_trade_per_symbol": true,
+    "all_six_symbols_may_overlap": true,
+    "no_leverage_cap_during_evaluation": "Use only Hyro evaluation rules; funded exposure limits are checked separately as structural diagnostics."
+  },
+  "execution_cost_cases": {
+    "BASE": {
+      "total_round_trip_execution_cost_pct_notional_ex_funding": 0.20,
+      "entry_half_pct": 0.10,
+      "exit_half_pct": 0.10
+    },
+    "STRESS": {
+      "total_round_trip_execution_cost_pct_notional_ex_funding": 0.30,
+      "entry_half_pct": 0.15,
+      "exit_half_pct": 0.15
+    },
+    "cost_timing": "Entry half debited at entry; exit half debited at exit. No maker rebate or fee optimization."
+  },
+  "funding": {
+    "source": "Exact canonical Binance USD-M historical funding files frozen in Phase5 source artifact",
+    "cashflow_long": "-funding_rate * current_position_notional",
+    "event_window": "events strictly after entry and strictly before exit",
+    "compounding": false,
+    "claim": "PROXY_ONLY_NOT_EXACT_HYRO_CLEO_FUNDING"
+  },
+  "mark_to_market": {
+    "primary": "SYNCHRONIZED_1M_CLOSE",
+    "daily_start_equity": "Equity at 00:00 UTC using 1m open before any entry/funding/exit action timestamped at that minute; then intraday events are applied.",
+    "intraminute_diagnostic": "Synchronized 1m low across open long positions may be reported only as conservative drawdown upper-bound diagnostic and may not alone create OBVIOUS_PROXY_BREACH.",
+    "missing_minute_policy": "FAIL_CLOSED_PROXY_INSUFFICIENT"
+  },
+  "challenge_rules": {
+    "profit_target_pct_initial_balance": 10.0,
+    "daily_drawdown_pct_initial_balance": 4.0,
+    "daily_floor": "starting_equity_of_current_UTC_day - 4% of initial balance",
+    "maximum_loss_floor": "94% of initial balance",
+    "floating_pnl_and_costs_count": true,
+    "single_position_max_realized_loss_pct_initial_balance": 3.0,
+    "minimum_trading_days": 5,
+    "qualifying_day": {
+      "requires_at_least_one_position_opened_that_UTC_day": true,
+      "requires_at_least_one_trade_closed_that_UTC_day_with_any_holding_period": true,
+      "qualifying_closed_trade_notional_min_pct_initial_balance": 5.0,
+      "qualifying_closed_trade_abs_net_pnl_min_pct_of_trade_notional": 1.0,
+      "dummy_trades": false
+    },
+    "consistency": {
+      "threshold_best_positive_realized_day_share_of_total_positive_net_profit_pct": 40.0,
+      "target_qualification_rule": "Target may count as achieved only when total net realized profit >=10% initial balance, qualifying trading days >=5, and best positive realized UTC day profit <=40% of total positive net realized profit. If the ratio is above 40%, continue the unchanged replay; do not cap/rewrite the day post hoc."
+    },
+    "inactivity": {
+      "threshold_days": 30,
+      "clock_start": "first setup entry, representing challenge activation immediately before first frozen signal entry",
+      "reset_event": "fully closed setup trade",
+      "breach": "elapsed time strictly greater than 30 days without a fully closed trade while challenge remains active",
+      "evaluation_after_pass_or_breach": "STOP; later history cannot retroactively change result"
+    }
+  },
+  "funded_structural_diagnostics": {
+    "default_cleo_leverage_for_margin_check": 10.0,
+    "max_total_margin_pct_initial_balance": 25.0,
+    "max_open_notional_multiple_initial_balance": 2.0,
+    "note": "Diagnostics only. They do not convert a challenge proxy survivor into funded compatibility."
+  },
+  "correlation_stress": {
+    "scenarios_concurrent_full_R_losses": [2, 3, 4, 6],
+    "calculation": "n * frozen proxy risk percentage, before extra gap slippage; report against 4% daily and 6% maximum-loss amounts.",
+    "winner_selection": false
+  },
+  "output_labels": [
+    "OBVIOUS_PROXY_BREACH",
+    "NO_OBVIOUS_PROXY_BREACH_BUT_EXACT_REPLAY_STILL_BLOCKED",
+    "PROXY_INSUFFICIENT"
+  ],
+  "classification": {
+    "OBVIOUS_PROXY_BREACH": "At least one frozen grid x BASE/STRESS path breaches a mandatory challenge rule before qualifying pass; report every grid cell separately. No rescue by dropping failed cells.",
+    "NO_OBVIOUS_PROXY_BREACH_BUT_EXACT_REPLAY_STILL_BLOCKED": "A grid cell reaches proxy pass before mandatory breach under the frozen assumptions. This is screening survival only and cannot authorize challenge purchase.",
+    "PROXY_INSUFFICIENT": "Required source path or rule application cannot be evaluated without an unfrozen assumption."
+  },
+  "post_run_policy": "Report all 10 grid/cost cells. Do not name a best risk size. Do not modify protocol based on results. Official PROP-COMPAT Phase3 remains locked."
+}
