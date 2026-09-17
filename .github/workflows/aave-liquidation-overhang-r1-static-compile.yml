@@ -1,0 +1,28 @@
+name: AAVE Liquidation Overhang 001 — R1 Static Compile
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - aave-liquidation-overhang-v0.1
+    paths:
+      - '.github/workflows/aave-liquidation-overhang-r1-static-compile.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  r1-static-compile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile R1 execution code only
+        run: |
+          python -m py_compile research/aave_liquidation_overhang/r1_scaled_ledger_audit_v01.py
+          python -m py_compile research/aave_liquidation_overhang/r1_reserve_shard_v01.py
+          python -m py_compile research/aave_liquidation_overhang/r1_reserve_shard_v02.py
+          python -m py_compile research/aave_liquidation_overhang/r1_global_state_v01.py
+          python -m py_compile research/aave_liquidation_overhang/aggregate_r1_reconstruction_v02.py
