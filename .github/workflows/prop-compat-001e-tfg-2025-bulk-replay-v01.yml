@@ -1,0 +1,100 @@
+name: PROP COMPAT 001E TFG 2025 Bulk Replay V0.1
+
+on:
+  push:
+    branches: [prop-compat-001-v0.1]
+    paths:
+      - '.github/workflows/prop-compat-001e-tfg-2025-bulk-replay-v01.yml'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/prop_compat/prop_compat_001e_tfg_2025_bulk_replay_v01.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  tfg-2025-bulk-replay:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout PROP-COMPAT authority branch
+        uses: actions/checkout@v4
+        with:
+          ref: prop-compat-001-v0.1
+          fetch-depth: 1
+
+      - name: Checkout frozen TFG scientific authority
+        uses: actions/checkout@v4
+        with:
+          ref: tfg-donchian-1d-oos-2025-v01
+          path: _authority
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Verify replay freeze before any current 2025 source access
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          d=json.loads(Path('research/prop_compat/PROP_COMPAT_001E_TFG_2025_BULK_REPLAY_FREEZE_V0.1.json').read_text())
+          assert d['status']=='FROZEN_BEFORE_2025_BULK_ACCESS_AND_REPLAY'
+          assert d['prerequisite_source_gate']['result']=='MEXC_BULK_SOURCE_EQUIVALENCE_PASS'
+          assert d['prerequisite_source_gate']['receipt_fingerprint']=='a1fb36706125767f7ee647caef615557a03f2bda220a707601aea2499574659b'
+          assert d['source']['required_files']==72
+          assert d['governance']['2026_historical_outcome_access'] is False
+          assert d['governance']['post_outcome_tuning'] is False
+          assert d['governance']['live_trading'] is False
+          print('TFG_2025_BULK_REPLAY_FREEZE_PASS')
+          PY
+
+      - name: Compile frozen replay runner
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: python -m py_compile research/prop_compat/prop_compat_001e_tfg_2025_bulk_replay_v01.py
+
+      - name: Download exact audited parent December-2024 source artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p _parent
+          curl --fail --location --silent --show-error \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/10419067320/zip" \
+            -o _parent/parent.zip
+          unzip -q _parent/parent.zip -d _parent/data
+          test "$(find _parent/data -name '*_USDT-Min15-2024-12-01.csv' | wc -l)" -eq 6
+
+      - name: Execute frozen same-family 2025 source reacquisition and replay
+        id: replay
+        continue-on-error: true
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: |
+          OUT=research/local_data/prop_compat_001e_tfg_2025_replay
+          mkdir -p "$OUT"
+          python research/prop_compat/prop_compat_001e_tfg_2025_bulk_replay_v01.py \
+            --authority-root ../_authority/Dream-Account-OS-v2.3-PARTIAL \
+            --prop-root . \
+            --parent-root ../_parent/data \
+            --output-dir "$OUT"
+
+      - name: Upload TFG 2025 recovery receipt, source manifest and regenerated ledger
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: PROP_COMPAT_001E_TFG_2025_BULK_REPLAY_V01
+          path: |
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/prop_compat_001e_tfg_2025_replay/PROP_COMPAT_001E_TFG_2025_BULK_REPLAY_RECEIPT_V0.1.json
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/prop_compat_001e_tfg_2025_replay/PROP_COMPAT_001E_TFG_2025_REACQUIRED_SOURCE_MANIFEST_V0.1.json
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/prop_compat_001e_tfg_2025_replay/PROP_COMPAT_001E_TFG_2025_REGENERATED_LEDGER_V0.1.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Enforce frozen replay verdict after artefact upload
+        if: steps.replay.outcome != 'success'
+        run: exit 2
