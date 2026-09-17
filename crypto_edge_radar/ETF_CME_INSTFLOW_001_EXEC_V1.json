@@ -1,0 +1,100 @@
+{
+  "contract_id": "ETF-CME-INSTFLOW-001-EXEC-V1",
+  "contract_version": "1.0",
+  "as_of_date": "2026-09-17",
+  "status": "PROSPECTIVE_EXECUTION_MAPPING_SHADOW_ONLY",
+  "capital_enabled": false,
+  "scientific_strategy": {
+    "strategy_id": "ETF-CME-INSTFLOW-001",
+    "scientific_tier": 2,
+    "scientific_status": "PROMOTED_CANDIDATE_FRAGILE",
+    "signal_source": "CFTC_PUBLIC_REPORTING",
+    "signal_contract_code": "133741",
+    "information_lag_days": 8,
+    "hold_days": 7,
+    "scientific_rule_changes": "FORBIDDEN"
+  },
+  "execution_mapping": {
+    "exchange": "MEXC",
+    "market_family": "USDT_PERPETUAL_FUTURES",
+    "exchange_symbol": "BTC_USDT",
+    "canonical_symbol": "BTCUSDT",
+    "mapping_status": "PUBLIC_CONTRACT_DETAIL_CONFIRMED_API_ELIGIBLE",
+    "mapping_receipt_artifact_id": 10505971516,
+    "mapping_source_path": "/api/v1/contract/detail",
+    "direction_support_required": ["LONG", "SHORT"],
+    "authenticated_transport_enabled": false,
+    "order_creation_enabled": false
+  },
+  "timing": {
+    "scientific_target": "FIRST_00_00_UTC_AT_OR_AFTER_INFORMATION_SAFE_TIME",
+    "operational_contract": "EXACT_TIMING_ENGINE_V1_DEPLOYMENT_ONLY",
+    "arm_lead_seconds": 60.0,
+    "max_technical_lateness_seconds": 2.0,
+    "early_entry_allowed": false,
+    "late_chase_allowed": false,
+    "scientific_target_unchanged": true
+  },
+  "current_api_fee_schedule": {
+    "effective_from_utc": "2026-06-01T08:00:00Z",
+    "maker_one_way_fraction": 0.0006,
+    "taker_one_way_fraction": 0.0008,
+    "maker_round_trip_bps": 12.0,
+    "taker_round_trip_bps": 16.0,
+    "source": "MEXC_OFFICIAL_API_FUTURES_FEE_UPDATE_2026-05-28",
+    "note": "API fee schedule must be revalidated before capital deployment. Promotions or web/app fees are not substitutes for API fees."
+  },
+  "cost_viability_gate": {
+    "historical_base_round_trip_cost_bps": 10.0,
+    "historical_stress_round_trip_cost_bps": 20.0,
+    "historical_estimated_break_even_round_trip_cost_bps": 21.2,
+    "current_taker_round_trip_fee_only_bps": 16.0,
+    "remaining_break_even_budget_after_taker_fees_bps": 5.2,
+    "must_measure_before_capital": [
+      "entry_slippage_bps",
+      "exit_slippage_bps",
+      "funding_paid_or_received_over_7_day_hold",
+      "spot_perpetual_basis_effect_relevant_to_mapping",
+      "order_rejection_or_partial_fill_rate",
+      "signal_to_ack_latency_ms",
+      "signal_to_fill_latency_ms"
+    ],
+    "gate_rule": "NO_CAPITAL_IF_PROSPECTIVE_ALL_IN_ROUND_TRIP_COST_IS_NOT_ECONOMICALLY_DEFENSIBLE_RELATIVE_TO_THE_FROZEN_EDGE",
+    "post_outcome_cost_rescue": "FORBIDDEN"
+  },
+  "order_semantics": {
+    "entry_order_type": "NOT_YET_FROZEN",
+    "exit_order_type": "NOT_YET_FROZEN",
+    "reason": "Market/taker protects timing but consumes most of the historical cost budget; maker reduces fees but introduces fill-selection risk. A prospective friction shadow must adjudicate this before order semantics are frozen.",
+    "fallback_from_maker_to_market": "FORBIDDEN_UNLESS_FROZEN_PROSPECTIVELY",
+    "manual_late_entry": "FORBIDDEN"
+  },
+  "risk_contract": {
+    "status": "BLOCKED_MISSING_STRATEGY_SPECIFIC_EXPOSURE_LOSS_MODEL",
+    "scientific_strategy_has_deterministic_stop": false,
+    "invent_stop_for_deployment": "FORBIDDEN",
+    "default_account_risk_per_trade_fraction": 0.001,
+    "max_simultaneous_planned_risk_fraction": 0.003,
+    "daily_stop_fraction": 0.003,
+    "weekly_stop_fraction": 0.0075,
+    "note": "The 0.10% validation budget cannot be converted into position notional through a fictitious stop. A separate prospective exposure-loss model is required."
+  },
+  "required_gates_before_micro_live": [
+    "MEXC_FRICTION_SHADOW_PASS",
+    "ENTRY_AND_EXIT_ORDER_SEMANTICS_FROZEN",
+    "STRATEGY_SPECIFIC_EXPOSURE_LOSS_MODEL_FROZEN",
+    "LOCAL_NODE_PREFLIGHT_PASS",
+    "LOCAL_CREDENTIAL_STORE_AND_TRANSPORT_SECURITY_PASS",
+    "DUPLICATE_ORDER_IDEMPOTENCY_PASS",
+    "KILL_SWITCH_PASS",
+    "PRE_TRADE_RECEIPT_PERSISTENCE_PASS"
+  ],
+  "governance": {
+    "fail_closed": true,
+    "no_main_merge": true,
+    "no_authenticated_exchange_api_in_this_contract_phase": true,
+    "no_orders": true,
+    "no_wallets": true,
+    "no_credentials_in_git_or_dashboard": true
+  }
+}
