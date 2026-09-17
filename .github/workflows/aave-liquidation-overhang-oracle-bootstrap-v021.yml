@@ -1,0 +1,38 @@
+name: AAVE Liquidation Overhang 001 — Oracle Bootstrap V0.2.1
+
+on:
+  push:
+    branches:
+      - aave-liquidation-overhang-v0.1
+    paths:
+      - research/aave_liquidation_overhang/oracle_bootstrap_provenance_v021.py
+      - research/aave_liquidation_overhang/AAVE_LIQUIDATION_OVERHANG_001_PROVIDER_IDENTITY_ERRATUM_V0_1.md
+      - .github/workflows/aave-liquidation-overhang-oracle-bootstrap-v021.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  oracle-bootstrap-provenance-v021:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout frozen research branch
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install source dependencies
+        run: pip install --disable-pip-version-check requests 'eth-hash[pycryptodome]'
+      - name: Execute corrected oracle bootstrap provenance V0.2.1
+        run: python research/aave_liquidation_overhang/oracle_bootstrap_provenance_v021.py
+      - name: Upload corrected oracle bootstrap receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: AAVE_LIQUIDATION_OVERHANG_001_ORACLE_BOOTSTRAP_V0_2_1
+          path: oracle_bootstrap_v021_output/AAVE_LIQUIDATION_OVERHANG_001_ORACLE_BOOTSTRAP_RECEIPT_V0_2_1.json
+          if-no-files-found: warn
+          retention-days: 30
