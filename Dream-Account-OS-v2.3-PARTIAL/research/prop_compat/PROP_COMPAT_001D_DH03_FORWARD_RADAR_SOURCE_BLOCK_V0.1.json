@@ -1,0 +1,17 @@
+{
+  "document_id":"PROP_COMPAT_001D_DH03_FORWARD_RADAR_SOURCE_BLOCK_V0.1",
+  "campaign_id":"PROP-COMPAT-001D",
+  "recorded_on":"2026-09-17",
+  "status":"SOURCE_OR_STATE_BLOCKED",
+  "setup_id":"DH-03-HO1",
+  "freeze":"PROP_COMPAT_001D_DH03_FORWARD_RADAR_FREEZE_V0.1",
+  "freeze_commit":"fb32edc03cc6d52112fb79fa5206b1352c5ac236",
+  "attempts":[
+    {"run_id":35229652043,"result":"TECHNICAL_DEPENDENCY_FAILURE_BEFORE_MARKET_DATA_ACCESS","cause":"prop-compat branch lacked imported HTF module; corrected by self-contained exact aggregation/ATR formulas only"},
+    {"run_id":35229821409,"result":"SOURCE_OR_STATE_BLOCKED","cause":"Binance USD-M public fapi endpoint returned HTTP 451 for BTCUSDT, ETHUSDT, SOLUSDT, BNBUSDT, XRPUSDT and DOGEUSDT from GitHub-hosted runner"}
+  ],
+  "evidence":{"artifact_id":10500327533,"artifact_name":"PROP_COMPAT_001D_DH03_FORWARD_RADAR_SNAPSHOT_V01","artifact_digest":"sha256:e99c40976e3a3a2be657a9702b03b6d7cb9cc034978506218712cec0867c3f59","snapshot_fingerprint":"fca58bd6a7708bf64ddc5713c421f4158339f7a9e9ea60552f38187710d78a27"},
+  "scientific_interpretation":"This is an infrastructure/source-access block only. No eligible post-freeze signal was evaluated, no historical 2026 performance was backfilled, and no inference about DH-03 edge quality follows from the HTTP 451 response.",
+  "next_source_policy":"Do not substitute a different venue or spot series silently. A future read-only radar may use an explicitly frozen Binance USD-M-accessible public source/runtime while preserving the original activation anchor and forward-only rule.",
+  "governance":{"research_only":true,"historical_2026_performance_backfill":false,"post_outcome_tuning":false,"orders":false,"live_trading":false,"webhooks":false,"merge_to_main":false}
+}
