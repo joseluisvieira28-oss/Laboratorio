@@ -1,0 +1,75 @@
+{
+  "lab_id": "BTC-DVOL-FUTURES-TERMSTRUCTURE-001",
+  "discovery_id": "DVOL-TS-CALENDAR-SPREAD-DISCOVERY-001",
+  "status": "PRE_OUTCOME_FROZEN",
+  "date_frozen": "2026-09-17",
+  "parent_source_gate": "DVOL-TS-CALENDAR-SPREAD-SOURCE-001",
+  "parent_source_run": 35280009674,
+  "parent_source_classification": "CALENDAR_SPREAD_SOURCE_DATA_PASS",
+  "economic_mechanism": "The near BTCDVOL future is mechanically pulled toward the contemporaneous DVOL index as its expiry approaches. An equal-and-opposite position in the next monthly BTCDVOL future can hedge a substantial common DVOL-index component, allowing the near contract's basis-convergence component to be tested more directly.",
+  "source": {
+    "provider": "Deribit official historical API",
+    "candidate_start": "2023-03-29",
+    "candidate_end": "2024-12-25",
+    "lower_bound": "2023-03-27T00:00:00Z",
+    "protected_start": "2025-01-01T00:00:00Z"
+  },
+  "pair_rule": {
+    "population": "Exact adjacent-expiry BTCDVOL pairs with listed-life overlap from the source gate population.",
+    "daily_anchor": "For each leg, first ordinary public trade at or after 08:00 UTC on each common active UTC day within the exact overlap interval.",
+    "common_day": "UTC date on which both near and far legs have an eligible daily anchor.",
+    "adjacent_observation": "Within a pair, compare each common-day anchor to the next common-day anchor.",
+    "no_pair_selection": true
+  },
+  "signal": {
+    "near_basis": "near_trade_price - near_trade_index_price at the current common-day anchor",
+    "direction": "near_basis > 0 => SHORT near / LONG far; near_basis < 0 => LONG near / SHORT far; near_basis == 0 => no directional observation.",
+    "quantity_ratio": "1:1 equal BTCDVOL units near:far",
+    "basis_threshold": 0,
+    "no_threshold_tuning": true
+  },
+  "primary_score": {
+    "formula": "near_position_sign * ((near_price_next-near_price_now) - (far_price_next-far_price_now)) / elapsed_calendar_days",
+    "interpretation": "Positive means the equal-unit calendar spread moved in the direction predicted by the near basis sign after hedging common DVOL movement.",
+    "primary_estimand": "Equal-weight mean of per-adjacent-pair mean scores."
+  },
+  "sample_gates": {
+    "minimum_pair_clusters_with_scores": 10,
+    "minimum_total_adjacent_common_day_scores": 50,
+    "minimum_distinct_near_expiration_quarters": 6
+  },
+  "bootstrap": {
+    "unit": "adjacent contract pair",
+    "replications": 10000,
+    "seed": 19092026,
+    "ci": 0.95,
+    "statistic": "equal-weight mean of pair-cluster means"
+  },
+  "statistical_gates": {
+    "mean_pair_score_gt": 0,
+    "median_pair_score_gt": 0,
+    "positive_pair_share_gte": 0.6,
+    "nonnegative_near_expiration_quarters_gte": 5,
+    "cluster_bootstrap_lower_95_gt": 0
+  },
+  "classifications": {
+    "pass": "CALENDAR_SPREAD_DISCOVERY_PASS",
+    "no_signal": "CALENDAR_SPREAD_DISCOVERY_NO_ROBUST_EDGE",
+    "insufficient": "CALENDAR_SPREAD_DISCOVERY_SAMPLE_INSUFFICIENT",
+    "technical_failure": "CALENDAR_SPREAD_DISCOVERY_TECHNICAL_FAILURE",
+    "provenance_failure": "CALENDAR_SPREAD_DISCOVERY_PROVENANCE_FAILURE"
+  },
+  "firewalls": {
+    "transaction_costs_opened": false,
+    "strategy_pnl_opened": false,
+    "strategy_returns_opened": false,
+    "access_2025": false,
+    "access_2026": false,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "wallet_access": false,
+    "merge_to_main": false
+  },
+  "no_rescue_rule": "After the canonical outcome is opened, do not alter pair construction, equal-unit hedge ratio, 08:00 daily anchor, basis threshold, direction, score formula, sample gates, statistical gates, years or source population under this Discovery ID.",
+  "post_pass_rule": "PASS authorizes only a separately frozen calendar-spread execution/cost MVE with legitimate post-signal fills on both legs. It does not authorize live trading or promotion by itself."
+}
