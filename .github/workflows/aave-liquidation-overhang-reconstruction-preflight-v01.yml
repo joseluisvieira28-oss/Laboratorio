@@ -6,6 +6,10 @@ on:
       - aave-liquidation-overhang-v0.1
     paths:
       - research/aave_liquidation_overhang/reconstruction_preflight.py
+      - research/aave_liquidation_overhang/reconstruction_preflight_shard.py
+      - research/aave_liquidation_overhang/aggregate_reconstruction_preflight_shards.py
+      - research/aave_liquidation_overhang/reconstruction_preflight_followup.py
+      - research/aave_liquidation_overhang/aggregate_reconstruction_preflight.py
       - .github/workflows/aave-liquidation-overhang-reconstruction-preflight-v01.yml
   workflow_dispatch:
 
@@ -13,9 +17,37 @@ permissions:
   contents: read
 
 jobs:
-  reconstruction-preflight:
+  reconstruction-r0-shards:
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shard_id: "01"
+            from_block: 16490000
+            to_block: 17119486
+          - shard_id: "02"
+            from_block: 17119487
+            to_block: 17748973
+          - shard_id: "03"
+            from_block: 17748974
+            to_block: 18378460
+          - shard_id: "04"
+            from_block: 18378461
+            to_block: 19007946
+          - shard_id: "05"
+            from_block: 19007947
+            to_block: 19637432
+          - shard_id: "06"
+            from_block: 19637433
+            to_block: 20266918
+          - shard_id: "07"
+            from_block: 20266919
+            to_block: 20896404
+          - shard_id: "08"
+            from_block: 20896405
+            to_block: 21525890
     steps:
       - name: Checkout frozen research branch
         uses: actions/checkout@v4
@@ -25,9 +57,138 @@ jobs:
           python-version: '3.12'
       - name: Install dependencies
         run: pip install --disable-pip-version-check requests 'eth-hash[pycryptodome]'
-      - name: Execute source reconstruction R0 preflight
-        run: python research/aave_liquidation_overhang/reconstruction_preflight.py
-      - name: Upload reconstruction preflight receipt
+      - name: Execute fixed reconstruction R0 shard
+        env:
+          SHARD_ID: ${{ matrix.shard_id }}
+          SHARD_FROM_BLOCK: ${{ matrix.from_block }}
+          SHARD_TO_BLOCK: ${{ matrix.to_block }}
+        run: python research/aave_liquidation_overhang/reconstruction_preflight_shard.py
+      - name: Upload R0 shard receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: AAVE_RECON_R0_SHARD_${{ matrix.shard_id }}
+          path: reconstruction_shards/shard_${{ matrix.shard_id }}.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  reconstruction-r0-bootstrap:
+    if: always()
+    needs: reconstruction-r0-shards
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout frozen research branch
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download all R0 shard receipts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: AAVE_RECON_R0_SHARD_*
+          path: downloaded_reconstruction_shards
+          merge-multiple: false
+      - name: Aggregate exact frozen R0 envelope
+        run: python research/aave_liquidation_overhang/aggregate_reconstruction_preflight_shards.py
+      - name: Upload R0 bootstrap receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: AAVE_RECON_R0_BOOTSTRAP
+          path: reconstruction_bootstrap_output/AAVE_LIQUIDATION_OVERHANG_001_RECONSTRUCTION_R0_BOOTSTRAP_V0_1.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  reconstruction-r0-token:
+    if: always()
+    needs: reconstruction-r0-bootstrap
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout frozen research branch
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: pip install --disable-pip-version-check requests 'eth-hash[pycryptodome]'
+      - name: Download R0 bootstrap
+        uses: actions/download-artifact@v4
+        with:
+          name: AAVE_RECON_R0_BOOTSTRAP
+          path: downloaded_reconstruction_bootstrap
+      - name: Probe token replay primitives
+        env:
+          RECON_MODE: token
+        run: python research/aave_liquidation_overhang/reconstruction_preflight_followup.py
+      - name: Upload token receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: AAVE_RECON_R0_TOKEN
+          path: reconstruction_followup_output/AAVE_LIQUIDATION_OVERHANG_001_RECONSTRUCTION_R0_TOKEN_V0_1.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  reconstruction-r0-oracle:
+    if: always()
+    needs: reconstruction-r0-bootstrap
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout frozen research branch
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: pip install --disable-pip-version-check requests 'eth-hash[pycryptodome]'
+      - name: Download R0 bootstrap
+        uses: actions/download-artifact@v4
+        with:
+          name: AAVE_RECON_R0_BOOTSTRAP
+          path: downloaded_reconstruction_bootstrap
+      - name: Probe point-in-time oracle route
+        env:
+          RECON_MODE: oracle
+        run: python research/aave_liquidation_overhang/reconstruction_preflight_followup.py
+      - name: Upload oracle receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: AAVE_RECON_R0_ORACLE
+          path: reconstruction_followup_output/AAVE_LIQUIDATION_OVERHANG_001_RECONSTRUCTION_R0_ORACLE_V0_1.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  reconstruction-r0-final:
+    if: always()
+    needs:
+      - reconstruction-r0-bootstrap
+      - reconstruction-r0-token
+      - reconstruction-r0-oracle
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout frozen research branch
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download R0 component receipts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: AAVE_RECON_R0_*
+          path: downloaded_reconstruction_parts
+          merge-multiple: false
+      - name: Aggregate reconstruction R0 preflight
+        run: python research/aave_liquidation_overhang/aggregate_reconstruction_preflight.py
+      - name: Upload canonical reconstruction R0 receipt
         if: always()
         uses: actions/upload-artifact@v4
         with:
