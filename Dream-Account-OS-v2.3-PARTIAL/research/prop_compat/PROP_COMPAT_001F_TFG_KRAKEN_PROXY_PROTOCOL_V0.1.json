@@ -1,0 +1,100 @@
+{
+  "document_id": "PROP_COMPAT_001F_TFG_KRAKEN_PROXY_PROTOCOL_V0.1",
+  "campaign_id": "PROP-COMPAT-001F",
+  "parent_campaign": "PROP-COMPAT-001",
+  "frozen_on": "2026-09-17",
+  "status": "FROZEN_BEFORE_TFG_KRAKEN_PROXY_OUTCOMES",
+  "setup_id": "TFG-DONCHIAN-1D-001",
+  "program": "KRAKEN_PROP",
+  "purpose": "Aggressive non-decisional TFG 1D x Kraken Prop kill-screen using the semantically reproduced 40-trade OOS ledger and a hash-validated MEXC Spot 15m mark-to-market proxy. This cannot establish exact Kraken Prop execution compatibility.",
+  "authority_chain": [
+    "PROP_COMPAT_001_GOVERNANCE_AMENDMENT_V0.8_AGGRESSIVE_RESEARCH",
+    "PROP_COMPAT_001E_TFG_RECOVERY_CLOSEOUT_V0.1",
+    "PROP_COMPAT_001B_KRAKEN_PROP_DH03_PROXY_PROTOCOL_V0.1",
+    "PROP_COMPAT_001B_KRAKEN_PROP_IMPLEMENTATION_CLARIFICATION_02"
+  ],
+  "source": {
+    "ledger_artifact_run_id": 35275795833,
+    "ledger_artifact_id": 10520806876,
+    "ledger_artifact_digest": "sha256:ac9916b9606005f202dfe1b3017870a3bc8c08b26c46a905e5d95f7a91fe3667",
+    "trade_core_fingerprint": "ab290487c693ad98cb20d1b87e2db2fcf11c97a54da303d7ff301e9d99dca9f8",
+    "historical_byte_identity_recovered": false,
+    "price_path": "Current official MEXC Spot bulk Min15 CSV members recorded and SHA256-bound by the successful PROP-COMPAT-001E recovery artifact.",
+    "price_path_role": "PROXY_MARK_TO_MARKET_ONLY_NOT_KRAKEN_EXECUTABLE_PRICE",
+    "coverage_rule": "Load only 2025-01 through 2025-10 because the first frozen entry is 2025-01-12 and the final frozen exit is 2025-10-10. No 2026 access."
+  },
+  "proxy_grid_pct_equity_per_1R": [0.10,0.15,0.20,0.25,0.30],
+  "plan_variants": {
+    "STARTER": {"profit_target_pct":10.0,"mdl_pct_balance_at_reset":3.0,"mdd_pct_initial_balance":6.0},
+    "INTERMEDIATE": {"profit_target_pct":12.0,"mdl_pct_balance_at_reset":3.0,"mdd_pct_initial_balance":5.0},
+    "ADVANCED": {"profit_target_pct":9.0,"mdl_pct_balance_at_reset":3.0,"mdd_pct_initial_balance":3.0}
+  },
+  "execution_cost_envelope": {
+    "BASE": {"round_trip_pct_notional":0.20,"entry_pct_notional":0.10,"exit_pct_notional":0.10},
+    "STRESS": {"round_trip_pct_notional":0.30,"entry_pct_notional":0.15,"exit_pct_notional":0.15},
+    "reason": "Preserve the TFG scientific BASE/STRESS execution-cost envelopes rather than replacing them with the more favorable current Kraken commission rate. Kraken carry is added on top."
+  },
+  "sizing_envelope": {
+    "TFG_FROZEN_R_DENOM": "position_notional = risk_amount / (initial_risk_fraction + execution_round_trip_fraction). This matches the frozen TFG net-R denominator.",
+    "STOP_DISTANCE_ONLY_CONSERVATIVE": "position_notional = risk_amount / initial_risk_fraction. This deliberately produces larger positions and is retained only as an adverse sizing sensitivity.",
+    "selection_policy": "Report both. Never choose one after outcomes. Robust-across-sizing requires both translations not to produce a contradictory failure."
+  },
+  "kraken_carry_envelope": {
+    "LEGAL_DAILY": "Charge 0.033% of current open notional at 00:00 UTC while positions are open.",
+    "SUPPORT_4H": "Charge 0.0055% of current open notional every four hours. Sweep all 240 possible minute phases.",
+    "fifteen_minute_observation_rule": "For a support carry event whose true minute is not a 15m observation, apply the debit at the first 15m observation at or after the true event. Retain the original phase label. This creates 16 observable timing buckets while preserving all 240 phase paths.",
+    "event_order": "Carry debit first, then 00:30 MDL reset if applicable, then frozen exits, then frozen entries, then equity tests. This reuses the already-frozen DH03 Kraken event ordering."
+  },
+  "tfq_execution_reconstruction": {
+    "entry": "Frozen next UTC daily open, represented by exact MEXC 15m 00:00 open.",
+    "stop_or_target_day": "The frozen daily outcome remains authoritative. Within its frozen exit UTC day, use the first 15m bar consistent with that authoritative exit reason only to timestamp the proxy exposure termination; do not use 15m ordering to reverse a frozen daily STOP_WINS outcome.",
+    "time_exit": "Frozen next daily open timestamp and price.",
+    "same_daily_bar_stop_target": "STOP remains authoritative even if 15m ordering would look more favorable."
+  },
+  "risk_engine": {
+    "initial_balance_units":100.0,
+    "risk_basis":"CURRENT_ACCOUNT_EQUITY_AT_ENTRY_BEFORE_NEW_ENTRY_COST",
+    "mdl_reset_utc":"00:30",
+    "mdl_floor":"balance_at_00_30_utc - 3% of that balance",
+    "intraday_breach":"total_equity <= mdl_floor",
+    "mdd_floor":{"STARTER":94.0,"INTERMEDIATE":95.0,"ADVANCED":97.0},
+    "profit_target":"real-time total equity reaches plan target after costs/carry"
+  },
+  "intrabar_ambiguity_guards": {
+    "confirmed_state":"Synchronized 15m closes.",
+    "target_upper_bound":"Aggregate long-position 15m highs are an upper bound only; if target could have occurred before a later confirmed breach, classify AMBIGUITY_MATERIAL.",
+    "breach_lower_bound":"Aggregate long-position 15m lows are a lower bound only; if a possible floor crossing precedes a later confirmed target, classify AMBIGUITY_MATERIAL.",
+    "purpose":"Never manufacture certainty from unsynchronized cross-symbol intrabar extremes."
+  },
+  "scenario_count": {
+    "base_cells_before_carry":60,
+    "formula":"3 plans x 5 risk values x 2 execution envelopes x 2 sizing translations",
+    "carry_paths_per_base_cell":241,
+    "total_scenario_paths":14460
+  },
+  "allowed_labels": [
+    "ROBUST_PROXY_SURVIVOR_EXACT_REPLAY_STILL_BLOCKED",
+    "OBVIOUS_PROXY_BREACH",
+    "PROXY_INSUFFICIENT_HISTORY_NO_DECISION",
+    "AMBIGUITY_MATERIAL",
+    "CARRY_OR_SIZING_SENSITIVITY_MATERIAL"
+  ],
+  "governance": {
+    "proxy_outcomes_opened_before_freeze":false,
+    "official_phase3_risk_grid_run":false,
+    "no_best_plan_selection":true,
+    "no_best_risk_selection":true,
+    "no_best_sizing_translation_selection":true,
+    "setup_rules_changed":false,
+    "symbol_drops":false,
+    "post_outcome_tuning":false,
+    "access_2026":false,
+    "challenge_purchase":false,
+    "live_trading":false,
+    "orders":false,
+    "wallet_use":false,
+    "exchange_mutation":false,
+    "merge_to_main":false
+  },
+  "post_run_policy": "If a material subset robustly survives, continue immediately to a separately frozen TFG Kraken robustness/sequence gauntlet under aggressive-research governance. Proxy survival is not PROP-COMPAT-PASS."
+}
