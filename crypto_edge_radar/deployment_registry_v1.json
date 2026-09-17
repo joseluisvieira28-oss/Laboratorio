@@ -1,13 +1,13 @@
 {
-  "registry_version": "1.3",
-  "as_of_utc": "2026-09-17T15:42:00Z",
+  "registry_version": "1.4",
+  "as_of_utc": "2026-09-17T19:06:00Z",
   "governance": "AGGRESSIVE_DEPLOYMENT_POLICY_V1",
   "candidates": [
     {
       "strategy_id": "ETF-CME-INSTFLOW-001",
       "scientific_tier": 2,
       "scientific_status": "PROMOTED_CANDIDATE_FRAGILE",
-      "deployment_state": "MICRO_LIVE_CANDIDATE_PENDING_FRICTION_AND_RISK_CONTRACT",
+      "deployment_state": "MICRO_LIVE_CANDIDATE_PENDING_FRICTION_RISK_AND_ORDER_SEMANTICS",
       "shadow_allowed": true,
       "micro_live_allowed_now": false,
       "source_branch": "etf-cme-institutional-flow-v0.1",
@@ -24,25 +24,35 @@
       "radar_mexc_public_market_observation_validated": true,
       "exact_timing_engine_v1_implemented": true,
       "local_windows_operator_node_built": true,
+      "local_node_preflight_implemented": true,
+      "public_friction_monitor_implemented": true,
       "execution_contract_id": "ETF-CME-INSTFLOW-001-EXEC-V1",
       "candidate_execution_venue": "MEXC USDT perpetual futures",
       "candidate_execution_symbol": "BTC_USDT",
       "candidate_execution_symbol_api_eligibility_validated": true,
+      "candidate_risk_model": "ISOLATED_1X_AUTO_MARGIN_OFF_VALIDATION_MARGIN_CAP",
+      "candidate_risk_sizer_implemented": true,
       "current_mexc_api_maker_fee_one_way_fraction": 0.0006,
       "current_mexc_api_taker_fee_one_way_fraction": 0.0008,
       "current_mexc_api_taker_round_trip_fee_bps": 16.0,
+      "mexc_funding_source_2025_full_coverage": false,
+      "mexc_funding_source_oldest_available_utc": "2025-03-27T16:00:00Z",
+      "mexc_funding_source_total_count_at_probe": 1618,
+      "partial_funding_diagnostic_promotional": false,
       "fragility_flags": [
         "Tier-1 readiness passed 9/10 only",
         "leave-one-trade-out minimum base-net mean failed",
         "break-even round-trip cost approximately 21.20 bps",
         "additive max drawdown approximately -35.43%",
         "one influential trade can make leave-one-out mean negative",
-        "current MEXC taker-only round-trip fees consume approximately 16 of the estimated 21.20 bps historical break-even cost budget before slippage/funding"
+        "current MEXC taker-only round-trip fees consume approximately 16 of the estimated 21.20 bps historical break-even cost budget before slippage/funding",
+        "MEXC public funding API cannot cover the complete frozen 2025 OOS event set"
       ],
       "blocking_gates": [
         "prospective MEXC all-in friction shadow not yet passed",
+        "complete historical MEXC funding mapping unavailable from current public API; partial diagnostic is non-promotional",
         "entry/exit order semantics not yet frozen",
-        "strategy-specific maximum-loss/exposure sizing model not frozen"
+        "candidate isolated-margin exposure model not yet fully validated/authenticated"
       ]
     },
     {
@@ -81,53 +91,11 @@
       "micro_live_allowed_now": false,
       "reason": "Protected 2026 shadow block produced materially negative base and stress economics; production path closed for tested implementation."
     },
-    {
-      "strategy_id": "MVE-ADX4H-01",
-      "scientific_tier": 4,
-      "scientific_status": "REJECTED_STONE_AFTER_2025_CONFIRMATION",
-      "deployment_state": "BLOCKED",
-      "shadow_allowed": false,
-      "micro_live_allowed_now": false
-    },
-    {
-      "strategy_id": "OPTIONS-SPOTPERP-002-UP_LOW",
-      "scientific_tier": 4,
-      "scientific_status": "REJECTED_OOS_FAILED",
-      "deployment_state": "BLOCKED",
-      "shadow_allowed": false,
-      "micro_live_allowed_now": false
-    },
-    {
-      "strategy_id": "CPI-SURPRISE-V0.3A",
-      "scientific_tier": 4,
-      "scientific_status": "REJECTED_AFTER_INDEPENDENT_OOS",
-      "deployment_state": "BLOCKED",
-      "shadow_allowed": false,
-      "micro_live_allowed_now": false
-    },
-    {
-      "strategy_id": "F08-RESIDUAL-RELATIVE-STRENGTH",
-      "scientific_tier": 4,
-      "scientific_status": "REJECTED_AFTER_2025_OOS",
-      "deployment_state": "BLOCKED",
-      "shadow_allowed": false,
-      "micro_live_allowed_now": false
-    },
-    {
-      "strategy_id": "ICHIMOKU-4H-MVE",
-      "scientific_tier": 4,
-      "scientific_status": "REJECTED_AFTER_2024_OOS",
-      "deployment_state": "BLOCKED",
-      "shadow_allowed": false,
-      "micro_live_allowed_now": false
-    },
-    {
-      "strategy_id": "SPOT-PERP-CARRY-V0.1",
-      "scientific_tier": 4,
-      "scientific_status": "REJECTED_OOS_NET_NEGATIVE",
-      "deployment_state": "BLOCKED",
-      "shadow_allowed": false,
-      "micro_live_allowed_now": false
-    }
+    {"strategy_id": "MVE-ADX4H-01", "scientific_tier": 4, "scientific_status": "REJECTED_STONE_AFTER_2025_CONFIRMATION", "deployment_state": "BLOCKED", "shadow_allowed": false, "micro_live_allowed_now": false},
+    {"strategy_id": "OPTIONS-SPOTPERP-002-UP_LOW", "scientific_tier": 4, "scientific_status": "REJECTED_OOS_FAILED", "deployment_state": "BLOCKED", "shadow_allowed": false, "micro_live_allowed_now": false},
+    {"strategy_id": "CPI-SURPRISE-V0.3A", "scientific_tier": 4, "scientific_status": "REJECTED_AFTER_INDEPENDENT_OOS", "deployment_state": "BLOCKED", "shadow_allowed": false, "micro_live_allowed_now": false},
+    {"strategy_id": "F08-RESIDUAL-RELATIVE-STRENGTH", "scientific_tier": 4, "scientific_status": "REJECTED_AFTER_2025_OOS", "deployment_state": "BLOCKED", "shadow_allowed": false, "micro_live_allowed_now": false},
+    {"strategy_id": "ICHIMOKU-4H-MVE", "scientific_tier": 4, "scientific_status": "REJECTED_AFTER_2024_OOS", "deployment_state": "BLOCKED", "shadow_allowed": false, "micro_live_allowed_now": false},
+    {"strategy_id": "SPOT-PERP-CARRY-V0.1", "scientific_tier": 4, "scientific_status": "REJECTED_OOS_NET_NEGATIVE", "deployment_state": "BLOCKED", "shadow_allowed": false, "micro_live_allowed_now": false}
   ]
 }
