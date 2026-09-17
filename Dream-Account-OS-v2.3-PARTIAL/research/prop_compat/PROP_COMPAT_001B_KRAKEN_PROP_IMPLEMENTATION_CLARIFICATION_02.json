@@ -1,0 +1,36 @@
+{
+  "document_id": "PROP_COMPAT_001B_KRAKEN_PROP_IMPLEMENTATION_CLARIFICATION_02",
+  "campaign_id": "PROP-COMPAT-001B",
+  "frozen_on": "2026-09-17",
+  "status": "FROZEN_BEFORE_1M_PROXY_OUTCOMES",
+  "authority_chain": [
+    "PROP_COMPAT_001B_KRAKEN_PROP_AMBIGUITY_ENVELOPE_PROTOCOL_V0.1",
+    "PROP_COMPAT_001B_KRAKEN_PROP_IMPLEMENTATION_CLARIFICATION_01",
+    "Kraken Support: Passing Your Evaluation",
+    "Kraken Support: Maximum Daily Loss (MDL) Explained"
+  ],
+  "authoritative_corrections": {
+    "profit_target": "Kraken support states the evaluation passes when account equity reaches the plan target in real time, including unrealized PnL and after fees.",
+    "mdl": "Kraken support states MDL is 3% below account balance at 00:30 UTC; total equity is monitored intraday and realized/unrealized PnL, commissions and margin funding count."
+  },
+  "implementation_clarification": {
+    "synchronized_1m_close_target": "A synchronized 1m-close equity at or above target is a confirmed proxy target event.",
+    "intraminute_target_upper_bound": "For each minute, the sum of long-position values at each symbol's 1m high is only an upper bound because cross-symbol highs may not be synchronous. If this upper bound could have reached target while synchronized close did not, record TARGET_UPPER_BOUND_POSSIBLE but do not call a pass.",
+    "persistence": "TARGET_UPPER_BOUND_POSSIBLE persists for that scenario until a confirmed synchronized-close target or a confirmed synchronized-close breach/period end.",
+    "false_breach_guard": "If a later synchronized-close MDL/MDD breach occurs after any earlier TARGET_UPPER_BOUND_POSSIBLE event, classification is AMBIGUITY_MATERIAL rather than OBVIOUS_PROXY_BREACH, because a real-time target may have been reached earlier inside a minute.",
+    "false_no_decision_guard": "If the replay ends without confirmed close target/breach but a TARGET_UPPER_BOUND_POSSIBLE occurred, classification is AMBIGUITY_MATERIAL rather than PROXY_INSUFFICIENT_HISTORY_NO_DECISION.",
+    "low_bound_rule": "The existing lower-bound rule is unchanged: aggregate 1m lows are a conservative mathematical lower bound only. Prior lower-bound floor crossing makes a later confirmed close target AMBIGUITY_MATERIAL; it cannot alone prove breach.",
+    "no_parameter_change": "No plan, risk value, execution cost, carry envelope, symbol, date, setup rule, or threshold is changed by this clarification."
+  },
+  "scientific_reason": "This is an implementation-correctness clarification required by the already-frozen real-time-equity target rule. It prevents false certainty in either direction and is frozen before opening the 1m ambiguity-envelope outcomes.",
+  "governance": {
+    "15m_diagnostic_already_opened": true,
+    "1m_proxy_outcomes_opened_before_clarification": false,
+    "15m_results_recomputed": false,
+    "post_outcome_parameter_change": false,
+    "official_phase3_risk_grid_run": false,
+    "challenge_purchase": false,
+    "live_trading": false,
+    "merge_to_main": false
+  }
+}
