@@ -79,3 +79,55 @@ jobs:
           path: crypto_edge_radar/v09_artifacts/
           if-no-files-found: error
           retention-days: 30
+
+  bnb-launchpool-market-source-gate:
+    needs: deterministic-safety
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: crypto_edge_radar
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install runtime dependencies
+        run: python -m pip install -e .
+      - name: Prepare receipts
+        run: mkdir -p v09_artifacts
+      - name: Real public Binance Spot BNBBTC 15m source probe
+        run: |
+          python - <<'PY'
+          from datetime import datetime, timezone
+          import json
+          from pathlib import Path
+          from radar.strategies.bnb_launchpool_demand import BinanceSpotBNBBTCKlineFeed, source_probe
+
+          now_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
+          receipt = source_probe(BinanceSpotBNBBTCKlineFeed(timeout=15), now_ms=now_ms)
+          Path('v09_artifacts/bnb_launchpool_bnbbtc_source_probe.json').write_text(
+              json.dumps(receipt, indent=2, sort_keys=True) + '\n', encoding='utf-8'
+          )
+          assert receipt['status'] == 'PASS_SOURCE_ONLY', receipt
+          assert receipt['strategy_id'] == 'BNB-LAUNCHPOOL-DEMAND-001', receipt
+          assert receipt['provider'] == 'BINANCE_SPOT_DATA_API_PUBLIC', receipt
+          assert receipt['market'] == 'SPOT', receipt
+          assert receipt['symbol'] == 'BNBBTC', receipt
+          assert receipt['interval'] == '15m', receipt
+          assert receipt['complete_15m_rows'] >= 190, receipt
+          assert receipt['authenticated_exchange_api_used'] is False, receipt
+          assert receipt['order_created'] is False, receipt
+          assert receipt['exchange_mutation_performed'] is False, receipt
+          probe = receipt['strict_entry_rule_probe']
+          assert probe['entry_after_boundary'] > probe['signal_on_boundary'], receipt
+          assert probe['entry_after_inside_bar'] > probe['signal_inside_bar'], receipt
+          print(json.dumps(receipt, sort_keys=True))
+          PY
+      - name: Upload BNB market-source receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: crypto-edge-radar-v09-bnb-launchpool-bnbbtc-source
+          path: crypto_edge_radar/v09_artifacts/
+          if-no-files-found: error
+          retention-days: 30
