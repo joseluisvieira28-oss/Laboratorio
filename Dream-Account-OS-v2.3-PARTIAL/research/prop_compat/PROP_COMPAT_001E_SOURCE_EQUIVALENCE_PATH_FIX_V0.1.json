@@ -1,0 +1,53 @@
+{
+  "document_id": "PROP_COMPAT_001E_SOURCE_EQUIVALENCE_PATH_FIX_V0.1",
+  "campaign_id": "PROP-COMPAT-001E",
+  "effective_on": "2026-09-17",
+  "status": "FROZEN_BEFORE_RERUN",
+  "authority": "PROP_COMPAT_001E_TFG_EXACT_RECOVERY_FREEZE_V0.1",
+  "scope": "DEPENDENCY_PATH_FIX_ONLY",
+  "failed_run": {
+    "workflow_run_id": 35234700947,
+    "head_sha": "45509e95d043dbbbdbba11fdfb82e34840438783",
+    "parent_artifact_download": "PASS",
+    "parent_artifact_id": 10419067320,
+    "workflow_precheck_six_december_files": "PASS",
+    "source_gate_result": "SOURCE_EQUIVALENCE_FAIL_CLOSED",
+    "root_cause": "The workflow downloaded the parent corpus under repository-root _parent/data, then invoked the source-equivalence runner from Dream-Account-OS-v2.3-PARTIAL with ../../_parent/data. That path resolves one directory above the repository root, so the runner saw zero matching parent CSV files for all six symbols.",
+    "observed_errors": [
+      "PARENT_FILE_RESOLUTION:BTCUSDT:hits=0",
+      "PARENT_FILE_RESOLUTION:ETHUSDT:hits=0",
+      "PARENT_FILE_RESOLUTION:SOLUSDT:hits=0",
+      "PARENT_FILE_RESOLUTION:BNBUSDT:hits=0",
+      "PARENT_FILE_RESOLUTION:XRPUSDT:hits=0",
+      "PARENT_FILE_RESOLUTION:DOGEUSDT:hits=0"
+    ]
+  },
+  "authorized_fix": {
+    "workflow": ".github/workflows/prop-compat-001e-tfg-mexc15-source-equivalence-v01.yml",
+    "old_argument": "../../_parent/data",
+    "new_argument": "../_parent/data",
+    "reason": "From the workflow working directory Dream-Account-OS-v2.3-PARTIAL, ../_parent/data resolves to the repository-root corpus directory created by the prior download step.",
+    "runner_code_changed": false,
+    "source_artifact_changed": false,
+    "source_candidate_changed": false,
+    "comparison_window_changed": false,
+    "comparison_fields_changed": false,
+    "acceptance_criteria_changed": false,
+    "setup_rule_changed": false,
+    "historical_target_changed": false
+  },
+  "governance": {
+    "research_only": true,
+    "fail_closed": true,
+    "post_outcome_tuning": false,
+    "access_2025_outcomes": false,
+    "access_2026_outcomes": false,
+    "live_trading": false,
+    "orders": false,
+    "exchange_mutation": false,
+    "wallet_use": false,
+    "webhooks": false,
+    "challenge_purchase": false,
+    "merge_to_main": false
+  }
+}
