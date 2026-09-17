@@ -1,0 +1,72 @@
+name: PROP COMPAT 001E TFG MEXC Bulk Equivalence V0.1
+
+on:
+  push:
+    branches: [prop-compat-001-v0.1]
+    paths:
+      - '.github/workflows/prop-compat-001e-tfg-mexc-bulk-equivalence-v01.yml'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/prop_compat/prop_compat_001e_tfg_mexc_bulk_equivalence_v01.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  bulk-source-equivalence:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: prop-compat-001-v0.1
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify frozen bulk recovery authority
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          d=json.loads(Path('research/prop_compat/PROP_COMPAT_001E_MEXC_BULK_REACQUISITION_FREEZE_V0.1.json').read_text())
+          assert d['status']=='FROZEN_BEFORE_BULK_EQUIVALENCE_EXECUTION'
+          assert d['pre_outcome_equivalence_gate']['year']==2024
+          assert d['unlock_policy']['2025_bulk_access_before_gate_pass'] is False
+          assert d['governance']['access_2026'] is False
+          assert d['governance']['live_trading'] is False
+          print('TFG_MEXC_BULK_RECOVERY_AUTHORITY_PASS')
+          PY
+      - name: Compile source-only bulk gate
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: python -m py_compile research/prop_compat/prop_compat_001e_tfg_mexc_bulk_equivalence_v01.py
+      - name: Download exact audited parent source artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p _parent
+          curl --fail --location --silent --show-error \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/10419067320/zip" \
+            -o _parent/parent.zip
+          unzip -q _parent/parent.zip -d _parent/data
+          test "$(find _parent/data -name '*_USDT-Min15-2024-12-01.csv' | wc -l)" -eq 6
+      - name: Run fail-closed official MEXC bulk equivalence gate
+        id: gate
+        continue-on-error: true
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: |
+          python research/prop_compat/prop_compat_001e_tfg_mexc_bulk_equivalence_v01.py ../_parent/data
+      - name: Upload bulk source equivalence receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: PROP_COMPAT_001E_TFG_MEXC_BULK_EQUIVALENCE_V01
+          path: Dream-Account-OS-v2.3-PARTIAL/research/local_data/prop_compat_001e_bulk_gate/PROP_COMPAT_001E_TFG_MEXC_BULK_EQUIVALENCE_V0.1.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Enforce bulk gate result after receipt upload
+        if: steps.gate.outcome != 'success'
+        run: exit 2
