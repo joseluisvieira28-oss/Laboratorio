@@ -1,0 +1,85 @@
+{
+  "document_id": "PROP_COMPAT_001B_KRAKEN_PROP_SOURCE_RESOLUTION_FREEZE_V0.1",
+  "campaign_id": "PROP-COMPAT-001B",
+  "parent_campaign": "PROP-COMPAT-001",
+  "frozen_on": "2026-09-17",
+  "status": "FROZEN_BEFORE_KRAKEN_PROXY_OUTCOMES",
+  "setup_id": "DH-03-HO1",
+  "prop_program": "KRAKEN_PROP",
+  "governance": {
+    "research_only": true,
+    "official_phase3_risk_grid_run": false,
+    "proxy_outcomes_opened_before_freeze": false,
+    "challenge_purchase": false,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "private_api_connected": false,
+    "setup_rules_changed": false,
+    "post_outcome_tuning": false,
+    "merge_to_main": false
+  },
+  "confirmed_current_rules": {
+    "plans": {
+      "STARTER": {"profit_target_pct": 10.0, "max_daily_loss_pct": 3.0, "max_drawdown_pct": 6.0},
+      "INTERMEDIATE": {"profit_target_pct": 12.0, "max_daily_loss_pct": 3.0, "max_drawdown_pct": 5.0},
+      "ADVANCED": {"profit_target_pct": 9.0, "max_daily_loss_pct": 3.0, "max_drawdown_pct": 3.0}
+    },
+    "daily_loss_reset": "00:30 UTC; balance at 00:30 establishes the daily reference and intraday equity is monitored in real time",
+    "maximum_drawdown": "static from initial balance",
+    "time_limit": null,
+    "consistency_rule": null,
+    "commission_pct_per_side": 0.04,
+    "commission_round_trip_pct": 0.08,
+    "overnight_allowed": true,
+    "weekend_allowed": true,
+    "order_types": ["MARKET","LIMIT","STOP_LOSS","STOP_LOSS_LIMIT","TAKE_PROFIT","TAKE_PROFIT_LIMIT"],
+    "gtc_stop_take_profit": true,
+    "stop_loss_execution": "triggers market order when stop level is reached",
+    "take_profit_execution": "triggers market order when target level is reached",
+    "partial_fills_in_breakout_evaluation_dashboard": false,
+    "api_trading": false
+  },
+  "carry_rule_conflict": {
+    "support_rule": {
+      "daily_rate_pct_notional": 0.033,
+      "collection": "six equal rollover charges every four hours",
+      "exact_phase_offset": "NOT_PUBLISHED",
+      "source": "https://support.kraken.com/articles/understanding-fees-on-kraken-prop"
+    },
+    "governing_evaluation_agreement_rule": {
+      "daily_rate_pct_notional": 0.033,
+      "eligibility": "open swap position at 00:00 UTC",
+      "debit_time": "00:00 UTC",
+      "source": "https://www.breakoutprop.com/breakout-evaluation-agreement/",
+      "annex_updated": "2026-08-27"
+    },
+    "common_total_daily_rate": true,
+    "material_difference": "timing and eligibility of debits can affect balance and therefore 00:30 MDL reference/equity path",
+    "resolution": "Do not choose one interpretation post-outcome. Any proxy screen must report both legal-daily and support-4h timing envelopes. Exact PROP-COMPAT remains blocked until authoritative reconciliation."
+  },
+  "execution_layer": {
+    "environment": "simulated evaluation environment intended to reflect live market conditions",
+    "market_order": "best available price; stop/take-profit trigger market orders",
+    "liquidity": "depth of market is material; limit orders require sufficient liquidity for full fill and partial fills are not supported in Breakout evaluation dashboard",
+    "historical_bid_ask_archive": "NOT_PUBLICLY_RECOVERED",
+    "historical_depth_archive": "NOT_PUBLICLY_RECOVERED",
+    "historical_prop_fill_archive": "NOT_PUBLICLY_RECOVERED",
+    "exact_replay_ready": false,
+    "proxy_policy": "If a non-decisional kill-screen is run, preserve the existing DH-03 BASE/STRESS total execution-cost envelopes of 0.20%/0.30% round trip ex carry. With Kraken commission fixed at 0.08% round trip, residual execution uncertainty is 0.12% BASE and 0.22% STRESS. This is not a claim about observed Kraken historical spreads."
+  },
+  "official_sources": [
+    "https://www.kraken.com/prop",
+    "https://support.kraken.com/articles/kraken-prop-faq",
+    "https://support.kraken.com/articles/understanding-fees-on-kraken-prop",
+    "https://support.kraken.com/articles/placing-orders-on-your-prop-account",
+    "https://support.kraken.com/articles/available-markets",
+    "https://www.breakoutprop.com/breakout-evaluation-agreement/",
+    "https://www.breakoutprop.com/funded-trader-agreement/"
+  ],
+  "decision": {
+    "exact_prop_replay_simulation_ready": false,
+    "reason": "Carry timing/eligibility conflict and unavailable historical executable bid/ask/depth/fill stream prevent exact replay.",
+    "non_decisional_ambiguity_envelope_allowed": true,
+    "official_risk_grid_status": "NOT_RUN_LOCKED"
+  }
+}
