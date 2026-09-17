@@ -23,6 +23,19 @@ class FakeCursor:
         if "PG_ADVISORY_XACT_LOCK" in statement:
             self.result = [(None,)]
             return
+        if statement.startswith("SELECT EVENT_ID FROM RADAR_EVENT_KEYS"):
+            event_type, event_key = params
+            event_id = self.database.keys.get((event_type, event_key))
+            self.result = [(event_id,)] if event_id is not None else []
+            return
+        if statement.startswith("INSERT INTO RADAR_EVENT_KEYS"):
+            event_type, event_key, event_id = params
+            identity = (event_type, event_key)
+            if identity in self.database.keys:
+                raise AssertionError("duplicate fake postgres event key")
+            self.database.keys[identity] = event_id
+            self.result = []
+            return
         if statement.startswith("SELECT CHAIN_SHA256 FROM RADAR_EVENTS"):
             if self.database.rows:
                 self.result = [(self.database.rows[-1]["chain_sha256"],)]
@@ -85,6 +98,7 @@ class FakeConnection:
 class FakePsycopg:
     def __init__(self):
         self.rows = []
+        self.keys = {}
 
     def connect(self, database_url, connect_timeout=5):
         if not database_url.startswith("postgresql://"):
@@ -109,6 +123,22 @@ class PostgresEvidenceTests(unittest.TestCase):
             ok, detail = store.verify_chain()
             self.assertTrue(ok)
             self.assertIn("2 events via postgres", detail)
+
+    def test_postgres_append_once_is_idempotent(self):
+        fake = FakePsycopg()
+        with patch.object(evidence, "psycopg", fake):
+            store = evidence.PostgresEvidenceStore("postgresql://example/test")
+            first = store.append_once("TFG_FORWARD_SIGNAL", "BTC:123", {"value": 1})
+            second = store.append_once("TFG_FORWARD_SIGNAL", "BTC:123", {"value": 999})
+            self.assertTrue(first["inserted"])
+            self.assertFalse(first["duplicate"])
+            self.assertFalse(second["inserted"])
+            self.assertTrue(second["duplicate"])
+            self.assertEqual(first["id"], second["id"])
+            self.assertEqual(len(fake.rows), 1)
+            self.assertEqual(len(fake.keys), 1)
+            ok, detail = store.verify_chain()
+            self.assertTrue(ok, detail)
 
     def test_postgres_detects_tampering(self):
         fake = FakePsycopg()
