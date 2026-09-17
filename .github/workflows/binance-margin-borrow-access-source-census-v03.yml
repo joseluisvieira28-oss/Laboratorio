@@ -1,0 +1,38 @@
+name: Binance Margin Borrow Access 001 — Source Census V0.3
+
+on:
+  push:
+    branches:
+      - binance-margin-borrow-access-v0.1
+    paths:
+      - research/binance_margin_borrow_access/source_census_v03.py
+      - research/binance_margin_borrow_access/BINANCE_MARGIN_BORROW_ACCESS_001_SOURCE_TRANSPORT_REMEDIATION_V0_3.md
+      - .github/workflows/binance-margin-borrow-access-source-census-v03.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-census-v03:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout frozen research branch
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install source dependencies
+        run: pip install --disable-pip-version-check requests beautifulsoup4
+      - name: Execute narrowed historical source census V0.3
+        run: python research/binance_margin_borrow_access/source_census_v03.py
+      - name: Upload source census V0.3 receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: BINANCE_MARGIN_BORROW_ACCESS_001_SOURCE_CENSUS_V0_3
+          path: source_census_v03_output/BINANCE_MARGIN_BORROW_ACCESS_001_SOURCE_CENSUS_RECEIPT_V0_3.json
+          if-no-files-found: warn
+          retention-days: 30
