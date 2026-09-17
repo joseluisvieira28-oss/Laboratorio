@@ -1,0 +1,38 @@
+name: AAVE Liquidation Overhang 001 — Historical State Provenance V0.3
+
+on:
+  push:
+    branches:
+      - aave-liquidation-overhang-v0.1
+    paths:
+      - research/aave_liquidation_overhang/historical_state_provenance_v03.py
+      - research/aave_liquidation_overhang/AAVE_LIQUIDATION_OVERHANG_001_HISTORICAL_STATE_PROVENANCE_ADDENDUM_V0_3.md
+      - .github/workflows/aave-liquidation-overhang-historical-state-v03.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  historical-state-provenance-v03:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout frozen research branch
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install source dependencies
+        run: pip install --disable-pip-version-check requests 'eth-hash[pycryptodome]'
+      - name: Execute independent historical state provenance V0.3
+        run: python research/aave_liquidation_overhang/historical_state_provenance_v03.py
+      - name: Upload historical state provenance receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: AAVE_LIQUIDATION_OVERHANG_001_HISTORICAL_STATE_PROVENANCE_V0_3
+          path: historical_state_v03_output/AAVE_LIQUIDATION_OVERHANG_001_HISTORICAL_STATE_PROVENANCE_V0_3.json
+          if-no-files-found: warn
+          retention-days: 30
