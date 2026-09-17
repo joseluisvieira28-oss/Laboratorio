@@ -1,13 +1,20 @@
 {
-  "registry_version": "1.4",
-  "as_of_utc": "2026-09-17T19:06:00Z",
-  "governance": "AGGRESSIVE_DEPLOYMENT_POLICY_V1",
+  "registry_version": "2.0",
+  "as_of_utc": "2026-09-17T20:15:00Z",
+  "governance": "ND_PROMOTION_POLICY_V3_PLUS_AGGRESSIVE_FAIL_CLOSED_DEPLOYMENT",
+  "focus_strategy_ids": [
+    "ETF-CME-INSTFLOW-001",
+    "BNB-LAUNCHPOOL-DEMAND-001",
+    "OPTIONS-SPOTPERP-001-V2.1",
+    "HTF-DONCHIAN-DH02-6H"
+  ],
+  "policy_note": "Scientific tier and deployment readiness are separate. Tier-2 classification does not override a later operational/shadow failure and never implies live-trading authorization.",
   "candidates": [
     {
       "strategy_id": "ETF-CME-INSTFLOW-001",
       "scientific_tier": 2,
-      "scientific_status": "PROMOTED_CANDIDATE_FRAGILE",
-      "deployment_state": "MICRO_LIVE_CANDIDATE_PENDING_FRICTION_RISK_AND_ORDER_SEMANTICS",
+      "scientific_status": "TIER_2_RETAINED_FRAGILE",
+      "deployment_state": "SHADOW_EXECUTION_RESEARCH__EXEC_V2_FRICTION_ACCOUNT_PREFLIGHT_PENDING",
       "shadow_allowed": true,
       "micro_live_allowed_now": false,
       "source_branch": "etf-cme-institutional-flow-v0.1",
@@ -23,73 +30,133 @@
       "radar_live_source_binding_implemented": true,
       "radar_mexc_public_market_observation_validated": true,
       "exact_timing_engine_v1_implemented": true,
-      "local_windows_operator_node_built": true,
-      "local_node_preflight_implemented": true,
       "public_friction_monitor_implemented": true,
-      "execution_contract_id": "ETF-CME-INSTFLOW-001-EXEC-V1",
-      "candidate_execution_venue": "MEXC USDT perpetual futures",
-      "candidate_execution_symbol": "BTC_USDT",
-      "candidate_execution_symbol_api_eligibility_validated": true,
-      "candidate_risk_model": "ISOLATED_1X_AUTO_MARGIN_OFF_VALIDATION_MARGIN_CAP",
-      "candidate_risk_sizer_implemented": true,
-      "current_mexc_api_maker_fee_one_way_fraction": 0.0006,
-      "current_mexc_api_taker_fee_one_way_fraction": 0.0008,
-      "current_mexc_api_taker_round_trip_fee_bps": 16.0,
-      "mexc_funding_source_2025_full_coverage": false,
-      "mexc_funding_source_oldest_available_utc": "2025-03-27T16:00:00Z",
-      "mexc_funding_source_total_count_at_probe": 1618,
-      "partial_funding_diagnostic_promotional": false,
+      "execution_research_branch": "etf-cme-exec-v2-asymmetric-mapping",
+      "execution_research_mapping": "LONG->MEXC BTCUSDT Spot; SHORT->MEXC BTC_USDT Perpetual",
       "fragility_flags": [
-        "Tier-1 readiness passed 9/10 only",
         "leave-one-trade-out minimum base-net mean failed",
         "break-even round-trip cost approximately 21.20 bps",
         "additive max drawdown approximately -35.43%",
-        "one influential trade can make leave-one-out mean negative",
-        "current MEXC taker-only round-trip fees consume approximately 16 of the estimated 21.20 bps historical break-even cost budget before slippage/funding",
-        "MEXC public funding API cannot cover the complete frozen 2025 OOS event set"
+        "one influential trade can make leave-one-out mean negative"
       ],
       "blocking_gates": [
-        "prospective MEXC all-in friction shadow not yet passed",
-        "complete historical MEXC funding mapping unavailable from current public API; partial diagnostic is non-promotional",
-        "entry/exit order semantics not yet frozen",
-        "candidate isolated-margin exposure model not yet fully validated/authenticated"
+        "account-specific API fee preflight not yet bound",
+        "prospective all-in execution friction gate not yet passed",
+        "entry/exit order semantics not yet frozen for EXEC-V2",
+        "candidate risk/exposure contract not yet execution-authorized"
       ]
     },
     {
       "strategy_id": "BNB-LAUNCHPOOL-DEMAND-001",
-      "scientific_tier": 3,
-      "scientific_status": "WATCHLIST_FORWARD_SHADOW",
-      "deployment_state": "SHADOW_ONLY",
+      "scientific_tier": 2,
+      "scientific_status": "TIER_2_QUASE_DIAMANTE__HIGH_TAIL_CONCENTRATION_FRAGILITY",
+      "deployment_state": "PROSPECTIVE_WATCHER_AND_MICROLIVE_READINESS_FROZEN__AWAIT_EXECUTION_AUTHORITY",
       "shadow_allowed": true,
       "micro_live_allowed_now": false,
-      "reason": "Repeated positive historical economics but failed frozen concentration gate; forward evidence still pending."
+      "authority_branch": "bnb-launchpool-demand-v3-readjudication-2026-09-17",
+      "authority_commit": "695405d33d64c713a3e73ef0fa0df916309005a4",
+      "forward_shadow_boundary_required": true,
+      "signal_identity": "official Binance Launchpool publication explicitly creating BNB staking/locking/farming utility",
+      "direction_rule": "LONG BNBBTC spot only",
+      "entry_rule": "first 15m open strictly after canonical announcement timestamp",
+      "exit_rule": "exact 24h hold",
+      "base_cost_bps_round_trip": 20,
+      "stress_cost_bps_round_trip": 30,
+      "one_active_trade_max": true,
+      "leverage_allowed": false,
+      "future_micro_live_max_notional_chf": 25,
+      "fragility_flags": [
+        "rare-event sample",
+        "historical concentration/tail fragility",
+        "one micro-live event is operational evidence only"
+      ],
+      "blocking_gates": [
+        "read-only prospective official-source watcher not yet integrated into radar v0.8",
+        "exact BNBBTC 15m market binding must pass for each event",
+        "separate explicit V3 MICRO-LIVE EXECUTION AUTHORITY does not yet exist",
+        "no order path may activate from readiness freeze alone"
+      ]
+    },
+    {
+      "strategy_id": "OPTIONS-SPOTPERP-001-V2.1",
+      "scientific_tier": 2,
+      "scientific_status": "TIER_2_QUASE_DIAMANTE__HIGH_RISK_FRAGILITY",
+      "deployment_state": "SHADOW_PREFLIGHT__LIVE_SOURCE_ADAPTER_AND_RISK_ENVELOPE_PENDING",
+      "shadow_allowed": true,
+      "micro_live_allowed_now": false,
+      "authority_branch": "options-spotperp-001-v21-oos-2025-v01",
+      "frozen_signal": "CALL_IV_MINUS_PUT_IV",
+      "primary_source": "Deribit historical/public option trades; live equivalent must preserve exact signal construction",
+      "direction_rule": "positive=LONG; negative=SHORT",
+      "historical_execution": "BTCUSDT spot 00:00 UTC t+1 to 00:00 UTC t+2",
+      "rv_window_daily_log_returns": 20,
+      "rv_baseline": "expanding median of all valid RV20 observations through signal date t",
+      "minimum_valid_rv20_history": 60,
+      "weight_rule": "min(1.0, expanding_median_RV20_t / RV20_t)",
+      "max_weight": 1.0,
+      "leverage_above_one": false,
+      "base_cost_bps_full_notional": 10,
+      "stress_cost_bps_full_notional": 20,
+      "fragility_flags": [
+        "STRESS20 economics negative in independent 2025 OOS",
+        "temporal breadth thin",
+        "high-risk fragility classification"
+      ],
+      "blocking_gates": [
+        "exact live Deribit option-trade source adapter not yet validated prospectively",
+        "continuous RV20 state bootstrap/provenance for live shadow not yet frozen",
+        "execution venue/instrument translation must preserve BTCUSDT spot identity or be separately frozen",
+        "candidate-specific micro-live risk envelope not yet frozen"
+      ]
+    },
+    {
+      "strategy_id": "HTF-DONCHIAN-DH02-6H",
+      "scientific_tier": 2,
+      "scientific_status": "TIER_2_RETAINED_STATISTICAL_FRAGILITY__HISTORICAL_CLASSIFICATION_PRESERVED",
+      "deployment_state": "BLOCKED_CLOSED_SHADOW_READINESS_FAIL_2026",
+      "shadow_allowed": false,
+      "micro_live_allowed_now": false,
+      "authority_branch": "htf-donchian-shadow-v0.1",
+      "frozen_cell": "DH-02-HO1",
+      "timeframe": "6H",
+      "direction_rule": "LONG_ONLY",
+      "symbols": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "DOGEUSDT"],
+      "donchian_lookback_complete_bars": 80,
+      "atr_length": 56,
+      "entry_rule": "next 6H open",
+      "stop_rule": "signal low minus 0.25*ATR56",
+      "target_r": 3.0,
+      "max_hold_bars": 160,
+      "base_round_trip_cost_pct": 0.20,
+      "stress_round_trip_cost_pct": 0.30,
+      "protected_2026_shadow_result": {
+        "resolved_trades": 27,
+        "base_expectancy_r": -0.5689228153152064,
+        "base_profit_factor": 0.35295321674707636,
+        "stress_expectancy_r": -0.5791187872063066
+      },
+      "reason": "Scientific Tier-2 historical/V3 classification is preserved, but the exact 6H production path closed after the protected 2026 shadow readiness failure. No rescue, 12H substitution, or capital path is permitted under this implementation.",
+      "blocking_gates": [
+        "terminal deployment blocker: CLOSED_SHADOW_READINESS_FAIL",
+        "any future Donchian production research requires a new prospectively frozen experiment and cannot rescue this closeout"
+      ]
     },
     {
       "strategy_id": "BTC-OPTIONS-EXPIRY-REVERSAL-001",
-      "scientific_tier": 3,
-      "scientific_status": "WATCHLIST_WEAK_CANDIDATE",
-      "deployment_state": "SHADOW_ONLY",
-      "shadow_allowed": true,
-      "micro_live_allowed_now": false,
-      "reason": "Independent 2024 base economics remained positive but stress economics and minimum leave-one-trade-out stability failed."
+      "scientific_tier": 4,
+      "scientific_status": "V3_REJECTED_WEAK_CANDIDATE",
+      "deployment_state": "BLOCKED",
+      "shadow_allowed": false,
+      "micro_live_allowed_now": false
     },
     {
       "strategy_id": "HTF-DH03-12H",
       "scientific_tier": null,
-      "scientific_status": "SECONDARY_EXACT_RULE_FORWARD_HOLDOUT_SURVIVOR",
-      "deployment_state": "DIAGNOSTIC_SHADOW_ONLY",
-      "shadow_allowed": true,
-      "micro_live_allowed_now": false,
-      "reason": "Secondary candidate survived Phase 5 but cannot replace the prospectively designated primary after outcomes."
-    },
-    {
-      "strategy_id": "HTF-DONCHIAN-DH02-6H",
-      "scientific_tier": null,
-      "scientific_status": "SHADOW_READINESS_FAIL_2026_PROTECTED_BLOCK",
-      "deployment_state": "BLOCKED",
+      "scientific_status": "HISTORICAL_SECONDARY_ONLY",
+      "deployment_state": "BLOCKED_SUPPORTING_EVIDENCE_ONLY",
       "shadow_allowed": false,
       "micro_live_allowed_now": false,
-      "reason": "Protected 2026 shadow block produced materially negative base and stress economics; production path closed for tested implementation."
+      "reason": "Cannot substitute for DH-02 after outcomes."
     },
     {"strategy_id": "MVE-ADX4H-01", "scientific_tier": 4, "scientific_status": "REJECTED_STONE_AFTER_2025_CONFIRMATION", "deployment_state": "BLOCKED", "shadow_allowed": false, "micro_live_allowed_now": false},
     {"strategy_id": "OPTIONS-SPOTPERP-002-UP_LOW", "scientific_tier": 4, "scientific_status": "REJECTED_OOS_FAILED", "deployment_state": "BLOCKED", "shadow_allowed": false, "micro_live_allowed_now": false},
