@@ -1,0 +1,82 @@
+name: PROP COMPAT 001C Stage D 1m Severe Extreme V0.1
+
+on:
+  push:
+    branches: [prop-compat-001-v0.1]
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/prop_compat/PROP_COMPAT_001C_STAGE_D_RUN_TRIGGER_V0.1.txt'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  stage-d:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: prop-compat-001-v0.1
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install numeric dependency
+        run: pip install 'numpy==2.1.1'
+      - name: Verify Stage D authority before outcomes
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('research/prop_compat')
+          g=json.loads((p/'PROP_COMPAT_001_GOVERNANCE_AMENDMENT_V0.8_AGGRESSIVE_RESEARCH.json').read_text())
+          q=json.loads((p/'PROP_COMPAT_001C_DH03_KRAKEN_ROBUSTNESS_GAUNTLET_PROTOCOL_V0.1.json').read_text())
+          c=json.loads((p/'PROP_COMPAT_001C_STAGE_D_IMPLEMENTATION_CLARIFICATION_V0.1.json').read_text())
+          assert g['mode']=='AGGRESSIVE_RESEARCH_PARALLEL_GATES'
+          assert q['status']=='FROZEN_BEFORE_GAUNTLET_OUTCOMES'
+          assert c['status']=='FROZEN_BEFORE_STAGE_D_1M_OUTCOMES'
+          assert c['governance']['stage_D_outcomes_opened_before_clarification'] is False
+          assert c['stage_D_scope']['base_cells']==30
+          assert c['stage_D_scope']['support_phase_paths']==7200
+          print('STAGE_D_AUTHORITY_GATE_PASS')
+          PY
+      - name: Compile Stage D runner
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: |
+          python -m py_compile research/prop_compat/prop_compat_001c_stage_d_1m_v01.py
+          python - <<'PY'
+          from research.prop_compat import prop_compat_001c_stage_d_1m_v01 as r
+          assert len(r.scenarios())==7230
+          assert set(r.PROFILES)=={'SEVERE','EXTREME'}
+          print('STAGE_D_CONSTANT_GATE_PASS')
+          PY
+      - name: Download exact frozen Phase5 source artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: HTF_DIAMOND_HUNT_001_PHASE5_SOURCE_V01
+          path: Dream-Account-OS-v2.3-PARTIAL/research/local_data/prop_compat_001c_stage_d/source
+          github-token: ${{ github.token }}
+          run-id: 35076213767
+      - name: Download exact frozen Phase5 execution artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: HTF_DIAMOND_HUNT_001_PHASE5_EXECUTION_V01
+          path: Dream-Account-OS-v2.3-PARTIAL/research/local_data/prop_compat_001c_stage_d/execution
+          github-token: ${{ github.token }}
+          run-id: 35080622854
+      - name: Run severe extreme 1m envelope
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: |
+          PYTHONPATH="$GITHUB_WORKSPACE/Dream-Account-OS-v2.3-PARTIAL" python research/prop_compat/prop_compat_001c_stage_d_1m_v01.py \
+            research/local_data/prop_compat_001c_stage_d/source \
+            research/local_data/prop_compat_001c_stage_d/execution
+      - name: Upload Stage D receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: PROP_COMPAT_001C_DH03_KRAKEN_STAGE_D_1M_V01
+          path: Dream-Account-OS-v2.3-PARTIAL/research/local_data/prop_compat_001c_stage_d/PROP_COMPAT_001C_DH03_KRAKEN_STAGE_D_1M_RECEIPT_V0.1.json
+          if-no-files-found: error
+          retention-days: 90
