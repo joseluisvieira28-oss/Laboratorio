@@ -31,6 +31,7 @@ def _float_env(name: str, default: float) -> float:
 @dataclass(frozen=True)
 class Settings:
     db_path: str = "radar_evidence.sqlite3"
+    database_url: str | None = None
     status_path: str = "radar_status.json"
     notification_path: str = "radar_notifications.jsonl"
     provider: str = "binance_usdm"
@@ -49,8 +50,12 @@ class Settings:
         provider = os.getenv("RADAR_PROVIDER", "binance_usdm").strip().lower()
         if provider not in ALLOWED_PROVIDERS:
             raise ValueError(f"RADAR_PROVIDER must be one of {sorted(ALLOWED_PROVIDERS)}")
+        database_url = os.getenv("RADAR_DATABASE_URL")
+        if database_url is not None:
+            database_url = database_url.strip() or None
         return cls(
             db_path=os.getenv("RADAR_DB", "radar_evidence.sqlite3"),
+            database_url=database_url,
             status_path=os.getenv("RADAR_STATUS", "radar_status.json"),
             notification_path=os.getenv(
                 "RADAR_NOTIFICATIONS", "radar_notifications.jsonl"
