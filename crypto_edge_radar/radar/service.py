@@ -24,6 +24,7 @@ def _atomic_json_write(path: Path, payload: dict[str, Any]) -> None:
 
 def _log_cycle(status: dict[str, Any]) -> None:
     """Emit a compact machine-readable runtime heartbeat without sensitive data."""
+    receipt = status.get("heartbeat_receipt") or {}
     record = {
         "event": "RADAR_CYCLE",
         "service": status.get("service", "CRYPTO_EDGE_RADAR"),
@@ -33,6 +34,8 @@ def _log_cycle(status: dict[str, Any]) -> None:
         "cycle": status.get("cycle"),
         "provider": status.get("provider"),
         "evidence_backend": status.get("evidence_backend"),
+        "evidence_event_id": receipt.get("id"),
+        "evidence_chain_sha256": receipt.get("chain_sha256"),
         "registered_strategies": status.get("registered_strategies", 0),
         "valid_signal_count": status.get("valid_signal_count", 0),
         "consecutive_failures": status.get("consecutive_failures", 0),
@@ -122,7 +125,8 @@ class PublicShadowService:
                 "registered_strategies": 0,
             }
             try:
-                self.engine.store.append("SERVICE_FAILURE", status)
+                failure_receipt = self.engine.store.append("SERVICE_FAILURE", status)
+                status["heartbeat_receipt"] = failure_receipt
             finally:
                 self._publish_status(status)
                 self.notifier.emit("SERVICE_FAIL_CLOSED", status)
