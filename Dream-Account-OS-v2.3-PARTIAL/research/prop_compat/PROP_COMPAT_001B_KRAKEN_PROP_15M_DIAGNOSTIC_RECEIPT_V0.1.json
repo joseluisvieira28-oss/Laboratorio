@@ -1,0 +1,99 @@
+{
+  "document_id": "PROP_COMPAT_001B_KRAKEN_PROP_15M_DIAGNOSTIC_RECEIPT_V0.1",
+  "campaign_id": "PROP-COMPAT-001B",
+  "completed_on": "2026-09-17",
+  "status": "KRAKEN_PROP_15M_DIAGNOSTIC_COMPLETE",
+  "setup_id": "DH-03-HO1",
+  "decisional_authority": false,
+  "source": {
+    "source_fingerprint": "d1a95d51d99eba0bd5f66e91d75ddcd175f7a84d954ba28a44c2dcd39ef4c5cb",
+    "ledger_sha256": "ec4e5dbc8d95a73d4eb9db55f4e1c0f264dba7eb724cbb7424f2c034a3a7eebd",
+    "resolved_trade_count": 146,
+    "canonical_15m_rows_per_symbol": 70176,
+    "symbols": ["BTCUSDT","ETHUSDT","SOLUSDT","BNBUSDT","XRPUSDT","DOGEUSDT"],
+    "years": [2023,2024],
+    "access_2025": false,
+    "access_2026": false
+  },
+  "test_space": {
+    "plans": ["STARTER","INTERMEDIATE","ADVANCED"],
+    "risk_pct_per_1R": [0.10,0.15,0.20,0.25,0.30],
+    "execution_cases": ["BASE","STRESS"],
+    "base_cells": 30,
+    "carry_paths_per_base_cell": 17,
+    "carry_paths": ["LEGAL_DAILY_0000","SUPPORT_4H_16_QUARTER_HOUR_PHASE_OFFSETS"]
+  },
+  "classification_counts": {
+    "15M_PROXY_SURVIVES_NOT_DECISIONAL": 14,
+    "15M_NO_DECISION": 14,
+    "OBVIOUS_15M_PROXY_BREACH": 2,
+    "15M_AMBIGUITY": 0
+  },
+  "classification_matrix": {
+    "STARTER": {
+      "0.10": {"BASE":"15M_NO_DECISION","STRESS":"15M_NO_DECISION"},
+      "0.15": {"BASE":"15M_NO_DECISION","STRESS":"15M_NO_DECISION"},
+      "0.20": {"BASE":"15M_PROXY_SURVIVES_NOT_DECISIONAL","STRESS":"15M_PROXY_SURVIVES_NOT_DECISIONAL"},
+      "0.25": {"BASE":"15M_PROXY_SURVIVES_NOT_DECISIONAL","STRESS":"15M_PROXY_SURVIVES_NOT_DECISIONAL"},
+      "0.30": {"BASE":"15M_PROXY_SURVIVES_NOT_DECISIONAL","STRESS":"15M_PROXY_SURVIVES_NOT_DECISIONAL"}
+    },
+    "INTERMEDIATE": {
+      "0.10": {"BASE":"15M_NO_DECISION","STRESS":"15M_NO_DECISION"},
+      "0.15": {"BASE":"15M_NO_DECISION","STRESS":"15M_NO_DECISION"},
+      "0.20": {"BASE":"15M_NO_DECISION","STRESS":"15M_NO_DECISION"},
+      "0.25": {"BASE":"15M_PROXY_SURVIVES_NOT_DECISIONAL","STRESS":"15M_PROXY_SURVIVES_NOT_DECISIONAL"},
+      "0.30": {"BASE":"15M_PROXY_SURVIVES_NOT_DECISIONAL","STRESS":"15M_PROXY_SURVIVES_NOT_DECISIONAL"}
+    },
+    "ADVANCED": {
+      "0.10": {"BASE":"15M_NO_DECISION","STRESS":"15M_NO_DECISION"},
+      "0.15": {"BASE":"15M_NO_DECISION","STRESS":"15M_NO_DECISION"},
+      "0.20": {"BASE":"15M_PROXY_SURVIVES_NOT_DECISIONAL","STRESS":"15M_PROXY_SURVIVES_NOT_DECISIONAL"},
+      "0.25": {"BASE":"15M_PROXY_SURVIVES_NOT_DECISIONAL","STRESS":"15M_PROXY_SURVIVES_NOT_DECISIONAL"},
+      "0.30": {"BASE":"OBVIOUS_15M_PROXY_BREACH","STRESS":"OBVIOUS_15M_PROXY_BREACH"}
+    }
+  },
+  "obvious_breach_detail": {
+    "ADVANCED_0.30_BASE": {
+      "reason": "MDD_15M_CLOSE_BREACH",
+      "legal_daily_decision_utc": "2023-10-11T18:00:00Z",
+      "support_phase_decision_range_utc": ["2023-10-11T17:00:00Z","2023-10-11T18:00:00Z"],
+      "max_close_drawdown_pct_initial_before_decision": 3.005006,
+      "max_15m_low_bound_drawdown_pct_initial_before_decision": 3.027288
+    },
+    "ADVANCED_0.30_STRESS": {
+      "reason": "MDD_15M_CLOSE_BREACH",
+      "legal_daily_decision_utc": "2023-10-09T16:30:00Z",
+      "support_phase_decision_range_utc": ["2023-10-09T16:30:00Z","2023-10-09T16:30:00Z"],
+      "max_close_drawdown_pct_initial_before_decision": 3.012313,
+      "max_15m_low_bound_drawdown_pct_initial_before_decision": 3.094447
+    }
+  },
+  "survivor_examples": {
+    "ADVANCED_0.20_BASE_legal_target_utc": "2024-11-12T08:30:00Z",
+    "ADVANCED_0.25_BASE_legal_target_utc": "2024-03-04T08:00:00Z",
+    "INTERMEDIATE_0.25_BASE_legal_target_utc": "2024-11-16T05:45:00Z",
+    "INTERMEDIATE_0.30_BASE_legal_target_utc": "2024-03-05T14:45:00Z",
+    "STARTER_0.20_BASE_legal_target_utc": "2024-11-18T06:45:00Z",
+    "STARTER_0.25_BASE_legal_target_utc": "2024-03-13T11:00:00Z",
+    "STARTER_0.30_BASE_legal_target_utc": "2024-02-28T16:45:00Z"
+  },
+  "carry_timing_sensitivity": {
+    "base_cells_with_changed_classification": 0,
+    "interpretation": "Within the canonical 15m fallback, legal daily carry and all 16 quarter-hour support 4h phase offsets produced the same classification in every base cell. This does not reconcile the official rule conflict but shows that the published carry timing ambiguity was not classification-dominant at 15m resolution."
+  },
+  "limitations": [
+    "This diagnostic uses canonical 15m, not the required pinned 1m path.",
+    "Exact historical Kraken Prop bid/ask, depth and proprietary fill stream remain unavailable.",
+    "Support 4h phase sweep is quarter-hour resolution here; the frozen exact proxy protocol requires all 240 minute phase offsets.",
+    "15m survivor cells cannot produce PROP-COMPAT-PASS or CONDITIONAL-PASS."
+  ],
+  "governance": {
+    "official_phase3_risk_grid_run": false,
+    "no_best_plan_selection": true,
+    "no_best_risk_selection": true,
+    "post_outcome_tuning": false,
+    "challenge_purchase": false,
+    "live_trading": false,
+    "merge_to_main": false
+  }
+}
