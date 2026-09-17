@@ -108,6 +108,31 @@ jobs:
         run: mkdir -p mexc_ci_artifacts
       - name: Real MEXC public futures observation — bounded one cycle
         run: python -m radar service --interval 5 --max-cycles 1
+      - name: Live MEXC contract eligibility gate for ETF-CME execution mapping
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from radar.market import MEXCFuturesPublicFeed
+
+          feed = MEXCFuturesPublicFeed(timeout=10)
+          eligible = sorted(feed.eligible_usdt_perpetual_symbols())
+          receipt = {
+              'provider': feed.provider,
+              'source_path': '/api/v1/contract/detail',
+              'candidate_execution_symbol_canonical': 'BTCUSDT',
+              'candidate_execution_symbol_mexc': 'BTC_USDT',
+              'btc_usdt_api_eligible': 'BTCUSDT' in eligible,
+              'core5_eligible': [s for s in ['BTCUSDT','ETHUSDT','SOLUSDT','BNBUSDT','XRPUSDT'] if s in eligible],
+              'authenticated_exchange_api_used': False,
+              'order_created': False,
+          }
+          Path('mexc_ci_artifacts/mexc_contract_eligibility.json').write_text(
+              json.dumps(receipt, sort_keys=True, indent=2), encoding='utf-8'
+          )
+          assert receipt['btc_usdt_api_eligible'] is True, receipt
+          print(json.dumps(receipt, sort_keys=True))
+          PY
       - name: Verify MEXC evidence chain
         run: python -m radar verify-evidence
       - name: Verify MEXC public heartbeat, core5 and ETF-CME shadow bot
