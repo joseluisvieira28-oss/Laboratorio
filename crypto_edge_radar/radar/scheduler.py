@@ -19,6 +19,12 @@ def _parse_utc(value: str) -> datetime:
     return parsed.astimezone(timezone.utc)
 
 
+def _aware_utc(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        raise ValueError("scheduler clock must be timezone-aware")
+    return value.astimezone(timezone.utc)
+
+
 @dataclass(frozen=True)
 class SchedulerDecision:
     sleep_seconds: float
@@ -78,7 +84,7 @@ class ExactTimingScheduler:
         return f"{strategy_id}|{target}"
 
     def mark_successful_due_events(self, now: datetime | None = None) -> None:
-        now = (now or self.clock()).astimezone(timezone.utc)
+        now = _aware_utc(now or self.clock())
         for plan in self._plans(now):
             timing = plan.get("operational_timing") or {}
             if timing.get("timing_state") != "DUE":
@@ -88,7 +94,7 @@ class ExactTimingScheduler:
                 self._handled_due_events.add(key)
 
     def next_decision(self, now: datetime | None = None) -> SchedulerDecision:
-        now = (now or self.clock()).astimezone(timezone.utc)
+        now = _aware_utc(now or self.clock())
         best = SchedulerDecision(self.normal_interval, "NORMAL_HEARTBEAT")
 
         for plan in self._plans(now):
@@ -113,7 +119,8 @@ class ExactTimingScheduler:
                     raise RuntimeError("armed timing plan missing target_time_utc")
                 target = _parse_utc(target_raw)
                 delay = max(0.0, (target - now).total_seconds())
-                if delay < best.sleep_seconds:
+                # Exact-entry wakeups win cadence ties against generic heartbeat.
+                if delay <= best.sleep_seconds:
                     best = SchedulerDecision(
                         delay,
                         "WAKE_AT_EXACT_ENTRY",
