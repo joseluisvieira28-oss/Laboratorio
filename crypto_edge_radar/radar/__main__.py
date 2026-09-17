@@ -5,6 +5,7 @@ import json
 import sys
 
 from .config import Settings
+from .dashboard import serve_dashboard
 from .deployment import RiskLimits, stop_based_position_size
 from .evidence import EvidenceStore
 from .engine import RadarEngine
@@ -56,6 +57,11 @@ def main(argv: list[str] | None = None) -> int:
     service.add_argument("--interval", type=float, default=30.0)
     service.add_argument("--max-cycles", type=int, default=None)
 
+    dashboard = sub.add_parser("dashboard", help="serve the read-only multi-bot web control room")
+    dashboard.add_argument("--host", default="127.0.0.1")
+    dashboard.add_argument("--port", type=int, default=8787)
+    dashboard.add_argument("--registry", default=None)
+
     sub.add_parser("status", help="read latest persisted service health status")
     sub.add_parser("verify-evidence", help="verify the local evidence hash chain")
     sub.add_parser(
@@ -102,6 +108,23 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "etf-cme-signal":
         try:
             print(json.dumps(current_signal_receipt(), sort_keys=True))
+            return 0
+        except Exception as exc:
+            print(json.dumps({"status": "FAIL_CLOSED", "error": str(exc)}, sort_keys=True))
+            return 2
+
+    if args.command == "dashboard":
+        try:
+            settings = Settings.from_env()
+            serve_dashboard(
+                host=args.host,
+                port=args.port,
+                status_path=settings.status_path,
+                notification_path=settings.notification_path,
+                registry_path=args.registry,
+            )
+            return 0
+        except KeyboardInterrupt:
             return 0
         except Exception as exc:
             print(json.dumps({"status": "FAIL_CLOSED", "error": str(exc)}, sort_keys=True))
