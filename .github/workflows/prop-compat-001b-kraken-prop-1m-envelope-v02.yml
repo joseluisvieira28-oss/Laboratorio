@@ -1,0 +1,102 @@
+name: PROP COMPAT 001B Kraken Prop 1m Envelope V0.2
+
+on:
+  push:
+    branches: [prop-compat-001-v0.1]
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/prop_compat/PROP_COMPAT_001B_KRAKEN_1M_RUN_TRIGGER_V0.2.txt'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  kraken-1m-envelope:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - name: Checkout isolated prop branch
+        uses: actions/checkout@v4
+        with:
+          ref: prop-compat-001-v0.1
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install frozen numeric dependency
+        run: python -m pip install --disable-pip-version-check numpy==2.2.6
+
+      - name: Verify frozen authority before 1m proxy outcomes
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('research/prop_compat')
+          proto=json.loads((p/'PROP_COMPAT_001B_KRAKEN_PROP_AMBIGUITY_ENVELOPE_PROTOCOL_V0.1.json').read_text())
+          c1=json.loads((p/'PROP_COMPAT_001B_KRAKEN_PROP_IMPLEMENTATION_CLARIFICATION_01.json').read_text())
+          c2=json.loads((p/'PROP_COMPAT_001B_KRAKEN_PROP_IMPLEMENTATION_CLARIFICATION_02.json').read_text())
+          grid=json.loads((p/'PROP_COMPAT_001_RISK_GRID_FREEZE_V0.1.json').read_text())
+          assert proto['status']=='FROZEN_BEFORE_PROXY_OUTCOMES'
+          assert proto['risk_grid_pct_equity_per_1R']==[0.10,0.15,0.20,0.25,0.30]
+          assert proto['cell_count']['plan_risk_execution_cells']==30
+          assert proto['cell_count']['support_phase_total_paths']==7200
+          assert c1['status']=='FROZEN_BEFORE_PROXY_OUTCOMES'
+          assert c1['governance']['proxy_outcomes_opened_before_clarification'] is False
+          assert c2['status']=='FROZEN_BEFORE_1M_PROXY_OUTCOMES'
+          assert c2['governance']['1m_proxy_outcomes_opened_before_clarification'] is False
+          assert grid['status']=='FROZEN_NOT_RUN'
+          assert grid['governance']['risk_grid_run'] is False
+          print('KRAKEN_1M_PROXY_AUTHORITY_GATE_PASS')
+          PY
+
+      - name: Compile corrected runner
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: |
+          python -m py_compile research/prop_compat/prop_compat_001b_kraken_proxy_runner_v01.py
+          python -m py_compile research/prop_compat/prop_compat_001b_kraken_proxy_runner_v02.py
+          sha256sum research/prop_compat/prop_compat_001b_kraken_proxy_runner_v01.py
+          sha256sum research/prop_compat/prop_compat_001b_kraken_proxy_runner_v02.py
+          python - <<'PY'
+          import numpy as np
+          print('NUMPY_VERSION', np.__version__)
+          PY
+
+      - name: Download exact frozen Phase5 source artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: HTF_DIAMOND_HUNT_001_PHASE5_SOURCE_V01
+          path: Dream-Account-OS-v2.3-PARTIAL/research/local_data/prop_compat_001b/source
+          github-token: ${{ github.token }}
+          run-id: 35076213767
+
+      - name: Download exact frozen Phase5 execution artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: HTF_DIAMOND_HUNT_001_PHASE5_EXECUTION_V01
+          path: Dream-Account-OS-v2.3-PARTIAL/research/local_data/prop_compat_001b/execution
+          github-token: ${{ github.token }}
+          run-id: 35080622854
+
+      - name: Run frozen Kraken Prop 1m ambiguity envelope
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        env:
+          PYTHONPATH: ${{ github.workspace }}/Dream-Account-OS-v2.3-PARTIAL
+        run: |
+          set -euo pipefail
+          python research/prop_compat/prop_compat_001b_kraken_proxy_runner_v02.py \
+            research/local_data/prop_compat_001b/source \
+            research/local_data/prop_compat_001b/execution
+
+      - name: Upload 1m ambiguity-envelope receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: PROP_COMPAT_001B_KRAKEN_PROP_1M_ENVELOPE_V02
+          path: Dream-Account-OS-v2.3-PARTIAL/research/local_data/prop_compat_001b_kraken_v02/PROP_COMPAT_001B_KRAKEN_PROP_1M_AMBIGUITY_ENVELOPE_RECEIPT_V0.2.json
+          if-no-files-found: error
+          retention-days: 90
