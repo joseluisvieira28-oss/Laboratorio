@@ -1,0 +1,48 @@
+{
+  "document_id":"PROP_COMPAT_001B_KRAKEN_PROP_SUPPORT_RESOLUTION_PACK_V0.1",
+  "campaign_id":"PROP-COMPAT-001B",
+  "created_on":"2026-09-17",
+  "status":"PREPARED_NOT_SENT",
+  "purpose":"Closed technical questions needed to reconcile current Kraken Prop support documentation with the governing Breakout evaluation agreement and to determine whether exact DH-03 compatibility replay can be made scientifically defensible.",
+  "questions":[
+    {
+      "id":"KP-Q1",
+      "topic":"margin funding cadence",
+      "question":"For a Kraken Prop evaluation opened today, is margin funding charged as six equal installments every four hours, or as one daily 0.033% charge for positions open at 00:00 UTC? If the six-installment model is current, please provide the exact UTC rollover timestamps or phase offset.",
+      "why_material":"The Kraken support pages state six four-hour charges, while the current Breakout Evaluation Agreement Annex A states a daily charge tied to 00:00 UTC. The timing changes balance around the 00:30 UTC MDL reference."
+    },
+    {
+      "id":"KP-Q2",
+      "topic":"document precedence",
+      "question":"If Kraken Prop support documentation conflicts with the Breakout Evaluation Agreement, which document controls the evaluation account in practice, and which version/date applies to evaluations purchased after 17 September 2026?",
+      "why_material":"Fail-closed simulation cannot select the more favorable interpretation."
+    },
+    {
+      "id":"KP-Q3",
+      "topic":"funding notional basis",
+      "question":"Is each margin-funding debit calculated from current mark-price notional at the rollover instant, entry notional, average entry notional, or another quantity? Please provide the exact formula.",
+      "why_material":"DH-03 positions may remain open for many days, so current notional versus entry notional can materially change cumulative carry and MDL path."
+    },
+    {
+      "id":"KP-Q4",
+      "topic":"price feed and historical execution",
+      "question":"What market-data source or price feed drives Kraken Prop / Breakout evaluation contracts, and is any historical bid/ask, order-book depth, spread, or fill dataset available for backtesting those exact contracts?",
+      "why_material":"The frozen DH-03 source is Binance USD-M. Exact compatibility requires quantifying venue/execution basis instead of silently treating Binance prices as Kraken Prop fills."
+    },
+    {
+      "id":"KP-Q5",
+      "topic":"stop and take-profit execution",
+      "question":"When a Stop Loss or Take Profit triggers a market order in a Kraken Prop evaluation, how is the execution price determined under insufficient depth or fast markets? Can the triggered market order fill across multiple price levels, and can it be partially filled?",
+      "why_material":"The frozen setup uses persistent stop/target semantics. Current public terms say partial fills are not supported in the Evaluation Dashboard for limit orders, but the exact treatment of triggered market orders needs confirmation."
+    },
+    {
+      "id":"KP-Q6",
+      "topic":"MDL event ordering",
+      "question":"At 00:30 UTC, is the new MDL reference calculated before or after any commission/funding entries timestamped at the same instant? If a rollover and MDL reset can share a timestamp, what is the exact event ordering?",
+      "why_material":"A few basis points can determine a breach when equity is close to the 3% daily floor."
+    }
+  ],
+  "requested_answer_format":"Please answer each question separately with the current rule, effective date, and the governing documentation/version where possible.",
+  "send_status":"NOT_SENT",
+  "governance":{"no_external_message_sent":true,"challenge_purchase":false,"live_trading":false,"merge_to_main":false}
+}
