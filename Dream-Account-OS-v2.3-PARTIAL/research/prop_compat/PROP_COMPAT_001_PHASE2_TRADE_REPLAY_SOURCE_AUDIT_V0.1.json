@@ -1,0 +1,132 @@
+{
+  "document_id": "PROP_COMPAT_001_PHASE2_TRADE_REPLAY_SOURCE_AUDIT_V0.1",
+  "campaign_id": "PROP-COMPAT-001",
+  "version": "0.1",
+  "created_on": "2026-09-17",
+  "status": "SOURCE_AUDIT_ONLY_NO_PROP_RULES_APPLIED",
+  "governance": {
+    "research_only": true,
+    "risk_grid_run": false,
+    "prop_rules_applied": false,
+    "prop_replay_run": false,
+    "monte_carlo_run": false,
+    "live_trading": false,
+    "orders_created": false,
+    "setup_rules_changed": false,
+    "outcome_dependent_tuning": false
+  },
+  "setups": {
+    "DH-03-HO1": {
+      "phase2_source_status": "EXACT_TRADE_LEDGER_RECOVERED_AND_VALIDATED",
+      "authority_branch": "htf-diamond-hunt-v0.1",
+      "authority_workflow": ".github/workflows/htf-diamond-hunt-phase5-execution-v01.yml",
+      "workflow_run_id": 35080622854,
+      "artifact_id": 10439998204,
+      "artifact_name": "HTF_DIAMOND_HUNT_001_PHASE5_EXECUTION_V01",
+      "artifact_digest": "sha256:d35786888d0e29e158d257233c567260d7da95268cdde251b0d49eb505a86149",
+      "artifact_expiry": "2026-12-15",
+      "ledger_filename": "DH-03-HO1_LEDGER.json",
+      "ledger_size_bytes": 97006,
+      "ledger_sha256": "ec4e5dbc8d95a73d4eb9db55f4e1c0f264dba7eb724cbb7424f2c034a3a7eebd",
+      "ledger_rows": 148,
+      "resolved_rows": 146,
+      "execution_path_unresolved_rows": 2,
+      "fields": [
+        "base_net_r",
+        "cell_id",
+        "economic_gross_return",
+        "entry_price",
+        "entry_time",
+        "execution_path_unresolved",
+        "exit_price",
+        "exit_reason",
+        "exit_time",
+        "funding_event_count",
+        "funding_return",
+        "initial_risk_fraction",
+        "price_gross_return",
+        "signal_open_time",
+        "stop",
+        "stress_net_r",
+        "symbol",
+        "target"
+      ],
+      "validation_against_official_closeout": {
+        "resolved_trade_count_matches": true,
+        "base_expectancy_r_recomputed": 0.3270763138082726,
+        "stress_expectancy_r_recomputed": 0.3017717129328741,
+        "official_base_expectancy_r": 0.3270763138,
+        "official_stress_expectancy_r": 0.3017717129,
+        "metrics_match_with_rounding": true
+      },
+      "phase2_capability": {
+        "trade_by_trade_entry_exit_replay": true,
+        "holding_duration": true,
+        "symbol_sequence": true,
+        "stop_target_values": true,
+        "funding_cashflow_per_trade": true,
+        "simultaneous_exposure_from_entry_exit_intervals": true,
+        "full_intraday_open_pnl_path": false,
+        "reason_full_intraday_open_pnl": "The recovered trade ledger contains entry/exit and funding economics but not every minute mark. Intraday equity reconstruction requires the frozen Phase5 minute-source artifact/series; do not interpolate missing marks."
+      },
+      "decision": "PHASE2_TRADE_LEDGER_READY_INTRADAY_MARK_PATH_PENDING"
+    },
+    "TFG-DONCHIAN-1D-001": {
+      "phase2_source_status": "BLOCKED_FINAL_LEDGER_BYTES_NOT_RECOVERED",
+      "authority_branch": "tfg-donchian-1d-oos-2025-v01",
+      "official_closeout_status": "OOS_CONFIRMATION_SURVIVES_SHADOW_ELIGIBLE",
+      "official_final_ledger_fingerprint": "e8838e706cc7d1b0538282253d1aff3811182fb138f451a375b6c0ebef6fac9b",
+      "pre_outcome_source_amendment_commit": "ee3d424d0275b1d4da1ed37437ba8232d645bd55",
+      "pre_outcome_source_amendment": "TFG_DONCHIAN_1D_001_2025_OOS_BULK15M_SOURCE_AMENDMENT_V0.1D.json",
+      "source_family": "OFFICIAL_MEXC_SPOT_BULK_MIN15_MONTHLY_FILES",
+      "source_manifest": {
+        "required_files_expected": 72,
+        "required_files_found": 72,
+        "rows_per_symbol_2025": 35040,
+        "symbols": ["BTC", "ETH", "SOL", "BNB", "XRP", "DOGE"],
+        "gap_count_per_symbol": 0,
+        "duplicate_timestamps_per_symbol": 0,
+        "data_2026_accessed": false,
+        "frozen_before_2025_outcome_evaluation": true,
+        "source_zip_sha256": {
+          "BTC_USDT-Min15-2025-05-01.zip": "005fd4b352082f7b8bfd667fdc5f0dbd3c2e3671a895a7b90d9bf026f901409e",
+          "BNB_USDT-Min15-2025-12-01.zip": "f45b9babb8c5ac92d93fd2871a65e6f55786c875e03aa5773dacc680758d3a8d",
+          "DOGE_USDT-Min15-2025-12-01.zip": "f7c19fc7965138e0453a50b558c1617c60d18f3eb2a0529d2741043410452d58"
+        }
+      },
+      "recovery_attempts": {
+        "github_actions_artifact_10448457021": {
+          "recovered": true,
+          "usable_as_final_ledger": false,
+          "reason": "Artifact contains only TFG_DONCHIAN_1D_2025_OOS_RECEIPT_V0.1C.json from the earlier blocked API-source attempt. Receipt explicitly states 2025_data_accessed=false and 2025_outcome_evaluation_performed=false."
+        },
+        "google_drive_exact_zip_name_search": {
+          "BTC_USDT-Min15-2025-05-01.zip": "NOT_FOUND",
+          "BNB_USDT-Min15-2025-12-01.zip": "NOT_FOUND",
+          "generic_MEXC_Min15_2025": "NO_SOURCE_BYTES_FOUND"
+        },
+        "public_web_exact_zip_name_search": "NO_DIRECT_MATCH_RECOVERED",
+        "current_mexc_historical_market_data_page_found": true,
+        "mexc_historical_page_note": "MEXC currently exposes a public Cryptocurrency Price History Data Download surface, but the retrieved page did not expose the exact 2025 Min15 bundle identifiers required to prove byte-for-byte equivalence. Do not substitute unverified current downloads for the frozen hashes."
+      },
+      "prohibited_shortcuts": [
+        "Do not use the earlier V0.1C blocked receipt as the final ledger.",
+        "Do not reconstruct the ledger from closeout aggregate metrics.",
+        "Do not replace the frozen MEXC source with a different venue.",
+        "Do not accept newly downloaded bytes unless they match the pre-outcome frozen file hashes/manifests and reproduce the official final ledger fingerprint."
+      ],
+      "decision": "BLOCKED_FINAL_LEDGER_BYTES_NOT_RECOVERED"
+    }
+  },
+  "phase2_overall": {
+    "exact_replay_ready_for_all_setups": false,
+    "dh03_trade_sequence_ready": true,
+    "tfg_trade_sequence_ready": false,
+    "risk_grid_status": "NOT_RUN_LOCKED",
+    "next_allowed_actions": [
+      "Recover DH-03 frozen minute mark source for intraday/open-PnL path validation.",
+      "Recover TFG final ledger bytes or byte-identical frozen MEXC source bundles and reproduce ledger fingerprint.",
+      "Do not apply any prop rule or risk sizing until the relevant rulebook path is simulation-ready."
+    ]
+  }
+}
