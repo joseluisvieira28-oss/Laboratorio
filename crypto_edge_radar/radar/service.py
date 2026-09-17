@@ -22,6 +22,26 @@ def _atomic_json_write(path: Path, payload: dict[str, Any]) -> None:
     os.replace(tmp, path)
 
 
+def _log_cycle(status: dict[str, Any]) -> None:
+    """Emit a compact machine-readable runtime heartbeat without sensitive data."""
+    record = {
+        "event": "RADAR_CYCLE",
+        "service": status.get("service", "CRYPTO_EDGE_RADAR"),
+        "version": status.get("version"),
+        "mode": status.get("mode"),
+        "health": status.get("health"),
+        "cycle": status.get("cycle"),
+        "provider": status.get("provider"),
+        "registered_strategies": status.get("registered_strategies", 0),
+        "valid_signal_count": status.get("valid_signal_count", 0),
+        "consecutive_failures": status.get("consecutive_failures", 0),
+        "completed_at_utc": status.get("completed_at_utc"),
+    }
+    if status.get("error"):
+        record["error"] = status["error"]
+    print(json.dumps(record, sort_keys=True), flush=True)
+
+
 @dataclass
 class JsonlNotifier:
     path: Path
@@ -59,7 +79,7 @@ class PublicShadowService:
             self.consecutive_failures = 0
             status = {
                 "service": "CRYPTO_EDGE_RADAR",
-                "version": "0.2",
+                "version": "0.4",
                 "mode": "PUBLIC_SHADOW_ONLY",
                 "provider": result["provider"],
                 "health": "OK",
@@ -74,6 +94,7 @@ class PublicShadowService:
             heartbeat = self.engine.store.append("SERVICE_HEARTBEAT", status)
             status["heartbeat_receipt"] = heartbeat
             self._publish_status(status)
+            _log_cycle(status)
             if result["valid_signals"]:
                 self.notifier.emit(
                     "VALID_SHADOW_SIGNAL",
@@ -84,7 +105,7 @@ class PublicShadowService:
             self.consecutive_failures += 1
             status = {
                 "service": "CRYPTO_EDGE_RADAR",
-                "version": "0.2",
+                "version": "0.4",
                 "mode": "PUBLIC_SHADOW_ONLY",
                 "provider": configured_provider,
                 "health": "FAIL_CLOSED",
@@ -94,12 +115,14 @@ class PublicShadowService:
                 "error": str(exc),
                 "consecutive_failures": self.consecutive_failures,
                 "valid_signal_count": 0,
+                "registered_strategies": 0,
             }
             try:
                 self.engine.store.append("SERVICE_FAILURE", status)
             finally:
                 self._publish_status(status)
                 self.notifier.emit("SERVICE_FAIL_CLOSED", status)
+                _log_cycle(status)
             return 2, status
 
     def run(self, interval: float, max_cycles: int | None = None) -> int:
