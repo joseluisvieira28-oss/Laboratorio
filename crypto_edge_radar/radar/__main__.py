@@ -7,7 +7,7 @@ import sys
 
 from .config import Settings
 from .deployment import RiskLimits, stop_based_position_size
-from .evidence import EvidenceStore
+from .evidence import build_evidence_store
 from .engine import RadarEngine
 from .market import BinancePublicFeed, BinanceSpotPublicFeed
 from .service import PublicShadowService, read_status
@@ -29,7 +29,7 @@ def build_engine() -> tuple[RadarEngine, Settings]:
     engine = RadarEngine(
         settings=settings,
         feed=build_feed(settings),
-        store=EvidenceStore(settings.db_path),
+        store=build_evidence_store(settings.db_path, settings.database_url),
         registry=StrategyRegistry.empty(),
     )
     return engine, settings
@@ -47,7 +47,7 @@ def run_once(engine: RadarEngine) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="CRYPTO EDGE RADAR V0.4 — public shadow + Render runtime + advisory deployment prep"
+        description="CRYPTO EDGE RADAR V0.5 — public shadow + remote evidence persistence"
     )
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("once", help="run one public-data observation cycle")
@@ -61,7 +61,7 @@ def main(argv: list[str] | None = None) -> int:
     web.add_argument("--port", type=int, default=int(os.getenv("PORT", "10000")))
 
     sub.add_parser("status", help="read latest persisted service health status")
-    sub.add_parser("verify-evidence", help="verify the local evidence hash chain")
+    sub.add_parser("verify-evidence", help="verify the configured evidence hash chain")
     sub.add_parser(
         "etf-cme-signal",
         help="fetch the latest public CFTC rows and evaluate the exact frozen ETF-CME signal",
@@ -111,7 +111,11 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps({"status": "FAIL_CLOSED", "error": str(exc)}, sort_keys=True))
             return 2
 
-    engine, settings = build_engine()
+    try:
+        engine, settings = build_engine()
+    except Exception as exc:
+        print(json.dumps({"status": "FAIL_CLOSED", "error": str(exc)}, sort_keys=True))
+        return 2
 
     if args.command == "once":
         return run_once(engine)
@@ -120,7 +124,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.command == "verify-evidence":
         ok, detail = engine.store.verify_chain()
-        print(json.dumps({"ok": ok, "detail": detail}, sort_keys=True))
+        print(json.dumps({"ok": ok, "detail": detail, "backend": engine.store.backend}, sort_keys=True))
         return 0 if ok else 3
     if args.command == "service":
         try:
