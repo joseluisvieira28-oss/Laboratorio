@@ -43,13 +43,18 @@ class ExactTimingScheduler:
         normal_interval: float = 30.0,
         clock: Callable[[], datetime] = _utc_now,
         sleeper: Callable[[float], None] = time.sleep,
+        due_retry_seconds: float = 0.25,
     ) -> None:
         if normal_interval < 5:
             raise ValueError("normal_interval must be >= 5 seconds")
+        if due_retry_seconds <= 0:
+            raise ValueError("due_retry_seconds must be > 0")
         self.runner = runner
         self.normal_interval = normal_interval
         self.clock = clock
         self.sleeper = sleeper
+        self.due_retry_seconds = due_retry_seconds
+        self._handled_due_events: set[str] = set()
 
     def _plans(self, now: datetime) -> list[dict]:
         plans: list[dict] = []
@@ -63,6 +68,25 @@ class ExactTimingScheduler:
             plans.append(plan)
         return plans
 
+    @staticmethod
+    def _event_key(plan: dict) -> str | None:
+        timing = plan.get("operational_timing") or {}
+        strategy_id = plan.get("strategy_id")
+        target = timing.get("target_time_utc")
+        if not strategy_id or not target:
+            return None
+        return f"{strategy_id}|{target}"
+
+    def mark_successful_due_events(self, now: datetime | None = None) -> None:
+        now = (now or self.clock()).astimezone(timezone.utc)
+        for plan in self._plans(now):
+            timing = plan.get("operational_timing") or {}
+            if timing.get("timing_state") != "DUE":
+                continue
+            key = self._event_key(plan)
+            if key:
+                self._handled_due_events.add(key)
+
     def next_decision(self, now: datetime | None = None) -> SchedulerDecision:
         now = (now or self.clock()).astimezone(timezone.utc)
         best = SchedulerDecision(self.normal_interval, "NORMAL_HEARTBEAT")
@@ -71,11 +95,14 @@ class ExactTimingScheduler:
             timing = plan.get("operational_timing") or {}
             state = timing.get("timing_state")
             strategy_id = plan.get("strategy_id")
+            key = self._event_key(plan)
 
             if state == "DUE":
+                if key and key in self._handled_due_events:
+                    continue
                 return SchedulerDecision(
-                    0.0,
-                    "EXACT_ENTRY_DUE_NOW",
+                    self.due_retry_seconds,
+                    "EXACT_ENTRY_DUE_RETRY",
                     timing.get("target_time_utc"),
                     strategy_id,
                 )
@@ -123,13 +150,13 @@ class ExactTimingScheduler:
         while max_cycles is None or self.runner.cycle_no < max_cycles:
             code, _ = self.runner.run_cycle()
             overall = max(overall, code)
+            if code == 0:
+                self.mark_successful_due_events()
+
             if max_cycles is not None and self.runner.cycle_no >= max_cycles:
                 break
 
             decision = self.next_decision()
-            # A zero-delay DUE state can occur immediately after a pre-target
-            # cycle. Yield minimally so the dedicated due cycle gets a fresh
-            # market timestamp without spinning the CPU.
             self.sleeper(max(0.001, decision.sleep_seconds))
 
         return overall
