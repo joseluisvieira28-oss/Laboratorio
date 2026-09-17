@@ -1,9 +1,8 @@
-name: MVE SIMPLE4H 01 — 2025 Source Preflight
+name: MVE SIMPLE4H 01 — V0.3 Source Preflight
 on:
   push:
     branches: [simple4h-recovery-v0.2]
-    paths:
-      - '.github/workflows/mve-simple4h-01-source-preflight.yml'
+    paths: ['.github/workflows/mve-simple4h-01-source-preflight.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -13,34 +12,38 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
+        with: {python-version: '3.12'}
       - run: pip install pandas
-      - name: Freeze structure preflight
-        run: python mve_simple4h_01_preflight.py --source-root "$RUNNER_TEMP/mve_simple4h_2025" --structure-only
-      - name: Download exactly authorized 2025 Binance USD-M Futures 1m archives
+      - name: Frozen structure gate
+        run: python mve_simple4h_01_preflight.py --source-root "$RUNNER_TEMP/simple4h" --structure-only
+      - name: Download only V0.3-authorized source bytes
         shell: bash
         run: |
           set -euo pipefail
-          ROOT="$RUNNER_TEMP/mve_simple4h_2025"
-          for S in BTCUSDT ETHUSDT SOLUSDT BNBUSDT XRPUSDT DOGEUSDT; do
+          ROOT="$RUNNER_TEMP/simple4h"
+          for S in BNBUSDT DOGEUSDT SOLUSDT XRPUSDT; do
             mkdir -p "$ROOT/$S"
-            for M in $(seq -w 1 12); do
-              F="${S}-1m-2025-${M}.zip"
+            for YM in 2024-12 2025-01 2025-02 2025-03 2025-04 2025-05 2025-06 2025-07 2025-08 2025-09 2025-10 2025-11 2025-12; do
+              F="${S}-1m-${YM}.zip"
               U="https://data.binance.vision/data/futures/um/monthly/klines/${S}/1m/${F}"
-              curl --fail --silent --show-error --location "$U" --output "$ROOT/$S/$F"
+              curl --fail --silent --show-error --location "$U" -o "$ROOT/$S/$F"
+              curl --fail --silent --show-error --location "${U}.CHECKSUM" -o "$ROOT/$S/${F}.CHECKSUM"
+              (cd "$ROOT/$S" && sha256sum -c "${F}.CHECKSUM")
             done
           done
-          test "$(find "$ROOT" -type f -name '*.zip' | wc -l)" -eq 72
-      - name: Timestamp-only source gate
-        run: python mve_simple4h_01_preflight.py --source-root "$RUNNER_TEMP/mve_simple4h_2025"
-      - name: Record source hashes only
+          test "$(find "$ROOT" -type f -name '*.zip' | wc -l)" -eq 52
+      - name: Timestamp-only gate
+        run: python mve_simple4h_01_preflight.py --source-root "$RUNNER_TEMP/simple4h"
+      - name: Build deterministic source manifest
         shell: bash
         run: |
-          ROOT="$RUNNER_TEMP/mve_simple4h_2025"
-          find "$ROOT" -type f -name '*.zip' -print0 | sort -z | xargs -0 sha256sum > MVE_SIMPLE4H_01_2025_SOURCE_SHA256.txt
+          ROOT="$RUNNER_TEMP/simple4h"
+          find "$ROOT" -type f -name '*.zip' -print0 | sort -z | xargs -0 sha256sum | sed "s#${ROOT}/##" > MVE_SIMPLE4H_01_SOURCE_MANIFEST_SHA256.txt
+          sha256sum MVE_SIMPLE4H_01_SOURCE_MANIFEST_SHA256.txt > MVE_SIMPLE4H_01_SOURCE_MANIFEST_FILE_SHA256.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: mve-simple4h-01-2025-source-receipt
-          path: MVE_SIMPLE4H_01_2025_SOURCE_SHA256.txt
+          name: mve-simple4h-01-v03-source-receipt
+          path: |
+            MVE_SIMPLE4H_01_SOURCE_MANIFEST_SHA256.txt
+            MVE_SIMPLE4H_01_SOURCE_MANIFEST_FILE_SHA256.txt
           retention-days: 90
