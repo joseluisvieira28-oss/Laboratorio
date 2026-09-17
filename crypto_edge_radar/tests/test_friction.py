@@ -55,6 +55,16 @@ class StubFrictionFeed(MEXCFuturesPublicFeed):
             "fairPrice": 100.05,
         }
 
+    def funding_rate_history(self, symbol, *, page_num=1, page_size=100):
+        self._validate_contract_symbol(symbol)
+        # Three settled rates inside the seven-day window: +1, +2, -0.5 bps.
+        return [
+            {"fundingRate": 0.0001, "settleTime": 1_800_000_000_000 - 8 * 3600 * 1000},
+            {"fundingRate": 0.0002, "settleTime": 1_800_000_000_000 - 16 * 3600 * 1000},
+            {"fundingRate": -0.00005, "settleTime": 1_800_000_000_000 - 24 * 3600 * 1000},
+            {"fundingRate": 0.0099, "settleTime": 1_800_000_000_000 - 8 * 24 * 3600 * 1000},
+        ]
+
     def recent_trades(self, symbol, limit=100):
         self._validate_contract_symbol(symbol)
         return [{"p": 100.0, "v": 1, "T": 1, "t": 1_800_000_000_000}]
@@ -80,7 +90,7 @@ class FrictionShadowTests(unittest.TestCase):
             -14.8,
         )
 
-    def test_funding_projection_is_scenario_only(self):
+    def test_funding_projection_and_trailing_history_are_separated(self):
         receipt = mexc_friction_shadow_receipt(feed=StubFrictionFeed())
         funding = receipt["funding_and_basis"]
         self.assertEqual(funding["collect_cycle_hours"], 8)
@@ -89,6 +99,11 @@ class FrictionShadowTests(unittest.TestCase):
             21.0,
         )
         self.assertIn("Not a forecast", funding["scenario_warning"])
+        trailing = funding["trailing_7d_settled_funding"]
+        self.assertEqual(trailing["settlement_count"], 3)
+        self.assertAlmostEqual(trailing["rate_sum_bps"], 2.5)
+        self.assertAlmostEqual(trailing["long_direction_burden_bps_proxy"], 2.5)
+        self.assertAlmostEqual(trailing["short_direction_burden_bps_proxy"], -2.5)
 
 
 if __name__ == "__main__":
