@@ -1,0 +1,3 @@
+triggered_at=2026-09-17
+probe_id=OVRP-EXEC-SOURCE-TARDIS-PROBE-002
+purpose=corrected_free_sample_calendar_source_feasibility_only
