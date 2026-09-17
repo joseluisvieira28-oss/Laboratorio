@@ -1,0 +1,103 @@
+{
+  "document_id": "PROP_COMPAT_001_PHASE2_DH03_EXACT_REPLAY_PRECHECK_V0.1",
+  "campaign_id": "PROP-COMPAT-001",
+  "setup_id": "DH-03-HO1",
+  "created_on": "2026-09-17",
+  "status": "EXACT_LEDGER_STRUCTURAL_REPLAY_PASS_INTRADAY_SOURCE_REPRODUCIBLE_NOT_MATERIALIZED",
+  "governance": {
+    "prop_rules_applied": false,
+    "risk_sizing_applied": false,
+    "risk_grid_run": false,
+    "cost_translation_run": false,
+    "monte_carlo_run": false,
+    "setup_modified": false,
+    "live_trading": false
+  },
+  "trade_ledger": {
+    "sha256": "ec4e5dbc8d95a73d4eb9db55f4e1c0f264dba7eb724cbb7424f2c034a3a7eebd",
+    "selected_rows": 148,
+    "resolved_rows": 146,
+    "execution_path_unresolved_rows": 2,
+    "first_resolved_entry_utc": "2023-01-21T12:00:00Z",
+    "last_resolved_exit_utc": "2024-12-20T11:22:00Z",
+    "exit_counts": {
+      "STOP": 89,
+      "TARGET": 47,
+      "TIME_EXIT_EXACT_MINUTE_OPEN": 10
+    },
+    "resolved_symbol_counts": {
+      "BTCUSDT": 24,
+      "ETHUSDT": 24,
+      "SOLUSDT": 29,
+      "BNBUSDT": 23,
+      "XRPUSDT": 24,
+      "DOGEUSDT": 22
+    },
+    "holding_duration_days": {
+      "mean": 8.945738203957381,
+      "median": 4.285069444444444,
+      "p90_empirical": 28.772222222222222,
+      "maximum": 40.0,
+      "resolved_trades_over_30_days": 14,
+      "exact_40_day_time_exits": 10
+    },
+    "concurrency": {
+      "maximum_simultaneous_resolved_positions": 6,
+      "interpretation": "The frozen six-symbol universe was simultaneously exposed at multiple points. Later risk safety must therefore be portfolio-based; per-trade risk alone is insufficient.",
+      "example_first_max_concurrency_timestamp_utc": "2023-11-11T12:00:00Z",
+      "example_active_symbols": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "DOGEUSDT"]
+    },
+    "funding": {
+      "total_funding_events_across_resolved_trades": 3894,
+      "mean_trade_funding_return_fraction": -0.0028406505479452054,
+      "note": "This is the frozen Binance USD-M historical funding contribution already contained in the DH-03 ledger, before any prop-specific cost translation."
+    },
+    "initial_stop_distance_fraction": {
+      "minimum": 0.01678646545666481,
+      "median": 0.05969218621489025,
+      "maximum": 0.431100789764751,
+      "note": "This is price-risk fraction (entry-to-stop divided by entry), not account risk sizing. No account-risk percentage has been applied."
+    },
+    "unresolved_rows": [
+      {
+        "symbol": "XRPUSDT",
+        "entry_time_utc": "2024-12-02T00:00:00Z",
+        "exit_reason": "EXECUTION_PATH_UNRESOLVED_END",
+        "treatment": "Remain unresolved; no imputation."
+      },
+      {
+        "symbol": "BNBUSDT",
+        "entry_time_utc": "2024-12-04T00:00:00Z",
+        "exit_reason": "EXECUTION_PATH_UNRESOLVED_END",
+        "treatment": "Remain unresolved; no imputation."
+      }
+    ]
+  },
+  "intraday_source_provenance": {
+    "source_binding_status": "FROZEN_EXACT_PHASE5_SOURCE_BEFORE_ANY_HOLDOUT_OUTCOME",
+    "source_run_id": 35076213767,
+    "artifact_id": 10438795414,
+    "artifact_digest": "sha256:d84cc2f9117519568fa1a8d276217550da82ddffffc2df37c195a95787dda752",
+    "source_fingerprint": "d1a95d51d99eba0bd5f66e91d75ddcd175f7a84d954ba28a44c2dcd39ef4c5cb",
+    "price_archive_count": 144,
+    "funding_archive_count": 144,
+    "raw_minute_rows_all_symbols": 6315840,
+    "minutes_per_symbol": 1052640,
+    "detected_minute_gaps_each_symbol": 0,
+    "incomplete_15m_buckets_each_symbol": 0,
+    "allowed_years": [2023, 2024],
+    "access_2025": false,
+    "access_2026": false,
+    "replay_runner_behavior": "For every symbol/month, the official Phase5 runner downloads the pinned Binance USD-M 1m archive URL, verifies the downloaded bytes against the pre-outcome SHA-256, then uses those minute bars for stop/target/max-hold resolution.",
+    "local_materialization_status": "CANONICAL_15M_AND_FUNDING_RECOVERED; RAW_1M_ARCHIVES_PINNED_BY_URL_AND_HASH_BUT_NOT_ALL_DOWNLOADED_IN_CURRENT_PROP_BRANCH"
+  },
+  "validation": {
+    "recomputed_base_expectancy_r": 0.3270763138082726,
+    "official_base_expectancy_r": 0.3270763138,
+    "recomputed_stress_expectancy_r": 0.3017717129328741,
+    "official_stress_expectancy_r": 0.3017717129,
+    "closeout_match": true
+  },
+  "phase2_decision": "DH03_EXACT_TRADE_REPLAY_SOURCE_CHAIN_VALIDATED",
+  "next_gate": "Materialize the pinned 1m archives only when needed for full open-PnL/equity-path reconstruction. Do not run the frozen risk grid until a relevant prop rulebook path is simulation-ready."
+}
