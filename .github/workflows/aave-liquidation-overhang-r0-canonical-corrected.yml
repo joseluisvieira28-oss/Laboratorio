@@ -1,0 +1,60 @@
+name: AAVE Liquidation Overhang 001 — R0 Canonical Corrected
+
+on:
+  push:
+    branches:
+      - aave-liquidation-overhang-v0.1
+    paths:
+      - research/aave_liquidation_overhang/aggregate_reconstruction_r0_corrected.py
+      - .github/workflows/aave-liquidation-overhang-r0-canonical-corrected.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  r0-canonical-corrected:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout frozen research branch
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download frozen R0 bootstrap receipt
+        uses: actions/download-artifact@v4
+        with:
+          name: AAVE_RECON_R0_BOOTSTRAP
+          path: r0_parts/bootstrap
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 35218275356
+      - name: Download frozen R0 token receipt
+        uses: actions/download-artifact@v4
+        with:
+          name: AAVE_RECON_R0_TOKEN
+          path: r0_parts/token
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 35218275356
+      - name: Download corrected oracle provenance receipt
+        uses: actions/download-artifact@v4
+        with:
+          name: AAVE_LIQUIDATION_OVERHANG_001_ORACLE_BOOTSTRAP_V0_2_2
+          path: r0_parts/oracle
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 35223450025
+      - name: Aggregate corrected canonical R0
+        run: python research/aave_liquidation_overhang/aggregate_reconstruction_r0_corrected.py
+      - name: Upload canonical corrected R0 receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: AAVE_LIQUIDATION_OVERHANG_001_RECONSTRUCTION_R0_CANONICAL_CORRECTED
+          path: reconstruction_r0_corrected_output/AAVE_LIQUIDATION_OVERHANG_001_RECONSTRUCTION_R0_CANONICAL_CORRECTED.json
+          if-no-files-found: warn
+          retention-days: 30
