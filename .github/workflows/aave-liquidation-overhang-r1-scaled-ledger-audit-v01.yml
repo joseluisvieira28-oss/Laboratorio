@@ -1,0 +1,50 @@
+name: AAVE Liquidation Overhang 001 — R1 Scaled Ledger Audit V0.1
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - aave-liquidation-overhang-v0.1
+    paths:
+      - '.github/workflows/aave-liquidation-overhang-r1-scaled-ledger-audit-v01.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  r1-scaled-ledger-audit-v01:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout frozen research branch
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install source dependencies
+        run: pip install --disable-pip-version-check requests 'eth-hash[pycryptodome]'
+
+      - name: Download canonical R0 bootstrap receipt
+        uses: actions/download-artifact@v4
+        with:
+          name: AAVE_RECON_R0_BOOTSTRAP
+          path: downloaded_r0_bootstrap
+          github-token: ${{ github.token }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: 35218275356
+
+      - name: Execute frozen deterministic R1 scaled-ledger audit
+        run: python research/aave_liquidation_overhang/r1_scaled_ledger_audit_v01.py
+
+      - name: Upload R1 audit receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: AAVE_LIQUIDATION_OVERHANG_001_R1_SCALED_LEDGER_AUDIT_V0_1
+          path: r1_scaled_ledger_audit_output/AAVE_LIQUIDATION_OVERHANG_001_R1_SCALED_LEDGER_AUDIT_V0_1.json
+          if-no-files-found: warn
+          retention-days: 30
