@@ -45,6 +45,30 @@ def load_freeze() -> Dict[str, Any]:
     assert x["2026_authorized"] is False
     return x
 
+def require_aws_credentials() -> None:
+    """Resolve credentials through boto3's standard provider chain without printing secrets.
+
+    This is transport-only hardening: environment variables, shared credentials/config,
+    credential_process, SSO/session-backed providers and other boto3-supported providers
+    are accepted. Resolution happens before the first S3 request and does not alter the
+    frozen scientific source, target, caps, decoders or decision rule.
+    """
+    try:
+        import boto3
+    except Exception as exc:
+        raise ProbeBlocked(f"TECHNICAL_BLOCKED: boto3 unavailable: {exc}") from exc
+    try:
+        creds = boto3.Session().get_credentials()
+        if creds is None:
+            raise ProbeBlocked("BLOCKED_NO_AUTHORIZATION: AWS credentials unavailable from standard provider chain")
+        frozen = creds.get_frozen_credentials()
+    except ProbeBlocked:
+        raise
+    except Exception as exc:
+        raise ProbeBlocked(f"BLOCKED_NO_AUTHORIZATION: AWS credential resolution failed: {type(exc).__name__}") from exc
+    if not frozen.access_key or not frozen.secret_key:
+        raise ProbeBlocked("BLOCKED_NO_AUTHORIZATION: AWS credentials incomplete in standard provider chain")
+
 def load_auth(runtime_confirmation: Optional[str]) -> Dict[str, Any]:
     if runtime_confirmation != RUNTIME_CONFIRMATION:
         raise ProbeBlocked("BLOCKED_NO_AUTHORIZATION: runtime confirmation missing")
@@ -67,8 +91,7 @@ def load_auth(runtime_confirmation: Optional[str]) -> Dict[str, Any]:
             raise ProbeBlocked(f"BLOCKED_NO_AUTHORIZATION: amendment {k} mismatch")
     if x.get("freeze_git_blob_sha") != EXPECTED_FREEZE_GIT_BLOB_SHA:
         raise ProbeBlocked("BLOCKED_NO_AUTHORIZATION: amendment freeze pin mismatch")
-    if not os.environ.get("AWS_ACCESS_KEY_ID") or not os.environ.get("AWS_SECRET_ACCESS_KEY"):
-        raise ProbeBlocked("BLOCKED_NO_AUTHORIZATION: AWS credentials missing")
+    require_aws_credentials()
     return x
 
 def make_s3():
