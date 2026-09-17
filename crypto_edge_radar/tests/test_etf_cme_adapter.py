@@ -1,4 +1,5 @@
 import unittest
+from datetime import datetime, timezone
 
 from radar.models import Direction, MarketSnapshot
 from radar.strategy import enforce_promotion_gate
@@ -56,20 +57,39 @@ class ETFCMEAdapterTests(unittest.TestCase):
         self.assertTrue(decision.valid_signal)
         self.assertEqual(decision.direction, Direction.LONG)
         self.assertEqual(decision.reason, "FROZEN_EXACT_ENTRY_SHADOW_SIGNAL")
+        self.assertEqual(decision.metadata["timing_contract"], "EXACT_TIMING_ENGINE_V1_DEPLOYMENT_ONLY")
         self.assertFalse(decision.metadata["micro_live_eligible"])
         self.assertFalse(decision.metadata["authenticated_exchange_api"])
         self.assertFalse(decision.metadata["order_created"])
 
-    def test_late_entry_is_never_chased(self):
+    def test_small_technical_lag_is_allowed_only_inside_frozen_budget(self):
         adapter = ETFCMEInstFlowAdapter(fetcher=lambda timeout: (PREVIOUS, CURRENT))
         decision = enforce_promotion_gate(
             adapter,
-            snapshot("BTCUSDT", "2026-09-16T00:00:01Z"),
+            snapshot("BTCUSDT", "2026-09-16T00:00:01.500000Z"),
+        )
+        self.assertTrue(decision.valid_signal)
+        self.assertEqual(decision.direction, Direction.LONG)
+        self.assertEqual(decision.metadata["operational_timing"]["max_late_seconds"], 2.0)
+
+    def test_late_entry_past_frozen_budget_is_never_chased(self):
+        adapter = ETFCMEInstFlowAdapter(fetcher=lambda timeout: (PREVIOUS, CURRENT))
+        decision = enforce_promotion_gate(
+            adapter,
+            snapshot("BTCUSDT", "2026-09-16T00:00:02.001000Z"),
         )
         self.assertFalse(decision.valid_signal)
         self.assertEqual(decision.direction, Direction.NONE)
         self.assertEqual(decision.reason, "ENTRY_WINDOW_PASSED_DO_NOT_CHASE")
         self.assertFalse(decision.metadata["entry_eligible_now"])
+        self.assertFalse(decision.metadata["operational_timing"]["late_chase_allowed"])
+
+    def test_timing_plan_arms_before_target(self):
+        adapter = ETFCMEInstFlowAdapter(fetcher=lambda timeout: (PREVIOUS, CURRENT))
+        plan = adapter.timing_plan(datetime(2026, 9, 15, 23, 59, 30, tzinfo=timezone.utc))
+        self.assertEqual(plan["state"], "ARMED_FOR_EXACT_ENTRY")
+        self.assertFalse(plan["entry_eligible_now"])
+        self.assertEqual(plan["operational_timing"]["timing_state"], "ARMED")
 
     def test_public_cftc_rows_are_cached_but_time_gate_is_recomputed(self):
         calls = []
@@ -88,12 +108,12 @@ class ETFCMEAdapterTests(unittest.TestCase):
         first = adapter.evaluate(snapshot("BTCUSDT", "2026-09-15T23:59:00Z"))
         second = adapter.evaluate(snapshot("BTCUSDT", "2026-09-16T00:00:00Z"))
         self.assertEqual(len(calls), 1)
-        self.assertEqual(first.reason, "WAITING_INFORMATION_SAFE_TIME")
+        self.assertEqual(first.reason, "ARMED_FOR_EXACT_ENTRY")
         self.assertEqual(second.direction, Direction.LONG)
         self.assertEqual(second.reason, "FROZEN_EXACT_ENTRY_SHADOW_SIGNAL")
 
         clock.value += 301
-        adapter.evaluate(snapshot("BTCUSDT", "2026-09-16T00:00:01Z"))
+        adapter.evaluate(snapshot("BTCUSDT", "2026-09-16T00:00:02.001000Z"))
         self.assertEqual(len(calls), 2)
 
 
