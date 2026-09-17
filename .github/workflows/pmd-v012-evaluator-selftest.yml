@@ -28,7 +28,11 @@ jobs:
         run: |
           python -m py_compile \
             Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/evaluate_chain_exact_features_v012.py \
-            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/chain_exact_evaluation_v012_selftest.py
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/chain_exact_evaluation_v012_selftest.py \
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/chain_exact_evaluation_v012_negative_selftest.py
       - name: Run positive-control evaluator test
         working-directory: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001
         run: python chain_exact_evaluation_v012_selftest.py
+      - name: Run negative-control evaluator test
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001
+        run: python chain_exact_evaluation_v012_negative_selftest.py
