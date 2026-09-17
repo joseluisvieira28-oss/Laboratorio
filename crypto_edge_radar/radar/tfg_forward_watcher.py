@@ -101,10 +101,21 @@ class TFGForwardShadowWatcher:
             )
             h12, _incomplete = aggregate_15m_to_12h(m15)
             complete_opens = {c.open_time for c in h12}
+            m15_opens = {c.open_time for c in m15}
             for boundary in boundaries:
                 signal_open = boundary - TWELVE_HOUR_MS
                 if signal_open not in complete_opens:
-                    raise TFGSourceError(f"missing complete 12H source bucket:{symbol}:{signal_open}")
+                    expected = [signal_open + i * FIFTEEN_MIN_MS for i in range(48)]
+                    missing = [ts for ts in expected if ts not in m15_opens]
+                    first_seen = m15[0].open_time if m15 else None
+                    last_seen = m15[-1].open_time if m15 else None
+                    raise TFGSourceError(
+                        "missing complete 12H source bucket:"
+                        f"{symbol}:{signal_open}:"
+                        f"missing_15m={missing}:"
+                        f"received_15m={len(m15)}:"
+                        f"first_seen={first_seen}:last_seen={last_seen}"
+                    )
             source_15m[symbol] = m15
             bars_12h[symbol] = h12
             daily[symbol] = d1
