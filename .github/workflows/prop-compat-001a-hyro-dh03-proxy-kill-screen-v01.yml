@@ -5,6 +5,7 @@ on:
     branches: [prop-compat-001-v0.1]
     paths:
       - 'Dream-Account-OS-v2.3-PARTIAL/research/prop_compat/PROP_COMPAT_001A_PROXY_RUN_TRIGGER_V0.1.txt'
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -15,9 +16,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout isolated prop branch
+        uses: actions/checkout@v4
+        with:
+          ref: prop-compat-001-v0.1
+          fetch-depth: 1
 
-      - uses: actions/setup-python@v5
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
@@ -31,6 +37,8 @@ jobs:
           proto=json.loads((p/'PROP_COMPAT_001_HYRO_DH03_PROXY_KILL_SCREEN_PROTOCOL_V0.1.json').read_text())
           freeze=json.loads((p/'PROP_COMPAT_001_HYRO_DH03_PROXY_REPLAY_FREEZE_V0.1.json').read_text())
           grid=json.loads((p/'PROP_COMPAT_001_RISK_GRID_FREEZE_V0.1.json').read_text())
+          c1=json.loads((p/'PROP_COMPAT_001_HYRO_DH03_PROXY_IMPLEMENTATION_CLARIFICATION_01.json').read_text())
+          c2=json.loads((p/'PROP_COMPAT_001_HYRO_DH03_PROXY_IMPLEMENTATION_CLARIFICATION_02.json').read_text())
           assert proto['status']=='FROZEN_BEFORE_PROXY_OUTCOMES'
           assert proto['governance']['proxy_outcomes_opened_before_freeze'] is False
           assert proto['proxy_grid_pct_equity_per_1R']==[0.10,0.15,0.20,0.25,0.30]
@@ -38,8 +46,19 @@ jobs:
           assert freeze['governance']['proxy_outcomes_opened'] is False
           assert grid['status']=='FROZEN_NOT_RUN'
           assert grid['governance']['risk_grid_run'] is False
+          assert c1['status']=='FROZEN_BEFORE_PROXY_OUTCOMES'
+          assert c1['governance']['proxy_outcomes_opened_before_clarification'] is False
+          assert c2['status']=='FROZEN_BEFORE_PROXY_OUTCOMES'
+          assert c2['governance']['proxy_outcomes_opened_before_clarification'] is False
           print('PROXY_AUTHORITY_GATE_PASS')
           PY
+
+      - name: Compile and self-test frozen runner
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: |
+          python -m py_compile research/prop_compat/prop_compat_001a_hyro_dh03_proxy_kill_screen_v01.py
+          python research/prop_compat/prop_compat_001a_hyro_dh03_proxy_kill_screen_v01.py --self-test
+          sha256sum research/prop_compat/prop_compat_001a_hyro_dh03_proxy_kill_screen_v01.py
 
       - name: Download exact frozen Phase5 source artifact
         uses: actions/download-artifact@v4
@@ -57,28 +76,22 @@ jobs:
           github-token: ${{ github.token }}
           run-id: 35080622854
 
-      - name: Recover frozen proxy runner
-        working-directory: Dream-Account-OS-v2.3-PARTIAL
-        run: |
-          gzip -dc research/prop_compat/hyro_dh03_proxy_kill_screen_v01.py.gz > /tmp/hyro_dh03_proxy_kill_screen_v01.py
-          python -m py_compile /tmp/hyro_dh03_proxy_kill_screen_v01.py
-          sha256sum /tmp/hyro_dh03_proxy_kill_screen_v01.py
-
       - name: Run frozen non-decisional proxy kill-screen
         working-directory: Dream-Account-OS-v2.3-PARTIAL
         run: |
-          mkdir -p research/local_data/prop_compat_001a/output
-          python /tmp/hyro_dh03_proxy_kill_screen_v01.py \
-            research/local_data/prop_compat_001a/source \
-            research/local_data/prop_compat_001a/execution \
-            research/local_data/prop_compat_001a/output
+          set -euo pipefail
+          mkdir -p research/local_data/prop_compat_001a/output /tmp/prop_compat_001a_binance_cache
+          python research/prop_compat/prop_compat_001a_hyro_dh03_proxy_kill_screen_v01.py \
+            --execution-dir research/local_data/prop_compat_001a/execution \
+            --source-dir research/local_data/prop_compat_001a/source \
+            --cache-dir /tmp/prop_compat_001a_binance_cache \
+            --output-dir research/local_data/prop_compat_001a/output
 
       - name: Upload proxy evidence
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: PROP_COMPAT_001A_HYRO_DH03_PROXY_KILL_SCREEN_V01
-          path: |
-            Dream-Account-OS-v2.3-PARTIAL/research/local_data/prop_compat_001a/output/PROP_COMPAT_001A_HYRO_DH03_PROXY_KILL_SCREEN_RESULT_V0.1.json
-            Dream-Account-OS-v2.3-PARTIAL/research/local_data/prop_compat_001a/output/PROP_COMPAT_001A_HYRO_DH03_PROXY_KILL_SCREEN_CELLS_V0.1.csv
+          path: Dream-Account-OS-v2.3-PARTIAL/research/local_data/prop_compat_001a/output/PROP_COMPAT_001A_HYRO_DH03_PROXY_KILL_SCREEN_RECEIPT_V0.1.json
           if-no-files-found: error
           retention-days: 90
