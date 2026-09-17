@@ -1,0 +1,50 @@
+name: BTC Options VRP — Tardis Schema Diagnostic V0.1
+
+on:
+  push:
+    branches:
+      - btc-options-vrp-tardis-source-probe-v0.1
+    paths:
+      - .github/btc-options-vrp-tardis-schema-diagnostic-v01.trigger
+
+permissions:
+  contents: read
+
+jobs:
+  schema_diagnostic:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: btc-options-vrp-tardis-source-probe-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --disable-pip-version-check requests
+      - name: Verify diagnostic authority
+        run: |
+          python - <<'PY'
+          import json
+          a=json.load(open('labs/BTC_OPTIONS_VRP_001/TARDIS_SCHEMA_DIAGNOSTIC_AUTHORITY_V0.1.json'))
+          assert a['status']=='FROZEN_SOURCE_SCHEMA_DIAGNOSTIC_ONLY'
+          assert a['parent_probe_run']==35273908796
+          assert a['parent_probe_classification']=='SOURCE_ROUTE_SCHEMA_INSUFFICIENT'
+          assert a['sample_date']=='2021-06-01'
+          assert all(v is False for k,v in a['safety'].items() if k.endswith('_authorized'))
+          print('SCHEMA_DIAGNOSTIC_AUTHORITY_PASS')
+          PY
+      - name: Compile diagnostics
+        run: |
+          python -m py_compile labs/BTC_OPTIONS_VRP_001/tardis_source_probe_v01.py
+          python -m py_compile labs/BTC_OPTIONS_VRP_001/tardis_schema_diagnostic_v01.py
+      - name: Run source-schema diagnostic
+        run: python labs/BTC_OPTIONS_VRP_001/tardis_schema_diagnostic_v01.py
+      - name: Upload diagnostic receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: BTC_OPTIONS_VRP_001_TARDIS_SCHEMA_DIAGNOSTIC_V0_1
+          path: artifacts/btc_options_vrp_tardis_schema_diag_v01/
+          retention-days: 90
+          if-no-files-found: warn
