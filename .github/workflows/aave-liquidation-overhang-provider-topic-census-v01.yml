@@ -1,0 +1,37 @@
+name: AAVE Liquidation Overhang 001 — Provider Topic Census V0.1
+
+on:
+  push:
+    branches:
+      - aave-liquidation-overhang-v0.1
+    paths:
+      - research/aave_liquidation_overhang/provider_bootstrap_topic_census.py
+      - .github/workflows/aave-liquidation-overhang-provider-topic-census-v01.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  provider-topic-census:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout frozen research branch
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install source dependencies
+        run: pip install --disable-pip-version-check requests 'eth-hash[pycryptodome]'
+      - name: Execute provider bootstrap topic census
+        run: python research/aave_liquidation_overhang/provider_bootstrap_topic_census.py
+      - name: Upload provider topic census receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: AAVE_LIQUIDATION_OVERHANG_001_PROVIDER_TOPIC_CENSUS_V0_1
+          path: provider_topic_census_output/AAVE_LIQUIDATION_OVERHANG_001_PROVIDER_BOOTSTRAP_TOPIC_CENSUS_V0_1.json
+          if-no-files-found: warn
+          retention-days: 30
