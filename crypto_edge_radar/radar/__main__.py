@@ -8,7 +8,7 @@ from .config import Settings
 from .deployment import RiskLimits, stop_based_position_size
 from .evidence import EvidenceStore
 from .engine import RadarEngine
-from .market import BinancePublicFeed, BinanceSpotPublicFeed
+from .market import BinancePublicFeed, BinanceSpotPublicFeed, MEXCFuturesPublicFeed
 from .service import PublicShadowService, read_status
 from .strategy import StrategyRegistry
 from .strategies.etf_cme_source import current_signal_receipt
@@ -19,6 +19,8 @@ def build_feed(settings: Settings):
         return BinancePublicFeed(timeout=settings.http_timeout)
     if settings.provider == "binance_spot_public":
         return BinanceSpotPublicFeed(timeout=settings.http_timeout)
+    if settings.provider == "mexc_futures_public":
+        return MEXCFuturesPublicFeed(timeout=settings.http_timeout)
     raise ValueError(f"unsupported provider: {settings.provider}")
 
 
