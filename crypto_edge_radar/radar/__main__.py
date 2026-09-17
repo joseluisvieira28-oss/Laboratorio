@@ -13,6 +13,7 @@ from .engine import RadarEngine
 from .market import BinancePublicFeed, BinanceSpotPublicFeed, MEXCFuturesPublicFeed
 from .service import PublicShadowService, read_status
 from .strategy import StrategyRegistry
+from .strategies.etf_cme_adapter import ETFCMEInstFlowAdapter
 from .strategies.etf_cme_source import current_signal_receipt
 
 
@@ -28,11 +29,16 @@ def build_feed(settings: Settings):
 
 def build_engine() -> tuple[RadarEngine, Settings]:
     settings = Settings.from_env()
+    registry = StrategyRegistry(
+        (
+            ETFCMEInstFlowAdapter(timeout=settings.http_timeout),
+        )
+    )
     engine = RadarEngine(
         settings=settings,
         feed=build_feed(settings),
         store=build_evidence_store(settings.db_path, settings.database_url),
-        registry=StrategyRegistry.empty(),
+        registry=registry,
     )
     return engine, settings
 
@@ -49,7 +55,7 @@ def run_once(engine: RadarEngine) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="CRYPTO EDGE RADAR V0.7 — MEXC control room + durable evidence"
+        description="CRYPTO EDGE RADAR V0.7 — MEXC control room + durable evidence + ETF-CME shadow bot"
     )
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("once", help="run one public-data observation cycle")
@@ -167,7 +173,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.command == "verify-evidence":
         ok, detail = engine.store.verify_chain()
-        print(json.dumps({"ok": ok, "detail": detail}, sort_keys=True))
+        print(json.dumps({"ok": ok, "detail": detail, "backend": engine.store.backend}, sort_keys=True))
         return 0 if ok else 3
     if args.command == "service":
         try:
