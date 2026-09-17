@@ -14,6 +14,7 @@ from .engine import RadarEngine
 from .friction import mexc_friction_shadow_receipt
 from .local_node import run_local_node
 from .market import BinancePublicFeed, BinanceSpotPublicFeed, MEXCFuturesPublicFeed
+from .risk import isolated_margin_validation_size
 from .service import PublicShadowService, read_status
 from .strategy import StrategyRegistry
 from .strategies.etf_cme_adapter import ETFCMEInstFlowAdapter
@@ -32,11 +33,7 @@ def build_feed(settings: Settings):
 
 def build_engine() -> tuple[RadarEngine, Settings]:
     settings = Settings.from_env()
-    registry = StrategyRegistry(
-        (
-            ETFCMEInstFlowAdapter(timeout=settings.http_timeout),
-        )
-    )
+    registry = StrategyRegistry((ETFCMEInstFlowAdapter(timeout=settings.http_timeout),))
     engine = RadarEngine(
         settings=settings,
         feed=build_feed(settings),
@@ -71,6 +68,45 @@ def timing_status(engine: RadarEngine) -> dict:
     }
 
 
+def public_isolated_risk_receipt(equity: float) -> dict:
+    feed = MEXCFuturesPublicFeed(timeout=10)
+    snapshots = feed.all_market_snapshots()
+    snap = snapshots.get("BTCUSDT")
+    if snap is None:
+        raise RuntimeError("MEXC BTCUSDT public snapshot unavailable")
+    contract = feed.contract_row("BTC_USDT")
+    if contract.get("apiAllowed") is False:
+        raise RuntimeError("MEXC BTC_USDT is not API eligible")
+    if contract.get("futureType") not in (None, 1) or contract.get("state") not in (None, 0):
+        raise RuntimeError("MEXC BTC_USDT contract is not active perpetual")
+    price = max(float(snap.bid_price), float(snap.ask_price), float(snap.last_price))
+    result = isolated_margin_validation_size(
+        account_equity=equity,
+        price=price,
+        contract_size=float(contract["contractSize"]),
+        min_vol=int(contract["minVol"]),
+        vol_unit=int(contract["volUnit"]),
+        leverage=1.0,
+        max_margin_fraction=0.001,
+    )
+    return {
+        "receipt_type": "ETF_CME_MEXC_ISOLATED_RISK_ADVISORY_V1",
+        "provider": feed.provider,
+        "symbol": "BTC_USDT",
+        "isolated_required": True,
+        "auto_margin_add_required_off": True,
+        "authenticated_state_verified": False,
+        "capital_enabled": False,
+        "orders_created": False,
+        "sizing": result,
+        "blockers": [
+            "authenticated verification of isolated mode / 1x leverage / auto-margin-add OFF",
+            "MEXC friction gate",
+            "entry and exit order semantics",
+        ],
+    }
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="CRYPTO EDGE RADAR V0.7 — MEXC control room + durable evidence + exact timing"
@@ -87,19 +123,13 @@ def main(argv: list[str] | None = None) -> int:
     dashboard.add_argument("--port", type=int, default=8787)
     dashboard.add_argument("--registry", default=None)
 
-    control = sub.add_parser(
-        "control-room",
-        help="run timing-aware public observation and web control room",
-    )
+    control = sub.add_parser("control-room", help="run timing-aware public observation and web control room")
     control.add_argument("--host", default="127.0.0.1")
     control.add_argument("--port", type=int, default=8787)
     control.add_argument("--interval", type=float, default=30.0)
     control.add_argument("--registry", default=None)
 
-    local = sub.add_parser(
-        "local-node",
-        help="run the always-on local operator node on loopback only",
-    )
+    local = sub.add_parser("local-node", help="run the always-on local operator node on loopback only")
     local.add_argument("--port", type=int, default=8787)
     local.add_argument("--interval", type=float, default=30.0)
     local.add_argument("--registry", default=None)
@@ -107,27 +137,22 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("timing-status", help="show exact-timing plans for registered strategies")
     sub.add_parser("status", help="read latest persisted service health status")
     sub.add_parser("verify-evidence", help="verify the evidence hash chain")
-    sub.add_parser(
-        "etf-cme-signal",
-        help="fetch the latest public CFTC rows and evaluate the scientific exact-time signal",
-    )
-    sub.add_parser(
-        "mexc-friction-shadow",
-        help="capture public-only BTC_USDT execution-friction observables; never creates orders",
-    )
+    sub.add_parser("etf-cme-signal", help="fetch latest public CFTC rows and evaluate the scientific exact-time signal")
+    sub.add_parser("mexc-friction-shadow", help="capture public-only BTC_USDT execution-friction observables; never creates orders")
 
-    risk_budget = sub.add_parser(
-        "risk-budget", help="print default launch risk amounts for an account equity"
-    )
+    risk_budget = sub.add_parser("risk-budget", help="print default launch risk amounts for an account equity")
     risk_budget.add_argument("--equity", type=float, required=True)
 
-    position_size = sub.add_parser(
-        "position-size",
-        help="advisory stop-based size; valid only for a frozen bounded-loss model",
-    )
+    position_size = sub.add_parser("position-size", help="advisory stop-based size; valid only for a frozen bounded-loss model")
     position_size.add_argument("--equity", type=float, required=True)
     position_size.add_argument("--entry", type=float, required=True)
     position_size.add_argument("--stop", type=float, required=True)
+
+    isolated = sub.add_parser(
+        "isolated-risk-size",
+        help="public MEXC isolated-margin sizing advisory for ETF-CME; never creates orders",
+    )
+    isolated.add_argument("--equity", type=float, required=True)
 
     args = parser.parse_args(argv)
 
@@ -141,12 +166,15 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "position-size":
         try:
-            print(
-                json.dumps(
-                    stop_based_position_size(args.equity, args.entry, args.stop),
-                    sort_keys=True,
-                )
-            )
+            print(json.dumps(stop_based_position_size(args.equity, args.entry, args.stop), sort_keys=True))
+            return 0
+        except Exception as exc:
+            print(json.dumps({"status": "FAIL_CLOSED", "error": str(exc)}, sort_keys=True))
+            return 2
+
+    if args.command == "isolated-risk-size":
+        try:
+            print(json.dumps(public_isolated_risk_receipt(args.equity), sort_keys=True))
             return 0
         except Exception as exc:
             print(json.dumps({"status": "FAIL_CLOSED", "error": str(exc)}, sort_keys=True))
