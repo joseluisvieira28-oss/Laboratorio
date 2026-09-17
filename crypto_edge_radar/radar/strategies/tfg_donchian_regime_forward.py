@@ -114,8 +114,21 @@ def _parse_kline(row: Any, interval: str) -> Candle:
     except (TypeError, ValueError) as exc:
         raise TFGSourceError("invalid MEXC spot kline values") from exc
     step = _duration_ms(interval)
-    if c.open_time % step != 0 or c.close_time != c.open_time + step - 1:
+    # MEXC Spot V3 reports closeTime at the next interval boundary (open + step),
+    # unlike Binance's common inclusive end timestamp (open + step - 1). Validate
+    # the provider-native timestamp strictly, then normalize internally to the
+    # inclusive-end convention used by the frozen TFG mechanics.
+    if c.open_time % step != 0 or c.close_time != c.open_time + step:
         raise TFGSourceError("MEXC spot kline timestamp/alignment violation")
+    c = Candle(
+        open_time=c.open_time,
+        open=c.open,
+        high=c.high,
+        low=c.low,
+        close=c.close,
+        volume=c.volume,
+        close_time=c.open_time + step - 1,
+    )
     vals = (c.open, c.high, c.low, c.close, c.volume)
     if any(not isfinite(v) for v in vals):
         raise TFGSourceError("non-finite MEXC kline value")
