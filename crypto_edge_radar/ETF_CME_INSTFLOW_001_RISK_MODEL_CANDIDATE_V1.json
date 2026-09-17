@@ -1,0 +1,63 @@
+{
+  "model_id": "ETF-CME-INSTFLOW-001-RISK-MODEL-CANDIDATE-V1",
+  "version": "1.0",
+  "status": "PROSPECTIVE_CANDIDATE_SHADOW_VALIDATION_REQUIRED",
+  "capital_enabled": false,
+  "purpose": "Define a bounded account-loss implementation candidate for a seven-day strategy that has no scientific stop, without inventing a stop or changing the frozen signal/exit rule.",
+  "scientific_invariants": {
+    "strategy_id": "ETF-CME-INSTFLOW-001",
+    "hold_days": 7,
+    "scientific_stop_exists": false,
+    "invent_stop": "FORBIDDEN",
+    "change_signal_or_exit_rule": "FORBIDDEN"
+  },
+  "candidate_loss_container": {
+    "venue": "MEXC",
+    "instrument": "BTC_USDT USDT perpetual",
+    "margin_mode_required": "ISOLATED",
+    "auto_margin_addition_required": false,
+    "manual_margin_addition_after_entry": "FORBIDDEN",
+    "cross_margin": "FORBIDDEN",
+    "candidate_leverage": 1.0,
+    "reason": "Use isolated margin as the account-loss firewall rather than creating a synthetic strategy stop. One-times leverage minimizes liquidation/mapping distortion while the implementation is validated.",
+    "exchange_mechanics_must_be_verified_before_capital": true
+  },
+  "validation_budget": {
+    "max_initial_isolated_margin_fraction_of_account_equity": 0.001,
+    "interpretation": "This is an allocated validation-margin cap, not stop-based risk and not a claim that realized loss is mathematically guaranteed to equal exactly 0.10% in all exchange failure scenarios.",
+    "candidate_max_notional_formula_at_1x": "account_equity * 0.001",
+    "minimum_contract_feasibility_rule": "If the MEXC minimum executable contract notional exceeds the frozen validation budget, micro-live is blocked rather than increasing the budget.",
+    "no_rounding_up_past_budget": true
+  },
+  "required_fail_closed_checks": [
+    "account is configured for isolated margin for BTC_USDT",
+    "auto margin addition is confirmed disabled",
+    "no open BTC_USDT position or conflicting order exists",
+    "leverage is exactly 1x before entry",
+    "initial isolated margin does not exceed the frozen validation budget",
+    "order quantity respects contractSize/minVol/volUnit without rounding above budget",
+    "seven-day exit semantics remain implementable",
+    "liquidation mechanics do not silently create a scientifically material implementation mismatch",
+    "fees/funding/slippage pass the separate MEXC friction gate",
+    "pre-trade receipt is persisted before authenticated transport"
+  ],
+  "equivalence_gate": {
+    "status": "PENDING",
+    "rule": "Freeze 1x isolated candidate first; then test whether its liquidation/margin mechanics would materially alter the frozen seven-day scientific implementation. Do not choose leverage after seeing which value best preserves outcomes.",
+    "if_material_mismatch": "BLOCK_MICRO_LIVE_AND_REVIEW_IMPLEMENTATION_MAPPING",
+    "post_outcome_leverage_tuning": "FORBIDDEN"
+  },
+  "source_basis": [
+    "MEXC documentation states isolated margin confines liquidation loss to the position initial/added margin rather than using available balance.",
+    "MEXC documentation states Auto Margin Addition can transfer additional available funds into an isolated position; therefore it must be disabled for this candidate.",
+    "MEXC contract detail confirms BTC_USDT supports the required perpetual/API mapping; authenticated account-state verification remains pending."
+  ],
+  "governance": {
+    "research_and_shadow_only_now": true,
+    "no_api_key_required_for_this_document": true,
+    "no_orders": true,
+    "no_credentials_in_repository": true,
+    "no_main_merge": true,
+    "fail_closed": true
+  }
+}
