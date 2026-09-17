@@ -1,0 +1,138 @@
+name: Binance Margin Borrow Access 001 — Discovery V0.1
+
+on:
+  push:
+    branches:
+      - binance-margin-borrow-access-v0.1
+    paths:
+      - research/binance_margin_borrow_access/DISCOVERY_TRIGGER_V0_1.txt
+      - .github/workflows/binance-margin-borrow-access-discovery-v01.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  PRIOR_SPOT_RUN_ID: '35269000941'
+  PARSER_RUN_ID: '35262879137'
+
+jobs:
+  manifest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        name: Checkout frozen research branch
+      - uses: actions/setup-python@v5
+        name: Set up Python
+        with:
+          python-version: '3.12'
+      - name: Install source dependency
+        run: pip install --disable-pip-version-check requests
+      - name: Compile frozen Discovery implementation
+        run: python -m py_compile research/binance_margin_borrow_access/discovery_v01.py
+      - name: Download canonical prior-Spot receipt
+        uses: actions/download-artifact@v4
+        with:
+          name: BINANCE_MARGIN_BORROW_ACCESS_001_PRIOR_SPOT_V0_1
+          path: upstream/prior_spot
+          run-id: ${{ env.PRIOR_SPOT_RUN_ID }}
+          github-token: ${{ github.token }}
+      - name: Download canonical parser receipt
+        uses: actions/download-artifact@v4
+        with:
+          name: BINANCE_MARGIN_BORROW_ACCESS_001_EVENT_PARSE_V0_1_1
+          path: upstream/parser
+          run-id: ${{ env.PARSER_RUN_ID }}
+          github-token: ${{ github.token }}
+      - name: Build outcome-blind immutable source manifest
+        run: >-
+          python research/binance_margin_borrow_access/discovery_v01.py manifest
+          --prior-spot-dir upstream/prior_spot
+          --parser-dir upstream/parser
+          --out discovery_manifest
+      - name: Upload immutable Discovery source manifest
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: BINANCE_MARGIN_BORROW_ACCESS_001_DISCOVERY_SOURCE_MANIFEST_V0_1
+          path: |
+            discovery_manifest/discovery_source_manifest.json
+            discovery_manifest/discovery_source_manifest_failure.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  outcome:
+    runs-on: ubuntu-latest
+    needs: manifest
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        shard: [0,1,2,3,4,5,6,7]
+    steps:
+      - uses: actions/checkout@v4
+        name: Checkout frozen research branch
+      - uses: actions/setup-python@v5
+        name: Set up Python
+        with:
+          python-version: '3.12'
+      - name: Install source dependency
+        run: pip install --disable-pip-version-check requests
+      - name: Download immutable Discovery source manifest
+        uses: actions/download-artifact@v4
+        with:
+          name: BINANCE_MARGIN_BORROW_ACCESS_001_DISCOVERY_SOURCE_MANIFEST_V0_1
+          path: discovery_manifest
+      - name: Execute frozen outcome shard
+        run: >-
+          python research/binance_margin_borrow_access/discovery_v01.py shard
+          --manifest discovery_manifest/discovery_source_manifest.json
+          --shard ${{ matrix.shard }}
+          --out discovery_outcome_shard_${{ matrix.shard }}
+      - name: Upload outcome shard receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: BINANCE_MARGIN_BORROW_ACCESS_001_DISCOVERY_V0_1_SHARD_${{ matrix.shard }}
+          path: discovery_outcome_shard_${{ matrix.shard }}/discovery_outcome_shard_${{ matrix.shard }}.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  aggregate:
+    runs-on: ubuntu-latest
+    needs: [manifest, outcome]
+    if: always()
+    steps:
+      - uses: actions/checkout@v4
+        name: Checkout frozen research branch
+      - uses: actions/setup-python@v5
+        name: Set up Python
+        with:
+          python-version: '3.12'
+      - name: Install analysis dependencies
+        run: pip install --disable-pip-version-check requests numpy scipy
+      - name: Download immutable Discovery source manifest
+        uses: actions/download-artifact@v4
+        with:
+          name: BINANCE_MARGIN_BORROW_ACCESS_001_DISCOVERY_SOURCE_MANIFEST_V0_1
+          path: discovery_manifest
+      - name: Download all outcome shard receipts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: BINANCE_MARGIN_BORROW_ACCESS_001_DISCOVERY_V0_1_SHARD_*
+          path: discovery_shards
+      - name: Aggregate frozen Discovery
+        run: >-
+          python research/binance_margin_borrow_access/discovery_v01.py aggregate
+          --manifest discovery_manifest/discovery_source_manifest.json
+          --shards discovery_shards
+          --out discovery_canonical
+      - name: Upload canonical Discovery receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: BINANCE_MARGIN_BORROW_ACCESS_001_DISCOVERY_V0_1
+          path: discovery_canonical/BINANCE_MARGIN_BORROW_ACCESS_001_DISCOVERY_RECEIPT_V0_1.json
+          if-no-files-found: warn
+          retention-days: 30
