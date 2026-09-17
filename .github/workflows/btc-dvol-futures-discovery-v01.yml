@@ -1,0 +1,58 @@
+name: BTC DVOL Futures Basis Convergence Discovery V0.1
+
+on:
+  push:
+    branches:
+      - btc-dvol-futures-discovery-v0.1
+
+permissions:
+  contents: read
+
+concurrency:
+  group: btc-dvol-futures-discovery-v01
+  cancel-in-progress: false
+
+jobs:
+  discovery:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: btc-dvol-futures-discovery-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --disable-pip-version-check requests==2.32.3
+      - name: Verify frozen authority
+        run: |
+          python - <<'PY'
+          import json
+          a=json.load(open('labs/BTC_DVOL_FUTURES_TERMSTRUCTURE_001/DISCOVERY_AUTHORITY_V0.1.json'))
+          assert a['discovery_id']=='DVOL-TS-CONVERGENCE-DISCOVERY-001'
+          assert a['status']=='PRE_OUTCOME_FROZEN'
+          assert a['parent_source_run']==35275287583
+          assert a['parent_source_classification']=='LIFECYCLE_SOURCE_DATA_PASS'
+          assert a['observation_rule']['daily_anchor'].startswith('For each confirmed contract')
+          assert a['observation_rule']['no_basis_threshold'] is True
+          assert a['observation_rule']['no_direction_selection'] is True
+          assert a['sample_gates']['minimum_confirmed_contracts_with_pairs']==12
+          assert a['sample_gates']['minimum_total_adjacent_pairs']==100
+          assert a['statistical_gates']['positive_contract_share_gte']==0.60
+          assert a['bootstrap']['replications']==10000
+          assert a['bootstrap']['seed']==17092026
+          f=a['firewalls']
+          assert all(v is False for v in f.values())
+          print('DVOL_DISCOVERY_AUTHORITY_PASS')
+          PY
+      - run: python -m py_compile labs/BTC_DVOL_FUTURES_TERMSTRUCTURE_001/discovery_v01.py
+      - name: Execute one-shot basis-convergence Discovery
+        run: python labs/BTC_DVOL_FUTURES_TERMSTRUCTURE_001/discovery_v01.py
+      - name: Upload immutable Discovery receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: btc-dvol-futures-discovery-v01-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/btc_dvol_futures_discovery_v01/
+          retention-days: 90
+          if-no-files-found: warn
