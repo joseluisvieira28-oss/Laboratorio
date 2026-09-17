@@ -1,4 +1,4 @@
-name: CRYPTO EDGE RADAR V0.3 CI + PUBLIC SOAK
+name: CRYPTO EDGE RADAR V0.5 CI + PUBLIC SOAK
 
 on:
   push:
@@ -6,6 +6,7 @@ on:
       - crypto-edge-radar-v0.1
       - crypto-edge-radar-aggressive-v0.3
       - crypto-edge-radar-render-v0.4
+      - crypto-edge-radar-postgres-v0.5
     paths:
       - 'crypto_edge_radar/**'
       - '.github/workflows/crypto-edge-radar-v01.yml'
@@ -31,6 +32,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Install packaged runtime
+        run: python -m pip install -e .
       - name: Compile
         run: python -m compileall radar tests
       - name: Unit tests
@@ -53,6 +56,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Install packaged runtime
+        run: python -m pip install -e .
       - name: Prepare artifact directory
         run: mkdir -p ci_artifacts
       - name: Real public-data bounded soak — 3 cycles
@@ -69,7 +74,9 @@ jobs:
           status = json.loads(Path('ci_artifacts/radar_status.json').read_text())
           assert status['health'] == 'OK', status
           assert status['cycle'] == 3, status
+          assert status['version'] == '0.5', status
           assert status['provider'] == 'BINANCE_SPOT_DATA_API_PUBLIC', status
+          assert status['evidence_backend'] == 'sqlite', status
           assert status['registered_strategies'] == 0, status
           assert status['valid_signal_count'] == 0, status
           assert len(status['universe']) == 5, status
@@ -79,7 +86,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: crypto-edge-radar-v03-public-shadow-receipt
+          name: crypto-edge-radar-v05-public-shadow-receipt
           path: crypto_edge_radar/ci_artifacts/
           if-no-files-found: warn
           retention-days: 14
