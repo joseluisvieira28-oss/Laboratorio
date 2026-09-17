@@ -1,0 +1,68 @@
+{
+  "document_id": "PROP_COMPAT_001_PHASE2_DH03_STRUCTURAL_PROP_PRECHECK_V0.1",
+  "campaign_id": "PROP-COMPAT-001",
+  "setup_id": "DH-03-HO1",
+  "created_on": "2026-09-17",
+  "status": "STRUCTURAL_PRECHECK_COMPLETE_NO_RISK_GRID_NO_PROP_PNL_REPLAY",
+  "source_ledger_sha256": "ec4e5dbc8d95a73d4eb9db55f4e1c0f264dba7eb724cbb7424f2c034a3a7eebd",
+  "governance": {
+    "official_risk_grid_run": false,
+    "risk_size_applied": false,
+    "prop_cost_translation_run": false,
+    "challenge_target_progression_run": false,
+    "drawdown_emulation_run": false,
+    "monte_carlo_run": false,
+    "setup_modified": false,
+    "live_trading": false
+  },
+  "portfolio_timing_structure": {
+    "distinct_entry_days_utc": 113,
+    "distinct_resolved_exit_days_utc": 110,
+    "distinct_days_with_at_least_one_entry_and_one_resolved_exit": 39,
+    "interpretation_for_hyro_minimum_days": "The five-day requirement is not structurally impossible before notional/PnL qualification is applied. Exact qualification remains sizing-dependent and is therefore not adjudicated here."
+  },
+  "hyro_inactivity_precheck": {
+    "official_rule": "Account disabled if most recent trading day is older than 30 days; trading day is the last day a trade was fully closed.",
+    "source_url": "https://www.hyrotrader.com/faq/rules/do-you-have-an-inactivity-rule/",
+    "maximum_gap_between_consecutive_resolved_portfolio_exits_days": 45.87222222222222,
+    "gaps_over_30_days_count": 2,
+    "gaps_over_30_days": [
+      {
+        "previous_exit_utc": "2023-08-17T21:43:00Z",
+        "previous_symbol": "XRPUSDT",
+        "next_exit_utc": "2023-10-02T18:39:00Z",
+        "next_symbol": "ETHUSDT",
+        "gap_days": 45.87222222222222
+      },
+      {
+        "previous_exit_utc": "2024-04-19T12:00:00Z",
+        "previous_symbol": "BNBUSDT",
+        "next_exit_utc": "2024-05-20T19:55:00Z",
+        "next_symbol": "SOLUSDT",
+        "gap_days": 31.32986111111111
+      }
+    ],
+    "classification": "MATERIAL_BREACH_CANDIDATE_NOT_FINAL",
+    "why_not_final": "A challenge may hit its target and transition state before a historical inactivity gap, depending on frozen risk sizing and target progression. Those outcomes remain behind the official risk-grid/prop-emulation gate."
+  },
+  "hyro_minimum_notional_structural_math": {
+    "official_min_trade_notional_pct_initial_balance": 5.0,
+    "formula_required_account_risk_pct_for_5pct_notional": "5 * initial_stop_distance_fraction",
+    "required_account_risk_pct_distribution_for_DH03_trades": {
+      "minimum": 0.08393232728332406,
+      "p10": 0.15187657555318418,
+      "p25": 0.20851629280873654,
+      "median": 0.29978467156920724,
+      "p75": 0.4205514560149435,
+      "p90": 0.6574980792427076,
+      "maximum": 2.155503948823755
+    },
+    "interpretation": "At the median DH-03 stop width, approximately 0.30% of account equity per 1R is required merely for position notional to reach 5% of initial balance. This is structural algebra only; no frozen grid cell has been executed or selected and no qualifying-day result has been opened."
+  },
+  "concurrency": {
+    "maximum_simultaneous_positions": 6,
+    "full_six_symbol_concurrency_observed": true,
+    "implication": "Any later prop emulation must enforce drawdown, margin and notional limits portfolio-wide rather than trade-by-trade."
+  },
+  "decision": "STRUCTURAL_PRECHECK_COMPLETE; OFFICIAL_RISK_GRID_REMAINS_LOCKED"
+}
