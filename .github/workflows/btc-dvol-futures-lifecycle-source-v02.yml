@@ -1,0 +1,61 @@
+name: BTC DVOL Futures Lifecycle Source Gate V0.2
+
+on:
+  push:
+    branches:
+      - btc-dvol-futures-lifecycle-source-v0.2
+    paths:
+      - .github/btc-dvol-futures-lifecycle-source-v02.trigger
+
+permissions:
+  contents: read
+
+concurrency:
+  group: btc-dvol-futures-lifecycle-source-v02
+  cancel-in-progress: false
+
+jobs:
+  lifecycle_source_v02:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: btc-dvol-futures-lifecycle-source-v0.2
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --disable-pip-version-check requests==2.32.3
+      - name: Verify frozen V0.2 authority and firewall
+        run: |
+          python - <<'PY'
+          import json
+          a=json.load(open('labs/BTC_DVOL_FUTURES_TERMSTRUCTURE_001/LIFECYCLE_SOURCE_AUTHORITY_V0.2.json'))
+          assert a['source_gate_id']=='DVOL-TS-LIFECYCLE-SOURCE-002'
+          assert a['parent_canonical_run']==35087694157
+          assert a['candidate_instrument_discovery']['candidate_start']=='2023-03-29'
+          assert a['candidate_instrument_discovery']['candidate_end']=='2024-12-25'
+          g=a['source_viability_gates_frozen']
+          assert g['minimum_confirmed_contracts']==12
+          assert g['minimum_qualifying_contracts']==8
+          assert g['minimum_aggregate_active_contract_days']==80
+          assert g['minimum_distinct_calendar_quarters_among_qualifying_contracts']==6
+          assert g['core_field_coverage_minimum']==1.0
+          assert g['aux_field_coverage_minimum']==0.9
+          assert g['exact_metadata_integrity_rate']==1.0
+          f=a['firewalls']
+          assert all(v is False for v in f.values())
+          print('DVOL_LIFECYCLE_SOURCE_V02_AUTHORITY_PASS')
+          PY
+      - name: Compile source-only runner
+        run: python -m py_compile labs/BTC_DVOL_FUTURES_TERMSTRUCTURE_001/lifecycle_source_gate_v02.py
+      - name: Execute boundary-corrected lifecycle source gate
+        run: python labs/BTC_DVOL_FUTURES_TERMSTRUCTURE_001/lifecycle_source_gate_v02.py
+      - name: Upload immutable V0.2 source receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: btc-dvol-futures-lifecycle-source-v02-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/btc_dvol_futures_lifecycle_source_v02/
+          retention-days: 90
+          if-no-files-found: warn
