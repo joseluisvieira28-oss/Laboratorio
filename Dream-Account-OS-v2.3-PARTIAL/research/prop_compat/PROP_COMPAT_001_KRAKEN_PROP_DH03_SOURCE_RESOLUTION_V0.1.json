@@ -1,0 +1,79 @@
+{
+  "document_id": "PROP_COMPAT_001_KRAKEN_PROP_DH03_SOURCE_RESOLUTION_V0.1",
+  "campaign_id": "PROP-COMPAT-001",
+  "frozen_on": "2026-09-17",
+  "status": "PRE_SIMULATION_SOURCE_RESOLUTION_FAIL_CLOSED",
+  "setup_id": "DH-03-HO1",
+  "program": "KRAKEN_PROP",
+  "governance": {
+    "research_only": true,
+    "setup_rules_changed": false,
+    "risk_grid_run": false,
+    "prop_replay_run": false,
+    "challenge_purchase": false,
+    "live_trading": false,
+    "orders_created": false,
+    "private_api_connected": false,
+    "merge_to_main": false
+  },
+  "official_current_rules_confirmed_2026_09_17": {
+    "evaluation_time_limit": "NONE",
+    "overnight_positions": "ALLOWED",
+    "commission_pct_notional_per_side": 0.04,
+    "commission_round_trip_pct_notional": 0.08,
+    "margin_funding_pct_notional_per_day": 0.033,
+    "margin_funding_charge_interval_hours": 4,
+    "fees_count_toward_risk_limits": true,
+    "maximum_daily_loss_pct": 3.0,
+    "maximum_daily_loss_reset_utc": "00:30",
+    "maximum_daily_loss_basis": "BALANCE_AT_00_30_UTC_WITH_REALIZED_AND_UNREALIZED_LOSSES_AND_FEES_COUNTING_INTRADAY",
+    "maximum_drawdown": {
+      "STARTER_pct": 6.0,
+      "INTERMEDIATE_pct": 5.0,
+      "ADVANCED_pct": 3.0,
+      "basis": "STATIC_FROM_STARTING_BALANCE"
+    },
+    "available_order_types": ["MARKET","LIMIT","STOP_LOSS","STOP_LOSS_LIMIT","TAKE_PROFIT","TAKE_PROFIT_LIMIT"],
+    "limit_order_tif": "GTC",
+    "market_universe_public_description": "Crypto contracts available on Kraken Prop; exact full pair list is exposed in the Prop trading-terminal market selector rather than frozen on the public FAQ.",
+    "profit_target_pct": {
+      "STARTER": 10.0,
+      "INTERMEDIATE": 12.0,
+      "ADVANCED": 9.0
+    }
+  },
+  "dh03_translation": {
+    "native_setup_market": "BINANCE_USDM_PERPETUAL_REFERENCE_WITH_EXACT_1M_PATH_AND_BINANCE_HISTORICAL_FUNDING",
+    "kraken_prop_market": "KRAKEN_PROP_CRYPTO_CONTRACTS",
+    "holding_horizon_max_days": 40,
+    "kraken_prop_carry_formula_is_deterministic_from_notional_and_elapsed_rollover_intervals": true,
+    "historical_exchange_funding_series_required_for_kraken_prop": false,
+    "reason": "Current official Kraken Prop documentation defines a fixed 0.033% per-day margin funding fee charged every four hours, rather than an exchange-variable funding-rate series.",
+    "execution_semantics": "Stop Loss and Take Profit orders exist, but exact historical Kraken Prop mark/fill path and spread for the frozen 2023-2024 DH03 timestamps have not been recovered."
+  },
+  "material_blockers": [
+    "Exact current availability of all six frozen DH03 symbols BTC/ETH/SOL/BNB/XRP/DOGE in the Kraken Prop market selector is not publicly enumerated in the recovered official FAQ.",
+    "Authoritative historical Kraken Prop executable price/spread/mark stream for 2023-2024 is not available in the recovered public sources; therefore exact historical prop fills cannot be claimed equivalent to the frozen Binance USD-M minute path.",
+    "Weekend holding semantics are not separately and explicitly documented in the recovered public FAQ; overnight holding is confirmed.",
+    "Kraken Prop API automation is not established by the recovered Prop-specific official documentation and must not be inferred from ordinary Kraken Pro API support."
+  ],
+  "important_resolution": {
+    "carry_blocker_status": "RESOLVED_FOR_RULE_FORMULA_NOT_HISTORICAL_EXECUTION",
+    "carry_rule": "0.033% of open notional per day, charged in six equal four-hour rollover intervals",
+    "scientific_impact": "Unlike DH03 native Binance funding, Kraken Prop carry can be modeled prospectively without reconstructing a variable historical funding series once the position-notional path and rollover timing are frozen. This removes one major source-rule blocker, but does not remove execution/market-availability blockers."
+  },
+  "decision": {
+    "exact_prop_replay_simulation_ready": false,
+    "official_risk_grid_status": "NOT_RUN_LOCKED",
+    "proxy_kill_screen_may_be_pre_frozen": true,
+    "recommended_next_action": "Freeze a non-decisional DH03 x Kraken Prop structural proxy using the existing five-value risk grid, exact frozen DH03 trade timestamps/path for mark-to-market proxy, Kraken Prop deterministic commissions/carry, MDL/MDD rules, and report all plan variants without selecting a winner. It cannot produce PROP-COMPAT-PASS while exact Kraken Prop execution and six-symbol availability remain unresolved."
+  },
+  "sources": [
+    "https://support.kraken.com/articles/kraken-prop-faq",
+    "https://support.kraken.com/articles/understanding-fees-on-kraken-prop",
+    "https://support.kraken.com/articles/maximum-daily-loss-mdl-explained",
+    "https://support.kraken.com/articles/how-kraken-prop-evaluations-work",
+    "https://support.kraken.com/articles/tips-to-avoid-breaching-your-account",
+    "https://support.kraken.com/au/articles/kraken-prop-plans-and-pricing"
+  ]
+}
