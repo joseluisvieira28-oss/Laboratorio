@@ -1,0 +1,109 @@
+{
+  "document_id": "PROP_COMPAT_001_PROP_RULEBOOK_AMENDMENT_V0.7",
+  "campaign_id": "PROP-COMPAT-001",
+  "version": "0.7",
+  "consulted_on": "2026-09-17",
+  "status": "PRE_SIMULATION_KRAKEN_CONFLICT_REVALIDATION_FROZEN",
+  "governance": {
+    "research_only": true,
+    "risk_grid_run": false,
+    "prop_replay_run": false,
+    "live_trading": false,
+    "orders_created": false,
+    "challenge_purchased": false,
+    "setup_rules_changed": false,
+    "post_outcome_tuning": false,
+    "merge_to_main": false
+  },
+  "source_priority": ["official_terms", "official_faq", "official_challenge_page", "official_documentation", "official_support"],
+  "kraken_prop": {
+    "status": "BLOCKED_MATERIAL_CARRY_RULE_CONFLICT_PLUS_EXECUTION_HISTORY_GAP",
+    "simulation_ready": false,
+    "support_current": {
+      "commission_pct_per_side": 0.04,
+      "margin_funding_pct_per_day": 0.033,
+      "charge_description": "charged every 4 hours on open positions",
+      "source": "https://support.kraken.com/articles/kraken-prop-faq"
+    },
+    "evaluation_terms_current": {
+      "agreement": "Breakout Evaluation Agreement",
+      "annex_updated": "2026-08-27",
+      "trading_fee_pct_per_order": 0.04,
+      "swap_rule": "If an open swap position exists at 00:00 UTC, a daily swap fee of 0.033% per open swap position is deducted from the Demo Account balance at that time.",
+      "source": "https://www.breakoutprop.com/breakout-evaluation-agreement/"
+    },
+    "funded_terms_current": {
+      "agreement": "Funded Trader Agreement",
+      "swap_rule": "If an open swap position exists at 00:00 UTC, a daily swap fee of 0.033% per open swap position is deducted from the Funded Account balance at 00:25 UTC.",
+      "source": "https://www.breakoutprop.com/funded-trader-agreement/"
+    },
+    "material_conflict": "The current Kraken support description of six funding charges per day is not operationally equivalent to the current governing Breakout legal text describing one daily 0.033% swap fee tied to the 00:00 UTC open-position state, with the funded agreement specifying deduction at 00:25 UTC. Cost timing and potentially cumulative charge amount materially affect 12H/1D positions and drawdown paths.",
+    "other_confirmed_rules": {
+      "mdl_pct": 3.0,
+      "mdl_reset": "00:30 UTC",
+      "mdd": "static from initial balance; plan-specific",
+      "order_types": ["MARKET", "LIMIT", "STOP_LOSS", "STOP_LOSS_LIMIT", "TAKE_PROFIT", "TAKE_PROFIT_LIMIT"],
+      "overnight": true,
+      "fees_count_toward_risk_limits": true
+    },
+    "remaining_execution_blocker": "No authoritative frozen historical executable Kraken Prop bid/ask/liquidity fill stream exists for the setup replay windows."
+  },
+  "kraken_funded_consumer_prop": {
+    "status": "BLOCKED_MATERIAL_GOVERNING_RULE_CONFLICT",
+    "simulation_ready": false,
+    "support_current": {
+      "last_updated": "2026-09-03",
+      "profit_target_pct": 12.0,
+      "maximum_loss_pct_starting_balance": 3.0,
+      "maximum_loss_floor_static": true,
+      "daily_loss_rule": "No separate daily-loss rule described",
+      "leverage": 1,
+      "advanced_order_types": false,
+      "base_spread_pct_per_side": 0.04,
+      "source": "https://support.kraken.com/au/articles/funded"
+    },
+    "evaluation_terms_current": {
+      "agreement": "Breakout Evaluation Agreement Annex B Section 2 Kraken Consumer Prop",
+      "applies_post_date": "2026-08-25",
+      "maximum_daily_loss_pct": 3.0,
+      "maximum_drawdown_pct": 5.0,
+      "leverage": 1,
+      "allowed_orders": ["MARKET_BUY", "MARKET_SELL"],
+      "base_spread_pct_per_side": 0.04,
+      "source": "https://www.breakoutprop.com/breakout-evaluation-agreement/"
+    },
+    "funded_terms_current": {
+      "agreement": "Funded Trader Agreement Annex C Kraken Funded Users",
+      "rule_reference": "states Kraken Funded uses Funded Account balances, Maximum Daily Loss Limits and Maximum Drawdown Limits set out in Annex B",
+      "base_spread_pct_per_side": 0.04,
+      "source": "https://www.breakoutprop.com/funded-trader-agreement/"
+    },
+    "material_conflict": "Current support and current legal agreements do not provide a single internally consistent max-loss/daily-loss specification for Kraken Funded. The support describes a fixed 3% total loss line; the current evaluation contract specifies 3% MDL plus 5% MDD for Kraken Consumer Prop purchases on/after 2026-08-25; the funded contract cross-references Annex B mechanics in a way that does not resolve this conflict cleanly.",
+    "execution_conflict": "The current product is mobile-only, 1x and without advanced order types. Current legal terms restrict Consumer Prop to market buy/sell orders. Frozen Donchian persistent stop/target semantics cannot be assumed operationally equivalent without changing execution behavior.",
+    "decision": "BLOCKED_FAIL_CLOSED"
+  },
+  "ftmo": {
+    "status": "BLOCKED_HISTORICAL_INSTRUMENT_AND_DYNAMIC_SWAP_LAYER",
+    "simulation_ready": false,
+    "dh03_blocker": "BNBUSD and SOLUSD were introduced as new FTMO crypto CFDs effective in July 2025, so an exact six-symbol FTMO replay of DH-03 over 2023-2024 cannot exist without changing the frozen universe.",
+    "carry_blocker": "FTMO states overnight rollover swaps are subject to regular changes and must be checked in current contract specifications; no authoritative historical swap series for the required windows is frozen.",
+    "sources": [
+      "https://ftmo.com/en/blog/trading-updates/trading-update-17-jul-2025/",
+      "https://ftmo.com/en/blog/trading-updates/trading-update-16-jul-2026/"
+    ]
+  },
+  "hyrotrader": {
+    "status": "EXACT_REPLAY_BLOCKED_PROXY_FROZEN",
+    "simulation_ready": false,
+    "authority": "PROP_COMPAT_001_PROP_RULEBOOK_AMENDMENT_V0.6",
+    "proxy_authority": "PROP_COMPAT_001_HYRO_DH03_PROXY_REPLAY_FREEZE_V0.1"
+  },
+  "campaign_decision": {
+    "any_exact_prop_path_simulation_ready": false,
+    "official_risk_grid_status": "NOT_RUN_LOCKED",
+    "exact_prop_replay_status": "BLOCKED",
+    "proxy_screen_status": "FROZEN_NOT_RUN_NON_DECISIONAL",
+    "challenge_purchase_authorized": false,
+    "reason": "Every current prop path retains at least one material rule/source/execution ambiguity that affects HTF drawdown, carry, instrument availability, or exact execution. Campaign governance requires fail-closed rather than choosing a favorable interpretation."
+  }
+}
