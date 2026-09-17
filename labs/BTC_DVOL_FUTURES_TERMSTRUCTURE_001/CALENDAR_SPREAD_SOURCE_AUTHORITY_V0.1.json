@@ -1,0 +1,73 @@
+{
+  "lab_id": "BTC-DVOL-FUTURES-TERMSTRUCTURE-001",
+  "source_gate_id": "DVOL-TS-CALENDAR-SPREAD-SOURCE-001",
+  "status": "PRE_ACQUISITION_FROZEN_SOURCE_ONLY",
+  "date_frozen": "2026-09-17",
+  "parent_lifecycle_source_gate": "DVOL-TS-LIFECYCLE-SOURCE-002",
+  "parent_discovery": "DVOL-TS-CONVERGENCE-DISCOVERY-001",
+  "closed_directional_mve": "DVOL-TS-DIRECTIONAL-EXEC-001",
+  "scientific_question": "Do adjacent monthly BTCDVOL futures coexist with enough simultaneous ordinary public trading activity to justify a separately governed near-vs-far calendar-spread study that can hedge common DVOL-index movement?",
+  "source": {
+    "provider": "Deribit official historical API",
+    "metadata_endpoint": "https://history.deribit.com/api/v2/public/get_instrument",
+    "trades_endpoint": "https://history.deribit.com/api/v2/public/get_last_trades_by_instrument_and_time",
+    "candidate_start": "2023-03-29",
+    "candidate_end": "2024-12-25",
+    "lower_bound": "2023-03-27T00:00:00Z",
+    "protected_start": "2025-01-01T00:00:00Z"
+  },
+  "pair_construction": {
+    "contract_population": "Exact valid BTCDVOL monthly futures discovered by the same deterministic Wednesday enumeration and overlap-window metadata rule as lifecycle source gate V0.2.",
+    "pair_rule": "Sort confirmed contracts by expiration_timestamp and pair adjacent expiries only.",
+    "overlap_start": "max(near.creation_timestamp, far.creation_timestamp, lower_bound)",
+    "overlap_end": "min(near.expiration_timestamp, far.expiration_timestamp, protected_start)-1ms",
+    "no_pair_selection": true
+  },
+  "retained_metrics_only": [
+    "confirmed contract count",
+    "adjacent pair count",
+    "overlap start/end timestamps",
+    "ordinary public trade count per leg within overlap",
+    "unique active UTC days per leg within overlap",
+    "common active UTC day count per pair",
+    "core field presence coverage",
+    "request hashes/byte counts"
+  ],
+  "qualifying_pair": {
+    "minimum_ordinary_public_trades_each_leg": 20,
+    "minimum_unique_active_utc_days_each_leg": 3,
+    "minimum_common_active_utc_days": 3
+  },
+  "source_gates": {
+    "minimum_confirmed_contracts": 12,
+    "minimum_adjacent_overlap_pairs": 12,
+    "minimum_qualifying_adjacent_pairs": 10,
+    "minimum_aggregate_common_contract_pair_days": 40,
+    "minimum_distinct_near_expiration_quarters": 6,
+    "core_field_coverage_minimum": 1,
+    "exact_metadata_integrity_rate": 1
+  },
+  "threshold_rationale": "Monthly contracts overlap for roughly a week by design. A usable calendar-spread study should therefore recover at least ten independent adjacent-expiry pair clusters, at least three simultaneous active days per qualifying pair, >=40 aggregate common pair-days, and broad coverage across >=6 quarters. These are source adequacy requirements only.",
+  "classifications": {
+    "pass": "CALENDAR_SPREAD_SOURCE_DATA_PASS",
+    "insufficient": "CALENDAR_SPREAD_SOURCE_DATA_INSUFFICIENT",
+    "technical_failure": "CALENDAR_SPREAD_SOURCE_TECHNICAL_FAILURE",
+    "provenance_failure": "CALENDAR_SPREAD_SOURCE_PROVENANCE_FAILURE"
+  },
+  "firewalls": {
+    "retain_price_values": false,
+    "retain_index_values": false,
+    "compute_spread": false,
+    "compute_basis": false,
+    "compute_returns": false,
+    "compute_pnl": false,
+    "access_2025": false,
+    "access_2026": false,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "wallet_access": false,
+    "merge_to_main": false
+  },
+  "stop_rule": "On any failed source gate, stop. Do not widen overlap intervals beyond exact listed coexistence, lower thresholds, skip sparse adjacent pairs, add non-adjacent pairs, or open prices/outcomes under this gate ID.",
+  "post_pass_rule": "PASS authorizes only a separately frozen pre-Discovery calendar-spread authority."
+}
