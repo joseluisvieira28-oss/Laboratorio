@@ -1,0 +1,153 @@
+-- DEFI-LIQUIDATION-SHOCK-001
+-- BIGQUERY BOUNDED CANDIDATE CENSUS V0.3
+-- READ-ONLY / SOURCE-ONLY / OUTCOME-BLIND / FAIL-CLOSED
+--
+-- V0.3 corrections versus V0.2:
+--   1) Kamino discriminator corrected:
+--        b1479acce2854a37  (WRONG)
+--        b1479abce2854a37  (CORRECT)
+--   2) Drift liquidate_spot_with_swap_begin/end retained as historical registry
+--      knowledge but excluded from the frozen 2021-2024 window because preserved
+--      protocol history introduces the feature on 2025-01-08.
+--   3) Source-supported decoder boundary is carried per reference row so any
+--      pre-boundary candidate is explicitly fail-closed.
+--
+-- No prices, returns, PnL, direction or trading outcomes are read.
+-- Always dry-run first. HARD STOP if estimated bytes > 100 GB.
+
+DECLARE chunk_start TIMESTAMP DEFAULT TIMESTAMP('2024-12-15T00:00:00Z');
+DECLARE chunk_end   TIMESTAMP DEFAULT TIMESTAMP('2024-12-16T00:00:00Z');
+DECLARE target_program_id STRING DEFAULT 'dRiftyHA39MWEi3m9aunc5MzRF1JYuBsbn6VPcn33UH';
+
+ASSERT chunk_start >= TIMESTAMP('2021-01-01T00:00:00Z') AS 'chunk_start precedes frozen source window';
+ASSERT chunk_end <= TIMESTAMP('2025-01-01T00:00:00Z') AS 'chunk_end exceeds frozen source window';
+ASSERT chunk_end > chunk_start AS 'chunk_end must be after chunk_start';
+ASSERT TIMESTAMP_DIFF(chunk_end, chunk_start, HOUR) <= 168 AS 'bounded census chunk may not exceed 7 days';
+ASSERT target_program_id IN (
+  'So1endDq2YkqhipRh3WViPa8hdiSpxWy6z3Z6tMCpAo',
+  'MFv2hWf31Z9kbCa1snEPYctwafyhdvnV7FZnsebVacA',
+  'KLend2g3cP87fffoy8q1mQqGKjrxjC8boSyAYavgmjD',
+  'dRiftyHA39MWEi3m9aunc5MzRF1JYuBsbn6VPcn33UH'
+) AS 'target_program_id outside frozen protocol registry';
+
+CREATE TEMP FUNCTION b58_prefix_hex(input STRING, take_bytes INT64)
+RETURNS STRING
+LANGUAGE js AS r"""
+  if (input === null || input === undefined || input.length === 0) return null;
+  var alphabet = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+  var map = {};
+  for (var i = 0; i < alphabet.length; i++) map[alphabet[i]] = i;
+  var bytes = [0];
+  for (var pos = 0; pos < input.length; pos++) {
+    var value = map[input[pos]];
+    if (value === undefined) return null;
+    var carry = value;
+    for (var j = 0; j < bytes.length; j++) {
+      var x = bytes[j] * 58 + carry;
+      bytes[j] = x & 255;
+      carry = Math.floor(x / 256);
+    }
+    while (carry > 0) {
+      bytes.push(carry & 255);
+      carry = Math.floor(carry / 256);
+    }
+  }
+  var leading = 0;
+  while (leading < input.length && input[leading] === '1') leading++;
+  var decoded = [];
+  for (var z = 0; z < leading; z++) decoded.push(0);
+  for (var k = bytes.length - 1; k >= 0; k--) decoded.push(bytes[k]);
+  if (leading === input.length) decoded = decoded.slice(0, leading);
+  else if (decoded.length > leading && decoded[leading] === 0 && bytes.length === 1 && bytes[0] === 0) decoded.splice(leading, 1);
+  var n = Math.min(Number(take_bytes), decoded.length);
+  var out = '';
+  for (var q = 0; q < n; q++) {
+    var h = decoded[q].toString(16);
+    if (h.length < 2) h = '0' + h;
+    out += h;
+  }
+  return out;
+""";
+
+WITH reference_registry AS (
+  SELECT 'save_solend' AS protocol, 'lending' AS family,
+         'So1endDq2YkqhipRh3WViPa8hdiSpxWy6z3Z6tMCpAo' AS program_id,
+         'LiquidateObligation' AS match_name, '0c' AS prefix_hex,
+         'native_u8_tag' AS encoding,
+         TIMESTAMP('2021-12-08T00:00:00Z') AS source_supported_from,
+         TRUE AS applicable_frozen_window UNION ALL
+  SELECT 'save_solend','lending','So1endDq2YkqhipRh3WViPa8hdiSpxWy6z3Z6tMCpAo',
+         'LiquidateObligationAndRedeemReserveCollateral','11','native_u8_tag',
+         TIMESTAMP('2024-07-19T17:54:33Z'),TRUE UNION ALL
+  SELECT 'marginfi_v2','lending','MFv2hWf31Z9kbCa1snEPYctwafyhdvnV7FZnsebVacA',
+         'lending_account_liquidate','d6a997d5fba756db','anchor_discriminator_8',
+         TIMESTAMP('2023-02-07T15:47:04Z'),TRUE UNION ALL
+  SELECT 'kamino_lend','lending','KLend2g3cP87fffoy8q1mQqGKjrxjC8boSyAYavgmjD',
+         'liquidate_obligation_and_redeem_reserve_collateral','b1479abce2854a37','anchor_discriminator_8',
+         TIMESTAMP('2023-11-17T13:25:35Z'),TRUE UNION ALL
+  SELECT 'drift_v2','perps_spot_margin','dRiftyHA39MWEi3m9aunc5MzRF1JYuBsbn6VPcn33UH',
+         'liquidate_perp','4b2377f7bf128b02','anchor_discriminator_8',
+         TIMESTAMP('2022-11-04T15:17:54Z'),TRUE UNION ALL
+  SELECT 'drift_v2','perps_spot_margin','dRiftyHA39MWEi3m9aunc5MzRF1JYuBsbn6VPcn33UH',
+         'liquidate_spot','6b00802923e5fb12','anchor_discriminator_8',
+         TIMESTAMP('2022-11-04T15:17:54Z'),TRUE UNION ALL
+  SELECT 'drift_v2','perps_spot_margin','dRiftyHA39MWEi3m9aunc5MzRF1JYuBsbn6VPcn33UH',
+         'liquidate_borrow_for_perp_pnl','a911205acf94d11b','anchor_discriminator_8',
+         TIMESTAMP('2022-11-04T15:17:54Z'),TRUE UNION ALL
+  SELECT 'drift_v2','perps_spot_margin','dRiftyHA39MWEi3m9aunc5MzRF1JYuBsbn6VPcn33UH',
+         'liquidate_perp_pnl_for_deposit','ed4bc6ebe9ba4b23','anchor_discriminator_8',
+         TIMESTAMP('2022-11-04T15:17:54Z'),TRUE UNION ALL
+  -- Reference-only audit rows: introduced after frozen window, never joined below.
+  SELECT 'drift_v2','perps_spot_margin','dRiftyHA39MWEi3m9aunc5MzRF1JYuBsbn6VPcn33UH',
+         'liquidate_spot_with_swap_begin','0c2bb0539cfb750d','anchor_discriminator_8',
+         TIMESTAMP('2025-01-08T23:42:44Z'),FALSE UNION ALL
+  SELECT 'drift_v2','perps_spot_margin','dRiftyHA39MWEi3m9aunc5MzRF1JYuBsbn6VPcn33UH',
+         'liquidate_spot_with_swap_end','8e58a3a0df4b37e1','anchor_discriminator_8',
+         TIMESTAMP('2025-01-08T23:42:44Z'),FALSE
+),
+refs AS (
+  SELECT * FROM reference_registry
+  WHERE program_id = target_program_id
+    AND applicable_frozen_window
+),
+tx_state AS (
+  SELECT block_slot, block_timestamp, signature, status, err,
+    CASE
+      WHEN status='Success' AND COALESCE(err,'')='' THEN 'SUCCESS_CONSISTENT'
+      WHEN status='Fail' AND COALESCE(err,'')!='' THEN 'FAIL_CONSISTENT'
+      ELSE 'STATUS_ERR_INCONSISTENT'
+    END AS status_err_consistency
+  FROM `bigquery-public-data.crypto_solana_mainnet_us.Transactions`
+  WHERE block_timestamp >= chunk_start AND block_timestamp < chunk_end
+),
+source_rows AS (
+  SELECT i.block_slot, i.block_timestamp, i.tx_signature,
+         i.index AS instruction_index, i.parent_index, i.program_id,
+         i.data, i.instruction_type,
+         t.status, t.err, t.status_err_consistency,
+         b58_prefix_hex(i.data,8) AS data_prefix_8_hex
+  FROM `bigquery-public-data.crypto_solana_mainnet_us.Instructions` i
+  JOIN tx_state t ON t.signature=i.tx_signature AND t.block_slot=i.block_slot
+  WHERE i.block_timestamp >= chunk_start AND i.block_timestamp < chunk_end
+    AND i.program_id = target_program_id
+    AND i.data IS NOT NULL
+),
+candidates AS (
+  SELECT r.protocol,r.family,s.program_id,r.match_name,r.encoding,r.prefix_hex AS reference_prefix_hex,
+         r.source_supported_from,s.block_slot,s.block_timestamp,s.tx_signature,
+         s.instruction_index,s.parent_index,s.instruction_type,s.data,s.data_prefix_8_hex,
+         s.status,s.err,s.status_err_consistency
+  FROM source_rows s
+  JOIN refs r ON STARTS_WITH(s.data_prefix_8_hex,r.prefix_hex)
+)
+SELECT *,
+  CASE
+    WHEN block_timestamp < source_supported_from THEN 'PRE_SOURCE_AUTHORITY_BOUNDARY_FAIL_CLOSED'
+    WHEN status_err_consistency='STATUS_ERR_INCONSISTENT' THEN 'SOURCE_ANOMALY_FAIL_CLOSED'
+    WHEN status='Fail' THEN 'LIQUIDATION_ATTEMPT_FAILED_NOT_REALIZED'
+    WHEN status='Success' THEN 'SUCCESSFUL_REFERENCE_CANDIDATE_PENDING_ONCHAIN_BOUNDARY_AND_RAW_CLASS_VALIDATION'
+    ELSE 'SOURCE_ANOMALY_FAIL_CLOSED'
+  END AS classification,
+  CASE WHEN parent_index IS NULL THEN 'outer' ELSE 'inner' END AS instruction_location
+FROM candidates
+ORDER BY block_timestamp,block_slot,tx_signature,parent_index,instruction_index;
