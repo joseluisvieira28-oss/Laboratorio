@@ -1,0 +1,23 @@
+{
+  "lab_id": "BTC-DVOL-FUTURES-TERMSTRUCTURE-001",
+  "source_gate_id": "DVOL-TS-LIFECYCLE-SOURCE-002",
+  "status": "PRE_ACQUISITION_TECHNICAL_SPEC_FROZEN",
+  "date_frozen": "2026-09-17",
+  "definitions": {
+    "calendar_candidate_enumeration": "Every UTC Wednesday date from 2023-03-29 through 2024-12-25 inclusive, unchanged from V0.1.",
+    "accepted_contract": "Exact archived metadata whose identity equals the candidate, kind=future, price_index=btcdvol_usdc, creation<expiration, expiration<2025-01-01 and listed life overlaps the bounded observation window.",
+    "observed_life": "Intersection of exact [creation_timestamp, expiration_timestamp] with [2023-03-27T00:00:00Z, 2024-12-31T23:59:59.999Z].",
+    "ordinary_public_trade": "A deduplicated exact-instrument historical trade with both block_trade_id and combo_id absent or null.",
+    "active_utc_day": "UTC calendar date containing >=1 ordinary public trade inside observed_life.",
+    "qualifying_contract": "Confirmed contract with >=20 ordinary public trades and >=5 unique active UTC days inside observed_life.",
+    "metadata_integrity_rate": "Accepted exact contracts satisfying V0.2 metadata conditions divided by all exact metadata responses; nonexistent candidate misses excluded."
+  },
+  "transport_rules": {
+    "http_retries": "Maximum 3 attempts for 429, 5xx or network exceptions with deterministic waits; exact instrument-not-found/wrong-format candidate misses are deterministic misses.",
+    "slice_rule": "24-hour bounded slices with count=1000 sorting=asc; recursively bisect exactly-1000 slices until below 1000 or <=1 second.",
+    "timestamp_firewall": "Every retained trade must be within observed_life and strictly before 2025-01-01T00:00:00Z.",
+    "raw_payload_policy": "Do not persist raw trade payloads; preserve request SHA-256, byte count, bounds and row count only.",
+    "economic_value_policy": "Price, amount, direction, index_price and mark_price may only be inspected for field presence; no values are retained or summarized."
+  },
+  "scientific_thresholds": "Exactly those frozen in LIFECYCLE_SOURCE_AUTHORITY_V0.2.json; identical numerically to V0.1."
+}
