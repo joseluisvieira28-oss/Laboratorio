@@ -102,6 +102,8 @@ Protected confirmation cohort: 2025-01-01 <= signal < 2026-01-01.
 Replication market/source must remain Binance USD-M Futures 1m, same product class as the parent lab.
 4H bars require exactly 240 native 1m observations; no interpolation or forward fill.
 A 2024 warm-up tail may be used solely to seed EMA/ATR/Donchian state before the first eligible 2025 signal. No 2024 signal may enter the confirmation sample.
+The confirmation cohort starts FLAT at 2025-01-01T00:00:00Z: positions triggered by pre-2025 signals are not inherited into the holdout. This boundary-state rule is frozen before 2025 access.
+Official source contract: Binance public-data USD-M Futures monthly 1m kline ZIPs and their adjacent `.CHECKSUM` sidecars for 2024-12 warm-up plus 2025-01 through 2025-12 for the four required assets (BNBUSDT, DOGEUSDT, SOLUSDT, XRPUSDT).
 
 ### End-of-2025 censoring rule
 No trade may require a 2026 bar for adjudication.
