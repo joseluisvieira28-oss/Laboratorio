@@ -1,70 +1,20 @@
-name: cvfb-native-oracle-p0-s3-v02
+name: cvfb-native-oracle-p0-s3-v02-adjudicated
 
 on:
-  pull_request:
-    paths:
-      - 'research/cross_venue_funding_basis/cvfb_native_oracle_p0_s3_access_v02.py'
-      - 'research/cross_venue_funding_basis/CVFB_NATIVE_ORACLE_PROVENANCE_P0_S3_RECOVERY_FREEZE_V0.2.json'
-      - '.github/workflows/cvfb-native-oracle-p0-s3-v02.yml'
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  unsigned-s3-access-gate:
+  adjudicated:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-      - name: Compile source-only S3 gate
-        run: python -m py_compile research/cross_venue_funding_basis/cvfb_native_oracle_p0_s3_access_v02.py
-      - name: Verify frozen S3 authority
+      - name: Final access-gate guard
         run: |
-          python - <<'PY'
-          import json
-          p='research/cross_venue_funding_basis/CVFB_NATIVE_ORACLE_PROVENANCE_P0_S3_RECOVERY_FREEZE_V0.2.json'
-          x=json.load(open(p,encoding='utf-8'))
-          assert x['status']=='FROZEN_BEFORE_S3_ACCESS_PROBE'
-          assert x['parent_primary_remains_closed'] is True
-          assert x['access_cost_gate']['aws_credentials_authorized'] is False
-          assert x['access_cost_gate']['requester_pays_charges_authorized'] is False
-          assert x['economic_outcomes_authorized'] is False
-          assert x['2026_authorized'] is False
-          assert x['live_trading_authorized'] is False
-          assert x['official_sources']==['s3://hl-mainnet-node-data/explorer_blocks','s3://hl-mainnet-node-data/replica_cmds']
-          print('S3_V02_FREEZE_GUARD_PASS')
-          PY
-      - name: Execute unsigned official-S3 access gate
-        run: |
-          mkdir -p out/cvfb_s3
-          python research/cross_venue_funding_basis/cvfb_native_oracle_p0_s3_access_v02.py \
-            --out out/cvfb_s3/CVFB_NATIVE_ORACLE_PROVENANCE_P0_S3_ACCESS_RECEIPT_V0.2.json
-      - name: Enforce no-cost/source-only firewall
-        run: |
-          python - <<'PY'
-          import json
-          p='out/cvfb_s3/CVFB_NATIVE_ORACLE_PROVENANCE_P0_S3_ACCESS_RECEIPT_V0.2.json'
-          x=json.load(open(p,encoding='utf-8'))
-          assert x['status']=='COMPLETE'
-          assert x['credentials_used'] is False
-          assert x['requester_pays_header_used'] is False
-          assert x['paid_transfer_authorized'] is False
-          assert x['object_bytes_downloaded'] is False
-          assert x['schema_values_opened'] is False
-          assert x['market_numeric_values_emitted'] is False
-          assert x['economic_outcomes_computed'] is False
-          assert x['primary_replication_reopened'] is False
-          assert x['2026_opened'] is False
-          assert x['live_trading_authorized'] is False
-          assert x['decision'] in {'BLOCKED_REQUESTER_PAYS_NO_AUTHORIZED_CREDENTIALS','TECHNICAL_BLOCKED'}
-          print('S3_V02_FINAL_GUARD_PASS', x['decision'])
-          PY
-      - uses: actions/upload-artifact@v4
-        with:
-          name: CVFB_NATIVE_ORACLE_PROVENANCE_P0_S3_V02
-          path: out/cvfb_s3/CVFB_NATIVE_ORACLE_PROVENANCE_P0_S3_ACCESS_RECEIPT_V0.2.json
-          if-no-files-found: error
-          retention-days: 90
+          echo 'S3 V0.2 unsigned source-access adjudication is FINAL.'
+          echo 'Canonical run: 35238455742.'
+          echo 'explorer_blocks=HTTP403; replica_cmds=HTTP403.'
+          echo 'Decision: BLOCKED_REQUESTER_PAYS_NO_AUTHORIZED_CREDENTIALS.'
+          echo 'No credentials, requester-pays billing, object bytes, economic outcomes, or 2026 data were opened.'
+          exit 1
