@@ -113,6 +113,10 @@ def validate(path: Path) -> list[str]:
         if key in data and not nonempty_str(data, key):
             errors.append(f"{path}: {key} must be a non-empty string")
 
+    forensic = data.get("forensic_audit_reference")
+    if forensic is not None and (not isinstance(forensic, str) or not forensic.strip()):
+        errors.append(f"{path}: forensic_audit_reference must be a non-empty string when supplied")
+
     source = data.get("source_authority")
     if not isinstance(source, dict):
         errors.append(f"{path}: source_authority must be an object")
