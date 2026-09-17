@@ -1,3 +1,4 @@
+from contextlib import closing
 import os
 import sqlite3
 import tempfile
@@ -16,11 +17,15 @@ class EvidenceTests(unittest.TestCase):
             ok, detail = store.verify_chain()
             self.assertTrue(ok, detail)
 
-            with sqlite3.connect(path) as conn:
-                conn.execute(
-                    "UPDATE events SET payload_json = ? WHERE id = 1",
-                    ('{"value":999}',),
-                )
+            # sqlite3.Connection context commits/rolls back but does not
+            # necessarily close the OS file handle. Windows requires explicit
+            # closure before TemporaryDirectory cleanup.
+            with closing(sqlite3.connect(path)) as conn:
+                with conn:
+                    conn.execute(
+                        "UPDATE events SET payload_json = ? WHERE id = 1",
+                        ('{"value":999}',),
+                    )
             ok, detail = store.verify_chain()
             self.assertFalse(ok)
             self.assertIn("mismatch", detail)
