@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextlib import closing
 import hashlib
 import json
 import sqlite3
@@ -60,23 +61,27 @@ class EvidenceStore:
         return conn
 
     def _init_db(self) -> None:
-        with self._connect() as conn:
-            conn.execute(
-                """
-                CREATE TABLE IF NOT EXISTS events (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    event_ts TEXT NOT NULL,
-                    event_type TEXT NOT NULL,
-                    payload_json TEXT NOT NULL,
-                    payload_sha256 TEXT NOT NULL,
-                    prev_chain_sha256 TEXT NOT NULL,
-                    chain_sha256 TEXT NOT NULL UNIQUE
+        # sqlite3.Connection.__exit__ commits/rolls back but does not guarantee
+        # handle closure. Windows will then keep the DB file locked. Pair the
+        # transaction context with contextlib.closing for deterministic cleanup.
+        with closing(self._connect()) as conn:
+            with conn:
+                conn.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS events (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        event_ts TEXT NOT NULL,
+                        event_type TEXT NOT NULL,
+                        payload_json TEXT NOT NULL,
+                        payload_sha256 TEXT NOT NULL,
+                        prev_chain_sha256 TEXT NOT NULL,
+                        chain_sha256 TEXT NOT NULL UNIQUE
+                    )
+                    """
                 )
-                """
-            )
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_events_type_ts ON events(event_type, event_ts)"
-            )
+                conn.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_events_type_ts ON events(event_type, event_ts)"
+                )
 
     def _last_chain_hash(self, conn: sqlite3.Connection) -> str:
         row = conn.execute(
@@ -91,20 +96,21 @@ class EvidenceStore:
         payload_sha = hashlib.sha256(payload_json.encode("utf-8")).hexdigest()
         event_ts = utc_now_iso()
 
-        with self._connect() as conn:
-            prev_hash = self._last_chain_hash(conn)
-            chain_material = "|".join((prev_hash, event_ts, event_type, payload_sha))
-            chain_sha = hashlib.sha256(chain_material.encode("utf-8")).hexdigest()
-            cursor = conn.execute(
-                """
-                INSERT INTO events (
-                    event_ts, event_type, payload_json, payload_sha256,
-                    prev_chain_sha256, chain_sha256
-                ) VALUES (?, ?, ?, ?, ?, ?)
-                """,
-                (event_ts, event_type, payload_json, payload_sha, prev_hash, chain_sha),
-            )
-            event_id = int(cursor.lastrowid)
+        with closing(self._connect()) as conn:
+            with conn:
+                prev_hash = self._last_chain_hash(conn)
+                chain_material = "|".join((prev_hash, event_ts, event_type, payload_sha))
+                chain_sha = hashlib.sha256(chain_material.encode("utf-8")).hexdigest()
+                cursor = conn.execute(
+                    """
+                    INSERT INTO events (
+                        event_ts, event_type, payload_json, payload_sha256,
+                        prev_chain_sha256, chain_sha256
+                    ) VALUES (?, ?, ?, ?, ?, ?)
+                    """,
+                    (event_ts, event_type, payload_json, payload_sha, prev_hash, chain_sha),
+                )
+                event_id = int(cursor.lastrowid)
 
         return _receipt(
             event_id=event_id,
@@ -117,7 +123,7 @@ class EvidenceStore:
         )
 
     def verify_chain(self) -> tuple[bool, str]:
-        with self._connect() as conn:
+        with closing(self._connect()) as conn:
             rows = conn.execute("SELECT * FROM events ORDER BY id ASC").fetchall()
 
         expected_prev = GENESIS_HASH
