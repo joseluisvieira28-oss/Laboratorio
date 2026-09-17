@@ -5,6 +5,7 @@ import csv
 from datetime import datetime, timezone
 import json
 from pathlib import Path
+from urllib.parse import urlencode
 
 from .friction import ETF_CME_BREAK_EVEN_ROUND_TRIP_BPS, MEXC_API_TAKER_ONE_WAY_FRACTION
 from .market import MEXCFuturesPublicFeed, MarketDataError
@@ -47,6 +48,31 @@ def load_frozen_event_schedule(path: str | Path) -> list[dict]:
     return out
 
 
+def _funding_history_page(
+    feed: MEXCFuturesPublicFeed,
+    *,
+    symbol: str,
+    page_num: int,
+    page_size: int,
+) -> dict:
+    """Return one public MEXC funding page including pagination metadata."""
+    raw = feed._validate_contract_symbol(symbol)
+    query = urlencode({"symbol": raw, "page_num": page_num, "page_size": page_size})
+    payload = feed._get_json(f"/api/v1/contract/funding_rate/history?{query}")
+    if not isinstance(payload, dict) or payload.get("success") is not True:
+        raise MarketDataError("invalid MEXC funding history payload")
+    data = payload.get("data")
+    if not isinstance(data, dict):
+        raise MarketDataError("MEXC funding history missing data")
+    rows = data.get("resultList")
+    if not isinstance(rows, list):
+        raise MarketDataError("MEXC funding history missing resultList")
+    for key in ("currentPage", "totalPage", "totalCount", "pageSize"):
+        if key not in data:
+            raise MarketDataError(f"MEXC funding history missing pagination field {key}")
+    return data
+
+
 def fetch_funding_rows_for_window(
     feed: MEXCFuturesPublicFeed,
     *,
@@ -54,17 +80,40 @@ def fetch_funding_rows_for_window(
     start_ms: int,
     end_ms: int,
     page_size: int = 1000,
-    max_pages: int = 10,
-) -> list[dict]:
+    max_pages: int = 100,
+) -> tuple[list[dict], dict]:
     if start_ms >= end_ms:
         raise ValueError("funding window start must be before end")
     rows_by_time: dict[int, dict] = {}
     oldest_seen: int | None = None
+    pagination_receipt: dict = {}
 
     for page in range(1, max_pages + 1):
-        rows = feed.funding_rate_history(symbol, page_num=page, page_size=page_size)
+        data = _funding_history_page(
+            feed,
+            symbol=symbol,
+            page_num=page,
+            page_size=page_size,
+        )
+        rows = data["resultList"]
+        current_page = int(data["currentPage"])
+        total_page = int(data["totalPage"])
+        total_count = int(data["totalCount"])
+        actual_page_size = int(data["pageSize"])
+        if current_page != page:
+            raise MarketDataError(
+                f"MEXC funding pagination page mismatch requested={page} returned={current_page}"
+            )
+        pagination_receipt = {
+            "requested_page_size": page_size,
+            "reported_page_size": actual_page_size,
+            "total_count": total_count,
+            "total_pages": total_page,
+            "last_page_requested": page,
+        }
         if not rows:
             break
+
         page_times: list[int] = []
         for row in rows:
             try:
@@ -75,19 +124,30 @@ def fetch_funding_rows_for_window(
             rows_by_time[settle] = row
             page_times.append(settle)
         if not page_times:
-            break
+            raise MarketDataError("MEXC funding page contained no valid settlement rows")
+
         page_oldest = min(page_times)
         if oldest_seen is not None and page_oldest >= oldest_seen:
             raise MarketDataError("MEXC funding pagination did not move backward")
         oldest_seen = page_oldest
         if page_oldest <= start_ms:
             break
-        if len(rows) < page_size:
+        if page >= total_page:
             break
+    else:
+        raise MarketDataError("MEXC funding pagination exceeded fail-closed max_pages")
+
+    all_times = sorted(rows_by_time)
+    if not all_times:
+        raise MarketDataError("MEXC funding history returned no valid rows")
+
+    pagination_receipt["oldest_retrieved_ms"] = all_times[0]
+    pagination_receipt["newest_retrieved_ms"] = all_times[-1]
+    pagination_receipt["retrieved_unique_rows"] = len(all_times)
 
     selected = [
-        row
-        for settle, row in sorted(rows_by_time.items())
+        rows_by_time[settle]
+        for settle in all_times
         if start_ms <= settle <= end_ms
     ]
     if not selected:
@@ -95,10 +155,17 @@ def fetch_funding_rows_for_window(
 
     selected_times = [int(float(row["settleTime"])) for row in selected]
     if min(selected_times) > start_ms + DAY_MS:
-        raise MarketDataError("MEXC funding history does not reach requested start")
+        raise MarketDataError(
+            "MEXC funding history does not reach requested start; "
+            f"requested_start={start_ms} oldest_retrieved={all_times[0]} "
+            f"total_count={pagination_receipt.get('total_count')} total_pages={pagination_receipt.get('total_pages')}"
+        )
     if max(selected_times) < end_ms - DAY_MS:
-        raise MarketDataError("MEXC funding history does not reach requested end")
-    return selected
+        raise MarketDataError(
+            "MEXC funding history does not reach requested end; "
+            f"requested_end={end_ms} newest_retrieved={all_times[-1]}"
+        )
+    return selected, pagination_receipt
 
 
 def _event_burden(event: dict, rows: list[dict]) -> dict:
@@ -164,7 +231,7 @@ def build_2025_funding_mapping_report(
     start_ms = min(_midnight_ms(event["entry"]) for event in directional)
     end_ms = max(_midnight_ms(event["exit"]) for event in directional)
     feed = feed or MEXCFuturesPublicFeed(timeout=15)
-    funding_rows = fetch_funding_rows_for_window(
+    funding_rows, pagination = fetch_funding_rows_for_window(
         feed,
         symbol=symbol,
         start_ms=start_ms,
@@ -200,6 +267,7 @@ def build_2025_funding_mapping_report(
         "long_event_count": sum(row["position"] == 1 for row in directional_rows),
         "short_event_count": sum(row["position"] == -1 for row in directional_rows),
         "funding_history_row_count": len(funding_rows),
+        "funding_api_pagination": pagination,
         "coverage_start_ms": min(int(float(row["settleTime"])) for row in funding_rows),
         "coverage_end_ms": max(int(float(row["settleTime"])) for row in funding_rows),
         "taker_round_trip_fee_bps": TAKER_ROUND_TRIP_BPS,
