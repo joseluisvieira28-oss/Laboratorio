@@ -22,6 +22,29 @@ def _atomic_json_write(path: Path, payload: dict[str, Any]) -> None:
     os.replace(tmp, path)
 
 
+def _log_cycle(status: dict[str, Any]) -> None:
+    receipt = status.get("heartbeat_receipt") or {}
+    record = {
+        "event": "RADAR_CYCLE",
+        "service": status.get("service", "CRYPTO_EDGE_RADAR"),
+        "version": status.get("version"),
+        "mode": status.get("mode"),
+        "health": status.get("health"),
+        "cycle": status.get("cycle"),
+        "provider": status.get("provider"),
+        "evidence_backend": status.get("evidence_backend"),
+        "evidence_event_id": receipt.get("id"),
+        "evidence_chain_sha256": receipt.get("chain_sha256"),
+        "registered_strategies": status.get("registered_strategies", 0),
+        "valid_signal_count": status.get("valid_signal_count", 0),
+        "consecutive_failures": status.get("consecutive_failures", 0),
+        "completed_at_utc": status.get("completed_at_utc"),
+    }
+    if status.get("error"):
+        record["error"] = status["error"]
+    print(json.dumps(record, sort_keys=True), flush=True)
+
+
 @dataclass
 class JsonlNotifier:
     path: Path
@@ -54,14 +77,16 @@ class PublicShadowService:
         self.cycle_no += 1
         started = _utc_now()
         configured_provider = getattr(self.engine.feed, "provider", "UNKNOWN_PUBLIC_PROVIDER")
+        evidence_backend = getattr(self.engine.store, "backend", "unknown")
         try:
             result = self.engine.run_cycle()
             self.consecutive_failures = 0
             status = {
                 "service": "CRYPTO_EDGE_RADAR",
-                "version": "0.2",
+                "version": "0.7",
                 "mode": "PUBLIC_SHADOW_ONLY",
                 "provider": result["provider"],
+                "evidence_backend": evidence_backend,
                 "health": "OK",
                 "cycle": self.cycle_no,
                 "started_at_utc": started,
@@ -74,6 +99,7 @@ class PublicShadowService:
             heartbeat = self.engine.store.append("SERVICE_HEARTBEAT", status)
             status["heartbeat_receipt"] = heartbeat
             self._publish_status(status)
+            _log_cycle(status)
             if result["valid_signals"]:
                 self.notifier.emit(
                     "VALID_SHADOW_SIGNAL",
@@ -84,9 +110,10 @@ class PublicShadowService:
             self.consecutive_failures += 1
             status = {
                 "service": "CRYPTO_EDGE_RADAR",
-                "version": "0.2",
+                "version": "0.7",
                 "mode": "PUBLIC_SHADOW_ONLY",
                 "provider": configured_provider,
+                "evidence_backend": evidence_backend,
                 "health": "FAIL_CLOSED",
                 "cycle": self.cycle_no,
                 "started_at_utc": started,
@@ -94,12 +121,15 @@ class PublicShadowService:
                 "error": str(exc),
                 "consecutive_failures": self.consecutive_failures,
                 "valid_signal_count": 0,
+                "registered_strategies": len(self.engine.registry.adapters),
             }
             try:
-                self.engine.store.append("SERVICE_FAILURE", status)
+                failure_receipt = self.engine.store.append("SERVICE_FAILURE", status)
+                status["heartbeat_receipt"] = failure_receipt
             finally:
                 self._publish_status(status)
                 self.notifier.emit("SERVICE_FAIL_CLOSED", status)
+                _log_cycle(status)
             return 2, status
 
     def run(self, interval: float, max_cycles: int | None = None) -> int:
