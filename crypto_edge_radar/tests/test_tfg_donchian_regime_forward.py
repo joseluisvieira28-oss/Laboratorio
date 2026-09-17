@@ -149,8 +149,8 @@ class TFGForwardMechanicsTests(TestCase):
         self.assertEqual(outcome.exit_reason, "STOP_AMBIGUOUS_SAME_BAR")
         self.assertTrue(outcome.same_bar_stop_target_ambiguity)
         self.assertEqual(outcome.exit_price, 90.0)
-        self.assertLess(outcome.base_net_r, 0.0)
-        self.assertLess(outcome.stress_net_r, outcome.base_net_r)
+        self.assertAlmostEqual(outcome.base_net_r, -1.0, places=12)
+        self.assertAlmostEqual(outcome.stress_net_r, -1.0, places=12)
 
     def test_schedule_is_0010_and_1210_semantics(self) -> None:
         boundary = (FORWARD_FREEZE_MS // TWELVE_HOUR_MS + 10) * TWELVE_HOUR_MS
