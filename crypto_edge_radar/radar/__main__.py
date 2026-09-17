@@ -8,7 +8,7 @@ from .config import Settings
 from .control_room import run_control_room
 from .dashboard import serve_dashboard
 from .deployment import RiskLimits, stop_based_position_size
-from .evidence import EvidenceStore
+from .evidence import build_evidence_store
 from .engine import RadarEngine
 from .market import BinancePublicFeed, BinanceSpotPublicFeed, MEXCFuturesPublicFeed
 from .service import PublicShadowService, read_status
@@ -31,7 +31,7 @@ def build_engine() -> tuple[RadarEngine, Settings]:
     engine = RadarEngine(
         settings=settings,
         feed=build_feed(settings),
-        store=EvidenceStore(settings.db_path),
+        store=build_evidence_store(settings.db_path, settings.database_url),
         registry=StrategyRegistry.empty(),
     )
     return engine, settings
@@ -49,7 +49,7 @@ def run_once(engine: RadarEngine) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="CRYPTO EDGE RADAR V0.3 — public shadow + advisory deployment prep"
+        description="CRYPTO EDGE RADAR V0.7 — MEXC control room + durable evidence"
     )
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("once", help="run one public-data observation cycle")
@@ -73,7 +73,7 @@ def main(argv: list[str] | None = None) -> int:
     control.add_argument("--registry", default=None)
 
     sub.add_parser("status", help="read latest persisted service health status")
-    sub.add_parser("verify-evidence", help="verify the local evidence hash chain")
+    sub.add_parser("verify-evidence", help="verify the evidence hash chain")
     sub.add_parser(
         "etf-cme-signal",
         help="fetch the latest public CFTC rows and evaluate the exact frozen ETF-CME signal",
