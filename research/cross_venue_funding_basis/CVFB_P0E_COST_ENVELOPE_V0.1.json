@@ -1,0 +1,38 @@
+{
+  "schema_version": "0.1",
+  "stage": "P0E_PREAUTHORIZATION_COST_ENVELOPE",
+  "status": "PLANNING_ONLY_NOT_AUTHORIZATION",
+  "purpose": "Bound the order of magnitude of possible requester-pays charges under the already-frozen P0E request/byte caps. This is deliberately conservative and is not an AWS invoice guarantee.",
+  "official_pricing_references": [
+    "https://docs.aws.amazon.com/AmazonS3/latest/userguide/RequesterPaysBuckets.html",
+    "https://aws.amazon.com/s3/pricing/",
+    "https://hyperliquid.gitbook.io/hyperliquid-docs/historical-data"
+  ],
+  "aws_requester_pays_fact": "Authenticated requester-pays requests charge the requester for request and downloaded-data costs; Hyperliquid documents requester-paid transfer for its historical S3 data.",
+  "frozen_p0e_caps": {
+    "max_list_requests": 1100,
+    "max_head_requests": 301,
+    "max_get_requests": 301,
+    "max_total_compressed_object_bytes": 33554432,
+    "max_total_compressed_mib": 32
+  },
+  "conservative_planning_rates_usd_not_claimed_actual": {
+    "list_per_1000_requests": 0.01,
+    "head_or_get_per_1000_requests": 0.001,
+    "data_transfer_per_gib": 0.20,
+    "note": "These planning rates intentionally exceed common S3 Standard examples on AWS pricing pages so the envelope does not depend on an unverified bucket region. Exact billing can differ by region/account/free-transfer eligibility/taxes."
+  },
+  "conservative_cap_math_usd": {
+    "list_requests": 0.011,
+    "head_plus_get_requests": 0.000602,
+    "max_32_mib_transfer": 0.00625,
+    "total_before_rounding": 0.017852
+  },
+  "planning_ceiling_usd": 0.05,
+  "planning_interpretation": "Under the frozen technical caps, the probe is designed to remain a cents-scale source audit. A separate explicit authorization is still required even though the expected monetary exposure is small.",
+  "execution_authorized": false,
+  "requester_pays_charges_authorized": false,
+  "aws_credentials_authorized": false,
+  "economic_outcomes_authorized": false,
+  "2026_authorized": false
+}
