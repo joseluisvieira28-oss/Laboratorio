@@ -51,7 +51,28 @@ jobs:
           print('TFG_2025_BULK_REPLAY_FREEZE_PASS')
           PY
 
-      - name: Compile frozen replay runner
+      - name: Verify and apply frozen stress-total reporting fix
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          fix=json.loads(Path('research/prop_compat/PROP_COMPAT_001E_TFG_2025_REPLAY_STRESS_TOTAL_FIELD_FIX_V0.1.json').read_text())
+          assert fix['status']=='FROZEN_BEFORE_TECHNICAL_RERUN'
+          assert fix['failed_run']['workflow_run_id']==35275547169
+          assert fix['authorized_fix']['source_changed'] is False
+          assert fix['authorized_fix']['setup_changed'] is False
+          assert fix['authorized_fix']['verification_targets_changed'] is False
+          p=Path('research/prop_compat/prop_compat_001e_tfg_2025_bulk_replay_v01.py')
+          s=p.read_text(encoding='utf-8')
+          needle='stress_metrics["total_net_r"]'
+          assert s.count(needle)==3, s.count(needle)
+          repl='(float(stress_metrics["net_expectancy_r"]) * int(stress_metrics["resolved_trade_count"]))'
+          p.write_text(s.replace(needle,repl),encoding='utf-8')
+          print('STRESS_TOTAL_REPORTING_FIX_APPLIED=PASS')
+          PY
+
+      - name: Compile frozen replay runner after authorized reporting fix
         working-directory: Dream-Account-OS-v2.3-PARTIAL
         run: python -m py_compile research/prop_compat/prop_compat_001e_tfg_2025_bulk_replay_v01.py
 
