@@ -43,8 +43,19 @@ def _receipt(
     }
 
 
+def _duplicate_receipt(*, event_id: int, event_type: str, event_key: str, backend: str) -> dict[str, Any]:
+    return {
+        "id": event_id,
+        "event_type": event_type,
+        "event_key": event_key,
+        "backend": backend,
+        "inserted": False,
+        "duplicate": True,
+    }
+
+
 class EvidenceStore:
-    """SQLite append-only event store with a SHA-256 hash chain."""
+    """SQLite append-only event store with a SHA-256 hash chain and idempotency keys."""
 
     backend = "sqlite"
 
@@ -61,9 +72,6 @@ class EvidenceStore:
         return conn
 
     def _init_db(self) -> None:
-        # sqlite3.Connection.__exit__ commits/rolls back but does not guarantee
-        # handle closure. Windows will then keep the DB file locked. Pair the
-        # transaction context with contextlib.closing for deterministic cleanup.
         with closing(self._connect()) as conn:
             with conn:
                 conn.execute(
@@ -81,6 +89,17 @@ class EvidenceStore:
                 )
                 conn.execute(
                     "CREATE INDEX IF NOT EXISTS idx_events_type_ts ON events(event_type, event_ts)"
+                )
+                conn.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS event_keys (
+                        event_type TEXT NOT NULL,
+                        event_key TEXT NOT NULL,
+                        event_id INTEGER NOT NULL,
+                        PRIMARY KEY (event_type, event_key),
+                        FOREIGN KEY (event_id) REFERENCES events(id)
+                    )
+                    """
                 )
 
     def _last_chain_hash(self, conn: sqlite3.Connection) -> str:
@@ -121,6 +140,66 @@ class EvidenceStore:
             chain_sha=chain_sha,
             backend=self.backend,
         )
+
+    def append_once(self, event_type: str, event_key: str, payload: dict[str, Any]) -> dict[str, Any]:
+        """Atomically append one keyed event, returning duplicate metadata on retries."""
+        if not event_type.strip():
+            raise ValueError("event_type is required")
+        if not event_key.strip():
+            raise ValueError("event_key is required")
+        payload_json = _canonical_json(payload)
+        payload_sha = hashlib.sha256(payload_json.encode("utf-8")).hexdigest()
+        event_ts = utc_now_iso()
+
+        with closing(self._connect()) as conn:
+            try:
+                conn.execute("BEGIN IMMEDIATE")
+                existing = conn.execute(
+                    "SELECT event_id FROM event_keys WHERE event_type = ? AND event_key = ?",
+                    (event_type, event_key),
+                ).fetchone()
+                if existing is not None:
+                    conn.rollback()
+                    return _duplicate_receipt(
+                        event_id=int(existing["event_id"]),
+                        event_type=event_type,
+                        event_key=event_key,
+                        backend=self.backend,
+                    )
+
+                prev_hash = self._last_chain_hash(conn)
+                chain_material = "|".join((prev_hash, event_ts, event_type, payload_sha))
+                chain_sha = hashlib.sha256(chain_material.encode("utf-8")).hexdigest()
+                cursor = conn.execute(
+                    """
+                    INSERT INTO events (
+                        event_ts, event_type, payload_json, payload_sha256,
+                        prev_chain_sha256, chain_sha256
+                    ) VALUES (?, ?, ?, ?, ?, ?)
+                    """,
+                    (event_ts, event_type, payload_json, payload_sha, prev_hash, chain_sha),
+                )
+                event_id = int(cursor.lastrowid)
+                conn.execute(
+                    "INSERT INTO event_keys (event_type, event_key, event_id) VALUES (?, ?, ?)",
+                    (event_type, event_key, event_id),
+                )
+                conn.commit()
+            except Exception:
+                conn.rollback()
+                raise
+
+        receipt = _receipt(
+            event_id=event_id,
+            event_ts=event_ts,
+            event_type=event_type,
+            payload_sha=payload_sha,
+            prev_hash=prev_hash,
+            chain_sha=chain_sha,
+            backend=self.backend,
+        )
+        receipt.update({"event_key": event_key, "inserted": True, "duplicate": False})
+        return receipt
 
     def verify_chain(self) -> tuple[bool, str]:
         with closing(self._connect()) as conn:
@@ -183,6 +262,16 @@ class PostgresEvidenceStore:
                         "CREATE INDEX IF NOT EXISTS idx_radar_events_type_ts "
                         "ON radar_events(event_type, event_ts)"
                     )
+                    cur.execute(
+                        """
+                        CREATE TABLE IF NOT EXISTS radar_event_keys (
+                            event_type TEXT NOT NULL,
+                            event_key TEXT NOT NULL,
+                            event_id BIGINT NOT NULL REFERENCES radar_events(id),
+                            PRIMARY KEY (event_type, event_key)
+                        )
+                        """
+                    )
         except Exception as exc:
             raise RuntimeError(
                 f"postgres evidence initialization failed: {type(exc).__name__}: {exc}"
@@ -240,6 +329,73 @@ class PostgresEvidenceStore:
             chain_sha=chain_sha,
             backend=self.backend,
         )
+
+    def append_once(self, event_type: str, event_key: str, payload: dict[str, Any]) -> dict[str, Any]:
+        if not event_type.strip():
+            raise ValueError("event_type is required")
+        if not event_key.strip():
+            raise ValueError("event_key is required")
+        payload_json = _canonical_json(payload)
+        payload_sha = hashlib.sha256(payload_json.encode("utf-8")).hexdigest()
+        event_ts = utc_now_iso()
+
+        try:
+            with self._connect() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT pg_advisory_xact_lock(%s)", (POSTGRES_CHAIN_LOCK_ID,))
+                    cur.execute(
+                        "SELECT event_id FROM radar_event_keys WHERE event_type = %s AND event_key = %s",
+                        (event_type, event_key),
+                    )
+                    existing = cur.fetchone()
+                    if existing is not None:
+                        return _duplicate_receipt(
+                            event_id=int(existing[0]),
+                            event_type=event_type,
+                            event_key=event_key,
+                            backend=self.backend,
+                        )
+
+                    cur.execute(
+                        "SELECT chain_sha256 FROM radar_events ORDER BY id DESC LIMIT 1"
+                    )
+                    row = cur.fetchone()
+                    prev_hash = row[0] if row else GENESIS_HASH
+                    chain_material = "|".join(
+                        (prev_hash, event_ts, event_type, payload_sha)
+                    )
+                    chain_sha = hashlib.sha256(chain_material.encode("utf-8")).hexdigest()
+                    cur.execute(
+                        """
+                        INSERT INTO radar_events (
+                            event_ts, event_type, payload_json, payload_sha256,
+                            prev_chain_sha256, chain_sha256
+                        ) VALUES (%s, %s, %s, %s, %s, %s)
+                        RETURNING id
+                        """,
+                        (event_ts, event_type, payload_json, payload_sha, prev_hash, chain_sha),
+                    )
+                    event_id = int(cur.fetchone()[0])
+                    cur.execute(
+                        "INSERT INTO radar_event_keys (event_type, event_key, event_id) VALUES (%s, %s, %s)",
+                        (event_type, event_key, event_id),
+                    )
+        except Exception as exc:
+            raise RuntimeError(
+                f"postgres keyed append failed: {type(exc).__name__}: {exc}"
+            ) from exc
+
+        receipt = _receipt(
+            event_id=event_id,
+            event_ts=event_ts,
+            event_type=event_type,
+            payload_sha=payload_sha,
+            prev_hash=prev_hash,
+            chain_sha=chain_sha,
+            backend=self.backend,
+        )
+        receipt.update({"event_key": event_key, "inserted": True, "duplicate": False})
+        return receipt
 
     def verify_chain(self) -> tuple[bool, str]:
         try:
