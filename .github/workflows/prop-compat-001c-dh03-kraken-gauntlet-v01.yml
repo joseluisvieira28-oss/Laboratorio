@@ -1,0 +1,69 @@
+name: PROP COMPAT 001C DH03 Kraken Robustness Gauntlet V0.1
+
+on:
+  push:
+    branches: [prop-compat-001-v0.1]
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/prop_compat/PROP_COMPAT_001C_GAUNTLET_RUN_TRIGGER_V0.1.txt'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  gauntlet:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: prop-compat-001-v0.1
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install numeric dependency
+        run: pip install 'numpy==2.1.1'
+      - name: Verify aggressive-research authority before outcomes
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('research/prop_compat')
+          g=json.loads((p/'PROP_COMPAT_001_GOVERNANCE_AMENDMENT_V0.8_AGGRESSIVE_RESEARCH.json').read_text())
+          q=json.loads((p/'PROP_COMPAT_001C_DH03_KRAKEN_ROBUSTNESS_GAUNTLET_PROTOCOL_V0.1.json').read_text())
+          assert g['status']=='ACTIVE_PROSPECTIVE_GOVERNANCE_AMENDMENT'
+          assert g['mode']=='AGGRESSIVE_RESEARCH_PARALLEL_GATES'
+          assert q['status']=='FROZEN_BEFORE_GAUNTLET_OUTCOMES'
+          assert q['governance']['outcomes_opened_before_freeze'] is False
+          assert q['risk_grid_pct_equity_per_1R']==[0.10,0.15,0.20,0.25,0.30]
+          assert q['stage_C_monte_carlo_sequence_risk']['repetitions']==20000
+          assert q['stage_C_monte_carlo_sequence_risk']['seed']==20260917
+          print('AGGRESSIVE_GAUNTLET_AUTHORITY_PASS')
+          PY
+      - name: Compile frozen runner
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: python -m py_compile research/prop_compat/prop_compat_001c_gauntlet_v01.py
+      - name: Download exact frozen Phase5 execution artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: HTF_DIAMOND_HUNT_001_PHASE5_EXECUTION_V01
+          path: Dream-Account-OS-v2.3-PARTIAL/research/local_data/prop_compat_001c/execution
+          github-token: ${{ github.token }}
+          run-id: 35080622854
+      - name: Run stages A B C
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: |
+          mkdir -p research/local_data/prop_compat_001c/output
+          python research/prop_compat/prop_compat_001c_gauntlet_v01.py \
+            research/local_data/prop_compat_001c/execution/DH-03-HO1_LEDGER.json \
+            research/local_data/prop_compat_001c/output/PROP_COMPAT_001C_DH03_KRAKEN_ROBUSTNESS_GAUNTLET_RECEIPT_V0.1.json
+      - name: Upload gauntlet evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: PROP_COMPAT_001C_DH03_KRAKEN_ROBUSTNESS_GAUNTLET_V01
+          path: Dream-Account-OS-v2.3-PARTIAL/research/local_data/prop_compat_001c/output/PROP_COMPAT_001C_DH03_KRAKEN_ROBUSTNESS_GAUNTLET_RECEIPT_V0.1.json
+          if-no-files-found: error
+          retention-days: 90
