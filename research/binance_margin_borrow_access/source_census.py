@@ -27,8 +27,9 @@ ARTICLE = "https://www.binance.com/en/support/announcement/detail/{code}"
 REFERER = "https://www.binance.com/en/messages/v2/group/announcement"
 START_MS = int(datetime(2023,1,1,tzinfo=timezone.utc).timestamp()*1000)
 END_MS = int(datetime(2024,12,31,23,59,59,tzinfo=timezone.utc).timestamp()*1000)
-PAGE_SIZE = 100
-MAX_PAGES = 120
+# Transport-only remediation: use the website-compatible page size demonstrated by the current announcement client.
+PAGE_SIZE = 20
+MAX_PAGES = 600
 
 # Positive source controls prospectively fixed before execution; not a discovery sample.
 POSITIVE_CONTROLS = {
@@ -77,7 +78,6 @@ def flatten_articles(obj: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def normalize_text(raw: str) -> str:
-    # Structural text only. No market values are requested or interpreted.
     raw = re.sub(r"<script[^>]*>.*?</script>", " ", raw, flags=re.I|re.S)
     raw = re.sub(r"<style[^>]*>.*?</style>", " ", raw, flags=re.I|re.S)
     raw = re.sub(r"<[^>]+>", " ", raw)
@@ -120,8 +120,6 @@ def main() -> int:
             dates = []
             for a in arts:
                 dates.append(a["releaseDate"])
-                # Metadata outside the frozen event window may be seen only to establish enumeration boundary,
-                # never retained as scientific event candidates.
                 if a["releaseDate"] <= END_MS:
                     article_by_code.setdefault(a["code"], a)
             added = len(article_by_code) - before
@@ -144,14 +142,11 @@ def main() -> int:
 
         frozen = [a for a in article_by_code.values() if START_MS <= a["releaseDate"] <= END_MS]
         frozen.sort(key=lambda x: (x["releaseDate"], x["code"]))
-
-        # Source-candidate titles only; contents are opened only for margin-looking titles plus fixed controls.
         margin_like = [a for a in frozen if "margin" in a["title"].lower()]
         codes_to_resolve = {a["code"] for a in margin_like} | set(POSITIVE_CONTROLS)
         resolved = []
         for code in sorted(codes_to_resolve):
             if code not in article_by_code:
-                # Positive control absent from index is itself enumeration evidence.
                 resolved.append({"code": code, "index_present": False, "structural_phrase_pass": False})
                 continue
             x = fetch_article(code)
@@ -196,6 +191,7 @@ def main() -> int:
         "frozen_start_utc": "2023-01-01T00:00:00Z",
         "frozen_end_utc": "2024-12-31T23:59:59Z",
         "enumeration_boundary_reached_before_start": reached_before_start,
+        "transport_page_size": PAGE_SIZE,
         "pages": pages,
         "unique_frozen_article_metadata": len(frozen),
         "margin_title_candidates": len(margin_like),
