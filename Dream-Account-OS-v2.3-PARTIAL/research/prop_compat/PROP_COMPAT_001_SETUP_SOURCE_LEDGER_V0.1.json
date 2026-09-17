@@ -1,0 +1,179 @@
+{
+  "document_id": "PROP_COMPAT_001_SETUP_SOURCE_LEDGER_V0.1",
+  "campaign_id": "PROP-COMPAT-001",
+  "campaign_name": "External Capital Compatibility",
+  "version": "0.1",
+  "created_at_utc": "2026-09-17T10:20:00Z",
+  "freshness_date": "2026-09-17",
+  "repository": "joseluisvieira28-oss/Laboratorio",
+  "campaign_branch": "prop-compat-001-v0.1",
+  "status": "FROZEN_SETUP_AUTHORITY_LEDGER",
+  "authority_policy": "Frozen repository/Drive artifacts outrank memory, summaries and reconstructed rules. No setup parameter may be changed in PROP-COMPAT-001.",
+  "governance": {
+    "research_only": true,
+    "no_live_trading": true,
+    "no_orders": true,
+    "no_exchange_mutation": true,
+    "no_wallets": true,
+    "no_challenge_purchase": true,
+    "no_prop_payment": true,
+    "no_private_api_connection": true,
+    "no_webhooks": true,
+    "no_setup_modification": true,
+    "no_post_outcome_tuning": true,
+    "no_cherry_picking": true,
+    "no_merge_to_main_without_explicit_authorization": true
+  },
+  "state_reconstruction": {
+    "lab_board_checked": {
+      "title": "CRYPTO_LAB_EDGE_CLASSIFICATION_BOARD_V1 — 2026-09-17",
+      "google_sheet_id": "1fv3S6nawlOUePlcR7TQXb4aqnois1nxuVeDTeUuS8fM",
+      "checked_on": "2026-09-17"
+    },
+    "branch_precheck": {
+      "equivalent_prop_compat_campaign_found": false,
+      "new_branch_created": "prop-compat-001-v0.1",
+      "setup_authority_branches": [
+        "tfg-donchian-1d-oos-2025-v01",
+        "htf-diamond-hunt-v0.1"
+      ]
+    }
+  },
+  "setups": [
+    {
+      "setup_id": "TFG-DONCHIAN-1D-001",
+      "official_authority_branch": "tfg-donchian-1d-oos-2025-v01",
+      "authority_files": [
+        "Dream-Account-OS-v2.3-PARTIAL/research/timeframe_gap/TFG_DONCHIAN_1D_001_FREEZE.json",
+        "Dream-Account-OS-v2.3-PARTIAL/research/timeframe_gap/TFG_DONCHIAN_1D_001_2025_OOS_CLOSEOUT_V0.1D.md",
+        "Dream-Account-OS-v2.3-PARTIAL/research/timeframe_gap/TFG_DONCHIAN_1D_FORWARD_SHADOW_V0.1_FREEZE.json"
+      ],
+      "official_rule": {
+        "market_in_original_discovery": "MEXC_SPOT",
+        "direction": "LONG_ONLY",
+        "source_interval": "15m",
+        "signal_timeframe": "1D_UTC",
+        "universe": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "DOGEUSDT"],
+        "donchian_lookback_complete_bars": 20,
+        "signal": "signal_close > maximum high of the prior 20 complete 1D bars, excluding the signal bar",
+        "atr": "ATR14 Wilder RMA true range",
+        "entry": "next complete 1D bar open",
+        "stop": "signal_low - 0.25 * ATR14_signal",
+        "target": "entry + 3 * (entry - stop)",
+        "target_r": 3.0,
+        "max_hold_bars": 40,
+        "max_hold_semantics": "exit at next daily open after 40 entry bars if neither stop nor target occurred",
+        "one_active_trade_per_symbol": true,
+        "pyramiding": false,
+        "same_bar_stop_and_target": "STOP_WINS",
+        "adverse_gap_through_stop": "exit at bar open",
+        "favorable_gap_over_target": "cap exit at target"
+      },
+      "frozen_costs": {
+        "base_round_trip_pct": 0.20,
+        "stress_round_trip_pct": 0.30
+      },
+      "discovery_state": {
+        "resolved_trades": 98,
+        "minimum_required": 100,
+        "classification_at_discovery_gate": "INSUFFICIENT_SAMPLE",
+        "note": "This earlier discovery sample status is not the latest scientific state; a separate frozen 2025 OOS confirmation was subsequently completed."
+      },
+      "oos_2025": {
+        "selected_trades": 40,
+        "resolved_trades": 40,
+        "base_expectancy_r_per_trade": 0.3510844126,
+        "base_profit_factor": 1.5851406877,
+        "base_total_r": 14.0433765048,
+        "base_win_rate": 0.40,
+        "stress_expectancy_r_per_trade": 0.3275204173,
+        "stress_profit_factor": 1.5458673621,
+        "stress_total_r": 13.1008166916,
+        "exit_counts": {"STOP": 24, "TARGET": 12, "TIME_EXIT_NEXT_OPEN": 4},
+        "frozen_gates_passed": true,
+        "official_status": "OOS_CONFIRMATION_SURVIVES_SHADOW_ELIGIBLE"
+      },
+      "shadow_state": {
+        "forward_shadow_freeze_exists": true,
+        "freeze_status": "FROZEN_FORWARD_ONLY_BEFORE_FIRST_SHADOW_SIGNAL",
+        "historical_2026_backfill_allowed": false,
+        "completed_shadow_closeout_verified_in_current_reconstruction": false,
+        "current_operational_classification": "SHADOW_ELIGIBLE_NOT_LIVE_AUTHORIZED"
+      },
+      "prop_compat_implication": "Eligible as a research input because frozen OOS confirmation survived; this does not imply prop compatibility and does not authorize live trading."
+    },
+    {
+      "setup_id": "DH-03-HO1",
+      "canonical_lineage": "HTF-DH03-DONCHIAN-12H-001",
+      "official_authority_branch": "htf-diamond-hunt-v0.1",
+      "authority_files": [
+        "Dream-Account-OS-v2.3-PARTIAL/research/htf_diamond_hunt/HTF_DIAMOND_HUNT_001_CAMPAIGN_FREEZE_V0.1.json",
+        "Dream-Account-OS-v2.3-PARTIAL/research/htf_diamond_hunt/HTF_DIAMOND_HUNT_001_PHASE4_FUNDING_EXECUTION_FREEZE_V0.1.json",
+        "Dream-Account-OS-v2.3-PARTIAL/research/htf_diamond_hunt/HTF_DIAMOND_HUNT_001_PHASE5_FORWARD_HOLDOUT_FREEZE_V0.1.json",
+        "Dream-Account-OS-v2.3-PARTIAL/research/htf_diamond_hunt/HTF_DIAMOND_HUNT_001_PHASE5_CLOSEOUT_V0.1.json"
+      ],
+      "official_rule": {
+        "direction": "LONG_ONLY",
+        "signal_timeframe": "12H",
+        "universe": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "DOGEUSDT"],
+        "donchian_lookback_complete_bars": 40,
+        "signal": "12H close strictly above maximum high of the prior 40 complete 12H bars",
+        "atr": "ATR28",
+        "entry": "next 12H open",
+        "stop": "signal_low - 0.25 * ATR28",
+        "target_r": 3.0,
+        "max_hold_bars": 80,
+        "max_hold_days": 40,
+        "one_active_trade_per_symbol": true
+      },
+      "frozen_execution_semantics": {
+        "market": "Binance public USD-M perpetual futures",
+        "price_interval_for_execution": "1m",
+        "entry": "frozen next HTF open represented by 1m open at that timestamp",
+        "scan": "consecutive 1m bars until frozen max-hold timestamp",
+        "stop_gap": "if minute open <= stop, exit at minute open",
+        "target_gap": "if minute open >= target, exit at target",
+        "same_minute_stop_and_target": "STOP_WINS",
+        "max_hold": "exit at 1m open exactly 40 days after entry",
+        "missing_path_policy": "EXECUTION_PATH_UNRESOLVED; no interpolation",
+        "funding_source": "official Binance USD-M historical fundingRate archives",
+        "funding_long_cashflow": "funding_return = -funding_rate for eligible events strictly after entry and strictly before exit",
+        "funding_compounding": false
+      },
+      "frozen_costs": {
+        "base_round_trip_pct": 0.20,
+        "stress_round_trip_pct": 0.30
+      },
+      "forward_holdout_2023_2024": {
+        "selected_trades": 148,
+        "resolved_trades": 146,
+        "execution_path_unresolved": 2,
+        "base_expectancy_r_per_trade": 0.3270763138,
+        "base_profit_factor": 1.5188467833,
+        "bootstrap_lower_95_r": 0.0024715851,
+        "bootstrap_upper_95_r": 0.6608146518,
+        "stress_expectancy_r_per_trade": 0.3017717129,
+        "stress_profit_factor": 1.4788681252,
+        "expectancy_2023_r": 0.2065167206,
+        "expectancy_2024_r": 0.4135955513,
+        "max_symbol_positive_share": 0.22436,
+        "max_quarter_positive_share": 0.27221,
+        "failed_frozen_conditions": [],
+        "official_cell_classification": "EXACT_RULE_FORWARD_HOLDOUT_SURVIVES"
+      },
+      "campaign_context": {
+        "overall_phase5_campaign_primary_failed": true,
+        "failed_primary_was": "DH-02-HO1",
+        "dh03_was_secondary": true,
+        "secondary_post_outcome_substitution_prohibited": true,
+        "note": "DH-03 itself did not fail its frozen holdout gates; it was not allowed to rescue/replace the designated primary after outcomes."
+      },
+      "prop_compat_implication": "Eligible as a research input with exact minute-path and funding semantics preserved. Two unresolved historical execution paths remain explicitly unresolved and must not be imputed post hoc."
+    }
+  ],
+  "phase0_close": {
+    "setup_reconstruction_complete": true,
+    "risk_grid_authorized": false,
+    "reason": "Phase 1 prop rulebook must be frozen without material unresolved rules before any risk-grid or prop replay can run."
+  }
+}
