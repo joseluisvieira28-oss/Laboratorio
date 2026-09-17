@@ -1,0 +1,85 @@
+{
+  "lab_id": "BTC-DVOL-FUTURES-TERMSTRUCTURE-001",
+  "discovery_id": "DVOL-TS-CONVERGENCE-DISCOVERY-001",
+  "status": "PRE_OUTCOME_FROZEN",
+  "date_frozen": "2026-09-17",
+  "parent_source_gate": "DVOL-TS-LIFECYCLE-SOURCE-002",
+  "parent_source_run": 35275287583,
+  "parent_source_artifact_id": 10520437278,
+  "parent_source_classification": "LIFECYCLE_SOURCE_DATA_PASS",
+  "economic_mechanism": "BTCDVOL futures are linear futures on the BTC DVOL index and cash-settle to an expiry TWAP of that index. If a non-zero futures-minus-index basis contains a true convergence component, the signed basis should on average move toward zero as the contract approaches expiry.",
+  "source": {
+    "provider": "Deribit official historical API",
+    "metadata_endpoint": "https://history.deribit.com/api/v2/public/get_instrument",
+    "trades_endpoint": "https://history.deribit.com/api/v2/public/get_last_trades_by_instrument_and_time",
+    "research_start": "2023-03-27T00:00:00Z",
+    "research_end": "2024-12-31T23:59:59.999Z",
+    "candidate_start": "2023-03-29",
+    "candidate_end": "2024-12-25",
+    "instrument_pattern": "BTCDVOL_USDC-DDMMMYY",
+    "accepted_contract_rule": "Exact metadata instrument_name match; kind=future; price_index=btcdvol_usdc; listed life overlaps the research window; expiry before 2025-01-01."
+  },
+  "observation_rule": {
+    "ordinary_trade": "Deduplicated public trade with block_trade_id and combo_id absent/null.",
+    "daily_anchor": "For each confirmed contract and UTC calendar day, retain the first ordinary trade at or after 08:00:00 UTC and strictly before contract expiration.",
+    "required_values": [
+      "price",
+      "index_price",
+      "timestamp"
+    ],
+    "basis_points": "trade_price - contemporaneous index_price",
+    "adjacent_pair_rule": "Within each contract, pair each eligible daily anchor with the next eligible daily anchor. Do not bridge across contracts.",
+    "elapsed_time_normalization": "signed convergence score divided by positive integer UTC calendar-day gap between paired anchors.",
+    "signed_convergence_score": "sign(basis_t) * (basis_t - basis_next) / elapsed_calendar_days. Positive means movement toward zero; negative means movement away from zero. basis_t==0 scores 0.",
+    "no_basis_threshold": true,
+    "no_direction_selection": true
+  },
+  "primary_estimand": "Equal-weight mean of per-contract mean signed convergence scores (DVOL index points per calendar day).",
+  "secondary_metrics": [
+    "median per-contract mean signed convergence",
+    "share of contracts with positive mean signed convergence",
+    "pooled adjacent-pair hit rate",
+    "expiration-quarter mean of per-contract mean signed convergence"
+  ],
+  "sample_gates": {
+    "minimum_confirmed_contracts_with_pairs": 12,
+    "minimum_total_adjacent_pairs": 100,
+    "minimum_distinct_expiration_quarters": 6
+  },
+  "statistical_gates": {
+    "mean_contract_convergence_gt": 0,
+    "median_contract_convergence_gt": 0,
+    "positive_contract_share_gte": 0.6,
+    "nonnegative_expiration_quarters_gte": 5,
+    "cluster_bootstrap_lower_95_gt": 0
+  },
+  "bootstrap": {
+    "unit": "contract",
+    "replications": 10000,
+    "seed": 17092026,
+    "ci": 0.95,
+    "statistic": "equal-weight mean of sampled contract means"
+  },
+  "classifications": {
+    "pass": "DISCOVERY_PASS_BASIS_CONVERGENCE",
+    "no_signal": "DISCOVERY_NO_ROBUST_CONVERGENCE",
+    "sample_insufficient": "DISCOVERY_SAMPLE_INSUFFICIENT",
+    "technical_failure": "DISCOVERY_SOURCE_OR_TECHNICAL_FAILURE",
+    "provenance_failure": "DISCOVERY_PROVENANCE_FAILURE"
+  },
+  "firewalls": {
+    "transaction_costs_opened": false,
+    "strategy_pnl_opened": false,
+    "strategy_returns_opened": false,
+    "threshold_tuning": false,
+    "post_outcome_rule_change": false,
+    "access_2025": false,
+    "access_2026": false,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "wallet_access": false,
+    "merge_to_main": false
+  },
+  "no_rescue_rule": "After the canonical outcome is opened, do not change daily anchor time, basis definition, pair construction, sample gates, statistical gates, bootstrap, source period or contract population under this Discovery ID.",
+  "post_pass_rule": "A PASS proves only historical basis convergence. It authorizes a separately frozen execution/cost MVE. It does not authorize live trading or a diamond classification."
+}
