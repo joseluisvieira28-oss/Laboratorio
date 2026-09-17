@@ -1,0 +1,61 @@
+{
+  "document_id": "PROP_COMPAT_001B_KRAKEN_PROP_PUBLIC_SOURCE_RESOLUTION_V0.3",
+  "campaign_id": "PROP-COMPAT-001B",
+  "consulted_on": "2026-09-17",
+  "status": "PUBLIC_SOURCE_RESOLUTION_EXHAUSTED_EXECUTION_HISTORY_NOT_PUBLIC",
+  "governance": {
+    "research_only": true,
+    "one_minute_proxy_outcomes_already_opened": true,
+    "existing_proxy_results_recomputed": false,
+    "existing_proxy_results_reinterpreted": false,
+    "official_phase3_risk_grid_run": false,
+    "post_outcome_parameter_change": false,
+    "challenge_purchase": false,
+    "live_trading": false,
+    "merge_to_main": false
+  },
+  "official_public_findings": {
+    "breakout_liquidity_model": {
+      "finding": "Breakout states that crypto trading data and liquidity are sourced from third-party brokers, market makers, exchanges or other liquidity providers. The environment is intended to replicate live execution and traders must account for liquidity, order-book depth, latency and slippage.",
+      "source": "https://www.breakoutprop.com/program-rules/"
+    },
+    "external_proxy_guidance": {
+      "finding": "Breakout states that the most accurate TradingView proxies are OKX and Bybit USDT perpetual futures, while explicitly warning that these pairs will not always perfectly align with Breakout symbols and recommending the native terminal chart for exact observation.",
+      "source": "https://www.breakoutprop.com/program-rules/",
+      "scientific_impact": "No external venue can be treated as an exact historical Breakout/Kraken Prop executable price stream."
+    },
+    "execution_semantics": {
+      "finding": "Breakout states that market orders execute at the best available price and that slippage can be material in volatile or illiquid conditions; limit orders can remain unfilled because of spread and insufficient depth, and the Breakout Terminal does not support partial fills for limit orders.",
+      "sources": [
+        "https://www.breakoutprop.com/guides/module-three-trade-execution/",
+        "https://www.breakoutprop.com/program-rules/"
+      ]
+    },
+    "kraken_prop_market_data": {
+      "finding": "Kraken Prop support states that the terminal exposes OHLC chart data, a real-time mark price used for valuation/PnL, and a live bid/ask order book with depth. The recovered public support material does not expose a historical downloadable archive of that Prop-specific bid/ask/depth/fill stream.",
+      "source": "https://support.kraken.com/articles/available-markets"
+    },
+    "current_six_asset_operational_evidence": {
+      "finding": "Current Breakout material explicitly documents BTC, SOL, BNB, XRP and DOGE leverage/position-cap updates and the Program Rules list BTC at 10x and BNB/DOGE/ETH/SOL/XRP at 5x. This supports present operational availability of the frozen DH-03 asset family, but does not establish historical 2023-2024 Kraken Prop execution because the current Kraken/Breakout integration is later.",
+      "sources": [
+        "https://www.breakoutprop.com/article/10x-leverage-increase/",
+        "https://www.breakoutprop.com/article/leverage-increase-rest-of-the-book/",
+        "https://www.breakoutprop.com/program-rules/"
+      ]
+    }
+  },
+  "search_result": {
+    "public_historical_prop_bid_ask_archive": "NOT_RECOVERED",
+    "public_historical_prop_depth_archive": "NOT_RECOVERED",
+    "public_historical_prop_fill_stream": "NOT_RECOVERED",
+    "official_historical_deterministic_fill_model": "NOT_RECOVERED",
+    "external_proxy_declared_exact": false,
+    "public_exact_execution_translation_simulation_ready": false
+  },
+  "adjudication": {
+    "exact_prop_replay": "BLOCKED",
+    "reason": "Official sources explicitly establish venue/execution basis risk and do not provide the historical Prop-specific executable stream required to eliminate it. Substituting Binance, OKX or Bybit as exact fills would contradict the provider's own warning that external prices may not align.",
+    "one_minute_proxy_role": "The frozen 1m ambiguity-envelope result remains a non-decisional compatibility screen only.",
+    "next_possible_resolution": "Authoritative response from Kraken Prop/Breakout support providing the feed methodology plus historical data or an official deterministic backtesting/execution model."
+  }
+}
