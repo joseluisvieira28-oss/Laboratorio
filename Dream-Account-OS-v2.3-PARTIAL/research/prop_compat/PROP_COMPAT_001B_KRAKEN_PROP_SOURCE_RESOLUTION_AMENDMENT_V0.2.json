@@ -1,0 +1,63 @@
+{
+  "document_id":"PROP_COMPAT_001B_KRAKEN_PROP_SOURCE_RESOLUTION_AMENDMENT_V0.2",
+  "campaign_id":"PROP-COMPAT-001B",
+  "consulted_on":"2026-09-17",
+  "status":"POST_DIAGNOSTIC_SOURCE_EVIDENCE_UPDATE_NO_RESCORE",
+  "governance":{
+    "15m_diagnostic_already_opened":true,
+    "existing_15m_results_recomputed":false,
+    "existing_15m_results_reinterpreted":false,
+    "official_phase3_risk_grid_run":false,
+    "post_outcome_parameter_change":false,
+    "challenge_purchase":false,
+    "live_trading":false,
+    "merge_to_main":false
+  },
+  "new_authoritative_evidence":{
+    "kraken_terms_precedence":{
+      "finding":"Kraken Terms state that before purchasing a Kraken Prop evaluation the user accepts Breakout's Evaluation Terms of Service, which govern the evaluation process, fees and outcomes; Kraken acts as the platform interface rather than the evaluation operator.",
+      "impact":"Breakout contractual/program documents are the primary authority for exact evaluation mechanics, while Kraken support remains important operational evidence.",
+      "source":"https://www.kraken.com/legal/eea-terms"
+    },
+    "breakout_evaluation_agreement":{
+      "updated":"2026-08-27",
+      "mdl_pct":3.0,
+      "mdl_balance_reference_utc":"00:30",
+      "commission_pct_per_side":0.04,
+      "swap_text":"If an Evaluation Trader has an open swap position at 00:00 UTC, a daily swap fee of 0.033% per open swap position is deducted at that time.",
+      "kraken_pro_prop_annex":"Annex B Section 1 states Kraken Pro Prop uses the standard Annex A evaluation structure and that the main Agreement and Annex A apply in full subject only to Annex B modifications.",
+      "source":"https://www.breakoutprop.com/breakout-evaluation-agreement/"
+    },
+    "breakout_program_rules":{
+      "updated":"2026-07-29",
+      "fee_basis":"notional size of the position",
+      "swap_rate_pct_per_day":0.033,
+      "terminal_specific":"DX terminal: daily for positions open at 00:00 UTC, deducted at 00:25 UTC. Breakout terminal: six charges per day, every four hours, approximately 0.0055% each.",
+      "execution_warning":"Evaluation environment seeks to replicate live execution; liquidity and order-book depth should be considered, especially in less liquid sessions.",
+      "source":"https://www.breakoutprop.com/program-rules/"
+    },
+    "kraken_operational_support":{
+      "swap_rate_pct_per_day":0.033,
+      "cadence":"six equal four-hour rollovers",
+      "basis":"total notional value of the open position",
+      "exact_utc_phase":"not published in recovered support pages",
+      "source":"https://support.kraken.com/articles/understanding-fees-on-kraken-prop"
+    }
+  },
+  "adjudication":{
+    "funding_notional_basis":"RESOLVED_TOTAL_OPEN_POSITION_NOTIONAL",
+    "funding_daily_rate":"RESOLVED_0.033_PERCENT_PER_DAY",
+    "funding_operational_cadence":"STRONGLY_SUPPORTED_AS_4H_FOR_KRAKEN_PROP_BY_KRAKEN_SUPPORT_AND_BREAKOUT_PROGRAM_RULES",
+    "funding_exact_phase":"BLOCKED_NOT_PUBLISHED",
+    "agreement_vs_operational_rule_consistency":"BLOCKED_INTERNAL_DOCUMENT_CONFLICT; Evaluation Agreement generic Annex A daily-at-00:00 wording does not cleanly match Kraken Support plus Breakout Program Rules Breakout-terminal 4h implementation.",
+    "execution_history":"BLOCKED_NO_HISTORICAL_PROP_BID_ASK_DEPTH_FILL_STREAM"
+  },
+  "exact_replay_state":{
+    "simulation_ready":false,
+    "remaining_material_blockers":[
+      "Exact UTC phase/timestamps of Kraken Prop's six four-hour funding rollovers and authoritative reconciliation with the Agreement's daily-at-00:00 clause.",
+      "Historical executable Kraken Prop/Breakout bid-ask, liquidity/depth and fill layer or a prospectively accepted deterministic translation that is not selected from outcomes.",
+      "Execution access to the already-frozen 1m ambiguity-envelope runner against the pinned 144 Binance 1m archives."
+    ]
+  }
+}
