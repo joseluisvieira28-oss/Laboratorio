@@ -27,6 +27,7 @@
     "assets": ["BTC", "ETH"],
     "selection": "Binary-search the first block whose blockTime is >= target; scan the fixed +/-150-height neighborhood. Do not adapt radius after viewing results.",
     "key_tokens": ["oracle", "funding", "mark", "price", "premium"],
+    "type_label_tokens": ["oracle"],
     "leaf_value_policy": "DO_NOT_EMIT_MARKET_NUMERIC_VALUES"
   },
   "allowed_outputs": [
@@ -35,8 +36,8 @@
     "canonical SHA256 fingerprints of raw block responses",
     "top-level and nested JSON key paths",
     "transaction/action type labels",
-    "counts of key-path matches",
-    "whether an oracle-related schema key exists"
+    "counts of key-path and type-label matches",
+    "whether an oracle-related schema key or action/type label exists"
   ],
   "forbidden_outputs": [
     "oracle numeric values",
@@ -59,8 +60,8 @@
     "post-outcome tuning"
   ],
   "decision_rule": {
-    "PASS_SCHEMA_CANDIDATE": "At least one oracle-related JSON key path is present in the fixed historical block neighborhood; this only permits a separately frozen P1 deterministic reconstruction audit.",
-    "FAIL_NO_NATIVE_ORACLE_SCHEMA_VISIBLE": "Probe completes but no oracle-related key path is visible; Explorer blockDetails is not sufficient for native-oracle reconstruction under this path.",
+    "PASS_SCHEMA_CANDIDATE": "At least one oracle-related JSON key path OR an oracle-related transaction/action type label is present in the fixed historical block neighborhood; this only permits a separately frozen P1 deterministic reconstruction audit.",
+    "FAIL_NO_NATIVE_ORACLE_SCHEMA_VISIBLE": "Probe completes but neither oracle-related key paths nor oracle-related transaction/action type labels are visible; Explorer blockDetails is not sufficient for native-oracle reconstruction under this path.",
     "TECHNICAL_BLOCKED": "Endpoint unavailable, historical bracket cannot be established, response schema invalid, or fixed scan incomplete."
   },
   "economic_outcomes_authorized": false,
