@@ -1,0 +1,128 @@
+{
+  "document_id": "PROP_COMPAT_001_HYRO_DH03_PROXY_REPLAY_FREEZE_V0.1",
+  "campaign_id": "PROP-COMPAT-001",
+  "version": "0.1",
+  "frozen_on": "2026-09-17",
+  "status": "FROZEN_NON_DECISIONAL_PROXY_NOT_RUN",
+  "setup_id": "DH-03-HO1",
+  "prop_program": "HYROTRADER_ONE_STEP_SWING_CLEO",
+  "purpose": "Permit a future research-only compatibility screening under explicitly conservative proxy assumptions where exact historical Hyro/CLEO execution data are unavailable. This proxy may identify obvious incompatibility but may not produce PROP-COMPAT-PASS, CONDITIONAL-PASS, challenge purchase authorization, or live-trading authorization.",
+  "governance": {
+    "research_only": true,
+    "proxy_not_exact_prop_replay": true,
+    "proxy_outcomes_opened": false,
+    "official_risk_grid_run": false,
+    "prop_replay_run": false,
+    "monte_carlo_run": false,
+    "setup_rules_changed": false,
+    "symbol_drops_allowed": false,
+    "time_period_selection_allowed": false,
+    "post_outcome_proxy_changes_allowed": false,
+    "challenge_purchase": false,
+    "live_trading": false,
+    "merge_to_main": false
+  },
+  "authorities": {
+    "setup_source": "DH-03-HO1 frozen exact-rule 2023-2024 holdout ledger and Phase5 source binding",
+    "setup_trade_ledger_sha256": "ec4e5dbc8d95a73d4eb9db55f4e1c0f264dba7eb724cbb7424f2c034a3a7eebd",
+    "price_source_fingerprint": "d1a95d51d99eba0bd5f66e91d75ddcd175f7a84d954ba28a44c2dcd39ef4c5cb",
+    "prop_rule_authority": "PROP_COMPAT_001_PROP_RULEBOOK_AMENDMENT_V0.6"
+  },
+  "frozen_proxy_translation": {
+    "price_path": {
+      "source": "EXACT_FROZEN_DH03_BINANCE_USDM_1M_ARCHIVE_PATH",
+      "rationale": "CLEO uses real-time Binance market data and order-book depth as pricing reference, but executes internally via B-Book. Binance 1m therefore serves only as a price-path proxy, not proof of exact CLEO fills.",
+      "exact_cleo_fill_claim": false
+    },
+    "signal_entry_stop_target_hold": {
+      "translation": "UNCHANGED_FROM_DH03",
+      "entry": "next 12H open",
+      "stop": "signal low - 0.25 * ATR28",
+      "target": "3R",
+      "maximum_hold": "80 x 12H bars = 40 days",
+      "same_path_ambiguity": "STOP_WINS",
+      "one_active_trade_per_symbol": true
+    },
+    "commission": {
+      "order_type_assumption": "TAKER_BOTH_SIDES_CONSERVATIVE",
+      "taker_pct_per_side": 0.05,
+      "round_trip_commission_pct": 0.10,
+      "maker_credit_or_maker_rate_used": false,
+      "rationale": "No optimistic maker fill assumption is allowed for a proxy intended to test survivability."
+    },
+    "execution_friction_envelope": {
+      "base_total_round_trip_execution_cost_pct_ex_funding": 0.20,
+      "stress_total_round_trip_execution_cost_pct_ex_funding": 0.30,
+      "base_implied_residual_spread_slippage_pct_round_trip_after_taker_commission": 0.10,
+      "stress_implied_residual_spread_slippage_pct_round_trip_after_taker_commission": 0.20,
+      "rationale": "These total BASE/STRESS envelopes preserve the already frozen DH-03 scientific execution-cost levels rather than selecting new friction after prop outcomes. The residual above current CLEO taker commission is treated as spread/slippage/execution uncertainty, not as a claim about historical observed CLEO fills."
+    },
+    "funding_proxy": {
+      "series": "EXACT_DH03_BINANCE_USDM_HISTORICAL_FUNDING_SERIES",
+      "event_cadence_context": "8-hour perpetual funding; current Hyro backtesting guidance cites 00:00/08:00/16:00 UTC",
+      "use": "PROXY_ONLY",
+      "exact_hyro_cleo_prop_debit_claim": false,
+      "reason": "CLEO uses Binance-based market data and its backtester uses exchange API funding data, but no current authoritative evidence proves exact historical Hyro/CLEO prop funding-rate equality throughout 2023-2024."
+    },
+    "daily_drawdown": {
+      "variant": "SWING_FIXED",
+      "amount_pct_initial_balance": 4.0,
+      "formula": "starting equity of current UTC day minus 4% of initial account balance",
+      "floating_pnl_and_fees_included": true
+    },
+    "maximum_loss": {
+      "amount_pct_initial_balance": 6.0,
+      "proxy_floor": "initial_balance * 0.94",
+      "exact_internal_system_mechanic_claim": false,
+      "note": "The 6% amount is official; static initial-balance proxy treatment is conservative/transparent for proxy screening but may not substitute for exact system implementation in final adjudication."
+    },
+    "single_position_realized_loss": {
+      "maximum_pct_initial_balance": 3.0,
+      "breach_if_exceeded": true
+    },
+    "minimum_trading_days": {
+      "required": 5,
+      "day_count_basis": "EXIT_DAY",
+      "qualifying_close_holding_period": "ANY",
+      "same_day_open_requirement": "AT_LEAST_ONE_POSITION_OPENED_ON_THE_QUALIFYING_DAY",
+      "trade_notional_min_pct_initial_balance": 5.0,
+      "qualifying_trade_pnl_abs_min_pct_trade_value": 1.0,
+      "dummy_trades_forbidden": true
+    },
+    "consistency_rule": {
+      "threshold_pct_total_net_result_per_day": 40.0,
+      "treatment": "EXCESS_CONTRIBUTION_NOT_COUNTED_TOWARD_TARGET_PER_CURRENT_HYRO_FAQ_INTERPRETATION",
+      "no_rule_relaxation_after_results": true
+    },
+    "inactivity": {
+      "threshold_days_since_last_fully_closed_trade": 30,
+      "portfolio_wide": true,
+      "breach_effect": "ACCOUNT_DISABLED"
+    },
+    "funded_exposure_limits": {
+      "maximum_total_margin_pct_initial_balance": 25.0,
+      "maximum_open_notional_multiple_initial_balance": 2.0,
+      "evaluation_stage_apply": false,
+      "funded_stage_apply": true
+    }
+  },
+  "frozen_risk_grid_reference": {
+    "document_id": "PROP_COMPAT_001_RISK_GRID_FREEZE_V0.1",
+    "risk_pct_per_1R": [0.10, 0.15, 0.20, 0.25, 0.30],
+    "official_grid_authorized_by_this_proxy_freeze": false,
+    "reason": "Campaign governance requires a simulation-ready exact prop translation for the official Phase3 risk grid. This document only freezes a separate proxy screen."
+  },
+  "allowed_future_proxy_outputs": [
+    "OBVIOUS_PROXY_BREACH",
+    "NO_OBVIOUS_PROXY_BREACH_BUT_EXACT_REPLAY_STILL_BLOCKED",
+    "PROXY_INSUFFICIENT"
+  ],
+  "forbidden_proxy_outputs": [
+    "PROP-COMPAT-PASS",
+    "CONDITIONAL-PASS",
+    "challenge_purchase_authorization",
+    "live_trading_authorization",
+    "best_prop_firm_selection"
+  ],
+  "decision": "PROXY_ASSUMPTIONS_FROZEN_BEFORE_PROXY_OUTCOMES; OFFICIAL_RISK_GRID_REMAINS_LOCKED"
+}
