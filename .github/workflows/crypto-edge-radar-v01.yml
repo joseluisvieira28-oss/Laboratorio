@@ -1,4 +1,4 @@
-name: CRYPTO EDGE RADAR V0.5 CI + PUBLIC SOAK
+name: CRYPTO EDGE RADAR V0.6 CI + PUBLIC SOAK
 
 on:
   push:
@@ -7,6 +7,7 @@ on:
       - crypto-edge-radar-aggressive-v0.3
       - crypto-edge-radar-render-v0.4
       - crypto-edge-radar-postgres-v0.5
+      - crypto-edge-radar-etf-cme-v0.6
     paths:
       - 'crypto_edge_radar/**'
       - '.github/workflows/crypto-edge-radar-v01.yml'
@@ -66,7 +67,7 @@ jobs:
         run: python -m radar etf-cme-signal > ci_artifacts/etf_cme_current_signal.json
       - name: Verify evidence chain
         run: python -m radar verify-evidence
-      - name: Verify final heartbeat and zero runtime-promoted strategies
+      - name: Verify final heartbeat and exactly one promoted shadow strategy
         run: |
           python - <<'PY'
           import json
@@ -74,10 +75,10 @@ jobs:
           status = json.loads(Path('ci_artifacts/radar_status.json').read_text())
           assert status['health'] == 'OK', status
           assert status['cycle'] == 3, status
-          assert status['version'] == '0.5', status
+          assert status['version'] == '0.6', status
           assert status['provider'] == 'BINANCE_SPOT_DATA_API_PUBLIC', status
           assert status['evidence_backend'] == 'sqlite', status
-          assert status['registered_strategies'] == 0, status
+          assert status['registered_strategies'] == 1, status
           assert status['valid_signal_count'] == 0, status
           assert len(status['universe']) == 5, status
           print(json.dumps(status, sort_keys=True))
@@ -86,7 +87,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: crypto-edge-radar-v05-public-shadow-receipt
+          name: crypto-edge-radar-v06-etf-cme-public-shadow-receipt
           path: crypto_edge_radar/ci_artifacts/
           if-no-files-found: warn
           retention-days: 14
