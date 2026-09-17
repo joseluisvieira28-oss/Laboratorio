@@ -1,0 +1,37 @@
+name: simple4h-source-only-gate
+
+on:
+  push:
+    branches:
+      - simple4h-recovery-v0.2
+    paths:
+      - 'research/simple4h/mve_simple4h_source_only_manifest_v01.py'
+      - '.github/workflows/simple4h-source-only-gate.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-only-checksum-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Build checksum-verified source manifest without opening CSV outcomes
+        run: |
+          python research/simple4h/mve_simple4h_source_only_manifest_v01.py \
+            --work "$RUNNER_TEMP/simple4h-source" \
+            --out "$RUNNER_TEMP/simple4h-receipt"
+      - name: Publish source-only receipts
+        uses: actions/upload-artifact@v4
+        with:
+          name: MVE_SIMPLE4H_01_SOURCE_ONLY_V01
+          path: |
+            ${{ runner.temp }}/simple4h-receipt/MVE_SIMPLE4H_01_SOURCE_MANIFEST_V0.1.json
+            ${{ runner.temp }}/simple4h-receipt/MVE_SIMPLE4H_01_SOURCE_ONLY_RECEIPT_V0.1.json
+          if-no-files-found: error
+          retention-days: 30
