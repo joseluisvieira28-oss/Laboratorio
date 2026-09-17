@@ -1,0 +1,141 @@
+{
+  "document_id": "PROP_COMPAT_001_PROP_RULEBOOK_AMENDMENT_V0.5",
+  "campaign_id": "PROP-COMPAT-001",
+  "version": "0.5",
+  "consulted_on": "2026-09-17",
+  "status": "PRE_SIMULATION_HYRO_ONE_STEP_SWING_CLEO_FREEZE",
+  "base_documents": [
+    "PROP_COMPAT_001_PROP_RULEBOOK_FREEZE_V0.1",
+    "PROP_COMPAT_001_PROP_RULEBOOK_AMENDMENT_V0.2",
+    "PROP_COMPAT_001_PROP_RULEBOOK_AMENDMENT_V0.3",
+    "PROP_COMPAT_001_PROP_RULEBOOK_AMENDMENT_V0.4"
+  ],
+  "governance": {
+    "research_only": true,
+    "risk_grid_run": false,
+    "prop_replay_run": false,
+    "live_trading": false,
+    "orders_created": false,
+    "challenge_purchased": false,
+    "private_api_connected": false,
+    "setup_rules_changed": false,
+    "post_outcome_tuning": false,
+    "merge_to_main": false
+  },
+  "hyrotrader_one_step_swing": {
+    "program_status": "RULE_MECHANICS_SUBSTANTIALLY_FROZEN_EXECUTION_COST_LAYER_BLOCKED",
+    "simulation_ready": false,
+    "research_execution_platform_primary": "CLEO",
+    "platform_selection_rationale": "Frozen before prop outcomes because DH-03-HO1 was scientifically validated on Binance USD-M perpetual price/funding paths and CLEO uses Binance market data/order-book depth as its pricing reference. This is source-proximity selection, not post-outcome winner selection.",
+    "alternate_platforms_not_selected": ["BYBIT_DEMO", "TEALSTREET_WITH_BYBIT_DEMO_DATA"],
+    "alternate_platform_policy": "Do not switch to Bybit/Tealstreet after seeing CLEO outcomes to rescue a result. A future platform comparison would require a separately pre-frozen experiment.",
+    "challenge_rules": {
+      "stages": 1,
+      "profit_target_pct": 10.0,
+      "daily_drawdown_pct": 4.0,
+      "daily_drawdown_variant": "SWING_FIXED",
+      "daily_drawdown_formula": "starting equity of current day minus 4% of initial account balance",
+      "floating_pnl_and_fees_included": true,
+      "daily_server_reset": "UTC; exact reset instant beyond UTC boundary not further specified in retrieved current article",
+      "maximum_loss_pct": 6.0,
+      "maximum_loss_mechanic": "published as maximum loss against account; exact floor update mechanics must not be inferred beyond authoritative wording",
+      "minimum_trading_days": 5,
+      "maximum_calendar_days": null,
+      "stop_loss_required": false,
+      "maximum_realized_loss_single_position_pct_initial_balance": 3.0,
+      "single_position_loss_rule_review": "manual review if realized loss exceeds limit",
+      "sources": [
+        "https://www.hyrotrader.com/trading-rules/",
+        "https://www.hyrotrader.com/faq/rules/how-is-the-5-daily-drawdown-calculated/",
+        "https://www.hyrotrader.com/faq/rules/what-is-the-maximum-loss-per-trade-rule/",
+        "https://www.hyrotrader.com/faq/evaluation-process/minimum-trading-days/"
+      ]
+    },
+    "minimum_trading_day_qualification": {
+      "distinct_days_required": 5,
+      "trade_minimum_notional_pct_initial_balance": 5.0,
+      "trade_pnl_magnitude_minimum_pct_of_trade_value": 1.0,
+      "day_counted_from": "trade exit day",
+      "same_day_open_and_close_requirement_text": "Hyro current FAQ states a qualifying day requires at least one position opened and closed on that day; exact application to multi-day positions must be emulated from the literal FAQ and not relaxed.",
+      "dummy_trades_prohibited_by_campaign": true,
+      "source": "https://www.hyrotrader.com/faq/evaluation-process/minimum-trading-days/"
+    },
+    "inactivity": {
+      "threshold_days": 30,
+      "reference_event": "most recent trading day, defined as the last day a trade was fully closed",
+      "effect": "account disabled",
+      "source": "https://www.hyrotrader.com/faq/rules/do-you-have-an-inactivity-rule/",
+      "dh03_materiality_precheck": "DH-03 contains positions lasting over 30 days, including exact 40-day time exits. This does not prove a breach because another portfolio position may close during the interval; inactivity must be evaluated account-wide."
+    },
+    "funded_stage_exposure": {
+      "maximum_total_margin_pct_initial_balance": 25.0,
+      "maximum_cumulative_open_notional_multiple_initial_balance": 2.0,
+      "applies_to": "funded account only",
+      "daily_drawdown_continues": true,
+      "maximum_loss_continues": true,
+      "source": "https://www.hyrotrader.com/faq/rules/are-there-any-other-rules-for-a-funded-account/"
+    },
+    "cleo_execution_model": {
+      "market_type": "USDT perpetual futures",
+      "pricing_reference": "real-time Binance market data and order-book depth",
+      "execution_model": "CLEO internal B-Book simulation intended to mirror realistic market conditions; not direct access to Binance liquidity",
+      "assets": "Binance-based perpetual assets; CLEO listings mirror Binance data subject to prop-firm availability choices",
+      "source": "https://www.hyrotrader.com/faq/cleo-platform/what-is-cleo-platform/",
+      "supporting_source": "https://docs.cleo.finance/knowledgebase/what-trading-pairs-or-assets-are-available-on-cleo-when-taking-a-crypto-prop-firm-challenge/"
+    },
+    "fees": {
+      "maker_pct_per_side": 0.02,
+      "taker_pct_per_side": 0.05,
+      "description": "CLEO fees simulate real Binance fees; Hyro states practical fees may be slightly higher due to slippage or other factors",
+      "source": "https://www.hyrotrader.com/faq/cleo-platform/what-are-cleos-fees/"
+    },
+    "funding_and_carry": {
+      "material": true,
+      "exact_hyro_cleo_prop_funding_formula_status": "NOT_EXPLICITLY_VERIFIED",
+      "cleo_backtester_context_only": "CLEO documentation states transaction costs can include exchange-API-derived funding fees and mentions 8-hour funding collection in its backtester, but this does not by itself prove that HyroTrader CLEO prop accounts debit the exact historical Binance USD-M funding series using identical timestamps/formula.",
+      "campaign_treatment": "FAIL_CLOSED; do not import DH-03 Binance funding cashflow as Hyro carry until current Hyro/CLEO prop funding semantics are explicitly authoritative.",
+      "sources_consulted": [
+        "https://docs.cleo.finance/knowledgebase/transaction-costs-in-backtesting/",
+        "https://www.hyrotrader.com/faq/cleo-platform/what-are-cleos-fees/"
+      ]
+    },
+    "slippage_spread": {
+      "slippage_material": true,
+      "exact_historical_cleo_prop_fill_path_status": "NOT_RECOVERED",
+      "known": "CLEO uses Binance order-book depth as pricing reference and Hyro warns fees may be slightly higher due to slippage/other factors",
+      "campaign_treatment": "FAIL_CLOSED for exact historical prop replay until a deterministic pre-outcome fill/slippage model is justified or historical CLEO execution data is recovered."
+    },
+    "automation": {
+      "hyro_api_connected_trading_bots_allowed": true,
+      "allowed": ["self-developed bots", "custom bots", "third-party trading bots"],
+      "prohibited": ["copy-trading services", "account mirroring", "external signal providers", "HFT", "execution/latency/risk-system exploitation"],
+      "source": "https://www.hyrotrader.com/faq/hyrotrader-account/can-i-use-trading-bots-or-signal-bots-during-the-challenge-or-on-a-funded-account/",
+      "cleo_specific_note": "CLEO documentation separately says API trading is not actively supported on the CLEO platform. Therefore Hyro's general bot/API permission must not be interpreted as proof of reliable CLEO API execution.",
+      "cleo_source": "https://docs.cleo.finance/knowledgebase/what-is-cleo-finance-and-the-cleo-platform/"
+    },
+    "holding": {
+      "overnight": true,
+      "weekend": true,
+      "crypto_24_7": true
+    },
+    "country_eligibility": {
+      "hyro_policy": "HyroTrader states it does not impose its own country restrictions; exchange platform restrictions can apply",
+      "cleo_policy": "HyroTrader states CLEO has no country restrictions",
+      "switzerland_research_status": "NO_PUBLIC_HYRO_OR_CLEO_RESTRICTION_IDENTIFIED",
+      "purchase_authorization": false,
+      "source": "https://www.hyrotrader.com/faq/platform/"
+    },
+    "remaining_material_blockers": [
+      "Exact HyroTrader/CLEO prop funding debit semantics and historical carry series are not explicitly verified.",
+      "Exact historical CLEO B-Book fill/slippage path is not recovered.",
+      "Static six-symbol availability across every historical DH-03 replay date is not independently frozen by HyroTrader, although CLEO states listings mirror Binance data and current Hyro documentation offers Binance-based perpetual assets.",
+      "Exact maximum-loss floor mechanics beyond the published 6% amount are not fully specified in the recovered authoritative rule text."
+    ],
+    "decision": "HYRO_ONE_STEP_SWING_CLEO_STRUCTURALLY_PROMISING_BUT_EXACT_PROP_REPLAY_BLOCKED"
+  },
+  "campaign_gate": {
+    "risk_grid_status": "NOT_RUN_LOCKED",
+    "phase3_not_authorized": true,
+    "note": "No compatibility result, pass rate, challenge duration or risk-size result has been opened."
+  }
+}
