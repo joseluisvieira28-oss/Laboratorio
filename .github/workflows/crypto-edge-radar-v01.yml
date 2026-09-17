@@ -63,7 +63,7 @@ jobs:
         run: python -m radar etf-cme-signal > ci_artifacts/etf_cme_current_signal.json
       - name: Verify evidence chain
         run: python -m radar verify-evidence
-      - name: Verify final heartbeat and zero runtime-promoted strategies
+      - name: Verify final heartbeat and exactly one runtime shadow bot
         run: |
           python - <<'PY'
           import json
@@ -73,7 +73,7 @@ jobs:
           assert status['cycle'] == 3, status
           assert status['provider'] == 'BINANCE_SPOT_DATA_API_PUBLIC', status
           assert status['evidence_backend'] == 'sqlite', status
-          assert status['registered_strategies'] == 0, status
+          assert status['registered_strategies'] == 1, status
           assert status['valid_signal_count'] == 0, status
           assert len(status['universe']) == 5, status
           print(json.dumps(status, sort_keys=True))
@@ -110,7 +110,7 @@ jobs:
         run: python -m radar service --interval 5 --max-cycles 1
       - name: Verify MEXC evidence chain
         run: python -m radar verify-evidence
-      - name: Verify MEXC public heartbeat and core5
+      - name: Verify MEXC public heartbeat, core5 and ETF-CME shadow bot
         run: |
           python - <<'PY'
           import json
@@ -120,7 +120,7 @@ jobs:
           assert status['cycle'] == 1, status
           assert status['provider'] == 'MEXC_FUTURES_PUBLIC', status
           assert status['evidence_backend'] == 'sqlite', status
-          assert status['registered_strategies'] == 0, status
+          assert status['registered_strategies'] == 1, status
           assert status['valid_signal_count'] == 0, status
           assert status['universe'] == ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', 'XRPUSDT'], status
           print(json.dumps(status, sort_keys=True))
