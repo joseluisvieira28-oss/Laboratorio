@@ -1,0 +1,68 @@
+{
+  "contract_id": "ETF-CME-INSTFLOW-001-EXEC-V2-ASYMMETRIC-CANDIDATE",
+  "as_of_date": "2026-09-17",
+  "status": "PROSPECTIVE_EXECUTION_MAPPING_RESEARCH_ONLY",
+  "capital_enabled": false,
+  "orders_created": false,
+  "scientific_strategy_unchanged": true,
+  "signal_rule_unchanged": true,
+  "direction_rule_unchanged": true,
+  "hold_rule_unchanged": true,
+  "candidate_mapping": {
+    "LONG": {
+      "venue": "MEXC",
+      "market": "SPOT",
+      "symbol": "BTCUSDT",
+      "rationale": "Historical outcome instrument was BTCUSDT spot; long spot avoids perpetual funding transfer."
+    },
+    "SHORT": {
+      "venue": "MEXC",
+      "market": "USDT_PERPETUAL_FUTURES",
+      "symbol": "BTC_USDT",
+      "rationale": "A simple unlevered spot position cannot express negative BTC exposure; perpetual remains the candidate implementation."
+    }
+  },
+  "why_this_is_not_signal_tuning": [
+    "The CFTC signal, sign, information lag, entry timestamp and seven-day hold are unchanged.",
+    "The mapping is selected prospectively as an execution implementation study, not from trade PnL outcomes.",
+    "A cost gate may block an execution but may never reverse a LONG into SHORT or vice versa."
+  ],
+  "known_public_facts": {
+    "mexc_btc_usdt_spot_api_support_announced_from": "2026-03-01T08:00:00Z",
+    "spot_api_open_to_all_users": true,
+    "futures_api_requires_kyc_application": true,
+    "mexc_has_no_sandbox": true,
+    "general_spot_reference_fee_maker_fraction": 0.0,
+    "general_spot_reference_fee_taker_fraction": 0.0005,
+    "general_spot_fee_note": "Reference from current MEXC Spot FAQ, not yet treated as an authenticated account/API-channel fee receipt. Exact applicable API/account fee must be verified before capital."
+  },
+  "current_partial_funding_diagnostic": {
+    "covered_directional_events": 39,
+    "covered_long_events": 18,
+    "covered_short_events": 21,
+    "long_events_definitely_over_21_2bps_with_current_16bps_futures_taker_fee_plus_funding": 16,
+    "long_events_possibly_over_21_2bps": 17,
+    "short_events_definitely_over_21_2bps": 0,
+    "short_events_possibly_over_21_2bps": 0,
+    "classification": "PARTIAL_NON_PROMOTIONAL_DIAGNOSTIC"
+  },
+  "required_gates": [
+    "MEXC_SPOT_BTCUSDT_PUBLIC_API_ELIGIBILITY_PASS",
+    "MEXC_SPOT_PUBLIC_SPREAD_AND_DEPTH_SHADOW_PASS",
+    "APPLICABLE_SPOT_API_ACCOUNT_FEE_VERIFIED_BEFORE_CAPITAL",
+    "LONG_SPOT_VS_HISTORICAL_OUTCOME_INSTRUMENT_MAPPING_REVIEW_PASS",
+    "SHORT_PERPETUAL_FRICTION_GATE_PASS",
+    "RISK_MODEL_BY_DIRECTION_FROZEN",
+    "ORDER_SEMANTICS_BY_DIRECTION_FROZEN",
+    "LOCAL_NODE_PREFLIGHT_PASS",
+    "AUTHENTICATED_TRANSPORT_SECURITY_PASS"
+  ],
+  "governance": {
+    "research_only": true,
+    "no_authenticated_api": true,
+    "no_orders": true,
+    "no_credentials": true,
+    "no_main_merge": true,
+    "no_post_outcome_rescue": true
+  }
+}
