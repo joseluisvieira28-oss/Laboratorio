@@ -32,6 +32,7 @@ def _log_cycle(status: dict[str, Any]) -> None:
         "health": status.get("health"),
         "cycle": status.get("cycle"),
         "provider": status.get("provider"),
+        "evidence_backend": status.get("evidence_backend"),
         "registered_strategies": status.get("registered_strategies", 0),
         "valid_signal_count": status.get("valid_signal_count", 0),
         "consecutive_failures": status.get("consecutive_failures", 0),
@@ -74,14 +75,16 @@ class PublicShadowService:
         self.cycle_no += 1
         started = _utc_now()
         configured_provider = getattr(self.engine.feed, "provider", "UNKNOWN_PUBLIC_PROVIDER")
+        evidence_backend = getattr(self.engine.store, "backend", "unknown")
         try:
             result = self.engine.run_cycle()
             self.consecutive_failures = 0
             status = {
                 "service": "CRYPTO_EDGE_RADAR",
-                "version": "0.4",
+                "version": "0.5",
                 "mode": "PUBLIC_SHADOW_ONLY",
                 "provider": result["provider"],
+                "evidence_backend": evidence_backend,
                 "health": "OK",
                 "cycle": self.cycle_no,
                 "started_at_utc": started,
@@ -105,9 +108,10 @@ class PublicShadowService:
             self.consecutive_failures += 1
             status = {
                 "service": "CRYPTO_EDGE_RADAR",
-                "version": "0.4",
+                "version": "0.5",
                 "mode": "PUBLIC_SHADOW_ONLY",
                 "provider": configured_provider,
+                "evidence_backend": evidence_backend,
                 "health": "FAIL_CLOSED",
                 "cycle": self.cycle_no,
                 "started_at_utc": started,
