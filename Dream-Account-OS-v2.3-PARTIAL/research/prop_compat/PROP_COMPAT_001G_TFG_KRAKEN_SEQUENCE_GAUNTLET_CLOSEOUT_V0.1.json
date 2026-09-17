@@ -1,0 +1,153 @@
+{
+  "document_id": "PROP_COMPAT_001G_TFG_KRAKEN_SEQUENCE_GAUNTLET_CLOSEOUT_V0.1",
+  "campaign_id": "PROP-COMPAT-001G",
+  "effective_on": "2026-09-17",
+  "status": "BASE_STRESS_POSITIVE_SEVERE_GATE_FAIL_SMALL_SAMPLE",
+  "setup_id": "TFG-DONCHIAN-1D-001",
+  "program_context": "KRAKEN_PROP",
+  "decisional_authority": false,
+  "protocol": "PROP_COMPAT_001G_TFG_KRAKEN_SEQUENCE_GAUNTLET_PROTOCOL_V0.1",
+  "protocol_commit": "5aa2e2571c7be002fb1093b724198533a3ce5a39",
+  "runner": "prop_compat_001g_tfg_kraken_sequence_gauntlet_v01.py",
+  "runner_commit": "f0bdd258f8a9fd7be2dd66e0392c0d398b1c857b",
+  "source": {
+    "recovery_artifact_run_id": 35275795833,
+    "recovery_artifact_id": 10520806876,
+    "recovery_artifact_digest": "sha256:ac9916b9606005f202dfe1b3017870a3bc8c08b26c46a905e5d95f7a91fe3667",
+    "trade_core_fingerprint": "ab290487c693ad98cb20d1b87e2db2fcf11c97a54da303d7ff301e9d99dca9f8",
+    "resolved_trades": 40,
+    "distinct_utc_entry_day_blocks": 30,
+    "year": 2025,
+    "access_2026": false,
+    "historical_byte_identity_recovered": false,
+    "semantic_economic_reproduction_pass": true
+  },
+  "stage_A": {
+    "factor_combinations": 48,
+    "positive_expectancy_combinations": 23,
+    "historical_plan_risk_decisions": 720,
+    "decision_counts": {
+      "NO_DECISION_HISTORY": 683,
+      "STATIC_MDD_BREACH_BEFORE_TARGET": 37,
+      "TARGET_BEFORE_STATIC_MDD": 0
+    },
+    "predeclared_profiles": {
+      "BASE": {
+        "execution_round_trip_pct": 0.20,
+        "carry_multiplier": 1.0,
+        "stop_gap_extra_R": 0.0,
+        "expectancy_R": 0.29986375636973017,
+        "profit_factor_R": 1.4844795584504973,
+        "total_R": 11.994550254789207,
+        "win_rate": 0.4,
+        "historical_static_MDD_decisions": {"NO_DECISION_HISTORY": 15, "BREACH": 0, "TARGET": 0}
+      },
+      "STRESS": {
+        "execution_round_trip_pct": 0.30,
+        "carry_multiplier": 1.0,
+        "stop_gap_extra_R": 0.0,
+        "expectancy_R": 0.2771364296282858,
+        "profit_factor_R": 1.4479806386239227,
+        "total_R": 11.085457185131432,
+        "win_rate": 0.4,
+        "historical_static_MDD_decisions": {"NO_DECISION_HISTORY": 15, "BREACH": 0, "TARGET": 0}
+      },
+      "SEVERE": {
+        "execution_round_trip_pct": 0.50,
+        "carry_multiplier": 1.5,
+        "stop_gap_extra_R": 0.50,
+        "expectancy_R": -0.08980675583055735,
+        "profit_factor_R": 0.9031306954388715,
+        "total_R": -3.592270233222294,
+        "win_rate": 0.4,
+        "historical_static_MDD_decisions": {"NO_DECISION_HISTORY": 14, "BREACH": 1, "TARGET": 0},
+        "breach_cell": "ADVANCED / 0.30% risk per 1R"
+      },
+      "EXTREME": {
+        "execution_round_trip_pct": 0.75,
+        "carry_multiplier": 2.0,
+        "stop_gap_extra_R": 1.0,
+        "expectancy_R": -0.46086209046128196,
+        "profit_factor_R": 0.6272714432679051,
+        "total_R": -18.434483618451278,
+        "win_rate": 0.375,
+        "historical_static_MDD_decisions": {"NO_DECISION_HISTORY": 11, "BREACH": 4, "TARGET": 0},
+        "breach_cells": [
+          "INTERMEDIATE / 0.30% risk per 1R",
+          "ADVANCED / 0.20% risk per 1R",
+          "ADVANCED / 0.25% risk per 1R",
+          "ADVANCED / 0.30% risk per 1R"
+        ]
+      }
+    }
+  },
+  "stage_B": {
+    "scenario_count": 60,
+    "nominal_MDL_3pct_breach_or_touch_scenarios": 2,
+    "scenarios": [
+      {"risk_pct_per_1R": 0.25, "simultaneous_positions": 6, "loss_multiplier_R_per_position": 2.0, "nominal_loss_pct_initial": 3.0},
+      {"risk_pct_per_1R": 0.30, "simultaneous_positions": 6, "loss_multiplier_R_per_position": 2.0, "nominal_loss_pct_initial": 3.6}
+    ]
+  },
+  "stage_C": {
+    "method": "UTC_ENTRY_DAY_BLOCK_BOOTSTRAP",
+    "repetitions": 20000,
+    "seed": 20260917,
+    "distinct_entry_day_blocks": 30,
+    "cell_count": 60,
+    "probability_ranges_across_all_3_plans_and_5_risks": {
+      "BASE": {
+        "target_before_static_MDD": [0.0, 0.19595],
+        "static_MDD_breach": [0.0, 0.19255],
+        "target_reach": [0.0, 0.199]
+      },
+      "STRESS": {
+        "target_before_static_MDD": [0.0, 0.17685],
+        "static_MDD_breach": [0.0, 0.19955],
+        "target_reach": [0.0, 0.1793]
+      },
+      "SEVERE": {
+        "target_before_static_MDD": [0.0, 0.0601],
+        "static_MDD_breach": [0.0, 0.5915],
+        "target_reach": [0.0, 0.06345]
+      },
+      "EXTREME": {
+        "target_before_static_MDD": [0.0, 0.01705],
+        "static_MDD_breach": [0.0007, 0.85585],
+        "target_reach": [0.0, 0.0185]
+      }
+    },
+    "interpretation": "BASE/STRESS retain positive trade economics, but the 2025 horizon is too short at the frozen 0.10-0.30% risk grid to reach any Kraken plan target in the observed historical sequence. The bootstrap target probabilities therefore describe resampled sequences of the same 30 entry-day blocks, not an expected calendar pass rate."
+  },
+  "full_local_research_receipt": {
+    "fingerprint": "fdd42b2a11069d50a9704a1556862ef2f965a32b88ecd6e9bbbe8addcc74557f",
+    "reproducible_by_committed_runner": true,
+    "note": "The full detailed receipt contains all 48 factor combinations, 720 historical plan-risk decisions, 60 correlation scenarios and 60 Monte Carlo cells. The committed runner deterministically regenerates it from the recovery artifact."
+  },
+  "scientific_interpretation": {
+    "base_stress_edge_survives": true,
+    "severe_predeclared_profile_survives": false,
+    "extreme_profile_survives": false,
+    "research_diamond_gate_met": false,
+    "no_edge_conclusion": false,
+    "reason": "The setup remains positive under BASE/STRESS plus Kraken carry, but the predeclared SEVERE profile is negative and the small 40-trade sample gives insufficient evidence for a Research Diamond promotion under the frozen aggressive-research tier definition."
+  },
+  "limitations": [
+    "Only 40 resolved trades and 30 UTC entry-day blocks are available; Monte Carlo uncertainty and the documented 2025 temporal concentration are material.",
+    "Stages A and C are ledger/sequence diagnostics and do not reconstruct proprietary Kraken mark/bid/ask/depth or exact intraday MDL.",
+    "The historical V0.1D ledger byte identity remains unrecovered; the 40-trade economic sequence is semantically reproduced and hash-bound by the trade-core fingerprint.",
+    "This closeout cannot produce PROP_COMPAT_PASS, challenge purchase authorization or live-trading authorization."
+  ],
+  "next_gate": "Combine with PROP-COMPAT-001F 15m MTM proxy when its already-dispatched GitHub Actions run completes. Do not change any 001F/001G thresholds after these outcomes.",
+  "governance": {
+    "post_outcome_tuning": false,
+    "best_plan_selected": false,
+    "best_risk_selected": false,
+    "challenge_purchase": false,
+    "live_trading": false,
+    "orders": false,
+    "wallet_use": false,
+    "exchange_mutation": false,
+    "merge_to_main": false
+  }
+}
