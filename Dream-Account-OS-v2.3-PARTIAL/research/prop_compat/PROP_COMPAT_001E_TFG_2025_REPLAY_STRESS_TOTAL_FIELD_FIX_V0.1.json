@@ -1,0 +1,48 @@
+{
+  "document_id": "PROP_COMPAT_001E_TFG_2025_REPLAY_STRESS_TOTAL_FIELD_FIX_V0.1",
+  "campaign_id": "PROP-COMPAT-001E",
+  "effective_on": "2026-09-17",
+  "status": "FROZEN_BEFORE_TECHNICAL_RERUN",
+  "parent_freeze": "PROP_COMPAT_001E_TFG_2025_BULK_REPLAY_FREEZE_V0.1",
+  "failed_run": {
+    "workflow_run_id": 35275547169,
+    "job_id": 105385175733,
+    "head_sha": "953aacaeb304d526d109746037f5412646acb5de",
+    "source_reacquisition_reached": true,
+    "outcome_computation_reached": true,
+    "scientific_verdict_emitted": false,
+    "failure": "KeyError: 'total_net_r' while reading asdict(StressMetrics)",
+    "cause": "The frozen authority StressMetrics dataclass contains selected_trade_count, resolved_trade_count, unresolved_trade_count, net_expectancy_r, median_net_r and profit_factor_r, but no total_net_r field. The reporting checker requested a non-existent derived field after stress metrics had already been computed."
+  },
+  "authorized_fix": {
+    "old_expression": "stress_metrics['total_net_r']",
+    "new_expression": "stress_metrics['net_expectancy_r'] * stress_metrics['resolved_trade_count']",
+    "identity": "For a resolved fixed cohort, total net R equals arithmetic mean net R multiplied by resolved trade count.",
+    "stress_trade_returns_recomputed": false,
+    "source_changed": false,
+    "setup_changed": false,
+    "trade_selection_changed": false,
+    "execution_semantics_changed": false,
+    "costs_changed": false,
+    "verification_targets_changed": false,
+    "tolerance_changed": false,
+    "right_edge_policy_changed": false
+  },
+  "authority_evidence": {
+    "stress_metrics_dataclass_source": "research/tfg_ema_pullback_1d_discovery_runner_v01.py",
+    "fields": ["cost_scenario","cohort_source","selected_trade_count","resolved_trade_count","unresolved_trade_count","net_expectancy_r","median_net_r","profit_factor_r"]
+  },
+  "governance": {
+    "research_only": true,
+    "fail_closed": true,
+    "post_outcome_tuning": false,
+    "2026_access": false,
+    "live_trading": false,
+    "orders": false,
+    "exchange_mutation": false,
+    "wallet_use": false,
+    "webhooks": false,
+    "challenge_purchase": false,
+    "merge_to_main": false
+  }
+}
