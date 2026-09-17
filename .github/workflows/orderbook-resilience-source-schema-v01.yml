@@ -1,0 +1,37 @@
+name: ORDERBOOK Resilience 001 — Source Schema V0.1
+
+on:
+  push:
+    branches:
+      - orderbook-resilience-v0.1
+    paths:
+      - research/orderbook_resilience/source_schema_probe.py
+      - .github/workflows/orderbook-resilience-source-schema-v01.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-schema:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout research branch
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependency
+        run: pip install --disable-pip-version-check requests
+      - name: Execute source-only schema probe
+        run: python research/orderbook_resilience/source_schema_probe.py
+      - name: Upload canonical receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ORDERBOOK_RESILIENCE_001_SOURCE_SCHEMA_V0_1
+          path: source_probe_output/ORDERBOOK_RESILIENCE_001_SOURCE_SCHEMA_RECEIPT_V0_1.json
+          if-no-files-found: warn
+          retention-days: 30
