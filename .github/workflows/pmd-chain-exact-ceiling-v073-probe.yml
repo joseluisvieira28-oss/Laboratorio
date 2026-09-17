@@ -1,0 +1,74 @@
+name: PMD-001 Chain-Exact Ceiling V073 BlockFirst Probe
+
+on:
+  push:
+    branches:
+      - pumpfun-migration-direction-v0.1
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/RUN_CHAIN_EXACT_CEILING_V073_PROBE.trigger'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pumpfun-migration-direction-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip requests solders huggingface_hub duckdb pytz
+      - name: Syntax checks
+        run: |
+          python -m py_compile \
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/chain_exact_ceiling_v073_blockfirst.py
+      - name: Rebuild frozen manifest
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001
+        run: |
+          python build_source_rebuild_manifest_v01.py \
+            --data-dir "$GITHUB_WORKSPACE/pmd_v073_probe_manifest_data" \
+            --out "$GITHUB_WORKSPACE/pmd_source_rebuild_manifest_v01.jsonl" \
+            --receipt "$GITHUB_WORKSPACE/pmd_source_rebuild_manifest_v01_receipt.json"
+          test ! -e "$GITHUB_WORKSPACE/pmd_v073_probe_manifest_data/postgard_outcomes.parquet"
+      - name: Execute first four frozen rows with block-first transport
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001
+        run: |
+          python chain_exact_ceiling_v073_blockfirst.py \
+            --manifest "$GITHUB_WORKSPACE/pmd_source_rebuild_manifest_v01.jsonl" \
+            --out-dir "$GITHUB_WORKSPACE/pmd_v073_probe" \
+            --start 0 --limit 4 \
+            --rpc-url https://api.mainnet-beta.solana.com \
+            --source-name solana_public_rpc_chain_exact_ceiling_v073_blockfirst \
+            --pace-seconds 0.05
+      - name: Assert source-only and classify transport probe
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('pmd_v073_probe/chain_exact_ceiling_details.jsonl')
+          rows=[json.loads(x) for x in p.read_text().splitlines() if x.strip()]
+          assert len(rows)==4
+          assert all(r.get('outcomes_opened') is False for r in rows)
+          assert all(r.get('boundary_parser_version')=='V07_MIGRATE_AND_MIGRATE_V2' for r in rows)
+          assert all(r.get('transport_version')=='V073_FINALIZED_BLOCK_FIRST' for r in rows)
+          print(json.dumps({
+            'rows':len(rows),
+            'source_resolved':sum(bool(r.get('source_resolved')) for r in rows),
+            'with_success':sum(bool(r.get('ceiling_has_successful_preboundary_signature')) for r in rows),
+            'missing_boundary_bodies':sum(int(r.get('boundary_transaction_bodies_missing') or 0) for r in rows),
+            'outcomes_opened':False,
+            'verdict':'V073_BLOCKFIRST_TRANSPORT_PROBE_PASS' if all(r.get('source_resolved') for r in rows) else 'V073_BLOCKFIRST_TRANSPORT_PROBE_INCOMPLETE'
+          },indent=2,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: PMD-001-chain-exact-ceiling-v073-probe
+          retention-days: 30
+          path: pmd_v073_probe/
