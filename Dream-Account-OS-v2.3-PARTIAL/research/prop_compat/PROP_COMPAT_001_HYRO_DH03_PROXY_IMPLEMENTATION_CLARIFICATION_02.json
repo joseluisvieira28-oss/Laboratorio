@@ -1,0 +1,39 @@
+{
+  "document_id": "PROP_COMPAT_001_HYRO_DH03_PROXY_IMPLEMENTATION_CLARIFICATION_02",
+  "campaign_id": "PROP-COMPAT-001A",
+  "frozen_on": "2026-09-17",
+  "status": "FROZEN_BEFORE_PROXY_OUTCOMES",
+  "authorities": [
+    "PROP_COMPAT_001_HYRO_DH03_PROXY_REPLAY_FREEZE_V0.1",
+    "PROP_COMPAT_001_HYRO_DH03_PROXY_KILL_SCREEN_PROTOCOL_V0.1",
+    "PROP_COMPAT_001_HYRO_DH03_PROXY_IMPLEMENTATION_CLARIFICATION_01",
+    "HTF-DIAMOND-HUNT-001 original funding/execution implementation"
+  ],
+  "governance": {
+    "proxy_outcomes_opened_before_clarification": false,
+    "official_phase3_risk_grid_run": false,
+    "setup_rule_change": false,
+    "post_outcome_tuning": false,
+    "live_trading": false,
+    "challenge_purchase": false,
+    "merge_to_main": false
+  },
+  "semantics": {
+    "position_quantity": "entry_notional / frozen_entry_price",
+    "entry_notional": "risk_amount / frozen_initial_risk_fraction",
+    "execution_cost_notional_basis": "FROZEN_ENTRY_NOTIONAL",
+    "BASE_entry_cost": "0.10% * entry_notional",
+    "BASE_exit_cost": "0.10% * entry_notional",
+    "STRESS_entry_cost": "0.15% * entry_notional",
+    "STRESS_exit_cost": "0.15% * entry_notional",
+    "reason_execution_cost_basis": "This preserves the prospectively frozen 0.20%/0.30% round-trip cost envelope as a deterministic fraction of the original trade notional and remains consistent with the original DH-03 scientific cost treatment, which subtracts a fixed return fraction rather than scaling the exit-half cost with favorable price movement.",
+    "realized_price_pnl": "quantity * (frozen_exit_price - frozen_entry_price)",
+    "funding_cashflow": "-funding_rate * abs(quantity * synchronized_1m_open_at_funding_minute)",
+    "funding_price_proxy": "Use the synchronized Binance USD-M 1m OPEN of the funding event minute because exact sub-minute tradeable mark/index history is not frozen. This remains explicitly PROXY_ONLY and cannot establish exact Hyro/CLEO funding equivalence.",
+    "funding_event_membership": "entry_time < funding_time < exit_time exactly, using canonical millisecond timestamps",
+    "funding_compounding": false,
+    "trade_net_pnl": "realized_price_pnl + sum(funding_cashflows) - entry_cost - exit_cost",
+    "no_exit_notional_fee_scaling": true
+  },
+  "post_run_lock": "These notional conventions may not be altered after any proxy cell is evaluated."
+}
