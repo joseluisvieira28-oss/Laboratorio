@@ -1,0 +1,110 @@
+{
+  "document_id": "PROP_COMPAT_001B_KRAKEN_PROP_1M_PROXY_CLOSEOUT_V0.1",
+  "campaign_id": "PROP-COMPAT-001B",
+  "closed_on": "2026-09-17",
+  "status": "PROXY_SURVIVES_MATERIAL_SUBSET_EXACT_PROP_REPLAY_BLOCKED",
+  "setup_id": "DH-03-HO1",
+  "prop_program": "KRAKEN_PROP",
+  "authority_chain": [
+    "PROP_COMPAT_001B_KRAKEN_PROP_AMBIGUITY_ENVELOPE_PROTOCOL_V0.1",
+    "PROP_COMPAT_001B_KRAKEN_PROP_IMPLEMENTATION_CLARIFICATION_01",
+    "PROP_COMPAT_001B_KRAKEN_PROP_IMPLEMENTATION_CLARIFICATION_02",
+    "PROP_COMPAT_001B_KRAKEN_PROP_PUBLIC_SOURCE_RESOLUTION_V0.3",
+    "GitHub Actions run 35224798639 artifact 10498238236"
+  ],
+  "execution_evidence": {
+    "workflow_run_id": 35224798639,
+    "workflow_conclusion": "success",
+    "artifact_id": 10498238236,
+    "artifact_name": "PROP_COMPAT_001B_KRAKEN_PROP_1M_ENVELOPE_V02",
+    "artifact_digest": "sha256:c7e3efb60c2b591058fdc78416a3e43e20d8b3beb1678843a6674fd219aebe90",
+    "receipt_file": "PROP_COMPAT_001B_KRAKEN_PROP_1M_AMBIGUITY_ENVELOPE_RECEIPT_V0.2.json",
+    "receipt_file_sha256": "583c9855d375b7597c3eff7c5a86b59422a961484087b420efb3e5edbf7148ee",
+    "receipt_fingerprint": "02d9e93a2b3cd6901149b8cb3b649eb93706a1d0d7af0c5ad68092d828dcd61c",
+    "binance_1m_archives_hash_validated": 144,
+    "access_2025": false,
+    "access_2026": false
+  },
+  "test_space": {
+    "plans": ["STARTER", "INTERMEDIATE", "ADVANCED"],
+    "risk_pct_per_1R": [0.10, 0.15, 0.20, 0.25, 0.30],
+    "execution_cases": ["BASE", "STRESS"],
+    "base_cells": 30,
+    "support_4h_phase_offsets_per_cell": 240,
+    "support_phase_paths": 7200,
+    "carry_interpretations": ["LEGAL_DAILY_0000", "SUPPORT_4H_EXHAUSTIVE_MINUTE_PHASE_SWEEP"]
+  },
+  "classification_counts": {
+    "ROBUST_PROXY_SURVIVOR_EXACT_REPLAY_STILL_BLOCKED": 14,
+    "PROXY_INSUFFICIENT": 14,
+    "OBVIOUS_PROXY_BREACH": 2,
+    "AMBIGUITY_MATERIAL": 0
+  },
+  "classification_matrix": {
+    "STARTER": {
+      "0.10": {"BASE":"PROXY_INSUFFICIENT","STRESS":"PROXY_INSUFFICIENT"},
+      "0.15": {"BASE":"PROXY_INSUFFICIENT","STRESS":"PROXY_INSUFFICIENT"},
+      "0.20": {"BASE":"ROBUST_PROXY_SURVIVOR_EXACT_REPLAY_STILL_BLOCKED","STRESS":"ROBUST_PROXY_SURVIVOR_EXACT_REPLAY_STILL_BLOCKED"},
+      "0.25": {"BASE":"ROBUST_PROXY_SURVIVOR_EXACT_REPLAY_STILL_BLOCKED","STRESS":"ROBUST_PROXY_SURVIVOR_EXACT_REPLAY_STILL_BLOCKED"},
+      "0.30": {"BASE":"ROBUST_PROXY_SURVIVOR_EXACT_REPLAY_STILL_BLOCKED","STRESS":"ROBUST_PROXY_SURVIVOR_EXACT_REPLAY_STILL_BLOCKED"}
+    },
+    "INTERMEDIATE": {
+      "0.10": {"BASE":"PROXY_INSUFFICIENT","STRESS":"PROXY_INSUFFICIENT"},
+      "0.15": {"BASE":"PROXY_INSUFFICIENT","STRESS":"PROXY_INSUFFICIENT"},
+      "0.20": {"BASE":"PROXY_INSUFFICIENT","STRESS":"PROXY_INSUFFICIENT"},
+      "0.25": {"BASE":"ROBUST_PROXY_SURVIVOR_EXACT_REPLAY_STILL_BLOCKED","STRESS":"ROBUST_PROXY_SURVIVOR_EXACT_REPLAY_STILL_BLOCKED"},
+      "0.30": {"BASE":"ROBUST_PROXY_SURVIVOR_EXACT_REPLAY_STILL_BLOCKED","STRESS":"ROBUST_PROXY_SURVIVOR_EXACT_REPLAY_STILL_BLOCKED"}
+    },
+    "ADVANCED": {
+      "0.10": {"BASE":"PROXY_INSUFFICIENT","STRESS":"PROXY_INSUFFICIENT"},
+      "0.15": {"BASE":"PROXY_INSUFFICIENT","STRESS":"PROXY_INSUFFICIENT"},
+      "0.20": {"BASE":"ROBUST_PROXY_SURVIVOR_EXACT_REPLAY_STILL_BLOCKED","STRESS":"ROBUST_PROXY_SURVIVOR_EXACT_REPLAY_STILL_BLOCKED"},
+      "0.25": {"BASE":"ROBUST_PROXY_SURVIVOR_EXACT_REPLAY_STILL_BLOCKED","STRESS":"ROBUST_PROXY_SURVIVOR_EXACT_REPLAY_STILL_BLOCKED"},
+      "0.30": {"BASE":"OBVIOUS_PROXY_BREACH","STRESS":"OBVIOUS_PROXY_BREACH"}
+    }
+  },
+  "obvious_breaches": {
+    "ADVANCED_0.30_BASE": {"rule":"MDD_CLOSE_BREACH","decision_time_utc":"2023-10-11T18:05:00Z"},
+    "ADVANCED_0.30_STRESS": {"rule":"MDD_CLOSE_BREACH","decision_time_utc":"2023-10-09T16:43:00Z"}
+  },
+  "carry_ambiguity_adjudication": {
+    "cells_with_classification_change_across_240_support_phase_offsets": 0,
+    "ambiguity_material_cells": 0,
+    "interpretation": "The unresolved published carry timing conflict is not classification-dominant in this 1m proxy envelope. Every base cell retained one classification across all 240 possible four-hour phase offsets and the legal-daily path.",
+    "exact_rule_conflict_resolved": false
+  },
+  "scientific_interpretation": {
+    "universal_structural_killer_found": false,
+    "hyro_style_timestamp_killer_found": false,
+    "material_proxy_survival_exists": true,
+    "exact_compatibility_claim": false,
+    "reason_exact_blocked": "Breakout/Kraken Prop historical executable bid/ask, depth and fill stream is not publicly recoverable. Official Breakout material states liquidity comes from third-party providers, external OKX/Bybit perps are only proxies and do not always align with Breakout symbols, and latency/slippage/order-book depth may materially affect execution.",
+    "dh03_edge_rejected": false,
+    "kraken_prop_research_priority": "KEEP_ALIVE_HIGH_INTEREST"
+  },
+  "decisional_limits": {
+    "PROP_COMPAT_PASS": false,
+    "CONDITIONAL_PASS": false,
+    "PROP_COMPAT_FAIL": false,
+    "official_phase3_risk_grid_run": false,
+    "best_plan_selected": false,
+    "best_risk_selected": false,
+    "challenge_purchase_authorized": false,
+    "live_trading_authorized": false
+  },
+  "remaining_unlock": {
+    "required": "Authoritative Kraken Prop/Breakout execution-source clarification providing historical executable data or an official deterministic historical execution model/feed methodology sufficient to prospectively translate DH-03 without choosing assumptions from outcomes.",
+    "prepared_support_pack": "PROP_COMPAT_001B_KRAKEN_PROP_SUPPORT_RESOLUTION_PACK_V0.2",
+    "external_contact_status": "NOT_SENT"
+  },
+  "governance": {
+    "research_only": true,
+    "post_outcome_tuning": false,
+    "setup_rules_changed": false,
+    "symbol_drops": false,
+    "risk_grid_changed": false,
+    "challenge_purchase": false,
+    "live_trading": false,
+    "merge_to_main": false
+  }
+}
