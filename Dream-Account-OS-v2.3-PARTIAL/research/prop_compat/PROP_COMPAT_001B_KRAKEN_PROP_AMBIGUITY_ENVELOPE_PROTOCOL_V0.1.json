@@ -1,0 +1,91 @@
+{
+  "document_id": "PROP_COMPAT_001B_KRAKEN_PROP_AMBIGUITY_ENVELOPE_PROTOCOL_V0.1",
+  "campaign_id": "PROP-COMPAT-001B",
+  "frozen_on": "2026-09-17",
+  "status": "FROZEN_BEFORE_PROXY_OUTCOMES",
+  "setup_id": "DH-03-HO1",
+  "prop_program": "KRAKEN_PROP",
+  "purpose": "Non-decisional ambiguity-envelope kill-screen. Determine whether DH-03 is obviously incompatible, obviously robust to the published Kraken carry ambiguity, or remains source-insufficient. This cannot produce PROP-COMPAT-PASS, CONDITIONAL-PASS, purchase authorization or live-trading authorization.",
+  "governance": {
+    "research_only": true,
+    "official_phase3_risk_grid_run": false,
+    "proxy_outcomes_opened_before_freeze": false,
+    "no_best_plan_selection": true,
+    "no_best_risk_selection": true,
+    "no_carry_interpretation_selection": true,
+    "no_execution_case_selection": true,
+    "setup_rules_changed": false,
+    "post_outcome_tuning": false,
+    "challenge_purchase": false,
+    "live_trading": false,
+    "merge_to_main": false
+  },
+  "source": {
+    "ledger_sha256": "ec4e5dbc8d95a73d4eb9db55f4e1c0f264dba7eb724cbb7424f2c034a3a7eebd",
+    "source_fingerprint": "d1a95d51d99eba0bd5f66e91d75ddcd175f7a84d954ba28a44c2dcd39ef4c5cb",
+    "execution_artifact_run_id": 35080622854,
+    "execution_artifact_id": 10439998204,
+    "phase5_source_run_id": 35076213767,
+    "phase5_source_artifact_id": 10438795414,
+    "unresolved_trade_policy": "Exclude the two official execution-path-unresolved rows exactly as in Phase5; no imputation."
+  },
+  "account_model": {
+    "initial_balance_units": 100.0,
+    "risk_basis": "current account equity immediately before entry cost",
+    "position_notional": "risk_amount / initial_risk_fraction",
+    "all_six_symbols_may_overlap": true,
+    "one_active_trade_per_symbol": true
+  },
+  "plans": {
+    "STARTER": {"profit_target_pct": 10.0, "mdl_pct": 3.0, "mdd_pct": 6.0},
+    "INTERMEDIATE": {"profit_target_pct": 12.0, "mdl_pct": 3.0, "mdd_pct": 5.0},
+    "ADVANCED": {"profit_target_pct": 9.0, "mdl_pct": 3.0, "mdd_pct": 3.0}
+  },
+  "risk_grid_pct_equity_per_1R": [0.10,0.15,0.20,0.25,0.30],
+  "execution_cases": {
+    "BASE": {"round_trip_total_pct_notional_ex_carry": 0.20, "entry_half_pct": 0.10, "exit_half_pct": 0.10, "kraken_commission_round_trip_pct": 0.08, "residual_execution_uncertainty_pct": 0.12},
+    "STRESS": {"round_trip_total_pct_notional_ex_carry": 0.30, "entry_half_pct": 0.15, "exit_half_pct": 0.15, "kraken_commission_round_trip_pct": 0.08, "residual_execution_uncertainty_pct": 0.22}
+  },
+  "carry_envelope": {
+    "LEGAL_DAILY_0000": {
+      "daily_rate_pct_notional": 0.033,
+      "rule": "If position is open at 00:00 UTC, debit full daily rate at 00:00 UTC.",
+      "authority": "Breakout Evaluation Agreement Annex A updated 2026-08-27"
+    },
+    "SUPPORT_4H_PHASE_SWEEP": {
+      "daily_rate_pct_notional": 0.033,
+      "installment_pct_notional": 0.0055,
+      "rule": "Six equal installments every four hours. Exact phase offset is unpublished.",
+      "phase_offsets": "Exhaustive minute-level sweep of offsets 0..239 minutes from 00:00 UTC; each offset defines six rollover times per 24h.",
+      "reporting": "For every Plan x Risk x Execution cell report best-case and worst-case decision across all 240 support timing offsets; do not select a favorable offset."
+    }
+  },
+  "risk_rules": {
+    "mdl_reference_time_utc": "00:30",
+    "mdl_floor": "balance at 00:30 UTC minus 3% of initial balance",
+    "intraday_equity_monitored": true,
+    "mdd_floor": "initial balance minus plan MDD percentage",
+    "fees_and_carry_reduce_balance": true,
+    "profit_target": "realized balance target; no consistency rule and no time limit",
+    "no_inactivity_rule_applied": true
+  },
+  "mark_to_market": {
+    "primary_path": "frozen Binance USD-M 1m price path as non-exact price proxy",
+    "daily_reference": "synchronized 1m open at 00:30 UTC for balance-reference event and synchronized 1m close for intraday equity checks",
+    "entry_stop_target_exit": "Preserve exact DH-03 entry/stop/target/max-hold timestamps and execution semantics from official ledger; price path is used for portfolio floating equity only.",
+    "missing_source": "PROXY_INSUFFICIENT"
+  },
+  "cell_count": {
+    "plan_risk_execution_cells": 30,
+    "legal_daily_paths": 30,
+    "support_phase_paths_per_cell": 240,
+    "support_phase_total_paths": 7200
+  },
+  "classification": {
+    "OBVIOUS_PROXY_BREACH": "All relevant carry interpretations for a frozen Plan x Risk x Execution cell breach before target.",
+    "ROBUST_PROXY_SURVIVOR_EXACT_REPLAY_STILL_BLOCKED": "Legal daily path reaches target without breach and every one of the 240 support 4h phase offsets also reaches target without breach.",
+    "AMBIGUITY_MATERIAL": "Published carry interpretations or support timing offsets change pass/breach outcome.",
+    "PROXY_INSUFFICIENT": "Required pinned source cannot be evaluated without a new assumption."
+  },
+  "post_run_policy": "Report all plans and all frozen risk/execution cells. Do not rank plans or risks. Exact PROP-COMPAT Phase3 remains locked regardless of proxy result."
+}
