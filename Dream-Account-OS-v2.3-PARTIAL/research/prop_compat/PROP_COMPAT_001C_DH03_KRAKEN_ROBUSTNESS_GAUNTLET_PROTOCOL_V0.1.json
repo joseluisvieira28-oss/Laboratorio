@@ -1,0 +1,80 @@
+{
+  "document_id": "PROP_COMPAT_001C_DH03_KRAKEN_ROBUSTNESS_GAUNTLET_PROTOCOL_V0.1",
+  "campaign_id": "PROP-COMPAT-001C",
+  "parent_campaign": "PROP-COMPAT-001",
+  "frozen_on": "2026-09-17",
+  "status": "FROZEN_BEFORE_GAUNTLET_OUTCOMES",
+  "authority": "PROP_COMPAT_001_GOVERNANCE_AMENDMENT_V0.8_AGGRESSIVE_RESEARCH",
+  "setup_id": "DH-03-HO1",
+  "program_context": "KRAKEN_PROP",
+  "purpose": "Aggressive non-decisional robustness attack. Quantify how much execution cost, carry, gap loss, correlated loss and adverse sequencing DH-03 can absorb without changing setup logic or selecting favorable cells after outcomes.",
+  "source": {
+    "ledger_sha256": "ec4e5dbc8d95a73d4eb9db55f4e1c0f264dba7eb724cbb7424f2c034a3a7eebd",
+    "resolved_trade_count": 146,
+    "years": [2023, 2024],
+    "unresolved_rows": "exclude exactly the two official execution-path-unresolved rows; no imputation"
+  },
+  "risk_grid_pct_equity_per_1R": [0.10, 0.15, 0.20, 0.25, 0.30],
+  "plans": {
+    "STARTER": {"target_pct": 10.0, "mdd_pct": 6.0, "mdl_pct": 3.0},
+    "INTERMEDIATE": {"target_pct": 12.0, "mdd_pct": 5.0, "mdl_pct": 3.0},
+    "ADVANCED": {"target_pct": 9.0, "mdd_pct": 3.0, "mdl_pct": 3.0}
+  },
+  "stage_A_full_factor_ledger_stress": {
+    "execution_round_trip_pct_notional": [0.20, 0.30, 0.50, 0.75],
+    "carry_daily_base_pct_notional": 0.033,
+    "carry_multipliers": [1.0, 1.5, 2.0],
+    "stop_gap_extra_R": [0.0, 0.25, 0.50, 1.0],
+    "factor_combinations": 48,
+    "trade_account_R_formula": "(price_gross_return - execution_cost_fraction - 0.00033*carry_multiplier*holding_days - stop_gap_extra_R*initial_risk_fraction_if_stop) / initial_risk_fraction",
+    "required_outputs": ["expectancy_R", "profit_factor_R", "win_rate", "total_R", "historical_exit_order_balance_path", "static_MDD_target_or_breach_by_plan_and_risk"],
+    "limitation": "Trade-ledger sequencing diagnostic only; does not claim exact intraday Kraken MDL/floating-equity path."
+  },
+  "stage_B_correlation_stress": {
+    "simultaneous_full_R_losses": [2, 3, 4, 6],
+    "loss_multipliers_R_per_position": [1.0, 1.5, 2.0],
+    "calculation": "n_positions * risk_pct_per_1R * loss_multiplier",
+    "compare_against_pct": {"MDL": 3.0, "STARTER_MDD": 6.0, "INTERMEDIATE_MDD": 5.0, "ADVANCED_MDD": 3.0}
+  },
+  "stage_C_monte_carlo_sequence_risk": {
+    "method": "UTC_ENTRY_DAY_BLOCK_BOOTSTRAP",
+    "repetitions": 20000,
+    "seed": 20260917,
+    "sample_unit": "all resolved trades sharing the same UTC entry date are aggregated as one block to retain same-day cross-symbol clustering",
+    "horizon_blocks": "same number of distinct historical UTC entry days as source sample",
+    "profiles": {
+      "BASE": {"execution_round_trip_pct": 0.20, "carry_multiplier": 1.0, "stop_gap_extra_R": 0.0},
+      "STRESS": {"execution_round_trip_pct": 0.30, "carry_multiplier": 1.0, "stop_gap_extra_R": 0.0},
+      "SEVERE": {"execution_round_trip_pct": 0.50, "carry_multiplier": 1.5, "stop_gap_extra_R": 0.50},
+      "EXTREME": {"execution_round_trip_pct": 0.75, "carry_multiplier": 2.0, "stop_gap_extra_R": 1.0}
+    },
+    "required_outputs": ["target_before_static_MDD_probability", "static_MDD_breach_probability", "target_reach_probability", "terminal_equity_percentiles", "max_drawdown_percentiles"],
+    "limitation": "Sequence-risk/MDD diagnostic only. It does not estimate exact Kraken intraday MDL because historical proprietary mark/bid/ask depth is unavailable."
+  },
+  "stage_D_policy": {
+    "automatic_next_step": "Every cell/profile that survives Stages A-C remains eligible for a later predeclared 1m combined-severe shadow/MTM envelope; no manual winner selection.",
+    "combined_severe_candidate": {"execution_round_trip_pct": 0.50, "carry_multiplier": 1.5, "stop_gap_extra_R": 0.50},
+    "combined_extreme_candidate": {"execution_round_trip_pct": 0.75, "carry_multiplier": 2.0, "stop_gap_extra_R": 1.0},
+    "not_run_by_this_ledger_runner": true
+  },
+  "research_tier_evidence": {
+    "RESEARCH_DIAMOND_candidate_condition": "positive frozen holdout already exists AND robustness evidence remains materially positive under severe predeclared stresses; no prop-production claim follows automatically",
+    "EXECUTION_DIAMOND_candidate_condition": "requires subsequent 1m/shadow execution robustness plus operational detector validation",
+    "PRODUCTION_DIAMOND_condition": "still requires authoritative platform execution compatibility and separate real-capital authorization"
+  },
+  "governance": {
+    "research_only": true,
+    "outcomes_opened_before_freeze": false,
+    "all_5_risk_values_reported": true,
+    "all_3_plans_reported": true,
+    "no_best_plan_selection": true,
+    "no_best_risk_selection": true,
+    "no_setup_changes": true,
+    "no_symbol_drops": true,
+    "no_time_selection": true,
+    "post_outcome_tuning": false,
+    "challenge_purchase": false,
+    "live_trading": false,
+    "merge_to_main": false
+  }
+}
