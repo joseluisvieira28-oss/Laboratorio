@@ -6,9 +6,13 @@ from typing import Callable
 
 from radar.models import Direction, MarketSnapshot, PromotionStatus
 from radar.strategy import RawSignal, StrategyAdapter
+from radar.timing import ExactTimingPolicy
 
 from .etf_cme_instflow_001 import CFTCObservation, STRATEGY_ID
-from .etf_cme_source import fetch_latest_two, signal_receipt_from_observations
+from .etf_cme_source import (
+    fetch_latest_two,
+    operational_signal_receipt_from_observations,
+)
 
 
 class ETFCMEInstFlowAdapter(StrategyAdapter):
@@ -25,6 +29,7 @@ class ETFCMEInstFlowAdapter(StrategyAdapter):
         source_refresh_seconds: float = 300.0,
         fetcher: Callable[[int], tuple[CFTCObservation, CFTCObservation]] = fetch_latest_two,
         monotonic: Callable[[], float] = time.monotonic,
+        timing_policy: ExactTimingPolicy | None = None,
     ) -> None:
         if timeout <= 0:
             raise ValueError("timeout must be > 0")
@@ -32,6 +37,7 @@ class ETFCMEInstFlowAdapter(StrategyAdapter):
             raise ValueError("source_refresh_seconds must be > 0")
         self.timeout = timeout
         self.source_refresh_seconds = source_refresh_seconds
+        self.timing_policy = timing_policy or ExactTimingPolicy()
         self._fetcher = fetcher
         self._monotonic = monotonic
         self._cached_observations: tuple[CFTCObservation, CFTCObservation] | None = None
@@ -60,6 +66,25 @@ class ETFCMEInstFlowAdapter(StrategyAdapter):
             raise ValueError("market snapshot observed_at must be timezone-aware")
         return value
 
+    def timing_plan(self, now: datetime) -> dict:
+        previous, current = self._observations()
+        receipt = operational_signal_receipt_from_observations(
+            previous,
+            current,
+            now,
+            timing_policy=self.timing_policy,
+        )
+        return {
+            "strategy_id": self.strategy_id,
+            "direction": receipt["direction"],
+            "state": receipt["state"],
+            "entry_eligible_now": receipt["entry_eligible_now"],
+            "exact_entry_time_utc": receipt["exact_entry_time_utc"],
+            "exact_exit_time_utc": receipt["exact_exit_time_utc"],
+            "operational_timing": receipt["operational_timing"],
+            "scientific_target_unchanged": True,
+        }
+
     def evaluate(self, snapshot: MarketSnapshot) -> RawSignal:
         if snapshot.symbol != self.frozen_symbol:
             return RawSignal(
@@ -74,10 +99,11 @@ class ETFCMEInstFlowAdapter(StrategyAdapter):
             )
 
         previous, current = self._observations()
-        receipt = signal_receipt_from_observations(
+        receipt = operational_signal_receipt_from_observations(
             previous,
             current,
             self._snapshot_time(snapshot),
+            timing_policy=self.timing_policy,
         )
         if receipt.get("strategy_id") != self.strategy_id:
             raise RuntimeError("ETF-CME source receipt strategy_id mismatch")
