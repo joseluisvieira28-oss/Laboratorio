@@ -54,6 +54,8 @@ jobs:
         name: Set up Python
         with:
           python-version: '3.12'
+      - name: Install parser dependencies
+        run: pip install --disable-pip-version-check requests beautifulsoup4
       - name: Download all strict parse shards
         uses: actions/download-artifact@v4
         with:
