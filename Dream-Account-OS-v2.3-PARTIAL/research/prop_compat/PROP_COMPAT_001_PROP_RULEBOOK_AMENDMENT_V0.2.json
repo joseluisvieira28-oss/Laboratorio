@@ -1,0 +1,388 @@
+{
+  "document_id": "PROP_COMPAT_001_PROP_RULEBOOK_AMENDMENT_V0.2",
+  "campaign_id": "PROP-COMPAT-001",
+  "version": "0.2",
+  "consulted_on": "2026-09-17",
+  "base_freeze": {
+    "document_id": "PROP_COMPAT_001_PROP_RULEBOOK_FREEZE_V0.1",
+    "path": "Dream-Account-OS-v2.3-PARTIAL/research/prop_compat/PROP_COMPAT_001_PROP_RULEBOOK_FREEZE_V0.1.json",
+    "blob_sha": "faa65ce8046adf1d4c6fbb7617390f07e6f57c27"
+  },
+  "status": "PRE_SIMULATION_BLOCKER_AUDIT_FROZEN_FAIL_CLOSED",
+  "governance": {
+    "research_only": true,
+    "outcomes_opened_in_this_amendment": false,
+    "risk_grid_run": false,
+    "prop_replay_run": false,
+    "live_trading": false,
+    "orders_created": false,
+    "exchange_mutation": false,
+    "wallets_used": false,
+    "challenges_purchased": false,
+    "private_api_connected": false,
+    "webhooks_created": false,
+    "setup_rules_changed": false,
+    "post_outcome_tuning": false,
+    "merge_to_main": false
+  },
+  "amendment_policy": "This file does not overwrite V0.1. It records only evidence recovered after V0.1 and pre-simulation corrections/resolutions. Where official public evidence remains insufficient, the blocker remains fail-closed. No result was used to choose a rule, platform, cost, symbol or risk size.",
+  "programs": {
+    "HYROTRADER_ONE_STEP_SWING": {
+      "program_status": "PARTIALLY_RESOLVED_FAIL_CLOSED",
+      "simulation_ready": false,
+      "frozen_scope": {
+        "challenge": "ONE_STEP",
+        "daily_drawdown_variant": "SWING",
+        "platform_variants_not_selected_post_outcome": true,
+        "note": "No platform variant is promoted from outcomes. CLEO is the most tractable Binance-referenced research path but remains blocked on exact prop funding/carry and Hyro-specific symbol manifest."
+      },
+      "resolved_or_strengthened": [
+        {
+          "field": "one_step_objectives",
+          "status": "CONFIRMED_CURRENT_OFFICIAL",
+          "value": {"profit_target_pct": 10.0, "daily_drawdown_pct": 4.0, "maximum_loss_pct": 6.0, "minimum_trading_days": 5, "trading_period": "UNLIMITED"},
+          "source_url": "https://www.hyrotrader.com/trading-rules/"
+        },
+        {
+          "field": "swing_daily_drawdown_mechanic",
+          "status": "CONFIRMED_CURRENT_OFFICIAL",
+          "value": "Swing changes daily drawdown from intraday trailing to a fixed daily floor based on starting equity of the day while retaining the One-Step 4% amount.",
+          "source_url": "https://www.hyrotrader.com/faq/rules/what-is-the-difference-between-standard-trailing-and-swing-fixed-daily-drawdown/"
+        },
+        {
+          "field": "swing_upgrade_price_schedule_one_step_usd",
+          "status": "CONFIRMED_CURRENT_OFFICIAL_SUPPORT",
+          "value": {"5000": 39, "10000": 59, "25000": 119, "50000": 169, "100000": 229, "200000": 419},
+          "source_url": "https://www.hyrotrader.com/ru/faq/swing-daily-drawdown-upgrade/what-is-the-cost-to-upgrade-a-challenge-to-swing/"
+        },
+        {
+          "field": "public_challenge_price_schedule_usd",
+          "status": "CONFIRMED_DISPLAYED_VALUES_BUT_TYPE_BINDING_AMBIGUOUS",
+          "value": {"5000": 59, "10000": 119, "25000": 249, "50000": 379, "100000": 579, "200000": 969},
+          "source_url": "https://www.hyrotrader.com/checkout/",
+          "ambiguity": "The same dynamically rendered checkout crawl displays One Step as the popular selection but its summary widget can show Two Step for the selected 25K configuration. Do not assert exact One-Step base fee binding from this render alone."
+        },
+        {
+          "field": "maximum_realized_loss_per_position",
+          "status": "CONFIRMED_CURRENT_OFFICIAL",
+          "value_pct_initial_balance": 3.0,
+          "source_url": "https://www.hyrotrader.com/faq/rules/what-is-the-maximum-loss-per-trade-rule/"
+        },
+        {
+          "field": "funded_exposure_limits",
+          "status": "CONFIRMED_CURRENT_OFFICIAL",
+          "value": {"total_margin_pct_initial_balance_max": 25.0, "cumulative_open_notional_multiple_initial_balance_max": 2.0},
+          "source_url": "https://www.hyrotrader.com/faq/rules/are-there-any-other-rules-for-a-funded-account/"
+        },
+        {
+          "field": "cleo_market_reference",
+          "status": "CONFIRMED_BY_HYRO_AND_CLEO",
+          "value": "CLEO prop trading uses Binance perpetual-futures market data in a simulated prop environment; it is not direct ownership of Binance positions.",
+          "source_urls": [
+            "https://www.hyrotrader.com/faq/platform/what-instruments-can-i-trade/",
+            "https://docs.cleo.finance/knowledgebase/can-i-use-the-cleo-platform-on-bybit/",
+            "https://docs.cleo.finance/knowledgebase/what-is-cleo-finance-and-the-cleo-platform/"
+          ]
+        },
+        {
+          "field": "cleo_transaction_fee",
+          "status": "CONFIRMED_PLATFORM_REFERENCE_AND_HYRO_COMPATIBLE",
+          "value": {"maker_pct_per_side": 0.02, "taker_pct_per_side": 0.05},
+          "source_url": "https://docs.cleo.finance/knowledgebase/does-the-cleo-platform-have-any-trading-fees/",
+          "interpretation": "CLEO states the prop firm sets fees and most use Binance-equivalent values. Hyro-specific exact account fee must still be snapshotted before a real purchase; no purchase is authorized."
+        },
+        {
+          "field": "cleo_order_controls",
+          "status": "CONFIRMED_PLATFORM_CAPABILITY",
+          "value": "Multiple stop-loss and take-profit controls are supported by CLEO.",
+          "source_url": "https://docs.cleo.finance/knowledgebase/why-should-choose-cleo-taking-hyrotrader-crypto-prop-firm-challenges/"
+        },
+        {
+          "field": "cleo_api_for_prop_trading",
+          "status": "CONFIRMED_NOT_SUPPORTED_FOR_THIRD_PARTY_PROP_AUTOMATION",
+          "value": "CLEO documentation states third-party/API connection is not supported for prop-firm trading.",
+          "source_url": "https://docs.cleo.finance/knowledgebase/connect-cleo-tradingview-hyrotrader/"
+        },
+        {
+          "field": "cleo_funding_presence",
+          "status": "CONFIRMED_PRESENT_BUT_RATE_SERIES_UNRESOLVED",
+          "value": "CLEO's current position-cost breakdown includes funding fees; funding is variable and not included in the pre-trade Return display.",
+          "source_url": "https://docs.cleo.finance/knowledgebase/return-order-panel-look-lower-cleo/"
+        }
+      ],
+      "remaining_blockers": [
+        {
+          "field": "exact_hyro_one_step_base_fee_type_binding",
+          "status": "BLOCKED_DYNAMIC_CHECKOUT_AMBIGUITY",
+          "materiality": "ECONOMIC_CLOSEOUT_ONLY",
+          "next_evidence_needed": "A current Hyro checkout/support receipt explicitly binding each displayed base price to One-Step."
+        },
+        {
+          "field": "exact_six_symbol_hyro_manifest",
+          "status": "BLOCKED_HYRO_SPECIFIC_STATIC_MANIFEST",
+          "materiality": "EXACT_REPLAY",
+          "detail": "Hyro confirms 400+/500+ Binance-based CLEO perpetual pairs and CLEO mirrors Binance listings, but prop firms may exclude pairs; the exact BTC/ETH/SOL/BNB/XRP/DOGE Hyro-CLEO manifest is not published as a static official list."
+        },
+        {
+          "field": "historical_prop_funding_series",
+          "status": "BLOCKED_EXACT_MAPPING",
+          "materiality": "EXACT_REPLAY_AND_COST_STRESS",
+          "detail": "Funding fees are confirmed as present and variable, but no current official source recovered proves that Hyro-CLEO historical prop funding cashflows equal the raw Binance funding archive event-for-event for the study periods."
+        },
+        {
+          "field": "historical_executable_spread_slippage",
+          "status": "BLOCKED_DYNAMIC_EXECUTION_LAYER",
+          "materiality": "EXACT_REPLAY",
+          "detail": "Binance-referenced market data is confirmed; a defensible historical Hyro-CLEO bid/ask and slippage execution archive is not publicly frozen."
+        }
+      ]
+    },
+    "KRAKEN_PROP": {
+      "program_status": "PARTIALLY_RESOLVED_FAIL_CLOSED",
+      "simulation_ready": false,
+      "corrections_to_v0_1_or_prior_summary": [
+        {
+          "field": "api_policy",
+          "prior_statement": "Kraken Prop has no API and orders must be manual.",
+          "corrected_status": "BLOCKED_NOT_EXPLICITLY_VERIFIED_FOR_PROP",
+          "reason": "Current official Prop support retrieved documents web/app trading and identical Prop/Pro order forms, while general Kraken API documentation exists. No dedicated current Prop source recovered explicitly authorizes or forbids private API order placement on Prop accounts. Do not infer either way."
+        }
+      ],
+      "resolved_or_strengthened": [
+        {
+          "field": "native_order_types",
+          "status": "CONFIRMED_CURRENT_OFFICIAL",
+          "value": ["MARKET", "LIMIT", "STOP_LOSS", "STOP_LOSS_LIMIT", "TAKE_PROFIT", "TAKE_PROFIT_LIMIT"],
+          "time_in_force": "GTC for limit/stop/take-profit orders",
+          "evaluation_and_funded_same_order_functionality": true,
+          "source_url": "https://support.kraken.com/articles/placing-orders-on-your-prop-account"
+        },
+        {
+          "field": "position_tp_sl_management",
+          "status": "CONFIRMED_CURRENT_OFFICIAL",
+          "value": "Open Prop positions expose TP/SL levels with Add/Edit/Remove controls; unrealized PnL counts toward risk limits in real time.",
+          "source_url": "https://support.kraken.com/articles/managing-positions"
+        },
+        {
+          "field": "market_structure_and_fees",
+          "status": "CONFIRMED_CURRENT_OFFICIAL",
+          "value": {"contract_type": "crypto contracts with no expiry", "commission_pct_per_side": 0.04, "margin_funding_pct_per_day_notional": 0.033, "funding_charge_interval_hours": 4},
+          "source_url": "https://support.kraken.com/articles/available-markets"
+        },
+        {
+          "field": "holding_duration",
+          "status": "CONFIRMED_GENERAL",
+          "value": "Contracts have no expiry and positions may be held as long as desired subject to funding and risk rules.",
+          "source_url": "https://support.kraken.com/articles/available-markets"
+        },
+        {
+          "field": "maximum_drawdown_mechanic",
+          "status": "CONFIRMED_CURRENT_OFFICIAL",
+          "value": "Static lifetime equity floor fixed below starting balance; realized loss, unrealized loss, commissions and funding count.",
+          "source_url": "https://support.kraken.com/articles/maximum-drawdown-mdd-explained"
+        },
+        {
+          "field": "evaluation_time_limit",
+          "status": "CONFIRMED_NONE",
+          "source_url": "https://support.kraken.com/articles/kraken-prop-faq"
+        },
+        {
+          "field": "pricing_targets_drawdown",
+          "status": "CONFIRMED_CURRENT_OFFICIAL_PUBLIC_PAGE",
+          "value": {
+            "Starter": {"profit_target_pct": 10, "mdl_pct": 3, "mdd_pct": 6, "sizes_usd": [5000,10000,25000,50000,100000]},
+            "Intermediate": {"profit_target_pct": 12, "mdl_pct": 3, "mdd_pct": 5, "sizes_usd": [5000,10000,25000,50000,100000,200000]},
+            "Advanced": {"profit_target_pct": 9, "mdl_pct": 3, "mdd_pct": 3, "sizes_usd": [5000,10000,25000,50000,100000,200000]}
+          },
+          "source_url": "https://www.kraken.com/prop"
+        }
+      ],
+      "remaining_blockers": [
+        {
+          "field": "exact_six_symbol_prop_manifest",
+          "status": "BLOCKED_TERMINAL_ONLY",
+          "materiality": "EXACT_REPLAY",
+          "detail": "Kraken's official Available Markets page explicitly says the full Prop pair list is only shown in the market selector inside the trading terminal. General Kraken markets are not accepted as a substitute."
+        },
+        {
+          "field": "per_market_max_position_sizes",
+          "status": "BLOCKED_TERMINAL_ONLY",
+          "materiality": "RISK_TRANSLATION",
+          "detail": "Official support confirms each Prop market has its own USD maximum position size but does not publish the values; they are enforced in-terminal."
+        },
+        {
+          "field": "prop_private_api_policy",
+          "status": "BLOCKED_NOT_EXPLICITLY_VERIFIED",
+          "materiality": "OPERATIONAL_AUDIT",
+          "detail": "Do not treat general Kraken Pro API availability as proof of Prop-account API compatibility."
+        },
+        {
+          "field": "historical_prop_contract_execution_path",
+          "status": "BLOCKED_SOURCE_MAPPING",
+          "materiality": "EXACT_REPLAY",
+          "detail": "Current support confirms mark-price PnL and live bid/ask/order book, but a historical public Prop-contract execution archive corresponding to the frozen setup periods has not been recovered."
+        }
+      ]
+    },
+    "FTMO_2STEP_SWING": {
+      "program_status": "PARTIALLY_RESOLVED_FAIL_CLOSED",
+      "simulation_ready": false,
+      "resolved_or_strengthened": [
+        {
+          "field": "swing_product_availability",
+          "status": "CONFIRMED_CURRENT_OFFICIAL",
+          "value": "Swing is available exclusively with FTMO Challenge 2-Step, matching the campaign's preferred FTMO variant.",
+          "source_url": "https://ftmo.com/en/faq/is-the-swing-account-type-available-for-ftmo-challenge-1-step/"
+        },
+        {
+          "field": "overnight_weekend_holding",
+          "status": "CONFIRMED_CURRENT_OFFICIAL",
+          "value": "Swing accounts have no restriction on overnight or weekend holding; evaluation stages also allow overnight/weekend holding.",
+          "source_url": "https://ftmo.com/faq/do-i-have-to-close-my-positions-overnight-or-before-the-weekend/"
+        },
+        {
+          "field": "six_underlying_crypto_symbols_documented",
+          "status": "CONFIRMED_HISTORICAL_OFFICIAL_LAUNCH_EVIDENCE_CURRENT_DYNAMIC_MANIFEST_NOT_STATIC",
+          "value": ["BTCUSD", "ETHUSD", "SOLUSD", "BNBUSD", "XRPUSD", "DOGEUSD"],
+          "source_url": "https://ftmo.com/en/blog/trading-updates/trading-update-17-jul-2025/",
+          "note": "Official 2025 trading update documents BTC/ETH/XRP/DOGE and introduction of BNB/SOL. Current Symbols page is dynamic and does not expose a static historical manifest through public crawl."
+        },
+        {
+          "field": "crypto_commission",
+          "status": "CONFIRMED_OFFICIAL_INSTRUMENT_UPDATE",
+          "value_pct_per_side": 0.0325,
+          "source_url": "https://ftmo.com/en/blog/trading-updates/trading-update-17-jul-2025/"
+        },
+        {
+          "field": "current_swap_policy",
+          "status": "CONFIRMED_DYNAMIC",
+          "value": "Overnight rollover swaps are subject to regular changes and must be checked in the live contract specification for each symbol.",
+          "source_url": "https://ftmo.com/en/trading-updates/"
+        },
+        {
+          "field": "current_contract_spec_location",
+          "status": "CONFIRMED_PLATFORM_ONLY_FOR_EXACT_SPEC",
+          "value": "FTMO instructs traders to inspect instrument specifications directly in the trading platform.",
+          "source_url": "https://ftmo.com/en/faq/what-are-the-account-specifications/"
+        }
+      ],
+      "remaining_blockers": [
+        {
+          "field": "historical_swap_series",
+          "status": "BLOCKED_NO_PUBLIC_HISTORICAL_ARCHIVE_RECOVERED",
+          "materiality": "EXACT_REPLAY_AND_COST_STRESS",
+          "detail": "Using today's swap for historical 3/5/10/20/40-day holds would be invalid because FTMO explicitly states swaps change regularly."
+        },
+        {
+          "field": "historical_spread_slippage_series",
+          "status": "BLOCKED_DYNAMIC_EXECUTION_LAYER",
+          "materiality": "EXACT_REPLAY",
+          "detail": "FTMO exposes live spreads/current symbol details and warns of spread widening/liquidity changes; no defensible public historical executable spread/slippage archive for the required periods was recovered."
+        },
+        {
+          "field": "current_exact_per_symbol_contract_specs",
+          "status": "BLOCKED_PLATFORM_DYNAMIC",
+          "materiality": "POSITION_SIZING_AND_EXECUTION",
+          "detail": "Exact current symbol specifications are platform-visible and can change; no account/platform login or purchase is authorized in this campaign."
+        },
+        {
+          "field": "venue_basis_mapping",
+          "status": "BLOCKED_STRUCTURAL_EXECUTION_DIFFERENCE",
+          "materiality": "EXACT_REPLAY",
+          "detail": "Frozen setup histories use crypto exchange spot/perpetual venues, whereas FTMO uses simulated CFDs. A historical one-to-one executable price-path mapping is not established."
+        }
+      ]
+    },
+    "KRAKEN_FUNDED": {
+      "program_status": "BLOCKED_OPERATIONAL_EXECUTION",
+      "simulation_ready": false,
+      "resolved_or_strengthened": [
+        {
+          "field": "product_surface",
+          "status": "CONFIRMED_CURRENT_OFFICIAL",
+          "value": "Kraken Funded is mobile-only in the Kraken App and lives in a dedicated Funded tab.",
+          "source_url": "https://support.kraken.com/au/articles/funded"
+        },
+        {
+          "field": "plans_and_entry_fees",
+          "status": "CONFIRMED_CURRENT_OFFICIAL",
+          "value": {"1000": 20, "5000": 50, "10000": 90},
+          "currency": "USD",
+          "source_url": "https://support.kraken.com/au/articles/funded"
+        },
+        {
+          "field": "costs",
+          "status": "CONFIRMED_CURRENT_OFFICIAL",
+          "value": {"commission": 0, "spread_pct_each_side": 0.04, "withdrawal_fee": 0, "leverage": "NONE"},
+          "source_url": "https://support.kraken.com/au/articles/funded"
+        },
+        {
+          "field": "challenge_rules",
+          "status": "CONFIRMED_CURRENT_OFFICIAL",
+          "value": {"profit_target_pct": 12, "daily_loss_limit": null, "maximum_loss_floor_pct_starting_balance": 3, "maximum_loss_floor_type": "STATIC", "time_limit": null, "minimum_trades": 0},
+          "source_url": "https://support.kraken.com/au/articles/funded"
+        },
+        {
+          "field": "order_functionality",
+          "status": "CONFIRMED_LIMITED",
+          "value": "Kraken Funded is described by official support as simple buy/sell in dollar amounts with no added leverage and no advanced order types.",
+          "source_url": "https://support.kraken.com/au/articles/funded"
+        },
+        {
+          "field": "asset_manifest",
+          "status": "CONFIRMED_GENERAL_BLOCKED_EXACT",
+          "value": "50+ major cryptocurrencies and select stocks; Bitcoin and Ethereum explicitly named; exact regional list is shown only in the Kraken Funded tab.",
+          "source_url": "https://support.kraken.com/au/articles/funded"
+        }
+      ],
+      "operational_determination": {
+        "status": "NOT_ELIGIBLE_FOR_EXACT_DONCHIAN_REPLAY_UNDER_CURRENT_PUBLICLY_DOCUMENTED_INTERFACE",
+        "reason": "Both frozen setups require deterministic stop, target and maximum-hold exits with defined gap semantics. Current official Kraken Funded support says there are no advanced order types. No Funded-specific API/bot/conditional-order path was recovered. Manual monitoring cannot be silently assumed to reproduce exact 24/7 trigger semantics.",
+        "formal_final_classification_deferred": true,
+        "why_not_prop_compat_fail_yet": "Campaign combination classification is reserved for the later compatibility matrix. At the Rulebook stage this remains an execution blocker rather than a simulated failure."
+      },
+      "remaining_blockers": [
+        {
+          "field": "native_stop_take_profit_conditional_order_support",
+          "status": "BLOCKED_BY_CURRENT_PRODUCT_LIMITATION",
+          "materiality": "FROZEN_SETUP_EXECUTION"
+        },
+        {
+          "field": "funded_specific_api_or_automation_path",
+          "status": "BLOCKED_NO_OFFICIAL_SUPPORT_RECOVERED",
+          "materiality": "FROZEN_SETUP_EXECUTION"
+        },
+        {
+          "field": "exact_six_symbol_regional_manifest",
+          "status": "BLOCKED_ACCOUNT_REGION_TAB_ONLY",
+          "materiality": "EXACT_REPLAY"
+        },
+        {
+          "field": "user_account_product_eligibility",
+          "status": "BLOCKED_ACCOUNT_SPECIFIC",
+          "materiality": "PRE_PURCHASE_ONLY",
+          "detail": "Official support says availability is determined by whether the Funded tab is visible in the user's Kraken account. No login or account interaction is authorized here."
+        }
+      ]
+    }
+  },
+  "gate_after_blocker_attack": {
+    "all_programs_simulation_ready": false,
+    "risk_grid_status": "NOT_RUN_LOCKED",
+    "prop_replay_status": "NOT_RUN",
+    "reason": "Material exact-execution/cost/market-manifest blockers remain for every program. Running a cross-program risk grid now would create asymmetric evidence quality and invite false compatibility conclusions.",
+    "program_gate": {
+      "HYROTRADER_ONE_STEP_SWING": "BLOCKED",
+      "KRAKEN_PROP": "BLOCKED",
+      "FTMO_2STEP_SWING": "BLOCKED",
+      "KRAKEN_FUNDED": "BLOCKED_OPERATIONAL_EXECUTION"
+    }
+  },
+  "next_permitted_actions": [
+    "Seek only official/public evidence for Hyro One-Step price type-binding, exact Hyro-CLEO six-symbol availability, and prop funding mapping.",
+    "Seek only official/public evidence for Kraken Prop six-symbol market selector values, per-market position limits, and Prop-specific API policy without account purchase or private API access.",
+    "Seek an official FTMO historical swap/spread source; if none exists, preserve FTMO historical exact-replay status as BLOCKED rather than synthesizing it.",
+    "Seek a Kraken Funded-specific official conditional-order/API mechanism; absent that, preserve operational execution blocker.",
+    "Do not run the frozen 0.10%-0.30% risk grid until the relevant program rulebook is simulation-ready."
+  ]
+}
