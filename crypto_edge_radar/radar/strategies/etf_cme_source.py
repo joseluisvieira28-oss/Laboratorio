@@ -39,7 +39,7 @@ def fetch_latest_two(timeout: int = 30) -> tuple[CFTCObservation, CFTCObservatio
     url = CFTC_BASE + "?" + urllib.parse.urlencode(params)
     request = urllib.request.Request(
         url,
-        headers={"User-Agent": "crypto-edge-radar-etf-cme-source/0.3"},
+        headers={"User-Agent": "crypto-edge-radar-etf-cme-source/0.7"},
     )
     with urllib.request.urlopen(request, timeout=timeout) as response:
         rows = list(csv.DictReader(io.StringIO(response.read().decode("utf-8-sig"))))
@@ -54,13 +54,20 @@ def fetch_latest_two(timeout: int = 30) -> tuple[CFTCObservation, CFTCObservatio
     return previous, current
 
 
-def current_signal_receipt(now: datetime | None = None, timeout: int = 30) -> dict:
-    now = now or datetime.now(timezone.utc)
+def signal_receipt_from_observations(
+    previous: CFTCObservation,
+    current: CFTCObservation,
+    now: datetime,
+) -> dict:
+    """Evaluate the frozen signal from already-fetched observations.
+
+    Runtime may cache slow-moving public CFTC rows, but the exact time gate is
+    re-evaluated on every radar cycle. No late-entry tolerance is introduced.
+    """
     if now.tzinfo is None:
         raise ValueError("now must be timezone-aware")
     now = now.astimezone(timezone.utc)
 
-    previous, current = fetch_latest_two(timeout=timeout)
     signal = compute_frozen_signal(previous, current)
 
     as_of_date = datetime.fromisoformat(current.as_of_date).date()
@@ -79,9 +86,6 @@ def current_signal_receipt(now: datetime | None = None, timeout: int = 30) -> di
         state = "EXACT_ENTRY_TIME"
         entry_eligible_now = signal.direction.value != "NONE"
     else:
-        # The frozen historical implementation enters at the exact first 00:00 UTC
-        # at/after the conservative information-safe time. V0.3 does not invent a
-        # discretionary late-entry tolerance for live deployment.
         state = "ENTRY_WINDOW_PASSED_DO_NOT_CHASE"
         entry_eligible_now = False
 
@@ -105,6 +109,12 @@ def current_signal_receipt(now: datetime | None = None, timeout: int = 30) -> di
         "authenticated_exchange_api": False,
         "order_created": False,
     }
+
+
+def current_signal_receipt(now: datetime | None = None, timeout: int = 30) -> dict:
+    now = now or datetime.now(timezone.utc)
+    previous, current = fetch_latest_two(timeout=timeout)
+    return signal_receipt_from_observations(previous, current, now)
 
 
 def current_signal_json(now: datetime | None = None, timeout: int = 30) -> str:
