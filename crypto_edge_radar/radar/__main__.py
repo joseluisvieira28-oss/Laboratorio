@@ -11,6 +11,7 @@ from .dashboard import serve_dashboard
 from .deployment import RiskLimits, stop_based_position_size
 from .evidence import build_evidence_store
 from .engine import RadarEngine
+from .friction import mexc_friction_shadow_receipt
 from .local_node import run_local_node
 from .market import BinancePublicFeed, BinanceSpotPublicFeed, MEXCFuturesPublicFeed
 from .service import PublicShadowService, read_status
@@ -110,6 +111,10 @@ def main(argv: list[str] | None = None) -> int:
         "etf-cme-signal",
         help="fetch the latest public CFTC rows and evaluate the scientific exact-time signal",
     )
+    sub.add_parser(
+        "mexc-friction-shadow",
+        help="capture public-only BTC_USDT execution-friction observables; never creates orders",
+    )
 
     risk_budget = sub.add_parser(
         "risk-budget", help="print default launch risk amounts for an account equity"
@@ -150,6 +155,14 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "etf-cme-signal":
         try:
             print(json.dumps(current_signal_receipt(), sort_keys=True))
+            return 0
+        except Exception as exc:
+            print(json.dumps({"status": "FAIL_CLOSED", "error": str(exc)}, sort_keys=True))
+            return 2
+
+    if args.command == "mexc-friction-shadow":
+        try:
+            print(json.dumps(mexc_friction_shadow_receipt(), sort_keys=True))
             return 0
         except Exception as exc:
             print(json.dumps({"status": "FAIL_CLOSED", "error": str(exc)}, sort_keys=True))
