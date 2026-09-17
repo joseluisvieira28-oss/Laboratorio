@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import json
+import re
 from typing import Iterable
+from urllib.parse import urlencode, urlparse
 from urllib.request import Request, urlopen
-from urllib.parse import urlparse
 
 from .models import MarketSnapshot, utc_now_iso
 
@@ -25,7 +26,14 @@ MEXC_FUTURES_BASE_URL = "https://api.mexc.com"
 MEXC_FUTURES_ALLOWED_PUBLIC_PATHS = {
     "/api/v1/contract/detail",
     "/api/v1/contract/ticker",
+    "/api/v1/contract/ping",
 }
+MEXC_FUTURES_ALLOWED_PUBLIC_PREFIXES = (
+    "/api/v1/contract/depth/",
+    "/api/v1/contract/funding_rate/",
+    "/api/v1/contract/deals/",
+)
+MEXC_CONTRACT_SYMBOL_RE = re.compile(r"^[A-Z0-9]+_USDT$")
 
 
 class MarketDataError(RuntimeError):
@@ -36,13 +44,20 @@ class _AllowlistedPublicFeed:
     provider = "unknown"
     base_url = ""
     allowed_paths: set[str] = set()
+    allowed_prefixes: tuple[str, ...] = ()
 
     def __init__(self, timeout: int = 10) -> None:
         self.timeout = timeout
 
+    def _path_allowed(self, parsed_path: str) -> bool:
+        if parsed_path in self.allowed_paths:
+            return True
+        return any(parsed_path.startswith(prefix) for prefix in self.allowed_prefixes)
+
     def _get_json(self, path: str):
-        if path not in self.allowed_paths:
-            raise MarketDataError(f"blocked non-allowlisted public path: {path}")
+        parsed_relative = urlparse(path)
+        if not self._path_allowed(parsed_relative.path):
+            raise MarketDataError(f"blocked non-allowlisted public path: {parsed_relative.path}")
         url = f"{self.base_url}{path}"
         parsed = urlparse(url)
         expected = urlparse(self.base_url)
@@ -51,7 +66,7 @@ class _AllowlistedPublicFeed:
         request = Request(
             url,
             method="GET",
-            headers={"User-Agent": "crypto-edge-radar/0.3 public-read-only"},
+            headers={"User-Agent": "crypto-edge-radar/0.7 public-read-only"},
         )
         try:
             with urlopen(request, timeout=self.timeout) as response:
@@ -151,15 +166,86 @@ class MEXCFuturesPublicFeed(_AllowlistedPublicFeed):
     provider = "MEXC_FUTURES_PUBLIC"
     base_url = MEXC_FUTURES_BASE_URL
     allowed_paths = MEXC_FUTURES_ALLOWED_PUBLIC_PATHS
+    allowed_prefixes = MEXC_FUTURES_ALLOWED_PUBLIC_PREFIXES
+
+    @staticmethod
+    def _validate_contract_symbol(symbol: str) -> str:
+        normalized = symbol.upper()
+        if not MEXC_CONTRACT_SYMBOL_RE.fullmatch(normalized):
+            raise MarketDataError(f"invalid MEXC contract symbol: {symbol}")
+        return normalized
+
+    def server_time_ms(self) -> int:
+        payload = self._get_json("/api/v1/contract/ping")
+        if not isinstance(payload, dict) or payload.get("success") is not True:
+            raise MarketDataError("invalid MEXC server time payload")
+        try:
+            value = int(payload["data"])
+        except (KeyError, TypeError, ValueError) as exc:
+            raise MarketDataError("MEXC server time missing data") from exc
+        if value <= 0:
+            raise MarketDataError("MEXC server time is non-positive")
+        return value
 
     def contract_detail(self) -> list[dict]:
         payload = self._get_json("/api/v1/contract/detail")
         if not isinstance(payload, dict) or payload.get("success") is not True:
             raise MarketDataError("invalid MEXC contract detail payload")
         rows = payload.get("data")
+        if isinstance(rows, dict):
+            rows = [rows]
         if not isinstance(rows, list):
             raise MarketDataError("MEXC contract detail missing data")
         return rows
+
+    def contract_row(self, symbol: str) -> dict:
+        raw = self._validate_contract_symbol(symbol)
+        for row in self.contract_detail():
+            if str(row.get("symbol", "")).upper() == raw:
+                return row
+        raise MarketDataError(f"MEXC contract not found: {raw}")
+
+    def order_book_depth(self, symbol: str, limit: int = 20) -> dict:
+        raw = self._validate_contract_symbol(symbol)
+        if not isinstance(limit, int) or limit < 1 or limit > 100:
+            raise MarketDataError("MEXC depth limit must be an integer from 1 to 100")
+        query = urlencode({"limit": limit})
+        payload = self._get_json(f"/api/v1/contract/depth/{raw}?{query}")
+        if not isinstance(payload, dict) or payload.get("success") is not True:
+            raise MarketDataError("invalid MEXC depth payload")
+        data = payload.get("data")
+        if not isinstance(data, dict):
+            raise MarketDataError("MEXC depth missing data")
+        asks, bids = data.get("asks"), data.get("bids")
+        if not isinstance(asks, list) or not isinstance(bids, list) or not asks or not bids:
+            raise MarketDataError("MEXC depth has no usable book")
+        return data
+
+    def funding_rate(self, symbol: str) -> dict:
+        raw = self._validate_contract_symbol(symbol)
+        payload = self._get_json(f"/api/v1/contract/funding_rate/{raw}")
+        if not isinstance(payload, dict) or payload.get("success") is not True:
+            raise MarketDataError("invalid MEXC funding payload")
+        data = payload.get("data")
+        if not isinstance(data, dict):
+            raise MarketDataError("MEXC funding missing data")
+        required = ("fundingRate", "collectCycle", "nextSettleTime", "idxPrice", "fairPrice")
+        if any(key not in data for key in required):
+            raise MarketDataError("MEXC funding payload missing required fields")
+        return data
+
+    def recent_trades(self, symbol: str, limit: int = 100) -> list[dict]:
+        raw = self._validate_contract_symbol(symbol)
+        if not isinstance(limit, int) or limit < 1 or limit > 100:
+            raise MarketDataError("MEXC trades limit must be an integer from 1 to 100")
+        query = urlencode({"limit": limit})
+        payload = self._get_json(f"/api/v1/contract/deals/{raw}?{query}")
+        if not isinstance(payload, dict) or payload.get("success") is not True:
+            raise MarketDataError("invalid MEXC recent trades payload")
+        data = payload.get("data")
+        if not isinstance(data, list):
+            raise MarketDataError("MEXC recent trades missing data")
+        return data
 
     def all_market_snapshots(self) -> dict[str, MarketSnapshot]:
         payload = self._get_json("/api/v1/contract/ticker")
@@ -209,6 +295,10 @@ class MEXCFuturesPublicFeed(_AllowlistedPublicFeed):
             if not raw_symbol or row.get("quoteCoin") != "USDT":
                 continue
             if row.get("apiAllowed") is False:
+                continue
+            if row.get("futureType") not in (None, 1):
+                continue
+            if row.get("state") not in (None, 0):
                 continue
             out.add(_canonical_mexc_symbol(str(raw_symbol)))
         return out
