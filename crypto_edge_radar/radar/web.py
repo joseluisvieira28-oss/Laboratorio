@@ -14,9 +14,10 @@ def _json_bytes(payload: dict[str, Any]) -> bytes:
     return json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
 
 
-def assert_writable_storage(*paths: str) -> None:
-    """Fail closed before runtime if configured persistence paths are not writable."""
-    parents = {Path(path).expanduser().resolve().parent for path in paths}
+def assert_writable_storage(*paths: str | None) -> None:
+    """Fail closed before runtime if configured local persistence paths are not writable."""
+    usable = [path for path in paths if path]
+    parents = {Path(path).expanduser().resolve().parent for path in usable}
     for parent in parents:
         parent.mkdir(parents=True, exist_ok=True)
         probe = parent / ".radar-write-probe"
@@ -29,7 +30,7 @@ def assert_writable_storage(*paths: str) -> None:
 
 def build_handler(status_path: str):
     class RadarHandler(BaseHTTPRequestHandler):
-        server_version = "CryptoEdgeRadar/0.4"
+        server_version = "CryptoEdgeRadar/0.5"
 
         def _send_json(self, code: int, payload: dict[str, Any]) -> None:
             body = _json_bytes(payload)
@@ -51,11 +52,12 @@ def build_handler(status_path: str):
                 health = status.get("health", "UNKNOWN")
                 payload = {
                     "service": status.get("service", "CRYPTO_EDGE_RADAR"),
-                    "version": status.get("version", "0.4"),
+                    "version": status.get("version", "0.5"),
                     "mode": status.get("mode", "PUBLIC_SHADOW_ONLY"),
                     "health": health,
                     "cycle": status.get("cycle"),
                     "provider": status.get("provider"),
+                    "evidence_backend": status.get("evidence_backend"),
                     "consecutive_failures": status.get("consecutive_failures"),
                 }
                 self._send_json(200 if health == "OK" else 503, payload)
@@ -82,7 +84,11 @@ def serve_render(
     if interval < 5:
         raise ValueError("interval must be >= 5 seconds")
 
-    assert_writable_storage(engine.store.db_path, status_path, notification_path)
+    # Postgres is validated by store construction. Only local files still need a
+    # filesystem probe. SQLite adds its DB path to that probe automatically.
+    assert_writable_storage(
+        getattr(engine.store, "db_path", None), status_path, notification_path
+    )
     runner = PublicShadowService(
         engine=engine,
         status_path=status_path,
