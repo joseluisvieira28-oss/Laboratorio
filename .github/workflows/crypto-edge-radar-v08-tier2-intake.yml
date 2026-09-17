@@ -1,0 +1,98 @@
+name: CRYPTO EDGE RADAR V0.8 — TIER2 INTAKE CI
+
+on:
+  push:
+    branches:
+      - crypto-edge-radar-tier2-intake-v0.8
+    paths:
+      - 'crypto_edge_radar/**'
+      - '.github/workflows/crypto-edge-radar-v08-tier2-intake.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tier2-intake-safety:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: crypto_edge_radar
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install
+        run: python -m pip install -e .
+      - name: Compile and unit tests
+        run: |
+          python -m compileall radar tests
+          python -m unittest discover -s tests -v
+      - name: Validate V3 registry authority
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path('deployment_registry_v1.json').read_text())
+          expected=['ETF-CME-INSTFLOW-001','BNB-LAUNCHPOOL-DEMAND-001','OPTIONS-SPOTPERP-001-V2.1','HTF-DONCHIAN-DH02-6H']
+          assert r['registry_version']=='2.0',r
+          assert r['focus_strategy_ids']==expected,r
+          by={x['strategy_id']:x for x in r['candidates']}
+          assert all(by[x]['scientific_tier']==2 for x in expected),by
+          assert by['ETF-CME-INSTFLOW-001']['shadow_allowed'] is True
+          assert by['BNB-LAUNCHPOOL-DEMAND-001']['shadow_allowed'] is True
+          assert by['OPTIONS-SPOTPERP-001-V2.1']['shadow_allowed'] is True
+          d=by['HTF-DONCHIAN-DH02-6H']
+          assert d['deployment_state'].startswith('BLOCKED_'),d
+          assert d['shadow_allowed'] is False and d['micro_live_allowed_now'] is False,d
+          assert by['BTC-OPTIONS-EXPIRY-REVERSAL-001']['scientific_tier']==4
+          print(json.dumps({'status':'PASS','focus':expected,'donchian_deployment':d['deployment_state']},sort_keys=True))
+          PY
+      - name: Validate control-room V3 state
+        run: |
+          mkdir -p ci_v08
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from radar.dashboard import build_control_room_state
+          Path('ci_v08/status.json').write_text(json.dumps({'health':'OK','provider':'MEXC_FUTURES_PUBLIC','cycle':0,'universe':['BTCUSDT','ETHUSDT','SOLUSDT','BNBUSDT','XRPUSDT']}))
+          Path('ci_v08/events.jsonl').write_text('')
+          s=build_control_room_state(status_path='ci_v08/status.json',notification_path='ci_v08/events.jsonl',registry_path='deployment_registry_v1.json')
+          assert s['system']['health']=='OK',s
+          assert s['registry']['ok'] is True,s
+          assert s['registry']['focus_loaded']==4,s
+          assert s['focus_counts']['SHADOW']==3,s
+          assert s['focus_counts']['BLOCKED']==1,s
+          assert s['focus_counts']['ARMED']==0,s
+          Path('ci_v08/v3_control_room_state.json').write_text(json.dumps(s,indent=2,sort_keys=True))
+          print(json.dumps(s['focus_counts'],sort_keys=True))
+          PY
+      - name: Public MEXC bounded observation
+        env:
+          RADAR_DB: ci_v08/radar_evidence.sqlite3
+          RADAR_STATUS: ci_v08/radar_status.json
+          RADAR_NOTIFICATIONS: ci_v08/radar_notifications.jsonl
+          RADAR_PROVIDER: mexc_futures_public
+          RADAR_UNIVERSE_MODE: core5
+        run: |
+          python -m radar service --interval 1 --max-cycles 1
+          python -m radar verify-evidence
+      - name: Verify no live transport
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          s=json.loads(Path('ci_v08/v3_control_room_state.json').read_text())
+          assert s['system']['live_order_transport_enabled'] is False,s
+          assert s['system']['authenticated_exchange_api_enabled'] is False,s
+          print('NO LIVE TRANSPORT: PASS')
+          PY
+      - name: Upload V0.8 intake receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: crypto-edge-radar-v08-tier2-intake-receipt
+          path: crypto_edge_radar/ci_v08/
+          if-no-files-found: warn
+          retention-days: 14
