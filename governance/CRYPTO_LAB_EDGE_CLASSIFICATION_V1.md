@@ -3,7 +3,8 @@
 Status: **FROZEN FRAMEWORK V1 / RESEARCH-ONLY**  
 Date: 2026-09-17  
 Repository: `joseluisvieira28-oss/Laboratorio`  
-Drive board: `CRYPTO_LAB_EDGE_CLASSIFICATION_BOARD_V1 — 2026-09-17` (`1fv3S6nawlOUePlcR7TQXb4aqnois1nxuVeDTeUuS8fM`)
+Drive board: `CRYPTO_LAB_EDGE_CLASSIFICATION_BOARD_V1 — 2026-09-17` (`1fv3S6nawlOUePlcR7TQXb4aqnois1nxuVeDTeUuS8fM`)  
+Branch forensic companion: `governance/CRYPTO_BRANCH_FORENSIC_AUDIT_V1.md`
 
 ## 1. Purpose
 
@@ -137,15 +138,19 @@ Do not combine noisy or failed Tier 3/Tier 4 signals to manufacture an attractiv
 
 ## 10. Current concentration map — initial V1 audit
 
-The 2026-09-16 repository archive plan reconciled 117 branch refs and showed a large concentration in trend/indicator, event and legacy relative-value work, while many credit, volatility-source and forced-flow mechanisms remained blocked or under-developed.
+The 2026-09-16 repository archive plan reconciled 117 branch refs. The 2026-09-17 forensic companion reconciles the current 126-ref surface by adding nine newer refs and recovering authority for multiple prior `HOLD / PENDING AUTHORITY CHECK` lineages.
 
-The initial V1 board therefore treats the following as broad research posture, not promotion:
+The combined audit shows a large concentration in trend/indicator, event and legacy relative-value work, while many credit, volatility-source and forced-flow mechanisms remain blocked or under-developed.
+
+The current broad research posture is therefore:
 
 - **Over-covered / saturated generic form:** generic trend/indicator clones, generic BTC-alt lead-lag, raw funding/OI/taker-flow variants.
-- **Still high-interest if source-clean:** forced-flow microstructure, DeFi credit stress, point-in-time volatility/VRP/gamma, market-access changes, expectations-aware macro surprise, predictive capital-flow states.
+- **Still high-interest if source-clean:** executable VRP/volatility, forced-flow microstructure, DeFi credit stress, point-in-time volatility/gamma, market-access changes, expectations-aware macro surprise, predictive capital-flow states.
 - **Portfolio layer:** deferred until at least two independently eligible standalone candidates exist.
 
 Canonical current statuses remain governed by the underlying lab authority, including the Near-Diamonds V2 registry and individual closeouts. This classification framework must never overwrite a lab verdict.
+
+The forensic companion is the canonical organizational audit for branch-level concentration and attention routing; it does not supersede the underlying scientific closeouts.
 
 ## 11. Governance
 
