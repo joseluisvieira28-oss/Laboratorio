@@ -1,0 +1,38 @@
+{
+  "document_id": "PROP_COMPAT_001C_STAGE_D_IMPLEMENTATION_CLARIFICATION_V0.1",
+  "campaign_id": "PROP-COMPAT-001C",
+  "frozen_on": "2026-09-17",
+  "status": "FROZEN_BEFORE_STAGE_D_1M_OUTCOMES",
+  "authority": "PROP_COMPAT_001C_DH03_KRAKEN_ROBUSTNESS_GAUNTLET_PROTOCOL_V0.1",
+  "profiles": {
+    "SEVERE": {"execution_round_trip_pct_notional": 0.50, "entry_half_pct": 0.25, "exit_half_pct": 0.25, "carry_multiplier": 1.5, "stop_gap_extra_R": 0.50},
+    "EXTREME": {"execution_round_trip_pct_notional": 0.75, "entry_half_pct": 0.375, "exit_half_pct": 0.375, "carry_multiplier": 2.0, "stop_gap_extra_R": 1.0}
+  },
+  "stage_D_scope": {
+    "all_plans": ["STARTER", "INTERMEDIATE", "ADVANCED"],
+    "all_risk_values_pct_per_1R": [0.10, 0.15, 0.20, 0.25, 0.30],
+    "profiles_run_for_every_plan_risk_cell": ["SEVERE", "EXTREME"],
+    "carry_interpretations": ["LEGAL_DAILY_0000", "SUPPORT_4H_ALL_240_MINUTE_PHASES"],
+    "base_cells": 30,
+    "support_phase_paths": 7200
+  },
+  "mechanics": {
+    "price_and_floating_equity": "Use exact pinned Binance USD-M 1m path only as the already-declared non-exact proxy for portfolio mark-to-market.",
+    "setup_entry_exit_timestamps": "Preserve official frozen DH-03 ledger timestamps and exit reasons; no setup timing changes.",
+    "execution_cost": "Debit frozen profile entry half on entry notional and exit half on exit notional.",
+    "carry": "Multiply the already-frozen Kraken daily 0.033% notional rate, or each 0.0055% four-hour installment, by the profile carry multiplier. Sweep every 4h phase 0..239 minutes plus legal-daily interpretation.",
+    "stop_gap_surcharge": "Only on official stop-family exits, debit an additional cash loss equal to frozen position entry notional times initial_risk_fraction times stop_gap_extra_R. This is a synthetic stress surcharge and does not alter setup exit timestamp.",
+    "target_and_breach_ambiguity": "Use the same conservative synchronized-close / 1m-high target upper-bound / 1m-low floor lower-bound logic frozen in Kraken V0.2; do not choose a favorable intraminute ordering.",
+    "decision_stop": "Each scenario stops at first robust target, obvious breach, or ambiguity classification; later history cannot rescue it."
+  },
+  "governance": {
+    "stage_D_outcomes_opened_before_clarification": false,
+    "no_best_plan_selection": true,
+    "no_best_risk_selection": true,
+    "no_profile_selection": true,
+    "post_outcome_tuning": false,
+    "challenge_purchase": false,
+    "live_trading": false,
+    "merge_to_main": false
+  }
+}
