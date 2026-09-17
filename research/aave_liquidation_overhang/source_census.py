@@ -6,6 +6,12 @@ Source-only / outcome-blind.
 - Requests no log.data field and decodes no economic amount/rate/price/balance.
 - Enumerates only event IDs, block timestamps and indexed participant identities.
 - Hard stops at the frozen 2024-12-31 boundary.
+
+V0.1 transport remediation:
+SQD Portal /stream returns bounded response segments. The scientifically frozen
+block envelope is therefore consumed by advancing from the final returned
+header.number + 1 until the exact requested end block is reached. No event,
+contract, source window, outcome permission or scientific gate is changed.
 """
 
 from __future__ import annotations
@@ -74,40 +80,75 @@ def topic_address(topic: str) -> str:
     return "0x" + topic[-40:].lower()
 
 
-def stream_chunk(start: int, end: int):
-    body = {
-        "type": "evm",
-        "fromBlock": start,
-        "toBlock": end,
-        "fields": {
-            "block": {"number": True, "timestamp": True},
-            "log": {
-                "address": True,
-                "topics": True,
-                "transactionHash": True,
-                "logIndex": True,
+def stream_chunk(start: int, end: int, stats: dict[str, int]):
+    """Yield the complete filtered SQD stream across [start,end].
+
+    Portal responses are continuation segments. Per the Portal contract, the
+    next request begins at the last returned header.number + 1 while keeping
+    toBlock, fields and filters unchanged.
+    """
+    cursor = start
+    while cursor <= end:
+        body = {
+            "type": "evm",
+            "fromBlock": cursor,
+            "toBlock": end,
+            "fields": {
+                "block": {"number": True, "timestamp": True},
+                "log": {
+                    "address": True,
+                    "topics": True,
+                    "transactionHash": True,
+                    "logIndex": True,
+                },
             },
-        },
-        "logs": [
-            {"address": [POOL], "topic0": POOL_TOPICS},
-            {"address": [CONFIGURATOR], "topic0": CONFIG_TOPICS},
-        ],
-    }
-    r = requests.post(
-        PORTAL,
-        json=body,
-        timeout=(20, 240),
-        stream=True,
-        headers={"Content-Type": "application/json", "User-Agent": f"{LAB_ID}/source-census-v0.1"},
-    )
-    r.raise_for_status()
-    for raw in r.iter_lines(decode_unicode=True):
-        if not raw:
-            continue
-        obj = json.loads(raw)
-        if isinstance(obj, dict) and obj.get("error"):
-            raise RuntimeError(f"portal error: {obj['error']}")
-        yield obj
+            "logs": [
+                {"address": [POOL], "topic0": POOL_TOPICS},
+                {"address": [CONFIGURATOR], "topic0": CONFIG_TOPICS},
+            ],
+        }
+        r = requests.post(
+            PORTAL,
+            json=body,
+            timeout=(20, 240),
+            stream=True,
+            headers={"Content-Type": "application/json", "User-Agent": f"{LAB_ID}/source-census-v0.1"},
+        )
+        if r.status_code == 204:
+            raise RuntimeError("unexpected Portal 204 inside frozen historical range")
+        r.raise_for_status()
+        stats["portal_requests"] += 1
+
+        page_last_block = None
+        page_rows = 0
+        for raw in r.iter_lines(decode_unicode=True):
+            if not raw:
+                continue
+            obj = json.loads(raw)
+            if isinstance(obj, dict) and obj.get("error"):
+                raise RuntimeError(f"portal error: {obj['error']}")
+            header = obj.get("header") or obj.get("block") or {}
+            bn = header.get("number")
+            if bn is None:
+                raise RuntimeError("Portal row missing continuation block number")
+            bn = int(bn)
+            if not (cursor <= bn <= end):
+                raise RuntimeError("Portal continuation row outside requested range")
+            if page_last_block is not None and bn < page_last_block:
+                raise RuntimeError("Portal page block order is non-monotonic")
+            page_last_block = bn
+            page_rows += 1
+            yield obj
+
+        if page_rows == 0 or page_last_block is None:
+            raise RuntimeError("Portal returned empty continuation page inside frozen range")
+        stats["portal_rows"] += page_rows
+        if page_last_block >= end:
+            return
+        next_cursor = page_last_block + 1
+        if next_cursor <= cursor:
+            raise RuntimeError("Portal continuation did not advance")
+        cursor = next_cursor
 
 
 def main() -> int:
@@ -129,7 +170,10 @@ def main() -> int:
             chunk_blocks_with_matches = 0
             chunk_first_ts = None
             chunk_last_ts = None
-            for obj in stream_chunk(start, end):
+            chunk_stats = {"portal_requests": 0, "portal_rows": 0}
+            chunk_terminal_header = None
+
+            for obj in stream_chunk(start, end, chunk_stats):
                 header = obj.get("header") or obj.get("block") or {}
                 bn = header.get("number")
                 ts = header.get("timestamp")
@@ -138,6 +182,7 @@ def main() -> int:
                     raise RuntimeError("missing block header number/timestamp")
                 bn = int(bn)
                 ts = int(ts)
+                chunk_terminal_header = bn
                 if not (start <= bn <= end):
                     raise RuntimeError("returned block outside requested chunk")
                 if ts > MAX_TS:
@@ -192,9 +237,14 @@ def main() -> int:
                     canonical = f"{bn}|{str(txh).lower()}|{li_int}|{address}|{topic0}\n"
                     structural_hasher.update(canonical.encode())
 
+            if chunk_terminal_header != end:
+                raise RuntimeError(f"Portal continuation stopped at {chunk_terminal_header}, expected {end}")
             chunks_receipt.append({
                 "from_block": start,
                 "to_block": end,
+                "terminal_header_block": chunk_terminal_header,
+                "portal_requests": chunk_stats["portal_requests"],
+                "portal_rows": chunk_stats["portal_rows"],
                 "matching_logs": chunk_logs,
                 "blocks_with_matches": chunk_blocks_with_matches,
                 "first_matching_timestamp": chunk_first_ts,
@@ -208,7 +258,7 @@ def main() -> int:
         classification = "SOURCE_ACQUISITION_TECHNICAL_FAILURE"
     elif any(counts[x] <= 0 for x in minimum_required):
         classification = "INSUFFICIENT_SOURCE_COVERAGE"
-    elif not all(c["matching_logs"] > 0 for c in chunks_receipt):
+    elif not all(c["matching_logs"] > 0 and c["terminal_header_block"] == c["to_block"] for c in chunks_receipt):
         classification = "INSUFFICIENT_SOURCE_COVERAGE"
     elif first_ts is None or last_ts is None or last_ts > MAX_TS:
         classification = "PROVENANCE_FAILURE"
@@ -218,6 +268,7 @@ def main() -> int:
     receipt = {
         "lab_id": LAB_ID,
         "phase": "SOURCE_CENSUS_ONLY_OUTCOME_BLIND",
+        "probe_version": "0.1-continuation-fix",
         "classification": classification,
         "source": "SQD ethereum-mainnet Portal",
         "frozen_from_block": FROM_BLOCK,
@@ -259,6 +310,7 @@ def main() -> int:
         "unique_position_users": len(all_position_users),
         "unique_liquidated_users": len(liquidation_users),
         "events_present": sorted(k for k, v in counts.items() if v > 0),
+        "portal_requests": sum(c.get("portal_requests", 0) for c in chunks_receipt),
         "protected_period_firewall": "PASS" if not (last_ts and last_ts > MAX_TS) else "FAIL",
         "economic_values_decoded": False,
         "returns_opened": False,
