@@ -1,0 +1,159 @@
+{
+  "document_id": "PROP_COMPAT_001_PROP_RULEBOOK_AMENDMENT_V0.4",
+  "campaign_id": "PROP-COMPAT-001",
+  "version": "0.4",
+  "consulted_on": "2026-09-17",
+  "status": "PRE_SIMULATION_KRAKEN_PROP_RULE_MECHANICS_FREEZE",
+  "base_documents": [
+    "PROP_COMPAT_001_PROP_RULEBOOK_FREEZE_V0.1",
+    "PROP_COMPAT_001_PROP_RULEBOOK_AMENDMENT_V0.2",
+    "PROP_COMPAT_001_PROP_RULEBOOK_AMENDMENT_V0.3"
+  ],
+  "governance": {
+    "research_only": true,
+    "outcomes_opened_for_rule_selection": false,
+    "risk_grid_run": false,
+    "prop_replay_run": false,
+    "live_trading": false,
+    "orders_created": false,
+    "challenge_purchased": false,
+    "private_api_connected": false,
+    "setup_rules_changed": false,
+    "post_outcome_tuning": false,
+    "merge_to_main": false
+  },
+  "kraken_prop": {
+    "program_scope": "Kraken Pro Prop / Breakout 1-Step evaluations and corresponding funded stage",
+    "rule_mechanics_status": "FROZEN_CURRENT_OFFICIAL",
+    "simulation_ready": false,
+    "simulation_blocker": "Historical executable Kraken Prop bid/ask/liquidity/slippage path for the DH-03 2023-2024 replay window is not available as a frozen official historical series. Official rules explicitly state spread/liquidity can vary and OKX/Bybit are only proxies that do not always align. Do not substitute Binance close prices as Kraken Prop fills.",
+    "governing_contract_chain": {
+      "kraken_terms": "Kraken Prop users must accept Breakout Evaluation Terms; those terms govern evaluation process, fees and outcomes. Passing traders sign a Funded Trader Agreement with Payward Oceanic.",
+      "sources": [
+        "https://www.kraken.com/legal/global-terms",
+        "https://www.breakoutprop.com/breakout-evaluation-agreement/",
+        "https://www.breakoutprop.com/funded-trader-agreement/"
+      ]
+    },
+    "plans": {
+      "Starter_Classic": {"profit_target_pct": 10.0, "maximum_drawdown_static_pct": 6.0, "maximum_daily_loss_pct": 3.0},
+      "Intermediate_Pro": {"profit_target_pct": 12.0, "maximum_drawdown_static_pct": 5.0, "maximum_daily_loss_pct": 3.0},
+      "Advanced_Turbo": {"profit_target_pct": 9.0, "maximum_drawdown_static_pct": 3.0, "maximum_daily_loss_pct": 3.0}
+    },
+    "daily_loss": {
+      "reset_time_utc": "00:30",
+      "calculation": "balance at 00:30 UTC minus 3%; balance excludes open positions when setting the floor; intraday equity including open positions is monitored against the floor",
+      "breach_condition": "equity reaches or falls through the daily loss floor",
+      "floating_pnl_included": true,
+      "source": "https://www.breakoutprop.com/program-rules/"
+    },
+    "maximum_drawdown": {
+      "mechanic": "STATIC_FROM_STARTING_BALANCE",
+      "floating_pnl_included_in_breach_test": true,
+      "source": "https://www.breakoutprop.com/program-rules/"
+    },
+    "time_rules": {
+      "minimum_evaluation_time": null,
+      "maximum_evaluation_time": null,
+      "inactivity": {
+        "threshold_calendar_days_without_transaction": 90,
+        "effect": "evaluation access is suspended until reactivation is requested; this is not encoded as a permanent drawdown breach",
+        "source": "https://www.breakoutprop.com/breakout-evaluation-agreement/"
+      }
+    },
+    "trading_hours_and_holding": {
+      "trading_hours": "24/7 subject to maintenance/service interruption",
+      "overnight_holding": true,
+      "weekend_holding": true,
+      "news_trading": "allowed without a separate news restriction, subject to data/pricing liquidity availability",
+      "source": "https://www.breakoutprop.com/program-rules/"
+    },
+    "fees_and_carry": {
+      "commission_pct_per_side": 0.04,
+      "commission_round_trip_pct": 0.08,
+      "commission_basis": "notional",
+      "margin_funding_pct_per_open_position_per_day_notional": 0.033,
+      "breakout_terminal_charge_frequency": "six times per day, once every four hours",
+      "approx_charge_pct_per_interval": 0.0055,
+      "exact_clock_anchor_status": "NOT_EXPLICITLY_FROZEN_IN_PUBLIC_RULE_TEXT",
+      "interpretation": "The number of four-hour funding intervals can be determined only after an exact terminal charging schedule/anchor is authoritative. Do not choose an anchor after seeing outcomes.",
+      "source": "https://www.breakoutprop.com/program-rules/"
+    },
+    "spread_liquidity_execution": {
+      "spread": "VARIABLE_BASED_ON_CENTRALIZED_EXCHANGE_LIQUIDITY",
+      "liquidity_sources": "third-party brokers, market makers, exchanges and other crypto liquidity providers",
+      "official_proxy_guidance": ["OKX USDT perpetuals", "Bybit USDT perpetuals"],
+      "official_proxy_warning": "proxy pairs do not always perfectly align with Breakout symbols",
+      "latency_slippage_material": true,
+      "partial_fills_supported": false,
+      "unfilled_limit_orders_possible_due_to_spread_or_insufficient_depth": true,
+      "source": "https://www.breakoutprop.com/program-rules/"
+    },
+    "order_types": {
+      "available": ["MARKET", "LIMIT", "STOP_LOSS", "STOP_LOSS_LIMIT", "TAKE_PROFIT", "TAKE_PROFIT_LIMIT"],
+      "limit_type_tif": "GTC",
+      "same_in_evaluation_and_funded": true,
+      "source": "https://support.kraken.com/articles/kraken-prop-faq"
+    },
+    "api_policy": {
+      "api_access": false,
+      "evaluation": false,
+      "funded": false,
+      "orders_must_be_placed_manually_via_trading_interface": true,
+      "source": "https://www.kraken.com/prop"
+    },
+    "universe_current_2026_09_17": {
+      "BTCUSD": {"fee_pct_per_side": 0.04, "max_total_size_usd": 1000000, "leverage": 10},
+      "ETHUSD": {"fee_pct_per_side": 0.04, "max_total_size_usd": 1000000, "leverage": 5},
+      "SOLUSD": {"fee_pct_per_side": 0.04, "max_total_size_usd": 500000, "leverage": 5},
+      "BNBUSD": {"fee_pct_per_side": 0.04, "max_total_size_usd": 400000, "leverage": 5},
+      "XRPUSD": {"fee_pct_per_side": 0.04, "max_total_size_usd": 300000, "leverage": 5},
+      "DOGEUSD": {"fee_pct_per_side": 0.04, "max_total_size_usd": 200000, "leverage": 5}
+    },
+    "universe_source": "https://www.breakoutprop.com/symbols/",
+    "current_cap_warning": "Leverage and position caps are dynamic and reviewed against market conditions; current values are a 2026-09-17 snapshot, not historical 2023-2024 values.",
+    "combined_active_capital_usd": 200000,
+    "profit_split": {
+      "default_trader_pct": 80,
+      "optional_trader_pct": 90,
+      "optional_upgrade_cost_pct_of_base_evaluation_fee": 20
+    },
+    "kyc": {
+      "evaluation": "basic Kraken verification (email + country) is sufficient for purchase/trading according to current Kraken support",
+      "funded": "full Kraken identity verification and Funded Trader Agreement required"
+    },
+    "eligibility": {
+      "public_kraken_prop_exclusions_current": ["Canada", "India", "United Kingdom"],
+      "switzerland_public_status": "NOT_LISTED_AS_EXCLUDED",
+      "classification": "ELIGIBILITY_CONDITIONAL_UI_VERIFICATION",
+      "reason": "Kraken terms state availability is jurisdiction-dependent and may be restricted or withdrawn. Absence from the public exclusion list is not treated as a purchase authorization.",
+      "sources": [
+        "https://support.kraken.com/articles/kraken-prop-faq",
+        "https://www.kraken.com/legal/global-terms"
+      ]
+    },
+    "prohibited_strategy_relevance": {
+      "exact_frozen_donchian_rule_is_not_news_based": true,
+      "latency_arbitrage": false,
+      "copy_trading": false,
+      "cross_account_hedging": false,
+      "warning": "Breakout prohibits third-party/off-the-shelf approaches marketed to pass evaluations and approaches difficult to replicate live. PROP-COMPAT-001 must therefore treat the setup as the user's independently frozen research rule and must not alter it specifically to pass the evaluation."
+    },
+    "remaining_material_blockers": [
+      "Historical executable spread/liquidity/slippage path for 2023-2024 DH-03 replay is unavailable from an authoritative Kraken Prop/Breakout historical source.",
+      "Exact four-hour funding charge clock anchors for Breakout Terminal are not explicitly stated in the retrieved public rule text; only frequency is stated.",
+      "Current leverage/position caps cannot be silently projected backward to 2023-2024; for compatibility testing they may be treated as current operational constraints, not historical venue facts."
+    ],
+    "decision": "RULEBOOK_MECHANICS_FROZEN_BUT_PROP_EXACT_REPLAY_REMAINS_BLOCKED"
+  },
+  "campaign_gate": {
+    "phase1_rulebook_for_kraken_prop": "MECHANICS_COMPLETE_EXECUTION_HISTORY_BLOCKED",
+    "phase2_exact_setup_replay_dh03": "SOURCE_CHAIN_VALIDATED",
+    "risk_grid_status": "NOT_RUN_LOCKED",
+    "next_allowed_work": [
+      "Resolve or pre-freeze a defensible executable-price/spread proxy protocol without opening risk-grid outcomes.",
+      "Resolve Breakout Terminal four-hour funding clock anchors from an official source if available.",
+      "Continue TFG evidence recovery without reconstructing trades from aggregates."
+    ]
+  }
+}
