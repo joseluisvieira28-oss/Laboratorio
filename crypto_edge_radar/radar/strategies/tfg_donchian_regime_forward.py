@@ -208,8 +208,6 @@ class MEXCSpotKlineFeed:
             if next_cursor <= cursor:
                 raise TFGSourceError("MEXC spot pagination did not advance")
             cursor = next_cursor
-            if len(payload) < 1000:
-                break
         return [rows[t] for t in sorted(rows)]
 
 
