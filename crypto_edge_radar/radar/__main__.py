@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 from datetime import datetime, timezone
 import json
+import os
 import sys
 
 from .config import Settings
@@ -11,6 +12,7 @@ from .dashboard import serve_dashboard
 from .deployment import RiskLimits, stop_based_position_size
 from .evidence import build_evidence_store
 from .engine import RadarEngine
+from .forward_web import serve_forward_shadow
 from .friction import mexc_friction_shadow_receipt
 from .local_node import run_local_node
 from .market import BinancePublicFeed, BinanceSpotPublicFeed, MEXCFuturesPublicFeed
@@ -109,7 +111,7 @@ def public_isolated_risk_receipt(equity: float) -> dict:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="CRYPTO EDGE RADAR V0.7 — MEXC control room + durable evidence + exact timing"
+        description="CRYPTO EDGE RADAR V0.9 — promoted-candidate shadow operations"
     )
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("once", help="run one public-data observation cycle")
@@ -117,6 +119,13 @@ def main(argv: list[str] | None = None) -> int:
     service = sub.add_parser("service", help="run heartbeat-enabled public shadow service")
     service.add_argument("--interval", type=float, default=30.0)
     service.add_argument("--max-cycles", type=int, default=None)
+
+    web = sub.add_parser(
+        "web-service",
+        help="run Render-compatible TFG + BNB public forward shadow watchers",
+    )
+    web.add_argument("--interval", type=float, default=float(os.getenv("RADAR_SERVICE_INTERVAL", "120")))
+    web.add_argument("--port", type=int, default=int(os.getenv("PORT", "10000")))
 
     dashboard = sub.add_parser("dashboard", help="serve the read-only multi-bot web control room")
     dashboard.add_argument("--host", default="127.0.0.1")
@@ -155,6 +164,13 @@ def main(argv: list[str] | None = None) -> int:
     isolated.add_argument("--equity", type=float, required=True)
 
     args = parser.parse_args(argv)
+
+    if args.command == "web-service":
+        try:
+            return serve_forward_shadow(port=args.port, interval=args.interval)
+        except Exception as exc:
+            print(json.dumps({"status": "FAIL_CLOSED", "error": str(exc)}, sort_keys=True))
+            return 2
 
     if args.command == "risk-budget":
         try:
