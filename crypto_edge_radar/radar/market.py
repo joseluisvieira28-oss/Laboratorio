@@ -21,6 +21,12 @@ SPOT_ALLOWED_PUBLIC_PATHS = {
     "/api/v3/exchangeInfo",
 }
 
+MEXC_FUTURES_BASE_URL = "https://api.mexc.com"
+MEXC_FUTURES_ALLOWED_PUBLIC_PATHS = {
+    "/api/v1/contract/detail",
+    "/api/v1/contract/ticker",
+}
+
 
 class MarketDataError(RuntimeError):
     pass
@@ -45,7 +51,7 @@ class _AllowlistedPublicFeed:
         request = Request(
             url,
             method="GET",
-            headers={"User-Agent": "crypto-edge-radar/0.2 public-shadow-only"},
+            headers={"User-Agent": "crypto-edge-radar/0.3 public-read-only"},
         )
         try:
             with urlopen(request, timeout=self.timeout) as response:
@@ -132,6 +138,84 @@ class BinanceSpotPublicFeed(_AllowlistedPublicFeed):
             and row.get("status") == "TRADING"
             and row.get("symbol")
         }
+
+
+class MEXCFuturesPublicFeed(_AllowlistedPublicFeed):
+    """GET-only MEXC perpetual-futures market-data feed.
+
+    Security boundary: this class has no API-key support, no signing logic and
+    no POST/DELETE path. MEXC symbols such as BTC_USDT are normalized to the
+    radar's canonical BTCUSDT form. It is a market-observation provider only.
+    """
+
+    provider = "MEXC_FUTURES_PUBLIC"
+    base_url = MEXC_FUTURES_BASE_URL
+    allowed_paths = MEXC_FUTURES_ALLOWED_PUBLIC_PATHS
+
+    def contract_detail(self) -> list[dict]:
+        payload = self._get_json("/api/v1/contract/detail")
+        if not isinstance(payload, dict) or payload.get("success") is not True:
+            raise MarketDataError("invalid MEXC contract detail payload")
+        rows = payload.get("data")
+        if not isinstance(rows, list):
+            raise MarketDataError("MEXC contract detail missing data")
+        return rows
+
+    def all_market_snapshots(self) -> dict[str, MarketSnapshot]:
+        payload = self._get_json("/api/v1/contract/ticker")
+        if not isinstance(payload, dict) or payload.get("success") is not True:
+            raise MarketDataError("invalid MEXC ticker payload")
+        rows = payload.get("data")
+        if isinstance(rows, dict):
+            rows = [rows]
+        if not isinstance(rows, list):
+            raise MarketDataError("MEXC ticker missing data")
+
+        observed_at = utc_now_iso()
+        out: dict[str, MarketSnapshot] = {}
+        for row in rows:
+            raw_symbol = row.get("symbol")
+            if not raw_symbol:
+                continue
+            symbol = _canonical_mexc_symbol(str(raw_symbol))
+            try:
+                snapshot = MarketSnapshot(
+                    symbol=symbol,
+                    observed_at=observed_at,
+                    last_price=float(row["lastPrice"]),
+                    bid_price=float(row["bid1"]),
+                    ask_price=float(row["ask1"]),
+                    quote_volume_24h=float(row["amount24"]),
+                )
+            except (KeyError, TypeError, ValueError):
+                continue
+            if (
+                snapshot.last_price <= 0
+                or snapshot.bid_price <= 0
+                or snapshot.ask_price <= 0
+                or snapshot.ask_price < snapshot.bid_price
+                or snapshot.quote_volume_24h < 0
+            ):
+                continue
+            out[symbol] = snapshot
+        if not out:
+            raise MarketDataError("no valid MEXC public market snapshots")
+        return out
+
+    def eligible_usdt_perpetual_symbols(self) -> set[str]:
+        out: set[str] = set()
+        for row in self.contract_detail():
+            raw_symbol = row.get("symbol")
+            if not raw_symbol or row.get("quoteCoin") != "USDT":
+                continue
+            if row.get("apiAllowed") is False:
+                continue
+            out.add(_canonical_mexc_symbol(str(raw_symbol)))
+        return out
+
+
+def _canonical_mexc_symbol(symbol: str) -> str:
+    return symbol.replace("_", "").upper()
 
 
 def _normalize_snapshots(tickers, books) -> dict[str, MarketSnapshot]:
