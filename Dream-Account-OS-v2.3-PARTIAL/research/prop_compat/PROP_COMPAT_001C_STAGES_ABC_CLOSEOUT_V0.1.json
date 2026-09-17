@@ -1,0 +1,68 @@
+{
+  "document_id": "PROP_COMPAT_001C_STAGES_ABC_CLOSEOUT_V0.1",
+  "campaign_id": "PROP-COMPAT-001C",
+  "closed_on": "2026-09-17",
+  "status": "STAGES_A_B_C_COMPLETE_STAGE_D_PENDING",
+  "authority": [
+    "PROP_COMPAT_001_GOVERNANCE_AMENDMENT_V0.8_AGGRESSIVE_RESEARCH",
+    "PROP_COMPAT_001C_DH03_KRAKEN_ROBUSTNESS_GAUNTLET_PROTOCOL_V0.1"
+  ],
+  "execution_evidence": {
+    "workflow_run_id": 35228245293,
+    "workflow_conclusion": "success",
+    "artifact_id": 10499767549,
+    "artifact_name": "PROP_COMPAT_001C_DH03_KRAKEN_ROBUSTNESS_GAUNTLET_V01",
+    "artifact_digest": "sha256:7b5f469d06633afa69707bc14b1af54ce8ba7f344cc150a9e46eaa63d2844e28",
+    "receipt_fingerprint": "09d32db16bb3586bffe073e108f08afbb8b0ebb9ec3f78a76387da06d0b63487",
+    "ledger_sha256": "ec4e5dbc8d95a73d4eb9db55f4e1c0f264dba7eb724cbb7424f2c034a3a7eebd",
+    "resolved_trades": 146
+  },
+  "stage_A": {
+    "factor_combinations": 48,
+    "positive_expectancy_factor_combinations": 27,
+    "plan_risk_factor_decisions": 720,
+    "decision_counts": {
+      "TARGET_BEFORE_STATIC_MDD": 47,
+      "STATIC_MDD_BREACH_BEFORE_TARGET": 334,
+      "NO_DECISION_HISTORY": 339
+    },
+    "profiles": {
+      "BASE": {"execution_rt_pct":0.20,"carry_multiplier":1.0,"stop_gap_extra_R":0.0,"expectancy_R":0.3369995675003724,"profit_factor_R":1.5133235239254996,"total_R":49.20193685505437},
+      "STRESS": {"execution_rt_pct":0.30,"carry_multiplier":1.0,"stop_gap_extra_R":0.0,"expectancy_R":0.3175626690005072,"profit_factor_R":1.4751964744317043,"total_R":46.364149674074056},
+      "SEVERE": {"execution_rt_pct":0.50,"carry_multiplier":1.5,"stop_gap_extra_R":0.50,"expectancy_R":-0.0475853582865837,"profit_factor_R":0.9527333907620859,"total_R":-6.947462309841221},
+      "EXTREME": {"execution_rt_pct":0.75,"carry_multiplier":2.0,"stop_gap_extra_R":1.0,"expectancy_R":-0.42245183482360726,"profit_factor_R":0.6874375412732494,"total_R":-61.67796788424666}
+    },
+    "interpretation": "The frozen historical edge remains positive under BASE and STRESS. The predeclared SEVERE composite crosses slightly below zero expectancy; EXTREME is clearly negative. This identifies a robustness boundary without tuning it after outcome."
+  },
+  "stage_B": {
+    "scenario_count": 60,
+    "nominal_MDL_3pct_breach_or_touch_count": 2,
+    "scenarios": [
+      {"risk_pct_per_1R":0.25,"simultaneous_positions":6,"loss_multiplier_R_each":2.0,"nominal_loss_pct_initial":3.0},
+      {"risk_pct_per_1R":0.30,"simultaneous_positions":6,"loss_multiplier_R_each":2.0,"nominal_loss_pct_initial":3.6}
+    ],
+    "interpretation": "Only the two frozen six-position 2R-loss cluster scenarios at the two highest risk levels touch or exceed the 3% nominal MDL amount. This is analytic nominal loss stress, not an exact intraday Kraken MDL replay."
+  },
+  "stage_C": {
+    "method": "UTC_ENTRY_DAY_BLOCK_BOOTSTRAP",
+    "repetitions_per_cell": 20000,
+    "seed": 20260917,
+    "probability_ranges_across_all_plan_risk_cells": {
+      "BASE": {"target_before_static_MDD":[0.0113,0.8033],"static_MDD_breach":[0.0,0.1579]},
+      "STRESS": {"target_before_static_MDD":[0.0092,0.77285],"static_MDD_breach":[0.00005,0.17585]},
+      "SEVERE": {"target_before_static_MDD":[0.0001,0.1712],"static_MDD_breach":[0.04085,0.76805]},
+      "EXTREME": {"target_before_static_MDD":[0.0,0.0189],"static_MDD_breach":[0.5877,0.98875]}
+    },
+    "interpretation": "Sequence risk is materially stronger in BASE/STRESS than in SEVERE/EXTREME. SEVERE and especially EXTREME sharply degrade target-before-static-MDD behavior. These probabilities are static-MDD sequence diagnostics and not exact proprietary Kraken intraday MDL estimates."
+  },
+  "next_predeclared_action": "Run Stage D SEVERE and EXTREME against the frozen 1m proxy path with Kraken MDL/MDD equity mechanics and all 240 carry phases; do not modify the profiles after these outcomes.",
+  "governance": {
+    "aggressive_research": true,
+    "post_outcome_tuning": false,
+    "best_plan_selected": false,
+    "best_risk_selected": false,
+    "challenge_purchase": false,
+    "live_trading": false,
+    "merge_to_main": false
+  }
+}
