@@ -34,7 +34,7 @@ jobs:
       - name: Build local operator node EXE
         run: |
           pyinstaller --clean --onefile --name CryptoEdgeRadarNode --add-data "deployment_registry_v1.json;." windows_node_entry.py
-      - name: Verify packaged deployment registry
+      - name: Verify packaged and materialized deployment registry
         shell: pwsh
         run: |
           $env:RADAR_PACKAGING_SELFTEST = "1"
@@ -44,6 +44,8 @@ jobs:
           if ($state.status -ne "PASS") { throw "package self-test did not PASS" }
           if (-not $state.required_strategy_present) { throw "ETF-CME strategy missing from packaged registry" }
           if ([int]$state.candidate_count -lt 4) { throw "packaged registry unexpectedly small" }
+          if (-not $state.runtime_registry_materialized) { throw "runtime registry was not materialized" }
+          if ([int]$state.runtime_candidate_count -ne [int]$state.candidate_count) { throw "runtime registry candidate count mismatch" }
       - name: Hash executable
         shell: pwsh
         run: |
