@@ -1,0 +1,59 @@
+name: BTC DVOL Futures Directional Execution V0.1
+
+on:
+  push:
+    branches:
+      - btc-dvol-futures-execution-v0.1
+    paths:
+      - 'labs/BTC_DVOL_FUTURES_TERMSTRUCTURE_001/EXECUTION_TRIGGER_V0.1.txt'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: btc-dvol-futures-execution-v01
+  cancel-in-progress: false
+
+jobs:
+  execution:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: btc-dvol-futures-execution-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --disable-pip-version-check requests==2.32.3
+      - name: Verify frozen execution authority
+        run: |
+          python - <<'PY'
+          import json
+          a=json.load(open('labs/BTC_DVOL_FUTURES_TERMSTRUCTURE_001/EXECUTION_AUTHORITY_V0.1.json'))
+          assert a['execution_mve_id']=='DVOL-TS-DIRECTIONAL-EXEC-001'
+          assert a['status']=='PRE_OUTCOME_FROZEN'
+          assert a['parent_discovery_run']==35278588512
+          assert a['parent_discovery_classification']=='DISCOVERY_PASS_BASIS_CONVERGENCE'
+          assert a['signal_rule']['basis_threshold']==0.0
+          assert a['fill_rule']['fill_window_minutes']==30
+          assert a['position']['quantity_btcdvol']==0.1
+          assert a['fixed_cost_model']['base_taker_rate_each_side']==0.0005
+          assert a['sample_gates']['minimum_executable_episodes']==120
+          assert a['bootstrap']['replications']==10000
+          assert a['firewalls']['access_2025'] is False
+          assert a['firewalls']['access_2026'] is False
+          assert a['firewalls']['live_trading'] is False
+          print('DVOL_EXECUTION_AUTHORITY_PASS')
+          PY
+      - run: python -m py_compile labs/BTC_DVOL_FUTURES_TERMSTRUCTURE_001/execution_v01.py
+      - name: Execute one-shot directional after-fixed-cost MVE
+        run: python labs/BTC_DVOL_FUTURES_TERMSTRUCTURE_001/execution_v01.py
+      - name: Upload immutable execution receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: btc-dvol-futures-execution-v01-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/btc_dvol_futures_execution_v01/
+          retention-days: 90
+          if-no-files-found: warn
