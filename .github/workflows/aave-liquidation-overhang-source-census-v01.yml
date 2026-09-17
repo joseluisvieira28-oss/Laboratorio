@@ -5,7 +5,8 @@ on:
     branches:
       - aave-liquidation-overhang-v0.1
     paths:
-      - research/aave_liquidation_overhang/**
+      - research/aave_liquidation_overhang/source_census_shard.py
+      - research/aave_liquidation_overhang/aggregate_source_census.py
       - .github/workflows/aave-liquidation-overhang-source-census-v01.yml
   workflow_dispatch:
 
@@ -13,9 +14,37 @@ permissions:
   contents: read
 
 jobs:
-  source-census:
+  source-census-shards:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shard_id: "01"
+            from_block: 16490000
+            to_block: 17119486
+          - shard_id: "02"
+            from_block: 17119487
+            to_block: 17748973
+          - shard_id: "03"
+            from_block: 17748974
+            to_block: 18378460
+          - shard_id: "04"
+            from_block: 18378461
+            to_block: 19007946
+          - shard_id: "05"
+            from_block: 19007947
+            to_block: 19637432
+          - shard_id: "06"
+            from_block: 19637433
+            to_block: 20266918
+          - shard_id: "07"
+            from_block: 20266919
+            to_block: 20896404
+          - shard_id: "08"
+            from_block: 20896405
+            to_block: 21525890
     steps:
       - name: Checkout frozen research branch
         uses: actions/checkout@v4
@@ -28,10 +57,47 @@ jobs:
       - name: Install census dependencies
         run: pip install --disable-pip-version-check requests 'eth-hash[pycryptodome]'
 
-      - name: Execute outcome-blind source census
-        run: python research/aave_liquidation_overhang/source_census.py
+      - name: Execute outcome-blind fixed shard
+        env:
+          SHARD_ID: ${{ matrix.shard_id }}
+          SHARD_FROM_BLOCK: ${{ matrix.from_block }}
+          SHARD_TO_BLOCK: ${{ matrix.to_block }}
+        run: python research/aave_liquidation_overhang/source_census_shard.py
 
-      - name: Upload source census receipt
+      - name: Upload shard receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: AAVE_CENSUS_SHARD_${{ matrix.shard_id }}
+          path: source_census_shards/shard_${{ matrix.shard_id }}.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  source-census-aggregate:
+    if: always()
+    needs: source-census-shards
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout frozen research branch
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download all shard receipts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: AAVE_CENSUS_SHARD_*
+          path: downloaded_shards
+          merge-multiple: false
+
+      - name: Aggregate exact frozen envelope
+        run: python research/aave_liquidation_overhang/aggregate_source_census.py
+
+      - name: Upload canonical source-census receipt
         if: always()
         uses: actions/upload-artifact@v4
         with:
