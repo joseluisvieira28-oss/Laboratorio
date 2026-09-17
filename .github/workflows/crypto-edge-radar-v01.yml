@@ -1,10 +1,11 @@
-name: CRYPTO EDGE RADAR V0.3 CI + PUBLIC SOAK
+name: CRYPTO EDGE RADAR V0.7 CI + MEXC SOAK
 
 on:
   push:
     branches:
       - crypto-edge-radar-v0.1
       - crypto-edge-radar-aggressive-v0.3
+      - crypto-edge-radar-aggressive-v0.7-render
     paths:
       - 'crypto_edge_radar/**'
       - '.github/workflows/crypto-edge-radar-v01.yml'
@@ -30,6 +31,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Install runtime dependencies
+        run: python -m pip install -e .
       - name: Compile
         run: python -m compileall radar tests
       - name: Unit tests
@@ -69,6 +72,7 @@ jobs:
           assert status['health'] == 'OK', status
           assert status['cycle'] == 3, status
           assert status['provider'] == 'BINANCE_SPOT_DATA_API_PUBLIC', status
+          assert status['evidence_backend'] == 'sqlite', status
           assert status['registered_strategies'] == 0, status
           assert status['valid_signal_count'] == 0, status
           assert len(status['universe']) == 5, status
@@ -78,7 +82,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: crypto-edge-radar-v03-public-shadow-receipt
+          name: crypto-edge-radar-v07-public-shadow-receipt
           path: crypto_edge_radar/ci_artifacts/
           if-no-files-found: warn
           retention-days: 14
@@ -115,6 +119,7 @@ jobs:
           assert status['health'] == 'OK', status
           assert status['cycle'] == 1, status
           assert status['provider'] == 'MEXC_FUTURES_PUBLIC', status
+          assert status['evidence_backend'] == 'sqlite', status
           assert status['registered_strategies'] == 0, status
           assert status['valid_signal_count'] == 0, status
           assert status['universe'] == ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', 'XRPUSDT'], status
@@ -124,7 +129,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: crypto-edge-radar-v03-mexc-public-receipt
+          name: crypto-edge-radar-v07-mexc-public-receipt
           path: crypto_edge_radar/mexc_ci_artifacts/
           if-no-files-found: warn
           retention-days: 14
