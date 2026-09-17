@@ -1,13 +1,13 @@
 {
-  "registry_version": "1.1",
-  "as_of_utc": "2026-09-16T21:35:00Z",
+  "registry_version": "1.2",
+  "as_of_utc": "2026-09-17T14:45:00Z",
   "governance": "AGGRESSIVE_DEPLOYMENT_POLICY_V1",
   "candidates": [
     {
       "strategy_id": "ETF-CME-INSTFLOW-001",
       "scientific_tier": 2,
       "scientific_status": "PROMOTED_CANDIDATE_FRAGILE",
-      "deployment_state": "MICRO_LIVE_CANDIDATE_PENDING_SOURCE_BINDING_AND_RISK_CONTRACT",
+      "deployment_state": "MICRO_LIVE_CANDIDATE_PENDING_EXECUTION_AND_RISK_CONTRACT",
       "shadow_allowed": true,
       "micro_live_allowed_now": false,
       "source_branch": "etf-cme-institutional-flow-v0.1",
@@ -20,7 +20,8 @@
       "base_cost_bps_round_trip": 10,
       "stress_cost_bps_round_trip": 20,
       "radar_signal_rule_implemented": true,
-      "radar_live_source_binding_implemented": false,
+      "radar_live_source_binding_implemented": true,
+      "radar_mexc_public_market_observation_validated": true,
       "fragility_flags": [
         "Tier-1 readiness passed 9/10 only",
         "leave-one-trade-out minimum base-net mean failed",
@@ -29,8 +30,7 @@
         "one influential trade can make leave-one-out mean negative"
       ],
       "blocking_gates": [
-        "pure deterministic signal trap exists but live CFTC source binding is not yet wired into radar runtime",
-        "execution venue/instrument for real-money implementation not frozen",
+        "execution venue/instrument mapping for real-money implementation not frozen",
         "strategy-specific maximum-loss/sizing model not frozen"
       ]
     },
