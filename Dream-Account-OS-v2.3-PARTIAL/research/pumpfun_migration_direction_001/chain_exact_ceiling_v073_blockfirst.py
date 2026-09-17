@@ -11,6 +11,9 @@ getTransaction availability from the public RPC.
 """
 from __future__ import annotations
 
+import json
+import sys
+from pathlib import Path
 from typing import Any
 
 import chain_exact_ceiling_v07 as v07
@@ -37,16 +40,13 @@ class BlockFirstRpc(_OriginalRpc):
 
     def get_transactions(self, signatures: list[str]) -> dict[str, Any]:
         # Boundary search already discovered each signature and slot via
-        # getSignaturesForAddress. Fetch the small set of finalized blocks that
-        # contain those signatures and recover the exact transaction bodies.
+        # getSignaturesForAddress. Fetch the finalized blocks that contain
+        # those signatures and recover exact transaction bodies.
         requested = [str(s) for s in signatures]
         by_slot: dict[int, set[str]] = {}
-        unresolved: set[str] = set()
         for sig in requested:
             slot = self._signature_slots.get(sig)
-            if slot is None:
-                unresolved.add(sig)
-            else:
+            if slot is not None:
                 by_slot.setdefault(int(slot), set()).add(sig)
 
         out: dict[str, Any] = {sig: {"_missing_batch_response": True} for sig in requested}
@@ -84,5 +84,25 @@ def collect_one_v073(*args, **kwargs):
 engine.collect_one = collect_one_v073
 
 
+def cli_value(flag: str) -> str | None:
+    try:
+        i = sys.argv.index(flag)
+        return sys.argv[i + 1]
+    except (ValueError, IndexError):
+        return None
+
+
 if __name__ == "__main__":
-    raise SystemExit(engine.main())
+    rc = engine.main()
+    out_dir = cli_value("--out-dir")
+    if out_dir:
+        p = Path(out_dir) / "chain_exact_ceiling_shard_receipt.json"
+        if p.exists():
+            r = json.loads(p.read_text(encoding="utf-8"))
+            r["stage"] = "CHAIN_EXACT_CEILING_V073_BLOCKFIRST_SHARD"
+            r["transport_version"] = "V073_FINALIZED_BLOCK_FIRST"
+            r["boundary_parser_version"] = "V07_MIGRATE_AND_MIGRATE_V2"
+            r["economic_outcomes_opened"] = False
+            r["scientific_verdict_authority"] = False
+            p.write_text(json.dumps(r, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    raise SystemExit(rc)
