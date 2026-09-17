@@ -1,0 +1,41 @@
+name: AAVE Liquidation Overhang 001 — Source Census V0.1
+
+on:
+  push:
+    branches:
+      - aave-liquidation-overhang-v0.1
+    paths:
+      - research/aave_liquidation_overhang/**
+      - .github/workflows/aave-liquidation-overhang-source-census-v01.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-census:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout frozen research branch
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install census dependencies
+        run: pip install --disable-pip-version-check requests 'eth-hash[pycryptodome]'
+
+      - name: Execute outcome-blind source census
+        run: python research/aave_liquidation_overhang/source_census.py
+
+      - name: Upload source census receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: AAVE_LIQUIDATION_OVERHANG_001_SOURCE_CENSUS_V0_1
+          path: source_census_output/AAVE_LIQUIDATION_OVERHANG_001_SOURCE_CENSUS_RECEIPT_V0_1.json
+          if-no-files-found: warn
+          retention-days: 30
