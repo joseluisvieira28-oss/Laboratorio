@@ -5,6 +5,7 @@ import json
 import sys
 
 from .config import Settings
+from .control_room import run_control_room
 from .dashboard import serve_dashboard
 from .deployment import RiskLimits, stop_based_position_size
 from .evidence import EvidenceStore
@@ -61,6 +62,15 @@ def main(argv: list[str] | None = None) -> int:
     dashboard.add_argument("--host", default="127.0.0.1")
     dashboard.add_argument("--port", type=int, default=8787)
     dashboard.add_argument("--registry", default=None)
+
+    control = sub.add_parser(
+        "control-room",
+        help="run public market observation and the web control room in one process",
+    )
+    control.add_argument("--host", default="127.0.0.1")
+    control.add_argument("--port", type=int, default=8787)
+    control.add_argument("--interval", type=float, default=30.0)
+    control.add_argument("--registry", default=None)
 
     sub.add_parser("status", help="read latest persisted service health status")
     sub.add_parser("verify-evidence", help="verify the local evidence hash chain")
@@ -131,6 +141,24 @@ def main(argv: list[str] | None = None) -> int:
             return 2
 
     engine, settings = build_engine()
+
+    if args.command == "control-room":
+        try:
+            run_control_room(
+                engine=engine,
+                status_path=settings.status_path,
+                notification_path=settings.notification_path,
+                host=args.host,
+                port=args.port,
+                interval=args.interval,
+                registry_path=args.registry,
+            )
+            return 0
+        except KeyboardInterrupt:
+            return 0
+        except Exception as exc:
+            print(json.dumps({"status": "FAIL_CLOSED", "error": str(exc)}, sort_keys=True))
+            return 2
 
     if args.command == "once":
         return run_once(engine)
