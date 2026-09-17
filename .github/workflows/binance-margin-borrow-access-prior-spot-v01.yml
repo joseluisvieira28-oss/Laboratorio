@@ -1,0 +1,123 @@
+name: Binance Margin Borrow Access 001 — Prior Spot Proof V0.1
+
+on:
+  push:
+    branches:
+      - binance-margin-borrow-access-v0.1
+    paths:
+      - .github/workflows/binance-margin-borrow-access-prior-spot-v01.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  PARSER_RUN_ID: '35262879137'
+
+jobs:
+  manifest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        name: Checkout frozen research branch
+      - uses: actions/setup-python@v5
+        name: Set up Python
+        with:
+          python-version: '3.12'
+      - name: Install source dependency
+        run: pip install --disable-pip-version-check requests
+      - name: Download frozen parser shard artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: BINANCE_MARGIN_BORROW_ACCESS_001_EVENT_PARSE_V0_1_1_SHARD_*
+          path: parser_v011_shards
+          run-id: ${{ env.PARSER_RUN_ID }}
+          github-token: ${{ github.token }}
+      - name: Build immutable prior-Spot manifest
+        run: >-
+          python research/binance_margin_borrow_access/prior_spot_proof_v01.py manifest
+          --parser-dir parser_v011_shards
+          --out prior_spot_manifest
+      - name: Upload immutable prior-Spot manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: BINANCE_MARGIN_BORROW_ACCESS_001_PRIOR_SPOT_MANIFEST_V0_1
+          path: prior_spot_manifest/prior_spot_manifest.json
+          if-no-files-found: error
+          retention-days: 30
+
+  probe:
+    runs-on: ubuntu-latest
+    needs: manifest
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        shard: [0,1,2,3,4,5,6,7]
+    steps:
+      - uses: actions/checkout@v4
+        name: Checkout frozen research branch
+      - uses: actions/setup-python@v5
+        name: Set up Python
+        with:
+          python-version: '3.12'
+      - name: Install source dependency
+        run: pip install --disable-pip-version-check requests
+      - name: Download immutable prior-Spot manifest
+        uses: actions/download-artifact@v4
+        with:
+          name: BINANCE_MARGIN_BORROW_ACCESS_001_PRIOR_SPOT_MANIFEST_V0_1
+          path: prior_spot_manifest
+      - name: Probe Binance Vision checksum metadata only
+        run: >-
+          python research/binance_margin_borrow_access/prior_spot_proof_v01.py shard
+          --manifest prior_spot_manifest/prior_spot_manifest.json
+          --shard ${{ matrix.shard }}
+          --out prior_spot_shard_${{ matrix.shard }}
+      - name: Upload prior-Spot shard receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: BINANCE_MARGIN_BORROW_ACCESS_001_PRIOR_SPOT_V0_1_SHARD_${{ matrix.shard }}
+          path: prior_spot_shard_${{ matrix.shard }}/prior_spot_shard_${{ matrix.shard }}.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  aggregate:
+    runs-on: ubuntu-latest
+    needs: [manifest, probe]
+    if: always()
+    steps:
+      - uses: actions/checkout@v4
+        name: Checkout frozen research branch
+      - uses: actions/setup-python@v5
+        name: Set up Python
+        with:
+          python-version: '3.12'
+      - name: Install source dependency
+        run: pip install --disable-pip-version-check requests
+      - name: Download immutable prior-Spot manifest
+        uses: actions/download-artifact@v4
+        with:
+          name: BINANCE_MARGIN_BORROW_ACCESS_001_PRIOR_SPOT_MANIFEST_V0_1
+          path: prior_spot_manifest
+      - name: Download all prior-Spot shard receipts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: BINANCE_MARGIN_BORROW_ACCESS_001_PRIOR_SPOT_V0_1_SHARD_*
+          path: prior_spot_shards
+      - name: Aggregate canonical prior-Spot proof
+        run: >-
+          python research/binance_margin_borrow_access/prior_spot_proof_v01.py aggregate
+          --manifest prior_spot_manifest/prior_spot_manifest.json
+          --shards prior_spot_shards
+          --out prior_spot_canonical
+      - name: Upload canonical prior-Spot receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: BINANCE_MARGIN_BORROW_ACCESS_001_PRIOR_SPOT_V0_1
+          path: prior_spot_canonical/BINANCE_MARGIN_BORROW_ACCESS_001_PRIOR_SPOT_RECEIPT_V0_1.json
+          if-no-files-found: warn
+          retention-days: 30
