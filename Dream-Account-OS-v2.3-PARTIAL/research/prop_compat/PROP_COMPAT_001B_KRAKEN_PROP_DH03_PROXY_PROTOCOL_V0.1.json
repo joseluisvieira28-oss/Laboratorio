@@ -1,0 +1,80 @@
+{
+  "document_id": "PROP_COMPAT_001B_KRAKEN_PROP_DH03_PROXY_PROTOCOL_V0.1",
+  "campaign_id": "PROP-COMPAT-001B",
+  "parent_campaign": "PROP-COMPAT-001",
+  "frozen_on": "2026-09-17",
+  "status": "FROZEN_BEFORE_PROXY_OUTCOMES",
+  "setup_id": "DH-03-HO1",
+  "program": "KRAKEN_PROP",
+  "purpose": "Non-decisional structural kill-screen. Detect obvious incompatibility under current official Kraken Prop risk/cost formulas without claiming exact historical Kraken Prop execution.",
+  "authority_chain": [
+    "PROP_COMPAT_001_KRAKEN_PROP_DH03_SOURCE_RESOLUTION_V0.1",
+    "PROP_COMPAT_001_RISK_GRID_FREEZE_V0.1",
+    "DH-03-HO1 frozen Phase5 exact-rule ledger/source binding"
+  ],
+  "governance": {
+    "proxy_outcomes_opened_before_freeze": false,
+    "official_phase3_risk_grid_run": false,
+    "proxy_grid_uses_same_frozen_values_without_winner_selection": true,
+    "setup_rules_changed": false,
+    "symbol_drops": false,
+    "time_period_selection": false,
+    "post_outcome_tuning": false,
+    "challenge_purchase": false,
+    "live_trading": false,
+    "merge_to_main": false
+  },
+  "proxy_grid_pct_equity_per_1R": [0.10,0.15,0.20,0.25,0.30],
+  "plan_variants": {
+    "STARTER": {"profit_target_pct":10.0,"mdl_pct_balance_at_reset":3.0,"mdd_pct_initial_balance":6.0},
+    "INTERMEDIATE": {"profit_target_pct":12.0,"mdl_pct_balance_at_reset":3.0,"mdd_pct_initial_balance":5.0},
+    "ADVANCED": {"profit_target_pct":9.0,"mdl_pct_balance_at_reset":3.0,"mdd_pct_initial_balance":3.0}
+  },
+  "account_model": {
+    "initial_balance_units":100.0,
+    "risk_basis":"CURRENT_ACCOUNT_EQUITY_AT_ENTRY_BEFORE_NEW_ENTRY_COST",
+    "position_notional":"risk_amount / frozen_DH03_initial_risk_fraction",
+    "one_active_trade_per_symbol":true,
+    "all_six_symbols_may_overlap":true
+  },
+  "cost_model": {
+    "commission_pct_notional_per_side":0.04,
+    "round_trip_commission_pct_notional":0.08,
+    "margin_funding_pct_notional_per_day":0.033,
+    "rollover_hours":4,
+    "rollover_rate_pct_notional":0.0055,
+    "funding_event_rule":"Charge 0.0055% of open notional at each four-hour rollover timestamp strictly after entry and while position remains open; exact boundary semantics at exit timestamp must be reported if encountered rather than tuned.",
+    "slippage_spread":"NOT_ADDED_AS_AN_EXACT_KRAKEN_PROP_SERIES; frozen Binance minute path is only a proxy price path. This prevents decisional PASS."
+  },
+  "risk_engine": {
+    "mdl_reset_utc":"00:30",
+    "mdl_floor":"balance_at_00_30_utc * 0.97",
+    "intraday_breach":"total_equity <= mdl_floor",
+    "mdd_floor":{"STARTER":94.0,"INTERMEDIATE":95.0,"ADVANCED":97.0},
+    "realized_and_unrealized_pnl_count":true,
+    "commissions_and_margin_funding_count":true,
+    "profit_target":"total_equity reaches initial_balance * (1 + plan_target_pct/100); stop that plan-cell at first target or breach"
+  },
+  "mark_to_market_proxy": {
+    "source":"Exact frozen Binance USD-M 1m path bound to DH03 Phase5",
+    "method":"SYNCHRONIZED_1M_CLOSE_WITH_FROZEN_DH03_EXECUTION_EVENTS",
+    "claim":"PROXY_ONLY_NOT_KRAKEN_PROP_EXECUTABLE_PRICE",
+    "missing_path":"PROXY_INSUFFICIENT"
+  },
+  "required_outputs": [
+    "all_15_plan_x_risk_cells",
+    "first_target_or_breach_timestamp",
+    "first_breach_rule",
+    "trade_count_before_decision",
+    "calendar_days_to_decision",
+    "maximum_daily_drawdown",
+    "maximum_total_drawdown",
+    "maximum_floating_drawdown",
+    "maximum_concurrent_positions",
+    "total_commission",
+    "total_margin_rollover_cost",
+    "correlation_stress_2_3_4_6_full_R_losses"
+  ],
+  "labels": ["OBVIOUS_PROXY_BREACH","NO_OBVIOUS_PROXY_BREACH_BUT_EXACT_REPLAY_STILL_BLOCKED","PROXY_INSUFFICIENT"],
+  "post_run_policy":"Report every cell. Do not choose a best plan or risk size. Do not change grid, setup, costs, symbols or dates after outcomes. A proxy survivor cannot authorize a challenge purchase or live trading."
+}
