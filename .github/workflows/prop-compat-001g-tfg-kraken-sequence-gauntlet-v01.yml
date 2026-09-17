@@ -1,0 +1,106 @@
+name: PROP-COMPAT-001G TFG Kraken Sequence Gauntlet V0.1
+
+on:
+  push:
+    branches:
+      - prop-compat-001-v0.1
+    paths:
+      - '.github/workflows/prop-compat-001g-tfg-kraken-sequence-gauntlet-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  sequence_gauntlet:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+    steps:
+      - name: Checkout isolated prop-compat branch
+        uses: actions/checkout@v4
+        with:
+          ref: prop-compat-001-v0.1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install numpy
+        run: python -m pip install --disable-pip-version-check -q numpy
+
+      - name: Verify protocol frozen before outcomes and compile runner
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          d=json.loads(Path('research/prop_compat/PROP_COMPAT_001G_TFG_KRAKEN_SEQUENCE_GAUNTLET_PROTOCOL_V0.1.json').read_text())
+          assert d['status']=='FROZEN_BEFORE_TFG_GAUNTLET_OUTCOMES'
+          assert d['stage_C_monte_carlo_sequence_risk']['repetitions']==20000
+          assert d['stage_C_monte_carlo_sequence_risk']['seed']==20260917
+          assert d['governance']['live_trading'] is False
+          assert d['governance']['merge_to_main'] is False
+          print('PROTOCOL_FREEZE=PASS')
+          PY
+          python -m py_compile research/prop_compat/prop_compat_001g_tfg_kraken_sequence_gauntlet_v01.py
+
+      - name: Verify exact recovery artifact metadata
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python - <<'PY'
+          import json, os, urllib.request
+          expected_id=10520806876
+          expected_digest='sha256:ac9916b9606005f202dfe1b3017870a3bc8c08b26c46a905e5d95f7a91fe3667'
+          req=urllib.request.Request(
+              f'https://api.github.com/repos/joseluisvieira28-oss/Laboratorio/actions/artifacts/{expected_id}',
+              headers={'Authorization':f'Bearer {os.environ["GH_TOKEN"]}','Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'},
+          )
+          with urllib.request.urlopen(req,timeout=30) as r: d=json.load(r)
+          assert d['id']==expected_id
+          assert d['name']=='PROP_COMPAT_001E_TFG_2025_BULK_REPLAY_V01'
+          assert d.get('digest')==expected_digest,(d.get('digest'),expected_digest)
+          assert d.get('expired') is False
+          print('RECOVERY_ARTIFACT_AUTHORITY=PASS')
+          PY
+
+      - name: Download exact TFG recovery artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: PROP_COMPAT_001E_TFG_2025_BULK_REPLAY_V01
+          path: Dream-Account-OS-v2.3-PARTIAL/research/local_data/prop_compat_001g_tfg_recovery
+          github-token: ${{ github.token }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: 35275795833
+
+      - name: Execute frozen sequence gauntlet
+        run: |
+          export PYTHONPATH="$PWD:${PYTHONPATH:-}"
+          OUT=research/local_data/prop_compat_001g
+          mkdir -p "$OUT"
+          python -m research.prop_compat.prop_compat_001g_tfg_kraken_sequence_gauntlet_v01 \
+            research/local_data/prop_compat_001g_tfg_recovery/PROP_COMPAT_001E_TFG_2025_REGENERATED_LEDGER_V0.1.json \
+            "$OUT/PROP_COMPAT_001G_TFG_KRAKEN_SEQUENCE_GAUNTLET_RECEIPT_V0.1.json"
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('research/local_data/prop_compat_001g/PROP_COMPAT_001G_TFG_KRAKEN_SEQUENCE_GAUNTLET_RECEIPT_V0.1.json')
+          d=json.loads(p.read_text())
+          expected='fdd42b2a11069d50a9704a1556862ef2f965a32b88ecd6e9bbbe8addcc74557f'
+          assert d['fingerprint']==expected,(d['fingerprint'],expected)
+          assert d['status']=='BASE_STRESS_POSITIVE_SEVERE_GATE_FAIL_SMALL_SAMPLE'
+          print('LOCAL_FINGERPRINT_REPRODUCTION=PASS')
+          PY
+
+      - name: Upload full sequence gauntlet receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: PROP_COMPAT_001G_TFG_KRAKEN_SEQUENCE_GAUNTLET_V01
+          path: Dream-Account-OS-v2.3-PARTIAL/research/local_data/prop_compat_001g/PROP_COMPAT_001G_TFG_KRAKEN_SEQUENCE_GAUNTLET_RECEIPT_V0.1.json
+          if-no-files-found: error
+          retention-days: 30
