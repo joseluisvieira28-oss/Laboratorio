@@ -1,0 +1,27 @@
+{
+  "document_id": "PROP_COMPAT_001B_KRAKEN_PROP_IMPLEMENTATION_CLARIFICATION_01",
+  "campaign_id": "PROP-COMPAT-001B",
+  "frozen_on": "2026-09-17",
+  "status": "FROZEN_BEFORE_PROXY_OUTCOMES",
+  "authority": "PROP_COMPAT_001B_KRAKEN_PROP_AMBIGUITY_ENVELOPE_PROTOCOL_V0.1",
+  "clarifications": {
+    "carry_notional": "At each rollover timestamp, carry is applied to current open-position notional using frozen position quantity multiplied by that minute's Binance-proxy 1m open price.",
+    "same_minute_event_order": ["carry_debit_on_positions_open_immediately_before_minute_events", "00:30_UTC_daily_balance_reference_if_applicable", "official_ledger_exits_symbol_ascending", "official_ledger_entries_symbol_ascending", "portfolio_equity_checks"],
+    "entry_sizing": "For simultaneous entries, each symbol is processed alphabetically. Risk amount equals frozen risk percentage times current equity at the exact minute open immediately before that entry's own execution-cost debit.",
+    "exit_cost": "Exit-side execution-cost percentage is applied to exit notional = frozen scenario quantity multiplied by official ledger exit price.",
+    "profit_target": "Kraken official support states evaluation passes when account equity reaches target in real time. Proxy target is established only by synchronized 1m close, which is conservative versus a true intraminute trigger.",
+    "intraminute_target_upper_bound": "Sum of each open long position valued at that symbol's 1m high is used only as a mathematical upper bound to prevent falsely declaring an obvious breach if target might have been hit within that minute.",
+    "intraminute_breach_lower_bound": "Sum of each open long position valued at that symbol's 1m low is used as a mathematical lower bound. A proxy survivor is called robust only if this lower bound never reaches MDL/MDD before the synchronized-close target. Low-bound breach alone cannot establish an actual breach because cross-symbol lows may not be synchronous.",
+    "same_minute_target_and_breach_uncertainty": "If synchronized-close breach occurs in a minute whose high-bound could have reached target, or synchronized-close target occurs after a prior low-bound floor crossing, classify AMBIGUITY_MATERIAL rather than choosing pass or breach.",
+    "challenge_start": "Evaluation is normalized to start immediately before the first frozen DH-03 entry with initial balance/equity 100 and initial MDL floor 97 until the next 00:30 UTC reset.",
+    "unresolved_rows": "The two official execution-path-unresolved DH-03 rows remain excluded exactly as in Phase5 resolved metrics; no exit imputation."
+  },
+  "governance": {
+    "proxy_outcomes_opened_before_clarification": false,
+    "post_outcome_change": false,
+    "official_risk_grid_run": false,
+    "challenge_purchase": false,
+    "live_trading": false,
+    "merge_to_main": false
+  }
+}
