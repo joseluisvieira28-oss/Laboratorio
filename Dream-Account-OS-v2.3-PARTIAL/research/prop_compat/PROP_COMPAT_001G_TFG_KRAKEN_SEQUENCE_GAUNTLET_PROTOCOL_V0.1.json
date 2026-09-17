@@ -1,0 +1,98 @@
+{
+  "document_id": "PROP_COMPAT_001G_TFG_KRAKEN_SEQUENCE_GAUNTLET_PROTOCOL_V0.1",
+  "campaign_id": "PROP-COMPAT-001G",
+  "parent_campaign": "PROP-COMPAT-001",
+  "frozen_on": "2026-09-17",
+  "status": "FROZEN_BEFORE_TFG_GAUNTLET_OUTCOMES",
+  "authority": "PROP_COMPAT_001_GOVERNANCE_AMENDMENT_V0.8_AGGRESSIVE_RESEARCH",
+  "setup_id": "TFG-DONCHIAN-1D-001",
+  "program_context": "KRAKEN_PROP",
+  "purpose": "Parallel non-decisional robustness and sequence-risk attack while the 15m TFG x Kraken proxy is queued. Reuse the exact DH03 gauntlet stress axes, profiles, repetitions and seed; adapt only the R denominator to the already-frozen TFG cost-inclusive risk convention before opening outcomes.",
+  "source": {
+    "recovery_artifact_run_id": 35275795833,
+    "recovery_artifact_id": 10520806876,
+    "recovery_artifact_digest": "sha256:ac9916b9606005f202dfe1b3017870a3bc8c08b26c46a905e5d95f7a91fe3667",
+    "trade_core_fingerprint": "ab290487c693ad98cb20d1b87e2db2fcf11c97a54da303d7ff301e9d99dca9f8",
+    "resolved_trade_count": 40,
+    "year": 2025,
+    "historical_byte_identity_recovered": false,
+    "semantic_economic_reproduction_pass": true
+  },
+  "comparability_authority": "PROP_COMPAT_001C_DH03_KRAKEN_ROBUSTNESS_GAUNTLET_PROTOCOL_V0.1",
+  "risk_grid_pct_equity_per_1R": [0.10, 0.15, 0.20, 0.25, 0.30],
+  "plans": {
+    "STARTER": {"target_pct": 10.0, "mdd_pct": 6.0, "mdl_pct": 3.0},
+    "INTERMEDIATE": {"target_pct": 12.0, "mdd_pct": 5.0, "mdl_pct": 3.0},
+    "ADVANCED": {"target_pct": 9.0, "mdd_pct": 3.0, "mdl_pct": 3.0}
+  },
+  "TFG_R_translation_frozen_before_outcomes": {
+    "holding_days": "(frozen exit_open_time - frozen entry_open_time) / 86400000",
+    "gross_return_fraction": "frozen outcome gross_return_pct / 100",
+    "initial_stop_risk_fraction": "frozen signal initial_risk_fraction",
+    "execution_cost_fraction": "execution_round_trip_pct_notional / 100",
+    "cost_inclusive_R_denominator": "initial_stop_risk_fraction + execution_cost_fraction",
+    "base_trade_R_before_gap": "(gross_return_fraction - execution_cost_fraction - 0.00033*carry_multiplier*holding_days) / cost_inclusive_R_denominator",
+    "stop_gap_rule": "If frozen exit_reason is STOP, subtract stop_gap_extra_R after the cost-inclusive base R calculation. This preserves the semantic meaning of +0.50R or +1.00R adverse stop slippage rather than scaling it by stop distance.",
+    "reason": "The frozen TFG OOS setup defines net R with a cost-inclusive denominator. Using DH03's stop-distance-only denominator would silently change TFG risk semantics. Stress axes themselves are unchanged."
+  },
+  "stage_A_full_factor_ledger_stress": {
+    "execution_round_trip_pct_notional": [0.20, 0.30, 0.50, 0.75],
+    "carry_daily_base_pct_notional": 0.033,
+    "carry_multipliers": [1.0, 1.5, 2.0],
+    "stop_gap_extra_R": [0.0, 0.25, 0.50, 1.0],
+    "factor_combinations": 48,
+    "required_outputs": ["expectancy_R", "profit_factor_R", "win_rate", "total_R", "historical_exit_order_balance_path", "static_MDD_target_or_breach_by_plan_and_risk"],
+    "limitation": "Trade-ledger sequencing diagnostic only; does not claim exact intraday Kraken MDL/floating-equity path."
+  },
+  "stage_B_correlation_stress": {
+    "simultaneous_full_R_losses": [2, 3, 4, 6],
+    "loss_multipliers_R_per_position": [1.0, 1.5, 2.0],
+    "calculation": "n_positions * risk_pct_per_1R * loss_multiplier",
+    "compare_against_pct": {"MDL": 3.0, "STARTER_MDD": 6.0, "INTERMEDIATE_MDD": 5.0, "ADVANCED_MDD": 3.0},
+    "note": "Pure portfolio stress algebra reused unchanged from DH03; it is independent of trade sample."
+  },
+  "stage_C_monte_carlo_sequence_risk": {
+    "method": "UTC_ENTRY_DAY_BLOCK_BOOTSTRAP",
+    "repetitions": 20000,
+    "seed": 20260917,
+    "sample_unit": "all 40 frozen resolved trades sharing the same UTC entry date are aggregated as one block to retain same-day cross-symbol clustering",
+    "horizon_blocks": "same number of distinct historical UTC entry days as the TFG 2025 sample",
+    "profiles": {
+      "BASE": {"execution_round_trip_pct": 0.20, "carry_multiplier": 1.0, "stop_gap_extra_R": 0.0},
+      "STRESS": {"execution_round_trip_pct": 0.30, "carry_multiplier": 1.0, "stop_gap_extra_R": 0.0},
+      "SEVERE": {"execution_round_trip_pct": 0.50, "carry_multiplier": 1.5, "stop_gap_extra_R": 0.50},
+      "EXTREME": {"execution_round_trip_pct": 0.75, "carry_multiplier": 2.0, "stop_gap_extra_R": 1.0}
+    },
+    "required_outputs": ["target_before_static_MDD_probability", "static_MDD_breach_probability", "target_reach_probability", "terminal_equity_percentiles", "max_drawdown_percentiles"],
+    "limitation": "Only 40 resolved trades / approximately 30 UTC entry-day blocks exist, so Monte Carlo uncertainty and regime concentration must be reported prominently. Static-MDD sequence risk only; no exact Kraken intraday MDL probability."
+  },
+  "stage_D_policy": {
+    "automatic_next_step": "If the queued 001F 15m proxy yields robust survivors, combine its MTM evidence with this gauntlet. No manual winner selection and no retroactive stress threshold changes.",
+    "combined_severe_candidate": {"execution_round_trip_pct": 0.50, "carry_multiplier": 1.5, "stop_gap_extra_R": 0.50},
+    "combined_extreme_candidate": {"execution_round_trip_pct": 0.75, "carry_multiplier": 2.0, "stop_gap_extra_R": 1.0},
+    "not_run_by_this_ledger_runner": true
+  },
+  "research_tier_evidence": {
+    "RESEARCH_DIAMOND_candidate_condition": "positive frozen OOS confirmation already exists AND severe predeclared robustness remains materially positive; this sample-size-limited diagnostic alone cannot confer the label",
+    "EXECUTION_DIAMOND_candidate_condition": "requires prospective forward/shadow execution robustness and operational detector validation",
+    "PRODUCTION_DIAMOND_condition": "requires authoritative platform execution compatibility and separate real-capital authorization"
+  },
+  "governance": {
+    "research_only": true,
+    "outcomes_opened_before_freeze": false,
+    "all_5_risk_values_reported": true,
+    "all_3_plans_reported": true,
+    "no_best_plan_selection": true,
+    "no_best_risk_selection": true,
+    "no_setup_changes": true,
+    "no_symbol_drops": true,
+    "no_time_selection": true,
+    "post_outcome_tuning": false,
+    "challenge_purchase": false,
+    "live_trading": false,
+    "orders": false,
+    "wallet_use": false,
+    "exchange_mutation": false,
+    "merge_to_main": false
+  }
+}
