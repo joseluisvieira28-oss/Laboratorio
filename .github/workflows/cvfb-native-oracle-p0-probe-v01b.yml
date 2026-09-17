@@ -1,0 +1,133 @@
+name: cvfb-native-oracle-p0-probe-v01b
+
+on:
+  pull_request:
+    paths:
+      - 'research/cross_venue_funding_basis/cvfb_native_oracle_p0_probe_v01b.py'
+      - 'research/cross_venue_funding_basis/CVFB_NATIVE_ORACLE_PROVENANCE_P0_TRANSPORT_AMENDMENT_V0.1B.json'
+      - '.github/workflows/cvfb-native-oracle-p0-probe-v01b.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  boundary:
+    runs-on: ubuntu-latest
+    outputs:
+      center: ${{ steps.center.outputs.value }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compile V0.1B source-only runner
+        run: python -m py_compile research/cross_venue_funding_basis/cvfb_native_oracle_p0_probe_v01b.py
+      - name: Verify frozen V0.1B amendment
+        run: |
+          python - <<'PY'
+          import json
+          p='research/cross_venue_funding_basis/CVFB_NATIVE_ORACLE_PROVENANCE_P0_TRANSPORT_AMENDMENT_V0.1B.json'
+          x=json.load(open(p,encoding='utf-8'))
+          assert x['status']=='FROZEN_BEFORE_V0.1B_RERUN'
+          assert x['scientific_design_changed'] is False
+          c=x['unchanged_scientific_contract']
+          assert c['target_epoch_ms']==1725148800000
+          assert c['height_bracket']==[100000000,600000000]
+          assert c['scan_radius_blocks_each_side']==150
+          assert c['scan_block_count']==301
+          assert c['market_numeric_values_emitted'] is False
+          assert c['economic_outcomes_authorized'] is False
+          assert x['transport_only_changes']['scan_shards']==12
+          print('V01B_FREEZE_GUARD_PASS')
+          PY
+      - name: Locate frozen historical boundary
+        run: |
+          mkdir -p out/boundary
+          python research/cross_venue_funding_basis/cvfb_native_oracle_p0_probe_v01b.py boundary \
+            --out out/boundary/CVFB_NATIVE_ORACLE_PROVENANCE_P0_BOUNDARY_V0.1B.json
+      - name: Export center
+        id: center
+        run: |
+          VALUE=$(python - <<'PY'
+          import json
+          x=json.load(open('out/boundary/CVFB_NATIVE_ORACLE_PROVENANCE_P0_BOUNDARY_V0.1B.json'))
+          print(x['first_height_at_or_after_target'])
+          PY
+          )
+          echo "value=$VALUE" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CVFB_NATIVE_ORACLE_P0_BOUNDARY_V01B
+          path: out/boundary/CVFB_NATIVE_ORACLE_PROVENANCE_P0_BOUNDARY_V0.1B.json
+          if-no-files-found: error
+          retention-days: 90
+
+  scan:
+    needs: boundary
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Scan deterministic frozen shard
+        run: |
+          mkdir -p out/shard
+          python research/cross_venue_funding_basis/cvfb_native_oracle_p0_probe_v01b.py scan \
+            --center '${{ needs.boundary.outputs.center }}' \
+            --shard '${{ matrix.shard }}' \
+            --out 'out/shard/CVFB_NATIVE_ORACLE_PROVENANCE_P0_SCAN_SHARD_${{ matrix.shard }}_V0.1B.json'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CVFB_NATIVE_ORACLE_P0_SCAN_${{ matrix.shard }}_V01B
+          path: out/shard/CVFB_NATIVE_ORACLE_PROVENANCE_P0_SCAN_SHARD_${{ matrix.shard }}_V0.1B.json
+          if-no-files-found: error
+          retention-days: 90
+
+  aggregate:
+    needs: [boundary, scan]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: CVFB_NATIVE_ORACLE_P0_*_V01B
+          path: out/all
+          merge-multiple: true
+      - name: Aggregate exact 301-block source-only receipt
+        run: |
+          python research/cross_venue_funding_basis/cvfb_native_oracle_p0_probe_v01b.py aggregate \
+            --boundary out/all/CVFB_NATIVE_ORACLE_PROVENANCE_P0_BOUNDARY_V0.1B.json \
+            --scan-dir out/all \
+            --out out/all/CVFB_NATIVE_ORACLE_PROVENANCE_P0_RECEIPT_V0.1B.json
+      - name: Enforce source-only firewalls
+        run: |
+          python - <<'PY'
+          import json
+          p='out/all/CVFB_NATIVE_ORACLE_PROVENANCE_P0_RECEIPT_V0.1B.json'
+          x=json.load(open(p,encoding='utf-8'))
+          assert x['status']=='COMPLETE'
+          assert x['scan']['block_count']==301
+          assert x['scan']['complete'] is True
+          assert x['market_numeric_values_emitted'] is False
+          assert x['economic_outcomes_computed'] is False
+          assert x['primary_replication_reopened'] is False
+          assert x['2026_opened'] is False
+          assert x['live_trading_authorized'] is False
+          assert x['decision'] in {'PASS_SCHEMA_CANDIDATE','FAIL_NO_NATIVE_ORACLE_SCHEMA_VISIBLE'}
+          print('P0_V01B_FINAL_GUARD_PASS', x['decision'])
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CVFB_NATIVE_ORACLE_PROVENANCE_P0_V01B
+          path: out/all/CVFB_NATIVE_ORACLE_PROVENANCE_P0_RECEIPT_V0.1B.json
+          if-no-files-found: error
+          retention-days: 90
