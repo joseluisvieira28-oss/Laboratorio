@@ -16,7 +16,6 @@ from .strategies.tfg_donchian_regime_forward import (
     TFGSourceError,
     aggregate_15m_to_12h,
     detect_signal,
-    latest_due_signal_close_ms,
     materialize_entry,
     regime_state,
     resolve_paper_trade,
@@ -30,6 +29,14 @@ WARMUP_DAILY_MS = 240 * DAY_MS
 
 def _first_forward_boundary_ms() -> int:
     return ((FORWARD_FREEZE_MS // TWELVE_HOUR_MS) + 1) * TWELVE_HOUR_MS
+
+
+def latest_certifiable_signal_close_ms(now_ms: int) -> int | None:
+    """Latest 12h boundary whose exact entry 15m bar is fully closed and auditable."""
+    boundary = now_ms - (now_ms % TWELVE_HOUR_MS)
+    if now_ms < boundary + FIFTEEN_MIN_MS:
+        boundary -= TWELVE_HOUR_MS
+    return boundary if boundary > FORWARD_FREEZE_MS else None
 
 
 def _boundaries_through(latest_due_ms: int) -> list[int]:
@@ -55,7 +62,7 @@ class TFGForwardShadowWatcher:
     def run_once(self, *, now_ms: int | None = None) -> dict[str, Any]:
         if now_ms is None:
             now_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
-        latest_due = latest_due_signal_close_ms(now_ms)
+        latest_due = latest_certifiable_signal_close_ms(now_ms)
         if latest_due is None:
             return {
                 "watcher_id": self.watcher_id,
@@ -92,15 +99,12 @@ class TFGForwardShadowWatcher:
                 end_ms=now_ms,
                 now_ms=now_ms,
             )
-            h12, incomplete = aggregate_15m_to_12h(m15)
-            # Incomplete edge buckets are normal around the current open bucket, but
-            # any missing fully elapsed 12h bucket inside the usable range is fatal.
+            h12, _incomplete = aggregate_15m_to_12h(m15)
             complete_opens = {c.open_time for c in h12}
             for boundary in boundaries:
                 signal_open = boundary - TWELVE_HOUR_MS
-                if signal_open >= first_boundary - WARMUP_15M_MS and boundary <= latest_due:
-                    if signal_open not in complete_opens:
-                        raise TFGSourceError(f"missing complete 12H source bucket:{symbol}:{signal_open}")
+                if signal_open not in complete_opens:
+                    raise TFGSourceError(f"missing complete 12H source bucket:{symbol}:{signal_open}")
             source_15m[symbol] = m15
             bars_12h[symbol] = h12
             daily[symbol] = d1
