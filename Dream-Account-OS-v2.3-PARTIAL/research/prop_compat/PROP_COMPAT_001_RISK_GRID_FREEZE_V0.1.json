@@ -1,0 +1,45 @@
+{
+  "document_id": "PROP_COMPAT_001_RISK_GRID_FREEZE_V0.1",
+  "campaign_id": "PROP-COMPAT-001",
+  "version": "0.1",
+  "frozen_on": "2026-09-17",
+  "status": "FROZEN_NOT_RUN",
+  "authority": "USER_CAMPAIGN_SPECIFICATION",
+  "risk_unit": "account_equity_per_1R",
+  "risk_grid_pct": [0.10, 0.15, 0.20, 0.25, 0.30],
+  "portfolio_measurements_required": [
+    "total_exposure",
+    "simultaneous_risk",
+    "symbol_concentration",
+    "correlated_risk",
+    "maximum_open_risk",
+    "realized_drawdown",
+    "floating_drawdown"
+  ],
+  "correlation_stress_required": [
+    "2_concurrent_stops",
+    "3_concurrent_stops",
+    "4_concurrent_stops",
+    "full_basket_adverse_move",
+    "overnight_gap",
+    "volatility_spike",
+    "correlated_breakout_failure"
+  ],
+  "governance": {
+    "grid_values_may_not_be_added_after_outcomes": true,
+    "no_interpolated_sizes": true,
+    "no_risk_size_selection_from_results": true,
+    "no_setup_rule_changes": true,
+    "no_cost_changes_to_rescue_result": true,
+    "no_symbol_drops": true,
+    "no_time_period_selection": true,
+    "risk_grid_run": false,
+    "prop_replay_run": false,
+    "live_trading": false,
+    "challenge_purchase": false
+  },
+  "execution_gate": {
+    "authorized_to_run_now": false,
+    "reason": "The risk grid is frozen prospectively but remains locked until the relevant prop rulebook/execution translation is declared simulation-ready under PROP-COMPAT-001 fail-closed governance."
+  }
+}
