@@ -1,0 +1,49 @@
+name: MVE SIMPLE4H 01 — 2025 One-Shot V0.3
+
+on:
+  push:
+    branches:
+      - simple4h-recovery-v0.2
+    paths:
+      - '.github/workflows/mve-simple4h-01-one-shot-2025.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  one-shot-2025:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install frozen runner dependencies
+        run: pip install numpy pandas scipy
+      - name: Inert runner self-test
+        run: python research/simple4h/mve_simple4h_2025_runner_v02.py --self-test
+      - name: Rebuild checksum-verified authorized 2025 source cohort
+        run: |
+          python research/simple4h/mve_simple4h_source_only_manifest_v01.py \
+            --work "$RUNNER_TEMP/simple4h-source" \
+            --out "$RUNNER_TEMP/simple4h-source-receipt"
+      - name: Execute frozen 2025 one-shot exactly once
+        run: |
+          python research/simple4h/mve_simple4h_2025_runner_v02.py \
+            --source-root "$RUNNER_TEMP/simple4h-source" \
+            --authorization-json research/simple4h/MVE_SIMPLE4H_01_2025_ONE_SHOT_AUTHORIZATION_READY_V0.1.json \
+            --out "$RUNNER_TEMP/simple4h-one-shot"
+      - name: Publish immutable research receipts
+        uses: actions/upload-artifact@v4
+        with:
+          name: MVE_SIMPLE4H_01_2025_ONE_SHOT_V03
+          path: |
+            ${{ runner.temp }}/simple4h-source-receipt/MVE_SIMPLE4H_01_SOURCE_MANIFEST_V0.1.json
+            ${{ runner.temp }}/simple4h-source-receipt/MVE_SIMPLE4H_01_SOURCE_ONLY_RECEIPT_V0.1.json
+            ${{ runner.temp }}/simple4h-one-shot/MVE_SIMPLE4H_01_SOURCE_RECEIPT_V0.1.json
+            ${{ runner.temp }}/simple4h-one-shot/MVE_SIMPLE4H_01_2025_EVENTS.csv.gz
+            ${{ runner.temp }}/simple4h-one-shot/MVE_SIMPLE4H_01_2025_SUMMARY.csv
+            ${{ runner.temp }}/simple4h-one-shot/MVE_SIMPLE4H_01_2025_DECISION_RECEIPT.json
+          if-no-files-found: error
+          retention-days: 90
