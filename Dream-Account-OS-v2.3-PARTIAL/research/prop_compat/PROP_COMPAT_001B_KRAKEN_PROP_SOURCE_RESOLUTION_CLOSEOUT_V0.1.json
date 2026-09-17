@@ -1,0 +1,91 @@
+{
+  "document_id": "PROP_COMPAT_001B_KRAKEN_PROP_SOURCE_RESOLUTION_CLOSEOUT_V0.1",
+  "campaign_id": "PROP-COMPAT-001B",
+  "closed_on": "2026-09-17",
+  "status": "SOURCE_RESOLUTION_PARTIAL_15M_PROXY_PROMISING_EXACT_REPLAY_BLOCKED",
+  "setup_id": "DH-03-HO1",
+  "prop_program": "KRAKEN_PROP",
+  "authority_chain": [
+    "PROP_COMPAT_001B_KRAKEN_PROP_SOURCE_RESOLUTION_FREEZE_V0.1",
+    "PROP_COMPAT_001B_KRAKEN_PROP_AMBIGUITY_ENVELOPE_PROTOCOL_V0.1",
+    "PROP_COMPAT_001B_KRAKEN_PROP_IMPLEMENTATION_CLARIFICATION_01",
+    "PROP_COMPAT_001B_KRAKEN_PROP_15M_DIAGNOSTIC_PROTOCOL_V0.1",
+    "PROP_COMPAT_001B_KRAKEN_PROP_15M_DIAGNOSTIC_RECEIPT_V0.1"
+  ],
+  "confirmed_rule_state": {
+    "plans": {
+      "STARTER": {"profit_target_pct":10.0,"mdl_pct":3.0,"mdd_pct":6.0},
+      "INTERMEDIATE": {"profit_target_pct":12.0,"mdl_pct":3.0,"mdd_pct":5.0},
+      "ADVANCED": {"profit_target_pct":9.0,"mdl_pct":3.0,"mdd_pct":3.0}
+    },
+    "mdl_reference_utc":"00:30",
+    "mdd_static":true,
+    "time_limit":null,
+    "consistency_rule":null,
+    "commission_pct_per_side":0.04,
+    "overnight_allowed":true,
+    "weekend_allowed":true,
+    "stop_and_take_profit_orders_available":true,
+    "gtc":true,
+    "api_trading":false,
+    "target_monitored_on_realtime_equity_including_unrealized_pnl":true
+  },
+  "remaining_exact_blockers": {
+    "carry_timing_conflict": {
+      "support":"0.033% per day divided into six 4-hour rollovers",
+      "evaluation_agreement":"0.033% daily charge for positions open at 00:00 UTC",
+      "materiality":"Timing/eligibility can alter balance around the 00:30 MDL reference.",
+      "status":"UNRESOLVED_AUTHORITATIVE_CONFLICT"
+    },
+    "execution_history": {
+      "historical_prop_bid_ask":"NOT_RECOVERED",
+      "historical_prop_depth":"NOT_RECOVERED",
+      "historical_prop_fill_stream":"NOT_RECOVERED",
+      "status":"EXACT_EXECUTION_LAYER_BLOCKED"
+    },
+    "minute_replay_infrastructure": {
+      "runner":"prop_compat_001b_kraken_proxy_runner_v01.py",
+      "frozen":true,
+      "executed":false,
+      "reason":"A new GitHub Actions workflow write was blocked by platform safety checks; current local runtime cannot directly resolve/download data.binance.vision and raw pinned 1m ZIPs are not retained in accessible Library/artifact storage.",
+      "policy":"No substitution of 15m for the exact 1m result."
+    }
+  },
+  "15m_diagnostic": {
+    "decisional_authority":false,
+    "base_cells":30,
+    "survives_not_decisional":14,
+    "no_decision":14,
+    "obvious_breach":2,
+    "ambiguity":0,
+    "obvious_breach_cells":["ADVANCED_0.30_BASE","ADVANCED_0.30_STRESS"],
+    "carry_timing_classification_changes":0,
+    "interpretation":"Unlike Hyro, no universal structural killer was found. The published carry-timing conflict did not change any 15m cell classification. Multiple cells reached their plan equity target without an observed 15m MDL/MDD breach, while Advanced at 0.30% per 1R breached its 3% static MDD under both execution cases. No cell is promoted to exact compatibility from this diagnostic."
+  },
+  "campaign_decision": {
+    "exact_prop_compat_status":"BLOCKED",
+    "PROP_COMPAT_PASS":false,
+    "CONDITIONAL_PASS":false,
+    "PROP_COMPAT_FAIL":false,
+    "scientific_read":"KRAKEN_PROP_REMAINS_WORTH_SOURCE_RESOLUTION; NOT_REJECTED_BY_PROXY",
+    "official_phase3_risk_grid":"NOT_RUN_LOCKED",
+    "challenge_purchase":"DO_NOT_PURCHASE",
+    "live_trading":false
+  },
+  "unlock_requirements": [
+    "Authoritative written reconciliation of Kraken Support versus Breakout Evaluation Agreement margin-funding cadence, exact UTC rollover timestamps, and notional basis.",
+    "Authoritative documentation or recoverable data for the Kraken Prop/Breakout executable price layer, or a pre-outcome formally accepted deterministic execution model that does not pretend to be observed historical fills.",
+    "Ability to execute the already-frozen 1m ambiguity-envelope runner against the 144 pinned/hash-verified Binance 1m archives without altering its semantics."
+  ],
+  "next_authorized_research_action":"Prepare support-resolution question pack; do not send externally without an explicit send instruction. Continue TFG ledger recovery in parallel if desired because it is independent of Kraken source resolution.",
+  "governance": {
+    "research_only":true,
+    "post_outcome_tuning":false,
+    "setup_rules_changed":false,
+    "no_best_plan_selection":true,
+    "no_best_risk_selection":true,
+    "challenge_purchase":false,
+    "live_trading":false,
+    "merge_to_main":false
+  }
+}
