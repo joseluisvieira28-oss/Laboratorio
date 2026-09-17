@@ -187,9 +187,10 @@ jobs:
         run: |
           python extract_chain_exact_features_v012.py --input-root "$GITHUB_WORKSPACE/all-full-v07" --out-dir "$GITHUB_WORKSPACE/features-v012"
           python - <<'PY'
-          import json
+          import json, os
           from pathlib import Path
-          r=json.loads(Path('$GITHUB_WORKSPACE/features-v012/chain_exact_features_v012_receipt.json').read_text())
+          p=Path(os.environ['GITHUB_WORKSPACE'])/'features-v012'/'chain_exact_features_v012_receipt.json'
+          r=json.loads(p.read_text())
           assert r['economic_outcomes_opened'] is False
           assert r['promotion_authority'] is False
           assert r['summary_rows']==1012 and r['unique_mints']==1012
