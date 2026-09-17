@@ -8,6 +8,8 @@ import urllib.request
 from dataclasses import asdict
 from datetime import datetime, timedelta, timezone
 
+from radar.timing import ExactTimingPolicy, TimingState
+
 from .etf_cme_instflow_001 import (
     CFTCObservation,
     CFTC_CONTRACT_CODE,
@@ -54,42 +56,32 @@ def fetch_latest_two(timeout: int = 30) -> tuple[CFTCObservation, CFTCObservatio
     return previous, current
 
 
-def signal_receipt_from_observations(
-    previous: CFTCObservation,
-    current: CFTCObservation,
-    now: datetime,
-) -> dict:
-    """Evaluate the frozen signal from already-fetched observations.
-
-    Runtime may cache slow-moving public CFTC rows, but the exact time gate is
-    re-evaluated on every radar cycle. No late-entry tolerance is introduced.
-    """
-    if now.tzinfo is None:
-        raise ValueError("now must be timezone-aware")
-    now = now.astimezone(timezone.utc)
-
-    signal = compute_frozen_signal(previous, current)
-
+def _times(current: CFTCObservation, information_lag_days: int, hold_days: int):
     as_of_date = datetime.fromisoformat(current.as_of_date).date()
     information_safe_time = datetime.combine(
-        as_of_date + timedelta(days=signal.information_lag_days),
+        as_of_date + timedelta(days=information_lag_days),
         datetime.min.time(),
         tzinfo=timezone.utc,
     )
     exact_entry_time = information_safe_time
-    exact_exit_time = exact_entry_time + timedelta(days=signal.hold_days)
+    exact_exit_time = exact_entry_time + timedelta(days=hold_days)
+    return information_safe_time, exact_entry_time, exact_exit_time
 
-    if now < information_safe_time:
-        state = "WAITING_INFORMATION_SAFE_TIME"
-        entry_eligible_now = False
-    elif now == exact_entry_time:
-        state = "EXACT_ENTRY_TIME"
-        entry_eligible_now = signal.direction.value != "NONE"
-    else:
-        state = "ENTRY_WINDOW_PASSED_DO_NOT_CHASE"
-        entry_eligible_now = False
 
-    return {
+def _base_receipt(
+    *,
+    previous: CFTCObservation,
+    current: CFTCObservation,
+    now: datetime,
+):
+    if now.tzinfo is None:
+        raise ValueError("now must be timezone-aware")
+    now = now.astimezone(timezone.utc)
+    signal = compute_frozen_signal(previous, current)
+    information_safe_time, exact_entry_time, exact_exit_time = _times(
+        current, signal.information_lag_days, signal.hold_days
+    )
+    payload = {
         "strategy_id": signal.strategy_id,
         "source": "CFTC_PUBLIC_REPORTING",
         "dataset": CFTC_DATASET,
@@ -102,19 +94,112 @@ def signal_receipt_from_observations(
         "information_safe_time_utc": information_safe_time.isoformat().replace("+00:00", "Z"),
         "exact_entry_time_utc": exact_entry_time.isoformat().replace("+00:00", "Z"),
         "exact_exit_time_utc": exact_exit_time.isoformat().replace("+00:00", "Z"),
-        "state": state,
-        "entry_eligible_now": entry_eligible_now,
         "micro_live_eligible": False,
         "micro_live_blocker": "EXECUTION_INSTRUMENT_AND_STRATEGY_RISK_MODEL_NOT_FROZEN",
         "authenticated_exchange_api": False,
         "order_created": False,
     }
+    return signal, now, exact_entry_time, payload
+
+
+def signal_receipt_from_observations(
+    previous: CFTCObservation,
+    current: CFTCObservation,
+    now: datetime,
+) -> dict:
+    """Historical/frozen exact-time evaluator.
+
+    This intentionally preserves exact timestamp equality. It exists as the
+    scientific reference and must not be widened to rescue a live or historical
+    entry.
+    """
+    signal, now, exact_entry_time, payload = _base_receipt(
+        previous=previous, current=current, now=now
+    )
+    information_safe_time = exact_entry_time
+
+    if now < information_safe_time:
+        state = "WAITING_INFORMATION_SAFE_TIME"
+        entry_eligible_now = False
+    elif now == exact_entry_time:
+        state = "EXACT_ENTRY_TIME"
+        entry_eligible_now = signal.direction.value != "NONE"
+    else:
+        state = "ENTRY_WINDOW_PASSED_DO_NOT_CHASE"
+        entry_eligible_now = False
+
+    payload.update(
+        {
+            "state": state,
+            "entry_eligible_now": entry_eligible_now,
+            "timing_contract": "SCIENTIFIC_EXACT_TIMESTAMP",
+        }
+    )
+    return payload
+
+
+def operational_signal_receipt_from_observations(
+    previous: CFTCObservation,
+    current: CFTCObservation,
+    now: datetime,
+    *,
+    timing_policy: ExactTimingPolicy | None = None,
+) -> dict:
+    """Deployment-only exact-timing bridge.
+
+    The scientific target remains the frozen exact timestamp. This function only
+    defines a tiny, prospectively frozen technical lateness budget for scheduler,
+    network and process jitter. It never allows early entry or discretionary
+    chasing after the budget expires.
+    """
+    policy = timing_policy or ExactTimingPolicy()
+    signal, now, exact_entry_time, payload = _base_receipt(
+        previous=previous, current=current, now=now
+    )
+    timing = policy.receipt(now=now, target=exact_entry_time)
+    timing_state = TimingState(timing["timing_state"])
+
+    if timing_state is TimingState.WAITING:
+        state = "WAITING_INFORMATION_SAFE_TIME"
+    elif timing_state is TimingState.ARMED:
+        state = "ARMED_FOR_EXACT_ENTRY"
+    elif timing_state is TimingState.DUE:
+        state = "OPERATIONAL_ENTRY_DUE"
+    else:
+        state = "ENTRY_WINDOW_PASSED_DO_NOT_CHASE"
+
+    entry_eligible_now = (
+        timing_state is TimingState.DUE and signal.direction.value != "NONE"
+    )
+    payload.update(
+        {
+            "state": state,
+            "entry_eligible_now": entry_eligible_now,
+            "timing_contract": "EXACT_TIMING_ENGINE_V1_DEPLOYMENT_ONLY",
+            "operational_timing": timing,
+            "scientific_target_unchanged": True,
+        }
+    )
+    return payload
 
 
 def current_signal_receipt(now: datetime | None = None, timeout: int = 30) -> dict:
     now = now or datetime.now(timezone.utc)
     previous, current = fetch_latest_two(timeout=timeout)
     return signal_receipt_from_observations(previous, current, now)
+
+
+def current_operational_signal_receipt(
+    now: datetime | None = None,
+    timeout: int = 30,
+    *,
+    timing_policy: ExactTimingPolicy | None = None,
+) -> dict:
+    now = now or datetime.now(timezone.utc)
+    previous, current = fetch_latest_two(timeout=timeout)
+    return operational_signal_receipt_from_observations(
+        previous, current, now, timing_policy=timing_policy
+    )
 
 
 def current_signal_json(now: datetime | None = None, timeout: int = 30) -> str:
