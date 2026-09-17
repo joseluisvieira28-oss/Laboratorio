@@ -1,0 +1,191 @@
+name: CED 1D V3 Byte Recovery + Frozen Discovery V0.1
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - ced-1d-v3-byte-recovery-2026-09-17
+    paths:
+      - .github/workflows/ced-1d-v3-byte-recovery-discovery-v01.yml
+
+permissions:
+  contents: read
+
+jobs:
+  ced1d:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      BASE: Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3
+      WORK: work
+      WS: work/CED_PHASE2_WORKSPACE
+      CANON: work/canon
+      OUT: work/CED1D_OUTPUT
+    steps:
+      - name: Checkout frozen branch
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Decode recovered canonical bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$CANON"
+          base64 -d "$BASE/evidence/ced_recovered_authority_bundle_v01.zip.b64" > "$WORK/canonical_bundle.zip"
+          echo '999b77bf293d642ca17d7d8c7422e4ee21c0e7f6aa0847cc386362881ff9539d  '"$WORK/canonical_bundle.zip" | sha256sum -c -
+          unzip -q "$WORK/canonical_bundle.zip" -d "$CANON"
+
+      - name: Bind canonical authority bytes
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo 'fb6da37a934468d84ee95f4eaadb663900eb7b9687e4d3e34bc1579d20a2631b  '"$CANON/RESEARCH_INPUT_INDEX.json" | sha256sum -c -
+          echo '4a6ee27a8b6fd66dcc89e3d2b4211d3f5d5c8020c151f8908f081108803acfb4  '"$CANON/authority/contract.json" | sha256sum -c -
+          python - <<'PY'
+          import json, pathlib
+          c=pathlib.Path('work/canon')
+          ev=json.loads((c/'authority/phase2_dataset_evidence.json').read_text())
+          uni=json.loads((c/'authority/CED-PH2-FROZEN-UNIVERSE.json').read_text())
+          ca=json.loads((c/'authority/contract_authority.json').read_text())
+          assert ev['verdict']=='DATASET_PASS'
+          assert ev['market']=='USD-M Futures'
+          assert ev['statistical_research_run'] is False
+          assert ev['holdout_assigned'] is False
+          assert ev['access_2026_plus'] is False
+          assert len(uni['symbols'])==10 and len(set(uni['symbols']))==10
+          assert uni['authority_status']=='RECOVERED_CANONICAL'
+          assert ca['authority_status']=='VERIFIED_CANONICAL'
+          assert ca['confirmation_2025_accessed'] is False
+          print('CANONICAL_AUTHORITY_BINDING_PASS')
+          PY
+
+      - name: Byte-exact USD-M source recovery 480/480
+        shell: bash
+        run: |
+          set -euo pipefail
+          python "$BASE/byte_exact_source_recovery_v02.py" \
+            --registry "$CANON/target_registry_R1.json" \
+            --output "$WS"
+          python - <<'PY'
+          import json
+          p='work/CED_PHASE2_WORKSPACE/byte_exact_recovery_receipt.json'
+          r=json.load(open(p,encoding='utf-8'))
+          assert r['status']=='BYTE_EXACT_RECOVERY_PASS'
+          assert r['completed_records']==480
+          assert r['expected_records']==480
+          assert r['year_2025_accessed'] is False
+          assert r['year_2026_accessed'] is False
+          assert r['outcomes_computed'] is False
+          print('BYTE_EXACT_RECOVERY_480_480_PASS')
+          PY
+
+      - name: Prepare canonical repaired-input index
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$WS/REPAIR_A01/EVIDENCE"
+          cp "$CANON/RESEARCH_INPUT_INDEX.json" "$WS/REPAIR_A01/EVIDENCE/RESEARCH_INPUT_INDEX.json"
+          cp "$CANON/repair_component_manifest.json" "$WS/REPAIR_A01/EVIDENCE/repair_component_manifest.json"
+          cp "$CANON/repair_config.json" "$CANON/repair_config.bound.json"
+
+      - name: Replay six canonical repairs byte-exact
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp "$CANON/repair_config.json" "$CANON/repair_config.json.tmp"
+          # Historical repair module loads repair_config.json beside itself; both recovered files already coexist in CANON.
+          python "$BASE/replay_six_repairs_v01.py" \
+            --workspace "$WS" \
+            --registry "$CANON/target_registry_R1.json" \
+            --manifest "$CANON/repair_component_manifest.json" \
+            --historical-repair "$CANON/repair_phase2_a01.py" \
+            --output "$WORK/repair_replay"
+          python - <<'PY'
+          import json
+          r=json.load(open('work/repair_replay/repair_replay_receipt.json',encoding='utf-8'))
+          assert r['status']=='CANONICAL_REPAIR_REPLAY_PASS'
+          assert r['record_count']==6
+          assert r['year_2025_accessed'] is False
+          assert r['year_2026_accessed'] is False
+          assert r['outcomes_computed'] is False
+          print('CANONICAL_SIX_REPAIR_REPLAY_PASS')
+          PY
+
+      - name: Unpack historical frozen CED 1D runner V0.3
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$WORK/runner"
+          unzip -q "$CANON/CED-1D-V1-RUNNER-FREEZE-V0.3.zip" -d "$WORK/runner"
+          test -f "$WORK/runner/CED_1D_V1_RUNNER_FREEZE_V0.3/run_1d_lab.py"
+
+      - name: Frozen runner preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          R="$WORK/runner/CED_1D_V1_RUNNER_FREEZE_V0.3"
+          python "$R/run_1d_lab.py" \
+            --authority "$CANON/authority" \
+            --dataset-workspace "$WS" \
+            --input-index REPAIR_A01/EVIDENCE/RESEARCH_INPUT_INDEX.json \
+            --output "$OUT/preflight"
+          python - <<'PY'
+          import json
+          p=json.load(open('work/CED1D_OUTPUT/preflight/preflight.json',encoding='utf-8'))
+          assert p['status']=='PREFLIGHT_PASS'
+          assert p['discovery_files_resolved']==480
+          assert p['discovery_months_per_symbol']==48
+          assert p['confirmation_2025_files_opened']==0
+          print('CED1D_FROZEN_PREFLIGHT_PASS')
+          PY
+
+      - name: Execute exact frozen 1D raw Discovery
+        shell: bash
+        run: |
+          set -euo pipefail
+          R="$WORK/runner/CED_1D_V1_RUNNER_FREEZE_V0.3"
+          python "$R/run_1d_lab.py" \
+            --authority "$CANON/authority" \
+            --dataset-workspace "$WS" \
+            --input-index REPAIR_A01/EVIDENCE/RESEARCH_INPUT_INDEX.json \
+            --output "$OUT/discovery" \
+            --raw-discovery
+          python - <<'PY'
+          import json
+          m=json.load(open('work/CED1D_OUTPUT/discovery/run_manifest.json',encoding='utf-8'))
+          assert m['lab']=='CED-1D-V1'
+          assert m['runner_version']=='0.3.0'
+          assert m['discovery_source_slots']==480
+          assert m['primary_tests']==820
+          assert m['confirmation_2025_accessed'] is False
+          assert m['confirmation_2025_files_opened']==0
+          assert m['access_2026_plus'] is False
+          assert m['costs_applied'] is False
+          assert m['multiple_testing_applied'] is False
+          assert m['scout_score_applied'] is False
+          print('CED1D_RAW_DISCOVERY_ONE_SHOT_COMPLETE')
+          PY
+
+      - name: Upload source recovery evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ced-1d-v3-source-recovery-${{ github.run_id }}
+          path: |
+            work/CED_PHASE2_WORKSPACE/byte_exact_recovery_receipt.json
+            work/repair_replay/repair_replay_receipt.json
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Upload frozen Discovery outputs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ced-1d-v3-frozen-discovery-${{ github.run_id }}
+          path: work/CED1D_OUTPUT
+          if-no-files-found: warn
+          retention-days: 30
