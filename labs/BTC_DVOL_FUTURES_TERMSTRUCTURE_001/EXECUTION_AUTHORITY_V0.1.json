@@ -1,0 +1,91 @@
+{
+  "lab_id": "BTC-DVOL-FUTURES-TERMSTRUCTURE-001",
+  "execution_mve_id": "DVOL-TS-DIRECTIONAL-EXEC-001",
+  "status": "PRE_OUTCOME_FROZEN",
+  "date_frozen": "2026-09-17",
+  "parent_discovery_id": "DVOL-TS-CONVERGENCE-DISCOVERY-001",
+  "parent_discovery_run": 35278588512,
+  "parent_discovery_artifact_id": 10521099777,
+  "parent_discovery_classification": "DISCOVERY_PASS_BASIS_CONVERGENCE",
+  "question": "Does the sign of the contemporaneous BTCDVOL futures-minus-index basis predict profitable movement in the traded DVOL future itself after fixed conservative transaction-cost stress and post-signal direction-matched public trade fills?",
+  "source": {
+    "provider": "Deribit official historical API",
+    "research_start": "2023-03-27T00:00:00Z",
+    "research_end": "2024-12-31T23:59:59.999Z",
+    "candidate_start": "2023-03-29",
+    "candidate_end": "2024-12-25",
+    "protected_start": "2025-01-01T00:00:00Z"
+  },
+  "signal_rule": {
+    "daily_anchor": "First ordinary public BTCDVOL trade at or after 08:00 UTC for each active UTC day, strictly before expiration.",
+    "basis": "signal_trade_price - signal_trade_index_price",
+    "direction": "basis > 0 => SELL/short future; basis < 0 => BUY/long future; basis == 0 => no episode.",
+    "basis_threshold": 0,
+    "nonoverlap": "Within each contract, pair daily signal anchors deterministically as (0,1),(2,3),... . Unpaired final anchor is ignored.",
+    "no_direction_optimization": true,
+    "no_threshold_tuning": true
+  },
+  "fill_rule": {
+    "ordinary_trade": "Deduplicated public trade with block/combo/RFQ identifiers absent/null.",
+    "entry": "First ordinary trade strictly after entry signal timestamp, matching the signal direction, within 30 minutes.",
+    "exit": "First ordinary trade strictly after the paired exit-anchor timestamp, matching the opposite direction, within 30 minutes.",
+    "missing_fill": "Exclude episode; never widen the window under this MVE ID.",
+    "fill_window_minutes": 30
+  },
+  "position": {
+    "quantity_btcdvol": 0.1,
+    "contract_pnl": "LONG: q*(exit-entry); SHORT: q*(entry-exit), USDC.",
+    "overlapping_positions": false
+  },
+  "fixed_cost_model": {
+    "purpose": "Conservative fixed research cost stress, not a claim that this was the exact account-specific fee on every historical date.",
+    "base_taker_rate_each_side": 0.0005,
+    "rationale": "Deribit's March 2023 launch announcement states DVOL futures follow the same fee structure as other USDC instruments. Public contemporaneous/legacy Deribit fee references commonly report 0.05% taker for USDC futures. Exact point-in-time fee provenance remains a separate promotion requirement.",
+    "delivery_fee": 0,
+    "delivery_fee_reason": "Every episode exits through a public trade before expiry; no episode is held to delivery.",
+    "stress": {
+      "adverse_ticks_each_side": 1,
+      "tick_size_usdc": 0.1,
+      "fee_multiplier": 1.25
+    }
+  },
+  "sample_gates": {
+    "minimum_executable_episodes": 120,
+    "minimum_contracts_with_executable_episodes": 12,
+    "minimum_expiration_quarters": 6
+  },
+  "bootstrap": {
+    "unit": "contract",
+    "replications": 10000,
+    "seed": 18092026,
+    "ci": 0.95,
+    "statistic": "equal-weight mean of per-contract mean net PnL"
+  },
+  "economic_gates": {
+    "mean_contract_base_net_gt": 0,
+    "base_profit_factor_gt": 1,
+    "cluster_bootstrap_base_lower_95_gt": 0,
+    "positive_contract_share_gte": 0.6,
+    "nonnegative_quarters_gte": 5,
+    "mean_contract_stress_net_gt": 0,
+    "stress_profit_factor_gt": 1,
+    "max_positive_contract_contribution_share_lte": 0.35
+  },
+  "classifications": {
+    "pass": "EXECUTION_PASS_FIXED_COST_STRESS",
+    "no_edge": "EXECUTION_NO_EDGE_AFTER_FIXED_COST_STRESS",
+    "insufficient": "EXECUTION_DATA_LIQUIDITY_INSUFFICIENT",
+    "technical_failure": "EXECUTION_SOURCE_OR_TECHNICAL_FAILURE",
+    "provenance_failure": "EXECUTION_PROVENANCE_FAILURE"
+  },
+  "firewalls": {
+    "access_2025": false,
+    "access_2026": false,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "wallet_access": false,
+    "merge_to_main": false
+  },
+  "no_rescue_rule": "After the canonical result is opened, do not alter basis threshold, direction, anchor construction, non-overlap rule, fill windows, quantity, fee/slippage assumptions, sample gates, economic gates, years or source population under this MVE ID.",
+  "post_pass_rule": "A PASS promotes the mechanism to an after-fixed-cost execution candidate only. Historical fee provenance, independent replication/robustness and Promotion Policy V3 adjudication remain required before quasi-diamond or any live authority."
+}
