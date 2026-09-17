@@ -1,0 +1,81 @@
+name: CRYPTO EDGE RADAR V0.9 PROMOTION SPRINT
+
+on:
+  push:
+    branches:
+      - crypto-edge-radar-promotion-sprint-v0.9
+    paths:
+      - 'crypto_edge_radar/**'
+      - '.github/workflows/crypto-edge-radar-v09-promotion.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deterministic-safety:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: crypto_edge_radar
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install runtime dependencies
+        run: python -m pip install -e .
+      - name: Compile radar and tests
+        run: python -m compileall radar tests
+      - name: Full deterministic unit suite
+        run: python -m unittest discover -s tests -v
+
+  tfg-mexc-spot-source-gate:
+    needs: deterministic-safety
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: crypto_edge_radar
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install runtime dependencies
+        run: python -m pip install -e .
+      - name: Prepare receipts
+        run: mkdir -p v09_artifacts
+      - name: Real public MEXC Spot TFG source probe
+        run: |
+          python - <<'PY'
+          from datetime import datetime, timezone
+          import json
+          from pathlib import Path
+          from radar.strategies.tfg_donchian_regime_forward import MEXCSpotKlineFeed, source_probe
+
+          now_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
+          receipt = source_probe(MEXCSpotKlineFeed(timeout=15), now_ms=now_ms)
+          Path('v09_artifacts/tfg_mexc_spot_source_probe.json').write_text(
+              json.dumps(receipt, indent=2, sort_keys=True) + '\n', encoding='utf-8'
+          )
+          assert receipt['status'] == 'PASS_SOURCE_ONLY', receipt
+          assert receipt['provider'] == 'MEXC_SPOT_PUBLIC', receipt
+          assert receipt['market'] == 'SPOT', receipt
+          assert receipt['endpoint'] == '/api/v3/klines', receipt
+          assert receipt['authenticated_exchange_api_used'] is False, receipt
+          assert receipt['order_created'] is False, receipt
+          assert receipt['exchange_mutation_performed'] is False, receipt
+          assert set(receipt['coverage']) == {'BTCUSDT','ETHUSDT','SOLUSDT','BNBUSDT','XRPUSDT','DOGEUSDT'}, receipt
+          for symbol, row in receipt['coverage'].items():
+              assert row['12h_complete_rows'] >= 40, (symbol, row)
+              assert row['1d_rows'] >= 220, (symbol, row)
+          print(json.dumps(receipt, sort_keys=True))
+          PY
+      - name: Upload TFG source receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: crypto-edge-radar-v09-tfg-mexc-spot-source
+          path: crypto_edge_radar/v09_artifacts/
+          if-no-files-found: error
+          retention-days: 30
