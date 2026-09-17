@@ -1,0 +1,41 @@
+name: Binance Margin Borrow Access 001 — Event Source Schema V0.1
+
+on:
+  push:
+    branches:
+      - binance-margin-borrow-access-v0.1
+    paths:
+      - research/binance_margin_borrow_access/event_source_schema_probe_v01.py
+      - research/binance_margin_borrow_access/BINANCE_MARGIN_BORROW_ACCESS_001_EVENT_SOURCE_SCHEMA_INPUT_V0_1.json
+      - research/binance_margin_borrow_access/BINANCE_MARGIN_BORROW_ACCESS_001_EVENT_SOURCE_ADJUDICATION_AUTHORITY_V0_1.md
+      - .github/workflows/binance-margin-borrow-access-event-source-schema-v01.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  schema:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        shard: [0, 1, 2, 3]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --disable-pip-version-check requests beautifulsoup4
+      - name: Probe frozen official article schema
+        run: python research/binance_margin_borrow_access/event_source_schema_probe_v01.py --input research/binance_margin_borrow_access/BINANCE_MARGIN_BORROW_ACCESS_001_EVENT_SOURCE_SCHEMA_INPUT_V0_1.json --shard ${{ matrix.shard }} --out schema_${{ matrix.shard }}
+      - name: Upload schema shard
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: BINANCE_MARGIN_BORROW_ACCESS_001_EVENT_SOURCE_SCHEMA_V0_1_SHARD_${{ matrix.shard }}
+          path: schema_${{ matrix.shard }}/
+          if-no-files-found: warn
+          retention-days: 30
