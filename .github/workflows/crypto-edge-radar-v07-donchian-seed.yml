@@ -1,0 +1,75 @@
+name: CRYPTO EDGE RADAR V0.7 Donchian Seed Gate
+
+on:
+  push:
+    branches:
+      - crypto-edge-radar-donchian-v0.7
+    paths:
+      - 'crypto_edge_radar/scripts/build_donchian_seed_v07.py'
+      - '.github/workflows/crypto-edge-radar-v07-donchian-seed.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-frozen-runtime-seed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: crypto_edge_radar
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: crypto-edge-radar-donchian-v0.7
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile seed builder
+        run: python -m py_compile scripts/build_donchian_seed_v07.py
+      - name: Build exact public-source seed
+        run: python scripts/build_donchian_seed_v07.py
+      - name: Assert source-only seed firewall
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('radar/seeds/tfg_donchian_regime_v1_seed.json')
+          x=json.loads(p.read_text())
+          assert x['status']=='SOURCE_SEED_PASS', x
+          assert x['source']['provider']=='MEXC', x
+          assert x['source']['market']=='SPOT', x
+          assert x['source']['access']=='PUBLIC_UNAUTHENTICATED_READ_ONLY_REST', x
+          assert x['source']['outcome_evaluation_performed'] is False, x
+          assert x['source']['orders_created'] is False, x
+          assert x['source']['authenticated_api_used'] is False, x
+          assert set(x['symbols'])=={'BTCUSDT','ETHUSDT','SOLUSDT','BNBUSDT','XRPUSDT','DOGEUSDT'}, x
+          for s,v in x['symbols'].items():
+              assert len(v['last_40_complete_12h'])==40, (s,v)
+              assert len(v['last_220_complete_daily'])==220, (s,v)
+              assert v['last_atr28']>0, (s,v)
+              assert len(v['sha256'])==64, (s,v)
+          assert len(x['seed_sha256'])==64, x
+          print('DONCHIAN_SEED_GATE_PASS', x['seed_sha256'])
+          PY
+      - name: Commit immutable seed to V0.7 branch
+        working-directory: .
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add crypto_edge_radar/radar/seeds/tfg_donchian_regime_v1_seed.json
+          if git diff --cached --quiet; then
+            echo 'seed unchanged'
+          else
+            git commit -m 'radar v0.7: freeze exact MEXC Donchian runtime seed'
+            git push origin HEAD:crypto-edge-radar-donchian-v0.7
+          fi
+      - name: Upload seed receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: crypto-edge-radar-v07-donchian-seed
+          path: crypto_edge_radar/radar/seeds/tfg_donchian_regime_v1_seed.json
+          if-no-files-found: warn
+          retention-days: 30
