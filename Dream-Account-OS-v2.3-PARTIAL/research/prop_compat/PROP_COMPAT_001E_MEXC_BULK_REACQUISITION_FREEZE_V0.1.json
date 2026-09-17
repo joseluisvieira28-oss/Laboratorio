@@ -1,0 +1,59 @@
+{
+  "document_id": "PROP_COMPAT_001E_MEXC_BULK_REACQUISITION_FREEZE_V0.1",
+  "campaign_id": "PROP-COMPAT-001E",
+  "effective_on": "2026-09-17",
+  "status": "FROZEN_BEFORE_BULK_EQUIVALENCE_EXECUTION",
+  "authority": "PROP_COMPAT_001E_TFG_EXACT_RECOVERY_FREEZE_V0.1",
+  "reason": "The already-frozen REST /api/v3/klines semantic candidate returned API_EMPTY for the complete December 2024 overlap on all six symbols after the parent-path bug was corrected. This is treated as source-access limitation, not a market-value mismatch. The original V0.1D authority itself used official MEXC Spot bulk Min15 files, so the next source-only recovery method returns to the same official historical bulk family.",
+  "official_source_family": {
+    "venue": "MEXC_SPOT",
+    "portal": "https://www.mexc.com/market-data-download",
+    "official_documentation_statement": "MEXC Spot API documentation links Download Historical Market Data and states that kline/trading data are provided for all Spot pairs since 2023-01-01.",
+    "listing_endpoint": "https://www.mexc.com/file-svc/history/download",
+    "symbol_metadata_endpoint": "https://www.mexc.com/api/platform/spot/market-v2/web/symbolsV2",
+    "bucket_family": "SPOT2/kline/<symbol_id>/monthly/Min15/",
+    "candidate_file_name_pattern": "<BASE>_USDT-Min15-YYYY-MM-01.csv",
+    "authentication_required": false
+  },
+  "pre_outcome_equivalence_gate": {
+    "year": 2024,
+    "month": 12,
+    "symbols": ["BTCUSDT","ETHUSDT","SOLUSDT","BNBUSDT","XRPUSDT","DOGEUSDT"],
+    "parent_source_artifact_id": 10419067320,
+    "required_parent_files": 6,
+    "interval": "Min15",
+    "comparison_fields": ["open_time","open","high","low","close","volume","amount","close_time"],
+    "expected_rows_per_symbol": 2976,
+    "pass_requires": "For every symbol, the official current bulk candidate must resolve unambiguously and match the exact parent December-2024 file on timestamps and all seven market/value fields. Byte SHA256 equality is additionally recorded but semantic field equality is the mandatory source-equivalence criterion.",
+    "failure_policy": "FAIL_CLOSED"
+  },
+  "unlock_policy": {
+    "2025_bulk_access_before_gate_pass": false,
+    "on_gate_pass": "May build a separately frozen 2025 reacquisition/replay step using only the same MEXC official bulk source family and the already committed 72-record V0.1D manifest.",
+    "on_gate_fail": "Do not use current MEXC bulk as a semantic replacement for the frozen V0.1D source."
+  },
+  "immutables": {
+    "setup_rules_changed": false,
+    "universe_changed": false,
+    "timeframe_changed": false,
+    "costs_changed": false,
+    "oos_window_changed": false,
+    "historical_acceptance_targets_changed": false,
+    "alternate_venue_substitution": false
+  },
+  "governance": {
+    "research_only": true,
+    "source_only_gate": true,
+    "outcome_evaluation": false,
+    "access_2025_before_gate_pass": false,
+    "access_2026": false,
+    "live_trading": false,
+    "orders": false,
+    "exchange_mutation": false,
+    "exchange_authentication": false,
+    "wallet_use": false,
+    "webhooks": false,
+    "challenge_purchase": false,
+    "merge_to_main": false
+  }
+}
