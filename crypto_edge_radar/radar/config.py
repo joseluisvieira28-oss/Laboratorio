@@ -5,7 +5,7 @@ import os
 
 CORE5 = ("BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT")
 ALLOWED_UNIVERSE_MODES = {"core5", "liquid"}
-ALLOWED_PROVIDERS = {"binance_usdm", "binance_spot_public"}
+ALLOWED_PROVIDERS = {"binance_usdm", "binance_spot_public", "mexc_futures_public"}
 
 
 def _int_env(name: str, default: int) -> int:
