@@ -133,6 +133,24 @@ jobs:
           assert receipt['btc_usdt_api_eligible'] is True, receipt
           print(json.dumps(receipt, sort_keys=True))
           PY
+      - name: Capture MEXC friction shadow V1
+        run: python -m radar mexc-friction-shadow > mexc_ci_artifacts/mexc_friction_shadow_v1.json
+      - name: Validate friction shadow remains public-only and fail-closed
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          receipt = json.loads(Path('mexc_ci_artifacts/mexc_friction_shadow_v1.json').read_text())
+          assert receipt['receipt_type'] == 'MEXC_FRICTION_SHADOW_V1', receipt
+          assert receipt['status'] == 'PUBLIC_OBSERVATION_ONLY', receipt
+          assert receipt['capital_enabled'] is False, receipt
+          assert receipt['orders_created'] is False, receipt
+          assert receipt['contract']['api_allowed'] is True, receipt
+          assert receipt['fees']['taker_round_trip_bps'] == 16.0, receipt
+          assert receipt['edge_budget']['historical_estimated_break_even_round_trip_bps'] == 21.2, receipt
+          assert receipt['top_of_book']['spread_bps'] >= 0, receipt
+          print(json.dumps(receipt, sort_keys=True))
+          PY
       - name: Verify MEXC evidence chain
         run: python -m radar verify-evidence
       - name: Verify MEXC public heartbeat, core5 and ETF-CME shadow bot
