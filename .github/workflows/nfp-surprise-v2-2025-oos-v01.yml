@@ -1,0 +1,195 @@
+name: NFP-SURPRISE-V2 2025 OOS V0.1
+
+on:
+  push:
+    branches:
+      - nfp-surprise-v2-2025-oos-v01
+    paths:
+      - .github/workflows/nfp-surprise-v2-2025-oos-v01.yml
+      - research/nfp_surprise_v2/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  nfp-v2-2025-one-shot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Checkout isolated NFP OOS branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Governance and immutable macro freeze binding
+        working-directory: research/nfp_surprise_v2
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${GITHUB_REF_NAME}" = "nfp-surprise-v2-2025-oos-v01"
+          AUTHORITY_COMMIT='0bbd3ae2c6e406b1f86aaf1dde19f78c7bf3dc7d'
+          FREEZE='NFP_SURPRISE_V2_2025_MACRO_SOURCE_FREEZE_V01.md'
+          git cat-file -e "${AUTHORITY_COMMIT}^{commit}"
+          git diff --quiet "$AUTHORITY_COMMIT" HEAD -- "research/nfp_surprise_v2/${FREEZE}"
+          grep -q 'FROZEN_PRE_MARKET_OUTCOME' "$FREEZE"
+          grep -q '2026 LOCKED' "$FREEZE"
+          grep -q '9 events' "$FREEZE"
+          grep -q '08:31 open' "$FREEZE"
+          grep -q '08:45 open' "$FREEZE"
+          grep -q '10 bps' "$FREEZE"
+          python3 -m py_compile source_acquire_2025_v01.py oos_runner_2025_v01.py
+          echo "AUTHORITY_COMMIT=$AUTHORITY_COMMIT"
+          echo 'MACRO_FREEZE_IMMUTABLE=true'
+          echo 'CRYPTO_OUTCOMES_NOT_OPENED_BY_PREFLIGHT=true'
+          echo '2026_LOCKED=true'
+          echo 'LIVE_TRADING=false'
+          echo 'EXCHANGE_MUTATION=false'
+
+      - name: Acquire Binance 2025 archives and run Source/Data Gate only
+        id: source_gate
+        working-directory: research/nfp_surprise_v2
+        shell: bash
+        run: |
+          set +e
+          rm -rf source_2025
+          python3 source_acquire_2025_v01.py --output source_2025
+          rc=$?
+          set -e
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          status='TECHNICAL_FAILURE'
+          if [ -f source_2025/source_manifest_2025.json ]; then
+            status="$(python3 - <<'PY'
+          import json
+          from pathlib import Path
+          print(json.loads(Path('source_2025/source_manifest_2025.json').read_text())['status'])
+          PY
+          )"
+          fi
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          echo "SOURCE_GATE_EXIT_CODE=$rc"
+          echo "SOURCE_GATE_STATUS=$status"
+
+      - name: Validate source firewall before prices
+        if: steps.source_gate.outputs.status == 'SOURCE_AUDIT_PASS'
+        working-directory: research/nfp_surprise_v2
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          m=json.loads(Path('source_2025/source_manifest_2025.json').read_text())
+          assert m['status']=='SOURCE_AUDIT_PASS'
+          assert m['authority_commit']=='0bbd3ae2c6e406b1f86aaf1dde19f78c7bf3dc7d'
+          assert len(m['records'])==22
+          assert len(m['directional_dates'])==9
+          assert m['outcomes_computed'] is False
+          assert m['year_2026_accessed'] is False
+          assert all(r['prices_opened'] is False for r in m['records'])
+          assert all(r['returns_computed'] is False for r in m['records'])
+          assert all(r['pnl_computed'] is False for r in m['records'])
+          print('SOURCE_AUDIT_PASS')
+          print('NO_CRYPTO_OUTCOMES_BEFORE_SOURCE_PASS=true')
+          print('2026_LOCKED=true')
+          PY
+
+      - name: Execute exact frozen 2025 BTC ETH OOS exactly once
+        id: oos
+        if: steps.source_gate.outputs.status == 'SOURCE_AUDIT_PASS'
+        working-directory: research/nfp_surprise_v2
+        shell: bash
+        run: |
+          set +e
+          rm -rf oos_output_2025
+          python3 oos_runner_2025_v01.py --source-root source_2025 --output oos_output_2025
+          rc=$?
+          set -e
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          echo "OOS_EXIT_CODE=$rc"
+          test "$rc" -eq 0 -o "$rc" -eq 3 -o "$rc" -eq 4
+
+      - name: Validate terminal scientific classification
+        if: steps.source_gate.outputs.status == 'SOURCE_AUDIT_PASS'
+        working-directory: research/nfp_surprise_v2
+        env:
+          OOS_RC: ${{ steps.oos.outputs.rc }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          p=Path('oos_output_2025/NFP_SURPRISE_V2_2025_OOS_CLOSEOUT_V01.json')
+          x=json.loads(p.read_text())
+          rc=int(os.environ['OOS_RC'])
+          expected={
+              0:'TIER2_PROMOTED_CANDIDATE__QUASE_DIAMANTE',
+              3:'TIER4_REJECTED',
+              4:'TIER3_POSITIVE_OR_MIXED',
+          }[rc]
+          assert x['classification']==expected
+          assert x['authority_commit']=='0bbd3ae2c6e406b1f86aaf1dde19f78c7bf3dc7d'
+          assert x['directional_events']==9
+          assert x['year_2026_accessed'] is False
+          assert x['live_trading_authorized'] is False
+          assert x['exchange_mutation_authorized'] is False
+          assert x['tier1_automatic'] is False
+          print('TERMINAL_CLASSIFICATION=',x['classification'])
+          print('ASSET_METRICS=',x['asset_metrics'])
+          print('FAMILY=',x['family'])
+          print('GATES=',x['gates'])
+          print('2026_LOCKED=true')
+          print('LIVE_TRADING=false')
+          PY
+
+      - name: Write immutable run receipt
+        if: always()
+        working-directory: research/nfp_surprise_v2
+        run: |
+          mkdir -p run_receipts
+          {
+            echo "repository=${GITHUB_REPOSITORY}"
+            echo "branch=${GITHUB_REF_NAME}"
+            echo "head_sha=${GITHUB_SHA}"
+            echo "run_id=${GITHUB_RUN_ID}"
+            echo "run_attempt=${GITHUB_RUN_ATTEMPT}"
+            echo "authority_commit=0bbd3ae2c6e406b1f86aaf1dde19f78c7bf3dc7d"
+            echo "source_status=${{ steps.source_gate.outputs.status }}"
+            echo "source_rc=${{ steps.source_gate.outputs.rc }}"
+            echo "oos_rc=${{ steps.oos.outputs.rc }}"
+            echo "2026_accessed=false"
+            echo "live_trading=false"
+            echo "exchange_mutation=false"
+          } > run_receipts/run_identity.txt
+
+      - name: Upload source receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nfp-surprise-v2-source-2025-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            research/nfp_surprise_v2/source_2025/source_manifest_2025.json
+            research/nfp_surprise_v2/run_receipts/run_identity.txt
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Upload frozen OOS closeout
+        if: steps.source_gate.outputs.status == 'SOURCE_AUDIT_PASS'
+        uses: actions/upload-artifact@v4
+        with:
+          name: nfp-surprise-v2-oos-2025-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            research/nfp_surprise_v2/oos_output_2025/NFP_SURPRISE_V2_2025_OOS_CLOSEOUT_V01.json
+            research/nfp_surprise_v2/oos_output_2025/NFP_SURPRISE_V2_2025_OOS_LEDGER_V01.csv
+            research/nfp_surprise_v2/run_receipts/run_identity.txt
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Fail closed if source gate did not pass
+        if: always()
+        shell: bash
+        run: |
+          if [ '${{ steps.source_gate.outputs.status }}' != 'SOURCE_AUDIT_PASS' ]; then
+            echo 'NON-SCIENTIFIC SOURCE/TECHNICAL BLOCKER — NO MARKET OUTCOME'
+            exit 2
+          fi
+          echo 'NFP-SURPRISE-V2 2025 OOS TERMINAL'
+          echo 'NO 2026 / NO LIVE / NO EXCHANGE MUTATION / NO MAIN MERGE / NO RESCUE'
