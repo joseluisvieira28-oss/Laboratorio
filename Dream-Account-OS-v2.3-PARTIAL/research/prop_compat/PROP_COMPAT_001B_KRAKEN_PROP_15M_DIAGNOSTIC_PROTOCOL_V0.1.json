@@ -1,0 +1,49 @@
+{
+  "document_id": "PROP_COMPAT_001B_KRAKEN_PROP_15M_DIAGNOSTIC_PROTOCOL_V0.1",
+  "campaign_id": "PROP-COMPAT-001B",
+  "frozen_on": "2026-09-17",
+  "status": "FROZEN_BEFORE_15M_DIAGNOSTIC_OUTCOMES",
+  "purpose": "Infrastructure fallback diagnostic only. Use the exact frozen Phase5 canonical 15m six-symbol source to screen Kraken Prop fragility while the required 1m ambiguity-envelope runner cannot be executed in the current environment. No result can produce PROP-COMPAT-PASS, CONDITIONAL-PASS, challenge purchase authorization, or unlock the official Phase3 risk grid.",
+  "source": {
+    "source_fingerprint": "d1a95d51d99eba0bd5f66e91d75ddcd175f7a84d954ba28a44c2dcd39ef4c5cb",
+    "ledger_sha256": "ec4e5dbc8d95a73d4eb9db55f4e1c0f264dba7eb724cbb7424f2c034a3a7eebd",
+    "canonical_15m": "Exact files recovered from Phase5 source artifact 10438795414",
+    "years": [2023,2024]
+  },
+  "plans": {
+    "STARTER": {"target_pct":10.0,"mdl_pct":3.0,"mdd_pct":6.0},
+    "INTERMEDIATE": {"target_pct":12.0,"mdl_pct":3.0,"mdd_pct":5.0},
+    "ADVANCED": {"target_pct":9.0,"mdl_pct":3.0,"mdd_pct":3.0}
+  },
+  "risk_grid_pct_per_1R": [0.10,0.15,0.20,0.25,0.30],
+  "execution_cases": {
+    "BASE": {"round_trip_total_pct_notional_ex_carry":0.20,"entry_half_pct":0.10,"exit_half_pct":0.10},
+    "STRESS": {"round_trip_total_pct_notional_ex_carry":0.30,"entry_half_pct":0.15,"exit_half_pct":0.15}
+  },
+  "carry_cases": {
+    "LEGAL_DAILY_0000": "0.033% of current open notional at 00:00 UTC",
+    "SUPPORT_4H_QUARTER_HOUR_PHASE_SWEEP": "0.033%/6 every 4h, evaluated at all 16 phase offsets representable on the canonical 15m grid: 00:00 through 03:45 in 15m steps"
+  },
+  "mark_to_market": {
+    "primary": "synchronized canonical 15m close",
+    "target_upper_bound": "sum of open long positions valued at each symbol's same 15m high",
+    "breach_lower_bound": "sum of open long positions valued at each symbol's same 15m low",
+    "limitation": "A 15m result cannot establish exact minute-level Kraken MDL/MDD compatibility. Survivor labels remain diagnostic only."
+  },
+  "classification": {
+    "OBVIOUS_15M_PROXY_BREACH": "Synchronized 15m close breaches before target, with no same-bar high-bound target possibility.",
+    "15M_PROXY_SURVIVES_NOT_DECISIONAL": "15m close reaches target before breach and even the low-bound never crosses MDL/MDD first.",
+    "15M_AMBIGUITY": "High/low bounds or carry phase differences make ordering uncertain.",
+    "15M_NO_DECISION": "Neither target nor breach is established inside frozen history."
+  },
+  "governance": {
+    "outcomes_opened_before_freeze": false,
+    "official_risk_grid_run": false,
+    "no_best_plan_selection": true,
+    "no_best_risk_selection": true,
+    "post_outcome_tuning": false,
+    "challenge_purchase": false,
+    "live_trading": false,
+    "merge_to_main": false
+  }
+}
