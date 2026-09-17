@@ -1,0 +1,91 @@
+{
+  "document_id": "PROP_COMPAT_001F_TFG_KRAKEN_PROXY_CLOSEOUT_V0.1",
+  "campaign_id": "PROP-COMPAT-001F",
+  "effective_on": "2026-09-17",
+  "status": "ALL_CELLS_PROXY_INSUFFICIENT_HISTORY_NO_DECISION",
+  "setup_id": "TFG-DONCHIAN-1D-001",
+  "program": "KRAKEN_PROP",
+  "decisional_authority": false,
+  "workflow": {
+    "run_id": 35279399958,
+    "conclusion": "success",
+    "head_sha": "28610ce991a7565ab6cd2db10785b42429b33bf1",
+    "artifact_id": 10522126420,
+    "artifact_name": "PROP_COMPAT_001F_TFG_KRAKEN_PROXY_V01",
+    "artifact_digest": "sha256:35ac4454fc2b5c9d9d1191611e9e83ed1bc50056ab7124b0a0bd3274723df553"
+  },
+  "receipt": {
+    "document_id": "PROP_COMPAT_001F_TFG_KRAKEN_PROXY_RECEIPT_V0.1",
+    "fingerprint": "4ba1fb88174b159cf29d0d1fa7bec5cd184478dd9d9e97fb59407b0eeae91916",
+    "json_sha256": "5149517fffe97cc8ea0f72aa0c1a14b46d5e5c8986dee62bde48804cb4eaa8ec"
+  },
+  "source_validation": {
+    "mexc_15m_files_downloaded_and_sha256_validated": 60,
+    "expected_files": 60,
+    "coverage_utc": ["2025-01-01T00:00:00Z", "2025-10-11T00:00:00Z"],
+    "trade_core_fingerprint": "ab290487c693ad98cb20d1b87e2db2fcf11c97a54da303d7ff301e9d99dca9f8",
+    "access_2026": false
+  },
+  "execution_reconstruction": {
+    "entries": 40,
+    "exits": 40,
+    "STOP": 24,
+    "TARGET": 12,
+    "TIME_EXIT_NEXT_OPEN": 4,
+    "same_day_target_seen_before_authoritative_stop": 0
+  },
+  "simulation": {
+    "scenario_paths": 14460,
+    "base_sizing_cells": 60,
+    "sizing_envelope_cells": 30,
+    "sizing_cell_classification_counts": {
+      "PROXY_INSUFFICIENT_HISTORY_NO_DECISION": 60
+    },
+    "sizing_envelope_classification_counts": {
+      "PROXY_INSUFFICIENT": 30
+    },
+    "robust_proxy_survivor_cells": 0,
+    "obvious_proxy_breach_cells": 0,
+    "ambiguity_material_cells": 0,
+    "carry_or_sizing_sensitivity_material_cells": 0,
+    "support_4h_phase_paths_per_sizing_cell": 240,
+    "carry_phase_classification_changes": 0
+  },
+  "observed_proxy_envelope": {
+    "ending_balance_range_across_legal_daily_cells": [101.08141245030919, 103.58664997487774],
+    "maximum_confirmed_close_drawdown_pct_initial": 1.9174431829461867,
+    "maximum_intrabar_low_bound_drawdown_pct_initial": 1.9379395318250374,
+    "maximum_total_open_notional_multiple_initial": 0.45263412786359697,
+    "maximum_concurrent_positions": 6,
+    "maximum_total_legal_daily_carry_units": 0.6785516975814273,
+    "interpretation": "Across the frozen 2025 40-trade horizon, no plan/risk/cost/sizing cell reached a Kraken target and no cell breached the proxy MDD/MDL envelope. The observed path is therefore safe-but-too-short/slow for a pass-or-fail adjudication, not a robust survivor and not an obvious breach."
+  },
+  "cross_read_with_001G": {
+    "sequence_gauntlet_status": "BASE_STRESS_POSITIVE_SEVERE_GATE_FAIL_SMALL_SAMPLE",
+    "BASE_expectancy_R_after_Kraken_carry": 0.29986375636973017,
+    "STRESS_expectancy_R_after_Kraken_carry": 0.2771364296282858,
+    "SEVERE_expectancy_R": -0.08980675583055735,
+    "EXTREME_expectancy_R": -0.46086209046128196,
+    "conclusion": "001F shows no structural Kraken breach in the 2025 MTM proxy, while 001G shows the economic edge remains positive in BASE/STRESS but breaks under the predeclared SEVERE profile."
+  },
+  "decision": {
+    "TFG_KRAKEN_proxy_pass": false,
+    "TFG_KRAKEN_proxy_fail": false,
+    "classification": "PROXY_INSUFFICIENT_HISTORY_NO_DECISION_WITH_SEVERE_ROBUSTNESS_FAIL",
+    "keep_setup_scientifically_alive": true,
+    "priority_for_prop_compatibility": "LOWER_THAN_DH03",
+    "reason": "TFG remains a positive OOS/shadow-eligible setup, but the available 2025 sequence is insufficient to reach Kraken targets at the frozen risk grid and its predeclared severe robustness profile is negative. No favorable risk escalation or longer synthetic calendar is permitted post-outcome."
+  },
+  "governance": {
+    "official_phase3_risk_grid_run": false,
+    "post_outcome_tuning": false,
+    "best_plan_selected": false,
+    "best_risk_selected": false,
+    "challenge_purchase": false,
+    "live_trading": false,
+    "orders": false,
+    "wallet_use": false,
+    "exchange_mutation": false,
+    "merge_to_main": false
+  }
+}
