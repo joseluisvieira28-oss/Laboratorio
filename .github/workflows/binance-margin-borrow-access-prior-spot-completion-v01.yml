@@ -1,0 +1,104 @@
+name: Binance Margin Borrow Access 001 — Prior Spot Completion V0.1
+
+on:
+  push:
+    branches:
+      - binance-margin-borrow-access-v0.1
+    paths:
+      - research/binance_margin_borrow_access/PRIOR_SPOT_COMPLETION_TRIGGER_V0_1.txt
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  SOURCE_RUN_ID: '35269000941'
+
+jobs:
+  complete:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        name: Checkout frozen research branch
+      - uses: actions/setup-python@v5
+        name: Set up Python
+        with:
+          python-version: '3.12'
+      - name: Install source dependency
+        run: pip install --disable-pip-version-check requests
+      - name: Download immutable prior-Spot manifest
+        uses: actions/download-artifact@v4
+        with:
+          name: BINANCE_MARGIN_BORROW_ACCESS_001_PRIOR_SPOT_MANIFEST_V0_1
+          path: completion/manifest
+          run-id: ${{ env.SOURCE_RUN_ID }}
+          github-token: ${{ github.token }}
+      - name: Download shard 0
+        uses: actions/download-artifact@v4
+        with:
+          name: BINANCE_MARGIN_BORROW_ACCESS_001_PRIOR_SPOT_V0_1_SHARD_0
+          path: completion/shards/shard0
+          run-id: ${{ env.SOURCE_RUN_ID }}
+          github-token: ${{ github.token }}
+      - name: Download shard 1
+        uses: actions/download-artifact@v4
+        with:
+          name: BINANCE_MARGIN_BORROW_ACCESS_001_PRIOR_SPOT_V0_1_SHARD_1
+          path: completion/shards/shard1
+          run-id: ${{ env.SOURCE_RUN_ID }}
+          github-token: ${{ github.token }}
+      - name: Download shard 2
+        uses: actions/download-artifact@v4
+        with:
+          name: BINANCE_MARGIN_BORROW_ACCESS_001_PRIOR_SPOT_V0_1_SHARD_2
+          path: completion/shards/shard2
+          run-id: ${{ env.SOURCE_RUN_ID }}
+          github-token: ${{ github.token }}
+      - name: Download shard 3
+        uses: actions/download-artifact@v4
+        with:
+          name: BINANCE_MARGIN_BORROW_ACCESS_001_PRIOR_SPOT_V0_1_SHARD_3
+          path: completion/shards/shard3
+          run-id: ${{ env.SOURCE_RUN_ID }}
+          github-token: ${{ github.token }}
+      - name: Download shard 4
+        uses: actions/download-artifact@v4
+        with:
+          name: BINANCE_MARGIN_BORROW_ACCESS_001_PRIOR_SPOT_V0_1_SHARD_4
+          path: completion/shards/shard4
+          run-id: ${{ env.SOURCE_RUN_ID }}
+          github-token: ${{ github.token }}
+      - name: Download shard 5
+        uses: actions/download-artifact@v4
+        with:
+          name: BINANCE_MARGIN_BORROW_ACCESS_001_PRIOR_SPOT_V0_1_SHARD_5
+          path: completion/shards/shard5
+          run-id: ${{ env.SOURCE_RUN_ID }}
+          github-token: ${{ github.token }}
+      - name: Execute shard 6 serially
+        run: >-
+          python research/binance_margin_borrow_access/prior_spot_proof_v01.py shard
+          --manifest completion/manifest/prior_spot_manifest.json
+          --shard 6 --out completion/shards/shard6
+      - name: Execute shard 7 serially
+        run: >-
+          python research/binance_margin_borrow_access/prior_spot_proof_v01.py shard
+          --manifest completion/manifest/prior_spot_manifest.json
+          --shard 7 --out completion/shards/shard7
+      - name: Aggregate all eight immutable shards
+        run: >-
+          python research/binance_margin_borrow_access/prior_spot_proof_v01.py aggregate
+          --manifest completion/manifest/prior_spot_manifest.json
+          --shards completion/shards
+          --out completion/canonical
+      - name: Upload completion receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: BINANCE_MARGIN_BORROW_ACCESS_001_PRIOR_SPOT_COMPLETION_V0_1
+          path: |
+            completion/shards/shard6/prior_spot_shard_6.json
+            completion/shards/shard7/prior_spot_shard_7.json
+            completion/canonical/BINANCE_MARGIN_BORROW_ACCESS_001_PRIOR_SPOT_RECEIPT_V0_1.json
+          if-no-files-found: warn
+          retention-days: 30
