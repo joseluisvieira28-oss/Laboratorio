@@ -1,0 +1,71 @@
+{
+  "lab_id": "BTC-OPTIONS-VRP-001",
+  "probe_id": "OVRP-EXEC-SOURCE-TARDIS-PROBE-001",
+  "version": "0.1",
+  "date_frozen": "2026-09-17",
+  "status": "FROZEN_SOURCE_ONLY_OUTCOME_BLIND",
+  "parent_discovery_mve": "OVRP-DVOL-RV30-001",
+  "parent_discovery_classification": "DISCOVERY_PASS_VRP_EXISTS",
+  "closed_execution_mve": "OVRP-EXEC-ATM30-7D-STATICDELTA-001",
+  "closed_execution_classification": "EXECUTION_DATA_LIQUIDITY_INSUFFICIENT",
+  "purpose": "Test only whether a genuinely higher-quality Tardis Deribit historical quote/options-chain route can support a future, separately authorized executable VRP MVE. This probe is not a strategy backtest and cannot promote the parent edge.",
+  "source": {
+    "provider": "Tardis.dev",
+    "exchange": "deribit",
+    "access_mode": "free_first_day_of_month_sample_without_api_key",
+    "base_url": "https://datasets.tardis.dev/v1",
+    "data_types": ["options_chain", "quotes"],
+    "aggregate_symbol": "OPTIONS"
+  },
+  "sample_dates": [
+    "2021-06-01",
+    "2022-06-01",
+    "2023-06-01",
+    "2024-06-01"
+  ],
+  "target_underlying": "BTC",
+  "pair_definition": {
+    "same_expiry": true,
+    "same_strike": true,
+    "right_pair": ["C", "P"],
+    "dte_min": 25,
+    "dte_max": 35,
+    "require_nonempty_chain_bbo_both_legs": true,
+    "require_nonempty_quote_bbo_both_legs": true
+  },
+  "bounded_transport": {
+    "max_options_chain_rows_per_date": 750000,
+    "max_quote_rows_per_date": 2000000,
+    "connect_timeout_seconds": 20,
+    "read_timeout_seconds": 90
+  },
+  "pass_rule": {
+    "all_dates_http_200": true,
+    "all_dates_schema_pass": true,
+    "all_dates_btc_option_rows_present": true,
+    "all_dates_25_35d_same_strike_call_put_pair_present": true,
+    "all_dates_chain_bbo_present_for_selected_pair": true,
+    "all_dates_quote_bbo_present_for_selected_pair": true,
+    "terminal_pass_classification": "PAID_SOURCE_ROUTE_FEASIBLE"
+  },
+  "terminal_classifications": [
+    "PAID_SOURCE_ROUTE_FEASIBLE",
+    "SOURCE_ROUTE_SCHEMA_INSUFFICIENT",
+    "SOURCE_ACQUISITION_TECHNICAL_FAILURE",
+    "PROVENANCE_FAILURE"
+  ],
+  "safety": {
+    "performance_outcomes_authorized": false,
+    "strategy_pnl_authorized": false,
+    "returns_authorized": false,
+    "execution_mve_authorized": false,
+    "paid_subscription_authorized": false,
+    "api_key_authorized": false,
+    "access_2025_authorized": false,
+    "access_2026_authorized": false,
+    "live_trading_authorized": false,
+    "exchange_mutation_authorized": false,
+    "wallet_access_authorized": false,
+    "merge_to_main_authorized": false
+  }
+}
