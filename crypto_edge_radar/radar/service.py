@@ -84,7 +84,7 @@ class PublicShadowService:
             self.consecutive_failures = 0
             status = {
                 "service": "CRYPTO_EDGE_RADAR",
-                "version": "0.5",
+                "version": "0.6",
                 "mode": "PUBLIC_SHADOW_ONLY",
                 "provider": result["provider"],
                 "evidence_backend": evidence_backend,
@@ -111,7 +111,7 @@ class PublicShadowService:
             self.consecutive_failures += 1
             status = {
                 "service": "CRYPTO_EDGE_RADAR",
-                "version": "0.5",
+                "version": "0.6",
                 "mode": "PUBLIC_SHADOW_ONLY",
                 "provider": configured_provider,
                 "evidence_backend": evidence_backend,
@@ -122,7 +122,7 @@ class PublicShadowService:
                 "error": str(exc),
                 "consecutive_failures": self.consecutive_failures,
                 "valid_signal_count": 0,
-                "registered_strategies": 0,
+                "registered_strategies": len(self.engine.registry.adapters),
             }
             try:
                 failure_receipt = self.engine.store.append("SERVICE_FAILURE", status)
