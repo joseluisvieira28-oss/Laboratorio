@@ -1,0 +1,54 @@
+name: PROP COMPAT 001E TFG Amendment Extract V0.1
+
+on:
+  push:
+    branches: [prop-compat-001-v0.1]
+    paths:
+      - '.github/workflows/prop-compat-001e-tfg-amendment-extract-v01.yml'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/prop_compat/prop_compat_001e_tfg_amendment_extract_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/prop_compat/PROP_COMPAT_001E_TFG_EXACT_RECOVERY_FREEZE_V0.1.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  extract:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: prop-compat-001-v0.1
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify recovery freeze
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('research/prop_compat/PROP_COMPAT_001E_TFG_EXACT_RECOVERY_FREEZE_V0.1.json')
+          d=json.loads(p.read_text())
+          assert d['status']=='FROZEN_BEFORE_RECOVERY_EXECUTION'
+          assert d['source_authority']['bulk_amendment_blob_sha']=='1973a9906171fab536d12f63324ef31548b2d001'
+          assert d['governance']['2026_historical_outcome_access'] is False
+          assert d['governance']['live_trading'] is False
+          print('TFG_RECOVERY_FREEZE_PASS')
+          PY
+      - name: Fetch frozen TFG authority branch
+        run: git fetch origin tfg-donchian-1d-oos-2025-v01:tfg-donchian-1d-oos-2025-v01
+      - name: Compile extractor
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: python -m py_compile research/prop_compat/prop_compat_001e_tfg_amendment_extract_v01.py
+      - name: Extract compact frozen source manifest
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: python research/prop_compat/prop_compat_001e_tfg_amendment_extract_v01.py
+      - name: Upload compact manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: PROP_COMPAT_001E_TFG_AMENDMENT_COMPACT_MANIFEST_V01
+          path: Dream-Account-OS-v2.3-PARTIAL/research/local_data/prop_compat_001e/PROP_COMPAT_001E_TFG_AMENDMENT_COMPACT_MANIFEST_V0.1.json
+          if-no-files-found: error
+          retention-days: 90
