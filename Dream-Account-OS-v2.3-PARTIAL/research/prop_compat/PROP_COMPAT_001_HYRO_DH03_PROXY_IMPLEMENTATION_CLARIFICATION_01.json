@@ -1,0 +1,45 @@
+{
+  "document_id": "PROP_COMPAT_001_HYRO_DH03_PROXY_IMPLEMENTATION_CLARIFICATION_01",
+  "campaign_id": "PROP-COMPAT-001A",
+  "frozen_on": "2026-09-17",
+  "status": "FROZEN_BEFORE_PROXY_OUTCOMES",
+  "authority": "PROP_COMPAT_001_HYRO_DH03_PROXY_KILL_SCREEN_PROTOCOL_V0.1",
+  "governance": {
+    "proxy_outcomes_opened_before_clarification": false,
+    "post_outcome_rule_change": false,
+    "official_phase3_risk_grid_run": false,
+    "setup_rule_change": false,
+    "live_trading": false,
+    "challenge_purchase": false,
+    "merge_to_main": false
+  },
+  "implementation_semantics": {
+    "minute_event_order": [
+      "At 00:00 UTC, compute the new daily starting equity from the synchronized 1m OPEN of positions carried from the prior minute, before any event timestamped in that minute.",
+      "Check inactivity continuously at minute resolution before allowing later events to rescue an already-expired account.",
+      "Process frozen ledger exits timestamped at the minute start using the frozen ledger exit price and debit the frozen exit-half execution cost.",
+      "Compute one common pre-entry equity snapshot at the synchronized minute OPEN after same-minute exits and before any new entry cost. All entries sharing the timestamp size from this same snapshot so symbol ordering cannot alter risk.",
+      "Open all frozen ledger entries timestamped at the minute start at the frozen ledger entry price and debit the frozen entry-half execution cost.",
+      "Apply canonical funding events using their exact millisecond timestamps. A funding event belongs to a trade only when entry_time < funding_time < exit_time, matching the original DH-03 rule.",
+      "After cash events, perform an event-time breach check using synchronized minute OPEN marks for still-open positions.",
+      "At minute end, mark all still-open positions to synchronized 1m CLOSE and perform the primary floating-equity breach check."
+    ],
+    "simultaneous_entries": "Use one shared pre-entry equity snapshot for every trade with the same entry_time; do not cascade entry fees or arbitrary symbol ordering into later same-minute position sizes.",
+    "same_minute_exit_entry": "Frozen exits at the minute start are processed before new entries. The only recovered cross-symbol entry+exit coincidences are exact-minute-open time exits, so this ordering matches their explicit execution semantic rather than inferring sub-minute stop/target ordering.",
+    "daily_drawdown_breach_comparator": "equity <= daily_floor",
+    "maximum_loss_breach_comparator": "equity <= 94% of initial balance",
+    "single_position_realized_loss_breach_comparator": "absolute net realized trade loss > 3% of initial balance",
+    "balance_cashflows": "Entry costs, exit costs, funding cashflows and realized price PnL immediately change account balance and the UTC day's realized net PnL.",
+    "trade_net_pnl_for_qualification": "Realized price PnL plus the trade's funding cashflows minus its entry and exit execution costs.",
+    "qualifying_trade_notional": "Entry notional.",
+    "consistency_denominator": "Cumulative net realized account profit above the 100-unit initial balance when positive; losing days, fees and funding therefore reduce the denominator rather than being discarded.",
+    "pass_check": "A proxy pass can occur only after total net realized profit is at least 10 initial-balance units, at least five qualifying UTC trading days have completed, and the largest positive realized UTC day is no more than 40% of cumulative net realized profit. The challenge stops at the first qualifying pass.",
+    "inactivity": "Clock starts at the first setup entry and resets only on a fully closed setup trade. Breach occurs at the first simulated minute for which elapsed time is strictly greater than 30 days while the challenge is still active.",
+    "history_end_without_pass_or_breach": "PROXY_INSUFFICIENT because Hyro has no maximum evaluation duration and the finite 2023-2024 setup history cannot prove eventual failure or survival.",
+    "missing_required_1m_mark": "PROXY_INSUFFICIENT; no forward-fill, interpolation or 15m substitution.",
+    "source_years": [2023, 2024],
+    "access_2025": false,
+    "access_2026": false
+  },
+  "post_run_lock": "None of these implementation semantics may be changed to rescue or worsen a proxy cell after outcomes are opened."
+}
