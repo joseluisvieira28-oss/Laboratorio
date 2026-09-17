@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+from datetime import datetime, timezone
 import json
 import sys
 
@@ -10,6 +11,7 @@ from .dashboard import serve_dashboard
 from .deployment import RiskLimits, stop_based_position_size
 from .evidence import build_evidence_store
 from .engine import RadarEngine
+from .local_node import run_local_node
 from .market import BinancePublicFeed, BinanceSpotPublicFeed, MEXCFuturesPublicFeed
 from .service import PublicShadowService, read_status
 from .strategy import StrategyRegistry
@@ -53,9 +55,24 @@ def run_once(engine: RadarEngine) -> int:
     return 0
 
 
+def timing_status(engine: RadarEngine) -> dict:
+    now = datetime.now(timezone.utc)
+    plans = []
+    for adapter in engine.registry.adapters:
+        planner = getattr(adapter, "timing_plan", None)
+        if planner is None:
+            continue
+        plans.append(planner(now))
+    return {
+        "checked_at_utc": now.isoformat().replace("+00:00", "Z"),
+        "timed_strategy_count": len(plans),
+        "plans": plans,
+    }
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="CRYPTO EDGE RADAR V0.7 — MEXC control room + durable evidence + ETF-CME shadow bot"
+        description="CRYPTO EDGE RADAR V0.7 — MEXC control room + durable evidence + exact timing"
     )
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("once", help="run one public-data observation cycle")
@@ -71,18 +88,27 @@ def main(argv: list[str] | None = None) -> int:
 
     control = sub.add_parser(
         "control-room",
-        help="run public market observation and the web control room in one process",
+        help="run timing-aware public observation and web control room",
     )
     control.add_argument("--host", default="127.0.0.1")
     control.add_argument("--port", type=int, default=8787)
     control.add_argument("--interval", type=float, default=30.0)
     control.add_argument("--registry", default=None)
 
+    local = sub.add_parser(
+        "local-node",
+        help="run the always-on local operator node on loopback only",
+    )
+    local.add_argument("--port", type=int, default=8787)
+    local.add_argument("--interval", type=float, default=30.0)
+    local.add_argument("--registry", default=None)
+
+    sub.add_parser("timing-status", help="show exact-timing plans for registered strategies")
     sub.add_parser("status", help="read latest persisted service health status")
     sub.add_parser("verify-evidence", help="verify the evidence hash chain")
     sub.add_parser(
         "etf-cme-signal",
-        help="fetch the latest public CFTC rows and evaluate the exact frozen ETF-CME signal",
+        help="fetch the latest public CFTC rows and evaluate the scientific exact-time signal",
     )
 
     risk_budget = sub.add_parser(
@@ -146,7 +172,19 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps({"status": "FAIL_CLOSED", "error": str(exc)}, sort_keys=True))
             return 2
 
-    engine, settings = build_engine()
+    try:
+        engine, settings = build_engine()
+    except Exception as exc:
+        print(json.dumps({"status": "FAIL_CLOSED", "error": str(exc)}, sort_keys=True))
+        return 2
+
+    if args.command == "timing-status":
+        try:
+            print(json.dumps(timing_status(engine), sort_keys=True))
+            return 0
+        except Exception as exc:
+            print(json.dumps({"status": "FAIL_CLOSED", "error": str(exc)}, sort_keys=True))
+            return 2
 
     if args.command == "control-room":
         try:
@@ -155,6 +193,23 @@ def main(argv: list[str] | None = None) -> int:
                 status_path=settings.status_path,
                 notification_path=settings.notification_path,
                 host=args.host,
+                port=args.port,
+                interval=args.interval,
+                registry_path=args.registry,
+            )
+            return 0
+        except KeyboardInterrupt:
+            return 0
+        except Exception as exc:
+            print(json.dumps({"status": "FAIL_CLOSED", "error": str(exc)}, sort_keys=True))
+            return 2
+
+    if args.command == "local-node":
+        try:
+            run_local_node(
+                engine=engine,
+                status_path=settings.status_path,
+                notification_path=settings.notification_path,
                 port=args.port,
                 interval=args.interval,
                 registry_path=args.registry,
