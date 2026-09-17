@@ -110,7 +110,7 @@ def serve_render(
         return 0
     finally:
         stop.set()
-        server.shutdown()
+        # serve_forever runs in this thread, so calling shutdown() here would deadlock.
         server.server_close()
         worker.join(timeout=max(1.0, min(interval, 5.0)))
     return 0
