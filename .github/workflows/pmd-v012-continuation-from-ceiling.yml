@@ -1,0 +1,243 @@
+name: PMD-001 V012 Continuation From Ceiling
+
+on:
+  push:
+    branches:
+      - pumpfun-migration-direction-v0.1
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/RUN_V012_CONTINUATION_FROM_CEILING.trigger'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  verify-ceiling:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      viable: ${{ steps.verify.outputs.viable }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pumpfun-migration-direction-v0.1
+      - name: Download frozen V0.7 ceiling receipt
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: 35218989089
+          name: PMD-001-chain-exact-ceiling-v07-aggregate
+          path: ceiling-v07
+      - name: Verify exact prerequisite
+        id: verify
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          hits=list(Path('ceiling-v07').rglob('chain_exact_ceiling_v07_receipt.json'))
+          if len(hits)!=1:
+              raise SystemExit(f'expected one ceiling receipt, found {len(hits)}')
+          r=json.loads(hits[0].read_text())
+          checks=[
+              r.get('verdict')=='CHAIN_EXACT_CEILING_V07_VIABLE',
+              r.get('economic_outcomes_opened') is False,
+              r.get('rows')==1012,
+              r.get('unique_mints')==1012,
+              r.get('full_index_set_reconciled') is True,
+              r.get('parser_version_ok') is True,
+              r.get('source_resolved_rows')==1012,
+              int(r.get('rows_with_successful_preboundary_signature',0))>=1000,
+          ]
+          ok=all(checks)
+          print(json.dumps(r,indent=2,sort_keys=True))
+          with open(os.environ['GITHUB_OUTPUT'],'a') as f:f.write(f"viable={'true' if ok else 'false'}\n")
+          if not ok: raise SystemExit('frozen V0.7 ceiling prerequisite is not VIABLE')
+          PY
+
+  full-shard:
+    needs: verify-ceiling
+    if: ${{ needs.verify-ceiling.outputs.viable == 'true' }}
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        start: [0, 253, 506, 759]
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pumpfun-migration-direction-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install source dependencies
+        run: python -m pip install --upgrade pip duckdb huggingface_hub requests solders pytz
+      - name: Syntax checks
+        run: |
+          python -m py_compile \
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/build_source_rebuild_manifest_v01.py \
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/source_rebuild_chain_exact_v07.py
+      - name: Rebuild frozen 1,012-row manifest
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001
+        run: |
+          python build_source_rebuild_manifest_v01.py --data-dir pmd_source_rebuild_manifest_data --out pmd_source_rebuild_manifest_v01.jsonl --receipt pmd_source_rebuild_manifest_v01_receipt.json
+          test ! -e pmd_source_rebuild_manifest_data/postgard_outcomes.parquet
+      - name: Execute deterministic V0.7 full-source shard
+        continue-on-error: true
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001
+        run: |
+          python source_rebuild_chain_exact_v07.py \
+            --manifest pmd_source_rebuild_manifest_v01.jsonl \
+            --full-manifest pmd_source_rebuild_manifest_v01.jsonl \
+            --out-dir pmd_chain_exact_full_v07_${{ matrix.start }} \
+            --rpc-url https://api.mainnet-beta.solana.com \
+            --source-name solana_public_rpc_chain_exact_full_v07 \
+            --start ${{ matrix.start }} --limit 253 --block-batch-size 4
+      - name: Assert source stage outcome wall
+        if: always()
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001
+        run: test ! -e pmd_source_rebuild_manifest_data/postgard_outcomes.parquet
+      - name: Upload compact full-source evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: PMD-001-chain-exact-full-v07-${{ matrix.start }}
+          if-no-files-found: warn
+          retention-days: 30
+          compression-level: 9
+          path: |
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/pmd_chain_exact_full_v07_${{ matrix.start }}/source_rebuild_summary.jsonl
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/pmd_chain_exact_full_v07_${{ matrix.start }}/block_hash_ledger.jsonl
+            Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/pmd_chain_exact_full_v07_${{ matrix.start }}/raw/*.jsonl
+
+  source-gate:
+    needs: [verify-ceiling, full-shard]
+    if: ${{ always() && needs.verify-ceiling.outputs.viable == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    outputs:
+      passed: ${{ steps.classify.outputs.passed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pumpfun-migration-direction-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download all full-source shards
+        uses: actions/download-artifact@v4
+        with:
+          pattern: PMD-001-chain-exact-full-v07-*
+          path: all-full-v07
+          merge-multiple: false
+      - name: Aggregate frozen final V0.7 Source Gate
+        continue-on-error: true
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001
+        run: python aggregate_chain_exact_source_gate_v07.py --input-root "$GITHUB_WORKSPACE/all-full-v07" --out-dir "$GITHUB_WORKSPACE/source-gate-v07"
+      - name: Classify exact Source Gate
+        id: classify
+        if: always()
+        run: |
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          p=Path('source-gate-v07/chain_exact_source_gate_v07_receipt.json')
+          passed=False
+          if p.exists():
+              r=json.loads(p.read_text());assert r['economic_outcomes_opened'] is False
+              passed=r.get('verdict')=='CHAIN_EXACT_SOURCE_GATE_V07_PASS'
+              print(json.dumps(r,indent=2,sort_keys=True))
+          else:
+              print(json.dumps({'verdict':'CHAIN_EXACT_SOURCE_GATE_V07_TECHNICAL_INCOMPLETE','receipt_missing':True}))
+          with open(os.environ['GITHUB_OUTPUT'],'a') as f:f.write(f"passed={'true' if passed else 'false'}\n")
+          PY
+      - name: Upload final Source Gate receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: PMD-001-chain-exact-source-gate-v07
+          retention-days: 30
+          path: source-gate-v07/
+
+  features-v012:
+    needs: [full-shard, source-gate]
+    if: ${{ needs.source-gate.outputs.passed == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pumpfun-migration-direction-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install parser dependencies
+        run: python -m pip install --upgrade pip requests solders
+      - name: Download all full-source shards
+        uses: actions/download-artifact@v4
+        with:
+          pattern: PMD-001-chain-exact-full-v07-*
+          path: all-full-v07
+          merge-multiple: false
+      - name: Extract frozen chain-exact V0.12 features
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001
+        run: |
+          python extract_chain_exact_features_v012.py --input-root "$GITHUB_WORKSPACE/all-full-v07" --out-dir "$GITHUB_WORKSPACE/features-v012"
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path('$GITHUB_WORKSPACE/features-v012/chain_exact_features_v012_receipt.json').read_text())
+          assert r['economic_outcomes_opened'] is False
+          assert r['promotion_authority'] is False
+          assert r['summary_rows']==1012 and r['unique_mints']==1012
+          print(json.dumps(r,indent=2,sort_keys=True))
+          PY
+      - name: Upload V0.12 source-only features
+        uses: actions/upload-artifact@v4
+        with:
+          name: PMD-001-chain-exact-features-v012
+          retention-days: 30
+          path: features-v012/
+
+  evaluate-v012:
+    needs: features-v012
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pumpfun-migration-direction-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install evaluation dependencies
+        run: python -m pip install --upgrade pip pandas numpy scipy
+      - name: Download V0.12 features
+        uses: actions/download-artifact@v4
+        with:
+          name: PMD-001-chain-exact-features-v012
+          path: features-v012
+      - name: Download frozen V0.8 exploratory outcomes
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: 35150072032
+          name: PMD-001-exploratory-outcomes-v08
+          path: outcomes-v08
+      - name: Evaluate fixed V0.12 family with BH-FDR and robustness gate
+        run: |
+          FEATURES=$(find features-v012 -name chain_exact_features_v012.jsonl -print -quit)
+          OUTCOMES=$(find outcomes-v08 -name v08_frozen_t0_baseline_outcomes.csv -print -quit)
+          test -n "$FEATURES" && test -n "$OUTCOMES"
+          python Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/evaluate_chain_exact_features_v012.py \
+            --features "$FEATURES" --outcomes "$OUTCOMES" --out v012_evaluation.json
+      - name: Upload V0.12 exploratory adjudication
+        uses: actions/upload-artifact@v4
+        with:
+          name: PMD-001-chain-exact-evaluation-v012
+          retention-days: 30
+          path: v012_evaluation.json
