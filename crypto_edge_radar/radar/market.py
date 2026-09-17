@@ -27,6 +27,7 @@ MEXC_FUTURES_ALLOWED_PUBLIC_PATHS = {
     "/api/v1/contract/detail",
     "/api/v1/contract/ticker",
     "/api/v1/contract/ping",
+    "/api/v1/contract/funding_rate/history",
 }
 MEXC_FUTURES_ALLOWED_PUBLIC_PREFIXES = (
     "/api/v1/contract/depth/",
@@ -233,6 +234,26 @@ class MEXCFuturesPublicFeed(_AllowlistedPublicFeed):
         if any(key not in data for key in required):
             raise MarketDataError("MEXC funding payload missing required fields")
         return data
+
+    def funding_rate_history(
+        self, symbol: str, *, page_num: int = 1, page_size: int = 100
+    ) -> list[dict]:
+        raw = self._validate_contract_symbol(symbol)
+        if not isinstance(page_num, int) or page_num < 1:
+            raise MarketDataError("MEXC funding history page_num must be >= 1")
+        if not isinstance(page_size, int) or page_size < 1 or page_size > 1000:
+            raise MarketDataError("MEXC funding history page_size must be from 1 to 1000")
+        query = urlencode({"symbol": raw, "page_num": page_num, "page_size": page_size})
+        payload = self._get_json(f"/api/v1/contract/funding_rate/history?{query}")
+        if not isinstance(payload, dict) or payload.get("success") is not True:
+            raise MarketDataError("invalid MEXC funding history payload")
+        data = payload.get("data")
+        if not isinstance(data, dict):
+            raise MarketDataError("MEXC funding history missing data")
+        rows = data.get("resultList")
+        if not isinstance(rows, list):
+            raise MarketDataError("MEXC funding history missing resultList")
+        return rows
 
     def recent_trades(self, symbol: str, limit: int = 100) -> list[dict]:
         raw = self._validate_contract_symbol(symbol)
