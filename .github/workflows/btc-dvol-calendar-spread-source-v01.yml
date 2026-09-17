@@ -1,0 +1,52 @@
+name: BTC DVOL Calendar Spread Source Gate V0.1
+
+on:
+  push:
+    branches:
+      - btc-dvol-futures-calendar-spread-source-v0.1
+    paths:
+      - 'labs/BTC_DVOL_FUTURES_TERMSTRUCTURE_001/CALENDAR_SPREAD_SOURCE_TRIGGER_V0.1.txt'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: btc-dvol-calendar-spread-source-v01
+  cancel-in-progress: false
+
+jobs:
+  source_gate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: btc-dvol-futures-calendar-spread-source-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --disable-pip-version-check requests==2.32.3
+      - name: Verify frozen source authority
+        run: |
+          python - <<'PY'
+          import json
+          a=json.load(open('labs/BTC_DVOL_FUTURES_TERMSTRUCTURE_001/CALENDAR_SPREAD_SOURCE_AUTHORITY_V0.1.json'))
+          assert a['source_gate_id']=='DVOL-TS-CALENDAR-SPREAD-SOURCE-001'
+          assert a['status']=='PRE_ACQUISITION_FROZEN_SOURCE_ONLY'
+          assert a['source_gates']['minimum_qualifying_adjacent_pairs']==10
+          assert a['source_gates']['minimum_aggregate_common_contract_pair_days']==40
+          assert a['qualifying_pair']['minimum_common_active_utc_days']==3
+          assert all(v is False for v in a['firewalls'].values())
+          print('DVOL_CALENDAR_SPREAD_SOURCE_AUTHORITY_PASS')
+          PY
+      - run: python -m py_compile labs/BTC_DVOL_FUTURES_TERMSTRUCTURE_001/calendar_spread_source_v01.py
+      - name: Execute outcome-blind calendar-spread source gate
+        run: python labs/BTC_DVOL_FUTURES_TERMSTRUCTURE_001/calendar_spread_source_v01.py
+      - name: Upload immutable source receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: btc-dvol-calendar-spread-source-v01-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/btc_dvol_calendar_spread_source_v01/
+          retention-days: 90
+          if-no-files-found: warn
