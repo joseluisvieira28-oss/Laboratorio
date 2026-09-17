@@ -1,0 +1,159 @@
+{
+  "document_id": "PROP_COMPAT_001_PROP_RULEBOOK_AMENDMENT_V0.3",
+  "campaign_id": "PROP-COMPAT-001",
+  "version": "0.3",
+  "consulted_on": "2026-09-17",
+  "base_documents": [
+    "PROP_COMPAT_001_PROP_RULEBOOK_FREEZE_V0.1",
+    "PROP_COMPAT_001_PROP_RULEBOOK_AMENDMENT_V0.2"
+  ],
+  "status": "PRE_SIMULATION_RULE_CONFLICT_AND_EXECUTION_AUDIT_FROZEN",
+  "simulation_ready": false,
+  "governance": {
+    "research_only": true,
+    "prop_outcomes_opened": false,
+    "risk_grid_run": false,
+    "prop_replay_run": false,
+    "live_trading": false,
+    "orders_created": false,
+    "exchange_mutation": false,
+    "wallets_used": false,
+    "challenge_purchased": false,
+    "private_api_connected": false,
+    "setup_rules_changed": false,
+    "post_outcome_tuning": false,
+    "merge_to_main": false
+  },
+  "source_priority": ["official_terms", "official_faq", "official_challenge_page", "official_documentation", "official_support"],
+  "programs": {
+    "KRAKEN_PROP": {
+      "status": "RULE_MECHANICS_READY_EXECUTABLE_PRICE_LAYER_PENDING",
+      "simulation_ready": false,
+      "confirmed": {
+        "governing_evaluation_contract": "Breakout Evaluation Agreement; Kraken legal terms state Breakout evaluation terms govern evaluation process, fees and outcomes.",
+        "daily_loss_pct": 3.0,
+        "daily_reset_utc": "00:30",
+        "maximum_drawdown_static_pct": {"Starter_Classic": 6.0, "Intermediate_Pro": 5.0, "Advanced_Turbo": 3.0},
+        "commission_pct_per_side": 0.04,
+        "margin_funding_pct_per_day_notional": 0.033,
+        "funding_charge_frequency": "every 4 hours on Kraken Prop / Breakout Terminal",
+        "overnight_holding": true,
+        "weekend_holding": true,
+        "order_types": ["MARKET", "LIMIT", "STOP_LOSS", "STOP_LOSS_LIMIT", "TAKE_PROFIT", "TAKE_PROFIT_LIMIT"],
+        "gtc": true,
+        "same_markets_and_order_types_evaluation_and_funded": true,
+        "universe_current": {
+          "BTCUSD": {"max_total_size_usd": 1000000, "leverage": 10},
+          "ETHUSD": {"max_total_size_usd": 1000000, "leverage": 5},
+          "SOLUSD": {"max_total_size_usd": 500000, "leverage": 5},
+          "BNBUSD": {"max_total_size_usd": 400000, "leverage": 5},
+          "XRPUSD": {"max_total_size_usd": 300000, "leverage": 5},
+          "DOGEUSD": {"max_total_size_usd": 200000, "leverage": 5}
+        },
+        "spread_policy": "variable based on centralized-exchange liquidity",
+        "capital_cap_usd_all_active_prop_accounts": 200000
+      },
+      "official_sources": [
+        "https://www.kraken.com/legal/global-terms",
+        "https://www.breakoutprop.com/breakout-evaluation-agreement/",
+        "https://www.breakoutprop.com/funded-trader-agreement/",
+        "https://www.breakoutprop.com/program-rules/",
+        "https://www.breakoutprop.com/symbols/",
+        "https://support.kraken.com/articles/kraken-prop-faq",
+        "https://support.kraken.com/articles/placing-orders-on-your-prop-account"
+      ],
+      "remaining_blocker": {
+        "id": "KRAKEN_PROP_HISTORICAL_EXECUTABLE_PRICE_LAYER",
+        "reason": "Official rules confirm variable spread and possible liquidity/slippage effects, but no frozen historical executable bid/ask series for the setup replay periods has yet been recovered. Using setup-venue closes as if they were Kraken Prop fills would silently erase venue/execution basis risk.",
+        "fail_closed": true
+      }
+    },
+    "KRAKEN_FUNDED_CONSUMER_PROP": {
+      "status": "BLOCKED_MATERIAL_RULE_CONFLICT_AND_EXECUTION",
+      "simulation_ready": false,
+      "contractual_evidence": {
+        "source": "https://www.breakoutprop.com/breakout-evaluation-agreement/",
+        "annex": "ANNEX B Section 2 - Kraken Consumer Prop",
+        "for_purchases_on_or_after": "2026-08-25",
+        "maximum_daily_loss_pct": 3.0,
+        "maximum_drawdown_pct": 5.0,
+        "leverage": 1,
+        "allowed_order_types": ["MARKET_BUY", "MARKET_SELL"],
+        "trading_fee": 0,
+        "daily_swap_fee": 0,
+        "base_spread_pct_per_side": 0.04,
+        "spread_can_widen": true
+      },
+      "funded_contract_evidence": {
+        "source": "https://www.breakoutprop.com/funded-trader-agreement/",
+        "annex": "ANNEX C - Kraken Funded Users",
+        "rule": "Kraken Funded uses the same Maximum Daily Loss and Maximum Drawdown limits as Annex B; 4 bps spread per side; spread may widen."
+      },
+      "support_conflict": {
+        "source": "https://support.kraken.com/au/articles/funded",
+        "last_updated": "2026-09-03",
+        "support_rule": "fixed 3% maximum-loss line, no advanced order types; Kraken educational material also states no separate daily limit",
+        "conflict": "Current support/education describes a 3% fixed max-loss model without a separate daily loss, while the governing Breakout contractual annex states 3% MDL plus 5% MDD for post-2026-08-25 purchases.",
+        "material": true,
+        "resolution_policy": "FAIL_CLOSED. Do not choose the rule that produces a better simulation. Obtain an authoritative contractual clarification/version before any replay."
+      },
+      "setup_execution_conflict": "The contractual Annex B restricts Kraken Consumer Prop to market buy/sell orders only. Frozen Donchian setups require persistent stop/target semantics; manual market-only monitoring must not be substituted unless proven to preserve the exact frozen execution rule.",
+      "classification": "BLOCKED"
+    },
+    "FTMO_2STEP_SWING": {
+      "status": "BLOCKED_HISTORICAL_INSTRUMENT_AND_CARRY_LAYER",
+      "simulation_ready": false,
+      "confirmed_current": {
+        "crypto_commission_pct_per_side": 0.0325,
+        "source": "https://ftmo.com/en/blog/trading-updates/trading-update-24-jul-2025/"
+      },
+      "dh03_2023_2024": {
+        "classification": "BLOCKED",
+        "blocker": "FTMO announced BNBUSD and SOLUSD as new cryptocurrency instruments in its 24-Jul-2025 trading update. Therefore an exact six-symbol FTMO replay of DH-03-HO1 over 2023-2024 cannot exist without changing the frozen universe.",
+        "prohibited_workaround": "Do not drop BNB/SOL, substitute another venue, or reweight the universe."
+      },
+      "tfg_2025": {
+        "classification": "BLOCKED_PENDING_TRADE_TIMESTAMP_INTERSECTION",
+        "blocker": "BNBUSD and SOLUSD were introduced only in late July 2025. The exact TFG 2025 final trade ledger must be recovered before determining whether unavailable-instrument signals/trades intersect the pre-introduction period."
+      },
+      "carry_blocker": "FTMO CFD swaps/spreads are dynamic and historically variable; no authoritative historical swap/spread series for the required replay windows is frozen. Current swap values must not be backfilled into historical trades.",
+      "official_sources": [
+        "https://ftmo.com/en/blog/trading-updates/trading-update-24-jul-2025/"
+      ]
+    },
+    "HYROTRADER_ONE_STEP_SWING": {
+      "status": "BLOCKED_EXACT_CARRY_AND_EXECUTION_LAYER",
+      "simulation_ready": false,
+      "confirmed_current": {
+        "profit_target_pct": 10.0,
+        "daily_drawdown_pct": 4.0,
+        "daily_drawdown_variant": "SWING_STATIC_FROM_DAY_START_EQUITY",
+        "maximum_loss_pct": 6.0,
+        "minimum_trading_days": 5,
+        "trading_period": "UNLIMITED",
+        "cleo_fee_pct_per_side": {"maker": 0.02, "taker": 0.05},
+        "cleo_market_reference": "Binance market data / Binance-equivalent perpetual environment",
+        "perpetual_funding_material": true
+      },
+      "official_sources": [
+        "https://www.hyrotrader.com/trading-rules/",
+        "https://www.hyrotrader.com/faq/rules/how-is-the-5-daily-drawdown-calculated/",
+        "https://www.hyrotrader.com/faq/cleo-platform/what-are-cleos-fees/",
+        "https://www.hyrotrader.com/trading-platforms/",
+        "https://www.hyrotrader.com/blog/backtesting-trading-strategies/"
+      ],
+      "remaining_blockers": [
+        "Exact historical funding/carry series applicable to the selected Hyro execution platform and replay window is not frozen.",
+        "Exact historical executable spread/slippage layer is not frozen.",
+        "A static historical six-symbol platform manifest for every replay date has not been recovered from an authoritative prop source."
+      ],
+      "fail_closed": true
+    }
+  },
+  "campaign_gate": {
+    "phase1_complete": false,
+    "risk_grid_status": "NOT_RUN_LOCKED",
+    "phase2_prop_application": "PROHIBITED_UNTIL_RELEVANT_RULEBOOK_PATH_IS_SIMULATION_READY",
+    "note": "Exact setup-ledger recovery may proceed because it does not apply any prop rule, risk size or outcome-dependent selection."
+  }
+}
