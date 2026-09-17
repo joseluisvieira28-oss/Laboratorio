@@ -1,0 +1,96 @@
+{
+  "document_id": "PROP_COMPAT_001C_DH03_KRAKEN_AGGRESSIVE_GAUNTLET_CLOSEOUT_V0.1",
+  "campaign_id": "PROP-COMPAT-001C",
+  "closed_on": "2026-09-17",
+  "status": "BASE_STRESS_EDGE_SURVIVES_SEVERE_ROBUSTNESS_GATE_FAIL",
+  "setup_id": "DH-03-HO1",
+  "program_context": "KRAKEN_PROP",
+  "governance_authority": "PROP_COMPAT_001_GOVERNANCE_AMENDMENT_V0.8_AGGRESSIVE_RESEARCH",
+  "evidence": {
+    "stages_ABC": {
+      "workflow_run_id": 35228245293,
+      "artifact_id": 10499767549,
+      "artifact_digest": "sha256:7b5f469d06633afa69707bc14b1af54ce8ba7f344cc150a9e46eaa63d2844e28",
+      "receipt_fingerprint": "09d32db16bb3586bffe073e108f08afbb8b0ebb9ec3f78a76387da06d0b63487"
+    },
+    "stage_D": {
+      "workflow_run_id": 35228491771,
+      "workflow_conclusion": "success",
+      "artifact_id": 10499858826,
+      "artifact_digest": "sha256:3e770410e02323c519241ee0d62c88a1c368f7d7e027a16c382dc1e4cc82f9fc",
+      "receipt_file_sha256": "b026ba996958e90d820dca3a4cf1fb1bc9ef1effd561e2531418bb82100969cd",
+      "receipt_fingerprint": "3998bd045e1d2d7ce3f3e3268ac60e8d49856d5383c4baddab45e4cf39c66df6",
+      "binance_1m_archives_hash_validated": 144,
+      "access_2025": false,
+      "access_2026": false
+    }
+  },
+  "stages_ABC_summary": {
+    "factor_combinations": 48,
+    "positive_expectancy_combinations": 27,
+    "BASE": {"expectancy_R":0.3369995675003724,"profit_factor_R":1.5133235239254996,"total_R":49.20193685505437},
+    "STRESS": {"expectancy_R":0.3175626690005072,"profit_factor_R":1.4751964744317043,"total_R":46.364149674074056},
+    "SEVERE": {"expectancy_R":-0.0475853582865837,"profit_factor_R":0.9527333907620859,"total_R":-6.947462309841221},
+    "EXTREME": {"expectancy_R":-0.42245183482360726,"profit_factor_R":0.6874375412732494,"total_R":-61.67796788424666},
+    "correlation_stress": {"total_scenarios":60,"nominal_MDL_3pct_touch_or_breach":2,"cases":["0.25% risk x 6 simultaneous x 2R = 3.0%","0.30% risk x 6 simultaneous x 2R = 3.6%"]},
+    "monte_carlo_20000": {
+      "BASE_target_before_static_MDD_range":[0.0113,0.8033],
+      "STRESS_target_before_static_MDD_range":[0.0092,0.77285],
+      "SEVERE_target_before_static_MDD_range":[0.0001,0.1712],
+      "EXTREME_target_before_static_MDD_range":[0.0,0.0189],
+      "BASE_static_MDD_breach_range":[0.0,0.1579],
+      "STRESS_static_MDD_breach_range":[0.00005,0.17585],
+      "SEVERE_static_MDD_breach_range":[0.04085,0.76805],
+      "EXTREME_static_MDD_breach_range":[0.5877,0.98875]
+    }
+  },
+  "stage_D_1m": {
+    "profiles": {
+      "SEVERE": {"execution_rt_pct_notional":0.50,"carry_multiplier":1.5,"stop_gap_extra_R":0.50,"cells":15,"obvious_proxy_breach":8,"proxy_insufficient_no_decision":7,"robust_proxy_survivor":0,"ambiguity_material":0},
+      "EXTREME": {"execution_rt_pct_notional":0.75,"carry_multiplier":2.0,"stop_gap_extra_R":1.0,"cells":15,"obvious_proxy_breach":15,"proxy_insufficient_no_decision":0,"robust_proxy_survivor":0,"ambiguity_material":0}
+    },
+    "total_classification_counts": {"OBVIOUS_PROXY_BREACH":23,"PROXY_INSUFFICIENT":7},
+    "breach_rule": "MDD_CLOSE_BREACH",
+    "carry_phase_sensitivity": "NONE_CLASSIFICATION_CHANGING; each reported breach/no-decision classification was identical across all 240 support phase offsets for that cell",
+    "interpretation": "The predeclared SEVERE and EXTREME combined execution/carry/gap envelopes do not produce a robust surviving Kraken proxy cell. This confirms that the execution robustness boundary lies below the SEVERE composite; no post-outcome intermediate threshold is selected as a rescue."
+  },
+  "tier_adjudication_under_v08": {
+    "RESEARCH_DIAMOND": false,
+    "EXECUTION_DIAMOND": false,
+    "PRODUCTION_DIAMOND": false,
+    "current_label": "ROBUST_BASE_STRESS_EDGE_SEVERE_GATE_FAIL",
+    "reason": "DH-03 has a positive frozen forward holdout and remains positive under BASE/STRESS, but the prospectively frozen RESEARCH_DIAMOND candidate condition required materially positive severe robustness. The SEVERE trade-level expectancy is negative and Stage D has zero robust severe 1m survivors. The label therefore cannot be promoted without changing the predeclared standard after outcomes."
+  },
+  "what_is_not_rejected": {
+    "DH03_base_edge": true,
+    "original_forward_holdout": "EXACT_RULE_FORWARD_HOLDOUT_SURVIVES",
+    "Kraken_base_stress_proxy": "14 prior robust proxy survivor cells under BASE/STRESS-era envelope",
+    "interpretation": "The edge is not NO_EDGE. The severe execution robustness tier failed."
+  },
+  "next_parallel_lanes_allowed_without_waiting_for_support": [
+    "forward-only read-only DH-03 shadow/radar from a new freeze timestamp with no historical 2026 backfill",
+    "execution-source resolution with Kraken/Breakout support in parallel if separately authorized for external sending",
+    "independent TFG exact-ledger recovery",
+    "no post-outcome cost/risk interpolation to manufacture a diamond"
+  ],
+  "hard_gates_still_binding": {
+    "challenge_purchase": false,
+    "live_trading": false,
+    "PROP_COMPAT_PASS": false,
+    "exact_Kraken_execution_translation": "BLOCKED_NOT_PUBLIC",
+    "merge_to_main": false
+  },
+  "governance": {
+    "aggressive_research": true,
+    "fail_fast": true,
+    "parallel_gates": true,
+    "post_outcome_tuning": false,
+    "setup_rules_changed": false,
+    "risk_grid_changed": false,
+    "best_plan_selected": false,
+    "best_risk_selected": false,
+    "challenge_purchase": false,
+    "live_trading": false,
+    "merge_to_main": false
+  }
+}
