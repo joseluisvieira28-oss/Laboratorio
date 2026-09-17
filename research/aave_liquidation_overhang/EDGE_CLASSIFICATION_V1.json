@@ -1,0 +1,38 @@
+{
+  "schema_version": "CRYPTO_LAB_EDGE_CLASSIFICATION_V1",
+  "lab_id": "AAVE-LIQUIDATION-OVERHANG-001",
+  "classification_frozen_at_utc": "2026-09-17T10:30:00Z",
+  "primary_edge_family": "CREDIT",
+  "secondary_edge_family": "MICRO",
+  "mathematical_engine": "borrower-level liquidation-distance distribution -> latent forced-sale inventory -> realized liquidation flow",
+  "mechanism_statement": "Leveraged Aave borrowers near the liquidation boundary are the constrained participants. When collateral/debt state crosses protocol liquidation eligibility, permissionless liquidators are paid a bonus to repay debt and seize collateral, creating forced flow that must be absorbed by the market.",
+  "expected_sign_or_payoff_shape": "Higher prospectively measured liquidation overhang should precede higher realized Aave liquidation notional; any later market-price sign is separately authorization-gated and not frozen here.",
+  "failure_mode": "Borrowers may self-deleverage before liquidation, correlated collateral/debt and eMode can invalidate naive shock math, oracle mechanics may dominate, and historical user-state reconstruction may be incomplete or too costly.",
+  "regime_dependency": "Expected to matter most during leverage build-up and adverse collateral-price shocks; mechanism validation must not be rescued by post-outcome regime selection.",
+  "source_authority": {
+    "canonical_source": "Ethereum mainnet Aave V3 official contracts/events; SQD ethereum-mainnet is the initial historical transport for source census only.",
+    "point_in_time_requirement": "All borrower/reserve/oracle state used later must be reconstructible using data available at or before each snapshot block. No present-day state substitution.",
+    "coverage_gate": "First prove protected-safe 2023-2024 event/participant enumeration and provenance; then separately prove borrower-state reconstruction coverage before any overhang or outcome is calculated."
+  },
+  "execution_assumptions": {
+    "executable_strategy": false,
+    "cost_model": "NOT_APPLICABLE at source census/mechanism-validation stage; any later directional execution layer must freeze costs prospectively.",
+    "entry_exit": "NOT_APPLICABLE at source census stage."
+  },
+  "protected_holdouts": ["2025", "2026"],
+  "validation_path": "M0 source census -> M1 borrower-state reconstruction gate -> mechanism validation (overhang -> future canonical liquidation notional) -> only then separate executable-market study if promoted.",
+  "promotion_policy_reference": "AAVE-LIQUIDATION-OVERHANG-001 prospective protocol to be frozen only after source reconstruction feasibility is proven; no market-edge promotion from source or mechanism evidence alone.",
+  "nearest_existing_family_or_lab": "AAVE-CREDIT-STRESS-001; DEFI-LIQUIDATION-SHOCK-001",
+  "material_difference_from_existing_work": "Uses borrower-level latent liquidation inventory observable before forced flow, rather than USDC borrow-rate changes or realized liquidation events.",
+  "expected_correlation_bucket": "DeFi leverage/forced-flow stress; conceptual only before standalone eligibility.",
+  "maturity": "M0",
+  "scientific_verdict": "NOT_TESTED",
+  "forensic_audit_reference": "governance/CRYPTO_BRANCH_FORENSIC_AUDIT_V1.md",
+  "governance": {
+    "research_only": true,
+    "fail_closed": true,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "post_outcome_tuning": false
+  }
+}
