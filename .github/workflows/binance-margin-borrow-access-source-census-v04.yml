@@ -1,0 +1,108 @@
+name: Binance Margin Borrow Access 001 — Source Census V0.4
+
+on:
+  push:
+    branches:
+      - binance-margin-borrow-access-v0.1
+    paths:
+      - research/binance_margin_borrow_access/source_census_v04.py
+      - research/binance_margin_borrow_access/BINANCE_MARGIN_BORROW_ACCESS_001_SOURCE_HYDRATION_REMEDIATION_V0_4.md
+      - .github/workflows/binance-margin-borrow-access-source-census-v04.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  manifest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout frozen research branch
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install source dependencies
+        run: pip install --disable-pip-version-check requests beautifulsoup4
+      - name: Build protected-safe immutable manifest
+        run: python research/binance_margin_borrow_access/source_census_v04.py manifest --out v04_manifest
+      - name: Upload immutable manifest
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: BINANCE_MARGIN_BORROW_ACCESS_001_V04_MANIFEST
+          path: v04_manifest/
+          if-no-files-found: warn
+          retention-days: 30
+
+  hydrate:
+    needs: manifest
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7]
+    steps:
+      - name: Checkout frozen research branch
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install source dependency
+        run: pip install --disable-pip-version-check requests beautifulsoup4
+      - name: Download immutable manifest
+        uses: actions/download-artifact@v4
+        with:
+          name: BINANCE_MARGIN_BORROW_ACCESS_001_V04_MANIFEST
+          path: v04_manifest
+      - name: Hydrate frozen shard
+        run: python research/binance_margin_borrow_access/source_census_v04.py hydrate --manifest v04_manifest/manifest.json --shard ${{ matrix.shard }} --out v04_shard_${{ matrix.shard }}
+      - name: Upload shard receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: BINANCE_MARGIN_BORROW_ACCESS_001_V04_SHARD_${{ matrix.shard }}
+          path: v04_shard_${{ matrix.shard }}/
+          if-no-files-found: warn
+          retention-days: 30
+
+  aggregate:
+    if: always()
+    needs: [manifest, hydrate]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout frozen research branch
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install source dependency
+        run: pip install --disable-pip-version-check requests beautifulsoup4
+      - name: Download immutable manifest
+        uses: actions/download-artifact@v4
+        with:
+          name: BINANCE_MARGIN_BORROW_ACCESS_001_V04_MANIFEST
+          path: v04_manifest
+      - name: Download all shard receipts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: BINANCE_MARGIN_BORROW_ACCESS_001_V04_SHARD_*
+          path: v04_shards
+          merge-multiple: false
+      - name: Aggregate canonical source census
+        run: python research/binance_margin_borrow_access/source_census_v04.py aggregate --manifest v04_manifest/manifest.json --shards v04_shards --out v04_final
+      - name: Upload canonical V0.4 receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: BINANCE_MARGIN_BORROW_ACCESS_001_SOURCE_CENSUS_V0_4
+          path: v04_final/
+          if-no-files-found: warn
+          retention-days: 30
