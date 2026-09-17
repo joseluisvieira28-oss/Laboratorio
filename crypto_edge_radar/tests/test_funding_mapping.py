@@ -86,10 +86,11 @@ class FundingMappingTests(unittest.TestCase):
                 writer.writeheader()
                 writer.writerow({"as_of": "2025-01-01", "entry": "2025-01-02", "exit": "2025-01-09", "position": -1})
             entry = 1735776000000
+            exit_ = 1736380800000
             rows = [
-                {"settleTime": entry - 1, "fundingRate": 0.0},
+                {"settleTime": entry, "fundingRate": 0.0},
                 {"settleTime": entry + 8 * 60 * 60 * 1000, "fundingRate": 0.0002},
-                {"settleTime": 1736380800000 + 1, "fundingRate": 0.0},
+                {"settleTime": exit_, "fundingRate": 0.0},
             ]
             report = build_2025_funding_mapping_report(event_csv=path, feed=StubFundingFeed({1: rows}))
         event = report["events"][0]
