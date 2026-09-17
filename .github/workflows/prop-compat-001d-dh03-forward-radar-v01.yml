@@ -1,0 +1,55 @@
+name: PROP COMPAT 001D DH03 Forward Radar Snapshot V0.1
+
+on:
+  push:
+    branches: [prop-compat-001-v0.1]
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/prop_compat/PROP_COMPAT_001D_RADAR_RUN_TRIGGER_V0.1.txt'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  radar-snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: prop-compat-001-v0.1
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify forward-only authority before market-data warmup
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('research/prop_compat')
+          f=json.loads((p/'PROP_COMPAT_001D_DH03_FORWARD_RADAR_FREEZE_V0.1.json').read_text())
+          g=json.loads((p/'PROP_COMPAT_001_GOVERNANCE_AMENDMENT_V0.8_AGGRESSIVE_RESEARCH.json').read_text())
+          assert f['status']=='FROZEN_FORWARD_ONLY_BEFORE_FIRST_ELIGIBLE_POST_FREEZE_SIGNAL'
+          assert f['warmup_policy']['performance_backfill_2026'] is False
+          assert f['governance']['live_trading'] is False and f['governance']['orders'] is False
+          assert g['mode']=='AGGRESSIVE_RESEARCH_PARALLEL_GATES'
+          print('FORWARD_RADAR_AUTHORITY_PASS')
+          PY
+      - name: Compile forward radar
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: python -m py_compile research/prop_compat/prop_compat_001d_dh03_forward_radar_v01.py
+      - name: Run read-only forward radar snapshot
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        env:
+          PYTHONPATH: ${{ github.workspace }}/Dream-Account-OS-v2.3-PARTIAL
+        run: python research/prop_compat/prop_compat_001d_dh03_forward_radar_v01.py
+      - name: Upload radar snapshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: PROP_COMPAT_001D_DH03_FORWARD_RADAR_SNAPSHOT_V01
+          path: Dream-Account-OS-v2.3-PARTIAL/research/local_data/prop_compat_001d/PROP_COMPAT_001D_DH03_FORWARD_RADAR_SNAPSHOT_V0.1.json
+          if-no-files-found: warn
+          retention-days: 90
