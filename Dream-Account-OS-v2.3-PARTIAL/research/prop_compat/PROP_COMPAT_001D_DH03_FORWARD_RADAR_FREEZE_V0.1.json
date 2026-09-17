@@ -1,0 +1,61 @@
+{
+  "document_id": "PROP_COMPAT_001D_DH03_FORWARD_RADAR_FREEZE_V0.1",
+  "campaign_id": "PROP-COMPAT-001D",
+  "parent_campaign": "PROP-COMPAT-001",
+  "frozen_on": "2026-09-17",
+  "status": "FROZEN_FORWARD_ONLY_BEFORE_FIRST_ELIGIBLE_POST_FREEZE_SIGNAL",
+  "authority": "PROP_COMPAT_001_GOVERNANCE_AMENDMENT_V0.8_AGGRESSIVE_RESEARCH",
+  "setup_id": "DH-03-HO1",
+  "mode": "READ_ONLY_FORWARD_RADAR_SHADOW",
+  "activation_anchor": "The Git commit timestamp that first contains this freeze. A signal is eligible only if its completed 12H signal-bar close timestamp is strictly later than that freeze commit timestamp.",
+  "setup_rules": {
+    "direction": "LONG_ONLY",
+    "venue_reference": "BINANCE_USD_M_PUBLIC_MARKET_DATA_READ_ONLY",
+    "symbols": ["BTCUSDT","ETHUSDT","SOLUSDT","BNBUSDT","XRPUSDT","DOGEUSDT"],
+    "timeframe": "12H_UTC",
+    "donchian_lookback_complete_bars": 40,
+    "atr_period_wilder": 28,
+    "signal": "completed 12H close strictly above max high of prior 40 completed 12H bars, excluding signal bar",
+    "entry": "next 12H bar open",
+    "stop": "signal_bar_low - 0.25 * ATR28_Wilder",
+    "target": "entry + 3 * (entry - stop)",
+    "max_hold_bars": 80,
+    "one_active_trade_per_symbol": true,
+    "no_pyramiding": true,
+    "same_bar_stop_target": "STOP_WINS",
+    "adverse_gap_through_stop": "exit_at_open",
+    "favorable_gap_over_target": "cap_at_target"
+  },
+  "warmup_policy": {
+    "allowed": "Fetch only the minimum historical public bars needed to compute current Donchian40 and ATR28 state for forward detection after activation.",
+    "forbidden": "Do not generate, score, replay or report historical 2026 trades/signals as forward evidence. Warmup bars are indicator state only.",
+    "performance_backfill_2026": false
+  },
+  "radar_output": {
+    "allowed": ["RADAR_ARMED_NO_ELIGIBLE_SIGNAL_YET","ELIGIBLE_FORWARD_SIGNAL_DETECTED","SOURCE_OR_STATE_BLOCKED"],
+    "signal_payload_if_detected": ["symbol","signal_bar_open_utc","signal_bar_close_utc","donchian_prior40_high","signal_close","atr28","planned_entry_bar_open_utc","stop_formula_value","3R_target_formula_pending_entry_open"],
+    "no_order_creation": true,
+    "no_alert_webhook_creation": true,
+    "no_position_mutation": true
+  },
+  "shadow_policy": {
+    "signals_detected_after_freeze_may_be_recorded": true,
+    "entry_and_exit_execution_may_be_shadow_recorded_from_public_data": true,
+    "no_real_order": true,
+    "no_exchange_authentication": true,
+    "no_wallet": true,
+    "no_private_api": true
+  },
+  "governance": {
+    "research_only": true,
+    "forward_only": true,
+    "historical_2026_performance_backfill": false,
+    "post_outcome_tuning": false,
+    "setup_rules_changed": false,
+    "challenge_purchase": false,
+    "live_trading": false,
+    "orders": false,
+    "webhooks": false,
+    "merge_to_main": false
+  }
+}
