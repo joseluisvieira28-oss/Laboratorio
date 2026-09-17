@@ -33,7 +33,17 @@ jobs:
           python -m unittest discover -s tests -v
       - name: Build local operator node EXE
         run: |
-          pyinstaller --clean --onefile --name CryptoEdgeRadarNode windows_node_entry.py
+          pyinstaller --clean --onefile --name CryptoEdgeRadarNode --add-data "deployment_registry_v1.json;." windows_node_entry.py
+      - name: Verify packaged deployment registry
+        shell: pwsh
+        run: |
+          $env:RADAR_PACKAGING_SELFTEST = "1"
+          $output = & .\dist\CryptoEdgeRadarNode.exe
+          Write-Host $output
+          $state = $output | ConvertFrom-Json
+          if ($state.status -ne "PASS") { throw "package self-test did not PASS" }
+          if (-not $state.required_strategy_present) { throw "ETF-CME strategy missing from packaged registry" }
+          if ([int]$state.candidate_count -lt 4) { throw "packaged registry unexpectedly small" }
       - name: Hash executable
         shell: pwsh
         run: |
