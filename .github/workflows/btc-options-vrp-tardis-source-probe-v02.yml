@@ -1,0 +1,52 @@
+name: BTC Options VRP — Tardis Source Probe V0.2
+
+on:
+  push:
+    branches:
+      - btc-options-vrp-tardis-source-probe-v0.1
+    paths:
+      - .github/btc-options-vrp-tardis-source-probe-v02.trigger
+
+permissions:
+  contents: read
+
+jobs:
+  source_probe_v02:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: btc-options-vrp-tardis-source-probe-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --disable-pip-version-check requests
+      - name: Verify corrected frozen authority
+        run: |
+          python - <<'PY'
+          import json
+          a=json.load(open('labs/BTC_OPTIONS_VRP_001/TARDIS_SOURCE_PROBE_AUTHORITY_V0.2.json'))
+          assert a['probe_id']=='OVRP-EXEC-SOURCE-TARDIS-PROBE-002'
+          assert a['status']=='FROZEN_SOURCE_ONLY_OUTCOME_BLIND'
+          assert a['parent_v01_run']==35273908796
+          assert a['schema_diagnostic_run']==35274231199
+          assert a['sample_dates']==['2021-01-01','2022-01-01','2023-01-01','2024-01-01']
+          assert all(int(x[:4]) < 2025 for x in a['sample_dates'])
+          assert all(v is False for k,v in a['safety'].items() if k.endswith('_authorized'))
+          print('TARDIS_SOURCE_PROBE_V02_AUTHORITY_PASS')
+          PY
+      - name: Compile corrected source probe
+        run: |
+          python -m py_compile labs/BTC_OPTIONS_VRP_001/tardis_source_probe_v01.py
+          python -m py_compile labs/BTC_OPTIONS_VRP_001/tardis_source_probe_v02.py
+      - name: Execute corrected free-sample source-feasibility probe
+        run: python labs/BTC_OPTIONS_VRP_001/tardis_source_probe_v02.py
+      - name: Upload immutable V0.2 source-probe receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: BTC_OPTIONS_VRP_001_TARDIS_SOURCE_PROBE_V0_2
+          path: artifacts/btc_options_vrp_tardis_source_probe_v02/
+          retention-days: 90
+          if-no-files-found: warn
