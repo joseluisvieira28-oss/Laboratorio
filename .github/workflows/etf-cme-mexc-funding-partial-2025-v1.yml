@@ -1,0 +1,63 @@
+name: ETF-CME MEXC FUNDING PARTIAL 2025 V1
+
+on:
+  push:
+    branches:
+      - crypto-edge-radar-aggressive-v0.7-render
+    paths:
+      - 'crypto_edge_radar/radar/funding_partial.py'
+      - '.github/workflows/etf-cme-mexc-funding-partial-2025-v1.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  partial-funding-diagnostic:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install radar runtime
+        run: cd crypto_edge_radar && python -m pip install -e .
+      - name: Download immutable ETF-CME 2025 OOS artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: etf-cme-instflow-001-oos-2025-34815006815-1
+          run-id: 34815006815
+          github-token: ${{ github.token }}
+          path: immutable_oos_2025
+      - name: Run outcome-blind partial MEXC funding diagnostic
+        run: |
+          mkdir -p artifacts/etf_cme_mexc_funding_partial_2025_v1
+          cd crypto_edge_radar
+          python -m radar.funding_partial \
+            --events ../immutable_oos_2025/oos_2025_observations.csv \
+            --output ../artifacts/etf_cme_mexc_funding_partial_2025_v1/report.json
+      - name: Validate fail-closed classification
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('artifacts/etf_cme_mexc_funding_partial_2025_v1/report.json').read_text())
+          assert p['classification']=='PARTIAL_SOURCE_COVERAGE_DIAGNOSTIC_ONLY', p
+          assert p['full_2025_source_coverage_pass'] is False, p
+          assert p['promotion_allowed_from_this_report'] is False, p
+          assert p['event_count_total']==50, p
+          assert p['market_outcome_columns_read'] is False, p
+          assert p['scientific_signal_changed'] is False, p
+          assert p['trade_selection_changed'] is False, p
+          assert p['capital_enabled'] is False, p
+          assert p['orders_created'] is False, p
+          print(json.dumps({k:v for k,v in p.items() if k not in {'events','excluded_events'}}, sort_keys=True, indent=2))
+          PY
+      - name: Upload partial funding diagnostic
+        uses: actions/upload-artifact@v4
+        with:
+          name: etf-cme-mexc-funding-partial-2025-v1-${{ github.run_id }}
+          path: artifacts/etf_cme_mexc_funding_partial_2025_v1/
+          if-no-files-found: error
+          retention-days: 90
