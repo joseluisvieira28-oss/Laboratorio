@@ -1,0 +1,75 @@
+name: ETF-CME EXEC V2 — MEXC SPOT MAPPING PROBE
+
+on:
+  push:
+    branches:
+      - etf-cme-exec-v2-asymmetric-mapping
+    paths:
+      - 'crypto_edge_radar/radar/mexc_spot.py'
+      - 'crypto_edge_radar/radar/spot_mapping.py'
+      - 'crypto_edge_radar/tests/test_mexc_spot_mapping.py'
+      - 'crypto_edge_radar/ETF_CME_INSTFLOW_001_EXEC_V2_ASYMMETRIC_CANDIDATE.json'
+      - '.github/workflows/etf-cme-exec-v2-spot-mapping.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  spot-mapping-probe:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: crypto_edge_radar
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install runtime
+        run: python -m pip install -e .
+      - name: Compile and targeted tests
+        run: |
+          python -m compileall radar tests
+          python -m unittest tests.test_mexc_spot_mapping -v
+      - name: Capture live public MEXC Spot-Perp mapping receipt
+        run: |
+          mkdir -p exec_v2_artifacts
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from radar.spot_mapping import spot_perp_mapping_receipt
+          receipt = spot_perp_mapping_receipt()
+          Path('exec_v2_artifacts/spot_perp_mapping_receipt.json').write_text(
+              json.dumps(receipt, sort_keys=True, indent=2), encoding='utf-8'
+          )
+          print(json.dumps(receipt, sort_keys=True))
+          PY
+      - name: Validate research-only governance
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('exec_v2_artifacts/spot_perp_mapping_receipt.json').read_text())
+          assert p['receipt_type']=='ETF_CME_EXEC_V2_SPOT_PERP_MAPPING_SHADOW', p
+          assert p['capital_enabled'] is False, p
+          assert p['orders_created'] is False, p
+          assert p['authenticated_api_used'] is False, p
+          assert p['long_mapping_candidate']['api_default_symbol_supported'] is True, p
+          assert p['gates']['capital']=='BLOCKED', p
+          assert p['gates']['spot_account_api_fee']=='UNVERIFIED_BLOCKER', p
+          print(json.dumps({
+              'checked_at_utc':p['checked_at_utc'],
+              'spot_spread_bps':p['long_mapping_candidate']['spread_bps'],
+              'perp_minus_spot_mid_bps':p['cross_market']['perp_minus_spot_mid_bps'],
+              'spot_api_supported':p['long_mapping_candidate']['api_default_symbol_supported'],
+              'capital':p['gates']['capital'],
+          }, sort_keys=True))
+          PY
+      - name: Upload EXEC V2 public receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: etf-cme-exec-v2-spot-mapping-${{ github.run_id }}
+          path: crypto_edge_radar/exec_v2_artifacts/
+          if-no-files-found: error
+          retention-days: 30
