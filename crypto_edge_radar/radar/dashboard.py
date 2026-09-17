@@ -10,7 +10,6 @@ from urllib.parse import urlparse
 
 from .deployment import RiskLimits
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_REGISTRY = PROJECT_ROOT / "deployment_registry_v1.json"
 
@@ -48,11 +47,11 @@ def _read_jsonl_tail(path: Path, limit: int = 30) -> list[dict[str, Any]]:
 
 def _bot_operating_state(candidate: dict[str, Any]) -> str:
     deployment_state = str(candidate.get("deployment_state") or "").upper()
-    if deployment_state == "BLOCKED" or candidate.get("scientific_tier") == 4:
+    if deployment_state.startswith("BLOCKED") or candidate.get("scientific_tier") == 4:
         return "BLOCKED"
     if candidate.get("micro_live_allowed_now") is True:
         return "ARMED"
-    if "SHADOW" in deployment_state or candidate.get("shadow_allowed") is True:
+    if candidate.get("shadow_allowed") is True or "SHADOW" in deployment_state or "WATCHER" in deployment_state:
         return "SHADOW"
     return "GATED"
 
@@ -63,15 +62,24 @@ def build_control_room_state(
     notification_path: str,
     registry_path: str | None = None,
 ) -> dict[str, Any]:
-    registry = _read_json(Path(registry_path) if registry_path else DEFAULT_REGISTRY, {"candidates": []})
+    selected_registry = Path(registry_path) if registry_path else DEFAULT_REGISTRY
+    registry = _read_json(selected_registry, {"candidates": []})
     service = _read_json(Path(status_path), {"health": "UNKNOWN"})
     events = _read_jsonl_tail(Path(notification_path))
 
+    candidates = registry.get("candidates") or []
+    focus_ids = registry.get("focus_strategy_ids") or [
+        "ETF-CME-INSTFLOW-001",
+        "BNB-LAUNCHPOOL-DEMAND-001",
+        "OPTIONS-SPOTPERP-001-V2.1",
+        "HTF-DONCHIAN-DH02-6H",
+    ]
+    focus_id_set = {str(x) for x in focus_ids}
+
     bots: list[dict[str, Any]] = []
-    for candidate in registry.get("candidates", []):
+    for candidate in candidates:
         if not isinstance(candidate, dict):
             continue
-        state = _bot_operating_state(candidate)
         blockers = candidate.get("blocking_gates") or []
         if isinstance(blockers, str):
             blockers = [blockers]
@@ -81,7 +89,7 @@ def build_control_room_state(
                 "tier": candidate.get("scientific_tier"),
                 "scientific_status": candidate.get("scientific_status", "UNKNOWN"),
                 "deployment_state": candidate.get("deployment_state", "UNKNOWN"),
-                "operating_state": state,
+                "operating_state": _bot_operating_state(candidate),
                 "shadow_allowed": bool(candidate.get("shadow_allowed")),
                 "micro_live_allowed_now": bool(candidate.get("micro_live_allowed_now")),
                 "blockers": blockers,
@@ -89,33 +97,37 @@ def build_control_room_state(
             }
         )
 
-    focus = [
-        bot
-        for bot in bots
-        if bot["strategy_id"]
-        in {
-            "ETF-CME-INSTFLOW-001",
-            "BNB-LAUNCHPOOL-DEMAND-001",
-            "BTC-OPTIONS-EXPIRY-REVERSAL-001",
-            "HTF-DH03-12H",
-        }
-    ]
+    focus = [bot for bot in bots if str(bot["strategy_id"]) in focus_id_set]
     counts = {
         key: sum(1 for bot in focus if bot["operating_state"] == key)
         for key in ("ARMED", "SHADOW", "GATED", "BLOCKED")
     }
+    registry_ok = bool(registry.get("registry_version")) and len(focus) == len(focus_id_set)
+    service_health = str(service.get("health", "UNKNOWN"))
+    effective_health = service_health if registry_ok else "REGISTRY_DESYNC"
     limits = RiskLimits()
+
     return {
         "generated_at_utc": _utc_now(),
         "system": {
             "name": "CRYPTO EDGE RADAR",
             "mode": "AGGRESSIVE_FAIL_CLOSED",
             "market_provider": service.get("provider", "UNKNOWN"),
-            "health": service.get("health", "UNKNOWN"),
+            "health": effective_health,
+            "market_health": service_health,
             "cycle": service.get("cycle"),
             "universe": service.get("universe", []),
             "live_order_transport_enabled": False,
             "authenticated_exchange_api_enabled": False,
+        },
+        "registry": {
+            "ok": registry_ok,
+            "path": str(selected_registry),
+            "exists": selected_registry.exists(),
+            "candidate_count": len(candidates),
+            "focus_expected": len(focus_id_set),
+            "focus_loaded": len(focus),
+            "focus_strategy_ids": list(focus_ids),
         },
         "risk_policy": {
             "planned_risk_per_trade_pct": limits.per_trade * 100,
@@ -132,34 +144,18 @@ def build_control_room_state(
 
 
 HTML = r"""<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Crypto Edge Radar — Control Room</title>
 <style>
-:root{--bg:#07090d;--panel:#10141b;--line:#252c37;--text:#f4f7fb;--muted:#9099a8;--ok:#59e19a;--warn:#ffd166;--bad:#ff6b6b;--cyan:#55d7ff;--violet:#a98bff}
-*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at top,#111827 0,#07090d 38%);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;min-height:100vh}
-.wrap{max-width:1380px;margin:0 auto;padding:28px}.top{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;margin-bottom:24px}.eyebrow{font-size:12px;letter-spacing:.18em;color:var(--cyan);font-weight:800}.title{font-size:34px;font-weight:850;letter-spacing:-.04em;margin-top:5px}.sub{color:var(--muted);margin-top:6px}.health{border:1px solid var(--line);background:rgba(16,20,27,.85);border-radius:14px;padding:12px 16px;min-width:215px}.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:8px;background:var(--warn)}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}.metric,.card,.feed{border:1px solid var(--line);background:rgba(16,20,27,.88);border-radius:16px;box-shadow:0 10px 40px rgba(0,0,0,.18)}.metric{padding:17px}.metric .n{font-size:28px;font-weight:850}.metric .k{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:3px}.bots{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}.card{padding:20px}.row{display:flex;align-items:center;justify-content:space-between;gap:12px}.id{font-size:17px;font-weight:800;letter-spacing:-.02em}.badge{font-size:11px;font-weight:850;letter-spacing:.07em;padding:6px 9px;border-radius:999px;border:1px solid var(--line)}.ARMED{color:var(--ok);border-color:rgba(89,225,154,.4);background:rgba(89,225,154,.08)}.SHADOW{color:var(--cyan);border-color:rgba(85,215,255,.35);background:rgba(85,215,255,.08)}.GATED{color:var(--warn);border-color:rgba(255,209,102,.35);background:rgba(255,209,102,.08)}.BLOCKED{color:var(--bad);border-color:rgba(255,107,107,.35);background:rgba(255,107,107,.08)}.meta{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:17px}.cell{padding:12px;background:#0a0d12;border:1px solid #1d2330;border-radius:11px}.cell b{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);margin-bottom:5px}.cell span{font-size:13px}.blockers{margin-top:14px;color:#c1c8d4;font-size:12px;line-height:1.55}.section{margin-top:20px}.section h2{font-size:14px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin:0 0 10px}.risk{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.risk .cell span{font-size:18px;font-weight:800}.feed{padding:15px;max-height:240px;overflow:auto;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;color:#b8c1cf}.event{padding:8px 4px;border-bottom:1px solid #1a202b}.empty{color:#6f7887;padding:12px 0}.footer{color:#606a79;font-size:11px;margin-top:18px;text-align:right}@media(max-width:850px){.grid,.risk,.bots{grid-template-columns:1fr}.top{flex-direction:column}.health{width:100%}.wrap{padding:18px}.title{font-size:28px}}
-</style>
-</head>
-<body><div class="wrap">
-<div class="top"><div><div class="eyebrow">AGGRESSIVE MODE · FAIL-CLOSED</div><div class="title">Crypto Edge Radar — Control Room</div><div class="sub">MEXC market observation · frozen gates · no discretionary overrides</div></div><div class="health"><div><span id="dot" class="dot"></span><strong id="health">LOADING</strong></div><div class="sub" id="provider">provider —</div></div></div>
-<div class="grid"><div class="metric"><div class="n" id="armed">0</div><div class="k">Armed</div></div><div class="metric"><div class="n" id="shadow">0</div><div class="k">Shadow</div></div><div class="metric"><div class="n" id="gated">0</div><div class="k">Gated</div></div><div class="metric"><div class="n" id="blocked">0</div><div class="k">Blocked</div></div></div>
-<div class="bots" id="bots"></div>
-<div class="section"><h2>Risk firewall</h2><div class="risk" id="risk"></div></div>
-<div class="section"><h2>Recent machine events</h2><div class="feed" id="events"></div></div>
-<div class="footer" id="stamp"></div>
-</div>
+:root{--bg:#07090d;--panel:#10141b;--line:#252c37;--text:#f4f7fb;--muted:#9099a8;--ok:#59e19a;--warn:#ffd166;--bad:#ff6b6b;--cyan:#55d7ff}
+*{box-sizing:border-box}body{margin:0;background:#07090d;color:var(--text);font-family:Inter,system-ui,sans-serif}.wrap{max-width:1400px;margin:auto;padding:28px}.top{display:flex;justify-content:space-between;gap:20px;margin-bottom:22px}.eyebrow{font-size:12px;letter-spacing:.18em;color:var(--cyan);font-weight:800}.title{font-size:34px;font-weight:850;margin-top:5px}.sub{color:var(--muted);margin-top:6px}.health,.metric,.card,.feed,.cell{border:1px solid var(--line);background:var(--panel);border-radius:15px}.health{padding:13px 16px;min-width:260px}.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:8px;background:var(--warn)}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}.metric{padding:17px}.metric .n{font-size:28px;font-weight:850}.metric .k{font-size:11px;color:var(--muted);letter-spacing:.1em}.bots{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}.card{padding:20px}.row{display:flex;justify-content:space-between;gap:12px}.id{font-size:17px;font-weight:800}.badge{font-size:11px;font-weight:850;padding:6px 9px;border-radius:999px;border:1px solid var(--line)}.ARMED{color:var(--ok)}.SHADOW{color:var(--cyan)}.GATED{color:var(--warn)}.BLOCKED{color:var(--bad)}.meta,.risk{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px}.meta{grid-template-columns:1fr 1fr}.cell{padding:11px}.cell b{display:block;font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:5px}.blockers{font-size:12px;color:#c1c8d4;line-height:1.5;margin-top:13px}.section{margin-top:20px}.section h2{font-size:13px;color:var(--muted);letter-spacing:.09em}.feed{padding:14px;max-height:250px;overflow:auto;font:11px ui-monospace,monospace}.event{padding:7px;border-bottom:1px solid #1a202b}.footer{font-size:11px;color:#667080;margin-top:16px;text-align:right}.diag{font-size:11px;color:var(--muted);margin-top:6px}@media(max-width:850px){.grid,.risk,.bots{grid-template-columns:1fr}.top{flex-direction:column}.health{width:100%}}
+</style></head><body><div class="wrap">
+<div class="top"><div><div class="eyebrow">AGGRESSIVE MODE · SCIENCE FROZEN · V3 AUTHORITY</div><div class="title">Crypto Edge Radar — Control Room</div><div class="sub">Prospective observation · fail-closed deployment gates · no discretionary rescue</div></div><div class="health"><div><span id="dot" class="dot"></span><strong id="health">LOADING</strong></div><div class="sub" id="provider"></div><div class="diag" id="diag"></div></div></div>
+<div class="grid"><div class="metric"><div class="n" id="armed">0</div><div class="k">ARMED</div></div><div class="metric"><div class="n" id="shadow">0</div><div class="k">SHADOW</div></div><div class="metric"><div class="n" id="gated">0</div><div class="k">GATED</div></div><div class="metric"><div class="n" id="blocked">0</div><div class="k">BLOCKED</div></div></div>
+<div class="bots" id="bots"></div><div class="section"><h2>RISK FIREWALL</h2><div class="risk" id="risk"></div></div><div class="section"><h2>RECENT MACHINE EVENTS</h2><div class="feed" id="events"></div></div><div class="footer" id="stamp"></div></div>
 <script>
 const esc=s=>String(s??'').replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-async function refresh(){try{const r=await fetch('/api/state',{cache:'no-store'});const d=await r.json();
-const sys=d.system||{};document.getElementById('health').textContent=sys.health||'UNKNOWN';document.getElementById('provider').textContent=(sys.market_provider||'UNKNOWN')+' · '+(sys.universe||[]).join(' / ');document.getElementById('dot').style.background=sys.health==='OK'?'var(--ok)':'var(--warn)';
-for(const k of ['armed','shadow','gated','blocked'])document.getElementById(k).textContent=(d.focus_counts||{})[k.toUpperCase()]||0;
-const bots=(d.bots||[]).map(b=>`<div class="card"><div class="row"><div class="id">${esc(b.strategy_id)}</div><div class="badge ${esc(b.operating_state)}">${esc(b.operating_state)}</div></div><div class="meta"><div class="cell"><b>Tier</b><span>${esc(b.tier??'secondary')}</span></div><div class="cell"><b>Deployment</b><span>${esc(b.deployment_state)}</span></div><div class="cell"><b>Shadow</b><span>${b.shadow_allowed?'YES':'NO'}</span></div><div class="cell"><b>Micro-live</b><span>${b.micro_live_allowed_now?'YES':'NO'}</span></div></div><div class="blockers">${(b.blockers||[]).length?'<b>Gates:</b> '+(b.blockers||[]).map(esc).join(' · '):esc(b.reason||'No active blocker text')}</div></div>`).join('');document.getElementById('bots').innerHTML=bots||'<div class="empty">No focus bots loaded.</div>';
-const rp=d.risk_policy||{};document.getElementById('risk').innerHTML=[['Trade',rp.planned_risk_per_trade_pct],['Concurrent',rp.max_concurrent_risk_pct],['Daily stop',rp.daily_stop_pct],['Weekly stop',rp.weekly_stop_pct]].map(x=>`<div class="cell"><b>${x[0]}</b><span>${Number(x[1]||0).toFixed(2)}%</span></div>`).join('');
-const ev=(d.recent_events||[]).slice().reverse();document.getElementById('events').innerHTML=ev.length?ev.map(e=>`<div class="event">${esc(e.ts_utc||'')} · <b>${esc(e.event_type||'EVENT')}</b> · ${esc(JSON.stringify(e.payload||{}))}</div>`).join(''):'<div class="empty">No machine events yet.</div>';document.getElementById('stamp').textContent='Updated '+(d.generated_at_utc||'');
-}catch(e){document.getElementById('health').textContent='DASHBOARD ERROR';document.getElementById('dot').style.background='var(--bad)';}}
+async function refresh(){try{const r=await fetch('/api/state',{cache:'no-store'}),d=await r.json(),s=d.system||{},rg=d.registry||{};document.getElementById('health').textContent=s.health||'UNKNOWN';document.getElementById('provider').textContent=(s.market_provider||'UNKNOWN')+' · '+(s.universe||[]).join(' / ');document.getElementById('dot').style.background=s.health==='OK'?'var(--ok)':'var(--bad)';document.getElementById('diag').textContent='registry '+(d.registry_version||'NULL')+' · '+(rg.focus_loaded??0)+'/'+(rg.focus_expected??0)+' focus loaded';for(const k of ['armed','shadow','gated','blocked'])document.getElementById(k).textContent=(d.focus_counts||{})[k.toUpperCase()]||0;document.getElementById('bots').innerHTML=(d.bots||[]).map(b=>`<div class="card"><div class="row"><div class="id">${esc(b.strategy_id)}</div><div class="badge ${esc(b.operating_state)}">${esc(b.operating_state)}</div></div><div class="meta"><div class="cell"><b>Tier</b>${esc(b.tier)}</div><div class="cell"><b>Deployment</b>${esc(b.deployment_state)}</div><div class="cell"><b>Shadow</b>${b.shadow_allowed?'YES':'NO'}</div><div class="cell"><b>Micro-live</b>${b.micro_live_allowed_now?'YES':'NO'}</div></div><div class="blockers">${(b.blockers||[]).length?'<b>Gates:</b> '+b.blockers.map(esc).join(' · '):esc(b.reason||'No active blocker text')}</div></div>`).join('')||'<div class="card BLOCKED">REGISTRY DESYNC — no focus bots loaded.</div>';const rp=d.risk_policy||{};document.getElementById('risk').innerHTML=[['Trade',rp.planned_risk_per_trade_pct],['Concurrent',rp.max_concurrent_risk_pct],['Daily stop',rp.daily_stop_pct],['Weekly stop',rp.weekly_stop_pct]].map(x=>`<div class="cell"><b>${x[0]}</b>${Number(x[1]||0).toFixed(2)}%</div>`).join('');const ev=(d.recent_events||[]).slice().reverse();document.getElementById('events').innerHTML=ev.length?ev.map(e=>`<div class="event">${esc(e.ts_utc||'')} · <b>${esc(e.event_type||'EVENT')}</b> · ${esc(JSON.stringify(e.payload||{}))}</div>`).join(''):'No machine events yet.';document.getElementById('stamp').textContent='Updated '+(d.generated_at_utc||'');}catch(e){document.getElementById('health').textContent='DASHBOARD ERROR';document.getElementById('dot').style.background='var(--bad)';}}
 refresh();setInterval(refresh,3000);
 </script></body></html>"""
 
@@ -183,15 +179,14 @@ class _DashboardHandler(BaseHTTPRequestHandler):
             self._send(200, "text/html; charset=utf-8", HTML.encode("utf-8"))
             return
         if path == "/api/state":
-            state = build_control_room_state(
-                status_path=self.status_path,
-                notification_path=self.notification_path,
-                registry_path=self.registry_path,
-            )
+            state = build_control_room_state(status_path=self.status_path, notification_path=self.notification_path, registry_path=self.registry_path)
             self._send(200, "application/json; charset=utf-8", json.dumps(state, sort_keys=True).encode("utf-8"))
             return
         if path == "/healthz":
-            self._send(200, "application/json", b'{"ok":true,"role":"read-only-control-room"}')
+            state = build_control_room_state(status_path=self.status_path, notification_path=self.notification_path, registry_path=self.registry_path)
+            ok = state["system"]["health"] == "OK"
+            body = json.dumps({"ok": ok, "role": "read-only-control-room", "health": state["system"]["health"]}, sort_keys=True).encode("utf-8")
+            self._send(200 if ok else 503, "application/json", body)
             return
         self._send(404, "application/json", b'{"error":"not_found"}')
 
@@ -200,25 +195,10 @@ class _DashboardHandler(BaseHTTPRequestHandler):
             super().log_message(format, *args)
 
 
-def serve_dashboard(
-    *,
-    host: str,
-    port: int,
-    status_path: str,
-    notification_path: str,
-    registry_path: str | None = None,
-) -> None:
+def serve_dashboard(*, host: str, port: int, status_path: str, notification_path: str, registry_path: str | None = None) -> None:
     if not (1 <= port <= 65535):
         raise ValueError("port must be between 1 and 65535")
-    handler = type(
-        "ConfiguredDashboardHandler",
-        (_DashboardHandler,),
-        {
-            "status_path": status_path,
-            "notification_path": notification_path,
-            "registry_path": registry_path,
-        },
-    )
+    handler = type("ConfiguredDashboardHandler", (_DashboardHandler,), {"status_path": status_path, "notification_path": notification_path, "registry_path": registry_path})
     server = ThreadingHTTPServer((host, port), handler)
     print(json.dumps({"dashboard": f"http://{host}:{port}", "mode": "READ_ONLY_CONTROL_ROOM"}, sort_keys=True))
     server.serve_forever()
