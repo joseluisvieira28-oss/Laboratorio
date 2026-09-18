@@ -1,0 +1,87 @@
+name: Options Expiry Gamma Free Monthly Corpus V0.3
+
+on:
+  push:
+    branches:
+      - options-expiry-gamma-free-corpus-v0.3
+    paths:
+      - 'labs/OPTIONS_EXPIRY_GAMMA_001/FREE_MONTHLY_CORPUS_TRIGGER_V0.3.txt'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: options-expiry-gamma-free-corpus-v03
+  cancel-in-progress: false
+
+jobs:
+  census:
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        shard: [0,1,2,3,4,5,6,7]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: options-expiry-gamma-free-corpus-v0.3
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --disable-pip-version-check requests==2.32.3
+      - name: Verify frozen authority
+        run: |
+          python - <<'PY'
+          import json
+          a=json.load(open('labs/OPTIONS_EXPIRY_GAMMA_001/FREE_MONTHLY_CORPUS_AUTHORITY_V0.3.json'))
+          assert a['source_gate_id']=='OEG-TARDIS-FREE-MONTHLY-CORPUS-003'
+          assert a['status']=='PRE_ACQUISITION_FROZEN_SOURCE_ONLY'
+          assert len(a['deterministic_dates'])==48
+          assert a['deterministic_dates'][0]=='2021-01-01'
+          assert a['deterministic_dates'][-1]=='2024-12-01'
+          assert a['shard_count']==8
+          assert a['aggregate_gates']['minimum_total_passing_dates']==40
+          assert a['aggregate_gates']['minimum_passing_dates_per_calendar_year']==10
+          assert a['aggregate_gates']['minimum_dates_with_near_expiry']==40
+          assert all(v is False for v in a['firewalls'].values())
+          print('OEG_FREE_MONTHLY_CORPUS_AUTHORITY_PASS')
+          PY
+      - run: python -m py_compile labs/OPTIONS_EXPIRY_GAMMA_001/free_monthly_corpus_v03.py
+      - name: Run source-only census shard
+        run: python labs/OPTIONS_EXPIRY_GAMMA_001/free_monthly_corpus_v03.py --shard ${{ matrix.shard }}
+      - name: Upload shard receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: oeg-free-monthly-v03-shard-${{ matrix.shard }}
+          path: artifacts/options_expiry_gamma_free_corpus_v03/shard_${{ matrix.shard }}.json
+          retention-days: 90
+          if-no-files-found: error
+
+  aggregate:
+    needs: census
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: options-expiry-gamma-free-corpus-v0.3
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: oeg-free-monthly-v03-shard-*
+          path: artifacts/free_monthly_shards
+      - name: Aggregate immutable shard receipts
+        run: python labs/OPTIONS_EXPIRY_GAMMA_001/free_monthly_corpus_v03.py --aggregate-dir artifacts/free_monthly_shards
+      - name: Upload canonical aggregate receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: oeg-free-monthly-v03-aggregate-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            artifacts/options_expiry_gamma_free_corpus_v03/aggregate.json
+            artifacts/options_expiry_gamma_free_corpus_v03/manifest.json
+          retention-days: 90
+          if-no-files-found: error
