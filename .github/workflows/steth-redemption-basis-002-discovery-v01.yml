@@ -20,9 +20,10 @@ env:
   SOURCE_RUN_ID: '35386033845'
   SOURCE_HEAD_SHA: 'dbc396c8d161bfd2ed097449d184d9fd0c69987b'
   SOURCE_ARTIFACT_NAME: 'STETH_REDEMPTION_BASIS_002_SOURCE_GATE_V0_1'
-  RUNNER_BLOB_SHA: '0b13b06c7ea7b1c01207eab5589c12c0de8718c0'
+  RUNNER_BLOB_SHA: 'a9566cfcf21dbb4b9e774a88ab9edc2852441147'
   PROTOCOL_BLOB_SHA: 'f993db84148746c704b904f80c437dfa67d9c1b6'
   IMPLEMENTATION_FREEZE_BLOB_SHA: '4e4999813b8f912818db2736c8cdcd18f1a93aa7'
+  TRANSPORT_REMEDIATION_BLOB_SHA: '200d8db8fdedec4cdd37b723819eae49351d2d34'
 
 jobs:
   preflight:
@@ -40,6 +41,7 @@ jobs:
           test "$(git hash-object research/steth_redemption_basis_002/discovery_v01.py)" = "${RUNNER_BLOB_SHA}"
           test "$(git hash-object research/steth_redemption_basis_002/STETH_REDEMPTION_BASIS_002_FINAL_PRE_DISCOVERY_PROTOCOL_V0_1.md)" = "${PROTOCOL_BLOB_SHA}"
           test "$(git hash-object research/steth_redemption_basis_002/STETH_REDEMPTION_BASIS_002_DISCOVERY_IMPLEMENTATION_FREEZE_V0_1.md)" = "${IMPLEMENTATION_FREEZE_BLOB_SHA}"
+          test "$(git hash-object research/steth_redemption_basis_002/STETH_REDEMPTION_BASIS_002_DISCOVERY_RPC_THROUGHPUT_REMEDIATION_V0_1A.md)" = "${TRANSPORT_REMEDIATION_BLOB_SHA}"
           echo STETH002_DISCOVERY_FILE_BINDING_PASS
 
       - name: Install minimal dependencies
@@ -47,6 +49,18 @@ jobs:
 
       - name: Compile runner
         run: python -m py_compile research/steth_redemption_basis_002/discovery_v01.py
+
+      - name: Verify transport-only remediation guard
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('research/steth_redemption_basis_002/discovery_v01.py').read_text()
+          assert 'rpc_batch_transient_item_errors' in s
+          assert 'rpc_batch_recursive_splits' in s
+          assert 'transient_codes = {429, -32005, -32016, -32000}' in s
+          assert 'max_attempts = 6' in s
+          print('STETH002_RPC_TRANSPORT_REMEDIATION_GUARD_PASS')
+          PY
 
       - name: Execute synthetic self-test only
         run: python research/steth_redemption_basis_002/discovery_v01.py --self-test
@@ -89,6 +103,7 @@ jobs:
           test "$(git hash-object research/steth_redemption_basis_002/discovery_v01.py)" = "${RUNNER_BLOB_SHA}"
           test "$(git hash-object research/steth_redemption_basis_002/STETH_REDEMPTION_BASIS_002_FINAL_PRE_DISCOVERY_PROTOCOL_V0_1.md)" = "${PROTOCOL_BLOB_SHA}"
           test "$(git hash-object research/steth_redemption_basis_002/STETH_REDEMPTION_BASIS_002_DISCOVERY_IMPLEMENTATION_FREEZE_V0_1.md)" = "${IMPLEMENTATION_FREEZE_BLOB_SHA}"
+          test "$(git hash-object research/steth_redemption_basis_002/STETH_REDEMPTION_BASIS_002_DISCOVERY_RPC_THROUGHPUT_REMEDIATION_V0_1A.md)" = "${TRANSPORT_REMEDIATION_BLOB_SHA}"
           echo STETH002_DISCOVERY_REBIND_PASS
 
       - name: Install exact research dependencies
