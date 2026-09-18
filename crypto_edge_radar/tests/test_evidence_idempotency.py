@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextlib import closing
 import sqlite3
 import tempfile
 from pathlib import Path
@@ -23,7 +24,7 @@ class EvidenceIdempotencyTests(unittest.TestCase):
             self.assertTrue(second["duplicate"])
             self.assertEqual(first["id"], second["id"])
 
-            with sqlite3.connect(db) as conn:
+            with closing(sqlite3.connect(db)) as conn:
                 event_count = conn.execute("SELECT COUNT(*) FROM events").fetchone()[0]
                 key_count = conn.execute("SELECT COUNT(*) FROM event_keys").fetchone()[0]
             self.assertEqual(event_count, 1)
