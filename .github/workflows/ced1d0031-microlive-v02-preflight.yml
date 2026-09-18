@@ -1,0 +1,46 @@
+name: CED1D-0031 Micro-Live V0.2 Preflight
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'crypto_edge_radar/radar/ced1d0031_public.py'
+      - 'crypto_edge_radar/radar/ced1d0031_microlive.py'
+      - 'crypto_edge_radar/radar/ced1d0031_preflight.py'
+      - 'crypto_edge_radar/radar/binance_trading.py'
+      - 'crypto_edge_radar/tests/test_ced1d0031_microlive.py'
+      - '.github/workflows/ced1d0031-microlive-v02-preflight.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  offline-safety:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      MICROLIVE_EXECUTION_ENABLED: "0"
+      BINANCE_API_KEY: ""
+      BINANCE_API_SECRET: ""
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile V0.2 modules
+        run: |
+          python -m py_compile crypto_edge_radar/radar/ced1d0031_public.py
+          python -m py_compile crypto_edge_radar/radar/binance_trading.py
+          python -m py_compile crypto_edge_radar/radar/ced1d0031_microlive.py
+          python -m py_compile crypto_edge_radar/radar/ced1d0031_preflight.py
+      - name: Run V0.2 safety tests
+        working-directory: crypto_edge_radar
+        run: |
+          python -m unittest tests.test_ced1d0031_microlive -v
+      - name: Assert no embedded exchange secrets
+        run: |
+          if grep -RIE 'BINANCE_API_SECRET[[:space:]]*=[[:space:]]*["'"'][^"'"']+|BEGIN PRIVATE KEY'             crypto_edge_radar/radar/ced1d0031_* crypto_edge_radar/radar/binance_trading.py; then
+            echo "Potential embedded credential found"
+            exit 1
+          fi
+          echo CED1D0031_MICROLIVE_V02_OFFLINE_PREFLIGHT_PASS
