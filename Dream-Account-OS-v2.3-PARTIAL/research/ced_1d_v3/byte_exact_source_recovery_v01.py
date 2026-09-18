@@ -131,7 +131,7 @@ def run(registry_path: Path, out: Path, execute: bool) -> int:
                 hist = registry[key]
                 expected = str(hist["local_sha256"]).lower()
                 name = f"{symbol}-1m-{month}.zip"
-                base = f"https://data.binance.vision/data/spot/monthly/klines/{symbol}/1m/{name}"
+                base = f"https://data.binance.vision/data/futures/um/monthly/klines/{symbol}/1m/{name}"
                 zpath = raw / name
                 cpath = raw / f"{name}.CHECKSUM"
                 rec = {"symbol":symbol,"month":month,"filename":name,"expected_sha256":expected}
