@@ -76,6 +76,7 @@ class DH03MarketStore:
                 "INSERT INTO meta(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
                 (key,json.dumps(value,sort_keys=True))
             )
+            conn.commit()
 
     def get_meta(self,key:str,default:Any=None)->Any:
         with closing(self._connect()) as conn:
@@ -88,6 +89,7 @@ class DH03MarketStore:
                 "INSERT OR IGNORE INTO bars15m(symbol,open_time,o,h,l,c,v,source) VALUES(?,?,?,?,?,?,?,?)",
                 (symbol,*row,source)
             )
+            conn.commit()
 
     def put_minute(self,symbol:str,row:tuple[int,float,float,float,float],source:str)->None:
         with closing(self._connect()) as conn:
@@ -95,6 +97,7 @@ class DH03MarketStore:
                 "INSERT OR IGNORE INTO minutes(symbol,open_time,o,h,l,c,source) VALUES(?,?,?,?,?,?,?)",
                 (symbol,*row,source)
             )
+            conn.commit()
 
     def put_funding(self,symbol:str,settlement:int,rate:float,source:str)->None:
         with closing(self._connect()) as conn:
@@ -102,6 +105,7 @@ class DH03MarketStore:
                 "INSERT OR IGNORE INTO funding(symbol,funding_time,rate,source) VALUES(?,?,?,?)",
                 (symbol,settlement,rate,source)
             )
+            conn.commit()
 
     def bars15m(self,symbol:str)->list[Bar]:
         with closing(self._connect()) as conn:
