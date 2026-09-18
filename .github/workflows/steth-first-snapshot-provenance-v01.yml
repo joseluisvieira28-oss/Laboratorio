@@ -1,0 +1,54 @@
+name: STETH Redemption Basis 001 — First Snapshot Provenance V0.1
+
+on:
+  push:
+    branches:
+      - empty-territory-hunt-v0.1
+    paths:
+      - '.github/workflows/steth-first-snapshot-provenance-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  provenance-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check requests 'eth-hash[pycryptodome]'
+      - name: Verify frozen probe authority
+        run: |
+          test -f research/steth_redemption_basis/STETH_REDEMPTION_BASIS_001_FIRST_SNAPSHOT_ACTIVATION_PROBE_V0_1.md
+          python -m py_compile research/steth_redemption_basis/first_snapshot_activation_probe_v01.py
+      - name: Execute source-only first-snapshot provenance probe
+        run: python research/steth_redemption_basis/first_snapshot_activation_probe_v01.py
+      - name: Enforce firewall
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('source_gate_output/STETH_REDEMPTION_BASIS_001_FIRST_SNAPSHOT_ACTIVATION_PROBE_V0_1.json')
+          assert p.exists()
+          x=json.loads(p.read_text())
+          s=x['safety']
+          assert not any(s.values())
+          assert x['classification'] in {
+            'FROZEN_SOURCE_BOUNDARY_PROVENANCE_FAILURE',
+            'FROZEN_FIRST_SNAPSHOT_SOURCE_VALID',
+            'TECHNICAL_INCONCLUSIVE'
+          }
+          print('STETH_FIRST_SNAPSHOT_FIREWALL_PASS',x['classification'])
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: STETH_REDEMPTION_BASIS_001_FIRST_SNAPSHOT_PROVENANCE_V0_1
+          path: source_gate_output/STETH_REDEMPTION_BASIS_001_FIRST_SNAPSHOT_ACTIVATION_PROBE_V0_1.json
+          if-no-files-found: error
+          retention-days: 30
