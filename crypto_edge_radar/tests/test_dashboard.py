@@ -62,6 +62,100 @@ class DashboardTests(unittest.TestCase):
             dh03 = next(b for b in state["bots"] if b["strategy_id"] == "HTF-DH03-12H-STANDALONE-FORWARD-V1")
             self.assertEqual(dh03["operating_state"], "GATED")
 
+    def test_dh03_ready_registry_without_live_collector_stays_gated(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            registry, status, events = self._paths(root)
+            strategy = "HTF-DH03-12H-STANDALONE-FORWARD-V1"
+            registry.write_text(
+                json.dumps({
+                    "registry_version": "3.4-test",
+                    "focus_strategy_ids": [strategy],
+                    "candidates": [{
+                        "strategy_id": strategy,
+                        "scientific_tier": None,
+                        "deployment_state": "PROSPECTIVE_ARCHIVE_SHADOW_READY__WINDOWS_LOCAL_COLLECTOR_BUILD_PASS",
+                        "shadow_allowed": True,
+                        "micro_live_allowed_now": False,
+                        "blocking_gates": [],
+                    }],
+                }),
+                encoding="utf-8",
+            )
+            state = build_control_room_state(
+                status_path=str(status),
+                notification_path=str(events),
+                registry_path=str(registry),
+            )
+            self.assertEqual(state["focus_counts"]["GATED"], 1)
+            self.assertEqual(state["focus_counts"]["SHADOW"], 0)
+            self.assertEqual(state["bots"][0]["runtime_status"], "MISSING")
+            self.assertIn("not COLLECTING", " ".join(state["bots"][0]["blockers"]))
+
+    def test_dh03_collecting_runtime_promotes_cockpit_to_shadow_only(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            registry, status, events = self._paths(root)
+            strategy = "HTF-DH03-12H-STANDALONE-FORWARD-V1"
+            registry.write_text(
+                json.dumps({
+                    "registry_version": "3.4-test",
+                    "focus_strategy_ids": [strategy],
+                    "candidates": [{
+                        "strategy_id": strategy,
+                        "scientific_tier": None,
+                        "deployment_state": "PROSPECTIVE_ARCHIVE_SHADOW_READY__WINDOWS_LOCAL_COLLECTOR_BUILD_PASS",
+                        "shadow_allowed": True,
+                        "micro_live_allowed_now": False,
+                    }],
+                }),
+                encoding="utf-8",
+            )
+            (root / "dh03_local_status.json").write_text(
+                json.dumps({"status": "COLLECTING"}),
+                encoding="utf-8",
+            )
+            state = build_control_room_state(
+                status_path=str(status),
+                notification_path=str(events),
+                registry_path=str(registry),
+            )
+            self.assertEqual(state["focus_counts"]["SHADOW"], 1)
+            self.assertEqual(state["focus_counts"]["GATED"], 0)
+            self.assertEqual(state["bots"][0]["runtime_status"], "COLLECTING")
+
+    def test_dh03_fail_closed_runtime_is_blocked_not_shadow(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            registry, status, events = self._paths(root)
+            strategy = "HTF-DH03-12H-STANDALONE-FORWARD-V1"
+            registry.write_text(
+                json.dumps({
+                    "registry_version": "3.4-test",
+                    "focus_strategy_ids": [strategy],
+                    "candidates": [{
+                        "strategy_id": strategy,
+                        "scientific_tier": None,
+                        "deployment_state": "PROSPECTIVE_ARCHIVE_SHADOW_READY__WINDOWS_LOCAL_COLLECTOR_BUILD_PASS",
+                        "shadow_allowed": True,
+                        "micro_live_allowed_now": False,
+                    }],
+                }),
+                encoding="utf-8",
+            )
+            (root / "dh03_local_status.json").write_text(
+                json.dumps({"status": "FAIL_CLOSED", "error": "clock drift"}),
+                encoding="utf-8",
+            )
+            state = build_control_room_state(
+                status_path=str(status),
+                notification_path=str(events),
+                registry_path=str(registry),
+            )
+            self.assertEqual(state["focus_counts"]["BLOCKED"], 1)
+            self.assertEqual(state["focus_counts"]["SHADOW"], 0)
+            self.assertIn("FAIL_CLOSED", " ".join(state["bots"][0]["blockers"]))
+
     def test_missing_registry_fails_closed_instead_of_showing_empty_ok(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
