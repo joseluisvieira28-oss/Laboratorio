@@ -1,0 +1,32 @@
+name: BTC Options VRP CoinAPI Source Probe V0.1 QA
+
+on:
+  push:
+    branches:
+      - btc-options-vrp-coinapi-source-probe-v0.1
+    paths:
+      - 'labs/BTC_OPTIONS_VRP_001/COINAPI_SOURCE_PROBE_AUTHORITY_V0.1.json'
+      - 'labs/BTC_OPTIONS_VRP_001/coinapi_source_probe_v01.py'
+      - '.github/workflows/btc-options-vrp-coinapi-source-probe-v01.yml'
+
+jobs:
+  source_probe_static_qa:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile frozen probe
+        run: python -m py_compile labs/BTC_OPTIONS_VRP_001/coinapi_source_probe_v01.py
+      - name: Verify fail-closed credential gate
+        shell: bash
+        run: |
+          set +e
+          OUTPUT="$(python labs/BTC_OPTIONS_VRP_001/coinapi_source_probe_v01.py)"
+          RC=$?
+          set -e
+          test "$RC" -eq 2
+          printf '%s\n' "$OUTPUT" | grep -q 'SOURCE_ACCESS_CREDENTIAL_REQUIRED'
+          printf '%s\n' "$OUTPUT" | grep -q '"outcomes_opened": false'
+          printf '%s\n' "$OUTPUT" | grep -q '"api_key_printed": false'
+          echo "COINAPI_SOURCE_PROBE_STATIC_QA_PASS"
