@@ -1,6 +1,6 @@
 {
-  "registry_version": "2.1",
-  "as_of_utc": "2026-09-18T05:17:35Z",
+  "registry_version": "2.2",
+  "as_of_utc": "2026-09-18T05:32:08Z",
   "governance": "ND_PROMOTION_POLICY_V3_PLUS_AGGRESSIVE_FAIL_CLOSED_DEPLOYMENT",
   "focus_strategy_ids": [
     "ETF-CME-INSTFLOW-001",
@@ -14,7 +14,7 @@
       "strategy_id": "ETF-CME-INSTFLOW-001",
       "scientific_tier": 2,
       "scientific_status": "TIER_2_RETAINED_FRAGILE",
-      "deployment_state": "SHADOW_EXECUTION_RESEARCH__EXEC_V2_FRICTION_ACCOUNT_PREFLIGHT_PENDING",
+      "deployment_state": "SHADOW_EXECUTION_RESEARCH__EXEC_V2_PUBLIC_PREFLIGHT_OPERATIONAL__AUTHENTICATED_PREFLIGHT_PENDING",
       "shadow_allowed": true,
       "micro_live_allowed_now": false,
       "source_branch": "etf-cme-institutional-flow-v0.1",
@@ -40,11 +40,30 @@
         "one influential trade can make leave-one-out mean negative"
       ],
       "blocking_gates": [
-        "account-specific API fee preflight not yet bound",
-        "prospective all-in execution friction gate not yet passed",
-        "entry/exit order semantics not yet frozen for EXEC-V2",
-        "candidate risk/exposure contract not yet execution-authorized"
-      ]
+        "account-specific API fee read-only verification",
+        "account equity and minimum executable notional feasibility",
+        "SHORT isolated margin confirmed",
+        "SHORT Auto Margin Add OFF confirmed",
+        "SHORT leverage exactly 1x confirmed",
+        "no conflicting position/order confirmed",
+        "EXEC-V2 local-node authenticated preflight",
+        "authenticated transport security",
+        "separate explicit execution authority"
+      ],
+      "execution_readiness_contract": "ETF_CME_INSTFLOW_001_EXEC_V2_READINESS_V1.json",
+      "risk_model_by_direction_frozen": true,
+      "order_semantics_by_direction_frozen": true,
+      "exact_timing_no_chase_frozen": true,
+      "exec_v2_public_preflight_operational": true,
+      "exec_v2_public_monitor_interval": "hourly",
+      "latest_public_observation": {
+        "checked_at_utc": "2026-09-18T05:31:40Z",
+        "spot_spread_bps": 0.02834332736061425,
+        "perp_minus_spot_mid_bps": -2.670714437368967,
+        "short_same_book_taker_round_trip_proxy_bps": 16.01288658963568,
+        "short_trailing_7d_fee_spread_funding_proxy_bps": 3.9028865896356795,
+        "historical_break_even_bps": 21.2
+      }
     },
     {
       "strategy_id": "BNB-LAUNCHPOOL-DEMAND-001",
@@ -235,34 +254,44 @@
     }
   ],
   "operational_shadow_v09": {
-    "status": "OPERATIONAL_PERSISTENT_PUBLIC_SHADOW",
+    "status": "OPERATIONAL_PERSISTENT_PUBLIC_SHADOW__THREE_ENGINE",
     "branch": "crypto-edge-radar-promotion-sprint-v0.9",
-    "commit": "fc662a96f472d4e2aec6f987027ecf85302dfa61",
-    "github_actions_run_id": 35279574821,
-    "github_actions_conclusion": "success",
+    "deployed_commit": "ba916cb4580461f90bd215c6f30726a01077f906",
     "render_service_id": "srv-dalqkpu1egvs73fhiehg",
-    "render_deploy_id": "dep-damce5u1egvs73bn2eh0",
+    "render_deploy_id": "dep-damcote1egvs73bo917g",
     "render_region": "frankfurt",
     "evidence_backend": "postgres",
     "postgres_id": "dpg-dalqi4qd0e5s738a77kg-a",
     "evidence_chain_ok": true,
-    "evidence_events_verified_at_activation": 78,
+    "evidence_events_verified": 79,
     "runtime_health": "OK",
-    "tfg_watcher": {
-      "watcher_id": "TFG-DONCHIAN-REGIME-V1-FORWARD-SHADOW",
-      "status": "OK",
-      "provider": "MEXC_SPOT_PUBLIC",
-      "latest_due_signal_close_utc": "2026-09-18T00:00:00Z",
-      "boundaries_scanned": 3,
-      "regime_on_boundaries": 3,
-      "eligible_signal_count_at_activation": 0
-    },
-    "bnb_watcher": {
-      "watcher_id": "BNB-LAUNCHPOOL-DEMAND-001-FORWARD-SHADOW-V3",
-      "status": "OK",
-      "official_source_provider": "BINANCE_SUPPORT_CMS_PUBLIC",
-      "market_provider": "BINANCE_SPOT_DATA_API_PUBLIC",
-      "eligible_events_visible_at_activation": 0
+    "engines": {
+      "bnb_launchpool": {
+        "status": "OK",
+        "watcher_id": "BNB-LAUNCHPOOL-DEMAND-001-FORWARD-SHADOW-V3",
+        "eligible_events_visible": 0
+      },
+      "tfg_regime": {
+        "status": "OK",
+        "watcher_id": "TFG-DONCHIAN-REGIME-V1-FORWARD-SHADOW",
+        "progress": "0/10",
+        "readiness_gate_pass": false,
+        "unresolved_execution_paths": 0,
+        "rule_deviations": 0,
+        "missed_eligible_signals": 0
+      },
+      "etf_cme_exec_v2": {
+        "status": "OK",
+        "classification": "PUBLIC_PREFLIGHT_ONLY",
+        "spot_spread_bps": 0.02834332736061425,
+        "perp_minus_spot_mid_bps": -2.670714437368967,
+        "short_same_book_taker_rt_proxy_bps": 16.01288658963568,
+        "short_trailing_7d_fee_spread_funding_proxy_bps": 3.9028865896356795,
+        "historical_break_even_bps": 21.2,
+        "account_fee_verified_read_only": false,
+        "authenticated_transport_ready": false,
+        "execution_authority_present": false
+      }
     },
     "authenticated_exchange_api_used": false,
     "orders_created": false,
