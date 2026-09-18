@@ -14,6 +14,7 @@ from urllib.error import HTTPError, URLError
 from .execution import ExecutionBlocked
 
 BASE_URL = "https://fapi.binance.com"
+MAX_TAKER_RATE = Decimal("0.0005")  # 5 bps/fill, frozen STRESS fee floor
 
 
 class BinanceUSDMTradingClient:
@@ -65,13 +66,18 @@ class BinanceUSDMTradingClient:
     def public_time(self) -> int:
         return int(self._request("GET", "/fapi/v1/time")["serverTime"])
 
-    def mark_or_last_price(self, symbol: str) -> Decimal:
+    def book_ticker(self, symbol: str) -> dict[str, Decimal]:
         row = self._request("GET", "/fapi/v1/ticker/bookTicker", {"symbol": symbol})
         bid = Decimal(str(row["bidPrice"]))
         ask = Decimal(str(row["askPrice"]))
         if bid <= 0 or ask <= 0 or ask < bid:
             raise ExecutionBlocked("invalid Binance book ticker")
-        return (bid + ask) / Decimal("2")
+        mid = (bid + ask) / Decimal("2")
+        spread_bps = (ask - bid) / mid * Decimal("10000")
+        return {"bid": bid, "ask": ask, "mid": mid, "spread_bps": spread_bps}
+
+    def mark_or_last_price(self, symbol: str) -> Decimal:
+        return self.book_ticker(symbol)["mid"]
 
     def market_rules(self, symbol: str) -> dict[str, Decimal]:
         info = self._request("GET", "/fapi/v1/exchangeInfo")
@@ -82,9 +88,20 @@ class BinanceUSDMTradingClient:
         lot = filters.get("MARKET_LOT_SIZE") or filters.get("LOT_SIZE")
         if not lot:
             raise ExecutionBlocked("market lot-size filter missing")
+        min_notional = Decimal("0")
+        notional_filter = filters.get("MIN_NOTIONAL") or filters.get("NOTIONAL")
+        if notional_filter:
+            min_notional = Decimal(
+                str(
+                    notional_filter.get("notional")
+                    or notional_filter.get("minNotional")
+                    or "0"
+                )
+            )
         return {
             "step_size": Decimal(str(lot["stepSize"])),
             "min_qty": Decimal(str(lot["minQty"])),
+            "min_notional": min_notional,
         }
 
     def _symbol_config(self, symbol: str) -> dict[str, Any]:
@@ -110,6 +127,16 @@ class BinanceUSDMTradingClient:
         )
         return rows if isinstance(rows, list) else []
 
+    def _position_mode(self) -> bool:
+        row = self._request("GET", "/fapi/v1/positionSide/dual", signed=True)
+        return bool(row.get("dualSidePosition"))
+
+    def _commission_rate(self, symbol: str) -> Decimal:
+        row = self._request(
+            "GET", "/fapi/v1/commissionRate", {"symbol": symbol}, signed=True
+        )
+        return Decimal(str(row["takerCommissionRate"]))
+
     def query_order_if_exists(self, symbol: str, client_order_id: str) -> dict[str, Any] | None:
         try:
             return self._request(
@@ -120,7 +147,6 @@ class BinanceUSDMTradingClient:
             )
         except ExecutionBlocked as exc:
             msg = str(exc)
-            # Binance uses -2013 when the order is genuinely absent.
             if '"code":-2013' in msg.replace(" ", ""):
                 return None
             raise
@@ -132,6 +158,9 @@ class BinanceUSDMTradingClient:
         if skew_ms > 1000:
             return {"ok": False, "reason": "CLOCK_SKEW", "skew_ms": skew_ms}
 
+        if self._position_mode():
+            return {"ok": False, "reason": "HEDGE_MODE_NOT_AUTHORIZED"}
+
         cfg = self._symbol_config(symbol)
         leverage = int(cfg.get("leverage", -1))
         margin_type = str(cfg.get("marginType", "")).upper()
@@ -142,6 +171,15 @@ class BinanceUSDMTradingClient:
                 "ok": False,
                 "reason": "MARGIN_NOT_ISOLATED",
                 "observed": margin_type,
+            }
+
+        taker_rate = self._commission_rate(symbol)
+        if taker_rate > MAX_TAKER_RATE:
+            return {
+                "ok": False,
+                "reason": "TAKER_FEE_ABOVE_FROZEN_STRESS_FLOOR",
+                "observed": format(taker_rate, "f"),
+                "max": format(MAX_TAKER_RATE, "f"),
             }
 
         open_orders = self._open_orders(symbol)
@@ -159,11 +197,15 @@ class BinanceUSDMTradingClient:
         if nonzero:
             return {"ok": False, "reason": "EXISTING_POSITION", "count": len(nonzero)}
 
+        book = self.book_ticker(symbol)
         return {
             "ok": True,
             "clock_skew_ms": skew_ms,
             "leverage": leverage,
             "margin_type": margin_type,
+            "hedge_mode": False,
+            "taker_commission_rate": format(taker_rate, "f"),
+            "spread_bps": format(book["spread_bps"], "f"),
             "open_orders": 0,
             "nonzero_positions": 0,
         }
@@ -214,8 +256,6 @@ class BinanceUSDMTradingClient:
         try:
             return self._request("POST", "/fapi/v1/order", params, signed=True)
         except ExecutionBlocked as first_error:
-            # A timeout/transport ambiguity must never cause a blind retry.
-            # Query the deterministic client ID; if Binance recorded it, recover it.
             try:
                 recovered = self.query_order_if_exists(symbol, client_order_id)
             except ExecutionBlocked:
