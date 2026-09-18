@@ -1,0 +1,63 @@
+name: AAVE Liquidation Overhang 001 — R1 Target Validation V0.2D
+
+on:
+  push:
+    branches:
+      - aave-liquidation-overhang-v0.1
+    paths:
+      - 'research/aave_liquidation_overhang/R1_TARGET_VALIDATION_TRIGGER_V0_2D.txt'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  revalidate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --disable-pip-version-check requests 'eth-hash[pycryptodome]'
+      - name: Compile exact target-only revalidator
+        run: |
+          python -m py_compile research/aave_liquidation_overhang/r1_target_validation_v02d.py
+          python -m py_compile research/aave_liquidation_overhang/r1_scaled_ledger_audit_v01.py
+      - name: Download immutable failed V0.2A canonical audit receipt
+        uses: actions/download-artifact@v4
+        with:
+          name: AAVE_LIQUIDATION_OVERHANG_001_R1_SCALED_LEDGER_AUDIT_V0_2A
+          run-id: 35375172202
+          github-token: ${{ github.token }}
+          path: downloaded_v02a
+      - name: Verify immutable upstream artifact binding
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          fs=list(Path('downloaded_v02a').rglob('AAVE_LIQUIDATION_OVERHANG_001_R1_SCALED_LEDGER_AUDIT_V0_2A.json'))
+          assert len(fs)==1, fs
+          p=json.loads(fs[0].read_text())
+          assert p['classification']=='RECONSTRUCTION_ACQUISITION_TECHNICAL_FAILURE', p
+          assert p['validation_target_count']==77, p
+          assert p['validation_failure_count']==77, p
+          assert all(x['failure']=='INSUFFICIENT_ARCHIVE_RPC_QUORUM' for x in p['validation_failures']), p
+          print(json.dumps({
+            'classification':p['classification'],
+            'targets':p['validation_target_count'],
+            'failures':p['validation_failure_count'],
+            'target_digest_sha256':p['target_digest_sha256'],
+          },sort_keys=True))
+          PY
+      - name: Exact three-provider target revalidation
+        run: python research/aave_liquidation_overhang/r1_target_validation_v02d.py
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: AAVE_R1_TARGET_VALIDATION_V0_2D
+          path: r1_v02d_output/AAVE_LIQUIDATION_OVERHANG_001_R1_TARGET_VALIDATION_V0_2D.json
+          if-no-files-found: error
+          retention-days: 30
