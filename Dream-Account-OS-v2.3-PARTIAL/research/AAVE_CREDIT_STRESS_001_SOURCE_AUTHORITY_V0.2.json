@@ -1,0 +1,103 @@
+{
+  "lab_id": "AAVE-CREDIT-STRESS-001",
+  "source_gate_id": "AAVE-CS001-SOURCE-002-SQD",
+  "status": "PRE_ACQUISITION_FROZEN_SOURCE_ONLY",
+  "date_frozen": "2026-09-18",
+  "parent_failed_gate": {
+    "branch": "aave-credit-stress-001-v01",
+    "canonical_run": 34843325641,
+    "classification": "SOURCE_ACQUISITION_TECHNICAL_FAILURE",
+    "reason": "All keyless RPC transports failed before scientific source adjudication."
+  },
+  "transport_change_only": true,
+  "new_transport": {
+    "provider": "SQD Ethereum mainnet Portal",
+    "endpoint": "https://portal.sqd.dev/datasets/ethereum-mainnet/stream",
+    "provenance_anchor": {
+      "lab": "AAVE-LIQUIDATION-OVERHANG-001",
+      "canonical_source_run": 35214027573,
+      "source_artifact_id": 10493989498,
+      "result": "SOURCE_CENSUS_PASS",
+      "exact_envelope": [
+        16490000,
+        21525890
+      ],
+      "reserve_data_updated_count": 863030
+    }
+  },
+  "frozen_contract": {
+    "pool": "0x87870bca3f3fd6335c3f4ce8392d69350b4fa4e2",
+    "event_signature": "ReserveDataUpdated(address,uint256,uint256,uint256,uint256,uint256)",
+    "topic0": "0x804c9b842b2748a22bb64b345453a3de7ca54a6ca45ce00d415894979e22897a",
+    "reserve": "USDC",
+    "reserve_address": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+    "topic1": "0x000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+    "windows": [
+      {
+        "label": "Q1",
+        "from_block": 19000000,
+        "to_block": 19000500
+      },
+      {
+        "label": "Q2",
+        "from_block": 19650000,
+        "to_block": 19650500
+      },
+      {
+        "label": "Q3",
+        "from_block": 20300000,
+        "to_block": 20300500
+      },
+      {
+        "label": "Q4",
+        "from_block": 20950000,
+        "to_block": 20950500
+      }
+    ],
+    "binance_source_presence": [
+      "https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1d/BTCUSDT-1d-2023-01.zip",
+      "https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1d/BTCUSDT-1d-2023-12.zip",
+      "https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1d/BTCUSDT-1d-2024-01.zip",
+      "https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1d/BTCUSDT-1d-2024-12.zip"
+    ]
+  },
+  "source_pass_rules": {
+    "all_four_windows_reach_exact_terminal_block": true,
+    "each_window_has_at_least_one_matching_log": true,
+    "each_retained_log_has_transaction_hash_log_index_topics_and_data": true,
+    "topic_count_at_least": 2,
+    "all_binance_presence_probes_ok": true,
+    "maximum_timestamp_utc": "2024-12-31T23:59:59Z"
+  },
+  "retained_fields_only": [
+    "window label and exact block bounds",
+    "terminal continuation block",
+    "first/last timestamps",
+    "matching log count",
+    "structural booleans for at most first three logs",
+    "transport attempt/retry counts",
+    "structural hashes",
+    "Binance archive HEAD receipts"
+  ],
+  "forbidden": [
+    "decode ReserveDataUpdated numeric values",
+    "variable borrow rate calculation",
+    "stress signal construction",
+    "BTC prices or returns",
+    "regression",
+    "PnL",
+    "2025 access",
+    "2026 access",
+    "live trading",
+    "exchange mutation",
+    "wallet access",
+    "merge to main"
+  ],
+  "classifications": {
+    "pass": "SOURCE_DATA_PASS",
+    "insufficient": "INSUFFICIENT_STRUCTURAL_SAMPLE",
+    "provenance_failure": "PROVENANCE_FAILURE",
+    "technical_failure": "SOURCE_ACQUISITION_TECHNICAL_FAILURE"
+  },
+  "post_pass_rule": "PASS authorizes only a separately frozen decode/source-schema gate. It does not authorize economic values, predictor construction, BTC outcomes, Discovery or live trading."
+}
