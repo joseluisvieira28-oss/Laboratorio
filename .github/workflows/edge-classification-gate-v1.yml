@@ -1,0 +1,39 @@
+name: Edge Classification Gate V1
+
+on:
+  pull_request:
+    paths:
+      - 'labs/**'
+      - 'governance/CRYPTO_LAB_EDGE_CLASSIFICATION_V1.md'
+      - 'governance/EDGE_CLASSIFICATION_TEMPLATE_V1.json'
+      - 'tools/validate_edge_classification_v1.py'
+      - '.github/workflows/edge-classification-gate-v1.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-edge-classification:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Validate new lab classifications
+        if: github.event_name == 'pull_request'
+        run: |
+          python tools/validate_edge_classification_v1.py \
+            --base "${{ github.event.pull_request.base.sha }}" \
+            --head "${{ github.event.pull_request.head.sha }}"
+
+      - name: Validate all present classifications (manual run)
+        if: github.event_name == 'workflow_dispatch'
+        run: python tools/validate_edge_classification_v1.py
