@@ -1,0 +1,96 @@
+{
+  "audit_id": "PROP-COMPAT-001-TFG-1D-LEDGER-RECOVERY-AUDIT-V0.1",
+  "status": "RECOVERY_PATH_NARROWED_EXACT_BYTES_STILL_MISSING",
+  "setup": "TFG-DONCHIAN-1D-001",
+  "authority_branch": "tfg-donchian-1d-oos-2025-v01",
+  "authority_closeout": {
+    "commit": "883345c81599149d6c7096e34d3b8f58c740163f",
+    "status": "OOS_CONFIRMATION_SURVIVES_SHADOW_ELIGIBLE",
+    "selected_resolved": "40/40",
+    "expected_local_ledger_fingerprint": "e8838e706cc7d1b0538282253d1aff3811182fb138f451a375b6c0ebef6fac9b",
+    "expected_local_run_receipt_fingerprint": "3f70d649a77b2c8f1afd675acef55b75f200cace512417e98e8eae74375184a1"
+  },
+  "actions_history_audit": {
+    "branch_run_count": 6,
+    "successful_runs": 0,
+    "runs": [
+      {
+        "id": 35101400529,
+        "version": "V0.1C2",
+        "conclusion": "failure",
+        "artifact_id": 10448457021,
+        "artifact_size_bytes": 595
+      },
+      {
+        "id": 35101237964,
+        "version": "V0.1C1",
+        "conclusion": "failure",
+        "artifact_id": 10448830336,
+        "artifact_size_bytes": 631
+      },
+      {
+        "id": 35100873169,
+        "version": "V0.1C",
+        "conclusion": "failure",
+        "artifact_id": 10448490984,
+        "artifact_size_bytes": 560
+      },
+      {
+        "id": 35100536233,
+        "version": "V0.1B",
+        "conclusion": "failure",
+        "artifact_id": 10447748639,
+        "artifact_size_bytes": 622
+      },
+      {
+        "id": 35100473538,
+        "version": "V0.1B",
+        "conclusion": "failure",
+        "artifact_id": 10447982675,
+        "artifact_size_bytes": 622
+      },
+      {
+        "id": 35099968106,
+        "version": "V0.1",
+        "conclusion": "failure",
+        "artifact_id": 10446799894,
+        "artifact_size_bytes": 525
+      }
+    ],
+    "latest_failure_reason": "SOURCE_1H_EQUIVALENCE_FAIL against audited parent MEXC bulk history",
+    "conclusion": "NO_HIDDEN_FINAL_LEDGER_IN_HISTORICAL_ACTIONS_ARTIFACTS"
+  },
+  "v01d_source_authority": {
+    "amendment_commit": "ee3d424d0275b1d4da1ed37437ba8232d645bd55",
+    "amendment_file": "TFG_DONCHIAN_1D_001_2025_OOS_BULK15M_SOURCE_AMENDMENT_V0.1D.json",
+    "required_2025_min15_files": 72,
+    "per_symbol_rows": 35040,
+    "source_zips_sha256": {
+      "BTC_USDT-Min15-2025-05-01.zip": "005fd4b352082f7b8bfd667fdc5f0dbd3c2e3671a895a7b90d9bf026f901409e",
+      "BNB_USDT-Min15-2025-12-01.zip": "f45b9babb8c5ac92d93fd2871a65e6f55786c875e03aa5773dacc680758d3a8d",
+      "DOGE_USDT-Min15-2025-12-01.zip": "f7c19fc7965138e0453a50b558c1617c60d18f3eb2a0529d2741043410452d58"
+    },
+    "ordered_72_file_manifest_sha256": "c3946f95fa81033d7566fe1114adb8f9c3ab5f076fb690caea2bb19d64762cbf"
+  },
+  "current_recovery_checks": {
+    "project_and_library_exact_zip_name_search": "NO_MATCH",
+    "local_mnt_data_exact_zip_name_search": "NO_MATCH",
+    "github_branch_final_ledger_file": "ABSENT",
+    "public_exact_filename_web_search": "NO_MATCH",
+    "official_mexc_market_data_download_page": "CONFIRMED_EXISTS_BUT_DYNAMIC_DOWNLOAD_URL_NOT_RECOVERED"
+  },
+  "governance": {
+    "scientific_rule_changed": false,
+    "outcome_tuning": false,
+    "historical_2026_outcomes_opened": false,
+    "live_trading": false,
+    "orders": false,
+    "merge_to_main": false
+  },
+  "next_valid_actions": [
+    "Recover the three exact authoritative ZIP byte sets matching frozen SHA256 values, OR recover the exact final V0.1D ledger bytes.",
+    "If exact ZIP bytes are recovered, deterministically rebuild all 72 Min15 members and rerun the unchanged frozen TFG rule.",
+    "Accept recovery only if regenerated ledger fingerprint equals e8838e706cc7d1b0538282253d1aff3811182fb138f451a375b6c0ebef6fac9b and aggregate closeout metrics match V0.1D.",
+    "Fail closed on any source hash or ledger fingerprint mismatch."
+  ]
+}
