@@ -1,0 +1,72 @@
+name: CED 1D V3 2025 Confirmation Source Gate
+
+on:
+  push:
+    branches:
+      - ced-1d-v3-byte-recovery-2026-09-17
+    paths:
+      - '.github/workflows/ced-1d-v3-2025-confirmation-source-gate.yml'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/prepare_confirmation_source_gate_v01.py'
+      - 'governance/CED_1D_V3_2025_CONFIRMATION_EXECUTION_FREEZE_2026-09-18.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      ROOT: Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3
+      CANON: Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/recovered_authority
+    steps:
+      - name: Checkout frozen branch
+        uses: actions/checkout@v4
+
+      - name: Compile source gate
+        run: python -m py_compile "$ROOT/prepare_confirmation_source_gate_v01.py"
+
+      - name: Assert pre-outcome freeze exists
+        shell: bash
+        run: |
+          test -f governance/CED_1D_V3_2025_CONFIRMATION_EXECUTION_FREEZE_2026-09-18.md
+          grep -q "FROZEN BEFORE ANY 2025 MARKET OUTCOME" governance/CED_1D_V3_2025_CONFIRMATION_EXECUTION_FREEZE_2026-09-18.md
+          echo PRE_OUTCOME_CONFIRMATION_FREEZE_PASS
+
+      - name: Execute source and provenance gate only
+        run: |
+          python "$ROOT/prepare_confirmation_source_gate_v01.py"             --registry "$CANON/target_registry_R1.json"             --output CONFIRMATION_SOURCE_GATE             --workers 8
+
+      - name: Assert no economic outcome was computed
+        run: |
+          python - <<'PY'
+          import json
+          x=json.load(open('CONFIRMATION_SOURCE_GATE/SOURCE_GATE_RECEIPT.json'))
+          assert x['status']=='CED1D_V3_2025_SOURCE_GATE_PASS',x
+          assert x['kline_files']==32,x
+          assert x['confirmation_2025_kline_files']==24,x
+          assert x['funding_symbols']==2,x
+          assert x['outcomes_computed'] is False,x
+          assert x['signals_computed'] is False,x
+          assert x['returns_computed'] is False,x
+          assert x['pnl_computed'] is False,x
+          assert x['promotion_computed'] is False,x
+          assert x['year_2025_source_accessed'] is True,x
+          assert x['year_2025_outcomes_accessed'] is False,x
+          assert x['year_2026_accessed'] is False,x
+          print('CONFIRMATION_SOURCE_GATE_ASSERTIONS_PASS')
+          PY
+
+      - name: Remove bulky kline archives before artifact upload
+        if: always()
+        run: rm -rf CONFIRMATION_SOURCE_GATE/klines
+
+      - name: Upload source gate evidence and frozen funding bytes
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ced1d-v3-2025-confirmation-source-gate
+          path: CONFIRMATION_SOURCE_GATE/
+          if-no-files-found: warn
+          retention-days: 30
