@@ -1,6 +1,6 @@
 {
   "registry_version": "3.3",
-  "as_of_utc": "2026-09-18T15:33:15Z",
+  "as_of_utc": "2026-09-18T15:33:30Z",
   "governance": "ND_PROMOTION_POLICY_V3_PLUS_AGGRESSIVE_FAIL_CLOSED_DEPLOYMENT",
   "focus_strategy_ids": [
     "ETF-CME-INSTFLOW-001",
@@ -332,7 +332,14 @@
         "status": "SOURCE_PASS__ARCHIVE_SHADOW_PASS__LOCAL_BUILD_PASS",
         "source_branch": "htf-dh03-12h-standalone-forward-v0.1",
         "windows_artifact_id": 10553155239,
-        "micro_live_authorized": false
+        "micro_live_authorized": false,
+        "last_archive_shadow_run_id": 35360055740,
+        "last_archive_shadow_conclusion": "success",
+        "last_windows_build_run_id": 35360055727,
+        "windows_v013_artifact_id": 10553155239,
+        "windows_v013_artifact_sha256": "28ea9c7e55fc2b35b2095acc1a958c70c0f45a5f0812dad9174ef5a126598858",
+        "external_daily_guard": "Radar Fishing Watch",
+        "external_daily_guard_enabled": true
       },
       "ced1d_0031": {
         "id": "CED1D-0031",
@@ -340,7 +347,13 @@
         "status": "ARMED_PRE_FIRST_COMPLETION",
         "first_eligible_signal_completion": "2026-09-19T00:00:00Z",
         "first_possible_archive_collection_date": "2026-09-21",
-        "micro_live_authorized": false
+        "micro_live_authorized": false,
+        "last_collector_run_id": 35360050402,
+        "last_collector_conclusion": "success",
+        "last_static_preflight_run_id": 35360134443,
+        "last_static_preflight_conclusion": "success",
+        "external_daily_guard": "Radar Fishing Watch",
+        "external_daily_guard_enabled": true
       }
     },
     "cleanup": {
@@ -368,6 +381,16 @@
       "orders_created": false,
       "exchange_mutation_performed": false,
       "live_capital_enabled": false
+    },
+    "external_orchestration": {
+      "automation_title": "Radar Fishing Watch",
+      "automation_id": "6aad2ed52ed8819198269b57120f79ff",
+      "enabled": true,
+      "schedule": "HOURLY",
+      "guard_semantics": "at most once per UTC day update only CED1D_0031_DAILY_TRIGGER.txt and DH03_DAILY_TRIGGER.txt when current UTC date not yet present",
+      "orders_allowed": false,
+      "exchange_mutation_allowed": false,
+      "capital_allowed": false
     }
   },
   "archive_registry": "archive_registry_v1.json",
