@@ -43,7 +43,9 @@ def run_once(engine: RadarEngine) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="CRYPTO EDGE RADAR V0.3 — promoted shadow motors")
+    parser = argparse.ArgumentParser(
+        description="CRYPTO EDGE RADAR V0.3 — promoted shadow motors + isolated micro-live layer"
+    )
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("once", help="run one public-data observation cycle")
 
@@ -53,8 +55,27 @@ def main(argv: list[str] | None = None) -> int:
 
     sub.add_parser("status", help="read latest persisted service health status")
     sub.add_parser("verify-evidence", help="verify the local evidence hash chain")
+    sub.add_parser(
+        "microlive",
+        help="run isolated CED1D-0031 micro-live daemon; requires explicit runtime arming and secrets",
+    )
 
     args = parser.parse_args(argv)
+
+    if args.command == "microlive":
+        try:
+            from .microlive_service import run_forever
+
+            return run_forever()
+        except Exception as exc:
+            print(
+                json.dumps(
+                    {"status": "MICROLIVE_FAIL_CLOSED", "error": str(exc)},
+                    sort_keys=True,
+                )
+            )
+            return 2
+
     engine, settings = build_engine()
 
     if args.command == "once":
