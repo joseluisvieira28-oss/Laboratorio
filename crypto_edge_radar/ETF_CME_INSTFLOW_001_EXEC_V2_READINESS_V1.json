@@ -1,0 +1,68 @@
+{
+  "contract_id": "ETF-CME-INSTFLOW-001-EXEC-V2-READINESS-V1",
+  "status": "FROZEN_READINESS_ONLY__NOT_EXECUTION_AUTHORITY",
+  "strategy_id": "ETF-CME-INSTFLOW-001",
+  "scientific_strategy_unchanged": true,
+  "signal_rule_unchanged": true,
+  "direction_rule_unchanged": true,
+  "hold_rule_unchanged": true,
+  "timing": {
+    "arm_lead_seconds": 60,
+    "max_late_seconds": 2,
+    "late_chase_allowed": false,
+    "missed_entry_behavior": "NO TRADE"
+  },
+  "risk_by_direction": {
+    "LONG": {
+      "mapping": "MEXC BTCUSDT SPOT",
+      "leverage": 0,
+      "max_initial_notional_fraction_of_equity": 0.001,
+      "rationale": "No scientific stop exists; cap unlevered spot notional itself rather than inventing a stop."
+    },
+    "SHORT": {
+      "mapping": "MEXC BTC_USDT USDT PERPETUAL",
+      "margin_mode": "ISOLATED",
+      "leverage": 1,
+      "auto_margin_add": "OFF_REQUIRED",
+      "max_initial_isolated_margin_fraction_of_equity": 0.001,
+      "rationale": "Use isolated 1x margin as the validation loss container without changing the seven-day scientific exit."
+    }
+  },
+  "order_semantics": {
+    "LONG_entry": "MARKET BUY at frozen exact entry timestamp",
+    "LONG_exit": "MARKET SELL at frozen +7d exit timestamp",
+    "SHORT_entry": "MARKET SELL/OPEN isolated 1x at frozen exact entry timestamp",
+    "SHORT_exit": "MARKET BUY/CLOSE reduce-only at frozen +7d exit timestamp",
+    "maker_fallback": false,
+    "partial_fill": "do not chase remainder; manage filled quantity; mark execution deviation",
+    "missed_exit": "flatten at first safe opportunity; mark EXECUTION_FAILURE; exclude from valid evidence"
+  },
+  "friction_gate": {
+    "max_projected_round_trip_bps": 20,
+    "basis": "frozen ETF-CME STRESS20 research accounting",
+    "LONG_formula": "2*taker_fee_bps_per_side + 2*observed_full_spread_bps + 2*simulated_market_impact_bps",
+    "SHORT_formula": "LONG formula + conservative_nonnegative_funding_burden_bps",
+    "account_specific_fee_read_required": true,
+    "future_funding_not_assumed_favorable": true
+  },
+  "remaining_authenticated_gates": [
+    "account-specific API fee read",
+    "account equity and minimum executable notional feasibility",
+    "SHORT isolated margin state",
+    "SHORT Auto Margin Add OFF state",
+    "SHORT leverage exactly 1x",
+    "no conflicting position/order",
+    "authenticated transport security",
+    "separate execution authority"
+  ],
+  "forbidden": [
+    "no order from this contract",
+    "no live activation",
+    "no stop invention",
+    "no signal reversal",
+    "no maker fallback rescue",
+    "no leverage tuning",
+    "no cost reduction rescue",
+    "no merge to main"
+  ]
+}
