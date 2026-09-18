@@ -1,0 +1,49 @@
+{
+  "document_id": "BNB_LAUNCHPOOL_DEMAND_001_V3_FORWARD_SOURCE_PREFLIGHT_V0.1",
+  "date": "2026-09-18",
+  "status": "FROZEN_BEFORE_AUTOMATED_FORWARD_SOURCE_SCAN",
+  "governing_policy": "ND-PROMOTION-POLICY-V3.0-FROZEN",
+  "parent_readiness": "BNB_LAUNCHPOOL_DEMAND_001_V3_MICROLIVE_READINESS_FREEZE_V0.1.md",
+  "parent_forward_freeze": "BNB_LAUNCHPOOL_DEMAND_001_FORWARD_SHADOW_V0.1_FREEZE.json",
+  "boundary_utc": "2026-09-16T20:51:23Z",
+  "purpose": "Operationalize the already-frozen forward event source scan without changing event, signal, execution, cost, clustering, or promotion logic.",
+  "source_contract": {
+    "provider": "Binance",
+    "list_route": "https://www.binance.com/bapi/composite/v1/public/cms/article/catalog/list/query?catalogId=48&pageNo=1&pageSize=50",
+    "detail_route_template": "https://www.binance.com/bapi/composite/v1/public/cms/article/detail/query?articleCode={article_code}",
+    "source_scope": "official Binance public CMS read-only",
+    "only_publication_timestamp_strictly_after_boundary": true,
+    "eligibility_all_required": [
+      "launchpool_text_present",
+      "bnb_text_present",
+      "staking_or_locking_or_farming_text_present"
+    ],
+    "event_identity": "canonical article code plus canonical CMS publication timestamp",
+    "no_pre_boundary_backfill": true
+  },
+  "preflight_output_classes": [
+    "SOURCE_PREFLIGHT_PASS_NO_ELIGIBLE_EVENT",
+    "SOURCE_PREFLIGHT_PASS_ELIGIBLE_EVENT_FOUND",
+    "SOURCE_PREFLIGHT_BLOCKED",
+    "SOURCE_PREFLIGHT_AMBIGUOUS"
+  ],
+  "price_firewall": {
+    "market_data_access": false,
+    "BNBBTC_price_access": false,
+    "returns": false,
+    "pnl": false,
+    "orders": false,
+    "wallets": false,
+    "authenticated_exchange": false
+  },
+  "no_scientific_change": true,
+  "governance": {
+    "research_only": true,
+    "fail_closed": true,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "orders": false,
+    "alerts_or_trade_webhooks": false,
+    "merge_to_main": false
+  }
+}
