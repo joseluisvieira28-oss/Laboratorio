@@ -1,0 +1,53 @@
+name: AAVE Credit Stress Decode Schema V0.1
+on:
+  push:
+    branches: [aave-credit-stress-source-v0.2-sqd]
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/AAVE_CREDIT_STRESS_001_DECODE_SCHEMA_AUTHORITY_V0.1.json'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/aave_credit_stress_001_decode_schema_v01.py'
+      - '.github/workflows/aave-credit-stress-decode-schema-v01.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  decode-schema:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: python -m pip install requests
+      - name: Authority gate
+        run: |
+          python - <<'PY'
+          import json
+          p='Dream-Account-OS-v2.3-PARTIAL/research/AAVE_CREDIT_STRESS_001_DECODE_SCHEMA_AUTHORITY_V0.1.json'
+          a=json.load(open(p))
+          assert a['status']=='PRE_DECODE_FROZEN_OUTCOME_BLIND'
+          assert a['parent_source_gate']['canonical_run']==35315587454
+          assert 'open BTC prices or returns' in a['forbidden']
+          print('AAVE_DECODE_SCHEMA_AUTHORITY_PASS')
+          PY
+      - name: Decode schema probe
+        run: python Dream-Account-OS-v2.3-PARTIAL/research/aave_credit_stress_001_decode_schema_v01.py
+      - name: Governance assertions
+        run: |
+          python - <<'PY'
+          import json
+          p='artifacts/aave_credit_stress_decode_schema_v01/AAVE_CREDIT_STRESS_001_DECODE_SCHEMA_RECEIPT_V0.1.json'
+          r=json.load(open(p))
+          assert r['classification'] in {'DECODE_SCHEMA_PASS','DECODE_SCHEMA_INSUFFICIENT'},r
+          assert r['btc_market_data_opened'] is False
+          assert r['btc_returns_computed'] is False
+          assert r['stress_predictor_constructed'] is False
+          assert r['daily_series_constructed'] is False
+          assert r['year_2025_accessed'] is False and r['year_2026_accessed'] is False
+          print(r['classification'],r.get('decoded_logs_total'))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: aave-credit-stress-decode-schema-${{ github.run_id }}
+          path: artifacts/aave_credit_stress_decode_schema_v01/
+          if-no-files-found: error
+          retention-days: 30
