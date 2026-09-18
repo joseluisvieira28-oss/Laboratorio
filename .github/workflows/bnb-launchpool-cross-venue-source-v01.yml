@@ -1,0 +1,36 @@
+name: BNB Launchpool Cross-Venue Source Gate V0.1
+
+on:
+  pull_request:
+    branches:
+      - bnb-launchpool-demand-v3-readjudication-2026-09-17
+    paths:
+      - "governance/BNB_LAUNCHPOOL_DEMAND_001_CROSS_VENUE_SOURCE_FREEZE_V0.1_2026-09-18.md"
+      - "Dream-Account-OS-v2.3-PARTIAL/research/bnb_launchpool_demand_001/cross_venue_source_probe_v01.py"
+      - ".github/workflows/bnb-launchpool-cross-venue-source-v01.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compile source-only probe
+        run: python -m py_compile Dream-Account-OS-v2.3-PARTIAL/research/bnb_launchpool_demand_001/cross_venue_source_probe_v01.py
+
+      - name: Execute source-only exact BNBBTC probe
+        run: python Dream-Account-OS-v2.3-PARTIAL/research/bnb_launchpool_demand_001/cross_venue_source_probe_v01.py
+
+      - name: Upload source receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bnb-launchpool-cross-venue-source-v01
+          path: Dream-Account-OS-v2.3-PARTIAL/research/local_data/bnb_launchpool_cross_venue_source_v01/
+          if-no-files-found: error
+          retention-days: 90
