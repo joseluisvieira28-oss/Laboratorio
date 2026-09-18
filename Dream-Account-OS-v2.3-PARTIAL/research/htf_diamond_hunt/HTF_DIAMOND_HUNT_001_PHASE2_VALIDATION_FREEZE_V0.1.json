@@ -1,0 +1,56 @@
+{
+  "campaign_id": "HTF-DIAMOND-HUNT-001",
+  "phase": "PHASE_2_DONCHIAN_FAMILY_TEMPORAL_VALIDATION",
+  "status": "FROZEN_BEFORE_PHASE2_SOURCE_ACCESS_OR_OUTCOMES",
+  "freeze_date": "2026-09-16",
+  "authority": "USER_EXPLICIT_CONTINUE_HUNT_GO_WITH_ALL",
+  "selection_rationale": "Phase 2 follows the predeclared Phase 1 promotion logic without selecting a single winning timeframe: the complete Donchian scale-transfer sibling family DH-02/DH-03 is carried forward jointly because DH-02 satisfied all frozen gates and DH-03 remained positive but sample-limited. EMA and PBR are not carried forward because their independent Phase 1 economics were negative.",
+  "governance": {
+    "research_only": true,
+    "no_live_trading": true,
+    "no_exchange_mutation": true,
+    "no_orders": true,
+    "no_alerts_or_webhooks": true,
+    "no_merge_to_main": true,
+    "no_render_deploy": true,
+    "no_post_outcome_tuning": true,
+    "no_asset_selection": true,
+    "no_timeframe_winner_selection": true,
+    "evaluate_both_6h_and_12h": true,
+    "no_threshold_changes": true,
+    "no_cost_rescue": true
+  },
+  "validation_dataset": {
+    "provider": "Binance public data",
+    "market": "Spot",
+    "symbols": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "DOGEUSDT"],
+    "raw_interval": "1m",
+    "start_utc_inclusive": "2019-01-01T00:00:00Z",
+    "end_utc_exclusive": "2021-01-01T00:00:00Z",
+    "allowed_source_years": [2019, 2020],
+    "forbidden_source_years": [2021, 2022, 2023, 2024, 2025, 2026],
+    "listing_aware_policy": "A monthly archive absent before a symbol's first official available Binance Spot monthly archive is recorded as PRE_LISTING_UNAVAILABLE and is not filled. After first availability, any later missing monthly archive inside 2019-2020 is SOURCE_GAP_BLOCKED. No alternate provider, synthetic fill, interpolation or cross-exchange backfill is allowed.",
+    "canonicalization": "Aggregate only complete consecutive 1m observations into UTC-aligned 15m bars. Incomplete 15m buckets are dropped. Higher-timeframe continuity is split across gaps.",
+    "source_gate_has_no_signals_or_returns": true
+  },
+  "costs": {"base_round_trip_pct": 0.20, "stress_round_trip_pct": 0.30},
+  "statistics": {"minimum_resolved_trades": 100, "bootstrap_repetitions": 5000, "bootstrap_seed": 230911, "bootstrap_unit": "UTC_ENTRY_DAY_BLOCK", "confidence_interval": 0.95},
+  "cells": [
+    {
+      "cell_id": "DH-02-V1",
+      "lineage": "DH-02",
+      "signal_timeframe": "6H",
+      "rule": {"direction":"LONG_ONLY","donchian_lookback_complete_bars":80,"entry":"next 6H open","atr_length":56,"stop":"signal low minus 0.25*ATR56","target_r":3.0,"max_hold_bars":160,"one_active_trade_per_symbol":true}
+    },
+    {
+      "cell_id": "DH-03-V1",
+      "lineage": "DH-03",
+      "signal_timeframe": "12H",
+      "rule": {"direction":"LONG_ONLY","donchian_lookback_complete_bars":40,"entry":"next 12H open","atr_length":28,"stop":"signal low minus 0.25*ATR28","target_r":3.0,"max_hold_bars":80,"one_active_trade_per_symbol":true}
+    }
+  ],
+  "decision_rules_per_cell": {"minimum_sample":"resolved trades >= 100","base_expectancy":"> 0","base_profit_factor":"> 1","bootstrap_lower_95":"> 0","stress_expectancy":"> 0","survivor_label":"VALIDATION_SURVIVES","sample_failure_label":"INSUFFICIENT_SAMPLE","other_failure_label":"VALIDATION_FAIL"},
+  "family_interpretation": "Both cells must always be reported. No post-outcome winner timeframe may be selected. A cell surviving validation is evidence for that frozen cell only; it does not authorize live trading or a diamond claim.",
+  "protected_data": {"2021_access": false, "2022_access": false, "2023_access": false, "2024_access": false, "2025_access": false, "2026_access": false},
+  "freeze_statement": "Rules, universe, costs, listing-aware source policy, sample floor and both validation cells are frozen before any Phase 2 source acquisition or outcome evaluation."
+}

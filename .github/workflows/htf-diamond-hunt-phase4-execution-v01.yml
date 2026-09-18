@@ -1,0 +1,73 @@
+name: HTF Diamond Hunt Phase4 Funding Execution V0.1
+
+on:
+  push:
+    branches: [htf-diamond-hunt-v0.1]
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/htf_diamond_hunt/PHASE4_EXECUTION_RUN_TRIGGER_V0.1.txt'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  phase4-execution:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify Phase4 frozen authorities before artifacts/network
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=Path('research/htf_diamond_hunt')
+          f=json.loads((r/'HTF_DIAMOND_HUNT_001_PHASE4_FUNDING_EXECUTION_FREEZE_V0.1.json').read_text())
+          p=json.loads((r/'HTF_DIAMOND_HUNT_001_PHASE3_SOURCE_BINDING_V0.1.json').read_text())
+          b=json.loads((r/'HTF_DIAMOND_HUNT_001_PHASE4_FUNDING_SOURCE_BINDING_V0.1.json').read_text())
+          assert f['status']=='FROZEN_BEFORE_PHASE4_SOURCE_ACCESS_OR_OUTCOMES'
+          assert [x['cell_id'] for x in f['cells']]==['DH-02-FX1','DH-03-FX1']
+          assert f['dataset']['allowed_source_years']==[2020,2021,2022]
+          assert f['dataset']['forbidden_source_years']==[2023,2024,2025,2026]
+          assert f['governance']['no_post_outcome_tuning'] is True
+          assert f['governance']['evaluate_both_6h_and_12h'] is True
+          assert p['artifact_id']==10437750562
+          assert p['source_fingerprint']=='1a92d2330106e229701eea3697a0c73ecb58076325a8979a843e42c7c058d981'
+          assert b['artifact_id']==10438046808
+          assert b['artifact_digest']=='sha256:f3845b0178c3ae07d6996b370b08ccfa595d5b631196df6c2a0863c0d75fa9a1'
+          assert b['source_fingerprint']=='e5d4b4375dd09ee2684b163b686c85c966d8cb04011b5ec3d04c92b9e0d01819'
+          print('PHASE4_AUTHORITY_GATE_PASS')
+          PY
+      - name: Compile frozen execution runner
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: python -m py_compile research/htf_diamond_hunt/htf_diamond_hunt_phase4_execution_v01.py
+      - name: Download exact frozen Phase3 price authority artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: HTF_DIAMOND_HUNT_001_PHASE3_SOURCE_V01
+          path: Dream-Account-OS-v2.3-PARTIAL/research/local_data/htf_diamond_hunt_phase3_source_v01
+          github-token: ${{ github.token }}
+          run-id: 35073537580
+      - name: Download exact frozen Phase4 funding artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: HTF_DIAMOND_HUNT_001_PHASE4_FUNDING_SOURCE_V01
+          path: Dream-Account-OS-v2.3-PARTIAL/research/local_data/htf_diamond_hunt_phase4_funding_source_v01
+          github-token: ${{ github.token }}
+          run-id: 35075105218
+      - name: Run frozen minute-path plus funding execution validation
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        env:
+          PYTHONPATH: ${{ github.workspace }}/Dream-Account-OS-v2.3-PARTIAL
+        run: python research/htf_diamond_hunt/htf_diamond_hunt_phase4_execution_v01.py research/local_data/htf_diamond_hunt_phase3_source_v01 research/local_data/htf_diamond_hunt_phase4_funding_source_v01
+      - name: Upload Phase4 execution evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: HTF_DIAMOND_HUNT_001_PHASE4_EXECUTION_V01
+          path: Dream-Account-OS-v2.3-PARTIAL/research/local_data/htf_diamond_hunt_phase4_execution_v01/
+          if-no-files-found: error
+          retention-days: 90
