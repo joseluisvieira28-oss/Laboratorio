@@ -72,7 +72,8 @@ def build_control_room_state(
         "ETF-CME-INSTFLOW-001",
         "BNB-LAUNCHPOOL-DEMAND-001",
         "OPTIONS-SPOTPERP-001-V2.1",
-        "HTF-DONCHIAN-DH02-6H",
+        "TFG-DONCHIAN-REGIME-ADAPTATION-V1",
+        "HTF-DH03-12H-STANDALONE-FORWARD-V1",
     ]
     focus_id_set = {str(x) for x in focus_ids}
 
