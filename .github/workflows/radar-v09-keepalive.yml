@@ -1,0 +1,44 @@
+name: Radar V0.9 Keepalive
+
+on:
+  schedule:
+    - cron: "*/8 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: radar-v09-keepalive
+  cancel-in-progress: true
+
+jobs:
+  ping:
+    runs-on: ubuntu-slim
+    timeout-minutes: 3
+    steps:
+      - name: Keep public shadow radar awake
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="https://crypto-edge-radar-v09-forward-preflight.onrender.com/health"
+          echo "GET $URL"
+          curl             --fail             --show-error             --silent             --location             --retry 2             --retry-delay 5             --max-time 90             "$URL" >/tmp/radar-health.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path("/tmp/radar-health.json")
+          text = p.read_text(encoding="utf-8", errors="replace")
+          try:
+              state = json.loads(text)
+          except Exception:
+              print("Radar responded but payload was not JSON.")
+              raise SystemExit(0)
+          print(json.dumps({
+              "health": state.get("health"),
+              "mode": state.get("mode"),
+              "checked_at_utc": state.get("checked_at_utc"),
+              "orders_created": state.get("orders_created"),
+              "live_capital_enabled": state.get("live_capital_enabled"),
+          }, sort_keys=True))
+          PY
