@@ -39,8 +39,33 @@ jobs:
           python -m unittest tests.test_ced1d0031_microlive -v
       - name: Assert no embedded exchange secrets
         run: |
-          if grep -RIE 'BINANCE_API_SECRET[[:space:]]*=[[:space:]]*["'"'][^"'"']+|BEGIN PRIVATE KEY'             crypto_edge_radar/radar/ced1d0031_* crypto_edge_radar/radar/binance_trading.py; then
-            echo "Potential embedded credential found"
-            exit 1
-          fi
-          echo CED1D0031_MICROLIVE_V02_OFFLINE_PREFLIGHT_PASS
+          python - <<'PY'
+          import ast
+          from pathlib import Path
+
+          paths = [
+              Path("crypto_edge_radar/radar/binance_trading.py"),
+              *sorted(Path("crypto_edge_radar/radar").glob("ced1d0031_*.py")),
+          ]
+          forbidden_text = ("BEGIN PRIVATE KEY", "BEGIN RSA PRIVATE KEY", "BEGIN OPENSSH PRIVATE KEY")
+          secret_names = {"BINANCE_API_KEY", "BINANCE_API_SECRET"}
+
+          findings = []
+          for path in paths:
+              text = path.read_text(encoding="utf-8")
+              for marker in forbidden_text:
+                  if marker in text:
+                      findings.append(f"{path}:private-key-marker:{marker}")
+              tree = ast.parse(text, filename=str(path))
+              for node in ast.walk(tree):
+                  if isinstance(node, ast.Assign):
+                      targets = [t.id for t in node.targets if isinstance(t, ast.Name)]
+                      for name in targets:
+                          if name in secret_names and isinstance(node.value, ast.Constant):
+                              value = node.value.value
+                              if isinstance(value, str) and value.strip():
+                                  findings.append(f"{path}:literal-secret-assignment:{name}")
+          if findings:
+              raise SystemExit("Potential embedded credential found: " + " | ".join(findings))
+          print("CED1D0031_MICROLIVE_V02_OFFLINE_PREFLIGHT_PASS")
+          PY
