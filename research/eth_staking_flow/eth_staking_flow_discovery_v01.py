@@ -167,11 +167,11 @@ def acquire_market_prices(outdir:Path)->tuple[dict[date,float],list[dict[str,Any
         raise RuntimeError(f"market daily coverage mismatch missing={missing[:5]} outside={outside[:5]}")
     return prices,manifest
 
-def pf(vals:list[float])->float:
+def pf(vals:list[float]):
     pos=sum(x for x in vals if x>0)
     neg=-sum(x for x in vals if x<0)
     if neg==0:
-        return math.inf if pos>0 else 0.0
+        return "INF" if pos>0 else 0.0
     return pos/neg
 
 def stationary_bootstrap(vals:list[float])->dict[str,float]:
@@ -283,7 +283,7 @@ def main()->int:
             "provenance_leakage_pass":True,
             "event_count_ge_30":n>=30,
             "mean_net10_gt_0":mean10>0,
-            "pf_net10_gt_1":pf10>1.0,
+            "pf_net10_gt_1":pf10=="INF" or (isinstance(pf10,(int,float)) and pf10>1.0),
             "stationary_bootstrap_p_le_0_10":boot["p_mean_le_zero"]<=0.10,
             "year_2023_nonnegative_if_ge5":years["2023"]["events"]<5 or years["2023"]["mean_net10"]>=0,
             "year_2024_nonnegative_if_ge5":years["2024"]["events"]<5 or years["2024"]["mean_net10"]>=0,
