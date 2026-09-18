@@ -29,6 +29,10 @@ on:
       - '.github/workflows/htf-dh03-12h-source-probe.yml'
   workflow_dispatch:
 
+concurrency:
+  group: htf-dh03-source-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
