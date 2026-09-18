@@ -1,0 +1,49 @@
+{
+  "contract_id": "BNB-LAUNCHPOOL-DEMAND-001-V3-MICROLIVE-EXECUTION-READINESS-V0.2",
+  "status": "FROZEN_READINESS_ONLY__NOT_EXECUTION_AUTHORITY",
+  "strategy_id": "BNB-LAUNCHPOOL-DEMAND-001",
+  "scientific_rule_changes": "NONE",
+  "candidate_execution_instrument": "BNBBTC SPOT",
+  "max_notional_chf": 25,
+  "leverage": "FORBIDDEN",
+  "max_simultaneous_positions": 1,
+  "entry": {
+    "reference": "first 15m BNBBTC open strictly after canonical announcement timestamp",
+    "candidate_order_type": "MARKET BUY",
+    "arm_lead_seconds": 60,
+    "max_late_seconds": 2,
+    "late_chase": false,
+    "missed_behavior": "NO TRADE"
+  },
+  "exit": {
+    "target": "exactly 24h after frozen entry timestamp",
+    "candidate_order_type": "MARKET SELL",
+    "max_late_seconds": 2,
+    "outage_safety_behavior": "flatten at first safe opportunity; mark EXECUTION_FAILURE; event cannot count as valid evidence"
+  },
+  "friction_gate": {
+    "account_specific_taker_fee_required": true,
+    "fee_read_must_be_read_only": true,
+    "projected_round_trip_formula": "2*taker_fee_bps_per_side + 2*observed_full_spread_bps + 2*simulated_market_impact_bps",
+    "maximum_projected_round_trip_bps": 30,
+    "basis": "existing frozen STRESS30 research accounting"
+  },
+  "venue_gate": {
+    "minimum_executable_notional_must_be_lte_chf": 25,
+    "exact_pair_must_exist": true,
+    "public_market_binding_required": true,
+    "authenticated_trade_state_preflight_required_before_any_future_authority": true
+  },
+  "forbidden": [
+    "no order from this contract",
+    "no live activation",
+    "no chase after +2s",
+    "no maker fallback",
+    "no averaging down",
+    "no pyramiding",
+    "no leverage",
+    "no signal/filter/direction/horizon changes",
+    "no merge to main"
+  ],
+  "activation_requirement": "separate explicit BNB-LAUNCHPOOL-DEMAND-001 V3 MICRO-LIVE EXECUTION AUTHORITY"
+}
