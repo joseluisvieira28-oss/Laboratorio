@@ -1,0 +1,43 @@
+name: BTC Options VRP Mark History Source Probe V0.1
+on:
+  push:
+    branches:
+      - btc-options-vrp-mark-history-probe-v0.1
+    paths:
+      - 'labs/BTC_OPTIONS_VRP_001/MARK_HISTORY_SOURCE_TRIGGER_V0.1.txt'
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: btc-options-vrp-mark-history-probe-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --disable-pip-version-check requests==2.32.3
+      - name: Verify authority
+        run: |
+          python - <<'PY'
+          import json
+          a=json.load(open('labs/BTC_OPTIONS_VRP_001/MARK_HISTORY_SOURCE_AUTHORITY_V0.1.json'))
+          assert a['probe_id']=='OVRP-MARK-HISTORY-SOURCE-PROBE-001'
+          assert len(a['cases'])==4
+          assert a['pass_rule']['minimum_points_per_leg']==100
+          assert a['pass_rule']['minimum_span_hours_per_leg']==156
+          assert all(v is False for k,v in a['safety'].items() if k.endswith('_authorized'))
+          print('MARK_HISTORY_SOURCE_AUTHORITY_PASS')
+          PY
+      - run: python -m py_compile labs/BTC_OPTIONS_VRP_001/mark_history_source_probe_v01.py
+      - name: Probe official historical mark route
+        run: python labs/BTC_OPTIONS_VRP_001/mark_history_source_probe_v01.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: BTC_OPTIONS_VRP_001_MARK_HISTORY_SOURCE_PROBE_V0_1
+          path: artifacts/btc_options_vrp_mark_history_probe_v01/
+          retention-days: 90
+          if-no-files-found: warn
