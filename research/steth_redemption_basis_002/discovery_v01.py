@@ -256,6 +256,24 @@ def verify_mapped_headers(mapped: list[dict[str, Any]], stats: Counter[str]) -> 
     raise RuntimeError("no second provider verified all mapped headers")
 
 
+def headers_batch(endpoint: str, blocks: list[int], stats: Counter[str]) -> dict[int, dict[str, Any]]:
+    out: dict[int, dict[str, Any]] = {}
+    unique = sorted(set(blocks))
+    for start in range(0, len(unique), 80):
+        chunk = unique[start:start + 80]
+        vals = rpc_batch(endpoint, [("eth_getBlockByNumber", [hex(b), False]) for b in chunk], stats)
+        for b, h in zip(chunk, vals):
+            if not isinstance(h, dict):
+                raise RuntimeError(f"missing batched header {b}")
+            if int(h["number"], 16) != b:
+                raise RuntimeError("batched header number mismatch")
+            ts = int(h["timestamp"], 16)
+            if ts > HEADER_CEILING_TS:
+                raise RuntimeError("protected-period batched header rejected")
+            out[b] = h
+    return out
+
+
 def map_daily_snapshots(stats: Counter[str]) -> list[dict[str, Any]]:
     targets = []
     dt = START_DT
@@ -265,27 +283,60 @@ def map_daily_snapshots(stats: Counter[str]) -> list[dict[str, Any]]:
     if len(targets) != EXPECTED_SNAPSHOTS:
         raise RuntimeError(f"snapshot target count mismatch {len(targets)}")
 
+    primary = PROVIDERS[0]
+    lower_block = FIRST_SNAPSHOT_BLOCK - 1
+    upper_block = LAST_SNAPSHOT_BLOCK
+    edge = headers_batch(primary, [lower_block, upper_block], stats)
+    if int(edge[lower_block]["timestamp"], 16) >= targets[0]:
+        raise RuntimeError("lower snapshot mapping bracket invalid")
+    if int(edge[upper_block]["timestamp"], 16) < targets[-1]:
+        raise RuntimeError("upper snapshot mapping bracket invalid")
+
+    lo = [lower_block] * len(targets)
+    hi = [upper_block] * len(targets)
+    rounds = 0
+    while True:
+        active = [i for i in range(len(targets)) if lo[i] + 1 < hi[i]]
+        if not active:
+            break
+        mids = sorted(set((lo[i] + hi[i]) // 2 for i in active))
+        hdrs = headers_batch(primary, mids, stats)
+        for i in active:
+            mid = (lo[i] + hi[i]) // 2
+            ts = int(hdrs[mid]["timestamp"], 16)
+            if ts < targets[i]:
+                lo[i] = mid
+            else:
+                hi[i] = mid
+        rounds += 1
+        if rounds > 32:
+            raise RuntimeError("vectorized timestamp mapping exceeded 32 rounds")
+        print(json.dumps({
+            "progress": "snapshot_mapping_round",
+            "round": rounds,
+            "active": len(active),
+            "unique_mid_headers": len(mids),
+        }, sort_keys=True), flush=True)
+
+    final_headers = headers_batch(primary, hi, stats)
     mapped = []
-    prev_block = FIRST_SNAPSHOT_BLOCK - 1
-    for idx, target in enumerate(targets):
-        if idx == 0:
-            lo = FIRST_SNAPSHOT_BLOCK - 1
-            hi = FIRST_SNAPSHOT_BLOCK + 2
-        elif idx == len(targets) - 1:
-            lo = prev_block + 1
-            hi = LAST_SNAPSHOT_BLOCK + 2
-        else:
-            lo = prev_block + 1
-            hi = min(HEADER_CEILING_BLOCK, prev_block + 9000)
-            while int(get_header(PROVIDERS[0], hi, stats)["timestamp"], 16) < target:
-                hi = min(HEADER_CEILING_BLOCK, hi + 4000)
-                if hi == HEADER_CEILING_BLOCK and int(get_header(PROVIDERS[0], hi, stats)["timestamp"], 16) < target:
-                    raise RuntimeError("unable to bracket next daily snapshot")
-        bn, ts, bh = first_block_at_or_after(target, lo, hi, stats)
-        mapped.append({"target_timestamp": target, "block": bn, "timestamp": ts, "hash": bh})
-        prev_block = bn
-        if idx % 50 == 0:
-            print(json.dumps({"progress": "snapshot_mapping", "mapped": idx + 1, "block": bn}, sort_keys=True), flush=True)
+    for target, bn in zip(targets, hi):
+        h = final_headers[bn]
+        ts = int(h["timestamp"], 16)
+        # Verify immediate predecessor invariant on primary in one batched pass later.
+        mapped.append({
+            "target_timestamp": target,
+            "block": bn,
+            "timestamp": ts,
+            "hash": str(h["hash"]).lower(),
+            "baseFeePerGas": int(h["baseFeePerGas"], 16),
+        })
+
+    prev_headers = headers_batch(primary, [x["block"] - 1 for x in mapped], stats)
+    for x in mapped:
+        pts = int(prev_headers[x["block"] - 1]["timestamp"], 16)
+        if x["timestamp"] < x["target_timestamp"] or pts >= x["target_timestamp"]:
+            raise RuntimeError("mapped first-block invariant failed")
 
     if mapped[0]["block"] != FIRST_SNAPSHOT_BLOCK:
         raise RuntimeError(f"first mapped block drift {mapped[0]['block']} != {FIRST_SNAPSHOT_BLOCK}")
@@ -500,6 +551,101 @@ def snapshot_state(snapshot: dict[str, Any], stats: Counter[str]) -> dict[str, A
     }
 
 
+
+def bulk_snapshot_states(mapped: list[dict[str, Any]], stats: Counter[str]) -> list[dict[str, Any]]:
+    n = len(mapped)
+    states: list[dict[str, Any]] = [{} for _ in range(n)]
+    chunk_size = 20
+
+    # Stage 1: Curve quote + queue position + queue backlog.
+    for start in range(0, n, chunk_size):
+        chunk = list(range(start, min(n, start + chunk_size)))
+        reqs: list[tuple[str, list[Any]]] = []
+        for i in chunk:
+            b = mapped[i]["block"]
+            reqs.extend([
+                ("eth_call", [{"to": CURVE, "data": calldata_get_dy()}, hex(b)]),
+                ("eth_call", [{"to": QUEUE, "data": selector("getLastRequestId()")}, hex(b)]),
+                ("eth_call", [{"to": QUEUE, "data": selector("unfinalizedStETH()")}, hex(b)]),
+            ])
+        vals = exact_quorum_batch(reqs, stats)
+        p = 0
+        for i in chunk:
+            quote, last_request_id, unfinalized = vals[p:p + 3]
+            p += 3
+            states[i].update({
+                "quote_wei": quote,
+                "last_request_id": last_request_id,
+                "unfinalized_steth_wei": unfinalized,
+                "acquired_base_wei": quote * 9998 // 10000,
+                "acquired_stress_wei": quote * 9995 // 10000,
+                "base_fee_per_gas": mapped[i]["baseFeePerGas"],
+            })
+        print(json.dumps({"progress": "snapshot_state_stage1", "done": chunk[-1] + 1, "total": n}, sort_keys=True), flush=True)
+
+    # Stage 2: acquired stETH -> shares at snapshot.
+    for start in range(0, n, chunk_size):
+        chunk = list(range(start, min(n, start + chunk_size)))
+        reqs = []
+        for i in chunk:
+            b = mapped[i]["block"]
+            reqs.extend([
+                ("eth_call", [{"to": STETH, "data": calldata_uint("getSharesByPooledEth(uint256)", states[i]["acquired_base_wei"])}, hex(b)]),
+                ("eth_call", [{"to": STETH, "data": calldata_uint("getSharesByPooledEth(uint256)", states[i]["acquired_stress_wei"])}, hex(b)]),
+            ])
+        vals = exact_quorum_batch(reqs, stats)
+        p = 0
+        for i in chunk:
+            states[i]["snapshot_shares_base"], states[i]["snapshot_shares_stress"] = vals[p:p + 2]
+            p += 2
+        print(json.dumps({"progress": "snapshot_state_stage2", "done": chunk[-1] + 1, "total": n}, sort_keys=True), flush=True)
+
+    # Stage 3: same acquired shares -> full stETH balance in next block.
+    for start in range(0, n, chunk_size):
+        chunk = list(range(start, min(n, start + chunk_size)))
+        reqs = []
+        for i in chunk:
+            nb = mapped[i]["block"] + 1
+            if nb > HEADER_CEILING_BLOCK:
+                raise RuntimeError("next-block state exceeds protected block ceiling")
+            reqs.extend([
+                ("eth_call", [{"to": STETH, "data": calldata_uint("getPooledEthByShares(uint256)", states[i]["snapshot_shares_base"])}, hex(nb)]),
+                ("eth_call", [{"to": STETH, "data": calldata_uint("getPooledEthByShares(uint256)", states[i]["snapshot_shares_stress"])}, hex(nb)]),
+            ])
+        vals = exact_quorum_batch(reqs, stats)
+        p = 0
+        for i in chunk:
+            states[i]["request_steth_base_wei"], states[i]["request_steth_stress_wei"] = vals[p:p + 2]
+            p += 2
+        print(json.dumps({"progress": "snapshot_state_stage3", "done": chunk[-1] + 1, "total": n}, sort_keys=True), flush=True)
+
+    # Stage 4: exact request shares in next block.
+    for start in range(0, n, chunk_size):
+        chunk = list(range(start, min(n, start + chunk_size)))
+        reqs = []
+        for i in chunk:
+            nb = mapped[i]["block"] + 1
+            reqs.extend([
+                ("eth_call", [{"to": STETH, "data": calldata_uint("getSharesByPooledEth(uint256)", states[i]["request_steth_base_wei"])}, hex(nb)]),
+                ("eth_call", [{"to": STETH, "data": calldata_uint("getSharesByPooledEth(uint256)", states[i]["request_steth_stress_wei"])}, hex(nb)]),
+            ])
+        vals = exact_quorum_batch(reqs, stats)
+        p = 0
+        for i in chunk:
+            states[i]["request_shares_base"], states[i]["request_shares_stress"] = vals[p:p + 2]
+            p += 2
+            required = [
+                states[i]["quote_wei"], states[i]["acquired_base_wei"], states[i]["acquired_stress_wei"],
+                states[i]["snapshot_shares_base"], states[i]["snapshot_shares_stress"],
+                states[i]["request_steth_base_wei"], states[i]["request_steth_stress_wei"],
+                states[i]["request_shares_base"], states[i]["request_shares_stress"],
+            ]
+            if min(required) <= 0:
+                raise RuntimeError(f"non-positive snapshot economic state at index {i}")
+        print(json.dumps({"progress": "snapshot_state_stage4", "done": chunk[-1] + 1, "total": n}, sort_keys=True), flush=True)
+
+    return states
+
 def checkpoint_at_finalization(fin: dict[str, Any], stats: Counter[str]) -> tuple[int, int]:
     idx = fin["ordinal"]
     key = idx.to_bytes(32, "big") + CHECKPOINTS_POSITION.to_bytes(32, "big")
@@ -575,6 +721,15 @@ def self_test() -> None:
     bs1 = moving_block_bootstrap_lower([1, 2, 3, 4, 5])
     bs2 = moving_block_bootstrap_lower([1, 2, 3, 4, 5])
     assert bs1 == bs2
+    synthetic_rebases = [{
+        "report_timestamp": 1_000_000,
+        "pre_total_eth": 1000,
+        "pre_total_shares": 1000,
+        "post_total_eth": 1001,
+        "post_total_shares": 1000,
+    }]
+    apr = trailing_apr(1_000_000, synthetic_rebases)
+    assert apr is not None and apr > 0
     assert calldata_get_dy().startswith("0x") and len(calldata_get_dy()) == 2 + 8 + 64 * 3
     print(json.dumps({
         "classification": "STETH002_DISCOVERY_SELF_TEST_PASS",
@@ -640,15 +795,7 @@ def run_discovery() -> int:
             raise RuntimeError("zero canonical TokenRebased events")
 
         mapped = map_daily_snapshots(stats)
-
-        # Attach canonical base fee from primary headers; secondary block hash/time already verified.
-        for i, s in enumerate(mapped):
-            h = get_header(PROVIDERS[0], s["block"], stats)
-            if "baseFeePerGas" not in h:
-                raise RuntimeError("missing baseFeePerGas")
-            s["baseFeePerGas"] = int(h["baseFeePerGas"], 16)
-            if i % 100 == 0:
-                print(json.dumps({"progress": "basefee_bind", "done": i + 1}, sort_keys=True), flush=True)
+        states = bulk_snapshot_states(mapped, stats)
 
         fin_froms = [x["from"] for x in finalizations]
         candidate_count = 0
@@ -681,7 +828,7 @@ def run_discovery() -> int:
                 no_signal_queue += 1
                 continue
 
-            st = snapshot_state(snap, stats)
+            st = states[idx]
             daily_throughput = Decimal(finalized_14d) / Decimal(14)
             queue_days = Decimal(st["unfinalized_steth_wei"]) / daily_throughput
             if queue_days < Decimal("0.25"):
