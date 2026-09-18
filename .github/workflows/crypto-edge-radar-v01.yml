@@ -1,4 +1,4 @@
-name: CRYPTO EDGE RADAR V0.2 CI + PUBLIC SOAK
+name: CRYPTO EDGE RADAR V0.3 CI + PUBLIC SOAK
 
 on:
   push:
@@ -33,6 +33,22 @@ jobs:
         run: python -m compileall radar tests
       - name: Unit tests
         run: python -m unittest discover -s tests -v
+      - name: Validate promoted motor manifest
+        run: |
+          python - <<'PY'
+          import json
+          x=json.load(open('PROMOTED_MOTOR_MANIFEST_V0.3.json'))
+          motors={m['candidate']:m for m in x['motors']}
+          a=motors['CED1D-0031']
+          assert a['tier']=='TIER_2_PROMOTED_CANDIDATE_QUASE_DIAMANTE',a
+          assert a['radar_mode']=='NATIVE_ADAPTER_ACTIVE_ON_BINANCE_USDM',a
+          assert a['first_eligible_signal_completion']=='2026-09-19T00:00:00Z',a
+          assert a['live_authorized'] is False,a
+          assert motors['HTF-DONCHIAN-DH-02-HO1-6H']['radar_mode']=='NATIVE_ADAPTER_BLOCKED_PENDING_CANDIDATE_SPECIFIC_2026_AUTHORITY'
+          assert x['radar_governance']['live_trading'] is False
+          assert x['radar_governance']['orders'] is False
+          print('PROMOTED_MOTOR_MANIFEST_PASS')
+          PY
 
   public-shadow-soak:
     needs: offline-safety-tests
@@ -57,7 +73,7 @@ jobs:
         run: python -m radar service --interval 5 --max-cycles 3
       - name: Verify evidence chain
         run: python -m radar verify-evidence
-      - name: Verify final heartbeat and zero promoted strategies
+      - name: Verify Spot validation heartbeat and zero compatible promoted strategies
         run: |
           python - <<'PY'
           import json
