@@ -34,6 +34,19 @@ jobs:
           assert all(v is False for v in a['hard_firewalls'].values())
           print('EDS_SOURCE_V04_AUTHORITY_PASS')
           PY
+      - name: Parser regression tests
+        run: |
+          python - <<'PY'
+          import sys
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/exchange_delisting_shock_001'
+          sys.path.insert(0, BASE)
+          import source_gate_v04 as s
+          x=s.semantic_token_identities('''<p>we have decided to delist and cease trading on all spot trading pairs for the following token(s) at 2024-02-20 03:00 (UTC):</p><p>Aragon (ANT)</p><p>Multichain (MULTI)</p><p>Vai (VAI)</p><p>Monero (XMR)</p><p>Please note:</p>''')
+          assert x=={'ANT':'Aragon','MULTI':'Multichain','VAI':'Vai','XMR':'Monero'}, x
+          y=s.semantic_token_identities('''<p>we have decided to delist and cease trading on all trading pairs for the following tokens at 2023-04-18 03:00 (UTC):</p><p>Kepple (QLC)</p><p>Neblio (NEBL)</p><p>Auto (AUTO)</p><p>Please note:</p>''')
+          assert y=={'QLC':'Kepple','NEBL':'Neblio','AUTO':'Auto'}, y
+          print('EDS_SOURCE_V04_PARSER_REGRESSION_PASS')
+          PY
       - name: Compile
         run: |
           BASE='Dream-Account-OS-v2.3-PARTIAL/research/exchange_delisting_shock_001'
