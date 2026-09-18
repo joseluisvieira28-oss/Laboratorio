@@ -1,0 +1,78 @@
+name: AVAX20 Cross-Venue Causal Decomposition V0.1
+
+on:
+  pull_request:
+    branches:
+      - cross-venue-diamond-replication-002-avax20
+    paths:
+      - "governance/AVAX20_CROSS_VENUE_CAUSAL_DECOMPOSITION_V0.1_FREEZE_2026-09-18.md"
+      - "Dream-Account-OS-v2.3-PARTIAL/research/avax20_cross_venue_causal_decomposition_v01.py"
+      - ".github/workflows/avax20-cross-venue-causal-decomposition-v01.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  causal-decomposition:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      ROOT: Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3
+      MATRIX: Dream-Account-OS-v2.3-PARTIAL/research/avax20_cross_venue_causal_decomposition_v01.py
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Compile frozen decomposition runner
+        run: python -m py_compile "$MATRIX"
+
+      - name: Re-verify Binance frozen 2025 price source
+        run: |
+          python "$ROOT/ced_1d_2025_source_gate_v03.py" \
+            --manifest "$ROOT/CED_1D_2025_SOURCE_MANIFEST_V0.2.json" \
+            --output "$RUNNER_TEMP/binance-price-source-gate" \
+            --cache "$RUNNER_TEMP/binance-price-cache"
+
+      - name: Re-verify Binance funding and mark-price interval source
+        run: |
+          python "$ROOT/ced_1d_2025_funding_markprice_interval_gate_v04.py" \
+            --amendment "$ROOT/CED_1D_2025_FUNDING_MARKPRICE_INTERVAL_SOURCE_AMENDMENT_V0.4.json" \
+            --output "$RUNNER_TEMP/binance-funding-mark-source"
+
+      - name: Assert Binance source gates before new outcomes
+        run: |
+          python - <<'PY'
+          import json, os
+          t=os.environ["RUNNER_TEMP"]
+          p=json.load(open(os.path.join(t,"binance-price-source-gate","CED_1D_2025_SOURCE_GATE_RECEIPT_V0.3.json")))
+          f=json.load(open(os.path.join(t,"binance-funding-mark-source","CED_1D_2025_FUNDING_MARKPRICE_INTERVAL_SOURCE_GATE_RECEIPT_V0.4.json")))
+          assert p["status"]=="SOURCE_DATA_PASS" and not p["failures"], p
+          assert p["confirmation_2025_outcomes_computed"] is False and p["access_2026_plus"] is False, p
+          assert f["status"]=="FUNDING_MARKPRICE_INTERVAL_SOURCE_PASS" and not f["failures"], f
+          assert f["symbols"]["AVAXUSDT"]["paired_records"]==1095, f
+          assert f["year_2026_accessed"] is False, f
+          print("BINANCE_SOURCE_AUTHORITY_PASS")
+          PY
+
+      - name: Execute frozen four-quadrant decomposition
+        run: |
+          python "$MATRIX" \
+            --price-cache "$RUNNER_TEMP/binance-price-cache" \
+            --price-manifest "$ROOT/CED_1D_2025_SOURCE_MANIFEST_V0.2.json" \
+            --binance-funding-bindings "$RUNNER_TEMP/binance-funding-mark-source/funding_markprice_interval_2025.json" \
+            --v03-runner-zip "$ROOT/recovered_authority/CED-1D-V1-RUNNER-FREEZE-V0.3.zip" \
+            --output "$RUNNER_TEMP/avax20-causal-decomposition"
+
+      - name: Upload immutable decomposition evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: avax20-cross-venue-causal-decomposition-v01
+          path: ${{ runner.temp }}/avax20-causal-decomposition/
+          if-no-files-found: error
+          retention-days: 90
