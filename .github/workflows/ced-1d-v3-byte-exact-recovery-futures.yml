@@ -1,0 +1,91 @@
+name: CED 1D V3 Byte-Exact USD-M Recovery
+
+on:
+  push:
+    branches:
+      - ced-1d-v3-byte-recovery-2026-09-17
+    paths:
+      - '.github/workflows/ced-1d-v3-byte-exact-recovery-futures.yml'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/byte_exact_source_recovery_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/recovered_authority/target_registry_R1.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  byte-exact-recovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      REGISTRY: Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/recovered_authority/target_registry_R1.json
+      RUNNER: Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/byte_exact_source_recovery_v01.py
+      OUT: artifacts/ced1d_byte_exact_recovery_futures
+      EXPECTED_REGISTRY_SHA256: 71a5f82a5002e63a9ce06c2d31a35b7aac8be569ce9a782097065f44b3b1fcd4
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate recovered registry bytes
+        shell: bash
+        run: |
+          set -euo pipefail
+          got="$(sha256sum "$REGISTRY" | awk '{print $1}')"
+          echo "REGISTRY_SHA256=$got"
+          test "$got" = "$EXPECTED_REGISTRY_SHA256"
+
+      - name: Registry binding preflight only
+        shell: bash
+        run: |
+          set -euo pipefail
+          python "$RUNNER" --registry "$REGISTRY" --output "$OUT"
+          python - <<'PY'
+          import json, os
+          p=os.path.join(os.environ['OUT'],'registry_binding_receipt.json')
+          x=json.load(open(p,encoding='utf-8'))
+          assert x['status']=='REGISTRY_BINDING_PASS', x
+          assert x['discovery_records']==480, x
+          assert x['expected_monthly_archives']==480, x
+          assert x['year_2025_accessed'] is False, x
+          assert x['year_2026_accessed'] is False, x
+          assert x['outcomes_computed'] is False, x
+          print('REGISTRY_BINDING_ASSERTIONS_PASS')
+          PY
+
+      - name: Execute exact 480 USD-M Futures source recovery
+        shell: bash
+        run: |
+          set -euo pipefail
+          python "$RUNNER" --registry "$REGISTRY" --output "$OUT" --execute-downloads
+
+      - name: Assert 480 of 480 and firewall
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, os
+          p=os.path.join(os.environ['OUT'],'byte_exact_recovery_receipt.json')
+          x=json.load(open(p,encoding='utf-8'))
+          assert x['status']=='BYTE_EXACT_RECOVERY_PASS', x.get('first_failure')
+          assert x['completed_records']==480, x['completed_records']
+          assert x['expected_records']==480, x['expected_records']
+          assert len(x['records'])==480, len(x['records'])
+          assert all(r['status']=='PASS' for r in x['records'])
+          assert x['year_2025_accessed'] is False
+          assert x['year_2026_accessed'] is False
+          assert x['outcomes_computed'] is False
+          assert x['live_trading_authorized'] is False
+          assert x['exchange_mutation_authorized'] is False
+          print('BYTE_EXACT_480_OF_480_PASS')
+          PY
+
+      - name: Upload recovery receipts only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ced1d-byte-exact-usdm-recovery-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ env.OUT }}/registry_binding_receipt.json
+            ${{ env.OUT }}/byte_exact_recovery_receipt.json
+          if-no-files-found: warn
+          retention-days: 30
