@@ -9,13 +9,10 @@ import traceback
 
 from radar.__main__ import main
 from radar.dh03_12h_local import DH03LocalCollector, default_paths
-from radar.bnb_local import BNBLocalFastMonitor
-from radar.bnb_launchpool_watcher import BNBLaunchpoolForwardShadowWatcher, BinanceOfficialLaunchpoolSource
-from radar.strategies.bnb_launchpool_demand import BinanceSpotBNBBTCKlineFeed
-from radar.evidence import EvidenceStore
+from radar.local_forward import LocalForwardSupervisor
 
 
-BUILD_ID = "v0.11-win-five-engine-dh03-bnb-local"
+BUILD_ID = "v0.12-win-five-engine-all-local"
 
 
 def _resource_path(name: str) -> str:
@@ -108,21 +105,26 @@ def _run_dh03_background() -> None:
         })
 
 
-def _run_bnb_background() -> None:
-    status_path = Path("data") / "bnb_local_status.json"
+def _run_forward_background() -> None:
+    status_path = Path("data") / "forward_local_supervisor_status.json"
     try:
-        evidence_path = str((Path("data") / "bnb_local_evidence.sqlite3").resolve())
-        watcher = BNBLaunchpoolForwardShadowWatcher(
-            store=EvidenceStore(evidence_path),
-            source=BinanceOfficialLaunchpoolSource(timeout=15),
-            market=BinanceSpotBNBBTCKlineFeed(timeout=10),
-        )
-        monitor = BNBLocalFastMonitor(
-            watcher=watcher,
-            status_path=str(status_path.resolve()),
-            interval_seconds=30.0,
-        )
-        monitor.run_forever()
+        supervisor = LocalForwardSupervisor(root="data")
+        _write_json_atomic(status_path, {
+            "status": "RUNNING",
+            "build_id": BUILD_ID,
+            "engines": [
+                "BNB-LAUNCHPOOL-DEMAND-001",
+                "TFG-DONCHIAN-REGIME-ADAPTATION-V1",
+                "OPTIONS-SPOTPERP-001-V2.1",
+                "ETF-CME-INSTFLOW-001",
+            ],
+            "poll_interval_seconds": 30.0,
+            "authenticated_exchange_api_used": False,
+            "orders_created": False,
+            "exchange_mutation_performed": False,
+            "live_capital_enabled": False,
+        })
+        supervisor.run_forever()
     except Exception as exc:
         _write_json_atomic(status_path, {
             "status": "FAIL_CLOSED",
@@ -133,14 +135,13 @@ def _run_bnb_background() -> None:
             "orders_created": False,
             "exchange_mutation_performed": False,
             "live_capital_enabled": False,
-            "micro_live_execution_enabled": False,
         })
 
 
-def _start_bnb_thread() -> threading.Thread:
+def _start_forward_thread() -> threading.Thread:
     thread = threading.Thread(
-        target=_run_bnb_background,
-        name="BNB-Launchpool-Fast-Shadow-Monitor",
+        target=_run_forward_background,
+        name="Four-Engine-Local-Forward-Shadow",
         daemon=True,
     )
     thread.start()
@@ -179,12 +180,12 @@ def run() -> int:
 
     if os.getenv("RADAR_PACKAGING_SELFTEST") == "1":
         package_state["dh03_collector_importable"] = True
-        package_state["bnb_local_monitor_importable"] = True
+        package_state["local_forward_supervisor_importable"] = True
         print(json.dumps(package_state, sort_keys=True))
         return 0
 
     _start_dh03_thread()
-    _start_bnb_thread()
+    _start_forward_thread()
 
     return main(
         [
