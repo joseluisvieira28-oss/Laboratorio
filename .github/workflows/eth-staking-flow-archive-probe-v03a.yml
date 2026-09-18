@@ -1,0 +1,83 @@
+name: ETH Staking Flow Historical Beacon Transport Probe V0.3A
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - eth-staking-flow-v0.3-archive-probe
+    paths:
+      - 'research/eth_staking_flow/ARCHIVE_TRANSPORT_PROBE_TRIGGER_V0_3A.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  provider-probes:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        provider_index: [0,1,2,3,4]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: eth-staking-flow-v0.3-archive-probe
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Verify V0.3A authority
+        run: |
+          test -f research/eth_staking_flow/ETH_STAKING_FLOW_001_ARCHIVE_TRANSPORT_EXECUTION_AMENDMENT_V0_3A.md
+          grep -q 'No ETH/BTC prices' research/eth_staking_flow/ETH_STAKING_FLOW_001_ARCHIVE_TRANSPORT_EXECUTION_AMENDMENT_V0_3A.md
+          echo ETH_STAKING_ARCHIVE_PROBE_V03A_AUTHORITY_PASS
+
+      - name: Compile source-only code
+        run: |
+          python -m py_compile research/eth_staking_flow/archive_transport_provider_v03a.py
+          python -m py_compile research/eth_staking_flow/aggregate_archive_transport_v03a.py
+
+      - name: Execute exact provider probe
+        env:
+          PROVIDER_INDEX: ${{ matrix.provider_index }}
+        run: python research/eth_staking_flow/archive_transport_provider_v03a.py
+
+      - name: Upload provider receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ETH_STAKING_V03A_PROVIDER_${{ matrix.provider_index }}
+          path: artifacts/eth_staking_flow_archive_probe_v03a/provider_${{ matrix.provider_index }}.json
+          if-no-files-found: warn
+          retention-days: 90
+
+  canonical-aggregate:
+    if: always()
+    needs: provider-probes
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: eth-staking-flow-v0.3-archive-probe
+
+      - name: Download all provider receipts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: ETH_STAKING_V03A_PROVIDER_*
+          path: downloaded_provider_receipts
+          merge-multiple: false
+
+      - name: Canonical provider-order adjudication
+        run: python research/eth_staking_flow/aggregate_archive_transport_v03a.py
+
+      - name: Upload canonical V0.3A receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ETH_STAKING_ARCHIVE_TRANSPORT_V03A_CANONICAL
+          path: artifacts/eth_staking_flow_archive_probe_v03a_aggregate/
+          if-no-files-found: warn
+          retention-days: 90
