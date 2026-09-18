@@ -1,0 +1,65 @@
+{
+  "receipt_id": "RADAR-V0132-DH03-RUNTIME-TRUTH-HARDENING-2026-09-18",
+  "recorded_at_utc": "2026-09-18T20:16:30Z",
+  "status": "VALIDATED_READY_FOR_CANONICAL_DEPLOY",
+  "repository": "joseluisvieira28-oss/Laboratorio",
+  "validated_head": "869329e3419c99becb2857afdba1cd7decca4f27",
+  "scientific_effect": "NONE__DASHBOARD_RUNTIME_TRUTH_AND_BUILD_ID_ONLY",
+  "change": {
+    "issue": "DH03 cockpit state was derived from registry shadow_allowed/readiness and could display SHADOW without proving the local collector was actually COLLECTING",
+    "resolution": {
+      "missing_or_bootstrapping": "GATED",
+      "collecting": "SHADOW",
+      "fail_closed": "BLOCKED"
+    },
+    "runtime_status_source": "data/dh03_local_status.json adjacent to local radar_status.json",
+    "build_id": "v0.13.2-win-six-motor-runtime-truth",
+    "scientific_rules_changed": false,
+    "universe_changed": false,
+    "timeframe_changed": false,
+    "costs_changed": false,
+    "entry_exit_rules_changed": false,
+    "forward_boundary_changed": false,
+    "historical_outcomes_reopened": false
+  },
+  "validation": {
+    "promotion_run_id": 35390050983,
+    "promotion_conclusion": "success",
+    "deterministic_tests": "172/172 PASS",
+    "tfg_source_gate": "PASS",
+    "bnb_market_source_gate": "PASS",
+    "bnb_official_source_gate": "PASS",
+    "forward_shadow_e2e": "PASS",
+    "windows_build_run_id": 35390050981,
+    "windows_build_conclusion": "success",
+    "package_selftest": "PASS"
+  },
+  "windows_artifact": {
+    "artifact_id": 10565516688,
+    "artifact_name": "crypto-edge-radar-v013-windows-node",
+    "zip_sha256": "dbf23641bb44e9db1f7ae7d0ea45fb78e12c56055e268d9048b8603b7e6725ca",
+    "exe_sha256": "b965496092a613176df893e12866d9a0492dd9dc496622c8e9f7452593ba4af3",
+    "local_hash_reverification": "PASS"
+  },
+  "render_predeploy": {
+    "workspace": "Laboratorio",
+    "service_id": "srv-dalqkpu1egvs73fhiehg",
+    "service_name": "crypto-edge-radar-v05-canary",
+    "branch": "crypto-edge-radar-postgres-v0.5",
+    "auto_deploy": "off",
+    "previous_live_commit": "0f96ae72af47999aaff66326edcab7b616ef55b2",
+    "postgres_id": "dpg-dalqi4qd0e5s738a77kg-a",
+    "postgres_status": "available",
+    "runtime_health": "OK",
+    "evidence_backend": "postgres",
+    "evidence_chain_last_observed": "verified 92 events via postgres",
+    "direct_readonly_sql_connector_note": "connector failed TLS negotiation; runtime Postgres evidence chain remained healthy"
+  },
+  "safety": {
+    "authenticated_exchange_api_used": false,
+    "orders_created": false,
+    "exchange_mutation_performed": false,
+    "live_capital_enabled": false,
+    "main_modified": false
+  }
+}
