@@ -1,0 +1,30 @@
+name: CED 1D AVAX20 Execution Synthetic QA
+
+on:
+  push:
+    branches:
+      - ced-1d-v3-byte-recovery-2026-09-17
+    paths:
+      - '.github/workflows/ced-1d-avax20-execution-synthetic-qa.yml'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/ced_1d_avax20_execution_feasibility_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/tests/test_ced_1d_avax20_execution_feasibility_v01.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile
+        run: |
+          python -m py_compile Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/ced_1d_avax20_execution_feasibility_v01.py
+          python -m py_compile Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/tests/test_ced_1d_avax20_execution_feasibility_v01.py
+      - name: Synthetic QA only
+        run: python Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/tests/test_ced_1d_avax20_execution_feasibility_v01.py
