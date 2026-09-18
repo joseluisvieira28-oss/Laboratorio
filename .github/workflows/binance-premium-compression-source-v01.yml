@@ -1,0 +1,54 @@
+name: Binance Premium Compression Source Gate V0.1
+
+on:
+  push:
+    branches:
+      - binance-premium-compression-v0.1
+    paths:
+      - 'research/binance_premium_compression/SOURCE_TRIGGER_V0_1.txt'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bpc-source-v01
+  cancel-in-progress: false
+
+jobs:
+  source_gate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: binance-premium-compression-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --disable-pip-version-check requests==2.32.3
+      - name: Verify frozen source authority
+        run: |
+          python - <<'PY'
+          import json
+          a=json.load(open('research/binance_premium_compression/BPC_SOURCE_AUTHORITY_V0_1.json'))
+          assert a['source_gate_id']=='BPC-SOURCE-001'
+          assert a['status']=='PRE_ACQUISITION_FROZEN_SOURCE_ONLY'
+          assert a['source']['symbols']==['BTCUSDT','ETHUSDT']
+          assert a['source']['interval']=='5m'
+          assert a['source']['start_month']=='2021-01'
+          assert a['source']['end_month']=='2024-12'
+          assert a['source_gates']['expected_dataset_symbol_month_receipts']==288
+          assert all(v is False for v in a['firewalls'].values())
+          print('BPC_SOURCE_AUTHORITY_PASS')
+          PY
+      - run: python -m py_compile research/binance_premium_compression/source_gate_v01.py
+      - name: Execute outcome-blind source gate
+        run: python research/binance_premium_compression/source_gate_v01.py
+      - name: Upload immutable source receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bpc-source-v01-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/binance_premium_compression_source_v01/
+          retention-days: 90
+          if-no-files-found: warn
