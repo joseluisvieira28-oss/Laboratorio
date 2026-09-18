@@ -1,0 +1,129 @@
+name: ETH Staking Flow 001 — Xatu Full Coverage V0.3B
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - eth-staking-flow-v0.3-xatu
+    paths:
+      - '.github/workflows/eth-staking-flow-xatu-v03b-coverage.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  monthly-coverage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shard_id: "202304"
+            shard_start: "2023-04-12"
+            shard_end: "2023-04-30"
+          - shard_id: "202305"
+            shard_start: "2023-05-01"
+            shard_end: "2023-05-31"
+          - shard_id: "202306"
+            shard_start: "2023-06-01"
+            shard_end: "2023-06-30"
+          - shard_id: "202307"
+            shard_start: "2023-07-01"
+            shard_end: "2023-07-31"
+          - shard_id: "202308"
+            shard_start: "2023-08-01"
+            shard_end: "2023-08-31"
+          - shard_id: "202309"
+            shard_start: "2023-09-01"
+            shard_end: "2023-09-30"
+          - shard_id: "202310"
+            shard_start: "2023-10-01"
+            shard_end: "2023-10-31"
+          - shard_id: "202311"
+            shard_start: "2023-11-01"
+            shard_end: "2023-11-30"
+          - shard_id: "202312"
+            shard_start: "2023-12-01"
+            shard_end: "2023-12-31"
+          - shard_id: "202401"
+            shard_start: "2024-01-01"
+            shard_end: "2024-01-31"
+          - shard_id: "202402"
+            shard_start: "2024-02-01"
+            shard_end: "2024-02-29"
+          - shard_id: "202403"
+            shard_start: "2024-03-01"
+            shard_end: "2024-03-31"
+          - shard_id: "202404"
+            shard_start: "2024-04-01"
+            shard_end: "2024-04-30"
+          - shard_id: "202405"
+            shard_start: "2024-05-01"
+            shard_end: "2024-05-31"
+          - shard_id: "202406"
+            shard_start: "2024-06-01"
+            shard_end: "2024-06-30"
+          - shard_id: "202407"
+            shard_start: "2024-07-01"
+            shard_end: "2024-07-31"
+          - shard_id: "202408"
+            shard_start: "2024-08-01"
+            shard_end: "2024-08-31"
+          - shard_id: "202409"
+            shard_start: "2024-09-01"
+            shard_end: "2024-09-30"
+          - shard_id: "202410"
+            shard_start: "2024-10-01"
+            shard_end: "2024-10-31"
+          - shard_id: "202411"
+            shard_start: "2024-11-01"
+            shard_end: "2024-11-30"
+          - shard_id: "202412"
+            shard_start: "2024-12-01"
+            shard_end: "2024-12-31"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependency
+        run: pip install --disable-pip-version-check requests
+      - name: Execute exact monthly coverage shard
+        env:
+          SHARD_ID: ${{ matrix.shard_id }}
+          SHARD_START: ${{ matrix.shard_start }}
+          SHARD_END: ${{ matrix.shard_end }}
+        run: python research/eth_staking_flow/xatu_v03b_coverage_shard.py
+      - name: Upload monthly coverage receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ETH_XATU_V03B_COVERAGE_${{ matrix.shard_id }}
+          path: xatu_v03b_coverage_shards/coverage_${{ matrix.shard_id }}.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  aggregate:
+    if: always()
+    needs: monthly-coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download all coverage shards
+        uses: actions/download-artifact@v4
+        with:
+          pattern: ETH_XATU_V03B_COVERAGE_*
+          path: downloaded_v03b_shards
+          merge-multiple: true
+      - name: Aggregate exact 630-day coverage
+        run: python research/eth_staking_flow/xatu_v03b_coverage_aggregate.py
+      - name: Upload canonical coverage receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ETH_STAKING_FLOW_001_XATU_FULL_COVERAGE_V0_3B
+          path: xatu_v03b_coverage_output/ETH_STAKING_FLOW_001_XATU_FULL_COVERAGE_V0_3B.json
+          if-no-files-found: warn
+          retention-days: 30
