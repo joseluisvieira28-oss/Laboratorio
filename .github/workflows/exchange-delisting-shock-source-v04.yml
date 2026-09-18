@@ -1,0 +1,51 @@
+name: EXCHANGE-DELISTING-SHOCK-001 Symbol Identity Source V0.4
+on:
+  push:
+    branches:
+      - exchange-delisting-shock-v0.4-symbol-identity-source
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/exchange_delisting_shock_001/SOURCE_V04_TRIGGER.txt'
+permissions:
+  contents: read
+jobs:
+  source_gate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: exchange-delisting-shock-v0.4-symbol-identity-source
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify frozen source contract
+        run: |
+          python - <<'PY'
+          import json
+          p='Dream-Account-OS-v2.3-PARTIAL/research/exchange_delisting_shock_001/SOURCE_CONTRACT_V04.json'
+          a=json.load(open(p))
+          assert a['source_gate_id']=='EDS-BINANCE-FULLTOKEN-SYMBOLIDENTITY-002'
+          assert a['status']=='FROZEN_NEW_SOURCE_CONTRACT_OUTCOME_BLIND'
+          assert a['source_event_gate']['minimum_qualified_token_events']==30
+          assert a['source_event_gate']['minimum_distinct_tokens']==15
+          assert a['source_event_gate']['required_calendar_years']==[2023,2024]
+          assert a['market_route_preflight']['minimum_route_qualified_token_events']==30
+          assert a['market_route_preflight']['minimum_route_qualified_distinct_tokens']==15
+          assert all(v is False for v in a['hard_firewalls'].values())
+          print('EDS_SOURCE_V04_AUTHORITY_PASS')
+          PY
+      - name: Compile
+        run: |
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/exchange_delisting_shock_001'
+          python -m py_compile "$BASE/source_gate_v02.py" "$BASE/source_gate_v03.py" "$BASE/source_gate_v04.py"
+      - name: Execute new outcome-blind source contract
+        run: |
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/exchange_delisting_shock_001'
+          (cd "$BASE" && python source_gate_v04.py)
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: EXCHANGE_DELISTING_SHOCK_001_SOURCE_V04
+          path: Dream-Account-OS-v2.3-PARTIAL/research/exchange_delisting_shock_001/source_evidence/EDS_SOURCE_DATA_GATE_V04.json
+          retention-days: 90
+          if-no-files-found: warn
