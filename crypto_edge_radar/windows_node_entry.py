@@ -4,11 +4,15 @@ import json
 import os
 from pathlib import Path
 import sys
+import threading
+import traceback
 
 from radar.__main__ import main
+from radar.dh03_12h_local import DH03LocalCollector, default_paths
+from radar.local_forward import LocalForwardSupervisor
 
 
-BUILD_ID = "v0.7-win-registry-materialize-v1"
+BUILD_ID = "v0.12-win-five-engine-all-local"
 
 
 def _resource_path(name: str) -> str:
@@ -32,12 +36,16 @@ def _verify_registry_file(registry_path: str) -> tuple[dict, dict]:
     required = "ETF-CME-INSTFLOW-001"
     if required not in ids:
         raise RuntimeError(f"deployment registry missing required strategy: {required}")
+    dh03 = "HTF-DH03-12H-STANDALONE-FORWARD-V1"
+    if dh03 not in ids:
+        raise RuntimeError(f"deployment registry missing DH03 local collector strategy: {dh03}")
     state = {
         "status": "PASS",
         "build_id": BUILD_ID,
         "registry_version": payload.get("registry_version"),
         "candidate_count": len(candidates),
         "required_strategy_present": True,
+        "dh03_strategy_present": True,
     }
     return payload, state
 
@@ -51,6 +59,103 @@ def _materialize_registry(payload: dict) -> str:
     tmp_path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
     tmp_path.replace(runtime_registry)
     return str(runtime_registry.resolve())
+
+
+
+
+def _write_json_atomic(path: Path, payload: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+    tmp.replace(path)
+
+
+def _run_dh03_background() -> None:
+    status_path = Path("data") / "dh03_local_status.json"
+    try:
+        market_db, evidence_db = default_paths()
+        collector = DH03LocalCollector(data_db=market_db, evidence_db=evidence_db)
+        _write_json_atomic(status_path, {
+            "status": "BOOTSTRAPPING",
+            "build_id": BUILD_ID,
+            "market_db": market_db,
+            "evidence_db": evidence_db,
+            "orders_created": False,
+            "live_capital_enabled": False,
+        })
+        bootstrap = collector.bootstrap()
+        _write_json_atomic(status_path, {
+            "status": "COLLECTING",
+            "build_id": BUILD_ID,
+            "bootstrap": bootstrap,
+            "market_db": market_db,
+            "evidence_db": evidence_db,
+            "orders_created": False,
+            "live_capital_enabled": False,
+        })
+        collector.run_forever()
+    except Exception as exc:
+        _write_json_atomic(status_path, {
+            "status": "FAIL_CLOSED",
+            "build_id": BUILD_ID,
+            "error": f"{type(exc).__name__}:{exc}",
+            "traceback": traceback.format_exc(limit=8),
+            "orders_created": False,
+            "live_capital_enabled": False,
+        })
+
+
+def _run_forward_background() -> None:
+    status_path = Path("data") / "forward_local_supervisor_status.json"
+    try:
+        supervisor = LocalForwardSupervisor(root="data")
+        _write_json_atomic(status_path, {
+            "status": "RUNNING",
+            "build_id": BUILD_ID,
+            "engines": [
+                "BNB-LAUNCHPOOL-DEMAND-001",
+                "TFG-DONCHIAN-REGIME-ADAPTATION-V1",
+                "OPTIONS-SPOTPERP-001-V2.1",
+                "ETF-CME-INSTFLOW-001",
+            ],
+            "poll_interval_seconds": 30.0,
+            "authenticated_exchange_api_used": False,
+            "orders_created": False,
+            "exchange_mutation_performed": False,
+            "live_capital_enabled": False,
+        })
+        supervisor.run_forever()
+    except Exception as exc:
+        _write_json_atomic(status_path, {
+            "status": "FAIL_CLOSED",
+            "build_id": BUILD_ID,
+            "error": f"{type(exc).__name__}:{exc}",
+            "traceback": traceback.format_exc(limit=8),
+            "authenticated_exchange_api_used": False,
+            "orders_created": False,
+            "exchange_mutation_performed": False,
+            "live_capital_enabled": False,
+        })
+
+
+def _start_forward_thread() -> threading.Thread:
+    thread = threading.Thread(
+        target=_run_forward_background,
+        name="Four-Engine-Local-Forward-Shadow",
+        daemon=True,
+    )
+    thread.start()
+    return thread
+
+
+def _start_dh03_thread() -> threading.Thread:
+    thread = threading.Thread(
+        target=_run_dh03_background,
+        name="DH03-12H-Shadow-Collector",
+        daemon=True,
+    )
+    thread.start()
+    return thread
 
 
 def run() -> int:
@@ -74,8 +179,13 @@ def run() -> int:
         return 2
 
     if os.getenv("RADAR_PACKAGING_SELFTEST") == "1":
+        package_state["dh03_collector_importable"] = True
+        package_state["local_forward_supervisor_importable"] = True
         print(json.dumps(package_state, sort_keys=True))
         return 0
+
+    _start_dh03_thread()
+    _start_forward_thread()
 
     return main(
         [
