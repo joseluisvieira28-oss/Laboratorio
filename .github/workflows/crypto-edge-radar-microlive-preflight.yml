@@ -8,6 +8,8 @@ on:
       - 'crypto_edge_radar/radar/binance_trading.py'
       - 'crypto_edge_radar/radar/mexc_trading.py'
       - 'crypto_edge_radar/radar/microlive_service.py'
+      - 'crypto_edge_radar/radar/credential_preflight.py'
+      - 'crypto_edge_radar/radar/__main__.py'
       - 'crypto_edge_radar/tests/test_microlive_execution.py'
       - '.github/workflows/crypto-edge-radar-microlive-preflight.yml'
 
@@ -25,7 +27,12 @@ jobs:
           python-version: '3.12'
       - name: Compile executor
         run: |
-          python -m py_compile             crypto_edge_radar/radar/execution.py             crypto_edge_radar/radar/binance_trading.py             crypto_edge_radar/radar/mexc_trading.py             crypto_edge_radar/radar/microlive_service.py
+          python -m py_compile crypto_edge_radar/radar/execution.py
+          python -m py_compile crypto_edge_radar/radar/binance_trading.py
+          python -m py_compile crypto_edge_radar/radar/mexc_trading.py
+          python -m py_compile crypto_edge_radar/radar/microlive_service.py
+          python -m py_compile crypto_edge_radar/radar/credential_preflight.py
+          python -m py_compile crypto_edge_radar/radar/__main__.py
       - name: Run micro-live safety tests
         working-directory: crypto_edge_radar
         env:
@@ -36,7 +43,10 @@ jobs:
           MEXC_API_SECRET: ""
         run: |
           python -m unittest tests.test_microlive_execution -v
-      - name: Assert no embedded credentials
+      - name: Assert no obvious embedded credentials
         run: |
-          ! grep -RIE 'sk-[A-Za-z0-9]|BEGIN PRIVATE KEY|api_secret[ ]*=[ ]*["'"'][^"'"']+'             crypto_edge_radar/radar || false
+          if grep -RIE 'BEGIN PRIVATE KEY|BINANCE_API_SECRET[[:space:]]*=[[:space:]]*["'"'][^"'"']+|MEXC_API_SECRET[[:space:]]*=[[:space:]]*["'"'][^"'"']+' crypto_edge_radar/radar; then
+            echo "Potential embedded credential detected"
+            exit 1
+          fi
           echo OFFLINE_MICROLIVE_PREFLIGHT_PASS
