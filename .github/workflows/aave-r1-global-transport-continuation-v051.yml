@@ -1,0 +1,140 @@
+name: AAVE R1 Global Transport Continuation V0.5.1
+
+on:
+  push:
+    branches:
+      - aave-liquidation-overhang-v0.1
+    paths:
+      - '.github/workflows/aave-r1-global-transport-continuation-v051.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  V03_RUN_ID: '35378904880'
+  GLOBAL_V041_RUN_ID: '35389082810'
+  GLOBAL_V041_HEAD_SHA: '95bef7382b0dd4e2780be93f15260e3c7df4eca4'
+
+jobs:
+  wait-and-adjudicate-v041:
+    runs-on: ubuntu-latest
+    timeout-minutes: 110
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Verify frozen continuation authority
+        run: test -f research/aave_liquidation_overhang/AAVE_LIQUIDATION_OVERHANG_001_R1_GLOBAL_TRANSPORT_CONTINUATION_V0_5_1.md
+
+      - name: Wait for exact V0.4.1 global run only
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python - <<'PY'
+          import json, os, time, urllib.request
+          repo='joseluisvieira28-oss/Laboratorio'
+          run_id=int(os.environ['GLOBAL_V041_RUN_ID'])
+          sha=os.environ['GLOBAL_V041_HEAD_SHA']
+          deadline=time.time()+100*60
+          while time.time()<deadline:
+              req=urllib.request.Request(
+                  f'https://api.github.com/repos/{repo}/actions/runs/{run_id}',
+                  headers={
+                      'Authorization':f"Bearer {os.environ['GH_TOKEN']}",
+                      'Accept':'application/vnd.github+json',
+                      'X-GitHub-Api-Version':'2022-11-28',
+                  }
+              )
+              with urllib.request.urlopen(req,timeout=30) as r:
+                  o=json.load(r)
+              assert o['head_sha']==sha,(o['head_sha'],sha)
+              if o['status']=='completed':
+                  print(json.dumps({
+                      'run_id':run_id,
+                      'status':o['status'],
+                      'conclusion':o['conclusion'],
+                      'head_sha':o['head_sha'],
+                  },sort_keys=True))
+                  break
+              time.sleep(30)
+          else:
+              raise SystemExit('V0.4.1 upstream wait timeout')
+          PY
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: AAVE_R1_V03_RESERVE_SHARD_*
+          path: downloaded_r1_shards
+          merge-multiple: true
+          run-id: 35378904880
+          github-token: ${{ github.token }}
+
+      - name: Reconcile only frozen stale-collateral-flag semantics
+        continue-on-error: true
+        run: python research/aave_liquidation_overhang/reconcile_r1_reserve_shards_flag_v01.py
+
+      - name: Bind exact reconciled 8-shard corpus
+        run: |
+          test "$(find reconciled_r1_shards -maxdepth 1 -name 'r1_reserve_shard_reconciled_*.json' | wc -l)" -eq 8
+          rm -rf downloaded_r1_shards
+          mkdir downloaded_r1_shards
+          cp reconciled_r1_shards/r1_reserve_shard_reconciled_*.json downloaded_r1_shards/
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: AAVE_R1_GLOBAL_STATE_DIAGNOSTIC_V0_4_1
+          path: downloaded_r1_global
+          run-id: 35389082810
+          github-token: ${{ github.token }}
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: AAVE_R1_AUDIT_CANONICAL_V0_2E
+          path: downloaded_r1_audit
+          run-id: 35378692311
+          github-token: ${{ github.token }}
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: AAVE_RECON_R0_BOOTSTRAP
+          path: downloaded_r0_bootstrap
+          run-id: 35218275356
+          github-token: ${{ github.token }}
+
+      - name: Canonical R1 adjudication with exact V0.4.1 global receipt
+        continue-on-error: true
+        run: python research/aave_liquidation_overhang/aggregate_r1_reconstruction_v02.py
+
+      - name: Outcome firewall
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('r1_canonical_output/AAVE_LIQUIDATION_OVERHANG_001_RECONSTRUCTION_R1_CANONICAL_V0_2.json')
+          assert p.exists()
+          x=json.loads(p.read_text())
+          s=x['safety']
+          assert s['health_factor_computed'] is False
+          assert s['overhang_computed'] is False
+          assert s['future_liquidation_outcome_computed'] is False
+          assert s['market_returns_opened'] is False
+          assert s['returns_opened'] is False
+          assert s['pnl_opened'] is False
+          assert s['accessed_2025_or_2026'] is False
+          assert s['live_trading'] is False
+          assert s['exchange_mutation'] is False
+          print('V051_CANONICAL_FIREWALL_PASS',x['classification'],x.get('next_authorized_phase'))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AAVE_R1_GLOBAL_TRANSPORT_CONTINUATION_V0_5_1
+          path: |
+            reconciled_r1_shards/*.json
+            r1_canonical_output/AAVE_LIQUIDATION_OVERHANG_001_RECONSTRUCTION_R1_CANONICAL_V0_2.json
+          if-no-files-found: error
+          retention-days: 30
