@@ -8,8 +8,8 @@ from .config import Settings
 from .evidence import EvidenceStore
 from .engine import RadarEngine
 from .market import BinancePublicFeed, BinanceSpotPublicFeed
+from .promoted import build_promoted_registry
 from .service import PublicShadowService, read_status
-from .strategy import StrategyRegistry
 
 
 def build_feed(settings: Settings):
@@ -22,11 +22,12 @@ def build_feed(settings: Settings):
 
 def build_engine() -> tuple[RadarEngine, Settings]:
     settings = Settings.from_env()
+    feed = build_feed(settings)
     engine = RadarEngine(
         settings=settings,
-        feed=build_feed(settings),
+        feed=feed,
         store=EvidenceStore(settings.db_path),
-        registry=StrategyRegistry.empty(),
+        registry=build_promoted_registry(feed),
     )
     return engine, settings
 
@@ -42,7 +43,7 @@ def run_once(engine: RadarEngine) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="CRYPTO EDGE RADAR V0.2 — public shadow only")
+    parser = argparse.ArgumentParser(description="CRYPTO EDGE RADAR V0.3 — promoted shadow motors")
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("once", help="run one public-data observation cycle")
 
