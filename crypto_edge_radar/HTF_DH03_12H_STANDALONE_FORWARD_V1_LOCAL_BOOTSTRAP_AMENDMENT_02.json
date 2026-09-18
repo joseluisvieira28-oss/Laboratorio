@@ -1,0 +1,51 @@
+{
+  "amendment_id": "HTF-DH03-12H-STANDALONE-FORWARD-V1-LOCAL-BOOTSTRAP-AMENDMENT-02",
+  "frozen_at_utc": "2026-09-18T08:08:00Z",
+  "parent_freeze": "HTF_DH03_12H_STANDALONE_FORWARD_V1_FREEZE.json",
+  "status": "FROZEN_BEFORE_LOCAL_REST_BOOTSTRAP_IMPLEMENTATION",
+  "purpose": "Allow the home Windows node to attempt the same official Binance USD-M public REST market-data source solely for causal recent-state bootstrap before a signal boundary.",
+  "allowed": {
+    "host": "https://fapi.binance.com",
+    "methods": [
+      "GET"
+    ],
+    "paths": [
+      "/fapi/v1/time",
+      "/fapi/v1/klines"
+    ],
+    "intervals": [
+      "15m"
+    ],
+    "symbols": [
+      "BTCUSDT",
+      "ETHUSDT",
+      "SOLUSDT",
+      "BNBUSDT",
+      "XRPUSDT",
+      "DOGEUSDT"
+    ],
+    "authentication": false
+  },
+  "fail_closed": {
+    "http_451": "do not substitute another venue; retain source gap and do not score signal",
+    "incomplete_15m_coverage": "do not score signal",
+    "late_entry_reconstruction": "forbidden",
+    "trade_path_gap_repair_as_valid_live_evidence": "forbidden"
+  },
+  "invariants": {
+    "venue_change": false,
+    "market_change": false,
+    "signal_change": false,
+    "timeframe_change": false,
+    "execution_change": false,
+    "cost_change": false,
+    "direction_change": false
+  },
+  "governance": {
+    "no_keys": true,
+    "no_orders": true,
+    "no_exchange_mutation": true,
+    "no_live_capital": true,
+    "bootstrap_rows_are_state_only": true
+  }
+}
