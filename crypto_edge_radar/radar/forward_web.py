@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import os
@@ -36,7 +36,11 @@ DH03_RETRY_MS = 6 * 60 * 60 * 1000
 
 def _utc_yesterday_iso(now_ms: int) -> str:
     now = datetime.fromtimestamp(now_ms / 1000.0, tz=timezone.utc)
-    return (now.date() - __import__('datetime').timedelta(days=1)).isoformat()
+    return (now.date() - timedelta(days=1)).isoformat()
+
+
+def _bnb_due(*, now_ms: int, last_check_ms: int | None) -> bool:
+    return last_check_ms is None or now_ms - last_check_ms >= BNB_POLL_MS
 
 
 def _dh03_due(*, now_ms: int, last_check_ms: int | None, state: dict[str, Any]) -> bool:
@@ -141,10 +145,7 @@ class ForwardShadowRuntime:
         errors: dict[str, str] = {}
 
         warnings: dict[str, str] = {}
-        bnb_due = (
-            self._last_bnb_check_ms is None
-            or now_ms - self._last_bnb_check_ms >= BNB_POLL_MS
-        )
+        bnb_due = _bnb_due(now_ms=now_ms, last_check_ms=self._last_bnb_check_ms)
         if bnb_due:
             try:
                 bnb_state = self.bnb.run_once(now_ms=now_ms)
