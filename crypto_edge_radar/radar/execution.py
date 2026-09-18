@@ -177,15 +177,19 @@ def round_quantity(
     price: Decimal,
     step_size: Decimal,
     min_qty: Decimal,
+    min_notional: Decimal = Decimal("0"),
 ) -> Decimal:
     if price <= 0 or step_size <= 0:
         raise ExecutionBlocked("invalid market rule")
     raw = notional_usdt / price
     units = (raw / step_size).to_integral_value(rounding=ROUND_DOWN)
     qty = units * step_size
+    actual_notional = qty * price
     if qty < min_qty:
         raise ExecutionBlocked("25 USDT cap is below venue minimum quantity")
-    if qty * price > MAX_NOTIONAL_USDT:
+    if actual_notional < min_notional:
+        raise ExecutionBlocked("25 USDT cap is below venue minimum notional")
+    if actual_notional > MAX_NOTIONAL_USDT:
         raise ExecutionBlocked("rounded quantity exceeds 25 USDT cap")
     return qty
 
@@ -219,6 +223,7 @@ class MicroLiveCoordinator:
             price=price,
             step_size=rules["step_size"],
             min_qty=rules["min_qty"],
+            min_notional=rules.get("min_notional", Decimal("0")),
         )
 
         entry_side = "BUY" if resolved["direction"] == "LONG" else "SELL"
