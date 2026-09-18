@@ -1,8 +1,8 @@
 {
-  "archive_version": "1.0",
-  "archived_at_utc": "2026-09-18T06:44:29Z",
-  "source_registry_version": "2.3",
-  "source_branch": "crypto-edge-radar-promotion-sprint-v0.9",
+  "archive_version": "1.1",
+  "archived_at_utc": "2026-09-18T09:49:00Z",
+  "source_registry_version": "3.1",
+  "source_branch": "htf-dh03-12h-standalone-forward-v0.1",
   "preservation_rule": "Historical verdicts and negative evidence remain immutable. Removal from active deployment registry is operational cleanup only.",
   "candidates": [
     {
@@ -108,6 +108,45 @@
       "deployment_state": "BLOCKED",
       "shadow_allowed": false,
       "micro_live_allowed_now": false
+    },
+    {
+      "strategy_id": "DVOL-TS-TERM-SPREAD-MR-DISCOVERY-001",
+      "scientific_tier": null,
+      "scientific_status": "TERM_SPREAD_MR_DISCOVERY_NO_ROBUST_EDGE",
+      "deployment_state": "ARCHIVED_EXACT_DISCOVERY",
+      "shadow_allowed": false,
+      "micro_live_allowed_now": false,
+      "authority_branch": "btc-dvol-termspread-mr-discovery-v0.1",
+      "evidence_run_id": 35310851071,
+      "reason": "Frozen exact term-spread mean-reversion Discovery completed with no robust edge. Preserve negative evidence; no rescue."
+    },
+    {
+      "strategy_id": "DVOL-TS-CALENDAR-SPREAD-DISCOVERY-001",
+      "scientific_tier": null,
+      "scientific_status": "CALENDAR_SPREAD_DISCOVERY_NO_ROBUST_EDGE",
+      "deployment_state": "ARCHIVED_EXACT_DISCOVERY",
+      "shadow_allowed": false,
+      "micro_live_allowed_now": false,
+      "authority_branch": "btc-dvol-futures-calendar-spread-discovery-v0.1",
+      "evidence_run_id": 35280406507,
+      "reason": "Frozen exact calendar-spread Discovery completed with no robust edge. Preserve negative evidence; no rescue."
+    },
+    {
+      "strategy_id": "BINANCE-MARGIN-BORROW-ACCESS-001",
+      "scientific_tier": null,
+      "scientific_status": "DISCOVERY_NO_SIGNAL",
+      "deployment_state": "ARCHIVED_EXACT_DISCOVERY",
+      "shadow_allowed": false,
+      "micro_live_allowed_now": false,
+      "authority_branch": "binance-margin-borrow-access-v0.1",
+      "evidence_run_id": 35270625130,
+      "evidence_summary": {
+        "article_observations": 49,
+        "asset_events": 94,
+        "mean_article_mar_24h": -0.002835880961176958,
+        "primary_one_sided_p": 0.4161379153607906
+      },
+      "reason": "Frozen Discovery completed without predictive signal. Preserve result; no post-outcome rescue."
     }
   ],
   "superseded_workflows": [
@@ -117,5 +156,27 @@
     ".github/workflows/options-discovery-one-shot-v01.yml",
     ".github/workflows/options-source-audit-finalize-monthly-raw-v01.yml"
   ],
-  "workflow_preservation": "Removed only from active cleanup branch after classification. Full history remains recoverable in Git commits and scientific branches."
+  "workflow_preservation": "Removed only from active cleanup branch after classification. Full history remains recoverable in Git commits and scientific branches.",
+  "unresolved_not_stones": [
+    {
+      "lab": "BINANCE-PREMIUM-COMPRESSION",
+      "status": "DATA_FAILURE",
+      "note": "Not archived as NO_EDGE; source failures must be resolved before any scientific verdict."
+    },
+    {
+      "lab": "COINBASE-BINANCE-LEADLAG-001",
+      "status": "DATA_FAILURE",
+      "note": "Not archived as NO_EDGE; frozen Discovery did not obtain valid adjudicable data."
+    },
+    {
+      "lab": "ETF-CREATION-FLOW-001",
+      "status": "SOURCE_FEASIBILITY_BLOCKED",
+      "note": "Not a scientific negative result."
+    },
+    {
+      "lab": "EXCHANGE-DELISTING-SHOCK-001",
+      "status": "INSUFFICIENT_SOURCE_SAMPLE",
+      "note": "Not a scientific negative result."
+    }
+  ]
 }
