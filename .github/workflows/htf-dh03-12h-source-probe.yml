@@ -1,0 +1,127 @@
+name: HTF DH03 12H — Standalone Public Source Probe
+
+on:
+  push:
+    branches: [htf-dh03-12h-standalone-forward-v0.1]
+    paths:
+      - 'crypto_edge_radar/radar/binance_usdm_public.py'
+      - 'crypto_edge_radar/radar/binance_usdm_ws_probe.py'
+      - 'crypto_edge_radar/HTF_DH03_12H_STANDALONE_FORWARD_V1_TRANSPORT_AMENDMENT_01.json'
+      - 'crypto_edge_radar/radar/binance_usdm_archive.py'
+      - 'crypto_edge_radar/HTF_DH03_12H_STANDALONE_FORWARD_V1_WARMUP_SOURCE_AMENDMENT_01.json'
+      - 'crypto_edge_radar/HTF_DH03_12H_STANDALONE_FORWARD_V1_LOCAL_BOOTSTRAP_AMENDMENT_02.json'
+      - 'crypto_edge_radar/radar/dh03_12h_core.py'
+      - 'crypto_edge_radar/radar/dh03_12h_local.py'
+      - 'crypto_edge_radar/tests/test_dh03_12h_core.py'
+      - 'crypto_edge_radar/tests/test_dh03_12h_local.py'
+      - 'crypto_edge_radar/pyproject.toml'
+      - 'crypto_edge_radar/radar/binance_usdm_funding_archive.py'
+      - 'crypto_edge_radar/HTF_DH03_12H_STANDALONE_FORWARD_V1_FUNDING_SOURCE_AMENDMENT_01.json'
+      - 'crypto_edge_radar/radar/binance_usdm_monthly_funding.py'
+      - 'crypto_edge_radar/HTF_DH03_12H_STANDALONE_FORWARD_V1_FUNDING_RECONCILIATION_AMENDMENT_02.json'
+      - 'crypto_edge_radar/radar/dh03_12h_forward.py'
+      - 'crypto_edge_radar/tests/test_dh03_12h_forward.py'
+      - 'crypto_edge_radar/radar/dh03_archive_watcher.py'
+      - 'crypto_edge_radar/tests/test_dh03_archive_watcher.py'
+      - 'crypto_edge_radar/HTF_DH03_12H_STANDALONE_FORWARD_V1_ARCHIVE_SHADOW_FREEZE.json'
+      - 'crypto_edge_radar/HTF_DH03_12H_STANDALONE_FORWARD_V1_BOUNDARY_CLARIFICATION_01.json'
+      - 'crypto_edge_radar/HTF_DH03_12H_STANDALONE_FORWARD_V1_FREEZE.json'
+      - '.github/workflows/htf-dh03-12h-source-probe.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: htf-dh03-source-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: crypto_edge_radar
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install
+        run: |
+          python -m pip install -e .
+          python -m pip install 'websockets>=15,<16'
+      - name: Compile and exact-rule tests
+        run: |
+          python -m compileall radar tests
+          python -m unittest tests.test_dh03_12h_forward tests.test_dh03_archive_watcher -v
+          python -m unittest discover -s tests -v
+      - name: Public WebSocket source probe after frozen transport amendment
+        run: |
+          mkdir -p dh03_probe
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from radar.binance_usdm_ws_probe import public_ws_source_probe
+          r=public_ws_source_probe()
+          Path('dh03_probe/receipt.json').write_text(json.dumps(r,sort_keys=True,indent=2))
+          print(json.dumps(r,sort_keys=True))
+          assert r['status']=='PASS_PUBLIC_WEBSOCKET_SOURCE', r
+          assert r['kline_symbols']==6, r
+          assert r['mark_price_funding_symbols']==6, r
+          assert r['authenticated_api_used'] is False
+          assert r['orders_created'] is False
+          assert r['exchange_mutation_performed'] is False
+          assert r['used_as_forward_evidence'] is False
+          PY
+      - name: Checksum-verified archive warmup probe
+        run: |
+          python - <<'PY'
+          import json
+          from datetime import date
+          from pathlib import Path
+          from radar.binance_usdm_archive import warmup_source_probe
+          r=warmup_source_probe(date(2026,9,16))
+          Path('dh03_probe/warmup_receipt.json').write_text(json.dumps(r,sort_keys=True,indent=2))
+          print(json.dumps({
+              'status':r['status'],
+              'day':r['day'],
+              'symbols':len(r['symbols']),
+              'rows_total':sum(x['rows'] for x in r['symbols'].values()),
+              'checksum_verified_all':r['checksum_verified_all'],
+              'used_as_forward_evidence':r['used_as_forward_evidence'],
+          },sort_keys=True))
+          assert r['status']=='PASS_ARCHIVE_WARMUP_SOURCE', r
+          assert len(r['symbols'])==6, r
+          assert sum(x['rows'] for x in r['symbols'].values())==8640, r
+          assert r['checksum_verified_all'] is True
+          assert r['used_as_forward_evidence'] is False
+          PY
+      - name: Checksum-verified monthly funding reconciliation probe
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from radar.binance_usdm_monthly_funding import source_probe
+          r=source_probe('2026-08')
+          Path('dh03_probe/funding_monthly_receipt.json').write_text(json.dumps(r,sort_keys=True,indent=2))
+          print(json.dumps({
+              'status':r['status'],
+              'month':r['month'],
+              'symbols':len(r['symbols']),
+              'total_events':r['total_events'],
+              'checksum_verified_all':r['checksum_verified_all'],
+              'used_as_forward_evidence':r['used_as_forward_evidence'],
+          },sort_keys=True))
+          assert r['status']=='PASS_MONTHLY_FUNDING_SOURCE', r
+          assert len(r['symbols'])==6, r
+          assert r['total_events']>=60, r
+          assert r['checksum_verified_all'] is True
+          assert r['used_as_forward_evidence'] is False
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: htf-dh03-12h-source-probe-${{ github.run_id }}
+          path: crypto_edge_radar/dh03_probe/
+          if-no-files-found: error
+          retention-days: 30
