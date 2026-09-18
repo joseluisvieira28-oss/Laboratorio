@@ -35,6 +35,7 @@ def get_json(base: str, params: dict, retries: int = 3):
     last = None
     for k in range(retries):
         try:
+            time.sleep(0.15)
             req = urllib.request.Request(url, headers={"User-Agent": UA, "Accept": "application/json"})
             with urllib.request.urlopen(req, timeout=15) as r:
                 if r.status != 200:
@@ -43,8 +44,18 @@ def get_json(base: str, params: dict, retries: int = 3):
         except Exception as e:
             last = e
             if k + 1 < retries:
-                time.sleep(0.5 * (2 ** k))
+                time.sleep(1.0 * (2 ** k))
     raise RuntimeError(f"GET_FAILED:{base}:{params}:{last}")
+
+
+def get_bybit_json(path: str, params: dict):
+    last = None
+    for host in ("https://api.bybit.com", "https://api.bytick.com"):
+        try:
+            return get_json(host + path, params)
+        except Exception as e:
+            last = e
+    raise RuntimeError(f"BYBIT_OFFICIAL_HOSTS_FAILED:{path}:{params}:{last}")
 
 def summary(times):
     x = sorted(set(int(t) for t in times))
@@ -56,7 +67,7 @@ def near(times, target, tolerance):
 def bybit():
     out = {"instrument": {}, "price_1m": {}, "funding": {}, "errors": []}
     try:
-        j = get_json("https://api.bybit.com/v5/market/instruments-info", {"category": "linear", "symbol": BYBIT_SYMBOL})
+        j = get_bybit_json("/v5/market/instruments-info", {"category": "linear", "symbol": BYBIT_SYMBOL})
         rows = ((j.get("result") or {}).get("list") or [])
         out["instrument"] = {"present": j.get("retCode") == 0 and any(r.get("symbol") == BYBIT_SYMBOL for r in rows), "count": len(rows)}
     except Exception as e:
@@ -66,7 +77,7 @@ def bybit():
     for a in ANCHORS:
         t = ms(a)
         try:
-            j = get_json("https://api.bybit.com/v5/market/kline", {
+            j = get_bybit_json("/v5/market/kline", {
                 "category": "linear", "symbol": BYBIT_SYMBOL, "interval": "1",
                 "start": t - 10 * 60_000, "end": t + 10 * 60_000, "limit": 50
             })
@@ -80,7 +91,7 @@ def bybit():
             out["errors"].append(f"PRICE:{a}:{e}")
 
         try:
-            j = get_json("https://api.bybit.com/v5/market/funding/history", {
+            j = get_bybit_json("/v5/market/funding/history", {
                 "category": "linear", "symbol": BYBIT_SYMBOL,
                 "startTime": t - 3 * 86400_000, "endTime": t + 3 * 86400_000, "limit": 200
             })
@@ -156,6 +167,7 @@ def main():
         "pnl_calculation_performed": False,
         "2026_plus_accessed": False,
         "anchors": ANCHORS,
+        "transport_remediation": {"serialized_requests": True, "bybit_official_host_fallback": ["api.bybit.com", "api.bytick.com"], "okx_shared_ip_throttle_seconds": 0.15},
         "venues": {
             "BYBIT_LINEAR_USDT": bybit(),
             "OKX_USDT_SWAP": okx(),
