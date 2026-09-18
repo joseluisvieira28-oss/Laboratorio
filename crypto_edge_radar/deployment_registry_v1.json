@@ -1,6 +1,6 @@
 {
-  "registry_version": "3.4",
-  "as_of_utc": "2026-09-18T16:38:42Z",
+  "registry_version": "3.5",
+  "as_of_utc": "2026-09-18T20:39:44Z",
   "governance": "ND_PROMOTION_POLICY_V3_PLUS_AGGRESSIVE_FAIL_CLOSED_DEPLOYMENT",
   "focus_strategy_ids": [
     "ETF-CME-INSTFLOW-001",
@@ -10,7 +10,7 @@
     "HTF-DH03-12H-STANDALONE-FORWARD-V1",
     "CED1D-0031"
   ],
-  "policy_note": "Active-only registry. Canonical cloud remains four-engine until V0.13 integration passes CI and deployment. DH03 standalone is source-certified and local-build-ready; historical closed DH02 remains archive-only.",
+  "policy_note": "Six-motor canonical control plane is live. DH03 cockpit SHADOW is runtime-truth gated on local collector status=COLLECTING; MISSING/BOOTSTRAPPING stays GATED and FAIL_CLOSED is BLOCKED. No micro-live or execution authority is granted by this registry.",
   "candidates": [
     {
       "strategy_id": "ETF-CME-INSTFLOW-001",
@@ -211,7 +211,7 @@
       "strategy_id": "HTF-DH03-12H-STANDALONE-FORWARD-V1",
       "scientific_tier": null,
       "scientific_status": "NEW_PROSPECTIVE_STANDALONE_CANDIDATE__SOURCE_PASS__LOCAL_BUILD_READY",
-      "deployment_state": "PROSPECTIVE_ARCHIVE_SHADOW_READY__WINDOWS_LOCAL_COLLECTOR_BUILD_PASS__AWAIT_FIRST_ELIGIBLE_SIGNAL",
+      "deployment_state": "PROSPECTIVE_ARCHIVE_SHADOW_READY__WINDOWS_V0132_RUNTIME_TRUTH__AWAIT_FIRST_ELIGIBLE_SIGNAL",
       "shadow_allowed": true,
       "micro_live_allowed_now": false,
       "authority_branch": "htf-dh03-12h-standalone-forward-v0.1",
@@ -251,25 +251,32 @@
       "archive_shadow_cadence": "retry_6h_until_utc_yesterday_available_then_sleep_until_next_utc_day",
       "evidence_backend": "POSTGRES_APPEND_ONLY_HASH_CHAIN",
       "local_node_build": {
-        "build_id": "v0.12-win-five-engine-all-local",
-        "workflow_run_id": 35342203475,
-        "workflow_conclusion": "success",
-        "reference_head_sha": "8fdc9d112806a600c2910351f6b1429c9890b5c8",
-        "previous_known_artifact_id": 10544571505,
-        "previous_known_exe_sha256": "f0e9a27bed653ed789f166869d2e31057d550880275c434af67ee7e9260d6a65",
-        "v013_rebuild_required": true
+        "build_id": "v0.13.2-win-six-motor-runtime-truth",
+        "runtime_truth_semantics": "MISSING_OR_BOOTSTRAPPING=GATED;COLLECTING=SHADOW;FAIL_CLOSED=BLOCKED",
+        "prearming_clock_guard": "BINANCE_PUBLIC_TIME__MAX_ABS_OFFSET_500MS__MAX_RTT_1000MS",
+        "validated_code_head": "869329e3419c99becb2857afdba1cd7decca4f27",
+        "regression_run_id": 35390050983,
+        "regression_conclusion": "success",
+        "deterministic_tests": "172/172 PASS",
+        "windows_validation_run_id": 35390050981,
+        "windows_validation_conclusion": "success",
+        "historical_validation_artifact_id": 10565516688,
+        "historical_validation_exe_sha256": "b965496092a613176df893e12866d9a0492dd9dc496622c8e9f7452593ba4af3",
+        "artifact_metadata_role": "NON_AUTHORITATIVE_HISTORICAL_VALIDATION__FINAL_RELEASE_HASHES_LIVE_IN_IMMUTABLE_RELEASE_RECEIPT",
+        "v013_rebuild_required": false
       },
       "validation": {
-        "integrated_regression_ci_run_id": 35368378091,
+        "integrated_regression_ci_run_id": 35390050983,
         "integrated_regression_ci_conclusion": "success",
-        "deterministic_tests": "163/163 PASS",
-        "windows_build_run_id": 35368378072,
-        "windows_build_conclusion": "success",
-        "windows_artifact_id": 10556909789,
-        "windows_artifact_name": "crypto-edge-radar-v013-windows-node",
-        "windows_artifact_zip_sha256": "0592a67ef0ca0c740a9bc5c0b958f1c9cd4d27dd1112ed58f5fbab82133df0cf",
-        "windows_executable_sha256": "d496e9f22bea8f089d1bba3727842720885e71c6f0a485a4fcecfd9d392f83bb",
-        "package_selftest": "PASS__6_CANDIDATES__DH03_COLLECTOR_IMPORTABLE__LOCAL_FORWARD_SUPERVISOR_IMPORTABLE"
+        "deterministic_tests": "172/172 PASS",
+        "tfg_source_gate": "PASS",
+        "bnb_market_source_gate": "PASS",
+        "bnb_official_source_gate": "PASS",
+        "forward_shadow_e2e": "PASS",
+        "windows_validation_run_id": 35390050981,
+        "windows_validation_conclusion": "success",
+        "package_selftest": "PASS__6_CANDIDATES__DH03_COLLECTOR_IMPORTABLE__LOCAL_FORWARD_SUPERVISOR_IMPORTABLE",
+        "final_release_artifact_authority": "receipts/RADAR_V0132_WINDOWS_RELEASE_FINAL_2026-09-18.json"
       }
     },
     {
@@ -328,7 +335,7 @@
     }
   ],
   "operational_shadow_v09": {
-    "status": "OPERATIONAL_SIX_MOTOR_CONTROL_PLANE__CLEAN_ACTIVE_REGISTRY",
+    "status": "OPERATIONAL_SIX_MOTOR_CONTROL_PLANE__V0132_RUNTIME_TRUTH",
     "branch": "crypto-edge-radar-cleanup-v1",
     "canonical_cloud_branch": "crypto-edge-radar-postgres-v0.5",
     "canonical_cloud_deploy_pending": false,
@@ -338,7 +345,7 @@
     "postgres_id": "dpg-dalqi4qd0e5s738a77kg-a",
     "runtime_health": "OK",
     "active_motor_count": 6,
-    "archived_closed_mechanisms": 21,
+    "archived_closed_mechanisms": 43,
     "archive_registry": "archive_registry_v1.json",
     "engines": {
       "bnb_launchpool": {
@@ -400,7 +407,7 @@
     "cleanup": {
       "active_only_registry": true,
       "active_or_gated_candidates": 6,
-      "closed_candidates_removed_from_active_view": 21,
+      "closed_candidates_removed_from_active_view": 43,
       "negative_evidence_preserved": true,
       "unresolved_non_scientific_states_not_mislabelled_as_stones": true,
       "scientific_verdicts_rewritten": false,
@@ -413,23 +420,24 @@
       "live_capital_enabled": false,
       "merge_main": false
     },
-    "render_deploy_id": "dep-damlir8u01pc73anndj0",
-    "evidence_events_verified": 89,
-    "canonical_cloud_commit": "fde68a8a91f394b9a69d0ed4ea3d9690380e4036",
+    "render_deploy_id": "dep-dampocrncjis73ccvq10",
+    "evidence_events_verified": 93,
+    "canonical_cloud_commit": "0d1756f5f7165ce5e3c6496caac2c39930805c54",
     "validation": {
-      "render_build_tests": "163/163 PASS",
-      "postgres_evidence_chain": "verified 89 events via postgres",
+      "render_build_tests": "172/172 PASS",
+      "postgres_evidence_chain": "verified 93 events via postgres",
       "authenticated_exchange_api_used": false,
       "orders_created": false,
       "exchange_mutation_performed": false,
       "live_capital_enabled": false,
-      "latest_cleanup_ci_run_id": 35368378091,
-      "latest_cleanup_ci": "163/163 PASS",
+      "latest_cleanup_ci_run_id": 35390050983,
+      "latest_cleanup_ci": "172/172 PASS",
       "latest_windows_build_run_id": 35368378072,
       "latest_windows_build": "SUCCESS",
-      "latest_windows_artifact_id": 10556909789,
-      "latest_windows_artifact_zip_sha256": "0592a67ef0ca0c740a9bc5c0b958f1c9cd4d27dd1112ed58f5fbab82133df0cf",
-      "latest_windows_executable_sha256": "d496e9f22bea8f089d1bba3727842720885e71c6f0a485a4fcecfd9d392f83bb"
+      "runtime_truth_code_validation_run_id": 35390050983,
+      "runtime_truth_windows_validation_run_id": 35390050981,
+      "final_windows_release_authority": "receipts/RADAR_V0132_WINDOWS_RELEASE_FINAL_2026-09-18.json",
+      "artifact_hashes_in_registry_are_authoritative": false
     },
     "external_orchestration": {
       "automation_title": "Radar Fishing Watch",
@@ -447,7 +455,7 @@
   "archive_registry": "archive_registry_v1.json",
   "v013_integration": {
     "branch": "crypto-edge-radar-v0.13-integration",
-    "status": "PORT_COMPLETE__CI_PENDING",
+    "status": "COMPLETE__CANONICAL_LIVE__V0132_RUNTIME_TRUTH_HARDENED",
     "preserves_runtime_authority": "RUNTIME_SERVICE_AUTHORITY_V1.json",
     "main_modified": false,
     "authenticated_exchange_api_used": false,
@@ -459,7 +467,26 @@
       "automated_collector_dry_wait_run_id": 35356404877,
       "native_radar_adapter_imported": false,
       "reason": "old V0.3 adapter does not implement V0.2A 20-prior-valid-day gap semantics exactly"
-    }
+    },
+    "canonical_runtime_commit": "0d1756f5f7165ce5e3c6496caac2c39930805c54",
+    "render_deploy_id": "dep-dampocrncjis73ccvq10",
+    "postgres_evidence_chain": "verified 93 events via postgres"
   },
-  "protected_research_registry": "protected_research_registry_v1.json"
+  "protected_research_registry": "protected_research_registry_v1.json",
+  "v0132_release": {
+    "status": "CANONICAL_RUNTIME_LIVE__FINAL_WINDOWS_PACKAGING_IN_PROGRESS",
+    "runtime_code_commit": "0d1756f5f7165ce5e3c6496caac2c39930805c54",
+    "render_deploy_id": "dep-dampocrncjis73ccvq10",
+    "render_health": "OK",
+    "postgres_evidence_chain": "verified 93 events via postgres",
+    "windows_build_id": "v0.13.2-win-six-motor-runtime-truth",
+    "final_release_receipt": "receipts/RADAR_V0132_WINDOWS_RELEASE_FINAL_2026-09-18.json",
+    "safety": {
+      "authenticated_exchange_api_used": false,
+      "orders_created": false,
+      "exchange_mutation_performed": false,
+      "live_capital_enabled": false,
+      "main_modified": false
+    }
+  }
 }
