@@ -1,6 +1,8 @@
 name: CED1D-0031 Prospective Shadow Collector V0.2
 
 on:
+  schedule:
+    - cron: '17 2 * * *'
   workflow_dispatch:
     inputs:
       through_signal_day:
@@ -41,9 +43,32 @@ jobs:
           test "$(sha256sum "$ROOT/recovered_authority/CED-1D-V1-RUNNER-FREEZE-V0.3.zip" | awk '{print $1}')" = "df625d0d4a05c55ba34ca51514d31fd61636ff0a823567585c2d02afa0877958"
           echo SHADOW_COLLECTOR_IMPLEMENTATION_IDENTITY_PASS
 
-      - name: Assert prospective boundary before any network access
+      - name: Resolve schedule-safe through signal day
+        id: through
         env:
-          THROUGH_SIGNAL_DAY: ${{ inputs.through_signal_day }}
+          MANUAL_THROUGH: ${{ inputs.through_signal_day }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import os
+          from datetime import date,datetime,timedelta,timezone
+          today=datetime.now(timezone.utc).date()
+          manual=(os.environ.get("MANUAL_THROUGH") or "").strip()
+          through=date.fromisoformat(manual) if manual else today-timedelta(days=3)
+          first=date(2026,9,18)
+          if through < first:
+              print("eligible=false")
+              print(f"through_signal_day={through.isoformat()}")
+          else:
+              assert through<=today-timedelta(days=3),(through,today)
+              print("eligible=true")
+              print(f"through_signal_day={through.isoformat()}")
+          PY
+
+      - name: Assert prospective boundary before any network access
+        if: steps.through.outputs.eligible == 'true'
+        env:
+          THROUGH_SIGNAL_DAY: ${{ steps.through.outputs.through_signal_day }}
         run: |
           python - <<'PY'
           import os
@@ -57,17 +82,23 @@ jobs:
           print("NO_PRE_BOUNDARY_PERFORMANCE_BACKFILL")
           PY
 
+      - name: No eligible T+3 day yet
+        if: steps.through.outputs.eligible != 'true'
+        run: echo "WAITING_FIRST_TPLUS3_SIGNAL_DAY"
+
       - name: Collect frozen prospective shadow evidence
+        if: steps.through.outputs.eligible == 'true'
         id: collector
         continue-on-error: true
         env:
-          THROUGH_SIGNAL_DAY: ${{ inputs.through_signal_day }}
+          THROUGH_SIGNAL_DAY: ${{ steps.through.outputs.through_signal_day }}
         run: |
           python "$ROOT/ced1d_0031_prospective_shadow_collector_v02.py"             --activation "governance/CED1D_0031_TIER2_SHADOW_ACTIVATION_AUTHORITY_V0.2_2026-09-18.json"             --v03-runner-zip "$ROOT/recovered_authority/CED-1D-V1-RUNNER-FREEZE-V0.3.zip"             --through-signal-day "$THROUGH_SIGNAL_DAY"             --output "$RUNNER_TEMP/shadow"
 
       - name: Assert governance receipt
         if: always()
         run: |
+          if [ "${{ steps.through.outputs.eligible }}" != "true" ]; then echo "NO_RECEIPT_EXPECTED_BEFORE_TPLUS3"; exit 0; fi
           test -f "$RUNNER_TEMP/shadow/CED1D_0031_PROSPECTIVE_SHADOW_RECEIPT_V0.2.json"
           python - <<'PY'
           import json,os
@@ -104,7 +135,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ced1d-0031-prospective-shadow-v02-${{ inputs.through_signal_day }}
+          name: ced1d-0031-prospective-shadow-v02-${{ steps.through.outputs.through_signal_day }}
           path: ${{ runner.temp }}/final
           if-no-files-found: error
           retention-days: 30
@@ -112,4 +143,4 @@ jobs:
       - name: Fail closed if collector failed
         if: always()
         run: |
-          test "${{ steps.collector.outcome }}" = "success"
+          if [ "${{ steps.through.outputs.eligible }}" = "true" ]; then test "${{ steps.collector.outcome }}" = "success"; fi
