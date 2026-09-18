@@ -37,6 +37,10 @@ No promotion. The exact equal-unit near/far implementation is closed. The small 
 
 The parent DVOL basis-convergence Discovery remains independently recorded as PASS, but this calendar-spread translation did not achieve robust statistical evidence.
 
-2025/2026 access: false.
+## NEW-HYPOTHESIS FIREWALL
+
+Any materially different calendar-spread signal designed after this result must treat 2023-2024 as contaminated development history. It may not use those outcomes as confirmation evidence. A new rule may only be adjudicated on a genuinely disjoint block under a new source gate and frozen authority.
+
+2026 remains locked.
 Transaction costs/PnL: unopened under this Discovery.
-Live trading/exchange mutation/main merge: false.
+Live trading/exchange mutation/wallet access/main merge: false.
