@@ -16,35 +16,54 @@ def h(obj):
     return hashlib.sha256(json.dumps(obj,sort_keys=True,separators=(",",":")).encode()).hexdigest()
 
 def expiry_dates_from_delivery(auth):
+    # Deribit caps a delivery-price response page at 100 rows even when a larger
+    # count is requested. Paginate deterministically by offset until we have
+    # crossed the pre-2021 boundary or the provider returns a short/empty page.
     url=auth["source"]["delivery_prices_url"]
-    params={"index_name":auth["source"]["delivery_index_name"],"count":1000,"offset":0}
-    r=requests.get(url,params=params,timeout=(20,60),headers={"User-Agent":"Crypto-Lab-VRP-monthly-source/0.1"})
-    raw=r.content; digest=hashlib.sha256(raw).hexdigest()
-    if r.status_code!=200:
-        raise RuntimeError(f"delivery HTTP {r.status_code} sha256={digest}")
-    obj=r.json()
-    result=(obj or {}).get("result")
-    if isinstance(result,dict):
-        rows=result.get("data") or result.get("records") or []
-    elif isinstance(result,list):
-        rows=result
-    else:
-        rows=[]
-    dates=set()
-    for x in rows:
-        if not isinstance(x,dict): continue
-        v=x.get("date")
-        if isinstance(v,(int,float)):
-            dates.add(datetime.fromtimestamp(int(v)/1000,tz=timezone.utc).date().isoformat())
-        elif isinstance(v,str):
-            try:
-                if v.isdigit():
-                    dates.add(datetime.fromtimestamp(int(v)/1000,tz=timezone.utc).date().isoformat())
-                else:
-                    dates.add(datetime.fromisoformat(v.replace("Z","+00:00")).date().isoformat())
-            except Exception:
-                pass
-    return dates,{"url":r.url,"http_status":r.status_code,"sha256":digest,"rows_seen":len(rows),"distinct_dates":len(dates)}
+    dates=set(); page_receipts=[]; total_rows=0
+    for offset in range(0,5000,100):
+        params={"index_name":auth["source"]["delivery_index_name"],"count":100,"offset":offset}
+        r=requests.get(url,params=params,timeout=(20,60),headers={"User-Agent":"Crypto-Lab-VRP-monthly-source/0.1.1"})
+        raw=r.content; digest=hashlib.sha256(raw).hexdigest()
+        if r.status_code!=200:
+            raise RuntimeError(f"delivery HTTP {r.status_code} offset={offset} sha256={digest}")
+        obj=r.json()
+        result=(obj or {}).get("result")
+        if isinstance(result,dict):
+            rows=result.get("data") or result.get("records") or []
+        elif isinstance(result,list):
+            rows=result
+        else:
+            rows=[]
+        page_dates=[]
+        for x in rows:
+            if not isinstance(x,dict): continue
+            v=x.get("date")
+            iso=None
+            if isinstance(v,(int,float)):
+                iso=datetime.fromtimestamp(int(v)/1000,tz=timezone.utc).date().isoformat()
+            elif isinstance(v,str):
+                try:
+                    if v.isdigit():
+                        iso=datetime.fromtimestamp(int(v)/1000,tz=timezone.utc).date().isoformat()
+                    else:
+                        iso=datetime.fromisoformat(v.replace("Z","+00:00")).date().isoformat()
+                except Exception:
+                    iso=None
+            if iso:
+                dates.add(iso); page_dates.append(iso)
+        total_rows+=len(rows)
+        page_receipts.append({"offset":offset,"http_status":r.status_code,"sha256":digest,"rows_seen":len(rows),
+                              "oldest_date":min(page_dates) if page_dates else None,
+                              "newest_date":max(page_dates) if page_dates else None})
+        if not rows or len(rows)<100:
+            break
+        if page_dates and min(page_dates)<="2021-01-01":
+            break
+    return dates,{"pages":len(page_receipts),"rows_seen":total_rows,"distinct_dates":len(dates),
+                  "page_receipts":page_receipts,
+                  "oldest_date":min(dates) if dates else None,
+                  "newest_date":max(dates) if dates else None}
 
 def run_year(auth,year):
     samples=[x for x in auth["sample_dates"] if int(x[:4])==year]
