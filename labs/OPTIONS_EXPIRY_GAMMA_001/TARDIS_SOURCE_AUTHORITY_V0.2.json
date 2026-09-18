@@ -1,0 +1,93 @@
+{
+  "lab_id": "OPTIONS-EXPIRY-GAMMA-001",
+  "source_gate_id": "OEG-TARDIS-POINTINTIME-SOURCE-002",
+  "status": "PRE_ACQUISITION_FROZEN_SOURCE_ONLY",
+  "date_frozen": "2026-09-18",
+  "parent_closeout": "SOURCE_FEASIBILITY_CLOSEOUT_V0.1.md",
+  "parent_classification": "SOURCE_ACCESS_BLOCKED / SOURCE_ENGINEERING_NOT_PROVEN",
+  "relationship_to_parent": "New source route only. The prior closeout remains immutable. This V0.2 tests a currently documented Tardis free-sample route that was not established in the parent closeout.",
+  "scientific_question": "Can historical Deribit BTC option-chain snapshots be reconstructed point-in-time with strike/expiry/type/open-interest and contemporaneous option Greek fields sufficient to support a later gamma-exposure source protocol without opening BTC market outcomes?",
+  "vendor_source": {
+    "provider": "Tardis.dev",
+    "dataset": "deribit/options_chain/OPTIONS.csv.gz",
+    "documented_free_access": "First day of each month without API key",
+    "url_template": "https://datasets.tardis.dev/v1/deribit/options_chain/YYYY/MM/DD/OPTIONS.csv.gz",
+    "no_subscription_purchase": true,
+    "no_api_key": true
+  },
+  "deterministic_probe_dates": [
+    "2021-01-01",
+    "2022-01-01",
+    "2023-01-01",
+    "2024-01-01"
+  ],
+  "snapshot_rule": {
+    "target_time_utc": "12:00:00",
+    "use_only_rows_at_or_before_target": true,
+    "maximum_staleness_minutes": 30,
+    "stop_reading_after_target_plus_minutes": 15,
+    "symbol_prefix": "BTC-",
+    "latest_row_per_symbol_only": true
+  },
+  "required_fields": [
+    "symbol",
+    "timestamp",
+    "type",
+    "strike_price",
+    "expiration",
+    "open_interest",
+    "mark_iv",
+    "underlying_price",
+    "delta",
+    "gamma"
+  ],
+  "retained_metrics_only": [
+    "download response status and byte/row counts",
+    "snapshot instrument count",
+    "call/put counts",
+    "distinct expiration count",
+    "distinct strike count",
+    "number of expiries within 14 calendar days",
+    "field-presence coverage fractions",
+    "point-in-time freshness coverage",
+    "request SHA-256 and source URL"
+  ],
+  "per_date_gates": {
+    "minimum_snapshot_instruments": 100,
+    "minimum_distinct_expiries": 3,
+    "minimum_distinct_strikes": 20,
+    "require_calls": true,
+    "require_puts": true,
+    "require_expiry_within_14_days": true,
+    "open_interest_coverage_minimum": 0.9,
+    "gamma_coverage_minimum": 0.9,
+    "delta_coverage_minimum": 0.9,
+    "mark_iv_coverage_minimum": 0.9,
+    "underlying_price_coverage_minimum": 0.9,
+    "freshness_coverage_minimum": 0.95
+  },
+  "aggregate_gate": "All four deterministic probe dates must pass every per-date gate.",
+  "classifications": {
+    "pass": "TARDIS_POINT_IN_TIME_GAMMA_SOURCE_FEASIBLE",
+    "insufficient": "TARDIS_POINT_IN_TIME_GAMMA_SOURCE_INSUFFICIENT",
+    "technical_failure": "TARDIS_POINT_IN_TIME_GAMMA_SOURCE_TECHNICAL_FAILURE"
+  },
+  "scientific_limit": "A source PASS establishes historical point-in-time OI/Greek availability only. Aggregate open interest does not by itself identify dealer long/short inventory, so a separate pre-Discovery mechanism authority must adjudicate any dealer-position-sign assumption before BTC outcomes.",
+  "commercial_limit": "Free monthly samples are not sufficient for the full 2021-2024 Discovery corpus. A PASS may still leave full-history acquisition commercially blocked until separately authorized.",
+  "firewalls": {
+    "retain_open_interest_values": false,
+    "retain_gamma_values": false,
+    "compute_gamma_exposure": false,
+    "compute_dealer_position_sign": false,
+    "open_btc_price_outcomes": false,
+    "compute_returns": false,
+    "compute_pnl": false,
+    "access_2025": false,
+    "access_2026": false,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "wallet_access": false,
+    "merge_to_main": false
+  },
+  "stop_rule": "Do not lower field-coverage, snapshot-size, freshness, expiry or year requirements after acquisition. Do not substitute current Deribit chains for historical snapshots."
+}
