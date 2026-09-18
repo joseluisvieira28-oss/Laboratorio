@@ -1,0 +1,85 @@
+name: ETH Staking Flow 001 — One-Shot Discovery V0.1
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - eth-staking-flow-v0.3-discovery
+    paths:
+      - 'research/eth_staking_flow/DISCOVERY_TRIGGER_V0_1.txt'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  discovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout frozen Discovery branch
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Static freeze guard
+        run: |
+          test -f research/eth_staking_flow/ETH_STAKING_FLOW_001_FINAL_PRE_DISCOVERY_PROTOCOL_V0_1.md
+          python -m py_compile research/eth_staking_flow/eth_staking_flow_discovery_v01.py
+
+      - name: Install source dependencies
+        run: pip install --disable-pip-version-check requests
+
+      - name: Download exact canonical 630-day queue source
+        uses: actions/download-artifact@v4
+        with:
+          name: ETH_STAKING_FLOW_001_XATU_FULL_QUEUE_V0_3D
+          path: downloaded_queue_source
+          github-token: ${{ github.token }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: 35384444641
+
+      - name: Execute frozen one-shot Discovery
+        run: python research/eth_staking_flow/eth_staking_flow_discovery_v01.py
+
+      - name: Safety and terminal-state guard
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('eth_staking_flow_discovery_output/ETH_STAKING_FLOW_001_DISCOVERY_V0_1.json')
+          assert p.exists(), 'missing Discovery receipt'
+          x=json.loads(p.read_text())
+          assert x['classification'] in {
+              'DISCOVERY_PASS_TO_INDEPENDENT_VALIDATION',
+              'DISCOVERY_FAIL_NO_PROMOTION',
+              'DISCOVERY_INSUFFICIENT_SAMPLE',
+              'DISCOVERY_TECHNICAL_OR_PROVENANCE_FAILURE'
+          }, x
+          assert x.get('accessed_2025_or_2026',x.get('protected_2025_2026_opened')) is False
+          assert x.get('live_trading') is False
+          assert x.get('exchange_mutation') is False
+          assert x.get('orders_created',False) is False
+          assert x.get('wallet_used',False) is False
+          print(json.dumps({
+              'classification':x['classification'],
+              'events':x.get('resolved_event_count'),
+              'mean_net10':x.get('mean_net10'),
+              'pf_net10':x.get('pf_net10'),
+              'bootstrap_p':(x.get('bootstrap') or {}).get('p_mean_le_zero'),
+              'all_gates':x.get('all_promotion_gates_pass')
+          },sort_keys=True))
+          PY
+
+      - name: Upload canonical Discovery evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ETH_STAKING_FLOW_001_DISCOVERY_V0_1
+          path: eth_staking_flow_discovery_output
+          if-no-files-found: error
+          retention-days: 30
