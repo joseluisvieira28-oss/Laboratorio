@@ -1,0 +1,97 @@
+{
+  "lab": "STABLECOIN-DEX-STRESS-001",
+  "mve_id": "SDS-CURVE3POOL-PEG-001",
+  "source_gate_id": "SDS-CURVE3POOL-PEG-001-SOURCE-002-SQD",
+  "status": "PRE_ACQUISITION_FROZEN_SOURCE_ONLY",
+  "date_frozen": "2026-09-18",
+  "parent_failed_source_gate": {
+    "run": 34861248837,
+    "classification": "SOURCE_AUTH_BLOCKED",
+    "reason": "Frozen keyless JSON-RPC transports returned HTTP 403 before historical TokenExchange acquisition."
+  },
+  "transport_change_only": true,
+  "transport": {
+    "provider": "SQD Ethereum mainnet Portal",
+    "endpoint": "https://portal.sqd.dev/datasets/ethereum-mainnet/stream",
+    "provenance_anchors": [
+      "AAVE-LIQUIDATION-OVERHANG-001 canonical SQD source census PASS",
+      "AAVE-CREDIT-STRESS-001 SQD source/decode PASS on 2026-09-18"
+    ]
+  },
+  "frozen_scientific_contract": {
+    "chain_id": 1,
+    "pool": "0xbebc44782c7db0a1a60cb6fe97d0b483032ff1c7",
+    "event": "TokenExchange(address indexed buyer,int128 sold_id,uint256 tokens_sold,int128 bought_id,uint256 tokens_bought)",
+    "topic0": "0x8b3e96f2b889fa771c53c981b40daf005f63f637f1869f707052d15a3dd97140",
+    "coins": {
+      "0": {
+        "symbol": "DAI",
+        "decimals": 18
+      },
+      "1": {
+        "symbol": "USDC",
+        "decimals": 6
+      },
+      "2": {
+        "symbol": "USDT",
+        "decimals": 6
+      }
+    },
+    "start_block": 11565000,
+    "end_block": 21525890,
+    "source_calendar_start": "2021-01-01",
+    "source_calendar_end": "2024-12-31",
+    "protected_timestamp_start": "2025-01-01T00:00:00Z",
+    "formula": {
+      "sold_norm": "tokens_sold / 10^decimals[sold_id]",
+      "bought_norm": "tokens_bought / 10^decimals[bought_id]",
+      "nominal_notional": "(sold_norm + bought_norm) / 2",
+      "abs_log_deviation": "abs(ln(bought_norm / sold_norm))",
+      "daily_stress": "sum(nominal_notional * abs_log_deviation) / sum(nominal_notional) over UTC day"
+    }
+  },
+  "source_gates": {
+    "exact_terminal_block_coverage": true,
+    "duplicate_log_identity_allowed": false,
+    "every_event_exact_4_nonindexed_words": true,
+    "valid_coin_ids_only": true,
+    "positive_quantities_only": true,
+    "minimum_daily_source_observations": 500,
+    "required_calendar_years": [
+      2021,
+      2022,
+      2023,
+      2024
+    ]
+  },
+  "retained_outputs": [
+    "daily UTC date",
+    "daily stress source value",
+    "swap count",
+    "weighted numerator and denominator",
+    "event counts",
+    "structural hashes",
+    "transport receipts"
+  ],
+  "classifications": {
+    "pass": "SOURCE_DATA_PASS",
+    "insufficient": "INSUFFICIENT_SAMPLE",
+    "technical_failure": "SOURCE_ACQUISITION_TECHNICAL_FAILURE",
+    "provenance_failure": "PROVENANCE_FAILURE"
+  },
+  "firewalls": {
+    "eth_market_data_opened": false,
+    "signal_threshold_computed": false,
+    "discovery_trade_count_computed": false,
+    "returns_computed": false,
+    "pnl_computed": false,
+    "performance_statistics_computed": false,
+    "access_2025": false,
+    "access_2026": false,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "wallet_access": false,
+    "merge_to_main": false
+  },
+  "post_pass_rule": "SOURCE_DATA_PASS authorizes only a separately frozen Discovery runner using the already frozen 90-day trailing 80th-percentile stress rule. It does not authorize 2025/2026 or live trading."
+}
