@@ -1,0 +1,85 @@
+{
+  "lab_id": "ETF-CREATION-FLOW-001",
+  "source_gate_id": "ECF-IBIT-SHARES-SOURCE-003",
+  "status": "PRE_ACQUISITION_FROZEN_SOURCE_ONLY",
+  "date_frozen": "2026-09-18",
+  "parent_closeout": "SOURCE_FEASIBILITY_BLOCKED",
+  "parent_branch": "etf-creation-flow-v0.1",
+  "scientific_question": "Can an official iShares historical endpoint recover exact 2024 IBIT Shares Outstanding observations in a cutoff-safe form without accessing current/protected holdings?",
+  "frozen_probe_dates": [
+    "2024-03-28",
+    "2024-06-28",
+    "2024-09-30",
+    "2024-12-30"
+  ],
+  "official_host": "https://www.ishares.com",
+  "product_id": "333011",
+  "product_slug": "ishares-bitcoin-trust-etf",
+  "permitted_routes": [
+    {
+      "id": "ajax_json_tab_all",
+      "template": "/us/products/333011/ishares-bitcoin-trust-etf/1467271812596.ajax?fileType=json&tab=all&asOfDate=YYYYMMDD"
+    },
+    {
+      "id": "ajax_json_fund",
+      "template": "/us/products/333011/ishares-bitcoin-trust-etf/1467271812596.ajax?fileType=json&fileName=IBIT_holdings&dataType=fund&asOfDate=YYYYMMDD"
+    },
+    {
+      "id": "ajax_csv_fund",
+      "template": "/us/products/333011/ishares-bitcoin-trust-etf/1467271812596.ajax?fileType=csv&fileName=IBIT_holdings&dataType=fund&asOfDate=YYYYMMDD"
+    }
+  ],
+  "parsing_contract": {
+    "accepted_wrappers": [
+      "strict JSON",
+      "anti-XSSI-prefixed JSON",
+      "JSONP parenthesis wrapper",
+      "Python-literal-compatible single-quoted object",
+      "CSV/text metadata rows"
+    ],
+    "requested_date_binding": "The raw provider payload must explicitly contain the requested date in YYYY-MM-DD, YYYYMMDD, or a provider-native human-readable date that resolves exactly to the requested date.",
+    "shares_field": "The payload must contain an explicit provider-native field/row naming Shares Outstanding (case/space/punctuation normalized only) with a positive numeric value.",
+    "forbidden_substitutes": [
+      "BTC quantity",
+      "market value",
+      "AUM",
+      "NAV",
+      "basket amount",
+      "third-party flows",
+      "derived shares from price or assets"
+    ],
+    "fail_closed": "No inferred date or inferred shares value."
+  },
+  "pass_gate": {
+    "minimum_exact_dates": 3,
+    "minimum_distinct_calendar_quarters": 3,
+    "same_official_route": true
+  },
+  "retained_diagnostics": [
+    "HTTP status/content-type/byte-count/SHA256",
+    "sanitized first 300 text characters for failing payloads only",
+    "parser mode used",
+    "exact requested-date match boolean",
+    "explicit Shares Outstanding field path/row",
+    "numeric Shares Outstanding value for exact 2024 probe dates only"
+  ],
+  "firewalls": {
+    "btc_market_data_accessed": false,
+    "returns_computed": false,
+    "pnl_computed": false,
+    "access_2025": false,
+    "access_2026": false,
+    "current_latest_holdings_route": false,
+    "current_data_download_workbook": false,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "merge_to_main": false
+  },
+  "classifications": {
+    "pass": "SOURCE_FEASIBILITY_PASS",
+    "blocked": "SOURCE_FEASIBILITY_BLOCKED",
+    "technical_failure": "SOURCE_FEASIBILITY_TECHNICAL_FAILURE",
+    "provenance_failure": "SOURCE_PROVENANCE_FAILURE"
+  },
+  "stop_rule": "If no official route passes the frozen exact-date/explicit-shares gate, stop. Do not substitute holdings, AUM, third-party flow data, current snapshots, or protected-period workbook history."
+}
