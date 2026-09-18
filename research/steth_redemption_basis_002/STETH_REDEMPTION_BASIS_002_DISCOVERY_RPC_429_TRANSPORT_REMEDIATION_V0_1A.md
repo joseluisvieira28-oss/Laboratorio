@@ -1,5 +1,12 @@
 # STETH-REDEMPTION-BASIS-002 — DISCOVERY RPC 429 TRANSPORT REMEDIATION V0.1A
 
+> **SUPERSEDED / NOT EXECUTION AUTHORITY**  
+> This later draft is preserved for audit only. The canonical transport remediation for V0.1 is the earlier
+> `STETH_REDEMPTION_BASIS_002_DISCOVERY_RPC_THROUGHPUT_REMEDIATION_V0_1A.md`
+> together with the original `DISCOVERY_IMPLEMENTATION_FREEZE_V0_1`.
+> Run `35398364376` is bound to that earlier authority and does **not** implement the chunk-size/retry-count choices proposed below.
+> No scientific rule is changed by this supersession.
+
 Date: 2026-09-18
 Status: **FROZEN AFTER TECHNICAL FAILURE / BEFORE ANY VALID DISCOVERY OUTCOME**
 
