@@ -7,13 +7,22 @@ from pathlib import Path
 import time
 
 from .binance_trading import BinanceUSDMTradingClient
-from .execution import ExecutionBlocked, MicroLiveCoordinator, MicroLiveSettings
+from .execution import (
+    ExecutionBlocked,
+    MicroLiveCoordinator,
+    MicroLiveSettings,
+    inspect_signal_identity,
+)
 
 UTC = timezone.utc
 
 
 def _offset_path() -> Path:
     return Path(os.getenv("MICROLIVE_CURSOR", "microlive_notification_cursor.json"))
+
+
+def _pending_path() -> Path:
+    return Path(os.getenv("MICROLIVE_PENDING", "microlive_pending_signal.json"))
 
 
 def _load_offset(source: Path) -> int:
@@ -40,27 +49,93 @@ def _save_offset(source: Path, offset: int) -> None:
     os.replace(tmp, cursor)
 
 
-def _handle_record(coordinator: MicroLiveCoordinator, record: dict) -> None:
+def _save_pending(signal: dict) -> None:
+    p = _pending_path()
+    p.parent.mkdir(parents=True, exist_ok=True)
+    if p.exists():
+        existing = json.loads(p.read_text(encoding="utf-8"))
+        old = (existing.get("metadata") or {}).get("signal_key")
+        new = (signal.get("metadata") or {}).get("signal_key")
+        if old != new:
+            raise ExecutionBlocked("a different pending signal already exists")
+        return
+    tmp = p.with_suffix(p.suffix + ".tmp")
+    tmp.write_text(json.dumps(signal, sort_keys=True, indent=2), encoding="utf-8")
+    os.replace(tmp, p)
+
+
+def _load_pending() -> dict | None:
+    p = _pending_path()
+    if not p.exists():
+        return None
+    return json.loads(p.read_text(encoding="utf-8"))
+
+
+def _clear_pending() -> None:
+    p = _pending_path()
+    if p.exists():
+        p.unlink()
+
+
+def _queue_record(record: dict) -> None:
     if record.get("event_type") != "VALID_SHADOW_SIGNAL":
         return
     payload = record.get("payload") or {}
     signals = payload.get("signals") or []
     for signal in signals:
-        try:
-            receipt = coordinator.process_signal(signal, now=datetime.now(UTC))
-            print(json.dumps(receipt, sort_keys=True), flush=True)
-        except ExecutionBlocked as exc:
+        resolved = inspect_signal_identity(signal)
+        now = datetime.now(UTC)
+        if now > resolved["reference_entry"].replace(second=5, microsecond=999999):
             print(
                 json.dumps(
                     {
-                        "event": "MICROLIVE_SIGNAL_NOT_EXECUTED",
-                        "reason": str(exc),
-                        "strategy_id": signal.get("strategy_id"),
+                        "event": "MICROLIVE_SIGNAL_EXPIRED_NO_BACKFILL",
+                        "signal_key": resolved["signal_key"],
                     },
                     sort_keys=True,
                 ),
                 flush=True,
             )
+            continue
+        _save_pending(signal)
+        print(
+            json.dumps(
+                {
+                    "event": "MICROLIVE_SIGNAL_QUEUED",
+                    "signal_key": resolved["signal_key"],
+                    "reference_entry": resolved["reference_entry"].isoformat(),
+                },
+                sort_keys=True,
+            ),
+            flush=True,
+        )
+
+
+def _execute_pending_if_due(coordinator: MicroLiveCoordinator) -> None:
+    signal = _load_pending()
+    if signal is None:
+        return
+    resolved = inspect_signal_identity(signal)
+    now = datetime.now(UTC)
+    if now < resolved["reference_entry"]:
+        return
+    if now > resolved["reference_entry"].replace(second=5, microsecond=999999):
+        print(
+            json.dumps(
+                {
+                    "event": "MICROLIVE_PENDING_EXPIRED_NO_BACKFILL",
+                    "signal_key": resolved["signal_key"],
+                },
+                sort_keys=True,
+            ),
+            flush=True,
+        )
+        _clear_pending()
+        return
+
+    receipt = coordinator.process_signal(signal, now=now)
+    print(json.dumps(receipt, sort_keys=True), flush=True)
+    _clear_pending()
 
 
 def run_forever() -> int:
@@ -71,7 +146,7 @@ def run_forever() -> int:
     )
     coordinator = MicroLiveCoordinator(settings, venue)
     source = Path(os.getenv("RADAR_NOTIFICATIONS", "radar_notifications.jsonl"))
-    poll = max(float(os.getenv("MICROLIVE_POLL_SECONDS", "1.0")), 0.5)
+    poll = max(float(os.getenv("MICROLIVE_POLL_SECONDS", "0.5")), 0.25)
 
     offset = _load_offset(source)
     print(
@@ -82,6 +157,7 @@ def run_forever() -> int:
                 "execution_enabled": settings.enabled,
                 "source": str(source),
                 "cursor": offset,
+                "pending": str(_pending_path()),
             },
             sort_keys=True,
         ),
@@ -93,6 +169,8 @@ def run_forever() -> int:
             exit_receipt = coordinator.maybe_exit_due(now=datetime.now(UTC))
             if exit_receipt:
                 print(json.dumps(exit_receipt, sort_keys=True), flush=True)
+
+            _execute_pending_if_due(coordinator)
 
             if source.exists():
                 with source.open("r", encoding="utf-8") as handle:
@@ -106,7 +184,7 @@ def run_forever() -> int:
                             record = json.loads(line)
                         except json.JSONDecodeError:
                             continue
-                        _handle_record(coordinator, record)
+                        _queue_record(record)
                     _save_offset(source, offset)
         except ExecutionBlocked as exc:
             print(
