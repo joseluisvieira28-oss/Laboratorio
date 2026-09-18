@@ -1,0 +1,106 @@
+name: CED 1D 2025 One-Shot Confirmation
+
+on:
+  push:
+    branches:
+      - ced-1d-v3-byte-recovery-2026-09-17
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/CED_1D_2025_ONE_SHOT_ACCESS_AUTHORIZATION_V0.1.json'
+
+permissions:
+  contents: read
+
+jobs:
+  one-shot-confirmation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      ROOT: Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Assert one-shot authorization
+        run: |
+          python - <<'PY'
+          import json,os
+          p=os.path.join(os.environ['ROOT'],'CED_1D_2025_ONE_SHOT_ACCESS_AUTHORIZATION_V0.1.json')
+          x=json.load(open(p))
+          assert x['status']=='AUTHORIZED_ONE_SHOT_2025_CONFIRMATION',x
+          assert x['authorization_count']==1,x
+          assert x['access_2026_plus'] is False,x
+          assert x['live_trading'] is False,x
+          assert x['orders'] is False,x
+          assert x['exchange_mutation'] is False,x
+          print('ONE_SHOT_AUTHORIZATION_PASS')
+          PY
+
+      - name: Compile frozen implementation
+        run: |
+          python -m py_compile "$ROOT/ced_1d_2025_source_gate_v03.py"
+          python -m py_compile "$ROOT/ced_1d_2025_funding_markprice_interval_gate_v04.py"
+          python -m py_compile "$ROOT/ced_1d_2025_confirmation_runner_v01.py"
+          python "$ROOT/tests/test_ced_1d_2025_confirmation_runner_v01.py"
+
+      - name: Re-verify and materialize exact 32-file price source
+        run: |
+          python "$ROOT/ced_1d_2025_source_gate_v03.py" \
+            --manifest "$ROOT/CED_1D_2025_SOURCE_MANIFEST_V0.2.json" \
+            --output "$RUNNER_TEMP/price-source-gate" \
+            --cache "$RUNNER_TEMP/price-cache"
+
+      - name: Re-verify funding rate plus mark-price interval source
+        run: |
+          python "$ROOT/ced_1d_2025_funding_markprice_interval_gate_v04.py" \
+            --amendment "$ROOT/CED_1D_2025_FUNDING_MARKPRICE_INTERVAL_SOURCE_AMENDMENT_V0.4.json" \
+            --output "$RUNNER_TEMP/funding-mark-source"
+
+      - name: Assert both source gates before outcomes
+        run: |
+          python - <<'PY'
+          import json,os
+          t=os.environ['RUNNER_TEMP']
+          p=json.load(open(os.path.join(t,'price-source-gate','CED_1D_2025_SOURCE_GATE_RECEIPT_V0.3.json')))
+          m=json.load(open(os.path.join(t,'funding-mark-source','CED_1D_2025_FUNDING_MARKPRICE_INTERVAL_SOURCE_GATE_RECEIPT_V0.4.json')))
+          assert p['status']=='SOURCE_DATA_PASS' and p['pass_count']==32 and not p['failures'],p
+          assert p['confirmation_2025_outcomes_computed'] is False and p['access_2026_plus'] is False,p
+          assert m['status']=='FUNDING_MARKPRICE_INTERVAL_SOURCE_PASS' and not m['failures'],m
+          assert m['symbols']['AVAXUSDT']['paired_records']==1095,m
+          assert m['symbols']['SOLUSDT']['paired_records']==1095,m
+          for k in ('signals_computed','returns_computed','pnl_computed','promotion_computed','year_2026_accessed'):
+              assert m[k] is False,(k,m)
+          print('ALL_SOURCE_GATES_PASS__OUTCOMES_NOW_AUTHORIZED')
+          PY
+
+      - name: Execute frozen 2025 one-shot Confirmation
+        run: |
+          python "$ROOT/ced_1d_2025_confirmation_runner_v01.py" \
+            --price-cache "$RUNNER_TEMP/price-cache" \
+            --price-manifest "$ROOT/CED_1D_2025_SOURCE_MANIFEST_V0.2.json" \
+            --funding-bindings "$RUNNER_TEMP/funding-mark-source/funding_markprice_interval_2025.json" \
+            --v03-runner-zip "$ROOT/recovered_authority/CED-1D-V1-RUNNER-FREEZE-V0.3.zip" \
+            --authorization "$ROOT/CED_1D_2025_ONE_SHOT_ACCESS_AUTHORIZATION_V0.1.json" \
+            --output "$RUNNER_TEMP/confirmation"
+
+      - name: Package immutable closeout evidence
+        if: always()
+        run: |
+          mkdir -p "$RUNNER_TEMP/final-evidence"
+          cp "$RUNNER_TEMP/price-source-gate/CED_1D_2025_SOURCE_GATE_RECEIPT_V0.3.json" "$RUNNER_TEMP/final-evidence/" 2>/dev/null || true
+          cp "$RUNNER_TEMP/price-source-gate/source_gate_summary.json" "$RUNNER_TEMP/final-evidence/" 2>/dev/null || true
+          cp "$RUNNER_TEMP/funding-mark-source/CED_1D_2025_FUNDING_MARKPRICE_INTERVAL_SOURCE_GATE_RECEIPT_V0.4.json" "$RUNNER_TEMP/final-evidence/" 2>/dev/null || true
+          cp "$RUNNER_TEMP/funding-mark-source/funding_markprice_interval_2025.json" "$RUNNER_TEMP/final-evidence/" 2>/dev/null || true
+          cp -r "$RUNNER_TEMP/confirmation/." "$RUNNER_TEMP/final-evidence/" 2>/dev/null || true
+          find "$RUNNER_TEMP/final-evidence" -type f -print0 | sort -z | xargs -0 sha256sum > "$RUNNER_TEMP/final-evidence/ARTIFACT_MEMBER_SHA256.txt" || true
+
+      - name: Upload one-shot evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ced1d-2025-one-shot-confirmation
+          path: ${{ runner.temp }}/final-evidence
+          if-no-files-found: error
+          retention-days: 30
