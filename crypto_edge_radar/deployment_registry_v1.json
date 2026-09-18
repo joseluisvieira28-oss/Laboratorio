@@ -1,6 +1,6 @@
 {
-  "registry_version": "3.0",
-  "as_of_utc": "2026-09-18T06:44:29Z",
+  "registry_version": "3.1",
+  "as_of_utc": "2026-09-18T14:22:30Z",
   "governance": "ND_PROMOTION_POLICY_V3_PLUS_AGGRESSIVE_FAIL_CLOSED_DEPLOYMENT",
   "focus_strategy_ids": [
     "ETF-CME-INSTFLOW-001",
@@ -9,7 +9,7 @@
     "TFG-DONCHIAN-REGIME-ADAPTATION-V1",
     "HTF-DH03-12H-STANDALONE-FORWARD-V1"
   ],
-  "policy_note": "Active deployment registry only. Closed/rejected/historical-only candidates moved to archive_registry_v1.json without rewriting verdicts.",
+  "policy_note": "Active-only registry. Canonical cloud remains four-engine until V0.13 integration passes CI and deployment. DH03 standalone is source-certified and local-build-ready; historical closed DH02 remains archive-only.",
   "candidates": [
     {
       "strategy_id": "ETF-CME-INSTFLOW-001",
@@ -178,9 +178,9 @@
     {
       "strategy_id": "HTF-DH03-12H-STANDALONE-FORWARD-V1",
       "scientific_tier": null,
-      "scientific_status": "NEW_PROSPECTIVE_STANDALONE_CANDIDATE__SOURCE_PASS",
-      "deployment_state": "GATED_SOURCE_PASS__LOCAL_COLLECTOR_BUILDING",
-      "shadow_allowed": false,
+      "scientific_status": "NEW_PROSPECTIVE_STANDALONE_CANDIDATE__SOURCE_PASS__LOCAL_BUILD_READY",
+      "deployment_state": "LOCAL_SHADOW_BUILD_READY__CLOUD_ARCHIVE_INTEGRATION_PENDING_V013_CI",
+      "shadow_allowed": true,
       "micro_live_allowed_now": false,
       "authority_branch": "htf-dh03-12h-standalone-forward-v0.1",
       "parent_historical_cell": "DH-03-HO1",
@@ -211,15 +211,29 @@
         "prefreeze_rows_used_as_forward_evidence": false
       },
       "blocking_gates": [
-        "exact local always-on 1m collector not yet built and regression-tested",
-        "minute-path/funding reconciliation not yet operational",
-        "first eligible signal boundary not yet observed under standalone authority",
+        "V0.13 integrated full regression CI must pass",
+        "V0.13 Windows five-engine package rebuild must pass",
+        "canonical Render deploy must prove DH03 archive-shadow without degrading four existing engines",
+        "operator must start the V0.13 Windows node for exact local 1m collection",
+        "first eligible standalone post-freeze 12H signal must be observed prospectively",
         "no micro-live execution authority"
-      ]
+      ],
+      "archive_shadow_mode": "BINANCE_PUBLIC_ARCHIVE_CHECKSUM_VERIFIED",
+      "archive_shadow_cadence": "retry_6h_until_utc_yesterday_available_then_sleep_until_next_utc_day",
+      "evidence_backend": "POSTGRES_APPEND_ONLY_HASH_CHAIN",
+      "local_node_build": {
+        "build_id": "v0.12-win-five-engine-all-local",
+        "workflow_run_id": 35342203475,
+        "workflow_conclusion": "success",
+        "reference_head_sha": "8fdc9d112806a600c2910351f6b1429c9890b5c8",
+        "previous_known_artifact_id": 10544571505,
+        "previous_known_exe_sha256": "f0e9a27bed653ed789f166869d2e31057d550880275c434af67ee7e9260d6a65",
+        "v013_rebuild_required": true
+      }
     }
   ],
   "operational_shadow_v09": {
-    "status": "OPERATIONAL_PERSISTENT_PUBLIC_SHADOW__FOUR_ENGINE",
+    "status": "OPERATIONAL_PERSISTENT_PUBLIC_SHADOW__FOUR_ENGINE__DH03_LOCAL_BUILD_READY",
     "branch": "crypto-edge-radar-promotion-sprint-v0.9",
     "deployed_commit": "adfd9c77c1bbc6b2d0b2f4952974488796a6604f",
     "render_service_id": "srv-dalqkpu1egvs73fhiehg",
@@ -228,7 +242,7 @@
     "evidence_backend": "postgres",
     "postgres_id": "dpg-dalqi4qd0e5s738a77kg-a",
     "evidence_chain_ok": true,
-    "evidence_events_verified": 80,
+    "evidence_events_verified": 87,
     "runtime_health": "OK",
     "engines": {
       "bnb_launchpool": {
@@ -266,6 +280,13 @@
         "forward_signal_days": 0,
         "resolved_forward_trades": 0,
         "micro_live_authorized": false
+      },
+      "dh03_12h_standalone": {
+        "status": "NOT_IN_CANONICAL_CLOUD_YET",
+        "source_validation": "PASS",
+        "local_build_status": "V0.12_GREEN__V0.13_REBUILD_REQUIRED",
+        "first_forward_archive_day": "2026-09-18",
+        "used_as_forward_evidence": false
       }
     },
     "authenticated_exchange_api_used": false,
@@ -279,5 +300,14 @@
       "active_or_gated_candidates": 5
     }
   },
-  "archive_registry": "archive_registry_v1.json"
+  "archive_registry": "archive_registry_v1.json",
+  "v013_integration": {
+    "branch": "crypto-edge-radar-v0.13-integration",
+    "status": "PORT_COMPLETE__CI_PENDING",
+    "preserves_runtime_authority": "RUNTIME_SERVICE_AUTHORITY_V1.json",
+    "main_modified": false,
+    "authenticated_exchange_api_used": false,
+    "orders_created": false,
+    "live_capital_enabled": false
+  }
 }
