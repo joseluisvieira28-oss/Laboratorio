@@ -1,0 +1,280 @@
+name: AAVE Liquidation Overhang 001 — Discovery 2023 V0.1
+
+on:
+  push:
+    branches:
+      - aave-liquidation-overhang-v0.1
+    paths:
+      - '.github/workflows/aave-liquidation-overhang-discovery-2023-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  R1_CANONICAL_RUN_ID: '35384529037'
+  R0_BOOTSTRAP_RUN_ID: '35218275356'
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: python -m pip install --disable-pip-version-check requests 'eth-hash[pycryptodome]'
+      - name: Compile Discovery V0.1
+        run: |
+          python -m py_compile research/aave_liquidation_overhang/discovery_calendar_v01.py
+          python -m py_compile research/aave_liquidation_overhang/discovery_global_replay_v01.py
+          python -m py_compile research/aave_liquidation_overhang/discovery_reserve_shard_v01.py
+          python -m py_compile research/aave_liquidation_overhang/discovery_predictor_aggregate_v01.py
+          python -m py_compile research/aave_liquidation_overhang/discovery_outcomes_v01.py
+          python -m py_compile research/aave_liquidation_overhang/discovery_adjudicate_v01.py
+          python -m py_compile research/aave_liquidation_overhang/discovery_static_qa_v01.py
+      - name: Verify frozen authorities
+        run: |
+          test -f research/aave_liquidation_overhang/AAVE_LIQUIDATION_OVERHANG_001_FINAL_PRE_DISCOVERY_PROTOCOL_V0_1.md
+          test -f research/aave_liquidation_overhang/AAVE_LIQUIDATION_OVERHANG_001_DISCOVERY_EXECUTION_AUTHORITY_V0_1.md
+          test -f research/aave_liquidation_overhang/AAVE_LIQUIDATION_OVERHANG_001_DISCOVERY_STATISTICAL_CLARIFICATION_V0_1.md
+      - name: Static deterministic QA
+        run: python research/aave_liquidation_overhang/discovery_static_qa_v01.py
+      - name: Download exact canonical R1 pass
+        uses: actions/download-artifact@v4
+        with:
+          name: AAVE_R1_SEMANTIC_RECONCILIATION_V0_5
+          path: downloaded_r1_canonical
+          github-token: ${{ github.token }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: ${{ env.R1_CANONICAL_RUN_ID }}
+      - name: Gate exact RECONSTRUCTION_DATA_PASS
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          hits=[]
+          for p in Path('downloaded_r1_canonical').rglob('*.json'):
+              x=json.loads(p.read_text())
+              if x.get('classification')=='RECONSTRUCTION_DATA_PASS':
+                  hits.append((p,x))
+          assert len(hits)==1,f'expected exactly one RECONSTRUCTION_DATA_PASS, got {len(hits)}'
+          p,x=hits[0]
+          assert x.get('next_authorized_phase')=='FINAL_PRE_DISCOVERY_PROTOCOL'
+          s=x['safety']
+          assert s['health_factor_computed'] is False
+          assert s['overhang_computed'] is False
+          assert s['future_liquidation_outcome_computed'] is False
+          assert s['market_returns_opened'] is False
+          assert s['pnl_opened'] is False
+          assert s['accessed_2025_or_2026'] is False
+          print('R1_DISCOVERY_GATE_PASS',p)
+          PY
+
+  calendar:
+    needs: preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check requests
+      - name: Build canonical 2023 snapshot calendar
+        run: python research/aave_liquidation_overhang/discovery_calendar_v01.py
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: AAVE_DISCOVERY_CALENDAR_V0_1
+          path: discovery_calendar_output/AAVE_LIQUIDATION_OVERHANG_001_DISCOVERY_CALENDAR_V0_1.json
+          if-no-files-found: error
+          retention-days: 30
+
+  global-source:
+    needs: calendar
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check requests 'eth-hash[pycryptodome]'
+      - uses: actions/download-artifact@v4
+        with:
+          name: AAVE_DISCOVERY_CALENDAR_V0_1
+          path: downloaded_discovery_calendar
+      - name: Reconstruct global/eMode/oracle Discovery source
+        run: python research/aave_liquidation_overhang/discovery_global_replay_v01.py
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: AAVE_DISCOVERY_GLOBAL_V0_1
+          path: discovery_global_output/AAVE_LIQUIDATION_OVERHANG_001_DISCOVERY_GLOBAL_V0_1.json
+          if-no-files-found: error
+          retention-days: 30
+
+  reserve-shards:
+    needs: global-source
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        shard_id: [0,1,2,3,4,5,6,7]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check requests 'eth-hash[pycryptodome]'
+      - uses: actions/download-artifact@v4
+        with:
+          name: AAVE_DISCOVERY_CALENDAR_V0_1
+          path: downloaded_discovery_calendar
+      - uses: actions/download-artifact@v4
+        with:
+          name: AAVE_DISCOVERY_GLOBAL_V0_1
+          path: downloaded_discovery_global
+      - uses: actions/download-artifact@v4
+        with:
+          name: AAVE_RECON_R0_BOOTSTRAP
+          path: downloaded_r0_bootstrap
+          github-token: ${{ github.token }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: ${{ env.R0_BOOTSTRAP_RUN_ID }}
+      - name: Replay exact reserve shard and materialize predictor source
+        env:
+          DISCOVERY_RESERVE_SHARD_ID: ${{ matrix.shard_id }}
+          DISCOVERY_RESERVE_SHARD_COUNT: '8'
+        run: python research/aave_liquidation_overhang/discovery_reserve_shard_v01.py
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: AAVE_DISCOVERY_RESERVE_SHARD_V0_1_${{ matrix.shard_id }}
+          path: |
+            discovery_reserve_shards/reserve_shard_*_meta.json
+            discovery_reserve_shards/reserve_shard_*_rows.jsonl.gz
+          if-no-files-found: warn
+          retention-days: 30
+
+  predictor:
+    needs: reserve-shards
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: AAVE_DISCOVERY_CALENDAR_V0_1
+          path: downloaded_discovery_calendar
+      - uses: actions/download-artifact@v4
+        with:
+          name: AAVE_DISCOVERY_GLOBAL_V0_1
+          path: downloaded_discovery_global
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: AAVE_DISCOVERY_RESERVE_SHARD_V0_1_*
+          path: downloaded_discovery_reserves
+          merge-multiple: true
+      - name: Aggregate and persist predictor BEFORE outcomes
+        run: python research/aave_liquidation_overhang/discovery_predictor_aggregate_v01.py
+      - name: Enforce predictor/outcome firewall
+        run: |
+          python - <<'PY'
+          import json
+          p='discovery_predictor_output/AAVE_LIQUIDATION_OVERHANG_001_DISCOVERY_PREDICTOR_2023_V0_1.json'
+          x=json.load(open(p))
+          assert x['classification']=='DISCOVERY_PREDICTOR_PASS'
+          s=x['safety']
+          assert s['future_liquidation_outcomes_opened'] is False
+          assert s['opened_2024_predictor'] is False
+          assert s['opened_2024_outcomes'] is False
+          assert s['opened_2025_or_2026'] is False
+          assert s['market_returns_opened'] is False
+          assert s['pnl_opened'] is False
+          print('PREDICTOR_FIREWALL_PASS',x['predictor_sha256'],x['days_overhang_10_positive'])
+          PY
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: AAVE_DISCOVERY_PREDICTOR_2023_V0_1
+          path: discovery_predictor_output/AAVE_LIQUIDATION_OVERHANG_001_DISCOVERY_PREDICTOR_2023_V0_1.json
+          if-no-files-found: error
+          retention-days: 30
+
+  outcomes-2023:
+    needs: predictor
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check requests 'eth-hash[pycryptodome]'
+      - uses: actions/download-artifact@v4
+        with:
+          name: AAVE_DISCOVERY_PREDICTOR_2023_V0_1
+          path: downloaded_discovery_predictor
+      - uses: actions/download-artifact@v4
+        with:
+          name: AAVE_DISCOVERY_CALENDAR_V0_1
+          path: downloaded_discovery_calendar
+      - uses: actions/download-artifact@v4
+        with:
+          name: AAVE_DISCOVERY_GLOBAL_V0_1
+          path: downloaded_discovery_global
+      - name: Open only frozen 2023 future liquidation outcome
+        run: python research/aave_liquidation_overhang/discovery_outcomes_v01.py
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: AAVE_DISCOVERY_OUTCOME_2023_V0_1
+          path: discovery_outcome_output/AAVE_LIQUIDATION_OVERHANG_001_DISCOVERY_OUTCOME_2023_V0_1.json
+          if-no-files-found: error
+          retention-days: 30
+
+  canonical-adjudication:
+    needs: outcomes-2023
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: AAVE_DISCOVERY_PREDICTOR_2023_V0_1
+          path: downloaded_discovery_predictor
+      - uses: actions/download-artifact@v4
+        with:
+          name: AAVE_DISCOVERY_OUTCOME_2023_V0_1
+          path: downloaded_discovery_outcome
+      - name: Canonical frozen 2023 Discovery adjudication
+        run: python research/aave_liquidation_overhang/discovery_adjudicate_v01.py
+      - name: Enforce protected-period and trading firewalls
+        run: |
+          python - <<'PY'
+          import json
+          p='discovery_canonical_output/AAVE_LIQUIDATION_OVERHANG_001_DISCOVERY_2023_CANONICAL_V0_1.json'
+          x=json.load(open(p))
+          s=x['safety']
+          assert s['opened_2024_predictor'] is False
+          assert s['opened_2024_outcomes'] is False
+          assert s['opened_2025_or_2026'] is False
+          assert s['market_returns_opened'] is False
+          assert s['pnl_opened'] is False
+          assert s['live_trading'] is False
+          assert s['exchange_mutation'] is False
+          print('DISCOVERY_CANONICAL_FIREWALL_PASS',x['classification'],x.get('next_authorized_phase'))
+          PY
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: AAVE_DISCOVERY_2023_CANONICAL_V0_1
+          path: discovery_canonical_output/AAVE_LIQUIDATION_OVERHANG_001_DISCOVERY_2023_CANONICAL_V0_1.json
+          if-no-files-found: error
+          retention-days: 30
