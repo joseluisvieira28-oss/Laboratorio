@@ -6,10 +6,8 @@ on:
       - ced-1d-v3-byte-recovery-2026-09-17
     paths:
       - '.github/workflows/ced-1d-2025-funding-markprice-gate.yml'
-      - 'Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/CED_1D_2025_FUNDING_MARKPRICE_TRANSPORT_AMENDMENT_V0.2.json'
-      - 'Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/ced_1d_2025_funding_markprice_gate_v02.py'
-      - 'Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/CED_1D_2025_FUNDING_REST_MIRROR_TRANSPORT_PROBE_FREEZE_V0.1.json'
-      - 'Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/ced_1d_2025_funding_rest_mirror_probe_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/CED_1D_2025_FUNDING_MARKPRICE_ARCHIVE_AMENDMENT_V0.3.json'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/ced_1d_2025_funding_markprice_archive_gate_v03.py'
   workflow_dispatch:
 
 permissions:
@@ -18,7 +16,7 @@ permissions:
 jobs:
   funding-markprice-source-gate:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 60
     env:
       ROOT: Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3
     steps:
@@ -26,48 +24,41 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Compile source-only scripts
+      - name: Compile source-only archive gate
+        run: python -m py_compile "$ROOT/ced_1d_2025_funding_markprice_archive_gate_v03.py"
+      - name: Recover exact 2025 funding settlements plus exact-timestamp mark price
         run: |
-          python -m py_compile "$ROOT/ced_1d_2025_funding_rest_mirror_probe_v01.py"
-          python -m py_compile "$ROOT/ced_1d_2025_funding_markprice_gate_v02.py"
-      - name: Probe exact Binance REST mirror schema only
-        run: |
-          python "$ROOT/ced_1d_2025_funding_rest_mirror_probe_v01.py" \
-            --freeze "$ROOT/CED_1D_2025_FUNDING_REST_MIRROR_TRANSPORT_PROBE_FREEZE_V0.1.json" \
-            --output "$RUNNER_TEMP/mirror-probe"
-          python - <<'PY'
-          import json,os
-          p=os.path.join(os.environ['RUNNER_TEMP'],'mirror-probe','mirror_probe_receipt.json')
-          x=json.load(open(p))
-          assert x['status']=='MIRROR_WITH_EXACT_SCHEMA_FOUND',x
-          assert x['outcomes_computed'] is False and x['pnl_computed'] is False and x['access_2026_plus'] is False,x
-          print('MIRROR_SCHEMA_GATE_PASS',x['accessible_exact_schema_hosts'])
-          PY
-      - name: Recover full 2025 markPrice and crosscheck archive identity
-        run: |
-          python "$ROOT/ced_1d_2025_funding_markprice_gate_v02.py" \
-            --amendment "$ROOT/CED_1D_2025_FUNDING_MARKPRICE_TRANSPORT_AMENDMENT_V0.2.json" \
-            --output "$RUNNER_TEMP/markprice-gate"
-      - name: Assert economic-outcome firewall
+          python "$ROOT/ced_1d_2025_funding_markprice_archive_gate_v03.py" \
+            --output "$RUNNER_TEMP/markprice-archive-gate"
+      - name: Assert source-only funded-provenance gate
         run: |
           python - <<'PY'
           import json,os
-          p=os.path.join(os.environ['RUNNER_TEMP'],'markprice-gate','CED_1D_2025_FUNDING_MARKPRICE_SOURCE_GATE_RECEIPT_V0.2.json')
+          p=os.path.join(
+              os.environ['RUNNER_TEMP'],
+              'markprice-archive-gate',
+              'CED_1D_2025_FUNDING_MARKPRICE_ARCHIVE_SOURCE_GATE_RECEIPT_V0.3.json'
+          )
           x=json.load(open(p))
           assert x['status']=='FUNDING_MARKPRICE_SOURCE_PASS',x
-          for k in ['signals_computed','returns_computed','pnl_computed','promotion_computed','access_2026_plus']:
+          for symbol in ['AVAXUSDT','SOLUSDT']:
+              assert x['symbols'][symbol]['funding_records']==1095,(symbol,x)
+              assert x['symbols'][symbol]['paired_records']==1095,(symbol,x)
+          for k in ['outcomes_computed','signals_computed','returns_computed','pnl_computed','promotion_computed','year_2026_accessed']:
               assert x[k] is False,(k,x)
-          assert x['symbols']['AVAXUSDT']['records']==1095,x
-          assert x['symbols']['SOLUSDT']['records']==1095,x
-          print('FUNDING_MARKPRICE_SOURCE_GATE_PASS')
+          assert x['orders_created'] is False and x['live_capital_enabled'] is False,x
+          print('FUNDING_MARKPRICE_ARCHIVE_SOURCE_GATE_PASS')
           PY
-      - name: Upload source-only markPrice evidence
+      - name: Remove bulky raw archives after receipt and pairing hashes are sealed
+        if: always()
+        run: |
+          find "$RUNNER_TEMP/markprice-archive-gate" -type f \
+            \( -name '*.zip' -o -name '*.CHECKSUM' \) -delete || true
+      - name: Upload source-only funded-provenance evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ced1d-2025-funding-markprice-source-gate
-          path: |
-            ${{ runner.temp }}/mirror-probe/
-            ${{ runner.temp }}/markprice-gate/
-          if-no-files-found: warn
+          name: ced1d-2025-funding-markprice-archive-source-gate
+          path: ${{ runner.temp }}/markprice-archive-gate/
+          if-no-files-found: error
           retention-days: 30
