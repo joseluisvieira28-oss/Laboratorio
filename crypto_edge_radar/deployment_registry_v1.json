@@ -1,6 +1,6 @@
 {
-  "registry_version": "2.0",
-  "as_of_utc": "2026-09-17T20:15:00Z",
+  "registry_version": "2.1",
+  "as_of_utc": "2026-09-18T05:08:40Z",
   "governance": "ND_PROMOTION_POLICY_V3_PLUS_AGGRESSIVE_FAIL_CLOSED_DEPLOYMENT",
   "focus_strategy_ids": [
     "ETF-CME-INSTFLOW-001",
@@ -50,7 +50,7 @@
       "strategy_id": "BNB-LAUNCHPOOL-DEMAND-001",
       "scientific_tier": 2,
       "scientific_status": "TIER_2_QUASE_DIAMANTE__HIGH_TAIL_CONCENTRATION_FRAGILITY",
-      "deployment_state": "PROSPECTIVE_WATCHER_AND_MICROLIVE_READINESS_FROZEN__AWAIT_EXECUTION_AUTHORITY",
+      "deployment_state": "PROSPECTIVE_FORWARD_SHADOW_OPERATIONAL__AWAIT_MICROLIVE_EXECUTION_AUTHORITY",
       "shadow_allowed": true,
       "micro_live_allowed_now": false,
       "authority_branch": "bnb-launchpool-demand-v3-readjudication-2026-09-17",
@@ -71,11 +71,14 @@
         "one micro-live event is operational evidence only"
       ],
       "blocking_gates": [
-        "read-only prospective official-source watcher not yet integrated into radar v0.8",
-        "exact BNBBTC 15m market binding must pass for each event",
+        "exact BNBBTC 15m market binding must pass for each future eligible event",
         "separate explicit V3 MICRO-LIVE EXECUTION AUTHORITY does not yet exist",
-        "no order path may activate from readiness freeze alone"
-      ]
+        "no order path may activate from readiness freeze or shadow operation alone"
+      ],
+      "radar_forward_watcher_implemented": true,
+      "radar_official_source_binding_live": true,
+      "radar_bnbbtc_market_binding_live": true,
+      "persistent_evidence_backend": "postgres"
     },
     {
       "strategy_id": "OPTIONS-SPOTPERP-001-V2.1",
@@ -93,7 +96,7 @@
       "rv_baseline": "expanding median of all valid RV20 observations through signal date t",
       "minimum_valid_rv20_history": 60,
       "weight_rule": "min(1.0, expanding_median_RV20_t / RV20_t)",
-      "max_weight": 1.0,
+      "max_weight": 1,
       "leverage_above_one": false,
       "base_cost_bps_full_notional": 10,
       "stress_cost_bps_full_notional": 20,
@@ -120,15 +123,22 @@
       "frozen_cell": "DH-02-HO1",
       "timeframe": "6H",
       "direction_rule": "LONG_ONLY",
-      "symbols": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "DOGEUSDT"],
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "SOLUSDT",
+        "BNBUSDT",
+        "XRPUSDT",
+        "DOGEUSDT"
+      ],
       "donchian_lookback_complete_bars": 80,
       "atr_length": 56,
       "entry_rule": "next 6H open",
       "stop_rule": "signal low minus 0.25*ATR56",
-      "target_r": 3.0,
+      "target_r": 3,
       "max_hold_bars": 160,
-      "base_round_trip_cost_pct": 0.20,
-      "stress_round_trip_cost_pct": 0.30,
+      "base_round_trip_cost_pct": 0.2,
+      "stress_round_trip_cost_pct": 0.3,
       "protected_2026_shadow_result": {
         "resolved_trades": 27,
         "base_expectancy_r": -0.5689228153152064,
@@ -158,11 +168,88 @@
       "micro_live_allowed_now": false,
       "reason": "Cannot substitute for DH-02 after outcomes."
     },
-    {"strategy_id": "MVE-ADX4H-01", "scientific_tier": 4, "scientific_status": "REJECTED_STONE_AFTER_2025_CONFIRMATION", "deployment_state": "BLOCKED", "shadow_allowed": false, "micro_live_allowed_now": false},
-    {"strategy_id": "OPTIONS-SPOTPERP-002-UP_LOW", "scientific_tier": 4, "scientific_status": "REJECTED_OOS_FAILED", "deployment_state": "BLOCKED", "shadow_allowed": false, "micro_live_allowed_now": false},
-    {"strategy_id": "CPI-SURPRISE-V0.3A", "scientific_tier": 4, "scientific_status": "REJECTED_AFTER_INDEPENDENT_OOS", "deployment_state": "BLOCKED", "shadow_allowed": false, "micro_live_allowed_now": false},
-    {"strategy_id": "F08-RESIDUAL-RELATIVE-STRENGTH", "scientific_tier": 4, "scientific_status": "REJECTED_AFTER_2025_OOS", "deployment_state": "BLOCKED", "shadow_allowed": false, "micro_live_allowed_now": false},
-    {"strategy_id": "ICHIMOKU-4H-MVE", "scientific_tier": 4, "scientific_status": "REJECTED_AFTER_2024_OOS", "deployment_state": "BLOCKED", "shadow_allowed": false, "micro_live_allowed_now": false},
-    {"strategy_id": "SPOT-PERP-CARRY-V0.1", "scientific_tier": 4, "scientific_status": "REJECTED_OOS_NET_NEGATIVE", "deployment_state": "BLOCKED", "shadow_allowed": false, "micro_live_allowed_now": false}
-  ]
+    {
+      "strategy_id": "MVE-ADX4H-01",
+      "scientific_tier": 4,
+      "scientific_status": "REJECTED_STONE_AFTER_2025_CONFIRMATION",
+      "deployment_state": "BLOCKED",
+      "shadow_allowed": false,
+      "micro_live_allowed_now": false
+    },
+    {
+      "strategy_id": "OPTIONS-SPOTPERP-002-UP_LOW",
+      "scientific_tier": 4,
+      "scientific_status": "REJECTED_OOS_FAILED",
+      "deployment_state": "BLOCKED",
+      "shadow_allowed": false,
+      "micro_live_allowed_now": false
+    },
+    {
+      "strategy_id": "CPI-SURPRISE-V0.3A",
+      "scientific_tier": 4,
+      "scientific_status": "REJECTED_AFTER_INDEPENDENT_OOS",
+      "deployment_state": "BLOCKED",
+      "shadow_allowed": false,
+      "micro_live_allowed_now": false
+    },
+    {
+      "strategy_id": "F08-RESIDUAL-RELATIVE-STRENGTH",
+      "scientific_tier": 4,
+      "scientific_status": "REJECTED_AFTER_2025_OOS",
+      "deployment_state": "BLOCKED",
+      "shadow_allowed": false,
+      "micro_live_allowed_now": false
+    },
+    {
+      "strategy_id": "ICHIMOKU-4H-MVE",
+      "scientific_tier": 4,
+      "scientific_status": "REJECTED_AFTER_2024_OOS",
+      "deployment_state": "BLOCKED",
+      "shadow_allowed": false,
+      "micro_live_allowed_now": false
+    },
+    {
+      "strategy_id": "SPOT-PERP-CARRY-V0.1",
+      "scientific_tier": 4,
+      "scientific_status": "REJECTED_OOS_NET_NEGATIVE",
+      "deployment_state": "BLOCKED",
+      "shadow_allowed": false,
+      "micro_live_allowed_now": false
+    }
+  ],
+  "operational_shadow_v09": {
+    "status": "OPERATIONAL_PERSISTENT_PUBLIC_SHADOW",
+    "branch": "crypto-edge-radar-promotion-sprint-v0.9",
+    "commit": "fc662a96f472d4e2aec6f987027ecf85302dfa61",
+    "github_actions_run_id": 35279574821,
+    "github_actions_conclusion": "success",
+    "render_service_id": "srv-dalqkpu1egvs73fhiehg",
+    "render_deploy_id": "dep-damce5u1egvs73bn2eh0",
+    "render_region": "frankfurt",
+    "evidence_backend": "postgres",
+    "postgres_id": "dpg-dalqi4qd0e5s738a77kg-a",
+    "evidence_chain_ok": true,
+    "evidence_events_verified_at_activation": 78,
+    "runtime_health": "OK",
+    "tfg_watcher": {
+      "watcher_id": "TFG-DONCHIAN-REGIME-V1-FORWARD-SHADOW",
+      "status": "OK",
+      "provider": "MEXC_SPOT_PUBLIC",
+      "latest_due_signal_close_utc": "2026-09-18T00:00:00Z",
+      "boundaries_scanned": 3,
+      "regime_on_boundaries": 3,
+      "eligible_signal_count_at_activation": 0
+    },
+    "bnb_watcher": {
+      "watcher_id": "BNB-LAUNCHPOOL-DEMAND-001-FORWARD-SHADOW-V3",
+      "status": "OK",
+      "official_source_provider": "BINANCE_SUPPORT_CMS_PUBLIC",
+      "market_provider": "BINANCE_SPOT_DATA_API_PUBLIC",
+      "eligible_events_visible_at_activation": 0
+    },
+    "authenticated_exchange_api_used": false,
+    "orders_created": false,
+    "exchange_mutation_performed": false,
+    "live_capital_enabled": false
+  }
 }
