@@ -39,22 +39,22 @@ class DH0312HLocalTests(unittest.TestCase):
                 market.put_15m("BTCUSDT",row,"TEST")
             result=engine.on_closed_15m("BTCUSDT",history[-1],"TEST")
             self.assertEqual(result["status"],"SIGNAL_RECORDED")
-            self.assertEqual(len(evidence.read_payloads("DH03_FORWARD_SIGNAL")),1)
+            self.assertEqual(len(evidence.read_payloads("DH03_LOCAL_SIGNAL")),1)
 
-            sig=evidence.read_payloads("DH03_FORWARD_SIGNAL")[0]
+            sig=evidence.read_payloads("DH03_LOCAL_SIGNAL")[0]
             entry_time=int(sig["candidate"]["signal_close_time"])
             changes=engine.on_open_1m("BTCUSDT",entry_time,100.0,"TEST")
             self.assertEqual(changes[0]["status"],"ENTRY_BOUND")
-            self.assertEqual(len(evidence.read_payloads("DH03_FORWARD_ENTRY")),1)
+            self.assertEqual(len(evidence.read_payloads("DH03_LOCAL_ENTRY")),1)
 
             # Restart from the same persistent stores.
             market2,evidence2,engine2=self._make(td,activation)
-            self.assertEqual(len(evidence2.read_payloads("DH03_FORWARD_SIGNAL")),1)
-            self.assertEqual(len(evidence2.read_payloads("DH03_FORWARD_ENTRY")),1)
+            self.assertEqual(len(evidence2.read_payloads("DH03_LOCAL_SIGNAL")),1)
+            self.assertEqual(len(evidence2.read_payloads("DH03_LOCAL_ENTRY")),1)
 
             # First closed minute holds; second hits target.
             engine2.on_closed_1m("BTCUSDT",(entry_time,100.0,101.0,99.0,100.0),"TEST")
-            entry=evidence2.read_payloads("DH03_FORWARD_ENTRY")[0]["signal"]
+            entry=evidence2.read_payloads("DH03_LOCAL_ENTRY")[0]["signal"]
             target=float(entry["target"])
             out=engine2.on_closed_1m(
                 "BTCUSDT",
@@ -62,7 +62,7 @@ class DH0312HLocalTests(unittest.TestCase):
                 "TEST",
             )
             self.assertTrue(any(x.get("status")=="RESOLVED" for x in out))
-            self.assertEqual(len(evidence2.read_payloads("DH03_FORWARD_RESOLUTION")),1)
+            self.assertEqual(len(evidence2.read_payloads("DH03_LOCAL_RESOLUTION")),1)
 
             # Replay cannot create a second resolution.
             engine2.on_closed_1m(
@@ -70,7 +70,7 @@ class DH0312HLocalTests(unittest.TestCase):
                 (entry_time+60_000,100.0,target+1.0,99.0,target),
                 "TEST",
             )
-            self.assertEqual(len(evidence2.read_payloads("DH03_FORWARD_RESOLUTION")),1)
+            self.assertEqual(len(evidence2.read_payloads("DH03_LOCAL_RESOLUTION")),1)
 
     def test_missed_exact_entry_is_deviation_not_late_reconstruction(self):
         with tempfile.TemporaryDirectory() as td:
@@ -81,12 +81,12 @@ class DH0312HLocalTests(unittest.TestCase):
             for row in history[:-1]:
                 market.put_15m("ETHUSDT",row,"TEST")
             engine.on_closed_15m("ETHUSDT",history[-1],"TEST")
-            sig=evidence.read_payloads("DH03_FORWARD_SIGNAL")[0]
+            sig=evidence.read_payloads("DH03_LOCAL_SIGNAL")[0]
             entry_time=int(sig["candidate"]["signal_close_time"])
             changes=engine.on_open_1m("ETHUSDT",entry_time+60_000,100.0,"TEST")
             self.assertEqual(changes[0]["reason"],"MISSED_EXACT_ENTRY_MINUTE_NO_RECONSTRUCTION")
-            self.assertEqual(len(evidence.read_payloads("DH03_FORWARD_ENTRY")),0)
-            self.assertEqual(len(evidence.read_payloads("DH03_FORWARD_DEVIATION")),1)
+            self.assertEqual(len(evidence.read_payloads("DH03_LOCAL_ENTRY")),0)
+            self.assertEqual(len(evidence.read_payloads("DH03_LOCAL_DEVIATION")),1)
 
     def test_minute_gap_becomes_terminal_deviation(self):
         with tempfile.TemporaryDirectory() as td:
@@ -97,14 +97,14 @@ class DH0312HLocalTests(unittest.TestCase):
             for row in history[:-1]:
                 market.put_15m("SOLUSDT",row,"TEST")
             engine.on_closed_15m("SOLUSDT",history[-1],"TEST")
-            sig=evidence.read_payloads("DH03_FORWARD_SIGNAL")[0]
+            sig=evidence.read_payloads("DH03_LOCAL_SIGNAL")[0]
             entry_time=int(sig["candidate"]["signal_close_time"])
             engine.on_open_1m("SOLUSDT",entry_time,100.0,"TEST")
             engine.on_closed_1m("SOLUSDT",(entry_time,100,101,99,100),"TEST")
             changes=engine.on_closed_1m("SOLUSDT",(entry_time+120_000,100,101,99,100),"TEST")
             self.assertTrue(any(x.get("reason")=="EXECUTION_PATH_UNRESOLVED_GAP" for x in changes))
-            self.assertEqual(len(evidence.read_payloads("DH03_FORWARD_RESOLUTION")),0)
-            self.assertEqual(len(evidence.read_payloads("DH03_FORWARD_DEVIATION")),1)
+            self.assertEqual(len(evidence.read_payloads("DH03_LOCAL_RESOLUTION")),0)
+            self.assertEqual(len(evidence.read_payloads("DH03_LOCAL_DEVIATION")),1)
 
     def test_funding_settlement_is_recorded_only_when_next_timestamp_rolls(self):
         with tempfile.TemporaryDirectory() as td:
@@ -117,7 +117,7 @@ class DH0312HLocalTests(unittest.TestCase):
             self.assertIsNotNone(receipt)
             self.assertEqual(receipt["funding_time"],t)
             self.assertAlmostEqual(receipt["funding_rate"],0.00012)
-            self.assertEqual(len(evidence.read_payloads("DH03_FUNDING_SETTLEMENT")),1)
+            self.assertEqual(len(evidence.read_payloads("DH03_LOCAL_FUNDING_SETTLEMENT")),1)
 
 
 if __name__=="__main__":
