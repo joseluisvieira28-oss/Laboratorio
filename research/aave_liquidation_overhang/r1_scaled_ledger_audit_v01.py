@@ -154,35 +154,63 @@ def stream_portal(log_filters: list[dict[str, Any]], include_data: bool, stats: 
             },
             "logs": log_filters,
         }
-        r = post_portal(body, stats)
+
+        # V0.3.1 transport-only hardening:
+        # Never yield a partially-read Portal window. If the HTTP body stream is
+        # interrupted, discard that incomplete buffer and retry the exact same
+        # request body/boundaries. Semantic/JSON/provenance errors still fail closed.
+        page_objects: list[dict[str, Any]] | None = None
         page_last: int | None = None
         rows = 0
-        try:
-            for raw in r.iter_lines(decode_unicode=True):
-                if not raw:
+        for stream_attempt in range(8):
+            r = post_portal(body, stats)
+            stats["stream_window_attempts"] += 1
+            local_objects: list[dict[str, Any]] = []
+            local_last: int | None = None
+            local_rows = 0
+            try:
+                for raw in r.iter_lines(decode_unicode=True):
+                    if not raw:
+                        continue
+                    obj = json.loads(raw)
+                    if isinstance(obj, dict) and obj.get("error"):
+                        raise RuntimeError(f"portal error: {obj['error']}")
+                    header = obj.get("header") or obj.get("block") or {}
+                    bn = header.get("number")
+                    if bn is None:
+                        raise RuntimeError("Portal row missing continuation block number")
+                    bn = int(bn)
+                    if not (cursor <= bn <= request_to):
+                        raise RuntimeError("Portal row outside requested window")
+                    if local_last is not None and bn < local_last:
+                        raise RuntimeError("Portal page non-monotonic")
+                    local_last = bn
+                    local_rows += 1
+                    local_objects.append(obj)
+            except requests.RequestException:
+                stats["stream_read_failures"] += 1
+                if stream_attempt < 7:
+                    stats["stream_read_retries"] += 1
+                    time.sleep(min(20.0, 1.5 * (2**stream_attempt)))
                     continue
-                obj = json.loads(raw)
-                if isinstance(obj, dict) and obj.get("error"):
-                    raise RuntimeError(f"portal error: {obj['error']}")
-                header = obj.get("header") or obj.get("block") or {}
-                bn = header.get("number")
-                if bn is None:
-                    raise RuntimeError("Portal row missing continuation block number")
-                bn = int(bn)
-                if not (cursor <= bn <= request_to):
-                    raise RuntimeError("Portal row outside requested window")
-                if page_last is not None and bn < page_last:
-                    raise RuntimeError("Portal page non-monotonic")
-                page_last = bn
-                rows += 1
-                yield obj
-        finally:
-            r.close()
-        if rows == 0 or page_last is None:
-            raise RuntimeError("Portal returned empty page inside frozen range")
-        stats["portal_rows"] += rows
-        cursor = page_last + 1
+                raise
+            finally:
+                r.close()
 
+            if local_rows == 0 or local_last is None:
+                raise RuntimeError("Portal returned empty page inside frozen range")
+            page_objects = local_objects
+            page_last = local_last
+            rows = local_rows
+            stats["stream_window_successes"] += 1
+            break
+
+        if page_objects is None or page_last is None:
+            raise RuntimeError("Portal stream window exhausted retry budget")
+        stats["portal_rows"] += rows
+        for obj in page_objects:
+            yield obj
+        cursor = page_last + 1
 
 def load_bootstrap() -> dict[str, Any]:
     explicit = os.environ.get("R0_BOOTSTRAP_PATH")
