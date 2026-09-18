@@ -1,0 +1,84 @@
+name: AAVE Risk Parameter Shock 001 — Source Census V0.1
+
+on:
+  push:
+    branches:
+      - aave-risk-parameter-shock-v0.1
+    paths:
+      - '.github/workflows/aave-risk-parameter-shock-source-census-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-census:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install frozen source dependencies
+        run: python -m pip install --disable-pip-version-check requests 'eth-hash[pycryptodome]'
+
+      - name: Static compile
+        run: python -m py_compile research/aave_risk_parameter_shock/source_census_v01.py
+
+      - name: Verify frozen source-only authority
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('research/aave_risk_parameter_shock/AAVE_RISK_PARAMETER_SHOCK_001_SOURCE_CENSUS_FREEZE_V0_1.json')
+          x=json.loads(p.read_text())
+          assert x['status']=='FROZEN_SOURCE_CENSUS_ONLY'
+          assert x['phase']=='SOURCE_CENSUS_ONLY_OUTCOME_BLIND'
+          assert x['source']['from_block']==16490000
+          assert x['source']['through_block']==21525890
+          assert x['source']['hard_timestamp_ceiling']==1735689599
+          assert len(x['structural_event_signatures'])==17
+          assert 'log.data decoding' in x['forbidden']
+          assert 'asset returns' in x['forbidden']
+          assert '2025 data' in x['forbidden']
+          assert '2026 outcome data' in x['forbidden']
+          print('SOURCE_CENSUS_FREEZE_GUARD_PASS')
+          PY
+
+      - name: Execute structural source census only
+        run: python research/aave_risk_parameter_shock/source_census_v01.py
+
+      - name: Enforce outcome firewall
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('out/aave_risk_parameter_shock/AAVE_RISK_PARAMETER_SHOCK_001_SOURCE_CENSUS_RECEIPT_V0_1.json')
+          x=json.loads(p.read_text())
+          assert x['classification'] in {'SOURCE_CENSUS_PASS','INSUFFICIENT_SOURCE_SAMPLE'}
+          assert x['to_block']==21525890
+          assert x['terminal_header_block']==21525890
+          s=x['safety']
+          assert s['log_data_requested'] is False
+          assert s['parameter_values_decoded'] is False
+          assert s['market_prices_opened'] is False
+          assert s['returns_opened'] is False
+          assert s['future_liquidation_outcomes_opened'] is False
+          assert s['health_factor_computed'] is False
+          assert s['liquidation_overhang_computed'] is False
+          assert s['pnl_opened'] is False
+          assert s['accessed_2025_or_2026'] is False
+          assert s['live_trading'] is False
+          assert s['exchange_mutation'] is False
+          print('SOURCE_CENSUS_OUTCOME_FIREWALL_PASS', x['classification'], x['total_structural_events'])
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AAVE_RISK_PARAMETER_SHOCK_001_SOURCE_CENSUS_V0_1
+          path: out/aave_risk_parameter_shock/AAVE_RISK_PARAMETER_SHOCK_001_SOURCE_CENSUS_RECEIPT_V0_1.json
+          if-no-files-found: error
+          retention-days: 90
