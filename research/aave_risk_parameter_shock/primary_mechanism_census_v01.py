@@ -275,6 +275,8 @@ def main() -> int:
                     "episode_id": len(episodes),
                     "episode_start_timestamp": int(cluster["timestamp"]),
                     "episode_start_block": int(cluster["block"]),
+                    "episode_end_timestamp": int(cluster["timestamp"]),
+                    "episode_end_block": int(cluster["block"]),
                     "transactionHashes": [cluster["transactionHash"]],
                     "affected_assets": list(cluster["affected_assets"]),
                     "decrease_log_count": int(cluster["decrease_log_count"]),
@@ -284,6 +286,8 @@ def main() -> int:
                 ep["transactionHashes"].append(cluster["transactionHash"])
                 ep["affected_assets"] = sorted(set(ep["affected_assets"]) | set(cluster["affected_assets"]))
                 ep["decrease_log_count"] += int(cluster["decrease_log_count"])
+                ep["episode_end_timestamp"] = max(int(ep["episode_end_timestamp"]), int(cluster["timestamp"]))
+                ep["episode_end_block"] = max(int(ep["episode_end_block"]), int(cluster["block"]))
         for ep in episodes:
             ep["calendar_year"] = datetime.fromtimestamp(
                 int(ep["episode_start_timestamp"]), tz=timezone.utc
