@@ -360,3 +360,42 @@ def source_schema_probe(feed: DeribitBTCOptionTradeFeed, *, start_ms: int, end_m
         "orders_created": False,
         "exchange_mutation_performed": False,
     }
+
+
+def _day_open_ms(day: date) -> int:
+    return int(datetime(day.year, day.month, day.day, tzinfo=timezone.utc).timestamp() * 1000)
+
+
+def latest_complete_signal_day(now_ms: int) -> date | None:
+    now = datetime.fromtimestamp(now_ms / 1000, tz=timezone.utc)
+    candidate = now.date() - timedelta(days=1)
+    return candidate if candidate >= FIRST_FULL_POST_FREEZE_SIGNAL_DAY else None
+
+
+def exact_daily_open_if_available(
+    feed: BinanceBTCUSDTDailyFeed,
+    *,
+    day: date,
+    now_ms: int,
+) -> float | None:
+    target_ms = _day_open_ms(day)
+    if now_ms < target_ms:
+        return None
+    payload = feed._get_json(
+        {
+            "symbol": "BTCUSDT",
+            "interval": "1d",
+            "startTime": target_ms,
+            "endTime": target_ms + DAY_MS - 1,
+            "limit": 2,
+        }
+    )
+    if not isinstance(payload, list) or not payload:
+        return None
+    row = payload[0]
+    if not isinstance(row, list) or len(row) < 2 or int(row[0]) != target_ms:
+        raise OptionsV21SourceError("BTC exact daily open binding mismatch")
+    value = float(row[1])
+    if not isfinite(value) or value <= 0:
+        raise OptionsV21SourceError("invalid BTC exact daily open")
+    return value
