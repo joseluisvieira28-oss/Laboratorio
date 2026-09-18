@@ -59,7 +59,7 @@ class PublicShadowService:
             self.consecutive_failures = 0
             status = {
                 "service": "CRYPTO_EDGE_RADAR",
-                "version": "0.2",
+                "version": "0.3",
                 "mode": "PUBLIC_SHADOW_ONLY",
                 "provider": result["provider"],
                 "health": "OK",
@@ -69,6 +69,7 @@ class PublicShadowService:
                 "universe": result["universe"],
                 "registered_strategies": result["registered_strategies"],
                 "valid_signal_count": len(result["valid_signals"]),
+                "duplicate_signal_count": result.get("duplicate_signal_count", 0),
                 "consecutive_failures": 0,
             }
             heartbeat = self.engine.store.append("SERVICE_HEARTBEAT", status)
