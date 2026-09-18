@@ -1,0 +1,62 @@
+name: BNB Launchpool V3 Forward Source Preflight V0.1
+
+on:
+  push:
+    branches:
+      - bnb-launchpool-demand-v3-readjudication-2026-09-17
+    paths:
+      - '.github/workflows/bnb-launchpool-demand-v3-forward-source-preflight-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  source_preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        shell: bash
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+    steps:
+      - name: Checkout isolated BNB V3 branch
+        uses: actions/checkout@v4
+        with:
+          ref: bnb-launchpool-demand-v3-readjudication-2026-09-17
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Verify frozen source-only protocol and compile
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('research/bnb_launchpool_demand_001/BNB_LAUNCHPOOL_DEMAND_001_V3_FORWARD_SOURCE_PREFLIGHT_V0.1.json')
+          d=json.loads(p.read_text())
+          assert d['status']=='FROZEN_BEFORE_AUTOMATED_FORWARD_SOURCE_SCAN'
+          assert d['boundary_utc']=='2026-09-16T20:51:23Z'
+          assert d['price_firewall']['market_data_access'] is False
+          assert d['governance']['live_trading'] is False
+          assert d['no_scientific_change'] is True
+          print('PREFLIGHT_FREEZE=PASS')
+          PY
+          python -m py_compile research/bnb_launchpool_demand_001/forward_shadow_v01/bnb_launchpool_forward_source_preflight_v01.py
+
+      - name: Scan only official Binance post-boundary announcement source
+        run: |
+          python research/bnb_launchpool_demand_001/forward_shadow_v01/bnb_launchpool_forward_source_preflight_v01.py
+          cat research/bnb_launchpool_demand_001/forward_shadow_v01/BNB_LAUNCHPOOL_DEMAND_001_V3_FORWARD_SOURCE_PREFLIGHT_RECEIPT_V0.1.json
+
+      - name: Upload source-only preflight receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: BNB_LAUNCHPOOL_DEMAND_001_V3_FORWARD_SOURCE_PREFLIGHT_V01
+          path: Dream-Account-OS-v2.3-PARTIAL/research/bnb_launchpool_demand_001/forward_shadow_v01/BNB_LAUNCHPOOL_DEMAND_001_V3_FORWARD_SOURCE_PREFLIGHT_RECEIPT_V0.1.json
+          if-no-files-found: error
+          retention-days: 30
