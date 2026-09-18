@@ -9,7 +9,7 @@ import time
 from typing import Any
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
-from urllib.error import HTTPError
+from urllib.error import HTTPError, URLError
 
 from .execution import ExecutionBlocked
 
@@ -58,6 +58,8 @@ class BinanceUSDMTradingClient:
         except HTTPError as exc:
             body = exc.read().decode("utf-8", "replace")
             raise ExecutionBlocked(f"Binance HTTP {exc.code}: {body}") from exc
+        except URLError as exc:
+            raise ExecutionBlocked(f"Binance network error: {exc}") from exc
         return json.loads(raw) if raw else {}
 
     def public_time(self) -> int:
@@ -107,6 +109,21 @@ class BinanceUSDMTradingClient:
             "GET", "/fapi/v1/openOrders", {"symbol": symbol}, signed=True
         )
         return rows if isinstance(rows, list) else []
+
+    def query_order_if_exists(self, symbol: str, client_order_id: str) -> dict[str, Any] | None:
+        try:
+            return self._request(
+                "GET",
+                "/fapi/v1/order",
+                {"symbol": symbol, "origClientOrderId": client_order_id},
+                signed=True,
+            )
+        except ExecutionBlocked as exc:
+            msg = str(exc)
+            # Binance uses -2013 when the order is genuinely absent.
+            if '"code":-2013' in msg.replace(" ", ""):
+                return None
+            raise
 
     def preflight(self, symbol: str) -> dict[str, Any]:
         server_ms = self.public_time()
@@ -179,6 +196,12 @@ class BinanceUSDMTradingClient:
         reduce_only: bool,
         client_order_id: str,
     ) -> dict[str, Any]:
+        existing = self.query_order_if_exists(symbol, client_order_id)
+        if existing is not None:
+            existing = dict(existing)
+            existing["_idempotent_recovery"] = True
+            return existing
+
         params = {
             "symbol": symbol,
             "side": side,
@@ -188,4 +211,17 @@ class BinanceUSDMTradingClient:
             "newClientOrderId": client_order_id,
             "newOrderRespType": "RESULT",
         }
-        return self._request("POST", "/fapi/v1/order", params, signed=True)
+        try:
+            return self._request("POST", "/fapi/v1/order", params, signed=True)
+        except ExecutionBlocked as first_error:
+            # A timeout/transport ambiguity must never cause a blind retry.
+            # Query the deterministic client ID; if Binance recorded it, recover it.
+            try:
+                recovered = self.query_order_if_exists(symbol, client_order_id)
+            except ExecutionBlocked:
+                raise first_error
+            if recovered is not None:
+                recovered = dict(recovered)
+                recovered["_idempotent_recovery_after_submit_error"] = True
+                return recovered
+            raise first_error
