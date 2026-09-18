@@ -1,0 +1,199 @@
+name: AAVE Liquidation Overhang 001 — R1 Sharded Audit V0.3.2
+
+on:
+  push:
+    branches:
+      - aave-liquidation-overhang-v0.1
+    paths:
+      - 'research/aave_liquidation_overhang/R1_SHARDED_AUDIT_TRIGGER_V0_3_2.txt'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  CENSUS_RUN_ID: '35214027573'
+  R0_RUN_ID: '35218275356'
+  PIN_ORIGINAL_AUDIT_BLOB: 'd2ddeae59667c9b0e61d092e0bf1ec504a663bf7'
+  PIN_SAMPLE_BLOB: '5dd2f0f5e32955e19cd0a997ca046eacda2cfc4a'
+  PIN_SHARD_BLOB: '509f19f7f251c8d399b5e77d8bed64c36403495e'
+  PIN_AGG_BLOB: '0bde06f90e672933a8a298387a451e4b83a73f15'
+
+jobs:
+  sample-derivation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Pin and compile audit implementation
+        run: |
+          test "$(git hash-object research/aave_liquidation_overhang/r1_scaled_ledger_audit_v01.py)" = "$PIN_ORIGINAL_AUDIT_BLOB"
+          test "$(git hash-object research/aave_liquidation_overhang/r1_audit_sample_from_census_v032.py)" = "$PIN_SAMPLE_BLOB"
+          test "$(git hash-object research/aave_liquidation_overhang/r1_audit_token_shard_v032.py)" = "$PIN_SHARD_BLOB"
+          test "$(git hash-object research/aave_liquidation_overhang/aggregate_r1_audit_shards_v032.py)" = "$PIN_AGG_BLOB"
+          python -m py_compile             research/aave_liquidation_overhang/r1_scaled_ledger_audit_v01.py             research/aave_liquidation_overhang/r1_audit_sample_from_census_v032.py             research/aave_liquidation_overhang/r1_audit_token_shard_v032.py             research/aave_liquidation_overhang/aggregate_r1_audit_shards_v032.py
+
+      - name: Install sample dependency
+        run: pip install --disable-pip-version-check 'eth-hash[pycryptodome]'
+
+      - name: Download canonical Source Census shards
+        uses: actions/download-artifact@v4
+        with:
+          pattern: AAVE_CENSUS_SHARD_*
+          path: downloaded_census_shards
+          merge-multiple: false
+          github-token: ${{ github.token }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: ${{ env.CENSUS_RUN_ID }}
+
+      - name: Derive exact frozen sample
+        run: python research/aave_liquidation_overhang/r1_audit_sample_from_census_v032.py
+
+      - name: Upload exact sample receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: AAVE_R1_AUDIT_SAMPLE_V0_3_2
+          path: r1_audit_sample_output/AAVE_LIQUIDATION_OVERHANG_001_R1_AUDIT_SAMPLE_V0_3_2.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  token-event-shards:
+    needs: sample-derivation
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shard_id: "01"
+            from_block: 16490000
+            to_block: 17119486
+          - shard_id: "02"
+            from_block: 17119487
+            to_block: 17748973
+          - shard_id: "03"
+            from_block: 17748974
+            to_block: 18378460
+          - shard_id: "04"
+            from_block: 18378461
+            to_block: 19007946
+          - shard_id: "05"
+            from_block: 19007947
+            to_block: 19637432
+          - shard_id: "06"
+            from_block: 19637433
+            to_block: 20266918
+          - shard_id: "07"
+            from_block: 20266919
+            to_block: 20896404
+          - shard_id: "08"
+            from_block: 20896405
+            to_block: 21525890
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install source dependencies
+        run: pip install --disable-pip-version-check requests 'eth-hash[pycryptodome]'
+
+      - name: Pin shard implementation
+        run: |
+          test "$(git hash-object research/aave_liquidation_overhang/r1_scaled_ledger_audit_v01.py)" = "$PIN_ORIGINAL_AUDIT_BLOB"
+          test "$(git hash-object research/aave_liquidation_overhang/r1_audit_token_shard_v032.py)" = "$PIN_SHARD_BLOB"
+
+      - name: Download exact sample
+        uses: actions/download-artifact@v4
+        with:
+          name: AAVE_R1_AUDIT_SAMPLE_V0_3_2
+          path: downloaded_r1_sample
+
+      - name: Download canonical R0 bootstrap
+        uses: actions/download-artifact@v4
+        with:
+          name: AAVE_RECON_R0_BOOTSTRAP
+          path: downloaded_r0_bootstrap
+          github-token: ${{ github.token }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: ${{ env.R0_RUN_ID }}
+
+      - name: Acquire exact token-event shard
+        env:
+          R1_AUDIT_SHARD_ID: ${{ matrix.shard_id }}
+          R1_AUDIT_FROM_BLOCK: ${{ matrix.from_block }}
+          R1_AUDIT_TO_BLOCK: ${{ matrix.to_block }}
+        run: python research/aave_liquidation_overhang/r1_audit_token_shard_v032.py
+
+      - name: Upload token-event shard receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: AAVE_R1_AUDIT_TOKEN_SHARD_${{ matrix.shard_id }}
+          path: r1_audit_token_shards/r1_audit_token_shard_${{ matrix.shard_id }}.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  canonical-audit-adjudication:
+    if: always() && needs.sample-derivation.result == 'success'
+    needs:
+      - sample-derivation
+      - token-event-shards
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install RPC validation dependencies
+        run: pip install --disable-pip-version-check requests 'eth-hash[pycryptodome]'
+
+      - name: Pin canonical aggregator and original validator
+        run: |
+          test "$(git hash-object research/aave_liquidation_overhang/r1_scaled_ledger_audit_v01.py)" = "$PIN_ORIGINAL_AUDIT_BLOB"
+          test "$(git hash-object research/aave_liquidation_overhang/aggregate_r1_audit_shards_v032.py)" = "$PIN_AGG_BLOB"
+
+      - name: Download exact sample
+        uses: actions/download-artifact@v4
+        with:
+          name: AAVE_R1_AUDIT_SAMPLE_V0_3_2
+          path: downloaded_r1_sample
+
+      - name: Download all token-event shard receipts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: AAVE_R1_AUDIT_TOKEN_SHARD_*
+          path: downloaded_r1_token_shards
+          merge-multiple: false
+
+      - name: Download canonical R0 bootstrap
+        uses: actions/download-artifact@v4
+        with:
+          name: AAVE_RECON_R0_BOOTSTRAP
+          path: downloaded_r0_bootstrap
+          github-token: ${{ github.token }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: ${{ env.R0_RUN_ID }}
+
+      - name: Aggregate and adjudicate exact frozen R1 audit
+        run: python research/aave_liquidation_overhang/aggregate_r1_audit_shards_v032.py
+
+      - name: Upload canonical R1 audit receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: AAVE_LIQUIDATION_OVERHANG_001_R1_SCALED_LEDGER_AUDIT_V0_3_2
+          path: r1_scaled_ledger_audit_output/AAVE_LIQUIDATION_OVERHANG_001_R1_SCALED_LEDGER_AUDIT_V0_3_2.json
+          if-no-files-found: warn
+          retention-days: 30
