@@ -270,6 +270,51 @@ class DH03ShadowEngine:
         rec=self.evidence.append_once("DH03_FORWARD_SIGNAL",key,payload)
         return {"status":"SIGNAL_RECORDED" if rec["inserted"] else "SIGNAL_DUPLICATE","event_key":key}
 
+    def on_open_1m(
+        self,
+        symbol:str,
+        open_time:int,
+        open_price:float,
+        source:str="BINANCE_USDM_PUBLIC_WEBSOCKET",
+    )->list[dict[str,Any]]:
+        signals=self._payloads("DH03_FORWARD_SIGNAL")
+        entries=self._payloads("DH03_FORWARD_ENTRY")
+        resolutions=self._payloads("DH03_FORWARD_RESOLUTION")
+        deviations=self._payloads("DH03_FORWARD_DEVIATION")
+        changes=[]
+        for key,payload in signals.items():
+            if payload.get("symbol")!=symbol or key in entries or key in resolutions or key in deviations:
+                continue
+            cand_payload=payload.get("candidate") or {}
+            entry_time=int(cand_payload["signal_close_time"])
+            if open_time<entry_time:
+                continue
+            if open_time>entry_time:
+                d={
+                    "event_key":key,"symbol":symbol,
+                    "reason":"MISSED_EXACT_ENTRY_MINUTE_NO_RECONSTRUCTION",
+                    "expected_entry_open_time":entry_time,"first_seen_minute":open_time,
+                }
+                self.evidence.append_once("DH03_FORWARD_DEVIATION",key,d)
+                changes.append(d)
+                continue
+            from .dh03_12h_core import SignalCandidate
+            candidate=SignalCandidate(**cand_payload)
+            try:
+                signal=bind_exact_entry(candidate,open_time,open_price)
+            except ValueError as exc:
+                d={"event_key":key,"symbol":symbol,"reason":f"PRE_ENTRY_CANCELLED:{exc}"}
+                self.evidence.append_once("DH03_FORWARD_DEVIATION",key,d)
+                changes.append(d)
+                continue
+            entry={
+                "event_key":key,"symbol":symbol,"signal":asdict(signal),
+                "source":source,"orders_created":False,"live_capital_enabled":False,
+            }
+            self.evidence.append_once("DH03_FORWARD_ENTRY",key,entry)
+            changes.append({"status":"ENTRY_BOUND","event_key":key})
+        return changes
+
     def on_closed_1m(self,symbol:str,row:tuple[int,float,float,float,float],source:str="BINANCE_USDM_PUBLIC_WEBSOCKET")->list[dict[str,Any]]:
         self.market.put_minute(symbol,row,source)
         t,o,hi,lo,c=row
@@ -280,39 +325,8 @@ class DH03ShadowEngine:
         changes=[]
 
         for key,payload in signals.items():
-            if payload.get("symbol")!=symbol or key in resolutions or key in deviations:
+            if payload.get("symbol")!=symbol or key in resolutions or key in deviations or key not in entries:
                 continue
-            cand_payload=payload.get("candidate") or {}
-            entry_time=int(cand_payload["signal_close_time"])
-            if key not in entries:
-                if t<entry_time:
-                    continue
-                if t>entry_time:
-                    d={
-                        "event_key":key,"symbol":symbol,
-                        "reason":"MISSED_EXACT_ENTRY_MINUTE_NO_RECONSTRUCTION",
-                        "expected_entry_open_time":entry_time,"first_seen_minute":t,
-                    }
-                    self.evidence.append_once("DH03_FORWARD_DEVIATION",key,d)
-                    changes.append(d)
-                    continue
-                from .dh03_12h_core import SignalCandidate
-                candidate=SignalCandidate(**cand_payload)
-                try:
-                    signal=bind_exact_entry(candidate,t,o)
-                except ValueError as exc:
-                    d={"event_key":key,"symbol":symbol,"reason":f"PRE_ENTRY_CANCELLED:{exc}"}
-                    self.evidence.append_once("DH03_FORWARD_DEVIATION",key,d)
-                    changes.append(d)
-                    continue
-                entry={
-                    "event_key":key,"symbol":symbol,"signal":asdict(signal),
-                    "source":source,"orders_created":False,"live_capital_enabled":False,
-                }
-                self.evidence.append_once("DH03_FORWARD_ENTRY",key,entry)
-                entries[key]=entry
-                changes.append({"status":"ENTRY_BOUND","event_key":key})
-
             signal_payload=(entries[key].get("signal") or {})
             from .dh03_12h_core import Signal
             signal=Signal(**signal_payload)
@@ -426,15 +440,17 @@ class DH03LocalCollector:
                         event=str(data.get("e",""))
                         if event=="kline":
                             k=data.get("k")
-                            if not isinstance(k,dict) or not bool(k.get("x")):
+                            if not isinstance(k,dict):
                                 continue
                             interval=str(k.get("i"))
-                            if interval=="15m":
+                            if interval=="1m":
+                                self.engine.on_open_1m(symbol,int(k["t"]),float(k["o"]))
+                                if bool(k.get("x")):
+                                    row=(int(k["t"]),float(k["o"]),float(k["h"]),float(k["l"]),float(k["c"]))
+                                    self.engine.on_closed_1m(symbol,row)
+                            elif interval=="15m" and bool(k.get("x")):
                                 row=(int(k["t"]),float(k["o"]),float(k["h"]),float(k["l"]),float(k["c"]),float(k["v"]))
                                 self.engine.on_closed_15m(symbol,row)
-                            elif interval=="1m":
-                                row=(int(k["t"]),float(k["o"]),float(k["h"]),float(k["l"]),float(k["c"]))
-                                self.engine.on_closed_1m(symbol,row)
                         elif event=="markPriceUpdate":
                             self.engine.on_mark_price(
                                 symbol,int(data["E"]),int(data["T"]),float(data["r"])
