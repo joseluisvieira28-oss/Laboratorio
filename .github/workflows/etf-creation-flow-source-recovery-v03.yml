@@ -1,0 +1,55 @@
+name: ETF Creation Flow Source Recovery V0.3
+
+on:
+  push:
+    branches:
+      - etf-creation-flow-source-recovery-v0.3
+    paths:
+      - 'labs/ETF_CREATION_FLOW_001/SOURCE_RECOVERY_TRIGGER_V0.3.txt'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: etf-creation-flow-source-recovery-v03
+  cancel-in-progress: false
+
+jobs:
+  source_recovery:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: etf-creation-flow-source-recovery-v0.3
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --disable-pip-version-check requests==2.32.3
+      - name: Verify frozen source authority
+        run: |
+          python - <<'PY'
+          import json
+          a=json.load(open('labs/ETF_CREATION_FLOW_001/SOURCE_RECOVERY_AUTHORITY_V0.3.json'))
+          assert a['source_gate_id']=='ECF-IBIT-SHARES-SOURCE-003'
+          assert a['status']=='PRE_ACQUISITION_FROZEN_SOURCE_ONLY'
+          assert a['frozen_probe_dates']==['2024-03-28','2024-06-28','2024-09-30','2024-12-30']
+          assert a['pass_gate']['minimum_exact_dates']==3
+          assert a['pass_gate']['minimum_distinct_calendar_quarters']==3
+          assert a['firewalls']['access_2025'] is False
+          assert a['firewalls']['access_2026'] is False
+          assert a['firewalls']['current_latest_holdings_route'] is False
+          assert a['firewalls']['current_data_download_workbook'] is False
+          print('ETF_CREATION_FLOW_SOURCE_V03_AUTHORITY_PASS')
+          PY
+      - run: python -m py_compile labs/ETF_CREATION_FLOW_001/source_recovery_v03.py
+      - name: Execute source-only recovery probe
+        run: python labs/ETF_CREATION_FLOW_001/source_recovery_v03.py
+      - name: Upload immutable source receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: etf-creation-flow-source-recovery-v03-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/etf_creation_flow_source_recovery_v03/
+          retention-days: 90
+          if-no-files-found: warn
