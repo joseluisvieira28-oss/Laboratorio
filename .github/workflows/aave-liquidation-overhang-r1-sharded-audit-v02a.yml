@@ -1,0 +1,181 @@
+name: AAVE Liquidation Overhang 001 — R1 Sharded Audit V0.2A
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - aave-liquidation-overhang-v0.1
+    paths:
+      - 'research/aave_liquidation_overhang/R1_SHARDED_AUDIT_TRIGGER_V0_2A.txt'
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  PINNED_R0_RUN_ID: '35218275356'
+
+jobs:
+  equivalence-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --disable-pip-version-check requests 'eth-hash[pycryptodome]'
+      - name: Compile sharded audit code
+        run: |
+          python -m py_compile research/aave_liquidation_overhang/r1_sharded_equivalence_qa_v02a.py
+          python -m py_compile research/aave_liquidation_overhang/r1_borrow_census_shard_v02a.py
+          python -m py_compile research/aave_liquidation_overhang/r1_borrow_sample_aggregate_v02a.py
+          python -m py_compile research/aave_liquidation_overhang/r1_delta_shard_v02a.py
+          python -m py_compile research/aave_liquidation_overhang/r1_sharded_audit_aggregate_v02a.py
+      - name: Synthetic split-merge equivalence QA
+        run: python research/aave_liquidation_overhang/r1_sharded_equivalence_qa_v02a.py
+
+  borrow-census:
+    needs: equivalence-qa
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { shard_id: '0', block_start: '16490000', block_end: '17119486' }
+          - { shard_id: '1', block_start: '17119487', block_end: '17748973' }
+          - { shard_id: '2', block_start: '17748974', block_end: '18378460' }
+          - { shard_id: '3', block_start: '18378461', block_end: '19007946' }
+          - { shard_id: '4', block_start: '19007947', block_end: '19637432' }
+          - { shard_id: '5', block_start: '19637433', block_end: '20266918' }
+          - { shard_id: '6', block_start: '20266919', block_end: '20896404' }
+          - { shard_id: '7', block_start: '20896405', block_end: '21525890' }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --disable-pip-version-check requests 'eth-hash[pycryptodome]'
+      - name: Borrow census shard
+        env:
+          R1_SHARD_ID: ${{ matrix.shard_id }}
+          R1_BLOCK_START: ${{ matrix.block_start }}
+          R1_BLOCK_END: ${{ matrix.block_end }}
+        run: python research/aave_liquidation_overhang/r1_borrow_census_shard_v02a.py
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: AAVE_R1_BORROW_SHARD_${{ matrix.shard_id }}
+          path: r1_borrow_shards/borrow_shard_${{ matrix.shard_id }}.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  sample-aggregate:
+    needs: borrow-census
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --disable-pip-version-check requests 'eth-hash[pycryptodome]'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: AAVE_R1_BORROW_SHARD_*
+          path: downloaded_borrow_shards
+          merge-multiple: true
+      - name: Freeze exact aggregated borrower sample
+        run: python research/aave_liquidation_overhang/r1_borrow_sample_aggregate_v02a.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AAVE_R1_SHARDED_SAMPLE_V0_2A
+          path: r1_borrow_sample/AAVE_LIQUIDATION_OVERHANG_001_R1_BORROW_SAMPLE_V0_2A.json
+          if-no-files-found: error
+          retention-days: 30
+
+  delta-replay:
+    needs: sample-aggregate
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { shard_id: '0', block_start: '16490000', block_end: '17119486' }
+          - { shard_id: '1', block_start: '17119487', block_end: '17748973' }
+          - { shard_id: '2', block_start: '17748974', block_end: '18378460' }
+          - { shard_id: '3', block_start: '18378461', block_end: '19007946' }
+          - { shard_id: '4', block_start: '19007947', block_end: '19637432' }
+          - { shard_id: '5', block_start: '19637433', block_end: '20266918' }
+          - { shard_id: '6', block_start: '20266919', block_end: '20896404' }
+          - { shard_id: '7', block_start: '20896405', block_end: '21525890' }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --disable-pip-version-check requests 'eth-hash[pycryptodome]'
+      - uses: actions/download-artifact@v4
+        with:
+          name: AAVE_R1_SHARDED_SAMPLE_V0_2A
+          path: downloaded_r1_sample
+      - uses: actions/download-artifact@v4
+        with:
+          name: AAVE_RECON_R0_BOOTSTRAP
+          path: downloaded_r0_bootstrap
+          github-token: ${{ github.token }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: ${{ env.PINNED_R0_RUN_ID }}
+      - name: Scaled-token delta replay shard
+        env:
+          R1_SHARD_ID: ${{ matrix.shard_id }}
+          R1_BLOCK_START: ${{ matrix.block_start }}
+          R1_BLOCK_END: ${{ matrix.block_end }}
+        run: python research/aave_liquidation_overhang/r1_delta_shard_v02a.py
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: AAVE_R1_DELTA_SHARD_${{ matrix.shard_id }}
+          path: r1_delta_shards/delta_shard_${{ matrix.shard_id }}.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  canonical-r1-audit:
+    needs:
+      - sample-aggregate
+      - delta-replay
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --disable-pip-version-check requests 'eth-hash[pycryptodome]'
+      - uses: actions/download-artifact@v4
+        with:
+          name: AAVE_R1_SHARDED_SAMPLE_V0_2A
+          path: downloaded_r1_sample
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: AAVE_R1_DELTA_SHARD_*
+          path: downloaded_delta_shards
+          merge-multiple: true
+      - uses: actions/download-artifact@v4
+        with:
+          name: AAVE_RECON_R0_BOOTSTRAP
+          path: downloaded_r0_bootstrap
+          github-token: ${{ github.token }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: ${{ env.PINNED_R0_RUN_ID }}
+      - name: Canonical merge, replay and archive-RPC adjudication
+        run: python research/aave_liquidation_overhang/r1_sharded_audit_aggregate_v02a.py
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: AAVE_LIQUIDATION_OVERHANG_001_R1_SCALED_LEDGER_AUDIT_V0_2A
+          path: r1_sharded_audit_output/AAVE_LIQUIDATION_OVERHANG_001_R1_SCALED_LEDGER_AUDIT_V0_2A.json
+          if-no-files-found: warn
+          retention-days: 30
