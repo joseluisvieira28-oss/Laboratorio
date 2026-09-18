@@ -207,13 +207,16 @@ def bind_exact_entry(candidate:SignalCandidate,entry_open_time:int,entry_price:f
 def funding_cashflow(
     funding_events:list[tuple[int,float]], entry_time:int, exit_time:int
 )->tuple[float,int]:
+    ordered=sorted((int(ts),float(rate)) for ts,rate in funding_events)
+    if any(ordered[i][0]<=ordered[i-1][0] for i in range(1,len(ordered))):
+        raise ValueError("funding timestamps must be strictly increasing")
+    if any(not isfinite(rate) for _,rate in ordered):
+        raise ValueError("non-finite funding")
     selected=[
-        rate for ts,rate in funding_events
+        rate for ts,rate in ordered
         if ts>entry_time and ts<exit_time
     ]
-    if any(not isfinite(float(x)) for x in selected):
-        raise ValueError("non-finite funding")
-    return -sum(float(x) for x in selected),len(selected)
+    return -sum(selected),len(selected)
 
 
 def resolve_minute_path(
@@ -223,6 +226,9 @@ def resolve_minute_path(
 )->MinuteOutcome:
     if not minutes:
         return MinuteOutcome(False,None,None,"EXECUTION_PATH_UNRESOLVED_END",None,None,0,None,None,None)
+    eligible=[row for row in minutes if int(row[0])>=signal.entry_open_time]
+    if not eligible or int(eligible[0][0])!=signal.entry_open_time:
+        return MinuteOutcome(False,None,None,"EXECUTION_PATH_UNRESOLVED_ENTRY",None,None,0,None,None,None)
     deadline=signal.entry_open_time+MAX_HOLD_MS
     previous=None
     exit_t=None
