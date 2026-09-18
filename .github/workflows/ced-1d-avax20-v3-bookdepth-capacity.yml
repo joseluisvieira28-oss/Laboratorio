@@ -1,0 +1,99 @@
+name: CED 1D AVAX20 V3 BookDepth Capacity
+
+on:
+  push:
+    branches:
+      - ced-1d-v3-byte-recovery-2026-09-17
+    paths:
+      - '.github/workflows/ced-1d-avax20-v3-bookdepth-capacity.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  capacity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      ROOT: Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3
+      ONE_ID: "10545241942"
+      ONE_SHA: "43984d73541085b76c9071e959de34284a8940e5968e10f04664cf56369987b5"
+      EXEC_ID: "10546145535"
+      EXEC_SHA: "5b784d64aa9d2741f9c16c331d7e75f9d428bf5912e5fe8e59815292df288d84"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Assert frozen implementation identity
+        run: |
+          test "$(git hash-object "$ROOT/ced_1d_avax20_bookdepth_capacity_v01.py")" = "dc804f77b608be98963eb654b51292e7fbefbee6"
+          test "$(git hash-object "$ROOT/tests/test_ced_1d_avax20_bookdepth_capacity_v01.py")" = "e548676679148b27d0b3d766241c6e9582aae6e0"
+          test "$(git hash-object "governance/CED_1D_AVAX20_V3_BOOKDEPTH_CAPACITY_CORROBORATION_FREEZE_2026-09-18.md")" = "7711e728304ebc9eadd760990f38b7a6d6e0f947"
+          python -m py_compile "$ROOT/ced_1d_avax20_bookdepth_capacity_v01.py"
+          python "$ROOT/tests/test_ced_1d_avax20_bookdepth_capacity_v01.py"
+          echo BOOKDEPTH_IMPLEMENTATION_IDENTITY_PASS
+
+      - name: Download immutable parent artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/one" "$RUNNER_TEMP/exe"
+          curl -fL -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json"             "https://api.github.com/repos/${{ github.repository }}/actions/artifacts/$ONE_ID/zip"             -o "$RUNNER_TEMP/one.zip"
+          curl -fL -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json"             "https://api.github.com/repos/${{ github.repository }}/actions/artifacts/$EXEC_ID/zip"             -o "$RUNNER_TEMP/exe.zip"
+          test "$(sha256sum "$RUNNER_TEMP/one.zip" | awk '{print $1}')" = "$ONE_SHA"
+          test "$(sha256sum "$RUNNER_TEMP/exe.zip" | awk '{print $1}')" = "$EXEC_SHA"
+          unzip -q "$RUNNER_TEMP/one.zip" -d "$RUNNER_TEMP/one"
+          unzip -q "$RUNNER_TEMP/exe.zip" -d "$RUNNER_TEMP/exe"
+          test -f "$RUNNER_TEMP/one/CED1D_2025_EVENT_LEDGER.csv"
+          test -f "$RUNNER_TEMP/one/CED_1D_2025_ONE_SHOT_CONFIRMATION_RECEIPT_V0.1.json"
+          test -f "$RUNNER_TEMP/exe/CED_1D_AVAX20_V3_EXECUTION_FEASIBILITY_RECEIPT_V0.1.json"
+          test -f "$RUNNER_TEMP/exe/AVAX20_EXECUTION_LEGS.csv"
+          echo IMMUTABLE_PARENT_ARTIFACTS_PASS
+
+      - name: Execute frozen all-leg bookDepth capacity corroboration
+        run: |
+          python "$ROOT/ced_1d_avax20_bookdepth_capacity_v01.py"             --ledger "$RUNNER_TEMP/one/CED1D_2025_EVENT_LEDGER.csv"             --one-shot-receipt "$RUNNER_TEMP/one/CED_1D_2025_ONE_SHOT_CONFIRMATION_RECEIPT_V0.1.json"             --prior-execution-receipt "$RUNNER_TEMP/exe/CED_1D_AVAX20_V3_EXECUTION_FEASIBILITY_RECEIPT_V0.1.json"             --prior-execution-legs "$RUNNER_TEMP/exe/AVAX20_EXECUTION_LEGS.csv"             --output "$RUNNER_TEMP/bookdepth"             --workers 8
+
+      - name: Assert governance firewall
+        run: |
+          python - <<'PY'
+          import json,os
+          p=os.path.join(os.environ['RUNNER_TEMP'],'bookdepth','CED_1D_AVAX20_V3_BOOKDEPTH_CAPACITY_RECEIPT_V0.1.json')
+          x=json.load(open(p))
+          assert x['candidate']=='CED1D-0031',x
+          assert x['metrics']['legs_required']==714,x
+          g=x['governance']
+          assert g['year_2026_accessed'] is False,g
+          assert g['live_trading'] is False,g
+          assert g['orders'] is False,g
+          assert g['exchange_mutation'] is False,g
+          assert g['signal_changed'] is False,g
+          assert g['events_changed'] is False,g
+          assert g['aggtrades_5s_rule_changed'] is False,g
+          assert x['prior_print_fill_proxy_fail_preserved'] is True,x
+          print('BOOKDEPTH_FIREWALL_PASS')
+          print('CAPACITY_STATUS',x['status'])
+          print('COMPOSITE_EXECUTION_FEASIBLE',x['composite_execution_feasible'])
+          PY
+
+      - name: Package evidence
+        if: always()
+        run: |
+          mkdir -p "$RUNNER_TEMP/final"
+          cp "$RUNNER_TEMP/bookdepth/"* "$RUNNER_TEMP/final/" 2>/dev/null || true
+          cp governance/CED_1D_AVAX20_V3_BOOKDEPTH_CAPACITY_CORROBORATION_FREEZE_2026-09-18.md "$RUNNER_TEMP/final/"
+          cp governance/CED_1D_AVAX20_V3_BOOKDEPTH_CAPACITY_IMPLEMENTATION_FREEZE_2026-09-18.md "$RUNNER_TEMP/final/"
+          find "$RUNNER_TEMP/final" -type f -print0 | sort -z | xargs -0 sha256sum > "$RUNNER_TEMP/final/ARTIFACT_MEMBER_SHA256.txt" || true
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ced1d-avax20-v3-bookdepth-capacity
+          path: ${{ runner.temp }}/final
+          if-no-files-found: error
+          retention-days: 30
