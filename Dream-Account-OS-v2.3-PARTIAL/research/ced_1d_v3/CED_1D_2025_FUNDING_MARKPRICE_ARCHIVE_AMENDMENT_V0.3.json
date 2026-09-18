@@ -1,0 +1,68 @@
+{
+  "document_id": "CED_1D_2025_FUNDING_MARKPRICE_ARCHIVE_AMENDMENT_V0.3",
+  "frozen_at_utc": "2026-09-18T11:35:06Z",
+  "status": "FROZEN_BEFORE_2025_CONFIRMATION_OUTCOMES",
+  "supersedes_transport_only": "CED_1D_2025_FUNDING_MARKPRICE_TRANSPORT_AMENDMENT_V0.2",
+  "parent_execution_freeze": "governance/CED_1D_V3_2025_CONFIRMATION_EXECUTION_FREEZE_2026-09-18.md",
+  "prior_transport_result": {
+    "rest_primary": "HTTP_451",
+    "rest_mirrors": "NO_EXACT_SCHEMA_MIRROR_AVAILABLE",
+    "economic_outcomes_accessed": false
+  },
+  "source_contract": {
+    "funding": {
+      "provider": "BINANCE_PUBLIC_DATA",
+      "dataset": "USD-M monthly fundingRate",
+      "path_pattern": "data/futures/um/monthly/fundingRate/{SYMBOL}/{SYMBOL}-fundingRate-2025-{MM}.zip",
+      "expected_records_per_symbol": 1095,
+      "mapping": "calc_time->fundingTime; last_funding_rate->fundingRate; funding_interval_hours preserved"
+    },
+    "mark_price": {
+      "provider": "BINANCE_PUBLIC_DATA",
+      "dataset": "USD-M monthly markPriceKlines",
+      "interval": "1m",
+      "path_pattern": "data/futures/um/monthly/markPriceKlines/{SYMBOL}/1m/{SYMBOL}-1m-2025-{MM}.zip",
+      "mapping": "markPrice = OPEN of the unique 1m mark-price candle with open_time exactly equal to fundingTime"
+    }
+  },
+  "exact_pairing": {
+    "symbols": [
+      "AVAXUSDT",
+      "SOLUSDT"
+    ],
+    "start_time_ms": 1735689600000,
+    "end_time_ms": 1767225599999,
+    "required_pairing": "one funding settlement -> exactly one mark-price candle at identical normalized millisecond timestamp",
+    "duplicate_or_missing": "FAIL_CLOSED",
+    "rate_population_change": "FORBIDDEN",
+    "approximate_or_nearest_timestamp": "FORBIDDEN",
+    "interpolation": "FORBIDDEN"
+  },
+  "integrity": {
+    "checksum_every_archive": true,
+    "zip_crc": true,
+    "schema_validation": true,
+    "strictly_ascending_unique_funding_times": true,
+    "positive_finite_mark_price": true,
+    "finite_funding_rate": true,
+    "no_fixed_funding_schedule_assumed": true
+  },
+  "scientific_invariants": {
+    "target_population_change": false,
+    "signal_change": false,
+    "costs_change": false,
+    "funding_pnl_formula_change": false,
+    "market_outcomes_accessed": false,
+    "year_2026_accessed": false
+  },
+  "governance": {
+    "source_only": true,
+    "returns_computed": false,
+    "pnl_computed": false,
+    "promotion_computed": false,
+    "orders": false,
+    "live_capital": false,
+    "exchange_mutation": false,
+    "merge_main": false
+  }
+}
