@@ -1,0 +1,84 @@
+{
+  "lab_id": "AAVE-CREDIT-STRESS-001",
+  "gate_id": "AAVE-CS001-DECODE-SCHEMA-001",
+  "status": "PRE_DECODE_FROZEN_OUTCOME_BLIND",
+  "frozen_at_utc": "2026-09-18T09:56:00Z",
+  "parent_source_gate": {
+    "id": "AAVE-CS001-SOURCE-002-SQD",
+    "canonical_run": 35315587454,
+    "classification": "SOURCE_DATA_PASS"
+  },
+  "source": {
+    "provider": "SQD Ethereum mainnet Portal",
+    "endpoint": "https://portal.sqd.dev/datasets/ethereum-mainnet/stream",
+    "pool": "0x87870bca3f3fd6335c3f4ce8392d69350b4fa4e2",
+    "event_signature": "ReserveDataUpdated(address,uint256,uint256,uint256,uint256,uint256)",
+    "topic0": "0x804c9b842b2748a22bb64b345453a3de7ca54a6ca45ce00d415894979e22897a",
+    "reserve": "USDC",
+    "topic1": "0x000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+    "windows": [
+      {
+        "label": "Q1",
+        "from_block": 19000000,
+        "to_block": 19000500
+      },
+      {
+        "label": "Q2",
+        "from_block": 19650000,
+        "to_block": 19650500
+      },
+      {
+        "label": "Q3",
+        "from_block": 20300000,
+        "to_block": 20300500
+      },
+      {
+        "label": "Q4",
+        "from_block": 20950000,
+        "to_block": 20950500
+      }
+    ]
+  },
+  "abi_decode": {
+    "indexed_topics": [
+      "reserve"
+    ],
+    "data_words": [
+      "liquidityRate",
+      "stableBorrowRate",
+      "variableBorrowRate",
+      "liquidityIndex",
+      "variableBorrowIndex"
+    ],
+    "word_bytes": 32,
+    "exact_data_bytes": 160,
+    "rate_unit": "RAY_1e27_PER_YEAR_RAW",
+    "index_unit": "RAY_1e27_RAW",
+    "permitted_outputs": [
+      "raw uint256 words",
+      "decimal ray-normalized values",
+      "timestamps/block/log identity",
+      "per-window structural and range summaries"
+    ]
+  },
+  "pass_gate": {
+    "all_four_windows_exact_terminal_block": true,
+    "each_window_decodes_at_least_one_matching_log": true,
+    "every_retained_log_exactly_five_uint256_words": true,
+    "variableBorrowRate_present_for_every_log": true,
+    "no_duplicate_block_tx_log_identity": true,
+    "maximum_timestamp_utc": "2024-12-31T23:59:59Z"
+  },
+  "forbidden": [
+    "construct stress predictor",
+    "aggregate to daily predictor series",
+    "open BTC prices or returns",
+    "compute regression, PnL, or direction",
+    "access 2025 or 2026",
+    "live trading",
+    "exchange mutation",
+    "wallet access",
+    "merge main"
+  ],
+  "post_pass_rule": "PASS authorizes only a separately frozen 2023-2024 full-history daily-series source acquisition/preparation gate. It does not authorize BTC outcomes or Discovery."
+}
