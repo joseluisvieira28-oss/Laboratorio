@@ -1,0 +1,58 @@
+name: CED 1D 2025 Funding MarkPrice Interval Source Gate
+
+on:
+  push:
+    branches:
+      - ced-1d-v3-byte-recovery-2026-09-17
+    paths:
+      - '.github/workflows/ced-1d-2025-funding-markprice-interval-gate.yml'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/CED_1D_2025_FUNDING_MARKPRICE_INTERVAL_SOURCE_AMENDMENT_V0.4.json'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/ced_1d_2025_funding_markprice_interval_gate_v04.py'
+      - 'governance/CED_1D_2025_FUNDING_MARK_PRICE_INTERVAL_BOUND_AMENDMENT_V0.2_2026-09-18.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  markprice-interval-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      ROOT: Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile
+        run: python -m py_compile "$ROOT/ced_1d_2025_funding_markprice_interval_gate_v04.py"
+      - name: Bind funding settlements to official markPrice LOW HIGH intervals
+        run: |
+          python "$ROOT/ced_1d_2025_funding_markprice_interval_gate_v04.py" \
+            --amendment "$ROOT/CED_1D_2025_FUNDING_MARKPRICE_INTERVAL_SOURCE_AMENDMENT_V0.4.json" \
+            --output "$RUNNER_TEMP/markprice-interval"
+      - name: Assert source-only firewall
+        run: |
+          python - <<'PY'
+          import json,os
+          p=os.path.join(os.environ['RUNNER_TEMP'],'markprice-interval','CED_1D_2025_FUNDING_MARKPRICE_INTERVAL_SOURCE_GATE_RECEIPT_V0.4.json')
+          x=json.load(open(p))
+          assert x['status']=='FUNDING_MARKPRICE_INTERVAL_SOURCE_PASS',x
+          assert x['symbols']['AVAXUSDT']['paired_records']==1095,x
+          assert x['symbols']['SOLUSDT']['paired_records']==1095,x
+          for k in ('signals_computed','returns_computed','pnl_computed','promotion_computed','year_2026_accessed'):
+              assert x[k] is False,(k,x)
+          print('MARKPRICE_INTERVAL_SOURCE_FIREWALL_PASS')
+          PY
+      - name: Remove bulky archive ZIPs before artifact upload
+        if: always()
+        run: find "$RUNNER_TEMP/markprice-interval" -type f \( -name '*.zip' -o -name '*.CHECKSUM' \) -delete || true
+      - name: Upload interval source evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ced1d-2025-funding-markprice-interval-source
+          path: ${{ runner.temp }}/markprice-interval
+          if-no-files-found: warn
+          retention-days: 30
