@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextlib import closing
 from dataclasses import asdict
 from datetime import date, datetime, timedelta, timezone
 import json
@@ -36,7 +37,7 @@ class DH03MarketStore:
     def __init__(self,path:str)->None:
         self.path=path
         Path(path).parent.mkdir(parents=True,exist_ok=True)
-        with self._connect() as conn:
+        with closing(self._connect()) as conn:
             conn.executescript("""
             PRAGMA journal_mode=WAL;
             CREATE TABLE IF NOT EXISTS bars15m(
@@ -70,40 +71,40 @@ class DH03MarketStore:
         return sqlite3.connect(self.path)
 
     def set_meta(self,key:str,value:Any)->None:
-        with self._connect() as conn:
+        with closing(self._connect()) as conn:
             conn.execute(
                 "INSERT INTO meta(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
                 (key,json.dumps(value,sort_keys=True))
             )
 
     def get_meta(self,key:str,default:Any=None)->Any:
-        with self._connect() as conn:
+        with closing(self._connect()) as conn:
             row=conn.execute("SELECT value FROM meta WHERE key=?",(key,)).fetchone()
         return default if row is None else json.loads(row[0])
 
     def put_15m(self,symbol:str,row:tuple[int,float,float,float,float,float],source:str)->None:
-        with self._connect() as conn:
+        with closing(self._connect()) as conn:
             conn.execute(
                 "INSERT OR IGNORE INTO bars15m(symbol,open_time,o,h,l,c,v,source) VALUES(?,?,?,?,?,?,?,?)",
                 (symbol,*row,source)
             )
 
     def put_minute(self,symbol:str,row:tuple[int,float,float,float,float],source:str)->None:
-        with self._connect() as conn:
+        with closing(self._connect()) as conn:
             conn.execute(
                 "INSERT OR IGNORE INTO minutes(symbol,open_time,o,h,l,c,source) VALUES(?,?,?,?,?,?,?)",
                 (symbol,*row,source)
             )
 
     def put_funding(self,symbol:str,settlement:int,rate:float,source:str)->None:
-        with self._connect() as conn:
+        with closing(self._connect()) as conn:
             conn.execute(
                 "INSERT OR IGNORE INTO funding(symbol,funding_time,rate,source) VALUES(?,?,?,?)",
                 (symbol,settlement,rate,source)
             )
 
     def bars15m(self,symbol:str)->list[Bar]:
-        with self._connect() as conn:
+        with closing(self._connect()) as conn:
             rows=conn.execute(
                 "SELECT open_time,o,h,l,c,v FROM bars15m WHERE symbol=? ORDER BY open_time",
                 (symbol,)
@@ -111,7 +112,7 @@ class DH03MarketStore:
         return [Bar(int(t),float(o),float(h),float(l),float(c),float(v)) for t,o,h,l,c,v in rows]
 
     def minutes_since(self,symbol:str,start_ms:int)->list[tuple[int,float,float,float,float]]:
-        with self._connect() as conn:
+        with closing(self._connect()) as conn:
             rows=conn.execute(
                 "SELECT open_time,o,h,l,c FROM minutes WHERE symbol=? AND open_time>=? ORDER BY open_time",
                 (symbol,start_ms)
@@ -119,7 +120,7 @@ class DH03MarketStore:
         return [(int(t),float(o),float(h),float(l),float(c)) for t,o,h,l,c in rows]
 
     def funding_between(self,symbol:str,start_ms:int,end_ms:int)->list[tuple[int,float]]:
-        with self._connect() as conn:
+        with closing(self._connect()) as conn:
             rows=conn.execute(
                 "SELECT funding_time,rate FROM funding WHERE symbol=? AND funding_time>? AND funding_time<? ORDER BY funding_time",
                 (symbol,start_ms,end_ms)
