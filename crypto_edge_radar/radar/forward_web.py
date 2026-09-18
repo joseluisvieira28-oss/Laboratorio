@@ -27,6 +27,8 @@ from .tfg_forward_metrics import evaluate_tfg_forward_evidence
 from .options_v21_live import BinanceBTCUSDTDailyFeed, DeribitBTCOptionTradeFeed
 from .options_v21_watcher import OptionsV21ForwardShadowWatcher
 from .options_v21_metrics import evaluate_options_v21_forward
+from .etf_cme_watcher import ETFCMEPublicSignalWatcher
+from .external_freshness import all_external_freshness
 
 
 class CachingBinanceOfficialLaunchpoolSource(BinanceOfficialLaunchpoolSource):
@@ -80,6 +82,10 @@ class ForwardShadowRuntime:
             options_feed=DeribitBTCOptionTradeFeed(timeout=settings.http_timeout),
             btc_feed=BinanceBTCUSDTDailyFeed(timeout=settings.http_timeout),
         )
+        self.etf_cme_signal = ETFCMEPublicSignalWatcher(
+            store=self.store,
+            timeout=settings.http_timeout,
+        )
         self.status_path = os.getenv("RADAR_FORWARD_STATUS", settings.status_path)
         self._lock = threading.Lock()
         self._state: dict[str, Any] = {
@@ -90,7 +96,9 @@ class ForwardShadowRuntime:
         }
         self._last_tfg_due: int | None = None
         self._last_etf_public_check_ms: int | None = None
+        self._last_etf_signal_check_ms: int | None = None
         self._last_options_runtime_day: str | None = None
+        self._last_external_freshness_check_ms: int | None = None
         self._options_state: dict[str, Any] = {
             "status": "STARTING",
             "watcher_id": "OPTIONS-SPOTPERP-001-V2.1-FORWARD-SHADOW",
@@ -101,6 +109,12 @@ class ForwardShadowRuntime:
             "capital_enabled": False,
             "orders_created": False,
         }
+        self._etf_signal_state: dict[str, Any] = {
+            "status": "STARTING",
+            "source_status": "UNKNOWN",
+            "watcher_id": "ETF-CME-INSTFLOW-001-CFTC-PUBLIC-FORWARD-WATCHER",
+        }
+        self._external_freshness_state: dict[str, Any] = {}
 
     def state(self) -> dict[str, Any]:
         with self._lock:
@@ -210,6 +224,26 @@ class ForwardShadowRuntime:
         else:
             etf_exec_v2 = self._etf_public_state
 
+        etf_signal_due = self._last_etf_signal_check_ms is None
+        next_window = self._etf_signal_state.get("next_expected_source_window")
+        if isinstance(next_window, str):
+            try:
+                target_ms = int(datetime.fromisoformat(next_window.replace("Z", "+00:00")).timestamp() * 1000)
+                if abs(target_ms - now_ms) <= 5 * 60 * 1000:
+                    etf_signal_due = True
+            except ValueError:
+                etf_signal_due = True
+        if self._last_etf_signal_check_ms is not None and now_ms - self._last_etf_signal_check_ms >= 60 * 60 * 1000:
+            etf_signal_due = True
+        if etf_signal_due:
+            etf_signal = self.etf_cme_signal.run_once(now_ms=now_ms)
+            self._etf_signal_state = etf_signal
+            self._last_etf_signal_check_ms = now_ms
+            if etf_signal.get("status") == "FAIL_CLOSED":
+                errors["etf_cme_signal"] = str(etf_signal.get("error") or "source failure")
+        else:
+            etf_signal = self._etf_signal_state
+
         options_runtime_day = datetime.fromtimestamp(
             now_ms / 1000.0, tz=timezone.utc
         ).date().isoformat()
@@ -239,6 +273,20 @@ class ForwardShadowRuntime:
             }
             errors["options_v21_metrics"] = options_v21_metrics["error"]
 
+        freshness_due = (
+            self._last_external_freshness_check_ms is None
+            or now_ms - self._last_external_freshness_check_ms >= 60 * 60 * 1000
+        )
+        if freshness_due:
+            external_freshness = all_external_freshness(
+                now=datetime.fromtimestamp(now_ms / 1000.0, tz=timezone.utc),
+                timeout=self.settings.http_timeout,
+            )
+            self._external_freshness_state = external_freshness
+            self._last_external_freshness_check_ms = now_ms
+        else:
+            external_freshness = self._external_freshness_state
+
         state = {
             "health": "OK" if not errors else "DEGRADED_FAIL_CLOSED",
             "mode": "PUBLIC_SHADOW_ONLY",
@@ -251,8 +299,10 @@ class ForwardShadowRuntime:
             "tfg_forward_metrics": tfg_forward_metrics,
             "bnb_launchpool": bnb_state,
             "etf_exec_v2_public": etf_exec_v2,
+            "etf_cme_signal": etf_signal,
             "options_v21": options_v21,
             "options_v21_metrics": options_v21_metrics,
+            "external_collectors": external_freshness,
             "errors": errors,
             "authenticated_exchange_api_used": False,
             "orders_created": False,
@@ -347,6 +397,13 @@ h1{margin:0 0 6px;font-size:28px}.sub{color:#9aa4b2;margin-bottom:22px}
 <div class="row"><span>Historical break-even</span><span id="etfBE">—</span></div>
 <div class="row"><span>Account fee</span><span id="etfFee">UNVERIFIED</span></div></section>
 
+<section class="card"><div class="k">ETF-CME Signal Watcher</div><div id="etfSignalStatus" class="v">—</div>
+<div class="row"><span>Source</span><span id="etfSignalSource">—</span></div>
+<div class="row"><span>Last success</span><span id="etfSignalSuccess">—</span></div>
+<div class="row"><span>Next window</span><span id="etfSignalNext">—</span></div>
+<div class="row"><span>Direction</span><span id="etfSignalDirection">—</span></div>
+<div class="row"><span>Missed</span><span id="etfSignalMissed">—</span></div></section>
+
 <section class="card"><div class="k">OPTIONS-SPOTPERP V2.1</div><div id="optStatus" class="v">—</div>
 <div class="row"><span>First signal day</span><span id="optFirst">—</span></div>
 <div class="row"><span>Signal days</span><span id="optDays">—</span></div>
@@ -354,6 +411,12 @@ h1{margin:0 0 6px;font-size:28px}.sub{color:#9aa4b2;margin-bottom:22px}
 <div class="row"><span>BASE mean bps</span><span id="optBase">—</span></div>
 <div class="row"><span>BASE PF</span><span id="optPf">—</span></div>
 <div class="row"><span>STRESS mean bps</span><span id="optStress">—</span></div></section>
+
+<section class="card"><div class="k">External Collectors</div><div class="v">Freshness</div>
+<div class="row"><span>DH03</span><span id="dh03Freshness">—</span></div>
+<div class="row"><span>DH03 last run</span><span id="dh03Run">—</span></div>
+<div class="row"><span>CED1D-0031</span><span id="cedFreshness">—</span></div>
+<div class="row"><span>CED last run</span><span id="cedRun">—</span></div></section>
 
 <section class="card"><div class="k">Safety</div><div class="v ok">FAIL-CLOSED</div>
 <div class="row"><span>Authenticated API</span><span id="auth">—</span></div>
@@ -395,6 +458,10 @@ async function refresh(){
     $("etfShortTrailing").textContent=val(sf.trailing_short_fee_spread_funding_bps);
     $("etfBE").textContent=val(sf.historical_break_even_bps);
     $("etfFee").textContent=e.account_fee_verified_read_only?"VERIFIED":"UNVERIFIED";
+    const es=s.etf_cme_signal||{}; paint("etfSignalStatus",es.status,es.source_status==="OK"&&es.status!=="MISSED_EXPECTED_OBSERVATION_NO_CHASE");
+    $("etfSignalSource").textContent=val(es.source_status); $("etfSignalSuccess").textContent=val(es.last_source_success_utc);
+    $("etfSignalNext").textContent=val(es.next_expected_source_window); $("etfSignalDirection").textContent=val(es.signal_direction);
+    $("etfSignalMissed").textContent=val(es.missed_expected_observation_count,0);
     const o=s.options_v21||{}, om=s.options_v21_metrics||{};
     paint("optStatus",o.status,o.status==="OK"||String(o.status||"").startsWith("WAITING_"));
     $("optFirst").textContent=val(o.first_signal_day);
@@ -403,6 +470,10 @@ async function refresh(){
     $("optBase").textContent=val(om.base_net_mean_bps);
     $("optPf").textContent=om.base_profit_factor===Infinity?"INF":val(om.base_profit_factor);
     $("optStress").textContent=val(om.stress_net_mean_bps);
+    const xc=s.external_collectors||{};
+    const dh=xc["HTF-DH03-12H-STANDALONE-FORWARD-V1"]||{}, ce=xc["CED1D-0031"]||{};
+    $("dh03Freshness").textContent=val(dh.freshness_classification); $("dh03Run").textContent=val(dh.last_workflow_run_id);
+    $("cedFreshness").textContent=val(ce.freshness_classification); $("cedRun").textContent=val(ce.last_workflow_run_id);
     $("auth").textContent=tf(s.authenticated_exchange_api_used); $("orders").textContent=tf(s.orders_created);
     $("mutation").textContent=tf(s.exchange_mutation_performed); $("capital").textContent=tf(s.live_capital_enabled);
   }catch(e){paint("health","UNREACHABLE",false)}
