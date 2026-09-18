@@ -23,9 +23,10 @@ TRANSIENT = {429, 500, 502, 503, 504, 529}
 SIG = "CollateralConfigurationChanged(address,uint256,uint256,uint256)"
 TOPIC0 = "0x" + keccak(SIG.encode()).hex()
 
-MIN_CLUSTERS = 12
+MIN_EPISODES = 12
 MIN_ASSETS = 4
 MIN_YEARS = 2
+EPISODE_SECONDS = 24 * 60 * 60
 
 def as_int(v: Any) -> int:
     if isinstance(v, int):
