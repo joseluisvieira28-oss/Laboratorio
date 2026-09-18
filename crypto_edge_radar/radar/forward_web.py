@@ -17,6 +17,8 @@ from .config import Settings
 from .evidence import build_evidence_store
 from .strategies.bnb_launchpool_demand import BinanceSpotBNBBTCKlineFeed
 from .strategies.tfg_donchian_regime_forward import MEXCSpotKlineFeed
+from .spot_mapping import spot_perp_mapping_receipt
+from .friction import mexc_friction_shadow_receipt
 from .tfg_forward_watcher import (
     TFGForwardShadowWatcher,
     latest_certifiable_signal_close_ms,
@@ -72,6 +74,13 @@ class ForwardShadowRuntime:
             "orders_created": False,
         }
         self._last_tfg_due: int | None = None
+        self._last_etf_public_check_ms: int | None = None
+        self._etf_public_state: dict[str, Any] = {
+            "status": "STARTING",
+            "classification": "PUBLIC_PREFLIGHT_ONLY",
+            "capital_enabled": False,
+            "orders_created": False,
+        }
 
     def state(self) -> dict[str, Any]:
         with self._lock:
@@ -123,6 +132,64 @@ class ForwardShadowRuntime:
             }
             errors["tfg_forward_metrics"] = tfg_forward_metrics["error"]
 
+        etf_due = (
+            self._last_etf_public_check_ms is None
+            or now_ms - self._last_etf_public_check_ms >= 60 * 60 * 1000
+        )
+        if etf_due:
+            try:
+                spot_receipt = spot_perp_mapping_receipt()
+                short_receipt = mexc_friction_shadow_receipt(symbol="BTC_USDT")
+                etf_exec_v2 = {
+                    "status": "OK",
+                    "classification": "PUBLIC_PREFLIGHT_ONLY",
+                    "checked_at_utc": checked,
+                    "spot_mapping": {
+                        "symbol": "BTCUSDT",
+                        "spread_bps": spot_receipt["long_mapping_candidate"]["spread_bps"],
+                        "perp_minus_spot_mid_bps": spot_receipt["cross_market"]["perp_minus_spot_mid_bps"],
+                        "spot_api_supported": spot_receipt["long_mapping_candidate"]["api_default_symbol_supported"],
+                        "funding_cost_long_spot": "NONE",
+                    },
+                    "short_perp_friction": {
+                        "same_book_taker_round_trip_proxy_bps": short_receipt["edge_budget"]["same_book_taker_round_trip_proxy_bps"],
+                        "trailing_short_fee_spread_funding_bps": short_receipt["edge_budget"]["trailing_7d_directional_proxy"]["short_fee_spread_funding_bps"],
+                        "historical_break_even_bps": short_receipt["edge_budget"]["historical_estimated_break_even_round_trip_bps"],
+                        "future_funding_is_forecast": False,
+                    },
+                    "account_fee_verified_read_only": False,
+                    "authenticated_transport_ready": False,
+                    "execution_authority_present": False,
+                    "capital_enabled": False,
+                    "orders_created": False,
+                    "authenticated_exchange_api_used": False,
+                    "exchange_mutation_performed": False,
+                }
+                hour_key = datetime.fromtimestamp(
+                    now_ms / 1000.0, tz=timezone.utc
+                ).strftime("%Y-%m-%dT%H")
+                self.store.append_once(
+                    "ETF_EXEC_V2_PUBLIC_PREFLIGHT",
+                    f"ETF-CME-INSTFLOW-001:EXEC-V2:{hour_key}",
+                    etf_exec_v2,
+                )
+                self._etf_public_state = etf_exec_v2
+                self._last_etf_public_check_ms = now_ms
+            except Exception as exc:
+                etf_exec_v2 = {
+                    "status": "FAIL_CLOSED",
+                    "classification": "PUBLIC_PREFLIGHT_FAIL_CLOSED",
+                    "error": f"{type(exc).__name__}:{exc}",
+                    "capital_enabled": False,
+                    "orders_created": False,
+                    "authenticated_exchange_api_used": False,
+                    "exchange_mutation_performed": False,
+                }
+                self._etf_public_state = etf_exec_v2
+                errors["etf_exec_v2"] = etf_exec_v2["error"]
+        else:
+            etf_exec_v2 = self._etf_public_state
+
         state = {
             "health": "OK" if not errors else "DEGRADED_FAIL_CLOSED",
             "mode": "PUBLIC_SHADOW_ONLY",
@@ -134,6 +201,7 @@ class ForwardShadowRuntime:
             "tfg": tfg_state,
             "tfg_forward_metrics": tfg_forward_metrics,
             "bnb_launchpool": bnb_state,
+            "etf_exec_v2_public": etf_exec_v2,
             "errors": errors,
             "authenticated_exchange_api_used": False,
             "orders_created": False,
@@ -220,6 +288,14 @@ h1{margin:0 0 6px;font-size:28px}.sub{color:#9aa4b2;margin-bottom:22px}
 <div class="row"><span>Eligible events</span><span id="bnbEvents">—</span></div>
 <div class="row"><span>Clusters visible</span><span id="bnbClusters">—</span></div></section>
 
+<section class="card"><div class="k">ETF-CME EXEC-V2</div><div id="etfStatus" class="v">—</div>
+<div class="row"><span>Spot spread bps</span><span id="etfSpread">—</span></div>
+<div class="row"><span>Perp-spot basis bps</span><span id="etfBasis">—</span></div>
+<div class="row"><span>SHORT fee+spread proxy</span><span id="etfShortProxy">—</span></div>
+<div class="row"><span>SHORT trailing 7d proxy</span><span id="etfShortTrailing">—</span></div>
+<div class="row"><span>Historical break-even</span><span id="etfBE">—</span></div>
+<div class="row"><span>Account fee</span><span id="etfFee">UNVERIFIED</span></div></section>
+
 <section class="card"><div class="k">Safety</div><div class="v ok">FAIL-CLOSED</div>
 <div class="row"><span>Authenticated API</span><span id="auth">—</span></div>
 <div class="row"><span>Orders created</span><span id="orders">—</span></div>
@@ -253,6 +329,13 @@ async function refresh(){
     const b=s.bnb_launchpool||{}; paint("bnbStatus",b.status,b.status==="OK");
     $("bnbOfficial").textContent=val(b.official_source_provider); $("bnbMarket").textContent=val(b.market_provider);
     $("bnbEvents").textContent=val(b.eligible_events_visible); $("bnbClusters").textContent=val(b.clusters_visible);
+    const e=s.etf_exec_v2_public||{}; paint("etfStatus",e.status,e.status==="OK");
+    const sm=e.spot_mapping||{}, sf=e.short_perp_friction||{};
+    $("etfSpread").textContent=val(sm.spread_bps); $("etfBasis").textContent=val(sm.perp_minus_spot_mid_bps);
+    $("etfShortProxy").textContent=val(sf.same_book_taker_round_trip_proxy_bps);
+    $("etfShortTrailing").textContent=val(sf.trailing_short_fee_spread_funding_bps);
+    $("etfBE").textContent=val(sf.historical_break_even_bps);
+    $("etfFee").textContent=e.account_fee_verified_read_only?"VERIFIED":"UNVERIFIED";
     $("auth").textContent=tf(s.authenticated_exchange_api_used); $("orders").textContent=tf(s.orders_created);
     $("mutation").textContent=tf(s.exchange_mutation_performed); $("capital").textContent=tf(s.live_capital_enabled);
   }catch(e){paint("health","UNREACHABLE",false)}
