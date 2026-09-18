@@ -18,6 +18,8 @@ class ForwardWebDashboardTests(unittest.TestCase):
         self.assertIn("/api/state", html)
         self.assertIn("TFG Donchian Regime", html)
         self.assertIn("BNB Launchpool", html)
+        self.assertIn("ETF-CME Signal Watcher", html)
+        self.assertIn("External Collectors", html)
         self.assertIn("FAIL-CLOSED", html)
         self.assertNotIn("Place Order", html)
         self.assertNotIn("API Key", html)
