@@ -1,0 +1,148 @@
+name: PMD-001 V0121 Stratified Wave A
+on:
+  push:
+    branches: [pumpfun-migration-direction-v0.1]
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/RUN_V0121_STRATIFIED_WAVE_A.trigger'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pumpfun-migration-direction-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install manifest dependencies
+        run: python -m pip install --upgrade pip duckdb huggingface_hub requests solders pytz
+      - name: Rebuild frozen manifest
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001
+        run: |
+          python build_source_rebuild_manifest_v01.py             --data-dir "$GITHUB_WORKSPACE/wave_manifest_data"             --out "$GITHUB_WORKSPACE/pmd_source_rebuild_manifest_v01.jsonl"             --receipt "$GITHUB_WORKSPACE/wave_manifest_receipt.json"
+          test ! -e "$GITHUB_WORKSPACE/wave_manifest_data/postgard_outcomes.parquet"
+      - name: Build deterministic stratified matrix
+        id: matrix
+        run: |
+          python - <<'PY'
+          import json, os
+          from collections import defaultdict
+          rows=[json.loads(x) for x in open("pmd_source_rebuild_manifest_v01.jsonl",encoding="utf-8") if x.strip()]
+          by=defaultdict(list)
+          for i,r in enumerate(rows):
+              by[str(r["t0"])[:10]].append(i)
+          include=[]
+          for d in sorted(by):
+              xs=by[d]
+              picks=sorted(set([xs[0],xs[len(xs)//2],xs[-1]]))
+              for idx in picks:
+                  include.append({"index":idx,"date":d.replace("-","")})
+          assert len(by)==20
+          with open(os.environ["GITHUB_OUTPUT"],"a") as f:
+              f.write("matrix="+json.dumps({"include":include},separators=(",",":"))+"\n")
+          print(json.dumps({"dates":len(by),"selected_rows":len(include),"indices":[x["index"] for x in include]},indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PMD-001-v0121-wave-a-manifest
+          retention-days: 30
+          path: |
+            pmd_source_rebuild_manifest_v01.jsonl
+            wave_manifest_receipt.json
+
+  source:
+    needs: prepare
+    strategy:
+      fail-fast: false
+      max-parallel: 12
+      matrix: ${{ fromJSON(needs.prepare.outputs.matrix) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pumpfun-migration-direction-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install source dependencies
+        run: python -m pip install --upgrade pip duckdb huggingface_hub requests solders pytz
+      - uses: actions/download-artifact@v4
+        with:
+          name: PMD-001-v0121-wave-a-manifest
+          path: wave-manifest
+      - name: Collect one frozen row
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001
+        run: |
+          python source_rebuild_chain_exact_v07.py             --manifest "$GITHUB_WORKSPACE/wave-manifest/pmd_source_rebuild_manifest_v01.jsonl"             --full-manifest "$GITHUB_WORKSPACE/wave-manifest/pmd_source_rebuild_manifest_v01.jsonl"             --out-dir "$GITHUB_WORKSPACE/wave_row_${{ matrix.index }}"             --rpc-url https://api.mainnet-beta.solana.com             --source-name solana_public_rpc_chain_exact_v0121_wave_a             --start ${{ matrix.index }} --limit 1 --block-batch-size 4
+      - name: Assert source-only row
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=next(Path(".").glob("wave_row_*/source_rebuild_summary.jsonl"))
+          rows=[json.loads(x) for x in p.read_text().splitlines() if x.strip()]
+          assert len(rows)==1
+          r=rows[0]
+          assert r.get("outcomes_opened") is False
+          assert r.get("stage")=="CHAIN_EXACT_SOURCE_REBUILD_V07"
+          assert r.get("boundary_parser_version")=="V07_MIGRATE_AND_MIGRATE_V2"
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: PMD-001-v0121-wave-a-index-${{ matrix.index }}
+          retention-days: 30
+          compression-level: 9
+          if-no-files-found: warn
+          path: |
+            wave_row_${{ matrix.index }}/source_rebuild_summary.jsonl
+            wave_row_${{ matrix.index }}/block_hash_ledger.jsonl
+            wave_row_${{ matrix.index }}/raw/*.jsonl
+
+  decode:
+    needs: source
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pumpfun-migration-direction-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install decoder dependencies
+        run: python -m pip install --upgrade pip requests solders
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: PMD-001-v0121-wave-a-index-*
+          path: wave-source
+          merge-multiple: false
+      - name: Extract V0.12.1 features source-only
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001
+        run: |
+          python extract_chain_exact_features_v0121.py             --input-root "$GITHUB_WORKSPACE/wave-source"             --out-dir "$GITHUB_WORKSPACE/wave-features"
+      - name: Report stratified decoder coverage
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path("wave-features/chain_exact_features_v012_receipt.json").read_text())
+          assert r["economic_outcomes_opened"] is False
+          assert r["promotion_authority"] is False
+          print(json.dumps(r,indent=2,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PMD-001-v0121-stratified-wave-a-features
+          retention-days: 30
+          path: wave-features/
