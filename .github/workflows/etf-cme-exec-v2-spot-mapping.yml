@@ -8,6 +8,9 @@ on:
       - 'crypto_edge_radar/radar/mexc_spot.py'
       - 'crypto_edge_radar/radar/spot_mapping.py'
       - 'crypto_edge_radar/tests/test_mexc_spot_mapping.py'
+      - 'crypto_edge_radar/radar/exec_v2_readiness.py'
+      - 'crypto_edge_radar/tests/test_exec_v2_readiness.py'
+      - 'crypto_edge_radar/ETF_CME_INSTFLOW_001_EXEC_V2_READINESS_V1.json'
       - 'crypto_edge_radar/ETF_CME_INSTFLOW_001_EXEC_V2_ASYMMETRIC_CANDIDATE.json'
       - '.github/workflows/etf-cme-exec-v2-spot-mapping.yml'
   workflow_dispatch:
@@ -31,7 +34,7 @@ jobs:
       - name: Compile and targeted tests
         run: |
           python -m compileall radar tests
-          python -m unittest tests.test_mexc_spot_mapping -v
+          python -m unittest tests.test_mexc_spot_mapping tests.test_exec_v2_readiness -v
       - name: Capture live public MEXC Spot-Perp mapping receipt
         run: |
           mkdir -p exec_v2_artifacts
