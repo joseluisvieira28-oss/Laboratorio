@@ -12,6 +12,7 @@ from .deployment import RiskLimits
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_REGISTRY = PROJECT_ROOT / "deployment_registry_v1.json"
+DH03_STRATEGY_ID = "HTF-DH03-12H-STANDALONE-FORWARD-V1"
 
 
 def _utc_now() -> str:
@@ -45,12 +46,26 @@ def _read_jsonl_tail(path: Path, limit: int = 30) -> list[dict[str, Any]]:
     return rows
 
 
-def _bot_operating_state(candidate: dict[str, Any]) -> str:
+def _bot_operating_state(candidate: dict[str, Any], *, dh03_status: dict[str, Any] | None = None) -> str:
+    strategy_id = str(candidate.get("strategy_id") or "")
     deployment_state = str(candidate.get("deployment_state") or "").upper()
     if deployment_state.startswith("BLOCKED") or candidate.get("scientific_tier") == 4:
         return "BLOCKED"
     if candidate.get("micro_live_allowed_now") is True:
         return "ARMED"
+
+    # DH03 is special: registry readiness alone must never inflate the live
+    # cockpit. It becomes SHADOW only after the canonical local collector
+    # reports COLLECTING. BOOTSTRAPPING/missing remains GATED; FAIL_CLOSED is
+    # an operational BLOCKED state.
+    if strategy_id == DH03_STRATEGY_ID:
+        status = str((dh03_status or {}).get("status") or "MISSING").upper()
+        if status == "COLLECTING":
+            return "SHADOW"
+        if status == "FAIL_CLOSED":
+            return "BLOCKED"
+        return "GATED"
+
     if candidate.get("shadow_allowed") is True or "SHADOW" in deployment_state or "WATCHER" in deployment_state:
         return "SHADOW"
     return "GATED"
@@ -64,8 +79,11 @@ def build_control_room_state(
 ) -> dict[str, Any]:
     selected_registry = Path(registry_path) if registry_path else DEFAULT_REGISTRY
     registry = _read_json(selected_registry, {"candidates": []})
-    service = _read_json(Path(status_path), {"health": "UNKNOWN"})
+    service_status_path = Path(status_path)
+    service = _read_json(service_status_path, {"health": "UNKNOWN"})
     events = _read_jsonl_tail(Path(notification_path))
+    dh03_status_path = service_status_path.parent / "dh03_local_status.json"
+    dh03_status = _read_json(dh03_status_path, {})
 
     candidates = registry.get("candidates") or []
     focus_ids = registry.get("focus_strategy_ids") or [
@@ -84,14 +102,25 @@ def build_control_room_state(
         blockers = candidate.get("blocking_gates") or []
         if isinstance(blockers, str):
             blockers = [blockers]
+        strategy_id = str(candidate.get("strategy_id", "UNKNOWN"))
+        operating_state = _bot_operating_state(candidate, dh03_status=dh03_status)
+        runtime_status = None
+        if strategy_id == DH03_STRATEGY_ID:
+            runtime_status = str(dh03_status.get("status") or "MISSING")
+            if operating_state == "GATED":
+                blockers = list(blockers) + [f"local DH03 collector runtime not COLLECTING ({runtime_status})"]
+            elif operating_state == "BLOCKED":
+                err = dh03_status.get("error")
+                blockers = list(blockers) + [f"local DH03 collector FAIL_CLOSED{': ' + str(err) if err else ''}"]
         bots.append(
             {
-                "strategy_id": candidate.get("strategy_id", "UNKNOWN"),
+                "strategy_id": strategy_id,
                 "tier": candidate.get("scientific_tier"),
                 "scientific_status": candidate.get("scientific_status", "UNKNOWN"),
                 "deployment_state": candidate.get("deployment_state", "UNKNOWN"),
-                "operating_state": _bot_operating_state(candidate),
+                "operating_state": operating_state,
                 "shadow_allowed": bool(candidate.get("shadow_allowed")),
+                "runtime_status": runtime_status,
                 "micro_live_allowed_now": bool(candidate.get("micro_live_allowed_now")),
                 "blockers": blockers,
                 "reason": candidate.get("reason"),
@@ -130,6 +159,10 @@ def build_control_room_state(
             "focus_loaded": len(focus),
             "focus_strategy_ids": list(focus_ids),
         },
+        "local_runtime": {
+            "dh03_status_path": str(dh03_status_path),
+            "dh03_status": str(dh03_status.get("status") or "MISSING"),
+        },
         "risk_policy": {
             "planned_risk_per_trade_pct": limits.per_trade * 100,
             "max_concurrent_risk_pct": limits.max_concurrent * 100,
@@ -156,7 +189,7 @@ HTML = r"""<!doctype html>
 <div class="bots" id="bots"></div><div class="section"><h2>RISK FIREWALL</h2><div class="risk" id="risk"></div></div><div class="section"><h2>RECENT MACHINE EVENTS</h2><div class="feed" id="events"></div></div><div class="footer" id="stamp"></div></div>
 <script>
 const esc=s=>String(s??'').replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-async function refresh(){try{const r=await fetch('/api/state',{cache:'no-store'}),d=await r.json(),s=d.system||{},rg=d.registry||{};document.getElementById('health').textContent=s.health||'UNKNOWN';document.getElementById('provider').textContent=(s.market_provider||'UNKNOWN')+' · '+(s.universe||[]).join(' / ');document.getElementById('dot').style.background=s.health==='OK'?'var(--ok)':'var(--bad)';document.getElementById('diag').textContent='registry '+(d.registry_version||'NULL')+' · '+(rg.focus_loaded??0)+'/'+(rg.focus_expected??0)+' focus loaded';for(const k of ['armed','shadow','gated','blocked'])document.getElementById(k).textContent=(d.focus_counts||{})[k.toUpperCase()]||0;document.getElementById('bots').innerHTML=(d.bots||[]).map(b=>`<div class="card"><div class="row"><div class="id">${esc(b.strategy_id)}</div><div class="badge ${esc(b.operating_state)}">${esc(b.operating_state)}</div></div><div class="meta"><div class="cell"><b>Tier</b>${esc(b.tier)}</div><div class="cell"><b>Deployment</b>${esc(b.deployment_state)}</div><div class="cell"><b>Shadow</b>${b.shadow_allowed?'YES':'NO'}</div><div class="cell"><b>Micro-live</b>${b.micro_live_allowed_now?'YES':'NO'}</div></div><div class="blockers">${(b.blockers||[]).length?'<b>Gates:</b> '+b.blockers.map(esc).join(' · '):esc(b.reason||'No active blocker text')}</div></div>`).join('')||'<div class="card BLOCKED">REGISTRY DESYNC — no focus bots loaded.</div>';const rp=d.risk_policy||{};document.getElementById('risk').innerHTML=[['Trade',rp.planned_risk_per_trade_pct],['Concurrent',rp.max_concurrent_risk_pct],['Daily stop',rp.daily_stop_pct],['Weekly stop',rp.weekly_stop_pct]].map(x=>`<div class="cell"><b>${x[0]}</b>${Number(x[1]||0).toFixed(2)}%</div>`).join('');const ev=(d.recent_events||[]).slice().reverse();document.getElementById('events').innerHTML=ev.length?ev.map(e=>`<div class="event">${esc(e.ts_utc||'')} · <b>${esc(e.event_type||'EVENT')}</b> · ${esc(JSON.stringify(e.payload||{}))}</div>`).join(''):'No machine events yet.';document.getElementById('stamp').textContent='Updated '+(d.generated_at_utc||'');}catch(e){document.getElementById('health').textContent='DASHBOARD ERROR';document.getElementById('dot').style.background='var(--bad)';}}
+async function refresh(){try{const r=await fetch('/api/state',{cache:'no-store'}),d=await r.json(),s=d.system||{},rg=d.registry||{};document.getElementById('health').textContent=s.health||'UNKNOWN';document.getElementById('provider').textContent=(s.market_provider||'UNKNOWN')+' · '+(s.universe||[]).join(' / ');document.getElementById('dot').style.background=s.health==='OK'?'var(--ok)':'var(--bad)';document.getElementById('diag').textContent='registry '+(d.registry_version||'NULL')+' · '+(rg.focus_loaded??0)+'/'+(rg.focus_expected??0)+' focus loaded';for(const k of ['armed','shadow','gated','blocked'])document.getElementById(k).textContent=(d.focus_counts||{})[k.toUpperCase()]||0;document.getElementById('bots').innerHTML=(d.bots||[]).map(b=>`<div class="card"><div class="row"><div class="id">${esc(b.strategy_id)}</div><div class="badge ${esc(b.operating_state)}">${esc(b.operating_state)}</div></div><div class="meta"><div class="cell"><b>Tier</b>${esc(b.tier)}</div><div class="cell"><b>Deployment</b>${esc(b.deployment_state)}</div><div class="cell"><b>Shadow allowed</b>${b.shadow_allowed?'YES':'NO'}${b.runtime_status?'<br><span class="diag">runtime '+esc(b.runtime_status)+'</span>':''}</div><div class="cell"><b>Micro-live</b>${b.micro_live_allowed_now?'YES':'NO'}</div></div><div class="blockers">${(b.blockers||[]).length?'<b>Gates:</b> '+b.blockers.map(esc).join(' · '):esc(b.reason||'No active blocker text')}</div></div>`).join('')||'<div class="card BLOCKED">REGISTRY DESYNC — no focus bots loaded.</div>';const rp=d.risk_policy||{};document.getElementById('risk').innerHTML=[['Trade',rp.planned_risk_per_trade_pct],['Concurrent',rp.max_concurrent_risk_pct],['Daily stop',rp.daily_stop_pct],['Weekly stop',rp.weekly_stop_pct]].map(x=>`<div class="cell"><b>${x[0]}</b>${Number(x[1]||0).toFixed(2)}%</div>`).join('');const ev=(d.recent_events||[]).slice().reverse();document.getElementById('events').innerHTML=ev.length?ev.map(e=>`<div class="event">${esc(e.ts_utc||'')} · <b>${esc(e.event_type||'EVENT')}</b> · ${esc(JSON.stringify(e.payload||{}))}</div>`).join(''):'No machine events yet.';document.getElementById('stamp').textContent='Updated '+(d.generated_at_utc||'');}catch(e){document.getElementById('health').textContent='DASHBOARD ERROR';document.getElementById('dot').style.background='var(--bad)';}}
 refresh();setInterval(refresh,3000);
 </script></body></html>"""
 
