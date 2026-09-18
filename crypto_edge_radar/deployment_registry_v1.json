@@ -1,6 +1,6 @@
 {
-  "registry_version": "3.3",
-  "as_of_utc": "2026-09-18T15:33:30Z",
+  "registry_version": "3.4",
+  "as_of_utc": "2026-09-18T16:38:42Z",
   "governance": "ND_PROMOTION_POLICY_V3_PLUS_AGGRESSIVE_FAIL_CLOSED_DEPLOYMENT",
   "focus_strategy_ids": [
     "ETF-CME-INSTFLOW-001",
@@ -144,8 +144,10 @@
         "high-risk fragility classification"
       ],
       "blocking_gates": [
-        "no Tier-1 forward evidence gate has been prospectively frozen",
+        "genuinely prospective forward evidence has not yet reached the frozen 10-trade operational milestone or 50-trade Tier-1 statistical gate",
+        "account-specific spot and futures taker fees remain unverified read-only blockers",
         "candidate-specific micro-live risk/readiness envelope not yet frozen",
+        "SHORT isolated margin / 1x / Auto Margin Add OFF authenticated state not yet verified",
         "authenticated execution transport not authorized",
         "no real-money execution authority exists"
       ],
@@ -157,7 +159,36 @@
       "prospective_freeze_utc": "2026-09-18T05:35:01Z",
       "first_full_postfreeze_signal_day": "2026-09-19",
       "risk_state_bootstrap": "FULL_BTCUSDT_DAILY_HISTORY_FROM_2021-04-01__CAUSAL_RV20_EXPANDING_MEDIAN",
-      "forward_evidence_backend": "POSTGRES_APPEND_ONLY_HASH_CHAIN"
+      "forward_evidence_backend": "POSTGRES_APPEND_ONLY_HASH_CHAIN",
+      "forward_evidence_gate": {
+        "authority": "OPTIONS_SPOTPERP_001_V21_FORWARD_EVIDENCE_GATE_V0.1.json",
+        "frozen_at_utc": "2026-09-18T08:07:01Z",
+        "operational_min_resolved": 10,
+        "tier1_min_resolved": 50,
+        "tier1_temporal_rule": "first 50 chronological resolved trades split into five consecutive blocks of 10; >=3 nonnegative BASE10 mean blocks",
+        "tier1_base10_mean_gt_bps": 0,
+        "tier1_base10_profit_factor_gt": 1,
+        "largest_single_positive_base10_trade_share_lte": 0.4,
+        "stress20_role": "mandatory fragility diagnostic; not automatic veto",
+        "automatic_tier1_promotion": false,
+        "automatic_micro_live_authorization": false
+      },
+      "execution_mapping_research": {
+        "authority": "OPTIONS_SPOTPERP_001_V21_EXEC_MAPPING_V0.1.json",
+        "closeout": "OPTIONS_SPOTPERP_001_V21_EXEC_MAPPING_PUBLIC_CLOSEOUT_2026-09-18.json",
+        "workflow_run_id": 35368907266,
+        "workflow_conclusion": "success",
+        "long_mapping": "MEXC SPOT BTCUSDT MARKET",
+        "short_mapping": "MEXC USDT PERPETUAL BTC_USDT MARKET isolated 1x",
+        "long_public_proxy_round_trip_bps": 10.001233920853819,
+        "long_base10_compatible_public_proxy": false,
+        "long_stress20_compatible_public_proxy": true,
+        "short_public_proxy_round_trip_bps": 16.01234416266222,
+        "short_base10_compatible_public_proxy": false,
+        "short_stress20_compatible_public_proxy": true,
+        "account_specific_fee_verified": false,
+        "interpretation": "public reference mapping is not BASE10-compatible but is STRESS20-compatible; this is an execution-mapping result, not a strategy edge verdict"
+      }
     },
     {
       "strategy_id": "TFG-DONCHIAN-REGIME-ADAPTATION-V1",
@@ -180,7 +211,7 @@
       "strategy_id": "HTF-DH03-12H-STANDALONE-FORWARD-V1",
       "scientific_tier": null,
       "scientific_status": "NEW_PROSPECTIVE_STANDALONE_CANDIDATE__SOURCE_PASS__LOCAL_BUILD_READY",
-      "deployment_state": "LOCAL_SHADOW_BUILD_READY__CLOUD_ARCHIVE_INTEGRATION_PENDING_V013_CI",
+      "deployment_state": "PROSPECTIVE_ARCHIVE_SHADOW_READY__WINDOWS_LOCAL_COLLECTOR_BUILD_PASS__AWAIT_FIRST_ELIGIBLE_SIGNAL",
       "shadow_allowed": true,
       "micro_live_allowed_now": false,
       "authority_branch": "htf-dh03-12h-standalone-forward-v0.1",
@@ -212,10 +243,7 @@
         "prefreeze_rows_used_as_forward_evidence": false
       },
       "blocking_gates": [
-        "V0.13 integrated full regression CI must pass",
-        "V0.13 Windows five-engine package rebuild must pass",
-        "canonical Render deploy must prove DH03 archive-shadow without degrading four existing engines",
-        "operator must start the V0.13 Windows node for exact local 1m collection",
+        "operator must run the canonical Windows node for exact local collection when local collector authority is required",
         "first eligible standalone post-freeze 12H signal must be observed prospectively",
         "no micro-live execution authority"
       ],
@@ -230,6 +258,18 @@
         "previous_known_artifact_id": 10544571505,
         "previous_known_exe_sha256": "f0e9a27bed653ed789f166869d2e31057d550880275c434af67ee7e9260d6a65",
         "v013_rebuild_required": true
+      },
+      "validation": {
+        "integrated_regression_ci_run_id": 35368378091,
+        "integrated_regression_ci_conclusion": "success",
+        "deterministic_tests": "163/163 PASS",
+        "windows_build_run_id": 35368378072,
+        "windows_build_conclusion": "success",
+        "windows_artifact_id": 10556909789,
+        "windows_artifact_name": "crypto-edge-radar-v013-windows-node",
+        "windows_artifact_zip_sha256": "0592a67ef0ca0c740a9bc5c0b958f1c9cd4d27dd1112ed58f5fbab82133df0cf",
+        "windows_executable_sha256": "d496e9f22bea8f089d1bba3727842720885e71c6f0a485a4fcecfd9d392f83bb",
+        "package_selftest": "PASS__6_CANDIDATES__DH03_COLLECTOR_IMPORTABLE__LOCAL_FORWARD_SUPERVISOR_IMPORTABLE"
       }
     },
     {
@@ -298,7 +338,7 @@
     "postgres_id": "dpg-dalqi4qd0e5s738a77kg-a",
     "runtime_health": "OK",
     "active_motor_count": 6,
-    "archived_closed_mechanisms": 20,
+    "archived_closed_mechanisms": 21,
     "archive_registry": "archive_registry_v1.json",
     "engines": {
       "bnb_launchpool": {
@@ -329,17 +369,18 @@
       "dh03_12h_standalone": {
         "id": "HTF-DH03-12H-STANDALONE-FORWARD-V1",
         "runtime": "GITHUB_ARCHIVE_SHADOW_PLUS_WINDOWS_LOCAL_COLLECTOR",
-        "status": "SOURCE_PASS__ARCHIVE_SHADOW_PASS__LOCAL_BUILD_PASS",
+        "status": "SOURCE_PASS__ARCHIVE_SHADOW_PASS__WINDOWS_BUILD_PASS__AWAIT_FIRST_ELIGIBLE_SIGNAL",
         "source_branch": "htf-dh03-12h-standalone-forward-v0.1",
         "windows_artifact_id": 10553155239,
         "micro_live_authorized": false,
         "last_archive_shadow_run_id": 35360055740,
         "last_archive_shadow_conclusion": "success",
-        "last_windows_build_run_id": 35360055727,
-        "windows_v013_artifact_id": 10553155239,
-        "windows_v013_artifact_sha256": "28ea9c7e55fc2b35b2095acc1a958c70c0f45a5f0812dad9174ef5a126598858",
+        "last_windows_build_run_id": 35368378072,
+        "windows_v013_artifact_id": 10556909789,
+        "windows_v013_artifact_sha256": "0592a67ef0ca0c740a9bc5c0b958f1c9cd4d27dd1112ed58f5fbab82133df0cf",
         "external_daily_guard": "Radar Fishing Watch",
-        "external_daily_guard_enabled": true
+        "external_daily_guard_enabled": true,
+        "windows_v013_executable_sha256": "d496e9f22bea8f089d1bba3727842720885e71c6f0a485a4fcecfd9d392f83bb"
       },
       "ced1d_0031": {
         "id": "CED1D-0031",
@@ -359,10 +400,11 @@
     "cleanup": {
       "active_only_registry": true,
       "active_or_gated_candidates": 6,
-      "closed_candidates_removed_from_active_view": 20,
+      "closed_candidates_removed_from_active_view": 21,
       "negative_evidence_preserved": true,
       "unresolved_non_scientific_states_not_mislabelled_as_stones": true,
-      "scientific_verdicts_rewritten": false
+      "scientific_verdicts_rewritten": false,
+      "protected_nonterminal_research_separated": true
     },
     "safety": {
       "authenticated_exchange_api_enabled": false,
@@ -380,7 +422,14 @@
       "authenticated_exchange_api_used": false,
       "orders_created": false,
       "exchange_mutation_performed": false,
-      "live_capital_enabled": false
+      "live_capital_enabled": false,
+      "latest_cleanup_ci_run_id": 35368378091,
+      "latest_cleanup_ci": "163/163 PASS",
+      "latest_windows_build_run_id": 35368378072,
+      "latest_windows_build": "SUCCESS",
+      "latest_windows_artifact_id": 10556909789,
+      "latest_windows_artifact_zip_sha256": "0592a67ef0ca0c740a9bc5c0b958f1c9cd4d27dd1112ed58f5fbab82133df0cf",
+      "latest_windows_executable_sha256": "d496e9f22bea8f089d1bba3727842720885e71c6f0a485a4fcecfd9d392f83bb"
     },
     "external_orchestration": {
       "automation_title": "Radar Fishing Watch",
@@ -391,7 +440,9 @@
       "orders_allowed": false,
       "exchange_mutation_allowed": false,
       "capital_allowed": false
-    }
+    },
+    "protected_research_fronts": 6,
+    "protected_research_registry": "protected_research_registry_v1.json"
   },
   "archive_registry": "archive_registry_v1.json",
   "v013_integration": {
@@ -409,5 +460,6 @@
       "native_radar_adapter_imported": false,
       "reason": "old V0.3 adapter does not implement V0.2A 20-prior-valid-day gap semantics exactly"
     }
-  }
+  },
+  "protected_research_registry": "protected_research_registry_v1.json"
 }
