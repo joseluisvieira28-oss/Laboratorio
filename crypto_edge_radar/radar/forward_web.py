@@ -45,6 +45,13 @@ class CachingBinanceOfficialLaunchpoolSource(BinanceOfficialLaunchpoolSource):
         return result
 
 
+def normalized_poll_interval_seconds(value: float) -> float:
+    value = float(value)
+    if value <= 0:
+        raise ValueError("poll interval must be positive")
+    return max(value, 30.0)
+
+
 def _atomic_json_write(path: str, payload: dict[str, Any]) -> None:
     target = Path(path)
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -258,8 +265,8 @@ class ForwardShadowRuntime:
 
     def run_loop(self, *, interval_seconds: float) -> None:
         # The old V0.5 canary start command passes 30s. Do not hammer official CMS;
-        # clamp the public-shadow poll interval to a conservative two minutes.
-        interval_seconds = max(float(interval_seconds), 120.0)
+        # Operational latency policy: 30s floor. Scientific signal/timing rules are unchanged.
+        interval_seconds = normalized_poll_interval_seconds(interval_seconds)
         while True:
             started = time.monotonic()
             try:
