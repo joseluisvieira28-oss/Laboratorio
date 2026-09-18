@@ -55,6 +55,8 @@ def load_verified_daily_1m(symbol:str,day:date,timeout:int=20)->dict[str,Any]:
         if len(names)!=1:
             raise BinanceArchiveError("unexpected ZIP members")
         rows=list(csv.reader(io.TextIOWrapper(zf.open(names[0]),encoding="utf-8")))
+    if rows and rows[0] and str(rows[0][0]).strip().lower() in {"open_time","open time"}:
+        rows=rows[1:]
     if len(rows)!=1440:
         raise BinanceArchiveError(f"expected 1440 one-minute rows, got {len(rows)}")
     opens=[]
