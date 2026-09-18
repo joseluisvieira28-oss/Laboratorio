@@ -21,6 +21,7 @@ from .tfg_forward_watcher import (
     TFGForwardShadowWatcher,
     latest_certifiable_signal_close_ms,
 )
+from .tfg_forward_metrics import evaluate_tfg_forward_evidence
 
 
 class CachingBinanceOfficialLaunchpoolSource(BinanceOfficialLaunchpoolSource):
@@ -111,6 +112,17 @@ class ForwardShadowRuntime:
         if not chain_ok:
             errors["evidence_chain"] = chain_detail
 
+        try:
+            tfg_forward_metrics = evaluate_tfg_forward_evidence(self.store)
+        except Exception as exc:
+            tfg_forward_metrics = {
+                "classification": "METRICS_FAIL_CLOSED",
+                "error": f"{type(exc).__name__}:{exc}",
+                "readiness_gate_pass": False,
+                "live_trading_automatically_authorized": False,
+            }
+            errors["tfg_forward_metrics"] = tfg_forward_metrics["error"]
+
         state = {
             "health": "OK" if not errors else "DEGRADED_FAIL_CLOSED",
             "mode": "PUBLIC_SHADOW_ONLY",
@@ -120,6 +132,7 @@ class ForwardShadowRuntime:
             "evidence_chain_ok": chain_ok,
             "evidence_chain_detail": chain_detail,
             "tfg": tfg_state,
+            "tfg_forward_metrics": tfg_forward_metrics,
             "bnb_launchpool": bnb_state,
             "errors": errors,
             "authenticated_exchange_api_used": False,
@@ -193,6 +206,14 @@ h1{margin:0 0 6px;font-size:28px}.sub{color:#9aa4b2;margin-bottom:22px}
 <div class="row"><span>Regime ON boundaries</span><span id="tfgRegime">—</span></div>
 <div class="row"><span>Eligible signals</span><span id="tfgSignals">—</span></div></section>
 
+<section class="card"><div class="k">TFG Forward Gate</div><div id="tfgGate" class="v">—</div>
+<div class="row"><span>Progress</span><span id="tfgProgress">—</span></div>
+<div class="row"><span>BASE expectancy</span><span id="tfgBaseExp">—</span></div>
+<div class="row"><span>BASE PF</span><span id="tfgBasePf">—</span></div>
+<div class="row"><span>STRESS expectancy</span><span id="tfgStressExp">—</span></div>
+<div class="row"><span>STRESS PF</span><span id="tfgStressPf">—</span></div>
+<div class="row"><span>BASE max DD</span><span id="tfgDD">—</span></div></section>
+
 <section class="card"><div class="k">BNB Launchpool</div><div id="bnbStatus" class="v">—</div>
 <div class="row"><span>Official source</span><span id="bnbOfficial">—</span></div>
 <div class="row"><span>Market source</span><span id="bnbMarket">—</span></div>
@@ -222,6 +243,13 @@ async function refresh(){
     const t=s.tfg||{}; paint("tfgStatus",t.status,t.status==="OK"||String(t.status||"").startsWith("IDLE_"));
     $("tfgProvider").textContent=val(t.provider); $("tfgBoundary").textContent=val(t.latest_due_signal_close_utc,val(t.latest_seen_boundary_ms));
     $("tfgRegime").textContent=val(t.regime_on_boundaries); $("tfgSignals").textContent=val(t.eligible_signal_count);
+    const m=s.tfg_forward_metrics||{}; paint("tfgGate",m.classification,m.readiness_gate_pass===true);
+    $("tfgProgress").textContent=val(m.progress);
+    $("tfgBaseExp").textContent=val(m.base_expectancy_r);
+    $("tfgBasePf").textContent=m.base_profit_factor_infinite?"INF":val(m.base_profit_factor);
+    $("tfgStressExp").textContent=val(m.stress_expectancy_r);
+    $("tfgStressPf").textContent=m.stress_profit_factor_infinite?"INF":val(m.stress_profit_factor);
+    $("tfgDD").textContent=val(m.base_max_additive_drawdown_r);
     const b=s.bnb_launchpool||{}; paint("bnbStatus",b.status,b.status==="OK");
     $("bnbOfficial").textContent=val(b.official_source_provider); $("bnbMarket").textContent=val(b.market_provider);
     $("bnbEvents").textContent=val(b.eligible_events_visible); $("bnbClusters").textContent=val(b.clusters_visible);
