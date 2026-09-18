@@ -7,6 +7,9 @@ on:
     paths:
       - 'crypto_edge_radar/radar/options_v21_live.py'
       - 'crypto_edge_radar/tests/test_options_v21_live.py'
+      - 'crypto_edge_radar/radar/options_v21_watcher.py'
+      - 'crypto_edge_radar/tests/test_options_v21_watcher.py'
+      - 'crypto_edge_radar/radar/options_v21_metrics.py'
       - 'crypto_edge_radar/OPTIONS_SPOTPERP_001_V21_LIVE_SHADOW_FREEZE_V0.1.json'
       - '.github/workflows/options-v21-live-shadow-probe.yml'
   workflow_dispatch:
@@ -30,7 +33,7 @@ jobs:
       - name: Compile and targeted tests
         run: |
           python -m compileall radar tests
-          python -m unittest tests.test_options_v21_live -v
+          python -m unittest tests.test_options_v21_live tests.test_options_v21_watcher -v
       - name: Capture strictly post-freeze Deribit schema receipt
         run: |
           mkdir -p options_v21_live_artifacts
