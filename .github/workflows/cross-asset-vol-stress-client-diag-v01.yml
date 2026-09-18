@@ -1,0 +1,28 @@
+name: CROSS-ASSET-VOL-STRESS-001 Cboe Client Diagnostic V0.1
+on:
+  push:
+    branches: [cross-asset-vol-stress-v0.1]
+    paths:
+      - 'labs/CROSS_ASSET_VOL_STRESS_001/diagnose_cboe_settlement_client_v01.py'
+      - '.github/workflows/cross-asset-vol-stress-client-diag-v01.yml'
+jobs:
+  client-diagnostic:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: cross-asset-vol-stress-v0.1
+      - name: Compile diagnostic
+        run: python -m py_compile labs/CROSS_ASSET_VOL_STRESS_001/diagnose_cboe_settlement_client_v01.py
+      - name: Inspect official page client bundles only
+        run: python labs/CROSS_ASSET_VOL_STRESS_001/diagnose_cboe_settlement_client_v01.py
+      - name: Upload diagnostic evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cross-asset-vol-stress-client-diag-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/cross_asset_vol_stress_client_diag_v01/
+          retention-days: 30
+          if-no-files-found: warn
