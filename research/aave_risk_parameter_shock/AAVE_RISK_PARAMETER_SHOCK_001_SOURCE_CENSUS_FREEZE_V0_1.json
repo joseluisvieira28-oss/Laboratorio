@@ -1,0 +1,81 @@
+{
+  "schema_version": "0.1",
+  "frontier_id": "AAVE-RISK-PARAMETER-SHOCK-001",
+  "phase": "SOURCE_CENSUS_ONLY_OUTCOME_BLIND",
+  "status": "FROZEN_SOURCE_CENSUS_ONLY",
+  "freeze_date": "2026-09-18",
+  "anti_duplication": {
+    "drive_checked": true,
+    "github_branches_checked": true,
+    "archive_registry_checked": true,
+    "classification_board_checked": true,
+    "closest_lines": [
+      "AAVE-LIQUIDATION-OVERHANG-001",
+      "AAVE-CREDIT-STRESS-001"
+    ],
+    "material_difference": "This census studies exogenous protocol risk-configuration changes emitted by PoolConfigurator, not price-driven borrower proximity or borrow-rate stress.",
+    "economic_outcomes_opened": false
+  },
+  "source": {
+    "network": "Ethereum mainnet",
+    "provider": "SQD ethereum-mainnet Portal",
+    "pool_configurator": "0x64b761d848206f447fe2dd461b0c635ec39ebb27",
+    "from_block": 16490000,
+    "through_block": 21525890,
+    "hard_timestamp_ceiling": 1735689599
+  },
+  "structural_event_signatures": [
+    "ReserveBorrowing(address,bool)",
+    "CollateralConfigurationChanged(address,uint256,uint256,uint256)",
+    "ReserveStableRateBorrowing(address,bool)",
+    "ReserveActive(address,bool)",
+    "ReserveFrozen(address,bool)",
+    "ReservePaused(address,bool)",
+    "ReserveFactorChanged(address,uint256,uint256)",
+    "BorrowCapChanged(address,uint256,uint256)",
+    "SupplyCapChanged(address,uint256,uint256)",
+    "LiquidationProtocolFeeChanged(address,uint256,uint256)",
+    "UnbackedMintCapChanged(address,uint256,uint256)",
+    "EModeAssetCategoryChanged(address,uint8,uint8)",
+    "EModeCategoryAdded(uint8,uint256,uint256,uint256,address,string)",
+    "ReserveInterestRateStrategyChanged(address,address,address)",
+    "DebtCeilingChanged(address,uint256,uint256)",
+    "SiloedBorrowingChanged(address,bool,bool)",
+    "BorrowableInIsolationChanged(address,bool)"
+  ],
+  "census_outputs_allowed": [
+    "event counts",
+    "unique log identities",
+    "first and last matching timestamps",
+    "event names present",
+    "structural checksum",
+    "transport diagnostics"
+  ],
+  "forbidden": [
+    "log.data decoding",
+    "old/new parameter values",
+    "asset returns",
+    "market prices",
+    "future liquidation outcomes",
+    "health factor",
+    "liquidation overhang",
+    "PnL",
+    "win rate",
+    "profit factor",
+    "drawdown",
+    "2025 data",
+    "2026 outcome data",
+    "live trading",
+    "orders",
+    "wallets",
+    "exchange mutation",
+    "merge to main"
+  ],
+  "adjudication": {
+    "SOURCE_CENSUS_PASS": "Transport reaches the exact frozen terminal block, no timestamp exceeds the ceiling, at least one frozen risk-configuration event is present, and structural identities are unique.",
+    "INSUFFICIENT_SOURCE_SAMPLE": "Source is complete but the total structural risk-configuration event population is too small to justify defining a new Discovery hypothesis. Sample threshold is intentionally not used to select an event subtype; the census is descriptive only.",
+    "SOURCE_ACQUISITION_TECHNICAL_FAILURE": "Transport/source fails before complete coverage.",
+    "PROVENANCE_FAILURE": "Boundary, duplicate, address, topic, or protected-period integrity fails."
+  },
+  "next_gate": "Only after census closeout may a separate FINAL_PRE_DISCOVERY_PROTOCOL define one economic mechanism prospectively. No market outcome may be opened from this census."
+}
