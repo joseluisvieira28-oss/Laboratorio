@@ -1,0 +1,143 @@
+{
+  "lab_id": "BINANCE-PREMIUM-COMPRESSION-001",
+  "discovery_id": "BPC-HEDGED-Z3-60M-001",
+  "status": "PRE_OUTCOME_FROZEN",
+  "date_frozen": "2026-09-18",
+  "parent_source_gate": "BPC-SOURCE-001",
+  "parent_source_run": 35323511819,
+  "parent_source_artifact_id": 10538785454,
+  "parent_source_classification": "SOURCE_DATA_PASS",
+  "lineage": {
+    "relation_to_prior": "MATERIALLY_DIFFERENT_EXTENSION",
+    "prior_family": "Spot–Perp Cash-and-Carry V0.1",
+    "distinction": "This MVE is an event-style short-horizon extreme-premium compression trade. It does not retest static carry harvesting or long-horizon basis carry."
+  },
+  "economic_mechanism": "When Binance USD-M perpetual premium is unusually positive versus its own recent history, arbitrageurs can buy spot and short the perpetual while funding pressure makes the long-perp side expensive. The paired position should benefit if the perp underperforms spot as the premium compresses.",
+  "universe": {
+    "assets": [
+      "BTC",
+      "ETH"
+    ],
+    "spot_symbols": [
+      "BTCUSDT",
+      "ETHUSDT"
+    ],
+    "perp_symbols": [
+      "BTCUSDT",
+      "ETHUSDT"
+    ],
+    "venue": "Binance",
+    "timeframe_minutes": 5,
+    "no_asset_selection_after_outcomes": true,
+    "no_timeframe_selection_after_outcomes": true
+  },
+  "data": {
+    "official_archive": "https://data.binance.vision",
+    "discovery_start": "2021-01-01T00:00:00Z",
+    "discovery_end": "2023-12-31T23:59:59.999Z",
+    "independent_validation_year": 2024,
+    "protected_holdout_years": [
+      2025,
+      2026
+    ],
+    "required_datasets": [
+      "USD-M premiumIndexKlines 5m",
+      "USD-M perpetual klines 5m",
+      "Spot klines 5m"
+    ],
+    "no_2024_access_before_discovery_classification": true,
+    "no_2025_access": true,
+    "no_2026_access": true
+  },
+  "signal": {
+    "premium_value": "USD-M premiumIndexKline close",
+    "rolling_window_bars": 2016,
+    "rolling_window_description": "Prior 7 calendar days at 5-minute frequency",
+    "standardization": "z = (current_premium - mean(prior 2016 premium closes)) / sample_std(prior 2016 premium closes)",
+    "threshold": 3,
+    "sign_rule": "Signal only when current premium > 0 and z >= 3.0",
+    "direction": "LONG_SPOT_SHORT_PERP",
+    "no_negative_premium_side": true,
+    "no_outcome_conditioning": true
+  },
+  "execution": {
+    "entry": "Next synchronized 5-minute bar open after the completed signal bar on both spot and perpetual",
+    "exit": "Synchronized open exactly 12 bars / 60 minutes after entry",
+    "max_hold_bars": 12,
+    "one_position_per_asset": true,
+    "signals_while_position_open": "IGNORE",
+    "funding_crossing_rule": "Exclude any episode whose entry-to-exit interval includes a scheduled 00:00, 08:00 or 16:00 UTC funding timestamp, including exact entry/exit timestamps. Funding cashflow is therefore set to zero rather than estimated.",
+    "pair_gross_return": "(spot_exit/spot_entry - 1) - (perp_exit/perp_entry - 1)",
+    "base_round_trip_pair_cost_fraction": 0.003,
+    "stress_round_trip_pair_cost_fraction": 0.004,
+    "cost_rationale": "Conservative fixed research cost stress for four fills across spot and perpetual. It is deliberately not lower than the closed prior cash-and-carry lineage and is not claimed to be exact account-specific historical fees.",
+    "stop_target": "NONE"
+  },
+  "discovery": {
+    "period": "2021-2023",
+    "sample_floor_resolved_trades": 100,
+    "bootstrap": {
+      "unit": "UTC calendar day portfolio block",
+      "resamples": 10000,
+      "seed": 20260918,
+      "interval": 0.95
+    },
+    "promotion_gates_all_required": {
+      "resolved_trades_gte": 100,
+      "base_mean_net_bps_gt": 0,
+      "base_profit_factor_gt": 1.1,
+      "bootstrap_95_lower_mean_daily_portfolio_bps_gt": 0,
+      "stress_mean_net_bps_gt": 0,
+      "stress_profit_factor_gt": 1,
+      "calendar_year_2021_mean_net_bps_gt": 0,
+      "calendar_year_2022_mean_net_bps_gt": 0,
+      "calendar_year_2023_mean_net_bps_gt": 0,
+      "btc_only_mean_net_bps_gt": 0,
+      "eth_only_mean_net_bps_gt": 0,
+      "max_positive_month_share_lte": 0.25,
+      "minimum_leave_one_trade_out_mean_net_bps_gt": 0,
+      "source_integrity_failures_eq": 0,
+      "execution_unresolved_eq": 0
+    }
+  },
+  "independent_validation": {
+    "year": 2024,
+    "open_only_if_discovery_passes": true,
+    "rules_identical": true,
+    "sample_floor_resolved_trades": 40,
+    "gates_all_required": {
+      "base_mean_net_bps_gt": 0,
+      "base_profit_factor_gt": 1,
+      "stress_mean_net_bps_gt": 0,
+      "stress_profit_factor_gt": 1,
+      "btc_only_mean_net_bps_gt": 0,
+      "eth_only_mean_net_bps_gt": 0,
+      "max_positive_month_share_lte": 0.35,
+      "source_integrity_failures_eq": 0,
+      "execution_unresolved_eq": 0
+    }
+  },
+  "classifications": {
+    "data_failure": "DATA_FAILURE",
+    "technical_failure": "TECHNICAL_FAILURE",
+    "insufficient_sample": "INSUFFICIENT_SAMPLE",
+    "discovery_no_edge": "DISCOVERY_NO_EDGE",
+    "discovery_survives": "DISCOVERY_SURVIVES",
+    "validation_fail": "INDEPENDENT_VALIDATION_FAIL",
+    "validation_survives": "INDEPENDENT_VALIDATION_SURVIVES"
+  },
+  "hard_firewalls": {
+    "research_only": true,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "orders": false,
+    "merge_to_main": false,
+    "post_outcome_tuning": false,
+    "asset_rescue": false,
+    "timeframe_rescue": false,
+    "threshold_rescue": false,
+    "cost_rescue": false,
+    "failed_hypothesis_rewrite": false
+  },
+  "no_rescue_rule": "After the canonical Discovery opens outcomes, do not change the 7-day window, z=3 threshold, positive-premium-only side, 5m timeframe, 60m hold, funding-crossing exclusion, assets, costs, source years or gates under this MVE ID."
+}
