@@ -1,0 +1,42 @@
+name: DEFI Liquidation Source V0.2 Synthetic QA
+
+on:
+  push:
+    branches:
+      - defi-liquidation-shock-v0.1
+    paths:
+      - '.github/workflows/defi-liquidation-source-v02-synthetic-qa.yml'
+      - 'labs/DEFI_LIQUIDATION_SHOCK_001/source/protocol_registry_v0_2.json'
+      - 'labs/DEFI_LIQUIDATION_SHOCK_001/source/collect_protocol_history_v0_2.py'
+      - 'labs/DEFI_LIQUIDATION_SHOCK_001/source/test_source_registry_v0_2.py'
+      - 'labs/DEFI_LIQUIDATION_SHOCK_001/source/test_bigquery_verifier_synthetic_v0_2.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile
+        run: |
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/collect_protocol_history_v0_2.py
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/test_source_registry_v0_2.py
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/test_bigquery_verifier_synthetic_v0_2.py
+      - name: Registry V0.2 QA
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/test_source_registry_v0_2.py
+      - name: Corrected Kamino verifier QA
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/test_bigquery_verifier_synthetic_v0_2.py
+      - name: Outcome firewall
+        run: |
+          echo SOURCE_ONLY_OUTCOME_BLIND_PASS
+          echo PRICES_OPENED_FALSE
+          echo RETURNS_COMPUTED_FALSE
+          echo PNL_COMPUTED_FALSE
+          echo LIVE_TRADING_FALSE
