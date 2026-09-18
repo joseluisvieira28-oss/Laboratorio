@@ -1,0 +1,46 @@
+{
+  "amendment_id": "HTF-DH03-12H-STANDALONE-FORWARD-V1-TRANSPORT-AMENDMENT-02",
+  "frozen_at_utc": "2026-09-18T09:04:30Z",
+  "parent_freeze": "HTF_DH03_12H_STANDALONE_FORWARD_V1_FREEZE.json",
+  "parent_transport_amendment": "HTF_DH03_12H_STANDALONE_FORWARD_V1_TRANSPORT_AMENDMENT_01.json",
+  "status": "FROZEN_BEFORE_FIRST_1M_LIVE_EXECUTION_PATH_ACCESS",
+  "purpose": "Preserve Phase5 minute-path execution semantics prospectively.",
+  "transport": {
+    "provider": "Binance USD-M public WebSocket",
+    "base_url": "wss://fstream.binance.com/market",
+    "kline_stream": "<symbol>@kline_1m",
+    "funding_stream": "<symbol>@markPrice@1s",
+    "symbols": [
+      "BTCUSDT",
+      "ETHUSDT",
+      "SOLUSDT",
+      "BNBUSDT",
+      "XRPUSDT",
+      "DOGEUSDT"
+    ]
+  },
+  "exactness": {
+    "signal_bars": "aggregate complete 1m rows into UTC-aligned 12H bars",
+    "execution_path": "1m OHLC, exact Phase4/Phase5 stop-first semantics",
+    "funding": "record public funding-rate snapshots keyed to next funding timestamp; economics remain fail-closed until settlement observation is complete",
+    "prefreeze_data_role": "warmup only; never standalone forward evidence"
+  },
+  "invariants": {
+    "strategy_rule_change": false,
+    "timeframe_change": false,
+    "venue_change": false,
+    "universe_change": false,
+    "direction_change": false,
+    "cost_change": false,
+    "stop_target_change": false,
+    "hold_change": false
+  },
+  "governance": {
+    "public_only": true,
+    "no_authenticated_api": true,
+    "no_orders": true,
+    "no_exchange_mutation": true,
+    "no_live_capital": true,
+    "fail_closed_on_gap_or_missing_funding": true
+  }
+}
