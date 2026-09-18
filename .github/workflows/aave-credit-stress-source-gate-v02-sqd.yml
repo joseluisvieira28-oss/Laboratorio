@@ -1,0 +1,55 @@
+name: AAVE Credit Stress SQD Source Gate V0.2
+
+on:
+  push:
+    branches:
+      - aave-credit-stress-source-v0.2-sqd
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/AAVE_CREDIT_STRESS_001_SOURCE_TRIGGER_V0.2.txt'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: aave-credit-stress-source-v02-sqd
+  cancel-in-progress: false
+
+jobs:
+  source_gate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: aave-credit-stress-source-v0.2-sqd
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --disable-pip-version-check requests==2.32.3
+      - name: Verify frozen source authority
+        run: |
+          python - <<'PY'
+          import json
+          p='Dream-Account-OS-v2.3-PARTIAL/research/AAVE_CREDIT_STRESS_001_SOURCE_AUTHORITY_V0.2.json'
+          a=json.load(open(p))
+          assert a['source_gate_id']=='AAVE-CS001-SOURCE-002-SQD'
+          assert a['transport_change_only'] is True
+          assert a['new_transport']['provider']=='SQD Ethereum mainnet Portal'
+          assert a['new_transport']['provenance_anchor']['result']=='SOURCE_CENSUS_PASS'
+          assert len(a['frozen_contract']['windows'])==4
+          assert a['frozen_contract']['topic0']=='0x804c9b842b2748a22bb64b345453a3de7ca54a6ca45ce00d415894979e22897a'
+          assert a['frozen_contract']['topic1']=='0x000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'
+          assert 'decode ReserveDataUpdated numeric values' in a['forbidden']
+          print('AAVE_CS001_SOURCE_V02_AUTHORITY_PASS')
+          PY
+      - run: python -m py_compile Dream-Account-OS-v2.3-PARTIAL/research/aave_credit_stress_001_source_gate_v02_sqd.py
+      - name: Execute outcome-blind SQD source gate
+        run: python Dream-Account-OS-v2.3-PARTIAL/research/aave_credit_stress_001_source_gate_v02_sqd.py
+      - name: Upload immutable source receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aave-credit-stress-source-v02-sqd-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/aave_credit_stress_source_v02_sqd/
+          retention-days: 90
+          if-no-files-found: warn
