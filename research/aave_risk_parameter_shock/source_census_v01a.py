@@ -155,6 +155,7 @@ def main() -> int:
         "network_retries": 0,
         "portal_rows": 0,
         "windows_completed": 0,
+        "empty_windows": 0,
     }
     first_ts = None
     last_ts = None
