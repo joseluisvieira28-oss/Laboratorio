@@ -1,0 +1,36 @@
+{
+  "amendment_id": "HTF-DH03-12H-STANDALONE-FORWARD-V1-LOCAL-BOOTSTRAP-AMENDMENT-01",
+  "frozen_at_utc": "2026-09-18T11:53:27Z",
+  "status": "SUPERSEDED_NONCANONICAL_AFTER_AUTHORITY_RECONCILIATION",
+  "rule": {
+    "arm_time": "captured locally at process start and persisted before first market-data request",
+    "first_scored_signal": "first 12H signal close strictly after persisted local arm time",
+    "bootstrap_role": "state only; never score any boundary at or before arm time",
+    "public_rest_endpoint": "GET https://fapi.binance.com/fapi/v1/klines",
+    "raw_interval": "1m",
+    "symbols": [
+      "BTCUSDT",
+      "ETHUSDT",
+      "SOLUSDT",
+      "BNBUSDT",
+      "XRPUSDT",
+      "DOGEUSDT"
+    ],
+    "fallback": "checksum-verified Binance public archive for mature days",
+    "if_rest_451_or_gap": "FAIL_CLOSED; no venue substitution"
+  },
+  "invariants": {
+    "provider": "Binance USD-M",
+    "authenticated_api": false,
+    "signal_rule_change": false,
+    "entry_exit_rule_change": false,
+    "backfill_as_forward_evidence": false,
+    "retrospective_boundary_scoring": false
+  },
+  "superseded_at_utc": "2026-09-18T11:58:00Z",
+  "scientific_effect": "NONE",
+  "reconciliation_note": "Created after pre-existing LOCAL_BOOTSTRAP_AMENDMENT_02. Canonical bootstrap remains 15m public REST/archive state bootstrap as implemented; this file must not expand or replace that authority.",
+  "canonical_authority": [
+    "HTF_DH03_12H_STANDALONE_FORWARD_V1_LOCAL_BOOTSTRAP_AMENDMENT_02.json"
+  ]
+}
