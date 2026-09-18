@@ -1,6 +1,6 @@
-# CRYPTO EDGE RADAR V0.2
+# CRYPTO EDGE RADAR V0.3
 
-Status: **PUBLIC SHADOW INFRASTRUCTURE ONLY**  
+Status: **PUBLIC SHADOW / PROMOTED-MOTOR INFRASTRUCTURE ONLY**  
 Development branch: `crypto-edge-radar-v0.1`  
 Draft PR: `#22`  
 Live trading: **FORBIDDEN**  
@@ -9,53 +9,121 @@ Order creation / cancellation / mutation: **NOT IMPLEMENTED**
 
 ## Purpose
 
-Provide a strategy-agnostic public market monitoring service that can run continuously and accept a future Crypto Lab strategy **only after prospectively governed promotion to shadow**.
+Run a strategy-agnostic public-data radar that may host only research candidates with explicit upstream promotion/shadow authority.
 
-The radar does not discover edges, tune rules, rescue rejected candidates, auto-promote strategies, or authorize capital. Research governance remains upstream and authoritative.
+The radar does not discover edges, tune strategies, rescue rejected candidates, auto-promote strategies, or authorize capital.
 
-## Current capability
+## V0.3 promoted motor state
 
-- Explicit public market provider identity on every market/evaluation/health record.
-- Default provider: Binance USD-M public market data.
-- Infrastructure-validation provider: Binance market-data-only Spot endpoint (`data-api.binance.vision`).
-- Core universe: BTCUSDT, ETHUSDT, SOLUSDT, BNBUSDT, XRPUSDT.
-- Optional `liquid` observation universe using frozen 24h quote-volume and max-symbol filters.
-- Empty strategy registry by default.
-- Only `PROMOTED_SHADOW` adapters may emit `VALID_SIGNAL`.
-- SQLite evidence log with SHA-256 payload hashes and chained event hashes.
-- Heartbeat event persisted after each successful service cycle.
-- Atomic JSON health/status file.
-- Local JSONL notification sink for service failures and future valid shadow signals.
-- Bounded service mode for CI soak tests and unbounded service mode for a future authorized host.
-- `status` and `verify-evidence` commands.
-- No dashboard, webhooks, API keys, balances, positions, orders, cancels, amendments, or exchange mutation.
+The current canonical motor manifest is:
+
+`PROMOTED_MOTOR_MANIFEST_V0.3.json`
+
+Current V3 Tier-2 set reconciled for Radar:
+
+1. **CED1D-0031 — AVAXUSDT Momentum 20D CONTINUATION H1**
+   - Tier 2 / Quase Diamante.
+   - Prospective public-data shadow activation authorized.
+   - First eligible signal completion: `2026-09-19T00:00:00Z`.
+   - Native Radar V0.3 adapter: **ACTIVE only on Binance USD-M public provider**.
+   - Exact symbol/provider binding; Spot substitution forbidden.
+   - Late backfill after the 00:01 reference entry is forbidden.
+   - Immutable signal key deduplication prevents repeat notifications.
+
+2. **BNB-LAUNCHPOOL-DEMAND-001**
+   - Tier 2 / Quase Diamante.
+   - Existing forward watcher retained.
+   - Radar native adapter: **not yet loaded**.
+   - Requires a dedicated event/provenance bridge; a snapshot-only adapter would be scientifically invalid.
+
+3. **ETF-CME-INSTFLOW-001**
+   - Tier 2 / promoted candidate.
+   - Existing forward shadow active.
+   - Radar native adapter: **not yet loaded**.
+   - Requires provenance-preserving ETF/CME/CFTC input bridge.
+
+4. **HTF-DONCHIAN DH-02-HO1 6H**
+   - Tier 2 / Quase Diamante.
+   - Shadow preflight ready.
+   - Protected 2026 access remains locked under its own candidate authority.
+   - Radar adapter must remain blocked until a separate candidate-specific authority opens that access.
+
+Rejected/Tier-4 candidates are not loadable into the promoted registry.
+
+## AVAX20 native adapter
+
+Research identity is preserved exactly:
+
+- market: Binance USD-M AVAXUSDT perpetual
+- lookback: 20 calendar days
+- signal: `ln(close_D / close_D-20)`
+- direction: CONTINUATION
+- signal completion: UTC day boundary
+- reference entry: +1 minute
+- reference exit: +1 calendar day
+- first eligible completion: 2026-09-19 00:00 UTC
+- no stops/targets/regime filter added
+- no late signal backfill
+- no real order path
+
+The adapter reads only allowlisted public USD-M daily klines and filters out incomplete candles. A directional signal is valid only inside the one-minute interval between frozen signal completion and frozen reference entry.
+
+## Signal deduplication
+
+Every promoted directional adapter must provide an immutable `metadata.signal_key`.
+
+New signals are written once to the append-only evidence chain as:
+
+`VALID_SHADOW_SIGNAL`
+
+If a later service cycle sees the same signal key, the decision is retained for audit but notification/emission is suppressed. A process restart therefore cannot spam the same shadow signal.
 
 ## Provider firewall
 
-The Spot market-data provider exists only so infrastructure can be validated from environments where the USD-M host is geographically unavailable. It is **not** interchangeable with futures data for a strategy.
+Default research/runtime provider: Binance USD-M public market data.
 
-A future strategy adapter must bind to the exact market/provider family authorized by its research package. A strategy validated on USD-M futures cannot silently run on Spot data.
+GitHub-hosted runners may receive HTTP 451 from `fapi.binance.com`. The CI public soak therefore continues to use Binance's official market-data-only Spot endpoint **for infrastructure validation only**.
+
+Spot does not load the AVAX20 adapter, cannot produce AVAX20 signals, and is never treated as futures-equivalent.
+
+## Current capability
+
+- Explicit public provider identity on all market/evaluation/health records.
+- Core5 observation universe plus exact promoted-strategy symbols when their adapter is loaded.
+- Optional broader liquid universe.
+- Provider-bound promoted strategy registry.
+- Native AVAX20 Tier-2 shadow adapter.
+- Immutable signal-key deduplication.
+- SQLite SHA-256 evidence chain.
+- Atomic JSON health/status file.
+- Local JSONL informational notification sink.
+- Heartbeat-enabled service loop.
+- Bounded CI soak.
+- No dashboard, webhooks, API keys, balances, positions, orders, cancels, amendments or exchange mutation.
 
 ## Scientific firewall
 
 ```text
-RESEARCH LAB
-   |
-   | explicit prospective promotion + provider identity
-   v
+RESEARCH LAB / PROMOTION POLICY
+          |
+          | explicit candidate-specific shadow authority
+          v
+PROMOTED MOTOR MANIFEST
+          |
+          | exact provider + exact identity
+          v
 STRATEGY ADAPTER REGISTRY
-   |
-   | promotion_status == PROMOTED_SHADOW
-   v
-PUBLIC SHADOW SERVICE
-   |
-   +--> allowlisted public market observation
-   +--> deterministic evaluation
-   +--> heartbeat/status
-   +--> evidence chain
-   +--> local notification sink
-   |
-   X  no order path exists
+          |
+          | PROMOTED_SHADOW only
+          v
+PUBLIC READ-ONLY RADAR
+          |
+          +--> deterministic signal
+          +--> immutable signal_key
+          +--> append-only evidence
+          +--> local informational notification
+          |
+          X  no order/account/wallet path
 ```
 
 ## Run locally
@@ -66,49 +134,26 @@ Requires Python 3.11+ and no third-party runtime packages.
 cd crypto_edge_radar
 python -m radar once
 python -m radar service --interval 30
-python -m radar service --interval 5 --max-cycles 3
 python -m radar status
 python -m radar verify-evidence
 ```
 
-Environment variables:
+Default USD-M mode loads compatible promoted native adapters. The Spot validation provider loads none.
 
-```bash
-RADAR_DB=radar_evidence.sqlite3
-RADAR_STATUS=radar_status.json
-RADAR_NOTIFICATIONS=radar_notifications.jsonl
-RADAR_PROVIDER=binance_usdm          # binance_usdm | binance_spot_public
-RADAR_UNIVERSE_MODE=core5            # core5 | liquid
-RADAR_MAX_SYMBOLS=50
-RADAR_MIN_QUOTE_VOLUME=50000000
-RADAR_HTTP_TIMEOUT=10
-```
+## Governance
 
-## Health semantics
+V0.3 does **not** authorize:
 
-Successful service cycles publish `health=OK`, provider, cycle number, selected universe, registered strategy count, valid signal count and the evidence receipt.
+- live trading
+- authenticated exchange APIs
+- account API keys
+- wallets
+- leverage
+- order creation or cancellation
+- exchange mutation
+- external execution webhooks
+- production capital
+- automatic Tier-1 promotion
+- merge to main
 
-Any market-data/evaluation failure publishes `health=FAIL_CLOSED`, emits no valid signal, records the failure when persistence is available and writes a local failure notification. Service intervals below five seconds are rejected.
-
-## Notifications
-
-V0.2 deliberately uses a local JSONL sink rather than Telegram, email, Discord or webhooks. External delivery is a later transport layer and must not create an exchange-order path. A future `VALID_SHADOW_SIGNAL` notification is informational/paper-only unless a separate governance phase explicitly authorizes something else.
-
-## Real public-data validation
-
-CI contains two gates:
-
-1. offline compile + unit/safety tests;
-2. a bounded three-cycle soak using real public Binance market data, followed by evidence-chain verification and assertions that the final heartbeat is healthy, provider identity is explicit, the Core5 is present, the strategy registry is empty and valid-signal count is zero.
-
-The first USD-M soak from the GitHub Central US runner correctly failed closed on HTTP 451 geographic access restriction. CI then moved to Binance's official market-data-only Spot base endpoint for infrastructure validation; that does not authorize a Spot strategy or substitute Spot for futures research.
-
-The bounded CI soak proves the public path; it is **not** represented as a 24/7 deployment.
-
-## Promotion contract
-
-A future strategy adapter must have immutable identity, exact provider/market family and explicit prospective `PROMOTED_SHADOW` status from its own research authority package. `RESEARCH`, `CANDIDATE`, `REJECTED`, `CLOSED`, unknown and missing promotion states fail closed.
-
-## Current strategy state
-
-No strategy is bundled as promoted. This is intentional: the radar can mature operationally while the Crypto Lab continues hunting for an edge that actually survives the scientific gates.
+The Radar is an evidence and signal-observation surface only.
