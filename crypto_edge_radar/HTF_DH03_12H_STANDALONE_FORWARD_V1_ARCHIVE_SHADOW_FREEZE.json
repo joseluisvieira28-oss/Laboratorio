@@ -1,0 +1,41 @@
+{
+  "execution_id": "HTF-DH03-12H-STANDALONE-FORWARD-V1-ARCHIVE-SHADOW",
+  "status": "FROZEN_BEFORE_FIRST_POSTFREEZE_ARCHIVE_OUTCOME",
+  "frozen_at_utc": "2026-09-18T06:58:30Z",
+  "parent_strategy_freeze": "HTF_DH03_12H_STANDALONE_FORWARD_V1_FREEZE.json",
+  "boundary_clarification": "HTF_DH03_12H_STANDALONE_FORWARD_V1_BOUNDARY_CLARIFICATION_01.json",
+  "source": {
+    "price_provider": "Binance Public Data USD-M daily 1m klines",
+    "checksum_required": true,
+    "warmup_start_utc": "2026-08-28T00:00:00Z",
+    "warmup_role": "STATE_ONLY_NOT_FORWARD_EVIDENCE",
+    "first_forward_signal_bar_open_utc": "2026-09-18T12:00:00Z",
+    "final_funding_provider": "Binance Public Data monthly fundingRate archives",
+    "live_funding_stream_role": "diagnostic/provisional only; cannot finalize net R"
+  },
+  "execution": {
+    "rule_identity": "DH-03-HO1 exact Phase5 semantics",
+    "one_active_trade_per_symbol": true,
+    "minute_path_required": true,
+    "stop_target_same_minute": "STOP_WINS",
+    "base_round_trip_cost_pct": 0.2,
+    "stress_round_trip_cost_pct": 0.3,
+    "price_exit_may_resolve_before_funding": true,
+    "net_r_finalization": "ONLY_AFTER_MONTHLY_FUNDING_RECONCILIATION"
+  },
+  "schedule": {
+    "intended_mode": "DAILY_ARCHIVE_SHADOW",
+    "latest_day_rule": "UTC yesterday only; never current incomplete day",
+    "missing_yesterday_archive": "WAITING_ARCHIVE_PUBLICATION",
+    "no_backfill_before_freeze_as_forward_evidence": true
+  },
+  "governance": {
+    "research_only": true,
+    "no_authenticated_api": true,
+    "no_orders": true,
+    "no_exchange_mutation": true,
+    "no_live_capital": true,
+    "no_post_outcome_tuning": true,
+    "no_DH02_rescue": true
+  }
+}
