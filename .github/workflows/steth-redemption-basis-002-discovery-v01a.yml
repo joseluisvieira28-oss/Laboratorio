@@ -1,0 +1,215 @@
+name: STETH Redemption Basis 002 — Discovery V0.1A Retry
+
+on:
+  push:
+    branches:
+      - steth-redemption-basis-002-discovery-v0.1
+    paths:
+      - '.github/workflows/steth-redemption-basis-002-discovery-v01a.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: steth-redemption-basis-002-discovery-v01a
+  cancel-in-progress: false
+
+env:
+  SOURCE_RUN_ID: '35386033845'
+  SOURCE_HEAD_SHA: 'dbc396c8d161bfd2ed097449d184d9fd0c69987b'
+  SOURCE_ARTIFACT_NAME: 'STETH_REDEMPTION_BASIS_002_SOURCE_GATE_V0_1'
+  RUNNER_BLOB_SHA: 'a9566cfcf21dbb4b9e774a88ab9edc2852441147'
+  PROTOCOL_BLOB_SHA: 'f993db84148746c704b904f80c437dfa67d9c1b6'
+  IMPLEMENTATION_FREEZE_BLOB_SHA: '4e4999813b8f912818db2736c8cdcd18f1a93aa7'
+  TRANSPORT_REMEDIATION_BLOB_SHA: '200d8db8fdedec4cdd37b723819eae49351d2d34'
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Verify exact frozen identities
+        run: |
+          test "$(git hash-object research/steth_redemption_basis_002/discovery_v01.py)" = "${RUNNER_BLOB_SHA}"
+          test "$(git hash-object research/steth_redemption_basis_002/STETH_REDEMPTION_BASIS_002_FINAL_PRE_DISCOVERY_PROTOCOL_V0_1.md)" = "${PROTOCOL_BLOB_SHA}"
+          test "$(git hash-object research/steth_redemption_basis_002/STETH_REDEMPTION_BASIS_002_DISCOVERY_IMPLEMENTATION_FREEZE_V0_1.md)" = "${IMPLEMENTATION_FREEZE_BLOB_SHA}"
+          test "$(git hash-object research/steth_redemption_basis_002/STETH_REDEMPTION_BASIS_002_DISCOVERY_RPC_THROUGHPUT_REMEDIATION_V0_1A.md)" = "${TRANSPORT_REMEDIATION_BLOB_SHA}"
+          echo STETH002_V01A_BINDING_PASS
+
+      - name: Install dependencies
+        run: python -m pip install --disable-pip-version-check requests 'eth-hash[pycryptodome]'
+
+      - name: Compile and base self-test
+        run: |
+          python -m py_compile research/steth_redemption_basis_002/discovery_v01.py
+          python research/steth_redemption_basis_002/discovery_v01.py --self-test
+
+      - name: Prove item-level 429 retry semantics
+        run: |
+          python - <<'PY'
+          import importlib.util
+          from collections import Counter
+          from pathlib import Path
+          p=Path('research/steth_redemption_basis_002/discovery_v01.py')
+          spec=importlib.util.spec_from_file_location('m',p)
+          m=importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+          calls={'n':0}
+          original=m.rpc_json
+          original_sleep=m.time.sleep
+          def fake_rpc_json(endpoint,payload,stats):
+              calls['n']+=1
+              if calls['n']==1:
+                  return [
+                      {'jsonrpc':'2.0','id':0,'result':'0x1'},
+                      {'jsonrpc':'2.0','id':1,'error':{'code':429,'message':'compute units per second capacity'}},
+                  ]
+              return [
+                  {'jsonrpc':'2.0','id':0,'result':'0x1'},
+                  {'jsonrpc':'2.0','id':1,'result':'0x2'},
+              ]
+          m.rpc_json=fake_rpc_json
+          m.time.sleep=lambda *_: None
+          stats=Counter()
+          try:
+              out=m.rpc_batch('synthetic',[('x',[]),('y',[])],stats)
+          finally:
+              m.rpc_json=original
+              m.time.sleep=original_sleep
+          assert out==['0x1','0x2'],out
+          assert calls['n']>=2,calls
+          assert stats['rpc_batch_transient_item_errors']>=1,stats
+          assert stats['rpc_batch_transient_retries']>=1,stats
+          print('STETH002_ITEM_429_RETRY_PASS',dict(stats))
+          PY
+
+      - name: Verify exact canonical source run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python - <<'PY'
+          import json,os,urllib.request
+          rid=int(os.environ['SOURCE_RUN_ID'])
+          req=urllib.request.Request(
+            f'https://api.github.com/repos/joseluisvieira28-oss/Laboratorio/actions/runs/{rid}',
+            headers={
+              'Authorization':f"Bearer {os.environ['GH_TOKEN']}",
+              'Accept':'application/vnd.github+json',
+              'X-GitHub-Api-Version':'2022-11-28',
+            }
+          )
+          with urllib.request.urlopen(req,timeout=30) as r:
+              o=json.load(r)
+          assert o['status']=='completed' and o['conclusion']=='success',o
+          assert o['head_sha']==os.environ['SOURCE_HEAD_SHA'],o
+          print('STETH002_V01A_SOURCE_RUN_PASS')
+          PY
+
+  discovery:
+    needs: preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Rebind exact frozen identities
+        run: |
+          test "$(git hash-object research/steth_redemption_basis_002/discovery_v01.py)" = "${RUNNER_BLOB_SHA}"
+          test "$(git hash-object research/steth_redemption_basis_002/STETH_REDEMPTION_BASIS_002_FINAL_PRE_DISCOVERY_PROTOCOL_V0_1.md)" = "${PROTOCOL_BLOB_SHA}"
+          test "$(git hash-object research/steth_redemption_basis_002/STETH_REDEMPTION_BASIS_002_DISCOVERY_IMPLEMENTATION_FREEZE_V0_1.md)" = "${IMPLEMENTATION_FREEZE_BLOB_SHA}"
+          test "$(git hash-object research/steth_redemption_basis_002/STETH_REDEMPTION_BASIS_002_DISCOVERY_RPC_THROUGHPUT_REMEDIATION_V0_1A.md)" = "${TRANSPORT_REMEDIATION_BLOB_SHA}"
+
+      - name: Install dependencies
+        run: python -m pip install --disable-pip-version-check requests 'eth-hash[pycryptodome]'
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.SOURCE_ARTIFACT_NAME }}
+          path: downloaded_source_gate
+          run-id: ${{ env.SOURCE_RUN_ID }}
+          github-token: ${{ github.token }}
+
+      - name: Bind exact source receipt before outcomes
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          fs=list(Path('downloaded_source_gate').rglob('*.json'))
+          assert len(fs)==1,fs
+          x=json.loads(fs[0].read_text())
+          assert x['lab_id']=='STETH-REDEMPTION-BASIS-002'
+          assert x['classification']=='SOURCE_DATA_PASS'
+          assert x['agreed_start_block']==17272128
+          assert x['agreed_end_block']==21522315
+          assert x['expected_daily_snapshot_population']==596
+          s=x['safety']
+          assert s['market_prices_opened'] is False
+          assert s['returns_opened'] is False
+          assert s['pnl_opened'] is False
+          assert s['accessed_2025_or_2026'] is False
+          print('STETH002_V01A_SOURCE_RECEIPT_BIND_PASS')
+          PY
+
+      - name: Execute exact frozen Discovery V0.1A
+        id: discovery_run
+        continue-on-error: true
+        run: python research/steth_redemption_basis_002/discovery_v01.py
+
+      - name: Enforce firewall and receipt
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('out/steth_redemption_basis_002_discovery/STETH_REDEMPTION_BASIS_002_DISCOVERY_V0_1.json')
+          assert p.exists(),'Discovery receipt missing'
+          x=json.loads(p.read_text())
+          assert x['lab_id']=='STETH-REDEMPTION-BASIS-002'
+          assert x['classification'] in {
+            'DISCOVERY_INSUFFICIENT_SAMPLE',
+            'DISCOVERY_NO_REDEMPTION_EDGE',
+            'DISCOVERY_REDEMPTION_EDGE_PASS_REQUIRES_SEPARATE_REPLICATION',
+            'DISCOVERY_TECHNICAL_OR_PROVENANCE_FAILURE',
+          }
+          s=x['safety']
+          assert s['accessed_2025_or_2026'] is False
+          assert s['live_trading'] is False
+          assert s['wallet_access'] is False
+          assert s['orders_created'] is False
+          assert s['exchange_mutation'] is False
+          assert s['leverage_deployed'] is False
+          assert s['main_merge'] is False
+          assert s['market_direction_returns_opened'] is False
+          print('STETH002_V01A_FIREWALL_PASS',x['classification'])
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: STETH_REDEMPTION_BASIS_002_DISCOVERY_V0_1A
+          path: out/steth_redemption_basis_002_discovery/STETH_REDEMPTION_BASIS_002_DISCOVERY_V0_1.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Final adjudication
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          x=json.loads(Path('out/steth_redemption_basis_002_discovery/STETH_REDEMPTION_BASIS_002_DISCOVERY_V0_1.json').read_text())
+          print('FINAL_CLASSIFICATION',x['classification'])
+          if x['classification']=='DISCOVERY_TECHNICAL_OR_PROVENANCE_FAILURE':
+              raise SystemExit(2)
+          PY
