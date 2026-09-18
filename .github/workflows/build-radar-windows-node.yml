@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - crypto-edge-radar-aggressive-v0.7-render
+      - htf-dh03-12h-standalone-forward-v0.1
     paths:
       - 'crypto_edge_radar/**'
       - '.github/workflows/build-radar-windows-node.yml'
@@ -43,7 +44,9 @@ jobs:
           $state = $output | ConvertFrom-Json
           if ($state.status -ne "PASS") { throw "package self-test did not PASS" }
           if (-not $state.required_strategy_present) { throw "ETF-CME strategy missing from packaged registry" }
-          if ([int]$state.candidate_count -lt 4) { throw "packaged registry unexpectedly small" }
+          if ([int]$state.candidate_count -lt 5) { throw "packaged registry unexpectedly small" }
+          if (-not $state.dh03_strategy_present) { throw "DH03 standalone strategy missing from packaged registry" }
+          if (-not $state.dh03_collector_importable) { throw "DH03 collector not importable in packaged EXE" }
           if (-not $state.runtime_registry_materialized) { throw "runtime registry was not materialized" }
           if ([int]$state.runtime_candidate_count -ne [int]$state.candidate_count) { throw "runtime registry candidate count mismatch" }
       - name: Hash executable
@@ -55,10 +58,11 @@ jobs:
       - name: Upload Windows node artifact
         uses: actions/upload-artifact@v4
         with:
-          name: crypto-edge-radar-v07-windows-node
+          name: crypto-edge-radar-v010-windows-node
           path: |
             crypto_edge_radar/dist/CryptoEdgeRadarNode.exe
             crypto_edge_radar/dist/CryptoEdgeRadarNode.sha256.txt
             crypto_edge_radar/LOCAL_OPERATOR_NODE_V1.md
+            crypto_edge_radar/LOCAL_OPERATOR_NODE_V010.md
           if-no-files-found: error
           retention-days: 14
