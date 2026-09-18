@@ -6,6 +6,7 @@ import json
 from math import isfinite
 from statistics import mean
 from typing import Any, Iterable
+import time
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
@@ -146,8 +147,20 @@ class MEXCSpotKlineFeed:
     provider = "MEXC_SPOT_PUBLIC"
     path = "/api/v3/klines"
 
-    def __init__(self, timeout: int = 10) -> None:
+    def __init__(
+        self,
+        timeout: int = 10,
+        *,
+        max_attempts: int = 3,
+        retry_backoff_seconds: float = 0.5,
+    ) -> None:
         self.timeout = timeout
+        self.max_attempts = max_attempts
+        self.retry_backoff_seconds = retry_backoff_seconds
+        if self.max_attempts < 1:
+            raise ValueError("max_attempts must be >= 1")
+        if self.retry_backoff_seconds < 0:
+            raise ValueError("retry_backoff_seconds must be >= 0")
 
     def _get_json(self, query: dict[str, Any]) -> Any:
         url = f"{self.base_url}{self.path}?{urlencode(query)}"
@@ -156,15 +169,24 @@ class MEXCSpotKlineFeed:
             method="GET",
             headers={"User-Agent": "crypto-edge-radar/0.9 tfg-forward-read-only"},
         )
-        try:
-            with urlopen(request, timeout=self.timeout) as response:
-                if response.status != 200:
-                    raise TFGSourceError(f"MEXC spot HTTP {response.status}")
-                return json.loads(response.read().decode("utf-8"))
-        except Exception as exc:
-            if isinstance(exc, TFGSourceError):
-                raise
-            raise TFGSourceError(f"MEXC spot source unavailable: {type(exc).__name__}: {exc}") from exc
+        last_exc: Exception | None = None
+        for attempt in range(1, self.max_attempts + 1):
+            try:
+                with urlopen(request, timeout=self.timeout) as response:
+                    if response.status != 200:
+                        raise TFGSourceError(f"MEXC spot HTTP {response.status}")
+                    return json.loads(response.read().decode("utf-8"))
+            except Exception as exc:
+                if isinstance(exc, TFGSourceError):
+                    raise
+                last_exc = exc
+                if attempt < self.max_attempts and self.retry_backoff_seconds:
+                    time.sleep(self.retry_backoff_seconds * attempt)
+        assert last_exc is not None
+        raise TFGSourceError(
+            f"MEXC spot source unavailable after {self.max_attempts} attempts: "
+            f"{type(last_exc).__name__}: {last_exc}"
+        ) from last_exc
 
     def klines(
         self,
