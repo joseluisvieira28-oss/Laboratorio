@@ -1,0 +1,39 @@
+name: CED 1D 2025 Funding Source Gate
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - ced-1d-v3-byte-recovery-2026-09-17
+    paths:
+      - '.github/workflows/ced-1d-2025-funding-gate.yml'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/CED_1D_2025_FUNDING_SOURCE_MANIFEST_V0.1.json'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/ced_1d_2025_funding_gate_v01.py'
+
+permissions:
+  contents: read
+
+jobs:
+  funding-source-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile funding gate
+        run: python -m py_compile Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/ced_1d_2025_funding_gate_v01.py
+      - name: Fetch official 2025 funding records only
+        run: |
+          python Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/ced_1d_2025_funding_gate_v01.py \
+            --manifest Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/CED_1D_2025_FUNDING_SOURCE_MANIFEST_V0.1.json \
+            --output "$RUNNER_TEMP/ced1d-funding-gate"
+      - name: Upload funding source receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ced1d-2025-funding-source-gate
+          path: ${{ runner.temp }}/ced1d-funding-gate
+          if-no-files-found: warn
+          retention-days: 30
