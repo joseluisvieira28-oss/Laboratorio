@@ -1,0 +1,82 @@
+name: BTC Options VRP Monthly Expiry Source V0.1
+
+on:
+  push:
+    branches:
+      - btc-options-vrp-monthly-expiry-source-v0.1
+    paths:
+      - 'labs/BTC_OPTIONS_VRP_001/MONTHLY_EXPIRY_SOURCE_TRIGGER_V0.1.txt'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: btc-options-vrp-monthly-expiry-source-v01
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        year: [2021, 2022, 2023, 2024]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: btc-options-vrp-monthly-expiry-source-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --disable-pip-version-check requests==2.32.3
+      - name: Verify frozen authority
+        run: |
+          python - <<'PY'
+          import json
+          a=json.load(open('labs/BTC_OPTIONS_VRP_001/MONTHLY_EXPIRY_SOURCE_AUTHORITY_V0.1.json'))
+          assert a['source_gate_id']=='OVRP-MONTHLY-EXPIRY-SOURCE-001'
+          assert a['status']=='FROZEN_SOURCE_ONLY_OUTCOME_BLIND'
+          assert len(a['sample_dates'])==45
+          assert a['source_gates']['minimum_complete_months_total']==36
+          assert a['pair_definition']['dte_min']==25 and a['pair_definition']['dte_max']==35
+          assert all(v is False for k,v in a['safety'].items() if k.endswith('_authorized'))
+          print('MONTHLY_EXPIRY_SOURCE_AUTHORITY_PASS')
+          PY
+      - run: python -m py_compile labs/BTC_OPTIONS_VRP_001/monthly_expiry_source_v01.py
+      - name: Probe year
+        run: python labs/BTC_OPTIONS_VRP_001/monthly_expiry_source_v01.py --year ${{ matrix.year }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: monthly-expiry-source-${{ matrix.year }}
+          path: artifacts/btc_options_vrp_monthly_expiry_source_v01/monthly_expiry_source_${{ matrix.year }}.json
+          retention-days: 90
+          if-no-files-found: warn
+
+  aggregate:
+    needs: probe
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: btc-options-vrp-monthly-expiry-source-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --disable-pip-version-check requests==2.32.3
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: monthly-expiry-source-*
+          path: monthly_expiry_inputs
+      - name: Aggregate frozen source gate
+        run: python labs/BTC_OPTIONS_VRP_001/monthly_expiry_source_v01.py --aggregate-dir monthly_expiry_inputs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: BTC_OPTIONS_VRP_001_MONTHLY_EXPIRY_SOURCE_V0_1
+          path: artifacts/btc_options_vrp_monthly_expiry_source_v01/MONTHLY_EXPIRY_SOURCE_AGGREGATE_V0.1.json
+          retention-days: 90
+          if-no-files-found: warn
