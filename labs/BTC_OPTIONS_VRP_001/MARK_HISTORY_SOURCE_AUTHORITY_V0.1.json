@@ -1,0 +1,75 @@
+{
+  "lab_id": "BTC-OPTIONS-VRP-001",
+  "probe_id": "OVRP-MARK-HISTORY-SOURCE-PROBE-001",
+  "status": "FROZEN_SOURCE_ONLY_OUTCOME_BLIND",
+  "date_frozen": "2026-09-18",
+  "purpose": "Test whether Deribit's official public get_mark_price_history route supplies dense historical 5-minute mark series for expired BTC options over the original 7-day execution horizon.",
+  "source": {
+    "provider": "Deribit official public API",
+    "url": "https://www.deribit.com/api/v2/public/get_mark_price_history",
+    "auth_required": false
+  },
+  "cases": [
+    {
+      "date": "2021-01-01",
+      "call": "BTC-29JAN21-28000-C",
+      "put": "BTC-29JAN21-28000-P"
+    },
+    {
+      "date": "2022-01-01",
+      "call": "BTC-28JAN22-42000-C",
+      "put": "BTC-28JAN22-42000-P"
+    },
+    {
+      "date": "2023-01-01",
+      "call": "BTC-27JAN23-20000-C",
+      "put": "BTC-27JAN23-20000-P"
+    },
+    {
+      "date": "2024-01-01",
+      "call": "BTC-26JAN24-35000-C",
+      "put": "BTC-26JAN24-35000-P"
+    }
+  ],
+  "window": {
+    "start_offset_minutes": 0,
+    "end_offset_days": 7
+  },
+  "pass_rule": {
+    "minimum_points_per_leg": 100,
+    "minimum_span_hours_per_leg": 156,
+    "all_8_legs_required": true,
+    "all_4_years_required": true
+  },
+  "retained_metrics_only": [
+    "instrument_name",
+    "requested start/end timestamps",
+    "HTTP status",
+    "payload sha256",
+    "point count",
+    "first timestamp",
+    "last timestamp",
+    "span hours"
+  ],
+  "safety": {
+    "mark_price_values_retained": false,
+    "returns_authorized": false,
+    "strategy_pnl_authorized": false,
+    "performance_outcomes_authorized": false,
+    "api_key_authorized": false,
+    "paid_subscription_authorized": false,
+    "access_2025_authorized": false,
+    "access_2026_authorized": false,
+    "live_trading_authorized": false,
+    "exchange_mutation_authorized": false,
+    "wallet_access_authorized": false,
+    "merge_to_main_authorized": false
+  },
+  "classifications": {
+    "pass": "MARK_HISTORY_SOURCE_ROUTE_PASS",
+    "insufficient": "MARK_HISTORY_SOURCE_ROUTE_INSUFFICIENT",
+    "technical_failure": "MARK_HISTORY_SOURCE_TECHNICAL_FAILURE",
+    "provenance_failure": "MARK_HISTORY_SOURCE_PROVENANCE_FAILURE"
+  },
+  "post_pass_rule": "A PASS proves only a dense official historical mark route. Mark price is not executable BBO. Any later MVE must separately freeze conservative execution/slippage semantics and may not rewrite the closed trade-print MVE."
+}
