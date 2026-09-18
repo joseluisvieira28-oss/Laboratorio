@@ -1,0 +1,27 @@
+{
+  "campaign_id": "HTF-DIAMOND-HUNT-001",
+  "phase": "PHASE_5_EXACT_RULE_FORWARD_HOLDOUT",
+  "status": "FROZEN_BEFORE_PHASE5_OUTCOMES",
+  "purpose": "Resolve implementation-only aggregation semantics left implicit by the already-frozen Phase5 gates; no rule, threshold, asset, timeframe, cost, stop, target, hold or source change is introduced.",
+  "source_binding_required": "HTF_DIAMOND_HUNT_001_PHASE5_SOURCE_BINDING_V0.1.json",
+  "execution_semantics": "IDENTICAL_TO_PHASE4_MINUTE_PATH_PLUS_FUNDING",
+  "metric_semantics": {
+    "calendar_year_expectancy": "mean BASE net R of resolved trades grouped by UTC entry_time calendar year",
+    "single_symbol_positive_net_r_share": "for each symbol, sum(max(BASE net R,0)) over resolved trades for that symbol divided by sum(max(BASE net R,0)) over all resolved trades in the cell",
+    "single_quarter_positive_net_r_share": "for each UTC entry_time calendar quarter, sum(max(BASE net R,0)) over resolved trades in that quarter divided by sum(max(BASE net R,0)) over all resolved trades in the cell",
+    "concentration_denominator_zero": "gate fails closed if total positive BASE net R is zero",
+    "bootstrap": "UTC_ENTRY_DAY_BLOCK; 5000 repetitions; seed 230911; 95 percent interval; identical to Phase4",
+    "primary_decision": "DH-02-HO1 only; DH-03-HO1 is reported jointly and cannot rescue a DH-02-HO1 failure"
+  },
+  "governance": {
+    "outcomes_inspected_before_this_clarification": false,
+    "no_post_outcome_tuning": true,
+    "no_asset_selection": true,
+    "no_timeframe_substitution": true,
+    "no_live_trading": true,
+    "no_exchange_mutation": true,
+    "no_merge_to_main": true,
+    "access_2025": false,
+    "access_2026": false
+  }
+}
