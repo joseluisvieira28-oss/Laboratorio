@@ -1,0 +1,52 @@
+{
+  "freeze_id": "OPTIONS-SPOTPERP-001-V2.1-LIVE-SHADOW-V0.1",
+  "frozen_at_utc": "2026-09-18T05:35:01Z",
+  "status": "FROZEN_BEFORE_FIRST_2026_LIVE_SOURCE_QUERY",
+  "authority": {
+    "scientific_branch": "options-spotperp-001-v21-oos-2025-v01",
+    "oos_run_id": 35231711508,
+    "oos_artifact_id": 10504812106,
+    "oos_artifact_digest": "sha256:dbbcb7ca0bd1a4fdc759b5ec0211743cfb9b441b304d23692094b148bdcfbf82",
+    "oos_classification": "TIER_2_PROMOTED_CANDIDATE__QUASE_DIAMANTE__HIGH_RISK_FRAGILITY"
+  },
+  "frozen_identity": {
+    "signal": "CALL_IV_MINUS_PUT_IV",
+    "direction": "positive=LONG; negative=SHORT; zero/invalid=FLAT",
+    "execution": "BTCUSDT spot 00:00 UTC t+1 to 00:00 UTC t+2",
+    "rv_window_daily_log_returns": 20,
+    "rv_baseline": "expanding median of all valid RV20 observations through signal date t",
+    "minimum_valid_rv20_history": 60,
+    "weight": "min(1.0, expanding_median_RV20_t / RV20_t)",
+    "max_weight": 1,
+    "leverage_above_one": false,
+    "base_cost_bps_full_notional": 10,
+    "stress_cost_bps_full_notional": 20
+  },
+  "prospective_rule": {
+    "evidence_signal_dates": "strictly after 2026-09-18T05:35:01Z and only when the frozen daily signal becomes causally knowable",
+    "pre_boundary_2026_data": "BOOTSTRAP_STATE_ONLY__NEVER_NEW_FORWARD_EVIDENCE",
+    "pre_boundary_outcomes": "FORBIDDEN_AS_FORWARD_EVIDENCE",
+    "no_backfill_rescue": true,
+    "no_parameter_tuning": true,
+    "no_direction_or_horizon_change": true
+  },
+  "oos_2025_reference": {
+    "resolved_scaled_trades": 363,
+    "average_executed_notional": 0.9718704171663333,
+    "base10_net_mean_bps": 5.0427663334042565,
+    "base10_profit_factor": 1.06915099179292,
+    "base10_max_drawdown": -0.27393135961723236,
+    "stress20_net_mean_bps": -4.675937838259077,
+    "stress20_profit_factor": 0.940166394773683,
+    "high_risk_fragility": true
+  },
+  "governance": {
+    "public_read_only_source_only": true,
+    "no_authenticated_exchange_api": true,
+    "no_orders": true,
+    "no_exchange_mutation": true,
+    "no_wallets": true,
+    "no_live_capital": true,
+    "no_merge_to_main": true
+  }
+}
