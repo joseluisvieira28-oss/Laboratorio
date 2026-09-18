@@ -1,6 +1,6 @@
 {
-  "registry_version": "3.1",
-  "as_of_utc": "2026-09-18T11:00:30Z",
+  "registry_version": "3.2",
+  "as_of_utc": "2026-09-18T11:25:57Z",
   "governance": "ND_PROMOTION_POLICY_V3_PLUS_AGGRESSIVE_FAIL_CLOSED_DEPLOYMENT",
   "focus_strategy_ids": [
     "ETF-CME-INSTFLOW-001",
@@ -204,7 +204,7 @@
       "strategy_id": "HTF-DH03-12H-STANDALONE-FORWARD-V1",
       "scientific_tier": null,
       "scientific_status": "NEW_PROSPECTIVE_STANDALONE_CANDIDATE__SOURCE_PASS",
-      "deployment_state": "PROSPECTIVE_ARCHIVE_SHADOW_OPERATIONAL__WAITING_FIRST_ELIGIBLE_ARCHIVE_DAY",
+      "deployment_state": "LOCAL_SHADOW_BUILD_READY__AWAIT_OPERATOR_START",
       "shadow_allowed": true,
       "micro_live_allowed_now": false,
       "authority_branch": "htf-dh03-12h-standalone-forward-v0.1",
@@ -236,9 +236,9 @@
         "prefreeze_rows_used_as_forward_evidence": false
       },
       "blocking_gates": [
-        "first eligible post-freeze archive day not yet published/available",
-        "first eligible signal boundary not yet observed under standalone authority",
-        "final net-R requires checksum-verified monthly funding reconciliation",
+        "operator must start V0.12 Windows node on the home PC",
+        "local DH03 bootstrap and collector health must reach COLLECTING without gap/deviation",
+        "first eligible standalone post-freeze 12H signal must be observed prospectively",
         "no micro-live execution authority"
       ],
       "archive_shadow_mode": "BINANCE_PUBLIC_ARCHIVE_CHECKSUM_VERIFIED",
@@ -250,6 +250,16 @@
         "first_forward_archive_day": "2026-09-18",
         "status": "WAITING_FIRST_ELIGIBLE_ARCHIVE_DAY",
         "used_as_forward_evidence": false
+      },
+      "local_node_build": {
+        "build_id": "v0.12-win-five-engine-all-local",
+        "workflow_run_id": 35339212352,
+        "workflow_conclusion": "success",
+        "head_sha": "f1276a35045fdab2996c131ea21400a6d139e14b",
+        "artifact_id": 10544571505,
+        "artifact_name": "crypto-edge-radar-v012-windows-node",
+        "artifact_zip_sha256": "1a16e0df47dbbdd0be660ef89f45a08ae0e130ca54177dcf5f5625165f8327ba",
+        "exe_sha256": "f0e9a27bed653ed789f166869d2e31057d550880275c434af67ee7e9260d6a65"
       }
     }
   ],
@@ -310,6 +320,16 @@
       "scientific_rules_changed": false,
       "orders_enabled": false,
       "capital_enabled": false
+    },
+    "five_engine_local_build": {
+      "status": "READY_AWAIT_OPERATOR_START",
+      "build_id": "v0.12-win-five-engine-all-local",
+      "artifact_id": 10544571505,
+      "four_cloud_engines_remain_operational": true,
+      "dh03_local_engine_build_ready": true,
+      "authenticated_exchange_api_used": false,
+      "orders_created": false,
+      "live_capital_enabled": false
     }
   },
   "archive_registry": "archive_registry_v1.json"
