@@ -1,0 +1,38 @@
+name: CED1D-0031 Prospective Shadow Synthetic QA
+
+on:
+  push:
+    branches:
+      - ced-1d-v3-byte-recovery-2026-09-17
+    paths:
+      - '.github/workflows/ced1d-0031-prospective-shadow-synthetic-qa.yml'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/ced1d_0031_prospective_shadow_collector_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/tests/test_ced1d_0031_prospective_shadow_collector_v01.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      ROOT: Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile
+        run: |
+          python -m py_compile "$ROOT/ced1d_0031_prospective_shadow_collector_v01.py"
+          python -m py_compile "$ROOT/tests/test_ced1d_0031_prospective_shadow_collector_v01.py"
+      - name: Synthetic QA only
+        run: python "$ROOT/tests/test_ced1d_0031_prospective_shadow_collector_v01.py"
+      - name: Assert no market/network access by QA design
+        run: |
+          grep -q 'PROSPECTIVE_SHADOW_SYNTHETIC_QA_PASS' "$ROOT/tests/test_ced1d_0031_prospective_shadow_collector_v01.py"
+          echo SHADOW_SYNTHETIC_QA_NETWORK_ACCESS_FALSE
+          echo SHADOW_SYNTHETIC_QA_2026_MARKET_OUTCOMES_OPENED_FALSE
+          echo SHADOW_SYNTHETIC_QA_LIVE_TRADING_FALSE
