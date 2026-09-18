@@ -1,0 +1,52 @@
+{
+  "amendment_id": "HTF-DH03-12H-STANDALONE-FORWARD-V1-TRANSPORT-AMENDMENT-01",
+  "frozen_at_utc": "2026-09-18T06:28:06Z",
+  "parent_freeze": "HTF_DH03_12H_STANDALONE_FORWARD_V1_FREEZE.json",
+  "status": "FROZEN_AFTER_REST_TRANSPORT_451_BEFORE_WEBSOCKET_SOURCE_ACCESS",
+  "observed_failure": {
+    "workflow_run_id": 35314992878,
+    "classification": "TRANSPORT_ONLY_HTTP_451",
+    "failing_request": "GET https://fapi.binance.com/fapi/v1/time",
+    "signal_or_outcome_accessed": false
+  },
+  "authorized_transport_remediation": {
+    "provider": "Binance",
+    "market": "USD-M perpetual futures",
+    "protocol": "PUBLIC_WEBSOCKET_MARKET_STREAMS",
+    "base_url": "wss://fstream.binance.com/market",
+    "streams": [
+      "<symbol>@kline_15m",
+      "<symbol>@markPrice@1s"
+    ],
+    "symbols": [
+      "BTCUSDT",
+      "ETHUSDT",
+      "SOLUSDT",
+      "BNBUSDT",
+      "XRPUSDT",
+      "DOGEUSDT"
+    ],
+    "purpose": "technical source connectivity and later prospective public shadow only"
+  },
+  "invariants": {
+    "venue_change": false,
+    "market_change": false,
+    "symbol_change": false,
+    "timeframe_change": false,
+    "rule_change": false,
+    "cost_change": false,
+    "direction_change": false,
+    "warmup_change": false,
+    "historical_outcome_access": false,
+    "prefreeze_forward_evidence": false
+  },
+  "governance": {
+    "no_api_keys": true,
+    "no_authenticated_api": true,
+    "no_orders": true,
+    "no_exchange_mutation": true,
+    "no_live_capital": true,
+    "source_probe_used_as_forward_evidence": false,
+    "fail_closed": true
+  }
+}
