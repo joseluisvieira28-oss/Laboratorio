@@ -85,20 +85,57 @@ def stream(start:int,end:int,filters:list[dict[str,Any]],stats:Counter[str]):
         rt=min(end,cursor+WINDOW-1)
         body={"type":"evm","fromBlock":cursor,"toBlock":rt,
               "fields":{"block":{"number":True,"timestamp":True},"log":{"address":True,"topics":True,"data":True,"transactionHash":True,"logIndex":True}},"logs":filters}
-        r=post(body,stats); last=None; rows=0
-        try:
-            for raw in r.iter_lines(decode_unicode=True):
-                if not raw: continue
-                obj=json.loads(raw)
-                if isinstance(obj,dict) and obj.get("error"): raise RuntimeError(f"portal error: {obj['error']}")
-                h=obj.get("header") or obj.get("block") or {}; bn=int(h["number"])
-                if not(cursor<=bn<=rt): raise RuntimeError("row outside window")
-                if last is not None and bn<last: raise RuntimeError("non-monotonic page")
-                last=bn; rows+=1; yield obj
-        finally: r.close()
-        stats["portal_rows"]+=rows
-        if rows==0 or last is None: cursor=rt+1; stats["empty_windows"]+=1
-        else: cursor=last+1
+
+        # V0.4.1 transport-only hardening. Buffer one complete Portal response
+        # before applying it. If the HTTP body stream is truncated, discard the
+        # incomplete page and retry the exact same request body/bounds.
+        page_objects=None
+        page_last=None
+        page_rows=0
+        for stream_attempt in range(8):
+            r=post(body,stats)
+            stats["stream_window_attempts"]+=1
+            local_objects=[]
+            local_last=None
+            local_rows=0
+            try:
+                for raw in r.iter_lines(decode_unicode=True):
+                    if not raw: continue
+                    obj=json.loads(raw)
+                    if isinstance(obj,dict) and obj.get("error"): raise RuntimeError(f"portal error: {obj['error']}")
+                    h=obj.get("header") or obj.get("block") or {}; bn=int(h["number"])
+                    if not(cursor<=bn<=rt): raise RuntimeError("row outside window")
+                    if local_last is not None and bn<local_last: raise RuntimeError("non-monotonic page")
+                    local_last=bn
+                    local_rows+=1
+                    local_objects.append(obj)
+            except requests.RequestException:
+                stats["stream_read_failures"]+=1
+                if stream_attempt<7:
+                    stats["stream_read_retries"]+=1
+                    time.sleep(min(20.0,1.5*(2**stream_attempt)))
+                    continue
+                raise
+            finally:
+                r.close()
+
+            page_objects=local_objects
+            page_last=local_last
+            page_rows=local_rows
+            stats["stream_window_successes"]+=1
+            break
+
+        if page_objects is None:
+            raise RuntimeError("Portal stream window exhausted retry budget")
+
+        stats["portal_rows"]+=page_rows
+        if page_rows==0 or page_last is None:
+            cursor=rt+1
+            stats["empty_windows"]+=1
+        else:
+            for obj in page_objects:
+                yield obj
+            cursor=page_last+1
 
 def load(root:str,classification:str)->dict[str,Any]:
     for p in Path(root).rglob("*.json"):
