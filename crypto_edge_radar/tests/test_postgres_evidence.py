@@ -58,6 +58,14 @@ class FakeCursor:
             )
             self.result = [(event_id,)]
             return
+        if statement.startswith("SELECT PAYLOAD_JSON FROM RADAR_EVENTS WHERE EVENT_TYPE"):
+            event_type = params[0]
+            self.result = [
+                (row["payload_json"],)
+                for row in self.database.rows
+                if row["event_type"] == event_type
+            ]
+            return
         if statement.startswith("SELECT ID, EVENT_TS, EVENT_TYPE, PAYLOAD_JSON"):
             self.result = [
                 (
@@ -139,6 +147,16 @@ class PostgresEvidenceTests(unittest.TestCase):
             self.assertEqual(len(fake.keys), 1)
             ok, detail = store.verify_chain()
             self.assertTrue(ok, detail)
+
+    def test_postgres_read_payloads_is_read_only_and_typed(self):
+        fake = FakePsycopg()
+        with patch.object(evidence, "psycopg", fake):
+            store = evidence.PostgresEvidenceStore("postgresql://example/test")
+            store.append("A", {"value": 1})
+            store.append("B", {"value": 2})
+            store.append("A", {"value": 3})
+            self.assertEqual(store.read_payloads("A"), [{"value": 1}, {"value": 3}])
+            self.assertEqual(len(fake.rows), 3)
 
     def test_postgres_detects_tampering(self):
         fake = FakePsycopg()
