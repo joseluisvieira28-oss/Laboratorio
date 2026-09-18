@@ -1,0 +1,59 @@
+{
+  "experiment_id": "HTF-DH03-12H-STANDALONE-FORWARD-V1",
+  "status": "FROZEN_BEFORE_FIRST_STANDALONE_2026_FORWARD_SOURCE_ACCESS",
+  "frozen_at_utc": "2026-09-18T06:26:53Z",
+  "lineage": {
+    "historical_family": "HTF-DIAMOND-HUNT-001",
+    "historical_role": "SECONDARY_TRANSFER_DIAGNOSTIC_ONLY",
+    "historical_cell": "DH-03-HO1",
+    "historical_evidence_may_support_mechanism": true,
+    "historical_evidence_may_not_count_as_standalone_independent_forward_validation": true,
+    "cannot_rescue_closed_DH02_6H": true
+  },
+  "rule": {
+    "market": "Binance USD-M perpetual futures",
+    "symbols": [
+      "BTCUSDT",
+      "ETHUSDT",
+      "SOLUSDT",
+      "BNBUSDT",
+      "XRPUSDT",
+      "DOGEUSDT"
+    ],
+    "timeframe": "12H_UTC",
+    "direction": "LONG_ONLY",
+    "donchian_lookback_complete_bars": 40,
+    "atr_length": 28,
+    "entry": "next 12H open",
+    "stop": "signal low minus 0.25*ATR28",
+    "target_r": 3,
+    "max_hold_bars": 80,
+    "one_active_trade_per_symbol": true,
+    "base_round_trip_cost_pct": 0.2,
+    "stress_round_trip_cost_pct": 0.3
+  },
+  "prospective_boundary": {
+    "no_2026_backfill_before_utc": "2026-09-18T06:26:53Z",
+    "first_eligible_signal": "first complete 12H UTC signal close strictly after freeze",
+    "earlier_2026_data": "FORBIDDEN_AS_STANDALONE_FORWARD_EVIDENCE",
+    "warmup_only_before_boundary": "permitted only if needed causally and never scored as forward evidence"
+  },
+  "promotion_state": {
+    "current": "NEW_PROSPECTIVE_STANDALONE_CANDIDATE__UNRANKED",
+    "tier2_claim": false,
+    "tier1_claim": false,
+    "micro_live_authorized": false
+  },
+  "governance": {
+    "public_read_only_market_data_only": true,
+    "no_authenticated_exchange_api": true,
+    "no_orders": true,
+    "no_exchange_mutation": true,
+    "no_live_capital": true,
+    "no_post_outcome_tuning": true,
+    "no_asset_selection": true,
+    "no_timeframe_substitution": true,
+    "no_DH02_rescue": true,
+    "no_main_merge": true
+  }
+}
