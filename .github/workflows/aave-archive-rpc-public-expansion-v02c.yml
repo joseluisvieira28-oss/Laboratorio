@@ -1,0 +1,32 @@
+name: AAVE Liquidation Overhang 001 — Archive RPC Public Expansion V0.2C
+
+on:
+  push:
+    branches:
+      - aave-liquidation-overhang-v0.1
+    paths:
+      - 'research/aave_liquidation_overhang/ARCHIVE_RPC_EXPANSION_TRIGGER_V02C.txt'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m py_compile research/aave_liquidation_overhang/archive_rpc_public_expansion_v02c.py
+      - run: pip install --disable-pip-version-check requests
+      - run: python research/aave_liquidation_overhang/archive_rpc_public_expansion_v02c.py
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: AAVE_ARCHIVE_RPC_PUBLIC_EXPANSION_V0_2C
+          path: archive_rpc_expansion_output/AAVE_ARCHIVE_RPC_PUBLIC_EXPANSION_V0_2C.json
+          if-no-files-found: warn
+          retention-days: 30
