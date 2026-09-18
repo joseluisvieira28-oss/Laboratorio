@@ -1,0 +1,100 @@
+{
+  "document_id": "OPTIONS_SPOTPERP_001_V21_RISK_ENVELOPE_CLOSEOUT_V0.1",
+  "lab_id": "OPTIONS-SPOTPERP-001",
+  "effective_on": "2026-09-18",
+  "status": "TIER2_RETAINED__BASE_POSITIVE_ONLY_COST_FRAGILE__SHADOW_REQUIRED",
+  "branch": "options-spotperp-v21-live-shadow-v0.1",
+  "authority": {
+    "freeze": "OPTIONS_SPOTPERP_001_V21_RISK_ENVELOPE_FREEZE_V0.1",
+    "freeze_commit": "26922ccc805f61de64e7286d893472c8f30f3098",
+    "receipt": "OPTIONS_SPOTPERP_001_V21_RISK_ENVELOPE_RECEIPT_V0.1",
+    "receipt_commit": "494545c9fb80a120ba793ffb5dae969e80a65200",
+    "receipt_fingerprint": "1153e60e4aedff50b3b42268a757c47c9e3d0ad266eb8c9264bb9d7d9e8aaecc",
+    "oos_run_id": 35231711508,
+    "oos_artifact_id": 10504812106,
+    "oos_ledger_sha256": "627ea092adbce43d0a00d5cab22fa56e3fdc27c4d03b5b0d25dd24d938173b8f"
+  },
+  "findings": {
+    "resolved_oos_trades": 363,
+    "base10": {
+      "mean_net_bps_full_allocation": 5.042766333404257,
+      "profit_factor": 1.06915099179292,
+      "historical_ending_return": 0.20087735390321293,
+      "historical_max_drawdown": -0.2739313596172329,
+      "month_block_bootstrap_probability_ending_positive": 0.6931
+    },
+    "stress20": {
+      "mean_net_bps_full_allocation": -4.675937838259076,
+      "profit_factor": 0.9401663947736831,
+      "historical_ending_return": -0.15611288516649524,
+      "historical_max_drawdown": -0.39251702135747046,
+      "month_block_bootstrap_probability_ending_positive": 0.2963
+    },
+    "severe30": {
+      "mean_net_bps_full_allocation": -14.394642009922407,
+      "profit_factor": 0.8277429851900275,
+      "historical_ending_return": -0.40697902223959037,
+      "historical_max_drawdown": -0.5007982000517791,
+      "month_block_bootstrap_probability_ending_positive": 0.0635
+    },
+    "extreme40": {
+      "mean_net_bps_full_allocation": -24.11334618158574,
+      "profit_factor": 0.7294591702349514,
+      "historical_ending_return": -0.5832690488072023,
+      "historical_max_drawdown": -0.6081355638058349,
+      "month_block_bootstrap_probability_ending_positive": 0.0064
+    }
+  },
+  "allocation_envelope": {
+    "fractions_tested": [0.05,0.10,0.20,0.30,0.50,0.75,1.00],
+    "base10_examples": {
+      "allocation_0_05": {
+        "historical_ending_return": 0.009194634209243047,
+        "historical_max_drawdown": -0.015878128188616558,
+        "bootstrap_drawdown_magnitude_p95": 0.0290600076011606
+      },
+      "allocation_0_30": {
+        "historical_ending_return": 0.05645157885871144,
+        "historical_max_drawdown": -0.09156615969167803,
+        "bootstrap_drawdown_magnitude_p95": 0.16217302566737715
+      },
+      "allocation_1_00": {
+        "historical_ending_return": 0.20087735390321293,
+        "historical_max_drawdown": -0.2739313596172329,
+        "bootstrap_drawdown_magnitude_p95": 0.44556862930616115
+      }
+    },
+    "interpretation": "Positive scalar allocation reduces both return and drawdown magnitude but cannot change the sign of expectancy or profit-factor ordering. Therefore allocation is a risk control, not a rescue mechanism."
+  },
+  "scientific_adjudication": {
+    "v3_tier2_status_changed": false,
+    "current_status": "TIER_2_QUASE_DIAMANTE_HIGH_RISK_FRAGILITY",
+    "base_edge_survives": true,
+    "stress20_edge_survives": false,
+    "severe_edge_survives": false,
+    "risk_sizing_rescues_cost_fragility": false,
+    "tier1_gate_met": false,
+    "micro_live_ready": false,
+    "reason": "The independent 2025 BASE10 OOS remains positive and V3 Tier2 evidence is preserved, but execution-cost sensitivity is material: the frozen 20 bps stress case is negative. Prospective read-only shadow evidence is required before any separate micro-live readiness decision."
+  },
+  "next_gate": {
+    "prospective_shadow_freeze_exists": true,
+    "first_full_post_freeze_signal_day": "2026-09-19",
+    "today_2026_09_18_forward_trade_available": false,
+    "no_backfill_as_forward_evidence": true,
+    "action": "Run the frozen read-only watcher only when a complete post-freeze signal day is causally available; preserve all source failures, flats, winners and losers append-only."
+  },
+  "governance": {
+    "risk_cell_selected": false,
+    "post_outcome_tuning": false,
+    "cost_reduction": false,
+    "subperiod_selection": false,
+    "year_2026_historical_backfill": false,
+    "live_trading": false,
+    "orders": false,
+    "exchange_mutation": false,
+    "wallets": false,
+    "micro_live_authorized": false,
+    "main_merge": false
+  }
+}
