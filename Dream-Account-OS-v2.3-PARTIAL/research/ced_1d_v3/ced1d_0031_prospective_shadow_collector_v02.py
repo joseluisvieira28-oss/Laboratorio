@@ -532,18 +532,18 @@ def main():
         error=None
     except Exception as e:
         status="SHADOW_COLLECTION_FAIL_CLOSED";error=f"{type(e).__name__}:{e}"
-        receipt={"document_id":"CED1D_0031_PROSPECTIVE_SHADOW_RECEIPT_V0.1","status":status,
+        receipt={"document_id":"CED1D_0031_PROSPECTIVE_SHADOW_RECEIPT_V0.2","status":status,
                  "candidate":TARGET,"through_signal_day":through.isoformat(),"error":error,
                  "source":source,"governance":{"pre_boundary_performance_backfill":False,"live_trading":False,
                  "orders":False,"wallets":False,"exchange_mutation":False,"authenticated_trading_endpoints":False,
                  "parameter_changes":False,"merge_main":False}}
         receipt["fingerprint"]=sha256_bytes(canonical(receipt))
-        (out/"CED1D_0031_PROSPECTIVE_SHADOW_RECEIPT_V0.1.json").write_text(json.dumps(receipt,indent=2,sort_keys=True)+"\n")
+        (out/"CED1D_0031_PROSPECTIVE_SHADOW_RECEIPT_V0.2.json").write_text(json.dumps(receipt,indent=2,sort_keys=True)+"\n")
         print(json.dumps(receipt,indent=2,sort_keys=True))
         raise
 
     write_csv(out/"CED1D_0031_PROSPECTIVE_SHADOW_LEDGER.csv",events)
-    receipt={"document_id":"CED1D_0031_PROSPECTIVE_SHADOW_RECEIPT_V0.1","status":status,
+    receipt={"document_id":"CED1D_0031_PROSPECTIVE_SHADOW_RECEIPT_V0.2","status":status,
              "candidate":TARGET,"first_eligible_signal_day":FIRST_SIGNAL_DAY.isoformat(),
              "first_eligible_signal_completion":"2026-09-19T00:00:00Z",
              "through_signal_day":through.isoformat(),"source":source,"metrics":metrics,
@@ -552,7 +552,7 @@ def main():
                "authenticated_trading_endpoints":False,"parameter_changes":False,"notional_per_leg_usdt":100,
                "merge_main":False}}
     receipt["fingerprint"]=sha256_bytes(canonical(receipt))
-    (out/"CED1D_0031_PROSPECTIVE_SHADOW_RECEIPT_V0.1.json").write_text(json.dumps(receipt,indent=2,sort_keys=True)+"\n")
+    (out/"CED1D_0031_PROSPECTIVE_SHADOW_RECEIPT_V0.2.json").write_text(json.dumps(receipt,indent=2,sort_keys=True)+"\n")
     print(json.dumps({"status":status,"through_signal_day":through.isoformat(),"metrics":metrics,
                       "fingerprint":receipt["fingerprint"]},indent=2,sort_keys=True))
 
