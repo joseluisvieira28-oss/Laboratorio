@@ -1,0 +1,42 @@
+name: Crypto Edge Radar Micro-Live Preflight
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'crypto_edge_radar/radar/execution.py'
+      - 'crypto_edge_radar/radar/binance_trading.py'
+      - 'crypto_edge_radar/radar/mexc_trading.py'
+      - 'crypto_edge_radar/radar/microlive_service.py'
+      - 'crypto_edge_radar/tests/test_microlive_execution.py'
+      - '.github/workflows/crypto-edge-radar-microlive-preflight.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  offline-safety:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile executor
+        run: |
+          python -m py_compile             crypto_edge_radar/radar/execution.py             crypto_edge_radar/radar/binance_trading.py             crypto_edge_radar/radar/mexc_trading.py             crypto_edge_radar/radar/microlive_service.py
+      - name: Run micro-live safety tests
+        working-directory: crypto_edge_radar
+        env:
+          MICROLIVE_EXECUTION_ENABLED: "0"
+          BINANCE_API_KEY: ""
+          BINANCE_API_SECRET: ""
+          MEXC_API_KEY: ""
+          MEXC_API_SECRET: ""
+        run: |
+          python -m unittest tests.test_microlive_execution -v
+      - name: Assert no embedded credentials
+        run: |
+          ! grep -RIE 'sk-[A-Za-z0-9]|BEGIN PRIVATE KEY|api_secret[ ]*=[ ]*["'"'][^"'"']+'             crypto_edge_radar/radar || false
+          echo OFFLINE_MICROLIVE_PREFLIGHT_PASS
