@@ -4,8 +4,11 @@ from dataclasses import dataclass
 @dataclass(frozen=True)
 class Settings:
     balance_chf: float = 56.0
-    normal_risk_pct: float = 0.02
-    exceptional_risk_pct: float = 0.03
+    normal_risk_pct: float = 1.0
+    defensive_risk_pct: float = 0.5
+    drawdown_defensive_pct: float = 5.0
+    drawdown_halt_pct: float = 10.0
+    loss_streak_defensive: int = 5
     min_volume_usd: float = 500_000.0
     strong_volume_usd: float = 5_000_000.0
     preferred_spread_pct: float = 0.20
@@ -16,4 +19,3 @@ class Settings:
     deep_scan_limit: int = 20
     database_path: str = "runtime/dream_account.sqlite3"
     dashboard_path: str = "runtime/dashboard.html"
-
