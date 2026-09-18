@@ -26,6 +26,23 @@ class RegistryPartitionTests(unittest.TestCase):
         self.assertFalse(a & p)
         self.assertFalse(z & p)
 
+    def test_operational_summary_counts_match_partition_files(self):
+        active=self._load("deployment_registry_v1.json")
+        archive=self._load("archive_registry_v1.json")
+        protected=self._load("protected_research_registry_v1.json")
+
+        op=active["operational_shadow_v09"]
+        cleanup=op["cleanup"]
+        focus=set(active["focus_strategy_ids"])
+        candidates={x["strategy_id"] for x in active["candidates"]}
+
+        self.assertEqual(focus,candidates)
+        self.assertEqual(op["active_motor_count"],len(active["candidates"]))
+        self.assertEqual(op["archived_closed_mechanisms"],len(archive["candidates"]))
+        self.assertEqual(op["protected_research_fronts"],len(protected["entries"]))
+        self.assertEqual(cleanup["active_or_gated_candidates"],len(active["candidates"]))
+        self.assertEqual(cleanup["closed_candidates_removed_from_active_view"],len(archive["candidates"]))
+
     def test_protected_research_is_not_silently_no_edge_or_motorized(self):
         protected=self._load("protected_research_registry_v1.json")
         for row in protected["entries"]:
