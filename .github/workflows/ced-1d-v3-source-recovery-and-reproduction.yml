@@ -27,6 +27,12 @@ jobs:
       - name: Checkout frozen branch
         uses: actions/checkout@v4
 
+      - name: Restore byte-exact canonical authority from Git object
+        shell: pwsh
+        run: |
+          python -c "import pathlib,subprocess; p=r'Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/recovered_authority/AUTHORITY/contract_authority.json'; pathlib.Path(p).write_bytes(subprocess.check_output(['git','show','HEAD:'+p.replace('\\','/')]))"
+          Write-Host "CONTRACT_AUTHORITY_GIT_BLOB_RESTORED"
+
       - name: Authenticate directly-bound canonical bytes
         shell: pwsh
         run: |
