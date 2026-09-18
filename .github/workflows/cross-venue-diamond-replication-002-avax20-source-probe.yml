@@ -1,10 +1,10 @@
-name: CROSS-VENUE-DIAMOND-REPLICATION-002 AVAX20 OKX Mark Price Source Gate
+name: CROSS-VENUE-DIAMOND-REPLICATION-002 AVAX20 OKX Stage B
 
 on:
   pull_request:
     branches: [ ced-1d-v3-byte-recovery-2026-09-17 ]
     paths:
-      - "governance/CROSS_VENUE_DIAMOND_REPLICATION_002_OKX_MARK_PRICE_SOURCE_FREEZE_2026-09-18.md"
+      - "governance/CROSS_VENUE_DIAMOND_REPLICATION_002_OKX_STAGE_B_EXACT_REPLICATION_FREEZE_2026-09-18.md"
       - "Dream-Account-OS-v2.3-PARTIAL/research/cross_venue_diamond_replication_002/**"
       - ".github/workflows/cross-venue-diamond-replication-002-avax20-source-probe.yml"
   workflow_dispatch:
@@ -13,19 +13,19 @@ permissions:
   contents: read
 
 jobs:
-  okx-mark-price-source-gate:
+  okx-stage-b:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
-      - name: Compile outcome-blind mark-price source gate
-        run: python -m py_compile Dream-Account-OS-v2.3-PARTIAL/research/cross_venue_diamond_replication_002/okx_mark_price_source_gate_v01.py
-      - name: Execute outcome-blind mark-price source gate
-        run: python Dream-Account-OS-v2.3-PARTIAL/research/cross_venue_diamond_replication_002/okx_mark_price_source_gate_v01.py
-      - name: Upload mark-price source receipt
+      - name: Compile frozen Stage-B runner
+        run: python -m py_compile Dream-Account-OS-v2.3-PARTIAL/research/cross_venue_diamond_replication_002/okx_stage_b_exact_replication_v01.py
+      - name: Execute frozen OKX Stage-B replication
+        run: python Dream-Account-OS-v2.3-PARTIAL/research/cross_venue_diamond_replication_002/okx_stage_b_exact_replication_v01.py
+      - name: Upload Stage-B receipt and ledger
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: cross-venue-diamond-replication-002-okx-mark-source-v01
-          path: Dream-Account-OS-v2.3-PARTIAL/research/local_data/cross_venue_diamond_replication_002_okx_mark_source/
+          name: cross-venue-diamond-replication-002-okx-stage-b-v01
+          path: Dream-Account-OS-v2.3-PARTIAL/research/local_data/cross_venue_diamond_replication_002_okx_stage_b/
           if-no-files-found: error
