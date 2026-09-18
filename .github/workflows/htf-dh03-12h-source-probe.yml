@@ -7,6 +7,8 @@ on:
       - 'crypto_edge_radar/radar/binance_usdm_public.py'
       - 'crypto_edge_radar/radar/binance_usdm_ws_probe.py'
       - 'crypto_edge_radar/HTF_DH03_12H_STANDALONE_FORWARD_V1_TRANSPORT_AMENDMENT_01.json'
+      - 'crypto_edge_radar/radar/binance_usdm_archive.py'
+      - 'crypto_edge_radar/HTF_DH03_12H_STANDALONE_FORWARD_V1_WARMUP_SOURCE_AMENDMENT_01.json'
       - 'crypto_edge_radar/HTF_DH03_12H_STANDALONE_FORWARD_V1_FREEZE.json'
       - '.github/workflows/htf-dh03-12h-source-probe.yml'
   workflow_dispatch:
@@ -47,6 +49,29 @@ jobs:
           assert r['authenticated_api_used'] is False
           assert r['orders_created'] is False
           assert r['exchange_mutation_performed'] is False
+          assert r['used_as_forward_evidence'] is False
+          PY
+      - name: Checksum-verified archive warmup probe
+        run: |
+          python - <<'PY'
+          import json
+          from datetime import date
+          from pathlib import Path
+          from radar.binance_usdm_archive import warmup_source_probe
+          r=warmup_source_probe(date(2026,9,17))
+          Path('dh03_probe/warmup_receipt.json').write_text(json.dumps(r,sort_keys=True,indent=2))
+          print(json.dumps({
+              'status':r['status'],
+              'day':r['day'],
+              'symbols':len(r['symbols']),
+              'rows_total':sum(x['rows'] for x in r['symbols'].values()),
+              'checksum_verified_all':r['checksum_verified_all'],
+              'used_as_forward_evidence':r['used_as_forward_evidence'],
+          },sort_keys=True))
+          assert r['status']=='PASS_ARCHIVE_WARMUP_SOURCE', r
+          assert len(r['symbols'])==6, r
+          assert sum(x['rows'] for x in r['symbols'].values())==8640, r
+          assert r['checksum_verified_all'] is True
           assert r['used_as_forward_evidence'] is False
           PY
       - uses: actions/upload-artifact@v4
