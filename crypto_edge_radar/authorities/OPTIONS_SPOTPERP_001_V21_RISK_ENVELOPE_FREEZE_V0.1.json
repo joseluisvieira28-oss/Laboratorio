@@ -1,0 +1,70 @@
+{
+  "document_id": "OPTIONS_SPOTPERP_001_V21_RISK_ENVELOPE_FREEZE_V0.1",
+  "lab_id": "OPTIONS-SPOTPERP-001",
+  "effective_on": "2026-09-18",
+  "status": "FROZEN_BEFORE_RISK_ENVELOPE_CALCULATION",
+  "branch": "options-spotperp-v21-live-shadow-v0.1",
+  "scientific_authority": {
+    "oos_branch": "options-spotperp-001-v21-oos-2025-v01",
+    "oos_run_id": 35231711508,
+    "oos_artifact_id": 10504812106,
+    "oos_artifact_digest": "sha256:dbbcb7ca0bd1a4fdc759b5ec0211743cfb9b441b304d23692094b148bdcfbf82",
+    "classification": "TIER_2_PROMOTED_CANDIDATE__QUASE_DIAMANTE__HIGH_RISK_FRAGILITY",
+    "ledger_file": "OPTIONS_SPOTPERP_001_V21_2025_OOS_LEDGER_V01.csv",
+    "resolved_scaled_trades": 363,
+    "year_2026_accessed": false
+  },
+  "purpose": "Quantify account-allocation and cost sensitivity of the already-closed 2025 OOS sequence for operational risk planning only. This is not a new edge validation and cannot promote the strategy.",
+  "frozen_calculation": {
+    "capital_allocation_fraction_grid": [0.05, 0.10, 0.20, 0.30, 0.50, 0.75, 1.00],
+    "cost_bps_full_notional_scenarios": {
+      "BASE10": 10,
+      "STRESS20": 20,
+      "SEVERE30": 30,
+      "EXTREME40": 40
+    },
+    "effective_trade_log_return": "allocation_fraction * weight * (unscaled_gross_bps - cost_bps) / 10000",
+    "equity_path": "exp(cumulative effective_trade_log_return)",
+    "max_drawdown": "minimum equity/previous_peak - 1 over chronological OOS sequence",
+    "profit_factor": "sum positive effective_net_bps / abs(sum negative effective_net_bps)",
+    "sequence_stress": {
+      "method": "complete_UTC_calendar_month_block_bootstrap",
+      "blocks": 12,
+      "repetitions": 20000,
+      "seed": 20260918,
+      "preserve_within_month_trade_order": true,
+      "report": [
+        "ending_return_p05_p50_p95",
+        "max_drawdown_p50_p90_p95",
+        "probability_ending_return_positive"
+      ]
+    }
+  },
+  "decision_policy": {
+    "report_all_cells": true,
+    "select_best_cell": false,
+    "no_risk_recommendation_from_this_historical_envelope": true,
+    "no_threshold_rescue": true,
+    "no_cost_reduction": true,
+    "no_signal_or_direction_change": true,
+    "no_subperiod_selection": true,
+    "no_2026_access": true,
+    "classification_labels_only": [
+      "BASE_POSITIVE_ONLY_COST_FRAGILE",
+      "BASE_STRESS_POSITIVE",
+      "ALL_COST_SCENARIOS_NEGATIVE",
+      "SOURCE_OR_CALCULATION_BLOCKED"
+    ],
+    "label_rule": "Classification is based on expectancy sign across cost scenarios only; allocation fraction cannot change expectancy sign and must never be used to rescue a negative cost scenario."
+  },
+  "governance": {
+    "research_only": true,
+    "post_outcome_tuning": false,
+    "live_trading": false,
+    "orders": false,
+    "exchange_mutation": false,
+    "wallets": false,
+    "challenge_or_prop_action": false,
+    "main_merge": false
+  }
+}
