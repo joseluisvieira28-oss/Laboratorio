@@ -1,0 +1,52 @@
+name: AAVE Risk Parameter Shock 001 — Discovery Static Preflight
+
+on:
+  push:
+    branches:
+      - aave-risk-parameter-shock-v0.1
+    paths:
+      - '.github/workflows/aave-risk-parameter-shock-discovery-preflight-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install --disable-pip-version-check requests 'eth-hash[pycryptodome]'
+      - name: Compile contingent Discovery
+        run: python -m py_compile research/aave_risk_parameter_shock/discovery_liquidation_count_v01.py
+      - name: Verify frozen causal MVE
+        run: |
+          python - <<'PY'
+          import importlib.util
+          from pathlib import Path
+          p=Path('research/aave_risk_parameter_shock/discovery_liquidation_count_v01.py')
+          spec=importlib.util.spec_from_file_location('d',p)
+          d=importlib.util.module_from_spec(spec); spec.loader.exec_module(d)
+          assert d.MVE_ID == 'ARPS-LT-DOWN-LIQCOUNT-H24-001'
+          assert d.FROM_BLOCK == 16490000
+          assert d.TO_BLOCK == 21525890
+          assert d.HORIZON_SECONDS == 86400
+          assert d.MIN_EPISODES == 12
+          assert d.MIN_ASSETS == 4
+          assert d.MIN_YEARS == 2
+          assert d.EXPECTED_LIQUIDATION_CALLS == 5539
+          assert d.RANDOMIZATION_SEED == 20260918
+          assert d.BOOTSTRAP_SEED == 20260919
+          assert d.MONTE_CARLO_N == 100000
+          assert d.BOOTSTRAP_N == 10000
+          assert Path('research/aave_risk_parameter_shock/AAVE_RISK_PARAMETER_SHOCK_001_CONTINGENT_FINAL_PRE_DISCOVERY_PROTOCOL_V0_1.md').exists()
+          src=p.read_text().lower()
+          for needle in ['btcusdt','profit_factor','drawdown','create_order','api_key']:
+              assert needle not in src, needle
+          print('DISCOVERY_STATIC_PREFLIGHT_PASS')
+          print('NO NETWORK / NO LIQUIDATION OUTCOMES / NO MARKET PRICES / NO RETURNS / NO PNL')
+          PY
