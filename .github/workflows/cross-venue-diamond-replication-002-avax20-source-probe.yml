@@ -1,10 +1,10 @@
-name: CROSS-VENUE-DIAMOND-REPLICATION-002 AVAX20 OKX Schema Only
+name: CROSS-VENUE-DIAMOND-REPLICATION-002 AVAX20 OKX Raw Pilot
 
 on:
   pull_request:
     branches: [ ced-1d-v3-byte-recovery-2026-09-17 ]
     paths:
-      - "governance/CROSS_VENUE_DIAMOND_REPLICATION_002_OKX_RESPONSE_SCHEMA_PROBE_2026-09-18.md"
+      - "governance/CROSS_VENUE_DIAMOND_REPLICATION_002_OKX_JAN2025_RAW_ACQUISITION_FREEZE_2026-09-18.md"
       - "Dream-Account-OS-v2.3-PARTIAL/research/cross_venue_diamond_replication_002/**"
       - ".github/workflows/cross-venue-diamond-replication-002-avax20-source-probe.yml"
   workflow_dispatch:
@@ -13,19 +13,19 @@ permissions:
   contents: read
 
 jobs:
-  okx-schema-only:
+  okx-raw-pilot:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - name: Compile schema-only probe
-        run: python -m py_compile Dream-Account-OS-v2.3-PARTIAL/research/cross_venue_diamond_replication_002/okx_historical_response_schema_probe_v01.py
-      - name: Execute schema-only probe
-        run: python Dream-Account-OS-v2.3-PARTIAL/research/cross_venue_diamond_replication_002/okx_historical_response_schema_probe_v01.py
-      - name: Upload schema-only receipt
+      - name: Compile frozen raw acquisition
+        run: python -m py_compile Dream-Account-OS-v2.3-PARTIAL/research/cross_venue_diamond_replication_002/okx_jan2025_raw_acquisition_v01.py
+      - name: Execute frozen Jan-2025 raw acquisition
+        run: python Dream-Account-OS-v2.3-PARTIAL/research/cross_venue_diamond_replication_002/okx_jan2025_raw_acquisition_v01.py
+      - name: Upload raw source pilot and receipt
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: cross-venue-diamond-replication-002-okx-schema-v01
-          path: Dream-Account-OS-v2.3-PARTIAL/research/local_data/cross_venue_diamond_replication_002_okx_schema_probe/
+          name: cross-venue-diamond-replication-002-okx-jan2025-raw-v01
+          path: Dream-Account-OS-v2.3-PARTIAL/research/local_data/cross_venue_diamond_replication_002_okx_raw_pilot/
           if-no-files-found: error
