@@ -1,0 +1,268 @@
+name: AAVE Liquidation Overhang 001 — R1 Sharded V0.3.1
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - aave-liquidation-overhang-v0.1
+    paths:
+      - '.github/workflows/aave-liquidation-overhang-r1-sharded-v031.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  SOURCE_CENSUS_RUN_ID: '35214027573'
+  R0_BOOTSTRAP_RUN_ID: '35218275356'
+
+jobs:
+  static-preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install static QA dependencies
+        run: pip install --disable-pip-version-check requests 'eth-hash[pycryptodome]'
+      - name: Compile V0.3.1 and inherited R1 code
+        run: |
+          python -m py_compile research/aave_liquidation_overhang/r1_audit_sample_from_census_v03.py
+          python -m py_compile research/aave_liquidation_overhang/r1_scaled_ledger_audit_shard_v03.py
+          python -m py_compile research/aave_liquidation_overhang/aggregate_r1_scaled_ledger_audit_v03.py
+          python -m py_compile research/aave_liquidation_overhang/r1_scaled_ledger_audit_v01.py
+          python -m py_compile research/aave_liquidation_overhang/r1_stream_transport_retry_static_test_v031.py
+          python -m py_compile research/aave_liquidation_overhang/r1_reserve_shard_v02.py
+          python -m py_compile research/aave_liquidation_overhang/r1_global_state_v01.py
+          python -m py_compile research/aave_liquidation_overhang/aggregate_r1_reconstruction_v02.py
+      - name: Verify frozen V0.3.1 remediation exists
+        run: test -f research/aave_liquidation_overhang/AAVE_LIQUIDATION_OVERHANG_001_R1_STREAM_TRANSPORT_REMEDIATION_V0_3_1.md
+      - name: Prove interrupted stream retry semantics
+        run: python research/aave_liquidation_overhang/r1_stream_transport_retry_static_test_v031.py
+
+  sample-from-canonical-census:
+    needs: static-preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install sample dependencies
+        run: pip install --disable-pip-version-check 'eth-hash[pycryptodome]'
+      - name: Download all 8 canonical Source Census shards
+        uses: actions/download-artifact@v4
+        with:
+          pattern: AAVE_CENSUS_SHARD_*
+          path: downloaded_census_shards
+          merge-multiple: false
+          github-token: ${{ github.token }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: ${{ env.SOURCE_CENSUS_RUN_ID }}
+      - name: Derive exact frozen 16-borrower sample
+        run: python research/aave_liquidation_overhang/r1_audit_sample_from_census_v03.py
+      - name: Upload frozen sample receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: AAVE_R1_AUDIT_SAMPLE_V031
+          path: r1_audit_sample_output/AAVE_LIQUIDATION_OVERHANG_001_R1_AUDIT_SAMPLE_V0_3.json
+          if-no-files-found: error
+          retention-days: 30
+
+  audit-shards:
+    needs: sample-from-canonical-census
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        shard_id: [0,1,2,3]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install source dependencies
+        run: pip install --disable-pip-version-check requests 'eth-hash[pycryptodome]'
+      - name: Download frozen V0.3 sample
+        uses: actions/download-artifact@v4
+        with:
+          name: AAVE_R1_AUDIT_SAMPLE_V031
+          path: downloaded_r1_sample
+      - name: Download canonical R0 bootstrap
+        uses: actions/download-artifact@v4
+        with:
+          name: AAVE_RECON_R0_BOOTSTRAP
+          path: downloaded_r0_bootstrap
+          github-token: ${{ github.token }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: ${{ env.R0_BOOTSTRAP_RUN_ID }}
+      - name: Execute exact 4-borrower audit shard
+        env:
+          AUDIT_SHARD_ID: ${{ matrix.shard_id }}
+        run: python research/aave_liquidation_overhang/r1_scaled_ledger_audit_shard_v03.py
+      - name: Upload audit shard receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: AAVE_R1_AUDIT_SHARD_V031_${{ matrix.shard_id }}
+          path: r1_audit_shards/AAVE_LIQUIDATION_OVERHANG_001_R1_AUDIT_SHARD_V0_3_*.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  audit-aggregate:
+    if: always()
+    needs:
+      - sample-from-canonical-census
+      - audit-shards
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download frozen V0.3 sample
+        uses: actions/download-artifact@v4
+        with:
+          name: AAVE_R1_AUDIT_SAMPLE_V031
+          path: downloaded_r1_sample
+      - name: Download all four audit shard receipts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: AAVE_R1_AUDIT_SHARD_V031_*
+          path: downloaded_r1_audit_shards
+          merge-multiple: true
+      - name: Canonical V0.3 audit aggregation
+        run: python research/aave_liquidation_overhang/aggregate_r1_scaled_ledger_audit_v03.py
+      - name: Upload canonical V0.3 R1 audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: AAVE_R1_AUDIT_CANONICAL_V031
+          path: r1_audit_canonical_output/AAVE_LIQUIDATION_OVERHANG_001_R1_SCALED_LEDGER_AUDIT_V0_3.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  reserve-replay-shards:
+    needs: audit-aggregate
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        shard_id: [0,1,2,3,4,5,6,7]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install source dependencies
+        run: pip install --disable-pip-version-check requests 'eth-hash[pycryptodome]'
+      - name: Download canonical V0.3 R1 audit
+        uses: actions/download-artifact@v4
+        with:
+          name: AAVE_R1_AUDIT_CANONICAL_V031
+          path: downloaded_r1_audit
+      - name: Download canonical R0 bootstrap
+        uses: actions/download-artifact@v4
+        with:
+          name: AAVE_RECON_R0_BOOTSTRAP
+          path: downloaded_r0_bootstrap
+          github-token: ${{ github.token }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: ${{ env.R0_BOOTSTRAP_RUN_ID }}
+      - name: Execute frozen reserve replay shard
+        env:
+          R1_SHARD_ID: ${{ matrix.shard_id }}
+          R1_SHARD_COUNT: '8'
+        run: python research/aave_liquidation_overhang/r1_reserve_shard_v02.py
+      - name: Upload reserve shard receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: AAVE_R1_RESERVE_SHARD_V031_${{ matrix.shard_id }}
+          path: r1_reserve_shards/r1_reserve_shard_v02_*.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  global-state-oracle:
+    needs: audit-aggregate
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install source dependencies
+        run: pip install --disable-pip-version-check requests 'eth-hash[pycryptodome]'
+      - name: Download canonical V0.3 R1 audit
+        uses: actions/download-artifact@v4
+        with:
+          name: AAVE_R1_AUDIT_CANONICAL_V031
+          path: downloaded_r1_audit
+      - name: Download canonical R0 bootstrap
+        uses: actions/download-artifact@v4
+        with:
+          name: AAVE_RECON_R0_BOOTSTRAP
+          path: downloaded_r0_bootstrap
+          github-token: ${{ github.token }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: ${{ env.R0_BOOTSTRAP_RUN_ID }}
+      - name: Execute frozen global state/oracle gate
+        run: python research/aave_liquidation_overhang/r1_global_state_v01.py
+      - name: Upload global state receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: AAVE_R1_GLOBAL_STATE_V031
+          path: r1_global_state_output/AAVE_LIQUIDATION_OVERHANG_001_R1_GLOBAL_STATE_V0_1.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  canonical-adjudication:
+    if: always() && needs.audit-aggregate.result == 'success'
+    needs:
+      - audit-aggregate
+      - reserve-replay-shards
+      - global-state-oracle
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download canonical V0.3 R1 audit
+        uses: actions/download-artifact@v4
+        with:
+          name: AAVE_R1_AUDIT_CANONICAL_V031
+          path: downloaded_r1_audit
+      - name: Download canonical R0 bootstrap
+        uses: actions/download-artifact@v4
+        with:
+          name: AAVE_RECON_R0_BOOTSTRAP
+          path: downloaded_r0_bootstrap
+          github-token: ${{ github.token }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: ${{ env.R0_BOOTSTRAP_RUN_ID }}
+      - name: Download all reserve shard receipts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: AAVE_R1_RESERVE_SHARD_V031_*
+          path: downloaded_r1_shards
+          merge-multiple: true
+      - name: Download global state receipt
+        uses: actions/download-artifact@v4
+        with:
+          name: AAVE_R1_GLOBAL_STATE_V031
+          path: downloaded_r1_global
+      - name: Canonical R1 reconstruction adjudication
+        run: python research/aave_liquidation_overhang/aggregate_r1_reconstruction_v02.py
+      - name: Upload canonical R1 reconstruction receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: AAVE_R1_RECONSTRUCTION_CANONICAL_V031
+          path: r1_canonical_output/AAVE_LIQUIDATION_OVERHANG_001_RECONSTRUCTION_R1_CANONICAL_V0_2.json
+          if-no-files-found: warn
+          retention-days: 30
