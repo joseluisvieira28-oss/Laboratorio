@@ -8,7 +8,7 @@ import os
 from pathlib import Path
 import sqlite3
 import time
-from typing import Any
+from typing import Any, Callable
 
 from .binance_usdm_archive import SYMBOLS, load_verified_daily_interval_rows
 from .binance_usdm_public import BinanceUSDMPublicFeed, BinanceUSDMPublicError
@@ -31,6 +31,56 @@ CELL_ID="HTF-DH03-12H-STANDALONE-FORWARD-V1"
 
 class DH03CollectorError(RuntimeError):
     pass
+
+
+MAX_ABS_DH03_CLOCK_OFFSET_MS=500.0
+MAX_DH03_PUBLIC_RTT_MS=1000.0
+
+
+def dh03_clock_preflight(
+    *,
+    feed:BinanceUSDMPublicFeed|None=None,
+    clock_ms:Callable[[],float]|None=None,
+)->dict[str,Any]:
+    """Fail-closed public clock check before the collector activation boundary is persisted."""
+    feed=feed or BinanceUSDMPublicFeed(timeout=10)
+    clock_ms=clock_ms or (lambda: time.time_ns()/1_000_000.0)
+    t0=float(clock_ms())
+    server_ms=float(feed.server_time_ms())
+    t1=float(clock_ms())
+    rtt_ms=max(0.0,t1-t0)
+    midpoint_ms=(t0+t1)/2.0
+    offset_ms=server_ms-midpoint_ms
+    blockers=[]
+    if abs(offset_ms)>MAX_ABS_DH03_CLOCK_OFFSET_MS:
+        blockers.append("CLOCK_OFFSET_OUTSIDE_DH03_BUDGET")
+    if rtt_ms>MAX_DH03_PUBLIC_RTT_MS:
+        blockers.append("PUBLIC_RTT_OUTSIDE_DH03_BUDGET")
+    return {
+        "preflight":"DH03_BINANCE_PUBLIC_CLOCK_PREFLIGHT_V1",
+        "pass":len(blockers)==0,
+        "blockers":blockers,
+        "provider":getattr(feed,"provider",type(feed).__name__),
+        "server_minus_local_midpoint_ms":offset_ms,
+        "request_rtt_ms":rtt_ms,
+        "max_abs_offset_ms":MAX_ABS_DH03_CLOCK_OFFSET_MS,
+        "max_rtt_ms":MAX_DH03_PUBLIC_RTT_MS,
+        "authenticated_exchange_api_used":False,
+        "orders_created":False,
+        "exchange_mutation_performed":False,
+        "live_capital_enabled":False,
+    }
+
+
+def require_dh03_clock_preflight(
+    *,
+    feed:BinanceUSDMPublicFeed|None=None,
+    clock_ms:Callable[[],float]|None=None,
+)->dict[str,Any]:
+    result=dh03_clock_preflight(feed=feed,clock_ms=clock_ms)
+    if not result["pass"]:
+        raise DH03CollectorError(f"DH03 clock preflight failed:{result['blockers']}")
+    return result
 
 
 class DH03MarketStore:
