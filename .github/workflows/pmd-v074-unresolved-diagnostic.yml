@@ -1,0 +1,48 @@
+name: PMD-001 V074 Unresolved Source Diagnostic
+on:
+  push:
+    branches: [pumpfun-migration-direction-v0.1]
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/RUN_V074_UNRESOLVED_DIAGNOSTIC.trigger'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pumpfun-migration-direction-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip duckdb huggingface_hub requests solders pytz
+      - name: Syntax check
+        run: python -m py_compile Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/diagnose_ceiling_unresolved_v074.py
+      - name: Rebuild frozen manifest
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001
+        run: |
+          python build_source_rebuild_manifest_v01.py --data-dir "$GITHUB_WORKSPACE/v074_manifest_data" --out "$GITHUB_WORKSPACE/pmd_source_rebuild_manifest_v01.jsonl" --receipt "$GITHUB_WORKSPACE/v074_manifest_receipt.json"
+          test ! -e "$GITHUB_WORKSPACE/v074_manifest_data/postgard_outcomes.parquet"
+      - name: Diagnose indices 15 283 284 source-only
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001
+        run: |
+          python diagnose_ceiling_unresolved_v074.py --manifest "$GITHUB_WORKSPACE/pmd_source_rebuild_manifest_v01.jsonl" --out-dir "$GITHUB_WORKSPACE/v074_diag"
+      - name: Assert outcome wall
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path('v074_diag/v074_unresolved_diagnostic.json').read_text())
+          assert len(r)==3
+          assert all(x['economic_outcomes_opened'] is False for x in r)
+          assert all(x['scientific_verdict_authority'] is False for x in r)
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PMD-001-v074-unresolved-source-diagnostic
+          retention-days: 30
+          path: v074_diag/
