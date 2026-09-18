@@ -1,10 +1,10 @@
-name: CROSS-VENUE-DIAMOND-REPLICATION-002 AVAX20 OKX Full Source Gate
+name: CROSS-VENUE-DIAMOND-REPLICATION-002 AVAX20 OKX Mark Price Source Gate
 
 on:
   pull_request:
     branches: [ ced-1d-v3-byte-recovery-2026-09-17 ]
     paths:
-      - "governance/CROSS_VENUE_DIAMOND_REPLICATION_002_OKX_FULL_SOURCE_FREEZE_2026-09-18.md"
+      - "governance/CROSS_VENUE_DIAMOND_REPLICATION_002_OKX_MARK_PRICE_SOURCE_FREEZE_2026-09-18.md"
       - "Dream-Account-OS-v2.3-PARTIAL/research/cross_venue_diamond_replication_002/**"
       - ".github/workflows/cross-venue-diamond-replication-002-avax20-source-probe.yml"
   workflow_dispatch:
@@ -13,19 +13,19 @@ permissions:
   contents: read
 
 jobs:
-  okx-full-source-gate:
+  okx-mark-price-source-gate:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - name: Compile frozen full source gate
-        run: python -m py_compile Dream-Account-OS-v2.3-PARTIAL/research/cross_venue_diamond_replication_002/okx_full_source_gate_v01.py
-      - name: Execute frozen full source gate
-        run: python Dream-Account-OS-v2.3-PARTIAL/research/cross_venue_diamond_replication_002/okx_full_source_gate_v01.py
-      - name: Upload source receipt and raw archives
+      - name: Compile outcome-blind mark-price source gate
+        run: python -m py_compile Dream-Account-OS-v2.3-PARTIAL/research/cross_venue_diamond_replication_002/okx_mark_price_source_gate_v01.py
+      - name: Execute outcome-blind mark-price source gate
+        run: python Dream-Account-OS-v2.3-PARTIAL/research/cross_venue_diamond_replication_002/okx_mark_price_source_gate_v01.py
+      - name: Upload mark-price source receipt
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: cross-venue-diamond-replication-002-okx-full-source-v01
-          path: Dream-Account-OS-v2.3-PARTIAL/research/local_data/cross_venue_diamond_replication_002_okx_full_source/
+          name: cross-venue-diamond-replication-002-okx-mark-source-v01
+          path: Dream-Account-OS-v2.3-PARTIAL/research/local_data/cross_venue_diamond_replication_002_okx_mark_source/
           if-no-files-found: error
