@@ -1,0 +1,49 @@
+name: RADAR FORWARD BOUNDARY WAKE CHECK
+
+on:
+  schedule:
+    - cron: '20 0,12 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  public-boundary-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Wake/read public canary state
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error             --retry 5 --retry-delay 10 --retry-all-errors             --max-time 180             https://crypto-edge-radar-v05-canary.onrender.com/api/state             -o state.json
+          cat state.json
+      - name: Validate fail-closed public shadow state
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          s=json.loads(Path('state.json').read_text())
+          assert s.get('health') in {'OK','STARTING'}, s
+          assert s.get('mode') == 'PUBLIC_SHADOW_ONLY', s
+          assert s.get('authenticated_exchange_api_used') is False, s
+          assert s.get('orders_created') is False, s
+          assert s.get('exchange_mutation_performed') is False, s
+          assert s.get('live_capital_enabled') is False, s
+          assert 'tfg' in s, s
+          assert 'options_v21' in s, s
+          print(json.dumps({
+              'health':s.get('health'),
+              'tfg_status':(s.get('tfg') or {}).get('status'),
+              'options_status':(s.get('options_v21') or {}).get('status'),
+              'evidence_backend':s.get('evidence_backend'),
+              'evidence_chain_ok':s.get('evidence_chain_ok'),
+          },sort_keys=True))
+          PY
+      - name: Upload boundary receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: radar-forward-boundary-wake-${{ github.run_id }}
+          path: state.json
+          if-no-files-found: error
+          retention-days: 30
