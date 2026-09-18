@@ -136,9 +136,15 @@ def walk(obj: Any, path: str, key_paths: set, labels: set, oracle_paths: set, or
         for v in obj:
             walk(v, path + "[]", key_paths, labels, oracle_paths, oracle_labels, identity_markers)
 
+def progress(msg: str) -> None:
+    print(f"P0F_PROGRESS {msg}", file=sys.stderr, flush=True)
+
 def run_probe(out: Path, confirmation: Optional[str]) -> Dict[str, Any]:
+    progress("FREEZE_CHECK")
     freeze = load_freeze()
+    progress("AUTH_CHECK")
     load_auth(confirmation)
+    progress("AUTH_OK")
     caps = freeze["cost_and_completeness_caps"]
     keys = freeze["deterministic_object_hypothesis"]["exact_keys"]
 
@@ -147,7 +153,8 @@ def run_probe(out: Path, confirmation: Optional[str]) -> Dict[str, Any]:
     total = 0
 
     # HEAD all exact frozen objects before any GET.
-    for key in keys:
+    for idx, key in enumerate(keys, start=1):
+        progress(f"HEAD_{idx}_OF_{len(keys)}")
         try:
             h = s3.head_object(Bucket=BUCKET, Key=key, RequestPayer="requester")
         except Exception as exc:
@@ -162,10 +169,12 @@ def run_probe(out: Path, confirmation: Optional[str]) -> Dict[str, Any]:
 
     key_paths, labels, oracle_paths, oracle_labels, identity_markers = set(), set(), set(), set(), set()
     objects = []
-    for m in metas:
+    for idx, m in enumerate(metas, start=1):
+        progress(f"GET_{idx}_OF_{len(metas)}")
         raw = s3.get_object(Bucket=BUCKET, Key=m["key"], RequestPayer="requester")["Body"].read()
         if len(raw) != m["content_length"]:
             raise ProbeBlocked(f"TECHNICAL_BLOCKED_COST_OR_DECODER: length mismatch key={m['key']}")
+        progress(f"DECODE_{idx}_OF_{len(metas)}")
         records = decode_lz4_msgpack(raw)
         for rec in records:
             walk(rec, "", key_paths, labels, oracle_paths, oracle_labels, identity_markers)
@@ -219,6 +228,7 @@ def run_probe(out: Path, confirmation: Optional[str]) -> Dict[str, Any]:
     }
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    progress("RECEIPT_WRITTEN")
     return result
 
 def plan() -> Dict[str, Any]:
@@ -246,7 +256,31 @@ def main() -> int:
     try:
         r = plan() if a.plan else run_probe(Path(a.out), a.authorization_confirmation)
     except ProbeBlocked as exc:
-        print(str(exc), file=sys.stderr)
+        print(f"P0F_BLOCKED {exc}", file=sys.stderr, flush=True)
+        if a.execute:
+            blocked = {
+                "schema_version": "0.1A",
+                "stage": "P0F_EXPLORER_BLOCKS_RAW_BOUNDED_REQUESTER_PAYS_SCHEMA_PROBE",
+                "status": "TECHNICAL_BLOCKED",
+                "decision": str(exc).split(":", 1)[0],
+                "detail": str(exc),
+                "freeze_git_blob_sha": EXPECTED_FREEZE_GIT_BLOB_SHA,
+                "raw_object_bodies_emitted": False,
+                "market_numeric_values_emitted": False,
+                "oracle_numeric_values_emitted": False,
+                "economic_outcomes_computed": False,
+                "primary_replication_reopened": False,
+                "2026_opened": False,
+                "live_trading_authorized": False,
+                "merge_to_main_authorized": False,
+            }
+            try:
+                p = Path(a.out)
+                p.parent.mkdir(parents=True, exist_ok=True)
+                p.write_text(json.dumps(blocked, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+                progress("BLOCKED_RECEIPT_WRITTEN")
+            except Exception as write_exc:
+                print(f"P0F_BLOCKED_RECEIPT_WRITE_FAILED {type(write_exc).__name__}", file=sys.stderr, flush=True)
         return 3
     except AssertionError as exc:
         print(f"FREEZE_GUARD_FAIL: {exc}", file=sys.stderr)
