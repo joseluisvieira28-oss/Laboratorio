@@ -12,7 +12,7 @@ from radar.dh03_12h_local import DH03LocalCollector, default_paths
 from radar.local_forward import LocalForwardSupervisor
 
 
-BUILD_ID = "v0.12-win-five-engine-all-local"
+BUILD_ID = "v0.13-win-six-motor-control-plane"
 
 
 def _resource_path(name: str) -> str:
@@ -39,6 +39,9 @@ def _verify_registry_file(registry_path: str) -> tuple[dict, dict]:
     dh03 = "HTF-DH03-12H-STANDALONE-FORWARD-V1"
     if dh03 not in ids:
         raise RuntimeError(f"deployment registry missing DH03 local collector strategy: {dh03}")
+    ced1d = "CED1D-0031"
+    if ced1d not in ids:
+        raise RuntimeError(f"deployment registry missing external CED1D strategy: {ced1d}")
     state = {
         "status": "PASS",
         "build_id": BUILD_ID,
@@ -46,6 +49,7 @@ def _verify_registry_file(registry_path: str) -> tuple[dict, dict]:
         "candidate_count": len(candidates),
         "required_strategy_present": True,
         "dh03_strategy_present": True,
+        "ced1d_strategy_present": True,
     }
     return payload, state
 
