@@ -1,0 +1,64 @@
+name: OPTIONS V2.1 — EXEC Mapping Public Probe
+
+on:
+  push:
+    branches: [options-v21-exec-mapping-v0.1]
+    paths:
+      - 'crypto_edge_radar/OPTIONS_SPOTPERP_001_V21_EXEC_MAPPING_V0.1.json'
+      - 'crypto_edge_radar/radar/options_v21_exec_mapping.py'
+      - 'crypto_edge_radar/tests/test_options_v21_exec_mapping.py'
+      - '.github/workflows/options-v21-exec-mapping-probe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mapping-probe:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: crypto_edge_radar
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install
+        run: python -m pip install -e .
+      - name: Compile and mapping tests
+        run: |
+          python -m compileall radar tests
+          python -m unittest tests.test_options_v21_exec_mapping -v
+      - name: Capture public mapping receipt
+        run: |
+          mkdir -p options_exec_mapping
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from radar.options_v21_exec_mapping import options_v21_exec_public_receipt
+          r=options_v21_exec_public_receipt()
+          Path('options_exec_mapping/receipt.json').write_text(json.dumps(r,sort_keys=True,indent=2))
+          print(json.dumps({
+            'checked_at_utc':r['checked_at_utc'],
+            'long_proxy_bps':r['evaluation']['long_spot']['public_proxy_round_trip_bps'],
+            'long_base10':r['evaluation']['long_spot']['base10_compatible_public_proxy'],
+            'long_stress20':r['evaluation']['long_spot']['stress20_compatible_public_proxy'],
+            'short_proxy_bps':r['evaluation']['short_perp']['public_proxy_round_trip_bps'],
+            'short_base10':r['evaluation']['short_perp']['base10_compatible_public_proxy'],
+            'short_stress20':r['evaluation']['short_perp']['stress20_compatible_public_proxy'],
+            'account_fee_verified':r['evaluation']['account_specific_fee_verified'],
+            'orders_created':r['orders_created'],
+          },sort_keys=True))
+          assert r['scientific_rule_changed'] is False
+          assert r['authenticated_api_used'] is False
+          assert r['orders_created'] is False
+          assert r['exchange_mutation_performed'] is False
+          assert r['capital_enabled'] is False
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: options-v21-exec-mapping-${{ github.run_id }}
+          path: crypto_edge_radar/options_exec_mapping/
+          if-no-files-found: error
+          retention-days: 30
