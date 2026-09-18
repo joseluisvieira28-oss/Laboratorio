@@ -27,6 +27,24 @@ from .tfg_forward_metrics import evaluate_tfg_forward_evidence
 from .options_v21_live import BinanceBTCUSDTDailyFeed, DeribitBTCOptionTradeFeed
 from .options_v21_watcher import OptionsV21ForwardShadowWatcher
 from .options_v21_metrics import evaluate_options_v21_forward
+from .dh03_archive_watcher import run_once as run_dh03_archive_shadow
+
+
+BNB_POLL_MS = 10 * 60 * 1000
+DH03_RETRY_MS = 6 * 60 * 60 * 1000
+
+
+def _utc_yesterday_iso(now_ms: int) -> str:
+    now = datetime.fromtimestamp(now_ms / 1000.0, tz=timezone.utc)
+    return (now.date() - __import__('datetime').timedelta(days=1)).isoformat()
+
+
+def _dh03_due(*, now_ms: int, last_check_ms: int | None, state: dict[str, Any]) -> bool:
+    if last_check_ms is None:
+        return True
+    if state.get('status') == 'OK' and state.get('latest_archive_day') == _utc_yesterday_iso(now_ms):
+        return False
+    return now_ms - last_check_ms >= DH03_RETRY_MS
 
 
 class CachingBinanceOfficialLaunchpoolSource(BinanceOfficialLaunchpoolSource):
@@ -84,6 +102,18 @@ class ForwardShadowRuntime:
         self._last_tfg_due: int | None = None
         self._last_etf_public_check_ms: int | None = None
         self._last_options_runtime_day: str | None = None
+        self._last_bnb_check_ms: int | None = None
+        self._bnb_state: dict[str, Any] = {
+            "status": "STARTING",
+            "watcher_id": "BNB-LAUNCHPOOL-DEMAND-001-FORWARD-SHADOW-V3",
+            "new_event_action_allowed": False,
+        }
+        self._last_dh03_check_ms: int | None = None
+        self._dh03_state: dict[str, Any] = {
+            "status": "STARTING",
+            "strategy_id": "HTF-DH03-12H-STANDALONE-FORWARD-V1",
+            "live_capital_enabled": False,
+        }
         self._options_state: dict[str, Any] = {
             "status": "STARTING",
             "watcher_id": "OPTIONS-SPOTPERP-001-V2.1-FORWARD-SHADOW",
@@ -110,11 +140,32 @@ class ForwardShadowRuntime:
         checked = datetime.fromtimestamp(now_ms / 1000.0, tz=timezone.utc).isoformat().replace("+00:00", "Z")
         errors: dict[str, str] = {}
 
-        try:
-            bnb_state = self.bnb.run_once(now_ms=now_ms)
-        except Exception as exc:
-            bnb_state = {"status": "FAIL_CLOSED", "error": f"{type(exc).__name__}:{exc}"}
-            errors["bnb_launchpool"] = bnb_state["error"]
+        warnings: dict[str, str] = {}
+        bnb_due = (
+            self._last_bnb_check_ms is None
+            or now_ms - self._last_bnb_check_ms >= BNB_POLL_MS
+        )
+        if bnb_due:
+            try:
+                bnb_state = self.bnb.run_once(now_ms=now_ms)
+                bnb_state["new_event_action_allowed"] = False
+                bnb_state["shadow_detection_only"] = True
+                self._bnb_state = bnb_state
+                self._last_bnb_check_ms = now_ms
+            except Exception as exc:
+                bnb_state = {
+                    "status": "SOURCE_RETRY_BACKOFF_FAIL_CLOSED",
+                    "error": f"{type(exc).__name__}:{exc}",
+                    "new_event_action_allowed": False,
+                    "shadow_detection_only": True,
+                    "retry_after_seconds": BNB_POLL_MS // 1000,
+                    "last_good_state": self._bnb_state if self._bnb_state.get("status") == "OK" else None,
+                }
+                self._bnb_state = bnb_state
+                self._last_bnb_check_ms = now_ms
+                warnings["bnb_launchpool"] = bnb_state["error"]
+        else:
+            bnb_state = self._bnb_state
 
         due = latest_certifiable_signal_close_ms(now_ms)
         if due is not None and due != self._last_tfg_due:
@@ -232,6 +283,34 @@ class ForwardShadowRuntime:
             }
             errors["options_v21_metrics"] = options_v21_metrics["error"]
 
+        if _dh03_due(
+            now_ms=now_ms,
+            last_check_ms=self._last_dh03_check_ms,
+            state=self._dh03_state,
+        ):
+            try:
+                dh03_state = run_dh03_archive_shadow(
+                    now=datetime.fromtimestamp(now_ms / 1000.0, tz=timezone.utc),
+                    persist=True,
+                    store=self.store,
+                )
+                self._dh03_state = dh03_state
+                self._last_dh03_check_ms = now_ms
+            except Exception as exc:
+                dh03_state = {
+                    "status": "FAIL_CLOSED",
+                    "error": f"{type(exc).__name__}:{exc}",
+                    "strategy_id": "HTF-DH03-12H-STANDALONE-FORWARD-V1",
+                    "live_capital_enabled": False,
+                    "orders_created": False,
+                    "authenticated_exchange_api_used": False,
+                }
+                self._dh03_state = dh03_state
+                self._last_dh03_check_ms = now_ms
+                errors["dh03_archive_shadow"] = dh03_state["error"]
+        else:
+            dh03_state = self._dh03_state
+
         state = {
             "health": "OK" if not errors else "DEGRADED_FAIL_CLOSED",
             "mode": "PUBLIC_SHADOW_ONLY",
@@ -246,7 +325,9 @@ class ForwardShadowRuntime:
             "etf_exec_v2_public": etf_exec_v2,
             "options_v21": options_v21,
             "options_v21_metrics": options_v21_metrics,
+            "dh03_12h_archive_shadow": dh03_state,
             "errors": errors,
+            "warnings": warnings,
             "authenticated_exchange_api_used": False,
             "orders_created": False,
             "exchange_mutation_performed": False,
@@ -348,6 +429,13 @@ h1{margin:0 0 6px;font-size:28px}.sub{color:#9aa4b2;margin-bottom:22px}
 <div class="row"><span>BASE PF</span><span id="optPf">—</span></div>
 <div class="row"><span>STRESS mean bps</span><span id="optStress">—</span></div></section>
 
+<section class="card"><div class="k">HTF DH03 12H Standalone</div><div id="dh03Status" class="v">—</div>
+<div class="row"><span>Latest archive day</span><span id="dh03Day">—</span></div>
+<div class="row"><span>Mode</span><span id="dh03Mode">—</span></div>
+<div class="row"><span>Forward evidence</span><span id="dh03Forward">—</span></div>
+<div class="row"><span>Signals</span><span id="dh03Signals">—</span></div>
+<div class="row"><span>Final resolutions</span><span id="dh03Final">—</span></div></section>
+
 <section class="card"><div class="k">Safety</div><div class="v ok">FAIL-CLOSED</div>
 <div class="row"><span>Authenticated API</span><span id="auth">—</span></div>
 <div class="row"><span>Orders created</span><span id="orders">—</span></div>
@@ -396,6 +484,14 @@ async function refresh(){
     $("optBase").textContent=val(om.base_net_mean_bps);
     $("optPf").textContent=om.base_profit_factor===Infinity?"INF":val(om.base_profit_factor);
     $("optStress").textContent=val(om.stress_net_mean_bps);
+    const d=s.dh03_12h_archive_shadow||{};
+    paint("dh03Status",d.status,d.status==="OK"||String(d.status||"").startsWith("WAITING_"));
+    $("dh03Day").textContent=val(d.latest_archive_day);
+    $("dh03Mode").textContent=val(d.mode);
+    $("dh03Forward").textContent=tf(d.used_as_forward_evidence);
+    const dtot=(d.evaluation||{}).totals||{};
+    $("dh03Signals").textContent=val(dtot.signals,0);
+    $("dh03Final").textContent=val(dtot.final_resolutions,0);
     $("auth").textContent=tf(s.authenticated_exchange_api_used); $("orders").textContent=tf(s.orders_created);
     $("mutation").textContent=tf(s.exchange_mutation_performed); $("capital").textContent=tf(s.live_capital_enabled);
   }catch(e){paint("health","UNREACHABLE",false)}
