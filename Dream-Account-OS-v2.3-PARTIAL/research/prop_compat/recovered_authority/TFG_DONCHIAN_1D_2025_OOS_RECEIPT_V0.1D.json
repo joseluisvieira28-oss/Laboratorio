@@ -1,0 +1,390 @@
+{
+  "2025_data_accessed": true,
+  "2025_outcome_evaluation_performed": true,
+  "2026_accessed": false,
+  "base_metrics": {
+    "exit_reasons": {
+      "STOP": 24,
+      "TARGET": 12,
+      "TIME_EXIT_NEXT_OPEN": 4
+    },
+    "leave_one_asset_out": {
+      "BNBUSDT": {
+        "mean_net_r": 0.2043838162822443,
+        "n": 31,
+        "profit_factor": 1.3167949152374787
+      },
+      "BTCUSDT": {
+        "mean_net_r": 0.44419646856423534,
+        "n": 33,
+        "profit_factor": 1.7714991296115665
+      },
+      "DOGEUSDT": {
+        "mean_net_r": 0.43286944888688844,
+        "n": 35,
+        "profit_factor": 1.7575215355520548
+      },
+      "ETHUSDT": {
+        "mean_net_r": 0.21472154286623754,
+        "n": 35,
+        "profit_factor": 1.3267501739268832
+      },
+      "SOLUSDT": {
+        "mean_net_r": 0.44646940652173084,
+        "n": 32,
+        "profit_factor": 1.7937233893719657
+      },
+      "XRPUSDT": {
+        "mean_net_r": 0.3608763245995389,
+        "n": 34,
+        "profit_factor": 1.6134897518192162
+      }
+    },
+    "loss_rate": 0.6,
+    "max_single_symbol_positive_net_r_share": 0.30774025009443506,
+    "median_net_r": -1.0,
+    "net_expectancy_r": 0.3510844126190423,
+    "per_quarter": {
+      "2025-Q1": {
+        "mean_net_r": -1.0,
+        "n": 5,
+        "profit_factor": 0.0,
+        "total_net_r": -5.0
+      },
+      "2025-Q2": {
+        "mean_net_r": 0.2149338929566241,
+        "n": 8,
+        "profit_factor": 1.4298677859132483,
+        "total_net_r": 1.7194711436529928
+      },
+      "2025-Q3": {
+        "mean_net_r": 0.7579499668124658,
+        "n": 23,
+        "profit_factor": 2.4527374363905596,
+        "total_net_r": 17.432849236686714
+      },
+      "2025-Q4": {
+        "mean_net_r": -0.027235968894504192,
+        "n": 4,
+        "profit_factor": 0.9636853748073277,
+        "total_net_r": -0.10894387557801677
+      }
+    },
+    "per_symbol": {
+      "BNBUSDT": {
+        "mean_net_r": 0.8563864666680131,
+        "n": 9,
+        "profit_factor": 2.9268695500030293,
+        "total_net_r": 7.707478200012117
+      },
+      "BTCUSDT": {
+        "mean_net_r": -0.08787242255115355,
+        "n": 7,
+        "profit_factor": 0.876978608428385,
+        "total_net_r": -0.6151069578580748
+      },
+      "DOGEUSDT": {
+        "mean_net_r": -0.2214108412558807,
+        "n": 5,
+        "profit_factor": 0.7232364484301491,
+        "total_net_r": -1.1070542062794035
+      },
+      "ETHUSDT": {
+        "mean_net_r": 1.3056245008886755,
+        "n": 5,
+        "profit_factor": 7.5281225044433775,
+        "total_net_r": 6.5281225044433775
+      },
+      "SOLUSDT": {
+        "mean_net_r": -0.030455562991711815,
+        "n": 8,
+        "profit_factor": 0.9593925826777175,
+        "total_net_r": -0.24364450393369452
+      },
+      "XRPUSDT": {
+        "mean_net_r": 0.2955969113962282,
+        "n": 6,
+        "profit_factor": 1.4433953670943422,
+        "total_net_r": 1.773581468377369
+      }
+    },
+    "profit_factor_r": 1.5851406876984038,
+    "resolved_trade_count": 40,
+    "selected_trade_count": 40,
+    "target_reach_rate": 0.3,
+    "total_net_r": 14.043376504761692,
+    "unresolved_execution_path_count": 0,
+    "win_rate": 0.4
+  },
+  "bootstrap": {
+    "confidence": 0.95,
+    "lower": -0.42734831807066687,
+    "method": "UTC_CALENDAR_DAY_BLOCK_BOOTSTRAP",
+    "point_estimate": 0.3510844126190423,
+    "repetitions": 5000,
+    "sample_days": 30,
+    "seed": 230911,
+    "undefined_reason": null,
+    "upper": 1.1005416049451395
+  },
+  "decision": {
+    "classification": "OOS_CONFIRMATION_SURVIVES_SHADOW_ELIGIBLE",
+    "failed_conditions": [],
+    "live_trading_authorized": false,
+    "minimum_resolved_oos_trades": 30,
+    "shadow_eligible": true
+  },
+  "diagnostic_notes": {
+    "bootstrap_is_reporting_only_not_frozen_oos_gate": true,
+    "bootstrap_lower_95_is_positive": false,
+    "per_quarter_temporal_heterogeneity_observed": true,
+    "post_outcome_tuning": false
+  },
+  "exchange_mutation": false,
+  "experiment_id": "TFG-DONCHIAN-1D-001-OOS2025-V0.1",
+  "fingerprint": "3f70d649a77b2c8f1afd675acef55b75f200cace512417e98e8eae74375184a1",
+  "frozen_rule": {
+    "atr_length": 14,
+    "base_round_trip_cost_pct": 0.2,
+    "donchian_lookback_complete_days": 20,
+    "entry": "next_daily_open",
+    "max_holding_bars": 40,
+    "one_active_position_per_symbol": true,
+    "same_bar_stop_target": "STOP_FIRST_CONSERVATIVE",
+    "side": "LONG_ONLY",
+    "stop": "signal_low - 0.25 * ATR14_signal",
+    "stress_round_trip_cost_pct": 0.3,
+    "target_r": 3.0,
+    "universe": [
+      "BTCUSDT",
+      "ETHUSDT",
+      "SOLUSDT",
+      "BNBUSDT",
+      "XRPUSDT",
+      "DOGEUSDT"
+    ]
+  },
+  "live_trading": false,
+  "merge_to_main": false,
+  "orders": false,
+  "parent_experiment_id": "TFG-DONCHIAN-1D-001",
+  "post_outcome_tuning": false,
+  "signal_diagnostics": {
+    "BNBUSDT": {
+      "all_2025_ready_signals": 22,
+      "cancelled_all_series": 0,
+      "full_path_eligible_signals": 22,
+      "overlap_skipped": 13,
+      "raw_all_series": 22,
+      "right_censored_signals": 0,
+      "selected_trades": 9,
+      "unresolved_execution_paths": 0
+    },
+    "BTCUSDT": {
+      "all_2025_ready_signals": 19,
+      "cancelled_all_series": 0,
+      "full_path_eligible_signals": 19,
+      "overlap_skipped": 12,
+      "raw_all_series": 19,
+      "right_censored_signals": 0,
+      "selected_trades": 7,
+      "unresolved_execution_paths": 0
+    },
+    "DOGEUSDT": {
+      "all_2025_ready_signals": 12,
+      "cancelled_all_series": 0,
+      "full_path_eligible_signals": 12,
+      "overlap_skipped": 7,
+      "raw_all_series": 12,
+      "right_censored_signals": 0,
+      "selected_trades": 5,
+      "unresolved_execution_paths": 0
+    },
+    "ETHUSDT": {
+      "all_2025_ready_signals": 20,
+      "cancelled_all_series": 0,
+      "full_path_eligible_signals": 19,
+      "overlap_skipped": 14,
+      "raw_all_series": 20,
+      "right_censored_signals": 1,
+      "selected_trades": 5,
+      "unresolved_execution_paths": 0
+    },
+    "SOLUSDT": {
+      "all_2025_ready_signals": 17,
+      "cancelled_all_series": 0,
+      "full_path_eligible_signals": 17,
+      "overlap_skipped": 9,
+      "raw_all_series": 17,
+      "right_censored_signals": 0,
+      "selected_trades": 8,
+      "unresolved_execution_paths": 0
+    },
+    "XRPUSDT": {
+      "all_2025_ready_signals": 12,
+      "cancelled_all_series": 0,
+      "full_path_eligible_signals": 12,
+      "overlap_skipped": 6,
+      "raw_all_series": 12,
+      "right_censored_signals": 0,
+      "selected_trades": 6,
+      "unresolved_execution_paths": 0
+    }
+  },
+  "source_72_file_manifest_sha256": "c3946f95fa81033d7566fe1114adb8f9c3ab5f076fb690caea2bb19d64762cbf",
+  "source_delivery": "OFFICIAL_MEXC_SPOT_BULK_MIN15_MONTHLY_FILES",
+  "source_integrity": {
+    "2026_partition_accessed": false,
+    "complete_daily_end_utc_inclusive": "2025-12-30T00:00:00Z",
+    "complete_daily_start_utc": "2024-12-01T00:00:00Z",
+    "complete_utc_daily_bars_used_per_symbol": 395,
+    "dec31_2025_raw_open_available": true,
+    "dec31_special_time_exit_used": false,
+    "per_symbol_15m_gap_count": {
+      "BNB": 0,
+      "BTC": 0,
+      "DOGE": 0,
+      "ETH": 0,
+      "SOL": 0,
+      "XRP": 0
+    },
+    "per_symbol_2025_15m_rows": {
+      "BNB": 35040,
+      "BTC": 35040,
+      "DOGE": 35040,
+      "ETH": 35040,
+      "SOL": 35040,
+      "XRP": 35040
+    },
+    "per_symbol_duplicate_timestamp_count": {
+      "BNB": 0,
+      "BTC": 0,
+      "DOGE": 0,
+      "ETH": 0,
+      "SOL": 0,
+      "XRP": 0
+    },
+    "required_2025_files_expected": 72,
+    "required_2025_files_found": 72
+  },
+  "source_zip_sha256": {
+    "BNB_USDT-Min15-2025-12-01.zip": "f45b9babb8c5ac92d93fd2871a65e6f55786c875e03aa5773dacc680758d3a8d",
+    "BTC_USDT-Min15-2025-05-01.zip": "005fd4b352082f7b8bfd667fdc5f0dbd3c2e3671a895a7b90d9bf026f901409e",
+    "DOGE_USDT-Min15-2025-12-01.zip": "f7c19fc7965138e0453a50b558c1617c60d18f3eb2a0529d2741043410452d58"
+  },
+  "status": "OOS_CONFIRMATION_SURVIVES_SHADOW_ELIGIBLE",
+  "stress_metrics": {
+    "exit_reasons": {
+      "STOP": 24,
+      "TARGET": 12,
+      "TIME_EXIT_NEXT_OPEN": 4
+    },
+    "leave_one_asset_out": {
+      "BNBUSDT": {
+        "mean_net_r": 0.18683971638961794,
+        "n": 31,
+        "profit_factor": 1.289601560403908
+      },
+      "BTCUSDT": {
+        "mean_net_r": 0.41990284160570923,
+        "n": 33,
+        "profit_factor": 1.7293049354204424
+      },
+      "DOGEUSDT": {
+        "mean_net_r": 0.4074079289657424,
+        "n": 35,
+        "profit_factor": 1.7129638756900492
+      },
+      "ETHUSDT": {
+        "mean_net_r": 0.19142201967251798,
+        "n": 35,
+        "profit_factor": 1.2912943777625274
+      },
+      "SOLUSDT": {
+        "mean_net_r": 0.42064999272366166,
+        "n": 32,
+        "profit_factor": 1.7478222092865097
+      },
+      "XRPUSDT": {
+        "mean_net_r": 0.3363356031563271,
+        "n": 34,
+        "profit_factor": 1.5717705253657561
+      }
+    },
+    "loss_rate": 0.6,
+    "max_single_symbol_positive_net_r_share": 0.3048123058181978,
+    "median_net_r": -1.0,
+    "net_expectancy_r": 0.32752041728938985,
+    "per_quarter": {
+      "2025-Q1": {
+        "mean_net_r": -1.0,
+        "n": 5,
+        "profit_factor": 0.0,
+        "total_net_r": -5.0
+      },
+      "2025-Q2": {
+        "mean_net_r": 0.19883899752610992,
+        "n": 8,
+        "profit_factor": 1.3976779950522198,
+        "total_net_r": 1.5907119802088794
+      },
+      "2025-Q3": {
+        "mean_net_r": 0.7248402186502706,
+        "n": 23,
+        "profit_factor": 2.389277085746352,
+        "total_net_r": 16.671325028956225
+      },
+      "2025-Q4": {
+        "mean_net_r": -0.04030507939737743,
+        "n": 4,
+        "profit_factor": 0.94625989413683,
+        "total_net_r": -0.16122031758950972
+      }
+    },
+    "per_symbol": {
+      "BNBUSDT": {
+        "mean_net_r": 0.8120872759441597,
+        "n": 9,
+        "profit_factor": 2.8271963708743595,
+        "total_net_r": 7.308785483497438
+      },
+      "BTCUSDT": {
+        "mean_net_r": -0.10799672591611587,
+        "n": 7,
+        "profit_factor": 0.8488045837174377,
+        "total_net_r": -0.7559770814128111
+      },
+      "DOGEUSDT": {
+        "mean_net_r": -0.23169216444507806,
+        "n": 5,
+        "profit_factor": 0.7103847944436524,
+        "total_net_r": -1.1584608222253903
+      },
+      "ETHUSDT": {
+        "mean_net_r": 1.2802092006074928,
+        "n": 5,
+        "profit_factor": 7.4010460030374645,
+        "total_net_r": 6.4010460030374645
+      },
+      "SOLUSDT": {
+        "mean_net_r": -0.04499788444769742,
+        "n": 8,
+        "profit_factor": 0.9400028207364034,
+        "total_net_r": -0.3599830755815794
+      },
+      "XRPUSDT": {
+        "mean_net_r": 0.27756769737674547,
+        "n": 6,
+        "profit_factor": 1.4163515460651181,
+        "total_net_r": 1.6654061842604728
+      }
+    },
+    "profit_factor_r": 1.5458673621489831,
+    "resolved_trade_count": 40,
+    "selected_trade_count": 40,
+    "target_reach_rate": 0.3,
+    "total_net_r": 13.100816691575593,
+    "unresolved_execution_path_count": 0,
+    "win_rate": 0.4
+  }
+}
