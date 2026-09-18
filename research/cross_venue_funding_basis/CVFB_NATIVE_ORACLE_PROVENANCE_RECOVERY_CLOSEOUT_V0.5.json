@@ -2,7 +2,7 @@
   "schema_version": "0.5",
   "lab_id": "CROSS_VENUE_FUNDING_BASIS_LAB_V01",
   "recovery_id": "CVFB_NATIVE_ORACLE_PROVENANCE_RECOVERY_V0.5",
-  "status": "CLOSED_BLOCKED_BY_HISTORICAL_SOURCE_COVERAGE_WITH_P0F_FROZEN_NOT_AUTHORIZED",
+  "status": "CLOSED_BLOCKED_BY_HISTORICAL_SOURCE_COVERAGE_WITH_P0F_AUTHORIZED_READY_TO_EXECUTE",
   "classification": "PROVENANCE_RECOVERY_BLOCKED_NOT_NO_EDGE",
   "parent_primary": {
     "branch": "funding-slot-diag-v03",
@@ -115,10 +115,10 @@
   "merge_to_main_authorized": false,
   "tuning_performed": false,
   "scientific_conclusion": "The recovery campaign still establishes neither edge nor no-edge. Explorer blockDetails exposed no oracle schema under P0. P0E then reached the official replica_cmds archive with authenticated requester-pays access but the frozen 2024-09-01 target date was absent under the frozen resolver, before any HEAD/GET object-body access. replica_cmds therefore cannot currently adjudicate this boundary. A distinct raw explorer_blocks S3 P0F probe is prospectively frozen over four exact chunk keys and remains NOT AUTHORIZED. The parent primary remains CLOSED / REPLICATION_INCONCLUSIVE / UNPROVEN.",
-  "next_action": "P0F_MAY_EXECUTE_ONLY_AFTER_SEPARATE_EXPLICIT_AUTHORIZATION_TEXT_I_EXPLICITLY_AUTHORIZE_CVFB_P0F_EXPLORER_BLOCKS_REQUESTER_PAYS; OTHERWISE_STOP_AS_PROVENANCE_BLOCKED_NOT_NO_EDGE",
+  "next_action": "EXECUTE_FROZEN_P0F_RAW_EXPLORER_BLOCKS_PROBE_WITH_EXACT_RUNTIME_CONFIRMATION; NO OTHER SOURCE_OR_OUTCOME_ACCESS_AUTHORIZED",
   "no_rescue": true,
   "raw_explorer_blocks_p0f": {
-    "status": "FROZEN_PRE_EXECUTION_NOT_AUTHORIZED",
+    "status": "AUTHORIZED_READY_TO_EXECUTE",
     "freeze_file": "research/cross_venue_funding_basis/CVFB_NATIVE_ORACLE_PROVENANCE_P0F_EXPLORER_BLOCKS_RAW_FREEZE_V0.1A.json",
     "freeze_git_blob_sha": "3517c354b0ad6e7e79e7a85d0755127aa9c367ba",
     "superseded_pre_execution_freeze": "research/cross_venue_funding_basis/CVFB_NATIVE_ORACLE_PROVENANCE_P0F_EXPLORER_BLOCKS_RAW_FREEZE_V0.1.json",
@@ -137,11 +137,14 @@
     "max_total_compressed_object_bytes": 33554432,
     "planning_cost_ceiling_usd": 0.05,
     "decoder": "LZ4 -> MessagePack stream",
-    "authorization_file_present": false,
-    "requester_pays_charges_authorized": false,
-    "aws_credentials_authorized": false,
-    "execution_authorized": false,
+    "authorization_file_present": true,
+    "requester_pays_charges_authorized": true,
+    "aws_credentials_authorized": true,
+    "execution_authorized": true,
     "required_runtime_confirmation": "I_EXPLICITLY_AUTHORIZE_CVFB_P0F_EXPLORER_BLOCKS_REQUESTER_PAYS",
-    "interpretation": "P0F is a raw-source schema audit only. It does not assume that an oracle-labelled record is native BTC/ETH validator oracle; any candidate requires a separate identity audit before reconstruction."
+    "interpretation": "P0F is a raw-source schema audit only. It does not assume that an oracle-labelled record is native BTC/ETH validator oracle; any candidate requires a separate identity audit before reconstruction.",
+    "authorization_file": "research/cross_venue_funding_basis/CVFB_NATIVE_ORACLE_PROVENANCE_P0F_EXPLORER_BLOCKS_REQUESTER_PAYS_AUTHORIZATION_V0.1.json",
+    "authorization_date": "2026-09-18",
+    "authorization_commit": "cb9e714506bb77dec7f6597777300aaf6f679fce"
   }
 }
