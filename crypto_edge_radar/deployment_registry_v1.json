@@ -1,6 +1,6 @@
 {
-  "registry_version": "2.2",
-  "as_of_utc": "2026-09-18T05:32:08Z",
+  "registry_version": "2.3",
+  "as_of_utc": "2026-09-18T06:21:54Z",
   "governance": "ND_PROMOTION_POLICY_V3_PLUS_AGGRESSIVE_FAIL_CLOSED_DEPLOYMENT",
   "focus_strategy_ids": [
     "ETF-CME-INSTFLOW-001",
@@ -120,7 +120,7 @@
       "strategy_id": "OPTIONS-SPOTPERP-001-V2.1",
       "scientific_tier": 2,
       "scientific_status": "TIER_2_QUASE_DIAMANTE__HIGH_RISK_FRAGILITY",
-      "deployment_state": "SHADOW_PREFLIGHT__LIVE_SOURCE_ADAPTER_AND_RISK_ENVELOPE_PENDING",
+      "deployment_state": "PROSPECTIVE_DAILY_SHADOW_OPERATIONAL__FIRST_FULL_SIGNAL_DAY_2026-09-19",
       "shadow_allowed": true,
       "micro_live_allowed_now": false,
       "authority_branch": "options-spotperp-001-v21-oos-2025-v01",
@@ -142,11 +142,20 @@
         "high-risk fragility classification"
       ],
       "blocking_gates": [
-        "exact live Deribit option-trade source adapter not yet validated prospectively",
-        "continuous RV20 state bootstrap/provenance for live shadow not yet frozen",
-        "execution venue/instrument translation must preserve BTCUSDT spot identity or be separately frozen",
-        "candidate-specific micro-live risk envelope not yet frozen"
-      ]
+        "no Tier-1 forward evidence gate has been prospectively frozen",
+        "candidate-specific micro-live risk/readiness envelope not yet frozen",
+        "authenticated execution transport not authorized",
+        "no real-money execution authority exists"
+      ],
+      "live_source_adapter": "DERIBIT_PUBLIC_HTTP__VALIDATED_POSTFREEZE",
+      "live_source_probe_run_id": 35314533978,
+      "live_source_probe_status": "PASS_SOURCE_SCHEMA",
+      "live_source_probe_trade_count": 14,
+      "prospective_freeze": "OPTIONS_SPOTPERP_001_V21_LIVE_SHADOW_FREEZE_V0.1.json",
+      "prospective_freeze_utc": "2026-09-18T05:35:01Z",
+      "first_full_postfreeze_signal_day": "2026-09-19",
+      "risk_state_bootstrap": "FULL_BTCUSDT_DAILY_HISTORY_FROM_2021-04-01__CAUSAL_RV20_EXPANDING_MEDIAN",
+      "forward_evidence_backend": "POSTGRES_APPEND_ONLY_HASH_CHAIN"
     },
     {
       "strategy_id": "HTF-DONCHIAN-DH02-6H",
@@ -254,7 +263,7 @@
     }
   ],
   "operational_shadow_v09": {
-    "status": "OPERATIONAL_PERSISTENT_PUBLIC_SHADOW__THREE_ENGINE",
+    "status": "OPERATIONAL_PERSISTENT_PUBLIC_SHADOW__FOUR_ENGINE",
     "branch": "crypto-edge-radar-promotion-sprint-v0.9",
     "deployed_commit": "ba916cb4580461f90bd215c6f30726a01077f906",
     "render_service_id": "srv-dalqkpu1egvs73fhiehg",
@@ -291,6 +300,16 @@
         "account_fee_verified_read_only": false,
         "authenticated_transport_ready": false,
         "execution_authority_present": false
+      },
+      "options_v21": {
+        "status": "WAITING_FIRST_FULL_POST_FREEZE_SIGNAL_DAY",
+        "watcher_id": "OPTIONS-SPOTPERP-001-V2.1-FORWARD-SHADOW",
+        "first_signal_day": "2026-09-19",
+        "source": "DERIBIT_PUBLIC_HTTP",
+        "btc_state_source": "BINANCE_SPOT_DATA_API_PUBLIC",
+        "forward_signal_days": 0,
+        "resolved_forward_trades": 0,
+        "micro_live_authorized": false
       }
     },
     "authenticated_exchange_api_used": false,
