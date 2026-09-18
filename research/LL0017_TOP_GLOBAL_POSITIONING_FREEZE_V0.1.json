@@ -1,0 +1,88 @@
+{
+  "experiment_id": "LL-0017-TPD-001",
+  "name": "Top-vs-Global Positioning Divergence",
+  "version": "0.1",
+  "state": "FROZEN_PRE_DISCOVERY",
+  "legacy_parent": "LL-0017",
+  "research_only": true,
+  "live_trading": false,
+  "exchange_mutation": false,
+  "main_merge_authorized": false,
+  "research_question": "Do extreme divergences between Binance top-trader position-weighted long/short positioning and broad-account long/short positioning predict subsequent perp returns in the direction of top-trader positioning after realistic costs?",
+  "anti_duplication": {
+    "LL-0016-C": "Funding-extreme plus OI-expansion crowd-unwind is CLOSED NO_EDGE and is not reopened.",
+    "SCL-AGG-002": "Generic aggressive taker-flow is CLOSED NO_EDGE with 0/240 survivors and is excluded from the primary signal.",
+    "DP_DPX": "Prior derivatives positioning/factor labs did not execute the exact top-position versus global-account divergence field pair.",
+    "novel_information": "Cross-sectional participant-class positioning divergence: position-weighted TOP traders versus GLOBAL account-count positioning."
+  },
+  "universe": ["BTCUSDT","ETHUSDT","SOLUSDT","BNBUSDT","XRPUSDT","DOGEUSDT"],
+  "venue": "Binance USD-M Futures",
+  "source": {
+    "metrics_family": "official Binance Vision daily/metrics, 5m",
+    "price_family": "official Binance Vision monthly 1m klines",
+    "operational_raw_reuse": "LL-0016-B Run02 immutable RAW bytes only; no LL-0016 result transfer",
+    "normalization_rule": "strict named-day half-open containment; no imputation",
+    "outer_part_sha256": {
+      "part01": "592b88bd34613675e12932aefc874f3f6b37af02f4c1608a2cc94a52853e5d2b",
+      "part02": "a0170e4f3fc742e95680195b5cd36ec8928e5650cc2de7e6d8f055be6e661065",
+      "part03": "f315e93b893e124467696bd54e0d2cfe147a34df55d79d77b46ef6ad61e1f629",
+      "part04": "3677b41e1c1ffc5108208215e8ff65811614afad08dad840b04ce2b17214a834",
+      "part05": "41381d98adeeb36db0428d380635dfd30d9e45374383acd163d35fa7eea30f52"
+    },
+    "metrics_2023_hashset_sha256": "8ecfde4485a20a9197b6ad60404db09697179e2bd0a96f8b2d9062dfebc49aad",
+    "price_2023_hashset_sha256": "61af8288142dbd0496596b9096113ec804835b488fa2a2640324722b0ff10a87"
+  },
+  "temporal_firewall": {
+    "source_warmup": ["2023-01-01","2023-01-31"],
+    "discovery_scored": ["2023-02-01","2023-12-31"],
+    "confirmation_locked": ["2024-01-01","2024-06-30"],
+    "2024H2": "UNTOUCHED",
+    "2025": "LOCKED",
+    "2026": "LOCKED"
+  },
+  "primary_feature": {
+    "definition": "D_t = ln(sum_toptrader_long_short_ratio) - ln(count_long_short_ratio)",
+    "interpretation": "position-weighted TOP-trader long/short skew relative to broad-account long/short skew",
+    "causal_zscore": "30 calendar days, current row excluded, >=99% 5m coverage",
+    "threshold": 1.5,
+    "event": "new threshold crossing only",
+    "direction": "FOLLOW sign(D): positive extreme=LONG, negative extreme=SHORT"
+  },
+  "execution": {
+    "metrics_grid": "5m UTC",
+    "entry_delay_minutes": 5,
+    "entry_price": "1m open at metric timestamp +5m",
+    "primary_hold_minutes": 60,
+    "diagnostic_holds_minutes": [30,120],
+    "one_active_event_per_asset": true,
+    "base_round_trip_cost_bps": 14,
+    "stress_round_trip_cost_bps": 20
+  },
+  "diagnostics_not_eligible_to_rescue": {
+    "top_account_vs_global": "ln(count_toptrader_long_short_ratio)-ln(count_long_short_ratio)",
+    "top_position_vs_top_account": "ln(sum_toptrader_long_short_ratio)-ln(count_toptrader_long_short_ratio)",
+    "taker_ratio": "sum_taker_long_short_vol_ratio",
+    "alternate_horizons": [30,120]
+  },
+  "primary_discovery_gates": {
+    "n_pooled_min": 300,
+    "n_each_asset_min": 30,
+    "net14_mean_positive": true,
+    "net20_mean_positive": true,
+    "gross_median_positive": true,
+    "utc_day_block_bootstrap_reps": 9999,
+    "bootstrap_seed": 20260918,
+    "one_sided_p_lt": 0.05,
+    "bootstrap_lower95_positive": true,
+    "all_leave_one_asset_out_net14_positive": true,
+    "assets_positive_net14_min": 4,
+    "quarters_positive_min": 3,
+    "q4_positive": true,
+    "remove_best_1pct_net14_positive": true,
+    "concentration_ceiling_asset": 0.35,
+    "concentration_ceiling_month": 0.25,
+    "concentration_ceiling_top5": 0.15,
+    "concentration_ceiling_single": 0.05
+  },
+  "decision_rule": "ALL primary gates must pass. Diagnostics cannot rescue. A survivor only permits a separately frozen 2024H1 confirmation; it is not an edge or promotion."
+}
