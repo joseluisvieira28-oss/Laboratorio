@@ -1,0 +1,44 @@
+{
+  "amendment_id": "HTF-DH03-12H-STANDALONE-FORWARD-V1-WARMUP-SOURCE-AMENDMENT-01",
+  "frozen_at_utc": "2026-09-18T06:32:44Z",
+  "parent_freeze": "HTF_DH03_12H_STANDALONE_FORWARD_V1_FREEZE.json",
+  "parent_transport_amendment": "HTF_DH03_12H_STANDALONE_FORWARD_V1_TRANSPORT_AMENDMENT_01.json",
+  "status": "FROZEN_BEFORE_ARCHIVE_WARMUP_ACCESS",
+  "source": {
+    "provider": "Binance Public Data",
+    "market": "USD-M perpetual futures",
+    "archive_family": "data/futures/um/daily/klines",
+    "raw_interval": "1m",
+    "checksum_required": true,
+    "purpose": "causal pre-boundary warmup only"
+  },
+  "warmup": {
+    "required_for": "Donchian40 + ATR28 state before first eligible post-freeze 12H signal",
+    "symbols": [
+      "BTCUSDT",
+      "ETHUSDT",
+      "SOLUSDT",
+      "BNBUSDT",
+      "XRPUSDT",
+      "DOGEUSDT"
+    ],
+    "prefreeze_data_role": "STATE_WARMUP_ONLY",
+    "counts_as_forward_evidence": false,
+    "outcome_scoring_for_prefreeze_rows": false
+  },
+  "invariants": {
+    "strategy_rule_change": false,
+    "provider_change": false,
+    "market_change": false,
+    "symbol_change": false,
+    "execution_change": false,
+    "cost_change": false
+  },
+  "governance": {
+    "no_authenticated_api": true,
+    "no_orders": true,
+    "no_exchange_mutation": true,
+    "no_live_capital": true,
+    "fail_closed_on_checksum_or_gap": true
+  }
+}
