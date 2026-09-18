@@ -1,9 +1,16 @@
 import unittest
 
-from radar.forward_web import dashboard_html
+from radar.forward_web import dashboard_html, normalized_poll_interval_seconds
 
 
 class ForwardWebDashboardTests(unittest.TestCase):
+    def test_poll_interval_floor_is_30_seconds(self):
+        self.assertEqual(normalized_poll_interval_seconds(1), 30.0)
+        self.assertEqual(normalized_poll_interval_seconds(30), 30.0)
+        self.assertEqual(normalized_poll_interval_seconds(45), 45.0)
+        with self.assertRaises(ValueError):
+            normalized_poll_interval_seconds(0)
+
     def test_dashboard_is_read_only_and_exposes_shadow_state(self):
         html = dashboard_html()
         self.assertIn("Crypto Edge Radar V0.9", html)
