@@ -1,0 +1,54 @@
+name: PMD-001 V0121 Heavy Decoder Validation
+on:
+  push:
+    branches: [pumpfun-migration-direction-v0.1]
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/RUN_V0121_HEAVY_DECODER_VALIDATION.trigger'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pumpfun-migration-direction-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip requests solders
+      - name: Download available heavy-row evidence
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: 35320300423
+          pattern: PMD-001-v074-heavy-rescue-index-*
+          path: heavy-source
+          merge-multiple: false
+      - name: Run V0.12.1 decoder on heavy rows
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001
+        run: |
+          python extract_chain_exact_features_v0121.py             --input-root "$GITHUB_WORKSPACE/heavy-source"             --out-dir "$GITHUB_WORKSPACE/v0121-heavy"
+      - name: Assert heavy validation contract
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path("v0121-heavy/chain_exact_features_v012_receipt.json").read_text())
+          assert r["economic_outcomes_opened"] is False
+          assert r["promotion_authority"] is False
+          assert r["summary_rows"] >= 6
+          assert r["unique_mints"] == r["summary_rows"]
+          assert r["decoder_complete_w300"] <= r["summary_rows"]
+          print(json.dumps(r,indent=2,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PMD-001-v0121-heavy-decoder-validation
+          retention-days: 30
+          path: v0121-heavy/
