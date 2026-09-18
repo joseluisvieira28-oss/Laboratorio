@@ -1,0 +1,66 @@
+{
+  "schema_version": "0.1",
+  "lab_id": "L2-RESILIENCY-001",
+  "mve_scope": "SOURCE_SCHEMA_AND_CLOCK_PREFLIGHT_ONLY",
+  "classification": "L2_SOURCE_SCHEMA_AND_CLOCK_PREFLIGHT_PASS_PARTIAL_COVERAGE",
+  "source": {
+    "provider": "Hyperliquid official historical archive",
+    "dataset": "market_data/l2Book",
+    "asset": "BTC",
+    "object_key": "market_data/20240901/0/l2Book/BTC.lz4",
+    "local_file": "ENTRY_20240901_00_BTC_l2Book.lz4",
+    "compressed_bytes": 690391,
+    "decompressed_bytes": 10361456,
+    "sha256": "5c8f66e5215deb7dc46f436dd997d299593a090b3a65a9cc9b6f642765aec2ec",
+    "zip_sha256": "11705847cc375adc20e7bd630f60b22bb2cef9caaa504a3c3c96b6dfee5518e6",
+    "user_manifest_sha256": "b6b3993fc02dac5562bbf87eea44ccfb5932439058ec7953d2e7c838804dd4f4",
+    "all_9_uploaded_manifest_hashes_verified": true
+  },
+  "records": {
+    "valid": 6277,
+    "invalid": 0,
+    "first_snapshot_ms": 1725148803215,
+    "last_snapshot_ms": 1725152399541,
+    "positive_time_transitions": 6276,
+    "duplicate_time_transitions": 0,
+    "backward_time_transitions": 0,
+    "full_top5_positive_size_records": 6277,
+    "uncrossed_spread_records": 6277
+  },
+  "cadence": {
+    "inter_snapshot_ms_median": 602.0,
+    "inter_snapshot_ms_p95": 626,
+    "inter_snapshot_ms_max": 1193,
+    "snapshots_per_minute_min": 99,
+    "snapshots_per_minute_median": 105.0,
+    "snapshots_per_minute_max": 110
+  },
+  "followup_clock_feasibility": {
+    "plus_1s": {"eligible": 6275, "median_extra_ms": 168, "p95_extra_ms": 247, "within_1000ms": 6275},
+    "plus_5s": {"eligible": 6268, "median_extra_ms": 338.0, "p95_extra_ms": 524, "within_1000ms": 6265},
+    "plus_15s": {"eligible": 6252, "median_extra_ms": 290.0, "p95_extra_ms": 557, "within_1000ms": 6250}
+  },
+  "protected_period_handling": {
+    "uploaded_2025_objects_present": true,
+    "used_for_l2_preflight": false,
+    "status": "QUARANTINED_NOT_USED"
+  },
+  "guards": {
+    "sweep_events_computed": false,
+    "replenishment_computed": false,
+    "midpoint_response_computed": false,
+    "returns_computed": false,
+    "pnl_computed": false,
+    "2025_market_outcome_accessed": false,
+    "2026_accessed": false,
+    "live_trading": false,
+    "exchange_mutation": false
+  },
+  "coverage": {
+    "covered_2024_hours": 1,
+    "full_2024_source_coverage_pass": false,
+    "discovery_authorized": false,
+    "note": "The recovered bytes prove official schema and timing feasibility only. One 2024 BTC hour is insufficient for the frozen 2024 Discovery population."
+  },
+  "next_action": "Acquire and audit additional 2024 BTC official l2Book objects under a separately bounded requester-pays source-only plan before any sweep/replenishment/outcome computation."
+}
