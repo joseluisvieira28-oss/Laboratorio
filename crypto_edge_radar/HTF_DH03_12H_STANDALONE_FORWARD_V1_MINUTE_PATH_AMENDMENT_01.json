@@ -1,0 +1,55 @@
+{
+  "amendment_id": "HTF-DH03-12H-STANDALONE-FORWARD-V1-MINUTE-PATH-AMENDMENT-01",
+  "frozen_at_utc": "2026-09-18T11:53:27Z",
+  "parent_freeze": "HTF_DH03_12H_STANDALONE_FORWARD_V1_FREEZE.json",
+  "status": "SUPERSEDED_NONCANONICAL_AFTER_AUTHORITY_RECONCILIATION",
+  "transport": {
+    "provider": "BINANCE_USDM_PUBLIC_WEBSOCKET",
+    "market": "USD-M perpetual futures",
+    "streams": [
+      "<symbol>@kline_1m",
+      "<symbol>@markPrice@1s"
+    ],
+    "symbols": [
+      "BTCUSDT",
+      "ETHUSDT",
+      "SOLUSDT",
+      "BNBUSDT",
+      "XRPUSDT",
+      "DOGEUSDT"
+    ]
+  },
+  "reason": "Historical Phase5 execution resolves entry/stop/target/time-exit on exact minute path; 15m stream is insufficient for identity preservation.",
+  "funding_finalization": {
+    "source_field": "markPriceUpdate.r",
+    "settlement_field": "markPriceUpdate.T",
+    "method": "latest observed funding-rate quote for the exact nextFundingTime before settlement",
+    "max_quote_age_seconds": 10,
+    "if_missing_or_stale": "FUNDING_PATH_UNRESOLVED_FAIL_CLOSED"
+  },
+  "invariants": {
+    "strategy_rule_change": false,
+    "market_change": false,
+    "provider_change": false,
+    "direction_change": false,
+    "stop_or_target_change": false,
+    "cost_change": false,
+    "max_hold_change": false,
+    "historical_outcome_access": false
+  },
+  "governance": {
+    "no_authenticated_api": true,
+    "no_orders": true,
+    "no_exchange_mutation": true,
+    "no_live_capital": true,
+    "no_backfill_as_forward_evidence": true,
+    "missed_boundary_behavior": "MISSED_ELIGIBLE_SIGNAL__NO_RETROACTIVE_FORWARD_SCORE"
+  },
+  "superseded_at_utc": "2026-09-18T11:58:00Z",
+  "scientific_effect": "NONE",
+  "reconciliation_note": "Redundant with pre-existing TRANSPORT_AMENDMENT_02 for 1m execution path; funding final authority remains FUNDING_RECONCILIATION_AMENDMENT_02 monthly checksum archive. This file must not override either canonical authority.",
+  "canonical_authority": [
+    "HTF_DH03_12H_STANDALONE_FORWARD_V1_TRANSPORT_AMENDMENT_02.json",
+    "HTF_DH03_12H_STANDALONE_FORWARD_V1_FUNDING_RECONCILIATION_AMENDMENT_02.json"
+  ]
+}
