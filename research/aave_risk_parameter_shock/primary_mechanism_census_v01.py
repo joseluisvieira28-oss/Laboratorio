@@ -196,7 +196,7 @@ def main() -> int:
         "hard_timestamp_ceiling": MAX_TS,
         "primary_mechanism": "liquidationThreshold decrease",
         "sample_gate": {
-            "min_distinct_transaction_clusters": MIN_CLUSTERS,
+            "min_independent_24h_episodes": MIN_EPISODES,
             "min_unique_affected_assets": MIN_ASSETS,
             "min_calendar_years": MIN_YEARS,
         },
@@ -268,19 +268,41 @@ def main() -> int:
                 "decrease_log_count": len(xs),
             })
 
+        episodes = []
+        for cluster in sorted(cluster_rows, key=lambda x: (int(x["timestamp"]), int(x["block"]), x["transactionHash"])):
+            if not episodes or int(cluster["timestamp"]) - int(episodes[-1]["episode_start_timestamp"]) > EPISODE_SECONDS:
+                episodes.append({
+                    "episode_id": len(episodes),
+                    "episode_start_timestamp": int(cluster["timestamp"]),
+                    "episode_start_block": int(cluster["block"]),
+                    "transactionHashes": [cluster["transactionHash"]],
+                    "affected_assets": list(cluster["affected_assets"]),
+                    "decrease_log_count": int(cluster["decrease_log_count"]),
+                })
+            else:
+                ep = episodes[-1]
+                ep["transactionHashes"].append(cluster["transactionHash"])
+                ep["affected_assets"] = sorted(set(ep["affected_assets"]) | set(cluster["affected_assets"]))
+                ep["decrease_log_count"] += int(cluster["decrease_log_count"])
+        for ep in episodes:
+            ep["calendar_year"] = datetime.fromtimestamp(
+                int(ep["episode_start_timestamp"]), tz=timezone.utc
+            ).year
+
         affected_assets = sorted({x["asset"] for x in decreases})
-        years = sorted({int(x["calendar_year"]) for x in decreases})
+        years = sorted({int(x["calendar_year"]) for x in episodes})
         gate = {
             "distinct_transaction_clusters": len(cluster_rows),
+            "independent_24h_episode_count": len(episodes),
             "unique_affected_assets": len(affected_assets),
             "calendar_years": years,
-            "cluster_gate_pass": len(cluster_rows) >= MIN_CLUSTERS,
+            "episode_gate_pass": len(episodes) >= MIN_EPISODES,
             "asset_gate_pass": len(affected_assets) >= MIN_ASSETS,
             "year_gate_pass": len(years) >= MIN_YEARS,
         }
         classification = (
             "MECHANISM_CENSUS_PASS"
-            if gate["cluster_gate_pass"] and gate["asset_gate_pass"] and gate["year_gate_pass"]
+            if gate["episode_gate_pass"] and gate["asset_gate_pass"] and gate["year_gate_pass"]
             else "INSUFFICIENT_PRIMARY_MECHANISM_SAMPLE"
         )
         digest = hashlib.sha256(
@@ -298,6 +320,7 @@ def main() -> int:
             "asset_history_count": len(history),
             "primary_decrease_log_count": len(decreases),
             "primary_decrease_transaction_cluster_count": len(cluster_rows),
+            "independent_24h_episode_count": len(episodes),
             "unique_affected_asset_count": len(affected_assets),
             "affected_assets": affected_assets,
             "calendar_years": years,
@@ -305,6 +328,7 @@ def main() -> int:
             "configuration_history": history,
             "primary_decrease_rows": decreases,
             "primary_decrease_clusters": cluster_rows,
+            "independent_24h_episodes": episodes,
             "mechanism_history_sha256": digest,
         })
     except Exception as exc:
@@ -317,6 +341,7 @@ def main() -> int:
         "decoded_events": receipt.get("decoded_event_count"),
         "decrease_logs": receipt.get("primary_decrease_log_count"),
         "decrease_clusters": receipt.get("primary_decrease_transaction_cluster_count"),
+        "independent_24h_episodes": receipt.get("independent_24h_episode_count"),
         "affected_assets": receipt.get("unique_affected_asset_count"),
         "calendar_years": receipt.get("calendar_years"),
         "market_prices_opened": False,
