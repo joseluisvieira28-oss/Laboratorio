@@ -1,0 +1,54 @@
+name: Options Expiry Gamma Tardis Source V0.2
+
+on:
+  push:
+    branches:
+      - options-expiry-gamma-tardis-source-v0.2
+    paths:
+      - 'labs/OPTIONS_EXPIRY_GAMMA_001/TARDIS_SOURCE_TRIGGER_V0.2.txt'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: options-expiry-gamma-tardis-source-v02
+  cancel-in-progress: false
+
+jobs:
+  source_probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: options-expiry-gamma-tardis-source-v0.2
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --disable-pip-version-check requests==2.32.3
+      - name: Verify frozen source authority
+        run: |
+          python - <<'PY'
+          import json
+          a=json.load(open('labs/OPTIONS_EXPIRY_GAMMA_001/TARDIS_SOURCE_AUTHORITY_V0.2.json'))
+          assert a['source_gate_id']=='OEG-TARDIS-POINTINTIME-SOURCE-002'
+          assert a['status']=='PRE_ACQUISITION_FROZEN_SOURCE_ONLY'
+          assert a['deterministic_probe_dates']==['2021-01-01','2022-01-01','2023-01-01','2024-01-01']
+          assert a['snapshot_rule']['target_time_utc']=='12:00:00'
+          assert a['per_date_gates']['open_interest_coverage_minimum']==0.90
+          assert a['per_date_gates']['gamma_coverage_minimum']==0.90
+          assert a['per_date_gates']['minimum_snapshot_instruments']==100
+          assert all(v is False for v in a['firewalls'].values())
+          print('OEG_TARDIS_SOURCE_AUTHORITY_PASS')
+          PY
+      - run: python -m py_compile labs/OPTIONS_EXPIRY_GAMMA_001/tardis_source_probe_v02.py
+      - name: Execute Tardis source-only gamma probe
+        run: python labs/OPTIONS_EXPIRY_GAMMA_001/tardis_source_probe_v02.py
+      - name: Upload immutable source receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: options-expiry-gamma-tardis-source-v02-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/options_expiry_gamma_tardis_source_v02/
+          retention-days: 90
+          if-no-files-found: warn
