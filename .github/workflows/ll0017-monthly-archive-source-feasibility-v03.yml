@@ -1,0 +1,32 @@
+name: LL-0017 — Monthly Archive Source Feasibility V0.3
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - ll-0017-positioning-ratio-v0.1
+    paths:
+      - 'research/ll0017_positioning/LL0017_MONTHLY_PROBE_TRIGGER_V0_3.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  monthly-source-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m py_compile research/ll0017_positioning/monthly_archive_source_probe_v03.py
+      - run: pip install --disable-pip-version-check requests
+      - run: python research/ll0017_positioning/monthly_archive_source_probe_v03.py
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: LL0017_MONTHLY_ARCHIVE_SOURCE_FEASIBILITY_V0_3
+          path: ll0017_monthly_probe_output/LL0017_MONTHLY_ARCHIVE_SOURCE_FEASIBILITY_RECEIPT_V0_3.json
+          if-no-files-found: warn
+          retention-days: 30
