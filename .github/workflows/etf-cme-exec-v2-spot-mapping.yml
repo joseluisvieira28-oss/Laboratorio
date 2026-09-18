@@ -48,6 +48,25 @@ jobs:
           )
           print(json.dumps(receipt, sort_keys=True))
           PY
+      - name: Capture live public MEXC SHORT-perp friction receipt
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from radar.friction import mexc_friction_shadow_receipt
+          receipt = mexc_friction_shadow_receipt(symbol='BTC_USDT')
+          Path('exec_v2_artifacts/short_perp_friction_receipt.json').write_text(
+              json.dumps(receipt, sort_keys=True, indent=2), encoding='utf-8'
+          )
+          print(json.dumps({
+              'checked_at_utc': receipt['checked_at_utc'],
+              'same_book_taker_round_trip_proxy_bps': receipt['edge_budget']['same_book_taker_round_trip_proxy_bps'],
+              'trailing_short_fee_spread_funding_bps': receipt['edge_budget']['trailing_7d_directional_proxy']['short_fee_spread_funding_bps'],
+              'break_even_bps': receipt['edge_budget']['historical_estimated_break_even_round_trip_bps'],
+              'orders_created': receipt['orders_created'],
+              'capital_enabled': receipt['capital_enabled'],
+          }, sort_keys=True))
+          PY
       - name: Validate research-only governance
         run: |
           python - <<'PY'
