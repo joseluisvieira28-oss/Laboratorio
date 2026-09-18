@@ -1,0 +1,130 @@
+{
+  "registry_version": "V0.2",
+  "lab_id": "DEFI-LIQUIDATION-SHOCK-001",
+  "status": "SOURCE_ONLY_HISTORICAL_BOUNDARIES_PINNED_ONCHAIN_FIRST_SUCCESS_PENDING",
+  "supersedes_for_future_execution": "protocol_registry_v0_1.json",
+  "source_window_utc": {
+    "start": "2021-01-01T00:00:00Z",
+    "end": "2024-12-31T23:59:59Z"
+  },
+  "protocols": [
+    {
+      "protocol": "save_solend",
+      "family": "lending",
+      "program_id": "So1endDq2YkqhipRh3WViPa8hdiSpxWy6z3Z6tMCpAo",
+      "reference_liquidation_encodings": [
+        {
+          "name": "LiquidateObligation",
+          "encoding": "native_u8_tag",
+          "prefix_hex": "0c",
+          "source_supported_from": "2021-12-08T00:00:00Z",
+          "onchain_first_success_pending": true
+        },
+        {
+          "name": "LiquidateObligationAndRedeemReserveCollateral",
+          "encoding": "native_u8_tag",
+          "prefix_hex": "11",
+          "source_supported_from": "2024-07-19T17:54:33Z",
+          "onchain_first_success_pending": true
+        }
+      ],
+      "historical_decoder_authoritative": false,
+      "notes": "V0.2 historical source boundaries from HISTORICAL_DECODER_AUTHORITY_MATRIX_V0.2; candidates before each encoding boundary remain fail-closed."
+    },
+    {
+      "protocol": "marginfi_v2",
+      "family": "lending",
+      "program_id": "MFv2hWf31Z9kbCa1snEPYctwafyhdvnV7FZnsebVacA",
+      "reference_liquidation_encodings": [
+        {
+          "name": "lending_account_liquidate",
+          "encoding": "anchor_discriminator_8",
+          "prefix_hex": "d6a997d5fba756db",
+          "source_supported_from": "2023-02-07T15:47:04Z",
+          "onchain_first_success_pending": true
+        }
+      ],
+      "historical_decoder_authoritative": false,
+      "notes": "Current program ID + liquidation instruction source-supported by 2023-02-07; exact on-chain first success pending."
+    },
+    {
+      "protocol": "kamino_lend",
+      "family": "lending",
+      "program_id": "KLend2g3cP87fffoy8q1mQqGKjrxjC8boSyAYavgmjD",
+      "reference_liquidation_encodings": [
+        {
+          "name": "liquidate_obligation_and_redeem_reserve_collateral",
+          "encoding": "anchor_discriminator_8",
+          "prefix_hex": "b1479abce2854a37",
+          "source_supported_from": "2023-11-17T13:25:35Z",
+          "onchain_first_success_pending": true
+        }
+      ],
+      "retired_wrong_prefixes": [
+        "b1479acce2854a37"
+      ],
+      "historical_decoder_authoritative": false,
+      "notes": "Corrected Kamino discriminator. All V0.1 zero-candidate claims produced with b1479acce2854a37 are invalid for Kamino."
+    },
+    {
+      "protocol": "drift_v2",
+      "family": "perps_spot_margin",
+      "program_id": "dRiftyHA39MWEi3m9aunc5MzRF1JYuBsbn6VPcn33UH",
+      "reference_liquidation_encodings": [
+        {
+          "name": "liquidate_perp",
+          "encoding": "anchor_discriminator_8",
+          "prefix_hex": "4b2377f7bf128b02",
+          "source_supported_from": "2022-11-04T15:17:54Z",
+          "onchain_first_success_pending": true
+        },
+        {
+          "name": "liquidate_spot",
+          "encoding": "anchor_discriminator_8",
+          "prefix_hex": "6b00802923e5fb12",
+          "source_supported_from": "2022-11-04T15:17:54Z",
+          "onchain_first_success_pending": true
+        },
+        {
+          "name": "liquidate_borrow_for_perp_pnl",
+          "encoding": "anchor_discriminator_8",
+          "prefix_hex": "a911205acf94d11b",
+          "source_supported_from": "2022-11-04T15:17:54Z",
+          "onchain_first_success_pending": true
+        },
+        {
+          "name": "liquidate_perp_pnl_for_deposit",
+          "encoding": "anchor_discriminator_8",
+          "prefix_hex": "ed4bc6ebe9ba4b23",
+          "source_supported_from": "2022-11-04T15:17:54Z",
+          "onchain_first_success_pending": true
+        }
+      ],
+      "outside_frozen_window_reference_only": [
+        {
+          "name": "liquidate_spot_with_swap_begin",
+          "prefix_hex": "0c2bb0539cfb750d",
+          "source_introduced": "2025-01-08T23:42:44Z"
+        },
+        {
+          "name": "liquidate_spot_with_swap_end",
+          "prefix_hex": "8e58a3a0df4b37e1",
+          "source_introduced": "2025-01-08T23:42:44Z"
+        }
+      ],
+      "historical_decoder_authoritative": false,
+      "notes": "Spot-with-swap liquidation pair is excluded from 2021-2024 candidate matching."
+    }
+  ],
+  "governance": {
+    "outcome_blind": true,
+    "prices_queried": false,
+    "returns_computed": false,
+    "pnl_computed": false,
+    "direction_tested": false,
+    "protocol_winner_selected": false,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "merge_main": false
+  }
+}
