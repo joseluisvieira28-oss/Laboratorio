@@ -1,0 +1,96 @@
+name: LL-0017 Positioning Ratio — Historical Source Coverage V0.2
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - ll-0017-positioning-ratio-v0.1
+    paths:
+      - 'research/ll0017_positioning/LL0017_COVERAGE_TRIGGER_V0_2.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  coverage-shards:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shard_id: "0"
+            start_date: "2021-01-01"
+            end_date: "2021-07-02"
+          - shard_id: "1"
+            start_date: "2021-07-03"
+            end_date: "2022-01-01"
+          - shard_id: "2"
+            start_date: "2022-01-02"
+            end_date: "2022-07-03"
+          - shard_id: "3"
+            start_date: "2022-07-04"
+            end_date: "2023-01-02"
+          - shard_id: "4"
+            start_date: "2023-01-03"
+            end_date: "2023-07-04"
+          - shard_id: "5"
+            start_date: "2023-07-05"
+            end_date: "2024-01-02"
+          - shard_id: "6"
+            start_date: "2024-01-03"
+            end_date: "2024-07-02"
+          - shard_id: "7"
+            start_date: "2024-07-03"
+            end_date: "2024-12-31"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile source-only code
+        run: |
+          python -m py_compile research/ll0017_positioning/source_coverage_shard_v02.py
+          python -m py_compile research/ll0017_positioning/aggregate_source_coverage_v02.py
+      - run: pip install --disable-pip-version-check requests
+      - name: Execute frozen source shard
+        env:
+          SHARD_ID: ${{ matrix.shard_id }}
+          SHARD_START_DATE: ${{ matrix.start_date }}
+          SHARD_END_DATE: ${{ matrix.end_date }}
+        run: python research/ll0017_positioning/source_coverage_shard_v02.py
+      - name: Upload shard receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: LL0017_COVERAGE_SHARD_${{ matrix.shard_id }}
+          path: ll0017_coverage_shards/coverage_shard_${{ matrix.shard_id }}.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  coverage-aggregate:
+    if: always()
+    needs: coverage-shards
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download all source shard receipts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: LL0017_COVERAGE_SHARD_*
+          path: downloaded_coverage_shards
+          merge-multiple: false
+      - name: Canonical source coverage adjudication
+        run: python research/ll0017_positioning/aggregate_source_coverage_v02.py
+      - name: Upload canonical coverage receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: LL0017_HISTORICAL_SOURCE_COVERAGE_V0_2
+          path: ll0017_coverage_output/LL0017_HISTORICAL_SOURCE_COVERAGE_RECEIPT_V0_2.json
+          if-no-files-found: warn
+          retention-days: 30
