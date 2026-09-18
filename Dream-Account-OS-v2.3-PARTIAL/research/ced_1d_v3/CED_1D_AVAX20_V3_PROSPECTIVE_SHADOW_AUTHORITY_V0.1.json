@@ -1,0 +1,85 @@
+{
+  "document_id": "CED_1D_AVAX20_V3_PROSPECTIVE_SHADOW_AUTHORITY_V0.1",
+  "date": "2026-09-18",
+  "status": "FROZEN_ARMED_PROSPECTIVE_NONLIVE",
+  "candidate": "CED1D-0031",
+  "parent_status": "TIER_2_PROMOTED_CANDIDATE_QUASE_DIAMANTE",
+  "first_eligible_signal_completion": "2026-09-19T00:00:00Z",
+  "first_eligible_reference_entry": "2026-09-19T00:01:00Z",
+  "pre_boundary_trade_backfill": false,
+  "warmup_exception": {
+    "allowed": true,
+    "purpose": "20-calendar-day momentum input and exact-path validation only",
+    "scored_as_shadow": false,
+    "parameter_selection": false
+  },
+  "immutable_signal": {
+    "symbol": "AVAXUSDT",
+    "lookback_days": 20,
+    "direction": "CONTINUATION",
+    "horizon_days": 1,
+    "entry_offset_minutes_after_signal_completion": 1
+  },
+  "minimum_shadow_evidence": {
+    "completed_events": 60,
+    "complete_utc_signal_weeks": 8,
+    "early_adjudication": false
+  },
+  "reference_track": {
+    "base_nonfunding_cost_bps": 14,
+    "stress_nonfunding_cost_bps": 20
+  },
+  "execution_track": {
+    "notional_per_leg_usdt": 100,
+    "aggtrades_window_ms": 5000,
+    "base_fee_per_fill_bps": 4,
+    "stress_fee_per_fill_bps": 5,
+    "bookdepth_max_age_ms": 60000,
+    "bookdepth_buy_band_pct": 1,
+    "bookdepth_sell_band_pct": -1,
+    "min_complete_aggtrades_pairs_for_economic_inference": 50
+  },
+  "operational_gates": {
+    "deterministic_signal_rate": 1,
+    "bookdepth_snapshot_coverage_min": 0.99,
+    "bookdepth_capacity_coverage_min": 0.99,
+    "active_month_capacity_min": 0.95,
+    "public_read_only_sources": true,
+    "no_silent_source_omission": true
+  },
+  "forward_economic_gates": {
+    "reference_base_mean_gt_0": true,
+    "reference_base_pf_gt_1": true,
+    "reference_stress_mean_ge_0": true,
+    "complete_week_base_positive_fraction_min": 0.5,
+    "execution_base_mean_gt_0": true,
+    "execution_base_pf_gt_1": true,
+    "execution_stress_mean_ge_0": true,
+    "median_latency_ms_max": 1000,
+    "p95_latency_ms_max": 5000,
+    "mean_nonfunding_base_proxy_bps_max": 14,
+    "p95_nonfunding_base_proxy_bps_max": 20
+  },
+  "concentration_gates": {
+    "single_month_abs_pnl_max": 0.3,
+    "top5_abs_pnl_max": 0.2,
+    "single_day_abs_pnl_max": 0.1
+  },
+  "routing": [
+    "TIER1_ADJUDICATION_ELIGIBLE",
+    "TIER2_RETAINED_FORWARD_FRAGILITY",
+    "SHADOW_BLOCKED_OR_INSUFFICIENT",
+    "MATERIAL_FORWARD_CONTRADICTION"
+  ],
+  "governance": {
+    "live_trading": false,
+    "test_orders": false,
+    "wallets": false,
+    "exchange_mutation": false,
+    "leverage": false,
+    "execution_webhooks": false,
+    "notional_above_100_for_inference": false,
+    "merge_main": false
+  },
+  "resolved_post_freeze_events_at_freeze": 0
+}
