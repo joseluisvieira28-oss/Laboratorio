@@ -1,0 +1,27 @@
+name: BTC Options VRP Mark History Diagnostic V0.1.1
+on:
+  push:
+    branches:
+      - btc-options-vrp-mark-history-probe-v0.1
+    paths:
+      - 'labs/BTC_OPTIONS_VRP_001/MARK_HISTORY_DIAGNOSTIC_TRIGGER_V0.1.1.txt'
+permissions:
+  contents: read
+jobs:
+  diagnostic:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: btc-options-vrp-mark-history-probe-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --disable-pip-version-check requests==2.32.3
+      - run: python -m py_compile labs/BTC_OPTIONS_VRP_001/mark_history_source_diagnostic_v011.py
+      - run: python labs/BTC_OPTIONS_VRP_001/mark_history_source_diagnostic_v011.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BTC_OPTIONS_VRP_001_MARK_HISTORY_DIAGNOSTIC_V0_1_1
+          path: artifacts/btc_options_vrp_mark_history_diag_v011/
+          retention-days: 90
