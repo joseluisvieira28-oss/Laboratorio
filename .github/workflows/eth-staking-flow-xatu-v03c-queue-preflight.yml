@@ -1,0 +1,36 @@
+name: ETH Staking Flow 001 — Xatu Queue Count Preflight V0.3C
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - eth-staking-flow-v0.3-xatu
+    paths:
+      - '.github/workflows/eth-staking-flow-xatu-v03c-queue-preflight.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  queue-count-preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install source dependencies
+        run: pip install --disable-pip-version-check pyarrow fsspec aiohttp
+      - name: Static compile
+        run: python -m py_compile research/eth_staking_flow/xatu_v03c_queue_count_preflight.py
+      - name: Execute exact four-date queue-count preflight
+        run: python research/eth_staking_flow/xatu_v03c_queue_count_preflight.py
+      - name: Upload receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ETH_STAKING_FLOW_001_XATU_QUEUE_COUNT_PREFLIGHT_V0_3C
+          path: xatu_v03c_queue_preflight_output/ETH_STAKING_FLOW_001_XATU_QUEUE_COUNT_PREFLIGHT_V0_3C.json
+          if-no-files-found: warn
+          retention-days: 30
