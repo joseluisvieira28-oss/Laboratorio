@@ -6,7 +6,7 @@ on:
     branches:
       - aave-liquidation-overhang-v0.1
     paths:
-      - '.github/workflows/aave-liquidation-overhang-r1-continuation-v01.yml'
+      - 'research/aave_liquidation_overhang/R1_CONTINUATION_TRIGGER_V0_1.txt'
 
 permissions:
   contents: read
@@ -129,7 +129,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: AAVE_R1_RESERVE_SHARD_${{ matrix.shard_id }}
-          path: r1_reserve_shards/r1_reserve_shard_v02_${{ matrix.shard_id }}.json
+          path: r1_reserve_shards/r1_reserve_shard_v02_*.json
           if-no-files-found: warn
           retention-days: 30
 
