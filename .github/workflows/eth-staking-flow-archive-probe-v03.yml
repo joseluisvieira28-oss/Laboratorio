@@ -1,0 +1,39 @@
+name: ETH Staking Flow Historical Beacon Transport Probe V0.3
+
+on:
+  push:
+    branches:
+      - eth-staking-flow-v0.3-archive-probe
+    paths:
+      - 'research/eth_staking_flow/ARCHIVE_TRANSPORT_PROBE_TRIGGER_V0_3.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: eth-staking-flow-v0.3-archive-probe
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify source-only authority
+        run: |
+          test -f research/eth_staking_flow/ETH_STAKING_FLOW_001_ARCHIVE_TRANSPORT_PROBE_AUTHORITY_V0_3.md
+          grep -q '2025_accessed=false' research/eth_staking_flow/ETH_STAKING_FLOW_001_ARCHIVE_TRANSPORT_PROBE_AUTHORITY_V0_3.md
+          grep -q 'ETH/BTC prices=false' research/eth_staking_flow/ETH_STAKING_FLOW_001_ARCHIVE_TRANSPORT_PROBE_AUTHORITY_V0_3.md
+          echo ETH_STAKING_ARCHIVE_PROBE_AUTHORITY_PASS
+      - run: python -m py_compile research/eth_staking_flow/archive_transport_probe_v03.py
+      - name: Execute historical boundary transport probe
+        run: python research/eth_staking_flow/archive_transport_probe_v03.py
+      - name: Upload immutable probe receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: eth-staking-flow-archive-probe-v03-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/eth_staking_flow_archive_probe_v03/
+          retention-days: 90
+          if-no-files-found: error
