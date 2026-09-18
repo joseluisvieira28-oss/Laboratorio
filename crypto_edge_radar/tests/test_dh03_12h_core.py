@@ -6,6 +6,7 @@ from radar.dh03_12h_core import (
     MAX_HOLD_MS,
     MINUTE_MS,
     TWELVE_H_MS,
+    FREEZE_MS,
     Bar,
     SignalCandidate,
     aggregate_12h,
@@ -48,10 +49,11 @@ class DH0312HCoreTests(unittest.TestCase):
 
     def test_breakout_is_strict_close_above_prior_40_high(self):
         bars=[]
+        base=FREEZE_MS-(FREEZE_MS%TWELVE_H_MS)+TWELVE_H_MS
         for i in range(LOOKBACK+1):
             high=100.0
             close=99.0
-            bars.append(Bar(i*TWELVE_H_MS,98,high,97,close,1))
+            bars.append(Bar(base+i*TWELVE_H_MS,98,high,97,close,1))
         # Exact equality is not a breakout.
         equal=list(bars)
         equal[-1]=Bar(equal[-1].open_time,98,101,97,100.0,1)
