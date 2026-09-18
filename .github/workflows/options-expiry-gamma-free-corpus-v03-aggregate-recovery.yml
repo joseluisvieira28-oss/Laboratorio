@@ -1,0 +1,84 @@
+name: Options Expiry Gamma Free Corpus V0.3 Aggregate Recovery
+
+on:
+  push:
+    branches:
+      - options-expiry-gamma-free-corpus-v0.3
+    paths:
+      - 'labs/OPTIONS_EXPIRY_GAMMA_001/FREE_CORPUS_AGGREGATE_RECOVERY_TRIGGER_V0.3.txt'
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  PINNED_SOURCE_RUN_ID: '35331017422'
+  PINNED_SOURCE_HEAD_SHA: 'a3f8f05d6ba42315c9d164f282927166e1a96972'
+
+jobs:
+  aggregate_recovery:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: options-expiry-gamma-free-corpus-v0.3
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - run: pip install --disable-pip-version-check requests==2.32.3
+
+      - name: Verify pinned source run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python - <<'PY'
+          import json, os, urllib.request
+          rid=os.environ['PINNED_SOURCE_RUN_ID']
+          url=f"https://api.github.com/repos/joseluisvieira28-oss/Laboratorio/actions/runs/{rid}"
+          req=urllib.request.Request(url,headers={
+            "Authorization":f"Bearer {os.environ['GH_TOKEN']}",
+            "Accept":"application/vnd.github+json",
+            "X-GitHub-Api-Version":"2022-11-28",
+          })
+          with urllib.request.urlopen(req,timeout=30) as r:
+              o=json.load(r)
+          assert o['head_sha']==os.environ['PINNED_SOURCE_HEAD_SHA'], (o['head_sha'],os.environ['PINNED_SOURCE_HEAD_SHA'])
+          assert o['status']=='completed'
+          print(json.dumps({"run_id":rid,"head_sha":o["head_sha"],"conclusion":o["conclusion"]},sort_keys=True))
+          PY
+
+      - name: Download exact eight source shards from pinned run
+        uses: actions/download-artifact@v4
+        with:
+          pattern: oeg-free-monthly-v03-shard-*
+          path: artifacts/free_monthly_shards
+          merge-multiple: false
+          github-token: ${{ github.token }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: ${{ env.PINNED_SOURCE_RUN_ID }}
+
+      - name: Verify exactly eight shard directories
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          root=Path('artifacts/free_monthly_shards')
+          ds=sorted(p for p in root.iterdir() if p.is_dir())
+          if len(ds)!=8:
+              raise SystemExit(f"FAIL_CLOSED expected 8 shard dirs, got {len(ds)}")
+          print("OEG_FREE_CORPUS_8_SHARDS_PINNED_PASS")
+          PY
+
+      - name: Execute unchanged frozen aggregate
+        run: python labs/OPTIONS_EXPIRY_GAMMA_001/free_monthly_corpus_v03.py --aggregate-dir artifacts/free_monthly_shards
+
+      - name: Upload recovered canonical aggregate
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: oeg-free-monthly-v03-aggregate-recovery-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/options_expiry_gamma_free_monthly_v03/
+          if-no-files-found: warn
+          retention-days: 90
