@@ -13,7 +13,7 @@ def ms(x):
     return int(datetime.fromisoformat(x.replace("Z","+00:00")).timestamp()*1000)
 
 def shape(v,depth=0):
-    if depth>=3:
+    if depth>=6:
         return type(v).__name__
     if isinstance(v,dict):
         return {k:shape(v[k],depth+1) for k in sorted(v)}
