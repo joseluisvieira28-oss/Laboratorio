@@ -1,0 +1,42 @@
+name: CED1D-0031 Prospective Shadow Synthetic QA V0.2
+
+on:
+  push:
+    branches:
+      - ced-1d-v3-byte-recovery-2026-09-17
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/ced1d_0031_prospective_shadow_collector_v02.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/tests/test_ced1d_0031_prospective_shadow_collector_v02.py'
+      - '.github/workflows/ced1d-0031-prospective-shadow-synthetic-qa-v02.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      ROOT: Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3
+      COLLECTOR_BLOB: "ecb794081f5d5753a2077325d44fca2a2ab12f3e"
+      TEST_BLOB: "d3c4e2525e4e0023e3fa40f0733b65b3b998245e"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Assert exact V0.2 implementation identity
+        run: |
+          set -euo pipefail
+          test "$(git hash-object "$ROOT/ced1d_0031_prospective_shadow_collector_v02.py")" = "$COLLECTOR_BLOB"
+          test "$(git hash-object "$ROOT/tests/test_ced1d_0031_prospective_shadow_collector_v02.py")" = "$TEST_BLOB"
+          python -m py_compile "$ROOT/ced1d_0031_prospective_shadow_collector_v02.py"
+      - name: Run network-free synthetic QA
+        run: |
+          set -euo pipefail
+          python "$ROOT/tests/test_ced1d_0031_prospective_shadow_collector_v02.py"
+      - name: Assert no real shadow source access in QA
+        run: |
+          echo "SYNTHETIC_ONLY_NO_NETWORK_SOURCE_ACCESS"
+          echo "NO_REAL_2026_SHADOW_OUTCOME_OPENED"
