@@ -5,6 +5,7 @@ import json
 from typing import Any
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
+from xml.etree import ElementTree
 
 
 API = "https://api.github.com/repos/joseluisvieira28-oss/Laboratorio/actions/runs"
@@ -58,6 +59,73 @@ def fetch_runs(*, branch: str, timeout: int = 15) -> list[dict[str, Any]]:
     return runs
 
 
+def fetch_public_fallback(*, branch: str, workflow: str, timeout: int = 15) -> dict[str, Any]:
+    """Use public, non-API GitHub surfaces when the unauthenticated API is rate-limited.
+
+    A workflow badge proves the latest branch workflow status and the dedicated
+    branch Atom feed supplies a conservative activity timestamp.  This is
+    telemetry only: no candidate outcomes or artifacts are read.
+    """
+    workflow_name = workflow.rsplit("/", 1)[-1]
+    badge_url = (
+        f"https://github.com/joseluisvieira28-oss/Laboratorio/actions/workflows/"
+        f"{workflow_name}/badge.svg?branch={branch}"
+    )
+    feed_url = f"https://github.com/joseluisvieira28-oss/Laboratorio/commits/{branch}.atom"
+    request_headers = {"User-Agent": "crypto-edge-radar-external-freshness/1"}
+    try:
+        with urlopen(Request(badge_url, headers=request_headers), timeout=timeout) as response:
+            badge = response.read().decode("utf-8", errors="replace").lower()
+        with urlopen(Request(feed_url, headers=request_headers), timeout=timeout) as response:
+            feed = response.read()
+        root = ElementTree.fromstring(feed)
+        updated = root.findtext("{http://www.w3.org/2005/Atom}updated")
+    except Exception as exc:
+        raise ExternalFreshnessError(f"GitHub public fallback unavailable:{type(exc).__name__}:{exc}") from exc
+    if not updated:
+        raise ExternalFreshnessError("GitHub public fallback feed missing updated timestamp")
+    success = "passing" in badge
+    return {
+        "created_at": updated,
+        "updated_at": updated,
+        "conclusion": "success" if success else "failure",
+        "source_status": "GITHUB_PUBLIC_BADGE_AND_BRANCH_ATOM_FALLBACK",
+    }
+
+
+def fallback_freshness(candidate: str, *, now: datetime | None = None, row: dict[str, Any]) -> dict[str, Any]:
+    config = COLLECTORS[candidate]
+    now = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
+    attempted = _dt(str(row["created_at"]))
+    next_due = attempted + timedelta(hours=24)
+    delay = max(0.0, (now - next_due).total_seconds())
+    conclusion = row.get("conclusion")
+    freshness = _classification(conclusion=conclusion, delay_seconds=delay)
+    return {
+        "strategy_id": candidate,
+        "collector_status": "OK" if conclusion == "success" else "FAIL_CLOSED",
+        "last_attempt_utc": _iso(attempted),
+        "last_source_success_utc": _iso(attempted) if conclusion == "success" else None,
+        "last_artifact_utc": None,
+        "last_persisted_event_utc": None,
+        "next_due_utc": _iso(next_due),
+        "delay_seconds": delay,
+        "freshness_classification": freshness,
+        "last_workflow_run_id": None,
+        "last_workflow_conclusion": conclusion,
+        "forward_boundary": config["forward_boundary"],
+        "eligible_event_count": None,
+        "resolved_forward_count": None,
+        "count_visibility": "NOT_AVAILABLE_FROM_PUBLIC_FALLBACK__NO_OUTCOMES_IMPORTED",
+        "source_status": row["source_status"],
+        "timestamp_semantics": "DEDICATED_BRANCH_ACTIVITY_PROXY_NOT_ARTIFACT_TIME",
+        "authenticated_exchange_api_used": False,
+        "orders_created": False,
+        "exchange_mutation_performed": False,
+        "live_capital_enabled": False,
+    }
+
+
 def collector_freshness(
     candidate: str,
     *,
@@ -108,17 +176,24 @@ def all_external_freshness(*, now: datetime | None = None, timeout: int = 15) ->
         try:
             rows = fetch_runs(branch=config["branch"], timeout=timeout)
             out[candidate] = collector_freshness(candidate, now=now, runs=rows, timeout=timeout)
-        except Exception as exc:
-            out[candidate] = {
-                "strategy_id": candidate,
-                "collector_status": "FAIL_CLOSED",
-                "freshness_classification": "FAIL_CLOSED",
-                "source_status": "GITHUB_PUBLIC_ACTIONS_METADATA_UNAVAILABLE",
-                "error": f"{type(exc).__name__}:{exc}",
-                "forward_boundary": config["forward_boundary"],
-                "authenticated_exchange_api_used": False,
-                "orders_created": False,
-                "exchange_mutation_performed": False,
-                "live_capital_enabled": False,
-            }
+        except Exception as primary_exc:
+            try:
+                row = fetch_public_fallback(
+                    branch=config["branch"], workflow=config["workflow"], timeout=timeout
+                )
+                out[candidate] = fallback_freshness(candidate, now=now, row=row)
+                out[candidate]["primary_source_error"] = f"{type(primary_exc).__name__}:{primary_exc}"
+            except Exception as fallback_exc:
+                out[candidate] = {
+                    "strategy_id": candidate,
+                    "collector_status": "FAIL_CLOSED",
+                    "freshness_classification": "FAIL_CLOSED",
+                    "source_status": "GITHUB_PUBLIC_METADATA_AND_FALLBACK_UNAVAILABLE",
+                    "error": f"primary={type(primary_exc).__name__}:{primary_exc};fallback={type(fallback_exc).__name__}:{fallback_exc}",
+                    "forward_boundary": config["forward_boundary"],
+                    "authenticated_exchange_api_used": False,
+                    "orders_created": False,
+                    "exchange_mutation_performed": False,
+                    "live_capital_enabled": False,
+                }
     return out
