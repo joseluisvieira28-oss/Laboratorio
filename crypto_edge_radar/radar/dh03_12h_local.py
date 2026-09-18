@@ -250,14 +250,16 @@ class DH03ShadowEngine:
         if candidate is None or candidate.signal_close_time<=self.activation_ms:
             return None
         key=self._event_key(symbol,candidate.signal_open_time)
-        active_entries=self._payloads("DH03_FORWARD_ENTRY")
-        resolutions=self._payloads("DH03_FORWARD_RESOLUTION")
+        active_entries=self._payloads("DH03_LOCAL_ENTRY")
+        resolutions=self._payloads("DH03_LOCAL_RESOLUTION")
         # One active trade per symbol.
         for ek,p in active_entries.items():
             if p.get("symbol")==symbol and ek not in resolutions:
                 return {"status":"OVERLAP_SKIPPED","event_key":key}
         payload={
             "event_key":key,
+            "evidence_role":"OPERATIONAL_TIMING_DIAGNOSTIC_ONLY",
+            "counts_as_scientific_forward_outcome":False,
             "cell_id":CELL_ID,
             "symbol":symbol,
             "candidate":asdict(candidate),
@@ -267,7 +269,7 @@ class DH03ShadowEngine:
             "orders_created":False,
             "exchange_mutation_performed":False,
         }
-        rec=self.evidence.append_once("DH03_FORWARD_SIGNAL",key,payload)
+        rec=self.evidence.append_once("DH03_LOCAL_SIGNAL",key,payload)
         return {"status":"SIGNAL_RECORDED" if rec["inserted"] else "SIGNAL_DUPLICATE","event_key":key}
 
     def on_open_1m(
@@ -277,10 +279,10 @@ class DH03ShadowEngine:
         open_price:float,
         source:str="BINANCE_USDM_PUBLIC_WEBSOCKET",
     )->list[dict[str,Any]]:
-        signals=self._payloads("DH03_FORWARD_SIGNAL")
-        entries=self._payloads("DH03_FORWARD_ENTRY")
-        resolutions=self._payloads("DH03_FORWARD_RESOLUTION")
-        deviations=self._payloads("DH03_FORWARD_DEVIATION")
+        signals=self._payloads("DH03_LOCAL_SIGNAL")
+        entries=self._payloads("DH03_LOCAL_ENTRY")
+        resolutions=self._payloads("DH03_LOCAL_RESOLUTION")
+        deviations=self._payloads("DH03_LOCAL_DEVIATION")
         changes=[]
         for key,payload in signals.items():
             if payload.get("symbol")!=symbol or key in entries or key in resolutions or key in deviations:
@@ -295,7 +297,7 @@ class DH03ShadowEngine:
                     "reason":"MISSED_EXACT_ENTRY_MINUTE_NO_RECONSTRUCTION",
                     "expected_entry_open_time":entry_time,"first_seen_minute":open_time,
                 }
-                self.evidence.append_once("DH03_FORWARD_DEVIATION",key,d)
+                self.evidence.append_once("DH03_LOCAL_DEVIATION",key,d)
                 changes.append(d)
                 continue
             from .dh03_12h_core import SignalCandidate
@@ -304,24 +306,24 @@ class DH03ShadowEngine:
                 signal=bind_exact_entry(candidate,open_time,open_price)
             except ValueError as exc:
                 d={"event_key":key,"symbol":symbol,"reason":f"PRE_ENTRY_CANCELLED:{exc}"}
-                self.evidence.append_once("DH03_FORWARD_DEVIATION",key,d)
+                self.evidence.append_once("DH03_LOCAL_DEVIATION",key,d)
                 changes.append(d)
                 continue
             entry={
                 "event_key":key,"symbol":symbol,"signal":asdict(signal),
                 "source":source,"orders_created":False,"live_capital_enabled":False,
             }
-            self.evidence.append_once("DH03_FORWARD_ENTRY",key,entry)
+            self.evidence.append_once("DH03_LOCAL_ENTRY",key,entry)
             changes.append({"status":"ENTRY_BOUND","event_key":key})
         return changes
 
     def on_closed_1m(self,symbol:str,row:tuple[int,float,float,float,float],source:str="BINANCE_USDM_PUBLIC_WEBSOCKET")->list[dict[str,Any]]:
         self.market.put_minute(symbol,row,source)
         t,o,hi,lo,c=row
-        signals=self._payloads("DH03_FORWARD_SIGNAL")
-        entries=self._payloads("DH03_FORWARD_ENTRY")
-        resolutions=self._payloads("DH03_FORWARD_RESOLUTION")
-        deviations=self._payloads("DH03_FORWARD_DEVIATION")
+        signals=self._payloads("DH03_LOCAL_SIGNAL")
+        entries=self._payloads("DH03_LOCAL_ENTRY")
+        resolutions=self._payloads("DH03_LOCAL_RESOLUTION")
+        deviations=self._payloads("DH03_LOCAL_DEVIATION")
         changes=[]
 
         for key,payload in signals.items():
@@ -341,16 +343,18 @@ class DH03ShadowEngine:
                     "reason":"EXECUTION_PATH_UNRESOLVED_GAP",
                     "last_seen_minute":t,
                 }
-                self.evidence.append_once("DH03_FORWARD_DEVIATION",key,d)
+                self.evidence.append_once("DH03_LOCAL_DEVIATION",key,d)
                 changes.append(d)
             elif outcome.resolved:
                 resolution={
-                    "event_key":key,"symbol":symbol,
+                    "event_key":key,"evidence_role":"OPERATIONAL_TIMING_DIAGNOSTIC_ONLY",
+                    "counts_as_scientific_forward_outcome":False,
+                    "symbol":symbol,
                     "signal":signal_payload,
                     "outcome":asdict(outcome),
                     "orders_created":False,"live_capital_enabled":False,
                 }
-                self.evidence.append_once("DH03_FORWARD_RESOLUTION",key,resolution)
+                self.evidence.append_once("DH03_LOCAL_RESOLUTION",key,resolution)
                 changes.append({"status":"RESOLVED","event_key":key,"reason":outcome.exit_reason})
         return changes
 
@@ -373,7 +377,7 @@ class DH03ShadowEngine:
             "event_key":key,"symbol":symbol,"funding_time":prev_t,
             "funding_rate":float(prev["rate"]),"source":"BINANCE_MARK_PRICE_STREAM_FINAL_OBS",
         }
-        self.evidence.append_once("DH03_FUNDING_SETTLEMENT",key,payload)
+        self.evidence.append_once("DH03_LOCAL_FUNDING_SETTLEMENT",key,payload)
         return payload
 
 
@@ -424,7 +428,7 @@ class DH03LocalCollector:
         while True:
             try:
                 with connect(url,open_timeout=10,close_timeout=3,ping_interval=120,ping_timeout=30) as ws:
-                    self.evidence.append("DH03_COLLECTOR_CONNECTION",{
+                    self.evidence.append("DH03_LOCAL_COLLECTOR_CONNECTION",{
                         "status":"CONNECTED","url_host":"fstream.binance.com",
                         "authenticated_exchange_api_used":False,
                     })
@@ -458,7 +462,7 @@ class DH03LocalCollector:
             except KeyboardInterrupt:
                 raise
             except Exception as exc:
-                self.evidence.append("DH03_COLLECTOR_CONNECTION",{
+                self.evidence.append("DH03_LOCAL_COLLECTOR_CONNECTION",{
                     "status":"RECONNECTING",
                     "error":f"{type(exc).__name__}:{exc}",
                     "authenticated_exchange_api_used":False,
