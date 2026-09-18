@@ -19,6 +19,7 @@ ARM_TOKEN = "CED1D-0031-MICROLIVE-V0.1-ONE-EVENT"
 EARLIEST_ENTRY_UTC = datetime(2026, 9, 21, 0, 1, tzinfo=UTC)
 MAX_NOTIONAL_USDT = Decimal("25")
 MAX_REAL_EVENTS = 1
+ENTRY_GRACE_SECONDS = 5
 
 
 class ExecutionBlocked(RuntimeError):
@@ -100,26 +101,26 @@ class ExecutionState:
         os.replace(tmp, p)
 
 
-def _parse_utc(value: str) -> datetime:
+def parse_utc(value: str) -> datetime:
     dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
     if dt.tzinfo is None:
         raise ExecutionBlocked("timestamp must be timezone-aware")
     return dt.astimezone(UTC)
 
 
-def _client_id(signal_key: str, suffix: str) -> str:
+def client_id(signal_key: str, suffix: str) -> str:
     digest = hashlib.sha256(signal_key.encode("utf-8")).hexdigest()[:12]
     return f"ced0031-{digest}-{suffix}"
 
 
-def _append_receipt(path: str, payload: dict[str, Any]) -> None:
+def append_receipt(path: str, payload: dict[str, Any]) -> None:
     p = Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
     with p.open("a", encoding="utf-8") as handle:
         handle.write(json.dumps(payload, sort_keys=True) + "\n")
 
 
-def validate_signal(signal: dict[str, Any], *, now: datetime) -> dict[str, Any]:
+def inspect_signal_identity(signal: dict[str, Any]) -> dict[str, Any]:
     if signal.get("strategy_id") != CANDIDATE:
         raise ExecutionBlocked("wrong strategy_id")
     if signal.get("symbol") != SYMBOL:
@@ -146,14 +147,12 @@ def validate_signal(signal: dict[str, Any], *, now: datetime) -> dict[str, Any]:
     if meta.get("provider") != PROVIDER:
         raise ExecutionBlocked("provider binding mismatch")
 
-    reference_entry = _parse_utc(meta["reference_entry"])
-    reference_exit = _parse_utc(meta["reference_exit"])
+    reference_entry = parse_utc(meta["reference_entry"])
+    reference_exit = parse_utc(meta["reference_exit"])
     if reference_entry < EARLIEST_ENTRY_UTC:
         raise ExecutionBlocked("pre micro-live activation boundary")
     if reference_exit <= reference_entry:
         raise ExecutionBlocked("invalid reference exit")
-    if not (reference_entry <= now <= reference_entry.replace(second=5, microsecond=999999)):
-        raise ExecutionBlocked("outside governed entry window")
 
     return {
         "signal_key": signal_key,
@@ -161,6 +160,15 @@ def validate_signal(signal: dict[str, Any], *, now: datetime) -> dict[str, Any]:
         "reference_entry": reference_entry,
         "reference_exit": reference_exit,
     }
+
+
+def validate_signal(signal: dict[str, Any], *, now: datetime) -> dict[str, Any]:
+    resolved = inspect_signal_identity(signal)
+    reference_entry = resolved["reference_entry"]
+    deadline = reference_entry.replace(second=ENTRY_GRACE_SECONDS, microsecond=999999)
+    if not (reference_entry <= now <= deadline):
+        raise ExecutionBlocked("outside governed entry window")
+    return resolved
 
 
 def round_quantity(
@@ -214,19 +222,19 @@ class MicroLiveCoordinator:
         )
 
         entry_side = "BUY" if resolved["direction"] == "LONG" else "SELL"
-        client_id = _client_id(resolved["signal_key"], "e")
+        entry_id = client_id(resolved["signal_key"], "e")
         order = self.venue.submit_market(
             symbol=SYMBOL,
             side=entry_side,
             quantity=qty,
             reduce_only=False,
-            client_order_id=client_id,
+            client_order_id=entry_id,
         )
 
         state.status = "OPEN"
         state.signal_key = resolved["signal_key"]
-        state.entry_client_order_id = client_id
-        state.exit_client_order_id = _client_id(resolved["signal_key"], "x")
+        state.entry_client_order_id = entry_id
+        state.exit_client_order_id = client_id(resolved["signal_key"], "x")
         state.quantity = format(qty, "f")
         state.direction = resolved["direction"]
         state.reference_exit = resolved["reference_exit"].isoformat()
@@ -241,11 +249,11 @@ class MicroLiveCoordinator:
             "direction": resolved["direction"],
             "quantity": format(qty, "f"),
             "approx_notional_usdt": format(qty * price, "f"),
-            "client_order_id": client_id,
+            "client_order_id": entry_id,
             "reference_exit": resolved["reference_exit"].isoformat(),
             "order": order,
         }
-        _append_receipt(self.settings.receipt_path, receipt)
+        append_receipt(self.settings.receipt_path, receipt)
         return receipt
 
     def maybe_exit_due(self, *, now: datetime | None = None) -> dict[str, Any] | None:
@@ -257,12 +265,11 @@ class MicroLiveCoordinator:
         if not state.reference_exit or not state.quantity or not state.direction:
             raise ExecutionBlocked("open state is incomplete")
 
-        due = _parse_utc(state.reference_exit)
+        due = parse_utc(state.reference_exit)
         if now < due:
             return None
-        if now > due.replace(second=5, microsecond=999999):
-            raise ExecutionBlocked("missed governed exit window; manual incident review required")
 
+        late_by_seconds = max(0.0, (now - due).total_seconds())
         side = "SELL" if state.direction == "LONG" else "BUY"
         order = self.venue.submit_market(
             symbol=SYMBOL,
@@ -285,7 +292,9 @@ class MicroLiveCoordinator:
             "quantity": state.quantity,
             "client_order_id": state.exit_client_order_id,
             "order": order,
+            "late_exit_incident": late_by_seconds > ENTRY_GRACE_SECONDS,
+            "late_by_seconds": late_by_seconds,
             "routing": "MANDATORY_RECONCILIATION_BEFORE_ANY_SECOND_REAL_EVENT",
         }
-        _append_receipt(self.settings.receipt_path, receipt)
+        append_receipt(self.settings.receipt_path, receipt)
         return receipt
