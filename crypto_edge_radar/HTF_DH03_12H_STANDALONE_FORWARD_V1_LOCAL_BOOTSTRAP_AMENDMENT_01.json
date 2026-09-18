@@ -1,0 +1,30 @@
+{
+  "amendment_id": "HTF-DH03-12H-STANDALONE-FORWARD-V1-LOCAL-BOOTSTRAP-AMENDMENT-01",
+  "frozen_at_utc": "2026-09-18T11:53:27Z",
+  "status": "FROZEN_BEFORE_LOCAL_PUBLIC_REST_BOOTSTRAP",
+  "rule": {
+    "arm_time": "captured locally at process start and persisted before first market-data request",
+    "first_scored_signal": "first 12H signal close strictly after persisted local arm time",
+    "bootstrap_role": "state only; never score any boundary at or before arm time",
+    "public_rest_endpoint": "GET https://fapi.binance.com/fapi/v1/klines",
+    "raw_interval": "1m",
+    "symbols": [
+      "BTCUSDT",
+      "ETHUSDT",
+      "SOLUSDT",
+      "BNBUSDT",
+      "XRPUSDT",
+      "DOGEUSDT"
+    ],
+    "fallback": "checksum-verified Binance public archive for mature days",
+    "if_rest_451_or_gap": "FAIL_CLOSED; no venue substitution"
+  },
+  "invariants": {
+    "provider": "Binance USD-M",
+    "authenticated_api": false,
+    "signal_rule_change": false,
+    "entry_exit_rule_change": false,
+    "backfill_as_forward_evidence": false,
+    "retrospective_boundary_scoring": false
+  }
+}
