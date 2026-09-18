@@ -1,6 +1,6 @@
 {
-  "registry_version": "3.0",
-  "as_of_utc": "2026-09-18T06:44:29Z",
+  "registry_version": "3.1",
+  "as_of_utc": "2026-09-18T09:17:24Z",
   "governance": "ND_PROMOTION_POLICY_V3_PLUS_AGGRESSIVE_FAIL_CLOSED_DEPLOYMENT",
   "focus_strategy_ids": [
     "ETF-CME-INSTFLOW-001",
@@ -179,8 +179,8 @@
       "strategy_id": "HTF-DH03-12H-STANDALONE-FORWARD-V1",
       "scientific_tier": null,
       "scientific_status": "NEW_PROSPECTIVE_STANDALONE_CANDIDATE__SOURCE_PASS",
-      "deployment_state": "GATED_SOURCE_PASS__LOCAL_COLLECTOR_BUILDING",
-      "shadow_allowed": false,
+      "deployment_state": "PROSPECTIVE_ARCHIVE_SHADOW_OPERATIONAL__LOCAL_NODE_BUILD_READY__AWAIT_OPERATOR_START",
+      "shadow_allowed": true,
       "micro_live_allowed_now": false,
       "authority_branch": "htf-dh03-12h-standalone-forward-v0.1",
       "parent_historical_cell": "DH-03-HO1",
@@ -211,11 +211,33 @@
         "prefreeze_rows_used_as_forward_evidence": false
       },
       "blocking_gates": [
-        "exact local always-on 1m collector not yet built and regression-tested",
-        "minute-path/funding reconciliation not yet operational",
+        "operator Windows node V0.10 not yet started on the real machine",
+        "first eligible post-freeze archive day not yet published/available",
         "first eligible signal boundary not yet observed under standalone authority",
+        "final net-R requires checksum-verified monthly funding reconciliation",
         "no micro-live execution authority"
-      ]
+      ],
+      "archive_shadow_mode": "BINANCE_PUBLIC_ARCHIVE_CHECKSUM_VERIFIED",
+      "archive_shadow_cadence": "branch-isolated trigger workflow; external recurring trigger unavailable due account task limit",
+      "evidence_backend": "APPEND_ONLY_HASH_CHAIN",
+      "local_node": {
+        "build_id": "v0.10-win-five-engine-dh03-local",
+        "workflow_run_id": 35328375282,
+        "conclusion": "success",
+        "test_suite": "147/147 PASS",
+        "artifact_id": 10540122238,
+        "artifact_digest": "sha256:2d50ea32aa2ae45d94226150ff387e72e98990571b15dfe315faed3f1c9c3794",
+        "exe_sha256": "069a759113fe741dcf422a25071585baa48e7f7b28bd9336eb71ff8c21df3731",
+        "dh03_collector_importable": true,
+        "operator_machine_started": false
+      },
+      "latest_runtime_state": {
+        "checked_at_utc": "2026-09-18T08:08:41.968847Z",
+        "latest_archive_day": "2026-09-17",
+        "first_forward_archive_day": "2026-09-18",
+        "status": "WAITING_FIRST_ELIGIBLE_ARCHIVE_DAY",
+        "used_as_forward_evidence": false
+      }
     }
   ],
   "operational_shadow_v09": {
@@ -277,6 +299,14 @@
       "archived_registry": "archive_registry_v1.json",
       "closed_candidates_removed_from_active_view": 9,
       "active_or_gated_candidates": 5
+    },
+    "five_engine_state": {
+      "cloud_engines_operational": 4,
+      "dh03_archive_shadow_operational": true,
+      "dh03_windows_node_build_ready": true,
+      "dh03_operator_node_running": false,
+      "live_capital_enabled": false,
+      "orders_created": false
     }
   },
   "archive_registry": "archive_registry_v1.json"
