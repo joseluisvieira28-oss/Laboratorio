@@ -1,0 +1,117 @@
+name: STETH Redemption Basis 002 — Discovery V0.1
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  discovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+
+    steps:
+      - name: Checkout exact branch state
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install frozen runtime dependencies
+        run: python -m pip install --disable-pip-version-check requests 'eth-hash[pycryptodome]'
+
+      - name: Verify frozen authorities and compile runner
+        run: |
+          test -f research/steth_redemption_basis_002/STETH_REDEMPTION_BASIS_002_FINAL_PRE_DISCOVERY_PROTOCOL_V0_1.md
+          test -f research/steth_redemption_basis_002/STETH_REDEMPTION_BASIS_002_DISCOVERY_IMPLEMENTATION_SEMANTICS_FREEZE_V0_1.md
+          test -f research/steth_redemption_basis_002/STETH_REDEMPTION_BASIS_002_DISCOVERY_IMPLEMENTATION_BOUNDARY_AMENDMENT_V0_1A.md
+          test -f research/steth_redemption_basis_002/STETH_REDEMPTION_BASIS_002_CHECKPOINT_PROVENANCE_AMENDMENT_V0_1B.md
+          python -m py_compile research/steth_redemption_basis_002/discovery_v01.py
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('research/steth_redemption_basis_002/discovery_v01.py').read_text()
+          guards=[
+            'N_SNAP=596' in s,
+            'END_BLOCK=21_522_315' in s,
+            'NOTIONAL=10**19' in s,
+            'MAX_HOLD=14*86400' in s,
+            '*9998//10000' in s,
+            '*9995//10000' in s,
+            'random.Random(20260918)' in s,
+            'eth_getStorageAt' in s,
+          ]
+          assert all(guards), guards
+          print('STETH002_DISCOVERY_STATIC_GUARDS_PASS')
+          PY
+
+      - name: Verify exact canonical source artifact metadata
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python - <<'PY'
+          import os,requests
+          url='https://api.github.com/repos/joseluisvieira28-oss/Laboratorio/actions/artifacts/10563803871'
+          r=requests.get(url,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'},timeout=30)
+          r.raise_for_status(); x=r.json()
+          assert x['name']=='STETH_REDEMPTION_BASIS_002_SOURCE_GATE_V0_1'
+          assert x['workflow_run']['id']==35386033845
+          assert x['digest']=='sha256:d1c371d5dda3718bb044f9a6b2cd628d8c35cd55af8ba85040375ee903110f53'
+          assert not x['expired']
+          print('STETH002_SOURCE_ARTIFACT_BINDING_PASS')
+          PY
+
+      - name: Download exact canonical source receipt
+        uses: actions/download-artifact@v4
+        with:
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: 35386033845
+          name: STETH_REDEMPTION_BASIS_002_SOURCE_GATE_V0_1
+          path: downloaded_source
+          github-token: ${{ github.token }}
+
+      - name: Execute exact frozen Discovery
+        id: run_discovery
+        continue-on-error: true
+        run: python research/steth_redemption_basis_002/discovery_v01.py
+
+      - name: Enforce receipt and safety firewall
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('out/steth_redemption_basis_002_discovery/STETH_REDEMPTION_BASIS_002_DISCOVERY_V0_1.json')
+          assert p.exists(), 'missing Discovery receipt'
+          x=json.loads(p.read_text())
+          allowed={
+            'DISCOVERY_TECHNICAL_OR_PROVENANCE_FAILURE',
+            'DISCOVERY_PROTECTED_PERIOD_BLOCKED',
+            'DISCOVERY_INSUFFICIENT_SAMPLE',
+            'DISCOVERY_NO_REDEMPTION_EDGE',
+            'DISCOVERY_REDEMPTION_EDGE_PASS_REQUIRES_SEPARATE_REPLICATION',
+          }
+          assert x['lab_id']=='STETH-REDEMPTION-BASIS-002'
+          assert x['classification'] in allowed
+          s=x['safety']
+          assert s['accessed_2025_or_2026'] is False
+          assert s['live_trading'] is False
+          assert s['wallet_access'] is False
+          assert s['exchange_mutation'] is False
+          assert s['main_merge'] is False
+          if 'snapshot_population' in x:
+              assert x['snapshot_population']==596
+              assert s['accessed_after_frozen_end_block'] is False
+          print('STETH002_DISCOVERY_FIREWALL_PASS',x['classification'])
+          PY
+
+      - name: Upload exact Discovery evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: STETH_REDEMPTION_BASIS_002_DISCOVERY_V0_1
+          path: out/steth_redemption_basis_002_discovery/
+          if-no-files-found: error
+          retention-days: 90
