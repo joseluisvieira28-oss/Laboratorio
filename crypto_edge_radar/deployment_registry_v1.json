@@ -1,13 +1,14 @@
 {
-  "registry_version": "3.1",
-  "as_of_utc": "2026-09-18T14:22:30Z",
+  "registry_version": "3.2",
+  "as_of_utc": "2026-09-18T14:29:10Z",
   "governance": "ND_PROMOTION_POLICY_V3_PLUS_AGGRESSIVE_FAIL_CLOSED_DEPLOYMENT",
   "focus_strategy_ids": [
     "ETF-CME-INSTFLOW-001",
     "BNB-LAUNCHPOOL-DEMAND-001",
     "OPTIONS-SPOTPERP-001-V2.1",
     "TFG-DONCHIAN-REGIME-ADAPTATION-V1",
-    "HTF-DH03-12H-STANDALONE-FORWARD-V1"
+    "HTF-DH03-12H-STANDALONE-FORWARD-V1",
+    "CED1D-0031"
   ],
   "policy_note": "Active-only registry. Canonical cloud remains four-engine until V0.13 integration passes CI and deployment. DH03 standalone is source-certified and local-build-ready; historical closed DH02 remains archive-only.",
   "candidates": [
@@ -230,6 +231,60 @@
         "previous_known_exe_sha256": "f0e9a27bed653ed789f166869d2e31057d550880275c434af67ee7e9260d6a65",
         "v013_rebuild_required": true
       }
+    },
+    {
+      "strategy_id": "CED1D-0031",
+      "label": "AVAXUSDT Momentum 20D CONTINUATION H1",
+      "scientific_tier": 2,
+      "scientific_status": "TIER_2_PROMOTED_CANDIDATE_QUASE_DIAMANTE__FORWARD_FRAGILITY",
+      "deployment_state": "PROSPECTIVE_PUBLIC_ARCHIVE_SHADOW_ARMED__TPLUS3_SCHEDULED",
+      "shadow_allowed": true,
+      "micro_live_allowed_now": false,
+      "authority_branch": "ced-1d-v3-byte-recovery-2026-09-17",
+      "promotion_record": "CED1D_0031_V3_TIER2_PROMOTION_RECORD_2026-09-18.json",
+      "activation_authority": "CED1D_0031_TIER2_SHADOW_ACTIVATION_AUTHORITY_V0.2_2026-09-18.json",
+      "collector_freeze": "CED1D_0031_PROSPECTIVE_SHADOW_COLLECTOR_IMPLEMENTATION_FREEZE_V0.2A_2026-09-18.md",
+      "workflow": ".github/workflows/ced1d-0031-prospective-shadow-collector.yml",
+      "execution_mode": "EXTERNAL_GITHUB_ACTIONS_ARCHIVE_SHADOW",
+      "symbol": "AVAXUSDT",
+      "lookback": "20 PRIOR VALID completed daily observations; max backward search 120 calendar days",
+      "direction_rule": "CONTINUATION",
+      "horizon_days": 1,
+      "first_eligible_signal_completion": "2026-09-19T00:00:00Z",
+      "first_eligible_reference_entry": "2026-09-19T00:01:00Z",
+      "scheduled_collection_lag_days": 3,
+      "first_possible_scheduled_evidence_date": "2026-09-21",
+      "operational_checkpoint": {
+        "min_resolved_events": 10,
+        "min_calendar_days": 14
+      },
+      "tier1_evidence_gate": {
+        "min_completed_events": 60,
+        "min_complete_utc_signal_weeks": 8,
+        "automatic_promotion": false
+      },
+      "execution_research_notional_usdt": 100,
+      "fragility_flags": [
+        "strict V0.2 confirmation remains FAIL",
+        "2025 bootstrap CI crosses zero",
+        "leave-one-month-out FAIL",
+        "neighbor stability FAIL",
+        "same-side aggTrades print-visibility proxy FAIL",
+        "bookDepth capacity is not exact historical BBO"
+      ],
+      "blockers": [
+        "first eligible T+3 archive evidence is not available before 2026-09-21",
+        "minimum 10 events and 14 calendar days operational checkpoint not met",
+        "Tier1 evidence gate 60 events and 8 complete UTC weeks not met",
+        "no micro-live execution authority"
+      ],
+      "safety": {
+        "public_read_only": true,
+        "authenticated_exchange_api_used": false,
+        "orders_created": false,
+        "exchange_mutation_performed": false,
+        "live_capital_enabled": false
+      }
     }
   ],
   "operational_shadow_v09": {
@@ -308,6 +363,13 @@
     "main_modified": false,
     "authenticated_exchange_api_used": false,
     "orders_created": false,
-    "live_capital_enabled": false
+    "live_capital_enabled": false,
+    "ced1d_external_motor": {
+      "status": "ARMED_SCHEDULED_TPLUS3",
+      "static_preflight_run_id": 35356468829,
+      "automated_collector_dry_wait_run_id": 35356404877,
+      "native_radar_adapter_imported": false,
+      "reason": "old V0.3 adapter does not implement V0.2A 20-prior-valid-day gap semantics exactly"
+    }
   }
 }
