@@ -1,0 +1,109 @@
+name: AAVE Risk Parameter Shock 001 — Source to Mechanism V0.1
+
+on:
+  push:
+    branches:
+      - aave-risk-parameter-shock-v0.1
+    paths:
+      - '.github/workflows/aave-risk-parameter-shock-source-to-mechanism-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  SOURCE_RUN_ID: '35382293497'
+  SOURCE_HEAD_SHA: '0620b6d20a3a2d5b3d9be3fc6f3ac5b2b669bcdf'
+
+jobs:
+  source-to-mechanism:
+    runs-on: ubuntu-latest
+    timeout-minutes: 100
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Wait only for exact V0.1A source run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python - <<'PY'
+          import json,os,time,urllib.request
+          run_id=int(os.environ['SOURCE_RUN_ID']); expected=os.environ['SOURCE_HEAD_SHA']
+          deadline=time.time()+70*60
+          while True:
+              req=urllib.request.Request(
+                  f'https://api.github.com/repos/joseluisvieira28-oss/Laboratorio/actions/runs/{run_id}',
+                  headers={'Authorization':f"Bearer {os.environ['GH_TOKEN']}",'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'}
+              )
+              with urllib.request.urlopen(req,timeout=30) as r: o=json.load(r)
+              assert o['head_sha']==expected,(o['head_sha'],expected)
+              if o['status']=='completed':
+                  print(json.dumps({'run_id':run_id,'conclusion':o['conclusion'],'head_sha':o['head_sha']},sort_keys=True))
+                  assert o['conclusion']=='success',o
+                  break
+              if time.time()>=deadline: raise SystemExit('exact source run wait timeout')
+              time.sleep(30)
+          PY
+      - uses: actions/download-artifact@v4
+        with:
+          name: AAVE_RISK_PARAMETER_SHOCK_001_SOURCE_CENSUS_V0_1A
+          path: downloaded_source_census
+          run-id: 35382293497
+          github-token: ${{ github.token }}
+      - name: Verify exact source PASS and firewall
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          fs=list(Path('downloaded_source_census').rglob('*.json'))
+          assert len(fs)==1,fs
+          x=json.loads(fs[0].read_text())
+          assert x['frontier_id']=='AAVE-RISK-PARAMETER-SHOCK-001'
+          assert x['classification']=='SOURCE_CENSUS_PASS',x
+          assert x['from_block']==16490000 and x['to_block']==21525890
+          s=x['safety']
+          assert s['log_data_requested'] is False
+          assert s['parameter_values_decoded'] is False
+          assert s['market_prices_opened'] is False
+          assert s['returns_opened'] is False
+          assert s['future_liquidation_outcomes_opened'] is False
+          assert s['pnl_opened'] is False
+          assert s['accessed_2025_or_2026'] is False
+          print('EXACT_SOURCE_CENSUS_PASS',x['total_structural_events'])
+          PY
+      - run: python -m pip install --disable-pip-version-check requests 'eth-hash[pycryptodome]'
+      - name: Execute frozen primary-mechanism census only
+        run: python research/aave_risk_parameter_shock/primary_mechanism_census_v01.py
+      - name: Enforce mechanism-census firewall
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('out/aave_risk_parameter_shock/AAVE_RISK_PARAMETER_SHOCK_001_PRIMARY_MECHANISM_CENSUS_V0_1.json')
+          assert p.exists()
+          x=json.loads(p.read_text())
+          assert x['classification'] in {'MECHANISM_CENSUS_PASS','INSUFFICIENT_PRIMARY_MECHANISM_SAMPLE','MECHANISM_CENSUS_TECHNICAL_OR_PROVENANCE_FAILURE'}
+          s=x['safety']
+          assert s['borrower_state_opened'] is False
+          assert s['health_factor_computed'] is False
+          assert s['liquidation_overhang_computed'] is False
+          assert s['future_liquidation_outcomes_opened'] is False
+          assert s['market_prices_opened'] is False
+          assert s['returns_opened'] is False
+          assert s['pnl_opened'] is False
+          assert s['accessed_2025_or_2026'] is False
+          assert s['live_trading'] is False
+          assert s['exchange_mutation'] is False
+          print('MECHANISM_CENSUS_FIREWALL_PASS',x['classification'],x.get('independent_24h_episode_count'))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: AAVE_RISK_PARAMETER_SHOCK_001_PRIMARY_MECHANISM_CENSUS_V0_1
+          path: out/aave_risk_parameter_shock/AAVE_RISK_PARAMETER_SHOCK_001_PRIMARY_MECHANISM_CENSUS_V0_1.json
+          if-no-files-found: error
+          retention-days: 90
