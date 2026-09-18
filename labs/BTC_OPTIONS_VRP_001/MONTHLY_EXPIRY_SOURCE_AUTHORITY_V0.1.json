@@ -1,0 +1,139 @@
+{
+  "lab_id": "BTC-OPTIONS-VRP-001",
+  "source_gate_id": "OVRP-MONTHLY-EXPIRY-SOURCE-001",
+  "status": "FROZEN_SOURCE_ONLY_OUTCOME_BLIND",
+  "date_frozen": "2026-09-18",
+  "lineage": {
+    "parent_discovery": "OVRP-DVOL-RV30-001",
+    "parent_discovery_status": "DISCOVERY_PASS_VRP_EXISTS",
+    "closed_execution_mve": "OVRP-EXEC-ATM30-7D-STATICDELTA-001",
+    "tardis_probe": "OVRP-EXEC-SOURCE-TARDIS-PROBE-002",
+    "tardis_probe_run": 35274543014,
+    "tardis_probe_status": "PAID_SOURCE_ROUTE_FEASIBLE"
+  },
+  "scientific_question": "Can the free first-day-of-month Tardis Deribit sample plus Deribit's official public historical delivery-price endpoint support a separate monthly-to-expiry ATM-straddle execution study without paid data?",
+  "source": {
+    "provider": "Tardis.dev + Deribit official public API",
+    "exchange": "deribit",
+    "access_mode": "free_first_day_of_month_sample_without_api_key",
+    "base_url": "https://datasets.tardis.dev/v1",
+    "data_types": [
+      "options_chain",
+      "quotes"
+    ],
+    "aggregate_symbol": "OPTIONS",
+    "delivery_prices_url": "https://www.deribit.com/api/v2/public/get_delivery_prices",
+    "delivery_index_name": "btc_usd"
+  },
+  "sample_dates": [
+    "2021-04-01",
+    "2021-05-01",
+    "2021-06-01",
+    "2021-07-01",
+    "2021-08-01",
+    "2021-09-01",
+    "2021-10-01",
+    "2021-11-01",
+    "2021-12-01",
+    "2022-01-01",
+    "2022-02-01",
+    "2022-03-01",
+    "2022-04-01",
+    "2022-05-01",
+    "2022-06-01",
+    "2022-07-01",
+    "2022-08-01",
+    "2022-09-01",
+    "2022-10-01",
+    "2022-11-01",
+    "2022-12-01",
+    "2023-01-01",
+    "2023-02-01",
+    "2023-03-01",
+    "2023-04-01",
+    "2023-05-01",
+    "2023-06-01",
+    "2023-07-01",
+    "2023-08-01",
+    "2023-09-01",
+    "2023-10-01",
+    "2023-11-01",
+    "2023-12-01",
+    "2024-01-01",
+    "2024-02-01",
+    "2024-03-01",
+    "2024-04-01",
+    "2024-05-01",
+    "2024-06-01",
+    "2024-07-01",
+    "2024-08-01",
+    "2024-09-01",
+    "2024-10-01",
+    "2024-11-01",
+    "2024-12-01"
+  ],
+  "target_underlying": "BTC",
+  "pair_definition": {
+    "same_expiry": true,
+    "same_strike": true,
+    "right_pair": [
+      "C",
+      "P"
+    ],
+    "dte_min": 25,
+    "dte_max": 35,
+    "require_nonempty_chain_bbo_both_legs": true,
+    "require_nonempty_quote_bbo_both_legs": true
+  },
+  "bounded_transport": {
+    "max_options_chain_rows_per_date": 750000,
+    "max_quote_rows_per_date": 2000000,
+    "connect_timeout_seconds": 20,
+    "read_timeout_seconds": 90
+  },
+  "source_gates": {
+    "minimum_complete_months_total": 36,
+    "minimum_complete_months_by_year": {
+      "2021": 6,
+      "2022": 8,
+      "2023": 8,
+      "2024": 8
+    },
+    "minimum_distinct_years": 4,
+    "require_delivery_price_date_for_selected_expiry": true
+  },
+  "retained_metrics_only": [
+    "sample date",
+    "selected option symbols",
+    "expiry date",
+    "DTE",
+    "rows scanned/bytes consumed",
+    "BBO presence booleans",
+    "delivery-date presence boolean",
+    "HTTP/source hashes",
+    "coverage counts"
+  ],
+  "classifications": {
+    "pass": "MONTHLY_EXPIRY_SOURCE_DATA_PASS",
+    "insufficient": "MONTHLY_EXPIRY_SOURCE_DATA_INSUFFICIENT",
+    "technical_failure": "MONTHLY_EXPIRY_SOURCE_TECHNICAL_FAILURE",
+    "provenance_failure": "MONTHLY_EXPIRY_SOURCE_PROVENANCE_FAILURE"
+  },
+  "safety": {
+    "performance_outcomes_authorized": false,
+    "strategy_pnl_authorized": false,
+    "returns_authorized": false,
+    "option_premium_values_retained": false,
+    "delivery_price_values_retained": false,
+    "paid_subscription_authorized": false,
+    "api_key_authorized": false,
+    "access_2025_authorized": false,
+    "access_2026_authorized": false,
+    "live_trading_authorized": false,
+    "exchange_mutation_authorized": false,
+    "wallet_access_authorized": false,
+    "merge_to_main_authorized": false
+  },
+  "stop_rule": "If frozen coverage gates fail, stop. Do not widen DTE, add paid dates, use 2025/2026, lower coverage thresholds or open performance under this source-gate ID.",
+  "post_pass_rule": "PASS authorizes only a new pre-outcome execution authority. It does not rewrite or rescue the closed weekly execution MVE."
+}
