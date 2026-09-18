@@ -227,8 +227,13 @@ def main()->int:
                 if dec>255: raise RuntimeError("invalid decimals")
                 if reserve in decimals and decimals[reserve]!=dec: raise RuntimeError("decimals changed")
                 decimals[reserve]=dec
-        missing_dec=[u for u,_ in selected if u not in decimals]
-        if missing_dec: raise RuntimeError(f"missing reserve decimals: {missing_dec}")
+        # Discovery-period eligibility: reserves initialized only after the
+        # frozen 2023 event ceiling are canonical master identities but cannot
+        # contribute state in this partition and therefore do not require a
+        # pre-existing aToken Initialized/decimals event inside 2023.
+        decimals_required=[u for u,_ in selected if init_block[u]<=to_block]
+        missing_dec=[u for u in decimals_required if u not in decimals]
+        if missing_dec: raise RuntimeError(f"missing active-Discovery reserve decimals: {missing_dec}")
 
         daily_oracle={x["date"]:x["oracle"] for x in glob["daily_oracle"]}
         # Acquire exact normalized indices and Aave prices for each active reserve/day.
