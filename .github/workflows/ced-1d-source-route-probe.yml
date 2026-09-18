@@ -1,0 +1,55 @@
+name: CED 1D Source Route Probe
+
+on:
+  push:
+    branches:
+      - ced-1d-v3-byte-recovery-2026-09-17
+    paths:
+      - '.github/workflows/ced-1d-source-route-probe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-route-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Probe canonical BTCUSDT 2021-10 archive routes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib, urllib.request, json, pathlib
+          expected='4b78dd0174890c975effca2ed078163d6e9b4f7437f692e2c430c724b7eafc24'
+          name='BTCUSDT-1m-2021-10.zip'
+          routes={
+            'USD_M_FUTURES': f'https://data.binance.vision/data/futures/um/monthly/klines/BTCUSDT/1m/{name}',
+            'SPOT': f'https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1m/{name}',
+          }
+          out={'expected_sha256':expected,'outcomes_computed':False,'year_2025_accessed':False,'year_2026_accessed':False,'routes':{}}
+          for label,url in routes.items():
+              p=pathlib.Path(label+'.zip')
+              req=urllib.request.Request(url,headers={'User-Agent':'CED-1D-SOURCE-ROUTE-PROBE/0.1'})
+              with urllib.request.urlopen(req,timeout=120) as r:
+                  p.write_bytes(r.read())
+              h=hashlib.sha256(p.read_bytes()).hexdigest()
+              out['routes'][label]={'url':url,'sha256':h,'matches_historical':h==expected,'bytes':p.stat().st_size}
+          matches=[k for k,v in out['routes'].items() if v['matches_historical']]
+          out['matching_routes']=matches
+          pathlib.Path('source_route_probe.json').write_text(json.dumps(out,indent=2,sort_keys=True))
+          print(json.dumps(out,indent=2,sort_keys=True))
+          if len(matches)!=1:
+              raise SystemExit(f'FAIL_CLOSED_ROUTE_IDENTITY: matches={matches}')
+          print('SOURCE_ROUTE_IDENTITY_PASS', matches[0])
+          PY
+
+      - name: Upload source-route receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ced1d-source-route-probe-${{ github.run_id }}
+          path: source_route_probe.json
+          if-no-files-found: error
+          retention-days: 30
