@@ -1,0 +1,44 @@
+{
+  "document_id":"CED_1D_2025_FUNDING_MARKPRICE_INTERVAL_SOURCE_AMENDMENT_V0.4",
+  "status":"FROZEN_BEFORE_MARKPRICE_ARCHIVE_ACCESS_AND_2025_STRATEGY_OUTCOMES",
+  "controlling_governance":"governance/CED_1D_2025_FUNDING_MARK_PRICE_INTERVAL_BOUND_AMENDMENT_V0.2_2026-09-18.md",
+  "supersedes_source_mapping_only":"CED_1D_2025_FUNDING_MARKPRICE_ARCHIVE_AMENDMENT_V0.3",
+  "correction_reason":"V0.3 incorrectly required fundingTime to equal 1m candle open_time byte-for-byte and selected OPEN. Controlling governance requires settlement minute=floor(fundingTime/60000)*60000 and source-supported LOW/HIGH bounds. No strategy outcome has been computed.",
+  "funding_identity":{
+    "source_run_id":35339781808,
+    "records_per_symbol":1095,
+    "canonical_records_sha256":{
+      "AVAXUSDT":"e4e204a815d9f192844156228f1a7675d92eec7b6f4863f1538f5f63c1d55d7d",
+      "SOLUSDT":"1eb69f6558f92734d467c8f7b2576912a2fc9b00494f8f50fe57e2409cdc818c"
+    }
+  },
+  "mark_price_source":{
+    "provider":"BINANCE_PUBLIC_DATA",
+    "dataset":"USD-M monthly markPriceKlines",
+    "path_pattern":"data/futures/um/monthly/markPriceKlines/{SYMBOL}/1m/{SYMBOL}-1m-2025-{MM}.zip",
+    "checksum_required":true,
+    "symbols":["AVAXUSDT","SOLUSDT"],
+    "months":"2025-01_through_2025-12"
+  },
+  "binding_rule":{
+    "settlement_minute_open":"floor(fundingTime/60000)*60000",
+    "required_match":"exactly one 1m markPrice candle at settlement_minute_open",
+    "nearest_neighbor":"FORBIDDEN",
+    "interpolation":"FORBIDDEN",
+    "required_fields":["open_time","open","high","low","close"],
+    "ohlc_validity":"finite positive and low<=open,close<=high",
+    "primary_point_estimate":"NONE",
+    "preserved_interval":"[LOW,HIGH]"
+  },
+  "governance":{
+    "source_only":true,
+    "signals_computed":false,
+    "returns_computed":false,
+    "pnl_computed":false,
+    "promotion_computed":false,
+    "year_2026_accessed":false,
+    "live_trading":false,
+    "orders":false,
+    "exchange_mutation":false
+  }
+}
