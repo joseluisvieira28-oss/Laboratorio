@@ -1,0 +1,48 @@
+{
+  "receipt_id": "RADAR-V0131-DH03-CLOCK-ARMING-HARDENING-2026-09-18",
+  "recorded_at_utc": "2026-09-18T18:23:00Z",
+  "status": "VALIDATED_READY_FOR_LOCAL_PREFLIGHT",
+  "scientific_effect": "NONE__OPERATIONAL_FAIL_CLOSED_HARDENING_ONLY",
+  "repository": "joseluisvieira28-oss/Laboratorio",
+  "source_branch": "crypto-edge-radar-cleanup-v1",
+  "tested_head": "16fb22f50d099324a8b9081ae48544efbdbb4cf8",
+  "change": {
+    "issue": "DH03 collector activation boundary could be persisted before local clock validation",
+    "remediation": "Binance USD-M public server clock preflight now runs before DH03 collector thread instantiation and before collector_activation_ms can be persisted",
+    "max_abs_clock_offset_ms": 500,
+    "max_public_rtt_ms": 1000,
+    "failure_mode": "FAIL_CLOSED__NO_DH03_ARMING",
+    "scientific_rules_changed": false,
+    "assets_changed": false,
+    "timeframe_changed": false,
+    "costs_changed": false,
+    "entry_exit_rules_changed": false,
+    "forward_boundary_backfilled": false
+  },
+  "validation": {
+    "promotion_run_id": 35379301493,
+    "promotion_conclusion": "success",
+    "deterministic_tests": "169/169 PASS",
+    "tfg_source_gate": "PASS",
+    "bnb_market_source_gate": "PASS",
+    "bnb_official_source_gate": "PASS",
+    "forward_shadow_e2e": "PASS",
+    "windows_build_run_id": 35379301371,
+    "windows_build_conclusion": "success",
+    "packaged_registry_selftest": "PASS"
+  },
+  "windows_artifact": {
+    "artifact_id": 10561912430,
+    "name": "crypto-edge-radar-v013-windows-node",
+    "zip_sha256": "42a4404b467707a152cb9b95adaff70b9df96ce8fab699c7481f8480f591096e",
+    "exe_sha256": "7bb88b9e5e5ec6c7f39e64cd83f89ff7659137f07d61d44fd10e5205f07af545",
+    "local_reverification": true
+  },
+  "safety": {
+    "authenticated_exchange_api_used": false,
+    "orders_created": false,
+    "exchange_mutation_performed": false,
+    "live_capital_enabled": false,
+    "main_modified": false
+  }
+}
