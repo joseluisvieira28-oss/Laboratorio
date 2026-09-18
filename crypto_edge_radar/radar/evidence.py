@@ -201,6 +201,17 @@ class EvidenceStore:
         receipt.update({"event_key": event_key, "inserted": True, "duplicate": False})
         return receipt
 
+    def read_payloads(self, event_type: str) -> list[dict[str, Any]]:
+        """Read one event type in append order without mutating the evidence chain."""
+        if not event_type.strip():
+            raise ValueError("event_type is required")
+        with closing(self._connect()) as conn:
+            rows = conn.execute(
+                "SELECT payload_json FROM events WHERE event_type = ? ORDER BY id ASC",
+                (event_type,),
+            ).fetchall()
+        return [json.loads(row["payload_json"]) for row in rows]
+
     def verify_chain(self) -> tuple[bool, str]:
         with closing(self._connect()) as conn:
             rows = conn.execute("SELECT * FROM events ORDER BY id ASC").fetchall()
@@ -396,6 +407,24 @@ class PostgresEvidenceStore:
         )
         receipt.update({"event_key": event_key, "inserted": True, "duplicate": False})
         return receipt
+
+    def read_payloads(self, event_type: str) -> list[dict[str, Any]]:
+        """Read one event type in append order without mutating the evidence chain."""
+        if not event_type.strip():
+            raise ValueError("event_type is required")
+        try:
+            with self._connect() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "SELECT payload_json FROM radar_events WHERE event_type = %s ORDER BY id ASC",
+                        (event_type,),
+                    )
+                    rows = cur.fetchall()
+        except Exception as exc:
+            raise RuntimeError(
+                f"postgres evidence read failed: {type(exc).__name__}: {exc}"
+            ) from exc
+        return [json.loads(row[0]) for row in rows]
 
     def verify_chain(self) -> tuple[bool, str]:
         try:
