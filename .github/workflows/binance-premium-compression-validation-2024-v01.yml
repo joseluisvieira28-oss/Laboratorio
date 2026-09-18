@@ -42,14 +42,12 @@ jobs:
           PY
       - run: python -m py_compile research/binance_premium_compression/validation_2024_v01.py
       - name: Execute frozen 2024 OOS
-        run: |
-          cd research/binance_premium_compression
-          python validation_2024_v01.py
+        run: python research/binance_premium_compression/validation_2024_v01.py
       - name: Upload immutable OOS receipt
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: bpc-validation-2024-v01-${{ github.run_id }}-${{ github.run_attempt }}
-          path: research/binance_premium_compression/artifacts/binance_premium_compression_validation_2024_v01/
+          path: artifacts/binance_premium_compression_validation_2024_v01/
           retention-days: 90
           if-no-files-found: warn
