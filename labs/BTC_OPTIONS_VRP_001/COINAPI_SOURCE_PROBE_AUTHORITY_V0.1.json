@@ -1,0 +1,92 @@
+{
+  "lab_id": "BTC-OPTIONS-VRP-001",
+  "probe_id": "OVRP-EXEC-SOURCE-COINAPI-PROBE-001",
+  "version": "0.1",
+  "date_frozen": "2026-09-18",
+  "branch": "btc-options-vrp-coinapi-source-probe-v0.1",
+  "status": "FROZEN_SOURCE_ONLY_CREDENTIAL_GATED_NO_PURCHASE",
+  "purpose": "Determine whether CoinAPI can provide historical Deribit option top-of-book quotes for expired contracts across 2021-2024 with sufficient metadata to justify a new execution MVE. No strategy outcome is authorized.",
+  "parent_scientific_state": {
+    "lab": "BTC-OPTIONS-VRP-001",
+    "parent_discovery": "DISCOVERY_PASS_VRP_EXISTS",
+    "old_execution_mve": "OVRP-EXEC-ATM30-7D-STATICDELTA-001",
+    "old_execution_closeout": "EXECUTION_DATA_LIQUIDITY_INSUFFICIENT",
+    "old_executable_n": 19,
+    "old_minimum_n": 120
+  },
+  "provider": {
+    "name": "CoinAPI",
+    "exchange_id": "DERIBIT",
+    "required_endpoints": [
+      "/v1/symbols/DERIBIT/history",
+      "/v1/quotes/{symbol_id}/history"
+    ],
+    "credential_env": "COINAPI_KEY",
+    "credential_must_not_be_committed": true
+  },
+  "cross_provider_fixed_samples": [
+    {
+      "date": "2021-01-01",
+      "call": "BTC-29JAN21-28000-C",
+      "put": "BTC-29JAN21-28000-P"
+    },
+    {
+      "date": "2022-01-01",
+      "call": "BTC-28JAN22-42000-C",
+      "put": "BTC-28JAN22-42000-P"
+    },
+    {
+      "date": "2023-01-01",
+      "call": "BTC-27JAN23-20000-C",
+      "put": "BTC-27JAN23-20000-P"
+    },
+    {
+      "date": "2024-01-01",
+      "call": "BTC-26JAN24-35000-C",
+      "put": "BTC-26JAN24-35000-P"
+    }
+  ],
+  "quote_probe_window_utc": {
+    "start_hour": 8,
+    "end_hour": 12,
+    "max_rows_requested_per_symbol": 1
+  },
+  "pass_rule": {
+    "all_8_expired_contracts_resolve_in_historical_symbol_metadata": true,
+    "all_8_contracts_return_at_least_one_historical_quote_in_frozen_window": true,
+    "all_returned_quote_rows_have_bid_and_ask_price_and_size_fields": true,
+    "terminal_pass_classification": "COINAPI_BBO_SOURCE_ROUTE_FEASIBLE"
+  },
+  "terminal_classifications": [
+    "COINAPI_BBO_SOURCE_ROUTE_FEASIBLE",
+    "SOURCE_ROUTE_SCHEMA_INSUFFICIENT",
+    "SOURCE_ACCESS_CREDENTIAL_REQUIRED",
+    "SOURCE_ACCESS_PLAN_RESTRICTED",
+    "SOURCE_ACQUISITION_TECHNICAL_FAILURE",
+    "PROVENANCE_FAILURE"
+  ],
+  "prospective_full_history_design_if_probe_passes": {
+    "anchor_count": 192,
+    "anchor_start": "2021-04-01T08:00:00Z",
+    "anchor_end": "2024-11-28T08:00:00Z",
+    "hold_days": 7,
+    "unique_weekly_calendar_dates_needed_for_entry_exit": 193,
+    "note": "Each 7-day exit date is the next weekly anchor date; source procurement should remain date/symbol bounded where provider capabilities permit."
+  },
+  "safety": {
+    "performance_outcomes_authorized": false,
+    "strategy_pnl_authorized": false,
+    "returns_authorized": false,
+    "execution_mve_authorized": false,
+    "purchase_authorized": false,
+    "paid_overage_authorized": false,
+    "api_key_storage_authorized": false,
+    "access_2025_authorized": false,
+    "access_2026_authorized": false,
+    "live_trading_authorized": false,
+    "exchange_mutation_authorized": false,
+    "wallet_access_authorized": false,
+    "merge_to_main_authorized": false,
+    "parameter_tuning_authorized": false
+  }
+}
