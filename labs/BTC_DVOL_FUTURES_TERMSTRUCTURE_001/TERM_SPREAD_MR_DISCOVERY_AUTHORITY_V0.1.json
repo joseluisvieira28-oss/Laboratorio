@@ -1,0 +1,79 @@
+{
+  "lab_id": "BTC-DVOL-FUTURES-TERMSTRUCTURE-001",
+  "discovery_id": "DVOL-TS-TERM-SPREAD-MR-DISCOVERY-001",
+  "status": "PRE_OUTCOME_FROZEN",
+  "date_frozen": "2026-09-18",
+  "parent_source_gate": "DVOL-TS-CALENDAR-SPREAD-SOURCE-001",
+  "parent_source_run": 35280009674,
+  "prior_related_discovery": {
+    "id": "DVOL-TS-CALENDAR-SPREAD-DISCOVERY-001",
+    "verdict": "CALENDAR_SPREAD_DISCOVERY_NO_ROBUST_EDGE",
+    "relationship": "Different signal. Prior study used the near futures-vs-index basis sign to predict a 1:1 near/far spread move. This study ignores the index basis and tests direct mean reversion of the adjacent futures term spread itself."
+  },
+  "economic_mechanism": "Adjacent BTCDVOL monthly futures share the same underlying volatility index but different expiry horizons. During their listed-life overlap, transient relative-value dislocations between near and far contracts may mean-revert as the near contract approaches settlement while both remain exposed to common DVOL shocks.",
+  "failure_mode": "Persistent volatility term-structure slope, regime shifts or expiry-specific risk premia can make the near-minus-far spread trend rather than mean-revert.",
+  "source": {
+    "provider": "Deribit official historical API",
+    "candidate_start": "2023-03-29",
+    "candidate_end": "2024-12-25",
+    "lower_bound": "2023-03-27T00:00:00Z",
+    "protected_start": "2025-01-01T00:00:00Z"
+  },
+  "pair_rule": {
+    "population": "Exact adjacent-expiry BTCDVOL futures with listed-life overlap from the passed calendar-spread source gate.",
+    "daily_anchor": "For each leg, first ordinary public trade at or after 08:00 UTC on each common active UTC day within exact overlap.",
+    "common_day": "UTC date with eligible near and far anchors.",
+    "next_observation": "Next common active UTC day within the same adjacent pair.",
+    "no_pair_selection": true
+  },
+  "signal": {
+    "term_spread": "near_trade_price - far_trade_price",
+    "direction": "spread > 0 => expect spread to fall toward zero; spread < 0 => expect spread to rise toward zero; spread == 0 => zero score.",
+    "threshold": 0,
+    "no_threshold_tuning": true
+  },
+  "score": {
+    "formula": "sign(spread_t) * (spread_t - spread_next) / elapsed_calendar_days",
+    "interpretation": "Positive means the adjacent term spread moved toward zero.",
+    "primary_estimand": "Equal-weight mean of per-pair mean scores."
+  },
+  "sample_gates": {
+    "minimum_pair_clusters_with_scores": 10,
+    "minimum_total_adjacent_scores": 50,
+    "minimum_distinct_near_expiration_quarters": 6
+  },
+  "bootstrap": {
+    "unit": "adjacent contract pair",
+    "replications": 10000,
+    "seed": 20092026,
+    "ci": 0.95,
+    "statistic": "equal-weight mean of pair-cluster means"
+  },
+  "statistical_gates": {
+    "mean_pair_score_gt": 0,
+    "median_pair_score_gt": 0,
+    "positive_pair_share_gte": 0.6,
+    "nonnegative_near_expiration_quarters_gte": 5,
+    "cluster_bootstrap_lower_95_gt": 0
+  },
+  "classifications": {
+    "pass": "TERM_SPREAD_MR_DISCOVERY_PASS",
+    "no_signal": "TERM_SPREAD_MR_DISCOVERY_NO_ROBUST_EDGE",
+    "insufficient": "TERM_SPREAD_MR_DISCOVERY_SAMPLE_INSUFFICIENT",
+    "technical_failure": "TERM_SPREAD_MR_DISCOVERY_TECHNICAL_FAILURE",
+    "provenance_failure": "TERM_SPREAD_MR_DISCOVERY_PROVENANCE_FAILURE"
+  },
+  "firewalls": {
+    "transaction_costs_opened": false,
+    "strategy_pnl_opened": false,
+    "strategy_returns_opened": false,
+    "access_2025": false,
+    "access_2026": false,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "wallet_access": false,
+    "merge_to_main": false
+  },
+  "no_rescue_rule": "After canonical outcome opening, do not change pair construction, 08:00 anchors, spread definition, threshold, score, sample/statistical gates, years or source population under this Discovery ID.",
+  "post_pass_rule": "PASS authorizes only a separately frozen executable spread MVE with legitimate post-signal fills on both legs and fixed costs."
+}
