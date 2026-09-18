@@ -1,0 +1,30 @@
+name: CED 1D V3 Payload Transport Diagnostic V0.1
+on:
+  push:
+    branches:
+      - ced-1d-v3-byte-recovery-2026-09-17
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/PAYLOAD_DIAG_TRIGGER_V0.1.txt'
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile diagnostic
+        run: python -m py_compile Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/payload_transport_diag_v01.py
+      - name: Find unique hash-anchored single-character repair
+        run: python Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/payload_transport_diag_v01.py
+      - name: Upload diagnostic evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ced1d-payload-transport-diag-v01-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/ced1d_payload_transport_diag_v01/
+          retention-days: 30
+          if-no-files-found: warn
