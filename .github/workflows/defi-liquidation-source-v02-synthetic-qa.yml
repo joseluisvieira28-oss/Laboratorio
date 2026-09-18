@@ -8,8 +8,11 @@ on:
       - '.github/workflows/defi-liquidation-source-v02-synthetic-qa.yml'
       - 'labs/DEFI_LIQUIDATION_SHOCK_001/source/protocol_registry_v0_2.json'
       - 'labs/DEFI_LIQUIDATION_SHOCK_001/source/collect_protocol_history_v0_2.py'
+      - 'labs/DEFI_LIQUIDATION_SHOCK_001/source/BIGQUERY_KAMINO_CORRECTED_SMOKE_TEST_V0_2.sql'
+      - 'labs/DEFI_LIQUIDATION_SHOCK_001/source/adjudicate_kamino_corrected_smoke_v0_2.py'
       - 'labs/DEFI_LIQUIDATION_SHOCK_001/source/test_source_registry_v0_2.py'
       - 'labs/DEFI_LIQUIDATION_SHOCK_001/source/test_bigquery_verifier_synthetic_v0_2.py'
+      - 'labs/DEFI_LIQUIDATION_SHOCK_001/source/test_adjudicate_kamino_corrected_smoke_v0_2.py'
   workflow_dispatch:
 
 permissions:
@@ -27,12 +30,22 @@ jobs:
       - name: Compile
         run: |
           python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/collect_protocol_history_v0_2.py
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/adjudicate_kamino_corrected_smoke_v0_2.py
           python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/test_source_registry_v0_2.py
           python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/test_bigquery_verifier_synthetic_v0_2.py
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/test_adjudicate_kamino_corrected_smoke_v0_2.py
       - name: Registry V0.2 QA
         run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/test_source_registry_v0_2.py
       - name: Corrected Kamino verifier QA
         run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/test_bigquery_verifier_synthetic_v0_2.py
+      - name: Kamino smoke adjudicator QA
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/test_adjudicate_kamino_corrected_smoke_v0_2.py
+      - name: Static SQL safety assertions
+        run: |
+          grep -q "b1479abce2854a37" labs/DEFI_LIQUIDATION_SHOCK_001/source/BIGQUERY_KAMINO_CORRECTED_SMOKE_TEST_V0_2.sql
+          ! grep -q "WHERE ix.data_prefix_8_hex='b1479acce2854a37'" labs/DEFI_LIQUIDATION_SHOCK_001/source/BIGQUERY_KAMINO_CORRECTED_SMOKE_TEST_V0_2.sql
+          grep -q "status='Success'" labs/DEFI_LIQUIDATION_SHOCK_001/source/BIGQUERY_KAMINO_CORRECTED_SMOKE_TEST_V0_2.sql
+          echo KAMINO_SQL_V02_STATIC_SAFETY_PASS
       - name: Outcome firewall
         run: |
           echo SOURCE_ONLY_OUTCOME_BLIND_PASS
@@ -40,3 +53,4 @@ jobs:
           echo RETURNS_COMPUTED_FALSE
           echo PNL_COMPUTED_FALSE
           echo LIVE_TRADING_FALSE
+          echo MAIN_MERGE_FALSE
