@@ -1,0 +1,87 @@
+name: AAVE Liquidation Overhang 001 — Discovery D0 Preflight V0.1
+
+on:
+  push:
+    branches:
+      - aave-liquidation-overhang-discovery-v0.1
+    paths:
+      - '.github/workflows/aave-liquidation-overhang-discovery-d0-preflight-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  CANONICAL_R1_RUN_ID: '35384529037'
+  CANONICAL_R1_ARTIFACT: 'AAVE_R1_SEMANTIC_RECONCILIATION_V0_5'
+  R0_RUN_ID: '35218275356'
+  R0_ARTIFACT: 'AAVE_RECON_R0_BOOTSTRAP'
+  PARENT_PROTOCOL_BLOB_SHA: '67e7b983cdfa069a2d6d5b41aaa50f815bfef15d'
+  D0_FREEZE_BLOB_SHA: '3c238b7c07fa5ad5516f3efd070ccd589e849c45'
+  PREFLIGHT_BLOB_SHA: 'b68a797a4f54511358e413a5f81e33d3f31f9fd1'
+
+jobs:
+  d0-preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Bind exact frozen files
+        run: |
+          test "$(git hash-object research/aave_liquidation_overhang/AAVE_LIQUIDATION_OVERHANG_001_FINAL_PRE_DISCOVERY_PROTOCOL_V0_1.md)" = "${PARENT_PROTOCOL_BLOB_SHA}"
+          test "$(git hash-object research/aave_liquidation_overhang/AAVE_LIQUIDATION_OVERHANG_001_DISCOVERY_D0_PREDICTOR_MATERIALIZATION_FREEZE_V0_1.md)" = "${D0_FREEZE_BLOB_SHA}"
+          test "$(git hash-object research/aave_liquidation_overhang/aave_discovery_d0_preflight_v01.py)" = "${PREFLIGHT_BLOB_SHA}"
+          python -m py_compile research/aave_liquidation_overhang/aave_discovery_d0_preflight_v01.py
+          echo AAVE_D0_FILE_BINDING_PASS
+
+      - name: Verify canonical R1 run identity
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python - <<'PY'
+          import json,os,urllib.request
+          rid=int(os.environ['CANONICAL_R1_RUN_ID'])
+          req=urllib.request.Request(
+            f'https://api.github.com/repos/joseluisvieira28-oss/Laboratorio/actions/runs/{rid}',
+            headers={
+              'Authorization':f"Bearer {os.environ['GH_TOKEN']}",
+              'Accept':'application/vnd.github+json',
+              'X-GitHub-Api-Version':'2022-11-28',
+            }
+          )
+          with urllib.request.urlopen(req,timeout=30) as r:
+              x=json.load(r)
+          assert x['status']=='completed' and x['conclusion']=='success',x
+          print('AAVE_D0_CANONICAL_R1_RUN_PASS',x['head_sha'])
+          PY
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.CANONICAL_R1_ARTIFACT }}
+          path: downloaded_r1_canonical
+          run-id: ${{ env.CANONICAL_R1_RUN_ID }}
+          github-token: ${{ github.token }}
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.R0_ARTIFACT }}
+          path: downloaded_r0_bootstrap
+          run-id: ${{ env.R0_RUN_ID }}
+          github-token: ${{ github.token }}
+
+      - name: Execute D0 outcome-blind static/source binding preflight
+        run: python research/aave_liquidation_overhang/aave_discovery_d0_preflight_v01.py
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: AAVE_LIQUIDATION_OVERHANG_001_DISCOVERY_D0_PREFLIGHT_V0_1
+          path: aave_discovery_d0_preflight_output/AAVE_LIQUIDATION_OVERHANG_001_DISCOVERY_D0_PREFLIGHT_V0_1.json
+          if-no-files-found: error
+          retention-days: 90
