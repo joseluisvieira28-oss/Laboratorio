@@ -1,0 +1,32 @@
+name: LL-0017 Positioning Ratio — Duplicate Provenance Diagnostic V0.1
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - ll-0017-positioning-ratio-v0.1
+    paths:
+      - 'research/ll0017_positioning/LL0017_DUPDIAG_TRIGGER_V0_1.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  duplicate-provenance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m py_compile research/ll0017_positioning/duplicate_provenance_diag_v01.py
+      - run: pip install --disable-pip-version-check requests
+      - run: python research/ll0017_positioning/duplicate_provenance_diag_v01.py
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: LL0017_DUPLICATE_PROVENANCE_DIAGNOSTIC_V0_1
+          path: ll0017_dupdiag_output/LL0017_DUPLICATE_PROVENANCE_DIAGNOSTIC_V0_1.json
+          if-no-files-found: warn
+          retention-days: 30
