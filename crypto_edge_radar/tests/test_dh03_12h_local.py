@@ -3,7 +3,13 @@ import tempfile
 import unittest
 
 from radar.dh03_12h_core import FREEZE_MS, FIFTEEN_MIN_MS, TWELVE_H_MS
-from radar.dh03_12h_local import DH03MarketStore, DH03ShadowEngine
+from radar.dh03_12h_local import (
+    DH03CollectorError,
+    DH03MarketStore,
+    DH03ShadowEngine,
+    dh03_clock_preflight,
+    require_dh03_clock_preflight,
+)
 from radar.evidence import EvidenceStore
 
 
@@ -22,7 +28,52 @@ def build_15m_history(base:int):
     return rows
 
 
+class _FakeClockFeed:
+    provider="BINANCE_USDM_PUBLIC_REST"
+
+    def __init__(self,server_ms):
+        self.server_ms=server_ms
+
+    def server_time_ms(self):
+        return self.server_ms
+
+
 class DH0312HLocalTests(unittest.TestCase):
+    def test_dh03_clock_preflight_passes_inside_budget(self):
+        ticks=iter([1000.0,1100.0])
+        result=dh03_clock_preflight(
+            feed=_FakeClockFeed(1050.0),
+            clock_ms=lambda:next(ticks),
+        )
+        self.assertTrue(result["pass"])
+        self.assertEqual(result["blockers"],[])
+        self.assertAlmostEqual(result["server_minus_local_midpoint_ms"],0.0)
+        self.assertAlmostEqual(result["request_rtt_ms"],100.0)
+
+    def test_dh03_clock_preflight_fails_offset_and_does_not_arm(self):
+        ticks=iter([1000.0,1100.0])
+        result=dh03_clock_preflight(
+            feed=_FakeClockFeed(2000.0),
+            clock_ms=lambda:next(ticks),
+        )
+        self.assertFalse(result["pass"])
+        self.assertIn("CLOCK_OFFSET_OUTSIDE_DH03_BUDGET",result["blockers"])
+        ticks=iter([1000.0,1100.0])
+        with self.assertRaises(DH03CollectorError):
+            require_dh03_clock_preflight(
+                feed=_FakeClockFeed(2000.0),
+                clock_ms=lambda:next(ticks),
+            )
+
+    def test_dh03_clock_preflight_fails_high_rtt(self):
+        ticks=iter([1000.0,2500.0])
+        result=dh03_clock_preflight(
+            feed=_FakeClockFeed(1750.0),
+            clock_ms=lambda:next(ticks),
+        )
+        self.assertFalse(result["pass"])
+        self.assertIn("PUBLIC_RTT_OUTSIDE_DH03_BUDGET",result["blockers"])
+
     def test_market_store_writes_survive_new_connection(self):
         with tempfile.TemporaryDirectory() as td:
             path=os.path.join(td,"market.sqlite3")
