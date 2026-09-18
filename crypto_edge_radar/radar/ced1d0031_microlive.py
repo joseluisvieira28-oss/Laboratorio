@@ -31,6 +31,7 @@ ENTRY_EVENT = "CED1D0031_MICROLIVE_ENTRY"
 EXIT_EVENT = "CED1D0031_MICROLIVE_EXIT"
 RECON_EVENT = "CED1D0031_MICROLIVE_RECONCILIATION"
 INCIDENT_EVENT = "CED1D0031_MICROLIVE_INCIDENT"
+CHAIN_VERIFY_INTERVAL_SECONDS = 60.0
 
 
 class MicroLiveBlocked(RuntimeError):
@@ -79,39 +80,6 @@ def _round_qty(
     return qty
 
 
-def _payloads(store, event_type: str) -> list[dict[str, Any]]:
-    return store.read_payloads(event_type)
-
-
-def _signal_by_key(store, signal_key: str) -> dict[str, Any] | None:
-    for payload in reversed(_payloads(store, SHADOW_EVENT_TYPE)):
-        if payload.get("signal_key") == signal_key:
-            return payload
-    return None
-
-
-def _first_entry(store) -> dict[str, Any] | None:
-    rows = _payloads(store, ENTRY_EVENT)
-    return rows[0] if rows else None
-
-
-def _first_exit(store) -> dict[str, Any] | None:
-    rows = _payloads(store, EXIT_EVENT)
-    return rows[0] if rows else None
-
-
-def _append_incident(store, key: str, payload: dict[str, Any]) -> None:
-    body = dict(payload)
-    body.update(
-        {
-            "candidate": CANDIDATE,
-            "authority_commit": AUTHORITY_COMMIT,
-            "checked_at_utc": datetime.now(UTC).isoformat(),
-        }
-    )
-    store.append_once(INCIDENT_EVENT, key, body)
-
-
 def _validate_signal_payload(signal: dict[str, Any]) -> dict[str, Any]:
     if signal.get("candidate") != CANDIDATE or signal.get("strategy_id") != CANDIDATE:
         raise MicroLiveBlocked("candidate identity mismatch")
@@ -135,275 +103,547 @@ def _validate_signal_payload(signal: dict[str, Any]) -> dict[str, Any]:
     return {"entry": entry, "exit": exit_at}
 
 
-def _recover_entry_if_exchange_has_order(
-    *,
-    store,
-    client: BinanceUSDMTradingClient,
-    signal: dict[str, Any],
-) -> dict[str, Any] | None:
-    existing_entry = _first_entry(store)
-    if existing_entry is not None:
-        return existing_entry
-
-    key = signal["signal_key"]
-    client_id = _client_id(key, "e")
-    order = client.query_order(SYMBOL, client_id)
-    if order is None:
-        return None
-
-    payload = {
-        "candidate": CANDIDATE,
-        "authority_commit": AUTHORITY_COMMIT,
-        "signal_key": key,
-        "direction": signal["direction"],
-        "reference_entry": signal["reference_entry"],
-        "reference_exit": signal["reference_exit"],
-        "client_order_id": client_id,
-        "order": order,
-        "recovered_after_process_or_network_ambiguity": True,
-    }
-    store.append_once(ENTRY_EVENT, key, payload)
-    return payload
-
-
-def _maybe_enter(
-    *,
-    now: datetime,
-    store,
-    client: BinanceUSDMTradingClient,
-) -> dict[str, Any] | None:
-    if _first_entry(store) is not None:
-        return None
-    if not _armed():
-        return None
-
-    signals = _payloads(store, SHADOW_EVENT_TYPE)
-    if not signals:
-        return None
-    signal = signals[-1]
-    identity = _validate_signal_payload(signal)
-    entry = identity["entry"]
-    deadline = entry.replace(second=ENTRY_GRACE_SECONDS, microsecond=999999)
-
-    recovered = _recover_entry_if_exchange_has_order(store=store, client=client, signal=signal)
-    if recovered is not None:
-        return recovered
-
-    if not (entry <= now <= deadline):
-        return None
-
-    health = client.preflight(SYMBOL)
-    if health.get("ok") is not True:
-        _append_incident(
-            store,
-            signal["signal_key"] + ":ENTRY_PREFLIGHT",
-            {"phase": "ENTRY", "reason": "PREFLIGHT_FAIL", "health": health},
+def _commission_breakdown(rows: list[dict[str, Any]]) -> dict[str, Decimal]:
+    out: dict[str, Decimal] = {}
+    for row in rows:
+        asset = str(row.get("commissionAsset") or "UNKNOWN")
+        out[asset] = out.get(asset, Decimal("0")) + Decimal(
+            str(row.get("commission", "0"))
         )
-        return None
-
-    rules = client.market_rules(SYMBOL)
-    book = client.book_ticker(SYMBOL)
-    qty = _round_qty(
-        price=book["mid"],
-        step_size=rules["step_size"],
-        min_qty=rules["min_qty"],
-        min_notional=rules["min_notional"],
-    )
-    side = "BUY" if signal["direction"] == "LONG" else "SELL"
-    client_id = _client_id(signal["signal_key"], "e")
-
-    order = client.submit_market(
-        symbol=SYMBOL,
-        side=side,
-        quantity=qty,
-        reduce_only=False,
-        client_order_id=client_id,
-    )
-
-    payload = {
-        "candidate": CANDIDATE,
-        "authority_commit": AUTHORITY_COMMIT,
-        "signal_key": signal["signal_key"],
-        "direction": signal["direction"],
-        "reference_entry": signal["reference_entry"],
-        "reference_exit": signal["reference_exit"],
-        "client_order_id": client_id,
-        "requested_quantity": format(qty, "f"),
-        "pretrade_mid": format(book["mid"], "f"),
-        "pretrade_spread_bps": format(book["spread_bps"], "f"),
-        "preflight": health,
-        "order": order,
-        "target_notional_usdt": format(TARGET_NOTIONAL_USDT, "f"),
-        "hard_cap_usdt": format(MAX_NOTIONAL_USDT, "f"),
-    }
-    store.append_once(ENTRY_EVENT, signal["signal_key"], payload)
-    return payload
+    return out
 
 
-def _executed_qty(entry: dict[str, Any]) -> Decimal:
-    order = entry.get("order") or {}
-    raw = order.get("executedQty") or order.get("origQty") or entry.get("requested_quantity")
-    qty = Decimal(str(raw))
-    if qty <= 0:
-        raise MicroLiveBlocked("entry has no positive executed quantity")
-    return qty
+class CED1D0031Runtime:
+    """One-process, restart-safe prospective shadow + one-event micro-live runtime.
 
+    Durable scientific/execution state is reconstructed from the existing Radar
+    evidence store. On the V0.9 cloud path this is PostgreSQL, not local files.
+    """
 
-def _maybe_exit(
-    *,
-    now: datetime,
-    store,
-    client: BinanceUSDMTradingClient,
-) -> dict[str, Any] | None:
-    entry = _first_entry(store)
-    if entry is None or _first_exit(store) is not None:
-        return None
-    signal = _signal_by_key(store, entry["signal_key"])
-    if signal is None:
-        raise MicroLiveBlocked("entry signal missing from evidence store")
-    exit_at = _parse_utc(signal["reference_exit"])
-    if now < exit_at:
-        return None
-
-    qty = _executed_qty(entry)
-    side = "SELL" if entry["direction"] == "LONG" else "BUY"
-    client_id = _client_id(entry["signal_key"], "x")
-    order = client.submit_market(
-        symbol=SYMBOL,
-        side=side,
-        quantity=qty,
-        reduce_only=True,
-        client_order_id=client_id,
-    )
-    late_by = max(0.0, (now - exit_at).total_seconds())
-    payload = {
-        "candidate": CANDIDATE,
-        "authority_commit": AUTHORITY_COMMIT,
-        "signal_key": entry["signal_key"],
-        "direction": entry["direction"],
-        "reference_exit": signal["reference_exit"],
-        "client_order_id": client_id,
-        "quantity": format(qty, "f"),
-        "order": order,
-        "late_by_seconds": late_by,
-        "late_exit_incident": late_by > ENTRY_GRACE_SECONDS,
-    }
-    store.append_once(EXIT_EVENT, entry["signal_key"], payload)
-    if late_by > ENTRY_GRACE_SECONDS:
-        _append_incident(
-            store,
-            entry["signal_key"] + ":LATE_EXIT",
-            {"phase": "EXIT", "reason": "LATE_EXIT", "late_by_seconds": late_by},
+    def __init__(self) -> None:
+        self.settings = Settings.from_env()
+        self.store = build_evidence_store(
+            self.settings.db_path,
+            self.settings.database_url,
         )
-    return payload
+        self.source = BinanceAVAXDailySource(timeout=self.settings.http_timeout)
+        self._client: BinanceUSDMTradingClient | None = None
+
+        signals = self.store.read_payloads(SHADOW_EVENT_TYPE)
+        entries = self.store.read_payloads(ENTRY_EVENT)
+        exits = self.store.read_payloads(EXIT_EVENT)
+        recons = self.store.read_payloads(RECON_EVENT)
+
+        self.latest_signal: dict[str, Any] | None = signals[-1] if signals else None
+        self.entry: dict[str, Any] | None = entries[0] if entries else None
+        self.exit: dict[str, Any] | None = exits[0] if exits else None
+        self.reconciliation: dict[str, Any] | None = recons[0] if recons else None
+
+        self._last_chain_check_monotonic = 0.0
+        self._chain_ok, self._chain_detail = self.store.verify_chain()
+        if not self._chain_ok:
+            raise MicroLiveBlocked(
+                f"evidence chain invalid at startup: {self._chain_detail}"
+            )
+        self._last_chain_check_monotonic = time.monotonic()
+
+    def _client_or_create(self) -> BinanceUSDMTradingClient:
+        if self._client is None:
+            self._client = BinanceUSDMTradingClient(
+                timeout=self.settings.http_timeout
+            )
+        return self._client
+
+    def _append_incident(self, key: str, payload: dict[str, Any]) -> None:
+        body = dict(payload)
+        body.update(
+            {
+                "candidate": CANDIDATE,
+                "authority_commit": AUTHORITY_COMMIT,
+                "checked_at_utc": datetime.now(UTC).isoformat(),
+            }
+        )
+        self.store.append_once(INCIDENT_EVENT, key, body)
+
+    def _maybe_verify_chain(self) -> None:
+        now_mono = time.monotonic()
+        if (
+            now_mono - self._last_chain_check_monotonic
+            < CHAIN_VERIFY_INTERVAL_SECONDS
+        ):
+            return
+        ok, detail = self.store.verify_chain()
+        self._chain_ok, self._chain_detail = ok, detail
+        self._last_chain_check_monotonic = now_mono
+        if not ok:
+            raise MicroLiveBlocked(f"evidence chain invalid: {detail}")
+
+    def _maybe_emit_signal(self, now: datetime) -> dict[str, Any] | None:
+        payload = maybe_emit_signal(
+            now=now,
+            store=self.store,
+            source=self.source,
+        )
+        if payload is not None:
+            self.latest_signal = payload
+        return payload
+
+    def _recover_entry_if_exchange_has_order(
+        self,
+        *,
+        client: BinanceUSDMTradingClient,
+        signal: dict[str, Any],
+    ) -> dict[str, Any] | None:
+        if self.entry is not None:
+            return self.entry
+
+        key = signal["signal_key"]
+        client_id = _client_id(key, "e")
+        order = client.query_order(SYMBOL, client_id)
+        if order is None:
+            return None
+
+        payload = {
+            "candidate": CANDIDATE,
+            "authority_commit": AUTHORITY_COMMIT,
+            "signal_key": key,
+            "direction": signal["direction"],
+            "reference_entry": signal["reference_entry"],
+            "reference_exit": signal["reference_exit"],
+            "client_order_id": client_id,
+            "order": order,
+            "recovered_after_process_or_network_ambiguity": True,
+        }
+        self.store.append_once(ENTRY_EVENT, key, payload)
+        self.entry = payload
+        return payload
+
+    def _maybe_recover_entry_anytime(
+        self,
+        client: BinanceUSDMTradingClient,
+    ) -> dict[str, Any] | None:
+        if self.entry is not None or self.latest_signal is None:
+            return None
+        try:
+            _validate_signal_payload(self.latest_signal)
+        except MicroLiveBlocked:
+            return None
+        return self._recover_entry_if_exchange_has_order(
+            client=client,
+            signal=self.latest_signal,
+        )
+
+    def _maybe_enter(
+        self,
+        *,
+        now: datetime,
+        client: BinanceUSDMTradingClient,
+    ) -> dict[str, Any] | None:
+        if self.entry is not None or not _armed() or self.latest_signal is None:
+            return None
+
+        signal = self.latest_signal
+        identity = _validate_signal_payload(signal)
+        entry_at = identity["entry"]
+        deadline = entry_at.replace(
+            second=ENTRY_GRACE_SECONDS,
+            microsecond=999999,
+        )
+
+        recovered = self._recover_entry_if_exchange_has_order(
+            client=client,
+            signal=signal,
+        )
+        if recovered is not None:
+            return recovered
+
+        if not (entry_at <= now <= deadline):
+            return None
+
+        health = client.preflight(SYMBOL)
+        if health.get("ok") is not True:
+            self._append_incident(
+                signal["signal_key"] + ":ENTRY_PREFLIGHT",
+                {
+                    "phase": "ENTRY",
+                    "reason": "PREFLIGHT_FAIL",
+                    "health": health,
+                },
+            )
+            return None
+
+        rules = client.market_rules(SYMBOL)
+        book = client.book_ticker(SYMBOL)
+        qty = _round_qty(
+            price=book["mid"],
+            step_size=rules["step_size"],
+            min_qty=rules["min_qty"],
+            min_notional=rules["min_notional"],
+        )
+        side = "BUY" if signal["direction"] == "LONG" else "SELL"
+        client_id = _client_id(signal["signal_key"], "e")
+
+        order = client.submit_market(
+            symbol=SYMBOL,
+            side=side,
+            quantity=qty,
+            reduce_only=False,
+            client_order_id=client_id,
+        )
+
+        payload = {
+            "candidate": CANDIDATE,
+            "authority_commit": AUTHORITY_COMMIT,
+            "signal_key": signal["signal_key"],
+            "direction": signal["direction"],
+            "reference_entry": signal["reference_entry"],
+            "reference_exit": signal["reference_exit"],
+            "client_order_id": client_id,
+            "requested_quantity": format(qty, "f"),
+            "pretrade_mid": format(book["mid"], "f"),
+            "pretrade_spread_bps": format(book["spread_bps"], "f"),
+            "preflight": health,
+            "order": order,
+            "target_notional_usdt": format(TARGET_NOTIONAL_USDT, "f"),
+            "hard_cap_usdt": format(MAX_NOTIONAL_USDT, "f"),
+        }
+        self.store.append_once(ENTRY_EVENT, signal["signal_key"], payload)
+        self.entry = payload
+        return payload
+
+    def _current_position_qty(
+        self,
+        client: BinanceUSDMTradingClient,
+    ) -> Decimal:
+        rows = client.position_risk(SYMBOL)
+        if len(rows) != 1:
+            raise MicroLiveBlocked(
+                f"position risk ambiguous at exit: {len(rows)} rows"
+            )
+        return Decimal(str(rows[0].get("positionAmt", "0")))
+
+    def _maybe_exit(
+        self,
+        *,
+        now: datetime,
+        client: BinanceUSDMTradingClient,
+    ) -> dict[str, Any] | None:
+        if self.entry is None or self.exit is not None:
+            return None
+        if self.latest_signal is None:
+            raise MicroLiveBlocked("entry exists but latest signal is missing")
+        if self.latest_signal.get("signal_key") != self.entry.get("signal_key"):
+            # On a restart days later the newest shadow signal may differ. Recover
+            # the exact entry signal from durable history.
+            matches = [
+                row
+                for row in self.store.read_payloads(SHADOW_EVENT_TYPE)
+                if row.get("signal_key") == self.entry.get("signal_key")
+            ]
+            if not matches:
+                raise MicroLiveBlocked("entry signal missing from evidence store")
+            signal = matches[-1]
+        else:
+            signal = self.latest_signal
+
+        exit_at = _parse_utc(signal["reference_exit"])
+        if now < exit_at:
+            return None
+
+        position_amt = self._current_position_qty(client)
+        client_id = _client_id(self.entry["signal_key"], "x")
+
+        if position_amt == 0:
+            existing = client.query_order(SYMBOL, client_id)
+            payload = {
+                "candidate": CANDIDATE,
+                "authority_commit": AUTHORITY_COMMIT,
+                "signal_key": self.entry["signal_key"],
+                "direction": self.entry["direction"],
+                "reference_exit": signal["reference_exit"],
+                "client_order_id": client_id,
+                "quantity": "0",
+                "order": existing,
+                "position_already_flat": True,
+                "late_by_seconds": max(
+                    0.0,
+                    (now - exit_at).total_seconds(),
+                ),
+            }
+            self.store.append_once(
+                EXIT_EVENT,
+                self.entry["signal_key"],
+                payload,
+            )
+            self._append_incident(
+                self.entry["signal_key"] + ":ALREADY_FLAT_AT_EXIT",
+                {
+                    "phase": "EXIT",
+                    "reason": "POSITION_ALREADY_FLAT",
+                    "known_exit_order": existing,
+                },
+            )
+            self.exit = payload
+            return payload
+
+        actual_direction = "LONG" if position_amt > 0 else "SHORT"
+        expected_direction = str(self.entry["direction"])
+        mismatch = actual_direction != expected_direction
+        qty = abs(position_amt)
+        side = "SELL" if position_amt > 0 else "BUY"
+
+        order = client.submit_market(
+            symbol=SYMBOL,
+            side=side,
+            quantity=qty,
+            reduce_only=True,
+            client_order_id=client_id,
+        )
+        late_by = max(0.0, (now - exit_at).total_seconds())
+        payload = {
+            "candidate": CANDIDATE,
+            "authority_commit": AUTHORITY_COMMIT,
+            "signal_key": self.entry["signal_key"],
+            "direction": expected_direction,
+            "observed_position_direction": actual_direction,
+            "direction_mismatch_incident": mismatch,
+            "reference_exit": signal["reference_exit"],
+            "client_order_id": client_id,
+            "quantity": format(qty, "f"),
+            "order": order,
+            "late_by_seconds": late_by,
+            "late_exit_incident": late_by > ENTRY_GRACE_SECONDS,
+        }
+        self.store.append_once(
+            EXIT_EVENT,
+            self.entry["signal_key"],
+            payload,
+        )
+        self.exit = payload
+
+        if mismatch:
+            self._append_incident(
+                self.entry["signal_key"] + ":POSITION_DIRECTION_MISMATCH",
+                {
+                    "phase": "EXIT",
+                    "reason": "POSITION_DIRECTION_MISMATCH",
+                    "expected_direction": expected_direction,
+                    "observed_direction": actual_direction,
+                    "action": "REDUCE_ONLY_CLOSE_ACTUAL_POSITION",
+                },
+            )
+        if late_by > ENTRY_GRACE_SECONDS:
+            self._append_incident(
+                self.entry["signal_key"] + ":LATE_EXIT",
+                {
+                    "phase": "EXIT",
+                    "reason": "LATE_EXIT",
+                    "late_by_seconds": late_by,
+                },
+            )
+        return payload
+
+    def _maybe_reconcile(
+        self,
+        *,
+        client: BinanceUSDMTradingClient,
+    ) -> dict[str, Any] | None:
+        if (
+            self.entry is None
+            or self.exit is None
+            or self.reconciliation is not None
+        ):
+            return None
+
+        signal_key = self.entry["signal_key"]
+        matches = [
+            row
+            for row in self.store.read_payloads(SHADOW_EVENT_TYPE)
+            if row.get("signal_key") == signal_key
+        ]
+        if not matches:
+            raise MicroLiveBlocked("signal missing for reconciliation")
+        signal = matches[-1]
+
+        start = int(
+            (
+                _parse_utc(signal["reference_entry"])
+                - timedelta(minutes=10)
+            ).timestamp()
+            * 1000
+        )
+        end = int(
+            (datetime.now(UTC) + timedelta(minutes=10)).timestamp()
+            * 1000
+        )
+        trades = client.user_trades(
+            SYMBOL,
+            start_ms=start,
+            end_ms=end,
+        )
+        funding = client.funding_income(
+            SYMBOL,
+            start_ms=start,
+            end_ms=end,
+        )
+
+        entry_order_id = str(
+            (self.entry.get("order") or {}).get("orderId", "")
+        )
+        exit_order_id = str(
+            (self.exit.get("order") or {}).get("orderId", "")
+        )
+        expected_ids = {
+            order_id
+            for order_id in (entry_order_id, exit_order_id)
+            if order_id
+        }
+        relevant = [
+            row
+            for row in trades
+            if str(row.get("orderId", "")) in expected_ids
+        ]
+        observed_ids = {
+            str(row.get("orderId", ""))
+            for row in relevant
+        }
+
+        if expected_ids and not expected_ids.issubset(observed_ids):
+            # Binance account-trade history can lag order acknowledgements.
+            # Do not seal an incomplete reconciliation; retry on a later cycle.
+            return None
+
+        commissions = _commission_breakdown(relevant)
+        realized = sum(
+            Decimal(str(row.get("realizedPnl", "0")))
+            for row in relevant
+        )
+        funding_total = sum(
+            Decimal(str(row.get("income", "0")))
+            for row in funding
+        )
+        commissions_usdt = commissions.get("USDT")
+        all_commission_usdt = set(commissions).issubset({"USDT"})
+        if all_commission_usdt:
+            commission_usdt = commissions_usdt or Decimal("0")
+            net_cashflow_usdt: str | None = format(
+                realized + funding_total - commission_usdt,
+                "f",
+            )
+        else:
+            net_cashflow_usdt = None
+
+        payload = {
+            "candidate": CANDIDATE,
+            "authority_commit": AUTHORITY_COMMIT,
+            "signal_key": signal_key,
+            "trade_rows": relevant,
+            "funding_rows": funding,
+            "commission_by_asset": {
+                asset: format(amount, "f")
+                for asset, amount in commissions.items()
+            },
+            "realized_pnl_usdt": format(realized, "f"),
+            "funding_income_usdt": format(funding_total, "f"),
+            "net_cashflow_usdt": net_cashflow_usdt,
+            "net_cashflow_note": (
+                "exact USDT cashflow"
+                if all_commission_usdt
+                else "not computed because one or more commissions were paid in a non-USDT asset"
+            ),
+            "reconciled_at_utc": datetime.now(UTC).isoformat(),
+            "second_real_event_authorized": False,
+        }
+        self.store.append_once(
+            RECON_EVENT,
+            signal_key,
+            payload,
+        )
+        self.reconciliation = payload
+        return payload
+
+    def cycle(
+        self,
+        *,
+        now: datetime | None = None,
+        allow_private: bool = True,
+    ) -> dict[str, Any]:
+        now = (now or datetime.now(UTC)).astimezone(UTC)
+        result: dict[str, Any] = {
+            "candidate": CANDIDATE,
+            "checked_at_utc": now.isoformat(),
+            "evidence_backend": self.store.backend,
+            "armed": _armed(),
+            "signal_key": (
+                self.latest_signal.get("signal_key")
+                if self.latest_signal
+                else None
+            ),
+            "entry_exists": self.entry is not None,
+            "exit_exists": self.exit is not None,
+            "reconciliation_exists": self.reconciliation is not None,
+        }
+
+        signal = self._maybe_emit_signal(now)
+        if signal is not None:
+            result["signal"] = signal
+
+        if allow_private and (_armed() or self.entry is not None):
+            client = self._client_or_create()
+
+            recovered = self._maybe_recover_entry_anytime(client)
+            if recovered is not None:
+                result["entry_recovery"] = recovered
+
+            entry = self._maybe_enter(
+                now=now,
+                client=client,
+            )
+            if entry is not None:
+                result["entry"] = entry
+
+            exit_row = self._maybe_exit(
+                now=now,
+                client=client,
+            )
+            if exit_row is not None:
+                result["exit"] = exit_row
+
+            recon = self._maybe_reconcile(client=client)
+            if recon is not None:
+                result["reconciliation"] = recon
+
+        self._maybe_verify_chain()
+        result["evidence_chain_ok"] = self._chain_ok
+        result["evidence_chain_detail"] = self._chain_detail
+        return result
 
 
-def _maybe_reconcile(*, store, client: BinanceUSDMTradingClient) -> dict[str, Any] | None:
-    entry = _first_entry(store)
-    exit_row = _first_exit(store)
-    if entry is None or exit_row is None:
-        return None
-    if _payloads(store, RECON_EVENT):
-        return None
-
-    signal = _signal_by_key(store, entry["signal_key"])
-    if signal is None:
-        raise MicroLiveBlocked("signal missing for reconciliation")
-
-    start = int((_parse_utc(signal["reference_entry"]) - timedelta(minutes=10)).timestamp() * 1000)
-    end = int((datetime.now(UTC) + timedelta(minutes=10)).timestamp() * 1000)
-    trades = client.user_trades(SYMBOL, start_ms=start, end_ms=end)
-    funding = client.funding_income(SYMBOL, start_ms=start, end_ms=end)
-
-    entry_order_id = str((entry.get("order") or {}).get("orderId", ""))
-    exit_order_id = str((exit_row.get("order") or {}).get("orderId", ""))
-    relevant = [
-        row for row in trades
-        if str(row.get("orderId", "")) in {entry_order_id, exit_order_id}
-    ]
-    commissions = sum(Decimal(str(row.get("commission", "0"))) for row in relevant)
-    realized = sum(Decimal(str(row.get("realizedPnl", "0"))) for row in relevant)
-    funding_total = sum(Decimal(str(row.get("income", "0"))) for row in funding)
-
-    payload = {
-        "candidate": CANDIDATE,
-        "authority_commit": AUTHORITY_COMMIT,
-        "signal_key": entry["signal_key"],
-        "trade_rows": relevant,
-        "funding_rows": funding,
-        "commission_total_asset_units": format(commissions, "f"),
-        "realized_pnl_usdt": format(realized, "f"),
-        "funding_income_usdt": format(funding_total, "f"),
-        "net_cashflow_usdt_before_nontrade_account_items": format(
-            realized + funding_total - commissions, "f"
-        ),
-        "reconciled_at_utc": datetime.now(UTC).isoformat(),
-        "second_real_event_authorized": False,
-    }
-    store.append_once(RECON_EVENT, entry["signal_key"], payload)
-    return payload
-
-
-def run_cycle(*, now: datetime | None = None, allow_private: bool = True) -> dict[str, Any]:
-    now = (now or datetime.now(UTC)).astimezone(UTC)
-    settings = Settings.from_env()
-    store = build_evidence_store(settings.db_path, settings.database_url)
-    source = BinanceAVAXDailySource(timeout=settings.http_timeout)
-
-    result: dict[str, Any] = {
-        "candidate": CANDIDATE,
-        "checked_at_utc": now.isoformat(),
-        "evidence_backend": store.backend,
-        "armed": _armed(),
-        "entry_exists": _first_entry(store) is not None,
-        "exit_exists": _first_exit(store) is not None,
-    }
-
-    signal = maybe_emit_signal(now=now, store=store, source=source)
-    if signal is not None:
-        result["signal"] = signal
-
-    if allow_private and (_armed() or _first_entry(store) is not None):
-        client = BinanceUSDMTradingClient(timeout=settings.http_timeout)
-
-        if _first_entry(store) is None:
-            signals = _payloads(store, SHADOW_EVENT_TYPE)
-            if signals:
-                latest = signals[-1]
-                try:
-                    _validate_signal_payload(latest)
-                    recovered = _recover_entry_if_exchange_has_order(
-                        store=store, client=client, signal=latest
-                    )
-                    if recovered is not None:
-                        result["entry_recovery"] = recovered
-                except Exception as exc:
-                    result["entry_recovery_error"] = f"{type(exc).__name__}:{exc}"
-
-        entry = _maybe_enter(now=now, store=store, client=client)
-        if entry is not None:
-            result["entry"] = entry
-
-        exit_row = _maybe_exit(now=now, store=store, client=client)
-        if exit_row is not None:
-            result["exit"] = exit_row
-
-        recon = _maybe_reconcile(store=store, client=client)
-        if recon is not None:
-            result["reconciliation"] = recon
-
-    chain_ok, detail = store.verify_chain()
-    result["evidence_chain_ok"] = chain_ok
-    result["evidence_chain_detail"] = detail
-    return result
+def run_cycle(
+    *,
+    now: datetime | None = None,
+    allow_private: bool = True,
+) -> dict[str, Any]:
+    runtime = CED1D0031Runtime()
+    return runtime.cycle(
+        now=now,
+        allow_private=allow_private,
+    )
 
 
 def run_forever() -> int:
-    poll = max(float(os.getenv("CED1D0031_POLL_SECONDS", "0.5")), 0.25)
+    runtime = CED1D0031Runtime()
+    poll = max(
+        float(os.getenv("CED1D0031_POLL_SECONDS", "0.5")),
+        0.25,
+    )
     while True:
         try:
-            result = run_cycle()
-            print(json.dumps(result, sort_keys=True), flush=True)
+            result = runtime.cycle()
+            print(
+                json.dumps(result, sort_keys=True),
+                flush=True,
+            )
         except (MicroLiveBlocked, BinanceTradingError) as exc:
             print(
                 json.dumps(
