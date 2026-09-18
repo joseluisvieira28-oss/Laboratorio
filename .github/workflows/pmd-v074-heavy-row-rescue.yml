@@ -1,0 +1,86 @@
+name: PMD-001 V074 Heavy Row Rescue
+on:
+  push:
+    branches: [pumpfun-migration-direction-v0.1]
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/RUN_V074_HEAVY_ROW_RESCUE.trigger'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pumpfun-migration-direction-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip duckdb huggingface_hub requests solders pytz
+      - name: Rebuild frozen manifest
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001
+        run: |
+          python build_source_rebuild_manifest_v01.py --data-dir "$GITHUB_WORKSPACE/heavy_manifest_data" --out "$GITHUB_WORKSPACE/pmd_source_rebuild_manifest_v01.jsonl" --receipt "$GITHUB_WORKSPACE/heavy_manifest_receipt.json"
+          test ! -e "$GITHUB_WORKSPACE/heavy_manifest_data/postgard_outcomes.parquet"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PMD-001-v074-heavy-rescue-manifest
+          retention-days: 30
+          path: |
+            pmd_source_rebuild_manifest_v01.jsonl
+            heavy_manifest_receipt.json
+
+  rescue:
+    needs: prepare
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix:
+        index: [420,421,422,423,1008,1009,1010,1011]
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pumpfun-migration-direction-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip duckdb huggingface_hub requests solders pytz
+      - uses: actions/download-artifact@v4
+        with:
+          name: PMD-001-v074-heavy-rescue-manifest
+          path: heavy-manifest
+      - name: Run one frozen row only
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001
+        run: |
+          python source_rebuild_chain_exact_v07.py             --manifest "$GITHUB_WORKSPACE/heavy-manifest/pmd_source_rebuild_manifest_v01.jsonl"             --full-manifest "$GITHUB_WORKSPACE/heavy-manifest/pmd_source_rebuild_manifest_v01.jsonl"             --out-dir "$GITHUB_WORKSPACE/heavy_row_${{ matrix.index }}"             --rpc-url https://api.mainnet-beta.solana.com             --source-name solana_public_rpc_chain_exact_full_v074_heavy_rescue             --start ${{ matrix.index }} --limit 1 --block-batch-size 4
+      - name: Assert source-only row
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=next(Path(".").glob("heavy_row_*/source_rebuild_summary.jsonl"))
+          rows=[json.loads(x) for x in p.read_text().splitlines() if x.strip()]
+          assert len(rows)==1
+          r=rows[0]
+          assert r.get("outcomes_opened") is False
+          assert r.get("stage")=="CHAIN_EXACT_SOURCE_REBUILD_V07"
+          assert r.get("boundary_parser_version")=="V07_MIGRATE_AND_MIGRATE_V2"
+          print(json.dumps(r,indent=2,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: PMD-001-v074-heavy-rescue-index-${{ matrix.index }}
+          retention-days: 30
+          compression-level: 9
+          if-no-files-found: warn
+          path: |
+            heavy_row_${{ matrix.index }}/source_rebuild_summary.jsonl
+            heavy_row_${{ matrix.index }}/block_hash_ledger.jsonl
+            heavy_row_${{ matrix.index }}/raw/*.jsonl
