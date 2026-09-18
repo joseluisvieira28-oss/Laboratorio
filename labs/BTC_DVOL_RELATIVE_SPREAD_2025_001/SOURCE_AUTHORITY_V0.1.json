@@ -1,0 +1,73 @@
+{
+  "lab_id": "BTC-DVOL-RELATIVE-SPREAD-2025-001",
+  "source_gate_id": "DVOL-RELSPREAD-2025-SOURCE-001",
+  "status": "PRE_ACQUISITION_FROZEN_SOURCE_ONLY",
+  "date_frozen": "2026-09-18",
+  "relationship_to_prior": "Materially different post-closeout hypothesis. 2023-2024 is contaminated development history and is forbidden as confirmation evidence. This gate inspects only the disjoint 2025 block for source adequacy; 2026 remains locked.",
+  "scientific_question": "Does the disjoint 2025 BTCDVOL monthly-futures population contain enough adjacent-contract overlap and simultaneous ordinary public trading activity to support a one-shot relative-basis calendar-spread test?",
+  "source": {
+    "provider": "Deribit official historical API",
+    "metadata_endpoint": "https://history.deribit.com/api/v2/public/get_instrument",
+    "trades_endpoint": "https://history.deribit.com/api/v2/public/get_last_trades_by_instrument_and_time",
+    "candidate_start": "2025-01-01",
+    "candidate_end": "2025-12-31",
+    "lower_bound": "2025-01-01T00:00:00Z",
+    "upper_bound": "2025-12-31T23:59:59.999Z",
+    "protected_start": "2026-01-01T00:00:00Z",
+    "instrument_pattern": "BTCDVOL_USDC-DDMMMYY"
+  },
+  "pair_construction": {
+    "contract_population": "Exact valid BTCDVOL futures discovered by deterministic Wednesday enumeration in 2025.",
+    "pair_rule": "Sort exact confirmed contracts by expiration_timestamp and pair adjacent expiries only.",
+    "overlap_start": "max(near.creation_timestamp, far.creation_timestamp, 2025-01-01T00:00:00Z)",
+    "overlap_end": "min(near.expiration_timestamp, far.expiration_timestamp, 2026-01-01T00:00:00Z)-1ms",
+    "no_pair_selection": true
+  },
+  "ordinary_trade_rule": "Deduplicate by trade_id; exclude block trades, block RFQ and combo trades.",
+  "retained_metrics_only": [
+    "confirmed exact contract count",
+    "metadata integrity",
+    "adjacent pair count",
+    "overlap start/end timestamps",
+    "ordinary public trade count each leg",
+    "unique active UTC days each leg",
+    "common active UTC day count",
+    "field presence coverage",
+    "request hashes/byte counts"
+  ],
+  "qualifying_pair": {
+    "minimum_ordinary_public_trades_each_leg": 20,
+    "minimum_unique_active_utc_days_each_leg": 3,
+    "minimum_common_active_utc_days": 3
+  },
+  "source_gates": {
+    "minimum_confirmed_contracts": 10,
+    "minimum_adjacent_overlap_pairs": 9,
+    "minimum_qualifying_adjacent_pairs": 7,
+    "minimum_aggregate_common_pair_days": 35,
+    "minimum_distinct_near_expiration_quarters": 4,
+    "core_field_coverage_minimum": 1,
+    "exact_metadata_integrity_rate": 1
+  },
+  "classifications": {
+    "pass": "RELATIVE_SPREAD_2025_SOURCE_DATA_PASS",
+    "insufficient": "RELATIVE_SPREAD_2025_SOURCE_DATA_INSUFFICIENT",
+    "technical_failure": "RELATIVE_SPREAD_2025_SOURCE_TECHNICAL_FAILURE",
+    "provenance_failure": "RELATIVE_SPREAD_2025_SOURCE_PROVENANCE_FAILURE"
+  },
+  "firewalls": {
+    "retain_price_values": false,
+    "retain_index_values": false,
+    "compute_relative_basis": false,
+    "compute_spread": false,
+    "compute_returns": false,
+    "compute_pnl": false,
+    "access_2026": false,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "wallet_access": false,
+    "merge_to_main": false
+  },
+  "stop_rule": "If any source gate fails, stop. Do not lower thresholds, select denser pairs, widen beyond exact listed-life overlap, add non-adjacent pairs, or open outcomes under this source gate ID.",
+  "post_pass_rule": "PASS authorizes only a separately frozen 2025 relative-basis one-shot authority. It does not authorize use of 2023-2024 as confirmation evidence or access to 2026."
+}
