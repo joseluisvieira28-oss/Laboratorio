@@ -1,0 +1,107 @@
+{
+  "lab_id": "AAVE-CREDIT-STRESS-001",
+  "discovery_id": "AAVE-CS001-REGRESSION-DISCOVERY-001",
+  "status": "PRE_OUTCOME_FROZEN",
+  "date_frozen": "2026-09-18",
+  "original_pre_discovery_authority": {
+    "drive_id": "1HrJ5Y7MlkxXGZwHKd2RH1O3cUDEaGZmFckfkneH3s9Q",
+    "frozen_date": "2026-09-14",
+    "hypothesis": "Daily increases in Aave V3 Ethereum USDC variableBorrowRate predict weaker next-day BTC returns; beta < 0."
+  },
+  "parent_decode": {
+    "gate": "AAVE-CS001-DECODE-DAILY-001",
+    "canonical_completion_run": 35333801258,
+    "artifact_id": 10541194504,
+    "classification": "DECODE_DAILY_SERIES_PASS",
+    "structural_sha256": "d9fd20432cff441faf7cbc171d904b4dec2cf68b0d10dcdc419522fca5705acc",
+    "first_event_date": "2023-01-27",
+    "last_event_date": "2024-12-31",
+    "daily_rows": 705
+  },
+  "source": {
+    "predictor": "Canonical Aave decode aggregate daily series from parent artifact.",
+    "outcome": "Official Binance Data Vision BTCUSDT 1d monthly klines.",
+    "outcome_archive_root": "https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1d",
+    "discovery_calendar_start": "2023-01-01",
+    "discovery_calendar_end": "2024-12-31",
+    "last_predictor_date_allowed": "2024-12-30",
+    "protected_years": [
+      2025,
+      2026
+    ]
+  },
+  "predictor": {
+    "raw": "raw_variable_borrow_rate_ray_t - raw_variable_borrow_rate_ray_t_minus_1",
+    "positive_scale_divisor": "10000000000000000000000000",
+    "scaled_interpretation": "Aave variable borrow-rate change in percentage-point units (1e25 RAY units = 1 percentage point).",
+    "threshold": null,
+    "clipping": false,
+    "winsorization": false,
+    "smoothing": false,
+    "ranking": false,
+    "regime_filter": false
+  },
+  "outcome": {
+    "formula": "ln(BTCUSDT_daily_close_t_plus_1 / BTCUSDT_daily_close_t)",
+    "timing": "Predictor uses Aave end-of-day state for UTC date t. Outcome is BTC close-to-close from UTC date t to t+1.",
+    "no_intraday_data": true,
+    "no_2025_bar_required": true
+  },
+  "regression": {
+    "model": "Y_t_plus_1 = alpha + beta * X_t + error",
+    "expected_beta_sign": "NEGATIVE",
+    "primary_weighting": "one daily observation = one row",
+    "intercept": true
+  },
+  "inference": {
+    "primary": "UTC calendar-week block bootstrap of OLS beta",
+    "bootstrap_replications": 10000,
+    "bootstrap_seed": 20260918,
+    "bootstrap_block": "ISO UTC calendar week, resampled with replacement",
+    "primary_one_sided_test": "beta < 0",
+    "primary_pass_probability_rule": "bootstrap fraction(beta >= 0) < 0.05",
+    "primary_upper_95_rule": "95th percentile bootstrap beta < 0",
+    "sensitivity": "Newey-West/HAC standard error",
+    "hac_lag_days": 7,
+    "hac_one_sided_p_rule": "p(beta < 0) < 0.05"
+  },
+  "sample_gates": {
+    "minimum_regression_rows": 650,
+    "minimum_nonzero_predictor_rows": 250,
+    "minimum_unique_utc_weeks": 90,
+    "both_calendar_years_present": true
+  },
+  "stability_gates": {
+    "beta_2023_lt": 0,
+    "beta_2024_lt": 0
+  },
+  "discovery_gates_all_required": [
+    "sample_gates_all_pass",
+    "full_sample_beta_lt_zero",
+    "bootstrap_fraction_beta_ge_zero_lt_0.05",
+    "bootstrap_95th_beta_lt_zero",
+    "hac_one_sided_p_lt_0.05",
+    "beta_2023_lt_zero",
+    "beta_2024_lt_zero"
+  ],
+  "classifications": {
+    "pass": "DISCOVERY_PASS_NEGATIVE_CREDIT_BETA",
+    "no_edge": "DISCOVERY_NO_PREDICTIVE_CREDIT_EDGE",
+    "insufficient": "DISCOVERY_SAMPLE_INSUFFICIENT",
+    "technical_failure": "DISCOVERY_TECHNICAL_FAILURE",
+    "provenance_failure": "DISCOVERY_PROVENANCE_FAILURE"
+  },
+  "firewalls": {
+    "strategy_pnl": false,
+    "trading_threshold": false,
+    "post_outcome_filter": false,
+    "access_2025": false,
+    "access_2026": false,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "wallet_access": false,
+    "merge_to_main": false
+  },
+  "no_rescue_rule": "After the canonical outcome is opened, do not change predictor definition, scaling sign, asset, horizon, regression sign, bootstrap, HAC lag, sample gates, year-stability gates or calendar window under this Discovery ID.",
+  "post_pass_rule": "PASS proves only a historical predictive relationship. A separate prospectively frozen trading/execution MVE is required before any after-cost or promotion claim."
+}
