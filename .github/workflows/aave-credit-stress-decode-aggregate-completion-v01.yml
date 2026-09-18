@@ -1,0 +1,42 @@
+name: AAVE Credit Stress Decode Aggregate Completion V0.1
+
+on:
+  push:
+    branches:
+      - aave-credit-stress-decode-v0.1
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/AAVE_CREDIT_STRESS_001_DECODE_AGGREGATE_COMPLETION_TRIGGER_V0.1.txt'
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  aggregate_completion:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: aave-credit-stress-decode-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --disable-pip-version-check requests==2.32.3
+      - name: Download immutable shard artifacts from canonical run
+        uses: actions/download-artifact@v4
+        with:
+          pattern: aave-cs001-decode-v01-shard-*
+          path: artifacts/aave_decode_shards
+          merge-multiple: false
+          github-token: ${{ github.token }}
+          run-id: 35332026520
+      - name: Aggregate canonical daily series
+        run: python Dream-Account-OS-v2.3-PARTIAL/research/aave_credit_stress_001_decode_v01.py --aggregate-dir artifacts/aave_decode_shards
+      - name: Upload canonical decode receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: aave-cs001-decode-v01-canonical-completion-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/aave_credit_stress_decode_v01/
+          retention-days: 90
+          if-no-files-found: error
