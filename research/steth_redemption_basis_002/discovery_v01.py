@@ -29,6 +29,7 @@ SOURCE_ARTIFACT_DIGEST = "sha256:d1c371d5dda3718bb044f9a6b2cd628d8c35cd55af8ba85
 SOURCE_HEAD_SHA = "dbc396c8d161bfd2ed097449d184d9fd0c69987b"
 FINAL_PROTOCOL_COMMIT = "80c9a30d4abcedbc86a951228fb0105c1cd094e9"
 IMPLEMENTATION_FREEZE_COMMIT = "06a0cfaa10b8d4d517e3b35bec076ed429c771fa"
+TRANSPORT_REMEDIATION_COMMIT = "c7883d43e8977e4dca910cffa34a1cf419e0b967"
 
 QUEUE = "0x889edc2edab5f40e902b864ad4d7ade8e412f9b1"
 STETH = "0xae7ab96520de3a18e5e111b5eaab095312d7fe84"
@@ -159,22 +160,61 @@ def rpc_single(endpoint: str, method: str, params: list[Any], stats: Counter[str
     return out.get("result")
 
 
-def rpc_batch(endpoint: str, requests_: list[tuple[str, list[Any]]], stats: Counter[str]) -> list[Any]:
-    payload = [
-        {"jsonrpc": "2.0", "id": i, "method": method, "params": params}
-        for i, (method, params) in enumerate(requests_)
-    ]
-    out = rpc_json(endpoint, payload, stats)
-    if not isinstance(out, list):
-        raise RuntimeError("batch RPC non-list")
-    byid = {x.get("id"): x for x in out if isinstance(x, dict)}
-    vals = []
-    for i in range(len(payload)):
-        x = byid.get(i)
-        if not x or x.get("error") is not None:
-            raise RuntimeError(f"batch RPC item {i} failed: {None if not x else x.get('error')}")
-        vals.append(x.get("result"))
-    return vals
+def rpc_batch(endpoint: str, requests_: list[tuple[str, list[Any]]], stats: Counter[str], depth: int = 0) -> list[Any]:
+    if not requests_:
+        return []
+    transient_codes = {429, -32005, -32016, -32000}
+    max_attempts = 6
+    last_error = None
+
+    for attempt in range(max_attempts):
+        payload = [
+            {"jsonrpc": "2.0", "id": i, "method": method, "params": params}
+            for i, (method, params) in enumerate(requests_)
+        ]
+        out = rpc_json(endpoint, payload, stats)
+        if not isinstance(out, list):
+            last_error = RuntimeError("batch RPC non-list")
+        else:
+            byid = {x.get("id"): x for x in out if isinstance(x, dict)}
+            vals = []
+            transient_item_error = False
+            terminal_item_error = None
+            for i in range(len(payload)):
+                x = byid.get(i)
+                if not x:
+                    terminal_item_error = RuntimeError(f"batch RPC item {i} missing")
+                    break
+                err = x.get("error")
+                if err is not None:
+                    code = err.get("code") if isinstance(err, dict) else None
+                    msg = str(err.get("message", "")) if isinstance(err, dict) else str(err)
+                    if code in transient_codes or "rate" in msg.lower() or "throughput" in msg.lower() or "compute units" in msg.lower():
+                        transient_item_error = True
+                        stats["rpc_batch_transient_item_errors"] += 1
+                        break
+                    terminal_item_error = RuntimeError(f"batch RPC item {i} failed: {err}")
+                    break
+                vals.append(x.get("result"))
+            if terminal_item_error is None and not transient_item_error and len(vals) == len(payload):
+                return vals
+            if terminal_item_error is not None:
+                raise terminal_item_error
+            last_error = RuntimeError("transient batch item throttling")
+
+        if attempt < max_attempts - 1:
+            delay = min(20.0, 1.5 * (2 ** attempt))
+            stats["rpc_batch_transient_retries"] += 1
+            time.sleep(delay)
+
+    if len(requests_) > 1 and depth < 8:
+        mid = len(requests_) // 2
+        stats["rpc_batch_recursive_splits"] += 1
+        left = rpc_batch(endpoint, requests_[:mid], stats, depth + 1)
+        right = rpc_batch(endpoint, requests_[mid:], stats, depth + 1)
+        return left + right
+
+    raise RuntimeError(f"batch RPC transient throttling exhausted after retries: {last_error}")
 
 
 def decode_uint_results(vals: list[Any]) -> tuple[int, ...]:
@@ -731,6 +771,7 @@ def self_test() -> None:
     apr = trailing_apr(1_000_000, synthetic_rebases)
     assert apr is not None and apr > 0
     assert calldata_get_dy().startswith("0x") and len(calldata_get_dy()) == 2 + 8 + 64 * 3
+    assert TRANSPORT_REMEDIATION_COMMIT == "c7883d43e8977e4dca910cffa34a1cf419e0b967"
     print(json.dumps({
         "classification": "STETH002_DISCOVERY_SELF_TEST_PASS",
         "checkpoint_slot_distinct": True,
@@ -755,6 +796,7 @@ def run_discovery() -> int:
             "source_head_sha": SOURCE_HEAD_SHA,
             "final_protocol_commit": FINAL_PROTOCOL_COMMIT,
             "implementation_freeze_commit": IMPLEMENTATION_FREEZE_COMMIT,
+            "transport_remediation_commit": TRANSPORT_REMEDIATION_COMMIT,
         },
         "safety": {
             "accessed_2025_or_2026": False,
