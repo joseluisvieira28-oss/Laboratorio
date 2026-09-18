@@ -9,6 +9,8 @@ on:
       - '.github/workflows/ced-1d-2025-funding-gate.yml'
       - 'Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/CED_1D_2025_FUNDING_SOURCE_MANIFEST_V0.1.json'
       - 'Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/ced_1d_2025_funding_gate_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/ced_1d_2025_funding_archive_gate_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/CED_1D_2025_FUNDING_SOURCE_TRANSPORT_AMENDMENT_V0.1.json'
 
 permissions:
   contents: read
@@ -22,11 +24,13 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Compile funding gate
-        run: python -m py_compile Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/ced_1d_2025_funding_gate_v01.py
-      - name: Fetch official 2025 funding records only
+      - name: Compile funding gates
         run: |
-          python Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/ced_1d_2025_funding_gate_v01.py \
+          python -m py_compile Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/ced_1d_2025_funding_gate_v01.py
+          python -m py_compile Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/ced_1d_2025_funding_archive_gate_v01.py
+      - name: Fetch checksum-verified official 2025 funding archives only
+        run: |
+          python Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/ced_1d_2025_funding_archive_gate_v01.py \
             --manifest Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/CED_1D_2025_FUNDING_SOURCE_MANIFEST_V0.1.json \
             --output "$RUNNER_TEMP/ced1d-funding-gate"
       - name: Upload funding source receipt
