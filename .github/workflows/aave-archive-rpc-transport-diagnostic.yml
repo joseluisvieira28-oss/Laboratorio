@@ -1,0 +1,37 @@
+name: AAVE Liquidation Overhang 001 — Archive RPC Transport Diagnostic
+
+on:
+  push:
+    branches:
+      - aave-liquidation-overhang-v0.1
+    paths:
+      - 'research/aave_liquidation_overhang/ARCHIVE_RPC_TRANSPORT_DIAG_TRIGGER.txt'
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download exact V0.2B feasibility receipt
+        uses: actions/download-artifact@v4
+        with:
+          name: AAVE_ARCHIVE_RPC_REPLACEMENT_SOURCE_FEASIBILITY_V0_2B
+          path: downloaded_archive_feas
+          github-token: ${{ github.token }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: '35377623033'
+      - run: python research/aave_liquidation_overhang/archive_rpc_feasibility_transport_diagnostic.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AAVE_ARCHIVE_RPC_TRANSPORT_DIAGNOSTIC
+          path: archive_rpc_feas_diag_output/AAVE_ARCHIVE_RPC_FEASIBILITY_TRANSPORT_DIAGNOSTIC.json
+          retention-days: 30
