@@ -31,11 +31,46 @@ from .dh03_archive_watcher import run_once as run_dh03_archive_shadow
 
 
 class CachingBinanceOfficialLaunchpoolSource(BinanceOfficialLaunchpoolSource):
-    """Caches immutable detail responses in-process; the catalog itself is always refreshed."""
+    """Rate-limit-aware official CMS cache. Never used as execution authority."""
 
     def __init__(self, timeout: int = 15) -> None:
         super().__init__(timeout=timeout)
         self._detail_cache: dict[str, tuple[Any, bytes]] = {}
+        self._catalog_cache: tuple[Any, bytes] | None = None
+        self._catalog_cached_at: float | None = None
+        self._catalog_ttl_seconds = 600.0
+        self._catalog_backoff_until = 0.0
+        self._catalog_failures = 0
+        self.catalog_status = "STARTING"
+
+    def catalog(self) -> tuple[Any, bytes]:
+        now = time.monotonic()
+        if (
+            self._catalog_cache is not None
+            and self._catalog_cached_at is not None
+            and now - self._catalog_cached_at < self._catalog_ttl_seconds
+        ):
+            self.catalog_status = "CACHE_FRESH"
+            return self._catalog_cache
+        if self._catalog_cache is not None and now < self._catalog_backoff_until:
+            self.catalog_status = "CACHE_BACKOFF_STALE"
+            return self._catalog_cache
+        try:
+            result = super().catalog()
+        except Exception as exc:
+            if "429" in str(exc) and self._catalog_cache is not None:
+                self._catalog_failures += 1
+                backoff = min(3600.0, 300.0 * (2 ** (self._catalog_failures - 1)))
+                self._catalog_backoff_until = now + backoff
+                self.catalog_status = "CACHE_BACKOFF_STALE"
+                return self._catalog_cache
+            raise
+        self._catalog_cache = result
+        self._catalog_cached_at = now
+        self._catalog_backoff_until = 0.0
+        self._catalog_failures = 0
+        self.catalog_status = "LIVE"
+        return result
 
     def detail(self, article_code: str) -> tuple[Any, bytes]:
         cached = self._detail_cache.get(article_code)
@@ -181,6 +216,10 @@ class ForwardShadowRuntime:
 
         try:
             bnb_state = self.bnb.run_once(now_ms=now_ms)
+            bnb_state["source_transport_status"] = getattr(
+                self.bnb.source, "catalog_status", "UNKNOWN"
+            )
+            bnb_state["source_transport_execution_authority"] = False
         except Exception as exc:
             bnb_state = {"status": "FAIL_CLOSED", "error": f"{type(exc).__name__}:{exc}"}
             errors["bnb_launchpool"] = bnb_state["error"]
