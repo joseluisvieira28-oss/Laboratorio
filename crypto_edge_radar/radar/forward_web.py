@@ -258,8 +258,8 @@ class ForwardShadowRuntime:
 
     def run_loop(self, *, interval_seconds: float) -> None:
         # The old V0.5 canary start command passes 30s. Do not hammer official CMS;
-        # clamp the public-shadow poll interval to a conservative two minutes.
-        interval_seconds = max(float(interval_seconds), 120.0)
+        # Operational latency policy: 30s floor. Scientific signal/timing rules are unchanged.
+        interval_seconds = max(float(interval_seconds), 30.0)
         while True:
             started = time.monotonic()
             try:
