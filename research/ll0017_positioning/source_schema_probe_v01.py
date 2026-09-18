@@ -225,6 +225,7 @@ def main() -> int:
     receipt_path.write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(json.dumps({
         "classification": classification,
+        "failure": failure,
         "probe_count": len(receipts),
         "header": common_header,
         "ratio_values_parsed": False,
