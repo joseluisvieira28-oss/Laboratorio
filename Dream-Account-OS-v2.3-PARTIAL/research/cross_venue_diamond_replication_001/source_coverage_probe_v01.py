@@ -33,20 +33,20 @@ def sha256_json(obj) -> str:
     return hashlib.sha256(b).hexdigest()
 
 
-def get_json(base: str, params: dict, retries: int = 5):
+def get_json(base: str, params: dict, retries: int = 2):
     url = base + "?" + urllib.parse.urlencode(params)
     last = None
     for k in range(retries):
         try:
             req = urllib.request.Request(url, headers={"User-Agent": UA, "Accept": "application/json"})
-            with urllib.request.urlopen(req, timeout=45) as r:
+            with urllib.request.urlopen(req, timeout=12) as r:
                 if r.status != 200:
                     raise RuntimeError(f"HTTP_{r.status}")
                 return json.loads(r.read().decode("utf-8"))
         except Exception as e:
             last = e
             if k + 1 < retries:
-                time.sleep(min(8, 2 ** k))
+                time.sleep(min(1.0, 0.25 * (2 ** k)))
     raise RuntimeError(f"GET_FAILED:{base}:{params}:{last}")
 
 
@@ -234,8 +234,11 @@ def main() -> int:
         "venues": {},
     }
 
-    bybit = [probe_bybit_symbol(s) for s in SYMBOLS]
-    okx = [probe_okx_symbol(s) for s in SYMBOLS]
+    # Transport-only acceleration: exact same frozen probes, evaluated per symbol in parallel.
+    # This does not change any scientific source requirement or inspect outcomes.
+    with ThreadPoolExecutor(max_workers=12) as pool:
+        bybit = list(pool.map(probe_bybit_symbol, SYMBOLS))
+        okx = list(pool.map(probe_okx_symbol, SYMBOLS))
     receipt["venues"]["BYBIT_LINEAR_USDT"] = {
         "symbols": bybit,
         "venue_pass": all(x["coverage_pass"] for x in bybit),
