@@ -5,7 +5,6 @@ import json
 import time
 import urllib.parse
 import urllib.request
-from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -34,21 +33,32 @@ def sha256_json(obj) -> str:
     return hashlib.sha256(b).hexdigest()
 
 
-def get_json(base: str, params: dict, retries: int = 2):
+def get_json(base: str, params: dict, retries: int = 3):
     url = base + "?" + urllib.parse.urlencode(params)
     last = None
     for k in range(retries):
         try:
+            time.sleep(0.15)
             req = urllib.request.Request(url, headers={"User-Agent": UA, "Accept": "application/json"})
-            with urllib.request.urlopen(req, timeout=12) as r:
+            with urllib.request.urlopen(req, timeout=15) as r:
                 if r.status != 200:
                     raise RuntimeError(f"HTTP_{r.status}")
                 return json.loads(r.read().decode("utf-8"))
         except Exception as e:
             last = e
             if k + 1 < retries:
-                time.sleep(min(1.0, 0.25 * (2 ** k)))
+                time.sleep(1.0 * (2 ** k))
     raise RuntimeError(f"GET_FAILED:{base}:{params}:{last}")
+
+
+def get_bybit_json(path: str, params: dict):
+    last = None
+    for host in ("https://api.bybit.com", "https://api.bytick.com"):
+        try:
+            return get_json(host + path, params)
+        except Exception as e:
+            last = e
+    raise RuntimeError(f"BYBIT_OFFICIAL_HOSTS_FAILED:{path}:{params}:{last}")
 
 
 def summarize_times(times: list[int]) -> dict:
@@ -70,8 +80,8 @@ def probe_bybit_symbol(symbol: str) -> dict:
     for a in ANCHORS:
         t = ms(a)
         try:
-            j = get_json(
-                "https://api.bybit.com/v5/market/kline",
+            j = get_bybit_json(
+                "/v5/market/kline",
                 {
                     "category": "linear",
                     "symbol": symbol,
@@ -120,8 +130,8 @@ def probe_bybit_symbol(symbol: str) -> dict:
     for a in (ANCHORS[0], ANCHORS[-1]):
         t = ms(a)
         try:
-            j = get_json(
-                "https://api.bybit.com/v5/market/funding/history",
+            j = get_bybit_json(
+                "/v5/market/funding/history",
                 {
                     "category": "linear",
                     "symbol": symbol,
@@ -233,13 +243,13 @@ def main() -> int:
         "anchors": ANCHORS,
         "symbols": SYMBOLS,
         "venues": {},
+        "transport_remediation": {"serialized_requests": True, "bybit_official_host_fallback": ["api.bybit.com", "api.bytick.com"], "okx_shared_ip_throttle_seconds": 0.15},
     }
 
-    # Transport-only acceleration: exact same frozen probes, evaluated per symbol in parallel.
-    # This does not change any scientific source requirement or inspect outcomes.
-    with ThreadPoolExecutor(max_workers=12) as pool:
-        bybit = list(pool.map(probe_bybit_symbol, SYMBOLS))
-        okx = list(pool.map(probe_okx_symbol, SYMBOLS))
+    # Transport remediation only: serialize requests to respect shared-IP venue limits.
+    # No scientific source requirement, symbol, anchor, timeframe, or outcome rule changes.
+    bybit = [probe_bybit_symbol(s) for s in SYMBOLS]
+    okx = [probe_okx_symbol(s) for s in SYMBOLS]
     receipt["venues"]["BYBIT_LINEAR_USDT"] = {
         "symbols": bybit,
         "venue_pass": all(x["coverage_pass"] for x in bybit),
