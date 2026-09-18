@@ -1,0 +1,53 @@
+name: PMD-001 V074 Source Stitch Recovery
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  stitch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pumpfun-migration-direction-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install manifest dependencies
+        run: python -m pip install --upgrade pip duckdb huggingface_hub requests solders pytz
+      - name: Rebuild frozen manifest
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001
+        run: |
+          python build_source_rebuild_manifest_v01.py --data-dir "$GITHUB_WORKSPACE/stitch_manifest_data" --out "$GITHUB_WORKSPACE/pmd_source_rebuild_manifest_v01.jsonl" --receipt "$GITHUB_WORKSPACE/stitch_manifest_receipt.json"
+          test ! -e "$GITHUB_WORKSPACE/stitch_manifest_data/postgard_outcomes.parquet"
+      - name: Download distributed primary source artifacts
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: 35320091340
+          pattern: PMD-001-v074-fullsource-shard-*
+          path: primary-source
+          merge-multiple: false
+      - name: Download heavy-row rescue artifacts
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: 35320300423
+          pattern: PMD-001-v074-heavy-rescue-index-*
+          path: rescue-source
+          merge-multiple: false
+      - name: Stitch exact source evidence
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001
+        run: |
+          python stitch_chain_exact_source_v074.py             --manifest "$GITHUB_WORKSPACE/pmd_source_rebuild_manifest_v01.jsonl"             --primary-root "$GITHUB_WORKSPACE/primary-source"             --rescue-root "$GITHUB_WORKSPACE/rescue-source"             --out-dir "$GITHUB_WORKSPACE/stitched-source"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: PMD-001-v074-stitched-source
+          retention-days: 30
+          compression-level: 9
+          path: stitched-source/
