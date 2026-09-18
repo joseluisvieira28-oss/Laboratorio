@@ -12,7 +12,7 @@ from radar.dh03_12h_local import DH03LocalCollector, default_paths, require_dh03
 from radar.local_forward import LocalForwardSupervisor
 
 
-BUILD_ID = "v0.13.1-win-six-motor-clock-guard"
+BUILD_ID = "v0.13.2-win-six-motor-runtime-truth"
 
 
 def _resource_path(name: str) -> str:
