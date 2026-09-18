@@ -90,3 +90,48 @@ def warmup_source_probe(day:date)->dict[str,Any]:
         "orders_created":False,
         "exchange_mutation_performed":False,
     }
+
+
+def load_verified_daily_1m_rows(symbol:str,day:date,timeout:int=20)->dict[str,Any]:
+    """Checksum-verified full 1m day for deterministic shadow reconstruction."""
+    symbol=symbol.upper()
+    if symbol not in SYMBOLS:
+        raise BinanceArchiveError("symbol outside frozen universe")
+    zip_url=_url(symbol,day,"")
+    checksum_url=_url(symbol,day,".CHECKSUM")
+    raw=_read_url(zip_url,timeout)
+    check=_read_url(checksum_url,timeout).decode("utf-8").strip().split()
+    if not check:
+        raise BinanceArchiveError("empty checksum receipt")
+    expected=check[0].lower()
+    actual=hashlib.sha256(raw).hexdigest()
+    if expected!=actual:
+        raise BinanceArchiveError(f"checksum mismatch:{symbol}:{day}")
+    with zipfile.ZipFile(io.BytesIO(raw)) as zf:
+        names=[n for n in zf.namelist() if not n.endswith("/")]
+        if len(names)!=1:
+            raise BinanceArchiveError("unexpected ZIP members")
+        rows=list(csv.reader(io.TextIOWrapper(zf.open(names[0]),encoding="utf-8")))
+    if rows and rows[0] and str(rows[0][0]).strip().lower() in {"open_time","open time"}:
+        rows=rows[1:]
+    if len(rows)!=1440:
+        raise BinanceArchiveError(f"expected 1440 one-minute rows, got {len(rows)}")
+    parsed=[]
+    prev=None
+    for row in rows:
+        if len(row)<7:
+            raise BinanceArchiveError("malformed kline row")
+        t=int(row[0]); o=float(row[1]); h=float(row[2]); l=float(row[3]); close=float(row[4])
+        if prev is not None and t!=prev+60_000:
+            raise BinanceArchiveError("one-minute continuity gap")
+        if min(o,h,l,close)<=0 or h<max(o,close,l) or l>min(o,close,h):
+            raise BinanceArchiveError("invalid OHLC")
+        prev=t
+        parsed.append((t,o,h,l,close))
+    return {
+        "symbol":symbol,
+        "day":day.isoformat(),
+        "sha256":actual,
+        "checksum_verified":True,
+        "rows":parsed,
+    }
