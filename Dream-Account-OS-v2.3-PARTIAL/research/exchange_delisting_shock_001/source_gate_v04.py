@@ -23,7 +23,7 @@ def semantic_token_identities(body):
     raw=html.unescape(body).translate({ord(c):None for c in ZERO_WIDTH}).replace('\xa0',' ')
     txt=v2.textify(raw)
     # Bound parsing to the semantic full-token declaration, never to the pair list.
-    anchor=re.search(r'(?is)decided\s+to\s+delist\s+and\s+cease\s+trading\s+on\s+all(?:\s+spot)?\s+trading\s+pairs\s+for\s+the\s+following\s+token(?:\(s\)|s)?\b',txt)
+    anchor=re.search(r'(?is)decided\\s+to\\s+delist\\s+and\\s+cease\\s+trading\\s+on\\s+all(?:\\s+spot)?\\s+trading\\s+pairs\\s+for\\s+the\\s+following\\s+token(?:\\(s\\)|s)?(?=\\s|:)',txt)
     if not anchor:
         return {}
     tail=txt[anchor.end():]
