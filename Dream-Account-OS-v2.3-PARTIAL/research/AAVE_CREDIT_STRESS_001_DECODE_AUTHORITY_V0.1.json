@@ -1,0 +1,82 @@
+{
+  "lab_id": "AAVE-CREDIT-STRESS-001",
+  "decode_gate_id": "AAVE-CS001-DECODE-DAILY-001",
+  "status": "PRE_DECODE_FROZEN_OUTCOME_BLIND",
+  "date_frozen": "2026-09-18",
+  "parent_source_gate": "AAVE-CS001-SOURCE-002-SQD",
+  "parent_source_run": 35315587454,
+  "parent_source_result": "SOURCE_DATA_PASS",
+  "source": {
+    "transport": "SQD Ethereum mainnet Portal",
+    "endpoint": "https://portal.sqd.dev/datasets/ethereum-mainnet/stream",
+    "from_block": 16490000,
+    "to_block": 21525890,
+    "maximum_timestamp_utc": "2024-12-31T23:59:59Z",
+    "pool": "0x87870bca3f3fd6335c3f4ce8392d69350b4fa4e2",
+    "topic0": "0x804c9b842b2748a22bb64b345453a3de7ca54a6ca45ce00d415894979e22897a",
+    "usdc_topic1": "0x000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+  },
+  "abi": {
+    "event": "ReserveDataUpdated(address indexed reserve,uint256 liquidityRate,uint256 stableBorrowRate,uint256 variableBorrowRate,uint256 liquidityIndex,uint256 variableBorrowIndex)",
+    "nonindexed_words": [
+      "liquidityRate",
+      "stableBorrowRate",
+      "variableBorrowRate",
+      "liquidityIndex",
+      "variableBorrowIndex"
+    ],
+    "variable_borrow_rate_word_index_zero_based": 2,
+    "ray_scale": "1000000000000000000000000000",
+    "expected_data_bytes": 160
+  },
+  "daily_series_rule": {
+    "discovery_calendar_start": "2023-01-01",
+    "discovery_calendar_end": "2024-12-31",
+    "daily_observation": "For each UTC date, use the final valid USDC ReserveDataUpdated event at or before 23:59:59 UTC.",
+    "missing_day": "After the first valid historical observation, carry forward the most recent prior valid variableBorrowRate.",
+    "pre_first_observation": "No backfill before the first valid Aave V3 USDC observation; these dates are structurally unavailable and excluded before any BTC outcome is opened.",
+    "predictor_later": "Arithmetic change raw_rate_t - raw_rate_t_minus_1; exact positive scaling allowed only for numerical conditioning.",
+    "no_interpolation": true,
+    "no_smoothing": true,
+    "no_threshold": true,
+    "no_clipping": true,
+    "no_winsorization": true
+  },
+  "gates": {
+    "exact_terminal_block_required": true,
+    "duplicate_log_identity_allowed": false,
+    "every_matching_log_exact_five_words": true,
+    "every_matching_log_topics_match": true,
+    "minimum_events": 100,
+    "minimum_daily_rows_after_first_observation": 600,
+    "zero_missing_dates_after_first_observation": true
+  },
+  "classifications": {
+    "pass": "DECODE_DAILY_SERIES_PASS",
+    "insufficient": "DECODE_DAILY_SERIES_INSUFFICIENT",
+    "technical_failure": "DECODE_TECHNICAL_FAILURE",
+    "provenance_failure": "DECODE_PROVENANCE_FAILURE"
+  },
+  "retained_output": [
+    "daily UTC date",
+    "raw variableBorrowRate RAY integer as decimal string",
+    "whether date had a new on-chain event",
+    "source event block/timestamp/logIndex for event days",
+    "event counts and structural hashes",
+    "first/last event dates"
+  ],
+  "firewalls": {
+    "btc_market_data_opened": false,
+    "btc_returns_computed": false,
+    "regression_computed": false,
+    "bootstrap_computed": false,
+    "pnl_computed": false,
+    "access_2025": false,
+    "access_2026": false,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "wallet_access": false,
+    "merge_to_main": false
+  },
+  "post_pass_rule": "PASS authorizes only freezing/executing the original predeclared 2023-2024 regression Discovery under separate explicit user authorization. It does not authorize 2025."
+}
