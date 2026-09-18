@@ -1,0 +1,97 @@
+name: CED 1D AVAX20 V3 Execution Feasibility
+
+on:
+  push:
+    branches:
+      - ced-1d-v3-byte-recovery-2026-09-17
+    paths:
+      - '.github/workflows/ced-1d-avax20-v3-execution-feasibility.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  execution-feasibility:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      ROOT: Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3
+      ONE_SHOT_ARTIFACT_ID: "10545241942"
+      ONE_SHOT_ARTIFACT_SHA256: "43984d73541085b76c9071e959de34284a8940e5968e10f04664cf56369987b5"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Assert frozen implementation identity
+        run: |
+          test -f governance/CED_1D_AVAX20_V3_EXECUTION_FEASIBILITY_FREEZE_2026-09-18.md
+          test -f governance/CED_1D_AVAX20_V3_EXECUTION_IMPLEMENTATION_FREEZE_2026-09-18.md
+          git_hash_file () { git hash-object "$1"; }
+          test "$(git_hash_file "$ROOT/ced_1d_avax20_execution_feasibility_v01.py")" = "c9766ba83fe878f2b76e8b2fa58393566f2eaf80"
+          test "$(git_hash_file "$ROOT/tests/test_ced_1d_avax20_execution_feasibility_v01.py")" = "084aec9ebeb13773f57adfeae3775cb618e3db83"
+          python -m py_compile "$ROOT/ced_1d_avax20_execution_feasibility_v01.py"
+          python "$ROOT/tests/test_ced_1d_avax20_execution_feasibility_v01.py"
+          echo EXECUTION_IMPLEMENTATION_IDENTITY_PASS
+
+      - name: Download immutable 2025 one-shot artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/one-shot"
+          curl -fL             -H "Authorization: Bearer $GH_TOKEN"             -H "Accept: application/vnd.github+json"             "https://api.github.com/repos/${{ github.repository }}/actions/artifacts/$ONE_SHOT_ARTIFACT_ID/zip"             -o "$RUNNER_TEMP/one-shot.zip"
+          GOT="$(sha256sum "$RUNNER_TEMP/one-shot.zip" | awk '{print $1}')"
+          echo "artifact_sha256=$GOT"
+          test "$GOT" = "$ONE_SHOT_ARTIFACT_SHA256"
+          unzip -q "$RUNNER_TEMP/one-shot.zip" -d "$RUNNER_TEMP/one-shot"
+          LEDGER="$(find "$RUNNER_TEMP/one-shot" -name CED1D_2025_EVENT_LEDGER.csv -type f | head -1)"
+          test -n "$LEDGER"
+          echo "LEDGER=$LEDGER" >> "$GITHUB_ENV"
+          echo IMMUTABLE_ONE_SHOT_ARTIFACT_PASS
+
+      - name: Execute frozen AVAX20 execution feasibility audit
+        run: |
+          python "$ROOT/ced_1d_avax20_execution_feasibility_v01.py"             --ledger "$LEDGER"             --output "$RUNNER_TEMP/execution"
+
+      - name: Assert 2026/live firewall
+        run: |
+          python - <<'PY'
+          import json,os
+          p=os.path.join(os.environ['RUNNER_TEMP'],'execution','CED_1D_AVAX20_V3_EXECUTION_FEASIBILITY_RECEIPT_V0.1.json')
+          x=json.load(open(p))
+          assert x['candidate']=='CED1D-0031',x
+          assert x['metrics']['events_required']==357,x
+          assert x['metrics']['legs_required']==714,x
+          g=x['governance']
+          assert g['year_2026_accessed'] is False,g
+          assert g['live_trading'] is False,g
+          assert g['orders'] is False,g
+          assert g['exchange_mutation'] is False,g
+          assert g['maker_assumption'] is False,g
+          assert g['signal_changed'] is False,g
+          assert g['events_changed'] is False,g
+          print('EXECUTION_FIREWALL_PASS')
+          print('VERDICT',x['status'])
+          PY
+
+      - name: Package evidence
+        if: always()
+        run: |
+          mkdir -p "$RUNNER_TEMP/final"
+          cp "$RUNNER_TEMP/execution/"* "$RUNNER_TEMP/final/" 2>/dev/null || true
+          cp governance/CED_1D_AVAX20_V3_EXECUTION_FEASIBILITY_FREEZE_2026-09-18.md "$RUNNER_TEMP/final/"
+          cp governance/CED_1D_AVAX20_V3_EXECUTION_IMPLEMENTATION_FREEZE_2026-09-18.md "$RUNNER_TEMP/final/"
+          find "$RUNNER_TEMP/final" -type f -print0 | sort -z | xargs -0 sha256sum > "$RUNNER_TEMP/final/ARTIFACT_MEMBER_SHA256.txt" || true
+
+      - name: Upload execution evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ced1d-avax20-v3-execution-feasibility
+          path: ${{ runner.temp }}/final
+          if-no-files-found: error
+          retention-days: 30
