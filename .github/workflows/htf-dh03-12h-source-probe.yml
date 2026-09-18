@@ -15,6 +15,9 @@ on:
       - 'crypto_edge_radar/HTF_DH03_12H_STANDALONE_FORWARD_V1_FUNDING_RECONCILIATION_AMENDMENT_02.json'
       - 'crypto_edge_radar/radar/dh03_12h_forward.py'
       - 'crypto_edge_radar/tests/test_dh03_12h_forward.py'
+      - 'crypto_edge_radar/radar/dh03_archive_watcher.py'
+      - 'crypto_edge_radar/tests/test_dh03_archive_watcher.py'
+      - 'crypto_edge_radar/HTF_DH03_12H_STANDALONE_FORWARD_V1_ARCHIVE_SHADOW_FREEZE.json'
       - 'crypto_edge_radar/HTF_DH03_12H_STANDALONE_FORWARD_V1_BOUNDARY_CLARIFICATION_01.json'
       - 'crypto_edge_radar/HTF_DH03_12H_STANDALONE_FORWARD_V1_FREEZE.json'
       - '.github/workflows/htf-dh03-12h-source-probe.yml'
@@ -41,7 +44,8 @@ jobs:
       - name: Compile and exact-rule tests
         run: |
           python -m compileall radar tests
-          python -m unittest tests.test_dh03_12h_forward -v
+          python -m unittest tests.test_dh03_12h_forward tests.test_dh03_archive_watcher -v
+          python -m unittest discover -s tests -v
       - name: Public WebSocket source probe after frozen transport amendment
         run: |
           mkdir -p dh03_probe
