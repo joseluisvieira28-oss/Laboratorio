@@ -1,0 +1,115 @@
+name: CED1D-0031 Prospective Shadow Collector
+
+on:
+  workflow_dispatch:
+    inputs:
+      through_signal_day:
+        description: 'Inclusive eligible signal day YYYY-MM-DD; collector enforces <= UTC today - 3 days'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      ROOT: Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3
+      COLLECTOR_BLOB: "bb599675431ec516daa5e0a316a202c186e9852e"
+      TEST_BLOB: "1e7a3e4b370fbfb556dd9af8d754c2b1384f1e1c"
+      ACTIVATION_BLOB: "f524aebd3cbae48b6dd916b1fba87aa88d94d2f4"
+      FREEZE_BLOB: "a7ae6e8da9c9d13543330fb372f4e9c277d82b0b"
+      FIRST_SIGNAL_DAY: "2026-09-18"
+      FIRST_COMPLETION: "2026-09-19T00:00:00Z"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Assert frozen implementation identity
+        run: |
+          test "$(git hash-object "$ROOT/ced1d_0031_prospective_shadow_collector_v01.py")" = "$COLLECTOR_BLOB"
+          test "$(git hash-object "$ROOT/tests/test_ced1d_0031_prospective_shadow_collector_v01.py")" = "$TEST_BLOB"
+          test "$(git hash-object "governance/CED1D_0031_TIER2_SHADOW_ACTIVATION_AUTHORITY_V0.2_2026-09-18.json")" = "$ACTIVATION_BLOB"
+          test "$(git hash-object "governance/CED1D_0031_PROSPECTIVE_SHADOW_COLLECTOR_IMPLEMENTATION_FREEZE_V0.1_2026-09-18.md")" = "$FREEZE_BLOB"
+          python -m py_compile "$ROOT/ced1d_0031_prospective_shadow_collector_v01.py"
+          python "$ROOT/tests/test_ced1d_0031_prospective_shadow_collector_v01.py"
+          test "$(sha256sum "$ROOT/recovered_authority/CED-1D-V1-RUNNER-FREEZE-V0.3.zip" | awk '{print $1}')" = "df625d0d4a05c55ba34ca51514d31fd61636ff0a823567585c2d02afa0877958"
+          echo SHADOW_COLLECTOR_IMPLEMENTATION_IDENTITY_PASS
+
+      - name: Assert prospective boundary before any network access
+        env:
+          THROUGH_SIGNAL_DAY: ${{ inputs.through_signal_day }}
+        run: |
+          python - <<'PY'
+          import os
+          from datetime import date,datetime,timedelta,timezone
+          through=date.fromisoformat(os.environ["THROUGH_SIGNAL_DAY"])
+          first=date.fromisoformat("2026-09-18")
+          today=datetime.now(timezone.utc).date()
+          assert through>=first,(through,first)
+          assert through<=today-timedelta(days=3),(through,today)
+          print("PROSPECTIVE_BOUNDARY_PASS",through.isoformat(),today.isoformat())
+          print("NO_PRE_BOUNDARY_PERFORMANCE_BACKFILL")
+          PY
+
+      - name: Collect frozen prospective shadow evidence
+        id: collector
+        continue-on-error: true
+        env:
+          THROUGH_SIGNAL_DAY: ${{ inputs.through_signal_day }}
+        run: |
+          python "$ROOT/ced1d_0031_prospective_shadow_collector_v01.py"             --activation "governance/CED1D_0031_TIER2_SHADOW_ACTIVATION_AUTHORITY_V0.2_2026-09-18.json"             --v03-runner-zip "$ROOT/recovered_authority/CED-1D-V1-RUNNER-FREEZE-V0.3.zip"             --through-signal-day "$THROUGH_SIGNAL_DAY"             --output "$RUNNER_TEMP/shadow"
+
+      - name: Assert governance receipt
+        if: always()
+        run: |
+          test -f "$RUNNER_TEMP/shadow/CED1D_0031_PROSPECTIVE_SHADOW_RECEIPT_V0.1.json"
+          python - <<'PY'
+          import json,os
+          p=os.path.join(os.environ["RUNNER_TEMP"],"shadow","CED1D_0031_PROSPECTIVE_SHADOW_RECEIPT_V0.1.json")
+          x=json.load(open(p))
+          assert x["candidate"]=="CED1D-0031",x
+          g=x["governance"]
+          assert g["pre_boundary_performance_backfill"] is False,g
+          assert g["live_trading"] is False,g
+          assert g["orders"] is False,g
+          assert g["wallets"] is False,g
+          assert g["exchange_mutation"] is False,g
+          assert g["authenticated_trading_endpoints"] is False,g
+          assert g["parameter_changes"] is False,g
+          assert g["merge_main"] is False,g
+          print("SHADOW_GOVERNANCE_FIREWALL_PASS")
+          print("STATUS",x["status"])
+          if x["status"]=="SHADOW_COLLECTION_COMPLETE":
+              print("ROUTING",x["metrics"]["routing"])
+              print("RESOLVED_EVENTS",x["metrics"]["resolved_trade_events"])
+              print("COMPLETE_WEEKS",x["metrics"]["complete_utc_signal_weeks"])
+          PY
+
+      - name: Package evidence
+        if: always()
+        run: |
+          mkdir -p "$RUNNER_TEMP/final"
+          cp "$RUNNER_TEMP/shadow/"* "$RUNNER_TEMP/final/" 2>/dev/null || true
+          cp governance/CED1D_0031_TIER2_SHADOW_ACTIVATION_AUTHORITY_V0.2_2026-09-18.json "$RUNNER_TEMP/final/"
+          cp governance/CED1D_0031_PROSPECTIVE_SHADOW_COLLECTOR_IMPLEMENTATION_FREEZE_V0.1_2026-09-18.md "$RUNNER_TEMP/final/"
+          find "$RUNNER_TEMP/final" -type f -print0 | sort -z | xargs -0 sha256sum > "$RUNNER_TEMP/final/ARTIFACT_MEMBER_SHA256.txt" || true
+
+      - name: Upload shadow evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ced1d-0031-prospective-shadow-${{ inputs.through_signal_day }}
+          path: ${{ runner.temp }}/final
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Fail closed if collector failed
+        if: always()
+        run: |
+          test "${{ steps.collector.outcome }}" = "success"
