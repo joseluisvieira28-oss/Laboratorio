@@ -1,0 +1,98 @@
+name: HTF DH03 12H — Prospective Archive Shadow
+
+on:
+  push:
+    branches:
+      - htf-dh03-12h-standalone-forward-v0.1
+    paths:
+      - 'crypto_edge_radar/DH03_DAILY_TRIGGER.txt'
+      - 'crypto_edge_radar/radar/dh03_archive_watcher.py'
+      - 'crypto_edge_radar/radar/dh03_12h_forward.py'
+      - 'crypto_edge_radar/radar/binance_usdm_archive.py'
+      - 'crypto_edge_radar/radar/binance_usdm_monthly_funding.py'
+      - 'crypto_edge_radar/tests/test_dh03_archive_watcher.py'
+      - 'crypto_edge_radar/tests/test_dh03_12h_forward.py'
+      - 'crypto_edge_radar/HTF_DH03_12H_STANDALONE_FORWARD_V1_ARCHIVE_SHADOW_FREEZE.json'
+      - '.github/workflows/htf-dh03-12h-forward-shadow.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: dh03-12h-prospective-shadow
+  cancel-in-progress: false
+
+jobs:
+  archive-shadow:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: crypto_edge_radar
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install runtime
+        run: python -m pip install -e .
+      - name: Compile and exact watcher tests
+        run: |
+          python -m compileall radar tests
+          python -m unittest tests.test_dh03_12h_forward tests.test_dh03_archive_watcher -v
+      - name: Restore previous append-only evidence state when available
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p dh03_state
+          PREV="$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/htf-dh03-12h-forward-shadow.yml/runs?branch=htf-dh03-12h-standalone-forward-v0.1&status=success&per_page=1" --jq '.workflow_runs[0].id // empty')"
+          if [ -n "$PREV" ]; then
+            echo "PREVIOUS_SUCCESSFUL_RUN=$PREV"
+            gh run download "$PREV" -n dh03-shadow-state -D dh03_previous || true
+            if [ -f dh03_previous/dh03_evidence.sqlite3 ]; then
+              cp dh03_previous/dh03_evidence.sqlite3 dh03_state/dh03_evidence.sqlite3
+            fi
+          else
+            echo "NO_PREVIOUS_SUCCESSFUL_RUN"
+          fi
+      - name: Run exact prospective archive shadow
+        env:
+          RADAR_DB: dh03_state/dh03_evidence.sqlite3
+        run: |
+          python -m radar.dh03_archive_watcher | tee dh03_state/latest_receipt.json
+      - name: Verify governance and evidence chain
+        env:
+          RADAR_DB: dh03_state/dh03_evidence.sqlite3
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          from radar.evidence import EvidenceStore
+          p=Path('dh03_state/latest_receipt.json')
+          r=json.loads(p.read_text())
+          assert r['status'] in {'OK','WAITING_FIRST_ELIGIBLE_ARCHIVE_DAY','WAITING_ARCHIVE_PUBLICATION'}, r
+          assert r['authenticated_exchange_api_used'] is False, r
+          assert r['orders_created'] is False, r
+          assert r['exchange_mutation_performed'] is False, r
+          assert r['live_capital_enabled'] is False, r
+          store=EvidenceStore(os.environ['RADAR_DB'])
+          ok,detail=store.verify_chain()
+          assert ok,detail
+          print(json.dumps({
+              'status':r['status'],
+              'latest_archive_day':r['latest_archive_day'],
+              'evidence_chain':detail,
+              'forward_evidence_used':r.get('used_as_forward_evidence',False),
+          },sort_keys=True))
+          PY
+      - name: Upload persistent shadow state
+        uses: actions/upload-artifact@v4
+        with:
+          name: dh03-shadow-state
+          path: |
+            crypto_edge_radar/dh03_state/dh03_evidence.sqlite3
+            crypto_edge_radar/dh03_state/latest_receipt.json
+          if-no-files-found: error
+          retention-days: 90
