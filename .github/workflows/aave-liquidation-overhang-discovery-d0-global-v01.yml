@@ -1,0 +1,106 @@
+name: AAVE Liquidation Overhang 001 — Discovery D0 Global V0.1
+
+on:
+  push:
+    branches:
+      - aave-liquidation-overhang-discovery-v0.1
+    paths:
+      - '.github/workflows/aave-liquidation-overhang-discovery-d0-global-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  D0_PREFLIGHT_RUN_ID: '35393485748'
+  D0_PREFLIGHT_ARTIFACT: 'AAVE_LIQUIDATION_OVERHANG_001_DISCOVERY_D0_PREFLIGHT_V0_1'
+  R0_RUN_ID: '35218275356'
+  R0_ARTIFACT: 'AAVE_RECON_R0_BOOTSTRAP'
+  GLOBAL_RUNNER_BLOB_SHA: '778722f9c97c7d04caae6429b833d07acc94a552'
+  D0_FREEZE_BLOB_SHA: '3c238b7c07fa5ad5516f3efd070ccd589e849c45'
+  PARENT_PROTOCOL_BLOB_SHA: '67e7b983cdfa069a2d6d5b41aaa50f815bfef15d'
+
+jobs:
+  d0-global:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Bind exact frozen files
+        run: |
+          test "$(git hash-object research/aave_liquidation_overhang/aave_discovery_d0_global_v01.py)" = "${GLOBAL_RUNNER_BLOB_SHA}"
+          test "$(git hash-object research/aave_liquidation_overhang/AAVE_LIQUIDATION_OVERHANG_001_DISCOVERY_D0_PREDICTOR_MATERIALIZATION_FREEZE_V0_1.md)" = "${D0_FREEZE_BLOB_SHA}"
+          test "$(git hash-object research/aave_liquidation_overhang/AAVE_LIQUIDATION_OVERHANG_001_FINAL_PRE_DISCOVERY_PROTOCOL_V0_1.md)" = "${PARENT_PROTOCOL_BLOB_SHA}"
+          python -m py_compile research/aave_liquidation_overhang/aave_discovery_d0_global_v01.py
+          echo AAVE_D0_GLOBAL_FILE_BINDING_PASS
+
+      - name: Install source dependencies
+        run: python -m pip install --disable-pip-version-check requests 'eth-hash[pycryptodome]'
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.D0_PREFLIGHT_ARTIFACT }}
+          path: downloaded_d0_preflight
+          run-id: ${{ env.D0_PREFLIGHT_RUN_ID }}
+          github-token: ${{ github.token }}
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.R0_ARTIFACT }}
+          path: downloaded_r0_bootstrap
+          run-id: ${{ env.R0_RUN_ID }}
+          github-token: ${{ github.token }}
+
+      - name: Verify D0 preflight binding
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          fs=list(Path('downloaded_d0_preflight').rglob('*.json'))
+          assert len(fs)==1,fs
+          x=json.loads(fs[0].read_text())
+          assert x['classification']=='D0_PREFLIGHT_PASS',x
+          assert x['reserve_count']==37,x
+          assert x['snapshot_count']==334,x
+          s=x['safety']
+          assert s['liquidation_outcomes_opened'] is False
+          assert s['market_returns_opened'] is False
+          assert s['pnl_opened'] is False
+          print('AAVE_D0_PREFLIGHT_BIND_PASS')
+          PY
+
+      - name: Execute 2023 outcome-blind global source and snapshot mapping
+        run: python research/aave_liquidation_overhang/aave_discovery_d0_global_v01.py
+
+      - name: Enforce no-outcome firewall
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('aave_discovery_d0_global_output/AAVE_LIQUIDATION_OVERHANG_001_DISCOVERY_D0_GLOBAL_V0_1.json')
+          assert p.exists(),'D0 global receipt missing'
+          x=json.loads(p.read_text())
+          s=x['safety']
+          assert s['liquidation_outcomes_opened'] is False
+          assert s['liquidation_call_values_decoded'] is False
+          assert s['market_returns_opened'] is False
+          assert s['pnl_opened'] is False
+          assert s['accessed_2024_outcomes'] is False
+          assert s['accessed_2025_or_2026'] is False
+          print('AAVE_D0_GLOBAL_FIREWALL_PASS',x['classification'])
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: AAVE_LIQUIDATION_OVERHANG_001_DISCOVERY_D0_GLOBAL_V0_1
+          path: aave_discovery_d0_global_output/AAVE_LIQUIDATION_OVERHANG_001_DISCOVERY_D0_GLOBAL_V0_1.json
+          if-no-files-found: error
+          retention-days: 90
