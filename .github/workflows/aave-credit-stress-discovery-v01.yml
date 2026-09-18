@@ -1,0 +1,64 @@
+name: AAVE Credit Stress Regression Discovery V0.1
+
+on:
+  push:
+    branches:
+      - aave-credit-stress-discovery-v0.1
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/AAVE_CREDIT_STRESS_001_DISCOVERY_TRIGGER_V0.1.txt'
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: aave-credit-stress-discovery-v01
+  cancel-in-progress: false
+
+jobs:
+  discovery:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: aave-credit-stress-discovery-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify frozen Discovery authority
+        run: |
+          python - <<'PY'
+          import json
+          a=json.load(open('Dream-Account-OS-v2.3-PARTIAL/research/AAVE_CREDIT_STRESS_001_DISCOVERY_AUTHORITY_V0.1.json'))
+          assert a['discovery_id']=='AAVE-CS001-REGRESSION-DISCOVERY-001'
+          assert a['status']=='PRE_OUTCOME_FROZEN'
+          assert a['original_pre_discovery_authority']['drive_id']=='1HrJ5Y7MlkxXGZwHKd2RH1O3cUDEaGZmFckfkneH3s9Q'
+          assert a['parent_decode']['canonical_completion_run']==35333801258
+          assert a['parent_decode']['classification']=='DECODE_DAILY_SERIES_PASS'
+          assert a['regression']['expected_beta_sign']=='NEGATIVE'
+          assert a['predictor']['threshold'] is None
+          assert a['inference']['bootstrap_replications']==10000
+          assert a['inference']['hac_lag_days']==7
+          assert a['sample_gates']['minimum_regression_rows']==650
+          assert a['firewalls']['access_2025'] is False
+          assert a['firewalls']['access_2026'] is False
+          print('AAVE_CREDIT_STRESS_DISCOVERY_AUTHORITY_PASS')
+          PY
+      - uses: actions/download-artifact@v4
+        with:
+          name: aave-cs001-decode-v01-canonical-completion-35333801258-1
+          path: artifacts/decode_parent
+          github-token: ${{ github.token }}
+          run-id: 35333801258
+      - run: python -m py_compile Dream-Account-OS-v2.3-PARTIAL/research/aave_credit_stress_001_discovery_v01.py
+      - name: Execute one-shot regression Discovery
+        run: python Dream-Account-OS-v2.3-PARTIAL/research/aave_credit_stress_001_discovery_v01.py
+      - name: Upload immutable Discovery receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aave-credit-stress-discovery-v01-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/aave_credit_stress_discovery_v01/
+          retention-days: 90
+          if-no-files-found: warn
