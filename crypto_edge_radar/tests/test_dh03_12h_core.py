@@ -148,6 +148,29 @@ class DH0312HCoreTests(unittest.TestCase):
         expected=(gross-0.001-0.002)/(s.initial_risk_fraction+0.002)
         self.assertAlmostEqual(out.base_net_r,expected,12)
 
+    def test_missing_exact_entry_minute_fails_closed(self):
+        c=SignalCandidate("BTCUSDT",10*TWELVE_H_MS,11*TWELVE_H_MS,90.0,8.0,100.0)
+        s=bind_exact_entry(c,11*TWELVE_H_MS,100.0)
+        t=s.entry_open_time
+        out=resolve_minute_path(
+            s,
+            [(t+MINUTE_MS,100.0,101.0,99.0,100.0)],
+            [],
+        )
+        self.assertFalse(out.resolved)
+        self.assertEqual(out.exit_reason,"EXECUTION_PATH_UNRESOLVED_ENTRY")
+
+    def test_duplicate_funding_timestamp_fails_closed(self):
+        c=SignalCandidate("BTCUSDT",10*TWELVE_H_MS,11*TWELVE_H_MS,90.0,8.0,100.0)
+        s=bind_exact_entry(c,11*TWELVE_H_MS,100.0)
+        t=s.entry_open_time
+        with self.assertRaises(ValueError):
+            resolve_minute_path(
+                s,
+                [(t,100.0,101.0,99.0,100.0),(t+MINUTE_MS,100.0,136.0,99.0,135.0)],
+                [(t+30_000,0.001),(t+30_000,0.002)],
+            )
+
 
 if __name__=="__main__":
     unittest.main()
