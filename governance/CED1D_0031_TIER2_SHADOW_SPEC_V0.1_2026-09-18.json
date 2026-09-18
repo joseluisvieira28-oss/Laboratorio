@@ -1,0 +1,91 @@
+{
+  "document_id": "CED1D_0031_TIER2_SHADOW_SPEC_V0.1_2026_09_18",
+  "status": "FROZEN_PRE_ACTIVATION_2026_ACCESS_NOT_AUTHORIZED",
+  "promotion_record": "Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/evidence/CED1D_0031_V3_TIER2_PROMOTION_RECORD_2026-09-18.json",
+  "candidate": {
+    "combination_id": "CED1D-0031",
+    "symbol": "AVAXUSDT",
+    "market": "Binance USD-M perpetual futures",
+    "family": "A_MOMENTUM",
+    "lookback_days": 20,
+    "direction": "CONTINUATION",
+    "horizon_days": 1
+  },
+  "signal_execution": {
+    "signal_information_cutoff": "completed daily information through UTC day D",
+    "signal_completion": "D+1 00:00:00 UTC",
+    "simulated_entry_reference": "D+1 00:01:00 UTC",
+    "simulated_exit_reference": "D+2 00:01:00 UTC",
+    "overlapping_signals": "blocked until prior H1 position exits",
+    "signal_code_authority": "CED-1D-V1-RUNNER-FREEZE-V0.3.zip / frozen Momentum implementation",
+    "parameter_changes_allowed": false
+  },
+  "shadow_mode": {
+    "read_only": true,
+    "research_notional_usdt": 100,
+    "real_orders": false,
+    "exchange_mutation": false,
+    "wallets": false,
+    "account_api_keys": false,
+    "leverage": false,
+    "alerts_webhooks": false,
+    "production_capital": false,
+    "maker_assumption": false,
+    "public_market_data_only_when_activation_authorized": true
+  },
+  "execution_model": {
+    "base_taker_fee_bps_per_fill": 4,
+    "stress_taker_fee_bps_per_fill": 5,
+    "base_roundtrip_fee_bps": 8,
+    "stress_roundtrip_fee_bps": 10,
+    "simulated_fill_source": "public top-of-book/order-book data when prospectively authorized",
+    "capacity_notional_usdt": 100,
+    "funding": "actual signed public funding settlements",
+    "double_counting_forbidden": true
+  },
+  "operational_shadow_sample": {
+    "min_resolved_shadow_events": 10,
+    "min_calendar_days": 14,
+    "rule": "both minimums must be satisfied; this is an operational-integrity gate, not standalone statistical edge proof",
+    "no_event_deletion": true,
+    "no_subperiod_selection": true
+  },
+  "operational_pass_gates": {
+    "candidate_identity_reconciliation_rate": 1,
+    "source_provenance_rate": 1,
+    "signal_reconciliation_rate": 1,
+    "required_market_data_availability_rate": 0.95,
+    "mean_total_nonfunding_execution_cost_bps_max": 14,
+    "p95_total_nonfunding_execution_cost_bps_max": 20,
+    "base_shadow_funded_mean_bps_min_exclusive": 0,
+    "base_shadow_profit_factor_min_exclusive": 1,
+    "max_single_event_positive_pnl_share": 0.4,
+    "missing_fill_or_source": "counts as failure/miss; never silently dropped"
+  },
+  "kill_switches": [
+    "candidate identity/hash mismatch",
+    "signal code hash mismatch",
+    "lookahead or timestamp ambiguity",
+    "source provenance/checksum failure",
+    "required price/funding data missing beyond frozen allowance",
+    "attempted order or authenticated trading endpoint",
+    "fee assumption below frozen floor",
+    "100 USDT capacity not supportable",
+    "2026 data accessed before explicit activation authority"
+  ],
+  "tier_semantics": {
+    "current_tier": "TIER_2_PROMOTED_CANDIDATE_QUASE_DIAMANTE",
+    "shadow_pass_does_not_automatically_create_tier1": true,
+    "tier1_requires_separate_adjudication": true,
+    "micro_live_requires_separate_authority": true,
+    "production_requires_separate_authority": true
+  },
+  "governance": {
+    "access_2026_plus": false,
+    "activation_authorized": false,
+    "live_trading": false,
+    "orders": false,
+    "exchange_mutation": false,
+    "merge_main": false
+  }
+}
