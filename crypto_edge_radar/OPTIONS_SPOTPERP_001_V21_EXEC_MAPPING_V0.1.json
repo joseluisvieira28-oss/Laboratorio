@@ -1,0 +1,69 @@
+{
+  "contract_id": "OPTIONS-SPOTPERP-001-V2.1-EXEC-MAPPING-V0.1",
+  "frozen_at_utc": "2026-09-18T16:26:00Z",
+  "status": "FROZEN_RESEARCH_MAPPING_ONLY__NOT_EXECUTION_AUTHORITY",
+  "strategy_id": "OPTIONS-SPOTPERP-001-V2.1",
+  "scientific_invariants": {
+    "signal": "CALL_IV_MINUS_PUT_IV",
+    "direction_rule": "positive=LONG; negative=SHORT; zero/invalid=FLAT",
+    "signal_day": "UTC daily",
+    "reference_entry": "BTCUSDT spot 00:00 UTC t+1",
+    "reference_exit": "BTCUSDT spot 00:00 UTC t+2",
+    "hold": "24h",
+    "risk_scaling": "min(1.0, expanding_median_RV20_t / RV20_t)",
+    "base_cost_bps_full_notional": 10,
+    "stress_cost_bps_full_notional": 20,
+    "rule_changes": false,
+    "horizon_change": false,
+    "signal_change": false
+  },
+  "candidate_execution_mapping": {
+    "LONG": {
+      "venue": "MEXC",
+      "market": "SPOT",
+      "symbol": "BTCUSDT",
+      "entry": "MARKET BUY at frozen t+1 00:00 UTC target",
+      "exit": "MARKET SELL at frozen t+2 00:00 UTC target",
+      "leverage": 0,
+      "funding": "NONE"
+    },
+    "SHORT": {
+      "venue": "MEXC",
+      "market": "USDT_PERPETUAL",
+      "symbol": "BTC_USDT",
+      "entry": "MARKET SELL/OPEN at frozen t+1 00:00 UTC target",
+      "exit": "MARKET BUY/CLOSE reduce-only at frozen t+2 00:00 UTC target",
+      "margin_mode": "ISOLATED",
+      "leverage": 1,
+      "auto_margin_add": "OFF_REQUIRED",
+      "funding": "INCLUDE_CONSERVATIVE_NONNEGATIVE_BURDEN"
+    }
+  },
+  "timing": {
+    "arm_lead_seconds": 60,
+    "max_late_seconds": 2,
+    "late_chase_allowed": false,
+    "maker_fallback_allowed": false,
+    "partial_fill": "do not chase remainder; mark execution deviation"
+  },
+  "mapping_gate": {
+    "public_market_support_required": true,
+    "account_specific_fee_read_required_before_any_future_authority": true,
+    "base10_execution_feasibility_test": "projected all-in round-trip must be <=10 bps to claim BASE10-compatible execution",
+    "stress20_execution_feasibility_test": "projected all-in round-trip must be <=20 bps to claim STRESS20-compatible execution",
+    "short_margin_state_read_only_preflight_required": true,
+    "authenticated_transport_security_required": true
+  },
+  "forbidden": [
+    "no order from this contract",
+    "no live capital",
+    "no authenticated API in public mapping probe",
+    "no venue switching after observing mapping result",
+    "no maker rescue",
+    "no cost reduction rescue",
+    "no leverage above 1x",
+    "no stop invention",
+    "no signal or direction changes",
+    "no main merge"
+  ]
+}
