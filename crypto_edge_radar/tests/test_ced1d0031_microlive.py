@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 import unittest
 
@@ -9,7 +10,14 @@ from radar.ced1d0031_microlive import (
     _round_qty,
     _validate_signal_payload,
 )
-from radar.ced1d0031_public import CANDIDATE, PROVIDER, SYMBOL
+from radar.ced1d0031_public import (
+    CANDIDATE,
+    PROVIDER,
+    SYMBOL,
+    signal_for_completion,
+)
+
+UTC = timezone.utc
 
 
 def signal():
@@ -31,6 +39,19 @@ def signal():
     }
 
 
+class FakeDailySource:
+    def daily_klines(self, *, limit=40):
+        start = datetime(2026, 8, 20, 0, 0, tzinfo=UTC)
+        rows = []
+        for i in range(32):
+            day = start + timedelta(days=i)
+            open_ms = int(day.timestamp() * 1000)
+            close_ms = int((day + timedelta(days=1)).timestamp() * 1000) - 1
+            close = 10.0 + i
+            rows.append([open_ms, "0", "0", "0", str(close), "0", close_ms])
+        return rows
+
+
 class CED1D0031MicroLiveTests(unittest.TestCase):
     def test_exact_identity_and_boundary(self):
         out = _validate_signal_payload(signal())
@@ -41,6 +62,18 @@ class CED1D0031MicroLiveTests(unittest.TestCase):
         row["symbol"] = "BTCUSDT"
         with self.assertRaises(Exception):
             _validate_signal_payload(row)
+
+    def test_signal_uses_exact_calendar_day_lookback(self):
+        completion = datetime(2026, 9, 21, 0, 0, tzinfo=UTC)
+        out = signal_for_completion(
+            completion=completion,
+            source=FakeDailySource(),
+        )
+        self.assertEqual(out["signal_day"], "2026-09-20")
+        self.assertEqual(out["lag_day"], "2026-08-31")
+        self.assertEqual(out["reference_entry"], "2026-09-21T00:01:00+00:00")
+        self.assertEqual(out["reference_exit"], "2026-09-22T00:01:00+00:00")
+        self.assertEqual(out["direction"], "LONG")
 
     def test_target_below_hard_cap(self):
         self.assertLess(TARGET_NOTIONAL_USDT, MAX_NOTIONAL_USDT)
