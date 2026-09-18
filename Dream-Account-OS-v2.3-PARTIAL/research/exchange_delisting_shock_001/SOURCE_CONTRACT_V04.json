@@ -1,0 +1,103 @@
+{
+  "lab_id": "EXCHANGE-DELISTING-SHOCK-001",
+  "source_gate_id": "EDS-BINANCE-FULLTOKEN-SYMBOLIDENTITY-002",
+  "status": "FROZEN_NEW_SOURCE_CONTRACT_OUTCOME_BLIND",
+  "date_frozen": "2026-09-18",
+  "parent_source_contract": {
+    "branch": "exchange-delisting-shock-v0.3-source-remediation",
+    "run_id": 34982070979,
+    "classification": "INSUFFICIENT_SOURCE_SAMPLE",
+    "finality_preserved": true,
+    "reason_for_new_contract": "V0.3 falsely treated the left side of every exact trading pair as the delisted token. Official Binance announcements can quote the delisted token as the right-side asset (e.g. USDT/VAI and USDT/IDRT). V0.3 also failed to recover visible official Name (SYMBOL) token-list identities. No market outcome was opened."
+  },
+  "economic_hypothesis": {
+    "mechanism": "A Binance full-token delisting announcement creates a public finite loss-of-market-access window and forced holder migration before all spot trading pairs cease.",
+    "expected_direction": "NEGATIVE_TOKEN_PERFORMANCE_AFTER_ANNOUNCEMENT",
+    "inverse_rescue_allowed": false
+  },
+  "event_universe": {
+    "publication_start_utc": "2023-01-01T00:00:00Z",
+    "publication_end_utc": "2024-12-31T23:59:59Z",
+    "primary_source": "OFFICIAL_BINANCE_SUPPORT_ONLY",
+    "include_rule": "Announcement explicitly states Binance will delist the token and cease trading on all or all spot trading pairs for that token.",
+    "multi_token_announcement": "ONE_TOKEN_EVENT_PER_OFFICIAL_TOKEN_LIST_IDENTITY",
+    "identity_rule": "Token identity must be parsed from the official semantic delisting list as visible Name (SYMBOL). The symbol must occur on either side of at least one pair in the same article's exact trading-pairs-removed section.",
+    "quote_asset_firewall": "Never infer delisted-token identity from pair orientation. USDT/BTC/BNB/etc are not events unless independently present in the official Name (SYMBOL) delisting list.",
+    "exclude": [
+      "ordinary pair removals where token remains on Binance Spot",
+      "margin-only/futures-only/product-only removals",
+      "announcements without exact all-pairs cessation timestamp",
+      "symbols not present in official Name (SYMBOL) delisting list"
+    ],
+    "repeat_or_amended_announcement": "FIRST_QUALIFYING_PUBLIC_ANNOUNCEMENT_ONLY",
+    "post_market_behavior_filtering": false
+  },
+  "required_source_fields": [
+    "official_article_code_or_url",
+    "article_title",
+    "publication_timestamp_utc",
+    "token_name_and_symbol_from_official_delisting_list",
+    "all_pairs_cessation_timestamp_utc",
+    "all_pairs_cessation_text_evidence",
+    "exact_trading_pairs",
+    "article_content_sha256"
+  ],
+  "source_event_gate": {
+    "minimum_qualified_token_events": 30,
+    "minimum_distinct_tokens": 15,
+    "required_calendar_years": [
+      2023,
+      2024
+    ],
+    "exact_publication_timestamp_required": true,
+    "exact_all_pairs_cessation_timestamp_required": true,
+    "third_party_field_substitution": false
+  },
+  "market_route_preflight": {
+    "source": "BINANCE_DATA_VISION_SPOT_OFFICIAL_ARCHIVES",
+    "pair_rule": "SYMBOLUSDT only, exactly preserving the original market-route convention; quote-side-only USDT/SYMBOL events may be source-qualified but not route-qualified.",
+    "interval": "1h",
+    "checksum_route_only": true,
+    "metadata_only": true,
+    "entry_boundary": "FIRST_WHOLE_UTC_HOUR_AT_LEAST_60_MINUTES_AFTER_PUBLICATION",
+    "terminal_boundary": "SCHEDULED_ALL_PAIRS_CESSATION_TIMESTAMP",
+    "minimum_route_qualified_token_events": 30,
+    "minimum_route_qualified_distinct_tokens": 15,
+    "required_calendar_years": [
+      2023,
+      2024
+    ],
+    "cross_exchange_backfill": false,
+    "synthetic_interpolation": false,
+    "ohlc_value_access": false,
+    "return_access": false,
+    "pnl_access": false
+  },
+  "protected_period": {
+    "access_2025": false,
+    "access_2026": false,
+    "late_2024_event_requiring_2025_market_route": "PROTECTED_EXCLUSION_NO_2025_REQUEST"
+  },
+  "classifications": {
+    "pass": "SOURCE_DATA_PASS",
+    "insufficient_source": "INSUFFICIENT_SOURCE_SAMPLE",
+    "insufficient_route": "INSUFFICIENT_MARKET_ROUTE_SAMPLE",
+    "access_blocked": "SOURCE_ACCESS_BLOCKED",
+    "technical_failure": "SOURCE_TECHNICAL_FAILURE"
+  },
+  "no_rescue_rule": "After this authority is frozen, do not lower event/token/year minimums, infer token identity from trading-pair orientation, introduce third-party token names, broaden event definition, change SYMBOLUSDT route convention, access 2025/2026, or open prices/outcomes under this gate.",
+  "post_pass_rule": "SOURCE_DATA_PASS still does not authorize Discovery. Freeze a separate FINAL_PRE_DISCOVERY_PROTOCOL before any price value.",
+  "hard_firewalls": {
+    "market_price_values_opened": false,
+    "returns_computed": false,
+    "pnl_computed": false,
+    "access_2025": false,
+    "access_2026": false,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "wallet_access": false,
+    "merge_to_main": false,
+    "post_outcome_tuning": false,
+    "cherry_picking": false
+  }
+}
