@@ -25,9 +25,19 @@ class LocalForwardSupervisorTests(unittest.TestCase):
     def test_settings_are_local_isolated_and_no_postgres(self):
         with tempfile.TemporaryDirectory() as td:
             s=build_local_forward_settings(td)
-            self.assertTrue(s.db_path.startswith(td))
-            self.assertTrue(s.status_path.startswith(td))
-            self.assertTrue(s.notification_path.startswith(td))
+            expected_root = os.path.normcase(os.path.realpath(td))
+            self.assertEqual(
+                os.path.normcase(os.path.realpath(os.path.dirname(s.db_path))),
+                expected_root,
+            )
+            self.assertEqual(
+                os.path.normcase(os.path.realpath(os.path.dirname(s.status_path))),
+                expected_root,
+            )
+            self.assertEqual(
+                os.path.normcase(os.path.realpath(os.path.dirname(s.notification_path))),
+                expected_root,
+            )
             self.assertIsNone(s.database_url)
             self.assertEqual(s.provider,"mexc_futures_public")
             self.assertEqual(s.universe_mode,"core5")
