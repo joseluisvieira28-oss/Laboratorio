@@ -9,6 +9,8 @@ on:
       - 'crypto_edge_radar/HTF_DH03_12H_STANDALONE_FORWARD_V1_TRANSPORT_AMENDMENT_01.json'
       - 'crypto_edge_radar/radar/binance_usdm_archive.py'
       - 'crypto_edge_radar/HTF_DH03_12H_STANDALONE_FORWARD_V1_WARMUP_SOURCE_AMENDMENT_01.json'
+      - 'crypto_edge_radar/radar/binance_usdm_funding_archive.py'
+      - 'crypto_edge_radar/HTF_DH03_12H_STANDALONE_FORWARD_V1_FUNDING_SOURCE_AMENDMENT_01.json'
       - 'crypto_edge_radar/HTF_DH03_12H_STANDALONE_FORWARD_V1_FREEZE.json'
       - '.github/workflows/htf-dh03-12h-source-probe.yml'
   workflow_dispatch:
@@ -71,6 +73,29 @@ jobs:
           assert r['status']=='PASS_ARCHIVE_WARMUP_SOURCE', r
           assert len(r['symbols'])==6, r
           assert sum(x['rows'] for x in r['symbols'].values())==8640, r
+          assert r['checksum_verified_all'] is True
+          assert r['used_as_forward_evidence'] is False
+          PY
+      - name: Checksum-verified realized funding archive probe
+        run: |
+          python - <<'PY'
+          import json
+          from datetime import date
+          from pathlib import Path
+          from radar.binance_usdm_funding_archive import funding_source_probe
+          r=funding_source_probe(date(2026,9,16))
+          Path('dh03_probe/funding_receipt.json').write_text(json.dumps(r,sort_keys=True,indent=2))
+          print(json.dumps({
+              'status':r['status'],
+              'day':r['day'],
+              'symbols':len(r['symbols']),
+              'total_events':r['total_events'],
+              'checksum_verified_all':r['checksum_verified_all'],
+              'used_as_forward_evidence':r['used_as_forward_evidence'],
+          },sort_keys=True))
+          assert r['status']=='PASS_DAILY_FUNDING_ARCHIVE', r
+          assert len(r['symbols'])==6, r
+          assert r['total_events']>=12, r
           assert r['checksum_verified_all'] is True
           assert r['used_as_forward_evidence'] is False
           PY
