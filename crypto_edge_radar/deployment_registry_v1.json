@@ -1,6 +1,6 @@
 {
   "registry_version": "3.1",
-  "as_of_utc": "2026-09-18T08:04:08Z",
+  "as_of_utc": "2026-09-18T10:32:00Z",
   "governance": "ND_PROMOTION_POLICY_V3_PLUS_AGGRESSIVE_FAIL_CLOSED_DEPLOYMENT",
   "focus_strategy_ids": [
     "ETF-CME-INSTFLOW-001",
@@ -149,7 +149,8 @@
         "high-risk fragility classification"
       ],
       "blocking_gates": [
-        "no Tier-1 forward evidence gate has been prospectively frozen",
+        "minimum 10 resolved genuinely prospective trades for operational shadow readiness not yet met",
+        "frozen first-50 Tier-1 statistical gate not yet met",
         "candidate-specific micro-live risk/readiness envelope not yet frozen",
         "authenticated execution transport not authorized",
         "no real-money execution authority exists"
@@ -162,7 +163,21 @@
       "prospective_freeze_utc": "2026-09-18T05:35:01Z",
       "first_full_postfreeze_signal_day": "2026-09-19",
       "risk_state_bootstrap": "FULL_BTCUSDT_DAILY_HISTORY_FROM_2021-04-01__CAUSAL_RV20_EXPANDING_MEDIAN",
-      "forward_evidence_backend": "POSTGRES_APPEND_ONLY_HASH_CHAIN"
+      "forward_evidence_backend": "POSTGRES_APPEND_ONLY_HASH_CHAIN",
+      "forward_evidence_gate": "OPTIONS_SPOTPERP_001_V21_FORWARD_EVIDENCE_GATE_V0.1.json",
+      "forward_evidence_gate_frozen": true,
+      "operational_shadow_min_resolved_forward_trades": 10,
+      "tier1_forward_min_resolved_trades": 50,
+      "tier1_forward_gate": {
+        "first_window_locked": "first 50 resolved prospective trades",
+        "block_size": 10,
+        "minimum_nonnegative_blocks": 3,
+        "max_single_positive_trade_share": 0.4,
+        "base10_mean_gt_0": true,
+        "base10_profit_factor_gt_1": true,
+        "automatic_tier1_promotion": false,
+        "operational_and_execution_audit_required": true
+      }
     },
     {
       "strategy_id": "TFG-DONCHIAN-REGIME-ADAPTATION-V1",
