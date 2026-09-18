@@ -1,6 +1,6 @@
 {
   "registry_version": "3.1",
-  "as_of_utc": "2026-09-18T10:32:00Z",
+  "as_of_utc": "2026-09-18T11:00:30Z",
   "governance": "ND_PROMOTION_POLICY_V3_PLUS_AGGRESSIVE_FAIL_CLOSED_DEPLOYMENT",
   "focus_strategy_ids": [
     "ETF-CME-INSTFLOW-001",
@@ -91,7 +91,7 @@
         "one micro-live event is operational evidence only"
       ],
       "blocking_gates": [
-        "real-time micro-live event-detection latency path not yet validated",
+        "local 30s event-detection path built but end-to-end operator-uptime/event latency receipt not yet observed",
         "genuinely prospective eligible event required",
         "account-specific read-only taker fee and venue minimum-notional preflight not yet bound",
         "separate explicit V3 MICRO-LIVE EXECUTION AUTHORITY does not yet exist",
@@ -118,7 +118,11 @@
         "min_notional_must_be_lte_chf": 25
       },
       "shadow_polling": {
-        "official_cms_poll_interval_seconds": 600,
+        "official_cms_poll_interval_seconds": 30,
+        "cloud_poll_floor_seconds": 30,
+        "local_fast_monitor_built": true,
+        "local_fast_monitor_build_id": "v0.11-win-five-engine-dh03-bnb-local",
+        "local_fast_monitor_interval_seconds": 30,
         "transient_source_failure_behavior": "SOURCE_RETRY_BACKOFF_FAIL_CLOSED",
         "micro_live_latency_path_validated": false
       }
@@ -299,7 +303,14 @@
     "authenticated_exchange_api_used": false,
     "orders_created": false,
     "exchange_mutation_performed": false,
-    "live_capital_enabled": false
+    "live_capital_enabled": false,
+    "polling_policy": {
+      "cloud_public_shadow_floor_seconds": 30,
+      "local_bnb_fast_monitor_seconds": 30,
+      "scientific_rules_changed": false,
+      "orders_enabled": false,
+      "capital_enabled": false
+    }
   },
   "archive_registry": "archive_registry_v1.json"
 }
