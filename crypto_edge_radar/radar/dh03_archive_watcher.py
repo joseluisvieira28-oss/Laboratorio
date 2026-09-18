@@ -225,7 +225,7 @@ def _persist(store,receipt:dict[str,Any])->dict[str,int]:
     return inserted
 
 
-def run_once(*,now:datetime|None=None,persist:bool=True)->dict[str,Any]:
+def run_once(*,now:datetime|None=None,persist:bool=True,store=None)->dict[str,Any]:
     now=now or datetime.now(timezone.utc)
     if now.tzinfo is None:
         raise ValueError("now must be timezone-aware")
@@ -267,9 +267,10 @@ def run_once(*,now:datetime|None=None,persist:bool=True)->dict[str,Any]:
         "used_as_forward_evidence":True,
     }
     if persist:
-        db_path=os.getenv("RADAR_DB","/tmp/dh03_shadow.sqlite3")
-        database_url=os.getenv("RADAR_DATABASE_URL") or os.getenv("DATABASE_URL")
-        store=build_evidence_store(db_path,database_url)
+        if store is None:
+            db_path=os.getenv("RADAR_DB","/tmp/dh03_shadow.sqlite3")
+            database_url=os.getenv("RADAR_DATABASE_URL") or os.getenv("DATABASE_URL")
+            store=build_evidence_store(db_path,database_url)
         receipt["evidence_backend"]=store.backend
         receipt["inserted"]=_persist(store,receipt)
         ok,detail=store.verify_chain()
