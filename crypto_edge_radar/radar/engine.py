@@ -20,29 +20,57 @@ class RadarEngine:
         self.store = store
         self.registry = registry
 
+    def _strategy_symbols(self) -> tuple[str, ...]:
+        symbols: list[str] = []
+        for adapter in self.registry.adapters:
+            for symbol in getattr(adapter, "symbols", ()):
+                if symbol not in symbols:
+                    symbols.append(symbol)
+        return tuple(symbols)
+
     def _select_universe(
         self, snapshots: dict[str, MarketSnapshot]
     ) -> tuple[str, ...]:
+        strategy_symbols = self._strategy_symbols()
+
         if self.settings.universe_mode == "core5":
-            missing = [symbol for symbol in CORE5 if symbol not in snapshots]
+            required = tuple(dict.fromkeys((*CORE5, *strategy_symbols)))
+            missing = [symbol for symbol in required if symbol not in snapshots]
             if missing:
-                raise MarketDataError(f"core universe incomplete: {missing}")
-            return CORE5
+                raise MarketDataError(f"required universe incomplete: {missing}")
+            return required
 
         if self.settings.universe_mode != "liquid":
             raise RuntimeError("unsupported universe mode")
 
         eligible = self.feed.eligible_usdt_perpetual_symbols()
+        missing_required = [
+            symbol
+            for symbol in strategy_symbols
+            if symbol not in snapshots or symbol not in eligible
+        ]
+        if missing_required:
+            raise MarketDataError(
+                f"promoted strategy symbols unavailable: {missing_required}"
+            )
+        if len(strategy_symbols) > self.settings.max_symbols:
+            raise MarketDataError(
+                "RADAR_MAX_SYMBOLS smaller than promoted strategy requirements"
+            )
+
         ranked = sorted(
             (
                 snap
                 for symbol, snap in snapshots.items()
-                if symbol in eligible and snap.quote_volume_24h >= self.settings.min_quote_volume
+                if symbol in eligible
+                and symbol not in strategy_symbols
+                and snap.quote_volume_24h >= self.settings.min_quote_volume
             ),
             key=lambda snap: snap.quote_volume_24h,
             reverse=True,
         )
-        selected = tuple(snap.symbol for snap in ranked[: self.settings.max_symbols])
+        slots = self.settings.max_symbols - len(strategy_symbols)
+        selected = tuple((*strategy_symbols, *(snap.symbol for snap in ranked[:slots])))
         if not selected:
             raise MarketDataError("liquid universe empty after frozen filters")
         return selected
@@ -63,14 +91,48 @@ class RadarEngine:
 
         decisions = []
         valid_signals = []
+        duplicate_signals = 0
+
         for adapter in self.registry.adapters:
-            for symbol in universe:
+            targets = tuple(getattr(adapter, "symbols", ())) or universe
+            for symbol in targets:
+                if symbol not in selected:
+                    raise MarketDataError(
+                        f"strategy target {symbol} not present in selected universe"
+                    )
+
                 decision = enforce_promotion_gate(adapter, selected[symbol])
                 item = decision.to_dict()
                 item["market_provider"] = provider
-                decisions.append(item)
+
                 if decision.valid_signal:
-                    valid_signals.append(item)
+                    signal_key = item.get("metadata", {}).get("signal_key")
+                    if not signal_key:
+                        raise RuntimeError(
+                            f"promoted directional strategy {decision.strategy_id} "
+                            "must provide immutable metadata.signal_key"
+                        )
+
+                    if self.store.signal_key_seen(signal_key):
+                        item["duplicate_suppressed"] = True
+                        duplicate_signals += 1
+                    else:
+                        item["duplicate_suppressed"] = False
+                        signal_record = {
+                            "signal_key": signal_key,
+                            "strategy_id": decision.strategy_id,
+                            "symbol": decision.symbol,
+                            "provider": provider,
+                            "direction": decision.direction.value,
+                            "decision": item,
+                        }
+                        signal_receipt = self.store.append(
+                            "VALID_SHADOW_SIGNAL", signal_record
+                        )
+                        item["signal_receipt"] = signal_receipt
+                        valid_signals.append(item)
+
+                decisions.append(item)
 
         decision_receipt = self.store.append(
             "STRATEGY_EVALUATION",
@@ -78,7 +140,8 @@ class RadarEngine:
                 "market_provider": provider,
                 "registered_strategies": [a.strategy_id for a in self.registry.adapters],
                 "decision_count": len(decisions),
-                "valid_signal_count": len(valid_signals),
+                "new_valid_signal_count": len(valid_signals),
+                "duplicate_signal_count": duplicate_signals,
                 "decisions": decisions,
             },
         )
@@ -89,6 +152,7 @@ class RadarEngine:
             "universe": list(universe),
             "registered_strategies": len(self.registry.adapters),
             "valid_signals": valid_signals,
+            "duplicate_signal_count": duplicate_signals,
             "market_receipt": market_receipt,
             "decision_receipt": decision_receipt,
         }
