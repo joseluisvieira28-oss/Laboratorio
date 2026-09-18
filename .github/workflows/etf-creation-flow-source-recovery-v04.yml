@@ -1,0 +1,54 @@
+name: ETF Creation Flow Product Data Source V0.4
+
+on:
+  push:
+    branches:
+      - etf-creation-flow-source-recovery-v0.4
+    paths:
+      - 'labs/ETF_CREATION_FLOW_001/SOURCE_RECOVERY_TRIGGER_V0.4.txt'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: etf-creation-flow-source-recovery-v04
+  cancel-in-progress: false
+
+jobs:
+  source_probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: etf-creation-flow-source-recovery-v0.4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --disable-pip-version-check requests==2.32.3
+      - name: Verify frozen V0.4 authority
+        run: |
+          python - <<'PY'
+          import json
+          a=json.load(open('labs/ETF_CREATION_FLOW_001/SOURCE_RECOVERY_AUTHORITY_V0.4.json'))
+          assert a['source_gate_id']=='ECF-IBIT-SHARES-SOURCE-004'
+          assert a['status']=='PRE_ACQUISITION_FROZEN_SOURCE_ONLY'
+          assert a['fixed_params']['component']=='keyFundFacts'
+          assert a['frozen_probe_dates']==['2024-03-28','2024-06-28','2024-09-30','2024-12-30']
+          assert a['pass_gate']['minimum_exact_dates']==3
+          assert a['firewalls']['fundDownload_historical_component'] is False
+          assert a['firewalls']['access_2025'] is False
+          assert a['firewalls']['access_2026'] is False
+          print('ETF_CREATION_FLOW_SOURCE_V04_AUTHORITY_PASS')
+          PY
+      - run: python -m py_compile labs/ETF_CREATION_FLOW_001/source_recovery_v04.py
+      - name: Execute exact-date keyFundFacts probe
+        run: python labs/ETF_CREATION_FLOW_001/source_recovery_v04.py
+      - name: Upload immutable source receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: etf-creation-flow-source-v04-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/etf_creation_flow_source_recovery_v04/
+          retention-days: 90
+          if-no-files-found: warn
