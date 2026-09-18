@@ -1,6 +1,6 @@
 {
   "registry_version": "2.1",
-  "as_of_utc": "2026-09-18T05:08:40Z",
+  "as_of_utc": "2026-09-18T05:17:35Z",
   "governance": "ND_PROMOTION_POLICY_V3_PLUS_AGGRESSIVE_FAIL_CLOSED_DEPLOYMENT",
   "focus_strategy_ids": [
     "ETF-CME-INSTFLOW-001",
@@ -71,14 +71,31 @@
         "one micro-live event is operational evidence only"
       ],
       "blocking_gates": [
-        "exact BNBBTC 15m market binding must pass for each future eligible event",
+        "genuinely prospective eligible event required",
+        "account-specific read-only taker fee and venue minimum-notional preflight not yet bound",
         "separate explicit V3 MICRO-LIVE EXECUTION AUTHORITY does not yet exist",
-        "no order path may activate from readiness freeze or shadow operation alone"
+        "no order path may activate from readiness/shadow contracts alone"
       ],
       "radar_forward_watcher_implemented": true,
       "radar_official_source_binding_live": true,
       "radar_bnbbtc_market_binding_live": true,
-      "persistent_evidence_backend": "postgres"
+      "persistent_evidence_backend": "postgres",
+      "execution_readiness_contract": "BNB_LAUNCHPOOL_DEMAND_001_V3_MICROLIVE_EXECUTION_READINESS_V0.2.json",
+      "execution_readiness_status": "FROZEN_AND_TESTED__100_TEST_SUITE_PASS",
+      "execution_semantics_frozen": true,
+      "execution_timing": {
+        "arm_lead_seconds": 60,
+        "max_late_seconds": 2,
+        "late_chase_allowed": false,
+        "entry_order_type": "MARKET BUY",
+        "exit_order_type": "MARKET SELL",
+        "exact_hold_hours": 24
+      },
+      "friction_gate": {
+        "max_projected_round_trip_bps": 30,
+        "account_specific_taker_fee_read_required": true,
+        "min_notional_must_be_lte_chf": 25
+      }
     },
     {
       "strategy_id": "OPTIONS-SPOTPERP-001-V2.1",
