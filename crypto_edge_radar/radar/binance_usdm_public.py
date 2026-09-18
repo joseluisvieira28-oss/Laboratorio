@@ -46,7 +46,14 @@ class BinanceUSDMPublicFeed:
             raise BinanceUSDMPublicError("time payload invalid")
         return int(p["serverTime"])
 
-    def klines(self,symbol:str,interval:str="15m",limit:int=5):
+    def klines(
+        self,
+        symbol:str,
+        interval:str="15m",
+        limit:int=5,
+        start_ms:int|None=None,
+        end_ms:int|None=None,
+    ):
         symbol=symbol.upper()
         if symbol not in SYMBOLS:
             raise BinanceUSDMPublicError("symbol outside frozen universe")
@@ -54,7 +61,14 @@ class BinanceUSDMPublicFeed:
             raise BinanceUSDMPublicError("interval not allowlisted")
         if not 1<=int(limit)<=1500:
             raise BinanceUSDMPublicError("invalid limit")
-        p=self._get_json("/fapi/v1/klines",{"symbol":symbol,"interval":interval,"limit":int(limit)})
+        query={"symbol":symbol,"interval":interval,"limit":int(limit)}
+        if start_ms is not None:
+            query["startTime"]=int(start_ms)
+        if end_ms is not None:
+            query["endTime"]=int(end_ms)
+        if start_ms is not None and end_ms is not None and int(end_ms)<int(start_ms):
+            raise BinanceUSDMPublicError("invalid kline time range")
+        p=self._get_json("/fapi/v1/klines",query)
         if not isinstance(p,list):
             raise BinanceUSDMPublicError("klines payload invalid")
         return p
