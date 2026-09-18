@@ -1,0 +1,39 @@
+{
+  "authority_id": "CRYPTO_EDGE_RADAR_RUNTIME_SERVICE_AUTHORITY_V1",
+  "as_of_utc": "2026-09-18T12:44:39Z",
+  "status": "FROZEN_OPERATIONAL_ROUTING_AUTHORITY",
+  "repository": "joseluisvieira28-oss/Laboratorio",
+  "branch": "crypto-edge-radar-cleanup-v1",
+  "canonical_runtime": {
+    "render_workspace": "Laboratorio",
+    "service_name": "crypto-edge-radar-v05-canary",
+    "service_id": "srv-dalqkpu1egvs73fhiehg",
+    "role": "CANONICAL_PERSISTENT_FORWARD_SHADOW_RUNTIME",
+    "evidence_backend": "postgres",
+    "postgres_id": "dpg-dalqi4qd0e5s738a77kg-a",
+    "expected_version": "0.9",
+    "observed_health": "OK",
+    "observed_evidence_chain_ok": true,
+    "observed_evidence_events_verified": 86
+  },
+  "secondary_runtime": {
+    "service_name": "crypto-edge-radar-v09-forward-preflight",
+    "service_id": "srv-dam61cou01pc73bkaveg",
+    "role": "SECONDARY_DIAGNOSTIC_PREFLIGHT_ONLY",
+    "evidence_backend_observed": "sqlite",
+    "must_not_be_used_as_primary_liveness_or_signal_authority": true
+  },
+  "monitoring_rules": [
+    "All radar health, cana-count and fish/signal checks must query the canonical runtime first.",
+    "Secondary diagnostic runtimes may be inspected only for debugging or deployment comparison.",
+    "A quiet or sleeping secondary runtime must not be reported as a canonical radar outage.",
+    "Canonical outage requires absence/degradation of the canonical runtime or failed evidence-chain integrity.",
+    "No monitoring or remediation action may enable live capital, create orders, mutate an exchange, weaken fail-closed controls, or alter frozen scientific rules."
+  ],
+  "safety": {
+    "authenticated_exchange_api_used": false,
+    "orders_created": false,
+    "exchange_mutation_performed": false,
+    "live_capital_enabled": false
+  }
+}
