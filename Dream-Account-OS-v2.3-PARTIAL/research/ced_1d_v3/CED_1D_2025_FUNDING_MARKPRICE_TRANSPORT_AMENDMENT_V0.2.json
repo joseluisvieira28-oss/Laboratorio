@@ -1,0 +1,58 @@
+{
+  "document_id": "CED_1D_2025_FUNDING_MARKPRICE_TRANSPORT_AMENDMENT_V0.2",
+  "status": "FROZEN_BEFORE_2025_ECONOMIC_OUTCOMES",
+  "parent_confirmation_freeze_commit": "ad0c4813c57cc3a18436e6c5505c3c7ac12c19d0",
+  "parent_funding_archive_gate_run": 35339781808,
+  "archive_source_status": "FUNDING_SOURCE_PASS",
+  "archive_identity": {
+    "AVAXUSDT": {
+      "records": 1095,
+      "canonical_records_sha256": "e4e204a815d9f192844156228f1a7675d92eec7b6f4863f1538f5f63c1d55d7d"
+    },
+    "SOLUSDT": {
+      "records": 1095,
+      "canonical_records_sha256": "1eb69f6558f92734d467c8f7b2576912a2fc9b00494f8f50fe57e2409cdc818c"
+    }
+  },
+  "observed_transport_failure": {
+    "canonical_endpoint": "https://fapi.binance.com/fapi/v1/fundingRate",
+    "workflow_run_id": 35339537472,
+    "classification": "HTTP_451_TRANSPORT_ONLY",
+    "economic_outcomes_accessed": false
+  },
+  "mark_price_recovery": {
+    "purpose": "recover the markPrice field documented on the Binance USD-M fundingRate response without changing settlement population or rates",
+    "fixed_mirror_order": [
+      "https://fapi1.binance.com",
+      "https://fapi2.binance.com",
+      "https://fapi3.binance.com",
+      "https://fapi4.binance.com"
+    ],
+    "endpoint_path": "/fapi/v1/fundingRate",
+    "symbols": ["AVAXUSDT", "SOLUSDT"],
+    "start_time_ms": 1735689600000,
+    "end_time_ms": 1767225599999,
+    "limit": 1000,
+    "selection_rule": "use the first mirror in fixed order whose response is HTTP 200 JSON list and contains symbol,fundingTime,fundingRate,markPrice; once selected do not switch mirrors mid-run",
+    "crosscheck_rule": {
+      "required_record_count_per_symbol": 1095,
+      "archive_rate_match": "Decimal(fundingRate) must equal the checksum-verified Data Vision archive rate for every paired settlement",
+      "timestamp_pairing": "strict chronological one-to-one pairing; absolute difference between REST fundingTime and archive provider calc_time must be <=1000 ms",
+      "mark_price": "finite and >0",
+      "duplicate_times": "forbidden",
+      "missing_or_extra_settlement": "fail closed"
+    }
+  },
+  "governance": {
+    "signals_computed": false,
+    "returns_computed": false,
+    "pnl_computed": false,
+    "promotion_computed": false,
+    "access_2026_plus": false,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "orders": false,
+    "wallets": false,
+    "fallback_to_approximate_mark_price": false
+  }
+}
