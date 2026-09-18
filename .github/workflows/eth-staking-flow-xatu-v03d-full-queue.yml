@@ -1,0 +1,179 @@
+name: ETH Staking Flow 001 — Xatu Full Queue Reconstruction V0.3D
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - eth-staking-flow-v0.3-xatu
+    paths:
+      - 'research/eth_staking_flow/XATU_V03D_TRIGGER.txt'
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  PINNED_PREFLIGHT_RUN_ID: '35380959352'
+
+jobs:
+  gate-v03c:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify exact V0.3C run completed successfully
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python - <<'PY'
+          import json, os, urllib.request
+          run_id=os.environ["PINNED_PREFLIGHT_RUN_ID"]
+          req=urllib.request.Request(
+              f"https://api.github.com/repos/joseluisvieira28-oss/Laboratorio/actions/runs/{run_id}",
+              headers={"Authorization":f"Bearer {os.environ['GH_TOKEN']}","Accept":"application/vnd.github+json","X-GitHub-Api-Version":"2022-11-28"})
+          with urllib.request.urlopen(req,timeout=30) as r: obj=json.load(r)
+          print(json.dumps({"run_id":run_id,"status":obj.get("status"),"conclusion":obj.get("conclusion")},sort_keys=True))
+          if obj.get("status")!="completed" or obj.get("conclusion")!="success":
+              raise SystemExit("FAIL_CLOSED: exact V0.3C run is not a completed SUCCESS")
+          PY
+      - name: Download exact V0.3C receipt
+        uses: actions/download-artifact@v4
+        with:
+          name: ETH_STAKING_FLOW_001_XATU_QUEUE_COUNT_PREFLIGHT_V0_3C
+          path: downloaded_v03c
+          github-token: ${{ github.token }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: ${{ env.PINNED_PREFLIGHT_RUN_ID }}
+      - name: Require QUEUE_COUNT_ENGINE_PASS
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          xs=list(Path("downloaded_v03c").rglob("*.json"))
+          if len(xs)!=1: raise SystemExit(f"FAIL_CLOSED: expected 1 V0.3C receipt, got {len(xs)}")
+          o=json.loads(xs[0].read_text())
+          print(json.dumps({"classification":o.get("classification")},sort_keys=True))
+          if o.get("classification")!="QUEUE_COUNT_ENGINE_PASS":
+              raise SystemExit("FAIL_CLOSED: V0.3C did not PASS")
+          if any(bool(o.get(k)) for k in ["market_prices_opened","returns_opened","pnl_opened","accessed_2025_or_2026"]):
+              raise SystemExit("FAIL_CLOSED: V0.3C safety violation")
+          PY
+
+  monthly-queue:
+    needs: gate-v03c
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shard_id: "202304"
+            shard_start: "2023-04-12"
+            shard_end: "2023-04-30"
+          - shard_id: "202305"
+            shard_start: "2023-05-01"
+            shard_end: "2023-05-31"
+          - shard_id: "202306"
+            shard_start: "2023-06-01"
+            shard_end: "2023-06-30"
+          - shard_id: "202307"
+            shard_start: "2023-07-01"
+            shard_end: "2023-07-31"
+          - shard_id: "202308"
+            shard_start: "2023-08-01"
+            shard_end: "2023-08-31"
+          - shard_id: "202309"
+            shard_start: "2023-09-01"
+            shard_end: "2023-09-30"
+          - shard_id: "202310"
+            shard_start: "2023-10-01"
+            shard_end: "2023-10-31"
+          - shard_id: "202311"
+            shard_start: "2023-11-01"
+            shard_end: "2023-11-30"
+          - shard_id: "202312"
+            shard_start: "2023-12-01"
+            shard_end: "2023-12-31"
+          - shard_id: "202401"
+            shard_start: "2024-01-01"
+            shard_end: "2024-01-31"
+          - shard_id: "202402"
+            shard_start: "2024-02-01"
+            shard_end: "2024-02-29"
+          - shard_id: "202403"
+            shard_start: "2024-03-01"
+            shard_end: "2024-03-31"
+          - shard_id: "202404"
+            shard_start: "2024-04-01"
+            shard_end: "2024-04-30"
+          - shard_id: "202405"
+            shard_start: "2024-05-01"
+            shard_end: "2024-05-31"
+          - shard_id: "202406"
+            shard_start: "2024-06-01"
+            shard_end: "2024-06-30"
+          - shard_id: "202407"
+            shard_start: "2024-07-01"
+            shard_end: "2024-07-31"
+          - shard_id: "202408"
+            shard_start: "2024-08-01"
+            shard_end: "2024-08-31"
+          - shard_id: "202409"
+            shard_start: "2024-09-01"
+            shard_end: "2024-09-30"
+          - shard_id: "202410"
+            shard_start: "2024-10-01"
+            shard_end: "2024-10-31"
+          - shard_id: "202411"
+            shard_start: "2024-11-01"
+            shard_end: "2024-11-30"
+          - shard_id: "202412"
+            shard_start: "2024-12-01"
+            shard_end: "2024-12-31"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install source dependencies
+        run: pip install --disable-pip-version-check pyarrow fsspec aiohttp
+      - name: Execute exact monthly queue reconstruction
+        env:
+          SHARD_ID: ${{ matrix.shard_id }}
+          SHARD_START: ${{ matrix.shard_start }}
+          SHARD_END: ${{ matrix.shard_end }}
+        run: python research/eth_staking_flow/xatu_v03d_queue_shard.py
+      - name: Upload monthly queue receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ETH_XATU_V03D_QUEUE_${{ matrix.shard_id }}
+          path: xatu_v03d_queue_shards/queue_${{ matrix.shard_id }}.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  aggregate:
+    if: always() && needs.gate-v03c.result == 'success'
+    needs:
+      - gate-v03c
+      - monthly-queue
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download all queue shards
+        uses: actions/download-artifact@v4
+        with:
+          pattern: ETH_XATU_V03D_QUEUE_*
+          path: downloaded_v03d_shards
+          merge-multiple: true
+      - name: Aggregate exact 630-day queue series
+        run: python research/eth_staking_flow/xatu_v03d_queue_aggregate.py
+      - name: Upload canonical source-data receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ETH_STAKING_FLOW_001_XATU_FULL_QUEUE_V0_3D
+          path: xatu_v03d_queue_output/ETH_STAKING_FLOW_001_XATU_FULL_QUEUE_RECONSTRUCTION_V0_3D.json
+          if-no-files-found: warn
+          retention-days: 30
