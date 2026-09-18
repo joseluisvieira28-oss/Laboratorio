@@ -133,10 +133,7 @@ jobs:
       - name: Execute exact frozen Discovery with transport-only retry
         id: discovery_run
         continue-on-error: true
-        run: |
-          cd research/steth_redemption_basis_002
-          python discovery_v011.py
-          cd ../..
+        run: python research/steth_redemption_basis_002/discovery_v011.py
 
       - name: Enforce Discovery firewall and receipt
         if: always()
