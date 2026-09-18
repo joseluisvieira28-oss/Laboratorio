@@ -1,62 +1,35 @@
-name: DEFI-LIQUIDATION-SHOCK-001 Source Preflight V0.1
+name: DEFI-LIQUIDATION-SHOCK-001 Source Preflight V0.1 — HISTORICAL SUPERSEDED
 
 on:
-  push:
-    branches:
-      - defi-liquidation-shock-v0.1
-    paths:
-      - '.github/workflows/defi-liquidation-source-preflight-v01.yml'
-      - 'labs/DEFI_LIQUIDATION_SHOCK_001/source/**'
-      - 'labs/DEFI_LIQUIDATION_SHOCK_001/SOURCE_ACQUISITION_AUTHORITY_V0.1.md'
-      - 'labs/DEFI_LIQUIDATION_SHOCK_001/HISTORICAL_DECODER_AUTHORITY_MATRIX_V0.1.md'
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  source-preflight:
+  source-preflight-historical:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
+      - name: Historical scope warning
+        run: |
+          echo "V0.1 IS HISTORICAL / SUPERSEDED FOR FUTURE SOURCE EXECUTION"
+          echo "It contains the retired Kamino discriminator path."
+          echo "Current authority: V0.2 synthetic QA + MANIFEST_V0.4."
       - name: Checkout frozen research branch
         uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-
-      - name: Compile source-only tooling
+      - name: Compile historical V0.1 tooling
         run: |
-          python -m py_compile \
-            labs/DEFI_LIQUIDATION_SHOCK_001/source/collect_protocol_history_v0_1.py \
-            labs/DEFI_LIQUIDATION_SHOCK_001/source/verify_bigquery_candidates_v0_1.py \
-            labs/DEFI_LIQUIDATION_SHOCK_001/source/test_source_collector_synthetic_v0_1.py \
-            labs/DEFI_LIQUIDATION_SHOCK_001/source/test_bigquery_verifier_synthetic_v0_1.py \
-            labs/DEFI_LIQUIDATION_SHOCK_001/source/test_source_static_governance_v0_1.py
-
-      - name: Run collector synthetic tests
-        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/test_source_collector_synthetic_v0_1.py
-
-      - name: Run BigQuery verifier synthetic tests
-        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/test_bigquery_verifier_synthetic_v0_1.py
-
-      - name: Run frozen source-governance assertions
-        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/test_source_static_governance_v0_1.py
-
-      - name: Assert source-only posture
+          python -m py_compile             labs/DEFI_LIQUIDATION_SHOCK_001/source/collect_protocol_history_v0_1.py             labs/DEFI_LIQUIDATION_SHOCK_001/source/verify_bigquery_candidates_v0_1.py             labs/DEFI_LIQUIDATION_SHOCK_001/source/test_source_collector_synthetic_v0_1.py             labs/DEFI_LIQUIDATION_SHOCK_001/source/test_bigquery_verifier_synthetic_v0_1.py             labs/DEFI_LIQUIDATION_SHOCK_001/source/test_source_static_governance_v0_1.py
+      - name: Run historical V0.1 tests
         run: |
-          python - <<'PY'
-          from pathlib import Path
-          files=[
-            Path('labs/DEFI_LIQUIDATION_SHOCK_001/source/BIGQUERY_PROGRAM_COVERAGE_PROBE_V0_1.sql'),
-            Path('labs/DEFI_LIQUIDATION_SHOCK_001/source/BIGQUERY_LIQUIDATION_CANDIDATE_CENSUS_V0_1.sql'),
-          ]
-          for p in files:
-              s=p.read_text(encoding='utf-8')
-              assert 'bigquery-public-data.crypto_solana_mainnet_us.Instructions' in s
-              assert '2021-01-01T00:00:00Z' in s
-              assert '2025-01-01T00:00:00Z' in s
-          print('DLS SOURCE-ONLY PREFLIGHT PASS — no market outcomes opened')
-          PY
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/test_source_collector_synthetic_v0_1.py
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/test_bigquery_verifier_synthetic_v0_1.py
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/test_source_static_governance_v0_1.py
+      - name: Historical-only footer
+        run: |
+          echo "HISTORICAL_V01_AUDIT_COMPLETE"
+          echo "NOT_CURRENT_KAMINO_AUTHORITY"
