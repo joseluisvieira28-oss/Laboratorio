@@ -1,5 +1,5 @@
-# Trigger after exact payload transport repair; no scientific rule changed.
-# 2026-09-18 rerun authorized after BYTE_EXACT_RECOVERY_PASS 480/480 (run 35322131962).
+# CED-1D V3 — direct canonical-byte Discovery reproduction.
+# Supersedes only the broken Base64 transport path. No scientific rule changed.
 name: CED 1D V3 Source Recovery and Reproduction
 
 on:
@@ -18,74 +18,91 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 180
     env:
-      PAYLOAD_DIR: Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/execution_payload_v02
-      PAYLOAD_SHA256: 36cf28b7221c8907471f69268c6a3114cd4294ab197d428fe22eed4e6602529a
+      ROOT: Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3
+      CANON: Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/recovered_authority
       EXPECTED_DERIVED_1D_SHA256: b92741d682a704a237cc1ab1a4d1fb0beb13798b11993ddde9ef54bcd4f3ab20
     steps:
       - name: Checkout frozen branch
         uses: actions/checkout@v4
 
-      - name: Reconstruct and authenticate execution payload
+      - name: Authenticate directly-bound canonical bytes
         shell: pwsh
         run: |
-          $files = @(
-            'part00.b64','part01.b64','part02.b64','part03.b64','part04.b64','part05.b64',
-            'part06-07.b64','part08.b64','part09.b64','part10a.b64','part10b.b64','part11a.b64','part11b.b64','part12.b64'
-          )
-          $b64 = ''
-          foreach ($f in $files) { $b64 += Get-Content -Raw (Join-Path $env:PAYLOAD_DIR $f) }
-          $bytes = [Convert]::FromBase64String($b64)
-          [IO.File]::WriteAllBytes('CED_1D_V3_EXECUTION_PAYLOAD_V02.zip', $bytes)
-          $sha = (Get-FileHash 'CED_1D_V3_EXECUTION_PAYLOAD_V02.zip' -Algorithm SHA256).Hash.ToLower()
-          Write-Host "PAYLOAD_SHA256=$sha"
-          if ($sha -ne $env:PAYLOAD_SHA256) { throw "PAYLOAD_SHA256_MISMATCH: $sha" }
-          Expand-Archive -LiteralPath 'CED_1D_V3_EXECUTION_PAYLOAD_V02.zip' -DestinationPath 'payload' -Force
+          function Assert-Sha([string]$Path,[string]$Expected) {
+            if (-not (Test-Path -LiteralPath $Path)) { throw "MISSING_CANONICAL_FILE: $Path" }
+            $got=(Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLower()
+            Write-Host "$Path SHA256=$got"
+            if ($got -ne $Expected) { throw "SHA256_MISMATCH: $Path got=$got expected=$Expected" }
+          }
+          Assert-Sha "$env:CANON/target_registry_R1.json" "71a5f82a5002e63a9ce06c2d31a35b7aac8be569ce9a782097065f44b3b1fcd4"
+          Assert-Sha "$env:CANON/RESEARCH_INPUT_INDEX.json" "fb6da37a934468d84ee95f4eaadb663900eb7b9687e4d3e34bc1579d20a2631b"
+          Assert-Sha "$env:CANON/CED-1D-V1-RUNNER-FREEZE-V0.3.zip" "df625d0d4a05c55ba34ca51514d31fd61636ff0a823567585c2d02afa0877958"
+          Assert-Sha "$env:CANON/AUTHORITY/CED-PH2-FROZEN-UNIVERSE.json" "d1c143a5d878de0fbc1e38ebc12791aac18e465aff3dcb2f604816cdd5861f3d"
+          Assert-Sha "$env:CANON/AUTHORITY/phase2_dataset_evidence.json" "3730717187cc48a8e242cce0d8d57bd74df12ecd06b7c85d4b02d111a1a3a657"
+          Assert-Sha "$env:CANON/AUTHORITY/contract_authority.json" "2ddff9535ca7b7841c209c62754b0cd568cf85ec45c1317359a59340a2b93be9"
+          Assert-Sha "$env:CANON/AUTHORITY/contract.json" "4a6ee27a8b6fd66dcc89e3d2b4211d3f5d5c8020c151f8908f081108803acfb4"
+          Assert-Sha "$env:CANON/repaired/LTCUSDT-1m-2022-02-REPAIRED-A01.zip" "5da90861fe6a61016f6e35cb0f85d82abe436694916fd164ceb31ca928118bc8"
+          Assert-Sha "$env:CANON/repaired/LTCUSDT-1m-2022-04-REPAIRED-A01.zip" "b9705e7846c2f46ebd2363e53b54dfe80e046a93c716e53a4e1cb1469eeb5368"
+          Assert-Sha "$env:CANON/repaired/SOLUSDT-1m-2022-02-REPAIRED-A01.zip" "462dd3c24772cef6f50a37a48a00e4c346cc70892ac255d9b5b8d1c16820ab13"
+          Assert-Sha "$env:CANON/repaired/SOLUSDT-1m-2022-04-REPAIRED-A01.zip" "e75555985892fda1a5965d6aa53be3e6680b9fa3f54460621147a72d7b9c671f"
+          Assert-Sha "$env:CANON/repaired/XRPUSDT-1m-2022-02-REPAIRED-A01.zip" "87f53beb65ba4727133866dc6d0995f0f79edf8a279f949468dd70f865eb4622"
+          Assert-Sha "$env:CANON/repaired/XRPUSDT-1m-2022-04-REPAIRED-A01.zip" "5da946dafcc979ccd6913fab51e864482957a7e821a50e956c3923f1e7313ef6"
+          Write-Host "CANONICAL_AUTHORITY_HASH_GATE_PASS"
 
-      - name: Source and data gate — exact 480 USD-M monthly bytes plus six canonical repairs
+      - name: Build exact 474 monthly plus 6 canonical-repair workspace
         shell: pwsh
         run: |
-          python payload/source_gate_prepare_v01.py --payload payload --workspace CED_PHASE2_WORKSPACE --output SOURCE_GATE
+          python "$env:ROOT/prepare_discovery_workspace_from_bound_authority_v01.py" `
+            --registry "$env:CANON/target_registry_R1.json" `
+            --index "$env:CANON/RESEARCH_INPUT_INDEX.json" `
+            --authority "$env:CANON/AUTHORITY" `
+            --repairs "$env:CANON/repaired" `
+            --workspace "CED_PHASE2_WORKSPACE" `
+            --output "SOURCE_GATE" `
+            --workers 16
 
-      - name: Assert source gate PASS and protected years untouched
+      - name: Assert 474 plus 6 and protected years untouched
         shell: pwsh
         run: |
-          python -c "import json; x=json.load(open('SOURCE_GATE/source_gate_receipt.json')); assert x['status']=='BYTE_EXACT_RECOVERY_PASS',x; assert x['completed_records']==480,x; assert x['expected_records']==480,x; assert x['repair_replay_records']==6,x; assert x['2025_accessed'] is False,x; assert x['2026_accessed'] is False,x; assert x['outcomes_computed'] is False,x; print('SOURCE_GATE_ASSERTIONS_PASS')"
+          python -c "import json; x=json.load(open('SOURCE_GATE/workspace_receipt.json')); assert x['status']=='DISCOVERY_WORKSPACE_474_PLUS_6_PASS',x; assert x['discovery_records']==480,x; assert x['official_monthly_records']==474,x; assert x['canonical_repair_records']==6,x; assert x['year_2025_accessed'] is False,x; assert x['year_2026_accessed'] is False,x; assert x['outcomes_computed'] is False,x; print('DISCOVERY_SOURCE_474_PLUS_6_ASSERTIONS_PASS')"
 
       - name: Unpack exact frozen V0.3 runner
         shell: pwsh
         run: |
-          $sha = (Get-FileHash 'payload/CED-1D-V1-RUNNER-FREEZE-V0.3.zip' -Algorithm SHA256).Hash.ToLower()
-          Write-Host "RUNNER_SHA256=$sha"
-          if ($sha -ne 'df625d0d4a05c55ba34ca51514d31fd61636ff0a823567585c2d02afa0877958') { throw "RUNNER_SHA256_MISMATCH: $sha" }
-          Expand-Archive -LiteralPath 'payload/CED-1D-V1-RUNNER-FREEZE-V0.3.zip' -DestinationPath 'runner' -Force
+          Expand-Archive -LiteralPath "$env:CANON/CED-1D-V1-RUNNER-FREEZE-V0.3.zip" -DestinationPath "runner_bundle" -Force
+          $dir=Get-ChildItem -Directory "runner_bundle" | Select-Object -First 1
+          if ($null -eq $dir) { throw "RUNNER_DIRECTORY_NOT_FOUND" }
+          "RUNNER_DIR=$($dir.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
-      - name: Frozen runner regression suite
+      - name: Frozen runner regression suite 36 of 36
         shell: pwsh
-        working-directory: runner
         run: |
+          Push-Location "$env:RUNNER_DIR"
+          python -c "import unittest; s=unittest.defaultTestLoader.discover('tests'); n=s.countTestCases(); print('DISCOVERED_TESTS='+str(n)); assert n==36,n"
           python -m unittest discover -s tests -v
+          Pop-Location
 
       - name: CED 1D preflight only
         shell: pwsh
         run: |
-          python runner/run_1d_lab.py --authority CED_PHASE2_WORKSPACE/AUTHORITY --dataset-workspace CED_PHASE2_WORKSPACE --input-index REPAIR_A01/EVIDENCE/RESEARCH_INPUT_INDEX.json --output PREFLIGHT
-          python -c "import json; x=json.load(open('PREFLIGHT/preflight.json')); assert x['status']=='PREFLIGHT_PASS',x; assert x['discovery_files_resolved']==480,x; assert x['discovery_months_per_symbol']==48,x; assert x['confirmation_2025_files_opened']==0,x; assert x['contract_sha256']=='4a6ee27a8b6fd66dcc89e3d2b4211d3f5d5c8020c151f8908f081108803acfb4',x; assert x['phase2_dataset_fingerprint']=='0b3de834cf5a126cb348596a466ce191e956640f4e7c3d8d3fbc8f38e1c5ad93',x; print('PREFLIGHT_ASSERTIONS_PASS')"
+          python "$env:RUNNER_DIR/run_1d_lab.py" --authority CED_PHASE2_WORKSPACE/AUTHORITY --dataset-workspace CED_PHASE2_WORKSPACE --input-index REPAIR_A01/EVIDENCE/RESEARCH_INPUT_INDEX.json --output PREFLIGHT
+          python -c "import json; x=json.load(open('PREFLIGHT/preflight.json')); assert x['status']=='PREFLIGHT_PASS',x; assert x['discovery_files_resolved']==480,x; assert x['discovery_months_per_symbol']==48,x; assert x['confirmation_2025_files_opened']==0,x; assert x['contract_sha256']=='4a6ee27a8b6fd66dcc89e3d2b4211d3f5d5c8020c151f8908f081108803acfb4',x; assert x['phase2_dataset_fingerprint']=='0b3de834cf5a126cb348596a466ce191e956640f4e7c3d8d3fbc8f38e1c5ad93',x; print('PREFLIGHT_480_PASS')"
 
-      - name: Exact frozen raw Discovery reproduction — 2021-2024 only
+      - name: Exact frozen raw Discovery reproduction 2021 to 2024 only
         shell: pwsh
         run: |
-          python runner/run_1d_lab.py --authority CED_PHASE2_WORKSPACE/AUTHORITY --dataset-workspace CED_PHASE2_WORKSPACE --input-index REPAIR_A01/EVIDENCE/RESEARCH_INPUT_INDEX.json --output CED1D_RAW --raw-discovery
+          python "$env:RUNNER_DIR/run_1d_lab.py" --authority CED_PHASE2_WORKSPACE/AUTHORITY --dataset-workspace CED_PHASE2_WORKSPACE --input-index REPAIR_A01/EVIDENCE/RESEARCH_INPUT_INDEX.json --output CED1D_RAW --raw-discovery
 
       - name: Assert historical identity and firewall
         shell: pwsh
         run: |
-          python -c "import json; m=json.load(open('CED1D_RAW/run_manifest.json')); d=json.load(open('CED1D_RAW/derived_daily_fingerprint.json')); assert m['stage']=='RAW_DISCOVERY_LEDGER_ONLY',m; assert m['primary_tests']==820,m; assert m['discovery_source_slots']==480,m; assert m['confirmation_2025_accessed'] is False,m; assert m['confirmation_2025_files_opened']==0,m; assert m['access_2026_plus'] is False,m; assert m['costs_applied'] is False,m; assert m['multiple_testing_applied'] is False,m; assert m['scout_score_applied'] is False,m; assert d['sha256']==r'${{ env.EXPECTED_DERIVED_1D_SHA256 }}',d; print('CED1D_REPRODUCTION_IDENTITY_PASS')"
+          python -c "import json; m=json.load(open('CED1D_RAW/run_manifest.json')); d=json.load(open('CED1D_RAW/derived_daily_fingerprint.json')); assert m['stage']=='RAW_DISCOVERY_LEDGER_ONLY',m; assert m['primary_tests']==820,m; assert m['discovery_source_slots']==480,m; assert m['confirmation_2025_accessed'] is False,m; assert m['confirmation_2025_files_opened']==0,m; assert m['access_2026_plus'] is False,m; assert m['costs_applied'] is False,m; assert m['multiple_testing_applied'] is False,m; assert m['scout_score_applied'] is False,m; assert d['sha256']=='b92741d682a704a237cc1ab1a4d1fb0beb13798b11993ddde9ef54bcd4f3ab20',d; print('CED1D_REPRODUCTION_IDENTITY_PASS')"
 
-      - name: Upload source-gate evidence
+      - name: Upload source and preflight evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ced1d-v3-source-gate-${{ github.run_id }}-${{ github.run_attempt }}
+          name: ced1d-v3-source-preflight
           path: |
             SOURCE_GATE/
             PREFLIGHT/
@@ -96,7 +113,7 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: ced1d-v3-raw-discovery-reproduction-${{ github.run_id }}-${{ github.run_attempt }}
+          name: ced1d-v3-raw-discovery-reproduction
           path: CED1D_RAW/
           if-no-files-found: error
           retention-days: 30
