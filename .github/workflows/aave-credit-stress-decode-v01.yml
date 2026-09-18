@@ -1,0 +1,87 @@
+name: AAVE Credit Stress Decode Daily V0.1
+
+on:
+  push:
+    branches:
+      - aave-credit-stress-decode-v0.1
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/AAVE_CREDIT_STRESS_001_DECODE_TRIGGER_V0.1.txt'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: aave-credit-stress-decode-v01
+  cancel-in-progress: false
+
+jobs:
+  decode_shards:
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        shard: [0,1,2,3,4,5,6,7]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: aave-credit-stress-decode-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --disable-pip-version-check requests==2.32.3
+      - name: Verify frozen decode authority
+        run: |
+          python - <<'PY'
+          import json
+          p='Dream-Account-OS-v2.3-PARTIAL/research/AAVE_CREDIT_STRESS_001_DECODE_AUTHORITY_V0.1.json'
+          a=json.load(open(p))
+          assert a['decode_gate_id']=='AAVE-CS001-DECODE-DAILY-001'
+          assert a['status']=='PRE_DECODE_FROZEN_OUTCOME_BLIND'
+          assert a['parent_source_run']==35315587454
+          assert a['parent_source_result']=='SOURCE_DATA_PASS'
+          assert a['abi']['variable_borrow_rate_word_index_zero_based']==2
+          assert a['abi']['expected_data_bytes']==160
+          assert a['gates']['minimum_events']==100
+          assert a['gates']['minimum_daily_rows_after_first_observation']==600
+          assert all(v is False for v in a['firewalls'].values())
+          print('AAVE_CS001_DECODE_AUTHORITY_PASS')
+          PY
+      - run: python -m py_compile Dream-Account-OS-v2.3-PARTIAL/research/aave_credit_stress_001_decode_v01.py
+      - name: Execute decode shard
+        run: python Dream-Account-OS-v2.3-PARTIAL/research/aave_credit_stress_001_decode_v01.py --shard ${{ matrix.shard }}
+      - name: Upload decode shard
+        uses: actions/upload-artifact@v4
+        with:
+          name: aave-cs001-decode-v01-shard-${{ matrix.shard }}
+          path: artifacts/aave_credit_stress_decode_v01/shard_${{ matrix.shard }}.json
+          retention-days: 90
+          if-no-files-found: error
+
+  aggregate:
+    needs: decode_shards
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: aave-credit-stress-decode-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: aave-cs001-decode-v01-shard-*
+          path: artifacts/aave_decode_shards
+      - name: Aggregate canonical daily series
+        run: python Dream-Account-OS-v2.3-PARTIAL/research/aave_credit_stress_001_decode_v01.py --aggregate-dir artifacts/aave_decode_shards
+      - name: Upload canonical decode receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: aave-cs001-decode-v01-aggregate-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            artifacts/aave_credit_stress_decode_v01/aggregate.json
+            artifacts/aave_credit_stress_decode_v01/manifest.json
+          retention-days: 90
+          if-no-files-found: error
