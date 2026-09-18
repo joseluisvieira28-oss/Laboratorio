@@ -1,14 +1,15 @@
 {
-  "registry_version": "2.3",
-  "as_of_utc": "2026-09-18T06:24:50Z",
+  "registry_version": "3.1",
+  "as_of_utc": "2026-09-18T08:04:08Z",
   "governance": "ND_PROMOTION_POLICY_V3_PLUS_AGGRESSIVE_FAIL_CLOSED_DEPLOYMENT",
   "focus_strategy_ids": [
     "ETF-CME-INSTFLOW-001",
     "BNB-LAUNCHPOOL-DEMAND-001",
     "OPTIONS-SPOTPERP-001-V2.1",
-    "HTF-DONCHIAN-DH02-6H"
+    "TFG-DONCHIAN-REGIME-ADAPTATION-V1",
+    "HTF-DH03-12H-STANDALONE-FORWARD-V1"
   ],
-  "policy_note": "Scientific tier and deployment readiness are separate. Tier-2 classification does not override a later operational/shadow failure and never implies live-trading authorization.",
+  "policy_note": "Active deployment registry only. Closed/rejected/historical-only candidates moved to archive_registry_v1.json without rewriting verdicts.",
   "candidates": [
     {
       "strategy_id": "ETF-CME-INSTFLOW-001",
@@ -90,6 +91,7 @@
         "one micro-live event is operational evidence only"
       ],
       "blocking_gates": [
+        "real-time micro-live event-detection latency path not yet validated",
         "genuinely prospective eligible event required",
         "account-specific read-only taker fee and venue minimum-notional preflight not yet bound",
         "separate explicit V3 MICRO-LIVE EXECUTION AUTHORITY does not yet exist",
@@ -114,6 +116,11 @@
         "max_projected_round_trip_bps": 30,
         "account_specific_taker_fee_read_required": true,
         "min_notional_must_be_lte_chf": 25
+      },
+      "shadow_polling": {
+        "official_cms_poll_interval_seconds": 600,
+        "transient_source_failure_behavior": "SOURCE_RETRY_BACKOFF_FAIL_CLOSED",
+        "micro_live_latency_path_validated": false
       }
     },
     {
@@ -158,15 +165,33 @@
       "forward_evidence_backend": "POSTGRES_APPEND_ONLY_HASH_CHAIN"
     },
     {
-      "strategy_id": "HTF-DONCHIAN-DH02-6H",
-      "scientific_tier": 2,
-      "scientific_status": "TIER_2_RETAINED_STATISTICAL_FRAGILITY__HISTORICAL_CLASSIFICATION_PRESERVED",
-      "deployment_state": "BLOCKED_CLOSED_SHADOW_READINESS_FAIL_2026",
-      "shadow_allowed": false,
+      "strategy_id": "TFG-DONCHIAN-REGIME-ADAPTATION-V1",
+      "scientific_tier": 3,
+      "scientific_status": "TIER_3_FORWARD_ONLY_CANDIDATE",
+      "deployment_state": "PROSPECTIVE_FORWARD_SHADOW_OPERATIONAL",
+      "shadow_allowed": true,
       "micro_live_allowed_now": false,
-      "authority_branch": "htf-donchian-shadow-v0.1",
-      "frozen_cell": "DH-02-HO1",
-      "timeframe": "6H",
+      "authority": "Regime Adaptation V1 closeout + Promotion Policy V3",
+      "watcher_id": "TFG-DONCHIAN-REGIME-V1-FORWARD-SHADOW",
+      "provider": "MEXC_SPOT_PUBLIC",
+      "readiness_gate": "10 resolved genuinely prospective filtered forward trades with positive BASE/STRESS economics and clean integrity",
+      "blocking_gates": [
+        "minimum 10 resolved filtered forward trades not yet met",
+        "base/stress expectancy and PF readiness gate not yet met",
+        "no micro-live execution authority"
+      ]
+    },
+    {
+      "strategy_id": "HTF-DH03-12H-STANDALONE-FORWARD-V1",
+      "scientific_tier": null,
+      "scientific_status": "NEW_PROSPECTIVE_STANDALONE_CANDIDATE__SOURCE_PASS",
+      "deployment_state": "PROSPECTIVE_ARCHIVE_SHADOW_OPERATIONAL__WAITING_FIRST_ELIGIBLE_ARCHIVE_DAY",
+      "shadow_allowed": true,
+      "micro_live_allowed_now": false,
+      "authority_branch": "htf-dh03-12h-standalone-forward-v0.1",
+      "parent_historical_cell": "DH-03-HO1",
+      "historical_role": "SECONDARY_SUPPORTING_EVIDENCE_ONLY",
+      "timeframe": "12H",
       "direction_rule": "LONG_ONLY",
       "symbols": [
         "BTCUSDT",
@@ -176,145 +201,90 @@
         "XRPUSDT",
         "DOGEUSDT"
       ],
-      "donchian_lookback_complete_bars": 80,
-      "atr_length": 56,
-      "entry_rule": "next 6H open",
-      "stop_rule": "signal low minus 0.25*ATR56",
+      "donchian_lookback_complete_bars": 40,
+      "atr_length": 28,
+      "entry_rule": "next 12H open",
+      "stop_rule": "signal low minus 0.25*ATR28",
       "target_r": 3,
-      "max_hold_bars": 160,
+      "max_hold_bars": 80,
       "base_round_trip_cost_pct": 0.2,
       "stress_round_trip_cost_pct": 0.3,
-      "protected_2026_shadow_result": {
-        "resolved_trades": 27,
-        "base_expectancy_r": -0.5689228153152064,
-        "base_profit_factor": 0.35295321674707636,
-        "stress_expectancy_r": -0.5791187872063066
+      "prospective_freeze_utc": "2026-09-18T06:26:53Z",
+      "source_validation": {
+        "public_websocket": "PASS_PUBLIC_WEBSOCKET_SOURCE_6_OF_6",
+        "official_archive_warmup": "PASS_ARCHIVE_WARMUP_SOURCE_8640_OF_8640_CHECKSUM_VERIFIED",
+        "source_probe_run_id": 35316165339,
+        "prefreeze_rows_used_as_forward_evidence": false
       },
-      "reason": "Scientific Tier-2 historical/V3 classification is preserved, but the exact 6H production path closed after the protected 2026 shadow readiness failure. No rescue, 12H substitution, or capital path is permitted under this implementation.",
       "blocking_gates": [
-        "terminal deployment blocker: CLOSED_SHADOW_READINESS_FAIL",
-        "any future Donchian production research requires a new prospectively frozen experiment and cannot rescue this closeout"
-      ]
-    },
-    {
-      "strategy_id": "BTC-OPTIONS-EXPIRY-REVERSAL-001",
-      "scientific_tier": 4,
-      "scientific_status": "V3_REJECTED_WEAK_CANDIDATE",
-      "deployment_state": "BLOCKED",
-      "shadow_allowed": false,
-      "micro_live_allowed_now": false
-    },
-    {
-      "strategy_id": "HTF-DH03-12H",
-      "scientific_tier": null,
-      "scientific_status": "HISTORICAL_SECONDARY_ONLY",
-      "deployment_state": "BLOCKED_SUPPORTING_EVIDENCE_ONLY",
-      "shadow_allowed": false,
-      "micro_live_allowed_now": false,
-      "reason": "Cannot substitute for DH-02 after outcomes."
-    },
-    {
-      "strategy_id": "MVE-ADX4H-01",
-      "scientific_tier": 4,
-      "scientific_status": "REJECTED_STONE_AFTER_2025_CONFIRMATION",
-      "deployment_state": "BLOCKED",
-      "shadow_allowed": false,
-      "micro_live_allowed_now": false
-    },
-    {
-      "strategy_id": "OPTIONS-SPOTPERP-002-UP_LOW",
-      "scientific_tier": 4,
-      "scientific_status": "REJECTED_OOS_FAILED",
-      "deployment_state": "BLOCKED",
-      "shadow_allowed": false,
-      "micro_live_allowed_now": false
-    },
-    {
-      "strategy_id": "CPI-SURPRISE-V0.3A",
-      "scientific_tier": 4,
-      "scientific_status": "REJECTED_AFTER_INDEPENDENT_OOS",
-      "deployment_state": "BLOCKED",
-      "shadow_allowed": false,
-      "micro_live_allowed_now": false
-    },
-    {
-      "strategy_id": "F08-RESIDUAL-RELATIVE-STRENGTH",
-      "scientific_tier": 4,
-      "scientific_status": "REJECTED_AFTER_2025_OOS",
-      "deployment_state": "BLOCKED",
-      "shadow_allowed": false,
-      "micro_live_allowed_now": false
-    },
-    {
-      "strategy_id": "ICHIMOKU-4H-MVE",
-      "scientific_tier": 4,
-      "scientific_status": "REJECTED_AFTER_2024_OOS",
-      "deployment_state": "BLOCKED",
-      "shadow_allowed": false,
-      "micro_live_allowed_now": false
-    },
-    {
-      "strategy_id": "SPOT-PERP-CARRY-V0.1",
-      "scientific_tier": 4,
-      "scientific_status": "REJECTED_OOS_NET_NEGATIVE",
-      "deployment_state": "BLOCKED",
-      "shadow_allowed": false,
-      "micro_live_allowed_now": false
+        "first eligible post-freeze archive day not yet published/available",
+        "first eligible signal boundary not yet observed under standalone authority",
+        "final net-R requires checksum-verified monthly funding reconciliation",
+        "no micro-live execution authority"
+      ],
+      "archive_shadow_mode": "BINANCE_PUBLIC_ARCHIVE_CHECKSUM_VERIFIED",
+      "archive_shadow_cadence": "retry_6h_until_utc_yesterday_available_then_sleep_until_next_utc_day",
+      "evidence_backend": "POSTGRES_APPEND_ONLY_HASH_CHAIN",
+      "latest_runtime_state": {
+        "checked_at_utc": "2026-09-18T08:03:52.290Z",
+        "latest_archive_day": "2026-09-17",
+        "first_forward_archive_day": "2026-09-18",
+        "status": "WAITING_FIRST_ELIGIBLE_ARCHIVE_DAY",
+        "used_as_forward_evidence": false
+      }
     }
   ],
   "operational_shadow_v09": {
-    "status": "OPERATIONAL_PERSISTENT_PUBLIC_SHADOW__FOUR_ENGINE",
+    "status": "OPERATIONAL_PERSISTENT_PUBLIC_SHADOW__FIVE_ENGINE",
     "branch": "crypto-edge-radar-promotion-sprint-v0.9",
-    "deployed_commit": "adfd9c77c1bbc6b2d0b2f4952974488796a6604f",
+    "deployed_commit": "2bd755b921da8284cb1d30d773c583bc4f30ae92",
     "render_service_id": "srv-dalqkpu1egvs73fhiehg",
-    "render_deploy_id": "dep-damdhqf40ujc73ahdo60",
+    "render_deploy_id": "dep-damf0e740ujc73amnclg",
     "render_region": "frankfurt",
     "evidence_backend": "postgres",
     "postgres_id": "dpg-dalqi4qd0e5s738a77kg-a",
     "evidence_chain_ok": true,
-    "evidence_events_verified": 80,
+    "evidence_events_verified": 82,
     "runtime_health": "OK",
     "engines": {
       "bnb_launchpool": {
         "status": "OK",
         "watcher_id": "BNB-LAUNCHPOOL-DEMAND-001-FORWARD-SHADOW-V3",
+        "poll_interval_seconds": 600,
+        "new_event_action_allowed": false,
         "eligible_events_visible": 0
       },
       "tfg_regime": {
         "status": "OK",
         "watcher_id": "TFG-DONCHIAN-REGIME-V1-FORWARD-SHADOW",
         "progress": "0/10",
-        "readiness_gate_pass": false,
-        "unresolved_execution_paths": 0,
-        "rule_deviations": 0,
-        "missed_eligible_signals": 0
+        "readiness_gate_pass": false
       },
       "etf_cme_exec_v2": {
         "status": "OK",
         "classification": "PUBLIC_PREFLIGHT_ONLY",
-        "spot_spread_bps": 0.02834332736061425,
-        "perp_minus_spot_mid_bps": -2.670714437368967,
-        "short_same_book_taker_rt_proxy_bps": 16.01288658963568,
-        "short_trailing_7d_fee_spread_funding_proxy_bps": 3.9028865896356795,
-        "historical_break_even_bps": 21.2,
         "account_fee_verified_read_only": false,
         "authenticated_transport_ready": false,
         "execution_authority_present": false
       },
       "options_v21": {
         "status": "WAITING_FIRST_FULL_POST_FREEZE_SIGNAL_DAY",
-        "watcher_id": "OPTIONS-SPOTPERP-001-V2.1-FORWARD-SHADOW",
         "first_signal_day": "2026-09-19",
-        "source": "DERIBIT_PUBLIC_HTTP",
-        "btc_state_source": "BINANCE_SPOT_DATA_API_PUBLIC",
-        "forward_signal_days": 0,
         "resolved_forward_trades": 0,
         "micro_live_authorized": false
+      },
+      "dh03_12h_standalone": {
+        "status": "WAITING_FIRST_ELIGIBLE_ARCHIVE_DAY",
+        "latest_archive_day": "2026-09-17",
+        "first_forward_archive_day": "2026-09-18",
+        "used_as_forward_evidence": false,
+        "mode": "PUBLIC_ARCHIVE_SHADOW_ONLY"
       }
     },
     "authenticated_exchange_api_used": false,
     "orders_created": false,
     "exchange_mutation_performed": false,
     "live_capital_enabled": false
-  }
+  },
+  "archive_registry": "archive_registry_v1.json"
 }
