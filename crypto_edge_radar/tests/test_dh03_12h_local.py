@@ -23,6 +23,20 @@ def build_15m_history(base:int):
 
 
 class DH0312HLocalTests(unittest.TestCase):
+    def test_market_store_writes_survive_new_connection(self):
+        with tempfile.TemporaryDirectory() as td:
+            path=os.path.join(td,"market.sqlite3")
+            first=DH03MarketStore(path)
+            first.set_meta("x",{"value":1})
+            first.put_15m("BTCUSDT",(0,100.0,101.0,99.0,100.5,1.0),"TEST")
+            first.put_minute("BTCUSDT",(0,100.0,101.0,99.0,100.5),"TEST")
+            first.put_funding("BTCUSDT",8*60*60*1000,0.0001,"TEST")
+            second=DH03MarketStore(path)
+            self.assertEqual(second.get_meta("x"),{"value":1})
+            self.assertEqual(len(second.bars15m("BTCUSDT")),1)
+            self.assertEqual(len(second.minutes_since("BTCUSDT",0)),1)
+            self.assertEqual(len(second.funding_between("BTCUSDT",-1,9*60*60*1000)),1)
+
     def _make(self,td,activation):
         market=DH03MarketStore(os.path.join(td,"market.sqlite3"))
         evidence=EvidenceStore(os.path.join(td,"evidence.sqlite3"))
