@@ -1,0 +1,49 @@
+{
+  "document_id": "CED_1D_2025_FUNDING_REST_MIRROR_TRANSPORT_PROBE_FREEZE_V0.1",
+  "frozen_at_utc": "2026-09-18T11:31:00Z",
+  "status": "FROZEN_BEFORE_MIRROR_PROBE__SOURCE_ONLY",
+  "parent_confirmation_freeze": "CED_1D_V3_2025_CONFIRMATION_EXECUTION_FREEZE_2026-09-18",
+  "observed_primary_failure": {
+    "run_id": 35339537472,
+    "host": "https://fapi.binance.com",
+    "classification": "HTTP_451_TRANSPORT_ONLY",
+    "outcomes_accessed": false
+  },
+  "purpose": "Recover the exact official fundingRate response fields including markPrice without changing query semantics. This is transport remediation only.",
+  "hosts": [
+    "https://fapi1.binance.com",
+    "https://fapi2.binance.com",
+    "https://fapi3.binance.com",
+    "https://fapi4.binance.com"
+  ],
+  "endpoint": "/fapi/v1/fundingRate",
+  "probe": {
+    "symbol": "AVAXUSDT",
+    "startTime": 1735689600000,
+    "endTime": 1735775999999,
+    "limit": 1000
+  },
+  "required_fields": [
+    "symbol",
+    "fundingTime",
+    "fundingRate",
+    "markPrice"
+  ],
+  "adoption_rule": {
+    "require_http_200": true,
+    "require_json_list": true,
+    "require_required_fields": true,
+    "require_symbol_match": true,
+    "require_times_inside_probe": true,
+    "note": "Any accessible mirror may be used for the full frozen 2025 query only if it returns the exact endpoint schema. Query parameters, pagination, symbols and 2025 interval remain unchanged."
+  },
+  "invariants": {
+    "price_returns_computed": false,
+    "pnl_computed": false,
+    "signals_computed": false,
+    "access_2026_plus": false,
+    "live_trading": false,
+    "orders": false,
+    "exchange_mutation": false
+  }
+}
