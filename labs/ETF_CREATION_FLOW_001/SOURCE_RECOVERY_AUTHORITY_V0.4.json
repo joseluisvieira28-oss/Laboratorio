@@ -1,0 +1,83 @@
+{
+  "lab_id": "ETF-CREATION-FLOW-001",
+  "source_gate_id": "ECF-IBIT-SHARES-SOURCE-004",
+  "status": "PRE_ACQUISITION_FROZEN_SOURCE_ONLY",
+  "date_frozen": "2026-09-18",
+  "parent_source_gate": "ECF-IBIT-SHARES-SOURCE-003",
+  "parent_result": "SOURCE_FEASIBILITY_BLOCKED",
+  "scientific_question": "Can the official BlackRock/iShares product-data v2 keyFundFacts component return exact historical IBIT Shares Outstanding for fixed 2024 dates?",
+  "frozen_probe_dates": [
+    "2024-03-28",
+    "2024-06-28",
+    "2024-09-30",
+    "2024-12-30"
+  ],
+  "routes": [
+    {
+      "id": "ishares_product_data_keyfacts",
+      "base": "https://www.ishares.com/varnish-api/blk-one01-product-data/product-data/api/v2/get-product-data"
+    },
+    {
+      "id": "blackrock_product_data_keyfacts",
+      "base": "https://www.blackrock.com/varnish-api/blk-one01-product-data/product-data/api/v2/get-product-data"
+    }
+  ],
+  "fixed_params": {
+    "appSubType": "ISHARES",
+    "appType": "PRODUCT_PAGE",
+    "component": "keyFundFacts",
+    "locale": "en_US",
+    "portfolioId": "333011",
+    "targetSite": "us-ishares",
+    "userType": "individual",
+    "excludeContent": "true"
+  },
+  "exact_field_path": "componentsByNameMap.keyFundFacts.containersByNameMap.default.dataPointsByNameMap.sharesOutstanding",
+  "date_binding_rules": [
+    "Prefer sharesOutstanding.asOfDate if present.",
+    "Else accept a provider-native keyFundFacts/default asOfDate data point.",
+    "Else accept a unique provider-native as-of date in the component only if it resolves exactly to the requested date.",
+    "Do not treat the request query itself as evidence of returned date."
+  ],
+  "pass_gate": {
+    "minimum_exact_dates": 3,
+    "minimum_distinct_calendar_quarters": 3,
+    "same_route": true,
+    "positive_numeric_shares": true
+  },
+  "fail_closed_conditions": [
+    "returned as-of date differs from requested date",
+    "protected 2025/2026 date detected in returned scientific component",
+    "sharesOutstanding field absent",
+    "sharesOutstanding nonnumeric/nonpositive",
+    "HTML/misroute/error"
+  ],
+  "forbidden_substitutes": [
+    "unitsHeld",
+    "BTC quantity",
+    "AUM",
+    "NAV",
+    "market value",
+    "third-party flows",
+    "derived shares"
+  ],
+  "firewalls": {
+    "btc_market_data_accessed": false,
+    "returns_computed": false,
+    "pnl_computed": false,
+    "fundDownload_historical_component": false,
+    "latest_holdings_route": false,
+    "data_download_workbook": false,
+    "access_2025": false,
+    "access_2026": false,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "merge_to_main": false
+  },
+  "classifications": {
+    "pass": "SOURCE_FEASIBILITY_PASS",
+    "blocked": "SOURCE_FEASIBILITY_BLOCKED",
+    "provenance_failure": "SOURCE_PROVENANCE_FAILURE",
+    "technical_failure": "SOURCE_FEASIBILITY_TECHNICAL_FAILURE"
+  }
+}
