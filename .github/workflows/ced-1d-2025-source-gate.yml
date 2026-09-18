@@ -8,8 +8,8 @@ on:
     paths:
       - '.github/workflows/ced-1d-2025-source-gate.yml'
       - 'Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/CED_1D_2025_SOURCE_MANIFEST_V0.2.json'
-      - 'Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/ced_1d_2025_source_gate_v02.py'
-      - 'governance/CED_1D_2025_TRANSFERRED_REPLICATION_CONFIRMATION_FREEZE_V0.1_2026-09-18.md'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/ced_1d_2025_source_gate_v03.py'
+      - 'governance/CED_1D_2025_KLINE_SOURCE_GATE_HEADER_REMEDIATION_2026-09-18.md'
 
 permissions:
   contents: read
@@ -17,25 +17,25 @@ permissions:
 jobs:
   source-gate:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
       - name: Compile source gate
-        run: python -m py_compile Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/ced_1d_2025_source_gate_v01.py
-      - name: Verify 28 frozen source ZIPs only
+        run: python -m py_compile Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/ced_1d_2025_source_gate_v03.py
+      - name: Verify 32 frozen source ZIPs only
         run: |
-          python Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/ced_1d_2025_source_gate_v01.py \
-            --manifest Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/CED_1D_2025_SOURCE_MANIFEST_V0.1.json \
+          python Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/ced_1d_2025_source_gate_v03.py \
+            --manifest Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/CED_1D_2025_SOURCE_MANIFEST_V0.2.json \
             --output "$RUNNER_TEMP/ced1d-source-gate" \
             --cache "$RUNNER_TEMP/ced1d-source-cache"
       - name: Upload source-only receipt
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ced1d-2025-source-gate
+          name: ced1d-2025-source-gate-v03
           path: ${{ runner.temp }}/ced1d-source-gate
           if-no-files-found: warn
           retention-days: 30
