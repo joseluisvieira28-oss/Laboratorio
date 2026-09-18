@@ -1,0 +1,48 @@
+name: Options Expiry Gamma Signed Flow Source V0.4
+
+on:
+  push:
+    branches:
+      - options-expiry-gamma-signed-flow-source-v0.4
+    paths:
+      - 'labs/OPTIONS_EXPIRY_GAMMA_001/SIGNED_FLOW_SOURCE_TRIGGER_V0.4.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  source_probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: options-expiry-gamma-signed-flow-source-v0.4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --disable-pip-version-check requests==2.32.3
+      - name: Verify frozen source authority
+        run: |
+          python - <<'PY'
+          import json
+          a=json.load(open('labs/OPTIONS_EXPIRY_GAMMA_001/SIGNED_FLOW_SOURCE_AUTHORITY_V0.4.json'))
+          assert a['source_gate_id']=='OEG-TARDIS-SIGNED-FLOW-SOURCE-004'
+          assert a['status']=='PRE_ACQUISITION_FROZEN_SOURCE_ONLY'
+          assert len(a['deterministic_probe_dates'])==4
+          assert a['source']['api_key_used'] is False
+          assert a['source']['subscription_purchase'] is False
+          assert all(v is False for v in a['firewalls'].values())
+          print('OEG_SIGNED_FLOW_SOURCE_AUTHORITY_PASS')
+          PY
+      - run: python -m py_compile labs/OPTIONS_EXPIRY_GAMMA_001/signed_flow_source_v04.py
+      - name: Execute signed-flow source-only probe
+        run: python labs/OPTIONS_EXPIRY_GAMMA_001/signed_flow_source_v04.py
+      - name: Upload immutable source receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: oeg-signed-flow-source-v04-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/options_expiry_gamma_signed_flow_source_v04/
+          if-no-files-found: warn
+          retention-days: 90
