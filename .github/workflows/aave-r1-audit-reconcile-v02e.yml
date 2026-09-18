@@ -1,0 +1,77 @@
+name: AAVE Liquidation Overhang 001 — R1 Audit Reconciliation V0.2E
+
+on:
+  push:
+    branches:
+      - aave-liquidation-overhang-v0.1
+    paths:
+      - 'research/aave_liquidation_overhang/R1_AUDIT_RECONCILIATION_TRIGGER_V0_2E.txt'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile reconciler
+        run: python -m py_compile research/aave_liquidation_overhang/r1_audit_reconcile_v02e.py
+
+      - name: Download immutable V0.2A deterministic corpus
+        uses: actions/download-artifact@v4
+        with:
+          name: AAVE_LIQUIDATION_OVERHANG_001_R1_SCALED_LEDGER_AUDIT_V0_2A
+          run-id: 35375172202
+          github-token: ${{ github.token }}
+          path: downloaded_v02a
+
+      - name: Download immutable V0.2D target validation PASS
+        uses: actions/download-artifact@v4
+        with:
+          name: AAVE_R1_TARGET_VALIDATION_V0_2D
+          run-id: 35378340649
+          github-token: ${{ github.token }}
+          path: downloaded_v02d
+
+      - name: Deterministic audit reconciliation
+        run: python research/aave_liquidation_overhang/r1_audit_reconcile_v02e.py
+
+      - name: Verify canonical PASS safety
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          fs=list(Path('r1_v02e_output').glob('AAVE_LIQUIDATION_OVERHANG_001_R1_AUDIT_CANONICAL_V0_2E.json'))
+          assert len(fs)==1, fs
+          p=json.loads(fs[0].read_text())
+          assert p['classification']=='R1_AUDIT_PASS', p
+          assert p['validation_target_count']==77, p
+          assert p['validated_target_count']==77, p
+          assert p['validation_failure_count']==0, p
+          assert len(p['sample_borrowers'])==16, p
+          assert p['canonical_reconciliation']['borrower_census_recomputed'] is False
+          assert p['canonical_reconciliation']['delta_replay_recomputed'] is False
+          assert p['canonical_reconciliation']['targets_recomputed'] is False
+          print(json.dumps({
+            'classification':p['classification'],
+            'sample_size':len(p['sample_borrowers']),
+            'targets':p['validation_target_count'],
+            'validated':p['validated_target_count'],
+            'target_digest_sha256':p['target_digest_sha256'],
+          },sort_keys=True))
+          PY
+
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: AAVE_R1_AUDIT_CANONICAL_V0_2E
+          path: r1_v02e_output/AAVE_LIQUIDATION_OVERHANG_001_R1_AUDIT_CANONICAL_V0_2E.json
+          if-no-files-found: error
+          retention-days: 30
