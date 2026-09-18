@@ -1,0 +1,131 @@
+name: AAVE Risk Parameter Shock 001 — Mechanism Census V0.1A
+
+on:
+  push:
+    branches:
+      - aave-risk-parameter-shock-v0.1
+    paths:
+      - '.github/workflows/aave-risk-parameter-shock-mechanism-census-v01a.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  SOURCE_RUN_ID: '35382293497'
+  SOURCE_HEAD_SHA: '0620b6d20a3a2d5b3d9be3fc6f3ac5b2b669bcdf'
+  SOURCE_ARTIFACT_NAME: 'AAVE_RISK_PARAMETER_SHOCK_001_SOURCE_CENSUS_V0_1A'
+
+jobs:
+  mechanism-census:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install --disable-pip-version-check requests 'eth-hash[pycryptodome]'
+
+      - name: Verify frozen remediation and code
+        run: |
+          test -f research/aave_risk_parameter_shock/AAVE_RISK_PARAMETER_SHOCK_001_MECHANISM_CENSUS_SQD_CONTINUATION_REMEDIATION_V0_1A.md
+          python -m py_compile research/aave_risk_parameter_shock/primary_mechanism_census_v01a.py
+          python - <<'PY'
+          import importlib.util
+          from pathlib import Path
+          p=Path('research/aave_risk_parameter_shock/primary_mechanism_census_v01a.py')
+          spec=importlib.util.spec_from_file_location('m',p)
+          m=importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+          assert m.LAB_ID=='AAVE-RISK-PARAMETER-SHOCK-001'
+          assert m.FROM_BLOCK==16490000 and m.TO_BLOCK==21525890
+          assert m.MAX_TS==1735689599
+          assert m.MIN_EPISODES==12 and m.MIN_ASSETS==4 and m.MIN_YEARS==2
+          assert m.EPISODE_SECONDS==86400
+          assert m.SIG=='CollateralConfigurationChanged(address,uint256,uint256,uint256)'
+          print('MECHANISM_V01A_FREEZE_GUARD_PASS')
+          PY
+
+      - name: Verify exact source run metadata
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python - <<'PY'
+          import json,os,urllib.request
+          run_id=os.environ['SOURCE_RUN_ID']; expected=os.environ['SOURCE_HEAD_SHA']
+          req=urllib.request.Request(
+            f'https://api.github.com/repos/joseluisvieira28-oss/Laboratorio/actions/runs/{run_id}',
+            headers={'Authorization':f"Bearer {os.environ['GH_TOKEN']}",'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'}
+          )
+          with urllib.request.urlopen(req,timeout=30) as r: o=json.load(r)
+          assert o['status']=='completed' and o['conclusion']=='success',o
+          assert o['head_sha']==expected,o
+          print('EXACT_SOURCE_RUN_PASS')
+          PY
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: AAVE_RISK_PARAMETER_SHOCK_001_SOURCE_CENSUS_V0_1A
+          path: downloaded_source_census
+          run-id: 35382293497
+          github-token: ${{ github.token }}
+
+      - name: Verify source receipt and exact 72-event primary-family count
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          fs=list(Path('downloaded_source_census').rglob('*.json'))
+          assert len(fs)==1,fs
+          x=json.loads(fs[0].read_text())
+          assert x['classification']=='SOURCE_CENSUS_PASS',x
+          assert x['from_block']==16490000 and x['to_block']==21525890
+          assert x['event_counts']['CollateralConfigurationChanged']==72,x
+          assert x['safety']['parameter_values_decoded'] is False
+          assert x['safety']['market_prices_opened'] is False
+          assert x['safety']['returns_opened'] is False
+          assert x['safety']['pnl_opened'] is False
+          print('SOURCE_RECEIPT_BIND_PASS',x['event_counts']['CollateralConfigurationChanged'])
+          PY
+
+      - name: Execute exact remediated primary-mechanism census
+        run: python research/aave_risk_parameter_shock/primary_mechanism_census_v01a.py
+
+      - name: Enforce mechanism census firewall
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('out/aave_risk_parameter_shock/AAVE_RISK_PARAMETER_SHOCK_001_PRIMARY_MECHANISM_CENSUS_V0_1.json')
+          assert p.exists()
+          x=json.loads(p.read_text())
+          assert x['classification'] in {
+            'MECHANISM_CENSUS_PASS',
+            'INSUFFICIENT_PRIMARY_MECHANISM_SAMPLE',
+            'MECHANISM_CENSUS_TECHNICAL_OR_PROVENANCE_FAILURE'
+          }
+          s=x['safety']
+          assert s['borrower_state_opened'] is False
+          assert s['health_factor_computed'] is False
+          assert s['liquidation_overhang_computed'] is False
+          assert s['future_liquidation_outcomes_opened'] is False
+          assert s['market_prices_opened'] is False
+          assert s['returns_opened'] is False
+          assert s['pnl_opened'] is False
+          assert s['accessed_2025_or_2026'] is False
+          assert s['live_trading'] is False
+          assert s['exchange_mutation'] is False
+          if x['classification']!='MECHANISM_CENSUS_TECHNICAL_OR_PROVENANCE_FAILURE':
+              assert x['decoded_event_count']==72,x
+          print('MECHANISM_V01A_FIREWALL_PASS',x['classification'],x.get('independent_24h_episode_count'))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: AAVE_RISK_PARAMETER_SHOCK_001_PRIMARY_MECHANISM_CENSUS_V0_1A
+          path: out/aave_risk_parameter_shock/AAVE_RISK_PARAMETER_SHOCK_001_PRIMARY_MECHANISM_CENSUS_V0_1.json
+          if-no-files-found: error
+          retention-days: 90
