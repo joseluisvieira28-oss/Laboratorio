@@ -1,0 +1,66 @@
+{
+  "experiment_id": "LL-0017-TPD-001",
+  "version": "V0.1A_TECHNICAL_PERFORMANCE_ONLY",
+  "status": "COMPLETE",
+  "classification": "NO_EDGE_DISCOVERY_FAIL",
+  "promotion": "NONE",
+  "discovery": {
+    "scored_window": "2023-02-01 through 2023-12-31",
+    "n": 1143,
+    "gross_mean_bps": 3.2273902530962375,
+    "gross_median_bps": -2.7320463743557974,
+    "net14_mean_bps": -10.772609746903761,
+    "net20_mean_bps": -16.772609746903765,
+    "bootstrap_one_sided_p": 1.0,
+    "bootstrap_lower95_bps": -14.683270136149694,
+    "bootstrap_upper95_bps": -6.83841231053566,
+    "remove_top1pct_net14_mean_bps": -15.685026117272242
+  },
+  "asset_net14_mean_bps": {
+    "BTCUSDT": -15.885664451235483,
+    "ETHUSDT": -16.660188253244073,
+    "SOLUSDT": 5.309550570643977,
+    "BNBUSDT": -11.85290153214544,
+    "XRPUSDT": -2.026356454045539,
+    "DOGEUSDT": -19.48788235062188
+  },
+  "quarter_net14_mean_bps": {
+    "2023Q1": -10.828137505992999,
+    "2023Q2": -12.308154599102599,
+    "2023Q3": -7.951691954064433,
+    "2023Q4": -11.856361588025361
+  },
+  "primary_gate_failures": [
+    "NET14 mean <= 0",
+    "NET20 mean <= 0",
+    "gross median <= 0",
+    "bootstrap p >= 0.05",
+    "bootstrap lower95 <= 0",
+    "leave-one-asset-out minimum <= 0",
+    "fewer than 4/6 assets net-positive",
+    "fewer than 3/4 quarters positive and Q4 negative",
+    "remove-best-1pct NET14 <= 0"
+  ],
+  "primary_gate_passes": [
+    "N pooled >= 300",
+    "N each asset >= 30",
+    "asset concentration <= 0.35",
+    "month concentration <= 0.25",
+    "top5 concentration <= 0.15",
+    "single-event concentration <= 0.05"
+  ],
+  "firewall": {
+    "2024H1_confirmation_accessed": false,
+    "2024H2_accessed": false,
+    "2025_accessed": false,
+    "2026_accessed": false,
+    "live_trading": false,
+    "exchange_mutation": false
+  },
+  "output_hashes": {
+    "RESULT.json": "0935d0f4ffea282866a11f17c2178842e01ffea9a8a57b3f44194959d20bee68",
+    "events_2023.csv": "567d74ec7b1ba4a3ff4be94ff120a29d23065a4616304f18df3ddd78d66ae65a",
+    "OUTPUT_SHA256.json": "2c20029133489376e4b7efe146edf8c825c7061132cf2f01960bef26fc1cfd2d"
+  },
+  "decision": "STOP. No 2024H1 Confirmation. No inverse-direction rescue, threshold rescue, horizon rescue, taker-flow rescue, funding/OI rescue, single-asset SOL rescue, lower-cost rescue, subperiod rescue or diagnostic rescue."
+}
