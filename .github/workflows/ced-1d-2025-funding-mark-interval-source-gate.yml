@@ -1,0 +1,40 @@
+name: CED 1D 2025 Funding Mark Interval Source Gate
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - ced-1d-v3-byte-recovery-2026-09-17
+    paths:
+      - '.github/workflows/ced-1d-2025-funding-mark-interval-source-gate.yml'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/CED_1D_2025_FUNDING_RATE_PINNED_SOURCE_MANIFEST_V0.2.json'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/ced_1d_2025_funding_mark_interval_source_gate_v01.py'
+      - 'governance/CED_1D_2025_FUNDING_MARK_PRICE_INTERVAL_BOUND_AMENDMENT_V0.2_2026-09-18.md'
+
+permissions:
+  contents: read
+
+jobs:
+  source-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile
+        run: python -m py_compile Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/ced_1d_2025_funding_mark_interval_source_gate_v01.py
+      - name: Bind every 2025 funding settlement to official 1m mark-price bounds
+        run: |
+          python Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/ced_1d_2025_funding_mark_interval_source_gate_v01.py \
+            --funding-manifest Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/CED_1D_2025_FUNDING_RATE_PINNED_SOURCE_MANIFEST_V0.2.json \
+            --output "$RUNNER_TEMP/ced1d-funding-mark-gate"
+      - name: Upload source evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ced1d-2025-funding-mark-interval-source
+          path: ${{ runner.temp }}/ced1d-funding-mark-gate
+          if-no-files-found: warn
+          retention-days: 30
