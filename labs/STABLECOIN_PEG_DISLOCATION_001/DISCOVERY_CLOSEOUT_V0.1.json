@@ -1,0 +1,112 @@
+{
+  "document_id": "STABLECOIN_PEG_DISLOCATION_001_DISCOVERY_CLOSEOUT_V0.1",
+  "lab_id": "STABLECOIN-PEG-DISLOCATION-001",
+  "mve_id": "SPD-USDCUSDT-CROSS25-H60-001",
+  "effective_on": "2026-09-18",
+  "status": "DISCOVERY_FAIL_NO_PROMOTION",
+  "authority_branch": "stablecoin-peg-dislocation-v0.1",
+  "authority": {
+    "final_pre_discovery_drive_id": "1uMwU9cnLnvpB32RiwcxKE9_YorfwTAH3nW4HqHGBUq0",
+    "discovery_workflow_run_id": 35091703060,
+    "discovery_artifact_id": 10444711700,
+    "discovery_artifact_name": "stablecoin-peg-dislocation-discovery-35091703060-1",
+    "discovery_artifact_digest": "sha256:505914f6d650fa178e99fa2fc1978cde435e485ba1e89995f948a547a559bfe4",
+    "head_sha": "b0b95b15c99f4fe55e0879d00973c3119451034d"
+  },
+  "source_binding": {
+    "classification": "DISCOVERY_SOURCE_BINDING_PASS",
+    "verified_days": 1296,
+    "expected_days": 1296,
+    "failure_count": 0,
+    "source_manifest_sha256": "a86c1d6667ee6f8416d0df30028fbb44ebbe64fd397e0884a09296453486b8ba",
+    "access_2025": false,
+    "access_2026": false,
+    "economic_outcomes_opened_before_source_binding_pass": false
+  },
+  "sample_gate": {
+    "N": 133,
+    "distinct_event_weeks": 22,
+    "distinct_event_years": 4,
+    "required_N": 50,
+    "required_weeks": 20,
+    "required_years": 3,
+    "pass": true
+  },
+  "performance": {
+    "long_n": 107,
+    "short_n": 26,
+    "mean_gross_bps": 2.465812922262145,
+    "median_gross_bps": 2.00481154771337,
+    "mean_base_net_bps": -17.534187077737855,
+    "median_base_net_bps": -17.99518845228663,
+    "profit_factor_base": 0.030314356436711175,
+    "positive_fraction_base": 0.045112781954887216,
+    "cumulative_additive_base_return": -0.23320468813391348,
+    "max_additive_drawdown_base": -0.23320468813391368,
+    "mean_stress_net_bps": -27.534187077737855,
+    "median_stress_net_bps": -27.99518845228663,
+    "profit_factor_stress": 0.009713813136893928,
+    "positive_fraction_stress": 0.022556390977443608,
+    "cumulative_additive_stress_return": -0.3662046881339135,
+    "worst_base_episode_bps": -93.19763361074871,
+    "p05_base_episode_bps": -27.418646942354503,
+    "largest_month_positive_gross_share": 0.3511028617007673,
+    "largest_single_event_positive_gross_share": 0.08156813516439321
+  },
+  "bootstrap": {
+    "method": "complete_utc_calendar_week_cluster_bootstrap",
+    "resamples": 10000,
+    "seed": 20260916,
+    "weeks": 22,
+    "observed_mean_base_net_bps": -17.534187077737855,
+    "one_sided_p_mean_le_zero": 1.0,
+    "percentile_ci95_lower": -19.451410074750743,
+    "percentile_ci95_upper": -14.395015448641749
+  },
+  "yearly": {
+    "2021": {"n": 70, "mean_base_net_bps": -16.7900861616049},
+    "2022": {"n": 10, "mean_base_net_bps": -22.19354884822898},
+    "2023": {"n": 29, "mean_base_net_bps": -19.27636371406925},
+    "2024": {"n": 24, "mean_base_net_bps": -15.657950576520568}
+  },
+  "promotion_gate_results": {
+    "sample_n": true,
+    "distinct_weeks": true,
+    "distinct_years": true,
+    "mean_base_positive": false,
+    "pf_base_gt_1": false,
+    "bootstrap_p_lt_005": false,
+    "bootstrap_lower_gt_0": false,
+    "mean_stress_positive": false,
+    "pf_stress_gt_1": false,
+    "median_gross_positive": true,
+    "calendar_stability": false,
+    "month_positive_gross_concentration_le_040": true,
+    "single_event_positive_gross_concentration_le_015": true,
+    "provenance_and_firewall_clean": true
+  },
+  "scientific_interpretation": {
+    "gross_reversion_sign_positive": true,
+    "gross_effect_economically_too_small_for_frozen_costs": true,
+    "base_and_stress_net_edge": false,
+    "all_represented_years_base_negative": true,
+    "conclusion": "The fixed 25bp / 60-minute USDCUSDT mean-reversion mechanism shows a small positive gross convergence sign but is decisively negative after the prospectively frozen 20/30 bps all-in cost envelopes. The exact MVE is closed and must not be rescued by threshold, horizon, side, fee, period or regime selection."
+  },
+  "decision": {
+    "classification": "DISCOVERY_FAIL_NO_PROMOTION",
+    "promote": false,
+    "no_edge_scope": "THIS_EXACT_FROZEN_MVE_ONLY",
+    "rescue_allowed": false,
+    "next_action": "ARCHIVE_EXACT_MVE__ANY_NEW_STABLECOIN_MECHANISM_REQUIRES_NEW_PROSPECTIVE_AUTHORITY"
+  },
+  "governance": {
+    "post_outcome_tuning": false,
+    "access_2025": false,
+    "access_2026": false,
+    "live_trading": false,
+    "orders": false,
+    "exchange_mutation": false,
+    "alerts_or_webhooks": false,
+    "merge_to_main": false
+  }
+}
