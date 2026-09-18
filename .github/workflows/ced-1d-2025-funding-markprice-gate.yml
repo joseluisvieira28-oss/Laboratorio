@@ -1,0 +1,73 @@
+name: CED 1D 2025 Funding MarkPrice Source Gate
+
+on:
+  push:
+    branches:
+      - ced-1d-v3-byte-recovery-2026-09-17
+    paths:
+      - '.github/workflows/ced-1d-2025-funding-markprice-gate.yml'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/CED_1D_2025_FUNDING_MARKPRICE_TRANSPORT_AMENDMENT_V0.2.json'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/ced_1d_2025_funding_markprice_gate_v02.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/CED_1D_2025_FUNDING_REST_MIRROR_TRANSPORT_PROBE_FREEZE_V0.1.json'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/ced_1d_2025_funding_rest_mirror_probe_v01.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  funding-markprice-source-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      ROOT: Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile source-only scripts
+        run: |
+          python -m py_compile "$ROOT/ced_1d_2025_funding_rest_mirror_probe_v01.py"
+          python -m py_compile "$ROOT/ced_1d_2025_funding_markprice_gate_v02.py"
+      - name: Probe exact Binance REST mirror schema only
+        run: |
+          python "$ROOT/ced_1d_2025_funding_rest_mirror_probe_v01.py" \
+            --freeze "$ROOT/CED_1D_2025_FUNDING_REST_MIRROR_TRANSPORT_PROBE_FREEZE_V0.1.json" \
+            --output "$RUNNER_TEMP/mirror-probe"
+          python - <<'PY'
+          import json,os
+          p=os.path.join(os.environ['RUNNER_TEMP'],'mirror-probe','mirror_probe_receipt.json')
+          x=json.load(open(p))
+          assert x['status']=='MIRROR_WITH_EXACT_SCHEMA_FOUND',x
+          assert x['outcomes_computed'] is False and x['pnl_computed'] is False and x['access_2026_plus'] is False,x
+          print('MIRROR_SCHEMA_GATE_PASS',x['accessible_exact_schema_hosts'])
+          PY
+      - name: Recover full 2025 markPrice and crosscheck archive identity
+        run: |
+          python "$ROOT/ced_1d_2025_funding_markprice_gate_v02.py" \
+            --amendment "$ROOT/CED_1D_2025_FUNDING_MARKPRICE_TRANSPORT_AMENDMENT_V0.2.json" \
+            --output "$RUNNER_TEMP/markprice-gate"
+      - name: Assert economic-outcome firewall
+        run: |
+          python - <<'PY'
+          import json,os
+          p=os.path.join(os.environ['RUNNER_TEMP'],'markprice-gate','CED_1D_2025_FUNDING_MARKPRICE_SOURCE_GATE_RECEIPT_V0.2.json')
+          x=json.load(open(p))
+          assert x['status']=='FUNDING_MARKPRICE_SOURCE_PASS',x
+          for k in ['signals_computed','returns_computed','pnl_computed','promotion_computed','access_2026_plus']:
+              assert x[k] is False,(k,x)
+          assert x['symbols']['AVAXUSDT']['records']==1095,x
+          assert x['symbols']['SOLUSDT']['records']==1095,x
+          print('FUNDING_MARKPRICE_SOURCE_GATE_PASS')
+          PY
+      - name: Upload source-only markPrice evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ced1d-2025-funding-markprice-source-gate
+          path: |
+            ${{ runner.temp }}/mirror-probe/
+            ${{ runner.temp }}/markprice-gate/
+          if-no-files-found: warn
+          retention-days: 30
