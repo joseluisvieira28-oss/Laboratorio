@@ -10,6 +10,7 @@ from radar.execution import (
     ExecutionState,
     MicroLiveCoordinator,
     MicroLiveSettings,
+    inspect_signal_identity,
     round_quantity,
     validate_signal,
 )
@@ -57,6 +58,10 @@ class FakeVenue:
 
 
 class MicroLiveSafetyTests(unittest.TestCase):
+    def test_identity_can_be_checked_before_entry(self):
+        x = inspect_signal_identity(valid_signal())
+        self.assertEqual(x["signal_key"], "CED1D-0031:2026-09-20")
+
     def test_exact_entry_window(self):
         x = validate_signal(
             valid_signal(), now=datetime(2026, 9, 21, 0, 1, 4, tzinfo=UTC)
@@ -101,6 +106,38 @@ class MicroLiveSafetyTests(unittest.TestCase):
             self.assertTrue(venue.orders[1]["reduce_only"])
             st = ExecutionState.load(state)
             self.assertEqual(st.completed_events, 1)
+
+    def test_late_exit_closes_but_flags_incident(self):
+        with tempfile.TemporaryDirectory() as td:
+            state = os.path.join(td, "state.json")
+            receipts = os.path.join(td, "r.jsonl")
+            settings = MicroLiveSettings(True, ARM_TOKEN, "binance_usdm", state, receipts)
+            venue = FakeVenue()
+            c = MicroLiveCoordinator(settings, venue)
+            c.process_signal(
+                valid_signal(), now=datetime(2026, 9, 21, 0, 1, 2, tzinfo=UTC)
+            )
+            out = c.maybe_exit_due(
+                now=datetime(2026, 9, 22, 0, 2, 0, tzinfo=UTC)
+            )
+            self.assertTrue(out["late_exit_incident"])
+            self.assertEqual(out["event"], "MICROLIVE_EXIT_SUBMITTED")
+
+    def test_no_second_real_event_under_v01(self):
+        with tempfile.TemporaryDirectory() as td:
+            state = os.path.join(td, "state.json")
+            receipts = os.path.join(td, "r.jsonl")
+            settings = MicroLiveSettings(True, ARM_TOKEN, "binance_usdm", state, receipts)
+            venue = FakeVenue()
+            c = MicroLiveCoordinator(settings, venue)
+            c.process_signal(
+                valid_signal(), now=datetime(2026, 9, 21, 0, 1, 2, tzinfo=UTC)
+            )
+            c.maybe_exit_due(now=datetime(2026, 9, 22, 0, 1, 2, tzinfo=UTC))
+            with self.assertRaises(ExecutionBlocked):
+                c.process_signal(
+                    valid_signal(), now=datetime(2026, 9, 21, 0, 1, 3, tzinfo=UTC)
+                )
 
     def test_not_armed_blocks(self):
         with tempfile.TemporaryDirectory() as td:
