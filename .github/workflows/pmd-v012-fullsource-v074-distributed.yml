@@ -1,0 +1,228 @@
+name: PMD-001 V012 Full Source Distributed V074
+on:
+  push:
+    branches: [pumpfun-migration-direction-v0.1]
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/RUN_V012_FULLSOURCE_DISTRIBUTED_V074.trigger'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pumpfun-migration-direction-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install manifest dependencies
+        run: python -m pip install --upgrade pip duckdb huggingface_hub requests solders pytz
+      - name: Rebuild frozen manifest
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001
+        run: |
+          python build_source_rebuild_manifest_v01.py --data-dir "$GITHUB_WORKSPACE/v074_manifest_data" --out "$GITHUB_WORKSPACE/pmd_source_rebuild_manifest_v01.jsonl" --receipt "$GITHUB_WORKSPACE/v074_manifest_receipt.json"
+          test ! -e "$GITHUB_WORKSPACE/v074_manifest_data/postgard_outcomes.parquet"
+      - name: Build deterministic 253-shard matrix
+        id: matrix
+        run: |
+          python - <<'PY'
+          import json,os
+          include=[{"shard":i,"start":i*4,"limit":4} for i in range(253)]
+          with open(os.environ["GITHUB_OUTPUT"],"a") as f:
+              f.write("matrix="+json.dumps({"include":include},separators=(",",":"))+"\n")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PMD-001-v074-fullsource-manifest
+          retention-days: 30
+          path: |
+            pmd_source_rebuild_manifest_v01.jsonl
+            v074_manifest_receipt.json
+
+  full-shards:
+    needs: prepare
+    strategy:
+      fail-fast: false
+      max-parallel: 16
+      matrix: ${{ fromJSON(needs.prepare.outputs.matrix) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pumpfun-migration-direction-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install source dependencies
+        run: python -m pip install --upgrade pip duckdb huggingface_hub requests solders pytz
+      - uses: actions/download-artifact@v4
+        with:
+          name: PMD-001-v074-fullsource-manifest
+          path: fullsource-manifest
+      - name: Syntax checks
+        run: |
+          python -m py_compile             Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/source_rebuild_chain_exact_v07.py
+      - name: Execute source-only full chain-exact shard
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001
+        run: |
+          python source_rebuild_chain_exact_v07.py             --manifest "$GITHUB_WORKSPACE/fullsource-manifest/pmd_source_rebuild_manifest_v01.jsonl"             --full-manifest "$GITHUB_WORKSPACE/fullsource-manifest/pmd_source_rebuild_manifest_v01.jsonl"             --out-dir "$GITHUB_WORKSPACE/v074_fullsource_${{ matrix.shard }}"             --rpc-url https://api.mainnet-beta.solana.com             --source-name solana_public_rpc_chain_exact_full_v074_distributed             --start ${{ matrix.start }} --limit ${{ matrix.limit }} --block-batch-size 4
+      - name: Assert source-only contract
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=next(Path(".").glob("v074_fullsource_*/source_rebuild_summary.jsonl"))
+          rows=[json.loads(x) for x in p.read_text().splitlines() if x.strip()]
+          assert 1 <= len(rows) <= 4
+          assert all(r.get("outcomes_opened") is False for r in rows)
+          assert all(r.get("stage")=="CHAIN_EXACT_SOURCE_REBUILD_V07" for r in rows)
+          assert all(r.get("boundary_parser_version")=="V07_MIGRATE_AND_MIGRATE_V2" for r in rows)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: PMD-001-v074-fullsource-shard-${{ matrix.shard }}
+          retention-days: 30
+          compression-level: 9
+          if-no-files-found: warn
+          path: |
+            v074_fullsource_${{ matrix.shard }}/source_rebuild_summary.jsonl
+            v074_fullsource_${{ matrix.shard }}/block_hash_ledger.jsonl
+            v074_fullsource_${{ matrix.shard }}/raw/*.jsonl
+
+  source-gate:
+    needs: [prepare, full-shards]
+    if: ${{ always() && needs.prepare.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    outputs:
+      passed: ${{ steps.classify.outputs.passed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pumpfun-migration-direction-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: PMD-001-v074-fullsource-shard-*
+          path: all-fullsource-v074
+          merge-multiple: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: PMD-001-v074-fullsource-manifest
+          path: fullsource-manifest
+      - name: Aggregate exact distributed source gate
+        continue-on-error: true
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001
+        run: |
+          python aggregate_chain_exact_source_gate_v074_distributed.py             --input-root "$GITHUB_WORKSPACE/all-fullsource-v074"             --manifest "$GITHUB_WORKSPACE/fullsource-manifest/pmd_source_rebuild_manifest_v01.jsonl"             --out-dir "$GITHUB_WORKSPACE/source-gate-v074"
+      - name: Classify source gate
+        id: classify
+        if: always()
+        run: |
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          p=Path("source-gate-v074/chain_exact_source_gate_v074_receipt.json")
+          passed=False
+          if p.exists():
+              r=json.loads(p.read_text())
+              assert r["economic_outcomes_opened"] is False
+              passed=r.get("verdict")=="CHAIN_EXACT_SOURCE_GATE_V074_PASS"
+              print(json.dumps(r,indent=2,sort_keys=True))
+          else:
+              print(json.dumps({"verdict":"CHAIN_EXACT_SOURCE_GATE_V074_TECHNICAL_INCOMPLETE","receipt_missing":True}))
+          with open(os.environ["GITHUB_OUTPUT"],"a") as f:
+              f.write("passed="+("true" if passed else "false")+"\n")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: PMD-001-chain-exact-source-gate-v074
+          retention-days: 30
+          path: source-gate-v074/
+
+  features-v012:
+    needs: [source-gate]
+    if: ${{ needs.source-gate.outputs.passed == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pumpfun-migration-direction-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install parser dependencies
+        run: python -m pip install --upgrade pip requests solders
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: PMD-001-v074-fullsource-shard-*
+          path: all-fullsource-v074
+          merge-multiple: false
+      - name: Extract frozen V0.12 features
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001
+        run: |
+          python extract_chain_exact_features_v012.py             --input-root "$GITHUB_WORKSPACE/all-fullsource-v074"             --out-dir "$GITHUB_WORKSPACE/features-v012"
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path("$GITHUB_WORKSPACE/features-v012/chain_exact_features_v012_receipt.json").read_text())
+          assert r["economic_outcomes_opened"] is False
+          assert r["promotion_authority"] is False
+          assert r["summary_rows"]==1012 and r["unique_mints"]==1012
+          print(json.dumps(r,indent=2,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PMD-001-chain-exact-features-v012-v074
+          retention-days: 30
+          path: features-v012/
+
+  evaluate-v012:
+    needs: features-v012
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pumpfun-migration-direction-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install evaluation dependencies
+        run: python -m pip install --upgrade pip pandas numpy scipy
+      - uses: actions/download-artifact@v4
+        with:
+          name: PMD-001-chain-exact-features-v012-v074
+          path: features-v012
+      - name: Download frozen V0.8 exploratory outcomes
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: 35150072032
+          name: PMD-001-exploratory-outcomes-v08
+          path: outcomes-v08
+      - name: Evaluate frozen feature family
+        run: |
+          FEATURES=$(find features-v012 -name chain_exact_features_v012.jsonl -print -quit)
+          OUTCOMES=$(find outcomes-v08 -name v08_frozen_t0_baseline_outcomes.csv -print -quit)
+          test -n "$FEATURES" && test -n "$OUTCOMES"
+          python Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/evaluate_chain_exact_features_v012.py             --features "$FEATURES" --outcomes "$OUTCOMES" --out v012_evaluation_v074.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PMD-001-chain-exact-evaluation-v012-v074
+          retention-days: 30
+          path: v012_evaluation_v074.json
