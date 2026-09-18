@@ -84,6 +84,23 @@ class EvidenceStore:
             "chain_sha256": chain_sha,
         }
 
+    def signal_key_seen(self, signal_key: str) -> bool:
+        if not signal_key:
+            raise ValueError("signal_key is required")
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT payload_json FROM events WHERE event_type = ? ORDER BY id ASC",
+                ("VALID_SHADOW_SIGNAL",),
+            ).fetchall()
+        for row in rows:
+            try:
+                payload = json.loads(row["payload_json"])
+            except json.JSONDecodeError:
+                continue
+            if payload.get("signal_key") == signal_key:
+                return True
+        return False
+
     def verify_chain(self) -> tuple[bool, str]:
         with self._connect() as conn:
             rows = conn.execute("SELECT * FROM events ORDER BY id ASC").fetchall()
