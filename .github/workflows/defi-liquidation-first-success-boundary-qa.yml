@@ -1,0 +1,67 @@
+name: DEFI Liquidation First-Success Boundary QA
+
+on:
+  push:
+    branches:
+      - defi-liquidation-shock-v0.1
+    paths:
+      - '.github/workflows/defi-liquidation-first-success-boundary-qa.yml'
+      - 'labs/DEFI_LIQUIDATION_SHOCK_001/ONCHAIN_FIRST_SUCCESS_BOUNDARY_PLAN_V0.1.md'
+      - 'labs/DEFI_LIQUIDATION_SHOCK_001/source/generate_first_success_probe_queue_v0_1.py'
+      - 'labs/DEFI_LIQUIDATION_SHOCK_001/source/adjudicate_first_success_probe_chunk_v0_1.py'
+      - 'labs/DEFI_LIQUIDATION_SHOCK_001/source/test_first_success_boundary_tooling_v0_1.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile
+        run: |
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/generate_first_success_probe_queue_v0_1.py
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/adjudicate_first_success_probe_chunk_v0_1.py
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/test_first_success_boundary_tooling_v0_1.py
+      - name: Synthetic QA
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/test_first_success_boundary_tooling_v0_1.py
+      - name: Generate deterministic queue
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/generate_first_success_probe_queue_v0_1.py
+      - name: Assert queue firewall
+        run: |
+          python - <<'PY'
+          import csv,json
+          from pathlib import Path
+          root=Path("labs/DEFI_LIQUIDATION_SHOCK_001")
+          rows=list(csv.DictReader(open(root/"FIRST_SUCCESS_PROBE_QUEUE_V0.1.csv",encoding="utf-8")))
+          meta=json.load(open(root/"FIRST_SUCCESS_PROBE_QUEUE_V0.1.json"))
+          assert rows and meta["status"]=="GENERATED_NOT_EXECUTED"
+          assert all(r["execution_state"]=="NOT_EXECUTED" for r in rows)
+          assert all(r["estimated_bytes"]=="PENDING_DRY_RUN" for r in rows)
+          assert not any("b1479acce2854a37" in r["active_reference_classes"] for r in rows)
+          assert not any("0c2bb0539cfb750d" in r["active_reference_classes"] for r in rows)
+          assert not any("8e58a3a0df4b37e1" in r["active_reference_classes"] for r in rows)
+          print("FIRST_SUCCESS_QUEUE_FIREWALL_PASS",len(rows))
+          PY
+      - name: Upload deterministic queue
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-first-success-probe-queue-v01
+          path: |
+            labs/DEFI_LIQUIDATION_SHOCK_001/FIRST_SUCCESS_PROBE_QUEUE_V0.1.csv
+            labs/DEFI_LIQUIDATION_SHOCK_001/FIRST_SUCCESS_PROBE_QUEUE_V0.1.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Outcome firewall
+        run: |
+          echo SOURCE_ONLY_OUTCOME_BLIND_PASS
+          echo PRICES_OPENED_FALSE
+          echo RETURNS_COMPUTED_FALSE
+          echo PNL_COMPUTED_FALSE
+          echo LIVE_TRADING_FALSE
