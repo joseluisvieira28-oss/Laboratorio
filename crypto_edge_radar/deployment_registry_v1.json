@@ -1,6 +1,6 @@
 {
-  "registry_version": "3.2",
-  "as_of_utc": "2026-09-18T14:32:00Z",
+  "registry_version": "3.3",
+  "as_of_utc": "2026-09-18T15:01:51Z",
   "governance": "ND_PROMOTION_POLICY_V3_PLUS_AGGRESSIVE_FAIL_CLOSED_DEPLOYMENT",
   "focus_strategy_ids": [
     "ETF-CME-INSTFLOW-001",
@@ -288,72 +288,75 @@
     }
   ],
   "operational_shadow_v09": {
-    "status": "OPERATIONAL_PERSISTENT_PUBLIC_SHADOW__FOUR_ENGINE__DH03_LOCAL_BUILD_READY",
-    "branch": "crypto-edge-radar-promotion-sprint-v0.9",
-    "deployed_commit": "adfd9c77c1bbc6b2d0b2f4952974488796a6604f",
+    "status": "OPERATIONAL_SIX_MOTOR_CONTROL_PLANE__CLEAN_ACTIVE_REGISTRY",
+    "branch": "crypto-edge-radar-cleanup-v1",
+    "canonical_cloud_branch": "crypto-edge-radar-postgres-v0.5",
+    "canonical_cloud_deploy_pending": true,
     "render_service_id": "srv-dalqkpu1egvs73fhiehg",
-    "render_deploy_id": "dep-damdhqf40ujc73ahdo60",
     "render_region": "frankfurt",
     "evidence_backend": "postgres",
     "postgres_id": "dpg-dalqi4qd0e5s738a77kg-a",
-    "evidence_chain_ok": true,
-    "evidence_events_verified": 87,
-    "runtime_health": "OK",
+    "runtime_health": "CI_GREEN_PRE_DEPLOY",
+    "active_motor_count": 6,
+    "archived_closed_mechanisms": 20,
+    "archive_registry": "archive_registry_v1.json",
     "engines": {
       "bnb_launchpool": {
-        "status": "OK",
-        "watcher_id": "BNB-LAUNCHPOOL-DEMAND-001-FORWARD-SHADOW-V3",
-        "eligible_events_visible": 0
-      },
-      "tfg_regime": {
-        "status": "OK",
-        "watcher_id": "TFG-DONCHIAN-REGIME-V1-FORWARD-SHADOW",
-        "progress": "0/10",
-        "readiness_gate_pass": false,
-        "unresolved_execution_paths": 0,
-        "rule_deviations": 0,
-        "missed_eligible_signals": 0
+        "id": "BNB-LAUNCHPOOL-DEMAND-001",
+        "runtime": "RENDER_PUBLIC_SHADOW",
+        "status": "OPERATIONAL_SHADOW",
+        "micro_live_authorized": false
       },
       "etf_cme_exec_v2": {
-        "status": "OK",
-        "classification": "PUBLIC_PREFLIGHT_ONLY",
-        "spot_spread_bps": 0.02834332736061425,
-        "perp_minus_spot_mid_bps": -2.670714437368967,
-        "short_same_book_taker_rt_proxy_bps": 16.01288658963568,
-        "short_trailing_7d_fee_spread_funding_proxy_bps": 3.9028865896356795,
-        "historical_break_even_bps": 21.2,
-        "account_fee_verified_read_only": false,
-        "authenticated_transport_ready": false,
-        "execution_authority_present": false
+        "id": "ETF-CME-INSTFLOW-001",
+        "runtime": "RENDER_PUBLIC_PREFLIGHT",
+        "status": "OPERATIONAL_PUBLIC_PREFLIGHT",
+        "micro_live_authorized": false
+      },
+      "tfg_regime": {
+        "id": "TFG-DONCHIAN-REGIME-ADAPTATION-V1",
+        "runtime": "RENDER_PUBLIC_SHADOW",
+        "status": "FORWARD_EVIDENCE_ACCUMULATING",
+        "micro_live_authorized": false
       },
       "options_v21": {
+        "id": "OPTIONS-SPOTPERP-001-V2.1",
+        "runtime": "RENDER_PUBLIC_SHADOW",
         "status": "WAITING_FIRST_FULL_POST_FREEZE_SIGNAL_DAY",
-        "watcher_id": "OPTIONS-SPOTPERP-001-V2.1-FORWARD-SHADOW",
         "first_signal_day": "2026-09-19",
-        "source": "DERIBIT_PUBLIC_HTTP",
-        "btc_state_source": "BINANCE_SPOT_DATA_API_PUBLIC",
-        "forward_signal_days": 0,
-        "resolved_forward_trades": 0,
         "micro_live_authorized": false
       },
       "dh03_12h_standalone": {
-        "status": "NOT_IN_CANONICAL_CLOUD_YET",
-        "source_validation": "PASS",
-        "local_build_status": "V0.12_GREEN__V0.13_REBUILD_REQUIRED",
-        "first_forward_archive_day": "2026-09-18",
-        "used_as_forward_evidence": false
+        "id": "HTF-DH03-12H-STANDALONE-FORWARD-V1",
+        "runtime": "GITHUB_ARCHIVE_SHADOW_PLUS_WINDOWS_LOCAL_COLLECTOR",
+        "status": "SOURCE_PASS__ARCHIVE_SHADOW_PASS__LOCAL_BUILD_PASS",
+        "source_branch": "htf-dh03-12h-standalone-forward-v0.1",
+        "windows_artifact_id": 10553155239,
+        "micro_live_authorized": false
+      },
+      "ced1d_0031": {
+        "id": "CED1D-0031",
+        "runtime": "GITHUB_TPLUS3_ARCHIVE_SHADOW",
+        "status": "ARMED_PRE_FIRST_COMPLETION",
+        "first_eligible_signal_completion": "2026-09-19T00:00:00Z",
+        "first_possible_archive_collection_date": "2026-09-21",
+        "micro_live_authorized": false
       }
     },
-    "authenticated_exchange_api_used": false,
-    "orders_created": false,
-    "exchange_mutation_performed": false,
-    "live_capital_enabled": false,
-    "active_registry_cleanup": {
-      "status": "ACTIVE_ONLY_REGISTRY",
-      "archived_registry": "archive_registry_v1.json",
-      "closed_candidates_removed_from_active_view": 20,
+    "cleanup": {
+      "active_only_registry": true,
       "active_or_gated_candidates": 6,
-      "archive_version": "1.1"
+      "closed_candidates_removed_from_active_view": 20,
+      "negative_evidence_preserved": true,
+      "unresolved_non_scientific_states_not_mislabelled_as_stones": true,
+      "scientific_verdicts_rewritten": false
+    },
+    "safety": {
+      "authenticated_exchange_api_enabled": false,
+      "orders_created": false,
+      "exchange_mutation_performed": false,
+      "live_capital_enabled": false,
+      "merge_main": false
     }
   },
   "archive_registry": "archive_registry_v1.json",
