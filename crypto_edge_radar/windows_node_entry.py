@@ -8,11 +8,11 @@ import threading
 import traceback
 
 from radar.__main__ import main
-from radar.dh03_12h_local import DH03LocalCollector, default_paths
+from radar.dh03_12h_local import DH03LocalCollector, default_paths, require_dh03_clock_preflight
 from radar.local_forward import LocalForwardSupervisor
 
 
-BUILD_ID = "v0.13-win-six-motor-control-plane"
+BUILD_ID = "v0.13.1-win-six-motor-clock-guard"
 
 
 def _resource_path(name: str) -> str:
@@ -187,6 +187,24 @@ def run() -> int:
         package_state["local_forward_supervisor_importable"] = True
         print(json.dumps(package_state, sort_keys=True))
         return 0
+
+    # DH03 activation_ms is a prospective scientific boundary. Validate the
+    # Binance public clock before the collector can persist that boundary.
+    try:
+        dh03_clock= require_dh03_clock_preflight()
+        _write_json_atomic(Path("data")/"dh03_clock_preflight.json",dh03_clock)
+    except Exception as exc:
+        failure={
+            "status":"FAIL_CLOSED",
+            "build_id":BUILD_ID,
+            "component":"DH03_CLOCK_ARMING_GUARD",
+            "error":f"{type(exc).__name__}:{exc}",
+            "orders_created":False,
+            "live_capital_enabled":False,
+        }
+        _write_json_atomic(Path("data")/"dh03_clock_preflight.json",failure)
+        print(json.dumps(failure,sort_keys=True))
+        return 2
 
     _start_dh03_thread()
     _start_forward_thread()
