@@ -1,0 +1,54 @@
+name: CED1D AVAX20 Tier2 Shadow Static Preflight
+
+on:
+  push:
+    branches:
+      - ced-1d-v3-byte-recovery-2026-09-17
+    paths:
+      - '.github/workflows/ced1d-0031-tier2-shadow-static-preflight.yml'
+      - 'governance/CED1D_0031_TIER2_SHADOW_SPEC_V0.1_2026-09-18.json'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/ced1d_0031_tier2_shadow_static_preflight_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/evidence/CED1D_0031_V3_TIER2_PROMOTION_RECORD_2026-09-18.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      ROOT: Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile static preflight
+        run: python -m py_compile "$ROOT/ced1d_0031_tier2_shadow_static_preflight_v01.py"
+      - name: Execute no-market-data preflight
+        run: |
+          python "$ROOT/ced1d_0031_tier2_shadow_static_preflight_v01.py"             --promotion "$ROOT/evidence/CED1D_0031_V3_TIER2_PROMOTION_RECORD_2026-09-18.json"             --shadow "governance/CED1D_0031_TIER2_SHADOW_SPEC_V0.1_2026-09-18.json"             --runner-zip "$ROOT/recovered_authority/CED-1D-V1-RUNNER-FREEZE-V0.3.zip"             --output "$RUNNER_TEMP/preflight"
+      - name: Assert no prospective data access
+        run: |
+          python - <<'PY'
+          import json,os
+          p=os.path.join(os.environ['RUNNER_TEMP'],'preflight','CED1D_0031_TIER2_SHADOW_STATIC_PREFLIGHT_RECEIPT_V0.1.json')
+          x=json.load(open(p))
+          assert x['status']=='SHADOW_STATIC_PREFLIGHT_PASS',x
+          assert x['market_data_accessed'] is False,x
+          assert x['year_2026_accessed'] is False,x
+          assert x['live_trading'] is False,x
+          assert x['orders'] is False,x
+          assert x['exchange_mutation'] is False,x
+          assert x['activation_authorized'] is False,x
+          print('SHADOW_STATIC_PREFLIGHT_FIREWALL_PASS')
+          PY
+      - name: Upload preflight evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: ced1d-0031-tier2-shadow-static-preflight
+          path: ${{ runner.temp }}/preflight
+          if-no-files-found: error
+          retention-days: 30
