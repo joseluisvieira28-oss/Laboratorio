@@ -56,11 +56,20 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("status", help="read latest persisted service health status")
     sub.add_parser("verify-evidence", help="verify the local evidence hash chain")
     sub.add_parser(
+        "microlive-preflight",
+        help="validate Binance credentials/account/order-test without submitting a real order",
+    )
+    sub.add_parser(
         "microlive",
         help="run isolated CED1D-0031 micro-live daemon; requires explicit runtime arming and secrets",
     )
 
     args = parser.parse_args(argv)
+
+    if args.command == "microlive-preflight":
+        from .credential_preflight import main as preflight_main
+
+        return preflight_main()
 
     if args.command == "microlive":
         try:
