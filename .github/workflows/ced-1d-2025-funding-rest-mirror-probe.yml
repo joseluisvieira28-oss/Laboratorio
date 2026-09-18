@@ -1,0 +1,39 @@
+name: CED 1D 2025 Funding REST Mirror Probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - ced-1d-v3-byte-recovery-2026-09-17
+    paths:
+      - '.github/workflows/ced-1d-2025-funding-rest-mirror-probe.yml'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/CED_1D_2025_FUNDING_REST_MIRROR_TRANSPORT_PROBE_FREEZE_V0.1.json'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/ced_1d_2025_funding_rest_mirror_probe_v01.py'
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile
+        run: python -m py_compile Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/ced_1d_2025_funding_rest_mirror_probe_v01.py
+      - name: Probe exact-schema Binance futures mirrors
+        run: |
+          python Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/ced_1d_2025_funding_rest_mirror_probe_v01.py \
+            --freeze Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/CED_1D_2025_FUNDING_REST_MIRROR_TRANSPORT_PROBE_FREEZE_V0.1.json \
+            --output "$RUNNER_TEMP/funding-mirror-probe"
+      - name: Upload receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ced1d-funding-rest-mirror-probe
+          path: ${{ runner.temp }}/funding-mirror-probe
+          if-no-files-found: error
+          retention-days: 30
