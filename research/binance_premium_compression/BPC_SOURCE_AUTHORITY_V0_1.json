@@ -1,0 +1,70 @@
+{
+  "lab_id": "BINANCE-PREMIUM-COMPRESSION-001",
+  "source_gate_id": "BPC-SOURCE-001",
+  "status": "PRE_ACQUISITION_FROZEN_SOURCE_ONLY",
+  "date_frozen": "2026-09-18",
+  "lineage": {
+    "relation_to_prior": "MATERIALLY_DIFFERENT_EXTENSION",
+    "prior_family": "Spot–Perp Cash-and-Carry V0.1",
+    "distinction": "Prior cash-and-carry tested carry/basis economics as a hedged position. This lab asks whether extreme intraday Binance USD-M premium-index dislocations compress over a short fixed horizon. It is not a rescue of the closed cash-and-carry implementation."
+  },
+  "economic_mechanism": "Extreme positive perpetual premium relative to the index can attract short-perp/long-spot arbitrage and increases funding pressure, creating a short-horizon force toward premium compression. Only after source adequacy is proven may a separately frozen Discovery test that mechanism.",
+  "source": {
+    "official_archive": "https://data.binance.vision",
+    "symbols": [
+      "BTCUSDT",
+      "ETHUSDT"
+    ],
+    "interval": "5m",
+    "start_month": "2021-01",
+    "end_month": "2024-12",
+    "protected_years": [
+      2025,
+      2026
+    ],
+    "required_datasets": [
+      {
+        "id": "um_premium_index",
+        "path_template": "data/futures/um/monthly/premiumIndexKlines/{SYMBOL}/5m/{SYMBOL}-5m-{YYYY-MM}.zip"
+      },
+      {
+        "id": "um_perp_klines",
+        "path_template": "data/futures/um/monthly/klines/{SYMBOL}/5m/{SYMBOL}-5m-{YYYY-MM}.zip"
+      },
+      {
+        "id": "spot_klines",
+        "path_template": "data/spot/monthly/klines/{SYMBOL}/5m/{SYMBOL}-5m-{YYYY-MM}.zip"
+      }
+    ],
+    "proof_method": "For source gate only, request the exact .CHECKSUM companion object. Do not download ZIP market data or open OHLC/premium values."
+  },
+  "source_gates": {
+    "expected_months_per_symbol": 48,
+    "expected_dataset_symbol_month_receipts": 288,
+    "checksum_http_200_fraction": 1,
+    "valid_sha256_line_fraction": 1,
+    "protected_year_accesses_eq": 0
+  },
+  "classifications": {
+    "pass": "SOURCE_DATA_PASS",
+    "insufficient": "SOURCE_DATA_INSUFFICIENT",
+    "technical_failure": "SOURCE_ACQUISITION_TECHNICAL_FAILURE",
+    "provenance_failure": "SOURCE_PROVENANCE_FAILURE"
+  },
+  "firewalls": {
+    "open_market_zip": false,
+    "retain_prices": false,
+    "retain_premium_values": false,
+    "compute_signal": false,
+    "compute_returns": false,
+    "compute_pnl": false,
+    "access_2025": false,
+    "access_2026": false,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "wallet_access": false,
+    "merge_to_main": false
+  },
+  "stop_rule": "If any required month/dataset/symbol lacks a valid official checksum receipt, stop as source-insufficient. Do not substitute another venue, asset, timeframe, quote currency or year under this source-gate ID.",
+  "post_pass_rule": "PASS authorizes only a separately frozen pre-Discovery protocol. No economic outcome may be opened by this source gate."
+}
