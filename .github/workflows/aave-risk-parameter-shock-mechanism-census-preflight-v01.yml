@@ -1,0 +1,52 @@
+name: AAVE Risk Parameter Shock 001 — Mechanism Census Static Preflight
+
+on:
+  push:
+    branches:
+      - aave-risk-parameter-shock-v0.1
+    paths:
+      - '.github/workflows/aave-risk-parameter-shock-mechanism-census-preflight-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install --disable-pip-version-check requests 'eth-hash[pycryptodome]'
+      - name: Compile frozen mechanism census
+        run: python -m py_compile research/aave_risk_parameter_shock/primary_mechanism_census_v01.py
+      - name: Verify prospectively frozen controls
+        run: |
+          python - <<'PY'
+          import importlib.util
+          from pathlib import Path
+          p=Path('research/aave_risk_parameter_shock/primary_mechanism_census_v01.py')
+          spec=importlib.util.spec_from_file_location('m',p)
+          m=importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+          assert m.LAB_ID == 'AAVE-RISK-PARAMETER-SHOCK-001'
+          assert m.FROM_BLOCK == 16490000
+          assert m.TO_BLOCK == 21525890
+          assert m.MAX_TS == 1735689599
+          assert m.MIN_EPISODES == 12
+          assert m.MIN_ASSETS == 4
+          assert m.MIN_YEARS == 2
+          assert m.EPISODE_SECONDS == 86400
+          assert m.SIG == 'CollateralConfigurationChanged(address,uint256,uint256,uint256)'
+          assert Path('research/aave_risk_parameter_shock/AAVE_RISK_PARAMETER_SHOCK_001_PRIMARY_MECHANISM_CENSUS_FREEZE_V0_1.md').exists()
+          assert Path('research/aave_risk_parameter_shock/AAVE_RISK_PARAMETER_SHOCK_001_PRIMARY_MECHANISM_CENSUS_INDEPENDENCE_AMENDMENT_V0_1A.md').exists()
+          assert Path('research/aave_risk_parameter_shock/AAVE_RISK_PARAMETER_SHOCK_001_CONTINGENT_FINAL_PRE_DISCOVERY_PROTOCOL_V0_1.md').exists()
+          src=p.read_text()
+          forbidden=['BINANCE','BTCUSDT','profit_factor','drawdown','live_order','create_order']
+          for needle in forbidden:
+              assert needle.lower() not in src.lower(), needle
+          print('MECHANISM_CENSUS_STATIC_PREFLIGHT_PASS')
+          print('NO NETWORK / NO THRESHOLD VALUES / NO LIQUIDATION OUTCOMES / NO MARKET RETURNS / NO PNL')
+          PY
