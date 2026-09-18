@@ -1,12 +1,10 @@
-name: CROSS-VENUE-DIAMOND-REPLICATION-002 AVAX20 OKX Historical Source Shape
+name: CROSS-VENUE-DIAMOND-REPLICATION-002 AVAX20 OKX Schema Only
 
 on:
   pull_request:
     branches: [ ced-1d-v3-byte-recovery-2026-09-17 ]
     paths:
-      - "governance/CROSS_VENUE_DIAMOND_REPLICATION_002_AVAX20_FREEZE_2026-09-18.md"
-      - "governance/CROSS_VENUE_DIAMOND_REPLICATION_002_SOURCE_TRANSPORT_REMEDIATION_2026-09-18.md"
-      - "governance/CROSS_VENUE_DIAMOND_REPLICATION_002_OKX_HISTORICAL_SOURCE_REMEDIATION_2026-09-18.md"
+      - "governance/CROSS_VENUE_DIAMOND_REPLICATION_002_OKX_RESPONSE_SCHEMA_PROBE_2026-09-18.md"
       - "Dream-Account-OS-v2.3-PARTIAL/research/cross_venue_diamond_replication_002/**"
       - ".github/workflows/cross-venue-diamond-replication-002-avax20-source-probe.yml"
   workflow_dispatch:
@@ -15,22 +13,19 @@ permissions:
   contents: read
 
 jobs:
-  okx-historical-source-shape:
+  okx-schema-only:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-
-      - name: Compile bounded outcome-blind OKX historical source probe
-        run: python -m py_compile Dream-Account-OS-v2.3-PARTIAL/research/cross_venue_diamond_replication_002/okx_historical_source_shape_probe_v01.py
-
-      - name: Execute bounded OKX historical source shape probe
-        run: python Dream-Account-OS-v2.3-PARTIAL/research/cross_venue_diamond_replication_002/okx_historical_source_shape_probe_v01.py
-
-      - name: Upload metadata-only historical source receipt
+      - name: Compile schema-only probe
+        run: python -m py_compile Dream-Account-OS-v2.3-PARTIAL/research/cross_venue_diamond_replication_002/okx_historical_response_schema_probe_v01.py
+      - name: Execute schema-only probe
+        run: python Dream-Account-OS-v2.3-PARTIAL/research/cross_venue_diamond_replication_002/okx_historical_response_schema_probe_v01.py
+      - name: Upload schema-only receipt
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: cross-venue-diamond-replication-002-okx-history-shape-v01
-          path: Dream-Account-OS-v2.3-PARTIAL/research/local_data/cross_venue_diamond_replication_002_okx_shape_probe/
+          name: cross-venue-diamond-replication-002-okx-schema-v01
+          path: Dream-Account-OS-v2.3-PARTIAL/research/local_data/cross_venue_diamond_replication_002_okx_schema_probe/
           if-no-files-found: error
