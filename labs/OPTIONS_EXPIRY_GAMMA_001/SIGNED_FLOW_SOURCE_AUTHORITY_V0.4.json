@@ -1,0 +1,88 @@
+{
+  "lab_id": "OPTIONS-EXPIRY-GAMMA-001",
+  "source_gate_id": "OEG-TARDIS-SIGNED-FLOW-SOURCE-004",
+  "status": "PRE_ACQUISITION_FROZEN_SOURCE_ONLY",
+  "date_frozen": "2026-09-18",
+  "parent_source_gate": "OEG-TARDIS-FREE-MONTHLY-CORPUS-003",
+  "parent_source_pass_run": 35375570296,
+  "scientific_question": "Does the free first-day-of-month Tardis Deribit OPTIONS corpus provide enough point-in-time trade-side data plus contemporaneous option-chain OI/Greek updates to support a later prospectively defined signed gamma-flow proxy, without assuming dealer inventory sign?",
+  "deterministic_probe_dates": [
+    "2021-01-01",
+    "2022-01-01",
+    "2023-01-01",
+    "2024-01-01"
+  ],
+  "source": {
+    "provider": "Tardis.dev",
+    "trades_url": "https://datasets.tardis.dev/v1/deribit/trades/YYYY/MM/DD/OPTIONS.csv.gz",
+    "chain_url": "https://datasets.tardis.dev/v1/deribit/options_chain/YYYY/MM/DD/OPTIONS.csv.gz",
+    "free_contract": "first day of month without API key",
+    "api_key_used": false,
+    "subscription_purchase": false
+  },
+  "window": {
+    "start_time_utc": "06:00:00",
+    "target_time_utc": "12:00:00",
+    "stop_after_utc": "12:15:00",
+    "symbol_prefix": "BTC-"
+  },
+  "required_trade_fields": [
+    "symbol",
+    "timestamp",
+    "side",
+    "price",
+    "amount"
+  ],
+  "required_chain_fields": [
+    "symbol",
+    "timestamp",
+    "open_interest",
+    "gamma"
+  ],
+  "per_date_gates": {
+    "minimum_btc_option_trades": 20,
+    "minimum_distinct_trade_symbols": 10,
+    "trade_side_coverage_minimum": 0.95,
+    "trade_price_coverage_minimum": 0.95,
+    "trade_amount_coverage_minimum": 0.95,
+    "trade_symbol_chain_match_coverage_minimum": 0.8,
+    "target_chain_open_interest_coverage_minimum": 0.9,
+    "target_chain_gamma_coverage_minimum": 0.9,
+    "minimum_matched_symbols_with_nonzero_oi_change": 5
+  },
+  "aggregate_gate": "All four deterministic dates must pass every per-date gate.",
+  "retained_metrics_only": [
+    "http statuses and compressed SHA256",
+    "BTC option trade count",
+    "distinct trade symbols",
+    "trade field coverage fractions",
+    "target chain instrument count",
+    "target chain OI/gamma coverage",
+    "trade-symbol to chain-symbol match coverage",
+    "number of matched symbols with nonzero OI change inside the frozen six-hour window"
+  ],
+  "classifications": {
+    "pass": "SIGNED_GAMMA_FLOW_SOURCE_FEASIBLE",
+    "insufficient": "SIGNED_GAMMA_FLOW_SOURCE_INSUFFICIENT",
+    "technical_failure": "SIGNED_GAMMA_FLOW_SOURCE_TECHNICAL_FAILURE"
+  },
+  "scientific_limit": "A PASS establishes only source feasibility for a future signed-flow proxy. It does not prove that trade side identifies dealer inventory, does not assign dealer long/short gamma, and does not authorize any BTC outcome or PnL.",
+  "firewalls": {
+    "retain_option_prices": false,
+    "retain_option_amounts": false,
+    "retain_open_interest_values": false,
+    "retain_gamma_values": false,
+    "compute_gamma_exposure": false,
+    "compute_dealer_inventory": false,
+    "compute_dealer_gamma_sign": false,
+    "open_btc_price_outcomes": false,
+    "compute_returns": false,
+    "compute_pnl": false,
+    "access_2025": false,
+    "access_2026": false,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "wallet_access": false,
+    "merge_to_main": false
+  }
+}
