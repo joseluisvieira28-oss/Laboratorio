@@ -1,0 +1,43 @@
+name: LL-0017 Positioning Ratio — Source Schema V0.1
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - ll-0017-positioning-ratio-v0.1
+    paths:
+      - 'research/ll0017_positioning/LL0017_SOURCE_TRIGGER_V0_1.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  source-schema:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout frozen branch
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Compile probe
+        run: python -m py_compile research/ll0017_positioning/source_schema_probe_v01.py
+
+      - name: Install source dependency
+        run: pip install --disable-pip-version-check requests
+
+      - name: Execute source-only probe
+        run: python research/ll0017_positioning/source_schema_probe_v01.py
+
+      - name: Upload source receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: LL0017_POSITIONING_RATIO_SOURCE_SCHEMA_V0_1
+          path: ll0017_source_output/LL0017_POSITIONING_RATIO_SOURCE_SCHEMA_RECEIPT_V0_1.json
+          if-no-files-found: warn
+          retention-days: 30
