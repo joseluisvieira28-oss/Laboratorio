@@ -1,0 +1,55 @@
+name: Binance Premium Compression 2024 OOS V0.1
+
+on:
+  push:
+    branches:
+      - binance-premium-compression-discovery-v0.1
+    paths:
+      - 'research/binance_premium_compression/VALIDATION_2024_TRIGGER_V0_1.txt'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bpc-validation-2024-v01
+  cancel-in-progress: false
+
+jobs:
+  validation:
+    if: ${{ contains(github.event.head_commit.message, 'Authorize BPC 2024 OOS after Discovery survives') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: binance-premium-compression-discovery-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --disable-pip-version-check requests==2.32.3
+      - name: Verify frozen OOS authority
+        run: |
+          python - <<'PY'
+          import json
+          a=json.load(open('research/binance_premium_compression/BPC_VALIDATION_2024_AUTHORITY_V0_1.json'))
+          assert a['status']=='FROZEN_BLOCKED_PENDING_PARENT_DISCOVERY_SURVIVES'
+          assert a['parent_discovery_run']==35324193354
+          assert a['rules_identical'] is True
+          assert a['sample_floor_resolved_trades']==40
+          assert a['firewalls']['access_2025'] is False
+          assert a['firewalls']['access_2026'] is False
+          print('BPC_2024_OOS_AUTHORITY_PASS')
+          PY
+      - run: python -m py_compile research/binance_premium_compression/validation_2024_v01.py
+      - name: Execute frozen 2024 OOS
+        run: |
+          cd research/binance_premium_compression
+          python validation_2024_v01.py
+      - name: Upload immutable OOS receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bpc-validation-2024-v01-${{ github.run_id }}-${{ github.run_attempt }}
+          path: research/binance_premium_compression/artifacts/binance_premium_compression_validation_2024_v01/
+          retention-days: 90
+          if-no-files-found: warn
