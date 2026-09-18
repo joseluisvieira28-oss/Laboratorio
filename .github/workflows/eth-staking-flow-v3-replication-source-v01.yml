@@ -1,0 +1,140 @@
+name: ETH Staking Flow 001 — V3 Replication Source V0.1
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - eth-staking-flow-v0.3-discovery
+    paths:
+      - 'research/eth_staking_flow/V3_REPLICATION_SOURCE_TRIGGER_V0_1.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  freeze-guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require specific V3 authority before protected source access
+        run: |
+          test -f research/eth_staking_flow/ETH_STAKING_FLOW_001_V3_INDEPENDENT_REPLICATION_AUTHORITY_V0_1.md
+          python -m py_compile research/eth_staking_flow/xatu_v3_replication_queue_shard_v01.py
+          python -m py_compile research/eth_staking_flow/xatu_v3_replication_queue_aggregate_v01.py
+
+  monthly-source:
+    needs: freeze-guard
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shard_id: "202501"
+            shard_start: "2025-01-01"
+            shard_end: "2025-01-31"
+          - shard_id: "202502"
+            shard_start: "2025-02-01"
+            shard_end: "2025-02-28"
+          - shard_id: "202503"
+            shard_start: "2025-03-01"
+            shard_end: "2025-03-31"
+          - shard_id: "202504"
+            shard_start: "2025-04-01"
+            shard_end: "2025-04-30"
+          - shard_id: "202505"
+            shard_start: "2025-05-01"
+            shard_end: "2025-05-31"
+          - shard_id: "202506"
+            shard_start: "2025-06-01"
+            shard_end: "2025-06-30"
+          - shard_id: "202507"
+            shard_start: "2025-07-01"
+            shard_end: "2025-07-31"
+          - shard_id: "202508"
+            shard_start: "2025-08-01"
+            shard_end: "2025-08-31"
+          - shard_id: "202509"
+            shard_start: "2025-09-01"
+            shard_end: "2025-09-30"
+          - shard_id: "202510"
+            shard_start: "2025-10-01"
+            shard_end: "2025-10-31"
+          - shard_id: "202511"
+            shard_start: "2025-11-01"
+            shard_end: "2025-11-30"
+          - shard_id: "202512"
+            shard_start: "2025-12-01"
+            shard_end: "2025-12-31"
+          - shard_id: "202601"
+            shard_start: "2026-01-01"
+            shard_end: "2026-01-31"
+          - shard_id: "202602"
+            shard_start: "2026-02-01"
+            shard_end: "2026-02-28"
+          - shard_id: "202603"
+            shard_start: "2026-03-01"
+            shard_end: "2026-03-31"
+          - shard_id: "202604"
+            shard_start: "2026-04-01"
+            shard_end: "2026-04-30"
+          - shard_id: "202605"
+            shard_start: "2026-05-01"
+            shard_end: "2026-05-31"
+          - shard_id: "202606"
+            shard_start: "2026-06-01"
+            shard_end: "2026-06-30"
+          - shard_id: "202607"
+            shard_start: "2026-07-01"
+            shard_end: "2026-07-31"
+          - shard_id: "202608"
+            shard_start: "2026-08-01"
+            shard_end: "2026-08-31"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install source dependencies
+        run: pip install --disable-pip-version-check pyarrow fsspec aiohttp
+      - name: Execute exact source-only replication shard
+        env:
+          SHARD_ID: ${{ matrix.shard_id }}
+          SHARD_START: ${{ matrix.shard_start }}
+          SHARD_END: ${{ matrix.shard_end }}
+        run: python research/eth_staking_flow/xatu_v3_replication_queue_shard_v01.py
+      - name: Upload source shard receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ETH_V3_REP_SOURCE_${{ matrix.shard_id }}
+          path: xatu_v3_replication_shards/queue_rep_${{ matrix.shard_id }}.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  aggregate:
+    if: always() && needs.freeze-guard.result == 'success'
+    needs:
+      - freeze-guard
+      - monthly-source
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download all source shards
+        uses: actions/download-artifact@v4
+        with:
+          pattern: ETH_V3_REP_SOURCE_*
+          path: downloaded_replication_shards
+          merge-multiple: true
+      - name: Aggregate exact 608-day protected source series
+        run: python research/eth_staking_flow/xatu_v3_replication_queue_aggregate_v01.py
+      - name: Upload canonical V3 replication source receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ETH_STAKING_FLOW_001_V3_REPLICATION_SOURCE_V0_1
+          path: xatu_v3_replication_output/ETH_STAKING_FLOW_001_V3_REPLICATION_SOURCE_V0_1.json
+          if-no-files-found: error
+          retention-days: 30
