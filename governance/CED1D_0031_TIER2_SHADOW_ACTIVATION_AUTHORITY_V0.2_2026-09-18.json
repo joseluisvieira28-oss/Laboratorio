@@ -1,0 +1,109 @@
+{
+  "document_id": "CED1D_0031_TIER2_SHADOW_ACTIVATION_AUTHORITY_V0.2_2026_09_18",
+  "date": "2026-09-18",
+  "status": "PROSPECTIVE_PUBLIC_DATA_SHADOW_ACTIVATION_AUTHORIZED",
+  "candidate": {
+    "combination_id": "CED1D-0031",
+    "symbol": "AVAXUSDT",
+    "lookback_days": 20,
+    "direction": "CONTINUATION",
+    "horizon_days": 1
+  },
+  "authority_precedence": {
+    "tier2_promotion_record": "Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/evidence/CED1D_0031_V3_TIER2_PROMOTION_RECORD_2026-09-18.json",
+    "promotion_commit": "3f207f0512015dfae12a0287f64516f425dd3d54",
+    "preactivation_shadow_v01": "governance/CED1D_0031_TIER2_SHADOW_SPEC_V0.1_2026-09-18.json",
+    "preactivation_commit": "1103ae5d84ec4242afc5fb9869274413a282ee62",
+    "static_preflight_run": 35345368240,
+    "static_preflight_artifact_id": 10546424571,
+    "static_preflight_artifact_digest": "sha256:e2c9b0405274638d7c4e1048c6f14f1ab40a51765a54ccf664e0ef7f5a6a7859",
+    "static_preflight_fingerprint": "a0bbae58a9215d12cc4338edfac0ae61d6610973d30b31168fc6512ac2848de2",
+    "static_preflight_market_data_accessed": false
+  },
+  "activation_scope": {
+    "first_eligible_signal_completion": "2026-09-19T00:00:00Z",
+    "first_eligible_reference_entry": "2026-09-19T00:01:00Z",
+    "public_market_data_read_only": true,
+    "authenticated_trading_endpoints": false,
+    "real_orders": false,
+    "exchange_mutation": false,
+    "wallets": false,
+    "account_api_keys": false,
+    "leverage": false,
+    "execution_webhooks": false,
+    "production_capital": false
+  },
+  "warmup": {
+    "pre_boundary_2026_input_access": true,
+    "purpose": "minimum exact 20-calendar-day momentum lookback/path computation for first post-freeze signal",
+    "performance_backfill": false,
+    "trade_outcomes_before_boundary": false,
+    "parameter_selection": false
+  },
+  "v01_operational_checkpoint_preserved": {
+    "min_resolved_shadow_events": 10,
+    "min_calendar_days": 14,
+    "semantics": "operational-integrity checkpoint only; not standalone Tier1 statistical proof"
+  },
+  "tier1_evidence_gate_v02": {
+    "min_completed_shadow_events": 60,
+    "min_complete_utc_signal_weeks": 8,
+    "both_required": true,
+    "rationale": "frozen 2025 cadence was approximately 357 events / 51 complete signal weeks = 7 events/week; 60 events requires roughly 8.6 weeks",
+    "early_tier1_adjudication": false,
+    "reference_base_mean_gt_0": true,
+    "reference_base_pf_gt_1": true,
+    "reference_stress_mean_ge_0": true,
+    "complete_week_base_positive_fraction_min": 0.5,
+    "min_complete_aggtrades_proxy_pairs": 50,
+    "execution_base_mean_gt_0": true,
+    "execution_base_pf_gt_1": true,
+    "execution_stress_mean_ge_0": true,
+    "median_latency_ms_max": 1000,
+    "p95_latency_ms_max": 5000,
+    "mean_nonfunding_base_proxy_bps_max": 14,
+    "p95_nonfunding_base_proxy_bps_max": 20,
+    "bookdepth_snapshot_coverage_min": 0.99,
+    "bookdepth_100usdt_capacity_coverage_min": 0.99,
+    "every_active_month_bookdepth_capacity_min": 0.95,
+    "concentration_single_month_abs_pnl_max": 0.3,
+    "concentration_top5_abs_pnl_max": 0.2,
+    "concentration_single_day_abs_pnl_max": 0.1
+  },
+  "execution_model_preserved": {
+    "research_notional_usdt": 100,
+    "base_taker_fee_bps_per_fill": 4,
+    "stress_taker_fee_bps_per_fill": 5,
+    "aggtrades_window_ms": 5000,
+    "maker_assumption": false,
+    "fee_discount_assumption": false,
+    "bookdepth_max_snapshot_age_ms": 60000,
+    "bookdepth_buy_percentage": 1,
+    "bookdepth_sell_percentage": -1
+  },
+  "routing": {
+    "checkpoint_10_events_14_days": "OPERATIONAL_CHECKPOINT_ONLY",
+    "full_60_events_8_weeks_pass": "TIER1_ADJUDICATION_ELIGIBLE_NOT_AUTOMATIC_TIER1",
+    "full_sample_mixed": "TIER2_RETAINED_FORWARD_FRAGILITY",
+    "source_or_execution_sample_insufficient": "SHADOW_BLOCKED_OR_INSUFFICIENT",
+    "full_sample_material_negative_base_pf_below_1": "MATERIAL_FORWARD_CONTRADICTION_REQUIRES_V3_READJUDICATION"
+  },
+  "supersession": {
+    "v01_access_2026_plus_false": "SUPERSEDED_ONLY_FOR_POST_ACTIVATION_PUBLIC_READ_ONLY_SHADOW_ACCESS",
+    "v01_activation_authorized_false": "SUPERSEDED_BY_THIS_V0.2",
+    "v01_signal_execution_cost_notional_rules": "PRESERVED",
+    "v01_10_event_14_day_checkpoint": "PRESERVED_AS_EARLY_OPERATIONAL_CHECKPOINT",
+    "retrospective_2026_trade_backfill": false
+  },
+  "governance": {
+    "live_trading": false,
+    "orders": false,
+    "exchange_mutation": false,
+    "wallets": false,
+    "account_api_keys": false,
+    "leverage": false,
+    "alerts_webhooks": false,
+    "production_capital": false,
+    "merge_main": false
+  }
+}
