@@ -1,14 +1,15 @@
 {
-  "registry_version": "2.3",
-  "as_of_utc": "2026-09-18T06:24:50Z",
+  "registry_version": "3.0",
+  "as_of_utc": "2026-09-18T06:44:29Z",
   "governance": "ND_PROMOTION_POLICY_V3_PLUS_AGGRESSIVE_FAIL_CLOSED_DEPLOYMENT",
   "focus_strategy_ids": [
     "ETF-CME-INSTFLOW-001",
     "BNB-LAUNCHPOOL-DEMAND-001",
     "OPTIONS-SPOTPERP-001-V2.1",
-    "HTF-DONCHIAN-DH02-6H"
+    "TFG-DONCHIAN-REGIME-ADAPTATION-V1",
+    "HTF-DH03-12H-STANDALONE-FORWARD-V1"
   ],
-  "policy_note": "Scientific tier and deployment readiness are separate. Tier-2 classification does not override a later operational/shadow failure and never implies live-trading authorization.",
+  "policy_note": "Active deployment registry only. Closed/rejected/historical-only candidates moved to archive_registry_v1.json without rewriting verdicts.",
   "candidates": [
     {
       "strategy_id": "ETF-CME-INSTFLOW-001",
@@ -158,15 +159,33 @@
       "forward_evidence_backend": "POSTGRES_APPEND_ONLY_HASH_CHAIN"
     },
     {
-      "strategy_id": "HTF-DONCHIAN-DH02-6H",
-      "scientific_tier": 2,
-      "scientific_status": "TIER_2_RETAINED_STATISTICAL_FRAGILITY__HISTORICAL_CLASSIFICATION_PRESERVED",
-      "deployment_state": "BLOCKED_CLOSED_SHADOW_READINESS_FAIL_2026",
+      "strategy_id": "TFG-DONCHIAN-REGIME-ADAPTATION-V1",
+      "scientific_tier": 3,
+      "scientific_status": "TIER_3_FORWARD_ONLY_CANDIDATE",
+      "deployment_state": "PROSPECTIVE_FORWARD_SHADOW_OPERATIONAL",
+      "shadow_allowed": true,
+      "micro_live_allowed_now": false,
+      "authority": "Regime Adaptation V1 closeout + Promotion Policy V3",
+      "watcher_id": "TFG-DONCHIAN-REGIME-V1-FORWARD-SHADOW",
+      "provider": "MEXC_SPOT_PUBLIC",
+      "readiness_gate": "10 resolved genuinely prospective filtered forward trades with positive BASE/STRESS economics and clean integrity",
+      "blocking_gates": [
+        "minimum 10 resolved filtered forward trades not yet met",
+        "base/stress expectancy and PF readiness gate not yet met",
+        "no micro-live execution authority"
+      ]
+    },
+    {
+      "strategy_id": "HTF-DH03-12H-STANDALONE-FORWARD-V1",
+      "scientific_tier": null,
+      "scientific_status": "NEW_PROSPECTIVE_STANDALONE_CANDIDATE__SOURCE_PASS",
+      "deployment_state": "GATED_SOURCE_PASS__LOCAL_COLLECTOR_BUILDING",
       "shadow_allowed": false,
       "micro_live_allowed_now": false,
-      "authority_branch": "htf-donchian-shadow-v0.1",
-      "frozen_cell": "DH-02-HO1",
-      "timeframe": "6H",
+      "authority_branch": "htf-dh03-12h-standalone-forward-v0.1",
+      "parent_historical_cell": "DH-03-HO1",
+      "historical_role": "SECONDARY_SUPPORTING_EVIDENCE_ONLY",
+      "timeframe": "12H",
       "direction_rule": "LONG_ONLY",
       "symbols": [
         "BTCUSDT",
@@ -176,90 +195,27 @@
         "XRPUSDT",
         "DOGEUSDT"
       ],
-      "donchian_lookback_complete_bars": 80,
-      "atr_length": 56,
-      "entry_rule": "next 6H open",
-      "stop_rule": "signal low minus 0.25*ATR56",
+      "donchian_lookback_complete_bars": 40,
+      "atr_length": 28,
+      "entry_rule": "next 12H open",
+      "stop_rule": "signal low minus 0.25*ATR28",
       "target_r": 3,
-      "max_hold_bars": 160,
+      "max_hold_bars": 80,
       "base_round_trip_cost_pct": 0.2,
       "stress_round_trip_cost_pct": 0.3,
-      "protected_2026_shadow_result": {
-        "resolved_trades": 27,
-        "base_expectancy_r": -0.5689228153152064,
-        "base_profit_factor": 0.35295321674707636,
-        "stress_expectancy_r": -0.5791187872063066
+      "prospective_freeze_utc": "2026-09-18T06:26:53Z",
+      "source_validation": {
+        "public_websocket": "PASS_PUBLIC_WEBSOCKET_SOURCE_6_OF_6",
+        "official_archive_warmup": "PASS_ARCHIVE_WARMUP_SOURCE_8640_OF_8640_CHECKSUM_VERIFIED",
+        "source_probe_run_id": 35316165339,
+        "prefreeze_rows_used_as_forward_evidence": false
       },
-      "reason": "Scientific Tier-2 historical/V3 classification is preserved, but the exact 6H production path closed after the protected 2026 shadow readiness failure. No rescue, 12H substitution, or capital path is permitted under this implementation.",
       "blocking_gates": [
-        "terminal deployment blocker: CLOSED_SHADOW_READINESS_FAIL",
-        "any future Donchian production research requires a new prospectively frozen experiment and cannot rescue this closeout"
+        "exact local always-on 1m collector not yet built and regression-tested",
+        "minute-path/funding reconciliation not yet operational",
+        "first eligible signal boundary not yet observed under standalone authority",
+        "no micro-live execution authority"
       ]
-    },
-    {
-      "strategy_id": "BTC-OPTIONS-EXPIRY-REVERSAL-001",
-      "scientific_tier": 4,
-      "scientific_status": "V3_REJECTED_WEAK_CANDIDATE",
-      "deployment_state": "BLOCKED",
-      "shadow_allowed": false,
-      "micro_live_allowed_now": false
-    },
-    {
-      "strategy_id": "HTF-DH03-12H",
-      "scientific_tier": null,
-      "scientific_status": "HISTORICAL_SECONDARY_ONLY",
-      "deployment_state": "BLOCKED_SUPPORTING_EVIDENCE_ONLY",
-      "shadow_allowed": false,
-      "micro_live_allowed_now": false,
-      "reason": "Cannot substitute for DH-02 after outcomes."
-    },
-    {
-      "strategy_id": "MVE-ADX4H-01",
-      "scientific_tier": 4,
-      "scientific_status": "REJECTED_STONE_AFTER_2025_CONFIRMATION",
-      "deployment_state": "BLOCKED",
-      "shadow_allowed": false,
-      "micro_live_allowed_now": false
-    },
-    {
-      "strategy_id": "OPTIONS-SPOTPERP-002-UP_LOW",
-      "scientific_tier": 4,
-      "scientific_status": "REJECTED_OOS_FAILED",
-      "deployment_state": "BLOCKED",
-      "shadow_allowed": false,
-      "micro_live_allowed_now": false
-    },
-    {
-      "strategy_id": "CPI-SURPRISE-V0.3A",
-      "scientific_tier": 4,
-      "scientific_status": "REJECTED_AFTER_INDEPENDENT_OOS",
-      "deployment_state": "BLOCKED",
-      "shadow_allowed": false,
-      "micro_live_allowed_now": false
-    },
-    {
-      "strategy_id": "F08-RESIDUAL-RELATIVE-STRENGTH",
-      "scientific_tier": 4,
-      "scientific_status": "REJECTED_AFTER_2025_OOS",
-      "deployment_state": "BLOCKED",
-      "shadow_allowed": false,
-      "micro_live_allowed_now": false
-    },
-    {
-      "strategy_id": "ICHIMOKU-4H-MVE",
-      "scientific_tier": 4,
-      "scientific_status": "REJECTED_AFTER_2024_OOS",
-      "deployment_state": "BLOCKED",
-      "shadow_allowed": false,
-      "micro_live_allowed_now": false
-    },
-    {
-      "strategy_id": "SPOT-PERP-CARRY-V0.1",
-      "scientific_tier": 4,
-      "scientific_status": "REJECTED_OOS_NET_NEGATIVE",
-      "deployment_state": "BLOCKED",
-      "shadow_allowed": false,
-      "micro_live_allowed_now": false
     }
   ],
   "operational_shadow_v09": {
@@ -315,6 +271,13 @@
     "authenticated_exchange_api_used": false,
     "orders_created": false,
     "exchange_mutation_performed": false,
-    "live_capital_enabled": false
-  }
+    "live_capital_enabled": false,
+    "active_registry_cleanup": {
+      "status": "ACTIVE_ONLY_REGISTRY",
+      "archived_registry": "archive_registry_v1.json",
+      "closed_candidates_removed_from_active_view": 9,
+      "active_or_gated_candidates": 5
+    }
+  },
+  "archive_registry": "archive_registry_v1.json"
 }
