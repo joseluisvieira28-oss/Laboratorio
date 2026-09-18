@@ -139,5 +139,10 @@
     "cost_rescue": false,
     "failed_hypothesis_rewrite": false
   },
-  "no_rescue_rule": "After the canonical Discovery opens outcomes, do not change the 7-day window, z=3 threshold, positive-premium-only side, 5m timeframe, 60m hold, funding-crossing exclusion, assets, costs, source years or gates under this MVE ID."
+  "no_rescue_rule": "After the canonical Discovery opens outcomes, do not change the 7-day window, z=3 threshold, positive-premium-only side, 5m timeframe, 60m hold, funding-crossing exclusion, assets, costs, source years or gates under this MVE ID.",
+  "data_integrity": {
+    "minimum_bar_coverage_fraction_each_dataset_asset": 0.999,
+    "duplicate_timestamp_rule": "Exact duplicate rows may deduplicate by timestamp only if OHLC/premium values are identical; conflicting duplicate timestamps are DATA_FAILURE.",
+    "synchronized_execution_rule": "Every selected signal must have both spot and perpetual entry/exit bars. Any selected signal with unresolved execution bars is an integrity failure, not silently dropped."
+  }
 }
