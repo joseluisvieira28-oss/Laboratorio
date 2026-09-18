@@ -1,4 +1,4 @@
-name: CED1D-0031 Prospective Shadow Collector
+name: CED1D-0031 Prospective Shadow Collector V0.2
 
 on:
   workflow_dispatch:
@@ -17,10 +17,10 @@ jobs:
     timeout-minutes: 120
     env:
       ROOT: Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3
-      COLLECTOR_BLOB: "bb599675431ec516daa5e0a316a202c186e9852e"
-      TEST_BLOB: "1e7a3e4b370fbfb556dd9af8d754c2b1384f1e1c"
+      COLLECTOR_BLOB: "bdb1ca9f5de01a8ab9657e80fd37fc243b9781f2"
+      TEST_BLOB: "d3c4e2525e4e0023e3fa40f0733b65b3b998245e"
       ACTIVATION_BLOB: "f524aebd3cbae48b6dd916b1fba87aa88d94d2f4"
-      FREEZE_BLOB: "a7ae6e8da9c9d13543330fb372f4e9c277d82b0b"
+      FREEZE_BLOB: "201157d5e49f3c40e0eed40a2a4b40b5cc8942b3"
       FIRST_SIGNAL_DAY: "2026-09-18"
       FIRST_COMPLETION: "2026-09-19T00:00:00Z"
     steps:
@@ -32,12 +32,12 @@ jobs:
 
       - name: Assert frozen implementation identity
         run: |
-          test "$(git hash-object "$ROOT/ced1d_0031_prospective_shadow_collector_v01.py")" = "$COLLECTOR_BLOB"
-          test "$(git hash-object "$ROOT/tests/test_ced1d_0031_prospective_shadow_collector_v01.py")" = "$TEST_BLOB"
+          test "$(git hash-object "$ROOT/ced1d_0031_prospective_shadow_collector_v02.py")" = "$COLLECTOR_BLOB"
+          test "$(git hash-object "$ROOT/tests/test_ced1d_0031_prospective_shadow_collector_v02.py")" = "$TEST_BLOB"
           test "$(git hash-object "governance/CED1D_0031_TIER2_SHADOW_ACTIVATION_AUTHORITY_V0.2_2026-09-18.json")" = "$ACTIVATION_BLOB"
-          test "$(git hash-object "governance/CED1D_0031_PROSPECTIVE_SHADOW_COLLECTOR_IMPLEMENTATION_FREEZE_V0.1_2026-09-18.md")" = "$FREEZE_BLOB"
-          python -m py_compile "$ROOT/ced1d_0031_prospective_shadow_collector_v01.py"
-          python "$ROOT/tests/test_ced1d_0031_prospective_shadow_collector_v01.py"
+          test "$(git hash-object "governance/CED1D_0031_PROSPECTIVE_SHADOW_COLLECTOR_IMPLEMENTATION_FREEZE_V0.2A_2026-09-18.md")" = "$FREEZE_BLOB"
+          python -m py_compile "$ROOT/ced1d_0031_prospective_shadow_collector_v02.py"
+          python "$ROOT/tests/test_ced1d_0031_prospective_shadow_collector_v02.py"
           test "$(sha256sum "$ROOT/recovered_authority/CED-1D-V1-RUNNER-FREEZE-V0.3.zip" | awk '{print $1}')" = "df625d0d4a05c55ba34ca51514d31fd61636ff0a823567585c2d02afa0877958"
           echo SHADOW_COLLECTOR_IMPLEMENTATION_IDENTITY_PASS
 
@@ -63,15 +63,15 @@ jobs:
         env:
           THROUGH_SIGNAL_DAY: ${{ inputs.through_signal_day }}
         run: |
-          python "$ROOT/ced1d_0031_prospective_shadow_collector_v01.py"             --activation "governance/CED1D_0031_TIER2_SHADOW_ACTIVATION_AUTHORITY_V0.2_2026-09-18.json"             --v03-runner-zip "$ROOT/recovered_authority/CED-1D-V1-RUNNER-FREEZE-V0.3.zip"             --through-signal-day "$THROUGH_SIGNAL_DAY"             --output "$RUNNER_TEMP/shadow"
+          python "$ROOT/ced1d_0031_prospective_shadow_collector_v02.py"             --activation "governance/CED1D_0031_TIER2_SHADOW_ACTIVATION_AUTHORITY_V0.2_2026-09-18.json"             --v03-runner-zip "$ROOT/recovered_authority/CED-1D-V1-RUNNER-FREEZE-V0.3.zip"             --through-signal-day "$THROUGH_SIGNAL_DAY"             --output "$RUNNER_TEMP/shadow"
 
       - name: Assert governance receipt
         if: always()
         run: |
-          test -f "$RUNNER_TEMP/shadow/CED1D_0031_PROSPECTIVE_SHADOW_RECEIPT_V0.1.json"
+          test -f "$RUNNER_TEMP/shadow/CED1D_0031_PROSPECTIVE_SHADOW_RECEIPT_V0.2.json"
           python - <<'PY'
           import json,os
-          p=os.path.join(os.environ["RUNNER_TEMP"],"shadow","CED1D_0031_PROSPECTIVE_SHADOW_RECEIPT_V0.1.json")
+          p=os.path.join(os.environ["RUNNER_TEMP"],"shadow","CED1D_0031_PROSPECTIVE_SHADOW_RECEIPT_V0.2.json")
           x=json.load(open(p))
           assert x["candidate"]=="CED1D-0031",x
           g=x["governance"]
@@ -97,14 +97,14 @@ jobs:
           mkdir -p "$RUNNER_TEMP/final"
           cp "$RUNNER_TEMP/shadow/"* "$RUNNER_TEMP/final/" 2>/dev/null || true
           cp governance/CED1D_0031_TIER2_SHADOW_ACTIVATION_AUTHORITY_V0.2_2026-09-18.json "$RUNNER_TEMP/final/"
-          cp governance/CED1D_0031_PROSPECTIVE_SHADOW_COLLECTOR_IMPLEMENTATION_FREEZE_V0.1_2026-09-18.md "$RUNNER_TEMP/final/"
+          cp governance/CED1D_0031_PROSPECTIVE_SHADOW_COLLECTOR_IMPLEMENTATION_FREEZE_V0.2A_2026-09-18.md "$RUNNER_TEMP/final/"
           find "$RUNNER_TEMP/final" -type f -print0 | sort -z | xargs -0 sha256sum > "$RUNNER_TEMP/final/ARTIFACT_MEMBER_SHA256.txt" || true
 
       - name: Upload shadow evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ced1d-0031-prospective-shadow-${{ inputs.through_signal_day }}
+          name: ced1d-0031-prospective-shadow-v02-${{ inputs.through_signal_day }}
           path: ${{ runner.temp }}/final
           if-no-files-found: error
           retention-days: 30
