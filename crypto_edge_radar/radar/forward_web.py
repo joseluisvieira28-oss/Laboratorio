@@ -24,6 +24,9 @@ from .tfg_forward_watcher import (
     latest_certifiable_signal_close_ms,
 )
 from .tfg_forward_metrics import evaluate_tfg_forward_evidence
+from .options_v21_live import BinanceBTCUSDTDailyFeed, DeribitBTCOptionTradeFeed
+from .options_v21_watcher import OptionsV21ForwardShadowWatcher
+from .options_v21_metrics import evaluate_options_v21_forward
 
 
 class CachingBinanceOfficialLaunchpoolSource(BinanceOfficialLaunchpoolSource):
@@ -65,6 +68,11 @@ class ForwardShadowRuntime:
             source=CachingBinanceOfficialLaunchpoolSource(timeout=settings.http_timeout),
             market=BinanceSpotBNBBTCKlineFeed(timeout=settings.http_timeout),
         )
+        self.options_v21 = OptionsV21ForwardShadowWatcher(
+            store=self.store,
+            options_feed=DeribitBTCOptionTradeFeed(timeout=settings.http_timeout),
+            btc_feed=BinanceBTCUSDTDailyFeed(timeout=settings.http_timeout),
+        )
         self.status_path = os.getenv("RADAR_FORWARD_STATUS", settings.status_path)
         self._lock = threading.Lock()
         self._state: dict[str, Any] = {
@@ -75,6 +83,11 @@ class ForwardShadowRuntime:
         }
         self._last_tfg_due: int | None = None
         self._last_etf_public_check_ms: int | None = None
+        self._last_options_runtime_day: str | None = None
+        self._options_state: dict[str, Any] = {
+            "status": "STARTING",
+            "watcher_id": "OPTIONS-SPOTPERP-001-V2.1-FORWARD-SHADOW",
+        }
         self._etf_public_state: dict[str, Any] = {
             "status": "STARTING",
             "classification": "PUBLIC_PREFLIGHT_ONLY",
@@ -190,6 +203,35 @@ class ForwardShadowRuntime:
         else:
             etf_exec_v2 = self._etf_public_state
 
+        options_runtime_day = datetime.fromtimestamp(
+            now_ms / 1000.0, tz=timezone.utc
+        ).date().isoformat()
+        if options_runtime_day != self._last_options_runtime_day:
+            try:
+                options_v21 = self.options_v21.run_once(now_ms=now_ms)
+                self._options_state = options_v21
+                self._last_options_runtime_day = options_runtime_day
+            except Exception as exc:
+                options_v21 = {
+                    "status": "FAIL_CLOSED",
+                    "error": f"{type(exc).__name__}:{exc}",
+                }
+                self._options_state = options_v21
+                errors["options_v21"] = options_v21["error"]
+        else:
+            options_v21 = self._options_state
+
+        try:
+            options_v21_metrics = evaluate_options_v21_forward(self.store)
+        except Exception as exc:
+            options_v21_metrics = {
+                "classification": "METRICS_FAIL_CLOSED",
+                "error": f"{type(exc).__name__}:{exc}",
+                "micro_live_authorized": False,
+                "live_capital_enabled": False,
+            }
+            errors["options_v21_metrics"] = options_v21_metrics["error"]
+
         state = {
             "health": "OK" if not errors else "DEGRADED_FAIL_CLOSED",
             "mode": "PUBLIC_SHADOW_ONLY",
@@ -202,6 +244,8 @@ class ForwardShadowRuntime:
             "tfg_forward_metrics": tfg_forward_metrics,
             "bnb_launchpool": bnb_state,
             "etf_exec_v2_public": etf_exec_v2,
+            "options_v21": options_v21,
+            "options_v21_metrics": options_v21_metrics,
             "errors": errors,
             "authenticated_exchange_api_used": False,
             "orders_created": False,
