@@ -1,0 +1,54 @@
+name: BTC DVOL Relative Spread 2025 Source Gate V0.1
+
+on:
+  push:
+    branches:
+      - btc-dvol-relative-spread-2025-source-v0.1
+    paths:
+      - 'labs/BTC_DVOL_RELATIVE_SPREAD_2025_001/SOURCE_TRIGGER_V0.1.txt'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: btc-dvol-relative-spread-2025-source-v01
+  cancel-in-progress: false
+
+jobs:
+  source_gate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: btc-dvol-relative-spread-2025-source-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --disable-pip-version-check requests==2.32.3
+      - name: Verify frozen source authority
+        run: |
+          python - <<'PY'
+          import json
+          a=json.load(open('labs/BTC_DVOL_RELATIVE_SPREAD_2025_001/SOURCE_AUTHORITY_V0.1.json'))
+          assert a['source_gate_id']=='DVOL-RELSPREAD-2025-SOURCE-001'
+          assert a['status']=='PRE_ACQUISITION_FROZEN_SOURCE_ONLY'
+          assert a['source']['candidate_start']=='2025-01-01'
+          assert a['source']['candidate_end']=='2025-12-31'
+          assert a['source']['protected_start']=='2026-01-01T00:00:00Z'
+          assert a['source_gates']['minimum_qualifying_adjacent_pairs']==7
+          assert a['source_gates']['minimum_aggregate_common_pair_days']==35
+          assert all(v is False for v in a['firewalls'].values())
+          print('DVOL_RELSPREAD_2025_SOURCE_AUTHORITY_PASS')
+          PY
+      - run: python -m py_compile labs/BTC_DVOL_RELATIVE_SPREAD_2025_001/source_gate_v01.py
+      - name: Execute outcome-blind 2025 source gate
+        run: python labs/BTC_DVOL_RELATIVE_SPREAD_2025_001/source_gate_v01.py
+      - name: Upload immutable source receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: btc-dvol-relspread-2025-source-v01-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/btc_dvol_relspread_2025_source_v01/
+          retention-days: 90
+          if-no-files-found: warn
