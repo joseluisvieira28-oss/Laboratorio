@@ -1,0 +1,55 @@
+name: CED1D-0031 Shadow V0.2A Static Preflight
+
+on:
+  push:
+    branches:
+      - ced-1d-v3-byte-recovery-2026-09-17
+    paths:
+      - '.github/workflows/ced1d-0031-prospective-shadow-v02-static-preflight.yml'
+      - '.github/workflows/ced1d-0031-prospective-shadow-collector.yml'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/ced1d_0031_prospective_shadow_collector_v02.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/tests/test_ced1d_0031_prospective_shadow_collector_v02.py'
+      - 'governance/CED1D_0031_PROSPECTIVE_SHADOW_COLLECTOR_IMPLEMENTATION_FREEZE_V0.2A_2026-09-18.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      ROOT: Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3
+      COLLECTOR_BLOB: "bdb1ca9f5de01a8ab9657e80fd37fc243b9781f2"
+      TEST_BLOB: "d3c4e2525e4e0023e3fa40f0733b65b3b998245e"
+      ACTIVATION_BLOB: "f524aebd3cbae48b6dd916b1fba87aa88d94d2f4"
+      FREEZE_BLOB: "201157d5e49f3c40e0eed40a2a4b40b5cc8942b3"
+      COLLECTOR_WORKFLOW_BLOB: "bea5900303657c5d5aa6085fb089af874382f63a"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Assert complete frozen identity chain
+        run: |
+          set -euo pipefail
+          test "$(git hash-object "$ROOT/ced1d_0031_prospective_shadow_collector_v02.py")" = "$COLLECTOR_BLOB"
+          test "$(git hash-object "$ROOT/tests/test_ced1d_0031_prospective_shadow_collector_v02.py")" = "$TEST_BLOB"
+          test "$(git hash-object governance/CED1D_0031_TIER2_SHADOW_ACTIVATION_AUTHORITY_V0.2_2026-09-18.json)" = "$ACTIVATION_BLOB"
+          test "$(git hash-object governance/CED1D_0031_PROSPECTIVE_SHADOW_COLLECTOR_IMPLEMENTATION_FREEZE_V0.2A_2026-09-18.md)" = "$FREEZE_BLOB"
+          test "$(git hash-object .github/workflows/ced1d-0031-prospective-shadow-collector.yml)" = "$COLLECTOR_WORKFLOW_BLOB"
+          test "$(sha256sum "$ROOT/recovered_authority/CED-1D-V1-RUNNER-FREEZE-V0.3.zip" | awk '{print $1}')" = "df625d0d4a05c55ba34ca51514d31fd61636ff0a823567585c2d02afa0877958"
+      - name: Compile and run network-free QA
+        run: |
+          set -euo pipefail
+          python -m py_compile "$ROOT/ced1d_0031_prospective_shadow_collector_v02.py"
+          python "$ROOT/tests/test_ced1d_0031_prospective_shadow_collector_v02.py"
+      - name: Assert armed workflow targets V0.2A
+        run: |
+          set -euo pipefail
+          grep -q 'ced1d_0031_prospective_shadow_collector_v02.py' .github/workflows/ced1d-0031-prospective-shadow-collector.yml
+          grep -q 'CED1D_0031_PROSPECTIVE_SHADOW_RECEIPT_V0.2.json' .github/workflows/ced1d-0031-prospective-shadow-collector.yml
+          grep -q 'CED1D_0031_PROSPECTIVE_SHADOW_COLLECTOR_IMPLEMENTATION_FREEZE_V0.2A_2026-09-18.md' .github/workflows/ced1d-0031-prospective-shadow-collector.yml
+          echo SHADOW_V02A_STATIC_PREFLIGHT_PASS
+          echo NO_REAL_MARKET_SOURCE_ACCESSED
