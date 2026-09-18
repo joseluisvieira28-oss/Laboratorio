@@ -1,0 +1,81 @@
+name: Stablecoin DEX Stress SQD Source Gate V0.2
+
+on:
+  push:
+    branches:
+      - stablecoin-dex-stress-source-v0.2-sqd
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/stablecoin_dex_stress_v0_1/SDS_CURVE3POOL_PEG_001_SOURCE_TRIGGER_V02_SQD.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  source_shards:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        shard: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: stablecoin-dex-stress-source-v0.2-sqd
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --disable-pip-version-check requests==2.32.3
+      - name: Verify frozen source authority
+        run: |
+          python - <<'PY'
+          import json
+          a=json.load(open('Dream-Account-OS-v2.3-PARTIAL/research/stablecoin_dex_stress_v0_1/SDS_CURVE3POOL_PEG_001_SOURCE_AUTHORITY_V02_SQD.json'))
+          assert a['source_gate_id']=='SDS-CURVE3POOL-PEG-001-SOURCE-002-SQD'
+          assert a['transport_change_only'] is True
+          assert a['frozen_scientific_contract']['pool']=='0xbebc44782c7db0a1a60cb6fe97d0b483032ff1c7'
+          assert a['frozen_scientific_contract']['start_block']==11565000
+          assert a['frozen_scientific_contract']['end_block']==21525890
+          assert a['source_gates']['minimum_daily_source_observations']==500
+          assert all(v is False for v in a['firewalls'].values())
+          print('SDS_SQD_SOURCE_AUTHORITY_PASS')
+          PY
+      - run: python -m py_compile Dream-Account-OS-v2.3-PARTIAL/research/stablecoin_dex_stress_v0_1/source_gate_v02_sqd.py
+      - name: Execute source shard
+        run: python Dream-Account-OS-v2.3-PARTIAL/research/stablecoin_dex_stress_v0_1/source_gate_v02_sqd.py --shard ${{ matrix.shard }}
+      - name: Upload shard
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sds-curve3pool-source-v02-shard-${{ matrix.shard }}
+          path: artifacts/stablecoin_dex_stress_source_v02_sqd/shard_${{ matrix.shard }}.json
+          retention-days: 90
+          if-no-files-found: error
+
+  aggregate:
+    needs: source_shards
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: stablecoin-dex-stress-source-v0.2-sqd
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --disable-pip-version-check requests==2.32.3
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: sds-curve3pool-source-v02-shard-*
+          path: artifacts/sds_shards
+          merge-multiple: false
+      - name: Aggregate canonical source series
+        run: python Dream-Account-OS-v2.3-PARTIAL/research/stablecoin_dex_stress_v0_1/source_gate_v02_sqd.py --aggregate-dir artifacts/sds_shards
+      - name: Upload canonical source receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: sds-curve3pool-source-v02-canonical-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/stablecoin_dex_stress_source_v02_sqd/
+          retention-days: 90
+          if-no-files-found: error
