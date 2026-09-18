@@ -1,0 +1,44 @@
+name: BTC DVOL Term Spread MR Discovery V0.1
+on:
+  push:
+    branches:
+      - btc-dvol-termspread-mr-discovery-v0.1
+    paths:
+      - 'labs/BTC_DVOL_FUTURES_TERMSTRUCTURE_001/TERM_SPREAD_MR_DISCOVERY_TRIGGER_V0.1.txt'
+permissions:
+  contents: read
+jobs:
+  discovery:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: btc-dvol-termspread-mr-discovery-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --disable-pip-version-check requests==2.32.3
+      - name: Verify frozen authority
+        run: |
+          python - <<'PY'
+          import json
+          a=json.load(open('labs/BTC_DVOL_FUTURES_TERMSTRUCTURE_001/TERM_SPREAD_MR_DISCOVERY_AUTHORITY_V0.1.json'))
+          assert a['discovery_id']=='DVOL-TS-TERM-SPREAD-MR-DISCOVERY-001'
+          assert a['status']=='PRE_OUTCOME_FROZEN'
+          assert a['signal']['threshold']==0.0
+          assert a['sample_gates']['minimum_total_adjacent_scores']==50
+          assert a['bootstrap']['replications']==10000
+          assert all(v is False for v in a['firewalls'].values())
+          print('TERM_SPREAD_MR_AUTHORITY_PASS')
+          PY
+      - run: python -m py_compile labs/BTC_DVOL_FUTURES_TERMSTRUCTURE_001/term_spread_mr_discovery_v01.py
+      - name: Execute one-shot term-spread MR Discovery
+        run: python labs/BTC_DVOL_FUTURES_TERMSTRUCTURE_001/term_spread_mr_discovery_v01.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: BTC_DVOL_TERM_SPREAD_MR_DISCOVERY_V0_1
+          path: artifacts/btc_dvol_termspread_mr_discovery_v01/
+          retention-days: 90
+          if-no-files-found: warn
