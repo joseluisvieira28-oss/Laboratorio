@@ -10,6 +10,10 @@ on:
       - 'crypto_edge_radar/**'
       - '.github/workflows/build-radar-windows-node.yml'
 
+concurrency:
+  group: build-radar-windows-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
