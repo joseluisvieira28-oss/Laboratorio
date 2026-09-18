@@ -27,6 +27,7 @@ from .tfg_forward_metrics import evaluate_tfg_forward_evidence
 from .options_v21_live import BinanceBTCUSDTDailyFeed, DeribitBTCOptionTradeFeed
 from .options_v21_watcher import OptionsV21ForwardShadowWatcher
 from .options_v21_metrics import evaluate_options_v21_forward
+from .dh03_archive_watcher import run_once as run_dh03_archive_shadow
 
 
 class CachingBinanceOfficialLaunchpoolSource(BinanceOfficialLaunchpoolSource):
@@ -94,6 +95,15 @@ class ForwardShadowRuntime:
             "capital_enabled": False,
             "orders_created": False,
         }
+        self._dh03_thread: threading.Thread | None = None
+        self._dh03_last_attempt_day: str | None = None
+        self._dh03_state: dict[str, Any] = {
+            "status": "STARTING",
+            "strategy_id": "HTF-DH03-12H-STANDALONE-FORWARD-V1",
+            "mode": "PUBLIC_ARCHIVE_SHADOW_ONLY",
+            "live_capital_enabled": False,
+            "orders_created": False,
+        }
 
     def state(self) -> dict[str, Any]:
         with self._lock:
@@ -103,6 +113,65 @@ class ForwardShadowRuntime:
         with self._lock:
             self._state = value
         _atomic_json_write(self.status_path, value)
+
+    def _dh03_worker(self) -> None:
+        try:
+            receipt = run_dh03_archive_shadow(persist=True)
+            totals = ((receipt.get("evaluation") or {}).get("totals") or {})
+            summary = {
+                "status": receipt.get("status", "UNKNOWN"),
+                "strategy_id": receipt.get("strategy_id", "HTF-DH03-12H-STANDALONE-FORWARD-V1"),
+                "mode": receipt.get("mode", "PUBLIC_ARCHIVE_SHADOW_ONLY"),
+                "latest_archive_day": receipt.get("latest_archive_day"),
+                "signals": totals.get("signals", 0),
+                "price_exits": totals.get("price_exits", 0),
+                "final_resolutions": totals.get("final_resolutions", 0),
+                "funding_pending": totals.get("funding_pending", 0),
+                "unresolved_price_paths": totals.get("unresolved_price_paths", 0),
+                "evidence_backend": receipt.get("evidence_backend", self.store.backend),
+                "evidence_chain_ok": receipt.get("evidence_chain_ok"),
+                "evidence_chain_detail": receipt.get("evidence_chain_detail"),
+                "live_capital_enabled": False,
+                "orders_created": False,
+                "authenticated_exchange_api_used": False,
+                "exchange_mutation_performed": False,
+            }
+            if receipt.get("error"):
+                summary["error"] = receipt["error"]
+        except Exception as exc:
+            summary = {
+                "status": "FAIL_CLOSED",
+                "strategy_id": "HTF-DH03-12H-STANDALONE-FORWARD-V1",
+                "mode": "PUBLIC_ARCHIVE_SHADOW_ONLY",
+                "error": f"{type(exc).__name__}:{exc}",
+                "live_capital_enabled": False,
+                "orders_created": False,
+                "authenticated_exchange_api_used": False,
+                "exchange_mutation_performed": False,
+            }
+        with self._lock:
+            self._dh03_state = summary
+
+    def _maybe_start_dh03(self, *, runtime_day: str) -> dict[str, Any]:
+        with self._lock:
+            running = self._dh03_thread is not None and self._dh03_thread.is_alive()
+            if self._dh03_last_attempt_day != runtime_day and not running:
+                self._dh03_last_attempt_day = runtime_day
+                self._dh03_state = {
+                    "status": "RUNNING",
+                    "strategy_id": "HTF-DH03-12H-STANDALONE-FORWARD-V1",
+                    "mode": "PUBLIC_ARCHIVE_SHADOW_ONLY",
+                    "live_capital_enabled": False,
+                    "orders_created": False,
+                }
+                worker = threading.Thread(
+                    target=self._dh03_worker,
+                    name="dh03-12h-archive-shadow",
+                    daemon=True,
+                )
+                self._dh03_thread = worker
+                worker.start()
+            return json.loads(json.dumps(self._dh03_state))
 
     def run_cycle(self, *, now_ms: int | None = None) -> dict[str, Any]:
         if now_ms is None:
@@ -232,11 +301,18 @@ class ForwardShadowRuntime:
             }
             errors["options_v21_metrics"] = options_v21_metrics["error"]
 
+        dh03_runtime_day = datetime.fromtimestamp(
+            now_ms / 1000.0, tz=timezone.utc
+        ).date().isoformat()
+        dh03_12h = self._maybe_start_dh03(runtime_day=dh03_runtime_day)
+        if dh03_12h.get("status") == "FAIL_CLOSED":
+            errors["dh03_12h"] = str(dh03_12h.get("error") or "FAIL_CLOSED")
+
         state = {
             "health": "OK" if not errors else "DEGRADED_FAIL_CLOSED",
             "mode": "PUBLIC_SHADOW_ONLY",
             "checked_at_utc": checked,
-            "version": "0.9",
+            "version": "1.0",
             "evidence_backend": self.store.backend,
             "evidence_chain_ok": chain_ok,
             "evidence_chain_detail": chain_detail,
@@ -246,6 +322,7 @@ class ForwardShadowRuntime:
             "etf_exec_v2_public": etf_exec_v2,
             "options_v21": options_v21,
             "options_v21_metrics": options_v21_metrics,
+            "dh03_12h": dh03_12h,
             "errors": errors,
             "authenticated_exchange_api_used": False,
             "orders_created": False,
@@ -289,7 +366,7 @@ def dashboard_html() -> str:
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Crypto Edge Radar V0.9</title>
+<title>Crypto Edge Radar V1.0</title>
 <style>
 :root{color-scheme:dark;background:#0b0d10;color:#f5f7fa;font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
 *{box-sizing:border-box}body{margin:0;padding:24px}.wrap{max-width:1100px;margin:auto}
@@ -303,7 +380,7 @@ h1{margin:0 0 6px;font-size:28px}.sub{color:#9aa4b2;margin-bottom:22px}
 </style>
 </head>
 <body><main class="wrap">
-<h1>Crypto Edge Radar V0.9</h1>
+<h1>Crypto Edge Radar V1.0</h1>
 <div class="sub">Persistent public shadow · read-only · no exchange mutation</div>
 <div class="grid">
 <section class="card"><div class="k">Runtime</div><div id="health" class="v">Loading…</div>
@@ -347,6 +424,14 @@ h1{margin:0 0 6px;font-size:28px}.sub{color:#9aa4b2;margin-bottom:22px}
 <div class="row"><span>BASE mean bps</span><span id="optBase">—</span></div>
 <div class="row"><span>BASE PF</span><span id="optPf">—</span></div>
 <div class="row"><span>STRESS mean bps</span><span id="optStress">—</span></div></section>
+
+<section class="card"><div class="k">DH03 12H Standalone</div><div id="dh03Status" class="v">—</div>
+<div class="row"><span>Archive day</span><span id="dh03Day">—</span></div>
+<div class="row"><span>Signals</span><span id="dh03Signals">—</span></div>
+<div class="row"><span>Price exits</span><span id="dh03Exits">—</span></div>
+<div class="row"><span>Final resolutions</span><span id="dh03Final">—</span></div>
+<div class="row"><span>Funding pending</span><span id="dh03Funding">—</span></div>
+<div class="row"><span>Path unresolved</span><span id="dh03Unresolved">—</span></div></section>
 
 <section class="card"><div class="k">Safety</div><div class="v ok">FAIL-CLOSED</div>
 <div class="row"><span>Authenticated API</span><span id="auth">—</span></div>
@@ -396,6 +481,14 @@ async function refresh(){
     $("optBase").textContent=val(om.base_net_mean_bps);
     $("optPf").textContent=om.base_profit_factor===Infinity?"INF":val(om.base_profit_factor);
     $("optStress").textContent=val(om.stress_net_mean_bps);
+    const d=s.dh03_12h||{};
+    paint("dh03Status",d.status,d.status==="OK"||d.status==="RUNNING"||String(d.status||"").startsWith("WAITING_"));
+    $("dh03Day").textContent=val(d.latest_archive_day);
+    $("dh03Signals").textContent=val(d.signals,0);
+    $("dh03Exits").textContent=val(d.price_exits,0);
+    $("dh03Final").textContent=val(d.final_resolutions,0);
+    $("dh03Funding").textContent=val(d.funding_pending,0);
+    $("dh03Unresolved").textContent=val(d.unresolved_price_paths,0);
     $("auth").textContent=tf(s.authenticated_exchange_api_used); $("orders").textContent=tf(s.orders_created);
     $("mutation").textContent=tf(s.exchange_mutation_performed); $("capital").textContent=tf(s.live_capital_enabled);
   }catch(e){paint("health","UNREACHABLE",false)}
