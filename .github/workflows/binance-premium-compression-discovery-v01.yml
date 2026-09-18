@@ -1,0 +1,59 @@
+name: Binance Premium Compression Discovery V0.1
+
+on:
+  push:
+    branches:
+      - binance-premium-compression-discovery-v0.1
+    paths:
+      - 'research/binance_premium_compression/DISCOVERY_TRIGGER_V0_1.txt'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bpc-discovery-v01
+  cancel-in-progress: false
+
+jobs:
+  discovery:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: binance-premium-compression-discovery-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --disable-pip-version-check requests==2.32.3
+      - name: Verify frozen Discovery authority
+        run: |
+          python - <<'PY'
+          import json
+          a=json.load(open('research/binance_premium_compression/BPC_DISCOVERY_AUTHORITY_V0_1.json'))
+          assert a['discovery_id']=='BPC-HEDGED-Z3-60M-001'
+          assert a['status']=='PRE_OUTCOME_FROZEN'
+          assert a['parent_source_run']==35323511819
+          assert a['signal']['threshold']==3.0
+          assert a['signal']['rolling_window_bars']==2016
+          assert a['signal']['direction']=='LONG_SPOT_SHORT_PERP'
+          assert a['execution']['max_hold_bars']==12
+          assert a['execution']['base_round_trip_pair_cost_fraction']==0.003
+          assert a['execution']['stress_round_trip_pair_cost_fraction']==0.004
+          assert a['discovery']['sample_floor_resolved_trades']==100
+          assert a['data']['no_2024_access_before_discovery_classification'] is True
+          assert a['data']['no_2025_access'] is True and a['data']['no_2026_access'] is True
+          assert a['hard_firewalls']['live_trading'] is False
+          print('BPC_DISCOVERY_AUTHORITY_PASS')
+          PY
+      - run: python -m py_compile research/binance_premium_compression/discovery_v01.py
+      - name: Execute one-shot 2021-2023 Discovery
+        run: python research/binance_premium_compression/discovery_v01.py
+      - name: Upload immutable Discovery receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bpc-discovery-v01-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/binance_premium_compression_discovery_v01/
+          retention-days: 90
+          if-no-files-found: warn
