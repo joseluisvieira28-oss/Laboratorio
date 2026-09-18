@@ -1,0 +1,84 @@
+{
+  "lab_id": "COINBASE-BINANCE-LEADLAG-001",
+  "authority_id": "CBLL-SOURCE-RECOVERY-V0.2",
+  "parent_mve_id": "CBLL-USDT-5M-Z3-001",
+  "freeze_date_utc": "2026-09-18",
+  "status": "FROZEN_PRE_ACQUISITION_PAID_SOURCE_AUTH_REQUIRED",
+  "scope": "SOURCE_PROVENANCE_ONLY",
+  "scientific_parent_classification": "DATA_FAILURE",
+  "outcomes_locked": true,
+  "source_recovery": {
+    "coinbase_source": "Coinbase Data Marketplace official Exchange tick-level trade dataset",
+    "coinbase_products": ["BTC-USDT", "ETH-USDT"],
+    "period_start": "2022-01-01T00:00:00Z",
+    "period_end": "2023-12-31T23:59:59Z",
+    "construction": "Aggregate authoritative executed trades into UTC-aligned 5-minute OHLCV buckets using only trades inside each bucket.",
+    "zero_trade_interval_rule": "MISSING_BUCKET_NO_SYNTHETIC_FILL",
+    "binance_source": "Official Binance Data Vision monthly spot klines",
+    "binance_symbols": ["BTCUSDT", "ETHUSDT"],
+    "binance_timeframe": "5m"
+  },
+  "frozen_gate": {
+    "btc_sync_fraction_gte": 0.995,
+    "eth_sync_fraction_gte": 0.995,
+    "full_prior_rolling_window_required": true,
+    "rolling_window_bars": 2016,
+    "source_integrity_failures_eq": 0
+  },
+  "allowed_outputs": [
+    "source receipts",
+    "raw byte SHA256 hashes",
+    "schema/timestamp validation",
+    "bar counts",
+    "synchronized bar counts",
+    "sync fractions",
+    "source gate classification"
+  ],
+  "forbidden_outputs": [
+    "signals",
+    "returns",
+    "trades",
+    "PnL",
+    "profit factor",
+    "bootstrap economics",
+    "directional diagnostics",
+    "2024 outcomes",
+    "2025 data",
+    "2026 data"
+  ],
+  "prohibited_rescues": [
+    "lower_99_5pct_gate",
+    "synthetic_candle_fill",
+    "last_price_carry_forward",
+    "switch_coinbase_quote_currency",
+    "change_timeframe",
+    "change_rolling_window",
+    "change_z_threshold",
+    "change_direction",
+    "change_execution",
+    "change_costs"
+  ],
+  "authorization_requirements": {
+    "paid_coinbase_data_purchase": "EXPLICIT_USER_AUTHORIZATION_REQUIRED",
+    "coinbase_sftp_credentials": "REQUIRED_FOR_EXECUTION",
+    "no_purchase_without_authorization": true
+  },
+  "classifications": [
+    "SOURCE_DATA_PASS",
+    "SOURCE_ACCESS_BLOCKED",
+    "SOURCE_PAID_ACCESS_NOT_AUTHORIZED",
+    "DATA_FAILURE",
+    "PROVENANCE_FAILURE"
+  ],
+  "hard_firewalls": {
+    "research_only": true,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "orders": false,
+    "merge_to_main": false,
+    "post_outcome_tuning": false,
+    "year_2024_outcomes_open": false,
+    "year_2025_access": false,
+    "year_2026_access": false
+  }
+}
