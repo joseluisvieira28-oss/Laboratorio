@@ -340,6 +340,14 @@ h1{margin:0 0 6px;font-size:28px}.sub{color:#9aa4b2;margin-bottom:22px}
 <div class="row"><span>Historical break-even</span><span id="etfBE">—</span></div>
 <div class="row"><span>Account fee</span><span id="etfFee">UNVERIFIED</span></div></section>
 
+<section class="card"><div class="k">OPTIONS-SPOTPERP V2.1</div><div id="optStatus" class="v">—</div>
+<div class="row"><span>First signal day</span><span id="optFirst">—</span></div>
+<div class="row"><span>Signal days</span><span id="optDays">—</span></div>
+<div class="row"><span>Resolved trades</span><span id="optResolved">—</span></div>
+<div class="row"><span>BASE mean bps</span><span id="optBase">—</span></div>
+<div class="row"><span>BASE PF</span><span id="optPf">—</span></div>
+<div class="row"><span>STRESS mean bps</span><span id="optStress">—</span></div></section>
+
 <section class="card"><div class="k">Safety</div><div class="v ok">FAIL-CLOSED</div>
 <div class="row"><span>Authenticated API</span><span id="auth">—</span></div>
 <div class="row"><span>Orders created</span><span id="orders">—</span></div>
@@ -380,6 +388,14 @@ async function refresh(){
     $("etfShortTrailing").textContent=val(sf.trailing_short_fee_spread_funding_bps);
     $("etfBE").textContent=val(sf.historical_break_even_bps);
     $("etfFee").textContent=e.account_fee_verified_read_only?"VERIFIED":"UNVERIFIED";
+    const o=s.options_v21||{}, om=s.options_v21_metrics||{};
+    paint("optStatus",o.status,o.status==="OK"||String(o.status||"").startsWith("WAITING_"));
+    $("optFirst").textContent=val(o.first_signal_day);
+    $("optDays").textContent=val(om.signal_days_observed,0);
+    $("optResolved").textContent=val(om.resolved_forward_trades,0);
+    $("optBase").textContent=val(om.base_net_mean_bps);
+    $("optPf").textContent=om.base_profit_factor===Infinity?"INF":val(om.base_profit_factor);
+    $("optStress").textContent=val(om.stress_net_mean_bps);
     $("auth").textContent=tf(s.authenticated_exchange_api_used); $("orders").textContent=tf(s.orders_created);
     $("mutation").textContent=tf(s.exchange_mutation_performed); $("capital").textContent=tf(s.live_capital_enabled);
   }catch(e){paint("health","UNREACHABLE",false)}
