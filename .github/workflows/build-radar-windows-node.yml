@@ -49,6 +49,8 @@ jobs:
           Write-Host $output
           $state = $output | ConvertFrom-Json
           if ($state.status -ne "PASS") { throw "package self-test did not PASS" }
+          if ($state.build_id -ne "v0.13.2-win-six-motor-runtime-truth") { throw "unexpected Windows build_id: $($state.build_id)" }
+          if ($state.registry_version -ne "3.5") { throw "unexpected packaged registry_version: $($state.registry_version)" }
           if (-not $state.required_strategy_present) { throw "ETF-CME strategy missing from packaged registry" }
           if ([int]$state.candidate_count -lt 6) { throw "packaged six-motor registry unexpectedly small" }
           if (-not $state.dh03_strategy_present) { throw "DH03 standalone strategy missing from packaged registry" }
