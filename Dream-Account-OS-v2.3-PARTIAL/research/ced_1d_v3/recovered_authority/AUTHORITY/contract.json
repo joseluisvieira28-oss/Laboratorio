@@ -1,0 +1,429 @@
+{
+  "lab_id": "CED",
+  "protocol_id": "CED-P1-PROTOCOL-V0.2",
+  "status": "PASS_FROZEN",
+  "artifact_class": "OFFICIAL_LOCAL_FREEZE",
+  "production_impact": "NONE",
+  "execution_capability": "NONE",
+  "market_access_authorized": false,
+  "owner_authorization": {
+    "source": "CRYPTO EDGE DISCOVERY ENGINE — MASTER MANIFEST — V0.1",
+    "drive_id": "1HkUTPFXq3DW4LXLemjm7GGAiUwp2DOWSXkoNNicbQMI",
+    "source_modified_at_utc": "2026-09-08T21:03:00.152Z",
+    "section": "OWNER DECISION AUTHORIZATION — PHASE 1 FREEZE — 8 SEPTEMBER 2026",
+    "status": "AUTHORIZED_FOR_IMPLEMENTATION_AND_FORMAL_FREEZE"
+  },
+  "source_zip_sha256": "60c948e991b5f9dff9095c6e85dd5b54a65224746f036838e6de9ed5cf2ce53e",
+  "original_commit_reported": "9b5c84e99b5795c9a1ba0dde5d75d44f3dce6680",
+  "original_commit_status": "NOT_VERIFIED",
+  "derived_git_commit": "RECORDED_AT_DELIVERY_FROM_GIT_HEAD",
+  "dataset_design": {
+    "proposed_id": "CED-DS-0001-V1",
+    "acquired_dataset_id": null,
+    "fingerprint": null,
+    "raw_hashes": null,
+    "venue": "Binance",
+    "market": "USD-M perpetual futures",
+    "universe": [
+      "BTCUSDT",
+      "ETHUSDT",
+      "SOLUSDT",
+      "BNBUSDT",
+      "XRPUSDT",
+      "DOGEUSDT"
+    ],
+    "universe_rule": "Fixed six-symbol MVP proposed by official CED Freeze Pack; eligible only while listed; not a historical liquidity-ranked population",
+    "selection_bias": "RETROSPECTIVE_FIXED_UNIVERSE; restrict inference to these symbols",
+    "listing_metadata_status": "NOT_VERIFIED",
+    "source_family": "Official historical monthly 1m kline archives plus provider checksums",
+    "source_availability": "NOT_VERIFIED_IN_THIS_MISSION",
+    "clock": "UTC",
+    "raw_resolution": "1m",
+    "market_period": {
+      "start_utc": "2021-01-01T00:00:00Z",
+      "end_utc": "2025-12-31T23:59:59.999999Z"
+    },
+    "required_fields": [
+      "open_time_ms",
+      "open",
+      "high",
+      "low",
+      "close",
+      "base_volume",
+      "close_time_ms",
+      "quote_volume",
+      "trade_count",
+      "taker_buy_base_volume",
+      "taker_buy_quote_volume",
+      "ignore"
+    ],
+    "layers": [
+      "RAW_IMMUTABLE",
+      "NORMALIZED_CAUSAL",
+      "FEATURE_CAUSAL",
+      "RESULT_LEDGER"
+    ],
+    "tier_b": "EXCLUDED until separate manifest: funding, spot, OI, mark/index/basis",
+    "tier_c": "EXCLUDED: book, liquidation, aggTrades, sub-minute, cross-venue, news/social/on-chain",
+    "cross_lab_raw_reuse": "DISABLED_IN_THIS_DRAFT",
+    "integrity": {
+      "provider_sha256": "REQUIRED",
+      "local_sha256": "REQUIRED",
+      "duplicates": "0; conflicting or exact duplicates block clean admission, do not silently deduplicate",
+      "bar_spacing_ms": 60000,
+      "timestamp_precision": "integer milliseconds, explicit units",
+      "forward_fill": false,
+      "ohlc_rule": "positive finite prices; low<=open,close<=high; nonnegative volumes/counts; buy volume<=total within decimal parsing tolerance",
+      "expected_rows": "from verified listing intervals and official outages; do not invent pre-listing history",
+      "coverage_minimum_per_symbol_month": 0.995,
+      "gap_rule": "record every gap; exclude every dependent feature/label window; any unexpected contiguous gap >5 minutes blocks affected module until reviewed; no post-outcome waiver",
+      "normalization": "deterministic decimal parsing, ordered symbol/open_time; immutable original bytes; versioned transform and config hash"
+    }
+  },
+  "splits": {
+    "discovery": {
+      "start_utc": "2021-01-01T00:00:00Z",
+      "end_utc": "2024-12-31T23:59:59.999999Z"
+    },
+    "validation": null,
+    "confirmation": {
+      "start_utc": "2025-01-01T00:00:00Z",
+      "end_utc": "2025-12-31T23:59:59.999999Z"
+    },
+    "holdout": null
+  },
+  "split_status": "FROZEN_BY_OWNER_AUTHORIZATION_2026-09-08",
+  "holdout": {
+    "state": "UNASSIGNED_LOCKED_FUTURE",
+    "dates": null,
+    "access": "DENIED",
+    "independence_status": "NOT_APPLICABLE_UNTIL_SEPARATE_OWNER_DECISION",
+    "selection_rule": "No future holdout may be assigned, acquired, inspected or inferred automatically. Holdout selection requires a separate explicit protocol decision.",
+    "current_2026_plus_ban": true,
+    "candidate_gate": "FROZEN_CHILD_AND_OWN_LOCKED_FINAL_HOLDOUT_PASS",
+    "candidate_gate_authority_status": "FROZEN_BY_OWNER"
+  },
+  "causality": {
+    "max_lookback_minutes": 44640,
+    "max_horizon_minutes": 15,
+    "entry_delay_minutes": 1,
+    "latency_stress_delay_minutes": 2,
+    "support_rule": "Entire feature+threshold-history+label support within own split. First 31 days are warm-up only, covering 30-day quantiles plus max 60-minute windows and lagged return. Entry and exit including 2-minute latency stress must precede split end.",
+    "purge": "discard crossing label/support intervals, no forward-fill; feature thresholds use completed observations strictly before event",
+    "overlap": "per configuration/symbol skip later signals until current position exits; simultaneous symbols remain clustered together",
+    "future_holdout_embargo": "UNASSIGNED; requires separate explicit protocol decision"
+  },
+  "costs": {
+    "units": "bps of gross notional, round-trip unless per_fill explicitly named",
+    "scout_bands": {
+      "GROSS_REFERENCE_ONLY": 0,
+      "LOW": 6,
+      "BASE": 10,
+      "STRESS": 14,
+      "SEVERE": 20
+    },
+    "bands_role": "nonfunding trading-cost sensitivities, not actual fees or fills",
+    "funding_rule": "signed actual settlement debit added separately, once, at contractual exposure times; crossing settlement without verified funding module makes net-funded result NOT_TESTABLE",
+    "confirmation": {
+      "model_status": "NOT_VERIFIED_EXECUTION; numerical venue-specific contract required before 2025 outcomes",
+      "formula": "net=gross-fees-spread-slippage-latency-funding; no double counting when execution price already embeds a component",
+      "default_nonfunding_base_floor_bps": 14,
+      "default_nonfunding_stress_floor_bps": 20,
+      "actual_contract": "max(floor, independently evidenced fee+spread+slippage+latency budget); each component and date-effective fee schedule frozen in child before OOS",
+      "maker": "FORBIDDEN_WITHOUT_NEW_EXECUTION_EVIDENCE_MODULE",
+      "bar_open": "reference-price sensitivity only; cannot substantiate executable CANDIDATE",
+      "missed_fills": "not assumed zero; fill/capacity gate NOT_TESTABLE without evidence"
+    },
+    "leverage": false
+  },
+  "scout_score": {
+    "version": "CED-SCORE-V0.2-DRAFT",
+    "weights": {
+      "economic_magnitude": 20,
+      "temporal_repeatability": 15,
+      "parameter_stability": 15,
+      "sample_sufficiency": 10,
+      "cross_context_consistency": 10,
+      "mechanism": 10,
+      "low_concentration": 10,
+      "implementation_realism": 5,
+      "cost_robustness": 5
+    },
+    "component_scale": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "formula": "sum(weight_i * score_i / 5); no renormalization",
+    "missing": "0 points; missing critical evidence invokes hard veto",
+    "thresholds": {
+      "archive": [
+        0,
+        39.999999
+      ],
+      "watch": [
+        40,
+        54.999999
+      ],
+      "scout_survivor": [
+        55,
+        69.999999
+      ],
+      "shortlist": [
+        70,
+        100
+      ]
+    },
+    "hard_vetoes": [
+      "lookahead",
+      "insufficient_sample",
+      "missing_lineage",
+      "missing_ledger",
+      "hidden_exclusion",
+      "single_episode_dependence",
+      "impossible_execution_claim",
+      "cross_lab_contamination"
+    ],
+    "max_shortlist_per_family": 3,
+    "max_total_shortlist": 9,
+    "tie_break": [
+      "descending score",
+      "descending minimum temporal net",
+      "ascending concentration",
+      "lexical immutable combination_id"
+    ],
+    "ranking_sample": "Discovery 2021-2024 only; no separately designated validation split",
+    "rubrics": {
+      "economic_magnitude": {
+        "metric": "mean net bps at BASE=10, before separately disclosed funding",
+        "scores_0_to_5": [
+          "<=0 or missing",
+          ">0 to <2",
+          "2 to <4",
+          "4 to <6",
+          "6 to <10",
+          ">=10"
+        ]
+      },
+      "temporal_repeatability": {
+        "metric": "fraction of active months with positive BASE net",
+        "scores_0_to_5": [
+          "<0.40 or missing",
+          "0.40 to <0.50",
+          "0.50 to <0.60",
+          "0.60 to <0.70",
+          "0.70 to <0.80",
+          ">=0.80"
+        ]
+      },
+      "parameter_stability": {
+        "metric": "fraction of adjacent grid neighbors with positive BASE net and >=50% selected mean; at least 2 neighbors",
+        "scores_0_to_5": [
+          "<0.25, missing, or <2 neighbors",
+          "0.25 to <0.40",
+          "0.40 to <0.55",
+          "0.55 to <0.70",
+          "0.70 to <0.85",
+          ">=0.85"
+        ]
+      },
+      "sample_sufficiency": {
+        "metric": "minimum ratio of event/day/week/month counts to Scout floors",
+        "scores_0_to_5": [
+          "<1 or missing; hard veto",
+          "1 to <1.25",
+          "1.25 to <1.50",
+          "1.50 to <2",
+          "2 to <3",
+          ">=3"
+        ]
+      },
+      "cross_context_consistency": {
+        "metric": "for asset-specific F06 claim: fraction of 4 UTC six-hour bins with positive BASE net and >=50 events; bins without sufficient sample count as nonpositive, not dropped",
+        "scores_0_to_5": [
+          "0 or missing",
+          ">0 to <0.25",
+          "0.25 to <0.50",
+          "0.50 to <0.75",
+          "0.75 to <1",
+          "1"
+        ]
+      },
+      "mechanism": {
+        "metric": "pre-data written mechanism review, frozen before Scout; score equals fulfilled checklist count 0..5",
+        "checklist": [
+          "falsifiable trigger/outcome",
+          "direction and failure observation defined",
+          "economic causal rationale independent of outcomes",
+          "confounder/alternative explanation recorded",
+          "raw fields measure proposed mechanism directly"
+        ]
+      },
+      "low_concentration": {
+        "metric": "max ratio of observed absolute-PnL shares to declared caps; undefined denominator -> missing; asset cap only for portfolio claims",
+        "scores_0_to_5": [
+          ">1 or missing; hard veto",
+          ">0.9 to 1",
+          ">0.8 to 0.9",
+          ">0.7 to 0.8",
+          ">0.5 to 0.7",
+          "<=0.5"
+        ]
+      },
+      "implementation_realism": {
+        "metric": "evidence level",
+        "scores_0_to_5": [
+          "impossible/unmeasurable",
+          "field mapping only",
+          "causal reference-price and latency sensitivity; no executable fills",
+          "independent quotes+documented fees+auditable taker assumptions",
+          "plus measured latency/fill/miss evidence",
+          "plus independent paper-quality gate"
+        ],
+        "phase1_tier_a_ceiling": 2
+      },
+      "cost_robustness": {
+        "metric": "highest nonfunding band with positive mean; funded claims require funding data",
+        "scores_0_to_5": [
+          "gross<=0 or missing",
+          "gross>0 only",
+          "positive LOW 6",
+          "positive BASE 10",
+          "positive STRESS 14",
+          "positive SEVERE 20"
+        ]
+      }
+    },
+    "context_cell_accounting": "Four UTC bins used only in one fixed composite diagnostic, not independently selected hypotheses; no standalone significance claims. If selected/claimed independently, each bin becomes an atomic test and must enter budget and multiplicity before running."
+  },
+  "sample_rules": {
+    "unit": "one non-overlapping configuration/symbol event or predeclared portfolio event",
+    "cluster": "same UTC calendar week shared across symbols; not individual correlated trades",
+    "effective_sample_reporting": "event count, active UTC days and active complete-week clusters separately; weekly cluster count is a conservative proxy, not proven independent N",
+    "scout": {
+      "min_events": 500,
+      "min_active_days": 180,
+      "min_active_week_clusters": 78,
+      "min_active_months": 18,
+      "min_months_per_calendar_year": 8
+    },
+    "validation": null,
+    "confirmation": {
+      "min_events": 300,
+      "min_active_days": 120,
+      "min_active_week_clusters": 39,
+      "min_active_months": 9
+    },
+    "underpowered_status": "INSUFFICIENT SAMPLE, never NO EDGE solely for insufficiency",
+    "other_mechanism_families": "no generic floor exemption; new pre-registered contract before eligibility"
+  },
+  "stability": {
+    "min_positive_active_month_fraction": 0.6666666666666666,
+    "min_positive_quarters": 3,
+    "neighbor_positive_fraction": 0.75,
+    "neighbor_mean_effect_fraction_of_selected": 0.5,
+    "max_single_month_share_absolute_pnl": 0.3,
+    "max_top5_event_share_absolute_pnl": 0.2,
+    "max_single_day_share_absolute_pnl": 0.1,
+    "max_single_asset_share_absolute_pnl_for_portfolio": 0.5,
+    "zero_denominator": "INSUFFICIENT SAMPLE / concentration not interpretable",
+    "asset_specific_claim": "report per-symbol; do not fabricate multiasset consistency",
+    "leave_one_month_out": "all aggregate base-net means must remain >0 for confirmation"
+  },
+  "statistics": {
+    "scout": "raw p and BH q at 5% diagnostic for every declared family; q<0.05 not survival requirement",
+    "family_atomic_unit": "one config x outcome/horizon x asset-or-predeclared-portfolio x context cell; opposite directions and variants count separately",
+    "all_failures_logged": true,
+    "family_size": "all preregistered atomic cells; failed/insufficient cells retain null metrics and use p=1 only internally in adjustment denominator",
+    "primary_metric": "mean net bps per non-overlapping event under frozen base execution contract",
+    "null": "mean net bps <=2",
+    "alternative": "mean net bps >2 in frozen direction",
+    "min_effect_net_bps": 2,
+    "stress_mean_min_bps": 0,
+    "confirmatory_correction": "Holm FWER 0.05 across every finalist primary cell and confirmatory variant, family frozen before 2025 access",
+    "bootstrap": "resample complete UTC weeks jointly across symbols, preserve within-week event rows; recompute sum(net)/count; one-sided centered-null bootstrap p with plus-one correction; percentile 95% CI",
+    "bootstrap_resamples": 9999,
+    "seed": 20260908,
+    "dependence_failure": "if assumed weekly clustering is inadequate, flag unresolved model adequacy; no silent block-length retune on OOS",
+    "pass_conjunction": [
+      "sample gates",
+      "mean net >2",
+      "95% lower CI >0",
+      "Holm adjusted p<=0.05",
+      "stress mean>=0",
+      "temporal+neighbor+concentration gates",
+      "complete lineage and ledger",
+      "verified execution assumptions"
+    ],
+    "confirmation_pass_state": "Use workflow tag CONFIRMED_SHORTLIST or HOLDOUT_ELIGIBLE; official result state remains CONTEXT-DEPENDENT until own Final Holdout passes; never promotion",
+    "bootstrap_null_detail": "For each finalist, Tobs=event-weighted mean(net). Center each event at net-Tobs+2. Resample joint UTC-week blocks with replacement, recompute event-weighted T*. p=(1+count[T*>=Tobs])/(9999+1). Percentile CI uses uncentered joint-week bootstrap. All-zero-count resamples are invalid and counted; >1% invalid resamples blocks inference, no silent resampling until success.",
+    "validation_rule": "No separate validation split. Discovery is 2021-2024; Confirmation is 2025. No Discovery outcome may be relabeled Confirmation.",
+    "confirmation_variants": "At most 3 shortlisted cells per family plus union of their immediate predeclared grid neighbors; all unique cells enter fixed Holm family, even failed tests (internal p=1). No new grid values from 2024/2025 outcomes. Total union <=96 for proposed F06 grid."
+  },
+  "campaign": {
+    "max_families": 3,
+    "max_atomic_tests_per_family": 500,
+    "first_proposed_family": "F06",
+    "first_proposed_child": "CED-0005-V1",
+    "status": "DRAFT_NOT_REGISTERED_FOR_TESTING",
+    "grid": {
+      "assets": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "SOLUSDT",
+        "BNBUSDT",
+        "XRPUSDT",
+        "DOGEUSDT"
+      ],
+      "compression_window_minutes": [
+        20,
+        60
+      ],
+      "shock_percentile": [
+        0.9,
+        0.95
+      ],
+      "horizon_minutes": [
+        5,
+        15
+      ],
+      "direction": [
+        "CONTINUATION",
+        "REVERSAL"
+      ],
+      "context": [
+        "ALL_ELIGIBLE_UTC"
+      ]
+    },
+    "atomic_tests": 96,
+    "cost_bands": "vector of sensitivities in same row, not separate hypotheses; if used as separately selected outcome they consume atomic budget",
+    "neighbors": "adjacent listed grid values only, never unlogged additional tests",
+    "expansion": "new Run ID and preregistered budget; same hypothesis family cumulative history retained; no OOS rescue",
+    "mechanism_definition": "Minute t denotes bar open timestamp. After bar t closes at t+1 minute, use previous w bars ending before t: range=max(high)/min(low)-1 <= q20 of analogous w-bar ranges in strictly earlier 30 days. Shock abs(log(close_t/close_t-1)) >= q90/q95 of strictly earlier 30-day absolute 1m returns. Quantiles use linear interpolation type 7; ties qualify; zero shock excluded. Continuation takes shock sign; reversal its opposite. Earliest base reference entry is open at t+2 minutes (1 full minute after close availability); stress open t+3. Exit open exactly horizon minutes after entry. No intrabar stops. Entire support, including quantile warm-up and exit, must be clean and within own split.",
+    "feasibility": {
+      "CED-0001": "DEFERRED: trade/subminute fields missing; kline proxy would require new version",
+      "CED-0002": "DEFERRED: spot/book missing",
+      "CED-0003": "DEFERRED: funding/mark/index missing",
+      "CED-0004": "DEFERRED: trades/book missing; do not call kline proxy order-book flow",
+      "CED-0005": "ONLY_PROPOSED_TIER_A_CHILD; IDEA remains unchanged",
+      "CED-0006": "DEFERRED: dynamic liquidity universe requires versioned fixed-universe adaptation or independent PIT ranking module",
+      "CED-0007": "DEFERRED: factor definition and PIT universe module/explicit adaptation required",
+      "CED-0008": "DEFERRED: book/stress evidence missing",
+      "CED-0009": "DEFERRED: book sequence missing; F13 extension pending taxonomy review",
+      "CED-0010": "DEFERRED: cross-venue clocks/books missing; F14 extension pending review",
+      "CED-0011": "DEFERRED: trade aggressor fields and PIT universe missing; F15 extension pending review",
+      "CED-0012": "DEFERRED: official event-time notices/books missing; F16 extension pending review"
+    }
+  },
+  "freeze_prerequisites": [],
+  "phase1_frozen": true,
+  "phase2_authorized": true,
+  "phase2_scope": "DATASET_ACQUISITION_INTEGRITY_CANONICAL_FINGERPRINT_ONLY",
+  "phase2_forbidden": ["SCOUT", "DISCOVERY", "CONFIRMATION", "HOLDOUT_ACCESS", "LIVE_TRADING", "PRODUCTION_PROMOTION"],
+  "discovery_run": false,
+  "candidate_count": 0,
+  "dataset_count": 0
+}
