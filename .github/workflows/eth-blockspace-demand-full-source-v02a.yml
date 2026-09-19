@@ -18,18 +18,21 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: {python-version: '3.12'}
-      - name: Verify source-data authority before economic protocol fields
+      - name: Verify source-data authority and V0.2A amendment
         run: |
           python - <<'PY'
           from pathlib import Path
-          p=Path('research/eth_blockspace_demand/ETH_BLOCKSPACE_DEMAND_001_FULL_SOURCE_DATA_GATE_V0_2.md')
-          s=p.read_text()
+          base=Path('research/eth_blockspace_demand/ETH_BLOCKSPACE_DEMAND_001_FULL_SOURCE_DATA_GATE_V0_2.md').read_text()
+          amend=Path('research/eth_blockspace_demand/ETH_BLOCKSPACE_DEMAND_001_FULL_SOURCE_DATA_GATE_V0_2A_AMENDMENT.md').read_text()
           for x in ['4,723','13,000,000','21,500,000','1,800 blocks','SOURCE_DATA_PASS',
                     'market_prices_opened=false','returns_opened=false','pnl_opened=false']:
-              assert x in s,x
+              assert x in base,x
+          for x in ['gasUsed >= 0','HTTP 429','max-parallel reduced from 4 to 2',
+                    'No provider, target, audit target, metric, aggregation rule, coverage threshold or safety boundary changes']:
+              assert x in amend,x
           t=list(range(13_000_000,21_500_000+1,1_800))
           assert len(t)==4723 and t[-1]==21_499_600
-          print('ETH_BLOCKSPACE_FULL_SOURCE_FREEZE_PASS targets=',len(t))
+          print('ETH_BLOCKSPACE_FULL_SOURCE_V02A_FREEZE_PASS targets=',len(t))
           PY
       - name: Compile exact collectors
         run: |
