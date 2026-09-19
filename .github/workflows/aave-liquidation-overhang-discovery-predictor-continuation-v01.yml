@@ -1,0 +1,253 @@
+name: AAVE Liquidation Overhang 001 — Discovery 2023 Predictor Continuation V0.1
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - aave-liquidation-overhang-v0.1
+    paths:
+      - '.github/workflows/aave-liquidation-overhang-discovery-predictor-continuation-v01.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  SOURCE_DISCOVERY_RUN_ID: '35427783826'
+
+jobs:
+  predictor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Guard exact prospective remediation
+        run: |
+          test -f research/aave_liquidation_overhang/AAVE_LIQUIDATION_OVERHANG_001_DISCOVERY_PREDICTOR_ACTIVE_RESERVE_UNION_REMEDIATION_V0_1.md
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('research/aave_liquidation_overhang/discovery_predictor_aggregate_v01.py').read_text()
+          assert 'canonical reserve master union is not exact 37' in s
+          assert 'active 2023 reserve decimals union is not exact 27' in s
+          assert 'issubset(set(reserves))' in s
+          print('PREDICTOR_ACTIVE_RESERVE_UNION_REMEDIATION_GUARD_PASS')
+          PY
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: AAVE_DISCOVERY_CALENDAR_V0_1
+          path: downloaded_discovery_calendar
+          github-token: ${{ github.token }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: ${{ env.SOURCE_DISCOVERY_RUN_ID }}
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: AAVE_DISCOVERY_GLOBAL_V0_1
+          path: downloaded_discovery_global
+          github-token: ${{ github.token }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: ${{ env.SOURCE_DISCOVERY_RUN_ID }}
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: AAVE_DISCOVERY_RESERVE_SHARD_V0_1_0
+          path: downloaded_discovery_reserves/shard_0
+          github-token: ${{ github.token }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: ${{ env.SOURCE_DISCOVERY_RUN_ID }}
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: AAVE_DISCOVERY_RESERVE_SHARD_V0_1_1
+          path: downloaded_discovery_reserves/shard_1
+          github-token: ${{ github.token }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: ${{ env.SOURCE_DISCOVERY_RUN_ID }}
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: AAVE_DISCOVERY_RESERVE_SHARD_V0_1_2
+          path: downloaded_discovery_reserves/shard_2
+          github-token: ${{ github.token }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: ${{ env.SOURCE_DISCOVERY_RUN_ID }}
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: AAVE_DISCOVERY_RESERVE_SHARD_V0_1_3
+          path: downloaded_discovery_reserves/shard_3
+          github-token: ${{ github.token }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: ${{ env.SOURCE_DISCOVERY_RUN_ID }}
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: AAVE_DISCOVERY_RESERVE_SHARD_V0_1_4
+          path: downloaded_discovery_reserves/shard_4
+          github-token: ${{ github.token }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: ${{ env.SOURCE_DISCOVERY_RUN_ID }}
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: AAVE_DISCOVERY_RESERVE_SHARD_V0_1_5
+          path: downloaded_discovery_reserves/shard_5
+          github-token: ${{ github.token }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: ${{ env.SOURCE_DISCOVERY_RUN_ID }}
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: AAVE_DISCOVERY_RESERVE_SHARD_V0_1_6
+          path: downloaded_discovery_reserves/shard_6
+          github-token: ${{ github.token }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: ${{ env.SOURCE_DISCOVERY_RUN_ID }}
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: AAVE_DISCOVERY_RESERVE_SHARD_V0_1_7
+          path: downloaded_discovery_reserves/shard_7
+          github-token: ${{ github.token }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: ${{ env.SOURCE_DISCOVERY_RUN_ID }}
+
+      - name: Gate exact eight PASS reserve shards before predictor
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          metas=[]
+          for p in Path('downloaded_discovery_reserves').rglob('reserve_shard_*_meta.json'):
+              x=json.loads(p.read_text())
+              metas.append(x)
+          assert len(metas)==8, len(metas)
+          assert sorted(int(x['shard_id']) for x in metas)==list(range(8))
+          assert all(x['classification']=='DISCOVERY_RESERVE_SHARD_PASS' for x in metas)
+          assert sum(len(x['selected_reserves']) for x in metas)==37
+          dec={}
+          for x in metas: dec.update(x.get('decimals') or {})
+          assert len(dec)==27, len(dec)
+          print('EIGHT_SHARD_SOURCE_GATE_PASS', len(metas), len(dec))
+          PY
+
+      - name: Aggregate and persist predictor BEFORE outcomes
+        run: python research/aave_liquidation_overhang/discovery_predictor_aggregate_v01.py
+
+      - name: Enforce predictor/outcome firewall
+        run: |
+          python - <<'PY'
+          import json
+          p='discovery_predictor_output/AAVE_LIQUIDATION_OVERHANG_001_DISCOVERY_PREDICTOR_2023_V0_1.json'
+          x=json.load(open(p))
+          assert x['classification']=='DISCOVERY_PREDICTOR_PASS',x
+          assert x['snapshot_count']==334
+          assert x['reserve_count']==27
+          assert x['full_r1_reserve_count']==37
+          s=x['safety']
+          assert s['future_liquidation_outcomes_opened'] is False
+          assert s['opened_2024_predictor'] is False
+          assert s['opened_2024_outcomes'] is False
+          assert s['opened_2025_or_2026'] is False
+          assert s['market_returns_opened'] is False
+          assert s['pnl_opened'] is False
+          print('PREDICTOR_FIREWALL_PASS',x['predictor_sha256'],x['days_overhang_10_positive'])
+          PY
+
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: AAVE_DISCOVERY_PREDICTOR_2023_V0_1_CONTINUATION
+          path: discovery_predictor_output/AAVE_LIQUIDATION_OVERHANG_001_DISCOVERY_PREDICTOR_2023_V0_1.json
+          if-no-files-found: error
+          retention-days: 30
+
+  outcomes-2023:
+    needs: predictor
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check requests 'eth-hash[pycryptodome]'
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: AAVE_DISCOVERY_PREDICTOR_2023_V0_1_CONTINUATION
+          path: downloaded_discovery_predictor
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: AAVE_DISCOVERY_CALENDAR_V0_1
+          path: downloaded_discovery_calendar
+          github-token: ${{ github.token }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: ${{ env.SOURCE_DISCOVERY_RUN_ID }}
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: AAVE_DISCOVERY_GLOBAL_V0_1
+          path: downloaded_discovery_global
+          github-token: ${{ github.token }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: ${{ env.SOURCE_DISCOVERY_RUN_ID }}
+
+      - name: Open only frozen 2023 future liquidation outcome
+        run: python research/aave_liquidation_overhang/discovery_outcomes_v01.py
+
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: AAVE_DISCOVERY_OUTCOME_2023_V0_1_CONTINUATION
+          path: discovery_outcome_output/AAVE_LIQUIDATION_OVERHANG_001_DISCOVERY_OUTCOME_2023_V0_1.json
+          if-no-files-found: error
+          retention-days: 30
+
+  canonical-adjudication:
+    needs: outcomes-2023
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: AAVE_DISCOVERY_PREDICTOR_2023_V0_1_CONTINUATION
+          path: downloaded_discovery_predictor
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: AAVE_DISCOVERY_OUTCOME_2023_V0_1_CONTINUATION
+          path: downloaded_discovery_outcome
+
+      - name: Canonical frozen 2023 Discovery adjudication
+        run: python research/aave_liquidation_overhang/discovery_adjudicate_v01.py
+
+      - name: Enforce protected-period and trading firewalls
+        run: |
+          python - <<'PY'
+          import json
+          p='discovery_canonical_output/AAVE_LIQUIDATION_OVERHANG_001_DISCOVERY_2023_CANONICAL_V0_1.json'
+          x=json.load(open(p))
+          s=x['safety']
+          assert s['opened_2024_predictor'] is False
+          assert s['opened_2024_outcomes'] is False
+          assert s['opened_2025_or_2026'] is False
+          assert s['market_returns_opened'] is False
+          assert s['pnl_opened'] is False
+          assert s['live_trading'] is False
+          assert s['exchange_mutation'] is False
+          print('DISCOVERY_CANONICAL_FIREWALL_PASS',x['classification'],x.get('next_authorized_phase'))
+          PY
+
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: AAVE_DISCOVERY_2023_CANONICAL_V0_1_CONTINUATION
+          path: discovery_canonical_output/AAVE_LIQUIDATION_OVERHANG_001_DISCOVERY_2023_CANONICAL_V0_1.json
+          if-no-files-found: error
+          retention-days: 30
