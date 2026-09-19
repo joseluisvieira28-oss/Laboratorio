@@ -310,14 +310,23 @@ def bh_qvalues(items:list[tuple[str,float]]):
     for (k,_),q in zip(valid,raw): out[k]=q
     return out
 
+def descriptive_events(events:list[dict[str,Any]], key:str):
+    vals=[float(e[key]) for e in events if key in e]
+    days=len({e["event_open_time"]//86_400_000 for e in events if key in e})
+    return {"n":len(vals),"days":days,"mean":mean(vals) if vals else None,"median":median(vals) if vals else None}
+
 def summarize(events):
     cells=defaultdict(list)
     for e in events:
         cells[e["cell"]].append(e)
     summaries={}; pvals=[]
     for cell,evs in sorted(cells.items()):
+        # Only the primary BASE series needs the frozen 3,000-draw UTC-day
+        # block bootstrap because only its 95% lower bound and p-value feed
+        # the scientific gate. Stress and all secondary diagnostics require
+        # descriptive means only under the frozen contract.
         b=bootstrap_by_day(evs,f"h{PRIMARY_H}_net_bps")
-        s=bootstrap_by_day(evs,f"h{PRIMARY_H}_stress_bps")
+        s=descriptive_events(evs,f"h{PRIMARY_H}_stress_bps")
         summaries[cell]={"family":evs[0]["family"],"timeframe":evs[0]["timeframe"],
                          "events_total":len(evs),"primary_horizon_bars":PRIMARY_H,
                          "base":b,"stress":s,
@@ -342,13 +351,14 @@ def summarize(events):
         aligned=[e for e in cells[cell] if e.get("parent_fast_mid_aligned") is True]
         nonaligned=[e for e in cells[cell] if e.get("parent_fast_mid_aligned") is False]
         d["secondary_parent_alignment"]={
-            "aligned":bootstrap_by_day(aligned,f"h{PRIMARY_H}_net_bps"),
-            "not_aligned":bootstrap_by_day(nonaligned,f"h{PRIMARY_H}_net_bps"),
+            "aligned":descriptive_events(aligned,f"h{PRIMARY_H}_net_bps"),
+            "not_aligned":descriptive_events(nonaligned,f"h{PRIMARY_H}_net_bps"),
+            "bootstrap_not_used_for_secondary_diagnostic":True,
             "rescue_authorized":False,
         }
         d["secondary_horizons"]={}
         for h in SECONDARY_H:
-            d["secondary_horizons"][str(h)]=bootstrap_by_day(cells[cell],f"h{h}_net_bps")
+            d["secondary_horizons"][str(h)]=descriptive_events(cells[cell],f"h{h}_net_bps")
     return summaries
 
 def verify_source(source_dir:Path, binding_path:Path):
