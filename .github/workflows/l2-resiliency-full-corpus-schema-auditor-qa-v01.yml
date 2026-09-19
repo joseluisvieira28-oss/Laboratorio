@@ -1,0 +1,45 @@
+name: L2 Resiliency Full Corpus Schema Auditor QA V0.1
+
+on:
+  push:
+    branches:
+      - l2-resiliency-v0.1
+    paths:
+      - '.github/workflows/l2-resiliency-full-corpus-schema-auditor-qa-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic-schema-auditor-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install structural-audit dependency only
+        run: pip install --disable-pip-version-check lz4
+
+      - name: Compile frozen source-schema auditor
+        run: |
+          python -m py_compile research/l2_resiliency/l2r_full_corpus_schema_audit_v01.py
+          python -m py_compile research/l2_resiliency/test_l2r_full_corpus_schema_audit_v01.py
+
+      - name: Run synthetic structural QA only
+        working-directory: research/l2_resiliency
+        run: python test_l2r_full_corpus_schema_audit_v01.py
+
+      - name: Firewalls
+        run: |
+          echo "NO HYPERLIQUID NETWORK"
+          echo "NO SWEEP EVENTS"
+          echo "NO REPLENISHMENT"
+          echo "NO MIDPOINT RESPONSE"
+          echo "NO RETURNS"
+          echo "NO PNL"
+          echo "2025/2026 UNOPENED"
