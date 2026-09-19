@@ -83,7 +83,7 @@ def main()->int:
         row_by_id={}
         for p in row_files:
             # Parse fixed filename suffix.
-            sid=int(p.name.split("_")[2])
+            sid=int(p.name.split("_")[3])
             row_by_id[sid]=p
         if set(row_by_id)!=set(range(8)): raise RuntimeError("row shard filenames mismatch")
         for sid,p in row_by_id.items():
