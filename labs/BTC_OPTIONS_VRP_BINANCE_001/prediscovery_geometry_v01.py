@@ -69,6 +69,24 @@ def parse_hour(v: str) -> int | None:
 def nonempty(v) -> bool:
     return v is not None and str(v).strip() not in {"", "nan", "NaN", "null", "None"}
 
+def parse_strike(raw, symbol: str) -> float:
+    s = str(raw).strip()
+    try:
+        return float(s)
+    except ValueError:
+        pass
+    m = re.fullmatch(r"(\\d{6})-([0-9]+(?:\\.[0-9]+)?)", s)
+    if not m:
+        raise ValueError("unrecognized strike encoding")
+    sm = re.search(r"(?:^|-)(\\d{6})-([0-9]+(?:\\.[0-9]+)?)(?:-|$)", symbol)
+    if not sm:
+        raise ValueError("symbol strike token unavailable")
+    if sm.group(1) != m.group(1):
+        raise ValueError("strike expiry token mismatch")
+    if float(sm.group(2)) != float(m.group(2)):
+        raise ValueError("strike value mismatch")
+    return float(m.group(2))
+
 def download_day(ds: str) -> bytes | None:
     req = urllib.request.Request(url_for(ds), headers={"User-Agent":"CryptoLab-SourceGeometry/0.1"})
     try:
@@ -115,7 +133,7 @@ def load_0800(ds: str, raw: bytes) -> tuple[dict[str, dict], dict]:
                 else:
                     continue
                 try:
-                    strike = float(row.get(by["strike"], ""))
+                    strike = parse_strike(row.get(by["strike"], ""), symbol)
                     delta = float(row.get(by["delta"], ""))
                 except Exception:
                     continue
