@@ -1,0 +1,145 @@
+name: MSEL-002 Source Prevalence V0.4 Sharded
+
+on:
+  push:
+    branches:
+      - memecoin-metadata-duplication-v0.1
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/memecoin_metadata_duplication_002/source/MSEL002_V04_TRIGGER.txt'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  QUALIFICATION_RUN_ID: '35438540272'
+
+jobs:
+  gate-qualification:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile frozen V0.4 tooling
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/memecoin_metadata_duplication_002/source
+        run: |
+          python -m py_compile fetch_v04_shard.py
+          python -m py_compile aggregate_v04_shards.py
+      - name: Download exact frozen qualification artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: MSEL002_UNIBLOCK_TRANSPORT_QUALIFICATION_V0_1
+          path: downloaded_qualification
+          github-token: ${{ github.token }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: ${{ env.QUALIFICATION_RUN_ID }}
+      - name: Verify exact qualification pass
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('downloaded_qualification/qualification_receipt.json')
+          x=json.loads(p.read_text())
+          assert x['classification']=='UNIBLOCK_TRANSPORT_QUALIFICATION_PASS',x
+          ps={r['provider']:r for r in x['providers']}
+          assert ps['official-mainnet-beta']['signature_count']==9564
+          assert ps['uniblock']['signature_count']==9564
+          assert ps['official-mainnet-beta']['signature_set_sha256']==ps['uniblock']['signature_set_sha256']
+          assert x['safety']['economic_outcomes_opened'] is False
+          print('MSEL002_V04_QUALIFICATION_GATE_PASS',ps['uniblock']['signature_set_sha256'])
+          PY
+
+  transaction-shards:
+    needs: gate-qualification
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        shard_id: [0,1,2,3,4,5,6,7]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download exact qualification artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: MSEL002_UNIBLOCK_TRANSPORT_QUALIFICATION_V0_1
+          path: downloaded_qualification
+          github-token: ${{ github.token }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: ${{ env.QUALIFICATION_RUN_ID }}
+      - name: Fetch deterministic transaction shard
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/memecoin_metadata_duplication_002/source
+        env:
+          MSEL002_QUALIFICATION_DIR: ${{ github.workspace }}/downloaded_qualification
+          MSEL002_SHARD_ID: ${{ matrix.shard_id }}
+          MSEL_TX_BATCH_SIZE: '10'
+          MSEL_RPS_DELAY: '0.10'
+          MSEL_RPC_RETRIES: '7'
+          MSEL_ITEM_RETRIES: '10'
+          MSEL_ITEM_BACKOFF_START: '1.0'
+          MSEL_ITEM_BACKOFF_CAP: '20.0'
+        run: python fetch_v04_shard.py
+      - name: Upload immutable shard evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: MSEL002_V04_SHARD_${{ matrix.shard_id }}
+          path: Dream-Account-OS-v2.3-PARTIAL/research/memecoin_metadata_duplication_002/source/v04_shard_${{ format('{0:00}', matrix.shard_id) }}/
+          if-no-files-found: warn
+          retention-days: 30
+
+  canonical-aggregate:
+    if: always() && needs.gate-qualification.result == 'success'
+    needs:
+      - gate-qualification
+      - transaction-shards
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download exact qualification artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: MSEL002_UNIBLOCK_TRANSPORT_QUALIFICATION_V0_1
+          path: downloaded_qualification
+          github-token: ${{ github.token }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: ${{ env.QUALIFICATION_RUN_ID }}
+      - name: Download all shard evidence
+        uses: actions/download-artifact@v4
+        with:
+          pattern: MSEL002_V04_SHARD_*
+          path: downloaded_shards
+          merge-multiple: false
+      - name: Canonical source/prevalence adjudication
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/memecoin_metadata_duplication_002/source
+        run: |
+          ln -s "${{ github.workspace }}/downloaded_qualification" downloaded_qualification
+          ln -s "${{ github.workspace }}/downloaded_shards" downloaded_shards
+          python aggregate_v04_shards.py
+      - name: Enforce economic-outcome firewall
+        run: |
+          python - <<'PY'
+          import json
+          p='Dream-Account-OS-v2.3-PARTIAL/research/memecoin_metadata_duplication_002/source/v04_canonical_output/source_prevalence_manifest_v04.json'
+          x=json.load(open(p))
+          s=x['safety']
+          assert s['economic_outcomes_opened'] is False
+          assert s['future_candidate_paths_opened'] is False
+          assert s['graduation_or_migration_opened'] is False
+          assert s['returns_opened'] is False
+          print('MSEL002_V04_FIREWALL_PASS',x['classification'])
+          PY
+      - name: Upload canonical V0.4 source/prevalence artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: MSEL002_SOURCE_PREVALENCE_V04_SHARDED
+          path: Dream-Account-OS-v2.3-PARTIAL/research/memecoin_metadata_duplication_002/source/v04_canonical_output/
+          if-no-files-found: warn
+          retention-days: 30
