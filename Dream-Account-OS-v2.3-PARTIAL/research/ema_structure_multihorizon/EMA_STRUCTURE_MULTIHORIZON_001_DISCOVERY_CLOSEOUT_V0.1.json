@@ -1,0 +1,96 @@
+{
+  "experiment_id": "EMA-STRUCTURE-MULTIHORIZON-001",
+  "status": "DISCOVERY_CLOSED",
+  "canonical_execution": {
+    "branch": "ema-structure-multihorizon-v0.1",
+    "run_id": 35441846334,
+    "head_sha": "62e8609c13e9126e833c27fe3b093cec31a8ad7d",
+    "artifact_id": 10583354744,
+    "artifact_digest": "sha256:1bb30bf68a454d69f62d6121314f80a0fa31bb7158459f72d195ebd3755e7793",
+    "result_json_sha256": "31032f253fb0b21af9c5eac7de1e493c7244c405342142bea14e4db29d225914",
+    "event_ledger_sha256": "6bdd472a7ffb48842cde4ca201c5146ed5ca29f61bf5286bd763d6a199ddd42c"
+  },
+  "source": {
+    "provider": "Binance Data Vision",
+    "market": "Spot",
+    "years": [2021, 2022],
+    "source_fingerprint": "08402ecb8931e42a0766370f55e46adc3de02474ce3a6128f4b2cdd89bb4ac78",
+    "access_2023": false,
+    "access_2024": false,
+    "access_2025": false,
+    "access_2026": false
+  },
+  "event_count": 52918,
+  "primary_cell_count": 30,
+  "classification_counts": {
+    "SURVIVES_DISCOVERY": 0,
+    "NO_EDGE": 20,
+    "INSUFFICIENT_SAMPLE": 10
+  },
+  "family_counts": {
+    "GEOMETRY": {"NO_EDGE": 8, "INSUFFICIENT_SAMPLE": 2, "SURVIVES_DISCOVERY": 0},
+    "CROSSOVER": {"NO_EDGE": 12, "INSUFFICIENT_SAMPLE": 8, "SURVIVES_DISCOVERY": 0}
+  },
+  "highest_interest_non_surviving_diagnostics": [
+    {
+      "cell": "6H:EMA20x50",
+      "n": 265,
+      "base_mean_net_bps": 164.86578966409527,
+      "stress_mean_net_bps": 160.86578966409527,
+      "bootstrap_95_lower_bps": -9.12726694404796,
+      "bh_fdr_q": 0.5548150616461179,
+      "classification": "NO_EDGE",
+      "interpretation": "Positive economics are descriptive only; uncertainty and multiple-testing correction fail the frozen gate."
+    },
+    {
+      "cell": "2H:EMA50x200",
+      "n": 250,
+      "base_mean_net_bps": 102.39823452941486,
+      "stress_mean_net_bps": 98.39823452941486,
+      "bootstrap_95_lower_bps": -14.922225230124205,
+      "bh_fdr_q": 0.6407864045318228,
+      "classification": "NO_EDGE"
+    },
+    {
+      "cell": "8H:EMA20x50",
+      "n": 203,
+      "base_mean_net_bps": 76.80231204380571,
+      "stress_mean_net_bps": 72.80231204380571,
+      "bootstrap_95_lower_bps": -58.670412476445094,
+      "bh_fdr_q": 0.6407864045318228,
+      "classification": "NO_EDGE"
+    },
+    {
+      "cell": "1D:EMA20x50",
+      "n": 57,
+      "base_mean_net_bps": 175.06368837556911,
+      "stress_mean_net_bps": 171.06368837556911,
+      "bootstrap_95_lower_bps": -106.39919763575676,
+      "classification": "INSUFFICIENT_SAMPLE"
+    }
+  ],
+  "multi_timeframe_confirmation": {
+    "role": "SECONDARY_DIAGNOSTIC_ONLY",
+    "finding": "No coherent parent-timeframe confirmation benefit was observed across the family. Among cells with at least 20 observations in both aligned and non-aligned groups, parent alignment had the higher mean in 8 cells and the lower mean in 11 cells.",
+    "rescue_authorized": false
+  },
+  "decision": {
+    "standalone_ema_geometry_edge_confirmed": false,
+    "standalone_ema_crossover_edge_confirmed": false,
+    "multi_timeframe_confirmation_edge_confirmed": false,
+    "promotion_authorized": false,
+    "live_or_shadow_authorized": false,
+    "historical_ema_pullback_verdicts_changed": false
+  },
+  "scientific_interpretation": "The exact frozen EMA geometry and crossover families do not establish a robust standalone directional edge on the audited Binance Spot 2021-2022 corpus at the predeclared six-bar horizon after costs and BH-FDR. Several intermediate-timeframe cells have positive point estimates and may serve only as family-level hypothesis generators; no single winning timeframe or EMA pair may be selected post outcome.",
+  "governance": {
+    "research_only": true,
+    "fail_closed": true,
+    "merge_to_main": false,
+    "post_outcome_parameter_tuning": false,
+    "winner_timeframe_selection": false,
+    "winner_asset_selection": false,
+    "live_trading": false,
+    "exchange_mutation": false
+  }
+}
