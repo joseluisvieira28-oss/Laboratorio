@@ -8,7 +8,7 @@ import threading
 import traceback
 
 from radar.__main__ import main
-from radar.dh03_12h_local import DH03LocalCollector, default_paths, require_dh03_clock_preflight
+from radar.dh03_12h_local import DH03LocalCollector, default_paths, dh03_clock_preflight
 from radar.local_forward import LocalForwardSupervisor
 from radar.render_sentinel import RenderSentinel
 
@@ -257,24 +257,34 @@ def run() -> int:
     # forward supervisor, or Render sentinel from starting.
     dh03_clock_ok = False
     try:
-        dh03_clock = require_dh03_clock_preflight()
+        dh03_clock = dh03_clock_preflight()
+        dh03_clock["build_id"] = BUILD_ID
+        dh03_clock["component"] = "DH03_CLOCK_ARMING_GUARD"
         _write_json_atomic(Path("data") / "dh03_clock_preflight.json", dh03_clock)
-        dh03_clock_ok = True
+        dh03_clock_ok = bool(dh03_clock.get("pass"))
+        if not dh03_clock_ok:
+            failure = {
+                **dh03_clock,
+                "status": "FAIL_CLOSED",
+                "reason": "DH03_NOT_STARTED_CLOCK_PREFLIGHT_FAILED",
+                "error": "DH03 clock/source arming guard rejected the observed public clock sample",
+            }
+            _write_json_atomic(Path("data") / "dh03_local_status.json", failure)
+            print(json.dumps(failure, sort_keys=True), flush=True)
     except Exception as exc:
         failure = {
             "status": "FAIL_CLOSED",
             "build_id": BUILD_ID,
             "component": "DH03_CLOCK_ARMING_GUARD",
             "error": f"{type(exc).__name__}:{exc}",
+            "reason": "DH03_CLOCK_PREFLIGHT_EXCEPTION",
+            "authenticated_exchange_api_used": False,
             "orders_created": False,
+            "exchange_mutation_performed": False,
             "live_capital_enabled": False,
         }
         _write_json_atomic(Path("data") / "dh03_clock_preflight.json", failure)
-        _write_json_atomic(Path("data") / "dh03_local_status.json", {
-            **failure,
-            "status": "FAIL_CLOSED",
-            "reason": "DH03_NOT_STARTED_CLOCK_PREFLIGHT_FAILED",
-        })
+        _write_json_atomic(Path("data") / "dh03_local_status.json", failure)
         print(json.dumps(failure, sort_keys=True), flush=True)
 
     if dh03_clock_ok:
