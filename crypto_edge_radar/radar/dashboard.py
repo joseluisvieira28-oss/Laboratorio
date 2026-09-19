@@ -181,7 +181,27 @@ def build_control_room_state(
     }
     registry_ok = bool(registry.get("registry_version")) and len(focus) == len(focus_id_set)
     service_health = str(service.get("health", "UNKNOWN"))
-    effective_health = service_health if registry_ok else "REGISTRY_DESYNC"
+
+    # Local V0.14.1 control-plane health is independent of one legacy market
+    # provider. Individual motors retain fail-closed runtime truth. The cockpit
+    # stays reachable for diagnosis even when a motor blocks itself.
+    forward_supervisor = str(forward_supervisor_status.get("status") or "MISSING").upper()
+    forward_health = str(forward_state.get("health") or "MISSING").upper()
+    dh03_runtime = str(dh03_status.get("status") or "MISSING").upper()
+    sentinel_supervisor = str(render_sentinel_supervisor.get("status") or "MISSING").upper()
+    sentinel_runtime = str(render_sentinel.get("status") or "MISSING").upper()
+    if not registry_ok:
+        effective_health = "REGISTRY_DESYNC"
+    elif (
+        forward_supervisor == "FAIL_CLOSED"
+        or forward_health == "DEGRADED_FAIL_CLOSED"
+        or dh03_runtime == "FAIL_CLOSED"
+        or sentinel_supervisor == "FAIL_CLOSED"
+        or sentinel_runtime == "REMOTE_FAIL_CLOSED"
+    ):
+        effective_health = "DEGRADED_FAIL_CLOSED"
+    else:
+        effective_health = "OK"
     limits = RiskLimits()
 
     return {
