@@ -1,0 +1,109 @@
+{
+  "lab_id": "ETH-DEMAND-FEE-FLOW-001",
+  "mve_id": "EDFF-FD45-REPLICATION-001",
+  "version": "0.1",
+  "date_frozen": "2026-09-20",
+  "branch": "eth-demand-fee-flow-v0.2",
+  "status": "FROZEN_BEFORE_MARKET_OUTCOMES",
+  "scientific_role": "Independent reconstruction/replication of the published protocol-demand mechanism using a different public data source. This is not a claim of a novel edge and cannot by itself be promoted to production.",
+  "source_dependency": "EDFF_SOURCE_FULL or EDFF_SOURCE_LIMITED with enough valid days; BLOCKED stops before market outcomes.",
+  "fee_signal": {
+    "daily_flow_intensity": "FeeTotNtv / SplyCur",
+    "smooth_days": 30,
+    "smooth_method": "simple trailing mean including day t",
+    "reference_days": 90,
+    "reference_method": "median of raw Flow Intensity over the 90 days ending t-1 (past-only)",
+    "flow_deviation": "ln(FI_30d_mean_t / FI_90d_past_median_t)",
+    "minimum_signal_history_days": 90
+  },
+  "market_outcome_source": {
+    "provider": "Binance public data archive",
+    "market": "spot",
+    "symbol": "ETHUSDT",
+    "interval": "1d",
+    "months": "2023-01 through 2024-12 only",
+    "authentication_required": false,
+    "cash_cost_usd": 0
+  },
+  "alignment": {
+    "fee_day": "UTC calendar day t",
+    "information_available": "after UTC day t is complete",
+    "entry_price": "ETHUSDT daily OPEN at t+1 UTC",
+    "primary_exit_price": "daily OPEN at t+46 UTC, giving a 45-day holding interval from entry",
+    "no_same_day_entry": true,
+    "no_2025_exit": true
+  },
+  "evaluation_windows": {
+    "placebo_2023": {
+      "signal_dates": "2023-03-13 through 2023-11-15",
+      "role": "pre-Dencun placebo/control; report only and must not be used to tune the post-Dencun rule"
+    },
+    "primary_post_dencun_2024": {
+      "signal_dates": "2024-03-13 through 2024-11-15",
+      "role": "primary replication window; all 45-day exits remain inside 2024"
+    }
+  },
+  "primary_test": {
+    "model": "OLS future 45-day log return = alpha + beta * FlowDeviation",
+    "hac_lags": 45,
+    "one_sided_economic_sign": "beta > 0",
+    "report": [
+      "N",
+      "beta",
+      "HAC_t",
+      "HAC_two_sided_p",
+      "R2",
+      "directional_accuracy",
+      "mean_future_return_when_FD_positive",
+      "mean_future_return_when_FD_negative"
+    ]
+  },
+  "frozen_secondary_horizons": {
+    "horizons_days": [
+      30,
+      60
+    ],
+    "alignment": "entry at t+1 open, exit at t+1+h open, clipped so exit remains <= year-end",
+    "role": "sign/shape robustness only; cannot rescue a failed 45-day primary"
+  },
+  "classification_rules": {
+    "REPLICATION_SUPPORTS_MECHANISM": [
+      "post-Dencun N >= 200",
+      "primary beta > 0",
+      "primary HAC two-sided p < 0.05",
+      "primary directional accuracy > 0.50",
+      "both 30d and 60d secondary beta estimates are > 0"
+    ],
+    "REPLICATION_MIXED": [
+      "post-Dencun N >= 150",
+      "primary beta > 0",
+      "but one or more SUPPORTS_MECHANISM requirements fail"
+    ],
+    "REPLICATION_DOES_NOT_SUPPORT": [
+      "post-Dencun N >= 150",
+      "primary beta <= 0"
+    ],
+    "INSUFFICIENT_REPLICATION_SAMPLE": [
+      "post-Dencun N < 150"
+    ]
+  },
+  "placebo_interpretation": "A weaker/insignificant 2023 placebo is supportive context only. A strong 2023 result does not automatically fail the mechanism because the primary test is explicitly post-Dencun.",
+  "no_rescue": [
+    "Do not change 30-day smoothing after outcomes.",
+    "Do not change 90-day median reference after outcomes.",
+    "Do not change 45-day primary horizon after outcomes.",
+    "Do not switch same-day/next-day alignment after outcomes.",
+    "Do not change sign direction after outcomes.",
+    "Do not open 2025/2026 to rescue.",
+    "Do not convert this replication into a trading strategy after seeing results without a fresh prefreeze."
+  ],
+  "safety": {
+    "cash_spend_usd": 0,
+    "access_2025": false,
+    "access_2026": false,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "wallet_access": false,
+    "merge_to_main": false
+  }
+}
