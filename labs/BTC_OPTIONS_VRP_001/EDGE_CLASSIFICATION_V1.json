@@ -1,0 +1,38 @@
+{
+  "schema_version": "CRYPTO_LAB_EDGE_CLASSIFICATION_V1",
+  "lab_id": "BTC-OPTIONS-VRP-001",
+  "classification_frozen_at_utc": "2026-09-19T16:55:00Z",
+  "primary_edge_family": "VOL",
+  "secondary_edge_family": "CARRY",
+  "mathematical_engine": "variance-risk-premium capture under executable bid/ask with static delta hedge and explicit tail-risk accounting",
+  "mechanism_statement": "Option buyers pay an insurance/convexity premium for protection against large BTC moves; option sellers receive that premium in exchange for short-volatility and crash exposure. The experiment asks whether the premium remains positive after executable spreads, hedge costs, fees and tail losses.",
+  "expected_sign_or_payoff_shape": "high-frequency small/moderate gains with negative skew and episodic tail losses; positive mean is insufficient unless tail and drawdown gates also survive",
+  "failure_mode": "bid/ask and hedge costs consume the premium, sparse executable quotes collapse sample size, or rare crash losses dominate long-run expectancy",
+  "regime_dependency": "expected to be sensitive to volatility level, jump risk and liquidity regime; no regime filter is authorized in this MVE",
+  "source_authority": {
+    "canonical_source": "Tardis.dev Deribit point-in-time options_chain + quotes, or equivalently authoritative historical BBO corpus",
+    "point_in_time_requirement": "all instrument selection and entry/exit quotes must be timestamp-valid with no future information and no midpoint substitution",
+    "coverage_gate": "at least 120 executable frozen weekly anchors from 2021-04-01 through 2024-11-28 before any performance verdict"
+  },
+  "execution_assumptions": {
+    "executable_strategy": true,
+    "cost_model": "Deribit option fees + BTC perpetual taker fees + explicit adverse-tick/slippage stress",
+    "entry_exit": "short same-strike ATM-ish 25-35 DTE call+put at executable bids; close after seven days at executable asks; static initial BTC perpetual delta hedge"
+  },
+  "protected_holdouts": ["2025", "2026"],
+  "validation_path": "source acquisition -> deterministic BBO execution census -> base/stress performance -> block bootstrap -> yearly stability -> protected holdout only under separate future authority",
+  "promotion_policy_reference": "pre-frozen numerical gates in EXECUTION_BBO_AUTHORITY_V0.2.json; no post-outcome rescue",
+  "nearest_existing_family_or_lab": "BTC-OPTIONS-VRP-001 prior trade-print execution MVE",
+  "material_difference_from_existing_work": "execution evidence source changes from sparse public trade prints to point-in-time historical BBO; economic rules are deliberately preserved and no regime filter is added",
+  "expected_correlation_bucket": "short-volatility / option-premium carry; conceptually distinct from trend, forced-flow and event-directional systems",
+  "maturity": "M2",
+  "scientific_verdict": "DISCOVERY_EFFECT_EXISTS_EXECUTION_NOT_YET_PROVEN",
+  "forensic_audit_reference": "governance/CRYPTO_BRANCH_FORENSIC_AUDIT_V1.md",
+  "governance": {
+    "research_only": true,
+    "fail_closed": true,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "post_outcome_tuning": false
+  }
+}
