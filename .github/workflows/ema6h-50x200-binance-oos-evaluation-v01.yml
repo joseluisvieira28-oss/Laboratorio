@@ -1,0 +1,129 @@
+name: EMA6H 50x200 Binance OOS Evaluation V0.1
+
+on:
+  push:
+    branches:
+      - ema6h-50x200-binance-oos-2025-2026-v0.1
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/ema6h_50x200_oos/RUN_OOS_EVALUATION_V0.1.txt'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  oos:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout frozen OOS branch
+        uses: actions/checkout@v4
+        with:
+          ref: ema6h-50x200-binance-oos-2025-2026-v0.1
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Verify freeze source binding and immutable runner before outcomes
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: |
+          python - <<'PY'
+          import json,subprocess
+          from pathlib import Path
+          p=Path('research/ema6h_50x200_oos')
+          f=json.loads((p/'EMA6H_50X200_BINANCE_OOS_2025_2026_001_FREEZE_V0.1.json').read_text())
+          b=json.loads((p/'EMA6H_50X200_BINANCE_OOS_2025_2026_001_SOURCE_BINDING_V0.1.json').read_text())
+          assert f['status']=='FROZEN_PRE_SOURCE_AND_PRE_OUTCOME'
+          assert b['status']=='FROZEN_SOURCE_BINDING'
+          assert b['source_run_id']==35444113484
+          assert b['artifact_id']==10585241073
+          assert b['artifact_digest']=='sha256:a8cb6cbbf48f8732b584dc404e5e558b8131e8af4c03242f7a875fdca0f50383'
+          assert b['outcome_evaluation_performed_before_binding'] is False
+          assert f['candidate_identity']['timeframe']=='6H'
+          assert f['candidate_identity']['fast_ema']==50 and f['candidate_identity']['slow_ema']==200
+          assert f['candidate_identity']['primary_horizon_bars']==6
+          assert f['statistics']['minimum_resolved_events']==50
+          assert f['statistics']['bootstrap_repetitions']==10000
+          assert f['statistics']['one_sided_support_p_max']==0.10
+          runner=p/'ema6h_50x200_binance_oos_runner_v01.py'
+          blob=subprocess.check_output(['git','hash-object',str(runner)]).decode().strip()
+          assert blob=='28fc2251664216a68beba49e95580611b70c05c2',blob
+          print('PRE_OUTCOME_AUTHORITY=PASS runner_blob=',blob)
+          PY
+
+      - name: Download exact frozen source artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: EMA6H_50X200_BINANCE_OOS_SOURCE_V01
+          path: Dream-Account-OS-v2.3-PARTIAL/research/local_data/ema6h_50x200_oos_source_bound
+          github-token: ${{ github.token }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: 35444113484
+
+      - name: Reverify bound source bytes before outcomes
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: |
+          python - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          p=Path('research/ema6h_50x200_oos')
+          b=json.loads((p/'EMA6H_50X200_BINANCE_OOS_2025_2026_001_SOURCE_BINDING_V0.1.json').read_text())
+          root=Path('research/local_data/ema6h_50x200_oos_source_bound')
+          rec=json.loads((root/'EMA6H_50X200_BINANCE_OOS_2025_2026_001_SOURCE_GATE_V0.1.json').read_text())
+          assert rec['status']=='SOURCE_DATA_PASS'
+          assert rec['archive_count']==120 and rec['access_after_2026_08'] is False
+          for sym,expected in b['canonical_sha256'].items():
+              data=(root/'canonical_15m'/f'{sym}_15m.csv').read_bytes()
+              assert hashlib.sha256(data).hexdigest()==expected,sym
+          print('SOURCE_BYTE_REBIND=PASS')
+          PY
+
+      - name: Compile and self-test frozen runner
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: |
+          python -m py_compile research/ema6h_50x200_oos/ema6h_50x200_binance_oos_runner_v01.py
+          python research/ema6h_50x200_oos/ema6h_50x200_binance_oos_runner_v01.py --self-test
+
+      - name: Execute exact protected OOS
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: |
+          python research/ema6h_50x200_oos/ema6h_50x200_binance_oos_runner_v01.py \
+            --source-dir research/local_data/ema6h_50x200_oos_source_bound \
+            --binding research/ema6h_50x200_oos/EMA6H_50X200_BINANCE_OOS_2025_2026_001_SOURCE_BINDING_V0.1.json \
+            --output-dir research/local_data/ema6h_50x200_oos_result_v01
+
+      - name: Verify terminal receipt and governance
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('research/local_data/ema6h_50x200_oos_result_v01/EMA6H_50X200_BINANCE_OOS_2025_2026_001_RESULT_V0.1.json')
+          d=json.loads(p.read_text())
+          assert d['status']=='OOS_COMPLETE'
+          assert d['classification'] in {
+            'TIER2_PROMOTED_CANDIDATE__QUASE_DIAMANTE',
+            'TIER3_WATCHLIST',
+            'TIER4_REJECTED_EXACT_CANDIDATE',
+            'INSUFFICIENT_SAMPLE'}
+          g=d['governance']
+          assert g['access_after_2026_08'] is False
+          assert g['live_trading'] is False and g['exchange_mutation'] is False
+          assert g['orders'] is False and g['merge_to_main'] is False
+          assert g['post_outcome_tuning'] is False
+          print('OOS_GOVERNANCE=PASS classification=',d['classification'])
+          PY
+
+      - name: Upload canonical OOS evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: EMA6H_50X200_BINANCE_OOS_2025_2026_001_RESULT_V01
+          path: |
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/ema6h_50x200_oos_result_v01/EMA6H_50X200_BINANCE_OOS_2025_2026_001_RESULT_V0.1.json
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/ema6h_50x200_oos_result_v01/EMA6H_50X200_BINANCE_OOS_2025_2026_001_EVENT_LEDGER_V0.1.csv
+          if-no-files-found: error
+          retention-days: 90
