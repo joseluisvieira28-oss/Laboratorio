@@ -1,0 +1,140 @@
+{
+  "experiment_id": "EMA6H-50X200-REGIME-DEPENDENCY-001",
+  "status": "FROZEN_POST_OUTCOME_HYPOTHESIS_PRE_DIAGNOSTIC_AND_PRE_FORWARD",
+  "created_date": "2026-09-19",
+  "policy": "ND-PROMOTION-POLICY-V3.0-FROZEN",
+  "parent": {
+    "candidate": "EMA6H-50X200-BINANCE-OOS-2025_2026-001",
+    "parent_closeout_commit": "6c2026f5b2d17475885bdb4838f336963dcea35e",
+    "parent_state": "TIER3_HIGH_WATCHLIST__TEMPORALLY_FRAGILE",
+    "historical_verdict_immutable": true
+  },
+  "hypothesis_origin": {
+    "post_outcome_generated": true,
+    "trigger": "Observed temporal instability raised the explicit hypothesis that the 6H EMA50x200 continuation effect depends on directional market regime rather than calendar year.",
+    "historical_diagnostic_cannot_promote": true,
+    "only_prospective_forward_evidence_can_confirm": true
+  },
+  "candidate_identity_unchanged": {
+    "timeframe": "6H",
+    "fast_ema": 50,
+    "slow_ema": 200,
+    "universe": ["BTCUSDT","ETHUSDT","SOLUSDT","BNBUSDT","XRPUSDT","DOGEUSDT"],
+    "bull_cross": "previous EMA50-minus-EMA200 <= 0 AND current EMA50-minus-EMA200 > 0",
+    "bear_cross": "previous EMA50-minus-EMA200 >= 0 AND current EMA50-minus-EMA200 < 0",
+    "entry": "next 6H bar open",
+    "exit": "open after 6 completed 6H bars following entry",
+    "primary_horizon_bars": 6,
+    "base_round_trip_cost_bps": 10.0,
+    "stress_round_trip_cost_bps": 14.0
+  },
+  "regime_classifier": {
+    "anchor_asset": "BTCUSDT",
+    "anchor_provider": "Binance Spot",
+    "anchor_timeframe": "1D UTC",
+    "moving_average_type": "SMA",
+    "long_window_days": 200,
+    "slope_lag_days": 20,
+    "information_cutoff": "Only the most recent fully closed BTC 1D bar with close_time < candidate signal_close may be used.",
+    "BULL_TREND": "btc_close > SMA200 AND SMA200_now > SMA200_20d_ago",
+    "BEAR_TREND": "btc_close < SMA200 AND SMA200_now < SMA200_20d_ago",
+    "TRANSITION_CHOP": "all other fully observed states",
+    "MISSING": "insufficient or non-contiguous daily history",
+    "no_threshold_search": true,
+    "no_alternative_regime_definition_after_results": true
+  },
+  "event_regime_buckets": {
+    "TREND_ALIGNED": "bull cross in BULL_TREND OR bear cross in BEAR_TREND",
+    "COUNTER_REGIME": "bull cross in BEAR_TREND OR bear cross in BULL_TREND",
+    "TRANSITION_CHOP": "candidate cross when regime state is TRANSITION_CHOP",
+    "MISSING": "candidate cross when regime state cannot be certified"
+  },
+  "phase_A_historical_diagnostic": {
+    "role": "EXPLANATORY_DIAGNOSTIC_ONLY",
+    "promotion_authority": false,
+    "existing_immutable_event_artifacts": [
+      {
+        "block": "BINANCE_2021_2022",
+        "run_id": 35441846334,
+        "artifact_id": 10583354744,
+        "artifact_digest": "sha256:1bb30bf68a454d69f62d6121314f80a0fa31bb7158459f72d195ebd3755e7793",
+        "cell": "6H:EMA50x200"
+      },
+      {
+        "block": "MEXC_2023_2024",
+        "run_id": 35442522590,
+        "artifact_id": 10584228166,
+        "artifact_digest": "sha256:8542a9bab177535ac60dbf3533947f2b8d7ff3136697df4b0c24838af9ef6aa9",
+        "cell": "6H:EMA50x200"
+      },
+      {
+        "block": "BINANCE_2025_AUG2026",
+        "run_id": 35444262073,
+        "artifact_id": 10585425988,
+        "artifact_digest": "sha256:72ec5ba4184b8877cc447f5168b41f7d9b63c5132f6a47c7c9da353139fb4d3f",
+        "cell": "6H:EMA50x200"
+      }
+    ],
+    "regime_anchor_source": {
+      "provider": "Binance Data Vision",
+      "market": "Spot",
+      "symbol": "BTCUSDT",
+      "interval": "1d",
+      "start_month": "2020-01",
+      "end_month": "2026-08",
+      "provider_checksum_required": true
+    },
+    "report": [
+      "n, base mean, stress mean, PF and positive fraction by regime bucket",
+      "same metrics by historical block and regime bucket",
+      "raw BULL_TREND / BEAR_TREND / TRANSITION_CHOP metrics",
+      "cross direction x regime state matrix",
+      "concentration by symbol within each bucket",
+      "no historical bucket may trigger promotion"
+    ]
+  },
+  "phase_B_prospective_forward": {
+    "role": "CONFIRMATORY_FORWARD_ONLY",
+    "activation_boundary_utc": "2026-09-19T18:00:00Z",
+    "first_eligible_signal_close_utc": "2026-09-20T00:00:00Z",
+    "reason_for_first_signal_boundary": "The 18:00-00:00 UTC 6H bar is the first full signal bar entirely after activation. No September 2026 pre-activation signal reconstruction is allowed.",
+    "public_data_only": true,
+    "authenticated_exchange_api": false,
+    "orders": false,
+    "exchange_mutation": false,
+    "evidence_categories": [
+      "all exact EMA50x200 6H crosses after boundary",
+      "regime state at each signal",
+      "bucket classification",
+      "entry and fixed 36h resolution",
+      "missed-signal and duplicate protection",
+      "rule-deviation events"
+    ],
+    "first_review_gate": {
+      "minimum_resolved_total_crosses": 10,
+      "automatic_promotion": false,
+      "purpose": "mechanism review only"
+    },
+    "stronger_review_gate": {
+      "minimum_resolved_total_crosses": 25,
+      "automatic_promotion": false,
+      "purpose": "separate V3 adjudication may be opened if evidence integrity is clean"
+    }
+  },
+  "mechanism_success_pattern": {
+    "historical_diagnostic_only": "TREND_ALIGNED should be materially stronger than TRANSITION_CHOP and COUNTER_REGIME if regime dependence is a plausible explanation.",
+    "forward_confirmation": "Prospective TREND_ALIGNED events must show positive base/stress economics and outperform the other frozen buckets without rule changes; exact adjudication is deferred to a separately frozen V3 review."
+  },
+  "governance": {
+    "research_only": true,
+    "fail_closed": true,
+    "merge_to_main": false,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "orders": false,
+    "wallets": false,
+    "post_outcome_tuning": false,
+    "historical_regime_filter_promotion": false,
+    "no_backfill_before_first_eligible_signal_close": true
+  }
+}
