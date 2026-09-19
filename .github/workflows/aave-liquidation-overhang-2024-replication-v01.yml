@@ -1,0 +1,281 @@
+name: AAVE Liquidation Overhang 001 — 2024 Replication V0.1
+
+on:
+  push:
+    branches:
+      - aave-liquidation-overhang-v0.1
+    paths:
+      - '.github/workflows/aave-liquidation-overhang-2024-replication-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  R0_BOOTSTRAP_RUN_ID: '35218275356'
+  SOURCE_DISCOVERY_RUN_ID: '35427783826'
+  PREFLIGHT_2024_RUN_ID: '35438124931'
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile isolated replication implementation
+        run: |
+          python -m py_compile research/aave_liquidation_overhang/replication_calendar_v01.py
+          python -m py_compile research/aave_liquidation_overhang/replication_global_replay_v01.py
+          python -m py_compile research/aave_liquidation_overhang/replication_reserve_shard_v01.py
+          python -m py_compile research/aave_liquidation_overhang/replication_predictor_aggregate_v01.py
+          python -m py_compile research/aave_liquidation_overhang/replication_outcomes_v01.py
+          python -m py_compile research/aave_liquidation_overhang/replication_adjudicate_v01.py
+      - name: Verify frozen authorities
+        run: |
+          test -f research/aave_liquidation_overhang/AAVE_LIQUIDATION_OVERHANG_001_FINAL_PRE_DISCOVERY_PROTOCOL_V0_1.md
+          test -f research/aave_liquidation_overhang/AAVE_LIQUIDATION_OVERHANG_001_2024_REPLICATION_EXECUTION_AUTHORITY_V0_1.md
+      - name: Download exact 2024 preflight receipt
+        uses: actions/download-artifact@v4
+        with:
+          name: AAVE_LIQUIDATION_OVERHANG_001_2024_REPLICATION_PREFLIGHT_V0_1
+          path: downloaded_replication_preflight
+          github-token: ${{ github.token }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: ${{ env.PREFLIGHT_2024_RUN_ID }}
+      - name: Gate exact preflight pass
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          xs=[]
+          for p in Path('downloaded_replication_preflight').rglob('*.json'):
+              x=json.loads(p.read_text())
+              if x.get('classification')=='REPLICATION_2024_PREFLIGHT_PASS': xs.append(x)
+          assert len(xs)==1,len(xs)
+          x=xs[0]
+          assert x['master_reserve_count']==37
+          assert x['active_by_2024_end_count']==37
+          assert x['future_after_2024_count']==0
+          assert x['expected_snapshot_count']==366
+          assert x['safety']['liquidation_outcomes_opened'] is False
+          assert x['safety']['opened_2025_or_2026'] is False
+          print('REPLICATION_2024_PREFLIGHT_GATE_PASS')
+          PY
+
+  calendar:
+    needs: preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check requests
+      - name: Download frozen 2023 boundary calendar only
+        uses: actions/download-artifact@v4
+        with:
+          name: AAVE_DISCOVERY_CALENDAR_V0_1
+          path: downloaded_discovery_calendar
+          github-token: ${{ github.token }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: ${{ env.SOURCE_DISCOVERY_RUN_ID }}
+      - name: Build canonical 2024 snapshot calendar
+        run: python research/aave_liquidation_overhang/replication_calendar_v01.py
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: AAVE_REPLICATION_CALENDAR_2024_V0_1
+          path: replication_calendar_output/AAVE_LIQUIDATION_OVERHANG_001_REPLICATION_CALENDAR_2024_V0_1.json
+          if-no-files-found: error
+          retention-days: 30
+
+  global-source:
+    needs: calendar
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check requests 'eth-hash[pycryptodome]'
+      - uses: actions/download-artifact@v4
+        with:
+          name: AAVE_REPLICATION_CALENDAR_2024_V0_1
+          path: downloaded_replication_calendar
+      - name: Reconstruct global/eMode/oracle replication source
+        run: python research/aave_liquidation_overhang/replication_global_replay_v01.py
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: AAVE_REPLICATION_GLOBAL_2024_V0_1
+          path: replication_global_output/AAVE_LIQUIDATION_OVERHANG_001_REPLICATION_GLOBAL_2024_V0_1.json
+          if-no-files-found: error
+          retention-days: 30
+
+  reserve-shards:
+    needs: global-source
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        shard_id: [0,1,2,3,4,5,6,7]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check requests 'eth-hash[pycryptodome]'
+      - uses: actions/download-artifact@v4
+        with:
+          name: AAVE_REPLICATION_CALENDAR_2024_V0_1
+          path: downloaded_replication_calendar
+      - uses: actions/download-artifact@v4
+        with:
+          name: AAVE_REPLICATION_GLOBAL_2024_V0_1
+          path: downloaded_replication_global
+      - uses: actions/download-artifact@v4
+        with:
+          name: AAVE_RECON_R0_BOOTSTRAP
+          path: downloaded_r0_bootstrap
+          github-token: ${{ github.token }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: ${{ env.R0_BOOTSTRAP_RUN_ID }}
+      - name: Replay exact 2024 reserve shard
+        env:
+          REPLICATION_RESERVE_SHARD_ID: ${{ matrix.shard_id }}
+          REPLICATION_RESERVE_SHARD_COUNT: '8'
+        run: python research/aave_liquidation_overhang/replication_reserve_shard_v01.py
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: AAVE_REPLICATION_RESERVE_SHARD_2024_V0_1_${{ matrix.shard_id }}
+          path: |
+            replication_reserve_shards/replication_reserve_shard_*_meta.json
+            replication_reserve_shards/replication_reserve_shard_*_rows.jsonl.gz
+          if-no-files-found: warn
+          retention-days: 30
+
+  predictor:
+    needs: reserve-shards
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: AAVE_REPLICATION_CALENDAR_2024_V0_1
+          path: downloaded_replication_calendar
+      - uses: actions/download-artifact@v4
+        with:
+          name: AAVE_REPLICATION_GLOBAL_2024_V0_1
+          path: downloaded_replication_global
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: AAVE_REPLICATION_RESERVE_SHARD_2024_V0_1_*
+          path: downloaded_replication_reserves
+          merge-multiple: true
+      - name: Persist full 2024 predictor BEFORE any 2024 outcome
+        run: python research/aave_liquidation_overhang/replication_predictor_aggregate_v01.py
+      - name: Enforce predictor/outcome firewall
+        run: |
+          python - <<'PY'
+          import json
+          p='replication_predictor_output/AAVE_LIQUIDATION_OVERHANG_001_REPLICATION_PREDICTOR_2024_V0_1.json'
+          x=json.load(open(p))
+          assert x['classification']=='REPLICATION_PREDICTOR_PASS',x
+          assert x['snapshot_count']==366
+          assert x['reserve_count']==37
+          s=x['safety']
+          assert s['opened_2024_predictor'] is True
+          assert s['opened_2024_outcomes'] is False
+          assert s['opened_2025_or_2026'] is False
+          assert s['market_returns_opened'] is False
+          assert s['pnl_opened'] is False
+          print('REPLICATION_PREDICTOR_FIREWALL_PASS',x['predictor_sha256'],x['days_overhang_10_positive'])
+          PY
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: AAVE_REPLICATION_PREDICTOR_2024_V0_1
+          path: replication_predictor_output/AAVE_LIQUIDATION_OVERHANG_001_REPLICATION_PREDICTOR_2024_V0_1.json
+          if-no-files-found: error
+          retention-days: 30
+
+  outcomes-2024:
+    needs: predictor
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check requests 'eth-hash[pycryptodome]'
+      - uses: actions/download-artifact@v4
+        with:
+          name: AAVE_REPLICATION_PREDICTOR_2024_V0_1
+          path: downloaded_replication_predictor
+      - uses: actions/download-artifact@v4
+        with:
+          name: AAVE_REPLICATION_CALENDAR_2024_V0_1
+          path: downloaded_replication_calendar
+      - uses: actions/download-artifact@v4
+        with:
+          name: AAVE_REPLICATION_GLOBAL_2024_V0_1
+          path: downloaded_replication_global
+      - name: Open only frozen 2024 Aave liquidation-flow outcome
+        run: python research/aave_liquidation_overhang/replication_outcomes_v01.py
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: AAVE_REPLICATION_OUTCOME_2024_V0_1
+          path: replication_outcome_output/AAVE_LIQUIDATION_OVERHANG_001_REPLICATION_OUTCOME_2024_V0_1.json
+          if-no-files-found: error
+          retention-days: 30
+
+  canonical-adjudication:
+    needs: outcomes-2024
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: AAVE_REPLICATION_PREDICTOR_2024_V0_1
+          path: downloaded_replication_predictor
+      - uses: actions/download-artifact@v4
+        with:
+          name: AAVE_REPLICATION_OUTCOME_2024_V0_1
+          path: downloaded_replication_outcome
+      - name: Canonical frozen 2024 replication adjudication
+        run: python research/aave_liquidation_overhang/replication_adjudicate_v01.py
+      - name: Enforce no-market/no-2025 firewall
+        run: |
+          python - <<'PY'
+          import json
+          p='replication_canonical_output/AAVE_LIQUIDATION_OVERHANG_001_REPLICATION_2024_CANONICAL_V0_1.json'
+          x=json.load(open(p))
+          s=x['safety']
+          assert s['opened_2024_predictor'] is True
+          assert s['opened_2024_outcomes'] is True
+          assert s['opened_2025_or_2026'] is False
+          assert s['market_returns_opened'] is False
+          assert s['pnl_opened'] is False
+          assert s['live_trading'] is False
+          assert s['exchange_mutation'] is False
+          print('REPLICATION_CANONICAL_FIREWALL_PASS',x['classification'],x.get('next_authorized_phase'))
+          PY
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: AAVE_REPLICATION_2024_CANONICAL_V0_1
+          path: replication_canonical_output/AAVE_LIQUIDATION_OVERHANG_001_REPLICATION_2024_CANONICAL_V0_1.json
+          if-no-files-found: error
+          retention-days: 30
