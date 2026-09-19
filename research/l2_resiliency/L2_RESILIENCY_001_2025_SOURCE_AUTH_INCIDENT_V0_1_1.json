@@ -1,0 +1,32 @@
+{
+  "schema_version":"0.1.1",
+  "lab_id":"L2-RESILIENCY-001",
+  "classification":"SOURCE_AUTH_BLOCKED_RESUMABLE",
+  "stage":"2025_SOURCE_INVENTORY",
+  "observed":{
+    "expected_hours":8760,
+    "present_hours":4889,
+    "missing_hours":360,
+    "error_hours":3511,
+    "partial_coverage_pct":55.81050228310502,
+    "error_signature":"LoginRefreshRequired: session expired / credentials changed",
+    "error_window_utc":"2025-01-01T00:00:00Z through 2025-05-27T06:00:00Z",
+    "resolved_present_window_examples":"2025-05-27T07:00:00Z onward with later official missing gaps",
+    "known_missing_runs":[
+      {"start":"2025-10-16T11:00:00Z","end":"2025-10-22T23:00:00Z","hours":157},
+      {"start":"2025-11-17T13:00:00Z","end":"2025-11-25T23:00:00Z","hours":203}
+    ]
+  },
+  "scientific_status":"NO_2025_OUTCOME_ACCESSED",
+  "interpretation":"Technical AWS authentication interruption only. Not source-coverage verdict and not validation failure.",
+  "resume_patch":{
+    "package":"L2R_2025_BTC_VALIDATION_PIPELINE_V011_RESUME.zip",
+    "runner_sha256":"80347c42e1893fbe0284ccc5779fdd841362a3feb24644d39777144f15be2a55",
+    "package_sha256":"3da0f466b1db170f8aedc7d45f7b757bb4e843cc7695bffc9953908c21449ba6",
+    "behavior":"Reuse resolved PRESENT/MISSING inventory rows; retry only ERROR/unresolved rows; fail fast on expired AWS auth; preserve progress; reuse verified downloads."
+  },
+  "scientific_rule_changes":false,
+  "next_action":"Run aws login locally, then execute V0.1.1 resume package. If auth expires again, rerun the same package after reauthentication; progress is preserved.",
+  "access_2026":false,
+  "pnl_computed":false
+}
