@@ -1,0 +1,91 @@
+name: Options Expiry Gamma Flow Vol Discovery V0.6
+
+on:
+  push:
+    branches:
+      - options-expiry-gamma-flow-vol-discovery-v0.6
+    paths:
+      - 'labs/OPTIONS_EXPIRY_GAMMA_001/GAMMA_FLOW_VOL_DISCOVERY_TRIGGER_V0.6.txt'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: oeg-gamma-flow-vol-discovery-v06
+  cancel-in-progress: false
+
+jobs:
+  shards:
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        shard: [0,1,2,3,4,5,6,7]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: options-expiry-gamma-flow-vol-discovery-v0.6
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --disable-pip-version-check requests==2.32.3
+      - name: Verify frozen authority
+        run: |
+          python - <<'PY'
+          import json
+          a=json.load(open('labs/OPTIONS_EXPIRY_GAMMA_001/GAMMA_FLOW_VOL_DISCOVERY_AUTHORITY_V0.6.json'))
+          assert a['discovery_id']=='OEG-SIGNED-GAMMA-FLOW-VOL-DISCOVERY-006'
+          assert a['status']=='PRE_OUTCOME_FROZEN'
+          assert a['parent_source_run']==35428784200
+          assert len(a['deterministic_dates'])==48
+          assert a['predictor_source']['short_dated_dte_min']==1
+          assert a['predictor_source']['short_dated_dte_max']==14
+          assert a['outcome_source']['symbol']=='BTCUSDT'
+          assert a['outcome_source']['interval']=='5m'
+          assert a['outcome_source']['required_bars']==144
+          assert a['statistical_gates']['spearman_rho_gte']==0.25
+          assert a['primary_test']['permutation_replications']==10000
+          assert a['primary_test']['bootstrap_replications']==10000
+          assert all(v is False for v in a['firewalls'].values())
+          print('OEG_V06_AUTHORITY_PASS')
+          PY
+      - run: python -m py_compile labs/OPTIONS_EXPIRY_GAMMA_001/gamma_flow_vol_discovery_v06_shard.py
+      - name: Execute frozen shard
+        env:
+          OEG_SHARD_ID: ${{ matrix.shard }}
+        run: python labs/OPTIONS_EXPIRY_GAMMA_001/gamma_flow_vol_discovery_v06_shard.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: oeg-gamma-flow-vol-v06-shard-${{ matrix.shard }}
+          path: artifacts/oeg_gamma_flow_vol_discovery_v06_shards/shard_${{ matrix.shard }}.json
+          retention-days: 90
+          if-no-files-found: error
+
+  aggregate:
+    needs: shards
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: options-expiry-gamma-flow-vol-discovery-v0.6
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: oeg-gamma-flow-vol-v06-shard-*
+          path: artifacts/oeg_gamma_flow_vol_discovery_v06_inputs
+          merge-multiple: true
+      - run: python -m py_compile labs/OPTIONS_EXPIRY_GAMMA_001/aggregate_gamma_flow_vol_discovery_v06.py
+      - name: Aggregate canonical Discovery
+        run: python labs/OPTIONS_EXPIRY_GAMMA_001/aggregate_gamma_flow_vol_discovery_v06.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: OEG_GAMMA_FLOW_VOL_DISCOVERY_V0_6
+          path: artifacts/oeg_gamma_flow_vol_discovery_v06/
+          retention-days: 90
+          if-no-files-found: error
