@@ -1,0 +1,85 @@
+{
+  "lab_id": "OPTIONS-EXPIRY-GAMMA-001",
+  "execution_mve_id": "OEG-GAMMA-FLOW-ATM-STRADDLE-EXEC-009",
+  "status": "FROZEN_NOT_AUTHORIZED_PENDING_PARENT_GATES",
+  "date_frozen": "2026-09-19",
+  "required_parents": [
+    {
+      "id": "OEG-SIGNED-GAMMA-FLOW-VOL-DISCOVERY-006",
+      "required_classification": "SIGNED_GAMMA_FLOW_VOL_DISCOVERY_PASS"
+    },
+    {
+      "id": "OEG-ATM-STRADDLE-BBO-CORPUS-008",
+      "required_classification": "ATM_STRADDLE_BBO_CORPUS_SOURCE_PASS"
+    }
+  ],
+  "signal": {
+    "predictor": "same gamma_flow_balance as frozen V0.6",
+    "long_vol": "gamma_flow_balance > 0 => BUY ATM call + BUY ATM put",
+    "short_vol": "gamma_flow_balance < 0 => SELL ATM call + SELL ATM put",
+    "no_trade": "gamma_flow_balance == 0",
+    "threshold": 0,
+    "no_threshold_tuning": true
+  },
+  "instrument_selection": {
+    "source": "same V0.8 prospectively selected pair",
+    "expiry_dte_min": 7,
+    "expiry_dte_max": 14,
+    "expiry_choice": "nearest eligible expiry",
+    "strike_choice": "nearest strike to 12:00 underlying, same strike call+put",
+    "amount_per_leg_btc_options": 0.1
+  },
+  "execution": {
+    "entry": "first valid two-sided BBO at/after 12:00 and <=12:05; buy at ask, sell at bid",
+    "exit": "first valid two-sided BBO at/after 23:55 and before 24:00; close long at bid, close short at ask",
+    "missing_leg_or_quote": "exclude date fail-closed; never widen windows",
+    "combo_discount_assumed": false
+  },
+  "cost_model": {
+    "historical_standard_option_trading_fee_per_side": 0.0003,
+    "fee_basis": "BTC underlying per option contract, capped at 12.5% of option value",
+    "fee_cap_fraction_of_option_value": 0.125,
+    "provenance": [
+      "https://insights.deribit.com/exchange-updates/deribit-lowers-option-trading-fees-to-make-the-market-more-accessible-to-retail-traders/",
+      "https://doi.org/10.3390/risks11050085"
+    ],
+    "delivery_fee": 0,
+    "rationale": "positions are closed by public BBO before expiry; no delivery",
+    "stress": {
+      "fee_multiplier": 1.25,
+      "additional_slippage": "one additional contemporaneous bid-ask spread per leg across the round trip, applied adversely and never improving a fill"
+    }
+  },
+  "sample_gates": {
+    "minimum_executable_dates": 36,
+    "minimum_executable_dates_per_year": 8,
+    "minimum_distinct_years": 4
+  },
+  "bootstrap": {
+    "unit": "date",
+    "replications": 10000,
+    "seed": 20092026,
+    "ci": 0.95,
+    "statistic": "mean net BTC PnL per straddle episode"
+  },
+  "economic_gates": {
+    "mean_base_net_btc_gt": 0,
+    "base_profit_factor_gte": 1.2,
+    "bootstrap_base_lower_95_gt": 0,
+    "positive_year_mean_count_gte": 3,
+    "mean_stress_net_btc_gt": 0,
+    "stress_profit_factor_gt": 1,
+    "max_single_positive_episode_share_lte": 0.25
+  },
+  "no_rescue_rule": "After execution outcomes open, do not alter sign rule, zero threshold, DTE range, expiry/strike selection, amount, entry/exit windows, BBO side, fee/cap, stress model, sample gates, economic gates or years under this MVE ID.",
+  "firewalls": {
+    "live_trading": false,
+    "exchange_mutation": false,
+    "orders": false,
+    "wallet_access": false,
+    "access_2025": false,
+    "access_2026": false,
+    "merge_to_main": false
+  },
+  "trigger_rule": "No runner may execute until both required parent classifications are verified from canonical immutable artifacts."
+}
