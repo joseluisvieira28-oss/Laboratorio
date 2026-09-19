@@ -44,7 +44,7 @@ def main():
     m=m[m["ts"].notna()&(m["oi"]>0)].sort_values("ts").drop_duplicates("ts",keep="last")
     f["ts"]=parse_time(f["calc_time"]); f["funding"]=pd.to_numeric(f["last_funding_rate"],errors="coerce")
     f=f[f["ts"].notna()&f["funding"].notna()].sort_values("ts").drop_duplicates("ts",keep="last")
-    f=f[(f["ts"]>=pd.Timestamp("2021-01-01",tz="UTC"))&(f["ts"]<pd.Timestamp("2025-01-01",tz="UTC"))]
+    f=f[(f["ts"]>=pd.Timestamp("2022-01-01",tz="UTC"))&(f["ts"]<pd.Timestamp("2025-01-01",tz="UTC"))]
     k["ts"]=parse_time(k["open_time"]); k["open"]=pd.to_numeric(k["open"],errors="coerce")
     k=k[k["ts"].notna()&(k["open"]>0)].sort_values("ts").drop_duplicates("ts",keep="last"); px=k.set_index("ts")["open"]
 
