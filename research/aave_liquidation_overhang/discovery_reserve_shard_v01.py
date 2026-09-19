@@ -202,8 +202,9 @@ def main()->int:
 
         reserves_all=sorted((u.lower(),m) for u,m in bootstrap["reserves"].items())
         if len(reserves_all)!=37: raise RuntimeError("R0 reserve universe not 37")
-        selected=[(u,m) for i,(u,m) in enumerate(reserves_all) if i%scount==sid]
-        if not selected: raise RuntimeError("empty reserve shard")
+        selected_all=[(u,m) for i,(u,m) in enumerate(reserves_all) if i%scount==sid]
+        selected=[(u,m) for u,m in selected_all if int(m["init_block"])<=to_block]
+        if not selected: raise RuntimeError("empty active 2023 reserve shard")
 
         token_meta={}; atoken_for={}; vdebt_for={}; init_block={}
         for u,m in selected:
@@ -402,6 +403,8 @@ def main()->int:
             "classification":"DISCOVERY_RESERVE_SHARD_PASS",
             "shard_id":sid,"shard_count":scount,
             "selected_reserves":underlyings,
+            "assigned_reserves_full_r1":[u for u,_m in selected_all],
+            "post_2023_reserves_excluded":[u for u,m in selected_all if int(m["init_block"])>to_block],
             "snapshot_count":len(snaps),
             "row_count":row_count,
             "row_sha256":row_hash.hexdigest(),
