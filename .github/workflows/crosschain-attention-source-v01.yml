@@ -1,0 +1,33 @@
+name: Crosschain Attention Reallocation Source Gate V0.1
+on:
+  push:
+    branches: [crosschain-attention-reallocation-v0.1]
+    paths:
+      - "labs/CROSSCHAIN_ATTENTION_REALLOCATION_001/SOURCE_AUTHORITY_V0.1.json"
+      - "labs/CROSSCHAIN_ATTENTION_REALLOCATION_001/source_gate_v01.py"
+      - ".github/workflows/crosschain-attention-source-v01.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: python -m pip install --disable-pip-version-check -q pandas
+      - name: Compile
+        run: python -m py_compile labs/CROSSCHAIN_ATTENTION_REALLOCATION_001/source_gate_v01.py
+      - name: Run bounded source-only gate
+        run: python labs/CROSSCHAIN_ATTENTION_REALLOCATION_001/source_gate_v01.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: CROSSCHAIN_ATTENTION_REALLOCATION_001_SOURCE_V0_1
+          path: |
+            car_source_receipt_v01.json
+            car_activity_2022_2024_v01.csv
+          if-no-files-found: warn
+          retention-days: 30
