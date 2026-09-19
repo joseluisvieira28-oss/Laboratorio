@@ -1,0 +1,59 @@
+name: BTC Options VRP optionsDX Zero-Price Catalog Probe V0.1
+
+on:
+  push:
+    branches:
+      - btc-options-vrp-free-route-attack-v0.1
+    paths:
+      - "labs/BTC_OPTIONS_VRP_001/OPTIONSDX_ZERO_PRICE_CATALOG_AUTHORITY_V0.1.json"
+      - "labs/BTC_OPTIONS_VRP_001/optionsdx_zero_price_catalog_probe_v01.py"
+      - ".github/workflows/btc-options-vrp-optionsdx-zero-price-v01.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  procurement-metadata:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Compile public catalog probe
+        run: python -m py_compile labs/BTC_OPTIONS_VRP_001/optionsdx_zero_price_catalog_probe_v01.py
+
+      - name: Run zero-spend catalog probe
+        id: probe
+        continue-on-error: true
+        run: python labs/BTC_OPTIONS_VRP_001/optionsdx_zero_price_catalog_probe_v01.py
+
+      - name: Upload procurement-only receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: BTC_OPTIONS_VRP_001_OPTIONSDX_ZERO_PRICE_CATALOG_V0_1
+          path: optionsdx_zero_price_catalog_receipt_v01.json
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Print terminal classification
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path("optionsdx_zero_price_catalog_receipt_v01.json")
+          if not p.exists():
+              raise SystemExit("receipt missing")
+          x=json.loads(p.read_text())
+          print("classification=",x.get("classification"))
+          print("variation_count=",x.get("variation_count"))
+          print("distinct_display_prices=",x.get("distinct_display_prices"))
+          print("zero_price_variation_count=",x.get("zero_price_variation_count"))
+          print("cart_or_checkout_used=",x.get("cart_or_checkout_used"))
+          PY
