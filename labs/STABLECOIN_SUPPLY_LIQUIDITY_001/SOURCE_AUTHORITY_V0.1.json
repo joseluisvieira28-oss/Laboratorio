@@ -1,0 +1,58 @@
+{
+  "lab_id": "STABLECOIN-SUPPLY-LIQUIDITY-001",
+  "source_gate_id": "SSLI-COINMETRICS-SUPPLY-001",
+  "version": "0.1",
+  "date_frozen": "2026-09-20",
+  "branch": "stablecoin-supply-liquidity-impulse-v0.1",
+  "status": "FROZEN_SOURCE_ONLY_BEFORE_OUTCOMES",
+  "economic_family": "SUPPLY / LIQUIDITY / CAPITAL INFLOW",
+  "mechanism": "Net creation of fiat-backed stablecoin supply represents deployable crypto-market liquidity. Large positive supply impulses may precede deployment into liquid crypto assets if capital is not absorbed instantaneously.",
+  "anti_duplication": {
+    "nearest_labs": [
+      "STABLECOIN-EXCHANGE-FLOW-001",
+      "STABLECOIN-PEG-DISLOCATION",
+      "STABLECOIN-DEX-STRESS-001"
+    ],
+    "material_difference": [
+      "This lab uses aggregate circulating supply change of USDT + USDC, not exchange inflow/outflow.",
+      "It does not test peg dislocation or depeg mean reversion.",
+      "It does not test DEX pool liquidity stress.",
+      "Primary economic object is new/removing stablecoin supply as a market-liquidity impulse."
+    ]
+  },
+  "source": {
+    "provider": "Coin Metrics Community API",
+    "endpoint": "https://community-api.coinmetrics.io/v4/timeseries/asset-metrics",
+    "assets": [
+      "usdt",
+      "usdc"
+    ],
+    "metric": "SplyCur",
+    "frequency": "1d",
+    "start_time": "2020-06-01",
+    "end_time": "2024-12-31",
+    "page_size": 10000,
+    "authentication_required": false,
+    "cash_cost_usd": 0
+  },
+  "frozen_source_gate": {
+    "per_asset_min_rows": 1600,
+    "nonnull_fraction_gte": 0.98,
+    "positive_fraction_gte": 0.98,
+    "min_time_lte": "2020-06-03T00:00:00Z",
+    "max_time_gte": "2024-12-29T00:00:00Z",
+    "max_time_lte": "2024-12-31T23:59:59Z",
+    "both_assets_required": true
+  },
+  "terminal_classes": [
+    "SSLI_SOURCE_FULL",
+    "SSLI_SOURCE_LIMITED",
+    "SSLI_SOURCE_BLOCKED"
+  ],
+  "outcome_boundary": [
+    "No BTC or ETH price is requested during source gate.",
+    "No returns or PnL during source gate.",
+    "No 2025/2026 source observation.",
+    "No live trading, wallet, exchange mutation or main merge."
+  ]
+}
