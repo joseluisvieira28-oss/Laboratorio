@@ -72,10 +72,12 @@ def main()->int:
         for x in metas:
             reserves.extend(x["selected_reserves"])
             reserve_decimals.update({k:int(v) for k,v in (x.get("decimals") or {}).items()})
-        if len(reserves)!=27 or len(set(reserves))!=27:
-            raise RuntimeError(f"active 2023 reserve union is not exact 27: {len(reserves)} / {len(set(reserves))}")
-        if set(reserves)!=set(reserve_decimals):
-            raise RuntimeError("active 2023 reserve decimals union mismatch")
+        if len(reserves)!=37 or len(set(reserves))!=37:
+            raise RuntimeError(f"canonical reserve master union is not exact 37: {len(reserves)} / {len(set(reserves))}")
+        if len(reserve_decimals)!=27:
+            raise RuntimeError(f"active 2023 reserve decimals union is not exact 27: {len(reserve_decimals)}")
+        if not set(reserve_decimals).issubset(set(reserves)):
+            raise RuntimeError("active 2023 reserve decimals escaped canonical reserve master")
 
         by_id={int(x["shard_id"]):x for x in metas}
         row_by_id={}
