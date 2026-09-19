@@ -1,0 +1,53 @@
+name: ETH Blockspace Demand 001 — Source Probe V0.1
+
+on:
+  push:
+    branches:
+      - eth-blockspace-demand-v0.1
+    paths:
+      - '.github/workflows/eth-blockspace-demand-source-probe-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install source dependency
+        run: pip install --disable-pip-version-check requests
+
+      - name: Verify source-only firewall
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('research/eth_blockspace_demand/ETH_BLOCKSPACE_DEMAND_001_PRE_SOURCE_AUTHORITY_V0_1.md')
+          assert p.exists()
+          s=p.read_text(encoding='utf-8')
+          for x in ['SOURCE-ONLY','OUTCOME-BLIND','2025 or 2026 source data','market prices','returns','PnL']:
+              assert x in s, x
+          print('ETH_BLOCKSPACE_SOURCE_AUTHORITY_GUARD_PASS')
+          PY
+
+      - name: Compile frozen source probe
+        run: python -m py_compile research/eth_blockspace_demand/source_probe_v01.py
+
+      - name: Execute exact historical source probe
+        run: python research/eth_blockspace_demand/source_probe_v01.py
+
+      - name: Upload source receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ETH_BLOCKSPACE_DEMAND_001_SOURCE_PROBE_V0_1
+          path: eth_blockspace_source_probe/ETH_BLOCKSPACE_DEMAND_001_SOURCE_PROBE_V0_1.json
+          if-no-files-found: warn
+          retention-days: 90
