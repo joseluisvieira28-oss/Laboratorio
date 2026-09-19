@@ -11,8 +11,12 @@ def parse_time(s):
     n=pd.to_numeric(s,errors="coerce")
     if n.notna().any() and n.notna().mean()>0.8:
         med=float(n.dropna().abs().median()); unit="ms" if med>1e11 else "s"
-        return pd.to_datetime(n,unit=unit,utc=True,errors="coerce")
-    return pd.to_datetime(s,utc=True,errors="coerce")
+        out=pd.to_datetime(n,unit=unit,utc=True,errors="coerce")
+    else:
+        out=pd.to_datetime(s,utc=True,errors="coerce")
+    # Pandas may preserve different datetime resolutions (ms/us) by source.
+    # Normalize every source to ns before merge_asof; values are unchanged.
+    return out.astype("datetime64[ns, UTC]")
 
 def pf(x):
     x=np.asarray(x,float); p=x[x>0].sum(); n=-x[x<0].sum()
