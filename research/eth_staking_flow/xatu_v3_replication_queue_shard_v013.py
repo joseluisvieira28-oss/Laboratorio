@@ -30,10 +30,6 @@ def _actual_timestamp_ranges_v013(pf):
         if len(arr) == 0:
             EMPTY_ROWGROUPS_SKIPPED += 1
             continue
-        non_null = int(pc.count(arr).as_py() or 0)
-        if non_null == 0:
-            EMPTY_ROWGROUPS_SKIPPED += 1
-            continue
         if arr.null_count:
             raise RuntimeError(f"row group {i}: null epoch_start_date_time in non-empty row group")
         mn = pc.min(arr).as_py()
