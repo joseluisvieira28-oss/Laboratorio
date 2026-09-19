@@ -113,6 +113,10 @@ def build_control_room_state(
     forward_supervisor_status = _read_json(forward_supervisor_status_path, {})
     forward_status_path = service_status_path.parent / "forward_local_status.json"
     forward_state = _read_json(forward_status_path, {})
+    render_sentinel_path = service_status_path.parent / "render_sentinel_status.json"
+    render_sentinel = _read_json(render_sentinel_path, {})
+    render_sentinel_supervisor_path = service_status_path.parent / "render_sentinel_supervisor_status.json"
+    render_sentinel_supervisor = _read_json(render_sentinel_supervisor_path, {})
 
     candidates = registry.get("candidates") or []
     focus_ids = registry.get("focus_strategy_ids") or [
@@ -209,6 +213,10 @@ def build_control_room_state(
             "forward_supervisor_status": str(forward_supervisor_status.get("status") or "MISSING"),
             "forward_status_path": str(forward_status_path),
             "forward_health": str(forward_state.get("health") or "MISSING"),
+            "render_sentinel_status_path": str(render_sentinel_path),
+            "render_sentinel_status": str(render_sentinel.get("status") or "MISSING"),
+            "render_sentinel_supervisor_status": str(render_sentinel_supervisor.get("status") or "MISSING"),
+            "render_sentinel_last_check_utc": render_sentinel.get("checked_at_utc"),
         },
         "risk_policy": {
             "planned_risk_per_trade_pct": limits.per_trade * 100,
