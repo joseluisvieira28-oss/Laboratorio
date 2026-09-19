@@ -1,0 +1,121 @@
+{
+  "lab_id": "BTC-OPTIONS-VRP-001",
+  "mve_id": "OVRP-EXEC-BBO-ATM30-7D-STATICDELTA-002",
+  "version": "0.2",
+  "date_frozen": "2026-09-19",
+  "status": "FROZEN_PENDING_FULL_HISTORY_SOURCE",
+  "research_only": true,
+  "parent_discovery": "DISCOVERY_PASS_VRP_EXISTS",
+  "parent_execution_mve": "OVRP-EXEC-ATM30-7D-STATICDELTA-001",
+  "parent_execution_closeout": "EXECUTION_DATA_LIQUIDITY_INSUFFICIENT",
+  "source_feasibility_proof": "TARDIS_SOURCE_PROBE_CLOSEOUT_V0.2.md",
+  "scientific_rationale": "The prior execution MVE opened no performance verdict because public direction-matched trade prints yielded only 19 executable episodes versus the frozen minimum 120. This new MVE changes the execution data source only, from sparse public trade prints to historical executable BBO quotes already proven structurally feasible in the source-only Tardis probe. Economic rules are preserved rather than tuned.",
+  "source": {
+    "provider": "Tardis.dev",
+    "exchange": "deribit",
+    "datasets": ["options_chain", "quotes"],
+    "required_access": "full historical paid access or an equivalently authoritative point-in-time BBO corpus",
+    "api_key_authorized_now": false,
+    "paid_subscription_authorized_now": false,
+    "free_sample_only_is_insufficient_for_execution_mve": true
+  },
+  "anchors": {
+    "first_date": "2021-04-01",
+    "last_date": "2024-11-28",
+    "weekday": "Thursday",
+    "hour_utc": 8,
+    "step_days": 7,
+    "expected_count": 192
+  },
+  "instrument_selection": {
+    "underlying": "BTC",
+    "same_expiry_call_put": true,
+    "same_strike_call_put": true,
+    "dte_min_days": 25.0,
+    "dte_max_days": 35.0,
+    "target_dte_days": 30.0,
+    "atm_selection_rule": "strike minimizing absolute log-moneyness to event-time underlying/index reference, with deterministic tie-break",
+    "selection_must_use_point_in_time_chain_only": true
+  },
+  "execution": {
+    "entry_window_hours": 4,
+    "exit_window_hours": 4,
+    "hold_days": 7,
+    "option_amount_per_leg": 0.1,
+    "option_entry_price_rule": "sell call at contemporaneous executable bid and sell put at contemporaneous executable bid",
+    "option_exit_price_rule": "buy back call at contemporaneous executable ask and buy back put at contemporaneous executable ask",
+    "no_mid_price_execution": true,
+    "no_future_quote_lookahead": true,
+    "quote_staleness_limit_seconds": 30,
+    "missing_or_stale_bbo": "episode_not_executable"
+  },
+  "delta_hedge": {
+    "hedge_instrument": "BTC-PERPETUAL",
+    "initial_hedge_only": true,
+    "no_intraweek_rehedge": true,
+    "risk_free_rate": 0.0,
+    "iv_rule": "mean_call_put_entry_iv",
+    "spot_rule": "mean_call_put_entry_index_price",
+    "hedge_window_minutes": 30,
+    "round_usd_notional": 10.0,
+    "perpetual_execution_rule": "adverse executable side within frozen hedge window; no mid-price substitution"
+  },
+  "fees": {
+    "option_underlying_fee": 0.0003,
+    "option_premium_cap_fraction": 0.125,
+    "perpetual_taker_rate": 0.0005
+  },
+  "stress": {
+    "option_adverse_ticks_each_side": 1,
+    "perpetual_adverse_slippage_bps_each_side": 2.5,
+    "fee_multiplier": 1.25
+  },
+  "minimum_executable_n": 120,
+  "bootstrap": {
+    "replications": 5000,
+    "seed": 230911,
+    "block_observations": 4,
+    "ci": 0.95
+  },
+  "required_risk_metrics": [
+    "mean_net_return",
+    "median_net_return",
+    "profit_factor",
+    "max_drawdown",
+    "worst_episode_return",
+    "cvar_95",
+    "cvar_99",
+    "worst_1pct_mean",
+    "positive_year_contribution_share",
+    "yearly_returns",
+    "bootstrap_mean_ci"
+  ],
+  "promotion_gates": {
+    "mean_base_net_gt_0": true,
+    "base_pf_gt": 1.0,
+    "bootstrap_lower_gt_0": true,
+    "nonnegative_years_gte": 3,
+    "mean_stress_net_gt_0": true,
+    "stress_pf_gt": 1.0,
+    "worst_base_return_gt": -0.10,
+    "base_max_drawdown_lte": 0.20,
+    "max_positive_year_contribution_share_lte": 0.60,
+    "minimum_executable_n_met": true,
+    "protected_period_clean": true
+  },
+  "protected_period": {
+    "access_2025_authorized": false,
+    "access_2026_authorized": false
+  },
+  "safety": {
+    "source_acquisition_authorized": false,
+    "performance_outcomes_authorized_before_source_pass": false,
+    "paid_subscription_authorized": false,
+    "api_key_authorized": false,
+    "live_trading_authorized": false,
+    "exchange_mutation_authorized": false,
+    "wallet_access_authorized": false,
+    "merge_to_main_authorized": false,
+    "post_outcome_tuning_authorized": false
+  }
+}
