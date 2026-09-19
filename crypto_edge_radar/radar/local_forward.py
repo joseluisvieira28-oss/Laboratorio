@@ -27,7 +27,7 @@ def build_local_forward_settings(root: str = "data") -> Settings:
 
 
 class LocalForwardSupervisor:
-    """Runs the four non-DH03 public shadow engines on the local Windows node."""
+    """Runs the five local non-DH03 public shadow engines on the Windows node. CED1D remains externally collected."""
 
     def __init__(
         self,
