@@ -1,0 +1,38 @@
+{
+  "schema_version": "CRYPTO_LAB_EDGE_CLASSIFICATION_V1",
+  "lab_id": "LIQUIDATION-PRESSURE-001",
+  "classification_frozen_at_utc": "2026-09-19T16:56:00Z",
+  "primary_edge_family": "MICRO",
+  "secondary_edge_family": "FLOW",
+  "mathematical_engine": "conditional response to forced-deleveraging intensity using event-time liquidation notional/side states",
+  "mechanism_statement": "Liquidated traders are forced counterparties. Exchange liquidation engines create non-discretionary order flow that may temporarily overwhelm or exhaust available liquidity, producing continuation or reversal conditional on pressure and market absorption.",
+  "expected_sign_or_payoff_shape": "unknown ex ante; the lab must permit either continuation or reversal and freeze the event-state definition before opening forward prices",
+  "failure_mode": "exchange liquidation feed is incomplete/aggregated, timestamps are unsuitable, market absorbs flow immediately, or apparent signal is contemporaneous rather than predictive",
+  "regime_dependency": "expected sensitivity to leverage, liquidity, volatility and open-interest regimes; no regime filter is authorized at the source-feasibility stage",
+  "source_authority": {
+    "canonical_source": "Tardis normalized Binance USDT Futures liquidation dataset sourced from exchange-native forceOrder feed, subject to documented snapshot limitation",
+    "point_in_time_requirement": "event timestamp and local receipt timestamp must be preserved; no liquidation inference from price/volume proxies",
+    "coverage_gate": "source-only free-sample probe must prove 2021-2024 BTCUSDT liquidation rows and required fields before any full-history source contract or outcome work"
+  },
+  "execution_assumptions": {
+    "executable_strategy": false,
+    "cost_model": "NOT_APPLICABLE at source-feasibility stage",
+    "entry_exit": "NOT_APPLICABLE until a separate pre-discovery authority freezes event clustering, horizon and execution assumptions"
+  },
+  "protected_holdouts": ["2025", "2026"],
+  "validation_path": "source feasibility -> full historical acquisition -> event census -> completeness/aggregation audit -> pre-discovery freeze -> one Discovery -> independent replication/holdout",
+  "promotion_policy_reference": "fail-closed lab governance; no performance opening before source and sample gates",
+  "nearest_existing_family_or_lab": "DEFI-LIQUIDATION-SHOCK-001 and prior LIQUIDATION-PRESSURE-001 official/free-source feasibility closeout",
+  "material_difference_from_existing_work": "uses a directly observed historical centralized-exchange liquidation feed rather than inferring liquidations from price/volume/open-interest proxies or on-chain lending events",
+  "expected_correlation_bucket": "forced-flow / deleveraging microstructure",
+  "maturity": "M1",
+  "scientific_verdict": "SOURCE_ROUTE_REOPENED_OUTCOME_BLIND",
+  "forensic_audit_reference": "governance/CRYPTO_BRANCH_FORENSIC_AUDIT_V1.md",
+  "governance": {
+    "research_only": true,
+    "fail_closed": true,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "post_outcome_tuning": false
+  }
+}
