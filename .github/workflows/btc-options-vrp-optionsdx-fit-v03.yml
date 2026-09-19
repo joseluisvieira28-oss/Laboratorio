@@ -1,0 +1,37 @@
+name: BTC Options VRP — optionsDX Public Sample Execution Fit V0.3
+on:
+  push:
+    branches: [btc-options-vrp-exec-bbo-v0.2]
+    paths: [.github/btc-options-vrp-optionsdx-fit-v03.trigger]
+permissions:
+  contents: read
+jobs:
+  source_fit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: btc-options-vrp-exec-bbo-v0.2}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Verify source-only fit authority
+        run: |
+          python - <<'PY'
+          import json
+          a=json.load(open('labs/BTC_OPTIONS_VRP_001/OPTIONSDX_SOURCE_FIT_AUTHORITY_V0.3.json'))
+          assert a['status']=='FROZEN_SOURCE_ONLY_PUBLIC_SAMPLE_EXECUTION_FIT'
+          assert a['safety']['purchase_authorized'] is False
+          assert a['safety']['performance_outcomes_authorized'] is False
+          print('OPTIONSDX_SOURCE_FIT_V03_AUTHORITY_PASS')
+          PY
+      - run: python -m py_compile labs/BTC_OPTIONS_VRP_001/optionsdx_source_fit_v03.py
+      - name: Execute value-redacted source fit probe
+        run: python labs/BTC_OPTIONS_VRP_001/optionsdx_source_fit_v03.py
+      - name: Upload immutable fit receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: BTC_OPTIONS_VRP_001_OPTIONSDX_SOURCE_FIT_V0_3
+          path: artifacts/btc_options_vrp_optionsdx_source_fit_v03/
+          retention-days: 90
+          if-no-files-found: warn
