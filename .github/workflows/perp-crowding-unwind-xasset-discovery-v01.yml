@@ -1,0 +1,35 @@
+name: Perp Crowding Unwind Cross-Asset Discovery V0.1
+on:
+  push:
+    branches: [perp-crowding-unwind-crossasset-v0.1]
+    paths:
+      - "labs/PERP_CROWDING_UNWIND_XASSET_001/DISCOVERY_PREFREEZE_V0.1.json"
+      - "labs/PERP_CROWDING_UNWIND_XASSET_001/discovery_v01.py"
+      - ".github/workflows/perp-crowding-unwind-xasset-discovery-v01.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  discovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: python -m pip install --disable-pip-version-check -q pandas numpy
+      - name: Compile
+        run: python -m py_compile labs/PERP_CROWDING_UNWIND_XASSET_001/discovery_v01.py
+      - name: Run source gates then exact-rule SOL/BNB replication
+        run: python labs/PERP_CROWDING_UNWIND_XASSET_001/discovery_v01.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: PERP_CROWDING_UNWIND_XASSET_001_DISCOVERY_V0_1
+          path: |
+            pcu_xasset_source_receipt_v01.json
+            pcu_xasset_discovery_receipt_v01.json
+            pcu_xasset_solusdt_trades_v01.csv
+            pcu_xasset_bnbusdt_trades_v01.csv
+          if-no-files-found: warn
+          retention-days: 30
