@@ -1,0 +1,40 @@
+name: Crosschain Attention Reallocation V0.2
+on:
+  push:
+    branches: [crosschain-attention-reallocation-v0.1]
+    paths:
+      - "labs/CROSSCHAIN_ATTENTION_REALLOCATION_001/SOURCE_AUTHORITY_V0.2.json"
+      - "labs/CROSSCHAIN_ATTENTION_REALLOCATION_001/DISCOVERY_PREFREEZE_V0.1.json"
+      - "labs/CROSSCHAIN_ATTENTION_REALLOCATION_001/source_gate_v02.py"
+      - "labs/CROSSCHAIN_ATTENTION_REALLOCATION_001/discovery_v01.py"
+      - ".github/workflows/crosschain-attention-v02.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source-then-discovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: python -m pip install --disable-pip-version-check -q pandas numpy
+      - name: Compile
+        run: |
+          python -m py_compile labs/CROSSCHAIN_ATTENTION_REALLOCATION_001/source_gate_v02.py
+          python -m py_compile labs/CROSSCHAIN_ATTENTION_REALLOCATION_001/discovery_v01.py
+      - name: Run fresh chain-native source gate
+        run: python labs/CROSSCHAIN_ATTENTION_REALLOCATION_001/source_gate_v02.py
+      - name: Run frozen predictive Discovery only if source passed
+        run: python labs/CROSSCHAIN_ATTENTION_REALLOCATION_001/discovery_v01.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: CROSSCHAIN_ATTENTION_REALLOCATION_001_V0_2
+          path: |
+            car_v02_source_receipt.json
+            car_v02_discovery_receipt.json
+            car_v02_events.csv
+          if-no-files-found: warn
+          retention-days: 30
