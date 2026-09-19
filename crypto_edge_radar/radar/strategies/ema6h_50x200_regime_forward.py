@@ -10,7 +10,7 @@ from typing import Any, Iterable
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
-BINANCE_SPOT_BASE_URL = "https://api.binance.com"
+BINANCE_SPOT_BASE_URL = "https://data-api.binance.vision"
 FROZEN_UNIVERSE = ("BTCUSDT","ETHUSDT","SOLUSDT","BNBUSDT","XRPUSDT","DOGEUSDT")
 FIFTEEN_MIN_MS = 900_000
 SIX_HOUR_MS = 21_600_000
