@@ -44,12 +44,16 @@ jobs:
           test -f research/aave_liquidation_overhang/AAVE_LIQUIDATION_OVERHANG_001_DISCOVERY_STATISTICAL_CLARIFICATION_V0_1.md
           test -f research/aave_liquidation_overhang/AAVE_LIQUIDATION_OVERHANG_001_DISCOVERY_RESERVE_DECIMALS_ELIGIBILITY_REMEDIATION_V0_1.md
           test -f research/aave_liquidation_overhang/AAVE_LIQUIDATION_OVERHANG_001_DISCOVERY_LIQUIDATION_THRESHOLD_INITIALIZATION_REMEDIATION_V0_1.md
+          test -f research/aave_liquidation_overhang/AAVE_LIQUIDATION_OVERHANG_001_DISCOVERY_PREDICTOR_ACTIVE_RESERVE_DECIMALS_UNION_REMEDIATION_V0_1.md
           python - <<'PY'
           from pathlib import Path
           s=Path('research/aave_liquidation_overhang/discovery_reserve_shard_v01.py').read_text()
           assert 'decimals_required=[u for u,_ in selected if init_block[u]<=to_block]' in s
           assert 'missing active-Discovery reserve decimals' in s
           assert 'cfg_lt={u:0 for u in underlyings}' in s
+          p=Path('research/aave_liquidation_overhang/discovery_predictor_aggregate_v01.py').read_text()
+          assert 'active 2023 reserve decimals union is not exact 27' in p
+          assert 'active 2023 reserve decimals escaped canonical reserve master' in p
           print('DISCOVERY_DECIMALS_ELIGIBILITY_REMEDIATION_GUARD_PASS')
           PY
       - name: Static deterministic QA
