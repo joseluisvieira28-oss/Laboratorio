@@ -97,7 +97,7 @@ def main():
     d=pd.DataFrame(trades)
     n=len(d)
     if n:
-        d["year"]=pd.to_datetime(d["ts"],utc=True).dt.year
+        d["year"]=pd.to_datetime(d["ts"],utc=True,format="mixed").dt.year
         years={str(int(y)):float(v) for y,v in d.groupby("year")["net10"].mean().items()}
         ci=boot_ci(d["net10"].to_numpy())
         st={
