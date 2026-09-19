@@ -1,0 +1,104 @@
+name: ETH Blockspace Demand 001 — Full Source Recovery V0.2C
+
+on:
+  push:
+    branches:
+      - eth-blockspace-demand-v0.1
+    paths:
+      - 'research/eth_blockspace_demand/RUN_FULL_SOURCE_RECOVERY_V0_2C.txt'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Verify frozen recovery authority
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('research/eth_blockspace_demand/ETH_BLOCKSPACE_DEMAND_001_FULL_SOURCE_DATA_RECOVERY_V0_2C.md').read_text()
+          for x in ['35445718239','4,723 targets','237 cross-provider audit','gasUsed >= 0',
+                    'market prices, returns, PnL']:
+              assert x in s,x
+          print('ETH_BLOCKSPACE_V02C_RECOVERY_AUTHORITY_PASS')
+          PY
+
+      - name: Verify exact parent shard artifact metadata
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python - <<'PY'
+          import json,os,urllib.request
+          expected={
+            'ETH_BLOCKSPACE_SOURCE_SHARD_0':'sha256:9b1d8610e9ef3591fe99e7fbe1731db3d4e5468bf87b6a868ca2049bd4465a57',
+            'ETH_BLOCKSPACE_SOURCE_SHARD_1':'sha256:97a83c29ed264e3b8e72e6e34b8b59d13b2b5005e632fb99c5fb0acc880c1150',
+            'ETH_BLOCKSPACE_SOURCE_SHARD_2':'sha256:ab1df8fb0533ade05a1a3fdf929744c78bd41ee5ff235423f0610392a6c55c14',
+            'ETH_BLOCKSPACE_SOURCE_SHARD_3':'sha256:8634ace59c44c7955d89f5645735b41d0fb6f19b6db51a583fc0b382871ed01f',
+            'ETH_BLOCKSPACE_SOURCE_SHARD_4':'sha256:cbb8bc8bccef4cf266d65d8fbbbcd86e9bc27e22c28b1de062938c7687b5b16d',
+            'ETH_BLOCKSPACE_SOURCE_SHARD_5':'sha256:653beab9deb78806fc7b266f0d3a247d6fe746045e898f605c16f196b6b557ca',
+            'ETH_BLOCKSPACE_SOURCE_SHARD_6':'sha256:362ac939e26eb8b7f8df8cd50b3532554adc27ae1a46e2203b027382d1e169a2',
+            'ETH_BLOCKSPACE_SOURCE_SHARD_7':'sha256:9703ccff65ef6519bc7f98e351710a1aec19cdd79e263456725c394e2bba172f'}
+          u='https://api.github.com/repos/joseluisvieira28-oss/Laboratorio/actions/runs/35445718239/artifacts?per_page=100'
+          req=urllib.request.Request(u,headers={'Authorization':f'Bearer {os.environ["GH_TOKEN"]}','Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'})
+          with urllib.request.urlopen(req,timeout=30) as r:d=json.load(r)
+          got={a['name']:a.get('digest') for a in d['artifacts'] if a['name'] in expected}
+          assert got==expected,(got,expected)
+          print('PARENT_SHARD_ARTIFACT_METADATA_PASS count=',len(got))
+          PY
+
+      - name: Download exact parent partial shards
+        uses: actions/download-artifact@v4
+        with:
+          pattern: ETH_BLOCKSPACE_SOURCE_SHARD_*
+          path: parent_shards
+          merge-multiple: true
+          github-token: ${{ github.token }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: 35445718239
+
+      - name: Compile recovery finalizer
+        run: python -m py_compile research/eth_blockspace_demand/full_source_recovery_finalize_v02c.py
+
+      - name: Install source dependency
+        run: pip install --disable-pip-version-check requests
+
+      - name: Recover only missing targets and incomplete audits
+        run: python research/eth_blockspace_demand/full_source_recovery_finalize_v02c.py
+
+      - name: Enforce canonical Source/Data PASS and firewall
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('eth_blockspace_full_source_v02c_final/ETH_BLOCKSPACE_DEMAND_001_FULL_SOURCE_DATA_GATE_V0_2C_RECEIPT.json')
+          d=json.loads(p.read_text())
+          assert d['status']=='SOURCE_DATA_PASS'
+          assert d['coverage']>=0.995
+          assert d['audit_pass_count']==237
+          assert d['daily_retention']>=0.95
+          s=d['safety']
+          assert s['market_prices_opened'] is False
+          assert s['returns_opened'] is False
+          assert s['pnl_opened'] is False
+          assert s['protected_period_accessed'] is False
+          print('ETH_BLOCKSPACE_V02C_SOURCE_DATA_PASS')
+          PY
+
+      - name: Upload canonical recovered source-data evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: ETH_BLOCKSPACE_DEMAND_001_FULL_SOURCE_DATA_V0_2C
+          path: eth_blockspace_full_source_v02c_final/
+          if-no-files-found: error
+          retention-days: 90
