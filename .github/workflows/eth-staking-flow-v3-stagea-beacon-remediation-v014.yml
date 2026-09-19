@@ -1,0 +1,58 @@
+name: ETH Staking Flow 001 — V3 Stage-A Beacon State Remediation V0.1.4
+
+on:
+  push:
+    branches:
+      - eth-staking-flow-v0.3-discovery
+    paths:
+      - '.github/workflows/eth-staking-flow-v3-stagea-beacon-remediation-v014.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  beacon-source-remediation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install source dependency
+        run: pip install --disable-pip-version-check requests
+
+      - name: Verify frozen V0.1.4 authority before network
+        run: |
+          test -f research/eth_staking_flow/ETH_STAKING_FLOW_001_V3_STAGEA_BEACON_STATE_SOURCE_REMEDIATION_V0_1_4.md
+          python -m py_compile research/eth_staking_flow/v3_stagea_beacon_state_source_remediation_v014.py
+
+      - name: Execute exact control-plus-seven-date source probe
+        run: python research/eth_staking_flow/v3_stagea_beacon_state_source_remediation_v014.py
+
+      - name: Enforce outcome firewall
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('eth_staking_beacon_remediation_output/ETH_STAKING_FLOW_001_V3_STAGEA_BEACON_REMEDIATION_V0_1_4.json')
+          assert p.exists(), 'V0.1.4 receipt missing'
+          x=json.loads(p.read_text())
+          s=x['safety']
+          for k in ['signal_evaluated','market_prices_opened','returns_opened','pnl_opened','live_trading','orders','wallets','exchange_mutation','source_after_2026_08_31_opened']:
+              assert s[k] is False,(k,s[k])
+          print('ETH_V3_STAGEA_V014_FIREWALL_PASS',x['classification'])
+          PY
+
+      - name: Upload immutable V0.1.4 receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ETH_STAKING_FLOW_001_V3_STAGEA_BEACON_REMEDIATION_V0_1_4
+          path: eth_staking_beacon_remediation_output/ETH_STAKING_FLOW_001_V3_STAGEA_BEACON_REMEDIATION_V0_1_4.json
+          if-no-files-found: error
+          retention-days: 30
