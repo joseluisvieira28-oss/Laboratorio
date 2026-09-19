@@ -1,0 +1,67 @@
+{
+  "receipt_id": "RADAR-V0141-WINDOWS-RESILIENT-BOOTSTRAP-FINAL-2026-09-19",
+  "finalized_at_utc": "2026-09-19T14:35:28Z",
+  "status": "FINAL_VALIDATED_LOCAL_BOOTSTRAP_CORRECTION",
+  "supersedes_local_release": "RADAR-V014-WINDOWS-SEVEN-MOTOR-FINAL-2026-09-19",
+  "repository": "joseluisvieira28-oss/Laboratorio",
+  "authority_branch": "crypto-edge-radar-v0141-windows-resilient-bootstrap",
+  "runtime_code_commit": "c0ebb67cca30950bf4be14d39a449a5c8553e06a",
+  "incident": {
+    "observed": "canonical V0.14 EXE hash passed but localhost:8787 never reached health OK within verifier window",
+    "exact_machine_root_cause_proven": false,
+    "audit_finding": "V0.14 had opaque pre-dashboard hard dependencies: DH03 clock arming guard and legacy MEXC single-provider local-node preflight could terminate the process before cockpit diagnostics were reachable",
+    "correction_scope": "operational bootstrap and diagnostics only"
+  },
+  "correction": {
+    "build_id": "v0.14.1-win-seven-motor-resilient-bootstrap",
+    "registry_version": "3.6",
+    "cockpit_bootstrap": "direct loopback dashboard after registry verification",
+    "legacy_mexc_local_node_preflight_gates_cockpit": false,
+    "dh03_clock_failure_behavior": "DH03_ONLY_FAIL_CLOSED__NO_COLLECTOR_START__NO_NEW_ACTIVATION_BOUNDARY__COCKPIT_REMAINS_REACHABLE",
+    "forward_supervisor_independent": true,
+    "render_sentinel_independent": true,
+    "per_motor_runtime_truth_preserved": true
+  },
+  "validation": {
+    "windows_build_run_id": 35449022303,
+    "conclusion": "success",
+    "tests": "199/199 PASS",
+    "dedicated_bootstrap_tests": [
+      "DH03 clock failure blocks only DH03 and still serves dashboard",
+      "DH03 clock pass starts collector and dashboard"
+    ],
+    "package_selftest": {
+      "status": "PASS",
+      "candidate_count": 7,
+      "runtime_candidate_count": 7,
+      "registry_version": "3.6",
+      "resilient_control_plane_bootstrap": true,
+      "dh03_collector_importable": true,
+      "local_forward_supervisor_importable": true,
+      "render_sentinel_importable": true
+    }
+  },
+  "artifact": {
+    "id": 10585727374,
+    "name": "crypto-edge-radar-v0141-windows-resilient-bootstrap",
+    "github_artifact_sha256": "51ad3c976097bbd4e2cebd693a12e387bfbe02a911c0f334fd6bed915f530214",
+    "exe_sha256": "428d3e6d01253a304ad325a229f4c7bfe3054e6d5de95df4f76e5a65116c6c77"
+  },
+  "scientific_invariants": {
+    "rules_changed": false,
+    "costs_changed": false,
+    "assets_changed": false,
+    "timeframes_changed": false,
+    "directions_changed": false,
+    "forward_boundaries_changed": false,
+    "classifications_changed": false,
+    "closed_hypotheses_reopened": false
+  },
+  "safety": {
+    "authenticated_exchange_api_enabled": false,
+    "orders_created": false,
+    "exchange_mutation_performed": false,
+    "live_capital_enabled": false,
+    "main_merge": false
+  }
+}
