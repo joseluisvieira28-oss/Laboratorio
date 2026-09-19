@@ -17,6 +17,8 @@ ENDPOINTS = [
     "https://ethereum-rpc.publicnode.com",
     "https://eth.drpc.org",
     "https://1rpc.io/eth",
+    "https://eth.llamarpc.com",
+    "https://rpc.flashbots.net",
 ]
 REQUIRED_FIELDS = [
     "number", "hash", "parentHash", "timestamp", "gasLimit", "gasUsed", "baseFeePerGas"
@@ -176,10 +178,27 @@ def main() -> int:
         receipt["failure"] = f"{type(exc).__name__}: {str(exc)[:1000]}"
 
     dst.write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    transport_summary = {
+        ep: {
+            "chain_id_ok": bool(v.get("chain_id_ok")),
+            "error_count": len(v.get("errors") or []),
+            "error_labels": [str(x).split(":")[0] for x in (v.get("errors") or [])],
+        }
+        for ep, v in (receipt.get("providers") or {}).items()
+    }
+    block_summary = {
+        b: {
+            "provider_quorum": x.get("provider_quorum"),
+            "identity_status": x.get("identity_status"),
+        }
+        for b, x in (receipt.get("blocks") or {}).items()
+    }
     print(json.dumps({
         "classification": receipt["classification"],
         "accepted_blocks": accepted_blocks,
         "frozen_blocks": len(BLOCKS),
+        "transport_summary": transport_summary,
+        "block_summary": block_summary,
         "economic_values_persisted": False,
         "market_prices_opened": False,
         "returns_opened": False,
