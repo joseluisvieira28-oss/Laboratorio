@@ -11,6 +11,8 @@ from radar.bnb_launchpool_watcher import (
     LaunchpoolAnnouncement,
     _candidate_rows,
     _cluster_announcements,
+    _cluster_key,
+    MISSED_PROSPECTIVE_EVENT,
 )
 from radar.evidence import EvidenceStore
 from radar.strategies.bnb_launchpool_demand import (
@@ -141,11 +143,20 @@ class BNBLaunchpoolWatcherTests(TestCase):
                 source=StaticEligibleSource(events),
                 market=FakeMarket(),
             )
+            # Seed the two cluster identities as if they had been observed prospectively
+            # before their frozen entry opens. A later restart may then bind/resolve them.
+            for cluster in _cluster_announcements(events):
+                key = _cluster_key(cluster)
+                store.append_once(
+                    "BNB_FORWARD_ELIGIBLE_EVENT",
+                    key,
+                    {"event_key": key, "prospective_observation_seed": True},
+                )
             first = watcher.run_once(now_ms=now_ms)
             second = watcher.run_once(now_ms=now_ms)
 
             self.assertEqual(first["clusters_visible"], 2)
-            self.assertEqual(first["inserted_events"], 2)
+            self.assertEqual(first["inserted_events"], 0)
             self.assertEqual(first["inserted_selections"], 1)
             self.assertEqual(first["inserted_resolutions"], 1)
             self.assertEqual(first["inserted_suppressions"], 1)
@@ -157,8 +168,36 @@ class BNBLaunchpoolWatcherTests(TestCase):
             self.assertEqual(second["duplicate_selections"], 1)
             self.assertEqual(second["duplicate_resolutions"], 1)
             self.assertEqual(second["duplicate_suppressions"], 1)
+            self.assertEqual(first["missed_prospective_observation_count"], 0)
             ok, detail = store.verify_chain()
             self.assertTrue(ok, detail)
+
+    def test_late_first_discovery_is_recorded_missed_and_never_backfilled(self) -> None:
+        t0 = FORWARD_BOUNDARY_MS + 10_000
+        event = LaunchpoolAnnouncement(CODE1, "A Launchpool", t0, "a", "1" * 64)
+        entry = first_eligible_entry_open_ms(t0)
+        now_ms = entry + FIFTEEN_MIN_MS
+
+        with tempfile.TemporaryDirectory() as td:
+            store = EvidenceStore(str(Path(td) / "evidence.sqlite3"))
+            watcher = BNBLaunchpoolForwardShadowWatcher(
+                store=store,
+                source=StaticEligibleSource([event]),
+                market=FakeMarket(),
+            )
+            first = watcher.run_once(now_ms=now_ms)
+            second = watcher.run_once(now_ms=now_ms)
+
+            self.assertEqual(first["inserted_events"], 0)
+            self.assertEqual(first["inserted_selections"], 0)
+            self.assertEqual(first["inserted_resolutions"], 0)
+            self.assertEqual(first["inserted_missed_observations"], 1)
+            self.assertEqual(first["missed_prospective_observation_count"], 1)
+            self.assertEqual(second["duplicate_missed_observations"], 1)
+            rows = store.read_payloads(MISSED_PROSPECTIVE_EVENT)
+            self.assertEqual(len(rows), 1)
+            self.assertTrue(rows[0]["late_reconstruction_forbidden"])
+            self.assertFalse(rows[0]["used_as_forward_trade_evidence"])
 
 
 if __name__ == "__main__":
