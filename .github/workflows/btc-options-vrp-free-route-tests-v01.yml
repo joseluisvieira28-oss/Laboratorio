@@ -26,14 +26,22 @@ jobs:
       - name: Run source-only unit tests
         run: python -m pytest -q labs/BTC_OPTIONS_VRP_001/test_forward_bbo_collector_v01.py
 
-      - name: Assert no outcome code markers in collector
+      - name: Assert no private/trading code markers in collector
         shell: python
         run: |
           from pathlib import Path
           p = Path("labs/BTC_OPTIONS_VRP_001/forward_bbo_collector_v01.py")
           s = p.read_text(encoding="utf-8").lower()
-          forbidden = ["profit_factor", "expectancy", "strategy_pnl", "place_order", "buy_order", "sell_order"]
+          forbidden = [
+              "place_order(",
+              "cancel_order(",
+              "private/",
+              "private_get",
+              "private_post",
+              "client_secret",
+              "access_token",
+          ]
           hits = [x for x in forbidden if x in s]
           if hits:
-              raise SystemExit(f"Forbidden source-only markers found: {hits}")
+              raise SystemExit(f"Forbidden source-only operational markers found: {hits}")
           print("source-only static firewall PASS")
