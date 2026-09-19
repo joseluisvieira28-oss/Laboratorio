@@ -1,0 +1,69 @@
+{
+  "lab_id": "OPTIONS-EXPIRY-GAMMA-001",
+  "source_gate_id": "OEG-ATM-STRADDLE-BBO-SOURCE-007",
+  "status": "PRE_ACQUISITION_FROZEN_SOURCE_ONLY",
+  "date_frozen": "2026-09-19",
+  "deterministic_probe_dates": [
+    "2021-01-01",
+    "2022-01-01",
+    "2023-01-01",
+    "2024-01-01"
+  ],
+  "source": {
+    "provider": "Tardis.dev Deribit free first-day-of-month datasets",
+    "chain_url": "https://datasets.tardis.dev/v1/deribit/options_chain/YYYY/MM/DD/OPTIONS.csv.gz",
+    "quotes_url": "https://datasets.tardis.dev/v1/deribit/quotes/YYYY/MM/DD/OPTIONS.csv.gz",
+    "api_key_used": false,
+    "subscription_purchase": false
+  },
+  "selection": {
+    "chain_snapshot": "latest BTC option chain row at or before 12:00 UTC",
+    "expiry_dte_min": 7,
+    "expiry_dte_max": 14,
+    "expiry_choice": "nearest eligible expiry",
+    "strike_choice": "strike minimizing absolute(strike-underlying_price), requiring both call and put",
+    "fixed_before_quotes": true
+  },
+  "quote_windows": {
+    "entry_anchor_utc": "12:00:00",
+    "entry_tolerance_minutes": 5,
+    "exit_anchor_utc": "23:55:00",
+    "exit_tolerance_minutes": 5
+  },
+  "per_date_gates": {
+    "selected_call_put_same_expiry_strike": true,
+    "entry_two_sided_bbo_both_legs": true,
+    "exit_two_sided_bbo_both_legs": true,
+    "noncrossed_bbo": true,
+    "positive_quote_amounts": true
+  },
+  "aggregate_gate": "All four deterministic probe dates must pass every per-date gate.",
+  "classifications": {
+    "pass": "ATM_STRADDLE_BBO_SOURCE_FEASIBLE",
+    "insufficient": "ATM_STRADDLE_BBO_SOURCE_INSUFFICIENT",
+    "technical_failure": "ATM_STRADDLE_BBO_SOURCE_TECHNICAL_FAILURE"
+  },
+  "retained_metrics_only": [
+    "date",
+    "selected expiry and strike",
+    "call/put symbols",
+    "quote-presence booleans",
+    "quote timestamp distances",
+    "HTTP statuses",
+    "compressed SHA256"
+  ],
+  "firewalls": {
+    "retain_bid_ask_prices": false,
+    "retain_option_premiums": false,
+    "compute_straddle_pnl": false,
+    "compute_returns": false,
+    "open_btc_outcomes": false,
+    "access_2025": false,
+    "access_2026": false,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "wallet_access": false,
+    "merge_to_main": false
+  },
+  "post_pass_rule": "PASS authorizes a full 48-date BBO source census or a separately frozen execution MVE only if the corresponding economic Discovery independently passes."
+}
