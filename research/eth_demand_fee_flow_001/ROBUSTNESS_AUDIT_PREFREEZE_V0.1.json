@@ -1,0 +1,51 @@
+{
+  "lab_id": "ETH-DEMAND-FEE-FLOW-001",
+  "audit_id": "EDFF-FD45-INFERENCE-ROBUSTNESS-001",
+  "version": "0.1",
+  "date_frozen": "2026-09-20",
+  "branch": "eth-demand-fee-flow-v0.2",
+  "parent_run": 35476370361,
+  "parent_verdict": "REPLICATION_MIXED",
+  "status": "FROZEN_POST-RESULT_ROBUSTNESS_NONPROMOTIONAL",
+  "purpose": "Characterize serial-dependence uncertainty in the already-opened 2024 primary sample without changing the signal, horizon, alignment, source, sign, or outcome.",
+  "immutable_parent_rules": {
+    "sample": "exact 248 primary post-Dencun 2024 observations emitted by EDFF-FD45-REPLICATION-001",
+    "signal": "same Flow Deviation values",
+    "outcome": "same next-day-open to +45d ETHUSDT log return",
+    "model": "same linear slope beta of future return on FD"
+  },
+  "tests": {
+    "circular_moving_block_bootstrap": {
+      "reps": 10000,
+      "block_length_days": 45,
+      "seed": 230923,
+      "statistic": "OLS beta",
+      "ci": [
+        0.025,
+        0.975
+      ]
+    },
+    "circular_shift_null": {
+      "minimum_abs_shift_days": 45,
+      "maximum_abs_shift_rule": "N-45",
+      "statistic": "OLS beta after circularly shifting FD relative to returns",
+      "p_value": "two-sided fraction of admissible shifted |beta| >= observed |beta| with +1 correction"
+    },
+    "calendar_quarter_signs": {
+      "role": "descriptive only",
+      "rule": "report beta separately for 2024Q2, Q3 and available Q4 observations; no selection or gate"
+    }
+  },
+  "classification_rules": {
+    "ROBUSTNESS_SUPPORTIVE_NOT_PROMOTIONAL": "bootstrap beta 95% lower > 0 AND circular-shift p < 0.05",
+    "ROBUSTNESS_PARTIAL_NOT_PROMOTIONAL": "observed beta > 0 AND exactly one of those two conditions holds",
+    "ROBUSTNESS_WEAK_NOT_PROMOTIONAL": "observed beta > 0 AND neither condition holds",
+    "ROBUSTNESS_CONTRADICTS_PARENT": "observed beta <= 0"
+  },
+  "hard_boundary": [
+    "This audit cannot upgrade the parent REPLICATION_MIXED verdict.",
+    "No threshold/horizon/alignment/sign/source changes.",
+    "No 2025/2026.",
+    "No trading/PnL."
+  ]
+}
