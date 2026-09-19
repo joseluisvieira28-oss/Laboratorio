@@ -1,0 +1,66 @@
+name: BTC Options VRP Free Route CI V0.1
+
+on:
+  pull_request:
+    paths:
+      - "labs/BTC_OPTIONS_VRP_001/FREE_ROUTE_*"
+      - "labs/BTC_OPTIONS_VRP_001/FORWARD_BBO_*"
+      - "labs/BTC_OPTIONS_VRP_001/forward_bbo_collector_v01.py"
+      - "labs/BTC_OPTIONS_VRP_001/test_forward_bbo_collector_v01.py"
+      - ".github/workflows/btc-options-vrp-free-route-ci-v01.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Compile collector
+        run: |
+          python -m py_compile labs/BTC_OPTIONS_VRP_001/forward_bbo_collector_v01.py
+
+      - name: Run unit tests
+        run: |
+          python labs/BTC_OPTIONS_VRP_001/test_forward_bbo_collector_v01.py
+
+      - name: Fail-closed safety scan
+        shell: bash
+        run: |
+          set -euo pipefail
+          f="labs/BTC_OPTIONS_VRP_001/forward_bbo_collector_v01.py"
+          if grep -Eiq 'private/|private_|client_secret|api_key|access_token|wallet|create_order|place_order|cancel_order|/buy|/sell' "$f"; then
+            echo "Forbidden authenticated/trading token detected in source-only collector"
+            exit 1
+          fi
+          grep -q 'public/get_index_price' "$f"
+          grep -q 'public/get_instruments' "$f"
+          grep -q 'public/get_order_book' "$f"
+
+      - name: Verify authority remains source-only
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path("labs/BTC_OPTIONS_VRP_001/FORWARD_BBO_COLLECTOR_AUTHORITY_V0.1.json")
+          a=json.loads(p.read_text())
+          s=a["safety"]
+          required_false=[
+              "returns_authorized","pnl_authorized","expectancy_authorized",
+              "future_realized_variance_authorized","strategy_signal_authorized",
+              "position_sizing_authorized","exchange_authentication_authorized",
+              "orders_authorized","cancels_authorized","wallet_access_authorized",
+              "exchange_mutation_authorized","live_trading_authorized","merge_to_main_authorized"
+          ]
+          assert all(s[k] is False for k in required_false)
+          assert s["access_2026_source_only_authorized"] is True
+          print("SOURCE_ONLY_AUTHORITY_PASS")
+          PY
