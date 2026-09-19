@@ -1,0 +1,46 @@
+{
+  "lab_id": "BTC-OPTIONS-VRP-001",
+  "probe_id": "OVRP-EXEC-SOURCE-OPTIONSDX-FIT-003",
+  "version": "0.3",
+  "date_frozen": "2026-09-19",
+  "status": "FROZEN_SOURCE_ONLY_PUBLIC_SAMPLE_EXECUTION_FIT",
+  "parent_source_probe": "OPTIONSDX_SAMPLE_SCHEMA_FEASIBLE",
+  "parent_run": 35456986140,
+  "purpose": "Test only whether the public optionsDX sample has timestamp density and same-strike 25-35 DTE call/put executable-BBO availability compatible with the already-frozen MVE. No option value, return, PnL or performance result may be emitted.",
+  "public_sample_url": "https://www.optionsdx.com/wp-content/uploads/2022/01/btc_sample.csv",
+  "frozen_fit_checks": {
+    "utc_window_start": "08:00:00",
+    "utc_window_end": "12:00:00",
+    "dte_min": 25.0,
+    "dte_max": 35.0,
+    "same_expiry_same_strike_call_put": true,
+    "require_bid_price_gt_zero": true,
+    "require_ask_price_gt_zero": true,
+    "require_bid_size_gt_zero": true,
+    "require_ask_size_gt_zero": true,
+    "near_anchor_minutes": 5,
+    "required_timestamp_with_candidate_pair_near_anchor": true
+  },
+  "pass_rule": {
+    "sample_schema_feasible": true,
+    "window_has_snapshots": true,
+    "window_has_candidate_pair": true,
+    "near_0800_has_candidate_pair": true,
+    "terminal_pass_classification": "OPTIONSDX_PUBLIC_SAMPLE_EXECUTION_FIT_PASS"
+  },
+  "safety": {
+    "purchase_authorized": false,
+    "paid_download_authorized": false,
+    "option_values_emit_authorized": false,
+    "performance_outcomes_authorized": false,
+    "returns_authorized": false,
+    "pnl_authorized": false,
+    "parameter_tuning_authorized": false,
+    "access_2025_authorized": false,
+    "access_2026_authorized": false,
+    "live_trading_authorized": false,
+    "exchange_mutation_authorized": false,
+    "wallet_access_authorized": false,
+    "merge_to_main_authorized": false
+  }
+}
