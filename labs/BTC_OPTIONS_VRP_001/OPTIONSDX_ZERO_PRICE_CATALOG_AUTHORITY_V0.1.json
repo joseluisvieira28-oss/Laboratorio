@@ -1,0 +1,44 @@
+{
+  "lab_id": "BTC-OPTIONS-VRP-001",
+  "probe_id": "OVRP-OPTIONSDX-ZERO-PRICE-CATALOG-001",
+  "version": "0.1",
+  "date_frozen": "2026-09-19",
+  "status": "FROZEN_PROCUREMENT_METADATA_ONLY",
+  "purpose": "Determine whether the public optionsDX BTC Deribit product currently exposes any full-data variation priced at exactly USD 0.00, before considering paid data. No dataset purchase, cart, checkout, account or strategy outcome is authorized.",
+  "product_url": "https://www.optionsdx.com/product/btc-option-chains/",
+  "cash_spend_cap_usd": 0,
+  "allowed_fields": [
+    "variation_id",
+    "period attribute",
+    "quote-frequency attribute",
+    "public display price",
+    "public regular price",
+    "stock/purchasability metadata if exposed"
+  ],
+  "pass_rule": {
+    "at_least_one_identifiable_zero_price_variation": true,
+    "terminal_pass_classification": "OPTIONSDX_ZERO_PRICE_VARIATION_FOUND"
+  },
+  "terminal_classifications": [
+    "OPTIONSDX_ZERO_PRICE_VARIATION_FOUND",
+    "OPTIONSDX_NO_ZERO_PRICE_VARIATION_VISIBLE",
+    "OPTIONSDX_CATALOG_METADATA_INSUFFICIENT",
+    "OPTIONSDX_CATALOG_ACQUISITION_FAILURE"
+  ],
+  "safety": {
+    "add_to_cart_authorized": false,
+    "checkout_authorized": false,
+    "account_creation_authorized": false,
+    "purchase_authorized": false,
+    "payment_authorized": false,
+    "api_key_authorized": false,
+    "strategy_data_download_authorized": false,
+    "returns_authorized": false,
+    "pnl_authorized": false,
+    "access_2025_authorized": false,
+    "access_2026_authorized": false,
+    "live_trading_authorized": false,
+    "exchange_mutation_authorized": false,
+    "merge_to_main_authorized": false
+  }
+}
