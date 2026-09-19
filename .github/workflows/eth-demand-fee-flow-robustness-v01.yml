@@ -1,0 +1,38 @@
+name: ETH Demand Fee Flow Inference Robustness V0.1
+on:
+  push:
+    branches: [eth-demand-fee-flow-v0.2]
+    paths:
+      - "research/eth_demand_fee_flow_001/ROBUSTNESS_AUDIT_PREFREEZE_V0.1.json"
+      - "research/eth_demand_fee_flow_001/robustness_audit_v01.py"
+      - ".github/workflows/eth-demand-fee-flow-robustness-v01.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  robustness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: python -m pip install --disable-pip-version-check -q pandas numpy statsmodels
+      - name: Compile
+        run: |
+          python -m py_compile research/eth_demand_fee_flow_001/source_gate_v02.py
+          python -m py_compile research/eth_demand_fee_flow_001/replication_v01.py
+          python -m py_compile research/eth_demand_fee_flow_001/robustness_audit_v01.py
+      - name: Reconstruct exact bounded parent dataset
+        run: |
+          python research/eth_demand_fee_flow_001/source_gate_v02.py
+          python research/eth_demand_fee_flow_001/replication_v01.py
+      - name: Run frozen non-promotional inference robustness audit
+        run: python research/eth_demand_fee_flow_001/robustness_audit_v01.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ETH_DEMAND_FEE_FLOW_001_ROBUSTNESS_V0_1
+          path: edff_robustness_receipt_v01.json
+          if-no-files-found: error
+          retention-days: 30
