@@ -1,0 +1,64 @@
+{
+  "lab_id": "PERP-CROWDING-UNWIND-ETH-001",
+  "mve_id": "PCU-ETH-24H-TRAILING-CROWDING-001",
+  "version": "0.1",
+  "date_frozen": "2026-09-19",
+  "branch": "perp-crowding-unwind-eth-v0.1",
+  "status": "FROZEN_INDEPENDENT_ASSET_TEST_BEFORE_ETH_OUTCOMES",
+  "parent_reference": {
+    "btc_lab": "PERP-CROWDING-UNWIND-001",
+    "btc_verdict": "DISCOVERY_FAIL_NO_PROMOTION",
+    "rule": "This ETH test cannot rescue, rewrite, or promote the BTC result."
+  },
+  "economic_family": "MICROSTRUCTURE / FORCED_FLOW / CROWDED_LEVERAGE",
+  "venue": "Binance USD-M Futures",
+  "symbol": "ETHUSDT",
+  "discovery_period": {
+    "start": "2021-01-01",
+    "end": "2024-12-31"
+  },
+  "protected_periods": [
+    "2025",
+    "2026"
+  ],
+  "mechanism": "Identical to BTC PCU: extreme funding tail plus unusually high 24h aggregate-open-interest expansion identifies crowded leveraged positioning; test a 24h contrarian unwind.",
+  "exact_rule_carryover": {
+    "funding_upper_quantile": 0.95,
+    "funding_lower_quantile": 0.05,
+    "oi_growth_quantile": 0.8,
+    "trailing_window_events": 540,
+    "minimum_history_events": 270,
+    "hold_hours": 24,
+    "metric_staleness_max_minutes": 15,
+    "round_trip_cost_bps_primary": 10,
+    "round_trip_cost_bps_stress": 20,
+    "one_active_position": true,
+    "funding_cashflows_included": false
+  },
+  "coverage_gate": {
+    "full": "at least 46 months at >=95% daily metrics coverage and >=11 full common months in every year, with monthly funding and 1h klines",
+    "limited": "at least 36 months at >=80% daily metrics coverage and >=8 usable common months in every year",
+    "blocked": "below limited"
+  },
+  "promotion_gate": {
+    "minimum_N": 60,
+    "mean_net10_gt_0": true,
+    "profit_factor_net10_gte": 1.1,
+    "bootstrap_95_lower_mean_net10_gt_0": true,
+    "positive_years_gte": 3,
+    "mean_net20_gt_0": true,
+    "profit_factor_net20_gt_1": true
+  },
+  "anti_tuning": [
+    "No threshold, horizon, cost, rolling history, sign, or overlap rule may differ from BTC PCU.",
+    "No 2025/2026 access.",
+    "No BTC outcome may be combined with ETH to retroactively change the BTC verdict."
+  ],
+  "safety": {
+    "cash_spend_usd": 0,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "wallet_access": false,
+    "merge_to_main": false
+  }
+}
