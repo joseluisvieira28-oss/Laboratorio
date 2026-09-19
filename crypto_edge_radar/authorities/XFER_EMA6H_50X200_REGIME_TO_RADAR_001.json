@@ -1,0 +1,39 @@
+{
+  "record_id": "XFER-EMA6H-50X200-REGIME-TO-RADAR-001",
+  "status": "APPROVED_RESEARCH_SHADOW_ONLY",
+  "created_date": "2026-09-19",
+  "source_lab": "EMA6H-50X200-REGIME-DEPENDENCY-001",
+  "source_version": "V0.1",
+  "source_artifact": {
+    "freeze_commit": "cbc4d0c22f5d9558b1b30693c73aa2a6de2d43c5",
+    "phase_A_closeout_commit": "58aa1fa76e9d4d2db64e2d4bfac7fceb1c4267ac",
+    "historical_diagnostic_run_id": 35445020407,
+    "historical_diagnostic_artifact_id": 10584398269,
+    "historical_diagnostic_artifact_digest": "sha256:dbce7ae1a818617f848b99a27e66bfdddfbbe5768eb216e98a99666a37d5b3c4"
+  },
+  "dataset_signature": {
+    "candidate_history": "189 immutable EMA50x200 6H events across Binance 2021-22, MEXC 2023-24, Binance 2025-Aug2026",
+    "regime_anchor": "Binance BTCUSDT 1D 2020-01 through 2026-08, checksum-bound",
+    "forward_boundary": "first eligible signal close 2026-09-20T00:00:00Z"
+  },
+  "hypothesis_finding": "Historical diagnostic does not support a simple symmetric bull/bear alignment explanation. TRANSITION_CHOP was descriptively strongest and a large bullish-vs-bearish crossover asymmetry appeared. These are post-outcome findings and cannot alter the parent strategy. Forward collection must retain both directions and all frozen regime buckets.",
+  "validation_status": "POST_OUTCOME_DIAGNOSTIC_ONLY__NO_PROMOTION_AUTHORITY",
+  "holdout_status": "Parent M5 OOS consumed through 2026-08. New Phase B evidence is strictly prospective from 2026-09-20T00:00:00Z.",
+  "target_system": "CRYPTO EDGE RADAR / canonical Postgres-backed public shadow control plane",
+  "target_rule_to_be_affected": "Add a new read-only protected forward evidence watcher only. No existing strategy adapter, scoring, risk, order logic, timing rule, or candidate verdict is modified.",
+  "conflict_check": {
+    "existing_six_motors_unchanged": true,
+    "main_branch_unchanged": true,
+    "no_existing_strategy_rule_modified": true,
+    "no_historical_backfill": true,
+    "no_authenticated_exchange_api": true,
+    "no_orders": true,
+    "no_exchange_mutation": true
+  },
+  "approval": {
+    "user_authorized": true,
+    "scope": "attack with everything on regime hypothesis",
+    "capital_authority": false,
+    "micro_live_authority": false
+  }
+}
