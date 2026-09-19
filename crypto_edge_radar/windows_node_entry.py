@@ -12,7 +12,7 @@ from radar.dh03_12h_local import DH03LocalCollector, default_paths, require_dh03
 from radar.local_forward import LocalForwardSupervisor
 
 
-BUILD_ID = "v0.13.2-win-six-motor-runtime-truth"
+BUILD_ID = "v0.14-win-seven-motor-forward-shadow"
 
 
 def _resource_path(name: str) -> str:
@@ -42,6 +42,9 @@ def _verify_registry_file(registry_path: str) -> tuple[dict, dict]:
     ced1d = "CED1D-0031"
     if ced1d not in ids:
         raise RuntimeError(f"deployment registry missing external CED1D strategy: {ced1d}")
+    ema6h = "EMA6H-50X200-REGIME-DEPENDENCY-001"
+    if ema6h not in ids:
+        raise RuntimeError(f"deployment registry missing EMA6H regime forward strategy: {ema6h}")
     state = {
         "status": "PASS",
         "build_id": BUILD_ID,
@@ -50,6 +53,7 @@ def _verify_registry_file(registry_path: str) -> tuple[dict, dict]:
         "required_strategy_present": True,
         "dh03_strategy_present": True,
         "ced1d_strategy_present": True,
+        "ema6h_strategy_present": True,
     }
     return payload, state
 
@@ -121,6 +125,7 @@ def _run_forward_background() -> None:
                 "TFG-DONCHIAN-REGIME-ADAPTATION-V1",
                 "OPTIONS-SPOTPERP-001-V2.1",
                 "ETF-CME-INSTFLOW-001",
+                "EMA6H-50X200-REGIME-DEPENDENCY-001",
             ],
             "poll_interval_seconds": 30.0,
             "authenticated_exchange_api_used": False,
@@ -145,7 +150,7 @@ def _run_forward_background() -> None:
 def _start_forward_thread() -> threading.Thread:
     thread = threading.Thread(
         target=_run_forward_background,
-        name="Four-Engine-Local-Forward-Shadow",
+        name="Five-Engine-Local-Forward-Shadow",
         daemon=True,
     )
     thread.start()
