@@ -146,7 +146,7 @@ def main()->int:
         else:
             classification=None; failure=None
 
-        counts=Counter(); seen=set(); days=set(); months_by_event={"Mint":set(),"Burn":set(),"Swap":set()}; years_by_event={"Mint":set(),"Burn":set(),"Swap":set()}
+        counts=Counter(); seen=set(); days=set(); swap_day_set=set(); months_by_event={"Mint":set(),"Burn":set(),"Swap":set()}; years_by_event={"Mint":set(),"Burn":set(),"Swap":set()}
         structural=hashlib.sha256()
         prewindow_rows=0
         if classification is None:
@@ -173,19 +173,12 @@ def main()->int:
                     dt=datetime.fromtimestamp(ts,tz=timezone.utc)
                     day=dt.date().isoformat(); month=f"{dt.year:04d}-{dt.month:02d}"
                     counts[ev]+=1; days.add(day); months_by_event[ev].add(month); years_by_event[ev].add(dt.year)
+                    if ev=="Swap": swap_day_set.add(day)
                     structural.update(f"{bn}|{ts}|{tx}|{li}|{ev}\n".encode())
 
-            swap_days=sum(1 for d in days)  # every admitted day set is event-active; derive swap-specific below
-            # derive exact swap days through a second compact set built from structural ledger is intentionally avoided;
-            # source gate requires swap-day count, so reacquire timestamp/topic metadata only, still no data/economic fields.
-            swap_day_set=set()
-            for obj in stream_logs(Counter()):
-                h=obj.get("header") or obj.get("block") or {}; ts=int(h["timestamp"])
-                if ts<START_TS or ts>END_TS: continue
-                for log in obj.get("logs") or []:
-                    topics=[str(x).lower() for x in (log.get("topics") or [])]
-                    if topics and topics[0]==T_SWAP:
-                        swap_day_set.add(datetime.fromtimestamp(ts,tz=timezone.utc).date().isoformat())
+            # Operational hardening only: derive unique Swap UTC days during the same
+            # immutable structural pass instead of re-downloading the frozen corpus.
+            # Scientific window, source, event definitions and gates are unchanged.
             swap_days=len(swap_day_set)
 
             gates={
