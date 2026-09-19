@@ -10,6 +10,7 @@ import traceback
 from radar.__main__ import main
 from radar.dh03_12h_local import DH03LocalCollector, default_paths, require_dh03_clock_preflight
 from radar.local_forward import LocalForwardSupervisor
+from radar.render_sentinel import RenderSentinel
 
 
 BUILD_ID = "v0.14-win-seven-motor-forward-shadow"
@@ -167,6 +168,45 @@ def _start_dh03_thread() -> threading.Thread:
     return thread
 
 
+def _run_render_sentinel_background() -> None:
+    status_path = Path("data") / "render_sentinel_supervisor_status.json"
+    try:
+        sentinel = RenderSentinel(root="data")
+        _write_json_atomic(status_path, {
+            "status": "RUNNING",
+            "build_id": BUILD_ID,
+            "interval_seconds": sentinel.interval_seconds,
+            "base_url": sentinel.base_url,
+            "mode": "READ_ONLY_KEEPALIVE_AND_RECONCILIATION",
+            "authenticated_exchange_api_used": False,
+            "orders_created": False,
+            "exchange_mutation_performed": False,
+            "live_capital_enabled": False,
+        })
+        sentinel.run_forever()
+    except Exception as exc:
+        _write_json_atomic(status_path, {
+            "status": "FAIL_CLOSED",
+            "build_id": BUILD_ID,
+            "error": f"{type(exc).__name__}:{exc}",
+            "traceback": traceback.format_exc(limit=8),
+            "authenticated_exchange_api_used": False,
+            "orders_created": False,
+            "exchange_mutation_performed": False,
+            "live_capital_enabled": False,
+        })
+
+
+def _start_render_sentinel_thread() -> threading.Thread:
+    thread = threading.Thread(
+        target=_run_render_sentinel_background,
+        name="Render-Public-Shadow-Sentinel",
+        daemon=True,
+    )
+    thread.start()
+    return thread
+
+
 def run() -> int:
     os.environ.setdefault("RADAR_PROVIDER", "mexc_futures_public")
     os.environ.setdefault("RADAR_UNIVERSE_MODE", "core5")
@@ -190,6 +230,7 @@ def run() -> int:
     if os.getenv("RADAR_PACKAGING_SELFTEST") == "1":
         package_state["dh03_collector_importable"] = True
         package_state["local_forward_supervisor_importable"] = True
+        package_state["render_sentinel_importable"] = True
         print(json.dumps(package_state, sort_keys=True))
         return 0
 
@@ -213,6 +254,7 @@ def run() -> int:
 
     _start_dh03_thread()
     _start_forward_thread()
+    _start_render_sentinel_thread()
 
     return main(
         [
