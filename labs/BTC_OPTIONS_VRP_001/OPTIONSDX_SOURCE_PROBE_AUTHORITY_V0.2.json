@@ -1,0 +1,42 @@
+{
+  "lab_id": "BTC-OPTIONS-VRP-001",
+  "probe_id": "OVRP-EXEC-SOURCE-OPTIONSDX-PROBE-002",
+  "version": "0.2",
+  "date_frozen": "2026-09-19",
+  "status": "FROZEN_SOURCE_ONLY_PUBLIC_SAMPLE_NO_PURCHASE",
+  "parent_v01_run": 35456894141,
+  "parent_v01_classification": "SOURCE_ROUTE_SCHEMA_INSUFFICIENT",
+  "erratum_path": "labs/BTC_OPTIONS_VRP_001/OPTIONSDX_SOURCE_PROBE_V0_1_ERRATUM.md",
+  "purpose": "Re-run only the public sample schema probe with provider-specific header normalization. No purchase or performance outcome is authorized.",
+  "provider": {
+    "name": "optionsDX",
+    "product": "BTC Option Chains [Deribit]",
+    "public_sample_url": "https://www.optionsdx.com/wp-content/uploads/2022/01/btc_sample.csv",
+    "published_historical_coverage": "2021-06 through 2024-09",
+    "published_frequencies": ["End of Day","30 Minutes","15 Minutes","5 Minutes","Minutely"],
+    "published_format": "Monthly CSVs"
+  },
+  "required_fields": ["QUOTE_UNIXTIME","INSTRUMENT_NAME","EXPIRY_UNIX","DTE","OPTION_RIGHT","STRIKE","BID_SIZE","BID_PRICE","ASK_PRICE","ASK_SIZE","UNDERLYING_PRICE","DELTA","MARK_IV"],
+  "pass_rule": {
+    "http_200": true,
+    "csv_parseable": true,
+    "required_fields_present_after_header_normalization": true,
+    "nonempty_rows": true,
+    "terminal_pass_classification": "OPTIONSDX_SAMPLE_SCHEMA_FEASIBLE"
+  },
+  "prospective_fit_note": "Published coverage is 2021-06 through 2024-09, shorter than the frozen 2021-04 through 2024-11 MVE. Missing provider dates remain non-executable and may not be removed from the anchor calendar.",
+  "safety": {
+    "purchase_authorized": false,
+    "paid_download_authorized": false,
+    "performance_outcomes_authorized": false,
+    "returns_authorized": false,
+    "pnl_authorized": false,
+    "parameter_tuning_authorized": false,
+    "access_2025_authorized": false,
+    "access_2026_authorized": false,
+    "live_trading_authorized": false,
+    "exchange_mutation_authorized": false,
+    "wallet_access_authorized": false,
+    "merge_to_main_authorized": false
+  }
+}
