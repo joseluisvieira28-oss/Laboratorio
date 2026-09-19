@@ -1,0 +1,160 @@
+name: EMA Crossover Intermediate MEXC Replication V0.1
+
+on:
+  push:
+    branches:
+      - ema-crossover-intermediate-mexc-rep-v0.1
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/ema_crossover_intermediate_rep/RUN_REPLICATION_V0.1.txt'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  replication:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout frozen replication branch
+        uses: actions/checkout@v4
+        with:
+          ref: ema-crossover-intermediate-mexc-rep-v0.1
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Verify freeze, amendment, and locked runner before source access
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: |
+          python - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          p=Path('research/ema_crossover_intermediate_rep')
+          f=json.loads((p/'EMA_CROSSOVER_INTERMEDIATE_MEXC_REP_001_FREEZE_V0.1.json').read_text())
+          a=json.loads((p/'EMA_CROSSOVER_INTERMEDIATE_MEXC_REP_001_PRECANONICAL_AMENDMENT_01.json').read_text())
+          r=p/'ema_crossover_intermediate_mexc_rep_v01.py'
+          assert f['experiment_id']=='EMA-CROSSOVER-INTERMEDIATE-MEXC-REP-001'
+          assert f['status']=='FROZEN_PRE_OUTCOME'
+          assert f['policy']=='ND-PROMOTION-POLICY-V3.0-FROZEN'
+          assert f['timeframes']==['2H','4H','6H','8H']
+          assert f['pairs']==['EMA20x50','EMA50x200']
+          assert f['ema_lengths']==[20,50,200]
+          assert f['event_definition']['primary_horizon_bars']==6
+          assert f['costs']['base_round_trip_bps']==10.0
+          assert f['costs']['stress_round_trip_bps']==14.0
+          assert f['statistics']['independent_validation_min_events']==50
+          assert f['statistics']['one_sided_support_p_max']==0.10
+          assert f['statistics']['bh_fdr_q_max']==0.10
+          assert a['correct_manifest_value']=='786a0129a2a7c9b58e2a465383d4849cedc3192e2c24bf8e4474ee709a3323fe'
+          assert a['scientific_change'] is False
+          h=hashlib.sha256(r.read_bytes()).hexdigest()
+          assert h==a['post_correction_engineering_smoke_disclosure']['runner_sha256_locked_after_smoke']== '26ea1d8d7cfa10d225399b1e08d38a77e6cbbff3c19b38571811a64e6aa72061',h
+          print('FREEZE_AMENDMENT_RUNNER_LOCK=PASS',h)
+          PY
+
+      - name: Verify frozen artifact metadata before download
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python - <<'PY'
+          import json,os,urllib.request
+          aid=10419067320
+          req=urllib.request.Request(
+            f'https://api.github.com/repos/joseluisvieira28-oss/Laboratorio/actions/artifacts/{aid}',
+            headers={'Authorization':f'Bearer {os.environ["GH_TOKEN"]}','Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'})
+          with urllib.request.urlopen(req,timeout=30) as r: d=json.load(r)
+          assert d['id']==aid
+          assert d['name']=='tfg-pbr01-1d-exact-parent-corpus'
+          assert d.get('digest')=='sha256:7b2562af14983d0344c9a28e81e9c1866f2e5e9dfafe94203da9a4ca1ffa36cb'
+          assert d.get('expired') is False
+          print('FROZEN_ARTIFACT_METADATA=PASS')
+          PY
+
+      - name: Download exact audited MEXC parent corpus
+        uses: actions/download-artifact@v4
+        with:
+          name: tfg-pbr01-1d-exact-parent-corpus
+          path: Dream-Account-OS-v2.3-PARTIAL/research/local_data/ema_crossover_mexc_rep_source
+          github-token: ${{ github.token }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: 35025382064
+
+      - name: Source-only 138-file identity preflight
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: |
+          python - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          root=Path('research/local_data/ema_crossover_mexc_rep_source')
+          raw=root/'tfg_pbr01_1d_raw'; mans=root/'tfg_pbr01_1d_manifests'; recs=root/'tfg_pbr01_1d_receipts'
+          expected={
+            'BTCUSDT':'fba38a205b911fad0494b86174ef06a2d04a5908b0617a27efb74f067f8cf1d9',
+            'ETHUSDT':'5a6433eb8703a9bcd0714fc6485ccc965cf754941ee6c69981158a7f11f36b7f',
+            'SOLUSDT':'db013d47799b99a7c827740cf03c8e7e27b08c317097836143c855f1a51dde9b',
+            'BNBUSDT':'ec43c0ab51dbf80fcde273c7d817b7cf9995e1614dfa5c05de4f664b9880437a',
+            'XRPUSDT':'9b15ebea40555f5d6def5aab65cc5485db8120e0a6fa74f53ac4bb981a004427',
+            'DOGEUSDT':'786a0129a2a7c9b58e2a465383d4849cedc3192e2c24bf8e4474ee709a3323fe'}
+          gate=json.loads((recs/'TFG_PBR01_1D_PARENT_CORPUS_IDENTITY_GATE_V0.1.json').read_text())
+          assert gate['status']=='PASS_EXACT_PARENT_CORPUS_IDENTITY_GATE'
+          assert gate['total_detected_gap_count']==36 and gate['total_missing_candle_count']==102
+          count=0
+          for sym,fp in expected.items():
+            m=json.loads((mans/f'{sym}_MANIFEST.json').read_text())
+            assert m['fingerprint']==fp and m['status']=='PASS_CORPUS_AUDIT_ONLY_WITH_GAPS'
+            assert m['expected_month_count']==23 and m['passed_month_count']==23 and m['total_row_count']==67183
+            for mm in m['months']:
+              p=raw/mm['source_file_name']
+              h=hashlib.sha256(p.read_bytes()).hexdigest()
+              assert h==mm['source_sha256'],(sym,mm['month'])
+              count+=1
+          assert count==138,count
+          print('SOURCE_ONLY_IDENTITY_PREFLIGHT=PASS files=138')
+          PY
+
+      - name: Compile and synthetic self-test locked runner
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: |
+          python -m py_compile research/ema_crossover_intermediate_rep/ema_crossover_intermediate_mexc_rep_v01.py
+          python research/ema_crossover_intermediate_rep/ema_crossover_intermediate_mexc_rep_v01.py --self-test
+
+      - name: Execute exact frozen independent replication
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: |
+          python research/ema_crossover_intermediate_rep/ema_crossover_intermediate_mexc_rep_v01.py \
+            --artifact-root research/local_data/ema_crossover_mexc_rep_source \
+            --output-dir research/local_data/ema_crossover_mexc_rep_result
+
+      - name: Verify governance and complete 8-cell report
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('research/local_data/ema_crossover_mexc_rep_result/EMA_CROSSOVER_INTERMEDIATE_MEXC_REP_001_RESULT_V0.1.json')
+          d=json.loads(p.read_text())
+          assert d['status']=='REPLICATION_COMPLETE'
+          assert len(d['cells'])==8
+          assert set(d['cells'])=={
+            '2H:EMA20x50','2H:EMA50x200','4H:EMA20x50','4H:EMA50x200',
+            '6H:EMA20x50','6H:EMA50x200','8H:EMA20x50','8H:EMA50x200'}
+          g=d['governance']
+          assert g['2025_access'] is False and g['2026_access'] is False
+          assert g['live_trading'] is False and g['exchange_mutation'] is False
+          assert g['merge_to_main'] is False and g['post_outcome_tuning'] is False
+          print('GOVERNANCE_COMPLETE_FAMILY=PASS')
+          PY
+
+      - name: Upload canonical replication evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: EMA_CROSSOVER_INTERMEDIATE_MEXC_REP_001_RESULT_V01
+          path: |
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/ema_crossover_mexc_rep_result/EMA_CROSSOVER_INTERMEDIATE_MEXC_REP_001_RESULT_V0.1.json
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/ema_crossover_mexc_rep_result/EMA_CROSSOVER_INTERMEDIATE_MEXC_REP_001_EVENT_LEDGER_V0.1.csv
+          if-no-files-found: error
+          retention-days: 90
