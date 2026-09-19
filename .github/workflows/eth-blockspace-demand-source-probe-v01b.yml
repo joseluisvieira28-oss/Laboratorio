@@ -1,0 +1,76 @@
+name: ETH Blockspace Demand 001 — Source Probe V0.1B
+
+on:
+  push:
+    branches:
+      - eth-blockspace-demand-v0.1
+    paths:
+      - 'research/eth_blockspace_demand/RUN_SOURCE_PROBE_V0_1B.txt'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-probe-v01b:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install source dependency
+        run: pip install --disable-pip-version-check requests
+
+      - name: Verify frozen V0.1B remediation authority
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('research/eth_blockspace_demand/ETH_BLOCKSPACE_DEMAND_001_SOURCE_TRANSPORT_REMEDIATION_V0_1B.md')
+          assert p.exists()
+          s=p.read_text(encoding='utf-8')
+          for x in [
+              'SOURCE-ONLY','OUTCOME-BLIND',
+              '13,000,000','15,000,000','18,000,000','21,000,000',
+              'https://eth.drpc.org','https://rpc.flashbots.net',
+              'No transaction bodies, logs, receipts, balances, prices, returns or PnL'
+          ]:
+              assert x in s, x
+          print('ETH_BLOCKSPACE_V01B_AUTHORITY_GUARD_PASS')
+          PY
+
+      - name: Compile exact V0.1B source probe
+        run: python -m py_compile research/eth_blockspace_demand/source_probe_v01b.py
+
+      - name: Execute exact qualified-provider source probe
+        run: python research/eth_blockspace_demand/source_probe_v01b.py
+
+      - name: Enforce outcome-blind PASS receipt
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('eth_blockspace_source_probe_v01b/ETH_BLOCKSPACE_DEMAND_001_SOURCE_PROBE_V0_1B.json')
+          d=json.loads(p.read_text())
+          assert d['classification']=='SOURCE_SCHEMA_PASS'
+          assert len(d['blocks'])==4
+          assert all(v['provider_quorum']==2 and v['identity_status']=='PASS' for v in d['blocks'].values())
+          assert all(v['chain_id_ok'] and v['all_four_blocks_ok'] and not v['errors'] for v in d['providers'].values())
+          s=d['safety']
+          assert s['economic_values_persisted'] is False
+          assert s['market_prices_opened'] is False
+          assert s['returns_opened'] is False
+          assert s['pnl_opened'] is False
+          assert s['accessed_2025_or_2026'] is False
+          print('ETH_BLOCKSPACE_V01B_SOURCE_SCHEMA_PASS')
+          PY
+
+      - name: Upload source-only receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: ETH_BLOCKSPACE_DEMAND_001_SOURCE_PROBE_V0_1B
+          path: eth_blockspace_source_probe_v01b/ETH_BLOCKSPACE_DEMAND_001_SOURCE_PROBE_V0_1B.json
+          if-no-files-found: error
+          retention-days: 90
