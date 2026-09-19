@@ -67,6 +67,7 @@ class FeatureRow:
     slope50_atr:float|None
     stack_dir:int
     fast_mid_dir:int
+    segment_id:int
 
 def sha256_file(path:Path)->str:
     h=hashlib.sha256()
@@ -150,7 +151,7 @@ def atr(bars:list[Bar],length:int)->list[float|None]:
         out[i]=val
     return out
 
-def features_for_segment(seg:list[Bar])->list[FeatureRow]:
+def features_for_segment(seg:list[Bar], segment_id:int)->list[FeatureRow]:
     closes=[b.close for b in seg]
     e20,e50,e200=(ema(closes,n) for n in EMA_LENGTHS)
     a14=atr(seg,ATR_LEN)
@@ -170,7 +171,7 @@ def features_for_segment(seg:list[Bar])->list[FeatureRow]:
                 if i>=SLOPE_LAG and e20[i-SLOPE_LAG] is not None and e50[i-SLOPE_LAG] is not None:
                     s20=(float(e20[i])-float(e20[i-SLOPE_LAG]))/at
                     s50=(float(e50[i])-float(e50[i-SLOPE_LAG]))/at
-        rows.append(FeatureRow(b,e20[i],e50[i],e200[i],at,width,s20,s50,stack,fastmid))
+        rows.append(FeatureRow(b,e20[i],e50[i],e200[i],at,width,s20,s50,stack,fastmid,segment_id))
     return rows
 
 def build_features(source:dict[str,list[Bar]]):
@@ -180,17 +181,21 @@ def build_features(source:dict[str,list[Bar]]):
         for sym in SYMBOLS:
             bars,inc=aggregate(source[sym],ms)
             rows=[]
-            for seg in split_segments(bars,ms):
-                rows.extend(features_for_segment(seg))
+            segs=split_segments(bars,ms)
+            for segment_id,seg in enumerate(segs):
+                rows.extend(features_for_segment(seg,segment_id))
             rows.sort(key=lambda r:r.bar.open_time)
             feat[tf][sym]=rows
-            meta[tf][sym]={"bars":len(rows),"incomplete_buckets":inc}
+            meta[tf][sym]={"bars":len(rows),"incomplete_buckets":inc,"contiguous_segments":len(segs)}
     return feat,meta
 
 def directional_forward(rows:list[FeatureRow], i:int, direction:int, h:int):
     entry_i=i+1
     exit_i=entry_i+h
     if direction not in (-1,1) or exit_i>=len(rows):
+        return None
+    segment_id=rows[i].segment_id
+    if rows[entry_i].segment_id!=segment_id or rows[exit_i].segment_id!=segment_id:
         return None
     entry=rows[entry_i].bar.open
     exitp=rows[exit_i].bar.open
@@ -207,6 +212,8 @@ def parent_context(feat, tf:str, sym:str, signal_close:int, direction:int):
     if j<0:
         return {"parent_tf":ptf,"parent_fast_mid_aligned":None,"parent_full_stack_aligned":None}
     r=rows[j]
+    if signal_close-r.bar.close_time>=TIMEFRAMES[ptf]:
+        return {"parent_tf":ptf,"parent_fast_mid_aligned":None,"parent_full_stack_aligned":None}
     return {"parent_tf":ptf,
             "parent_fast_mid_aligned":r.fast_mid_dir==direction,
             "parent_full_stack_aligned":r.stack_dir==direction}
@@ -218,6 +225,8 @@ def derive_events(feat):
             rows=feat[tf][sym]
             for i in range(1,len(rows)-1):
                 r,p=rows[i],rows[i-1]
+                if r.segment_id!=p.segment_id:
+                    continue
                 for pair,a_now,b_now,a_prev,b_prev in (
                     ("EMA20x50",r.ema20,r.ema50,p.ema20,p.ema50),
                     ("EMA50x200",r.ema50,r.ema200,p.ema50,p.ema200),
@@ -240,6 +249,7 @@ def derive_events(feat):
                 def geometry_ok(k:int)->bool:
                     if k<SLOPE_LAG: return False
                     x=rows[k]; old=rows[k-SLOPE_LAG]
+                    if x.segment_id!=old.segment_id: return False
                     if x.stack_dir==0 or x.width_atr is None or old.width_atr is None or x.slope20_atr is None or x.slope50_atr is None:
                         return False
                     d=x.stack_dir
@@ -426,6 +436,7 @@ def main():
         "minimum_events":MIN_EVENTS,
         "bh_fdr_alpha":Q_ALPHA,
         "event_count":len(events),
+        "continuity_enforcement":{"segment_id_propagated":True,"event_cross_gap_forbidden":True,"forward_window_cross_gap_forbidden":True,"stale_parent_context_forbidden":True,"technical_amendment":"TECHNICAL_AMENDMENT_03"},
         "derived_data_meta":meta,
         "cells":summaries,
         "governance":{"2023_access":False,"2024_access":False,"2025_access":False,"2026_access":False,
