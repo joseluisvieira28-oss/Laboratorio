@@ -1,0 +1,44 @@
+name: ETH Blockspace JSON-RPC Batch Qualification V0.2B
+on:
+  push:
+    branches: [eth-blockspace-demand-v0.1]
+    paths: ['research/eth_blockspace_demand/RUN_BATCH_QUAL_V0_2B.txt']
+permissions: {contents: read}
+jobs:
+  qualify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install --disable-pip-version-check requests
+      - name: Batch qualification source-only
+        run: |
+          python - <<'PY'
+          import json,requests
+          eps=['https://eth.drpc.org','https://rpc.flashbots.net']
+          blocks=[13000000,15000000,18000000,21000000]
+          out={'classification':'SOURCE_TRANSPORT_BATCH_QUALIFICATION','market_prices_opened':False,'returns_opened':False,'pnl_opened':False,'providers':{}}
+          for ep in eps:
+            payload=[{'jsonrpc':'2.0','id':i,'method':'eth_getBlockByNumber','params':[hex(b),False]} for i,b in enumerate(blocks)]
+            r=requests.post(ep,json=payload,timeout=(10,40)); r.raise_for_status(); x=r.json()
+            assert isinstance(x,list) and len(x)==len(blocks),(ep,type(x),len(x) if isinstance(x,list) else None)
+            by={int(z['id']):z.get('result') for z in x}
+            hashes=[]
+            ok=True
+            for i,b in enumerate(blocks):
+              o=by.get(i); ok=ok and isinstance(o,dict) and int(o['number'],16)==b and int(o['timestamp'],16)<1735689600
+              hashes.append(o['hash'].lower() if isinstance(o,dict) else None)
+            out['providers'][ep]={'batch_supported':ok,'count':len(x),'hashes':hashes}
+          assert all(v['batch_supported'] for v in out['providers'].values())
+          a=list(out['providers'].values())
+          assert a[0]['hashes']==a[1]['hashes']
+          open('ETH_BLOCKSPACE_BATCH_QUAL_V0_2B.json','w').write(json.dumps(out,indent=2,sort_keys=True))
+          print(json.dumps({'batch_supported':{k:v['batch_supported'] for k,v in out['providers'].items()},'cross_provider_hash_agreement':True,'market_prices_opened':False,'returns_opened':False,'pnl_opened':False}))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ETH_BLOCKSPACE_BATCH_QUAL_V0_2B
+          path: ETH_BLOCKSPACE_BATCH_QUAL_V0_2B.json
+          if-no-files-found: error
+          retention-days: 30
