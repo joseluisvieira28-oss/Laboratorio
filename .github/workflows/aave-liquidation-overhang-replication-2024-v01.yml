@@ -69,9 +69,9 @@ jobs:
         with:
           name: AAVE_DISCOVERY_2023_CANONICAL_V0_1_CONTINUATION
           path: downloaded_discovery_authority
-          github-token: \${{ github.token }}
+          github-token: ${{ github.token }}
           repository: joseluisvieira28-oss/Laboratorio
-          run-id: \${{ env.DISCOVERY_CANONICAL_RUN_ID }}
+          run-id: ${{ env.DISCOVERY_CANONICAL_RUN_ID }}
       - name: Gate exact Discovery mechanism pass
         run: |
           python - <<'PY'
@@ -163,18 +163,18 @@ jobs:
         with:
           name: AAVE_RECON_R0_BOOTSTRAP
           path: downloaded_r0_bootstrap
-          github-token: \${{ github.token }}
+          github-token: ${{ github.token }}
           repository: joseluisvieira28-oss/Laboratorio
-          run-id: \${{ env.R0_BOOTSTRAP_RUN_ID }}
+          run-id: ${{ env.R0_BOOTSTRAP_RUN_ID }}
       - name: Replay exact 2024 reserve shard
         env:
-          REPLICATION_RESERVE_SHARD_ID: \${{ matrix.shard_id }}
+          REPLICATION_RESERVE_SHARD_ID: ${{ matrix.shard_id }}
           REPLICATION_RESERVE_SHARD_COUNT: '8'
         run: python research/aave_liquidation_overhang/replication_reserve_shard_2024_v01.py
       - if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: AAVE_REPLICATION_RESERVE_SHARD_2024_V0_1_\${{ matrix.shard_id }}
+          name: AAVE_REPLICATION_RESERVE_SHARD_2024_V0_1_${{ matrix.shard_id }}
           path: |
             replication_reserve_shards/replication_reserve_shard_*_meta.json
             replication_reserve_shards/replication_reserve_shard_*_rows.jsonl.gz
