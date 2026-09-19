@@ -1,0 +1,105 @@
+name: MSEL-002 Official Solana Sharded Source Prevalence V0.5
+
+on:
+  push:
+    branches:
+      - memecoin-metadata-duplication-v0.1
+    paths:
+      - '.github/workflows/msel002-official-sharded-source-prevalence-v05.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  QUALIFICATION_RUN_ID: '35438540272'
+
+jobs:
+  source-shards:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        shard_id: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Verify frozen V0.5 authority and compile
+        run: |
+          test -f Dream-Account-OS-v2.3-PARTIAL/research/memecoin_metadata_duplication_002/MSEL_002_OFFICIAL_SOLANA_SHARDED_SOURCE_PREVALENCE_REMEDIATION_V05_FREEZE.md
+          python -m py_compile Dream-Account-OS-v2.3-PARTIAL/research/memecoin_metadata_duplication_002/source/fetch_v05_official_shard.py
+          python -m py_compile Dream-Account-OS-v2.3-PARTIAL/research/memecoin_metadata_duplication_002/source/aggregate_v05_official_shards.py
+
+      - name: Download exact preserved official signature census
+        uses: actions/download-artifact@v4
+        with:
+          name: MSEL002_UNIBLOCK_TRANSPORT_QUALIFICATION_V0_1
+          path: downloaded_qualification
+          github-token: ${{ github.token }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: ${{ env.QUALIFICATION_RUN_ID }}
+
+      - name: Fetch exact official Solana transaction shard
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/memecoin_metadata_duplication_002/source
+        env:
+          MSEL002_SHARD_ID: ${{ matrix.shard_id }}
+          MSEL002_QUALIFICATION_DIR: ${{ github.workspace }}/downloaded_qualification
+          MSEL_TX_BATCH_SIZE: '5'
+          MSEL_RPS_DELAY: '1.00'
+          MSEL_RPC_RETRIES: '7'
+          MSEL_ITEM_RETRIES: '12'
+          MSEL_ITEM_BACKOFF_START: '2.0'
+          MSEL_ITEM_BACKOFF_CAP: '30.0'
+        run: python fetch_v05_official_shard.py
+
+      - name: Upload exact shard evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: MSEL002_V05_OFFICIAL_SHARD_${{ matrix.shard_id }}
+          path: Dream-Account-OS-v2.3-PARTIAL/research/memecoin_metadata_duplication_002/source/v05_official_shard_*
+          if-no-files-found: warn
+          retention-days: 30
+
+  aggregate:
+    if: always()
+    needs: source-shards
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download exact preserved official signature census
+        uses: actions/download-artifact@v4
+        with:
+          name: MSEL002_UNIBLOCK_TRANSPORT_QUALIFICATION_V0_1
+          path: downloaded_qualification
+          github-token: ${{ github.token }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: ${{ env.QUALIFICATION_RUN_ID }}
+
+      - name: Download all V0.5 shard evidence
+        uses: actions/download-artifact@v4
+        with:
+          pattern: MSEL002_V05_OFFICIAL_SHARD_*
+          path: downloaded_shards
+          merge-multiple: false
+
+      - name: Canonical unchanged source/prevalence adjudication
+        run: python Dream-Account-OS-v2.3-PARTIAL/research/memecoin_metadata_duplication_002/source/aggregate_v05_official_shards.py
+
+      - name: Upload canonical V0.5 source/prevalence evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: MSEL002_SOURCE_PREVALENCE_V05_OFFICIAL_SHARDED
+          path: v05_official_canonical_output/
+          if-no-files-found: warn
+          retention-days: 30
