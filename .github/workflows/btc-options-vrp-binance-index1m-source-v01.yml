@@ -1,0 +1,37 @@
+name: Binance BTC Index 1m Source Gate V0.1
+on:
+  push:
+    branches: [btc-options-vrp-binance-eoh-source-v0.1]
+    paths:
+      - "labs/BTC_OPTIONS_VRP_BINANCE_001/INDEX1M_SOURCE_AUTHORITY_V0.1.json"
+      - "labs/BTC_OPTIONS_VRP_BINANCE_001/index1m_source_probe_v01.py"
+      - ".github/workflows/btc-options-vrp-binance-index1m-source-v01.yml"
+permissions:
+  contents: read
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - name: Run frozen index source gate
+        id: probe
+        continue-on-error: true
+        run: python labs/BTC_OPTIONS_VRP_BINANCE_001/index1m_source_probe_v01.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: BTC_OPTIONS_VRP_BINANCE_001_INDEX1M_SOURCE_V0_1
+          path: binance_index1m_source_receipt_v01.json
+          retention-days: 30
+      - name: Enforce source pass
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          x=json.load(open("binance_index1m_source_receipt_v01.json"))
+          print("classification=",x["classification"])
+          if x["classification"]!="BINANCE_INDEX1M_SOURCE_FEASIBLE": raise SystemExit(2)
+          PY
