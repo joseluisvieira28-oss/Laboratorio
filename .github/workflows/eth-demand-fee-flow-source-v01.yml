@@ -1,0 +1,33 @@
+name: ETH Demand Fee Flow Source Gate V0.1
+on:
+  push:
+    branches: [eth-demand-fee-flow-v0.1]
+    paths:
+      - "labs/ETH_DEMAND_FEE_FLOW_001/SOURCE_AUTHORITY_V0.1.json"
+      - "labs/ETH_DEMAND_FEE_FLOW_001/source_gate_v01.py"
+      - ".github/workflows/eth-demand-fee-flow-source-v01.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: python -m pip install --disable-pip-version-check -q pandas
+      - name: Compile
+        run: python -m py_compile labs/ETH_DEMAND_FEE_FLOW_001/source_gate_v01.py
+      - name: Run frozen zero-key source gate
+        run: python labs/ETH_DEMAND_FEE_FLOW_001/source_gate_v01.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ETH_DEMAND_FEE_FLOW_001_SOURCE_V0_1
+          path: |
+            edff_source_receipt_v01.json
+            edff_source_daily_v01.csv
+          if-no-files-found: warn
+          retention-days: 30
