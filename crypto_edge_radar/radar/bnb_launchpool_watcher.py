@@ -8,6 +8,7 @@ import json
 import re
 import time
 from typing import Any, Iterable
+from urllib.error import HTTPError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
@@ -179,14 +180,38 @@ class BinanceOfficialLaunchpoolSource:
                 "Accept-Language": "en-US,en;q=0.9",
             },
         )
-        try:
-            with urlopen(request, timeout=self.timeout) as response:
-                body = response.read()
-                if response.status != 200 or not body:
-                    raise BNBLaunchpoolSourceError(f"Binance CMS HTTP/empty response:{response.status}")
-        except Exception as exc:
+        body: bytes | None = None
+        last_error: Exception | None = None
+        for attempt in range(3):
+            try:
+                with urlopen(request, timeout=self.timeout) as response:
+                    body = response.read()
+                    if response.status != 200 or not body:
+                        raise BNBLaunchpoolSourceError(
+                            f"Binance CMS HTTP/empty response:{response.status}"
+                        )
+                    break
+            except HTTPError as exc:
+                last_error = exc
+                if exc.code != 429 and exc.code < 500:
+                    break
+                if attempt < 2:
+                    retry_after = exc.headers.get("Retry-After") if exc.headers else None
+                    try:
+                        delay = min(5.0, max(0.5, float(retry_after))) if retry_after else float(attempt + 1)
+                    except (TypeError, ValueError):
+                        delay = float(attempt + 1)
+                    time.sleep(delay)
+            except Exception as exc:
+                last_error = exc
+                if attempt < 2:
+                    time.sleep(float(attempt + 1))
+                    continue
+                break
+        if not body:
+            exc = last_error or BNBLaunchpoolSourceError("Binance CMS returned empty response")
             if isinstance(exc, BNBLaunchpoolSourceError):
-                raise
+                raise exc
             raise BNBLaunchpoolSourceError(
                 f"Binance CMS source unavailable:{type(exc).__name__}:{exc}"
             ) from exc
