@@ -4,7 +4,7 @@ import calendar, concurrent.futures, io, json, urllib.request, zipfile
 from pathlib import Path
 import pandas as pd
 
-START="2021-01"; END="2024-12"
+START="2022-01"; END="2024-12"
 MONTHLY="https://data.binance.vision/data/futures/um/monthly"
 DAILY="https://data.binance.vision/data/futures/um/daily"
 SYMBOL="ETHUSDT"
@@ -87,10 +87,10 @@ def main():
 
     full_months=[r["month"] for r in rec if r.get("metrics_full") and r.get("funding_ok") and r.get("kline_ok")]
     usable_months=[r["month"] for r in rec if r.get("metrics_usable") and r.get("funding_ok") and r.get("kline_ok")]
-    fy={str(y):sum(x.startswith(str(y)+"-") for x in full_months) for y in range(2021,2025)}
-    uy={str(y):sum(x.startswith(str(y)+"-") for x in usable_months) for y in range(2021,2025)}
-    full=(len(full_months)>=46 and min(fy.values())>=11)
-    limited=(len(usable_months)>=36 and min(uy.values())>=8)
+    fy={str(y):sum(x.startswith(str(y)+"-") for x in full_months) for y in range(2022,2025)}
+    uy={str(y):sum(x.startswith(str(y)+"-") for x in usable_months) for y in range(2022,2025)}
+    full=(len(full_months)>=35 and min(fy.values())>=11)
+    limited=(len(usable_months)>=30 and min(uy.values())>=8)
     cls="PCU_ETH_COVERAGE_FULL" if full else ("PCU_ETH_COVERAGE_LIMITED" if limited else "PCU_ETH_COVERAGE_BLOCKED")
     if metrics: pd.concat(metrics,ignore_index=True).to_csv("pcu_eth_cache/metrics.csv",index=False)
     if funding: pd.concat(funding,ignore_index=True).to_csv("pcu_eth_cache/funding.csv",index=False)
