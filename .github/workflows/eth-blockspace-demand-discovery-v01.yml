@@ -1,0 +1,122 @@
+name: ETH Blockspace Demand 001 — Discovery V0.1
+
+on:
+  push:
+    branches:
+      - eth-blockspace-demand-v0.1
+    paths:
+      - 'research/eth_blockspace_demand/RUN_DISCOVERY_V0_1.txt'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  discovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: eth-blockspace-demand-v0.1
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Verify frozen pre-Discovery authority before market access
+        run: |
+          python - <<'PY'
+          import subprocess
+          from pathlib import Path
+          p=Path('research/eth_blockspace_demand')
+          proto=(p/'ETH_BLOCKSPACE_DEMAND_001_FINAL_PRE_DISCOVERY_PROTOCOL_V0_1.md').read_text()
+          bind=(p/'ETH_BLOCKSPACE_DEMAND_001_DISCOVERY_IMPLEMENTATION_BINDING_V0_1A.md').read_text()
+          for x in [
+              'EBD-BURN80-UTIL50-LONG-H24-001',
+              '2022-01 through 2023-12',
+              'No 2024, 2025 or 2026 market archive',
+              'BASE round-trip cost: **20 bps**',
+              'STRESS round-trip cost: **30 bps**',
+              'resolved n >= 100',
+              'bootstrap lower 95% > 0',
+              '2022 BASE mean > 0',
+              '2023 BASE mean > 0'
+          ]:
+              assert x in proto,x
+          for x in [
+              'Discovery signal dates 2022-01-01 through 2023-12-29: **112**',
+              'b655923a78696538decbeb261734c003d868704c7ac3e7dd3017d5c8734100db',
+              '2024 source-only holdout signal dates: **43**',
+              '241807d84dca3826dfba5d77d3f0b51f63ce88d3a8c34a1f2d7352b2af277191'
+          ]:
+              assert x in bind,x
+          runner=p/'eth_blockspace_discovery_v01.py'
+          blob=subprocess.check_output(['git','hash-object',str(runner)]).decode().strip()
+          assert blob=='835b7c18cd154066632b241b2be04d60f5a4732f',blob
+          print('PRE_DISCOVERY_AUTHORITY=PASS runner_blob=',blob)
+          PY
+
+      - name: Download exact canonical source-data artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ETH_BLOCKSPACE_DEMAND_001_FULL_SOURCE_DATA_V0_2C
+          path: source_bound
+          github-token: ${{ github.token }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: 35446488521
+
+      - name: Rebind canonical source bytes before market access
+        run: |
+          python - <<'PY'
+          import hashlib
+          from pathlib import Path
+          root=Path('source_bound')
+          daily=root/'ETH_BLOCKSPACE_DEMAND_001_DAILY_SOURCE_SERIES_V0_2C.csv'
+          blocks=root/'ETH_BLOCKSPACE_DEMAND_001_SAMPLED_BLOCKS_V0_2C.csv'
+          assert hashlib.sha256(daily.read_bytes()).hexdigest()=='1fffaf5dde2a1cff10356333536a6660a22f35e56210f376081738ea394bc928'
+          assert hashlib.sha256(blocks.read_bytes()).hexdigest()=='f1324568b8002948b6b13e2a687d8fb8a7d9fe9bbb20e9704b0804efa8d90e8a'
+          print('SOURCE_BYTE_BINDING=PASS')
+          PY
+
+      - name: Compile frozen Discovery runner
+        run: python -m py_compile research/eth_blockspace_demand/eth_blockspace_discovery_v01.py
+
+      - name: Execute frozen Discovery 2022-2023 only
+        run: |
+          python research/eth_blockspace_demand/eth_blockspace_discovery_v01.py \
+            --source-dir source_bound \
+            --output-dir eth_blockspace_discovery_v01
+
+      - name: Enforce terminal governance
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('eth_blockspace_discovery_v01/ETH_BLOCKSPACE_DEMAND_001_DISCOVERY_RESULT_V0_1.json')
+          d=json.loads(p.read_text())
+          assert d['status']=='DISCOVERY_COMPLETE'
+          assert d['classification'] in {'DISCOVERY_SURVIVES','DISCOVERY_NO_EDGE','INSUFFICIENT_SAMPLE'}
+          m=d['market_source']
+          assert m['market_2024_accessed'] is False
+          assert m['market_2025_accessed'] is False
+          assert m['market_2026_accessed'] is False
+          g=d['governance']
+          assert g['2024_market_outcomes_locked'] is True
+          assert g['post_outcome_tuning'] is False
+          assert g['live_trading'] is False
+          assert g['orders'] is False
+          assert g['exchange_mutation'] is False
+          assert g['merge_main'] is False
+          print('DISCOVERY_GOVERNANCE=PASS classification=',d['classification'])
+          PY
+
+      - name: Upload canonical Discovery evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: ETH_BLOCKSPACE_DEMAND_001_DISCOVERY_V0_1
+          path: eth_blockspace_discovery_v01/
+          if-no-files-found: error
+          retention-days: 90
