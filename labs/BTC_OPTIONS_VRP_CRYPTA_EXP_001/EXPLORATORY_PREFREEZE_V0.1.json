@@ -1,0 +1,109 @@
+{
+  "lab_id": "BTC-OPTIONS-VRP-CRYPTA-EXP-001",
+  "mve_id": "CRYPTA-ATM30-24H-QUOTE-CARRY-001",
+  "version": "0.1",
+  "date_frozen": "2026-09-19",
+  "branch": "btc-options-vrp-cryptarbitrage-exploratory-v0.1",
+  "status": "FROZEN_EXPLORATORY_NONPROMOTIONAL",
+  "scientific_boundary": [
+    "The old 90-day source gate remains failed and is not rewritten.",
+    "The missing bid/ask sizes remain an execution/capacity blocker.",
+    "This experiment asks only whether the 68-day SOURCE_LIMITED parquet contains quote-price carry worth further replication.",
+    "A positive result cannot promote to diamond/quasi-diamond, production, shadow execution, or capital."
+  ],
+  "source": {
+    "google_drive_file_id": "1g9p2Kq8op40y4ZFQQ9AJw8a9CaDThOY8",
+    "expected_sha256": "6ed2162288d177d3c3a5443456c3fb78ed2c175249f0a0ff1665a5dd9c89800b",
+    "known_period_start": "2024-01-13T19:00:14Z",
+    "known_period_end": "2024-07-27T20:00:10Z",
+    "known_rows": 4498832,
+    "known_25_35_dte_distinct_dates": 68,
+    "known_limitation": "No bid-size or ask-size fields"
+  },
+  "mechanism": "BTC option implied-volatility/carry premium may exceed subsequent 24h repricing often enough for a prospectively selected near-30D ATM short straddle to show positive quote-based carry after standard option trading fees.",
+  "selection": {
+    "decision_hour_utc": 8,
+    "hold_hours": 24,
+    "entry_day_rule": "Each UTC calendar day with an 08:00-hour snapshot; no nearest-hour substitution.",
+    "dte_min_inclusive": 25,
+    "dte_max_inclusive": 35,
+    "target_dte": 30,
+    "expiry_choice": "Minimize abs(DTE-30), tie -> smaller DTE.",
+    "strike_choice": "Within chosen expiry, among strikes with both call and put at entry, minimize abs(log(strike/median_underlying_price_at_entry)); tie -> lower strike.",
+    "no_fallback_rule": "After the pair is selected, if either selected instrument lacks valid next-calendar-day 08:00 exit quote, skip the episode. Do not choose a second-best expiry or strike.",
+    "entry_execution": "Sell one call and one put at their best bid prices.",
+    "exit_execution": "Buy back the same instruments next calendar day at their best ask prices.",
+    "quantity_per_leg": 1,
+    "hedge": "None",
+    "mark_prices_used": false
+  },
+  "valid_quote_rule": "bid>0, ask>0, ask>=bid, underlying_price>0",
+  "fee_model": {
+    "venue": "Deribit BTC options",
+    "standard_rate_underlying_btc_per_contract": 0.0003,
+    "cap_fraction_of_option_trade_price": 0.125,
+    "formula_per_leg_transaction": "min(0.0003 BTC, 0.125 * option_trade_price_BTC) * 1 contract",
+    "fee_transactions": 4,
+    "delivery_fee": false,
+    "note": "Standard trading-fee model only; spread is already represented by bid-entry/ask-exit."
+  },
+  "endpoints": {
+    "gross_cash_btc": "entry_call_bid + entry_put_bid - exit_call_ask - exit_put_ask",
+    "net_cash_btc": "gross_cash_btc - four frozen trading fees",
+    "net_premium_return": "net_cash_btc / (entry_call_bid + entry_put_bid)"
+  },
+  "statistics": {
+    "circular_moving_block_bootstrap_reps": 10000,
+    "block_length": 5,
+    "seed": 230919,
+    "ci": [
+      0.025,
+      0.975
+    ],
+    "report": [
+      "N",
+      "mean",
+      "median",
+      "positive_fraction",
+      "profit_factor_net_cash",
+      "bootstrap_95_ci_mean",
+      "monthly_means",
+      "positive_month_count",
+      "max_losing_streak"
+    ]
+  },
+  "exploratory_gates": {
+    "minimum_N": 40,
+    "mean_net_premium_return_gt_0": true,
+    "median_net_premium_return_gt_0": true,
+    "profit_factor_gt_1": true,
+    "bootstrap_95_lower_mean_gt_0": true,
+    "positive_months_gte": 3
+  },
+  "classifications": [
+    "EXPLORATORY_SIGNAL_PRESENT_NONPROMOTIONAL",
+    "EXPLORATORY_MIXED_NONPROMOTIONAL",
+    "EXPLORATORY_NO_SIGNAL",
+    "EXPLORATORY_INSUFFICIENT_SAMPLE",
+    "TECHNICAL_BLOCKED"
+  ],
+  "forbidden_rescues": [
+    "Do not change 08:00 UTC after outcomes.",
+    "Do not change 24h hold after outcomes.",
+    "Do not change 25-35 DTE or target 30 after outcomes.",
+    "Do not choose another strike rule after outcomes.",
+    "Do not use mark or midpoint after outcomes.",
+    "Do not invert long/short direction after outcomes.",
+    "Do not remove fees after outcomes.",
+    "Do not infer executable capacity from missing quote sizes."
+  ],
+  "safety": {
+    "cash_spend_usd": 0,
+    "live_trading_authorized": false,
+    "exchange_mutation_authorized": false,
+    "wallet_access_authorized": false,
+    "access_2025_authorized": false,
+    "access_2026_authorized": false,
+    "merge_to_main_authorized": false
+  }
+}
