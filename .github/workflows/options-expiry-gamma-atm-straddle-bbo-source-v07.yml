@@ -1,0 +1,68 @@
+name: Options Expiry Gamma ATM Straddle BBO Source V0.7
+on:
+  push:
+    branches: [options-expiry-gamma-bbo-source-v0.7]
+    paths: ['labs/OPTIONS_EXPIRY_GAMMA_001/ATM_STRADDLE_BBO_SOURCE_TRIGGER_V0.7.txt']
+permissions:
+  contents: read
+concurrency:
+  group: oeg-atm-straddle-bbo-source-v07
+  cancel-in-progress: false
+jobs:
+  probes:
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        probe: [0,1,2,3]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: options-expiry-gamma-bbo-source-v0.7}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install --disable-pip-version-check requests==2.32.3
+      - name: Verify frozen source authority
+        run: |
+          python - <<'PY'
+          import json
+          a=json.load(open('labs/OPTIONS_EXPIRY_GAMMA_001/ATM_STRADDLE_BBO_SOURCE_AUTHORITY_V0.7.json'))
+          s=json.load(open('labs/OPTIONS_EXPIRY_GAMMA_001/ATM_STRADDLE_BBO_SOURCE_TECHNICAL_SPEC_V0.7.json'))
+          assert a['source_gate_id']=='OEG-ATM-STRADDLE-BBO-SOURCE-007'
+          assert a['status']=='PRE_ACQUISITION_FROZEN_SOURCE_ONLY'
+          assert a['selection']['expiry_dte_min']==7 and a['selection']['expiry_dte_max']==14
+          assert len(a['deterministic_probe_dates'])==4
+          assert s['entry_quote_rule'].startswith('first two-sided')
+          assert all(v is False for v in a['firewalls'].values())
+          print('OEG_BBO_V07_AUTHORITY_PASS')
+          PY
+      - run: python -m py_compile labs/OPTIONS_EXPIRY_GAMMA_001/atm_straddle_bbo_source_v07_shard.py
+      - env:
+          OEG_PROBE_INDEX: ${{ matrix.probe }}
+        run: python labs/OPTIONS_EXPIRY_GAMMA_001/atm_straddle_bbo_source_v07_shard.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: oeg-bbo-v07-probe-${{ matrix.probe }}
+          path: artifacts/oeg_atm_straddle_bbo_source_v07_shards/probe_${{ matrix.probe }}.json
+          retention-days: 90
+          if-no-files-found: error
+  aggregate:
+    needs: probes
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: options-expiry-gamma-bbo-source-v0.7}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: oeg-bbo-v07-probe-*
+          path: artifacts/oeg_atm_straddle_bbo_source_v07_inputs
+          merge-multiple: true
+      - run: python labs/OPTIONS_EXPIRY_GAMMA_001/aggregate_atm_straddle_bbo_source_v07.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: OEG_ATM_STRADDLE_BBO_SOURCE_V0_7
+          path: artifacts/oeg_atm_straddle_bbo_source_v07/
+          retention-days: 90
