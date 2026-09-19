@@ -1,0 +1,51 @@
+{
+  "lab_id": "BTC-OPTIONS-UWA-001",
+  "source_probe_id": "UWA-DERIBIT-TRADES-SOURCE-001",
+  "version": "0.1",
+  "date_frozen": "2026-09-19",
+  "branch": "btc-options-uwa-source-v0.1",
+  "status": "FROZEN_SOURCE_ONLY_OUTCOME_BLIND",
+  "mechanism_family": "OPTIONS_INFORMATION / TRADE_HISTORY",
+  "purpose": "Validate the free CC BY University of Western Australia Deribit BTC-options dataset as a distinct historical source. This is not a rescue of the closed executable VRP MVE.",
+  "provenance": {
+    "uwa_dataset_doi": "10.26182/5eabbcb4fbf28",
+    "uwa_landing_page": "https://research-repository.uwa.edu.au/en/datasets/deribits-options-data/",
+    "author_data_library": "https://sites.google.com/view/lai-hoang/research/data",
+    "author_google_drive_file_id": "1H1hSTgy1qFVPro1_96pmMU035bvh3WoQ",
+    "documented_trade_period_start": "2016-11-29",
+    "documented_trade_period_end": "2020-10-05",
+    "license": "CC BY"
+  },
+  "frozen_questions": [
+    "Can at least one canonical data object be downloaded anonymously at zero cash cost?",
+    "What exact columns are present?",
+    "Do rows identify option instrument, timestamp, price/trade quantity and expiry/strike/right?",
+    "Are bid/ask prices and bid/ask sizes present or absent?",
+    "What is the actual temporal span and row count?"
+  ],
+  "classification_rules": {
+    "UWA_TRADE_HISTORY_FULL": "download succeeds; >=100000 option-trade rows; instrument identity and timestamps present; documented multi-year span substantially confirmed",
+    "UWA_TRADE_HISTORY_LIMITED": "download succeeds and useful option-trade history exists but preferred breadth/schema is incomplete",
+    "UWA_SOURCE_BLOCKED": "no canonical object can be obtained or core trade identity/timestamp fields are absent"
+  },
+  "nonclaims": [
+    "Trade history is not executable BBO history.",
+    "No returns, PnL, VRP, volatility forecast score, expectancy or edge is computed by this gate.",
+    "No historical BBO-size claim may be inferred unless explicit size fields exist.",
+    "No 2025/2026 protected data is accessed."
+  ],
+  "safety": {
+    "cash_spend_usd": 0,
+    "account_creation_authorized": false,
+    "identity_submission_authorized": false,
+    "returns_authorized": false,
+    "pnl_authorized": false,
+    "tuning_authorized": false,
+    "access_2025_authorized": false,
+    "access_2026_authorized": false,
+    "live_trading_authorized": false,
+    "exchange_mutation_authorized": false,
+    "wallet_access_authorized": false,
+    "merge_to_main_authorized": false
+  }
+}
