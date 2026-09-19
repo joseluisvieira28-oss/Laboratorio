@@ -1,0 +1,108 @@
+name: ETH Blockspace Demand 001 — Full Source Data Gate V0.2A
+
+on:
+  push:
+    branches:
+      - eth-blockspace-demand-v0.1
+    paths:
+      - 'research/eth_blockspace_demand/RUN_FULL_SOURCE_V0_2A.txt'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  freeze-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Verify source-data authority before economic protocol fields
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('research/eth_blockspace_demand/ETH_BLOCKSPACE_DEMAND_001_FULL_SOURCE_DATA_GATE_V0_2.md')
+          s=p.read_text()
+          for x in ['4,723','13,000,000','21,500,000','1,800 blocks','SOURCE_DATA_PASS',
+                    'market_prices_opened=false','returns_opened=false','pnl_opened=false']:
+              assert x in s,x
+          t=list(range(13_000_000,21_500_000+1,1_800))
+          assert len(t)==4723 and t[-1]==21_499_600
+          print('ETH_BLOCKSPACE_FULL_SOURCE_FREEZE_PASS targets=',len(t))
+          PY
+      - name: Compile exact collectors
+        run: |
+          python -m py_compile research/eth_blockspace_demand/full_source_shard_v02a.py
+          python -m py_compile research/eth_blockspace_demand/full_source_aggregate_v02a.py
+
+  collect:
+    needs: freeze-guard
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        shard: [0,1,2,3,4,5,6,7]
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Install source dependency
+        run: pip install --disable-pip-version-check requests
+      - name: Collect deterministic source shard
+        env:
+          SHARD_ID: ${{ matrix.shard }}
+          SHARD_COUNT: '8'
+        run: python research/eth_blockspace_demand/full_source_shard_v02a.py
+      - name: Upload source shard
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ETH_BLOCKSPACE_SOURCE_V02A_SHARD_${{ matrix.shard }}
+          path: eth_blockspace_full_source_v02/shard_*
+          if-no-files-found: error
+          retention-days: 90
+
+  aggregate:
+    needs: collect
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Download all source shards
+        uses: actions/download-artifact@v4
+        with:
+          pattern: ETH_BLOCKSPACE_SOURCE_V02A_SHARD_*
+          path: source_shards
+          merge-multiple: true
+      - name: Aggregate and enforce frozen Source/Data Gate
+        run: python research/eth_blockspace_demand/full_source_aggregate_v02a.py
+      - name: Verify no market outcome leakage
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('eth_blockspace_full_source_v02a_final/ETH_BLOCKSPACE_DEMAND_001_FULL_SOURCE_DATA_GATE_V0_2A_RECEIPT.json')
+          d=json.loads(p.read_text())
+          assert d['status']=='SOURCE_DATA_PASS'
+          assert d['grid']['coverage']>=0.995
+          assert d['cross_provider_audit']['pass']==237
+          assert d['daily']['retention']>=0.95
+          s=d['safety']
+          assert s['protected_period_accessed'] is False
+          assert s['market_prices_opened'] is False
+          assert s['returns_opened'] is False
+          assert s['pnl_opened'] is False
+          print('ETH_BLOCKSPACE_SOURCE_DATA_PASS')
+          PY
+      - name: Upload canonical source-data evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: ETH_BLOCKSPACE_DEMAND_001_FULL_SOURCE_DATA_V0_2A
+          path: eth_blockspace_full_source_v02a_final/
+          if-no-files-found: error
+          retention-days: 90
