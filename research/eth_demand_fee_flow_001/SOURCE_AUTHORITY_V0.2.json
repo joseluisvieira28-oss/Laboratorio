@@ -1,0 +1,73 @@
+{
+  "lab_id": "ETH-DEMAND-FEE-FLOW-001",
+  "source_gate_id": "EDFF-COINMETRICS-COMMUNITY-001",
+  "version": "0.2",
+  "date_frozen": "2026-09-20",
+  "branch": "eth-demand-fee-flow-v0.2",
+  "parent_lab": {
+    "branch": "protocol-demand-v0.1",
+    "id": "PROTOCOL-DEMAND-001",
+    "prior_status": "SOURCE_GOVERNANCE_BLOCKED",
+    "unblock_reason": "Coin Metrics Community API documents server-side start_time/end_time bounds and exposes native-unit total fees and current ETH supply without API key. This avoids the prior full-history protected-year problem."
+  },
+  "economic_family": "PROTOCOL FUNDAMENTALS / DEMAND FLOW",
+  "literature_anchor": {
+    "title": "Demand-Side Fee Flows and Return Predictability on Ethereum",
+    "authors": [
+      "Lucas Dünnes",
+      "Jens Felsenstein-Eckberg"
+    ],
+    "ssrn_id": "7003998",
+    "paper_date": "2026-06-26",
+    "public_methodology": {
+      "flow_intensity": "daily total network fees / circulating ETH supply",
+      "smoothed_flow_intensity": "30-day average",
+      "reference_rate": "90-day trailing median of flow intensity",
+      "flow_deviation": "ln(smoothed FI / reference rate)",
+      "reported_strongest_horizon_days": 45,
+      "dencun_date": "2024-03-13"
+    }
+  },
+  "source": {
+    "provider": "Coin Metrics Community API",
+    "endpoint": "https://community-api.coinmetrics.io/v4/timeseries/asset-metrics",
+    "asset": "eth",
+    "metrics": [
+      "FeeTotNtv",
+      "SplyCur"
+    ],
+    "frequency": "1d",
+    "start_time": "2022-12-01",
+    "end_time": "2024-12-31",
+    "page_size": 10000,
+    "authentication_required": false,
+    "cash_cost_usd": 0,
+    "license_note": "Community data is documented as free for non-commercial use under a Creative Commons license.",
+    "metric_semantics": {
+      "FeeTotNtv": "Total fees in native units. Coin Metrics documents that for Ethereum it includes transaction base fees, priority fees and blob fees after Dencun.",
+      "SplyCur": "Current ETH supply in native units."
+    }
+  },
+  "frozen_source_gate": {
+    "min_rows": 750,
+    "max_timestamp_lte": "2024-12-31T23:59:59Z",
+    "min_timestamp_lte": "2022-12-02T00:00:00Z",
+    "fee_nonnull_fraction_gte": 0.98,
+    "supply_nonnull_fraction_gte": 0.98,
+    "positive_fee_fraction_gte": 0.98,
+    "supply_floor_eth": 100000000,
+    "dencun_date_covered": true,
+    "required_post_dencun_days_gte": 290
+  },
+  "terminal_classes": [
+    "EDFF_SOURCE_FULL",
+    "EDFF_SOURCE_LIMITED",
+    "EDFF_SOURCE_BLOCKED"
+  ],
+  "outcome_boundary": [
+    "No market price is requested during the source gate.",
+    "No returns, PnL, regression outcome, direction accuracy or trading result is computed during the source gate.",
+    "No 2025 or 2026 source observation may be requested.",
+    "No live trading, exchange mutation, wallet use or merge to main."
+  ]
+}
