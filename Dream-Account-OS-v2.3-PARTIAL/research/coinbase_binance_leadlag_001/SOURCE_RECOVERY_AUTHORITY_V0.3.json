@@ -1,0 +1,123 @@
+{
+  "lab_id": "COINBASE-BINANCE-LEADLAG-001",
+  "authority_id": "CBLL-SOURCE-RECOVERY-V0.3",
+  "parent_mve_id": "CBLL-USDT-5M-Z3-001",
+  "freeze_date_utc": "2026-09-20",
+  "status": "FROZEN_PRE_ACQUISITION_FREE_PUBLIC_ROUTE_PROBE",
+  "scope": "SOURCE_PROVENANCE_ONLY",
+  "scientific_parent_classification": "DATA_FAILURE",
+  "historical_v02_preserved": true,
+  "outcomes_locked": true,
+  "reason_for_additive_authority": "September 2026 official Coinbase Advanced Trade SDK documentation exposes get_public_market_trades(product_id, limit, start, end) and labels it public/no-auth, while the REST page also displays an Authorization requirement. This contradiction must be resolved by a minimal source-only probe before any paid purchase.",
+  "candidate_route": {
+    "provider": "Coinbase",
+    "product": "Advanced Trade Public Market Trades",
+    "method": "GET",
+    "endpoint_template": "https://api.coinbase.com/api/v3/brokerage/market/products/{product_id}/ticker",
+    "authentication_probe": "NO_AUTHORIZATION_HEADER",
+    "query_parameters": ["limit", "start", "end"],
+    "coinbase_products": ["BTC-USDT", "ETH-USDT"],
+    "allowed_period_start": "2022-01-01T00:00:00Z",
+    "allowed_period_end": "2023-12-31T23:59:59Z",
+    "probe_windows": [
+      {
+        "id": "EARLY_2022",
+        "start": "2022-01-01T00:00:00Z",
+        "end": "2022-01-01T00:05:00Z"
+      },
+      {
+        "id": "LATE_2023",
+        "start": "2023-12-31T23:54:59Z",
+        "end": "2023-12-31T23:59:59Z"
+      }
+    ],
+    "limit": 1000
+  },
+  "frozen_5m_reconstruction_semantics": {
+    "status": "FROZEN_BUT_NOT_AUTHORIZED_TO_EXECUTE_UNTIL_ROUTE_FEASIBILITY_PASSES",
+    "bucket_clock": "UTC",
+    "bucket_boundaries": "Unix-epoch aligned 300-second half-open buckets [t, t+300s)",
+    "market_identity": {
+      "BTC": "Coinbase BTC-USDT only",
+      "ETH": "Coinbase ETH-USDT only"
+    },
+    "trade_ordering": "Primary order is full-precision source timestamp ascending. If distinct trades with different prices have an identical source timestamp and the source exposes no canonical execution sequence, the affected bucket is ORDERING_AMBIGUOUS and fails source integrity; do not invent a tie-break execution order.",
+    "duplicate_handling": "Duplicate trade_id with byte-equivalent normalized fields is deduplicated once; conflicting duplicate trade_id is SOURCE_INTEGRITY_FAILURE.",
+    "ohlc": "Open=first unambiguous chronological trade, High=max trade price, Low=min trade price, Close=last unambiguous chronological trade.",
+    "volume": "Sum Coinbase base-asset trade size for trades inside the bucket.",
+    "empty_bucket": "MISSING_BUCKET_NO_SYNTHETIC_FILL",
+    "no_interpolation": true,
+    "no_last_price_carry": true
+  },
+  "probe_allowed_outputs": [
+    "HTTP access status",
+    "response byte SHA256",
+    "response schema field names",
+    "trade counts",
+    "minimum and maximum returned timestamps",
+    "product identity checks",
+    "duplicate trade-id counts",
+    "out-of-window counts",
+    "limit saturation flags",
+    "route feasibility classification"
+  ],
+  "probe_forbidden_outputs": [
+    "raw price values",
+    "raw size values",
+    "candles",
+    "signals",
+    "returns",
+    "lead-lag statistics",
+    "correlations",
+    "future direction",
+    "trades",
+    "PnL",
+    "Sharpe",
+    "expectancy",
+    "win rate",
+    "2024 outcomes",
+    "2025 data",
+    "2026 data"
+  ],
+  "route_feasibility_gate": {
+    "http_200_all_requests": true,
+    "no_authentication_required": true,
+    "exact_products_only": true,
+    "required_trade_fields": ["trade_id", "product_id", "price", "size", "time"],
+    "duplicates_eq": 0,
+    "out_of_requested_window_eq": 0,
+    "outside_2022_2023_eq": 0,
+    "at_least_one_historical_trade_per_product": true,
+    "note": "Limit saturation does not prove completeness and therefore cannot produce SOURCE_DATA_PASS. If saturation appears, a separately frozen adaptive time-splitting acquisition test is required."
+  },
+  "frozen_parent_gate_unchanged": {
+    "btc_sync_fraction_gte": 0.995,
+    "eth_sync_fraction_gte": 0.995,
+    "full_prior_rolling_window_required": true,
+    "rolling_window_bars": 2016,
+    "source_integrity_failures_eq": 0
+  },
+  "classifications": [
+    "SOURCE_RECOVERY_ROUTE_FEASIBLE",
+    "SOURCE_DATA_INSUFFICIENT",
+    "SOURCE_ACQUISITION_TECHNICAL_FAILURE",
+    "PROVENANCE_FAILURE",
+    "PAID_SOURCE_REQUIRED",
+    "DATA_FAILURE"
+  ],
+  "hard_firewalls": {
+    "research_only": true,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "orders": false,
+    "wallets": false,
+    "alerts_webhooks": false,
+    "merge_to_main": false,
+    "render_deployment": false,
+    "post_outcome_tuning": false,
+    "year_2024_outcomes_open": false,
+    "year_2025_access": false,
+    "year_2026_access": false,
+    "paid_purchase_authorized": false
+  }
+}
