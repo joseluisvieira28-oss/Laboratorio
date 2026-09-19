@@ -1,0 +1,59 @@
+name: BTC Options VRP optionsDX Free Sample Probe V0.1
+
+on:
+  push:
+    branches:
+      - btc-options-vrp-free-route-attack-v0.1
+    paths:
+      - "labs/BTC_OPTIONS_VRP_001/OPTIONSDX_FREE_SAMPLE_PROBE_AUTHORITY_V0.1.json"
+      - "labs/BTC_OPTIONS_VRP_001/optionsdx_free_sample_probe_v01.py"
+      - ".github/workflows/btc-options-vrp-optionsdx-free-sample-v01.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Compile source-only probe
+        run: python -m py_compile labs/BTC_OPTIONS_VRP_001/optionsdx_free_sample_probe_v01.py
+
+      - name: Run frozen public sample probe
+        id: probe
+        continue-on-error: true
+        run: python labs/BTC_OPTIONS_VRP_001/optionsdx_free_sample_probe_v01.py
+
+      - name: Upload source receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: BTC_OPTIONS_VRP_001_OPTIONSDX_FREE_SAMPLE_PROBE_V0_1
+          path: optionsdx_free_sample_probe_receipt_v01.json
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Enforce frozen pass rule
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path("optionsdx_free_sample_probe_receipt_v01.json")
+          if not p.exists():
+              raise SystemExit("receipt missing")
+          x=json.loads(p.read_text())
+          print("classification=",x.get("classification"))
+          print("row_count=",x.get("row_count"))
+          print("complete_bbo_rows_25_35_dte=",x.get("complete_bbo_rows_25_35_dte"))
+          if x.get("classification") != "OPTIONSDX_FREE_SAMPLE_SCHEMA_PASS":
+              raise SystemExit(2)
+          PY
