@@ -1,0 +1,120 @@
+name: EMA Structure Multi-Horizon Discovery V0.1
+
+on:
+  push:
+    branches:
+      - ema-structure-multihorizon-v0.1
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/ema_structure_multihorizon/RUN_DISCOVERY_V0.1.txt'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  discovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout frozen research branch
+        uses: actions/checkout@v4
+        with:
+          ref: ema-structure-multihorizon-v0.1
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Verify prospective freeze before source access
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('research/ema_structure_multihorizon/EMA_STRUCTURE_MULTIHORIZON_001_FREEZE_V0.1.json')
+          d=json.loads(p.read_text())
+          assert d['experiment_id']=='EMA-STRUCTURE-MULTIHORIZON-001'
+          assert d['status']=='FROZEN_PRE_OUTCOME'
+          assert d['source']['artifact_id']==10434938955
+          assert d['source']['allowed_years']==[2021,2022]
+          assert d['source']['forbidden_years']==[2023,2024,2025,2026]
+          assert d['indicator_freeze']['ema_lengths']==[20,50,200]
+          assert d['outcome_semantics']['primary_horizon_bars']==6
+          assert d['statistics']['minimum_events_per_cell']==100
+          assert d['statistics']['bh_fdr_alpha']==0.05
+          assert d['governance']['post_outcome_tuning'] is False
+          print('FREEZE_GATE=PASS')
+          PY
+
+      - name: Compile and self-test frozen runner
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: |
+          python -m py_compile research/ema_structure_multihorizon/ema_structure_multihorizon_discovery_v01.py
+          python research/ema_structure_multihorizon/ema_structure_multihorizon_discovery_v01.py --self-test
+
+      - name: Download exact audited Binance 2021-2022 source artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: HTF_DIAMOND_HUNT_001_SOURCE_V01
+          path: Dream-Account-OS-v2.3-PARTIAL/research/local_data/ema_structure_multihorizon_source_v01
+          github-token: ${{ github.token }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: 35068227095
+
+      - name: Rebind source fingerprint before outcomes
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: |
+          python - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          src=Path('research/local_data/ema_structure_multihorizon_source_v01')
+          bind=json.loads(Path('research/htf_diamond_hunt/HTF_DIAMOND_HUNT_001_SOURCE_BINDING_V0.1.json').read_text())
+          rec=json.loads((src/'HTF_DIAMOND_HUNT_001_SOURCE_GATE_V0.1.json').read_text())
+          assert rec['status']=='SOURCE_DATA_PASS'
+          assert rec['source_fingerprint']==bind['source_fingerprint']=='08402ecb8931e42a0766370f55e46adc3de02474ce3a6128f4b2cdd89bb4ac78'
+          assert bind['artifact_id']==10434938955
+          for y in (2023,2024,2025,2026):
+              assert rec[f'access_{y}_performed'] is False
+          for sym,x in bind['canonical_15m'].items():
+              p=src/'canonical_15m'/f'{sym}_15m.csv'
+              assert hashlib.sha256(p.read_bytes()).hexdigest()==x['sha256']
+          print('SOURCE_REBIND=PASS')
+          PY
+
+      - name: Execute frozen EMA structure and crossover Discovery
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: |
+          python research/ema_structure_multihorizon/ema_structure_multihorizon_discovery_v01.py \
+            --source-dir research/local_data/ema_structure_multihorizon_source_v01 \
+            --binding research/htf_diamond_hunt/HTF_DIAMOND_HUNT_001_SOURCE_BINDING_V0.1.json \
+            --output-dir research/local_data/ema_structure_multihorizon_result_v01
+
+      - name: Verify governance receipt
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('research/local_data/ema_structure_multihorizon_result_v01/EMA_STRUCTURE_MULTIHORIZON_001_DISCOVERY_RESULT_V0.1.json')
+          d=json.loads(p.read_text())
+          assert d['status']=='DISCOVERY_COMPLETE'
+          g=d['governance']
+          assert all(g[f'{y}_access'] is False for y in (2023,2024,2025,2026))
+          assert g['live_trading'] is False
+          assert g['exchange_mutation'] is False
+          assert g['post_outcome_tuning'] is False
+          print('GOVERNANCE_RECEIPT=PASS events=',d['event_count'])
+          PY
+
+      - name: Upload Discovery evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: EMA_STRUCTURE_MULTIHORIZON_001_DISCOVERY_V01
+          path: |
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/ema_structure_multihorizon_result_v01/EMA_STRUCTURE_MULTIHORIZON_001_DISCOVERY_RESULT_V0.1.json
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/ema_structure_multihorizon_result_v01/EMA_STRUCTURE_MULTIHORIZON_001_EVENT_LEDGER_V0.1.csv
+          if-no-files-found: error
+          retention-days: 90
