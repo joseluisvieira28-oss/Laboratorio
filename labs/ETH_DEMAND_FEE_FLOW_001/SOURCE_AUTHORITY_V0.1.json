@@ -1,0 +1,94 @@
+{
+  "lab_id": "ETH-DEMAND-FEE-FLOW-001",
+  "source_gate_id": "EDFF-CM-COMMUNITY-001",
+  "version": "0.1",
+  "date_frozen": "2026-09-20",
+  "branch": "eth-demand-fee-flow-v0.1",
+  "status": "FROZEN_SOURCE_ONLY",
+  "economic_family": "PROTOCOL_FUNDAMENTALS / DEMAND_FLOW",
+  "mechanism": "Ethereum protocol fee intensity, measured in native ETH relative to ETH supply, may contain slow-moving information about economic demand that is capitalized into ETH price with a lag.",
+  "literature_anchor": {
+    "title": "Demand-Side Fee Flows and Return Predictability on Ethereum",
+    "authors": [
+      "Lucas Dünnes",
+      "Jens Felsenstein-Eckberg"
+    ],
+    "ssrn": "7003998",
+    "posted": "2026-07-18",
+    "methodology_publicly_described": {
+      "flow_intensity": "daily fees / ETH supply",
+      "smoothing": "30-day average",
+      "reference_rate": "90-day trailing median",
+      "flow_deviation": "ln(smoothed flow intensity / reference rate)",
+      "highlighted_horizon_days": 45,
+      "stated_regime": "predictability emerges post-Dencun"
+    },
+    "boundary": "Literature is mechanism inspiration and a later replication target, not proof for this lab."
+  },
+  "canonical_source": {
+    "provider": "Coin Metrics Community API v4",
+    "base_url": "https://community-api.coinmetrics.io/v4",
+    "authentication": "none",
+    "license_context": "Community data / Creative Commons; non-commercial research lane",
+    "asset": "eth",
+    "frequency": "1d",
+    "metrics": [
+      "FeeTotNtv",
+      "SplyCur",
+      "PriceUSD"
+    ]
+  },
+  "source_probe_window": {
+    "start": "2024-03-01",
+    "end": "2025-12-31",
+    "protected_2026": true
+  },
+  "frozen_source_checks": [
+    "HTTP 200 without API key",
+    "FeeTotNtv available and positive on representative dates",
+    "SplyCur available and positive",
+    "PriceUSD available and positive",
+    "daily timestamps parseable",
+    "no duplicate daily timestamps",
+    "coverage >= 95% of calendar days from 2024-03-01 through 2025-12-31",
+    "at least 600 complete daily observations"
+  ],
+  "classifications": [
+    "EDFF_SOURCE_FULL",
+    "EDFF_SOURCE_LIMITED",
+    "EDFF_SOURCE_BLOCKED"
+  ],
+  "source_full_rule": "coverage >=95%, complete rows >=600, all three metrics present, no auth",
+  "source_limited_rule": "coverage >=80%, complete rows >=450, all three metrics present, no auth",
+  "outcome_boundary": {
+    "future_returns_opened": false,
+    "regression_run": false,
+    "trading_rule_run": false,
+    "pnl_opened": false,
+    "year_2026_opened": false
+  },
+  "anti_duplication": {
+    "repo_search_terms": [
+      "fee-flow",
+      "demand-side",
+      "ethereum-fee",
+      "protocol-fee"
+    ],
+    "result_at_freeze": "No matching prior lab branch found.",
+    "nearest_existing_families": [
+      "funding/OI crowding",
+      "options VRP",
+      "Aave credit stress",
+      "token unlocks"
+    ],
+    "material_difference": "Protocol-native Ethereum demand flow, not leverage positioning, derivatives carry, lending stress, or event supply."
+  },
+  "safety": {
+    "cash_spend_usd": 0,
+    "credentials_authorized": false,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "wallet_access": false,
+    "merge_to_main": false
+  }
+}
