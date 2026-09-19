@@ -31,6 +31,7 @@ CATALOG_ID = 48
 PAGE_SIZE = 50
 CLUSTER_MS = 60 * 60 * 1000
 FROZEN_DETAIL_PROBE_CODE = "73d44e64598c446cb4ec2f83b776c2f0"
+MISSED_PROSPECTIVE_EVENT = "BNB_FORWARD_MISSED_PROSPECTIVE_OBSERVATION"
 
 
 @dataclass(frozen=True)
@@ -315,7 +316,14 @@ class BNBLaunchpoolForwardShadowWatcher:
         duplicate_suppressions = 0
         inserted_resolutions = 0
         duplicate_resolutions = 0
+        inserted_missed_observations = 0
+        duplicate_missed_observations = 0
         active_exit_ms: int | None = None
+        existing_events = {
+            str(payload.get("event_key")): payload
+            for payload in self.store.read_payloads("BNB_FORWARD_ELIGIBLE_EVENT")
+            if payload.get("event_key")
+        }
 
         for cluster in clusters:
             anchor = cluster[0]
@@ -334,13 +342,31 @@ class BNBLaunchpoolForwardShadowWatcher:
                 "detail_sha256": {event.article_code: event.detail_sha256 for event in cluster},
                 "theoretical_entry_open_ms": theoretical_entry,
                 "theoretical_exit_open_ms": theoretical_exit,
+                "first_observed_at_utc": _utc_iso(now_ms),
+                "observed_before_frozen_entry_open": now_ms < theoretical_entry,
                 "authenticated_exchange_api_used": False,
                 "order_created": False,
                 "exchange_mutation_performed": False,
             }
+            previously_observed = key in existing_events
+            if not previously_observed and now_ms >= theoretical_entry:
+                missed_payload = {
+                    **event_payload,
+                    "reason": "FIRST_OBSERVATION_OCCURRED_AT_OR_AFTER_FROZEN_ENTRY_OPEN",
+                    "late_reconstruction_forbidden": True,
+                    "used_as_forward_trade_evidence": False,
+                }
+                missed = self.store.append_once(MISSED_PROSPECTIVE_EVENT, key, missed_payload)
+                if missed["inserted"]:
+                    inserted_missed_observations += 1
+                else:
+                    duplicate_missed_observations += 1
+                continue
+
             receipt = self.store.append_once("BNB_FORWARD_ELIGIBLE_EVENT", key, event_payload)
             if receipt["inserted"]:
                 inserted_events += 1
+                existing_events[key] = event_payload
             else:
                 duplicate_events += 1
 
@@ -416,6 +442,12 @@ class BNBLaunchpoolForwardShadowWatcher:
             "duplicate_suppressions": duplicate_suppressions,
             "inserted_resolutions": inserted_resolutions,
             "duplicate_resolutions": duplicate_resolutions,
+            "inserted_missed_observations": inserted_missed_observations,
+            "duplicate_missed_observations": duplicate_missed_observations,
+            "missed_prospective_observation_count": len(
+                self.store.read_payloads(MISSED_PROSPECTIVE_EVENT)
+            ),
+            "no_chase_after_missed_entry": True,
             "evidence_backend": self.store.backend,
             "authenticated_exchange_api_used": False,
             "order_created": False,
