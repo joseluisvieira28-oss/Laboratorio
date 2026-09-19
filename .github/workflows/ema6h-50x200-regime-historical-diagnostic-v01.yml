@@ -1,0 +1,135 @@
+name: EMA6H 50x200 Regime Historical Diagnostic V0.1
+
+on:
+  push:
+    branches:
+      - ema6h-50x200-regime-dependency-v0.1
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/ema6h_50x200_regime/RUN_HISTORICAL_DIAGNOSTIC_V0.1.txt'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  diagnostic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout frozen regime branch
+        uses: actions/checkout@v4
+        with:
+          ref: ema6h-50x200-regime-dependency-v0.1
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Verify frozen post-outcome diagnostic authority
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          d=json.loads(Path('research/ema6h_50x200_regime/EMA6H_50X200_REGIME_DEPENDENCY_001_FREEZE_V0.1.json').read_text())
+          assert d['experiment_id']=='EMA6H-50X200-REGIME-DEPENDENCY-001'
+          assert d['status']=='FROZEN_POST_OUTCOME_HYPOTHESIS_PRE_DIAGNOSTIC_AND_PRE_FORWARD'
+          assert d['hypothesis_origin']['post_outcome_generated'] is True
+          assert d['phase_A_historical_diagnostic']['promotion_authority'] is False
+          r=d['regime_classifier']
+          assert r['moving_average_type']=='SMA'
+          assert r['long_window_days']==200 and r['slope_lag_days']==20
+          assert d['phase_B_prospective_forward']['first_eligible_signal_close_utc']=='2026-09-20T00:00:00Z'
+          print('REGIME_FREEZE_GATE=PASS')
+          PY
+
+      - name: Download immutable Binance 2021-2022 Discovery evidence
+        uses: actions/download-artifact@v4
+        with:
+          name: EMA_STRUCTURE_MULTIHORIZON_001_DISCOVERY_V01
+          path: Dream-Account-OS-v2.3-PARTIAL/research/local_data/regime_parent_discovery
+          github-token: ${{ github.token }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: 35441846334
+
+      - name: Download immutable MEXC 2023-2024 replication evidence
+        uses: actions/download-artifact@v4
+        with:
+          name: EMA_CROSSOVER_INTERMEDIATE_MEXC_REP_001_RESULT_V01
+          path: Dream-Account-OS-v2.3-PARTIAL/research/local_data/regime_parent_mexc
+          github-token: ${{ github.token }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: 35442522590
+
+      - name: Download immutable Binance 2025-Aug2026 OOS evidence
+        uses: actions/download-artifact@v4
+        with:
+          name: EMA6H_50X200_BINANCE_OOS_2025_2026_001_RESULT_V01
+          path: Dream-Account-OS-v2.3-PARTIAL/research/local_data/regime_parent_oos
+          github-token: ${{ github.token }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: 35444262073
+
+      - name: Verify immutable evidence artifact metadata
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python - <<'PY'
+          import json,os,urllib.request
+          expected={
+            10583354744:'sha256:1bb30bf68a454d69f62d6121314f80a0fa31bb7158459f72d195ebd3755e7793',
+            10584228166:'sha256:8542a9bab177535ac60dbf3533947f2b8d7ff3136697df4b0c24838af9ef6aa9',
+            10585425988:'sha256:72ec5ba4184b8877cc447f5168b41f7d9b63c5132f6a47c7c9da353139fb4d3f'}
+          for aid,digest in expected.items():
+              req=urllib.request.Request(f'https://api.github.com/repos/joseluisvieira28-oss/Laboratorio/actions/artifacts/{aid}',headers={'Authorization':f'Bearer {os.environ["GH_TOKEN"]}','Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(req,timeout=30) as r:d=json.load(r)
+              assert d['id']==aid and d.get('digest')==digest and d.get('expired') is False
+          print('IMMUTABLE_ARTIFACTS=PASS')
+          PY
+
+      - name: Compile diagnostic code
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: |
+          python -m py_compile research/ema6h_50x200_regime/ema_regime_btc1d_source_v01.py
+          python -m py_compile research/ema6h_50x200_regime/ema6h_50x200_regime_historical_diag_v01.py
+
+      - name: Acquire checksum-bound BTC 1D regime anchor
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: python research/ema6h_50x200_regime/ema_regime_btc1d_source_v01.py
+
+      - name: Execute diagnostic only
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: |
+          python research/ema6h_50x200_regime/ema6h_50x200_regime_historical_diag_v01.py \
+            --daily research/local_data/ema6h_50x200_regime_btc1d_v01/BTCUSDT_1d.csv \
+            --discovery research/local_data/regime_parent_discovery/EMA_STRUCTURE_MULTIHORIZON_001_EVENT_LEDGER_V0.1.csv \
+            --mexc research/local_data/regime_parent_mexc/EMA_CROSSOVER_INTERMEDIATE_MEXC_REP_001_EVENT_LEDGER_V0.1.csv \
+            --oos research/local_data/regime_parent_oos/EMA6H_50X200_BINANCE_OOS_2025_2026_001_EVENT_LEDGER_V0.1.csv \
+            --outdir research/local_data/ema6h_50x200_regime_diag_v01
+
+      - name: Verify no promotion authority
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('research/local_data/ema6h_50x200_regime_diag_v01/EMA6H_50X200_REGIME_DEPENDENCY_001_HISTORICAL_DIAGNOSTIC_V0.1.json')
+          d=json.loads(p.read_text())
+          assert d['status']=='HISTORICAL_DIAGNOSTIC_COMPLETE'
+          assert d['promotion_authority'] is False
+          assert d['event_count']==189
+          print('DIAGNOSTIC_BOUNDARY=PASS')
+          PY
+
+      - name: Upload diagnostic evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: EMA6H_50X200_REGIME_DEPENDENCY_001_HIST_DIAG_V01
+          path: |
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/ema6h_50x200_regime_diag_v01/
+            Dream-Account-OS-v2.3-PARTIAL/research/local_data/ema6h_50x200_regime_btc1d_v01/BTCUSDT_1D_REGIME_SOURCE_RECEIPT_V0.1.json
+          if-no-files-found: error
+          retention-days: 90
