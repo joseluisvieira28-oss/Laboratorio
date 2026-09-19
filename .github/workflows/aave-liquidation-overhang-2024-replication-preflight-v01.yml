@@ -1,0 +1,47 @@
+name: AAVE Liquidation Overhang 001 — 2024 Replication Preflight V0.1
+
+on:
+  push:
+    branches:
+      - aave-liquidation-overhang-v0.1
+    paths:
+      - '.github/workflows/aave-liquidation-overhang-2024-replication-preflight-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  R0_BOOTSTRAP_RUN_ID: '35218275356'
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify frozen 2024 replication authority
+        run: |
+          test -f research/aave_liquidation_overhang/AAVE_LIQUIDATION_OVERHANG_001_2024_REPLICATION_EXECUTION_AUTHORITY_V0_1.md
+          python -m py_compile research/aave_liquidation_overhang/replication_2024_preflight_v01.py
+      - name: Download canonical R0 bootstrap
+        uses: actions/download-artifact@v4
+        with:
+          name: AAVE_RECON_R0_BOOTSTRAP
+          path: downloaded_r0_bootstrap
+          github-token: ${{ github.token }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: ${{ env.R0_BOOTSTRAP_RUN_ID }}
+      - name: Execute outcome-blind 2024 preflight
+        run: python research/aave_liquidation_overhang/replication_2024_preflight_v01.py
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: AAVE_LIQUIDATION_OVERHANG_001_2024_REPLICATION_PREFLIGHT_V0_1
+          path: replication_2024_preflight_output/AAVE_LIQUIDATION_OVERHANG_001_2024_REPLICATION_PREFLIGHT_V0_1.json
+          if-no-files-found: error
+          retention-days: 30
