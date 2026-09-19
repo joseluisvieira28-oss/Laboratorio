@@ -20,7 +20,7 @@ class WindowsResilientBootstrapTests(unittest.TestCase):
             try:
                 with (
                     patch.object(entry, "_resource_path", return_value=self._registry_path()),
-                    patch.object(entry, "require_dh03_clock_preflight", side_effect=RuntimeError("synthetic clock fail")),
+                    patch.object(entry, "dh03_clock_preflight", return_value={"pass": False, "blockers": ["CLOCK_OFFSET_OUTSIDE_DH03_BUDGET"], "server_minus_local_midpoint_ms": 1234.5, "request_rtt_ms": 42.0, "max_abs_offset_ms": 500.0, "max_rtt_ms": 1000.0, "authenticated_exchange_api_used": False, "orders_created": False, "exchange_mutation_performed": False, "live_capital_enabled": False}),
                     patch.object(entry, "_start_dh03_thread") as start_dh03,
                     patch.object(entry, "_start_forward_thread") as start_forward,
                     patch.object(entry, "_start_render_sentinel_thread") as start_sentinel,
@@ -37,6 +37,8 @@ class WindowsResilientBootstrapTests(unittest.TestCase):
                 dh = json.loads(Path("data/dh03_local_status.json").read_text(encoding="utf-8"))
                 self.assertEqual(dh["status"], "FAIL_CLOSED")
                 self.assertEqual(dh["reason"], "DH03_NOT_STARTED_CLOCK_PREFLIGHT_FAILED")
+                self.assertEqual(dh["server_minus_local_midpoint_ms"], 1234.5)
+                self.assertEqual(dh["request_rtt_ms"], 42.0)
                 status = json.loads(Path("data/radar_status.json").read_text(encoding="utf-8"))
                 self.assertEqual(status["health"], "OK")
                 self.assertFalse(status["orders_created"])
@@ -50,7 +52,7 @@ class WindowsResilientBootstrapTests(unittest.TestCase):
             try:
                 with (
                     patch.object(entry, "_resource_path", return_value=self._registry_path()),
-                    patch.object(entry, "require_dh03_clock_preflight", return_value={"pass": True}),
+                    patch.object(entry, "dh03_clock_preflight", return_value={"pass": True, "blockers": [], "server_minus_local_midpoint_ms": 4.0, "request_rtt_ms": 30.0, "max_abs_offset_ms": 500.0, "max_rtt_ms": 1000.0}),
                     patch.object(entry, "_start_dh03_thread") as start_dh03,
                     patch.object(entry, "_start_forward_thread") as start_forward,
                     patch.object(entry, "_start_render_sentinel_thread") as start_sentinel,
