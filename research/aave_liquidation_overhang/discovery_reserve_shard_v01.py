@@ -273,7 +273,7 @@ def main()->int:
 
         balances=defaultdict(dict)
         flags={}
-        cfg_lt={u:None for u in underlyings}
+        cfg_lt={u:0 for u in underlyings}
         cfg_emode={u:0 for u in underlyings}
         counts=Counter(); seen=set(); negative=[]; debt_transfer_count=0
         current_tx=None; touched_tx=set(); stale_flag_diagnostics=0
