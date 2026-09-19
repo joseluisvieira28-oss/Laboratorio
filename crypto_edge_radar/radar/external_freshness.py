@@ -2,13 +2,16 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 import json
+import time
 from typing import Any
+from urllib.error import HTTPError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 from xml.etree import ElementTree
 
 
 API = "https://api.github.com/repos/joseluisvieira28-oss/Laboratorio/actions/runs"
+_API_COOLDOWN_UNTIL_EPOCH = 0.0
 COLLECTORS = {
     "HTF-DH03-12H-STANDALONE-FORWARD-V1": {
         "branch": "htf-dh03-12h-standalone-forward-v0.1",
@@ -46,11 +49,23 @@ def _classification(*, conclusion: str | None, delay_seconds: float) -> str:
 
 
 def fetch_runs(*, branch: str, timeout: int = 15) -> list[dict[str, Any]]:
+    global _API_COOLDOWN_UNTIL_EPOCH
+    if time.time() < _API_COOLDOWN_UNTIL_EPOCH:
+        raise ExternalFreshnessError("GitHub public runs API in rate-limit cooldown")
     url = API + "?" + urlencode({"branch": branch, "per_page": 30})
     request = Request(url, headers={"User-Agent": "crypto-edge-radar-external-freshness/1"})
     try:
         with urlopen(request, timeout=timeout) as response:
             payload = json.loads(response.read().decode("utf-8"))
+    except HTTPError as exc:
+        if exc.code in {403, 429}:
+            reset = exc.headers.get("X-RateLimit-Reset") if exc.headers else None
+            try:
+                reset_epoch = float(reset) if reset else time.time() + 3600.0
+            except (TypeError, ValueError):
+                reset_epoch = time.time() + 3600.0
+            _API_COOLDOWN_UNTIL_EPOCH = max(time.time() + 300.0, reset_epoch + 5.0)
+        raise ExternalFreshnessError(f"GitHub public runs unavailable:{type(exc).__name__}:{exc}") from exc
     except Exception as exc:
         raise ExternalFreshnessError(f"GitHub public runs unavailable:{type(exc).__name__}:{exc}") from exc
     runs = payload.get("workflow_runs") if isinstance(payload, dict) else None
