@@ -2,9 +2,9 @@
 
 Date: 2026-09-19
 Branch: `aave-liquidation-overhang-v0.1`
-Status: **FROZEN BEFORE EXECUTION / OPERATIONAL-ONLY / OUTCOME-BLIND**
+Status: **SUPERSEDED / DO NOT EXECUTE / CANONICAL R1 ALREADY PASSED**
 
-## Why this remediation exists
+## Supersession note\n\nThis file was appended after a stale run-state check on 2026-09-19. Branch reconciliation immediately recovered the newer canonical lineage: R1 semantic-reconciliation run `35384529037` already emitted `RECONSTRUCTION_DATA_PASS`, and 2023 Discovery authority was already active. Therefore this V0.2 remediation is non-canonical and MUST NOT execute, retrigger R1, or override the passed lineage. Canonical progression is the already-frozen Discovery path.\n\n## Historical reason this remediation was drafted
 
 The deterministic R1 scaled-ledger audit V0.1 was executed twice without producing a scientific/reconstruction verdict:
 
