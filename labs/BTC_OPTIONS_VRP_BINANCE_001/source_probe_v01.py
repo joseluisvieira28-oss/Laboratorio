@@ -27,17 +27,17 @@ ALIASES = {
     "option_identity": {"symbol","instrument","instrument_name","contract","contract_name"},
     "expiry": {"expiry","expiration","expiration_time","expiry_date"},
     "strike": {"strike","strike_price"},
-    "right": {"side","right","option_type"},
-    "bid_price": {"bid_price","bidprice","bid"},
-    "ask_price": {"ask_price","askprice","ask"},
-    "bid_size": {"bid_qty","bidqty","bid_size","bidsize","bid_amount"},
-    "ask_size": {"ask_qty","askqty","ask_size","asksize","ask_amount"},
+    "right": {"side","right","option_type","type"},
+    "bid_price": {"bid_price","bidprice","bid","best_bid_price"},
+    "ask_price": {"ask_price","askprice","ask","best_ask_price"},
+    "bid_size": {"bid_qty","bidqty","bid_size","bidsize","bid_amount","best_bid_qty"},
+    "ask_size": {"ask_qty","askqty","ask_size","asksize","ask_amount","best_ask_qty"},
     "underlying_price": {"underlying_price","underlyingprice","spot_price","index_price"},
     "implied_volatility": {"mark_iv","markiv","iv","implied_volatility"},
 }
 
 REQUIRED_CORE = {
-    "option_identity","expiry","strike","right",
+    "point_in_time_timestamp","option_identity","expiry","strike","right",
     "bid_price","ask_price","bid_size","ask_size"
 }
 
@@ -91,8 +91,45 @@ def inspect_sample(ds: str) -> dict:
             reader = csv.DictReader(text)
             headers = reader.fieldnames or []
             smap = semantic_map(headers)
-            row_count = sum(1 for _ in reader)
+            by_norm = {norm(h): h for h in headers}
+
+            row_count = 0
+            timestamp_rows = 0
+            expiry_parse_rows = 0
+            right_rows = 0
+            complete_bbo_rows = 0
+
+            for row in reader:
+                row_count += 1
+
+                # Point-in-time reconstruction is source-only: date + hour.
+                dval = row.get(by_norm.get("date", ""), "")
+                hval = row.get(by_norm.get("hour", ""), "")
+                if str(dval).strip() and str(hval).strip():
+                    timestamp_rows += 1
+
+                symbol_header = smap.get("option_identity")
+                symbol = str(row.get(symbol_header, "") if symbol_header else "").strip()
+                # Binance option symbols include a deterministic YYMMDD expiry token.
+                if re.search(r"(?:^|-)(\\d{6})(?:-|$)", symbol):
+                    expiry_parse_rows += 1
+
+                right_header = smap.get("right")
+                if right_header and str(row.get(right_header, "")).strip():
+                    right_rows += 1
+
+                bbo_headers = [
+                    smap.get("bid_price"), smap.get("ask_price"),
+                    smap.get("bid_size"), smap.get("ask_size")
+                ]
+                if all(h and str(row.get(h, "")).strip() not in {"", "nan", "NaN", "null", "None"} for h in bbo_headers):
+                    complete_bbo_rows += 1
+
     semantic_present = {k: (v is not None) for k, v in smap.items()}
+    semantic_present["point_in_time_timestamp"] = (
+        "date" in by_norm and "hour" in by_norm and timestamp_rows == row_count and row_count > 0
+    )
+    semantic_present["expiry"] = (expiry_parse_rows == row_count and row_count > 0)
     return {
         "date": ds,
         "zip_bytes": len(raw),
@@ -101,6 +138,10 @@ def inspect_sample(ds: str) -> dict:
         "normalized_columns": sorted(norm(h) for h in headers),
         "semantic_present": semantic_present,
         "row_count": row_count,
+        "timestamp_reconstructable_rows": timestamp_rows,
+        "expiry_parse_rows": expiry_parse_rows,
+        "right_nonempty_rows": right_rows,
+        "complete_bbo_rows": complete_bbo_rows,
         "prices_emitted": False,
     }
 
