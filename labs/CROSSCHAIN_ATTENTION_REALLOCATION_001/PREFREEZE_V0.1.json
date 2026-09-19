@@ -1,0 +1,137 @@
+{
+  "lab_id": "CROSSCHAIN-ATTENTION-REALLOCATION-001",
+  "mve_id": "CAR-HALFDAY-WINNER-RIVALS-001",
+  "version": "0.1",
+  "date_frozen": "2026-09-20",
+  "branch": "crosschain-attention-reallocation-v0.1",
+  "status": "FROZEN_BEFORE_OUTCOMES",
+  "economic_family": "EVENT_CONDITIONAL / RELATIVE_VALUE / ATTENTION_SUBSTITUTION",
+  "mechanism": "An extreme positive half-day return on one major smart-contract chain can attract scarce investor attention and capital away from rival chain ecosystems. The test is whether the attention-shock chain subsequently outperforms an equal-weight basket of rival chain natives over the next half-day.",
+  "literature_anchor": {
+    "title": "One Rising Ship Sinks Other Ships: Cross-Chain Negative Spillovers in Crypto Markets",
+    "arxiv": "2602.23762",
+    "documented_scope": "Ethereum, Solana, BSC, Arbitrum, Avalanche; 2022-2025",
+    "documented_mechanism": "attention-driven capital reallocation / substitution across chain ecosystems",
+    "boundary": "The paper documents cross-chain spillovers; this lab tests a separately frozen, executable native-token relative-value translation."
+  },
+  "anti_duplication": {
+    "nearest_labs": [
+      "H180-0001 Hourly Lead-Lag Discovery",
+      "PCU crowding-unwind family"
+    ],
+    "material_difference": [
+      "Not an unconditional BTC-leader/follower model.",
+      "Not funding or open-interest crowding.",
+      "Signal is an event-conditioned extreme return in one competing chain native.",
+      "Outcome is winner-versus-rival-basket relative value, designed to suppress broad crypto beta."
+    ],
+    "repo_search_at_freeze": "No prior branch found for cross-chain attention/capital-reallocation/fee-flow equivalents."
+  },
+  "universe": [
+    "ETHUSDT",
+    "SOLUSDT",
+    "BNBUSDT",
+    "AVAXUSDT"
+  ],
+  "market_control": "BTCUSDT is downloaded for diagnostics only and does not determine primary signal or PnL.",
+  "venue": "Binance USD-M Futures",
+  "data": {
+    "source": "https://data.binance.vision/data/futures/um/monthly/klines/{SYMBOL}/1h/{SYMBOL}-1h-YYYY-MM.zip",
+    "frequency": "1h",
+    "source_period": [
+      "2022-01",
+      "2025-12"
+    ],
+    "cash_spend_usd": 0,
+    "authentication": "none"
+  },
+  "chronology": {
+    "discovery": [
+      "2022-01-01",
+      "2024-12-31"
+    ],
+    "holdout_2025": [
+      "2025-01-01",
+      "2025-12-31"
+    ],
+    "year_2026_locked": true,
+    "holdout_rule": "Do not open 2025 outcomes unless the frozen 2022-2024 Discovery gate passes."
+  },
+  "source_gate": {
+    "required_symbols": [
+      "BTCUSDT",
+      "ETHUSDT",
+      "SOLUSDT",
+      "BNBUSDT",
+      "AVAXUSDT"
+    ],
+    "full_rule": "Each symbol has >=46/48 monthly archives, >=11 months in every calendar year, parseable 1h OHLC and no duplicate open_time.",
+    "limited_rule": "Each signal symbol has >=40/48 months and >=9 months in each discovery year; holdout may not open unless 2025 has >=11 months.",
+    "blocked": "Below limited coverage."
+  },
+  "signal": {
+    "sampling": "half-day boundaries at 00:00 and 12:00 UTC",
+    "trailing_history_halfdays": 180,
+    "minimum_history_halfdays": 120,
+    "attention_shock": "current 12h log return >= its own past-only rolling 95th percentile and current return > 0",
+    "multi_shock_resolution": "If multiple chains qualify at the same boundary, choose the chain with the largest standardized shock = current 12h return / past-only rolling 180-halfday standard deviation.",
+    "entry": "next half-day begins at the same UTC boundary using the 1h bar OPEN at that boundary",
+    "exit": "1h bar OPEN exactly 12 hours later",
+    "trade": "long winner 1.0 notional; short equal-weight basket of the other three chains totaling 1.0 notional",
+    "relative_gross_return": "winner 12h return - mean(rival three 12h returns)",
+    "no_btc_filter": true,
+    "no_trend_filter": true,
+    "no_volume_filter": true,
+    "no_funding_filter": true,
+    "no_oi_filter": true
+  },
+  "costs": {
+    "primary_roundtrip_bps_on_relative_portfolio": 20,
+    "stress_roundtrip_bps_on_relative_portfolio": 40,
+    "interpretation": "Approx. 10 bps round-trip on the long notional plus 10 bps across the short basket; stress doubles this."
+  },
+  "inference": {
+    "bootstrap_reps": 10000,
+    "circular_block_length": 5,
+    "seed": 230923
+  },
+  "discovery_gate": {
+    "minimum_N": 60,
+    "mean_net20_gt_0": true,
+    "profit_factor_net20_gte": 1.1,
+    "bootstrap_95_lower_mean_net20_gt_0": true,
+    "positive_years_gte": 2,
+    "mean_net40_gt_0": true,
+    "profit_factor_net40_gt_1": true
+  },
+  "holdout_gate": {
+    "minimum_N": 20,
+    "mean_net20_gt_0": true,
+    "profit_factor_net20_gt_1": true,
+    "bootstrap_95_lower_mean_net20_gt_0": true,
+    "mean_net40_gt_0": true
+  },
+  "terminal_classes": [
+    "DISCOVERY_FAIL_NO_PROMOTION",
+    "DISCOVERY_PASS_HOLDOUT_FAIL",
+    "SURVIVES_2025_HOLDOUT",
+    "INSUFFICIENT_SAMPLE",
+    "BLOCKED_SOURCE_COVERAGE"
+  ],
+  "no_rescue": [
+    "No percentile change after outcomes.",
+    "No change from 12h to another horizon after outcomes.",
+    "No change to winner-long/rivals-short direction after outcomes.",
+    "No symbol dropping after outcomes.",
+    "No BTC filter added after outcomes.",
+    "No cost reduction after outcomes.",
+    "No 2026 opening."
+  ],
+  "safety": {
+    "cash_spend_usd": 0,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "wallet_access": false,
+    "merge_to_main": false
+  }
+}
