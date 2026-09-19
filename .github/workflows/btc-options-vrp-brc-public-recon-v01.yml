@@ -1,0 +1,27 @@
+name: BTC Options VRP BRC Public Recon V0.1
+on:
+  push:
+    branches: [btc-options-vrp-brc-source-v0.1]
+    paths:
+      - "labs/BTC_OPTIONS_VRP_001/BRC_ACCESS_AUTHORITY_V0.1.json"
+      - "labs/BTC_OPTIONS_VRP_001/brc_options_public_recon_v01.py"
+      - ".github/workflows/btc-options-vrp-brc-public-recon-v01.yml"
+permissions:
+  contents: read
+jobs:
+  recon:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - name: Compile
+        run: python -m py_compile labs/BTC_OPTIONS_VRP_001/brc_options_public_recon_v01.py
+      - name: Run frozen public-only BRC recon
+        run: python labs/BTC_OPTIONS_VRP_001/brc_options_public_recon_v01.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BTC_OPTIONS_VRP_001_BRC_PUBLIC_RECON_V0_1
+          path: brc_options_public_recon_receipt_v01.json
+          retention-days: 30
