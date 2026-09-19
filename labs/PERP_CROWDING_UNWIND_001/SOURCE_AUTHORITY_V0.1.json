@@ -1,0 +1,101 @@
+{
+  "lab_id": "PERP-CROWDING-UNWIND-001",
+  "source_gate_id": "PCU-BINANCE-METRICS-FUNDING-001",
+  "version": "0.1",
+  "date_frozen": "2026-09-19",
+  "branch": "perp-crowding-unwind-v0.1",
+  "status": "FROZEN_PRE_SOURCE_OUTCOME_BLIND",
+  "economic_family": "MICROSTRUCTURE / FORCED_FLOW / CROWDED_LEVERAGE",
+  "mechanism": "Extreme perpetual funding combined with accelerating aggregate open interest may identify crowded leveraged positioning that is vulnerable to a subsequent unwind. This is not a pure positioning-ratio hypothesis.",
+  "anti_duplication": {
+    "nearest_lab": "LL-0017 top/global positioning ratio",
+    "material_difference": [
+      "LL-0017 uses trader positioning ratios as the signal family.",
+      "PCU-001 uses exchange-wide aggregate open interest acceleration plus funding-rate extremity.",
+      "No top-trader/global long-short ratio is required for the primary signal.",
+      "Primary mechanism is leveraged crowding and forced unwind, not trader-ratio continuation."
+    ],
+    "forbidden_rescue": "Do not import LL-0017 thresholds, outcomes, or sign choices into this lab."
+  },
+  "venue": "Binance USD-M Futures",
+  "asset": "BTCUSDT",
+  "discovery_period_if_source_passes": {
+    "start": "2021-01-01",
+    "end": "2024-12-31",
+    "protected_2025_2026": true
+  },
+  "frozen_source_routes": {
+    "metrics": "https://data.binance.vision/data/futures/um/daily/metrics/BTCUSDT/BTCUSDT-metrics-YYYY-MM-DD.zip",
+    "funding": "https://data.binance.vision/data/futures/um/daily/fundingRate/BTCUSDT/BTCUSDT-fundingRate-YYYY-MM-DD.zip",
+    "futures_1h": "https://data.binance.vision/data/futures/um/daily/klines/BTCUSDT/1h/BTCUSDT-1h-YYYY-MM-DD.zip"
+  },
+  "representative_dates": [
+    "2021-03-15",
+    "2022-06-15",
+    "2023-10-15",
+    "2024-03-15",
+    "2024-11-15"
+  ],
+  "required_fields": {
+    "metrics_any_of": [
+      [
+        "create_time",
+        "symbol",
+        "sum_open_interest"
+      ],
+      [
+        "create_time",
+        "symbol",
+        "sum_open_interest_value"
+      ]
+    ],
+    "funding_any_of": [
+      [
+        "calc_time",
+        "symbol",
+        "last_funding_rate"
+      ],
+      [
+        "fundingTime",
+        "fundingRate"
+      ]
+    ],
+    "kline_min_columns": 7
+  },
+  "pass_rule": {
+    "all_representative_dates_metrics_http_200": true,
+    "all_representative_dates_funding_http_200": true,
+    "all_representative_dates_kline_http_200": true,
+    "open_interest_field_present": true,
+    "funding_rate_field_present": true,
+    "timestamps_parseable": true,
+    "no_authentication_required": true,
+    "cash_spend_usd": 0
+  },
+  "terminal_classes": [
+    "PCU_SOURCE_FULL",
+    "PCU_SOURCE_LIMITED",
+    "PCU_SOURCE_BLOCKED"
+  ],
+  "outcome_boundary": [
+    "No future returns.",
+    "No direction adjudication.",
+    "No PnL.",
+    "No threshold optimization.",
+    "No 2025/2026.",
+    "No live trading or exchange mutation."
+  ],
+  "safety": {
+    "cash_spend_usd": 0,
+    "credentials_authorized": false,
+    "returns_authorized": false,
+    "pnl_authorized": false,
+    "tuning_authorized": false,
+    "access_2025_authorized": false,
+    "access_2026_authorized": false,
+    "live_trading_authorized": false,
+    "exchange_mutation_authorized": false,
+    "wallet_access_authorized": false,
+    "merge_to_main_authorized": false
+  }
+}
