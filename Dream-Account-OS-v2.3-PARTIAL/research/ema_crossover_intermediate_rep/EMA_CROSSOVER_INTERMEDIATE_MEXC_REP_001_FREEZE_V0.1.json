@@ -1,0 +1,129 @@
+{
+  "experiment_id": "EMA-CROSSOVER-INTERMEDIATE-MEXC-REP-001",
+  "status": "FROZEN_PRE_OUTCOME",
+  "created_date": "2026-09-19",
+  "policy": "ND-PROMOTION-POLICY-V3.0-FROZEN",
+  "maturity_target": "M4_REPLICATION",
+  "parent": {
+    "experiment_id": "EMA-STRUCTURE-MULTIHORIZON-001",
+    "canonical_discovery_run_id": 35441846334,
+    "canonical_discovery_head_sha": "62e8609c13e9126e833c27fe3b093cec31a8ad7d",
+    "discovery_closeout_commit": "a52ae0ccd6b0624a3c35bc813b68036e0fb61511",
+    "historical_verdict_preserved": true,
+    "parent_summary": "0 SURVIVES_DISCOVERY; 20 NO_EDGE; 10 INSUFFICIENT_SAMPLE. Intermediate crossover cells produced mixed-to-positive point estimates and were explicitly retained only as hypothesis-generating evidence."
+  },
+  "scientific_identity": {
+    "primary_edge_family": "TREND",
+    "secondary_family": null,
+    "mathematical_engine": "direction-normalized continuation after a deterministic EMA trend-state transition",
+    "mechanism_statement": "A completed fast-over-slow or fast-under-slow EMA crossover may proxy a persistent trend transition caused by gradual capital reallocation; if real, direction-normalized returns after the crossover should remain positive on a genuinely independent venue/time block.",
+    "failure_mode": "range-bound/choppy price action creates repeated false crossovers and destroys post-cross continuation after costs",
+    "payoff_shape": "unknown_before_replication",
+    "regime_dependency": "trend persistence versus chop"
+  },
+  "anti_selection_rule": {
+    "family_selected_from_parent_as_new_child_hypothesis": true,
+    "all_predeclared_intermediate_cells_must_run": true,
+    "winner_timeframe_selection_before_replication": false,
+    "winner_pair_selection_before_replication": false,
+    "asset_selection": false,
+    "direction_flip": false,
+    "parameter_tuning": false,
+    "parent_verdict_rewrite": false
+  },
+  "source": {
+    "provider": "MEXC",
+    "market": "SPOT",
+    "source_interval": "15m",
+    "window_start_utc": "2023-02-01T00:00:00.000Z",
+    "window_end_utc_exclusive": "2024-12-31T16:00:00.000Z",
+    "reuse_exact_audited_artifact": true,
+    "source_parent_experiment": "TFG-EMA-PULLBACK-1D-001",
+    "github_actions_run_id": 35025382064,
+    "artifact_name": "tfg-pbr01-1d-exact-parent-corpus",
+    "artifact_id": 10419067320,
+    "artifact_digest": "sha256:7b2562af14983d0344c9a28e81e9c1866f2e5e9dfafe94203da9a4ca1ffa36cb",
+    "expected_source_files": 138,
+    "expected_effective_15m_candles_per_symbol": 67151,
+    "expected_total_detected_gap_count": 36,
+    "expected_total_missing_candle_count": 102,
+    "parent_corpus_fingerprint_by_symbol": {
+      "BTCUSDT": "fba38a205b911fad0494b86174ef06a2d04a5908b0617a27efb74f067f8cf1d9",
+      "ETHUSDT": "5a6433eb8703a9bcd0714fc6485ccc965cf754941ee6c69981158a7f11f36b7f",
+      "SOLUSDT": "db013d47799b99a7c827740cf03c8e7e27b08c317097836143c855f1a51dde9b",
+      "BNBUSDT": "ec43c0ab51dbf80fcde273c7d817b7cf9995e1614dfa5c05de4f664b9880437a",
+      "XRPUSDT": "9b15ebea40555f5d6def5aab65cc5485db8120e0a6fa74f53ac4bb981a004427",
+      "DOGEUSDT": "786a0129a2a7c9b58e2a465383d4849cedc3192e0c24bf8e4474ee709a3323fe"
+    }
+  },
+  "universe": ["BTCUSDT","ETHUSDT","SOLUSDT","BNBUSDT","XRPUSDT","DOGEUSDT"],
+  "timeframes": ["2H","4H","6H","8H"],
+  "pairs": ["EMA20x50","EMA50x200"],
+  "ema_lengths": [20,50,200],
+  "event_definition": {
+    "bull_cross": "previous fast-minus-slow <= 0 AND current fast-minus-slow > 0",
+    "bear_cross": "previous fast-minus-slow >= 0 AND current fast-minus-slow < 0",
+    "signal_uses_completed_bar_only": true,
+    "entry": "next bar open",
+    "exit": "open after 6 completed bars following entry",
+    "primary_horizon_bars": 6,
+    "directional_pooling": "multiply raw forward return by +1 for bull cross and -1 for bear cross before costs"
+  },
+  "costs": {
+    "base_round_trip_bps": 10.0,
+    "stress_round_trip_bps": 14.0,
+    "stress_is_fragility_not_automatic_veto_under_v3": true,
+    "cost_reduction_after_outcomes": false
+  },
+  "parent_discovery_reference": {
+    "2H:EMA20x50": {"n":940,"base_mean_net_bps":6.82137361092228,"classification":"NO_EDGE"},
+    "2H:EMA50x200": {"n":250,"base_mean_net_bps":102.39823452941486,"classification":"NO_EDGE"},
+    "4H:EMA20x50": {"n":436,"base_mean_net_bps":50.16199467086497,"classification":"NO_EDGE"},
+    "4H:EMA50x200": {"n":98,"base_mean_net_bps":-45.24582017280156,"classification":"INSUFFICIENT_SAMPLE"},
+    "6H:EMA20x50": {"n":265,"base_mean_net_bps":164.86578966409527,"classification":"NO_EDGE"},
+    "6H:EMA50x200": {"n":59,"base_mean_net_bps":95.07867564861247,"classification":"INSUFFICIENT_SAMPLE"},
+    "8H:EMA20x50": {"n":203,"base_mean_net_bps":76.80231204380571,"classification":"NO_EDGE"},
+    "8H:EMA50x200": {"n":44,"base_mean_net_bps":107.87775066141853,"classification":"INSUFFICIENT_SAMPLE"}
+  },
+  "statistics": {
+    "independent_validation_min_events": 50,
+    "bootstrap": "UTC entry-day block bootstrap",
+    "bootstrap_repetitions": 5000,
+    "bootstrap_seed": 20260919,
+    "bootstrap_confidence": 0.95,
+    "one_sided_support_p_max": 0.10,
+    "multiple_testing": "Benjamini-Hochberg across the 8 predeclared replication cells",
+    "bh_fdr_q_max": 0.10,
+    "profit_factor_definition": "sum positive net bps / absolute sum negative net bps"
+  },
+  "replication_classification": {
+    "REPLICATION_SUPPORTIVE": "n>=50 AND parent discovery mean>0 AND MEXC base mean>0 AND base PF>1 AND one-sided block-bootstrap p<=0.10 AND BH-FDR q<=0.10",
+    "REPLICATION_CONTRADICTS_STRONG": "n>=50 AND MEXC base mean<0 AND base PF<1 AND bootstrap upper95<0",
+    "REPLICATION_CONTRADICTS_ECONOMIC": "n>=50 AND MEXC base mean<0 AND base PF<1 but upper95 is not below zero",
+    "REPLICATION_MIXED": "adequate sample but neither supportive nor contradictory under the frozen definitions",
+    "INSUFFICIENT_SAMPLE": "n<50"
+  },
+  "v3_adjudication_boundary": {
+    "runner_may_not_assign_tier2": true,
+    "supportive_cells_require_separate_v3_adjudication": true,
+    "no_single_cell_promotion_without_complete_8_cell_family_report": true,
+    "no_live_or_shadow_authority_from_this_experiment": true
+  },
+  "protected_data": {
+    "2025": "LOCKED",
+    "2026": "LOCKED"
+  },
+  "governance": {
+    "research_only": true,
+    "fail_closed": true,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "orders": false,
+    "wallets": false,
+    "alerts_webhooks": false,
+    "render_deploy": false,
+    "merge_to_main": false,
+    "post_outcome_tuning": false,
+    "cherry_picking": false
+  }
+}
