@@ -1,0 +1,39 @@
+name: Liquidation Pressure — Multi-Venue Source Probe V0.1
+on:
+  push:
+    branches: [liquidation-pressure-tardis-source-v0.2]
+    paths: [.github/liquidation-pressure-multivenue-source-v01.trigger]
+permissions:
+  contents: read
+jobs:
+  source_probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: liquidation-pressure-tardis-source-v0.2}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install --disable-pip-version-check requests
+      - name: Verify source-only authority
+        run: |
+          python - <<'PY'
+          import json
+          a=json.load(open('labs/LIQUIDATION_PRESSURE_001/MULTIVENUE_SOURCE_PROBE_AUTHORITY_V0.1.json'))
+          assert a['status']=='FROZEN_SOURCE_ONLY_OUTCOME_BLIND'
+          assert a['selection_firewall']['do_not_select_by_forward_returns'] is True
+          assert all(int(d[:4]) < 2025 for d in a['sample_dates'])
+          assert all(v is False for k,v in a['safety'].items() if k.endswith('_authorized'))
+          print('MULTIVENUE_SOURCE_AUTHORITY_PASS')
+          PY
+      - run: python -m py_compile labs/LIQUIDATION_PRESSURE_001/multivenue_source_probe_v01.py
+      - name: Execute multi-venue source probe
+        run: python labs/LIQUIDATION_PRESSURE_001/multivenue_source_probe_v01.py
+      - name: Upload immutable source receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: LIQUIDATION_PRESSURE_001_MULTIVENUE_SOURCE_PROBE_V0_1
+          path: artifacts/liquidation_pressure_multivenue_source_probe_v01/
+          retention-days: 90
+          if-no-files-found: warn
