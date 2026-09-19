@@ -31,7 +31,13 @@ REQUIRED = {
 
 
 def norm(s: str) -> str:
-    return "_".join(s.strip().upper().replace("-", "_").split())
+    x = s.strip()
+    if x.startswith("[") and x.endswith("]"):
+        x = x[1:-1]
+    x = "_".join(x.upper().replace("-", "_").split())
+    if x == "OPTION_RIGHT":
+        x = "RIGHT"
+    return x
 
 
 def nonempty(v) -> bool:
