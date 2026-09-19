@@ -1,0 +1,20 @@
+{
+  "receipt_id": "RADAR-V0141-OPERATOR-BUNDLE-HOTFIX1-2026-09-19",
+  "status": "OPERATOR_WRAPPER_HOTFIX_ONLY",
+  "incident": "START_AND_VERIFY_V0141.bat passed %~dp0 as a quoted -BundleRoot argument; the trailing backslash caused Windows command-line parsing to deliver a stray trailing quote to PowerShell, making Resolve-Path reject the path.",
+  "correction": [
+    "launcher no longer passes -BundleRoot; Start_Verify_V0141.ps1 uses $PSScriptRoot directly",
+    "PowerShell defensively trims a stray double quote and uses Resolve-Path -LiteralPath"
+  ],
+  "canonical_exe_unchanged": true,
+  "exe_sha256": "428d3e6d01253a304ad325a229f4c7bfe3054e6d5de95df4f76e5a65116c6c77",
+  "hotfix_bundle_sha256": "561626ddb4479b2cbd38685b8fec5fb2cc798cb57bc838b48021693dc0fc1e59",
+  "scientific_changes": false,
+  "execution_authority_changes": false,
+  "safety": {
+    "authenticated_exchange_api_enabled": false,
+    "orders_created": false,
+    "exchange_mutation_performed": false,
+    "live_capital_enabled": false
+  }
+}
