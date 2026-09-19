@@ -1,0 +1,92 @@
+{
+  "lab_id": "CROSSCHAIN-ATTENTION-REALLOCATION-001",
+  "mve_id": "CAR-ETHAVAX-ACTIVITY-LEADER-3D-001",
+  "version": "0.1",
+  "date_frozen": "2026-09-20",
+  "branch": "crosschain-attention-reallocation-v0.1",
+  "status": "FROZEN_BEFORE_ETH_AVAX_MARKET_OUTCOMES",
+  "economic_family": "RELATIVE VALUE / ATTENTION-INDUCED CAPITAL REALLOCATION",
+  "mechanism": "A large chain-specific activity shock may attract attention/capital toward that ecosystem and away from a competing chain. Test whether the activity-shock leader subsequently outperforms the other token over the next three days.",
+  "chains": {
+    "ETH": {
+      "activity": "Coin Metrics ETH TxCnt daily",
+      "market": "ETHUSDT Binance spot"
+    },
+    "AVAX": {
+      "activity": "Avalanche Metrics C-Chain daily txCount",
+      "market": "AVAXUSDT Binance spot"
+    }
+  },
+  "source_period": "2022-01-01 through 2024-12-31",
+  "discovery_period": {
+    "signal_start": "2022-02-01",
+    "signal_end": "2023-12-27",
+    "price_outcomes": "2022-2023 only",
+    "replication_2024_locked": true
+  },
+  "signal": {
+    "transform": "natural log daily activity",
+    "standardization": "past-only 28-day sample mean/std per chain",
+    "zscore": "(log_activity_t - past28_mean) / past28_sample_std",
+    "leader": "chain with greater z",
+    "leader_threshold": 1.5,
+    "gap_threshold": 1,
+    "event_rule": "leader_z >= 1.5 AND leader_z - follower_z >= 1.0",
+    "overlap": "one active event at a time; new signals ignored until prior 3-day outcome exits"
+  },
+  "outcome": {
+    "information_time": "after activity day t is complete",
+    "entry": "next-day t+1 daily OPEN",
+    "exit": "t+4 daily OPEN",
+    "horizon_days": 3,
+    "relative_return": "ln(leader_exit/leader_entry) - ln(follower_exit/follower_entry)",
+    "execution_claimed": false,
+    "pnl_claimed": false,
+    "costs_applied": false
+  },
+  "discovery_gate": {
+    "minimum_N": 40,
+    "mean_relative_return_gt_0": true,
+    "bootstrap_95_lower_mean_gt_0": true,
+    "positive_years_required": 2,
+    "leader_win_rate_gt_0_50": true,
+    "median_report_only": true
+  },
+  "statistics": {
+    "bootstrap_reps": 10000,
+    "circular_block_length_events": 5,
+    "seed": 230926,
+    "report": [
+      "N",
+      "mean",
+      "median",
+      "leader_win_rate",
+      "bootstrap95",
+      "2022_mean",
+      "2023_mean",
+      "event_counts_by_leader",
+      "max_losing_streak"
+    ]
+  },
+  "classifications": [
+    "DISCOVERY_PASS_ATTENTION_REALLOCATION",
+    "DISCOVERY_FAIL_NO_PROMOTION",
+    "INSUFFICIENT_SAMPLE",
+    "BLOCKED_SOURCE"
+  ],
+  "replication_rule": "Only a Discovery pass may authorize a separately frozen 2024 replication.",
+  "no_rescue": [
+    "Do not change 28d standardization, 1.5 leader threshold, 1.0 gap, or 3d horizon after outcomes.",
+    "Do not invert to mean reversion after outcomes.",
+    "Do not drop a losing chain.",
+    "Do not open 2024 to rescue Discovery.",
+    "Do not open 2025/2026."
+  ],
+  "safety": {
+    "cash_spend_usd": 0,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "wallet_access": false,
+    "merge_to_main": false
+  }
+}
