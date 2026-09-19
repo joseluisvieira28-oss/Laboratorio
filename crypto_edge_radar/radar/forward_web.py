@@ -24,6 +24,12 @@ from .tfg_forward_watcher import (
     latest_certifiable_signal_close_ms,
 )
 from .tfg_forward_metrics import evaluate_tfg_forward_evidence
+from .ema6h_regime_watcher import EMA6HRegimeForwardWatcher
+from .ema6h_regime_metrics import evaluate_ema6h_regime_forward
+from .strategies.ema6h_50x200_regime_forward import (
+    BinanceSpotKlineFeed as EMA6HBinanceSpotKlineFeed,
+    latest_certifiable_signal_close_ms as latest_ema6h_certifiable_signal_close_ms,
+)
 from .options_v21_live import BinanceBTCUSDTDailyFeed, DeribitBTCOptionTradeFeed
 from .options_v21_watcher import OptionsV21ForwardShadowWatcher
 from .options_v21_metrics import evaluate_options_v21_forward
@@ -92,6 +98,10 @@ class ForwardShadowRuntime:
             store=self.store,
             feed=MEXCSpotKlineFeed(timeout=settings.http_timeout),
         )
+        self.ema6h_regime = EMA6HRegimeForwardWatcher(
+            store=self.store,
+            feed=EMA6HBinanceSpotKlineFeed(timeout=settings.http_timeout),
+        )
         self.bnb = BNBLaunchpoolForwardShadowWatcher(
             store=self.store,
             source=CachingBinanceOfficialLaunchpoolSource(timeout=settings.http_timeout),
@@ -115,6 +125,11 @@ class ForwardShadowRuntime:
             "orders_created": False,
         }
         self._last_tfg_due: int | None = None
+        self._last_ema6h_due: int | None = None
+        self._ema6h_state: dict[str, Any] = {
+            "status": "STARTING",
+            "watcher_id": "EMA6H-50X200-REGIME-DEPENDENCY-001-FORWARD-SHADOW",
+        }
         self._last_etf_public_check_ms: int | None = None
         self._last_etf_signal_check_ms: int | None = None
         self._last_options_runtime_day: str | None = None
@@ -238,6 +253,30 @@ class ForwardShadowRuntime:
                 "status": "IDLE_NO_NEW_CERTIFIABLE_12H_BOUNDARY",
                 "latest_seen_boundary_ms": self._last_tfg_due,
             }
+
+        ema6h_due = latest_ema6h_certifiable_signal_close_ms(now_ms)
+        if ema6h_due != self._last_ema6h_due or self._ema6h_state.get("status") == "STARTING":
+            try:
+                ema6h_state = self.ema6h_regime.run_once(now_ms=now_ms)
+                self._ema6h_state = ema6h_state
+                self._last_ema6h_due = ema6h_due
+            except Exception as exc:
+                ema6h_state = {"status": "FAIL_CLOSED", "error": f"{type(exc).__name__}:{exc}"}
+                self._ema6h_state = ema6h_state
+                errors["ema6h_regime"] = ema6h_state["error"]
+        else:
+            ema6h_state = self._ema6h_state
+
+        try:
+            ema6h_metrics = evaluate_ema6h_regime_forward(self.store)
+        except Exception as exc:
+            ema6h_metrics = {
+                "classification": "METRICS_FAIL_CLOSED",
+                "error": f"{type(exc).__name__}:{exc}",
+                "automatic_promotion": False,
+                "live_trading_authorized": False,
+            }
+            errors["ema6h_regime_metrics"] = ema6h_metrics["error"]
 
         runtime_liveness = self._runtime_liveness(now_ms=now_ms)
 
@@ -388,6 +427,8 @@ class ForwardShadowRuntime:
             "runtime_liveness": runtime_liveness,
             "tfg": tfg_state,
             "tfg_forward_metrics": tfg_forward_metrics,
+            "ema6h_regime": ema6h_state,
+            "ema6h_regime_metrics": ema6h_metrics,
             "bnb_launchpool": bnb_state,
             "etf_exec_v2_public": etf_exec_v2,
             "etf_cme_signal": etf_signal,
