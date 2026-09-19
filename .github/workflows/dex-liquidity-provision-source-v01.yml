@@ -1,0 +1,46 @@
+name: DEX Liquidity Provision 001 — Source Gate V0.1
+
+on:
+  push:
+    branches:
+      - dex-liquidity-provision-v0.1
+    paths:
+      - '.github/workflows/dex-liquidity-provision-source-v01.yml'
+      - 'research/dex_liquidity_provision/SOURCE_TRIGGER_V0_1.txt'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout frozen research branch
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install source dependencies
+        run: pip install --disable-pip-version-check requests 'eth-hash[pycryptodome]'
+
+      - name: Verify authority exists before network access
+        run: |
+          test -f research/dex_liquidity_provision/DEX_LIQUIDITY_PROVISION_001_PRE_SOURCE_AUTHORITY_V0_1.md
+          python -m py_compile research/dex_liquidity_provision/source_probe_v01.py
+
+      - name: Execute structural source-only gate
+        run: python research/dex_liquidity_provision/source_probe_v01.py
+
+      - name: Upload immutable source receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: DEX_LIQUIDITY_PROVISION_001_SOURCE_V0_1
+          path: dex_liquidity_source_output/DEX_LIQUIDITY_PROVISION_001_SOURCE_RECEIPT_V0_1.json
+          if-no-files-found: warn
+          retention-days: 30
