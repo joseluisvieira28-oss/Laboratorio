@@ -1,0 +1,41 @@
+name: MSEL-002 Uniblock Transport Qualification V0.1
+
+on:
+  push:
+    branches:
+      - memecoin-metadata-duplication-v0.1
+    paths:
+      - '.github/workflows/msel002-uniblock-transport-qualification-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  qualify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify frozen source authority and compile
+        run: |
+          test -f Dream-Account-OS-v2.3-PARTIAL/research/memecoin_metadata_duplication_002/MSEL_002_ONCHAIN_IMMUTABLE_IDENTITY_SOURCE_FREEZE_V01.md
+          test -f Dream-Account-OS-v2.3-PARTIAL/research/memecoin_metadata_duplication_002/MSEL_002_UNIBLOCK_TRANSPORT_QUALIFICATION_FREEZE_V01.md
+          python -m py_compile Dream-Account-OS-v2.3-PARTIAL/research/memecoin_metadata_duplication_002/source/qualify_uniblock_transport_v01.py
+      - name: Run source-only dual-provider qualification
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/memecoin_metadata_duplication_002/source
+        env:
+          MSEL_RPS_DELAY: '0.20'
+          MSEL_RPC_RETRIES: '7'
+        run: python qualify_uniblock_transport_v01.py
+      - name: Upload qualification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: MSEL002_UNIBLOCK_TRANSPORT_QUALIFICATION_V0_1
+          path: Dream-Account-OS-v2.3-PARTIAL/research/memecoin_metadata_duplication_002/source/transport_qualification_v01/
+          if-no-files-found: error
+          retention-days: 30
