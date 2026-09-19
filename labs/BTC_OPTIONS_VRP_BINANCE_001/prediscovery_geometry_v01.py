@@ -75,10 +75,10 @@ def parse_strike(raw, symbol: str) -> float:
         return float(s)
     except ValueError:
         pass
-    m = re.fullmatch(r"(\\d{6})-([0-9]+(?:\\.[0-9]+)?)", s)
+    m = re.fullmatch(r"(\d{6})-([0-9]+(?:\.[0-9]+)?)", s)
     if not m:
         raise ValueError("unrecognized strike encoding")
-    sm = re.search(r"(?:^|-)(\\d{6})-([0-9]+(?:\\.[0-9]+)?)(?:-|$)", symbol)
+    sm = re.search(r"(?:^|-)(\d{6})-([0-9]+(?:\.[0-9]+)?)(?:-|$)", symbol)
     if not sm:
         raise ValueError("symbol strike token unavailable")
     if sm.group(1) != m.group(1):
