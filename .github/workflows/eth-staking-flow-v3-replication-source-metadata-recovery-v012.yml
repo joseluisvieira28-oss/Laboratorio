@@ -1,0 +1,211 @@
+name: ETH Staking Flow 001 — V3 Replication Source Metadata Recovery V0.1.2
+
+on:
+  push:
+    branches:
+      - eth-staking-flow-v0.3-discovery
+    paths:
+      - 'research/eth_staking_flow/V3_REPLICATION_SOURCE_METADATA_RECOVERY_TRIGGER_V0_1_2.txt'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  ORIGINAL_RUN_ID: '35387477455'
+
+jobs:
+  freeze-guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Bind exact source and recovery bytes
+        run: |
+          test "$(git hash-object research/eth_staking_flow/xatu_v3_replication_queue_shard_v01.py)" = "b6892737a9a9914faa86cec206389432352f466e"
+          test "$(git hash-object research/eth_staking_flow/xatu_v3_replication_queue_aggregate_v01.py)" = "930390961b446f51592e68845469ea1320d55527"
+          test "$(git hash-object research/eth_staking_flow/xatu_v3_replication_queue_shard_v012.py)" = "d31d9a45cdf0774f5a61f115812e35b4c0a08008"
+          test "$(git hash-object research/eth_staking_flow/xatu_v3_replication_queue_aggregate_v012.py)" = "31ae8a6e74e2f112e8e9e015ebe05f6c92deb388"
+          test "$(git hash-object research/eth_staking_flow/ETH_STAKING_FLOW_001_V3_REPLICATION_SOURCE_PARQUET_METADATA_FALLBACK_V0_1_2.md)" = "d68a5309747a2ada842f482024687fe0a9ecb927"
+          test "$(git hash-object research/eth_staking_flow/ETH_STAKING_FLOW_001_V3_INDEPENDENT_REPLICATION_AUTHORITY_V0_1.md)" = "06a1044b5c1212fc9314b3644e68223b86cfc227"
+          python -m py_compile research/eth_staking_flow/xatu_v3_replication_queue_shard_v012.py
+          python -m py_compile research/eth_staking_flow/xatu_v3_replication_queue_aggregate_v012.py
+          echo ETH_V3_METADATA_RECOVERY_BIND_PASS
+
+  equivalence-qa:
+    needs: freeze-guard
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install exact source dependencies
+        run: pip install --disable-pip-version-check pyarrow fsspec aiohttp
+      - name: Prove metadata and column-value routes are semantically identical
+        run: |
+          python - <<'PY'
+          import importlib.util, json
+          from datetime import date
+          from pathlib import Path
+          p=Path('research/eth_staking_flow/xatu_v3_replication_queue_shard_v012.py')
+          spec=importlib.util.spec_from_file_location('v012',p)
+          m=importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(m)
+          controls=[date(2025,2,24),date(2025,3,2),date(2025,10,17)]
+          rows=[m.equivalence_payload(d) for d in controls]
+          print(json.dumps(rows,sort_keys=True))
+          assert all(x['pass'] for x in rows),rows
+          assert all(not x['mismatch'] for x in rows),rows
+          print('ETH_V3_METADATA_FALLBACK_EQUIVALENCE_PASS')
+          PY
+
+  recover-months:
+    needs: equivalence-qa
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shard_id: "202502"
+            shard_start: "2025-02-01"
+            shard_end: "2025-02-28"
+          - shard_id: "202503"
+            shard_start: "2025-03-01"
+            shard_end: "2025-03-31"
+          - shard_id: "202510"
+            shard_start: "2025-10-01"
+            shard_end: "2025-10-31"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install exact source dependencies
+        run: pip install --disable-pip-version-check pyarrow fsspec aiohttp
+      - name: Recover exact frozen month with metadata fallback only
+        env:
+          SHARD_ID: ${{ matrix.shard_id }}
+          SHARD_START: ${{ matrix.shard_start }}
+          SHARD_END: ${{ matrix.shard_end }}
+        run: python research/eth_staking_flow/xatu_v3_replication_queue_shard_v012.py
+      - name: Enforce exact fallback-day identity
+        if: always()
+        env:
+          SHARD_ID: ${{ matrix.shard_id }}
+        run: |
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          sid=os.environ['SHARD_ID']
+          expected={
+            '202502':{'2025-02-25','2025-02-26','2025-02-27','2025-02-28'},
+            '202503':{'2025-03-01'},
+            '202510':{'2025-10-18','2025-10-19'},
+          }[sid]
+          p=Path('xatu_v3_replication_shards')/f'queue_rep_{sid}.json'
+          assert p.exists(),p
+          x=json.loads(p.read_text())
+          got={r['date'] for r in x.get('daily_source_records') or [] if r.get('timestamp_locator')=='COLUMN_VALUE_FALLBACK_NO_ROWGROUP_STATS'}
+          assert got==expected,(sid,got,expected)
+          assert x['classification']=='SHARD_PASS',(sid,x['classification'],x.get('errors'))
+          print('ETH_V3_METADATA_RECOVERY_SHARD_PASS',sid,sorted(got))
+          PY
+      - name: Upload metadata recovery shard receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ETH_V3_REP_METADATA_RECOVERY_${{ matrix.shard_id }}
+          path: xatu_v3_replication_shards/queue_rep_${{ matrix.shard_id }}.json
+          if-no-files-found: error
+          retention-days: 30
+
+  aggregate:
+    if: always() && needs.freeze-guard.result == 'success' && needs.equivalence-qa.result == 'success'
+    needs:
+      - freeze-guard
+      - equivalence-qa
+      - recover-months
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download original 20 source shard receipts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: ETH_V3_REP_SOURCE_*
+          path: downloaded_original
+          merge-multiple: true
+          run-id: ${{ env.ORIGINAL_RUN_ID }}
+          github-token: ${{ github.token }}
+
+      - name: Download three V0.1.2 recovery receipts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: ETH_V3_REP_METADATA_RECOVERY_*
+          path: downloaded_recovery
+          merge-multiple: true
+
+      - name: Assemble exact 17 original passes plus 3 recovered shards
+        run: |
+          python - <<'PY'
+          import json,shutil
+          from pathlib import Path
+          recovered={'202502','202503','202510'}
+          dst=Path('downloaded_replication_shards')
+          dst.mkdir(parents=True,exist_ok=True)
+          originals={}
+          for p in Path('downloaded_original').rglob('queue_rep_*.json'):
+              x=json.loads(p.read_text())
+              originals[str(x.get('shard_id'))]=(p,x)
+          assert len(originals)==20,sorted(originals)
+          for sid,(p,x) in originals.items():
+              if sid in recovered:
+                  assert x.get('classification')=='SOURCE_ACQUISITION_TECHNICAL_FAILURE',(sid,x.get('classification'))
+                  continue
+              assert x.get('classification')=='SHARD_PASS',(sid,x.get('classification'))
+              shutil.copy2(p,dst/p.name)
+          recovery={}
+          for p in Path('downloaded_recovery').rglob('queue_rep_*.json'):
+              x=json.loads(p.read_text())
+              recovery[str(x.get('shard_id'))]=(p,x)
+          assert set(recovery)==recovered,(set(recovery),recovered)
+          for sid,(p,x) in recovery.items():
+              assert x.get('classification')=='SHARD_PASS',(sid,x.get('classification'),x.get('errors'))
+              shutil.copy2(p,dst/p.name)
+          final=list(dst.glob('queue_rep_*.json'))
+          assert len(final)==20,len(final)
+          print('ETH_V3_METADATA_RECOVERY_ASSEMBLY_PASS',len(final))
+          PY
+
+      - name: Run unchanged scientific aggregate with V0.1.2 lineage
+        run: python research/eth_staking_flow/xatu_v3_replication_queue_aggregate_v012.py
+
+      - name: Enforce source-only firewall
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('xatu_v3_replication_output/ETH_STAKING_FLOW_001_V3_REPLICATION_SOURCE_V0_1.json')
+          assert p.exists(),'metadata recovery aggregate receipt missing'
+          x=json.loads(p.read_text())
+          assert x['signal_evaluated'] is False
+          assert x['market_prices_opened'] is False
+          assert x['returns_opened'] is False
+          assert x['pnl_opened'] is False
+          assert x['source_cutoff_2026']=='2026-08-31'
+          print('ETH_V3_METADATA_RECOVERY_FIREWALL_PASS',x['classification'])
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ETH_STAKING_FLOW_001_V3_REPLICATION_SOURCE_V0_1_2
+          path: xatu_v3_replication_output/ETH_STAKING_FLOW_001_V3_REPLICATION_SOURCE_V0_1.json
+          if-no-files-found: error
+          retention-days: 30
