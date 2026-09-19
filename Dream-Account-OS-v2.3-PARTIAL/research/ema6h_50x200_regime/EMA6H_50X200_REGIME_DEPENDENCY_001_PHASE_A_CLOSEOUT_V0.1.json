@@ -1,0 +1,55 @@
+{
+  "experiment_id": "EMA6H-50X200-REGIME-DEPENDENCY-001",
+  "phase": "A_HISTORICAL_DIAGNOSTIC",
+  "status": "COMPLETE_NO_PROMOTION_AUTHORITY",
+  "canonical_run_id": 35445020407,
+  "canonical_run_head_sha": "d3365d477340aaafc1e49c0375a80ff2cc711b2f",
+  "artifact_id": 10584398269,
+  "artifact_digest": "sha256:dbce7ae1a818617f848b99a27e66bfdddfbbe5768eb216e98a99666a37d5b3c4",
+  "result_json_sha256": "a2deb66200d2f7793791adc8f3f4f602ab6e13387c7d63c36d094eb7a4b53283",
+  "tagged_event_ledger_sha256": "808b9aa8a94f6b5ec63b479097dbc74716228ca5432da5cee504f2d039152b3f",
+  "btc_1d_source_receipt_sha256": "bd515fa930caa9725eb3af949da1c90d20c193a706e6302438638cd7b0f6a217",
+  "events": 189,
+  "regime_classifier": {
+    "BULL_TREND": "BTC close > SMA200 and SMA200 rising versus 20d ago",
+    "BEAR_TREND": "BTC close < SMA200 and SMA200 falling versus 20d ago",
+    "TRANSITION_CHOP": "otherwise"
+  },
+  "pooled_regime_results": {
+    "BULL_TREND": {"n":82,"base_mean_bps":46.714553197100265,"pf":1.3701024925190148},
+    "BEAR_TREND": {"n":80,"base_mean_bps":46.25393277888748,"pf":1.2988648654449262},
+    "TRANSITION_CHOP": {"n":27,"base_mean_bps":116.19097147902292,"pf":2.019894978608236}
+  },
+  "pooled_bucket_results": {
+    "TREND_ALIGNED": {"n":76,"base_mean_bps":46.87649589185516,"pf":1.334580864832026},
+    "COUNTER_REGIME": {"n":86,"base_mean_bps":46.14295693828173,"pf":1.3284107079598997},
+    "TRANSITION_CHOP": {"n":27,"base_mean_bps":116.19097147902292,"pf":2.019894978608236}
+  },
+  "direction_x_regime_key_findings": {
+    "BULL_TREND_BULL_CROSS": {"n":37,"base_mean_bps":93.77908163869024,"pf":1.8576812550211623},
+    "BULL_TREND_BEAR_CROSS": {"n":45,"base_mean_bps":8.01705203401517,"pf":1.0572237942372844},
+    "BEAR_TREND_BULL_CROSS": {"n":41,"base_mean_bps":87.9884623210133,"pf":1.6242660642956435},
+    "BEAR_TREND_BEAR_CROSS": {"n":39,"base_mean_bps":2.37917095255008,"pf":1.0140536254262549},
+    "TRANSITION_CHOP_BULL_CROSS": {"n":19,"base_mean_bps":240.77153871498342,"pf":4.317207819937979},
+    "TRANSITION_CHOP_BEAR_CROSS": {"n":8,"base_mean_bps":-179.68787570638327,"pf":0.1528606483958775}
+  },
+  "scientific_interpretation": {
+    "simple_bull_bear_alignment_explanation_supported": false,
+    "regime_dependency_plausible": true,
+    "strongest_historical_bucket": "TRANSITION_CHOP",
+    "directional_asymmetry_is_large": true,
+    "important_note": "The historical pattern is more consistent with bullish crossover asymmetry and/or transition-state breakout behavior than with a symmetric 'cross aligned with established bull/bear regime' mechanism."
+  },
+  "prohibited_rescues": [
+    "Do not convert the existing candidate to long-only from this diagnostic.",
+    "Do not drop bearish crosses.",
+    "Do not redefine TRANSITION_CHOP.",
+    "Do not alter SMA200 or 20-day slope lag.",
+    "Do not select only the strongest historical bucket for promotion."
+  ],
+  "next_authorized_stage": {
+    "phase": "B_PROSPECTIVE_FORWARD",
+    "first_eligible_signal_close_utc": "2026-09-20T00:00:00Z",
+    "rules": "Exact original bidirectional EMA50x200 6H candidate plus frozen regime tags. All buckets and both directions must be collected prospectively."
+  }
+}
