@@ -1,0 +1,65 @@
+name: AAVE Liquidation Overhang 001 — R1 Scaled Ledger Audit V0.2
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - aave-liquidation-overhang-v0.1
+    paths:
+      - '.github/workflows/aave-liquidation-overhang-r1-scaled-ledger-audit-v02.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  r1-scaled-ledger-audit-v02:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Checkout frozen research branch
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install source dependencies
+        run: pip install --disable-pip-version-check requests 'eth-hash[pycryptodome]'
+
+      - name: Compile unchanged audit plus V0.2 wrapper
+        run: |
+          python -m py_compile research/aave_liquidation_overhang/r1_scaled_ledger_audit_v01.py
+          python -m py_compile research/aave_liquidation_overhang/r1_scaled_ledger_audit_v02.py
+
+      - name: Download canonical source-census shard receipts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: AAVE_CENSUS_SHARD_*
+          path: downloaded_source_census_shards
+          merge-multiple: false
+          github-token: ${{ github.token }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: '35214027573'
+
+      - name: Download canonical R0 bootstrap receipt
+        uses: actions/download-artifact@v4
+        with:
+          name: AAVE_RECON_R0_BOOTSTRAP
+          path: downloaded_r0_bootstrap
+          github-token: ${{ github.token }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: '35218275356'
+
+      - name: Execute V0.2 operational remediation with unchanged scientific audit
+        run: python research/aave_liquidation_overhang/r1_scaled_ledger_audit_v02.py
+
+      - name: Upload R1 V0.2 audit receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: AAVE_LIQUIDATION_OVERHANG_001_R1_SCALED_LEDGER_AUDIT_V0_2
+          path: r1_scaled_ledger_audit_output/AAVE_LIQUIDATION_OVERHANG_001_R1_SCALED_LEDGER_AUDIT_V0_2.json
+          if-no-files-found: warn
+          retention-days: 30
