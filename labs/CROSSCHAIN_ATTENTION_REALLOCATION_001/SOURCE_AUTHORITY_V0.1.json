@@ -1,0 +1,59 @@
+{
+  "lab_id": "CROSSCHAIN-ATTENTION-REALLOCATION-001",
+  "source_gate_id": "CAR-COINMETRICS-ACTIVITY-001",
+  "version": "0.1",
+  "date_frozen": "2026-09-20",
+  "branch": "crosschain-attention-reallocation-v0.1",
+  "status": "FROZEN_SOURCE_ONLY_OUTCOME_BLIND",
+  "economic_family": "RELATIVE VALUE / ATTENTION-INDUCED CAPITAL REALLOCATION",
+  "literature_anchor": {
+    "title": "One Rising Ship Sinks Other Ships: Cross-Chain Negative Spillovers in Crypto Markets",
+    "authors": [
+      "Mengzhong Ma",
+      "Te Bao",
+      "Yonggang Wen"
+    ],
+    "arxiv_id": "2602.23762",
+    "paper_scope": "Ethereum, Solana, Binance Smart Chain, Arbitrum and Avalanche, 2022-2025",
+    "mechanism_summary": "attention-driven capital reallocation and substitution across chains"
+  },
+  "source_question": "Can a zero-cost, server-bounded public source provide a comparable daily chain-activity metric for ETH, SOL and AVAX over 2022-2024 without accessing 2025/2026?",
+  "source": {
+    "provider": "Coin Metrics Community API",
+    "endpoint": "https://community-api.coinmetrics.io/v4/timeseries/asset-metrics",
+    "assets": [
+      "eth",
+      "sol",
+      "avax"
+    ],
+    "primary_metric": "TxCnt",
+    "frequency": "1d",
+    "start_time": "2022-01-01",
+    "end_time": "2024-12-31",
+    "authentication_required": false,
+    "cash_cost_usd": 0
+  },
+  "frozen_gate": {
+    "per_asset_min_rows": 1000,
+    "nonnull_fraction_gte": 0.95,
+    "positive_fraction_gte": 0.95,
+    "min_time_lte": "2022-01-03T00:00:00Z",
+    "max_time_gte": "2024-12-29T00:00:00Z",
+    "max_time_lte": "2024-12-31T23:59:59Z",
+    "all_three_assets_required": true
+  },
+  "if_primary_metric_unavailable": "Stop as SOURCE_BLOCKED. Do not choose another activity metric after inspecting price outcomes. A different metric would require a fresh source authority.",
+  "terminal_classes": [
+    "CAR_SOURCE_FULL",
+    "CAR_SOURCE_LIMITED",
+    "CAR_SOURCE_BLOCKED"
+  ],
+  "outcome_boundary": [
+    "No token prices or returns.",
+    "No lead/lag direction.",
+    "No PnL.",
+    "No 2025/2026.",
+    "No live trading or exchange mutation.",
+    "No merge to main."
+  ]
+}
