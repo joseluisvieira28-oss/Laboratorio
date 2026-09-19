@@ -1,0 +1,39 @@
+name: Perp Crowding Unwind Discovery V0.1
+on:
+  push:
+    branches: [perp-crowding-unwind-v0.1]
+    paths:
+      - "labs/PERP_CROWDING_UNWIND_001/DISCOVERY_PREFREEZE_V0.1.json"
+      - "labs/PERP_CROWDING_UNWIND_001/coverage_gate_v01.py"
+      - "labs/PERP_CROWDING_UNWIND_001/discovery_v01.py"
+      - ".github/workflows/perp-crowding-unwind-discovery-v01.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  discovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: python -m pip install --disable-pip-version-check -q pandas numpy
+      - name: Compile
+        run: |
+          python -m py_compile labs/PERP_CROWDING_UNWIND_001/coverage_gate_v01.py
+          python -m py_compile labs/PERP_CROWDING_UNWIND_001/discovery_v01.py
+      - name: Full source coverage gate before outcomes
+        run: python labs/PERP_CROWDING_UNWIND_001/coverage_gate_v01.py
+      - name: Run frozen Discovery
+        run: python labs/PERP_CROWDING_UNWIND_001/discovery_v01.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: PERP_CROWDING_UNWIND_001_DISCOVERY_V0_1
+          path: |
+            pcu_coverage_receipt_v01.json
+            pcu_discovery_receipt_v01.json
+            pcu_discovery_trades_v01.csv
+          if-no-files-found: warn
+          retention-days: 30
