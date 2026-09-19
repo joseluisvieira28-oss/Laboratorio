@@ -1,0 +1,45 @@
+name: Cryptarbitrage 68D Quote Carry Exploratory V0.1
+on:
+  push:
+    branches: [btc-options-vrp-cryptarbitrage-exploratory-v0.1]
+    paths:
+      - "labs/BTC_OPTIONS_VRP_CRYPTA_EXP_001/EXPLORATORY_PREFREEZE_V0.1.json"
+      - "labs/BTC_OPTIONS_VRP_CRYPTA_EXP_001/crypta_quote_carry_v01.py"
+      - ".github/workflows/crypta-68d-quote-carry-v01.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  exploratory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: python -m pip install --disable-pip-version-check -q pandas numpy pyarrow
+      - name: Download exact frozen public parquet
+        run: |
+          python - <<'PY'
+          import urllib.request,hashlib
+          fid="1g9p2Kq8op40y4ZFQQ9AJw8a9CaDThOY8"
+          u=f"https://drive.usercontent.google.com/download?id={fid}&export=download&confirm=t"
+          req=urllib.request.Request(u,headers={"User-Agent":"CryptoLab-FreeSource/0.1"})
+          with urllib.request.urlopen(req,timeout=120) as r: raw=r.read()
+          h=hashlib.sha256(raw).hexdigest()
+          if h!="6ed2162288d177d3c3a5443456c3fb78ed2c175249f0a0ff1665a5dd9c89800b":
+              raise SystemExit("hash mismatch "+h)
+          open("btc_option_data_toshare.parquet","wb").write(raw)
+          print("source_bytes",len(raw),"sha256",h)
+          PY
+      - name: Run frozen non-promotional exploratory MVE
+        run: python labs/BTC_OPTIONS_VRP_CRYPTA_EXP_001/crypta_quote_carry_v01.py btc_option_data_toshare.parquet
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: BTC_OPTIONS_VRP_CRYPTA_EXP_001_V0_1
+          path: |
+            crypta_quote_carry_receipt_v01.json
+            crypta_quote_carry_trades_v01.csv
+          if-no-files-found: error
+          retention-days: 30
