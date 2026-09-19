@@ -1,0 +1,65 @@
+{
+  "schema_version":"0.2",
+  "lab_id":"L2-RESILIENCY-001",
+  "classification":"SOURCE_SCHEMA_NORMALIZED_PASS",
+  "source":"Hyperliquid official historical BTC l2Book / 2024",
+  "corpus":{
+    "objects":8707,
+    "compressed_bytes":6832137900,
+    "records":50717748,
+    "contiguous_present_segments":11,
+    "missing_hours":77
+  },
+  "schema_audit":{
+    "failed_objects":0,
+    "json_schema_violations":0,
+    "wrong_channel":0,
+    "wrong_coin":0,
+    "envelope_outside_key_hour":0,
+    "envelope_backwards":0,
+    "future_payload":0,
+    "top5_violations":0,
+    "crossed_books":0,
+    "min_bid_levels_global":20,
+    "min_ask_levels_global":20
+  },
+  "normalization":{
+    "equal_payload_timestamp":158,
+    "stale_late_payload":80,
+    "stale_ledger_unique_rows":80,
+    "stale_segment_distribution":{"1":5,"2":3,"3":72},
+    "stale_rewind_ms":{"min":448,"median":288733.5,"p95":622690.95,"max":707456},
+    "rule":"payload_ms < last_accepted_payload_ms => preserve raw evidence but quarantine from normalized state continuity"
+  },
+  "cross_file_reconciliation":{
+    "object_audit_rows":8707,
+    "unique_object_keys":8707,
+    "object_status_all_pass":true,
+    "object_record_sum_matches_receipt":true,
+    "stale_ledger_matches_object_audit":true,
+    "segment_summaries_match_receipt":true,
+    "derived_missing_hour_total":77,
+    "cross_object_envelope_endpoint_monotonic_violations":0
+  },
+  "evidence_sha256":{
+    "schema_normalized_receipt":"63a361254700379cdba21e593249d4c82457cab5135777fdb6360d702a0ac2b9",
+    "schema_normalized_object_audit":"68de1896e84e4d4f2be4c3f36027e642dd2b6a8db87c3d637b0db282f430b10c",
+    "stale_late_payload_ledger":"129e80686c0a358a5195b50c181d993c7b4fe34d4e4bfa7e043221d1d835950c",
+    "frozen_raw_manifest":"59e16ce8ea41658c2ea0fc6f2489d4deafbdc676e008d0b93f95ee6e3864913d"
+  },
+  "firewalls":{
+    "sweep_events_computed":false,
+    "replenishment_computed":false,
+    "weak_strong_labels_computed":false,
+    "midpoint_response_computed":false,
+    "returns_computed":false,
+    "pnl_computed":false,
+    "access_2025":false,
+    "access_2026":false,
+    "live_trading":false,
+    "exchange_mutation":false
+  },
+  "scientific_status":"SOURCE_AND_SCHEMA_GATE_CLOSED_PASS / DISCOVERY_NOT_OPEN",
+  "remaining_pre_discovery_blocker":"Frozen sweep authority uses 'displayed quantity at prior best falls materially' but no numeric materiality threshold is yet frozen.",
+  "next_authorized_preparation":"Prospectively freeze one numeric materiality definition independent of outcomes, then prepare outcome-blind event-construction preflight. No real sweep outcomes before separate authorization."
+}
