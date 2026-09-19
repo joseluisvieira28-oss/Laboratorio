@@ -1,0 +1,118 @@
+{
+  "lab_id": "PERP-CROWDING-UNWIND-001",
+  "mve_id": "PCU-BTC-24H-TRAILING-CROWDING-001",
+  "version": "0.1",
+  "date_frozen": "2026-09-19",
+  "branch": "perp-crowding-unwind-v0.1",
+  "status": "FROZEN_BEFORE_DISCOVERY_OUTCOMES",
+  "discovery_period": {
+    "start": "2021-01-01",
+    "end": "2024-12-31"
+  },
+  "protected_periods": [
+    "2025",
+    "2026"
+  ],
+  "mechanism": "When BTC perpetual funding is in an extreme positive/negative tail and aggregate open interest has simultaneously expanded unusually fast, leveraged positioning is crowded. The primary hypothesis is a 24h contrarian price unwind: short after extreme positive funding + high OI expansion, long after extreme negative funding + high OI expansion.",
+  "anti_duplication": {
+    "nearest_lab": "LL-0017 top/global positioning-ratio family",
+    "materially_new": "Primary features are raw funding-rate tail state plus aggregate open-interest expansion. No top-trader/global long-short ratio enters the signal."
+  },
+  "source": {
+    "venue": "Binance USD-M Futures",
+    "symbol": "BTCUSDT",
+    "metrics": "monthly public metrics archives",
+    "funding": "monthly public fundingRate archives",
+    "price": "monthly public 1h futures kline archives",
+    "coverage_gate_before_outcomes": true,
+    "full_coverage_rule": "at least 46 common months and at least 11 common months in every calendar year",
+    "limited_coverage_rule": "at least 36 common months and at least 8 common months in every calendar year",
+    "blocked_rule": "below limited coverage"
+  },
+  "decision_clock": {
+    "events": "Each published funding calc_time.",
+    "metric_alignment": "Latest aggregate-open-interest observation at or before funding calc_time, maximum staleness 15 minutes.",
+    "oi_reference": "Latest aggregate-open-interest observation at or before calc_time minus 24h, maximum staleness 15 minutes.",
+    "entry_price": "BTCUSDT futures 1h bar OPEN at the funding event hour.",
+    "exit_price": "BTCUSDT futures 1h bar OPEN exactly 24h later."
+  },
+  "features": {
+    "funding_rate": "last_funding_rate",
+    "oi_growth_24h": "sum_open_interest(t) / sum_open_interest(t-24h) - 1",
+    "trailing_window_events": 540,
+    "minimum_history_events": 270,
+    "funding_upper_quantile": 0.95,
+    "funding_lower_quantile": 0.05,
+    "oi_growth_quantile": 0.8,
+    "trailing_rule": "All rolling thresholds are shifted by one event; the current event never contributes to its own threshold."
+  },
+  "signal": {
+    "short": "funding_rate >= trailing 95th percentile AND oi_growth_24h >= trailing 80th percentile",
+    "long": "funding_rate <= trailing 5th percentile AND oi_growth_24h >= trailing 80th percentile",
+    "direction": "contrarian to funding tail",
+    "overlap_rule": "one active 24h position at a time; signals before the active position exits are ignored",
+    "no_top_trader_ratios": true,
+    "no_price_filter": true,
+    "no_volatility_filter": true
+  },
+  "pnl": {
+    "gross_return": "direction * (exit_open / entry_open - 1)",
+    "primary_round_trip_cost_bps": 10,
+    "stress_round_trip_cost_bps": 20,
+    "funding_cashflows_included": false,
+    "rationale": "This MVE tests forced-price-unwind, not funding carry; excluding funding cashflows avoids settlement-timing ambiguity."
+  },
+  "statistics": {
+    "bootstrap": "10000 circular moving-block resamples of primary net10 returns",
+    "bootstrap_block_length": 5,
+    "seed": 230919,
+    "report": [
+      "N",
+      "long_N",
+      "short_N",
+      "mean_net10",
+      "median_net10",
+      "hit_rate",
+      "profit_factor_net10",
+      "bootstrap_95_ci_mean_net10",
+      "mean_net20",
+      "profit_factor_net20",
+      "year_means_net10",
+      "positive_year_count",
+      "max_losing_streak"
+    ]
+  },
+  "promotion_gate": {
+    "minimum_N": 60,
+    "mean_net10_gt_0": true,
+    "profit_factor_net10_gte": 1.1,
+    "bootstrap_95_lower_mean_net10_gt_0": true,
+    "positive_years_gte": 3,
+    "stress_net20_mean_gt_0": true,
+    "stress_profit_factor_net20_gt_1": true,
+    "median_is_report_only": true
+  },
+  "terminal_classes": [
+    "DISCOVERY_PASS_CROWDING_UNWIND_SIGNAL",
+    "DISCOVERY_FAIL_NO_PROMOTION",
+    "INSUFFICIENT_EXECUTABLE_SAMPLE",
+    "BLOCKED_SOURCE_COVERAGE"
+  ],
+  "no_rescue": [
+    "Do not change 95/5 funding tails after outcomes.",
+    "Do not change 80th percentile OI-growth threshold after outcomes.",
+    "Do not change the 540/270 trailing history after outcomes.",
+    "Do not change 24h horizon after outcomes.",
+    "Do not add top/global trader ratios after outcomes.",
+    "Do not invert the contrarian direction after outcomes.",
+    "Do not reduce the 10 bps primary cost after outcomes.",
+    "Do not open 2025/2026 to rescue the result."
+  ],
+  "safety": {
+    "cash_spend_usd": 0,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "wallet_access": false,
+    "merge_to_main": false
+  }
+}
