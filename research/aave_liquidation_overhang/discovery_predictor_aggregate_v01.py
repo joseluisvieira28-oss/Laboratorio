@@ -72,10 +72,10 @@ def main()->int:
         for x in metas:
             reserves.extend(x["selected_reserves"])
             reserve_decimals.update({k:int(v) for k,v in (x.get("decimals") or {}).items()})
-        if len(reserves)!=37 or len(set(reserves))!=37:
-            raise RuntimeError("reserve union is not exact 37")
+        if len(reserves)!=27 or len(set(reserves))!=27:
+            raise RuntimeError(f"active 2023 reserve union is not exact 27: {len(reserves)} / {len(set(reserves))}")
         if set(reserves)!=set(reserve_decimals):
-            raise RuntimeError("reserve decimals union mismatch")
+            raise RuntimeError("active 2023 reserve decimals union mismatch")
 
         by_id={int(x["shard_id"]):x for x in metas}
         row_by_id={}
@@ -183,7 +183,8 @@ def main()->int:
             "protocol":"AAVE_LIQUIDATION_OVERHANG_001_FINAL_PRE_DISCOVERY_PROTOCOL_V0_1",
             "execution_authority":"AAVE_LIQUIDATION_OVERHANG_001_DISCOVERY_EXECUTION_AUTHORITY_V0_1",
             "snapshot_count":len(daily),
-            "reserve_count":37,
+            "reserve_count":27,
+            "full_r1_reserve_count":37,
             "predictor_sha256":predictor_hash.hexdigest(),
             "daily_predictor":daily,
             "days_overhang_10_positive":sum(1 for x in daily if int(x["overhang_debt_10"])>0),
