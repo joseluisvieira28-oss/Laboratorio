@@ -1,0 +1,114 @@
+{
+  "lab_id": "FUNDING-CASH-CARRY-001",
+  "mve_id": "FCC-BTC-24H-PERSISTENCE-001",
+  "version": "0.1",
+  "date_frozen": "2026-09-19",
+  "branch": "funding-cash-carry-v0.1",
+  "status": "FROZEN_BEFORE_OUTCOMES",
+  "economic_family": "CARRY / MARKET_NEUTRAL_SPOT_PERP",
+  "anti_duplication": {
+    "nearest_lab": "CROSS_VENUE_FUNDING_BASIS_LAB_V01",
+    "material_difference": [
+      "FCC-001 is single-venue Binance spot + USD-M perpetual cash-and-carry.",
+      "No Hyperliquid/native oracle, cross-venue basis, or oracle reconstruction is used.",
+      "Primary payment mechanism is persistence of future perpetual funding after an observed extreme positive funding settlement.",
+      "Directional BTC beta is hedged by long spot / short perp."
+    ]
+  },
+  "venue": "Binance",
+  "symbol": "BTCUSDT",
+  "discovery_period": {
+    "start": "2021-01-01",
+    "end": "2024-12-31"
+  },
+  "protected_periods": [
+    "2025",
+    "2026"
+  ],
+  "source": {
+    "funding": "Binance USD-M monthly fundingRate archives",
+    "perp_price": "Binance USD-M monthly BTCUSDT 1h klines",
+    "spot_price": "Binance Spot monthly BTCUSDT 1h klines",
+    "zero_cash_cost": true
+  },
+  "mechanism": "Leveraged long demand creates positive perpetual funding paid to shorts. Extreme positive funding may persist across the next several settlements. A fully hedged long-spot/short-perp position can harvest that funding while minimizing directional BTC exposure, subject to basis movement and trading costs.",
+  "signal": {
+    "decision": "Immediately after a funding settlement t is observed.",
+    "trailing_history_events": 540,
+    "minimum_history_events": 270,
+    "threshold": "current funding > 0 AND >= past-only trailing 90th percentile",
+    "rolling_shift": 1,
+    "entry": "1h bar OPEN at t + 1h for both spot and perp",
+    "exit": "1h bar OPEN at t + 25h for both spot and perp",
+    "hold": "24 hours",
+    "position": "long 1 BTC spot + short 1 BTC perpetual",
+    "overlap": "one active position at a time"
+  },
+  "funding_receipts": {
+    "included_settlements": "funding timestamps strictly after t and <= t+24h",
+    "expected_count": "normally 3 settlements",
+    "approximation": "payment_i = funding_rate_i * perp_1h_open_at_settlement for a 1 BTC short; positive funding is received by the short",
+    "minimum_receipt_settlements": 3
+  },
+  "pnl": {
+    "normalization": "initial spot notional",
+    "gross_formula": "[(spot_exit-spot_entry) + (perp_entry-perp_exit) + sum(funding_rate_i*perp_price_i)] / spot_entry",
+    "primary_all_in_roundtrip_cost_bps": 30,
+    "stress_all_in_roundtrip_cost_bps": 40,
+    "note": "30 bps approximates 20 bps spot round-trip plus 10 bps futures round-trip without VIP/BNB discounts."
+  },
+  "coverage_gate": {
+    "full": "at least 46 common months and >=11 months in every year",
+    "limited": "at least 36 common months and >=8 months in every year",
+    "blocked": "below limited"
+  },
+  "promotion_gate": {
+    "minimum_N": 80,
+    "mean_net30_gt_0": true,
+    "profit_factor_net30_gte": 1.1,
+    "bootstrap_95_lower_mean_net30_gt_0": true,
+    "positive_years_gte": 3,
+    "mean_net40_gt_0": true,
+    "profit_factor_net40_gt_1": true
+  },
+  "statistics": {
+    "bootstrap_reps": 10000,
+    "circular_block_length": 5,
+    "seed": 230921,
+    "report": [
+      "N",
+      "mean_net30",
+      "median_net30",
+      "hit_rate",
+      "PF_net30",
+      "bootstrap_CI",
+      "mean_net40",
+      "PF_net40",
+      "year_means",
+      "positive_years",
+      "max_losing_streak",
+      "mean_funding_component"
+    ]
+  },
+  "terminal_classes": [
+    "DISCOVERY_PASS_FUNDING_CARRY_SIGNAL",
+    "DISCOVERY_FAIL_NO_PROMOTION",
+    "INSUFFICIENT_SAMPLE",
+    "BLOCKED_SOURCE_COVERAGE"
+  ],
+  "no_rescue": [
+    "Do not change 90th percentile after outcomes.",
+    "Do not change 24h hold after outcomes.",
+    "Do not include the already-paid funding at signal time.",
+    "Do not reduce 30 bps primary cost after outcomes.",
+    "Do not add OI, trend, volatility or trader-ratio filters after outcomes.",
+    "Do not open 2025/2026 to rescue."
+  ],
+  "safety": {
+    "cash_spend_usd": 0,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "wallet_access": false,
+    "merge_to_main": false
+  }
+}
