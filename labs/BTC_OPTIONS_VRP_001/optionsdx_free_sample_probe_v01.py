@@ -78,6 +78,7 @@ def probe() -> dict:
         max_ts = None
         complete_bbo = 0
         complete_bbo_25_35 = 0
+        dte_values = []
 
         for row in reader:
             rows += 1
@@ -105,6 +106,7 @@ def probe() -> dict:
                 if "DTE" in header_map and nonempty(get("DTE")):
                     try:
                         dte = float(get("DTE"))
+                        dte_values.append(dte)
                         if 25.0 <= dte <= 35.0:
                             complete_bbo_25_35 += 1
                     except Exception:
@@ -138,6 +140,8 @@ def probe() -> dict:
             "last_quote_date_utc":max(distinct_quote_dates) if distinct_quote_dates else None,
             "complete_bbo_rows":complete_bbo,
             "complete_bbo_rows_25_35_dte":complete_bbo_25_35,
+            "min_dte":min(dte_values) if dte_values else None,
+            "max_dte":max(dte_values) if dte_values else None,
             "outcomes_opened":False,
             "prices_emitted_in_receipt":False,
         }
