@@ -270,6 +270,10 @@ def percentile(xs:list[float],p:float)->float:
     return xs[lo]*(1-f)+xs[hi]*f
 
 def bootstrap_by_day(events:list[dict[str,Any]], key:str):
+    # Exact same UTC-day block bootstrap semantics as the freeze, implemented
+    # through per-day sums/counts rather than repeatedly materializing event lists.
+    # Sampling a day duplicates all observations in that day, so this is
+    # mathematically identical while substantially reducing runtime.
     groups=defaultdict(list)
     for e in events:
         if key in e:
@@ -279,13 +283,19 @@ def bootstrap_by_day(events:list[dict[str,Any]], key:str):
     vals=[v for d in days for v in groups[d]]
     if not vals:
         return {"n":0,"days":0,"mean":None,"median":None,"lower95":None,"upper95":None,"p_one_sided":None}
+    day_sum={d:sum(groups[d]) for d in days}
+    day_n={d:len(groups[d]) for d in days}
     rng=Random(BOOT_SEED)
     draws=[]
+    nd=len(days)
     for _ in range(BOOT_REPS):
-        sample=[]
-        for __ in range(len(days)):
-            sample.extend(groups[days[rng.randrange(len(days))]])
-        draws.append(mean(sample))
+        total=0.0
+        count=0
+        for __ in range(nd):
+            d=days[rng.randrange(nd)]
+            total+=day_sum[d]
+            count+=day_n[d]
+        draws.append(total/count)
     p=(sum(x<=0 for x in draws)+1)/(len(draws)+1)
     return {"n":len(vals),"days":len(days),"mean":mean(vals),"median":median(vals),
             "lower95":percentile(draws,0.025),"upper95":percentile(draws,0.975),"p_one_sided":p}
