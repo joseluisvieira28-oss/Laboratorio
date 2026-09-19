@@ -13,6 +13,13 @@ from .deployment import RiskLimits
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_REGISTRY = PROJECT_ROOT / "deployment_registry_v1.json"
 DH03_STRATEGY_ID = "HTF-DH03-12H-STANDALONE-FORWARD-V1"
+LOCAL_FORWARD_STRATEGY_IDS = {
+    "BNB-LAUNCHPOOL-DEMAND-001",
+    "TFG-DONCHIAN-REGIME-ADAPTATION-V1",
+    "OPTIONS-SPOTPERP-001-V2.1",
+    "ETF-CME-INSTFLOW-001",
+    "EMA6H-50X200-REGIME-DEPENDENCY-001",
+}
 
 
 def _utc_now() -> str:
@@ -46,7 +53,13 @@ def _read_jsonl_tail(path: Path, limit: int = 30) -> list[dict[str, Any]]:
     return rows
 
 
-def _bot_operating_state(candidate: dict[str, Any], *, dh03_status: dict[str, Any] | None = None) -> str:
+def _bot_operating_state(
+    candidate: dict[str, Any],
+    *,
+    dh03_status: dict[str, Any] | None = None,
+    forward_supervisor_status: dict[str, Any] | None = None,
+    forward_state: dict[str, Any] | None = None,
+) -> str:
     strategy_id = str(candidate.get("strategy_id") or "")
     deployment_state = str(candidate.get("deployment_state") or "").upper()
     if deployment_state.startswith("BLOCKED") or candidate.get("scientific_tier") == 4:
@@ -64,6 +77,18 @@ def _bot_operating_state(candidate: dict[str, Any], *, dh03_status: dict[str, An
             return "SHADOW"
         if status == "FAIL_CLOSED":
             return "BLOCKED"
+        return "GATED"
+
+    # The five public forward engines are real local runtime components.
+    # Registry readiness alone must not display SHADOW if their supervisor is
+    # missing or their shared runtime has failed closed.
+    if strategy_id in LOCAL_FORWARD_STRATEGY_IDS:
+        supervisor = str((forward_supervisor_status or {}).get("status") or "MISSING").upper()
+        health = str((forward_state or {}).get("health") or "MISSING").upper()
+        if supervisor == "FAIL_CLOSED" or health == "DEGRADED_FAIL_CLOSED":
+            return "BLOCKED"
+        if supervisor == "RUNNING" and health == "OK":
+            return "SHADOW"
         return "GATED"
 
     if candidate.get("shadow_allowed") is True or "SHADOW" in deployment_state or "WATCHER" in deployment_state:
@@ -84,6 +109,10 @@ def build_control_room_state(
     events = _read_jsonl_tail(Path(notification_path))
     dh03_status_path = service_status_path.parent / "dh03_local_status.json"
     dh03_status = _read_json(dh03_status_path, {})
+    forward_supervisor_status_path = service_status_path.parent / "forward_local_supervisor_status.json"
+    forward_supervisor_status = _read_json(forward_supervisor_status_path, {})
+    forward_status_path = service_status_path.parent / "forward_local_status.json"
+    forward_state = _read_json(forward_status_path, {})
 
     candidates = registry.get("candidates") or []
     focus_ids = registry.get("focus_strategy_ids") or [
@@ -103,7 +132,12 @@ def build_control_room_state(
         if isinstance(blockers, str):
             blockers = [blockers]
         strategy_id = str(candidate.get("strategy_id", "UNKNOWN"))
-        operating_state = _bot_operating_state(candidate, dh03_status=dh03_status)
+        operating_state = _bot_operating_state(
+            candidate,
+            dh03_status=dh03_status,
+            forward_supervisor_status=forward_supervisor_status,
+            forward_state=forward_state,
+        )
         runtime_status = None
         if strategy_id == DH03_STRATEGY_ID:
             runtime_status = str(dh03_status.get("status") or "MISSING")
@@ -112,6 +146,15 @@ def build_control_room_state(
             elif operating_state == "BLOCKED":
                 err = dh03_status.get("error")
                 blockers = list(blockers) + [f"local DH03 collector FAIL_CLOSED{': ' + str(err) if err else ''}"]
+        elif strategy_id in LOCAL_FORWARD_STRATEGY_IDS:
+            supervisor = str(forward_supervisor_status.get("status") or "MISSING")
+            health = str(forward_state.get("health") or "MISSING")
+            runtime_status = f"FORWARD_SUPERVISOR={supervisor};FORWARD_HEALTH={health}"
+            if operating_state == "GATED":
+                blockers = list(blockers) + [f"local forward runtime not healthy ({runtime_status})"]
+            elif operating_state == "BLOCKED":
+                err = forward_supervisor_status.get("error") or (forward_state.get("errors") or {})
+                blockers = list(blockers) + [f"local forward runtime FAIL_CLOSED ({runtime_status}){': ' + str(err) if err else ''}"]
         bots.append(
             {
                 "strategy_id": strategy_id,
@@ -162,6 +205,10 @@ def build_control_room_state(
         "local_runtime": {
             "dh03_status_path": str(dh03_status_path),
             "dh03_status": str(dh03_status.get("status") or "MISSING"),
+            "forward_supervisor_status_path": str(forward_supervisor_status_path),
+            "forward_supervisor_status": str(forward_supervisor_status.get("status") or "MISSING"),
+            "forward_status_path": str(forward_status_path),
+            "forward_health": str(forward_state.get("health") or "MISSING"),
         },
         "risk_policy": {
             "planned_risk_per_trade_pct": limits.per_trade * 100,
