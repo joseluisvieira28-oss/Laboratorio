@@ -1,0 +1,49 @@
+{
+  "schema_version": "0.1",
+  "lab_id": "L2-RESILIENCY-001",
+  "classification": "SOURCE_BOUNDARY_DIAGNOSTIC_COMPLETE",
+  "target_objects": 2699,
+  "outside_timestamp_count": 2768,
+  "outside_before_hour_count": 2768,
+  "outside_after_hour_count": 0,
+  "outside_position_first3_count": 2760,
+  "outside_position_last3_count": 0,
+  "outside_position_middle_count": 8,
+  "outside_abs_offset_ms": {
+    "min": 1,
+    "median": 189,
+    "p95": 537,
+    "p99": 790,
+    "max": 2374618
+  },
+  "backwards_transition_count_actual_full_sequence": 64,
+  "backwards_jump_abs_ms": {
+    "min": 448,
+    "median": 294166,
+    "p95": 623849,
+    "max": 707456
+  },
+  "interpretation": {
+    "boundary_pattern": "STRONG_PRE_HOUR_LEADING_OVERLAP_SIGNATURE",
+    "note": "2760/2768 outside-hour rows occur in the first three records and every outside-hour row is before the key hour. Eight middle-of-file stale-looking payload timestamps and 64 true payload-time reversals require separate source-semantics adjudication before parser correction.",
+    "not_edge_verdict": true,
+    "not_source_body_failure": true
+  },
+  "evidence_sha256": {
+    "boundary_receipt": "fa3cd1a115663cb4a88ec9f8ea2207802178a11de6f2c50092b265343059c19f",
+    "outside_hour_rows": "4cc00c325474b16225e32229aff6d93467aca1ef9f16bc109c9f88b9bab334b6",
+    "backwards_rows": "15577353ba6cc10c675d3002588278dfaa097f6b25bfaf236d7a3dc840760b3c",
+    "boundary_object_summary": "13ed8972986886958ccaf19cd2bd46ee568eff4fbe75fcd7ea79aabde2591445"
+  },
+  "firewalls": {
+    "book_depth_analyzed": false,
+    "sweep_events_computed": false,
+    "replenishment_computed": false,
+    "midpoint_response_computed": false,
+    "returns_computed": false,
+    "pnl_computed": false,
+    "access_2025": false,
+    "access_2026": false
+  },
+  "next_gate": "SOURCE_ENVELOPE_VS_PAYLOAD_TIME_DIAGNOSTIC_V0_2"
+}
