@@ -1,0 +1,93 @@
+{
+  "lab_id": "STABLECOIN-SUPPLY-LIQUIDITY-001",
+  "mve_id": "SSLI-USDTUSDC-7D-IMPULSE-001",
+  "version": "0.1",
+  "date_frozen": "2026-09-20",
+  "branch": "stablecoin-supply-liquidity-impulse-v0.1",
+  "status": "FROZEN_BEFORE_MARKET_OUTCOMES",
+  "scientific_role": "Discovery of a predictive liquidity-impulse mechanism. 2024 market outcomes remain locked for independent replication.",
+  "source_dependency": "SSLI_SOURCE_FULL or SSLI_SOURCE_LIMITED; BLOCKED stops before outcomes.",
+  "signal": {
+    "aggregate_supply": "USDT SplyCur + USDC SplyCur",
+    "transform": "g7_t = ln(aggregate_supply_t / aggregate_supply_t-7d)",
+    "trailing_reference_days": 180,
+    "minimum_history_days": 120,
+    "threshold": "g7_t > 0 AND g7_t >= past-only trailing 90th percentile of g7",
+    "threshold_shift": 1,
+    "event_overlap": "one active 7-day event at a time; signals before the current event exits are ignored"
+  },
+  "discovery_period": {
+    "signal_start": "2021-01-01",
+    "signal_end": "2023-12-22",
+    "reason": "All next-day entries and 7-day exits remain inside 2021-2023. 2024 is reserved and unopened."
+  },
+  "market_outcome": {
+    "provider": "Binance public spot monthly 1d archives",
+    "assets": [
+      "BTCUSDT",
+      "ETHUSDT"
+    ],
+    "entry": "daily OPEN at t+1 UTC",
+    "exit": "daily OPEN at t+8 UTC",
+    "horizon_days": 7,
+    "portfolio_return": "equal-weight mean of BTC and ETH log returns",
+    "execution_claimed": false,
+    "costs_applied": false,
+    "note": "Predictive market-return Discovery only, not an executable trading strategy."
+  },
+  "diagnostics_frozen_before_outcomes": {
+    "prior_7d_market_return": "equal-weight BTC/ETH log return from t-7 open to t open, descriptive only",
+    "purpose": "Detect whether stablecoin supply impulses simply follow recent crypto performance; not a gate and not a filter."
+  },
+  "primary_statistics": {
+    "bootstrap": "10000 circular moving-block resamples of non-overlapping event returns",
+    "block_length_events": 3,
+    "seed": 230925,
+    "report": [
+      "N",
+      "mean_future_7d_return",
+      "median_future_7d_return",
+      "hit_rate",
+      "bootstrap_95_ci_mean",
+      "year_means",
+      "positive_year_count",
+      "mean_prior_7d_return",
+      "event_count_by_year",
+      "max_losing_streak"
+    ]
+  },
+  "discovery_gate": {
+    "minimum_N": 30,
+    "mean_future_return_gt_0": true,
+    "bootstrap_95_lower_mean_gt_0": true,
+    "positive_years_gte": 2,
+    "hit_rate_gt_0_50": true,
+    "median_report_only": true
+  },
+  "classifications": [
+    "DISCOVERY_PASS_LIQUIDITY_IMPULSE",
+    "DISCOVERY_FAIL_NO_PROMOTION",
+    "INSUFFICIENT_SAMPLE",
+    "BLOCKED_SOURCE"
+  ],
+  "replication_rule": "Only if Discovery passes may a separately frozen 2024 replication be opened. No 2024 market outcome is accessed by this MVE.",
+  "no_rescue": [
+    "Do not change 7-day supply growth after outcomes.",
+    "Do not change the 180-day trailing reference after outcomes.",
+    "Do not change the 90th percentile threshold after outcomes.",
+    "Do not change the 7-day forward horizon after outcomes.",
+    "Do not add momentum, volatility, funding, or macro filters after outcomes.",
+    "Do not invert the signal after outcomes.",
+    "Do not open 2024 to rescue a failed Discovery.",
+    "Do not open 2025/2026."
+  ],
+  "safety": {
+    "cash_spend_usd": 0,
+    "access_2025": false,
+    "access_2026": false,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "wallet_access": false,
+    "merge_to_main": false
+  }
+}
