@@ -1,0 +1,56 @@
+{
+  "lab_id": "BTC-OPTIONS-VRP-001",
+  "source_mve_id": "OVRP-OPTIONSDX-FREE-EOD-2021-06-001-SOURCE",
+  "version": "0.1",
+  "date_frozen": "2026-09-19",
+  "status": "FROZEN_ZERO_CASH_SOURCE_ACQUISITION_PRECHECK",
+  "purpose": "Acquire and validate only the exact public zero-price optionsDX BTC Deribit 2021-06 End-of-Day variation, if it can be retrieved without cash spend and without submitting user identity. If checkout/account is required, stop before that action.",
+  "exact_variation": {
+    "product_id": 1527,
+    "variation_id": 1570,
+    "period": "2021-06",
+    "quote_frequency": "End of Day",
+    "public_display_price_usd": 0
+  },
+  "source_validation_if_bytes_are_obtained": {
+    "compute_sha256": true,
+    "count_rows": true,
+    "capture_column_names": true,
+    "verify_bbo_fields": true,
+    "verify_bid_ask_sizes": true,
+    "report_quote_date_min_max": true,
+    "report_dte_min_max": true,
+    "report_count_25_35_dte_with_complete_bbo": true,
+    "emit_market_price_values": false
+  },
+  "scientific_nonclaims": [
+    "EOD data does not automatically satisfy the old 08:00 UTC execution MVE.",
+    "A source pass does not authorize returns or a strategy backtest.",
+    "The old execution MVE remains closed and cannot be rescued.",
+    "Any EOD execution study would require a new prospectively frozen MVE."
+  ],
+  "stop_rules": [
+    "If obtaining the file requires cart mutation, checkout, account creation, email submission, login, order creation or any payment method, stop and classify USER_ACTION_REQUIRED_ZERO_CASH_CHECKOUT.",
+    "Do not attempt to use indexed order URLs, other users' order links, cookies, credentials, or private download tokens.",
+    "Do not spend money."
+  ],
+  "safety": {
+    "cash_spend_cap_usd": 0,
+    "cart_authorized": false,
+    "checkout_authorized": false,
+    "account_creation_authorized": false,
+    "user_identity_submission_authorized": false,
+    "purchase_authorized": false,
+    "payment_authorized": false,
+    "strategy_pnl_authorized": false,
+    "returns_authorized": false,
+    "future_realized_variance_authorized": false,
+    "parameter_tuning_authorized": false,
+    "access_2025_authorized": false,
+    "access_2026_strategy_authorized": false,
+    "live_trading_authorized": false,
+    "exchange_mutation_authorized": false,
+    "wallet_access_authorized": false,
+    "merge_to_main_authorized": false
+  }
+}
