@@ -1,0 +1,36 @@
+name: BTC Options VRP Cryptarbitrage Link Recovery V0.1
+
+on:
+  push:
+    branches:
+      - btc-options-vrp-free-route-attack-v0.1
+    paths:
+      - "labs/BTC_OPTIONS_VRP_001/cryptarbitrage_link_recovery_v01.py"
+      - ".github/workflows/btc-options-vrp-cryptarbitrage-link-v01.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  recover-public-link:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile
+        run: python -m py_compile labs/BTC_OPTIONS_VRP_001/cryptarbitrage_link_recovery_v01.py
+      - name: Recover public outbound link only
+        continue-on-error: true
+        run: python labs/BTC_OPTIONS_VRP_001/cryptarbitrage_link_recovery_v01.py
+      - name: Upload link-recovery receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: BTC_OPTIONS_VRP_001_CRYPTARBITRAGE_LINK_RECOVERY_V0_1
+          path: cryptarbitrage_link_recovery_receipt_v01.json
+          if-no-files-found: error
+          retention-days: 30
