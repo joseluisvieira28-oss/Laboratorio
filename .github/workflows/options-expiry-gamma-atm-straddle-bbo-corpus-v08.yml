@@ -1,0 +1,69 @@
+name: Options Expiry Gamma ATM Straddle BBO Corpus V0.8
+on:
+  push:
+    branches: [options-expiry-gamma-bbo-corpus-v0.8]
+    paths: ['labs/OPTIONS_EXPIRY_GAMMA_001/ATM_STRADDLE_BBO_CORPUS_TRIGGER_V0.8.txt']
+permissions:
+  contents: read
+concurrency:
+  group: oeg-atm-straddle-bbo-corpus-v08
+  cancel-in-progress: false
+jobs:
+  shards:
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        shard: [0,1,2,3,4,5,6,7]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: options-expiry-gamma-bbo-corpus-v0.8}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install --disable-pip-version-check requests==2.32.3
+      - name: Verify frozen corpus authority
+        run: |
+          python - <<'PY'
+          import json
+          a=json.load(open('labs/OPTIONS_EXPIRY_GAMMA_001/ATM_STRADDLE_BBO_CORPUS_AUTHORITY_V0.8.json'))
+          assert a['source_gate_id']=='OEG-ATM-STRADDLE-BBO-CORPUS-008'
+          assert a['status']=='FROZEN_PRE_ACQUISITION_NOT_TRIGGERED'
+          assert a['parent_source_run']==35452239900
+          assert len(a['deterministic_dates'])==48
+          assert a['shard_count']==8
+          assert a['selection']['expiry_dte_min']==7 and a['selection']['expiry_dte_max']==14
+          assert a['aggregate_gates']['minimum_passing_dates']==40
+          assert all(v is False for v in a['firewalls'].values())
+          print('OEG_BBO_V08_AUTHORITY_PASS')
+          PY
+      - run: python -m py_compile labs/OPTIONS_EXPIRY_GAMMA_001/atm_straddle_bbo_corpus_v08_shard.py
+      - env:
+          OEG_SHARD_ID: ${{ matrix.shard }}
+        run: python labs/OPTIONS_EXPIRY_GAMMA_001/atm_straddle_bbo_corpus_v08_shard.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: oeg-bbo-corpus-v08-shard-${{ matrix.shard }}
+          path: artifacts/oeg_atm_straddle_bbo_corpus_v08_shards/shard_${{ matrix.shard }}.json
+          retention-days: 90
+          if-no-files-found: error
+  aggregate:
+    needs: shards
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: options-expiry-gamma-bbo-corpus-v0.8}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: oeg-bbo-corpus-v08-shard-*
+          path: artifacts/oeg_atm_straddle_bbo_corpus_v08_inputs
+          merge-multiple: true
+      - run: python labs/OPTIONS_EXPIRY_GAMMA_001/aggregate_atm_straddle_bbo_corpus_v08.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: OEG_ATM_STRADDLE_BBO_CORPUS_V0_8
+          path: artifacts/oeg_atm_straddle_bbo_corpus_v08/
+          retention-days: 90
