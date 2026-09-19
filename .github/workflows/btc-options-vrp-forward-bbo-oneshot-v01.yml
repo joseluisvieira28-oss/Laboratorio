@@ -1,0 +1,102 @@
+name: BTC Options VRP Public Forward BBO One-Shot V0.1
+
+on:
+  push:
+    branches:
+      - btc-options-vrp-free-route-attack-v0.1
+    paths:
+      - "labs/BTC_OPTIONS_VRP_001/FORWARD_BBO_COLLECTOR_AUTHORITY_V0.1.json"
+      - "labs/BTC_OPTIONS_VRP_001/forward_bbo_collector_v01.py"
+      - "labs/BTC_OPTIONS_VRP_001/test_forward_bbo_collector_v01.py"
+      - ".github/workflows/btc-options-vrp-forward-bbo-oneshot-v01.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-only-capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Compile and test collector
+        run: |
+          python -m py_compile labs/BTC_OPTIONS_VRP_001/forward_bbo_collector_v01.py
+          python labs/BTC_OPTIONS_VRP_001/test_forward_bbo_collector_v01.py
+
+      - name: Verify frozen source-only authority
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          a=json.loads(Path("labs/BTC_OPTIONS_VRP_001/FORWARD_BBO_COLLECTOR_AUTHORITY_V0.1.json").read_text())
+          s=a["safety"]
+          assert s["access_2026_source_only_authorized"] is True
+          for k in [
+              "returns_authorized","pnl_authorized","expectancy_authorized",
+              "future_realized_variance_authorized","strategy_signal_authorized",
+              "position_sizing_authorized","exchange_authentication_authorized",
+              "orders_authorized","cancels_authorized","wallet_access_authorized",
+              "exchange_mutation_authorized","live_trading_authorized",
+              "merge_to_main_authorized"
+          ]:
+              assert s[k] is False, k
+          print("SOURCE_ONLY_AUTHORITY_PASS")
+          PY
+
+      - name: Capture current public Deribit BBO source snapshot
+        run: |
+          python labs/BTC_OPTIONS_VRP_001/forward_bbo_collector_v01.py \
+            --output deribit_btc_options_bbo_oneshot_v01.jsonl
+
+      - name: Build source receipt without emitting market prices
+        run: |
+          python - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+          p=Path("deribit_btc_options_bbo_oneshot_v01.jsonl")
+          raw=p.read_bytes()
+          lines=[x for x in raw.decode("utf-8").splitlines() if x.strip()]
+          assert len(lines)==1, f"expected one snapshot, got {len(lines)}"
+          x=json.loads(lines[0])
+          receipt={
+              "collector_id":"OVRP-FORWARD-PUBLIC-BBO-COLLECTOR-001",
+              "classification":"PUBLIC_FORWARD_BBO_SOURCE_CAPTURE_PASS"
+                  if x.get("captured_instrument_count",0)>0 else
+                  "PUBLIC_FORWARD_BBO_SOURCE_CAPTURE_INSUFFICIENT",
+              "snapshot_hour_utc":x.get("snapshot_hour_utc"),
+              "selected_instrument_count":x.get("selected_instrument_count"),
+              "captured_instrument_count":x.get("captured_instrument_count"),
+              "failure_count":x.get("failure_count"),
+              "artifact_bytes":len(raw),
+              "artifact_sha256":hashlib.sha256(raw).hexdigest(),
+              "authenticated":False,
+              "orders":False,
+              "returns_computed":False,
+              "pnl_computed":False,
+              "market_prices_emitted_in_receipt":False,
+          }
+          Path("deribit_btc_options_bbo_oneshot_receipt_v01.json").write_text(
+              json.dumps(receipt,indent=2,sort_keys=True)+"\n"
+          )
+          print(json.dumps(receipt,sort_keys=True))
+          if receipt["classification"]!="PUBLIC_FORWARD_BBO_SOURCE_CAPTURE_PASS":
+              raise SystemExit(2)
+          PY
+
+      - name: Upload source-only capture and receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: BTC_OPTIONS_VRP_001_PUBLIC_FORWARD_BBO_ONESHOT_V0_1
+          path: |
+            deribit_btc_options_bbo_oneshot_v01.jsonl
+            deribit_btc_options_bbo_oneshot_receipt_v01.json
+          if-no-files-found: error
+          retention-days: 30
