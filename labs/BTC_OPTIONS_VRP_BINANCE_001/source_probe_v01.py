@@ -111,7 +111,7 @@ def inspect_sample(ds: str) -> dict:
                 symbol_header = smap.get("option_identity")
                 symbol = str(row.get(symbol_header, "") if symbol_header else "").strip()
                 # Binance option symbols include a deterministic YYMMDD expiry token.
-                if re.search(r"(?:^|-)(\\d{6})(?:-|$)", symbol):
+                if re.search(r"(?:^|-)(\d{6})(?:-|$)", symbol):
                     expiry_parse_rows += 1
 
                 right_header = smap.get("right")
