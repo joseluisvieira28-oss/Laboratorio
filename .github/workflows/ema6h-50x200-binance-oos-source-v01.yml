@@ -1,0 +1,84 @@
+name: EMA6H 50x200 Binance OOS Source Gate V0.1
+
+on:
+  push:
+    branches:
+      - ema6h-50x200-binance-oos-2025-2026-v0.1
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/ema6h_50x200_oos/RUN_SOURCE_GATE_V0.1.txt'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Checkout frozen OOS branch
+        uses: actions/checkout@v4
+        with:
+          ref: ema6h-50x200-binance-oos-2025-2026-v0.1
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Verify candidate freeze before any market source access
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('research/ema6h_50x200_oos/EMA6H_50X200_BINANCE_OOS_2025_2026_001_FREEZE_V0.1.json')
+          d=json.loads(p.read_text())
+          assert d['experiment_id']=='EMA6H-50X200-BINANCE-OOS-2025_2026-001'
+          assert d['status']=='FROZEN_PRE_SOURCE_AND_PRE_OUTCOME'
+          c=d['candidate_identity']
+          assert c['timeframe']=='6H' and c['fast_ema']==50 and c['slow_ema']==200
+          assert c['primary_horizon_bars']==6
+          assert c['base_round_trip_cost_bps']==10.0 and c['stress_round_trip_cost_bps']==14.0
+          s=d['source_authority']
+          assert s['expected_archive_count']==120 and s['months'][0]=='2025-01' and s['months'][-1]=='2026-08'
+          assert d['statistics']['minimum_resolved_events']==50
+          assert d['protected_data']['2026_sep_onward']=='LOCKED'
+          assert d['governance']['post_outcome_tuning'] is False
+          print('PRE_SOURCE_FREEZE_GATE=PASS')
+          PY
+
+      - name: Compile source gate
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: python -m py_compile research/ema6h_50x200_oos/ema6h_50x200_oos_source_gate_v01.py
+
+      - name: Execute outcome-blind source gate only
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: python research/ema6h_50x200_oos/ema6h_50x200_oos_source_gate_v01.py
+
+      - name: Verify source receipt remains outcome-blind
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('research/local_data/ema6h_50x200_oos_source_v01/EMA6H_50X200_BINANCE_OOS_2025_2026_001_SOURCE_GATE_V0.1.json')
+          d=json.loads(p.read_text())
+          assert d['status']=='SOURCE_DATA_PASS'
+          assert d['archive_count']==120
+          assert d['microseconds_normalized_to_milliseconds'] is True
+          assert d['outcome_evaluation_performed'] is False
+          assert d['signal_calculation_performed'] is False
+          assert d['return_calculation_performed'] is False
+          assert d['access_after_2026_08'] is False
+          print('OUTCOME_BLIND_RECEIPT=PASS')
+          PY
+
+      - name: Upload frozen source artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: EMA6H_50X200_BINANCE_OOS_SOURCE_V01
+          path: Dream-Account-OS-v2.3-PARTIAL/research/local_data/ema6h_50x200_oos_source_v01/
+          if-no-files-found: error
+          retention-days: 90
