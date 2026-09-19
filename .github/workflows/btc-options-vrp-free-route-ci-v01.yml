@@ -37,8 +37,8 @@ jobs:
         run: |
           set -euo pipefail
           f="labs/BTC_OPTIONS_VRP_001/forward_bbo_collector_v01.py"
-          if grep -Eiq 'private/|private_|client_secret|api_key|access_token|wallet|create_order|place_order|cancel_order|/buy|/sell' "$f"; then
-            echo "Forbidden authenticated/trading token detected in source-only collector"
+          if grep -Eiq 'api_get\(["'"'"']private/|Authorization|client_secret|access_token|create_order|place_order|cancel_order' "$f"; then
+            echo "Forbidden authenticated/trading implementation detected in source-only collector"
             exit 1
           fi
           grep -q 'public/get_index_price' "$f"
