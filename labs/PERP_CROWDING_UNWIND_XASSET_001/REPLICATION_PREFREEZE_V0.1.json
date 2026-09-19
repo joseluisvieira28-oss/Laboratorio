@@ -1,0 +1,74 @@
+{
+  "lab_id": "PERP-CROWDING-UNWIND-XASSET-001",
+  "version": "0.1",
+  "date_frozen": "2026-09-19",
+  "branch": "perp-crowding-unwind-xasset-v0.1",
+  "status": "FROZEN_CROSS_ASSET_REPLICATION_BEFORE_NEW_ASSET_OUTCOMES",
+  "economic_family": "MICROSTRUCTURE / FORCED_FLOW / CROWDED_LEVERAGE",
+  "assets": [
+    "SOLUSDT",
+    "BNBUSDT"
+  ],
+  "venue": "Binance USD-M Futures",
+  "period": {
+    "start": "2022-01-01",
+    "end": "2024-12-31"
+  },
+  "protected_periods": [
+    "2025",
+    "2026"
+  ],
+  "parent_evidence": {
+    "btc": "DISCOVERY_FAIL_NO_PROMOTION with positive mean/PF but bootstrap lower <=0",
+    "eth": "DISCOVERY_FAIL_NO_PROMOTION with positive mean/PF but bootstrap lower <=0 and poor year stability",
+    "rule": "BTC and ETH outcomes cannot be used to change any replication rule below."
+  },
+  "exact_rule_carryover": {
+    "funding_upper_quantile": 0.95,
+    "funding_lower_quantile": 0.05,
+    "oi_growth_quantile": 0.8,
+    "trailing_window_events": 540,
+    "minimum_history_events": 270,
+    "hold_hours": 24,
+    "metric_staleness_max_minutes": 15,
+    "one_active_position": true,
+    "direction": "contrarian to funding tail when OI growth is high",
+    "primary_round_trip_cost_bps": 10,
+    "stress_round_trip_cost_bps": 20,
+    "funding_cashflows_included": false
+  },
+  "source_gate": {
+    "full": "per asset: >=35 FULL common months, >=11 FULL months in each 2022/2023/2024; FULL month requires >=95% daily metrics coverage + monthly funding + monthly 1h klines",
+    "limited": "per asset: >=30 USABLE common months, >=8 USABLE months in each year; USABLE month requires >=80% daily metrics coverage",
+    "blocked": "below limited"
+  },
+  "individual_gate": {
+    "minimum_N": 60,
+    "mean_net10_gt_0": true,
+    "profit_factor_net10_gte": 1.1,
+    "bootstrap_95_lower_mean_net10_gt_0": true,
+    "positive_years_gte": 3,
+    "mean_net20_gt_0": true,
+    "profit_factor_net20_gt_1": true
+  },
+  "family_adjudication": {
+    "REPLICATION_STRONG": "Both SOLUSDT and BNBUSDT individually pass every frozen gate.",
+    "REPLICATION_PARTIAL": "Exactly one asset individually passes every frozen gate AND the other asset has mean net10 > 0, PF net10 > 1, mean net20 > 0 and PF net20 > 1.",
+    "REPLICATION_FAIL": "Any other result.",
+    "note": "REPLICATION_PARTIAL is diagnostic only and is not promotion."
+  },
+  "no_rescue": [
+    "Do not add/remove assets after outcomes.",
+    "Do not change thresholds, horizon, sign, costs, rolling windows or overlap rule.",
+    "Do not pool BTC/ETH with new assets to manufacture significance.",
+    "Do not open 2025/2026.",
+    "Do not promote from a partial replication."
+  ],
+  "safety": {
+    "cash_spend_usd": 0,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "wallet_access": false,
+    "merge_to_main": false
+  }
+}
