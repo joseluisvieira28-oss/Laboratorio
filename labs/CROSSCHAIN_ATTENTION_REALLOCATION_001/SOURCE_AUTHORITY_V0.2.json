@@ -1,0 +1,65 @@
+{
+  "lab_id": "CROSSCHAIN-ATTENTION-REALLOCATION-001",
+  "source_gate_id": "CAR-CHAINNATIVE-ACTIVITY-002",
+  "version": "0.2",
+  "date_frozen": "2026-09-20",
+  "branch": "crosschain-attention-reallocation-v0.1",
+  "parent_source_gate": "CAR-COINMETRICS-ACTIVITY-001 / CAR_SOURCE_BLOCKED",
+  "status": "FROZEN_FRESH_SOURCE_AUTHORITY_BEFORE_OUTCOMES",
+  "economic_family": "RELATIVE VALUE / ATTENTION-INDUCED CAPITAL REALLOCATION",
+  "scientific_reason_for_new_source": "V0.1 failed only because one uniform provider did not expose the frozen metric for SOL and AVAX. No market outcome was opened. V0.2 uses each chain's documented public analytics source and standardizes activity within-chain, so raw count level differences are not compared directly.",
+  "chains": {
+    "ETH": {
+      "activity_metric": "daily transaction count",
+      "provider": "Coin Metrics Community",
+      "endpoint": "https://community-api.coinmetrics.io/v4/timeseries/asset-metrics",
+      "metric": "TxCnt",
+      "asset": "eth",
+      "start": "2022-01-01",
+      "end": "2024-12-31",
+      "auth": false,
+      "cost_usd": 0
+    },
+    "SOL": {
+      "activity_metric": "daily successful non-vote transaction count",
+      "provider": "Solscan public analytics",
+      "endpoint": "https://public-api.solscan.io/analytics/transactions",
+      "filter": "nonvote_success",
+      "from_date": "20220101",
+      "to_date": "20241231",
+      "auth": false,
+      "cost_usd": 0
+    },
+    "AVAX": {
+      "activity_metric": "daily C-Chain transaction count",
+      "provider": "Avalanche Metrics API",
+      "endpoint": "https://metrics.avax.network/v2/chains/43114/metrics/txCount",
+      "chain_id": "43114",
+      "startTimestamp": 1640995200,
+      "endTimestamp": 1735689599,
+      "timeInterval": "day",
+      "pageSize": 2160,
+      "auth": false,
+      "cost_usd": 0
+    }
+  },
+  "comparability_rule": "Only within-chain standardized log-activity shocks may be compared cross-sectionally. Raw transaction-count levels may never be compared across chains because source semantics differ.",
+  "frozen_gate": {
+    "per_chain_min_rows": 900,
+    "nonnull_fraction_gte": 0.95,
+    "positive_fraction_gte": 0.95,
+    "min_date_lte": "2022-01-07",
+    "max_date_gte": "2024-12-20",
+    "max_date_lte": "2024-12-31",
+    "all_three_chains_required": true
+  },
+  "outcome_boundary": [
+    "No token prices",
+    "No returns",
+    "No PnL",
+    "No 2025/2026",
+    "No live trading",
+    "No exchange mutation",
+    "No merge to main"
+  ]
+}
