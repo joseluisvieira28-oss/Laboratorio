@@ -1,0 +1,64 @@
+name: EMA6H Regime Radar Forward Validation V0.1
+
+on:
+  push:
+    branches:
+      - ema6h-50x200-regime-forward-radar-v0.1
+    paths:
+      - 'crypto_edge_radar/EMA6H_REGIME_FORWARD_VALIDATION_TRIGGER.txt'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: crypto_edge_radar
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install radar
+        run: python -m pip install -e .
+      - name: Compile
+        run: python -m compileall radar tests
+      - name: Full deterministic regression
+        run: python -m unittest discover -s tests -v
+      - name: Public Binance source probe
+        run: |
+          python - <<'PY'
+          from datetime import datetime,timezone
+          from radar.strategies.ema6h_50x200_regime_forward import BinanceSpotKlineFeed,DAY_MS,FIFTEEN_MIN_MS,FROZEN_UNIVERSE
+          now=int(datetime.now(timezone.utc).timestamp()*1000)
+          f=BinanceSpotKlineFeed(timeout=15)
+          for s in FROZEN_UNIVERSE:
+              xs=f.klines(s,'15m',start_ms=now-DAY_MS,end_ms=now,now_ms=now)
+              assert len(xs)>=90,(s,len(xs))
+          d=f.klines('BTCUSDT','1d',start_ms=now-240*DAY_MS,end_ms=now,now_ms=now)
+          assert len(d)>=220,len(d)
+          print('EMA6H_REGIME_PUBLIC_SOURCE=PASS')
+          PY
+      - name: Pre-boundary watcher smoke
+        run: |
+          python - <<'PY'
+          import tempfile
+          from pathlib import Path
+          from radar.evidence import EvidenceStore
+          from radar.ema6h_regime_watcher import EMA6HRegimeForwardWatcher
+          from radar.ema6h_regime_metrics import evaluate_ema6h_regime_forward
+          from radar.strategies.ema6h_50x200_regime_forward import FIRST_ELIGIBLE_SIGNAL_CLOSE_MS
+          with tempfile.TemporaryDirectory() as td:
+              st=EvidenceStore(str(Path(td)/'e.sqlite3'))
+              w=EMA6HRegimeForwardWatcher(store=st)
+              state=w.run_once(now_ms=FIRST_ELIGIBLE_SIGNAL_CLOSE_MS-1)
+              assert state['status']=='WAITING_FIRST_ELIGIBLE_BOUNDARY',state
+              m=evaluate_ema6h_regime_forward(st)
+              assert m['classification']=='FORWARD_EVIDENCE_ACCUMULATING',m
+              assert m['automatic_promotion'] is False
+              ok,detail=st.verify_chain();assert ok,detail
+          print('PRE_BOUNDARY_SHADOW=PASS')
+          PY

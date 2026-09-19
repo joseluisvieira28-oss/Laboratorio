@@ -1,6 +1,6 @@
 {
-  "registry_version": "3.5",
-  "as_of_utc": "2026-09-18T20:39:44Z",
+  "registry_version": "3.6",
+  "as_of_utc": "2026-09-19T13:21:00Z",
   "governance": "ND_PROMOTION_POLICY_V3_PLUS_AGGRESSIVE_FAIL_CLOSED_DEPLOYMENT",
   "focus_strategy_ids": [
     "ETF-CME-INSTFLOW-001",
@@ -8,9 +8,10 @@
     "OPTIONS-SPOTPERP-001-V2.1",
     "TFG-DONCHIAN-REGIME-ADAPTATION-V1",
     "HTF-DH03-12H-STANDALONE-FORWARD-V1",
-    "CED1D-0031"
+    "CED1D-0031",
+    "EMA6H-50X200-REGIME-DEPENDENCY-001"
   ],
-  "policy_note": "Six-motor canonical control plane is live. DH03 cockpit SHADOW is runtime-truth gated on local collector status=COLLECTING; MISSING/BOOTSTRAPPING stays GATED and FAIL_CLOSED is BLOCKED. No micro-live or execution authority is granted by this registry.",
+  "policy_note": "Seven-motor canonical control plane candidate state: existing six motors unchanged; EMA6H-50X200-REGIME-DEPENDENCY-001 added as research-only prospective public shadow after full regression/source validation. No micro-live or execution authority is granted.",
   "candidates": [
     {
       "strategy_id": "ETF-CME-INSTFLOW-001",
@@ -332,10 +333,56 @@
         "exchange_mutation_performed": false,
         "live_capital_enabled": false
       }
+    },
+    {
+      "strategy_id": "EMA6H-50X200-REGIME-DEPENDENCY-001",
+      "label": "EMA50×EMA200 6H Regime Dependency",
+      "scientific_tier": 3,
+      "scientific_status": "TIER3_HIGH_WATCHLIST__TEMPORALLY_FRAGILE__REGIME_FORWARD_ONLY",
+      "deployment_state": "PROSPECTIVE_PUBLIC_SHADOW_VALIDATED__WAITING_FIRST_ELIGIBLE_BOUNDARY",
+      "shadow_allowed": true,
+      "micro_live_allowed_now": false,
+      "authority_branch": "ema6h-50x200-regime-dependency-v0.1",
+      "radar_branch": "ema6h-50x200-regime-forward-radar-v0.1",
+      "cross_lab_transfer": "authorities/XFER_EMA6H_50X200_REGIME_TO_RADAR_001.json",
+      "watcher_id": "EMA6H-50X200-REGIME-DEPENDENCY-001-FORWARD-SHADOW",
+      "provider": "BINANCE_SPOT_DATA_API_PUBLIC",
+      "timeframe": "6H",
+      "pair": "EMA50xEMA200",
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "SOLUSDT",
+        "BNBUSDT",
+        "XRPUSDT",
+        "DOGEUSDT"
+      ],
+      "hold_bars": 6,
+      "hold_hours": 36,
+      "base_cost_bps": 10,
+      "stress_cost_bps": 14,
+      "regime_anchor": "BTCUSDT 1D; SMA200 + 20-day SMA200 slope; BULL/BEAR/TRANSITION_CHOP",
+      "first_eligible_signal_close_utc": "2026-09-20T00:00:00Z",
+      "first_review_gate": "10 resolved prospective crosses; mechanism review only; no automatic promotion",
+      "stronger_review_gate": "25 resolved prospective crosses; separate V3 adjudication may be opened if integrity clean",
+      "historical_diagnostic": "TRANSITION_CHOP descriptively strongest; large bullish-vs-bearish crossover asymmetry; post-outcome only and not used to change forward rules",
+      "blocking_gates": [
+        "first eligible full post-activation 6H signal close not yet reached",
+        "minimum 10 resolved prospective crosses not met",
+        "minimum 25 resolved prospective crosses for stronger V3 review not met",
+        "no micro-live execution authority"
+      ],
+      "safety": {
+        "public_read_only": true,
+        "authenticated_exchange_api_used": false,
+        "orders_created": false,
+        "exchange_mutation_performed": false,
+        "live_capital_enabled": false
+      }
     }
   ],
   "operational_shadow_v09": {
-    "status": "OPERATIONAL_SIX_MOTOR_CONTROL_PLANE__V0132_RUNTIME_TRUTH",
+    "status": "OPERATIONAL_SEVEN_MOTOR_CONTROL_PLANE__EMA6H_REGIME_FORWARD_VALIDATED_PENDING_CANONICAL_DEPLOY",
     "branch": "crypto-edge-radar-cleanup-v1",
     "canonical_cloud_branch": "crypto-edge-radar-postgres-v0.5",
     "canonical_cloud_deploy_pending": false,
@@ -344,7 +391,7 @@
     "evidence_backend": "postgres",
     "postgres_id": "dpg-dalqi4qd0e5s738a77kg-a",
     "runtime_health": "OK",
-    "active_motor_count": 6,
+    "active_motor_count": 7,
     "archived_closed_mechanisms": 43,
     "archive_registry": "archive_registry_v1.json",
     "engines": {
@@ -402,11 +449,21 @@
         "last_static_preflight_conclusion": "success",
         "external_daily_guard": "Radar Fishing Watch",
         "external_daily_guard_enabled": true
+      },
+      "ema6h_regime": {
+        "id": "EMA6H-50X200-REGIME-DEPENDENCY-001",
+        "runtime": "RENDER_PUBLIC_SHADOW",
+        "status": "VALIDATED_WAITING_FIRST_ELIGIBLE_BOUNDARY",
+        "first_eligible_signal_close_utc": "2026-09-20T00:00:00Z",
+        "micro_live_authorized": false,
+        "validation_run_id": 35445454103,
+        "deterministic_tests": "188/188 PASS",
+        "public_source_probe": "PASS_BINANCE_SPOT_DATA_API_PUBLIC"
       }
     },
     "cleanup": {
       "active_only_registry": true,
-      "active_or_gated_candidates": 6,
+      "active_or_gated_candidates": 7,
       "closed_candidates_removed_from_active_view": 43,
       "negative_evidence_preserved": true,
       "unresolved_non_scientific_states_not_mislabelled_as_stones": true,
