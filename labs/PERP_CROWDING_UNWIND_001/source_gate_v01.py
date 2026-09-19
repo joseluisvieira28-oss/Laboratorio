@@ -32,7 +32,7 @@ def main():
     for d in DATES:
         routes={
           "metrics":f"{BASE}/metrics/BTCUSDT/BTCUSDT-metrics-{d}.zip",
-          "funding":f"{BASE}/fundingRate/BTCUSDT/BTCUSDT-fundingRate-{d}.zip",
+          "funding":f"{BASE.replace('/daily','/monthly')}/fundingRate/BTCUSDT/BTCUSDT-fundingRate-{d[:7]}.zip",
           "kline":f"{BASE}/klines/BTCUSDT/1h/BTCUSDT-1h-{d}.zip"
         }
         rec={"date":d}
@@ -55,6 +55,21 @@ def main():
                 elif kind=="funding":
                     df=read_csv(data,True); c=normcols(df.columns)
                     rec["funding_rows"]=len(df); rec["funding_columns"]=list(map(str,df.columns))
+                    # Monthly archive: require the frozen representative date to be present.
+                    tc0=[x for x in df.columns if str(x).strip().lower().replace(" ","_") in {"calc_time","fundingtime","timestamp","time"}]
+                    date_present=False
+                    if tc0:
+                        s0=df[tc0[0]]
+                        n0=pd.to_numeric(s0,errors="coerce")
+                        if n0.notna().any():
+                            med0=float(n0.dropna().abs().median()); unit0="ms" if med0>1e11 else "s"
+                            tt0=pd.to_datetime(n0,unit=unit0,utc=True,errors="coerce")
+                        else:
+                            tt0=pd.to_datetime(s0,utc=True,errors="coerce")
+                        date_present=bool((tt0.dt.strftime("%Y-%m-%d")==d).any())
+                    rec["funding_representative_date_present"]=date_present
+                    if not date_present:
+                        raise RuntimeError("monthly funding archive missing representative date")
                     fr=bool({"last_funding_rate","fundingrate","funding_rate"} & c)
                     funding_present=funding_present or fr
                     tc=[x for x in df.columns if str(x).strip().lower().replace(" ","_") in {"calc_time","fundingtime","timestamp","time"}]
