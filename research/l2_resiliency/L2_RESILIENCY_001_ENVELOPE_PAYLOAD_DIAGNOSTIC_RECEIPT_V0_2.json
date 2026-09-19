@@ -1,0 +1,55 @@
+{
+  "schema_version":"0.2",
+  "lab_id":"L2-RESILIENCY-001",
+  "classification":"SOURCE_ENVELOPE_PARTITION_SEMANTICS_PASS",
+  "manifest_sha256":"59e16ce8ea41658c2ea0fc6f2489d4deafbdc676e008d0b93f95ee6e3864913d",
+  "full_corpus":{
+    "objects":8707,
+    "records":50717748,
+    "envelope_outside_key_hour":0,
+    "envelope_backwards_within_objects":0,
+    "payload_after_envelope":0,
+    "payload_backwards_adjacent_transitions":64,
+    "payload_duplicate_timestamps":158,
+    "max_envelope_minus_payload_ms":2671431
+  },
+  "outside_hour_payload_rows":{
+    "rows":2768,
+    "envelope_in_key_hour":2768,
+    "previous_hour_file_present":2767,
+    "same_payload_timestamp_in_previous_hour":9,
+    "exact_payload_duplicate_in_previous_hour":7
+  },
+  "backwards_payload_transitions":{
+    "rows":64,
+    "envelope_monotonic":64,
+    "same_payload_timestamp_seen_earlier_same_file":41,
+    "exact_payload_seen_earlier_same_file":36
+  },
+  "interpretation":{
+    "hour_partition_clock":"top-level envelope time",
+    "payload_clock":"raw.data.time",
+    "evidence":"All 50,717,748 envelope timestamps remained inside their S3 key hour and non-decreasing within each object, while raw.data.time can be delayed/replayed. raw.data.time was never later than envelope time.",
+    "prior_schema_fail_status":"ADMINISTRATIVE_TIME_CONTRACT_TOO_STRICT — NOT EDGE VERDICT",
+    "not_no_edge":true
+  },
+  "evidence_sha256":{
+    "diagnostic_receipt":"507ba43ba81f41d5c917e58fba613f0f9da2c10ea08c38f34e814d62d1457be3",
+    "envelope_object_audit":"ef6707caf3a4a99dd3543798c447bbf14434a5b27053998f04ec50458b9a402d",
+    "boundary_overlap_matches":"824e9b96433f23dc6e2e0e787671e36db973f3368a90c85d280b9d2560c6c704",
+    "backwards_payload_semantics":"1a43cc3e693cdbcf75ee68ed079d2ebf9150ed20569034c77cb59717593a9422"
+  },
+  "firewalls":{
+    "book_depth_analyzed":false,
+    "sweep_events_computed":false,
+    "replenishment_computed":false,
+    "midpoint_response_computed":false,
+    "returns_computed":false,
+    "pnl_computed":false,
+    "access_2025":false,
+    "access_2026":false,
+    "live_trading":false,
+    "exchange_mutation":false
+  },
+  "next_gate":"Corrected full-corpus schema/normalization audit under envelope partition semantics; validate top-5 on every record and quarantine late payload rewinds source-only."
+}
