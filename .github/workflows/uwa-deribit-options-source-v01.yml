@@ -1,0 +1,61 @@
+name: UWA Deribit Options Free Source Gate V0.1
+on:
+  push:
+    branches: [btc-options-uwa-source-v0.1]
+    paths:
+      - "labs/BTC_OPTIONS_UWA_001/UWA_DERIBIT_SOURCE_AUTHORITY_V0.1.json"
+      - "labs/BTC_OPTIONS_UWA_001/uwa_deribit_source_probe_v01.py"
+      - ".github/workflows/uwa-deribit-options-source-v01.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - name: Install parsers
+        run: python -m pip install --disable-pip-version-check -q pandas pyreadr gdown
+      - name: Try author's canonical Google Drive object
+        continue-on-error: true
+        run: |
+          gdown --id 1H1hSTgy1qFVPro1_96pmMU035bvh3WoQ -O uwa_author_data.rds
+          ls -lh uwa_author_data.rds || true
+      - name: Try UWA repository compact RDS fallback
+        continue-on-error: true
+        run: |
+          python - <<'PY'
+          import urllib.request
+          u="https://research-repository.uwa.edu.au/files/78320956/Deribit_BTC_option_all.rds"
+          req=urllib.request.Request(u,headers={"User-Agent":"Mozilla/5.0"})
+          try:
+              with urllib.request.urlopen(req,timeout=120) as r: raw=r.read()
+              open("Deribit_BTC_option_all.rds","wb").write(raw)
+              print("bytes",len(raw))
+          except Exception as e: print("fallback_rds_error",repr(e))
+          PY
+      - name: Try UWA IV CSV fallback
+        continue-on-error: true
+        run: |
+          python - <<'PY'
+          import urllib.request
+          u="https://research-repository.uwa.edu.au/files/78305486/Deribit_w_IV.csv"
+          req=urllib.request.Request(u,headers={"User-Agent":"Mozilla/5.0"})
+          try:
+              with urllib.request.urlopen(req,timeout=120) as r: raw=r.read()
+              open("Deribit_w_IV.csv","wb").write(raw)
+              print("bytes",len(raw))
+          except Exception as e: print("fallback_csv_error",repr(e))
+          PY
+      - name: Run frozen source-only probe
+        run: python labs/BTC_OPTIONS_UWA_001/uwa_deribit_source_probe_v01.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: BTC_OPTIONS_UWA_001_SOURCE_V0_1
+          path: uwa_deribit_source_receipt_v01.json
+          if-no-files-found: error
+          retention-days: 30
