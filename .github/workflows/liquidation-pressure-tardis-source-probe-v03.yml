@@ -1,0 +1,43 @@
+name: Liquidation Pressure — Tardis Source Probe V0.3
+on:
+  push:
+    branches: [liquidation-pressure-tardis-source-v0.2]
+    paths: [.github/liquidation-pressure-tardis-source-v03.trigger]
+permissions:
+  contents: read
+jobs:
+  source_probe_v03:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: liquidation-pressure-tardis-source-v0.2
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --disable-pip-version-check requests
+      - name: Verify corrected frozen authority
+        run: |
+          python - <<'PY'
+          import json
+          a=json.load(open('labs/LIQUIDATION_PRESSURE_001/TARDIS_SOURCE_PROBE_AUTHORITY_V0.3.json'))
+          assert a['probe_id']=='LP-TARDIS-SOURCE-PROBE-003'
+          assert a['status']=='FROZEN_SOURCE_ONLY_OUTCOME_BLIND'
+          assert a['source']['dataset_symbol']=='BTCUSDT'
+          assert all(int(d[:4]) < 2025 for d in a['sample_dates'])
+          assert all(v is False for k,v in a['safety'].items() if k.endswith('_authorized'))
+          print('LIQUIDATION_PRESSURE_TARDIS_SOURCE_V03_AUTHORITY_PASS')
+          PY
+      - name: Compile probe
+        run: python -m py_compile labs/LIQUIDATION_PRESSURE_001/tardis_source_probe_v03.py
+      - name: Execute corrected free-sample probe
+        run: python labs/LIQUIDATION_PRESSURE_001/tardis_source_probe_v03.py
+      - name: Upload immutable receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: LIQUIDATION_PRESSURE_001_TARDIS_SOURCE_PROBE_V0_3
+          path: artifacts/liquidation_pressure_tardis_source_probe_v03/
+          retention-days: 90
+          if-no-files-found: warn
