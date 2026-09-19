@@ -21,6 +21,14 @@ class DashboardTests(unittest.TestCase):
             encoding="utf-8",
         )
         events.write_text(json.dumps({"ts_utc": "2026-09-17T00:00:00Z", "event_type": "TEST", "payload": {}}) + "\n", encoding="utf-8")
+        (root / "forward_local_supervisor_status.json").write_text(
+            json.dumps({"status": "RUNNING", "build_id": "TEST"}),
+            encoding="utf-8",
+        )
+        (root / "forward_local_status.json").write_text(
+            json.dumps({"health": "OK", "errors": {}}),
+            encoding="utf-8",
+        )
         return registry, status, events
 
     def test_active_registry_focus_excludes_archived_stones_and_keeps_gated_candidate(self):
@@ -61,6 +69,60 @@ class DashboardTests(unittest.TestCase):
             self.assertEqual(state["focus_counts"]["ARMED"], 0)
             dh03 = next(b for b in state["bots"] if b["strategy_id"] == "HTF-DH03-12H-STANDALONE-FORWARD-V1")
             self.assertEqual(dh03["operating_state"], "GATED")
+
+    def test_local_forward_registry_shadow_stays_gated_when_supervisor_missing(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            registry, status, events = self._paths(root)
+            (root / "forward_local_supervisor_status.json").unlink()
+            (root / "forward_local_status.json").unlink()
+            strategy = "EMA6H-50X200-REGIME-DEPENDENCY-001"
+            registry.write_text(
+                json.dumps({
+                    "registry_version": "3.6-test",
+                    "focus_strategy_ids": [strategy],
+                    "candidates": [{
+                        "strategy_id": strategy,
+                        "scientific_tier": 3,
+                        "deployment_state": "PROSPECTIVE_PUBLIC_SHADOW_VALIDATED__WAITING_FIRST_ELIGIBLE_BOUNDARY",
+                        "shadow_allowed": True,
+                        "micro_live_allowed_now": False,
+                    }],
+                }),
+                encoding="utf-8",
+            )
+            state = build_control_room_state(status_path=str(status), notification_path=str(events), registry_path=str(registry))
+            self.assertEqual(state["focus_counts"]["GATED"], 1)
+            self.assertEqual(state["focus_counts"]["SHADOW"], 0)
+            self.assertIn("not healthy", " ".join(state["bots"][0]["blockers"]))
+
+    def test_local_forward_runtime_fail_closed_blocks_all_local_forward_shadow_claims(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            registry, status, events = self._paths(root)
+            (root / "forward_local_status.json").write_text(
+                json.dumps({"health": "DEGRADED_FAIL_CLOSED", "errors": {"ema6h_regime": "source unavailable"}}),
+                encoding="utf-8",
+            )
+            strategy = "EMA6H-50X200-REGIME-DEPENDENCY-001"
+            registry.write_text(
+                json.dumps({
+                    "registry_version": "3.6-test",
+                    "focus_strategy_ids": [strategy],
+                    "candidates": [{
+                        "strategy_id": strategy,
+                        "scientific_tier": 3,
+                        "deployment_state": "PROSPECTIVE_PUBLIC_SHADOW_VALIDATED__WAITING_FIRST_ELIGIBLE_BOUNDARY",
+                        "shadow_allowed": True,
+                        "micro_live_allowed_now": False,
+                    }],
+                }),
+                encoding="utf-8",
+            )
+            state = build_control_room_state(status_path=str(status), notification_path=str(events), registry_path=str(registry))
+            self.assertEqual(state["focus_counts"]["BLOCKED"], 1)
+            self.assertEqual(state["focus_counts"]["SHADOW"], 0)
+            self.assertIn("FAIL_CLOSED", " ".join(state["bots"][0]["blockers"]))
 
     def test_dh03_ready_registry_without_live_collector_stays_gated(self):
         with tempfile.TemporaryDirectory() as td:
