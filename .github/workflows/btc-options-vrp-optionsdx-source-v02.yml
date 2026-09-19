@@ -1,0 +1,37 @@
+name: BTC Options VRP — optionsDX Public Sample Source Probe V0.2
+on:
+  push:
+    branches: [btc-options-vrp-exec-bbo-v0.2]
+    paths: [.github/btc-options-vrp-optionsdx-source-v02.trigger]
+permissions:
+  contents: read
+jobs:
+  source_probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: btc-options-vrp-exec-bbo-v0.2}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Verify corrected source-only authority
+        run: |
+          python - <<'PY'
+          import json
+          a=json.load(open('labs/BTC_OPTIONS_VRP_001/OPTIONSDX_SOURCE_PROBE_AUTHORITY_V0.2.json'))
+          assert a['probe_id']=='OVRP-EXEC-SOURCE-OPTIONSDX-PROBE-002'
+          assert a['safety']['purchase_authorized'] is False
+          assert a['safety']['performance_outcomes_authorized'] is False
+          print('OPTIONSDX_SOURCE_V02_AUTHORITY_PASS')
+          PY
+      - run: python -m py_compile labs/BTC_OPTIONS_VRP_001/optionsdx_source_probe_v02.py
+      - name: Execute corrected public sample probe
+        run: python labs/BTC_OPTIONS_VRP_001/optionsdx_source_probe_v02.py
+      - name: Upload immutable source receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: BTC_OPTIONS_VRP_001_OPTIONSDX_SOURCE_PROBE_V0_2
+          path: artifacts/btc_options_vrp_optionsdx_source_probe_v02/
+          retention-days: 90
+          if-no-files-found: warn
