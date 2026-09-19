@@ -229,6 +229,59 @@ class DashboardTests(unittest.TestCase):
             self.assertFalse(state["registry"]["ok"])
             self.assertEqual(state["bots"], [])
 
+    def test_control_plane_stays_reachable_when_legacy_service_health_is_unknown(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            registry, status, events = self._paths(root)
+            status.write_text(json.dumps({"health": "UNKNOWN", "provider": "CONTROL_PLANE_ONLY"}), encoding="utf-8")
+            strategy = "EMA6H-50X200-REGIME-DEPENDENCY-001"
+            registry.write_text(
+                json.dumps({
+                    "registry_version": "3.6-test",
+                    "focus_strategy_ids": [strategy],
+                    "candidates": [{
+                        "strategy_id": strategy,
+                        "scientific_tier": 3,
+                        "deployment_state": "PROSPECTIVE_PUBLIC_SHADOW_VALIDATED__WAITING_FIRST_ELIGIBLE_BOUNDARY",
+                        "shadow_allowed": True,
+                        "micro_live_allowed_now": False,
+                    }],
+                }),
+                encoding="utf-8",
+            )
+            state = build_control_room_state(status_path=str(status), notification_path=str(events), registry_path=str(registry))
+            self.assertEqual(state["system"]["health"], "OK")
+            self.assertEqual(state["system"]["market_health"], "UNKNOWN")
+            self.assertEqual(state["focus_counts"]["SHADOW"], 1)
+
+    def test_dh03_fail_closed_degrades_control_plane_but_dashboard_state_remains_available(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            registry, status, events = self._paths(root)
+            strategy = "HTF-DH03-12H-STANDALONE-FORWARD-V1"
+            registry.write_text(
+                json.dumps({
+                    "registry_version": "3.6-test",
+                    "focus_strategy_ids": [strategy],
+                    "candidates": [{
+                        "strategy_id": strategy,
+                        "scientific_tier": None,
+                        "deployment_state": "PROSPECTIVE_ARCHIVE_SHADOW_READY",
+                        "shadow_allowed": True,
+                        "micro_live_allowed_now": False,
+                    }],
+                }),
+                encoding="utf-8",
+            )
+            (root / "dh03_local_status.json").write_text(
+                json.dumps({"status": "FAIL_CLOSED", "error": "clock drift"}),
+                encoding="utf-8",
+            )
+            state = build_control_room_state(status_path=str(status), notification_path=str(events), registry_path=str(registry))
+            self.assertEqual(state["system"]["health"], "DEGRADED_FAIL_CLOSED")
+            self.assertEqual(state["focus_counts"]["BLOCKED"], 1)
+            self.assertEqual(state["bots"][0]["runtime_status"], "FAIL_CLOSED")
+
     def test_dashboard_html_has_live_state_endpoint(self):
         self.assertIn("/api/state", HTML)
         self.assertIn("Crypto Edge Radar", HTML)
