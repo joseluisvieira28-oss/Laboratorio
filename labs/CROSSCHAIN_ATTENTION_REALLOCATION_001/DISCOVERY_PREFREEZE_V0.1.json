@@ -1,0 +1,83 @@
+{
+  "lab_id": "CROSSCHAIN-ATTENTION-REALLOCATION-001",
+  "mve_id": "CAR-3CHAIN-ACTIVITY-LEADER-3D-001",
+  "version": "0.1",
+  "date_frozen": "2026-09-20",
+  "branch": "crosschain-attention-reallocation-v0.1",
+  "status": "FROZEN_BEFORE_ANY_MARKET_OUTCOME",
+  "mechanism": "An unusually large chain-specific activity shock can attract investor attention and capital away from competing ecosystems. If reallocation is not instantaneous, the token of the activity leader may outperform the other chain tokens over the following three days.",
+  "source_dependency": "CAR_SOURCE_FULL_V02 required; source-blocked means no outcomes.",
+  "assets": {
+    "ETH": "ETHUSDT",
+    "SOL": "SOLUSDT",
+    "AVAX": "AVAXUSDT"
+  },
+  "signal": {
+    "daily_activity": "chain-native transaction-count series from SOURCE_AUTHORITY_V0.2",
+    "transform": "natural log of positive daily count",
+    "lookback_days": 28,
+    "zscore": "(log_activity_t - mean(log_activity over t-28..t-1)) / sample_std over t-28..t-1",
+    "minimum_history_days": 28,
+    "event_threshold": "leader z >= 1.5",
+    "separation_threshold": "leader z - median(other two z) >= 0.75",
+    "leader": "chain with highest z on event day",
+    "overlap": "one 3-day event at a time; any event before active event exits is ignored",
+    "no_price_filter": true,
+    "no_btc_filter": true,
+    "no_volatility_filter": true
+  },
+  "outcome": {
+    "provider": "Binance public spot monthly 1d archives",
+    "period": "2022-01-01 through 2024-12-31",
+    "entry": "daily OPEN at t+1 UTC",
+    "exit": "daily OPEN at t+4 UTC",
+    "leader_return": "ln(leader_exit/leader_entry)",
+    "peers_return": "equal-weight mean of the other two log returns",
+    "relative_return": "leader_return - peers_return",
+    "note": "Predictive relative-return study only; no executable shorting/PnL claim."
+  },
+  "gate": {
+    "minimum_N": 60,
+    "mean_relative_return_gt_0": true,
+    "median_relative_return_gt_0": true,
+    "bootstrap_95_lower_mean_gt_0": true,
+    "positive_years_gte": 2,
+    "leader_win_rate_gt_0_50": true
+  },
+  "statistics": {
+    "bootstrap_reps": 10000,
+    "circular_block_length_events": 5,
+    "seed": 230924,
+    "report": [
+      "N",
+      "mean_relative_return",
+      "median",
+      "leader_win_rate",
+      "bootstrap95",
+      "year_means",
+      "event_counts_by_leader",
+      "max_losing_streak"
+    ]
+  },
+  "terminal_classes": [
+    "DISCOVERY_PASS_ATTENTION_REALLOCATION",
+    "DISCOVERY_FAIL_NO_PROMOTION",
+    "INSUFFICIENT_SAMPLE",
+    "BLOCKED_SOURCE"
+  ],
+  "no_rescue": [
+    "No threshold changes after outcomes.",
+    "No alternate lookback after outcomes.",
+    "No horizon changes after outcomes.",
+    "No inversion to mean reversion after outcomes.",
+    "No dropping a losing chain after outcomes.",
+    "No 2025/2026."
+  ],
+  "safety": {
+    "cash_spend_usd": 0,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "wallet_access": false,
+    "merge_to_main": false
+  }
+}
