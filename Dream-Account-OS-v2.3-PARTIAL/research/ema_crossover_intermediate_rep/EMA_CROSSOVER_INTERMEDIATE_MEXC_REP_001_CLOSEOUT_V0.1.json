@@ -1,0 +1,110 @@
+{
+  "experiment_id": "EMA-CROSSOVER-INTERMEDIATE-MEXC-REP-001",
+  "status": "M4_REPLICATION_COMPLETE",
+  "policy": "ND-PROMOTION-POLICY-V3.0-FROZEN",
+  "canonical_run": {
+    "run_id": 35442522590,
+    "head_sha": "b02c09546c8401acd118be6da12dd1c1ba60004b",
+    "artifact_id": 10584228166,
+    "artifact_digest": "sha256:8542a9bab177535ac60dbf3533947f2b8d7ff3136697df4b0c24838af9ef6aa9",
+    "result_json_sha256": "8194f4eea2205ddb2afe780e9301e56f7d34dca8eb1bf1865fa67de04fa356cb",
+    "event_ledger_sha256": "ef07f27dc0a4daad8ffe50454abc9c4bb8cd8fe69eaa5b920a763913bacbda5c",
+    "locked_runner_sha256": "26ea1d8d7cfa10d225399b1e08d38a77e6cbbff3c19b38571811a64e6aa72061"
+  },
+  "source": {
+    "provider": "MEXC",
+    "market": "SPOT",
+    "window": "2023-02-01T00:00:00Z to 2024-12-31T16:00:00Z exclusive",
+    "artifact_id": 10419067320,
+    "artifact_digest": "sha256:7b2562af14983d0344c9a28e81e9c1866f2e5e9dfafe94203da9a4ca1ffa36cb",
+    "raw_files_verified": 138,
+    "effective_15m_rows_per_symbol": 67151,
+    "source_gap_count_total": 36,
+    "source_missing_candles_total": 102,
+    "2025_access": false,
+    "2026_access": false
+  },
+  "events_total": 2369,
+  "replication_classification_counts": {
+    "REPLICATION_SUPPORTIVE": 0,
+    "REPLICATION_CONTRADICTS_STRONG": 0,
+    "REPLICATION_CONTRADICTS_ECONOMIC": 5,
+    "REPLICATION_MIXED": 2,
+    "INSUFFICIENT_SAMPLE": 1
+  },
+  "cells": {
+    "2H:EMA20x50": {
+      "n": 901, "base_mean_net_bps": -7.100966739495927, "pf": 0.9116724412329148,
+      "bootstrap_p_one_sided": 0.8176364727054589, "bh_fdr_q": 0.8522295540891822,
+      "replication": "REPLICATION_CONTRADICTS_ECONOMIC",
+      "v3_additive_adjudication": "TIER4_REJECTED_EXACT_CELL",
+      "reason": "Large independent sample is base-net negative, PF below 1, and both 2023 and 2024 blocks are negative."
+    },
+    "2H:EMA50x200": {
+      "n": 277, "base_mean_net_bps": -10.240030304110034, "pf": 0.8771240529073624,
+      "bootstrap_p_one_sided": 0.7954409118176364, "bh_fdr_q": 0.8522295540891822,
+      "replication": "REPLICATION_CONTRADICTS_ECONOMIC",
+      "v3_additive_adjudication": "TIER4_REJECTED_EXACT_CELL",
+      "reason": "Independent aggregate economics are negative with PF below 1; temporal blocks disagree, so the prior positive point estimate is not robust."
+    },
+    "4H:EMA20x50": {
+      "n": 456, "base_mean_net_bps": -13.056327757079023, "pf": 0.8852347786304616,
+      "bootstrap_p_one_sided": 0.7860427914417116, "bh_fdr_q": 0.8522295540891822,
+      "replication": "REPLICATION_CONTRADICTS_ECONOMIC",
+      "v3_additive_adjudication": "TIER4_REJECTED_EXACT_CELL",
+      "reason": "Independent replication reverses the positive Discovery point estimate and is net negative after frozen base costs."
+    },
+    "4H:EMA50x200": {
+      "n": 111, "base_mean_net_bps": -35.26777807307308, "pf": 0.7603797340677277,
+      "bootstrap_p_one_sided": 0.8522295540891822, "bh_fdr_q": 0.8522295540891822,
+      "replication": "REPLICATION_CONTRADICTS_ECONOMIC",
+      "v3_additive_adjudication": "TIER4_REJECTED_EXACT_CELL",
+      "reason": "Discovery point estimate was already negative and the independent block is again materially negative with PF well below 1."
+    },
+    "6H:EMA20x50": {
+      "n": 293, "base_mean_net_bps": 1.6621312656429228, "pf": 1.0120951511153253,
+      "bootstrap_p_one_sided": 0.47590481903619275, "bh_fdr_q": 0.8522295540891822,
+      "replication": "REPLICATION_MIXED",
+      "v3_additive_adjudication": "TIER3_WATCHLIST_LOW",
+      "reason": "Independent economics are only marginally positive, uncertainty is wide, and 2023 is negative while 2024 is positive."
+    },
+    "6H:EMA50x200": {
+      "n": 64, "base_mean_net_bps": 74.55061849280825, "pf": 1.7366018086325654,
+      "bootstrap_p_one_sided": 0.0611877624475105, "bh_fdr_q": 0.489502099580084,
+      "largest_positive_share": 0.17524630620151813,
+      "replication": "REPLICATION_MIXED",
+      "v3_additive_adjudication": "TIER3_HIGH_WATCHLIST",
+      "reason": "Independent MEXC block is economically positive with PF 1.74 and one-sided p 0.061; parent Binance block was also positive but formally insufficient. It fails the frozen eight-cell family FDR and the dense-mechanism canonical-sample requirement, so Tier 2 is not authorized."
+    },
+    "8H:EMA20x50": {
+      "n": 219, "base_mean_net_bps": -18.52106221512249, "pf": 0.9032944368658866,
+      "bootstrap_p_one_sided": 0.6814637072585483, "bh_fdr_q": 0.8522295540891822,
+      "replication": "REPLICATION_CONTRADICTS_ECONOMIC",
+      "v3_additive_adjudication": "TIER4_REJECTED_EXACT_CELL",
+      "reason": "Independent aggregate block is base-net negative and PF below 1, with 2024 materially negative."
+    },
+    "8H:EMA50x200": {
+      "n": 48, "base_mean_net_bps": -41.3782181468826, "pf": 0.7569105061264023,
+      "replication": "INSUFFICIENT_SAMPLE",
+      "v3_additive_adjudication": "INSUFFICIENT_SAMPLE_OUTSIDE_TIER_LADDER",
+      "reason": "Independent validation block is below the frozen n=50 minimum; no Tier 4 relabel is allowed from an insufficient sample."
+    }
+  },
+  "family_decision": {
+    "replication_supportive_cells": 0,
+    "tier2_promotion_authorized": false,
+    "family_as_standalone_edge_confirmed": false,
+    "next_priority": "6H:EMA50x200 only as a new prospectively frozen Tier-3 follow-up if a genuinely independent third historical block can be sourced without opening 2025/2026.",
+    "no_rescue": "Do not change EMA lengths, horizon, costs, direction, asset universe, or select favorable subperiods."
+  },
+  "governance": {
+    "research_only": true,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "orders": false,
+    "alerts_webhooks": false,
+    "merge_to_main": false,
+    "post_outcome_tuning": false,
+    "historical_parent_verdict_preserved": true
+  }
+}
