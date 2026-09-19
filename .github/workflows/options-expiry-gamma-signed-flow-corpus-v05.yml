@@ -1,0 +1,74 @@
+name: Options Expiry Gamma Signed Flow Corpus V0.5
+
+on:
+  push:
+    branches:
+      - options-expiry-gamma-signed-flow-corpus-v0.5
+    paths:
+      - 'labs/OPTIONS_EXPIRY_GAMMA_001/SIGNED_FLOW_CORPUS_TRIGGER_V0.5.txt'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  source-shards:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        shard_id: [0,1,2,3,4,5,6,7]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install source dependency
+        run: pip install --disable-pip-version-check requests
+      - name: Compile frozen V0.5 source code
+        run: |
+          python -m py_compile labs/OPTIONS_EXPIRY_GAMMA_001/signed_flow_source_v04.py
+          python -m py_compile labs/OPTIONS_EXPIRY_GAMMA_001/signed_flow_corpus_v05_shard.py
+          python -m py_compile labs/OPTIONS_EXPIRY_GAMMA_001/aggregate_signed_flow_corpus_v05.py
+      - name: Execute fixed six-date source shard
+        env:
+          OEG_SHARD_ID: ${{ matrix.shard_id }}
+          OEG_SHARD_COUNT: '8'
+        run: python labs/OPTIONS_EXPIRY_GAMMA_001/signed_flow_corpus_v05_shard.py
+      - name: Upload immutable shard receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: oeg-signed-flow-corpus-v05-shard-${{ matrix.shard_id }}
+          path: artifacts/options_expiry_gamma_signed_flow_corpus_v05_shards/shard_${{ matrix.shard_id }}.json
+          if-no-files-found: error
+          retention-days: 90
+
+  canonical-aggregate:
+    if: always()
+    needs: source-shards
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download all eight source-shard receipts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: oeg-signed-flow-corpus-v05-shard-*
+          path: downloaded_signed_flow_shards
+          merge-multiple: false
+      - name: Adjudicate frozen 48-date corpus
+        run: python labs/OPTIONS_EXPIRY_GAMMA_001/aggregate_signed_flow_corpus_v05.py
+      - name: Upload canonical V0.5 source receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: OEG_SIGNED_FLOW_CORPUS_SOURCE_V0_5
+          path: artifacts/options_expiry_gamma_signed_flow_corpus_v05/
+          if-no-files-found: error
+          retention-days: 90
