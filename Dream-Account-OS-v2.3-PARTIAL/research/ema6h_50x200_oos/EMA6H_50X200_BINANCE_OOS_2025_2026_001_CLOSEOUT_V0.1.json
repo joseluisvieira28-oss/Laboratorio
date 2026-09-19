@@ -1,0 +1,118 @@
+{
+  "experiment_id": "EMA6H-50X200-BINANCE-OOS-2025_2026-001",
+  "status": "M5_OOS_COMPLETE",
+  "policy": "ND-PROMOTION-POLICY-V3.0-FROZEN",
+  "canonical_oos": {
+    "run_id": 35444262073,
+    "head_sha": "88413a0d3fe3701514ae60a647581d06d3e53f12",
+    "artifact_id": 10585425988,
+    "artifact_digest": "sha256:72ec5ba4184b8877cc447f5168b41f7d9b63c5132f6a47c7c9da353139fb4d3f",
+    "result_json_sha256": "6daa6103ffe5af2016da621e2e18f64943c9c3691dedd3aebe431fb1f2b01e12",
+    "event_ledger_sha256": "e54aaed734a79c94dc270217e1800634c8f2477b2959f832dd9e318033928e55"
+  },
+  "source": {
+    "source_run_id": 35444113484,
+    "source_artifact_id": 10585241073,
+    "source_artifact_digest": "sha256:a8cb6cbbf48f8732b584dc404e5e558b8131e8af4c03242f7a875fdca0f50383",
+    "provider": "Binance Data Vision",
+    "market": "Spot",
+    "window": "2025-01-01 through 2026-08-31 complete UTC months",
+    "archive_count": 120,
+    "rows_15m_per_symbol": 58368,
+    "gaps_total": 0,
+    "access_after_2026_08": false
+  },
+  "exact_candidate": {
+    "timeframe": "6H",
+    "pair": "EMA50xEMA200",
+    "horizon_bars": 6,
+    "directional_pooling": "bull +1 / bear -1",
+    "base_cost_bps": 10,
+    "stress_cost_bps": 14,
+    "universe": ["BTCUSDT","ETHUSDT","SOLUSDT","BNBUSDT","XRPUSDT","DOGEUSDT"]
+  },
+  "oos_result": {
+    "classification": "TIER3_WATCHLIST",
+    "resolved_events": 66,
+    "base_mean_net_bps": 4.351254054529926,
+    "base_pf": 1.0347616060592189,
+    "base_median_bps": -7.774740837317986,
+    "positive_fraction": 0.4696969696969697,
+    "stress_mean_net_bps": 0.35125405452992614,
+    "stress_pf": 1.0027586411662817,
+    "bootstrap_95_lower_bps": -109.7133934191243,
+    "bootstrap_95_upper_bps": 109.17727256679864,
+    "bootstrap_one_sided_p": 0.46045395460453953,
+    "largest_positive_event_share": 0.15135012744965168,
+    "largest_symbol_positive_pnl_share": 0.26309429392090344
+  },
+  "temporal_blocks": {
+    "2025": {
+      "n": 32,
+      "base_mean_net_bps": -45.440398631930755,
+      "pf": 0.739087936609038
+    },
+    "2026_JAN_AUG": {
+      "n": 34,
+      "base_mean_net_bps": 51.21398599472821,
+      "pf": 1.6477046888581377
+    }
+  },
+  "failed_tier2_gates": [
+    "bootstrap one-sided p <= 0.10",
+    "2025 base mean > 0",
+    "all leave-one-symbol-out pooled means > 0"
+  ],
+  "leave_one_symbol_out_mean_bps": {
+    "BNBUSDT": 11.31026274511455,
+    "BTCUSDT": -10.359190304887445,
+    "DOGEUSDT": 17.980036562289946,
+    "ETHUSDT": 3.1971237667935375,
+    "SOLUSDT": 14.773241717845305,
+    "XRPUSDT": -12.460964925495945
+  },
+  "v3_pooled_diagnostic_existing_immutable_blocks": {
+    "allowed_role": "DIAGNOSTIC_ONLY_CANNOT_OVERRIDE_FROZEN_OOS_GATES",
+    "blocks": [
+      {"name":"BINANCE_2021_2022","n":59,"base_mean_net_bps":95.07867564861246,"pf":1.5068151057965045},
+      {"name":"MEXC_2023_2024","n":64,"base_mean_net_bps":74.55061849280825,"pf":1.7366018086325654},
+      {"name":"BINANCE_2025_AUG2026","n":66,"base_mean_net_bps":4.351254054529919,"pf":1.0347616060592189}
+    ],
+    "pooled_n": 189,
+    "pooled_base_mean_net_bps": 56.444784203210794,
+    "pooled_base_pf": 1.4133742509399965,
+    "pooled_stress_mean_net_bps": 52.444784203210794,
+    "pooled_stress_pf": 1.3784902606051326,
+    "pooled_largest_positive_event_share": 0.12114307704927144,
+    "leave_one_block_out": {
+      "omit_BINANCE_2021_2022": {"n":130,"mean_bps":38.910941162605404,"pf":1.343203113133089},
+      "omit_MEXC_2023_2024": {"n":125,"mean_bps":47.17459704693689,"pf":1.3050621575133572},
+      "omit_BINANCE_2025_AUG2026": {"n":123,"mean_bps":84.3974101366493,"pf":1.591645314558928}
+    }
+  },
+  "v3_adjudication": {
+    "historical_parent_verdicts_preserved": true,
+    "tier2_promoted_candidate_quase_diamante": false,
+    "final_current_state": "TIER3_HIGH_WATCHLIST__TEMPORALLY_FRAGILE",
+    "reason": "The exact candidate remains positive in three immutable aggregate blocks and pooled leave-one-block-out diagnostics, but the prospectively frozen M5 OOS failed statistical, 2025 temporal, and leave-one-symbol-out Tier2 gates. The pooled diagnostic cannot override those failures.",
+    "tier4_rejected": false
+  },
+  "next_legitimate_action": {
+    "historical_parameter_or_subperiod_rescue": false,
+    "new_ema_lengths": false,
+    "asset_selection": false,
+    "cost_reduction": false,
+    "direction_change": false,
+    "only_clean_path": "Prospective forward evidence under a separately frozen read-only authority starting strictly after the next authority boundary; no retrospective September 2026 reconstruction."
+  },
+  "governance": {
+    "research_only": true,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "orders": false,
+    "wallets": false,
+    "alerts_webhooks": false,
+    "merge_to_main": false,
+    "post_outcome_tuning": false
+  }
+}
