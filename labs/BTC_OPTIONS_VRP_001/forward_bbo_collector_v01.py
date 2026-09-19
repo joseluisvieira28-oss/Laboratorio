@@ -17,6 +17,7 @@ import json
 import math
 import os
 import sys
+import time
 import urllib.parse
 import urllib.request
 from pathlib import Path
@@ -141,6 +142,11 @@ def capture() -> dict:
             rows.append(normalize_book(inst, book, snapshot_time, snapshot_hour))
         except Exception as exc:
             failures.append({"instrument_name": inst["instrument_name"], "error": str(exc)})
+        finally:
+            # Conservative public-IP pacing. Deribit documents public access as
+            # per-IP limited and recommends subscriptions for sustained traffic.
+            # This source collector is intentionally low-rate and hourly-scale.
+            time.sleep(0.12)
 
     perp = None
     try:
