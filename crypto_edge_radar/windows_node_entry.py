@@ -13,7 +13,7 @@ from radar.local_forward import LocalForwardSupervisor
 from radar.render_sentinel import RenderSentinel
 
 
-BUILD_ID = "v0.14-win-seven-motor-forward-shadow"
+BUILD_ID = "v0.14.1-win-seven-motor-resilient-bootstrap"
 
 
 def _resource_path(name: str) -> str:
@@ -231,38 +231,65 @@ def run() -> int:
         package_state["dh03_collector_importable"] = True
         package_state["local_forward_supervisor_importable"] = True
         package_state["render_sentinel_importable"] = True
+        package_state["resilient_control_plane_bootstrap"] = True
         print(json.dumps(package_state, sort_keys=True))
         return 0
 
+    # Materialize a control-plane status before any network gate. The local
+    # dashboard must always come up so an individual motor can fail closed
+    # without blacking out diagnostics for the other motors.
+    _write_json_atomic(Path("data") / "radar_status.json", {
+        "health": "OK",
+        "provider": "MULTI_SOURCE_PUBLIC_CONTROL_PLANE",
+        "cycle": 0,
+        "universe": [],
+        "build_id": BUILD_ID,
+        "mode": "PUBLIC_SHADOW_CONTROL_PLANE",
+        "authenticated_exchange_api_used": False,
+        "orders_created": False,
+        "exchange_mutation_performed": False,
+        "live_capital_enabled": False,
+    })
+
     # DH03 activation_ms is a prospective scientific boundary. Validate the
     # Binance public clock before the collector can persist that boundary.
+    # Failure blocks DH03 only; it must not prevent the seven-motor cockpit,
+    # forward supervisor, or Render sentinel from starting.
+    dh03_clock_ok = False
     try:
-        dh03_clock= require_dh03_clock_preflight()
-        _write_json_atomic(Path("data")/"dh03_clock_preflight.json",dh03_clock)
+        dh03_clock = require_dh03_clock_preflight()
+        _write_json_atomic(Path("data") / "dh03_clock_preflight.json", dh03_clock)
+        dh03_clock_ok = True
     except Exception as exc:
-        failure={
-            "status":"FAIL_CLOSED",
-            "build_id":BUILD_ID,
-            "component":"DH03_CLOCK_ARMING_GUARD",
-            "error":f"{type(exc).__name__}:{exc}",
-            "orders_created":False,
-            "live_capital_enabled":False,
+        failure = {
+            "status": "FAIL_CLOSED",
+            "build_id": BUILD_ID,
+            "component": "DH03_CLOCK_ARMING_GUARD",
+            "error": f"{type(exc).__name__}:{exc}",
+            "orders_created": False,
+            "live_capital_enabled": False,
         }
-        _write_json_atomic(Path("data")/"dh03_clock_preflight.json",failure)
-        print(json.dumps(failure,sort_keys=True))
-        return 2
+        _write_json_atomic(Path("data") / "dh03_clock_preflight.json", failure)
+        _write_json_atomic(Path("data") / "dh03_local_status.json", {
+            **failure,
+            "status": "FAIL_CLOSED",
+            "reason": "DH03_NOT_STARTED_CLOCK_PREFLIGHT_FAILED",
+        })
+        print(json.dumps(failure, sort_keys=True), flush=True)
 
-    _start_dh03_thread()
+    if dh03_clock_ok:
+        _start_dh03_thread()
     _start_forward_thread()
     _start_render_sentinel_thread()
 
+    # V0.14.1 intentionally serves the multi-motor cockpit directly instead
+    # of invoking the legacy MEXC single-provider local-node preflight. Each
+    # research motor already has its own public-source fail-closed gate.
     return main(
         [
-            "local-node",
+            "dashboard",
             "--port",
             "8787",
-            "--interval",
-            "30",
             "--registry",
             runtime_registry,
         ]
