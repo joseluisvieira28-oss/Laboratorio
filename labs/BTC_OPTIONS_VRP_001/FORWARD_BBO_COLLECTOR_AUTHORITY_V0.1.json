@@ -1,0 +1,47 @@
+{
+  "lab_id": "BTC-OPTIONS-VRP-001",
+  "collector_id": "OVRP-FORWARD-PUBLIC-BBO-COLLECTOR-001",
+  "version": "0.1",
+  "date_frozen": "2026-09-19",
+  "status": "FROZEN_SOURCE_ONLY_FORWARD_COLLECTION",
+  "purpose": "Begin a zero-cost prospective Deribit BTC options BBO evidence stream using only unauthenticated public endpoints. This collector creates source data only and cannot compute or inspect strategy performance.",
+  "source": {
+    "provider": "Deribit public API v2",
+    "authentication": "none",
+    "endpoints": [
+      "public/get_index_price",
+      "public/get_instruments",
+      "public/get_order_book"
+    ],
+    "venue": "Deribit",
+    "currency": "BTC"
+  },
+  "capture_envelope": {
+    "cadence": "external scheduler; recommended hourly",
+    "option_dte_min_days": 20,
+    "option_dte_max_days": 45,
+    "max_abs_strike_distance_from_index_fraction": 0.25,
+    "order_book_depth": 1,
+    "include_btc_perpetual_reference": true,
+    "store_mark_iv_and_greeks_when_returned": true,
+    "append_only": true,
+    "deterministic_snapshot_key": "UTC hour + instrument_name"
+  },
+  "rationale": "The envelope is deliberately broader than the old ATM30 execution MVE so future source research is not forced to select one strike/expiry after observing outcomes. Any future trading MVE still requires a separate prospective freeze.",
+  "safety": {
+    "access_2026_source_only_authorized": true,
+    "returns_authorized": false,
+    "pnl_authorized": false,
+    "expectancy_authorized": false,
+    "future_realized_variance_authorized": false,
+    "strategy_signal_authorized": false,
+    "position_sizing_authorized": false,
+    "exchange_authentication_authorized": false,
+    "orders_authorized": false,
+    "cancels_authorized": false,
+    "wallet_access_authorized": false,
+    "exchange_mutation_authorized": false,
+    "live_trading_authorized": false,
+    "merge_to_main_authorized": false
+  }
+}

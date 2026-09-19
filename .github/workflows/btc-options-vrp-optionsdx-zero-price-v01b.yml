@@ -1,0 +1,65 @@
+name: BTC Options VRP optionsDX Zero-Price Variation V0.1B
+
+on:
+  push:
+    branches:
+      - btc-options-vrp-free-route-attack-v0.1
+    paths:
+      - "labs/BTC_OPTIONS_VRP_001/OPTIONSDX_ZERO_PRICE_VARIATION_LOOKUP_AMENDMENT_V0.1B.md"
+      - "labs/BTC_OPTIONS_VRP_001/optionsdx_zero_price_variation_lookup_v01b.py"
+      - ".github/workflows/btc-options-vrp-optionsdx-zero-price-v01b.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  public-variation-metadata:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Compile public variation lookup
+        run: python -m py_compile labs/BTC_OPTIONS_VRP_001/optionsdx_zero_price_variation_lookup_v01b.py
+
+      - name: Run zero-spend variation lookup
+        id: lookup
+        continue-on-error: true
+        run: python labs/BTC_OPTIONS_VRP_001/optionsdx_zero_price_variation_lookup_v01b.py
+
+      - name: Upload procurement-only receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: BTC_OPTIONS_VRP_001_OPTIONSDX_ZERO_PRICE_VARIATION_V0_1B
+          path: optionsdx_zero_price_variation_receipt_v01b.json
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Print classification only
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path("optionsdx_zero_price_variation_receipt_v01b.json")
+          if not p.exists():
+              raise SystemExit("receipt missing")
+          x=json.loads(p.read_text())
+          print("classification=",x.get("classification"))
+          print("selector_value_counts=",x.get("selector_value_counts"))
+          print("visible_selector_cross_product=",x.get("visible_selector_cross_product"))
+          print("lookup_count=",x.get("lookup_count"))
+          print("resolved_price_count=",x.get("resolved_price_count"))
+          print("distinct_display_prices=",x.get("distinct_display_prices"))
+          print("zero_price_variation_count=",x.get("zero_price_variation_count"))
+          print("zero_price_variations=",x.get("zero_price_variations"))
+          print("cash_spend_usd=",x.get("cash_spend_usd"))
+          print("cart_used=",x.get("cart_used"))
+          print("checkout_used=",x.get("checkout_used"))
+          PY

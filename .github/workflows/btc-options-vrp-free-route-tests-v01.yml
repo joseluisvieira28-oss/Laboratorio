@@ -1,0 +1,47 @@
+name: BTC Options VRP Free Route Tests V0.1
+
+on:
+  push:
+    branches:
+      - btc-options-vrp-free-route-attack-v0.1
+  pull_request:
+    branches:
+      - btc-options-vrp-tardis-source-probe-v0.1
+
+permissions:
+  contents: read
+
+jobs:
+  source-only-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile source-only collector
+        run: python -m py_compile labs/BTC_OPTIONS_VRP_001/forward_bbo_collector_v01.py
+      - name: Install pytest
+        run: python -m pip install --disable-pip-version-check pytest
+      - name: Run source-only unit tests
+        run: python -m pytest -q labs/BTC_OPTIONS_VRP_001/test_forward_bbo_collector_v01.py
+
+      - name: Assert no private/trading code markers in collector
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path("labs/BTC_OPTIONS_VRP_001/forward_bbo_collector_v01.py")
+          s = p.read_text(encoding="utf-8").lower()
+          forbidden = [
+              "place_order(",
+              "cancel_order(",
+              "private/",
+              "private_get",
+              "private_post",
+              "client_secret",
+              "access_token",
+          ]
+          hits = [x for x in forbidden if x in s]
+          if hits:
+              raise SystemExit(f"Forbidden source-only operational markers found: {hits}")
+          print("source-only static firewall PASS")

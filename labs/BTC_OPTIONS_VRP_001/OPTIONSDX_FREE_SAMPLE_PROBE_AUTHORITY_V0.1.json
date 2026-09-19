@@ -1,0 +1,64 @@
+{
+  "lab_id": "BTC-OPTIONS-VRP-001",
+  "probe_id": "OVRP-EXEC-SOURCE-OPTIONSDX-FREE-SAMPLE-001",
+  "version": "0.1",
+  "date_frozen": "2026-09-19",
+  "branch": "btc-options-vrp-free-route-attack-v0.1",
+  "status": "FROZEN_SOURCE_ONLY_OUTCOME_BLIND",
+  "purpose": "Test only whether the public optionsDX BTC Deribit sample is retrievable and contains the historical point-in-time BBO schema needed for a future execution MVE. This probe cannot establish full-history coverage or performance.",
+  "source": {
+    "provider": "optionsDX",
+    "public_sample_url": "https://www.optionsdx.com/wp-content/uploads/2022/01/btc_sample.csv",
+    "product_page": "https://www.optionsdx.com/product/btc-option-chains/",
+    "cash_cost_cap_usd": 0
+  },
+  "required_fields": [
+    "QUOTE_UNIXTIME",
+    "INSTRUMENT_NAME",
+    "UNDERLYING_PRICE",
+    "EXPIRY_UNIX",
+    "DTE",
+    "RIGHT",
+    "STRIKE",
+    "BID_SIZE",
+    "BID_PRICE",
+    "ASK_PRICE",
+    "ASK_SIZE"
+  ],
+  "pass_rule": {
+    "http_success": true,
+    "csv_parse_success": true,
+    "all_required_fields_present": true,
+    "at_least_one_row_with_bid_ask_price_and_size": true,
+    "at_least_one_row_in_25_35_dte_with_bid_ask_price_and_size": true,
+    "terminal_pass_classification": "OPTIONSDX_FREE_SAMPLE_SCHEMA_PASS"
+  },
+  "terminal_classifications": [
+    "OPTIONSDX_FREE_SAMPLE_SCHEMA_PASS",
+    "OPTIONSDX_FREE_SAMPLE_SCHEMA_INSUFFICIENT",
+    "OPTIONSDX_FREE_SAMPLE_ACQUISITION_FAILURE"
+  ],
+  "explicit_nonclaims": [
+    "A pass does not prove sufficient historical coverage.",
+    "A pass does not authorize buying monthly datasets.",
+    "A pass does not authorize an execution backtest.",
+    "A pass does not reopen the old execution MVE."
+  ],
+  "safety": {
+    "strategy_pnl_authorized": false,
+    "returns_authorized": false,
+    "expectancy_authorized": false,
+    "profit_factor_authorized": false,
+    "drawdown_authorized": false,
+    "future_realized_variance_authorized": false,
+    "parameter_tuning_authorized": false,
+    "purchase_authorized": false,
+    "api_key_authorized": false,
+    "access_2025_authorized": false,
+    "access_2026_authorized": false,
+    "live_trading_authorized": false,
+    "exchange_mutation_authorized": false,
+    "wallet_access_authorized": false,
+    "merge_to_main_authorized": false
+  }
+}

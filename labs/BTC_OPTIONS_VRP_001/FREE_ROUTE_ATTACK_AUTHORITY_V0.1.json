@@ -1,0 +1,108 @@
+{
+  "lab_id": "BTC-OPTIONS-VRP-001",
+  "source_mve_id": "OVRP-EXEC-FREE-ROUTE-001-SOURCE",
+  "version": "0.1",
+  "date_frozen": "2026-09-19",
+  "branch": "btc-options-vrp-free-route-attack-v0.1",
+  "status": "FROZEN_SOURCE_ONLY_OUTCOME_BLIND",
+  "purpose": "Find and verify the highest-quality zero-cash-cost historical Deribit BTC options BBO/chain route capable of supporting a future new execution MVE, without opening strategy outcomes.",
+  "parent_scientific_state": {
+    "discovery": "DISCOVERY_PASS_VRP_EXISTS",
+    "old_execution_mve": "OVRP-EXEC-ATM30-7D-STATICDELTA-001",
+    "old_execution_closeout": "EXECUTION_DATA_LIQUIDITY_INSUFFICIENT",
+    "old_executable_n": 19,
+    "old_minimum_n": 120,
+    "old_mve_reopen_forbidden": true
+  },
+  "frozen_required_capabilities": {
+    "venue": "Deribit",
+    "underlying": "BTC",
+    "historical_window_interest": "2021-04-01 through 2024-11-28",
+    "option_identity": true,
+    "timestamp": true,
+    "expiry": true,
+    "strike": true,
+    "right": true,
+    "bid_price": true,
+    "ask_price": true,
+    "bid_size": true,
+    "ask_size": true,
+    "underlying_or_index_price": true,
+    "provenance_and_point_in_time_integrity": true
+  },
+  "route_priority": [
+    {
+      "priority": 1,
+      "route_id": "CRYPTARBITRAGE_FREE_2024H1_PARQUET",
+      "cash_cost_cap": 0,
+      "allowed": "Recover direct public file; verify provenance, immutable hash, schema and timestamp/coverage only.",
+      "known_claim": "Hourly snapshots of all Deribit BTC options from 2024-01-13 through 2024-07-27; public article states file is free.",
+      "current_state": "DIRECT_FILE_LINK_RECOVERY_PENDING"
+    },
+    {
+      "priority": 2,
+      "route_id": "BRC_DERIBIT_OPTIONS_ORDERBOOK",
+      "cash_cost_cap": 0,
+      "allowed": "Verify current BRC membership/accreditation path, exact options dataset availability, license and downloadable schema only.",
+      "known_claim": "Published research reports 8,444,664 Deribit order-book snapshots from 2021-04-01 through 2022-04-01 for BTC options/futures.",
+      "current_state": "ACCESS_AND_DATASET_IDENTITY_VERIFICATION_PENDING"
+    },
+    {
+      "priority": 3,
+      "route_id": "OPTIONSDX_FREE_SAMPLE",
+      "cash_cost_cap": 0,
+      "allowed": "Verify sample accessibility, exact dates/frequency, fields and provenance only.",
+      "known_claim": "Public field schema includes bid/ask prices and sizes, underlying, expiry, strike, Greeks and IV; sample URL exposed by public site.",
+      "current_state": "SCHEMA_PASS_PAYLOAD_RETRIEVAL_PENDING"
+    },
+    {
+      "priority": 4,
+      "route_id": "COINAPI_SIGNUP_CREDITS",
+      "cash_cost_cap": 0,
+      "allowed": "Only after user supplies/authorizes credential: use signup credits for the already-frozen 8-contract source probe. No paid overage.",
+      "current_state": "USER_CREDENTIAL_GATED"
+    },
+    {
+      "priority": 5,
+      "route_id": "TARDIS_COMMERCIAL",
+      "cash_cost_cap": 0,
+      "allowed": "Pricing/volume estimation only. No purchase, API key, subscription or full-history request under this authority.",
+      "known_claim": "Existing V0.2 probe classified PAID_SOURCE_ROUTE_FEASIBLE.",
+      "current_state": "LAST_RESORT_COST_ESTIMATION_ONLY"
+    }
+  ],
+  "exact_terminal_routes_not_to_reopen": [
+    "OVRP-EXEC-ATM30-7D-STATICDELTA-001 public trade-print execution MVE",
+    "OVRP-MONTHLY-EXPIRY-SOURCE-001",
+    "OVRP-MARK-HISTORY-SOURCE-PROBE-001"
+  ],
+  "pass_rule": {
+    "free_route_pass_requires": [
+      "cash cost = 0",
+      "historical pre-2025 option BBO or chain with bid and ask",
+      "bid/ask sizes available",
+      "timestamps and option identity sufficient for point-in-time selection",
+      "provenance reproducible",
+      "coverage sufficient to justify a separately frozen new execution MVE"
+    ],
+    "partial_route_classification": "FREE_ROUTE_PARTIAL_COVERAGE",
+    "full_route_classification": "FREE_ROUTE_FEASIBLE",
+    "no_route_classification": "FREE_ROUTE_EXHAUSTED_PAID_DECISION_REQUIRED"
+  },
+  "safety": {
+    "strategy_pnl_authorized": false,
+    "returns_authorized": false,
+    "future_realized_variance_authorized": false,
+    "execution_mve_authorized": false,
+    "parameter_tuning_authorized": false,
+    "purchase_authorized": false,
+    "paid_overage_authorized": false,
+    "api_key_use_authorized": false,
+    "wallet_signature_authorized": false,
+    "access_2025_authorized": false,
+    "access_2026_authorized": false,
+    "live_trading_authorized": false,
+    "exchange_mutation_authorized": false,
+    "merge_to_main_authorized": false
+  }
+}

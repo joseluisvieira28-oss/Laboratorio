@@ -1,0 +1,67 @@
+name: BTC Options VRP Cryptarbitrage Parquet Source V0.1
+on:
+  push:
+    branches: [btc-options-vrp-free-route-attack-v0.1]
+    paths:
+      - "labs/BTC_OPTIONS_VRP_001/CRYPTARBITRAGE_PARQUET_SOURCE_AUTHORITY_V0.1.json"
+      - "labs/BTC_OPTIONS_VRP_001/cryptarbitrage_parquet_source_v01.py"
+      - ".github/workflows/btc-options-vrp-cryptarbitrage-parquet-v01.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - name: Install source-reader dependencies
+        run: python -m pip install --disable-pip-version-check -q pandas pyarrow
+      - name: Download exact public Drive object
+        run: |
+          python - <<'PY'
+          import urllib.request
+          fid="1g9p2Kq8op40y4ZFQQ9AJw8a9CaDThOY8"
+          urls=[
+            f"https://drive.usercontent.google.com/download?id={fid}&export=download&confirm=t",
+            f"https://drive.google.com/uc?export=download&id={fid}&confirm=t"
+          ]
+          last=None
+          for url in urls:
+              try:
+                  req=urllib.request.Request(url,headers={"User-Agent":"CryptoLab-FreeSource/0.1"})
+                  with urllib.request.urlopen(req,timeout=120) as r:
+                      raw=r.read()
+                  if raw[:4]==b"PAR1" and raw[-4:]==b"PAR1":
+                      open("btc_option_data_toshare.parquet","wb").write(raw)
+                      print("downloaded_bytes=",len(raw))
+                      break
+                  last=f"not parquet: {len(raw)} bytes"
+              except Exception as e:
+                  last=repr(e)
+          else:
+              raise SystemExit(f"public Drive download failed: {last}")
+          PY
+      - name: Run frozen source-only validator
+        id: probe
+        continue-on-error: true
+        run: python labs/BTC_OPTIONS_VRP_001/cryptarbitrage_parquet_source_v01.py btc_option_data_toshare.parquet
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: BTC_OPTIONS_VRP_001_CRYPTARBITRAGE_2024H1_SOURCE_V0_1
+          path: cryptarbitrage_2024h1_source_receipt_v01.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Enforce frozen source pass
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          x=json.load(open("cryptarbitrage_2024h1_source_receipt_v01.json"))
+          print("classification=",x["classification"])
+          if x["classification"]!="CRYPTARBITRAGE_2024H1_SOURCE_FEASIBLE":
+              raise SystemExit(2)
+          PY

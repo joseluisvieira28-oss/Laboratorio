@@ -1,0 +1,35 @@
+name: BTC Options VRP optionsDX Free EOD Direct-File Precheck V0.1
+
+on:
+  push:
+    branches:
+      - btc-options-vrp-free-route-attack-v0.1
+    paths:
+      - "labs/BTC_OPTIONS_VRP_001/OPTIONSDX_FREE_EOD_SOURCE_AUTHORITY_V0.1.json"
+      - "labs/BTC_OPTIONS_VRP_001/optionsdx_free_eod_direct_precheck_v01.py"
+      - ".github/workflows/btc-options-vrp-optionsdx-free-eod-precheck-v01.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  precheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile
+        run: python -m py_compile labs/BTC_OPTIONS_VRP_001/optionsdx_free_eod_direct_precheck_v01.py
+      - name: Run exact public metadata precheck
+        run: python labs/BTC_OPTIONS_VRP_001/optionsdx_free_eod_direct_precheck_v01.py
+      - name: Upload receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: BTC_OPTIONS_VRP_001_OPTIONSDX_FREE_EOD_PRECHECK_V0_1
+          path: optionsdx_free_eod_precheck_receipt_v01.json
+          if-no-files-found: error
+          retention-days: 30

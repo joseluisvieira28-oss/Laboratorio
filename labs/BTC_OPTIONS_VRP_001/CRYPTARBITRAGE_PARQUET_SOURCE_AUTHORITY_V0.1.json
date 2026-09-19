@@ -1,0 +1,66 @@
+{
+  "lab_id": "BTC-OPTIONS-VRP-001",
+  "source_probe_id": "OVRP-CRYPTARBITRAGE-2024H1-PARQUET-001",
+  "version": "0.1",
+  "date_frozen": "2026-09-19",
+  "branch": "btc-options-vrp-free-route-attack-v0.1",
+  "status": "FROZEN_SOURCE_ONLY_OUTCOME_BLIND",
+  "purpose": "Validate the exact free Cryptarbitrage Google Drive parquet linked by Deribit Insights for historical Deribit BTC options quote/source coverage. No strategy outcomes.",
+  "provenance": {
+    "publisher_article": "https://insights.deribit.com/education/option-backtest-selling-weekend-vol/",
+    "x_status": "https://x.com/cryptarbitrage/status/1817888742650085616",
+    "google_drive_file_id": "1g9p2Kq8op40y4ZFQQ9AJw8a9CaDThOY8",
+    "google_drive_title_observed": "btc_option_data_toshare.parquet",
+    "google_drive_size_bytes_observed": 57453783
+  },
+  "frozen_checks": {
+    "parquet_magic": true,
+    "sha256": true,
+    "row_count": true,
+    "column_names": true,
+    "timestamp_min_max": true,
+    "distinct_utc_dates": true,
+    "distinct_utc_hours": true,
+    "option_identity": true,
+    "expiry": true,
+    "strike": true,
+    "call_put_right": true,
+    "bid_price": true,
+    "ask_price": true,
+    "bid_size": true,
+    "ask_size": true,
+    "underlying_or_index_price": true,
+    "complete_bbo_row_count": true,
+    "complete_bbo_25_35_dte_row_count": true,
+    "distinct_25_35_dte_dates": true
+  },
+  "pass_rule": {
+    "file_download_success": true,
+    "valid_parquet": true,
+    "timestamped_rows_gt": 0,
+    "complete_bbo_rows_gt": 0,
+    "complete_bbo_25_35_dte_rows_gt": 0,
+    "minimum_distinct_25_35_dte_dates": 30,
+    "terminal_pass_classification": "CRYPTARBITRAGE_2024H1_SOURCE_FEASIBLE"
+  },
+  "nonclaims": [
+    "A source pass does not reopen the old execution MVE.",
+    "A source pass does not prove a profitable strategy.",
+    "The file period overlaps known 2024 research and is not an untouched holdout.",
+    "No published strategy result may be copied into our promotion decision."
+  ],
+  "safety": {
+    "cash_spend_usd": 0,
+    "returns_authorized": false,
+    "pnl_authorized": false,
+    "expectancy_authorized": false,
+    "profit_factor_authorized": false,
+    "parameter_tuning_authorized": false,
+    "access_2025_authorized": false,
+    "access_2026_authorized": false,
+    "live_trading_authorized": false,
+    "exchange_mutation_authorized": false,
+    "wallet_access_authorized": false,
+    "merge_to_main_authorized": false
+  }
+}

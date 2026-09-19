@@ -1,0 +1,38 @@
+name: BTC Options VRP Cryptarbitrage Price-Only Geometry V0.1
+on:
+  push:
+    branches: [btc-options-vrp-free-route-attack-v0.1]
+    paths:
+      - "labs/BTC_OPTIONS_VRP_001/CRYPTARBITRAGE_PRICEONLY_GEOMETRY_AUTHORITY_V0.1.md"
+      - "labs/BTC_OPTIONS_VRP_001/cryptarbitrage_priceonly_geometry_v01.py"
+      - ".github/workflows/btc-options-vrp-cryptarbitrage-priceonly-geometry-v01.yml"
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: python -m pip install --disable-pip-version-check -q pandas pyarrow
+      - name: Download exact public Drive object
+        run: |
+          python - <<'PY'
+          import urllib.request
+          fid="1g9p2Kq8op40y4ZFQQ9AJw8a9CaDThOY8"
+          u=f"https://drive.usercontent.google.com/download?id={fid}&export=download&confirm=t"
+          req=urllib.request.Request(u,headers={"User-Agent":"CryptoLab-FreeSource/0.1"})
+          with urllib.request.urlopen(req,timeout=120) as r: raw=r.read()
+          if not (raw[:4]==b"PAR1" and raw[-4:]==b"PAR1"): raise SystemExit("not parquet")
+          open("btc_option_data_toshare.parquet","wb").write(raw)
+          print("downloaded_bytes=",len(raw))
+          PY
+      - name: Run frozen price-only geometry diagnostic
+        run: python labs/BTC_OPTIONS_VRP_001/cryptarbitrage_priceonly_geometry_v01.py btc_option_data_toshare.parquet
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BTC_OPTIONS_VRP_001_CRYPTARBITRAGE_PRICEONLY_GEOMETRY_V0_1
+          path: cryptarbitrage_priceonly_geometry_receipt_v01.json
+          retention-days: 30
