@@ -63,6 +63,24 @@ DH03 runs in its dedicated local minute-path collector thread.
 
 CED1D remains externally collected by the dedicated GitHub T+3 archive-shadow workflow and is represented in the control plane / freshness state.
 
+## PC 24/7 Render Sentinel
+
+V0.14 also runs a read-only sentinel every 5 minutes against the canonical Render public health endpoint.
+
+Purpose:
+- keep the free Render canary warm while the PC is online;
+- detect remote health/evidence-chain/safety anomalies;
+- detect recovered liveness gaps instead of silently treating them as healthy;
+- persist local append-only sentinel receipts for later reconciliation.
+
+Sentinel states:
+- OK = Render health OK, Postgres evidence chain OK, safety flags all false.
+- REMOTE_REVIEW_REQUIRED = a recovered runtime gap requires review.
+- REMOTE_FAIL_CLOSED = remote health/evidence/safety state is inconsistent.
+- REMOTE_UNREACHABLE = public canary could not be reached after bounded retries.
+
+The sentinel is public/read-only. It uses no credentials and can never create orders or mutate an exchange. A remote sentinel failure does not fabricate a scientific failure and does not rewrite candidate evidence.
+
 ## DH03 integrity
 
 Before DH03 can persist a prospective activation boundary:
