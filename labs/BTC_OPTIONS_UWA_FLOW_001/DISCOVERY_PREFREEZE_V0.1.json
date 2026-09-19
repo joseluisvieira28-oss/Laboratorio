@@ -1,0 +1,113 @@
+{
+  "lab_id": "BTC-OPTIONS-UWA-FLOW-001",
+  "mve_id": "UWA-SIGNED-OPTION-FLOW-24H-001",
+  "version": "0.1",
+  "date_frozen": "2026-09-19",
+  "branch": "btc-options-uwa-flow-discovery-v0.1",
+  "status": "FROZEN_BEFORE_ANY_FUTURE_RETURN_OPENING",
+  "economic_family": "OPTIONS_INFORMATION / SIGNED_TRADE_FLOW",
+  "source": {
+    "file": "Deribit_w_IV.csv",
+    "sha256": "47af56f73630b54a025b554088c03771404af15bbe9091dddee7d1c644c903b2",
+    "rows": 761067,
+    "trade_period_observed": "2016-11-29 through 2020-02-11",
+    "fields_used": [
+      "time_trade",
+      "direction",
+      "amount",
+      "price_USD",
+      "type",
+      "index_price"
+    ]
+  },
+  "mechanism": "Aggressive option trade flow may contain informed directional demand. Buy calls and sell puts are treated as bullish pressure; sell calls and buy puts as bearish pressure. Large premium-weighted imbalance during active trading windows is hypothesized to predict same-direction BTC index movement over the next 24h.",
+  "chronology": {
+    "discovery_start": "2017-01-01",
+    "discovery_end": "2018-12-31",
+    "replication_2019_locked": true,
+    "year_2020_locked": true,
+    "rule": "Do not open 2019/2020 future-return outcomes unless Discovery passes its frozen gate."
+  },
+  "aggregation": {
+    "window": "4h UTC bins",
+    "signed_map": {
+      "buy_call": 1,
+      "sell_call": -1,
+      "buy_put": -1,
+      "sell_put": 1
+    },
+    "weight": "amount * price_USD",
+    "imbalance": "sum(signed_weight) / sum(abs(weight))",
+    "activity": "sum(abs(weight))",
+    "price_proxy": "last index_price observed in the 4h bin",
+    "price_freshness": "last option trade carrying index_price must be within 30 minutes of the 4h bin end for both entry and exit"
+  },
+  "signal": {
+    "trailing_history_bins": 360,
+    "minimum_history_bins": 180,
+    "imbalance_extreme": "abs(imbalance) >= trailing past-only 90th percentile of abs(imbalance)",
+    "activity_filter": "activity >= trailing past-only 50th percentile activity",
+    "direction": "sign(imbalance), i.e. continuation of signed option flow",
+    "horizon": "24h = 6 x 4h bins",
+    "overlap": "one active 24h position at a time; overlapping signals ignored",
+    "no_iv_filter": true,
+    "no_strike_filter": true,
+    "no_dte_filter": true
+  },
+  "pnl": {
+    "gross_return": "direction * (exit_index_price / entry_index_price - 1)",
+    "primary_round_trip_cost_bps": 10,
+    "stress_round_trip_cost_bps": 20,
+    "note": "Index price is a research proxy, not an executable venue fill."
+  },
+  "discovery_gate": {
+    "minimum_N": 60,
+    "mean_net10_gt_0": true,
+    "profit_factor_net10_gte": 1.1,
+    "bootstrap_95_lower_mean_net10_gt_0": true,
+    "positive_discovery_years_required": 2,
+    "mean_net20_gt_0": true,
+    "profit_factor_net20_gt_1": true,
+    "median_report_only": true
+  },
+  "statistics": {
+    "bootstrap_reps": 10000,
+    "circular_moving_block_length": 5,
+    "seed": 230920,
+    "report": [
+      "N",
+      "mean_net10",
+      "median_net10",
+      "hit_rate",
+      "profit_factor_net10",
+      "bootstrap_95_ci_mean_net10",
+      "mean_net20",
+      "profit_factor_net20",
+      "year_means",
+      "positive_year_count",
+      "max_losing_streak"
+    ]
+  },
+  "terminal_classes": [
+    "DISCOVERY_PASS_SIGNED_OPTION_FLOW",
+    "DISCOVERY_FAIL_NO_PROMOTION",
+    "INSUFFICIENT_SAMPLE",
+    "BLOCKED_SOURCE_SEMANTICS"
+  ],
+  "no_rescue": [
+    "Do not change 4h aggregation after outcomes.",
+    "Do not change 90th percentile imbalance threshold after outcomes.",
+    "Do not change median activity filter after outcomes.",
+    "Do not change 24h horizon after outcomes.",
+    "Do not invert continuation to contrarian after outcomes.",
+    "Do not add IV/DTE/strike filters after outcomes.",
+    "Do not open 2019 or 2020 to rescue a Discovery failure."
+  ],
+  "safety": {
+    "cash_spend_usd": 0,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "wallet_access": false,
+    "merge_to_main": false
+  }
+}
