@@ -1,0 +1,92 @@
+{
+  "lab_id": "ETH-DEMAND-FEE-FLOW-001",
+  "experiment_id": "EDFF-45D-CM-REPLICATION-001",
+  "version": "0.1",
+  "date_frozen": "2026-09-20",
+  "branch": "eth-demand-fee-flow-v0.1",
+  "status": "FROZEN_BEFORE_FORWARD_RETURN_OPENING",
+  "purpose": "Independent-source replication of the published Ethereum Flow Deviation relationship at the single highlighted 45-day horizon. This is a literature replication, not a new-discovery claim.",
+  "literature_formula": {
+    "flow_intensity": "FeeTotNtv / SplyCur",
+    "smoothed_flow_intensity": "30-day simple moving average of daily flow_intensity",
+    "reference_rate": "90-day trailing median of raw daily flow_intensity",
+    "flow_deviation": "ln(smoothed_flow_intensity / reference_rate)",
+    "horizon_days": 45,
+    "dencun_date": "2024-03-13"
+  },
+  "implementation_clarification": "The 90-day reference is applied to raw daily FI because the public methodology explicitly says 30-day-smoothed FI is compared with a 90-day trailing median of FI. No alternate smoothing/reference variant will be opened.",
+  "source": {
+    "provider": "Coin Metrics Community API v4",
+    "metrics": [
+      "FeeTotNtv",
+      "SplyCur",
+      "PriceUSD"
+    ],
+    "warmup_start": "2023-11-01",
+    "end": "2025-12-31",
+    "authentication": "none"
+  },
+  "chronology": {
+    "discovery_fit_signal_dates": [
+      "2024-03-13",
+      "2024-12-31"
+    ],
+    "discovery_fit_requires_exit_by": "2025-02-14",
+    "holdout_signal_dates": [
+      "2025-01-01",
+      "2025-11-16"
+    ],
+    "holdout_exit_end": "2025-12-31",
+    "year_2026_locked": true
+  },
+  "outcome": {
+    "forward_log_return_45d": "ln(PriceUSD[t+45] / PriceUSD[t])",
+    "regression": "forward_log_return_45d = alpha + beta * flow_deviation",
+    "discovery_inference": "OLS coefficient with Newey-West/HAC maxlags=45"
+  },
+  "holdout_prediction": {
+    "coefficients": "Frozen alpha and beta estimated only from 2024 discovery-fit rows whose 45-day exits occur no later than 2025-02-14. No refit on holdout.",
+    "prediction": "alpha_2024 + beta_2024 * FD_2025",
+    "benchmark": "constant mean forward 45d log return from the 2024 discovery-fit sample",
+    "oos_r2": "1 - SSE_model_2025 / SSE_benchmark_2025",
+    "direction_accuracy": "fraction sign(predicted_return) == sign(actual_return)"
+  },
+  "frozen_gates": {
+    "discovery_N_gte": 200,
+    "discovery_beta_gt_0": true,
+    "discovery_HAC_t_gte": 2,
+    "discovery_R2_gt_0": true,
+    "holdout_N_gte": 250,
+    "holdout_OOS_R2_gt_0": true,
+    "holdout_direction_accuracy_gt": 0.5,
+    "holdout_beta_sign_consistency_report_only": true,
+    "positive_vs_negative_FD_spread_gt_0": true
+  },
+  "terminal_classes": [
+    "LITERATURE_REPLICATION_PASS",
+    "LITERATURE_REPLICATION_MIXED",
+    "LITERATURE_REPLICATION_FAIL",
+    "REPLICATION_BLOCKED"
+  ],
+  "promotion_boundary": [
+    "A pass does not equal a tradable strategy or diamond.",
+    "This sample overlaps the published research era and therefore is not a protected post-publication holdout.",
+    "No 2026 outcomes may be opened.",
+    "A pass authorizes only a separately pre-frozen executable translation or forward watch."
+  ],
+  "no_rescue": [
+    "Do not change 30-day smoothing.",
+    "Do not change 90-day median.",
+    "Do not change the 45-day horizon.",
+    "Do not choose a different post-Dencun start after outcomes.",
+    "Do not change Coin Metrics metrics after outcomes.",
+    "Do not open 2026 to rescue."
+  ],
+  "safety": {
+    "cash_spend_usd": 0,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "wallet_access": false,
+    "merge_to_main": false
+  }
+}
