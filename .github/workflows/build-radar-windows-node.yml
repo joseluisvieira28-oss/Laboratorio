@@ -9,6 +9,7 @@ on:
       - crypto-edge-radar-v0.13-integration
       - crypto-edge-radar-cleanup-v1
       - crypto-edge-radar-v014-windows-seven-motor
+      - crypto-edge-radar-v0141-windows-resilient-bootstrap
     paths:
       - 'crypto_edge_radar/**'
       - '.github/workflows/build-radar-windows-node.yml'
@@ -50,7 +51,7 @@ jobs:
           Write-Host $output
           $state = $output | ConvertFrom-Json
           if ($state.status -ne "PASS") { throw "package self-test did not PASS" }
-          if ($state.build_id -ne "v0.14-win-seven-motor-forward-shadow") { throw "unexpected Windows build_id: $($state.build_id)" }
+          if ($state.build_id -ne "v0.14.1-win-seven-motor-resilient-bootstrap") { throw "unexpected Windows build_id: $($state.build_id)" }
           if ($state.registry_version -ne "3.6") { throw "unexpected packaged registry_version: $($state.registry_version)" }
           if (-not $state.required_strategy_present) { throw "ETF-CME strategy missing from packaged registry" }
           if ([int]$state.candidate_count -ne 7) { throw "packaged seven-motor registry candidate count mismatch" }
@@ -60,6 +61,7 @@ jobs:
           if (-not $state.dh03_collector_importable) { throw "DH03 collector not importable in packaged EXE" }
           if (-not $state.local_forward_supervisor_importable) { throw "Unified local forward supervisor not importable in packaged EXE" }
           if (-not $state.render_sentinel_importable) { throw "Render sentinel not importable in packaged EXE" }
+          if (-not $state.resilient_control_plane_bootstrap) { throw "resilient control-plane bootstrap missing" }
           if (-not $state.runtime_registry_materialized) { throw "runtime registry was not materialized" }
           if ([int]$state.runtime_candidate_count -ne [int]$state.candidate_count) { throw "runtime registry candidate count mismatch" }
       - name: Hash executable
@@ -71,7 +73,7 @@ jobs:
       - name: Upload Windows node artifact
         uses: actions/upload-artifact@v4
         with:
-          name: crypto-edge-radar-v014-windows-seven-motor
+          name: crypto-edge-radar-v0141-windows-resilient-bootstrap
           path: |
             crypto_edge_radar/dist/CryptoEdgeRadarNode.exe
             crypto_edge_radar/dist/CryptoEdgeRadarNode.sha256.txt
