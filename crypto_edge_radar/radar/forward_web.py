@@ -31,6 +31,26 @@ from .etf_cme_watcher import ETFCMEPublicSignalWatcher
 from .external_freshness import all_external_freshness
 
 
+RUNTIME_LIVENESS_EVENT = "RADAR_RUNTIME_LIVENESS"
+RUNTIME_GAP_EVENT = "RADAR_RUNTIME_GAP_DETECTED"
+RUNTIME_LIVENESS_BUCKET_MS = 15 * 60 * 1000
+RUNTIME_GAP_ALERT_SECONDS = 30 * 60
+
+
+def _parse_utc_ms(value: Any) -> int | None:
+    if not isinstance(value, str) or not value:
+        return None
+    try:
+        return int(
+            datetime.fromisoformat(value.replace("Z", "+00:00"))
+            .astimezone(timezone.utc)
+            .timestamp()
+            * 1000
+        )
+    except Exception:
+        return None
+
+
 class CachingBinanceOfficialLaunchpoolSource(BinanceOfficialLaunchpoolSource):
     """Caches immutable detail responses in-process; the catalog itself is always refreshed."""
 
@@ -99,6 +119,8 @@ class ForwardShadowRuntime:
         self._last_etf_signal_check_ms: int | None = None
         self._last_options_runtime_day: str | None = None
         self._last_external_freshness_check_ms: int | None = None
+        self._last_liveness_bucket_ms: int | None = None
+        self._runtime_liveness_state: dict[str, Any] = {"status": "STARTING"}
         self._options_state: dict[str, Any] = {
             "status": "STARTING",
             "watcher_id": "OPTIONS-SPOTPERP-001-V2.1-FORWARD-SHADOW",
@@ -119,6 +141,72 @@ class ForwardShadowRuntime:
     def state(self) -> dict[str, Any]:
         with self._lock:
             return json.loads(json.dumps(self._state))
+
+    def _runtime_liveness(self, *, now_ms: int) -> dict[str, Any]:
+        bucket_ms = now_ms - (now_ms % RUNTIME_LIVENESS_BUCKET_MS)
+        if self._last_liveness_bucket_ms == bucket_ms:
+            return self._runtime_liveness_state
+
+        previous_rows = self.store.read_payloads(RUNTIME_LIVENESS_EVENT)
+        previous_ms = max(
+            (
+                parsed
+                for parsed in (
+                    _parse_utc_ms(row.get("checked_at_utc")) for row in previous_rows
+                )
+                if parsed is not None and parsed < bucket_ms
+            ),
+            default=None,
+        )
+        gap_seconds = None if previous_ms is None else max(0.0, (now_ms - previous_ms) / 1000.0)
+        if previous_ms is None:
+            classification = "FIRST_OBSERVATION"
+        elif gap_seconds is not None and gap_seconds > RUNTIME_GAP_ALERT_SECONDS:
+            classification = "RECOVERED_GAP_REVIEW_REQUIRED"
+        else:
+            classification = "CONTINUOUS"
+
+        checked = datetime.fromtimestamp(now_ms / 1000.0, tz=timezone.utc).isoformat().replace("+00:00", "Z")
+        bucket_utc = datetime.fromtimestamp(bucket_ms / 1000.0, tz=timezone.utc).isoformat().replace("+00:00", "Z")
+        payload = {
+            "status": classification,
+            "checked_at_utc": checked,
+            "bucket_start_utc": bucket_utc,
+            "previous_liveness_utc": (
+                datetime.fromtimestamp(previous_ms / 1000.0, tz=timezone.utc).isoformat().replace("+00:00", "Z")
+                if previous_ms is not None
+                else None
+            ),
+            "gap_seconds": gap_seconds,
+            "gap_alert_threshold_seconds": RUNTIME_GAP_ALERT_SECONDS,
+            "requires_missed_window_review": classification == "RECOVERED_GAP_REVIEW_REQUIRED",
+            "evidence_backend": self.store.backend,
+            "authenticated_exchange_api_used": False,
+            "orders_created": False,
+            "exchange_mutation_performed": False,
+            "live_capital_enabled": False,
+        }
+        key = f"RADAR_RUNTIME_LIVENESS:{bucket_utc}"
+        receipt = self.store.append_once(RUNTIME_LIVENESS_EVENT, key, payload)
+        payload["evidence_inserted"] = bool(receipt["inserted"])
+
+        if classification == "RECOVERED_GAP_REVIEW_REQUIRED":
+            gap_receipt = self.store.append_once(
+                RUNTIME_GAP_EVENT,
+                f"RADAR_RUNTIME_GAP_DETECTED:{bucket_utc}",
+                {
+                    **payload,
+                    "reason": "PERSISTED_LIVENESS_GAP_EXCEEDED_FAIL_CLOSED_THRESHOLD",
+                    "scientific_rules_changed": False,
+                },
+            )
+            payload["gap_receipt_inserted"] = bool(gap_receipt["inserted"])
+        else:
+            payload["gap_receipt_inserted"] = False
+
+        self._last_liveness_bucket_ms = bucket_ms
+        self._runtime_liveness_state = payload
+        return payload
 
     def _set_state(self, value: dict[str, Any]) -> None:
         with self._lock:
@@ -150,6 +238,8 @@ class ForwardShadowRuntime:
                 "status": "IDLE_NO_NEW_CERTIFIABLE_12H_BOUNDARY",
                 "latest_seen_boundary_ms": self._last_tfg_due,
             }
+
+        runtime_liveness = self._runtime_liveness(now_ms=now_ms)
 
         chain_ok, chain_detail = self.store.verify_chain()
         if not chain_ok:
@@ -295,6 +385,7 @@ class ForwardShadowRuntime:
             "evidence_backend": self.store.backend,
             "evidence_chain_ok": chain_ok,
             "evidence_chain_detail": chain_detail,
+            "runtime_liveness": runtime_liveness,
             "tfg": tfg_state,
             "tfg_forward_metrics": tfg_forward_metrics,
             "bnb_launchpool": bnb_state,
