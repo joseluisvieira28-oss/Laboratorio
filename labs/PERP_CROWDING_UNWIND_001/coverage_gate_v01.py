@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 from __future__ import annotations
-import io,json,urllib.request,zipfile
+import calendar, concurrent.futures, io, json, urllib.request, zipfile
 from pathlib import Path
 import pandas as pd
 
 START="2021-01"; END="2024-12"
-BASE="https://data.binance.vision/data/futures/um/monthly"
+MONTHLY="https://data.binance.vision/data/futures/um/monthly"
+DAILY="https://data.binance.vision/data/futures/um/daily"
 
 def months():
     return pd.period_range(START,END,freq="M").astype(str).tolist()
@@ -35,40 +36,69 @@ def parse_klines(data):
     df.columns=["open_time","open","high","low","close","volume","close_time","quote_volume","trades","taker_base","taker_quote","ignore"]
     return df[["open_time","open","close"]]
 
+def fetch_metric_day(ds):
+    u=f"{DAILY}/metrics/BTCUSDT/BTCUSDT-metrics-{ds}.zip"
+    try:
+        _,data,n=fetch(u)
+        d=parse_metrics(data); d["source_date"]=ds
+        return ds,d,n,None
+    except Exception as e:
+        return ds,None,0,f"{type(e).__name__}:{str(e)[:180]}"
+
+def metric_month(m):
+    y,mo=map(int,m.split("-")); nd=calendar.monthrange(y,mo)[1]
+    dates=[f"{y:04d}-{mo:02d}-{d:02d}" for d in range(1,nd+1)]
+    out=[]; errs=[]; total_bytes=0
+    with concurrent.futures.ThreadPoolExecutor(max_workers=12) as ex:
+        for ds,d,n,e in ex.map(fetch_metric_day,dates):
+            if d is not None:
+                out.append(d); total_bytes+=n
+            else: errs.append({"date":ds,"error":e})
+    ok=len(out); ratio=ok/nd
+    df=pd.concat(out,ignore_index=True) if out else None
+    return df,{"metric_days_ok":ok,"calendar_days":nd,"metric_day_ratio":ratio,
+               "metrics_full":ratio>=0.95,"metrics_usable":ratio>=0.80,
+               "metric_errors":errs,"metrics_zip_bytes_total":total_bytes}
+
 def main():
     Path("pcu_cache").mkdir(exist_ok=True)
     rec=[]; metrics=[]; funding=[]; klines=[]
     for m in months():
         row={"month":m}
+        md,mstat=metric_month(m); row.update(mstat)
+        if md is not None:
+            md["source_month"]=m; metrics.append(md); row["metrics_rows"]=len(md)
         routes={
-          "metrics":f"{BASE}/metrics/BTCUSDT/BTCUSDT-metrics-{m}.zip",
-          "funding":f"{BASE}/fundingRate/BTCUSDT/BTCUSDT-fundingRate-{m}.zip",
-          "kline":f"{BASE}/klines/BTCUSDT/1h/BTCUSDT-1h-{m}.zip"
+          "funding":f"{MONTHLY}/fundingRate/BTCUSDT/BTCUSDT-fundingRate-{m}.zip",
+          "kline":f"{MONTHLY}/klines/BTCUSDT/1h/BTCUSDT-1h-{m}.zip"
         }
         for kind,u in routes.items():
             try:
-                name,data,n=fetch(u)
+                _,data,n=fetch(u)
                 row[kind+"_ok"]=True; row[kind+"_zip_bytes"]=n
-                if kind=="metrics":
-                    d=parse_metrics(data); d["source_month"]=m; metrics.append(d); row["metrics_rows"]=len(d)
-                elif kind=="funding":
+                if kind=="funding":
                     d=parse_funding(data); d["source_month"]=m; funding.append(d); row["funding_rows"]=len(d)
                 else:
                     d=parse_klines(data); d["source_month"]=m; klines.append(d); row["kline_rows"]=len(d)
             except Exception as e:
                 row[kind+"_ok"]=False; row[kind+"_error"]=f"{type(e).__name__}:{str(e)[:240]}"
         rec.append(row)
-    common=[r["month"] for r in rec if r.get("metrics_ok") and r.get("funding_ok") and r.get("kline_ok")]
-    yc={str(y):sum(x.startswith(str(y)+"-") for x in common) for y in range(2021,2025)}
-    full=(len(common)>=46 and min(yc.values())>=11)
-    limited=(len(common)>=36 and min(yc.values())>=8)
+
+    full_months=[r["month"] for r in rec if r.get("metrics_full") and r.get("funding_ok") and r.get("kline_ok")]
+    usable_months=[r["month"] for r in rec if r.get("metrics_usable") and r.get("funding_ok") and r.get("kline_ok")]
+    fy={str(y):sum(x.startswith(str(y)+"-") for x in full_months) for y in range(2021,2025)}
+    uy={str(y):sum(x.startswith(str(y)+"-") for x in usable_months) for y in range(2021,2025)}
+    full=(len(full_months)>=46 and min(fy.values())>=11)
+    limited=(len(usable_months)>=36 and min(uy.values())>=8)
     cls="PCU_COVERAGE_FULL" if full else ("PCU_COVERAGE_LIMITED" if limited else "PCU_COVERAGE_BLOCKED")
     if metrics: pd.concat(metrics,ignore_index=True).to_csv("pcu_cache/metrics.csv",index=False)
     if funding: pd.concat(funding,ignore_index=True).to_csv("pcu_cache/funding.csv",index=False)
     if klines: pd.concat(klines,ignore_index=True).to_csv("pcu_cache/klines.csv",index=False)
-    out={"classification":cls,"common_month_count":len(common),"common_months":common,"common_months_by_year":yc,"records":rec,"outcomes_opened":False}
+    out={"classification":cls,"full_month_count":len(full_months),"usable_month_count":len(usable_months),
+         "full_months_by_year":fy,"usable_months_by_year":uy,"records":rec,"outcomes_opened":False}
     Path("pcu_coverage_receipt_v01.json").write_text(json.dumps(out,indent=2,sort_keys=True)+"\n")
-    print(json.dumps({"classification":cls,"common_month_count":len(common),"common_months_by_year":yc},sort_keys=True))
+    print(json.dumps({"classification":cls,"full_month_count":len(full_months),"usable_month_count":len(usable_months),
+                      "full_months_by_year":fy,"usable_months_by_year":uy},sort_keys=True))
     if cls=="PCU_COVERAGE_BLOCKED": return 2
     return 0
 
