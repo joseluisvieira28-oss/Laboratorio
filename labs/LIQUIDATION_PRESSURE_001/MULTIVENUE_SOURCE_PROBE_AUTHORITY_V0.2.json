@@ -1,0 +1,55 @@
+{
+  "lab_id": "LIQUIDATION-PRESSURE-001",
+  "probe_id": "LP-MULTIVENUE-SOURCE-PROBE-002",
+  "version": "0.2",
+  "date_frozen": "2026-09-19",
+  "status": "FROZEN_SOURCE_ONLY_OUTCOME_BLIND",
+  "parent_v01_run": 35456766433,
+  "parent_v01_classification": "MULTIVENUE_SOURCE_ROUTE_INSUFFICIENT",
+  "erratum_path": "labs/LIQUIDATION_PRESSURE_001/MULTIVENUE_SOURCE_PROBE_V0_1_ERRATUM.md",
+  "purpose": "Re-adjudicate only historical source availability with zero-event dates treated as valid source states. No market outcomes or economic threshold are authorized.",
+  "sample_dates": ["2021-09-01","2022-01-01","2023-01-01","2024-01-01"],
+  "venues": [
+    {"exchange":"binance-futures","dataset_symbol":"BTCUSDT","target_symbols":["BTCUSDT"],"source_method":"Binance forceOrder WebSocket","source_quality_note":"KNOWN_CENSORING: since 2021-04-27 snapshot order data at max one push per second; not complete liquidation ground truth"},
+    {"exchange":"bitmex","dataset_symbol":"XBTUSD","target_symbols":["XBTUSD"],"source_method":"BitMEX WebSocket liquidation channel","source_quality_note":"DIRECT_LIQUIDATION_CHANNEL; no Tardis-specific throttling warning pinned in current source review"},
+    {"exchange":"deribit","dataset_symbol":"PERPETUALS","target_symbols":["BTC-PERPETUAL"],"source_method":"Deribit trade channel liquidation flag","source_quality_note":"TRADE_LEVEL_LIQUIDATION_FLAG; no Tardis-specific throttling warning pinned in current source review"},
+    {"exchange":"bybit","dataset_symbol":"PERPETUALS","target_symbols":["BTCUSD","BTCUSDT"],"source_method":"REST polling until 2021-09-20, then Bybit WebSocket liquidation channel","source_quality_note":"METHOD_CHANGE_WITHIN_WINDOW; completeness must be treated cautiously"},
+    {"exchange":"cryptofacilities","dataset_symbol":"PERPETUALS","target_symbols":["PI_XBTUSD"],"source_method":"Kraken Futures trade channel liquidation type","source_quality_note":"TRADE_LEVEL_LIQUIDATION_TYPE; no Tardis-specific throttling warning pinned in current source review"}
+  ],
+  "required_columns": ["exchange","symbol","timestamp","local_timestamp","id","side","price","amount"],
+  "venue_pass_rule": {
+    "all_dates_http_200": true,
+    "nonempty_files_schema_valid": true,
+    "zero_event_dates_allowed": true,
+    "target_symbol_nonempty_on_at_least_n_dates": 2,
+    "no_transport_or_decode_failure": true
+  },
+  "overall_pass_rule": {
+    "venues_passing_gte": 3,
+    "venues_without_known_binance_one_per_second_censoring_passing_gte": 1,
+    "terminal_pass_classification": "MULTIVENUE_HISTORICAL_SOURCE_ROUTE_FEASIBLE"
+  },
+  "selection_firewall": {
+    "do_not_rank_by_event_count": true,
+    "do_not_select_by_forward_returns": true,
+    "do_not_open_market_prices": true,
+    "source_quality_and_temporal_coverage_only": true
+  },
+  "safety": {
+    "market_price_outcomes_authorized": false,
+    "forward_returns_authorized": false,
+    "continuation_reversal_authorized": false,
+    "event_threshold_tuning_authorized": false,
+    "strategy_pnl_authorized": false,
+    "performance_metrics_authorized": false,
+    "paid_subscription_authorized": false,
+    "api_key_authorized": false,
+    "access_2025_authorized": false,
+    "access_2026_authorized": false,
+    "live_trading_authorized": false,
+    "exchange_mutation_authorized": false,
+    "wallet_access_authorized": false,
+    "merge_to_main_authorized": false,
+    "post_outcome_tuning_authorized": false
+  }
+}
