@@ -1,0 +1,91 @@
+{
+  "lab_id": "BTC-OPTIONS-UWA-001",
+  "source_probe_id": "UWA-DERIBIT-TRADES-SOURCE-001",
+  "recovery_mode": "USER_BROWSER_CANONICAL_DOWNLOAD",
+  "date": "2026-09-19",
+  "classification": "UWA_TRADE_HISTORY_FULL",
+  "automatic_runner_history": {
+    "run_id": 35470837446,
+    "prior_classification": "UWA_SOURCE_BLOCKED",
+    "reason": "GitHub runner could not access the Google Drive object and official UWA file endpoints returned HTTP 403. This was an access/transport block, not a data-quality verdict."
+  },
+  "received_files": [
+    {
+      "name": "Deribit_w_IV.csv",
+      "bytes": 149371644,
+      "sha256": "47af56f73630b54a025b554088c03771404af15bbe9091dddee7d1c644c903b2",
+      "parsed": true,
+      "row_count": 761067,
+      "columns": [
+        "timestamp",
+        "price",
+        "instrument_name",
+        "index_price",
+        "direction",
+        "amount",
+        "time_trade",
+        "strike",
+        "type",
+        "time_create",
+        "time_expire",
+        "date",
+        "irate",
+        "price_USD",
+        "iv_Tbill",
+        "tt"
+      ],
+      "first_trade_utc": "2016-11-29T08:23:13Z",
+      "last_trade_utc": "2020-02-11T05:12:08Z",
+      "distinct_trade_dates": 1147,
+      "distinct_instruments": 5189,
+      "calls": 432102,
+      "puts": 328965,
+      "buys": 386703,
+      "sells": 374364,
+      "bid_ask_fields_present": false,
+      "trade_amount_present": true,
+      "index_price_present": true,
+      "implied_volatility_present": true
+    },
+    {
+      "name": "instrument_name.csv",
+      "bytes": 493948,
+      "sha256": "a39733081781987aed135b619681064d8c62cc918e97679705ebe65fcc95ffb2",
+      "parsed": true,
+      "row_count": 6724,
+      "columns": [
+        "name",
+        "strike",
+        "type",
+        "time_create",
+        "time_expire"
+      ],
+      "unique_instruments": 6724,
+      "calls": 3362,
+      "puts": 3362,
+      "first_creation_utc": "2016-07-13T17:30:59Z",
+      "last_creation_utc": "2020-02-11T16:05:00Z",
+      "latest_expiry_utc": "2020-09-25T08:00:00Z"
+    },
+    {
+      "name": "Deribit_BTC_option_all.rds",
+      "bytes": 17300728,
+      "sha256": "4d953347223ee398f21ef3e164e983ec13be9770c030eefd4bc33e0921582427",
+      "parsed_in_current_runtime": false,
+      "note": "Raw file preserved by hash. The CSV source already independently satisfies the frozen multi-year trade-history source criteria."
+    }
+  ],
+  "source_interpretation": [
+    "This is a large historical Deribit BTC-options TRADE dataset, not an order-book/BBO dataset.",
+    "Bid/ask prices and bid/ask sizes are absent from the parsed trade CSV.",
+    "Trade direction, amount, option identity, strike, expiry, index price and IV are available.",
+    "The IV-enriched CSV covers 2016-11-29 through 2020-02-11; the instrument catalogue contains expiries through 2020-09-25.",
+    "No edge or PnL conclusion is implied by this source pass."
+  ],
+  "outcome_boundary": {
+    "future_returns_opened": false,
+    "pnl_opened": false,
+    "strategy_tested": false,
+    "protected_2025_2026_opened": false
+  }
+}
