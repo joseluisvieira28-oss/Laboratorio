@@ -1,0 +1,21 @@
+name: ETH Blockspace Source Schema Diagnostic V0.2A
+on:
+  push:
+    branches: [eth-blockspace-demand-v0.1]
+    paths: ['research/eth_blockspace_demand/RUN_SCHEMA_DIAG_V0_2A.txt']
+permissions: {contents: read}
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install --disable-pip-version-check requests
+      - run: python research/eth_blockspace_demand/source_schema_diag_v02a.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ETH_BLOCKSPACE_SCHEMA_DIAGNOSTIC_V0_2A
+          path: ETH_BLOCKSPACE_SCHEMA_DIAGNOSTIC_V0_2A.json
+          if-no-files-found: error
+          retention-days: 30
