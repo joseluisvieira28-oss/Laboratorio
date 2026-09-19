@@ -1,0 +1,105 @@
+{
+  "lab_id": "ETH-BLOCKSPACE-DEMAND-001",
+  "candidate_id": "EBD-BURN80-UTIL50-LONG-H24-001",
+  "status": "DISCOVERY_COMPLETE",
+  "classification": "DISCOVERY_NO_EDGE",
+  "date": "2026-09-19",
+  "authority": {
+    "final_pre_discovery_protocol_commit": "5b6e3c3d3204aa192ff3eac5f8cb78a303d5db42",
+    "implementation_binding_commit": "21dcf7db02726db9389b646e58157204db9303aa",
+    "runner_blob_sha": "835b7c18cd154066632b241b2be04d60f5a4732f",
+    "canonical_run_id": 35448832680,
+    "canonical_run_head_sha": "4cf7bcffe03b1d778b6e495bcfb9c2f10089b324",
+    "artifact_id": 10585897896,
+    "artifact_digest": "sha256:a625bdb7e024fb286e1b9e0d2df2c8cae856d6e4ac2612422e63fbd0fbdb9d06",
+    "result_json_sha256": "012e33f57efac3c7b53dcce0c95c601efe9ccf944e4797470035536a3db5c40d",
+    "event_ledger_sha256": "938c8548d65aa38039dbaeb142d1ba14875f369e86b6c00c1bc27f6bb42867c7"
+  },
+  "source_data": {
+    "canonical_source_run_id": 35446488521,
+    "canonical_source_artifact_id": 10585049563,
+    "canonical_source_artifact_digest": "sha256:6bd5b8970a07fa022d91710b956a0ed80468fee3417c16d02746be6eb1e71114",
+    "daily_series_sha256": "1fffaf5dde2a1cff10356333536a6660a22f35e56210f376081738ea394bc928",
+    "source_coverage": "4723/4723",
+    "cross_provider_audits": "237/237",
+    "daily_retention": 0.9983831851253031
+  },
+  "candidate_identity": {
+    "mechanism": "High Ethereum base-fee burn plus above-median gas utilization may precede positive next-day ETH returns.",
+    "signal": "current daily sampled-block base-fee burn >= prior-90 80th percentile AND current gas utilization >= prior-90 median",
+    "instrument": "Binance Spot ETHUSDT",
+    "direction": "LONG",
+    "entry": "next UTC day open",
+    "exit": "following UTC day open",
+    "hold_hours": 24,
+    "base_cost_bps": 20,
+    "stress_cost_bps": 30,
+    "discovery_window": "2022-01 through 2023-12"
+  },
+  "discovery_result": {
+    "n": 112,
+    "base_mean_net_bps": 30.595860254437692,
+    "base_median_net_bps": -0.009570784109662611,
+    "base_pf": 1.2898368210992393,
+    "base_positive_fraction": 0.5,
+    "base_cumulative_bps": 3426.7363484970215,
+    "base_max_additive_drawdown_bps": -2697.85232878821,
+    "stress_mean_net_bps": 20.595860254437692,
+    "stress_pf": 1.1861080878331913,
+    "bootstrap_lower95_bps": -37.030027657298994,
+    "bootstrap_upper95_bps": 92.97264219846852,
+    "bootstrap_one_sided_p": 0.17638236176382363,
+    "largest_single_positive_event_share": 0.07968692939362224,
+    "year_2022": {
+      "n": 34,
+      "base_mean_net_bps": 34.26702048937952,
+      "base_pf": 1.2411838399960764
+    },
+    "year_2023": {
+      "n": 78,
+      "base_mean_net_bps": 28.995610921257924,
+      "base_pf": 1.3234488956497201
+    }
+  },
+  "gates": {
+    "n_ge_100": true,
+    "base_mean_positive": true,
+    "base_pf_gt_1": true,
+    "stress_mean_positive": true,
+    "bootstrap_lower95_positive": false,
+    "bootstrap_p_le_0_05": false,
+    "2022_base_mean_positive": true,
+    "2023_base_mean_positive": true,
+    "largest_positive_event_share_le_0_20": true
+  },
+  "adjudication": {
+    "exact_candidate_closed": true,
+    "reason": "The point estimate was economically positive in both 2022 and 2023 and survived BASE/STRESS economics, but the prospectively frozen uncertainty gates failed: bootstrap 95% lower bound was negative and one-sided p exceeded 0.05.",
+    "no_parameter_rescue": true,
+    "no_threshold_rescue": true,
+    "no_direction_rescue": true,
+    "no_horizon_rescue": true,
+    "no_cost_rescue": true,
+    "no_regime_rescue": true,
+    "2024_oos_authorized": false
+  },
+  "protected_holdout": {
+    "source_only_signal_count_2024": 43,
+    "source_only_signal_dates_sha256": "241807d84dca3826dfba5d77d3f0b51f63ce88d3a8c34a1f2d7352b2af277191",
+    "2024_market_outcomes_accessed": false,
+    "2025_market_outcomes_accessed": false,
+    "2026_market_outcomes_accessed": false,
+    "instruction": "Keep 2024 market outcomes locked for this exact candidate because DISCOVERY_SURVIVES was not achieved."
+  },
+  "governance": {
+    "research_only": true,
+    "live_trading": false,
+    "orders": false,
+    "wallets": false,
+    "exchange_mutation": false,
+    "alerts_webhooks": false,
+    "render_deploy": false,
+    "merge_main": false,
+    "post_outcome_tuning": false
+  }
+}
