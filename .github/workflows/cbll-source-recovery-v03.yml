@@ -1,0 +1,74 @@
+name: CBLL Source Recovery V0.3
+
+on:
+  push:
+    branches:
+      - coinbase-binance-leadlag-v0.1
+    paths:
+      - "Dream-Account-OS-v2.3-PARTIAL/research/coinbase_binance_leadlag_001/SOURCE_RECOVERY_AUTHORITY_V0.3.json"
+      - "Dream-Account-OS-v2.3-PARTIAL/research/coinbase_binance_leadlag_001/source_recovery_probe_v03.py"
+      - ".github/workflows/cbll-source-recovery-v03.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cbll-source-recovery-v03
+  cancel-in-progress: false
+
+jobs:
+  source-only-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+      BASE_DIR: Dream-Account-OS-v2.3-PARTIAL/research/coinbase_binance_leadlag_001
+    steps:
+      - name: Checkout frozen branch commit
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Execute source-only public historical trades probe
+        id: probe
+        shell: bash
+        run: |
+          set +e
+          python "$BASE_DIR/source_recovery_probe_v03.py" \
+            --output "$BASE_DIR/SOURCE_RECOVERY_PROBE_V0.3_RECEIPT.json"
+          code=$?
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Hash receipt
+        shell: bash
+        run: |
+          sha256sum "$BASE_DIR/SOURCE_RECOVERY_PROBE_V0.3_RECEIPT.json" \
+            > "$BASE_DIR/SOURCE_RECOVERY_PROBE_V0.3_RECEIPT.sha256"
+
+      - name: Persist source-only receipt on research branch
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            "$BASE_DIR/SOURCE_RECOVERY_PROBE_V0.3_RECEIPT.json" \
+            "$BASE_DIR/SOURCE_RECOVERY_PROBE_V0.3_RECEIPT.sha256"
+          if git diff --cached --quiet; then
+            echo "No receipt change to commit."
+          else
+            git commit -m "Record CBLL V0.3 source recovery probe receipt"
+            git push origin HEAD:coinbase-binance-leadlag-v0.1
+          fi
+
+      - name: Preserve fail-closed workflow status
+        if: always()
+        shell: bash
+        run: |
+          code="${{ steps.probe.outputs.exit_code }}"
+          if [ -z "$code" ]; then
+            echo "Probe exit code missing."
+            exit 2
+          fi
+          exit "$code"
