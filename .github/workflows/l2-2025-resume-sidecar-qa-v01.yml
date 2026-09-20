@@ -1,0 +1,69 @@
+name: L2 2025 Resume Sidecar QA V0.1
+
+on:
+  push:
+    branches:
+      - l2-resiliency-v0.1
+    paths:
+      - "research/l2_resiliency/l2r_2025_resume_offline_preflight_v01.py"
+      - "research/l2_resiliency/test_l2r_2025_resume_offline_preflight_v01.py"
+      - "research/l2_resiliency/run_l2r_2025_resume_preflight_windows.ps1"
+      - "research/l2_resiliency/L2_RESILIENCY_001_2025_RESUME_OPERATIONAL_HARDENING_V0_1.md"
+      - ".github/workflows/l2-2025-resume-sidecar-qa-v01.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic-resume-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: l2-resiliency-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile sidecar
+        run: |
+          python -m py_compile research/l2_resiliency/l2r_2025_resume_offline_preflight_v01.py
+          python -m py_compile research/l2_resiliency/test_l2r_2025_resume_offline_preflight_v01.py
+      - name: Synthetic resumability tests
+        run: python research/l2_resiliency/test_l2r_2025_resume_offline_preflight_v01.py
+      - name: Assert scientific firewall
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path("research/l2_resiliency/L2_RESILIENCY_001_2025_RESUME_OPERATIONAL_HARDENING_V0_1.md").read_text()
+          for x in ["no 2025 market outcome access","no 2026 access","no L2 parsing","no PnL","no scientific parameter changes","no main merge"]:
+              assert x in p, x
+          print("L2_RESUME_SIDECAR_FIREWALL_PASS")
+          PY
+
+  windows-parser-qa:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: l2-resiliency-v0.1
+      - name: Parse PowerShell helper without execution
+        shell: pwsh
+        run: |
+          $path = "research/l2_resiliency/run_l2r_2025_resume_preflight_windows.ps1"
+          $tokens = $null
+          $errors = $null
+          [void][System.Management.Automation.Language.Parser]::ParseFile($path, [ref]$tokens, [ref]$errors)
+          if ($errors.Count -gt 0) {
+            $errors | ForEach-Object { Write-Error $_.Message }
+            exit 1
+          }
+          Write-Host "POWERSHELL_PARSE_PASS"
+      - name: Assert no automatic frozen-runner launch
+        shell: pwsh
+        run: |
+          $txt = Get-Content "research/l2_resiliency/run_l2r_2025_resume_preflight_windows.ps1" -Raw
+          if ($txt -notmatch "does NOT launch the frozen validation package automatically") { throw "missing no-auto-launch declaration" }
+          Write-Host "NO_AUTO_LAUNCH_GUARD_PASS"
