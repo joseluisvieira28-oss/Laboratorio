@@ -1,0 +1,73 @@
+name: DEX Liquidity Provision 001 — Source Gate V0.2 Sharded
+
+on:
+  push:
+    branches:
+      - dex-liquidity-provision-v0.1
+    paths:
+      - '.github/workflows/dex-liquidity-provision-source-v02-sharded.yml'
+      - 'research/dex_liquidity_provision/source_probe_shard_v02.py'
+      - 'research/dex_liquidity_provision/aggregate_source_shards_v02.py'
+      - 'research/dex_liquidity_provision/DEX_LIQUIDITY_PROVISION_001_SHARDED_TRANSPORT_AMENDMENT_V0_2.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  shard:
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        shard: [0,1,2,3,4,5,6,7]
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --disable-pip-version-check requests 'eth-hash[pycryptodome]'
+      - name: Execute frozen structural shard
+        env:
+          DEX_SHARD_ID: ${{ matrix.shard }}
+          DEX_SHARD_COUNT: 8
+        run: python research/dex_liquidity_provision/source_probe_shard_v02.py
+      - name: Upload shard evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: DEX_LP_SOURCE_V02_SHARD_${{ matrix.shard }}
+          path: dex_lp_shard_*/
+          if-no-files-found: error
+          retention-days: 30
+
+  aggregate:
+    needs: shard
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --disable-pip-version-check requests 'eth-hash[pycryptodome]'
+      - name: Download all exact shard artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p downloaded_shards
+          for i in 0 1 2 3 4 5 6 7; do
+            gh run download ${{ github.run_id }} --name DEX_LP_SOURCE_V02_SHARD_$i --dir downloaded_shards/shard_$i
+          done
+      - name: Aggregate frozen source gate
+        run: python research/dex_liquidity_provision/aggregate_source_shards_v02.py
+      - name: Upload final source receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: DEX_LIQUIDITY_PROVISION_001_SOURCE_V0_2
+          path: dex_liquidity_source_v02_output/DEX_LIQUIDITY_PROVISION_001_SOURCE_RECEIPT_V0_2.json
+          if-no-files-found: warn
+          retention-days: 30
