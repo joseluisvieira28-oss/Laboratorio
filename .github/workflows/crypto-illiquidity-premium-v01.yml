@@ -1,0 +1,36 @@
+name: Crypto Illiquidity Premium V0.1
+on:
+  push:
+    branches: [crypto-illiquidity-premium-v0.1]
+    paths:
+      - "labs/CRYPTO_ILLIQUIDITY_PREMIUM_001/PREFREEZE_V0.1.json"
+      - "labs/CRYPTO_ILLIQUIDITY_PREMIUM_001/discovery_v01.py"
+      - ".github/workflows/crypto-illiquidity-premium-v01.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: python -m pip install --disable-pip-version-check -q pandas numpy
+      - name: Compile
+        run: python -m py_compile labs/CRYPTO_ILLIQUIDITY_PREMIUM_001/discovery_v01.py
+      - name: Run source gate, Discovery and conditional holdout
+        run: python labs/CRYPTO_ILLIQUIDITY_PREMIUM_001/discovery_v01.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: CRYPTO_ILLIQUIDITY_PREMIUM_001_V0_1
+          path: |
+            cip_source_receipt_v01.json
+            cip_discovery_receipt_v01.json
+            cip_final_receipt_v01.json
+            cip_discovery_trades_v01.csv
+            cip_holdout_trades_v01.csv
+          if-no-files-found: warn
+          retention-days: 30
