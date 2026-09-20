@@ -1,7 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { DataSource } from '@subsquid/portal-client';
+import portalPkg from '@subsquid/portal-client';
+const { DataSource } = portalPkg;
 
 const PUMP='6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P';
 const MIGRATE_D8='0x9beae792ec9ea21e';
@@ -10,7 +11,11 @@ const EXPECTED_COHORT_SHA='5501ee9c35d6a5966b18246a2a7b35f428900d48b7fa3deaa5e9b
 const BOOT_SEED='MSEL-002-MIGRATION-BOOTSTRAP-V1|2026-09-20';
 const NBOOT=100000;
 
-function canon(o){ return JSON.stringify(o,Object.keys(o).sort()); }
+function stable(o){
+  if(Array.isArray(o)) return '['+o.map(stable).join(',')+']';
+  if(o && typeof o==='object') return '{'+Object.keys(o).sort().map(k=>JSON.stringify(k)+':'+stable(o[k])).join(',')+'}';
+  return JSON.stringify(o);
+}
 function sha256(buf){ return crypto.createHash('sha256').update(buf).digest('hex'); }
 function qtile(a,p){ const b=[...a].sort((x,y)=>x-y); const x=(b.length-1)*p, lo=Math.floor(x), hi=Math.ceil(x); return lo===hi?b[lo]:b[lo]+(b[hi]-b[lo])*(x-lo); }
 function rngFromSeed(s){ let state=BigInt('0x'+sha256(Buffer.from(s)).slice(0,16)); return ()=>{ state ^= state<<13n; state ^= state>>7n; state ^= state<<17n; state &= ((1n<<64n)-1n); return Number(state>>11n)/9007199254740992; }; }
@@ -20,7 +25,7 @@ if(!cohortPath||!outdir) throw new Error('usage: node collect_migration_discover
 const raw=fs.readFileSync(cohortPath);
 const cohort=JSON.parse(raw.toString('utf8'));
 if(cohort.cohort_id!=='MSEL-002-ECONOMIC-COHORT-V0.1') throw new Error('COHORT_ID_MISMATCH');
-const cohortPayloadSha=sha256(Buffer.from(JSON.stringify(cohort,Object.keys(cohort).sort())+'\n'));
+const cohortPayloadSha=sha256(Buffer.from(stable(cohort)+'\n'));
 if(cohortPayloadSha!==EXPECTED_COHORT_SHA) {
   // The canonical cohort hash was computed with recursive sorted keys; verify using source-provided identity fields below,
   // and require the upstream embedded source hash plus exact frozen counts. Never silently change cohort membership.
