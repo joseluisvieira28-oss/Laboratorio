@@ -1,0 +1,55 @@
+name: Geometric Trendline Source Gate V0.1
+
+on:
+  push:
+    branches:
+      - geometric-trendline-v0.1
+    paths:
+      - "research/geometric_trendline/**"
+      - ".github/workflows/geometric-trendline-source-gate-v01.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: geometric-trendline-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile
+        run: python -m py_compile research/geometric_trendline/geometric_trendline_source_gate_v01.py
+      - name: Assert outcome firewall in source-gate implementation
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path("research/geometric_trendline/GEOMETRIC_TRENDLINE_001_PREOPEN_ANTI_DUP_GATE_V0_1.md").read_text()
+          required=["2025 market data: FORBIDDEN","2026 market data: FORBIDDEN","Trendline outcomes: FORBIDDEN","PnL/costs/Sharpe/leverage: FORBIDDEN"]
+          missing=[x for x in required if x not in p]
+          if missing: raise SystemExit("missing firewall: "+repr(missing))
+          print("FIREWALL_ASSERT_PASS")
+          PY
+      - name: Execute metadata/checksum-only source gate
+        run: python research/geometric_trendline/geometric_trendline_source_gate_v01.py
+      - name: Verify receipt guards
+        run: |
+          python - <<'PY'
+          import json
+          p="research/geometric_trendline/GEOMETRIC_TRENDLINE_001_SOURCE_GATE_RECEIPT_V0_1.json"
+          x=json.load(open(p))
+          assert x["classification"]=="SOURCE_GATE_PASS"
+          assert x["passed_months"]==48
+          assert all(v is False for k,v in x["guards"].items() if k.endswith("_accessed") or k in ["ohlcv_values_parsed","pivots_computed","trendlines_computed","returns_computed","pnl_computed","live_trading","exchange_mutation"])
+          print("RECEIPT_GUARDS_PASS")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: geometric-trendline-source-gate-v01
+          path: research/geometric_trendline/GEOMETRIC_TRENDLINE_001_SOURCE_GATE_RECEIPT_V0_1.json
+          if-no-files-found: error
