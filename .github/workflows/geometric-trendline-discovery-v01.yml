@@ -1,0 +1,97 @@
+name: Geometric Trendline Discovery One-Shot V0.1
+
+on:
+  push:
+    branches:
+      - geometric-trendline-v0.1
+    paths:
+      - ".github/geometric-trendline-discovery.trigger"
+
+permissions:
+  contents: read
+
+jobs:
+  discovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: geometric-trendline-v0.1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Verify explicit trigger
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          expected="GEOMETRIC-TRENDLINE-001 DISCOVERY 2021-2024 AUTHORIZED 2026-09-20\n"
+          got=Path(".github/geometric-trendline-discovery.trigger").read_text()
+          assert got==expected, repr(got)
+          print("DISCOVERY_TRIGGER_AUTHORITY_PASS")
+          PY
+
+      - name: Verify frozen pre-outcome bytes
+        run: |
+          python - <<'PY'
+          import hashlib, pathlib
+          expected={
+            "research/geometric_trendline/GEOMETRIC_TRENDLINE_001_DISCOVERY_AUTHORIZATION_V0_1.json":"7f5ee9754fd8de931b7b399943a10132415f23203dabbb498a5eb58a67a0f953",
+            "research/geometric_trendline/GEOMETRIC_TRENDLINE_001_IMPLEMENTATION_CLARIFICATION_V0_1_1.md":"ab15bb141d1730d49b0b21d5f0b5556da5bc0817027052100475703283b3bc33",
+            "research/geometric_trendline/GEOMETRIC_TRENDLINE_001_PREDISCOVERY_PROTOCOL_V0_1.md":"bd6c5adc657edc761e243e844d297777ddc08f96c09df89e84fadbbc436bb654",
+            "research/geometric_trendline/geometric_trendline_core_v01.py":"243193dbd93cb803e17f14ab51deaf4d8a6d967171822c4f93ddc56ff4bf8cee",
+            "research/geometric_trendline/geometric_trendline_discovery_v01.py":"cd15d8ab62721a3b6e66ffa550baabf9d3064b852ebbe8b154f5c65a32d04c85",
+            "research/geometric_trendline/test_geometric_trendline_synthetic_v01.py":"f4223b30515b0fcc83c15ec1b4df44af418e3a25aea80a42bbecf977b8664ca9",
+          }
+          for p,h in expected.items():
+              got=hashlib.sha256(pathlib.Path(p).read_bytes()).hexdigest()
+              assert got==h,(p,got,h)
+          print("FROZEN_BYTES_PASS")
+          PY
+
+      - name: Re-run causal synthetic firewall
+        run: python research/geometric_trendline/test_geometric_trendline_synthetic_v01.py
+
+      - name: Execute frozen Discovery 2021-2024
+        run: python research/geometric_trendline/geometric_trendline_discovery_v01.py
+
+      - name: Verify terminal scientific receipt
+        run: |
+          python - <<'PY'
+          import json
+          p="research/geometric_trendline/discovery_output/GEOMETRIC_TRENDLINE_001_DISCOVERY_2021_2024_RECEIPT_V0_1.json"
+          x=json.load(open(p))
+          allowed={"DISCOVERY_MECHANISM_PASS","DISCOVERY_FAIL_NO_PROMOTION","DISCOVERY_INSUFFICIENT_SAMPLE"}
+          assert x["classification"] in allowed
+          g=x["guards"]
+          assert g["2025_accessed"] is False
+          assert g["2026_accessed"] is False
+          assert g["live_trading"] is False
+          assert g["exchange_mutation"] is False
+          assert g["orders_created"] is False
+          assert g["wallets_used"] is False
+          assert g["pnl_computed"] is False
+          assert g["post_outcome_retuning"] is False
+          assert x["source"]["months_verified"]==48
+          print("DISCOVERY_RECEIPT_GUARDS_PASS")
+          print("TERMINAL_CLASSIFICATION="+x["classification"])
+          PY
+
+      - name: Fingerprint evidence
+        run: |
+          python - <<'PY'
+          import hashlib,json,pathlib
+          root=pathlib.Path("research/geometric_trendline/discovery_output")
+          files=sorted(p for p in root.iterdir() if p.is_file())
+          out={p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in files}
+          (root/"GEOMETRIC_TRENDLINE_001_DISCOVERY_EVIDENCE_HASHES_V0_1.json").write_text(json.dumps(out,indent=2,sort_keys=True)+"\n")
+          print(json.dumps(out,indent=2,sort_keys=True))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: geometric-trendline-discovery-v01
+          path: research/geometric_trendline/discovery_output/
+          if-no-files-found: error
