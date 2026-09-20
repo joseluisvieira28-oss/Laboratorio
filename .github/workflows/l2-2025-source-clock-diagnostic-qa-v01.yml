@@ -26,6 +26,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Install diagnostic dependency
+        run: python -m pip install --disable-pip-version-check lz4==4.4.4
       - name: Compile diagnostic
         run: |
           python -m py_compile research/l2_resiliency/l2r_2025_source_clock_diagnostic_v01.py
@@ -37,8 +39,6 @@ jobs:
           python - <<'PY'
           from pathlib import Path
           p=Path("research/l2_resiliency/l2r_2025_source_clock_diagnostic_v01.py").read_text()
-          forbidden=["bid_depth","ask_depth","midpoint","response_bps","pnl","replenishment"]
-          # Terms may appear only as explicit false guard labels; no market computation code.
           assert 'levels_read":False' in p
           assert 'validation_outcomes_computed":False' in p
           assert 'access_2026":False' in p
