@@ -1,0 +1,47 @@
+name: L2 2025 Source Clock Diagnostic QA V0.1
+
+on:
+  push:
+    branches:
+      - l2-resiliency-v0.1
+    paths:
+      - "research/l2_resiliency/l2r_2025_source_clock_diagnostic_v01.py"
+      - "research/l2_resiliency/test_l2r_2025_source_clock_diagnostic_v01.py"
+      - "research/l2_resiliency/RUN_SOURCE_CLOCK_DIAGNOSTIC_V01.bat"
+      - "research/l2_resiliency/L2_RESILIENCY_001_2025_SOURCE_SCHEMA_CLOCK_INCIDENT_V0_1.md"
+      - ".github/workflows/l2-2025-source-clock-diagnostic-qa-v01.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: l2-resiliency-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile diagnostic
+        run: |
+          python -m py_compile research/l2_resiliency/l2r_2025_source_clock_diagnostic_v01.py
+          python -m py_compile research/l2_resiliency/test_l2r_2025_source_clock_diagnostic_v01.py
+      - name: Run synthetic clock QA
+        run: python research/l2_resiliency/test_l2r_2025_source_clock_diagnostic_v01.py
+      - name: Assert source-only firewall
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path("research/l2_resiliency/l2r_2025_source_clock_diagnostic_v01.py").read_text()
+          forbidden=["bid_depth","ask_depth","midpoint","response_bps","pnl","replenishment"]
+          # Terms may appear only as explicit false guard labels; no market computation code.
+          assert 'levels_read":False' in p
+          assert 'validation_outcomes_computed":False' in p
+          assert 'access_2026":False' in p
+          assert 'DEFAULT_KEY="market_data/20250101/4/l2Book/BTC.lz4"' in p
+          print("SOURCE_ONLY_FIREWALL_PASS")
+          PY
