@@ -1,0 +1,70 @@
+{
+  "lab_id": "BTC-MVRV-VALUATION-001",
+  "source_gate_id": "BMV-CM-COMMUNITY-001",
+  "version": "0.1",
+  "date_frozen": "2026-09-20",
+  "branch": "btc-mvrv-valuation-v0.1",
+  "status": "FROZEN_SOURCE_ONLY_OUTCOME_BLIND",
+  "economic_family": "ONCHAIN_VALUATION / REALIZED_CAP",
+  "mechanism": "Bitcoin market value relative to realized value may proxy unrealized profit/cost-basis pressure. Extreme valuation states may contain information about subsequent medium-horizon returns and differ economically from leverage/funding, options, trend, or protocol-fee demand.",
+  "literature_anchor": {
+    "title": "From Network Fundamentals to Macro-Financial Integration: The Evolving Predictability of Bitcoin Returns",
+    "posted": "2026-05-06",
+    "public_claim": "The paper reports that market-to-realized value (MVRV), funding rates, and open interest predict Bitcoin returns across identified regimes.",
+    "boundary": "Literature motivates source validation only; no outcome conclusion is imported."
+  },
+  "source": {
+    "provider": "Coin Metrics Community API v4",
+    "base_url": "https://community-api.coinmetrics.io/v4",
+    "authentication": "none",
+    "asset": "btc",
+    "target_semantics": [
+      "realized capitalization in USD and current market capitalization in USD, OR",
+      "a directly published MVRV metric with clear metadata"
+    ]
+  },
+  "source_probe": {
+    "catalog_endpoint": "/v4/catalog-all/assets?assets=btc",
+    "metadata_endpoint": "/v4/reference-data/asset-metrics",
+    "representative_window": [
+      "2019-01-01",
+      "2025-12-31"
+    ],
+    "year_2026_locked": true
+  },
+  "frozen_checks": [
+    "Discover exact BTC metric IDs whose metadata explicitly reference realized capitalization or MVRV.",
+    "Require zero-key access.",
+    "Require daily frequency.",
+    "Require at least 95% coverage over 2019-2025 for either direct MVRV or both market cap + realized cap.",
+    "Require positive finite values and no duplicate daily timestamps.",
+    "Do not calculate any future return, regression, threshold, PnL or 2026 outcome."
+  ],
+  "classifications": [
+    "BMV_SOURCE_FULL",
+    "BMV_SOURCE_LIMITED",
+    "BMV_SOURCE_BLOCKED"
+  ],
+  "full_rule": "A semantically valid direct MVRV series OR market-cap/realized-cap pair exists with >=95% daily coverage 2019-2025 and no authentication.",
+  "limited_rule": "Semantically valid series exists with >=80% daily coverage over at least four calendar years.",
+  "anti_duplication": {
+    "repo_search_at_freeze": "No branch matching mvrv, realized-cap, realized-profit, realized-loss or sopr.",
+    "nearest_labs": [
+      "PCU crowding/unwind",
+      "miner-stress",
+      "ETH demand fee flow"
+    ],
+    "material_difference": "Cost-basis valuation state, not leverage, miner flow, or network fee demand."
+  },
+  "safety": {
+    "cash_spend_usd": 0,
+    "credentials_used": false,
+    "returns_opened": false,
+    "pnl_opened": false,
+    "year_2026_opened": false,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "wallet_access": false,
+    "merge_to_main": false
+  }
+}
