@@ -1,0 +1,60 @@
+{
+  "lab_id": "CRYPTO-INTRAWEEK-RV-SPOT-001",
+  "mve_id": "CIRV-HAR-DOW-BTCETH-SPOT-001",
+  "version": "0.1",
+  "date_frozen": "2026-09-20",
+  "branch": "crypto-intraweek-rv-spot-replication-v0.1",
+  "status": "FROZEN_EXACT_RULE_SPOT_REPLICATION_BEFORE_OUTCOMES",
+  "parent": {
+    "lab": "CRYPTO-INTRAWEEK-RV-001",
+    "parent_market": "Binance USD-M Futures",
+    "verdict": "SURVIVES_2025_HOLDOUT",
+    "canonical_run": 35500049139,
+    "rule": "Spot replication is independent corroboration and cannot rewrite the parent."
+  },
+  "assets": [
+    "BTCUSDT",
+    "ETHUSDT"
+  ],
+  "venue": "Binance Spot",
+  "source": "Binance public monthly 5m spot klines",
+  "mechanism": "Exact-rule cross-instrument replication of target-day weekday structure in one-day-ahead realized variance.",
+  "exact_carryover": {
+    "realized_variance": "sum squared 5m close-to-close log returns on UTC day; accepted day >=270 returns",
+    "baseline_HAR": [
+      "intercept",
+      "log RV1",
+      "log mean RV5",
+      "log mean RV22"
+    ],
+    "HAR_DOW": "same HAR plus target-day Tue-Sun dummies, Monday base",
+    "estimation": "rolling previous 730 valid feature rows; minimum 500; daily re-estimation",
+    "discovery_target_dates": [
+      "2023-01-01",
+      "2024-12-31"
+    ],
+    "holdout_2025_locked_until_discovery_pass": true,
+    "qlike_formula": "log(forecast_RV)+realized_RV/forecast_RV",
+    "log_mse_formula": "(logRV-predicted_logRV)^2",
+    "dm_lag": 7
+  },
+  "gates": "Identical to parent BTC/ETH futures MVE.",
+  "interpretation": {
+    "if_survives": "Supports instrument/market robustness of the intraweek volatility-forecast mechanism.",
+    "if_fails": "Futures result remains valid but may not generalize to spot."
+  },
+  "no_rescue": [
+    "No model changes",
+    "No asset dropping",
+    "No 2025 opening unless Discovery passes",
+    "No 2026"
+  ],
+  "safety": {
+    "cash_spend_usd": 0,
+    "pnl_opened": false,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "wallet_access": false,
+    "merge_to_main": false
+  }
+}
