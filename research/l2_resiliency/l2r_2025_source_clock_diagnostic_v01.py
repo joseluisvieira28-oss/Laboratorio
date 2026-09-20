@@ -12,7 +12,7 @@ except Exception as e:
 LAB_ID="L2-RESILIENCY-001"
 DEFAULT_KEY="market_data/20250101/4/l2Book/BTC.lz4"
 EXPECTED_RAW_SHA256="248d0f9f4e3eff470520af97908ca299f34314c97a29a0fac650285d4d705093"
-ISO_RE=re.compile(r"^(\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2})(?:\\.(\\d+))?Z?$")
+ISO_RE=re.compile(r"^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.(\d+))?Z?$")
 
 def default_base() -> Path:
     return Path.home()/"Desktop"/"L2R_2025_BTC_VALIDATION_LOCAL"
@@ -83,7 +83,7 @@ def main():
             out=dec.decompress(b)
             if not out: continue
             pending+=out
-            parts=pending.split(b"\\n"); pending=parts.pop()
+            parts=pending.split(b"\n"); pending=parts.pop()
             for line in parts:
                 if not line.strip(): continue
                 o=json.loads(line)
