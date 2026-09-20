@@ -1,0 +1,142 @@
+{
+  "lab_id": "CRYPTO-ILLIQUIDITY-PREMIUM-001",
+  "mve_id": "CIP-MAJOR5-WEEKLY-AMIHUD-001",
+  "version": "0.1",
+  "date_frozen": "2026-09-20",
+  "branch": "crypto-illiquidity-premium-v0.1",
+  "status": "FROZEN_BEFORE_OUTCOMES",
+  "economic_family": "LIQUIDITY / CROSS_SECTIONAL_RISK_PREMIUM",
+  "mechanism": "Less-liquid cryptoassets may command a return premium as compensation for trading frictions and inventory/liquidity risk. The test asks whether, within a fixed universe of major USD-M perpetuals, a market-neutral long-illiquid / short-liquid portfolio earns positive subsequent weekly returns after conservative costs.",
+  "literature_anchor": {
+    "title": "Beyond the Hype: A Multi-Layer Machine Learning Framework for Cryptocurrency Return Forecasting",
+    "posted": "2026-03-23",
+    "public_claim": "The paper reports that lower liquidity predicts higher future returns across five major cryptocurrencies.",
+    "boundary": "This lab uses a simple classic Amihud-style measure and fixed cross-sectional portfolio; it does not copy or tune the paper's machine-learning specification."
+  },
+  "anti_duplication": {
+    "repo_search_terms": [
+      "illiquidity",
+      "amihud",
+      "liquidity-premium",
+      "liquidity-return"
+    ],
+    "result_at_freeze": "No prior branch found.",
+    "nearest_families": [
+      "microstructure/forced-flow",
+      "trend",
+      "funding/OI crowding"
+    ],
+    "material_difference": "Cross-sectional compensation for low liquidity rather than directional forced flow, momentum or leverage crowding."
+  },
+  "universe": [
+    "BTCUSDT",
+    "ETHUSDT",
+    "BNBUSDT",
+    "SOLUSDT",
+    "XRPUSDT"
+  ],
+  "venue": "Binance USD-M Futures",
+  "source": {
+    "route": "https://data.binance.vision/data/futures/um/monthly/klines/{SYMBOL}/1d/{SYMBOL}-1d-YYYY-MM.zip",
+    "period": [
+      "2020-12",
+      "2025-12"
+    ],
+    "frequency": "1d",
+    "authentication": "none",
+    "cash_spend_usd": 0
+  },
+  "source_gate": {
+    "discovery_required": "Each asset >=35/36 monthly archives over 2021-2023 and >=11 months in every discovery year.",
+    "holdout_required": "Each asset >=23/24 monthly archives over 2024-2025 and >=11 months in each holdout year.",
+    "schema": [
+      "open_time",
+      "open",
+      "close",
+      "quote_volume"
+    ],
+    "no_outcomes_before_source_gate": true
+  },
+  "feature": {
+    "daily_log_return": "ln(open[t+1]/open[t]) using consecutive UTC daily opens",
+    "amihud_daily": "abs(daily_log_return) / quote_volume[t]",
+    "trailing_window_days": 20,
+    "trailing_min_days": 20,
+    "rank_day": "Sunday UTC daily bar, after its day is complete",
+    "no_size_or_marketcap_filter": true
+  },
+  "signal": {
+    "rebalance": "Every Monday 00:00 UTC",
+    "rank": "Sort five assets by trailing 20-day mean Amihud illiquidity using data through the just-completed Sunday.",
+    "long": "Top 2 most illiquid, equal-weight long totaling +1 notional.",
+    "short": "Bottom 2 most liquid, equal-weight short totaling -1 notional.",
+    "middle": "Rank 3 ignored.",
+    "hold": "Monday open to next Monday open, exactly 7 days.",
+    "overlap": "No overlap; one weekly portfolio."
+  },
+  "pnl": {
+    "gross": "mean(long 7d log returns) - mean(short 7d log returns)",
+    "primary_cost_bps": 20,
+    "stress_cost_bps": 40,
+    "net20": "gross - 0.002",
+    "net40": "gross - 0.004",
+    "funding_excluded": "Funding cashflows excluded; this is a price/liquidity-premium MVE."
+  },
+  "chronology": {
+    "discovery": [
+      "2021-01-04",
+      "2023-12-25"
+    ],
+    "holdout": [
+      "2024-01-01",
+      "2025-12-22"
+    ],
+    "rule": "2024-2025 holdout outcomes stay closed unless Discovery passes.",
+    "year_2026_locked": true
+  },
+  "inference": {
+    "bootstrap_reps": 10000,
+    "circular_block_length": 4,
+    "seed": 230924
+  },
+  "discovery_gate": {
+    "minimum_N": 130,
+    "mean_net20_gt_0": true,
+    "profit_factor_net20_gte": 1.15,
+    "bootstrap_95_lower_mean_net20_gt_0": true,
+    "positive_years_gte": 2,
+    "mean_net40_gt_0": true,
+    "profit_factor_net40_gt_1": true
+  },
+  "holdout_gate": {
+    "minimum_N": 90,
+    "mean_net20_gt_0": true,
+    "profit_factor_net20_gte": 1.1,
+    "bootstrap_95_lower_mean_net20_gt_0": true,
+    "positive_years_eq_2": true,
+    "mean_net40_gt_0": true
+  },
+  "terminal_classes": [
+    "DISCOVERY_FAIL_NO_PROMOTION",
+    "DISCOVERY_PASS_HOLDOUT_FAIL",
+    "SURVIVES_2024_2025_HOLDOUT",
+    "INSUFFICIENT_SAMPLE",
+    "BLOCKED_SOURCE"
+  ],
+  "no_rescue": [
+    "Do not change 20-day Amihud window.",
+    "Do not change weekly rebalance or 7-day hold.",
+    "Do not replace the fixed five-asset universe.",
+    "Do not change top2/bottom2 construction.",
+    "Do not reduce costs after outcomes.",
+    "Do not add trend, funding, volatility or market-cap filters.",
+    "Do not open 2026."
+  ],
+  "safety": {
+    "cash_spend_usd": 0,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "wallet_access": false,
+    "merge_to_main": false
+  }
+}
