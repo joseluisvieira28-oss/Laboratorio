@@ -1,8 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import portalPkg from '@subsquid/portal-client';
-const { DataSource } = portalPkg;
 
 const PUMP='6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P';
 const MIGRATE_D8='0x9beae792ec9ea21e';
@@ -48,17 +46,54 @@ const endJson=await endResp.json();
 const endSlot=Number(endJson.block_number);
 if(!Number.isInteger(endSlot)||endSlot<startSlot) throw new Error('END_SLOT_INVALID');
 
-const ds=new DataSource({network:'solana-mainnet'});
-const blocks=await ds.getBlocks({
-  from:startSlot,
-  to:endSlot,
-  fields:{
-    block:{number:true,timestamp:true},
-    transaction:{signatures:true,err:true},
-    instruction:{programId:true,accounts:true,data:true,transactionIndex:true,instructionAddress:true,isCommitted:true,error:true},
-  },
-  instructions:[{programId:[PUMP],d8:[MIGRATE_D8]}],
-});
+const STREAM='https://portal.sqd.dev/datasets/solana-mainnet/finalized-stream';
+const TRANSIENT=new Set([429,502,503,504,529]);
+const blocks=[];
+const transport=[];
+let current=startSlot;
+while(current<=endSlot){
+  const body={
+    type:'solana',
+    fromBlock:current,
+    toBlock:endSlot,
+    fields:{
+      block:{number:true,timestamp:true},
+      transaction:{signatures:true,err:true},
+      instruction:{programId:true,accounts:true,data:true,transactionIndex:true,instructionAddress:true,isCommitted:true,error:true},
+    },
+    instructions:[{programId:[PUMP],d8:[MIGRATE_D8]}],
+  };
+  let res=null;
+  for(let attempt=0;attempt<12;attempt++){
+    res=await fetch(STREAM,{method:'POST',headers:{'content-type':'application/json','accept-encoding':'gzip'},body:JSON.stringify(body)});
+    if(TRANSIENT.has(res.status)){
+      const ra=Number(res.headers.get('retry-after')||0);
+      const delay=ra>0?ra*1000:Math.min(30000,1000*(2**attempt));
+      await new Promise(r=>setTimeout(r,delay));
+      continue;
+    }
+    break;
+  }
+  if(!res) throw new Error('STREAM_NO_RESPONSE');
+  if(res.status===204) throw new Error(`SOURCE_RANGE_UNRESOLVED_HTTP_204_FROM_${current}`);
+  if(!res.ok) throw new Error(`STREAM_HTTP_${res.status}: ${(await res.text()).slice(0,500)}`);
+  const txt=await res.text();
+  const lines=txt.trim().split('\n').filter(Boolean);
+  if(lines.length===0) throw new Error(`SOURCE_RANGE_EMPTY_BATCH_FROM_${current}`);
+  let last=current-1;
+  for(const line of lines){
+    const b=JSON.parse(line);
+    const n=Number(b?.header?.number);
+    if(!Number.isInteger(n)||n<current||n>endSlot) throw new Error('STREAM_BLOCK_RANGE_FAILURE');
+    if(n<last) throw new Error('STREAM_NON_MONOTONIC');
+    last=n;
+    blocks.push(b);
+  }
+  if(last<current) throw new Error('STREAM_NO_PROGRESS');
+  transport.push({from_block:current,last_block:last,http_status:res.status,lines:lines.length});
+  current=last+1;
+}
+if(current!==endSlot+1) throw new Error('SOURCE_RANGE_NOT_COMPLETE');
 
 const byMint=new Map(candidates.map(c=>[c.mint,[]]));
 let totalMigrateInstructions=0, malformed=0, committedMigrations=0;
@@ -126,7 +161,7 @@ const counts={
 };
 const result={
   lab_id:'MSEL-002',phase:'MIGRATION_DISCOVERY_V0.1',classification,
-  source:{provider:'SQD Portal solana-mainnet',start_slot:startSlot,end_slot:endSlot,end_timestamp:endTs,blocks_returned:blocks.length,total_migrate_instructions:totalMigrateInstructions,committed_migrate_instructions:committedMigrations,cohort_migrate_evidence_rows:evidence.length},
+  source:{provider:'SQD Portal solana-mainnet finalized-stream',start_slot:startSlot,end_slot:endSlot,end_timestamp:endTs,coverage_complete:true,transport_batches:transport.length,blocks_returned:blocks.length,total_migrate_instructions:totalMigrateInstructions,committed_migrate_instructions:committedMigrations,cohort_migrate_evidence_rows:evidence.length},
   counts,
   stats:{D24,D72,bootstrap_95_ci_D24:ci,bootstrap_resamples:NBOOT,bootstrap_seed:BOOT_SEED,gate_D24_le_neg_0_10:D24<=-0.10,gate_ci_upper_lt_0:ci[1]<0,gate_D72_lt_0:D72<0},
   safety:{prices_opened:false,returns_opened:false,pnl_opened:false,market_cap_opened:false,live_trading:false,orders:false,wallets:false,exchange_mutation:false},
