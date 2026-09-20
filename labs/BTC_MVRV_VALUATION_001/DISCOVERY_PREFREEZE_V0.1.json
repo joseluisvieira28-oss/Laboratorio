@@ -1,0 +1,104 @@
+{
+  "lab_id": "BTC-MVRV-VALUATION-001",
+  "experiment_id": "BMV-30D-VALUATION-001",
+  "version": "0.1",
+  "date_frozen": "2026-09-20",
+  "branch": "btc-mvrv-valuation-v0.1",
+  "status": "FROZEN_BEFORE_FUTURE_RETURN_OPENING",
+  "economic_family": "ONCHAIN_VALUATION / REALIZED_CAP",
+  "mechanism": "MVRV compares market value with aggregate on-chain realized cost basis. A higher MVRV implies a larger aggregate unrealized-profit cushion and potentially more sell-side realization pressure; a lower MVRV implies cheaper market value relative to aggregate realized cost basis. The primary directional hypothesis is therefore contrarian: higher MVRV predicts lower subsequent BTC returns.",
+  "source": {
+    "provider": "Coin Metrics Community API v4",
+    "asset": "btc",
+    "valuation_metric": "CapMVRVCur",
+    "price_metric": "PriceUSD",
+    "frequency": "1d",
+    "warmup_start": "2018-01-01",
+    "end": "2025-12-31",
+    "authentication": "none"
+  },
+  "chronology": {
+    "discovery_signal_dates": [
+      "2019-01-01",
+      "2023-12-31"
+    ],
+    "discovery_exit_end": "2024-01-30",
+    "holdout_signal_dates": [
+      "2024-01-01",
+      "2025-12-01"
+    ],
+    "holdout_exit_end": "2025-12-31",
+    "rule": "2024-2025 holdout outcomes are not opened unless the 2019-2023 Discovery gate passes.",
+    "year_2026_locked": true
+  },
+  "predictor": {
+    "x": "ln(CapMVRVCur)",
+    "transform_reason": "Log transform is frozen before outcomes to reduce ratio skew; no rolling threshold or cycle-specific tuning is used."
+  },
+  "outcome": {
+    "horizon_days": 30,
+    "y": "ln(PriceUSD[t+30] / PriceUSD[t])",
+    "regression": "y = alpha + beta * ln(MVRV)",
+    "inference": "OLS with Newey-West/HAC maxlags=30 because 30-day forward returns overlap."
+  },
+  "discovery_diagnostics": {
+    "quintiles": "Fixed sample quintiles of ln(MVRV) computed only inside Discovery.",
+    "spread": "mean future 30d return in lowest MVRV quintile minus highest MVRV quintile",
+    "note": "Quintile spread is corroborative, not used to redefine the regression."
+  },
+  "discovery_gate": {
+    "minimum_N": 1500,
+    "beta_lt_0": true,
+    "HAC_t_lte_minus_2": true,
+    "R2_gte_0_01": true,
+    "low_minus_high_quintile_spread_gt_0": true,
+    "positive_calendar_years_for_spread_gte": 3
+  },
+  "holdout_model": {
+    "coefficients": "Frozen alpha/beta estimated on 2019-2023 Discovery only.",
+    "prediction": "alpha_discovery + beta_discovery * ln(MVRV_t)",
+    "benchmark": "constant mean 30d log return from Discovery",
+    "metrics": [
+      "OOS_R2",
+      "sign_accuracy",
+      "RMSE_model",
+      "RMSE_benchmark"
+    ],
+    "holdout_quintiles": "Use Discovery quintile cutpoints; do not recompute thresholds in holdout."
+  },
+  "holdout_gate": {
+    "minimum_N": 650,
+    "fixed_model_OOS_R2_gt_0": true,
+    "fixed_model_sign_accuracy_gt_0_50": true,
+    "frozen_low_minus_high_quintile_spread_gt_0": true,
+    "holdout_beta_lt_0_report_and_gate": true,
+    "holdout_HAC_t_lte_minus_1_645": true
+  },
+  "terminal_classes": [
+    "DISCOVERY_FAIL_NO_PROMOTION",
+    "DISCOVERY_PASS_HOLDOUT_FAIL",
+    "SURVIVES_2024_2025_HOLDOUT",
+    "INSUFFICIENT_SAMPLE",
+    "BLOCKED_SOURCE"
+  ],
+  "promotion_boundary": [
+    "SURVIVES means predictive relationship survived this holdout, not a tradable strategy and not a diamond.",
+    "Any executable strategy translation requires a new pre-freeze with costs and trading rules.",
+    "No 2026 outcomes may be opened."
+  ],
+  "no_rescue": [
+    "Do not change 30-day horizon after outcomes.",
+    "Do not switch to MVRV Z-score, FF MVRV, NUPL or reconstructed realized cap.",
+    "Do not add halving/cycle filters.",
+    "Do not change log transform.",
+    "Do not recompute holdout quintiles.",
+    "Do not open 2026 to rescue."
+  ],
+  "safety": {
+    "cash_spend_usd": 0,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "wallet_access": false,
+    "merge_to_main": false
+  }
+}
