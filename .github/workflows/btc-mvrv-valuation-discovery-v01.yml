@@ -1,0 +1,35 @@
+name: BTC MVRV 30D Valuation Discovery V0.1
+on:
+  push:
+    branches: [btc-mvrv-valuation-v0.1]
+    paths:
+      - "labs/BTC_MVRV_VALUATION_001/DISCOVERY_PREFREEZE_V0.1.json"
+      - "labs/BTC_MVRV_VALUATION_001/discovery_v01.py"
+      - ".github/workflows/btc-mvrv-valuation-discovery-v01.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  discovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: python -m pip install --disable-pip-version-check -q pandas numpy statsmodels
+      - name: Compile
+        run: python -m py_compile labs/BTC_MVRV_VALUATION_001/discovery_v01.py
+      - name: Run frozen Discovery and conditional 2024-2025 holdout
+        run: python labs/BTC_MVRV_VALUATION_001/discovery_v01.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: BTC_MVRV_VALUATION_001_DISCOVERY_V0_1
+          path: |
+            bmv_discovery_receipt_v01.json
+            bmv_final_receipt_v01.json
+            bmv_discovery_rows_v01.csv
+            bmv_holdout_rows_v01.csv
+          if-no-files-found: warn
+          retention-days: 30
