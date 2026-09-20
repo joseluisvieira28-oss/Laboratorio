@@ -6,6 +6,7 @@ on:
       - memecoin-metadata-duplication-v0.1
     paths:
       - '.github/workflows/msel002-migration-discovery-v01.yml'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/memecoin_metadata_duplication_002/source/collect_migration_discovery_v01.mjs'
   workflow_dispatch:
 
 permissions:
@@ -33,7 +34,7 @@ jobs:
           mkdir -p msel002_cohort
           gh run download 35500294196             --repo joseluisvieira28-oss/Laboratorio             --name MSEL002_ECONOMIC_COHORT_V01             --dir msel002_cohort
 
-      - name: Install pinned source client
+      - name: Install SQD source client
         run: npm install --no-save @subsquid/portal-client
 
       - name: Execute frozen migration Discovery
