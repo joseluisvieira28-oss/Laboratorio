@@ -1,0 +1,73 @@
+{
+  "lab_id": "CRYPTO-INTRAWEEK-RV-XASSET-001",
+  "mve_id": "CIRV-HAR-DOW-SOLBNB-001",
+  "version": "0.1",
+  "date_frozen": "2026-09-20",
+  "branch": "crypto-intraweek-rv-crossasset-v0.1",
+  "status": "FROZEN_EXACT_RULE_CROSS_ASSET_REPLICATION_BEFORE_OUTCOMES",
+  "parent": {
+    "lab": "CRYPTO-INTRAWEEK-RV-001",
+    "verdict": "SURVIVES_2025_HOLDOUT",
+    "canonical_run": 35500049139,
+    "rule": "SOL/BNB replication cannot rewrite or rescue the BTC/ETH result."
+  },
+  "assets": [
+    "SOLUSDT",
+    "BNBUSDT"
+  ],
+  "venue": "Binance USD-M Futures",
+  "mechanism": "Exact-rule replication of target-day weekday structure in one-day-ahead realized-variance forecasting.",
+  "exact_carryover": {
+    "realized_variance": "sum squared 5m close-to-close log returns on UTC day; accepted day >=270 returns",
+    "baseline_HAR": [
+      "intercept",
+      "log RV1",
+      "log mean RV5",
+      "log mean RV22"
+    ],
+    "HAR_DOW": "baseline plus target-day Tue-Sun dummies, Monday base",
+    "estimation": "rolling previous 730 valid feature rows; minimum 500; daily re-estimation",
+    "discovery_target_dates": [
+      "2023-01-01",
+      "2024-12-31"
+    ],
+    "holdout_2025_locked_until_discovery_pass": true,
+    "qlike_formula": "log(forecast_RV)+realized_RV/forecast_RV",
+    "log_mse_formula": "(logRV-predicted_logRV)^2",
+    "dm_lag": 7
+  },
+  "discovery_gate": {
+    "per_asset_min_N": 650,
+    "qlike_improvement_positive_both_assets": true,
+    "log_mse_improvement_positive_both_assets": true,
+    "pooled_qlike_reduction_gte": 0.01,
+    "dm_t_gte_1_645_at_least_one_asset": true,
+    "dm_t_positive_both_assets": true
+  },
+  "holdout_gate": {
+    "per_asset_min_N": 330,
+    "qlike_improvement_positive_both_assets": true,
+    "log_mse_improvement_positive_both_assets": true,
+    "pooled_qlike_reduction_gt_0": true,
+    "dm_t_positive_both_assets": true
+  },
+  "family_interpretation": {
+    "if_both_survive": "Independent cross-asset replication supports a general intraweek variance-forecast mechanism.",
+    "if_mixed": "Keep BTC/ETH L5 result; do not manufacture pooled survival.",
+    "if_both_fail": "Cross-asset generality not supported; BTC/ETH result remains valid only for those assets."
+  },
+  "no_rescue": [
+    "No model or threshold changes.",
+    "No dropping SOL or BNB after outcomes.",
+    "No 2025 opening unless exact Discovery gate passes.",
+    "No 2026 data."
+  ],
+  "safety": {
+    "cash_spend_usd": 0,
+    "pnl_opened": false,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "wallet_access": false,
+    "merge_to_main": false
+  }
+}
