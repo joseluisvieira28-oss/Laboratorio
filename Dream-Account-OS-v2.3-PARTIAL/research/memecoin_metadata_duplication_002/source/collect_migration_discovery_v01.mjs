@@ -98,13 +98,14 @@ if(current!==endSlot+1) throw new Error('SOURCE_RANGE_NOT_COMPLETE');
 const byMint=new Map(candidates.map(c=>[c.mint,[]]));
 let totalMigrateInstructions=0, malformed=0, committedMigrations=0;
 const evidence=[];
+const malformedEvidence=[];
 for(const b of blocks){
   const slot=Number(b.header.number), ts=Number(b.header.timestamp);
   const txs=b.transactions||[];
   for(const ins of (b.instructions||[])){
     totalMigrateInstructions++;
-    if(ins.programId!==PUMP || !Array.isArray(ins.accounts) || ins.accounts.length<10){malformed++; continue;}
-    if(ins.accounts[8]!==PUMP_AMM){malformed++; continue;}
+    if(ins.programId!==PUMP || !Array.isArray(ins.accounts) || ins.accounts.length<10){malformed++; malformedEvidence.push({slot,block_time:ts,reason:'PROGRAM_OR_ACCOUNTS_SHAPE',program_id:ins.programId,accounts:ins.accounts??null,data:ins.data??null,transaction_index:ins.transactionIndex??null,instruction_address:ins.instructionAddress??null,is_committed:ins.isCommitted??null,error:ins.error??null}); continue;}
+    if(ins.accounts[8]!==PUMP_AMM){malformed++; malformedEvidence.push({slot,block_time:ts,reason:'PUMP_AMM_ACCOUNT_MISMATCH',program_id:ins.programId,accounts:ins.accounts,data:ins.data??null,transaction_index:ins.transactionIndex??null,instruction_address:ins.instructionAddress??null,is_committed:ins.isCommitted??null,error:ins.error??null}); continue;}
     const mint=ins.accounts[2];
     const committed=ins.isCommitted===true && (ins.error===null || ins.error===undefined);
     if(!committed) continue;
@@ -116,7 +117,7 @@ for(const b of blocks){
     byMint.get(mint).push(rec); evidence.push(rec);
   }
 }
-if(malformed!==0) throw new Error(`MIGRATE_SCHEMA_OR_CONTINUITY_FAILURE_${malformed}`);
+if(malformed!==0){ fs.mkdirSync(outdir,{recursive:true}); fs.writeFileSync(path.join(outdir,'MSEL_002_MIGRATE_SCHEMA_DIAGNOSTIC_V0_1.json'),JSON.stringify({lab_id:'MSEL-002',classification:'MIGRATE_SCHEMA_OR_CONTINUITY_FAILURE',malformed_count:malformed,records:malformedEvidence,safety:{prices_opened:false,returns_opened:false,pnl_opened:false}},null,2)+'\n'); throw new Error(`MIGRATE_SCHEMA_OR_CONTINUITY_FAILURE_${malformed}`); }
 
 const outcomes=[];
 for(const c of candidates){
