@@ -63,7 +63,7 @@ def rpc_get_pool(endpoint:str)->tuple[bool,str|None,str|None]:
 
 def post_portal(body:dict[str,Any],stats:Counter[str])->requests.Response:
     last=None
-    for attempt in range(8):
+    for attempt in range(20):
         try:
             r=requests.post(PORTAL,json=body,timeout=(20,180),stream=True,headers={
                 "Content-Type":"application/json","Accept-Encoding":"gzip",
@@ -73,8 +73,8 @@ def post_portal(body:dict[str,Any],stats:Counter[str])->requests.Response:
                 stats["transient_retries"]+=1
                 retry=r.headers.get("Retry-After")
                 r.close()
-                if attempt<7:
-                    try: delay=float(retry) if retry else min(20.0,1.5*(2**attempt))
+                if attempt<19:
+                    try: delay=float(retry) if retry else min(60.0,1.5*(2**attempt))
                     except ValueError: delay=min(20.0,1.5*(2**attempt))
                     time.sleep(delay); continue
             r.raise_for_status()
