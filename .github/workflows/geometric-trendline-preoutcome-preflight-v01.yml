@@ -1,0 +1,93 @@
+name: Geometric Trendline Pre-Outcome Preflight V0.1
+
+on:
+  push:
+    branches:
+      - geometric-trendline-v0.1
+    paths:
+      - "research/geometric_trendline/GEOMETRIC_TRENDLINE_001_PREDISCOVERY_PROTOCOL_V0_1.md"
+      - "research/geometric_trendline/GEOMETRIC_TRENDLINE_001_IMPLEMENTATION_CLARIFICATION_V0_1_1.md"
+      - "research/geometric_trendline/GEOMETRIC_TRENDLINE_001_DISCOVERY_AUTHORIZATION_V0_1.json"
+      - "research/geometric_trendline/geometric_trendline_core_v01.py"
+      - "research/geometric_trendline/test_geometric_trendline_synthetic_v01.py"
+      - "research/geometric_trendline/geometric_trendline_discovery_v01.py"
+      - ".github/workflows/geometric-trendline-preoutcome-preflight-v01.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: geometric-trendline-v0.1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Compile frozen implementation
+        run: |
+          python -m py_compile research/geometric_trendline/geometric_trendline_core_v01.py
+          python -m py_compile research/geometric_trendline/test_geometric_trendline_synthetic_v01.py
+          python -m py_compile research/geometric_trendline/geometric_trendline_discovery_v01.py
+
+      - name: Run synthetic causal tests
+        run: python research/geometric_trendline/test_geometric_trendline_synthetic_v01.py
+
+      - name: Assert protected-period and execution firewalls
+        run: |
+          python - <<'PY'
+          import importlib.util, pathlib
+          p=pathlib.Path("research/geometric_trendline/geometric_trendline_discovery_v01.py")
+          spec=importlib.util.spec_from_file_location("gtlrunner",p)
+          m=importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+          assert (m.START_YEAR,m.START_MONTH)==(2021,1)
+          assert (m.END_YEAR,m.END_MONTH)==(2024,12)
+          assert m.EXPECTED_MONTHS==48
+          assert m.BASE=="https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1m"
+          txt=pathlib.Path("research/geometric_trendline/GEOMETRIC_TRENDLINE_001_PREDISCOVERY_PROTOCOL_V0_1.md").read_text()
+          for x in ["2025 FORBIDDEN","2026 FORBIDDEN","No live trading","No exchange mutation","No merge to main"]:
+              assert x in txt, x
+          print("FIREWALL_PREFLIGHT_PASS")
+          PY
+
+      - name: Freeze implementation hashes
+        run: |
+          python - <<'PY'
+          import hashlib,json,os,pathlib
+          files=[
+            "research/geometric_trendline/GEOMETRIC_TRENDLINE_001_PREDISCOVERY_PROTOCOL_V0_1.md",
+            "research/geometric_trendline/GEOMETRIC_TRENDLINE_001_IMPLEMENTATION_CLARIFICATION_V0_1_1.md",
+            "research/geometric_trendline/GEOMETRIC_TRENDLINE_001_DISCOVERY_AUTHORIZATION_V0_1.json",
+            "research/geometric_trendline/geometric_trendline_core_v01.py",
+            "research/geometric_trendline/test_geometric_trendline_synthetic_v01.py",
+            "research/geometric_trendline/geometric_trendline_discovery_v01.py",
+          ]
+          hashes={p:hashlib.sha256(pathlib.Path(p).read_bytes()).hexdigest() for p in files}
+          receipt={
+            "schema_version":"0.1",
+            "lab_id":"GEOMETRIC-TRENDLINE-001",
+            "status":"PREOUTCOME_PREFLIGHT_PASS",
+            "head_sha":os.environ["GITHUB_SHA"],
+            "synthetic_tests":"6/6 PASS",
+            "market_network_requests":0,
+            "market_outcomes_accessed":False,
+            "access_2025":False,
+            "access_2026":False,
+            "files_sha256":hashes,
+          }
+          out=pathlib.Path("research/geometric_trendline/GEOMETRIC_TRENDLINE_001_PREOUTCOME_LOCK_RECEIPT_V0_1.json")
+          out.write_text(json.dumps(receipt,indent=2,sort_keys=True)+"\n")
+          print(json.dumps(receipt,indent=2,sort_keys=True))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: geometric-trendline-preoutcome-lock-v01
+          path: research/geometric_trendline/GEOMETRIC_TRENDLINE_001_PREOUTCOME_LOCK_RECEIPT_V0_1.json
+          if-no-files-found: error
