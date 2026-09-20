@@ -105,10 +105,10 @@ for(const b of blocks){
   for(const ins of (b.instructions||[])){
     totalMigrateInstructions++;
     if(ins.programId!==PUMP || !Array.isArray(ins.accounts) || ins.accounts.length<10){malformed++; malformedEvidence.push({slot,block_time:ts,reason:'PROGRAM_OR_ACCOUNTS_SHAPE',program_id:ins.programId,accounts:ins.accounts??null,data:ins.data??null,transaction_index:ins.transactionIndex??null,instruction_address:ins.instructionAddress??null,is_committed:ins.isCommitted??null,error:ins.error??null}); continue;}
-    if(ins.accounts[8]!==PUMP_AMM){malformed++; malformedEvidence.push({slot,block_time:ts,reason:'PUMP_AMM_ACCOUNT_MISMATCH',program_id:ins.programId,accounts:ins.accounts,data:ins.data??null,transaction_index:ins.transactionIndex??null,instruction_address:ins.instructionAddress??null,is_committed:ins.isCommitted??null,error:ins.error??null}); continue;}
-    const mint=ins.accounts[2];
     const committed=ins.isCommitted===true && (ins.error===null || ins.error===undefined);
     if(!committed) continue;
+    if(ins.accounts[8]!==PUMP_AMM){malformed++; malformedEvidence.push({slot,block_time:ts,reason:'COMMITTED_PUMP_AMM_ACCOUNT_MISMATCH',program_id:ins.programId,accounts:ins.accounts,data:ins.data??null,transaction_index:ins.transactionIndex??null,instruction_address:ins.instructionAddress??null,is_committed:ins.isCommitted??null,error:ins.error??null}); continue;}
+    const mint=ins.accounts[2];
     committedMigrations++;
     if(!byMint.has(mint)) continue;
     const ti=Number(ins.transactionIndex);
