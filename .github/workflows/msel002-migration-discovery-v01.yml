@@ -1,0 +1,50 @@
+name: MSEL-002 Migration Discovery V0.1
+
+on:
+  push:
+    branches:
+      - memecoin-metadata-duplication-v0.1
+    paths:
+      - '.github/workflows/msel002-migration-discovery-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  discovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout frozen branch
+        uses: actions/checkout@v4
+
+      - name: Verify frozen implementation
+        run: |
+          test -f Dream-Account-OS-v2.3-PARTIAL/research/memecoin_metadata_duplication_002/MSEL_002_ECONOMIC_OUTCOME_FREEZE_V01.md
+          test -f Dream-Account-OS-v2.3-PARTIAL/research/memecoin_metadata_duplication_002/MSEL_002_MIGRATION_DISCOVERY_IMPLEMENTATION_FREEZE_V01.md
+          node --check Dream-Account-OS-v2.3-PARTIAL/research/memecoin_metadata_duplication_002/source/collect_migration_discovery_v01.mjs
+
+      - name: Download exact frozen cohort
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p msel002_cohort
+          gh run download 35500294196             --repo joseluisvieira28-oss/Laboratorio             --name MSEL002_ECONOMIC_COHORT_V01             --dir msel002_cohort
+
+      - name: Install pinned source client
+        run: npm install --no-save @subsquid/portal-client
+
+      - name: Execute frozen migration Discovery
+        run: |
+          node Dream-Account-OS-v2.3-PARTIAL/research/memecoin_metadata_duplication_002/source/collect_migration_discovery_v01.mjs             msel002_cohort/MSEL_002_ECONOMIC_COHORT_V0_1.json             msel002_migration_discovery_output
+
+      - name: Upload immutable Discovery artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: MSEL002_MIGRATION_DISCOVERY_V01
+          path: msel002_migration_discovery_output/
+          if-no-files-found: warn
+          retention-days: 30
