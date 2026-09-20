@@ -1,0 +1,187 @@
+name: PMD-001 V076 Complete Artifact Pagination Recovery
+
+on:
+  push:
+    branches: [pumpfun-migration-direction-v0.1]
+    paths:
+      - '.github/workflows/pmd-v076-complete-artifact-pagination.yml'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/V076_COMPLETE_ARTIFACT_PAGINATION_REMEDIATION.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  stitch-and-source-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    outputs:
+      passed: ${{ steps.gate.outputs.passed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pumpfun-migration-direction-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install source dependencies
+        run: python -m pip install --upgrade pip duckdb huggingface_hub requests solders pytz
+      - name: Download exact frozen manifest from V075
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p missing-four-manifest
+          gh run download 35389095184 --repo joseluisvieira28-oss/Laboratorio             --name PMD-001-v075-missing-four-manifest --dir missing-four-manifest
+      - name: Enumerate and download ALL immutable V074 primary shards
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p primary-source
+          gh api --paginate             -H 'Accept: application/vnd.github+json'             '/repos/joseluisvieira28-oss/Laboratorio/actions/runs/35320091340/artifacts?per_page=100'             --jq '.artifacts[] | select(.name | startswith("PMD-001-v074-fullsource-shard-")) | [.id,.name] | @tsv'             | sort -t$'\t' -k2,2 > primary_artifacts.tsv
+          python - <<'PY'
+          from pathlib import Path
+          rows=[]
+          for line in Path("primary_artifacts.tsv").read_text().splitlines():
+              aid,name=line.split("\t")
+              sid=int(name.rsplit("-",1)[1])
+              rows.append((int(aid),name,sid))
+          assert len(rows)==252, len(rows)
+          ids={x[2] for x in rows}
+          expected=set(range(253))-{250}
+          assert ids==expected, {"missing":sorted(expected-ids),"unexpected":sorted(ids-expected)}
+          print({"primary_artifacts":len(rows),"missing_shard":[250]})
+          PY
+          while IFS=$'\t' read -r aid name; do
+            mkdir -p "primary-source/$name"
+            gh api -H 'Accept: application/vnd.github+json'               "/repos/joseluisvieira28-oss/Laboratorio/actions/artifacts/$aid/zip" > /tmp/pmd_artifact.zip
+            unzip -q /tmp/pmd_artifact.zip -d "primary-source/$name"
+          done < primary_artifacts.tsv
+      - name: Download exact V075 missing-four recoveries
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p missing-four-source
+          for i in 1000 1001 1002 1003; do
+            gh run download 35389095184 --repo joseluisvieira28-oss/Laboratorio               --name "PMD-001-v075-missing-four-index-$i"               --dir "missing-four-source/PMD-001-v075-missing-four-index-$i"
+          done
+      - name: Stitch exact 1012-row corpus
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001
+        run: |
+          python stitch_chain_exact_source_v074.py             --manifest "$GITHUB_WORKSPACE/missing-four-manifest/pmd_source_rebuild_manifest_v01.jsonl"             --primary-root "$GITHUB_WORKSPACE/primary-source"             --rescue-root "$GITHUB_WORKSPACE/missing-four-source"             --out-dir "$GITHUB_WORKSPACE/stitched-source"
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          r=json.loads((Path(os.environ["GITHUB_WORKSPACE"])/"stitched-source/source_stitch_v074_receipt.json").read_text())
+          assert r["manifest_rows"]==1012
+          assert r["stitched_rows"]==1012
+          assert r["unique_mints"]==1012
+          assert r["full_summary_reconciled"] is True
+          assert r["full_raw_reconciled"] is True
+          assert r["economic_outcomes_opened"] is False
+          print(json.dumps({k:r[k] for k in ["stitched_rows","source_complete_rows","feature_source_eligible_rows","full_raw_reconciled"]},indent=2))
+          PY
+      - name: Apply unchanged V074 Source Gate
+        id: gate
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001
+        run: |
+          set +e
+          python aggregate_chain_exact_source_gate_v074_distributed.py             --input-root "$GITHUB_WORKSPACE/stitched-source"             --manifest "$GITHUB_WORKSPACE/missing-four-manifest/pmd_source_rebuild_manifest_v01.jsonl"             --out-dir "$GITHUB_WORKSPACE/source-gate-v076"
+          RC=$?
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          p=Path(os.environ["GITHUB_WORKSPACE"])/"source-gate-v076/chain_exact_source_gate_v074_receipt.json"
+          if not p.exists(): raise SystemExit("source-gate receipt missing")
+          r=json.loads(p.read_text())
+          assert r["economic_outcomes_opened"] is False
+          passed=r.get("verdict")=="CHAIN_EXACT_SOURCE_GATE_V074_PASS"
+          with open(os.environ["GITHUB_OUTPUT"],"a") as f:
+              f.write("passed="+("true" if passed else "false")+"\n")
+          print(json.dumps(r,indent=2,sort_keys=True))
+          PY
+          exit 0
+      - name: Upload immutable full source and gate
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: PMD-001-v076-full-source-and-gate
+          retention-days: 30
+          compression-level: 9
+          path: |
+            stitched-source/
+            source-gate-v076/
+
+  features-v0121:
+    needs: stitch-and-source-gate
+    if: ${{ needs.stitch-and-source-gate.outputs.passed == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pumpfun-migration-direction-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --upgrade pip requests solders
+      - uses: actions/download-artifact@v4
+        with:
+          name: PMD-001-v076-full-source-and-gate
+          path: v076-source
+      - name: Extract unchanged frozen V0121 features
+        working-directory: Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001
+        run: |
+          python extract_chain_exact_features_v0121.py             --input-root "$GITHUB_WORKSPACE/v076-source/stitched-source"             --out-dir "$GITHUB_WORKSPACE/features-v0121"
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          r=json.loads((Path(os.environ["GITHUB_WORKSPACE"])/"features-v0121/chain_exact_features_v012_receipt.json").read_text())
+          assert r["economic_outcomes_opened"] is False
+          assert r["promotion_authority"] is False
+          assert r["summary_rows"]==1012 and r["unique_mints"]==1012
+          assert r.get("decoder_version")=="V0121_OFFICIAL_IDL_QUOTE_AWARE"
+          print(json.dumps(r,indent=2,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PMD-001-v076-chain-exact-features-v0121
+          retention-days: 30
+          path: features-v0121/
+
+  evaluate-v0121:
+    needs: features-v0121
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pumpfun-migration-direction-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --upgrade pip pandas numpy scipy
+      - uses: actions/download-artifact@v4
+        with:
+          name: PMD-001-v076-chain-exact-features-v0121
+          path: features-v0121
+      - name: Download already-opened frozen V08 outcomes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p outcomes-v08
+          gh run download 35150072032 --repo joseluisvieira28-oss/Laboratorio             --name PMD-001-exploratory-outcomes-v08 --dir outcomes-v08
+      - name: Apply unchanged V0121 replication-candidate gate
+        run: |
+          FEATURES=$(find features-v0121 -name chain_exact_features_v012.jsonl -print -quit)
+          OUTCOMES=$(find outcomes-v08 -name v08_frozen_t0_baseline_outcomes.csv -print -quit)
+          test -n "$FEATURES" && test -n "$OUTCOMES"
+          python Dream-Account-OS-v2.3-PARTIAL/research/pumpfun_migration_direction_001/evaluate_chain_exact_features_v0121.py             --features "$FEATURES" --outcomes "$OUTCOMES" --out v0121_evaluation_v076.json
+          cat v0121_evaluation_v076.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: PMD-001-v076-chain-exact-evaluation-v0121
+          retention-days: 30
+          path: v0121_evaluation_v076.json
