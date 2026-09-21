@@ -18,6 +18,7 @@ _ALLOWED_POST_PATHS = {
     "/api/v1/private/position/change_leverage",
     "/api/v1/private/position/change_auto_add_im",
     "/api/v1/private/order/create",
+    "/api/v1/private/order/cancel_with_external",
 }
 
 
@@ -25,7 +26,7 @@ class MEXCTradeTransportError(RuntimeError):
     pass
 
 
-def _canonical_post_body(payload: dict[str, Any]) -> str:
+def _canonical_post_body(payload: Any) -> str:
     # MEXC signs the exact JSON string used as the POST body.
     return json.dumps(payload, separators=(",", ":"), ensure_ascii=False)
 
@@ -72,7 +73,7 @@ class MEXCFuturesMutationTransport:
         self._clock_ms = clock_ms or (lambda: int(time.time_ns() / 1_000_000))
         self._opener = opener
 
-    def _post_json(self, path: str, payload: dict[str, Any]) -> Any:
+    def _post_json(self, path: str, payload: Any) -> Any:
         parsed = urlparse(path)
         if parsed.scheme or parsed.netloc:
             raise MEXCTradeTransportError("absolute URLs are forbidden")
@@ -176,6 +177,24 @@ class MEXCFuturesMutationTransport:
                 "isEnabled": False,
             },
         )
+
+    def cancel_by_external(
+        self,
+        *,
+        symbol: str,
+        external_oid: str,
+    ) -> list[dict[str, Any]]:
+        if symbol != "BTC_USDT":
+            raise MEXCTradeTransportError("only BTC_USDT is allowlisted in V0.2")
+        if not EXTERNAL_OID_RE.fullmatch(external_oid):
+            raise MEXCTradeTransportError("invalid external_oid")
+        data = self._post_json(
+            "/api/v1/private/order/cancel_with_external",
+            [{"symbol": symbol, "externalOid": external_oid}],
+        )
+        if not isinstance(data, list):
+            raise MEXCTradeTransportError("cancel response missing list")
+        return data
 
     def submit_market_order(
         self,
