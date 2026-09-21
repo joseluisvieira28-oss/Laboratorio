@@ -40,6 +40,9 @@ def spot_exchange_info(symbol: str) -> dict:
         "base_asset_precision": row.get("baseAssetPrecision"),
         "quote_asset_precision": row.get("quoteAssetPrecision"),
         "quote_amount_precision": row.get("quoteAmountPrecision"),
+        "quote_amount_precision_market": row.get("quoteAmountPrecisionMarket"),
+        "max_quote_amount": row.get("maxQuoteAmount"),
+        "max_quote_amount_market": row.get("maxQuoteAmountMarket"),
         "base_size_precision": row.get("baseSizePrecision"),
         "permissions": row.get("permissions"),
         "order_types": row.get("orderTypes"),
@@ -48,7 +51,8 @@ def spot_exchange_info(symbol: str) -> dict:
         "raw_selected": {
             k: row.get(k) for k in (
                 "symbol","status","baseAsset","quoteAsset","baseAssetPrecision",
-                "quoteAssetPrecision","quoteAmountPrecision","baseSizePrecision",
+                "quoteAssetPrecision","quoteAmountPrecision","quoteAmountPrecisionMarket",
+                "maxQuoteAmount","maxQuoteAmountMarket","baseSizePrecision",
                 "isSpotTradingAllowed","permissions","orderTypes"
             )
         },
@@ -118,15 +122,29 @@ def extract_spot_minimum(info: dict, book: dict) -> dict:
         if isinstance(min_notional_filter,dict)
         else None
     )
+    # MEXC Spot V3 documents quoteAmountPrecision as min order amount,
+    # and quoteAmountPrecisionMarket as the market-order minimum when present.
+    documented_min_quote = decimal_or_none(info.get("quote_amount_precision"))
+    documented_market_min_quote = decimal_or_none(info.get("quote_amount_precision_market"))
     ask=book["ask"]
     quantity_implied = min_qty * ask if min_qty is not None else None
-    candidates=[x for x in (min_notional,quantity_implied) if x is not None and x>0]
+    candidates=[
+        x for x in (
+            min_notional,
+            documented_min_quote,
+            documented_market_min_quote,
+            quantity_implied,
+        )
+        if x is not None and x>0
+    ]
     min_quote=max(candidates) if candidates else None
     return {
         "determinable": min_quote is not None,
         "minimum_quantity": min_qty,
         "quantity_step": step,
         "minimum_notional_filter_quote": min_notional,
+        "documented_min_order_quote": documented_min_quote,
+        "documented_market_min_order_quote": documented_market_min_quote,
         "minimum_quote_from_quantity_at_ask": quantity_implied,
         "minimum_executable_quote_estimate": min_quote,
         "quote_asset": info.get("quote_asset"),
