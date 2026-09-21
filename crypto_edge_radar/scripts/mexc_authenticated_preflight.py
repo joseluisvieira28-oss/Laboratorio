@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -16,7 +17,12 @@ def main() -> int:
     try:
         credentials = MEXCCredentials.from_env()
         client = MEXCFuturesAuthenticatedReadOnlyClient(credentials)
-        result = run_authenticated_preflight(private_client=client)
+        expected_raw = os.getenv("MEXC_EXPECTED_FUTURES_EQUITY_USDT", "").strip()
+        expected_equity = float(expected_raw) if expected_raw else None
+        result = run_authenticated_preflight(
+            private_client=client,
+            expected_equity_usdt=expected_equity,
+        )
     except Exception as exc:
         result = {
             "preflight_id": "MEXC_FUTURES_AUTHENTICATED_READ_ONLY_PREFLIGHT_V0.1",
