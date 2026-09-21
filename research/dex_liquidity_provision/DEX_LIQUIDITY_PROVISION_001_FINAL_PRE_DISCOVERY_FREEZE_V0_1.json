@@ -1,0 +1,162 @@
+{
+  "document_type": "DEX_LIQUIDITY_PROVISION_FINAL_PRE_DISCOVERY_FREEZE",
+  "version": "0.1",
+  "freeze_date_utc": "2026-09-21",
+  "lab_id": "DEX-LIQUIDITY-PROVISION-001",
+  "status": "FROZEN_BEFORE_ECONOMIC_FIELD_ACCESS",
+  "source_binding": {
+    "source_gate_run_id": 35530732777,
+    "source_gate_artifact_id": 10612116802,
+    "source_gate_artifact_digest": "sha256:918112067a536cee820e62fec1f91dba89b65861b3bb119688aae544ce3d2021",
+    "source_gate_verdict": "SOURCE_DATA_PASS",
+    "chain": "ethereum-mainnet",
+    "portal_dataset": "https://portal.sqd.dev/datasets/ethereum-mainnet",
+    "pool": "0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640",
+    "factory": "0x1f98431c8ad98523631ae4a59f267346ea31f984",
+    "pair": "USDC/WETH",
+    "fee_tier": 500,
+    "uniswap_v3_core_commit": "d0831dc6b8a318df3872b6d68f6de135c9f3ec29",
+    "abi_interface_path": "contracts/interfaces/pool/IUniswapV3PoolEvents.sol"
+  },
+  "mechanism": {
+    "family": "MICRO_VOL",
+    "hypothesis": "Withdrawal-dominant Uniswap V3 LP flow over the previous 6 hours predicts higher realized pool-price volatility over the next 6 hours.",
+    "predicted_sign": "POSITIVE_WITHDRAWAL_SCORE_TO_FUTURE_RV",
+    "strategy_claim": false
+  },
+  "event_decode": {
+    "mint": {
+      "signature": "Mint(address,address,int24,int24,uint128,uint256,uint256)",
+      "liquidity_amount": "nonindexed data word 1, uint128"
+    },
+    "burn": {
+      "signature": "Burn(address,int24,int24,uint128,uint256,uint256)",
+      "liquidity_amount": "nonindexed data word 0, uint128"
+    },
+    "swap": {
+      "signature": "Swap(address,address,int256,int256,uint160,uint128,int24)",
+      "sqrtPriceX96": "nonindexed data word 2, uint160",
+      "price_log_definition": "2 * ln(sqrtPriceX96 / 2^96)",
+      "note": "token orientation is irrelevant for realized-volatility magnitude"
+    }
+  },
+  "observation": {
+    "cadence": "6H_UTC_NONOVERLAPPING",
+    "anchor_hours_utc": [
+      0,
+      6,
+      12,
+      18
+    ],
+    "feature_window": "[t-6h,t)",
+    "outcome_window": "[t,t+6h)",
+    "lp_feature": {
+      "mint_liquidity": "sum Mint liquidity amount in feature window",
+      "burn_liquidity": "sum Burn liquidity amount in feature window",
+      "gross_liquidity_flow": "mint_liquidity + burn_liquidity",
+      "withdrawal_score": "(burn_liquidity - mint_liquidity) / gross_liquidity_flow",
+      "eligible": "gross_liquidity_flow > 0"
+    },
+    "future_volatility": {
+      "price_series": "last Swap sqrtPriceX96 observed in each UTC minute",
+      "return_series": "log-price difference only for adjacent minute snapshots exactly 60 seconds apart",
+      "minimum_adjacent_minute_returns": 330,
+      "rv6h_bps": "sqrt(sum(one_minute_log_return^2)) * 10000",
+      "annualization": false
+    }
+  },
+  "split": {
+    "discovery": {
+      "start_utc": "2022-01-01T00:00:00Z",
+      "end_exclusive_utc": "2024-01-01T00:00:00Z",
+      "years": [
+        2022,
+        2023
+      ]
+    },
+    "replication": {
+      "start_utc": "2024-01-01T00:00:00Z",
+      "end_exclusive_utc": "2025-01-01T00:00:00Z",
+      "years": [
+        2024
+      ],
+      "open_only_if_discovery_passes": true
+    },
+    "protected": {
+      "years": [
+        2025,
+        2026
+      ],
+      "access": false
+    }
+  },
+  "inference": {
+    "primary_statistic": "Spearman rank correlation between withdrawal_score and future rv6h_bps",
+    "tail_statistic": "median future rv6h_bps in withdrawal-score top quintile divided by bottom quintile",
+    "quintiles": "phase-wide empirical 20th and 80th percentile thresholds; low <= q20, high >= q80",
+    "bootstrap": {
+      "unit": "UTC calendar day block",
+      "resamples": 10000,
+      "seed": 20260921,
+      "confidence": 0.95,
+      "statistics": [
+        "spearman_rho",
+        "q5_q1_median_rv_ratio"
+      ]
+    },
+    "quarter_stability": "Spearman rho computed independently by UTC calendar quarter"
+  },
+  "gates": {
+    "discovery_all_required": {
+      "eligible_observations_gte": 2000,
+      "spearman_rho_gte": 0.05,
+      "bootstrap_95_lower_spearman_rho_gt": 0,
+      "q5_q1_median_rv_ratio_gte": 1.1,
+      "bootstrap_95_lower_q5_q1_ratio_gt": 1,
+      "positive_quarter_rho_count_gte": 6,
+      "total_quarters_eq": 8,
+      "minimum_quarter_rho_gt": -0.05,
+      "source_integrity_failures_eq": 0
+    },
+    "replication_all_required": {
+      "eligible_observations_gte": 1000,
+      "spearman_rho_gte": 0.025,
+      "bootstrap_95_lower_spearman_rho_gt": 0,
+      "q5_q1_median_rv_ratio_gte": 1.05,
+      "bootstrap_95_lower_q5_q1_ratio_gt": 1,
+      "positive_quarter_rho_count_gte": 3,
+      "total_quarters_eq": 4,
+      "minimum_quarter_rho_gt": -0.05,
+      "source_integrity_failures_eq": 0
+    }
+  },
+  "classifications": [
+    "DISCOVERY_DATA_FAILURE",
+    "DISCOVERY_INSUFFICIENT_SAMPLE",
+    "DISCOVERY_NO_EDGE",
+    "DISCOVERY_SURVIVES",
+    "REPLICATION_DATA_FAILURE",
+    "REPLICATION_INSUFFICIENT_SAMPLE",
+    "REPLICATION_FAIL",
+    "REPLICATION_SURVIVES"
+  ],
+  "firewalls": {
+    "no_parameter_search": true,
+    "no_horizon_search": true,
+    "no_pool_search": true,
+    "no_regime_filter": true,
+    "no_direction_flip": true,
+    "no_post_outcome_tuning": true,
+    "no_2025": true,
+    "no_2026": true,
+    "no_live_trading": true,
+    "no_orders": true,
+    "no_wallets": true,
+    "no_exchange_mutation": true,
+    "no_main_merge": true,
+    "no_render": true,
+    "no_pnl": true,
+    "no_strategy_promotion_from_discovery_alone": true
+  },
+  "post_replication_rule": "REPLICATION_SURVIVES authorizes only a separately frozen execution/shadow protocol. It does not itself create a trading cana, Tier promotion, capital authority or live-trading authority."
+}
