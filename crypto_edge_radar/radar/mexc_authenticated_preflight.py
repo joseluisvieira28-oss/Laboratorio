@@ -111,6 +111,7 @@ def run_authenticated_preflight(
     clock_ms = clock_ms or (lambda: time.time_ns() / 1_000_000.0)
 
     blockers: list[str] = []
+    candidate_blockers: list[str] = []
     warnings: list[str] = []
     checks: dict[str, Any] = {}
 
@@ -386,7 +387,9 @@ def run_authenticated_preflight(
             "no_trade_if_minimum_exceeds_budget": True,
         }
         if not feasible:
-            blockers.append("ETF_CME_VENUE_MIN_NOTIONAL_EXCEEDS_FROZEN_VALIDATION_BUDGET")
+            candidate_blockers.append(
+                "ETF_CME_VENUE_MIN_NOTIONAL_EXCEEDS_FROZEN_VALIDATION_BUDGET"
+            )
 
     # No open position means margin type and Auto Margin Add do not exist as active
     # position state. We refuse to convert the operator UI selector into account truth.
@@ -430,7 +433,15 @@ def run_authenticated_preflight(
             "api_secret_returned_in_receipt": False,
         },
     )
-    return result.to_dict()
+    out = result.to_dict()
+    out["candidate_feasibility"] = {
+        "ETF-CME-INSTFLOW-001": {
+            "pass": len(candidate_blockers) == 0,
+            "status": "PASS" if not candidate_blockers else "BLOCKED",
+            "blockers": candidate_blockers,
+        }
+    }
+    return out
 
 
 def sanitized_json(result: dict[str, Any]) -> str:
