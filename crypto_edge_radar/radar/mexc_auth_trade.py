@@ -183,18 +183,17 @@ class MEXCFuturesMutationTransport:
         *,
         symbol: str,
         external_oid: str,
-    ) -> list[dict[str, Any]]:
+    ) -> Any:
         if symbol != "BTC_USDT":
             raise MEXCTradeTransportError("only BTC_USDT is allowlisted in V0.2")
         if not EXTERNAL_OID_RE.fullmatch(external_oid):
             raise MEXCTradeTransportError("invalid external_oid")
-        data = self._post_json(
+        # Current/legacy MEXC contract documentation agrees this endpoint
+        # accepts one object, unlike the batch cancel endpoint.
+        return self._post_json(
             "/api/v1/private/order/cancel_with_external",
-            [{"symbol": symbol, "externalOid": external_oid}],
+            {"symbol": symbol, "externalOid": external_oid},
         )
-        if not isinstance(data, list):
-            raise MEXCTradeTransportError("cancel response missing list")
-        return data
 
     def submit_market_order(
         self,
