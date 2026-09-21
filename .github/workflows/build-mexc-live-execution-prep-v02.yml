@@ -1,0 +1,142 @@
+name: BUILD MEXC LIVE EXECUTION PREP V0.2 CURRENT API
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - mexc-live-execution-prep-v0.2-current-api
+    paths:
+      - 'crypto_edge_radar/radar/mexc_*'
+      - 'crypto_edge_radar/scripts/mexc_*'
+      - 'crypto_edge_radar/tests/test_mexc_*'
+      - 'crypto_edge_radar/windows/Run_MEXC_Ready_Check_V02.ps1'
+      - 'crypto_edge_radar/windows/Run_MEXC_Authenticated_Preflight.ps1'
+      - 'crypto_edge_radar/windows/Set_MEXC_Preflight_Secrets.ps1'
+      - 'crypto_edge_radar/ETF_CME_INSTFLOW_001_MICRO_LIVE_EXECUTION_AUTHORITY_TEMPLATE_V0.2.json'
+      - 'crypto_edge_radar/MEXC_LIVE_EXECUTION_V02_OPERATOR_GUIDE.md'
+      - '.github/workflows/build-mexc-live-execution-prep-v02.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test-build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: crypto_edge_radar
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install
+        run: |
+          python -m pip install -e .
+          python -m pip install "pyinstaller>=6,<7"
+
+      - name: Compile current MEXC modules
+        run: |
+          python -m compileall radar scripts tests
+
+      - name: Run all MEXC safety tests
+        run: |
+          python -m unittest discover -s tests -p "test_mexc_*.py" -v
+
+      - name: Verify V0.2 template cannot authorize a live order
+        shell: pwsh
+        run: |
+          $a=Get-Content ETF_CME_INSTFLOW_001_MICRO_LIVE_EXECUTION_AUTHORITY_TEMPLATE_V0.2.json | ConvertFrom-Json
+          if ($a.status -ne "TEMPLATE_NOT_AUTHORITY") { throw "V0.2 template unexpectedly active" }
+          if ($a.orders_authorized_by_this_template) { throw "V0.2 template authorizes orders" }
+          if ($a.api_place_order_path -ne "/api/v1/private/order/create") { throw "stale place-order API path" }
+          if ($a.leverage -ne 1) { throw "template leverage not exactly 1x" }
+          if ($a.margin_mode -ne "ISOLATED") { throw "template margin mode not isolated" }
+          if ($a.position_mode -ne 1) { throw "template position mode not hedge" }
+
+      - name: Static mutation-surface safety check
+        shell: pwsh
+        run: |
+          $src=Get-Content radar\mexc_auth_trade.py -Raw
+          foreach ($forbidden in @(
+            "/api/v1/private/account/transfer",
+            "/api/v1/private/account/withdraw",
+            "/api/v1/private/order/submit"
+          )) {
+            if ($src.Contains($forbidden)) { throw "forbidden/stale mutation endpoint present: $forbidden" }
+          }
+          foreach ($required in @(
+            "/api/v1/private/order/create",
+            "/api/v1/private/order/cancel_with_external",
+            "/api/v1/private/position/change_leverage",
+            "/api/v1/private/position/change_auto_add_im"
+          )) {
+            if (-not $src.Contains($required)) { throw "required current endpoint missing: $required" }
+          }
+
+      - name: PowerShell syntax validation
+        shell: pwsh
+        run: |
+          foreach ($s in @(
+            "windows\Set_MEXC_Preflight_Secrets.ps1",
+            "windows\Run_MEXC_Authenticated_Preflight.ps1",
+            "windows\Run_MEXC_Ready_Check_V02.ps1"
+          )) {
+            $errors=$null
+            [void][System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $s),[ref]$null,[ref]$errors)
+            if ($errors.Count -gt 0) { $errors | Format-List; throw "PowerShell syntax failure: $s" }
+          }
+
+      - name: Build authenticated preflight
+        run: |
+          pyinstaller --clean --onefile --name MEXCAuthenticatedPreflight --paths . scripts/mexc_authenticated_preflight.py
+
+      - name: Build risk-state generator
+        run: |
+          pyinstaller --clean --onefile --name MEXCRiskState --paths . scripts/mexc_risk_state.py
+
+      - name: Build live executor
+        run: |
+          pyinstaller --clean --onefile --name MEXCLiveExecutor --paths . scripts/mexc_live_executor.py
+
+      - name: Build exit guard
+        run: |
+          pyinstaller --clean --onefile --name MEXCExitGuard --paths . scripts/mexc_exit_guard.py
+
+      - name: Hash binaries
+        shell: pwsh
+        run: |
+          foreach ($exe in @(
+            "MEXCAuthenticatedPreflight.exe",
+            "MEXCRiskState.exe",
+            "MEXCLiveExecutor.exe",
+            "MEXCExitGuard.exe"
+          )) {
+            $hash=(Get-FileHash (Join-Path "dist" $exe) -Algorithm SHA256).Hash.ToLower()
+            "$exe sha256=$hash" | Tee-Object -FilePath (Join-Path "dist" ($exe+".sha256.txt"))
+          }
+
+      - name: Assemble V0.2 Windows bundle
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path bundle\dist | Out-Null
+          New-Item -ItemType Directory -Force -Path bundle\windows | Out-Null
+          Copy-Item dist\MEXCAuthenticatedPreflight.exe bundle\dist\
+          Copy-Item dist\MEXCRiskState.exe bundle\dist\
+          Copy-Item dist\MEXCLiveExecutor.exe bundle\dist\
+          Copy-Item dist\MEXCExitGuard.exe bundle\dist\
+          Copy-Item dist\*.sha256.txt bundle\dist\
+          Copy-Item windows\Set_MEXC_Preflight_Secrets.ps1 bundle\windows\
+          Copy-Item windows\Run_MEXC_Authenticated_Preflight.ps1 bundle\windows\
+          Copy-Item windows\Run_MEXC_Ready_Check_V02.ps1 bundle\windows\
+          Copy-Item ETF_CME_INSTFLOW_001_MICRO_LIVE_EXECUTION_AUTHORITY_TEMPLATE_V0.2.json bundle\
+          Copy-Item MEXC_LIVE_EXECUTION_V02_OPERATOR_GUIDE.md bundle\
+
+      - name: Upload V0.2 bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: mexc-live-execution-prep-v02-current-api
+          path: crypto_edge_radar/bundle/**
+          retention-days: 14
+          if-no-files-found: error
