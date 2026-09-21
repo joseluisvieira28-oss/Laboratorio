@@ -11,7 +11,7 @@ import tempfile
 from datetime import date
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[1]
 CFG = {"family":"A_MOMENTUM","symbol":"AVAXUSDT","lookback":20,"horizon":1,"direction":"CONTINUATION"}
 BASE_COST = 14.0
 STRESS_COST = 20.0
