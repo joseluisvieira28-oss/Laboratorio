@@ -1,0 +1,100 @@
+name: ETH Staking V3 — Stage-A V0.1.4 Audit Rerun
+
+on:
+  push:
+    branches:
+      - eth-staking-flow-v3-status-audit-2026-09-21
+    paths:
+      - '.github/workflows/eth-staking-flow-v3-stagea-v014-audit-rerun.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  source-only-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: eth-staking-flow-v3-status-audit-2026-09-21
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Bind frozen authority and source-only runner
+        run: |
+          test -f research/eth_staking_flow/ETH_STAKING_FLOW_001_V3_STAGEA_BEACON_STATE_SOURCE_REMEDIATION_V0_1_4.md
+          test -f research/eth_staking_flow/ETH_STAKING_FLOW_001_V3_INDEPENDENT_REPLICATION_AUTHORITY_V0_1.md
+          python -m py_compile research/eth_staking_flow/v3_stagea_beacon_state_source_remediation_v014.py
+          echo "AUTHORITY_BLOB=$(git hash-object research/eth_staking_flow/ETH_STAKING_FLOW_001_V3_STAGEA_BEACON_STATE_SOURCE_REMEDIATION_V0_1_4.md)"
+          echo "RUNNER_BLOB=$(git hash-object research/eth_staking_flow/v3_stagea_beacon_state_source_remediation_v014.py)"
+
+      - name: Install source dependency
+        run: pip install --disable-pip-version-check requests
+
+      - name: Execute exact frozen source-only probe
+        id: probe
+        shell: bash
+        run: |
+          set +e
+          python research/eth_staking_flow/v3_stagea_beacon_state_source_remediation_v014.py
+          rc=$?
+          set -e
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          test -f eth_staking_beacon_remediation_output/ETH_STAKING_FLOW_001_V3_STAGEA_BEACON_REMEDIATION_V0_1_4.json
+
+      - name: Enforce hard outcome firewall
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('eth_staking_beacon_remediation_output/ETH_STAKING_FLOW_001_V3_STAGEA_BEACON_REMEDIATION_V0_1_4.json')
+          x=json.loads(p.read_text())
+          s=x['safety']
+          for k in ['signal_evaluated','market_prices_opened','returns_opened','pnl_opened','live_trading','orders','wallets','exchange_mutation','source_after_2026_08_31_opened']:
+              assert s[k] is False,(k,s[k])
+          assert set(x['control_dates'])=={'2025-02-24','2025-03-02','2025-10-17'}
+          assert set(x['missing_dates'])=={'2025-02-25','2025-02-26','2025-02-27','2025-02-28','2025-03-01','2025-10-18','2025-10-19'}
+          print('SOURCE_ONLY_FIREWALL_PASS',x['classification'])
+          PY
+
+      - name: Persist immutable audit receipt on isolated branch
+        env:
+          PROBE_RC: ${{ steps.probe.outputs.rc }}
+        run: |
+          mkdir -p research/eth_staking_flow/audit_receipts
+          cp eth_staking_beacon_remediation_output/ETH_STAKING_FLOW_001_V3_STAGEA_BEACON_REMEDIATION_V0_1_4.json \
+             research/eth_staking_flow/audit_receipts/ETH_STAKING_FLOW_001_V3_STAGEA_BEACON_REMEDIATION_V0_1_4_2026_09_21.json
+          python - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+          p=Path('research/eth_staking_flow/audit_receipts/ETH_STAKING_FLOW_001_V3_STAGEA_BEACON_REMEDIATION_V0_1_4_2026_09_21.json')
+          x=json.loads(p.read_text())
+          m={
+            'lab_id':'ETH-STAKING-FLOW-001',
+            'audit_date':'2026-09-21',
+            'phase':'V3_STAGE_A_V0_1_4_AUDIT_RERUN',
+            'classification':x['classification'],
+            'receipt_sha256':hashlib.sha256(p.read_bytes()).hexdigest(),
+            'probe_exit_code':int(os.environ['PROBE_RC']),
+            'outcomes_opened':False,
+            'main_modified':False,
+          }
+          Path('research/eth_staking_flow/audit_receipts/ETH_STAKING_FLOW_001_V3_STAGEA_V0_1_4_AUDIT_META.json').write_text(json.dumps(m,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(m,sort_keys=True))
+          PY
+          git config user.name "crypto-lab-source-audit"
+          git config user.email "actions@users.noreply.github.com"
+          git add research/eth_staking_flow/audit_receipts/
+          git commit -m "audit: persist ETH staking V3 Stage-A V0.1.4 source-only receipt"
+          git push origin HEAD:eth-staking-flow-v3-status-audit-2026-09-21
+
+      - name: Preserve scientific classification
+        env:
+          PROBE_RC: ${{ steps.probe.outputs.rc }}
+        run: |
+          echo "SOURCE-ONLY audit complete; receipt persisted before adjudication."
+          test "$PROBE_RC" -eq 0 -o "$PROBE_RC" -eq 2
