@@ -22,6 +22,12 @@ MAX_PUBLIC_RTT_MS = 1500.0
 # Frozen existing Crypto Lab execution-control value. This is not new science.
 ETF_VALIDATION_ALLOCATION_FRACTION = 0.001
 
+# MEXC official API Futures schedule effective 2026-06-01.
+# API execution fees take precedence over web/app/promotional rates.
+MEXC_API_FUTURES_MAKER_FLOOR = 0.0006
+MEXC_API_FUTURES_TAKER_FLOOR = 0.0008
+MEXC_API_FEE_SOURCE = "MEXC_OFFICIAL_API_FUTURES_FEES_EFFECTIVE_2026-06-01"
+
 DOCUMENTED_RATE_LIMITS = {
     "contract_detail": "1 request / 5 seconds",
     "public_ping": "20 requests / 2 seconds",
@@ -273,15 +279,31 @@ def run_authenticated_preflight(
         fees = private_client.tiered_fee_rate(SYMBOL)
         maker = _safe_float(fees.get("makerFee"), "makerFee")
         taker = _safe_float(fees.get("takerFee"), "takerFee")
+        effective_maker = max(maker, MEXC_API_FUTURES_MAKER_FLOOR)
+        effective_taker = max(taker, MEXC_API_FUTURES_TAKER_FLOOR)
+        account_below_api_floor = (
+            maker < MEXC_API_FUTURES_MAKER_FLOOR
+            or taker < MEXC_API_FUTURES_TAKER_FLOOR
+        )
         checks["fees"] = {
             "pass": maker >= 0 and taker >= 0,
             "level": fees.get("level"),
-            "maker_fee_fraction": maker,
-            "taker_fee_fraction": taker,
-            "maker_fee_bps": maker * 10_000.0,
-            "taker_fee_bps": taker * 10_000.0,
-            "source": "AUTHENTICATED_MEXC_ACCOUNT",
+            "authenticated_account_maker_fee_fraction": maker,
+            "authenticated_account_taker_fee_fraction": taker,
+            "authenticated_account_maker_fee_bps": maker * 10_000.0,
+            "authenticated_account_taker_fee_bps": taker * 10_000.0,
+            "official_api_maker_fee_floor_fraction": MEXC_API_FUTURES_MAKER_FLOOR,
+            "official_api_taker_fee_floor_fraction": MEXC_API_FUTURES_TAKER_FLOOR,
+            "effective_maker_fee_fraction_for_execution_model": effective_maker,
+            "effective_taker_fee_fraction_for_execution_model": effective_taker,
+            "effective_maker_fee_bps_for_execution_model": effective_maker * 10_000.0,
+            "effective_taker_fee_bps_for_execution_model": effective_taker * 10_000.0,
+            "authenticated_account_below_official_api_floor": account_below_api_floor,
+            "source": "AUTHENTICATED_ACCOUNT_PLUS_OFFICIAL_API_FUTURES_FLOOR",
+            "official_api_fee_source": MEXC_API_FEE_SOURCE,
         }
+        if account_below_api_floor:
+            warnings.append("AUTHENTICATED_FEE_ENDPOINT_BELOW_OFFICIAL_API_EXECUTION_FLOOR__USING_OFFICIAL_FLOOR")
         if maker < 0 or taker < 0:
             blockers.append("AUTHENTICATED_FEE_RATE_INVALID")
     except Exception as exc:
