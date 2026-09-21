@@ -1,0 +1,84 @@
+name: BUILD RADAR V0.14.1 LOCAL RECOVERY
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - radar-v0141-local-recovery-v0.1
+    paths:
+      - 'crypto_edge_radar/windows/START_RADAR_RECOVERY_V0141.ps1'
+      - 'crypto_edge_radar/windows/START_RADAR_RECOVERY_V0141.bat'
+      - 'crypto_edge_radar/windows/CHECK_RADAR_V0141.ps1'
+      - 'crypto_edge_radar/RADAR_V0141_LOCAL_RECOVERY_README.md'
+      - '.github/workflows/build-radar-v0141-local-recovery.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build-recovery:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: crypto_edge_radar
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install runtime and packager
+        run: |
+          python -m pip install -e .
+          python -m pip install "pyinstaller>=6,<7"
+      - name: Compile and full tests
+        run: |
+          python -m compileall radar tests windows_node_entry.py
+          python -m unittest discover -s tests -v
+      - name: Build canonical V0.14.1 node
+        run: |
+          pyinstaller --clean --onefile --name CryptoEdgeRadarNode --add-data "deployment_registry_v1.json;." windows_node_entry.py
+      - name: Package self-test
+        shell: pwsh
+        run: |
+          $env:RADAR_PACKAGING_SELFTEST = "1"
+          $state = (& .\dist\CryptoEdgeRadarNode.exe) | ConvertFrom-Json
+          if ($state.status -ne "PASS") { throw "package self-test failed" }
+          if ($state.build_id -ne "v0.14.1-win-seven-motor-resilient-bootstrap") { throw "unexpected build_id" }
+          if ($state.registry_version -ne "3.6") { throw "unexpected registry version" }
+          if ([int]$state.candidate_count -ne 7) { throw "unexpected motor count" }
+          if (-not $state.resilient_control_plane_bootstrap) { throw "resilient bootstrap missing" }
+      - name: PowerShell syntax validation
+        shell: pwsh
+        run: |
+          $scripts = @(
+            "windows\START_RADAR_RECOVERY_V0141.ps1",
+            "windows\CHECK_RADAR_V0141.ps1"
+          )
+          foreach ($s in $scripts) {
+            $errors = $null
+            [void][System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $s), [ref]$null, [ref]$errors)
+            if ($errors.Count -gt 0) { $errors | Format-List; throw "PowerShell syntax failure: $s" }
+          }
+      - name: Hash executable
+        shell: pwsh
+        run: |
+          $hash = (Get-FileHash dist\CryptoEdgeRadarNode.exe -Algorithm SHA256).Hash.ToLower()
+          "sha256=$hash" | Out-File dist\CryptoEdgeRadarNode.sha256.txt -Encoding ascii
+          Get-Content dist\CryptoEdgeRadarNode.sha256.txt
+      - name: Assemble bundle
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path recovery_bundle\windows | Out-Null
+          Copy-Item dist\CryptoEdgeRadarNode.exe recovery_bundle\CryptoEdgeRadarNode.exe
+          Copy-Item dist\CryptoEdgeRadarNode.sha256.txt recovery_bundle\CryptoEdgeRadarNode.sha256.txt
+          Copy-Item windows\START_RADAR_RECOVERY_V0141.ps1 recovery_bundle\windows\
+          Copy-Item windows\START_RADAR_RECOVERY_V0141.bat recovery_bundle\windows\
+          Copy-Item windows\CHECK_RADAR_V0141.ps1 recovery_bundle\windows\
+          Copy-Item RADAR_V0141_LOCAL_RECOVERY_README.md recovery_bundle\
+      - name: Upload recovery bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: crypto-edge-radar-v0141-local-recovery
+          path: crypto_edge_radar/recovery_bundle/**
+          if-no-files-found: error
+          retention-days: 14
