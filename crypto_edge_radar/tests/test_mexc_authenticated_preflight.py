@@ -90,6 +90,7 @@ class MEXCAuthenticatedPreflightTests(unittest.TestCase):
             private_client=_PrivateClient(),
             public_feed=_PublicFeed(contract_size=0.000001),
             clock_ms=lambda: next(times),
+            expected_equity_usdt=112.3763,
         )
         self.assertTrue(result["pass"], result)
         self.assertEqual(result["status"], "PASS")
@@ -103,10 +104,24 @@ class MEXCAuthenticatedPreflightTests(unittest.TestCase):
             private_client=_PrivateClient(),
             public_feed=_PublicFeed(contract_size=0.0001),
             clock_ms=lambda: next(times),
+            expected_equity_usdt=112.3763,
         )
         self.assertFalse(result["pass"])
         self.assertIn(
             "ETF_CME_VENUE_MIN_NOTIONAL_EXCEEDS_FROZEN_VALIDATION_BUDGET",
+            result["blockers"],
+        )
+
+    def test_fail_closed_when_account_identity_reference_missing(self):
+        times = iter([1_700_000_000_000, 1_700_000_000_100])
+        result = run_authenticated_preflight(
+            private_client=_PrivateClient(),
+            public_feed=_PublicFeed(contract_size=0.000001),
+            clock_ms=lambda: next(times),
+        )
+        self.assertFalse(result["pass"])
+        self.assertIn(
+            "ACCOUNT_IDENTITY_EXPECTED_EQUITY_NOT_PROVIDED",
             result["blockers"],
         )
 
@@ -127,6 +142,7 @@ class MEXCAuthenticatedPreflightTests(unittest.TestCase):
             private_client=WithPosition(),
             public_feed=_PublicFeed(contract_size=0.000001),
             clock_ms=lambda: next(times),
+            expected_equity_usdt=112.3763,
         )
         self.assertFalse(result["pass"])
         self.assertIn("OPEN_FUTURES_POSITION_PRESENT", result["blockers"])
