@@ -1,0 +1,53 @@
+--- V0.1.1/l2r_validation_2025_pipeline_v01.py
++++ V0.1.2/l2r_validation_2025_pipeline_v01.py
+@@ -29,6 +29,8 @@
+ YEAR = 2025
+ BUCKET = "hyperliquid-archive"
+ ASSET = "BTC"
++PIPELINE_VERSION = "0.1.2"
++SOURCE_CLOCK_SEMANTICS = "OUTER_ENVELOPE_NODE_ORDER_CLOCK__NESTED_PAYLOAD_EXCHANGE_CLOCK"
+ EXPECTED_HOURS = 365 * 24
+ MIN_HOURLY_COVERAGE_PCT = 95.0
+ MIN_ELIGIBLE_DAYS = 300
+@@ -145,7 +147,7 @@
+     except Exception as e:
+         msg = f"{type(e).__name__}: {str(e)}"
+         if "LoginRefreshRequired" in msg or "expired" in msg.lower() or "credentials" in msg.lower():
+-            raise PipelineFailure("SOURCE_AUTH_BLOCKED: AWS session is not valid. Run 'aws login' in PowerShell, then rerun this V0.1.1 package.")
++            raise PipelineFailure("SOURCE_AUTH_BLOCKED: AWS session is not valid. Run 'aws login' in PowerShell, then rerun this V0.1.2 package.")
+@@ -452,10 +454,10 @@
+-        pending=b""; ri=0; obj_records=0; obj_stale=0; obj_equal=0
++        pending=b""; ri=0; obj_records=0; obj_stale=0; obj_equal=0; obj_payload_ahead=0
+@@ -466,8 +468,14 @@
+             p=st["payload_ms"]
+             if last_env is not None and env < last_env:
+                 raise PipelineFailure(f"{key}: envelope backwards")
++            # V0.1.2 SOURCE-SEMANTICS AMENDMENT:
++            # outer time is the node/archive ordering clock; nested raw.data.time
++            # is the exchange payload clock. A positive cross-clock delta is
++            # diagnostic, not a schema failure.
+             if p*1_000_000 > env:
+-                raise PipelineFailure(f"{key}: future payload")
++                totals["payload_ahead_envelope"]+=1; obj_payload_ahead+=1
+@@ -506,6 +514,7 @@
+             "equal_payload_timestamp":obj_equal,
++            "payload_ahead_envelope":obj_payload_ahead,
+@@ -559,6 +568,9 @@
+         "equal_payload_timestamp":int(totals["equal"]),
++        "payload_ahead_envelope_diagnostic":int(totals["payload_ahead_envelope"]),
++        "source_clock_semantics":SOURCE_CLOCK_SEMANTICS,
++        "cross_clock_ordering_constraint":"NONE — distinct clocks; envelope orders archive state; payload rewind quarantine unchanged",
+@@ -672,7 +684,8 @@
+-            if p*1_000_000>env: raise PipelineFailure("future payload")
++            # V0.1.2: cross-clock lead is diagnostic only.
++            if p*1_000_000>env: totals["payload_ahead_envelope"]+=1
+@@ -923,7 +936,7 @@
+-    print("L2-RESILIENCY-001 — INDEPENDENT 2025 VALIDATION PIPELINE V0.1.1")
++    print("L2-RESILIENCY-001 — INDEPENDENT 2025 VALIDATION PIPELINE V0.1.2")
+@@ -952,9 +965,9 @@
+-        if not p.exists():
+-            p.write_text(json.dumps({"classification":"PIPELINE_FAIL_CLOSED","failure":f"{type(e).__name__}: {str(e)[:3000]}",
+-                                     "access_2026":False},indent=2)+"\n",encoding="utf-8")
++        p.write_text(json.dumps({"classification":"PIPELINE_FAIL_CLOSED","failure":f"{type(e).__name__}: {str(e)[:3000]}",
++                                 "outcomes_computed":False,"access_2026":False,
++                                 "pipeline_version":PIPELINE_VERSION},indent=2)+"\n",encoding="utf-8")
