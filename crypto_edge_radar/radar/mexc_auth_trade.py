@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import re
 import time
 from typing import Any, Callable
 from urllib.parse import urlparse
@@ -11,10 +12,12 @@ from urllib.request import Request, urlopen
 from .mexc_auth_readonly import MEXCCredentials
 
 MEXC_FUTURES_BASE_URL = "https://api.mexc.com"
+EXTERNAL_OID_RE = re.compile(r"^[A-Za-z0-9_.:-]{1,32}$")
 
 _ALLOWED_POST_PATHS = {
     "/api/v1/private/position/change_leverage",
-    "/api/v1/private/order/submit",
+    "/api/v1/private/position/change_auto_add_im",
+    "/api/v1/private/order/create",
 }
 
 
@@ -23,8 +26,7 @@ class MEXCTradeTransportError(RuntimeError):
 
 
 def _canonical_post_body(payload: dict[str, Any]) -> str:
-    # MEXC signs the exact JSON string for POST. Compact deterministic encoding
-    # prevents accidental signature/body divergence.
+    # MEXC signs the exact JSON string used as the POST body.
     return json.dumps(payload, separators=(",", ":"), ensure_ascii=False)
 
 
@@ -44,15 +46,15 @@ def _post_signature(
 
 
 class MEXCFuturesMutationTransport:
-    """Minimal MEXC Futures mutation transport.
+    """Tiny mutation surface for candidate-authorized BTC_USDT micro-live.
 
-    This class deliberately exposes only:
-    - configure isolated leverage for a direction;
-    - submit one contract order.
+    Deliberately allowlisted to:
+    - set a direction to isolated 1x before entry;
+    - create a BTC_USDT market order;
+    - disable Auto-Add Margin on an existing isolated position.
 
-    It is never instantiated by Radar/shadow services. The local executor
-    requires a separate active candidate-specific authority and explicit
-    execution token before this transport can be reached.
+    It has no transfer, withdrawal, generic account mutation, batch order,
+    cancel-all, leverage >1x or cross-margin method.
     """
 
     base_url = MEXC_FUTURES_BASE_URL
@@ -85,6 +87,7 @@ class MEXCFuturesMutationTransport:
             request_time_ms=request_time_ms,
             body=body,
         )
+
         url = f"{self.base_url}{parsed.path}"
         final = urlparse(url)
         expected = urlparse(self.base_url)
@@ -100,7 +103,7 @@ class MEXCFuturesMutationTransport:
                 "Request-Time": str(request_time_ms),
                 "Signature": signature,
                 "Content-Type": "application/json",
-                "User-Agent": "crypto-lab-mexc-live-executor/0.1",
+                "User-Agent": "crypto-lab-mexc-live-executor/0.2",
             },
         )
         try:
@@ -122,11 +125,13 @@ class MEXCFuturesMutationTransport:
         if not isinstance(result, dict) or result.get("success") is not True:
             code = result.get("code") if isinstance(result, dict) else None
             message = (
-                result.get("message") or result.get("msg")
+                (result.get("message") or result.get("msg") or "unknown MEXC error")
                 if isinstance(result, dict)
                 else "invalid response"
             )
-            raise MEXCTradeTransportError(f"MEXC mutation failed code={code}: {message}")
+            raise MEXCTradeTransportError(
+                f"MEXC mutation failed code={code}: {message}"
+            )
         return result.get("data")
 
     def configure_isolated_leverage(
@@ -137,11 +142,11 @@ class MEXCFuturesMutationTransport:
         leverage: int = 1,
     ) -> Any:
         if symbol != "BTC_USDT":
-            raise MEXCTradeTransportError("only BTC_USDT is allowlisted in V0.1")
+            raise MEXCTradeTransportError("only BTC_USDT is allowlisted in V0.2")
         if position_type not in (1, 2):
             raise MEXCTradeTransportError("position_type must be 1 long or 2 short")
         if leverage != 1:
-            raise MEXCTradeTransportError("V0.1 only permits exactly 1x leverage")
+            raise MEXCTradeTransportError("V0.2 only permits exactly 1x leverage")
         return self._post_json(
             "/api/v1/private/position/change_leverage",
             {
@@ -149,6 +154,26 @@ class MEXCFuturesMutationTransport:
                 "leverage": 1,
                 "symbol": symbol,
                 "positionType": position_type,
+            },
+        )
+
+    def set_auto_add_margin(
+        self,
+        *,
+        position_id: int,
+        enabled: bool,
+    ) -> Any:
+        if not isinstance(position_id, int) or position_id <= 0:
+            raise MEXCTradeTransportError("position_id must be positive integer")
+        if enabled is not False:
+            raise MEXCTradeTransportError(
+                "V0.2 can only DISABLE Auto-Add Margin; enabling is forbidden"
+            )
+        return self._post_json(
+            "/api/v1/private/position/change_auto_add_im",
+            {
+                "positionId": position_id,
+                "isEnabled": False,
             },
         )
 
@@ -160,31 +185,43 @@ class MEXCFuturesMutationTransport:
         side: int,
         external_oid: str,
         position_mode: int = 1,
-    ) -> Any:
+        position_id: int | None = None,
+    ) -> dict[str, Any]:
         if symbol != "BTC_USDT":
-            raise MEXCTradeTransportError("only BTC_USDT is allowlisted in V0.1")
+            raise MEXCTradeTransportError("only BTC_USDT is allowlisted in V0.2")
         if not isinstance(volume_contracts, int) or volume_contracts < 1:
             raise MEXCTradeTransportError("volume_contracts must be integer >= 1")
-        if side not in (1, 2, 3, 4):
-            raise MEXCTradeTransportError("unsupported MEXC futures side")
-        if position_mode not in (1, 2):
-            raise MEXCTradeTransportError("position_mode must be hedge=1 or one-way=2")
-        if not external_oid or len(external_oid) > 32:
-            raise MEXCTradeTransportError("external_oid must be 1..32 chars")
-        return self._post_json(
-            "/api/v1/private/order/submit",
-            {
-                "symbol": symbol,
-                "price": 0,
-                "vol": volume_contracts,
-                "leverage": 1,
-                "side": side,
-                "type": 5,
-                "openType": 1,
-                "externalOid": external_oid,
-                "positionMode": position_mode,
-            },
-        )
+        if side not in (2, 3):
+            raise MEXCTradeTransportError(
+                "V0.2 ETF-CME Futures path permits only open-short(3) or close-short(2)"
+            )
+        if position_mode != 1:
+            raise MEXCTradeTransportError("V0.2 requires Hedge Mode (positionMode=1)")
+        if not EXTERNAL_OID_RE.fullmatch(external_oid):
+            raise MEXCTradeTransportError("external_oid must be safe 1..32 chars")
+        if side == 2 and (not isinstance(position_id, int) or position_id <= 0):
+            raise MEXCTradeTransportError("close-short requires a positive position_id")
+        if side == 3 and position_id is not None:
+            raise MEXCTradeTransportError("open-short must not supply position_id")
+
+        payload: dict[str, Any] = {
+            "symbol": symbol,
+            "price": 0,
+            "vol": volume_contracts,
+            "leverage": 1,
+            "side": side,
+            "type": 5,
+            "openType": 1,
+            "externalOid": external_oid,
+            "positionMode": 1,
+        }
+        if position_id is not None:
+            payload["positionId"] = position_id
+
+        data = self._post_json("/api/v1/private/order/create", payload)
+        if not isinstance(data, dict) or not data.get("orderId"):
+            raise MEXCTradeTransportError("order/create success response missing orderId")
+        return data
 
 
 __all__ = [
