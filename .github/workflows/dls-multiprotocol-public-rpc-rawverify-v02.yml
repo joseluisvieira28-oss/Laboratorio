@@ -1,0 +1,52 @@
+name: DLS Multiprotocol Public RPC Raw Verify V0.2
+
+on:
+  push:
+    branches:
+      - defi-liquidation-multiprotocol-public-rpc-rawverify-v0.2
+    paths:
+      - '.github/workflows/dls-multiprotocol-public-rpc-rawverify-v02.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  rawverify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run frozen 23-row source-only verifier
+        run: |
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/verify_multiprotocol_public_rpc_sample_v0_2.py | tee DLS_MULTIPROTOCOL_PUBLIC_RPC_RAWVERIFY_STDOUT_V0.2.txt
+      - name: Package evidence
+        if: always()
+        run: |
+          python - <<'PY'
+          import hashlib, json, pathlib, zipfile
+          root=pathlib.Path("dls_multiprotocol_public_rpc_rawverify_v02")
+          manifest=[]
+          if root.exists():
+              for p in sorted(root.glob("*")):
+                  if p.is_file():
+                      manifest.append({"name":p.name,"sha256":hashlib.sha256(p.read_bytes()).hexdigest(),"bytes":p.stat().st_size})
+          m=pathlib.Path("DLS_MULTIPROTOCOL_PUBLIC_RPC_RAWVERIFY_MANIFEST_V0.2.json")
+          m.write_text(json.dumps({"files":manifest},indent=2)+"\n")
+          with zipfile.ZipFile("DLS_MULTIPROTOCOL_PUBLIC_RPC_RAWVERIFY_EVIDENCE_V0.2.zip","w",zipfile.ZIP_DEFLATED) as z:
+              for p in sorted(root.glob("*")):
+                  if p.is_file(): z.write(p,p.name)
+              z.write(m,m.name)
+          PY
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-multiprotocol-public-rpc-rawverify-v02
+          path: |
+            dls_multiprotocol_public_rpc_rawverify_v02/
+            DLS_MULTIPROTOCOL_PUBLIC_RPC_RAWVERIFY_MANIFEST_V0.2.json
+            DLS_MULTIPROTOCOL_PUBLIC_RPC_RAWVERIFY_EVIDENCE_V0.2.zip
+            DLS_MULTIPROTOCOL_PUBLIC_RPC_RAWVERIFY_STDOUT_V0.2.txt
+          if-no-files-found: warn
+          retention-days: 30
