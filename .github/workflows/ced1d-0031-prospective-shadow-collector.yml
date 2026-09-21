@@ -1,6 +1,9 @@
-name: CED1D-0031 Prospective Shadow Collector V0.2
+name: CED1D-0031 Prospective Shadow Collector V0.2B
 
 on:
+  pull_request:
+    branches:
+      - ced-1d-v3-byte-recovery-2026-09-17
   schedule:
     - cron: '17 2 * * *'
   push:
@@ -9,6 +12,9 @@ on:
     paths:
       - '.github/workflows/ced1d-0031-prospective-shadow-collector.yml'
       - 'governance/CED1D_0031_AUTOMATED_SHADOW_SCHEDULE_AMENDMENT_V0.1_2026-09-18.md'
+      - 'governance/CED1D_0031_PROSPECTIVE_SHADOW_COLLECTOR_TRANSPORT_REMEDIATION_V0.2B_2026-09-21.md'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/ced1d_0031_prospective_shadow_collector_v02b.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/tests/test_ced1d_0031_prospective_shadow_collector_v02b.py'
       - 'governance/CED1D_0031_DAILY_TRIGGER.txt'
   workflow_dispatch:
     inputs:
@@ -26,12 +32,12 @@ jobs:
     timeout-minutes: 120
     env:
       ROOT: Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3
-      COLLECTOR_BLOB: "bdb1ca9f5de01a8ab9657e80fd37fc243b9781f2"
-      TEST_BLOB: "d3c4e2525e4e0023e3fa40f0733b65b3b998245e"
+      COLLECTOR_BLOB: "32ce5772f17d7ab7b61adb9952aa0c71ce420afc"
+      TEST_BLOB: "49d80a73ef2f48b96bce6c763a66fa220b270762"
       ACTIVATION_BLOB: "f524aebd3cbae48b6dd916b1fba87aa88d94d2f4"
-      FREEZE_BLOB: "201157d5e49f3c40e0eed40a2a4b40b5cc8942b3"
-      FIRST_SIGNAL_DAY: "2026-09-18"
-      FIRST_COMPLETION: "2026-09-19T00:00:00Z"
+      FREEZE_BLOB: "33a8ffd1da67f6485748bb4501b897f50501fba6"
+      FIRST_SIGNAL_DAY: "2026-09-21"
+      FIRST_COMPLETION: "2026-09-22T00:00:00Z"
     steps:
       - uses: actions/checkout@v4
 
@@ -41,14 +47,38 @@ jobs:
 
       - name: Assert frozen implementation identity
         run: |
-          test "$(git hash-object "$ROOT/ced1d_0031_prospective_shadow_collector_v02.py")" = "$COLLECTOR_BLOB"
-          test "$(git hash-object "$ROOT/tests/test_ced1d_0031_prospective_shadow_collector_v02.py")" = "$TEST_BLOB"
+          test "$(git hash-object "$ROOT/ced1d_0031_prospective_shadow_collector_v02b.py")" = "$COLLECTOR_BLOB"
+          test "$(git hash-object "$ROOT/tests/test_ced1d_0031_prospective_shadow_collector_v02b.py")" = "$TEST_BLOB"
           test "$(git hash-object "governance/CED1D_0031_TIER2_SHADOW_ACTIVATION_AUTHORITY_V0.2_2026-09-18.json")" = "$ACTIVATION_BLOB"
-          test "$(git hash-object "governance/CED1D_0031_PROSPECTIVE_SHADOW_COLLECTOR_IMPLEMENTATION_FREEZE_V0.2A_2026-09-18.md")" = "$FREEZE_BLOB"
-          python -m py_compile "$ROOT/ced1d_0031_prospective_shadow_collector_v02.py"
-          python "$ROOT/tests/test_ced1d_0031_prospective_shadow_collector_v02.py"
+          test "$(git hash-object "governance/CED1D_0031_PROSPECTIVE_SHADOW_COLLECTOR_TRANSPORT_REMEDIATION_V0.2B_2026-09-21.md")" = "$FREEZE_BLOB"
+          python -m py_compile "$ROOT/ced1d_0031_prospective_shadow_collector_v02b.py"
+          python "$ROOT/tests/test_ced1d_0031_prospective_shadow_collector_v02b.py"
           test "$(sha256sum "$ROOT/recovered_authority/CED-1D-V1-RUNNER-FREEZE-V0.3.zip" | awk '{print $1}')" = "df625d0d4a05c55ba34ca51514d31fd61636ff0a823567585c2d02afa0877958"
           echo SHADOW_COLLECTOR_IMPLEMENTATION_IDENTITY_PASS
+
+      - name: Probe corrected USD-M funding transport (source-only)
+        run: |
+          python - <<'PY'
+          import json, math, urllib.parse, urllib.request
+          params=urllib.parse.urlencode({
+              "symbol":"AVAXUSDT",
+              "startTime":1789776060000,
+              "endTime":1789862460000,
+              "limit":1000,
+          })
+          url="https://fapi.binance.com/fapi/v1/fundingRate?"+params
+          req=urllib.request.Request(url,headers={"User-Agent":"CED1D-0031-V02B-SOURCE-PROBE"})
+          with urllib.request.urlopen(req,timeout=30) as r:
+              assert r.status==200,r.status
+              rows=json.loads(r.read().decode("utf-8"))
+          assert isinstance(rows,list),type(rows)
+          for x in rows:
+              assert x.get("symbol")=="AVAXUSDT",x
+              assert 1789776060000 <= int(x["fundingTime"]) <= 1789862460000,x
+              assert math.isfinite(float(x["fundingRate"])),x
+          print("CED1D_V02B_FUNDING_TRANSPORT_PASS",len(rows))
+          print("PUBLIC_READ_ONLY_NO_AUTH_NO_ORDERS")
+          PY
 
       - name: Resolve schedule-safe through signal day
         id: through
@@ -62,7 +92,7 @@ jobs:
           today=datetime.now(timezone.utc).date()
           manual=(os.environ.get("MANUAL_THROUGH") or "").strip()
           through=date.fromisoformat(manual) if manual else today-timedelta(days=3)
-          first=date(2026,9,18)
+          first=date(2026,9,21)
           if through < first:
               print("eligible=false")
               print(f"through_signal_day={through.isoformat()}")
@@ -81,7 +111,7 @@ jobs:
           import os
           from datetime import date,datetime,timedelta,timezone
           through=date.fromisoformat(os.environ["THROUGH_SIGNAL_DAY"])
-          first=date.fromisoformat("2026-09-18")
+          first=date.fromisoformat("2026-09-21")
           today=datetime.now(timezone.utc).date()
           assert through>=first,(through,first)
           assert through<=today-timedelta(days=3),(through,today)
@@ -100,16 +130,16 @@ jobs:
         env:
           THROUGH_SIGNAL_DAY: ${{ steps.through.outputs.through_signal_day }}
         run: |
-          python "$ROOT/ced1d_0031_prospective_shadow_collector_v02.py"             --activation "governance/CED1D_0031_TIER2_SHADOW_ACTIVATION_AUTHORITY_V0.2_2026-09-18.json"             --v03-runner-zip "$ROOT/recovered_authority/CED-1D-V1-RUNNER-FREEZE-V0.3.zip"             --through-signal-day "$THROUGH_SIGNAL_DAY"             --output "$RUNNER_TEMP/shadow"
+          python "$ROOT/ced1d_0031_prospective_shadow_collector_v02b.py"             --activation "governance/CED1D_0031_TIER2_SHADOW_ACTIVATION_AUTHORITY_V0.2_2026-09-18.json"             --v03-runner-zip "$ROOT/recovered_authority/CED-1D-V1-RUNNER-FREEZE-V0.3.zip"             --through-signal-day "$THROUGH_SIGNAL_DAY"             --output "$RUNNER_TEMP/shadow"
 
       - name: Assert governance receipt
         if: always()
         run: |
           if [ "${{ steps.through.outputs.eligible }}" != "true" ]; then echo "NO_RECEIPT_EXPECTED_BEFORE_TPLUS3"; exit 0; fi
-          test -f "$RUNNER_TEMP/shadow/CED1D_0031_PROSPECTIVE_SHADOW_RECEIPT_V0.2.json"
+          test -f "$RUNNER_TEMP/shadow/CED1D_0031_PROSPECTIVE_SHADOW_RECEIPT_V0.2B.json"
           python - <<'PY'
           import json,os
-          p=os.path.join(os.environ["RUNNER_TEMP"],"shadow","CED1D_0031_PROSPECTIVE_SHADOW_RECEIPT_V0.2.json")
+          p=os.path.join(os.environ["RUNNER_TEMP"],"shadow","CED1D_0031_PROSPECTIVE_SHADOW_RECEIPT_V0.2B.json")
           x=json.load(open(p))
           assert x["candidate"]=="CED1D-0031",x
           g=x["governance"]
@@ -135,14 +165,14 @@ jobs:
           mkdir -p "$RUNNER_TEMP/final"
           cp "$RUNNER_TEMP/shadow/"* "$RUNNER_TEMP/final/" 2>/dev/null || true
           cp governance/CED1D_0031_TIER2_SHADOW_ACTIVATION_AUTHORITY_V0.2_2026-09-18.json "$RUNNER_TEMP/final/"
-          cp governance/CED1D_0031_PROSPECTIVE_SHADOW_COLLECTOR_IMPLEMENTATION_FREEZE_V0.2A_2026-09-18.md "$RUNNER_TEMP/final/"
+          cp governance/CED1D_0031_PROSPECTIVE_SHADOW_COLLECTOR_TRANSPORT_REMEDIATION_V0.2B_2026-09-21.md "$RUNNER_TEMP/final/"
           find "$RUNNER_TEMP/final" -type f -print0 | sort -z | xargs -0 sha256sum > "$RUNNER_TEMP/final/ARTIFACT_MEMBER_SHA256.txt" || true
 
       - name: Upload shadow evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ced1d-0031-prospective-shadow-v02-${{ steps.through.outputs.through_signal_day }}
+          name: ced1d-0031-prospective-shadow-v02b-${{ steps.through.outputs.through_signal_day }}
           path: ${{ runner.temp }}/final
           if-no-files-found: error
           retention-days: 30
