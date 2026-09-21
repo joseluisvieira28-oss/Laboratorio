@@ -26,8 +26,14 @@ try {
         throw "Decrypted API credential is empty."
     }
 
+    $expectedEquity = Read-Host "Expected MEXC Futures equity USDT shown in the app (example: 112.3763)"
+    if ([string]::IsNullOrWhiteSpace($expectedEquity)) {
+        throw "Expected Futures equity is required to confirm the API key is bound to the intended account."
+    }
+
     $env:MEXC_API_KEY = $apiKey
     $env:MEXC_API_SECRET = $apiSecret
+    $env:MEXC_EXPECTED_FUTURES_EQUITY_USDT = $expectedEquity
 
     Push-Location $radarRoot
     try {
@@ -59,6 +65,8 @@ try {
 finally {
     Remove-Item Env:MEXC_API_KEY -ErrorAction SilentlyContinue
     Remove-Item Env:MEXC_API_SECRET -ErrorAction SilentlyContinue
+    Remove-Item Env:MEXC_EXPECTED_FUTURES_EQUITY_USDT -ErrorAction SilentlyContinue
+    $expectedEquity = $null
     $apiKey = $null
     $apiSecret = $null
 }
