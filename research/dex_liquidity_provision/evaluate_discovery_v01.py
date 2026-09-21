@@ -39,16 +39,23 @@ def combine_source(root:Path,phase:str,shard_count:int=8):
     receipts=[]
     lp=defaultdict(lambda:[0,0,0,0])
     minutes={}
+    all_receipts=list(root.glob("**/shard_receipt.json"))
     for sid in range(shard_count):
-        rs=list(root.glob(f"**/dex_lp_{phase}_shard_{sid}/shard_receipt.json"))
-        ps=list(root.glob(f"**/dex_lp_{phase}_shard_{sid}/minute_prices.jsonl.gz"))
-        ls=list(root.glob(f"**/dex_lp_{phase}_shard_{sid}/lp_buckets.jsonl.gz"))
-        if len(rs)!=1 or len(ps)!=1 or len(ls)!=1:
-            raise RuntimeError(f"artifact cardinality failure shard={sid} receipts={len(rs)} prices={len(ps)} lp={len(ls)}")
-        r=json.loads(rs[0].read_text())
+        matches=[]
+        for rp in all_receipts:
+            candidate=json.loads(rp.read_text())
+            if candidate.get("phase")==phase and int(candidate.get("shard_id",-1))==sid:
+                matches.append((rp,candidate))
+        if len(matches)!=1:
+            raise RuntimeError(f"artifact receipt identity cardinality failure shard={sid} matches={len(matches)}")
+        rp,r=matches[0]
+        ps=list(rp.parent.glob("minute_prices.jsonl.gz"))
+        ls=list(rp.parent.glob("lp_buckets.jsonl.gz"))
+        if len(ps)!=1 or len(ls)!=1:
+            raise RuntimeError(f"artifact payload cardinality failure shard={sid} prices={len(ps)} lp={len(ls)}")
         if r.get("classification")!="ECONOMIC_SOURCE_SHARD_PASS":
             raise RuntimeError(f"shard {sid} not PASS")
-        if r.get("phase")!=phase or int(r.get("shard_id",-1))!=sid or int(r.get("shard_count",-1))!=shard_count:
+        if int(r.get("shard_count",-1))!=shard_count:
             raise RuntimeError("shard identity mismatch")
         receipts.append(r)
         for row in read_jsonl_gz(ls[0]):
