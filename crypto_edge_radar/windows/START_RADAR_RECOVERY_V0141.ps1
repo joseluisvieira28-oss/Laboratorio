@@ -40,26 +40,52 @@ Log "=== Crypto Edge Radar V0.14.1 recovery launcher ==="
 Log "Root: $Root"
 Log "EXE: $Exe"
 
-# Never kill arbitrary software on 8787.
+# Never kill arbitrary software on 8787. If an older CryptoEdgeRadarNode is
+# occupying the port, identify it by process name and replace it only when the
+# live /api/state proves it is not registry 3.6 / seven-motor canonical.
 if (PortListening) {
-    Log "Port 8787 is already listening. Checking local Radar HTTP response..."
+    Log "Port 8787 is already listening. Verifying canonical Radar identity..."
+    $canonicalAlreadyRunning = $false
     try {
-        $resp = Invoke-WebRequest -UseBasicParsing -Uri "http://127.0.0.1:$Port/" -TimeoutSec 4
-        if ($resp.StatusCode -ge 200 -and $resp.StatusCode -lt 500) {
-            Log "Radar/local HTTP service is already reachable. Opening browser."
-            Start-Process "http://127.0.0.1:$Port/"
-            exit 0
+        $state = Invoke-RestMethod -Uri "http://127.0.0.1:$Port/api/state" -TimeoutSec 4
+        $registryVersion = [string]$state.registry_version
+        $focusExpected = [int]$state.registry.focus_expected
+        $focusLoaded = [int]$state.registry.focus_loaded
+        Log "Existing service reports registry=$registryVersion focus=$focusLoaded/$focusExpected"
+        if ($registryVersion -eq "3.6" -and $focusExpected -eq 7 -and $focusLoaded -eq 7) {
+            $canonicalAlreadyRunning = $true
         }
     }
     catch {
-        throw "Port 8787 is occupied but the Radar HTTP check failed. Do not kill it automatically. Inspect with: Get-NetTCPConnection -LocalPort 8787 | Format-List *"
+        Log "Existing port did not return a canonical Radar /api/state response."
     }
+
+    if ($canonicalAlreadyRunning) {
+        Log "PASS: canonical registry 3.6 / 7-motor Radar is already running."
+        Start-Process "http://127.0.0.1:$Port/"
+        exit 0
+    }
+
+    $listeners = Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue
+    $pids = @($listeners | Select-Object -ExpandProperty OwningProcess -Unique)
+    if ($pids.Count -ne 1) {
+        throw "Port 8787 is occupied by an unknown/multiple process set. Refusing automatic termination."
+    }
+    $owner = Get-Process -Id $pids[0] -ErrorAction SilentlyContinue
+    if ($null -eq $owner -or $owner.ProcessName -ne "CryptoEdgeRadarNode") {
+        $name = if ($null -eq $owner) { "UNKNOWN" } else { $owner.ProcessName }
+        throw "Port 8787 is occupied by $name (PID $($pids[0])). Refusing to kill unrelated software."
+    }
+
+    Log "Replacing stale/non-canonical CryptoEdgeRadarNode PID $($owner.Id)..."
+    $owner | Stop-Process -Force
+    Start-Sleep -Milliseconds 800
 }
 
-# Stop only stale CryptoEdgeRadarNode processes from this product.
+# Stop only any remaining stale CryptoEdgeRadarNode processes from this product.
 $old = Get-Process -Name "CryptoEdgeRadarNode" -ErrorAction SilentlyContinue
 if ($old) {
-    Log "Stopping stale CryptoEdgeRadarNode process(es)..."
+    Log "Stopping remaining stale CryptoEdgeRadarNode process(es)..."
     $old | Stop-Process -Force
     Start-Sleep -Milliseconds 800
 }
