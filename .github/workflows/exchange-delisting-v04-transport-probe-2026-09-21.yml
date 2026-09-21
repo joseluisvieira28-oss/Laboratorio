@@ -1,0 +1,89 @@
+name: Exchange Delisting V0.4 — Transport Probe 2026-09-21
+on:
+  push:
+    branches: [exchange-delisting-v04-transport-probe-2026-09-21]
+    paths: ['.github/workflows/exchange-delisting-v04-transport-probe-2026-09-21.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: exchange-delisting-v04-transport-probe-2026-09-21
+          fetch-depth: 0
+      - name: Probe frozen source transports only
+        run: |
+          python - <<'PY'
+          import json, urllib.parse, urllib.request, urllib.error
+          from pathlib import Path
+          UA={'User-Agent':'Mozilla/5.0 EXCHANGE-DELISTING-SHOCK-001/transport-probe','clienttype':'web'}
+          def req(url, timeout=15):
+              try:
+                  q=urllib.request.Request(url,headers=UA)
+                  with urllib.request.urlopen(q,timeout=timeout) as r:
+                      body=r.read()
+                      return {'ok':True,'status':r.status,'bytes':len(body),'body':body}
+              except Exception as e:
+                  return {'ok':False,'status':getattr(e,'code',None),'error':type(e).__name__+':'+str(e)[:300],'bytes':0,'body':b''}
+          list_url='https://www.binance.com/bapi/composite/v1/public/cms/article/list/query?'+urllib.parse.urlencode({'type':1,'catalogId':161,'pageNo':1,'pageSize':50})
+          a=req(list_url)
+          detail=None
+          article_code=None
+          if a['ok']:
+              try:
+                  obj=json.loads(a['body'])
+                  stack=[obj]
+                  while stack and article_code is None:
+                      x=stack.pop()
+                      if isinstance(x,dict):
+                          title=str(x.get('title') or '')
+                          code=x.get('code') or x.get('articleCode')
+                          if code and title.lower().startswith('binance will delist'):
+                              article_code=str(code); break
+                          stack.extend(x.values())
+                      elif isinstance(x,list): stack.extend(x)
+              except Exception: pass
+          if article_code:
+              detail_url='https://www.binance.com/bapi/composite/v1/public/cms/article/detail/query?'+urllib.parse.urlencode({'articleCode':article_code})
+              detail=req(detail_url)
+          # Known historical archive-sidecar transport only; never open ZIP/OHLC.
+          checksum_url='https://data.binance.vision/data/spot/daily/klines/BTCUSDT/1h/BTCUSDT-1h-2024-01-02.zip.CHECKSUM'
+          c=req(checksum_url)
+          out={
+             'lab_id':'EXCHANGE-DELISTING-SHOCK-001',
+             'audit_date':'2026-09-21',
+             'probe':'V04_TRANSPORT_ONLY',
+             'cms_list':{k:v for k,v in a.items() if k!='body'},
+             'article_code_found':article_code,
+             'cms_detail':({k:v for k,v in detail.items() if k!='body'} if detail else None),
+             'datavision_checksum':{k:v for k,v in c.items() if k!='body'},
+             'market_price_values_opened':False,'returns_computed':False,'pnl_computed':False,
+             'year_2025_opened':False,'year_2026_opened':False
+          }
+          if a['ok'] and article_code and detail and detail['ok'] and c['ok']:
+              out['classification']='SOURCE_TRANSPORT_PASS'
+          elif not a['ok']:
+              out['classification']='CMS_LIST_TRANSPORT_BLOCKED'
+          elif article_code is None:
+              out['classification']='CMS_LIST_ACCESSIBLE_NO_DELIST_ARTICLE_FOUND_ON_PAGE1'
+          elif not detail or not detail['ok']:
+              out['classification']='CMS_DETAIL_TRANSPORT_BLOCKED'
+          elif not c['ok']:
+              out['classification']='DATAVISION_CHECKSUM_TRANSPORT_BLOCKED'
+          else:
+              out['classification']='SOURCE_TRANSPORT_INCOMPLETE'
+          p=Path('Dream-Account-OS-v2.3-PARTIAL/research/exchange_delisting_shock_001/audit_receipts')
+          p.mkdir(parents=True,exist_ok=True)
+          (p/'EDS_V04_TRANSPORT_PROBE_2026_09_21.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(out,sort_keys=True))
+          PY
+      - name: Persist probe receipt
+        run: |
+          git config user.name "crypto-lab-source-audit"
+          git config user.email "actions@users.noreply.github.com"
+          git add Dream-Account-OS-v2.3-PARTIAL/research/exchange_delisting_shock_001/audit_receipts/
+          git commit -m "audit: persist exchange delisting V0.4 transport probe"
+          git push origin HEAD:exchange-delisting-v04-transport-probe-2026-09-21
