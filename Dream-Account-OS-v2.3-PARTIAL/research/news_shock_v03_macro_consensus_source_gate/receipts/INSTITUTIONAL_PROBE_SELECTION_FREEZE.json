@@ -1,0 +1,29 @@
+{
+  "document_type": "NEWS_SHOCK_V03_INSTITUTIONAL_PROBE_SELECTION_FREEZE",
+  "as_of_date": "2026-09-21",
+  "parent_branch": "news-shock-v03-2021-consensus-census",
+  "parent_commit": "fc4f7a1a",
+  "selection_rule": "Within each event_family in the frozen 2021 manifest, sort event_id ascending and select the first row.",
+  "selection_rule_reason": "Deterministic, reproducible, availability-blind, and fixed before any institutional consensus lookup.",
+  "selected_events": [
+    {
+      "event_id": "US_CPI_2021-01-13",
+      "event_family": "CPI",
+      "scheduled_T0_utc": "2021-01-13T13:30:00Z",
+      "required_probe_fields": ["headline_cpi_mom", "headline_cpi_yoy", "core_cpi_mom", "core_cpi_yoy"]
+    },
+    {
+      "event_id": "US_NFP_2021-01-08",
+      "event_family": "EMPLOYMENT_SITUATION",
+      "scheduled_T0_utc": "2021-01-08T13:30:00Z",
+      "required_probe_fields": ["nfp_change_k", "unemployment_rate", "ahe_mom", "ahe_yoy"]
+    }
+  ],
+  "guards": {
+    "consensus_consulted_before_freeze": false,
+    "market_outcomes_accessed": false,
+    "years_2025_or_2026_accessed": false,
+    "acceptance_rules_changed": false,
+    "credentials_stored": false
+  }
+}
