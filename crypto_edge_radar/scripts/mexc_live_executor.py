@@ -275,6 +275,39 @@ def main() -> int:
     snapshots = public_feed.all_market_snapshots()
     snap = snapshots["BTCUSDT"]
     funding = public_feed.funding_rate("BTC_USDT")
+    contract = public_feed.contract_row("BTC_USDT")
+    live_assets = readonly.assets()
+    usdt_asset = next(
+        (row for row in live_assets if str(row.get("currency", "")).upper() == "USDT"),
+        None,
+    )
+    if usdt_asset is None:
+        print(json.dumps({"status":"FAIL_CLOSED","blockers":["LAST_MOMENT_USDT_ASSET_MISSING"]},indent=2))
+        return 4
+    live_equity = float(usdt_asset.get("equity", 0) or 0)
+    if live_equity <= 0:
+        print(json.dumps({"status":"FAIL_CLOSED","blockers":["LAST_MOMENT_EQUITY_INVALID"]},indent=2))
+        return 4
+    volume = int(authority["volume_contracts"])
+    current_conservative_price = max(float(snap.last_price), float(snap.ask_price))
+    current_notional = (
+        volume
+        * float(contract["contractSize"])
+        * current_conservative_price
+    )
+    current_budget = live_equity * 0.001
+    if current_notional > current_budget + 1e-12:
+        print(json.dumps({
+            "status":"FAIL_CLOSED",
+            "blockers":["LAST_MOMENT_NOTIONAL_EXCEEDS_FROZEN_0_1PCT_BUDGET"],
+            "current_notional_usdt":current_notional,
+            "current_budget_usdt":current_budget
+        },indent=2))
+        return 4
+    if Path(kill_switch_path).exists():
+        print(json.dumps({"status":"FAIL_CLOSED","blockers":["KILL_SWITCH_PRESENT_BEFORE_MUTATION"]},indent=2))
+        return 4
+
     pre_order = {
         "receipt_type": "PRE_ORDER_RECEIPT",
         "created_at_utc": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
@@ -282,8 +315,11 @@ def main() -> int:
         "signal_identity": gate["signal_identity"],
         "symbol": gate["symbol"],
         "direction": "SHORT",
-        "requested_notional_usdt": gate["requested_notional_usdt"],
-        "maximum_authorized_notional_usdt": gate["maximum_authorized_notional_usdt"],
+        "requested_notional_usdt_at_gate": gate["requested_notional_usdt"],
+        "requested_notional_usdt_last_moment": current_notional,
+        "maximum_authorized_notional_usdt_at_gate": gate["maximum_authorized_notional_usdt"],
+        "maximum_authorized_notional_usdt_last_moment": current_budget,
+        "live_equity_usdt": live_equity,
         "minimum_notional_usdt": gate["minimum_notional_usdt"],
         "exchange": "MEXC",
         "margin_mode": "ISOLATED",
@@ -343,6 +379,14 @@ def main() -> int:
         print(json.dumps({"status": "FAIL_CLOSED", "blockers": ["ISOLATED_1X_POST_VERIFY_FAILED"]}, indent=2))
         return 5
 
+    # Fresh conflict/kill-switch check after leverage configuration and before order/create.
+    if Path(kill_switch_path).exists():
+        print(json.dumps({"status":"FAIL_CLOSED","blockers":["KILL_SWITCH_PRESENT_BEFORE_ORDER"]},indent=2))
+        return 5
+    if readonly.open_positions() or readonly.open_orders():
+        print(json.dumps({"status":"FAIL_CLOSED","blockers":["LAST_MOMENT_POSITION_OR_ORDER_CONFLICT"]},indent=2))
+        return 5
+
     duplicate_key = str(authority["duplicate_protection_key"])
     try:
         lock = _acquire_duplicate_lock(
@@ -358,7 +402,6 @@ def main() -> int:
         print(json.dumps({"status": "FAIL_CLOSED", "blockers": [str(exc)]}, indent=2))
         return 6
 
-    volume = int(authority["volume_contracts"])
     external_oid = str(authority["external_oid"])
     order_request = {
         "receipt_type": "ORDER_REQUEST",
