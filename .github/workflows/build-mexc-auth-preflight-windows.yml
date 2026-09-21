@@ -1,0 +1,71 @@
+name: BUILD MEXC AUTHENTICATED READ-ONLY PREFLIGHT
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - mexc-futures-authenticated-preflight-v0.1
+    paths:
+      - 'crypto_edge_radar/radar/mexc_auth_readonly.py'
+      - 'crypto_edge_radar/radar/mexc_authenticated_preflight.py'
+      - 'crypto_edge_radar/scripts/mexc_authenticated_preflight.py'
+      - 'crypto_edge_radar/windows/Set_MEXC_Preflight_Secrets.ps1'
+      - 'crypto_edge_radar/windows/Run_MEXC_Authenticated_Preflight.ps1'
+      - 'crypto_edge_radar/tests/test_mexc_auth_readonly.py'
+      - 'crypto_edge_radar/tests/test_mexc_authenticated_preflight.py'
+      - 'crypto_edge_radar/MEXC_FUTURES_AUTHENTICATED_READ_ONLY_PREFLIGHT_AUTHORITY_V0.1.json'
+      - '.github/workflows/build-mexc-auth-preflight-windows.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: crypto_edge_radar
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install package and packager
+        run: |
+          python -m pip install -e .
+          python -m pip install "pyinstaller>=6,<7"
+      - name: Compile authenticated preflight modules
+        run: |
+          python -m compileall radar scripts tests
+      - name: Run MEXC authenticated preflight safety tests
+        run: |
+          python -m unittest discover -s tests -p "test_mexc_auth*.py" -v
+      - name: Verify authority is read-only
+        shell: pwsh
+        run: |
+          $a = Get-Content MEXC_FUTURES_AUTHENTICATED_READ_ONLY_PREFLIGHT_AUTHORITY_V0.1.json | ConvertFrom-Json
+          if ($a.status -ne "AUTHORIZED_READ_ONLY_PREFLIGHT_ONLY") { throw "wrong authority status" }
+          if ($a.allowed_http_methods.Count -ne 1 -or $a.allowed_http_methods[0] -ne "GET") { throw "authority not GET-only" }
+          if ($a.live_capital_authorized_by_this_authority) { throw "live capital unexpectedly authorized" }
+          if ($a.candidate_execution_authority_created_by_this_authority) { throw "candidate execution authority unexpectedly created" }
+      - name: Build standalone preflight EXE
+        run: |
+          pyinstaller --clean --onefile --name MEXCAuthenticatedPreflight --paths . scripts/mexc_authenticated_preflight.py
+      - name: Hash executable
+        shell: pwsh
+        run: |
+          $hash = (Get-FileHash dist\MEXCAuthenticatedPreflight.exe -Algorithm SHA256).Hash.ToLower()
+          "sha256=$hash" | Out-File -FilePath dist\MEXCAuthenticatedPreflight.sha256.txt -Encoding ascii
+          Get-Content dist\MEXCAuthenticatedPreflight.sha256.txt
+      - name: Upload local-only preflight bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: mexc-authenticated-readonly-preflight-windows
+          path: |
+            crypto_edge_radar/dist/MEXCAuthenticatedPreflight.exe
+            crypto_edge_radar/dist/MEXCAuthenticatedPreflight.sha256.txt
+            crypto_edge_radar/windows/Set_MEXC_Preflight_Secrets.ps1
+            crypto_edge_radar/windows/Run_MEXC_Authenticated_Preflight.ps1
+            crypto_edge_radar/MEXC_FUTURES_AUTHENTICATED_READ_ONLY_PREFLIGHT_AUTHORITY_V0.1.json
+          if-no-files-found: error
+          retention-days: 7
