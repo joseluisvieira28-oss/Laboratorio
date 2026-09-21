@@ -1,0 +1,38 @@
+{
+  "schema_version":"0.1",
+  "lab_id":"L2-RESILIENCY-001",
+  "year":2025,
+  "classification":"RUNTIME_COMPUTE_BLOCKED_AFTER_DRIVE_INGEST_READY",
+  "drive_transport":{
+    "folder":"L2R_2025_DRIVE_PARTS_32MiB",
+    "archives":[
+      {"name":"20250530.zip","parts":93,"size_bytes":3090700320,"sha256":"1f5c59b04cf8a51638a32f0aa7ffd7b5a29a6906bd4f3a3881df716b4bbbabce"},
+      {"name":"20250907.zip","parts":63,"size_bytes":2088567760,"sha256":"b1aeda17292fc4358a7f396a683a27c46c769df71e74baf47a463d1b871f28a3"},
+      {"name":"20251227.zip","parts":70,"size_bytes":2333757454,"sha256":"0683727131ac8e3cbc45a47edd57fd9ec69a996eb5eaed40a2ce6bda86d1b54c"}
+    ],
+    "total_parts":226,
+    "part_size_target_bytes":33554432,
+    "scientific_changes":false
+  },
+  "ingestion_probe":{
+    "library_listing":"PASS",
+    "materialize_one_32MiB_part":"PASS",
+    "workspace_path":"/mnt/data/l2r32test/20250530.zip.part0001",
+    "workspace_read_or_hash":"BLOCKED_BY_RUNTIME_CLIENT_TRANSPORT_ERROR"
+  },
+  "previous_scientific_state":{
+    "inventory":"PASS 8400/8760 PRESENT = 95.8904109589%",
+    "acquisition":"PASS 8400 objects, 8975275014 bytes",
+    "schema":"FAIL_CLOSED on raw.data.time > envelope in first observed 2025 violation",
+    "holdout_outcomes_opened":false
+  },
+  "scientific_interpretation":"No scientific verdict. This is infrastructure-only. Do not classify as NO_EDGE or VALIDATION_FAIL.",
+  "firewalls":{
+    "access_2026":false,
+    "holdout_outcomes_opened":false,
+    "post_outcome_tuning":false,
+    "live_trading":false,
+    "exchange_mutation":false
+  },
+  "next_action":"When a working compute runtime is available, materialize and hash all 226 chunks, reassemble and verify the three original ZIP SHA256 values, extract RAW, run the frozen source-clock diagnostic, freeze any deterministic timestamp-semantic amendment prospectively, then execute the one-shot 2025 holdout only if source/schema gates pass."
+}
