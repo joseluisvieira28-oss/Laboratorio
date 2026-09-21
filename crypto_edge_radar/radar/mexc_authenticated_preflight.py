@@ -98,6 +98,8 @@ def run_authenticated_preflight(
     private_client: MEXCFuturesAuthenticatedReadOnlyClient,
     public_feed: MEXCFuturesPublicFeed | None = None,
     clock_ms: Callable[[], float] | None = None,
+    expected_equity_usdt: float | None = None,
+    expected_equity_tolerance_usdt: float = 0.01,
 ) -> dict[str, Any]:
     public_feed = public_feed or MEXCFuturesPublicFeed(timeout=10)
     clock_ms = clock_ms or (lambda: time.time_ns() / 1_000_000.0)
@@ -179,8 +181,21 @@ def run_authenticated_preflight(
         usdt = _find_usdt_asset(assets)
         equity = _safe_float(usdt.get("equity"), "equity")
         available = _safe_float(usdt.get("availableBalance"), "availableBalance")
+        identity_match = False
+        expected_value = None
+        equity_delta = None
+        if expected_equity_usdt is not None:
+            expected_value = _safe_float(expected_equity_usdt, "expected_equity_usdt")
+            tolerance = _safe_float(
+                expected_equity_tolerance_usdt, "expected_equity_tolerance_usdt"
+            )
+            if tolerance < 0:
+                raise ValueError("expected_equity_tolerance_usdt must be non-negative")
+            equity_delta = abs(equity - expected_value)
+            identity_match = equity_delta <= tolerance
+
         checks["account"] = {
-            "pass": equity >= 0 and available >= 0,
+            "pass": equity >= 0 and available >= 0 and identity_match,
             "currency": "USDT",
             "equity_usdt": equity,
             "available_balance_usdt": available,
@@ -188,17 +203,26 @@ def run_authenticated_preflight(
             "frozen_balance_usdt": usdt.get("frozenBalance"),
             "position_margin_usdt": usdt.get("positionMargin"),
             "unrealized_usdt": usdt.get("unrealized"),
-            "operator_account_identity_confirmation_required": True,
+            "expected_equity_usdt": expected_value,
+            "expected_equity_tolerance_usdt": expected_equity_tolerance_usdt,
+            "equity_delta_usdt": equity_delta,
+            "account_identity_match": identity_match,
         }
         if equity < 0 or available < 0:
             blockers.append("USDT_ACCOUNT_BALANCE_INVALID")
+        if expected_equity_usdt is None:
+            blockers.append("ACCOUNT_IDENTITY_EXPECTED_EQUITY_NOT_PROVIDED")
+        elif not identity_match:
+            blockers.append("ACCOUNT_IDENTITY_EQUITY_MISMATCH")
     except Exception as exc:
         checks["account"] = {"pass": False, "error": f"{type(exc).__name__}: {exc}"}
         blockers.append("AUTHENTICATED_ACCOUNT_BALANCE_READ_FAILED")
         equity = None
 
+    positions_read_ok = False
     try:
         positions = private_client.open_positions()
+        positions_read_ok = True
         checks["positions"] = {
             "pass": len(positions) == 0,
             "open_position_count": len(positions),
@@ -334,13 +358,18 @@ def run_authenticated_preflight(
 
     # No open position means margin type and Auto Margin Add do not exist as active
     # position state. We refuse to convert the operator UI selector into account truth.
-    if not positions:
+    if positions_read_ok and not positions:
         checks["active_margin_state"] = {
             "pass": True,
             "state": "NO_OPEN_POSITION",
             "margin_mode": "NOT_APPLICABLE_UNTIL_POSITION_EXISTS",
             "auto_margin_add": "NOT_APPLICABLE_UNTIL_POSITION_EXISTS",
             "execution_requirement": "future candidate-specific order path must set/verify ISOLATED, 1x and Auto Margin Add OFF where applicable",
+        }
+    elif not positions_read_ok:
+        checks["active_margin_state"] = {
+            "pass": False,
+            "state": "UNKNOWN_BECAUSE_POSITION_READ_FAILED",
         }
 
     checks["rate_limits"] = {
