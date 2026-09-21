@@ -17,22 +17,15 @@ class _Response:
     def __init__(self, payload, status=200):
         self.status = status
         self._payload = payload
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc, tb):
-        return False
-
-    def read(self):
-        return json.dumps(self._payload).encode("utf-8")
+    def __enter__(self): return self
+    def __exit__(self, exc_type, exc, tb): return False
+    def read(self): return json.dumps(self._payload).encode("utf-8")
 
 
 class _Opener:
     def __init__(self, payload):
         self.payload = payload
         self.requests = []
-
     def __call__(self, request, timeout):
         self.requests.append((request, timeout))
         return _Response(self.payload)
@@ -46,13 +39,9 @@ class MEXCAuthReadOnlyTests(unittest.TestCase):
         )
 
     def test_signature_matches_independent_hmac_vector(self):
-        # MEXC target string per docs: accessKey + timestamp + sorted GET query.
-        # Target here is exactly: key123a=1&b=2
         sig = _signature(
-            api_key="key",
-            api_secret="secret",
-            request_time_ms=123,
-            query="a=1&b=2",
+            api_key="key", api_secret="secret",
+            request_time_ms=123, query="a=1&b=2",
         )
         self.assertEqual(
             sig,
@@ -61,8 +50,7 @@ class MEXCAuthReadOnlyTests(unittest.TestCase):
 
     def test_private_read_is_get_only_and_headers_are_not_in_url(self):
         opener = _Opener({
-            "success": True,
-            "code": 0,
+            "success": True, "code": 0,
             "data": [{"currency": "USDT", "equity": 1, "availableBalance": 1}],
         })
         client = MEXCFuturesAuthenticatedReadOnlyClient(
@@ -80,16 +68,41 @@ class MEXCAuthReadOnlyTests(unittest.TestCase):
         self.assertEqual(request.get_header("Apikey"), "KEY123")
         self.assertTrue(request.get_header("Signature"))
 
-    def test_mutating_path_is_blocked_before_network(self):
+    def test_current_open_orders_endpoint_is_exact_documented_path(self):
+        opener=_Opener({"success":True,"code":0,"data":{"resultList":[]}})
+        client=MEXCFuturesAuthenticatedReadOnlyClient(
+            MEXCCredentials("K","S"),clock_ms=lambda:1700000000000,opener=opener
+        )
+        self.assertEqual(client.open_orders(),[])
+        request,_=opener.requests[0]
+        self.assertEqual(urlparse(request.full_url).path,"/api/v1/private/order/list/open_orders")
+
+    def test_external_oid_lookup_is_read_only(self):
+        opener=_Opener({"success":True,"code":0,"data":{"orderId":"123","state":3}})
+        client=MEXCFuturesAuthenticatedReadOnlyClient(
+            MEXCCredentials("K","S"),clock_ms=lambda:1700000000000,opener=opener
+        )
+        row=client.order_by_external(symbol="BTC_USDT",external_oid="abc-123")
+        self.assertEqual(row["orderId"],"123")
+        request,_=opener.requests[0]
+        self.assertEqual(request.get_method(),"GET")
+        self.assertEqual(
+            urlparse(request.full_url).path,
+            "/api/v1/private/order/external/BTC_USDT/abc-123"
+        )
+
+    def test_mutating_paths_are_blocked_before_network(self):
         opener = _Opener({"success": True, "data": {}})
         client = MEXCFuturesAuthenticatedReadOnlyClient(
-            MEXCCredentials("k", "s"),
-            opener=opener,
+            MEXCCredentials("k", "s"), opener=opener,
         )
-        with self.assertRaises(MEXCAuthenticatedReadError):
-            client._get_json("/api/v1/private/order/submit")
-        with self.assertRaises(MEXCAuthenticatedReadError):
-            client._get_json("/api/v1/private/position/change_leverage")
+        for path in (
+            "/api/v1/private/order/create",
+            "/api/v1/private/position/change_leverage",
+            "/api/v1/private/position/change_auto_add_im",
+        ):
+            with self.assertRaises(MEXCAuthenticatedReadError):
+                client._get_json(path)
         self.assertEqual(opener.requests, [])
 
 
