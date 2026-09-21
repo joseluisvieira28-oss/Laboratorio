@@ -56,35 +56,40 @@ class _PrivateClient:
             "unrealized": 0,
         }]
 
-    def open_positions(self):
+    def open_positions(self, symbol=None):
         return []
 
-    def open_orders(self, symbol):
+    def open_orders(self, symbol=None):
         return []
+
+    def fee_details(self, symbol):
+        return {
+            "level": 9999,
+            "realMakerFee": 0.0,
+            "realTakerFee": 0.0,
+            "originalMakerFee": 0.0006,
+            "originalTakerFee": 0.0008,
+            "feeRateMode": "API",
+        }
 
     def tiered_fee_rate(self, symbol):
-        return {
-            "level": 0,
-            "makerFee": 0.0006,
-            "takerFee": 0.0008,
-        }
+        return self.fee_details(symbol)
 
     def leverage(self, symbol):
         return [
-            {"positionType": 1, "leverage": 1, "level": 1, "imr": 1, "mmr": 0.004},
-            {"positionType": 2, "leverage": 1, "level": 1, "imr": 1, "mmr": 0.004},
+            {"positionType": 1, "openType": 1, "leverage": 1, "level": 1, "imr": 1, "mmr": 0.004},
+            {"positionType": 2, "openType": 1, "leverage": 1, "level": 1, "imr": 1, "mmr": 0.004},
         ]
 
     def position_mode(self):
-        return 2
+        return 1
 
     def risk_limit(self, symbol):
         return {symbol: [{"level": 1, "maxLeverage": 500}]}
 
 
 class MEXCAuthenticatedPreflightTests(unittest.TestCase):
-    def test_pass_when_exchange_minimum_fits_existing_frozen_budget(self):
-        # 1 * 0.000001 BTC * 100k = 0.10 USDT <= 0.1123763 USDT.
+    def test_exchange_preflight_passes_and_candidate_passes_when_minimum_fits(self):
         times = iter([1_700_000_000_000, 1_700_000_000_100])
         result = run_authenticated_preflight(
             private_client=_PrivateClient(),
@@ -94,11 +99,11 @@ class MEXCAuthenticatedPreflightTests(unittest.TestCase):
         )
         self.assertTrue(result["pass"], result)
         self.assertEqual(result["status"], "PASS")
+        self.assertTrue(result["candidate_feasibility"]["ETF-CME-INSTFLOW-001"]["pass"])
         self.assertFalse(result["security"]["exchange_mutation_performed"])
         self.assertFalse(result["security"]["order_endpoint_implemented"])
 
-    def test_fail_closed_when_exchange_minimum_exceeds_existing_budget(self):
-        # 1 * 0.0001 BTC * 100k = 10 USDT > 0.1123763 USDT.
+    def test_exchange_preflight_stays_pass_when_only_candidate_minimum_exceeds_budget(self):
         times = iter([1_700_000_000_000, 1_700_000_000_100])
         result = run_authenticated_preflight(
             private_client=_PrivateClient(),
@@ -106,10 +111,34 @@ class MEXCAuthenticatedPreflightTests(unittest.TestCase):
             clock_ms=lambda: next(times),
             expected_equity_usdt=112.3763,
         )
-        self.assertFalse(result["pass"])
+        self.assertTrue(result["pass"], result)
+        self.assertEqual(result["status"], "PASS")
+        candidate=result["candidate_feasibility"]["ETF-CME-INSTFLOW-001"]
+        self.assertFalse(candidate["pass"])
+        self.assertEqual(candidate["status"], "BLOCKED")
         self.assertIn(
             "ETF_CME_VENUE_MIN_NOTIONAL_EXCEEDS_FROZEN_VALIDATION_BUDGET",
+            candidate["blockers"],
+        )
+        self.assertNotIn(
+            "ETF_CME_VENUE_MIN_NOTIONAL_EXCEEDS_FROZEN_VALIDATION_BUDGET",
             result["blockers"],
+        )
+
+    def test_official_api_fee_floor_overrides_zero_authenticated_promo_value(self):
+        times = iter([1_700_000_000_000, 1_700_000_000_100])
+        result = run_authenticated_preflight(
+            private_client=_PrivateClient(),
+            public_feed=_PublicFeed(contract_size=0.000001),
+            clock_ms=lambda: next(times),
+            expected_equity_usdt=112.3763,
+        )
+        fees=result["checks"]["fees"]
+        self.assertEqual(fees["authenticated_account_taker_fee_bps"],0.0)
+        self.assertEqual(fees["effective_taker_fee_bps_for_execution_model"],8.0)
+        self.assertIn(
+            "AUTHENTICATED_FEE_ENDPOINT_BELOW_OFFICIAL_API_EXECUTION_FLOOR__USING_OFFICIAL_FLOOR",
+            result["warnings"],
         )
 
     def test_fail_closed_when_account_identity_reference_missing(self):
@@ -127,7 +156,7 @@ class MEXCAuthenticatedPreflightTests(unittest.TestCase):
 
     def test_fail_closed_on_existing_position(self):
         class WithPosition(_PrivateClient):
-            def open_positions(self):
+            def open_positions(self, symbol=None):
                 return [{
                     "symbol": "ETH_USDT",
                     "positionType": 1,
