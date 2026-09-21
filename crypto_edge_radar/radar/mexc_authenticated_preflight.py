@@ -252,7 +252,7 @@ def run_authenticated_preflight(
         positions = []
 
     try:
-        orders = private_client.open_orders(SYMBOL)
+        orders = private_client.open_orders()
         checks["orders"] = {
             "pass": len(orders) == 0,
             "open_order_count": len(orders),
@@ -270,15 +270,21 @@ def run_authenticated_preflight(
             ],
         }
         if orders:
-            blockers.append("OPEN_BTC_USDT_ORDER_PRESENT")
+            blockers.append("OPEN_FUTURES_ORDER_PRESENT")
     except Exception as exc:
         checks["orders"] = {"pass": False, "error": f"{type(exc).__name__}: {exc}"}
         blockers.append("AUTHENTICATED_OPEN_ORDERS_READ_FAILED")
 
     try:
-        fees = private_client.tiered_fee_rate(SYMBOL)
-        maker = _safe_float(fees.get("makerFee"), "makerFee")
-        taker = _safe_float(fees.get("takerFee"), "takerFee")
+        fees = private_client.fee_details(SYMBOL)
+        maker_raw = fees.get("realMakerFee")
+        taker_raw = fees.get("realTakerFee")
+        if maker_raw is None:
+            maker_raw = fees.get("makerFee")
+        if taker_raw is None:
+            taker_raw = fees.get("takerFee")
+        maker = _safe_float(maker_raw, "realMakerFee")
+        taker = _safe_float(taker_raw, "realTakerFee")
         effective_maker = max(maker, MEXC_API_FUTURES_MAKER_FLOOR)
         effective_taker = max(taker, MEXC_API_FUTURES_TAKER_FLOOR)
         account_below_api_floor = (
@@ -288,6 +294,9 @@ def run_authenticated_preflight(
         checks["fees"] = {
             "pass": maker >= 0 and taker >= 0,
             "level": fees.get("level"),
+            "fee_rate_mode": fees.get("feeRateMode"),
+            "authenticated_account_original_maker_fee_fraction": fees.get("originalMakerFee"),
+            "authenticated_account_original_taker_fee_fraction": fees.get("originalTakerFee"),
             "authenticated_account_maker_fee_fraction": maker,
             "authenticated_account_taker_fee_fraction": taker,
             "authenticated_account_maker_fee_bps": maker * 10_000.0,
@@ -299,7 +308,7 @@ def run_authenticated_preflight(
             "effective_maker_fee_bps_for_execution_model": effective_maker * 10_000.0,
             "effective_taker_fee_bps_for_execution_model": effective_taker * 10_000.0,
             "authenticated_account_below_official_api_floor": account_below_api_floor,
-            "source": "AUTHENTICATED_ACCOUNT_PLUS_OFFICIAL_API_FUTURES_FLOOR",
+            "source": "AUTHENTICATED_ACCOUNT_V2_PLUS_OFFICIAL_API_FUTURES_FLOOR",
             "official_api_fee_source": MEXC_API_FEE_SOURCE,
         }
         if account_below_api_floor:
@@ -319,6 +328,7 @@ def run_authenticated_preflight(
             "rows": [
                 {
                     "position_type": row.get("positionType"),
+                    "open_type": row.get("openType"),
                     "leverage": row.get("leverage"),
                     "risk_level": row.get("level"),
                     "imr": row.get("imr"),
