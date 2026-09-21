@@ -1,0 +1,137 @@
+name: Exchange Delisting V0.4.1 — Source Audit Rerun
+
+on:
+  push:
+    branches:
+      - exchange-delisting-v04-source-audit-2026-09-21
+    paths:
+      - '.github/workflows/exchange-delisting-v041-source-audit-rerun.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  source-only-audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: exchange-delisting-v04-source-audit-2026-09-21
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Bind exact frozen V0.4 authority and V0.4.1 parser erratum
+        run: |
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/exchange_delisting_shock_001'
+          test -f "$BASE/SOURCE_CONTRACT_V04.json"
+          test -f "$BASE/SOURCE_V04_PARSER_ERRATUM_V0.4.1.md"
+          test -f "$BASE/source_gate_v04.py"
+          python - <<'PY'
+          import json
+          p='Dream-Account-OS-v2.3-PARTIAL/research/exchange_delisting_shock_001/SOURCE_CONTRACT_V04.json'
+          a=json.load(open(p))
+          assert a['source_gate_id']=='EDS-BINANCE-FULLTOKEN-SYMBOLIDENTITY-002'
+          assert a['status']=='FROZEN_NEW_SOURCE_CONTRACT_OUTCOME_BLIND'
+          assert a['source_event_gate']['minimum_qualified_token_events']==30
+          assert a['source_event_gate']['minimum_distinct_tokens']==15
+          assert a['source_event_gate']['required_calendar_years']==[2023,2024]
+          assert a['market_route_preflight']['minimum_route_qualified_token_events']==30
+          assert a['market_route_preflight']['minimum_route_qualified_distinct_tokens']==15
+          assert all(v is False for v in a['hard_firewalls'].values())
+          print('EDS_V041_AUTHORITY_BIND_PASS')
+          PY
+          echo "AUTHORITY_BLOB=$(git hash-object "$BASE/SOURCE_CONTRACT_V04.json")"
+          echo "ERRATUM_BLOB=$(git hash-object "$BASE/SOURCE_V04_PARSER_ERRATUM_V0.4.1.md")"
+          echo "RUNNER_BLOB=$(git hash-object "$BASE/source_gate_v04.py")"
+
+      - name: Install source dependency
+        run: pip install --disable-pip-version-check requests
+
+      - name: Parser regression tests
+        run: |
+          python - <<'PY'
+          import sys
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/exchange_delisting_shock_001'
+          sys.path.insert(0,BASE)
+          import source_gate_v04 as s
+          x=s.semantic_token_identities('''<p>we have decided to delist and cease trading on all spot trading pairs for the following token(s) at 2024-02-20 03:00 (UTC):</p><p>Aragon (ANT)</p><p>Multichain (MULTI)</p><p>Vai (VAI)</p><p>Monero (XMR)</p><p>Please note:</p>''')
+          assert x=={'ANT':'Aragon','MULTI':'Multichain','VAI':'Vai','XMR':'Monero'},x
+          y=s.semantic_token_identities('''<p>we have decided to delist and cease trading on all trading pairs for the following tokens at 2023-04-18 03:00 (UTC):</p><p>Kepple (QLC)</p><p>Neblio (NEBL)</p><p>Auto (AUTO)</p><p>Please note:</p>''')
+          assert y=={'QLC':'Kepple','NEBL':'Neblio','AUTO':'Auto'},y
+          print('EDS_V041_PARSER_REGRESSION_PASS')
+          PY
+
+      - name: Execute exact outcome-blind source contract
+        id: gate
+        shell: bash
+        run: |
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/exchange_delisting_shock_001'
+          set +e
+          (cd "$BASE" && python source_gate_v04.py)
+          rc=$?
+          set -e
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          test -f "$BASE/source_evidence/EDS_SOURCE_DATA_GATE_V04.json"
+
+      - name: Enforce source-only firewall
+        run: |
+          python - <<'PY'
+          import json
+          p='Dream-Account-OS-v2.3-PARTIAL/research/exchange_delisting_shock_001/source_evidence/EDS_SOURCE_DATA_GATE_V04.json'
+          x=json.load(open(p))
+          g=x['receipt']['guards']
+          for k in ['market_price_values_opened','returns_computed','pnl_computed','year_2025_opened','year_2026_opened','live_trading','exchange_mutation','wallet_access','merge_to_main']:
+              assert g[k] is False,(k,g[k])
+          assert x['classification'] in {'SOURCE_DATA_PASS','INSUFFICIENT_SOURCE_SAMPLE','INSUFFICIENT_MARKET_ROUTE_SAMPLE','SOURCE_ACCESS_BLOCKED','SOURCE_TECHNICAL_FAILURE'}
+          print('EDS_V041_SOURCE_FIREWALL_PASS',x['classification'])
+          PY
+
+      - name: Persist receipt and audit metadata
+        env:
+          GATE_RC: ${{ steps.gate.outputs.rc }}
+        run: |
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/exchange_delisting_shock_001'
+          mkdir -p "$BASE/audit_receipts"
+          cp "$BASE/source_evidence/EDS_SOURCE_DATA_GATE_V04.json" "$BASE/audit_receipts/EDS_SOURCE_DATA_GATE_V04_2026_09_21.json"
+          python - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          p=Path('Dream-Account-OS-v2.3-PARTIAL/research/exchange_delisting_shock_001/audit_receipts/EDS_SOURCE_DATA_GATE_V04_2026_09_21.json')
+          x=json.loads(p.read_text())
+          r=x['receipt']
+          meta={
+            'lab_id':'EXCHANGE-DELISTING-SHOCK-001',
+            'source_gate_id':x['source_gate_id'],
+            'audit_date':'2026-09-21',
+            'classification':x['classification'],
+            'qualified_token_events':r['qualified_token_events'],
+            'qualified_distinct_tokens':r['qualified_distinct_tokens'],
+            'qualified_years':r['qualified_years'],
+            'route_qualified_token_events':r['route_qualified_token_events'],
+            'route_qualified_distinct_tokens':r['route_qualified_distinct_tokens'],
+            'route_qualified_years':r['route_qualified_years'],
+            'receipt_sha256':hashlib.sha256(p.read_bytes()).hexdigest(),
+            'gate_exit_code':int(os.environ['GATE_RC']),
+            'market_outcomes_opened':False,
+            'main_modified':False
+          }
+          q=Path('Dream-Account-OS-v2.3-PARTIAL/research/exchange_delisting_shock_001/audit_receipts/EDS_SOURCE_V041_AUDIT_META.json')
+          q.write_text(json.dumps(meta,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(meta,sort_keys=True))
+          PY
+          git config user.name "crypto-lab-source-audit"
+          git config user.email "actions@users.noreply.github.com"
+          git add "$BASE/audit_receipts/"
+          git commit -m "audit: persist exchange delisting V0.4.1 source census receipt"
+          git push origin HEAD:exchange-delisting-v04-source-audit-2026-09-21
+
+      - name: Preserve classification
+        env:
+          GATE_RC: ${{ steps.gate.outputs.rc }}
+        run: |
+          echo "Outcome-blind source audit persisted."
+          test "$GATE_RC" -eq 0
