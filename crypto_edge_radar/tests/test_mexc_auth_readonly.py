@@ -45,7 +45,9 @@ class MEXCAuthReadOnlyTests(unittest.TestCase):
             "page_num=1&page_size=100&symbol=BTC_USDT",
         )
 
-    def test_signature_matches_hmac_contract(self):
+    def test_signature_matches_independent_hmac_vector(self):
+        # MEXC target string per docs: accessKey + timestamp + sorted GET query.
+        # Target here is exactly: key123a=1&b=2
         sig = _signature(
             api_key="key",
             api_secret="secret",
@@ -54,7 +56,7 @@ class MEXCAuthReadOnlyTests(unittest.TestCase):
         )
         self.assertEqual(
             sig,
-            "0feb85cbaca4508744ec82647da9bd4d4f46f2f80e58485c12ec07099e7f2215",
+            "c882f568119d28d1d0f51e6fd1aeffe97f84cee07188f5e04a76d31533f034c4",
         )
 
     def test_private_read_is_get_only_and_headers_are_not_in_url(self):
