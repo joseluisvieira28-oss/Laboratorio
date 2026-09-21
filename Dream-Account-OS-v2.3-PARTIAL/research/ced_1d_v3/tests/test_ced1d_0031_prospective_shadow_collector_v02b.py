@@ -67,7 +67,7 @@ assert abs(ev[0]["funding_upper_bps"]+9.0)<1e-9,ev[0]
 assert abs(ev[0]["reference_base_lower_bps"]-(20-14-11))<1e-9,ev[0]
 
 # Complete week counting: first full prospective week is Mon 2026-09-21.
-assert m.complete_signal_weeks(date(2026,9,27))==[]
+assert m.complete_signal_weeks(date(2026,9,26))==[]
 ws=m.complete_signal_weeks(date(2026,11,15))
 assert len(ws)==8,ws
 assert ws[0]==date(2026,9,21) and ws[-1]==date(2026,11,9),ws
