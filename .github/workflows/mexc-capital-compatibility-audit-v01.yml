@@ -1,0 +1,46 @@
+name: MEXC Capital Compatibility Audit V0.1
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - mexc-capital-compatibility-audit-v0.1
+    paths:
+      - 'crypto_edge_radar/scripts/mexc_capital_compatibility_audit.py'
+      - '.github/workflows/mexc-capital-compatibility-audit-v01.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: crypto_edge_radar
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run public-only live MEXC capital compatibility audit
+        run: |
+          mkdir -p audit_out
+          python scripts/mexc_capital_compatibility_audit.py | tee audit_out/mexc_capital_compatibility_audit_v01.json
+      - name: Assert no live execution path
+        run: |
+          python - <<'PY'
+          import json
+          p=json.load(open('audit_out/mexc_capital_compatibility_audit_v01.json',encoding='utf-8'))
+          assert p['orders_created'] is False
+          assert p['authenticated_exchange_api_used'] is False
+          assert p['exchange_mutation_performed'] is False
+          assert all(v.get('live_order_now') is False for v in p['candidates'].values())
+          print('PASS: public-only audit; no order path')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mexc-capital-compatibility-audit-v01
+          path: crypto_edge_radar/audit_out/mexc_capital_compatibility_audit_v01.json
+          if-no-files-found: error
+          retention-days: 14
