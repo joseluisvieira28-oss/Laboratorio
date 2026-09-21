@@ -4,6 +4,7 @@ import hashlib
 import hmac
 import json
 import os
+import re
 import time
 from dataclasses import dataclass
 from typing import Any, Callable
@@ -12,6 +13,8 @@ from urllib.request import Request, urlopen
 
 MEXC_FUTURES_BASE_URL = "https://api.mexc.com"
 DEFAULT_TIMEOUT_SECONDS = 10
+CONTRACT_RE = re.compile(r"^[A-Z0-9]+_USDT$")
+EXTERNAL_OID_RE = re.compile(r"^[A-Za-z0-9_.:-]{1,32}$")
 
 _PRIVATE_EXACT_PATHS = {
     "/api/v1/private/account/assets",
@@ -19,10 +22,11 @@ _PRIVATE_EXACT_PATHS = {
     "/api/v1/private/position/position_mode",
     "/api/v1/private/position/leverage",
     "/api/v1/private/account/risk_limit",
-    "/api/v1/private/account/tiered_fee_rate",
+    "/api/v1/private/account/tiered_fee_rate/v2",
+    "/api/v1/private/order/list/open_orders",
 }
 _PRIVATE_PREFIX_PATHS = (
-    "/api/v1/private/order/list/open_orders/",
+    "/api/v1/private/order/external/",
 )
 
 
@@ -63,14 +67,21 @@ def _signature(*, api_key: str, api_secret: str, request_time_ms: int, query: st
     ).hexdigest()
 
 
-class MEXCFuturesAuthenticatedReadOnlyClient:
-    """Authenticated MEXC Futures client with an intentionally tiny GET-only surface.
+def _contract(symbol: str) -> str:
+    value = symbol.upper()
+    if not CONTRACT_RE.fullmatch(value):
+        raise MEXCAuthenticatedReadError(f"invalid MEXC futures contract: {symbol}")
+    return value
 
-    Security invariant:
-    - only allowlisted private GET endpoints are reachable;
-    - there is no POST, PUT, PATCH or DELETE implementation;
-    - credentials are accepted only from caller memory/environment;
-    - credentials are never returned, logged or persisted.
+
+class MEXCFuturesAuthenticatedReadOnlyClient:
+    """Authenticated MEXC Futures GET-only client bound to current documented endpoints.
+
+    Security boundary:
+    - only explicitly allowlisted private GET endpoints are reachable;
+    - no POST/DELETE method exists here;
+    - credentials remain caller-memory/environment only;
+    - credentials are never returned or persisted.
     """
 
     provider = "MEXC_FUTURES_AUTHENTICATED_READ_ONLY"
@@ -101,7 +112,9 @@ class MEXCFuturesAuthenticatedReadOnlyClient:
         if parsed.scheme or parsed.netloc:
             raise MEXCAuthenticatedReadError("absolute URLs are forbidden")
         if not self._allowed(path):
-            raise MEXCAuthenticatedReadError(f"blocked non-allowlisted private GET path: {parsed.path}")
+            raise MEXCAuthenticatedReadError(
+                f"blocked non-allowlisted private GET path: {parsed.path}"
+            )
 
         query = _encoded_query(params)
         request_time_ms = int(self._clock_ms())
@@ -128,7 +141,7 @@ class MEXCFuturesAuthenticatedReadOnlyClient:
                 "Request-Time": str(request_time_ms),
                 "Signature": signature,
                 "Content-Type": "application/json",
-                "User-Agent": "crypto-edge-radar-mexc-auth-preflight/0.1 GET-only",
+                "User-Agent": "crypto-lab-mexc-auth/0.2 GET-only",
             },
         )
         try:
@@ -153,7 +166,9 @@ class MEXCFuturesAuthenticatedReadOnlyClient:
         if payload.get("success") is not True:
             code = payload.get("code")
             message = payload.get("message") or payload.get("msg") or "unknown MEXC error"
-            raise MEXCAuthenticatedReadError(f"MEXC private read failed code={code}: {message}")
+            raise MEXCAuthenticatedReadError(
+                f"MEXC private read failed code={code}: {message}"
+            )
         return payload.get("data")
 
     def assets(self) -> list[dict[str, Any]]:
@@ -162,40 +177,50 @@ class MEXCFuturesAuthenticatedReadOnlyClient:
             raise MEXCAuthenticatedReadError("account assets payload missing list")
         return data
 
-    def open_positions(self) -> list[dict[str, Any]]:
-        data = self._get_json("/api/v1/private/position/open_positions")
+    def open_positions(self, symbol: str | None = None) -> list[dict[str, Any]]:
+        params = {"symbol": _contract(symbol)} if symbol else None
+        data = self._get_json("/api/v1/private/position/open_positions", params)
         if data is None:
             return []
         if not isinstance(data, list):
             raise MEXCAuthenticatedReadError("open positions payload missing list")
         return data
 
-    def open_orders(self, symbol: str = "BTC_USDT") -> list[dict[str, Any]]:
+    def open_orders(self, symbol: str | None = None) -> list[dict[str, Any]]:
         data = self._get_json(
-            f"/api/v1/private/order/list/open_orders/{symbol}",
+            "/api/v1/private/order/list/open_orders",
             {"page_num": 1, "page_size": 100},
         )
         if data is None:
-            return []
-        if isinstance(data, dict) and isinstance(data.get("resultList"), list):
-            return data["resultList"]
-        if isinstance(data, list):
-            return data
-        raise MEXCAuthenticatedReadError("open orders payload has unsupported shape")
+            rows: list[dict[str, Any]] = []
+        elif isinstance(data, dict) and isinstance(data.get("resultList"), list):
+            rows = data["resultList"]
+        elif isinstance(data, list):
+            rows = data
+        else:
+            raise MEXCAuthenticatedReadError("open orders payload has unsupported shape")
+        if symbol:
+            wanted = _contract(symbol)
+            return [row for row in rows if str(row.get("symbol", "")).upper() == wanted]
+        return rows
 
-    def tiered_fee_rate(self, symbol: str = "BTC_USDT") -> dict[str, Any]:
+    def fee_details(self, symbol: str = "BTC_USDT") -> dict[str, Any]:
         data = self._get_json(
-            "/api/v1/private/account/tiered_fee_rate",
-            {"symbol": symbol},
+            "/api/v1/private/account/tiered_fee_rate/v2",
+            {"symbol": _contract(symbol)},
         )
         if not isinstance(data, dict):
-            raise MEXCAuthenticatedReadError("tiered fee payload missing object")
+            raise MEXCAuthenticatedReadError("fee details payload missing object")
         return data
+
+    # Compatibility name for callers from V0.1.
+    def tiered_fee_rate(self, symbol: str = "BTC_USDT") -> dict[str, Any]:
+        return self.fee_details(symbol)
 
     def leverage(self, symbol: str = "BTC_USDT") -> list[dict[str, Any]]:
         data = self._get_json(
             "/api/v1/private/position/leverage",
-            {"symbol": symbol},
+            {"symbol": _contract(symbol)},
         )
         if isinstance(data, dict):
             return [data]
@@ -216,8 +241,19 @@ class MEXCFuturesAuthenticatedReadOnlyClient:
     def risk_limit(self, symbol: str = "BTC_USDT") -> Any:
         return self._get_json(
             "/api/v1/private/account/risk_limit",
-            {"symbol": symbol},
+            {"symbol": _contract(symbol)},
         )
+
+    def order_by_external(self, *, symbol: str, external_oid: str) -> dict[str, Any]:
+        symbol = _contract(symbol)
+        if not EXTERNAL_OID_RE.fullmatch(external_oid):
+            raise MEXCAuthenticatedReadError("invalid external_oid")
+        data = self._get_json(
+            f"/api/v1/private/order/external/{symbol}/{external_oid}"
+        )
+        if not isinstance(data, dict):
+            raise MEXCAuthenticatedReadError("external order lookup missing object")
+        return data
 
 
 __all__ = [
