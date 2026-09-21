@@ -56,3 +56,5 @@ With the operator's authenticated equity around 112.3763 USDT:
 - the executor therefore remains unreachable by design.
 
 No template in this package authorizes an order.
+
+Validation trigger: final V0.2 current-API safety suite after entry/exit/risk hardening.
