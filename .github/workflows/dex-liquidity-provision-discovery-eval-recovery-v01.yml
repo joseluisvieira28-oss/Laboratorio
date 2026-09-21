@@ -1,0 +1,133 @@
+name: DEX Liquidity Provision 001 — Discovery Eval Recovery V0.1
+
+on:
+  push:
+    branches:
+      - dex-liquidity-provision-v0.1
+    paths:
+      - '.github/workflows/dex-liquidity-provision-discovery-eval-recovery-v01.yml'
+      - 'research/dex_liquidity_provision/DEX_LIQUIDITY_PROVISION_001_DISCOVERY_ARTIFACT_LAYOUT_AMENDMENT_V0_1.md'
+      - 'research/dex_liquidity_provision/evaluate_discovery_v01.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  PYTHONUNBUFFERED: "1"
+  FREEZE: research/dex_liquidity_provision/DEX_LIQUIDITY_PROVISION_001_FINAL_PRE_DISCOVERY_FREEZE_V0_1.json
+  DISCOVERY_RUN_ID: "35564286069"
+
+jobs:
+  discovery-evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    outputs:
+      passed: ${{ steps.verdict.outputs.passed }}
+      classification: ${{ steps.verdict.outputs.classification }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dex-liquidity-provision-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install evaluation dependencies
+        run: python -m pip install --disable-pip-version-check numpy pandas scipy
+      - name: Download exact immutable Discovery shards from canonical run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p downloaded_discovery
+          for i in 0 1 2 3 4 5 6 7; do
+            gh run download "$DISCOVERY_RUN_ID"               --repo joseluisvieira28-oss/Laboratorio               --name "DEX_LP_DISCOVERY_SHARD_$i"               --dir "downloaded_discovery/DEX_LP_DISCOVERY_SHARD_$i"
+          done
+      - name: Evaluate unchanged frozen Discovery
+        run: |
+          python research/dex_liquidity_provision/evaluate_discovery_v01.py             --phase discovery             --root downloaded_discovery             --freeze "$FREEZE"             --out discovery_result
+      - name: Bind Discovery verdict
+        id: verdict
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          p=Path("discovery_result/DEX_LIQUIDITY_PROVISION_001_DISCOVERY_RESULT_V0_1.json")
+          r=json.loads(p.read_text())
+          c=str(r["classification"])
+          assert c in {"DISCOVERY_NO_EDGE","DISCOVERY_SURVIVES","DISCOVERY_INSUFFICIENT_SAMPLE"}
+          with open(os.environ["GITHUB_OUTPUT"],"a") as f:
+              f.write("classification="+c+"\n")
+              f.write("passed="+("true" if c=="DISCOVERY_SURVIVES" else "false")+"\n")
+          print(json.dumps({"classification":c,"replication_authorized":c=="DISCOVERY_SURVIVES"},sort_keys=True))
+          PY
+      - name: Upload Discovery adjudication
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: DEX_LIQUIDITY_PROVISION_001_DISCOVERY_V0_1_RECOVERED
+          path: discovery_result/
+          if-no-files-found: warn
+          retention-days: 30
+
+  replication-shards:
+    needs: discovery-evaluate
+    if: ${{ needs.discovery-evaluate.outputs.passed == 'true' }}
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        shard: [0,1,2,3,4,5,6,7]
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dex-liquidity-provision-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install source dependencies
+        run: python -m pip install --disable-pip-version-check requests 'eth-hash[pycryptodome]'
+      - name: Acquire frozen 2024 replication source shard
+        run: |
+          python research/dex_liquidity_provision/discovery_source_shard_v01.py             --phase replication             --shard-id ${{ matrix.shard }}             --shard-count 8             --freeze "$FREEZE"             --out "dex_lp_replication_shard_${{ matrix.shard }}"
+      - name: Upload replication shard evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: DEX_LP_REPLICATION_SHARD_${{ matrix.shard }}
+          path: dex_lp_replication_shard_${{ matrix.shard }}/
+          if-no-files-found: error
+          retention-days: 30
+
+  replication-evaluate:
+    needs: replication-shards
+    if: ${{ needs.replication-shards.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dex-liquidity-provision-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install evaluation dependencies
+        run: python -m pip install --disable-pip-version-check numpy pandas scipy
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: DEX_LP_REPLICATION_SHARD_*
+          path: downloaded_replication
+          merge-multiple: false
+      - name: Evaluate unchanged frozen 2024 replication
+        run: |
+          python research/dex_liquidity_provision/evaluate_discovery_v01.py             --phase replication             --root downloaded_replication             --freeze "$FREEZE"             --out replication_result
+      - name: Upload replication adjudication
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: DEX_LIQUIDITY_PROVISION_001_REPLICATION_V0_1_RECOVERED
+          path: replication_result/
+          if-no-files-found: warn
+          retention-days: 30
