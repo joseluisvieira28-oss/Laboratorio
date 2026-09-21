@@ -24,7 +24,7 @@ class Opener:
         if path=="/api/v1/private/order/create":
             return Resp({"success":True,"code":0,"data":{"orderId":"12345","ts":1700000000123}})
         if path=="/api/v1/private/order/cancel_with_external":
-            return Resp({"success":True,"code":0,"data":[{"orderId":"12345","errorCode":0}]})
+            return Resp({"success":True,"code":0,"data":{"orderId":"12345","externalOid":"abc-123","status":"CANCELLED"}})
         return Resp({"success":True,"code":0,"data":None})
 
 
@@ -110,12 +110,12 @@ class TradeTransportTests(unittest.TestCase):
     def test_cancel_by_external_is_narrowly_allowlisted(self):
         op=Opener()
         c=MEXCFuturesMutationTransport(MEXCCredentials("K","S"),opener=op)
-        rows=c.cancel_by_external(symbol="BTC_USDT",external_oid="abc-123")
-        self.assertEqual(rows[0]["errorCode"],0)
+        row=c.cancel_by_external(symbol="BTC_USDT",external_oid="abc-123")
+        self.assertEqual(row["externalOid"],"abc-123")
         req=op.requests[0]
         self.assertEqual(urlparse(req.full_url).path,"/api/v1/private/order/cancel_with_external")
         body=json.loads(req.data.decode())
-        self.assertEqual(body,[{"symbol":"BTC_USDT","externalOid":"abc-123"}])
+        self.assertEqual(body,{"symbol":"BTC_USDT","externalOid":"abc-123"})
 
 
 if __name__=="__main__":
