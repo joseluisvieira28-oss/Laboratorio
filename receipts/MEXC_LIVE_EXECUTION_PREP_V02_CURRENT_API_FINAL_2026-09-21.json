@@ -1,0 +1,111 @@
+{
+  "receipt_id": "MEXC-LIVE-EXECUTION-PREP-V02-CURRENT-API-FINAL-2026-09-21",
+  "finalized_at_utc": "2026-09-21T22:04:00Z",
+  "status": "VALIDATED_INFRASTRUCTURE_READY__NO_CURRENT_LEGITIMATE_ORDER",
+  "repository": "joseluisvieira28-oss/Laboratorio",
+  "mexc_branch": "mexc-live-execution-prep-v0.2-current-api",
+  "mexc_validated_head": "c8a023739a03f70433ee26f31e90522693ab3efd",
+  "mexc_ci": {
+    "run_id": 35660232899,
+    "conclusion": "success",
+    "tests": "30/30 PASS",
+    "artifact_id": 10667251762,
+    "artifact_name": "mexc-live-execution-prep-v02-current-api",
+    "artifact_sha256": "2182469fddf0d080f0a95df725c99d004f9da445cd8e7192a4fdf52d779c30d1",
+    "binaries": {
+      "MEXCAuthenticatedPreflight.exe": "60338c7cfc623cbdeb984863c33db313445ca42a14c9201e881b92e0bd7b25de",
+      "MEXCRiskState.exe": "27681dabacf5baf01f922cbc7e7b97fe83674d3c54b2d4ef2acadab809d52273",
+      "MEXCLiveExecutor.exe": "5165bd3ee6e30dbe731020577ef29783c1341880e48086c61c9ed06582fb490a",
+      "MEXCExitGuard.exe": "356d8520b299ea9281a9327f1e01f86c5195ff4206919623abae1fe17cf84322"
+    }
+  },
+  "current_api_bindings": {
+    "place_order": "POST /api/v1/private/order/create",
+    "cancel_by_external": "POST /api/v1/private/order/cancel_with_external",
+    "query_by_external": "GET /api/v1/private/order/external/{symbol}/{external_oid}",
+    "open_orders": "GET /api/v1/private/order/list/open_orders",
+    "fee_details": "GET /api/v1/private/account/tiered_fee_rate/v2",
+    "auto_margin": "POST /api/v1/private/position/change_auto_add_im"
+  },
+  "safety_invariants": {
+    "current_contract_allowlist": [
+      "BTC_USDT"
+    ],
+    "margin_mode": "ISOLATED_ONLY",
+    "leverage": "EXACTLY_1X_ONLY",
+    "position_mode": "HEDGE_ONLY",
+    "auto_margin_add": "OFF_REQUIRED_POST_FILL__EMERGENCY_FLATTEN_IF_NOT_VERIFIED",
+    "stale_signal_chase": false,
+    "duplicate_protection": true,
+    "kill_switch": true,
+    "daily_halt_fraction_equity": 0.003,
+    "weekly_halt_fraction_equity": 0.0075,
+    "max_concurrent_planned_risk_fraction_equity": 0.003,
+    "etf_validation_fraction_equity": 0.001,
+    "main_merge": false
+  },
+  "receipts_implemented": [
+    "PRE_ORDER_RECEIPT",
+    "ORDER_REQUEST",
+    "EXCHANGE_ACK",
+    "FILL_RECEIPT",
+    "FEE_RECEIPT",
+    "SLIPPAGE_RECEIPT",
+    "EXIT_RECEIPT",
+    "POST_TRADE_RECONCILIATION"
+  ],
+  "radar_bundle": {
+    "branch": "radar-v0141-local-recovery-v0.1",
+    "validated_head": "709dd8142441fe77aad35d36698fd8b8ef8178fa",
+    "run_id": 35660062636,
+    "conclusion": "success",
+    "tests": "199/199 PASS",
+    "artifact_id": 10666926073,
+    "artifact_sha256": "4a736219944ae15570cc9484ec0a8f655f94b1fa29f68a8874149acfeb0e3836",
+    "exe_sha256": "28e270e66c8e3dcd5de05073d67986223a042596fc4f1a31f744ba1ef55e3fff",
+    "registry_version": "3.6",
+    "motor_count": 7,
+    "fishing_labels_visual_only": true
+  },
+  "operator_authenticated_evidence": {
+    "v01_receipt_equity_usdt": 112.3763,
+    "account_identity_match": true,
+    "open_positions": 0,
+    "open_orders": 0,
+    "clock_pass": true,
+    "note": "Operator must run V0.2 Ready Check once to validate the current documented private endpoints against the live account. V0.1 result mixed ETF sizing into global preflight and is superseded architecturally."
+  },
+  "current_candidate_truth": {
+    "ETF-CME-INSTFLOW-001": {
+      "exchange_infrastructure": "PREPARED",
+      "current_capital_compatible": false,
+      "frozen_budget_usdt": 0.1123763,
+      "spot_long_minimum_usdt": 1,
+      "spot_long_equity_required_at_0_1pct_usdt": 1000,
+      "futures_short_minimum_usdt_approx": 8.68,
+      "futures_short_equity_required_at_0_1pct_usdt_approx": 8680,
+      "current_signal_execution_authority": false,
+      "decision": "NO_TRADE"
+    },
+    "BNB-LAUNCHPOOL-DEMAND-001": {
+      "mexc_frozen_pair": "BNBBTC",
+      "mexc_pair_present_in_live_probe": false,
+      "eligible_event_now": false,
+      "decision": "NO_TRADE"
+    },
+    "OPTIONS-SPOTPERP-001-V2.1": "SOURCE_FAIL_CLOSED",
+    "CED1D-0031": "COLLECTOR_FAIL_CLOSED",
+    "TFG-DONCHIAN-REGIME-ADAPTATION-V1": "TIER3_FORWARD_ONLY",
+    "EMA6H-50X200-REGIME-DEPENDENCY-001": "TIER3_FORWARD_ONLY",
+    "HTF-DH03-12H-STANDALONE-FORWARD-V1": "PROSPECTIVE_SHADOW_ONLY"
+  },
+  "combined_operator_pack": {
+    "filename": "CRYPTO_LAB_MEXC_READY_PACK_2026-09-21.zip",
+    "sha256": "246d011b3f4ffa8aa6b763255266a2b6f6c931f4d7a3fd0cb9254c462a6b5306",
+    "secrets_included": false
+  },
+  "science_changed": false,
+  "risk_changed": false,
+  "order_created": false,
+  "exchange_mutation_performed": false
+}
