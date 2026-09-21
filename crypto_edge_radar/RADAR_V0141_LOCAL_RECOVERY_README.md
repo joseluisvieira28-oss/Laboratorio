@@ -29,3 +29,5 @@ This prints process, port, HTTP, local status JSON and recent log tails.
 ## Safety
 
 This is public-shadow infrastructure. It contains no authenticated exchange order transport and does not authorize capital or orders.
+
+Build trigger: 2026-09-21 local recovery validation.
