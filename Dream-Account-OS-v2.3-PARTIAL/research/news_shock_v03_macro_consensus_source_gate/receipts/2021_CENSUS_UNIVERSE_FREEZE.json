@@ -1,0 +1,27 @@
+{
+  "document_type": "NEWS_SHOCK_V03_2021_CENSUS_UNIVERSE_FREEZE",
+  "version": "0.1",
+  "frozen_before_consensus_search": true,
+  "base_commit": "908e409732437c549d3cb1d05dd580e5d38bd5db",
+  "branch": "news-shock-v03-2021-consensus-census",
+  "universe": {
+    "year": 2021,
+    "cpi_events": 12,
+    "employment_situation_events": 12,
+    "total_events": 24,
+    "selection": "all scheduled BLS CPI and Employment Situation releases in calendar year 2021"
+  },
+  "required_fields": {
+    "CPI": ["headline_cpi_mom", "headline_cpi_yoy", "core_cpi_mom", "core_cpi_yoy"],
+    "EMPLOYMENT_SITUATION": ["nfp_change_k", "unemployment_rate", "ahe_mom", "ahe_yoy", "prior_payroll_revisions"]
+  },
+  "allowed_event_classes": ["ACCEPTED_COMPLETE", "ACCEPTED_PARTIAL", "CONSENSUS_PROVENANCE_INCOMPLETE", "TIMESTAMP_PROVENANCE_INCOMPLETE", "CONFLICTING_SOURCES", "SOURCE_UNAVAILABLE"],
+  "guards": {
+    "outcome_blind": true,
+    "year_2025_forbidden": true,
+    "year_2026_forbidden": true,
+    "google_drive_forbidden": true,
+    "market_data_forbidden": true,
+    "rules_may_change_after_coverage": false
+  }
+}
