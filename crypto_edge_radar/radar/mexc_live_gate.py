@@ -237,6 +237,9 @@ def validate_futures_short_execution(
     # Exact timing and no-chase.
     try:
         target = _parse_utc(authority.get("entry_target_utc"), "entry_target_utc")
+        exit_target = _parse_utc(authority.get("exit_target_utc"), "exit_target_utc")
+        if abs((exit_target - target).total_seconds() - 7 * 24 * 3600) > 1e-9:
+            blockers.append("EXIT_TARGET_NOT_EXACTLY_PLUS_7D")
         max_late_seconds = float(authority.get("max_late_seconds"))
         seconds_from_target = (now_utc - target).total_seconds()
         if seconds_from_target < -60:
@@ -244,8 +247,9 @@ def validate_futures_short_execution(
         elif seconds_from_target > max_late_seconds:
             blockers.append("STALE_SIGNAL_NO_CHASE")
     except Exception:
+        exit_target = None
         seconds_from_target = None
-        blockers.append("ENTRY_WINDOW_INVALID")
+        blockers.append("ENTRY_OR_EXIT_WINDOW_INVALID")
 
     reference_entry = authority.get("reference_entry_price")
     try:
@@ -273,6 +277,7 @@ def validate_futures_short_execution(
         "effective_taker_fee_bps": effective_taker,
         "reference_entry_price": reference_entry,
         "entry_seconds_from_target": seconds_from_target,
+        "exit_target_utc": exit_target.isoformat().replace("+00:00","Z") if exit_target else None,
         "order_side_semantics": "3=OPEN_SHORT; 2=CLOSE_SHORT",
         "api_place_order_path": CURRENT_PLACE_ORDER_PATH,
         "order_type": "MARKET",
