@@ -1,0 +1,91 @@
+name: DLS Save0c V0.3 Safe Cursor Recovery V0.1
+
+on:
+  push:
+    branches:
+      - dls-save0c-v03-safe-cursor-v0.1
+    paths:
+      - '.github/workflows/dls-save0c-v03-safe-cursor-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dls-save0c-v03-safe-cursor-v0.1
+          fetch-depth: 0
+
+      - name: Download cancelled Save0c V0.3 artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dls-save0c-first-success-rpc-v03
+          path: parent
+          run-id: 35771022352
+          github-token: ${{ github.token }}
+
+      - name: Extract confirmed page 217 cursor
+        run: |
+          python - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+
+          matches=list(Path("parent").rglob("signatures_page_0217.json"))
+          rec={
+            "schema_version":"0.1","lab_id":"DEFI-LIQUIDATION-SHOCK-001",
+            "classification":"SAVE0C_V03_SAFE_CURSOR_PAGE217_FAIL_CLOSED",
+            "parent_run_id":35771022352,
+            "parent_artifact_id":10714501324,
+            "parent_artifact_sha256":"b5284d198c7e5101bdd2ac5c0136c51248dbf002e1f42051e84091ab098bbf6b",
+            "accepted_page_number":217,
+            "rejected_orphan_page_number":218,
+            "prices":False,"returns":False,"pnl":False,"direction":False,
+            "event_outcomes":False,"live_trading":False,"orders":False,
+            "wallets":False,"exchange_mutation":False,"paid_source":False,"merge_main":False
+          }
+          if len(matches)!=1:
+              rec["reason"]=f"expected_one_page217_found_{len(matches)}"
+          else:
+              p=matches[0]
+              raw=p.read_bytes()
+              rec["page_sha256"]=hashlib.sha256(raw).hexdigest()
+              try:
+                  obj=json.loads(raw); rows=obj.get("result")
+              except Exception as e:
+                  rows=None; rec["reason"]=f"json_{type(e).__name__}"
+              if isinstance(rows,list) and len(rows)==1000:
+                  row=rows[-1]
+                  if isinstance(row,dict) and isinstance(row.get("signature"),str) and row.get("slot") is not None and row.get("blockTime") is not None:
+                      rec.update(
+                        classification="SAVE0C_V03_SAFE_CURSOR_PAGE217_EXTRACTED",
+                        page_row_count=1000,
+                        resume_before_signature=row["signature"],
+                        resume_slot=int(row["slot"]),
+                        resume_block_time=int(row["blockTime"]),
+                        resume_err=row.get("err"),
+                        selected_page_path=str(p)
+                      )
+                  else:
+                      rec["reason"]="invalid_final_row"
+              elif "reason" not in rec:
+                  rec["reason"]="page217_not_1000_rows"
+          out=Path("labs/DEFI_LIQUIDATION_SHOCK_001/SAVE0C_V03_SAFE_CURSOR_V0.1.json")
+          out.write_text(json.dumps(rec,indent=2,sort_keys=True)+"\n",encoding="utf-8")
+          print(json.dumps(rec,indent=2,sort_keys=True))
+          if rec["classification"]!="SAVE0C_V03_SAFE_CURSOR_PAGE217_EXTRACTED":
+              raise SystemExit(2)
+          PY
+
+      - name: Persist safe cursor
+        run: |
+          git config user.name "crypto-lab-source-audit"
+          git config user.email "actions@users.noreply.github.com"
+          git add labs/DEFI_LIQUIDATION_SHOCK_001/SAVE0C_V03_SAFE_CURSOR_V0.1.json
+          git commit -m "dls: persist Save 0x0c V0.3 safe page217 cursor" || true
+          git push origin HEAD:dls-save0c-v03-safe-cursor-v0.1
