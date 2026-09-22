@@ -1,0 +1,114 @@
+name: DLS SolArchive HF Metadata Probe V0.1A
+
+on:
+  push:
+    branches:
+      - defi-liquidation-kamino-first-success-exec-v0.1
+    paths:
+      - '.github/workflows/dls-solarchive-hf-metadata-probe-v01a.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: defi-liquidation-kamino-first-success-exec-v0.1
+          fetch-depth: 0
+
+      - name: Install public HF client
+        run: python -m pip install --disable-pip-version-check 'huggingface_hub>=0.34,<2'
+
+      - name: Fetch schema and date index through public Hugging Face mirror
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from huggingface_hub import hf_hub_download, HfApi
+          from pathlib import Path
+          import json, hashlib
+
+          repo='solarchive/solarchive'
+          status='SOLARCHIVE_HF_METADATA_PROBE_PASS'
+          errors=[]
+          schema_path=None
+          index_path=None
+
+          try:
+              schema_path=hf_hub_download(repo_id=repo,repo_type='dataset',filename='schemas/transactions.json')
+          except Exception as e:
+              errors.append('SCHEMA:'+type(e).__name__+':'+str(e)[:300])
+          try:
+              index_path=hf_hub_download(repo_id=repo,repo_type='dataset',filename='txs/2024-12-15/index.json')
+          except Exception as e:
+              errors.append('INDEX:'+type(e).__name__+':'+str(e)[:300])
+
+          tree=[]
+          try:
+              api=HfApi()
+              for x in api.list_repo_tree(repo_id=repo,repo_type='dataset',path_in_repo='txs/2024-12-15',recursive=False,expand=False):
+                  tree.append({
+                    'path':getattr(x,'path',None),
+                    'size':getattr(x,'size',None),
+                    'blob_id':getattr(x,'blob_id',None),
+                    'lfs':bool(getattr(x,'lfs',None)),
+                  })
+          except Exception as e:
+              errors.append('TREE:'+type(e).__name__+':'+str(e)[:300])
+
+          schema=None; idx=None
+          if schema_path:
+              schema=json.loads(Path(schema_path).read_text())
+          if index_path:
+              idx=json.loads(Path(index_path).read_text())
+
+          def names(x):
+              out=[]
+              if isinstance(x,list):
+                  for v in x: out+=names(v)
+              elif isinstance(x,dict):
+                  if isinstance(x.get('name'),str):out.append(x['name'])
+                  p=x.get('properties')
+                  if isinstance(p,dict):out+=list(p)
+              return sorted(set(out))
+
+          if schema is None or (idx is None and not tree):
+              status='SOLARCHIVE_HF_METADATA_PROBE_INCOMPLETE'
+
+          out={
+            'schema_version':'0.1A',
+            'lab_id':'DEFI-LIQUIDATION-SHOCK-001',
+            'status':status,
+            'date':'2024-12-15',
+            'repo_id':repo,
+            'schema_present':schema is not None,
+            'date_index_present':idx is not None,
+            'schema_sha256':hashlib.sha256(Path(schema_path).read_bytes()).hexdigest() if schema_path else None,
+            'index_sha256':hashlib.sha256(Path(index_path).read_bytes()).hexdigest() if index_path else None,
+            'schema_field_names':names(schema) if schema else [],
+            'index_top_keys':sorted(idx) if isinstance(idx,dict) else [],
+            'index_file_count':len(idx.get('files',[])) if isinstance(idx,dict) and isinstance(idx.get('files'),list) else None,
+            'repo_tree':tree,
+            'errors':errors,
+            'data_rows_opened':False,
+            'market_outcomes_opened':False,
+            'scientific_changes':False
+          }
+          p=Path('labs/DEFI_LIQUIDATION_SHOCK_001/audit_receipts/DLS_SOLARCHIVE_HF_METADATA_PROBE_V0.1A.json')
+          p.parent.mkdir(parents=True,exist_ok=True)
+          p.write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          print(json.dumps({'status':status,'schema_present':out['schema_present'],'date_index_present':out['date_index_present'],'tree_count':len(tree),'errors':errors},sort_keys=True))
+          PY
+
+      - name: Persist receipt
+        run: |
+          git config user.name "crypto-lab-source-audit"
+          git config user.email "actions@users.noreply.github.com"
+          git add labs/DEFI_LIQUIDATION_SHOCK_001/audit_receipts/DLS_SOLARCHIVE_HF_METADATA_PROBE_V0.1A.json
+          git commit -m "audit: persist SolArchive HF metadata probe"
+          git push origin HEAD:defi-liquidation-kamino-first-success-exec-v0.1
