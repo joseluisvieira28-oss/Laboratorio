@@ -43,6 +43,7 @@ jobs:
           repo = os.environ["GH_REPOSITORY"]
           token = os.environ["GH_TOKEN"]
           workflow = "cirv-prospective-forward-v02.yml"
+          workflow_path = ".github/workflows/cirv-prospective-forward-v02.yml"
           branch = "crypto-intraweek-rv-forward-v0.1"
           since = "2026-09-20T00:00:00Z"
 
@@ -60,12 +61,14 @@ jobs:
                   return json.load(r)
 
           runs_url = (
-              f"https://api.github.com/repos/{repo}/actions/workflows/{workflow}/runs"
+              f"https://api.github.com/repos/{repo}/actions/runs"
               f"?branch={branch}&per_page=100"
           )
           payload = get(runs_url)
           rows = []
           for run in payload.get("workflow_runs", []):
+              if run.get("path") != workflow_path and run.get("name") != "CIRV BTC ETH Prospective Forward V0.2":
+                  continue
               created = run.get("created_at") or ""
               if created and created < since:
                   continue
@@ -126,6 +129,7 @@ jobs:
               "repository": repo,
               "branch": branch,
               "workflow": workflow,
+              "workflow_path": workflow_path,
               "audit_since_utc": since,
               "scientific_model_changed": False,
               "market_outcomes_opened": False,
