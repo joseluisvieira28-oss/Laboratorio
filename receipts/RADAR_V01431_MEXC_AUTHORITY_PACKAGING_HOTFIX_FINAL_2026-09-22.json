@@ -1,0 +1,36 @@
+{
+  "receipt_id": "RADAR_V01431_MEXC_AUTHORITY_PACKAGING_HOTFIX_FINAL_2026-09-22",
+  "status": "VALIDATED_HOTFIX",
+  "reason": "V0.14.3 runtime consumed standing MEXC authority from PROJECT_ROOT but the Windows PyInstaller build embedded only deployment_registry_v1.json. The initial artifact could therefore report standing authority missing/FAIL_CLOSED despite a valid operator authorization.",
+  "source_audit_branch": "radar-mexc-postdeploy-hardening-v0.1",
+  "hotfix_branch": "radar-v01431-authority-packaging-hotfix-v0.1",
+  "build_id": "v0.14.3.1-win-mexc-authority-packaging-hotfix",
+  "corrections": [
+    "Embed MEXC_FUTURES_STANDING_MICROLIVE_OPERATOR_AUTHORITY_V0.1.json into the onefile executable.",
+    "Package self-test now verifies standing authority presence, ID, ACTIVE status and scope.",
+    "Launcher requires exact V0.14.3.1 build identity before reusing an existing local node.",
+    "Add atomic IMPORT_MEXC_RECEIPTS_V0143.ps1 helper for sanitized preflight/risk receipts."
+  ],
+  "validation": {
+    "run_id": 35704049876,
+    "job_id": 106668610254,
+    "conclusion": "success",
+    "targeted_tests": "41/41 PASS",
+    "package_selftest": "PASS",
+    "powershell_syntax": "PASS",
+    "launcher_identity_check": "PASS",
+    "zip_integrity": "PASS"
+  },
+  "artifact": {
+    "id": 10683238375,
+    "name": "crypto-edge-radar-v01431-mexc-authority-packaging-hotfix",
+    "sha256": "e394431ae54f10fb7f520c99224def98eed3621b6de2dfdd07f16fa17dab6214",
+    "executable_sha256": "c0ab8e488e03b236e20bff4e132665c1ddbaace5c7e1593600f4a4a0530a4b6e"
+  },
+  "current_scientific_state_unchanged": true,
+  "risk_changed": false,
+  "live_order_created": false,
+  "exchange_mutation_performed": false,
+  "main_merged": false,
+  "supersedes_artifact_id": 10683635730
+}
