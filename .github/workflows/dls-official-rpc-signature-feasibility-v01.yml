@@ -1,0 +1,96 @@
+name: DLS Official RPC Signature Feasibility V0.1
+
+on:
+  push:
+    branches:
+      - defi-liquidation-kamino-first-success-exec-v0.1
+    paths:
+      - '.github/workflows/dls-official-rpc-signature-feasibility-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: defi-liquidation-kamino-first-success-exec-v0.1
+          fetch-depth: 0
+      - name: Query one frozen signature page
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import urllib.request, urllib.error, json, time, datetime, hashlib
+          from pathlib import Path
+
+          RPC="https://api.mainnet-beta.solana.com"
+          P="KLend2g3cP87fffoy8q1mQqGKjrxjC8boSyAYavgmjD"
+          A="2JT9QV2zqYiYwDFVwbv6aPhRQkxi5Ynyq9sWi3i3nY18rqewZ3eiuNrHwHKsdcjaz6vm54EsTuh4AAwpTTM6pVwr"
+          payload={"jsonrpc":"2.0","id":1,"method":"getSignaturesForAddress","params":[P,{"before":A,"limit":1000,"commitment":"finalized"}]}
+          data=json.dumps(payload).encode()
+          req=urllib.request.Request(RPC,data=data,headers={"Content-Type":"application/json","User-Agent":"crypto-lab-source-audit/1.0"})
+          obj=None; err=None; http=None
+          for attempt in range(6):
+              try:
+                  with urllib.request.urlopen(req,timeout=45) as r:
+                      http=r.status; obj=json.loads(r.read()); break
+              except urllib.error.HTTPError as e:
+                  http=e.code
+                  if e.code==429 or 500<=e.code<600:
+                      time.sleep(2*(attempt+1)); continue
+                  err=f"HTTP_{e.code}"; break
+              except Exception as e:
+                  if attempt<5:
+                      time.sleep(2*(attempt+1)); continue
+                  err=type(e).__name__+":"+str(e)[:200]
+          rows=obj.get("result",[]) if isinstance(obj,dict) and isinstance(obj.get("result"),list) else []
+          rpc_error=obj.get("error") if isinstance(obj,dict) else None
+
+          refp=Path("labs/DEFI_LIQUIDATION_SHOCK_001/source/KAMINO_CORRECTED_SMOKE_REFERENCE_MANIFEST_V0.2.json")
+          ref=json.loads(refp.read_text())
+          known={r["tx_signature"] for r in ref["rows"]}
+          sigs=[r.get("signature") for r in rows if isinstance(r,dict) and isinstance(r.get("signature"),str)]
+          overlap=sorted(known & set(sigs))
+          times=[r.get("blockTime") for r in rows if isinstance(r,dict) and isinstance(r.get("blockTime"),int)]
+          slots=[r.get("slot") for r in rows if isinstance(r,dict) and isinstance(r.get("slot"),int)]
+          span=(max(times)-min(times)) if times else None
+          def iso(ts):
+              return datetime.datetime.fromtimestamp(ts,datetime.timezone.utc).isoformat() if isinstance(ts,int) else None
+          monotonic_slots=all(slots[i]>=slots[i+1] for i in range(len(slots)-1)) if slots else None
+          monotonic_times=all(times[i]>=times[i+1] for i in range(len(times)-1)) if times else None
+          status="OFFICIAL_RPC_SIGNATURE_PAGE_PASS" if http==200 and not rpc_error and rows else "OFFICIAL_RPC_SIGNATURE_PAGE_BLOCKED"
+          out={
+            "schema_version":"0.1","lab_id":"DEFI-LIQUIDATION-SHOCK-001","status":status,
+            "endpoint":RPC,"method":"getSignaturesForAddress","address":P,"before_anchor":A,"limit":1000,
+            "http_status":http,"transport_error":err,"rpc_error":rpc_error,
+            "row_count":len(rows),"unique_signatures":len(set(sigs)),
+            "newest_slot":max(slots) if slots else None,"oldest_slot":min(slots) if slots else None,
+            "newest_block_time":max(times) if times else None,"oldest_block_time":min(times) if times else None,
+            "newest_block_time_iso":iso(max(times)) if times else None,
+            "oldest_block_time_iso":iso(min(times)) if times else None,
+            "historical_span_seconds":span,
+            "historical_span_hours":span/3600 if span is not None else None,
+            "null_block_time_count":sum(1 for r in rows if isinstance(r,dict) and r.get("blockTime") is None),
+            "err_nonnull_count":sum(1 for r in rows if isinstance(r,dict) and r.get("err") is not None),
+            "slot_nonincreasing":monotonic_slots,"block_time_nonincreasing":monotonic_times,
+            "known_smoke_overlap_count":len(overlap),"known_smoke_overlap_signatures":overlap,
+            "reference_manifest_sha256":hashlib.sha256(refp.read_bytes()).hexdigest(),
+            "transaction_bodies_opened":False,
+            "governance":{"source_only":True,"outcome_blind":True,"prices":False,"returns":False,"pnl":False,"direction":False,"paid_data":False}
+          }
+          p=Path("labs/DEFI_LIQUIDATION_SHOCK_001/audit_receipts/DLS_OFFICIAL_RPC_SIGNATURE_FEASIBILITY_V0.1.json")
+          p.parent.mkdir(parents=True,exist_ok=True); p.write_text(json.dumps(out,indent=2,sort_keys=True)+"\n")
+          print(json.dumps({k:out[k] for k in ("status","http_status","row_count","unique_signatures","oldest_block_time_iso","historical_span_hours","known_smoke_overlap_count","err_nonnull_count")},indent=2,sort_keys=True))
+          PY
+      - name: Persist receipt
+        run: |
+          git config user.name "crypto-lab-source-audit"
+          git config user.email "actions@users.noreply.github.com"
+          git add labs/DEFI_LIQUIDATION_SHOCK_001/audit_receipts/DLS_OFFICIAL_RPC_SIGNATURE_FEASIBILITY_V0.1.json
+          git commit -m "audit: persist official RPC signature feasibility"
+          git push origin HEAD:defi-liquidation-kamino-first-success-exec-v0.1
