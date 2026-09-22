@@ -1,6 +1,6 @@
 $ErrorActionPreference = "Stop"
 
-$LauncherMutex = New-Object System.Threading.Mutex($false, "Local\CryptoEdgeRadarV0143Launcher")
+$LauncherMutex = New-Object System.Threading.Mutex($false, "Local\CryptoEdgeRadarV0144Launcher")
 if (-not $LauncherMutex.WaitOne(0)) {
     Write-Host "Another Radar launcher is already active. Refusing duplicate start."
     exit 0
@@ -20,7 +20,7 @@ $ExeCandidates = @(
 )
 $Exe = $ExeCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
 if (-not $Exe) {
-    throw "CryptoEdgeRadarNode.exe not found in the approved V0.14.3.3 onedir/root locations"
+    throw "CryptoEdgeRadarNode.exe not found in the approved V0.14.4 onedir/root locations"
 }
 
 $Port = 8787
@@ -44,13 +44,13 @@ function PortListening {
     }
 }
 
-Log "=== Crypto Edge Radar V0.14.3.3 live-state reconciliation launcher ==="
+Log "=== Crypto Edge Radar V0.14.4 live-state reconciliation launcher ==="
 Log "Root: $Root"
 Log "EXE: $Exe"
 
 # Never kill arbitrary software on 8787. If an older CryptoEdgeRadarNode is
 # occupying the port, identify it by process name and replace it only when the
-# live /api/state proves it is not registry 3.6 / seven-motor canonical.
+# live /api/state proves it is not registry 3.7 / eight-motor canonical.
 if (PortListening) {
     Log "Port 8787 is already listening. Verifying canonical Radar identity..."
     $canonicalAlreadyRunning = $false
@@ -62,10 +62,10 @@ if (PortListening) {
         $focusLoaded = [int]$state.registry.focus_loaded
         Log "Existing service reports build=$buildId registry=$registryVersion focus=$focusLoaded/$focusExpected"
         if (
-            $buildId -eq "v0.14.3.3-win-single-instance-lock" -and
-            $registryVersion -eq "3.6" -and
-            $focusExpected -eq 7 -and
-            $focusLoaded -eq 7
+            $buildId -eq "v0.14.4-win-cirv-eight-motor" -and
+            $registryVersion -eq "3.7" -and
+            $focusExpected -eq 8 -and
+            $focusLoaded -eq 8
         ) {
             $canonicalAlreadyRunning = $true
         }
@@ -75,7 +75,7 @@ if (PortListening) {
     }
 
     if ($canonicalAlreadyRunning) {
-        Log "PASS: canonical V0.14.3.3 registry 3.6 / 7-motor Radar is already running."
+        Log "PASS: canonical V0.14.4 registry 3.7 / 8-motor Radar is already running."
         if ($env:RADAR_NO_BROWSER -ne "1") { Start-Process "http://127.0.0.1:$Port/" }
         exit 0
     }
