@@ -11,7 +11,7 @@ BOUNDARY_ISO="2023-02-07T15:47:04Z"
 BOUNDARY_TS=int(datetime.fromisoformat(BOUNDARY_ISO.replace("Z","+00:00")).timestamp())
 ANCHOR_SIG="5stv5fkA5c4oXYfUaXx59oAENDfcvjr9zzZdLwNyevRK68wzZ5BGeKkj6bq8KmgjXUj68qX2NAsaD86aS8d1Cm73"
 ANCHOR_SLOT=239637875
-ANCHOR_TS=int(datetime.fromisoformat("2024-01-03T12:26:07+00:00").timestamp())
+ANCHOR_TS=1704283167
 ANCHOR_ERR=None
 PAGE_LIMIT=1000
 MAX_PAGES=5000
@@ -108,7 +108,7 @@ state={
  "source_boundary":BOUNDARY_ISO,
  "anchor":{"signature":ANCHOR_SIG,"slot":ANCHOR_SLOT,"block_time":ANCHOR_TS,"err":ANCHOR_ERR},
  "continuation_parent_run_id":35754821042,
- "resume_cursor_extraction_run_id":35732854347,
+ "resume_cursor_extraction_run_id":35770637623,
  "resume_cursor_page_sha256":"788fda0abb1dca2dec9db1cd81f39cf2b0a55f7f1960502590a2645576fada47",
  "phase":"PHASE_A_SIGNATURE_CRAWL","pages_completed":0,"signatures_seen":0,
  "crossed_lower_boundary":False,
