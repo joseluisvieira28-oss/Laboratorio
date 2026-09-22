@@ -9,7 +9,8 @@
     "real_capital": true,
     "micro_live_only": true,
     "candidate_specific_authority_still_required": true,
-    "per_trade_reconfirmation_required": false
+    "per_trade_reconfirmation_required": false,
+    "all_present_and_future_governance_eligible_mexc_futures_micro_live_routes": true
   },
   "standing_authorized_routes": [
     {
@@ -72,5 +73,16 @@
     "OPTIONS-SPOTPERP-001-V2.1": "AUTHORIZED_BY_OPERATOR_BUT_NOT_ACTIVATABLE_NOW__FORWARD_SOURCE_READINESS_AND_RISK_ENVELOPE_GATES"
   },
   "order_created_by_this_authority": false,
-  "exchange_mutation_performed_by_this_authority": false
+  "exchange_mutation_performed_by_this_authority": false,
+  "future_route_admission_rule": {
+    "operator_reconfirmation_required": false,
+    "admission": "AUTOMATIC_OPERATOR_SCOPE_ONLY__NOT_AUTOMATIC_SCIENTIFIC_PROMOTION_OR_EXECUTION",
+    "requirements": [
+      "scientific tier is 1 or 2 under the then-current frozen promotion policy",
+      "MEXC Futures execution mapping is frozen before outcomes/trade",
+      "candidate-specific micro-live risk/readiness envelope is frozen",
+      "candidate-specific executor/gate is implemented and tested",
+      "all global and candidate-specific activation requirements in this standing authority pass"
+    ]
+  }
 }
