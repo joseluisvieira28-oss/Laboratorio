@@ -1,0 +1,45 @@
+{
+  "receipt_id": "RADAR_MEXC_POSTDEPLOY_HARDENING_2026-09-22",
+  "date": "2026-09-22",
+  "branch": "radar-mexc-postdeploy-hardening-v0.1",
+  "build_id": "v0.14.3-win-mexc-postdeploy-hardening",
+  "base_v0142_commit": "7f329bc9",
+  "implementation_commit": "eb375da4",
+  "registry_version": "3.6",
+  "motor_count": 7,
+  "scientific_rules_changed": false,
+  "risk_increased": false,
+  "promotion_changed": false,
+  "live_order_created": false,
+  "exchange_mutation_performed": false,
+  "findings": {
+    "high": 5,
+    "medium": 3,
+    "deribit_root_cause": "IV_ZERO_ON_FROZEN_INELIGIBLE_ROWS_VALIDATED_TOO_EARLY",
+    "mexc_public_metadata_reprobe": "SOURCE_FAILURE_NON_JSON__NO_NEW_VALUE_ADOPTED"
+  },
+  "validation": {
+    "focused_tests": "37/37 PASS",
+    "full_tests": "239/239 PASS",
+    "compileall": "PASS",
+    "workflow_yaml": "PASS",
+    "windows_package_ci": "PENDING",
+    "powershell_ci": "PENDING"
+  },
+  "observed_motor_status_preserved": {
+    "ETF-CME-INSTFLOW-001": "LINE_IN_WATER__CAPITAL_BLOCKED",
+    "BNB-LAUNCHPOOL-DEMAND-001": "LINE_IN_WATER",
+    "OPTIONS-SPOTPERP-001-V2.1": "BLOCKED__AWAIT_GENUINELY_HEALTHY_RECOVERY_CYCLE",
+    "TFG-DONCHIAN-REGIME-ADAPTATION-V1": "LINE_IN_WATER",
+    "HTF-DH03-12H-STANDALONE-FORWARD-V1": "LINE_IN_WATER",
+    "CED1D-0031": "WAITING_GATE",
+    "EMA6H-50X200-REGIME-DEPENDENCY-001": "LINE_IN_WATER"
+  },
+  "remaining_blockers": [
+    "V0.14.3 Windows packaging CI not yet completed",
+    "fresh local sanitized MEXC preflight and risk-state receipts required",
+    "Options genuine healthy recovery cycle required",
+    "ETF venue minimum exceeds frozen validation budget",
+    "Options candidate-specific micro-live envelope/authority and forward gate absent"
+  ]
+}

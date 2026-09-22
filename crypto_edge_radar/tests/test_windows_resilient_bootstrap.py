@@ -67,6 +67,21 @@ class WindowsResilientBootstrapTests(unittest.TestCase):
             finally:
                 os.chdir(old)
 
+    def test_launcher_has_duplicate_and_unrelated_process_guards(self):
+        script = (Path(__file__).resolve().parents[1] / "windows" / "START_RADAR_RECOVERY_V0141.ps1").read_text(encoding="utf-8")
+        self.assertIn("CryptoEdgeRadarV0143Launcher", script)
+        self.assertIn("approvedPaths -notcontains $ownerPath", script)
+        self.assertNotIn('Get-Process -Name "CryptoEdgeRadarNode"', script)
+
+    def test_watchdog_and_autostart_are_singleton_and_restart_capable(self):
+        root = Path(__file__).resolve().parents[1] / "windows"
+        watchdog = (root / "RUN_RADAR_24X7_V0143.ps1").read_text(encoding="utf-8")
+        installer = (root / "INSTALL_RADAR_AUTOSTART_V0143.ps1").read_text(encoding="utf-8")
+        self.assertIn("CryptoEdgeRadarV0143Watchdog", watchdog)
+        self.assertIn("Start-Sleep -Seconds 15", watchdog)
+        self.assertIn("Register-ScheduledTask", installer)
+        self.assertIn("-AtLogOn", installer)
+
 
 if __name__ == "__main__":
     unittest.main()

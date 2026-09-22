@@ -1,0 +1,88 @@
+{
+  "authority_id": "MEXC_FUTURES_STANDING_MICROLIVE_OPERATOR_AUTHORITY_V0.1",
+  "status": "ACTIVE_STANDING_OPERATOR_AUTHORIZATION",
+  "authorized_at_date": "2026-09-22",
+  "operator_intent": "Authorize legitimate micro-live execution on MEXC Futures for every scientifically eligible Crypto Lab candidate without requiring a new per-trade operator confirmation.",
+  "scope": {
+    "exchange": "MEXC",
+    "product": "USDT_PERPETUAL_FUTURES",
+    "real_capital": true,
+    "micro_live_only": true,
+    "candidate_specific_authority_still_required": true,
+    "per_trade_reconfirmation_required": false,
+    "all_present_and_future_governance_eligible_mexc_futures_micro_live_routes": true
+  },
+  "standing_authorized_routes": [
+    {
+      "strategy_id": "ETF-CME-INSTFLOW-001",
+      "direction": "SHORT",
+      "symbol": "BTC_USDT",
+      "scientific_tier": 2,
+      "route_status": "OPERATOR_AUTHORIZED__ACTIVATION_GATE_REQUIRED"
+    },
+    {
+      "strategy_id": "OPTIONS-SPOTPERP-001-V2.1",
+      "direction": "SHORT",
+      "symbol": "BTC_USDT",
+      "scientific_tier": 2,
+      "route_status": "OPERATOR_AUTHORIZED__SCIENCE_AND_READINESS_GATES_REQUIRED"
+    }
+  ],
+  "activation_requirements": [
+    "scientific tier must be 1 or 2 at activation time",
+    "candidate must have a frozen MEXC Futures execution mapping",
+    "candidate-specific micro-live risk/readiness envelope must be frozen",
+    "canonical prospective signal must exist and match exact frozen identity/direction",
+    "information-safe/entry timing rule must pass",
+    "source and Radar motor must be healthy",
+    "authenticated MEXC preflight must PASS and be fresh",
+    "candidate capital feasibility must PASS without increasing frozen risk",
+    "account risk firewall must PASS and be fresh",
+    "no conflicting position or order",
+    "effective API fees/funding/friction must fit frozen candidate budget",
+    "candidate-specific immutable ACTIVE_MICRO_LIVE_EXECUTION_AUTHORITY must be persisted before order transport",
+    "isolated margin and exactly 1x leverage required",
+    "Auto Margin Add must be OFF/verified under the candidate execution contract",
+    "duplicate protection and kill switch must be active",
+    "pre-order receipt must be persisted before transport"
+  ],
+  "permanently_not_granted_by_this_authority": [
+    "merge to main",
+    "withdrawals",
+    "transfers",
+    "wallet mutation",
+    "Cross margin",
+    "leverage above 1x",
+    "martingale",
+    "revenge sizing",
+    "automatic size escalation after wins",
+    "late-entry chasing",
+    "post-outcome tuning",
+    "science or threshold changes",
+    "promotion manufacture",
+    "discretionary/test trades"
+  ],
+  "tier_rules": {
+    "1": "eligible subject to all execution gates",
+    "2": "eligible subject to all execution gates",
+    "3": "SHADOW_ONLY__standing operator authorization does not upgrade tier",
+    "4": "BLOCKED"
+  },
+  "current_truth": {
+    "ETF-CME-INSTFLOW-001": "AUTHORIZED_BY_OPERATOR_BUT_NOT_ACTIVATABLE_NOW__CAPITAL_MINIMUM_AND_SIGNAL_GATES",
+    "OPTIONS-SPOTPERP-001-V2.1": "AUTHORIZED_BY_OPERATOR_BUT_NOT_ACTIVATABLE_NOW__FORWARD_SOURCE_READINESS_AND_RISK_ENVELOPE_GATES"
+  },
+  "order_created_by_this_authority": false,
+  "exchange_mutation_performed_by_this_authority": false,
+  "future_route_admission_rule": {
+    "operator_reconfirmation_required": false,
+    "admission": "AUTOMATIC_OPERATOR_SCOPE_ONLY__NOT_AUTOMATIC_SCIENTIFIC_PROMOTION_OR_EXECUTION",
+    "requirements": [
+      "scientific tier is 1 or 2 under the then-current frozen promotion policy",
+      "MEXC Futures execution mapping is frozen before outcomes/trade",
+      "candidate-specific micro-live risk/readiness envelope is frozen",
+      "candidate-specific executor/gate is implemented and tested",
+      "all global and candidate-specific activation requirements in this standing authority pass"
+    ]
+  }
+}

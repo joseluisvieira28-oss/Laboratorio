@@ -1,0 +1,53 @@
+{
+  "authority_id": "MEXC_FUTURES_AUTHENTICATED_READ_ONLY_PREFLIGHT_AUTHORITY_V0.1",
+  "frozen_on": "2026-09-21",
+  "status": "AUTHORIZED_READ_ONLY_PREFLIGHT_ONLY",
+  "purpose": "Authenticate the dedicated local MEXC Futures API integration and read account/execution state before any candidate-specific live authority exists.",
+  "exchange": "MEXC",
+  "base_url": "https://api.mexc.com",
+  "allowed_http_methods": [
+    "GET"
+  ],
+  "allowed_private_reads": [
+    "account assets",
+    "open positions",
+    "open BTC_USDT orders",
+    "BTC_USDT account fee tier/rate",
+    "BTC_USDT leverage state",
+    "position mode",
+    "BTC_USDT risk limit"
+  ],
+  "allowed_public_reads": [
+    "server time",
+    "BTC_USDT contract metadata",
+    "BTC_USDT ticker/depth",
+    "BTC_USDT funding"
+  ],
+  "forbidden": [
+    "order creation",
+    "order cancellation",
+    "position creation",
+    "position closure",
+    "leverage mutation",
+    "margin mutation",
+    "position-mode mutation",
+    "asset transfer",
+    "withdrawal",
+    "API key or secret persistence in repository",
+    "API key or secret persistence in Drive",
+    "API key or secret transmission to chat",
+    "Render secret deployment",
+    "merge to main"
+  ],
+  "secret_boundary": {
+    "execution_location": "LOCAL_WINDOWS_OPERATOR_NODE_ONLY",
+    "storage": "WINDOWS_DPAPI_OR_EPHEMERAL_PROCESS_MEMORY",
+    "github": "FORBIDDEN",
+    "google_drive": "FORBIDDEN",
+    "chat": "FORBIDDEN",
+    "render": "FORBIDDEN"
+  },
+  "pass_required_before_next_phase": true,
+  "candidate_execution_authority_created_by_this_authority": false,
+  "live_capital_authorized_by_this_authority": false
+}

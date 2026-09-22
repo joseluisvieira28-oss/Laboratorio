@@ -1,5 +1,11 @@
 $ErrorActionPreference = "Stop"
 
+$LauncherMutex = New-Object System.Threading.Mutex($false, "Local\CryptoEdgeRadarV0143Launcher")
+if (-not $LauncherMutex.WaitOne(0)) {
+    Write-Host "Another Radar launcher is already active. Refusing duplicate start."
+    exit 0
+}
+
 $Root = Split-Path -Parent $PSScriptRoot
 $LogDir = Join-Path $Root "logs"
 $DataDir = Join-Path $Root "data"
@@ -36,7 +42,7 @@ function PortListening {
     }
 }
 
-Log "=== Crypto Edge Radar V0.14.2 failure-isolation launcher ==="
+Log "=== Crypto Edge Radar V0.14.3 post-deployment hardening launcher ==="
 Log "Root: $Root"
 Log "EXE: $Exe"
 
@@ -54,7 +60,7 @@ if (PortListening) {
         $focusLoaded = [int]$state.registry.focus_loaded
         Log "Existing service reports build=$buildId registry=$registryVersion focus=$focusLoaded/$focusExpected"
         if (
-            $buildId -eq "v0.14.2-win-forward-failure-isolation" -and
+            $buildId -eq "v0.14.3-win-mexc-postdeploy-hardening" -and
             $registryVersion -eq "3.6" -and
             $focusExpected -eq 7 -and
             $focusLoaded -eq 7
@@ -67,8 +73,8 @@ if (PortListening) {
     }
 
     if ($canonicalAlreadyRunning) {
-        Log "PASS: canonical V0.14.2 registry 3.6 / 7-motor Radar is already running."
-        Start-Process "http://127.0.0.1:$Port/"
+        Log "PASS: canonical V0.14.3 registry 3.6 / 7-motor Radar is already running."
+        if ($env:RADAR_NO_BROWSER -ne "1") { Start-Process "http://127.0.0.1:$Port/" }
         exit 0
     }
 
@@ -78,21 +84,15 @@ if (PortListening) {
         throw "Port 8787 is occupied by an unknown/multiple process set. Refusing automatic termination."
     }
     $owner = Get-Process -Id $pids[0] -ErrorAction SilentlyContinue
-    if ($null -eq $owner -or $owner.ProcessName -ne "CryptoEdgeRadarNode") {
+    $ownerPath = if ($null -eq $owner) { "" } else { [string]$owner.Path }
+    $approvedPaths = @($ExeCandidates | ForEach-Object { [System.IO.Path]::GetFullPath($_) })
+    if ($null -eq $owner -or $owner.ProcessName -ne "CryptoEdgeRadarNode" -or $approvedPaths -notcontains $ownerPath) {
         $name = if ($null -eq $owner) { "UNKNOWN" } else { $owner.ProcessName }
-        throw "Port 8787 is occupied by $name (PID $($pids[0])). Refusing to kill unrelated software."
+        throw "Port 8787 is occupied by $name at '$ownerPath' (PID $($pids[0])). Refusing to kill an unrelated or unverified process."
     }
 
     Log "Replacing stale/non-canonical CryptoEdgeRadarNode PID $($owner.Id)..."
     $owner | Stop-Process -Force
-    Start-Sleep -Milliseconds 800
-}
-
-# Stop only any remaining stale CryptoEdgeRadarNode processes from this product.
-$old = Get-Process -Name "CryptoEdgeRadarNode" -ErrorAction SilentlyContinue
-if ($old) {
-    Log "Stopping remaining stale CryptoEdgeRadarNode process(es)..."
-    $old | Stop-Process -Force
     Start-Sleep -Milliseconds 800
 }
 
@@ -136,7 +136,7 @@ while ((Get-Date) -lt $deadline) {
             Log "PID: $($proc.Id)"
             Log "stdout: $Stdout"
             Log "stderr: $Stderr"
-            Start-Process "http://127.0.0.1:$Port/"
+            if ($env:RADAR_NO_BROWSER -ne "1") { Start-Process "http://127.0.0.1:$Port/" }
             exit 0
         }
     }

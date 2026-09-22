@@ -1,0 +1,65 @@
+{
+  "registry_id": "MEXC_FUTURES_MICROLIVE_FISHING_REGISTRY_V0.1",
+  "standing_authority_id": "MEXC_FUTURES_STANDING_MICROLIVE_OPERATOR_AUTHORITY_V0.1",
+  "as_of_date": "2026-09-22",
+  "futures_canes": [
+    {
+      "cane_id": "FUTURES-CANE-ETF-CME-SHORT",
+      "strategy_id": "ETF-CME-INSTFLOW-001",
+      "symbol": "BTC_USDT",
+      "direction": "SHORT",
+      "venue": "MEXC_USDT_PERPETUAL",
+      "operator_authorized": true,
+      "scientific_tier": 2,
+      "fishing_state": "IN_WATER__FAIL_CLOSED_UNTIL_GATES_PASS",
+      "executable_now": false,
+      "current_blockers": [
+        "venue minimum exceeds frozen 0.1% validation budget at current equity",
+        "no current canonical executable signal",
+        "candidate-specific active authority not instantiated because activation gates are not met"
+      ]
+    },
+    {
+      "cane_id": "FUTURES-CANE-OPTIONS-SPOTPERP-SHORT",
+      "strategy_id": "OPTIONS-SPOTPERP-001-V2.1",
+      "symbol": "BTC_USDT",
+      "direction": "SHORT",
+      "venue": "MEXC_USDT_PERPETUAL",
+      "operator_authorized": true,
+      "scientific_tier": 2,
+      "fishing_state": "IN_WATER__FAIL_CLOSED_UNTIL_GATES_PASS",
+      "executable_now": false,
+      "current_blockers": [
+        "prospective forward evidence gate not met",
+        "candidate-specific micro-live risk/readiness envelope not frozen",
+        "source/readiness blockers must clear before activation",
+        "candidate-specific active authority not instantiated because activation gates are not met"
+      ]
+    }
+  ],
+  "not_futures_canes": [
+    {
+      "strategy_id": "BNB-LAUNCHPOOL-DEMAND-001",
+      "reason": "frozen route is spot BNBBTC, not MEXC Futures"
+    },
+    {
+      "strategy_id": "TFG-DONCHIAN-REGIME-ADAPTATION-V1",
+      "reason": "Tier 3 shadow-only"
+    },
+    {
+      "strategy_id": "EMA6H-50X200-REGIME-DEPENDENCY-001",
+      "reason": "Tier 3 shadow-only"
+    },
+    {
+      "strategy_id": "HTF-DH03-12H-STANDALONE-FORWARD-V1",
+      "reason": "prospective shadow-only; no MEXC Futures micro-live mapping"
+    },
+    {
+      "strategy_id": "CED1D-0031",
+      "reason": "no frozen MEXC Futures micro-live mapping and evidence gate not met"
+    }
+  ],
+  "total_futures_canes": 2,
+  "operator_authorized_futures_canes": 2,
+  "executable_now": 0
+}

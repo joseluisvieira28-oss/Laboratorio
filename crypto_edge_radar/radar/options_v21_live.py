@@ -41,7 +41,7 @@ class OptionTrade:
     trade_id: str
     timestamp: int
     instrument_name: str
-    iv: float
+    iv: float | None
     index_price: float
 
 
@@ -75,23 +75,29 @@ def _parse_instrument(name: str) -> tuple[date, float, str]:
 def _parse_trade(row: Any, *, start_ms: int, end_ms: int) -> OptionTrade:
     if not isinstance(row, dict):
         raise OptionsV21SourceError("Deribit trade row is not an object")
-    required = ("timestamp", "instrument_name", "iv", "index_price")
+    required = ("timestamp", "instrument_name", "index_price")
     if any(k not in row for k in required):
         raise OptionsV21SourceError("Deribit trade row missing frozen signal field")
     try:
         ts = int(row["timestamp"])
-        iv = float(row["iv"])
         index_price = float(row["index_price"])
     except (TypeError, ValueError) as exc:
         raise OptionsV21SourceError("Deribit trade row has invalid numeric field") from exc
     if not start_ms <= ts <= end_ms:
         raise OptionsV21SourceError("Deribit returned trade outside requested time window")
-    if not isfinite(iv) or iv <= 0 or not isfinite(index_price) or index_price <= 0:
+    raw_iv = row.get("iv")
+    try:
+        iv = None if raw_iv is None else float(raw_iv)
+    except (TypeError, ValueError) as exc:
+        raise OptionsV21SourceError("Deribit trade row has invalid IV field") from exc
+    if not isfinite(index_price) or index_price <= 0:
         raise OptionsV21SourceError(
-            "Deribit trade has invalid IV/index "
+            "Deribit trade has invalid index "
             f"(trade_id={row.get('trade_id')!r}, instrument={row.get('instrument_name')!r}, "
             f"iv={row.get('iv')!r}, index_price={row.get('index_price')!r})"
         )
+    if iv is not None and not isfinite(iv):
+        raise OptionsV21SourceError("Deribit trade has non-finite IV")
     trade_id = str(row.get("trade_id") or "")
     if not trade_id:
         # Fail closed rather than deduplicating with a guessed identity.
@@ -199,6 +205,11 @@ def build_daily_skew(day: date, trades: list[OptionTrade]) -> dict[str, Any]:
         if not eligible:
             rejected_moneyness += 1
             continue
+        if row.iv is None or row.iv <= 0:
+            raise OptionsV21SourceError(
+                "eligible Deribit option trade has invalid IV "
+                f"(trade_id={row.trade_id!r}, instrument={row.instrument_name!r}, iv={row.iv!r})"
+            )
         target = call_by_inst if side == "C" else put_by_inst
         target.setdefault(row.instrument_name, []).append(row.iv)
         eligible_rows += 1

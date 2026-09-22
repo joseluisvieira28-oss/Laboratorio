@@ -1,5 +1,5 @@
 import unittest
-from datetime import date
+from datetime import date, datetime, timezone
 from math import exp
 
 from radar.options_v21_live import (
@@ -35,6 +35,22 @@ class StubProbeFeed(DeribitBTCOptionTradeFeed):
 
 
 class OptionsV21LiveTests(unittest.TestCase):
+    def test_zero_iv_outside_frozen_eligibility_does_not_poison_day(self):
+        day = date(2026, 9, 19)
+        ts = int(datetime(2026, 9, 19, 12, tzinfo=timezone.utc).timestamp() * 1000)
+        rows = [
+            OptionTrade("irrelevant", ts, "BTC-20SEP26-10000-C", 0.0, 100000.0),
+        ]
+        out = build_daily_skew(day, rows)
+        self.assertFalse(out["valid"])
+        self.assertEqual(out["rejected_dte"], 1)
+
+    def test_zero_iv_inside_frozen_eligibility_remains_fail_closed(self):
+        day = date(2026, 9, 19)
+        ts = int(datetime(2026, 9, 19, 12, tzinfo=timezone.utc).timestamp() * 1000)
+        rows = [OptionTrade("eligible", ts, "BTC-30OCT26-110000-C", 0.0, 100000.0)]
+        with self.assertRaises(OptionsV21SourceError):
+            build_daily_skew(day, rows)
     def test_exact_daily_skew_uses_median_per_instrument_then_side(self):
         day=date(2026,9,19)
         ts=1789776000000

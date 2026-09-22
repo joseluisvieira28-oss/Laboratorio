@@ -1,20 +1,25 @@
-name: BUILD RADAR V0.14.2 FOCUSED VALIDATION
+name: BUILD RADAR V0.14.3 POST-DEPLOYMENT HARDENING
 
 on:
   workflow_dispatch:
   push:
     branches:
-      - radar-v0142-forward-failure-isolation-v0.1
+      - radar-mexc-postdeploy-hardening-v0.1
     paths:
       - 'crypto_edge_radar/radar/dashboard.py'
       - 'crypto_edge_radar/radar/options_v21_live.py'
+      - 'crypto_edge_radar/radar/forward_web.py'
+      - 'crypto_edge_radar/radar/mexc_local_state.py'
       - 'crypto_edge_radar/tests/test_dashboard.py'
       - 'crypto_edge_radar/tests/test_options_v21_live.py'
+      - 'crypto_edge_radar/tests/test_mexc_local_state.py'
       - 'crypto_edge_radar/tests/test_windows_resilient_bootstrap.py'
       - 'crypto_edge_radar/windows_node_entry.py'
       - 'crypto_edge_radar/windows/START_RADAR_RECOVERY_V0141.ps1'
       - 'crypto_edge_radar/windows/START_RADAR_RECOVERY_V0141.bat'
       - 'crypto_edge_radar/windows/CHECK_RADAR_V0141.ps1'
+      - 'crypto_edge_radar/windows/RUN_RADAR_24X7_V0143.ps1'
+      - 'crypto_edge_radar/windows/INSTALL_RADAR_AUTOSTART_V0143.ps1'
       - '.github/workflows/build-radar-v0142-focused-validation.yml'
 
 permissions:
@@ -39,13 +44,13 @@ jobs:
 
       - name: Compile changed surfaces
         run: |
-          python -m compileall radar\dashboard.py radar\options_v21_live.py windows_node_entry.py tests\test_dashboard.py tests\test_options_v21_live.py tests\test_windows_resilient_bootstrap.py
+          python -m compileall radar\dashboard.py radar\forward_web.py radar\mexc_local_state.py radar\options_v21_live.py windows_node_entry.py tests\test_dashboard.py tests\test_mexc_local_state.py tests\test_options_v21_live.py tests\test_windows_resilient_bootstrap.py
 
       - name: Targeted failure-isolation tests
         run: |
-          python -m unittest tests.test_dashboard tests.test_options_v21_live tests.test_windows_resilient_bootstrap -v
+          python -m unittest tests.test_dashboard tests.test_mexc_local_state tests.test_options_v21_live tests.test_mexc_live_gate tests.test_mexc_auth_trade tests.test_windows_resilient_bootstrap -v
 
-      - name: Build V0.14.2 node
+      - name: Build V0.14.3 node
         run: |
           pyinstaller --clean --onefile --name CryptoEdgeRadarNode --add-data "deployment_registry_v1.json;." windows_node_entry.py
 
@@ -55,7 +60,7 @@ jobs:
           $env:RADAR_PACKAGING_SELFTEST = "1"
           $state = (& .\dist\CryptoEdgeRadarNode.exe) | ConvertFrom-Json
           if ($state.status -ne "PASS") { throw "package self-test failed" }
-          if ($state.build_id -ne "v0.14.2-win-forward-failure-isolation") { throw "unexpected build_id" }
+          if ($state.build_id -ne "v0.14.3-win-mexc-postdeploy-hardening") { throw "unexpected build_id" }
           if ($state.registry_version -ne "3.6") { throw "unexpected registry version" }
           if ([int]$state.candidate_count -ne 7) { throw "unexpected motor count" }
           if (-not $state.resilient_control_plane_bootstrap) { throw "resilient bootstrap missing" }
@@ -65,18 +70,20 @@ jobs:
         run: |
           foreach ($s in @(
             "windows\START_RADAR_RECOVERY_V0141.ps1",
-            "windows\CHECK_RADAR_V0141.ps1"
+            "windows\CHECK_RADAR_V0141.ps1",
+            "windows\RUN_RADAR_24X7_V0143.ps1",
+            "windows\INSTALL_RADAR_AUTOSTART_V0143.ps1"
           )) {
             $errors=$null
             [void][System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $s),[ref]$null,[ref]$errors)
             if ($errors.Count -gt 0) { $errors | Format-List; throw "PowerShell syntax failure: $s" }
           }
 
-      - name: Prove launcher requires exact V0.14.2 identity
+      - name: Prove launcher requires exact V0.14.3 identity
         shell: pwsh
         run: |
           $src=Get-Content "windows\START_RADAR_RECOVERY_V0141.ps1" -Raw
-          if (-not $src.Contains('v0.14.2-win-forward-failure-isolation')) { throw "launcher does not require V0.14.2 build id" }
+          if (-not $src.Contains('v0.14.3-win-mexc-postdeploy-hardening')) { throw "launcher does not require V0.14.3 build id" }
           if (-not $src.Contains('registryVersion -eq "3.6"')) { throw "launcher registry check missing" }
           if (-not $src.Contains('focusExpected -eq 7')) { throw "launcher seven-motor check missing" }
           if (-not $src.Contains('ProcessName -ne "CryptoEdgeRadarNode"')) { throw "unrelated-process safety check missing" }
@@ -91,17 +98,19 @@ jobs:
       - name: Assemble hotfix bundle
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force -Path v0142_bundle\windows | Out-Null
-          Copy-Item dist\CryptoEdgeRadarNode.exe v0142_bundle\CryptoEdgeRadarNode.exe
-          Copy-Item dist\CryptoEdgeRadarNode.sha256.txt v0142_bundle\CryptoEdgeRadarNode.sha256.txt
-          Copy-Item windows\START_RADAR_RECOVERY_V0141.ps1 v0142_bundle\windows\
-          Copy-Item windows\START_RADAR_RECOVERY_V0141.bat v0142_bundle\windows\
-          Copy-Item windows\CHECK_RADAR_V0141.ps1 v0142_bundle\windows\
+          New-Item -ItemType Directory -Force -Path v0143_bundle\windows | Out-Null
+          Copy-Item dist\CryptoEdgeRadarNode.exe v0143_bundle\CryptoEdgeRadarNode.exe
+          Copy-Item dist\CryptoEdgeRadarNode.sha256.txt v0143_bundle\CryptoEdgeRadarNode.sha256.txt
+          Copy-Item windows\START_RADAR_RECOVERY_V0141.ps1 v0143_bundle\windows\
+          Copy-Item windows\START_RADAR_RECOVERY_V0141.bat v0143_bundle\windows\
+          Copy-Item windows\CHECK_RADAR_V0141.ps1 v0143_bundle\windows\
+          Copy-Item windows\RUN_RADAR_24X7_V0143.ps1 v0143_bundle\windows\
+          Copy-Item windows\INSTALL_RADAR_AUTOSTART_V0143.ps1 v0143_bundle\windows\
 
-      - name: Upload V0.14.2 hotfix
+      - name: Upload V0.14.3 hardening build
         uses: actions/upload-artifact@v4
         with:
-          name: crypto-edge-radar-v0142-forward-failure-isolation
-          path: crypto_edge_radar/v0142_bundle/**
+          name: crypto-edge-radar-v0143-mexc-postdeploy-hardening
+          path: crypto_edge_radar/v0143_bundle/**
           if-no-files-found: error
           retention-days: 14

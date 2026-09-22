@@ -9,6 +9,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 from .deployment import RiskLimits
+from .mexc_local_state import read_mexc_local_state
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_REGISTRY = PROJECT_ROOT / "deployment_registry_v1.json"
@@ -172,6 +173,10 @@ def build_control_room_state(
     render_sentinel = _read_json(render_sentinel_path, {})
     render_sentinel_supervisor_path = service_status_path.parent / "render_sentinel_supervisor_status.json"
     render_sentinel_supervisor = _read_json(render_sentinel_supervisor_path, {})
+    mexc = read_mexc_local_state(
+        data_dir=service_status_path.parent,
+        standing_authority_path=PROJECT_ROOT / "MEXC_FUTURES_STANDING_MICROLIVE_OPERATOR_AUTHORITY_V0.1.json",
+    )
 
     candidates = registry.get("candidates") or []
     focus_ids = registry.get("focus_strategy_ids") or [
@@ -238,6 +243,14 @@ def build_control_room_state(
                 "micro_live_allowed_now": bool(candidate.get("micro_live_allowed_now")),
                 "blockers": blockers,
                 "reason": candidate.get("reason"),
+                "execution": {
+                    "exchange_preflight": (mexc["exchange_authenticated_preflight"] or {}).get("status"),
+                    "risk_firewall": (mexc["account_risk_firewall"] or {}).get("status"),
+                    "capital_feasibility": (mexc["candidate_capital_feasibility"].get(strategy_id) or {}).get("status", "NOT_APPLICABLE"),
+                    "standing_authority": ((mexc["standing_operator_authority"].get("routes") or {}).get(strategy_id) or {}).get("operator_authorized", False),
+                    "signal_state": "NO_CANONICAL_EXECUTABLE_SIGNAL",
+                    "micro_live_readiness": "FAIL_CLOSED",
+                },
             }
         )
 
@@ -312,6 +325,7 @@ def build_control_room_state(
             "daily_stop_pct": limits.daily_stop * 100,
             "weekly_stop_pct": limits.weekly_stop * 100,
         },
+        "mexc_execution": mexc,
         "focus_counts": counts,
         "bots": focus,
         "recent_events": events,

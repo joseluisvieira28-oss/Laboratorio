@@ -13,7 +13,7 @@ from radar.local_forward import LocalForwardSupervisor
 from radar.render_sentinel import RenderSentinel
 
 
-BUILD_ID = "v0.14.2-win-forward-failure-isolation"
+BUILD_ID = "v0.14.3-win-mexc-postdeploy-hardening"
 
 
 def _resource_path(name: str) -> str:

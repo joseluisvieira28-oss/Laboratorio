@@ -67,6 +67,8 @@ class DashboardTests(unittest.TestCase):
             self.assertEqual(state["focus_counts"]["GATED"], 1)
             self.assertEqual(state["focus_counts"]["BLOCKED"], 0)
             self.assertEqual(state["focus_counts"]["ARMED"], 0)
+            self.assertIn("mexc_execution", state)
+            self.assertEqual(state["mexc_execution"]["exchange_authenticated_preflight"]["status"], "FAIL_CLOSED")
             dh03 = next(b for b in state["bots"] if b["strategy_id"] == "HTF-DH03-12H-STANDALONE-FORWARD-V1")
             self.assertEqual(dh03["operating_state"], "GATED")
 

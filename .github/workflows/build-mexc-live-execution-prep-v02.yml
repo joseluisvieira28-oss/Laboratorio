@@ -1,0 +1,210 @@
+name: BUILD MEXC LIVE EXECUTION PREP V0.2 CURRENT API
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - mexc-live-execution-prep-v0.2-current-api
+      - mexc-futures-standing-microlive-authority-v0.1
+      - mexc-v02-riskstate-launcher-hotfix-v0.1
+    paths:
+      - 'crypto_edge_radar/radar/mexc_*'
+      - 'crypto_edge_radar/scripts/mexc_*'
+      - 'crypto_edge_radar/tests/test_mexc_*'
+      - 'crypto_edge_radar/windows/Run_MEXC_Ready_Check_V02.ps1'
+      - 'crypto_edge_radar/windows/Run_MEXC_Authenticated_Preflight.ps1'
+      - 'crypto_edge_radar/windows/Set_MEXC_Preflight_Secrets.ps1'
+      - 'crypto_edge_radar/ETF_CME_INSTFLOW_001_MICRO_LIVE_EXECUTION_AUTHORITY_TEMPLATE_V0.2.json'
+      - 'crypto_edge_radar/MEXC_FUTURES_STANDING_MICROLIVE_OPERATOR_AUTHORITY_V0.1.json'
+      - 'crypto_edge_radar/MEXC_FUTURES_MICROLIVE_FISHING_REGISTRY_V0.1.json'
+      - 'crypto_edge_radar/MEXC_LIVE_EXECUTION_V02_OPERATOR_GUIDE.md'
+      - '.github/workflows/build-mexc-live-execution-prep-v02.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test-build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: crypto_edge_radar
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install
+        run: |
+          python -m pip install -e .
+          python -m pip install "pyinstaller>=6,<7"
+
+      - name: Compile current MEXC modules
+        run: |
+          python -m compileall radar scripts tests
+
+      - name: Run all MEXC safety tests
+        run: |
+          python -m unittest discover -s tests -p "test_mexc_*.py" -v
+
+      - name: Verify V0.2 template cannot authorize a live order
+        shell: pwsh
+        run: |
+          $a=Get-Content ETF_CME_INSTFLOW_001_MICRO_LIVE_EXECUTION_AUTHORITY_TEMPLATE_V0.2.json | ConvertFrom-Json
+          if ($a.status -ne "TEMPLATE_NOT_AUTHORITY") { throw "V0.2 template unexpectedly active" }
+          if ($a.orders_authorized_by_this_template) { throw "V0.2 template authorizes orders" }
+          if ($a.api_place_order_path -ne "/api/v1/private/order/create") { throw "stale place-order API path" }
+          if ($a.leverage -ne 1) { throw "template leverage not exactly 1x" }
+          if ($a.margin_mode -ne "ISOLATED") { throw "template margin mode not isolated" }
+          if ($a.position_mode -ne 1) { throw "template position mode not hedge" }
+
+      - name: Verify standing operator micro-live authority
+        shell: pwsh
+        run: |
+          $s=Get-Content MEXC_FUTURES_STANDING_MICROLIVE_OPERATOR_AUTHORITY_V0.1.json | ConvertFrom-Json
+          if ($s.status -ne "ACTIVE_STANDING_OPERATOR_AUTHORIZATION") { throw "standing operator authority not active" }
+          if ($s.scope.exchange -ne "MEXC") { throw "standing authority exchange mismatch" }
+          if ($s.scope.product -ne "USDT_PERPETUAL_FUTURES") { throw "standing authority product mismatch" }
+          if (-not $s.scope.real_capital) { throw "standing authority does not permit real capital" }
+          if (-not $s.scope.micro_live_only) { throw "standing authority scope is not micro-live only" }
+          if ($s.scope.per_trade_reconfirmation_required) { throw "per-trade reconfirmation unexpectedly required" }
+          $ids=@($s.standing_authorized_routes | ForEach-Object { $_.strategy_id })
+          if ($ids.Count -ne 2) { throw "unexpected number of standing-authorized MEXC Futures routes" }
+          if (-not ($ids -contains "ETF-CME-INSTFLOW-001")) { throw "ETF-CME Futures route missing" }
+          if (-not ($ids -contains "OPTIONS-SPOTPERP-001-V2.1")) { throw "OPTIONS-SPOTPERP Futures route missing" }
+          foreach ($r in $s.standing_authorized_routes) {
+            if ($r.symbol -ne "BTC_USDT") { throw "unexpected Futures symbol" }
+            if ($r.direction -ne "SHORT") { throw "standing route must be frozen SHORT Futures" }
+            if (@(1,2) -notcontains [int]$r.scientific_tier) { throw "standing authority illegally includes non-Tier1/2" }
+          }
+
+          $f=Get-Content MEXC_FUTURES_MICROLIVE_FISHING_REGISTRY_V0.1.json | ConvertFrom-Json
+          if ([int]$f.total_futures_canes -ne 2) { throw "fishing registry must have exactly two MEXC Futures canes" }
+          if ([int]$f.operator_authorized_futures_canes -ne 2) { throw "both Futures canes must be operator-authorized" }
+          if ([int]$f.executable_now -ne 0) { throw "registry must not fabricate executable-now state" }
+
+      - name: Static mutation-surface safety check
+        shell: pwsh
+        run: |
+          $src=Get-Content radar\mexc_auth_trade.py -Raw
+          foreach ($forbidden in @(
+            "/api/v1/private/account/transfer",
+            "/api/v1/private/account/withdraw",
+            "/api/v1/private/order/submit"
+          )) {
+            if ($src.Contains($forbidden)) { throw "forbidden/stale mutation endpoint present: $forbidden" }
+          }
+          foreach ($required in @(
+            "/api/v1/private/order/create",
+            "/api/v1/private/order/cancel_with_external",
+            "/api/v1/private/position/change_leverage",
+            "/api/v1/private/position/change_auto_add_im"
+          )) {
+            if (-not $src.Contains($required)) { throw "required current endpoint missing: $required" }
+          }
+
+      - name: PowerShell syntax validation
+        shell: pwsh
+        run: |
+          foreach ($s in @(
+            "windows\Set_MEXC_Preflight_Secrets.ps1",
+            "windows\Run_MEXC_Authenticated_Preflight.ps1",
+            "windows\Run_MEXC_Ready_Check_V02.ps1"
+          )) {
+            $errors=$null
+            [void][System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $s),[ref]$null,[ref]$errors)
+            if ($errors.Count -gt 0) { $errors | Format-List; throw "PowerShell syntax failure: $s" }
+          }
+
+      - name: Build authenticated preflight
+        run: |
+          pyinstaller --clean --onefile --name MEXCAuthenticatedPreflight --paths . scripts/mexc_authenticated_preflight.py
+
+      - name: Build risk-state generator
+        run: |
+          pyinstaller --clean --onefile --name MEXCRiskState --paths . scripts/mexc_risk_state.py
+
+      - name: Smoke-test packaged risk-state EXE from Unicode Windows path
+        shell: pwsh
+        run: |
+          $unicodeRoot = Join-Path $env:RUNNER_TEMP "José Radar Smoke"
+          New-Item -ItemType Directory -Force -Path $unicodeRoot | Out-Null
+          $preflight = Join-Path $unicodeRoot "mexc_authenticated_preflight_receipt.json"
+          $riskOut = Join-Path $unicodeRoot "mexc_account_risk_state.json"
+          $receiptRoot = Join-Path $unicodeRoot "live_receipts"
+          New-Item -ItemType Directory -Force -Path $receiptRoot | Out-Null
+
+          @{
+            pass = $true
+            status = "PASS"
+            checks = @{
+              account = @{ equity_usdt = 112.3763 }
+              positions = @{ open_position_count = 0 }
+            }
+          } | ConvertTo-Json -Depth 8 | Set-Content -Encoding UTF8 $preflight
+
+          $exe = (Resolve-Path "dist\MEXCRiskState.exe").Path
+          $args = @("--preflight",$preflight,"--receipt-root",$receiptRoot,"--out",$riskOut)
+          $argLine = ($args | ForEach-Object { '"' + [string]$_ + '"' }) -join ' '
+          $proc = Start-Process -FilePath $exe -ArgumentList $argLine -NoNewWindow -Wait -PassThru
+          if ($proc.ExitCode -ne 0) { throw "Packaged MEXCRiskState smoke test failed: $($proc.ExitCode)" }
+          if (-not (Test-Path $riskOut)) { throw "Risk-state smoke receipt missing" }
+          $risk = Get-Content $riskOut -Raw | ConvertFrom-Json
+          if ($risk.status -ne "PASS") { throw "Risk-state smoke receipt not PASS" }
+
+          # Reproduce the operator symptom deliberately: append the EXE path.
+          # The packaged CLI may ignore only an exact self-path echo.
+          Remove-Item $riskOut -Force
+          $argsEcho = @("--preflight",$preflight,"--receipt-root",$receiptRoot,"--out",$riskOut,$exe)
+          $argLineEcho = ($argsEcho | ForEach-Object { '"' + [string]$_ + '"' }) -join ' '
+          $proc2 = Start-Process -FilePath $exe -ArgumentList $argLineEcho -NoNewWindow -Wait -PassThru
+          if ($proc2.ExitCode -ne 0) { throw "Self-path echo hardening failed: $($proc2.ExitCode)" }
+          if (-not (Test-Path $riskOut)) { throw "Risk-state echo smoke receipt missing" }
+
+      - name: Build live executor
+        run: |
+          pyinstaller --clean --onefile --name MEXCLiveExecutor --paths . scripts/mexc_live_executor.py
+
+      - name: Build exit guard
+        run: |
+          pyinstaller --clean --onefile --name MEXCExitGuard --paths . scripts/mexc_exit_guard.py
+
+      - name: Hash binaries
+        shell: pwsh
+        run: |
+          foreach ($exe in @(
+            "MEXCAuthenticatedPreflight.exe",
+            "MEXCRiskState.exe",
+            "MEXCLiveExecutor.exe",
+            "MEXCExitGuard.exe"
+          )) {
+            $hash=(Get-FileHash (Join-Path "dist" $exe) -Algorithm SHA256).Hash.ToLower()
+            "$exe sha256=$hash" | Tee-Object -FilePath (Join-Path "dist" ($exe+".sha256.txt"))
+          }
+
+      - name: Assemble V0.2 Windows bundle
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path bundle\dist | Out-Null
+          New-Item -ItemType Directory -Force -Path bundle\windows | Out-Null
+          Copy-Item dist\MEXCAuthenticatedPreflight.exe bundle\dist\
+          Copy-Item dist\MEXCRiskState.exe bundle\dist\
+          Copy-Item dist\MEXCLiveExecutor.exe bundle\dist\
+          Copy-Item dist\MEXCExitGuard.exe bundle\dist\
+          Copy-Item dist\*.sha256.txt bundle\dist\
+          Copy-Item windows\Set_MEXC_Preflight_Secrets.ps1 bundle\windows\
+          Copy-Item windows\Run_MEXC_Authenticated_Preflight.ps1 bundle\windows\
+          Copy-Item windows\Run_MEXC_Ready_Check_V02.ps1 bundle\windows\
+          Copy-Item ETF_CME_INSTFLOW_001_MICRO_LIVE_EXECUTION_AUTHORITY_TEMPLATE_V0.2.json bundle\
+          Copy-Item MEXC_FUTURES_STANDING_MICROLIVE_OPERATOR_AUTHORITY_V0.1.json bundle\
+          Copy-Item MEXC_FUTURES_MICROLIVE_FISHING_REGISTRY_V0.1.json bundle\
+          Copy-Item MEXC_LIVE_EXECUTION_V02_OPERATOR_GUIDE.md bundle\
+
+      - name: Upload V0.2 bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: mexc-live-execution-prep-v02-current-api
+          path: crypto_edge_radar/bundle/**
+          retention-days: 14
+          if-no-files-found: error

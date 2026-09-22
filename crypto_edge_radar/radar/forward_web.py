@@ -365,11 +365,16 @@ class ForwardShadowRuntime:
         if self._last_etf_signal_check_ms is not None and now_ms - self._last_etf_signal_check_ms >= 60 * 60 * 1000:
             etf_signal_due = True
         if etf_signal_due:
-            etf_signal = self.etf_cme_signal.run_once(now_ms=now_ms)
-            self._etf_signal_state = etf_signal
-            self._last_etf_signal_check_ms = now_ms
-            if etf_signal.get("status") == "FAIL_CLOSED":
-                errors["etf_cme_signal"] = str(etf_signal.get("error") or "source failure")
+            try:
+                etf_signal = self.etf_cme_signal.run_once(now_ms=now_ms)
+                self._etf_signal_state = etf_signal
+                self._last_etf_signal_check_ms = now_ms
+                if etf_signal.get("status") == "FAIL_CLOSED":
+                    errors["etf_cme_signal"] = str(etf_signal.get("error") or "source failure")
+            except Exception as exc:
+                etf_signal = {"status": "FAIL_CLOSED", "error": f"{type(exc).__name__}:{exc}"}
+                self._etf_signal_state = etf_signal
+                errors["etf_cme_signal"] = etf_signal["error"]
         else:
             etf_signal = self._etf_signal_state
 
@@ -407,12 +412,17 @@ class ForwardShadowRuntime:
             or now_ms - self._last_external_freshness_check_ms >= 60 * 60 * 1000
         )
         if freshness_due:
-            external_freshness = all_external_freshness(
-                now=datetime.fromtimestamp(now_ms / 1000.0, tz=timezone.utc),
-                timeout=self.settings.http_timeout,
-            )
-            self._external_freshness_state = external_freshness
-            self._last_external_freshness_check_ms = now_ms
+            try:
+                external_freshness = all_external_freshness(
+                    now=datetime.fromtimestamp(now_ms / 1000.0, tz=timezone.utc),
+                    timeout=self.settings.http_timeout,
+                )
+                self._external_freshness_state = external_freshness
+                self._last_external_freshness_check_ms = now_ms
+            except Exception as exc:
+                external_freshness = {"status": "FAIL_CLOSED", "error": f"{type(exc).__name__}:{exc}"}
+                self._external_freshness_state = external_freshness
+                errors["external_freshness"] = external_freshness["error"]
         else:
             external_freshness = self._external_freshness_state
 
