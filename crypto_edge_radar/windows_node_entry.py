@@ -13,7 +13,7 @@ from radar.local_forward import LocalForwardSupervisor
 from radar.render_sentinel import RenderSentinel
 
 
-BUILD_ID = "v0.14.1-win-seven-motor-resilient-bootstrap"
+BUILD_ID = "v0.14.2-win-forward-failure-isolation"
 
 
 def _resource_path(name: str) -> str:
