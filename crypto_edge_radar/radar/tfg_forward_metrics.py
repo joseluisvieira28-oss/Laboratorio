@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from math import isfinite
 from typing import Any
+
+from .strategies.tfg_donchian_regime_forward import MAX_HOLD_BARS, TWELVE_HOUR_MS, utc_iso_from_ms
 
 MIN_RESOLVED_FORWARD_TRADES = 10
 
@@ -32,7 +35,47 @@ def _event_key(payload: dict[str, Any]) -> str:
     return key
 
 
-def evaluate_tfg_forward_evidence(store) -> dict[str, Any]:
+def _classify_unresolved_states(
+    signals: list[dict[str, Any]],
+    unresolved_keys: list[str],
+    *,
+    now_ms: int,
+) -> list[dict[str, Any]]:
+    by_key = {_event_key(x): x for x in signals}
+    states: list[dict[str, Any]] = []
+    for key in unresolved_keys:
+        payload = by_key.get(key) or {}
+        trade = payload.get("paper_trade") or {}
+        entry = trade.get("entry_open_time")
+        if not isinstance(entry, int):
+            states.append({
+                "event_key": key,
+                "state": "UNCLASSIFIED_MISSING_ENTRY_BINDING",
+                "entry_open_time": entry,
+                "frozen_time_exit_due_ms": None,
+                "frozen_time_exit_due_utc": None,
+            })
+            continue
+        due = entry + MAX_HOLD_BARS * TWELVE_HOUR_MS
+        state = (
+            "MATURING_WITHIN_FROZEN_MAX_HOLD"
+            if now_ms < due
+            else "OVERDUE_RECONCILIATION_REVIEW"
+        )
+        states.append({
+            "event_key": key,
+            "state": state,
+            "entry_open_time": entry,
+            "entry_open_utc": utc_iso_from_ms(entry),
+            "frozen_time_exit_due_ms": due,
+            "frozen_time_exit_due_utc": utc_iso_from_ms(due),
+        })
+    return states
+
+
+def evaluate_tfg_forward_evidence(store, *, now_ms: int | None = None) -> dict[str, Any]:
+    if now_ms is None:
+        now_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
     signals = store.read_payloads("TFG_FORWARD_SIGNAL")
     resolutions = store.read_payloads("TFG_FORWARD_RESOLUTION")
     deviations = store.read_payloads("TFG_FORWARD_RULE_DEVIATION")
@@ -46,6 +89,16 @@ def evaluate_tfg_forward_evidence(store) -> dict[str, Any]:
     duplicate_signals = len(signal_keys) - len(unique_signal_keys)
     duplicate_resolutions = len(resolution_keys) - len(unique_resolution_keys)
     unresolved_keys = sorted(unique_signal_keys - unique_resolution_keys)
+    unresolved_states = _classify_unresolved_states(signals, unresolved_keys, now_ms=now_ms)
+    maturing_unresolved = sum(
+        x["state"] == "MATURING_WITHIN_FROZEN_MAX_HOLD" for x in unresolved_states
+    )
+    overdue_unresolved = sum(
+        x["state"] == "OVERDUE_RECONCILIATION_REVIEW" for x in unresolved_states
+    )
+    unclassified_unresolved = sum(
+        x["state"] == "UNCLASSIFIED_MISSING_ENTRY_BINDING" for x in unresolved_states
+    )
 
     base_values: list[float] = []
     stress_values: list[float] = []
@@ -115,6 +168,12 @@ def evaluate_tfg_forward_evidence(store) -> dict[str, Any]:
         "stress_max_additive_drawdown_r": _max_additive_drawdown(stress_values),
         "unresolved_execution_paths": len(unresolved_keys),
         "unresolved_event_keys": unresolved_keys,
+        "unresolved_state_breakdown": {
+            "maturing_within_frozen_max_hold": maturing_unresolved,
+            "overdue_reconciliation_review": overdue_unresolved,
+            "unclassified_missing_entry_binding": unclassified_unresolved,
+        },
+        "unresolved_states": unresolved_states,
         "rule_deviations": len(deviations),
         "missed_eligible_signals": len(missed),
         "duplicate_signals": duplicate_signals,
