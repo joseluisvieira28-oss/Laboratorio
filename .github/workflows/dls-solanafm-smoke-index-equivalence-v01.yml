@@ -1,0 +1,173 @@
+name: DLS SolanaFM Smoke Index Equivalence V0.1
+
+on:
+  push:
+    branches:
+      - defi-liquidation-kamino-first-success-exec-v0.1
+    paths:
+      - '.github/workflows/dls-solanafm-smoke-index-equivalence-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: defi-liquidation-kamino-first-success-exec-v0.1
+          fetch-depth: 0
+
+      - name: Query frozen source-only smoke window
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, time, urllib.parse, urllib.request, urllib.error, hashlib
+          from pathlib import Path
+
+          PROGRAM="KLend2g3cP87fffoy8q1mQqGKjrxjC8boSyAYavgmjD"
+          BASE=f"https://api.solana.fm/v0/accounts/{PROGRAM}/transactions"
+          params0={"utcFrom":"1734220800","utcTo":"1734307200","limit":"1000"}
+          refp=Path("labs/DEFI_LIQUIDATION_SHOCK_001/source/KAMINO_CORRECTED_SMOKE_REFERENCE_MANIFEST_V0.2.json")
+          ref=json.loads(refp.read_text())
+          known={r["tx_signature"]:r for r in ref["rows"]}
+          all_rows=[]
+          pages=[]
+          access_blocked=False
+          transport_error=None
+
+          def extract_rows(obj):
+              if isinstance(obj,list): return obj
+              if not isinstance(obj,dict): return []
+              for k in ("data","result","transactions","items"):
+                  v=obj.get(k)
+                  if isinstance(v,list): return v
+                  if isinstance(v,dict):
+                      for kk in ("data","transactions","items"):
+                          vv=v.get(kk)
+                          if isinstance(vv,list): return vv
+              return []
+
+          for page in range(1,501):
+              q=dict(params0); q["page"]=str(page)
+              url=BASE+"?"+urllib.parse.urlencode(q)
+              req=urllib.request.Request(url,headers={"Accept":"application/json","User-Agent":"crypto-lab-source-audit/1.0"})
+              body=None; status=None
+              for attempt in range(5):
+                  try:
+                      with urllib.request.urlopen(req,timeout=45) as r:
+                          status=r.status; body=r.read()
+                      break
+                  except urllib.error.HTTPError as e:
+                      status=e.code
+                      if e.code in (401,402,403):
+                          access_blocked=True
+                          try: body=e.read()
+                          except Exception: body=b""
+                          break
+                      if e.code==429 or 500<=e.code<600:
+                          time.sleep(2*(attempt+1)); continue
+                      try: body=e.read()
+                      except Exception: body=b""
+                      transport_error=f"HTTP_{e.code}"
+                      break
+                  except Exception as e:
+                      if attempt<4:
+                          time.sleep(2*(attempt+1)); continue
+                      transport_error=type(e).__name__+":"+str(e)[:200]
+              rec={"page":page,"http_status":status,"bytes":len(body or b"")}
+              pages.append(rec)
+              if access_blocked or transport_error: break
+              if status!=200 or body is None:
+                  transport_error=f"UNEXPECTED_HTTP_{status}"; break
+              try:
+                  obj=json.loads(body)
+              except Exception as e:
+                  transport_error="JSON_DECODE:"+str(e)[:160]; break
+              rows=extract_rows(obj)
+              all_rows.extend(rows)
+              rec["rows"]=len(rows)
+              if len(rows)<1000: break
+              time.sleep(0.25)
+          else:
+              transport_error="PAGE_LIMIT_EXCEEDED"
+
+          def sig(row):
+              if not isinstance(row,dict): return None
+              for k in ("signature","tx_signature","txHash","tx_hash","hash"):
+                  v=row.get(k)
+                  if isinstance(v,str) and v: return v
+              tx=row.get("transaction")
+              if isinstance(tx,dict):
+                  ss=tx.get("signatures")
+                  if isinstance(ss,list) and ss and isinstance(ss[0],str): return ss[0]
+              return None
+
+          indexed={}
+          for row in all_rows:
+              s=sig(row)
+              if s: indexed[s]=row
+          matched=sorted(set(known)&set(indexed))
+          missing=sorted(set(known)-set(indexed))
+
+          if access_blocked:
+              classification="SOLANAFM_INDEX_ACCESS_BLOCKED"
+          elif transport_error:
+              classification="SOLANAFM_INDEX_INSUFFICIENT"
+          elif missing:
+              classification="SOLANAFM_INDEX_EQUIVALENCE_FAIL_CLOSED"
+          else:
+              classification="SOLANAFM_INDEX_KNOWN_SIGNATURE_COVERAGE_PASS_RAW_POPULATION_AUDIT_REQUIRED"
+
+          sample_keys=sorted(set().union(*(r.keys() for r in all_rows if isinstance(r,dict)))) if all_rows else []
+          out={
+            "schema_version":"0.1",
+            "lab_id":"DEFI-LIQUIDATION-SHOCK-001",
+            "classification":classification,
+            "endpoint_base":BASE,
+            "window":{"utc_from":1734220800,"utc_to":1734307200},
+            "page_size":1000,
+            "pages":pages,
+            "indexed_rows":len(all_rows),
+            "indexed_unique_signatures":len(indexed),
+            "known_reference_count":len(known),
+            "known_matched_count":len(matched),
+            "known_missing_count":len(missing),
+            "known_missing_signatures":missing,
+            "response_row_keys":sample_keys,
+            "access_blocked":access_blocked,
+            "transport_error":transport_error,
+            "reference_manifest_sha256":hashlib.sha256(refp.read_bytes()).hexdigest(),
+            "raw_population_audit_required":classification.endswith("RAW_POPULATION_AUDIT_REQUIRED"),
+            "governance":{
+              "source_only":True,"outcome_blind":True,"prices":False,"returns":False,"pnl":False,
+              "direction":False,"year_2025_2026_market_outcomes":False,"live_trading":False,
+              "orders":False,"wallets":False,"exchange_mutation":False,"paid_data":False,"merge_main":False
+            }
+          }
+          p=Path("labs/DEFI_LIQUIDATION_SHOCK_001/audit_receipts/DLS_SOLANAFM_SMOKE_INDEX_EQUIVALENCE_V0.1.json")
+          p.parent.mkdir(parents=True,exist_ok=True)
+          p.write_text(json.dumps(out,indent=2,sort_keys=True)+"\n")
+          print(json.dumps({
+            "classification":classification,"indexed_rows":len(all_rows),
+            "indexed_unique_signatures":len(indexed),"known_matched":len(matched),
+            "known_missing":len(missing),"access_blocked":access_blocked,
+            "transport_error":transport_error
+          },sort_keys=True))
+          PY
+
+      - name: Persist receipt
+        if: always()
+        run: |
+          if [ ! -f labs/DEFI_LIQUIDATION_SHOCK_001/audit_receipts/DLS_SOLANAFM_SMOKE_INDEX_EQUIVALENCE_V0.1.json ]; then
+            exit 1
+          fi
+          git config user.name "crypto-lab-source-audit"
+          git config user.email "actions@users.noreply.github.com"
+          git add labs/DEFI_LIQUIDATION_SHOCK_001/audit_receipts/DLS_SOLANAFM_SMOKE_INDEX_EQUIVALENCE_V0.1.json
+          git commit -m "audit: persist SolanaFM smoke index equivalence"
+          git push origin HEAD:defi-liquidation-kamino-first-success-exec-v0.1
