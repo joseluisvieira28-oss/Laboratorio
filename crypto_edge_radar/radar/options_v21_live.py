@@ -87,7 +87,11 @@ def _parse_trade(row: Any, *, start_ms: int, end_ms: int) -> OptionTrade:
     if not start_ms <= ts <= end_ms:
         raise OptionsV21SourceError("Deribit returned trade outside requested time window")
     if not isfinite(iv) or iv <= 0 or not isfinite(index_price) or index_price <= 0:
-        raise OptionsV21SourceError("Deribit trade has invalid IV/index")
+        raise OptionsV21SourceError(
+            "Deribit trade has invalid IV/index "
+            f"(trade_id={row.get('trade_id')!r}, instrument={row.get('instrument_name')!r}, "
+            f"iv={row.get('iv')!r}, index_price={row.get('index_price')!r})"
+        )
     trade_id = str(row.get("trade_id") or "")
     if not trade_id:
         # Fail closed rather than deduplicating with a guessed identity.
