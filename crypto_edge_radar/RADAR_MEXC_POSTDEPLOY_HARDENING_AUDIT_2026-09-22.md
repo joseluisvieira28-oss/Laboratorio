@@ -56,13 +56,12 @@ This table preserves the last confirmed control-room observation. V0.14.3 deploy
 - Workflow YAML parse: PASS.
 - Secret scan: no literal API key/secret assignment found.
 - Mutation surface: only exact 1x isolated configuration, Auto Margin Add OFF, BTC_USDT order/create and cancel-by-external are allowlisted; no withdrawal, transfer, Cross margin or leverage >1x method.
-- Windows package self-test and PowerShell syntax: delegated to the branch CI; local Linux cannot execute the Windows EXE/PowerShell validation.
+- Windows CI run `35702947599`: SUCCESS. Package self-test, PowerShell syntax, exact build identity and artifact assembly all passed.
+- Windows artifact `10683635730`: `crypto-edge-radar-v0143-mexc-postdeploy-hardening`, archive digest `sha256:99eab70a94932a171f3b2c7cab20249d79b6db3aaa2c9aa659c5c43e2da6d4dc`.
 
 ## Remaining blockers
 
-1. CI/package job must pass and publish the V0.14.3 Windows artifact.
-2. Operator PC must install/run V0.14.3 and copy fresh sanitized MEXC preflight and risk-state receipts into the Radar `data` directory.
-3. Options must complete a genuinely healthy post-deploy cycle; the old FAIL_CLOSED state must not be manually cleared.
-4. ETF remains capital-incompatible under the frozen 0.1% budget.
-5. Options remains without candidate-specific micro-live risk/readiness authority and sufficient forward evidence.
-
+1. Operator PC must install/run V0.14.3 and copy fresh sanitized MEXC preflight and risk-state receipts into the Radar `data` directory.
+2. Options must complete a genuinely healthy post-deploy cycle; the old FAIL_CLOSED state must not be manually cleared.
+3. ETF remains capital-incompatible under the frozen 0.1% budget.
+4. Options remains without candidate-specific micro-live risk/readiness authority and sufficient forward evidence.
