@@ -1,0 +1,59 @@
+name: DLS Save 0x0c Post-Window Upper Anchor V0.1
+
+on:
+  push:
+    branches:
+      - dls-save0c-upper-anchor-v0.1
+    paths:
+      - '.github/workflows/dls-save0c-upper-anchor-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dls-save0c-upper-anchor-v0.1
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/find_save0c_post_window_anchor_v0_1.py
+      - name: Execute source-only post-window anchor probe
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/find_save0c_post_window_anchor_v0_1.py | tee STDOUT.txt
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-save0c-post-window-upper-anchor-v01
+          path: |
+            dls_save0c_upper_anchor_v01/
+            labs/DEFI_LIQUIDATION_SHOCK_001/SAVE0C_POST_WINDOW_UPPER_ANCHOR_RECEIPT_V0.1.json
+            STDOUT.txt
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Persist receipt
+        if: always()
+        run: |
+          if [ -f labs/DEFI_LIQUIDATION_SHOCK_001/SAVE0C_POST_WINDOW_UPPER_ANCHOR_RECEIPT_V0.1.json ]; then
+            git config user.name "crypto-lab-source-audit"
+            git config user.email "actions@users.noreply.github.com"
+            git add labs/DEFI_LIQUIDATION_SHOCK_001/SAVE0C_POST_WINDOW_UPPER_ANCHOR_RECEIPT_V0.1.json
+            git commit -m "dls: persist Save 0x0c post-window upper anchor receipt" || true
+            git push origin HEAD:dls-save0c-upper-anchor-v0.1
+          fi
+      - name: Firewall
+        if: always()
+        run: |
+          echo SOURCE_ONLY_TRUE
+          echo PRICES_FALSE
+          echo RETURNS_FALSE
+          echo PNL_FALSE
+          echo DIRECTION_FALSE
+          echo LIVE_TRADING_FALSE
