@@ -441,5 +441,58 @@ class DashboardTests(unittest.TestCase):
             self.assertEqual(state["bots"][0]["operating_state"], "SHADOW")
 
 
+    def test_cirv_requires_live_watcher_truth_before_shadow(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            registry, status, events = self._paths(root)
+            strategy = "CRYPTO-INTRAWEEK-RV-001 / CIRV-HAR-DOW-BTCETH-001"
+            registry.write_text(json.dumps({
+                "registry_version": "3.7-test",
+                "focus_strategy_ids": [strategy],
+                "candidates": [{
+                    "strategy_id": strategy,
+                    "scientific_tier": None,
+                    "scientific_status": "L5_REPLICATED_OOS_FORECAST_MECHANISM__NOT_TRADING_EDGE",
+                    "deployment_state": "M6_PROSPECTIVE_SHADOW__RADAR_LOCAL_WATCHER__PROSPECTIVE_BLIND_DELAYED_SOURCE",
+                    "shadow_allowed": True,
+                    "micro_live_allowed_now": False,
+                    "blocking_gates": [],
+                }],
+            }), encoding="utf-8")
+
+            state = build_control_room_state(
+                status_path=str(status),
+                notification_path=str(events),
+                registry_path=str(registry),
+            )
+            self.assertEqual(state["bots"][0]["operating_state"], "GATED")
+
+            (root / "cirv_local_status.json").write_text(json.dumps({
+                "status": "WATCHING",
+                "runtime_phase": "WAITING_SOURCE_WINDOW",
+                "checked_at_utc": "2026-09-22T20:30:00Z",
+            }), encoding="utf-8")
+            state = build_control_room_state(
+                status_path=str(status),
+                notification_path=str(events),
+                registry_path=str(registry),
+            )
+            self.assertEqual(state["bots"][0]["operating_state"], "SHADOW")
+            self.assertEqual(state["local_runtime"]["cirv_status"], "WATCHING")
+
+            (root / "cirv_local_status.json").write_text(json.dumps({
+                "status": "FAIL_CLOSED",
+                "runtime_phase": "RUNTIME_EXCEPTION",
+                "error": "synthetic",
+            }), encoding="utf-8")
+            state = build_control_room_state(
+                status_path=str(status),
+                notification_path=str(events),
+                registry_path=str(registry),
+            )
+            self.assertEqual(state["bots"][0]["operating_state"], "BLOCKED")
+            self.assertEqual(state["system"]["health"], "DEGRADED_FAIL_CLOSED")
+
+
 if __name__ == "__main__":
     unittest.main()

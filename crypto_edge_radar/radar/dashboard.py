@@ -15,6 +15,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_REGISTRY = PROJECT_ROOT / "deployment_registry_v1.json"
 DH03_STRATEGY_ID = "HTF-DH03-12H-STANDALONE-FORWARD-V1"
 CED1D_STRATEGY_ID = "CED1D-0031"
+CIRV_STRATEGY_ID = "CRYPTO-INTRAWEEK-RV-001 / CIRV-HAR-DOW-BTCETH-001"
 LOCAL_FORWARD_STRATEGY_IDS = {
     "BNB-LAUNCHPOOL-DEMAND-001",
     "TFG-DONCHIAN-REGIME-ADAPTATION-V1",
@@ -129,6 +130,7 @@ def _bot_operating_state(
     forward_supervisor_status: dict[str, Any] | None = None,
     forward_state: dict[str, Any] | None = None,
     render_sentinel: dict[str, Any] | None = None,
+    cirv_status: dict[str, Any] | None = None,
 ) -> str:
     strategy_id = str(candidate.get("strategy_id") or "")
     deployment_state = str(candidate.get("deployment_state") or "").upper()
@@ -152,6 +154,14 @@ def _bot_operating_state(
 
     if strategy_id == CED1D_STRATEGY_ID:
         return "SHADOW" if str((render_sentinel or {}).get("status") or "MISSING").upper() == "OK" else "BLOCKED"
+
+    if strategy_id == CIRV_STRATEGY_ID:
+        status = str((cirv_status or {}).get("status") or "MISSING").upper()
+        if status in {"WATCHING", "FORECAST_READY"}:
+            return "SHADOW"
+        if status == "FAIL_CLOSED":
+            return "BLOCKED"
+        return "GATED"
 
     # The five public forward engines share one supervisor but fail closed
     # independently. A candidate-specific source failure must never poison the
@@ -194,6 +204,8 @@ def build_control_room_state(
     render_sentinel = _read_json(render_sentinel_path, {})
     render_sentinel_supervisor_path = service_status_path.parent / "render_sentinel_supervisor_status.json"
     render_sentinel_supervisor = _read_json(render_sentinel_supervisor_path, {})
+    cirv_status_path = service_status_path.parent / "cirv_local_status.json"
+    cirv_status = _read_json(cirv_status_path, {})
     mexc = read_mexc_local_state(
         data_dir=service_status_path.parent,
         standing_authority_path=PROJECT_ROOT / "MEXC_FUTURES_STANDING_MICROLIVE_OPERATOR_AUTHORITY_V0.1.json",
@@ -223,6 +235,7 @@ def build_control_room_state(
             forward_supervisor_status=forward_supervisor_status,
             forward_state=forward_state,
             render_sentinel=render_sentinel,
+            cirv_status=cirv_status,
         )
         runtime_status = None
         if strategy_id == DH03_STRATEGY_ID:
@@ -259,6 +272,14 @@ def build_control_room_state(
                 blockers = list(blockers) + [
                     f"CED1D external runtime not proven healthy ({runtime_status})"
                 ]
+        elif strategy_id == CIRV_STRATEGY_ID:
+            runtime_status = str(cirv_status.get("status") or "MISSING")
+            phase = str(cirv_status.get("runtime_phase") or "MISSING")
+            if operating_state == "GATED":
+                blockers = list(blockers) + [f"CIRV local watcher not yet proven alive ({runtime_status}; {phase})"]
+            elif operating_state == "BLOCKED":
+                err = cirv_status.get("error") or cirv_status.get("reason")
+                blockers = list(blockers) + [f"CIRV local watcher FAIL_CLOSED ({phase}){chr(58) + chr(32) + str(err) if err else ''}"]
 
         component_key = FORWARD_COMPONENT_BY_STRATEGY.get(strategy_id)
         component = forward_state.get(component_key) if component_key else None
@@ -268,6 +289,7 @@ def build_control_room_state(
             "collector_alive": operating_state == "SHADOW",
             "source_freshness": (
                 (render_sentinel.get("remote_health") if strategy_id == CED1D_STRATEGY_ID else None)
+                or (cirv_status.get("runtime_phase") if strategy_id == CIRV_STRATEGY_ID else None)
                 or component.get("source_status")
                 or component.get("status")
                 or runtime_status
@@ -275,10 +297,12 @@ def build_control_room_state(
             ),
             "last_successful_cycle_utc": (
                 render_sentinel.get("checked_at_utc") if strategy_id == CED1D_STRATEGY_ID else
+                cirv_status.get("checked_at_utc") if strategy_id == CIRV_STRATEGY_ID else
                 component.get("checked_at_utc") or forward_state.get("checked_at_utc")
             ),
             "last_failure": (
                 render_sentinel.get("error") if strategy_id == CED1D_STRATEGY_ID else
+                cirv_status.get("error") if strategy_id == CIRV_STRATEGY_ID else
                 component.get("error")
             ),
         }
@@ -337,6 +361,7 @@ def build_control_room_state(
     dh03_runtime = str(dh03_status.get("status") or "MISSING").upper()
     sentinel_supervisor = str(render_sentinel_supervisor.get("status") or "MISSING").upper()
     sentinel_runtime = str(render_sentinel.get("status") or "MISSING").upper()
+    cirv_runtime = str(cirv_status.get("status") or "MISSING").upper()
     if not registry_ok:
         effective_health = "REGISTRY_DESYNC"
     elif (
@@ -345,6 +370,7 @@ def build_control_room_state(
         or dh03_runtime == "FAIL_CLOSED"
         or sentinel_supervisor == "FAIL_CLOSED"
         or sentinel_runtime == "REMOTE_FAIL_CLOSED"
+        or cirv_runtime == "FAIL_CLOSED"
     ):
         effective_health = "DEGRADED_FAIL_CLOSED"
     else:
@@ -385,6 +411,10 @@ def build_control_room_state(
             "render_sentinel_status": str(render_sentinel.get("status") or "MISSING"),
             "render_sentinel_supervisor_status": str(render_sentinel_supervisor.get("status") or "MISSING"),
             "render_sentinel_last_check_utc": render_sentinel.get("checked_at_utc"),
+            "cirv_status_path": str(cirv_status_path),
+            "cirv_status": str(cirv_status.get("status") or "MISSING"),
+            "cirv_runtime_phase": str(cirv_status.get("runtime_phase") or "MISSING"),
+            "cirv_checked_at_utc": cirv_status.get("checked_at_utc"),
         },
         "risk_policy": {
             "planned_risk_per_trade_pct": limits.per_trade * 100,
@@ -408,7 +438,7 @@ HTML = r"""<!doctype html>
 :root{--bg:#07090d;--panel:#10141b;--line:#252c37;--text:#f4f7fb;--muted:#9099a8;--ok:#59e19a;--warn:#ffd166;--bad:#ff6b6b;--cyan:#55d7ff}
 *{box-sizing:border-box}body{margin:0;background:#07090d;color:var(--text);font-family:Inter,system-ui,sans-serif}.wrap{max-width:1400px;margin:auto;padding:28px}.top{display:flex;justify-content:space-between;gap:20px;margin-bottom:22px}.eyebrow{font-size:12px;letter-spacing:.18em;color:var(--cyan);font-weight:800}.title{font-size:34px;font-weight:850;margin-top:5px}.sub{color:var(--muted);margin-top:6px}.health,.metric,.card,.feed,.cell{border:1px solid var(--line);background:var(--panel);border-radius:15px}.health{padding:13px 16px;min-width:260px}.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:8px;background:var(--warn)}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}.metric{padding:17px}.metric .n{font-size:28px;font-weight:850}.metric .k{font-size:11px;color:var(--muted);letter-spacing:.1em}.bots{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}.card{padding:20px}.row{display:flex;justify-content:space-between;gap:12px}.id{font-size:17px;font-weight:800}.badge{font-size:11px;font-weight:850;padding:6px 9px;border-radius:999px;border:1px solid var(--line)}.ARMED{color:var(--ok)}.SHADOW{color:var(--cyan)}.GATED{color:var(--warn)}.BLOCKED{color:var(--bad)}.meta,.risk{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px}.meta{grid-template-columns:1fr 1fr}.cell{padding:11px}.cell b{display:block;font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:5px}.blockers{font-size:12px;color:#c1c8d4;line-height:1.5;margin-top:13px}.section{margin-top:20px}.section h2{font-size:13px;color:var(--muted);letter-spacing:.09em}.feed{padding:14px;max-height:250px;overflow:auto;font:11px ui-monospace,monospace}.event{padding:7px;border-bottom:1px solid #1a202b}.footer{font-size:11px;color:#667080;margin-top:16px;text-align:right}.diag{font-size:11px;color:var(--muted);margin-top:6px}@media(max-width:850px){.grid,.risk,.bots{grid-template-columns:1fr}.top{flex-direction:column}.health{width:100%}}
 </style></head><body><div class="wrap">
-<div class="top"><div><div class="eyebrow">AGGRESSIVE MODE · SCIENCE FROZEN · V3 AUTHORITY</div><div class="title">Crypto Edge Radar — Control Room</div><div class="sub">Prospective observation · fail-closed deployment gates · no discretionary rescue · 🎣 seven-motor fishing watch</div></div><div class="health"><div><span id="dot" class="dot"></span><strong id="health">LOADING</strong></div><div class="sub" id="provider"></div><div class="diag" id="diag"></div></div></div>
+<div class="top"><div><div class="eyebrow">AGGRESSIVE MODE · SCIENCE FROZEN · V3 AUTHORITY</div><div class="title">Crypto Edge Radar — Control Room</div><div class="sub">Prospective observation · fail-closed deployment gates · no discretionary rescue · 🎣 eight-motor fishing watch</div></div><div class="health"><div><span id="dot" class="dot"></span><strong id="health">LOADING</strong></div><div class="sub" id="provider"></div><div class="diag" id="diag"></div></div></div>
 <div class="grid"><div class="metric"><div class="n" id="armed">0</div><div class="k">🐟 HOOKED · ARMED</div></div><div class="metric"><div class="n" id="shadow">0</div><div class="k">🎣 LINES IN WATER</div></div><div class="metric"><div class="n" id="gated">0</div><div class="k">🪝 WAITING GATE</div></div><div class="metric"><div class="n" id="blocked">0</div><div class="k">⛔ BLOCKED</div></div></div>
 <div class="section"><h2>MEXC EXECUTION CONTROL PLANE</h2><div class="risk" id="mexc"></div></div><div class="bots" id="bots"></div><div class="section"><h2>FROZEN RISK POLICY</h2><div class="risk" id="risk"></div></div><div class="section"><h2>RECENT MACHINE EVENTS</h2><div class="feed" id="events"></div></div><div class="footer" id="stamp"></div></div>
 <script>

@@ -10,13 +10,14 @@ import traceback
 from radar.__main__ import main
 from radar.dh03_12h_local import DH03LocalCollector, default_paths, require_dh03_clock_preflight
 from radar.local_forward import LocalForwardSupervisor
+from radar.cirv_local import CIRVLocalWatcher
 from radar.render_sentinel import RenderSentinel
 
 
-BUILD_ID = "v0.14.3.3-win-single-instance-lock"
+BUILD_ID = "v0.14.4-win-cirv-eight-motor"
 
 _INSTANCE_MUTEX_HANDLE = None
-_INSTANCE_MUTEX_NAME = r"Local\CryptoEdgeRadarV01433Node"
+_INSTANCE_MUTEX_NAME = r"Local\CryptoEdgeRadarV0144Node"
 _ERROR_ALREADY_EXISTS = 183
 
 
@@ -100,6 +101,9 @@ def _verify_registry_file(registry_path: str) -> tuple[dict, dict]:
     ema6h = "EMA6H-50X200-REGIME-DEPENDENCY-001"
     if ema6h not in ids:
         raise RuntimeError(f"deployment registry missing EMA6H regime forward strategy: {ema6h}")
+    cirv = "CRYPTO-INTRAWEEK-RV-001 / CIRV-HAR-DOW-BTCETH-001"
+    if cirv not in ids:
+        raise RuntimeError(f"deployment registry missing CIRV forecast shadow strategy: {cirv}")
     state = {
         "status": "PASS",
         "build_id": BUILD_ID,
@@ -109,6 +113,7 @@ def _verify_registry_file(registry_path: str) -> tuple[dict, dict]:
         "dh03_strategy_present": True,
         "ced1d_strategy_present": True,
         "ema6h_strategy_present": True,
+        "cirv_strategy_present": True,
     }
     return payload, state
 
@@ -234,6 +239,45 @@ def _start_forward_thread() -> threading.Thread:
     return thread
 
 
+def _run_cirv_background() -> None:
+    status_path = Path("data") / "cirv_local_status.json"
+    try:
+        watcher = CIRVLocalWatcher(root="data")
+        _write_json_atomic(status_path, {
+            "status": "WATCHING",
+            "runtime_phase": "STARTING",
+            "build_id": BUILD_ID,
+            "strategy_id": "CRYPTO-INTRAWEEK-RV-001 / CIRV-HAR-DOW-BTCETH-001",
+            "orders_created": False,
+            "authenticated_exchange_api_used": False,
+            "exchange_mutation_performed": False,
+            "live_capital_enabled": False,
+        })
+        watcher.run_forever()
+    except Exception as exc:
+        _write_json_atomic(status_path, {
+            "status": "FAIL_CLOSED",
+            "runtime_phase": "SUPERVISOR_EXCEPTION",
+            "build_id": BUILD_ID,
+            "error": f"{type(exc).__name__}:{exc}",
+            "traceback": traceback.format_exc(limit=8),
+            "orders_created": False,
+            "authenticated_exchange_api_used": False,
+            "exchange_mutation_performed": False,
+            "live_capital_enabled": False,
+        })
+
+
+def _start_cirv_thread() -> threading.Thread:
+    thread = threading.Thread(
+        target=_run_cirv_background,
+        name="CIRV-BTCETH-Prospective-Forecast-Shadow",
+        daemon=True,
+    )
+    thread.start()
+    return thread
+
+
 def _start_dh03_thread() -> threading.Thread:
     thread = threading.Thread(
         target=_run_dh03_background,
@@ -343,6 +387,7 @@ def run() -> int:
         package_state["dh03_collector_importable"] = True
         package_state["local_forward_supervisor_importable"] = True
         package_state["render_sentinel_importable"] = True
+        package_state["cirv_watcher_importable"] = True
         package_state["resilient_control_plane_bootstrap"] = True
         print(json.dumps(package_state, sort_keys=True))
         return 0
@@ -365,7 +410,7 @@ def run() -> int:
 
     # DH03 activation_ms is a prospective scientific boundary. Validate the
     # Binance public clock before the collector can persist that boundary.
-    # Failure blocks DH03 only; it must not prevent the seven-motor cockpit,
+    # Failure blocks DH03 only; it must not prevent the eight-motor cockpit,
     # forward supervisor, or Render sentinel from starting.
     dh03_clock_ok = False
     try:
@@ -392,6 +437,7 @@ def run() -> int:
     if dh03_clock_ok:
         _start_dh03_thread()
     _start_forward_thread()
+    _start_cirv_thread()
     _start_render_sentinel_thread()
 
     # V0.14.1 intentionally serves the multi-motor cockpit directly instead

@@ -35,6 +35,7 @@ class WindowsResilientBootstrapTests(unittest.TestCase):
                     patch.object(entry, "require_dh03_clock_preflight", side_effect=RuntimeError("synthetic clock fail")),
                     patch.object(entry, "_start_dh03_thread") as start_dh03,
                     patch.object(entry, "_start_forward_thread") as start_forward,
+                    patch.object(entry, "_start_cirv_thread") as start_cirv,
                     patch.object(entry, "_start_render_sentinel_thread") as start_sentinel,
                     patch.object(entry, "main", return_value=0) as main,
                 ):
@@ -42,6 +43,7 @@ class WindowsResilientBootstrapTests(unittest.TestCase):
                 self.assertEqual(rc, 0)
                 start_dh03.assert_not_called()
                 start_forward.assert_called_once()
+                start_cirv.assert_called_once()
                 start_sentinel.assert_called_once()
                 args = main.call_args.args[0]
                 self.assertEqual(args[0], "dashboard")
@@ -65,6 +67,7 @@ class WindowsResilientBootstrapTests(unittest.TestCase):
                     patch.object(entry, "require_dh03_clock_preflight", return_value={"pass": True}),
                     patch.object(entry, "_start_dh03_thread") as start_dh03,
                     patch.object(entry, "_start_forward_thread") as start_forward,
+                    patch.object(entry, "_start_cirv_thread") as start_cirv,
                     patch.object(entry, "_start_render_sentinel_thread") as start_sentinel,
                     patch.object(entry, "main", return_value=0) as main,
                 ):
@@ -72,6 +75,7 @@ class WindowsResilientBootstrapTests(unittest.TestCase):
                 self.assertEqual(rc, 0)
                 start_dh03.assert_called_once()
                 start_forward.assert_called_once()
+                start_cirv.assert_called_once()
                 start_sentinel.assert_called_once()
                 self.assertEqual(main.call_args.args[0][0], "dashboard")
                 clock = json.loads(Path("data/dh03_clock_preflight.json").read_text(encoding="utf-8"))
@@ -86,6 +90,7 @@ class WindowsResilientBootstrapTests(unittest.TestCase):
             patch.object(entry, "require_dh03_clock_preflight") as clock_preflight,
             patch.object(entry, "_start_dh03_thread") as start_dh03,
             patch.object(entry, "_start_forward_thread") as start_forward,
+            patch.object(entry, "_start_cirv_thread") as start_cirv,
             patch.object(entry, "_start_render_sentinel_thread") as start_sentinel,
             patch.object(entry, "main") as main,
         ):
@@ -96,6 +101,7 @@ class WindowsResilientBootstrapTests(unittest.TestCase):
         clock_preflight.assert_not_called()
         start_dh03.assert_not_called()
         start_forward.assert_not_called()
+        start_cirv.assert_not_called()
         start_sentinel.assert_not_called()
         main.assert_not_called()
 
@@ -111,6 +117,7 @@ class WindowsResilientBootstrapTests(unittest.TestCase):
                     patch.object(entry, "require_dh03_clock_preflight", return_value={"pass": True}),
                     patch.object(entry, "_start_dh03_thread"),
                     patch.object(entry, "_start_forward_thread"),
+                    patch.object(entry, "_start_cirv_thread"),
                     patch.object(entry, "_start_render_sentinel_thread"),
                     patch.object(entry, "main", return_value=0),
                 ):
@@ -122,7 +129,7 @@ class WindowsResilientBootstrapTests(unittest.TestCase):
 
     def test_launcher_has_duplicate_and_unrelated_process_guards(self):
         script = (Path(__file__).resolve().parents[1] / "windows" / "START_RADAR_RECOVERY_V0141.ps1").read_text(encoding="utf-8")
-        self.assertIn("CryptoEdgeRadarV0143Launcher", script)
+        self.assertIn("CryptoEdgeRadarV0144Launcher", script)
         self.assertIn("approvedPaths -notcontains $ownerPath", script)
         self.assertNotIn('Get-Process -Name "CryptoEdgeRadarNode"', script)
 
@@ -135,10 +142,25 @@ class WindowsResilientBootstrapTests(unittest.TestCase):
         self.assertIn("Register-ScheduledTask", installer)
         self.assertIn("-AtLogOn", installer)
 
-    def test_launcher_supports_stable_onedir_and_exact_v01433_identity(self):
+    def test_launcher_supports_stable_onedir_and_exact_v0144_identity(self):
         script = (Path(__file__).resolve().parents[1] / "windows" / "START_RADAR_RECOVERY_V0141.ps1").read_text(encoding="utf-8")
         self.assertIn("CryptoEdgeRadarNode\\CryptoEdgeRadarNode.exe", script)
-        self.assertIn("v0.14.3.3-win-single-instance-lock", script)
+        self.assertIn("v0.14.4-win-cirv-eight-motor", script)
+
+
+    def test_v0144_watchdog_autostart_and_upgrade_are_fail_closed(self):
+        root = Path(__file__).resolve().parents[1] / "windows"
+        watchdog = (root / "RUN_RADAR_24X7_V0144.ps1").read_text(encoding="utf-8")
+        installer = (root / "INSTALL_RADAR_AUTOSTART_V0144.ps1").read_text(encoding="utf-8")
+        upgrade = (root / "UPGRADE_RADAR_V0144.ps1").read_text(encoding="utf-8")
+        self.assertIn("CryptoEdgeRadarV0144Watchdog", watchdog)
+        self.assertIn('TaskName "CryptoEdgeRadarV0144"', installer)
+        self.assertIn("v0.14.3.3-win-single-instance-lock", upgrade)
+        self.assertIn("v0.14.4-win-cirv-eight-motor", upgrade)
+        self.assertIn("registry.focus_loaded", upgrade)
+        self.assertIn("cirv_status", upgrade)
+        self.assertIn("Rolling back", upgrade)
+        self.assertIn("Refusing automatic", upgrade)
 
 
 if __name__ == "__main__":
