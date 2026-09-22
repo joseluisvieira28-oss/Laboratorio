@@ -13,13 +13,25 @@ class WindowsResilientBootstrapTests(unittest.TestCase):
     def _registry_path() -> str:
         return str((Path(__file__).resolve().parents[1] / "deployment_registry_v1.json").resolve())
 
+    @staticmethod
+    def _authority_path() -> str:
+        return str((Path(__file__).resolve().parents[1] / "MEXC_FUTURES_STANDING_MICROLIVE_OPERATOR_AUTHORITY_V0.1.json").resolve())
+
+    @classmethod
+    def _resource(cls, _self, name: str) -> str:
+        if name == "deployment_registry_v1.json":
+            return cls._registry_path()
+        if name == "MEXC_FUTURES_STANDING_MICROLIVE_OPERATOR_AUTHORITY_V0.1.json":
+            return cls._authority_path()
+        raise AssertionError(f"unexpected packaged resource requested in test: {name}")
+
     def test_dh03_clock_failure_blocks_only_dh03_and_still_serves_dashboard(self):
         with tempfile.TemporaryDirectory() as td:
             old = os.getcwd()
             os.chdir(td)
             try:
                 with (
-                    patch.object(entry, "_resource_path", return_value=self._registry_path()),
+                    patch.object(entry, "_resource_path", side_effect=self._resource),
                     patch.object(entry, "require_dh03_clock_preflight", side_effect=RuntimeError("synthetic clock fail")),
                     patch.object(entry, "_start_dh03_thread") as start_dh03,
                     patch.object(entry, "_start_forward_thread") as start_forward,
@@ -49,7 +61,7 @@ class WindowsResilientBootstrapTests(unittest.TestCase):
             os.chdir(td)
             try:
                 with (
-                    patch.object(entry, "_resource_path", return_value=self._registry_path()),
+                    patch.object(entry, "_resource_path", side_effect=self._resource),
                     patch.object(entry, "require_dh03_clock_preflight", return_value={"pass": True}),
                     patch.object(entry, "_start_dh03_thread") as start_dh03,
                     patch.object(entry, "_start_forward_thread") as start_forward,
