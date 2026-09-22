@@ -2,6 +2,8 @@ import os
 import tempfile
 import unittest
 
+from radar.strategies.tfg_donchian_regime_forward import MAX_HOLD_BARS, TWELVE_HOUR_MS
+
 from radar.evidence import EvidenceStore
 from radar.tfg_forward_metrics import evaluate_tfg_forward_evidence
 
@@ -62,6 +64,32 @@ class TFGForwardMetricsTests(unittest.TestCase):
             result = evaluate_tfg_forward_evidence(store)
             self.assertEqual(result["unresolved_execution_paths"], 1)
             self.assertFalse(result["gate_checks"]["unresolved_execution_paths_eq_0"])
+            self.assertFalse(result["readiness_gate_pass"])
+
+    def test_unresolved_visibility_separates_maturing_from_overdue_without_credit(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            store = self._store(tmp)
+            key1 = "TFG-DONCHIAN-REGIME-V1:BTCUSDT:100"
+            key2 = "TFG-DONCHIAN-REGIME-V1:ETHUSDT:200"
+            store.append_once("TFG_FORWARD_SIGNAL", key1, {
+                "event_key": key1,
+                "paper_trade": {"entry_open_time": 1_000_000},
+            })
+            store.append_once("TFG_FORWARD_SIGNAL", key2, {
+                "event_key": key2,
+                "paper_trade": {"entry_open_time": 2_000_000},
+            })
+            due1 = 1_000_000 + MAX_HOLD_BARS * TWELVE_HOUR_MS
+            now = due1
+            result = evaluate_tfg_forward_evidence(store, now_ms=now)
+            self.assertEqual(result["resolved_forward_trades"], 0)
+            self.assertEqual(result["unresolved_execution_paths"], 2)
+            self.assertEqual(
+                result["unresolved_state_breakdown"]["overdue_reconciliation_review"], 1
+            )
+            self.assertEqual(
+                result["unresolved_state_breakdown"]["maturing_within_frozen_max_hold"], 1
+            )
             self.assertFalse(result["readiness_gate_pass"])
 
     def test_ten_bad_trades_fail_without_rescue(self):
