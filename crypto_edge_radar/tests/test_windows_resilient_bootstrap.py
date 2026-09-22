@@ -94,6 +94,11 @@ class WindowsResilientBootstrapTests(unittest.TestCase):
         self.assertIn("Register-ScheduledTask", installer)
         self.assertIn("-AtLogOn", installer)
 
+    def test_launcher_supports_stable_onedir_and_exact_v01432_identity(self):
+        script = (Path(__file__).resolve().parents[1] / "windows" / "START_RADAR_RECOVERY_V0141.ps1").read_text(encoding="utf-8")
+        self.assertIn("CryptoEdgeRadarNode\\CryptoEdgeRadarNode.exe", script)
+        self.assertIn("v0.14.3.2-win-live-state-reconciliation", script)
+
 
 if __name__ == "__main__":
     unittest.main()
