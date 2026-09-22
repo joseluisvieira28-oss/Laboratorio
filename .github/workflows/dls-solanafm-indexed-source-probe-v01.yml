@@ -1,0 +1,45 @@
+name: DLS SolanaFM Indexed Source Probe V0.1
+
+on:
+  pull_request:
+    branches:
+      - defi-liquidation-public-rpc-history-feasibility-v0.1
+  push:
+    branches:
+      - defi-liquidation-indexed-source-recon-v0.1
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/solanafm_indexed_source_probe_v0_1.py
+      - name: Run source-only bounded indexed probe
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/solanafm_indexed_source_probe_v0_1.py
+      - name: Assert firewall
+        run: |
+          python - <<'PY'
+          import json
+          p="dls_solanafm_probe/SOLANAFM_INDEXED_SOURCE_PROBE_RECEIPT_V0.1.json"
+          x=json.load(open(p))
+          assert x["source_data_pass"] is False
+          for k in ("prices","returns","pnl","direction","market_response","live_trading","orders","wallets","exchange_mutation","merge_main"):
+              assert x[k] is False,(k,x[k])
+          print(x["classification"],x["accessible_protocols"])
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dls-solanafm-indexed-source-probe-v01
+          path: dls_solanafm_probe/
+          if-no-files-found: error
+          retention-days: 30
