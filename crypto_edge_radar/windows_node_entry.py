@@ -13,7 +13,7 @@ from radar.local_forward import LocalForwardSupervisor
 from radar.render_sentinel import RenderSentinel
 
 
-BUILD_ID = "v0.14.3-win-mexc-postdeploy-hardening"
+BUILD_ID = "v0.14.3.1-win-mexc-authority-packaging-hotfix"
 
 
 def _resource_path(name: str) -> str:
@@ -57,6 +57,28 @@ def _verify_registry_file(registry_path: str) -> tuple[dict, dict]:
         "ema6h_strategy_present": True,
     }
     return payload, state
+
+
+def _verify_standing_authority_file(authority_path: str) -> dict:
+    if not os.path.isfile(authority_path):
+        raise RuntimeError(f"standing MEXC authority missing: {authority_path}")
+    payload = json.loads(Path(authority_path).read_text(encoding="utf-8"))
+    if payload.get("authority_id") != "MEXC_FUTURES_STANDING_MICROLIVE_OPERATOR_AUTHORITY_V0.1":
+        raise RuntimeError("standing MEXC authority id mismatch")
+    if payload.get("status") != "ACTIVE_STANDING_OPERATOR_AUTHORIZATION":
+        raise RuntimeError("standing MEXC authority is not active")
+    scope = payload.get("scope") or {}
+    if scope.get("exchange") != "MEXC" or scope.get("product") != "USDT_PERPETUAL_FUTURES":
+        raise RuntimeError("standing MEXC authority scope mismatch")
+    if scope.get("micro_live_only") is not True:
+        raise RuntimeError("standing MEXC authority scope is not micro-live only")
+    if scope.get("per_trade_reconfirmation_required") is not False:
+        raise RuntimeError("standing MEXC authority per-trade reconfirmation flag invalid")
+    return {
+        "standing_authority_present": True,
+        "standing_authority_id": payload.get("authority_id"),
+        "standing_authority_status": payload.get("status"),
+    }
 
 
 def _materialize_registry(payload: dict) -> str:
@@ -219,6 +241,10 @@ def run() -> int:
     bundled_registry = _resource_path("deployment_registry_v1.json")
     try:
         payload, package_state = _verify_registry_file(bundled_registry)
+        authority_state = _verify_standing_authority_file(
+            _resource_path("MEXC_FUTURES_STANDING_MICROLIVE_OPERATOR_AUTHORITY_V0.1.json")
+        )
+        package_state.update(authority_state)
         runtime_registry = _materialize_registry(payload)
         _, runtime_state = _verify_registry_file(runtime_registry)
         package_state["runtime_registry_materialized"] = True
