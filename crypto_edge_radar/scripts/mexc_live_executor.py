@@ -9,6 +9,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from radar.cli_argv import strip_exact_self_path_echo
+
 from radar.market import MEXCFuturesPublicFeed
 from radar.mexc_auth_readonly import (
     MEXCCredentials,
@@ -198,7 +200,7 @@ def main() -> int:
     p.add_argument("--receipt-root", default="live_receipts")
     p.add_argument("--duplicate-lock-root", default="live_state/duplicate_locks")
     p.add_argument("--execute", action="store_true")
-    args = p.parse_args()
+    args = p.parse_args(strip_exact_self_path_echo())
 
     authority = _load(args.authority)
     signal = _load(args.signal)
