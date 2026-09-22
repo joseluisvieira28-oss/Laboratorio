@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import patch
 from datetime import datetime, timezone
 
-from radar.external_freshness import collector_freshness, fallback_freshness
+from radar.external_freshness import all_external_freshness, collector_freshness, fallback_freshness
 
 
 def run(candidate, path, created="2026-09-18T15:00:00Z", conclusion="success"):
