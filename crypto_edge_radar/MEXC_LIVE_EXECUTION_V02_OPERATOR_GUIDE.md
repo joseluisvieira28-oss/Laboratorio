@@ -58,3 +58,16 @@ With the operator's authenticated equity around 112.3763 USDT:
 No template in this package authorizes an order.
 
 Validation trigger: final V0.2 current-API safety suite after entry/exit/risk hardening.
+
+
+## Standing operator authorization
+
+`MEXC_FUTURES_STANDING_MICROLIVE_OPERATOR_AUTHORITY_V0.1.json` records explicit operator authorization for legitimate MEXC Futures micro-live execution without per-trade reconfirmation.
+
+Current MEXC Futures canes:
+- ETF-CME-INSTFLOW-001 SHORT -> BTC_USDT perpetual.
+- OPTIONS-SPOTPERP-001-V2.1 SHORT -> BTC_USDT perpetual.
+
+The standing authorization also covers future candidates only after they independently become Tier 1/2, obtain a frozen MEXC Futures mapping and candidate-specific micro-live envelope, and pass all execution gates. It is operator scope only: it cannot promote a strategy, relax evidence gates, increase risk, manufacture a signal or activate an order by itself.
+
+Current executable-now count remains zero until a candidate genuinely clears its scientific, capital, source, timing and execution gates.
