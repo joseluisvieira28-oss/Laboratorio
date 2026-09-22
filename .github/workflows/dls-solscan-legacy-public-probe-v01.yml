@@ -1,0 +1,54 @@
+name: DLS Solscan Legacy Public Probe V0.1
+
+on:
+  push:
+    branches:
+      - defi-liquidation-kamino-first-success-exec-v0.1
+    paths:
+      - '.github/workflows/dls-solscan-legacy-public-probe-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe fixed historical anchor without auth
+        shell: bash
+        run: |
+          python - <<'PY'
+          import urllib.request, urllib.parse, urllib.error, json
+          P="KLend2g3cP87fffoy8q1mQqGKjrxjC8boSyAYavgmjD"
+          A="2JT9QV2zqYiYwDFVwbv6aPhRQkxi5Ynyq9sWi3i3nY18rqewZ3eiuNrHwHKsdcjaz6vm54EsTuh4AAwpTTM6pVwr"
+          base="https://public-api.solscan.io/account/transactions"
+          q=urllib.parse.urlencode({"account":P,"beforeHash":A,"limit":"50"})
+          u=base+"?"+q
+          req=urllib.request.Request(u,headers={"Accept":"application/json","User-Agent":"crypto-lab-source-audit/1.0"})
+          out={"endpoint":base,"auth_sent":False,"anchor":A}
+          try:
+              with urllib.request.urlopen(req,timeout=30) as r:
+                  b=r.read()
+                  out.update(http_status=r.status,bytes=len(b))
+                  try:
+                      o=json.loads(b)
+                      out["json_type"]=type(o).__name__
+                      rows=o if isinstance(o,list) else (o.get("data") if isinstance(o,dict) and isinstance(o.get("data"),list) else [])
+                      out["rows"]=len(rows)
+                      if rows:
+                          out["row_keys"]=sorted(rows[0].keys()) if isinstance(rows[0],dict) else []
+                          out["sample"]=[{k:x.get(k) for k in ("txHash","signature","slot","blockTime","block_time","status")} for x in rows[:3] if isinstance(x,dict)]
+                  except Exception as e:
+                      out["json_error"]=type(e).__name__+":"+str(e)
+                      out["body_prefix"]=b[:500].decode(errors="replace")
+          except urllib.error.HTTPError as e:
+              out.update(http_status=e.code,error="HTTPError")
+              try: out["body_prefix"]=e.read(500).decode(errors="replace")
+              except Exception: pass
+          except Exception as e:
+              out.update(http_status=None,error=type(e).__name__+":"+str(e))
+          print(json.dumps(out,indent=2,sort_keys=True))
+          PY
