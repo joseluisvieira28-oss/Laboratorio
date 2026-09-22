@@ -1,4 +1,4 @@
-name: BUILD RADAR V0.14.1 LOCAL RECOVERY
+name: BUILD RADAR V0.14.2 FORWARD FAILURE ISOLATION
 
 on:
   workflow_dispatch:
@@ -9,6 +9,7 @@ on:
     paths:
       - 'crypto_edge_radar/radar/dashboard.py'
       - 'crypto_edge_radar/radar/options_v21_live.py'
+      - 'crypto_edge_radar/windows_node_entry.py'
       - 'crypto_edge_radar/tests/test_dashboard.py'
       - 'crypto_edge_radar/windows/START_RADAR_RECOVERY_V0141.ps1'
       - 'crypto_edge_radar/windows/START_RADAR_RECOVERY_V0141.bat'
@@ -38,7 +39,7 @@ jobs:
         run: |
           python -m compileall radar tests windows_node_entry.py
           python -m unittest discover -s tests -v
-      - name: Build canonical V0.14.1 node
+      - name: Build canonical V0.14.2 node
         run: |
           pyinstaller --clean --onefile --name CryptoEdgeRadarNode --add-data "deployment_registry_v1.json;." windows_node_entry.py
       - name: Package self-test
@@ -47,7 +48,7 @@ jobs:
           $env:RADAR_PACKAGING_SELFTEST = "1"
           $state = (& .\dist\CryptoEdgeRadarNode.exe) | ConvertFrom-Json
           if ($state.status -ne "PASS") { throw "package self-test failed" }
-          if ($state.build_id -ne "v0.14.1-win-seven-motor-resilient-bootstrap") { throw "unexpected build_id" }
+          if ($state.build_id -ne "v0.14.2-win-forward-failure-isolation") { throw "unexpected build_id" }
           if ($state.registry_version -ne "3.6") { throw "unexpected registry version" }
           if ([int]$state.candidate_count -ne 7) { throw "unexpected motor count" }
           if (-not $state.resilient_control_plane_bootstrap) { throw "resilient bootstrap missing" }
@@ -82,7 +83,7 @@ jobs:
       - name: Upload recovery bundle
         uses: actions/upload-artifact@v4
         with:
-          name: crypto-edge-radar-v0141-local-recovery
+          name: crypto-edge-radar-v0142-forward-failure-isolation
           path: crypto_edge_radar/recovery_bundle/**
           if-no-files-found: error
           retention-days: 14
