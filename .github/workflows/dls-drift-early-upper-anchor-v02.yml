@@ -1,0 +1,61 @@
+name: DLS Drift Early Upper Anchor V0.2
+
+on:
+  push:
+    branches:
+      - dls-drift-early-upper-anchor-v0.2
+    paths:
+      - '.github/workflows/dls-drift-early-upper-anchor-v02.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dls-drift-early-upper-anchor-v0.2
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/find_drift_early_upper_anchor_v0_2.py
+      - name: Execute accounts-only source anchor probe
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/find_drift_early_upper_anchor_v0_2.py | tee STDOUT.txt
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-drift-early-upper-anchor-v02
+          path: |
+            labs/DEFI_LIQUIDATION_SHOCK_001/DRIFT_EARLY_UPPER_ANCHOR_RECEIPT_V0.2.json
+            STDOUT.txt
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Persist receipt
+        if: always()
+        run: |
+          if [ -f labs/DEFI_LIQUIDATION_SHOCK_001/DRIFT_EARLY_UPPER_ANCHOR_RECEIPT_V0.2.json ]; then
+            git config user.name "crypto-lab-source-audit"
+            git config user.email "actions@users.noreply.github.com"
+            git add labs/DEFI_LIQUIDATION_SHOCK_001/DRIFT_EARLY_UPPER_ANCHOR_RECEIPT_V0.2.json
+            git commit -m "dls: persist Drift early upper anchor receipt v0.2" || true
+            git push origin HEAD:dls-drift-early-upper-anchor-v0.2
+          fi
+      - name: Firewall
+        if: always()
+        run: |
+          echo SOURCE_ONLY_TRUE
+          echo ACCOUNTS_ONLY_BLOCKS_TRUE
+          echo LIQUIDATION_CLASSIFICATION_FALSE
+          echo PRICES_FALSE
+          echo RETURNS_FALSE
+          echo PNL_FALSE
+          echo DIRECTION_FALSE
+          echo LIVE_TRADING_FALSE
+          echo MERGE_MAIN_FALSE
