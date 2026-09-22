@@ -81,8 +81,9 @@ class CED1DRenderShadowV03Tests(TestCase):
 
     def test_pinned_runner_asset_hash_is_exact(self):
         root = Path(__file__).resolve().parents[1]
-        b64 = (root / "assets" / "CED-1D-V1-RUNNER-FREEZE-V0.3.zip.b64").read_text().strip()
-        raw = base64.b64decode(b64, validate=True)
+        b64 = (root / "assets" / "CED-1D-V1-RUNNER-FREEZE-V0.3.zip.b64").read_text()
+        compact = "".join(b64.split())
+        raw = base64.b64decode(compact, validate=True)
         self.assertEqual(
             hashlib.sha256(raw).hexdigest(),
             "df625d0d4a05c55ba34ca51514d31fd61636ff0a823567585c2d02afa0877958",
