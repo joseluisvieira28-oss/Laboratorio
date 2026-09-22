@@ -1,4 +1,4 @@
-name: BUILD RADAR V0.14.3.2 LIVE STATE RECONCILIATION
+name: BUILD RADAR V0.14.3.3 SINGLE INSTANCE LOCK
 
 on:
   workflow_dispatch:
@@ -7,6 +7,7 @@ on:
       - radar-mexc-postdeploy-hardening-v0.1
       - radar-v01431-authority-packaging-hotfix-v0.1
       - radar-v01432-live-state-reconciliation-v0.1
+      - radar-v01433-single-instance-lock-v0.1
     paths:
       - 'crypto_edge_radar/radar/dashboard.py'
       - 'crypto_edge_radar/radar/options_v21_live.py'
@@ -53,7 +54,11 @@ jobs:
         run: |
           python -m unittest tests.test_dashboard tests.test_mexc_local_state tests.test_options_v21_live tests.test_mexc_live_gate tests.test_mexc_auth_trade tests.test_windows_resilient_bootstrap -v
 
-      - name: Build V0.14.3.2 node (stable onedir layout for App Control)
+      - name: Full Windows regression suite
+        run: |
+          python -m unittest discover -s tests -v
+
+      - name: Build V0.14.3.3 node (stable onedir layout for App Control)
         run: |
           pyinstaller --clean --onedir --name CryptoEdgeRadarNode --add-data "deployment_registry_v1.json;." --add-data "MEXC_FUTURES_STANDING_MICROLIVE_OPERATOR_AUTHORITY_V0.1.json;." windows_node_entry.py
 
@@ -63,13 +68,45 @@ jobs:
           $env:RADAR_PACKAGING_SELFTEST = "1"
           $state = (& .\dist\CryptoEdgeRadarNode\CryptoEdgeRadarNode.exe) | ConvertFrom-Json
           if ($state.status -ne "PASS") { throw "package self-test failed" }
-          if ($state.build_id -ne "v0.14.3.2-win-live-state-reconciliation") { throw "unexpected build_id" }
+          if ($state.build_id -ne "v0.14.3.3-win-single-instance-lock") { throw "unexpected build_id" }
           if (-not $state.standing_authority_present) { throw "standing MEXC authority missing from package" }
           if ($state.standing_authority_id -ne "MEXC_FUTURES_STANDING_MICROLIVE_OPERATOR_AUTHORITY_V0.1") { throw "standing authority id mismatch" }
           if ($state.standing_authority_status -ne "ACTIVE_STANDING_OPERATOR_AUTHORIZATION") { throw "standing authority inactive" }
           if ($state.registry_version -ne "3.6") { throw "unexpected registry version" }
           if ([int]$state.candidate_count -ne 7) { throw "unexpected motor count" }
           if (-not $state.resilient_control_plane_bootstrap) { throw "resilient bootstrap missing" }
+
+      - name: Packaged duplicate-process regression
+        shell: pwsh
+        run: |
+          $exe = (Resolve-Path ".\dist\CryptoEdgeRadarNode\CryptoEdgeRadarNode.exe").Path
+          $probe = Join-Path $env:RUNNER_TEMP "radar-v01433-duplicate-probe"
+          New-Item -ItemType Directory -Force -Path $probe | Out-Null
+          $firstOut = Join-Path $probe "first.stdout.log"
+          $firstErr = Join-Path $probe "first.stderr.log"
+          $secondOut = Join-Path $probe "second.stdout.log"
+          $secondErr = Join-Path $probe "second.stderr.log"
+          $first = $null
+          try {
+            $first = Start-Process -FilePath $exe -WorkingDirectory $probe -RedirectStandardOutput $firstOut -RedirectStandardError $firstErr -PassThru
+            Start-Sleep -Seconds 4
+            if ($first.HasExited) {
+              if (Test-Path $firstOut) { Get-Content $firstOut -Raw }
+              if (Test-Path $firstErr) { Get-Content $firstErr -Raw }
+              throw "primary packaged Radar exited before duplicate probe"
+            }
+
+            $second = Start-Process -FilePath $exe -WorkingDirectory $probe -RedirectStandardOutput $secondOut -RedirectStandardError $secondErr -PassThru -Wait
+            $dupText = if (Test-Path $secondOut) { Get-Content $secondOut -Raw } else { "" }
+            Write-Host $dupText
+            if ($second.ExitCode -ne 3) { throw "duplicate packaged Radar exit code was $($second.ExitCode), expected 3" }
+            if (-not $dupText.Contains("DUPLICATE_LOCAL_NODE")) { throw "duplicate packaged Radar did not emit DUPLICATE_LOCAL_NODE" }
+          }
+          finally {
+            if ($null -ne $first -and -not $first.HasExited) {
+              Stop-Process -Id $first.Id -Force -ErrorAction SilentlyContinue
+            }
+          }
 
       - name: PowerShell syntax validation
         shell: pwsh
@@ -86,11 +123,11 @@ jobs:
             if ($errors.Count -gt 0) { $errors | Format-List; throw "PowerShell syntax failure: $s" }
           }
 
-      - name: Prove launcher requires exact V0.14.3.2 identity
+      - name: Prove launcher requires exact V0.14.3.3 identity
         shell: pwsh
         run: |
           $src=Get-Content "windows\START_RADAR_RECOVERY_V0141.ps1" -Raw
-          if (-not $src.Contains('v0.14.3.2-win-live-state-reconciliation')) { throw "launcher does not require V0.14.3.2 build id" }
+          if (-not $src.Contains('v0.14.3.3-win-single-instance-lock')) { throw "launcher does not require V0.14.3.3 build id" }
           if (-not $src.Contains('registryVersion -eq "3.6"')) { throw "launcher registry check missing" }
           if (-not $src.Contains('focusExpected -eq 7')) { throw "launcher seven-motor check missing" }
           if (-not $src.Contains('ProcessName -ne "CryptoEdgeRadarNode"')) { throw "unrelated-process safety check missing" }
@@ -118,10 +155,10 @@ jobs:
           Copy-Item windows\IMPORT_MEXC_RECEIPTS_V0143.ps1 v0143_bundle\windows\
           Copy-Item MEXC_FUTURES_STANDING_MICROLIVE_OPERATOR_AUTHORITY_V0.1.json v0143_bundle\
 
-      - name: Upload V0.14.3.2 live-state reconciliation
+      - name: Upload V0.14.3.3 single-instance lock
         uses: actions/upload-artifact@v4
         with:
-          name: crypto-edge-radar-v01432-live-state-reconciliation
+          name: crypto-edge-radar-v01433-single-instance-lock
           path: crypto_edge_radar/v0143_bundle/**
           if-no-files-found: error
           retention-days: 14
