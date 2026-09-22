@@ -86,8 +86,20 @@ class MexcLocalStateTests(unittest.TestCase):
             (root / "mexc_account_risk_state.json").write_text('{"status":', encoding="utf-8")
             state = read_mexc_local_state(data_dir=root, standing_authority_path=authority, now_utc=NOW)
             self.assertEqual(state["exchange_authenticated_preflight"]["status"], "FAIL_CLOSED")
-            self.assertEqual(state["exchange_authenticated_preflight"]["reason"], "AUTHENTICATED_PREFLIGHT_STALE")
+            self.assertEqual(state["exchange_authenticated_preflight"]["reason"], "AUTHENTICATED_PREFLIGHT_RECEIPT_STALE")
             self.assertEqual(state["account_risk_firewall"]["status"], "FAIL_CLOSED")
+
+    def test_future_dated_receipts_fail_closed(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            preflight = self._preflight()
+            preflight["checked_at_utc"] = "2026-09-22T08:01:00Z"
+            self._write(root, "mexc_authenticated_preflight_receipt.json", preflight)
+            self._write(root, "mexc_account_risk_state.json", self._risk())
+            authority = self._write(root, "standing.json", self._standing())
+            state = read_mexc_local_state(data_dir=root, standing_authority_path=authority, now_utc=NOW)
+            self.assertEqual(state["exchange_authenticated_preflight"]["status"], "FAIL_CLOSED")
+            self.assertEqual(state["exchange_authenticated_preflight"]["reason"], "AUTHENTICATED_PREFLIGHT_RECEIPT_TIMESTAMP_IN_FUTURE")
 
     def test_secret_bearing_receipt_is_rejected(self):
         with tempfile.TemporaryDirectory() as td:
