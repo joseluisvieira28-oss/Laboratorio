@@ -11,6 +11,7 @@ from radar.options_v21_watcher import OptionsV21ForwardShadowWatcher
 
 class StubOptions:
     provider="DERIBIT_STUB"
+    last_invalid_iv_index_rows=0
     def trades(self, *, start_ms, end_ms):
         day=datetime.fromtimestamp(start_ms/1000,tz=timezone.utc).date()
         ts=start_ms+1000
@@ -48,6 +49,24 @@ class StubBTC:
 
 
 class OptionsV21WatcherTests(unittest.TestCase):
+    def test_source_quality_counter_is_persisted_without_changing_signal(self):
+        class QualityStubOptions(StubOptions):
+            def trades(self, *, start_ms, end_ms):
+                rows=super().trades(start_ms=start_ms,end_ms=end_ms)
+                self.last_invalid_iv_index_rows=2
+                return rows
+
+        with tempfile.TemporaryDirectory() as tmp:
+            store=EvidenceStore(os.path.join(tmp,"e.sqlite3"))
+            w=OptionsV21ForwardShadowWatcher(store=store,options_feed=QualityStubOptions(),btc_feed=StubBTC())
+            now=int(datetime(2026,9,20,1,tzinfo=timezone.utc).timestamp()*1000)
+            result=w.run_once(now_ms=now)
+            self.assertEqual(result["invalid_iv_index_rows_rejected_this_run"],2)
+            days=store.read_payloads("OPTIONS_V21_FORWARD_SIGNAL_DAY")
+            self.assertEqual(len(days),1)
+            self.assertEqual(days[0]["source_quality"]["invalid_iv_index_rows_rejected"],2)
+            self.assertTrue(days[0]["signal"]["valid"])
+
     def test_waits_before_first_full_postfreeze_day(self):
         with tempfile.TemporaryDirectory() as tmp:
             store=EvidenceStore(os.path.join(tmp,"e.sqlite3"))
