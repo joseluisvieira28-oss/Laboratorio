@@ -35,6 +35,7 @@ class WindowsResilientBootstrapTests(unittest.TestCase):
                     patch.object(entry, "require_dh03_clock_preflight", side_effect=RuntimeError("synthetic clock fail")),
                     patch.object(entry, "_start_dh03_thread") as start_dh03,
                     patch.object(entry, "_start_forward_thread") as start_forward,
+                    patch.object(entry, "_start_cirv_thread") as start_cirv,
                     patch.object(entry, "_start_render_sentinel_thread") as start_sentinel,
                     patch.object(entry, "main", return_value=0) as main,
                 ):
@@ -42,6 +43,7 @@ class WindowsResilientBootstrapTests(unittest.TestCase):
                 self.assertEqual(rc, 0)
                 start_dh03.assert_not_called()
                 start_forward.assert_called_once()
+                start_cirv.assert_called_once()
                 start_sentinel.assert_called_once()
                 args = main.call_args.args[0]
                 self.assertEqual(args[0], "dashboard")
@@ -65,6 +67,7 @@ class WindowsResilientBootstrapTests(unittest.TestCase):
                     patch.object(entry, "require_dh03_clock_preflight", return_value={"pass": True}),
                     patch.object(entry, "_start_dh03_thread") as start_dh03,
                     patch.object(entry, "_start_forward_thread") as start_forward,
+                    patch.object(entry, "_start_cirv_thread") as start_cirv,
                     patch.object(entry, "_start_render_sentinel_thread") as start_sentinel,
                     patch.object(entry, "main", return_value=0) as main,
                 ):
@@ -72,6 +75,7 @@ class WindowsResilientBootstrapTests(unittest.TestCase):
                 self.assertEqual(rc, 0)
                 start_dh03.assert_called_once()
                 start_forward.assert_called_once()
+                start_cirv.assert_called_once()
                 start_sentinel.assert_called_once()
                 self.assertEqual(main.call_args.args[0][0], "dashboard")
                 clock = json.loads(Path("data/dh03_clock_preflight.json").read_text(encoding="utf-8"))
@@ -86,6 +90,7 @@ class WindowsResilientBootstrapTests(unittest.TestCase):
             patch.object(entry, "require_dh03_clock_preflight") as clock_preflight,
             patch.object(entry, "_start_dh03_thread") as start_dh03,
             patch.object(entry, "_start_forward_thread") as start_forward,
+            patch.object(entry, "_start_cirv_thread") as start_cirv,
             patch.object(entry, "_start_render_sentinel_thread") as start_sentinel,
             patch.object(entry, "main") as main,
         ):
@@ -96,6 +101,7 @@ class WindowsResilientBootstrapTests(unittest.TestCase):
         clock_preflight.assert_not_called()
         start_dh03.assert_not_called()
         start_forward.assert_not_called()
+        start_cirv.assert_not_called()
         start_sentinel.assert_not_called()
         main.assert_not_called()
 
@@ -111,6 +117,7 @@ class WindowsResilientBootstrapTests(unittest.TestCase):
                     patch.object(entry, "require_dh03_clock_preflight", return_value={"pass": True}),
                     patch.object(entry, "_start_dh03_thread"),
                     patch.object(entry, "_start_forward_thread"),
+                    patch.object(entry, "_start_cirv_thread"),
                     patch.object(entry, "_start_render_sentinel_thread"),
                     patch.object(entry, "main", return_value=0),
                 ):
