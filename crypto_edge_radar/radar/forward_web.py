@@ -519,7 +519,8 @@ class ForwardShadowRuntime:
             "external_collectors": external_freshness,
             "deployment_drift": deploy_drift,
             "operational_attention_required": (
-                deploy_drift.get("classification") == "STALE_RUNTIME"
+                deploy_drift.get("classification")
+                in {"STALE_RUNTIME", "UNAVAILABLE_FAIL_CLOSED"}
             ),
             "errors": errors,
             "authenticated_exchange_api_used": False,
