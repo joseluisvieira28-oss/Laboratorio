@@ -1,0 +1,76 @@
+name: DLS SolArchive Direct Transport Probe V0.1B
+
+on:
+  push:
+    branches:
+      - defi-liquidation-kamino-first-success-exec-v0.1
+    paths:
+      - '.github/workflows/dls-solarchive-direct-transport-v01b.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: defi-liquidation-kamino-first-success-exec-v0.1
+          fetch-depth: 0
+
+      - name: Probe ordinary HTTP client/header variants
+        shell: bash
+        run: |
+          set +e
+          mkdir -p /tmp/dls_sa
+          python - <<'PY'
+          import urllib.request, urllib.error, json, hashlib
+          from pathlib import Path
+
+          urls={
+            "schema":"https://data.solarchive.org/schemas/solana/transactions.json",
+            "index":"https://data.solarchive.org/txs/2024-12-15/index.json",
+          }
+          variants=[
+            ("plain",{}),
+            ("browser",{"User-Agent":"Mozilla/5.0","Accept":"application/json,*/*"}),
+            ("site",{"User-Agent":"Mozilla/5.0","Accept":"application/json,*/*","Referer":"https://solarchive.org/"}),
+          ]
+          rows=[]
+          for label,headers in variants:
+              for kind,url in urls.items():
+                  rec={"variant":label,"kind":kind,"url":url}
+                  try:
+                      req=urllib.request.Request(url,headers=headers)
+                      with urllib.request.urlopen(req,timeout=30) as r:
+                          b=r.read()
+                          rec.update(http_status=r.status,bytes=len(b),sha256=hashlib.sha256(b).hexdigest(),content_type=r.headers.get("content-type"))
+                          Path(f"/tmp/dls_sa/{label}_{kind}.bin").write_bytes(b)
+                  except urllib.error.HTTPError as e:
+                      rec.update(http_status=e.code,error="HTTPError")
+                  except Exception as e:
+                      rec.update(http_status=None,error=type(e).__name__+":"+str(e)[:180])
+                  rows.append(rec)
+          accessible=[r for r in rows if r.get("http_status")==200]
+          status="SOLARCHIVE_DIRECT_TRANSPORT_ACCESSIBLE" if accessible else "SOLARCHIVE_DIRECT_TRANSPORT_HTTP_BLOCKED"
+          out={
+            "schema_version":"0.1B","lab_id":"DEFI-LIQUIDATION-SHOCK-001","status":status,
+            "rows":rows,"data_rows_opened":False,"scientific_changes":False,
+            "governance":{"source_only":True,"outcome_blind":True,"prices":False,"returns":False,"pnl":False,"direction":False}
+          }
+          p=Path("labs/DEFI_LIQUIDATION_SHOCK_001/audit_receipts/DLS_SOLARCHIVE_DIRECT_TRANSPORT_V0.1B.json")
+          p.parent.mkdir(parents=True,exist_ok=True)
+          p.write_text(json.dumps(out,indent=2,sort_keys=True)+"\n")
+          print(json.dumps({"status":status,"accessible_count":len(accessible)},sort_keys=True))
+          PY
+
+      - name: Persist receipt
+        run: |
+          git config user.name "crypto-lab-source-audit"
+          git config user.email "actions@users.noreply.github.com"
+          git add labs/DEFI_LIQUIDATION_SHOCK_001/audit_receipts/DLS_SOLARCHIVE_DIRECT_TRANSPORT_V0.1B.json
+          git commit -m "audit: persist SolArchive direct transport v0.1B"
+          git push origin HEAD:defi-liquidation-kamino-first-success-exec-v0.1
