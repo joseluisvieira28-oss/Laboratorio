@@ -37,6 +37,7 @@ from .options_v21_watcher import OptionsV21ForwardShadowWatcher
 from .options_v21_metrics import evaluate_options_v21_forward
 from .etf_cme_watcher import ETFCMEPublicSignalWatcher
 from .external_freshness import all_external_freshness
+from .persistence_expiry import persistence_expiry_state
 from .deploy_drift import deployment_drift_receipt
 
 
@@ -489,6 +490,11 @@ class ForwardShadowRuntime:
         else:
             deploy_drift = self._deploy_drift_state
 
+        persistence_expiry = persistence_expiry_state(
+            os.getenv("RADAR_PERSISTENCE_EXPIRY_UTC"),
+            now=datetime.fromtimestamp(now_ms / 1000.0, tz=timezone.utc),
+        )
+
         state = {
             "health": "OK" if not errors else "DEGRADED_FAIL_CLOSED",
             "mode": "PUBLIC_SHADOW_ONLY",
@@ -499,6 +505,7 @@ class ForwardShadowRuntime:
             "evidence_chain_ok": chain_ok,
             "evidence_chain_detail": chain_detail,
             "runtime_liveness": runtime_liveness,
+            "persistence_expiry": persistence_expiry,
             "tfg": tfg_state,
             "tfg_forward_metrics": tfg_forward_metrics,
             "ema6h_regime": ema6h_state,
