@@ -43,6 +43,17 @@ RUNTIME_LIVENESS_BUCKET_MS = 15 * 60 * 1000
 RUNTIME_GAP_ALERT_SECONDS = 30 * 60
 
 
+def _runtime_identity() -> dict[str, Any]:
+    return {
+        "render": os.getenv("RENDER", "").lower() == "true",
+        "git_commit": os.getenv("RENDER_GIT_COMMIT"),
+        "git_branch": os.getenv("RENDER_GIT_BRANCH"),
+        "service_id": os.getenv("RENDER_SERVICE_ID"),
+        "service_name": os.getenv("RENDER_SERVICE_NAME"),
+        "instance_id": os.getenv("RENDER_INSTANCE_ID"),
+    }
+
+
 def _parse_utc_ms(value: Any) -> int | None:
     if not isinstance(value, str) or not value:
         return None
@@ -421,6 +432,7 @@ class ForwardShadowRuntime:
             "mode": "PUBLIC_SHADOW_ONLY",
             "checked_at_utc": checked,
             "version": "0.9",
+            "runtime_identity": _runtime_identity(),
             "evidence_backend": self.store.backend,
             "evidence_chain_ok": chain_ok,
             "evidence_chain_detail": chain_detail,
@@ -458,6 +470,7 @@ class ForwardShadowRuntime:
                     "health": "DEGRADED_FAIL_CLOSED",
                     "mode": "PUBLIC_SHADOW_ONLY",
                     "checked_at_utc": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+                    "runtime_identity": _runtime_identity(),
                     "evidence_backend": self.store.backend,
                     "errors": {"runtime": f"{type(exc).__name__}:{exc}"},
                     "authenticated_exchange_api_used": False,
