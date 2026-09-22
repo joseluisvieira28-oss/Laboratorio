@@ -4,7 +4,7 @@
   "branch": "crypto-intraweek-rv-forward-v0.1",
   "parent_forward_id": "CIRV-BTCETH-FORWARD-001",
   "status": "FROZEN_PROSPECTIVE_OPERATIONAL_REMEDIATION",
-  "reason": "The V0.2 scheduled workflow existed only on a non-default branch, so GitHub schedule did not produce canonical forward runs. Runtime audit on 2026-09-22 found no forward runs or artifacts since the 2026-09-20 freeze boundary.",
+  "reason": "The original V0.2 forward was operationally nonfunctional for two independent reasons: GitHub scheduled workflows only run canonically from the default branch, while this workflow lived only on the feature branch; and Binance Vision daily USD-M 5m archives for D-1 were empirically observed publishing around 08:14-08:35 UTC on 2026-09-21/22, far after the frozen 00:25 UTC schedule.",
   "historical_adjudication": {
     "2026-09-21": "MISSED_FORWARD_TARGET_NO_CANONICAL_RUN_EVIDENCE",
     "2026-09-22": "MISSED_FORWARD_TARGET_NO_CANONICAL_RUN_EVIDENCE",
@@ -31,17 +31,29 @@
     "target_definition_changed": false
   },
   "source_transport_remediation": {
-    "completed_prior_months": "Binance Vision USD-M monthly 5m archives",
-    "completed_current_month_days": "Binance USD-M public /fapi/v1/klines, exact UTC day, 5m",
+    "selected_source": "Binance Vision USD-M futures 5m archives — unchanged from parent source family",
+    "completed_prior_months": "monthly archives",
+    "completed_current_month_days": "daily archives",
+    "measured_publication_receipt": {
+      "2026-09-20_BTCUSDT": "2026-09-21T08:13:51Z",
+      "2026-09-20_ETHUSDT": "2026-09-21T08:14:06Z",
+      "2026-09-21_BTCUSDT": "2026-09-22T08:34:58Z",
+      "2026-09-21_ETHUSDT": "2026-09-22T08:35:14Z"
+    },
+    "rejected_transport": "Binance USD-M REST from GitHub-hosted runner",
+    "rejected_reason": "primary fapi endpoint returned HTTP 451; fapi1-fapi4 returned unusable non-JSON responses in controlled probe",
     "target_day_requested": false,
-    "purpose": "Remove dependence on publication timing of Binance Vision daily ZIPs while preserving identical 5m candle semantics and fail-closed daily coverage gate."
+    "scientific_effect": "NONE — source semantics remain USD-M futures 5m; only arming time is moved after observed archive publication."
   },
   "trigger_remediation": {
     "canonical_schedule_on_feature_branch_rejected": true,
-    "new_trigger": "prospective daily trigger on open diagnostic PR synchronization",
+    "new_trigger": "daily external trigger updates the existing open diagnostic PR branch; PR synchronize invokes the branch-local forward workflow",
     "trigger_file": "labs/CRYPTO_INTRAWEEK_RV_001/CIRV_FORWARD_DAILY_TRIGGER.txt",
-    "target_must_equal_trigger_date": true,
-    "no_retroactive_trigger": true
+    "intended_trigger_time_utc": "09:05",
+    "allowed_execution_window_utc": "08:50-10:30",
+    "target_must_equal_current_utc_date": true,
+    "no_retroactive_trigger": true,
+    "pr_number": 72
   },
   "safety": {
     "research_only": true,
@@ -50,5 +62,14 @@
     "wallet_access": false,
     "merge_to_main": false,
     "pnl_authorized": false
+  },
+  "forward_interpretation": {
+    "label": "PROSPECTIVE_BLIND_DELAYED_SOURCE",
+    "scientific_use": "Valid forward forecast evidence because only D-1 and earlier source data enter the frozen model.",
+    "execution_limitation": "Forecast is timestamped after target UTC day has begun because the canonical archive is delayed. This does not authorize intraday execution or any trading application. A low-latency exact-source application layer would require separate prospective authority."
+  },
+  "blocked_attempts": {
+    "watcher_v02_rest_transport": "BLOCKED_GITHUB_RUNNER_HTTP_451",
+    "economic_outcomes_opened": false
   }
 }
