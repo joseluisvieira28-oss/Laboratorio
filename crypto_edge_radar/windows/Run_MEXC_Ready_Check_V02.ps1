@@ -78,7 +78,13 @@ try {
                 "--receipt-root", $riskRoot,
                 "--out", $riskOut
             )
-            $proc=Start-Process -FilePath $riskExe -ArgumentList $riskArgs -NoNewWindow -Wait -PassThru
+            foreach ($arg in $riskArgs) {
+                if ([string]$arg -match '"') {
+                    throw "Unexpected quote character in local risk-state path/argument."
+                }
+            }
+            $riskArgLine=($riskArgs | ForEach-Object { '"' + [string]$_ + '"' }) -join ' '
+            $proc=Start-Process -FilePath $riskExe -ArgumentList $riskArgLine -NoNewWindow -Wait -PassThru
             $riskExit=$proc.ExitCode
         } elseif (Get-Command python -ErrorAction SilentlyContinue) {
             & python ".\scripts\mexc_risk_state.py" --preflight $receipt --receipt-root $riskRoot --out $riskOut
