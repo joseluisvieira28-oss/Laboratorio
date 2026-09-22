@@ -51,7 +51,12 @@ Events 3077 and 3033 are enforcement/block evidence, not ordinary application cr
 - Science, thresholds, direction, risk and promotion: unchanged.
 - Main merge: no.
 
-CI/artifact identifiers are recorded in the repository receipt after the Windows workflow completes.
+- Windows CI run: 35716708491 — SUCCESS.
+- Windows job: 106709793912 — SUCCESS; compile, targeted tests, onedir build, package self-test, PowerShell parsing, identity guard, manifest and artifact upload all passed.
+- Artifact ID: 10689936356.
+- Artifact: `crypto-edge-radar-v01432-live-state-reconciliation`.
+- Artifact SHA-256: `456315b14328ae1eaf29e6042b0e143a06d2f90714e49342cd84bef645a3e3da`.
+- Authoritative code commit built by CI: `340f1bcae3539c8e8c54f57fe3eff3910340b978`.
 
 ## Operator deployment
 
