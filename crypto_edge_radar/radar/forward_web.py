@@ -15,6 +15,7 @@ from .bnb_launchpool_watcher import (
 )
 from .config import Settings
 from .ced1d_source_probe import ced1d_render_source_probe
+from .ced1d_render_shadow_runtime import CED1DRenderShadowRunner
 from .evidence import build_evidence_store
 from .strategies.bnb_launchpool_demand import BinanceSpotBNBBTCKlineFeed
 from .strategies.tfg_donchian_regime_forward import MEXCSpotKlineFeed
@@ -128,6 +129,7 @@ class ForwardShadowRuntime:
             store=self.store,
             timeout=settings.http_timeout,
         )
+        self.ced1d_render_shadow = CED1DRenderShadowRunner(store=self.store)
         self.status_path = os.getenv("RADAR_FORWARD_STATUS", settings.status_path)
         self._lock = threading.Lock()
         self._state: dict[str, Any] = {
@@ -146,6 +148,11 @@ class ForwardShadowRuntime:
         self._last_etf_signal_check_ms: int | None = None
         self._last_options_runtime_day: str | None = None
         self._last_external_freshness_check_ms: int | None = None
+        self._last_ced1d_render_shadow_check_date: str | None = None
+        self._ced1d_render_shadow_state: dict[str, Any] = {
+            "status": "DISABLED_NOT_ARMED",
+            "strategy_id": "CED1D-0031",
+        }
         self._last_liveness_bucket_ms: int | None = None
         self._runtime_liveness_state: dict[str, Any] = {"status": "STARTING"}
         self._options_state: dict[str, Any] = {
@@ -414,6 +421,44 @@ class ForwardShadowRuntime:
             }
             errors["options_v21_metrics"] = options_v21_metrics["error"]
 
+        ced1d_enabled = os.getenv("CED1D_RENDER_SHADOW_V03_ENABLED", "").lower() == "true"
+        ced1d_runtime_day = datetime.fromtimestamp(
+            now_ms / 1000.0, tz=timezone.utc
+        ).date().isoformat()
+        if not ced1d_enabled:
+            ced1d_render_shadow = {
+                "status": "DISABLED_NOT_ARMED",
+                "strategy_id": "CED1D-0031",
+                "authenticated_exchange_api_used": False,
+                "orders_created": False,
+                "exchange_mutation_performed": False,
+                "live_capital_enabled": False,
+            }
+            self._ced1d_render_shadow_state = ced1d_render_shadow
+        elif (
+            self._last_ced1d_render_shadow_check_date != ced1d_runtime_day
+            or self._ced1d_render_shadow_state.get("status") == "STARTING"
+        ):
+            try:
+                ced1d_render_shadow = self.ced1d_render_shadow.run_once(now_ms=now_ms)
+                self._ced1d_render_shadow_state = ced1d_render_shadow
+                self._last_ced1d_render_shadow_check_date = ced1d_runtime_day
+            except Exception as exc:
+                ced1d_render_shadow = {
+                    "status": "FAIL_CLOSED",
+                    "strategy_id": "CED1D-0031",
+                    "error": f"{type(exc).__name__}:{exc}",
+                    "authenticated_exchange_api_used": False,
+                    "orders_created": False,
+                    "exchange_mutation_performed": False,
+                    "live_capital_enabled": False,
+                }
+                self._ced1d_render_shadow_state = ced1d_render_shadow
+                self._last_ced1d_render_shadow_check_date = ced1d_runtime_day
+                errors["ced1d_render_shadow"] = ced1d_render_shadow["error"]
+        else:
+            ced1d_render_shadow = self._ced1d_render_shadow_state
+
         freshness_due = (
             self._last_external_freshness_check_ms is None
             or now_ms - self._last_external_freshness_check_ms >= 60 * 60 * 1000
@@ -447,6 +492,7 @@ class ForwardShadowRuntime:
             "etf_cme_signal": etf_signal,
             "options_v21": options_v21,
             "options_v21_metrics": options_v21_metrics,
+            "ced1d_render_shadow": ced1d_render_shadow,
             "external_collectors": external_freshness,
             "errors": errors,
             "authenticated_exchange_api_used": False,
