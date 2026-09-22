@@ -1,0 +1,57 @@
+name: Radar Canonical Integrity Audit V0.1
+
+on:
+  pull_request:
+    branches:
+      - crypto-edge-radar-postgres-v0.5
+  push:
+    branches:
+      - radar-canonical-integrity-audit-v0.1
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: crypto_edge_radar
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install runtime
+        run: python -m pip install -e .
+      - name: Compile
+        run: python -m compileall radar tests
+      - name: Full deterministic suite
+        run: python -m unittest discover -s tests -v
+      - name: Assert OPTIONS hardened semantics
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path("radar/options_v21_live.py").read_text()
+          w=Path("radar/options_v21_watcher.py").read_text()
+          assert "OptionsV21InvalidSignalRow" in p
+          assert "last_invalid_iv_index_rows" in p
+          assert "invalid_iv_index_rows_rejected_this_run" in w
+          assert "source_quality" in w
+          print("OPTIONS_HARDENED_SEMANTICS_PRESENT")
+          PY
+      - name: Assert TFG unresolved paths remain non-crediting
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path("radar/tfg_forward_metrics.py").read_text()
+          assert "MATURING_WITHIN_FROZEN_MAX_HOLD" in p
+          assert "OVERDUE_RECONCILIATION_REVIEW" in p
+          assert '"unresolved_execution_paths_eq_0": len(unresolved_keys) == 0' in p
+          print("TFG_UNRESOLVED_NON_CREDITING_PASS")
+          PY
+      - name: Assert market mutation stays blocked
+        run: |
+          python -m unittest tests.test_market_safety -v
+          echo CANONICAL_MARKET_MUTATION_FIREWALL_PASS
