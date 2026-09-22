@@ -1,0 +1,57 @@
+name: CIRV Binance Vision Publication Probe V0.1
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/cirv-binance-vision-publication-probe-v01.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Probe daily archive publication headers
+        run: |
+          python - <<'PY'
+          import json, urllib.request, urllib.error
+          from datetime import datetime, timezone
+          rows=[]
+          for day in ["2026-09-20","2026-09-21"]:
+              for sym in ["BTCUSDT","ETHUSDT"]:
+                  url=f"https://data.binance.vision/data/futures/um/daily/klines/{sym}/5m/{sym}-5m-{day}.zip"
+                  try:
+                      req=urllib.request.Request(url,method="HEAD",headers={"User-Agent":"CryptoLab-CIRV-Vision-Probe/0.1"})
+                      with urllib.request.urlopen(req,timeout=20) as r:
+                          rows.append({
+                              "day":day,"symbol":sym,"http":r.status,
+                              "last_modified":r.headers.get("Last-Modified"),
+                              "content_length":r.headers.get("Content-Length"),
+                              "etag":r.headers.get("ETag"),
+                              "url":url
+                          })
+                  except urllib.error.HTTPError as e:
+                      rows.append({"day":day,"symbol":sym,"http":e.code,"error":"HTTPError","url":url})
+                  except Exception as e:
+                      rows.append({"day":day,"symbol":sym,"http":None,"error":type(e).__name__+":"+str(e)[:160],"url":url})
+          out={"probe_id":"CIRV-BINANCE-VISION-PUBLICATION-PROBE-V0.1",
+               "generated_at_utc":datetime.now(timezone.utc).isoformat(),
+               "market_outcomes_opened":False,
+               "rows":rows}
+          print("CIRV_VISION_PROBE_JSON="+json.dumps(out,sort_keys=True))
+          open("cirv_vision_publication_probe_v01.json","w").write(json.dumps(out,indent=2,sort_keys=True)+"\n")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: CIRV_BINANCE_VISION_PUBLICATION_PROBE_V01
+          path: cirv_vision_publication_probe_v01.json
+          if-no-files-found: warn
+          retention-days: 30
