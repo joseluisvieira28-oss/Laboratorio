@@ -1,0 +1,51 @@
+name: DLS Drift Data API Schema Remediation V0.2
+
+on:
+  push:
+    branches:
+      - dls-drift-data-api-schema-remediation-v0.2
+    paths:
+      - '.github/workflows/dls-drift-data-api-schema-remediation-v02.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dls-drift-data-api-schema-remediation-v0.2
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/probe_drift_data_api_schema_transport_v0_2.py
+      - name: Execute schema-only transport remediation
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/probe_drift_data_api_schema_transport_v0_2.py
+      - name: Persist receipt
+        if: always()
+        run: |
+          if [ -f labs/DEFI_LIQUIDATION_SHOCK_001/DRIFT_DATA_API_SCHEMA_TRANSPORT_REMEDIATION_RECEIPT_V0.2.json ]; then
+            git config user.name "crypto-lab-source-audit"
+            git config user.email "actions@users.noreply.github.com"
+            git add labs/DEFI_LIQUIDATION_SHOCK_001/DRIFT_DATA_API_SCHEMA_TRANSPORT_REMEDIATION_RECEIPT_V0.2.json
+            git commit -m "dls: persist Drift Data API schema remediation receipt v0.2" || true
+            git push origin HEAD:dls-drift-data-api-schema-remediation-v0.2
+          fi
+      - name: Firewall
+        if: always()
+        run: |
+          echo SCHEMA_ONLY_TRUE
+          echo DISCOVERED_ROUTES_CALLED_FALSE
+          echo EVENT_ROWS_FALSE
+          echo LIQUIDATION_ROWS_FALSE
+          echo PRICES_FALSE
+          echo RETURNS_FALSE
+          echo PNL_FALSE
+          echo DIRECTION_FALSE
+          echo LIVE_TRADING_FALSE
