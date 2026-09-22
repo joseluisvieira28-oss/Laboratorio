@@ -1,0 +1,120 @@
+name: DLS RPC Resume Cursor Extract V0.2
+
+on:
+  push:
+    branches:
+      - dls-rpc-resume-cursors-v0.2
+    paths:
+      - '.github/workflows/dls-rpc-resume-cursors-v02.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dls-rpc-resume-cursors-v0.2
+          fetch-depth: 0
+
+      - name: Download marginfi parent artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dls-marginfi-first-success-rpc-v01
+          path: marginfi_parent
+          run-id: 35715833295
+          github-token: ${{ github.token }}
+
+      - name: Download Save 0x0c parent artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dls-save0c-first-success-rpc-v01
+          path: save0c_parent
+          run-id: 35716197055
+          github-token: ${{ github.token }}
+
+      - name: Extract exact deterministic cursors
+        run: |
+          python - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+
+          jobs=[
+            {
+              "name":"marginfi",
+              "page_candidates":[
+                Path("marginfi_parent/dls_marginfi_rpc_boundary_v01/signatures_page_5000.json"),
+                Path("marginfi_parent/signatures_page_5000.json")
+              ],
+              "classification":"MARGINFI_RPC_RESUME_CURSOR_EXTRACTED",
+              "run_id":35715833295,
+              "artifact_id":10694211179,
+              "artifact_sha256":"86575189d1f19809f5a373d2e393761f263175960ecf496e7dfd82d421e5fea3",
+              "out":"labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_RPC_RESUME_CURSOR_V0.2.json"
+            },
+            {
+              "name":"save0c",
+              "page_candidates":[
+                Path("save0c_parent/dls_save0c_rpc_boundary_v01/signatures_page_5000.json"),
+                Path("save0c_parent/signatures_page_5000.json")
+              ],
+              "classification":"SAVE0C_RPC_RESUME_CURSOR_EXTRACTED",
+              "run_id":35716197055,
+              "artifact_id":10695241107,
+              "artifact_sha256":"bef6757fdbd5657e33567e53e31ea5eea410e3a6d1d773e633e7427b4800bbf8",
+              "out":"labs/DEFI_LIQUIDATION_SHOCK_001/SAVE0C_RPC_RESUME_CURSOR_V0.2.json"
+            }
+          ]
+
+          for j in jobs:
+              page=next((p for p in j["page_candidates"] if p.exists()),None)
+              rec={
+                "schema_version":"0.2",
+                "lab_id":"DEFI-LIQUIDATION-SHOCK-001",
+                "parent_run_id":j["run_id"],
+                "parent_artifact_id":j["artifact_id"],
+                "parent_artifact_sha256":j["artifact_sha256"],
+                "source_page":"signatures_page_5000.json",
+                "prices":False,"returns":False,"pnl":False,"direction":False,
+                "event_outcomes":False,"live_trading":False,"orders":False,
+                "wallets":False,"exchange_mutation":False,"paid_source":False,"merge_main":False
+              }
+              if page is None:
+                  rec.update(classification=j["classification"].replace("_EXTRACTED","_EXTRACTION_FAIL_CLOSED"),reason="page_missing")
+              else:
+                  raw=page.read_bytes()
+                  rec["page_sha256"]=hashlib.sha256(raw).hexdigest()
+                  obj=json.loads(raw)
+                  rows=obj.get("result")
+                  if not isinstance(rows,list) or not rows:
+                      rec.update(classification=j["classification"].replace("_EXTRACTED","_EXTRACTION_FAIL_CLOSED"),reason="result_not_nonempty_list")
+                  else:
+                      row=rows[-1]
+                      if not isinstance(row,dict) or not isinstance(row.get("signature"),str) or row.get("slot") is None or row.get("blockTime") is None:
+                          rec.update(classification=j["classification"].replace("_EXTRACTED","_EXTRACTION_FAIL_CLOSED"),reason="final_row_missing_required_fields")
+                      else:
+                          rec.update(
+                            classification=j["classification"],
+                            page_row_count=len(rows),
+                            resume_before_signature=row["signature"],
+                            resume_slot=int(row["slot"]),
+                            resume_block_time=int(row["blockTime"]),
+                            resume_err=row.get("err")
+                          )
+              Path(j["out"]).write_text(json.dumps(rec,indent=2,sort_keys=True)+"\n",encoding="utf-8")
+              print(json.dumps(rec,indent=2,sort_keys=True))
+          PY
+
+      - name: Persist cursor receipts
+        run: |
+          git config user.name "crypto-lab-source-audit"
+          git config user.email "actions@users.noreply.github.com"
+          git add labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_RPC_RESUME_CURSOR_V0.2.json
+          git add labs/DEFI_LIQUIDATION_SHOCK_001/SAVE0C_RPC_RESUME_CURSOR_V0.2.json
+          git commit -m "dls: persist marginfi and Save 0x0c resume cursors v0.2" || true
+          git push origin HEAD:dls-rpc-resume-cursors-v0.2
