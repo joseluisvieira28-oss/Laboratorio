@@ -14,6 +14,7 @@ from .mexc_local_state import read_mexc_local_state
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_REGISTRY = PROJECT_ROOT / "deployment_registry_v1.json"
 DH03_STRATEGY_ID = "HTF-DH03-12H-STANDALONE-FORWARD-V1"
+CED1D_STRATEGY_ID = "CED1D-0031"
 LOCAL_FORWARD_STRATEGY_IDS = {
     "BNB-LAUNCHPOOL-DEMAND-001",
     "TFG-DONCHIAN-REGIME-ADAPTATION-V1",
@@ -30,6 +31,21 @@ FORWARD_ERROR_KEYS_BY_STRATEGY = {
     "EMA6H-50X200-REGIME-DEPENDENCY-001": {"ema6h_regime", "ema6h_regime_metrics"},
 }
 SHARED_FORWARD_FATAL_ERROR_KEYS = {"evidence_chain", "runtime"}
+FORWARD_COMPONENT_BY_STRATEGY = {
+    "BNB-LAUNCHPOOL-DEMAND-001": "bnb_launchpool",
+    "TFG-DONCHIAN-REGIME-ADAPTATION-V1": "tfg",
+    "OPTIONS-SPOTPERP-001-V2.1": "options_v21",
+    "ETF-CME-INSTFLOW-001": "etf_cme_signal",
+    "EMA6H-50X200-REGIME-DEPENDENCY-001": "ema6h_regime",
+}
+
+
+def _component_has_healthy_evidence(strategy_id: str, forward_state: dict[str, Any] | None) -> bool:
+    component = (forward_state or {}).get(FORWARD_COMPONENT_BY_STRATEGY.get(strategy_id, ""))
+    if not isinstance(component, dict) or not component:
+        return False
+    status = str(component.get("status") or "MISSING").upper()
+    return status not in {"MISSING", "STARTING", "FAIL_CLOSED", "ERROR"}
 
 
 def _forward_motor_health(
@@ -112,13 +128,15 @@ def _bot_operating_state(
     dh03_status: dict[str, Any] | None = None,
     forward_supervisor_status: dict[str, Any] | None = None,
     forward_state: dict[str, Any] | None = None,
+    render_sentinel: dict[str, Any] | None = None,
 ) -> str:
     strategy_id = str(candidate.get("strategy_id") or "")
     deployment_state = str(candidate.get("deployment_state") or "").upper()
     if deployment_state.startswith("BLOCKED") or candidate.get("scientific_tier") == 4:
         return "BLOCKED"
-    if candidate.get("micro_live_allowed_now") is True:
-        return "ARMED"
+    # Registry/UI metadata is never executable evidence. ARMED requires a
+    # canonical signal and the immutable execution gate, neither of which is
+    # represented by the deployment registry.
 
     # DH03 is special: registry readiness alone must never inflate the live
     # cockpit. It becomes SHADOW only after the canonical local collector
@@ -132,6 +150,9 @@ def _bot_operating_state(
             return "BLOCKED"
         return "GATED"
 
+    if strategy_id == CED1D_STRATEGY_ID:
+        return "SHADOW" if str((render_sentinel or {}).get("status") or "MISSING").upper() == "OK" else "BLOCKED"
+
     # The five public forward engines share one supervisor but fail closed
     # independently. A candidate-specific source failure must never poison the
     # other motors. Shared evidence-chain/runtime failures still block all.
@@ -144,7 +165,7 @@ def _bot_operating_state(
         if motor_health == "FAIL_CLOSED":
             return "BLOCKED"
         if motor_health == "OK":
-            return "SHADOW"
+            return "SHADOW" if _component_has_healthy_evidence(strategy_id, forward_state) else "GATED"
         return "GATED"
 
     if candidate.get("shadow_allowed") is True or "SHADOW" in deployment_state or "WATCHER" in deployment_state:
@@ -201,6 +222,7 @@ def build_control_room_state(
             dh03_status=dh03_status,
             forward_supervisor_status=forward_supervisor_status,
             forward_state=forward_state,
+            render_sentinel=render_sentinel,
         )
         runtime_status = None
         if strategy_id == DH03_STRATEGY_ID:
@@ -224,32 +246,77 @@ def build_control_room_state(
                 f"MOTOR_HEALTH={motor_health}"
             )
             if operating_state == "GATED":
-                blockers = list(blockers) + [f"local forward motor not healthy ({runtime_status})"]
+                blockers = list(blockers) + [f"local forward motor lacks a completed healthy component cycle ({runtime_status})"]
             elif operating_state == "BLOCKED":
                 detail = "; ".join(motor_errors)
                 blockers = list(blockers) + [
                     f"local forward motor FAIL_CLOSED ({runtime_status})"
                     + (f": {detail}" if detail else "")
                 ]
+        elif strategy_id == CED1D_STRATEGY_ID:
+            runtime_status = str(render_sentinel.get("status") or "MISSING")
+            if operating_state == "BLOCKED":
+                blockers = list(blockers) + [
+                    f"CED1D external runtime not proven healthy ({runtime_status})"
+                ]
+
+        component_key = FORWARD_COMPONENT_BY_STRATEGY.get(strategy_id)
+        component = forward_state.get(component_key) if component_key else None
+        if not isinstance(component, dict):
+            component = {}
+        runtime_observability = {
+            "collector_alive": operating_state == "SHADOW",
+            "source_freshness": (
+                (render_sentinel.get("remote_health") if strategy_id == CED1D_STRATEGY_ID else None)
+                or component.get("source_status")
+                or component.get("status")
+                or runtime_status
+                or "MISSING"
+            ),
+            "last_successful_cycle_utc": (
+                render_sentinel.get("checked_at_utc") if strategy_id == CED1D_STRATEGY_ID else
+                component.get("checked_at_utc") or forward_state.get("checked_at_utc")
+            ),
+            "last_failure": (
+                render_sentinel.get("error") if strategy_id == CED1D_STRATEGY_ID else
+                component.get("error")
+            ),
+        }
+
+        exchange_status = (mexc["exchange_authenticated_preflight"] or {}).get("status")
+        risk_status = (mexc["account_risk_firewall"] or {}).get("status")
+        capital_status = (mexc["candidate_capital_feasibility"].get(strategy_id) or {}).get("status", "NOT_APPLICABLE")
+        standing_route = ((mexc["standing_operator_authority"].get("routes") or {}).get(strategy_id) or {})
+        standing_authorized = standing_route.get("operator_authorized", False)
+        readiness_blockers = []
+        if operating_state != "ARMED": readiness_blockers.append("NO_CANONICAL_ARMED_SIGNAL")
+        if exchange_status != "PASS": readiness_blockers.append("MEXC_AUTH_NOT_PASS")
+        if risk_status != "PASS": readiness_blockers.append("ACCOUNT_RISK_NOT_PASS")
+        if capital_status == "BLOCKED": readiness_blockers.append("CAPITAL_INCOMPATIBLE")
+        if not standing_authorized: readiness_blockers.append("STANDING_ROUTE_NOT_AUTHORIZED")
+        if candidate.get("micro_live_allowed_now") is not True: readiness_blockers.append("CANDIDATE_SPECIFIC_AUTHORITY_NOT_ACTIVE")
         bots.append(
             {
                 "strategy_id": strategy_id,
                 "tier": candidate.get("scientific_tier"),
                 "scientific_status": candidate.get("scientific_status", "UNKNOWN"),
                 "deployment_state": candidate.get("deployment_state", "UNKNOWN"),
+                "deployment_baseline": candidate.get("deployment_state", "UNKNOWN"),
                 "operating_state": operating_state,
                 "shadow_allowed": bool(candidate.get("shadow_allowed")),
                 "runtime_status": runtime_status,
+                "runtime_observability": runtime_observability,
                 "micro_live_allowed_now": bool(candidate.get("micro_live_allowed_now")),
                 "blockers": blockers,
                 "reason": candidate.get("reason"),
                 "execution": {
-                    "exchange_preflight": (mexc["exchange_authenticated_preflight"] or {}).get("status"),
-                    "risk_firewall": (mexc["account_risk_firewall"] or {}).get("status"),
-                    "capital_feasibility": (mexc["candidate_capital_feasibility"].get(strategy_id) or {}).get("status", "NOT_APPLICABLE"),
-                    "standing_authority": ((mexc["standing_operator_authority"].get("routes") or {}).get(strategy_id) or {}).get("operator_authorized", False),
+                    "exchange_preflight": exchange_status,
+                    "risk_firewall": risk_status,
+                    "capital_feasibility": capital_status,
+                    "standing_authority": standing_authorized,
                     "signal_state": "NO_CANONICAL_EXECUTABLE_SIGNAL",
                     "micro_live_readiness": "FAIL_CLOSED",
+                    "readiness_blockers": readiness_blockers,
                 },
             }
         )
@@ -343,11 +410,11 @@ HTML = r"""<!doctype html>
 </style></head><body><div class="wrap">
 <div class="top"><div><div class="eyebrow">AGGRESSIVE MODE · SCIENCE FROZEN · V3 AUTHORITY</div><div class="title">Crypto Edge Radar — Control Room</div><div class="sub">Prospective observation · fail-closed deployment gates · no discretionary rescue · 🎣 seven-motor fishing watch</div></div><div class="health"><div><span id="dot" class="dot"></span><strong id="health">LOADING</strong></div><div class="sub" id="provider"></div><div class="diag" id="diag"></div></div></div>
 <div class="grid"><div class="metric"><div class="n" id="armed">0</div><div class="k">🐟 HOOKED · ARMED</div></div><div class="metric"><div class="n" id="shadow">0</div><div class="k">🎣 LINES IN WATER</div></div><div class="metric"><div class="n" id="gated">0</div><div class="k">🪝 WAITING GATE</div></div><div class="metric"><div class="n" id="blocked">0</div><div class="k">⛔ BLOCKED</div></div></div>
-<div class="bots" id="bots"></div><div class="section"><h2>RISK FIREWALL</h2><div class="risk" id="risk"></div></div><div class="section"><h2>RECENT MACHINE EVENTS</h2><div class="feed" id="events"></div></div><div class="footer" id="stamp"></div></div>
+<div class="section"><h2>MEXC EXECUTION CONTROL PLANE</h2><div class="risk" id="mexc"></div></div><div class="bots" id="bots"></div><div class="section"><h2>FROZEN RISK POLICY</h2><div class="risk" id="risk"></div></div><div class="section"><h2>RECENT MACHINE EVENTS</h2><div class="feed" id="events"></div></div><div class="footer" id="stamp"></div></div>
 <script>
 const esc=s=>String(s??'').replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const fishingLabel=s=>({ARMED:'🐟 HOOKED · ARMED',SHADOW:'🎣 FISHING',GATED:'🪝 WAITING',BLOCKED:'⛔ BLOCKED'}[s]||s);
-async function refresh(){try{const r=await fetch('/api/state',{cache:'no-store'}),d=await r.json(),s=d.system||{},rg=d.registry||{};document.getElementById('health').textContent=s.health||'UNKNOWN';document.getElementById('provider').textContent=(s.market_provider||'UNKNOWN')+' · '+(s.universe||[]).join(' / ');document.getElementById('dot').style.background=s.health==='OK'?'var(--ok)':'var(--bad)';document.getElementById('diag').textContent=(d.build_id||'UNKNOWN')+' · registry '+(d.registry_version||'NULL')+' · '+(rg.focus_loaded??0)+'/'+(rg.focus_expected??0)+' focus loaded';for(const k of ['armed','shadow','gated','blocked'])document.getElementById(k).textContent=(d.focus_counts||{})[k.toUpperCase()]||0;document.getElementById('bots').innerHTML=(d.bots||[]).map(b=>`<div class="card"><div class="row"><div class="id">${esc(b.strategy_id)}</div><div class="badge ${esc(b.operating_state)}">${esc(fishingLabel(b.operating_state))}</div></div><div class="meta"><div class="cell"><b>Tier</b>${esc(b.tier)}</div><div class="cell"><b>Deployment</b>${esc(b.deployment_state)}</div><div class="cell"><b>Shadow allowed</b>${b.shadow_allowed?'YES':'NO'}${b.runtime_status?'<br><span class="diag">runtime '+esc(b.runtime_status)+'</span>':''}</div><div class="cell"><b>Micro-live</b>${b.micro_live_allowed_now?'YES':'NO'}</div></div><div class="blockers">${(b.blockers||[]).length?'<b>Gates:</b> '+b.blockers.map(esc).join(' · '):esc(b.reason||'No active blocker text')}</div></div>`).join('')||'<div class="card BLOCKED">REGISTRY DESYNC — no focus bots loaded.</div>';const rp=d.risk_policy||{};document.getElementById('risk').innerHTML=[['Trade',rp.planned_risk_per_trade_pct],['Concurrent',rp.max_concurrent_risk_pct],['Daily stop',rp.daily_stop_pct],['Weekly stop',rp.weekly_stop_pct]].map(x=>`<div class="cell"><b>${x[0]}</b>${Number(x[1]||0).toFixed(2)}%</div>`).join('');const ev=(d.recent_events||[]).slice().reverse();document.getElementById('events').innerHTML=ev.length?ev.map(e=>`<div class="event">${esc(e.ts_utc||'')} · <b>${esc(e.event_type||'EVENT')}</b> · ${esc(JSON.stringify(e.payload||{}))}</div>`).join(''):'No machine events yet.';document.getElementById('stamp').textContent='Updated '+(d.generated_at_utc||'');}catch(e){document.getElementById('health').textContent='DASHBOARD ERROR';document.getElementById('dot').style.background='var(--bad)';}}
+async function refresh(){try{const r=await fetch('/api/state',{cache:'no-store'}),d=await r.json(),s=d.system||{},rg=d.registry||{},mx=d.mexc_execution||{},ex=mx.exchange_authenticated_preflight||{},rf=mx.account_risk_firewall||{},sa=mx.standing_operator_authority||{};document.getElementById('health').textContent=s.health||'UNKNOWN';document.getElementById('provider').textContent=(s.market_provider||'UNKNOWN')+' · '+(s.universe||[]).join(' / ');document.getElementById('dot').style.background=s.health==='OK'?'var(--ok)':'var(--bad)';document.getElementById('diag').textContent=(d.build_id||'UNKNOWN')+' · registry '+(d.registry_version||'NULL')+' · '+(rg.focus_loaded??0)+'/'+(rg.focus_expected??0)+' focus loaded';for(const k of ['armed','shadow','gated','blocked'])document.getElementById(k).textContent=(d.focus_counts||{})[k.toUpperCase()]||0;document.getElementById('mexc').innerHTML=[['MEXC auth',ex.status],['Receipt age',ex.age_seconds==null?'N/A':Math.round(ex.age_seconds)+'s'],['Risk firewall',rf.status],['Standing authority',sa.status]].map(x=>`<div class="cell"><b>${esc(x[0])}</b>${esc(x[1]??'MISSING')}</div>`).join('');document.getElementById('bots').innerHTML=(d.bots||[]).map(b=>{const x=b.execution||{},o=b.runtime_observability||{};return `<div class="card"><div class="row"><div class="id">${esc(b.strategy_id)}</div><div class="badge ${esc(b.operating_state)}">${esc(fishingLabel(b.operating_state))}</div></div><div class="meta"><div class="cell"><b>Tier</b>${esc(b.tier)}</div><div class="cell"><b>Deployment baseline (historical)</b>${esc(b.deployment_baseline)}</div><div class="cell"><b>Collector / watcher</b>${o.collector_alive?'ALIVE':'NOT PROVEN'}<br><span class="diag">${esc(b.runtime_status||'MISSING')}</span></div><div class="cell"><b>Last successful cycle</b>${esc(o.last_successful_cycle_utc||'NOT PROVEN')}</div><div class="cell"><b>MEXC auth</b>${esc(x.exchange_preflight)}</div><div class="cell"><b>Risk firewall</b>${esc(x.risk_firewall)}</div><div class="cell"><b>Capital</b>${esc(x.capital_feasibility)}</div><div class="cell"><b>Standing auth</b>${x.standing_authority?'ACTIVE':'INACTIVE / N/A'}</div><div class="cell"><b>Signal</b>${esc(x.signal_state)}</div><div class="cell"><b>Micro-live</b>${esc(x.micro_live_readiness)}</div></div><div class="blockers"><b>Why not armed:</b> ${esc((x.readiness_blockers||[]).join(' · ')||'NONE')}<br>${(b.blockers||[]).length?'<b>Registry/runtime gates:</b> '+b.blockers.map(esc).join(' · '):esc(b.reason||'No active blocker text')}</div></div>`}).join('')||'<div class="card BLOCKED">REGISTRY DESYNC — no focus bots loaded.</div>';const rp=d.risk_policy||{};document.getElementById('risk').innerHTML=[['Trade',rp.planned_risk_per_trade_pct],['Concurrent',rp.max_concurrent_risk_pct],['Daily stop',rp.daily_stop_pct],['Weekly stop',rp.weekly_stop_pct]].map(x=>`<div class="cell"><b>${x[0]}</b>${Number(x[1]||0).toFixed(2)}%</div>`).join('');const ev=(d.recent_events||[]).slice().reverse();document.getElementById('events').innerHTML=ev.length?ev.map(e=>`<div class="event">${esc(e.ts_utc||'')} · <b>${esc(e.event_type||'EVENT')}</b> · ${esc(JSON.stringify(e.payload||{}))}</div>`).join(''):'No machine events yet.';document.getElementById('stamp').textContent='Updated '+(d.generated_at_utc||'');}catch(e){document.getElementById('health').textContent='DASHBOARD ERROR';document.getElementById('dot').style.background='var(--bad)';}}
 refresh();setInterval(refresh,3000);
 </script></body></html>"""
 
