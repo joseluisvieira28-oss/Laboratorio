@@ -10,6 +10,7 @@ EXECUTION_TOKEN = "CRYPTO_LAB_LIVE_EXECUTION_V0_2"
 REQUIRED_STRATEGY = "ETF-CME-INSTFLOW-001"
 REQUIRED_SYMBOL = "BTC_USDT"
 CURRENT_PLACE_ORDER_PATH = "/api/v1/private/order/create"
+REQUIRED_STANDING_AUTHORITY_ID = "MEXC_FUTURES_STANDING_MICROLIVE_OPERATOR_AUTHORITY_V0.1"
 
 
 class LiveExecutionGateError(RuntimeError):
@@ -46,6 +47,7 @@ def _positive_float(value: Any, field: str) -> float:
 def validate_futures_short_execution(
     *,
     authority_path: str,
+    standing_authority_path: str,
     preflight_path: str,
     signal_path: str,
     risk_state_path: str,
@@ -54,6 +56,7 @@ def validate_futures_short_execution(
 ) -> dict[str, Any]:
     now_utc = (now_utc or datetime.now(timezone.utc)).astimezone(timezone.utc)
     authority = _load(authority_path)
+    standing = _load(standing_authority_path)
     preflight = _load(preflight_path)
     signal = _load(signal_path)
     risk_state = _load(risk_state_path)
@@ -61,6 +64,34 @@ def validate_futures_short_execution(
 
     if Path(kill_switch_path).exists():
         blockers.append("KILL_SWITCH_PRESENT")
+
+    # Standing operator authority means the operator does not need to
+    # reconfirm each legitimate micro-live. It never relaxes scientific,
+    # capital, source, timing or risk gates.
+    if standing.get("authority_id") != REQUIRED_STANDING_AUTHORITY_ID:
+        blockers.append("STANDING_OPERATOR_AUTHORITY_ID_MISMATCH")
+    if standing.get("status") != "ACTIVE_STANDING_OPERATOR_AUTHORIZATION":
+        blockers.append("STANDING_OPERATOR_AUTHORITY_NOT_ACTIVE")
+    scope = standing.get("scope") or {}
+    if scope.get("exchange") != "MEXC" or scope.get("product") != "USDT_PERPETUAL_FUTURES":
+        blockers.append("STANDING_OPERATOR_AUTHORITY_SCOPE_MISMATCH")
+    if scope.get("real_capital") is not True or scope.get("micro_live_only") is not True:
+        blockers.append("STANDING_OPERATOR_AUTHORITY_CAPITAL_SCOPE_INVALID")
+    if scope.get("per_trade_reconfirmation_required") is not False:
+        blockers.append("STANDING_OPERATOR_AUTHORITY_RECONFIRMATION_NOT_FROZEN_FALSE")
+    routes = standing.get("standing_authorized_routes") or []
+    route_ok = any(
+        isinstance(route, dict)
+        and route.get("strategy_id") == REQUIRED_STRATEGY
+        and route.get("direction") == "SHORT"
+        and route.get("symbol") == REQUIRED_SYMBOL
+        and int(route.get("scientific_tier", 99)) in (1, 2)
+        for route in routes
+    )
+    if not route_ok:
+        blockers.append("STRATEGY_NOT_COVERED_BY_STANDING_OPERATOR_AUTHORITY")
+    if authority.get("operator_standing_authority_id") != REQUIRED_STANDING_AUTHORITY_ID:
+        blockers.append("CANDIDATE_AUTHORITY_NOT_BOUND_TO_STANDING_OPERATOR_AUTHORITY")
 
     # Candidate-specific immutable authority.
     if authority.get("status") != "ACTIVE_MICRO_LIVE_EXECUTION_AUTHORITY":
@@ -268,6 +299,7 @@ def validate_futures_short_execution(
         "pass": len(blockers) == 0,
         "blockers": blockers,
         "strategy_id": REQUIRED_STRATEGY,
+        "operator_standing_authority_id": REQUIRED_STANDING_AUTHORITY_ID,
         "symbol": REQUIRED_SYMBOL,
         "signal_identity": signal_key,
         "minimum_notional_usdt": venue_min,
