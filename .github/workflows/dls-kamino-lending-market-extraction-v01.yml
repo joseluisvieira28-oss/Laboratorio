@@ -1,0 +1,132 @@
+name: DLS Kamino Lending Market Extraction V0.1
+
+on:
+  push:
+    branches:
+      - defi-liquidation-kamino-first-success-exec-v0.1
+    paths:
+      - '.github/workflows/dls-kamino-lending-market-extraction-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: defi-liquidation-kamino-first-success-exec-v0.1
+          fetch-depth: 0
+      - name: Extract lending_market from frozen RAW events
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, urllib.request, urllib.error, time
+          from pathlib import Path
+          from collections import Counter
+
+          RPC="https://api.mainnet-beta.solana.com"
+          PROGRAM="KLend2g3cP87fffoy8q1mQqGKjrxjC8boSyAYavgmjD"
+          PREFIX=bytes.fromhex("b1479abce2854a37")
+          ALPH="123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+          MAP={c:i for i,c in enumerate(ALPH)}
+
+          def b58decode(s):
+              n=0
+              for c in s: n=n*58+MAP[c]
+              b=n.to_bytes((n.bit_length()+7)//8,"big") if n else b""
+              return b"\x00"*(len(s)-len(s.lstrip("1")))+b
+
+          def rpc(sig):
+              payload={"jsonrpc":"2.0","id":1,"method":"getTransaction","params":[sig,{"encoding":"jsonParsed","maxSupportedTransactionVersion":0,"commitment":"finalized"}]}
+              req=urllib.request.Request(RPC,data=json.dumps(payload).encode(),headers={"Content-Type":"application/json","User-Agent":"crypto-lab-source-audit/1.0"})
+              for a in range(7):
+                  try:
+                      with urllib.request.urlopen(req,timeout=45) as r: return json.loads(r.read())
+                  except urllib.error.HTTPError as e:
+                      if e.code==429 or 500<=e.code<600:
+                          time.sleep(2*(a+1)); continue
+                      return {"transport_error":f"HTTP_{e.code}"}
+                  except Exception as e:
+                      if a<6: time.sleep(2*(a+1)); continue
+                      return {"transport_error":type(e).__name__+":"+str(e)[:200]}
+
+          ref=json.loads(Path("labs/DEFI_LIQUIDATION_SHOCK_001/source/KAMINO_CORRECTED_SMOKE_REFERENCE_MANIFEST_V0.2.json").read_text())
+          success=[r for r in ref["rows"] if r["status"]=="Success"]
+          if len(success)!=16: raise SystemExit(f"EXPECTED_16_SUCCESS_GOT_{len(success)}")
+
+          rows=[]
+          for n,r in enumerate(success):
+              sig=r["tx_signature"]; obj=rpc(sig)
+              rec={"signature":sig,"expected_slot":r["block_slot"],"expected_timestamp":r["block_timestamp"]}
+              if obj.get("transport_error"):
+                  rec.update(status="TRANSPORT_BLOCKED",detail=obj["transport_error"]); rows.append(rec); continue
+              if obj.get("error") or obj.get("result") is None:
+                  rec.update(status="RPC_FAIL_CLOSED",detail=obj.get("error")); rows.append(rec); continue
+              tx=obj["result"]
+              rec["returned_slot"]=tx.get("slot")
+              meta=tx.get("meta") or {}
+              rec["meta_err_null"]=meta.get("err") is None
+              msg=((tx.get("transaction") or {}).get("message") or {})
+              keys=[]
+              for k in msg.get("accountKeys") or []:
+                  if isinstance(k,str): keys.append(k)
+                  elif isinstance(k,dict): keys.append(k.get("pubkey"))
+                  else: keys.append(None)
+              matches=[]
+              for ins in msg.get("instructions") or []:
+                  if not isinstance(ins,dict) or ins.get("programId")!=PROGRAM: continue
+                  data=ins.get("data")
+                  if not isinstance(data,str): continue
+                  try: raw=b58decode(data)
+                  except Exception: continue
+                  if not raw.startswith(PREFIX): continue
+                  ac=ins.get("accounts") or []
+                  resolved=[]
+                  for x in ac:
+                      if isinstance(x,str): resolved.append(x)
+                      elif isinstance(x,int) and 0<=x<len(keys): resolved.append(keys[x])
+                      else: resolved.append(None)
+                  matches.append(resolved)
+              rec["matching_outer_instruction_count"]=len(matches)
+              if len(matches)!=1 or len(matches[0])<3:
+                  rec["status"]="ACCOUNT_TOPOLOGY_FAIL_CLOSED"
+              elif tx.get("slot")!=r["block_slot"] or not rec["meta_err_null"]:
+                  rec["status"]="RAW_IDENTITY_FAIL_CLOSED"
+              else:
+                  rec["lending_market"]=matches[0][2]
+                  rec["liquidator"]=matches[0][0] if len(matches[0])>0 else None
+                  rec["obligation"]=matches[0][1] if len(matches[0])>1 else None
+                  rec["repay_reserve"]=matches[0][4] if len(matches[0])>4 else None
+                  rec["status"]="LENDING_MARKET_EXTRACTED"
+              rows.append(rec)
+              time.sleep(0.5)
+
+          good=[r for r in rows if r["status"]=="LENDING_MARKET_EXTRACTED"]
+          counts=Counter(r["lending_market"] for r in good)
+          classification="KAMINO_LENDING_MARKET_EXTRACTION_PASS" if len(good)==16 and all(r.get("lending_market") for r in good) else "KAMINO_LENDING_MARKET_EXTRACTION_FAIL_CLOSED"
+          out={
+            "schema_version":"0.1","lab_id":"DEFI-LIQUIDATION-SHOCK-001","classification":classification,
+            "historical_source_commit":"57074f4599a36ab0b433a71599b206c73efe1fd7",
+            "lending_market_account_index":2,
+            "candidate_count":16,"extracted_count":len(good),
+            "distinct_lending_markets":len(counts),
+            "lending_market_counts":dict(sorted(counts.items())),
+            "rows":rows,
+            "governance":{"source_only":True,"outcome_blind":True,"prices":False,"returns":False,"pnl":False,"direction":False,"paid_data":False}
+          }
+          p=Path("labs/DEFI_LIQUIDATION_SHOCK_001/audit_receipts/DLS_KAMINO_LENDING_MARKET_EXTRACTION_V0.1.json")
+          p.parent.mkdir(parents=True,exist_ok=True); p.write_text(json.dumps(out,indent=2,sort_keys=True)+"\n")
+          print(json.dumps({"classification":classification,"extracted":len(good),"distinct_markets":len(counts),"market_counts":dict(counts)},indent=2,sort_keys=True))
+          PY
+      - name: Persist receipt
+        run: |
+          git config user.name "crypto-lab-source-audit"
+          git config user.email "actions@users.noreply.github.com"
+          git add labs/DEFI_LIQUIDATION_SHOCK_001/audit_receipts/DLS_KAMINO_LENDING_MARKET_EXTRACTION_V0.1.json
+          git commit -m "audit: persist Kamino lending-market extraction"
+          git push origin HEAD:defi-liquidation-kamino-first-success-exec-v0.1
