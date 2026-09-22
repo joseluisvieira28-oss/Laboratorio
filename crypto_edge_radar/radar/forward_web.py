@@ -37,6 +37,7 @@ from .options_v21_watcher import OptionsV21ForwardShadowWatcher
 from .options_v21_metrics import evaluate_options_v21_forward
 from .etf_cme_watcher import ETFCMEPublicSignalWatcher
 from .external_freshness import all_external_freshness
+from .deploy_drift import deployment_drift_receipt
 
 
 RUNTIME_LIVENESS_EVENT = "RADAR_RUNTIME_LIVENESS"
@@ -148,6 +149,8 @@ class ForwardShadowRuntime:
         self._last_etf_signal_check_ms: int | None = None
         self._last_options_runtime_day: str | None = None
         self._last_external_freshness_check_ms: int | None = None
+        self._last_deploy_drift_check_ms: int | None = None
+        self._deploy_drift_state: dict[str, Any] = {"classification": "STARTING"}
         self._last_ced1d_render_shadow_check_date: str | None = None
         self._ced1d_render_shadow_state: dict[str, Any] = {
             "status": "DISABLED_NOT_ARMED",
@@ -473,6 +476,19 @@ class ForwardShadowRuntime:
         else:
             external_freshness = self._external_freshness_state
 
+        deploy_drift_due = (
+            self._last_deploy_drift_check_ms is None
+            or now_ms - self._last_deploy_drift_check_ms >= 60 * 60 * 1000
+        )
+        if deploy_drift_due:
+            deploy_drift = deployment_drift_receipt(
+                timeout=self.settings.http_timeout
+            )
+            self._deploy_drift_state = deploy_drift
+            self._last_deploy_drift_check_ms = now_ms
+        else:
+            deploy_drift = self._deploy_drift_state
+
         state = {
             "health": "OK" if not errors else "DEGRADED_FAIL_CLOSED",
             "mode": "PUBLIC_SHADOW_ONLY",
@@ -494,6 +510,10 @@ class ForwardShadowRuntime:
             "options_v21_metrics": options_v21_metrics,
             "ced1d_render_shadow": ced1d_render_shadow,
             "external_collectors": external_freshness,
+            "deployment_drift": deploy_drift,
+            "operational_attention_required": (
+                deploy_drift.get("classification") == "STALE_RUNTIME"
+            ),
             "errors": errors,
             "authenticated_exchange_api_used": False,
             "orders_created": False,
