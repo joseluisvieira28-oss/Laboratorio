@@ -1,0 +1,66 @@
+name: DLS Solscan Playground Access Probe V0.1
+
+on:
+  push:
+    branches:
+      - defi-liquidation-kamino-first-success-exec-v0.1
+    paths:
+      - '.github/workflows/dls-solscan-playground-access-probe-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe frozen smoke request without auth
+        shell: bash
+        run: |
+          python - <<'PY'
+          import urllib.request, urllib.parse, urllib.error, json
+          P="KLend2g3cP87fffoy8q1mQqGKjrxjC8boSyAYavgmjD"
+          D="b1479abce2854a37"
+          base="https://pro-api.solscan.io/playground/account/transactions/enhanced"
+          params=[
+            ("address",P),("from_time","1734220800"),("to_time","1734307200"),
+            ("instruction[]",P+D),("limit","10")
+          ]
+          url=base+"?"+urllib.parse.urlencode(params)
+          req=urllib.request.Request(url,headers={"Accept":"application/json","User-Agent":"crypto-lab-source-audit/1.0"})
+          out={"endpoint":base,"auth_sent":False}
+          try:
+              with urllib.request.urlopen(req,timeout=30) as r:
+                  b=r.read()
+                  out.update(http_status=r.status,bytes=len(b))
+                  try:
+                      o=json.loads(b)
+                      out["json_type"]=type(o).__name__
+                      if isinstance(o,dict):
+                          out["top_keys"]=sorted(o.keys())
+                          d=o.get("data")
+                          if isinstance(d,list):
+                              out["rows"]=len(d)
+                              out["sample"]=[{k:x.get(k) for k in ("slot","block_time","tx_hash","status")} for x in d[:3] if isinstance(x,dict)]
+                          elif isinstance(d,dict):
+                              out["data_keys"]=sorted(d.keys())
+                              for kk in ("items","data","transactions"):
+                                  v=d.get(kk)
+                                  if isinstance(v,list):
+                                      out["rows"]=len(v)
+                                      out["sample"]=[{k:x.get(k) for k in ("slot","block_time","tx_hash","status")} for x in v[:3] if isinstance(x,dict)]
+                                      break
+                  except Exception as e:
+                      out["json_error"]=type(e).__name__+":"+str(e)
+                      out["body_prefix"]=b[:300].decode(errors="replace")
+          except urllib.error.HTTPError as e:
+              out.update(http_status=e.code,error="HTTPError")
+              try: out["body_prefix"]=e.read(500).decode(errors="replace")
+              except Exception: pass
+          except Exception as e:
+              out.update(http_status=None,error=type(e).__name__+":"+str(e))
+          print(json.dumps(out,indent=2,sort_keys=True))
+          PY
