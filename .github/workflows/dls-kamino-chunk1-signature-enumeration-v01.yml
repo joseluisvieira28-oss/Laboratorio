@@ -1,0 +1,50 @@
+name: DLS Kamino Chunk1 Signature Enumeration V0.1
+
+on:
+  push:
+    branches:
+      - defi-liquidation-kamino-boundary-execution-v0.1
+    paths:
+      - '.github/workflows/dls-kamino-chunk1-signature-enumeration-v01.yml'
+      - 'labs/DEFI_LIQUIDATION_SHOCK_001/source/enumerate_kamino_chunk1_signatures_v0_1.py'
+      - 'labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_CHUNK1_SIGNATURE_ENUMERATION_TRIGGER_V0.1.txt'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  enumerate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Enumerate exact frozen chunk #1
+        run: |
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/enumerate_kamino_chunk1_signatures_v0_1.py | tee DLS_KAMINO_CHUNK1_SIGNATURE_ENUMERATION_STDOUT_V0.1.txt
+      - name: Package evidence
+        if: always()
+        run: |
+          python - <<'PY'
+          import hashlib,json,pathlib,zipfile
+          root=pathlib.Path("dls_kamino_chunk1_signature_enumeration_v01")
+          if root.exists():
+              files=[p for p in sorted(root.glob("*")) if p.is_file()]
+              manifest=[{"name":p.name,"bytes":p.stat().st_size,"sha256":hashlib.sha256(p.read_bytes()).hexdigest()} for p in files]
+              pathlib.Path("DLS_KAMINO_CHUNK1_SIGNATURE_ENUMERATION_MANIFEST_V0.1.json").write_text(json.dumps({"files":manifest},indent=2)+"\n")
+              with zipfile.ZipFile("DLS_KAMINO_CHUNK1_SIGNATURE_ENUMERATION_EVIDENCE_V0.1.zip","w",zipfile.ZIP_DEFLATED) as z:
+                  for p in files:z.write(p,p.name)
+                  z.write("DLS_KAMINO_CHUNK1_SIGNATURE_ENUMERATION_MANIFEST_V0.1.json")
+          PY
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-kamino-chunk1-signature-enumeration-v01
+          path: |
+            dls_kamino_chunk1_signature_enumeration_v01/
+            DLS_KAMINO_CHUNK1_SIGNATURE_ENUMERATION_MANIFEST_V0.1.json
+            DLS_KAMINO_CHUNK1_SIGNATURE_ENUMERATION_EVIDENCE_V0.1.zip
+            DLS_KAMINO_CHUNK1_SIGNATURE_ENUMERATION_STDOUT_V0.1.txt
+          if-no-files-found: warn
+          retention-days: 30
