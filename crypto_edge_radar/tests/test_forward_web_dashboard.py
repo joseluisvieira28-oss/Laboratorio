@@ -4,6 +4,13 @@ from radar.forward_web import dashboard_html, normalized_poll_interval_seconds
 
 
 class ForwardWebDashboardTests(unittest.TestCase):
+    def test_dls_probe_endpoint_is_read_only_surface(self):
+        source = __import__("inspect").getsource(__import__(
+            "radar.forward_web", fromlist=["_Handler"]
+        )._Handler.do_GET)
+        self.assertIn("/api/dls-solanafm-source-probe", source)
+        self.assertNotIn("POST", source)
+
     def test_poll_interval_floor_is_30_seconds(self):
         self.assertEqual(normalized_poll_interval_seconds(1), 30.0)
         self.assertEqual(normalized_poll_interval_seconds(30), 30.0)
