@@ -1,0 +1,59 @@
+name: DLS Save Marginfi Upper Anchor V0.1
+
+on:
+  push:
+    branches:
+      - dls-save-marginfi-upper-anchor-v0.1
+    paths:
+      - '.github/workflows/dls-save-marginfi-upper-anchor-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dls-save-marginfi-upper-anchor-v0.1
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/find_save_marginfi_upper_anchor_v0_1.py
+      - name: Execute source-only anchor probe
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/find_save_marginfi_upper_anchor_v0_1.py | tee DLS_SAVE_MARGINFI_UPPER_ANCHOR_STDOUT_V0.1.txt
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-save-marginfi-upper-anchor-v01
+          path: |
+            dls_save_marginfi_upper_anchor_v01/
+            labs/DEFI_LIQUIDATION_SHOCK_001/SAVE_MARGINFI_UPPER_ANCHOR_RECEIPT_V0.1.json
+            DLS_SAVE_MARGINFI_UPPER_ANCHOR_STDOUT_V0.1.txt
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Persist receipt
+        if: always()
+        run: |
+          if [ -f labs/DEFI_LIQUIDATION_SHOCK_001/SAVE_MARGINFI_UPPER_ANCHOR_RECEIPT_V0.1.json ]; then
+            git config user.name "crypto-lab-source-audit"
+            git config user.email "actions@users.noreply.github.com"
+            git add labs/DEFI_LIQUIDATION_SHOCK_001/SAVE_MARGINFI_UPPER_ANCHOR_RECEIPT_V0.1.json
+            git commit -m "dls: persist Save marginfi upper anchor receipt v0.1" || true
+            git push origin HEAD:dls-save-marginfi-upper-anchor-v0.1
+          fi
+      - name: Firewall
+        if: always()
+        run: |
+          echo SOURCE_ONLY_TRUE
+          echo PRICES_FALSE
+          echo RETURNS_FALSE
+          echo PNL_FALSE
+          echo DIRECTION_FALSE
+          echo LIVE_TRADING_FALSE
