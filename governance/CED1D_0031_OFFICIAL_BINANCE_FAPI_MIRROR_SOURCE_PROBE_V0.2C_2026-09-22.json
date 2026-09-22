@@ -1,0 +1,36 @@
+{
+  "document_id": "CED1D_0031_OFFICIAL_BINANCE_FAPI_MIRROR_SOURCE_PROBE_V0.2C_2026-09-22",
+  "status": "FROZEN_SOURCE_ONLY_BEFORE_PROBE",
+  "parent_blocker": "CED1D_0031_V02B_GITHUB_RUNNER_SOURCE_BLOCK_RECEIPT_2026-09-21",
+  "candidate": "CED1D-0031",
+  "purpose": "Test only whether official Binance USD-M REST mirror hosts expose the exact frozen /fapi/v1/fundingRate schema from the current GitHub-hosted runner. No forward outcome or performance is computed.",
+  "hosts": ["https://fapi1.binance.com","https://fapi2.binance.com","https://fapi3.binance.com","https://fapi4.binance.com"],
+  "endpoint": "/fapi/v1/fundingRate",
+  "probe": {"symbol":"AVAXUSDT","startTime":1789948800000,"endTime":1790035199000,"limit":1000},
+  "required_fields": ["symbol","fundingTime","fundingRate"],
+  "adoption_rule": {
+    "probe_only": true,
+    "require_http_200": true,
+    "require_json_list": true,
+    "require_nonempty": true,
+    "require_required_fields": true,
+    "require_symbol_match": true,
+    "require_times_inside_probe": true,
+    "collector_adoption_requires_separate_prospective_amendment": true
+  },
+  "invariants": {
+    "signal_rule_changed": false,
+    "funding_formula_changed": false,
+    "execution_rule_changed": false,
+    "costs_changed": false,
+    "returns_computed": false,
+    "pnl_computed": false,
+    "forward_outcomes_computed": false,
+    "live_trading": false,
+    "orders": false,
+    "exchange_mutation": false,
+    "proxy_or_vpn": false,
+    "alternate_venue": false,
+    "merge_main": false
+  }
+}
