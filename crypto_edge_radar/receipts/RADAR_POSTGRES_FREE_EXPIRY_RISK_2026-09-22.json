@@ -1,0 +1,45 @@
+{
+  "schema_version": "0.1",
+  "date": "2026-09-22",
+  "classification": "PERSISTENCE_EXPIRY_RISK_OPEN",
+  "database": {
+    "render_id": "dpg-dalqi4qd0e5s738a77kg-a",
+    "name": "crypto-edge-radar-evidence-v04",
+    "region": "frankfurt",
+    "plan": "free",
+    "status": "available",
+    "expires_at_utc": "2026-10-17T08:47:15.2559Z",
+    "high_availability": false
+  },
+  "observed_runtime": {
+    "evidence_backend": "postgres",
+    "evidence_chain_ok": true,
+    "latest_verified_event_count_observed": 450,
+    "live_capital_enabled": false
+  },
+  "checks": {
+    "render_readonly_sql_connector": "BLOCKED_BY_TOOL_TLS_NEGOTIATION",
+    "github_canonical_database_secret_configured": false,
+    "github_continuity_schedule_created": false
+  },
+  "governance": {
+    "paid_upgrade_authorized": false,
+    "spend_money": false,
+    "secret_copy_from_render_to_github": false,
+    "public_evidence_export": false,
+    "live_trading": false,
+    "orders": false,
+    "exchange_mutation": false,
+    "main_merge": false
+  },
+  "required_before_expiry": [
+    "Create a defensible backup or migration path for the canonical evidence store.",
+    "Verify restored hash-chain integrity on the target store before cutover.",
+    "Do not delete or mutate the current store until independent restore verification passes."
+  ],
+  "reopening_triggers": [
+    "A secure export path from the canonical Postgres store becomes available.",
+    "A separately authorized replacement/upgrade datastore is selected.",
+    "A legitimate database credential handoff is configured through a secret manager without exposing the value."
+  ]
+}
