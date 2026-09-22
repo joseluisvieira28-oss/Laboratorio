@@ -146,7 +146,8 @@ jobs:
 
           $exe = (Resolve-Path "dist\MEXCRiskState.exe").Path
           $args = @("--preflight",$preflight,"--receipt-root",$receiptRoot,"--out",$riskOut)
-          $proc = Start-Process -FilePath $exe -ArgumentList $args -NoNewWindow -Wait -PassThru
+          $argLine = ($args | ForEach-Object { '"' + [string]$_ + '"' }) -join ' '
+          $proc = Start-Process -FilePath $exe -ArgumentList $argLine -NoNewWindow -Wait -PassThru
           if ($proc.ExitCode -ne 0) { throw "Packaged MEXCRiskState smoke test failed: $($proc.ExitCode)" }
           if (-not (Test-Path $riskOut)) { throw "Risk-state smoke receipt missing" }
           $risk = Get-Content $riskOut -Raw | ConvertFrom-Json
@@ -156,7 +157,8 @@ jobs:
           # The packaged CLI may ignore only an exact self-path echo.
           Remove-Item $riskOut -Force
           $argsEcho = @("--preflight",$preflight,"--receipt-root",$receiptRoot,"--out",$riskOut,$exe)
-          $proc2 = Start-Process -FilePath $exe -ArgumentList $argsEcho -NoNewWindow -Wait -PassThru
+          $argLineEcho = ($argsEcho | ForEach-Object { '"' + [string]$_ + '"' }) -join ' '
+          $proc2 = Start-Process -FilePath $exe -ArgumentList $argLineEcho -NoNewWindow -Wait -PassThru
           if ($proc2.ExitCode -ne 0) { throw "Self-path echo hardening failed: $($proc2.ExitCode)" }
           if (-not (Test-Path $riskOut)) { throw "Risk-state echo smoke receipt missing" }
 
