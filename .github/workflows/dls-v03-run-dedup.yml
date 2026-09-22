@@ -1,0 +1,39 @@
+name: DLS V0.3 Duplicate Run Cleanup
+
+on:
+  push:
+    branches:
+      - dls-v03-run-dedup-2026-09-22
+    paths:
+      - '.github/workflows/dls-v03-run-dedup.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  cancel-duplicates:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cancel non-canonical duplicate runs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          for run_id in 35771014450 35771176929 35771022352 35771191728; do
+            code=$(curl -sS -o /tmp/cancel-$run_id.json -w "%{http_code}" \
+              -X POST \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/$REPO/actions/runs/$run_id/cancel")
+            echo "run=$run_id http=$code"
+            if [ "$code" != "202" ] && [ "$code" != "409" ]; then
+              cat /tmp/cancel-$run_id.json || true
+              exit 1
+            fi
+          done
+          echo "CANONICAL_MARGINFI_RUN=35771157618"
+          echo "CANONICAL_SAVE0C_RUN=35771166732"
+          echo "SCIENTIFIC_CONTRACT_UNCHANGED=true"
