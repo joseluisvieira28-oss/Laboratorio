@@ -1,0 +1,41 @@
+name: Radar Deploy Drift Atom Fallback V0.2 QA
+
+on:
+  pull_request:
+    branches:
+      - crypto-edge-radar-postgres-v0.5
+  push:
+    branches:
+      - radar-deploy-drift-atom-fallback-v0.2
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: crypto_edge_radar
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -e .
+      - name: Deploy drift V0.2 targeted tests
+        run: python -m unittest tests.test_deploy_drift tests.test_deploy_drift_runtime_integration -v
+      - name: Full deterministic Radar suite
+        run: python -m unittest discover -s tests -v
+      - name: Static no-auto-deploy firewall
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path("radar/deploy_drift.py").read_text()
+          assert "trigger_deploy" not in p
+          assert "deploy_hook" not in p
+          assert "automatic_deploy_performed" in p
+          assert "GITHUB_ATOM" in p
+          print("DEPLOY_DRIFT_V02_FIREWALL_PASS")
+          PY
