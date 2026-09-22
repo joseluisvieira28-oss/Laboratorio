@@ -36,7 +36,7 @@ function PortListening {
     }
 }
 
-Log "=== Crypto Edge Radar V0.14.1 recovery launcher ==="
+Log "=== Crypto Edge Radar V0.14.2 failure-isolation launcher ==="
 Log "Root: $Root"
 Log "EXE: $Exe"
 
@@ -48,11 +48,17 @@ if (PortListening) {
     $canonicalAlreadyRunning = $false
     try {
         $state = Invoke-RestMethod -Uri "http://127.0.0.1:$Port/api/state" -TimeoutSec 4
+        $buildId = [string]$state.build_id
         $registryVersion = [string]$state.registry_version
         $focusExpected = [int]$state.registry.focus_expected
         $focusLoaded = [int]$state.registry.focus_loaded
-        Log "Existing service reports registry=$registryVersion focus=$focusLoaded/$focusExpected"
-        if ($registryVersion -eq "3.6" -and $focusExpected -eq 7 -and $focusLoaded -eq 7) {
+        Log "Existing service reports build=$buildId registry=$registryVersion focus=$focusLoaded/$focusExpected"
+        if (
+            $buildId -eq "v0.14.2-win-forward-failure-isolation" -and
+            $registryVersion -eq "3.6" -and
+            $focusExpected -eq 7 -and
+            $focusLoaded -eq 7
+        ) {
             $canonicalAlreadyRunning = $true
         }
     }
@@ -61,7 +67,7 @@ if (PortListening) {
     }
 
     if ($canonicalAlreadyRunning) {
-        Log "PASS: canonical registry 3.6 / 7-motor Radar is already running."
+        Log "PASS: canonical V0.14.2 registry 3.6 / 7-motor Radar is already running."
         Start-Process "http://127.0.0.1:$Port/"
         exit 0
     }
