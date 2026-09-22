@@ -1,0 +1,87 @@
+name: DLS Kamino RPC First Success Resume V0.1B
+
+on:
+  push:
+    branches:
+      - defi-liquidation-kamino-rpc-resume-v0.1b
+    paths:
+      - 'labs/DEFI_LIQUIDATION_SHOCK_001/source/resolve_kamino_first_success_rpc_v0_1b.py'
+      - '.github/workflows/dls-kamino-rpc-first-success-resume-v01b.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  resolve-boundary-resume:
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: defi-liquidation-kamino-rpc-resume-v0.1b
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Compile frozen continuation resolver
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/resolve_kamino_first_success_rpc_v0_1b.py
+
+      - name: Execute source-only continuation
+        run: |
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/resolve_kamino_first_success_rpc_v0_1b.py | tee DLS_KAMINO_RPC_FIRST_SUCCESS_STDOUT_V0.1B.txt
+
+      - name: Package continuation evidence
+        if: always()
+        run: |
+          python - <<'PY'
+          import hashlib,json,pathlib,zipfile
+          root=pathlib.Path('dls_kamino_rpc_boundary_v01b')
+          files=[]
+          if root.exists():
+              for p in sorted(root.glob('*')):
+                  if p.is_file():
+                      files.append({'name':p.name,'bytes':p.stat().st_size,'sha256':hashlib.sha256(p.read_bytes()).hexdigest()})
+              pathlib.Path('DLS_KAMINO_RPC_FIRST_SUCCESS_MANIFEST_V0.1B.json').write_text(json.dumps({'files':files},indent=2)+'\n')
+              with zipfile.ZipFile('DLS_KAMINO_RPC_FIRST_SUCCESS_EVIDENCE_V0.1B.zip','w',zipfile.ZIP_DEFLATED) as z:
+                  for p in sorted(root.glob('*')):
+                      if p.is_file(): z.write(p,p.name)
+                  z.write('DLS_KAMINO_RPC_FIRST_SUCCESS_MANIFEST_V0.1B.json')
+          PY
+
+      - name: Upload continuation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-kamino-rpc-first-success-v01b
+          path: |
+            dls_kamino_rpc_boundary_v01b/
+            DLS_KAMINO_RPC_FIRST_SUCCESS_MANIFEST_V0.1B.json
+            DLS_KAMINO_RPC_FIRST_SUCCESS_EVIDENCE_V0.1B.zip
+            DLS_KAMINO_RPC_FIRST_SUCCESS_STDOUT_V0.1B.txt
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Persist continuation receipt
+        if: always()
+        run: |
+          if [ -f dls_kamino_rpc_boundary_v01b/DLS_KAMINO_RPC_FIRST_SUCCESS_RECEIPT_V0.1B.json ]; then
+            cp dls_kamino_rpc_boundary_v01b/DLS_KAMINO_RPC_FIRST_SUCCESS_RECEIPT_V0.1B.json labs/DEFI_LIQUIDATION_SHOCK_001/
+            git config user.name "crypto-lab-source-audit"
+            git config user.email "actions@users.noreply.github.com"
+            git add labs/DEFI_LIQUIDATION_SHOCK_001/DLS_KAMINO_RPC_FIRST_SUCCESS_RECEIPT_V0.1B.json
+            git commit -m "dls: persist Kamino RPC first-success continuation receipt v0.1b" || true
+            git push origin HEAD:defi-liquidation-kamino-rpc-resume-v0.1b
+          fi
+
+      - name: Firewall
+        if: always()
+        run: |
+          echo SOURCE_ONLY_TRUE
+          echo PRICES_FALSE
+          echo RETURNS_FALSE
+          echo PNL_FALSE
+          echo DIRECTION_FALSE
+          echo LIVE_TRADING_FALSE
+          echo MERGE_MAIN_FALSE
