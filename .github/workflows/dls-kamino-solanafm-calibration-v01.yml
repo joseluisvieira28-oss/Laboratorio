@@ -1,0 +1,49 @@
+name: DLS Kamino SolanaFM Calibration V0.1
+
+on:
+  push:
+    branches:
+      - defi-liquidation-kamino-solanafm-probe-v0.1
+    paths:
+      - 'labs/DEFI_LIQUIDATION_SHOCK_001/source/probe_kamino_solanafm_calibration_v0_1.py'
+      - '.github/workflows/dls-kamino-solanafm-calibration-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  calibrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: defi-liquidation-kamino-solanafm-probe-v0.1
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run metadata-only calibration
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/probe_kamino_solanafm_calibration_v0_1.py | tee DLS_KAMINO_SOLANAFM_CALIBRATION_STDOUT_V0.1.txt
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-kamino-solanafm-calibration-v01
+          path: |
+            dls_kamino_solanafm_probe_v01/
+            DLS_KAMINO_SOLANAFM_CALIBRATION_STDOUT_V0.1.txt
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Persist receipt
+        if: always()
+        run: |
+          if [ -f dls_kamino_solanafm_probe_v01/DLS_KAMINO_SOLANAFM_CALIBRATION_RECEIPT_V0.1.json ]; then
+            cp dls_kamino_solanafm_probe_v01/DLS_KAMINO_SOLANAFM_CALIBRATION_RECEIPT_V0.1.json labs/DEFI_LIQUIDATION_SHOCK_001/
+            git config user.name "crypto-lab-source-audit"
+            git config user.email "actions@users.noreply.github.com"
+            git add labs/DEFI_LIQUIDATION_SHOCK_001/DLS_KAMINO_SOLANAFM_CALIBRATION_RECEIPT_V0.1.json
+            git commit -m "dls: persist Kamino SolanaFM calibration receipt" || true
+            git push origin HEAD:defi-liquidation-kamino-solanafm-probe-v0.1
+          fi
