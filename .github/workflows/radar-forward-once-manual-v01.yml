@@ -57,3 +57,40 @@ jobs:
             exit 0
           fi
           python -m radar forward-once
+
+
+  read-only-evidence-snapshot:
+    needs: qa
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: crypto_edge_radar
+    env:
+      RADAR_DATABASE_URL: ${{ secrets.RADAR_DATABASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -e .
+      - name: Export evidence snapshot or receipt missing authorization
+        run: python tools/export_evidence_snapshot_readonly.py
+      - name: Assert no database mutation
+        run: |
+          python - <<'PY'
+          import json
+          x=json.load(open("evidence_snapshot/SNAPSHOT_RECEIPT.json"))
+          assert x["database_mutation"] is False
+          assert x["secret_value_exposed"] is False
+          assert x["classification"] in {
+              "AUTH_REQUIRED_NOT_EXECUTED",
+              "READ_ONLY_EVIDENCE_SNAPSHOT_COMPLETE",
+          }
+          print("READ_ONLY_SNAPSHOT_FIREWALL_PASS",x["classification"])
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: radar-evidence-snapshot-readonly-v01
+          path: crypto_edge_radar/RADAR_EVIDENCE_SNAPSHOT_READONLY.zip
+          if-no-files-found: error
+          retention-days: 30
