@@ -1,0 +1,49 @@
+name: DLS Drift Indexed Source Schema Probe V0.1
+
+on:
+  push:
+    branches:
+      - dls-drift-indexed-source-probe-v0.1
+    paths:
+      - '.github/workflows/dls-drift-indexed-source-schema-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dls-drift-indexed-source-probe-v0.1
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/probe_drift_indexed_source_schema_v0_1.py
+      - name: Execute schema-only probe
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/probe_drift_indexed_source_schema_v0_1.py
+      - name: Persist receipt
+        if: always()
+        run: |
+          if [ -f labs/DEFI_LIQUIDATION_SHOCK_001/DRIFT_INDEXED_SOURCE_SCHEMA_PROBE_RECEIPT_V0.1.json ]; then
+            git config user.name "crypto-lab-source-audit"
+            git config user.email "actions@users.noreply.github.com"
+            git add labs/DEFI_LIQUIDATION_SHOCK_001/DRIFT_INDEXED_SOURCE_SCHEMA_PROBE_RECEIPT_V0.1.json
+            git commit -m "dls: persist Drift indexed source schema receipt v0.1" || true
+            git push origin HEAD:dls-drift-indexed-source-probe-v0.1
+          fi
+      - name: Firewall
+        if: always()
+        run: |
+          echo SCHEMA_ONLY_TRUE
+          echo EVENT_ROWS_FALSE
+          echo PRICES_FALSE
+          echo RETURNS_FALSE
+          echo PNL_FALSE
+          echo DIRECTION_FALSE
+          echo LIVE_TRADING_FALSE
