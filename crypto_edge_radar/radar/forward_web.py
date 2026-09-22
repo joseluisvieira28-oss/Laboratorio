@@ -14,6 +14,7 @@ from .bnb_launchpool_watcher import (
     BinanceOfficialLaunchpoolSource,
 )
 from .config import Settings
+from .ced1d_source_probe import ced1d_render_source_probe
 from .evidence import build_evidence_store
 from .strategies.bnb_launchpool_demand import BinanceSpotBNBBTCKlineFeed
 from .strategies.tfg_donchian_regime_forward import MEXCSpotKlineFeed
@@ -656,6 +657,10 @@ class _Handler(BaseHTTPRequestHandler):
             state = self.runtime.state()
             status = 200 if state.get("health") in ("OK", "STARTING") else 503
             self._send_json(status, state)
+            return
+        if self.path == "/api/ced1d-source-probe":
+            result = ced1d_render_source_probe(timeout=self.runtime.settings.http_timeout)
+            self._send_json(200, result)
             return
         self._send_json(404, {"error": "not_found"})
 
