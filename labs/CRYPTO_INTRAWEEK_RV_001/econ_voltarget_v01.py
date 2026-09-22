@@ -17,6 +17,8 @@ ASSETS=("BTCUSDT","ETHUSDT")
 BASE="https://data.binance.vision/data/spot/monthly/klines"
 FREEZE_COMMIT="79577d02184113a4c67486b42f30b360bfdab76e"
 TRANSLATION_ID="CIRV-VOLTARGET-BTCETH-SPOT-001"
+FREEZE_BLOB_SHA="61b98963a938f52106840b5affbb18cac00db5ac"
+ROOT=Path(__file__).resolve().parent
 BASE_COST=0.0020
 STRESS_COST=0.0030
 
@@ -285,7 +287,24 @@ def run_block(year:int)->dict:
     }
 
 
+def _require_receipt(name:str, required_field:str="pass")->dict:
+    path=ROOT/name
+    if not path.exists():
+        raise RuntimeError(f"prerequisite receipt missing: {name}")
+    payload=json.loads(path.read_text(encoding="utf-8"))
+    if payload.get("translation_id")!=TRANSLATION_ID:
+        raise RuntimeError(f"wrong translation identity in {name}")
+    if not bool(payload.get(required_field)):
+        raise RuntimeError(f"prerequisite receipt not PASS: {name}")
+    return payload
+
+
 def main():
+    freeze_path=ROOT/"ECON_TRANSLATION_PREFREEZE_V0.1.json"
+    if not freeze_path.exists():
+        raise RuntimeError("economic translation pre-freeze missing")
+    # Git blob identity is pinned externally by workflow; the script also pins
+    # the freeze commit inside every result.
     ap=argparse.ArgumentParser()
     ap.add_argument("--stage",required=True,choices=["SOURCE_ONLY","DISCOVERY_2023","REPLICATION_2024","OOS_2025"])
     ap.add_argument("--out",required=True)
@@ -293,6 +312,11 @@ def main():
     if args.stage=="SOURCE_ONLY":
         result=source_gate()
     else:
+        _require_receipt("ECON_SOURCE_GATE_RECEIPT_V0.1.json","source_data_pass")
+        if args.stage in {"REPLICATION_2024","OOS_2025"}:
+            _require_receipt("ECON_DISCOVERY_2023_CLOSEOUT_V0.1.json","pass")
+        if args.stage=="OOS_2025":
+            _require_receipt("ECON_REPLICATION_2024_CLOSEOUT_V0.1.json","pass")
         year={"DISCOVERY_2023":2023,"REPLICATION_2024":2024,"OOS_2025":2025}[args.stage]
         result=run_block(year)
         result["stage"]=args.stage
