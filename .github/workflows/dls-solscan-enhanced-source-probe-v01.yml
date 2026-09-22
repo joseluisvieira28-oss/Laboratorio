@@ -1,0 +1,52 @@
+name: DLS Solscan Enhanced Source Probe V0.1
+
+on:
+  pull_request:
+    branches:
+      - defi-liquidation-public-rpc-history-feasibility-v0.1
+  push:
+    branches:
+      - defi-liquidation-solscan-enhanced-probe-v0.1
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-probe:
+    runs-on: ubuntu-latest
+    env:
+      SOLSCAN_API_KEY: ${{ secrets.SOLSCAN_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/solscan_enhanced_source_probe_v0_1.py
+      - name: Execute or receipt missing authorization
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/solscan_enhanced_source_probe_v0_1.py
+      - name: Assert source-only firewall
+        run: |
+          python - <<'PY'
+          import json
+          p="dls_solscan_enhanced_probe/SOLSCAN_ENHANCED_SOURCE_PROBE_RECEIPT_V0.1.json"
+          x=json.load(open(p))
+          fw=x["firewall"]
+          for k,v in fw.items():
+              assert v is False,(k,v)
+          assert x["classification"] in {
+            "AUTH_REQUIRED_NOT_EXECUTED",
+            "SOLSCAN_ENHANCED_SCHEMA_PASS_ALL_CLASSES",
+            "SOLSCAN_ENHANCED_PARTIAL_SCHEMA_PASS",
+            "SOLSCAN_ENHANCED_SOURCE_BLOCKED",
+          },x
+          print("DLS_SOLSCAN_FIREWALL_PASS",x["classification"])
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dls-solscan-enhanced-source-probe-v01
+          path: dls_solscan_enhanced_probe/
+          if-no-files-found: error
+          retention-days: 30
