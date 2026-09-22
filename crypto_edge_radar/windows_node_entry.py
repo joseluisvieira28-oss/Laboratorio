@@ -13,7 +13,61 @@ from radar.local_forward import LocalForwardSupervisor
 from radar.render_sentinel import RenderSentinel
 
 
-BUILD_ID = "v0.14.3.2-win-live-state-reconciliation"
+BUILD_ID = "v0.14.3.3-win-single-instance-lock"
+
+_INSTANCE_MUTEX_HANDLE = None
+_INSTANCE_MUTEX_NAME = r"Local\CryptoEdgeRadarV01433Node"
+_ERROR_ALREADY_EXISTS = 183
+
+
+def _acquire_single_instance_lock() -> tuple[bool, str]:
+    """Hold one OS-level mutex for the lifetime of the Windows Radar process."""
+    global _INSTANCE_MUTEX_HANDLE
+    if os.name != "nt":
+        return True, "NON_WINDOWS_HOST"
+
+    import ctypes
+    from ctypes import wintypes
+
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    create_mutex = kernel32.CreateMutexW
+    create_mutex.argtypes = [wintypes.LPVOID, wintypes.BOOL, wintypes.LPCWSTR]
+    create_mutex.restype = wintypes.HANDLE
+    close_handle = kernel32.CloseHandle
+    close_handle.argtypes = [wintypes.HANDLE]
+    close_handle.restype = wintypes.BOOL
+
+    ctypes.set_last_error(0)
+    handle = create_mutex(None, False, _INSTANCE_MUTEX_NAME)
+    if not handle:
+        err = ctypes.get_last_error()
+        raise OSError(err, "CreateMutexW failed")
+
+    err = ctypes.get_last_error()
+    if err == _ERROR_ALREADY_EXISTS:
+        close_handle(handle)
+        return False, "DUPLICATE_LOCAL_NODE"
+
+    _INSTANCE_MUTEX_HANDLE = handle
+    return True, "LOCK_ACQUIRED"
+
+
+def _release_single_instance_lock() -> None:
+    global _INSTANCE_MUTEX_HANDLE
+    handle = _INSTANCE_MUTEX_HANDLE
+    _INSTANCE_MUTEX_HANDLE = None
+    if handle is None or os.name != "nt":
+        return
+
+    import ctypes
+    from ctypes import wintypes
+
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    close_handle = kernel32.CloseHandle
+    close_handle.argtypes = [wintypes.HANDLE]
+    close_handle.restype = wintypes.BOOL
+    close_handle(handle)
+
 
 
 def _resource_path(name: str) -> str:
@@ -236,6 +290,36 @@ def run() -> int:
     os.environ.setdefault("RADAR_STATUS", os.path.join("data", "radar_status.json"))
     os.environ.setdefault("RADAR_NOTIFICATIONS", os.path.join("data", "radar_notifications.jsonl"))
     os.environ.setdefault("RADAR_BUILD_ID", BUILD_ID)
+
+    packaging_selftest = os.getenv("RADAR_PACKAGING_SELFTEST") == "1"
+    lock_acquired = False
+    if not packaging_selftest:
+        try:
+            lock_acquired, lock_reason = _acquire_single_instance_lock()
+        except Exception as exc:
+            print(json.dumps({
+                "status": "FAIL_CLOSED",
+                "build_id": BUILD_ID,
+                "reason": "SINGLE_INSTANCE_LOCK_ERROR",
+                "error": f"{type(exc).__name__}:{exc}",
+                "orders_created": False,
+                "exchange_mutation_performed": False,
+            }, sort_keys=True), flush=True)
+            return 2
+
+        if not lock_acquired:
+            duplicate_state = {
+                "status": "FAIL_CLOSED",
+                "build_id": BUILD_ID,
+                "reason": lock_reason,
+                "exit_code": 3,
+                "orders_created": False,
+                "exchange_mutation_performed": False,
+                "live_capital_enabled": False,
+            }
+            print(json.dumps(duplicate_state, sort_keys=True), flush=True)
+            return 3
+
     os.makedirs("data", exist_ok=True)
 
     bundled_registry = _resource_path("deployment_registry_v1.json")
@@ -250,10 +334,12 @@ def run() -> int:
         package_state["runtime_registry_materialized"] = True
         package_state["runtime_candidate_count"] = runtime_state["candidate_count"]
     except Exception as exc:
+        if lock_acquired:
+            _release_single_instance_lock()
         print(json.dumps({"status": "FAIL_CLOSED", "build_id": BUILD_ID, "error": str(exc)}, sort_keys=True))
         return 2
 
-    if os.getenv("RADAR_PACKAGING_SELFTEST") == "1":
+    if packaging_selftest:
         package_state["dh03_collector_importable"] = True
         package_state["local_forward_supervisor_importable"] = True
         package_state["render_sentinel_importable"] = True
@@ -311,15 +397,19 @@ def run() -> int:
     # V0.14.1 intentionally serves the multi-motor cockpit directly instead
     # of invoking the legacy MEXC single-provider local-node preflight. Each
     # research motor already has its own public-source fail-closed gate.
-    return main(
-        [
-            "dashboard",
-            "--port",
-            "8787",
-            "--registry",
-            runtime_registry,
-        ]
-    )
+    try:
+        return main(
+            [
+                "dashboard",
+                "--port",
+                "8787",
+                "--registry",
+                runtime_registry,
+            ]
+        )
+    finally:
+        if lock_acquired:
+            _release_single_instance_lock()
 
 
 if __name__ == "__main__":

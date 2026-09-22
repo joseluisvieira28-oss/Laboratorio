@@ -1,0 +1,91 @@
+{
+  "receipt_id": "RADAR_V01433_WINDOWS_SINGLE_INSTANCE_LOCK_2026-09-22",
+  "status": "PASS",
+  "date_utc": "2026-09-22",
+  "branch": "radar-v01433-single-instance-lock-v0.1",
+  "base_branch": "radar-v01432-live-state-reconciliation-v0.1",
+  "base_commit": "0926650f71e6bacb020a6b7e35e324d475f3d7be",
+  "implementation_head": "b4a86468bda56982cba9fae8d90d30619d1a54d7",
+  "build_id": "v0.14.3.3-win-single-instance-lock",
+  "scope": [
+    "Windows process-level single-instance lock before local runtime writes/collectors",
+    "duplicate process fail-closed with exit code 3 and DUPLICATE_LOCAL_NODE",
+    "launcher identity upgraded to V0.14.3.3",
+    "Windows CI packaged duplicate-process regression"
+  ],
+  "science_changed": false,
+  "strategy_thresholds_changed": false,
+  "live_trading_enabled": false,
+  "orders_created": false,
+  "exchange_mutation_performed": false,
+  "validation": {
+    "workflow_run_id": 35743243871,
+    "workflow_conclusion": "success",
+    "targeted_tests": 47,
+    "full_windows_tests": 245,
+    "package_selftest": "PASS",
+    "packaged_duplicate_regression": "PASS",
+    "powershell_syntax": "PASS",
+    "launcher_identity": "PASS"
+  },
+  "artifact": {
+    "id": 10701545018,
+    "name": "crypto-edge-radar-v01433-single-instance-lock",
+    "zip_sha256": "f594a0d89dc66a8c8eba2d2131c268fd12ce6d01778665913511c9119c2a06e9",
+    "exe_sha256": "06c13596f5c045edb9fc02e95abce6642dfab704788f320a7f05cd7f36f5bcc3",
+    "expires_at": "2026-10-06T14:54:57Z"
+  },
+  "deployment_status": "WINDOWS_NODE_24X7_READY_SHADOW_CONTROL_PLANE",
+  "notes": [
+    "Current V0.14.3.2 process may continue shadow observation but is not the final 24/7 deployment.",
+    "MEXC receipt freshness remains fail-closed by design.",
+    "HTF-DH03 bootstrap health and ETF budget compatibility are separate blockers and were not altered."
+  ],
+  "pc_validation": {
+    "status": "PASS",
+    "validated_at_local": "2026-09-22",
+    "build_id": "v0.14.3.3-win-single-instance-lock",
+    "duplicate_exit_code": 3,
+    "duplicate_reason": "DUPLICATE_LOCAL_NODE",
+    "radar_process_count": 1,
+    "radar_pid": 28152,
+    "port_8787_owner_pid": 28152,
+    "exchange_mutation_performed": false,
+    "orders_created": false,
+    "live_capital_enabled": false
+  },
+  "watchdog_autostart_validation": {
+    "status": "PASS",
+    "task_name": "CryptoEdgeRadarV0143",
+    "task_state": "Running",
+    "old_pid": 28152,
+    "new_pid": 35044,
+    "radar_process_count": 1,
+    "port_8787_owner_pid": 35044,
+    "build_id": "v0.14.3.3-win-single-instance-lock",
+    "registry_version": "3.6",
+    "focus_loaded": 7,
+    "focus_expected": 7,
+    "restart_recovery": "PASS",
+    "single_instance_after_recovery": "PASS"
+  },
+  "windows_24x7_ready": true,
+  "live_execution_ready": false,
+  "final_notes": [
+    "Windows watchdog/autostart restart recovery validated on operator PC.",
+    "This readiness applies to the local Windows shadow/control-plane runtime only.",
+    "Micro-live remains governed by candidate-specific signal, capital, authority and risk gates."
+  ],
+  "final_reboot_validation": {
+    "status": "PASS",
+    "task_state": "Running",
+    "radar_process_count": 1,
+    "radar_pid": 14568,
+    "port_8787_owner_pid": 14568,
+    "build_id": "v0.14.3.3-win-single-instance-lock",
+    "registry_version": "3.6",
+    "focus_loaded": 7,
+    "focus_expected": 7,
+    "reboot_autostart_proven": true
+  }
+}
