@@ -30,6 +30,10 @@ on:
       - 'crypto_edge_radar/windows/RUN_RADAR_24X7_V0143.ps1'
       - 'crypto_edge_radar/windows/INSTALL_RADAR_AUTOSTART_V0143.ps1'
       - 'crypto_edge_radar/windows/IMPORT_MEXC_RECEIPTS_V0143.ps1'
+      - 'crypto_edge_radar/windows/UPGRADE_RADAR_V0144.bat'
+      - 'crypto_edge_radar/windows/UPGRADE_RADAR_V0144.ps1'
+      - 'crypto_edge_radar/windows/INSTALL_RADAR_AUTOSTART_V0144.ps1'
+      - 'crypto_edge_radar/windows/RUN_RADAR_24X7_V0144.ps1'
       - '.github/workflows/build-radar-v0142-focused-validation.yml'
 
 permissions:
@@ -124,7 +128,10 @@ jobs:
             "windows\CHECK_RADAR_V0141.ps1",
             "windows\RUN_RADAR_24X7_V0143.ps1",
             "windows\INSTALL_RADAR_AUTOSTART_V0143.ps1",
-            "windows\IMPORT_MEXC_RECEIPTS_V0143.ps1"
+            "windows\IMPORT_MEXC_RECEIPTS_V0143.ps1",
+            "windows\RUN_RADAR_24X7_V0144.ps1",
+            "windows\INSTALL_RADAR_AUTOSTART_V0144.ps1",
+            "windows\UPGRADE_RADAR_V0144.ps1"
           )) {
             $errors=$null
             [void][System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $s),[ref]$null,[ref]$errors)
@@ -161,6 +168,10 @@ jobs:
           Copy-Item windows\RUN_RADAR_24X7_V0143.ps1 v0144_bundle\windows\
           Copy-Item windows\INSTALL_RADAR_AUTOSTART_V0143.ps1 v0144_bundle\windows\
           Copy-Item windows\IMPORT_MEXC_RECEIPTS_V0143.ps1 v0144_bundle\windows\
+          Copy-Item windows\RUN_RADAR_24X7_V0144.ps1 v0144_bundle\windows\
+          Copy-Item windows\INSTALL_RADAR_AUTOSTART_V0144.ps1 v0144_bundle\windows\
+          Copy-Item windows\UPGRADE_RADAR_V0144.ps1 v0144_bundle\windows\
+          Copy-Item windows\UPGRADE_RADAR_V0144.bat v0144_bundle\windows\
           Copy-Item MEXC_FUTURES_STANDING_MICROLIVE_OPERATOR_AUTHORITY_V0.1.json v0144_bundle\
 
       - name: Upload V0.14.4 CIRV eight motor
