@@ -18,6 +18,7 @@ on:
       - 'crypto_edge_radar/radar/forward_web.py'
       - 'crypto_edge_radar/radar/mexc_local_state.py'
       - 'crypto_edge_radar/tests/test_dashboard.py'
+      - 'crypto_edge_radar/tests/test_cirv_local.py'
       - 'crypto_edge_radar/tests/test_options_v21_live.py'
       - 'crypto_edge_radar/tests/test_mexc_local_state.py'
       - 'crypto_edge_radar/tests/test_windows_resilient_bootstrap.py'
@@ -52,7 +53,7 @@ jobs:
 
       - name: Compile changed surfaces
         run: |
-          python -m compileall radar\dashboard.py radar\forward_web.py radar\mexc_local_state.py radar\options_v21_live.py windows_node_entry.py tests\test_dashboard.py tests\test_mexc_local_state.py tests\test_options_v21_live.py tests\test_windows_resilient_bootstrap.py
+          python -m compileall radar\dashboard.py radar\cirv_local.py radar\forward_web.py radar\mexc_local_state.py radar\options_v21_live.py windows_node_entry.py tests\test_dashboard.py tests\test_cirv_local.py tests\test_mexc_local_state.py tests\test_options_v21_live.py tests\test_windows_resilient_bootstrap.py
 
       - name: Targeted failure-isolation tests
         run: |
