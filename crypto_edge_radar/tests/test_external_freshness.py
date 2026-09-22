@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import patch
 from datetime import datetime, timezone
 
 from radar.external_freshness import collector_freshness, fallback_freshness
