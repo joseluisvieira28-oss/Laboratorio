@@ -1,0 +1,28 @@
+{
+  "schema_version": "0.1",
+  "lab_id": "L2-RESILIENCY-001",
+  "year": 2025,
+  "classification": "DRIVE_32MIB_INGESTION_REOPENED",
+  "evidence": {
+    "master_manifest_drive_id": "1CyBlooXmDOjtzC4uyoyZAkcfi15FI-4_",
+    "part_size_target_bytes": 33554432,
+    "total_parts": 226,
+    "first_materialized_part": "20250530.zip.part0001",
+    "first_materialized_size_bytes": 33554432,
+    "first_materialized_sha256": "fcb6bc4e15baf3c04f6708332ea24a3bf04820e6cbf1cca8e752f4368fa09517",
+    "expected_first_part_sha256": "fcb6bc4e15baf3c04f6708332ea24a3bf04820e6cbf1cca8e752f4368fa09517",
+    "hash_match": true
+  },
+  "interpretation": "The prior runtime blocker observed with ~220 MiB Drive parts does not reproduce on the 32 MiB transport. Full byte-verification and reassembly are now operationally feasible in the current runtime.",
+  "scientific_state_unchanged": true,
+  "holdout_outcomes_opened": false,
+  "source_clock_diagnostic_opened": false,
+  "firewalls": {
+    "access_2026": false,
+    "post_outcome_tuning": false,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "main_merge": false
+  },
+  "next_action": "Verify all 226 32-MiB parts against the frozen manifest, reassemble each of the three ZIPs, verify original outer ZIP SHA256 values, then run only the frozen source-clock diagnostic before any 2025 holdout outcomes."
+}
