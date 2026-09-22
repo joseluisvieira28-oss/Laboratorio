@@ -17,8 +17,8 @@ from radar.ced1d_source_probe import (
 class CED1DRenderSourceProbeTests(unittest.TestCase):
     def test_exact_schema_validation(self):
         ok, n = _validate_payload([
-            {"symbol": SYMBOL, "fundingTime": START_MS, "fundingRate": "0.0001"},
-            {"symbol": SYMBOL, "fundingTime": END_MS, "fundingRate": "-0.0002"},
+            {"symbol": SYMBOL, "fundingTime": START_MS, "fundingRate": "0.0001", "markPrice": "100.0"},
+            {"symbol": SYMBOL, "fundingTime": END_MS, "fundingRate": "-0.0002", "markPrice": "101.0"},
         ])
         self.assertTrue(ok)
         self.assertEqual(n, 2)
@@ -26,7 +26,13 @@ class CED1DRenderSourceProbeTests(unittest.TestCase):
         self.assertFalse(_validate_payload([])[0])
         self.assertFalse(_validate_payload([{"symbol": SYMBOL}])[0])
         self.assertFalse(_validate_payload([
-            {"symbol": "BTCUSDT", "fundingTime": START_MS, "fundingRate": "0.1"}
+            {"symbol": SYMBOL, "fundingTime": START_MS, "fundingRate": "0.1", "markPrice": "0"}
+        ])[0])
+        self.assertFalse(_validate_payload([
+            {"symbol": SYMBOL, "fundingTime": START_MS, "fundingRate": "0.1"}
+        ])[0])
+        self.assertFalse(_validate_payload([
+            {"symbol": "BTCUSDT", "fundingTime": START_MS, "fundingRate": "0.1", "markPrice": "100"}
         ])[0])
 
     def test_aggregate_pass_requires_exact_schema_winner(self):
@@ -41,7 +47,7 @@ class CED1DRenderSourceProbeTests(unittest.TestCase):
             })
         with patch("radar.ced1d_source_probe.probe_host", side_effect=side_effect):
             result = ced1d_render_source_probe()
-        self.assertEqual(result["classification"], "OFFICIAL_ENDPOINT_SCHEMA_PASS")
+        self.assertEqual(result["classification"], "OFFICIAL_ENDPOINT_EXACT_SCHEMA_PASS")
         self.assertEqual(result["accessible_exact_schema_hosts"], [HOSTS[2]])
         self.assertFalse(result["used_as_forward_evidence"])
         self.assertFalse(result["collector_adoption_authorized"])
@@ -62,7 +68,7 @@ class CED1DRenderSourceProbeTests(unittest.TestCase):
             ],
         ):
             result = ced1d_render_source_probe()
-        self.assertEqual(result["classification"], "OFFICIAL_ENDPOINT_TRANSPORT_BLOCKED")
+        self.assertEqual(result["classification"], "OFFICIAL_ENDPOINT_EXACT_SCHEMA_BLOCKED")
         self.assertEqual(result["accessible_exact_schema_hosts"], [])
 
 
