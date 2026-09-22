@@ -1,0 +1,90 @@
+name: DLS Kamino Main Market Signature Feasibility V0.1
+
+on:
+  push:
+    branches:
+      - defi-liquidation-kamino-first-success-exec-v0.1
+    paths:
+      - '.github/workflows/dls-kamino-main-market-signature-feasibility-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: defi-liquidation-kamino-first-success-exec-v0.1
+          fetch-depth: 0
+      - name: Query one frozen main-market signature page
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import urllib.request, urllib.error, json, time, datetime
+          from pathlib import Path
+
+          RPC="https://api.mainnet-beta.solana.com"
+          MARKET="7u3HeHxYDLhnCoErrtycNokbQYbWGzLs6JSDqGAv5PfF"
+          ANCHOR="2JT9QV2zqYiYwDFVwbv6aPhRQkxi5Ynyq9sWi3i3nY18rqewZ3eiuNrHwHKsdcjaz6vm54EsTuh4AAwpTTM6pVwr"
+          payload={"jsonrpc":"2.0","id":1,"method":"getSignaturesForAddress","params":[MARKET,{"before":ANCHOR,"limit":1000,"commitment":"finalized"}]}
+          req=urllib.request.Request(RPC,data=json.dumps(payload).encode(),headers={"Content-Type":"application/json","User-Agent":"crypto-lab-source-audit/1.0"})
+          obj=None; err=None; http=None
+          for a in range(7):
+              try:
+                  with urllib.request.urlopen(req,timeout=45) as r:
+                      http=r.status; obj=json.loads(r.read()); break
+              except urllib.error.HTTPError as e:
+                  http=e.code
+                  if e.code==429 or 500<=e.code<600:
+                      time.sleep(2*(a+1)); continue
+                  err=f"HTTP_{e.code}"; break
+              except Exception as e:
+                  if a<6: time.sleep(2*(a+1)); continue
+                  err=type(e).__name__+":"+str(e)[:200]
+
+          rows=obj.get("result",[]) if isinstance(obj,dict) and isinstance(obj.get("result"),list) else []
+          rpc_error=obj.get("error") if isinstance(obj,dict) else None
+          ref=json.loads(Path("labs/DEFI_LIQUIDATION_SHOCK_001/source/KAMINO_CORRECTED_SMOKE_REFERENCE_MANIFEST_V0.2.json").read_text())
+          known={r["tx_signature"] for r in ref["rows"]}
+          sigs=[r.get("signature") for r in rows if isinstance(r,dict)]
+          times=[r.get("blockTime") for r in rows if isinstance(r,dict) and isinstance(r.get("blockTime"),int)]
+          slots=[r.get("slot") for r in rows if isinstance(r,dict) and isinstance(r.get("slot"),int)]
+          span=max(times)-min(times) if times else None
+          def iso(x): return datetime.datetime.fromtimestamp(x,datetime.timezone.utc).isoformat() if isinstance(x,int) else None
+          overlap=sorted(known & set(sigs))
+          global_span=2277
+          out={
+            "schema_version":"0.1","lab_id":"DEFI-LIQUIDATION-SHOCK-001",
+            "classification":"KAMINO_MAIN_MARKET_SIGNATURE_PAGE_PASS" if http==200 and not rpc_error and rows else "KAMINO_MAIN_MARKET_SIGNATURE_PAGE_BLOCKED",
+            "endpoint":RPC,"method":"getSignaturesForAddress","address":MARKET,"before_anchor":ANCHOR,"limit":1000,
+            "http_status":http,"rpc_error":rpc_error,"transport_error":err,
+            "row_count":len(rows),"unique_signatures":len(set(sigs)),
+            "newest_slot":max(slots) if slots else None,"oldest_slot":min(slots) if slots else None,
+            "newest_block_time_iso":iso(max(times)) if times else None,
+            "oldest_block_time_iso":iso(min(times)) if times else None,
+            "historical_span_seconds":span,"historical_span_hours":span/3600 if span is not None else None,
+            "program_global_reference_span_seconds":global_span,
+            "span_multiplier_vs_program_global":(span/global_span) if span is not None else None,
+            "err_nonnull_count":sum(1 for r in rows if isinstance(r,dict) and r.get("err") is not None),
+            "known_smoke_overlap_count":len(overlap),"known_smoke_overlap_signatures":overlap,
+            "slot_nonincreasing":all(slots[i]>=slots[i+1] for i in range(len(slots)-1)) if slots else None,
+            "block_time_nonincreasing":all(times[i]>=times[i+1] for i in range(len(times)-1)) if times else None,
+            "transaction_bodies_opened":False,
+            "governance":{"source_only":True,"outcome_blind":True,"prices":False,"returns":False,"pnl":False,"direction":False,"paid_data":False}
+          }
+          p=Path("labs/DEFI_LIQUIDATION_SHOCK_001/audit_receipts/DLS_KAMINO_MAIN_MARKET_SIGNATURE_FEASIBILITY_V0.1.json")
+          p.parent.mkdir(parents=True,exist_ok=True); p.write_text(json.dumps(out,indent=2,sort_keys=True)+"\n")
+          print(json.dumps({k:out[k] for k in ("classification","row_count","oldest_block_time_iso","historical_span_hours","span_multiplier_vs_program_global","known_smoke_overlap_count","err_nonnull_count")},indent=2,sort_keys=True))
+          PY
+      - name: Persist receipt
+        run: |
+          git config user.name "crypto-lab-source-audit"
+          git config user.email "actions@users.noreply.github.com"
+          git add labs/DEFI_LIQUIDATION_SHOCK_001/audit_receipts/DLS_KAMINO_MAIN_MARKET_SIGNATURE_FEASIBILITY_V0.1.json
+          git commit -m "audit: persist Kamino main-market signature feasibility"
+          git push origin HEAD:defi-liquidation-kamino-first-success-exec-v0.1
