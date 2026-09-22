@@ -125,6 +125,16 @@ def main(argv: list[str] | None = None) -> int:
         help="run one replay-safe public forward-shadow cycle and exit",
     )
 
+    forward_loop = sub.add_parser(
+        "forward-loop",
+        help="run the replay-safe public forward-shadow loop without an HTTP server",
+    )
+    forward_loop.add_argument(
+        "--interval",
+        type=float,
+        default=float(os.getenv("RADAR_SERVICE_INTERVAL", "30")),
+    )
+
     web = sub.add_parser(
         "web-service",
         help="run Render-compatible TFG + BNB public forward shadow watchers",
@@ -179,6 +189,20 @@ def main(argv: list[str] | None = None) -> int:
             state = runtime.run_cycle()
             print(json.dumps(state, sort_keys=True))
             return 0 if state.get("health") == "OK" else 2
+        except Exception as exc:
+            print(json.dumps({"status": "FAIL_CLOSED", "error": str(exc)}, sort_keys=True))
+            return 2
+
+    if args.command == "forward-loop":
+        try:
+            settings = Settings.from_env()
+            runtime = __import__(
+                "radar.forward_web", fromlist=["ForwardShadowRuntime"]
+            ).ForwardShadowRuntime(settings=settings)
+            runtime.run_loop(interval_seconds=args.interval)
+            return 0
+        except KeyboardInterrupt:
+            return 0
         except Exception as exc:
             print(json.dumps({"status": "FAIL_CLOSED", "error": str(exc)}, sort_keys=True))
             return 2
