@@ -50,5 +50,32 @@ class ExternalFreshnessTests(unittest.TestCase):
         self.assertIsNone(state["eligible_event_count"])
 
 
+
+    def test_ced1d_legacy_route_is_superseded_without_querying_github(self):
+        with patch("radar.external_freshness.fetch_runs") as fetch_runs, patch(
+            "radar.external_freshness.fetch_public_fallback"
+        ) as fallback:
+            result = all_external_freshness(
+                now=datetime(2026, 9, 22, 8, 0, tzinfo=timezone.utc)
+            )
+        ced = result["CED1D-0031"]
+        self.assertEqual(ced["collector_status"], "SUPERSEDED")
+        self.assertEqual(ced["freshness_classification"], "SUPERSEDED")
+        self.assertEqual(ced["superseded_by"], "RENDER_SHADOW_V0.3")
+        self.assertEqual(ced["new_forward_boundary"], "2026-09-22T00:00:00Z")
+        # Other collectors may still query GitHub; CED1D itself must never use the old route.
+        self.assertFalse(
+            any(
+                call.kwargs.get("branch") == "ced-1d-v3-byte-recovery-2026-09-17"
+                for call in fetch_runs.call_args_list
+            )
+        )
+        self.assertFalse(
+            any(
+                call.kwargs.get("branch") == "ced-1d-v3-byte-recovery-2026-09-17"
+                for call in fallback.call_args_list
+            )
+        )
+
 if __name__ == "__main__":
     unittest.main()
