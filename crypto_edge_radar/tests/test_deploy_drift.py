@@ -37,14 +37,36 @@ class DeployDriftTests(TestCase):
         self.assertFalse(r["in_sync"])
         self.assertEqual(r["canonical_head_commit"], head)
 
-    def test_source_failure_is_fail_closed(self):
+    def test_api_failure_uses_atom_fallback(self):
+        sha = "b" * 40
+        atom = f'<entry><link href="https://github.com/x/y/commit/{sha}"/></entry>'
+        with patch.dict(os.environ, {"RENDER_GIT_COMMIT": sha}, clear=True), patch(
+            "radar.deploy_drift._fetch_json",
+            side_effect=RuntimeError("rate limited"),
+        ), patch(
+            "radar.deploy_drift._fetch_text",
+            return_value=atom,
+        ):
+            r = deployment_drift_receipt(timeout=1)
+        self.assertEqual(r["classification"], "IN_SYNC")
+        self.assertTrue(r["in_sync"])
+        self.assertEqual(r["source"], "GITHUB_ATOM_FALLBACK")
+        self.assertIn("rate limited", r["primary_error"])
+
+    def test_both_sources_failure_is_fail_closed(self):
         with patch.dict(os.environ, {"RENDER_GIT_COMMIT": "a" * 40}, clear=True), patch(
             "radar.deploy_drift._fetch_json",
             side_effect=RuntimeError("boom"),
+        ), patch(
+            "radar.deploy_drift._fetch_text",
+            side_effect=RuntimeError("atom boom"),
         ):
             r = deployment_drift_receipt(timeout=1)
         self.assertEqual(r["classification"], "UNAVAILABLE_FAIL_CLOSED")
         self.assertIsNone(r["in_sync"])
+        self.assertIsNone(r["source"])
+        self.assertIn("boom", r["primary_error"])
+        self.assertIn("atom boom", r["fallback_error"])
 
 
 if __name__ == "__main__":
