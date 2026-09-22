@@ -1,7 +1,7 @@
 {
   "schema_version": "0.1",
   "date": "2026-09-22",
-  "classification": "LIVE_RUNTIME_OPTIONS_REPAIR_VERIFIED__TFG_VISIBILITY_VERIFIED__CONTINUITY_AND_DB_EXPIRY_RISKS_OPEN",
+  "classification": "LIVE_REPAIR_VERIFIED__CONTINUITY_HARDENING_READY__CREDENTIAL_AND_FREE_TIER_LIMITS_EXPLICIT",
   "options_v21": {
     "problem": "single Deribit row with invalid IV/index aborted entire live source window",
     "scientific_change": false,
@@ -53,7 +53,14 @@
     "accessible_programs": 0,
     "observed_http_status": 502,
     "source_data_pass": false,
-    "promising_reopening_trigger": "Solscan Enhanced historical indexed route: documentation exposes server-side time/program/status/instruction-discriminator filters. The playground currently advertises a Free API key/free-tier surface, while general Pro documentation also lists paid packages; entitlement must be verified before any source-only adoption."
+    "promising_reopening_trigger": "Solscan Enhanced historical indexed route: documentation exposes server-side time/program/status/instruction-discriminator filters. The playground currently advertises a Free API key/free-tier surface, while general Pro documentation also lists paid packages; entitlement must be verified before any source-only adoption.",
+    "solscan_enhanced_probe": {
+      "status": "AUTH_REQUIRED_NOT_EXECUTED",
+      "workflow_run": 35694979325,
+      "solscan_api_key_configured": false,
+      "request_executed_with_key": false,
+      "source_data_pass": false
+    }
   },
   "firewalls": {
     "main_merge": false,
@@ -114,5 +121,53 @@
     "direct_connector_error_class": "SSL_TLS_REQUIRED",
     "database_mutation_attempted": false,
     "readonly_snapshot_remediation_prepared": true
+  },
+  "forward_once_runtime": {
+    "status": "CANONICAL_MANUAL_RUNTIME_READY",
+    "qa_run": 35695665362,
+    "qa_conclusion": "SUCCESS",
+    "full_tests": "193/193 PASS",
+    "recurring_schedule_created": false,
+    "github_database_secret_configured": false,
+    "credential_gated_one_shot_executed": false,
+    "credential_gate_classification": "AUTH_REQUIRED_NOT_EXECUTED",
+    "database_mutation": false
+  },
+  "evidence_snapshot_readonly": {
+    "status": "PREPARED_BUT_AUTH_REQUIRED",
+    "qa_run": 35695665362,
+    "classification": "AUTH_REQUIRED_NOT_EXECUTED",
+    "database_mutation": false,
+    "secret_value_exposed": false,
+    "receipt_zip_sha256": "4bcd2100096f14173061dda47044fa7c6eeede0f1c662a0008c5d6c2bf9c148a",
+    "full_evidence_snapshot_created": false
+  },
+  "local_forward_loop_fallback": {
+    "status": "CANONICAL_READY_NOT_STARTED",
+    "qa_run": 35695995060,
+    "qa_conclusion": "SUCCESS",
+    "full_tests": "194/194 PASS",
+    "http_server": false,
+    "default_interval_seconds": 30,
+    "windows_launcher": "crypto_edge_radar/windows/START_FORWARD_LOOP_FAIL_CLOSED.bat",
+    "refuses_start_without_radar_database_url": true,
+    "credential_committed": false,
+    "pc_process_started": false
+  },
+  "runtime_identity_observability": {
+    "status": "CANONICAL_READY",
+    "qa_run": 35696081223,
+    "qa_conclusion": "SUCCESS",
+    "full_tests": "194/194 PASS",
+    "exposed_fields": [
+      "render",
+      "git_commit",
+      "git_branch",
+      "service_id",
+      "service_name",
+      "instance_id"
+    ],
+    "arbitrary_environment_exposed": false,
+    "secret_fields_exposed": false
   }
 }
