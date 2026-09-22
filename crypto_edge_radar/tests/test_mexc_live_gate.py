@@ -36,6 +36,7 @@ class GateTests(unittest.TestCase):
             "max_simultaneous_positions":1,
             "api_place_order_path":"/api/v1/private/order/create",
             "signal_identity":"sig",
+            "operator_standing_authority_id":"MEXC_FUTURES_STANDING_MICROLIVE_OPERATOR_AUTHORITY_V0.1",
             "max_initial_isolated_margin_fraction_of_equity":0.001,
             "max_concurrent_planned_risk_fraction_equity":0.003,
             "daily_stop_fraction_equity":0.003,
@@ -101,13 +102,34 @@ class GateTests(unittest.TestCase):
             "open_micro_live_positions":0
         }
 
-    def _run(self,td,authority,preflight=None,signal=None,risk=None):
+    def _standing(self):
+        return {
+            "authority_id":"MEXC_FUTURES_STANDING_MICROLIVE_OPERATOR_AUTHORITY_V0.1",
+            "status":"ACTIVE_STANDING_OPERATOR_AUTHORIZATION",
+            "scope":{
+                "exchange":"MEXC",
+                "product":"USDT_PERPETUAL_FUTURES",
+                "real_capital":True,
+                "micro_live_only":True,
+                "per_trade_reconfirmation_required":False
+            },
+            "standing_authorized_routes":[{
+                "strategy_id":"ETF-CME-INSTFLOW-001",
+                "direction":"SHORT",
+                "symbol":"BTC_USDT",
+                "scientific_tier":2
+            }]
+        }
+
+    def _run(self,td,authority,preflight=None,signal=None,risk=None,standing=None):
         a=self._write(td,"a.json",authority)
+        sa=self._write(td,"standing.json",standing or self._standing())
         p=self._write(td,"p.json",preflight or self._preflight())
         s=self._write(td,"s.json",signal or self._signal())
         r=self._write(td,"r.json",risk or self._risk())
         return validate_futures_short_execution(
-            authority_path=a,preflight_path=p,signal_path=s,risk_state_path=r,
+            authority_path=a,standing_authority_path=sa,
+            preflight_path=p,signal_path=s,risk_state_path=r,
             kill_switch_path=str(Path(td)/"none"),now_utc=NOW
         )
 
@@ -116,6 +138,23 @@ class GateTests(unittest.TestCase):
             out=self._run(td,self._authority(status="TEMPLATE_NOT_AUTHORITY"))
             self.assertFalse(out["pass"])
             self.assertIn("ACTIVE_CANDIDATE_SPECIFIC_AUTHORITY_ABSENT",out["blockers"])
+
+    def test_standing_operator_authority_removes_per_trade_reconfirmation_but_not_gates(self):
+        with tempfile.TemporaryDirectory() as td:
+            out=self._run(td,self._authority())
+            self.assertTrue(out["pass"],out)
+            self.assertEqual(
+                out["operator_standing_authority_id"],
+                "MEXC_FUTURES_STANDING_MICROLIVE_OPERATOR_AUTHORITY_V0.1"
+            )
+
+    def test_inactive_standing_operator_authority_blocks(self):
+        with tempfile.TemporaryDirectory() as td:
+            standing=self._standing()
+            standing["status"]="REVOKED"
+            out=self._run(td,self._authority(),standing=standing)
+            self.assertFalse(out["pass"])
+            self.assertIn("STANDING_OPERATOR_AUTHORITY_NOT_ACTIVE",out["blockers"])
 
     def test_venue_minimum_above_frozen_budget_blocks(self):
         with tempfile.TemporaryDirectory() as td:
