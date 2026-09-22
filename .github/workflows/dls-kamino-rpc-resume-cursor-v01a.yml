@@ -1,0 +1,92 @@
+name: DLS Kamino RPC Resume Cursor Extract V0.1A
+
+on:
+  push:
+    branches:
+      - defi-liquidation-kamino-rpc-resume-v0.1a
+    paths:
+      - '.github/workflows/dls-kamino-rpc-resume-cursor-v01a.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  extract-resume-cursor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: defi-liquidation-kamino-rpc-resume-v0.1a
+          fetch-depth: 0
+
+      - name: Download exact parent artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dls-kamino-rpc-first-success-v01
+          path: parent_artifact
+          run-id: 35689367726
+          github-token: ${{ github.token }}
+
+      - name: Extract deterministic resume cursor
+        run: |
+          python - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+
+          candidates = [
+              Path("parent_artifact/dls_kamino_rpc_boundary_v01/signatures_page_5000.json"),
+              Path("parent_artifact/signatures_page_5000.json"),
+          ]
+          page = next((p for p in candidates if p.exists()), None)
+          out_path = Path("labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_RPC_RESUME_CURSOR_V0.1A.json")
+
+          receipt = {
+              "schema_version":"0.1A",
+              "lab_id":"DEFI-LIQUIDATION-SHOCK-001",
+              "parent_run_id":35689367726,
+              "parent_artifact_id":10681229919,
+              "parent_artifact_sha256":"bd0fd03a095e93fbdb95bfd6266686ee076b11ab863822f06430b1c77c6d3e74",
+              "source_page":"signatures_page_5000.json",
+              "target_lower_boundary":"2023-11-17T13:25:35Z",
+              "prices":False,"returns":False,"pnl":False,"direction":False,
+              "live_trading":False,"orders":False,"wallets":False,
+              "exchange_mutation":False,"paid_source":False,"merge_main":False
+          }
+
+          if page is None:
+              receipt.update(classification="KAMINO_RPC_RESUME_CURSOR_EXTRACTION_FAIL_CLOSED",reason="page_missing")
+          else:
+              raw=page.read_bytes()
+              receipt["page_sha256"]=hashlib.sha256(raw).hexdigest()
+              obj=json.loads(raw)
+              rows=obj.get("result")
+              if not isinstance(rows,list) or not rows:
+                  receipt.update(classification="KAMINO_RPC_RESUME_CURSOR_EXTRACTION_FAIL_CLOSED",reason="result_not_nonempty_list")
+              else:
+                  row=rows[-1]
+                  if not isinstance(row,dict) or not isinstance(row.get("signature"),str) or row.get("slot") is None or row.get("blockTime") is None:
+                      receipt.update(classification="KAMINO_RPC_RESUME_CURSOR_EXTRACTION_FAIL_CLOSED",reason="final_row_missing_required_fields")
+                  else:
+                      receipt.update(
+                          classification="KAMINO_RPC_RESUME_CURSOR_EXTRACTED",
+                          page_row_count=len(rows),
+                          resume_before_signature=row["signature"],
+                          resume_slot=int(row["slot"]),
+                          resume_block_time=int(row["blockTime"]),
+                          resume_err=row.get("err")
+                      )
+
+          out_path.write_text(json.dumps(receipt,indent=2,sort_keys=True)+"\n",encoding="utf-8")
+          print(json.dumps(receipt,indent=2,sort_keys=True))
+          PY
+
+      - name: Persist cursor receipt
+        run: |
+          git config user.name "crypto-lab-source-audit"
+          git config user.email "actions@users.noreply.github.com"
+          git add labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_RPC_RESUME_CURSOR_V0.1A.json
+          git commit -m "dls: persist Kamino RPC resume cursor v0.1a" || true
+          git push origin HEAD:defi-liquidation-kamino-rpc-resume-v0.1a
