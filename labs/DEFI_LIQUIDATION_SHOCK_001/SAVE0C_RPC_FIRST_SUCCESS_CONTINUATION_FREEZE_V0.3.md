@@ -9,14 +9,17 @@ Parent V0.2:
 - reason: `max_pages_reached_before_lower_boundary`
 - pages: `5000`
 - signatures: `5,000,000`
-- oldest time: `2023-02-04T05:28:20Z`
+- oldest blockTime integer: `1675486100`
+- oldest UTC: `2023-02-04T04:48:20Z`
 
 Deterministic V0.3 resume cursor:
+- extraction run: `35770637623`
 - classification: `SAVE0C_RPC_RESUME_CURSOR_EXTRACTED`
 - page SHA256: `f7a1d4d00698c8f51f92a4fafb99cdc3eb59ff298fdd49e2332dd94701c57864`
 - signature: `4amYSo5KXHFHmqH8oFgjeBZhzb4PQFBHfhHH57rNf9MNYmKCxzf15gZVmYzMjMF2Ey9FS2k7PWdzenyr2B6mLQm3`
 - slot: `175932243`
-- time: `2023-02-04T05:28:20Z`
+- blockTime integer: `1675486100`
+- UTC: `2023-02-04T04:48:20Z`
 - cursor tx status: failed with InstructionError; cursor-only, never a realized event
 
 Scientific identity unchanged:
@@ -38,5 +41,8 @@ Continuation:
 - page cap before crossing => `SAVE0C_FIRST_SUCCESS_BOUNDARY_RPC_HISTORY_BLOCKED`;
 - lower boundary crossed with no match in earliest slice => `SAVE0C_FIRST_SUCCESS_BOUNDARY_RPC_NO_MATCH_IN_EARLIEST_SLICE`;
 - any structural inconsistency => fail closed.
+
+Evidence correction note:
+The V0.2 persisted receipt's anchor ISO text was generated from a manually entered timestamp that differed from the cursor's authoritative integer blockTime. No V0.2 boundary was crossed and no RAW event was adjudicated in that run, so this was metadata-only and had no scientific outcome effect. V0.3 uses the exact extracted integer blockTime above.
 
 Firewall: prices=false; returns=false; pnl=false; direction=false; protected 2025/2026 market outcomes=false; live trading=false; orders=false; wallets=false; exchange mutation=false; paid source=false; merge main=false.
