@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import base64
+import gzip
 import hashlib
 import json
 from typing import Any
@@ -128,3 +130,37 @@ def build_private_evidence_snapshot(store) -> dict[str, Any]:
         "events": events,
         "event_keys": keys,
     }
+
+
+def emit_snapshot_log_chunks(store, *, chunk_chars: int = 8000) -> dict[str, Any]:
+    if chunk_chars < 1000:
+        raise ValueError("chunk_chars too small")
+    snapshot = build_private_evidence_snapshot(store)
+    raw = json.dumps(
+        snapshot,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+    ).encode("utf-8")
+    packed = gzip.compress(raw, compresslevel=9)
+    encoded = base64.b64encode(packed).decode("ascii")
+    total = (len(encoded) + chunk_chars - 1) // chunk_chars
+    header = {
+        "snapshot_sha256": hashlib.sha256(raw).hexdigest(),
+        "gzip_sha256": hashlib.sha256(packed).hexdigest(),
+        "event_count": snapshot["event_count"],
+        "key_count": snapshot["key_count"],
+        "chunk_chars": chunk_chars,
+        "chunk_count": total,
+        "database_mutation": False,
+        "secret_values_included": False,
+    }
+    print("RADAR_BACKUP_HEADER " + json.dumps(header, sort_keys=True), flush=True)
+    for idx in range(total):
+        chunk = encoded[idx * chunk_chars : (idx + 1) * chunk_chars]
+        print(
+            f"RADAR_BACKUP_CHUNK {idx + 1}/{total} {chunk}",
+            flush=True,
+        )
+    print("RADAR_BACKUP_END", flush=True)
+    return header
