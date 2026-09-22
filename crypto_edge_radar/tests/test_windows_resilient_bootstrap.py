@@ -148,5 +148,20 @@ class WindowsResilientBootstrapTests(unittest.TestCase):
         self.assertIn("v0.14.4-win-cirv-eight-motor", script)
 
 
+    def test_v0144_watchdog_autostart_and_upgrade_are_fail_closed(self):
+        root = Path(__file__).resolve().parents[1] / "windows"
+        watchdog = (root / "RUN_RADAR_24X7_V0144.ps1").read_text(encoding="utf-8")
+        installer = (root / "INSTALL_RADAR_AUTOSTART_V0144.ps1").read_text(encoding="utf-8")
+        upgrade = (root / "UPGRADE_RADAR_V0144.ps1").read_text(encoding="utf-8")
+        self.assertIn("CryptoEdgeRadarV0144Watchdog", watchdog)
+        self.assertIn('TaskName "CryptoEdgeRadarV0144"', installer)
+        self.assertIn("v0.14.3.3-win-single-instance-lock", upgrade)
+        self.assertIn("v0.14.4-win-cirv-eight-motor", upgrade)
+        self.assertIn("registry.focus_loaded", upgrade)
+        self.assertIn("cirv_status", upgrade)
+        self.assertIn("Rolling back", upgrade)
+        self.assertIn("Refusing automatic", upgrade)
+
+
 if __name__ == "__main__":
     unittest.main()
