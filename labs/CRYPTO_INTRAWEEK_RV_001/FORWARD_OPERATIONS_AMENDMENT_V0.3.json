@@ -1,0 +1,54 @@
+{
+  "amendment_id": "CIRV-BTCETH-FORWARD-OPS-V0.3",
+  "date_frozen": "2026-09-22",
+  "branch": "crypto-intraweek-rv-forward-v0.1",
+  "parent_forward_id": "CIRV-BTCETH-FORWARD-001",
+  "status": "FROZEN_PROSPECTIVE_OPERATIONAL_REMEDIATION",
+  "reason": "The V0.2 scheduled workflow existed only on a non-default branch, so GitHub schedule did not produce canonical forward runs. Runtime audit on 2026-09-22 found no forward runs or artifacts since the 2026-09-20 freeze boundary.",
+  "historical_adjudication": {
+    "2026-09-21": "MISSED_FORWARD_TARGET_NO_CANONICAL_RUN_EVIDENCE",
+    "2026-09-22": "MISSED_FORWARD_TARGET_NO_CANONICAL_RUN_EVIDENCE",
+    "backfill_forbidden": true,
+    "scientific_verdict_changed": false
+  },
+  "effective_forward_start": "2026-09-23",
+  "scientific_contract": {
+    "assets": [
+      "BTCUSDT",
+      "ETHUSDT"
+    ],
+    "realized_variance": "sum squared 5m close-to-close log returns on UTC day; accepted day >=270 returns",
+    "baseline": "HAR logRV1/logRV5/logRV22",
+    "challenger": "same HAR plus target-day Tue-Sun dummies, Monday base",
+    "rolling_training_rows": 730,
+    "minimum_training_rows": 500,
+    "metrics": [
+      "QLIKE",
+      "log-MSE"
+    ],
+    "model_parameters_changed": false,
+    "sampling_changed": false,
+    "target_definition_changed": false
+  },
+  "source_transport_remediation": {
+    "completed_prior_months": "Binance Vision USD-M monthly 5m archives",
+    "completed_current_month_days": "Binance USD-M public /fapi/v1/klines, exact UTC day, 5m",
+    "target_day_requested": false,
+    "purpose": "Remove dependence on publication timing of Binance Vision daily ZIPs while preserving identical 5m candle semantics and fail-closed daily coverage gate."
+  },
+  "trigger_remediation": {
+    "canonical_schedule_on_feature_branch_rejected": true,
+    "new_trigger": "prospective daily trigger on open diagnostic PR synchronization",
+    "trigger_file": "labs/CRYPTO_INTRAWEEK_RV_001/CIRV_FORWARD_DAILY_TRIGGER.txt",
+    "target_must_equal_trigger_date": true,
+    "no_retroactive_trigger": true
+  },
+  "safety": {
+    "research_only": true,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "wallet_access": false,
+    "merge_to_main": false,
+    "pnl_authorized": false
+  }
+}
