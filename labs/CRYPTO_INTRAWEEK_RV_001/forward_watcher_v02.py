@@ -6,7 +6,8 @@ import numpy as np
 import pandas as pd
 
 ASSETS=["BTCUSDT","ETHUSDT"]
-BASE="https://data.binance.vision/data/futures/um"\nAPI="https://fapi.binance.com/fapi/v1/klines"
+BASE="https://data.binance.vision/data/futures/um"
+API="https://fapi.binance.com/fapi/v1/klines"
 BOUNDARY=pd.Timestamp("2026-09-20",tz="UTC")
 FIRST_TARGET=pd.Timestamp("2026-09-21",tz="UTC")
 
