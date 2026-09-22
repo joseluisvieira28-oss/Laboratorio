@@ -1,9 +1,9 @@
-name: DLS Drift Historical S3 HEAD Calibration V0.1
+name: DLS Drift Historical S3 HEAD Calibration V0.2A
 
 on:
   push:
     branches:
-      - dls-drift-historical-s3-head-probe-v0.1
+      - dls-drift-historical-s3-head-probe-v0.2a
     paths:
       - '.github/workflows/dls-drift-historical-s3-head-v01.yml'
   workflow_dispatch:
@@ -24,17 +24,17 @@ jobs:
         with:
           python-version: '3.12'
       - name: Compile
-        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/probe_drift_historical_s3_head_v0_1.py
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/probe_drift_historical_s3_head_v0_2.py
       - name: Execute HEAD-only calibration
         run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/probe_drift_historical_s3_head_v0_1.py
       - name: Persist receipt
         if: always()
         run: |
-          if [ -f labs/DEFI_LIQUIDATION_SHOCK_001/DRIFT_HISTORICAL_S3_HEAD_CALIBRATION_RECEIPT_V0.1.json ]; then
+          if [ -f labs/DEFI_LIQUIDATION_SHOCK_001/DRIFT_HISTORICAL_S3_HEAD_CALIBRATION_RECEIPT_V0.2.json ]; then
             git config user.name "crypto-lab-source-audit"
             git config user.email "actions@users.noreply.github.com"
             git add labs/DEFI_LIQUIDATION_SHOCK_001/DRIFT_HISTORICAL_S3_HEAD_CALIBRATION_RECEIPT_V0.1.json
-            git commit -m "dls: persist Drift historical S3 HEAD calibration receipt v0.1" || true
+            git commit -m "dls: persist corrected Drift historical S3 HEAD calibration receipt v0.2" || true
             git push origin HEAD:dls-drift-historical-s3-head-probe-v0.1
           fi
       - name: Firewall
