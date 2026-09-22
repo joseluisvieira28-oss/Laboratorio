@@ -1,0 +1,94 @@
+{
+  "receipt_id": "RADAR_V0142_FORWARD_FAILURE_ISOLATION_FINAL_2026-09-22",
+  "status": "VALIDATED_HOTFIX",
+  "incident": {
+    "observed_control_room_health": "DEGRADED_FAIL_CLOSED",
+    "observed_counts": {
+      "armed": 0,
+      "shadow": 1,
+      "gated": 1,
+      "blocked": 5
+    },
+    "root_source_error": "OptionsV21SourceError:Deribit trade has invalid IV/index",
+    "propagation_bug": "Dashboard treated any shared forward runtime DEGRADED_FAIL_CLOSED state as a blocker for all five local-forward motors, even when the error belonged to one candidate."
+  },
+  "correction": {
+    "build_id": "v0.14.2-win-forward-failure-isolation",
+    "candidate_specific_isolation": true,
+    "error_mapping": {
+      "BNB-LAUNCHPOOL-DEMAND-001": [
+        "bnb_launchpool"
+      ],
+      "TFG-DONCHIAN-REGIME-ADAPTATION-V1": [
+        "tfg",
+        "tfg_forward_metrics"
+      ],
+      "OPTIONS-SPOTPERP-001-V2.1": [
+        "options_v21",
+        "options_v21_metrics"
+      ],
+      "ETF-CME-INSTFLOW-001": [
+        "etf_exec_v2",
+        "etf_cme_signal"
+      ],
+      "EMA6H-50X200-REGIME-DEPENDENCY-001": [
+        "ema6h_regime",
+        "ema6h_regime_metrics"
+      ]
+    },
+    "shared_fatal_errors_still_block_all": [
+      "evidence_chain",
+      "runtime"
+    ],
+    "overall_degraded_banner_preserved_when_any_motor_is_fail_closed": true,
+    "options_bad_row_behavior_changed": false,
+    "options_diagnostics_improved": true,
+    "launcher_requires_exact_build_id": true,
+    "launcher_registry_version": "3.6",
+    "launcher_focus_required": "7/7",
+    "unrelated_port_process_termination_forbidden": true
+  },
+  "validation": {
+    "full_regression": {
+      "run_id": 35698151469,
+      "code_head": "bb04ba55f5edb39f1c2771438f510beef20a8afa",
+      "result": "SUCCESS",
+      "tests": "201/201 PASS",
+      "note": "Includes candidate-specific isolation tests and shared evidence-chain fatal blocking test."
+    },
+    "final_focused_package": {
+      "run_id": 35698889046,
+      "job_id": 106651922357,
+      "code_head": "741a59da3a7d2c6a6409c41a5e6177c395c19eaf",
+      "result": "SUCCESS",
+      "tests": "20/20 PASS",
+      "package_selftest": "PASS",
+      "powershell_syntax": "PASS",
+      "exact_v0142_launcher_identity_check": "PASS"
+    }
+  },
+  "artifact": {
+    "id": 10681548394,
+    "name": "crypto-edge-radar-v0142-forward-failure-isolation",
+    "sha256": "e3d1d2e648fc7af088c61a428bb48514b89e492bd55cf43f49a161a27c8ab874",
+    "executable_sha256": "40f5abb815d366feaa8b379de75d2a6fc297c985d046f2d59bde47f7c7109127"
+  },
+  "expected_operator_behavior": {
+    "old_v0141_running": "launcher detects missing/different build_id and replaces only CryptoEdgeRadarNode",
+    "expected_if_options_is_only_forward_error": {
+      "system_health": "DEGRADED_FAIL_CLOSED",
+      "armed": 0,
+      "shadow": 5,
+      "gated": 1,
+      "blocked": 1,
+      "blocked_motor": "OPTIONS-SPOTPERP-001-V2.1"
+    },
+    "note": "Counts are an expectation conditional on Options being the only active candidate-specific forward error; actual runtime remains authoritative."
+  },
+  "science_changed": false,
+  "thresholds_changed": false,
+  "risk_changed": false,
+  "live_order_created": false,
+  "exchange_mutation_performed": false,
+  "main_merged": false
+}
