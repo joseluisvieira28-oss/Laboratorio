@@ -120,6 +120,11 @@ def main(argv: list[str] | None = None) -> int:
     service.add_argument("--interval", type=float, default=30.0)
     service.add_argument("--max-cycles", type=int, default=None)
 
+    sub.add_parser(
+        "forward-once",
+        help="run one replay-safe public forward-shadow cycle and exit",
+    )
+
     web = sub.add_parser(
         "web-service",
         help="run Render-compatible TFG + BNB public forward shadow watchers",
@@ -164,6 +169,19 @@ def main(argv: list[str] | None = None) -> int:
     isolated.add_argument("--equity", type=float, required=True)
 
     args = parser.parse_args(argv)
+
+    if args.command == "forward-once":
+        try:
+            settings = Settings.from_env()
+            runtime = __import__(
+                "radar.forward_web", fromlist=["ForwardShadowRuntime"]
+            ).ForwardShadowRuntime(settings=settings)
+            state = runtime.run_cycle()
+            print(json.dumps(state, sort_keys=True))
+            return 0 if state.get("health") == "OK" else 2
+        except Exception as exc:
+            print(json.dumps({"status": "FAIL_CLOSED", "error": str(exc)}, sort_keys=True))
+            return 2
 
     if args.command == "web-service":
         try:
