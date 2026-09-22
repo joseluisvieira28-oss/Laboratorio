@@ -68,23 +68,37 @@ try {
         }
 
         $riskOut=Join-Path $radarRoot "mexc_account_risk_state.json"
+        $riskRoot=Join-Path $radarRoot "live_receipts"
         $riskExe=Join-Path $radarRoot "dist\MEXCRiskState.exe"
+        $risk=$null
+
         if (Test-Path $riskExe) {
-            & $riskExe --preflight $receipt --receipt-root (Join-Path $radarRoot "live_receipts") --out $riskOut
-            $riskExit=$LASTEXITCODE
+            $riskArgs=@(
+                "--preflight", $receipt,
+                "--receipt-root", $riskRoot,
+                "--out", $riskOut
+            )
+            $proc=Start-Process -FilePath $riskExe -ArgumentList $riskArgs -NoNewWindow -Wait -PassThru
+            $riskExit=$proc.ExitCode
         } elseif (Get-Command python -ErrorAction SilentlyContinue) {
-            & python ".\scripts\mexc_risk_state.py" --preflight $receipt --receipt-root ".\live_receipts" --out $riskOut
+            & python ".\scripts\mexc_risk_state.py" --preflight $receipt --receipt-root $riskRoot --out $riskOut
             $riskExit=$LASTEXITCODE
         } else {
             throw "MEXCRiskState.exe and Python are both unavailable."
         }
-        if (Test-Path $riskOut) {
-            $risk=Get-Content $riskOut -Raw | ConvertFrom-Json
-            Write-Host ("ACCOUNT RISK FIREWALL       : " + $risk.status)
-            Write-Host ("Daily realized loss         : " + ([math]::Round(100*[double]$risk.daily_realized_loss_fraction_equity,4)) + "%")
-            Write-Host ("Weekly realized loss        : " + ([math]::Round(100*[double]$risk.weekly_realized_loss_fraction_equity,4)) + "%")
-            Write-Host ("Concurrent planned risk     : " + ([math]::Round(100*[double]$risk.concurrent_planned_risk_fraction_equity,4)) + "%")
+
+        if ($riskExit -ne 0) {
+            throw "MEXC risk-state generator failed closed with exit code $riskExit."
         }
+        if (-not (Test-Path $riskOut)) {
+            throw "Risk-state receipt was not created."
+        }
+
+        $risk=Get-Content $riskOut -Raw | ConvertFrom-Json
+        Write-Host ("ACCOUNT RISK FIREWALL       : " + $risk.status)
+        Write-Host ("Daily realized loss         : " + ([math]::Round(100*[double]$risk.daily_realized_loss_fraction_equity,4)) + "%")
+        Write-Host ("Weekly realized loss        : " + ([math]::Round(100*[double]$risk.weekly_realized_loss_fraction_equity,4)) + "%")
+        Write-Host ("Concurrent planned risk     : " + ([math]::Round(100*[double]$risk.concurrent_planned_risk_fraction_equity,4)) + "%")
 
         Write-Host "-------------------------------------------------------------------"
         if ($pf.pass -eq $true -and $null -ne $candidate -and $candidate.pass -eq $true -and $risk.status -eq "PASS") {
