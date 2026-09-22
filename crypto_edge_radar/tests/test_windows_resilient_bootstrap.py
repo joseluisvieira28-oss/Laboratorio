@@ -79,6 +79,47 @@ class WindowsResilientBootstrapTests(unittest.TestCase):
             finally:
                 os.chdir(old)
 
+    def test_duplicate_node_is_rejected_before_any_collector_or_dashboard(self):
+        with (
+            patch.object(entry, "_acquire_single_instance_lock", return_value=(False, "DUPLICATE_LOCAL_NODE")),
+            patch.object(entry, "_resource_path") as resource_path,
+            patch.object(entry, "require_dh03_clock_preflight") as clock_preflight,
+            patch.object(entry, "_start_dh03_thread") as start_dh03,
+            patch.object(entry, "_start_forward_thread") as start_forward,
+            patch.object(entry, "_start_render_sentinel_thread") as start_sentinel,
+            patch.object(entry, "main") as main,
+        ):
+            rc = entry.run()
+
+        self.assertEqual(rc, 3)
+        resource_path.assert_not_called()
+        clock_preflight.assert_not_called()
+        start_dh03.assert_not_called()
+        start_forward.assert_not_called()
+        start_sentinel.assert_not_called()
+        main.assert_not_called()
+
+    def test_single_instance_lock_is_released_after_dashboard_returns(self):
+        with tempfile.TemporaryDirectory() as td:
+            old = os.getcwd()
+            os.chdir(td)
+            try:
+                with (
+                    patch.object(entry, "_resource_path", side_effect=self._resource),
+                    patch.object(entry, "_acquire_single_instance_lock", return_value=(True, "LOCK_ACQUIRED")),
+                    patch.object(entry, "_release_single_instance_lock") as release_lock,
+                    patch.object(entry, "require_dh03_clock_preflight", return_value={"pass": True}),
+                    patch.object(entry, "_start_dh03_thread"),
+                    patch.object(entry, "_start_forward_thread"),
+                    patch.object(entry, "_start_render_sentinel_thread"),
+                    patch.object(entry, "main", return_value=0),
+                ):
+                    rc = entry.run()
+                self.assertEqual(rc, 0)
+                release_lock.assert_called_once()
+            finally:
+                os.chdir(old)
+
     def test_launcher_has_duplicate_and_unrelated_process_guards(self):
         script = (Path(__file__).resolve().parents[1] / "windows" / "START_RADAR_RECOVERY_V0141.ps1").read_text(encoding="utf-8")
         self.assertIn("CryptoEdgeRadarV0143Launcher", script)
@@ -94,10 +135,10 @@ class WindowsResilientBootstrapTests(unittest.TestCase):
         self.assertIn("Register-ScheduledTask", installer)
         self.assertIn("-AtLogOn", installer)
 
-    def test_launcher_supports_stable_onedir_and_exact_v01432_identity(self):
+    def test_launcher_supports_stable_onedir_and_exact_v01433_identity(self):
         script = (Path(__file__).resolve().parents[1] / "windows" / "START_RADAR_RECOVERY_V0141.ps1").read_text(encoding="utf-8")
         self.assertIn("CryptoEdgeRadarNode\\CryptoEdgeRadarNode.exe", script)
-        self.assertIn("v0.14.3.2-win-live-state-reconciliation", script)
+        self.assertIn("v0.14.3.3-win-single-instance-lock", script)
 
 
 if __name__ == "__main__":
