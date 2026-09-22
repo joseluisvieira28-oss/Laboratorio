@@ -1,0 +1,36 @@
+name: TFG Unresolved Visibility V0.1
+
+on:
+  pull_request:
+    branches:
+      - crypto-edge-radar-postgres-v0.5
+  push:
+    branches:
+      - tfg-unresolved-visibility-v0.1
+    paths:
+      - 'crypto_edge_radar/radar/tfg_forward_metrics.py'
+      - 'crypto_edge_radar/tests/test_tfg_forward_metrics.py'
+      - 'crypto_edge_radar/authorities/TFG_DONCHIAN_UNRESOLVED_VISIBILITY_AMENDMENT_01.md'
+      - '.github/workflows/tfg-unresolved-visibility-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: crypto_edge_radar
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install runtime
+        run: python -m pip install -e .
+      - name: Targeted TFG metrics tests
+        run: python -m unittest tests.test_tfg_forward_metrics -v
+      - name: Full deterministic suite
+        run: python -m unittest discover -s tests -v
