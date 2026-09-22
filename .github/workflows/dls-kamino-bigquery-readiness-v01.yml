@@ -1,0 +1,191 @@
+name: DLS Kamino BigQuery Readiness V0.1
+
+on:
+  push:
+    branches:
+      - defi-liquidation-kamino-first-success-exec-v0.1
+    paths:
+      - '.github/workflows/dls-kamino-bigquery-readiness-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  readiness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+      GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+      GOOGLE_APPLICATION_CREDENTIALS_JSON: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
+      GCP_CREDENTIALS: ${{ secrets.GCP_CREDENTIALS }}
+      BIGQUERY_CREDENTIALS: ${{ secrets.BIGQUERY_CREDENTIALS }}
+      GOOGLE_APPLICATION_CREDENTIALS_SECRET: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
+      GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+      GOOGLE_CLOUD_PROJECT_SECRET: ${{ secrets.GOOGLE_CLOUD_PROJECT }}
+      BIGQUERY_PROJECT_ID: ${{ secrets.BIGQUERY_PROJECT_ID }}
+      GOOGLE_PROJECT_ID: ${{ secrets.GOOGLE_PROJECT_ID }}
+      GCP_PROJECT: ${{ secrets.GCP_PROJECT }}
+      BIGQUERY_BILLING_PROJECT: ${{ secrets.BIGQUERY_BILLING_PROJECT }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: defi-liquidation-kamino-first-success-exec-v0.1
+          fetch-depth: 0
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Check auth presence, instantiate frozen first chunk, dry run only
+        shell: bash
+        run: |
+          set +e
+          mkdir -p labs/DEFI_LIQUIDATION_SHOCK_001/audit_receipts
+          python - <<'PY'
+          from pathlib import Path
+          import json, os
+          names=[
+            "GOOGLE_CREDENTIALS","GCP_SA_KEY","GOOGLE_APPLICATION_CREDENTIALS_JSON",
+            "GCP_CREDENTIALS","BIGQUERY_CREDENTIALS","GOOGLE_APPLICATION_CREDENTIALS_SECRET"
+          ]
+          present={n:bool(os.environ.get(n)) for n in names}
+          Path("/tmp/dls_bq_secret_presence.json").write_text(json.dumps(present,sort_keys=True))
+          selected=""
+          for n in names:
+              v=os.environ.get(n,"")
+              if v.strip().startswith("{"):
+                  Path("/tmp/dls_gcp_cred.json").write_text(v)
+                  selected=n
+                  break
+          Path("/tmp/dls_bq_selected_source.txt").write_text(selected)
+          PY
+
+          AUTH_OK=false
+          if [ -s /tmp/dls_gcp_cred.json ]; then
+            gcloud auth activate-service-account --key-file=/tmp/dls_gcp_cred.json >/tmp/dls_auth_stdout.txt 2>/tmp/dls_auth_stderr.txt
+            if [ $? -eq 0 ]; then AUTH_OK=true; fi
+          else
+            gcloud auth print-access-token >/tmp/dls_token.txt 2>/tmp/dls_auth_stderr.txt
+            if [ $? -eq 0 ] && [ -s /tmp/dls_token.txt ]; then AUTH_OK=true; fi
+          fi
+          rm -f /tmp/dls_token.txt
+
+          PROJECT=""
+          for n in GCP_PROJECT_ID GOOGLE_CLOUD_PROJECT_SECRET BIGQUERY_PROJECT_ID GOOGLE_PROJECT_ID GCP_PROJECT BIGQUERY_BILLING_PROJECT; do
+            eval "v=\${$n}"
+            if [ -n "$v" ]; then PROJECT="$v"; break; fi
+          done
+          if [ -z "$PROJECT" ] && [ -s /tmp/dls_gcp_cred.json ]; then
+            PROJECT=$(python - <<'PY'
+          import json
+          try:
+              print(json.load(open("/tmp/dls_gcp_cred.json")).get("project_id",""))
+          except Exception:
+              print("")
+          PY
+            )
+          fi
+
+          export AUTH_OK PROJECT
+          python - <<'PY'
+          from pathlib import Path
+          import re, hashlib, os, json
+          src=Path("labs/DEFI_LIQUIDATION_SHOCK_001/source/BIGQUERY_BOUNDED_CANDIDATE_CENSUS_V0_3.sql")
+          text=src.read_text()
+          reps=[
+            (r"DECLARE chunk_start TIMESTAMP DEFAULT TIMESTAMP\('[^']+'\);",
+             "DECLARE chunk_start TIMESTAMP DEFAULT TIMESTAMP('2023-11-17T13:25:35Z');"),
+            (r"DECLARE chunk_end\s+TIMESTAMP DEFAULT TIMESTAMP\('[^']+'\);",
+             "DECLARE chunk_end   TIMESTAMP DEFAULT TIMESTAMP('2023-11-24T13:25:35Z');"),
+            (r"DECLARE target_program_id STRING DEFAULT '[^']+';",
+             "DECLARE target_program_id STRING DEFAULT 'KLend2g3cP87fffoy8q1mQqGKjrxjC8boSyAYavgmjD';"),
+          ]
+          inst=text
+          counts=[]
+          for pat,val in reps:
+              inst,n=re.subn(pat,val,inst,count=1)
+              counts.append(n)
+          if counts != [1,1,1]:
+              raise SystemExit("INSTANTIATION_FAIL_CLOSED:"+repr(counts))
+          out=Path("/tmp/DLS_KAMINO_FIRST_SUCCESS_CHUNK_0001_V0_3.sql")
+          out.write_text(inst)
+          meta={
+            "canonical_sql_sha256":hashlib.sha256(text.encode()).hexdigest(),
+            "instantiated_sql_sha256":hashlib.sha256(inst.encode()).hexdigest(),
+            "substitution_counts":counts,
+            "chunk_start":"2023-11-17T13:25:35Z",
+            "chunk_end_exclusive":"2023-11-24T13:25:35Z",
+            "program_id":"KLend2g3cP87fffoy8q1mQqGKjrxjC8boSyAYavgmjD",
+            "scientific_rule_changes":False
+          }
+          Path("/tmp/dls_bq_instantiation.json").write_text(json.dumps(meta,indent=2,sort_keys=True))
+          PY
+
+          DRY_ATTEMPT=false
+          DRY_PASS=false
+          if [ "$AUTH_OK" = true ] && [ -n "$PROJECT" ]; then
+            DRY_ATTEMPT=true
+            bq query --project_id="$PROJECT" --use_legacy_sql=false --dry_run < /tmp/DLS_KAMINO_FIRST_SUCCESS_CHUNK_0001_V0_3.sql > /tmp/dls_bq_dryrun.txt 2>&1
+            if [ $? -eq 0 ]; then DRY_PASS=true; fi
+          else
+            : > /tmp/dls_bq_dryrun.txt
+          fi
+          export DRY_ATTEMPT DRY_PASS
+
+          python - <<'PY'
+          from pathlib import Path
+          import json, os, re, hashlib
+          presence=json.loads(Path("/tmp/dls_bq_secret_presence.json").read_text())
+          inst=json.loads(Path("/tmp/dls_bq_instantiation.json").read_text())
+          raw=Path("/tmp/dls_bq_dryrun.txt").read_text(errors="replace")
+          nums=[int(x.replace(",","")) for x in re.findall(r"([0-9][0-9,]*)\s+bytes",raw,re.I)]
+          est=max(nums) if nums else None
+          auth=os.environ.get("AUTH_OK")=="true"
+          project=bool(os.environ.get("PROJECT"))
+          attempted=os.environ.get("DRY_ATTEMPT")=="true"
+          passed=os.environ.get("DRY_PASS")=="true"
+          if not auth or not project:
+              status="BIGQUERY_EXECUTION_CREDENTIAL_BLOCKED"
+          elif not passed:
+              status="BIGQUERY_DRY_RUN_FAIL_CLOSED"
+          elif est is not None and est>100_000_000_000:
+              status="BIGQUERY_ESTIMATE_HARD_STOP"
+          else:
+              status="BIGQUERY_FIRST_CHUNK_READY_FOR_EXECUTION"
+          out={
+            "schema_version":"0.1",
+            "lab_id":"DEFI-LIQUIDATION-SHOCK-001",
+            "status":status,
+            "auth_usable":auth,
+            "project_id_present":project,
+            "credential_presence":presence,
+            "secret_values_recorded":False,
+            "dry_run_attempted":attempted,
+            "dry_run_pass":passed,
+            "estimated_bytes_parsed":est,
+            "hard_stop_bytes":100_000_000_000,
+            "instantiation":inst,
+            "billable_query_executed":False,
+            "governance":{
+              "source_only":True,"outcome_blind":True,"prices":False,"returns":False,
+              "pnl":False,"direction":False,"live_trading":False,"orders":False,
+              "wallets":False,"exchange_mutation":False,"merge_main":False
+            }
+          }
+          p=Path("labs/DEFI_LIQUIDATION_SHOCK_001/audit_receipts/DLS_KAMINO_BIGQUERY_READINESS_V0.1.json")
+          p.write_text(json.dumps(out,indent=2,sort_keys=True)+"\n")
+          print(json.dumps({"status":status,"auth_usable":auth,"project_id_present":project,
+                            "dry_run_attempted":attempted,"dry_run_pass":passed,
+                            "estimated_bytes_parsed":est},sort_keys=True))
+          PY
+
+          rm -f /tmp/dls_gcp_cred.json /tmp/dls_auth_stdout.txt /tmp/dls_auth_stderr.txt /tmp/dls_bq_secret_presence.json /tmp/dls_bq_selected_source.txt /tmp/dls_bq_instantiation.json /tmp/dls_bq_dryrun.txt /tmp/DLS_KAMINO_FIRST_SUCCESS_CHUNK_0001_V0_3.sql
+
+      - name: Persist readiness receipt
+        run: |
+          git config user.name "crypto-lab-source-audit"
+          git config user.email "actions@users.noreply.github.com"
+          git add labs/DEFI_LIQUIDATION_SHOCK_001/audit_receipts/DLS_KAMINO_BIGQUERY_READINESS_V0.1.json
+          git diff --cached --quiet && exit 0
+          git commit -m "audit: persist Kamino BigQuery readiness"
+          git push origin HEAD:defi-liquidation-kamino-first-success-exec-v0.1
