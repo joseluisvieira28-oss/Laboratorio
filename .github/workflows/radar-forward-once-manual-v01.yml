@@ -23,6 +23,24 @@ jobs:
       - run: python -m pip install -e .
       - run: python -m unittest tests.test_forward_once_cli -v
       - run: python -m unittest discover -s tests -v
+      - name: DLS Render SolanaFM source-only probe
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --max-time 90 --retry 2 --retry-delay 2 \
+            'https://crypto-edge-radar-v05-canary.onrender.com/api/dls-solanafm-source-probe' \
+            -o dls_solanafm_render_receipt.json
+          python - <<'PY'
+          import json
+          x=json.load(open('dls_solanafm_render_receipt.json'))
+          assert x['source_data_pass'] is False
+          for k in ('prices','returns','pnl','direction','market_response','first_success_boundary_adjudicated','authenticated_exchange_api_used','orders_created','wallets_used','exchange_mutation_performed','live_capital_enabled'):
+              assert x[k] is False,(k,x[k])
+          print('DLS_RENDER_CLASSIFICATION='+x['classification'])
+          print('DLS_RENDER_ACCESSIBLE_PROTOCOLS='+','.join(x['accessible_protocols']))
+          for row in x['results']:
+              print('DLS_RENDER_RESULT',row['protocol'],'HTTP',row.get('http_status'),'PASS',row.get('transport_schema_pass'),'ERROR',row.get('error'))
+          PY
       - name: Probe existing DB authorization without exposing it
         env:
           RADAR_DATABASE_URL: ${{ secrets.RADAR_DATABASE_URL }}
