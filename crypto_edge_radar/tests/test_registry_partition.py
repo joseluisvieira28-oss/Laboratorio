@@ -19,7 +19,7 @@ class RegistryPartitionTests(unittest.TestCase):
         z={x["strategy_id"] for x in archive["candidates"]}
         p={x["research_id"] for x in protected["entries"]}
 
-        self.assertEqual(len(a),7)
+        self.assertEqual(len(a),8)
         self.assertEqual(len(z),44)
         self.assertEqual(len(p),5)
         self.assertFalse(a & z)
