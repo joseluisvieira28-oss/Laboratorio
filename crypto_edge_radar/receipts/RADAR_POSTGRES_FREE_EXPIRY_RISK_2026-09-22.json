@@ -1,7 +1,7 @@
 {
   "schema_version": "0.1",
   "date": "2026-09-22",
-  "classification": "PERSISTENCE_EXPIRY_RISK_OPEN",
+  "classification": "DATA_LOSS_RISK_MITIGATED__CONTINUITY_TARGET_PROVISIONING_REQUIRED",
   "database": {
     "render_id": "dpg-dalqi4qd0e5s738a77kg-a",
     "name": "crypto-edge-radar-evidence-v04",
@@ -41,5 +41,19 @@
     "A secure export path from the canonical Postgres store becomes available.",
     "A separately authorized replacement/upgrade datastore is selected.",
     "A legitimate database credential handoff is configured through a secret manager without exposing the value."
-  ]
+  ],
+  "mitigation": {
+    "verified_private_backup": true,
+    "backup_event_count": 483,
+    "backup_key_count": 405,
+    "backup_snapshot_sha256": "0d7a3069cd7fb1db7161658a296b7a76dccc96cdc40509e854d46ea11995ca2c",
+    "backup_chain_head_sha256": "7ed78f2e343c8695daa50e4b73a73097e876524b928528f409d98a9973c268fa",
+    "drive_raw_backup_file_id": "1rN6fWn4e92rNiddTzsPRBeZ4oOT8nKs3",
+    "restore_tooling_validated": true,
+    "cutover_protocol_frozen": true,
+    "preferred_free_target": "Neon Free",
+    "alternate_free_target": "Supabase Free",
+    "target_credentials_available": false
+  },
+  "next_action": "Provision/connect a legitimate persistent target Postgres, then execute a separate verified maintenance cutover under RADAR_POSTGRES_CUTOVER_PROTOCOL_V0.1."
 }
