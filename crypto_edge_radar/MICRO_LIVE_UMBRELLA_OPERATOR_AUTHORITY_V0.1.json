@@ -1,0 +1,44 @@
+{
+  "authority_id": "MICRO-LIVE-UMBRELLA-OPERATOR-AUTHORITY-V0.1",
+  "authorized_at_utc": "2026-09-22T04:28:00Z",
+  "status": "ACTIVE_OPERATOR_CONSENT",
+  "scope": "ALL_CURRENT_AND_FUTURE_CRYPTO_LAB_MICRO_LIVE_CANDIDATES_THAT_ALREADY_PASS_FROZEN_SCIENCE_RISK_SOURCE_VENUE_AND_EXECUTION_GATES",
+  "operator_intent": "Do not ask for per-trade confirmation once a genuinely eligible micro-live candidate reaches all frozen gates. Automatically permit creation of the required immutable candidate-specific execution authority and execution intent.",
+  "applies_to_scientific_tiers": [
+    1,
+    2
+  ],
+  "tier3_action": "SHADOW_ONLY",
+  "tier4_action": "BLOCKED",
+  "venue_scope": [
+    "MEXC_SPOT",
+    "MEXC_USDT_PERPETUAL"
+  ],
+  "leverage_policy": "USE_ONLY_CANDIDATE_FROZEN_LEVERAGE__NO_GLOBAL_OVERRIDE",
+  "explicit_forbidden": [
+    "discretionary trades",
+    "test trades without canonical signal",
+    "changing scientific rules after seeing outcomes",
+    "increasing risk or order size only to satisfy venue minimum",
+    "martingale or recovery sizing",
+    "late signal chasing",
+    "Cross 500x",
+    "withdrawals",
+    "transfers",
+    "wallet mutation",
+    "main merge"
+  ],
+  "candidate_specific_authority_rule": "REQUIRED_BUT_MAY_BE_GENERATED_AUTOMATICALLY_FROM_THIS_UMBRELLA_ONCE_ALL_CANDIDATE_GATES_PASS",
+  "order_submission_rule": "ONLY_AFTER_CANDIDATE_SPECIFIC_AUTHORITY_IS_IMMUTABLY_FROZEN_AND_PRE_ORDER_GATE_PASSES",
+  "current_candidate_operator_consent": {
+    "ETF-CME-INSTFLOW-001": "GRANTED_IF_AND_ONLY_IF_CANDIDATE_GATES_PASS",
+    "BNB-LAUNCHPOOL-DEMAND-001": "GRANTED_IF_AND_ONLY_IF_CANDIDATE_GATES_PASS",
+    "OPTIONS-SPOTPERP-001-V2.1": "GRANTED_IF_AND_ONLY_IF_CANDIDATE_GATES_PASS",
+    "CED1D-0031": "GRANTED_IF_AND_ONLY_IF_CANDIDATE_GATES_PASS",
+    "TFG-DONCHIAN-REGIME-ADAPTATION-V1": "NOT_LIVE_ELIGIBLE_TIER3",
+    "EMA6H-50X200-REGIME-DEPENDENCY-001": "NOT_LIVE_ELIGIBLE_TIER3",
+    "HTF-DH03-12H-STANDALONE-FORWARD-V1": "NOT_LIVE_ELIGIBLE_UNRANKED_PROSPECTIVE"
+  },
+  "current_order_authorized_now": false,
+  "note": "This is human/operator consent. It does not itself create a signal, change a scientific tier, waive a blocker, or authorize an order that fails frozen candidate gates."
+}
