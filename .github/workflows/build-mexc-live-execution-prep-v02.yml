@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - mexc-live-execution-prep-v0.2-current-api
+      - mexc-futures-standing-microlive-authority-v0.1
     paths:
       - 'crypto_edge_radar/radar/mexc_*'
       - 'crypto_edge_radar/scripts/mexc_*'
@@ -13,6 +14,8 @@ on:
       - 'crypto_edge_radar/windows/Run_MEXC_Authenticated_Preflight.ps1'
       - 'crypto_edge_radar/windows/Set_MEXC_Preflight_Secrets.ps1'
       - 'crypto_edge_radar/ETF_CME_INSTFLOW_001_MICRO_LIVE_EXECUTION_AUTHORITY_TEMPLATE_V0.2.json'
+      - 'crypto_edge_radar/MEXC_FUTURES_STANDING_MICROLIVE_OPERATOR_AUTHORITY_V0.1.json'
+      - 'crypto_edge_radar/MEXC_FUTURES_MICROLIVE_FISHING_REGISTRY_V0.1.json'
       - 'crypto_edge_radar/MEXC_LIVE_EXECUTION_V02_OPERATOR_GUIDE.md'
       - '.github/workflows/build-mexc-live-execution-prep-v02.yml'
 
@@ -54,6 +57,31 @@ jobs:
           if ($a.leverage -ne 1) { throw "template leverage not exactly 1x" }
           if ($a.margin_mode -ne "ISOLATED") { throw "template margin mode not isolated" }
           if ($a.position_mode -ne 1) { throw "template position mode not hedge" }
+
+      - name: Verify standing operator micro-live authority
+        shell: pwsh
+        run: |
+          $s=Get-Content MEXC_FUTURES_STANDING_MICROLIVE_OPERATOR_AUTHORITY_V0.1.json | ConvertFrom-Json
+          if ($s.status -ne "ACTIVE_STANDING_OPERATOR_AUTHORIZATION") { throw "standing operator authority not active" }
+          if ($s.scope.exchange -ne "MEXC") { throw "standing authority exchange mismatch" }
+          if ($s.scope.product -ne "USDT_PERPETUAL_FUTURES") { throw "standing authority product mismatch" }
+          if (-not $s.scope.real_capital) { throw "standing authority does not permit real capital" }
+          if (-not $s.scope.micro_live_only) { throw "standing authority scope is not micro-live only" }
+          if ($s.scope.per_trade_reconfirmation_required) { throw "per-trade reconfirmation unexpectedly required" }
+          $ids=@($s.standing_authorized_routes | ForEach-Object { $_.strategy_id })
+          if ($ids.Count -ne 2) { throw "unexpected number of standing-authorized MEXC Futures routes" }
+          if (-not ($ids -contains "ETF-CME-INSTFLOW-001")) { throw "ETF-CME Futures route missing" }
+          if (-not ($ids -contains "OPTIONS-SPOTPERP-001-V2.1")) { throw "OPTIONS-SPOTPERP Futures route missing" }
+          foreach ($r in $s.standing_authorized_routes) {
+            if ($r.symbol -ne "BTC_USDT") { throw "unexpected Futures symbol" }
+            if ($r.direction -ne "SHORT") { throw "standing route must be frozen SHORT Futures" }
+            if (@(1,2) -notcontains [int]$r.scientific_tier) { throw "standing authority illegally includes non-Tier1/2" }
+          }
+
+          $f=Get-Content MEXC_FUTURES_MICROLIVE_FISHING_REGISTRY_V0.1.json | ConvertFrom-Json
+          if ([int]$f.total_futures_canes -ne 2) { throw "fishing registry must have exactly two MEXC Futures canes" }
+          if ([int]$f.operator_authorized_futures_canes -ne 2) { throw "both Futures canes must be operator-authorized" }
+          if ([int]$f.executable_now -ne 0) { throw "registry must not fabricate executable-now state" }
 
       - name: Static mutation-surface safety check
         shell: pwsh
@@ -131,6 +159,8 @@ jobs:
           Copy-Item windows\Run_MEXC_Authenticated_Preflight.ps1 bundle\windows\
           Copy-Item windows\Run_MEXC_Ready_Check_V02.ps1 bundle\windows\
           Copy-Item ETF_CME_INSTFLOW_001_MICRO_LIVE_EXECUTION_AUTHORITY_TEMPLATE_V0.2.json bundle\
+          Copy-Item MEXC_FUTURES_STANDING_MICROLIVE_OPERATOR_AUTHORITY_V0.1.json bundle\
+          Copy-Item MEXC_FUTURES_MICROLIVE_FISHING_REGISTRY_V0.1.json bundle\
           Copy-Item MEXC_LIVE_EXECUTION_V02_OPERATOR_GUIDE.md bundle\
 
       - name: Upload V0.2 bundle
