@@ -86,7 +86,7 @@ jobs:
         shell: pwsh
         run: |
           $exe = (Resolve-Path ".\dist\CryptoEdgeRadarNode\CryptoEdgeRadarNode.exe").Path
-          $probe = Join-Path $env:RUNNER_TEMP "radar-v01433-duplicate-probe"
+          $probe = Join-Path $env:RUNNER_TEMP "radar-v0144-duplicate-probe"
           New-Item -ItemType Directory -Force -Path $probe | Out-Null
           $firstOut = Join-Path $probe "first.stdout.log"
           $firstErr = Join-Path $probe "first.stderr.log"
@@ -133,9 +133,9 @@ jobs:
         shell: pwsh
         run: |
           $src=Get-Content "windows\START_RADAR_RECOVERY_V0141.ps1" -Raw
-          if (-not $src.Contains('v0.14.4-win-cirv-eight-motor')) { throw "launcher does not require V0.14.3.3 build id" }
+          if (-not $src.Contains('v0.14.4-win-cirv-eight-motor')) { throw "launcher does not require V0.14.4 build id" }
           if (-not $src.Contains('registryVersion -eq "3.7"')) { throw "launcher registry check missing" }
-          if (-not $src.Contains('focusExpected -eq 8')) { throw "launcher seven-motor check missing" }
+          if (-not $src.Contains('focusExpected -eq 8')) { throw "launcher eight-motor check missing" }
           if (-not $src.Contains('ProcessName -ne "CryptoEdgeRadarNode"')) { throw "unrelated-process safety check missing" }
 
       - name: Hash executable
