@@ -1,7 +1,7 @@
 {
   "schema_version": "0.1",
   "date": "2026-09-22",
-  "classification": "CANONICAL_CODE_REPAIRS_APPLIED_AND_ISOLATED_QA_PASS__LIVE_RUNTIME_HEALTH_NOT_INDEPENDENTLY_ASSERTED",
+  "classification": "LIVE_RUNTIME_OPTIONS_REPAIR_VERIFIED__TFG_VISIBILITY_VERIFIED__CONTINUITY_AND_DB_EXPIRY_RISKS_OPEN",
   "options_v21": {
     "problem": "single Deribit row with invalid IV/index aborted entire live source window",
     "scientific_change": false,
@@ -63,5 +63,56 @@
     "exchange_mutation": false,
     "capital_enabled": false,
     "post_outcome_tuning": false
+  },
+  "render_runtime_live_validation": {
+    "service_id": "srv-dalqkpu1egvs73fhiehg",
+    "service_name": "crypto-edge-radar-v05-canary",
+    "workspace_id": "tea-daffqvgu01pc73a9sad0",
+    "branch": "crypto-edge-radar-postgres-v0.5",
+    "auto_deploy": false,
+    "plan": "free",
+    "region": "frankfurt",
+    "deploy_id": "dep-dap1v9942hec738k274g",
+    "deployed_commit": "3ebeb4a6ccca9bb4742efa23466b94485c7a3fbd",
+    "deployed_status": "live",
+    "live_at_utc": "2026-09-22T06:29:23.929603Z",
+    "post_cutover_observations": {
+      "repeated_health_ok": true,
+      "errors_empty": true,
+      "evidence_backend": "postgres",
+      "evidence_chain_ok": true,
+      "evidence_chain_verified_event_count_observed": 432,
+      "options_v21_status": "OK",
+      "options_v21_invalid_iv_index_rows_rejected_this_run": 107,
+      "tfg_unresolved_execution_paths": 11,
+      "tfg_maturing_within_frozen_max_hold": 11,
+      "tfg_overdue_reconciliation_review": 0,
+      "tfg_unclassified_missing_entry_binding": 0,
+      "authenticated_exchange_api_used": false,
+      "orders_created": false,
+      "exchange_mutation_performed": false,
+      "live_capital_enabled": false
+    }
+  },
+  "runtime_continuity_risk": {
+    "classification": "FREE_WEB_SERVICE_NOT_24X7_CONTINUITY_AUTHORITY",
+    "observed_runtime_gap_seconds": 14204.436,
+    "observed_gap_status": "RECOVERED_GAP_REVIEW_REQUIRED",
+    "later_continuity_recovered": true,
+    "artificial_keepalive_adopted": false,
+    "scientific_rules_changed": false,
+    "note": "Free web runtime continuity is not sufficient as sole authority for continuous watchers; replay-safe discrete execution remediation is under isolated QA."
+  },
+  "postgres_evidence_risk": {
+    "postgres_id": "dpg-dalqi4qd0e5s738a77kg-a",
+    "name": "crypto-edge-radar-evidence-v04",
+    "plan": "free",
+    "region": "frankfurt",
+    "status": "available",
+    "expires_at": "2026-10-17T08:47:15.2559Z",
+    "direct_connector_sql_audit_status": "BLOCKED_BY_RENDER_CONNECTOR_TLS_HANDSHAKE",
+    "direct_connector_error_class": "SSL_TLS_REQUIRED",
+    "database_mutation_attempted": false,
+    "readonly_snapshot_remediation_prepared": true
   }
 }
