@@ -8,7 +8,6 @@ from pathlib import Path
 import threading
 import time
 from typing import Any
-from urllib.parse import parse_qs, urlparse
 
 from .bnb_launchpool_watcher import (
     BNBLaunchpoolForwardShadowWatcher,
@@ -38,7 +37,6 @@ from .options_v21_watcher import OptionsV21ForwardShadowWatcher
 from .options_v21_metrics import evaluate_options_v21_forward
 from .etf_cme_watcher import ETFCMEPublicSignalWatcher
 from .external_freshness import all_external_freshness
-from .private_evidence_backup import build_private_evidence_snapshot, emit_snapshot_log_chunks
 
 
 RUNTIME_LIVENESS_EVENT = "RADAR_RUNTIME_LIVENESS"
@@ -698,17 +696,6 @@ class _Handler(BaseHTTPRequestHandler):
         self.wfile.write(raw)
 
     def do_GET(self) -> None:  # noqa: N802
-        parsed = urlparse(self.path)
-        if parsed.path == "/api/private/evidence-backup":
-            enabled = os.getenv("RADAR_BACKUP_EXPORT_ENABLED", "").lower() == "true"
-            expected = os.getenv("RADAR_BACKUP_EXPORT_TOKEN", "")
-            provided = (parse_qs(parsed.query).get("token") or [""])[0]
-            if not enabled or not expected or provided != expected:
-                self._send_json(404, {"error": "not_found"})
-                return
-            snapshot = build_private_evidence_snapshot(self.runtime.store)
-            self._send_json(200, snapshot)
-            return
         if self.path == "/":
             self._send_html(200, dashboard_html())
             return
@@ -730,8 +717,6 @@ class _Handler(BaseHTTPRequestHandler):
 def serve_forward_shadow(*, port: int, interval: float) -> int:
     settings = Settings.from_env()
     runtime = ForwardShadowRuntime(settings=settings)
-    if os.getenv("RADAR_BACKUP_LOG_EMIT_ON_START", "").lower() == "true":
-        emit_snapshot_log_chunks(runtime.store)
     runtime.run_cycle()
     worker = threading.Thread(
         target=runtime.run_loop,
