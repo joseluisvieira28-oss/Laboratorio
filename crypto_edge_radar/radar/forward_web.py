@@ -15,7 +15,6 @@ from .bnb_launchpool_watcher import (
 )
 from .config import Settings
 from .ced1d_source_probe import ced1d_render_source_probe
-from .dls_solanafm_source_probe import dls_solanafm_render_source_probe
 from .ced1d_render_shadow_runtime import CED1DRenderShadowRunner
 from .evidence import build_evidence_store
 from .strategies.bnb_launchpool_demand import BinanceSpotBNBBTCKlineFeed
@@ -707,12 +706,6 @@ class _Handler(BaseHTTPRequestHandler):
             return
         if self.path == "/api/ced1d-source-probe":
             result = ced1d_render_source_probe(timeout=self.runtime.settings.http_timeout)
-            self._send_json(200, result)
-            return
-        if self.path == "/api/dls-solanafm-source-probe":
-            result = dls_solanafm_render_source_probe(
-                timeout=self.runtime.settings.http_timeout
-            )
             self._send_json(200, result)
             return
         self._send_json(404, {"error": "not_found"})
