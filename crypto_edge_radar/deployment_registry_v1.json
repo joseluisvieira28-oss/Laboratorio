@@ -1,6 +1,6 @@
 {
-  "registry_version": "3.6",
-  "as_of_utc": "2026-09-19T13:40:00Z",
+  "registry_version": "3.7",
+  "as_of_utc": "2026-09-22T20:26:00Z",
   "governance": "ND_PROMOTION_POLICY_V3_PLUS_AGGRESSIVE_FAIL_CLOSED_DEPLOYMENT",
   "focus_strategy_ids": [
     "ETF-CME-INSTFLOW-001",
@@ -9,9 +9,10 @@
     "TFG-DONCHIAN-REGIME-ADAPTATION-V1",
     "HTF-DH03-12H-STANDALONE-FORWARD-V1",
     "CED1D-0031",
-    "EMA6H-50X200-REGIME-DEPENDENCY-001"
+    "EMA6H-50X200-REGIME-DEPENDENCY-001",
+    "CRYPTO-INTRAWEEK-RV-001 / CIRV-HAR-DOW-BTCETH-001"
   ],
-  "policy_note": "Seven-motor canonical control plane candidate state: existing six motors unchanged; EMA6H-50X200-REGIME-DEPENDENCY-001 added as research-only prospective public shadow after full regression/source validation. No micro-live or execution authority is granted.",
+  "policy_note": "Eight-motor canonical control plane candidate state: prior seven motors unchanged; CIRV-HAR-DOW-BTCETH-001 added as research-only BTC/ETH realized-variance forecast shadow. CIRV is not an economic trading edge and receives no micro-live or execution authority.",
   "candidates": [
     {
       "strategy_id": "ETF-CME-INSTFLOW-001",
@@ -386,6 +387,39 @@
         "exchange_mutation_performed": false,
         "live_capital_enabled": false
       }
+    },
+    {
+      "strategy_id": "CRYPTO-INTRAWEEK-RV-001 / CIRV-HAR-DOW-BTCETH-001",
+      "label": "CIRV HAR-DOW BTC/ETH realized-variance forecast",
+      "scientific_tier": null,
+      "scientific_status": "L5_REPLICATED_OOS_FORECAST_MECHANISM__NOT_TRADING_EDGE",
+      "deployment_state": "M6_PROSPECTIVE_SHADOW__RADAR_LOCAL_WATCHER__PROSPECTIVE_BLIND_DELAYED_SOURCE",
+      "shadow_allowed": true,
+      "micro_live_allowed_now": false,
+      "authority_branch": "crypto-intraweek-rv-forward-v0.1",
+      "canonical_watcher_git_blob_sha": "f83445cf98681ed24465ffe9dfd7bff173fb63ff",
+      "ops_amendment_commit": "187c7eba80ca47b7e096d5b5a179811ef9864851",
+      "assets": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "source": "Binance Vision USD-M Futures 5m archives",
+      "model": "HAR logRV1/logRV5/logRV22 + target-day Tue-Sun dummies; Monday base; 730 rolling training rows; min 500",
+      "first_clean_forward_target": "2026-09-23",
+      "execution_mode": "WINDOWS_LOCAL_PUBLIC_ARCHIVE_FORECAST_SHADOW",
+      "source_window_utc": "09:00-10:30 after D-1 archive publication",
+      "forward_classification": "PROSPECTIVE_BLIND_DELAYED_SOURCE",
+      "no_backfill_targets": [
+        "2026-09-21",
+        "2026-09-22"
+      ],
+      "economic_translation_status": "SEPARATE_PROSPECTIVE_APPLICATION_FREEZE_REQUIRED",
+      "blocking_gates": [
+        "forecast mechanism has no frozen economic execution mapping",
+        "not an intraday execution signal because D-1 canonical archives publish after target UTC day begins",
+        "micro-live requires a separate economic candidate, costs/execution/risk model and authority",
+        "no automatic Tier promotion from forecast quality alone"
+      ]
     }
   ],
   "operational_shadow_v09": {
