@@ -36,6 +36,12 @@ class OptionsV21SourceError(RuntimeError):
     pass
 
 
+class OptionsV21InvalidSignalRow(OptionsV21SourceError):
+    """A structurally valid source row whose IV/index cannot enter the frozen signal."""
+
+    pass
+
+
 @dataclass(frozen=True)
 class OptionTrade:
     trade_id: str
@@ -80,20 +86,25 @@ def _parse_trade(row: Any, *, start_ms: int, end_ms: int) -> OptionTrade:
         raise OptionsV21SourceError("Deribit trade row missing frozen signal field")
     try:
         ts = int(row["timestamp"])
-        iv = float(row["iv"])
-        index_price = float(row["index_price"])
     except (TypeError, ValueError) as exc:
-        raise OptionsV21SourceError("Deribit trade row has invalid numeric field") from exc
+        raise OptionsV21SourceError("Deribit trade row has invalid timestamp") from exc
     if not start_ms <= ts <= end_ms:
         raise OptionsV21SourceError("Deribit returned trade outside requested time window")
-    if not isfinite(iv) or iv <= 0 or not isfinite(index_price) or index_price <= 0:
-        raise OptionsV21SourceError("Deribit trade has invalid IV/index")
+
     trade_id = str(row.get("trade_id") or "")
     if not trade_id:
         # Fail closed rather than deduplicating with a guessed identity.
         raise OptionsV21SourceError("Deribit trade missing trade_id")
     name = str(row["instrument_name"])
     _parse_instrument(name)
+
+    try:
+        iv = float(row["iv"])
+        index_price = float(row["index_price"])
+    except (TypeError, ValueError) as exc:
+        raise OptionsV21InvalidSignalRow("Deribit trade has invalid IV/index") from exc
+    if not isfinite(iv) or iv <= 0 or not isfinite(index_price) or index_price <= 0:
+        raise OptionsV21InvalidSignalRow("Deribit trade has invalid IV/index")
     return OptionTrade(trade_id, ts, name, iv, index_price)
 
 
@@ -104,6 +115,7 @@ class DeribitBTCOptionTradeFeed:
 
     def __init__(self, timeout: int = 15) -> None:
         self.timeout = timeout
+        self.last_invalid_iv_index_rows = 0
 
     def _get_json(self, query: dict[str, Any]) -> Any:
         url = f"{self.base_url}{self.path}?{urlencode(query)}"
@@ -143,12 +155,22 @@ class DeribitBTCOptionTradeFeed:
         rows = result.get("trades")
         if not isinstance(rows, list):
             raise OptionsV21SourceError("Deribit result missing trades")
-        trades = [_parse_trade(row, start_ms=start_ms, end_ms=end_ms) for row in rows]
-        return trades, bool(result.get("has_more", False)) or len(rows) >= MAX_TRADES_PER_REQUEST
+        saturated = bool(result.get("has_more", False)) or len(rows) >= MAX_TRADES_PER_REQUEST
+        if saturated:
+            # The parent page is not final evidence; recursively split the exact same time window.
+            return [], True
+        trades: list[OptionTrade] = []
+        for row in rows:
+            try:
+                trades.append(_parse_trade(row, start_ms=start_ms, end_ms=end_ms))
+            except OptionsV21InvalidSignalRow:
+                self.last_invalid_iv_index_rows += 1
+        return trades, False
 
     def trades(self, *, start_ms: int, end_ms: int) -> list[OptionTrade]:
         if start_ms < 0 or end_ms < start_ms:
             raise OptionsV21SourceError("invalid Deribit time range")
+        self.last_invalid_iv_index_rows = 0
 
         def collect(lo: int, hi: int) -> list[OptionTrade]:
             rows, saturated = self._one_window(lo, hi)
@@ -354,6 +376,7 @@ def source_schema_probe(feed: DeribitBTCOptionTradeFeed, *, start_ms: int, end_m
         "start_ms": start_ms,
         "end_ms": end_ms,
         "trade_count": len(rows),
+        "invalid_iv_index_rows_rejected": int(getattr(feed, "last_invalid_iv_index_rows", 0)),
         "required_fields_validated": ["timestamp", "instrument_name", "iv", "index_price", "trade_id"],
         "used_as_forward_evidence": False,
         "authenticated_api_used": False,
