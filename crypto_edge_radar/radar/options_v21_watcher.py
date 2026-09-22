@@ -94,6 +94,7 @@ class OptionsV21ForwardShadowWatcher:
         duplicate_resolutions = 0
         valid_signal_days = 0
         directional_signal_days = 0
+        invalid_iv_index_rows_rejected_this_run = 0
 
         for day in signal_days:
             key = _key(day)
@@ -102,6 +103,10 @@ class OptionsV21ForwardShadowWatcher:
             if payload is None:
                 start_ms, end_ms = _utc_day_bounds(day)
                 trades = self.options_feed.trades(start_ms=start_ms, end_ms=end_ms)
+                invalid_iv_index_rows_rejected = int(
+                    getattr(self.options_feed, "last_invalid_iv_index_rows", 0)
+                )
+                invalid_iv_index_rows_rejected_this_run += invalid_iv_index_rows_rejected
                 signal = build_daily_skew(day, trades)
                 if signal["valid"]:
                     if btc_state_bars is None:
@@ -121,6 +126,9 @@ class OptionsV21ForwardShadowWatcher:
                     "event_key": key,
                     "signal_date": day.isoformat(),
                     "source_provider": self.options_feed.provider,
+                    "source_quality": {
+                        "invalid_iv_index_rows_rejected": invalid_iv_index_rows_rejected,
+                    },
                     "signal": signal,
                     "risk_scaling": risk,
                     "used_as_forward_evidence": True,
@@ -240,6 +248,7 @@ class OptionsV21ForwardShadowWatcher:
             "signal_days_scanned": len(signal_days),
             "valid_signal_days": valid_signal_days,
             "directional_signal_days": directional_signal_days,
+            "invalid_iv_index_rows_rejected_this_run": invalid_iv_index_rows_rejected_this_run,
             "inserted_signal_days": inserted_signal_days,
             "duplicate_signal_days": duplicate_signal_days,
             "inserted_entries": inserted_entries,
