@@ -1,0 +1,52 @@
+name: CED1D Render Probe Invoke Once V0.1
+
+on:
+  push:
+    branches:
+      - ced1d-render-probe-invoker-v0.1
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  invoke-once:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Invoke Render source-only probe exactly once
+        run: |
+          set -euo pipefail
+          curl --fail-with-body --silent --show-error --max-time 90 \
+            https://crypto-edge-radar-v05-canary.onrender.com/api/ced1d-source-probe \
+            -o ced1d_render_probe_result.json
+          cat ced1d_render_probe_result.json
+      - name: Assert source-only firewall and parse verdict
+        run: |
+          python - <<'PY'
+          import json
+          x=json.load(open("ced1d_render_probe_result.json"))
+          assert x["probe_id"]=="CED1D-0031-RENDER-SOURCE-PROBE-V0.1"
+          assert x["classification"] in {
+              "OFFICIAL_ENDPOINT_SCHEMA_PASS",
+              "OFFICIAL_ENDPOINT_TRANSPORT_BLOCKED",
+          }
+          assert x["used_as_forward_evidence"] is False
+          assert x["collector_adoption_authorized"] is False
+          assert x["returns_computed"] is False
+          assert x["pnl_computed"] is False
+          assert x["authenticated_exchange_api_used"] is False
+          assert x["orders_created"] is False
+          assert x["exchange_mutation_performed"] is False
+          assert x["live_capital_enabled"] is False
+          print("CED1D_RENDER_REAL_PROBE_VERDICT",x["classification"])
+          print("WINNERS",x["accessible_exact_schema_hosts"])
+          for r in x["results"]:
+              print("HOST",r["host"],"HTTP",r.get("http_status"),"SCHEMA",r.get("schema_pass"),"ROWS",r.get("row_count"),"ERROR",r.get("error_class"))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ced1d-render-real-probe-v01
+          path: ced1d_render_probe_result.json
+          if-no-files-found: error
+          retention-days: 30
