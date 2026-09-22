@@ -28,16 +28,22 @@ def _validate_payload(data: Any) -> tuple[bool, int | None]:
     for row in data:
         if not isinstance(row, dict):
             return False, len(data)
-        if any(k not in row for k in ("symbol", "fundingTime", "fundingRate")):
+        if any(k not in row for k in ("symbol", "fundingTime", "fundingRate", "markPrice")):
             return False, len(data)
         if row["symbol"] != SYMBOL:
             return False, len(data)
         try:
             ft = int(row["fundingTime"])
             rate = float(row["fundingRate"])
+            mark_price = float(row["markPrice"])
         except (TypeError, ValueError):
             return False, len(data)
-        if not START_MS <= ft <= END_MS or not isfinite(rate):
+        if (
+            not START_MS <= ft <= END_MS
+            or not isfinite(rate)
+            or not isfinite(mark_price)
+            or mark_price <= 0
+        ):
             return False, len(data)
     return True, len(data)
 
@@ -101,11 +107,12 @@ def ced1d_render_source_probe(*, timeout: int = 12) -> dict[str, Any]:
     results = [probe_host(host, timeout=timeout) for host in HOSTS]
     winners = [x["host"] for x in results if x.get("schema_pass") is True]
     return {
-        "probe_id": "CED1D-0031-RENDER-SOURCE-PROBE-V0.1",
+        "probe_id": "CED1D-0031-RENDER-SOURCE-PROBE-V0.2",
+        "required_fields": ["symbol", "fundingTime", "fundingRate", "markPrice"],
         "classification": (
-            "OFFICIAL_ENDPOINT_SCHEMA_PASS"
+            "OFFICIAL_ENDPOINT_EXACT_SCHEMA_PASS"
             if winners
-            else "OFFICIAL_ENDPOINT_TRANSPORT_BLOCKED"
+            else "OFFICIAL_ENDPOINT_EXACT_SCHEMA_BLOCKED"
         ),
         "accessible_exact_schema_hosts": winners,
         "results": results,
