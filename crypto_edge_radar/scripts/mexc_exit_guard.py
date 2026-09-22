@@ -9,6 +9,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from radar.cli_argv import strip_exact_self_path_echo
+
 from radar.market import MEXCFuturesPublicFeed
 from radar.mexc_auth_readonly import (
     MEXCCredentials,
@@ -142,7 +144,7 @@ def main()->int:
     ap.add_argument("--kill-switch",default="KILL_SWITCH")
     ap.add_argument("--execute",action="store_true")
     ap.add_argument("--watch",action="store_true")
-    args=ap.parse_args()
+    args=ap.parse_args(strip_exact_self_path_echo())
 
     authority=_load(args.authority)
     active=_load(args.active_trade)
