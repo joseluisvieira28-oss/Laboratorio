@@ -1,0 +1,59 @@
+name: DLS SolanaFM Fast Page Probe V0.1A
+
+on:
+  push:
+    branches:
+      - defi-liquidation-kamino-first-success-exec-v0.1
+    paths:
+      - '.github/workflows/dls-solanafm-fast-page-probe-v01a.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe one frozen page
+        shell: bash
+        run: |
+          python - <<'PY'
+          import urllib.request, urllib.parse, urllib.error, json
+          P="KLend2g3cP87fffoy8q1mQqGKjrxjC8boSyAYavgmjD"
+          q=urllib.parse.urlencode({"utcFrom":1734220800,"utcTo":1734307200,"limit":5,"page":1})
+          u=f"https://api.solana.fm/v0/accounts/{P}/transactions?{q}"
+          req=urllib.request.Request(u,headers={"Accept":"application/json","User-Agent":"crypto-lab-source-audit/1.0"})
+          out={"url_base":u.split("?")[0]}
+          try:
+              with urllib.request.urlopen(req,timeout=20) as r:
+                  b=r.read()
+                  out.update(http_status=r.status,bytes=len(b))
+                  try:
+                      obj=json.loads(b)
+                      out["json_type"]=type(obj).__name__
+                      if isinstance(obj,dict):
+                          out["top_keys"]=sorted(obj.keys())
+                          for k in ("data","result","transactions","items"):
+                              v=obj.get(k)
+                              if isinstance(v,list):
+                                  out["row_count"]=len(v); out["first_row"]=v[0] if v else None; break
+                              if isinstance(v,dict):
+                                  out["nested_keys_"+k]=sorted(v.keys())
+                                  for kk in ("data","transactions","items"):
+                                      vv=v.get(kk)
+                                      if isinstance(vv,list):
+                                          out["row_count"]=len(vv); out["first_row"]=vv[0] if vv else None; break
+                      elif isinstance(obj,list):
+                          out["row_count"]=len(obj); out["first_row"]=obj[0] if obj else None
+                  except Exception as e: out["json_error"]=repr(e)
+          except urllib.error.HTTPError as e:
+              out.update(http_status=e.code,error="HTTPError")
+              try: out["error_body"]=e.read(500).decode(errors="replace")
+              except Exception: pass
+          except Exception as e:
+              out.update(http_status=None,error=type(e).__name__+":"+str(e))
+          print(json.dumps(out,indent=2,sort_keys=True))
+          PY
