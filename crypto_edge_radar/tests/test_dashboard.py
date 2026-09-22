@@ -124,6 +124,105 @@ class DashboardTests(unittest.TestCase):
             self.assertEqual(state["focus_counts"]["SHADOW"], 0)
             self.assertIn("FAIL_CLOSED", " ".join(state["bots"][0]["blockers"]))
 
+    def test_options_source_failure_blocks_only_options_not_other_forward_motors(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            registry, status, events = self._paths(root)
+            (root / "forward_local_status.json").write_text(
+                json.dumps({
+                    "health": "DEGRADED_FAIL_CLOSED",
+                    "errors": {
+                        "options_v21": "OptionsV21SourceError:Deribit trade has invalid IV/index"
+                    }
+                }),
+                encoding="utf-8",
+            )
+            focus = [
+                "ETF-CME-INSTFLOW-001",
+                "BNB-LAUNCHPOOL-DEMAND-001",
+                "OPTIONS-SPOTPERP-001-V2.1",
+                "TFG-DONCHIAN-REGIME-ADAPTATION-V1",
+                "EMA6H-50X200-REGIME-DEPENDENCY-001",
+            ]
+            registry.write_text(
+                json.dumps({
+                    "registry_version": "3.6-test",
+                    "focus_strategy_ids": focus,
+                    "candidates": [
+                        {
+                            "strategy_id": strategy,
+                            "scientific_tier": 2 if strategy in focus[:3] else 3,
+                            "deployment_state": "PROSPECTIVE_FORWARD_SHADOW_OPERATIONAL",
+                            "shadow_allowed": True,
+                            "micro_live_allowed_now": False,
+                        }
+                        for strategy in focus
+                    ],
+                }),
+                encoding="utf-8",
+            )
+            state = build_control_room_state(
+                status_path=str(status),
+                notification_path=str(events),
+                registry_path=str(registry),
+            )
+            self.assertEqual(state["system"]["health"], "DEGRADED_FAIL_CLOSED")
+            by_id = {b["strategy_id"]: b for b in state["bots"]}
+            self.assertEqual(by_id["OPTIONS-SPOTPERP-001-V2.1"]["operating_state"], "BLOCKED")
+            self.assertIn(
+                "options_v21",
+                " ".join(by_id["OPTIONS-SPOTPERP-001-V2.1"]["blockers"]),
+            )
+            for strategy in (
+                "ETF-CME-INSTFLOW-001",
+                "BNB-LAUNCHPOOL-DEMAND-001",
+                "TFG-DONCHIAN-REGIME-ADAPTATION-V1",
+                "EMA6H-50X200-REGIME-DEPENDENCY-001",
+            ):
+                self.assertEqual(by_id[strategy]["operating_state"], "SHADOW", strategy)
+                self.assertIn("MOTOR_HEALTH=OK", by_id[strategy]["runtime_status"])
+
+    def test_shared_evidence_chain_failure_blocks_all_forward_motors(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            registry, status, events = self._paths(root)
+            (root / "forward_local_status.json").write_text(
+                json.dumps({
+                    "health": "DEGRADED_FAIL_CLOSED",
+                    "errors": {"evidence_chain": "hash mismatch"},
+                }),
+                encoding="utf-8",
+            )
+            focus = [
+                "ETF-CME-INSTFLOW-001",
+                "OPTIONS-SPOTPERP-001-V2.1",
+            ]
+            registry.write_text(
+                json.dumps({
+                    "registry_version": "3.6-test",
+                    "focus_strategy_ids": focus,
+                    "candidates": [
+                        {
+                            "strategy_id": strategy,
+                            "scientific_tier": 2,
+                            "deployment_state": "PROSPECTIVE_FORWARD_SHADOW_OPERATIONAL",
+                            "shadow_allowed": True,
+                            "micro_live_allowed_now": False,
+                        }
+                        for strategy in focus
+                    ],
+                }),
+                encoding="utf-8",
+            )
+            state = build_control_room_state(
+                status_path=str(status),
+                notification_path=str(events),
+                registry_path=str(registry),
+            )
+            self.assertEqual(state["focus_counts"]["BLOCKED"], 2)
+            for bot in state["bots"]:
+                self.assertIn("evidence_chain", " ".join(bot["blockers"]))
+
     def test_dh03_ready_registry_without_live_collector_stays_gated(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
