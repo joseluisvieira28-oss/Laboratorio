@@ -1,0 +1,51 @@
+name: DLS Drift S3 Range Control Probe V0.3
+
+on:
+  push:
+    branches:
+      - dls-drift-s3-range-control-v0.3
+    paths:
+      - '.github/workflows/dls-drift-s3-range-control-v03.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dls-drift-s3-range-control-v0.3
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/probe_drift_s3_range_control_v0_3.py
+      - name: Execute source-transport-only probe
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/probe_drift_s3_range_control_v0_3.py
+      - name: Persist receipt
+        if: always()
+        run: |
+          if [ -f labs/DEFI_LIQUIDATION_SHOCK_001/DRIFT_S3_RANGE_CONTROL_PROBE_RECEIPT_V0.3.json ]; then
+            git config user.name "crypto-lab-source-audit"
+            git config user.email "actions@users.noreply.github.com"
+            git add labs/DEFI_LIQUIDATION_SHOCK_001/DRIFT_S3_RANGE_CONTROL_PROBE_RECEIPT_V0.3.json
+            git commit -m "dls: persist Drift S3 range-control receipt v0.3" || true
+            git push origin HEAD:dls-drift-s3-range-control-v0.3
+          fi
+      - name: Firewall
+        if: always()
+        run: |
+          echo SOURCE_TRANSPORT_ONLY_TRUE
+          echo BODY_BYTES_INTERPRETED_0
+          echo FUNDING_VALUES_FALSE
+          echo LIQUIDATION_ROWS_FALSE
+          echo PRICES_FALSE
+          echo RETURNS_FALSE
+          echo PNL_FALSE
+          echo DIRECTION_FALSE
+          echo LIVE_TRADING_FALSE
