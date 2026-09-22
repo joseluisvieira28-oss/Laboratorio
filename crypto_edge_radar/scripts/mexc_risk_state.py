@@ -6,6 +6,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
+from radar.cli_argv import strip_exact_self_path_echo
+
 
 def _load(path: Path) -> dict[str, Any]:
     payload=json.loads(path.read_text(encoding="utf-8"))
@@ -112,7 +114,7 @@ def main()->int:
     ap.add_argument("--preflight",required=True)
     ap.add_argument("--receipt-root",default="live_receipts")
     ap.add_argument("--out",default="mexc_account_risk_state.json")
-    args=ap.parse_args()
+    args=ap.parse_args(strip_exact_self_path_echo())
     state=build_state(
         preflight_path=Path(args.preflight),
         receipt_root=Path(args.receipt_root),
