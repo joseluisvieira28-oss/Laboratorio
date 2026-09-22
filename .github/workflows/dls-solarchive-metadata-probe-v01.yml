@@ -1,0 +1,92 @@
+name: DLS SolArchive Metadata Probe V0.1
+
+on:
+  push:
+    branches:
+      - defi-liquidation-kamino-first-success-exec-v0.1
+    paths:
+      - '.github/workflows/dls-solarchive-metadata-probe-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: defi-liquidation-kamino-first-success-exec-v0.1
+          fetch-depth: 0
+
+      - name: Fetch public metadata only
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/solarchive
+          curl -fL --retry 4 --retry-all-errors --connect-timeout 20             https://data.solarchive.org/schemas/solana/transactions.json             -o /tmp/solarchive/transactions_schema.json
+          curl -fL --retry 4 --retry-all-errors --connect-timeout 20             https://data.solarchive.org/txs/2024-12-15/index.json             -o /tmp/solarchive/day_index.json
+          python - <<'PY'
+          import json, hashlib
+          from pathlib import Path
+          schema_p=Path('/tmp/solarchive/transactions_schema.json')
+          idx_p=Path('/tmp/solarchive/day_index.json')
+          schema=json.loads(schema_p.read_text())
+          idx=json.loads(idx_p.read_text())
+
+          def collect_names(x):
+              out=[]
+              if isinstance(x,list):
+                  for v in x: out += collect_names(v)
+              elif isinstance(x,dict):
+                  if isinstance(x.get('name'),str): out.append(x['name'])
+                  props=x.get('properties')
+                  if isinstance(props,dict): out += list(props)
+              return sorted(set(out))
+
+          files=[]
+          raw_files=idx.get('files',[]) if isinstance(idx,dict) else []
+          if isinstance(raw_files,list):
+              for f in raw_files:
+                  if isinstance(f,str):
+                      files.append({'name':f})
+                  elif isinstance(f,dict):
+                      files.append({k:f.get(k) for k in ('name','path','url','size','size_bytes','sha256','checksum') if k in f})
+
+          out={
+            'schema_version':'0.1',
+            'lab_id':'DEFI-LIQUIDATION-SHOCK-001',
+            'status':'SOLARCHIVE_METADATA_PROBE_PASS',
+            'date':'2024-12-15',
+            'schema_sha256':hashlib.sha256(schema_p.read_bytes()).hexdigest(),
+            'index_sha256':hashlib.sha256(idx_p.read_bytes()).hexdigest(),
+            'schema_top_type':type(schema).__name__,
+            'schema_field_names':collect_names(schema),
+            'index_top_keys':sorted(idx.keys()) if isinstance(idx,dict) else [],
+            'file_count':len(files),
+            'files':files,
+            'source_urls':{
+              'schema':'https://data.solarchive.org/schemas/solana/transactions.json',
+              'index':'https://data.solarchive.org/txs/2024-12-15/index.json'
+            },
+            'data_rows_opened':False,
+            'prices_opened':False,
+            'returns_opened':False,
+            'pnl_opened':False,
+            'direction_opened':False
+          }
+          p=Path('labs/DEFI_LIQUIDATION_SHOCK_001/audit_receipts/DLS_SOLARCHIVE_METADATA_PROBE_V0.1.json')
+          p.parent.mkdir(parents=True,exist_ok=True)
+          p.write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          print(json.dumps({'status':out['status'],'file_count':out['file_count'],'fields':out['schema_field_names']},sort_keys=True))
+          PY
+
+      - name: Persist metadata receipt
+        run: |
+          git config user.name "crypto-lab-source-audit"
+          git config user.email "actions@users.noreply.github.com"
+          git add labs/DEFI_LIQUIDATION_SHOCK_001/audit_receipts/DLS_SOLARCHIVE_METADATA_PROBE_V0.1.json
+          git commit -m "audit: persist SolArchive metadata probe"
+          git push origin HEAD:defi-liquidation-kamino-first-success-exec-v0.1
