@@ -1,0 +1,55 @@
+name: CED1D Render Source Probe V0.1
+
+on:
+  pull_request:
+    branches:
+      - crypto-edge-radar-postgres-v0.5
+  push:
+    branches:
+      - ced1d-render-source-probe-v0.1
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: crypto_edge_radar
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -e .
+      - name: Compile
+        run: python -m compileall radar tests
+      - name: Targeted probe tests
+        run: python -m unittest tests.test_ced1d_source_probe -v
+      - name: Full deterministic suite
+        run: python -m unittest discover -s tests -v
+      - name: Assert no trading authority
+        run: |
+          python - <<'PY'
+          from radar.ced1d_source_probe import ced1d_render_source_probe
+          from unittest.mock import patch
+          fake=[
+            {
+              "host":"https://fapi.binance.com",
+              "endpoint":"/fapi/v1/fundingRate",
+              "http_status":451,
+              "schema_pass":False,
+              "row_count":None,
+            }
+          ]*5
+          with patch("radar.ced1d_source_probe.probe_host", side_effect=fake):
+              x=ced1d_render_source_probe()
+          assert x["used_as_forward_evidence"] is False
+          assert x["collector_adoption_authorized"] is False
+          assert x["orders_created"] is False
+          assert x["exchange_mutation_performed"] is False
+          assert x["live_capital_enabled"] is False
+          print("CED1D_RENDER_PROBE_FIREWALL_PASS")
+          PY
