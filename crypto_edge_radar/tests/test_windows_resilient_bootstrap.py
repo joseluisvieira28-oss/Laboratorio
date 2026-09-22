@@ -18,7 +18,7 @@ class WindowsResilientBootstrapTests(unittest.TestCase):
         return str((Path(__file__).resolve().parents[1] / "MEXC_FUTURES_STANDING_MICROLIVE_OPERATOR_AUTHORITY_V0.1.json").resolve())
 
     @classmethod
-    def _resource(cls, _self, name: str) -> str:
+    def _resource(cls, name: str) -> str:
         if name == "deployment_registry_v1.json":
             return cls._registry_path()
         if name == "MEXC_FUTURES_STANDING_MICROLIVE_OPERATOR_AUTHORITY_V0.1.json":
