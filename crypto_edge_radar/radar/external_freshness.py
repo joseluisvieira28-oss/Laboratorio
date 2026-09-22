@@ -22,6 +22,9 @@ COLLECTORS = {
         "branch": "ced-1d-v3-byte-recovery-2026-09-17",
         "workflow": ".github/workflows/ced1d-0031-prospective-shadow-collector.yml",
         "forward_boundary": "2026-09-19T00:00:00Z",
+        "superseded_by": "RENDER_SHADOW_V0.3",
+        "superseded_at_utc": "2026-09-22T07:25:00Z",
+        "new_forward_boundary": "2026-09-22T00:00:00Z",
     },
 }
 
@@ -188,6 +191,22 @@ def collector_freshness(
 def all_external_freshness(*, now: datetime | None = None, timeout: int = 15) -> dict[str, Any]:
     out: dict[str, Any] = {}
     for candidate, config in COLLECTORS.items():
+        if config.get("superseded_by"):
+            out[candidate] = {
+                "strategy_id": candidate,
+                "collector_status": "SUPERSEDED",
+                "freshness_classification": "SUPERSEDED",
+                "source_status": "HISTORICAL_GITHUB_ROUTE_SUPERSEDED",
+                "forward_boundary": config["forward_boundary"],
+                "superseded_by": config["superseded_by"],
+                "superseded_at_utc": config["superseded_at_utc"],
+                "new_forward_boundary": config["new_forward_boundary"],
+                "authenticated_exchange_api_used": False,
+                "orders_created": False,
+                "exchange_mutation_performed": False,
+                "live_capital_enabled": False,
+            }
+            continue
         try:
             rows = fetch_runs(branch=config["branch"], timeout=timeout)
             out[candidate] = collector_freshness(candidate, now=now, runs=rows, timeout=timeout)
