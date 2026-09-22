@@ -1,0 +1,41 @@
+name: DLS SolArchive Source Recon V0.1
+
+on:
+  pull_request:
+    branches:
+      - defi-liquidation-public-rpc-history-feasibility-v0.1
+  push:
+    branches:
+      - defi-liquidation-solarchive-source-recon-v0.1
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  recon:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/solarchive_source_recon_v0_1.py
+      - run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/solarchive_source_recon_v0_1.py
+      - name: Assert source-only firewall
+        run: |
+          python - <<'PY'
+          import json
+          x=json.load(open("dls_solarchive_recon/SOLARCHIVE_SOURCE_RECON_RECEIPT_V0.1.json"))
+          for k in ("source_data_pass","prices","returns","pnl","direction","market_response","liquidation_events_decoded","first_success_boundary_adjudicated","live_trading","orders","wallets","exchange_mutation","merge_main"):
+              assert x[k] is False,(k,x[k])
+          print("DLS_SOLARCHIVE_FIREWALL_PASS",x["classification"])
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dls-solarchive-source-recon-v01
+          path: dls_solarchive_recon/
+          if-no-files-found: error
+          retention-days: 30
