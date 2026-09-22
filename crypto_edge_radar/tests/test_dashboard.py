@@ -7,6 +7,19 @@ from radar.dashboard import HTML, build_control_room_state
 
 
 class DashboardTests(unittest.TestCase):
+    @staticmethod
+    def _healthy_forward_state(errors=None):
+        return {
+            "health": "OK" if not errors else "DEGRADED_FAIL_CLOSED",
+            "checked_at_utc": "2026-09-22T08:00:00Z",
+            "errors": errors or {},
+            "bnb_launchpool": {"status": "NO_NEW_EVENT"},
+            "tfg": {"status": "IDLE_NO_NEW_CERTIFIABLE_12H_BOUNDARY"},
+            "options_v21": {"status": "NO_SIGNAL"},
+            "etf_cme_signal": {"status": "NO_SIGNAL"},
+            "ema6h_regime": {"status": "IDLE_NO_NEW_BOUNDARY"},
+        }
+
     def _paths(self, root: Path):
         registry = root / "registry.json"
         status = root / "status.json"
@@ -26,7 +39,7 @@ class DashboardTests(unittest.TestCase):
             encoding="utf-8",
         )
         (root / "forward_local_status.json").write_text(
-            json.dumps({"health": "OK", "errors": {}}),
+            json.dumps(self._healthy_forward_state()),
             encoding="utf-8",
         )
         return registry, status, events
@@ -96,7 +109,7 @@ class DashboardTests(unittest.TestCase):
             state = build_control_room_state(status_path=str(status), notification_path=str(events), registry_path=str(registry))
             self.assertEqual(state["focus_counts"]["GATED"], 1)
             self.assertEqual(state["focus_counts"]["SHADOW"], 0)
-            self.assertIn("not healthy", " ".join(state["bots"][0]["blockers"]))
+            self.assertIn("lacks a completed healthy component cycle", " ".join(state["bots"][0]["blockers"]))
 
     def test_local_forward_runtime_fail_closed_blocks_all_local_forward_shadow_claims(self):
         with tempfile.TemporaryDirectory() as td:
@@ -131,12 +144,9 @@ class DashboardTests(unittest.TestCase):
             root = Path(td)
             registry, status, events = self._paths(root)
             (root / "forward_local_status.json").write_text(
-                json.dumps({
-                    "health": "DEGRADED_FAIL_CLOSED",
-                    "errors": {
-                        "options_v21": "OptionsV21SourceError:Deribit trade has invalid IV/index"
-                    }
-                }),
+                json.dumps(self._healthy_forward_state({
+                    "options_v21": "OptionsV21SourceError:Deribit trade has invalid IV/index"
+                })),
                 encoding="utf-8",
             )
             focus = [
@@ -386,8 +396,49 @@ class DashboardTests(unittest.TestCase):
     def test_dashboard_html_has_live_state_endpoint(self):
         self.assertIn("/api/state", HTML)
         self.assertIn("Crypto Edge Radar", HTML)
-        self.assertIn("RISK FIREWALL", HTML)
+        self.assertIn("Risk firewall", HTML)
+        self.assertIn("Deployment baseline (historical)", HTML)
         self.assertIn("REGISTRY DESYNC", HTML)
+
+    def test_registry_metadata_alone_cannot_arm_candidate(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            registry, status, events = self._paths(root)
+            strategy = "ETF-CME-INSTFLOW-001"
+            registry.write_text(json.dumps({
+                "registry_version": "3.6-test",
+                "focus_strategy_ids": [strategy],
+                "candidates": [{
+                    "strategy_id": strategy,
+                    "scientific_tier": 2,
+                    "deployment_state": "AUTHENTICATED_PREFLIGHT_PENDING",
+                    "shadow_allowed": True,
+                    "micro_live_allowed_now": True,
+                }],
+            }), encoding="utf-8")
+            state = build_control_room_state(status_path=str(status), notification_path=str(events), registry_path=str(registry))
+            self.assertEqual(state["focus_counts"]["ARMED"], 0)
+            self.assertEqual(state["bots"][0]["operating_state"], "SHADOW")
+
+    def test_ced1d_registry_shadow_requires_live_sentinel_evidence(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            registry, status, events = self._paths(root)
+            strategy = "CED1D-0031"
+            registry.write_text(json.dumps({
+                "registry_version": "3.6-test",
+                "focus_strategy_ids": [strategy],
+                "candidates": [{"strategy_id": strategy, "scientific_tier": 2,
+                    "deployment_state": "PROSPECTIVE_PUBLIC_ARCHIVE_SHADOW_ARMED",
+                    "shadow_allowed": True, "micro_live_allowed_now": False}],
+            }), encoding="utf-8")
+            state = build_control_room_state(status_path=str(status), notification_path=str(events), registry_path=str(registry))
+            self.assertEqual(state["bots"][0]["operating_state"], "BLOCKED")
+            (root / "render_sentinel_status.json").write_text(json.dumps({
+                "status": "OK", "remote_health": "OK", "checked_at_utc": "2026-09-22T08:00:00Z"
+            }), encoding="utf-8")
+            state = build_control_room_state(status_path=str(status), notification_path=str(events), registry_path=str(registry))
+            self.assertEqual(state["bots"][0]["operating_state"], "SHADOW")
 
 
 if __name__ == "__main__":
