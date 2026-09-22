@@ -1,0 +1,77 @@
+name: DLS PublicNode Kamino RAW Calibration V0.1
+
+on:
+  push:
+    branches:
+      - defi-liquidation-publicnode-calibration-v0.1
+    paths:
+      - '.github/workflows/dls-publicnode-kamino-raw-calibration-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  calibrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: defi-liquidation-publicnode-calibration-v0.1
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build transport-only verifier copy
+        run: |
+          cp labs/DEFI_LIQUIDATION_SHOCK_001/source/verify_kamino_public_rpc_v0_1.py /tmp/verify_publicnode.py
+          python - <<'PY'
+          p='/tmp/verify_publicnode.py'
+          s=open(p,encoding='utf-8').read()
+          old='RPC="https://api.mainnet-beta.solana.com"'
+          new='RPC="https://solana-rpc.publicnode.com"'
+          assert old in s
+          s=s.replace(old,new,1)
+          open(p,'w',encoding='utf-8').write(s)
+          PY
+      - name: Execute exact 16-row RAW calibration
+        run: python /tmp/verify_publicnode.py | tee DLS_PUBLICNODE_KAMINO_RAW_CALIBRATION_STDOUT_V0.1.txt
+      - name: Reclassify calibration receipt without changing row evidence
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          src=Path('dls_kamino_public_rpc_rawverify_v01/DLS_KAMINO_PUBLIC_RPC_RAWVERIFY_RECEIPT_V0.1.json')
+          x=json.loads(src.read_text())
+          base=x.get('classification')
+          if x.get('verified_count')==16 and x.get('content_mismatch_count')==0:
+              c='PUBLICNODE_KAMINO_RAW_CALIBRATION_PASS'
+          elif x.get('content_mismatch_count',0)>0:
+              c='PUBLICNODE_KAMINO_RAW_CALIBRATION_CONTENT_MISMATCH_FAIL_CLOSED'
+          else:
+              c='PUBLICNODE_KAMINO_RAW_CALIBRATION_PARTIAL_OR_HISTORY_BLOCKED'
+          x['original_verifier_classification']=base
+          x['classification']=c
+          x['calibration_only']=True
+          out=Path('labs/DEFI_LIQUIDATION_SHOCK_001/PUBLICNODE_KAMINO_RAW_CALIBRATION_RECEIPT_V0.1.json')
+          out.write_text(json.dumps(x,indent=2,sort_keys=True)+'\n')
+          print(json.dumps({'classification':c,'verified_count':x.get('verified_count'),'transport_blocked_count':x.get('transport_blocked_count'),'content_mismatch_count':x.get('content_mismatch_count')},sort_keys=True))
+          PY
+      - name: Upload evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-publicnode-kamino-raw-calibration-v01
+          path: |
+            dls_kamino_public_rpc_rawverify_v01/
+            labs/DEFI_LIQUIDATION_SHOCK_001/PUBLICNODE_KAMINO_RAW_CALIBRATION_RECEIPT_V0.1.json
+            DLS_PUBLICNODE_KAMINO_RAW_CALIBRATION_STDOUT_V0.1.txt
+          if-no-files-found: error
+          retention-days: 30
+      - name: Persist receipt
+        run: |
+          git config user.name "crypto-lab-source-audit"
+          git config user.email "actions@users.noreply.github.com"
+          git add labs/DEFI_LIQUIDATION_SHOCK_001/PUBLICNODE_KAMINO_RAW_CALIBRATION_RECEIPT_V0.1.json
+          git commit -m "dls: persist PublicNode Kamino raw calibration receipt" || true
+          git push origin HEAD:defi-liquidation-publicnode-calibration-v0.1
