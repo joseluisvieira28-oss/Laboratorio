@@ -1,0 +1,44 @@
+{
+  "receipt_id": "MEXC_V02_RISKSTATE_LAUNCHER_HOTFIX_FINAL_2026-09-22",
+  "status": "VALIDATED",
+  "incident_observed_on_operator_pc": {
+    "mexc_authenticated_preflight": "PASS",
+    "etf_cme_capital_feasibility": "BLOCKED_EXPECTED",
+    "error": "MEXCRiskState.exe argparse received stray/incorrectly split launcher arguments"
+  },
+  "branch": "mexc-v02-riskstate-launcher-hotfix-v0.1",
+  "validated_head": "89936c98b4bbe4650502bf9ef1b25562df78f891",
+  "workflow": {
+    "run_id": 35696933143,
+    "job_id": 106645754951,
+    "conclusion": "success",
+    "tests": "32/32 PASS",
+    "packaged_risk_state_unicode_smoke_test": "PASS",
+    "packaged_risk_state_exact_self_path_echo_smoke_test": "PASS"
+  },
+  "fixes": [
+    "Run_MEXC_Ready_Check_V02.ps1 now invokes MEXCRiskState.exe via quoted Start-Process arguments",
+    "risk-state nonzero exit code now causes true fail-closed launcher failure",
+    "MEXCRiskState.exe strips only an exact duplicate path to its own executable",
+    "same exact-self-path CLI hardening applied to live executor and exit guard",
+    "Windows CI executes packaged MEXCRiskState.exe from a Unicode path containing José and spaces",
+    "Windows CI also deliberately appends the EXE path and verifies the narrow sanitizer"
+  ],
+  "artifact": {
+    "id": 10680542338,
+    "name": "mexc-live-execution-prep-v02-current-api",
+    "sha256": "a2aecaf088f6af0519513557c4e3f44d4ee515f7b689bd04f3f6e3164b524bff"
+  },
+  "binaries": {
+    "MEXCAuthenticatedPreflight.exe": "c639841951386cdd55c0618eaa5bdb9f3e448e114f8c69ec1d7ec5404b17449a",
+    "MEXCRiskState.exe": "d3454254acc19134dc4f5ad10fb464f8f454f73f8a6832595c4d0dc775643ce2",
+    "MEXCLiveExecutor.exe": "51d13fc53824b902889d5f3f3d7429b925419af18a8f1107909dfe02ccd3a52c",
+    "MEXCExitGuard.exe": "aba061f2b32ced51360debf52427b5bd49544de8976578f946f3b42f2339e345"
+  },
+  "api_credentials_need_reentry": false,
+  "dpapi_credentials_reused": true,
+  "science_changed": false,
+  "risk_changed": false,
+  "live_order_created": false,
+  "exchange_mutation_performed": false
+}
