@@ -13,12 +13,14 @@ New-Item -ItemType Directory -Force -Path $LogDir | Out-Null
 New-Item -ItemType Directory -Force -Path $DataDir | Out-Null
 
 $ExeCandidates = @(
+    (Join-Path $Root "CryptoEdgeRadarNode\CryptoEdgeRadarNode.exe"),
     (Join-Path $Root "CryptoEdgeRadarNode.exe"),
+    (Join-Path $Root "dist\CryptoEdgeRadarNode\CryptoEdgeRadarNode.exe"),
     (Join-Path $Root "dist\CryptoEdgeRadarNode.exe")
 )
 $Exe = $ExeCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
 if (-not $Exe) {
-    throw "CryptoEdgeRadarNode.exe not found under $Root or $Root\dist"
+    throw "CryptoEdgeRadarNode.exe not found in the approved V0.14.3.2 onedir/root locations"
 }
 
 $Port = 8787
@@ -42,7 +44,7 @@ function PortListening {
     }
 }
 
-Log "=== Crypto Edge Radar V0.14.3.1 authority-packaging hotfix launcher ==="
+Log "=== Crypto Edge Radar V0.14.3.2 live-state reconciliation launcher ==="
 Log "Root: $Root"
 Log "EXE: $Exe"
 
@@ -60,7 +62,7 @@ if (PortListening) {
         $focusLoaded = [int]$state.registry.focus_loaded
         Log "Existing service reports build=$buildId registry=$registryVersion focus=$focusLoaded/$focusExpected"
         if (
-            $buildId -eq "v0.14.3.1-win-mexc-authority-packaging-hotfix" -and
+            $buildId -eq "v0.14.3.2-win-live-state-reconciliation" -and
             $registryVersion -eq "3.6" -and
             $focusExpected -eq 7 -and
             $focusLoaded -eq 7
@@ -73,7 +75,7 @@ if (PortListening) {
     }
 
     if ($canonicalAlreadyRunning) {
-        Log "PASS: canonical V0.14.3.1 registry 3.6 / 7-motor Radar is already running."
+        Log "PASS: canonical V0.14.3.2 registry 3.6 / 7-motor Radar is already running."
         if ($env:RADAR_NO_BROWSER -ne "1") { Start-Process "http://127.0.0.1:$Port/" }
         exit 0
     }
