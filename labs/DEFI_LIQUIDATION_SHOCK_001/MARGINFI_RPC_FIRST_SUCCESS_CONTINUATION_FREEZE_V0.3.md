@@ -9,14 +9,17 @@ Parent V0.2:
 - reason: `max_pages_reached_before_lower_boundary`
 - pages: `5000`
 - signatures: `5,000,000`
-- oldest time: `2024-01-03T12:26:07Z`
+- oldest blockTime integer: `1704283167`
+- oldest UTC: `2024-01-03T11:59:27Z`
 
 Deterministic V0.3 resume cursor:
+- extraction run: `35770637623`
 - classification: `MARGINFI_RPC_RESUME_CURSOR_EXTRACTED`
 - page SHA256: `788fda0abb1dca2dec9db1cd81f39cf2b0a55f7f1960502590a2645576fada47`
 - signature: `5stv5fkA5c4oXYfUaXx59oAENDfcvjr9zzZdLwNyevRK68wzZ5BGeKkj6bq8KmgjXUj68qX2NAsaD86aS8d1Cm73`
 - slot: `239637875`
-- time: `2024-01-03T12:26:07Z`
+- blockTime integer: `1704283167`
+- UTC: `2024-01-03T11:59:27Z`
 - cursor tx status: success
 
 Scientific identity unchanged:
@@ -37,5 +40,8 @@ Continuation:
 - page cap before crossing => `MARGINFI_FIRST_SUCCESS_BOUNDARY_RPC_HISTORY_BLOCKED`;
 - lower boundary crossed with no match in earliest slice => `MARGINFI_FIRST_SUCCESS_BOUNDARY_RPC_NO_MATCH_IN_EARLIEST_SLICE`;
 - any structural inconsistency => fail closed.
+
+Evidence correction note:
+The V0.2 persisted receipt's anchor ISO text was generated from a manually entered timestamp that differed from the cursor's authoritative integer blockTime. No V0.2 boundary was crossed and no RAW event was adjudicated in that run, so this was metadata-only and had no scientific outcome effect. V0.3 uses the exact extracted integer blockTime above.
 
 Firewall: prices=false; returns=false; pnl=false; direction=false; protected 2025/2026 market outcomes=false; live trading=false; orders=false; wallets=false; exchange mutation=false; paid source=false; merge main=false.
