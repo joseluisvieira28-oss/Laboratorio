@@ -1,10 +1,11 @@
-name: BUILD RADAR V0.14.3 POST-DEPLOYMENT HARDENING
+name: BUILD RADAR V0.14.3.1 AUTHORITY PACKAGING HOTFIX
 
 on:
   workflow_dispatch:
   push:
     branches:
       - radar-mexc-postdeploy-hardening-v0.1
+      - radar-v01431-authority-packaging-hotfix-v0.1
     paths:
       - 'crypto_edge_radar/radar/dashboard.py'
       - 'crypto_edge_radar/radar/options_v21_live.py'
@@ -50,9 +51,9 @@ jobs:
         run: |
           python -m unittest tests.test_dashboard tests.test_mexc_local_state tests.test_options_v21_live tests.test_mexc_live_gate tests.test_mexc_auth_trade tests.test_windows_resilient_bootstrap -v
 
-      - name: Build V0.14.3 node
+      - name: Build V0.14.3.1 node
         run: |
-          pyinstaller --clean --onefile --name CryptoEdgeRadarNode --add-data "deployment_registry_v1.json;." windows_node_entry.py
+          pyinstaller --clean --onefile --name CryptoEdgeRadarNode --add-data "deployment_registry_v1.json;." --add-data "MEXC_FUTURES_STANDING_MICROLIVE_OPERATOR_AUTHORITY_V0.1.json;." windows_node_entry.py
 
       - name: Package self-test
         shell: pwsh
@@ -60,7 +61,10 @@ jobs:
           $env:RADAR_PACKAGING_SELFTEST = "1"
           $state = (& .\dist\CryptoEdgeRadarNode.exe) | ConvertFrom-Json
           if ($state.status -ne "PASS") { throw "package self-test failed" }
-          if ($state.build_id -ne "v0.14.3-win-mexc-postdeploy-hardening") { throw "unexpected build_id" }
+          if ($state.build_id -ne "v0.14.3.1-win-mexc-authority-packaging-hotfix") { throw "unexpected build_id" }
+          if (-not $state.standing_authority_present) { throw "standing MEXC authority missing from package" }
+          if ($state.standing_authority_id -ne "MEXC_FUTURES_STANDING_MICROLIVE_OPERATOR_AUTHORITY_V0.1") { throw "standing authority id mismatch" }
+          if ($state.standing_authority_status -ne "ACTIVE_STANDING_OPERATOR_AUTHORIZATION") { throw "standing authority inactive" }
           if ($state.registry_version -ne "3.6") { throw "unexpected registry version" }
           if ([int]$state.candidate_count -ne 7) { throw "unexpected motor count" }
           if (-not $state.resilient_control_plane_bootstrap) { throw "resilient bootstrap missing" }
@@ -79,11 +83,11 @@ jobs:
             if ($errors.Count -gt 0) { $errors | Format-List; throw "PowerShell syntax failure: $s" }
           }
 
-      - name: Prove launcher requires exact V0.14.3 identity
+      - name: Prove launcher requires exact V0.14.3.1 identity
         shell: pwsh
         run: |
           $src=Get-Content "windows\START_RADAR_RECOVERY_V0141.ps1" -Raw
-          if (-not $src.Contains('v0.14.3-win-mexc-postdeploy-hardening')) { throw "launcher does not require V0.14.3 build id" }
+          if (-not $src.Contains('v0.14.3.1-win-mexc-authority-packaging-hotfix')) { throw "launcher does not require V0.14.3.1 build id" }
           if (-not $src.Contains('registryVersion -eq "3.6"')) { throw "launcher registry check missing" }
           if (-not $src.Contains('focusExpected -eq 7')) { throw "launcher seven-motor check missing" }
           if (-not $src.Contains('ProcessName -ne "CryptoEdgeRadarNode"')) { throw "unrelated-process safety check missing" }
@@ -106,11 +110,12 @@ jobs:
           Copy-Item windows\CHECK_RADAR_V0141.ps1 v0143_bundle\windows\
           Copy-Item windows\RUN_RADAR_24X7_V0143.ps1 v0143_bundle\windows\
           Copy-Item windows\INSTALL_RADAR_AUTOSTART_V0143.ps1 v0143_bundle\windows\
+          Copy-Item MEXC_FUTURES_STANDING_MICROLIVE_OPERATOR_AUTHORITY_V0.1.json v0143_bundle\
 
-      - name: Upload V0.14.3 hardening build
+      - name: Upload V0.14.3.1 authority-packaging hotfix
         uses: actions/upload-artifact@v4
         with:
-          name: crypto-edge-radar-v0143-mexc-postdeploy-hardening
+          name: crypto-edge-radar-v01431-mexc-authority-packaging-hotfix
           path: crypto_edge_radar/v0143_bundle/**
           if-no-files-found: error
           retention-days: 14
