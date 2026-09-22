@@ -17,7 +17,7 @@ from radar.render_sentinel import RenderSentinel
 BUILD_ID = "v0.14.4-win-cirv-eight-motor"
 
 _INSTANCE_MUTEX_HANDLE = None
-_INSTANCE_MUTEX_NAME = r"Local\CryptoEdgeRadarV01433Node"
+_INSTANCE_MUTEX_NAME = r"Local\CryptoEdgeRadarV0144Node"
 _ERROR_ALREADY_EXISTS = 183
 
 
