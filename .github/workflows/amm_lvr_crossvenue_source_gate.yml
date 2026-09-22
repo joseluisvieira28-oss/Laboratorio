@@ -1,0 +1,27 @@
+name: AMM-LVR-CROSSVENUE-001 Source Gate
+
+on:
+  pull_request:
+    paths:
+      - 'labs/amm-lvr-crossvenue-001/**'
+      - '.github/workflows/amm_lvr_crossvenue_source_gate.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run outcome-blind source gate
+        run: python labs/amm-lvr-crossvenue-001/source_gate.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AMM-LVR-CROSSVENUE-001-SOURCE-EVIDENCE
+          path: labs/amm-lvr-crossvenue-001/evidence/
