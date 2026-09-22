@@ -1,17 +1,18 @@
 from __future__ import annotations
 
-from unittest import TestCase
 from pathlib import Path
+from unittest import TestCase
 
 
-class PrivateBackupRouteStaticTests(TestCase):
-    def test_route_is_token_gated_and_no_secret_value_is_returned(self):
+class PrivateBackupCleanupTests(TestCase):
+    def test_temporary_backup_surfaces_are_absent_from_runtime(self):
         source = (Path(__file__).resolve().parents[1] / "radar" / "forward_web.py").read_text()
-        self.assertIn("/api/private/evidence-backup", source)
-        self.assertIn("RADAR_BACKUP_EXPORT_ENABLED", source)
-        self.assertIn("RADAR_BACKUP_EXPORT_TOKEN", source)
-        self.assertIn('provided != expected', source)
-        self.assertIn('{"error": "not_found"}', source)
+        self.assertNotIn("/api/private/evidence-backup", source)
+        self.assertNotIn("RADAR_BACKUP_EXPORT_TOKEN", source)
+        self.assertNotIn("RADAR_BACKUP_EXPORT_ENABLED", source)
+        self.assertNotIn("RADAR_BACKUP_LOG_EMIT_ON_START", source)
+        self.assertNotIn("build_private_evidence_snapshot", source)
+        self.assertNotIn("emit_snapshot_log_chunks", source)
 
 
 if __name__ == "__main__":
