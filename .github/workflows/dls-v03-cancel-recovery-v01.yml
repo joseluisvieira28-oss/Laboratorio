@@ -1,0 +1,126 @@
+name: DLS V0.3 Cancel Recovery V0.1
+
+on:
+  push:
+    branches:
+      - dls-v03-cancel-recovery-v0.1
+    paths:
+      - '.github/workflows/dls-v03-cancel-recovery-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dls-v03-cancel-recovery-v0.1
+          fetch-depth: 0
+
+      - name: Download marginfi V0.3 artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dls-marginfi-first-success-rpc-v03
+          path: marginfi_v03
+          run-id: 35771014450
+          github-token: ${{ github.token }}
+
+      - name: Download Save 0x0c V0.3 artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dls-save0c-first-success-rpc-v03
+          path: save0c_v03
+          run-id: 35771022352
+          github-token: ${{ github.token }}
+
+      - name: Recover exact last complete cursors
+        run: |
+          python - <<'PY'
+          import hashlib,json,re
+          from pathlib import Path
+
+          configs=[
+            {
+              "name":"marginfi",
+              "root":Path("marginfi_v03"),
+              "expected_last_log_page":205,
+              "classification":"MARGINFI_V03_CANCEL_RECOVERY_CURSOR_EXTRACTED",
+              "run":35771014450,"artifact":10713843479,
+              "artifact_sha":"d33e966a59d76af2096920e4f169a406d7dcf7fcf4bf17509ab5000abdf727c3",
+              "out":Path("labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_V03_CANCEL_RECOVERY_CURSOR_V0.1.json")
+            },
+            {
+              "name":"save0c",
+              "root":Path("save0c_v03"),
+              "expected_last_log_page":217,
+              "classification":"SAVE0C_V03_CANCEL_RECOVERY_CURSOR_EXTRACTED",
+              "run":35771022352,"artifact":10714501324,
+              "artifact_sha":"b5284d198c7e5101bdd2ac5c0136c51248dbf002e1f42051e84091ab098bbf6b",
+              "out":Path("labs/DEFI_LIQUIDATION_SHOCK_001/SAVE0C_V03_CANCEL_RECOVERY_CURSOR_V0.1.json")
+            }
+          ]
+
+          for c in configs:
+              candidates=[]
+              for p in c["root"].rglob("signatures_page_*.json"):
+                  m=re.search(r"signatures_page_(\d+)\.json$",p.name)
+                  if m:
+                      candidates.append((int(m.group(1)),p))
+              rec={
+                "schema_version":"0.1","lab_id":"DEFI-LIQUIDATION-SHOCK-001",
+                "parent_run_id":c["run"],"parent_artifact_id":c["artifact"],
+                "parent_artifact_sha256":c["artifact_sha"],
+                "parent_conclusion":"cancelled",
+                "expected_last_complete_page_from_logs":c["expected_last_log_page"],
+                "prices":False,"returns":False,"pnl":False,"direction":False,
+                "event_outcomes":False,"live_trading":False,"orders":False,
+                "wallets":False,"exchange_mutation":False,"paid_source":False,"merge_main":False
+              }
+              if not candidates:
+                  rec.update(classification=c["classification"].replace("_EXTRACTED","_FAIL_CLOSED"),reason="no_signature_pages")
+              else:
+                  page_no,page=max(candidates,key=lambda x:x[0])
+                  rec["selected_page_number"]=page_no
+                  rec["selected_page_path"]=str(page)
+                  raw=page.read_bytes()
+                  rec["page_sha256"]=hashlib.sha256(raw).hexdigest()
+                  try:
+                      obj=json.loads(raw)
+                      rows=obj.get("result")
+                  except Exception as e:
+                      rows=None
+                      rec["json_error"]=type(e).__name__
+                  if page_no!=c["expected_last_log_page"]:
+                      rec.update(classification=c["classification"].replace("_EXTRACTED","_FAIL_CLOSED"),reason="artifact_log_page_mismatch")
+                  elif not isinstance(rows,list) or not rows:
+                      rec.update(classification=c["classification"].replace("_EXTRACTED","_FAIL_CLOSED"),reason="result_not_nonempty_list")
+                  else:
+                      row=rows[-1]
+                      if not isinstance(row,dict) or not isinstance(row.get("signature"),str) or row.get("slot") is None or row.get("blockTime") is None:
+                          rec.update(classification=c["classification"].replace("_EXTRACTED","_FAIL_CLOSED"),reason="final_row_missing_required_fields")
+                      else:
+                          rec.update(
+                            classification=c["classification"],
+                            page_row_count=len(rows),
+                            resume_before_signature=row["signature"],
+                            resume_slot=int(row["slot"]),
+                            resume_block_time=int(row["blockTime"]),
+                            resume_err=row.get("err")
+                          )
+              c["out"].write_text(json.dumps(rec,indent=2,sort_keys=True)+"\n",encoding="utf-8")
+              print(json.dumps(rec,indent=2,sort_keys=True))
+          PY
+
+      - name: Persist recovery cursors
+        run: |
+          git config user.name "crypto-lab-source-audit"
+          git config user.email "actions@users.noreply.github.com"
+          git add labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_V03_CANCEL_RECOVERY_CURSOR_V0.1.json
+          git add labs/DEFI_LIQUIDATION_SHOCK_001/SAVE0C_V03_CANCEL_RECOVERY_CURSOR_V0.1.json
+          git commit -m "dls: persist V0.3 cancellation recovery cursors" || true
+          git push origin HEAD:dls-v03-cancel-recovery-v0.1
