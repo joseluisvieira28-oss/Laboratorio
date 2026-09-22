@@ -122,7 +122,7 @@ class WindowsResilientBootstrapTests(unittest.TestCase):
 
     def test_launcher_has_duplicate_and_unrelated_process_guards(self):
         script = (Path(__file__).resolve().parents[1] / "windows" / "START_RADAR_RECOVERY_V0141.ps1").read_text(encoding="utf-8")
-        self.assertIn("CryptoEdgeRadarV0143Launcher", script)
+        self.assertIn("CryptoEdgeRadarV0144Launcher", script)
         self.assertIn("approvedPaths -notcontains $ownerPath", script)
         self.assertNotIn('Get-Process -Name "CryptoEdgeRadarNode"', script)
 
@@ -135,10 +135,10 @@ class WindowsResilientBootstrapTests(unittest.TestCase):
         self.assertIn("Register-ScheduledTask", installer)
         self.assertIn("-AtLogOn", installer)
 
-    def test_launcher_supports_stable_onedir_and_exact_v01433_identity(self):
+    def test_launcher_supports_stable_onedir_and_exact_v0144_identity(self):
         script = (Path(__file__).resolve().parents[1] / "windows" / "START_RADAR_RECOVERY_V0141.ps1").read_text(encoding="utf-8")
         self.assertIn("CryptoEdgeRadarNode\\CryptoEdgeRadarNode.exe", script)
-        self.assertIn("v0.14.3.3-win-single-instance-lock", script)
+        self.assertIn("v0.14.4-win-cirv-eight-motor", script)
 
 
 if __name__ == "__main__":
