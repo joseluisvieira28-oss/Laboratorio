@@ -1,0 +1,107 @@
+name: BUILD RADAR V0.14.2 FOCUSED VALIDATION
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - radar-v0142-forward-failure-isolation-v0.1
+    paths:
+      - 'crypto_edge_radar/radar/dashboard.py'
+      - 'crypto_edge_radar/radar/options_v21_live.py'
+      - 'crypto_edge_radar/tests/test_dashboard.py'
+      - 'crypto_edge_radar/tests/test_options_v21_live.py'
+      - 'crypto_edge_radar/tests/test_windows_resilient_bootstrap.py'
+      - 'crypto_edge_radar/windows_node_entry.py'
+      - 'crypto_edge_radar/windows/START_RADAR_RECOVERY_V0141.ps1'
+      - 'crypto_edge_radar/windows/START_RADAR_RECOVERY_V0141.bat'
+      - 'crypto_edge_radar/windows/CHECK_RADAR_V0141.ps1'
+      - '.github/workflows/build-radar-v0142-focused-validation.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build-focused:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: crypto_edge_radar
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install runtime and packager
+        run: |
+          python -m pip install -e .
+          python -m pip install "pyinstaller>=6,<7"
+
+      - name: Compile changed surfaces
+        run: |
+          python -m compileall radar\dashboard.py radar\options_v21_live.py windows_node_entry.py tests\test_dashboard.py tests\test_options_v21_live.py tests\test_windows_resilient_bootstrap.py
+
+      - name: Targeted failure-isolation tests
+        run: |
+          python -m unittest tests.test_dashboard tests.test_options_v21_live tests.test_windows_resilient_bootstrap -v
+
+      - name: Build V0.14.2 node
+        run: |
+          pyinstaller --clean --onefile --name CryptoEdgeRadarNode --add-data "deployment_registry_v1.json;." windows_node_entry.py
+
+      - name: Package self-test
+        shell: pwsh
+        run: |
+          $env:RADAR_PACKAGING_SELFTEST = "1"
+          $state = (& .\dist\CryptoEdgeRadarNode.exe) | ConvertFrom-Json
+          if ($state.status -ne "PASS") { throw "package self-test failed" }
+          if ($state.build_id -ne "v0.14.2-win-forward-failure-isolation") { throw "unexpected build_id" }
+          if ($state.registry_version -ne "3.6") { throw "unexpected registry version" }
+          if ([int]$state.candidate_count -ne 7) { throw "unexpected motor count" }
+          if (-not $state.resilient_control_plane_bootstrap) { throw "resilient bootstrap missing" }
+
+      - name: PowerShell syntax validation
+        shell: pwsh
+        run: |
+          foreach ($s in @(
+            "windows\START_RADAR_RECOVERY_V0141.ps1",
+            "windows\CHECK_RADAR_V0141.ps1"
+          )) {
+            $errors=$null
+            [void][System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $s),[ref]$null,[ref]$errors)
+            if ($errors.Count -gt 0) { $errors | Format-List; throw "PowerShell syntax failure: $s" }
+          }
+
+      - name: Prove launcher requires exact V0.14.2 identity
+        shell: pwsh
+        run: |
+          $src=Get-Content "windows\START_RADAR_RECOVERY_V0141.ps1" -Raw
+          if (-not $src.Contains('v0.14.2-win-forward-failure-isolation')) { throw "launcher does not require V0.14.2 build id" }
+          if (-not $src.Contains('registryVersion -eq "3.6"')) { throw "launcher registry check missing" }
+          if (-not $src.Contains('focusExpected -eq 7')) { throw "launcher seven-motor check missing" }
+          if (-not $src.Contains('ProcessName -ne "CryptoEdgeRadarNode"')) { throw "unrelated-process safety check missing" }
+
+      - name: Hash executable
+        shell: pwsh
+        run: |
+          $hash=(Get-FileHash dist\CryptoEdgeRadarNode.exe -Algorithm SHA256).Hash.ToLower()
+          "sha256=$hash" | Out-File dist\CryptoEdgeRadarNode.sha256.txt -Encoding ascii
+          Get-Content dist\CryptoEdgeRadarNode.sha256.txt
+
+      - name: Assemble hotfix bundle
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path v0142_bundle\windows | Out-Null
+          Copy-Item dist\CryptoEdgeRadarNode.exe v0142_bundle\CryptoEdgeRadarNode.exe
+          Copy-Item dist\CryptoEdgeRadarNode.sha256.txt v0142_bundle\CryptoEdgeRadarNode.sha256.txt
+          Copy-Item windows\START_RADAR_RECOVERY_V0141.ps1 v0142_bundle\windows\
+          Copy-Item windows\START_RADAR_RECOVERY_V0141.bat v0142_bundle\windows\
+          Copy-Item windows\CHECK_RADAR_V0141.ps1 v0142_bundle\windows\
+
+      - name: Upload V0.14.2 hotfix
+        uses: actions/upload-artifact@v4
+        with:
+          name: crypto-edge-radar-v0142-forward-failure-isolation
+          path: crypto_edge_radar/v0142_bundle/**
+          if-no-files-found: error
+          retention-days: 14
