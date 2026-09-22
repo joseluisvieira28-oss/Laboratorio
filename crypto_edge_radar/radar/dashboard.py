@@ -21,6 +21,58 @@ LOCAL_FORWARD_STRATEGY_IDS = {
     "EMA6H-50X200-REGIME-DEPENDENCY-001",
 }
 
+FORWARD_ERROR_KEYS_BY_STRATEGY = {
+    "BNB-LAUNCHPOOL-DEMAND-001": {"bnb_launchpool"},
+    "TFG-DONCHIAN-REGIME-ADAPTATION-V1": {"tfg", "tfg_forward_metrics"},
+    "OPTIONS-SPOTPERP-001-V2.1": {"options_v21", "options_v21_metrics"},
+    "ETF-CME-INSTFLOW-001": {"etf_exec_v2", "etf_cme_signal"},
+    "EMA6H-50X200-REGIME-DEPENDENCY-001": {"ema6h_regime", "ema6h_regime_metrics"},
+}
+SHARED_FORWARD_FATAL_ERROR_KEYS = {"evidence_chain", "runtime"}
+
+
+def _forward_motor_health(
+    strategy_id: str,
+    *,
+    forward_supervisor_status: dict[str, Any] | None,
+    forward_state: dict[str, Any] | None,
+) -> tuple[str, list[str]]:
+    supervisor = str((forward_supervisor_status or {}).get("status") or "MISSING").upper()
+    shared_health = str((forward_state or {}).get("health") or "MISSING").upper()
+    errors = (forward_state or {}).get("errors") or {}
+    if not isinstance(errors, dict):
+        errors = {"runtime": str(errors)}
+
+    if supervisor == "FAIL_CLOSED":
+        return "FAIL_CLOSED", [str((forward_supervisor_status or {}).get("error") or "forward supervisor failed closed")]
+
+    shared_errors = [
+        f"{key}: {errors[key]}"
+        for key in SHARED_FORWARD_FATAL_ERROR_KEYS
+        if key in errors
+    ]
+    if shared_errors:
+        return "FAIL_CLOSED", shared_errors
+
+    candidate_keys = FORWARD_ERROR_KEYS_BY_STRATEGY.get(strategy_id, set())
+    candidate_errors = [
+        f"{key}: {errors[key]}"
+        for key in candidate_keys
+        if key in errors
+    ]
+    if candidate_errors:
+        return "FAIL_CLOSED", candidate_errors
+
+    if supervisor == "RUNNING":
+        if shared_health == "OK":
+            return "OK", []
+        if shared_health == "DEGRADED_FAIL_CLOSED":
+            # Another motor can fail closed without poisoning this motor.
+            return "OK", []
+        return "MISSING", []
+
+    return "MISSING", []
+
 
 def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -79,15 +131,18 @@ def _bot_operating_state(
             return "BLOCKED"
         return "GATED"
 
-    # The five public forward engines are real local runtime components.
-    # Registry readiness alone must not display SHADOW if their supervisor is
-    # missing or their shared runtime has failed closed.
+    # The five public forward engines share one supervisor but fail closed
+    # independently. A candidate-specific source failure must never poison the
+    # other motors. Shared evidence-chain/runtime failures still block all.
     if strategy_id in LOCAL_FORWARD_STRATEGY_IDS:
-        supervisor = str((forward_supervisor_status or {}).get("status") or "MISSING").upper()
-        health = str((forward_state or {}).get("health") or "MISSING").upper()
-        if supervisor == "FAIL_CLOSED" or health == "DEGRADED_FAIL_CLOSED":
+        motor_health, _ = _forward_motor_health(
+            strategy_id,
+            forward_supervisor_status=forward_supervisor_status,
+            forward_state=forward_state,
+        )
+        if motor_health == "FAIL_CLOSED":
             return "BLOCKED"
-        if supervisor == "RUNNING" and health == "OK":
+        if motor_health == "OK":
             return "SHADOW"
         return "GATED"
 
@@ -153,12 +208,24 @@ def build_control_room_state(
         elif strategy_id in LOCAL_FORWARD_STRATEGY_IDS:
             supervisor = str(forward_supervisor_status.get("status") or "MISSING")
             health = str(forward_state.get("health") or "MISSING")
-            runtime_status = f"FORWARD_SUPERVISOR={supervisor};FORWARD_HEALTH={health}"
+            motor_health, motor_errors = _forward_motor_health(
+                strategy_id,
+                forward_supervisor_status=forward_supervisor_status,
+                forward_state=forward_state,
+            )
+            runtime_status = (
+                f"FORWARD_SUPERVISOR={supervisor};"
+                f"FORWARD_HEALTH={health};"
+                f"MOTOR_HEALTH={motor_health}"
+            )
             if operating_state == "GATED":
-                blockers = list(blockers) + [f"local forward runtime not healthy ({runtime_status})"]
+                blockers = list(blockers) + [f"local forward motor not healthy ({runtime_status})"]
             elif operating_state == "BLOCKED":
-                err = forward_supervisor_status.get("error") or (forward_state.get("errors") or {})
-                blockers = list(blockers) + [f"local forward runtime FAIL_CLOSED ({runtime_status}){': ' + str(err) if err else ''}"]
+                detail = "; ".join(motor_errors)
+                blockers = list(blockers) + [
+                    f"local forward motor FAIL_CLOSED ({runtime_status})"
+                    + (f": {detail}" if detail else "")
+                ]
         bots.append(
             {
                 "strategy_id": strategy_id,
