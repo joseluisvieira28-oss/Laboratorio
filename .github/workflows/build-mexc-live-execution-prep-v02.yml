@@ -6,6 +6,7 @@ on:
     branches:
       - mexc-live-execution-prep-v0.2-current-api
       - mexc-futures-standing-microlive-authority-v0.1
+      - mexc-v02-riskstate-launcher-hotfix-v0.1
     paths:
       - 'crypto_edge_radar/radar/mexc_*'
       - 'crypto_edge_radar/scripts/mexc_*'
@@ -123,6 +124,41 @@ jobs:
       - name: Build risk-state generator
         run: |
           pyinstaller --clean --onefile --name MEXCRiskState --paths . scripts/mexc_risk_state.py
+
+      - name: Smoke-test packaged risk-state EXE from Unicode Windows path
+        shell: pwsh
+        run: |
+          $unicodeRoot = Join-Path $env:RUNNER_TEMP "José Radar Smoke"
+          New-Item -ItemType Directory -Force -Path $unicodeRoot | Out-Null
+          $preflight = Join-Path $unicodeRoot "mexc_authenticated_preflight_receipt.json"
+          $riskOut = Join-Path $unicodeRoot "mexc_account_risk_state.json"
+          $receiptRoot = Join-Path $unicodeRoot "live_receipts"
+          New-Item -ItemType Directory -Force -Path $receiptRoot | Out-Null
+
+          @{
+            pass = $true
+            status = "PASS"
+            checks = @{
+              account = @{ equity_usdt = 112.3763 }
+              positions = @{ open_position_count = 0 }
+            }
+          } | ConvertTo-Json -Depth 8 | Set-Content -Encoding UTF8 $preflight
+
+          $exe = (Resolve-Path "dist\MEXCRiskState.exe").Path
+          $args = @("--preflight",$preflight,"--receipt-root",$receiptRoot,"--out",$riskOut)
+          $proc = Start-Process -FilePath $exe -ArgumentList $args -NoNewWindow -Wait -PassThru
+          if ($proc.ExitCode -ne 0) { throw "Packaged MEXCRiskState smoke test failed: $($proc.ExitCode)" }
+          if (-not (Test-Path $riskOut)) { throw "Risk-state smoke receipt missing" }
+          $risk = Get-Content $riskOut -Raw | ConvertFrom-Json
+          if ($risk.status -ne "PASS") { throw "Risk-state smoke receipt not PASS" }
+
+          # Reproduce the operator symptom deliberately: append the EXE path.
+          # The packaged CLI may ignore only an exact self-path echo.
+          Remove-Item $riskOut -Force
+          $argsEcho = @("--preflight",$preflight,"--receipt-root",$receiptRoot,"--out",$riskOut,$exe)
+          $proc2 = Start-Process -FilePath $exe -ArgumentList $argsEcho -NoNewWindow -Wait -PassThru
+          if ($proc2.ExitCode -ne 0) { throw "Self-path echo hardening failed: $($proc2.ExitCode)" }
+          if (-not (Test-Path $riskOut)) { throw "Risk-state echo smoke receipt missing" }
 
       - name: Build live executor
         run: |
