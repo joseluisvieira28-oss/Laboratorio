@@ -1,0 +1,67 @@
+name: DLS Kamino Chunk1 Phase B Exhaustive Decode V0.1
+
+on:
+  push:
+    branches:
+      - defi-liquidation-kamino-boundary-execution-v0.1
+    paths:
+      - '.github/workflows/dls-kamino-chunk1-phase-b-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  phase_b:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download exact frozen Phase A artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dls-kamino-chunk1-signature-enumeration-v01
+          path: phase_a
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: 35688650697
+
+      - name: Execute exhaustive frozen Phase B
+        run: |
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/decode_kamino_chunk1_phase_b_v0_1.py | tee DLS_KAMINO_CHUNK1_PHASE_B_STDOUT_V0.1.txt
+
+      - name: Build evidence manifest
+        if: always()
+        run: |
+          python - <<'PY'
+          import hashlib,json,pathlib
+          root=pathlib.Path("dls_kamino_chunk1_phase_b_v01")
+          files=[]
+          if root.exists():
+              for p in sorted(root.rglob("*")):
+                  if p.is_file():
+                      files.append({
+                        "path":str(p.relative_to(root)),
+                        "bytes":p.stat().st_size,
+                        "sha256":hashlib.sha256(p.read_bytes()).hexdigest()
+                      })
+          pathlib.Path("DLS_KAMINO_CHUNK1_PHASE_B_MANIFEST_V0.1.json").write_text(
+              json.dumps({"schema_version":"0.1","files":files},indent=2)+"\n")
+          print("MANIFEST_FILES",len(files))
+          print("MANIFEST_BYTES",sum(x["bytes"] for x in files))
+          PY
+
+      - name: Upload complete Phase B evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-kamino-chunk1-phase-b-v01
+          path: |
+            dls_kamino_chunk1_phase_b_v01/
+            DLS_KAMINO_CHUNK1_PHASE_B_MANIFEST_V0.1.json
+            DLS_KAMINO_CHUNK1_PHASE_B_STDOUT_V0.1.txt
+          if-no-files-found: warn
+          retention-days: 30
+          compression-level: 0
