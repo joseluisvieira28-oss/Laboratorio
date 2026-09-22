@@ -1,0 +1,74 @@
+name: DLS Save 0x0c First Success RPC V0.3
+
+on:
+  push:
+    branches:
+      - dls-save0c-first-success-rpc-v0.3
+    paths:
+      - '.github/workflows/dls-save0c-first-success-rpc-v03.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dls-save0c-first-success-rpc-v0.3
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile frozen resolver
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/resolve_save0c_first_success_rpc_v0_3.py
+      - name: Execute source-only resolver
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/resolve_save0c_first_success_rpc_v0_3.py | tee STDOUT.txt
+      - name: Package evidence
+        if: always()
+        run: |
+          python - <<'PY'
+          import hashlib,json,pathlib
+          root=pathlib.Path('dls_save0c_rpc_boundary_v03')
+          if root.exists():
+              files=[]
+              for p in sorted(root.glob('*')):
+                  if p.is_file():
+                      files.append({'name':p.name,'bytes':p.stat().st_size,'sha256':hashlib.sha256(p.read_bytes()).hexdigest()})
+              pathlib.Path('MANIFEST.json').write_text(json.dumps({'files':files},indent=2)+'\n')
+          PY
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-save0c-first-success-rpc-v03
+          path: |
+            dls_save0c_rpc_boundary_v03/
+            MANIFEST.json
+            STDOUT.txt
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Persist receipt
+        if: always()
+        run: |
+          if [ -f dls_save0c_rpc_boundary_v03/DLS_SAVE0C_RPC_FIRST_SUCCESS_RECEIPT_V0.3.json ]; then
+            cp dls_save0c_rpc_boundary_v03/DLS_SAVE0C_RPC_FIRST_SUCCESS_RECEIPT_V0.3.json labs/DEFI_LIQUIDATION_SHOCK_001/
+            git config user.name "crypto-lab-source-audit"
+            git config user.email "actions@users.noreply.github.com"
+            git add labs/DEFI_LIQUIDATION_SHOCK_001/DLS_SAVE0C_RPC_FIRST_SUCCESS_RECEIPT_V0.3.json
+            git commit -m "dls: persist Save 0x0c first-success RPC receipt v0.1" || true
+            git push origin HEAD:dls-save0c-first-success-rpc-v0.3
+          fi
+      - name: Firewall
+        if: always()
+        run: |
+          echo SOURCE_ONLY_TRUE
+          echo PROTECTED_2025_2026_OUTCOMES_FALSE
+          echo PRICES_FALSE
+          echo RETURNS_FALSE
+          echo PNL_FALSE
+          echo DIRECTION_FALSE
+          echo LIVE_TRADING_FALSE
