@@ -191,6 +191,7 @@ def _emergency_flatten(
 def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--authority", required=True)
+    p.add_argument("--standing-authority", required=True)
     p.add_argument("--preflight", required=True)
     p.add_argument("--signal", required=True)
     p.add_argument("--risk-state", required=True)
@@ -208,6 +209,7 @@ def main() -> int:
     kill_switch_path = str(authority.get("kill_switch_path") or "KILL_SWITCH")
     gate = validate_futures_short_execution(
         authority_path=args.authority,
+        standing_authority_path=args.standing_authority,
         preflight_path=args.preflight,
         signal_path=args.signal,
         risk_state_path=args.risk_state,
