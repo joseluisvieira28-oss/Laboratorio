@@ -1,0 +1,53 @@
+name: CED1D-0031 V0.2C Official FAPI Mirror Probe
+
+on:
+  push:
+    branches:
+      - ced1d-official-mirror-probe-v0.2c
+    paths:
+      - 'governance/CED1D_0031_OFFICIAL_BINANCE_FAPI_MIRROR_SOURCE_PROBE_V0.2C_2026-09-22.json'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/ced1d_0031_official_fapi_mirror_probe_v02c.py'
+      - '.github/workflows/ced1d-0031-official-fapi-mirror-probe-v02c.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Static compile
+        run: python -m py_compile Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/ced1d_0031_official_fapi_mirror_probe_v02c.py
+      - name: Probe official Binance mirrors source-only
+        run: |
+          python Dream-Account-OS-v2.3-PARTIAL/research/ced_1d_v3/ced1d_0031_official_fapi_mirror_probe_v02c.py \
+            --freeze governance/CED1D_0031_OFFICIAL_BINANCE_FAPI_MIRROR_SOURCE_PROBE_V0.2C_2026-09-22.json \
+            --output "$RUNNER_TEMP/ced1d-v02c"
+      - name: Assert no scientific or execution authority
+        run: |
+          python - <<'PY'
+          import json,os
+          p=os.path.join(os.environ["RUNNER_TEMP"],"ced1d-v02c","CED1D_0031_OFFICIAL_FAPI_MIRROR_PROBE_RECEIPT_V0.2C.json")
+          x=json.load(open(p))
+          assert x["used_as_forward_evidence"] is False
+          assert x["returns_computed"] is False
+          assert x["pnl_computed"] is False
+          assert x["orders"] is False
+          assert x["exchange_mutation"] is False
+          assert x["collector_adoption_authorized"] is False
+          print(x["classification"],x["accessible_exact_schema_hosts"])
+          PY
+      - name: Upload receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ced1d-0031-official-fapi-mirror-probe-v02c
+          path: ${{ runner.temp }}/ced1d-v02c
+          if-no-files-found: error
+          retention-days: 30
