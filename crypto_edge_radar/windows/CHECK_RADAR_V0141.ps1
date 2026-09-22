@@ -24,6 +24,7 @@ foreach ($rel in @(
     "data\dh03_clock_preflight.json",
     "data\dh03_local_status.json",
     "data\forward_local_supervisor_status.json",
+    "data\cirv_local_status.json",
     "data\render_sentinel_supervisor_status.json"
 )) {
     $p = Join-Path $Root $rel
