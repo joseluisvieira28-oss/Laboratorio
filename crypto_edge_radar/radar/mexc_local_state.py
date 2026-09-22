@@ -27,6 +27,16 @@ def _fail(reason: str, *, receipt_version: str) -> dict[str, Any]:
     }
 
 
+def _freshness(age: float | None, maximum: float) -> tuple[bool, str | None]:
+    if age is None:
+        return False, "RECEIPT_TIMESTAMP_INVALID"
+    if age < 0:
+        return False, "RECEIPT_TIMESTAMP_IN_FUTURE"
+    if age > maximum:
+        return False, "RECEIPT_STALE"
+    return True, None
+
+
 def _read_receipt(path: Path, *, receipt_version: str) -> tuple[dict[str, Any] | None, dict[str, Any]]:
     try:
         raw = path.read_bytes()
@@ -112,7 +122,7 @@ def read_mexc_local_state(
             and security.get("exchange_mutation_performed") is False
             and security.get("withdrawal_endpoint_implemented") is False
         )
-        fresh = age is not None and 0 <= age <= max_preflight_age_seconds
+        fresh, freshness_reason = _freshness(age, max_preflight_age_seconds)
         valid = preflight.get("preflight_id") == PREFLIGHT_ID and not missing_or_failed and safe and fresh
         exchange.update({
             "status": "PASS" if valid else "FAIL_CLOSED",
@@ -121,8 +131,11 @@ def read_mexc_local_state(
             "checked_at_utc": preflight.get("checked_at_utc"),
             "failed_checks": missing_or_failed,
             "sanitized": safe,
+            "account_identity_pass": (checks.get("account") or {}).get("pass") is True,
+            "open_position_count": (checks.get("positions") or {}).get("open_position_count"),
+            "open_order_count": (checks.get("orders") or {}).get("open_order_count"),
             "reason": None if valid else (
-                "AUTHENTICATED_PREFLIGHT_STALE" if not fresh else
+                f"AUTHENTICATED_PREFLIGHT_{freshness_reason}" if not fresh else
                 "AUTHENTICATED_PREFLIGHT_SCHEMA_OR_CHECK_FAILURE"
             ),
         })
@@ -142,7 +155,7 @@ def read_mexc_local_state(
     risk_state = dict(risk_meta)
     if risk is not None:
         age = _age(risk.get("as_of_utc"), now)
-        fresh = age is not None and 0 <= age <= max_risk_age_seconds
+        fresh, freshness_reason = _freshness(age, max_risk_age_seconds)
         valid = risk.get("status") == "PASS" and fresh and not _contains_secret(risk)
         risk_state.update({
             "status": "PASS" if valid else "FAIL_CLOSED",
@@ -152,7 +165,10 @@ def read_mexc_local_state(
             "daily_realized_loss_fraction_equity": risk.get("daily_realized_loss_fraction_equity"),
             "weekly_realized_loss_fraction_equity": risk.get("weekly_realized_loss_fraction_equity"),
             "concurrent_planned_risk_fraction_equity": risk.get("concurrent_planned_risk_fraction_equity"),
-            "reason": None if valid else "ACCOUNT_RISK_STATE_MISSING_INVALID_OR_STALE",
+            "reason": None if valid else (
+                f"ACCOUNT_RISK_STATE_{freshness_reason}" if not fresh else
+                "ACCOUNT_RISK_STATE_INVALID"
+            ),
         })
 
     authority = dict(standing_meta)
@@ -176,7 +192,12 @@ def read_mexc_local_state(
                     "symbol": route.get("symbol"),
                     "scientific_tier": route.get("scientific_tier"),
                 }
-        authority.update({"status": "PASS" if valid else "FAIL_CLOSED", "routes": routes})
+        authority.update({
+            "status": "ACTIVE" if valid else "FAIL_CLOSED",
+            "active": valid,
+            "authority_id": standing.get("authority_id"),
+            "routes": routes,
+        })
 
     return {
         "schema_version": "RADAR_MEXC_LOCAL_STATE_V0.1",
@@ -188,4 +209,3 @@ def read_mexc_local_state(
         "secrets_loaded": False,
         "exchange_mutation_performed": False,
     }
-
