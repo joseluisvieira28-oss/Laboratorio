@@ -1,0 +1,51 @@
+name: CED1D Render Shadow Migration V0.3 QA
+
+on:
+  pull_request:
+    branches:
+      - crypto-edge-radar-postgres-v0.5
+  push:
+    branches:
+      - ced1d-render-shadow-migration-v0.3
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: crypto_edge_radar
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install runtime
+        run: python -m pip install -e .
+      - name: Compile
+        run: python -m compileall radar tests
+      - name: CED1D V0.3 invariants
+        run: |
+          python -m unittest             tests.test_ced1d_render_shadow_collector_v03             tests.test_ced1d_render_shadow_migration_equivalence -v
+      - name: Full deterministic Radar suite
+        run: python -m unittest discover -s tests -v
+      - name: Safety assertions
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          a=json.loads(Path("authorities/CED1D_0031_RENDER_SHADOW_ACTIVATION_V0.3.json").read_text())
+          assert a["status"]=="PROSPECTIVE_PUBLIC_DATA_SHADOW_ACTIVATION_AUTHORIZED"
+          assert a["activation_scope"]["first_eligible_signal_day"]=="2026-09-22"
+          assert a["activation_scope"]["first_eligible_signal_completion"]=="2026-09-23T00:00:00Z"
+          assert a["activation_scope"]["first_eligible_reference_entry"]=="2026-09-23T00:01:00Z"
+          assert a["governance"]["retrospective_2026_backfill"] is False
+          assert a["governance"]["live_trading"] is False
+          assert a["governance"]["orders"] is False
+          assert a["governance"]["exchange_mutation"] is False
+          assert a["governance"]["production_capital"] is False
+          print("CED1D_V03_PROSPECTIVE_FIREWALL_PASS")
+          PY
