@@ -13,7 +13,7 @@ from radar.local_forward import LocalForwardSupervisor
 from radar.render_sentinel import RenderSentinel
 
 
-BUILD_ID = "v0.14.3.1-win-mexc-authority-packaging-hotfix"
+BUILD_ID = "v0.14.3.2-win-live-state-reconciliation"
 
 
 def _resource_path(name: str) -> str:
