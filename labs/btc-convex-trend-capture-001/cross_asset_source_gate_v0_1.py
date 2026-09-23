@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-BTC-CONVEX-TREND-CAPTURE-001 — CROSS-ASSET SOURCE GATE V0.1E
+BTC-CONVEX-TREND-CAPTURE-001 — CROSS-ASSET SOURCE GATE V0.1F
 
 Coverage/provenance only. NO economic outcomes.
 Authority:
@@ -8,6 +8,7 @@ Authority:
 - CROSS_ASSET_SOURCE_AMENDMENT_004
 - CROSS_ASSET_SOURCE_AMENDMENT_005
 - CROSS_ASSET_SOURCE_AMENDMENT_006
+- CROSS_ASSET_SOURCE_AMENDMENT_007
 """
 from __future__ import annotations
 import csv, io, json, math, hashlib, urllib.request, urllib.parse, zipfile
@@ -176,11 +177,51 @@ def load_mark_prices(symbol):
 def funding_history(symbol,mark_map):
     seen={}
     cursor=START_MS
-    direct=fallback=dedup=0
+    direct=monthly_fallback=daily_fallback=dedup=0
     exact_hour=normalized_count=0
     max_dev=0
     pages=[]
     timestamp_audit=[]
+    daily_cache={}
+    daily_manifest=[]
+    daily_fallback_audit=[]
+
+    def resolve_daily_exact(norm_t):
+        date_str=datetime.fromtimestamp(norm_t/1000,tz=timezone.utc).strftime("%Y-%m-%d")
+        if date_str not in daily_cache:
+            url=f"https://data.binance.vision/data/futures/um/daily/markPriceKlines/{symbol}/1h/{symbol}-1h-{date_str}.zip"
+            body=get_bytes(url)
+            sha=hashlib.sha256(body).hexdigest()
+            daily_manifest.append({"date":date_str,"url":url,"sha256":sha,"bytes":len(body)})
+            with zipfile.ZipFile(io.BytesIO(body)) as zf:
+                names=zf.namelist()
+                if len(names)!=1:
+                    raise RuntimeError(f"{symbol} {date_str}: unexpected daily markPrice zip members {names}")
+                text=zf.read(names[0]).decode("utf-8-sig")
+            rows={}
+            for q in csv.reader(io.StringIO(text)):
+                if not q: continue
+                try: t=int(q[0])
+                except ValueError: continue
+                if t>10**14: t//=1000
+                p=float(q[1])
+                if not math.isfinite(p) or p<=0:
+                    raise RuntimeError(f"{symbol}: invalid daily markPrice OPEN {t}")
+                rows[t]=p
+            daily_cache[date_str]={"rows":rows,"url":url,"sha256":sha}
+        item=daily_cache[date_str]
+        if norm_t not in item["rows"]:
+            raise RuntimeError(f"{symbol}: missing funding mark and no exact daily markPriceKline {norm_t}")
+        mark=item["rows"][norm_t]
+        daily_fallback_audit.append({
+            "normalized_funding_time_ms":norm_t,
+            "date":date_str,
+            "url":item["url"],
+            "sha256":item["sha256"],
+            "open":mark,
+        })
+        return mark
+
     while cursor<=END_MS:
         qs=urllib.parse.urlencode({
             "symbol":symbol,
@@ -205,10 +246,9 @@ def funding_history(symbol,mark_map):
             if not (START_MS<=norm_t<=END_MS):
                 continue
             max_dev=max(max_dev,dev)
-            if dev==0:
-                exact_hour+=1
-            else:
-                normalized_count+=1
+            if dev==0: exact_hour+=1
+            else: normalized_count+=1
+
             rate=float(x["fundingRate"])
             if not math.isfinite(rate):
                 raise RuntimeError(f"{symbol}: nonfinite funding rate {raw_t}")
@@ -218,12 +258,15 @@ def funding_history(symbol,mark_map):
                 mark=float(raw_mark)
                 source="funding_record"
                 direct+=1
-            else:
-                if norm_t not in mark_map:
-                    raise RuntimeError(f"{symbol}: missing funding mark and no exact markPriceKline {norm_t}")
+            elif norm_t in mark_map:
                 mark=mark_map[norm_t]
-                source="markPriceKline_open"
-                fallback+=1
+                source="monthly_markPriceKline_open"
+                monthly_fallback+=1
+            else:
+                mark=resolve_daily_exact(norm_t)
+                source="daily_markPriceKline_open"
+                daily_fallback+=1
+
             if not math.isfinite(mark) or mark<=0:
                 raise RuntimeError(f"{symbol}: invalid resolved markPrice {raw_t}")
 
@@ -263,7 +306,10 @@ def funding_history(symbol,mark_map):
     ordered={t:seen[t] for t in sorted(seen)}
     return ordered,{
         "direct_mark_count":direct,
-        "fallback_mark_count":fallback,
+        "monthly_fallback_mark_count":monthly_fallback,
+        "daily_fallback_mark_count":daily_fallback,
+        "daily_fallback_audit":daily_fallback_audit,
+        "daily_mark_manifest":daily_manifest,
         "exact_hour_record_count":exact_hour,
         "normalized_record_count":normalized_count,
         "max_timestamp_deviation_ms":max_dev,
@@ -274,12 +320,13 @@ def funding_history(symbol,mark_map):
 
 out={
     "lab":"BTC-CONVEX-TREND-CAPTURE-001",
-    "gate":"CROSS_ASSET_SOURCE_GATE_V0.1E",
+    "gate":"CROSS_ASSET_SOURCE_GATE_V0.1F",
     "authority":[
         "CROSS_ASSET_COST_VALIDATION_FREEZE_V0.1",
         "CROSS_ASSET_SOURCE_AMENDMENT_004",
         "CROSS_ASSET_SOURCE_AMENDMENT_005",
         "CROSS_ASSET_SOURCE_AMENDMENT_006",
+        "CROSS_ASSET_SOURCE_AMENDMENT_007",
     ],
     "symbols":{}
 }
@@ -308,7 +355,10 @@ for s in SYMBOLS:
             "first_normalized_ms":first,
             "last_normalized_ms":last,
             "direct_mark_count":fmeta["direct_mark_count"],
-            "fallback_mark_count":fmeta["fallback_mark_count"],
+            "monthly_fallback_mark_count":fmeta["monthly_fallback_mark_count"],
+            "daily_fallback_mark_count":fmeta["daily_fallback_mark_count"],
+            "daily_fallback_audit":fmeta["daily_fallback_audit"],
+            "daily_mark_manifest":fmeta["daily_mark_manifest"],
             "unresolved_mark_count":0,
             "exact_hour_record_count":fmeta["exact_hour_record_count"],
             "normalized_record_count":fmeta["normalized_record_count"],
@@ -337,7 +387,7 @@ for s in SYMBOLS:
     }
 
 out["overall"]="PASS" if all_pass else "FAIL_CLOSED"
-path=EVID/"CROSS_ASSET_SOURCE_GATE_V0.1E.json"
+path=EVID/"CROSS_ASSET_SOURCE_GATE_V0.1F.json"
 path.write_text(json.dumps(out,indent=2),encoding="utf-8")
 print(json.dumps({
     "gate":out["gate"],
@@ -353,7 +403,8 @@ print(json.dumps({
             "market_gapfill_hours_added":v.get("market_coverage",{}).get("gapfill_hours_added"),
             "funding_count":v["funding"].get("count"),
             "direct_mark_count":v["funding"].get("direct_mark_count"),
-            "fallback_mark_count":v["funding"].get("fallback_mark_count"),
+            "monthly_fallback_mark_count":v["funding"].get("monthly_fallback_mark_count"),
+            "daily_fallback_mark_count":v["funding"].get("daily_fallback_mark_count"),
             "normalized_record_count":v["funding"].get("normalized_record_count"),
             "max_timestamp_deviation_ms":v["funding"].get("max_timestamp_deviation_ms"),
             "error":v["funding"].get("error"),
@@ -362,4 +413,4 @@ print(json.dumps({
 },indent=2))
 print("WROTE",path)
 if not all_pass:
-    raise SystemExit("FAIL_CLOSED: cross-asset source gate V0.1E failed")
+    raise SystemExit("FAIL_CLOSED: cross-asset source gate V0.1F failed")
