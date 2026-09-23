@@ -1,0 +1,80 @@
+{
+  "lab_id": "DCV-001",
+  "date_utc": "2026-09-23",
+  "gate": "FULL_SOURCE_CENSUS_V0.1_MONTHLY_MARK_ROUTE",
+  "classification": "SOURCE_DATA_INSUFFICIENT__MONTHLY_MARK_ROUTE",
+  "scientific_outcomes_opened": false,
+  "economic_values_reported": false,
+  "protected_2025_accessed": false,
+  "protected_2026_accessed": false,
+  "discovery_executed": false,
+  "replication_2024_full_source_accessed": false,
+  "source_gate_v01": {
+    "run_id": 35855881333,
+    "classification": "SOURCE_DATA_PASS",
+    "verified_objects": 12
+  },
+  "full_census_attempts": [
+    {
+      "run_id": 35856441350,
+      "classification": "TECHNICAL_OR_SOURCE_FAIL_CLOSED",
+      "reason": "early-2021 metrics exact duplicate timestamp rows"
+    },
+    {
+      "run_id": 35857338183,
+      "classification": "SOURCE_DATA_INSUFFICIENT",
+      "reason": "markPriceKlines monthly route coverage 26088/26280 = 99.2694%, below frozen 99.5% and internal gaps exceed 3h"
+    }
+  ],
+  "source_only_diagnostics": {
+    "exact_duplicate_metrics": {
+      "runs": [
+        35857096844,
+        35857174683
+      ],
+      "conflicting_duplicate_groups": 0,
+      "remediation": "exact-row dedupe frozen prospectively in Amendment B"
+    },
+    "mark_timestamp_coverage": {
+      "run_id": 35857609706,
+      "present_unique_hours": 26088,
+      "expected_hours": 26280,
+      "missing_hours": 192,
+      "missing_runs": [
+        [
+          "2021-07-01T00:00:00Z",
+          "2021-07-01T23:00:00Z",
+          24
+        ],
+        [
+          "2021-07-24T00:00:00Z",
+          "2021-07-27T23:00:00Z",
+          96
+        ],
+        [
+          "2022-07-31T00:00:00Z",
+          "2022-07-31T23:00:00Z",
+          24
+        ],
+        [
+          "2022-10-02T00:00:00Z",
+          "2022-10-02T23:00:00Z",
+          24
+        ],
+        [
+          "2023-02-24T00:00:00Z",
+          "2023-02-24T23:00:00Z",
+          24
+        ]
+      ]
+    }
+  },
+  "decision": "Do not waive V0.1 source thresholds. Monthly mark-price route alone is closed for DCV-001. A separately frozen official daily-archive remediation may be probed before any economic outcome is opened.",
+  "governance": {
+    "science_changed": false,
+    "threshold_relaxed": false,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "main_merge": false
+  }
+}
