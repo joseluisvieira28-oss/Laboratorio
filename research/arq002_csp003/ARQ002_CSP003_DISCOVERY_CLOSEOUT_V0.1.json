@@ -1,0 +1,85 @@
+{
+  "lab_id": "ARQ-002-CSP-003",
+  "title": "CVD + Price Sweep/Reclaim + Positioning Confirmation",
+  "date_utc": "2026-09-23",
+  "classification": "DISCOVERY_FAIL_NO_PROMOTION",
+  "final": true,
+  "branch": "arq002-csp003-validity-mask-v0.1",
+  "authority": "research/arq002_csp003/ARQ002_CSP003_DISCOVERY_AUTHORITY_V0.1.md",
+  "source": {
+    "source_binding_sha256": "ab96c7a82ac6e416b35ae701e9c5efd509df378b59eca1ff30e79d01672519e2",
+    "source_census_run": 35908982717,
+    "oi_validity_diagnostic_run": 35910417295,
+    "agg_rows_structurally_scanned": 530973404,
+    "metrics_expected_slots": 105408,
+    "metrics_unavailable_slots": 432,
+    "metrics_valid_positive_slots": 104976
+  },
+  "discovery": {
+    "workflow_run": 35910976864,
+    "final_artifact_id": 10773466256,
+    "final_artifact_digest_sha256": "70ed9714941b1cd8dfa9a4c9356d50ede2e2817ce138e2e80bddf4ef22a5a80d",
+    "receipt_sha256": "3ffc428a7e4bde21c8b29b866a368cfbe91efbda13e3a6a702c5c65e67fbc685",
+    "independent_reaggregation_exact_match": true,
+    "ablation_counts": {
+      "A": 35595,
+      "B": 23958,
+      "C": 12059,
+      "D": 6065
+    },
+    "baseline_A_n": 35595,
+    "d_confirmed_n": 6065,
+    "d_rejected_n": 29530,
+    "unique_utc_days": 366,
+    "d_confirmed_low10_mean": -0.0009407235336526606,
+    "d_confirmed_base14_mean": -0.0013407235336526605,
+    "d_confirmed_stress20_mean": -0.0019407235336526604,
+    "d_rejected_base14_mean": -0.001367416166355674,
+    "confirmed_minus_rejected_base14_delta": 0.000026692632703013497,
+    "implied_gross_mean_before_cost": 0.0000592764663473394,
+    "bootstrap_utc_day": {
+      "repetitions": 10000,
+      "seed": 2002001,
+      "ci95_low": -0.0013918887659010737,
+      "ci95_high": -0.0012878343206122107
+    },
+    "short_side": {
+      "n": 5570,
+      "base14_mean": -0.0013456263753613535
+    },
+    "long_side": {
+      "n": 495,
+      "base14_mean": -0.0012855541835164578
+    },
+    "positive_month_count": 0,
+    "best_1pct_removed_count": 61,
+    "best_1pct_removed_base14_mean": -0.00140947716577514,
+    "source_validity_masked_sweep_events": 201,
+    "ambiguous_both_sides": 9,
+    "gates": {
+      "source_census_pass": true,
+      "d_confirmed_n_gte_200": true,
+      "unique_utc_days_gte_60": true,
+      "base14_mean_gt_0": false,
+      "stress20_mean_gt_0": false,
+      "confirmed_minus_rejected_gt_0": true,
+      "bootstrap_95_lower_gt_0": false,
+      "short_side_base14_gt_0": false,
+      "long_side_base14_gt_0": false,
+      "positive_months_gte_7": false,
+      "remove_best_1pct_still_positive": false,
+      "max_month_concentration_lte_25pct": true
+    }
+  },
+  "interpretation": "Full CVD+OI+funding confirmation produced a small positive incremental delta versus rejected sweep events, but pooled gross effect before costs was only about +0.59 bps and could not overcome the frozen 10/14/20 bps round-trip cost bands. Both directional sides and all 12 calendar months were negative at BASE14; bootstrap inference was tightly negative.",
+  "decision": "CLOSE exact ARQ-002-CSP-003. No threshold/sign/horizon/cost/time/asset rescue. Do not open 2025 or 2026 under this authority.",
+  "firewall": {
+    "confirmation_2025_accessed": false,
+    "final_holdout_2026_accessed": false,
+    "live_trading": false,
+    "orders": false,
+    "exchange_mutation": false,
+    "wallet_access": false,
+    "main_merge": false
+  }
+}
