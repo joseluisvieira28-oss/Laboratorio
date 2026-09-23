@@ -1,0 +1,103 @@
+{
+  "lab_id": "DCV-001",
+  "title": "Derivatives Crowding × Volatility Interaction",
+  "date_utc": "2026-09-23",
+  "classification": "DISCOVERY_FAIL_NO_PROMOTION",
+  "final": true,
+  "branch": "dcv001-funding-oi-vol-interaction-v0.1",
+  "authority": [
+    "research/dcv001/DCV001_PREOUTCOME_AUTHORITY_V0.1.md",
+    "research/dcv001/DCV001_PREOUTCOME_AMENDMENT_A_V0.1.md",
+    "research/dcv001/DCV001_PREOUTCOME_AMENDMENT_B_V0.1.md",
+    "research/dcv001/DCV001_DAILY_MARK_REMEDIATION_AUTHORITY_V0.2.md",
+    "research/dcv001/DCV001_OI_VALIDITY_TECHNICAL_CORRECTION_V0.1.md"
+  ],
+  "evidence": {
+    "source_gate_run": 35855881333,
+    "source_gate_classification": "SOURCE_DATA_PASS",
+    "source_gate_receipt_sha256": "30883b971493718617a90d8bd476ae047631a1f4251da0d91cd3bd4f45eec9dc",
+    "monthly_mark_source_closeout": "SOURCE_DATA_INSUFFICIENT__MONTHLY_MARK_ROUTE",
+    "metrics_duplicate_diag_runs": [
+      35857096844,
+      35857174683
+    ],
+    "mark_coverage_diag_run": 35857609706,
+    "daily_mark_remediation_probe_run": 35857818769,
+    "final_frozen_run": 35858229589,
+    "final_artifact_id": 10748308509,
+    "final_artifact_digest_sha256": "f5eec311b3a660769b5d86c5a901dffff824457fee90862f7fd5c98f93097884",
+    "final_receipt_sha256": "e72bb8a2e4a76183aa9e39246751682b022993462c40febac3e53b113d1bc36f"
+  },
+  "source_census": {
+    "classification": "SOURCE_CENSUS_PASS",
+    "census_sha256": "cd7d214fff168c3d5fdd742b504b410f8b89dd6ad8aa1cab3bf2cb3ecf1f2020",
+    "checksum_verified_objects": 1175,
+    "metrics_requested_days": 1095,
+    "metrics_present_days": 1095,
+    "metrics_coverage_fraction": 1,
+    "metrics_exact_duplicate_rows_removed": 40152,
+    "metrics_conflicting_duplicate_group_count": 0,
+    "funding_months": 36,
+    "funding_max_gap_hours": 8.000013055555556,
+    "mark_months": 36,
+    "mark_daily_patch_objects": 8,
+    "mark_daily_patch_hours": 192,
+    "mark_hour_rows": 26280,
+    "mark_expected_hours": 26280,
+    "mark_coverage_fraction": 1,
+    "mark_max_consecutive_missing_hours": 0
+  },
+  "discovery": {
+    "eligible_n": 997,
+    "design_rank": 8,
+    "primary_parameter": "funding_x_oi_x_rv7",
+    "expected_sign": "negative",
+    "bFOV": -0.0006263756941150628,
+    "bootstrap": {
+      "method": "moving block, chronological rows, block=7",
+      "repetitions": 5000,
+      "seed": 140017,
+      "valid_estimates": 5000,
+      "singular_samples": 0,
+      "ci95_low": -0.0020661131778175156,
+      "ci95_high": 0.0014461721558298546
+    },
+    "years": {
+      "2021": {
+        "n": 268,
+        "bFOV": 0.0024612507371405516,
+        "rank": 8
+      },
+      "2022": {
+        "n": 365,
+        "bFOV": -0.0015969396489717838,
+        "rank": 8
+      },
+      "2023": {
+        "n": 364,
+        "bFOV": 0.002075318548204936,
+        "rank": 8
+      }
+    },
+    "gates": {
+      "eligible_n_gte_900": true,
+      "design_rank_eq_8": true,
+      "bFOV_lt_0": true,
+      "bootstrap_95_upper_lt_0": false,
+      "negative_bFOV_years_gte_2_of_3": false
+    }
+  },
+  "firewall": {
+    "replication_2024_full_source_accessed": false,
+    "protected_2025_accessed": false,
+    "protected_2026_accessed": false,
+    "pnl_computed": false,
+    "live_trading": false,
+    "orders": false,
+    "exchange_mutation": false,
+    "wallet_access": false,
+    "main_merge": false
+  },
+  "decision": "CLOSE exact DCV-001 hypothesis. No sign inversion, thresholding, z-window/horizon/asset/source substitution, favorable-year selection, 2024 rescue or 2025/2026 opening.",
+  "interpretation": "The pooled triple interaction has the prospectively expected negative sign, but inference is not distinguishable from zero under the frozen bootstrap and annual sign stability fails. This is not a promoted mechanism and not a trading edge."
+}
