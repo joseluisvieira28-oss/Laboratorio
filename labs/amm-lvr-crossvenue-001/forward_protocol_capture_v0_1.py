@@ -68,7 +68,7 @@ async def get_logs_resilient(block_hex, addresses, v2_topic):
             "fromBlock":block_hex,
             "toBlock":block_hex,
             "address":chunk,
-            "topics":[[V3_SWAP_TOPIC,v2_topic]],
+            "topics":[V3_SWAP_TOPIC],
         }
         last_error=None
         for url in [RPC, TRACE_RPC]:
@@ -124,8 +124,6 @@ async def build_pool_registry():
     # Resolve canonical selectors from signatures exactly as the source gate that passed.
     getpool_hash=await arpc(RPC,"web3_sha3",["0x"+"getPool(address,address,uint24)".encode().hex()])
     getpool_sel=getpool_hash[2:10]
-    # V2 topic is retained only for transport compatibility; the frozen economic MVE is V3-only.
-    v2_topic=await arpc(RPC,"web3_sha3",["0x"+"Swap(address,uint256,uint256,uint256,uint256,address)".encode().hex()])
     pools={}
     for a,b in PAIRS:
         aa=TOKENS[a]["address"]; bb=TOKENS[b]["address"]
@@ -138,14 +136,6 @@ async def build_pool_registry():
                     pools[addr]={"dex":"UNISWAP_V3","pair":f"{a}-{b}","fee":fee}
             except Exception:
                 pass
-        try:
-            data=SEL_GETPAIR+word_addr(aa)+word_addr(bb)
-            out=await arpc(RPC,"eth_call",[{"to":V2_FACTORY,"data":"0x"+data},"latest"])
-            addr=decode_addr(out)
-            if addr and int(addr,16)!=0:
-                pools[addr]={"dex":"UNISWAP_V2","pair":f"{a}-{b}","fee":3000}
-        except Exception:
-            pass
     # Resolve token order for every pool.
     for addr,meta in pools.items():
         try:
@@ -155,7 +145,7 @@ async def build_pool_registry():
             meta["token1"]=ADDR_TO_SYMBOL.get((t1 or "").lower())
         except Exception:
             meta["token0"]=None; meta["token1"]=None
-    return pools,v2_topic
+    return pools,None
 
 def decode_swap(log,meta):
     data=(log.get("data") or "0x")[2:]
