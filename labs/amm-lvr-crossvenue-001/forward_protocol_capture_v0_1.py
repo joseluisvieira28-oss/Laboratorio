@@ -57,6 +57,59 @@ def rpc(url,method,params):
 async def arpc(url,method,params):
     return await asyncio.to_thread(rpc,url,method,params)
 
+async def get_logs_resilient(block_hex, addresses, v2_topic):
+    """Transport-only fallback. Scientific filter is unchanged."""
+    merged=[]
+    seen=set()
+    # Small chunks avoid public-provider address-array policy limits.
+    chunks=[addresses[i:i+8] for i in range(0,len(addresses),8)]
+    for chunk in chunks:
+        filt={
+            "fromBlock":block_hex,
+            "toBlock":block_hex,
+            "address":chunk,
+            "topics":[[V3_SWAP_TOPIC,v2_topic]],
+        }
+        last_error=None
+        for url in [RPC, TRACE_RPC]:
+            try:
+                rows=await arpc(url,"eth_getLogs",[filt])
+                for lg in rows or []:
+                    key=(lg.get("transactionHash"),lg.get("logIndex"))
+                    if key not in seen:
+                        seen.add(key)
+                        merged.append(lg)
+                last_error=None
+                break
+            except Exception as e:
+                last_error=e
+        if last_error is not None:
+            # Final transport fallback: exact same filter, one pool at a time.
+            for addr in chunk:
+                one={
+                    "fromBlock":block_hex,
+                    "toBlock":block_hex,
+                    "address":addr,
+                    "topics":[[V3_SWAP_TOPIC,v2_topic]],
+                }
+                ok=False
+                err=None
+                for url in [TRACE_RPC,RPC]:
+                    try:
+                        rows=await arpc(url,"eth_getLogs",[one])
+                        for lg in rows or []:
+                            key=(lg.get("transactionHash"),lg.get("logIndex"))
+                            if key not in seen:
+                                seen.add(key)
+                                merged.append(lg)
+                        ok=True
+                        break
+                    except Exception as e:
+                        err=e
+                if not ok:
+                    raise err if err is not None else RuntimeError("eth_getLogs transport failed")
+    return merged
+
 def word_addr(a): return a[2:].lower().rjust(64,"0")
 def word_uint(x): return hex(int(x))[2:].rjust(64,"0")
 def decode_addr(x):
@@ -273,12 +326,7 @@ async def main():
                 if last is None: last=head-1
                 for n in range(last+1,head+1):
                     block=await arpc(RPC,"eth_getBlockByNumber",[hex(n),False])
-                    filt={
-                        "fromBlock":hex(n),"toBlock":hex(n),
-                        "address":addresses,
-                        "topics":[[V3_SWAP_TOPIC,v2_topic]]
-                    }
-                    logs=await arpc(RPC,"eth_getLogs",[filt])
+                    logs=await get_logs_resilient(hex(n),addresses,v2_topic)
                     bytx=defaultdict(list)
                     for lg in logs or []: bytx[lg.get("transactionHash")].append(lg)
                     for txh,lgs in bytx.items():
