@@ -1,0 +1,27 @@
+name: BTC-CONVEX-001 untouched cross-asset cost validation
+
+on:
+  pull_request:
+    paths:
+      - 'labs/btc-convex-trend-capture-001/CROSS_ASSET_EVAL_TRIGGER.txt'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run frozen Parent + Sticky cross-asset validation once
+        run: python labs/btc-convex-trend-capture-001/cross_asset_cost_validation_v0_1.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: BTC-CONVEX-001-CROSS-ASSET-COST-VALIDATION
+          path: labs/btc-convex-trend-capture-001/evidence/CROSS_ASSET_COST_VALIDATION_V0.1.json
