@@ -36,6 +36,8 @@ jobs:
         run: python labs/amm-lvr-crossvenue-001/evaluate_headroom_v0_1.py
       - name: Build immutable compact ledger snapshot
         run: python labs/amm-lvr-crossvenue-001/build_forward_ledger_snapshot_v0_1.py
+      - name: Aggregate deduplicated forward ledger
+        run: python labs/amm-lvr-crossvenue-001/aggregate_forward_ledger_v0_1.py
       - name: Persist ledger snapshot on research branch
         shell: bash
         run: |
@@ -61,3 +63,4 @@ jobs:
             labs/amm-lvr-crossvenue-001/evidence/headroom_evaluation_v0_1_summary.json
             labs/amm-lvr-crossvenue-001/evidence/headroom_evaluation_v0_1_errors.json
             labs/amm-lvr-crossvenue-001/evidence/forward_ledger_snapshot_v0_1.json
+            labs/amm-lvr-crossvenue-001/evidence/forward_ledger_rollup_v0_1.json
