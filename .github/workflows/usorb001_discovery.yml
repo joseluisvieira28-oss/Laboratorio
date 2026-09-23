@@ -1,0 +1,38 @@
+name: USORB-001 Discovery 2022-2023
+
+on:
+  push:
+    branches:
+      - us-open-orb-crypto-v0.1
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/USORB_001_RUN_TRIGGER.txt'
+
+permissions:
+  contents: write
+
+jobs:
+  discovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Restore Git CA trust
+        run: |
+          test -f /etc/ssl/certs/ca-certificates.crt
+          git config --global http.sslCAInfo /etc/ssl/certs/ca-certificates.crt
+          git config --global http.sslVerify true
+      - uses: actions/checkout@v4
+        with:
+          ref: us-open-orb-crypto-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Run frozen Discovery only
+        run: python Dream-Account-OS-v2.3-PARTIAL/research/us_open_orb_crypto_v01.py
+      - name: Commit immutable receipt
+        run: |
+          git config user.name "crypto-lab-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add Dream-Account-OS-v2.3-PARTIAL/runtime/usorb001_discovery_receipt.json
+          git diff --cached --quiet && exit 0
+          git commit -m "research: record USORB-001 discovery receipt"
+          git push origin HEAD:us-open-orb-crypto-v0.1
