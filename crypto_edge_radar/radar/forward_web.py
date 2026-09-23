@@ -39,6 +39,8 @@ from .options_v21_metrics import evaluate_options_v21_forward
 from .etf_cme_watcher import ETFCMEPublicSignalWatcher
 from .external_freshness import all_external_freshness
 from .private_evidence_backup import build_private_evidence_snapshot
+from .persistence_expiry import persistence_expiry_state
+from .deploy_drift import deployment_drift_receipt
 
 
 RUNTIME_LIVENESS_EVENT = "RADAR_RUNTIME_LIVENESS"
@@ -150,6 +152,8 @@ class ForwardShadowRuntime:
         self._last_etf_signal_check_ms: int | None = None
         self._last_options_runtime_day: str | None = None
         self._last_external_freshness_check_ms: int | None = None
+        self._last_deploy_drift_check_ms: int | None = None
+        self._deploy_drift_state: dict[str, Any] = {"classification": "STARTING"}
         self._last_ced1d_render_shadow_check_date: str | None = None
         self._ced1d_render_shadow_state: dict[str, Any] = {
             "status": "DISABLED_NOT_ARMED",
@@ -475,6 +479,24 @@ class ForwardShadowRuntime:
         else:
             external_freshness = self._external_freshness_state
 
+        deploy_drift_due = (
+            self._last_deploy_drift_check_ms is None
+            or now_ms - self._last_deploy_drift_check_ms >= 60 * 60 * 1000
+        )
+        if deploy_drift_due:
+            deploy_drift = deployment_drift_receipt(
+                timeout=self.settings.http_timeout
+            )
+            self._deploy_drift_state = deploy_drift
+            self._last_deploy_drift_check_ms = now_ms
+        else:
+            deploy_drift = self._deploy_drift_state
+
+        persistence_expiry = persistence_expiry_state(
+            os.getenv("RADAR_PERSISTENCE_EXPIRY_UTC"),
+            now=datetime.fromtimestamp(now_ms / 1000.0, tz=timezone.utc),
+        )
+
         state = {
             "health": "OK" if not errors else "DEGRADED_FAIL_CLOSED",
             "mode": "PUBLIC_SHADOW_ONLY",
@@ -485,6 +507,7 @@ class ForwardShadowRuntime:
             "evidence_chain_ok": chain_ok,
             "evidence_chain_detail": chain_detail,
             "runtime_liveness": runtime_liveness,
+            "persistence_expiry": persistence_expiry,
             "tfg": tfg_state,
             "tfg_forward_metrics": tfg_forward_metrics,
             "ema6h_regime": ema6h_state,
@@ -496,6 +519,11 @@ class ForwardShadowRuntime:
             "options_v21_metrics": options_v21_metrics,
             "ced1d_render_shadow": ced1d_render_shadow,
             "external_collectors": external_freshness,
+            "deployment_drift": deploy_drift,
+            "operational_attention_required": (
+                deploy_drift.get("classification")
+                in {"STALE_RUNTIME", "UNAVAILABLE_FAIL_CLOSED"}
+            ),
             "errors": errors,
             "authenticated_exchange_api_used": False,
             "orders_created": False,
