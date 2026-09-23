@@ -202,6 +202,7 @@ def source_closeout_guard():
 
 def main():
     source=source_closeout_guard()
+    source_mask_all={to_ms(x) for x in source.get("metrics_missing_timestamps_utc",[])}
     ap=argparse.ArgumentParser(); ap.add_argument("--month",required=True); args=ap.parse_args()
     y,m=map(int,args.month.split("-"))
     if y!=2024: raise SystemExit("month must be 2024")
@@ -215,6 +216,20 @@ def main():
     for d in kdays: klines.update(load_kline_day(d))
     metrics={}
     for d in mdays: metrics.update(load_metrics_day(d))
+
+    # Bind the scientific population to the exact source-only mask persisted
+    # before outcomes. Archive revisions cannot silently change the population.
+    current_expected=set()
+    for d in days:
+        lo=day_start_ms(d)
+        current_expected.update(lo+i*300000 for i in range(288))
+    current_observed=set(metrics).intersection(current_expected)
+    actual_missing=current_expected-current_observed
+    frozen_missing=source_mask_all.intersection(current_expected)
+    if actual_missing!=frozen_missing:
+        raise FrozenError(
+            f"SOURCE_MASK_DRIFT:{args.month}:actual={len(actual_missing)}:frozen={len(frozen_missing)}"
+        )
 
     prev_month_date=first.replace(day=1)-timedelta(days=1)
     funding={}
@@ -315,6 +330,8 @@ def main():
       "lab_id":"ARQ-002-CSP-002","month":args.month,
       "classification":"DISCOVERY_MONTH_COMPLETE",
       "source_closeout_receipt_sha256":source.get("receipt_sha256"),
+      "frozen_metrics_missing_slots_month":len(frozen_missing),
+      "source_mask_drift":False,
       "ablation_counts":ab,
       "source_masked_sweep_events":masked_oi,
       "ambiguous_both_sides":ambiguous,
