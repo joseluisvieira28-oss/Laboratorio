@@ -202,7 +202,7 @@ def source_closeout_guard():
 
 def main():
     source=source_closeout_guard()
-    source_mask_all={to_ms(x) for x in source.get("metrics_missing_timestamps_utc",[])}
+    source_mask_by_month=source.get("metrics_mask_by_month") or {}
     ap=argparse.ArgumentParser(); ap.add_argument("--month",required=True); args=ap.parse_args()
     y,m=map(int,args.month.split("-"))
     if y!=2024: raise SystemExit("month must be 2024")
@@ -224,12 +224,22 @@ def main():
         lo=day_start_ms(d)
         current_expected.update(lo+i*300000 for i in range(288))
     current_observed=set(metrics).intersection(current_expected)
-    actual_missing=current_expected-current_observed
-    frozen_missing=source_mask_all.intersection(current_expected)
-    if actual_missing!=frozen_missing:
+    actual_missing=sorted(current_expected-current_observed)
+    actual_missing_iso=[
+        datetime.fromtimestamp(t/1000,tz=UTC).isoformat().replace("+00:00","Z")
+        for t in actual_missing
+    ]
+    actual_mask_sha=hashlib.sha256(
+        json.dumps(actual_missing_iso,separators=(",",":")).encode()
+    ).hexdigest()
+    frozen_mask=source_mask_by_month.get(args.month)
+    if not frozen_mask:
+        raise FrozenError(f"SOURCE_MASK_BINDING_MISSING:{args.month}")
+    if int(frozen_mask.get("missing_count",-1))!=len(actual_missing) or frozen_mask.get("sha256")!=actual_mask_sha:
         raise FrozenError(
-            f"SOURCE_MASK_DRIFT:{args.month}:actual={len(actual_missing)}:frozen={len(frozen_missing)}"
+            f"SOURCE_MASK_DRIFT:{args.month}:actual_count={len(actual_missing)}:actual_sha={actual_mask_sha}"
         )
+    frozen_missing=set(actual_missing)
 
     prev_month_date=first.replace(day=1)-timedelta(days=1)
     funding={}
@@ -331,6 +341,7 @@ def main():
       "classification":"DISCOVERY_MONTH_COMPLETE",
       "source_closeout_receipt_sha256":source.get("receipt_sha256"),
       "frozen_metrics_missing_slots_month":len(frozen_missing),
+      "frozen_metrics_mask_sha256":actual_mask_sha,
       "source_mask_drift":False,
       "ablation_counts":ab,
       "source_masked_sweep_events":masked_oi,
