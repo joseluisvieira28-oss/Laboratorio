@@ -6,7 +6,7 @@ on:
       - l2-resiliency-2025-source-clock-fullcorpus-v0.1a
     paths:
       - 'research/l2_resiliency/RUN_L2R_2025_DRIVE_RESTORE_AND_VALIDATION_V01B.ps1'
-      - 'research/l2_resiliency/L2R_2025_BTC_VALIDATION_PIPELINE_V01B_FROZEN_SOURCE.py'
+      - 'research/l2_resiliency/L2R_2025_BTC_VALIDATION_PIPELINE_V01B_FROZEN_SOURCE.b64.txt'
       - 'research/l2_resiliency/l2r_2025_rebuild_verified_manifest_v01a.py'
       - 'research/l2_resiliency/RUN_L2R_2025_VALIDATION_ATTACK_V01B.cmd'
       - '.github/workflows/l2-2025-validation-v01b-windows-qa.yml'
@@ -28,10 +28,19 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Decode canonical frozen runner payload
+        shell: pwsh
+        run: |
+          $payload='research/l2_resiliency/L2R_2025_BTC_VALIDATION_PIPELINE_V01B_FROZEN_SOURCE.b64.txt'
+          $runner=Join-Path $env:RUNNER_TEMP 'L2R_2025_BTC_VALIDATION_PIPELINE_V01B_FROZEN_SOURCE.py'
+          $b64=(Get-Content -LiteralPath $payload -Raw -Encoding ASCII) -replace '\\s',''
+          [IO.File]::WriteAllBytes($runner,[Convert]::FromBase64String($b64))
+          "V01B_RUNNER=$runner" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
       - name: Compile frozen runner and manifest helper
         shell: pwsh
         run: |
-          python -m py_compile research/l2_resiliency/L2R_2025_BTC_VALIDATION_PIPELINE_V01B_FROZEN_SOURCE.py
+          python -m py_compile "$env:V01B_RUNNER"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -m py_compile research/l2_resiliency/l2r_2025_rebuild_verified_manifest_v01a.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -52,7 +61,7 @@ jobs:
       - name: Verify frozen V0.1B runner binding
         shell: pwsh
         run: |
-          $p='research/l2_resiliency/L2R_2025_BTC_VALIDATION_PIPELINE_V01B_FROZEN_SOURCE.py'
+          $p="$env:V01B_RUNNER"
           $h=(Get-FileHash -LiteralPath $p -Algorithm SHA256).Hash.ToLowerInvariant()
           if ($h -ne 'e16efd7071a159fb767b6ff872f284e498ca110518bec06d9b4c3db867079a38') { throw "Runner SHA mismatch $h" }
           Write-Host 'V01B_RUNNER_BINDING_PASS'
@@ -79,7 +88,7 @@ jobs:
           $files=@(
             'research/l2_resiliency/RUN_L2R_2025_VALIDATION_ATTACK_V01B.cmd',
             'research/l2_resiliency/RUN_L2R_2025_DRIVE_RESTORE_AND_VALIDATION_V01B.ps1',
-            'research/l2_resiliency/L2R_2025_BTC_VALIDATION_PIPELINE_V01B_FROZEN_SOURCE.py',
+            'research/l2_resiliency/L2R_2025_BTC_VALIDATION_PIPELINE_V01B_FROZEN_SOURCE.b64.txt',
             'research/l2_resiliency/l2r_2025_rebuild_verified_manifest_v01a.py'
           )
           Compress-Archive -Path $files -DestinationPath "$env:RUNNER_TEMP\L2R_2025_VALIDATION_ATTACK_V01B.zip" -Force
