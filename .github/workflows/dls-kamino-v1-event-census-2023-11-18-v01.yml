@@ -1,0 +1,145 @@
+name: DLS Kamino V1 Event Census 2023-11-18 V0.1
+
+on:
+  push:
+    branches:
+      - dls-kamino-v1-event-census-2023-11-18-v0.1
+    paths:
+      - '.github/workflows/dls-kamino-v1-event-census-2023-11-18-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  build_queue:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+      total: ${{ steps.matrix.outputs.total }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dls-kamino-v1-event-census-2023-11-18-v0.1
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download preserved Kamino boundary artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dls-kamino-rpc-first-success-v01b
+          path: parent
+          run-id: 35704794316
+          github-token: ${{ github.token }}
+      - name: Compile census runner
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/run_kamino_v1_event_census_2023_11_18_v0_1.py
+      - name: Build deterministic frozen queue
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/run_kamino_v1_event_census_2023_11_18_v0_1.py queue --parent parent
+      - name: Persist queue before RAW adjudication
+        run: |
+          git config user.name "crypto-lab-source-audit"
+          git config user.email "actions@users.noreply.github.com"
+          git add labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_V1_EVENT_CENSUS_2023_11_18_QUEUE_V0.1.json
+          git add labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_V1_EVENT_CENSUS_2023_11_18_QUEUE_RECEIPT_V0.1.json
+          git commit -m "dls: freeze Kamino V1 2023-11-18 census queue v0.1" || true
+          git push origin HEAD:dls-kamino-v1-event-census-2023-11-18-v0.1
+      - name: Build tranche matrix
+        id: matrix
+        run: |
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json, math
+          p="labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_V1_EVENT_CENSUS_2023_11_18_QUEUE_V0.1.json"
+          q=json.load(open(p))
+          n=len(q["rows"]); size=250
+          inc=[{"index":i,"start":i*size,"end":min(n,(i+1)*size)} for i in range((n+size-1)//size)] or [{"index":0,"start":0,"end":0}]
+          print("matrix="+json.dumps({"include":inc},separators=(",",":")))
+          print("total="+str(n))
+          PY
+      - name: Upload frozen queue
+        uses: actions/upload-artifact@v4
+        with:
+          name: kamino-v1-census-2023-11-18-queue-v01
+          path: |
+            labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_V1_EVENT_CENSUS_2023_11_18_QUEUE_V0.1.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_V1_EVENT_CENSUS_2023_11_18_QUEUE_RECEIPT_V0.1.json
+          retention-days: 30
+
+  scan:
+    needs: build_queue
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix: ${{ fromJson(needs.build_queue.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dls-kamino-v1-event-census-2023-11-18-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          name: kamino-v1-census-2023-11-18-queue-v01
+          path: queue_artifact
+      - name: RAW adjudicate tranche
+        run: |
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/run_kamino_v1_event_census_2023_11_18_v0_1.py scan             --queue queue_artifact/KAMINO_V1_EVENT_CENSUS_2023_11_18_QUEUE_V0.1.json             --index "${{ matrix.index }}"             --start "${{ matrix.start }}"             --end "${{ matrix.end }}"             --out "tranche_${{ matrix.index }}"
+      - name: Upload tranche RAW evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kamino-v1-census-2023-11-18-tranche-${{ matrix.index }}
+          path: tranche_${{ matrix.index }}/
+          if-no-files-found: error
+          retention-days: 30
+
+  finalize:
+    needs: [build_queue, scan]
+    if: ${{ always() && needs.build_queue.result == 'success' && needs.scan.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dls-kamino-v1-event-census-2023-11-18-v0.1
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          name: kamino-v1-census-2023-11-18-queue-v01
+          path: queue_artifact
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: kamino-v1-census-2023-11-18-tranche-*
+          path: tranches
+      - name: Finalize complete chunk
+        run: |
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/run_kamino_v1_event_census_2023_11_18_v0_1.py finalize             --queue queue_artifact/KAMINO_V1_EVENT_CENSUS_2023_11_18_QUEUE_V0.1.json             --tranches tranches
+      - name: Persist final ledgers and receipt
+        run: |
+          git config user.name "crypto-lab-source-audit"
+          git config user.email "actions@users.noreply.github.com"
+          git pull --rebase origin dls-kamino-v1-event-census-2023-11-18-v0.1
+          git add labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_V1_EVENT_CENSUS_2023_11_18_ADJUDICATION_V0.1.jsonl
+          git add labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_V1_EVENT_CENSUS_2023_11_18_EVENTS_V0.1.jsonl
+          git add labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_V1_EVENT_CENSUS_2023_11_18_FAILED_ATTEMPTS_V0.1.jsonl
+          git add labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_V1_EVENT_CENSUS_2023_11_18_CHUNK_RECEIPT_V0.1.json
+          git commit -m "dls: close Kamino V1 census day 2023-11-18 v0.1"
+          git push origin HEAD:dls-kamino-v1-event-census-2023-11-18-v0.1
+      - name: Upload final census summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: kamino-v1-census-2023-11-18-final-v01
+          path: |
+            labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_V1_EVENT_CENSUS_2023_11_18_ADJUDICATION_V0.1.jsonl
+            labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_V1_EVENT_CENSUS_2023_11_18_EVENTS_V0.1.jsonl
+            labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_V1_EVENT_CENSUS_2023_11_18_FAILED_ATTEMPTS_V0.1.jsonl
+            labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_V1_EVENT_CENSUS_2023_11_18_CHUNK_RECEIPT_V0.1.json
+          retention-days: 30
