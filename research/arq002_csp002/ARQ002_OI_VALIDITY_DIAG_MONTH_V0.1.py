@@ -31,11 +31,17 @@ def checksum(u):
     return m.group(1).lower()
 
 def to_ms(v):
-    x=float(v)
-    if x>1e14:return int(x/1000)
-    if x>1e11:return int(x)
-    if x>1e9:return int(x*1000)
-    raise RuntimeError(f"TS_PARSE:{v}")
+    s=v.strip()
+    try:
+        x=float(s)
+        if x>1e14:return int(x/1000)
+        if x>1e11:return int(x)
+        if x>1e9:return int(x*1000)
+    except ValueError:
+        pass
+    dt=datetime.fromisoformat(s.replace("Z","+00:00"))
+    if dt.tzinfo is None:dt=dt.replace(tzinfo=UTC)
+    return int(dt.timestamp()*1000)
 
 def iso(ms):return datetime.fromtimestamp(ms/1000,tz=UTC).isoformat().replace("+00:00","Z")
 
