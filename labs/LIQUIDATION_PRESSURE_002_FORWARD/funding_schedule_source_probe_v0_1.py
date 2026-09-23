@@ -26,7 +26,7 @@ async def main():
     try:
         async with websockets.connect(URL,ping_interval=20,ping_timeout=20,close_timeout=5,max_size=2**20) as ws:
             await ws.send(json.dumps({"op":"subscribe","args":TOPICS}))
-            while time.monotonic()<deadline and len(rows)<len(SYMBOLS):
+            while time.monotonic()<deadline and (len(rows)<len(SYMBOLS) or not ack):
                 try:
                     raw=await asyncio.wait_for(ws.recv(),timeout=5)
                 except asyncio.TimeoutError:
