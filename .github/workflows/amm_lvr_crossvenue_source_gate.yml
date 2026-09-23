@@ -1,10 +1,6 @@
-name: AMM-LVR-CROSSVENUE-001 Source Gate
+name: AMM-LVR-CROSSVENUE-001 Frozen Source Revalidation
 
 on:
-  pull_request:
-    paths:
-      - 'labs/amm-lvr-crossvenue-001/**'
-      - '.github/workflows/amm_lvr_crossvenue_source_gate.yml'
   workflow_dispatch:
 
 permissions:
@@ -19,23 +15,24 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Run one-day sample source gate
+      - name: Revalidate one-day sample source gate
         run: python labs/amm-lvr-crossvenue-001/source_gate.py
-      - name: Attack historical-free vs forward-free source routes
+      - name: Revalidate historical-free vs forward-free source routes
         run: python labs/amm-lvr-crossvenue-001/source_attack_v0_2.py
-      - name: Probe archival Ethereum replay on frozen public sample
+      - name: Revalidate archival Ethereum replay
         run: python labs/amm-lvr-crossvenue-001/historical_onchain_replay_probe_v0_1.py
-      - name: Probe no-key archive RPC matrix
+      - name: Revalidate no-key archive RPC matrix
         run: python labs/amm-lvr-crossvenue-001/archive_rpc_matrix_v0_1.py
-      - name: Probe frozen Uniswap executable quote routes
+      - name: Revalidate Uniswap executable quote routes
         run: python labs/amm-lvr-crossvenue-001/uniswap_quoter_source_probe_v0_1.py
-      - name: Run 120-second frozen-registry forward collector
+      - name: Revalidate 120-second frozen-registry observability
         run: python labs/amm-lvr-crossvenue-001/forward_observability_v0_2.py
-      - name: Smoke-test 120-second forward shadow evidence collector
+      - name: Smoke-test forward shadow collector
         run: python labs/amm-lvr-crossvenue-001/forward_shadow_collector_v0_1.py --seconds 120 --poll 2
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
-          name: AMM-LVR-CROSSVENUE-001-SOURCE-EVIDENCE
+          name: AMM-LVR-CROSSVENUE-001-SOURCE-REVALIDATION
           path: |
             labs/amm-lvr-crossvenue-001/evidence/
             labs/amm-lvr-crossvenue-001/forward_data/
