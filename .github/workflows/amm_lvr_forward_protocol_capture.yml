@@ -1,10 +1,12 @@
-name: AMM-LVR-CROSSVENUE-001 Forward Protocol Raw Capture
+name: AMM-LVR-CROSSVENUE-001 Forward Protocol + Headroom Pilot
 
 on:
   pull_request:
     paths:
       - 'labs/amm-lvr-crossvenue-001/AUTHORITY_RECONCILIATION_V0.1.md'
       - 'labs/amm-lvr-crossvenue-001/forward_protocol_capture_v0_1.py'
+      - 'labs/amm-lvr-crossvenue-001/HEADROOM_EVALUATOR_FREEZE_V0.1.md'
+      - 'labs/amm-lvr-crossvenue-001/evaluate_headroom_v0_1.py'
       - '.github/workflows/amm_lvr_forward_protocol_capture.yml'
   workflow_dispatch:
 
@@ -12,9 +14,9 @@ permissions:
   contents: read
 
 jobs:
-  capture:
+  capture-and-headroom:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -24,10 +26,15 @@ jobs:
         run: python -m pip install --disable-pip-version-check websockets==15.0.1
       - name: Capture 240 seconds of protocol-compliant raw forward evidence
         run: python labs/amm-lvr-crossvenue-001/forward_protocol_capture_v0_1.py
+      - name: Evaluate frozen pre-inclusion headroom
+        run: python labs/amm-lvr-crossvenue-001/evaluate_headroom_v0_1.py
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: AMM-LVR-CROSSVENUE-001-FORWARD-PROTOCOL-RAW-CAPTURE
+          name: AMM-LVR-CROSSVENUE-001-FORWARD-PROTOCOL-HEADROOM
           path: |
             labs/amm-lvr-crossvenue-001/evidence/forward_protocol_capture_v0_1.json
             labs/amm-lvr-crossvenue-001/evidence/forward_protocol_capture_v0_1_receipt.json
+            labs/amm-lvr-crossvenue-001/evidence/headroom_evaluation_v0_1.json
+            labs/amm-lvr-crossvenue-001/evidence/headroom_evaluation_v0_1_summary.json
+            labs/amm-lvr-crossvenue-001/evidence/headroom_evaluation_v0_1_errors.json
