@@ -1,0 +1,24 @@
+name: ARQ-002-CSP-003 Warmup Source V0.1
+on:
+  push:
+    branches: [arq002-csp003-clean-2022-2023-v0.1]
+    paths:
+      - research/arq002_csp003/ARQ002_CSP003_WARMUP_SOURCE_V0.1.py
+      - .github/workflows/arq002-csp003-warmup-source-v01.yml
+permissions:
+  contents: read
+jobs:
+  warmup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: python research/arq002_csp003/ARQ002_CSP003_WARMUP_SOURCE_V0.1.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: arq002-csp003-warmup-source
+          path: ARQ002_CSP003_WARMUP_SOURCE_2021_12_V0.1.json
+          if-no-files-found: error
+          retention-days: 30
