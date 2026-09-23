@@ -1,0 +1,150 @@
+name: DLS Kamino Save11 Source Subgate Closeout V0.7
+
+on:
+  push:
+    branches:
+      - dls-kamino-save11-event-census-v0.1
+    paths:
+      - 'labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_SAVE11_FIELD_ENRICHMENT_RECEIPT_V0.6.json'
+
+permissions:
+  contents: write
+
+jobs:
+  closeout:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dls-kamino-save11-event-census-v0.1
+          fetch-depth: 0
+
+      - name: Build fail-closed source subgate closeout
+        run: |
+          python - <<'PY'
+          import hashlib,json,pathlib,sys
+          root=pathlib.Path("labs/DEFI_LIQUIDATION_SHOCK_001")
+          cp=root/"KAMINO_SAVE11_SQD_EVENT_CENSUS_RECEIPT_V0.4.2.json"
+          rp=root/"KAMINO_SAVE11_RAW_SAMPLE_RECONCILIATION_RECEIPT_V0.5.json"
+          fp=root/"KAMINO_SAVE11_FIELD_ENRICHMENT_RECEIPT_V0.6.json"
+          c=json.loads(cp.read_text()); r=json.loads(rp.read_text()); f=json.loads(fp.read_text())
+          assert c.get("classification")=="SQD_EVENT_CENSUS_COMPLETE_PENDING_RAW_SAMPLE", c.get("classification")
+          assert r.get("classification")=="RAW_SAMPLE_RECONCILIATION_PASS", r.get("classification")
+          fc=f.get("classification")
+          if fc=="FIELD_ENRICHMENT_COMPLETE":
+              cls="KAMINO_SAVE11_EVENT_CENSUS_RAW_PASS_FIELDS_COMPLETE"
+          elif fc=="FIELD_ENRICHMENT_COMPLETE_WITH_SAVE11_PRELAYOUT_PENDING":
+              cls="KAMINO_SAVE11_EVENT_CENSUS_RAW_PASS_FIELD_GAP_DECLARED"
+          else:
+              raise AssertionError("FIELD_TERMINAL_NOT_AUTHORIZED:"+str(fc))
+
+          def sh(path):
+              return hashlib.sha256(path.read_bytes()).hexdigest()
+
+          obj={
+            "schema_version":"0.7",
+            "lab_id":"DEFI-LIQUIDATION-SHOCK-001",
+            "classification":cls,
+            "global_source_data_pass":False,
+            "discovery_authorized":False,
+            "economic_outcomes_accessed":False,
+            "census_classification":c.get("classification"),
+            "raw_classification":r.get("classification"),
+            "field_classification":fc,
+            "protocol_summaries":c.get("protocol_summaries"),
+            "expected_chunk_counts":c.get("expected_chunk_counts"),
+            "manifest_entry_count":c.get("manifest_entry_count"),
+            "raw_sample_signature_count":r.get("sample_signature_count"),
+            "raw_sample_passed_count":r.get("passed_count"),
+            "field_protocol_counts":f.get("protocol_counts"),
+            "save11_prelayout_pending_count":f.get("save11_prelayout_pending_count"),
+            "source_receipts_sha256":{
+              "census":sh(cp),"raw":sh(rp),"fields":sh(fp)
+            },
+            "pending_global_dls_source_work":["save_0c","marginfi_v2","drift_v2_core4"],
+            "firewall":{
+              "prices":False,"returns":False,"pnl":False,"direction":False,
+              "economic_outcomes":False,"live_trading":False,"orders":False,
+              "wallets":False,"exchange_mutation":False,"paid_source":False,
+              "account_creation":False,"merge_main":False
+            }
+          }
+          jp=root/"KAMINO_SAVE11_SOURCE_SUBGATE_CLOSEOUT_RECEIPT_V0.7.json"
+          jp.write_text(json.dumps(obj,indent=2,sort_keys=True)+"\n")
+
+          ps=c.get("protocol_summaries") or {}
+          pc=f.get("protocol_counts") or {}
+          lines=[
+            "# DEFI-LIQUIDATION-SHOCK-001 — KAMINO + SAVE11 SOURCE SUB-GATE CLOSEOUT V0.7",
+            "",
+            f"Classification: `{cls}`",
+            "",
+            "This closes only the Kamino V1 + Save11 event-census/RAW/field-coverage sub-gate.",
+            "It does not issue global SOURCE_DATA_PASS and does not authorize Discovery or economic outcomes.",
+            "",
+            "## Event windows",
+            "",
+            "- Kamino V1: 2023-11-17T14:48:24Z to 2025-01-01T00:00:00Z exclusive.",
+            "- Save11: 2024-07-19T19:30:52Z to 2025-01-01T00:00:00Z exclusive.",
+            "",
+            "## Census",
+            ""
+          ]
+          for p in ("kamino","save11"):
+              s=ps.get(p,{})
+              lines.append(
+                f"- {p}: successful instruction rows={s.get('successful_instruction_rows')}; "
+                f"failed instruction rows={s.get('failed_instruction_rows')}; "
+                f"distinct successful signatures={s.get('distinct_successful_signatures')}; "
+                f"known first success recovered={s.get('known_first_success_recovered')}."
+              )
+          lines += [
+            "",
+            "## RAW deterministic sample",
+            "",
+            f"- sampled signatures: {r.get('sample_signature_count')}",
+            f"- passed signatures: {r.get('passed_count')}",
+            f"- classification: `{r.get('classification')}`",
+            "",
+            "## Field coverage",
+            ""
+          ]
+          for p in ("kamino","save11"):
+              lines.append(f"- {p}: `{json.dumps(pc.get(p,{}),sort_keys=True)}`")
+          lines += [
+            f"- Save11 pre-public-layout pending rows: {f.get('save11_prelayout_pending_count')}",
+            f"- field classification: `{fc}`",
+            "",
+            "## Global DLS state",
+            "",
+            "- Global SOURCE_DATA_PASS: **NOT ISSUED**.",
+            "- Economic Discovery: **NOT AUTHORIZED**.",
+            "- Remaining source work: Save0c, marginfi v2, Drift v2 core4.",
+            "- Prices / returns / PnL / direction were not opened in this sub-gate.",
+            ""
+          ]
+          mp=root/"KAMINO_SAVE11_SOURCE_SUBGATE_CLOSEOUT_V0.7.md"
+          mp.write_text("\n".join(lines),encoding="utf-8")
+          print(json.dumps(obj,indent=2,sort_keys=True))
+          PY
+
+      - name: Persist closeout
+        run: |
+          git config user.name "crypto-lab-source-audit"
+          git config user.email "actions@users.noreply.github.com"
+          git add labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_SAVE11_SOURCE_SUBGATE_CLOSEOUT_RECEIPT_V0.7.json
+          git add labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_SAVE11_SOURCE_SUBGATE_CLOSEOUT_V0.7.md
+          git commit -m "dls: close Kamino Save11 source sub-gate v0.7" || true
+          git pull --rebase origin dls-kamino-save11-event-census-v0.1
+          git push origin HEAD:dls-kamino-save11-event-census-v0.1
+
+      - name: Firewall
+        run: |
+          echo GLOBAL_SOURCE_DATA_PASS_FALSE
+          echo DISCOVERY_AUTHORIZED_FALSE
+          echo ECONOMIC_OUTCOMES_FALSE
+          echo PRICES_FALSE
+          echo RETURNS_FALSE
+          echo PNL_FALSE
+          echo DIRECTION_FALSE
+          echo MERGE_MAIN_FALSE
