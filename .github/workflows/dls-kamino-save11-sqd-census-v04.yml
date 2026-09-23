@@ -1,0 +1,78 @@
+name: DLS Kamino Save11 SQD Event Census V0.4
+
+on:
+  push:
+    branches:
+      - dls-kamino-save11-event-census-v0.1
+    paths:
+      - '.github/workflows/dls-kamino-save11-sqd-census-v04.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  census:
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix:
+        include:
+          - { protocol: kamino, index: 0, start: "2023-11-17", end: "2023-12-18" }
+          - { protocol: kamino, index: 1, start: "2023-12-18", end: "2024-01-18" }
+          - { protocol: kamino, index: 2, start: "2024-01-18", end: "2024-02-18" }
+          - { protocol: kamino, index: 3, start: "2024-02-18", end: "2024-03-20" }
+          - { protocol: kamino, index: 4, start: "2024-03-20", end: "2024-04-20" }
+          - { protocol: kamino, index: 5, start: "2024-04-20", end: "2024-05-21" }
+          - { protocol: kamino, index: 6, start: "2024-05-21", end: "2024-06-21" }
+          - { protocol: kamino, index: 7, start: "2024-06-21", end: "2024-07-22" }
+          - { protocol: kamino, index: 8, start: "2024-07-22", end: "2024-08-22" }
+          - { protocol: kamino, index: 9, start: "2024-08-22", end: "2024-09-22" }
+          - { protocol: kamino, index: 10, start: "2024-09-22", end: "2024-10-23" }
+          - { protocol: kamino, index: 11, start: "2024-10-23", end: "2024-11-23" }
+          - { protocol: kamino, index: 12, start: "2024-11-23", end: "2024-12-24" }
+          - { protocol: kamino, index: 13, start: "2024-12-24", end: "2025-01-01" }
+          - { protocol: save11, index: 0, start: "2024-07-19", end: "2024-08-19" }
+          - { protocol: save11, index: 1, start: "2024-08-19", end: "2024-09-19" }
+          - { protocol: save11, index: 2, start: "2024-09-19", end: "2024-10-20" }
+          - { protocol: save11, index: 3, start: "2024-10-20", end: "2024-11-20" }
+          - { protocol: save11, index: 4, start: "2024-11-20", end: "2024-12-21" }
+          - { protocol: save11, index: 5, start: "2024-12-21", end: "2025-01-01" }
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dls-kamino-save11-event-census-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile frozen census runner
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/run_sqd_event_census_partition_v0_4.py
+      - name: Run frozen calendar partition
+        run: |
+          OUT="census_partitions/${{ matrix.protocol }}/part_${{ matrix.index }}"
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/run_sqd_event_census_partition_v0_4.py \
+            --protocol "${{ matrix.protocol }}" \
+            --start "${{ matrix.start }}" \
+            --end "${{ matrix.end }}" \
+            --out "$OUT"
+      - name: Upload partition evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-sqd-census-${{ matrix.protocol }}-${{ matrix.index }}
+          path: census_partitions/${{ matrix.protocol }}/part_${{ matrix.index }}
+          if-no-files-found: error
+          retention-days: 30
+      - name: Firewall
+        if: always()
+        run: |
+          echo SOURCE_ONLY_TRUE
+          echo PRICES_FALSE
+          echo AMOUNTS_FALSE
+          echo RETURNS_FALSE
+          echo PNL_FALSE
+          echo DIRECTION_FALSE
+          echo LIVE_TRADING_FALSE
+          echo MERGE_MAIN_FALSE
