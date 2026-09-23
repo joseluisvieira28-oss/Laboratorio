@@ -1,0 +1,47 @@
+name: DLS Save11 Official API Locator V0.1
+
+on:
+  push:
+    branches:
+      - dls-save11-official-api-locator-v0.1
+    paths:
+      - '.github/workflows/dls-save11-official-api-locator-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  locator:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dls-save11-official-api-locator-v0.1
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/extract_save11_official_api_locator_v0_1.py
+      - name: Extract secondary locator
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/extract_save11_official_api_locator_v0_1.py
+      - name: Persist locator evidence
+        run: |
+          git config user.name "crypto-lab-source-audit"
+          git config user.email "actions@users.noreply.github.com"
+          git add labs/DEFI_LIQUIDATION_SHOCK_001/SAVE11_OFFICIAL_API_LOCATOR_V0.1.json
+          git add labs/DEFI_LIQUIDATION_SHOCK_001/SAVE11_OFFICIAL_API_LOCATOR_RECEIPT_V0.1.json
+          git commit -m "dls: persist Save11 official API locator v0.1" || true
+          git push origin HEAD:dls-save11-official-api-locator-v0.1
+      - name: Firewall
+        run: |
+          echo SECONDARY_LOCATOR_ONLY_TRUE
+          echo PRICES_FALSE
+          echo AMOUNTS_FALSE
+          echo RETURNS_FALSE
+          echo PNL_FALSE
+          echo DIRECTION_FALSE
+          echo LIVE_TRADING_FALSE
+          echo MERGE_MAIN_FALSE
