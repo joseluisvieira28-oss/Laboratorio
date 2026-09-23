@@ -5,7 +5,7 @@ CROSS-ASSET COST VALIDATION V0.1
 
 Authority:
 - CROSS_ASSET_COST_VALIDATION_FREEZE_V0.1.md
-- CROSS_ASSET_SOURCE_AMENDMENT_004.md
+- CROSS_ASSET_SOURCE_AMENDMENT_005.md
 - CHILD_HYPOTHESIS_STICKY_TRAIL_H1_FREEZE.md
 
 This script MUST run only after source gate PASS.
@@ -168,6 +168,27 @@ def fetch_funding_rest(symbol,manifest,mark_map):
     }
     return ordered,time_meta
 
+def load_daily_market_gap_file(symbol,date_str,manifest):
+    url=f"https://data.binance.vision/data/futures/um/daily/klines/{symbol}/1h/{symbol}-1h-{date_str}.zip"
+    body=get_bytes(url)
+    manifest.append({
+        "kind":"kline_daily_gapfill","symbol":symbol,"date":date_str,"url":url,
+        "sha256":hashlib.sha256(body).hexdigest(),"bytes":len(body),
+    })
+    with zipfile.ZipFile(io.BytesIO(body)) as zf:
+        names=zf.namelist()
+        if len(names)!=1:
+            raise RuntimeError(f"{symbol} {date_str} daily kline zip members {names}")
+        text=zf.read(names[0]).decode("utf-8-sig")
+    out=[]
+    for q in csv.reader(io.StringIO(text)):
+        if not q: continue
+        try:t=int(q[0])
+        except ValueError:continue
+        if t>10**14:t//=1000
+        out.append({"t":t,"open":float(q[1]),"high":float(q[2]),"low":float(q[3]),"close":float(q[4]),"volume":float(q[5])})
+    return out
+
 def load_symbol(symbol):
     manifest=[]; bars=[]
     for y,m in months(2020,12,2025,12):
@@ -177,9 +198,25 @@ def load_symbol(symbol):
         if b["t"] in bd and bd[b["t"]]!=b:
             raise RuntimeError(f"{symbol} duplicate conflicting kline {b['t']}")
         bd[b["t"]]=b
+
+    gapfill_added=0
+    gapfill_dates=[]
+    if symbol=="SOLUSDT":
+        gapfill_dates=["2022-02-26","2022-02-27","2022-02-28","2022-04-01","2022-04-02"]
+        for ds in gapfill_dates:
+            for b in load_daily_market_gap_file(symbol,ds,manifest):
+                if b["t"] in bd:
+                    if bd[b["t"]]!=b:
+                        raise RuntimeError(f"{symbol} daily/monthly conflict at {b['t']}")
+                else:
+                    bd[b["t"]]=b
+                    gapfill_added+=1
+
     bars=[bd[k] for k in sorted(bd)]
     mark_map=load_mark_price_map(symbol,manifest)
     funding,time_meta=fetch_funding_rest(symbol,manifest,mark_map)
+    time_meta["market_gapfill_dates"]=gapfill_dates
+    time_meta["market_gapfill_hours_added"]=gapfill_added
     manifest_hash=hashlib.sha256(json.dumps(manifest,sort_keys=True,separators=(",",":")).encode()).hexdigest()
     return bars,funding,manifest,manifest_hash,time_meta
 
@@ -412,7 +449,7 @@ out={
     "lab":"BTC-CONVEX-TREND-CAPTURE-001",
     "experiment":"CROSS_ASSET_COST_VALIDATION_V0.1",
     "freeze":"CROSS_ASSET_COST_VALIDATION_FREEZE_V0.1",
-    "source_amendment":"CROSS_ASSET_SOURCE_AMENDMENT_004",
+    "source_amendment":"CROSS_ASSET_SOURCE_AMENDMENT_005",
     "period":["2021-01-01T00:00:00Z","2025-12-31T23:00:00Z"],
     "symbols":{},
     "family":{},
