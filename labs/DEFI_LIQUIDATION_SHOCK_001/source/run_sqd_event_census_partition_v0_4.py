@@ -58,15 +58,32 @@ def req(url, body=None, retries=8):
 
 def iso_to_dt(s): return dt.datetime.fromisoformat(s.replace("Z","+00:00"))
 def ts_to_slot(day_iso):
-    unix=int(iso_to_dt(day_iso).timestamp())
+    target_dt=iso_to_dt(day_iso)
+    unix=int(target_dt.timestamp())
     st,h,raw=req(f"{TSROOT}/{unix}/block")
     if st!=200: raise RuntimeError(f"timestamp_resolver_http_{st}:{raw[:300]!r}")
     obj=json.loads(raw)
-    if isinstance(obj,int): return obj
-    if isinstance(obj,dict):
-        for k in ("block","block_number","number","slot"):
-            if isinstance(obj.get(k),int): return obj[k]
-    raise RuntimeError(f"timestamp_resolver_schema:{obj!r}")
+    seed=None
+    if isinstance(obj,int): seed=obj
+    elif isinstance(obj,dict):
+        for k in ("block_number","block","number","slot"):
+            if isinstance(obj.get(k),int):
+                seed=obj[k]; break
+    if seed is None: raise RuntimeError(f"timestamp_resolver_schema:{obj!r}")
+    body={"type":"solana","fromBlock":seed,"toBlock":seed+64,
+          "fields":{"block":{"number":True,"timestamp":True}}}
+    st,h,raw=req(STREAM,body)
+    if st!=200: raise RuntimeError(f"timestamp_calibration_stream_http_{st}:{raw[:300]!r}")
+    candidates=[]
+    for line in raw.decode("utf-8","replace").splitlines():
+        if not line.strip(): continue
+        blk=json.loads(line); hdr=blk.get("header") or {}
+        num=hdr.get("number"); t=norm_time(hdr.get("timestamp"))
+        if isinstance(num,int) and isinstance(t,str) and iso_to_dt(t)>=target_dt:
+            candidates.append((num,t))
+    if not candidates: raise RuntimeError(f"timestamp_calibration_no_block_ge_target:seed={seed}")
+    candidates.sort()
+    return candidates[0][0]
 
 def norm_time(v):
     if isinstance(v,str): return v
