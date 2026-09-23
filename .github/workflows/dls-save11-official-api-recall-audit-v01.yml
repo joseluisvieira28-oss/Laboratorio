@@ -1,0 +1,55 @@
+name: DLS Save11 Official API Locator Recall Audit V0.1
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout audit branch
+        uses: actions/checkout@v4
+        with:
+          ref: dls-save11-official-api-recall-audit-v0.1
+          path: audit
+          fetch-depth: 0
+      - name: Checkout canonical Save11 census branch
+        uses: actions/checkout@v4
+        with:
+          ref: dls-save11-event-census-v0.1
+          path: census
+      - name: Checkout official locator branch
+        uses: actions/checkout@v4
+        with:
+          ref: dls-save11-official-api-locator-v0.1
+          path: locator
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify prerequisites exist
+        run: |
+          test -f census/labs/DEFI_LIQUIDATION_SHOCK_001/SAVE11_EVENT_CENSUS_CHUNK_RECEIPT_V0.1.json
+          test -f census/labs/DEFI_LIQUIDATION_SHOCK_001/SAVE11_EVENT_CENSUS_EVENTS_V0.1.jsonl
+          test -f census/labs/DEFI_LIQUIDATION_SHOCK_001/SAVE11_EVENT_CENSUS_FAILED_ATTEMPTS_V0.1.jsonl
+          test -f locator/labs/DEFI_LIQUIDATION_SHOCK_001/SAVE11_OFFICIAL_API_LOCATOR_RECEIPT_V0.1.json
+          test -f locator/labs/DEFI_LIQUIDATION_SHOCK_001/SAVE11_OFFICIAL_API_LOCATOR_V0.1.json
+      - name: Compile audit
+        run: python -m py_compile audit/labs/DEFI_LIQUIDATION_SHOCK_001/source/audit_save11_official_api_locator_recall_v0_1.py
+      - name: Run recall audit
+        run: |
+          python audit/labs/DEFI_LIQUIDATION_SHOCK_001/source/audit_save11_official_api_locator_recall_v0_1.py             --census-receipt census/labs/DEFI_LIQUIDATION_SHOCK_001/SAVE11_EVENT_CENSUS_CHUNK_RECEIPT_V0.1.json             --events census/labs/DEFI_LIQUIDATION_SHOCK_001/SAVE11_EVENT_CENSUS_EVENTS_V0.1.jsonl             --attempts census/labs/DEFI_LIQUIDATION_SHOCK_001/SAVE11_EVENT_CENSUS_FAILED_ATTEMPTS_V0.1.jsonl             --locator-receipt locator/labs/DEFI_LIQUIDATION_SHOCK_001/SAVE11_OFFICIAL_API_LOCATOR_RECEIPT_V0.1.json             --locator locator/labs/DEFI_LIQUIDATION_SHOCK_001/SAVE11_OFFICIAL_API_LOCATOR_V0.1.json             --out audit/labs/DEFI_LIQUIDATION_SHOCK_001/SAVE11_OFFICIAL_API_LOCATOR_RECALL_AUDIT_RECEIPT_V0.1.json
+      - name: Persist audit receipt
+        if: always()
+        working-directory: audit
+        run: |
+          if [ -f labs/DEFI_LIQUIDATION_SHOCK_001/SAVE11_OFFICIAL_API_LOCATOR_RECALL_AUDIT_RECEIPT_V0.1.json ]; then
+            git config user.name "crypto-lab-source-audit"
+            git config user.email "actions@users.noreply.github.com"
+            git add labs/DEFI_LIQUIDATION_SHOCK_001/SAVE11_OFFICIAL_API_LOCATOR_RECALL_AUDIT_RECEIPT_V0.1.json
+            git commit -m "dls: persist Save11 official locator recall audit v0.1" || true
+            git push origin HEAD:dls-save11-official-api-recall-audit-v0.1
+          fi
