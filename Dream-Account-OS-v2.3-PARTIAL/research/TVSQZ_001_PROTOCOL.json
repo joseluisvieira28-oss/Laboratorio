@@ -1,0 +1,95 @@
+{
+  "lab_id": "TVSQZ-001",
+  "title": "TradingView Squeeze Momentum — Volatility Compression Release MVE",
+  "freeze_date": "2026-09-23",
+  "status": "PRE_DISCOVERY_FROZEN",
+  "parent_mission": "TVSC-001",
+  "governance": "CRYPTO-LAB-GOVERNANCE-V4.0-DEATH-FROZEN",
+  "novelty_statement": "Tests relative volatility compression and subsequent expansion. This is distinct from CIGL_BB_01 mean-reversion, which trades price outside Bollinger bands.",
+  "contamination_map": [
+    "TradingView public Squeeze Momentum description and open-source defaults were visible before freeze.",
+    "Existing Crypto Lab classic-indicator work and Donchian/trend work were visible before freeze.",
+    "No TVSQZ-001 market outcomes were inspected before this freeze."
+  ],
+  "source": {
+    "provider": "Binance public data archive",
+    "market": "USD-M Futures",
+    "interval": "1h",
+    "symbols": [
+      "BTCUSDT",
+      "ETHUSDT",
+      "SOLUSDT",
+      "BNBUSDT",
+      "XRPUSDT",
+      "DOGEUSDT"
+    ],
+    "discovery": "2022-01-01T00:00:00Z/2023-12-31T23:59:59Z",
+    "internal_oos_sealed": "2024-01-01T00:00:00Z/2024-12-31T23:59:59Z",
+    "final_holdout_sealed": "2025-01-01T00:00:00Z/2025-12-31T23:59:59Z",
+    "locked": "2026-01-01T00:00:00Z onward"
+  },
+  "squeeze_definition": {
+    "bb_length": 20,
+    "bb_multiplier": 2,
+    "kc_length": 20,
+    "kc_multiplier": 1.5,
+    "kc_range": "true_range",
+    "squeeze_on": "lowerBB > lowerKC AND upperBB < upperKC",
+    "squeeze_off": "lowerBB < lowerKC AND upperBB > upperKC",
+    "release_event": "previous_bar.squeeze_on == true AND current_bar.squeeze_off == true",
+    "momentum": "LazyBear linreg construction reproduced independently from OHLC; sign only is used in directional gate."
+  },
+  "stage_a_mechanism": {
+    "primary_outcome": "future_rv4 / expected_rv4_from_trailing20",
+    "future_rv4": "sum of squared 1h log returns over the next 4 completed bars",
+    "expected_rv4_from_trailing20": "4 * mean squared 1h log return over the trailing 20 completed returns available at event time",
+    "aggregate": "median event ratio",
+    "bootstrap": {
+      "metric": "median",
+      "reps": 2000,
+      "seed": 20260923,
+      "ci": "95% percentile"
+    },
+    "minimum_total_events": 500,
+    "minimum_events_per_counted_symbol": 50,
+    "minimum_counted_symbols": 4,
+    "pass_rules": {
+      "overall_median_ratio_gte": 1.2,
+      "bootstrap_lower95_gt": 1.05,
+      "symbols_with_median_gt_1_min": 4
+    },
+    "on_fail": "CLOSE_EXACT_NO_EDGE_OR_INSUFFICIENT_SAMPLE; DO_NOT_EVALUATE_DIRECTIONAL_STAGE"
+  },
+  "stage_b_directional": {
+    "open_only_if_stage_a_passes": true,
+    "side": "sign(momentum_value) at release event",
+    "entry": "next bar open",
+    "exit": "close of fourth bar after entry bar begins (i+4 close)",
+    "roundtrip_cost_bps": 10,
+    "bootstrap": {
+      "metric": "mean_net_bps",
+      "reps": 2000,
+      "seed": 20260924,
+      "ci": "95% percentile"
+    },
+    "minimum_trades": 300,
+    "pass_rules": {
+      "mean_net_bps_gt": 0,
+      "profit_factor_gt": 1,
+      "bootstrap_lower95_gt": 0,
+      "symbols_with_positive_mean_min": 4
+    },
+    "on_fail": "DIRECTIONAL_EXACT_NO_EDGE; MECHANISM_STAGE_A_STATE_REMAINS_RECORDED"
+  },
+  "if_both_pass": "DISCOVERY_SURVIVES_ONLY. 2024 remains sealed pending a separate prospective OOS authorization/freeze.",
+  "forbidden": [
+    "parameter tuning after outcome access",
+    "changing horizon after outcome access",
+    "winner asset selection",
+    "cost reduction rescue",
+    "opening 2024, 2025 or 2026 in this run",
+    "merge to main",
+    "live trading",
+    "exchange mutation"
+  ]
+}
