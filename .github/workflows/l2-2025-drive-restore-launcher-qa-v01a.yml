@@ -7,6 +7,7 @@ on:
     paths:
       - 'research/l2_resiliency/RUN_L2R_2025_DRIVE_RESTORE_AND_SOURCE_CLOCK_V01A.ps1'
       - 'research/l2_resiliency/l2r_2025_rebuild_verified_manifest_v01a.py'
+      - 'research/l2_resiliency/RUN_L2R_2025_DRIVE_ATTACK_V01A.cmd'
       - '.github/workflows/l2-2025-drive-restore-launcher-qa-v01a.yml'
   workflow_dispatch:
 
@@ -85,3 +86,24 @@ jobs:
             if(-not $txt.Contains($needle)) { throw "Missing safety marker $needle" }
           }
           Write-Host 'RESEARCH_ONLY_MARKERS_PASS'
+
+      - name: Package one-click Windows attack bundle
+        shell: pwsh
+        run: |
+          $files=@(
+            'research/l2_resiliency/RUN_L2R_2025_DRIVE_ATTACK_V01A.cmd',
+            'research/l2_resiliency/RUN_L2R_2025_DRIVE_RESTORE_AND_SOURCE_CLOCK_V01A.ps1',
+            'research/l2_resiliency/l2r_2025_rebuild_verified_manifest_v01a.py'
+          )
+          Compress-Archive -Path $files -DestinationPath "$env:RUNNER_TEMP\L2R_2025_DRIVE_ATTACK_V01A.zip" -Force
+          $sha=(Get-FileHash -LiteralPath "$env:RUNNER_TEMP\L2R_2025_DRIVE_ATTACK_V01A.zip" -Algorithm SHA256).Hash.ToLowerInvariant()
+          $sha | Set-Content -LiteralPath "$env:RUNNER_TEMP\L2R_2025_DRIVE_ATTACK_V01A.sha256.txt" -Encoding ascii
+          Write-Host "BUNDLE_SHA256=$sha"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: L2R_2025_DRIVE_ATTACK_V01A
+          path: |
+            ${{ runner.temp }}\L2R_2025_DRIVE_ATTACK_V01A.zip
+            ${{ runner.temp }}\L2R_2025_DRIVE_ATTACK_V01A.sha256.txt
+          if-no-files-found: error
