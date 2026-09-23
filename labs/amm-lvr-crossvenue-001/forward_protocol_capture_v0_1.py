@@ -19,7 +19,7 @@ RPC="https://ethereum-rpc.publicnode.com"
 TRACE_RPC="https://eth.drpc.org"
 V3_FACTORY="0x1f98431c8ad98523631ae4a59f267346ea31f984"
 V2_FACTORY="0x5c69bee701ef814a2b6a3edd4b1652cb9cc5aa6f"
-SEL_GETPOOL="1698ee82"
+SEL_GETPOOL=None  # resolved dynamically from canonical signature at startup
 SEL_GETPAIR="e6a43905"
 SEL_TOKEN0="0x0dfe1681"
 SEL_TOKEN1="0xd21220a7"
@@ -68,13 +68,16 @@ def signed256(x):
     return n-(1<<256) if n>=(1<<255) else n
 
 async def build_pool_registry():
-    # Compute V2 swap topic from a provider that supports web3_sha3.
+    # Resolve canonical selectors from signatures exactly as the source gate that passed.
+    getpool_hash=await arpc(RPC,"web3_sha3",["0x"+"getPool(address,address,uint24)".encode().hex()])
+    getpool_sel=getpool_hash[2:10]
+    # V2 topic is retained only for transport compatibility; the frozen economic MVE is V3-only.
     v2_topic=await arpc(RPC,"web3_sha3",["0x"+"Swap(address,uint256,uint256,uint256,uint256,address)".encode().hex()])
     pools={}
     for a,b in PAIRS:
         aa=TOKENS[a]["address"]; bb=TOKENS[b]["address"]
         for fee in V3_FEES:
-            data=SEL_GETPOOL+word_addr(aa)+word_addr(bb)+word_uint(fee)
+            data=getpool_sel+word_addr(aa)+word_addr(bb)+word_uint(fee)
             try:
                 out=await arpc(RPC,"eth_call",[{"to":V3_FACTORY,"data":"0x"+data},"latest"])
                 addr=decode_addr(out)
