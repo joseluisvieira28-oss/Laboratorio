@@ -1,0 +1,61 @@
+name: DLS Save11 SQD Inner CPI Calibration V0.3.1
+
+on:
+  push:
+    branches:
+      - dls-kamino-save11-event-census-v0.1
+    paths:
+      - '.github/workflows/dls-save11-sqd-inner-cpi-calibration-v031.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  calibrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dls-kamino-save11-event-census-v0.1
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/calibrate_save11_sqd_inner_cpi_v0_3_1.py
+      - name: Execute program-only inner/CPI control
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/calibrate_save11_sqd_inner_cpi_v0_3_1.py | tee STDOUT_SAVE11_SQD_V031.txt
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-save11-sqd-inner-cpi-calibration-v031
+          path: |
+            labs/DEFI_LIQUIDATION_SHOCK_001/SAVE11_SQD_INNER_CPI_CALIBRATION_RECEIPT_V0.3.1.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/SAVE11_SQD_INNER_CPI_CALIBRATION_FREEZE_V0.3.1.md
+            STDOUT_SAVE11_SQD_V031.txt
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Persist receipt
+        if: always()
+        run: |
+          if [ -f labs/DEFI_LIQUIDATION_SHOCK_001/SAVE11_SQD_INNER_CPI_CALIBRATION_RECEIPT_V0.3.1.json ]; then
+            git config user.name "crypto-lab-source-audit"
+            git config user.email "actions@users.noreply.github.com"
+            git add labs/DEFI_LIQUIDATION_SHOCK_001/SAVE11_SQD_INNER_CPI_CALIBRATION_RECEIPT_V0.3.1.json
+            git commit -m "dls: persist Save11 SQD inner-CPI calibration receipt v0.3.1" || true
+            git push origin HEAD:dls-kamino-save11-event-census-v0.1
+          fi
+      - name: Firewall
+        if: always()
+        run: |
+          echo SOURCE_ONLY_TRUE
+          echo PROGRAM_FILTER_ONLY_TRUE
+          echo LOCAL_TAG11_DECODE_TRUE
+          echo PRICES_FALSE
+          echo RETURNS_FALSE
+          echo PNL_FALSE
+          echo DIRECTION_FALSE
+          echo LIVE_TRADING_FALSE
