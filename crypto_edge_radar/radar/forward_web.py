@@ -37,6 +37,7 @@ from .options_v21_live import BinanceBTCUSDTDailyFeed, DeribitBTCOptionTradeFeed
 from .options_v21_watcher import OptionsV21ForwardShadowWatcher
 from .options_v21_metrics import evaluate_options_v21_forward
 from .etf_cme_watcher import ETFCMEPublicSignalWatcher
+from .etf_cme_exact_scheduler import ETFCMEExactRuntimeScheduler
 from .external_freshness import all_external_freshness
 from .private_evidence_backup import build_private_evidence_snapshot
 
@@ -130,6 +131,9 @@ class ForwardShadowRuntime:
         self.etf_cme_signal = ETFCMEPublicSignalWatcher(
             store=self.store,
             timeout=settings.http_timeout,
+        )
+        self.etf_cme_exact_scheduler = ETFCMEExactRuntimeScheduler(
+            watcher=self.etf_cme_signal,
         )
         self.ced1d_render_shadow = CED1DRenderShadowRunner(store=self.store)
         self.status_path = os.getenv("RADAR_FORWARD_STATUS", settings.status_path)
@@ -492,6 +496,7 @@ class ForwardShadowRuntime:
             "bnb_launchpool": bnb_state,
             "etf_exec_v2_public": etf_exec_v2,
             "etf_cme_signal": etf_signal,
+            "etf_cme_exact_scheduler": self.etf_cme_exact_scheduler.state(),
             "options_v21": options_v21,
             "options_v21_metrics": options_v21_metrics,
             "ced1d_render_shadow": ced1d_render_shadow,
@@ -731,6 +736,13 @@ def serve_forward_shadow(*, port: int, interval: float) -> int:
     settings = Settings.from_env()
     runtime = ForwardShadowRuntime(settings=settings)
     runtime.run_cycle()
+    exact_etf_worker = threading.Thread(
+        target=runtime.etf_cme_exact_scheduler.run_loop,
+        name="etf-cme-exact-timing-scheduler",
+        daemon=True,
+    )
+    exact_etf_worker.start()
+
     worker = threading.Thread(
         target=runtime.run_loop,
         kwargs={"interval_seconds": interval},
