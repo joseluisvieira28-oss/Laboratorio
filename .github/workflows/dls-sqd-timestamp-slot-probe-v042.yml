@@ -1,0 +1,49 @@
+name: DLS SQD Timestamp Slot Probe V0.4.2
+
+on:
+  push:
+    branches:
+      - dls-kamino-save11-event-census-v0.1
+    paths:
+      - '.github/workflows/dls-sqd-timestamp-slot-probe-v042.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dls-kamino-save11-event-census-v0.1
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/probe_sqd_timestamp_slot_v0_4_2.py
+      - name: Execute corrected timestamp-slot probe
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/probe_sqd_timestamp_slot_v0_4_2.py | tee SQD_TS_PROBE_V042_STDOUT.txt
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-sqd-timestamp-slot-probe-v042
+          path: |
+            labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_SAVE11_SQD_TIMESTAMP_SLOT_PROBE_RECEIPT_V0.4.2.json
+            SQD_TS_PROBE_V042_STDOUT.txt
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Persist receipt
+        if: always()
+        run: |
+          if [ -f labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_SAVE11_SQD_TIMESTAMP_SLOT_PROBE_RECEIPT_V0.4.2.json ]; then
+            git config user.name "crypto-lab-source-audit"
+            git config user.email "actions@users.noreply.github.com"
+            git add labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_SAVE11_SQD_TIMESTAMP_SLOT_PROBE_RECEIPT_V0.4.2.json
+            git commit -m "dls: persist SQD timestamp resolver calibration v0.4.2" || true
+            git push origin HEAD:dls-kamino-save11-event-census-v0.1
+          fi
