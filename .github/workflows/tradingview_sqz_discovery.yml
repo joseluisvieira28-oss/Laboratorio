@@ -1,0 +1,33 @@
+name: TVSQZ-001 Discovery 2022-2023
+
+on:
+  push:
+    branches:
+      - tradingview-strategy-census-v0.1
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/TVSQZ_001_RUN_TRIGGER.txt'
+
+permissions:
+  contents: write
+
+jobs:
+  discovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tradingview-strategy-census-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Run frozen discovery only
+        run: python Dream-Account-OS-v2.3-PARTIAL/research/tradingview_sqz_mve_v01.py
+      - name: Commit immutable receipt
+        run: |
+          git config user.name "crypto-lab-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add Dream-Account-OS-v2.3-PARTIAL/runtime/tvsqz001_discovery_receipt.json
+          git diff --cached --quiet && exit 0
+          git commit -m "research: record TVSQZ-001 discovery receipt"
+          git push origin HEAD:tradingview-strategy-census-v0.1
