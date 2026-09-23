@@ -164,3 +164,35 @@ def emit_snapshot_log_chunks(store, *, chunk_chars: int = 8000) -> dict[str, Any
         )
     print("RADAR_BACKUP_END", flush=True)
     return header
+
+
+def emit_snapshot_json_chunks(store, *, chunk_chars: int = 8000) -> dict[str, Any]:
+    """Emit one verified snapshot as ASCII JSON chunks for private log transport."""
+    if chunk_chars < 1000:
+        raise ValueError("chunk_chars too small")
+    snapshot = build_private_evidence_snapshot(store)
+    raw_text = json.dumps(
+        snapshot,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=True,
+    )
+    raw = raw_text.encode("ascii")
+    total = (len(raw_text) + chunk_chars - 1) // chunk_chars
+    header = {
+        "raw_json_sha256": hashlib.sha256(raw).hexdigest(),
+        "event_count": snapshot["event_count"],
+        "key_count": snapshot["key_count"],
+        "chain_head_sha256": snapshot["chain_head_sha256"],
+        "canonical_snapshot_sha256": snapshot["snapshot_sha256"],
+        "chunk_chars": chunk_chars,
+        "chunk_count": total,
+        "database_mutation": False,
+        "secret_values_included": False,
+    }
+    print("RADAR_JSON_HEADER " + json.dumps(header, sort_keys=True), flush=True)
+    for idx in range(total):
+        chunk = raw_text[idx * chunk_chars : (idx + 1) * chunk_chars]
+        print(f"RADAR_JSON_CHUNK {idx + 1}/{total} {chunk}", flush=True)
+    print("RADAR_JSON_END", flush=True)
+    return header
