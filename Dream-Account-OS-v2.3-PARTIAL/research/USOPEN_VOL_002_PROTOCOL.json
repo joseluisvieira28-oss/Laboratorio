@@ -1,0 +1,105 @@
+{
+  "lab_id": "USOPEN-VOL-002",
+  "parent_lab_id": "USOPEN-VOL-001",
+  "mve_id": "USOV-POSTETF-2024-001",
+  "title": "U.S. Cash Open 30m Volatility Shock — Post-ETF 2024 Replication",
+  "freeze_date": "2026-09-23",
+  "status": "PRE_REPLICATION_FROZEN",
+  "governance": "CRYPTO-LAB-GOVERNANCE-V4.0-DEATH-FROZEN",
+  "primary_family": "VOL",
+  "secondary_family": "MICRO",
+  "regime_boundary": {
+    "approval_date": "2024-01-10",
+    "first_public_trading_date": "2024-01-11",
+    "post_sample_start": "2024-01-11",
+    "post_sample_end": "2024-12-31",
+    "causality_claim": false
+  },
+  "source": {
+    "provider": "Binance Data Vision",
+    "market": "USD-M Futures",
+    "dataset": "monthly 5m klines",
+    "symbols": [
+      "BTCUSDT",
+      "ETHUSDT",
+      "SOLUSDT",
+      "BNBUSDT",
+      "XRPUSDT",
+      "DOGEUSDT"
+    ],
+    "baseline_open": "2022-01-01/2023-12-31",
+    "replication_open": "2024-01-11/2024-12-31",
+    "protected": [
+      "2025",
+      "2026"
+    ]
+  },
+  "clock": {
+    "timezone": "America/New_York",
+    "eligible_days": "regular U.S. cash-market weekdays excluding full-day NYSE closures",
+    "pre": [
+      "09:00",
+      "09:30"
+    ],
+    "open": [
+      "09:30",
+      "10:00"
+    ],
+    "post": [
+      "10:00",
+      "10:30"
+    ],
+    "bars_per_window": 6,
+    "dst": "IANA America/New_York"
+  },
+  "realized_variance": {
+    "sampling": "5m close-to-close log returns",
+    "definition": "sum squared log returns over exactly six consecutive 5m bars",
+    "ratio_epsilon_policy": "days with any zero/nonpositive PRE/OPEN/POST RV excluded before ratios; exclusion count recorded"
+  },
+  "replication_gate": {
+    "minimum_symbol_days": 1350,
+    "primary_open_pre": {
+      "pooled_median_ratio_gte": 1.2,
+      "date_cluster_bootstrap_lower95_ratio_gt": 1.05
+    },
+    "confirmatory_open_post": {
+      "pooled_median_ratio_gte": 1.1,
+      "date_cluster_bootstrap_lower95_ratio_gt": 1
+    },
+    "breadth": {
+      "symbols_open_pre_median_gt_1_10_min": 4
+    },
+    "bootstrap": {
+      "unit": "U.S. trading date with all symbols preserved",
+      "statistic": "median log ratio, exponentiated for reporting",
+      "reps": 5000,
+      "seed": 20260925
+    },
+    "on_pass": "POSTETF_2024_EXACT_REPLICATION_SURVIVES",
+    "on_fail": "POSTETF_2024_EXACT_REPLICATION_FAILS"
+  },
+  "structural_comparison": {
+    "metric": "exp(median log OPEN/PRE 2024 minus median log OPEN/PRE 2022-2023)",
+    "bootstrap": "independent date-cluster resampling within baseline and post regimes; all symbols preserved; 5000 reps; seed 20260926",
+    "amplified": "lower95 > 1",
+    "attenuated": "upper95 < 1",
+    "otherwise": "NO_DETECTABLE_SHIFT",
+    "causal_interpretation_forbidden": true
+  },
+  "forbidden": [
+    "open 2025 or 2026",
+    "include 2024-01-01 through 2024-01-10 in post-ETF sample",
+    "directional PnL",
+    "window tuning",
+    "clock shifting",
+    "weekday/month selection",
+    "BTC-only rescue",
+    "macro-day exclusion after outcomes",
+    "variance-estimator substitution",
+    "threshold changes after outcomes",
+    "merge to main",
+    "live trading",
+    "exchange mutation"
+  ]
+}
