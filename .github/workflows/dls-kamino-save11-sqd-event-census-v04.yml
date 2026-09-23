@@ -1,0 +1,129 @@
+name: DLS Kamino Save11 SQD Event Census V0.4
+
+on:
+  push:
+    branches:
+      - dls-kamino-save11-event-census-v0.1
+    paths:
+      - '.github/workflows/dls-kamino-save11-sqd-event-census-v04.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  census:
+    strategy:
+      fail-fast: false
+      max-parallel: 6
+      matrix:
+        include:
+          - { protocol: kamino, start: '2023-11-17', end: '2023-12-01', id: k202311 }
+          - { protocol: kamino, start: '2023-12-01', end: '2024-01-01', id: k202312 }
+          - { protocol: kamino, start: '2024-01-01', end: '2024-02-01', id: k202401 }
+          - { protocol: kamino, start: '2024-02-01', end: '2024-03-01', id: k202402 }
+          - { protocol: kamino, start: '2024-03-01', end: '2024-04-01', id: k202403 }
+          - { protocol: kamino, start: '2024-04-01', end: '2024-05-01', id: k202404 }
+          - { protocol: kamino, start: '2024-05-01', end: '2024-06-01', id: k202405 }
+          - { protocol: kamino, start: '2024-06-01', end: '2024-07-01', id: k202406 }
+          - { protocol: kamino, start: '2024-07-01', end: '2024-08-01', id: k202407 }
+          - { protocol: kamino, start: '2024-08-01', end: '2024-09-01', id: k202408 }
+          - { protocol: kamino, start: '2024-09-01', end: '2024-10-01', id: k202409 }
+          - { protocol: kamino, start: '2024-10-01', end: '2024-11-01', id: k202410 }
+          - { protocol: kamino, start: '2024-11-01', end: '2024-12-01', id: k202411 }
+          - { protocol: kamino, start: '2024-12-01', end: '2025-01-01', id: k202412 }
+          - { protocol: save11, start: '2024-07-19', end: '2024-08-01', id: s202407 }
+          - { protocol: save11, start: '2024-08-01', end: '2024-09-01', id: s202408 }
+          - { protocol: save11, start: '2024-09-01', end: '2024-10-01', id: s202409 }
+          - { protocol: save11, start: '2024-10-01', end: '2024-11-01', id: s202410 }
+          - { protocol: save11, start: '2024-11-01', end: '2024-12-01', id: s202411 }
+          - { protocol: save11, start: '2024-12-01', end: '2025-01-01', id: s202412 }
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dls-kamino-save11-event-census-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/run_sqd_event_census_partition_v0_4.py
+      - name: Run frozen daily census partition
+        run: |
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/run_sqd_event_census_partition_v0_4.py \
+            --protocol "${{ matrix.protocol }}" --start "${{ matrix.start }}" --end "${{ matrix.end }}" \
+            --out "census/${{ matrix.id }}"
+      - name: Upload partition evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-census-${{ matrix.id }}
+          path: census/${{ matrix.id }}
+          if-no-files-found: error
+          retention-days: 30
+
+  aggregate:
+    needs: census
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dls-kamino-save11-event-census-v0.1
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download all partition evidence
+        uses: actions/download-artifact@v4
+        with:
+          pattern: dls-census-*
+          path: census_all
+          merge-multiple: false
+      - name: Aggregate completeness and freeze RAW sample
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/aggregate_sqd_event_census_v0_4.py census_all
+      - name: RAW reconcile deterministic sample
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/reconcile_sqd_census_raw_sample_v0_4.py
+      - name: Final authority receipt
+        run: |
+          python - <<'PY'
+          import json,hashlib
+          from pathlib import Path
+          c=json.loads(Path("labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_SAVE11_SQD_EVENT_CENSUS_RECEIPT_V0.4.json").read_text())
+          r=json.loads(Path("labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_SAVE11_RAW_SAMPLE_RECONCILIATION_RECEIPT_V0.4.json").read_text())
+          passed=c.get("classification")=="SQD_EVENT_CENSUS_COMPLETE_PENDING_RAW_SAMPLE" and r.get("classification")=="RAW_SAMPLE_RECONCILIATION_PASS"
+          out={
+            "schema_version":"0.4","lab_id":"DEFI-LIQUIDATION-SHOCK-001",
+            "classification":"KAMINO_SAVE11_EVENT_CENSUS_SOURCE_PASS" if passed else "KAMINO_SAVE11_EVENT_CENSUS_BLOCKED_FAIL_CLOSED",
+            "census_classification":c.get("classification"),"raw_sample_classification":r.get("classification"),
+            "protocols":c.get("protocols"),"raw_sample_count":r.get("sample_count"),"raw_sample_pass_count":r.get("pass_count"),
+            "no_economic_outcomes_opened":True,
+            "firewall":{"prices":False,"returns":False,"pnl":False,"direction":False,"economic_outcomes":False,
+                        "live_trading":False,"orders":False,"wallets":False,"exchange_mutation":False,"merge_main":False}
+          }
+          Path("labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_SAVE11_EVENT_CENSUS_FINAL_AUTHORITY_RECEIPT_V0.4.json").write_text(json.dumps(out,indent=2,sort_keys=True)+"\n")
+          print(json.dumps(out,indent=2,sort_keys=True))
+          if not passed: raise SystemExit(2)
+          PY
+      - name: Upload aggregate evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-kamino-save11-census-v04-aggregate
+          path: |
+            labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_SAVE11_SQD_EVENT_CENSUS_RECEIPT_V0.4.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_SAVE11_RAW_SAMPLE_QUEUE_V0.4.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_SAVE11_RAW_SAMPLE_RECONCILIATION_RECEIPT_V0.4.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_SAVE11_EVENT_CENSUS_FINAL_AUTHORITY_RECEIPT_V0.4.json
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Persist aggregate receipts
+        if: always()
+        run: |
+          git config user.name "crypto-lab-source-audit"
+          git config user.email "actions@users.noreply.github.com"
+          git add labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_SAVE11_*V0.4.json || true
+          git commit -m "dls: persist Kamino Save11 SQD event census v0.4 receipts" || true
+          git push origin HEAD:dls-kamino-save11-event-census-v0.1
