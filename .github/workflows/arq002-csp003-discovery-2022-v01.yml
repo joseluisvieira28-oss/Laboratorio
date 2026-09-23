@@ -1,0 +1,58 @@
+name: ARQ-002-CSP-003 Frozen Discovery 2022 V0.1
+on:
+  push:
+    branches: [arq002-csp003-clean-2022-2023-v0.1]
+    paths:
+      - research/arq002_csp003/DISCOVERY_TRIGGER_2022.txt
+permissions:
+  contents: read
+jobs:
+  month:
+    strategy:
+      fail-fast: false
+      matrix:
+        month: ["2022-01","2022-02","2022-03","2022-04","2022-05","2022-06","2022-07","2022-08","2022-09","2022-10","2022-11","2022-12"]
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: python research/arq002_csp003/ARQ002_CSP003_DISCOVERY_MONTH_2022_V0.1.py --month ${{ matrix.month }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: arq002-csp003-discovery-${{ matrix.month }}
+          path: arq002_csp003_discovery_${{ matrix.month }}.json
+          if-no-files-found: error
+          retention-days: 30
+  aggregate:
+    needs: month
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: arq002-csp003-discovery-*
+          path: monthly
+          merge-multiple: true
+      - run: python research/arq002_csp003/ARQ002_CSP003_DISCOVERY_AGG_2022_V0.1.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: arq002-csp003-discovery-2022-final
+          path: ARQ002_CSP003_DISCOVERY_RECEIPT_2022_V0.1.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Enforce terminal state
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          r=json.load(open("ARQ002_CSP003_DISCOVERY_RECEIPT_2022_V0.1.json"))
+          if r.get("classification") not in {"DISCOVERY_SURVIVES_NOT_EDGE","DISCOVERY_FAIL_NO_PROMOTION"}:
+              raise SystemExit("FAIL_CLOSED")
+          if r.get("replication_2023_accessed") is not False or r.get("year_2024_scored") is not False:
+              raise SystemExit("FIREWALL")
+          print(r["classification"])
+          PY
