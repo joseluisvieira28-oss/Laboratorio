@@ -1,0 +1,127 @@
+name: DLS Kamino Save11 SQD Event Census V0.4.2
+
+on:
+  push:
+    branches:
+      - dls-kamino-save11-event-census-v0.1
+    paths:
+      - '.github/workflows/dls-kamino-save11-sqd-event-census-v042.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: dls-kamino-save11-sqd-event-census-v042
+  cancel-in-progress: false
+
+jobs:
+  census:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dls-kamino-save11-event-census-v0.1
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Preflight frozen authorities
+        run: |
+          python - <<'PY'
+          import json, pathlib
+          root=pathlib.Path("labs/DEFI_LIQUIDATION_SHOCK_001")
+          v03=json.loads((root/"KAMINO_SAVE11_SQD_BOUNDARY_CALIBRATION_RECEIPT_V0.3.json").read_text())
+          kam=next(x for x in v03["controls"] if x["name"]=="kamino")
+          assert kam.get("passed") is True, kam
+          s11=json.loads((root/"SAVE11_SQD_INNER_CPI_CALIBRATION_RECEIPT_V0.3.1.json").read_text())
+          assert s11["classification"]=="SAVE11_SQD_INNER_CPI_CALIBRATION_PASS", s11
+          ts=json.loads((root/"KAMINO_SAVE11_SQD_TIMESTAMP_SLOT_PROBE_RECEIPT_V0.4.2.json").read_text())
+          assert ts["classification"]=="SQD_TIMESTAMP_SLOT_RESOLVER_PASS", ts
+          print("PRE_CENSUS_AUTHORITY_PASS")
+          PY
+
+      - name: Compile frozen executor
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/run_sqd_event_census_v0_4_2.py
+
+      - name: Execute full daily source census
+        id: execute
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/run_sqd_event_census_v0_4_2.py | tee DLS_SQD_EVENT_CENSUS_V042_STDOUT.txt
+
+      - name: Package evidence
+        if: always()
+        run: |
+          python - <<'PY'
+          import hashlib,json,pathlib
+          root=pathlib.Path("labs/DEFI_LIQUIDATION_SHOCK_001/sqd_census_v0_4")
+          files=[]
+          if root.exists():
+            for p in sorted(root.rglob("*")):
+              if p.is_file():
+                b=p.read_bytes()
+                files.append({"path":str(p),"bytes":len(b),"sha256":hashlib.sha256(b).hexdigest()})
+          pathlib.Path("DLS_SQD_EVENT_CENSUS_V042_MANIFEST.json").write_text(
+            json.dumps({"files":files},indent=2,sort_keys=True)+"\n")
+          PY
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-kamino-save11-sqd-event-census-v042
+          path: |
+            labs/DEFI_LIQUIDATION_SHOCK_001/sqd_census_v0_4/
+            labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_SAVE11_SQD_EVENT_CENSUS_RECEIPT_V0.4.2.json
+            DLS_SQD_EVENT_CENSUS_V042_MANIFEST.json
+            DLS_SQD_EVENT_CENSUS_V042_STDOUT.txt
+          if-no-files-found: warn
+          retention-days: 30
+          compression-level: 6
+
+      - name: Persist durable census evidence
+        if: always()
+        run: |
+          git config user.name "crypto-lab-source-audit"
+          git config user.email "actions@users.noreply.github.com"
+          git add labs/DEFI_LIQUIDATION_SHOCK_001/sqd_census_v0_4/ || true
+          git add labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_SAVE11_SQD_EVENT_CENSUS_RECEIPT_V0.4.2.json || true
+          git commit -m "dls: persist Kamino Save11 SQD census v0.4.2 evidence" || true
+          git pull --rebase origin dls-kamino-save11-event-census-v0.1
+          git push origin HEAD:dls-kamino-save11-event-census-v0.1
+
+      - name: Final adjudication
+        if: always()
+        run: |
+          python - <<'PY'
+          import json,pathlib,sys
+          p=pathlib.Path("labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_SAVE11_SQD_EVENT_CENSUS_RECEIPT_V0.4.2.json")
+          if not p.exists():
+            print("CENSUS_RECEIPT_MISSING_FAIL_CLOSED")
+            sys.exit(2)
+          r=json.loads(p.read_text())
+          print("CLASSIFICATION",r.get("classification"))
+          print("PROTOCOL_SUMMARIES",json.dumps(r.get("protocol_summaries",{}),sort_keys=True))
+          if r.get("classification")!="SQD_EVENT_CENSUS_COMPLETE_PENDING_RAW_SAMPLE":
+            sys.exit(2)
+          PY
+
+      - name: Firewall
+        if: always()
+        run: |
+          echo SOURCE_ONLY_TRUE
+          echo PRICES_FALSE
+          echo BALANCES_FALSE
+          echo TOKEN_BALANCES_FALSE
+          echo AMOUNTS_FALSE
+          echo RETURNS_FALSE
+          echo PNL_FALSE
+          echo DIRECTION_FALSE
+          echo LIVE_TRADING_FALSE
+          echo ORDERS_FALSE
+          echo MERGE_MAIN_FALSE
