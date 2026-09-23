@@ -55,11 +55,11 @@ class DeployDriftTests(TestCase):
         head = "b" * 40
         diff = (
             "diff --git a/crypto_edge_radar/receipts/X.json "
-            "b/crypto_edge_radar/receipts/X.json\\n"
+            "b/crypto_edge_radar/receipts/X.json\n"
             "diff --git a/crypto_edge_radar/tests/test_x.py "
-            "b/crypto_edge_radar/tests/test_x.py\\n"
+            "b/crypto_edge_radar/tests/test_x.py\n"
             "diff --git a/.github/workflows/x.yml "
-            "b/.github/workflows/x.yml\\n"
+            "b/.github/workflows/x.yml\n"
         )
         with patch.dict(os.environ, {"RENDER_GIT_COMMIT": deployed}, clear=True), patch(
             "radar.deploy_drift._fetch_json",
@@ -84,7 +84,7 @@ class DeployDriftTests(TestCase):
         head = "b" * 40
         diff = (
             "diff --git a/crypto_edge_radar/authorities/X.json "
-            "b/crypto_edge_radar/authorities/X.json\\n"
+            "b/crypto_edge_radar/authorities/X.json\n"
         )
         with patch.dict(os.environ, {"RENDER_GIT_COMMIT": deployed}, clear=True), patch(
             "radar.deploy_drift._fetch_json",
