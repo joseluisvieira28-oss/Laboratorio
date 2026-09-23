@@ -212,10 +212,13 @@ if ((Sha256 $manifestPath) -ne $ExpectedManifestSha) { throw "FAIL CLOSED frozen
 Write-Host "MANIFEST PASS $ExpectedManifestSha"
 
 $ExpectedRunnerSha = "e16efd7071a159fb767b6ff872f284e498ca110518bec06d9b4c3db867079a38"
-$RunnerPath = Join-Path $PSScriptRoot "L2R_2025_BTC_VALIDATION_PIPELINE_V01B_FROZEN_SOURCE.py"
+$RunnerPayload = Join-Path $PSScriptRoot "L2R_2025_BTC_VALIDATION_PIPELINE_V01B_FROZEN_SOURCE.b64.txt"
+$RunnerPath = Join-Path $TmpRoot "L2R_2025_BTC_VALIDATION_PIPELINE_V01B_FROZEN_SOURCE.py"
 $EvidenceName = "L2_RESILIENCY_001_2025_VALIDATION_EVIDENCE_V0_1.zip"
 
-if (-not (Test-Path -LiteralPath $RunnerPath -PathType Leaf)) { throw "Missing frozen V0.1B runner: $RunnerPath" }
+if (-not (Test-Path -LiteralPath $RunnerPayload -PathType Leaf)) { throw "Missing frozen V0.1B runner payload: $RunnerPayload" }
+$runnerB64 = (Get-Content -LiteralPath $RunnerPayload -Raw -Encoding ASCII) -replace "\s",""
+[IO.File]::WriteAllBytes($RunnerPath,[Convert]::FromBase64String($runnerB64))
 $runnerSha = Sha256 $RunnerPath
 if ($runnerSha -ne $ExpectedRunnerSha) { throw "FAIL CLOSED V0.1B runner SHA mismatch: $runnerSha" }
 Write-Host "V0.1B RUNNER PASS $runnerSha"
