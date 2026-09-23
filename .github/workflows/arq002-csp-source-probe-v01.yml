@@ -1,0 +1,53 @@
+name: ARQ-002-CSP Source Probe V0.1
+
+on:
+  push:
+    branches:
+      - arq002-cvd-sweep-positioning-v0.1
+    paths:
+      - research/arq002_csp/ARQ002_CSP_SOURCE_PROBE_V0.1.py
+      - .github/workflows/arq002-csp-source-probe-v01.yml
+
+permissions:
+  contents: read
+
+jobs:
+  source-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile
+        run: python -m py_compile research/arq002_csp/ARQ002_CSP_SOURCE_PROBE_V0.1.py
+      - name: Run outcome-blind official-source probe
+        id: probe
+        continue-on-error: true
+        run: python research/arq002_csp/ARQ002_CSP_SOURCE_PROBE_V0.1.py
+      - name: Upload receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: arq002-csp-source-probe-v01
+          path: arq002_csp_source_probe_receipt.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Enforce fail-closed source gate
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path("arq002_csp_source_probe_receipt.json")
+          if not p.exists(): raise SystemExit("FAIL_CLOSED: receipt missing")
+          r=json.loads(p.read_text())
+          if r.get("classification")!="SOURCE_DATA_PASS":
+              raise SystemExit("FAIL_CLOSED: source probe")
+          if r.get("economic_values_reported") is not False or r.get("outcomes_opened") is not False:
+              raise SystemExit("FAIL_CLOSED: economic firewall")
+          if r.get("protected_2025_accessed") is not False or r.get("protected_2026_accessed") is not False:
+              raise SystemExit("FAIL_CLOSED: protected-period firewall")
+          print("SOURCE_DATA_PASS")
+          PY
