@@ -1,0 +1,50 @@
+name: DLS SQD Field Shape Calibration V0.1
+
+on:
+  push:
+    branches:
+      - dls-kamino-save11-event-census-v0.1
+    paths:
+      - '.github/workflows/dls-sqd-field-shape-calibration-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  calibrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dls-kamino-save11-event-census-v0.1
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/calibrate_sqd_field_shape_v0_1.py
+      - name: Execute field-shape calibration
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/calibrate_sqd_field_shape_v0_1.py | tee DLS_FIELD_SHAPE_CALIBRATION_STDOUT.txt
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-sqd-field-shape-calibration-v01
+          path: |
+            labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_SAVE11_SQD_FIELD_SHAPE_CALIBRATION_RECEIPT_V0.1.json
+            DLS_FIELD_SHAPE_CALIBRATION_STDOUT.txt
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Persist receipt
+        if: always()
+        run: |
+          if [ -f labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_SAVE11_SQD_FIELD_SHAPE_CALIBRATION_RECEIPT_V0.1.json ]; then
+            git config user.name "crypto-lab-source-audit"
+            git config user.email "actions@users.noreply.github.com"
+            git add labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_SAVE11_SQD_FIELD_SHAPE_CALIBRATION_RECEIPT_V0.1.json
+            git commit -m "dls: persist SQD field-shape calibration v0.1" || true
+            git pull --rebase origin dls-kamino-save11-event-census-v0.1
+            git push origin HEAD:dls-kamino-save11-event-census-v0.1
+          fi
