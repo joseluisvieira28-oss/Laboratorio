@@ -1,0 +1,70 @@
+name: LIQUIDATION-PRESSURE-002 Source Calibration
+
+on:
+  push:
+    branches:
+      - liquidation-pressure-002-forward-v0.1
+    paths:
+      - 'labs/LIQUIDATION_PRESSURE_002_FORWARD/CALIBRATION_TRIGGER.txt'
+  workflow_dispatch:
+
+concurrency:
+  group: liquidation-pressure-002-source-calibration
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  calibration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: liquidation-pressure-002-forward-v0.1
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pinned websocket client
+        run: pip install websockets==15.0.1
+      - name: Collect 50 minutes of source-only liquidation calibration
+        run: python labs/LIQUIDATION_PRESSURE_002_FORWARD/source_calibration_collector_v0_1.py --seconds 3000
+      - name: Evaluate frozen source calibration readiness
+        shell: bash
+        run: |
+          set +e
+          python labs/LIQUIDATION_PRESSURE_002_FORWARD/calibrate_source_thresholds_v0_1.py --input labs/LIQUIDATION_PRESSURE_002_FORWARD/calibration/liquidation_records_v0_1.jsonl
+          rc=$?
+          set -e
+          if [ "$rc" -ne 0 ] && [ "$rc" -ne 3 ]; then
+            exit "$rc"
+          fi
+          if [ -f labs/LIQUIDATION_PRESSURE_002_FORWARD/evidence/source_calibration_canonical_v0_1.json ]; then
+            cp labs/LIQUIDATION_PRESSURE_002_FORWARD/evidence/source_calibration_canonical_v0_1.json labs/LIQUIDATION_PRESSURE_002_FORWARD/calibration/source_calibration_status_v0_1.json
+          else
+            cp labs/LIQUIDATION_PRESSURE_002_FORWARD/evidence/source_calibration_preview_v0_1.json labs/LIQUIDATION_PRESSURE_002_FORWARD/calibration/source_calibration_status_v0_1.json
+          fi
+      - name: Persist calibration ledger and status
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "crypto-lab-source-bot"
+          git config user.email "crypto-lab-source-bot@users.noreply.github.com"
+          git add labs/LIQUIDATION_PRESSURE_002_FORWARD/calibration/
+          if git diff --cached --quiet; then
+            echo "No new calibration records"
+            exit 0
+          fi
+          git commit -m "LP2: persist source calibration run ${GITHUB_RUN_ID}"
+          git pull --rebase origin liquidation-pressure-002-forward-v0.1
+          git push origin HEAD:liquidation-pressure-002-forward-v0.1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: LIQUIDATION-PRESSURE-002-SOURCE-CALIBRATION
+          path: |
+            labs/LIQUIDATION_PRESSURE_002_FORWARD/calibration/
+            labs/LIQUIDATION_PRESSURE_002_FORWARD/evidence/source_calibration_preview_v0_1.json
+            labs/LIQUIDATION_PRESSURE_002_FORWARD/evidence/source_calibration_canonical_v0_1.json
