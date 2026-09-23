@@ -751,25 +751,50 @@ class _Handler(BaseHTTPRequestHandler):
 def serve_forward_shadow(*, port: int, interval: float) -> int:
     settings = Settings.from_env()
     runtime = ForwardShadowRuntime(settings=settings)
-    runtime.run_cycle()
+    quiesced = os.getenv("RADAR_EVIDENCE_WRITES_QUIESCED", "").lower() == "true"
+
+    if quiesced:
+        chain_ok, chain_detail = runtime.store.verify_chain()
+        state = {
+            "health": "OK" if chain_ok else "DEGRADED_FAIL_CLOSED",
+            "mode": "EVIDENCE_WRITES_QUIESCED",
+            "checked_at_utc": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            "version": "0.9",
+            "runtime_identity": _runtime_identity(),
+            "evidence_backend": runtime.store.backend,
+            "evidence_chain_ok": chain_ok,
+            "evidence_chain_detail": chain_detail,
+            "maintenance_quiesce": True,
+            "authenticated_exchange_api_used": False,
+            "orders_created": False,
+            "exchange_mutation_performed": False,
+            "live_capital_enabled": False,
+        }
+        runtime._set_state(state)
+        print(json.dumps(state, sort_keys=True), flush=True)
+    else:
+        runtime.run_cycle()
+
     if os.getenv("RADAR_BACKUP_LOG_EMIT_ON_START", "").lower() == "true":
         emit_snapshot_log_chunks(runtime.store)
     if os.getenv("RADAR_BACKUP_JSON_LOG_EMIT_ON_START", "").lower() == "true":
         emit_snapshot_json_chunks(runtime.store)
-    exact_etf_worker = threading.Thread(
-        target=runtime.etf_cme_exact_scheduler.run_loop,
-        name="etf-cme-exact-timing-scheduler",
-        daemon=True,
-    )
-    exact_etf_worker.start()
 
-    worker = threading.Thread(
-        target=runtime.run_loop,
-        kwargs={"interval_seconds": interval},
-        name="forward-shadow-watchers",
-        daemon=True,
-    )
-    worker.start()
+    if not quiesced:
+        exact_etf_worker = threading.Thread(
+            target=runtime.etf_cme_exact_scheduler.run_loop,
+            name="etf-cme-exact-timing-scheduler",
+            daemon=True,
+        )
+        exact_etf_worker.start()
+
+        worker = threading.Thread(
+            target=runtime.run_loop,
+            kwargs={"interval_seconds": interval},
+            name="forward-shadow-watchers",
+            daemon=True,
+        )
+        worker.start()
 
     handler = type("ForwardShadowHandler", (_Handler,), {"runtime": runtime})
     server = ThreadingHTTPServer(("0.0.0.0", int(port)), handler)
