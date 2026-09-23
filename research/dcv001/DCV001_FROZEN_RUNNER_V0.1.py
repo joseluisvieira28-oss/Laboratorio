@@ -511,12 +511,16 @@ def read_metrics_values(metas: dict[str, ObjectMeta]) -> dict[date, float]:
         candidates: list[tuple[int, float]] = []
         for r in body:
             ts = to_ms(r[ti])
-            val = float(r[oi])
+            try:
+                val = float(r[oi])
+            except (TypeError, ValueError):
+                continue
             if not math.isfinite(val) or val <= 0:
-                raise RunError(f"INVALID_OI_VALUE:{meta.key}")
+                continue
             candidates.append((ts, val))
         if not candidates:
-            raise RunError(f"NO_VALID_OI:{meta.key}")
+            # Frozen authority: a day with no valid OI snapshot is not model-eligible.
+            continue
         candidates.sort(key=lambda x: x[0])
         last_ts, last_val = candidates[-1]
         d = datetime.fromtimestamp(last_ts / 1000, tz=timezone.utc).date()
