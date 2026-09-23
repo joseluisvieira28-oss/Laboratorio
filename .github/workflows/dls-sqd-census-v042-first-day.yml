@@ -1,0 +1,35 @@
+name: DLS SQD Census V0.4.2 First-Day Gate
+on:
+  push:
+    branches: [dls-kamino-save11-event-census-v0.4.2]
+    paths: ['.github/workflows/dls-sqd-census-v042-first-day.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  first_day:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {protocol: kamino, start: '2023-11-17', end: '2023-11-18'}
+          - {protocol: save11, start: '2024-07-19', end: '2024-07-20'}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: dls-kamino-save11-event-census-v0.4.2}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/run_sqd_event_census_partition_v0_4_2.py
+      - run: |
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/run_sqd_event_census_partition_v0_4_2.py \
+            --protocol "${{ matrix.protocol }}" --start "${{ matrix.start }}" --end "${{ matrix.end }}" \
+            --out "first_day/${{ matrix.protocol }}"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dls-sqd-v042-first-day-${{ matrix.protocol }}
+          path: first_day/${{ matrix.protocol }}
+          if-no-files-found: error
+          retention-days: 30
