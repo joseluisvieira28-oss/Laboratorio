@@ -8,7 +8,6 @@ from pathlib import Path
 import threading
 import time
 from typing import Any
-from urllib.parse import parse_qs, urlparse
 
 from .bnb_launchpool_watcher import (
     BNBLaunchpoolForwardShadowWatcher,
@@ -38,7 +37,6 @@ from .options_v21_watcher import OptionsV21ForwardShadowWatcher
 from .options_v21_metrics import evaluate_options_v21_forward
 from .etf_cme_watcher import ETFCMEPublicSignalWatcher
 from .external_freshness import all_external_freshness
-from .private_evidence_backup import build_private_evidence_snapshot
 from .persistence_expiry import persistence_expiry_state
 from .deploy_drift import deployment_drift_receipt
 
@@ -726,17 +724,6 @@ class _Handler(BaseHTTPRequestHandler):
         self.wfile.write(raw)
 
     def do_GET(self) -> None:  # noqa: N802
-        parsed = urlparse(self.path)
-        if parsed.path == "/api/private/evidence-backup":
-            enabled = os.getenv("RADAR_BACKUP_EXPORT_ENABLED", "").lower() == "true"
-            expected = os.getenv("RADAR_BACKUP_EXPORT_TOKEN", "")
-            provided = (parse_qs(parsed.query).get("token") or [""])[0]
-            if not enabled or not expected or provided != expected:
-                self._send_json(404, {"error": "not_found"})
-                return
-            snapshot = build_private_evidence_snapshot(self.runtime.store)
-            self._send_json(200, snapshot)
-            return
         if self.path == "/":
             self._send_html(200, dashboard_html())
             return
@@ -759,15 +746,6 @@ def serve_forward_shadow(*, port: int, interval: float) -> int:
     settings = Settings.from_env()
     runtime = ForwardShadowRuntime(settings=settings)
     runtime.run_cycle()
-    if os.getenv("RADAR_BACKUP_LOG_EXPORT_ENABLED", "").lower() == "true":
-        snapshot = build_private_evidence_snapshot(runtime.store)
-        meta = {k: v for k, v in snapshot.items() if k not in ("events", "event_keys")}
-        print("RADAR_PRIVATE_BACKUP_META|" + json.dumps(meta, sort_keys=True, separators=(",", ":")), flush=True)
-        for row in snapshot["events"]:
-            print("RADAR_PRIVATE_BACKUP_EVENT|" + json.dumps(row, sort_keys=True, separators=(",", ":")), flush=True)
-        for row in snapshot["event_keys"]:
-            print("RADAR_PRIVATE_BACKUP_KEY|" + json.dumps(row, sort_keys=True, separators=(",", ":")), flush=True)
-        print("RADAR_PRIVATE_BACKUP_END|" + snapshot["snapshot_sha256"], flush=True)
     worker = threading.Thread(
         target=runtime.run_loop,
         kwargs={"interval_seconds": interval},
