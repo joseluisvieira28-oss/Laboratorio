@@ -1,0 +1,123 @@
+name: DLS Kamino Save11 RAW Sample V0.5
+
+on:
+  push:
+    branches:
+      - dls-kamino-save11-event-census-v0.1
+    paths:
+      - 'labs/DEFI_LIQUIDATION_SHOCK_001/RAW_SAMPLE_V0.5_TRIGGER.txt'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: dls-kamino-save11-raw-sample-v05
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dls-kamino-save11-event-census-v0.1
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Preflight census complete
+        run: |
+          python - <<'PY'
+          import json,pathlib
+          p=pathlib.Path("labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_SAVE11_SQD_EVENT_CENSUS_RECEIPT_V0.4.2.json")
+          assert p.exists(), "CENSUS_RECEIPT_MISSING"
+          r=json.loads(p.read_text())
+          assert r.get("classification")=="SQD_EVENT_CENSUS_COMPLETE_PENDING_RAW_SAMPLE", r.get("classification")
+          q=pathlib.Path("labs/DEFI_LIQUIDATION_SHOCK_001/sqd_census_v0_4/RAW_SAMPLE_QUEUE_V0.4.2.json")
+          assert q.exists(), "RAW_SAMPLE_QUEUE_MISSING"
+          print("RAW_SAMPLE_PREFLIGHT_PASS")
+          PY
+
+      - name: Compile frozen verifier
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/verify_sqd_census_raw_sample_v0_5.py
+
+      - name: Execute deterministic RAW reconciliation
+        id: verify
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/verify_sqd_census_raw_sample_v0_5.py | tee DLS_RAW_SAMPLE_V05_STDOUT.txt
+
+      - name: Package evidence
+        if: always()
+        run: |
+          python - <<'PY'
+          import hashlib,json,pathlib
+          root=pathlib.Path("labs/DEFI_LIQUIDATION_SHOCK_001/sqd_census_v0_4/raw_sample_v0_5")
+          files=[]
+          if root.exists():
+            for p in sorted(root.rglob("*")):
+              if p.is_file():
+                b=p.read_bytes()
+                files.append({"path":str(p),"bytes":len(b),"sha256":hashlib.sha256(b).hexdigest()})
+          pathlib.Path("DLS_RAW_SAMPLE_V05_MANIFEST.json").write_text(
+              json.dumps({"files":files},indent=2,sort_keys=True)+"\n")
+          PY
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-kamino-save11-raw-sample-v05
+          path: |
+            labs/DEFI_LIQUIDATION_SHOCK_001/sqd_census_v0_4/raw_sample_v0_5/
+            labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_SAVE11_RAW_SAMPLE_RECONCILIATION_RECEIPT_V0.5.json
+            DLS_RAW_SAMPLE_V05_MANIFEST.json
+            DLS_RAW_SAMPLE_V05_STDOUT.txt
+          if-no-files-found: warn
+          retention-days: 30
+          compression-level: 6
+
+      - name: Persist RAW evidence
+        if: always()
+        run: |
+          git config user.name "crypto-lab-source-audit"
+          git config user.email "actions@users.noreply.github.com"
+          git add labs/DEFI_LIQUIDATION_SHOCK_001/sqd_census_v0_4/raw_sample_v0_5/ || true
+          git add labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_SAVE11_RAW_SAMPLE_RECONCILIATION_RECEIPT_V0.5.json || true
+          git commit -m "dls: persist Kamino Save11 RAW sample v0.5 evidence" || true
+          git pull --rebase origin dls-kamino-save11-event-census-v0.1
+          git push origin HEAD:dls-kamino-save11-event-census-v0.1
+
+      - name: Final adjudication
+        if: always()
+        run: |
+          python - <<'PY'
+          import json,pathlib,sys
+          p=pathlib.Path("labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_SAVE11_RAW_SAMPLE_RECONCILIATION_RECEIPT_V0.5.json")
+          if not p.exists():
+            print("RAW_RECEIPT_MISSING_FAIL_CLOSED")
+            sys.exit(2)
+          r=json.loads(p.read_text())
+          print("CLASSIFICATION",r.get("classification"))
+          print("PASSED",r.get("passed_count"),"TOTAL",r.get("sample_signature_count"))
+          if r.get("classification")!="RAW_SAMPLE_RECONCILIATION_PASS":
+            sys.exit(2)
+          PY
+
+      - name: Firewall
+        if: always()
+        run: |
+          echo SOURCE_ONLY_TRUE
+          echo ECONOMIC_OUTCOMES_FALSE
+          echo PRICES_FALSE
+          echo RETURNS_FALSE
+          echo PNL_FALSE
+          echo DIRECTION_FALSE
+          echo LIVE_TRADING_FALSE
+          echo ORDERS_FALSE
+          echo MERGE_MAIN_FALSE
