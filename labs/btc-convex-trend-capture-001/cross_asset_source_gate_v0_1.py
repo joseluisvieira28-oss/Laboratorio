@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-BTC-CONVEX-TREND-CAPTURE-001 — CROSS-ASSET SOURCE GATE V0.1C
+BTC-CONVEX-TREND-CAPTURE-001 — CROSS-ASSET SOURCE GATE V0.1D
 
 Coverage/provenance only. NO economic outcomes.
-Authority: CROSS_ASSET_SOURCE_AMENDMENT_004.
+Authority: CROSS_ASSET_SOURCE_AMENDMENT_005.
 """
 from __future__ import annotations
 import csv, io, json, math, hashlib, urllib.request, urllib.parse, zipfile
@@ -36,6 +36,74 @@ def head_ok(url):
             return True, getattr(r,"status",200), r.headers.get("Content-Length")
     except Exception as e:
         return False, None, str(e)
+
+
+def load_market_coverage(symbol):
+    market={}
+    manifest=[]
+    for y,m in months(2020,12,2025,12):
+        ym=f"{y:04d}-{m:02d}"
+        url=f"https://data.binance.vision/data/futures/um/monthly/klines/{symbol}/1h/{symbol}-1h-{ym}.zip"
+        body=get_bytes(url)
+        manifest.append({"kind":"monthly","month":ym,"url":url,"sha256":hashlib.sha256(body).hexdigest(),"bytes":len(body)})
+        with zipfile.ZipFile(io.BytesIO(body)) as zf:
+            names=zf.namelist()
+            if len(names)!=1: raise RuntimeError(f"{symbol} {ym}: unexpected market zip members {names}")
+            text=zf.read(names[0]).decode("utf-8-sig")
+        for q in csv.reader(io.StringIO(text)):
+            if not q: continue
+            try:t=int(q[0])
+            except ValueError:continue
+            if t>10**14:t//=1000
+            rec=(float(q[1]),float(q[2]),float(q[3]),float(q[4]),float(q[5]))
+            if t in market and market[t]!=rec:
+                raise RuntimeError(f"{symbol}: conflicting monthly market bar {t}")
+            market[t]=rec
+
+    gapfill_dates=[]
+    gapfill_added=0
+    if symbol=="SOLUSDT":
+        gapfill_dates=["2022-02-26","2022-02-27","2022-02-28","2022-04-01","2022-04-02"]
+        for ds in gapfill_dates:
+            url=f"https://data.binance.vision/data/futures/um/daily/klines/{symbol}/1h/{symbol}-1h-{ds}.zip"
+            body=get_bytes(url)
+            manifest.append({"kind":"daily_gapfill","date":ds,"url":url,"sha256":hashlib.sha256(body).hexdigest(),"bytes":len(body)})
+            with zipfile.ZipFile(io.BytesIO(body)) as zf:
+                names=zf.namelist()
+                if len(names)!=1: raise RuntimeError(f"{symbol} {ds}: unexpected daily zip members {names}")
+                text=zf.read(names[0]).decode("utf-8-sig")
+            for q in csv.reader(io.StringIO(text)):
+                if not q: continue
+                try:t=int(q[0])
+                except ValueError:continue
+                if t>10**14:t//=1000
+                rec=(float(q[1]),float(q[2]),float(q[3]),float(q[4]),float(q[5]))
+                if t in market:
+                    if market[t]!=rec:
+                        raise RuntimeError(f"{symbol}: daily/monthly conflict {t}")
+                else:
+                    market[t]=rec
+                    gapfill_added+=1
+
+    end_bar=int(datetime(2025,12,31,23,0,tzinfo=timezone.utc).timestamp()*1000)
+    window=[t for t in market if START_MS<=t<=end_bar]
+    expected=((end_bar-START_MS)//3600000)+1
+    missing=[]
+    for t in range(START_MS,end_bar+1,3600000):
+        if t not in market: missing.append(t)
+    passed=(len(window)==expected and len(missing)==0 and min(window)==START_MS and max(window)==end_bar)
+    return {
+        "pass":passed,
+        "expected_hours":expected,
+        "present_hours":len(window),
+        "missing_hours":len(missing),
+        "first_missing_ms":missing[0] if missing else None,
+        "last_missing_ms":missing[-1] if missing else None,
+        "gapfill_dates":gapfill_dates,
+        "gapfill_hours_added":gapfill_added,
+        "manifest_count":len(manifest),
+        "manifest_sha256":hashlib.sha256(json.dumps(manifest,sort_keys=True,separators=(",",":")).encode()).hexdigest(),
+    }
 
 def load_mark_prices(symbol):
     marks={}
@@ -123,17 +191,17 @@ def funding_history(symbol,mark_map):
     ordered={t:seen[t] for t in sorted(seen)}
     return ordered,{"direct_mark_count":direct,"fallback_mark_count":fallback,"pages":pages}
 
-out={"lab":"BTC-CONVEX-TREND-CAPTURE-001","gate":"CROSS_ASSET_SOURCE_GATE_V0.1C",
-     "authority":"CROSS_ASSET_SOURCE_AMENDMENT_004","symbols":{}}
+out={"lab":"BTC-CONVEX-TREND-CAPTURE-001","gate":"CROSS_ASSET_SOURCE_GATE_V0.1D",
+     "authority":"CROSS_ASSET_SOURCE_AMENDMENT_005","symbols":{}}
 all_pass=True
 for s in SYMBOLS:
-    price_missing=[]; price_present=0
-    for y,m in months(2020,12,2025,12):
-        ym=f"{y:04d}-{m:02d}"
-        url=f"https://data.binance.vision/data/futures/um/monthly/klines/{s}/1h/{s}-1h-{ym}.zip"
-        ok,status,detail=head_ok(url)
-        if ok: price_present+=1
-        else: price_missing.append({"month":ym,"url":url,"detail":detail})
+    try:
+        market_meta=load_market_coverage(s)
+        price_pass=market_meta["pass"]
+    except Exception as e:
+        price_pass=False
+        market_meta={"error":repr(e)}
+
     try:
         mark_map,mark_manifest,mark_missing=load_mark_prices(s)
         funds,fmeta=funding_history(s,mark_map)
@@ -154,22 +222,20 @@ for s in SYMBOLS:
     except Exception as e:
         funding_pass=False
         funding_meta={"error":repr(e)}
-    price_pass=(len(price_missing)==0)
+
     passed=price_pass and funding_pass
     all_pass &= passed
     out["symbols"][s]={
-        "price_monthly_files_expected":61,
-        "price_monthly_files_present":price_present,
-        "price_missing_months":price_missing,
+        "market_coverage":market_meta,
         "funding":funding_meta,
         "price_coverage_pass":price_pass,
         "funding_coverage_pass":funding_pass,
         "pass":passed,
     }
 out["overall"]="PASS" if all_pass else "FAIL_CLOSED"
-path=EVID/"CROSS_ASSET_SOURCE_GATE_V0.1C.json"
+path=EVID/"CROSS_ASSET_SOURCE_GATE_V0.1D.json"
 path.write_text(json.dumps(out,indent=2),encoding="utf-8")
 print(json.dumps(out,indent=2))
 print("WROTE",path)
 if not all_pass:
-    raise SystemExit("FAIL_CLOSED: cross-asset source gate V0.1C failed")
+    raise SystemExit("FAIL_CLOSED: cross-asset source gate V0.1D failed")
