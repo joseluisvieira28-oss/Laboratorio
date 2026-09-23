@@ -1,0 +1,69 @@
+name: DLS Kamino Program Signature Daily Manifest V0.1
+
+on:
+  push:
+    branches:
+      - dls-kamino-signature-daily-manifest-v0.1
+    paths:
+      - '.github/workflows/dls-kamino-signature-daily-manifest-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dls-kamino-signature-daily-manifest-v0.1
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download newer preserved signature slice
+        uses: actions/download-artifact@v4
+        with:
+          name: dls-kamino-rpc-first-success-v01
+          path: newer
+          run-id: 35689367726
+          github-token: ${{ github.token }}
+      - name: Download older continuation signature slice
+        uses: actions/download-artifact@v4
+        with:
+          name: dls-kamino-rpc-first-success-v01b
+          path: older
+          run-id: 35704794316
+          github-token: ${{ github.token }}
+      - name: Compile manifest builder
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/build_kamino_program_signature_daily_manifest_v0_1.py
+      - name: Build daily source manifest
+        run: |
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/build_kamino_program_signature_daily_manifest_v0_1.py             --newer-root newer             --older-root older
+      - name: Persist compact manifest
+        run: |
+          git config user.name "crypto-lab-source-audit"
+          git config user.email "actions@users.noreply.github.com"
+          git add labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_PROGRAM_SIGNATURE_DAILY_MANIFEST_V0.1.json
+          git add labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_PROGRAM_SIGNATURE_DAILY_MANIFEST_RECEIPT_V0.1.json
+          git commit -m "dls: persist Kamino daily signature manifest v0.1" || true
+          git push origin HEAD:dls-kamino-signature-daily-manifest-v0.1
+      - name: Upload compact manifest evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: kamino-program-signature-daily-manifest-v01
+          path: |
+            labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_PROGRAM_SIGNATURE_DAILY_MANIFEST_V0.1.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_PROGRAM_SIGNATURE_DAILY_MANIFEST_RECEIPT_V0.1.json
+          retention-days: 30
+      - name: Firewall
+        run: |
+          echo SOURCE_INDEX_ONLY_TRUE
+          echo LIQUIDATION_CLASSIFICATION_FALSE
+          echo PRICES_FALSE
+          echo RETURNS_FALSE
+          echo PNL_FALSE
+          echo DIRECTION_FALSE
