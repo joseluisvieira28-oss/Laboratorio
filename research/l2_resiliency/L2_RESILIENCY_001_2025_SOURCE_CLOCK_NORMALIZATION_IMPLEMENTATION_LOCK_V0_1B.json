@@ -1,0 +1,68 @@
+{
+  "schema_version": "0.1",
+  "lab_id": "L2-RESILIENCY-001",
+  "date": "2026-09-23",
+  "status": "IMPLEMENTATION_FROZEN_PRE_2025_VALIDATION_OUTCOME",
+  "amendment": "SOURCE_CLOCK_NORMALIZATION_AMENDMENT_V0.1B",
+  "authority": "INDEPENDENT_2025_VALIDATION_EXPLICITLY_AUTHORIZED",
+  "canonical_manifest_sha256": "767e75594864344c75dd2669ec4fad8c738710c218322b11fd43a83077ef17c3",
+  "canonical_objects": 8400,
+  "canonical_compressed_bytes": 8975275014,
+  "base_v011": {
+    "package": "L2R_2025_BTC_VALIDATION_PIPELINE_V011_RESUME.zip",
+    "package_sha256": "3da0f466b1db170f8aedc7d45f7b757bb4e843cc7695bffc9953908c21449ba6",
+    "runner_sha256": "80347c42e1893fbe0284ccc5779fdd841362a3feb24644d39777144f15be2a55"
+  },
+  "v01b_runner": {
+    "drive_file_id": "1OG0nchnXOoujD77tbopO_Lh351DTXvo4",
+    "stored_name": "L2R_2025_BTC_VALIDATION_PIPELINE_V01B_FROZEN_SOURCE",
+    "bytes": 46720,
+    "sha256": "e16efd7071a159fb767b6ff872f284e498ca110518bec06d9b4c3db867079a38",
+    "drive_roundtrip_byte_compare": "PASS"
+  },
+  "source_clock_diagnostic": {
+    "classification": "SOURCE_CLOCK_DIAGNOSTIC_COMPLETE",
+    "interpretation": "MIXED_FUTURE_PAYLOAD_SEMANTICS_REQUIRES_REVIEW",
+    "records": 53647758,
+    "future_payload": 109,
+    "future_le_1ms": 9,
+    "future_gt_1ms": 100,
+    "max_future_ahead_us_ceil": 42610,
+    "payload_backwards": 171,
+    "envelope_backwards": 0,
+    "envelope_outside_key_hour": 0,
+    "receipt_sha256": "0472ff0f69623442b8fb16ba795cc3615aef6a6e0fe906b867b8084a1955c178",
+    "future_ledger_sha256": "bc183c8e2206f30626fe213955b47c29ec9281f0eec9ab4fce476693f1cccc2b",
+    "object_audit_sha256": "079fbaa532408e715f6ef892519951ad1e040b98c4ea30906e36cd7a8b8cda20"
+  },
+  "frozen_normalization": {
+    "ordering_clock": "top_level_envelope_time",
+    "event_anchor": "top_level_envelope_time",
+    "payload_clock": "raw.data.time milliseconds",
+    "future_clock_rule": "payload_ms*1e6 > envelope_ns is flagged and preserved; accepted non-stale future rows do not advance the payload monotonicity watermark",
+    "stale_rule": "payload_ms < last accepted non-future payload watermark => STALE_LATE_PAYLOAD quarantine",
+    "equal_rule": "equal payload timestamps preserved in envelope order",
+    "timestamp_clamping": false,
+    "fitted_clock_threshold": false
+  },
+  "equivalence_2024": {
+    "canonical_future_payload_rows": 0,
+    "rule": "future branch unreachable on 2024; prior accepted/quarantined sequence and watermark evolution unchanged",
+    "classification": "2024_NORMALIZATION_EQUIVALENCE_PASS_BY_UNREACHABLE_BRANCH_PROOF"
+  },
+  "downstream_rules_changed": false,
+  "outcomes_opened_before_lock": false,
+  "non_scientific_parser_benchmark_note": "A parser performance smoke touched book fields before this lock but computed no sweep, replenishment, directional response, causal cell, validation sign, return or PnL and has zero scientific credit.",
+  "firewalls": {
+    "access_2026": false,
+    "pnl": false,
+    "costs": false,
+    "sharpe": false,
+    "leverage": false,
+    "live_trading": false,
+    "orders": false,
+    "exchange_mutation": false,
+    "main_merge": false,
+    "post_outcome_retuning": false
+  }
+}
