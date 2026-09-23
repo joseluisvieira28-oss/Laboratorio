@@ -7,6 +7,7 @@ Authority:
 - CROSS_ASSET_COST_VALIDATION_FREEZE_V0.1
 - CROSS_ASSET_SOURCE_AMENDMENT_004
 - CROSS_ASSET_SOURCE_AMENDMENT_005
+- CROSS_ASSET_SOURCE_AMENDMENT_006
 """
 from __future__ import annotations
 import csv, io, json, math, hashlib, urllib.request, urllib.parse, zipfile
@@ -50,6 +51,93 @@ def normalize_hour(raw_t):
     if dev>MAX_TS_DEVIATION_MS:
         raise RuntimeError(f"funding timestamp deviation {dev} ms exceeds {MAX_TS_DEVIATION_MS}: raw={raw_t} norm={norm}")
     return norm,dev
+
+
+def load_market_coverage(symbol):
+    """
+    Reconstruct the frozen 2021-2025 1h market timeline from official
+    Binance Vision monthly files, plus only the five pre-authorized SOL
+    daily gap-fill files from Amendment 005.
+    """
+    market={}
+    manifest=[]
+    for y,m in months(2020,12,2025,12):
+        ym=f"{y:04d}-{m:02d}"
+        url=f"https://data.binance.vision/data/futures/um/monthly/klines/{symbol}/1h/{symbol}-1h-{ym}.zip"
+        body=get_bytes(url)
+        manifest.append({
+            "kind":"monthly_market_kline","month":ym,"url":url,
+            "sha256":hashlib.sha256(body).hexdigest(),"bytes":len(body)
+        })
+        with zipfile.ZipFile(io.BytesIO(body)) as zf:
+            names=zf.namelist()
+            if len(names)!=1:
+                raise RuntimeError(f"{symbol} {ym}: unexpected market zip members {names}")
+            text=zf.read(names[0]).decode("utf-8-sig")
+        for q in csv.reader(io.StringIO(text)):
+            if not q: continue
+            try: t=int(q[0])
+            except ValueError: continue
+            if t>10**14: t//=1000
+            rec=(float(q[1]),float(q[2]),float(q[3]),float(q[4]),float(q[5]))
+            if t in market and market[t]!=rec:
+                raise RuntimeError(f"{symbol}: conflicting monthly market bar {t}")
+            market[t]=rec
+
+    gapfill_dates=[]
+    gapfill_added=0
+    if symbol=="SOLUSDT":
+        gapfill_dates=["2022-02-26","2022-02-27","2022-02-28","2022-04-01","2022-04-02"]
+        for ds in gapfill_dates:
+            url=f"https://data.binance.vision/data/futures/um/daily/klines/{symbol}/1h/{symbol}-1h-{ds}.zip"
+            body=get_bytes(url)
+            manifest.append({
+                "kind":"daily_market_gapfill","date":ds,"url":url,
+                "sha256":hashlib.sha256(body).hexdigest(),"bytes":len(body)
+            })
+            with zipfile.ZipFile(io.BytesIO(body)) as zf:
+                names=zf.namelist()
+                if len(names)!=1:
+                    raise RuntimeError(f"{symbol} {ds}: unexpected daily market zip members {names}")
+                text=zf.read(names[0]).decode("utf-8-sig")
+            for q in csv.reader(io.StringIO(text)):
+                if not q: continue
+                try: t=int(q[0])
+                except ValueError: continue
+                if t>10**14: t//=1000
+                rec=(float(q[1]),float(q[2]),float(q[3]),float(q[4]),float(q[5]))
+                if t in market:
+                    if market[t]!=rec:
+                        raise RuntimeError(f"{symbol}: daily/monthly market conflict {t}")
+                else:
+                    market[t]=rec
+                    gapfill_added+=1
+
+    end_bar=int(datetime(2025,12,31,23,0,tzinfo=timezone.utc).timestamp()*1000)
+    expected=((end_bar-START_MS)//HOUR_MS)+1
+    missing=[t for t in range(START_MS,end_bar+1,HOUR_MS) if t not in market]
+    present=sum(1 for t in market if START_MS<=t<=end_bar)
+    passed=(
+        present==expected
+        and not missing
+        and START_MS in market
+        and end_bar in market
+    )
+    return {
+        "pass":passed,
+        "expected_hours":expected,
+        "present_hours":present,
+        "missing_hours":len(missing),
+        "first_missing_ms":missing[0] if missing else None,
+        "last_missing_ms":missing[-1] if missing else None,
+        "gapfill_dates":gapfill_dates,
+        "gapfill_hours_added":gapfill_added,
+        "manifest_count":len(manifest),
+        "manifest_sha256":hashlib.sha256(
+            json.dumps(manifest,sort_keys=True,separators=(",",":")).encode()
+        ).hexdigest(),
+        "manifest":manifest,
+    }
 
 def load_mark_prices(symbol):
     marks={}
@@ -191,21 +279,19 @@ out={
         "CROSS_ASSET_COST_VALIDATION_FREEZE_V0.1",
         "CROSS_ASSET_SOURCE_AMENDMENT_004",
         "CROSS_ASSET_SOURCE_AMENDMENT_005",
+        "CROSS_ASSET_SOURCE_AMENDMENT_006",
     ],
     "symbols":{}
 }
 all_pass=True
 
 for s in SYMBOLS:
-    price_missing=[]; price_present=0
-    for y,m in months(2020,12,2025,12):
-        ym=f"{y:04d}-{m:02d}"
-        url=f"https://data.binance.vision/data/futures/um/monthly/klines/{s}/1h/{s}-1h-{ym}.zip"
-        ok,status,detail=head_ok(url)
-        if ok:
-            price_present+=1
-        else:
-            price_missing.append({"month":ym,"url":url,"detail":detail})
+    try:
+        market_meta=load_market_coverage(s)
+        price_pass=bool(market_meta["pass"])
+    except Exception as e:
+        price_pass=False
+        market_meta={"error":repr(e)}
 
     try:
         mark_map,mark_manifest,mark_missing=load_mark_prices(s)
@@ -240,13 +326,10 @@ for s in SYMBOLS:
         funding_pass=False
         funding_meta={"error":repr(e)}
 
-    price_pass=(len(price_missing)==0)
     passed=price_pass and funding_pass
     all_pass &= passed
     out["symbols"][s]={
-        "price_monthly_files_expected":61,
-        "price_monthly_files_present":price_present,
-        "price_missing_months":price_missing,
+        "market_coverage":market_meta,
         "funding":funding_meta,
         "price_coverage_pass":price_pass,
         "funding_coverage_pass":funding_pass,
@@ -263,7 +346,11 @@ print(json.dumps({
     "symbols":{
         s:{
             "pass":v["pass"],
-            "price_files":f'{v["price_monthly_files_present"]}/{v["price_monthly_files_expected"]}',
+            "market_hours":(
+                f'{v["market_coverage"].get("present_hours")}/{v["market_coverage"].get("expected_hours")}'
+                if isinstance(v.get("market_coverage"),dict) else None
+            ),
+            "market_gapfill_hours_added":v.get("market_coverage",{}).get("gapfill_hours_added"),
             "funding_count":v["funding"].get("count"),
             "direct_mark_count":v["funding"].get("direct_mark_count"),
             "fallback_mark_count":v["funding"].get("fallback_mark_count"),
