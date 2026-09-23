@@ -33,6 +33,38 @@ def hx(v):
         return None
     return int(v,16) if isinstance(v,str) and v.startswith("0x") else int(v)
 
+def direct_from_calltracer(node, fee_recipient):
+    total=0
+    calls=0
+    def walk(n):
+        nonlocal total,calls
+        if not isinstance(n,dict):
+            return
+        if (n.get("to") or "").lower()==fee_recipient:
+            val=hx(n.get("value") or "0x0") or 0
+            if val>0:
+                total+=val
+                calls+=1
+        for c in n.get("calls") or []:
+            walk(c)
+    walk(node)
+    return total,calls
+
+def direct_from_parity(trace, fee_recipient):
+    total=0
+    calls=0
+    for t in trace:
+        if t.get("type")!="call":
+            continue
+        a=t.get("action") or {}
+        if (a.get("to") or "").lower()!=fee_recipient:
+            continue
+        val=hx(a.get("value") or "0x0") or 0
+        if val>0:
+            total+=val
+            calls+=1
+    return total,calls
+
 rows=[]
 for h in REG.get("hits",[]):
     tx=h["tx_hash"]
@@ -43,9 +75,23 @@ for h in REG.get("hits",[]):
 
     block_num=receipt["blockNumber"]
     block,e2=rpc("eth_getBlockByNumber",[block_num,False])
-    trace,e3=rpc("trace_transaction",[tx])
     block_pass=isinstance(block,dict)
-    trace_pass=isinstance(trace,list)
+
+    debug_trace,e_debug=rpc("debug_traceTransaction",[tx,{"tracer":"callTracer","timeout":"10s"}])
+    parity_trace=None
+    e_parity=None
+    if not isinstance(debug_trace,dict):
+        parity_trace,e_parity=rpc("trace_transaction",[tx])
+
+    if isinstance(debug_trace,dict):
+        trace_pass=True
+        trace_mode="debug_callTracer"
+    elif isinstance(parity_trace,list):
+        trace_pass=True
+        trace_mode="trace_transaction"
+    else:
+        trace_pass=False
+        trace_mode=None
 
     base=hx(block.get("baseFeePerGas")) if block_pass else None
     effective=hx(receipt.get("effectiveGasPrice"))
@@ -58,16 +104,10 @@ for h in REG.get("hits",[]):
     direct=0
     direct_calls=0
     if trace_pass and fee_recipient:
-        for t in trace:
-            if t.get("type")!="call":
-                continue
-            a=t.get("action") or {}
-            if (a.get("to") or "").lower()!=fee_recipient:
-                continue
-            val=hx(a.get("value") or "0x0")
-            if val>0:
-                direct+=val
-                direct_calls+=1
+        if trace_mode=="debug_callTracer":
+            direct,direct_calls=direct_from_calltracer(debug_trace,fee_recipient)
+        else:
+            direct,direct_calls=direct_from_parity(parity_trace,fee_recipient)
 
     observed=(priority_paid+direct) if priority_paid is not None and trace_pass else None
     rows.append({
@@ -77,6 +117,7 @@ for h in REG.get("hits",[]):
         "receipt_pass":True,
         "block_pass":block_pass,
         "trace_pass":trace_pass,
+        "trace_mode":trace_mode,
         "fee_recipient":fee_recipient or None,
         "gas_used":gas_used,
         "base_fee_per_gas_wei":base,
@@ -86,7 +127,8 @@ for h in REG.get("hits",[]):
         "direct_fee_recipient_transfer_calls":direct_calls,
         "direct_fee_recipient_transfer_wei":direct if trace_pass else None,
         "observed_inclusion_payment_wei":observed,
-        "trace_error":e3 if not trace_pass else None,
+        "debug_trace_error":e_debug if not isinstance(debug_trace,dict) else None,
+        "parity_trace_error":e_parity if not trace_pass else None,
         "block_error":e2 if not block_pass else None,
     })
 
@@ -97,6 +139,8 @@ summary={
     "receipt_pass":sum(1 for r in rows if r.get("receipt_pass")),
     "block_pass":sum(1 for r in rows if r.get("block_pass")),
     "trace_pass":sum(1 for r in rows if r.get("trace_pass")),
+    "debug_calltracer_pass":sum(1 for r in rows if r.get("trace_mode")=="debug_callTracer"),
+    "parity_trace_pass":sum(1 for r in rows if r.get("trace_mode")=="trace_transaction"),
     "transactions_with_direct_fee_recipient_transfer":sum(1 for r in rows if (r.get("direct_fee_recipient_transfer_wei") or 0)>0),
     "transactions_with_observed_inclusion_payment":sum(1 for r in rows if (r.get("observed_inclusion_payment_wei") or 0)>0),
     "economic_outcomes_opened":False,
