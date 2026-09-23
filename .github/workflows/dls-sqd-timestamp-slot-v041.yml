@@ -1,0 +1,27 @@
+name: DLS SQD Timestamp Slot Probe V0.4.1
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dls-kamino-save11-event-census-v0.1
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Probe timestamp resolver
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/probe_sqd_timestamp_slot_v0_4_1.py
+      - name: Persist
+        if: always()
+        run: |
+          git config user.name "crypto-lab-source-audit"
+          git config user.email "actions@users.noreply.github.com"
+          git add labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_SAVE11_SQD_TIMESTAMP_SLOT_PROBE_RECEIPT_V0.4.1.json || true
+          git commit -m "dls: persist SQD timestamp-slot probe v0.4.1" || true
+          git push origin HEAD:dls-kamino-save11-event-census-v0.1
