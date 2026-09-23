@@ -1,0 +1,59 @@
+{
+  "lab_id": "ARQ-002-CSP-002",
+  "date_utc": "2026-09-23",
+  "classification": "SOURCE_VALIDITY_FAIL_CLOSED__NO_FINAL_ECONOMIC_VERDICT",
+  "final": true,
+  "branch": "arq002-csp002-source-mask-v0.1",
+  "source_census": {
+    "classification": "SOURCE_CENSUS_PASS",
+    "run": 35908982717,
+    "receipt_sha256": "182b1a501a9b51727e8e01a25919f6a74bcf24602bd3944727aed5bc9b47c1f7",
+    "metrics_missing_slots": 127,
+    "metrics_missing_dates": {
+      "2024-02-16": 125,
+      "2024-10-28": 2
+    }
+  },
+  "discovery_attempt": {
+    "run": 35909816918,
+    "terminal_state": "TECHNICAL_FAIL_CLOSED",
+    "completed_month_receipts": 10,
+    "failed_months": [
+      "2024-07",
+      "2024-08"
+    ],
+    "aggregate_reason": "MONTH_COUNT:10/12",
+    "economic_outcomes_partially_opened": true,
+    "final_scientific_adjudication": false
+  },
+  "source_validity_diagnostic": {
+    "run": 35910417295,
+    "classification": "SOURCE_DIAGNOSTIC_COMPLETE",
+    "receipt_sha256": "d459acd54ab5dffa3dedb0d0a397a19e5ff7415289f7e8302c7bf61b42b7ff62",
+    "invalid_oi_count": 305,
+    "invalid_reason": "NONPOSITIVE",
+    "invalid_dates": {
+      "2024-07-09": 6,
+      "2024-07-10": 41,
+      "2024-07-11": 46,
+      "2024-07-12": 43,
+      "2024-07-13": 52,
+      "2024-07-14": 85,
+      "2024-07-15": 26,
+      "2024-08-12": 6
+    },
+    "missing_oi_slots": 127
+  },
+  "governance": {
+    "reason_for_close": "Frozen CSP-002 source mask covered missing timestamps only. It did not authorize masking nonpositive OI values. Because partial 2024 economic outcomes already exist, expanding the mask now would be a post-outcome source-rule change.",
+    "no_rescue": true,
+    "do_not_complete_2024_under_csp002": true,
+    "do_not_reclassify_partial_months_as_scientific_verdict": true,
+    "protected_2025_accessed": false,
+    "protected_2026_accessed": false,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "main_merge": false
+  },
+  "decision": "CLOSE exact CSP-002 without final economic verdict. Any continuation requires a new LAB_ID, prospectively frozen invalid+missing OI eligibility rule, and an outcome-unopened period."
+}
