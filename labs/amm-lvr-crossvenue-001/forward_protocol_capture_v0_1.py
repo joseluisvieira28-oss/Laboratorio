@@ -16,7 +16,7 @@ OUT=ROOT/"evidence"
 OUT.mkdir(parents=True,exist_ok=True)
 
 RPC="https://eth.drpc.org"
-SELECTOR_RPC="https://eth.drpc.org"
+SELECTOR_RPC="https://ethereum-rpc.publicnode.com"
 TRACE_RPC="https://eth.drpc.org"
 V3_FACTORY="0x1f98431c8ad98523631ae4a59f267346ea31f984"
 V2_FACTORY="0x5c69bee701ef814a2b6a3edd4b1652cb9cc5aa6f"
