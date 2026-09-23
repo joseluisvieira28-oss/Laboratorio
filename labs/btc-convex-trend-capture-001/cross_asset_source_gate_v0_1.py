@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-BTC-CONVEX-TREND-CAPTURE-001 — CROSS-ASSET SOURCE GATE V0.1B
+BTC-CONVEX-TREND-CAPTURE-001 — CROSS-ASSET SOURCE GATE V0.1C
 
 Coverage/provenance only. NO economic outcomes.
-Funding transport follows CROSS_ASSET_SOURCE_AMENDMENT_003.
+Authority: CROSS_ASSET_SOURCE_AMENDMENT_004.
 """
 from __future__ import annotations
-import json, math, urllib.request, urllib.parse
+import csv, io, json, math, hashlib, urllib.request, urllib.parse, zipfile
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -24,6 +24,11 @@ def months(y0,m0,y1,m1):
         m+=1
         if m==13:y+=1;m=1
 
+def get_bytes(url):
+    req=urllib.request.Request(url,headers={"User-Agent":"CryptoLab-SourceGate/1.0"})
+    with urllib.request.urlopen(req,timeout=45) as r:
+        return r.read()
+
 def head_ok(url):
     req=urllib.request.Request(url,method="HEAD",headers={"User-Agent":"CryptoLab-SourceGate/1.0"})
     try:
@@ -32,10 +37,43 @@ def head_ok(url):
     except Exception as e:
         return False, None, str(e)
 
-def funding_history(symbol):
-    rows=[]
-    cursor=START_MS
+def load_mark_prices(symbol):
+    marks={}
+    manifest=[]
+    missing=[]
+    for y,m in months(2021,1,2025,12):
+        ym=f"{y:04d}-{m:02d}"
+        url=f"https://data.binance.vision/data/futures/um/monthly/markPriceKlines/{symbol}/1h/{symbol}-1h-{ym}.zip"
+        try:
+            body=get_bytes(url)
+        except Exception as e:
+            missing.append({"month":ym,"url":url,"error":repr(e)})
+            continue
+        manifest.append({"month":ym,"url":url,"sha256":hashlib.sha256(body).hexdigest(),"bytes":len(body)})
+        with zipfile.ZipFile(io.BytesIO(body)) as zf:
+            names=zf.namelist()
+            if len(names)!=1:
+                raise RuntimeError(f"{symbol} {ym}: unexpected markPrice zip members {names}")
+            text=zf.read(names[0]).decode("utf-8-sig")
+        for q in csv.reader(io.StringIO(text)):
+            if not q: continue
+            try:t=int(q[0])
+            except ValueError:continue
+            if t>10**14:t//=1000
+            p=float(q[1])
+            if not math.isfinite(p) or p<=0:
+                raise RuntimeError(f"{symbol}: invalid markPrice kline OPEN {t}")
+            if t in marks and abs(marks[t]-p)>1e-12:
+                raise RuntimeError(f"{symbol}: conflicting markPrice kline {t}")
+            marks[t]=p
+    return marks,manifest,missing
+
+def funding_history(symbol,mark_map):
     seen={}
+    cursor=START_MS
+    direct=0
+    fallback=0
+    pages=[]
     while cursor<=END_MS:
         qs=urllib.parse.urlencode({
             "symbol":symbol,
@@ -44,24 +82,34 @@ def funding_history(symbol):
             "limit":1000,
         })
         url=FUNDING_HOST+"/fapi/v1/fundingRate?"+qs
-        req=urllib.request.Request(url,headers={"User-Agent":"CryptoLab-SourceGate/1.0"})
-        with urllib.request.urlopen(req,timeout=30) as r:
-            arr=json.loads(r.read().decode())
+        raw=get_bytes(url)
+        pages.append({"url":url,"sha256":hashlib.sha256(raw).hexdigest(),"bytes":len(raw)})
+        arr=json.loads(raw.decode())
         if not isinstance(arr,list):
-            raise RuntimeError(f"{symbol}: unexpected funding payload type")
-        if not arr:
-            break
+            raise RuntimeError(f"{symbol}: unexpected funding payload")
+        if not arr: break
         for x in arr:
             t=int(x["fundingTime"])
-            if not (START_MS<=t<=END_MS):
-                continue
+            if not (START_MS<=t<=END_MS): continue
+            if t%3600000!=0:
+                raise RuntimeError(f"{symbol}: funding timestamp not hour-aligned {t}")
             rate=float(x["fundingRate"])
-            mark=float(x["markPrice"])
             if not math.isfinite(rate):
-                raise RuntimeError(f"{symbol}: nonfinite funding rate at {t}")
+                raise RuntimeError(f"{symbol}: nonfinite funding rate {t}")
+            raw_mark=x.get("markPrice")
+            if raw_mark not in (None,""):
+                mark=float(raw_mark)
+                source="funding_record"
+                direct+=1
+            else:
+                if t not in mark_map:
+                    raise RuntimeError(f"{symbol}: missing funding mark and no exact markPriceKline {t}")
+                mark=mark_map[t]
+                source="markPriceKline_open"
+                fallback+=1
             if not math.isfinite(mark) or mark<=0:
-                raise RuntimeError(f"{symbol}: invalid markPrice at {t}")
-            rec={"t":t,"rate":rate,"mark":mark,"rateType":x.get("rateType")}
+                raise RuntimeError(f"{symbol}: invalid resolved markPrice {t}")
+            rec={"rate":rate,"mark":mark,"mark_source":source,"rateType":x.get("rateType")}
             if t in seen and seen[t]!=rec:
                 raise RuntimeError(f"{symbol}: conflicting duplicate funding record {t}")
             seen[t]=rec
@@ -69,15 +117,14 @@ def funding_history(symbol):
         if nxt<=cursor:
             raise RuntimeError(f"{symbol}: funding pagination stalled")
         cursor=nxt
-        if len(arr)<1000:
-            break
-    rows=[seen[t] for t in sorted(seen)]
-    if not rows:
+        if len(arr)<1000: break
+    if not seen:
         raise RuntimeError(f"{symbol}: no funding records")
-    return rows
+    ordered={t:seen[t] for t in sorted(seen)}
+    return ordered,{"direct_mark_count":direct,"fallback_mark_count":fallback,"pages":pages}
 
-out={"lab":"BTC-CONVEX-TREND-CAPTURE-001","gate":"CROSS_ASSET_SOURCE_GATE_V0.1B",
-     "funding_host":FUNDING_HOST,"symbols":{}}
+out={"lab":"BTC-CONVEX-TREND-CAPTURE-001","gate":"CROSS_ASSET_SOURCE_GATE_V0.1C",
+     "authority":"CROSS_ASSET_SOURCE_AMENDMENT_004","symbols":{}}
 all_pass=True
 for s in SYMBOLS:
     price_missing=[]; price_present=0
@@ -88,17 +135,21 @@ for s in SYMBOLS:
         if ok: price_present+=1
         else: price_missing.append({"month":ym,"url":url,"detail":detail})
     try:
-        funds=funding_history(s)
-        first=funds[0]["t"]; last=funds[-1]["t"]
-        monotonic=all(funds[i]["t"]<funds[i+1]["t"] for i in range(len(funds)-1))
-        funding_pass=(first<=START_MS+9*3600*1000 and last>=END_MS-9*3600*1000 and monotonic)
+        mark_map,mark_manifest,mark_missing=load_mark_prices(s)
+        funds,fmeta=funding_history(s,mark_map)
+        first=min(funds); last=max(funds)
+        funding_pass=(not mark_missing and first<=START_MS+9*3600000 and last>=END_MS-9*3600000)
         funding_meta={
             "count":len(funds),
             "first_ms":first,
             "last_ms":last,
-            "all_mark_prices_present":all(x["mark"]>0 for x in funds),
-            "strictly_chronological":monotonic,
-            "rate_types":sorted(set(x.get("rateType") for x in funds if x.get("rateType") is not None)),
+            "direct_mark_count":fmeta["direct_mark_count"],
+            "fallback_mark_count":fmeta["fallback_mark_count"],
+            "unresolved_mark_count":0,
+            "funding_page_count":len(fmeta["pages"]),
+            "mark_price_monthly_files_expected":60,
+            "mark_price_monthly_files_present":len(mark_manifest),
+            "mark_price_missing_months":mark_missing,
         }
     except Exception as e:
         funding_pass=False
@@ -116,9 +167,9 @@ for s in SYMBOLS:
         "pass":passed,
     }
 out["overall"]="PASS" if all_pass else "FAIL_CLOSED"
-path=EVID/"CROSS_ASSET_SOURCE_GATE_V0.1B.json"
+path=EVID/"CROSS_ASSET_SOURCE_GATE_V0.1C.json"
 path.write_text(json.dumps(out,indent=2),encoding="utf-8")
 print(json.dumps(out,indent=2))
 print("WROTE",path)
 if not all_pass:
-    raise SystemExit("FAIL_CLOSED: cross-asset source gate V0.1B failed")
+    raise SystemExit("FAIL_CLOSED: cross-asset source gate V0.1C failed")
