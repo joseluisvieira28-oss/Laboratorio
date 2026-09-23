@@ -5,16 +5,16 @@ on:
     branches:
       - btc-convex-trend-capture-001-v0.1
     paths:
-      - 'labs/btc-convex-trend-capture-001/**'
-      - '.github/workflows/btc_convex_exit_timing_v03.yml'
-  pull_request:
-    paths:
-      - 'labs/btc-convex-trend-capture-001/**'
+      - 'labs/btc-convex-trend-capture-001/exit_timing_diagnostic_v0_3.py'
       - '.github/workflows/btc_convex_exit_timing_v03.yml'
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
+
+concurrency:
+  group: btc-convex-exit-timing-v03
+  cancel-in-progress: false
 
 jobs:
   exit-timing:
@@ -22,11 +22,28 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: btc-convex-trend-capture-001-v0.1
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
       - name: Run frozen 4pct stop / 12pct trail timing diagnostic
         run: python labs/btc-convex-trend-capture-001/exit_timing_diagnostic_v0_3.py
+      - name: Persist immutable diagnostic evidence on research branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "crypto-lab-forensic-bot"
+          git config user.email "crypto-lab-forensic-bot@users.noreply.github.com"
+          git add labs/btc-convex-trend-capture-001/evidence/EXIT_TIMING_DIAGNOSTIC_V0.3.json
+          if git diff --cached --quiet; then
+            echo "Evidence already current"
+            exit 0
+          fi
+          git commit -m "BTC-CONVEX-001: persist exit timing V0.3 evidence"
+          git pull --rebase origin btc-convex-trend-capture-001-v0.1
+          git push origin HEAD:btc-convex-trend-capture-001-v0.1
       - uses: actions/upload-artifact@v4
         if: always()
         with:
