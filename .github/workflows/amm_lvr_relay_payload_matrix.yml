@@ -1,0 +1,28 @@
+name: AMM-LVR-CROSSVENUE-001 Relay Payload Matrix
+
+on:
+  pull_request:
+    paths:
+      - 'labs/amm-lvr-crossvenue-001/relay_payload_matrix_v0_1.py'
+      - '.github/workflows/amm_lvr_relay_payload_matrix.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  relay-payload-matrix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Probe public relay payload attribution
+        run: python labs/amm-lvr-crossvenue-001/relay_payload_matrix_v0_1.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: AMM-LVR-CROSSVENUE-001-RELAY-PAYLOAD-MATRIX
+          path: labs/amm-lvr-crossvenue-001/evidence/relay_payload_matrix_v0_1_receipt.json
