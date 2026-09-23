@@ -1,0 +1,74 @@
+{
+  "date": "2026-09-23",
+  "strategy_id": "ETF-CME-INSTFLOW-001",
+  "classification": "EXACT_RUNTIME_SCHEDULER_V0_2_DEPLOYED__PAST_MISS_PRESERVED",
+  "scientific_authority": {
+    "contract_code": "133741",
+    "information_lag_days": 8,
+    "information_safe_time_rule": "CFTC as-of date + 8 calendar days at 00:00 UTC",
+    "entry_target_rule": "first BTCUSDT 00:00 UTC daily price at/after information-safe time",
+    "hold_days": 7,
+    "arm_lead_seconds": 60,
+    "max_late_seconds": 2,
+    "scientific_target_changed": false
+  },
+  "observed_failure": {
+    "missed_as_of_date": "2026-09-15",
+    "frozen_target_utc": "2026-09-23T00:00:00Z",
+    "classification": "MISSED_EXPECTED_OBSERVATION_NO_CHASE",
+    "missed_count_preserved": 1,
+    "reconstructed": false,
+    "late_chase": false
+  },
+  "remediation": {
+    "authority": "crypto_edge_radar/authorities/ETF_CME_INSTFLOW_001_EXACT_RUNTIME_SCHEDULER_V0.2.md",
+    "scheduler": "crypto_edge_radar/radar/etf_cme_exact_scheduler.py",
+    "boundary_as_of_date": "2026-09-15",
+    "next_signal_requires_as_of_date_strictly_after_boundary": true,
+    "dedicated_runtime_thread": "etf-cme-exact-timing-scheduler",
+    "uses_existing_watcher": true,
+    "uses_existing_exact_timing_policy": true,
+    "historical_backfill": false
+  },
+  "validation": {
+    "original_qa_run": 35821123928,
+    "rebased_qa_run": 35821283625,
+    "concurrent_ced1d_qa_run": 35821283629,
+    "radar_forward_once_run": 35821283635,
+    "targeted_tests": "PASS",
+    "full_deterministic_suite": "PASS",
+    "safety_assertions": "PASS",
+    "render_build_tests": "235 PASS"
+  },
+  "runtime": {
+    "service": "crypto-edge-radar-v05-canary",
+    "deploy_id": "dep-daplvgnlk1mc73c3a44g",
+    "deployed_commit": "c3ce1af5e3c8ec45f338e9d1a2cbda629c387af7",
+    "deploy_status": "live",
+    "health": "OK",
+    "evidence_backend": "postgres",
+    "evidence_chain_ok": true,
+    "latest_verified_event_count_observed": 553,
+    "scheduler_state": "WAITING_NEW_CFTC_AS_OF_AFTER_BOUNDARY",
+    "scheduler_current_as_of_date": "2026-09-15",
+    "scheduler_target_utc": "2026-09-23T00:00:00Z",
+    "scheduler_orders_created": false,
+    "scheduler_exchange_mutation_performed": false,
+    "scheduler_live_capital_enabled": false
+  },
+  "governance": {
+    "signal_changed": false,
+    "timing_target_changed": false,
+    "late_budget_changed": false,
+    "costs_changed": false,
+    "backfill": false,
+    "live_trading": false,
+    "orders": false,
+    "wallets": false,
+    "exchange_mutation": false,
+    "capital": false,
+    "automatic_promotion": false,
+    "main_merge": false
+  },
+  "next_action": "Wait for a newly published CFTC as-of date strictly after 2026-09-15. The dedicated scheduler will pre-arm and attempt the unchanged 00:00 UTC target prospectively."
+}
