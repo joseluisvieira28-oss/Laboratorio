@@ -38,6 +38,7 @@ from .options_v21_metrics import evaluate_options_v21_forward
 from .etf_cme_watcher import ETFCMEPublicSignalWatcher
 from .etf_cme_exact_scheduler import ETFCMEExactRuntimeScheduler
 from .external_freshness import all_external_freshness
+from .private_evidence_backup import emit_snapshot_log_chunks
 from .persistence_expiry import persistence_expiry_state
 from .deploy_drift import deployment_drift_receipt
 
@@ -751,6 +752,8 @@ def serve_forward_shadow(*, port: int, interval: float) -> int:
     settings = Settings.from_env()
     runtime = ForwardShadowRuntime(settings=settings)
     runtime.run_cycle()
+    if os.getenv("RADAR_BACKUP_LOG_EMIT_ON_START", "").lower() == "true":
+        emit_snapshot_log_chunks(runtime.store)
     exact_etf_worker = threading.Thread(
         target=runtime.etf_cme_exact_scheduler.run_loop,
         name="etf-cme-exact-timing-scheduler",
