@@ -194,9 +194,7 @@ def main():
     if not ym.startswith("2024-"):raise SystemExit("2024 only")
     manifest=json.loads(Path(args.manifest).read_text())
     if manifest.get("manifest_sha256")!="67058b6e4575f1a3a442c05cf4a57a66e354ee058848aa9b10caaa0648cf36ea":
-        # This value binds the locally reconstructed manifest content from frozen source receipts.
-        # The workflow builder is also checked below by recomputation.
-        pass
+        raise FrozenError(f"MANIFEST_BINDING:{manifest.get('manifest_sha256')}")
     copied=dict(manifest);given=copied.pop("manifest_sha256",None)
     calc=hashlib.sha256(json.dumps(copied,sort_keys=True,separators=(",",":")).encode()).hexdigest()
     if given!=calc:raise FrozenError(f"MANIFEST_HASH_INTERNAL:{given}:{calc}")
