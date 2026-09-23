@@ -1,0 +1,68 @@
+{
+  "lab_id": "ARQ-002-CSP-001",
+  "date_utc": "2026-09-23",
+  "classification": "SOURCE_DATA_INSUFFICIENT",
+  "final": true,
+  "branch": "arq002-cvd-sweep-positioning-v0.1",
+  "evidence": {
+    "source_probe_run": 35898848356,
+    "source_probe_classification": "SOURCE_DATA_PASS",
+    "source_probe_receipt_sha256": "a052dec019dd2da231acb05f9d46437187bcd134f38a15fae625aff03bbc21e9",
+    "full_source_census_run": 35899452900,
+    "full_source_census_artifact_id": 10768078217,
+    "full_source_census_receipt_sha256": "4d7338127aaed07cadc7b794a172b1aba58057438e68dc74198e91396450eb20",
+    "metrics_gap_diagnostic_run": 35900517072
+  },
+  "source_findings": {
+    "monthly_shards_passed": [
+      "2024-01",
+      "2024-03",
+      "2024-04",
+      "2024-05",
+      "2024-06",
+      "2024-07",
+      "2024-08",
+      "2024-09",
+      "2024-11",
+      "2024-12"
+    ],
+    "monthly_shards_failed": [
+      "2024-02",
+      "2024-10"
+    ],
+    "incomplete_metrics_days": {
+      "2024-02-16": {
+        "observed_slots": 163,
+        "expected_slots": 288,
+        "missing_slots": 125,
+        "first_missing_utc": "2024-02-16T13:35:00Z",
+        "last_missing_utc": "2024-02-16T23:55:00Z",
+        "pattern": "single missing suffix"
+      },
+      "2024-10-28": {
+        "observed_slots": 286,
+        "expected_slots": 288,
+        "missing_slots": 2,
+        "first_missing_utc": "2024-10-28T16:25:00Z",
+        "last_missing_utc": "2024-10-28T16:30:00Z",
+        "pattern": "single 10-minute gap"
+      }
+    },
+    "timestamps_otherwise_exact_5m_grid": true,
+    "conflicting_duplicate_groups": 0
+  },
+  "firewall": {
+    "economic_values_opened": false,
+    "sweep_outcomes_opened": false,
+    "cvd_values_opened": false,
+    "oi_values_opened": false,
+    "funding_values_opened": false,
+    "protected_2025_accessed": false,
+    "protected_2026_accessed": false,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "main_merge": false
+  },
+  "decision": "CLOSE CSP-001 under its frozen requirement of complete 288/288 metrics coverage for every 2024 UTC day. No economic verdict.",
+  "next_allowed": "A new prospective child may use a deterministic pre-outcome source-availability mask, but must use a new LAB_ID and must not inspect economic outcomes before that source contract is frozen."
+}
