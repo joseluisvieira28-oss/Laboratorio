@@ -1,0 +1,33 @@
+name: DLS Kamino Save11 SQD First Day Census V0.4.2
+on:
+  push:
+    branches: [dls-kamino-save11-event-census-v0.1]
+    paths: ['.github/workflows/dls-kamino-save11-sqd-first-day-v042.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  census:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: dls-kamino-save11-event-census-v0.1, fetch-depth: 0}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/run_sqd_first_day_census_v0_4_2.py
+      - run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/run_sqd_first_day_census_v0_4_2.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dls-kamino-save11-sqd-first-day-v042
+          path: labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_SAVE11_SQD_FIRST_DAY_CENSUS_RECEIPT_V0.4.2.json
+          retention-days: 30
+      - name: Persist
+        if: always()
+        run: |
+          git config user.name "crypto-lab-source-audit"
+          git config user.email "actions@users.noreply.github.com"
+          git add labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_SAVE11_SQD_FIRST_DAY_CENSUS_RECEIPT_V0.4.2.json || true
+          git commit -m "dls: persist SQD first-day census v0.4.2" || true
+          git push origin HEAD:dls-kamino-save11-event-census-v0.1
