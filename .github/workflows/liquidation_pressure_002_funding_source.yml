@@ -19,6 +19,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Install pinned websocket client
+        run: pip install websockets==15.0.1
       - name: Probe public Bybit funding schedule metadata
         run: python labs/LIQUIDATION_PRESSURE_002_FORWARD/funding_schedule_source_probe_v0_1.py
       - uses: actions/upload-artifact@v4
