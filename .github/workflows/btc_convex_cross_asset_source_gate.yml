@@ -1,9 +1,7 @@
 name: BTC-CONVEX-001 cross-asset source gate
 
 on:
-  push:
-    branches:
-      - btc-convex-trend-capture-001-v0.1
+  pull_request:
     paths:
       - 'labs/btc-convex-trend-capture-001/CROSS_ASSET_SOURCE_GATE_TRIGGER_V005.txt'
   workflow_dispatch:
@@ -21,8 +19,6 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: btc-convex-trend-capture-001-v0.1
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
