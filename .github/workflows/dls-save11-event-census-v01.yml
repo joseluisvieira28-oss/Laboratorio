@@ -45,6 +45,8 @@ jobs:
           git add labs/DEFI_LIQUIDATION_SHOCK_001/SAVE11_EVENT_CENSUS_QUEUE_V0.1.json
           git add labs/DEFI_LIQUIDATION_SHOCK_001/SAVE11_EVENT_CENSUS_QUEUE_RECEIPT_V0.1.json
           git commit -m "dls: freeze Save11 first census queue v0.1" || true
+          git fetch origin dls-save11-event-census-v0.1
+          git rebase origin/dls-save11-event-census-v0.1
           git push origin HEAD:dls-save11-event-census-v0.1
       - name: Build tranche matrix
         id: matrix
