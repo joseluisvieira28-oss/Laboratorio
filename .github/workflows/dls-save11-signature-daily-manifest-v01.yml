@@ -1,0 +1,62 @@
+name: DLS Save11 Program Signature Daily Manifest V0.1
+
+on:
+  push:
+    branches:
+      - dls-save11-signature-daily-manifest-v0.1
+    paths:
+      - '.github/workflows/dls-save11-signature-daily-manifest-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dls-save11-signature-daily-manifest-v0.1
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download preserved Save11 signature slice
+        uses: actions/download-artifact@v4
+        with:
+          name: dls-save11-first-success-rpc-v01
+          path: source_artifact
+          run-id: 35715830047
+          github-token: ${{ github.token }}
+      - name: Compile manifest builder
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/build_save11_program_signature_daily_manifest_v0_1.py
+      - name: Build daily source manifest
+        run: |
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/build_save11_program_signature_daily_manifest_v0_1.py             --root source_artifact
+      - name: Persist compact manifest
+        run: |
+          git config user.name "crypto-lab-source-audit"
+          git config user.email "actions@users.noreply.github.com"
+          git add labs/DEFI_LIQUIDATION_SHOCK_001/SAVE11_PROGRAM_SIGNATURE_DAILY_MANIFEST_V0.1.json
+          git add labs/DEFI_LIQUIDATION_SHOCK_001/SAVE11_PROGRAM_SIGNATURE_DAILY_MANIFEST_RECEIPT_V0.1.json
+          git commit -m "dls: persist Save11 daily signature manifest v0.1" || true
+          git push origin HEAD:dls-save11-signature-daily-manifest-v0.1
+      - name: Upload compact manifest evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: save11-program-signature-daily-manifest-v01
+          path: |
+            labs/DEFI_LIQUIDATION_SHOCK_001/SAVE11_PROGRAM_SIGNATURE_DAILY_MANIFEST_V0.1.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/SAVE11_PROGRAM_SIGNATURE_DAILY_MANIFEST_RECEIPT_V0.1.json
+          retention-days: 30
+      - name: Firewall
+        run: |
+          echo SOURCE_INDEX_ONLY_TRUE
+          echo LIQUIDATION_CLASSIFICATION_FALSE
+          echo PRICES_FALSE
+          echo RETURNS_FALSE
+          echo PNL_FALSE
+          echo DIRECTION_FALSE
