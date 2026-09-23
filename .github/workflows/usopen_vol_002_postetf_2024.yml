@@ -1,0 +1,38 @@
+name: USOPEN-VOL-002 Post-ETF 2024 Replication
+
+on:
+  push:
+    branches:
+      - us-open-volatility-postetf-2024-v0.1
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/USOPEN_VOL_002_RUN_TRIGGER.txt'
+
+permissions:
+  contents: write
+
+jobs:
+  replication:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 40
+    steps:
+      - name: Restore Git CA trust
+        run: |
+          test -f /etc/ssl/certs/ca-certificates.crt
+          git config --global http.sslCAInfo /etc/ssl/certs/ca-certificates.crt
+          git config --global http.sslVerify true
+      - uses: actions/checkout@v4
+        with:
+          ref: us-open-volatility-postetf-2024-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Run frozen post-ETF 2024 replication
+        run: python Dream-Account-OS-v2.3-PARTIAL/research/us_open_volatility_postetf_2024_v01.py
+      - name: Commit immutable receipt
+        run: |
+          git config user.name "crypto-lab-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add Dream-Account-OS-v2.3-PARTIAL/runtime/usopen_vol_002_postetf_2024_receipt.json
+          git diff --cached --quiet && exit 0
+          git commit -m "research: record USOPEN-VOL-002 post-ETF 2024 receipt"
+          git push origin HEAD:us-open-volatility-postetf-2024-v0.1
