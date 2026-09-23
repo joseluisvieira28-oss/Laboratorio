@@ -1,9 +1,9 @@
-name: USOPEN-VOL-001 Discovery 2022-2023
+name: USOPEN-VOL-001 Discovery 2022-2023 Runner22
 
 on:
   push:
     branches:
-      - us-open-volatility-shock-v0.1
+      - us-open-volatility-shock-v0.1a-runner22
     paths:
       - 'Dream-Account-OS-v2.3-PARTIAL/research/USOPEN_VOL_001_RUN_TRIGGER.txt'
 
@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   discovery:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     timeout-minutes: 35
     steps:
       - name: Restore Git CA trust
@@ -22,7 +22,7 @@ jobs:
           git config --global http.sslVerify true
       - uses: actions/checkout@v4
         with:
-          ref: us-open-volatility-shock-v0.1
+          ref: us-open-volatility-shock-v0.1a-runner22
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -35,4 +35,4 @@ jobs:
           git add Dream-Account-OS-v2.3-PARTIAL/runtime/usopen_vol_001_discovery_receipt.json
           git diff --cached --quiet && exit 0
           git commit -m "research: record USOPEN-VOL-001 discovery receipt"
-          git push origin HEAD:us-open-volatility-shock-v0.1
+          git push origin HEAD:us-open-volatility-shock-v0.1a-runner22
