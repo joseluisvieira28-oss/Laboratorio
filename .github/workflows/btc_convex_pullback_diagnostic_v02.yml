@@ -1,0 +1,28 @@
+name: BTC-CONVEX-001 post-hoc pullback forensic diagnostic
+
+on:
+  pull_request:
+    paths:
+      - 'labs/btc-convex-trend-capture-001/**'
+      - '.github/workflows/btc_convex_pullback_diagnostic_v02.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnostic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run post-hoc pullback and same-bar OHLC diagnostic
+        run: python labs/btc-convex-trend-capture-001/entry_pullback_diagnostic_v0_2.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: BTC-CONVEX-001-PULLBACK-DIAGNOSTIC-V02
+          path: labs/btc-convex-trend-capture-001/evidence/ENTRY_PULLBACK_DIAGNOSTIC_V0.2.json
