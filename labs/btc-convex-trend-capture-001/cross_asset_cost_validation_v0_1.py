@@ -5,7 +5,7 @@ CROSS-ASSET COST VALIDATION V0.1
 
 Authority:
 - CROSS_ASSET_COST_VALIDATION_FREEZE_V0.1.md
-- CROSS_ASSET_SOURCE_AMENDMENT_003.md
+- CROSS_ASSET_SOURCE_AMENDMENT_004.md
 - CHILD_HYPOTHESIS_STICKY_TRAIL_H1_FREEZE.md
 
 This script MUST run only after source gate PASS.
@@ -60,7 +60,39 @@ def parse_kline_zip(symbol,y,m,manifest):
         out.append({"t":t,"open":float(q[1]),"high":float(q[2]),"low":float(q[3]),"close":float(q[4]),"volume":float(q[5])})
     return out
 
-def fetch_funding_rest(symbol,manifest):
+def load_mark_price_map(symbol,manifest):
+    marks={}
+    for y,m in months(2021,1,2025,12):
+        ym=f"{y:04d}-{m:02d}"
+        url=f"https://data.binance.vision/data/futures/um/monthly/markPriceKlines/{symbol}/1h/{symbol}-1h-{ym}.zip"
+        body=get_bytes(url)
+        manifest.append({
+            "kind":"markPriceKline",
+            "symbol":symbol,
+            "month":ym,
+            "url":url,
+            "sha256":hashlib.sha256(body).hexdigest(),
+            "bytes":len(body),
+        })
+        with zipfile.ZipFile(io.BytesIO(body)) as zf:
+            names=zf.namelist()
+            if len(names)!=1:
+                raise RuntimeError(f"{symbol} {ym} markPrice zip members {names}")
+            text=zf.read(names[0]).decode("utf-8-sig")
+        for q in csv.reader(io.StringIO(text)):
+            if not q: continue
+            try:t=int(q[0])
+            except ValueError:continue
+            if t>10**14:t//=1000
+            p=float(q[1])
+            if not math.isfinite(p) or p<=0:
+                raise RuntimeError(f"{symbol}: invalid markPrice kline OPEN {t}")
+            if t in marks and abs(marks[t]-p)>1e-12:
+                raise RuntimeError(f"{symbol}: conflicting markPrice kline {t}")
+            marks[t]=p
+    return marks
+
+def fetch_funding_rest(symbol,manifest,mark_map):
     host="https://www.binance.com"
     cursor=START_MS
     seen={}
@@ -93,14 +125,22 @@ def fetch_funding_rest(symbol,manifest):
             if not (START_MS<=t<=END_MS):
                 continue
             rate=float(x["fundingRate"])
-            mark=float(x["markPrice"])
             if not math.isfinite(rate):
                 raise RuntimeError(f"{symbol}: nonfinite funding rate at {t}")
-            if not math.isfinite(mark) or mark<=0:
-                raise RuntimeError(f"{symbol}: invalid funding markPrice at {t}")
             if t % 3600000 != 0:
                 raise RuntimeError(f"{symbol}: funding timestamp not hour-aligned {t}")
-            rec={"rate":rate,"mark":mark,"rateType":x.get("rateType")}
+            raw_mark=x.get("markPrice")
+            if raw_mark not in (None,""):
+                mark=float(raw_mark)
+                mark_source="funding_record"
+            else:
+                if t not in mark_map:
+                    raise RuntimeError(f"{symbol}: missing funding mark and no exact markPriceKline {t}")
+                mark=mark_map[t]
+                mark_source="markPriceKline_open"
+            if not math.isfinite(mark) or mark<=0:
+                raise RuntimeError(f"{symbol}: invalid resolved funding markPrice at {t}")
+            rec={"rate":rate,"mark":mark,"mark_source":mark_source,"rateType":x.get("rateType")}
             if t in seen and seen[t]!=rec:
                 raise RuntimeError(f"{symbol}: conflicting duplicate funding {t}")
             seen[t]=rec
@@ -121,7 +161,9 @@ def fetch_funding_rest(symbol,manifest):
         "funding_record_count":len(ordered),
         "first_funding_ms":first,
         "last_funding_ms":last,
-        "all_mark_prices_official":True,
+        "direct_mark_count":sum(1 for x in ordered.values() if x["mark_source"]=="funding_record"),
+        "fallback_markPriceKline_count":sum(1 for x in ordered.values() if x["mark_source"]=="markPriceKline_open"),
+        "unresolved_mark_count":0,
         "all_timestamps_hour_aligned":True,
     }
     return ordered,time_meta
@@ -136,7 +178,8 @@ def load_symbol(symbol):
             raise RuntimeError(f"{symbol} duplicate conflicting kline {b['t']}")
         bd[b["t"]]=b
     bars=[bd[k] for k in sorted(bd)]
-    funding,time_meta=fetch_funding_rest(symbol,manifest)
+    mark_map=load_mark_price_map(symbol,manifest)
+    funding,time_meta=fetch_funding_rest(symbol,manifest,mark_map)
     manifest_hash=hashlib.sha256(json.dumps(manifest,sort_keys=True,separators=(",",":")).encode()).hexdigest()
     return bars,funding,manifest,manifest_hash,time_meta
 
@@ -369,7 +412,7 @@ out={
     "lab":"BTC-CONVEX-TREND-CAPTURE-001",
     "experiment":"CROSS_ASSET_COST_VALIDATION_V0.1",
     "freeze":"CROSS_ASSET_COST_VALIDATION_FREEZE_V0.1",
-    "source_amendment":"CROSS_ASSET_SOURCE_AMENDMENT_003",
+    "source_amendment":"CROSS_ASSET_SOURCE_AMENDMENT_004",
     "period":["2021-01-01T00:00:00Z","2025-12-31T23:00:00Z"],
     "symbols":{},
     "family":{},
