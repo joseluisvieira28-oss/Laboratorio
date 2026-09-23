@@ -5,13 +5,13 @@ CROSS-ASSET COST VALIDATION V0.1
 
 Authority:
 - CROSS_ASSET_COST_VALIDATION_FREEZE_V0.1.md
-- CROSS_ASSET_SOURCE_AMENDMENT_001.md
+- CROSS_ASSET_SOURCE_AMENDMENT_003.md
 - CHILD_HYPOTHESIS_STICKY_TRAIL_H1_FREEZE.md
 
 This script MUST run only after source gate PASS.
 """
 from __future__ import annotations
-import csv, io, json, math, hashlib, urllib.request, zipfile
+import csv, io, json, math, hashlib, urllib.request, urllib.parse, zipfile
 from collections import deque
 from datetime import datetime, timezone
 from pathlib import Path
@@ -60,59 +60,85 @@ def parse_kline_zip(symbol,y,m,manifest):
         out.append({"t":t,"open":float(q[1]),"high":float(q[2]),"low":float(q[3]),"close":float(q[4]),"volume":float(q[5])})
     return out
 
-def parse_funding_zip(symbol,y,m,manifest):
-    ym=f"{y:04d}-{m:02d}"
-    url=f"https://data.binance.vision/data/futures/um/monthly/fundingRate/{symbol}/{symbol}-fundingRate-{ym}.zip"
-    body=get_bytes(url)
-    manifest.append({"kind":"funding","symbol":symbol,"month":ym,"url":url,"sha256":hashlib.sha256(body).hexdigest(),"bytes":len(body)})
-    with zipfile.ZipFile(io.BytesIO(body)) as zf:
-        names=zf.namelist()
-        if len(names)!=1: raise RuntimeError(f"{symbol} {ym} funding zip members {names}")
-        text=zf.read(names[0]).decode("utf-8-sig")
-    rd=csv.DictReader(io.StringIO(text))
-    header=rd.fieldnames or []
-    time_col=next((x for x in header if x.lower() in ("calc_time","fundingtime","funding_time")),None)
-    rate_col=next((x for x in header if x.lower() in ("last_funding_rate","fundingrate","funding_rate")),None)
-    if not time_col or not rate_col:
-        raise RuntimeError(f"{symbol} {ym} funding schema unsupported: {header}")
-    out=[]
-    for r in rd:
-        if not r.get(time_col): continue
-        raw_t=int(float(r[time_col]))
-        if raw_t>10**14: raw_t//=1000
-        nearest=round(raw_t/3600000)*3600000
-        deviation=abs(raw_t-nearest)
-        if deviation>1000:
-            raise RuntimeError(f"{symbol} {ym} funding timestamp deviation {deviation}ms exceeds frozen 1000ms")
-        rate=float(r[rate_col])
-        out.append({"t":nearest,"raw_t":raw_t,"deviation_ms":deviation,"rate":rate})
-    return out
+def fetch_funding_rest(symbol,manifest):
+    host="https://www.binance.com"
+    cursor=START_MS
+    seen={}
+    page=0
+    while cursor<=END_MS:
+        qs=urllib.parse.urlencode({
+            "symbol":symbol,
+            "startTime":cursor,
+            "endTime":END_MS,
+            "limit":1000,
+        })
+        url=host+"/fapi/v1/fundingRate?"+qs
+        raw=get_bytes(url)
+        page+=1
+        manifest.append({
+            "kind":"funding_rest_page",
+            "symbol":symbol,
+            "page":page,
+            "url":url,
+            "sha256":hashlib.sha256(raw).hexdigest(),
+            "bytes":len(raw),
+        })
+        arr=json.loads(raw.decode())
+        if not isinstance(arr,list):
+            raise RuntimeError(f"{symbol}: unexpected funding payload")
+        if not arr:
+            break
+        for x in arr:
+            t=int(x["fundingTime"])
+            if not (START_MS<=t<=END_MS):
+                continue
+            rate=float(x["fundingRate"])
+            mark=float(x["markPrice"])
+            if not math.isfinite(rate):
+                raise RuntimeError(f"{symbol}: nonfinite funding rate at {t}")
+            if not math.isfinite(mark) or mark<=0:
+                raise RuntimeError(f"{symbol}: invalid funding markPrice at {t}")
+            if t % 3600000 != 0:
+                raise RuntimeError(f"{symbol}: funding timestamp not hour-aligned {t}")
+            rec={"rate":rate,"mark":mark,"rateType":x.get("rateType")}
+            if t in seen and seen[t]!=rec:
+                raise RuntimeError(f"{symbol}: conflicting duplicate funding {t}")
+            seen[t]=rec
+        nxt=int(arr[-1]["fundingTime"])+1
+        if nxt<=cursor:
+            raise RuntimeError(f"{symbol}: funding pagination stalled")
+        cursor=nxt
+        if len(arr)<1000:
+            break
+    if not seen:
+        raise RuntimeError(f"{symbol}: no funding records")
+    ordered={t:seen[t] for t in sorted(seen)}
+    first=min(ordered); last=max(ordered)
+    if first>START_MS+9*3600000 or last<END_MS-9*3600000:
+        raise RuntimeError(f"{symbol}: incomplete funding boundary coverage")
+    time_meta={
+        "funding_transport":"https://www.binance.com/fapi/v1/fundingRate",
+        "funding_record_count":len(ordered),
+        "first_funding_ms":first,
+        "last_funding_ms":last,
+        "all_mark_prices_official":True,
+        "all_timestamps_hour_aligned":True,
+    }
+    return ordered,time_meta
 
 def load_symbol(symbol):
-    manifest=[]; bars=[]; funds=[]
+    manifest=[]; bars=[]
     for y,m in months(2020,12,2025,12):
         bars.extend(parse_kline_zip(symbol,y,m,manifest))
-    for y,m in months(2021,1,2025,12):
-        funds.extend(parse_funding_zip(symbol,y,m,manifest))
-    # dedupe exact timestamps; duplicate disagreement fails closed
     bd={}
     for b in bars:
-        if b["t"] in bd and bd[b["t"]]!=b: raise RuntimeError(f"{symbol} duplicate conflicting kline {b['t']}")
+        if b["t"] in bd and bd[b["t"]]!=b:
+            raise RuntimeError(f"{symbol} duplicate conflicting kline {b['t']}")
         bd[b["t"]]=b
-    fd={}
-    max_funding_timestamp_deviation_ms=0
-    normalized_funding_records=[]
-    for x in funds:
-        max_funding_timestamp_deviation_ms=max(max_funding_timestamp_deviation_ms,x["deviation_ms"])
-        if x["t"] in fd and abs(fd[x["t"]]-x["rate"])>1e-15:
-            raise RuntimeError(f"{symbol} duplicate conflicting funding {x['t']}")
-        fd[x["t"]]=x["rate"]
-        normalized_funding_records.append({"raw_t":x["raw_t"],"normalized_t":x["t"],"deviation_ms":x["deviation_ms"]})
     bars=[bd[k] for k in sorted(bd)]
+    funding,time_meta=fetch_funding_rest(symbol,manifest)
     manifest_hash=hashlib.sha256(json.dumps(manifest,sort_keys=True,separators=(",",":")).encode()).hexdigest()
-    time_meta={"max_funding_timestamp_deviation_ms":max_funding_timestamp_deviation_ms,
-               "funding_timestamp_record_count":len(normalized_funding_records)}
-    return bars,fd,manifest,manifest_hash,time_meta
+    return bars,funding,manifest,manifest_hash,time_meta
 
 def sma(vals,n):
     out=[None]*len(vals); q=deque(); s=0.0
@@ -200,9 +226,10 @@ def simulate(symbol,bars,funding,mode,slip):
         if t>END_MS: break
 
         # 1) funding applies only to positions carried into this timestamp.
+        # Amendment 003: exact official funding record markPrice; no candle fallback.
         if position is not None and position["entry_t"]<t and t in funding:
-            mark=b["open"]  # frozen fallback from official market bar OPEN
-            cf=-position["qty"]*mark*funding[t]
+            frec=funding[t]
+            cf=-position["qty"]*frec["mark"]*frec["rate"]
             equity+=cf
             position["funding"]+=cf
             total_funding+=cf
@@ -342,7 +369,7 @@ out={
     "lab":"BTC-CONVEX-TREND-CAPTURE-001",
     "experiment":"CROSS_ASSET_COST_VALIDATION_V0.1",
     "freeze":"CROSS_ASSET_COST_VALIDATION_FREEZE_V0.1",
-    "source_amendment":"CROSS_ASSET_SOURCE_AMENDMENT_001",
+    "source_amendment":"CROSS_ASSET_SOURCE_AMENDMENT_003",
     "period":["2021-01-01T00:00:00Z","2025-12-31T23:00:00Z"],
     "symbols":{},
     "family":{},
