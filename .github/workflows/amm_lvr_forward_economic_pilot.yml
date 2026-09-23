@@ -1,0 +1,31 @@
+name: AMM-LVR-CROSSVENUE-001 Forward Economic Pilot
+
+on:
+  pull_request:
+    paths:
+      - 'labs/amm-lvr-crossvenue-001/FORWARD_ENGINE_IMPLEMENTATION_FREEZE_V0.1.md'
+      - 'labs/amm-lvr-crossvenue-001/forward_economic_engine_v0_1.py'
+      - '.github/workflows/amm_lvr_forward_economic_pilot.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  engineering-sweep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Execute frozen 48-state forward engineering sweep
+        run: python labs/amm-lvr-crossvenue-001/forward_economic_engine_v0_1.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: AMM-LVR-CROSSVENUE-001-FORWARD-ECONOMIC-PILOT
+          path: |
+            labs/amm-lvr-crossvenue-001/evidence/forward_economic_sweep_v0_1.json
+            labs/amm-lvr-crossvenue-001/evidence/forward_economic_sweep_v0_1_summary.json
