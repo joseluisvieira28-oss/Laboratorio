@@ -1,0 +1,27 @@
+name: BTC-CONVEX-001 isolated expansion adjudication V0.1
+
+on:
+  push:
+    branches:
+      - btc-convex-expansion-adjudication-v0.1
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-expansion:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run frozen Parent-only expansion validation
+        run: python labs/btc-convex-trend-capture-001/expansion_cost_validation_v0_1.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: BTC-CONVEX-001-ISOLATED-EXPANSION-ADJUDICATION-V01
+          path: labs/btc-convex-trend-capture-001/evidence/EXPANSION_COST_VALIDATION_V0.1.json
