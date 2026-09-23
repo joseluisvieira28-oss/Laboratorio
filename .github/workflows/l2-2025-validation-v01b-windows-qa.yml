@@ -1,0 +1,96 @@
+name: L2 2025 Frozen Validation Windows QA V0.1B
+
+on:
+  push:
+    branches:
+      - l2-resiliency-2025-source-clock-fullcorpus-v0.1a
+    paths:
+      - 'research/l2_resiliency/RUN_L2R_2025_DRIVE_RESTORE_AND_VALIDATION_V01B.ps1'
+      - 'research/l2_resiliency/L2R_2025_BTC_VALIDATION_PIPELINE_V01B_FROZEN_SOURCE.py'
+      - 'research/l2_resiliency/l2r_2025_rebuild_verified_manifest_v01a.py'
+      - 'research/l2_resiliency/RUN_L2R_2025_VALIDATION_ATTACK_V01B.cmd'
+      - '.github/workflows/l2-2025-validation-v01b-windows-qa.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  qa:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: l2-resiliency-2025-source-clock-fullcorpus-v0.1a
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Compile frozen runner and manifest helper
+        shell: pwsh
+        run: |
+          python -m py_compile research/l2_resiliency/L2R_2025_BTC_VALIDATION_PIPELINE_V01B_FROZEN_SOURCE.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m py_compile research/l2_resiliency/l2r_2025_rebuild_verified_manifest_v01a.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Parse PowerShell launcher
+        shell: pwsh
+        run: |
+          $path='research/l2_resiliency/RUN_L2R_2025_DRIVE_RESTORE_AND_VALIDATION_V01B.ps1'
+          $tokens=$null
+          $errors=$null
+          [System.Management.Automation.Language.Parser]::ParseFile($path,[ref]$tokens,[ref]$errors) | Out-Null
+          if ($errors.Count -gt 0) {
+            $errors | ForEach-Object { Write-Error $_.Message }
+            exit 2
+          }
+          Write-Host 'POWERSHELL_PARSE_PASS'
+
+      - name: Verify frozen V0.1B runner binding
+        shell: pwsh
+        run: |
+          $p='research/l2_resiliency/L2R_2025_BTC_VALIDATION_PIPELINE_V01B_FROZEN_SOURCE.py'
+          $h=(Get-FileHash -LiteralPath $p -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($h -ne 'e16efd7071a159fb767b6ff872f284e498ca110518bec06d9b4c3db867079a38') { throw "Runner SHA mismatch $h" }
+          Write-Host 'V01B_RUNNER_BINDING_PASS'
+
+      - name: Assert frozen safety and offline markers
+        shell: pwsh
+        run: |
+          $txt=Get-Content -LiteralPath 'research/l2_resiliency/RUN_L2R_2025_DRIVE_RESTORE_AND_VALIDATION_V01B.ps1' -Raw
+          foreach($needle in @(
+            '767e75594864344c75dd2669ec4fad8c738710c218322b11fd43a83077ef17c3',
+            'e16efd7071a159fb767b6ff872f284e498ca110518bec06d9b4c3db867079a38',
+            '--offline-existing-corpus',
+            'NO POST-OUTCOME RETUNING',
+            '2026 FORBIDDEN',
+            'L2_RESILIENCY_001_2025_VALIDATION_EVIDENCE_V0_1.zip'
+          )) {
+            if(-not $txt.Contains($needle)) { throw "Missing frozen marker $needle" }
+          }
+          Write-Host 'FROZEN_SAFETY_MARKERS_PASS'
+
+      - name: Package one-click Windows validation bundle
+        shell: pwsh
+        run: |
+          $files=@(
+            'research/l2_resiliency/RUN_L2R_2025_VALIDATION_ATTACK_V01B.cmd',
+            'research/l2_resiliency/RUN_L2R_2025_DRIVE_RESTORE_AND_VALIDATION_V01B.ps1',
+            'research/l2_resiliency/L2R_2025_BTC_VALIDATION_PIPELINE_V01B_FROZEN_SOURCE.py',
+            'research/l2_resiliency/l2r_2025_rebuild_verified_manifest_v01a.py'
+          )
+          Compress-Archive -Path $files -DestinationPath "$env:RUNNER_TEMP\L2R_2025_VALIDATION_ATTACK_V01B.zip" -Force
+          $sha=(Get-FileHash -LiteralPath "$env:RUNNER_TEMP\L2R_2025_VALIDATION_ATTACK_V01B.zip" -Algorithm SHA256).Hash.ToLowerInvariant()
+          $sha | Set-Content -LiteralPath "$env:RUNNER_TEMP\L2R_2025_VALIDATION_ATTACK_V01B.sha256.txt" -Encoding ascii
+          Write-Host "BUNDLE_SHA256=$sha"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: L2R_2025_VALIDATION_ATTACK_V01B
+          path: |
+            ${{ runner.temp }}\L2R_2025_VALIDATION_ATTACK_V01B.zip
+            ${{ runner.temp }}\L2R_2025_VALIDATION_ATTACK_V01B.sha256.txt
+          if-no-files-found: error
