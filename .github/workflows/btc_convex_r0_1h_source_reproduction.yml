@@ -1,0 +1,28 @@
+name: BTC-CONVEX-001 R0 1H source reproduction
+
+on:
+  pull_request:
+    paths:
+      - 'labs/btc-convex-trend-capture-001/**'
+      - '.github/workflows/btc_convex_r0_1h_source_reproduction.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  reproduce-entry:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Reproduce recovered Pine entry signal on official Binance 1h data
+        run: python labs/btc-convex-trend-capture-001/r0_1h_entry_source_reproduction_v0_1.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: BTC-CONVEX-001-R0-1H-ENTRY-SOURCE-REPRO
+          path: labs/btc-convex-trend-capture-001/evidence/R0_1H_ENTRY_SOURCE_REPRODUCTION_V0.1.json
