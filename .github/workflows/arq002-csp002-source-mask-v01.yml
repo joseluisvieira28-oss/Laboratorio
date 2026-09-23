@@ -1,0 +1,46 @@
+name: ARQ-002-CSP-002 Source Mask Gate V0.1
+on:
+  push:
+    branches: [arq002-cvd-sweep-positioning-v0.2]
+    paths:
+      - research/arq002_csp/ARQ002_CSP002_MASK_MONTH_V0.1.py
+      - research/arq002_csp/ARQ002_CSP002_MASK_AGGREGATE_V0.1.py
+      - .github/workflows/arq002-csp002-source-mask-v01.yml
+permissions:
+  contents: read
+jobs:
+  rescan:
+    strategy:
+      fail-fast: false
+      matrix:
+        month: ["2024-02","2024-10"]
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Rescan month under frozen mask policy
+        run: python research/arq002_csp/ARQ002_CSP002_MASK_MONTH_V0.1.py --month ${{ matrix.month }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: arq002-csp002-mask-${{ matrix.month }}
+          path: arq002_csp002_mask_${{ matrix.month }}.json
+          retention-days: 30
+  aggregate:
+    needs: rescan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: arq002-csp002-mask-*
+          path: mask_receipts
+          merge-multiple: true
+      - run: python research/arq002_csp/ARQ002_CSP002_MASK_AGGREGATE_V0.1.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: arq002-csp002-source-mask-v01
+          path: ARQ002_CSP002_SOURCE_MASK_RECEIPT_V0.1.json
+          retention-days: 30
