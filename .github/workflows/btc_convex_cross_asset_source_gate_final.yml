@@ -1,9 +1,8 @@
-name: BTC-CONVEX-001 FINAL source gate V0.1D
+name: BTC-CONVEX-001 FINAL source gate V0.1F
 
 on:
   pull_request:
     paths:
-      - '.github/workflows/btc_convex_cross_asset_source_gate_final.yml'
       - 'labs/btc-convex-trend-capture-001/CROSS_ASSET_SOURCE_GATE_FINAL_TRIGGER.txt'
   workflow_dispatch:
 
@@ -11,7 +10,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: btc-convex-source-gate-final-v01d
+  group: btc-convex-source-gate-final-v01f
   cancel-in-progress: false
 
 jobs:
@@ -23,10 +22,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Run authoritative source gate V0.1D only
+      - name: Run authoritative source gate V0.1F only
         run: python labs/btc-convex-trend-capture-001/cross_asset_source_gate_v0_1.py
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: BTC-CONVEX-001-FINAL-SOURCE-GATE-V01D
-          path: labs/btc-convex-trend-capture-001/evidence/CROSS_ASSET_SOURCE_GATE_V0.1D.json
+          name: BTC-CONVEX-001-FINAL-SOURCE-GATE-V01F
+          path: labs/btc-convex-trend-capture-001/evidence/CROSS_ASSET_SOURCE_GATE_V0.1F.json
