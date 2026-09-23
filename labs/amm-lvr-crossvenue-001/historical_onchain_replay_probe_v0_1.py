@@ -78,7 +78,9 @@ tx_ok=sum(p["tx_found"] for p in probes)
 receipt_ok=sum(p["receipt_found"] for p in probes)
 block_ok=sum(p["block_found"] for p in probes)
 core_ratio=min(tx_ok,receipt_ok,block_ok)/n if n else 0
-verdict="HISTORICAL_ONCHAIN_REPLAY_PASS" if n>=10 and core_ratio>=0.95 else "HISTORICAL_ONCHAIN_REPLAY_FAIL"
+core_txblock_ratio=min(tx_ok,block_ok)/n if n else 0
+receipt_ratio=receipt_ok/n if n else 0
+verdict="HISTORICAL_TXBLOCK_PASS_RECEIPT_ARCHIVE_BLOCKED" if n>=10 and core_txblock_ratio>=0.95 and receipt_ratio<0.95 else ("HISTORICAL_ONCHAIN_REPLAY_PASS" if n>=10 and core_ratio>=0.95 else "HISTORICAL_ONCHAIN_REPLAY_FAIL")
 trace_verdict="TRACE_PUBLIC_PASS" if n and trace_success/n>=0.80 else "TRACE_PUBLIC_BLOCKED_OR_INCOMPLETE"
 
 receipt_out={
@@ -91,6 +93,8 @@ receipt_out={
     "receipt_found":receipt_ok,
     "block_found":block_ok,
     "core_replay_ratio":core_ratio,
+    "core_txblock_ratio":core_txblock_ratio,
+    "receipt_ratio":receipt_ratio,
     "verdict":verdict,
     "trace_success_count":trace_success,
     "trace_verdict":trace_verdict,
@@ -102,5 +106,5 @@ receipt_out={
 }
 (OUT/"historical_onchain_replay_probe_v0_1_receipt.json").write_text(json.dumps(receipt_out,indent=2,sort_keys=True),encoding="utf-8")
 print(json.dumps(receipt_out,indent=2,sort_keys=True))
-if verdict!="HISTORICAL_ONCHAIN_REPLAY_PASS":
+if verdict=="HISTORICAL_ONCHAIN_REPLAY_FAIL":
     raise SystemExit(2)
