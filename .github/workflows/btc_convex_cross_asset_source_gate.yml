@@ -1,0 +1,29 @@
+name: BTC-CONVEX-001 cross-asset source gate
+
+on:
+  pull_request:
+    paths:
+      - 'labs/btc-convex-trend-capture-001/cross_asset_source_gate_v0_1.py'
+      - '.github/workflows/btc_convex_cross_asset_source_gate.yml'
+      - 'labs/btc-convex-trend-capture-001/CROSS_ASSET_COST_VALIDATION_FREEZE_V0.1.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify official Binance price/funding coverage only
+        run: python labs/btc-convex-trend-capture-001/cross_asset_source_gate_v0_1.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: BTC-CONVEX-001-CROSS-ASSET-SOURCE-GATE
+          path: labs/btc-convex-trend-capture-001/evidence/CROSS_ASSET_SOURCE_GATE_V0.1.json
