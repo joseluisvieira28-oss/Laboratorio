@@ -19,8 +19,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Run outcome-blind source gate
+      - name: Run one-day sample source gate
         run: python labs/amm-lvr-crossvenue-001/source_gate.py
+      - name: Attack historical-free vs forward-free source routes
+        run: python labs/amm-lvr-crossvenue-001/source_attack_v0_2.py
       - uses: actions/upload-artifact@v4
         with:
           name: AMM-LVR-CROSSVENUE-001-SOURCE-EVIDENCE
