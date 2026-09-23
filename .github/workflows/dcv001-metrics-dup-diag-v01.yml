@@ -1,0 +1,26 @@
+name: DCV-001 Metrics Duplicate Diagnostic V0.1
+
+on:
+  push:
+    branches:
+      - dcv001-funding-oi-vol-interaction-v0.1
+    paths:
+      - research/dcv001/DCV001_METRICS_DUPLICATION_DIAG_V0.1.py
+      - .github/workflows/dcv001-metrics-dup-diag-v01.yml
+
+permissions:
+  contents: read
+
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile
+        run: python -m py_compile research/dcv001/DCV001_METRICS_DUPLICATION_DIAG_V0.1.py
+      - name: Run source-only diagnostic
+        run: python research/dcv001/DCV001_METRICS_DUPLICATION_DIAG_V0.1.py
