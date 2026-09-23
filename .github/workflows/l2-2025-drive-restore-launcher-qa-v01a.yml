@@ -1,0 +1,87 @@
+name: L2 2025 Drive Restore Launcher QA V0.1A
+
+on:
+  push:
+    branches:
+      - l2-resiliency-2025-source-clock-fullcorpus-v0.1a
+    paths:
+      - 'research/l2_resiliency/RUN_L2R_2025_DRIVE_RESTORE_AND_SOURCE_CLOCK_V01A.ps1'
+      - 'research/l2_resiliency/l2r_2025_rebuild_verified_manifest_v01a.py'
+      - '.github/workflows/l2-2025-drive-restore-launcher-qa-v01a.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  qa:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: l2-resiliency-2025-source-clock-fullcorpus-v0.1a
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Compile manifest helper
+        shell: pwsh
+        run: |
+          python -m py_compile research/l2_resiliency/l2r_2025_rebuild_verified_manifest_v01a.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Parse PowerShell launcher
+        shell: pwsh
+        run: |
+          $path='research/l2_resiliency/RUN_L2R_2025_DRIVE_RESTORE_AND_SOURCE_CLOCK_V01A.ps1'
+          $tokens=$null
+          $errors=$null
+          [System.Management.Automation.Language.Parser]::ParseFile($path,[ref]$tokens,[ref]$errors) | Out-Null
+          if ($errors.Count -gt 0) {
+            $errors | ForEach-Object { Write-Error $_.Message }
+            exit 2
+          }
+          Write-Host 'POWERSHELL_PARSE_PASS'
+
+      - name: Verify embedded canonical V0.1A package and members
+        shell: pwsh
+        run: |
+          $path='research/l2_resiliency/RUN_L2R_2025_DRIVE_RESTORE_AND_SOURCE_CLOCK_V01A.ps1'
+          $txt=Get-Content -LiteralPath $path -Raw
+          $m=[regex]::Match($txt,"(?s)\x24pkgB64=@'\r?\n(.*?)\r?\n'@")
+          if (-not $m.Success) { throw 'Embedded package base64 not found' }
+          $bytes=[Convert]::FromBase64String(($m.Groups[1].Value -replace '\s',''))
+          $tmp=Join-Path $env:RUNNER_TEMP 'L2R_2025_BTC_SOURCE_CLOCK_DIAGNOSTIC_V01A.zip'
+          [IO.File]::WriteAllBytes($tmp,$bytes)
+          $sha=(Get-FileHash -LiteralPath $tmp -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($sha -ne 'bb6195b42f2ad75ddc7ea8eefe4ecabe5bcc940ec8e3e14b22e4e1dc9c075fc8') { throw "Package SHA mismatch $sha" }
+          $dir=Join-Path $env:RUNNER_TEMP 'pkg'
+          Expand-Archive -LiteralPath $tmp -DestinationPath $dir -Force
+          $expected=@{
+            'l2r_2025_source_clock_diagnostic_v01a.py'='0f929df19a713d7fb1805688be15fa131ba9c270e9f9fd6c84776ed5b0f5531f'
+            'RUN_2025_SOURCE_CLOCK_DIAGNOSTIC_V01A.bat'='ed9682f5f3a28f31e7ad402189dda0adb0e4bab7f70370f82a5d91fb33bab25d'
+            'README.txt'='82a1b7ee881839e6f89a168920a49b8aa23e274270fc9935a12b5a8552b22059'
+            'MANIFEST_EQUIVALENCE_RECEIPT_V0_1A.json'='51441b8a547892b711085666ac1f698130a3e9960ace59a861d15b9b2385e0d9'
+          }
+          foreach($name in $expected.Keys) {
+            $p=Join-Path $dir $name
+            if(-not (Test-Path -LiteralPath $p)) { throw "Missing member $name" }
+            $h=(Get-FileHash -LiteralPath $p -Algorithm SHA256).Hash.ToLowerInvariant()
+            if($h -ne $expected[$name]) { throw "Member hash mismatch $name $h" }
+          }
+          Write-Host 'CANONICAL_PACKAGE_BINDING_PASS'
+
+      - name: Assert research-only safety markers
+        shell: pwsh
+        run: |
+          $txt=Get-Content -LiteralPath 'research/l2_resiliency/RUN_L2R_2025_DRIVE_RESTORE_AND_SOURCE_CLOCK_V01A.ps1' -Raw
+          foreach($needle in @(
+            'NO SWEEPS / NO RETURNS / NO PNL / NO 2026 / NO ORDERS',
+            'EXPECTED_MANIFEST_SHA256',
+            'L2_RESILIENCY_001_2025_SOURCE_CLOCK_DIAGNOSTIC_EVIDENCE_V0_1.zip'
+          )) {
+            if(-not $txt.Contains($needle)) { throw "Missing safety marker $needle" }
+          }
+          Write-Host 'RESEARCH_ONLY_MARKERS_PASS'
