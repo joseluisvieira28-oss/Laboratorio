@@ -1,0 +1,103 @@
+name: DLS Kamino Save11 Field Enrichment V0.6
+
+on:
+  push:
+    branches:
+      - dls-kamino-save11-event-census-v0.1
+    paths:
+      - 'labs/DEFI_LIQUIDATION_SHOCK_001/FIELD_ENRICHMENT_V0.6_TRIGGER.txt'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: dls-kamino-save11-field-enrichment-v06
+  cancel-in-progress: false
+
+jobs:
+  enrich:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dls-kamino-save11-event-census-v0.1
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Preflight source gates
+        run: |
+          python - <<'PY'
+          import json,pathlib
+          root=pathlib.Path("labs/DEFI_LIQUIDATION_SHOCK_001")
+          c=json.loads((root/"KAMINO_SAVE11_SQD_EVENT_CENSUS_RECEIPT_V0.4.2.json").read_text())
+          r=json.loads((root/"KAMINO_SAVE11_RAW_SAMPLE_RECONCILIATION_RECEIPT_V0.5.json").read_text())
+          assert c.get("classification")=="SQD_EVENT_CENSUS_COMPLETE_PENDING_RAW_SAMPLE", c.get("classification")
+          assert r.get("classification")=="RAW_SAMPLE_RECONCILIATION_PASS", r.get("classification")
+          print("FIELD_ENRICHMENT_PREFLIGHT_PASS")
+          PY
+
+      - name: Compile
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/enrich_sqd_census_fields_v0_6.py
+
+      - name: Execute field enrichment
+        id: enrich
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/enrich_sqd_census_fields_v0_6.py | tee DLS_FIELD_ENRICHMENT_V06_STDOUT.txt
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-kamino-save11-field-enrichment-v06
+          path: |
+            labs/DEFI_LIQUIDATION_SHOCK_001/sqd_census_v0_4/field_enrichment_v0_6/
+            labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_SAVE11_FIELD_ENRICHMENT_RECEIPT_V0.6.json
+            DLS_FIELD_ENRICHMENT_V06_STDOUT.txt
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Persist evidence
+        if: always()
+        run: |
+          git config user.name "crypto-lab-source-audit"
+          git config user.email "actions@users.noreply.github.com"
+          git add labs/DEFI_LIQUIDATION_SHOCK_001/sqd_census_v0_4/field_enrichment_v0_6/ || true
+          git add labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_SAVE11_FIELD_ENRICHMENT_RECEIPT_V0.6.json || true
+          git commit -m "dls: persist Kamino Save11 field enrichment v0.6" || true
+          git pull --rebase origin dls-kamino-save11-event-census-v0.1
+          git push origin HEAD:dls-kamino-save11-event-census-v0.1
+
+      - name: Final adjudication
+        if: always()
+        run: |
+          python - <<'PY'
+          import json,pathlib,sys
+          p=pathlib.Path("labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_SAVE11_FIELD_ENRICHMENT_RECEIPT_V0.6.json")
+          if not p.exists(): sys.exit("FIELD_RECEIPT_MISSING")
+          r=json.loads(p.read_text())
+          print("CLASSIFICATION",r.get("classification"))
+          if r.get("classification") not in (
+            "FIELD_ENRICHMENT_COMPLETE",
+            "FIELD_ENRICHMENT_COMPLETE_WITH_SAVE11_PRELAYOUT_PENDING"
+          ):
+            sys.exit(2)
+          PY
+
+      - name: Firewall
+        if: always()
+        run: |
+          echo SOURCE_ONLY_TRUE
+          echo PRICES_FALSE
+          echo USD_VALUES_FALSE
+          echo RETURNS_FALSE
+          echo PNL_FALSE
+          echo DIRECTION_FALSE
+          echo LIVE_TRADING_FALSE
+          echo MERGE_MAIN_FALSE
