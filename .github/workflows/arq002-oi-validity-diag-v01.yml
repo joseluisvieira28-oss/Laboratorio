@@ -1,0 +1,45 @@
+name: ARQ-002 OI Validity Diagnostic 2024 V0.1
+on:
+  push:
+    branches: [arq002-csp002-source-mask-v0.1]
+    paths:
+      - research/arq002_csp002/ARQ002_OI_VALIDITY_DIAG_MONTH_V0.1.py
+      - research/arq002_csp002/ARQ002_OI_VALIDITY_DIAG_AGG_V0.1.py
+      - .github/workflows/arq002-oi-validity-diag-v01.yml
+permissions:
+  contents: read
+jobs:
+  month:
+    strategy:
+      fail-fast: false
+      matrix:
+        month: ["2024-01","2024-02","2024-03","2024-04","2024-05","2024-06","2024-07","2024-08","2024-09","2024-10","2024-11","2024-12"]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: python research/arq002_csp002/ARQ002_OI_VALIDITY_DIAG_MONTH_V0.1.py --month ${{ matrix.month }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: arq002-oi-diag-${{ matrix.month }}
+          path: arq002_oi_diag_${{ matrix.month }}.json
+          retention-days: 30
+  aggregate:
+    needs: month
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: arq002-oi-diag-*
+          path: diag
+          merge-multiple: true
+      - run: python research/arq002_csp002/ARQ002_OI_VALIDITY_DIAG_AGG_V0.1.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: arq002-oi-validity-diag-final
+          path: ARQ002_OI_VALIDITY_DIAGNOSTIC_2024.json
+          retention-days: 30
