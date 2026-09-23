@@ -1,0 +1,105 @@
+{
+  "lab_id": "ARQ-001-MTF-001",
+  "date_utc": "2026-09-23",
+  "classification": "DISCOVERY_FAIL_NO_PROMOTION",
+  "authority": [
+    "ARQ001_MTF_PREOUTCOME_AUTHORITY_V0.1.md",
+    "ARQ001_MTF_PREOUTCOME_AMENDMENT_A_V0.1.md",
+    "ARQ001_MTF_PREOUTCOME_AMENDMENT_B_V0.1.md",
+    "ARQ001_MTF_PREOUTCOME_AMENDMENT_C_V0.1.md",
+    "ARQ001_MTF_PREOUTCOME_AMENDMENT_D_V0.1.md"
+  ],
+  "source": {
+    "regime_source_classification": "REGIME_SOURCE_PASS__2024_DISCOVERY_SLICE_AVAILABLE",
+    "binance_source_classification": "SOURCE_CENSUS_PASS",
+    "binance_source_workflow_run": 35893432555,
+    "binance_source_census_sha256": "b9e6350d3b2559b9d795a4cded381668d69be4717e1a8532a4f73fc03dccc7e4",
+    "binance_artifact_sha256": "81665e40e15c7f0836f2cbd7681627ccb373896c9f1354d9d04b6e60116d92c8",
+    "binance_inner_gzip_sha256": "87b05645bacd11e18870c2d174c32c770bf354c5585b90a3c57345a64508b1e2",
+    "tradingview_sha256": {
+      "BTC.D": "d833ddd89913f076f9797ca89014371ed806468ae94bd3084ccbb58f7ba46208",
+      "USDT.D": "66eae148679447a788ee5ccd40e50a5c58766ed185f94f89c83a722d29e71bcf",
+      "TOTAL3": "b151d0bc36090b3433a171dd0d28e777c794f7ab7f428ea5e5ddbd12f24749d7"
+    }
+  },
+  "discovery": {
+    "eligible_feature_rows": 10300,
+    "ablation_counts": {
+      "A": 516,
+      "B": 116,
+      "C": 85,
+      "D": 85
+    },
+    "baseline_A_n": 516,
+    "d_confirmed_n": 85,
+    "d_rejected_n": 431,
+    "d_confirmed_low10_mean": -0.0013914423438363477,
+    "d_confirmed_base12_mean": -0.0015914423438363478,
+    "d_confirmed_stress14_mean": -0.0017914423438363481,
+    "d_rejected_base12_mean": -0.0014786099543358916,
+    "confirmed_minus_rejected_base12_delta": -0.00011283238950045619,
+    "per_alt": {
+      "ETHUSDT": {
+        "n": 17,
+        "base12_mean": 0.0017105515040439332,
+        "stress14_mean": 0.0015105515040439333
+      },
+      "SOLUSDT": {
+        "n": 18,
+        "base12_mean": -0.0010246200130583625,
+        "stress14_mean": -0.0012246200130583617
+      },
+      "BNBUSDT": {
+        "n": 19,
+        "base12_mean": 0.0002007486813750777,
+        "stress14_mean": 7.486813750777846e-7
+      },
+      "XRPUSDT": {
+        "n": 15,
+        "base12_mean": -0.004282172922159255,
+        "stress14_mean": -0.004482172922159256
+      },
+      "DOGEUSDT": {
+        "n": 16,
+        "base12_mean": -0.005343152854595223,
+        "stress14_mean": -0.005543152854595223
+      }
+    },
+    "positive_alt_count_base12": 2,
+    "alts_with_n_gte_20": 0,
+    "bootstrap_utc_day": {
+      "repetitions": 10000,
+      "seed": 140001,
+      "ci95_low": -0.00572727,
+      "ci95_high": 0.00346318
+    },
+    "best_1pct_removed_count": 1,
+    "best_1pct_removed_base12_mean": -0.0022852288288765735,
+    "best_alt_removed": "ETHUSDT",
+    "remove_best_alt_base12_mean": -0.0024169408058064184,
+    "gates": {
+      "source_provenance_pass": true,
+      "d_confirmed_n_gte_200": false,
+      "at_least_4_alts_n_gte_20": false,
+      "base12_mean_gt_0": false,
+      "stress14_mean_gt_0": false,
+      "confirmed_minus_rejected_base12_gt_0": false,
+      "bootstrap_95_lower_gt_0": false,
+      "at_least_3_of_5_alts_positive_base12": false,
+      "remove_best_1pct_still_positive": false,
+      "remove_best_alt_still_positive": false
+    },
+    "all_gates_pass": false
+  },
+  "firewall": {
+    "discovery_year": 2024,
+    "confirmation_2025_accessed": false,
+    "final_holdout_2026_accessed": false,
+    "live_trading": false,
+    "orders": false,
+    "exchange_mutation": false,
+    "wallet_access": false,
+    "main_merge": false
+  },
+  "decision": "CLOSE_EXACT_LAB__DO_NOT_OPEN_2025__NO_RESCUE"
+}
