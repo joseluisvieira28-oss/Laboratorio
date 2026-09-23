@@ -215,7 +215,8 @@ if ($needRestore) {
 
     $zipPath=Join-Path $TmpRoot $name
     Reassemble-Archive $a $PartsRoot $zipPath
-    Extract-ZipResumable $zipPath $RawRoot
+    $RawArchiveRoot = Join-Path $RawRoot "market_data"
+    Extract-ZipResumable $zipPath $RawArchiveRoot
     Remove-Item -LiteralPath $zipPath -Force
   }
 
