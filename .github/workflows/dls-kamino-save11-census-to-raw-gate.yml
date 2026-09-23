@@ -1,0 +1,42 @@
+name: DLS Census to RAW Gate
+
+on:
+  push:
+    branches:
+      - dls-kamino-save11-event-census-v0.1
+    paths:
+      - 'labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_SAVE11_SQD_EVENT_CENSUS_RECEIPT_V0.4.2.json'
+
+permissions:
+  contents: write
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dls-kamino-save11-event-census-v0.1
+          fetch-depth: 0
+      - name: Validate census terminal state
+        id: check
+        run: |
+          python - <<'PY'
+          import json,pathlib,sys
+          p=pathlib.Path("labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_SAVE11_SQD_EVENT_CENSUS_RECEIPT_V0.4.2.json")
+          r=json.loads(p.read_text())
+          print("classification=",r.get("classification"))
+          if r.get("classification")!="SQD_EVENT_CENSUS_COMPLETE_PENDING_RAW_SAMPLE":
+              sys.exit(2)
+          q=pathlib.Path("labs/DEFI_LIQUIDATION_SHOCK_001/sqd_census_v0_4/RAW_SAMPLE_QUEUE_V0.4.2.json")
+          assert q.exists(), "RAW_SAMPLE_QUEUE_MISSING"
+          PY
+      - name: Arm frozen RAW gate
+        run: |
+          printf '%s\n'             'AUTHORIZED_FROM_CENSUS_RECEIPT=KAMINO_SAVE11_SQD_EVENT_CENSUS_RECEIPT_V0.4.2.json'             'EXPECTED_CLASSIFICATION=SQD_EVENT_CENSUS_COMPLETE_PENDING_RAW_SAMPLE'             'RAW_FREEZE=KAMINO_SAVE11_RAW_SAMPLE_RECONCILIATION_FREEZE_V0.5.md'             > labs/DEFI_LIQUIDATION_SHOCK_001/RAW_SAMPLE_V0.5_TRIGGER.txt
+          git config user.name "crypto-lab-source-audit"
+          git config user.email "actions@users.noreply.github.com"
+          git add labs/DEFI_LIQUIDATION_SHOCK_001/RAW_SAMPLE_V0.5_TRIGGER.txt
+          git commit -m "dls: authorize frozen RAW sample v0.5 after census pass" || true
+          git pull --rebase origin dls-kamino-save11-event-census-v0.1
+          git push origin HEAD:dls-kamino-save11-event-census-v0.1
