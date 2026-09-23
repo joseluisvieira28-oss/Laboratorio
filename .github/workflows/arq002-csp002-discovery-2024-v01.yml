@@ -1,0 +1,102 @@
+name: ARQ-002-CSP-002 Frozen Discovery 2024 V0.1
+
+on:
+  push:
+    branches: [arq002-cvd-sweep-positioning-v0.2]
+    paths:
+      - research/arq002_csp/ARQ002_CSP002_BUILD_SOURCE_MANIFEST_V0.1.py
+      - research/arq002_csp/ARQ002_CSP002_MONTH_DISCOVERY_V0.1.py
+      - research/arq002_csp/ARQ002_CSP002_DISCOVERY_AGGREGATE_V0.1.py
+      - .github/workflows/arq002-csp002-discovery-2024-v01.yml
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download strict source receipts from prior run
+        uses: actions/download-artifact@v4
+        with:
+          pattern: arq002-source-2024-*
+          path: strict_receipts
+          merge-multiple: true
+          github-token: ${{ github.token }}
+          run-id: 35899452900
+      - name: Download masked source receipts from CSP-002 gate
+        uses: actions/download-artifact@v4
+        with:
+          pattern: arq002-csp002-mask-2024-*
+          path: mask_receipts
+          merge-multiple: true
+          github-token: ${{ github.token }}
+          run-id: 35900923026
+      - name: Build source-byte manifest
+        run: python research/arq002_csp/ARQ002_CSP002_BUILD_SOURCE_MANIFEST_V0.1.py
+      - name: Enforce frozen manifest hash
+        run: |
+          python - <<'PY'
+          import json
+          r=json.load(open("ARQ002_CSP002_SOURCE_MANIFEST_V0.1.json"))
+          exp="67058b6e4575f1a3a442c05cf4a57a66e354ee058848aa9b10caaa0648cf36ea"
+          if r.get("manifest_sha256")!=exp:
+              raise SystemExit(f"FAIL_CLOSED manifest {r.get('manifest_sha256')} != {exp}")
+          print("SOURCE_MANIFEST_PASS",exp)
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: arq002-csp002-source-manifest
+          path: ARQ002_CSP002_SOURCE_MANIFEST_V0.1.json
+          retention-days: 30
+
+  month:
+    needs: prepare
+    strategy:
+      fail-fast: false
+      max-parallel: 6
+      matrix:
+        month: ["2024-01","2024-02","2024-03","2024-04","2024-05","2024-06","2024-07","2024-08","2024-09","2024-10","2024-11","2024-12"]
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v4
+        with:
+          name: arq002-csp002-source-manifest
+          path: source_manifest
+      - name: Materialize frozen monthly observations
+        run: |
+          python research/arq002_csp/ARQ002_CSP002_MONTH_DISCOVERY_V0.1.py \
+            --month ${{ matrix.month }} \
+            --manifest source_manifest/ARQ002_CSP002_SOURCE_MANIFEST_V0.1.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: arq002-csp002-discovery-${{ matrix.month }}
+          path: |
+            ARQ002_CSP002_OBS_${{ matrix.month }}.csv
+            ARQ002_CSP002_MONTH_${{ matrix.month }}_RECEIPT.json
+          retention-days: 30
+
+  adjudicate:
+    needs: month
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: arq002-csp002-discovery-2024-*
+          path: month_artifacts
+          merge-multiple: true
+      - name: Frozen annual adjudication
+        run: python research/arq002_csp/ARQ002_CSP002_DISCOVERY_AGGREGATE_V0.1.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: arq002-csp002-discovery-result-v01
+          path: ARQ002_CSP002_DISCOVERY_RESULT_V0.1.json
+          retention-days: 30
