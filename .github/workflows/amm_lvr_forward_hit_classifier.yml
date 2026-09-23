@@ -1,0 +1,28 @@
+name: AMM-LVR-CROSSVENUE-001 Forward Hit Classifier
+
+on:
+  pull_request:
+    paths:
+      - 'labs/amm-lvr-crossvenue-001/classify_forward_hits_v0_1.py'
+      - 'labs/amm-lvr-crossvenue-001/forward_hit_registry_v0_2.json'
+      - '.github/workflows/amm_lvr_forward_hit_classifier.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  classify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Classify frozen registry touches
+        run: python labs/amm-lvr-crossvenue-001/classify_forward_hits_v0_1.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AMM-LVR-CROSSVENUE-001-HIT-CLASSIFICATION
+          path: labs/amm-lvr-crossvenue-001/evidence/forward_hit_classification_v0_1_receipt.json
