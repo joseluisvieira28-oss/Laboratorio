@@ -167,6 +167,7 @@ for r in ledger:
         vals={k:bars[i][k] for k in ["open","high","low","close"]}
         dist={k:abs(r["entry"]/v-1)*10000 for k,v in vals.items()}
         nearest=min(dist,key=dist.get); same_ohlc[nearest]+=1
+        prev_enter=bool(prv and prv["enter"])
         decision=cur
         decision_bar="same_bar_final_values"
     else:
@@ -174,6 +175,8 @@ for r in ledger:
         prv=sig[i-1] if i>0 else None
         ordinary_pass += int(bool(prv and prv["enter"]))
         price_open_match += int(abs(r["entry"]/bars[i]["open"]-1)*10000 <= 1.0)
+        prev_enter=None
+        nearest=None
         decision=prv
         decision_bar="previous_closed_bar"
     if decision:
@@ -183,6 +186,9 @@ for r in ledger:
         else: branch_counts["NEITHER"]+=1
     records.append({
         "n":r["n"],"entry_dt":r["entry_dt"],"same_bar_reentry":same,
+        "previous_bar_enter_for_samebar":prev_enter,
+        "samebar_nearest_ohlc":nearest,
+        "pnl":r["pnl"],"ret":r["ret"],
         "decision_bar":decision_bar,"decision":decision,
     })
     prev_exit=r["exit_ms"]
