@@ -1,0 +1,89 @@
+name: DCV-001 Source Gate V0.1
+
+on:
+  push:
+    branches:
+      - dcv001-funding-oi-vol-interaction-v0.1
+    paths:
+      - research/dcv001/DCV001_PREOUTCOME_AUTHORITY_V0.1.md
+      - research/dcv001/DCV001_SOURCE_GATE_V0.1.py
+      - .github/workflows/dcv001-source-gate-v01.yml
+
+permissions:
+  contents: read
+
+jobs:
+  source-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout isolated branch
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Compile source gate
+        run: python -m py_compile research/dcv001/DCV001_SOURCE_GATE_V0.1.py
+
+      - name: Run outcome-blind source gate
+        id: gate
+        continue-on-error: true
+        run: python research/dcv001/DCV001_SOURCE_GATE_V0.1.py
+
+      - name: Print firewall-safe receipt
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path("dcv001_source_gate_receipt.json")
+          if not p.exists():
+              raise SystemExit("receipt missing")
+          r=json.loads(p.read_text())
+          safe={
+              "lab_id":r.get("lab_id"),
+              "classification":r.get("classification"),
+              "verified_object_count":r.get("verified_object_count",0),
+              "fixed_probe_count":r.get("fixed_probe_count",0),
+              "errors":r.get("errors",[]),
+              "outcome_values_opened":r.get("outcome_values_opened"),
+              "economic_values_reported":r.get("economic_values_reported"),
+              "protected_2025_accessed":r.get("protected_2025_accessed"),
+              "protected_2026_accessed":r.get("protected_2026_accessed"),
+              "receipt_sha256":r.get("receipt_sha256"),
+          }
+          print(json.dumps(safe,sort_keys=True))
+          PY
+
+      - name: Upload source receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dcv001-source-gate-v01-receipt
+          path: dcv001_source_gate_receipt.json
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Enforce fail-closed gate
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path("dcv001_source_gate_receipt.json")
+          if not p.exists():
+              raise SystemExit("FAIL_CLOSED: receipt missing")
+          r=json.loads(p.read_text())
+          if r.get("classification") != "SOURCE_DATA_PASS":
+              raise SystemExit("FAIL_CLOSED: source gate did not pass")
+          if r.get("outcome_values_opened") is not False:
+              raise SystemExit("FAIL_CLOSED: outcome firewall")
+          if r.get("economic_values_reported") is not False:
+              raise SystemExit("FAIL_CLOSED: economic-value firewall")
+          if r.get("protected_2025_accessed") is not False or r.get("protected_2026_accessed") is not False:
+              raise SystemExit("FAIL_CLOSED: protected-period firewall")
+          print("SOURCE_DATA_PASS")
+          PY
