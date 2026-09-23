@@ -121,7 +121,7 @@ Negative funding rates credit the long.
 
 Mark-price hierarchy:
 1. use the funding record's official `markPrice` where present;
-2. if an old historical record lacks markPrice, use the official Binance 1h market close corresponding to the funding timestamp as a pre-frozen fallback;
+2. if an old historical record lacks markPrice, use the official Binance 1h market **OPEN** whose open timestamp equals the funding timestamp as a pre-frozen fallback;
 3. if neither is available, fail closed for that asset.
 
 Funding is accumulated into account equity and trade net PnL.
@@ -153,7 +153,7 @@ For Parent and Sticky H1, per asset and cost layer:
 - slippage cost;
 - top-1 and top-3 winner dependence;
 - year-by-year PnL;
-- current/end-state open position handled separately.
+- if a position remains open at 2025-12-31 23:00 UTC, force-liquidate it at that final bar CLOSE using the applicable adverse slippage and exit commission; report that forced end liquidation separately.
 
 Family-level:
 - equal-weight mean return across the three assets;
