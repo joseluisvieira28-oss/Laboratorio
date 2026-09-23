@@ -1,0 +1,87 @@
+{
+  "lab_id": "USORB-001",
+  "title": "U.S. Cash Open 15m Opening-Range Breakout — Crypto Perpetuals",
+  "freeze_date": "2026-09-23",
+  "status": "PRE_DISCOVERY_FROZEN",
+  "governance": "CRYPTO-LAB-GOVERNANCE-V4.0-DEATH-FROZEN",
+  "primary_family": "TREND",
+  "secondary_family": "MICRO",
+  "mechanism_statement": "The 09:30 America/New_York U.S. equity core open injects concentrated cross-asset information and liquidity demand; the first confirmed break of the 09:30–09:45 ET crypto range may continue directionally over the next 60 minutes.",
+  "failure_mode": "The U.S. cash open is contemporaneous noise for crypto or the initial range is rapidly mean-reverted/whipsawed after costs.",
+  "source": {
+    "provider": "Binance Data Vision",
+    "market": "USD-M Futures",
+    "dataset": "monthly 5m klines",
+    "symbols": [
+      "BTCUSDT",
+      "ETHUSDT",
+      "SOLUSDT",
+      "BNBUSDT",
+      "XRPUSDT",
+      "DOGEUSDT"
+    ],
+    "discovery": "2022-01-01T00:00:00Z/2023-12-31T23:59:59Z",
+    "internal_oos_sealed": "2024-01-01T00:00:00Z/2024-12-31T23:59:59Z",
+    "final_holdout_sealed": "2025-01-01T00:00:00Z/2025-12-31T23:59:59Z",
+    "locked": "2026-01-01T00:00:00Z onward"
+  },
+  "market_clock": {
+    "timezone": "America/New_York",
+    "eligible_days": "NYSE/Nasdaq regular U.S. cash trading weekdays excluding full-day closures",
+    "opening_range_start": "09:30",
+    "opening_range_end_exclusive": "09:45",
+    "signal_start": "09:45",
+    "signal_end_exclusive": "11:30",
+    "dst_handling": "IANA zoneinfo America/New_York"
+  },
+  "rule": {
+    "bars": "5m",
+    "opening_range": "high=max(highs of 09:30,09:35,09:40 bars); low=min(lows of same bars)",
+    "signal": "first completed 5m bar from 09:45 through 11:25 ET whose close is strictly above OR high or strictly below OR low",
+    "side": "LONG above OR high; SHORT below OR low",
+    "one_signal_per_symbol_day": true,
+    "entry": "next 5m bar open",
+    "holding_bars": 12,
+    "exit": "close of the 12th 5m bar starting with the entry bar",
+    "stop": null,
+    "take_profit": null,
+    "pyramiding": false,
+    "base_roundtrip_cost_bps": 10,
+    "stress_roundtrip_cost_bps": 14
+  },
+  "discovery_gate": {
+    "minimum_trades": 1500,
+    "net10_mean_bps_gt": 0,
+    "net14_mean_bps_gt": 0,
+    "profit_factor_net10_gt": 1,
+    "cluster_bootstrap": "resample U.S. trading dates with all cross-sectional trades preserved; 5000 reps; seed 20260923",
+    "bootstrap95_lower_net10_gt": 0,
+    "minimum_positive_symbols_net10": 4,
+    "minimum_positive_calendar_years_net10": 2,
+    "max_single_symbol_positive_pnl_share": 0.6,
+    "on_pass": "DISCOVERY_SURVIVES_ONLY; 2024 stays sealed pending separate prospective OOS authorization",
+    "on_fail": "CLOSE_EXACT_NO_EDGE or INSUFFICIENT_SAMPLE; no reversal/filter/horizon rescue"
+  },
+  "contamination_map": [
+    "Public TradingView ORB descriptions were visible before freeze.",
+    "Existing Donchian, VWAP, ATR/SuperTrend and trendline Crypto Lab results were visible before freeze.",
+    "No USORB-001 2022-2023 economic outcomes were inspected before this freeze."
+  ],
+  "forbidden": [
+    "EMA filter",
+    "VWAP filter",
+    "volume filter",
+    "ATR filter or stop",
+    "reversal rescue",
+    "opening-window changes",
+    "signal-window changes",
+    "holding-horizon changes",
+    "weekday selection",
+    "winner-asset selection",
+    "cost reduction rescue",
+    "opening 2024/2025/2026",
+    "live trading",
+    "exchange mutation",
+    "merge to main"
+  ]
+}
