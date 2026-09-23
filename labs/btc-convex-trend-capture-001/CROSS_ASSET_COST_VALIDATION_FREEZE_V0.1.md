@@ -126,6 +126,11 @@ Mark-price hierarchy:
 
 Funding is accumulated into account equity and trade net PnL.
 
+Funding event ordering is frozen as follows:
+- a position carried open from before a funding timestamp pays/receives that funding event;
+- a position first opened exactly at that funding timestamp does **not** pay/receive that event;
+- if a carried position later stops out during the same funding bar, funding is applied first, then the intrabar exit.
+
 No funding source may be switched after outcomes because another provider gives a better result.
 
 ## 9. Starting capital and sizing
