@@ -66,7 +66,38 @@ function Find-PartsRoot {
     if (Test-PartsRoot $c) { return (Resolve-Path -LiteralPath $c).Path }
   }
 
-  throw "Could not locate $MasterName. Mount Google Drive for Desktop or rerun with -PartsRoot 'X:\path\L2R_2025_DRIVE_PARTS_220MiB'."
+  # Recursive fallback: Google Drive for Desktop often nests My Drive content
+  # several folders below the mounted drive root. Search only the user profile
+  # and non-system filesystem drives for the frozen master manifest.
+  $searchRoots = New-Object System.Collections.Generic.List[string]
+  if (Test-Path -LiteralPath $env:USERPROFILE -PathType Container) {
+    $searchRoots.Add($env:USERPROFILE)
+  }
+  foreach ($d in (Get-PSDrive -PSProvider FileSystem -ErrorAction SilentlyContinue)) {
+    $root=[string]$d.Root
+    if ([string]::IsNullOrWhiteSpace($root)) { continue }
+    if ($root.TrimEnd('\') -ieq $env:SystemDrive) { continue }
+    if (Test-Path -LiteralPath $root -PathType Container) { $searchRoots.Add($root) }
+  }
+
+  foreach ($root in ($searchRoots | Select-Object -Unique)) {
+    Write-Host "Searching recursively for $MasterName under $root ..."
+    try {
+      $hit = Get-ChildItem -LiteralPath $root -Filter $MasterName -File -Recurse -ErrorAction SilentlyContinue |
+        Select-Object -First 1
+      if ($null -ne $hit) {
+        $parent=$hit.Directory.FullName
+        if (Test-PartsRoot $parent) {
+          Write-Host "FOUND PartsRoot: $parent"
+          return (Resolve-Path -LiteralPath $parent).Path
+        }
+      }
+    } catch {
+      Write-Host "  recursive search skipped/failed under $root : $($_.Exception.Message)"
+    }
+  }
+
+  throw "Could not locate $MasterName. Google Drive may not be mounted/synced locally. Rerun with -PartsRoot 'X:\path\L2R_2025_DRIVE_PARTS_220MiB' once you know the local Drive path."
 }
 
 function Reassemble-Archive($Archive, [string]$Root, [string]$OutZip) {
