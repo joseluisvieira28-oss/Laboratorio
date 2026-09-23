@@ -1,17 +1,10 @@
-name: BTC-CONVEX-001 cross-asset source gate
+name: BTC-CONVEX-001 cross-asset source gate (parked)
 
 on:
-  pull_request:
-    paths:
-      - 'labs/btc-convex-trend-capture-001/CROSS_ASSET_SOURCE_GATE_TRIGGER_V006.txt'
   workflow_dispatch:
 
 permissions:
   contents: read
-
-concurrency:
-  group: btc-convex-cross-asset-source-gate-v006-final
-  cancel-in-progress: false
 
 jobs:
   source-gate:
@@ -24,10 +17,3 @@ jobs:
           python-version: '3.12'
       - name: Verify official Binance price/funding/mark coverage only
         run: python labs/btc-convex-trend-capture-001/cross_asset_source_gate_v0_1.py
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: BTC-CONVEX-001-CROSS-ASSET-SOURCE-GATE-V006
-          path: labs/btc-convex-trend-capture-001/evidence/CROSS_ASSET_SOURCE_GATE_V0.1E.json
-
-# final-gate-trigger-v01e
