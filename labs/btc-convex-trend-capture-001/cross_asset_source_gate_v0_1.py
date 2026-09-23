@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-BTC-CONVEX-TREND-CAPTURE-001 — CROSS-ASSET SOURCE GATE V0.1D
+BTC-CONVEX-TREND-CAPTURE-001 — CROSS-ASSET SOURCE GATE V0.1E
 
 Coverage/provenance only. NO economic outcomes.
 Authority:
@@ -186,7 +186,7 @@ def funding_history(symbol,mark_map):
 
 out={
     "lab":"BTC-CONVEX-TREND-CAPTURE-001",
-    "gate":"CROSS_ASSET_SOURCE_GATE_V0.1D",
+    "gate":"CROSS_ASSET_SOURCE_GATE_V0.1E",
     "authority":[
         "CROSS_ASSET_COST_VALIDATION_FREEZE_V0.1",
         "CROSS_ASSET_SOURCE_AMENDMENT_004",
@@ -254,7 +254,7 @@ for s in SYMBOLS:
     }
 
 out["overall"]="PASS" if all_pass else "FAIL_CLOSED"
-path=EVID/"CROSS_ASSET_SOURCE_GATE_V0.1D.json"
+path=EVID/"CROSS_ASSET_SOURCE_GATE_V0.1E.json"
 path.write_text(json.dumps(out,indent=2),encoding="utf-8")
 print(json.dumps({
     "gate":out["gate"],
@@ -275,4 +275,4 @@ print(json.dumps({
 },indent=2))
 print("WROTE",path)
 if not all_pass:
-    raise SystemExit("FAIL_CLOSED: cross-asset source gate V0.1D failed")
+    raise SystemExit("FAIL_CLOSED: cross-asset source gate V0.1E failed")
