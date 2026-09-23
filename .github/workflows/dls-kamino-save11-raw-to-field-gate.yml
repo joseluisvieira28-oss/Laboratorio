@@ -1,0 +1,39 @@
+name: DLS RAW to Field Gate
+
+on:
+  push:
+    branches:
+      - dls-kamino-save11-event-census-v0.1
+    paths:
+      - 'labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_SAVE11_RAW_SAMPLE_RECONCILIATION_RECEIPT_V0.5.json'
+
+permissions:
+  contents: write
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dls-kamino-save11-event-census-v0.1
+          fetch-depth: 0
+      - name: Validate RAW terminal state
+        run: |
+          python - <<'PY'
+          import json,pathlib,sys
+          p=pathlib.Path("labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_SAVE11_RAW_SAMPLE_RECONCILIATION_RECEIPT_V0.5.json")
+          r=json.loads(p.read_text())
+          print("classification=",r.get("classification"))
+          if r.get("classification")!="RAW_SAMPLE_RECONCILIATION_PASS":
+              sys.exit(2)
+          PY
+      - name: Arm frozen field-enrichment gate
+        run: |
+          printf '%s\n'             'AUTHORIZED_FROM_RAW_RECEIPT=KAMINO_SAVE11_RAW_SAMPLE_RECONCILIATION_RECEIPT_V0.5.json'             'EXPECTED_CLASSIFICATION=RAW_SAMPLE_RECONCILIATION_PASS'             'FIELD_FREEZE=KAMINO_SAVE11_FIELD_ENRICHMENT_FREEZE_V0.6.md'             > labs/DEFI_LIQUIDATION_SHOCK_001/FIELD_ENRICHMENT_V0.6_TRIGGER.txt
+          git config user.name "crypto-lab-source-audit"
+          git config user.email "actions@users.noreply.github.com"
+          git add labs/DEFI_LIQUIDATION_SHOCK_001/FIELD_ENRICHMENT_V0.6_TRIGGER.txt
+          git commit -m "dls: authorize frozen field enrichment v0.6 after RAW pass" || true
+          git pull --rebase origin dls-kamino-save11-event-census-v0.1
+          git push origin HEAD:dls-kamino-save11-event-census-v0.1
