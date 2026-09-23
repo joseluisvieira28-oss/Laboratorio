@@ -1,0 +1,18 @@
+name: ARQ-002-CSP Metrics Gap Diagnostic V0.1
+on:
+  push:
+    branches: [arq002-cvd-sweep-positioning-v0.1]
+    paths:
+      - research/arq002_csp/ARQ002_CSP_METRICS_GAP_DIAG_V0.1.py
+      - .github/workflows/arq002-csp-metrics-gap-diag-v01.yml
+permissions:
+  contents: read
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python research/arq002_csp/ARQ002_CSP_METRICS_GAP_DIAG_V0.1.py
