@@ -1,0 +1,68 @@
+name: DLS Kamino Save11 SolArchive HF Mirror V0.2
+
+on:
+  push:
+    branches:
+      - dls-kamino-save11-event-census-v0.1
+    paths:
+      - '.github/workflows/dls-kamino-save11-solarchive-hf-v02.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dls-kamino-save11-event-census-v0.1
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install metadata client
+        run: pip install --disable-pip-version-check --quiet huggingface_hub
+
+      - name: Compile
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/probe_solarchive_hf_mirror_v0_2.py
+
+      - name: Probe mirror metadata and schema only
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/probe_solarchive_hf_mirror_v0_2.py | tee STDOUT_HF_V02.txt
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-kamino-save11-solarchive-hf-v02
+          path: |
+            labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_SAVE11_SOLARCHIVE_HF_MIRROR_RECEIPT_V0.2.json
+            STDOUT_HF_V02.txt
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Persist receipt
+        if: always()
+        run: |
+          if [ -f labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_SAVE11_SOLARCHIVE_HF_MIRROR_RECEIPT_V0.2.json ]; then
+            git config user.name "crypto-lab-source-audit"
+            git config user.email "actions@users.noreply.github.com"
+            git add labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_SAVE11_SOLARCHIVE_HF_MIRROR_RECEIPT_V0.2.json
+            git commit -m "dls: persist SolArchive HF mirror receipt v0.2" || true
+            git push origin HEAD:dls-kamino-save11-event-census-v0.1
+          fi
+
+      - name: Firewall
+        if: always()
+        run: |
+          echo METADATA_ONLY_TRUE
+          echo TRANSACTION_ROWS_READ_FALSE
+          echo PRICES_FALSE
+          echo RETURNS_FALSE
+          echo PNL_FALSE
+          echo DIRECTION_FALSE
+          echo LIVE_TRADING_FALSE
