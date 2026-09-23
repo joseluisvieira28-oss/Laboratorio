@@ -159,7 +159,7 @@ def main():
     if y!=2022:raise SystemExit("2022 only")
     ds=days(y,m);first,last=ds[0],ds[-1]
     kdays=[first-timedelta(days=1)]+ds+([] if last==date(2022,12,31) else [last+timedelta(days=1)])
-    mdays=[first-timedelta(days=1)]+ds
+    mdays=[first-timedelta(days=1)]+ds+([] if last==date(2022,12,31) else [last+timedelta(days=1)])
     kl={};metrics={};current_invalid=[];current_missing=[]
     for d in kdays:kl.update(load_kline(d))
     for d in mdays:
