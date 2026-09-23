@@ -91,7 +91,10 @@ class ObjectMeta:
     sha256: str
     published_sha256: str
     byte_count: int
+    raw_row_count: int
     row_count: int
+    exact_duplicate_rows_removed: int
+    conflicting_duplicate_group_count: int
     first_timestamp_ms: int
     last_timestamp_ms: int
     timestamps_ms: list[int]
@@ -223,6 +226,32 @@ def assert_pre2025(ts: list[int], key: str) -> None:
         raise RunError(f"PROTECTED_TIMESTAMP:{key}")
 
 
+def dedupe_exact_metrics_rows(body: list[list[str]], ti: int, key: str) -> tuple[list[list[str]], int, int]:
+    """Collapse only exact full-row duplicates sharing create_time.
+
+    Amendment B: conflicting duplicate timestamp groups fail closed.
+    No numeric economic field is interpreted by this structural normalization.
+    """
+    groups: dict[int, list[list[str]]] = {}
+    for r in body:
+        if len(r) <= ti:
+            raise RunError(f"METRICS_WIDTH:{key}")
+        groups.setdefault(to_ms(r[ti]), []).append(r)
+
+    deduped: list[list[str]] = []
+    removed = 0
+    conflicting = 0
+    for ts in sorted(groups):
+        rows_at_ts = groups[ts]
+        unique_rows = {tuple(r) for r in rows_at_ts}
+        if len(unique_rows) != 1:
+            conflicting += 1
+            raise RunError(f"SOURCE_PROVENANCE_CONFLICT:{key}:{iso_ms(ts)}:{len(unique_rows)}")
+        deduped.append(rows_at_ts[0])
+        removed += len(rows_at_ts) - 1
+    return deduped, removed, conflicting
+
+
 def parse_meta(spec: ObjectSpec, sha: str, pub: str, size: int) -> ObjectMeta:
     rows = decode_rows(spec.cache_path)
     if not rows:
@@ -235,9 +264,12 @@ def parse_meta(spec: ObjectSpec, sha: str, pub: str, size: int) -> ObjectMeta:
             raise RunError(f"METRICS_SCHEMA_MISSING:{spec.key}:{sorted(missing)}")
         ti = header.index("create_time")
         si = header.index("symbol")
-        body = rows[1:]
-        if not body:
+        raw_body = rows[1:]
+        if not raw_body:
             raise RunError(f"METRICS_NO_BODY:{spec.key}")
+        body, exact_duplicate_rows_removed, conflicting_duplicate_group_count = dedupe_exact_metrics_rows(
+            raw_body, ti, spec.key
+        )
         ts = []
         for r in body:
             if len(r) <= max(ti, si):
@@ -253,6 +285,9 @@ def parse_meta(spec: ObjectSpec, sha: str, pub: str, size: int) -> ObjectMeta:
             raise RunError(f"METRICS_DATE_SCOPE:{spec.key}:{iso_ms(min(ts))}:{iso_ms(max(ts))}")
 
     elif spec.dataset == "funding":
+        exact_duplicate_rows_removed = 0
+        conflicting_duplicate_group_count = 0
+        raw_body = rows[1:]
         header = [x.strip() for x in rows[0]]
         ti = find_alias(header, FUNDING_TIME_ALIASES, "FUNDING_TIME", spec.key)
         find_alias(header, FUNDING_RATE_ALIASES, "FUNDING_RATE", spec.key)
@@ -264,6 +299,9 @@ def parse_meta(spec: ObjectSpec, sha: str, pub: str, size: int) -> ObjectMeta:
             raise RunError(f"FUNDING_WIDTH:{spec.key}")
 
     elif spec.dataset == "mark":
+        exact_duplicate_rows_removed = 0
+        conflicting_duplicate_group_count = 0
+        raw_body = rows
         body = rows
         try:
             to_ms(rows[0][0])
@@ -282,6 +320,9 @@ def parse_meta(spec: ObjectSpec, sha: str, pub: str, size: int) -> ObjectMeta:
     if len(ts) != len(set(ts)):
         raise RunError(f"DUPLICATE_TIMESTAMP_INSIDE_OBJECT:{spec.key}")
 
+    if spec.dataset != "metrics":
+        raw_body = body
+
     return ObjectMeta(
         dataset=spec.dataset,
         key=spec.key,
@@ -290,7 +331,10 @@ def parse_meta(spec: ObjectSpec, sha: str, pub: str, size: int) -> ObjectMeta:
         sha256=sha,
         published_sha256=pub,
         byte_count=size,
+        raw_row_count=len(raw_body),
         row_count=len(body),
+        exact_duplicate_rows_removed=exact_duplicate_rows_removed,
+        conflicting_duplicate_group_count=conflicting_duplicate_group_count,
         first_timestamp_ms=min(ts),
         last_timestamp_ms=max(ts),
         timestamps_ms=ts,
@@ -389,7 +433,10 @@ def acquire_and_census(year_start: int, year_end: int, label: str) -> tuple[dict
             "published_sha256": meta.published_sha256,
             "checksum_verified": meta.sha256 == meta.published_sha256,
             "byte_count": meta.byte_count,
-            "row_count": meta.row_count,
+            "raw_row_count": meta.raw_row_count,
+            "row_count_after_exact_dedupe": meta.row_count,
+            "exact_duplicate_rows_removed": meta.exact_duplicate_rows_removed,
+            "conflicting_duplicate_group_count": meta.conflicting_duplicate_group_count,
             "first_timestamp_utc": iso_ms(meta.first_timestamp_ms),
             "last_timestamp_utc": iso_ms(meta.last_timestamp_ms),
         })
@@ -402,6 +449,8 @@ def acquire_and_census(year_start: int, year_end: int, label: str) -> tuple[dict
         "metrics_present_days": len(metric_metas),
         "metrics_missing_days": sorted(missing_metrics),
         "metrics_coverage_fraction": metrics_coverage,
+        "metrics_exact_duplicate_rows_removed": sum(m.exact_duplicate_rows_removed for m in metric_metas),
+        "metrics_conflicting_duplicate_group_count": sum(m.conflicting_duplicate_group_count for m in metric_metas),
         "funding_months": len(funding_metas),
         "funding_max_gap_hours": max_funding_gap_h,
         "mark_months": len(mark_metas),
@@ -427,8 +476,9 @@ def read_metrics_values(metas: dict[str, ObjectMeta]) -> dict[date, float]:
         rows = decode_rows(Path(meta.cache_path))
         header = [x.strip() for x in rows[0]]
         ti, oi = header.index("create_time"), header.index("sum_open_interest")
+        body, _, _ = dedupe_exact_metrics_rows(rows[1:], ti, meta.key)
         candidates: list[tuple[int, float]] = []
-        for r in rows[1:]:
+        for r in body:
             ts = to_ms(r[ti])
             val = float(r[oi])
             if not math.isfinite(val) or val <= 0:
@@ -717,7 +767,7 @@ def main() -> int:
 
     receipt: dict = {
         "lab_id": "DCV-001",
-        "authority": "DCV001_PREOUTCOME_AUTHORITY_V0.1.md + AMENDMENT_A_V0.1",
+        "authority": "DCV001_PREOUTCOME_AUTHORITY_V0.1.md + AMENDMENT_A_V0.1 + AMENDMENT_B_V0.1",
         "classification": "RUNNING",
         "live_trading": False,
         "orders_created": False,
