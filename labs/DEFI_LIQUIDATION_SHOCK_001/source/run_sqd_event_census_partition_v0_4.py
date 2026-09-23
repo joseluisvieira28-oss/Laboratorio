@@ -64,7 +64,7 @@ def ts_to_slot(day_iso):
     obj=json.loads(raw)
     if isinstance(obj,int): return obj
     if isinstance(obj,dict):
-        for k in ("block","number","slot"):
+        for k in ("block","block_number","number","slot"):
             if isinstance(obj.get(k),int): return obj[k]
     raise RuntimeError(f"timestamp_resolver_schema:{obj!r}")
 
