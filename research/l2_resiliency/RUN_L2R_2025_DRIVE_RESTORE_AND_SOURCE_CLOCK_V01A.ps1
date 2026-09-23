@@ -163,26 +163,37 @@ Write-Host "NO SWEEPS / NO RETURNS / NO PNL / NO 2026 / NO ORDERS"
 [IO.Directory]::CreateDirectory($EvidenceRoot) | Out-Null
 [IO.Directory]::CreateDirectory($TmpRoot) | Out-Null
 
-$PartsRoot = Find-PartsRoot
-Write-Host "PartsRoot: $PartsRoot"
-$masterPath = Join-Path $PartsRoot $MasterName
-$master = Get-Content -LiteralPath $masterPath -Raw -Encoding UTF8 | ConvertFrom-Json
+$rawFiles=@(Get-ChildItem -LiteralPath $RawRoot -Filter "BTC.lz4" -File -Recurse -ErrorAction SilentlyContinue)
+$rawBytes=[int64]0
+if ($rawFiles.Count -gt 0) { $rawBytes=[int64](($rawFiles | Measure-Object -Property Length -Sum).Sum) }
+$needRestore = -not ($rawFiles.Count -eq $ExpectedObjects -and $rawBytes -eq $ExpectedBytes)
 
-foreach ($a in @($master.archives)) {
-  $name=[string]$a.source_file
-  if (-not $ExpectedArchives.ContainsKey($name)) { throw "Master contains unexpected archive: $name" }
-  $e=$ExpectedArchives[$name]
-  if ([int64]$a.source_size_bytes -ne [int64]$e.Size) { throw "Master archive size mismatch: $name" }
-  if (([string]$a.source_sha256).ToLowerInvariant() -ne [string]$e.Sha) { throw "Master archive hash mismatch: $name" }
+if ($needRestore) {
+  Write-Host "RAW corpus absent/incomplete: count=$($rawFiles.Count) bytes=$rawBytes"
+  $PartsRoot = Find-PartsRoot
+  Write-Host "PartsRoot: $PartsRoot"
+  $masterPath = Join-Path $PartsRoot $MasterName
+  $master = Get-Content -LiteralPath $masterPath -Raw -Encoding UTF8 | ConvertFrom-Json
 
-  $zipPath=Join-Path $TmpRoot $name
-  Reassemble-Archive $a $PartsRoot $zipPath
-  Extract-ZipResumable $zipPath $RawRoot
-  Remove-Item -LiteralPath $zipPath -Force
+  foreach ($a in @($master.archives)) {
+    $name=[string]$a.source_file
+    if (-not $ExpectedArchives.ContainsKey($name)) { throw "Master contains unexpected archive: $name" }
+    $e=$ExpectedArchives[$name]
+    if ([int64]$a.source_size_bytes -ne [int64]$e.Size) { throw "Master archive size mismatch: $name" }
+    if (([string]$a.source_sha256).ToLowerInvariant() -ne [string]$e.Sha) { throw "Master archive hash mismatch: $name" }
+
+    $zipPath=Join-Path $TmpRoot $name
+    Reassemble-Archive $a $PartsRoot $zipPath
+    Extract-ZipResumable $zipPath $RawRoot
+    Remove-Item -LiteralPath $zipPath -Force
+  }
+
+  $rawFiles=@(Get-ChildItem -LiteralPath $RawRoot -Filter "BTC.lz4" -File -Recurse)
+  $rawBytes=[int64](($rawFiles | Measure-Object -Property Length -Sum).Sum)
+} else {
+  Write-Host "REUSE existing full RAW corpus; Drive restore not required."
 }
 
-$rawFiles=@(Get-ChildItem -LiteralPath $RawRoot -Filter "BTC.lz4" -File -Recurse)
-$rawBytes=[int64](($rawFiles | Measure-Object -Property Length -Sum).Sum)
 Write-Host "RAW SHAPE count=$($rawFiles.Count) bytes=$rawBytes"
 if ($rawFiles.Count -ne $ExpectedObjects -or $rawBytes -ne $ExpectedBytes) {
   throw "FAIL CLOSED RAW corpus shape mismatch"
@@ -241,7 +252,17 @@ $evSha=Sha256 $evidence
 Write-Host "EVIDENCE PASS path=$evidence"
 Write-Host "EVIDENCE_SHA256=$evSha"
 
-$resultDir=Join-Path $PartsRoot "_L2_DIAGNOSTIC_RESULTS"
+$resultDir=$null
+if (Test-PartsRoot $PartsRoot) {
+  $resultDir=Join-Path $PartsRoot "_L2_DIAGNOSTIC_RESULTS"
+} else {
+  try {
+    $detected=Find-PartsRoot
+    $resultDir=Join-Path $detected "_L2_DIAGNOSTIC_RESULTS"
+  } catch {
+    $resultDir=Join-Path $Base "_L2_DIAGNOSTIC_RESULTS_LOCAL"
+  }
+}
 [IO.Directory]::CreateDirectory($resultDir) | Out-Null
 $dest=Join-Path $resultDir ([IO.Path]::GetFileName($evidence))
 Copy-Item -LiteralPath $evidence -Destination $dest -Force
@@ -254,12 +275,12 @@ $status=[ordered]@{
   raw_bytes=$ExpectedBytes
   manifest_sha256=$ExpectedManifestSha
   diagnostic_package_sha256=$ExpectedPackageSha
-  copied_to_drive=$dest
+  copied_result=$dest
   sweeps_computed=$false
   returns_computed=$false
   pnl_computed=$false
   access_2026=$false
 }
 $status | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $resultDir "L2R_2025_SOURCE_CLOCK_V01A_LOCAL_EXECUTION_RECEIPT.json") -Encoding UTF8
-Write-Host "COPIED EVIDENCE TO DRIVE: $dest"
+Write-Host "COPIED EVIDENCE RESULT: $dest"
 Write-Host "=== COMPLETE ==="
