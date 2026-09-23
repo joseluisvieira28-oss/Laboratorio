@@ -56,6 +56,14 @@ for d in DAYS:
         "max_duplicate_multiplicity":max(c.values()),
         "final_create_time_multiplicity":len(same_final),
         "all_symbols_btcusdt":all(r[si].strip()=="BTCUSDT" for r in body),
+        "duplicate_groups_exact_row_identical":all(
+            len({tuple(r) for r in body if to_ms(r[ti])==t})==1
+            for t,v in c.items() if v>1
+        ),
+        "conflicting_duplicate_group_count":sum(
+            1 for t,v in c.items()
+            if v>1 and len({tuple(r) for r in body if to_ms(r[ti])==t})>1
+        ),
         "economic_values_reported":False,
     })
 print(json.dumps(out,sort_keys=True))
