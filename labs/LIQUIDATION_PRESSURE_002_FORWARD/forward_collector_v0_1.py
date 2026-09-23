@@ -15,6 +15,7 @@ TOPICS=(
     [f"allLiquidation.{s}" for s in SYMBOLS]
     + [f"orderbook.50.{s}" for s in SYMBOLS]
     + [f"publicTrade.{s}" for s in SYMBOLS]
+    + [f"tickers.{s}" for s in SYMBOLS]
 )
 ROOT=pathlib.Path(__file__).resolve().parent
 OUT=ROOT/"evidence"
