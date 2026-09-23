@@ -44,6 +44,22 @@ if missing:
     ranges.append((a,p))
 
 fmt=lambda t: datetime.fromtimestamp(t/1000,tz=timezone.utc).isoformat()
+daily_fallback=[]
+for a,b in ranges:
+    cur=datetime.fromtimestamp(a/1000,tz=timezone.utc).date()
+    endd=datetime.fromtimestamp(b/1000,tz=timezone.utc).date()
+    while cur<=endd:
+        ds=cur.isoformat()
+        url=f"https://data.binance.vision/data/futures/um/daily/klines/SOLUSDT/1h/SOLUSDT-1h-{ds}.zip"
+        req=urllib.request.Request(url,method="HEAD",headers={"User-Agent":"CryptoLab-CoverageProbe/1.0"})
+        try:
+            with urllib.request.urlopen(req,timeout=20) as rr:
+                daily_fallback.append({"date":ds,"url":url,"available":True,"status":getattr(rr,"status",200)})
+        except Exception as e:
+            daily_fallback.append({"date":ds,"url":url,"available":False,"error":repr(e)})
+        from datetime import timedelta
+        cur+=timedelta(days=1)
+
 out={
   "probe":"SOLUSDT_1H_COVERAGE_GAP_PROBE_V0.1",
   "economic_outcomes_opened":False,
@@ -52,6 +68,7 @@ out={
   "present_hours":len(ts),
   "missing_hours":len(missing),
   "missing_ranges":[{"start":fmt(a),"end":fmt(b),"hours":((b-a)//3600000)+1} for a,b in ranges],
+  "daily_fallback_probe":daily_fallback,
 }
 path=EVID/"SOLUSDT_1H_COVERAGE_GAP_PROBE_V0.1.json"
 path.write_text(json.dumps(out,indent=2),encoding="utf-8")
