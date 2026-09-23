@@ -1,6 +1,10 @@
 name: ARQ-002-CSP-003 AggTrades Source 2022 V0.1
 on:
   workflow_dispatch:
+  push:
+    branches: [arq002-csp003-clean-2022-2023-v0.1]
+    paths:
+      - research/arq002_csp003/AGG_SOURCE_TRIGGER_2022.txt
 
 permissions:
   contents: read
@@ -15,8 +19,6 @@ jobs:
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: arq002-csp003-clean-2022-2023-v0.1
       - uses: actions/setup-python@v5
         with: {python-version: "3.12"}
       - name: Execute source-only aggTrades month
@@ -34,8 +36,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: arq002-csp003-clean-2022-2023-v0.1
       - uses: actions/download-artifact@v4
         with:
           pattern: arq002-csp003-agg-*
