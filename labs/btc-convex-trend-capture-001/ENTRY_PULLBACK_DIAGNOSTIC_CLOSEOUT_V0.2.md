@@ -51,9 +51,9 @@ It still does not prove that any of these indicators appear literally in the Pin
 
 ## 4h same-bar reentry fingerprint
 
-18 source-verifiable 4h reentries occurred in the exact same chart bar as the preceding exit.
+There are 19 same-bar 4h reentries in the supplied ledger. Eighteen are source-verifiable against the official Binance archive; the remaining 2019 case falls in unavailable monthly archive coverage.
 
-All **18 / 18** reentry prices match the Binance bar **LOW** within 1 basis point.
+All **18 / 18** source-verifiable reentry prices match the Binance bar **LOW** within 1 basis point.
 
 Nearest OHLC classification:
 - LOW: 18
@@ -69,16 +69,22 @@ Therefore the correct classification is:
 
 **CALC_ON_ORDER_FILLS_OR_EQUIVALENT_INTRABAR_RECALCULATION — STRONGLY SUSPECTED, NOT PROVEN WITHOUT SOURCE/SETTINGS.**
 
-## Economic contribution of suspicious same-bar reentries
+## Descriptive economic contribution of same-bar reentries
 
-There are 19 same-bar 4h reentries in the trade list; 18 are closed and one may be outside source-verifiable coverage depending on archive availability.
-
-For the 18 closed same-bar reentry trades:
+All 19 same-bar reentries are closed in the supplied 4h ledger:
 - winners: 8
-- losers: 10? [see note below]
-- net contribution is small relative to total 4h closed PnL.
+- losses: 11
+- winning PnL: +5,028.04 USDT
+- losing PnL: -4,891.24 USDT
+- **net: +136.80 USDT**
 
-A separate exact ledger audit should be treated as authoritative for the contribution calculation; this section intentionally does not use the source-reconstruction probe itself to adjudicate PnL.
+The 18 source-verifiable same-bar trades excluding the unavailable 2019 case sum to **+519.16 USDT**.
+
+The full 4h closed-trade PnL is +1,417.20 USDT. A simple ledger exclusion of all 19 same-bar reentry trade PnLs leaves +1,280.40 USDT.
+
+This exclusion is a descriptive accounting diagnostic, **not** a counterfactual backtest: removing trades would alter subsequent equity-based position sizing and potentially strategy state.
+
+Therefore the suspicious same-bar behavior is an important execution-authenticity risk, but it does not by itself account for the full positive 4h ledger.
 
 ## Scientific interpretation
 
