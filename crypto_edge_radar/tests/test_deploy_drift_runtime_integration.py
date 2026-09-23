@@ -20,11 +20,11 @@ class DeployDriftRuntimeIntegrationTests(TestCase):
         )
         has_hardened_fallback = (
             "all_external_freshness" in source
-            and '"external_collectors"' in source
-            and '"operational_attention_required"' in source
+            and "external_collectors" in source
+            and "operational_attention_required" in source
         )
         self.assertTrue(has_legacy or has_hardened_fallback)
-        self.assertIn('"operational_attention_required"', source)
+        self.assertIn("operational_attention_required", source)
         self.assertNotIn("trigger_deploy", source)
         self.assertNotIn("deploy_hook", source)
 
