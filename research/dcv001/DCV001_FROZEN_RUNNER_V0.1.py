@@ -45,7 +45,17 @@ BOOT_REPS = 5000
 BLOCK = 7
 PROTECTED_START = datetime(2025, 1, 1, tzinfo=timezone.utc)
 PROTECTED_START_MS = int(PROTECTED_START.timestamp() * 1000)
-USER_AGENT = "Crypto-Lab-DCV001-FrozenRunner/0.1"
+USER_AGENT = "Crypto-Lab-DCV001-FrozenRunner/0.2"
+MARK_DAILY_PATCH_DATES = (
+    "2021-07-01",
+    "2021-07-24",
+    "2021-07-25",
+    "2021-07-26",
+    "2021-07-27",
+    "2022-07-31",
+    "2022-10-02",
+    "2023-02-24",
+)
 METRICS_REQUIRED = {
     "create_time",
     "symbol",
@@ -298,7 +308,7 @@ def parse_meta(spec: ObjectSpec, sha: str, pub: str, size: int) -> ObjectMeta:
         if len(ts) != len(body):
             raise RunError(f"FUNDING_WIDTH:{spec.key}")
 
-    elif spec.dataset == "mark":
+    elif spec.dataset in ("mark", "mark_patch"):
         exact_duplicate_rows_removed = 0
         conflicting_duplicate_group_count = 0
         raw_body = rows
@@ -310,6 +320,12 @@ def parse_meta(spec: ObjectSpec, sha: str, pub: str, size: int) -> ObjectMeta:
         if not body or any(len(r) < 6 for r in body):
             raise RunError(f"MARK_SCHEMA:{spec.key}")
         ts = [to_ms(r[0]) for r in body]
+        if spec.dataset == "mark_patch":
+            requested = date.fromisoformat(spec.key)
+            lo = int(datetime.combine(requested, datetime.min.time(), tzinfo=timezone.utc).timestamp() * 1000)
+            hi = lo + 86_400_000
+            if len(ts) != 24 or sorted(ts) != [lo + i * 3_600_000 for i in range(24)]:
+                raise RunError(f"MARK_PATCH_DAY_GRID_INVALID:{spec.key}")
 
     else:
         raise RunError(f"UNKNOWN_DATASET:{spec.dataset}")
@@ -354,6 +370,12 @@ def build_specs(year_start: int, year_end: int) -> list[ObjectSpec]:
         p_url = f"{BASE}/monthly/markPriceKlines/{SYMBOL}/1h/{SYMBOL}-1h-{ym}.zip"
         specs.append(ObjectSpec("funding", ym, f_url, CACHE / f"funding/{SYMBOL}-fundingRate-{ym}.zip", True))
         specs.append(ObjectSpec("mark", ym, p_url, CACHE / f"mark/{SYMBOL}-1h-{ym}.zip", True))
+
+    for ds in MARK_DAILY_PATCH_DATES:
+        d = date.fromisoformat(ds)
+        if year_start <= d.year <= year_end:
+            p_url = f"{BASE}/daily/markPriceKlines/{SYMBOL}/1h/{SYMBOL}-1h-{ds}.zip"
+            specs.append(ObjectSpec("mark_patch", ds, p_url, CACHE / f"mark_patch/{SYMBOL}-1h-{ds}.zip", True))
     return specs
 
 
@@ -388,6 +410,7 @@ def acquire_and_census(year_start: int, year_end: int, label: str) -> tuple[dict
     metric_metas = sorted((m for m in metas.values() if m.dataset == "metrics"), key=lambda x: x.key)
     funding_metas = sorted((m for m in metas.values() if m.dataset == "funding"), key=lambda x: x.key)
     mark_metas = sorted((m for m in metas.values() if m.dataset == "mark"), key=lambda x: x.key)
+    mark_patch_metas = sorted((m for m in metas.values() if m.dataset == "mark_patch"), key=lambda x: x.key)
 
     metrics_coverage = len(metric_metas) / requested_metrics
     if metrics_coverage < 0.99:
@@ -407,7 +430,13 @@ def acquire_and_census(year_start: int, year_end: int, label: str) -> tuple[dict
 
     metric_ts = combined_ts(metric_metas)
     funding_ts = combined_ts(funding_metas)
-    mark_ts = combined_ts(mark_metas)
+    monthly_mark_ts = combined_ts(mark_metas)
+    patch_mark_ts = combined_ts(mark_patch_metas) if mark_patch_metas else []
+    monthly_mark_set = set(monthly_mark_ts)
+    overlap = sorted(monthly_mark_set.intersection(patch_mark_ts))
+    if overlap:
+        raise RunError(f"MARK_PATCH_OVERLAP_WITH_MONTHLY:{len(overlap)}:{iso_ms(overlap[0])}")
+    mark_ts = sorted(monthly_mark_ts + patch_mark_ts)
 
     # Funding continuity: no gap greater than 12 hours.
     funding_gaps = [(b - a) / 3_600_000 for a, b in zip(funding_ts, funding_ts[1:])]
@@ -454,6 +483,8 @@ def acquire_and_census(year_start: int, year_end: int, label: str) -> tuple[dict
         "funding_months": len(funding_metas),
         "funding_max_gap_hours": max_funding_gap_h,
         "mark_months": len(mark_metas),
+        "mark_daily_patch_objects": len(mark_patch_metas),
+        "mark_daily_patch_hours": len(patch_mark_ts),
         "mark_hour_rows": len(mark_ts),
         "mark_expected_hours": expected_hours,
         "mark_coverage_fraction": mark_coverage,
@@ -517,7 +548,9 @@ def read_funding_values(metas: dict[str, ObjectMeta]) -> dict[date, float]:
 
 def read_mark_values(metas: dict[str, ObjectMeta]) -> dict[int, float]:
     out: dict[int, float] = {}
-    for meta in sorted((m for m in metas.values() if m.dataset == "mark"), key=lambda x: x.key):
+    ordered = sorted((m for m in metas.values() if m.dataset == "mark"), key=lambda x: x.key)
+    ordered += sorted((m for m in metas.values() if m.dataset == "mark_patch"), key=lambda x: x.key)
+    for meta in ordered:
         rows = decode_rows(Path(meta.cache_path))
         body = rows
         try:
@@ -767,7 +800,7 @@ def main() -> int:
 
     receipt: dict = {
         "lab_id": "DCV-001",
-        "authority": "DCV001_PREOUTCOME_AUTHORITY_V0.1.md + AMENDMENT_A_V0.1 + AMENDMENT_B_V0.1",
+        "authority": "DCV001_PREOUTCOME_AUTHORITY_V0.1.md + AMENDMENT_A_V0.1 + AMENDMENT_B_V0.1 + DAILY_MARK_REMEDIATION_AUTHORITY_V0.2",
         "classification": "RUNNING",
         "live_trading": False,
         "orders_created": False,
