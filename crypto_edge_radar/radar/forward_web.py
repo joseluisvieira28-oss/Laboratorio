@@ -759,6 +759,15 @@ def serve_forward_shadow(*, port: int, interval: float) -> int:
     settings = Settings.from_env()
     runtime = ForwardShadowRuntime(settings=settings)
     runtime.run_cycle()
+    if os.getenv("RADAR_BACKUP_LOG_EXPORT_ENABLED", "").lower() == "true":
+        snapshot = build_private_evidence_snapshot(runtime.store)
+        meta = {k: v for k, v in snapshot.items() if k not in ("events", "event_keys")}
+        print("RADAR_PRIVATE_BACKUP_META|" + json.dumps(meta, sort_keys=True, separators=(",", ":")), flush=True)
+        for row in snapshot["events"]:
+            print("RADAR_PRIVATE_BACKUP_EVENT|" + json.dumps(row, sort_keys=True, separators=(",", ":")), flush=True)
+        for row in snapshot["event_keys"]:
+            print("RADAR_PRIVATE_BACKUP_KEY|" + json.dumps(row, sort_keys=True, separators=(",", ":")), flush=True)
+        print("RADAR_PRIVATE_BACKUP_END|" + snapshot["snapshot_sha256"], flush=True)
     worker = threading.Thread(
         target=runtime.run_loop,
         kwargs={"interval_seconds": interval},
