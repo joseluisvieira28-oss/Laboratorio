@@ -121,14 +121,17 @@ def fetch_funding_rest(symbol,manifest,mark_map):
         if not arr:
             break
         for x in arr:
-            t=int(x["fundingTime"])
+            raw_t=int(x["fundingTime"])
+            nearest=round(raw_t/3600000)*3600000
+            deviation=abs(raw_t-nearest)
+            if deviation>1000:
+                raise RuntimeError(f"{symbol}: funding timestamp deviation {deviation}ms exceeds frozen 1000ms")
+            t=nearest
             if not (START_MS<=t<=END_MS):
                 continue
             rate=float(x["fundingRate"])
             if not math.isfinite(rate):
                 raise RuntimeError(f"{symbol}: nonfinite funding rate at {t}")
-            if t % 3600000 != 0:
-                raise RuntimeError(f"{symbol}: funding timestamp not hour-aligned {t}")
             raw_mark=x.get("markPrice")
             if raw_mark not in (None,""):
                 mark=float(raw_mark)
@@ -140,7 +143,8 @@ def fetch_funding_rest(symbol,manifest,mark_map):
                 mark_source="markPriceKline_open"
             if not math.isfinite(mark) or mark<=0:
                 raise RuntimeError(f"{symbol}: invalid resolved funding markPrice at {t}")
-            rec={"rate":rate,"mark":mark,"mark_source":mark_source,"rateType":x.get("rateType")}
+            rec={"rate":rate,"mark":mark,"mark_source":mark_source,"rateType":x.get("rateType"),
+                 "raw_t":raw_t,"deviation_ms":deviation}
             if t in seen and seen[t]!=rec:
                 raise RuntimeError(f"{symbol}: conflicting duplicate funding {t}")
             seen[t]=rec
@@ -164,7 +168,8 @@ def fetch_funding_rest(symbol,manifest,mark_map):
         "direct_mark_count":sum(1 for x in ordered.values() if x["mark_source"]=="funding_record"),
         "fallback_markPriceKline_count":sum(1 for x in ordered.values() if x["mark_source"]=="markPriceKline_open"),
         "unresolved_mark_count":0,
-        "all_timestamps_hour_aligned":True,
+        "max_funding_timestamp_deviation_ms":max(x["deviation_ms"] for x in ordered.values()),
+        "all_timestamps_normalized_under_1s_rule":True,
     }
     return ordered,time_meta
 
