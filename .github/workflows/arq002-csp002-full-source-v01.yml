@@ -1,0 +1,95 @@
+name: ARQ-002-CSP-002 Full 2024 Source Census V0.1
+
+on:
+  push:
+    branches:
+      - arq002-csp002-source-mask-v0.1
+    paths:
+      - research/arq002_csp002/ARQ002_CSP002_FULL_SOURCE_MONTH_V0.1.py
+      - research/arq002_csp002/ARQ002_CSP002_FULL_SOURCE_AGGREGATE_V0.1.py
+      - .github/workflows/arq002-csp002-full-source-v01.yml
+
+permissions:
+  contents: read
+
+jobs:
+  month:
+    strategy:
+      fail-fast: false
+      matrix:
+        month: ["2024-01","2024-02","2024-03","2024-04","2024-05","2024-06","2024-07","2024-08","2024-09","2024-10","2024-11","2024-12"]
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile
+        run: python -m py_compile research/arq002_csp002/ARQ002_CSP002_FULL_SOURCE_MONTH_V0.1.py
+      - name: Scan one month
+        id: scan
+        continue-on-error: true
+        run: python research/arq002_csp002/ARQ002_CSP002_FULL_SOURCE_MONTH_V0.1.py --month ${{ matrix.month }}
+      - name: Upload monthly receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: arq002-csp002-source-${{ matrix.month }}
+          path: arq002_csp002_source_${{ matrix.month }}.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Enforce month pass
+        if: always()
+        run: |
+          python - <<'PY'
+          import json,glob
+          fs=glob.glob("arq002_csp002_source_*.json")
+          if len(fs)!=1: raise SystemExit("FAIL_CLOSED: monthly receipt missing")
+          r=json.load(open(fs[0]))
+          if r.get("classification")!="SOURCE_MONTH_PASS":
+              raise SystemExit("FAIL_CLOSED: month source")
+          if r.get("economic_values_reported") is not False or r.get("outcomes_opened") is not False:
+              raise SystemExit("FAIL_CLOSED: outcome firewall")
+          print("SOURCE_MONTH_PASS")
+          PY
+
+  aggregate:
+    needs: month
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: arq002-csp002-source-*
+          path: monthly_receipts
+          merge-multiple: true
+      - name: Aggregate full-year source receipt
+        id: aggregate
+        continue-on-error: true
+        run: python research/arq002_csp002/ARQ002_CSP002_FULL_SOURCE_AGGREGATE_V0.1.py
+      - name: Upload full source receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: arq002-csp002-full-source-census-v01
+          path: ARQ002_CSP002_FULL_SOURCE_CENSUS_2024_V0.1.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Enforce full source pass
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          p="ARQ002_CSP002_FULL_SOURCE_CENSUS_2024_V0.1.json"
+          r=json.load(open(p))
+          if r.get("classification")!="SOURCE_CENSUS_PASS":
+              raise SystemExit("FAIL_CLOSED: full source census")
+          if r.get("economic_values_reported") is not False or r.get("outcomes_opened") is not False:
+              raise SystemExit("FAIL_CLOSED: outcome firewall")
+          if r.get("protected_2025_accessed") is not False or r.get("protected_2026_accessed") is not False:
+              raise SystemExit("FAIL_CLOSED: protected period")
+          print("SOURCE_CENSUS_PASS")
+          PY
