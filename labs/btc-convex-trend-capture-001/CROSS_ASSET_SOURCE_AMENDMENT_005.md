@@ -2,56 +2,75 @@
 
 **Date:** 2026-09-23  
 **Status:** FROZEN BEFORE ANY CROSS-ASSET ECONOMIC OUTCOME IS OPENED  
-**Scope:** SOLUSDT official daily market-kline gap completion only  
-**Authority:** additive; preserves Amendments 001–004
+**Scope:** official funding timestamp normalization only  
+**Authority:** supersedes prior timestamp-handling clauses where they conflict; preserves Amendment 004 mark-price hierarchy
 
 ## Trigger
 
-Internal timestamp coverage audit found that the official Binance Vision SOLUSDT 1h **monthly** market-kline archives are missing exactly 120 hourly timestamps inside the frozen 2021–2025 evaluation interval:
+Source Gate V0.1C failed before any economic outcome was opened because official Binance funding-history records included timestamps such as:
 
-- 2022-02-26 00:00 through 2022-02-28 23:00 UTC — 72 hours;
-- 2022-04-01 00:00 through 2022-04-02 23:00 UTC — 48 hours.
+`1609459200002`
 
-A source-only probe opened no economic outcomes and confirmed that the corresponding five official Binance Vision **daily** 1h files all return HTTP 200.
+for the funding event corresponding to:
 
-## Authorized repair
+`2021-01-01 00:00:00 UTC = 1609459200000`
 
-Primary market source remains the official monthly Binance Vision USD-M 1h kline archive.
+Observed deviation:
+**+2 milliseconds**.
 
-For SOLUSDT only, the following official daily files are authorized solely to fill timestamps absent from the monthly archive:
+Price coverage remained complete.
 
-- SOLUSDT-1h-2022-02-26.zip
-- SOLUSDT-1h-2022-02-27.zip
-- SOLUSDT-1h-2022-02-28.zip
-- SOLUSDT-1h-2022-04-01.zip
-- SOLUSDT-1h-2022-04-02.zip
+## Frozen normalization rule
 
-Path:
-`https://data.binance.vision/data/futures/um/daily/klines/SOLUSDT/1h/`
+For each official funding-history `fundingTime`:
 
-## Hard rules
+1. preserve `raw_funding_time_ms`;
+2. compute:
+   `normalized_funding_time_ms = round(raw / 3,600,000) × 3,600,000`;
+3. compute absolute deviation in milliseconds;
+4. normalize only when deviation <= **1,000 ms**;
+5. if deviation > 1,000 ms:
+   **DATA_TIMESTAMP_BLOCKED / FAIL_CLOSED**.
 
-1. Daily data may add **only** timestamps absent from monthly data.
-2. If a daily timestamp overlaps a monthly timestamp, OHLCV must match exactly/to source precision or FAIL_CLOSED.
-3. No interpolation.
-4. No forward fill.
-5. No synthetic candles.
-6. No date-window shift.
-7. After repair, the frozen 2021-01-01 00:00 through 2025-12-31 23:00 UTC sequence must contain every exact hourly timestamp.
-8. Hash every daily repair ZIP in the provenance receipt.
+No rate, markPrice, asset, period, signal, threshold, fee, slippage or execution rule changes.
 
-## Unchanged
+## Duplicate handling
 
-No change to:
-- ETHUSDT / SOLUSDT / BNBUSDT universe;
-- 1h timeframe;
-- evaluation dates;
-- 2026 lock;
-- Parent V5;
-- Sticky H1;
-- causal execution;
-- funding rates or official funding mark-price hierarchy;
-- fees/slippage;
-- scientific gates.
+After normalization:
+- if two records map to the same normalized timestamp and their fundingRate + resolved markPrice agree within numerical precision, deduplicate;
+- if they conflict, **FAIL_CLOSED**.
 
-This amendment repairs source completeness only and cannot create promotion credit by itself.
+## Mark-price hierarchy preserved
+
+Amendment 004 remains authoritative:
+1. use funding-history record `markPrice` when present and valid;
+2. only if empty, use official Binance USD-M 1h `markPriceKline OPEN` at the normalized funding timestamp;
+3. if no exact fallback exists, DATA_BLOCKED.
+
+## Funding cashflow
+
+For a long open across the normalized funding event:
+
+`funding_cashflow = -qty × resolved_markPrice × fundingRate`
+
+The fundingRate and markPrice remain those of the official record/frozen fallback. Only the timestamp used to align the event to the 1h causal engine is normalized.
+
+## Audit requirements
+
+Evidence must record:
+- raw timestamp;
+- normalized timestamp;
+- deviation_ms;
+- maximum observed deviation;
+- number of normalized records;
+- number of exact-hour records;
+- any duplicate deduplications;
+- zero deviations > 1,000 ms.
+
+## Outcome boundary
+
+All economic workflow attempts before a PASS under Amendment 005 remain:
+
+**INVALID_UNOPENED_DO_NOT_USE**
+
+A fresh Source Gate must PASS before the adjudicating economic trigger is fired.
