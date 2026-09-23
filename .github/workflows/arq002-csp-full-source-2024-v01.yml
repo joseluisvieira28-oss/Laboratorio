@@ -1,0 +1,77 @@
+name: ARQ-002-CSP Full 2024 Source Census V0.1
+
+on:
+  push:
+    branches:
+      - arq002-cvd-sweep-positioning-v0.1
+    paths:
+      - research/arq002_csp/ARQ002_CSP_FULL_SOURCE_MONTH_V0.1.py
+      - research/arq002_csp/ARQ002_CSP_FULL_SOURCE_AGGREGATE_V0.1.py
+      - .github/workflows/arq002-csp-full-source-2024-v01.yml
+
+permissions:
+  contents: read
+
+jobs:
+  month:
+    strategy:
+      fail-fast: false
+      max-parallel: 6
+      matrix:
+        month: ["2024-01","2024-02","2024-03","2024-04","2024-05","2024-06","2024-07","2024-08","2024-09","2024-10","2024-11","2024-12"]
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile
+        run: python -m py_compile research/arq002_csp/ARQ002_CSP_FULL_SOURCE_MONTH_V0.1.py
+      - name: Scan official source shard
+        id: scan
+        continue-on-error: true
+        run: python research/arq002_csp/ARQ002_CSP_FULL_SOURCE_MONTH_V0.1.py --month ${{ matrix.month }}
+      - name: Upload month receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: arq002-source-${{ matrix.month }}
+          path: arq002_source_${{ matrix.month }}.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Enforce month pass
+        if: always()
+        run: |
+          python - <<'PY'
+          import json,os
+          m=os.environ["MONTH"]
+          r=json.load(open(f"arq002_source_{m}.json"))
+          if r.get("classification")!="SOURCE_MONTH_PASS":
+              raise SystemExit("FAIL_CLOSED month")
+          print("SOURCE_MONTH_PASS",m)
+          PY
+        env:
+          MONTH: ${{ matrix.month }}
+
+  aggregate:
+    needs: month
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: arq002-source-2024-*
+          path: monthly_receipts
+          merge-multiple: true
+      - name: Aggregate annual source gate
+        run: python research/arq002_csp/ARQ002_CSP_FULL_SOURCE_AGGREGATE_V0.1.py
+      - name: Upload annual receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: arq002-csp-full-source-2024-v01
+          path: ARQ002_CSP_FULL_SOURCE_CENSUS_2024_V0.1.json
+          if-no-files-found: error
+          retention-days: 30
