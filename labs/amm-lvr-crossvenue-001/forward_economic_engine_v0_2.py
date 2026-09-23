@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+# Canonical V0.2 causal read-only engine; trigger/identity marker only.
+
 import asyncio
 import copy
 import json
