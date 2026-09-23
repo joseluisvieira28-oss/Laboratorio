@@ -69,7 +69,7 @@ async def get_logs_resilient(block_hex, addresses, v2_topic):
             "fromBlock":block_hex,
             "toBlock":block_hex,
             "address":chunk,
-            "topics":[V3_SWAP_TOPIC],
+            "topics":[[V3_SWAP_TOPIC,v2_topic]],
         }
         last_error=None
         for url in [RPC, TRACE_RPC]:
@@ -91,7 +91,7 @@ async def get_logs_resilient(block_hex, addresses, v2_topic):
                     "fromBlock":block_hex,
                     "toBlock":block_hex,
                     "address":addr,
-                    "topics":[V3_SWAP_TOPIC],
+                    "topics":[[V3_SWAP_TOPIC,v2_topic]],
                 }
                 ok=False
                 err=None
@@ -122,9 +122,10 @@ def signed256(x):
     return n-(1<<256) if n>=(1<<255) else n
 
 async def build_pool_registry():
-    # Resolve canonical selectors from signatures exactly as the source gate that passed.
+    # Resolve canonical selectors/topics from signatures exactly as the frozen protocol requires.
     getpool_hash=await arpc(SELECTOR_RPC,"web3_sha3",["0x"+"getPool(address,address,uint24)".encode().hex()])
     getpool_sel=getpool_hash[2:10]
+    v2_swap_topic=await arpc(SELECTOR_RPC,"web3_sha3",["0x"+"Swap(address,uint256,uint256,uint256,uint256,address)".encode().hex()])
     pools={}
     for a,b in PAIRS:
         aa=TOKENS[a]["address"]; bb=TOKENS[b]["address"]
@@ -137,6 +138,15 @@ async def build_pool_registry():
                     pools[addr]={"dex":"UNISWAP_V3","pair":f"{a}-{b}","fee":fee}
             except Exception:
                 pass
+        # V2 is part of the controlling FORWARD_ECONOMIC_PROTOCOL_V0.1.
+        try:
+            data=SEL_GETPAIR+word_addr(aa)+word_addr(bb)
+            out=await arpc(RPC,"eth_call",[{"to":V2_FACTORY,"data":"0x"+data},"latest"])
+            addr=decode_addr(out)
+            if addr and int(addr,16)!=0:
+                pools[addr]={"dex":"UNISWAP_V2","pair":f"{a}-{b}","fee":3000}
+        except Exception:
+            pass
     # Resolve token order for every pool.
     for addr,meta in pools.items():
         try:
@@ -146,7 +156,7 @@ async def build_pool_registry():
             meta["token1"]=ADDR_TO_SYMBOL.get((t1 or "").lower())
         except Exception:
             meta["token0"]=None; meta["token1"]=None
-    return pools,None
+    return pools,v2_swap_topic
 
 def decode_swap(log,meta):
     data=(log.get("data") or "0x")[2:]
