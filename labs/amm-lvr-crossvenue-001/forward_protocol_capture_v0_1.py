@@ -90,7 +90,7 @@ async def get_logs_resilient(block_hex, addresses, v2_topic):
                     "fromBlock":block_hex,
                     "toBlock":block_hex,
                     "address":addr,
-                    "topics":[[V3_SWAP_TOPIC,v2_topic]],
+                    "topics":[V3_SWAP_TOPIC],
                 }
                 ok=False
                 err=None
