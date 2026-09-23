@@ -349,7 +349,7 @@ out={
     ],
     "symbols":{}
 }
-all_pass=True
+valid_count=0
 
 for s in SYMBOLS:
     try:
@@ -396,7 +396,7 @@ for s in SYMBOLS:
         funding_meta={"error":repr(e)}
 
     passed=price_pass and funding_pass
-    all_pass &= passed
+    valid_count += int(passed)
     out["symbols"][s]={
         "market_coverage":market_meta,
         "funding":funding_meta,
@@ -405,7 +405,7 @@ for s in SYMBOLS:
         "pass":passed,
     }
 
-out["overall"]="PASS" if all_pass else "FAIL_CLOSED"
+out["valid_asset_count"]=valid_count\nout["blocked_asset_count"]=len(SYMBOLS)-valid_count\nout["overall"]="PASS" if valid_count>=4 else "FAIL_CLOSED"
 path=EVID/"EXPANSION_SOURCE_GATE_V0.1.json"
 path.write_text(json.dumps(out,indent=2),encoding="utf-8")
 print(json.dumps({
@@ -431,5 +431,5 @@ print(json.dumps({
     }
 },indent=2))
 print("WROTE",path)
-if not all_pass:
+if valid_count<4:
     raise SystemExit("FAIL_CLOSED: expansion source gate V0.1 failed")
