@@ -23,8 +23,10 @@ jobs:
         run: python labs/amm-lvr-crossvenue-001/source_gate.py
       - name: Attack historical-free vs forward-free source routes
         run: python labs/amm-lvr-crossvenue-001/source_attack_v0_2.py
-      - name: Run 90-second prospective observability collector
-        run: python labs/amm-lvr-crossvenue-001/forward_observability_v0_1.py
+      - name: Probe archival Ethereum replay on frozen public sample
+        run: python labs/amm-lvr-crossvenue-001/historical_onchain_replay_probe_v0_1.py
+      - name: Run 120-second frozen-registry forward collector
+        run: python labs/amm-lvr-crossvenue-001/forward_observability_v0_2.py
       - uses: actions/upload-artifact@v4
         with:
           name: AMM-LVR-CROSSVENUE-001-SOURCE-EVIDENCE
