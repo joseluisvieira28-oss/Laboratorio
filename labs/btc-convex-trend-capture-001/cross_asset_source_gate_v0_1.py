@@ -157,10 +157,13 @@ def funding_history(symbol,mark_map):
             raise RuntimeError(f"{symbol}: unexpected funding payload")
         if not arr: break
         for x in arr:
-            t=int(x["fundingTime"])
+            raw_t=int(x["fundingTime"])
+            nearest=round(raw_t/3600000)*3600000
+            deviation=abs(raw_t-nearest)
+            if deviation>1000:
+                raise RuntimeError(f"{symbol}: funding timestamp deviation {deviation}ms exceeds frozen 1000ms")
+            t=nearest
             if not (START_MS<=t<=END_MS): continue
-            if t%3600000!=0:
-                raise RuntimeError(f"{symbol}: funding timestamp not hour-aligned {t}")
             rate=float(x["fundingRate"])
             if not math.isfinite(rate):
                 raise RuntimeError(f"{symbol}: nonfinite funding rate {t}")
@@ -177,7 +180,7 @@ def funding_history(symbol,mark_map):
                 fallback+=1
             if not math.isfinite(mark) or mark<=0:
                 raise RuntimeError(f"{symbol}: invalid resolved markPrice {t}")
-            rec={"rate":rate,"mark":mark,"mark_source":source,"rateType":x.get("rateType")}
+            rec={"rate":rate,"mark":mark,"mark_source":source,"rateType":x.get("rateType"),"raw_t":raw_t,"deviation_ms":deviation}
             if t in seen and seen[t]!=rec:
                 raise RuntimeError(f"{symbol}: conflicting duplicate funding record {t}")
             seen[t]=rec
@@ -215,6 +218,7 @@ for s in SYMBOLS:
             "fallback_mark_count":fmeta["fallback_mark_count"],
             "unresolved_mark_count":0,
             "funding_page_count":len(fmeta["pages"]),
+            "max_funding_timestamp_deviation_ms":max(x["deviation_ms"] for x in funds.values()),
             "mark_price_monthly_files_expected":60,
             "mark_price_monthly_files_present":len(mark_manifest),
             "mark_price_missing_months":mark_missing,
