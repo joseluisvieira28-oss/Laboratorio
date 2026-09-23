@@ -6,6 +6,7 @@ CROSS-ASSET COST VALIDATION V0.1
 Authority:
 - CROSS_ASSET_COST_VALIDATION_FREEZE_V0.1.md
 - CROSS_ASSET_SOURCE_AMENDMENT_006.md
+- CROSS_ASSET_SOURCE_AMENDMENT_007.md
 - CHILD_HYPOTHESIS_STICKY_TRAIL_H1_FREEZE.md
 
 This script MUST run only after source gate PASS.
@@ -99,6 +100,60 @@ def fetch_funding_rest(symbol,manifest,mark_map):
     page=0
     max_deviation_ms=0
     normalized_nonzero_count=0
+    direct_mark_count=0
+    monthly_mark_count=0
+    daily_mark_count=0
+    duplicate_count=0
+    daily_cache={}
+    daily_fallback_audit=[]
+
+    def resolve_daily_mark_exact(t):
+        date_str=datetime.fromtimestamp(t/1000,tz=timezone.utc).strftime("%Y-%m-%d")
+        if date_str not in daily_cache:
+            url=f"https://data.binance.vision/data/futures/um/daily/markPriceKlines/{symbol}/1h/{symbol}-1h-{date_str}.zip"
+            body=get_bytes(url)
+            sha=hashlib.sha256(body).hexdigest()
+            manifest.append({
+                "kind":"markPriceKline_daily_gapfill",
+                "symbol":symbol,
+                "date":date_str,
+                "url":url,
+                "sha256":sha,
+                "bytes":len(body),
+            })
+            with zipfile.ZipFile(io.BytesIO(body)) as zf:
+                names=zf.namelist()
+                if len(names)!=1:
+                    raise RuntimeError(f"{symbol} {date_str}: unexpected daily markPrice zip members {names}")
+                text=zf.read(names[0]).decode("utf-8-sig")
+            rows={}
+            for q in csv.reader(io.StringIO(text)):
+                if not q:
+                    continue
+                try:
+                    qt=int(q[0])
+                except ValueError:
+                    continue
+                if qt>10**14:
+                    qt//=1000
+                p=float(q[1])
+                if not math.isfinite(p) or p<=0:
+                    raise RuntimeError(f"{symbol}: invalid daily markPrice OPEN {qt}")
+                rows[qt]=p
+            daily_cache[date_str]={"rows":rows,"url":url,"sha256":sha}
+        item=daily_cache[date_str]
+        if t not in item["rows"]:
+            raise RuntimeError(f"{symbol}: missing funding mark and no exact daily markPriceKline {t}")
+        mark=item["rows"][t]
+        daily_fallback_audit.append({
+            "normalized_funding_time_ms":t,
+            "date":date_str,
+            "url":item["url"],
+            "sha256":item["sha256"],
+            "open":mark,
+        })
+        return mark
+
     while cursor<=END_MS:
         qs=urllib.parse.urlencode({
             "symbol":symbol,
@@ -122,55 +177,87 @@ def fetch_funding_rest(symbol,manifest,mark_map):
             raise RuntimeError(f"{symbol}: unexpected funding payload")
         if not arr:
             break
+
         for x in arr:
             raw_t=int(x["fundingTime"])
-            nearest=round(raw_t/3600000)*3600000
+            # Amendment 005: normalize only if within 1 second of the nearest UTC hour.
+            nearest=((raw_t + 1_800_000)//3_600_000)*3_600_000
             deviation=abs(raw_t-nearest)
             if deviation>1000:
                 raise RuntimeError(f"{symbol}: funding timestamp deviation {deviation}ms exceeds frozen 1000ms")
             t=nearest
             if not (START_MS<=t<=END_MS):
                 continue
+            max_deviation_ms=max(max_deviation_ms,deviation)
+            if deviation:
+                normalized_nonzero_count+=1
+
             rate=float(x["fundingRate"])
             if not math.isfinite(rate):
                 raise RuntimeError(f"{symbol}: nonfinite funding rate at {t}")
+
             raw_mark=x.get("markPrice")
             if raw_mark not in (None,""):
                 mark=float(raw_mark)
                 mark_source="funding_record"
-            else:
-                if t not in mark_map:
-                    raise RuntimeError(f"{symbol}: missing funding mark and no exact markPriceKline {t}")
+                direct_mark_count+=1
+            elif t in mark_map:
                 mark=mark_map[t]
-                mark_source="markPriceKline_open"
+                mark_source="monthly_markPriceKline_open"
+                monthly_mark_count+=1
+            else:
+                mark=resolve_daily_mark_exact(t)
+                mark_source="daily_markPriceKline_open"
+                daily_mark_count+=1
+
             if not math.isfinite(mark) or mark<=0:
                 raise RuntimeError(f"{symbol}: invalid resolved funding markPrice at {t}")
-            rec={"rate":rate,"mark":mark,"mark_source":mark_source,"rateType":x.get("rateType"),
-                 "raw_t":raw_t,"deviation_ms":deviation}
-            if t in seen and seen[t]!=rec:
-                raise RuntimeError(f"{symbol}: conflicting duplicate funding {t}")
-            seen[t]=rec
+
+            core={"rate":rate,"mark":mark,"mark_source":mark_source}
+            if t in seen:
+                prev=seen[t]
+                same=(abs(prev["rate"]-rate)<=1e-15 and abs(prev["mark"]-mark)<=1e-10)
+                if not same:
+                    raise RuntimeError(f"{symbol}: conflicting duplicate funding after normalization {t}")
+                duplicate_count+=1
+                continue
+
+            seen[t]={
+                **core,
+                "rateType":x.get("rateType"),
+                "raw_funding_time_ms":raw_t,
+                "normalized_funding_time_ms":t,
+                "deviation_ms":deviation,
+            }
+
         nxt=int(arr[-1]["fundingTime"])+1
         if nxt<=cursor:
             raise RuntimeError(f"{symbol}: funding pagination stalled")
         cursor=nxt
         if len(arr)<1000:
             break
+
     if not seen:
         raise RuntimeError(f"{symbol}: no funding records")
+
     ordered={t:seen[t] for t in sorted(seen)}
     first=min(ordered); last=max(ordered)
     if first>START_MS+9*3600000 or last<END_MS-9*3600000:
         raise RuntimeError(f"{symbol}: incomplete funding boundary coverage")
+
     time_meta={
         "funding_transport":"https://www.binance.com/fapi/v1/fundingRate",
         "funding_record_count":len(ordered),
         "first_funding_ms":first,
         "last_funding_ms":last,
-        "direct_mark_count":sum(1 for x in ordered.values() if x["mark_source"]=="funding_record"),
-        "fallback_markPriceKline_count":sum(1 for x in ordered.values() if x["mark_source"]=="markPriceKline_open"),
+        "direct_mark_count":direct_mark_count,
+        "monthly_fallback_markPriceKline_count":monthly_mark_count,
+        "daily_fallback_markPriceKline_count":daily_mark_count,
+        "daily_fallback_audit":daily_fallback_audit,
         "unresolved_mark_count":0,
-        "max_funding_timestamp_deviation_ms":max(x["deviation_ms"] for x in ordered.values()),
+        "max_funding_timestamp_deviation_ms":max_deviation_ms,
+        "normalized_nonzero_timestamp_count":normalized_nonzero_count,
+        "deduplicated_after_normalization":duplicate_count,
         "all_timestamps_normalized_under_1s_rule":True,
     }
     return ordered,time_meta
@@ -456,7 +543,7 @@ out={
     "lab":"BTC-CONVEX-TREND-CAPTURE-001",
     "experiment":"CROSS_ASSET_COST_VALIDATION_V0.1",
     "freeze":"CROSS_ASSET_COST_VALIDATION_FREEZE_V0.1",
-    "source_amendment":"CROSS_ASSET_SOURCE_AMENDMENT_006",
+    "source_amendment":"CROSS_ASSET_SOURCE_AMENDMENT_007",
     "period":["2021-01-01T00:00:00Z","2025-12-31T23:00:00Z"],
     "symbols":{},
     "family":{},
