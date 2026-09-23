@@ -1,0 +1,27 @@
+name: AMM-LVR-CROSSVENUE-001 Recent Trace Probe
+
+on:
+  pull_request:
+    paths:
+      - 'labs/amm-lvr-crossvenue-001/recent_trace_matrix_v0_1.py'
+      - '.github/workflows/amm_lvr_recent_trace_probe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  recent-trace-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Probe current free receipt and trace routes
+        run: python labs/amm-lvr-crossvenue-001/recent_trace_matrix_v0_1.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AMM-LVR-CROSSVENUE-001-RECENT-TRACE-EVIDENCE
+          path: labs/amm-lvr-crossvenue-001/evidence/recent_trace_matrix_v0_1_receipt.json
