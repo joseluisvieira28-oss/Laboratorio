@@ -1,0 +1,86 @@
+name: DLS SQD Boundary Calibration V0.3
+
+on:
+  push:
+    branches:
+      - dls-kamino-save11-event-census-v0.1
+    paths:
+      - '.github/workflows/dls-sqd-boundary-calibration-v03.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  calibrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dls-kamino-save11-event-census-v0.1
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Compile frozen calibration
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/calibrate_sqd_boundary_v0_3.py
+
+      - name: Execute SQD boundary calibration
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/calibrate_sqd_boundary_v0_3.py | tee STDOUT_SQD_CAL_V03.txt
+
+      - name: Package evidence
+        if: always()
+        run: |
+          python - <<'PY'
+          import hashlib,json,pathlib
+          paths=[
+            pathlib.Path("labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_SAVE11_SQD_BOUNDARY_CALIBRATION_FREEZE_V0.3.md"),
+            pathlib.Path("labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_SAVE11_SQD_BOUNDARY_CALIBRATION_RECEIPT_V0.3.json"),
+            pathlib.Path("STDOUT_SQD_CAL_V03.txt"),
+          ]
+          files=[]
+          for p in paths:
+              if p.exists():
+                  files.append({"name":str(p),"bytes":p.stat().st_size,"sha256":hashlib.sha256(p.read_bytes()).hexdigest()})
+          pathlib.Path("MANIFEST_SQD_CAL_V03.json").write_text(json.dumps({"files":files},indent=2)+"\n")
+          PY
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-sqd-boundary-calibration-v03
+          path: |
+            labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_SAVE11_SQD_BOUNDARY_CALIBRATION_RECEIPT_V0.3.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_SAVE11_SQD_BOUNDARY_CALIBRATION_FREEZE_V0.3.md
+            MANIFEST_SQD_CAL_V03.json
+            STDOUT_SQD_CAL_V03.txt
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Persist receipt
+        if: always()
+        run: |
+          if [ -f labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_SAVE11_SQD_BOUNDARY_CALIBRATION_RECEIPT_V0.3.json ]; then
+            git config user.name "crypto-lab-source-audit"
+            git config user.email "actions@users.noreply.github.com"
+            git add labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_SAVE11_SQD_BOUNDARY_CALIBRATION_RECEIPT_V0.3.json
+            git commit -m "dls: persist SQD boundary calibration receipt v0.3" || true
+            git push origin HEAD:dls-kamino-save11-event-census-v0.1
+          fi
+
+      - name: Firewall
+        if: always()
+        run: |
+          echo SOURCE_ONLY_TRUE
+          echo EXACT_DISCRIMINATOR_FILTERS_TRUE
+          echo PRICES_FALSE
+          echo TOKEN_BALANCES_FALSE
+          echo RETURNS_FALSE
+          echo PNL_FALSE
+          echo DIRECTION_FALSE
+          echo LIVE_TRADING_FALSE
+          echo MERGE_MAIN_FALSE
