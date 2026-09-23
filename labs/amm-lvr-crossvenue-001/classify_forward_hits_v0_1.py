@@ -53,15 +53,11 @@ def rpc(method,params):
     except Exception as e:
         return None,{"local":type(e).__name__+":"+str(e)[:500]}
 
-def sha3_selector(sig):
-    out,err=rpc("web3_sha3",["0x"+sig.encode().hex()])
-    if not out: raise RuntimeError(err)
-    return out[:10]
-
-SEL_TOKEN0=sha3_selector("token0()")
-SEL_TOKEN1=sha3_selector("token1()")
-SEL_FEE=sha3_selector("fee()")
-SEL_GETPOOL=sha3_selector("getPool(address,address,uint24)")
+# Canonical ABI selectors frozen from Uniswap V3 interfaces.
+SEL_TOKEN0="0x0dfe1681"
+SEL_TOKEN1="0xd21220a7"
+SEL_FEE="0xddca3f43"
+SEL_GETPOOL="0x1698ee82"
 
 def eth_call(to,data,block="latest"):
     return rpc("eth_call",[{"to":to,"data":data},block])
