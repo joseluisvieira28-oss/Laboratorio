@@ -1,0 +1,96 @@
+{
+  "lab_id": "USOPEN-VOL-001",
+  "mve_id": "USOV-PREETF-001",
+  "title": "U.S. Cash Open 30m Volatility Shock — Pre-ETF Discovery",
+  "freeze_date": "2026-09-23",
+  "status": "PRE_DISCOVERY_FROZEN",
+  "governance": "CRYPTO-LAB-GOVERNANCE-V4.0-DEATH-FROZEN",
+  "primary_family": "VOL",
+  "secondary_family": "MICRO",
+  "scientific_scope": "pre-ETF structural mechanism only; no post-2024 inference",
+  "source": {
+    "provider": "Binance Data Vision",
+    "market": "USD-M Futures",
+    "dataset": "monthly 5m klines",
+    "symbols": [
+      "BTCUSDT",
+      "ETHUSDT",
+      "SOLUSDT",
+      "BNBUSDT",
+      "XRPUSDT",
+      "DOGEUSDT"
+    ],
+    "discovery": "2022-01-01T00:00:00Z/2023-12-31T23:59:59Z",
+    "protected": [
+      "2024",
+      "2025",
+      "2026"
+    ]
+  },
+  "clock": {
+    "timezone": "America/New_York",
+    "eligible_days": "regular U.S. cash-market weekdays excluding full-day NYSE closures",
+    "pre": [
+      "09:00",
+      "09:30"
+    ],
+    "open": [
+      "09:30",
+      "10:00"
+    ],
+    "post": [
+      "10:00",
+      "10:30"
+    ],
+    "bars_per_window": 6,
+    "dst": "IANA America/New_York"
+  },
+  "realized_variance": {
+    "sampling": "5m close-to-close log returns",
+    "definition": "sum squared log returns over exactly six consecutive 5m bars",
+    "ratio_epsilon_policy": "days with any zero/nonpositive window RV are excluded before ratios; exclusion count recorded"
+  },
+  "discovery_gate": {
+    "minimum_symbol_days": 2700,
+    "primary_open_pre": {
+      "pooled_median_ratio_gte": 1.2,
+      "date_cluster_bootstrap_lower95_ratio_gt": 1.05
+    },
+    "confirmatory_open_post": {
+      "pooled_median_ratio_gte": 1.1,
+      "date_cluster_bootstrap_lower95_ratio_gt": 1
+    },
+    "breadth": {
+      "symbols_open_pre_median_gt_1_10_min": 4,
+      "positive_years_open_pre_median_gt_1_05_min": 2
+    },
+    "bootstrap": {
+      "unit": "U.S. trading date with all symbols preserved",
+      "statistic": "median log ratio, exponentiated for reporting",
+      "reps": 5000,
+      "seed": 20260923
+    },
+    "on_pass": "DISCOVERY_MECHANISM_SURVIVES_PREETF_ONLY; 2024 remains sealed",
+    "on_fail": "CLOSE_EXACT_PREETF_MECHANISM_NO_SIGNAL; do not infer post-ETF failure"
+  },
+  "secondary_diagnostics": [
+    "median PRE RV, OPEN RV, POST RV by symbol",
+    "OPEN/PRE and OPEN/POST per symbol",
+    "2022 and 2023 pooled date-median ratios",
+    "volume OPEN/PRE ratio descriptive only"
+  ],
+  "forbidden": [
+    "open 2024 2025 or 2026",
+    "directional PnL",
+    "window tuning",
+    "clock shifting",
+    "weekday/month selection",
+    "BTC-only rescue",
+    "macro-day exclusion after outcomes",
+    "variance-estimator substitution",
+    "post-outcome threshold changes",
+    "merge to main",
+    "live trading",
+    "exchange mutation"
+  ]
+}
