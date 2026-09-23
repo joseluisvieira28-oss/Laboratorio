@@ -1,0 +1,36 @@
+name: DLS Save11 Official API Timestamp Diagnostic V0.2
+
+on:
+  push:
+    branches:
+      - dls-save11-official-api-timestamp-diag-v0.2
+    paths:
+      - '.github/workflows/dls-save11-official-api-timestamp-diag-v02.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dls-save11-official-api-timestamp-diag-v0.2
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/diagnose_save11_official_api_timestamp_v0_2.py
+      - name: Run timestamp and parameter diagnostic
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/diagnose_save11_official_api_timestamp_v0_2.py
+      - name: Persist diagnostic receipt
+        run: |
+          git config user.name "crypto-lab-source-audit"
+          git config user.email "actions@users.noreply.github.com"
+          git add labs/DEFI_LIQUIDATION_SHOCK_001/SAVE11_OFFICIAL_API_TIMESTAMP_DIAGNOSTIC_RECEIPT_V0.2.json
+          git commit -m "dls: persist Save11 official API timestamp diagnostic v0.2" || true
+          git push origin HEAD:dls-save11-official-api-timestamp-diag-v0.2
