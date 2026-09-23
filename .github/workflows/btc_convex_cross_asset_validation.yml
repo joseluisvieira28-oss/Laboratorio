@@ -1,18 +1,16 @@
-name: BTC-CONVEX-001 untouched cross-asset cost validation
+name: BTC-CONVEX-001 FINAL untouched cross-asset validation V007
 
 on:
-  push:
-    branches:
-      - btc-convex-trend-capture-001-v0.1
+  pull_request:
     paths:
-      - 'labs/btc-convex-trend-capture-001/CROSS_ASSET_EVAL_TRIGGER_V005.txt'
+      - 'labs/btc-convex-trend-capture-001/CROSS_ASSET_EVAL_TRIGGER_V007.txt'
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: btc-convex-cross-asset-eval-v005
+  group: btc-convex-cross-asset-eval-v007
   cancel-in-progress: false
 
 jobs:
@@ -21,8 +19,6 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: btc-convex-trend-capture-001-v0.1
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -31,5 +27,5 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: BTC-CONVEX-001-CROSS-ASSET-COST-VALIDATION-V005
+          name: BTC-CONVEX-001-FINAL-CROSS-ASSET-VALIDATION-V007
           path: labs/btc-convex-trend-capture-001/evidence/CROSS_ASSET_COST_VALIDATION_V0.1.json
