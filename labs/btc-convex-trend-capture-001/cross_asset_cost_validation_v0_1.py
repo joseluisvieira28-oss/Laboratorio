@@ -78,10 +78,14 @@ def parse_funding_zip(symbol,y,m,manifest):
     out=[]
     for r in rd:
         if not r.get(time_col): continue
-        t=int(float(r[time_col]))
-        if t>10**14:t//=1000
+        raw_t=int(float(r[time_col]))
+        if raw_t>10**14: raw_t//=1000
+        nearest=round(raw_t/3600000)*3600000
+        deviation=abs(raw_t-nearest)
+        if deviation>1000:
+            raise RuntimeError(f"{symbol} {ym} funding timestamp deviation {deviation}ms exceeds frozen 1000ms")
         rate=float(r[rate_col])
-        out.append({"t":t,"rate":rate})
+        out.append({"t":nearest,"raw_t":raw_t,"deviation_ms":deviation,"rate":rate})
     return out
 
 def load_symbol(symbol):
@@ -96,12 +100,19 @@ def load_symbol(symbol):
         if b["t"] in bd and bd[b["t"]]!=b: raise RuntimeError(f"{symbol} duplicate conflicting kline {b['t']}")
         bd[b["t"]]=b
     fd={}
+    max_funding_timestamp_deviation_ms=0
+    normalized_funding_records=[]
     for x in funds:
-        if x["t"] in fd and abs(fd[x["t"]]-x["rate"])>1e-15: raise RuntimeError(f"{symbol} duplicate conflicting funding {x['t']}")
+        max_funding_timestamp_deviation_ms=max(max_funding_timestamp_deviation_ms,x["deviation_ms"])
+        if x["t"] in fd and abs(fd[x["t"]]-x["rate"])>1e-15:
+            raise RuntimeError(f"{symbol} duplicate conflicting funding {x['t']}")
         fd[x["t"]]=x["rate"]
+        normalized_funding_records.append({"raw_t":x["raw_t"],"normalized_t":x["t"],"deviation_ms":x["deviation_ms"]})
     bars=[bd[k] for k in sorted(bd)]
     manifest_hash=hashlib.sha256(json.dumps(manifest,sort_keys=True,separators=(",",":")).encode()).hexdigest()
-    return bars,fd,manifest,manifest_hash
+    time_meta={"max_funding_timestamp_deviation_ms":max_funding_timestamp_deviation_ms,
+               "funding_timestamp_record_count":len(normalized_funding_records)}
+    return bars,fd,manifest,manifest_hash,time_meta
 
 def sma(vals,n):
     out=[None]*len(vals); q=deque(); s=0.0
@@ -337,7 +348,7 @@ out={
     "family":{},
 }
 for symbol in SYMBOLS:
-    bars,funding,manifest,mhash=load_symbol(symbol)
+    bars,funding,manifest,mhash,time_meta=load_symbol(symbol)
     # coverage checks before simulations
     window_bars=[b for b in bars if START_MS<=b["t"]<=END_MS]
     if not window_bars or window_bars[0]["t"]!=START_MS or window_bars[-1]["t"]!=END_MS:
@@ -349,7 +360,8 @@ for symbol in SYMBOLS:
     if not funding:
         raise SystemExit(f"FAIL_CLOSED {symbol}: no funding records")
     sym={"provenance":{"manifest_sha256":mhash,"manifest_entries":manifest,
-                       "bar_count_economic":len(window_bars),"funding_event_count":sum(1 for t in funding if START_MS<=t<=END_MS)},
+                       "bar_count_economic":len(window_bars),"funding_event_count":sum(1 for t in funding if START_MS<=t<=END_MS),
+                       "funding_timestamp_normalization":time_meta},
          "results":{}}
     for mode in MODES:
         sym["results"][mode]={}
