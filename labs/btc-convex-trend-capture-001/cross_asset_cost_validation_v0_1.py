@@ -5,7 +5,7 @@ CROSS-ASSET COST VALIDATION V0.1
 
 Authority:
 - CROSS_ASSET_COST_VALIDATION_FREEZE_V0.1.md
-- CROSS_ASSET_SOURCE_AMENDMENT_005.md
+- CROSS_ASSET_SOURCE_AMENDMENT_006.md
 - CHILD_HYPOTHESIS_STICKY_TRAIL_H1_FREEZE.md
 
 This script MUST run only after source gate PASS.
@@ -97,6 +97,8 @@ def fetch_funding_rest(symbol,manifest,mark_map):
     cursor=START_MS
     seen={}
     page=0
+    max_deviation_ms=0
+    normalized_nonzero_count=0
     while cursor<=END_MS:
         qs=urllib.parse.urlencode({
             "symbol":symbol,
@@ -454,7 +456,7 @@ out={
     "lab":"BTC-CONVEX-TREND-CAPTURE-001",
     "experiment":"CROSS_ASSET_COST_VALIDATION_V0.1",
     "freeze":"CROSS_ASSET_COST_VALIDATION_FREEZE_V0.1",
-    "source_amendment":"CROSS_ASSET_SOURCE_AMENDMENT_005",
+    "source_amendment":"CROSS_ASSET_SOURCE_AMENDMENT_006",
     "period":["2021-01-01T00:00:00Z","2025-12-31T23:00:00Z"],
     "symbols":{},
     "family":{},
