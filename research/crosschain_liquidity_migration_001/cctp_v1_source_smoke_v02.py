@@ -272,16 +272,41 @@ try:
             if x: mint_index.setdefault(x["tx_hash"],[]).append(x)
 
         paired=unpaired=ambiguous=mismatch=0; samples=[]
+        reason_counts={"NO_RECEIVED_NONCE":0,"RECEIVED_SEMANTIC_MISMATCH":0,"AMBIGUOUS_RECEIVED":0,"MINT_OR_AMOUNT_MISMATCH":0}
+        unpaired_diagnostics=[]
         for x in source:
-            cand=[d for d in recv_index.get((sd,x["nonce"]),[]) if d["sender"]==x["sender"] and d["body_hex"].lower()==x["body_hex"].lower()]
-            if not cand: unpaired+=1; continue
-            if len(cand)!=1: ambiguous+=1; continue
+            raw_candidates=recv_index.get((sd,x["nonce"]),[])
+            if not raw_candidates:
+                unpaired+=1; reason_counts["NO_RECEIVED_NONCE"]+=1
+                if len(unpaired_diagnostics)<30: unpaired_diagnostics.append({"nonce":x["nonce"],"reason":"NO_RECEIVED_NONCE","source_tx":x["source_tx"]})
+                continue
+            cand=[d for d in raw_candidates if d["sender"]==x["sender"] and d["body_hex"].lower()==x["body_hex"].lower()]
+            if not cand:
+                unpaired+=1; reason_counts["RECEIVED_SEMANTIC_MISMATCH"]+=1
+                if len(unpaired_diagnostics)<30: unpaired_diagnostics.append({"nonce":x["nonce"],"reason":"RECEIVED_SEMANTIC_MISMATCH","received_candidates":len(raw_candidates),"source_tx":x["source_tx"]})
+                continue
+            if len(cand)!=1:
+                ambiguous+=1; reason_counts["AMBIGUOUS_RECEIVED"]+=1
+                if len(unpaired_diagnostics)<30: unpaired_diagnostics.append({"nonce":x["nonce"],"reason":"AMBIGUOUS_RECEIVED","candidate_count":len(cand),"source_tx":x["source_tx"]})
+                continue
             d=cand[0]
             m=[z for z in mint_index.get(d["tx_hash"],[]) if z["amount_atomic"]==x["amount_atomic"] and z["token"]==CHAINS[dd]["usdc"] and z["recipient"]==x["mint_recipient"]]
-            if len(m)!=1: mismatch+=1; continue
+            if len(m)!=1:
+                mismatch+=1; reason_counts["MINT_OR_AMOUNT_MISMATCH"]+=1
+                if len(unpaired_diagnostics)<30: unpaired_diagnostics.append({"nonce":x["nonce"],"reason":"MINT_OR_AMOUNT_MISMATCH","mint_candidates_in_tx":len(mint_index.get(d["tx_hash"],[])),"source_tx":x["source_tx"],"destination_tx":d["tx_hash"]})
+                continue
             paired+=1
             if len(samples)<5:samples.append({"nonce":x["nonce"],"amount_atomic":x["amount_atomic"],"source_tx":x["source_tx"],"destination_tx":d["tx_hash"],"message_sha256":x["message_sha256"]})
-        receipt["routes"].append({"source_domain":sd,"destination_domain":dd,"source_messages":len(source),"paired":paired,"unpaired":unpaired,"ambiguous":ambiguous,"mint_or_amount_mismatch":mismatch,"samples":samples})
+        received_nonces=sorted({nonce for (src,nonce) in recv_index if src==sd})
+        receipt["routes"].append({
+          "source_domain":sd,"destination_domain":dd,"source_messages":len(source),"paired":paired,"unpaired":unpaired,
+          "ambiguous":ambiguous,"mint_or_amount_mismatch":mismatch,"samples":samples,
+          "source_nonces":sorted(x["nonce"] for x in source),
+          "destination_received_nonces_for_source":received_nonces,
+          "nonce_overlap_count":len(set(x["nonce"] for x in source) & set(received_nonces)),
+          "unpaired_reason_counts":reason_counts,
+          "unpaired_diagnostics":unpaired_diagnostics,
+        })
 
     total=sum(x["source_messages"] for x in receipt["routes"])
     paired=sum(x["paired"] for x in receipt["routes"])
