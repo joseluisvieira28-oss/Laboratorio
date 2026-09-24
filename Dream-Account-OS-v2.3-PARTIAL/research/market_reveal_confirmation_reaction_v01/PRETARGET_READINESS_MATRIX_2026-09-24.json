@@ -20,9 +20,24 @@
       "meaning": "continuous pre-decision measurements defined without classifier thresholds"
     },
     {
+      "gate": "TIMESTAMP_NANOSECOND_PRECISION",
+      "status": "PASS_SYNTHETIC",
+      "meaning": "strict RFC3339 parsing preserves 1-9 fractional digits with integer nanosecond arithmetic and rejects unsupported precision"
+    },
+    {
+      "gate": "SOURCE_AND_COLLECTOR_AVAILABILITY_BOUNDARY",
+      "status": "PASS_SYNTHETIC_PROTOCOL_UNARMED",
+      "meaning": "future target protocol must require both source time and collector arrival by decision; canonical template remains unset until authority transition"
+    },
+    {
       "gate": "BINANCE_PUBLIC_SOURCE_SCHEMA",
       "status": "PASS",
       "meaning": "live non-target source schema verified on public market-data-only transport"
+    },
+    {
+      "gate": "BINANCE_SNAPSHOT_BRIDGE_SEMANTICS",
+      "status": "PASS_SYNTHETIC",
+      "meaning": "snapshot-to-diff transitions are explicitly classified as STALE, BRIDGES, GAP or INVALID_INTERVAL"
     },
     {
       "gate": "COINBASE_MARKET_TRADES_SCHEMA",
@@ -35,6 +50,11 @@
       "meaning": "GitHub runner closed abnormally before L2; secondary host failed DNS before reaching Coinbase; portable local probe is ready"
     },
     {
+      "gate": "COINBASE_MULTI_UPDATE_BATCH_TIMING",
+      "status": "PASS_SYNTHETIC",
+      "meaning": "post-batch book state is timestamped at the latest engine event_time represented in the Coinbase batch"
+    },
+    {
       "gate": "LOCAL_ORDER_BOOK_RECONSTRUCTION",
       "status": "PASS_SYNTHETIC",
       "meaning": "snapshot/update replay, sequence gaps, stale duplicates and crossed-book atomicity tested"
@@ -42,7 +62,12 @@
     {
       "gate": "NO_LOOKAHEAD_BOUNDARY",
       "status": "PASS_SYNTHETIC",
-      "meaning": "future feature trades and future book batches are rejected"
+      "meaning": "future feature trades and future book batches are rejected, including a one-nanosecond boundary violation"
+    },
+    {
+      "gate": "METAMORPHIC_MEASUREMENT_INVARIANTS",
+      "status": "PASS_SYNTHETIC_PENDING_CURRENT_HEAD_CI",
+      "meaning": "scale/sign transformation invariants are encoded to detect silent measurement-semantic regressions"
     },
     {
       "gate": "STATE_RECEIPT_PROVENANCE",
@@ -52,7 +77,12 @@
     {
       "gate": "IMPLEMENTATION_FINGERPRINT_TOOLING",
       "status": "PASS_SYNTHETIC_PENDING_CURRENT_HEAD_CI",
-      "meaning": "fileset and byte-level manifest tooling implemented; every scientific freeze can be fingerprinted"
+      "meaning": "fileset and byte-level manifest tooling implemented; availability boundary is now included in the scientific implementation fileset"
+    },
+    {
+      "gate": "LIVE_SCHEMA_SHAKEDOWN_TRIGGER",
+      "status": "MANUAL_ONLY",
+      "meaning": "GitHub source shakedown no longer auto-runs on push, enforcing the anti-zombie environment rule"
     },
     {
       "gate": "OFFICIAL_2027_FOMC_CALENDAR",
@@ -67,7 +97,7 @@
     {
       "gate": "PRETARGET_PROTOCOL",
       "status": "LOCKED_UNARMED",
-      "meaning": "template exists but exact event families, venues/symbols, anchor, decision clock, depth, classifier, outcome horizon and economics remain intentionally unset"
+      "meaning": "template exists but event families, venues/symbols, anchor, decision clock, availability rule, depth, classifier, outcome horizon and economics remain intentionally unset"
     },
     {
       "gate": "H02",
@@ -89,13 +119,15 @@
     "portable Coinbase level2 source-only probe passes on a local/alternate network environment",
     "complete official 2027 BLS CPI/Employment Situation calendar becomes available",
     "separate governance authority explicitly authorizes H02 design/freeze",
-    "all pretarget protocol fields are frozen before any independent target observation",
+    "all pretarget protocol fields including SOURCE_AND_COLLECTOR_ARRIVAL are frozen before any independent target observation",
     "implementation and calendar manifests are fingerprinted before target opening"
   ],
   "anti_zombie_rules": [
+    "GitHub live schema shakedown is manual-only and must not be auto-repeated without an environment change",
     "do not repeat the same GitHub Coinbase L2 source hunt without an environment change",
     "do not reuse contaminated 2021-2026 outcomes for selection or promotion",
     "do not choose depth/clock/horizon/classifier after seeing target outcomes",
+    "do not use exchange source timestamps alone to admit prospectively late-arriving data",
     "do not convert source blockers into NO_EDGE",
     "do not promote infrastructure readiness as scientific edge"
   ]
