@@ -23,6 +23,9 @@ on:
       - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_fault_injection_v01.py'
       - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_golden_corpus_v01.py'
       - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_metamorphic_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_shadow_journal_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_shadow_recovery_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_shadow_collector_hygiene_v01.py'
       - '.github/workflows/market-reveal-confirmation-reaction-synthetic-ci-v01.yml'
 
 permissions:
@@ -36,9 +39,13 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Compile portable alternate-host probe
+      - name: Compile portable source and shadow tooling
         run: |
           python -m py_compile "Dream-Account-OS-v2.3-PARTIAL/research/market_reveal_confirmation_reaction_v01/coinbase_level2_local_probe.py"
+          python -m py_compile "Dream-Account-OS-v2.3-PARTIAL/research/market_reveal_confirmation_reaction_v01/coinbase_l2_shadow_collector.py"
+          python -m py_compile "Dream-Account-OS-v2.3-PARTIAL/research/market_reveal_confirmation_reaction_v01/shadow_journal.py"
+          python -m py_compile "Dream-Account-OS-v2.3-PARTIAL/research/market_reveal_confirmation_reaction_v01/shadow_recovery.py"
+          python -m py_compile "Dream-Account-OS-v2.3-PARTIAL/research/market_reveal_confirmation_reaction_v01/verify_shadow_journal.py"
       - name: Run measurement tests
         run: |
           python "Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_confirmation_reaction_v01.py" -v
@@ -90,6 +97,15 @@ jobs:
       - name: Run metamorphic measurement invariants
         run: |
           python "Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_metamorphic_v01.py" -v
+      - name: Run shadow journal integrity tests
+        run: |
+          python "Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_shadow_journal_v01.py" -v
+      - name: Run shadow replay recovery tests
+        run: |
+          python "Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_shadow_recovery_v01.py" -v
+      - name: Run shadow collector boundary hygiene tests
+        run: |
+          python "Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_shadow_collector_hygiene_v01.py" -v
       - name: Run pre-target anti-hindsight guards
         run: |
           python "Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_pretarget_guard_v01.py" -v
