@@ -275,7 +275,7 @@ async def run_collector(
         "l2_snapshot_seen": l2_snapshot_seen,
         "l2_update_messages": l2_update_messages,
         "heartbeat_messages": heartbeat_messages,
-        "heartbeat_subscription_used": false,
+        "heartbeat_subscription_used": False,
         "inserted_messages": inserted_messages,
         "deduped_messages": deduped_messages,
         "persisted_messages": persisted,
