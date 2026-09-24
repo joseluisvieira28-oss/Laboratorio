@@ -66,7 +66,7 @@ async def run_probe(seconds: float, heartbeat: bool) -> dict[str, Any]:
             open_timeout=8,
             close_timeout=2,
             ping_interval=20,
-            max_size=2_000_000,
+            max_size=16_000_000,
         ) as ws:
             receipt["transport"] = "PASS"
 
