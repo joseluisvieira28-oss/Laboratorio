@@ -1,0 +1,235 @@
+//@version=6
+indicator("SRC Crypto Lab — Market Microscope V1", shorttitle="SRC Microscope V1", overlay=true, max_labels_count=100)
+
+// ============================================================================
+// RESEARCH INSTRUMENT — NOT A TRADING STRATEGY
+// Lab: TV-FOOTPRINT-CALIBRATION-001
+// Purpose: calibrate TradingView footprint/LTF-derived measurements against
+// canonical exchange aggressor-flow data before granting any scientific use.
+// No strategy.* calls. No orders. No exchange mutation. No directional edge claim.
+// ============================================================================
+
+const string LAB_ID = "TV-FOOTPRINT-CALIBRATION-001"
+const string SENSOR_VERSION = "MM-V1"
+const string TARGET_SYMBOL = "BINANCE:BTCUSDT"
+const string TARGET_TF = "5"
+const string LTF = "1"
+const int TICKS_PER_ROW = 100
+const float VA_PERCENT = 70.0
+const float IMBALANCE_PERCENT = 300.0
+const int VOLUME_BASELINE_BARS = 288
+int FORWARD_START = timestamp("UTC", 2026, 9, 24, 11, 0)
+
+// Exact calibration context. A different symbol/timeframe/footprint definition
+// requires a new calibration identity rather than silent parameter mutation.
+if barstate.isfirst and syminfo.tickerid != TARGET_SYMBOL
+    runtime.error("FAIL-CLOSED: TV-FOOTPRINT-CALIBRATION-001 requires BINANCE:BTCUSDT.")
+
+if barstate.isfirst and timeframe.period != TARGET_TF
+    runtime.error("FAIL-CLOSED: TV-FOOTPRINT-CALIBRATION-001 requires the 5-minute chart timeframe.")
+
+// -----------------------------------------------------------------------------
+// 1) TradingView footprint sensor
+// One unique footprint request only. Frozen at 100 ticks/row, VA70, imbalance300.
+// -----------------------------------------------------------------------------
+footprint fp = request.footprint(TICKS_PER_ROW, VA_PERCENT, IMBALANCE_PERCENT)
+bool hasFp = not na(fp)
+
+float fpTotal = na
+float fpBuy = na
+float fpSell = na
+float fpDelta = na
+float fpDeltaPct = na
+float pocMid = na
+float vahUpper = na
+float valLower = na
+int buyImbalanceRows = 0
+int sellImbalanceRows = 0
+int footprintRows = 0
+
+if hasFp
+    fpTotal := fp.total_volume()
+    fpBuy := fp.buy_volume()
+    fpSell := fp.sell_volume()
+    fpDelta := fp.delta()
+    fpDeltaPct := fpTotal > 0 ? fpDelta / fpTotal : na
+
+    volume_row pocRow = fp.poc()
+    volume_row vahRow = fp.vah()
+    volume_row valRow = fp.val()
+
+    pocMid := math.avg(pocRow.up_price(), pocRow.down_price())
+    vahUpper := vahRow.up_price()
+    valLower := valRow.down_price()
+
+    for row in fp.rows()
+        footprintRows += 1
+        if row.has_buy_imbalance()
+            buyImbalanceRows += 1
+        if row.has_sell_imbalance()
+            sellImbalanceRows += 1
+
+float pocMigration = not na(pocMid) and not na(pocMid[1]) ? pocMid - pocMid[1] : na
+float pocMigrationBps = not na(pocMigration) and close != 0 ? pocMigration / close * 10000.0 : na
+
+// -----------------------------------------------------------------------------
+// 2) Lower-timeframe structure engine
+// Retrieves all available 1m intrabars inside each 5m chart bar.
+// -----------------------------------------------------------------------------
+[ltfOpen, ltfHigh, ltfLow, ltfClose, ltfVolume] = request.security_lower_tf(
+    syminfo.tickerid,
+    LTF,
+    [open, high, low, close, volume]
+)
+
+int intrabars = array.size(ltfClose)
+float ltfPathDistance = 0.0
+float ltfSignedVolume = 0.0
+float ltfFirstOpen = intrabars > 0 ? array.get(ltfOpen, 0) : na
+float ltfLastClose = intrabars > 0 ? array.get(ltfClose, intrabars - 1) : na
+float ltfPrev = ltfFirstOpen
+
+if intrabars > 0
+    for i = 0 to intrabars - 1
+        float iOpen = array.get(ltfOpen, i)
+        float iClose = array.get(ltfClose, i)
+        float iVolume = array.get(ltfVolume, i)
+        ltfPathDistance += math.abs(iClose - ltfPrev)
+        ltfSignedVolume += iClose > iOpen ? iVolume : iClose < iOpen ? -iVolume : 0.0
+        ltfPrev := iClose
+
+float ltfNetDisplacement = intrabars > 0 ? math.abs(ltfLastClose - ltfFirstOpen) : na
+float ltfPathEfficiency = ltfPathDistance > 0 ? ltfNetDisplacement / ltfPathDistance : na
+float ltfSignedVolumePct = volume > 0 ? ltfSignedVolume / volume : na
+
+// -----------------------------------------------------------------------------
+// 3) Descriptive chart context
+// These are measurements, not trade filters.
+// -----------------------------------------------------------------------------
+float volMean = ta.sma(volume, VOLUME_BASELINE_BARS)
+float volStd = ta.stdev(volume, VOLUME_BASELINE_BARS)
+float volumeZ = volStd > 0 ? (volume - volMean) / volStd : na
+float barReturnBps = open != 0 ? (close / open - 1.0) * 10000.0 : na
+float closeToCloseBps = close[1] != 0 ? (close / close[1] - 1.0) * 10000.0 : na
+
+// -----------------------------------------------------------------------------
+// 4) Multi-market context engine
+// lookahead_off is explicit. Invalid auxiliary symbols fail soft to na.
+// Values are observational and never create a trade direction.
+// -----------------------------------------------------------------------------
+float ethRet = request.security("BINANCE:ETHUSDT", timeframe.period, close / close[1] - 1.0, gaps=barmerge.gaps_off, lookahead=barmerge.lookahead_off, ignore_invalid_symbol=true)
+float solRet = request.security("BINANCE:SOLUSDT", timeframe.period, close / close[1] - 1.0, gaps=barmerge.gaps_off, lookahead=barmerge.lookahead_off, ignore_invalid_symbol=true)
+float cmeBtcRet = request.security("CME:BTC1!", timeframe.period, close / close[1] - 1.0, gaps=barmerge.gaps_off, lookahead=barmerge.lookahead_off, ignore_invalid_symbol=true)
+float ndxRet = request.security("NASDAQ:NDX", timeframe.period, close / close[1] - 1.0, gaps=barmerge.gaps_off, lookahead=barmerge.lookahead_off, ignore_invalid_symbol=true)
+float dxyRet = request.security("TVC:DXY", timeframe.period, close / close[1] - 1.0, gaps=barmerge.gaps_off, lookahead=barmerge.lookahead_off, ignore_invalid_symbol=true)
+
+// -----------------------------------------------------------------------------
+// 5) Forward boundary + research telemetry
+// Pine code cannot create a running TradingView alert by itself. If the operator
+// later creates an alert from this script, alert() emits measurement JSON only.
+// It contains NO order instruction and NO buy/sell action.
+// -----------------------------------------------------------------------------
+bool forwardActive = time_close >= FORWARD_START
+
+f_num(float x) =>
+    na(x) ? "null" : str.tostring(x)
+
+if barstate.isrealtime and barstate.isconfirmed and forwardActive and hasFp
+    string payload = "{" +
+      "\"lab_id\":\"" + LAB_ID + "\"," +
+      "\"sensor_version\":\"" + SENSOR_VERSION + "\"," +
+      "\"symbol\":\"" + syminfo.tickerid + "\"," +
+      "\"timeframe\":\"" + timeframe.period + "\"," +
+      "\"bar_open_ms\":" + str.tostring(time) + "," +
+      "\"bar_close_ms\":" + str.tostring(time_close) + "," +
+      "\"close\":" + f_num(close) + "," +
+      "\"tv_total_volume\":" + f_num(fpTotal) + "," +
+      "\"tv_buy_volume\":" + f_num(fpBuy) + "," +
+      "\"tv_sell_volume\":" + f_num(fpSell) + "," +
+      "\"tv_delta\":" + f_num(fpDelta) + "," +
+      "\"tv_delta_pct\":" + f_num(fpDeltaPct) + "," +
+      "\"poc_mid\":" + f_num(pocMid) + "," +
+      "\"poc_migration_bps\":" + f_num(pocMigrationBps) + "," +
+      "\"vah\":" + f_num(vahUpper) + "," +
+      "\"val\":" + f_num(valLower) + "," +
+      "\"buy_imbalance_rows\":" + str.tostring(buyImbalanceRows) + "," +
+      "\"sell_imbalance_rows\":" + str.tostring(sellImbalanceRows) + "," +
+      "\"footprint_rows\":" + str.tostring(footprintRows) + "," +
+      "\"ltf_intrabars\":" + str.tostring(intrabars) + "," +
+      "\"ltf_path_efficiency\":" + f_num(ltfPathEfficiency) + "," +
+      "\"ltf_signed_volume_pct\":" + f_num(ltfSignedVolumePct) + "," +
+      "\"volume_z\":" + f_num(volumeZ) + "," +
+      "\"bar_return_bps\":" + f_num(barReturnBps) + "," +
+      "\"eth_ret\":" + f_num(ethRet) + "," +
+      "\"sol_ret\":" + f_num(solRet) + "," +
+      "\"cme_btc_ret\":" + f_num(cmeBtcRet) + "," +
+      "\"ndx_ret\":" + f_num(ndxRet) + "," +
+      "\"dxy_ret\":" + f_num(dxyRet) +
+      "}"
+    alert(payload, alert.freq_once_per_bar_close)
+
+// -----------------------------------------------------------------------------
+// 6) Visual microscope + exportable feature columns
+// Data-window plots are intentionally named as a stable export schema.
+// -----------------------------------------------------------------------------
+plot(pocMid, "MM_POC_MID", color=color.new(color.orange, 0), linewidth=2)
+plot(vahUpper, "MM_VAH", color=color.new(color.blue, 45), linewidth=1)
+plot(valLower, "MM_VAL", color=color.new(color.blue, 45), linewidth=1)
+
+plot(fpTotal, "TVFP_total_volume", display=display.data_window)
+plot(fpBuy, "TVFP_buy_volume", display=display.data_window)
+plot(fpSell, "TVFP_sell_volume", display=display.data_window)
+plot(fpDelta, "TVFP_delta", display=display.data_window)
+plot(fpDeltaPct, "TVFP_delta_pct", display=display.data_window)
+plot(pocMid, "TVFP_poc_mid", display=display.data_window)
+plot(pocMigrationBps, "TVFP_poc_migration_bps", display=display.data_window)
+plot(vahUpper, "TVFP_vah", display=display.data_window)
+plot(valLower, "TVFP_val", display=display.data_window)
+plot(buyImbalanceRows, "TVFP_buy_imbalance_rows", display=display.data_window)
+plot(sellImbalanceRows, "TVFP_sell_imbalance_rows", display=display.data_window)
+plot(footprintRows, "TVFP_rows", display=display.data_window)
+plot(intrabars, "LTF_intrabars", display=display.data_window)
+plot(ltfPathEfficiency, "LTF_path_efficiency", display=display.data_window)
+plot(ltfSignedVolumePct, "LTF_signed_volume_pct", display=display.data_window)
+plot(volumeZ, "CTX_volume_z", display=display.data_window)
+plot(barReturnBps, "CTX_bar_return_bps", display=display.data_window)
+plot(closeToCloseBps, "CTX_close_to_close_bps", display=display.data_window)
+plot(ethRet, "XASSET_eth_ret", display=display.data_window)
+plot(solRet, "XASSET_sol_ret", display=display.data_window)
+plot(cmeBtcRet, "XASSET_cme_btc_ret", display=display.data_window)
+plot(ndxRet, "XASSET_ndx_ret", display=display.data_window)
+plot(dxyRet, "XASSET_dxy_ret", display=display.data_window)
+
+bool forwardStartPulse = forwardActive and not forwardActive[1]
+plotshape(forwardStartPulse, title="Forward calibration start", style=shape.flag, location=location.bottom, text="TVFP\nSTART", size=size.tiny, color=color.new(color.purple, 0), textcolor=color.white)
+
+// -----------------------------------------------------------------------------
+// 7) Research dashboard
+// -----------------------------------------------------------------------------
+var table dash = table.new(position.top_right, 2, 11, border_width=1)
+if barstate.islast
+    string fpState = hasFp ? "AVAILABLE" : "MISSING / PLAN OR DATA"
+    string fwState = forwardActive ? "FORWARD ACTIVE" : "PRE-BOUNDARY"
+    string alertState = "MEASUREMENT ONLY"
+    table.cell(dash, 0, 0, "SRC CRYPTO LAB", text_color=color.white, bgcolor=color.new(color.blue, 40))
+    table.cell(dash, 1, 0, "MARKET MICROSCOPE V1", text_color=color.white, bgcolor=color.new(color.blue, 40))
+    table.cell(dash, 0, 1, "Lab")
+    table.cell(dash, 1, 1, LAB_ID)
+    table.cell(dash, 0, 2, "Status")
+    table.cell(dash, 1, 2, "INSTRUMENT CALIBRATION")
+    table.cell(dash, 0, 3, "Forward")
+    table.cell(dash, 1, 3, fwState)
+    table.cell(dash, 0, 4, "Footprint")
+    table.cell(dash, 1, 4, fpState)
+    table.cell(dash, 0, 5, "TV delta %")
+    table.cell(dash, 1, 5, na(fpDeltaPct) ? "n/a" : str.tostring(fpDeltaPct * 100.0, "#.##") + "%")
+    table.cell(dash, 0, 6, "POC migration")
+    table.cell(dash, 1, 6, na(pocMigrationBps) ? "n/a" : str.tostring(pocMigrationBps, "#.##") + " bps")
+    table.cell(dash, 0, 7, "LTF efficiency")
+    table.cell(dash, 1, 7, na(ltfPathEfficiency) ? "n/a" : str.tostring(ltfPathEfficiency, "#.###"))
+    table.cell(dash, 0, 8, "LTF bars")
+    table.cell(dash, 1, 8, str.tostring(intrabars))
+    table.cell(dash, 0, 9, "Telemetry")
+    table.cell(dash, 1, 9, alertState)
+    table.cell(dash, 0, 10, "Trading authority")
+    table.cell(dash, 1, 10, "NONE", bgcolor=color.new(color.red, 60))
