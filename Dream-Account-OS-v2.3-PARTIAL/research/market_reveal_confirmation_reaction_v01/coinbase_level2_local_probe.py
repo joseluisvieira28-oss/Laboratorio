@@ -42,6 +42,7 @@ async def run_probe(seconds: float, heartbeat: bool) -> dict[str, Any]:
     receipt: dict[str, Any] = {
         "probe": "MRCR_COINBASE_L2_ALTERNATE_HOST_V01",
         "transport": "UNKNOWN",
+        "websocket_proxy_mode": "DIRECT_NO_PROXY",
         "subscription_ack": False,
         "l2_snapshot_seen": False,
         "l2_update_seen": False,
@@ -61,6 +62,7 @@ async def run_probe(seconds: float, heartbeat: bool) -> dict[str, Any]:
     try:
         async with websockets.connect(
             WS_URL,
+            proxy=None,
             open_timeout=8,
             close_timeout=2,
             ping_interval=20,
