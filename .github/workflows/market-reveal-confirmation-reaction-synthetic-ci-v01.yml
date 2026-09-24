@@ -18,6 +18,9 @@ on:
       - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_state_receipt_v01.py'
       - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_calendar_manifest_v01.py'
       - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_freeze_manifest_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_science_lock_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_fault_injection_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_golden_corpus_v01.py'
       - '.github/workflows/market-reveal-confirmation-reaction-synthetic-ci-v01.yml'
 
 permissions:
@@ -67,6 +70,18 @@ jobs:
       - name: Build and verify current freeze candidate manifest
         run: |
           python "Dream-Account-OS-v2.3-PARTIAL/research/market_reveal_confirmation_reaction_v01/freeze_candidate_check.py" --head-sha "$GITHUB_SHA"
+      - name: Enforce pretarget science lock
+        run: |
+          python "Dream-Account-OS-v2.3-PARTIAL/research/market_reveal_confirmation_reaction_v01/science_lock.py"
+      - name: Run science lock regression tests
+        run: |
+          python "Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_science_lock_v01.py" -v
+      - name: Run deterministic fault injection stress tests
+        run: |
+          python "Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_fault_injection_v01.py" -v
+      - name: Run golden synthetic corpus regression
+        run: |
+          python "Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_golden_corpus_v01.py" -v
       - name: Run pre-target anti-hindsight guards
         run: |
           python "Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_pretarget_guard_v01.py" -v
