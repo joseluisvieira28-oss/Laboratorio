@@ -72,13 +72,13 @@ class ShadowRecoveryTests(unittest.TestCase):
             session_id="S1",
             collector_version="TEST",
             endpoint="wss://example.invalid",
-            product_id="BTC-USD",
+            product_id=product_id,
             started_wall_ns=1,
             started_monotonic_ns=2,
         )
         return conn
 
-    def _ingest(self, conn, msg, wall):
+    def _ingest(self, conn, msg, wall, product_id="BTC-USD"):
         raw = json.dumps(msg, separators=(",", ":")).encode()
         ingest_message(
             conn,
@@ -117,6 +117,31 @@ class ShadowRecoveryTests(unittest.TestCase):
                 product_id="BTC-USD",
             )
             self.assertEqual(result, restarted)
+            conn.close()
+
+    def test_intervening_subscription_sequence_is_not_l2_gap(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "journal.sqlite3"
+            conn = self._conn(path)
+            self._ingest(conn, snapshot_message(0), 100)
+            self._ingest(conn, update_message(1), 200)
+            subscription = {
+                "channel": "subscriptions",
+                "timestamp": "2026-09-24T17:00:01.100000000Z",
+                "sequence_num": 2,
+                "events": [{"subscriptions": {"level2": ["BTC-USD"]}}],
+            }
+            self._ingest(conn, subscription, 250, product_id=None)
+            self._ingest(conn, update_message(3), 300)
+            result = replay_coinbase_level2_session(
+                conn,
+                session_id="S1",
+                product_id="BTC-USD",
+            )
+            self.assertTrue(result.ok, result.failure_reason)
+            self.assertEqual(result.snapshot_count, 1)
+            self.assertEqual(result.update_message_count, 2)
+            self.assertEqual(result.final_sequence, 3)
             conn.close()
 
     def test_gap_fails_recovery_closed(self):
