@@ -1,0 +1,33 @@
+name: USOPEN-SHORTVOL-FWD-001 Public Source Probe
+
+on:
+  push:
+    branches:
+      - us-open-shortvol-forward-v0.1
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/USOPEN_SHORTVOL_FWD_001_SOURCE_TRIGGER.txt'
+
+permissions:
+  contents: write
+
+jobs:
+  source:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: us-open-shortvol-forward-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Run public source probe only
+        run: python Dream-Account-OS-v2.3-PARTIAL/research/us_open_shortvol_fwd_001_source_probe.py
+      - name: Commit source receipt
+        run: |
+          git config user.name "crypto-lab-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add Dream-Account-OS-v2.3-PARTIAL/runtime/usopen_shortvol_fwd_001_source_probe.json
+          git diff --cached --quiet && exit 0
+          git commit -m "research: record USOPEN short-vol public source probe"
+          git push origin HEAD:us-open-shortvol-forward-v0.1
