@@ -7,7 +7,7 @@ import json
 import sqlite3
 from typing import Any
 
-from order_book import LocalOrderBook
+from order_book import BookSequenceGap, LocalOrderBook
 from shadow_journal import (
     ZERO_HASH,
     chain_sha256,
