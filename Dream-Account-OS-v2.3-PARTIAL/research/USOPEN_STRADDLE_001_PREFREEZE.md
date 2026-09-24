@@ -61,7 +61,7 @@ Base net BTC:
 `exit_bid_call + exit_bid_put - entry_ask_call - entry_ask_put - all_fees`
 
 Stress:
-- base net minus one additional contemporaneous bid-ask spread per leg across the round trip, adverse only.
+- base net minus one additional bid-ask spread per leg across the round trip, defined prospectively as max(entry spread, exit spread) for that leg, adverse only.
 
 ## Frozen diagnostic gates
 
