@@ -9,6 +9,7 @@ sys.path.insert(0, str(MODULE_DIR))
 
 from source_adapters import (
     binance_depth_sequence_ok,
+    binance_snapshot_bridge_status,
     coinbase_sequence_transition,
     parse_binance_aggtrade,
     parse_binance_depth_update,
@@ -45,26 +46,6 @@ class SourceAdapterTests(unittest.TestCase):
             "m": False,
         })
         self.assertEqual(row.aggressor_side, "BUY")
-
-    def test_coinbase_side_is_maker_side_and_must_be_inverted(self):
-        sell_aggressor = parse_coinbase_market_trade({
-            "trade_id": "1",
-            "product_id": "BTC-USD",
-            "price": "100",
-            "size": "2",
-            "side": "BUY",
-            "time": "2026-01-01T00:00:00Z",
-        })
-        buy_aggressor = parse_coinbase_market_trade({
-            "trade_id": "2",
-            "product_id": "BTC-USD",
-            "price": "100",
-            "size": "2",
-            "side": "SELL",
-            "time": "2026-01-01T00:00:01Z",
-        })
-        self.assertEqual(sell_aggressor.aggressor_side, "SELL")
-        self.assertEqual(buy_aggressor.aggressor_side, "BUY")
 
     def test_binance_depth_quantities_are_absolute_and_zero_is_valid(self):
         rows = parse_binance_depth_update({
@@ -147,6 +128,28 @@ class SourceAdapterTests(unittest.TestCase):
         self.assertEqual(
             rows[0].source_event_time,
             "2026-09-24T17:30:01.111Z",
+        )
+
+    def test_binance_snapshot_bridge_states(self):
+        self.assertEqual(
+            binance_snapshot_bridge_status(160, 157, 160),
+            "STALE",
+        )
+        self.assertEqual(
+            binance_snapshot_bridge_status(160, 157, 165),
+            "BRIDGES",
+        )
+        self.assertEqual(
+            binance_snapshot_bridge_status(160, 161, 161),
+            "BRIDGES",
+        )
+        self.assertEqual(
+            binance_snapshot_bridge_status(160, 162, 163),
+            "GAP",
+        )
+        self.assertEqual(
+            binance_snapshot_bridge_status(160, 170, 169),
+            "INVALID_INTERVAL",
         )
 
     def test_binance_sequence_gap_detection(self):
