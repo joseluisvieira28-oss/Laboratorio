@@ -1,9 +1,11 @@
 {
   "authority_id": "AUTOMATED_MICROLIVE_EXECUTION_AUTHORITY_V0.1",
-  "status": "PROPOSED_DRY_RUN_ONLY",
+  "status": "PROPOSED_DRY_RUN_ONLY__TIER2_MICROLIVE_POLICY_V1_BOUND",
   "date": "2026-09-24",
   "repository": "joseluisvieira28-oss/Laboratorio",
   "authority_branch": "automated-microlive-authority-audit-v0.1-2026-09-24",
+  "governing_micro_live_policy": "TIER2-MICROLIVE-POLICY-V1.0-FROZEN-2026-09-24",
+  "eligibility_registry": "TIER2_MICROLIVE_ELIGIBILITY_REGISTRY_V1",
   "activation": {
     "live_execution_enabled": false,
     "exchange_mutation_enabled": false,
@@ -14,6 +16,9 @@
     "separate_future_activation_authority_required": true
   },
   "principles": [
+    "TIER2_CAN_BE_MICROLIVE_RESEARCH_ELIGIBLE_BEFORE_TIER1",
+    "FORWARD_DIAMOND_GATES_DO_NOT_AUTOMATICALLY_BLOCK_MICROLIVE",
+    "MICROLIVE_DOES_NOT_PROMOTE",
     "ANY_UNKNOWN_STATE=NO_ORDER",
     "ANY_STALE_STATE=NO_ORDER",
     "ANY_AUTHORITY_MISMATCH=NO_ORDER",
@@ -22,93 +27,98 @@
     "NO_POST_OUTCOME_TUNING",
     "NO_LATE_ENTRY_CHASE"
   ],
+  "default_micro_live_envelope": {
+    "maximum_notional_usdt_equivalent": 10.0,
+    "maximum_leverage": 1.0,
+    "futures_margin_mode": "ISOLATED",
+    "maximum_concurrent_positions": 1,
+    "maximum_total_account_exposure_usdt_equivalent": 10.0,
+    "daily_realized_loss_limit_usdt": 2.0,
+    "rolling_7d_realized_loss_limit_usdt": 5.0,
+    "cross_margin": false,
+    "auto_margin_add": false,
+    "averaging_down": false,
+    "martingale": false,
+    "automatic_size_escalation": false,
+    "venue_minimum_above_cap_action": "NO_TRADE"
+  },
   "precedence": [
-    "exact frozen candidate protocol + canonical execution + terminal closeout",
-    "pre-outcome candidate-specific amendment",
-    "frozen global policy",
+    "exact frozen candidate scientific protocol + canonical execution + terminal closeout",
+    "prospective candidate-specific execution amendment",
+    "TIER2-MICROLIVE-POLICY-V1.0-FROZEN-2026-09-24",
+    "other frozen global policy",
     "current classification board/registry",
     "archive/roadmap/branch census",
     "branch names/chat shorthand"
   ],
-  "candidate_schema": {
-    "candidate_id": "REQUIRED",
-    "frozen_identity": "REQUIRED",
-    "scientific_authority": "REQUIRED",
-    "eligible_for_micro_live": "REQUIRED_BOOLEAN",
-    "eligible_for_automated_execution": "REQUIRED_BOOLEAN",
-    "allowed_venue": "REQUIRED",
-    "allowed_symbol": "REQUIRED",
-    "allowed_direction_semantics": "REQUIRED",
-    "maximum_notional": "REQUIRED",
-    "maximum_leverage": "REQUIRED",
-    "margin_mode": "REQUIRED",
-    "entry_order_type": "REQUIRED",
-    "exit_order_type": "REQUIRED",
-    "maximum_concurrent_positions": "REQUIRED",
-    "maximum_candidate_exposure": "REQUIRED",
-    "maximum_total_account_exposure": "REQUIRED",
-    "daily_loss_limit": "REQUIRED",
-    "weekly_loss_limit": "REQUIRED",
-    "maximum_slippage": "REQUIRED",
-    "signal_ttl": "REQUIRED",
-    "source_freshness_limit": "REQUIRED",
-    "evidence_freshness_limit": "REQUIRED",
-    "account_state_freshness_limit": "REQUIRED",
-    "kill_switch_required": true,
-    "immutable_preorder_receipt_required": true,
-    "immutable_execution_receipt_required": true,
-    "restart_reconciliation_required": true,
-    "orphan_position_detection_required": true,
-    "reduce_only_exit_required_when_supported": true
-  },
   "current_candidate_review_state": [
     {
       "candidate_id": "BNB-LAUNCHPOOL-DEMAND-001",
       "scientific_state": "TIER_2_QUASE_DIAMANTE",
-      "review_eligible_without_repeating_historical_science": true,
-      "eligible_for_micro_live": false,
-      "eligible_for_automated_execution": false,
-      "reason": "Tier 2 science is already established under V3, but the canonical route is BNBBTC spot, not the current MEXC Futures standing authority. Candidate-specific spot execution mapping, risk envelope and execution authority are absent. Diamond V0.2 25-event gate is for stronger Diamond evidence and is not itself a Tier-2 prerequisite."
-    },
-    {
-      "candidate_id": "ETF-CME-INSTFLOW-001",
-      "scientific_state": "TIER_2_FRAGILE",
-      "review_eligible_without_repeating_historical_science": true,
-      "eligible_for_micro_live": false,
-      "eligible_for_automated_execution": false,
-      "reason": "Standing operator route exists, but Q4 V0.1A no-peek authority controls forward evidence until the one-shot evaluation after 2027-01-01. Current runtime signal direction is LONG while standing MEXC route is SHORT-only, so current execution eligibility is authority-mismatched and fail-closed."
+      "historical_science_retest_required": false,
+      "eligible_for_micro_live_research": true,
+      "eligible_for_automated_execution_now": false,
+      "blocking_items": [
+        "freeze compatible exact BNBBTC SPOT venue mapping",
+        "freeze candidate-specific execution amendment",
+        "wait for genuine canonical eligible event",
+        "pass fresh source/market/account/firewall checks"
+      ],
+      "diamond_v02_25_event_gate_role": "TIER1_OR_DIAMOND_EVIDENCE_GATE__NOT_MICROLIVE_ELIGIBILITY_GATE"
     },
     {
       "candidate_id": "OPTIONS-SPOTPERP-001-V2.1",
       "scientific_state": "TIER_2_HIGH_RISK_FRAGILITY",
-      "review_eligible_without_repeating_historical_science": true,
-      "eligible_for_micro_live": false,
-      "eligible_for_automated_execution": false,
-      "reason": "Independent 2025 OOS is preserved, but the frozen first-50 forward evidence gate remains controlling; runtime is 4/50 and no candidate-specific active micro-live authority exists."
+      "historical_science_retest_required": false,
+      "eligible_for_micro_live_research": true,
+      "eligible_for_automated_execution_now": false,
+      "existing_mexc_route": "BTC_USDT_PERPETUAL_SHORT",
+      "blocking_items": [
+        "freeze candidate-specific V1 execution amendment",
+        "canonical signal must match a prospectively frozen execution direction mapping",
+        "pass fresh source/market/account/firewall checks",
+        "exactly-once executor not yet implemented"
+      ],
+      "first_50_forward_gate_role": "TIER1_OR_DIAMOND_EVIDENCE_GATE__NO_EARLY_SCIENTIFIC_VERDICT__NOT_BLANKET_MICROLIVE_BLOCKER"
     },
     {
       "candidate_id": "CED1D-0031",
       "scientific_state": "TIER_2_QUASE_DIAMANTE",
-      "review_eligible_without_repeating_historical_science": true,
-      "eligible_for_micro_live": false,
-      "eligible_for_automated_execution": false,
-      "reason": "Historical/OOS science and execution-capacity corroboration are preserved. Current prospective authority remains 60 events + 8 complete UTC weeks and runtime is WAITING_SOURCE_READINESS at 0/60, 0/8. No frozen MEXC Futures execution mapping exists."
+      "historical_science_retest_required": false,
+      "eligible_for_micro_live_research": true,
+      "eligible_for_automated_execution_now": false,
+      "blocking_items": [
+        "current WAITING_SOURCE_READINESS must clear",
+        "freeze exact execution mapping",
+        "freeze candidate-specific execution amendment",
+        "canonical signal required",
+        "pass fresh account/firewall checks",
+        "exactly-once executor not yet implemented"
+      ],
+      "60_event_8_week_gate_role": "TIER1_OR_DIAMOND_EVIDENCE_GATE__NOT_BLANKET_MICROLIVE_BLOCKER"
+    },
+    {
+      "candidate_id": "ETF-CME-INSTFLOW-001",
+      "scientific_state": "TIER_2_FRAGILE",
+      "historical_science_retest_required": false,
+      "eligible_for_micro_live_research": false,
+      "eligible_for_automated_execution_now": false,
+      "reason": "Preserve controlling Q4 V0.1A no-peek experiment; live outcome exposure would contaminate the sealed lane.",
+      "future_option": "Create separate execution fork with zero promotion credit from contaminated Q4 lane."
     },
     {
       "candidate_id": "TFG-DONCHIAN-REGIME-ADAPTATION-V1",
       "scientific_state": "TIER_3_FORWARD_ONLY",
-      "review_eligible_without_repeating_historical_science": false,
-      "eligible_for_micro_live": false,
-      "eligible_for_automated_execution": false,
-      "reason": "Independent post-freeze validation remains incomplete. Runtime readiness is 7/10 resolved, 4 paths still maturing, and the current frozen gate is not passed."
+      "eligible_for_micro_live_research": false,
+      "eligible_for_automated_execution_now": false,
+      "reason": "Independent post-freeze scientific validation incomplete."
     },
     {
       "candidate_id": "HTF-DH03-12H-STANDALONE-FORWARD-V1",
       "scientific_state": "PROSPECTIVE_STANDALONE_SHADOW_SUPPORTING_FAMILY_EVIDENCE_ONLY",
-      "review_eligible_without_repeating_historical_science": false,
-      "eligible_for_micro_live": false,
-      "eligible_for_automated_execution": false,
-      "reason": "Historical 12H sibling evidence cannot be converted into separate promotion. The standalone identity still needs genuinely independent prospective evidence and has no capital/execution mapping."
+      "eligible_for_micro_live_research": false,
+      "eligible_for_automated_execution_now": false,
+      "reason": "Standalone identity requires genuinely independent prospective evidence."
     }
   ],
   "hard_firewall_required_checks": [
