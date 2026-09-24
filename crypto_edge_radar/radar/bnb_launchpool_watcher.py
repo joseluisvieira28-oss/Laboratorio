@@ -335,7 +335,7 @@ class BNBLaunchpoolForwardShadowWatcher:
         self.store = store
         self.source = source or BinanceOfficialLaunchpoolSource()
         self.market = market or BinanceSpotBNBBTCKlineFeed()
-        self.diamond_feed = diamond_feed or BinancePublicMinuteFeed()
+        self.diamond_feed = diamond_feed
 
     def run_once(self, *, now_ms: int | None = None) -> dict[str, Any]:
         if now_ms is None:
@@ -437,7 +437,11 @@ class BNBLaunchpoolForwardShadowWatcher:
 
             active_exit_ms = theoretical_exit
 
-            if key not in existing_diamond_measurements and key not in existing_diamond_blocks:
+            if (
+                self.diamond_feed is not None
+                and key not in existing_diamond_measurements
+                and key not in existing_diamond_blocks
+            ):
                 try:
                     diamond = measure_causal_event(
                         self.diamond_feed,
@@ -561,10 +565,15 @@ class BNBLaunchpoolForwardShadowWatcher:
                 self.store.read_payloads(DIAMOND_BLOCKED_EVENT)
             ),
             "diamond_measurement_errors": diamond_measurement_errors,
+            "diamond_measurement_enabled": self.diamond_feed is not None,
             "diamond_measurement_status": (
-                "TECHNICAL_RETRY_REQUIRED"
-                if diamond_measurement_errors
-                else "OK"
+                "DISABLED_NOT_ARMED"
+                if self.diamond_feed is None
+                else (
+                    "TECHNICAL_RETRY_REQUIRED"
+                    if diamond_measurement_errors
+                    else "OK"
+                )
             ),
             "missed_prospective_observation_count": len(
                 self.store.read_payloads(MISSED_PROSPECTIVE_EVENT)
