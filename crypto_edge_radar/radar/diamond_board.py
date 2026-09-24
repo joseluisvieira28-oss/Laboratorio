@@ -18,6 +18,7 @@ def build_diamond_board(state: dict[str, Any]) -> dict[str, Any]:
     options = state.get("options_v21_metrics") or {}
     ced = state.get("ced1d_render_shadow") or {}
     bnb = state.get("bnb_launchpool") or {}
+    bnb_diamond = state.get("bnb_diamond_v02") or {}
     etf_signal = state.get("etf_cme_signal") or {}
     etf_sched = state.get("etf_cme_exact_scheduler") or {}
 
@@ -50,6 +51,17 @@ def build_diamond_board(state: dict[str, Any]) -> dict[str, Any]:
         etf_state = "Q4_SOURCE_BLOCKED_FAIL_CLOSED"
 
     bnb_events = int(bnb.get("eligible_events_visible") or 0)
+    bnb_complete = int(bnb_diamond.get("complete_causal_measurements") or 0)
+    bnb_blocked = int(bnb_diamond.get("blocked_causal_measurements") or 0)
+    bnb_summary = bnb_diamond.get("summary") or {}
+    if bnb_blocked > 0:
+        bnb_state = "DIAMOND_MEASUREMENT_BLOCKED"
+    elif bool(bnb_summary.get("verdict_allowed_now")):
+        bnb_state = "CAUSAL_GATE_READY_FOR_PARENT_RECONCILIATION"
+    elif bnb_events == 0 and bnb_complete == 0:
+        bnb_state = "WAITING_GENUINELY_PROSPECTIVE_EVENT"
+    else:
+        bnb_state = "COLLECTING"
 
     return {
         "board_id": "CRYPTO-LAB-DIAMOND-BOARD-V0.1",
@@ -97,11 +109,18 @@ def build_diamond_board(state: dict[str, Any]) -> dict[str, Any]:
                 "verdict_allowed_now": False,
             },
             "BNB-LAUNCHPOOL-DEMAND-001": {
-                "authority": "PARENT_FORWARD_WATCHER_CANONICAL__DIAMOND_V0.2_DRAFT_PR88",
-                "state": "WAITING_GENUINELY_PROSPECTIVE_EVENT",
+                "authority": "BNB-LAUNCHPOOL-DIAMOND-V0.2-2026-09-24 + canonical parent forward watcher",
+                "state": bnb_state,
                 "runtime_status": bnb.get("status"),
+                "measurement_status": bnb_diamond.get("status"),
                 "eligible_events_visible": bnb_events,
-                "diamond_contract_canonical": False,
+                "complete_causal_measurements": bnb_complete,
+                "required_causal_measurements": 25,
+                "progress_causal": _progress(bnb_complete, 25),
+                "blocked_causal_measurements": bnb_blocked,
+                "causal_gate_pass": bnb_summary.get("causal_gate_pass"),
+                "diamond_contract_canonical": True,
+                "parent_reconciliation_required": True,
                 "automatic_promotion": False,
                 "verdict_allowed_now": False,
             },

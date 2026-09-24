@@ -13,6 +13,7 @@ from .bnb_launchpool_watcher import (
     BNBLaunchpoolForwardShadowWatcher,
     BinanceOfficialLaunchpoolSource,
 )
+from .bnb_diamond_v02 import BNBDiamondV02Sidecar, BinanceSpotOneMinuteFeed
 from .config import Settings
 from .ced1d_source_probe import ced1d_render_source_probe
 from .ced1d_render_shadow_runtime import CED1DRenderShadowRunner
@@ -124,6 +125,10 @@ class ForwardShadowRuntime:
             store=self.store,
             source=CachingBinanceOfficialLaunchpoolSource(timeout=settings.http_timeout),
             market=BinanceSpotBNBBTCKlineFeed(timeout=settings.http_timeout),
+        )
+        self.bnb_diamond_v02 = BNBDiamondV02Sidecar(
+            store=self.store,
+            feed=BinanceSpotOneMinuteFeed(timeout=settings.http_timeout),
         )
         self.options_v21 = OptionsV21ForwardShadowWatcher(
             store=self.store,
@@ -268,6 +273,21 @@ class ForwardShadowRuntime:
         except Exception as exc:
             bnb_state = {"status": "FAIL_CLOSED", "error": f"{type(exc).__name__}:{exc}"}
             errors["bnb_launchpool"] = bnb_state["error"]
+
+        try:
+            bnb_diamond_v02 = self.bnb_diamond_v02.run_once(now_ms=now_ms)
+        except Exception as exc:
+            # Measurement sidecar is fail-closed for Diamond evidence but MUST NOT
+            # mutate or disable the canonical parent BNB forward watcher.
+            bnb_diamond_v02 = {
+                "status": "DIAMOND_MEASUREMENT_FAIL_CLOSED",
+                "error": f"{type(exc).__name__}:{exc}",
+                "parent_science_changed": False,
+                "authenticated_exchange_api_used": False,
+                "orders_created": False,
+                "exchange_mutation_performed": False,
+                "live_capital_enabled": False,
+            }
 
         due = latest_certifiable_signal_close_ms(now_ms)
         if due is not None and due != self._last_tfg_due:
@@ -517,6 +537,7 @@ class ForwardShadowRuntime:
             "ema6h_regime": ema6h_state,
             "ema6h_regime_metrics": ema6h_metrics,
             "bnb_launchpool": bnb_state,
+            "bnb_diamond_v02": bnb_diamond_v02,
             "etf_exec_v2_public": etf_exec_v2,
             "etf_cme_signal": etf_signal,
             "etf_cme_exact_scheduler": self.etf_cme_exact_scheduler.state(),
