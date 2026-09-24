@@ -63,8 +63,11 @@ def hf_values(x):
     return vals
 
 if SNAP.exists():
-    print(json.dumps({"status":"IDEMPOTENT_ALREADY_CAPTURED","date":TODAY}))
-    raise SystemExit(0)
+    old=json.loads(SNAP.read_text())
+    retryable=(old.get("valid_health_factor_count")==0 and old.get("holder_query_error_count")==old.get("reserve_count") and not old.get("liquidation_outcomes_opened") and not old.get("market_prices_opened") and not old.get("returns_opened") and not old.get("pnl_opened"))
+    if not retryable:
+        print(json.dumps({"status":"IDEMPOTENT_ALREADY_CAPTURED","date":TODAY}))
+        raise SystemExit(0)
 
 markets=call("get_markets",{"version":"v4"})
 reserves=sorted({str(d.get("reserveId") or d.get("reserve_id")) for d in dicts(markets) if (d.get("reserveId") or d.get("reserve_id")) is not None})
