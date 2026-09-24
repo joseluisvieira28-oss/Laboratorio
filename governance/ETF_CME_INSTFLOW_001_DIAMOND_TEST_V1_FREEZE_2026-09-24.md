@@ -1,73 +1,124 @@
-# ETF-CME-INSTFLOW-001 — DIAMOND TEST V1 PROSPECTIVE FREEZE — 2026-09-24
+# ETF-CME-INSTFLOW-001 — DIAMOND TEST V1 AUTHORITY RECONCILIATION — 2026-09-24
 
-Status: FROZEN BEFORE DIAMOND-COUNTED FORWARD BLOCK
-Parent: ETF-CME-INSTFLOW-001
-Diamond authority: DIAMOND-TEST-V1-FROZEN-2026-09-24
-Current V3 state: Tier 2 retained — fragile / forward shadow active
-Diamond state: DIAMOND_TEST_ARMED
+Status: `CORRECTED_BEFORE_ANY_ETF_DIAMOND_OUTCOME_ACCESS`
 
-## Scientific identity — unchanged
+Parent: `ETF-CME-INSTFLOW-001`
 
-- CFTC Legacy Futures Only;
-- contract code 133741;
-- signal = delta(noncommercial_long - noncommercial_short) / current open interest;
-- sign determines LONG / SHORT / FLAT;
-- information-safe time = CFTC as-of date + 8 calendar days at 00:00 UTC;
-- entry = first BTCUSDT daily 00:00 UTC at/after information-safe time;
-- exit = entry + 7 calendar days at 00:00 UTC;
-- no threshold, category, regime or horizon change.
+## Authority conflict discovered and resolved
 
-Exact runtime timing remains:
-- arm lead = 60 seconds;
-- max technical lateness = 2 seconds;
-- no late chase.
+The 2026-09-24 draft originally proposed a new first-50 resolved-observation Diamond block.
 
-## Diamond boundary
+That proposal is **void and must not be used** because a stricter, earlier prospectively frozen authority already exists:
 
-The 2026-09-23 missed observation is immutable and excluded from this new Diamond block because it occurred before this freeze.
+- `ETF-CME-INSTFLOW-001 — FORWARD SHADOW Q4 2026 — FINAL EVALUATION CONTRACT V0.1A`
+- frozen: **2026-09-15**
+- study: `ETF-CME-INSTFLOW-001-FORWARD-SHADOW-Q4-2026-V0.1A`
 
-Only forward observations with information-safe timestamps strictly after this freeze may enter the Diamond block.
+Earlier authority takes precedence.
 
-No missed or late event after this freeze may be reconstructed.
+No ETF-CME BTC forward outcome has been opened by the 2026-09-24 Diamond work.
 
-## Sample
+## Governing Q4 authority — inherited exactly
 
-Final Diamond statistical block = first **50 resolved directional forward observations** after this freeze.
+The Diamond Test may observe **source-only** CFTC state and operational timing/friction diagnostics during Q4, but must not fetch, inspect, log, summarize, infer or use BTC forward-outcome prices before the frozen one-shot evaluation.
 
-Rationale: Promotion Policy V3 defines >=50 genuinely independent validation observations as the normal dense/systematic independent-block minimum. The historical independent OOS also contained 50 weeks. This sample rule is frozen before the new Diamond block.
+Frozen window:
+- first allowed prospective CFTC as-of: 2026-09-15;
+- last allowed prospective CFTC as-of: 2026-12-15;
+- latest allowed exit: 2026-12-31;
+- target maximum weeks: 14;
+- minimum evaluable weeks: 12.
 
-## Statistical gates at 50
+Frozen one-shot evaluation:
+- may execute only **after 2027-01-01T00:00:00Z**;
+- exactly one final economic evaluation;
+- no interim PnL;
+- no sequential testing;
+- no early promotion/demotion;
+- no partial-sample verdict;
+- all eligible prospective observations included.
 
-All required:
-- BASE10 mean > 0;
-- BASE10 PF > 1;
-- STRESS20 mean >= 0;
-- five consecutive blocks of 10 observations;
-- at least 3/5 blocks have non-negative BASE10 mean;
-- largest single positive BASE10 observation share <=40%;
-- no favourable-week deletion;
-- no missed/late observation reconstructed;
-- signal provenance and timing identity remain exact.
+## Frozen scientific rule
 
-## Operational gate
+Unchanged:
+- CFTC dataset `6dca-aqww`;
+- contract code `133741`;
+- signal = delta(non-commercial long - non-commercial short) / current open interest;
+- positive signal = LONG BTC;
+- negative signal = SHORT BTC;
+- zero = no position/no cost;
+- entry = first Binance BTCUSDT Spot daily 00:00 UTC open at/after as-of + 8 calendar days;
+- exit = entry + 7 calendar days;
+- BASE round-trip cost = 10 bps;
+- STRESS round-trip cost = 20 bps;
+- no threshold / z-score / winsorization / regime filter / alternate COT category.
 
-The existing candidate-specific readiness contract remains authoritative:
-- projected all-in round-trip friction for an intended execution must be <=20 bps;
-- exact applicable fees must be measured, never assumed lower after outcomes;
-- LONG mapping = unlevered MEXC BTCUSDT Spot;
-- SHORT mapping = MEXC BTC_USDT isolated 1x perpetual;
-- no stop invention;
-- no maker fallback rescue;
-- no leverage tuning;
-- missed exact entry = no trade.
+Frozen outcome source:
+- **Binance Vision BTCUSDT Spot 1d official archive bytes only**;
+- source archive hashes must be preserved;
+- REST ticker, TradingView, exchange UI, alternate venue, mark/index, interpolation or reconstructed candle are forbidden substitutes.
 
-For Diamond survival, every counted implementation observation must have an immutable pre-entry friction/timing receipt. An observation whose projected friction exceeds 20 bps remains in the scientific ledger but is marked operationally non-executable; it cannot be silently deleted.
+## Frozen final success criteria
 
-## Outcome
+`FORWARD_SHADOW_PASS` requires all simultaneously:
 
-At 50:
-- statistical gates PASS + no unresolved operational contradiction -> `DIAMOND_TEST_SURVIVES`;
-- statistical gate FAIL -> `DIAMOND_TEST_FAIL__EXACT_ETF_CME_NO_RESCUE`;
-- source/timing/operational evidence incomplete -> `DIAMOND_TEST_BLOCKED`.
+- evaluable observations >= 12;
+- BASE NET10 mean > 0;
+- BASE PF >= 1.0;
+- STRESS20 NET mean >= 0;
+- STRESS20 PF >= 1.0;
+- OLS beta sign positive;
+- leave-one-trade-out minimum BASE NET mean > 0;
+- max single-trade share of positive gross PnL <= 40%;
+- absolute additive max drawdown < 0.50;
+- clean provenance / no leakage / no technical or source-path failure.
 
-No automatic Tier 1, micro-live, production or capital authority is created.
+At final evaluation:
+- pass => `DIAMOND_TEST_ETF_EVIDENCE_LAYER_PASS__TIER_EFFECT_NONE_AUTOMATIC`;
+- scientific/economic fail with >=12 => `DIAMOND_TEST_FAIL__EXACT_ETF_CME_NO_RESCUE`;
+- legitimate evaluable sample <12 => `DIAMOND_TEST_INSUFFICIENT_SAMPLE`;
+- technical/provenance failure => `DIAMOND_TEST_BLOCKED`.
+
+A Q4 forward pass is strong independent evidence but is **not automatically** `DIAMOND_TEST_SURVIVES`; Diamond V1 still requires a separate post-evaluation reconciliation of operational realism and the complete evidence chain, without changing the frozen Q4 result.
+
+## What is allowed before 2027-01-01
+
+Allowed:
+- CFTC source-only checkpointing;
+- exact timing receipts;
+- missed-observation receipts;
+- public execution-friction diagnostics;
+- source health;
+- persistence/idempotency checks;
+- evidence-chain integrity;
+- verification that no BTC outcomes were opened.
+
+Forbidden:
+- BTC forward price fetch for Q4 observations;
+- forward return;
+- PnL;
+- PF;
+- drawdown;
+- interim winner/loser view;
+- partial-sample performance;
+- threshold/horizon/cost/sign/category/regime rescue.
+
+## Preserved runtime fact
+
+The information-safe observation expected on 2026-09-23 was missed under the exact runtime and is immutable as `MISSED_EXPECTED_OBSERVATION_NO_CHASE`.
+
+It must not be reconstructed as a prospective observed signal.
+
+The older Q4 V0.1A source-only study remains the scientific authority for inclusion and final one-shot evaluation semantics.
+
+## Governance
+
+- research-only;
+- no live trading from this document;
+- no orders;
+- no exchange mutation;
+- no wallets;
+- no capital;
+- no main merge;
+- no interim outcome peeking;
+- no post-outcome rescue.
