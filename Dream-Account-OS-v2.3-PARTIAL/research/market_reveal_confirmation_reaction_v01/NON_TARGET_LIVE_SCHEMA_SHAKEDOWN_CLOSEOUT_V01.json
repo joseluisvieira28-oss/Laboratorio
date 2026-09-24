@@ -1,0 +1,70 @@
+{
+  "document_type": "MRCR_NON_TARGET_LIVE_SCHEMA_SHAKEDOWN_CLOSEOUT_V01",
+  "lab_id": "MARKET-REVEAL-CONFIRMATION-REACTION-001",
+  "date": "2026-09-24",
+  "scope": "SOURCE_TRANSPORT_AND_SCHEMA_ONLY",
+  "economic_values_persisted": false,
+  "raw_payloads_persisted": false,
+  "scientific_outcomes_accessed": false,
+  "final_classification": "PARTIAL_PASS_COINBASE_LEVEL2_TRANSPORT_BLOCKED_ON_GITHUB_RUNNER",
+  "synthetic_ci": {
+    "head_before_closeout": "b47934aad3d95949af01f6317b3b980d2ef471ce",
+    "run_id": 36033704362,
+    "conclusion": "success"
+  },
+  "live_shakedown": {
+    "run_id": 36033704386,
+    "conclusion": "failure_by_fail_closed_contract",
+    "reason": "both venue schema gates were required; Coinbase level2 was not established before abnormal websocket closure",
+    "binance": {
+      "endpoint_label": "MARKET_DATA_ONLY",
+      "transport": "PASS",
+      "aggtrade_messages": 25,
+      "aggtrade_schema_pass": true,
+      "depth_messages": 55,
+      "depth_schema_pass": true,
+      "depth_sequence_anomaly": false
+    },
+    "coinbase": {
+      "transport": "FAIL",
+      "close_code": 1006,
+      "channels_seen": [
+        "market_trades",
+        "subscriptions"
+      ],
+      "market_trade_messages": 2,
+      "market_trade_schema_pass": true,
+      "level2_messages": 0,
+      "level2_schema_pass": false,
+      "sequence_anomaly_diagnostic": true,
+      "sequence_anomaly_interpretation": "NOT_ADJUDICATED_DUE_TRANSPORT_FAILURE_AND_INCOMPLETE_CHANNEL_CAPTURE"
+    }
+  },
+  "interpretation": {
+    "binance_public_feed_semantics_live_verified": true,
+    "coinbase_market_trades_schema_partially_live_verified": true,
+    "coinbase_level2_live_verified": false,
+    "edge_evidence": false,
+    "no_edge_allowed": false,
+    "source_block_is_scientific_failure": false
+  },
+  "anti_zombie_decision": {
+    "github_runner_probe_plan_exhausted": true,
+    "do_not_repeat_same_runner_hunt": true,
+    "objective_reopen_triggers": [
+      "a separately authorized local or alternate-host source-only transport shakedown",
+      "a documented Coinbase transport/environment change",
+      "a prospectively authorized collector environment with independent connectivity proof"
+    ]
+  },
+  "guards": {
+    "h02_authorized": false,
+    "target_observation_authorized": false,
+    "live_trading": false,
+    "paper_orders": false,
+    "exchange_mutation": false,
+    "main_merge": false,
+    "render_deploy": false
+  },
+  "final_state": "BINANCE_SOURCE_PATH_LIVE_SCHEMA_PASS__COINBASE_MARKET_TRADES_PARTIAL_PASS__COINBASE_LEVEL2_GITHUB_RUNNER_TRANSPORT_BLOCKED__TARGETS_LOCKED"
+}
