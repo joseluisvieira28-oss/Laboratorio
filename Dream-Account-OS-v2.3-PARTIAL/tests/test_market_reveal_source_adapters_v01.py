@@ -60,6 +60,19 @@ class SourceAdapterTests(unittest.TestCase):
         self.assertEqual(len(rows), 3)
         self.assertEqual(rows[1].absolute_quantity, Decimal("0"))
 
+    def test_coinbase_level2_offer_maps_to_ask(self):
+        row = parse_coinbase_level2_update(
+            product_id="BTC-USD",
+            sequence_num=42,
+            update={
+                "side": "offer",
+                "event_time": "2026-01-01T00:00:00.123Z",
+                "price_level": "101",
+                "new_quantity": "1",
+            },
+        )
+        self.assertEqual(row.side, "ASK")
+
     def test_coinbase_level2_absolute_quantity(self):
         row = parse_coinbase_level2_update(
             product_id="BTC-USD",
