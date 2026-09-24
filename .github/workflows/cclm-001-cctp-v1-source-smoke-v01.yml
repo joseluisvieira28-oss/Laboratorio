@@ -1,0 +1,32 @@
+name: CCLM-001 CCTP V1 source smoke
+
+on:
+  push:
+    branches:
+      - crosschain-liquidity-migration-001-source-gate-v0.1
+    paths:
+      - 'research/crosschain_liquidity_migration_001/cctp_v1_source_smoke_v01.py'
+      - '.github/workflows/cclm-001-cctp-v1-source-smoke-v01.yml'
+      - 'research/crosschain_liquidity_migration_001/CCLM_SOURCE_SMOKE_TRIGGER.txt'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run source-only CCTP V1 historical smoke
+        run: python research/crosschain_liquidity_migration_001/cctp_v1_source_smoke_v01.py
+      - name: Upload source evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: cclm-001-cctp-v1-source-smoke-2023-08-20
+          path: artifacts/cclm_cctp_v1_source_smoke_2023_08_20.json
+          if-no-files-found: error
