@@ -197,7 +197,17 @@ def main():
             if nxt>=cursor: raise RuntimeError("non-descending cursor")
             cursor=nxt
         if not reached: raise RuntimeError("did not cross lower 2024 boundary")
-        if not CONTROLS.issubset(candidates): raise RuntimeError("positive controls missing from immutable index")
+        missing_controls_index=sorted(CONTROLS-set(candidates))
+        (outdir/"enumeration_diagnostic.json").write_text(json.dumps({
+          "candidate_count":len(candidates),
+          "candidates":sorted(candidates.values(),key=lambda x:x["telegram_message_id"]),
+          "missing_controls_from_index":missing_controls_index,
+          "pages":pages,
+          "market_prices_opened":False,
+          "returns_opened":False,
+          "pnl_opened":False
+        },indent=2,sort_keys=True)+"\\n")
+        if missing_controls_index: raise RuntimeError("positive controls missing from immutable index: "+",".join(missing_controls_index))
 
         articles=[]; events=[]
         for code,meta in sorted(candidates.items()):
