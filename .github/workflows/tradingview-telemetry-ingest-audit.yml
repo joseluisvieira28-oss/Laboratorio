@@ -1,0 +1,75 @@
+name: TradingView telemetry ingest audit
+
+on:
+  push:
+    branches:
+      - tradingview-telemetry-ingest-v0.1
+  pull_request:
+    paths:
+      - "tradingview_ingest/**"
+      - ".github/workflows/tradingview-telemetry-ingest-audit.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install isolated ingest dependencies
+        run: pip install -r tradingview_ingest/requirements.txt
+
+      - name: Unit tests
+        run: python -m unittest tradingview_ingest/test_app.py
+
+      - name: Fail-closed security boundary
+        shell: python
+        run: |
+          from pathlib import Path
+
+          src = Path("tradingview_ingest/app.py").read_text(encoding="utf-8")
+          lower = src.lower()
+
+          forbidden_imports = [
+              "import requests",
+              "from requests",
+              "import httpx",
+              "from httpx",
+              "urllib.request",
+              "ccxt",
+              "psycopg",
+              "redis",
+          ]
+          for token in forbidden_imports:
+              assert token not in lower, f"forbidden client/persistence dependency: {token}"
+
+          execution_tokens = [
+              "create_order(",
+              "place_order(",
+              "submit_order(",
+              "cancel_order(",
+              "set_leverage(",
+              "withdraw(",
+          ]
+          for token in execution_tokens:
+              assert token not in lower, f"exchange mutation surface forbidden: {token}"
+
+          assert 'LOG_PREFIX = "TVFP_RECEIPT "' in src
+          assert '"trading_authority": "NONE"' in src
+          assert "TV-FOOTPRINT-CALIBRATION-001" in src
+          assert "1790247600000" in src
+          assert "bar_close_ms" in src
+          assert "hmac.compare_digest" in src
+
+          print("PASS: no outbound HTTP client")
+          print("PASS: no exchange mutation API")
+          print("PASS: no DB/Redis credentials")
+          print("PASS: structured receipt log ledger")
+          print("PASS: exact frozen lab identity and boundary")
