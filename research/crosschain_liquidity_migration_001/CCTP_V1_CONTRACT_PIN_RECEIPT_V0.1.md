@@ -7,15 +7,17 @@ Verdict: V1_CONTRACT_ADDRESS_AUTHORITATIVE_PIN_PASS
 
 ## Circle-owned authority
 
-Circle's published USDCKit/CCTP chain definitions currently expose the CCTP V1 contract addresses used by the Ethereum and Avalanche integrations.
+Circle's published USDCKit/CCTP chain definitions expose the CCTP V1 contract addresses and native USDC contracts used by the Ethereum and Avalanche integrations.
 
 ### Ethereum mainnet / domain 0
 - MessageTransmitter: 0x0a992d191deec32afe36203ad87d7d289a738f81
 - TokenMessenger: 0xbd3fa81b58ba92a82136038b25adec7066af3155
+- native USDC: 0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48
 
 ### Avalanche C-Chain / domain 1
 - MessageTransmitter: 0x8186359af5f57fbb40c6b14a588d2a59c0c29880
 - TokenMessenger: 0x6b25532e1060ce10cc3b0a99e5683b91bfde6982
+- native USDC: 0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e
 
 Authority surface:
 https://docs-w3s-node-sdk.circle.com/variables/providers_cross-chain-transfer-protocol.SUPPORTED_CHAINS.html
@@ -33,6 +35,18 @@ Official V1 source defines:
 - Message layout: version[0:4], sourceDomain[4:8], destinationDomain[8:12], nonce[12:20], sender[20:52], recipient[52:84], destinationCaller[84:116], messageBody[116:]
 - BurnMessage layout: version[0:4], burnToken[4:36], mintRecipient[36:68], amount[68:100], messageSender[100:132]
 
+## Canonical USDC message filter
+
+A source MessageSent is eligible for this pilot only if:
+- sourceDomain and destinationDomain match one frozen Ethereum/Avalanche route;
+- message sender equals the source-domain V1 TokenMessenger encoded as bytes32;
+- message recipient equals the destination-domain V1 TokenMessenger encoded as bytes32;
+- burnToken equals the source-domain native USDC contract encoded as bytes32;
+- outer message version = 0;
+- burn-body version = 0.
+
+This prevents generic MessageTransmitter traffic from being mislabeled as a CCTP USDC transfer.
+
 ## Pair identity
 
 Canonical V1 lifecycle identity for the pilot is:
@@ -40,13 +54,16 @@ Canonical V1 lifecycle identity for the pilot is:
 
 Additional integrity:
 - full source message bytes retained;
-- Keccak-256 message hash when implementation library is available;
+- Keccak-256 message hash when implementation/library or RPC support is available;
 - source destinationDomain must match frozen route;
 - body amount must agree with destination MintAndWithdraw amount;
 - MessageReceived sourceDomain/nonce/sender/body must agree with source message.
 
 Why (sourceDomain, nonce) is acceptable:
 MessageTransmitter V1 reserves a unique nonce on the source domain and destination receive protection tracks sourceDomain+nonce. Message hash remains an additional immutable payload identity.
+
+Replacement-message caveat:
+V1 permits replacement messages reusing the same nonce until one confirms. Multiple source messages for the same (sourceDomain, nonce) are therefore not silently deduplicated. The exact destination MessageReceived body must resolve which message landed or the lifecycle remains ambiguous/fail-closed.
 
 ## Consequence
 
