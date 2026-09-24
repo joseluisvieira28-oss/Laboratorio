@@ -61,6 +61,31 @@ class DiamondBoardTests(unittest.TestCase):
         )
         self.assertTrue(row["verdict_allowed_now"])
 
+    def test_bnb_sidecar_never_creates_full_verdict_by_itself(self):
+        board = build_diamond_board({
+            "bnb_launchpool": {
+                "status": "OK",
+                "eligible_events_visible": 1,
+            },
+            "bnb_diamond_v02": {
+                "status": "OK",
+                "complete_causal_measurements": 25,
+                "blocked_causal_measurements": 0,
+                "summary": {
+                    "verdict_allowed_now": True,
+                    "causal_gate_pass": True,
+                },
+            },
+        })
+        row = board["candidates"]["BNB-LAUNCHPOOL-DEMAND-001"]
+        self.assertEqual(
+            row["state"],
+            "CAUSAL_GATE_READY_FOR_PARENT_RECONCILIATION",
+        )
+        self.assertTrue(row["diamond_contract_canonical"])
+        self.assertTrue(row["parent_reconciliation_required"])
+        self.assertFalse(row["verdict_allowed_now"])
+
     def test_safety_is_read_only(self):
         board = build_diamond_board({
             "authenticated_exchange_api_used": False,
