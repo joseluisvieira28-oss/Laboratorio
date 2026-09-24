@@ -18,6 +18,8 @@ def build_diamond_board(state: dict[str, Any]) -> dict[str, Any]:
     options = state.get("options_v21_metrics") or {}
     ced = state.get("ced1d_render_shadow") or {}
     bnb = state.get("bnb_launchpool") or {}
+    bnb_diamond = state.get("bnb_diamond_v02_metrics") or {}
+    bnb_diamond_enabled = bool(state.get("bnb_diamond_v02_enabled"))
     etf_signal = state.get("etf_cme_signal") or {}
     etf_sched = state.get("etf_cme_exact_scheduler") or {}
 
@@ -50,6 +52,19 @@ def build_diamond_board(state: dict[str, Any]) -> dict[str, Any]:
         etf_state = "Q4_SOURCE_BLOCKED_FAIL_CLOSED"
 
     bnb_events = int(bnb.get("eligible_events_visible") or 0)
+    bnb_diamond_classification = str(
+        bnb_diamond.get("classification") or "DIAMOND_TEST_NOT_STARTED"
+    )
+    if not bnb_diamond_enabled:
+        bnb_diamond_state = "DIAMOND_V0.2_CODE_READY__NOT_ARMED"
+    elif bnb_diamond_classification == "DIAMOND_TEST_SURVIVES__REVIEW_REQUIRED":
+        bnb_diamond_state = "DIAMOND_TEST_SURVIVES__REVIEW_REQUIRED"
+    elif bnb_diamond_classification.startswith("DIAMOND_TEST_FAIL"):
+        bnb_diamond_state = "DIAMOND_TEST_FAIL__NO_RESCUE"
+    elif bnb_diamond_classification == "DIAMOND_METRICS_FAIL_CLOSED":
+        bnb_diamond_state = "DIAMOND_TEST_BLOCKED"
+    else:
+        bnb_diamond_state = "DIAMOND_TEST_COLLECTING"
 
     return {
         "board_id": "CRYPTO-LAB-DIAMOND-BOARD-V0.1",
@@ -98,12 +113,26 @@ def build_diamond_board(state: dict[str, Any]) -> dict[str, Any]:
             },
             "BNB-LAUNCHPOOL-DEMAND-001": {
                 "authority": "PARENT_FORWARD_WATCHER_CANONICAL__DIAMOND_V0.2_DRAFT_PR88",
-                "state": "WAITING_GENUINELY_PROSPECTIVE_EVENT",
+                "state": bnb_diamond_state,
                 "runtime_status": bnb.get("status"),
                 "eligible_events_visible": bnb_events,
+                "diamond_measurement_enabled": bnb_diamond_enabled,
+                "complete_causal_measurements": bnb_diamond.get("complete_causal_measurements"),
+                "matched_resolved_events": bnb_diamond.get("matched_resolved_events"),
+                "target_events": bnb_diamond.get("target_events", 25),
+                "progress": _progress(
+                    int(bnb_diamond.get("matched_resolved_events") or 0),
+                    int(bnb_diamond.get("target_events") or 25),
+                ),
                 "diamond_contract_canonical": False,
                 "automatic_promotion": False,
-                "verdict_allowed_now": False,
+                "verdict_allowed_now": (
+                    bnb_diamond_classification
+                    in {
+                        "DIAMOND_TEST_SURVIVES__REVIEW_REQUIRED",
+                        "DIAMOND_TEST_FAIL__EXACT_CANDIDATE_NO_RESCUE",
+                    }
+                ),
             },
         },
         "safety": {
