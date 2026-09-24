@@ -1,0 +1,79 @@
+{
+  "translation_id": "CIRV-VOLTARGET-BTCETH-SPOT-001",
+  "parent_forecast_mve": "CIRV-HAR-DOW-BTCETH-001",
+  "status": "DISCOVERY_FAIL_NO_PROMOTION",
+  "terminal": true,
+  "date": "2026-09-22",
+  "prefreeze_commit": "79577d02184113a4c67486b42f30b360bfdab76e",
+  "implementation_runner_blob": "fec92212203ffdf1e01fadf6d25d895ec05c4279",
+  "source_gate": {
+    "run_id": 35785110379,
+    "result": "SOURCE_DATA_PASS",
+    "coverage": "120/120 HTTP 200",
+    "artifact_id": 10719583763
+  },
+  "discovery_2023": {
+    "run_id": 35785236955,
+    "conclusion": "SUCCESS_OPERATIONALLY__FAIL_SCIENTIFICALLY",
+    "artifact_id": 10719028993,
+    "artifact_digest": "sha256:09a5bb881863b15cfecca5af23215efd95a2c97327e0f7e630146d88557a8c2d",
+    "source_digest": "3a873b5352756893f7fbf034e876367cb34c0c93b9dfc092243f00aa35558058",
+    "evaluable_portfolio_days": 365,
+    "baseline_HAR_BASE": {
+      "mean_daily": -0.00020050294798981523,
+      "profit_factor": 0.9684578265148023,
+      "annualized_sharpe": -0.20994367743172382,
+      "annualized_vol": 0.34858671102435423,
+      "max_drawdown": -0.38286168627432837,
+      "total_compound_return": -0.12486356465975146
+    },
+    "challenger_HAR_DOW_BASE": {
+      "mean_daily": -0.00023507161330351382,
+      "profit_factor": 0.962226088819996,
+      "annualized_sharpe": -0.25324065766687137,
+      "annualized_vol": 0.33881265214786616,
+      "max_drawdown": -0.37874992517594386,
+      "total_compound_return": -0.13299297541167865
+    },
+    "challenger_HAR_DOW_STRESS": {
+      "mean_daily": -0.0011784493599184009,
+      "profit_factor": 0.8260791794520671,
+      "annualized_sharpe": -1.2690223881688485,
+      "annualized_vol": 0.3389491157763446,
+      "max_drawdown": -0.5131970601711215,
+      "total_compound_return": -0.38580149230835115
+    },
+    "incremental_mean_daily_base_dow_minus_har": -0.000034568665313698704,
+    "gates": {
+      "min_evaluable_portfolio_days": true,
+      "challenger_base_mean_gt_0": false,
+      "challenger_base_pf_gt_1": false,
+      "challenger_stress_mean_gt_0": false,
+      "challenger_stress_pf_gt_1": false,
+      "challenger_sharpe_gt_baseline_har": false,
+      "challenger_annualized_vol_lte_baseline_har": true,
+      "challenger_max_drawdown_not_worse_than_baseline_har": true
+    },
+    "pass": false
+  },
+  "interpretation": [
+    "The HAR-DOW overlay reduced annualized volatility and slightly improved maximum drawdown versus plain HAR in 2023.",
+    "It did not produce positive net expectancy, PF>1, stress profitability, or Sharpe improvement.",
+    "The exact frozen spot volatility-targeting economic translation therefore fails Discovery and is closed.",
+    "This does not invalidate the parent CIRV forecasting edge; it only rejects this economic translation."
+  ],
+  "locked_followups": {
+    "replication_2024": "DO_NOT_OPEN",
+    "holdout_2025": "DO_NOT_OPEN",
+    "year_2026": "LOCKED",
+    "rescue_same_translation": "FORBIDDEN"
+  },
+  "governance": {
+    "live_trading": false,
+    "orders": false,
+    "exchange_mutation": false,
+    "wallets": false,
+    "merge_main": false,
+    "automatic_tier_promotion": false
+  }
+}
