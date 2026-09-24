@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   source-smoke:
@@ -19,11 +19,22 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: crosschain-liquidity-migration-001-source-gate-v0.1
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
       - name: Run source-only CCTP V1 historical smoke
         run: python research/crosschain_liquidity_migration_001/cctp_v1_source_smoke_v01.py
+      - name: Persist source-only receipt on research branch
+        run: |
+          cp artifacts/cclm_cctp_v1_source_smoke_2023_08_20.json research/crosschain_liquidity_migration_001/CCTP_V1_SOURCE_SMOKE_2023_08_20_RECEIPT.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/crosschain_liquidity_migration_001/CCTP_V1_SOURCE_SMOKE_2023_08_20_RECEIPT.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "CCLM-001: record historical V1 source smoke receipt [skip ci]"
+          git push origin HEAD:crosschain-liquidity-migration-001-source-gate-v0.1
       - name: Upload source evidence
         uses: actions/upload-artifact@v4
         with:
