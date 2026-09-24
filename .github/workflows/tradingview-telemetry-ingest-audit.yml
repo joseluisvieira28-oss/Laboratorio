@@ -44,9 +44,11 @@ jobs:
               "from httpx",
               "urllib.request",
               "ccxt",
+              "psycopg",
+              "redis",
           ]
           for token in forbidden_imports:
-              assert token not in lower, f"outbound network client forbidden: {token}"
+              assert token not in lower, f"forbidden client/persistence dependency: {token}"
 
           execution_tokens = [
               "create_order(",
@@ -59,14 +61,15 @@ jobs:
           for token in execution_tokens:
               assert token not in lower, f"exchange mutation surface forbidden: {token}"
 
-          assert 'TRADING_AUTHORITY = "NONE"' not in src
+          assert 'LOG_PREFIX = "TVFP_RECEIPT "' in src
           assert '"trading_authority": "NONE"' in src
           assert "TV-FOOTPRINT-CALIBRATION-001" in src
           assert "1790247600000" in src
-          assert "UNIQUE (lab_id, sensor_version, symbol, timeframe, bar_close_ms)" in src
+          assert "bar_close_ms" in src
+          assert "hmac.compare_digest" in src
 
           print("PASS: no outbound HTTP client")
           print("PASS: no exchange mutation API")
-          print("PASS: exact frozen lab identity")
-          print("PASS: exact forward boundary")
-          print("PASS: DB idempotency constraint")
+          print("PASS: no DB/Redis credentials")
+          print("PASS: structured receipt log ledger")
+          print("PASS: exact frozen lab identity and boundary")
