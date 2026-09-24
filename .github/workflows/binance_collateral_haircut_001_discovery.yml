@@ -1,0 +1,34 @@
+name: BINANCE-COLLATERAL-HAIRCUT-001 Discovery 2024
+on:
+  push:
+    branches: [binance-collateral-haircut-v0.1]
+    paths: ['Dream-Account-OS-v2.3-PARTIAL/research/BINANCE_COLLATERAL_HAIRCUT_001_DISCOVERY_TRIGGER.txt']
+permissions: {contents: write}
+jobs:
+  discovery:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: binance-collateral-haircut-v0.1}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - name: Verify source gate PASS before opening outcomes
+        run: |
+          python - <<'PY'
+          import json
+          p="Dream-Account-OS-v2.3-PARTIAL/runtime/binance_collateral_haircut_001/source_manifest_receipt_v01c.json"
+          d=json.load(open(p))
+          assert d["classification"]=="BINANCE_COLLATERAL_HAIRCUT_SOURCE_PASS"
+          assert d["asset_events"]==36 and d["independent_clusters"]==5
+          PY
+      - name: Run frozen 2024 Discovery
+        run: python Dream-Account-OS-v2.3-PARTIAL/research/binance_collateral_haircut_001_discovery.py
+      - name: Commit immutable Discovery receipt
+        run: |
+          git config user.name "crypto-lab-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add Dream-Account-OS-v2.3-PARTIAL/runtime/binance_collateral_haircut_001/discovery_2024_receipt.json
+          git diff --cached --quiet && exit 0
+          git commit -m "research: record collateral haircut 2024 Discovery receipt"
+          git push origin HEAD:binance-collateral-haircut-v0.1
