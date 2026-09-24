@@ -1,0 +1,40 @@
+name: DLS V0.4.3 RAW Reconciler Preflight
+
+on:
+  push:
+    branches:
+      - dls-v043-raw-reconciler-preflight
+    paths:
+      - .github/workflows/dls-v043-raw-reconciler-preflight.yml
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile
+        run: |
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/reconcile_sqd_census_raw_sample_v0_4_3.py
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/run_v043_raw_reconciler_preflight.py
+      - name: Run known-authority RAW preflight
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/run_v043_raw_reconciler_preflight.py
+      - name: Upload preflight receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-v043-raw-reconciler-preflight
+          path: labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_SAVE11_RAW_SAMPLE_RECONCILIATION_RECEIPT_V0.4.3.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_TRUE
