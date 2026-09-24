@@ -121,7 +121,7 @@ else:
     for rid in reserve_ids[:20]:
         if len(set(wallets))>=6:break
         try:
-            h=call("get_reserve_holders",{"reserveId":rid,"side":"borrow","limit":5,"version":"v4"})
+            h=call("get_reserve_holders",{"reserveId":rid,"side":"borrow","limit":10,"version":"v4"})
             holder_queries+=1
             wallets.extend(address_list(h))
         except Exception as e:
@@ -164,19 +164,19 @@ else:
             row["summary_error"]=f"{type(e).__name__}:{str(e)[:160]}"
 
         items=None
-        for pid in list(dict.fromkeys(pos_ids))[:2]:
-            for args in (
-                {"positionId":pid,"version":"v4"},
-                {"userPositionId":pid,"version":"v4"},
-            ):
+        spoke_ids=extract_ids(pos,("spokeId","spoke_id")) if pos is not None else []
+        row["spoke_ids_found"]=len(set(spoke_ids))
+        for spoke_id in list(dict.fromkeys(spoke_ids))[:2]:
+            for side in ("supply","borrow"):
+                args={"user":w,"spokeId":spoke_id,"side":side,"version":"v4"}
                 try:
-                    items=call("get_position_items",args)
-                    row["position_items_field_paths"]=sorted(field_paths(items))
-                    row["position_items_argument_shape_used"]=sorted(args)
-                    break
+                    got=call("get_position_items",args)
+                    row.setdefault("position_items_field_paths",[])
+                    row["position_items_field_paths"]=sorted(set(row["position_items_field_paths"]) | field_paths(got))
+                    row.setdefault("position_items_argument_shapes_used",[]).append({"spokeId_sha256":hashlib.sha256(spoke_id.encode()).hexdigest(),"side":side})
+                    items=got
                 except Exception:
                     continue
-            if items is not None:break
 
         # reserve details on a reserve actually referenced by this position if possible
         for rid in list(dict.fromkeys(reserve_from_pos))[:1]:
