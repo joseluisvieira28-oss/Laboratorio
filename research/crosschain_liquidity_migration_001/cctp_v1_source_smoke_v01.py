@@ -119,7 +119,7 @@ def parse_message(message):
         "raw_sha256": hashlib.sha256(message).hexdigest(),
     }
 
-def decode_message_received(log):
+def address_as_bytes32_hex(address):\n    return "0x" + ("0" * 24) + address.lower().replace("0x", "")\n\ndef decode_message_received(log):
     topics = log.get("topics") or []
     raw = bytes.fromhex(log.get("data", "0x")[2:])
     if len(topics) < 3 or len(raw) < 128:
