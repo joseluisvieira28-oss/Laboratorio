@@ -1,5 +1,9 @@
 name: MRCR V0.1 Synthetic Safety CI
 
+concurrency:
+  group: mrcr-synthetic-safety-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   workflow_dispatch:
   push:
