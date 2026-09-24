@@ -1,0 +1,70 @@
+{
+  "access_2025": false,
+  "access_2026": false,
+  "captured_at_utc": "2026-09-24T18:10:10.346498+00:00",
+  "child_id": "CCLM-CCTP-USDC-001",
+  "classification": "ETHEREUM_HISTORICAL_RPC_ROUTE_PASS",
+  "historical_block": 18433832,
+  "lab_id": "CROSSCHAIN-LIQUIDITY-MIGRATION-001",
+  "market_outcomes_opened": false,
+  "mutation": false,
+  "pnl_opened": false,
+  "probes": [
+    {
+      "error": "RuntimeError:HTTP_525:error code: 525\n",
+      "name": "llamarpc",
+      "pass": false
+    },
+    {
+      "error": "RuntimeError:HTTP_429:{\"id\":null,\"error\":{\"code\":-32005,\"message\":\"Rate limit exceeded\"},\"jsonrpc\":\"2.0\"}\n",
+      "name": "merkle",
+      "pass": false
+    },
+    {
+      "block_present": true,
+      "block_timestamp": 1698316499,
+      "chain_id": "0x1",
+      "log_count": 1,
+      "logs": [
+        {
+          "data_sha256": "67bc552327334744f50325601da85ab5036d8dfe51c8f156ce23b11fd5324e47",
+          "log_index": 228,
+          "tx": "0x24784b8e000c0f493b300b9ba122e2acf5b806e8698d87384b865214969e823c"
+        }
+      ],
+      "name": "blast_public",
+      "pass": true
+    },
+    {
+      "error": "RuntimeError:HTTP_521:error code: 521\n",
+      "name": "blockpi_public",
+      "pass": false
+    },
+    {
+      "error": "RuntimeError:HTTP_429:{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32029,\"message\":\"Too Many Requests, Please apply an OnFinality API key or contact us to receive a higher rate limit\"},\"id\":1}",
+      "name": "onfinality_public",
+      "pass": false
+    },
+    {
+      "block_present": true,
+      "block_timestamp": 1698316499,
+      "chain_id": "0x1",
+      "log_count": 0,
+      "logs": [],
+      "name": "flashbots",
+      "pass": false
+    },
+    {
+      "block_present": true,
+      "block_timestamp": 1698316499,
+      "chain_id": "0x1",
+      "error": "RuntimeError:HTTP_403:{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32602,\"message\":\"Archive requests require a personal token. Get one at: https://www.allnodes.com/publicnode\"},\"id\":1}\n",
+      "name": "publicnode",
+      "pass": false
+    }
+  ],
+  "stage": "ETHEREUM_HISTORICAL_RPC_TRANSPORT_MATRIX_V0.4",
+  "winning_routes": [
+    "blast_public"
+  ]
+}
