@@ -13,6 +13,13 @@ from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 from .evidence import EvidenceStore, PostgresEvidenceStore
+from .bnb_launchpool_diamond_v02 import (
+    BLOCKED_EVENT as DIAMOND_BLOCKED_EVENT,
+    MEASUREMENT_EVENT as DIAMOND_MEASUREMENT_EVENT,
+    BNBDiamondMeasurementError,
+    BinancePublicMinuteFeed,
+    measure_causal_event,
+)
 from .strategies.bnb_launchpool_demand import (
     BASE_COST_BPS,
     STRESS_COST_BPS,
@@ -323,10 +330,12 @@ class BNBLaunchpoolForwardShadowWatcher:
         store: Store,
         source: BinanceOfficialLaunchpoolSource | None = None,
         market: BinanceSpotBNBBTCKlineFeed | None = None,
+        diamond_feed: BinancePublicMinuteFeed | None = None,
     ) -> None:
         self.store = store
         self.source = source or BinanceOfficialLaunchpoolSource()
         self.market = market or BinanceSpotBNBBTCKlineFeed()
+        self.diamond_feed = diamond_feed or BinancePublicMinuteFeed()
 
     def run_once(self, *, now_ms: int | None = None) -> dict[str, Any]:
         if now_ms is None:
@@ -343,7 +352,22 @@ class BNBLaunchpoolForwardShadowWatcher:
         duplicate_resolutions = 0
         inserted_missed_observations = 0
         duplicate_missed_observations = 0
+        inserted_diamond_measurements = 0
+        duplicate_diamond_measurements = 0
+        inserted_diamond_blocks = 0
+        duplicate_diamond_blocks = 0
+        diamond_measurement_errors: list[str] = []
         active_exit_ms: int | None = None
+        existing_diamond_measurements = {
+            str(payload.get("event_key"))
+            for payload in self.store.read_payloads(DIAMOND_MEASUREMENT_EVENT)
+            if payload.get("event_key")
+        }
+        existing_diamond_blocks = {
+            str(payload.get("event_key"))
+            for payload in self.store.read_payloads(DIAMOND_BLOCKED_EVENT)
+            if payload.get("event_key")
+        }
         existing_events = {
             str(payload.get("event_key")): payload
             for payload in self.store.read_payloads("BNB_FORWARD_ELIGIBLE_EVENT")
@@ -412,6 +436,63 @@ class BNBLaunchpoolForwardShadowWatcher:
                 continue
 
             active_exit_ms = theoretical_exit
+
+            if key not in existing_diamond_measurements and key not in existing_diamond_blocks:
+                try:
+                    diamond = measure_causal_event(
+                        self.diamond_feed,
+                        signal_timestamp_ms=anchor.published_ms,
+                        now_ms=now_ms,
+                    )
+                    if diamond.get("status") == "COMPLETE":
+                        diamond_payload = {
+                            **event_payload,
+                            **diamond,
+                            "event_key": key,
+                            "measurement_role": "DIAMOND_V0.2_CAUSAL_DIAGNOSTIC_ONLY",
+                            "parent_science_changed": False,
+                        }
+                        diamond_receipt = self.store.append_once(
+                            DIAMOND_MEASUREMENT_EVENT,
+                            key,
+                            diamond_payload,
+                        )
+                        if diamond_receipt["inserted"]:
+                            inserted_diamond_measurements += 1
+                            existing_diamond_measurements.add(key)
+                        else:
+                            duplicate_diamond_measurements += 1
+                    elif diamond.get("status") != "WAITING_CAUSAL_WINDOW":
+                        raise BNBDiamondMeasurementError(
+                            f"unexpected Diamond measurement status:{diamond.get('status')}"
+                        )
+                except BNBDiamondMeasurementError as exc:
+                    reason = str(exc)
+                    if reason.startswith(
+                        "MECHANISM_DATA_BLOCKED_FEWER_THAN_20_VALID_BASELINE_DAYS"
+                    ):
+                        block_receipt = self.store.append_once(
+                            DIAMOND_BLOCKED_EVENT,
+                            key,
+                            {
+                                **event_payload,
+                                "event_key": key,
+                                "status": "MECHANISM_DATA_BLOCKED",
+                                "reason": reason,
+                                "used_as_diamond_evidence": False,
+                                "parent_trade_rule_unchanged": True,
+                            },
+                        )
+                        if block_receipt["inserted"]:
+                            inserted_diamond_blocks += 1
+                            existing_diamond_blocks.add(key)
+                        else:
+                            duplicate_diamond_blocks += 1
+                    else:
+                        diamond_measurement_errors.append(
+                            f"{key}:{type(exc).__name__}:{exc}"
+                        )
+
             binding = bind_prospective_event(
                 self.market,
                 signal_timestamp_ms=anchor.published_ms,
@@ -469,6 +550,22 @@ class BNBLaunchpoolForwardShadowWatcher:
             "duplicate_resolutions": duplicate_resolutions,
             "inserted_missed_observations": inserted_missed_observations,
             "duplicate_missed_observations": duplicate_missed_observations,
+            "inserted_diamond_measurements": inserted_diamond_measurements,
+            "duplicate_diamond_measurements": duplicate_diamond_measurements,
+            "inserted_diamond_blocks": inserted_diamond_blocks,
+            "duplicate_diamond_blocks": duplicate_diamond_blocks,
+            "diamond_complete_measurement_count": len(
+                self.store.read_payloads(DIAMOND_MEASUREMENT_EVENT)
+            ),
+            "diamond_blocked_measurement_count": len(
+                self.store.read_payloads(DIAMOND_BLOCKED_EVENT)
+            ),
+            "diamond_measurement_errors": diamond_measurement_errors,
+            "diamond_measurement_status": (
+                "TECHNICAL_RETRY_REQUIRED"
+                if diamond_measurement_errors
+                else "OK"
+            ),
             "missed_prospective_observation_count": len(
                 self.store.read_payloads(MISSED_PROSPECTIVE_EVENT)
             ),
