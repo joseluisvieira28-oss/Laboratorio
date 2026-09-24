@@ -25,6 +25,7 @@ class PretargetGateTests(unittest.TestCase):
         self.assertIn("TARGET_OBSERVATION_NOT_AUTHORIZED", result.blockers)
         self.assertIn("OFFICIAL_CALENDAR_INCOMPLETE", result.blockers)
         self.assertIn("DEPTH_MODE_INVALID_OR_MISSING", result.blockers)
+        self.assertIn("AVAILABILITY_RULE_INVALID_OR_MISSING", result.blockers)
         self.assertIn("OUTCOME_FUTURE_HORIZON_SECONDS_MISSING", result.blockers)
 
     def _synthetic_complete_protocol(self):
@@ -46,6 +47,7 @@ class PretargetGateTests(unittest.TestCase):
         p["decision_state"] = {
             "anchor_definition": "SYNTHETIC_ANCHOR",
             "decision_clock_seconds": [1],
+            "availability_rule": "SOURCE_AND_COLLECTOR_ARRIVAL",
             "depth_definition": {"mode": "TOP_N", "value": 1},
             "measurement_catalog_sha256": "b" * 64,
             "implementation_head_sha": "c" * 40,
@@ -94,6 +96,14 @@ class PretargetGateTests(unittest.TestCase):
         result = validate_for_freeze(p)
         self.assertFalse(result.ready)
         self.assertIn("CROSS_VENUE_MERGE_POLICY_INVALID", result.blockers)
+
+    def test_source_only_availability_rule_is_rejected(self):
+        p = self._synthetic_complete_protocol()
+        p["decision_state"]["availability_rule"] = "SOURCE_TIME_ONLY"
+        p["freeze"]["protocol_fingerprint_sha256"] = protocol_fingerprint(p)
+        result = validate_for_freeze(p)
+        self.assertFalse(result.ready)
+        self.assertIn("AVAILABILITY_RULE_INVALID_OR_MISSING", result.blockers)
 
 
 if __name__ == "__main__":
