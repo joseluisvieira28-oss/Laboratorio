@@ -156,7 +156,7 @@ def main():
     pages=[]; seen={}; reached_2024=False; crossed_before=False; last_codes=None
     try:
         for page in range(1,151):
-            r=get(LIST,{"type":1,"pageNo":page,"pageSize":100})
+            r=get(LIST,{"type":1,"pageNo":page,"pageSize":50})
             obj=r.json(); recs=article_meta_records(obj)
             codes=sorted({x["code"] for x in recs})
             if not codes: raise RuntimeError(f"CMS page {page} contains no parseable article metadata")
