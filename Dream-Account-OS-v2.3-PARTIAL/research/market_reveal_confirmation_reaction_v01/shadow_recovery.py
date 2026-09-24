@@ -176,6 +176,8 @@ def replay_coinbase_level2_session(
             if not isinstance(envelope_timestamp, str) or not envelope_timestamp:
                 raise ValueError("level2 payload missing envelope timestamp")
 
+            snapshot_rows = []
+            incremental_rows = []
             for event in msg.get("events", []):
                 if not isinstance(event, dict):
                     raise ValueError("level2 event is not object")
@@ -187,17 +189,22 @@ def replay_coinbase_level2_session(
                     sequence_num=sequence_num,
                     envelope_timestamp=envelope_timestamp,
                 )
-                if not updates:
-                    continue
-
                 if event_type == "snapshot":
-                    book.initialize_from_snapshot_updates(updates)
-                    snapshot_count += 1
+                    snapshot_rows.extend(updates)
                 elif event_type == "update":
-                    if not book.initialized:
-                        raise ValueError("incremental level2 update before snapshot")
-                    book.apply_updates(updates)
-                    update_message_count += 1
+                    incremental_rows.extend(updates)
+
+            if snapshot_rows and incremental_rows:
+                raise ValueError("mixed snapshot/update level2 payload is ambiguous")
+
+            if snapshot_rows:
+                book.initialize_from_snapshot_updates(tuple(snapshot_rows))
+                snapshot_count += 1
+            elif incremental_rows:
+                if not book.initialized:
+                    raise ValueError("incremental level2 update before snapshot")
+                book.apply_updates(tuple(incremental_rows))
+                update_message_count += 1
 
         if not book.initialized:
             return ReplayRecovery(
