@@ -1,5 +1,9 @@
 import importlib.util
+import json
+import os
 import unittest
+
+os.environ["TV_WEBHOOK_TOKEN"] = "unit-test-token-abcdefghijklmnopqrstuvwxyz"
 
 spec = importlib.util.spec_from_file_location(
     "appmod", "tradingview_ingest/app.py"
@@ -83,6 +87,41 @@ class ValidationTests(unittest.TestCase):
         p["ltf_intrabars"] = 6
         with self.assertRaises(appmod.ValidationError):
             appmod.validate_payload(p)
+
+    def test_receipt_is_deterministic(self):
+        p = valid_payload()
+        r1 = appmod.receipt_record(
+            p, appmod.datetime(2026, 9, 24, 11, 5, tzinfo=appmod.timezone.utc)
+        )
+        r2 = appmod.receipt_record(
+            p, appmod.datetime(2026, 9, 24, 11, 6, tzinfo=appmod.timezone.utc)
+        )
+        self.assertEqual(r1["evidence_key"], r2["evidence_key"])
+        self.assertEqual(r1["payload_sha256"], r2["payload_sha256"])
+
+    def test_http_accept_and_duplicate(self):
+        appmod._recent.clear()
+        appmod.accepted_in_process = 0
+        appmod.duplicates_in_process = 0
+        client = appmod.app.test_client()
+        token = os.environ["TV_WEBHOOK_TOKEN"]
+        p = valid_payload()
+
+        r = client.post(f"/v1/tradingview/{token}", json=p)
+        self.assertEqual(r.status_code, 202)
+        self.assertEqual(r.get_json()["status"], "accepted")
+
+        r = client.post(f"/v1/tradingview/{token}", json=p)
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.get_json()["status"], "duplicate_in_process")
+
+    def test_http_rejects_execution_field(self):
+        client = appmod.app.test_client()
+        token = os.environ["TV_WEBHOOK_TOKEN"]
+        p = valid_payload()
+        p["side"] = "BUY"
+        r = client.post(f"/v1/tradingview/{token}", json=p)
+        self.assertEqual(r.status_code, 422)
 
 
 if __name__ == "__main__":
