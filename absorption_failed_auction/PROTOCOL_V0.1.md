@@ -106,6 +106,14 @@ To reduce repeated counting of the same market episode, after any accepted prima
 
 The first qualifying event wins. Suppressed bars are preserved as `COOLDOWN_SUPPRESSED`.
 
+## Outcome sealing
+
+A parent `PASS_STRONG` opens **event collection only**. It does not authorize inspection of future-return outcomes.
+
+During `COLLECTING`, the event ledger may contain only information available at or before each event-bar close. `R5`, `R15`, `R30`, `R60` and `R240` remain sealed.
+
+Economic outcome resolution may open exactly once only after the frozen minimum-sample, date-span, transport-coverage and source-integrity requirements are satisfied. If they are not satisfied, state remains `INSUFFICIENT_SAMPLE` / `SOURCE_BLOCKED`; partial outcomes must not be inspected to decide whether to continue collecting.
+
 ## Outcomes
 
 Outcome clock starts at event-bar close.
