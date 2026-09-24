@@ -15,6 +15,7 @@ TXS=[
  "0x634bb8aa7cc276dd5b40b7d03bcb18de1763faf9f7cf13bb778b00ce4c2318d1",
  "0xb7b9fef5c25a37b47ac136105dae3f319a21475f35a02d4dd713d42c55867d8e",
 ]
+FIXED_NONCES={31476,31477,40913,40914}
 OUT=Path("artifacts/cclm002_batch_order_adjudication_v01.json")
 
 def rpc(method,params):
@@ -62,6 +63,9 @@ for tx in TXS:
     pairs=[];previous_received=-1
     for i,x in enumerate(relevant):
         if x["kind"]!="RECEIVED":continue
+        if x["nonce"] not in FIXED_NONCES:
+            previous_received=x["log_index"]
+            continue
         candidates=[m for m in relevant if m["kind"]=="MINT" and previous_received<m["log_index"]<x["log_index"]
                     and m["token"]==DEST_USDC and m["amount"]==x["amount"]
                     and m["recipient"]==("0x"+x["recipient"][-40:].lower())]
