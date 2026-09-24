@@ -8,16 +8,10 @@ on:
       - 'research/liquidation_convexity_oracle_distance_001/lcod_source_probe_v01.py'
       - '.github/workflows/lcod-001-source-component-probe-v01.yml'
       - 'research/liquidation_convexity_oracle_distance_001/LCOD_SOURCE_PROBE_TRIGGER.txt'
-  pull_request:
-    branches:
-      - main
-    paths:
-      - 'research/liquidation_convexity_oracle_distance_001/**'
-      - '.github/workflows/lcod-001-source-component-probe-v01.yml'
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   source-probe:
@@ -25,11 +19,22 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: liquidation-convexity-oracle-distance-001-source-gate-v0.1
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
       - name: Run Aave read-only source component probe
         run: python research/liquidation_convexity_oracle_distance_001/lcod_source_probe_v01.py
+      - name: Persist source-only receipt on research branch
+        run: |
+          cp artifacts/lcod_source_probe_v01.json research/liquidation_convexity_oracle_distance_001/LCOD_SOURCE_COMPONENT_PROBE_RECEIPT.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/liquidation_convexity_oracle_distance_001/LCOD_SOURCE_COMPONENT_PROBE_RECEIPT.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "LCOD-001: record live source component probe receipt [skip ci]"
+          git push origin HEAD:liquidation-convexity-oracle-distance-001-source-gate-v0.1
       - name: Upload immutable probe evidence
         uses: actions/upload-artifact@v4
         with:
