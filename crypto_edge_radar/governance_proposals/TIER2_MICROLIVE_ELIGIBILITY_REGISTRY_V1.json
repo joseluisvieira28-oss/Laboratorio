@@ -1,0 +1,100 @@
+{
+  "registry_id": "TIER2_MICROLIVE_ELIGIBILITY_REGISTRY_V1",
+  "policy_id": "TIER2-MICROLIVE-POLICY-V1.0-FROZEN-2026-09-24",
+  "status": "FROZEN_PROSPECTIVE_GOVERNANCE_ELIGIBILITY__LIVE_TRANSPORT_DISABLED",
+  "date": "2026-09-24",
+  "default_micro_live_envelope": {
+    "max_notional_usdt_equivalent": 10.0,
+    "max_leverage": 1.0,
+    "futures_margin_mode": "ISOLATED",
+    "maximum_program_concurrent_positions": 1,
+    "maximum_total_live_notional_usdt_equivalent": 10.0,
+    "daily_realized_loss_kill_usdt": 2.0,
+    "rolling_7d_realized_loss_kill_usdt": 5.0,
+    "averaging_down": false,
+    "martingale": false,
+    "revenge_sizing": false,
+    "automatic_size_escalation": false,
+    "cross_margin": false,
+    "auto_margin_add": false,
+    "venue_minimum_must_fit_cap": true
+  },
+  "candidates": [
+    {
+      "candidate_id": "OPTIONS-SPOTPERP-001-V2.1",
+      "scientific_tier": 2,
+      "historical_science_retest_required": false,
+      "micro_live_scientific_eligibility": true,
+      "tier1_or_diamond_forward_gate_preserved": "FIRST_50_RESOLVED_FORWARD_TRADES",
+      "forward_gate_blocks_micro_live_under_v1": false,
+      "candidate_specific_execution_amendment_required": true,
+      "existing_mexc_route": {
+        "venue": "MEXC_USDT_PERPETUAL",
+        "symbol": "BTC_USDT",
+        "currently_frozen_direction": "SHORT"
+      },
+      "direction_rule": "EXECUTE_ONLY_WHEN_CANONICAL_PARENT_DIRECTION_MATCHES_A_PROSPECTIVELY_FROZEN_EXECUTION_MAPPING",
+      "live_transport_enabled": false,
+      "current_state": "MICROLIVE_POLICY_ELIGIBLE__AWAIT_EXECUTION_AMENDMENT_AND_CANONICAL_MATCHING_SIGNAL"
+    },
+    {
+      "candidate_id": "BNB-LAUNCHPOOL-DEMAND-001",
+      "scientific_tier": 2,
+      "historical_science_retest_required": false,
+      "micro_live_scientific_eligibility": true,
+      "tier1_or_diamond_forward_gate_preserved": "BNB_DIAMOND_V0.2_FIRST_25",
+      "forward_gate_blocks_micro_live_under_v1": false,
+      "candidate_specific_execution_amendment_required": true,
+      "required_economic_identity": {
+        "instrument_type": "SPOT",
+        "pair": "BNBBTC",
+        "direction": "LONG",
+        "hold_hours": 24,
+        "no_leverage": true
+      },
+      "futures_substitution_allowed": false,
+      "venue_mapping_status": "REQUIRES_CURRENT_COMPATIBLE_SPOT_VENUE_VERIFICATION",
+      "live_transport_enabled": false,
+      "current_state": "MICROLIVE_POLICY_ELIGIBLE__AWAIT_SPOT_ROUTE_AND_GENUINE_EVENT"
+    },
+    {
+      "candidate_id": "CED1D-0031",
+      "scientific_tier": 2,
+      "historical_science_retest_required": false,
+      "micro_live_scientific_eligibility": true,
+      "tier1_or_diamond_forward_gate_preserved": "60_EVENTS_AND_8_COMPLETE_UTC_WEEKS",
+      "forward_gate_blocks_micro_live_under_v1": false,
+      "candidate_specific_execution_amendment_required": true,
+      "source_gate_still_blocks_order_when_not_ready": true,
+      "current_source_state_at_freeze": "WAITING_SOURCE_READINESS",
+      "execution_mapping_status": "NOT_FROZEN",
+      "live_transport_enabled": false,
+      "current_state": "MICROLIVE_POLICY_ELIGIBLE__NO_ORDER_UNTIL_SOURCE_READY_AND_MAPPING_FROZEN"
+    },
+    {
+      "candidate_id": "ETF-CME-INSTFLOW-001",
+      "scientific_tier": 2,
+      "historical_science_retest_required": false,
+      "micro_live_scientific_eligibility": false,
+      "reason": "PRESERVE_Q4_V0.1A_NO_PEEK_LANE_UNTIL_FINAL_EVALUATION_AFTER_2027-01-01",
+      "alternative": "SEPARATE_FUTURE_EXECUTION_FORK_WITH_ZERO_PROMOTION_CREDIT_FROM_CONTAMINATED_Q4_LANE",
+      "live_transport_enabled": false
+    },
+    {
+      "candidate_id": "TFG-DONCHIAN-REGIME-ADAPTATION-V1",
+      "scientific_tier": 3,
+      "micro_live_scientific_eligibility": false,
+      "reason": "INDEPENDENT_POST_FREEZE_VALIDATION_INCOMPLETE"
+    },
+    {
+      "candidate_id": "HTF-DH03-12H-STANDALONE-FORWARD-V1",
+      "scientific_tier": null,
+      "micro_live_scientific_eligibility": false,
+      "reason": "STANDALONE_IDENTITY_NOT_INDEPENDENTLY_VALIDATED"
+    }
+  ],
+  "global_live_transport_enabled": false,
+  "exchange_credentials_used_by_freeze": false,
+  "orders_created_by_freeze": false,
+  "exchange_mutation_by_freeze": false
+}
