@@ -1,0 +1,65 @@
+name: USOPEN-STRADDLE-001 Retrospective Price-Only Diagnostic
+
+on:
+  push:
+    branches:
+      - us-open-straddle-monetization-v0.1
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/USOPEN_STRADDLE_001_RUN_TRIGGER.txt'
+
+permissions:
+  contents: write
+
+jobs:
+  diagnostic:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 25
+    steps:
+      - name: Restore Git CA trust
+        run: |
+          test -f /etc/ssl/certs/ca-certificates.crt
+          git config --global http.sslCAInfo /etc/ssl/certs/ca-certificates.crt
+          git config --global http.sslVerify true
+      - uses: actions/checkout@v4
+        with:
+          ref: us-open-straddle-monetization-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install source reader
+        run: python -m pip install --disable-pip-version-check -q pandas pyarrow
+      - name: Download exact public Cryptarbitrage parquet
+        run: |
+          python - <<'PY'
+          import urllib.request
+          fid="1g9p2Kq8op40y4ZFQQ9AJw8a9CaDThOY8"
+          urls=[
+            f"https://drive.usercontent.google.com/download?id={fid}&export=download&confirm=t",
+            f"https://drive.google.com/uc?export=download&id={fid}&confirm=t"
+          ]
+          last=None
+          for url in urls:
+              try:
+                  req=urllib.request.Request(url,headers={"User-Agent":"CryptoLab-USOPEN-STRADDLE-001/1.0"})
+                  with urllib.request.urlopen(req,timeout=120) as r:
+                      raw=r.read()
+                  if raw[:4]==b"PAR1" and raw[-4:]==b"PAR1":
+                      open("btc_option_data_toshare.parquet","wb").write(raw)
+                      print("downloaded_bytes=",len(raw))
+                      break
+                  last=f"not parquet: {len(raw)} bytes"
+              except Exception as e:
+                  last=repr(e)
+          else:
+              raise SystemExit(f"public Drive download failed: {last}")
+          PY
+      - name: Run frozen retrospective price-only diagnostic
+        run: python Dream-Account-OS-v2.3-PARTIAL/research/us_open_straddle_001_retrospective.py btc_option_data_toshare.parquet
+      - name: Commit immutable receipt
+        run: |
+          git config user.name "crypto-lab-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add Dream-Account-OS-v2.3-PARTIAL/runtime/usopen_straddle_001_retrospective_receipt.json
+          git diff --cached --quiet && exit 0
+          git commit -m "research: record USOPEN-STRADDLE-001 retrospective receipt"
+          git push origin HEAD:us-open-straddle-monetization-v0.1
