@@ -1,0 +1,101 @@
+{
+  "schema_version": "0.4.2.1",
+  "lab_id": "DEFI-LIQUIDATION-SHOCK-001",
+  "phase": "KAMINO_SAVE11_HISTORICAL_EVENT_CENSUS",
+  "classification": "TECHNICAL_BLOCKED",
+  "not_no_edge": true,
+  "source_pass": false,
+  "scientific_population_changed": false,
+  "first_day_gate": {
+    "run_id": 35918551961,
+    "conclusion": "PASS",
+    "kamino": {
+      "stream_complete": true,
+      "anomaly_count": 0,
+      "known_first_success_recovered": true,
+      "slot": 230572965
+    },
+    "save11": {
+      "stream_complete": true,
+      "anomaly_count": 0,
+      "known_first_success_recovered": true,
+      "slot": 278496102
+    }
+  },
+  "blocker": {
+    "code": "SQD_HTTP_200_EMPTY_BODY_NOT_RETRYABLE",
+    "description": "SQD finalized-stream intermittently returns HTTP 200 with an empty response body. Frozen runner V0.4.2 treats the first such response as SOURCE_CHUNK_BLOCKED instead of retrying the identical request.",
+    "scientific_interpretation": "Transport failure only. Empty HTTP 200 is not proof of a zero-event day and must not be converted to NO_EDGE or SOURCE PASS."
+  },
+  "independent_evidence": [
+    {
+      "run_id": 35921229252,
+      "protocol": "kamino",
+      "day": "2023-11-23",
+      "detail": "empty_200_response",
+      "stream_complete": false,
+      "anomaly_count": 0
+    },
+    {
+      "run_id": 35921229252,
+      "protocol": "save11",
+      "day": "2024-07-23",
+      "detail": "empty_200_response",
+      "stream_complete": false,
+      "anomaly_count": 0
+    },
+    {
+      "run_id": 35921229252,
+      "protocol": "kamino",
+      "day": "2024-10-03",
+      "detail": "empty_200_response",
+      "stream_complete": false,
+      "anomaly_count": 0
+    },
+    {
+      "run_id": 35921229252,
+      "protocol": "kamino",
+      "day": "2024-11-08",
+      "detail": "empty_200_response",
+      "stream_complete": false,
+      "anomaly_count": 0
+    },
+    {
+      "run_id": 35955608980,
+      "protocol": "kamino",
+      "partition": "k202312",
+      "day": "2023-12-05",
+      "detail": "empty_200_response",
+      "stream_complete": false,
+      "anomaly_count": 0,
+      "artifact_id": 10790622437
+    }
+  ],
+  "transport_remediation_required": [
+    "Retry the exact same SQD request on HTTP 200 plus empty body with bounded deterministic backoff.",
+    "If bounded retries exhaust, remain fail-closed as TECHNICAL/SOURCE_BLOCKED.",
+    "Pin workflow checkout to the run SHA rather than a mutable branch name.",
+    "Revalidate previously blocked Kamino and Save11 days before authoritative full-range rerun.",
+    "Then require complete daily coverage, zero anomalies, known first-success recovery and Official Solana RPC deterministic RAW sample PASS."
+  ],
+  "execution_constraint": {
+    "description": "The connected GitHub integration allowed documentation/branch operations but blocked executable runner/workflow hardening through its safety checks. No bypass was attempted.",
+    "current_full_run": 35955608980,
+    "current_full_run_authoritative": false
+  },
+  "firewall": {
+    "prices": false,
+    "returns": false,
+    "pnl": false,
+    "direction": false,
+    "economic_outcomes": false,
+    "protected_market_outcomes_2025_2026": false,
+    "live_trading": false,
+    "orders": false,
+    "wallets": false,
+    "exchange_mutation": false,
+    "paid_source": false,
+    "account_creation": false,
+    "merge_main": false
+  }
+}
