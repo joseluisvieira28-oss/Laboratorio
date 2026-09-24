@@ -40,6 +40,13 @@ class ScienceLockTests(unittest.TestCase):
         self.assertFalse(locked)
         self.assertIn("DEPTH_RULE_PRESELECTED", violations)
 
+    def test_selecting_availability_rule_breaks_lock_before_transition(self):
+        p = copy.deepcopy(PROTOCOL)
+        p["decision_state"]["availability_rule"] = "SOURCE_AND_COLLECTOR_ARRIVAL"
+        locked, violations = evaluate_science_lock(p, CALENDAR, READINESS)
+        self.assertFalse(locked)
+        self.assertIn("AVAILABILITY_RULE_PRESELECTED", violations)
+
     def test_populating_calendar_breaks_lock(self):
         c = copy.deepcopy(CALENDAR)
         c["complete_official_calendar"] = True
