@@ -12,12 +12,21 @@ import time
 from typing import Any
 
 import websockets
+from websockets.exceptions import ConnectionClosed, InvalidStatus
 
 
-BINANCE_URL = (
-    "wss://stream.binance.com:9443/stream"
-    "?streams=btcusdt@aggTrade/btcusdt@depth@100ms"
-)
+BINANCE_ENDPOINTS = [
+    (
+        "MARKET_DATA_ONLY",
+        "wss://data-stream.binance.vision:443/stream"
+        "?streams=btcusdt@aggTrade/btcusdt@depth@100ms",
+    ),
+    (
+        "PRIMARY_SPOT",
+        "wss://stream.binance.com:9443/stream"
+        "?streams=btcusdt@aggTrade/btcusdt@depth@100ms",
+    ),
+]
 COINBASE_URL = "wss://advanced-trade-ws.coinbase.com"
 
 
@@ -25,8 +34,16 @@ def _has(obj: dict[str, Any], fields: set[str]) -> bool:
     return fields.issubset(obj.keys())
 
 
-async def probe_binance(seconds: float = 6.0) -> dict[str, Any]:
+def _http_status(exc: Exception) -> int | None:
+    if isinstance(exc, InvalidStatus):
+        response = getattr(exc, "response", None)
+        return getattr(response, "status_code", None)
+    return None
+
+
+async def _probe_binance_endpoint(label: str, url: str, seconds: float) -> dict[str, Any]:
     out = {
+        "endpoint_label": label,
         "transport": "UNKNOWN",
         "aggtrade_messages": 0,
         "depth_messages": 0,
@@ -34,12 +51,13 @@ async def probe_binance(seconds: float = 6.0) -> dict[str, Any]:
         "depth_schema_pass": False,
         "depth_sequence_anomaly": False,
         "error": None,
+        "http_status": None,
     }
     previous_u = None
     deadline = time.monotonic() + seconds
     try:
         async with websockets.connect(
-            BINANCE_URL,
+            url,
             open_timeout=8,
             close_timeout=2,
             ping_interval=None,
@@ -70,10 +88,28 @@ async def probe_binance(seconds: float = 6.0) -> dict[str, Any]:
                         if previous_u is not None and first > previous_u + 1:
                             out["depth_sequence_anomaly"] = True
                         previous_u = max(previous_u or last, last)
-    except Exception as exc:  # sanitized: class only, no payloads
+    except Exception as exc:
         out["transport"] = "FAIL"
         out["error"] = type(exc).__name__
+        out["http_status"] = _http_status(exc)
     return out
+
+
+async def probe_binance(seconds: float = 6.0) -> dict[str, Any]:
+    attempts = []
+    for label, url in BINANCE_ENDPOINTS:
+        result = await _probe_binance_endpoint(label, url, seconds)
+        attempts.append(result)
+        if (
+            result["transport"] == "PASS"
+            and result["aggtrade_schema_pass"]
+            and result["depth_schema_pass"]
+        ):
+            result["attempts"] = attempts
+            return result
+    final = attempts[-1]
+    final["attempts"] = attempts
+    return final
 
 
 async def probe_coinbase(seconds: float = 6.0) -> dict[str, Any]:
@@ -81,12 +117,16 @@ async def probe_coinbase(seconds: float = 6.0) -> dict[str, Any]:
         "transport": "UNKNOWN",
         "market_trade_messages": 0,
         "level2_messages": 0,
+        "heartbeat_messages": 0,
         "market_trade_schema_pass": False,
         "level2_schema_pass": False,
         "sequence_anomaly": False,
+        "channels_seen": [],
         "error": None,
+        "close_code": None,
     }
-    previous_seq = None
+    previous_seq_by_channel: dict[str, int] = {}
+    channels_seen: set[str] = set()
     deadline = time.monotonic() + seconds
     try:
         async with websockets.connect(
@@ -96,16 +136,12 @@ async def probe_coinbase(seconds: float = 6.0) -> dict[str, Any]:
             ping_interval=20,
             max_size=2_000_000,
         ) as ws:
-            await ws.send(json.dumps({
-                "type": "subscribe",
-                "product_ids": ["BTC-USD"],
-                "channel": "market_trades",
-            }))
-            await ws.send(json.dumps({
-                "type": "subscribe",
-                "product_ids": ["BTC-USD"],
-                "channel": "level2",
-            }))
+            for channel in ("heartbeats", "market_trades", "level2"):
+                msg = {"type": "subscribe", "channel": channel}
+                if channel != "heartbeats":
+                    msg["product_ids"] = ["BTC-USD"]
+                await ws.send(json.dumps(msg))
+
             out["transport"] = "PASS"
             while time.monotonic() < deadline:
                 try:
@@ -113,14 +149,20 @@ async def probe_coinbase(seconds: float = 6.0) -> dict[str, Any]:
                 except asyncio.TimeoutError:
                     continue
                 msg = json.loads(raw)
-                channel = msg.get("channel")
+                channel = str(msg.get("channel", "UNKNOWN"))
+                channels_seen.add(channel)
+
                 seq = msg.get("sequence_num")
                 if isinstance(seq, int):
-                    if previous_seq is not None and seq > previous_seq + 1:
+                    previous = previous_seq_by_channel.get(channel)
+                    if previous is not None and seq > previous + 1:
                         out["sequence_anomaly"] = True
-                    previous_seq = max(previous_seq if previous_seq is not None else seq, seq)
+                    if previous is None or seq > previous:
+                        previous_seq_by_channel[channel] = seq
 
-                if channel == "market_trades":
+                if channel == "heartbeats":
+                    out["heartbeat_messages"] += 1
+                elif channel == "market_trades":
                     out["market_trade_messages"] += 1
                     for event in msg.get("events", []):
                         for trade in event.get("trades", []):
@@ -140,9 +182,14 @@ async def probe_coinbase(seconds: float = 6.0) -> dict[str, Any]:
                                 {"side", "event_time", "price_level", "new_quantity"},
                             ):
                                 out["level2_schema_pass"] = True
+    except ConnectionClosed as exc:
+        out["transport"] = "FAIL"
+        out["error"] = type(exc).__name__
+        out["close_code"] = getattr(exc, "code", None)
     except Exception as exc:
         out["transport"] = "FAIL"
         out["error"] = type(exc).__name__
+    out["channels_seen"] = sorted(channels_seen)
     return out
 
 
