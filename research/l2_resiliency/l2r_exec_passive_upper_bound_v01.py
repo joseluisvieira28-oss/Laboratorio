@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
-import argparse, csv, datetime as dt, hashlib, json, math, re, zipfile
-from collections import Counter, deque
+import argparse, csv, datetime as dt, hashlib, json, math, os, re, zipfile
+from collections import Counter, defaultdict, deque
 from pathlib import Path
 
 LAB_ID='L2R-EXEC-PASSIVE-001'
@@ -15,8 +15,9 @@ HORIZONS_MS=(1000,5000,15000,60000)
 CELLS=(('R1_Y5',1000,5000),('R1_Y15',1000,15000),('R1_Y60',1000,60000),('R5_Y15',5000,15000),('R5_Y60',5000,60000),('R15_Y60',15000,60000))
 MAX_LATENESS_NS=1_100_000_000
 READ_CHUNK=1024*1024
-KEY_RE=re.compile(r'^market_data/(2025\\d{4})/([0-9]|1[0-9]|2[0-3])/l2Book/BTC\\.lz4$')
-ISO_RE=re.compile(r'^(\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2})(?:\\.(\\d+))?Z?$')
+KEY_RE=re.compile(r'^market_data/(2025\d{4})/([0-9]|1[0-9]|2[0-3])/l2Book/BTC\.lz4$')
+ISO_RE=re.compile(r'^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.(\d+))?Z?$')
+# Current official Hyperliquid base schedule snapshot (freeze date 2026-09-24), bps per fill.
 MAKER_SCENARIOS_BPS=(0.0,0.4,0.8,1.2,1.5)
 TAKER_SCENARIOS_BPS=(2.4,2.6,2.8,3.0,3.5,4.0,4.5)
 
@@ -31,19 +32,17 @@ def sha256_file(p:Path)->str:
 def parse_env_ns(s:str)->int:
     m=ISO_RE.fullmatch(s.strip())
     if not m: raise FailClosed(f'invalid envelope time {s}')
-    base,frac=m.groups()
-    d=dt.datetime.strptime(base,'%Y-%m-%dT%H:%M:%S').replace(tzinfo=dt.timezone.utc)
+    base,frac=m.groups(); d=dt.datetime.strptime(base,'%Y-%m-%dT%H:%M:%S').replace(tzinfo=dt.timezone.utc)
     return int(d.timestamp())*1_000_000_000+int(((frac or '')+'000000000')[:9])
 
 def key_hour(key:str)->dt.datetime:
     m=KEY_RE.fullmatch(key)
     if not m: raise FailClosed(f'illegal key {key}')
-    ymd,hs=m.groups()
-    return dt.datetime.strptime(ymd+f'{int(hs):02d}','%Y%m%d%H').replace(tzinfo=dt.timezone.utc)
+    ymd,hs=m.groups(); d=dt.datetime.strptime(ymd+f'{int(hs):02d}','%Y%m%d%H').replace(tzinfo=dt.timezone.utc)
+    return d
 
 def key_bounds_ns(key:str):
-    d=key_hour(key); s=int(d.timestamp())*1_000_000_000
-    return s,s+3_600_000_000_000
+    d=key_hour(key); s=int(d.timestamp())*1_000_000_000; return s,s+3_600_000_000_000
 
 def finite(v,name):
     if isinstance(v,bool): raise FailClosed(f'boolean {name}')
@@ -73,8 +72,7 @@ def extract_state(o):
     if not all(ap[i]<ap[i+1] for i in range(4)): raise FailClosed('ask order')
     if bp[0]>=ap[0]: raise FailClosed('crossed book')
     return {'payload_ms':p,'bid':bp[0],'ask':ap[0],'mid':(bp[0]+ap[0])/2,
-            'bid_prices_all':tuple(bp),'ask_prices_all':tuple(ap),
-            'bid_depth5':sum(bsz),'ask_depth5':sum(asz)}
+            'bid_prices_all':tuple(bp),'ask_prices_all':tuple(ap),'bid_depth5':sum(bsz),'ask_depth5':sum(asz)}
 
 def build_segments(rows):
     rows=sorted(rows,key=lambda r:key_hour(r['key'])); out=[]; cur=[]; prev=None
@@ -91,11 +89,14 @@ def ret_taker(direction,r,y):
     if direction>0: return 10000.0*(y['bid']/r['ask']-1.0)
     return -10000.0*(y['ask']/r['bid']-1.0)
 def ret_maker_upper(direction,r,y):
+    # Same directional-return convention as the parent: direction * (exit/entry - 1).
+    # Deliberately optimistic upper bound: certain passive fill at touch on both legs,
+    # no queue delay/adverse selection, exit fill exactly at Y-touch.
     if direction>0: return 10000.0*(y['ask']/r['bid']-1.0)
     return -10000.0*(y['bid']/r['ask']-1.0)
 def spread_bps(st): return 10000.0*(st['ask']-st['bid'])/st['mid']
 
-def process_segment(rows,base:Path):
+def process_segment(seg_id, rows, base:Path):
     last_env=None; last_payload=None; prev=None
     active={}; queues={h:deque() for h in HORIZONS_MS}; eid=0
     stats={c[0]:{'n':0,'sum_mid':0.0,'sum_taker':0.0,'sum_maker_upper':0.0,'sum_entry_spread':0.0,'sum_exit_spread':0.0} for c in CELLS}
@@ -120,8 +121,7 @@ def process_segment(rows,base:Path):
         for h in HORIZONS_MS:
             q=queues[h]
             while q and q[0][0]<=env:
-                target,i=q.popleft()
-                resolve(i,h,st if env-target<=MAX_LATENESS_NS else None)
+                target,i=q.popleft(); resolve(i,h,st if env-target<=MAX_LATENESS_NS else None)
     def create(env,side,pre_depth):
         nonlocal eid
         i=eid; eid+=1; direction=1.0 if side=='ASK' else -1.0
@@ -141,10 +141,8 @@ def process_segment(rows,base:Path):
                 totals['bid_sweeps']+=1; create(env,'BID',prev['bid_depth5'])
         prev=st
     for row in rows:
-        key=row['key']
-        rel=str(row['local_relpath']).replace('\\','/')
-        path=base/'HL_L2R_2025_BTC_RAW_V0_1'/Path(*rel.split('/'))
-        start,end=key_bounds_ns(key); pending=b''
+        key=row['key']; path=base/'HL_L2R_2025_BTC_RAW_V0_1'/Path(*str(row['local_relpath']).replace('\\','/').split('/'))
+        start,end=key_bounds_ns(key); dec=None; pending=b''
         import lz4.frame
         dec=lz4.frame.LZ4FrameDecompressor(); h=hashlib.sha256(); hm=hashlib.md5(); actual=0
         def proc(line):
@@ -173,44 +171,34 @@ def process_segment(rows,base:Path):
             raise FailClosed(f'byte/hash mismatch {key}')
         totals['objects']+=1
     for h in HORIZONS_MS:
-        while queues[h]:
-            _,i=queues[h].popleft(); resolve(i,h,None)
+        while queues[h]: _,i=queues[h].popleft(); resolve(i,h,None)
     if active: raise FailClosed('active events remain')
     return stats,totals
 
 def main():
-    ap=argparse.ArgumentParser()
-    ap.add_argument('--base',default=str(Path.home()/'Desktop'/'L2R_2025_BTC_VALIDATION_LOCAL'))
-    args=ap.parse_args()
-    base=Path(args.base).resolve()
-    ev=base/'_EVIDENCE_2025_VALIDATION_V0_1'
-    manifest=ev/'L2_RESILIENCY_001_2025_BTC_RAW_MANIFEST_V0_1.csv'
+    ap=argparse.ArgumentParser(); ap.add_argument('--base',default=str(Path.home()/'Desktop'/'L2R_2025_BTC_VALIDATION_LOCAL')); args=ap.parse_args()
+    base=Path(args.base).resolve(); ev=base/'_EVIDENCE_2025_VALIDATION_V0_1'; manifest=ev/'L2_RESILIENCY_001_2025_BTC_RAW_MANIFEST_V0_1.csv'
     if not manifest.exists(): raise SystemExit(f'FAIL-CLOSED manifest missing {manifest}')
     if sha256_file(manifest)!=EXPECTED_MANIFEST_SHA256: raise SystemExit('FAIL-CLOSED canonical manifest SHA mismatch')
     with manifest.open('r',encoding='utf-8-sig',newline='') as f: rows=list(csv.DictReader(f))
-    if len(rows)!=EXPECTED_OBJECTS or sum(int(r['content_length']) for r in rows)!=EXPECTED_BYTES:
-        raise SystemExit('FAIL-CLOSED corpus identity mismatch')
-    segs=build_segments(rows)
-    print(f'CANONICAL SOURCE PASS | objects={len(rows)} segments={len(segs)}')
+    if len(rows)!=EXPECTED_OBJECTS or sum(int(r['content_length']) for r in rows)!=EXPECTED_BYTES: raise SystemExit('FAIL-CLOSED corpus identity mismatch')
+    segs=build_segments(rows); print(f'CANONICAL SOURCE PASS | objects={len(rows)} segments={len(segs)}')
     merged={c[0]:Counter() for c in CELLS}; totals=Counter()
     for i,seg in enumerate(segs,1):
-        st,tt=process_segment(seg,base); totals.update(tt)
+        st,tt=process_segment(i,seg,base); totals.update(tt)
         for cell,d in st.items(): merged[cell].update(d)
         print(f'segment {i} PASS | sweeps={tt["ask_sweeps"]+tt["bid_sweeps"]:,}')
     out=[]
     for name,_,_ in CELLS:
         s=merged[name]; n=int(s['n'])
         if n<=0: raise SystemExit(f'FAIL-CLOSED zero weak opportunities {name}')
-        row={'cell':name,'weak_n':n,
-             'mean_mid_response_bps':s['sum_mid']/n,
+        row={'cell':name,'weak_n':n,'mean_mid_response_bps':s['sum_mid']/n,
              'mean_taker_touch_gross_bps':s['sum_taker']/n,
              'mean_maker_touch_optimistic_gross_bps':s['sum_maker_upper']/n,
              'mean_entry_spread_bps':s['sum_entry_spread']/n,
              'mean_exit_spread_bps':s['sum_exit_spread']/n}
-        for fee in MAKER_SCENARIOS_BPS:
-            row[f'maker_upper_net_fee_{fee:.1f}_bps_per_fill']=row['mean_maker_touch_optimistic_gross_bps']-2*fee
-        for fee in TAKER_SCENARIOS_BPS:
-            row[f'taker_net_fee_{fee:.1f}_bps_per_fill']=row['mean_taker_touch_gross_bps']-2*fee
+        for fee in MAKER_SCENARIOS_BPS: row[f'maker_upper_net_fee_{fee:.1f}_bps_per_fill']=row['mean_maker_touch_optimistic_gross_bps']-2*fee
+        for fee in TAKER_SCENARIOS_BPS: row[f'taker_net_fee_{fee:.1f}_bps_per_fill']=row['mean_taker_touch_gross_bps']-2*fee
         out.append(row)
     evidence=base/'_EVIDENCE_L2R_EXEC_PASSIVE_V0_1'; evidence.mkdir(parents=True,exist_ok=True)
     csvp=evidence/'L2R_EXEC_PASSIVE_001_2025_UPPER_BOUND_CELL_SUMMARY_V0_1.csv'
@@ -219,24 +207,17 @@ def main():
     base_maker=1.5; base_taker=4.5
     maker_base_vals=[r[f'maker_upper_net_fee_{base_maker:.1f}_bps_per_fill'] for r in out]
     positive_cells=sum(v>0 for v in maker_base_vals)
-    by_r={str(rh):any(row['cell']==name and row[f'maker_upper_net_fee_{base_maker:.1f}_bps_per_fill']>0
-                      for row in out for name,crh,_ in CELLS if crh==rh)
-          for rh in (1000,5000,15000)}
+    by_r={str(rh):any(row['cell']==name and row[f'maker_upper_net_fee_{base_maker:.1f}_bps_per_fill']>0 for row in out for name,crh,_ in CELLS if crh==rh) for rh in (1000,5000,15000)}
     panel_mean=sum(maker_base_vals)/len(maker_base_vals)
-    base_support={'panel_equal_weight_mean_positive':panel_mean>0,
-                  'at_least_4_of_6_cells_positive':positive_cells>=4,
-                  'each_R_has_positive_cell':all(by_r.values())}
+    base_support={'panel_equal_weight_mean_positive':panel_mean>0,'at_least_4_of_6_cells_positive':positive_cells>=4,'each_R_has_positive_cell':all(by_r.values())}
     base_class='PASSIVE_STANDARD_BASE_UPPER_BOUND_SURVIVES' if all(base_support.values()) else 'PASSIVE_STANDARD_BASE_UPPER_BOUND_FAIL'
     verdict={
       'schema_version':'0.1','implementation_version':IMPLEMENTATION_VERSION,'lab_id':LAB_ID,'parent_lab_id':PARENT_LAB_ID,'year':YEAR,
       'purpose':'POST-VALIDATION DEVELOPMENT DIAGNOSTIC; NOT INDEPENDENT EVIDENCE',
-      'source_manifest_sha256':EXPECTED_MANIFEST_SHA256,
-      'classification':base_class,
-      'standard_base_panel':{'equal_weight_mean_net_bps':panel_mean,'positive_cells':positive_cells,
-                             'positive_by_replenishment_horizon':by_r,'support_gate':base_support},
+      'source_manifest_sha256':EXPECTED_MANIFEST_SHA256,'classification':base_class,
+      'standard_base_panel':{'equal_weight_mean_net_bps':panel_mean,'positive_cells':positive_cells,'positive_by_replenishment_horizon':by_r,'support_gate':base_support},
       'cells':out,
-      'hyperliquid_fee_snapshot_bps_per_fill':{'base_maker':base_maker,'base_taker':base_taker,
-                                               'maker_scenarios':MAKER_SCENARIOS_BPS,'taker_scenarios':TAKER_SCENARIOS_BPS},
+      'hyperliquid_fee_snapshot_bps_per_fill':{'base_maker':base_maker,'base_taker':base_taker,'maker_scenarios':MAKER_SCENARIOS_BPS,'taker_scenarios':TAKER_SCENARIOS_BPS},
       'interpretation':{
         'taker_base_all_cells_positive':all(r[f'taker_net_fee_{base_taker:.1f}_bps_per_fill']>0 for r in out),
         'maker_optimistic_base_all_cells_positive':all(r[f'maker_upper_net_fee_{base_maker:.1f}_bps_per_fill']>0 for r in out),
@@ -246,17 +227,13 @@ def main():
       'firewalls':{'access_2026':False,'network':False,'live_trading':False,'exchange_mutation':False,'orders':False,'main_merge':False},
       'no_post_outcome_selection':'All six parent causal cells are reported; no cell is selected or promoted from 2025 outcomes.'
     }
-    jp=evidence/'L2R_EXEC_PASSIVE_001_2025_UPPER_BOUND_RECEIPT_V0_1.json'
-    jp.write_text(json.dumps(verdict,indent=2,sort_keys=True)+'\n',encoding='utf-8')
+    jp=evidence/'L2R_EXEC_PASSIVE_001_2025_UPPER_BOUND_RECEIPT_V0_1.json'; jp.write_text(json.dumps(verdict,indent=2,sort_keys=True)+'\n',encoding='utf-8')
     z=base/'L2R_EXEC_PASSIVE_001_2025_UPPER_BOUND_EVIDENCE_V0_1.zip'
     with zipfile.ZipFile(z,'w',zipfile.ZIP_DEFLATED) as zz:
         zz.write(csvp,csvp.name); zz.write(jp,jp.name)
     print('\n=== EXECUTION UPPER-BOUND DIAGNOSTIC ===')
     for r in out:
-        print(r['cell'],'n',r['weak_n'],'mid',r['mean_mid_response_bps'],
-              'taker_gross',r['mean_taker_touch_gross_bps'],
-              'maker_upper_gross',r['mean_maker_touch_optimistic_gross_bps'],
-              'maker_base_net',r[f'maker_upper_net_fee_{base_maker:.1f}_bps_per_fill'])
+        print(r['cell'],'n',r['weak_n'],'mid',r['mean_mid_response_bps'],'taker_gross',r['mean_taker_touch_gross_bps'],'maker_upper_gross',r['mean_maker_touch_optimistic_gross_bps'],'maker_base_net',r[f'maker_upper_net_fee_{base_maker:.1f}_bps_per_fill'])
     print('STANDARD BASE CLASSIFICATION:',base_class)
     print('PANEL equal-weight maker-upper net bps:',panel_mean,'positive_cells',f'{positive_cells}/6','positive_by_R',by_r)
     print('Evidence:',z); print('SHA256:',sha256_file(z)); print('NO 2026 / NO NETWORK / NO ORDERS')
