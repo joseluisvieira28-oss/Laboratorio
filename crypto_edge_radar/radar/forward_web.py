@@ -640,6 +640,14 @@ h1{margin:0 0 6px;font-size:28px}.sub{color:#9aa4b2;margin-bottom:22px}
 <div class="row"><span>BASE PF</span><span id="optPf">—</span></div>
 <div class="row"><span>STRESS mean bps</span><span id="optStress">—</span></div></section>
 
+<section class="card"><div class="k">Diamond Board V0.1</div><div class="v">READ-ONLY</div>
+<div class="row"><span>AVAX20</span><span id="diamondCed">—</span></div>
+<div class="row"><span>OPTIONS V2.1</span><span id="diamondOptions">—</span></div>
+<div class="row"><span>ETF-CME</span><span id="diamondEtf">—</span></div>
+<div class="row"><span>BNB Launchpool</span><span id="diamondBnb">—</span></div>
+<div class="row"><span>Automatic promotion</span><span id="diamondAuto">—</span></div>
+<div class="row"><span>Raw board</span><span class="mono">/api/diamond</span></div></section>
+
 <section class="card"><div class="k">External Collectors</div><div class="v">Freshness</div>
 <div class="row"><span>DH03</span><span id="dh03Freshness">—</span></div>
 <div class="row"><span>DH03 last run</span><span id="dh03Run">—</span></div>
@@ -698,6 +706,12 @@ async function refresh(){
     $("optBase").textContent=val(om.base_net_mean_bps);
     $("optPf").textContent=om.base_profit_factor===Infinity?"INF":val(om.base_profit_factor);
     $("optStress").textContent=val(om.stress_net_mean_bps);
+    const db=s.diamond_board||{}, dc=db.candidates||{};
+    $("diamondCed").textContent=val((dc["CED1D-0031"]||{}).state);
+    $("diamondOptions").textContent=val((dc["OPTIONS-SPOTPERP-001-V2.1"]||{}).state);
+    $("diamondEtf").textContent=val((dc["ETF-CME-INSTFLOW-001"]||{}).state);
+    $("diamondBnb").textContent=val((dc["BNB-LAUNCHPOOL-DEMAND-001"]||{}).state);
+    $("diamondAuto").textContent=db.automatic_promotion===false?"NO":val(db.automatic_promotion);
     const xc=s.external_collectors||{};
     const dh=xc["HTF-DH03-12H-STANDALONE-FORWARD-V1"]||{}, ce=xc["CED1D-0031"]||{};
     $("dh03Freshness").textContent=val(dh.freshness_classification); $("dh03Run").textContent=val(dh.last_workflow_run_id);
