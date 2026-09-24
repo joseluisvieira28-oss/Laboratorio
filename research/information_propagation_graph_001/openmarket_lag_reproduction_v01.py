@@ -10,8 +10,8 @@ REPO="gregyoung14/openmarket-btc-polymarket"
 REV="74502466d1a7cef56395bfd8d0b465fbebc849cf"
 OUT=Path("artifacts/ipg001_openmarket_lag_reproduction_v01.json")
 
-root=Path(snapshot_download(repo_id=REPO,repo_type="dataset",revision=REV,allow_patterns=["full/lag_pairs_ms/**/*.parquet"]))
-files=sorted((root/"full"/"lag_pairs_ms").rglob("*.parquet"))
+root=Path(snapshot_download(repo_id=REPO,repo_type="dataset",revision=REV,allow_patterns=["unified/lag_pairs_ms/**/*.parquet"]))
+files=sorted((root/"unified"/"lag_pairs_ms").rglob("*.parquet"))
 chunks=[];violations=0;rows_raw=0
 for p in files:
     t=pq.read_table(p,columns=["lead_lag_ms","binance_source_ts_ms","polymarket_source_ts_ms"])
