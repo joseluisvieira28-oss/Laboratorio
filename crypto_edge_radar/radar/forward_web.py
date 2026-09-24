@@ -18,6 +18,10 @@ from .ced1d_source_probe import ced1d_render_source_probe
 from .ced1d_render_shadow_runtime import CED1DRenderShadowRunner
 from .evidence import build_evidence_store
 from .strategies.bnb_launchpool_demand import BinanceSpotBNBBTCKlineFeed
+from .bnb_launchpool_diamond_v02 import (
+    BinancePublicMinuteFeed,
+    evaluate_bnb_diamond_v02,
+)
 from .strategies.tfg_donchian_regime_forward import MEXCSpotKlineFeed
 from .spot_mapping import spot_perp_mapping_receipt
 from .friction import mexc_friction_shadow_receipt
@@ -120,10 +124,18 @@ class ForwardShadowRuntime:
             store=self.store,
             feed=EMA6HBinanceSpotKlineFeed(timeout=settings.http_timeout),
         )
+        self.bnb_diamond_v02_enabled = (
+            os.getenv("BNB_DIAMOND_V02_ENABLED", "").lower() == "true"
+        )
         self.bnb = BNBLaunchpoolForwardShadowWatcher(
             store=self.store,
             source=CachingBinanceOfficialLaunchpoolSource(timeout=settings.http_timeout),
             market=BinanceSpotBNBBTCKlineFeed(timeout=settings.http_timeout),
+            diamond_feed=(
+                BinancePublicMinuteFeed(timeout=settings.http_timeout)
+                if self.bnb_diamond_v02_enabled
+                else None
+            ),
         )
         self.options_v21 = OptionsV21ForwardShadowWatcher(
             store=self.store,
@@ -268,6 +280,17 @@ class ForwardShadowRuntime:
         except Exception as exc:
             bnb_state = {"status": "FAIL_CLOSED", "error": f"{type(exc).__name__}:{exc}"}
             errors["bnb_launchpool"] = bnb_state["error"]
+
+        try:
+            bnb_diamond_metrics = evaluate_bnb_diamond_v02(self.store)
+        except Exception as exc:
+            bnb_diamond_metrics = {
+                "strategy_id": "BNB-LAUNCHPOOL-DEMAND-001",
+                "classification": "DIAMOND_METRICS_FAIL_CLOSED",
+                "error": f"{type(exc).__name__}:{exc}",
+                "automatic_promotion": False,
+                "live_trading_authorized": False,
+            }
 
         due = latest_certifiable_signal_close_ms(now_ms)
         if due is not None and due != self._last_tfg_due:
@@ -517,6 +540,8 @@ class ForwardShadowRuntime:
             "ema6h_regime": ema6h_state,
             "ema6h_regime_metrics": ema6h_metrics,
             "bnb_launchpool": bnb_state,
+            "bnb_diamond_v02_enabled": self.bnb_diamond_v02_enabled,
+            "bnb_diamond_v02_metrics": bnb_diamond_metrics,
             "etf_exec_v2_public": etf_exec_v2,
             "etf_cme_signal": etf_signal,
             "etf_cme_exact_scheduler": self.etf_cme_exact_scheduler.state(),
