@@ -130,20 +130,59 @@ def parse_coinbase_level2_update(
     product_id: str,
     sequence_num: int,
     update: Mapping[str, Any],
+    source_event_time_override: str | None = None,
 ) -> CanonicalBookUpdate:
     raw_side = str(update["side"]).lower()
     if raw_side not in {"bid", "ask"}:
         raise ValueError("Coinbase level2 side must be bid or ask")
+    source_time = (
+        str(source_event_time_override)
+        if source_event_time_override is not None
+        else str(update["event_time"])
+    )
     return CanonicalBookUpdate(
         venue="COINBASE_ADVANCED_SPOT",
         native_symbol=product_id,
-        source_event_time=str(update["event_time"]),
+        source_event_time=source_time,
         sequence_first=int(sequence_num),
         sequence_last=int(sequence_num),
         side=raw_side.upper(),
         price_level=_decimal("price_level", update["price_level"], positive=True),
         absolute_quantity=_decimal("new_quantity", update["new_quantity"]),
     )
+
+
+def parse_coinbase_level2_event(
+    *,
+    event: Mapping[str, Any],
+    sequence_num: int,
+    envelope_timestamp: str,
+) -> tuple[str, Tuple[CanonicalBookUpdate, ...]]:
+    event_type = str(event.get("type", "")).lower()
+    if event_type not in {"snapshot", "update"}:
+        raise ValueError("Coinbase level2 event type must be snapshot or update")
+    product_id = str(event["product_id"])
+    updates = event.get("updates", [])
+    if not isinstance(updates, list):
+        raise ValueError("Coinbase level2 updates must be a list")
+
+    rows = []
+    for update in updates:
+        rows.append(
+            parse_coinbase_level2_update(
+                product_id=product_id,
+                sequence_num=sequence_num,
+                update=update,
+                # Coinbase's documented snapshot example carries epoch-zero
+                # per-level event_time. Use the message-envelope timestamp for
+                # snapshot acquisition time; incremental updates retain the
+                # matching-engine event_time.
+                source_event_time_override=(
+                    envelope_timestamp if event_type == "snapshot" else None
+                ),
+            )
+        )
+    return event_type, tuple(rows)
 
 
 def binance_depth_sequence_ok(previous_last: int, current_first: int, current_last: int) -> bool:
