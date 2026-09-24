@@ -1,0 +1,44 @@
+{
+  "lab_id": "AAVE-HF-CROWDING-001",
+  "source_gate_id": "AAVE-HFC-001-SOURCE-CAPABILITY-001",
+  "freeze_date": "2026-09-24",
+  "status": "SOURCE_CAPABILITY_PRE_FROZEN",
+  "governance": "CRYPTO-LAB-GOVERNANCE-V4.0-DEATH-FROZEN",
+  "primary_family": "CREDIT",
+  "secondary_family": "FLOW",
+  "endpoint": "https://mcp.aave.com/",
+  "pass_rule": {
+    "unauthenticated_tools_list_success": true,
+    "minimum_tool_count": 1,
+    "required_exact_tools": [
+      "get_user_summary",
+      "get_user_positions",
+      "get_user_summary_history"
+    ],
+    "require_market_or_reserve_read_capability": true,
+    "require_history_or_timeseries_read_capability": true
+  },
+  "retained_fields": [
+    "tool_name",
+    "tool_description",
+    "input_schema_top_level_keys"
+  ],
+  "forbidden": [
+    "wallet addresses",
+    "position values",
+    "health factor values",
+    "liquidation outcomes",
+    "market prices",
+    "returns",
+    "pnl",
+    "prepare action",
+    "submit action",
+    "signing",
+    "exchange mutation",
+    "wallet mutation",
+    "live trading",
+    "merge to main"
+  ],
+  "on_pass": "OFFICIAL_AAVE_MCP_CREDIT_SOURCE_CAPABILITY_PASS",
+  "on_fail": "OFFICIAL_AAVE_MCP_CREDIT_SOURCE_CAPABILITY_INSUFFICIENT"
+}
