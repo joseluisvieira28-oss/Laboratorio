@@ -19,6 +19,9 @@ CODE_FILES = [
     MODULE_DIR / "calendar_manifest.py",
     MODULE_DIR / "freeze_candidate_check.py",
     MODULE_DIR / "science_lock.py",
+    MODULE_DIR / "shadow_journal.py",
+    MODULE_DIR / "shadow_recovery.py",
+    MODULE_DIR / "verify_shadow_journal.py",
 ]
 
 PROBE_FILE = MODULE_DIR / "coinbase_level2_local_probe.py"
