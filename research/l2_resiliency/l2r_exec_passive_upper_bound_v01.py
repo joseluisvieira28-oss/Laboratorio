@@ -6,6 +6,7 @@ from pathlib import Path
 
 LAB_ID='L2R-EXEC-PASSIVE-001'
 PARENT_LAB_ID='L2-RESILIENCY-001'
+IMPLEMENTATION_VERSION='0.1.1'
 YEAR=2025
 EXPECTED_MANIFEST_SHA256='767e75594864344c75dd2669ec4fad8c738710c218322b11fd43a83077ef17c3'
 EXPECTED_OBJECTS=8400
@@ -88,10 +89,10 @@ def build_segments(rows):
 def ret_mid(direction,r,y): return direction*10000.0*(y['mid']/r['mid']-1.0)
 def ret_taker(direction,r,y):
     if direction>0: return 10000.0*(y['bid']/r['ask']-1.0)
-    return 10000.0*(r['bid']/y['ask']-1.0)
+    return -10000.0*(y['ask']/r['bid']-1.0)
 def ret_maker_upper(direction,r,y):
     if direction>0: return 10000.0*(y['ask']/r['bid']-1.0)
-    return 10000.0*(r['ask']/y['bid']-1.0)
+    return -10000.0*(y['bid']/r['ask']-1.0)
 def spread_bps(st): return 10000.0*(st['ask']-st['bid'])/st['mid']
 
 def process_segment(rows,base:Path):
@@ -227,7 +228,7 @@ def main():
                   'each_R_has_positive_cell':all(by_r.values())}
     base_class='PASSIVE_STANDARD_BASE_UPPER_BOUND_SURVIVES' if all(base_support.values()) else 'PASSIVE_STANDARD_BASE_UPPER_BOUND_FAIL'
     verdict={
-      'schema_version':'0.1','lab_id':LAB_ID,'parent_lab_id':PARENT_LAB_ID,'year':YEAR,
+      'schema_version':'0.1','implementation_version':IMPLEMENTATION_VERSION,'lab_id':LAB_ID,'parent_lab_id':PARENT_LAB_ID,'year':YEAR,
       'purpose':'POST-VALIDATION DEVELOPMENT DIAGNOSTIC; NOT INDEPENDENT EVIDENCE',
       'source_manifest_sha256':EXPECTED_MANIFEST_SHA256,
       'classification':base_class,
