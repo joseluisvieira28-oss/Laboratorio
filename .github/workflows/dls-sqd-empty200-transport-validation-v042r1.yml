@@ -1,0 +1,103 @@
+name: DLS SQD Empty-200 Transport Validation V0.4.2-R1
+
+on:
+  push:
+    branches: [dls-census-v042-transport-r1]
+    paths: ['.github/workflows/dls-sqd-empty200-transport-validation-v042r1.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        include:
+          - {protocol: kamino, start: '2023-11-23', end: '2023-11-24', id: kamino-2023-11-23}
+          - {protocol: save11, start: '2024-07-23', end: '2024-07-24', id: save11-2024-07-23}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile frozen V0.4.2 runner
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/run_sqd_event_census_partition_v0_4_2.py
+      - name: Retry only transient SQD empty-200
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="validation/${{ matrix.id }}"
+          for attempt in 1 2 3 4 5 6 7 8; do
+            rm -rf "$out"
+            set +e
+            python labs/DEFI_LIQUIDATION_SHOCK_001/source/run_sqd_event_census_partition_v0_4_2.py \
+              --protocol "${{ matrix.protocol }}" --start "${{ matrix.start }}" --end "${{ matrix.end }}" --out "$out"
+            rc=$?
+            set -e
+            if [ "$rc" -eq 0 ]; then
+              echo "TRANSPORT_VALIDATION_PASS attempt=$attempt"
+              exit 0
+            fi
+            detail="$(python - "$out" <<'PY'
+import json,sys
+from pathlib import Path
+root=Path(sys.argv[1])
+vals=[]
+for p in root.glob("*.json"):
+    if p.name=="MANIFEST.json":
+        continue
+    try:
+        o=json.loads(p.read_text())
+    except Exception:
+        continue
+    if o.get("classification")=="SOURCE_CHUNK_BLOCKED":
+        vals.append(o.get("detail") or "")
+print(vals[-1] if vals else "")
+PY
+)"
+            echo "attempt=$attempt rc=$rc detail=$detail"
+            if [ "$detail" != "empty_200_response" ]; then
+              echo "NON_EMPTY200_FAILURE_FAIL_CLOSED"
+              exit "$rc"
+            fi
+            if [ "$attempt" -eq 8 ]; then
+              echo "EMPTY200_RETRIES_EXHAUSTED_FAIL_CLOSED"
+              exit 2
+            fi
+            sleep $(( attempt < 6 ? 2**(attempt-1) : 32 ))
+          done
+      - name: Verify partition authority shape
+        run: |
+          python - "${{ matrix.protocol }}" "validation/${{ matrix.id }}/MANIFEST.json" <<'PY'
+import json,sys
+p=sys.argv[1]
+m=json.load(open(sys.argv[2]))
+assert m["protocol"]==p
+assert m["classification"]=="PARTITION_COMPLETE"
+assert m["chunk_count"]==1
+assert m["anomaly_count"]==0
+print("VALIDATION_AUTHORITY_SHAPE_PASS")
+PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dls-empty200-validation-v042r1-${{ matrix.id }}
+          path: validation/${{ matrix.id }}
+          if-no-files-found: error
+          retention-days: 30
+      - name: Firewall
+        run: |
+          echo SOURCE_ONLY_TRUE
+          echo PRICES_FALSE
+          echo RETURNS_FALSE
+          echo PNL_FALSE
+          echo DIRECTION_FALSE
+          echo ECONOMIC_OUTCOMES_FALSE
+          echo LIVE_TRADING_FALSE
+          echo MERGE_MAIN_FALSE
