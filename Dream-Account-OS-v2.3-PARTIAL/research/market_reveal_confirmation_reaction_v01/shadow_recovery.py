@@ -148,7 +148,7 @@ def replay_coinbase_level2_session(
 
     rows = conn.execute(
         """
-        SELECT ordinal, channel, raw_payload
+        SELECT ordinal, channel, sequence_num, raw_payload
         FROM shadow_messages
         WHERE session_id=?
         ORDER BY ordinal
@@ -164,6 +164,21 @@ def replay_coinbase_level2_session(
     update_message_count = 0
 
     try:
+        previous_stream_sequence: int | None = None
+        for row in rows:
+            stream_sequence = row["sequence_num"]
+            if not isinstance(stream_sequence, int):
+                raise ValueError("persisted websocket message missing integer sequence_num")
+            if (
+                previous_stream_sequence is not None
+                and stream_sequence != previous_stream_sequence + 1
+            ):
+                raise BookSequenceGap(
+                    "Coinbase websocket stream sequence discontinuity: "
+                    f"previous={previous_stream_sequence}, current={stream_sequence}"
+                )
+            previous_stream_sequence = stream_sequence
+
         for row in rows:
             if row["channel"] not in {"l2_data", "level2"}:
                 continue
@@ -203,7 +218,10 @@ def replay_coinbase_level2_session(
             elif incremental_rows:
                 if not book.initialized:
                     raise ValueError("incremental level2 update before snapshot")
-                book.apply_updates(tuple(incremental_rows))
+                book.apply_updates(
+                    tuple(incremental_rows),
+                    coinbase_stream_continuity_verified=True,
+                )
                 update_message_count += 1
 
         if not book.initialized:
