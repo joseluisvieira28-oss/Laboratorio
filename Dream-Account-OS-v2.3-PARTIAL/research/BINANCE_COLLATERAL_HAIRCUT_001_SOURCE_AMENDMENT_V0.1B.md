@@ -1,18 +1,18 @@
-# BINANCE-COLLATERAL-HAIRCUT-001 — SOURCE ENUMERATION TECHNICAL AMENDMENT V0.1B
+# BINANCE-COLLATERAL-HAIRCUT-001 — SOURCE AMENDMENT V0.1B
 
 Date: 2026-09-24
+Outcome access before amendment: ZERO.
 
-Official CMS catalog probe established:
-- catalogId 48 = New Cryptocurrency Listing
-- catalogId 49 = Latest Binance News
+Both historical index transports were shown technically unsuitable:
+1. Telegram archive had complete 2024 time coverage but did not expose canonical article links for this family.
+2. Binance CMS list endpoint returned a mixed non-pageable catalogue spanning years and did not expose the frozen controls.
 
-The generic article-list endpoint returns a multi-catalog snapshot rather than a complete chronological archive.
+Before opening any market prices, an exhaustive month-by-month source-only search of official Binance Support pages recovered five distinct 2024 collateral-ratio update articles.
 
-Technical correction:
-- enumerate the official catalog-list endpoint for exactly catalogId 48 and 49;
-- page each catalog backward until crossing 2024-01-01;
-- union and deduplicate article codes;
-- hydrate bodies only for retained 2024 articles whose title contains "collateral ratio" and "margin", plus the four pre-frozen controls;
-- no market outcomes are opened.
+The five official article codes and effective timestamps are now frozen in `BINANCE_COLLATERAL_HAIRCUT_001_MANIFEST_V0.1B.json`.
 
-Scientific hypothesis, source gate thresholds, event parser, 2024 Discovery protocol, 2025/2026 protection and all no-rescue rules remain unchanged.
+The canonical authority for article identity/body remains the official Binance article-detail endpoint. The external search was used only to recover official article identifiers, never as outcome evidence.
+
+No Discovery rule, sign, horizon, threshold, control asset, cost rule or protected period is changed.
+
+The V0.1B gate additionally requires the exact five article codes and exactly 36 parsed asset-events. Any mismatch fails closed.
