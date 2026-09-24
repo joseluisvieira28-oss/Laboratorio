@@ -1,0 +1,28 @@
+name: BINANCE-COLLATERAL-HAIRCUT-001 Source Census V0.1A
+on:
+  push:
+    branches: [binance-collateral-haircut-v0.1]
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/BINANCE_COLLATERAL_HAIRCUT_001_SOURCE_V01A_TRIGGER.txt'
+permissions:
+  contents: write
+jobs:
+  source:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: binance-collateral-haircut-v0.1}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: pip install -q requests beautifulsoup4
+      - run: python Dream-Account-OS-v2.3-PARTIAL/research/binance_collateral_haircut_001_source_census_v01a.py
+      - name: Commit source receipt
+        if: always()
+        run: |
+          git config user.name "crypto-lab-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add Dream-Account-OS-v2.3-PARTIAL/runtime/binance_collateral_haircut_001/source_census_receipt_v01a.json || true
+          git diff --cached --quiet && exit 0
+          git commit -m "research: record collateral haircut source census V0.1A"
+          git push origin HEAD:binance-collateral-haircut-v0.1
