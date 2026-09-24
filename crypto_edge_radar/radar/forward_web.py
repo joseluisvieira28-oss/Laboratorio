@@ -41,6 +41,7 @@ from .external_freshness import all_external_freshness
 from .private_evidence_backup import emit_snapshot_json_chunks, emit_snapshot_log_chunks
 from .persistence_expiry import persistence_expiry_state
 from .deploy_drift import deployment_drift_receipt
+from .diamond_board import build_diamond_board
 
 
 RUNTIME_LIVENESS_EVENT = "RADAR_RUNTIME_LIVENESS"
@@ -534,6 +535,7 @@ class ForwardShadowRuntime:
             "exchange_mutation_performed": False,
             "live_capital_enabled": False,
         }
+        state["diamond_board"] = build_diamond_board(state)
         self._set_state(state)
         print(json.dumps(state, sort_keys=True), flush=True)
         return state
@@ -737,6 +739,10 @@ class _Handler(BaseHTTPRequestHandler):
             state = self.runtime.state()
             status = 200 if state.get("health") in ("OK", "STARTING") else 503
             self._send_json(status, state)
+            return
+        if self.path == "/api/diamond":
+            state = self.runtime.state()
+            self._send_json(200, state.get("diamond_board") or {})
             return
         if self.path == "/api/ced1d-source-probe":
             result = ced1d_render_source_probe(timeout=self.runtime.settings.http_timeout)
