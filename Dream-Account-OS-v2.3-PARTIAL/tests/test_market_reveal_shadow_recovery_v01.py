@@ -72,7 +72,7 @@ class ShadowRecoveryTests(unittest.TestCase):
             session_id="S1",
             collector_version="TEST",
             endpoint="wss://example.invalid",
-            product_id=product_id,
+            product_id="BTC-USD",
             started_wall_ns=1,
             started_monotonic_ns=2,
         )
@@ -84,7 +84,7 @@ class ShadowRecoveryTests(unittest.TestCase):
             conn,
             session_id="S1",
             channel=msg["channel"],
-            product_id="BTC-USD",
+            product_id=product_id,
             sequence_num=msg["sequence_num"],
             envelope_timestamp=msg["timestamp"],
             source_time_max_ns=wall,
