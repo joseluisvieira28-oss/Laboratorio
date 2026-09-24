@@ -174,16 +174,19 @@ else:
                     row.setdefault("position_items_field_paths",[])
                     row["position_items_field_paths"]=sorted(set(row["position_items_field_paths"]) | field_paths(got))
                     row.setdefault("position_items_argument_shapes_used",[]).append({"spokeId_sha256":hashlib.sha256(spoke_id.encode()).hexdigest(),"side":side})
+                    reserve_from_pos.extend(extract_ids(got,("reserveId","reserve_id")))
                     items=got
                 except Exception:
                     continue
 
-        # reserve details on a reserve actually referenced by this position if possible
-        for rid in list(dict.fromkeys(reserve_from_pos))[:1]:
+        row["reserve_ids_in_positions"]=len(set(reserve_from_pos))
+        # reserve details on reserves actually referenced by component items
+        reserve_detail_paths=set()
+        for rid in list(dict.fromkeys(reserve_from_pos))[:3]:
             try:
                 rd=call("get_reserve_details",{"reserveId":rid,"version":"v4"})
-                row["reserve_details_field_paths"]=sorted(field_paths(rd))
-                break
+                reserve_detail_paths |= field_paths(rd)
+                row["reserve_details_field_paths"]=sorted(reserve_detail_paths)
             except Exception as e:
                 row["reserve_details_error"]=f"{type(e).__name__}:{str(e)[:160]}"
         samples.append(row)
