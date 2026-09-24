@@ -1,0 +1,31 @@
+name: DLS V0.4.3 Packaging Preflight
+
+on:
+  push:
+    branches:
+      - dls-census-v043-empty-stream-semantics
+    paths:
+      - .github/workflows/dls-v043-packaging-preflight.yml
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile V0.4.3 authority chain
+        run: |
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/run_sqd_event_census_partition_v0_4_3.py
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/aggregate_sqd_event_census_v0_4_3.py
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/reconcile_sqd_census_raw_sample_v0_4_3.py
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/finalize_kamino_save11_event_census_v0_4_3.py
+      - name: Firewall
+        run: echo SOURCE_ONLY_TRUE
