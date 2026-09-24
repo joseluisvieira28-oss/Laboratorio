@@ -1,0 +1,72 @@
+{
+  "lab_id": "USOPEN-SHORTVOL-FWD-001",
+  "title": "U.S. Open Short-Vol Forward Shadow",
+  "freeze_date": "2026-09-24",
+  "status": "PRE_FORWARD_FROZEN",
+  "governance": "CRYPTO-LAB-GOVERNANCE-V4.0-DEATH-FROZEN",
+  "primary_family": "VOL",
+  "secondary_family": "EVENT",
+  "hypothesis": "Prospectively, BTC ATM option premium around the U.S. cash open may exceed the 09:00–11:00 ET realized/mark-to-market value change enough that shorting a 7–14 DTE ATM straddle at executable BBO remains profitable after standard fees and stress.",
+  "contamination_boundary": {
+    "historical_longvol_block": "2024H1 contaminated / diagnostic only",
+    "forward_start_date": "2026-09-24",
+    "prefreeze_2026_backfill": false
+  },
+  "source": {
+    "provider": "Deribit public unauthenticated API",
+    "endpoints": [
+      "public/get_index_price",
+      "public/get_instruments",
+      "public/get_order_book"
+    ],
+    "authenticated_endpoints": false
+  },
+  "rule": {
+    "timezone": "America/New_York",
+    "regular_us_cash_weekdays_only": true,
+    "entry_window": [
+      "09:00",
+      "09:10"
+    ],
+    "exit_window": [
+      "11:00",
+      "11:10"
+    ],
+    "dte_min": 7,
+    "dte_max": 14,
+    "expiry_choice": "nearest eligible expiry",
+    "strike_choice": "same-strike call+put nearest current BTC index",
+    "amount_per_leg_btc_options": 0.1,
+    "entry": "SELL call bid + SELL put bid",
+    "exit": "BUY call ask + BUY put ask",
+    "min_displayed_entry_bid_amount_per_leg": 0.1,
+    "min_displayed_exit_ask_amount_per_leg": 0.1,
+    "one_episode_per_date": true
+  },
+  "costs": {
+    "option_fee_per_1btc_amount_per_side_btc": 0.0003,
+    "fee_cap_fraction_of_premium": 0.125,
+    "delivery_fee": 0,
+    "stress": "subtract max(entry spread,exit spread)*0.1 once per leg"
+  },
+  "forward_gate": {
+    "minimum_completed_dates": 30,
+    "mean_base_net_btc_gt": 0,
+    "base_profit_factor_gte": 1.2,
+    "bootstrap_reps": 10000,
+    "bootstrap_seed": 20261002,
+    "bootstrap_lower95_mean_gt": 0,
+    "mean_stress_net_btc_gt": 0,
+    "stress_profit_factor_gt": 1,
+    "nonnegative_calendar_months_min": 2,
+    "max_single_positive_episode_share_lte": 0.25
+  },
+  "safety": {
+    "live_trading": false,
+    "orders": false,
+    "private_endpoints": false,
+    "wallet": false,
+    "exchange_mutation": false,
+    "merge_to_main": false
+  }
+}
