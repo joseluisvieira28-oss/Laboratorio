@@ -173,10 +173,6 @@ def parse_coinbase_level2_event(
                 product_id=product_id,
                 sequence_num=sequence_num,
                 update=update,
-                # Coinbase's documented snapshot example carries epoch-zero
-                # per-level event_time. Use the message-envelope timestamp for
-                # snapshot acquisition time; incremental updates retain the
-                # matching-engine event_time.
                 source_event_time_override=(
                     envelope_timestamp if event_type == "snapshot" else None
                 ),
@@ -185,12 +181,29 @@ def parse_coinbase_level2_event(
     return event_type, tuple(rows)
 
 
+def binance_snapshot_bridge_status(
+    snapshot_last_update_id: int,
+    current_first: int,
+    current_last: int,
+) -> str:
+    snapshot_last = int(snapshot_last_update_id)
+    first = int(current_first)
+    last = int(current_last)
+
+    if first > last:
+        return "INVALID_INTERVAL"
+    if last <= snapshot_last:
+        return "STALE"
+    if first <= snapshot_last + 1 <= last:
+        return "BRIDGES"
+    if first > snapshot_last + 1:
+        return "GAP"
+    return "INVALID_INTERVAL"
+
+
 def binance_depth_sequence_ok(previous_last: int, current_first: int, current_last: int) -> bool:
-    if current_first > current_last:
-        return False
-    if current_last <= previous_last:
-        return True
-    return current_first <= previous_last + 1 <= current_last
+    status = binance_snapshot_bridge_status(previous_last, current_first, current_last)
+    return status in {"STALE", "BRIDGES"}
 
 
 def coinbase_sequence_transition(previous: int, current: int) -> str:
