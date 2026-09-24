@@ -740,6 +740,10 @@ class _Handler(BaseHTTPRequestHandler):
             status = 200 if state.get("health") in ("OK", "STARTING") else 503
             self._send_json(status, state)
             return
+        if self.path == "/api/diamond":
+            state = self.runtime.state()
+            self._send_json(200, state.get("diamond_board") or {})
+            return
         if self.path == "/api/ced1d-source-probe":
             result = ced1d_render_source_probe(timeout=self.runtime.settings.http_timeout)
             self._send_json(200, result)
