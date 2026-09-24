@@ -282,6 +282,7 @@ async def run_collector(
         "sequence_anomaly": sequence_anomaly,
         "chain_integrity_pass": chain.ok,
         "recovery_pass": recovery.ok,
+        "recovery_failure_reason": recovery.failure_reason,
         "recovered_final_sequence": recovery.final_sequence,
         "raw_payloads_persisted_local_only": True,
         "authentication_used": False,
