@@ -1,4 +1,4 @@
-name: Absorption Failed Auction V0.1 freeze audit
+name: Absorption Failed Auction V0.1 legacy supersession guard
 on:
   push:
     branches: [absorption-failed-auction-v0.1]
@@ -15,17 +15,21 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: {python-version: "3.12"}
-      - run: python -m unittest absorption_failed_auction/test_engine.py
-      - name: Outcome-blind freeze guard
+      - name: Verify pre-outcome supersession only
         shell: python
         run: |
+          import json
           from pathlib import Path
-          e=Path("absorption_failed_auction/engine.py").read_text()
-          p=Path("absorption_failed_auction/PROTOCOL_V0.1.md").read_text()
-          assert 'Real-outcome loader intentionally not enabled' in e
-          assert 'required_parent_state": "PASS_STRONG"' in Path("absorption_failed_auction/FREEZE.json").read_text()
-          for s in ["q90","q30","q70","288","100","30","95%"]:
-              assert s in p
-          for forbidden in ["strategy.","create_order(","place_order(","ccxt","MEXC"]:
-              assert forbidden not in e
-          print("PASS: outcome loader closed; science frozen")
+
+          freeze=json.loads(Path("absorption_failed_auction/FREEZE.json").read_text())
+          gate=json.loads(Path("absorption_failed_auction/PARENT_AUTHORITY.json").read_text())
+          receipt=Path("absorption_failed_auction/PRE_OUTCOME_HARDENING_RECEIPT_V0.1.1.md").read_text()
+
+          assert freeze["version"] == "V0.1.1-PRE-OUTCOME-HARDENING"
+          assert freeze["supersedes"] == "V0.1 PRE-OUTCOME ONLY"
+          assert freeze["state"] == "FROZEN_OUTCOME_BLIND"
+          assert freeze["required_parent_state"] == "PASS_STRONG"
+          assert gate["economic_outcomes_unlocked"] is False
+          assert gate["event_collection_open"] is False
+          assert "No future price outcomes for this lab were opened" in receipt
+          print("PASS: preliminary V0.1 is superseded only in the pre-outcome state")
