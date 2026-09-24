@@ -13,6 +13,7 @@ on:
       - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_decision_boundary_v01.py'
       - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_order_book_v01.py'
       - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_state_reconstruction_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_book_replay_v01.py'
       - '.github/workflows/market-reveal-confirmation-reaction-synthetic-ci-v01.yml'
 
 permissions:
@@ -44,6 +45,9 @@ jobs:
       - name: Run state reconstruction tests
         run: |
           python "Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_state_reconstruction_v01.py" -v
+      - name: Run bounded book replay tests
+        run: |
+          python "Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_book_replay_v01.py" -v
       - name: Run pre-target anti-hindsight guards
         run: |
           python "Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_pretarget_guard_v01.py" -v
