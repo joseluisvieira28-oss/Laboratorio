@@ -1,0 +1,285 @@
+{
+  "action_tool_called": false,
+  "classification": "READ_SCHEMA_COMPLETE",
+  "health_factor_values_opened": false,
+  "lab_id": "AAVE-HF-CROWDING-001",
+  "liquidation_outcomes_opened": false,
+  "market_values_opened": false,
+  "mutation": false,
+  "pnl_opened": false,
+  "probe_id": "AAVE-HFC-001-READ-SCHEMA-001",
+  "returns_opened": false,
+  "selected_tools": {
+    "get_asset_history": {
+      "description": "v4 only. One asset across every v4 reserve that holds it: 'price' is its oracle price per sample, 'supply' and 'borrow' are the amounts plus the APY spread across those reserves (averageApyPct with the highest and lowest at that moment). Not the same question as get_apy_history, which is one reserve's own rate - an asset sits in several reserves at once, so a wide gap between highestApyPct and lowestApyPct is the point, not noise. The asset is named by its token address and chain, and get_markets does NOT return a token address, so do not look for one there: get_multichain_asset takes a symbol and returns the token address per chain in one call, and get_hub_assets returns it per hub asset.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "chainId": {
+            "description": "Chain the token is on, e.g. 1 for Ethereum. Required: the same symbol exists on several.",
+            "exclusiveMinimum": 0,
+            "type": "number"
+          },
+          "metric": {
+            "description": "Which series: oracle price, supplied amount, or borrowed amount.",
+            "enum": [
+              "price",
+              "supply",
+              "borrow"
+            ],
+            "type": "string"
+          },
+          "token": {
+            "description": "Token address, 0x-prefixed (40 hex chars).",
+            "type": "string"
+          },
+          "version": {
+            "description": "Optional, and only 'v4': this tool exists on v4 only.",
+            "enum": [
+              "v4"
+            ],
+            "type": "string"
+          },
+          "window": {
+            "description": "How far back to go (default week).",
+            "enum": [
+              "day",
+              "week",
+              "month",
+              "sixMonths",
+              "year"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "metric",
+          "token",
+          "chainId"
+        ],
+        "type": "object"
+      }
+    },
+    "get_market_history": {
+      "description": "v4 only. Deposits, borrows, available liquidity and utilisation over a window, for one hub or one spoke. Pick the layer deliberately: a hub is the liquidity itself and answers 'is this market growing', a spoke is one venue onto that liquidity and answers 'is this venue being used'. Ids come from get_reserve_details, which returns both 'hubId' and 'spokeId' for a reserve, or from get_hubs ('hubId') and get_user_positions ('spokeId' for a spoke the wallet already holds). The two are not interchangeable and the wrong one is rejected. To judge a venue before entering it, take the ids from get_reserve_details rather than from a position that does not exist yet. For the protocol as a whole rather than one market use get_protocol_history, for one reserve's rate use get_apy_history, and for one asset across every reserve holding it use get_asset_history.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "description": "The hubId (scope 'hub') or spokeId (scope 'spoke'). Not an address.",
+            "type": "string"
+          },
+          "scope": {
+            "description": "Which layer 'id' names: a hub's liquidity, or one spoke onto it.",
+            "enum": [
+              "hub",
+              "spoke"
+            ],
+            "type": "string"
+          },
+          "version": {
+            "description": "Optional, and only 'v4': this tool exists on v4 only.",
+            "enum": [
+              "v4"
+            ],
+            "type": "string"
+          },
+          "window": {
+            "description": "How far back to go (default week).",
+            "enum": [
+              "day",
+              "week",
+              "month",
+              "sixMonths",
+              "year"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "scope",
+          "id"
+        ],
+        "type": "object"
+      }
+    },
+    "get_protocol_history": {
+      "description": "v4 only. Aave v4 protocol-wide history: market size, total borrows and available liquidity per sample over a window. Omit chainId to cover every supported v4 chain. Use this for 'is the protocol growing', not for one wallet (get_user_summary_history) or one reserve (get_apy_history).",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "chainId": {
+            "description": "Chain id to restrict to, e.g. 1 for Ethereum. Omit the argument entirely to cover every chain.",
+            "exclusiveMinimum": 0,
+            "type": "number"
+          },
+          "version": {
+            "description": "Optional, and only 'v4': this tool exists on v4 only.",
+            "enum": [
+              "v4"
+            ],
+            "type": "string"
+          },
+          "window": {
+            "description": "Time window (default week).",
+            "enum": [
+              "day",
+              "week",
+              "month",
+              "sixMonths",
+              "year"
+            ],
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_reserve_holders": {
+      "description": "v4 only. The biggest wallets supplying or borrowing one v4 reserve, largest first, for questions about concentration: whether one address is most of a reserve's liquidity, or most of its debt. The token is named once for the whole list rather than repeated per row. 'reserveId' comes from a get_markets row or a get_position_items item. An empty list means this reserve has no holders indexed on that side, which is common for the borrow side of an asset few people borrow, and is not an error.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "cursor": {
+            "description": "'nextCursor' from a previous call, for the next page. Omit the argument entirely for the first page.",
+            "type": "string"
+          },
+          "limit": {
+            "description": "How many wallets to return. Only 10 or 50; default 10.",
+            "enum": [
+              10,
+              50
+            ],
+            "type": "number"
+          },
+          "reserveId": {
+            "description": "reserveId from get_markets or get_position_items.",
+            "type": "string"
+          },
+          "side": {
+            "description": "Rank the wallets supplying it, or the ones borrowing it (default supply).",
+            "enum": [
+              "supply",
+              "borrow"
+            ],
+            "type": "string"
+          },
+          "version": {
+            "description": "Optional, and only 'v4': this tool exists on v4 only.",
+            "enum": [
+              "v4"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "reserveId"
+        ],
+        "type": "object"
+      }
+    },
+    "get_user_positions": {
+      "description": "A wallet's Aave positions (supplies and borrows) on v3, v4, or both. Omit chainId and both versions cover every chain they serve, stating which under 'chainsCovered'; there is no need to loop over chains yourself. 'chainsNotServed', when present, lists chains this API holds no market on: Aave supports the chain, there is nothing here to read, so an empty result for one of them is not an answer about that chain, and asking again returns the same nothing. v4 returns 'positions', each with its own health factor; v3 returns 'supplies' and 'borrows'. These are Aave-side positions only: a wallet's own token balances are not here, and an empty result means nothing is supplied or borrowed rather than that the wallet is empty. For what it holds, pass 'user' to get_markets, which returns walletBalance per reserve.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "chainId": {
+            "description": "Chain id to restrict to, e.g. 1 for Ethereum. Omit the argument entirely to cover every chain.",
+            "exclusiveMinimum": 0,
+            "type": "number"
+          },
+          "user": {
+            "description": "Wallet address, 0x-prefixed (40 hex chars).",
+            "type": "string"
+          },
+          "version": {
+            "description": "Protocol version (default all).",
+            "enum": [
+              "v3",
+              "v4",
+              "all"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "user"
+        ],
+        "type": "object"
+      }
+    },
+    "get_user_summary": {
+      "description": "A wallet's aggregate position and health factor. Omit chainId and both versions cover every chain they serve, stating which under 'chainsCovered'; there is no need to loop over chains yourself. 'chainsNotServed', when present, lists chains this API holds no market on: Aave supports the chain, there is nothing here to read, so an empty result for one of them is not an answer about that chain, and asking again returns the same nothing. Ask for one of those chains on its own and the reply is the scope alone, with no totals: a zero would read as a real balance. v4 returns a cross-chain summary (lowest health factor, totals, net APY). v3 has no cross-market aggregate, so it returns one entry per market the wallet actually holds a position in, each with its own health factor; 'marketsWithPosition': 0 means the wallet holds no v3 position anywhere, not that the read was narrow or that the wallet is empty: token balances are not here. For what it holds, pass 'user' to get_markets, which returns walletBalance per reserve. This is the lending position and only that. A wallet's Aave holdings also include its Safety Module stake (get_safety_module) and Savings GHO (get_sgho_vault), neither of which is a reserve and neither of which appears in any figure here, so a portfolio answer built from this alone understates what the wallet holds.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "chainId": {
+            "description": "Chain id to restrict to, e.g. 1 for Ethereum. Omit the argument entirely to cover every chain.",
+            "exclusiveMinimum": 0,
+            "type": "number"
+          },
+          "user": {
+            "description": "Wallet address, 0x-prefixed (40 hex chars).",
+            "type": "string"
+          },
+          "version": {
+            "description": "Protocol version (default all).",
+            "enum": [
+              "v3",
+              "v4",
+              "all"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "user"
+        ],
+        "type": "object"
+      }
+    },
+    "get_user_summary_history": {
+      "description": "v4 only. How one wallet's net worth, supplied, debt and health factor moved over a window on Aave v4. Use it to answer 'how has my position changed' or to see how close to liquidation a wallet has been. Omit chainId to cover every supported v4 chain.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "chainId": {
+            "description": "Chain id to restrict to, e.g. 1 for Ethereum. Omit the argument entirely to cover every chain.",
+            "exclusiveMinimum": 0,
+            "type": "number"
+          },
+          "user": {
+            "description": "Wallet address, 0x-prefixed (40 hex chars).",
+            "type": "string"
+          },
+          "version": {
+            "description": "Optional, and only 'v4': this tool exists on v4 only.",
+            "enum": [
+              "v4"
+            ],
+            "type": "string"
+          },
+          "window": {
+            "description": "Time window (default week).",
+            "enum": [
+              "day",
+              "week",
+              "month",
+              "sixMonths",
+              "year"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "user"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "tool_calls_executed": [
+    "tools/list"
+  ],
+  "wallet_addresses_opened": false
+}
