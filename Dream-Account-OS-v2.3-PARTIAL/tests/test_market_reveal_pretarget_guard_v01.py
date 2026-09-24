@@ -13,6 +13,8 @@ CODE_FILES = [
     MODULE_DIR / "state_reconstruction.py",
 ]
 
+PROBE_FILE = MODULE_DIR / "coinbase_level2_local_probe.py"
+
 FORBIDDEN_IDENTIFIERS = {
     "future_return",
     "target_return",
@@ -58,6 +60,31 @@ class PreTargetGuardTests(unittest.TestCase):
             forbidden_roots.isdisjoint(imported),
             f"network imports found: {sorted(forbidden_roots & imported)}",
         )
+
+    def test_coinbase_probe_has_no_file_persistence_calls(self):
+        tree = ast.parse(PROBE_FILE.read_text(encoding="utf-8"), filename=str(PROBE_FILE))
+        dangerous = []
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Call):
+                if isinstance(node.func, ast.Name) and node.func.id == "open":
+                    dangerous.append("open")
+                if isinstance(node.func, ast.Attribute) and node.func.attr in {
+                    "write_text",
+                    "write_bytes",
+                    "write",
+                    "writelines",
+                }:
+                    dangerous.append(node.func.attr)
+        self.assertEqual(dangerous, [], f"probe persistence calls found: {dangerous}")
+
+    def test_coinbase_probe_is_public_market_data_only(self):
+        source = PROBE_FILE.read_text(encoding="utf-8")
+        self.assertIn("wss://advanced-trade-ws.coinbase.com", source)
+        self.assertNotIn("advanced-trade-ws-user.coinbase.com", source)
+        self.assertNotIn("api.coinbase.com", source)
+        self.assertNotIn("os.environ", source)
+        self.assertNotIn("API_KEY", source)
+        self.assertNotIn("SIGNING_KEY", source)
 
 
 if __name__ == "__main__":
