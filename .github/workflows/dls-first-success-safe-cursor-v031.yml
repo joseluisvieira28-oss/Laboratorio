@@ -1,0 +1,133 @@
+name: DLS First Success Safe Cursor V0.3.1
+
+on:
+  push:
+    branches:
+      - dls-first-success-safe-cursor-v031
+    paths:
+      - .github/workflows/dls-first-success-safe-cursor-v031.yml
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  resolve:
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        include:
+          - protocol: marginfi
+            parent_run_id: '35771014450'
+            parent_artifact: dls-marginfi-first-success-rpc-v03
+            outdir: dls_marginfi_rpc_boundary_v031
+            artifact: dls-marginfi-first-success-rpc-v031
+          - protocol: save0c
+            parent_run_id: '35771022352'
+            parent_artifact: dls-save0c-first-success-rpc-v03
+            outdir: dls_save0c_rpc_boundary_v031
+            artifact: dls-save0c-first-success-rpc-v031
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download frozen parent artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.parent_artifact }}
+          path: parent_artifact
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: ${{ matrix.parent_run_id }}
+      - name: Compile frozen V0.3.1 resolver
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/resolve_first_success_safe_cursor_v0_3_1.py
+      - name: Execute source-only continuation
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/resolve_first_success_safe_cursor_v0_3_1.py --protocol "${{ matrix.protocol }}" --parent parent_artifact | tee STDOUT-${{ matrix.protocol }}.txt
+      - name: Package evidence manifest
+        if: always()
+        run: |
+          python - <<'PY'
+          import hashlib,json,pathlib,os
+          root=pathlib.Path(os.environ["OUTDIR"])
+          files=[]
+          if root.exists():
+              for p in sorted(root.glob('*')):
+                  if p.is_file():
+                      files.append({'name':p.name,'bytes':p.stat().st_size,'sha256':hashlib.sha256(p.read_bytes()).hexdigest()})
+          pathlib.Path("MANIFEST-"+os.environ["PROTOCOL"]+".json").write_text(json.dumps({'schema_version':'0.3.1','protocol':os.environ['PROTOCOL'],'files':files},indent=2)+'\n')
+          PY
+        env:
+          OUTDIR: ${{ matrix.outdir }}
+          PROTOCOL: ${{ matrix.protocol }}
+      - name: Upload continuation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: |
+            ${{ matrix.outdir }}/
+            MANIFEST-${{ matrix.protocol }}.json
+            STDOUT-${{ matrix.protocol }}.txt
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Firewall
+        if: always()
+        run: |
+          echo SOURCE_ONLY_TRUE
+          echo PRICES_FALSE
+          echo RETURNS_FALSE
+          echo PNL_FALSE
+          echo DIRECTION_FALSE
+          echo EVENT_OUTCOMES_FALSE
+          echo PROTECTED_2025_2026_OUTCOMES_FALSE
+          echo LIVE_TRADING_FALSE
+          echo ORDERS_FALSE
+          echo WALLETS_FALSE
+          echo EXCHANGE_MUTATION_FALSE
+          echo PAID_SOURCE_FALSE
+          echo MERGE_MAIN_FALSE
+
+  persist:
+    needs: resolve
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dls-first-success-safe-cursor-v031
+          fetch-depth: 0
+      - name: Download V0.3.1 evidence
+        uses: actions/download-artifact@v4
+        with:
+          pattern: dls-*-first-success-rpc-v031
+          path: evidence
+          merge-multiple: false
+      - name: Persist terminal receipts if present
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import shutil
+          base=Path('labs/DEFI_LIQUIDATION_SHOCK_001')
+          names=[
+            'DLS_MARGINFI_RPC_FIRST_SUCCESS_RECEIPT_V0.3.1.json',
+            'DLS_SAVE0C_RPC_FIRST_SUCCESS_RECEIPT_V0.3.1.json'
+          ]
+          for name in names:
+              hits=list(Path('evidence').rglob(name))
+              if len(hits)==1:
+                  shutil.copy2(hits[0],base/name)
+                  print('PERSIST_READY',name)
+              elif len(hits)>1:
+                  raise SystemExit('duplicate receipt '+name)
+          PY
+          git config user.name "crypto-lab-source-audit"
+          git config user.email "actions@users.noreply.github.com"
+          git add labs/DEFI_LIQUIDATION_SHOCK_001/*V0.3.1.json || true
+          git commit -m "dls: persist safe-cursor first-success V0.3.1 receipts" || true
+          git push origin HEAD:dls-first-success-safe-cursor-v031
