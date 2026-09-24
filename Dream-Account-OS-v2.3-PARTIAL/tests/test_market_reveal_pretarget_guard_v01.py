@@ -9,6 +9,7 @@ CODE_FILES = [
     MODULE_DIR / "measurements.py",
     MODULE_DIR / "source_adapters.py",
     MODULE_DIR / "decision_boundary.py",
+    MODULE_DIR / "availability_boundary.py",
     MODULE_DIR / "order_book.py",
     MODULE_DIR / "state_reconstruction.py",
     MODULE_DIR / "book_replay.py",
