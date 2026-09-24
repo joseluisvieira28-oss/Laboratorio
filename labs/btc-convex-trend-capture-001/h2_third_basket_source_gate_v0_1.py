@@ -405,7 +405,9 @@ for s in SYMBOLS:
         "pass":passed,
     }
 
-out["valid_asset_count"]=valid_count\nout["blocked_asset_count"]=len(SYMBOLS)-valid_count\nout["overall"]="PASS" if valid_count>=4 else "FAIL_CLOSED"
+out["valid_asset_count"]=valid_count
+out["blocked_asset_count"]=len(SYMBOLS)-valid_count
+out["overall"]="PASS" if valid_count>=4 else "FAIL_CLOSED"
 path=EVID/"H2_THIRD_BASKET_SOURCE_GATE_V0.1.json"
 path.write_text(json.dumps(out,indent=2),encoding="utf-8")
 print(json.dumps({
