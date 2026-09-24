@@ -148,10 +148,6 @@ async def run_collector(
                 "product_ids": [product],
                 "channel": "level2",
             }))
-            await ws.send(json.dumps({
-                "type": "subscribe",
-                "channel": "heartbeats",
-            }))
 
             while time.monotonic() < deadline:
                 try:
@@ -204,10 +200,6 @@ async def run_collector(
 
                 if channel == "subscriptions":
                     subscription_ack = True
-                    continue
-
-                if channel == "heartbeats":
-                    heartbeat_messages += 1
                     continue
 
                 if channel not in {"l2_data", "level2"}:
@@ -283,6 +275,7 @@ async def run_collector(
         "l2_snapshot_seen": l2_snapshot_seen,
         "l2_update_messages": l2_update_messages,
         "heartbeat_messages": heartbeat_messages,
+        "heartbeat_subscription_used": false,
         "inserted_messages": inserted_messages,
         "deduped_messages": deduped_messages,
         "persisted_messages": persisted,
