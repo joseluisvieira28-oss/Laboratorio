@@ -1,0 +1,66 @@
+name: DLS Marginfi Save0c SQD Boundary Adjudication V0.1
+
+on:
+  push:
+    branches:
+      - dls-marginfi-save0c-sqd-boundary-v01
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_MARGINFI_SAVE0C_SQD_ADJUDICATION_V01.marker
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  adjudicate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download authoritative earliest-partition artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p boundary
+          gh run download 36012206541 -n dls-sqd-first-boundary-marginfi-202302 -D boundary/marginfi
+          gh run download 36012206541 -n dls-sqd-first-boundary-save0c-202112 -D boundary/save0c
+          find boundary -type f -maxdepth 3 -print
+      - name: Aggregate frozen chronological boundary
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/aggregate_sqd_first_success_boundary_v0_1.py boundary
+      - name: Official Solana RPC RAW reconciliation
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/reconcile_sqd_first_success_raw_v0_1.py
+      - name: Upload adjudication receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-marginfi-save0c-sqd-boundary-adjudication-v01
+          path: |
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_SAVE0C_SQD_FIRST_SUCCESS_CANDIDATES_V0.1.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_SAVE0C_SQD_FIRST_SUCCESS_RAW_RECEIPT_V0.1.json
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Firewall
+        if: always()
+        run: |
+          echo SOURCE_ONLY_TRUE
+          echo PRICES_FALSE
+          echo BALANCES_FALSE
+          echo TOKEN_AMOUNTS_FALSE
+          echo RETURNS_FALSE
+          echo PNL_FALSE
+          echo DIRECTION_FALSE
+          echo ECONOMIC_OUTCOMES_FALSE
+          echo PROTECTED_2025_2026_MARKET_OUTCOMES_FALSE
+          echo LIVE_TRADING_FALSE
+          echo ORDERS_FALSE
+          echo WALLETS_FALSE
+          echo EXCHANGE_MUTATION_FALSE
+          echo PAID_SOURCE_FALSE
+          echo ACCOUNT_CREATION_FALSE
+          echo POST_OUTCOME_TUNING_FALSE
+          echo MERGE_MAIN_FALSE
