@@ -342,8 +342,15 @@ class BNBDiamondV02Sidecar:
             except Exception:
                 transient_failures += 1
 
-        rows = [complete[k] for k in sorted(complete)]
-        summary = summarize_complete_measurements(rows)
+        rows = sorted(
+            complete.values(),
+            key=lambda x: (int(x.get("signal_timestamp_ms") or 0), str(x.get("event_key") or "")),
+        )
+        # V0.2 is frozen to the first 25 complete causal measurements.
+        # Later observations may be preserved, but may not rewrite the first-25 gate.
+        summary_rows = rows[:FINAL_SAMPLE]
+        summary = summarize_complete_measurements(summary_rows)
+        summary["total_complete_measurements_preserved"] = len(rows)
         return {
             "status": (
                 "DIAMOND_MEASUREMENT_BLOCKED"
