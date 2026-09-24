@@ -14,6 +14,7 @@ from typing import Any, Mapping
 
 LAB_ID = "MARKET-REVEAL-CONFIRMATION-REACTION-001"
 DOC_TYPE = "MRCR_PRETARGET_PROTOCOL_V01"
+REQUIRED_AVAILABILITY_MODE = "SOURCE_AND_COLLECTOR_ARRIVAL"
 
 
 @dataclass(frozen=True)
@@ -94,6 +95,10 @@ def validate_for_freeze(protocol: Mapping[str, Any]) -> GateResult:
     ):
         if _missing(state.get(field)):
             blockers.append(f"DECISION_STATE_{field.upper()}_MISSING")
+
+    availability = state.get("availability_rule")
+    if availability != REQUIRED_AVAILABILITY_MODE:
+        blockers.append("AVAILABILITY_RULE_INVALID_OR_MISSING")
 
     depth = state.get("depth_definition") or {}
     if depth.get("mode") not in {"TOP_N", "BPS_BAND"}:
