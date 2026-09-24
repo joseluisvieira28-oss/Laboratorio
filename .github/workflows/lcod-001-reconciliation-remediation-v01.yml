@@ -20,7 +20,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: python -m pip install --disable-pip-version-check --quiet eth-utils
+      - run: python -m pip install --disable-pip-version-check --quiet eth-utils "eth-hash[pycryptodome]"
       - run: python research/liquidation_convexity_oracle_distance_001/lcod_reconciliation_remediation_probe_v01.py
       - name: Persist receipt
         if: always()
