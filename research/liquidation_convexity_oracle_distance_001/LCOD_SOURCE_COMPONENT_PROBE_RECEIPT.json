@@ -1,0 +1,262 @@
+{
+  "action_tools_called": false,
+  "captured_at_utc": "2026-09-24T17:51:58.397382+00:00",
+  "classification": "SOURCE_COMPONENT_FIELDS_INSUFFICIENT",
+  "component_marker_count": 0,
+  "endpoint": "https://mcp.aave.com/",
+  "holder_queries": 0,
+  "holder_query_error_types": [
+    "RuntimeError",
+    "RuntimeError",
+    "RuntimeError",
+    "RuntimeError",
+    "RuntimeError",
+    "RuntimeError",
+    "RuntimeError",
+    "RuntimeError",
+    "RuntimeError",
+    "RuntimeError",
+    "RuntimeError",
+    "RuntimeError",
+    "RuntimeError",
+    "RuntimeError",
+    "RuntimeError",
+    "RuntimeError",
+    "RuntimeError",
+    "RuntimeError",
+    "RuntimeError",
+    "RuntimeError"
+  ],
+  "lab_id": "LIQUIDATION-CONVEXITY-ORACLE-DISTANCE-001",
+  "market_returns_opened": false,
+  "markets_field_paths": [
+    "v4",
+    "v4.chainsCovered",
+    "v4.chainsNotServed",
+    "v4.markets",
+    "v4.markets[].borrowApyPct",
+    "v4.markets[].borrowCap",
+    "v4.markets[].borrowable",
+    "v4.markets[].canBorrow",
+    "v4.markets[].canSupply",
+    "v4.markets[].canSwapFrom",
+    "v4.markets[].canUseAsCollateral",
+    "v4.markets[].chainId",
+    "v4.markets[].hub",
+    "v4.markets[].reserveId",
+    "v4.markets[].spoke",
+    "v4.markets[].suppliable",
+    "v4.markets[].supplyApyPct",
+    "v4.markets[].supplyCap",
+    "v4.markets[].symbol"
+  ],
+  "missing_tools": [],
+  "mutation": false,
+  "pnl_opened": false,
+  "relevant_field_paths": [],
+  "required_tools": [
+    "get_markets",
+    "get_reserve_holders",
+    "get_user_positions",
+    "get_position_items",
+    "get_user_summary",
+    "get_reserve_details"
+  ],
+  "sample_borrower_sha256": [],
+  "sample_borrowers": 0,
+  "samples": [],
+  "stage": "LIVE_SOURCE_COMPONENT_CAPABILITY_PROBE",
+  "tool_input_schemas": {
+    "get_markets": {
+      "additionalProperties": false,
+      "properties": {
+        "chainId": {
+          "description": "Chain id to restrict to, e.g. 1 for Ethereum. Omit the argument entirely to cover every chain.",
+          "exclusiveMinimum": 0,
+          "type": "number"
+        },
+        "symbols": {
+          "description": "Optional token symbols to return, e.g. ['USDC','GHO']. Case-insensitive. Strongly preferred when you know the asset: a chain has ~70 reserves and listing them all is a large response.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "user": {
+          "description": "Optional wallet address (0x, 40 hex). Adds walletBalance, youCanSupply and youCanBorrow to every row, for this wallet, in the same call. Pass it whenever the question is about what someone can actually do rather than what the rates are.",
+          "type": "string"
+        },
+        "version": {
+          "description": "Protocol version (default all).",
+          "enum": [
+            "v3",
+            "v4",
+            "all"
+          ],
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "get_position_items": {
+      "additionalProperties": false,
+      "properties": {
+        "side": {
+          "description": "Which side to list (default supply).",
+          "enum": [
+            "supply",
+            "borrow"
+          ],
+          "type": "string"
+        },
+        "spokeId": {
+          "description": "spokeId from get_user_positions (not the spoke address).",
+          "type": "string"
+        },
+        "user": {
+          "description": "Wallet address, 0x-prefixed (40 hex chars).",
+          "type": "string"
+        },
+        "version": {
+          "description": "Optional, and only 'v4': this tool exists on v4 only.",
+          "enum": [
+            "v4"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "user",
+        "spokeId"
+      ],
+      "type": "object"
+    },
+    "get_reserve_details": {
+      "additionalProperties": false,
+      "properties": {
+        "chainId": {
+          "description": "v3 only: chain id (positive integer).",
+          "exclusiveMinimum": 0,
+          "type": "number"
+        },
+        "market": {
+          "description": "v3 only: market pool address (from get_markets).",
+          "type": "string"
+        },
+        "reserveId": {
+          "description": "v4 only: the reserveId from get_markets, copied verbatim.",
+          "type": "string"
+        },
+        "token": {
+          "description": "v3 only: underlying token address.",
+          "type": "string"
+        },
+        "version": {
+          "description": "Optional: inferred from the reserve selector ('reserveId' is v4, 'market'+'token'+'chainId' is v3). Send it to be explicit, or if you somehow set both.",
+          "enum": [
+            "v3",
+            "v4"
+          ],
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "get_reserve_holders": {
+      "additionalProperties": false,
+      "properties": {
+        "cursor": {
+          "description": "'nextCursor' from a previous call, for the next page. Omit the argument entirely for the first page.",
+          "type": "string"
+        },
+        "limit": {
+          "description": "How many wallets to return. Only 10 or 50; default 10.",
+          "enum": [
+            10,
+            50
+          ],
+          "type": "number"
+        },
+        "reserveId": {
+          "description": "reserveId from get_markets or get_position_items.",
+          "type": "string"
+        },
+        "side": {
+          "description": "Rank the wallets supplying it, or the ones borrowing it (default supply).",
+          "enum": [
+            "supply",
+            "borrow"
+          ],
+          "type": "string"
+        },
+        "version": {
+          "description": "Optional, and only 'v4': this tool exists on v4 only.",
+          "enum": [
+            "v4"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "reserveId"
+      ],
+      "type": "object"
+    },
+    "get_user_positions": {
+      "additionalProperties": false,
+      "properties": {
+        "chainId": {
+          "description": "Chain id to restrict to, e.g. 1 for Ethereum. Omit the argument entirely to cover every chain.",
+          "exclusiveMinimum": 0,
+          "type": "number"
+        },
+        "user": {
+          "description": "Wallet address, 0x-prefixed (40 hex chars).",
+          "type": "string"
+        },
+        "version": {
+          "description": "Protocol version (default all).",
+          "enum": [
+            "v3",
+            "v4",
+            "all"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "user"
+      ],
+      "type": "object"
+    },
+    "get_user_summary": {
+      "additionalProperties": false,
+      "properties": {
+        "chainId": {
+          "description": "Chain id to restrict to, e.g. 1 for Ethereum. Omit the argument entirely to cover every chain.",
+          "exclusiveMinimum": 0,
+          "type": "number"
+        },
+        "user": {
+          "description": "Wallet address, 0x-prefixed (40 hex chars).",
+          "type": "string"
+        },
+        "version": {
+          "description": "Protocol version (default all).",
+          "enum": [
+            "v3",
+            "v4",
+            "all"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "user"
+      ],
+      "type": "object"
+    }
+  },
+  "v4_reserve_ids_found": 92,
+  "valuation_marker_count": 0
+}
