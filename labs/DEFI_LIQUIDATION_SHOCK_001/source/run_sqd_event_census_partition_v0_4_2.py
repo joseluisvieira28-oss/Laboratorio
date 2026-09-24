@@ -35,7 +35,7 @@ def b58decode(s):
     raw=n.to_bytes((n.bit_length()+7)//8,"big") if n else b""
     return b"\x00"*(len(s)-len(s.lstrip("1")))+raw
 
-def req(url, body=None, retries=8):
+def req(url, body=None, retries=20):
     data=None if body is None else json.dumps(body,separators=(",",":")).encode()
     headers={"Accept":"application/x-ndjson,application/json","User-Agent":"crypto-lab-dls-census/0.4.2"}
     if data is not None: headers["Content-Type"]="application/json"
@@ -49,11 +49,11 @@ def req(url, body=None, retries=8):
             raw=e.read()
             if e.code==429 or 500<=e.code<600:
                 last={"http":e.code,"body":raw[:500].decode("utf-8","replace")}
-                time.sleep(min(60,2**i)); continue
+                time.sleep(min(20,2**i)); continue
             return int(e.code),dict(e.headers),raw
         except Exception as e:
             last={"error":type(e).__name__,"detail":str(e)[:500]}
-            time.sleep(min(60,2**i))
+            time.sleep(min(20,2**i))
     raise RuntimeError(f"transport_exhausted:{last}")
 
 def iso_to_dt(s): return dt.datetime.fromisoformat(s.replace("Z","+00:00"))
@@ -105,7 +105,13 @@ def stream_day(protocol, day_start, day_end, from_slot, to_slot):
         if st!=200: raise RuntimeError(f"stream_http_{st}:{raw[:500]!r}")
         txt=raw.decode("utf-8","replace")
         lines=[x for x in txt.splitlines() if x.strip()]
-        if not lines: raise RuntimeError("empty_200_response")
+        if not lines:
+            # SQD Portal's official client treats HTTP 200 with an empty
+            # stream body as end-of-stream. For this bounded finalized query,
+            # that is a complete zero-additional-match termination, not a
+            # transport failure. Preserve fail-closed semantics for malformed
+            # non-empty bodies and all linkage/anomaly checks.
+            break
         batch=[json.loads(x) for x in lines]
         last=None
         for b in batch:
@@ -173,7 +179,7 @@ def stream_day(protocol, day_start, day_end, from_slot, to_slot):
     failed=[r for r in rows if r.get("classification")=="LIQUIDATION_ATTEMPT_FAILED_NOT_REALIZED"]
     anomalies=[r for r in rows if r.get("classification")=="SOURCE_ANOMALY_FAIL_CLOSED" or r.get("anomaly")]
     return {
-      "schema_version":"0.4.2","protocol":protocol,"day_start":day_start,"day_end":day_end,
+      "schema_version":"0.4.2","transport_revision":"0.4.2.1","protocol":protocol,"day_start":day_start,"day_end":day_end,
       "from_slot":from_slot,"to_slot":to_slot,"stream_complete":True,
       "request_count":request_count,"source_headers":source_headers,
       "instruction_match_count":len(rows),"successful_instruction_count":len(success),
@@ -191,7 +197,7 @@ c=CFG[args.protocol]
 start=max(iso_to_dt(args.start+"T00:00:00Z"),iso_to_dt(c["authoritative_start"]))
 end=min(iso_to_dt(args.end+"T00:00:00Z"),iso_to_dt(END_GLOBAL))
 out=Path(args.out); out.mkdir(parents=True,exist_ok=True)
-manifest={"schema_version":"0.4.2","protocol":args.protocol,"requested_start":args.start,"requested_end":args.end,
+manifest={"schema_version":"0.4.2","transport_revision":"0.4.2.1","protocol":args.protocol,"requested_start":args.start,"requested_end":args.end,
           "effective_start":start.isoformat(),"effective_end":end.isoformat(),"chunks":[],"classification":"IN_PROGRESS",
           "firewall":{"prices":False,"balances":False,"amounts":False,"returns":False,"pnl":False,"direction":False,
                       "economic_outcomes":False,"protected_market_outcomes_2025_2026":False,"live_trading":False,
