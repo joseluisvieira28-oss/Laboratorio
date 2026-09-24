@@ -1,0 +1,42 @@
+name: TV Evidence Vault V0.1 audit
+
+on:
+  push:
+    branches:
+      - tv-evidence-vault-v0.1
+  pull_request:
+    paths:
+      - "tradingview_evidence_vault/**"
+      - ".github/workflows/tv-evidence-vault-audit.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Unit tests
+        run: python -m unittest tradingview_evidence_vault/test_vault.py
+      - name: Fail-closed scientific audit
+        shell: python
+        run: |
+          from pathlib import Path
+          src = Path("tradingview_evidence_vault/vault.py").read_text()
+          lower = src.lower()
+          for forbidden in [
+              "requests", "httpx", "ccxt", "strategy.", "create_order",
+              "place_order", "future_return", "pnl"
+          ]:
+              assert forbidden not in lower, forbidden
+          assert "payload_sha256 mismatch" in src
+          assert "conflicting receipts" in src
+          assert "missing_bar_close_ms" in src
+          assert "terminal_chain_sha256" in src
+          assert "trading_authority" in src
+          print("PASS: vault is evidence-only and fail-closed")
