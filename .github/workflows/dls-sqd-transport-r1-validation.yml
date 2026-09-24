@@ -1,0 +1,52 @@
+name: DLS SQD Transport R1 Validation
+
+on:
+  push:
+    branches:
+      - dls-census-v042-transport-r1
+    paths:
+      - .github/workflows/dls-sqd-transport-r1-validation.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        include:
+          - protocol: kamino
+            start: '2023-11-23'
+            end: '2023-11-24'
+            id: kamino-2023-11-23
+          - protocol: save11
+            start: '2024-07-23'
+            end: '2024-07-24'
+            id: save11-2024-07-23
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile transport wrapper
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/run_sqd_event_census_partition_transport_r1.py
+      - name: Run transport validation day
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/run_sqd_event_census_partition_transport_r1.py --protocol "${{ matrix.protocol }}" --start "${{ matrix.start }}" --end "${{ matrix.end }}" --out "validation/${{ matrix.id }}"
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-transport-r1-validation-${{ matrix.id }}
+          path: validation/${{ matrix.id }}
+          if-no-files-found: error
+          retention-days: 30
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_TRUE
