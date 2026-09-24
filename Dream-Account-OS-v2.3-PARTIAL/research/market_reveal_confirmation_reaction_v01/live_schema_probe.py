@@ -96,19 +96,20 @@ async def _probe_binance_endpoint(label: str, url: str, seconds: float) -> dict[
 
 
 async def probe_binance(seconds: float = 6.0) -> dict[str, Any]:
-    attempts = []
+    attempts: list[dict[str, Any]] = []
     for label, url in BINANCE_ENDPOINTS:
         result = await _probe_binance_endpoint(label, url, seconds)
-        attempts.append(result)
+        attempts.append(dict(result))
         if (
             result["transport"] == "PASS"
             and result["aggtrade_schema_pass"]
             and result["depth_schema_pass"]
         ):
-            result["attempts"] = attempts
-            return result
-    final = attempts[-1]
-    final["attempts"] = attempts
+            final = dict(result)
+            final["attempts"] = list(attempts)
+            return final
+    final = dict(attempts[-1])
+    final["attempts"] = list(attempts)
     return final
 
 
