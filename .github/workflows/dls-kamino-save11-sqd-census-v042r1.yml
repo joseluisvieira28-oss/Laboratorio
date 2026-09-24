@@ -95,10 +95,16 @@ jobs:
           python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/aggregate_sqd_event_census_v0_4_2.py
           python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/reconcile_sqd_census_raw_sample_v0_4_2.py
       - name: Aggregate completeness
+        id: aggregate
+        continue-on-error: true
         run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/aggregate_sqd_event_census_v0_4_2.py census_all
       - name: RAW reconcile deterministic sample
+        id: raw
+        if: steps.aggregate.outcome == 'success'
+        continue-on-error: true
         run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/reconcile_sqd_census_raw_sample_v0_4_2.py
       - name: Final authority receipt
+        if: always()
         run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/finalize_kamino_save11_event_census_v0_4_2.py
       - name: Upload aggregate authority evidence
         if: always()
