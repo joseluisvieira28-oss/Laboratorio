@@ -121,12 +121,12 @@ async def probe_coinbase(seconds: float = 6.0) -> dict[str, Any]:
         "heartbeat_messages": 0,
         "market_trade_schema_pass": False,
         "level2_schema_pass": False,
-        "sequence_anomaly": False,
+        "sequence_anomaly": None,
+        "sequence_scope": "NOT_ADJUDICATED_MULTI_CHANNEL",
         "channels_seen": [],
         "error": None,
         "close_code": None,
     }
-    previous_seq_by_channel: dict[str, int] = {}
     channels_seen: set[str] = set()
     deadline = time.monotonic() + seconds
     try:
@@ -152,14 +152,6 @@ async def probe_coinbase(seconds: float = 6.0) -> dict[str, Any]:
                 msg = json.loads(raw)
                 channel = str(msg.get("channel", "UNKNOWN"))
                 channels_seen.add(channel)
-
-                seq = msg.get("sequence_num")
-                if isinstance(seq, int):
-                    previous = previous_seq_by_channel.get(channel)
-                    if previous is not None and seq > previous + 1:
-                        out["sequence_anomaly"] = True
-                    if previous is None or seq > previous:
-                        previous_seq_by_channel[channel] = seq
 
                 if channel == "heartbeats":
                     out["heartbeat_messages"] += 1
