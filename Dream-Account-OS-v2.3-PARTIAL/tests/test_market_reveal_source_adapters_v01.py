@@ -12,6 +12,7 @@ from source_adapters import (
     coinbase_sequence_transition,
     parse_binance_aggtrade,
     parse_binance_depth_update,
+    parse_coinbase_level2_event,
     parse_coinbase_level2_update,
     parse_coinbase_market_trade,
 )
@@ -92,6 +93,61 @@ class SourceAdapterTests(unittest.TestCase):
         self.assertEqual(row.side, "BID")
         self.assertEqual(row.absolute_quantity, Decimal("0"))
         self.assertEqual(row.sequence_first, 42)
+
+    def test_coinbase_snapshot_uses_envelope_time_not_epoch_zero_level_time(self):
+        event_type, rows = parse_coinbase_level2_event(
+            event={
+                "type": "snapshot",
+                "product_id": "BTC-USD",
+                "updates": [
+                    {
+                        "side": "bid",
+                        "event_time": "1970-01-01T00:00:00Z",
+                        "price_level": "100",
+                        "new_quantity": "1",
+                    },
+                    {
+                        "side": "ask",
+                        "event_time": "1970-01-01T00:00:00Z",
+                        "price_level": "101",
+                        "new_quantity": "1",
+                    },
+                ],
+            },
+            sequence_num=0,
+            envelope_timestamp="2026-09-24T17:30:00.123456Z",
+        )
+        self.assertEqual(event_type, "snapshot")
+        self.assertEqual(len(rows), 2)
+        self.assertTrue(
+            all(
+                row.source_event_time == "2026-09-24T17:30:00.123456Z"
+                for row in rows
+            )
+        )
+
+    def test_coinbase_incremental_update_keeps_engine_event_time(self):
+        event_type, rows = parse_coinbase_level2_event(
+            event={
+                "type": "update",
+                "product_id": "BTC-USD",
+                "updates": [
+                    {
+                        "side": "bid",
+                        "event_time": "2026-09-24T17:30:01.111Z",
+                        "price_level": "100",
+                        "new_quantity": "2",
+                    }
+                ],
+            },
+            sequence_num=1,
+            envelope_timestamp="2026-09-24T17:30:01.222Z",
+        )
+        self.assertEqual(event_type, "update")
+        self.assertEqual(
+            rows[0].source_event_time,
+            "2026-09-24T17:30:01.111Z",
+        )
 
     def test_binance_sequence_gap_detection(self):
         self.assertTrue(binance_depth_sequence_ok(156, 157, 160))
