@@ -71,7 +71,7 @@ reserves=sorted({str(d.get("reserveId") or d.get("reserve_id")) for d in dicts(m
 wallets=set(); holder_errors=0
 for rid in reserves:
     try:
-        h=call("get_reserve_holders",{"reserveId":rid,"side":"borrow","limit":5,"version":"v4"})
+        h=call("get_reserve_holders",{"reserveId":rid,"side":"borrow","limit":10,"version":"v4"})
         wallets.update(addresses(h))
     except Exception:
         holder_errors+=1
