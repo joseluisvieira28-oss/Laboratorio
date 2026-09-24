@@ -1,32 +1,11 @@
 {
   "action_tools_called": false,
-  "captured_at_utc": "2026-09-24T17:51:58.397382+00:00",
-  "classification": "SOURCE_COMPONENT_FIELDS_INSUFFICIENT",
-  "component_marker_count": 0,
+  "captured_at_utc": "2026-09-24T17:52:55.545917+00:00",
+  "classification": "SOURCE_COMPONENT_FIELDS_PRESENT_RECONCILIATION_REQUIRED",
+  "component_marker_count": 16,
   "endpoint": "https://mcp.aave.com/",
-  "holder_queries": 0,
-  "holder_query_error_types": [
-    "RuntimeError",
-    "RuntimeError",
-    "RuntimeError",
-    "RuntimeError",
-    "RuntimeError",
-    "RuntimeError",
-    "RuntimeError",
-    "RuntimeError",
-    "RuntimeError",
-    "RuntimeError",
-    "RuntimeError",
-    "RuntimeError",
-    "RuntimeError",
-    "RuntimeError",
-    "RuntimeError",
-    "RuntimeError",
-    "RuntimeError",
-    "RuntimeError",
-    "RuntimeError",
-    "RuntimeError"
-  ],
+  "holder_queries": 2,
+  "holder_query_error_types": [],
   "lab_id": "LIQUIDATION-CONVEXITY-ORACLE-DISTANCE-001",
   "market_returns_opened": false,
   "markets_field_paths": [
@@ -53,7 +32,33 @@
   "missing_tools": [],
   "mutation": false,
   "pnl_opened": false,
-  "relevant_field_paths": [],
+  "relevant_field_paths": [
+    "[].balanceUsd",
+    "[].interest",
+    "[].isCollateral",
+    "[].principal",
+    "[].reserveId",
+    "[].withdrawableIgnoringDebt",
+    "v4.lowestHealthFactor",
+    "v4.netAccruedInterestUsd",
+    "v4.netWorthUsd",
+    "v4.positions[].averageCollateralFactorPct",
+    "v4.positions[].healthFactor",
+    "v4.positions[].liquidationPriceUsd",
+    "v4.positions[].maxBorrowingPowerUsd",
+    "v4.positions[].netAccruedInterestUsd",
+    "v4.positions[].netBalanceUsd",
+    "v4.positions[].netBorrowApyPct",
+    "v4.positions[].netCollateralUsd",
+    "v4.positions[].netSupplyApyPct",
+    "v4.positions[].remainingBorrowingPowerUsd",
+    "v4.positions[].totalCollateralUsd",
+    "v4.positions[].totalDebtUsd",
+    "v4.positions[].totalSuppliedUsd",
+    "v4.totalCollateralUsd",
+    "v4.totalDebtUsd",
+    "v4.totalSuppliedUsd"
+  ],
   "required_tools": [
     "get_markets",
     "get_reserve_holders",
@@ -62,9 +67,475 @@
     "get_user_summary",
     "get_reserve_details"
   ],
-  "sample_borrower_sha256": [],
-  "sample_borrowers": 0,
-  "samples": [],
+  "sample_borrower_sha256": [
+    "e470fbce79e3780528b76b7814cf3eeb315fbaefd4d36e546bc32f16b1373ae6",
+    "90faea9244b09dc7eae4216bd18419d276d959cfe79857e5faa2c4b1e96197bf",
+    "ffc39149d5225fd3092802522df6d7b692822ab95f0efab7f9f2733b7588ebd7",
+    "798755bf9ddb62739f3a251d5302a85f93e8332112b173fd9a1133f303b0db5a",
+    "f4f0d459d4a3692bd983049440ec72367fc4a06ec40c9d4873d4776b59a71103",
+    "a334f55e82cc7deb2186926740f5ff9648f756879fa078b1f559972e86752cca"
+  ],
+  "sample_borrowers": 6,
+  "samples": [
+    {
+      "borrower_sha256": "e470fbce79e3780528b76b7814cf3eeb315fbaefd4d36e546bc32f16b1373ae6",
+      "position_ids_found": 0,
+      "position_items_argument_shapes_used": [
+        {
+          "side": "supply",
+          "spokeId_sha256": "add071e42578dcc76441d35f63da83d0a7331d14500902d256ab07e3017c6537"
+        },
+        {
+          "side": "borrow",
+          "spokeId_sha256": "add071e42578dcc76441d35f63da83d0a7331d14500902d256ab07e3017c6537"
+        },
+        {
+          "side": "supply",
+          "spokeId_sha256": "6b23d6b98ccd13a3ea71acdd289079672b6f20c0e102729b688f2617f30442ea"
+        },
+        {
+          "side": "borrow",
+          "spokeId_sha256": "6b23d6b98ccd13a3ea71acdd289079672b6f20c0e102729b688f2617f30442ea"
+        }
+      ],
+      "position_items_field_paths": [
+        "[].apyPct",
+        "[].balance",
+        "[].balanceUsd",
+        "[].createdAt",
+        "[].decimals",
+        "[].interest",
+        "[].isCollateral",
+        "[].positionItemId",
+        "[].principal",
+        "[].reserveId",
+        "[].side",
+        "[].symbol",
+        "[].token",
+        "[].withdrawableIgnoringDebt"
+      ],
+      "positions_field_paths": [
+        "v4",
+        "v4.chainsCovered",
+        "v4.chainsNotServed",
+        "v4.positions",
+        "v4.positions[].averageCollateralFactorPct",
+        "v4.positions[].canUpdateDynamicConfig",
+        "v4.positions[].chainId",
+        "v4.positions[].createdAt",
+        "v4.positions[].healthFactor",
+        "v4.positions[].liquidationPriceUsd",
+        "v4.positions[].maxBorrowingPowerUsd",
+        "v4.positions[].netAccruedInterestUsd",
+        "v4.positions[].netApyPct",
+        "v4.positions[].netBalanceUsd",
+        "v4.positions[].netBorrowApyPct",
+        "v4.positions[].netCollateralUsd",
+        "v4.positions[].netSupplyApyPct",
+        "v4.positions[].remainingBorrowingPowerUsd",
+        "v4.positions[].riskPremiumPct",
+        "v4.positions[].spoke",
+        "v4.positions[].spokeAddress",
+        "v4.positions[].spokeId",
+        "v4.positions[].totalCollateralUsd",
+        "v4.positions[].totalDebtUsd",
+        "v4.positions[].totalSuppliedUsd"
+      ],
+      "reserve_ids_in_positions": 0,
+      "spoke_ids_found": 2,
+      "summary_field_paths": [
+        "v4",
+        "v4.chainsCovered",
+        "v4.chainsNotServed",
+        "v4.lowestHealthFactor",
+        "v4.netAccruedInterestUsd",
+        "v4.netApyPct",
+        "v4.netWorthUsd",
+        "v4.totalCollateralUsd",
+        "v4.totalDebtUsd",
+        "v4.totalPositions",
+        "v4.totalSuppliedUsd"
+      ],
+      "summary_health_candidates": [
+        1.9670250001947045
+      ]
+    },
+    {
+      "borrower_sha256": "90faea9244b09dc7eae4216bd18419d276d959cfe79857e5faa2c4b1e96197bf",
+      "position_ids_found": 0,
+      "position_items_argument_shapes_used": [
+        {
+          "side": "supply",
+          "spokeId_sha256": "6b23d6b98ccd13a3ea71acdd289079672b6f20c0e102729b688f2617f30442ea"
+        },
+        {
+          "side": "borrow",
+          "spokeId_sha256": "6b23d6b98ccd13a3ea71acdd289079672b6f20c0e102729b688f2617f30442ea"
+        }
+      ],
+      "position_items_field_paths": [
+        "[].apyPct",
+        "[].balance",
+        "[].balanceUsd",
+        "[].createdAt",
+        "[].decimals",
+        "[].interest",
+        "[].isCollateral",
+        "[].positionItemId",
+        "[].principal",
+        "[].reserveId",
+        "[].side",
+        "[].symbol",
+        "[].token",
+        "[].withdrawableIgnoringDebt"
+      ],
+      "positions_field_paths": [
+        "v4",
+        "v4.chainsCovered",
+        "v4.chainsNotServed",
+        "v4.positions",
+        "v4.positions[].averageCollateralFactorPct",
+        "v4.positions[].canUpdateDynamicConfig",
+        "v4.positions[].chainId",
+        "v4.positions[].createdAt",
+        "v4.positions[].healthFactor",
+        "v4.positions[].liquidationPriceUsd",
+        "v4.positions[].maxBorrowingPowerUsd",
+        "v4.positions[].netAccruedInterestUsd",
+        "v4.positions[].netApyPct",
+        "v4.positions[].netBalanceUsd",
+        "v4.positions[].netBorrowApyPct",
+        "v4.positions[].netCollateralUsd",
+        "v4.positions[].netSupplyApyPct",
+        "v4.positions[].remainingBorrowingPowerUsd",
+        "v4.positions[].riskPremiumPct",
+        "v4.positions[].spoke",
+        "v4.positions[].spokeAddress",
+        "v4.positions[].spokeId",
+        "v4.positions[].totalCollateralUsd",
+        "v4.positions[].totalDebtUsd",
+        "v4.positions[].totalSuppliedUsd"
+      ],
+      "reserve_ids_in_positions": 0,
+      "spoke_ids_found": 1,
+      "summary_field_paths": [
+        "v4",
+        "v4.chainsCovered",
+        "v4.chainsNotServed",
+        "v4.lowestHealthFactor",
+        "v4.netAccruedInterestUsd",
+        "v4.netApyPct",
+        "v4.netWorthUsd",
+        "v4.totalCollateralUsd",
+        "v4.totalDebtUsd",
+        "v4.totalPositions",
+        "v4.totalSuppliedUsd"
+      ],
+      "summary_health_candidates": [
+        2.1560653036047186
+      ]
+    },
+    {
+      "borrower_sha256": "ffc39149d5225fd3092802522df6d7b692822ab95f0efab7f9f2733b7588ebd7",
+      "position_ids_found": 0,
+      "position_items_argument_shapes_used": [
+        {
+          "side": "supply",
+          "spokeId_sha256": "6b23d6b98ccd13a3ea71acdd289079672b6f20c0e102729b688f2617f30442ea"
+        },
+        {
+          "side": "borrow",
+          "spokeId_sha256": "6b23d6b98ccd13a3ea71acdd289079672b6f20c0e102729b688f2617f30442ea"
+        }
+      ],
+      "position_items_field_paths": [
+        "[].apyPct",
+        "[].balance",
+        "[].balanceUsd",
+        "[].createdAt",
+        "[].decimals",
+        "[].interest",
+        "[].isCollateral",
+        "[].positionItemId",
+        "[].principal",
+        "[].reserveId",
+        "[].side",
+        "[].symbol",
+        "[].token",
+        "[].withdrawableIgnoringDebt"
+      ],
+      "positions_field_paths": [
+        "v4",
+        "v4.chainsCovered",
+        "v4.chainsNotServed",
+        "v4.positions",
+        "v4.positions[].averageCollateralFactorPct",
+        "v4.positions[].canUpdateDynamicConfig",
+        "v4.positions[].chainId",
+        "v4.positions[].createdAt",
+        "v4.positions[].healthFactor",
+        "v4.positions[].liquidationPriceUsd",
+        "v4.positions[].maxBorrowingPowerUsd",
+        "v4.positions[].netAccruedInterestUsd",
+        "v4.positions[].netApyPct",
+        "v4.positions[].netBalanceUsd",
+        "v4.positions[].netBorrowApyPct",
+        "v4.positions[].netCollateralUsd",
+        "v4.positions[].netSupplyApyPct",
+        "v4.positions[].remainingBorrowingPowerUsd",
+        "v4.positions[].riskPremiumPct",
+        "v4.positions[].spoke",
+        "v4.positions[].spokeAddress",
+        "v4.positions[].spokeId",
+        "v4.positions[].totalCollateralUsd",
+        "v4.positions[].totalDebtUsd",
+        "v4.positions[].totalSuppliedUsd"
+      ],
+      "reserve_ids_in_positions": 0,
+      "spoke_ids_found": 1,
+      "summary_field_paths": [
+        "v4",
+        "v4.chainsCovered",
+        "v4.chainsNotServed",
+        "v4.lowestHealthFactor",
+        "v4.netAccruedInterestUsd",
+        "v4.netApyPct",
+        "v4.netWorthUsd",
+        "v4.totalCollateralUsd",
+        "v4.totalDebtUsd",
+        "v4.totalPositions",
+        "v4.totalSuppliedUsd"
+      ],
+      "summary_health_candidates": [
+        1.6024250133765272
+      ]
+    },
+    {
+      "borrower_sha256": "798755bf9ddb62739f3a251d5302a85f93e8332112b173fd9a1133f303b0db5a",
+      "position_ids_found": 0,
+      "position_items_argument_shapes_used": [
+        {
+          "side": "supply",
+          "spokeId_sha256": "6b23d6b98ccd13a3ea71acdd289079672b6f20c0e102729b688f2617f30442ea"
+        },
+        {
+          "side": "borrow",
+          "spokeId_sha256": "6b23d6b98ccd13a3ea71acdd289079672b6f20c0e102729b688f2617f30442ea"
+        }
+      ],
+      "position_items_field_paths": [
+        "[].apyPct",
+        "[].balance",
+        "[].balanceUsd",
+        "[].createdAt",
+        "[].decimals",
+        "[].interest",
+        "[].isCollateral",
+        "[].positionItemId",
+        "[].principal",
+        "[].reserveId",
+        "[].side",
+        "[].symbol",
+        "[].token",
+        "[].withdrawableIgnoringDebt"
+      ],
+      "positions_field_paths": [
+        "v4",
+        "v4.chainsCovered",
+        "v4.chainsNotServed",
+        "v4.positions",
+        "v4.positions[].averageCollateralFactorPct",
+        "v4.positions[].canUpdateDynamicConfig",
+        "v4.positions[].chainId",
+        "v4.positions[].createdAt",
+        "v4.positions[].healthFactor",
+        "v4.positions[].liquidationPriceUsd",
+        "v4.positions[].maxBorrowingPowerUsd",
+        "v4.positions[].netAccruedInterestUsd",
+        "v4.positions[].netApyPct",
+        "v4.positions[].netBalanceUsd",
+        "v4.positions[].netBorrowApyPct",
+        "v4.positions[].netCollateralUsd",
+        "v4.positions[].netSupplyApyPct",
+        "v4.positions[].remainingBorrowingPowerUsd",
+        "v4.positions[].riskPremiumPct",
+        "v4.positions[].spoke",
+        "v4.positions[].spokeAddress",
+        "v4.positions[].spokeId",
+        "v4.positions[].totalCollateralUsd",
+        "v4.positions[].totalDebtUsd",
+        "v4.positions[].totalSuppliedUsd"
+      ],
+      "reserve_ids_in_positions": 0,
+      "spoke_ids_found": 1,
+      "summary_field_paths": [
+        "v4",
+        "v4.chainsCovered",
+        "v4.chainsNotServed",
+        "v4.lowestHealthFactor",
+        "v4.netAccruedInterestUsd",
+        "v4.netApyPct",
+        "v4.netWorthUsd",
+        "v4.totalCollateralUsd",
+        "v4.totalDebtUsd",
+        "v4.totalPositions",
+        "v4.totalSuppliedUsd"
+      ],
+      "summary_health_candidates": [
+        2.7442466592663224
+      ]
+    },
+    {
+      "borrower_sha256": "f4f0d459d4a3692bd983049440ec72367fc4a06ec40c9d4873d4776b59a71103",
+      "position_ids_found": 0,
+      "position_items_argument_shapes_used": [
+        {
+          "side": "supply",
+          "spokeId_sha256": "6b23d6b98ccd13a3ea71acdd289079672b6f20c0e102729b688f2617f30442ea"
+        },
+        {
+          "side": "borrow",
+          "spokeId_sha256": "6b23d6b98ccd13a3ea71acdd289079672b6f20c0e102729b688f2617f30442ea"
+        }
+      ],
+      "position_items_field_paths": [
+        "[].apyPct",
+        "[].balance",
+        "[].balanceUsd",
+        "[].createdAt",
+        "[].decimals",
+        "[].interest",
+        "[].isCollateral",
+        "[].positionItemId",
+        "[].principal",
+        "[].reserveId",
+        "[].side",
+        "[].symbol",
+        "[].token",
+        "[].withdrawableIgnoringDebt"
+      ],
+      "positions_field_paths": [
+        "v4",
+        "v4.chainsCovered",
+        "v4.chainsNotServed",
+        "v4.positions",
+        "v4.positions[].averageCollateralFactorPct",
+        "v4.positions[].canUpdateDynamicConfig",
+        "v4.positions[].chainId",
+        "v4.positions[].createdAt",
+        "v4.positions[].healthFactor",
+        "v4.positions[].liquidationPriceUsd",
+        "v4.positions[].maxBorrowingPowerUsd",
+        "v4.positions[].netAccruedInterestUsd",
+        "v4.positions[].netApyPct",
+        "v4.positions[].netBalanceUsd",
+        "v4.positions[].netBorrowApyPct",
+        "v4.positions[].netCollateralUsd",
+        "v4.positions[].netSupplyApyPct",
+        "v4.positions[].remainingBorrowingPowerUsd",
+        "v4.positions[].riskPremiumPct",
+        "v4.positions[].spoke",
+        "v4.positions[].spokeAddress",
+        "v4.positions[].spokeId",
+        "v4.positions[].totalCollateralUsd",
+        "v4.positions[].totalDebtUsd",
+        "v4.positions[].totalSuppliedUsd"
+      ],
+      "reserve_ids_in_positions": 0,
+      "spoke_ids_found": 1,
+      "summary_field_paths": [
+        "v4",
+        "v4.chainsCovered",
+        "v4.chainsNotServed",
+        "v4.lowestHealthFactor",
+        "v4.netAccruedInterestUsd",
+        "v4.netApyPct",
+        "v4.netWorthUsd",
+        "v4.totalCollateralUsd",
+        "v4.totalDebtUsd",
+        "v4.totalPositions",
+        "v4.totalSuppliedUsd"
+      ],
+      "summary_health_candidates": [
+        1.805974459691434
+      ]
+    },
+    {
+      "borrower_sha256": "a334f55e82cc7deb2186926740f5ff9648f756879fa078b1f559972e86752cca",
+      "position_ids_found": 0,
+      "position_items_argument_shapes_used": [
+        {
+          "side": "supply",
+          "spokeId_sha256": "6b23d6b98ccd13a3ea71acdd289079672b6f20c0e102729b688f2617f30442ea"
+        },
+        {
+          "side": "borrow",
+          "spokeId_sha256": "6b23d6b98ccd13a3ea71acdd289079672b6f20c0e102729b688f2617f30442ea"
+        }
+      ],
+      "position_items_field_paths": [
+        "[].apyPct",
+        "[].balance",
+        "[].balanceUsd",
+        "[].createdAt",
+        "[].decimals",
+        "[].interest",
+        "[].isCollateral",
+        "[].positionItemId",
+        "[].principal",
+        "[].reserveId",
+        "[].side",
+        "[].symbol",
+        "[].token",
+        "[].withdrawableIgnoringDebt"
+      ],
+      "positions_field_paths": [
+        "v4",
+        "v4.chainsCovered",
+        "v4.chainsNotServed",
+        "v4.positions",
+        "v4.positions[].averageCollateralFactorPct",
+        "v4.positions[].canUpdateDynamicConfig",
+        "v4.positions[].chainId",
+        "v4.positions[].createdAt",
+        "v4.positions[].healthFactor",
+        "v4.positions[].liquidationPriceUsd",
+        "v4.positions[].maxBorrowingPowerUsd",
+        "v4.positions[].netAccruedInterestUsd",
+        "v4.positions[].netApyPct",
+        "v4.positions[].netBalanceUsd",
+        "v4.positions[].netBorrowApyPct",
+        "v4.positions[].netCollateralUsd",
+        "v4.positions[].netSupplyApyPct",
+        "v4.positions[].remainingBorrowingPowerUsd",
+        "v4.positions[].riskPremiumPct",
+        "v4.positions[].spoke",
+        "v4.positions[].spokeAddress",
+        "v4.positions[].spokeId",
+        "v4.positions[].totalCollateralUsd",
+        "v4.positions[].totalDebtUsd",
+        "v4.positions[].totalSuppliedUsd"
+      ],
+      "reserve_ids_in_positions": 0,
+      "spoke_ids_found": 1,
+      "summary_field_paths": [
+        "v4",
+        "v4.chainsCovered",
+        "v4.chainsNotServed",
+        "v4.lowestHealthFactor",
+        "v4.netAccruedInterestUsd",
+        "v4.netApyPct",
+        "v4.netWorthUsd",
+        "v4.totalCollateralUsd",
+        "v4.totalDebtUsd",
+        "v4.totalPositions",
+        "v4.totalSuppliedUsd"
+      ],
+      "summary_health_candidates": [
+        2.3510025742196543
+      ]
+    }
+  ],
   "stage": "LIVE_SOURCE_COMPONENT_CAPABILITY_PROBE",
   "tool_input_schemas": {
     "get_markets": {
@@ -258,5 +729,5 @@
     }
   },
   "v4_reserve_ids_found": 92,
-  "valuation_marker_count": 0
+  "valuation_marker_count": 15
 }
