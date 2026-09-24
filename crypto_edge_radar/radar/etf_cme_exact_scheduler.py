@@ -79,7 +79,10 @@ class ETFCMEExactRuntimeScheduler:
 
     def _set_state(self, **updates: Any) -> dict[str, Any]:
         with self._lock:
-            self._state = {**self._state, **updates}
+            next_state = {**self._state, **updates}
+            if updates.get("status") != "FAIL_CLOSED" and "error" not in updates:
+                next_state.pop("error", None)
+            self._state = next_state
             return json.loads(json.dumps(self._state))
 
     def discover(self, *, now_ms: int | None = None) -> dict[str, Any]:
@@ -101,6 +104,7 @@ class ETFCMEExactRuntimeScheduler:
             "target_ms": target_ms,
             "target_utc": receipt["information_safe_time_utc"],
             "current_as_of_date": current.as_of_date,
+            "source_snapshot_observed_at_utc": _iso_ms(now_ms),
         }
 
     def prearm(self, discovery: dict[str, Any], *, observed_ms: int | None = None) -> dict[str, Any]:
@@ -156,21 +160,68 @@ class ETFCMEExactRuntimeScheduler:
             current_as_of_date=current.as_of_date,
             target_utc=discovery["target_utc"],
             prearm_evidence_inserted=bool(appended["inserted"]),
+            prearmed_at_utc=_iso_ms(observed_ms),
+            source_snapshot_observed_at_utc=discovery["source_snapshot_observed_at_utc"],
             timing_state=state.value,
         )
 
-    def attempt_exact(self, *, now_ms: int | None = None) -> dict[str, Any]:
+    def attempt_exact(
+        self,
+        *,
+        now_ms: int | None = None,
+        discovery: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         if now_ms is None:
             now_ms = _utc_ms(self._now_fn())
-        result = self.watcher.run_once(now_ms=now_ms)
+
+        if discovery is None:
+            result = self.watcher.run_once(now_ms=now_ms)
+            source_mode = "LIVE_FETCH_COMPATIBILITY_PATH"
+        else:
+            observed_ms = _parse_ms(discovery["source_snapshot_observed_at_utc"])
+            snapshot_age_seconds = (now_ms - observed_ms) / 1000.0
+            maximum_snapshot_age = (
+                self.policy.arm_lead_seconds + self.policy.max_late_seconds
+            )
+            if snapshot_age_seconds < 0 or snapshot_age_seconds > maximum_snapshot_age:
+                raise RuntimeError(
+                    "PREARMED_SOURCE_SNAPSHOT_OUTSIDE_FROZEN_ARM_WINDOW"
+                )
+            if discovery["current"].as_of_date <= BOUNDARY_AS_OF_DATE:
+                raise RuntimeError("PREARMED_SOURCE_SNAPSHOT_NOT_POST_BOUNDARY")
+
+            result = self.watcher.run_from_observations(
+                previous=discovery["previous"],
+                current=discovery["current"],
+                now_ms=now_ms,
+                source_observed_at_utc=discovery["source_snapshot_observed_at_utc"],
+            )
+            source_mode = "PREARMED_PUBLIC_CFTC_SNAPSHOT"
+
         return self._set_state(
             status="EXACT_ATTEMPT_COMPLETED",
             attempted_at_utc=_iso_ms(now_ms),
+            exact_source_mode=source_mode,
             watcher_status=result.get("status"),
             watcher_source_status=result.get("source_status"),
+            watcher_source_binding=result.get("source_binding"),
             signal_evidence_inserted=bool(result.get("signal_evidence_inserted")),
             missed_evidence_inserted=bool(result.get("missed_evidence_inserted")),
         )
+
+    def _failure_sleep_seconds(self, *, now_ms: int) -> float:
+        state = self.state()
+        target = state.get("target_utc")
+        if isinstance(target, str):
+            try:
+                target_ms = _parse_ms(target)
+                arm_at_ms = target_ms - int(self.policy.arm_lead_seconds * 1000)
+                expires_ms = target_ms + int(self.policy.max_late_seconds * 1000)
+                if arm_at_ms <= now_ms <= expires_ms:
+                    return FINAL_WAIT_SLICE_SECONDS
+            except Exception:
+                pass
+        return self.refresh_seconds
 
     def run_loop(self) -> None:
         while True:
@@ -221,7 +272,10 @@ class ETFCMEExactRuntimeScheduler:
                                 ),
                             )
                         )
-                    self.attempt_exact(now_ms=_utc_ms(self._now_fn()))
+                    self.attempt_exact(
+                        now_ms=_utc_ms(self._now_fn()),
+                        discovery=discovery,
+                    )
                     self._sleep_fn(self.refresh_seconds)
                     continue
 
@@ -238,6 +292,7 @@ class ETFCMEExactRuntimeScheduler:
                 self.attempt_exact(now_ms=now_ms)
                 self._sleep_fn(self.refresh_seconds)
             except Exception as exc:
+                failure_now_ms = _utc_ms(self._now_fn())
                 self._set_state(
                     status="FAIL_CLOSED",
                     error=f"{type(exc).__name__}:{exc}",
@@ -245,4 +300,6 @@ class ETFCMEExactRuntimeScheduler:
                     exchange_mutation_performed=False,
                     live_capital_enabled=False,
                 )
-                self._sleep_fn(self.refresh_seconds)
+                self._sleep_fn(
+                    self._failure_sleep_seconds(now_ms=failure_now_ms)
+                )
