@@ -102,18 +102,15 @@ def stream_day(protocol, day_start, day_end, from_slot, to_slot):
         st,h,raw=req(STREAM,body)
         request_count+=1
         source_headers.append(h.get("x-sqd-data-source"))
-        if st==204: break
+        if st==204:
+            termination_evidence.append({"from_slot":current,"to_slot":to_slot,"http_status":204,"reason":"NO_CONTENT_DOCUMENTED_STREAM_TERMINATION"})
+            break
         if st!=200: raise RuntimeError(f"stream_http_{st}:{raw[:500]!r}")
         txt=raw.decode("utf-8","replace")
         lines=[x for x in txt.splitlines() if x.strip()]
         if not lines:
-            st2,h2,raw2=req(STREAM,body)
-            request_count+=1
-            source_headers.append(h2.get("x-sqd-data-source"))
-            if st2!=200: raise RuntimeError(f"empty_200_retry_http_{st2}:{raw2[:500]!r}")
-            txt=raw2.decode("utf-8","replace")
-            lines=[x for x in txt.splitlines() if x.strip()]
-            if not lines: raise RuntimeError("empty_200_response")
+            termination_evidence.append({"from_slot":current,"to_slot":to_slot,"http_status":200,"reason":"EMPTY_NDJSON_DOCUMENTED_STREAM_TERMINATION"})
+            break
         batch=[json.loads(x) for x in lines]
         last=None
         for b in batch:
