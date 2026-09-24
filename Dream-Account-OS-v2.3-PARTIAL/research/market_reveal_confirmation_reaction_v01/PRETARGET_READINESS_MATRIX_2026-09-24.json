@@ -50,6 +50,26 @@
       "meaning": "GitHub runner closed abnormally before L2; secondary host failed DNS before reaching Coinbase; portable local probe is ready"
     },
     {
+      "gate": "COINBASE_L2_LOCAL_SHADOW_PACKAGE",
+      "status": "READY_NOT_EXECUTED_LOCAL",
+      "meaning": "Windows launcher + public L2 collector + local SQLite journal + offline verifier are ready; only an operator-machine run can establish local source PASS"
+    },
+    {
+      "gate": "SHADOW_JOURNAL_TAMPER_EVIDENCE",
+      "status": "PASS_SYNTHETIC",
+      "meaning": "raw SHA-256, per-session hash chain, SQLite integrity_check and metadata tamper detection pass synthetic CI"
+    },
+    {
+      "gate": "SHADOW_RESTART_RECOVERY",
+      "status": "PASS_SYNTHETIC",
+      "meaning": "journal close/reopen and raw-only snapshot/update replay reconstruct the same final sequence; gaps and missing snapshots fail closed"
+    },
+    {
+      "gate": "SHADOW_COLLECTOR_BOUNDARY_HYGIENE",
+      "status": "PASS_SYNTHETIC",
+      "meaning": "collector is restricted to the public Coinbase market-data websocket; offline components have no network imports and runtime code has no target/trading identifiers"
+    },
+    {
       "gate": "COINBASE_MULTI_UPDATE_BATCH_TIMING",
       "status": "PASS_SYNTHETIC",
       "meaning": "post-batch book state is timestamped at the latest engine event_time represented in the Coinbase batch"
@@ -116,13 +136,14 @@
     }
   ],
   "objective_next_triggers": [
-    "portable Coinbase level2 source-only probe passes on a local/alternate network environment",
+    "Run Run_MRCR_Coinbase_L2_Shadow.cmd on the operator Windows machine/network and require collector PASS + offline verifier PASS",
     "complete official 2027 BLS CPI/Employment Situation calendar becomes available",
     "separate governance authority explicitly authorizes H02 design/freeze",
     "all pretarget protocol fields including SOURCE_AND_COLLECTOR_ARRIVAL are frozen before any independent target observation",
     "implementation and calendar manifests are fingerprinted before target opening"
   ],
   "anti_zombie_rules": [
+    "local shadow raw data is infrastructure evidence only and must not be used to select or promote MRCR scientific parameters",
     "GitHub live schema shakedown is manual-only and must not be auto-repeated without an environment change",
     "do not repeat the same GitHub Coinbase L2 source hunt without an environment change",
     "do not reuse contaminated 2021-2026 outcomes for selection or promotion",
