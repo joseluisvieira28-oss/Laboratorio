@@ -1,0 +1,63 @@
+name: Diamond Board V0.1 QA
+
+on:
+  pull_request:
+    branches:
+      - crypto-edge-radar-postgres-v0.5
+    paths:
+      - "crypto_edge_radar/radar/diamond_board.py"
+      - "crypto_edge_radar/radar/forward_web.py"
+      - "crypto_edge_radar/tests/test_diamond_board.py"
+      - "crypto_edge_radar/tests/test_forward_web_dashboard.py"
+      - "governance/DIAMOND_BOARD_V0.1_READ_ONLY_AUTHORITY_2026-09-24.md"
+      - ".github/workflows/diamond-board-v01-qa.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Compile
+        run: |
+          cd crypto_edge_radar
+          python -m compileall radar tests
+
+      - name: Diamond Board tests
+        run: |
+          cd crypto_edge_radar
+          python -m unittest discover -s tests -p 'test_diamond_board.py' -v
+          python -m unittest discover -s tests -p 'test_forward_web_dashboard.py' -v
+
+      - name: Read-only governance guard
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path("crypto_edge_radar/radar/diamond_board.py")
+          s = p.read_text(encoding="utf-8")
+          forbidden = [
+              "urlopen(",
+              "requests.",
+              "create_order",
+              "cancel_order",
+              "authenticated",
+              "api_key",
+              "secret",
+              "wallet",
+              "leverage =",
+          ]
+          hits = [x for x in forbidden if x in s.lower()]
+          if hits:
+              raise SystemExit(f"forbidden Diamond Board runtime capability: {hits}")
+          if "automatic_promotion" not in s or '"capital_authority": False' not in s:
+              raise SystemExit("Diamond Board safety declarations missing")
+          print("PASS: Diamond Board remains read-only governance surface")
+          PY
