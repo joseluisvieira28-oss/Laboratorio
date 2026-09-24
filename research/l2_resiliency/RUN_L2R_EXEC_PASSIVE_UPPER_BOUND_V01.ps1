@@ -2,10 +2,10 @@ param(
   [string]$Base = "$env:USERPROFILE\Desktop\L2R_2025_BTC_VALIDATION_LOCAL"
 )
 $ErrorActionPreference = 'Stop'
-$ExpectedScriptSha = '62c88b86c82b80cf10c203258a9444192eb30b9ff6c4b9247a600d3a21d175f8'
+$ExpectedScriptSha = '9e5d33f7eddf552996ba2cf9da0e73a6efff1ca17aa5355660cb0fea2794ccb3'
 $Here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $Runner = Join-Path $Here 'l2r_exec_passive_upper_bound_v01.py'
-Write-Host '=== L2R EXEC PASSIVE UPPER-BOUND V0.1 ==='
+Write-Host '=== L2R EXEC PASSIVE UPPER-BOUND V0.1.1 ==='
 Write-Host '2025 DEVELOPMENT ONLY | NO 2026 | NO NETWORK | NO ORDERS | NO EXCHANGE MUTATION'
 if (!(Test-Path -LiteralPath $Runner)) { throw "Runner missing: $Runner" }
 $sha=(Get-FileHash -Algorithm SHA256 -LiteralPath $Runner).Hash.ToLower()
@@ -27,4 +27,4 @@ if($LASTEXITCODE -ne 0){
 Write-Host "EXECUTING against Base=$Base"
 & $py $Runner --base $Base
 if($LASTEXITCODE -ne 0){ throw "Diagnostic failed rc=$LASTEXITCODE" }
-Write-Host '=== L2R EXEC PASSIVE V0.1 COMPLETE ==='
+Write-Host '=== L2R EXEC PASSIVE V0.1.1 COMPLETE ==='
