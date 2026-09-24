@@ -1,0 +1,540 @@
+{
+  "action_tool_called": false,
+  "classification": "OFFICIAL_AAVE_MCP_CREDIT_SOURCE_CAPABILITY_PASS",
+  "health_factor_values_opened": false,
+  "history_or_timeseries_read_capability_present": true,
+  "http_status": 200,
+  "lab_id": "AAVE-HF-CROWDING-001",
+  "liquidation_outcomes_opened": false,
+  "market_or_reserve_read_capability_present": true,
+  "market_prices_opened": false,
+  "mutation": false,
+  "pnl_opened": false,
+  "required_exact_tools_present": {
+    "get_user_positions": true,
+    "get_user_summary": true,
+    "get_user_summary_history": true
+  },
+  "returns_opened": false,
+  "source_gate_id": "AAVE-HFC-001-SOURCE-CAPABILITY-001",
+  "tool_count": 53,
+  "tools": [
+    {
+      "description": "List chains Aave supports, on v3, v4, or both. A chain carrying 'notServed': true is one this API holds no market on: every market, position and rewards read comes back empty for it, and that emptiness says nothing about the chain itself. Its gateway addresses read 0x0 for the same reason, so do not send a transaction to one. Every chain without the flag has markets to read.",
+      "input_schema_top_level_keys": [
+        "additionalProperties",
+        "properties",
+        "type"
+      ],
+      "name": "get_chains"
+    },
+    {
+      "description": "List Aave markets/reserves (symbol, APY, caps, liquidity) on v3, v4, or both. Chain coverage: omit chainId and every response states the chains it read as 'chainsCovered', plus 'chainsNotCovered' when it read fewer than all of them. 'chainsNotServed', when present, lists chains this API holds no market on: Aave supports the chain, there is nothing here to read, so an empty result for one of them is not an answer about that chain, and asking again returns the same nothing. v4 always covers every ",
+      "input_schema_top_level_keys": [
+        "additionalProperties",
+        "properties",
+        "type"
+      ],
+      "name": "get_markets"
+    },
+    {
+      "description": "v3 only. eMode groups correlated assets (ETH-correlated, stablecoins) so they borrow against each other at a higher LTV, raising borrowing power at the cost of restricting which assets the position may hold. Returns each market's categories with the 'categoryId' that prepare_set_emode takes, its LTV and liquidation thresholds, and which symbols are in it. Narrow with 'symbols' (e.g. ['USDC']) to get just the categories that asset is in - unfiltered this is every category on every chain. Markets ",
+      "input_schema_top_level_keys": [
+        "additionalProperties",
+        "properties",
+        "type"
+      ],
+      "name": "get_emode_categories"
+    },
+    {
+      "description": "A wallet's Aave positions (supplies and borrows) on v3, v4, or both. Omit chainId and both versions cover every chain they serve, stating which under 'chainsCovered'; there is no need to loop over chains yourself. 'chainsNotServed', when present, lists chains this API holds no market on: Aave supports the chain, there is nothing here to read, so an empty result for one of them is not an answer about that chain, and asking again returns the same nothing. v4 returns 'positions', each with its own ",
+      "input_schema_top_level_keys": [
+        "additionalProperties",
+        "properties",
+        "required",
+        "type"
+      ],
+      "name": "get_user_positions"
+    },
+    {
+      "description": "v4 only. The individual supplies or borrows inside one v4 spoke: principal, accrued interest and what is withdrawable right now, per item, which the per-spoke aggregate from get_user_positions cannot show. Get 'spokeId' from get_user_positions.",
+      "input_schema_top_level_keys": [
+        "additionalProperties",
+        "properties",
+        "required",
+        "type"
+      ],
+      "name": "get_position_items"
+    },
+    {
+      "description": "A wallet's aggregate position and health factor. Omit chainId and both versions cover every chain they serve, stating which under 'chainsCovered'; there is no need to loop over chains yourself. 'chainsNotServed', when present, lists chains this API holds no market on: Aave supports the chain, there is nothing here to read, so an empty result for one of them is not an answer about that chain, and asking again returns the same nothing. Ask for one of those chains on its own and the reply is the sc",
+      "input_schema_top_level_keys": [
+        "additionalProperties",
+        "properties",
+        "required",
+        "type"
+      ],
+      "name": "get_user_summary"
+    },
+    {
+      "description": "v4 only. After sending a transaction, ask whether the Aave API has processed it. Use this instead of sleeping or polling an RPC: the API lags the chain, and prepare_action will not issue a dependent follow-up (the supply after an approval, the withdraw after a repay) until it has caught up. Pass the txHash you sent plus the 'operations' array that came back on that transaction. Poll until processed is true, then continue.",
+      "input_schema_top_level_keys": [
+        "additionalProperties",
+        "properties",
+        "required",
+        "type"
+      ],
+      "name": "get_transaction_processed"
+    },
+    {
+      "description": "Deep detail for a single reserve (rates, caps, risk parameters, utilisation, the interest-rate curve, token addresses) on v3 or v4. Every rate and percentage is a percent ('3.32' means 3.32%), named with a Pct suffix. On v4, utilisation and the rate curve are hub-wide, shared by every spoke drawing on the asset. Two v4 fields whose meaning the numbers do not give away: 'collateralFactorPct' is the liquidation boundary itself, because v4 has no separate liquidation threshold - do not look for one",
+      "input_schema_top_level_keys": [
+        "additionalProperties",
+        "properties",
+        "type"
+      ],
+      "name": "get_reserve_details"
+    },
+    {
+      "description": "Historical supply or borrow APY for a reserve over time, on v3 or v4. Returns a time-series of {date, apyPct}, where apyPct is a percent ('3.32' means 3.32%). Each point is an average over its sampling interval, and the interval widens with the window (hourly for 'day', coarser above that), so a series is not directly comparable to the instantaneous rate from get_reserve_details. Use get_markets first for the reserveId (v4) or market+token (v3). When comparing v3 against v4 for the same asset (a",
+      "input_schema_top_level_keys": [
+        "additionalProperties",
+        "properties",
+        "type"
+      ],
+      "name": "get_apy_history"
+    },
+    {
+      "description": "A wallet's Aave transaction history (supply, borrow, repay, withdraw, collateral changes) on v3, v4, or both. Most recent first. v4 covers every chain; v3 reads one market on one chain at a time, because upstream paginates per market, so it states its scope as 'chainsCovered' and 'market' and you pass chainId to read another. Use get_user_positions, not this, to find out where a wallet holds anything.",
+      "input_schema_top_level_keys": [
+        "additionalProperties",
+        "properties",
+        "required",
+        "type"
+      ],
+      "name": "get_user_activity"
+    },
+    {
+      "description": "v4 only. Aave v4 protocol-wide history: market size, total borrows and available liquidity per sample over a window. Omit chainId to cover every supported v4 chain. Use this for 'is the protocol growing', not for one wallet (get_user_summary_history) or one reserve (get_apy_history).",
+      "input_schema_top_level_keys": [
+        "additionalProperties",
+        "properties",
+        "type"
+      ],
+      "name": "get_protocol_history"
+    },
+    {
+      "description": "v4 only. How one wallet's net worth, supplied, debt and health factor moved over a window on Aave v4. Use it to answer 'how has my position changed' or to see how close to liquidation a wallet has been. Omit chainId to cover every supported v4 chain.",
+      "input_schema_top_level_keys": [
+        "additionalProperties",
+        "properties",
+        "required",
+        "type"
+      ],
+      "name": "get_user_summary_history"
+    },
+    {
+      "description": "v4 only. Aave v4 hubs: a hub holds the liquidity and global accounting that user-facing spokes draw from. Returns each hub's hubId, address, chain and totals. Pass a hubId to get_hub_assets for the assets it carries. Omit chainId to cover every supported v4 chain.",
+      "input_schema_top_level_keys": [
+        "additionalProperties",
+        "properties",
+        "type"
+      ],
+      "name": "get_hubs"
+    },
+    {
+      "description": "v4 only. The assets held by one Aave v4 hub, with hub-wide supplied and borrowed totals, rates and utilisation. Get hubId from get_hubs (or the hubAddress on get_reserve_details). This is hub-level accounting; for what a user can actually supply or borrow, use get_markets, which is per spoke.",
+      "input_schema_top_level_keys": [
+        "additionalProperties",
+        "properties",
+        "required",
+        "type"
+      ],
+      "name": "get_hub_assets"
+    },
+    {
+      "description": "v4 only. Deposits, borrows, available liquidity and utilisation over a window, for one hub or one spoke. Pick the layer deliberately: a hub is the liquidity itself and answers 'is this market growing', a spoke is one venue onto that liquidity and answers 'is this venue being used'. Ids come from get_reserve_details, which returns both 'hubId' and 'spokeId' for a reserve, or from get_hubs ('hubId') and get_user_positions ('spokeId' for a spoke the wallet already holds). The two are not interchang",
+      "input_schema_top_level_keys": [
+        "additionalProperties",
+        "properties",
+        "required",
+        "type"
+      ],
+      "name": "get_market_history"
+    },
+    {
+      "description": "v4 only. One asset across every v4 reserve that holds it: 'price' is its oracle price per sample, 'supply' and 'borrow' are the amounts plus the APY spread across those reserves (averageApyPct with the highest and lowest at that moment). Not the same question as get_apy_history, which is one reserve's own rate - an asset sits in several reserves at once, so a wide gap between highestApyPct and lowestApyPct is the point, not noise. The asset is named by its token address and chain, and get_market",
+      "input_schema_top_level_keys": [
+        "additionalProperties",
+        "properties",
+        "required",
+        "type"
+      ],
+      "name": "get_asset_history"
+    },
+    {
+      "description": "v4 only. The biggest wallets supplying or borrowing one v4 reserve, largest first, for questions about concentration: whether one address is most of a reserve's liquidity, or most of its debt. The token is named once for the whole list rather than repeated per row. 'reserveId' comes from a get_markets row or a get_position_items item. An empty list means this reserve has no holders indexed on that side, which is common for the borrow side of an asset few people borrow, and is not an error.",
+      "input_schema_top_level_keys": [
+        "additionalProperties",
+        "properties",
+        "required",
+        "type"
+      ],
+      "name": "get_reserve_holders"
+    },
+    {
+      "description": "v4 only. The rate curve for one hub asset: borrow and supply APY at each level of utilisation, as points along the curve the protocol actually uses. This explains a rate rather than reporting it - where the kink sits, how steeply borrowing gets more expensive past it, and what the rate would become if utilisation moved. Use it before a large supply or borrow that would shift utilisation, because the current rate from get_reserve_details is one point on this curve and not what a large position wo",
+      "input_schema_top_level_keys": [
+        "additionalProperties",
+        "properties",
+        "required",
+        "type"
+      ],
+      "name": "get_interest_rate_model"
+    },
+    {
+      "description": "v4 only. The tokens a wallet actually holds that v4 can take, per token and summed across chains, with 'perChain' saying where each sits, plus the best supply APY and lowest borrow APY the protocol currently offers on that token. This is the wallet, not a position: nothing here is supplied or borrowed yet, and the rates alongside a balance are what Aave would pay or charge, not what the wallet is earning. Start a 'what should I do with what I have' question here and a 'how is my position doing' ",
+      "input_schema_top_level_keys": [
+        "additionalProperties",
+        "properties",
+        "required",
+        "type"
+      ],
+      "name": "get_wallet_balances"
+    },
+    {
+      "description": "v4 only. The per-collateral breakdown of one position's risk premium: how much of the position each token is, and the weight the protocol charges for it. 'currentRiskPremiumWeightPct' is the weight in force now and 'latestRiskPremiumWeightPct' the one the protocol has moved to, so the two differing is the point - the position has been repriced and has not caught up, and the borrow rate will follow. Use it to answer why a v4 borrow costs what it does when the reserve's headline rate says otherwis",
+      "input_schema_top_level_keys": [
+        "additionalProperties",
+        "properties",
+        "required",
+        "type"
+      ],
+      "name": "get_risk_premium"
+    },
+    {
+      "description": "v4 only. Per-asset limits for one (hub, spoke) pair: supply and borrow caps, whether the asset is active there, whether it is halted, and the risk premium threshold. Read it before sizing a large position, because a cap is what turns a valid-looking supply into a reverting one. 'halted' stops supply, borrow, withdraw and repay alike; an asset that is simply not active was never configured on that spoke, which is a different thing from one that was turned off. Both ids come from get_reserve_detai",
+      "input_schema_top_level_keys": [
+        "additionalProperties",
+        "properties",
+        "required",
+        "type"
+      ],
+      "name": "get_spoke_configs"
+    },
+    {
+      "description": "v4 only. One asset across every v4 chain at once, by symbol: what is supplied and borrowed on each, the rate on each, and a summary naming the best supply rate and the lowest borrow rate anywhere. This is the tool for 'where should I supply USDC' and for 'is this cheaper to borrow somewhere else' - one call rather than reading get_markets per chain. It answers about the asset, not about a wallet. Omit chainId to cover every chain v4 serves, stated under 'chainsCovered'.",
+      "input_schema_top_level_keys": [
+        "additionalProperties",
+        "properties",
+        "required",
+        "type"
+      ],
+      "name": "get_multichain_asset"
+    },
+    {
+      "description": "Build an unsigned transaction to liquidate an unhealthy position: repay part of someone else's debt and receive their collateral plus the liquidation bonus. Only viable while that position's health factor is below 1 (check get_user_summary for the target). v4 takes collateral and debt as reserveIds; v3 takes collateralToken and debtToken addresses plus chainId. Non-custodial: the liquidator signs and submits.",
+      "input_schema_top_level_keys": [
+        "additionalProperties",
+        "properties",
+        "required",
+        "type"
+      ],
+      "name": "prepare_liquidation"
+    },
+    {
+      "description": "v3 only. Build an unsigned transaction to switch a wallet's Aave v3 eMode category. eMode groups correlated assets (ETH-correlated, stablecoins) so they borrow against each other at a higher LTV, raising borrowing power at the cost of restricting which assets the position may hold. Take categoryId from get_emode_categories for that market; pass 0 to turn eMode off. v3 only: v4 replaces eMode with risk premium and dynamic config.",
+      "input_schema_top_level_keys": [
+        "additionalProperties",
+        "properties",
+        "required",
+        "type"
+      ],
+      "name": "prepare_set_emode"
+    },
+    {
+      "description": "Build an unsigned transaction to supply, borrow, withdraw, or repay on Aave (v3 or v4). Returns an execution plan (a transaction to sign, or an approval step first). For a borrow or a withdraw, call preview_action first and read its warnings: the simulation is free, it commits nothing, and it is the cheapest way to learn the position cannot take the action - a withdraw of collateral pinned by an open borrow is the case that catches callers out. Non-custodial: the user's wallet signs and submits;",
+      "input_schema_top_level_keys": [
+        "additionalProperties",
+        "properties",
+        "required",
+        "type"
+      ],
+      "name": "prepare_action"
+    },
+    {
+      "description": "Build an unsigned transaction to change whether a supplied asset is used as collateral (v3 or v4). On v4 'enable' sets the state; on v3 it toggles the current state, and a toggle that would invert a stated 'enable' is refused. The wallet must already hold a supply in that reserve: this sets a flag on it, nothing moves. Disabling can leave a position liquidatable, so it is simulated first: a health factor under 1 after is refused, just above 1 carries a warning to relay, and a build whose simulat",
+      "input_schema_top_level_keys": [
+        "additionalProperties",
+        "properties",
+        "required",
+        "type"
+      ],
+      "name": "prepare_set_collateral"
+    },
+    {
+      "description": "Simulate a supply/borrow/withdraw/repay against a wallet's position WITHOUT executing, on v3 or v4. Always do this before a borrow or a withdraw. Send only the arguments that apply: v4 takes 'reserveId'; v3 takes 'market' + 'token' + 'chainId'; 'max' is for withdraw and repay; 'native' works on both; 'enableCollateral' is v4 only. Both versions answer with 'healthFactorBefore' and 'healthFactorAfter'; v4 also returns net APY, risk premium, net collateral, net balance, projected earnings and both",
+      "input_schema_top_level_keys": [
+        "additionalProperties",
+        "properties",
+        "required",
+        "type"
+      ],
+      "name": "preview_action"
+    },
+    {
+      "description": "No version argument: token swaps are protocol-agnostic and run on the v4 backend, so they cover the chains that backend serves rather than every chain Aave has a market on. Call this before get_swap_quote to see where a swap can be quoted: with no arguments it sweeps the chains v4 serves and returns each one with how many tokens are swappable there, which is the cheap answer; pass 'chainIds' to get the actual token list, and to ask about a chain the sweep does not reach. A chain under 'chainsNot",
+      "input_schema_top_level_keys": [
+        "additionalProperties",
+        "properties",
+        "type"
+      ],
+      "name": "get_swappable_tokens"
+    },
+    {
+      "description": "No version argument: token swaps are protocol-agnostic and run on the v4 backend, so the chains and tokens they cover are that backend's and not every chain Aave holds a market on - a chain it does not serve is rejected outright rather than quoted badly. Call get_swappable_tokens first if you do not already know the chain is covered, or read 'canSwapFrom' on the reserve from get_markets. Quote a token swap: returns the quote with a quoteId to prepare and sign through prepare_order.",
+      "input_schema_top_level_keys": [
+        "additionalProperties",
+        "properties",
+        "required",
+        "type"
+      ],
+      "name": "get_swap_quote"
+    },
+    {
+      "description": "No version argument: every order runs on the v4 backend. Which optional arguments apply is decided by the quote that minted the quoteId, so decide before emitting any: a quote that offered a 'bySignature' permit takes permitSignature + permitDeadline once that permit is signed; route:'transaction' applies only to a SwapByTransaction... quote (a native-token sell) and takes no signatures at all. Never send a signature argument unsolicited - it exists to carry back a signature the quote explicitly",
+      "input_schema_top_level_keys": [
+        "additionalProperties",
+        "properties",
+        "required",
+        "type"
+      ],
+      "name": "prepare_order"
+    },
+    {
+      "description": "No version argument: every order runs on the v4 backend. Relay an order the user already signed (quoteId + signature from prepare_order's PreparedOrder). State-changing: this posts the order. The server never signs.",
+      "input_schema_top_level_keys": [
+        "additionalProperties",
+        "properties",
+        "required",
+        "type"
+      ],
+      "name": "submit_signed_order"
+    },
+    {
+      "description": "No version argument. From an orderId, return the EIP-712 cancellation for the user to sign; cancel_order relays the result. This is the gasless route for an intent order; an order that went on chain (a native-token sell) is cancelled with cancel_order's transaction route instead, which needs no signature and no prepare. Non-custodial: this returns what the user signs, and commits nothing.",
+      "input_schema_top_level_keys": [
+        "additionalProperties",
+        "properties",
+        "required",
+        "type"
+      ],
+      "name": "prepare_cancel_order"
+    },
+    {
+      "description": "No version argument. Cancel an open order. Two routes: pass 'signature' (signed over what prepare_cancel_order returned) to relay a gasless cancellation - state-changing, and the route an intent order takes; omit 'signature' entirely for the on-chain route, which returns the cancel transaction for the user to sign and send, the route an order that went on chain (a native-token sell) takes. The server never signs.",
+      "input_schema_top_level_keys": [
+        "additionalProperties",
+        "properties",
+        "required",
+        "type"
+      ],
+      "name": "cancel_order"
+    },
+    {
+      "description": "No version argument. Status of an order by id: open, pending signature, fulfilled, cancelled or expired, with the operation it performs and an explorer link. 'order' comes back null when the API cannot see that id, which a wrong id and a just-submitted order both produce - poll again briefly before concluding.",
+      "input_schema_top_level_keys": [
+        "additionalProperties",
+        "properties",
+        "required",
+        "type"
+      ],
+      "name": "get_order_status"
+    },
+    {
+      "description": "No version argument: orders run on the v4 backend, so this covers the chains that backend serves and names them under 'chainsCovered'; a chain under 'chainsNotCovered' could not be read and is worth asking about again. A wallet's orders, newest first. Despite the name it returns every status unless 'statuses' narrows it - pass ['open','pending_signature'] for what is still actionable. Each chain returns its newest 50 orders; 'more: true' on a chain means older history exists beyond what was retu",
+      "input_schema_top_level_keys": [
+        "additionalProperties",
+        "properties",
+        "required",
+        "type"
+      ],
+      "name": "get_pending_orders"
+    },
+    {
+      "description": "A wallet's claimable Aave rewards on v3, v4, or both. Covers incentive programmes distributed through Merit as well as the protocol's own, so a GHO or sGHO incentive shows up here rather than anywhere separate. Omit chainId and both versions cover every chain they serve, stating which under 'chainsCovered' and tagging each row with its own chainId. 'chainsNotServed', when present, lists chains this API holds no market on: Aave supports the chain, there is nothing here to read, so an empty result",
+      "input_schema_top_level_keys": [
+        "additionalProperties",
+        "properties",
+        "required",
+        "type"
+      ],
+      "name": "get_user_rewards"
+    },
+    {
+      "description": "v4 only. Build an unsigned transaction to claim a wallet's V4 rewards. If 'ids' is omitted, claims everything currently claimable. Non-custodial. There is no v3 equivalent because a v3 claim needs no second call: get_user_rewards already returns the transaction.",
+      "input_schema_top_level_keys": [
+        "additionalProperties",
+        "properties",
+        "required",
+        "type"
+      ],
+      "name": "prepare_claim_rewards"
+    },
+    {
+      "description": "v3 only, Ethereum only. Savings GHO (sGHO) is an ERC-4626 vault that pays a target rate on deposited GHO. Returns the vault's targetRatePct, totalAssets, supplyCap and paused flag; pass 'user' to add that wallet's shares, their GHO value, its GHO wallet balance, and the maxDeposit / maxWithdraw the contract allows right now. Quote what a deposit earns from 'combinedAprPct' when it is present: a Merit campaign sometimes pays 'incentiveAprPct' on top of the target rate, and the two differ in how t",
+      "input_schema_top_level_keys": [
+        "additionalProperties",
+        "properties",
+        "type"
+      ],
+      "name": "get_sgho_vault"
+    },
+    {
+      "description": "v3 only, Ethereum only. Convert between GHO and sGHO shares at the vault's current index, without building anything. Which unit 'amount' is in depends on the action: 'deposit' takes GHO and returns the shares it would mint; 'withdraw' takes sGHO SHARES and returns the GHO they would return. Call this with action 'withdraw' before prepare_sgho_action, because that withdrawal is denominated in shares and not in GHO - passing a GHO figure there withdraws the wrong amount. When quoting what a user-n",
+      "input_schema_top_level_keys": [
+        "additionalProperties",
+        "properties",
+        "required",
+        "type"
+      ],
+      "name": "get_sgho_preview"
+    },
+    {
+      "description": "v3 only, Ethereum only. Build an unsigned transaction to deposit GHO into the sGHO vault or withdraw from it. Non-custodial: the user's wallet signs and submits, so building one commits them to nothing. Choose sensible values, build it, and say what you chose rather than stopping to ask. Send only the arguments that apply and leave every other one out. On 'deposit', 'amount' is GHO. On 'withdraw', 'amount' is a number of sGHO SHARES, not GHO - get_sgho_preview converts - or pass max:true to rede",
+      "input_schema_top_level_keys": [
+        "additionalProperties",
+        "properties",
+        "required",
+        "type"
+      ],
+      "name": "prepare_sgho_action"
+    },
+    {
+      "description": "v3 only, Ethereum only. Build an unsigned transaction that moves a wallet's stkGHO out of the Safety Module and into the sGHO vault. All-or-nothing: it covers the entire stkGHO position and takes no amount. Call get_safety_module with the same wallet first and quote the legacy stkGHO balance it returns, so the user knows what they are moving before they sign. Non-custodial, so build it rather than asking permission first.",
+      "input_schema_top_level_keys": [
+        "additionalProperties",
+        "properties",
+        "required",
+        "type"
+      ],
+      "name": "prepare_stkgho_migrate"
+    },
+    {
+      "description": "Aave's Safety Module, Ethereum only, and the one product here that is read from the contracts rather than the Aave API. Returns both generations: 'umbrella', the per-asset stake tokens securing the protocol now, each with its total staked, target liquidity, reward APY, cooldown and unstake window; and 'legacy', the stkAAVE / stkGHO / stkABPT tokens alongside it. Pass 'user' to add that wallet's staked balance, claimable rewards and cooldown state on both. Staking is not supplying: a stake earns ",
+      "input_schema_top_level_keys": [
+        "additionalProperties",
+        "properties",
+        "type"
+      ],
+      "name": "get_safety_module"
+    },
+    {
+      "description": "v3 only. Name exactly one of 'user', 'owner' or 'vault', and read that sentence before choosing arguments: 'user' lists every vault that wallet holds shares in and is the portfolio question, 'owner' lists what one curator runs, 'vault' reads a single vault by address and is the only one that also needs 'chainId'. An Aave Vault is an ERC-4626 vault a curator deploys over one v3 reserve, taking a fee on the yield, so its APR is below that reserve's by the fee. Shares in one are an Aave position th",
+      "input_schema_top_level_keys": [
+        "additionalProperties",
+        "properties",
+        "type"
+      ],
+      "name": "get_vaults"
+    },
+    {
+      "description": "v3 only. Convert between a vault's assets and its shares at the current index, without building anything. Which unit 'amount' is in depends on the action, and this is the thing to get right: 'deposit' takes ASSETS and returns the shares minted, 'mint' takes SHARES and returns the assets it would cost, 'withdraw' takes ASSETS and returns the shares burnt, 'redeem' takes SHARES and returns the assets returned. Use the assets pair to fix the token amount exactly and the shares pair to fix the share",
+      "input_schema_top_level_keys": [
+        "additionalProperties",
+        "properties",
+        "required",
+        "type"
+      ],
+      "name": "get_vault_preview"
+    },
+    {
+      "description": "v3 only. Build an unsigned transaction to move value in or out of an Aave Vault. Non-custodial: the user's wallet signs and submits, so building one commits them to nothing - choose sensible values, build it, and say what you chose rather than stopping to ask. Which unit 'amount' is in depends on the action: 'deposit' and 'withdraw' take ASSETS, 'mint' and 'redeem' take SHARES. Set 'asAToken' true to move the reserve's aToken instead of its underlying token, which skips supplying first when the ",
+      "input_schema_top_level_keys": [
+        "additionalProperties",
+        "properties",
+        "required",
+        "type"
+      ],
+      "name": "prepare_vault_action"
+    },
+    {
+      "description": "v3 only. How one wallet's position in one vault moved over a window: total yield earned, plus a per-sample breakdown of balance, deposits and withdrawals. Use it to answer 'what has this vault actually paid me', which the current APR cannot - the APR is the rate now, this is what was received. Needs the vault address and its chain, both of which get_vaults returns.",
+      "input_schema_top_level_keys": [
+        "additionalProperties",
+        "properties",
+        "required",
+        "type"
+      ],
+      "name": "get_vault_activity"
+    },
+    {
+      "description": "Takes no 'version' argument (DAO governance is not per-market; Governance V3 is unrelated to Aave v3/v4 markets). List or search Aave DAO governance proposals. Filter by 'state' to answer \"what is live right now\" (state 'active') or \"what is waiting to execute\" (state 'queued'). Pass 'search' for full-text over title, author and description, ranked by relevance. Vote tallies are in AAVE.",
+      "input_schema_top_level_keys": [
+        "additionalProperties",
+        "properties",
+        "type"
+      ],
+      "name": "search_governance_proposals"
+    },
+    {
+      "description": "Takes no 'version' argument (DAO governance is not per-market; Governance V3 is unrelated to Aave v3/v4 markets). Full detail for one Aave DAO governance proposal: state, author, vote tallies, quorum, timings and the transaction hash of each lifecycle step. 'quorumMet' and 'differentialMet' are the two conditions a proposal must meet to pass. Vote tallies and quorum are both in AAVE, so they compare directly. The long IPFS write-up is omitted unless includeDescription is true.",
+      "input_schema_top_level_keys": [
+        "additionalProperties",
+        "properties",
+        "required",
+        "type"
+      ],
+      "name": "get_governance_proposal"
+    },
+    {
+      "description": "Takes no 'version' argument (DAO governance is not per-market; Governance V3 is unrelated to Aave v3/v4 markets). Who voted on an Aave DAO proposal and with how much power, largest voter first. Pass support=true or false to list only one side. 'totals' covers every vote on the proposal, not just the page returned. Voting power is in AAVE.",
+      "input_schema_top_level_keys": [
+        "additionalProperties",
+        "properties",
+        "required",
+        "type"
+      ],
+      "name": "get_proposal_votes"
+    },
+    {
+      "description": "Takes no 'version' argument (DAO governance is not per-market; Governance V3 is unrelated to Aave v3/v4 markets). How one wallet voted on one Aave DAO proposal, and with how much power. Returns voted:false when that wallet did not vote, which is an answer rather than an error. Voting power is in AAVE.",
+      "input_schema_top_level_keys": [
+        "additionalProperties",
+        "properties",
+        "required",
+        "type"
+      ],
+      "name": "get_user_vote"
+    },
+    {
+      "description": "Takes no 'version' argument (DAO governance is not per-market; Governance V3 is unrelated to Aave v3/v4 markets). What an Aave DAO proposal actually executes: one payload per target chain, each with its execution state, timelock delay, grace period and the contract calls it makes. Use this to tell whether a passed proposal has landed on every chain yet: a proposal can be 'executed' on mainnet while a payload is still 'queued' elsewhere.",
+      "input_schema_top_level_keys": [
+        "additionalProperties",
+        "properties",
+        "required",
+        "type"
+      ],
+      "name": "get_proposal_payloads"
+    },
+    {
+      "description": "Applies to both versions. Protocol and usage guidance for building Aave flows correctly. Read the relevant topic before constructing an action. Topics: overview, v4, v3, positions, health-factor, risks, ids, amounts, prices, signing, swaps, gho, safety-module, portfolio, governance, rewards, tools, docs. Also the place to come when no tool seems to fit what you were asked for: send 'lookingFor' and this answers with the full capability list rather than leaving you to guess from tool names. For d",
+      "input_schema_top_level_keys": [
+        "additionalProperties",
+        "properties",
+        "type"
+      ],
+      "name": "get_aave_guide"
+    },
+    {
+      "description": "Applies to both versions. What this Aave server can do: the tool families, the ready-made prompts, and the guide topics. Call this when an Aave conversation opens with no specific request and answer from it, rather than guessing from tool names.",
+      "input_schema_top_level_keys": [
+        "additionalProperties",
+        "properties",
+        "type"
+      ],
+      "name": "get_started"
+    }
+  ],
+  "wallet_addresses_opened": false
+}
