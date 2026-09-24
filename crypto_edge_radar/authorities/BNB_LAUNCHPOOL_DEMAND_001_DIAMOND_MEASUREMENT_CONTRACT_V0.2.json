@@ -1,0 +1,84 @@
+{
+  "freeze_id": "BNB-LAUNCHPOOL-DIAMOND-V0.2-2026-09-24",
+  "status": "FROZEN_BEFORE_ANY_DIAMOND_COUNTED_EVENT",
+  "parent_candidate": "BNB-LAUNCHPOOL-DEMAND-001",
+  "governing_authorities": [
+    "ND-PROMOTION-POLICY-V3.0-FROZEN",
+    "DIAMOND-TEST-V1-FROZEN-2026-09-24",
+    "BNB-LAUNCHPOOL-DEMAND-001-FORWARD-SHADOW-V0.1"
+  ],
+  "authority_precedence": "If this measurement contract conflicts with the canonical parent trading rule, the parent rule wins and Diamond adjudication is BLOCKED_AUTHORITY_MISMATCH.",
+  "science_mutation": false,
+  "live_trading_authorized": false,
+  "sample_rule": {
+    "minimum_resolved_diamond_events": 25,
+    "rationale": "Reuses the 25-resolved-trade prospective floor frozen on 2026-09-16 before any post-freeze event/outcome. It is not a post-outcome sample-size choice.",
+    "no_early_diamond_survival": true
+  },
+  "parent_economic_rule_unchanged": {
+    "side": "LONG_BNBBTC",
+    "entry": "first fully available 15-minute BNBBTC bar open strictly greater than canonical signal timestamp",
+    "hold_hours": 24,
+    "pair": "BNBBTC_SPOT",
+    "base_round_trip_cost_bps": 20.0,
+    "stress_round_trip_cost_bps": 30.0,
+    "one_active_trade": true,
+    "cluster_minutes_lte": 60,
+    "stop": null,
+    "target": null,
+    "leverage": "NONE"
+  },
+  "causal_measurement": {
+    "purpose": "Measure the preregistered BNB-specific demand-shock fingerprint without changing event eligibility or the parent trade.",
+    "market_data": "public read-only Binance Spot 1m klines only",
+    "symbols": ["BNBBTC", "BNBUSDT", "BTCUSDT"],
+    "event_window_alignment": "first complete 1m bar whose open_time is strictly greater than canonical signal timestamp",
+    "short_windows_minutes": [15, 60],
+    "return_definition": "simple return from first aligned 1m open to close of the final complete 1m bar in the window",
+    "volume_symbol": "BNBUSDT",
+    "volume_field": "quote_asset_volume",
+    "volume_window_minutes": 60,
+    "baseline": {
+      "definition": "median quote_asset_volume across the most recent 20 prior UTC dates with a complete same-clock 60m window",
+      "required_valid_days": 20,
+      "maximum_calendar_lookback_days": 40,
+      "no_outcome_calibration": true,
+      "insufficient_baseline_action": "MECHANISM_DATA_BLOCKED_EVENT_DOES_NOT_COUNT_TOWARD_DIAMOND_25"
+    },
+    "volume_shock_ratio": "event_60m_quote_volume / median_prior20_same_clock_60m_quote_volume"
+  },
+  "diamond_survival_gates_at_25_all_required": {
+    "all_original_forward_path_integrity_gates_pass": true,
+    "base_mean_net_24h_bps_gt_zero": true,
+    "base_pf_24h_gt_one": true,
+    "max_single_trade_share_positive_base_net_lte_0_40": true,
+    "positive_bnbbtc_60m_events_gte": 17,
+    "median_bnbbtc_60m_return_gt_zero": true,
+    "volume_shock_ratio_gt_one_events_gte": 17,
+    "median_volume_shock_ratio_gt_one": true,
+    "all_25_events_have_complete_causal_measurement": true,
+    "source_rule_deviations": 0,
+    "trading_rule_deviations": 0,
+    "missed_eligible_events": 0,
+    "duplicate_event_count": 0
+  },
+  "statistical_note": "17/25 positive signs has one-sided exact Binomial(25,0.5) tail probability approximately 0.0539. This is a preregistered descriptive robustness hurdle, not a standalone proof of causality.",
+  "failure_actions": {
+    "scientific_gate_failure": "DIAMOND_TEST_FAIL_EXACT_CANDIDATE_NO_RESCUE",
+    "source_or_measurement_failure": "DIAMOND_TEST_BLOCKED",
+    "fewer_than_25_complete_events": "DIAMOND_TEST_COLLECTING"
+  },
+  "anti_rescue": [
+    "no event deletion after outcomes",
+    "no sign inversion",
+    "no pair substitution",
+    "no horizon change",
+    "no cost change",
+    "no threshold change",
+    "no regime filter added after outcomes",
+    "no volume-baseline change after outcomes",
+    "no sample-floor reduction",
+    "no 12h/6h/timeframe substitution",
+    "no live-order inference from this contract"
+  ]
+}
