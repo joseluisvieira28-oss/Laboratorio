@@ -1,0 +1,32 @@
+name: LCOD-001 source component probe
+
+on:
+  push:
+    branches:
+      - liquidation-convexity-oracle-distance-001-source-gate-v0.1
+    paths:
+      - 'research/liquidation_convexity_oracle_distance_001/lcod_source_probe_v01.py'
+      - '.github/workflows/lcod-001-source-component-probe-v01.yml'
+      - 'research/liquidation_convexity_oracle_distance_001/LCOD_SOURCE_PROBE_TRIGGER.txt'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run Aave read-only source component probe
+        run: python research/liquidation_convexity_oracle_distance_001/lcod_source_probe_v01.py
+      - name: Upload immutable probe evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: lcod-001-source-component-probe-v01
+          path: artifacts/lcod_source_probe_v01.json
+          if-no-files-found: error
