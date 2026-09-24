@@ -47,26 +47,16 @@ class ETFCMEPublicSignalWatcher:
     def _payloads(self, event_type: str) -> list[dict[str, Any]]:
         return self.store.read_payloads(event_type)
 
-    def run_once(self, *, now_ms: int | None = None) -> dict[str, Any]:
-        if now_ms is None:
-            now_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
+    def _run_with_observations(
+        self,
+        *,
+        previous: Any,
+        current: Any,
+        now_ms: int,
+        source_binding: str,
+        source_observed_at_utc: str,
+    ) -> dict[str, Any]:
         attempted = _iso(now_ms)
-        try:
-            previous, current = self.source(timeout=self.timeout)
-        except Exception as exc:
-            return {
-                "watcher_id": WATCHER_ID,
-                "strategy_id": STRATEGY_ID,
-                "status": "FAIL_CLOSED",
-                "source_status": "SOURCE_UNAVAILABLE",
-                "last_source_attempt_utc": attempted,
-                "error": f"{type(exc).__name__}:{exc}",
-                "authenticated_exchange_api_used": False,
-                "order_created": False,
-                "exchange_mutation_performed": False,
-                "live_capital_enabled": False,
-            }
-
         now = datetime.fromtimestamp(now_ms / 1000.0, tz=timezone.utc)
         receipt = operational_signal_receipt_from_observations(previous, current, now)
         key = _key(current.as_of_date)
@@ -77,7 +67,8 @@ class ETFCMEPublicSignalWatcher:
             "source_dataset": "CFTC_LEGACY_FUTURES_ONLY_6DCA_AQWW",
             "source_contract_code": "133741",
             "source_attempt_utc": attempted,
-            "source_success_utc": attempted,
+            "source_success_utc": source_observed_at_utc,
+            "source_binding": source_binding,
             "used_as_forward_signal_evidence": False,
             "authenticated_exchange_api_used": False,
             "order_created": False,
@@ -122,8 +113,9 @@ class ETFCMEPublicSignalWatcher:
             "strategy_id": STRATEGY_ID,
             "status": status,
             "source_status": "OK",
+            "source_binding": source_binding,
             "last_source_attempt_utc": attempted,
-            "last_source_success_utc": attempted,
+            "last_source_success_utc": source_observed_at_utc,
             "last_signal_observation_utc": max(
                 (str(p.get("observed_at_utc")) for p in signals if p.get("observed_at_utc")),
                 default=None,
@@ -146,3 +138,54 @@ class ETFCMEPublicSignalWatcher:
             "exchange_mutation_performed": False,
             "live_capital_enabled": False,
         }
+
+    def run_from_observations(
+        self,
+        *,
+        previous: Any,
+        current: Any,
+        now_ms: int | None = None,
+        source_observed_at_utc: str | None = None,
+    ) -> dict[str, Any]:
+        """Persist an exact-time observation from a prearmed public CFTC snapshot.
+
+        This method performs no source fetch. It is only a transport hardening
+        path for observations already fetched inside the frozen arm window.
+        Scientific signal, target, lateness and no-chase rules are unchanged.
+        """
+        if now_ms is None:
+            now_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
+        return self._run_with_observations(
+            previous=previous,
+            current=current,
+            now_ms=now_ms,
+            source_binding="PREARMED_PUBLIC_CFTC_SNAPSHOT",
+            source_observed_at_utc=source_observed_at_utc or _iso(now_ms),
+        )
+
+    def run_once(self, *, now_ms: int | None = None) -> dict[str, Any]:
+        if now_ms is None:
+            now_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
+        attempted = _iso(now_ms)
+        try:
+            previous, current = self.source(timeout=self.timeout)
+        except Exception as exc:
+            return {
+                "watcher_id": WATCHER_ID,
+                "strategy_id": STRATEGY_ID,
+                "status": "FAIL_CLOSED",
+                "source_status": "SOURCE_UNAVAILABLE",
+                "last_source_attempt_utc": attempted,
+                "error": f"{type(exc).__name__}:{exc}",
+                "authenticated_exchange_api_used": False,
+                "order_created": False,
+                "exchange_mutation_performed": False,
+                "live_capital_enabled": False,
+            }
+        return self._run_with_observations(
+            previous=previous,
+            current=current,
+            now_ms=now_ms,
+            source_binding="LIVE_PUBLIC_CFTC_FETCH",
+            source_observed_at_utc=attempted,
+        )
