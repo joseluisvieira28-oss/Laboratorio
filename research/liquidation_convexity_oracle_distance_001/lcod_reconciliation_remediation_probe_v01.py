@@ -6,7 +6,10 @@ from pathlib import Path
 from eth_utils import keccak
 
 URL="https://mcp.aave.com/"
-ETH_RPC="https://eth-mainnet.public.blastapi.io"
+CHAIN_RPCS={
+  1:"https://eth-mainnet.public.blastapi.io",
+  43114:"https://api.avax.network/ext/bc/C/rpc",
+}
 OUT=Path("artifacts/lcod_reconciliation_remediation_probe_v01.json")
 GROUP=set("4567")
 TOL=5e-5
@@ -100,21 +103,23 @@ def decode_reserve_id(rid):
     chain,spoke,numeric=raw.split("::")
     return int(chain),spoke.lower(),int(numeric)
 
-def eth_call(to,data):
-    x=http_post(ETH_RPC,{"jsonrpc":"2.0","id":1,"method":"eth_call","params":[{"to":to,"data":"0x"+data.hex()},"latest"]})
+def chain_call(chain_id,to,data):
+    url=CHAIN_RPCS.get(chain_id)
+    if not url:raise RuntimeError(f"UNSUPPORTED_CHAIN:{chain_id}")
+    x=http_post(url,{"jsonrpc":"2.0","id":1,"method":"eth_call","params":[{"to":to,"data":"0x"+data.hex()},"latest"]})
     if x.get("error"):raise RuntimeError(x["error"])
     v=x.get("result")
     if not isinstance(v,str) or not v.startswith("0x"):raise RuntimeError("INVALID_ETH_CALL")
     return bytes.fromhex(v[2:])
 
-def dynamic_cf_bps(spoke,rid_num,user):
+def dynamic_cf_bps(chain_id,spoke,rid_num,user):
     addr=bytes.fromhex(user[2:])
     d1=SEL_GET_USER_POSITION + rid_num.to_bytes(32,"big") + b"\x00"*12 + addr
-    raw=eth_call(spoke,d1)
+    raw=chain_call(chain_id,spoke,d1)
     if len(raw)<160:raise RuntimeError("SHORT_USER_POSITION_RETURN")
     key=int.from_bytes(raw[128:160],"big")
     d2=SEL_GET_DYNAMIC_CONFIG + rid_num.to_bytes(32,"big") + key.to_bytes(32,"big")
-    cfg=eth_call(spoke,d2)
+    cfg=chain_call(chain_id,spoke,d2)
     if len(cfg)<96:raise RuntimeError("SHORT_DYNAMIC_CONFIG_RETURN")
     return key,int.from_bytes(cfg[0:32],"big")
 
@@ -189,9 +194,10 @@ for w in selected:
                 if amount is None or price is None or cf is None:raise RuntimeError("FRESH_SUPPLY_FIELD_MISSING")
                 cap1+=amount*price*(cf/100.0)
                 ch,spoke_from_rid,rn=decode_reserve_id(rid)
-                if ch!=1 or chain_id!=1:raise RuntimeError(f"NON_ETHEREUM_CHAIN:{ch}:{chain_id}")
+                if ch!=chain_id:raise RuntimeError(f"CHAIN_ID_MISMATCH:{ch}:{chain_id}")
+                if ch not in CHAIN_RPCS:raise RuntimeError(f"UNSUPPORTED_CHAIN:{ch}")
                 if spoke_addr and spoke_from_rid!=spoke_addr:raise RuntimeError("SPOKE_ADDRESS_MISMATCH")
-                key,dyn_cf=dynamic_cf_bps(spoke_from_rid,rn,w)
+                key,dyn_cf=dynamic_cf_bps(ch,spoke_from_rid,rn,w)
                 cap2+=amount*price*(dyn_cf/10000.0);dyn_legs+=1
                 if abs(dyn_cf/100.0-cf)>1e-12:changed+=1
             for it in bs:
