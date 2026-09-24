@@ -1,0 +1,25 @@
+name: BINANCE-COLLATERAL-HAIRCUT-001 Source Gate V0.1C
+on:
+  push:
+    branches: [binance-collateral-haircut-v0.1]
+    paths: ['Dream-Account-OS-v2.3-PARTIAL/research/BINANCE_COLLATERAL_HAIRCUT_001_SOURCE_V01C_TRIGGER.txt']
+permissions: {contents: write}
+jobs:
+  gate:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: binance-collateral-haircut-v0.1}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: pip install -q requests
+      - run: python Dream-Account-OS-v2.3-PARTIAL/research/binance_collateral_haircut_001_manifest_gate_v01c.py
+      - if: always()
+        run: |
+          git config user.name "crypto-lab-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add Dream-Account-OS-v2.3-PARTIAL/runtime/binance_collateral_haircut_001/source_manifest_receipt_v01c.json || true
+          git diff --cached --quiet && exit 0
+          git commit -m "research: record collateral haircut source gate V0.1C"
+          git push origin HEAD:binance-collateral-haircut-v0.1
