@@ -86,7 +86,7 @@ async def deribit_subscribe(name,channel,mode):
 
 async def main():
     await asyncio.gather(
-      collect_binance("binance_spot","wss://stream.binance.com:9443/ws/btcusdt@aggTrade"),
+      collect_binance("binance_spot","wss://data-stream.binance.vision/ws/btcusdt@aggTrade"),
       collect_binance("binance_perp","wss://fstream.binance.com/ws/btcusdt@aggTrade"),
       deribit_subscribe("deribit_perp","trades.BTC-PERPETUAL.100ms","trades"),
       deribit_subscribe("deribit_options","markprice.options.btc_usd","options"),
