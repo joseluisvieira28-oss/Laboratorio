@@ -1,0 +1,31 @@
+name: Absorption Failed Auction V0.1 freeze audit
+on:
+  push:
+    branches: [absorption-failed-auction-v0.1]
+  pull_request:
+    paths:
+      - "absorption_failed_auction/**"
+      - ".github/workflows/absorption-failed-auction-freeze.yml"
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: python -m unittest absorption_failed_auction/test_engine.py
+      - name: Outcome-blind freeze guard
+        shell: python
+        run: |
+          from pathlib import Path
+          e=Path("absorption_failed_auction/engine.py").read_text()
+          p=Path("absorption_failed_auction/PROTOCOL_V0.1.md").read_text()
+          assert 'Real-outcome loader intentionally not enabled' in e
+          assert 'required_parent_state": "PASS_STRONG"' in Path("absorption_failed_auction/FREEZE.json").read_text()
+          for s in ["q90","q30","q70","288","100","30","95%"]:
+              assert s in p
+          for forbidden in ["strategy.","create_order(","place_order(","ccxt","MEXC"]:
+              assert forbidden not in e
+          print("PASS: outcome loader closed; science frozen")
