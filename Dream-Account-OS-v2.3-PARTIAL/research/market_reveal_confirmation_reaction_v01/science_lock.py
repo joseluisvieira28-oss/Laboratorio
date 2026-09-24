@@ -52,7 +52,7 @@ def evaluate_science_lock(
         violations.append("CROSS_VENUE_MERGE_POLICY_CHANGED")
 
     state = protocol.get("decision_state") or {}
-    for field in ("anchor_definition", "decision_clock_seconds"):
+    for field in ("anchor_definition", "decision_clock_seconds", "availability_rule"):
         if _is_populated(state.get(field)):
             violations.append(f"{field.upper()}_PRESELECTED")
     depth = state.get("depth_definition") or {}
