@@ -24,10 +24,32 @@ def canonical_book_time_ns(update: CanonicalBookUpdate) -> int:
 def batch_time_ns(batch: Sequence[CanonicalBookUpdate]) -> int:
     if not batch:
         raise ValueError("book update batch is empty")
-    times = {canonical_book_time_ns(row) for row in batch}
-    if len(times) != 1:
-        raise ValueError("book update batch has mixed source timestamps")
-    return next(iter(times))
+
+    venues = {row.venue for row in batch}
+    symbols = {row.native_symbol for row in batch}
+    sequences = {(row.sequence_first, row.sequence_last) for row in batch}
+    if len(venues) != 1:
+        raise ValueError("book update batch has mixed venues")
+    if len(symbols) != 1:
+        raise ValueError("book update batch has mixed symbols")
+    if len(sequences) != 1:
+        raise ValueError("book update batch has mixed sequence identifiers")
+
+    times = [canonical_book_time_ns(row) for row in batch]
+    venue = batch[0].venue
+
+    if venue == "BINANCE_SPOT":
+        if len(set(times)) != 1:
+            raise ValueError("Binance depth event has mixed source timestamps")
+        return times[0]
+
+    if venue == "COINBASE_ADVANCED_SPOT":
+        # One level2 message can carry multiple price-level updates. The resulting
+        # post-batch book state cannot exist before the latest engine timestamp
+        # represented inside that message.
+        return max(times)
+
+    raise ValueError(f"unsupported venue: {venue}")
 
 
 def initial_observation(
