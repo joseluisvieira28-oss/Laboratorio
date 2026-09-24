@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from __future__ import annotations
-import hashlib,json,urllib.request
+import hashlib,json,urllib.request,urllib.error,time
 from datetime import datetime,timezone
 from pathlib import Path
 
@@ -30,10 +30,20 @@ TOPIC_RECEIVED="0x58200b4c34ae05ee816d710053fff3fb75af4395915d3d2a771b24aa10e3cc
 TOPIC_MINT="0x1b2a7ff080b8cb6ff436ce0372e399692bbfb6d4ae5766fd8d58a7b8cc6142e6"
 
 def post(url,payload,timeout=60):
-    req=urllib.request.Request(url,data=json.dumps(payload).encode(),headers={
-      "Content-Type":"application/json","Accept":"application/json","User-Agent":"CryptoLab-CCLM-SETTLED-002/0.1"
-    },method="POST")
-    with urllib.request.urlopen(req,timeout=timeout) as r:return r.read()
+    raw=json.dumps(payload).encode()
+    last=None
+    for attempt in range(5):
+        try:
+            req=urllib.request.Request(url,data=raw,headers={
+              "Content-Type":"application/json","Accept":"application/json","User-Agent":"CryptoLab-CCLM-SETTLED-002/0.1"
+            },method="POST")
+            with urllib.request.urlopen(req,timeout=timeout) as r:
+                return r.read()
+        except (urllib.error.HTTPError,urllib.error.URLError,TimeoutError) as e:
+            last=e
+            if attempt==4: raise
+            time.sleep(2.0*(attempt+1))
+    raise last
 
 def rpc(url,method,params,timeout=45):
     x=json.loads(post(url,{"jsonrpc":"2.0","id":1,"method":method,"params":params},timeout).decode())
