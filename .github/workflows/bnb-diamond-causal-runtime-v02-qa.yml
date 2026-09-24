@@ -1,0 +1,67 @@
+name: BNB Diamond Causal Runtime V0.2 QA
+
+on:
+  pull_request:
+    branches:
+      - crypto-edge-radar-postgres-v0.5
+    paths:
+      - "crypto_edge_radar/radar/bnb_launchpool_diamond_v02.py"
+      - "crypto_edge_radar/radar/bnb_launchpool_watcher.py"
+      - "crypto_edge_radar/radar/diamond_board.py"
+      - "crypto_edge_radar/radar/forward_web.py"
+      - "crypto_edge_radar/tests/test_bnb_launchpool_diamond_v02.py"
+      - "crypto_edge_radar/tests/test_bnb_launchpool_watcher.py"
+      - "crypto_edge_radar/tests/test_bnb_launchpool_market_binding.py"
+      - "governance/BNB_LAUNCHPOOL_DIAMOND_CAUSAL_RUNTIME_V0.2_2026-09-24.md"
+      - ".github/workflows/bnb-diamond-causal-runtime-v02-qa.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Compile
+        run: |
+          cd crypto_edge_radar
+          python -m compileall radar tests
+
+      - name: BNB Diamond deterministic tests
+        run: |
+          cd crypto_edge_radar
+          python -m unittest discover -s tests -p 'test_bnb_launchpool_diamond_v02.py' -v
+          python -m unittest discover -s tests -p 'test_bnb_launchpool_watcher.py' -v
+          python -m unittest discover -s tests -p 'test_bnb_launchpool_market_binding.py' -v
+          python -m unittest discover -s tests -p 'test_diamond_board.py' -v
+
+      - name: Feature gate and safety guard
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          w = Path("crypto_edge_radar/radar/forward_web.py").read_text(encoding="utf-8")
+          m = Path("crypto_edge_radar/radar/bnb_launchpool_diamond_v02.py").read_text(encoding="utf-8")
+          assert 'BNB_DIAMOND_V02_ENABLED' in w
+          assert 'os.getenv("BNB_DIAMOND_V02_ENABLED", "").lower() == "true"' in w
+          assert '"automatic_promotion": False' in m
+          assert '"live_trading_authorized": False' in m
+          assert '"orders_created": False' in m
+          assert '"exchange_mutation_performed": False' in m
+          for forbidden in (
+              "create_market_order",
+              "create_limit_order",
+              "place_order",
+              "set_leverage(",
+              "withdraw(",
+          ):
+              if forbidden in m.lower():
+                  raise SystemExit(f"forbidden capability: {forbidden}")
+          print("PASS: BNB Diamond measurement remains feature-gated and read-only")
+          PY
