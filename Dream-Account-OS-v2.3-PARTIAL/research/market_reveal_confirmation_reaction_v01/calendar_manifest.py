@@ -26,6 +26,13 @@ def manifest_sha256(manifest: Mapping[str, Any]) -> str:
     return hashlib.sha256(canonical_json_bytes(clean)).hexdigest()
 
 
+def _missing_required(mapping: Mapping[str, Any], field: str) -> bool:
+    if field not in mapping:
+        return True
+    value = mapping[field]
+    return value is None or value == ""
+
+
 def validate_calendar_manifest(manifest: Mapping[str, Any]) -> tuple[bool, tuple[str, ...]]:
     blockers: list[str] = []
 
@@ -49,7 +56,7 @@ def validate_calendar_manifest(manifest: Mapping[str, Any]) -> tuple[bool, tuple
                 blockers.append(f"SOURCE_{index}_INVALID")
                 continue
             for field in ("authority", "source_url", "retrieved_at_utc"):
-                if not source.get(field):
+                if _missing_required(source, field):
                     blockers.append(f"SOURCE_{index}_{field.upper()}_MISSING")
 
     events = manifest.get("events")
@@ -67,12 +74,18 @@ def validate_calendar_manifest(manifest: Mapping[str, Any]) -> tuple[bool, tuple
                 "scheduled_time_utc",
                 "official_source_ref",
             ):
-                if not event.get(field):
+                if _missing_required(event, field):
                     blockers.append(f"EVENT_{index}_{field.upper()}_MISSING")
             event_id = event.get("event_id")
             if event_id in identities:
                 blockers.append("DUPLICATE_EVENT_ID")
             identities.add(event_id)
+
+            source_ref = event.get("official_source_ref")
+            if isinstance(source_ref, bool) or not isinstance(source_ref, int):
+                blockers.append(f"EVENT_{index}_OFFICIAL_SOURCE_REF_INVALID")
+            elif isinstance(sources, list) and not (0 <= source_ref < len(sources)):
+                blockers.append(f"EVENT_{index}_OFFICIAL_SOURCE_REF_OUT_OF_RANGE")
 
     if manifest.get("complete_official_calendar") is not True:
         blockers.append("COMPLETE_OFFICIAL_CALENDAR_FALSE")
