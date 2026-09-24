@@ -126,7 +126,7 @@ async def run_collector(
     inserted_messages = 0
     deduped_messages = 0
     sequence_anomaly = False
-    previous_l2_sequence: int | None = None
+    previous_ws_sequence: int | None = None
     error_class: str | None = None
     close_code: int | None = None
 
@@ -198,25 +198,23 @@ async def run_collector(
                 else:
                     deduped_messages += 1
 
+                if sequence_num is None:
+                    sequence_anomaly = True
+                    raise RuntimeError("websocket message missing integer sequence_num")
+                if (
+                    previous_ws_sequence is not None
+                    and sequence_num != previous_ws_sequence + 1
+                ):
+                    sequence_anomaly = True
+                    raise RuntimeError("websocket sequence discontinuity detected")
+                previous_ws_sequence = sequence_num
+
                 if channel == "subscriptions":
                     subscription_ack = True
                     continue
 
                 if channel not in {"l2_data", "level2"}:
                     continue
-
-                if sequence_num is not None:
-                    if (
-                        previous_l2_sequence is not None
-                        and sequence_num > previous_l2_sequence + 1
-                    ):
-                        sequence_anomaly = True
-                        raise RuntimeError("level2 sequence gap detected")
-                    if (
-                        previous_l2_sequence is None
-                        or sequence_num > previous_l2_sequence
-                    ):
-                        previous_l2_sequence = sequence_num
 
                 for event in msg.get("events", []):
                     if not isinstance(event, dict):
