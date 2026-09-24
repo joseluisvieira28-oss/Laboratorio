@@ -65,6 +65,36 @@ class DecisionBoundaryTests(unittest.TestCase):
             1_000_000_000,
         )
 
+    def test_rfc3339_preserves_all_nine_fractional_digits(self):
+        self.assertEqual(
+            rfc3339_to_ns("1970-01-01T00:00:01.123456789Z"),
+            1_123_456_789,
+        )
+
+    def test_rfc3339_offset_is_exact(self):
+        self.assertEqual(
+            rfc3339_to_ns("1970-01-01T01:00:01.000000001+01:00"),
+            1_000_000_001,
+        )
+        self.assertEqual(
+            rfc3339_to_ns("1969-12-31T19:00:01.000000001-05:00"),
+            1_000_000_001,
+        )
+
+    def test_one_nanosecond_after_decision_is_future(self):
+        decision = rfc3339_to_ns("2026-09-24T17:00:00.123456788Z")
+        future = rfc3339_to_ns("2026-09-24T17:00:00.123456789Z")
+        with self.assertRaises(ValueError):
+            assert_no_future(
+                [Row(future, "future")],
+                timestamp_ns=lambda item: item.ts,
+                decision_ns=decision,
+            )
+
+    def test_invalid_fraction_beyond_nanoseconds_rejected(self):
+        with self.assertRaises(ValueError):
+            rfc3339_to_ns("2026-01-01T00:00:00.1234567890Z")
+
     def test_hash_is_deterministic_and_tamper_evident(self):
         a = raw_sha256(b'{"x":1}')
         b = raw_sha256(b'{"x":1}')
