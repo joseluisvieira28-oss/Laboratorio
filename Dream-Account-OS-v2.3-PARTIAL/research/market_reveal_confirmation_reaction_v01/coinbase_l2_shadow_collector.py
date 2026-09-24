@@ -139,7 +139,7 @@ async def run_collector(
             open_timeout=8,
             close_timeout=2,
             ping_interval=20,
-            max_size=4_000_000,
+            max_size=16_000_000,
         ) as ws:
             transport = "PASS"
 
