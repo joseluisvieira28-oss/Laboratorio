@@ -76,6 +76,7 @@ def main() -> int:
         "persisted_message_count": chain.message_count,
         "chain_head_sha256": chain.chain_head_sha256,
         "recovery_pass": recovery.ok,
+        "recovery_failure_reason": recovery.failure_reason,
         "snapshot_count": recovery.snapshot_count,
         "update_message_count": recovery.update_message_count,
         "recovered_final_sequence": recovery.final_sequence,
