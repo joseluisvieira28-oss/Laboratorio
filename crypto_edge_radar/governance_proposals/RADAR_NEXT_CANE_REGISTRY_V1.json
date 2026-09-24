@@ -1,0 +1,120 @@
+{
+  "registry_id": "RADAR_NEXT_CANE_REGISTRY_V1",
+  "policy_id": "RADAR-AGGRESSIVE-INTAKE-V1.0-FROZEN-2026-09-24",
+  "date": "2026-09-24",
+  "status": "FROZEN_PROSPECTIVE_QUEUE",
+  "current_canonical_cloud_registry": {
+    "version": "3.6",
+    "motor_count": 7,
+    "note": "Current cloud runtime before CIRV integration remains the 7-motor canonical service."
+  },
+  "next_canes": [
+    {
+      "rank": 1,
+      "candidate_id": "CIRV-HAR-DOW-BTCETH-001",
+      "class": "RADAR_INTAKE_READY",
+      "intake_action": "ADD_AS_EIGHTH_FORECAST_SHADOW_MOTOR",
+      "validated_package": {
+        "build": "v0.14.4-win-cirv-eight-motor",
+        "registry": "3.7",
+        "motor_count": 8,
+        "ci": "PASS",
+        "targeted_tests": "54/54 PASS",
+        "full_regression": "252/252 PASS"
+      },
+      "scientific_state": "L5_REPLICATED_OOS__M6_PROSPECTIVE_SHADOW",
+      "economic_trading_edge": false,
+      "micro_live_policy_eligible": false,
+      "reason_not_micro_live": "Forecast mechanism is validated, but the frozen Spot vol-target economic translation failed Discovery. Radar role is forecast-only."
+    },
+    {
+      "rank": 2,
+      "candidate_id": "USOPEN-SHORTVOL-FWD-001",
+      "parent_id": "USOPEN-PERSIST-001",
+      "class": "RADAR_FISHING_QUEUE",
+      "scientific_state": "PARENT_M5_OOS_HOLDOUT_SURVIVES__FORWARD_ECONOMIC_CAPTURE_INCOMPLETE",
+      "current_blocker": "FROZEN_FORWARD_ECONOMIC_SAMPLE_INCOMPLETE",
+      "missed_event_policy": "2026-09-24 ENTRY miss is immutable; no reconstruction/no chase",
+      "micro_live_policy_on_future_tier2": "AUTO_ELIGIBLE_FOR_CANDIDATE_SPECIFIC_REVIEW"
+    },
+    {
+      "rank": 3,
+      "candidate_id": "LIQUIDATION-PRESSURE-002-FORWARD",
+      "class": "RADAR_FISHING_QUEUE",
+      "scientific_state": "PROSPECTIVE_SOURCE_CALIBRATION",
+      "current_blocker": "CALIBRATION_AND_ECONOMIC_ADJUDICATION_INCOMPLETE",
+      "micro_live_policy_on_future_tier2": "AUTO_ELIGIBLE_FOR_CANDIDATE_SPECIFIC_REVIEW"
+    },
+    {
+      "rank": 4,
+      "candidate_id": "AMM-LVR-CROSSVENUE-001",
+      "class": "RADAR_FISHING_QUEUE",
+      "scientific_state": "FORWARD_EVIDENCE_ACTIVE__NOT_OPEN",
+      "current_observation": "NO_POSITIVE_PREINCLUSION_HEADROOM_IN_CURRENT_SAMPLE",
+      "current_blocker": "ECONOMIC_SURVIVAL_NOT_ESTABLISHED",
+      "micro_live_policy_on_future_tier2": "AUTO_ELIGIBLE_FOR_CANDIDATE_SPECIFIC_REVIEW"
+    },
+    {
+      "rank": 5,
+      "candidate_id": "AAVE-HF-CROWDING-001",
+      "class": "RADAR_FISHING_QUEUE",
+      "scientific_state": "M2_SOURCE__CALIBRATION_ACTIVE",
+      "current_blocker": "FROZEN_MINIMUM_SNAPSHOTS_AND_PREDICTOR_ECONOMIC_ADJUDICATION_INCOMPLETE",
+      "micro_live_policy_on_future_tier2": "AUTO_ELIGIBLE_FOR_CANDIDATE_SPECIFIC_REVIEW"
+    },
+    {
+      "rank": 6,
+      "candidate_id": "DEFI-LIQUIDATION-SHOCK-001",
+      "class": "RADAR_FISHING_QUEUE_SOURCE_STAGE",
+      "scientific_state": "SOURCE_EVENT_RECONSTRUCTION",
+      "current_blocker": "NO_ECONOMIC_EDGE_VERDICT",
+      "micro_live_policy_on_future_tier2": "AUTO_ELIGIBLE_FOR_CANDIDATE_SPECIFIC_REVIEW"
+    },
+    {
+      "rank": 7,
+      "candidate_id": "LIQUIDATION-CONVEXITY-ORACLE-DISTANCE-001",
+      "class": "RADAR_FISHING_QUEUE_SOURCE_STAGE",
+      "scientific_state": "M2_SOURCE__FORWARD_COMPONENT_SOURCE_RECONCILIATION_PASS",
+      "current_blocker": "HISTORICAL_RECONSTRUCTION_AND_ECONOMIC_ADJUDICATION_UNPROVEN",
+      "micro_live_policy_on_future_tier2": "AUTO_ELIGIBLE_FOR_CANDIDATE_SPECIFIC_REVIEW"
+    }
+  ],
+  "terminal_exclusions": [
+    {
+      "candidate_id": "MSEL-002",
+      "reason": "DISCOVERY_NO_EDGE_FOR_FROZEN_MIGRATION_MECHANISM"
+    },
+    {
+      "candidate_id": "PMD-001",
+      "reason": "NO_EDGE_PROMOTION_FAIL_EXACT_TESTED_PATH"
+    },
+    {
+      "candidate_id": "AAVE-LIQUIDATION-OVERHANG-001",
+      "reason": "REPLICATION_NO_SIGNAL_CLOSED_NO_RESCUE"
+    },
+    {
+      "candidate_id": "CIRV-VOLTARGET-BTCETH-SPOT-001",
+      "reason": "DISCOVERY_FAIL_NO_PROMOTION_EXACT_ECONOMIC_TRANSLATION"
+    }
+  ],
+  "automatic_future_rule": {
+    "trigger": "LEGITIMATE_TIER2_REACHED_UNDER_FROZEN_SCIENCE",
+    "action": "MICRO_LIVE_POLICY_ELIGIBLE",
+    "repeat_historical_discovery_or_oos": false,
+    "generic_extra_wait_allowed": false,
+    "still_required": [
+      "candidate-specific execution mapping",
+      "candidate-specific execution amendment",
+      "current canonical signal",
+      "source freshness",
+      "market freshness",
+      "account freshness",
+      "hard firewall PASS",
+      "exactly-once executor"
+    ]
+  },
+  "live_transport_enabled": false,
+  "capital_enabled": false,
+  "orders_created": false,
+  "main_merge_authorized": false
+}
