@@ -14,6 +14,9 @@ CODE_FILES = [
     MODULE_DIR / "book_replay.py",
     MODULE_DIR / "pretarget_gate.py",
     MODULE_DIR / "state_receipt.py",
+    MODULE_DIR / "freeze_manifest.py",
+    MODULE_DIR / "calendar_manifest.py",
+    MODULE_DIR / "freeze_candidate_check.py",
 ]
 
 PROBE_FILE = MODULE_DIR / "coinbase_level2_local_probe.py"
