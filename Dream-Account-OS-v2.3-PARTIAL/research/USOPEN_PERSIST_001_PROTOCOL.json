@@ -1,0 +1,95 @@
+{
+  "lab_id": "USOPEN-PERSIST-001",
+  "title": "U.S. Cash Open Volatility Persistence — 2025 OOS",
+  "freeze_date": "2026-09-24",
+  "status": "PRE_OOS_FROZEN",
+  "governance": "CRYPTO-LAB-GOVERNANCE-V4.0-DEATH-FROZEN",
+  "primary_family": "VOL",
+  "secondary_family": "MICRO",
+  "parent_observation": "USOPEN-VOL-002 2024 exact replication failed OPEN/POST while OPEN/PRE remained ~2x; this generated persistence hypothesis, so 2024 is contaminated and cannot validate this lab.",
+  "source": {
+    "provider": "Binance Data Vision",
+    "market": "USD-M Futures",
+    "dataset": "monthly 5m klines",
+    "symbols": [
+      "BTCUSDT",
+      "ETHUSDT",
+      "SOLUSDT",
+      "BNBUSDT",
+      "XRPUSDT",
+      "DOGEUSDT"
+    ],
+    "oos": "2025-01-01T00:00:00Z/2025-12-31T23:59:59Z",
+    "protected": [
+      "2026"
+    ]
+  },
+  "clock": {
+    "timezone": "America/New_York",
+    "eligible_days": "regular U.S. cash-market weekdays excluding full-day NYSE closures",
+    "pre": [
+      "09:00",
+      "09:30"
+    ],
+    "open": [
+      "09:30",
+      "10:00"
+    ],
+    "persist": [
+      "10:00",
+      "10:30"
+    ],
+    "decay_diagnostic": [
+      "10:30",
+      "11:00"
+    ],
+    "bars_per_window": 6,
+    "dst": "IANA America/New_York"
+  },
+  "realized_variance": {
+    "sampling": "5m close-to-close log returns",
+    "definition": "sum squared log returns over exactly six consecutive 5m bars",
+    "ratio_epsilon_policy": "exclude symbol-days with any zero/nonpositive gated-window RV; exclusions recorded"
+  },
+  "oos_gate": {
+    "minimum_symbol_days": 1400,
+    "open_pre_anchor": {
+      "pooled_median_ratio_gte": 1.2,
+      "date_cluster_bootstrap_lower95_ratio_gt": 1.05
+    },
+    "persist_pre_primary": {
+      "pooled_median_ratio_gte": 1.2,
+      "date_cluster_bootstrap_lower95_ratio_gt": 1.05,
+      "symbols_median_gt_1_10_min": 4
+    },
+    "bootstrap": {
+      "unit": "U.S. trading date with all symbols preserved",
+      "statistic": "median log ratio, exponentiated",
+      "reps": 5000,
+      "seed_open_pre": 20260928,
+      "seed_persist_pre": 20260929,
+      "seed_persist_open": 20260930
+    },
+    "on_pass": "OOS_2025_PERSISTENCE_SURVIVES",
+    "on_fail": "OOS_2025_PERSISTENCE_FAILS or INSUFFICIENT_SAMPLE"
+  },
+  "diagnostics_only": [
+    "PERSIST/OPEN pooled median and bootstrap",
+    "per-symbol OPEN/PRE and PERSIST/PRE",
+    "volume PERSIST/PRE",
+    "10:30-11:00 ET DECAY/PRE"
+  ],
+  "forbidden": [
+    "use 2024 as validation",
+    "open 2026",
+    "window tuning",
+    "threshold tuning after outcomes",
+    "asset selection",
+    "macro-day exclusion after outcomes",
+    "directional PnL",
+    "filters",
+    "live trading",
+    "exchange mutation",
+    "merge to main"
+  ]
+}
