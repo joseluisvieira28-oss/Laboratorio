@@ -1,0 +1,49 @@
+name: ETF-CME Prearm Transport Hardening V0.3 QA
+
+on:
+  push:
+    branches:
+      - etf-cme-prearm-transport-hardening-v0.3-2026-09-24
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile
+        run: |
+          cd crypto_edge_radar
+          python -m compileall radar tests
+      - name: ETF source and exact scheduler tests
+        run: |
+          cd crypto_edge_radar
+          python -m unittest -v             tests.test_etf_cme_source             tests.test_etf_cme_exact_scheduler             tests.test_etf_cme_exact_scheduler_integration
+      - name: Frozen scientific constants guard
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path("crypto_edge_radar/radar/strategies/etf_cme_instflow_001.py").read_text()
+          required=[
+              'CFTC_CONTRACT_CODE = "133741"',
+              'INFORMATION_LAG_DAYS = 8',
+              'HOLD_DAYS = 7',
+              'BASE_COST_BPS_ROUND_TRIP = 10',
+              'STRESS_COST_BPS_ROUND_TRIP = 20',
+          ]
+          for x in required:
+              assert x in p, x
+          s=Path("crypto_edge_radar/radar/etf_cme_exact_scheduler.py").read_text()
+          assert 'BOUNDARY_AS_OF_DATE = "2026-09-15"' in s
+          assert 'PREARMED_PUBLIC_CFTC_SNAPSHOT' in s
+          assert 'late_chase_allowed=False' in s
+          print("FROZEN_CONSTANTS_AND_NO_CHASE_GUARD_PASS")
+          PY
