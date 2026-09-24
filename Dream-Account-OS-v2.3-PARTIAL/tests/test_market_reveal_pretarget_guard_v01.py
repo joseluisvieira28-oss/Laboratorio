@@ -11,6 +11,7 @@ CODE_FILES = [
     MODULE_DIR / "decision_boundary.py",
     MODULE_DIR / "order_book.py",
     MODULE_DIR / "state_reconstruction.py",
+    MODULE_DIR / "book_replay.py",
 ]
 
 PROBE_FILE = MODULE_DIR / "coinbase_level2_local_probe.py"
