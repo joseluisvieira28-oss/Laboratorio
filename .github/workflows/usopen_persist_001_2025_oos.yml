@@ -1,0 +1,38 @@
+name: USOPEN-PERSIST-001 2025 OOS
+
+on:
+  push:
+    branches:
+      - us-open-persistence-2025-v0.1
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/USOPEN_PERSIST_001_RUN_TRIGGER.txt'
+
+permissions:
+  contents: write
+
+jobs:
+  oos:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 40
+    steps:
+      - name: Restore Git CA trust
+        run: |
+          test -f /etc/ssl/certs/ca-certificates.crt
+          git config --global http.sslCAInfo /etc/ssl/certs/ca-certificates.crt
+          git config --global http.sslVerify true
+      - uses: actions/checkout@v4
+        with:
+          ref: us-open-persistence-2025-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Run frozen 2025 OOS persistence test
+        run: python Dream-Account-OS-v2.3-PARTIAL/research/us_open_persistence_2025_v01.py
+      - name: Commit immutable receipt
+        run: |
+          git config user.name "crypto-lab-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add Dream-Account-OS-v2.3-PARTIAL/runtime/usopen_persist_001_2025_oos_receipt.json
+          git diff --cached --quiet && exit 0
+          git commit -m "research: record USOPEN-PERSIST-001 2025 OOS receipt"
+          git push origin HEAD:us-open-persistence-2025-v0.1
