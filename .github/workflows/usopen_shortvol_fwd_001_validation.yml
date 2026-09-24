@@ -1,0 +1,35 @@
+name: USOPEN-SHORTVOL-FWD-001 Collector Validation
+
+on:
+  push:
+    branches:
+      - us-open-shortvol-forward-v0.1
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/USOPEN_SHORTVOL_FWD_001_VALIDATE_TRIGGER.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: us-open-shortvol-forward-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compile
+        run: python -m py_compile Dream-Account-OS-v2.3-PARTIAL/research/us_open_shortvol_fwd_001_collector.py
+      - name: Static firewall
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          s=Path("Dream-Account-OS-v2.3-PARTIAL/research/us_open_shortvol_fwd_001_collector.py").read_text()
+          forbidden=["private/","private_","place_order","cancel_order","client_id","client_secret","access_token"]
+          bad=[x for x in forbidden if x in s]
+          print("forbidden_hits=",bad)
+          if bad: raise SystemExit(2)
+          PY
