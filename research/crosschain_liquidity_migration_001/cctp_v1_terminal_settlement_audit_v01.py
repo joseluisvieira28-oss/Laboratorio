@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from __future__ import annotations
-import hashlib,json,urllib.request
+import hashlib,json,urllib.request,urllib.error,time
 from datetime import datetime,timezone
 from pathlib import Path
 from cctp_v1_message import decode_single_dynamic_bytes_abi,parse_cctp_message_v1
@@ -23,8 +23,16 @@ S1=int(datetime(2023,8,21,tzinfo=timezone.utc).timestamp())-1
 CUT=int(datetime(2025,1,1,tzinfo=timezone.utc).timestamp())-1
 
 def post(url,payload,timeout=90):
-    req=urllib.request.Request(url,data=json.dumps(payload).encode(),headers={"Content-Type":"application/json","Accept":"application/json","User-Agent":"CryptoLab-CCLM-001-Terminal/0.1"},method="POST")
-    with urllib.request.urlopen(req,timeout=timeout) as r:return r.read()
+    raw=json.dumps(payload).encode();last=None
+    for attempt in range(5):
+        try:
+            req=urllib.request.Request(url,data=raw,headers={"Content-Type":"application/json","Accept":"application/json","User-Agent":"CryptoLab-CCLM-001-Terminal/0.1"},method="POST")
+            with urllib.request.urlopen(req,timeout=timeout) as r:return r.read()
+        except (urllib.error.HTTPError,urllib.error.URLError,TimeoutError) as e:
+            last=e
+            if attempt==4: raise
+            time.sleep(2.0*(attempt+1))
+    raise last
 
 def rpc(url,method,params):
     obj=json.loads(post(url,{"jsonrpc":"2.0","id":1,"method":method,"params":params},60).decode())
