@@ -156,7 +156,7 @@ receipt = {
     "lab_id": "CROSSCHAIN-LIQUIDITY-MIGRATION-001",
     "child_id": "CCLM-CCTP-USDC-001",
     "stage": "CCTP_V1_HISTORICAL_SOURCE_SMOKE",
-    "window": {"start": "2023-08-20T00:00:00Z", "end": "2023-08-20T23:59:59Z"},
+    "window": {"source_start": "2023-08-20T00:00:00Z", "source_end": "2023-08-20T23:59:59Z", "destination_pair_end": "2023-08-22T23:59:59Z"},
     "market_outcomes_opened": False,
     "pnl_opened": False,
     "mutation": False,
