@@ -125,7 +125,7 @@ else:
             holder_queries+=1
             wallets.extend(address_list(h))
         except Exception as e:
-            holder_errors.append(type(e).__name__)
+            holder_errors.append(f"{type(e).__name__}:{str(e)[:240]}")
     wallets=list(dict.fromkeys(wallets))[:6]
     receipt["holder_queries"]=holder_queries
     receipt["holder_query_error_types"]=holder_errors
