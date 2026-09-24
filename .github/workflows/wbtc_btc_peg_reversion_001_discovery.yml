@@ -1,0 +1,31 @@
+name: WBTC-BTC-PEG-REVERSION-001 Discovery
+on:
+  push:
+    branches: [wbtc-btc-peg-reversion-v0.1]
+    paths: ['Dream-Account-OS-v2.3-PARTIAL/research/WBTC_BTC_PEG_REVERSION_001_DISCOVERY_TRIGGER.txt']
+permissions: {contents: write}
+jobs:
+  discovery:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: wbtc-btc-peg-reversion-v0.1}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - name: Verify source gate
+        run: |
+          python - <<'PY'
+          import json
+          p="Dream-Account-OS-v2.3-PARTIAL/runtime/wbtc_btc_peg_reversion_001_source_receipt.json"
+          d=json.load(open(p)); assert d["classification"]=="WBTCBTC_1H_SOURCE_COVERAGE_PASS"
+          assert not d["price_values_opened"] and not d["protected_2024_outcomes_opened"]
+          PY
+      - run: python Dream-Account-OS-v2.3-PARTIAL/research/wbtc_btc_peg_reversion_001_discovery.py
+      - run: |
+          git config user.name "crypto-lab-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add Dream-Account-OS-v2.3-PARTIAL/runtime/wbtc_btc_peg_reversion_001_discovery_receipt.json
+          git diff --cached --quiet && exit 0
+          git commit -m "research: record WBTC-BTC 2022-23 Discovery receipt"
+          git push origin HEAD:wbtc-btc-peg-reversion-v0.1
