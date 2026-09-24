@@ -135,6 +135,7 @@ async def run_collector(
     try:
         async with websockets.connect(
             WS_URL,
+            proxy=None,
             open_timeout=8,
             close_timeout=2,
             ping_interval=20,
@@ -275,6 +276,7 @@ async def run_collector(
         "collector": COLLECTOR_VERSION,
         "session_id": session_id,
         "transport_fixture_product": product,
+        "websocket_proxy_mode": "DIRECT_NO_PROXY",
         "transport_fixture_is_scientific_target": False,
         "transport": transport,
         "subscription_ack": subscription_ack,
