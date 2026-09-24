@@ -8,7 +8,7 @@ from pathlib import Path
 CHAINS = {
     0: {
         "name": "Ethereum",
-        "rpc": "https://ethereum-rpc.publicnode.com",
+        "rpc": "https://eth-mainnet.public.blastapi.io",
         "message_transmitter": "0x0a992d191deec32afe36203ad87d7d289a738f81",
         "token_messenger": "0xbd3fa81b58ba92a82136038b25adec7066af3155",
     },
