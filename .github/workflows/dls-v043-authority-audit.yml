@@ -1,0 +1,65 @@
+name: DLS V0.4.3 Independent Authority Audit
+
+on:
+  push:
+    branches:
+      - dls-v043-authority-audit
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_V043_AUTHORITY_AUDIT.marker
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download authoritative census partition artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: dls-census-v043-*
+          path: census_all
+          merge-multiple: false
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: 35958824070
+      - name: Compile independent authority audit
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/audit_sqd_event_census_authority_v0_4_3.py
+      - name: Audit complete partition evidence
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/audit_sqd_event_census_authority_v0_4_3.py census_all
+      - name: Upload authority audit receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-v043-independent-authority-audit
+          path: labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_SAVE11_SQD_EVENT_CENSUS_AUTHORITY_AUDIT_V0.4.3.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Persist audit receipt
+        if: always()
+        run: |
+          git config user.name "crypto-lab-source-audit"
+          git config user.email "actions@users.noreply.github.com"
+          git add labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_SAVE11_SQD_EVENT_CENSUS_AUTHORITY_AUDIT_V0.4.3.json || true
+          git commit -m "dls: persist V0.4.3 independent authority audit" || true
+          git push origin HEAD:dls-v043-authority-audit
+      - name: Firewall
+        if: always()
+        run: |
+          echo SOURCE_ONLY_TRUE
+          echo PRICES_FALSE
+          echo RETURNS_FALSE
+          echo PNL_FALSE
+          echo DIRECTION_FALSE
+          echo ECONOMIC_OUTCOMES_FALSE
+          echo LIVE_TRADING_FALSE
+          echo MERGE_MAIN_FALSE
