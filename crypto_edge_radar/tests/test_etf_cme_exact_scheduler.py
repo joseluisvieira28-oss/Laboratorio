@@ -100,6 +100,70 @@ class ETFCMEExactRuntimeSchedulerTests(unittest.TestCase):
         self.assertEqual(len(self.store.read_payloads(SIGNAL_EVENT)), 0)
         self.assertEqual(len(self.store.read_payloads(MISSED_EVENT)), 1)
 
+    def test_prearmed_exact_attempt_reuses_public_snapshot_without_refetch(self):
+        calls = {"count": 0}
+        previous = CFTCObservation("2026-09-15", 1000, 400, 300)
+        current = CFTCObservation("2026-09-22", 1000, 450, 300)
+
+        def one_shot_source(**_kwargs):
+            calls["count"] += 1
+            if calls["count"] > 1:
+                raise RuntimeError("second CFTC fetch forbidden in this test")
+            return previous, current
+
+        watcher = ETFCMEPublicSignalWatcher(
+            store=self.store,
+            source=one_shot_source,
+        )
+        scheduler = ETFCMEExactRuntimeScheduler(watcher=watcher)
+        discovery = scheduler.discover(
+            now_ms=ms("2026-09-29T23:59:30Z")
+        )
+        self.assertEqual(calls["count"], 1)
+
+        prearm = scheduler.prearm(
+            discovery,
+            observed_ms=ms("2026-09-29T23:59:30Z"),
+        )
+        self.assertEqual(prearm["status"], "PREARMED_FOR_EXACT_TARGET")
+
+        state = scheduler.attempt_exact(
+            now_ms=ms("2026-09-30T00:00:00Z"),
+            discovery=discovery,
+        )
+        self.assertEqual(calls["count"], 1)
+        self.assertEqual(state["watcher_status"], "SIGNAL_OBSERVED")
+        self.assertEqual(
+            state["exact_source_mode"],
+            "PREARMED_PUBLIC_CFTC_SNAPSHOT",
+        )
+        self.assertEqual(len(self.store.read_payloads(SIGNAL_EVENT)), 1)
+
+    def test_prearmed_snapshot_outside_frozen_arm_window_fails_closed(self):
+        scheduler = self._scheduler("2026-09-22")
+        discovery = scheduler.discover(
+            now_ms=ms("2026-09-29T23:58:00Z")
+        )
+        with self.assertRaisesRegex(
+            RuntimeError,
+            "PREARMED_SOURCE_SNAPSHOT_OUTSIDE_FROZEN_ARM_WINDOW",
+        ):
+            scheduler.attempt_exact(
+                now_ms=ms("2026-09-30T00:00:00Z"),
+                discovery=discovery,
+            )
+
+    def test_successful_state_transition_clears_stale_transport_error(self):
+        scheduler = self._scheduler("2026-09-15")
+        scheduler._set_state(
+            status="FAIL_CLOSED",
+            error="HTTPError:HTTP Error 500: Server Error",
+        )
+        state = scheduler._set_state(
+            status="WAITING_NEW_CFTC_AS_OF_AFTER_BOUNDARY",
+        )
+        self.assertNotIn("error", state)
+
 
 if __name__ == "__main__":
     unittest.main()
