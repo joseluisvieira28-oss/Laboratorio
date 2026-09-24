@@ -1,0 +1,283 @@
+name: DLS Marginfi Save0c SQD Full Boundary V0.1
+
+on:
+  push:
+    branches:
+      - dls-marginfi-save0c-sqd-boundary-v01
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_MARGINFI_SAVE0C_SQD_FULL_V01.marker
+
+permissions:
+  contents: read
+
+jobs:
+  partition:
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        include:
+          - protocol: marginfi
+            start: '2023-02-07T15:47:04Z'
+            end: '2023-03-01T00:00:00Z'
+            id: marginfi-202302
+          - protocol: marginfi
+            start: '2023-03-01T00:00:00Z'
+            end: '2023-04-01T00:00:00Z'
+            id: marginfi-202303
+          - protocol: marginfi
+            start: '2023-04-01T00:00:00Z'
+            end: '2023-05-01T00:00:00Z'
+            id: marginfi-202304
+          - protocol: marginfi
+            start: '2023-05-01T00:00:00Z'
+            end: '2023-06-01T00:00:00Z'
+            id: marginfi-202305
+          - protocol: marginfi
+            start: '2023-06-01T00:00:00Z'
+            end: '2023-07-01T00:00:00Z'
+            id: marginfi-202306
+          - protocol: marginfi
+            start: '2023-07-01T00:00:00Z'
+            end: '2023-08-01T00:00:00Z'
+            id: marginfi-202307
+          - protocol: marginfi
+            start: '2023-08-01T00:00:00Z'
+            end: '2023-09-01T00:00:00Z'
+            id: marginfi-202308
+          - protocol: marginfi
+            start: '2023-09-01T00:00:00Z'
+            end: '2023-10-01T00:00:00Z'
+            id: marginfi-202309
+          - protocol: marginfi
+            start: '2023-10-01T00:00:00Z'
+            end: '2023-11-01T00:00:00Z'
+            id: marginfi-202310
+          - protocol: marginfi
+            start: '2023-11-01T00:00:00Z'
+            end: '2023-12-01T00:00:00Z'
+            id: marginfi-202311
+          - protocol: marginfi
+            start: '2023-12-01T00:00:00Z'
+            end: '2024-01-01T00:00:00Z'
+            id: marginfi-202312
+          - protocol: marginfi
+            start: '2024-01-01T00:00:00Z'
+            end: '2024-02-01T00:00:00Z'
+            id: marginfi-202401
+          - protocol: marginfi
+            start: '2024-02-01T00:00:00Z'
+            end: '2024-03-01T00:00:00Z'
+            id: marginfi-202402
+          - protocol: marginfi
+            start: '2024-03-01T00:00:00Z'
+            end: '2024-04-01T00:00:00Z'
+            id: marginfi-202403
+          - protocol: marginfi
+            start: '2024-04-01T00:00:00Z'
+            end: '2024-05-01T00:00:00Z'
+            id: marginfi-202404
+          - protocol: marginfi
+            start: '2024-05-01T00:00:00Z'
+            end: '2024-06-01T00:00:00Z'
+            id: marginfi-202405
+          - protocol: marginfi
+            start: '2024-06-01T00:00:00Z'
+            end: '2024-07-01T00:00:00Z'
+            id: marginfi-202406
+          - protocol: marginfi
+            start: '2024-07-01T00:00:00Z'
+            end: '2024-08-01T00:00:00Z'
+            id: marginfi-202407
+          - protocol: marginfi
+            start: '2024-08-01T00:00:00Z'
+            end: '2024-09-01T00:00:00Z'
+            id: marginfi-202408
+          - protocol: marginfi
+            start: '2024-09-01T00:00:00Z'
+            end: '2024-10-01T00:00:00Z'
+            id: marginfi-202409
+          - protocol: marginfi
+            start: '2024-10-01T00:00:00Z'
+            end: '2024-11-01T00:00:00Z'
+            id: marginfi-202410
+          - protocol: marginfi
+            start: '2024-11-01T00:00:00Z'
+            end: '2024-12-01T00:00:00Z'
+            id: marginfi-202411
+          - protocol: marginfi
+            start: '2024-12-01T00:00:00Z'
+            end: '2025-01-01T00:00:00Z'
+            id: marginfi-202412
+          - protocol: save0c
+            start: '2021-12-08T00:00:00Z'
+            end: '2022-01-01T00:00:00Z'
+            id: save0c-202112
+          - protocol: save0c
+            start: '2022-01-01T00:00:00Z'
+            end: '2022-02-01T00:00:00Z'
+            id: save0c-202201
+          - protocol: save0c
+            start: '2022-02-01T00:00:00Z'
+            end: '2022-03-01T00:00:00Z'
+            id: save0c-202202
+          - protocol: save0c
+            start: '2022-03-01T00:00:00Z'
+            end: '2022-04-01T00:00:00Z'
+            id: save0c-202203
+          - protocol: save0c
+            start: '2022-04-01T00:00:00Z'
+            end: '2022-05-01T00:00:00Z'
+            id: save0c-202204
+          - protocol: save0c
+            start: '2022-05-01T00:00:00Z'
+            end: '2022-06-01T00:00:00Z'
+            id: save0c-202205
+          - protocol: save0c
+            start: '2022-06-01T00:00:00Z'
+            end: '2022-07-01T00:00:00Z'
+            id: save0c-202206
+          - protocol: save0c
+            start: '2022-07-01T00:00:00Z'
+            end: '2022-08-01T00:00:00Z'
+            id: save0c-202207
+          - protocol: save0c
+            start: '2022-08-01T00:00:00Z'
+            end: '2022-09-01T00:00:00Z'
+            id: save0c-202208
+          - protocol: save0c
+            start: '2022-09-01T00:00:00Z'
+            end: '2022-10-01T00:00:00Z'
+            id: save0c-202209
+          - protocol: save0c
+            start: '2022-10-01T00:00:00Z'
+            end: '2022-11-01T00:00:00Z'
+            id: save0c-202210
+          - protocol: save0c
+            start: '2022-11-01T00:00:00Z'
+            end: '2022-12-01T00:00:00Z'
+            id: save0c-202211
+          - protocol: save0c
+            start: '2022-12-01T00:00:00Z'
+            end: '2023-01-01T00:00:00Z'
+            id: save0c-202212
+          - protocol: save0c
+            start: '2023-01-01T00:00:00Z'
+            end: '2023-02-01T00:00:00Z'
+            id: save0c-202301
+          - protocol: save0c
+            start: '2023-02-01T00:00:00Z'
+            end: '2023-03-01T00:00:00Z'
+            id: save0c-202302
+          - protocol: save0c
+            start: '2023-03-01T00:00:00Z'
+            end: '2023-04-01T00:00:00Z'
+            id: save0c-202303
+          - protocol: save0c
+            start: '2023-04-01T00:00:00Z'
+            end: '2023-05-01T00:00:00Z'
+            id: save0c-202304
+          - protocol: save0c
+            start: '2023-05-01T00:00:00Z'
+            end: '2023-06-01T00:00:00Z'
+            id: save0c-202305
+          - protocol: save0c
+            start: '2023-06-01T00:00:00Z'
+            end: '2023-07-01T00:00:00Z'
+            id: save0c-202306
+          - protocol: save0c
+            start: '2023-07-01T00:00:00Z'
+            end: '2023-08-01T00:00:00Z'
+            id: save0c-202307
+          - protocol: save0c
+            start: '2023-08-01T00:00:00Z'
+            end: '2023-09-01T00:00:00Z'
+            id: save0c-202308
+          - protocol: save0c
+            start: '2023-09-01T00:00:00Z'
+            end: '2023-10-01T00:00:00Z'
+            id: save0c-202309
+          - protocol: save0c
+            start: '2023-10-01T00:00:00Z'
+            end: '2023-11-01T00:00:00Z'
+            id: save0c-202310
+          - protocol: save0c
+            start: '2023-11-01T00:00:00Z'
+            end: '2023-12-01T00:00:00Z'
+            id: save0c-202311
+          - protocol: save0c
+            start: '2023-12-01T00:00:00Z'
+            end: '2024-01-01T00:00:00Z'
+            id: save0c-202312
+          - protocol: save0c
+            start: '2024-01-01T00:00:00Z'
+            end: '2024-02-01T00:00:00Z'
+            id: save0c-202401
+          - protocol: save0c
+            start: '2024-02-01T00:00:00Z'
+            end: '2024-03-01T00:00:00Z'
+            id: save0c-202402
+          - protocol: save0c
+            start: '2024-03-01T00:00:00Z'
+            end: '2024-04-01T00:00:00Z'
+            id: save0c-202403
+          - protocol: save0c
+            start: '2024-04-01T00:00:00Z'
+            end: '2024-05-01T00:00:00Z'
+            id: save0c-202404
+          - protocol: save0c
+            start: '2024-05-01T00:00:00Z'
+            end: '2024-06-01T00:00:00Z'
+            id: save0c-202405
+          - protocol: save0c
+            start: '2024-06-01T00:00:00Z'
+            end: '2024-07-01T00:00:00Z'
+            id: save0c-202406
+          - protocol: save0c
+            start: '2024-07-01T00:00:00Z'
+            end: '2024-08-01T00:00:00Z'
+            id: save0c-202407
+          - protocol: save0c
+            start: '2024-08-01T00:00:00Z'
+            end: '2024-09-01T00:00:00Z'
+            id: save0c-202408
+          - protocol: save0c
+            start: '2024-09-01T00:00:00Z'
+            end: '2024-10-01T00:00:00Z'
+            id: save0c-202409
+          - protocol: save0c
+            start: '2024-10-01T00:00:00Z'
+            end: '2024-11-01T00:00:00Z'
+            id: save0c-202410
+          - protocol: save0c
+            start: '2024-11-01T00:00:00Z'
+            end: '2024-12-01T00:00:00Z'
+            id: save0c-202411
+          - protocol: save0c
+            start: '2024-12-01T00:00:00Z'
+            end: '2025-01-01T00:00:00Z'
+            id: save0c-202412
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile frozen source runner
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/run_sqd_first_success_partition_v0_1.py
+      - name: Run frozen monthly partition
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/run_sqd_first_success_partition_v0_1.py --protocol "${{ matrix.protocol }}" --start "${{ matrix.start }}" --end "${{ matrix.end }}" --out "boundary/${{ matrix.id }}.json"
+      - name: Upload partition
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-sqd-first-boundary-${{ matrix.id }}
+          path: boundary/${{ matrix.id }}.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_TRUE
