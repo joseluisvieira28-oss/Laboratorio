@@ -133,8 +133,12 @@ def parse_coinbase_level2_update(
     source_event_time_override: str | None = None,
 ) -> CanonicalBookUpdate:
     raw_side = str(update["side"]).lower()
-    if raw_side not in {"bid", "ask"}:
-        raise ValueError("Coinbase level2 side must be bid or ask")
+    if raw_side == "bid":
+        canonical_side = "BID"
+    elif raw_side in {"offer", "ask"}:
+        canonical_side = "ASK"
+    else:
+        raise ValueError("Coinbase level2 side must be bid or offer/ask")
     source_time = (
         str(source_event_time_override)
         if source_event_time_override is not None
@@ -146,7 +150,7 @@ def parse_coinbase_level2_update(
         source_event_time=source_time,
         sequence_first=int(sequence_num),
         sequence_last=int(sequence_num),
-        side=raw_side.upper(),
+        side=canonical_side,
         price_level=_decimal("price_level", update["price_level"], positive=True),
         absolute_quantity=_decimal("new_quantity", update["new_quantity"]),
     )
