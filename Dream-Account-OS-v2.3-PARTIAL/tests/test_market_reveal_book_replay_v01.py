@@ -8,12 +8,13 @@ MODULE_DIR = ROOT / "research" / "market_reveal_confirmation_reaction_v01"
 sys.path.insert(0, str(MODULE_DIR))
 
 from book_replay import (
+    batch_time_ns,
     initial_observation,
     replay_incremental_batches,
 )
 from decision_boundary import rfc3339_to_ns
 from order_book import BookSequenceGap, DepthSpec, LocalOrderBook
-from source_adapters import parse_coinbase_level2_event
+from source_adapters import CanonicalBookUpdate, parse_coinbase_level2_event
 
 
 class BookReplayTests(unittest.TestCase):
@@ -94,6 +95,67 @@ class BookReplayTests(unittest.TestCase):
         self.assertEqual(len(out), 1)
         self.assertEqual(out[0].metrics.sequence_last, 1)
         self.assertEqual(out[0].metrics.best_bid, Decimal("100"))
+
+    def test_coinbase_multi_update_batch_uses_latest_engine_time(self):
+        batch = (
+            CanonicalBookUpdate(
+                venue="COINBASE_ADVANCED_SPOT",
+                native_symbol="BTC-USD",
+                source_event_time="2026-09-24T17:00:01.000000001Z",
+                sequence_first=1,
+                sequence_last=1,
+                side="BID",
+                price_level=Decimal("100"),
+                absolute_quantity=Decimal("1"),
+            ),
+            CanonicalBookUpdate(
+                venue="COINBASE_ADVANCED_SPOT",
+                native_symbol="BTC-USD",
+                source_event_time="2026-09-24T17:00:01.000000009Z",
+                sequence_first=1,
+                sequence_last=1,
+                side="ASK",
+                price_level=Decimal("102"),
+                absolute_quantity=Decimal("1"),
+            ),
+        )
+        self.assertEqual(
+            batch_time_ns(batch),
+            rfc3339_to_ns("2026-09-24T17:00:01.000000009Z"),
+        )
+
+    def test_latest_update_one_ns_after_decision_blocks_entire_batch(self):
+        decision = rfc3339_to_ns("2026-09-24T17:00:01.000000008Z")
+        batch = (
+            CanonicalBookUpdate(
+                venue="COINBASE_ADVANCED_SPOT",
+                native_symbol="BTC-USD",
+                source_event_time="2026-09-24T17:00:01.000000001Z",
+                sequence_first=1,
+                sequence_last=1,
+                side="BID",
+                price_level=Decimal("100"),
+                absolute_quantity=Decimal("1"),
+            ),
+            CanonicalBookUpdate(
+                venue="COINBASE_ADVANCED_SPOT",
+                native_symbol="BTC-USD",
+                source_event_time="2026-09-24T17:00:01.000000009Z",
+                sequence_first=1,
+                sequence_last=1,
+                side="ASK",
+                price_level=Decimal("102"),
+                absolute_quantity=Decimal("1"),
+            ),
+        )
+        with self.assertRaises(ValueError):
+            replay_incremental_batches(
+                book=self.book,
+                batches=[batch],
+                depth_spec=self.depth,
+                decision_ns=decision,
+            )
+        self.assertEqual(self.book.sequence_last, 0)
 
     def test_future_batch_fails_before_mutating_book(self):
         batch = self._batch(
