@@ -121,7 +121,12 @@ class LocalOrderBook:
         self._asks = asks
         self._sequence_last = updates[0].sequence_last
 
-    def apply_updates(self, updates: Sequence[CanonicalBookUpdate]) -> ApplyResult:
+    def apply_updates(
+        self,
+        updates: Sequence[CanonicalBookUpdate],
+        *,
+        coinbase_stream_continuity_verified: bool = False,
+    ) -> ApplyResult:
         if self._sequence_last is None:
             raise BookNotInitialized("load a snapshot before incremental updates")
         if not updates:
@@ -154,7 +159,7 @@ class LocalOrderBook:
                 )
         elif self.venue == "COINBASE_ADVANCED_SPOT":
             transition = coinbase_sequence_transition(previous, last)
-            if transition == "GAP":
+            if transition == "GAP" and not coinbase_stream_continuity_verified:
                 raise BookSequenceGap(
                     f"Coinbase sequence gap: previous={previous}, current={last}"
                 )
