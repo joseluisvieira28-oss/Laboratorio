@@ -1,0 +1,75 @@
+name: DLS SQD V0.4.3 Calibration
+
+on:
+  push:
+    branches:
+      - dls-census-v043-empty-stream-semantics
+    paths:
+      - .github/workflows/dls-sqd-v043-calibration.yml
+
+permissions:
+  contents: read
+
+jobs:
+  calibrate:
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        include:
+          - protocol: kamino
+            start: '2023-11-17'
+            end: '2023-11-18'
+            id: kamino-first
+            known_signature: '2tMYYz4YWDiqMWF4H34t1oz5PRfvMfQZbXKUM6ZpK2SocmKrik2pbbx4k734LTe2mEgi5WvqLwMAZAzUqYuBD3uv'
+            require_empty: 'false'
+          - protocol: save11
+            start: '2024-07-19'
+            end: '2024-07-20'
+            id: save11-first
+            known_signature: 'WdTyQhEUhG2HjQ5LHApW8DU4aLRiKGQ5s8PZYBeoCJ8Acm6tkzqAdL4iasRYnSVnkHTVHTXu7zdgsSmDH8WmQ4L'
+            require_empty: 'false'
+          - protocol: kamino
+            start: '2023-11-23'
+            end: '2023-11-24'
+            id: kamino-empty-boundary
+            known_signature: ''
+            require_empty: 'true'
+          - protocol: save11
+            start: '2024-07-23'
+            end: '2024-07-24'
+            id: save11-empty-boundary
+            known_signature: ''
+            require_empty: 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile V0.4.3
+        run: |
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/run_sqd_event_census_partition_v0_4_3.py
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/validate_sqd_v0_4_3_calibration.py
+      - name: Run calibration partition
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/run_sqd_event_census_partition_v0_4_3.py --protocol "${{ matrix.protocol }}" --start "${{ matrix.start }}" --end "${{ matrix.end }}" --out "calibration/${{ matrix.id }}"
+      - name: Verify calibration
+        if: matrix.require_empty == 'false'
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/validate_sqd_v0_4_3_calibration.py --dir "calibration/${{ matrix.id }}" --protocol "${{ matrix.protocol }}" --known-signature "${{ matrix.known_signature }}"
+      - name: Verify empty termination calibration
+        if: matrix.require_empty == 'true'
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/validate_sqd_v0_4_3_calibration.py --dir "calibration/${{ matrix.id }}" --protocol "${{ matrix.protocol }}" --require-empty-termination
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-v043-calibration-${{ matrix.id }}
+          path: calibration/${{ matrix.id }}
+          if-no-files-found: error
+          retention-days: 30
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_TRUE
