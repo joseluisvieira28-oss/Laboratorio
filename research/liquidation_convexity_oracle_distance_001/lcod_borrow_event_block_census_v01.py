@@ -28,6 +28,8 @@ SPOKES={
 SPOKES={k:v.lower() for k,v in SPOKES.items()}
 ADDR_SET=set(SPOKES.values())
 TOPIC0=Web3.keccak(text="Borrow(uint256,address,address,uint256,uint256)").hex().lower()
+if not TOPIC0.startswith("0x"):
+    TOPIC0="0x"+TOPIC0
 SELECTOR=Web3.keccak(text="getUserAccountData(address)")[:4].hex()
 
 def post(url,payload,timeout=120):
