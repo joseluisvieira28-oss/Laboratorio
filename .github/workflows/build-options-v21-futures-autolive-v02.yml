@@ -1,4 +1,4 @@
-name: BUILD OPTIONS V21 FUTURES ONLY AUTO MICROLIVE V0.2
+name: BUILD OPTIONS V21 FUTURES ONLY AUTO MICROLIVE V0.2.1
 
 on:
   workflow_dispatch:
@@ -7,14 +7,18 @@ on:
       - options-v21-futures-only-autolive-v02-2026-09-25
     paths:
       - 'crypto_edge_radar/radar/options_v21_futures_*'
+      - 'crypto_edge_radar/radar/options_v21_live.py'
       - 'crypto_edge_radar/radar/mexc_auth_trade.py'
       - 'crypto_edge_radar/scripts/options_v21_futures_autolive_agent.py'
       - 'crypto_edge_radar/tests/test_options_v21_futures_*'
+      - 'crypto_edge_radar/tests/test_options_v21_live.py'
       - 'crypto_edge_radar/tests/test_mexc_auth_trade*.py'
       - 'crypto_edge_radar/windows/*OPTIONS_V21_Futures*'
       - 'crypto_edge_radar/windows/Set_MEXC_Preflight_Secrets.ps1'
       - 'crypto_edge_radar/windows/Run_MEXC_Ready_Check_V02.ps1'
       - 'crypto_edge_radar/OPTIONS_SPOTPERP_001_V21_FUTURES_ONLY_AUTOLIVE_V0.2.json'
+      - 'crypto_edge_radar/OPTIONS_SPOTPERP_001_V21_FUTURES_ONLY_AUTOLIVE_V0.2.1_SOURCE_HOTFIX.json'
+      - 'crypto_edge_radar/authorities/OPTIONS_SPOTPERP_001_V21_INVALID_IV_INDEX_ROW_HANDLING_AMENDMENT_01.md'
       - '.github/workflows/build-options-v21-futures-autolive-v02.yml'
 
 permissions:
@@ -59,7 +63,7 @@ jobs:
           python -m unittest tests.test_options_v21_futures_autolive_engine -v
           python -m unittest tests.test_mexc_auth_trade_options_v02 -v
 
-      - name: Verify frozen Futures-only contract
+      - name: Verify frozen Futures-only contract and source hotfix
         shell: pwsh
         run: |
           $c=Get-Content OPTIONS_SPOTPERP_001_V21_FUTURES_ONLY_AUTOLIVE_V0.2.json | ConvertFrom-Json
@@ -74,6 +78,10 @@ jobs:
           if ($c.timing.operational_entry_ttl_seconds -ne 300) { throw "TTL mismatch" }
           if ($c.security.spot_order_transport) { throw "Spot transport unexpectedly enabled" }
           if ($c.security.transfer_endpoint -or $c.security.withdrawal_endpoint) { throw "wallet mutation unexpectedly enabled" }
+          $h=Get-Content OPTIONS_SPOTPERP_001_V21_FUTURES_ONLY_AUTOLIVE_V0.2.1_SOURCE_HOTFIX.json | ConvertFrom-Json
+          if ($h.status -ne "FROZEN_TECHNICAL_SOURCE_REMEDIATION") { throw "source hotfix not frozen" }
+          if ($h.remediation.invalid_iv_or_index_row -ne "REJECT_ROW_INCREMENT_COUNTER_CONTINUE_WINDOW") { throw "invalid IV/index remediation mismatch" }
+          if (-not $h.unchanged.execution_fork_futures_only -or $h.unchanged.spot_orders) { throw "hotfix changed execution scope" }
 
       - name: Static Futures-only audit
         shell: pwsh
@@ -171,11 +179,13 @@ jobs:
           Copy-Item windows\Resume_OPTIONS_V21_Futures_V02.ps1 bundle\windows\
           Copy-Item windows\Disarm_OPTIONS_V21_Futures_V02.ps1 bundle\windows\
           Copy-Item OPTIONS_SPOTPERP_001_V21_FUTURES_ONLY_AUTOLIVE_V0.2.json bundle\
+          Copy-Item OPTIONS_SPOTPERP_001_V21_FUTURES_ONLY_AUTOLIVE_V0.2.1_SOURCE_HOTFIX.json bundle\
+          Copy-Item authorities\OPTIONS_SPOTPERP_001_V21_INVALID_IV_INDEX_ROW_HANDLING_AMENDMENT_01.md bundle\
 
       - name: Upload Futures-only bundle
         uses: actions/upload-artifact@v4
         with:
-          name: options-v21-futures-only-auto-microlive-v02
+          name: options-v21-futures-only-auto-microlive-v021
           path: crypto_edge_radar/bundle/**
           retention-days: 14
           if-no-files-found: error
