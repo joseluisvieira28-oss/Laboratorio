@@ -50,8 +50,8 @@ def build_state(*,preflight_path:Path,receipt_root:Path,now:datetime|None=None)-
         except Exception:
             continue
         loss=max(0.0,-pnl)
-        if closed>=week_start:
-            weekly_loss_usdt+=loss
+        if closed>=rolling_7d_start:
+            rolling_7d_loss_usdt+=loss
         if closed>=day_start:
             daily_loss_usdt+=loss
         counted.append(str(path))
