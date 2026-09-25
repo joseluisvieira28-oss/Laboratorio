@@ -7,7 +7,7 @@ from urllib.request import Request, urlopen
 
 
 MEXC_SPOT_BASE_URL = "https://api.mexc.com"
-MEXC_SPOT_ALLOWED_EXACT = {"/api/v3/defaultSymbols"}
+MEXC_SPOT_ALLOWED_EXACT = {"/api/v3/defaultSymbols", "/api/v3/exchangeInfo", "/api/v3/time"}
 MEXC_SPOT_ALLOWED_PREFIXES = (
     "/api/v3/ticker/bookTicker",
     "/api/v3/ticker/price",
@@ -59,6 +59,28 @@ class MEXCSpotPublicFeed:
             if isinstance(exc, MEXCSpotPublicError):
                 raise
             raise MEXCSpotPublicError(f"spot public feed unavailable: {exc}") from exc
+
+    def server_time_ms(self) -> int:
+        payload = self._get_json("/api/v3/time")
+        if not isinstance(payload, dict) or "serverTime" not in payload:
+            raise MEXCSpotPublicError("spot server time payload invalid")
+        value = int(payload["serverTime"])
+        if value <= 0:
+            raise MEXCSpotPublicError("spot server time non-positive")
+        return value
+
+    def exchange_info(self, symbol: str = "BTCUSDT") -> dict:
+        symbol = self._validate_symbol(symbol)
+        payload = self._get_json(f"/api/v3/exchangeInfo?{urlencode({'symbol': symbol})}")
+        rows = payload.get("symbols") if isinstance(payload, dict) and isinstance(payload.get("symbols"), list) else payload
+        if isinstance(rows, dict):
+            rows = [rows]
+        if not isinstance(rows, list):
+            raise MEXCSpotPublicError("exchangeInfo payload invalid")
+        for row in rows:
+            if isinstance(row, dict) and str(row.get("symbol", "")).upper() == symbol:
+                return row
+        raise MEXCSpotPublicError(f"exchangeInfo symbol missing: {symbol}")
 
     def default_symbols(self) -> set[str]:
         payload = self._get_json("/api/v3/defaultSymbols")
