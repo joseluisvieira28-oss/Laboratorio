@@ -1,0 +1,158 @@
+name: LCOD-001 prospective mechanical snapshot V0.1
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 3 * * *'
+  push:
+    branches:
+      - liquidation-convexity-oracle-distance-001-source-gate-v0.1
+    paths:
+      - '.github/workflows/lcod-001-prospective-mechanical-snapshot-v01.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: lcod-001-prospective-mechanical-snapshot-v01
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.prep.outputs.matrix }}
+      block: ${{ steps.prep.outputs.block }}
+      block_hash: ${{ steps.prep.outputs.block_hash }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: liquidation-convexity-oracle-distance-001-source-gate-v0.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - id: prep
+        run: node research/liquidation_convexity_oracle_distance_001/lcod_active_population_prepare_v08.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lcod-fwd-pop-prepare
+          path: artifacts/lcod_active_population_prepare_v08.json
+          if-no-files-found: error
+
+  classify_population:
+    needs: prepare
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix: ${{ fromJSON(needs.prepare.outputs.matrix) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: liquidation-convexity-oracle-distance-001-source-gate-v0.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-save @subsquid/evm-stream@0.1.5 ethers@6.15.0
+      - name: Rebuild active population at common finalized block
+        env:
+          CHUNK_ID: ${{ matrix.id }}
+          FROM_BLOCK: ${{ matrix.from }}
+          TO_BLOCK: ${{ matrix.to }}
+          FINAL_BLOCK: ${{ needs.prepare.outputs.block }}
+          FINAL_HASH: ${{ needs.prepare.outputs.block_hash }}
+        run: node research/liquidation_convexity_oracle_distance_001/lcod_active_population_chunk_v08.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lcod-fwd-pop-chunk-${{ matrix.id }}
+          path: artifacts/lcod_active_population_chunk_*_v08.json
+          if-no-files-found: error
+
+  aggregate_population:
+    needs:
+      - prepare
+      - classify_population
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: liquidation-convexity-oracle-distance-001-source-gate-v0.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: lcod-fwd-pop-*
+          path: artifacts/all
+          merge-multiple: true
+      - name: Aggregate and enforce population gate
+        run: node research/liquidation_convexity_oracle_distance_001/lcod_active_population_aggregate_v08.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lcod-fwd-population
+          path: artifacts/lcod_block_pinned_active_population_v08.json
+          if-no-files-found: error
+
+  reconstruct_and_curve:
+    needs: aggregate_population
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: liquidation-convexity-oracle-distance-001-source-gate-v0.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/download-artifact@v4
+        with:
+          name: lcod-fwd-population
+          path: artifacts/population
+      - name: Bind this run's population receipt
+        run: |
+          cp artifacts/population/lcod_block_pinned_active_population_v08.json research/liquidation_convexity_oracle_distance_001/LCOD_BLOCK_PINNED_ACTIVE_POPULATION_RECEIPT.json
+      - run: npm install --no-save @subsquid/evm-stream@0.1.5 ethers@6.15.0
+      - name: Reconstruct full same-block components
+        run: node research/liquidation_convexity_oracle_distance_001/lcod_full_same_block_component_reconstruction_v01.mjs
+      - name: Bind component receipt locally
+        run: |
+          cp artifacts/lcod_full_same_block_component_reconstruction_v01.json research/liquidation_convexity_oracle_distance_001/LCOD_FULL_SAME_BLOCK_COMPONENT_RECONSTRUCTION_RECEIPT.json
+      - name: Open frozen mechanical curve
+        run: python research/liquidation_convexity_oracle_distance_001/lcod_open_canonical_curve_v01.py
+      - name: Finalize prospective snapshot
+        run: python research/liquidation_convexity_oracle_distance_001/lcod_finalize_forward_snapshot_v01.py
+      - name: Persist compact forward snapshot
+        run: |
+          BLOCK=$(python -c "import json; print(json.load(open('artifacts/lcod_forward_mechanical_snapshot_v01.json'))['ethereum_block_number'])")
+          DEST="research/liquidation_convexity_oracle_distance_001/forward_snapshots/LCOD_FORWARD_SNAPSHOT_BLOCK_${BLOCK}.json"
+          mkdir -p research/liquidation_convexity_oracle_distance_001/forward_snapshots
+          cp artifacts/lcod_forward_mechanical_snapshot_v01.json "$DEST"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$DEST"
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "LCOD-001: record prospective mechanical snapshot block ${BLOCK} [skip ci]"
+          for attempt in 1 2 3; do
+            git fetch origin liquidation-convexity-oracle-distance-001-source-gate-v0.1
+            git rebase origin/liquidation-convexity-oracle-distance-001-source-gate-v0.1
+            if git push origin HEAD:liquidation-convexity-oracle-distance-001-source-gate-v0.1; then
+              exit 0
+            fi
+            sleep $((attempt * 5))
+          done
+          exit 1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lcod-forward-mechanical-snapshot-v01
+          path: |
+            artifacts/lcod_full_same_block_component_reconstruction_v01.json
+            research/liquidation_convexity_oracle_distance_001/LCOD_CANONICAL_COLLATERAL_STRESS_CURVE_RECEIPT.json
+            artifacts/lcod_forward_mechanical_snapshot_v01.json
+          if-no-files-found: warn
