@@ -15,6 +15,7 @@ from radar.ced1d_render_shadow_runtime import (
     RECEIPT_EVENT,
     LEDGER_EVENT,
     FAILURE_EVENT,
+    BOOKDEPTH_TRANSPORT_RECEIPT,
     _validate_complete_result,
     latest_mature_signal_day,
     retryable_latest_archive_404,
@@ -23,6 +24,21 @@ from radar.ced1d_render_shadow_runtime import (
 
 def ms(y, m, d, hh=0, mm=0):
     return int(datetime(y, m, d, hh, mm, tzinfo=timezone.utc).timestamp() * 1000)
+
+
+def write_transport_receipt(out: Path, status="TRANSPORT_ADAPTER_COMPLETE"):
+    (out / BOOKDEPTH_TRANSPORT_RECEIPT).write_text(
+        json.dumps({
+            "authority_id": "CED1D-0031-BOOKDEPTH-TIMESTAMP-TRANSPORT-V0.5",
+            "status": status,
+            "scientific_rules_changed": False,
+            "authenticated_exchange_api_used": False,
+            "orders_created": False,
+            "exchange_mutation_performed": False,
+            "live_capital_enabled": False,
+            "events": [],
+        })
+    )
 
 
 class CED1DRenderShadowRuntimeTests(TestCase):
@@ -96,6 +112,10 @@ class CED1DRenderShadowRuntimeTests(TestCase):
                 (out / "CED1D_0031_RENDER_SHADOW_RECEIPT_V0.3.json").write_text(
                     json.dumps(receipt)
                 )
+                write_transport_receipt(
+                    out,
+                    status="TRANSPORT_ADAPTER_COLLECTOR_FAIL_CLOSED",
+                )
                 class P:
                     returncode = 1
                     stderr = "collector fail-closed"
@@ -166,6 +186,7 @@ class CED1DRenderShadowRuntimeTests(TestCase):
                     "event_id,signal_day,status\n"
                     "CED1D-0031:2026-09-22,2026-09-22,NO_SIGNAL\n"
                 )
+                write_transport_receipt(out)
                 class P:
                     returncode = 0
                     stderr = ""
