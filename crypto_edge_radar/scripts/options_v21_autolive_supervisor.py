@@ -622,13 +622,24 @@ class AutoLiveSupervisor:
                         _ms(now - timedelta(seconds=1)),
                         _ms(target) - 1,
                     )
-                    self.cache.prefetch(
-                        options_feed=self.options_feed,
-                        btc_feed=self.btc_feed,
-                        end_ms=safe_end,
-                    )
-                    if remaining <= PREFLIGHT_LEAD_SECONDS:
+                    if (
+                        self.cache.option_end_ms is None
+                        or safe_end - self.cache.option_end_ms >= 10_000
+                    ):
+                        self.cache.prefetch(
+                            options_feed=self.options_feed,
+                            btc_feed=self.btc_feed,
+                            end_ms=safe_end,
+                        )
+                    if (
+                        remaining <= PREFLIGHT_LEAD_SECONDS
+                        and (
+                            self.cache.preflight_at is None
+                            or (now - self.cache.preflight_at).total_seconds() >= 20
+                        )
+                    ):
                         self._refresh_preflight(now)
+                        self.cache.preflight_at = now
                     self._status(
                         "PREARMED",
                         signal_day=signal_day.isoformat(),
