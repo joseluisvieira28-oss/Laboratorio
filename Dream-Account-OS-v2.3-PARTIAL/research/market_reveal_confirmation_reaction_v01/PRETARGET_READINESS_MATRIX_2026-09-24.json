@@ -1,7 +1,7 @@
 {
   "document_type": "MRCR_PRETARGET_READINESS_MATRIX_V01",
   "lab_id": "MARKET-REVEAL-CONFIRMATION-REACTION-001",
-  "as_of": "2026-09-24",
+  "as_of": "2026-09-25",
   "overall_state": "PRETARGET_INFRA_HARDENED__SCIENCE_NOT_ARMED",
   "gates": [
     {
@@ -46,13 +46,13 @@
     },
     {
       "gate": "COINBASE_LEVEL2_SOURCE_TRANSPORT",
-      "status": "BLOCKED_ENVIRONMENT",
-      "meaning": "GitHub runner closed abnormally before L2; secondary host failed DNS before reaching Coinbase; portable local probe is ready"
+      "status": "PASS_OPERATOR_WINDOWS",
+      "meaning": "public Coinbase Advanced level2 transport observed on operator Windows host/network; subscription ACK, snapshot and sustained updates received with no authentication"
     },
     {
       "gate": "COINBASE_L2_LOCAL_SHADOW_PACKAGE",
-      "status": "READY_NOT_EXECUTED_LOCAL",
-      "meaning": "Windows launcher + public L2 collector + local SQLite journal + offline verifier are ready; only an operator-machine run can establish local source PASS"
+      "status": "PASS_OPERATOR_WINDOWS",
+      "meaning": "operator-host run completed collector PASS and separate offline verifier PASS on the locally persisted journal"
     },
     {
       "gate": "SHADOW_JOURNAL_TAMPER_EVIDENCE",
@@ -61,8 +61,8 @@
     },
     {
       "gate": "SHADOW_RESTART_RECOVERY",
-      "status": "PASS_SYNTHETIC",
-      "meaning": "journal close/reopen and raw-only snapshot/update replay reconstruct the same final sequence; gaps and missing snapshots fail closed"
+      "status": "PASS_SYNTHETIC_AND_OPERATOR",
+      "meaning": "synthetic close/reopen tests pass and separate operator-host offline verifier reconstructed the persisted session after collection"
     },
     {
       "gate": "SHADOW_COLLECTOR_BOUNDARY_HYGIENE",
@@ -136,7 +136,6 @@
     }
   ],
   "objective_next_triggers": [
-    "Run Run_MRCR_Coinbase_L2_Shadow.cmd on the operator Windows machine/network and require collector PASS + offline verifier PASS",
     "complete official 2027 BLS CPI/Employment Situation calendar becomes available",
     "separate governance authority explicitly authorizes H02 design/freeze",
     "all pretarget protocol fields including SOURCE_AND_COLLECTOR_ARRIVAL are frozen before any independent target observation",
@@ -151,5 +150,28 @@
     "do not use exchange source timestamps alone to admit prospectively late-arriving data",
     "do not convert source blockers into NO_EDGE",
     "do not promote infrastructure readiness as scientific edge"
-  ]
+  ],
+  "operator_local_source_receipt": {
+    "evidence_date": "2026-09-25",
+    "session_id": "424dcd73-dc4c-4d6c-80fd-290dba53d4c9",
+    "transport_fixture_product": "BTC-USD",
+    "transport_fixture_is_scientific_target": false,
+    "collector_status": "PASS",
+    "offline_verifier_status": "PASS",
+    "subscription_ack": true,
+    "l2_snapshot_seen": true,
+    "persisted_message_count": 999,
+    "update_message_count": 997,
+    "recovered_final_sequence": 998,
+    "sequence_anomaly": false,
+    "sqlite_integrity_pass": true,
+    "chain_integrity_pass": true,
+    "recovery_pass": true,
+    "authentication_used": false,
+    "account_endpoints_used": false,
+    "signals_computed": false,
+    "outcomes_computed": false,
+    "orders_enabled": false,
+    "raw_payloads_uploaded": false
+  }
 }
