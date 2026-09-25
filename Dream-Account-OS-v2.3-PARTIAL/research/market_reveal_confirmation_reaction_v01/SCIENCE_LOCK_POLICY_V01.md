@@ -1,5 +1,5 @@
 # MRCR V0.1 — Pretarget Science Lock Policy
-Status: ACTIVE / FAIL-CLOSED
+Status: ACTIVE / H02 DESIGN FROZEN / TARGET FAIL-CLOSED
 Date: 2026-09-24
 
 This lock exists to prevent accidental arming of MRCR before a separate explicit scientific authority exists.
@@ -48,5 +48,14 @@ The future authority transition is now explicitly two-stage:
 Structural freeze validation therefore rejects any protocol that marks target
 observation authorized before freeze completion.
 
-Current state remains unchanged: this science lock is ACTIVE, no H02 authority
-receipt has been issued, and target observations remain locked.
+Current state after explicit operator authorization on 2026-09-25:
+
+- H02_DESIGN_FREEZE authority is ACTIVE;
+- the H02 scientific ruleset is frozen and fingerprinted;
+- the canonical final protocol template remains target-locked and unpopulated
+  until the complete official 2027 calendar exists;
+- target observation remains NOT AUTHORIZED;
+- live/paper trading and exchange mutation remain prohibited.
+
+The lock now protects the frozen H02 ruleset against mutation and protects the
+target boundary until a later exact TARGET_OBSERVATION_OPEN authority exists.
