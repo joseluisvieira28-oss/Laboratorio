@@ -1,0 +1,138 @@
+name: BUILD MEXC TIER2 MICROLIVE V0.3
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - mexc-tier2-microlive-v03-2026-09-25
+    paths:
+      - 'crypto_edge_radar/radar/mexc_tier2_*'
+      - 'crypto_edge_radar/scripts/mexc_tier2_*'
+      - 'crypto_edge_radar/tests/test_mexc_tier2_*'
+      - 'crypto_edge_radar/windows/Run_MEXC_Tier2_Ready_Check_V03.ps1'
+      - 'crypto_edge_radar/OPTIONS_SPOTPERP_001_V21_MICROLIVE_SHORT_AUTHORITY_TEMPLATE_V0.3.json'
+      - 'crypto_edge_radar/MEXC_TIER2_MICROLIVE_V03_OPERATOR_GUIDE.md'
+      - '.github/workflows/build-mexc-tier2-microlive-v03.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test-build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: crypto_edge_radar
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install
+        run: |
+          python -m pip install -e .
+          python -m pip install "pyinstaller>=6,<7"
+
+      - name: Compile
+        run: python -m compileall radar scripts tests
+
+      - name: Run legacy MEXC safety suite
+        run: python -m unittest discover -s tests -p "test_mexc_*.py" -v
+
+      - name: Verify V0.3 template cannot authorize orders
+        shell: pwsh
+        run: |
+          $a=Get-Content OPTIONS_SPOTPERP_001_V21_MICROLIVE_SHORT_AUTHORITY_TEMPLATE_V0.3.json | ConvertFrom-Json
+          if ($a.status -ne "TEMPLATE_NOT_AUTHORITY") { throw "V0.3 template unexpectedly active" }
+          if ($a.orders_authorized_by_this_template) { throw "V0.3 template authorizes orders" }
+          if ($a.max_notional_usdt -ne 10) { throw "V0.3 max notional is not 10 USDT" }
+          if ($a.daily_realized_loss_kill_usdt -ne 2) { throw "V0.3 daily kill is not 2 USDT" }
+          if ($a.rolling_7d_realized_loss_kill_usdt -ne 5) { throw "V0.3 7d kill is not 5 USDT" }
+          if ($a.leverage -ne 1) { throw "V0.3 leverage not exactly 1x" }
+          if ($a.margin_mode -ne "ISOLATED") { throw "V0.3 margin not isolated" }
+          if ($a.direction -ne "SHORT") { throw "V0.3 first lane must remain SHORT-only" }
+
+      - name: Static mutation-surface check
+        shell: pwsh
+        run: |
+          $src=Get-Content radar\mexc_auth_trade.py -Raw
+          foreach ($forbidden in @(
+            "/api/v1/private/account/transfer",
+            "/api/v1/private/account/withdraw",
+            "/api/v1/private/order/submit"
+          )) {
+            if ($src.Contains($forbidden)) { throw "forbidden/stale mutation endpoint present: $forbidden" }
+          }
+          foreach ($required in @(
+            "/api/v1/private/order/create",
+            "/api/v1/private/order/cancel_with_external",
+            "/api/v1/private/position/change_leverage",
+            "/api/v1/private/position/change_auto_add_im"
+          )) {
+            if (-not $src.Contains($required)) { throw "required endpoint missing: $required" }
+          }
+
+      - name: Prove old 0.1 percent budget is absent from V0.3 gate/executor
+        shell: pwsh
+        run: |
+          $gate=Get-Content radar\mexc_tier2_live_gate.py -Raw
+          $exe=Get-Content scripts\mexc_tier2_live_executor.py -Raw
+          if ($gate.Contains("0.001")) { throw "old 0.1% budget leaked into V0.3 gate" }
+          if ($exe.Contains("0.001")) { throw "old 0.1% budget leaked into V0.3 executor" }
+          if (-not $gate.Contains("10.0")) { throw "10 USDT cap missing from gate" }
+
+      - name: PowerShell syntax
+        shell: pwsh
+        run: |
+          $errors=$null
+          [void][System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path "windows\Run_MEXC_Tier2_Ready_Check_V03.ps1"),[ref]$null,[ref]$errors)
+          if ($errors.Count -gt 0) { $errors | Format-List; throw "PowerShell syntax failure" }
+
+      - name: Build authenticated preflight
+        run: pyinstaller --clean --onefile --name MEXCAuthenticatedPreflight --paths . scripts/mexc_authenticated_preflight.py
+
+      - name: Build Tier2 risk state
+        run: pyinstaller --clean --onefile --name MEXCTier2RiskState --paths . scripts/mexc_tier2_risk_state.py
+
+      - name: Build Tier2 live executor
+        run: pyinstaller --clean --onefile --name MEXCTier2LiveExecutor --paths . scripts/mexc_tier2_live_executor.py
+
+      - name: Build Tier2 exit guard
+        run: pyinstaller --clean --onefile --name MEXCTier2ExitGuard --paths . scripts/mexc_tier2_exit_guard.py
+
+      - name: Hash binaries
+        shell: pwsh
+        run: |
+          foreach ($exe in @(
+            "MEXCAuthenticatedPreflight.exe",
+            "MEXCTier2RiskState.exe",
+            "MEXCTier2LiveExecutor.exe",
+            "MEXCTier2ExitGuard.exe"
+          )) {
+            $hash=(Get-FileHash (Join-Path "dist" $exe) -Algorithm SHA256).Hash.ToLower()
+            "$exe sha256=$hash" | Tee-Object -FilePath (Join-Path "dist" ($exe+".sha256.txt"))
+          }
+
+      - name: Assemble Windows pre-live bundle
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path bundle\dist | Out-Null
+          New-Item -ItemType Directory -Force -Path bundle\windows | Out-Null
+          Copy-Item dist\MEXCAuthenticatedPreflight.exe bundle\dist\
+          Copy-Item dist\MEXCTier2RiskState.exe bundle\dist\
+          Copy-Item dist\MEXCTier2LiveExecutor.exe bundle\dist\
+          Copy-Item dist\MEXCTier2ExitGuard.exe bundle\dist\
+          Copy-Item dist\*.sha256.txt bundle\dist\
+          Copy-Item windows\Set_MEXC_Preflight_Secrets.ps1 bundle\windows\
+          Copy-Item windows\Run_MEXC_Tier2_Ready_Check_V03.ps1 bundle\windows\
+          Copy-Item OPTIONS_SPOTPERP_001_V21_MICROLIVE_SHORT_AUTHORITY_TEMPLATE_V0.3.json bundle\
+          Copy-Item MEXC_TIER2_MICROLIVE_V03_OPERATOR_GUIDE.md bundle\
+
+      - name: Upload V0.3 bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: mexc-tier2-microlive-v03-prelive
+          path: crypto_edge_radar/bundle/**
+          retention-days: 14
+          if-no-files-found: error
