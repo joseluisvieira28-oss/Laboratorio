@@ -1,0 +1,38 @@
+name: microstructure-forward-integrity-v01
+
+on:
+  pull_request:
+    paths:
+      - 'research/microstructure_scalping/l2_replay.py'
+      - 'research/microstructure_scalping/test_l2_replay.py'
+      - 'research/microstructure_scalping/mexc_forward_depth_v01.py'
+      - '.github/workflows/microstructure-forward-integrity-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  replay-unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m unittest research.microstructure_scalping.test_l2_replay -v
+
+  mexc-forward-depth:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install 'websockets>=13,<16'
+      - name: Capture 20s public MEXC incremental depth
+        run: python research/microstructure_scalping/mexc_forward_depth_v01.py --seconds 20
+      - name: Print receipt
+        if: always()
+        run: cat research/microstructure_scalping/receipts/mexc_forward_depth_v01.json || true
