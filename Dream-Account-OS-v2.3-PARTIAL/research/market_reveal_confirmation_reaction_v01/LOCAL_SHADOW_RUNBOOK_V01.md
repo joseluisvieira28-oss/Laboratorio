@@ -1,6 +1,6 @@
 # MRCR V0.1 — Local Coinbase L2 Shadow Runbook
-Status: READY / NON-TARGET / SOURCE-ONLY
-Date: 2026-09-24
+Status: PASS OPERATOR WINDOWS / NON-TARGET / SOURCE-ONLY
+Date: 2026-09-25
 
 ## Objective
 
@@ -29,8 +29,8 @@ The launcher:
 3. stores the journal under:
    `%LOCALAPPDATA%\MRCR\shadow_v01\data\coinbase_l2_shadow.sqlite3`;
 4. connects only to the public Coinbase market-data WebSocket;
-5. subscribes to level2 for the transport fixture product plus public heartbeats;
-6. runs for 60 seconds;
+5. subscribes only to level2 for the transport fixture product;
+6. uses direct no-proxy WebSocket transport with a bounded 16 MB message ceiling and runs for 60 seconds;
 7. persists exact raw source messages locally;
 8. runs the offline verifier immediately after collection.
 
@@ -112,3 +112,39 @@ This run cannot authorize:
 Final rule:
 
 **LOCAL SOURCE PASS IS INFRASTRUCTURE EVIDENCE, NOT EDGE EVIDENCE.**
+
+
+## Operator-host PASS receipt
+
+Sanitized operator evidence:
+
+- session: `424dcd73-dc4c-4d6c-80fd-290dba53d4c9`
+- collector: `PASS`
+- offline verifier: `PASS`
+- transport: `PASS`
+- subscription ACK: `true`
+- L2 snapshot: `true`
+- persisted messages: `999`
+- L2 update messages: `997`
+- recovered final sequence: `998`
+- sequence anomaly: `false`
+- SQLite integrity: `true`
+- hash-chain integrity: `true`
+- raw-only recovery: `true`
+- authentication/account endpoints/signals/outcomes/orders: all `false`
+
+### Sequence semantics established on operator host
+
+The observed stream contained global WebSocket sequence continuity across both
+`l2_data` and `subscriptions` messages. Therefore L2-only sequence numbers
+may appear to skip when an intervening non-L2 message consumes the sequence.
+
+The fail-closed rule is now:
+
+1. require exact continuity across the complete persisted WebSocket stream;
+2. allow an apparent L2-only skip only when every intervening sequence number
+   is present in the same tamper-evident journal;
+3. fail closed on any true full-stream discontinuity.
+
+This receipt establishes local source/persistence/recovery infrastructure only.
+It does not authorize H02, target observation, scientific promotion or trading.
