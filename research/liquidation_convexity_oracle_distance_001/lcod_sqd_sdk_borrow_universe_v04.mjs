@@ -117,7 +117,7 @@ const addrName=Object.fromEntries(Object.entries(SPOKES).map(([k,v])=>[v[0],k]))
 let eventCount=0,decodeErrors=0,batchCount=0,blockCount=0,fixturePresent=false
 let minSeen=null,maxSeen=null
 const canonical=[]
-for await (const batch of source.getStream()){
+for await (const batch of source.getStream({from:MIN_BLOCK,to:L})){
  batchCount++
  for(const block of batch.blocks){
   blockCount++
