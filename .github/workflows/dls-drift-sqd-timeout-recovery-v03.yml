@@ -1,0 +1,103 @@
+name: DLS Drift SQD Timeout Recovery V0.3
+
+on:
+  push:
+    branches:
+      - dls-drift-sqd-boundary-v01
+    paths:
+      - .github/workflows/dls-drift-sqd-timeout-recovery-v03.yml
+
+permissions:
+  contents: read
+
+jobs:
+  recover:
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        include:
+          - start: '2024-02-01T00:00:00Z'
+            end: '2024-02-08T00:00:00Z'
+            id: d202402a
+          - start: '2024-02-08T00:00:00Z'
+            end: '2024-02-15T00:00:00Z'
+            id: d202402b
+          - start: '2024-02-15T00:00:00Z'
+            end: '2024-02-22T00:00:00Z'
+            id: d202402c
+          - start: '2024-02-22T00:00:00Z'
+            end: '2024-02-29T00:00:00Z'
+            id: d202402d
+          - start: '2024-02-29T00:00:00Z'
+            end: '2024-03-01T00:00:00Z'
+            id: d202402e
+          - start: '2024-03-01T00:00:00Z'
+            end: '2024-03-08T00:00:00Z'
+            id: d202403a
+          - start: '2024-03-08T00:00:00Z'
+            end: '2024-03-15T00:00:00Z'
+            id: d202403b
+          - start: '2024-03-15T00:00:00Z'
+            end: '2024-03-22T00:00:00Z'
+            id: d202403c
+          - start: '2024-03-22T00:00:00Z'
+            end: '2024-03-29T00:00:00Z'
+            id: d202403d
+          - start: '2024-03-29T00:00:00Z'
+            end: '2024-04-01T00:00:00Z'
+            id: d202403e
+          - start: '2024-04-01T00:00:00Z'
+            end: '2024-04-08T00:00:00Z'
+            id: d202404a
+          - start: '2024-04-08T00:00:00Z'
+            end: '2024-04-15T00:00:00Z'
+            id: d202404b
+          - start: '2024-04-15T00:00:00Z'
+            end: '2024-04-22T00:00:00Z'
+            id: d202404c
+          - start: '2024-04-22T00:00:00Z'
+            end: '2024-04-29T00:00:00Z'
+            id: d202404d
+          - start: '2024-04-29T00:00:00Z'
+            end: '2024-05-01T00:00:00Z'
+            id: d202404e
+          - start: '2024-05-01T00:00:00Z'
+            end: '2024-05-08T00:00:00Z'
+            id: d202405a
+          - start: '2024-05-08T00:00:00Z'
+            end: '2024-05-15T00:00:00Z'
+            id: d202405b
+          - start: '2024-05-15T00:00:00Z'
+            end: '2024-05-22T00:00:00Z'
+            id: d202405c
+          - start: '2024-05-22T00:00:00Z'
+            end: '2024-05-29T00:00:00Z'
+            id: d202405d
+          - start: '2024-05-29T00:00:00Z'
+            end: '2024-06-01T00:00:00Z'
+            id: d202405e
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile frozen runner
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/run_drift_sqd_first_success_partition_v0_1.py
+      - name: Run frozen remediation shard
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/run_drift_sqd_first_success_partition_v0_1.py --start "${{ matrix.start }}" --end "${{ matrix.end }}" --out "drift_recovery_v03/${{ matrix.id }}"
+      - name: Upload remediation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-drift-sqd-recovery-v03-${{ matrix.id }}
+          path: drift_recovery_v03/${{ matrix.id }}
+          if-no-files-found: error
+          retention-days: 30
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_TRUE
