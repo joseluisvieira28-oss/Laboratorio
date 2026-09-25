@@ -1,0 +1,20 @@
+name: LCOD-001 Forward Scheduler V0.1
+
+on:
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: lcod-001-forward-scheduler-v01
+  cancel-in-progress: false
+
+jobs:
+  forward:
+    name: Call frozen LCOD forward pipeline
+    uses: joseluisvieira28-oss/Laboratorio/.github/workflows/lcod-001-prospective-mechanical-snapshot-v01.yml@liquidation-convexity-oracle-distance-001-source-gate-v0.1
+    secrets: inherit
