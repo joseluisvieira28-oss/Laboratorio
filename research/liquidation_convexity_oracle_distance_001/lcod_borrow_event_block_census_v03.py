@@ -109,16 +109,13 @@ for name,(addr,start) in SPOKES.items():
     try:
         raw=post(SQD,q,180)
         obj=parse_stream(raw)
-        count=0
+        counter=[0]
         def scan(v):
-            nonlocal_dummy=None
-            nonlocal_vars=None
-            nonlocal count
             if isinstance(v,dict):
                 a=str(v.get("address") or "").lower()
                 ts=v.get("topics")
                 if a==addr and isinstance(ts,list) and ts and str(ts[0]).lower()==TOPIC:
-                    count+=1
+                    counter[0]+=1
                     if len(ts)<4:
                         decode_errors.append(f"{name}:TOPIC_COUNT")
                     else:
@@ -129,6 +126,7 @@ for name,(addr,start) in SPOKES.items():
             elif isinstance(v,list):
                 for z in v:scan(z)
         scan(obj)
+        count=counter[0]
         log_counts[name]=count
         transport[name]={"from_block":start,"to_block":N,"raw_bytes":len(raw),"raw_sha256":hashlib.sha256(raw).hexdigest()}
     except Exception as e:
