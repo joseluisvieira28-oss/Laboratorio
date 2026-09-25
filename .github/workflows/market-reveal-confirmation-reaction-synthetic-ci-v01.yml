@@ -16,6 +16,7 @@ on:
       - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_pretarget_guard_v01.py'
       - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_decision_boundary_v01.py'
       - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_availability_boundary_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_clock_integrity_v01.py'
       - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_order_book_v01.py'
       - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_state_reconstruction_v01.py'
       - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_book_replay_v01.py'
@@ -63,6 +64,9 @@ jobs:
       - name: Run source-plus-arrival availability tests
         run: |
           python "Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_availability_boundary_v01.py" -v
+      - name: Run collector clock integrity tests
+        run: |
+          python "Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_clock_integrity_v01.py" -v
       - name: Run local order book tests
         run: |
           python "Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_order_book_v01.py" -v
