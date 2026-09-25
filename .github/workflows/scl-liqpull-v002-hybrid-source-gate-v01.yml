@@ -1,0 +1,32 @@
+name: SCL LIQPULL V002 Hybrid Source Gate V0.1
+
+on:
+  push:
+    paths:
+      - '.github/workflows/scl-liqpull-v002-hybrid-source-gate-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  hybrid-source-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install aiohttp websockets
+      - name: Run frozen 120-second public source gate
+        run: |
+          python research/scalping_forward/scl_liqpull_v002_hybrid_source_probe_v01.py             --out-dir source_gate_v002             --duration-seconds 120             --authority-commit f2831a1bd6c803c8e96c74847fd52d8773e88c4a
+      - name: Show source-only adjudication
+        run: cat source_gate_v002/SCL_LIQPULL_TOXICITY_FWD_002_SOURCE_GATE_RESULT_V0_1.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: scl-liqpull-v002-hybrid-source-gate-v01
+          path: source_gate_v002/
+          if-no-files-found: error
+          retention-days: 7
