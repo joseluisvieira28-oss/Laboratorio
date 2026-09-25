@@ -28,7 +28,8 @@ const ADDRS=Object.values(SPOKES).map(x=>x[0])
 const VALID=new Set(ADDRS)
 const MIN_BLOCK=Math.min(...Object.values(SPOKES).map(x=>x[1]))
 
-function sha(s){return createHash('sha256').update(s).digest('hex')}\nfunction hx(v){const s=String(v||'').toLowerCase();return s.startsWith('0x')?s:'0x'+s}
+function sha(s){return createHash('sha256').update(s).digest('hex')}
+function hx(v){const s=String(v||'').toLowerCase();return s.startsWith('0x')?s:'0x'+s}
 function walk(v,out=[]){
  if(Array.isArray(v)){for(const z of v) walk(z,out)}
  else if(v && typeof v==='object'){out.push(v); for(const z of Object.values(v)) walk(z,out)}
