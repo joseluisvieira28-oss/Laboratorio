@@ -20,6 +20,8 @@ jobs:
           python-version: '3.12'
       - name: Run V0.2 deterministic aggressive shadow snapshot
         run: python labs/btc-convex-trend-capture-001/prospective_shadow_snapshot_v0_2_aggressive.py
+      - name: Fail-closed validate V0.2 evidence contract
+        run: python labs/btc-convex-trend-capture-001/validate_prospective_shadow_v0_2.py
       - uses: actions/upload-artifact@v4
         if: always()
         with:
