@@ -373,14 +373,14 @@ def run_authenticated_preflight(
         checks["risk_limit"] = {"pass": False, "error": f"{type(exc).__name__}: {exc}"}
         blockers.append("AUTHENTICATED_RISK_LIMIT_READ_FAILED")
 
-    # Existing ETF-CME V2 readiness budget feasibility diagnostic only.
+    # ETF-CME readiness diagnostic under the frozen fixed-cap micro-live policy.
     if equity is not None and "minimum_executable_notional_estimate_usdt" in checks.get("contract", {}):
-        budget = equity * ETF_VALIDATION_ALLOCATION_FRACTION
+        budget = MICROLIVE_MAX_TRADE_NOTIONAL_USDT
         venue_min = float(checks["contract"]["minimum_executable_notional_estimate_usdt"])
         feasible = venue_min <= budget
         checks["etf_cme_existing_validation_budget"] = {
             "pass": feasible,
-            "existing_frozen_fraction_of_equity": ETF_VALIDATION_ALLOCATION_FRACTION,
+            "fixed_micro_live_cap_usdt": MICROLIVE_MAX_TRADE_NOTIONAL_USDT,
             "account_equity_usdt": equity,
             "maximum_validation_allocation_usdt": budget,
             "estimated_venue_minimum_notional_usdt": venue_min,
@@ -388,7 +388,7 @@ def run_authenticated_preflight(
         }
         if not feasible:
             candidate_blockers.append(
-                "ETF_CME_VENUE_MIN_NOTIONAL_EXCEEDS_FROZEN_VALIDATION_BUDGET"
+                "ETF_CME_VENUE_MIN_NOTIONAL_EXCEEDS_FROZEN_10_USDT_CAP"
             )
 
     # No open position means margin type and Auto Margin Add do not exist as active
