@@ -22,7 +22,7 @@ def inspect_bytes(url,body):
     out={"url":url,"compressed_bytes":len(body),"decoded_bytes":len(raw),"lines_seen":min(len(lines),2000)}
     if not lines:
         raise RuntimeError("empty_file")
-    reader=csv.DictReader(io.StringIO("\\n".join(lines[:2000])))
+    reader=csv.DictReader(io.StringIO("\n".join(lines[:2000])))
     rows=list(reader)
     out["columns"]=reader.fieldnames
     out["sample_rows"]=rows[:3]
