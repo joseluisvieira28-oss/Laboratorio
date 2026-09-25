@@ -117,6 +117,13 @@ def main()->int:
     try:
         state=_radar_state(args.radar_url)
         signal=build_execution_signal(now=datetime.now(timezone.utc),radar_state=state)
+        completed=datetime.now(timezone.utc)
+        entry=datetime.fromisoformat(signal["entry_target_utc"].replace("Z","+00:00"))
+        actual_latency=(completed-entry).total_seconds()
+        if actual_latency>30:
+            raise OptionsExecutionBridgeError("ENTRY_WINDOW_MISSED_DURING_SIGNAL_MATERIALIZATION_NO_CHASE")
+        signal["materialized_at_utc"]=completed.isoformat().replace("+00:00","Z")
+        signal["materialization_latency_seconds"]=actual_latency
     except Exception as exc:
         print(json.dumps({"status":"FAIL_CLOSED","blocker":f"{type(exc).__name__}:{exc}"},indent=2)); return 2
     Path(args.out).write_text(json.dumps(signal,indent=2,sort_keys=True)+"\n",encoding="utf-8")
