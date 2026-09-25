@@ -37,15 +37,18 @@ class RiskStateTests(unittest.TestCase):
                 "realized_net_pnl_usdt":-2.0
             })
             self._write(root/"live"/"b"/"ACTIVE_TRADE_STATE.json",{
-                "state":"EXIT_PENDING","planned_risk_fraction_equity":0.001
+                "state":"EXIT_PENDING","planned_notional_usdt":8.6
             })
             state=build_state(
                 preflight_path=pf,receipt_root=root/"live",
                 now=datetime(2026,9,21,21,0,tzinfo=timezone.utc)
             )
             self.assertAlmostEqual(state["daily_realized_loss_fraction_equity"],0.002)
-            self.assertAlmostEqual(state["concurrent_planned_risk_fraction_equity"],0.001)
+            self.assertAlmostEqual(state["concurrent_planned_notional_usdt"],8.6)
             self.assertEqual(state["open_micro_live_positions"],1)
+            self.assertEqual(state["policy"]["maximum_notional_usdt_equivalent"],10.0)
+            self.assertEqual(state["policy"]["daily_realized_loss_kill_usdt"],2.0)
+            self.assertEqual(state["policy"]["rolling_7d_realized_loss_kill_usdt"],5.0)
 
 
 if __name__=="__main__":
