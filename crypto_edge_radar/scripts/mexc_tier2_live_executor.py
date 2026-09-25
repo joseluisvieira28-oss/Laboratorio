@@ -12,6 +12,7 @@ from typing import Any
 from radar.market import MEXCFuturesPublicFeed
 from radar.mexc_auth_readonly import MEXCCredentials, MEXCFuturesAuthenticatedReadOnlyClient
 from radar.mexc_auth_trade import MEXCFuturesMutationTransport
+from radar.mexc_spot_auth import MEXCSpotAuthenticatedClient
 from radar.mexc_tier2_live_gate import EXECUTION_TOKEN, validate_tier2_options_short_execution
 
 def _write(path:Path,payload:dict[str,Any])->None:
@@ -135,6 +136,16 @@ def main()->int:
     readonly=MEXCFuturesAuthenticatedReadOnlyClient(credentials)
     transport=MEXCFuturesMutationTransport(credentials)
     public=MEXCFuturesPublicFeed(timeout=10)
+    spot_read=MEXCSpotAuthenticatedClient(credentials)
+
+    try:
+        spot_open_orders=spot_read.open_orders("BTCUSDT")
+    except Exception as exc:
+        print(json.dumps({"status":"FAIL_CLOSED","blockers":["SPOT_CROSS_VENUE_RECONCILIATION_FAILED"],"error":f"{type(exc).__name__}:{exc}"},indent=2))
+        return 4
+    if spot_open_orders:
+        print(json.dumps({"status":"FAIL_CLOSED","blockers":["OPEN_SPOT_ORDER_PRESENT_CROSS_VENUE"]},indent=2))
+        return 4
 
     if readonly.open_positions() or readonly.open_orders() or readonly.position_mode()!=1:
         print(json.dumps({"status":"FAIL_CLOSED","blockers":["LAST_MOMENT_POSITION_ORDER_OR_MODE_CONFLICT"]},indent=2))
