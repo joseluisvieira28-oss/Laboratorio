@@ -21,6 +21,7 @@ def build_preflight(client: MEXCSpotAuthenticatedReadOnlyClient) -> dict:
     account = client.account()
     self_symbols = client.self_symbols()
     default_symbols = client.default_symbols()
+    exchange_info = client.exchange_info(ALLOWED_SYMBOL)
     orders = client.open_orders(ALLOWED_SYMBOL)
     mx_deduct = client.mx_deduct_enabled()
     fee = client.trade_fee(ALLOWED_SYMBOL)
@@ -51,10 +52,21 @@ def build_preflight(client: MEXCSpotAuthenticatedReadOnlyClient) -> dict:
             "equity_usdt": usdt["free"],
         },
         "symbol": {
-            "pass": ALLOWED_SYMBOL in default_symbols and ALLOWED_SYMBOL in self_symbols,
+            "pass": (
+                ALLOWED_SYMBOL in default_symbols
+                and ALLOWED_SYMBOL in self_symbols
+                and exchange_info.get("isSpotTradingAllowed") is True
+                and exchange_info.get("quoteOrderQtyMarketAllowed") is True
+                and "MARKET" in (exchange_info.get("orderTypes") or [])
+            ),
             "symbol": ALLOWED_SYMBOL,
             "in_default_symbols": ALLOWED_SYMBOL in default_symbols,
             "in_api_key_symbols": ALLOWED_SYMBOL in self_symbols,
+            "is_spot_trading_allowed": exchange_info.get("isSpotTradingAllowed"),
+            "quote_order_qty_market_allowed": exchange_info.get("quoteOrderQtyMarketAllowed"),
+            "order_types": exchange_info.get("orderTypes"),
+            "quote_amount_precision": exchange_info.get("quoteAmountPrecision"),
+            "base_size_precision": exchange_info.get("baseSizePrecision"),
         },
         "orders": {
             "pass": len(orders) == 0,
