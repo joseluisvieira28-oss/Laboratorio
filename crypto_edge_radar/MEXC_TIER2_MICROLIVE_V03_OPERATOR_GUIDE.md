@@ -30,6 +30,9 @@ Frozen scientific identity:
 
 Execution translation:
 - negative signal -> MEXC `BTC_USDT` perpetual SHORT;
+- maximum post-midnight execution latency: **30 seconds**;
+- observed canonical runtime on 2026-09-25 materialized the prior-day signal by 00:00:10.527 UTC;
+- this latency allowance is execution-feasibility only and does not rewrite the historical 00:00 scientific entry;
 - isolated 1x;
 - Auto Margin Add OFF;
 - max 10 USDT notional;
