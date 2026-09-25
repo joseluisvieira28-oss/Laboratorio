@@ -131,8 +131,10 @@ def decode_received(log):
     if off+32>len(raw):return None
     n=int.from_bytes(raw[off:off+32],"big");body=raw[off+32:off+32+n]
     if len(body)!=132:return None
+    li=log.get("logIndex","0x0")
+    if isinstance(li,str): li=int(li,16) if li.startswith("0x") else int(li)
     return {"source_domain":source,"nonce":int(ts[2],16),"sender":sender.lower(),"body":body,
-            "tx":str(log.get("transactionHash") or "").lower()}
+            "tx":str(log.get("transactionHash") or "").lower(),"log_index":int(li)}
 
 def parse_burn_body(body):
     if len(body)!=132:return None
@@ -142,8 +144,10 @@ def parse_burn_body(body):
 def decode_mint(log):
     ts=log.get("topics") or [];raw=bytes.fromhex((log.get("data") or "0x")[2:])
     if len(ts)<3 or len(raw)<32:return None
+    li=log.get("logIndex","0x0")
+    if isinstance(li,str): li=int(li,16) if li.startswith("0x") else int(li)
     return {"recipient":"0x"+ts[1][-40:].lower(),"token":"0x"+ts[2][-40:].lower(),
-            "amount":int.from_bytes(raw[:32],"big"),"tx":str(log.get("transactionHash") or "").lower()}
+            "amount":int.from_bytes(raw[:32],"big"),"tx":str(log.get("transactionHash") or "").lower(),"log_index":int(li)}
 
 receipt={"lab_id":"CROSSCHAIN-LIQUIDITY-MIGRATION-001","child_id":"CCLM-CCTP-SETTLED-FLOW-002",
  "stage":"SETTLED_FLOW_MONTHLY_SOURCE_SCALE_V0.1","window_month":MONTH,
@@ -159,8 +163,12 @@ try:
         mint_by_tx={}
         for l in mint:
             x=decode_mint(l)
-            if x:mint_by_tx.setdefault(x["tx"],[]).append(x)
+            if x: mint_by_tx.setdefault(x["tx"],[]).append(x)
+        for tx in mint_by_tx:
+            mint_by_tx[tx].sort(key=lambda z:z["log_index"])
+        used_mints=set()
         canonical=[];route_mismatch=0
+        rec=sorted(rec,key=lambda z:(str(z.get("transactionHash") or "").lower(), int(z.get("logIndex","0x0"),16) if isinstance(z.get("logIndex"),str) else int(z.get("logIndex") or 0)))
         for l in rec:
             x=decode_received(l)
             if not x or x["source_domain"]!=sd:continue
@@ -168,11 +176,16 @@ try:
             b=parse_burn_body(x["body"])
             if not b or b["version"]!=0:continue
             if b["burn_token"][-40:].lower()!=CHAINS[sd]["usdc"][-40:].lower():continue
-            cand=[m for m in mint_by_tx.get(x["tx"],[]) if m["token"]==CHAINS[dd]["usdc"] and m["amount"]==b["amount"] and m["recipient"]==("0x"+b["mint_recipient"][-40:].lower())]
-            if len(cand)!=1:
+            exact=[m for m in mint_by_tx.get(x["tx"],[]) if m["token"]==CHAINS[dd]["usdc"] and m["amount"]==b["amount"] and m["recipient"]==("0x"+b["mint_recipient"][-40:].lower()) and m["log_index"]<x["log_index"] and (x["tx"],m["log_index"]) not in used_mints]
+            if not exact:
                 route_mismatch+=1;continue
+            # V1 contract order: handleReceiveMessage -> MintAndWithdraw, then MessageReceived.
+            # In batched receiveMessage calls, choose the nearest preceding exact unused mint.
+            chosen=max(exact,key=lambda m:m["log_index"])
+            used_mints.add((x["tx"],chosen["log_index"]))
             canonical.append({"source_domain":sd,"destination_domain":dd,"nonce":x["nonce"],"amount_atomic":b["amount"],
-                              "destination_tx":x["tx"],"body_sha256":hashlib.sha256(x["body"]).hexdigest()})
+                              "destination_tx":x["tx"],"body_sha256":hashlib.sha256(x["body"]).hexdigest(),
+                              "mint_log_index":chosen["log_index"],"received_log_index":x["log_index"]})
         total+=len(canonical);mismatches+=route_mismatch
         receipt["routes"].append({"source_domain":sd,"destination_domain":dd,"received_logs_total":len(rec),
           "mint_logs_total":len(mint),"canonical_settled_flows":len(canonical),"semantic_mismatch_count":route_mismatch,
