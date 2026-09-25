@@ -22,7 +22,6 @@ class PretargetGateTests(unittest.TestCase):
         result = validate_for_freeze(self.template)
         self.assertFalse(result.ready)
         self.assertIn("H02_NOT_AUTHORIZED", result.blockers)
-        self.assertIn("TARGET_OBSERVATION_NOT_AUTHORIZED", result.blockers)
         self.assertIn("OFFICIAL_CALENDAR_INCOMPLETE", result.blockers)
         self.assertIn("DEPTH_MODE_INVALID_OR_MISSING", result.blockers)
         self.assertIn("AVAILABILITY_RULE_INVALID_OR_MISSING", result.blockers)
@@ -32,7 +31,7 @@ class PretargetGateTests(unittest.TestCase):
         p = copy.deepcopy(self.template)
         p["status"] = "SYNTHETIC_TEST_ONLY"
         p["governance"]["h02_authorized"] = True
-        p["governance"]["target_observation_authorized"] = True
+        p["governance"]["target_observation_authorized"] = False
         p["calendar"] = {
             "complete_official_calendar": True,
             "calendar_source_manifest_sha256": "a" * 64,
@@ -96,6 +95,17 @@ class PretargetGateTests(unittest.TestCase):
         result = validate_for_freeze(p)
         self.assertFalse(result.ready)
         self.assertIn("CROSS_VENUE_MERGE_POLICY_INVALID", result.blockers)
+
+    def test_target_observation_authority_must_not_precede_freeze(self):
+        p = self._synthetic_complete_protocol()
+        p["governance"]["target_observation_authorized"] = True
+        p["freeze"]["protocol_fingerprint_sha256"] = protocol_fingerprint(p)
+        result = validate_for_freeze(p)
+        self.assertFalse(result.ready)
+        self.assertIn(
+            "TARGET_OBSERVATION_MUST_REMAIN_LOCKED_DURING_FREEZE",
+            result.blockers,
+        )
 
     def test_source_only_availability_rule_is_rejected(self):
         p = self._synthetic_complete_protocol()
