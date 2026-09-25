@@ -34,7 +34,7 @@ class Tier2GateTests(unittest.TestCase):
             "max_risk_state_age_seconds":60,
             "entry_target_utc":"2026-09-25T00:00:00Z",
             "exit_target_utc":"2026-09-26T00:00:00Z",
-            "max_late_seconds":2,"duplicate_protection_key":"dup",
+            "max_late_seconds":30,"duplicate_protection_key":"dup",
             "friction_budget_bps":20.0,"projected_round_trip_bps":18.0,
             "reference_entry_price":85000.0,"volume_contracts":1
         }
