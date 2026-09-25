@@ -89,6 +89,8 @@ def validate_tier2_options_short_execution(
         blockers.append("AUTHORITY_ONE_POSITION_CONSTRAINT_MISSING")
     if authority.get("late_chase_allowed") is not False:
         blockers.append("AUTHORITY_LATE_CHASE_NOT_FORBIDDEN")
+    if float(authority.get("max_late_seconds",-1)) != 30.0:
+        blockers.append("EXECUTION_TRANSLATION_MAX_LATE_NOT_FROZEN_30S")
     if authority.get("implementation_mapping_review_status")!="ACCEPTED_PRE_ORDER":
         blockers.append("IMPLEMENTATION_MAPPING_REVIEW_NOT_ACCEPTED")
 
