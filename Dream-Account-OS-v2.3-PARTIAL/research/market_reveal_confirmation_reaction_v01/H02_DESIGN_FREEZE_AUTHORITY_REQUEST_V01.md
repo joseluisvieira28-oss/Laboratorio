@@ -1,5 +1,5 @@
 # MRCR V0.1 — H02 Design/Freeze Authority Request
-Status: DRAFT_NOT_AUTHORITY
+Status: FULFILLED_BY_EXPLICIT_AUTHORITY
 Date: 2026-09-25
 
 This document is a future operator decision surface. It does not supersede the
@@ -54,3 +54,17 @@ To issue this authority legitimately, the operator must explicitly authorize
 
 Generic instructions such as "continue", "attack", or "do everything possible"
 do not activate this document.
+
+
+## Fulfilment receipt
+
+Explicit operator authorization was received on 2026-09-25 in direct response
+to this authority request.
+
+Canonical authority receipt:
+`H02_DESIGN_FREEZE_AUTHORITY_V01.json`
+
+Receipt SHA-256:
+`30c189762d05f33f88a1a6d8a9ad3af80355b4589564c70ca15f996dc7f4a155`
+
+This fulfilment does not authorize target observation.
