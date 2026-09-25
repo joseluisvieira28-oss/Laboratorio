@@ -1,0 +1,39 @@
+name: CMM-RM-001 Exploratory Resolution Map V0.1
+
+on:
+  push:
+    branches:
+      - cross-market-resolution-map-001-exploratory-v0.1
+    paths:
+      - "cmm001/CMM_RM_001_EXPLORATORY_AUTHORITY_V01.md"
+      - "cmm001/resolution_map_v01.py"
+      - ".github/workflows/cmm-rm-001-v01.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  resolution-map:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout isolated branch
+        uses: actions/checkout@v4
+        with:
+          ref: cross-market-resolution-map-001-exploratory-v0.1
+
+      - name: Run immutable-ledger resolution map
+        run: |
+          python3 cmm001/resolution_map_v01.py
+
+      - name: Preserve exploratory evidence
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add cmm001/resolution_map_results/
+          if ! git diff --cached --quiet; then
+            git commit -m "cmm-rm-001: record exploratory resolution map v0.1 [skip ci]"
+            git pull --rebase origin cross-market-resolution-map-001-exploratory-v0.1
+            git push origin HEAD:cross-market-resolution-map-001-exploratory-v0.1
+          fi
