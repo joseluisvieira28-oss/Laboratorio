@@ -37,7 +37,8 @@ jobs:
           git add cmm001/results/CMM001_SOURCE_GATE_RESULT_V02.json cmm001/results/CMM001_SOURCE_GATE_RECEIPT_V02.md
           if ! git diff --cached --quiet; then
             git commit -m "cmm001: record source gate v0.2 transport receipt [skip ci]"
-            git push
+            git pull --rebase origin cross-market-mispricing-001-source-gate-v0.1
+            git push origin HEAD:cross-market-mispricing-001-source-gate-v0.1
           fi
 
       - name: Enforce fail-closed source gate
