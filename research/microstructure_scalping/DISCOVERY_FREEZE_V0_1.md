@@ -11,8 +11,13 @@ Historical Bybit BTCUSDT L2:
 
 The 2026 partition MUST NOT be opened by Discovery or OOS code.
 
+## Event clock
+Primary event time = matching-engine timestamp `cts` when present.
+Fallback to `ts` is allowed only when `cts` is absent and must be explicitly flagged.
+No future event may influence a feature timestamped at t.
+
 ## Primary economic question
-Does information observable in the L2 book at time t predict an executable future mid-price move over the frozen horizons strongly enough to remain positive after realistic transaction costs?
+Does information observable in the L2 book at time t predict an executable future move over the frozen horizons strongly enough to remain positive after realistic transaction costs?
 
 ## Frozen horizons
 - 100 ms
@@ -22,7 +27,7 @@ Does information observable in the L2 book at time t predict an executable futur
 - 15 s
 - 30 s
 
-Labels use the first observed mid-price at or after t+horizon.
+Labels use the first observed reconstructed book state at or after t+horizon.
 No interpolation from future data is allowed.
 
 ## Causal features allowed at t
@@ -37,15 +42,40 @@ Secondary, only after implementation is causality-tested:
 - signed depth-add/remove intensity
 - trade aggressor imbalance
 - event intensity
-- short-horizon backward-looking volatility
+- backward-looking volatility
 - cross-market leader/follower state
 
-No feature may use any event with source timestamp later than t.
+No feature may use any event with event clock later than t.
+
+## Frozen first Discovery MVE
+- source: Bybit BTCUSDT 2023-01-18 ob500
+- source window: first 250,000 messages
+- anchors: at most one anchor per 1,000 ms of matching-engine time
+- signals tested independently:
+  - sign(microprice_displacement_bps)
+  - sign(imbalance_l1)
+  - sign(imbalance_l5)
+  - sign(imbalance_l10)
+- no threshold search in this MVE
+- no parameter tuning from its outcomes
+- purpose: determine whether raw predictive direction exists and whether it is remotely compatible with execution costs
+
+## Execution labels
+For each future horizon preserve:
+- future mid
+- future best bid
+- future best ask
+
+Taker-only executable return:
+- LONG: enter at current ask, exit at future bid
+- SHORT: enter at current bid, exit at future ask
+
+Therefore spread is paid through executable BBO prices rather than subtracted twice.
 
 ## Execution model hierarchy
 ### Primary: taker-only
-This is the first economic gate because fills are deterministic enough to model conservatively.
-Entry and exit are charged taker fees plus spread/slippage/latency assumptions.
+First economic gate.
+Net = executable gross return - entry taker fee - exit taker fee - explicit slippage sensitivity.
 
 ### Secondary: maker-assisted
 BLOCKED until a defensible fill/queue/adverse-selection model exists.
@@ -59,10 +89,10 @@ No OOS rescue tuning.
 2026 remains locked regardless of Discovery/OOS outcome.
 
 ## Promotion states
-- SOURCE_FEASIBLE: source/replay gate passed
-- DISCOVERY_SURVIVES: candidate survives Discovery after multiple-testing controls
-- OOS_SURVIVES: frozen candidate survives 2025 OOS
-- FORWARD_REQUIRED: historical evidence survives but target-venue forward replication is required
+- SOURCE_FEASIBLE
+- DISCOVERY_SURVIVES
+- OOS_SURVIVES
+- FORWARD_REQUIRED
 - NO_EDGE
 - BLOCKED
 
