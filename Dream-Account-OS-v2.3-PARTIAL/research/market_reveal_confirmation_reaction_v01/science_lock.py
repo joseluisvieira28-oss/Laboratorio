@@ -9,11 +9,17 @@ import json
 from pathlib import Path
 from typing import Any
 
+from h02_ruleset import validate_h02_ruleset
+
 
 HERE = Path(__file__).resolve().parent
 PROTOCOL = HERE / "PRETARGET_PROTOCOL_TEMPLATE_V01.json"
 CALENDAR = HERE / "OFFICIAL_CALENDAR_MANIFEST_TEMPLATE_V01.json"
 READINESS = HERE / "PRETARGET_READINESS_MATRIX_2026-09-24.json"
+AUTHORITY = HERE / "H02_DESIGN_FREEZE_AUTHORITY_V01.json"
+RULESET = HERE / "H02_SCIENTIFIC_RULESET_V01.json"
+CLASSIFIER = HERE / "H02_CLASSIFIER_SPEC_V01.json"
+MEASUREMENT_CATALOG = HERE / "MEASUREMENT_CATALOG_V01.md"
 
 
 def _is_populated(value: Any) -> bool:
@@ -24,6 +30,10 @@ def evaluate_science_lock(
     protocol: dict[str, Any],
     calendar: dict[str, Any],
     readiness: dict[str, Any],
+    authority: dict[str, Any] | None = None,
+    ruleset: dict[str, Any] | None = None,
+    classifier: dict[str, Any] | None = None,
+    measurement_catalog_bytes: bytes | None = None,
 ) -> tuple[bool, tuple[str, ...]]:
     violations: list[str] = []
 
@@ -94,8 +104,13 @@ def evaluate_science_lock(
         if _is_populated(freeze.get(field)):
             violations.append(f"{field.upper()}_POPULATED_WITHOUT_TRANSITION")
 
+    design_authorized = authority is not None
     expected = {
-        "H02": "NOT_AUTHORIZED",
+        "H02": (
+            "DESIGN_FREEZE_AUTHORIZED"
+            if design_authorized
+            else "NOT_AUTHORIZED"
+        ),
         "TARGET_OBSERVATION": "NOT_AUTHORIZED",
         "LIVE_TRADING": "PROHIBITED",
     }
@@ -108,6 +123,19 @@ def evaluate_science_lock(
         if statuses.get(gate) != status:
             violations.append(f"READINESS_{gate}_STATUS_CHANGED")
 
+    if design_authorized:
+        if ruleset is None or classifier is None or measurement_catalog_bytes is None:
+            violations.append("H02_DESIGN_AUTHORITY_WITHOUT_FROZEN_RULESET_EVIDENCE")
+        else:
+            ready, blockers = validate_h02_ruleset(
+                ruleset,
+                authority,
+                classifier,
+                measurement_catalog_bytes,
+            )
+            if not ready:
+                violations.extend(f"H02_RULESET:{b}" for b in blockers)
+
     return len(violations) == 0, tuple(sorted(set(violations)))
 
 
@@ -115,10 +143,22 @@ def main() -> int:
     protocol = json.loads(PROTOCOL.read_text(encoding="utf-8"))
     calendar = json.loads(CALENDAR.read_text(encoding="utf-8"))
     readiness = json.loads(READINESS.read_text(encoding="utf-8"))
-    locked, violations = evaluate_science_lock(protocol, calendar, readiness)
+    authority = json.loads(AUTHORITY.read_text(encoding="utf-8"))
+    ruleset = json.loads(RULESET.read_text(encoding="utf-8"))
+    classifier = json.loads(CLASSIFIER.read_text(encoding="utf-8"))
+    locked, violations = evaluate_science_lock(
+        protocol,
+        calendar,
+        readiness,
+        authority,
+        ruleset,
+        classifier,
+        MEASUREMENT_CATALOG.read_bytes(),
+    )
     print(json.dumps({
         "lock": "MRCR_PRETARGET_SCIENCE_LOCK_V01",
         "locked": locked,
+        "mode": "H02_DESIGN_FROZEN__TARGET_LOCKED",
         "violations": list(violations),
     }, sort_keys=True))
     return 0 if locked else 2
