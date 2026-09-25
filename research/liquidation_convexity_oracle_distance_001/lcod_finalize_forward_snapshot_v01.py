@@ -43,7 +43,13 @@ if len(rows)!=int(comp.get("active_population_count",-1)):
     raise SystemExit("COMPONENT_ROW_COUNT_MISMATCH")
 
 event=os.environ.get("GITHUB_EVENT_NAME","local")
-role="FORWARD_OBSERVATION" if event in ("schedule","push") else "DIAGNOSTIC_ONLY"
+existing=list((HERE/"forward_snapshots").glob("LCOD_FORWARD_SNAPSHOT_BLOCK_*.json"))
+if event=="schedule":
+    role="FORWARD_OBSERVATION"
+elif event=="push" and not existing:
+    role="FORWARD_OBSERVATION"
+else:
+    role="DIAGNOSTIC_ONLY"
 captured=datetime.now(timezone.utc).isoformat().replace("+00:00","Z")
 
 receipt={
