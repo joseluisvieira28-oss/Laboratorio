@@ -78,7 +78,10 @@ jobs:
         run: |
           foreach ($s in @(
             "windows\Set_MEXC_Preflight_Secrets.ps1",
-            "windows\Run_Tier2_MicroLive_Ready_Check_V03.ps1"
+            "windows\Run_Tier2_MicroLive_Ready_Check_V03.ps1",
+            "windows\ARM_TIER2_AUTOLIVE_V03.ps1",
+            "windows\START_TIER2_AUTOLIVE_V03.ps1",
+            "windows\DISARM_TIER2_AUTOLIVE_V03.ps1"
           )) {
             $errors=$null
             [void][System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $s),[ref]$null,[ref]$errors)
@@ -121,6 +124,8 @@ jobs:
           Copy-Item windows\Run_Tier2_MicroLive_Ready_Check_V03.ps1 bundle\windows\
           Copy-Item windows\READY_CHECK_TIER2_MICROLIVE_V03.bat bundle\windows\
           Copy-Item windows\ARM_TIER2_AUTOLIVE_V03.ps1 bundle\windows\
+          Copy-Item windows\START_TIER2_AUTOLIVE_V03.ps1 bundle\windows\
+          Copy-Item windows\DISARM_TIER2_AUTOLIVE_V03.ps1 bundle\windows\
           Copy-Item OPTIONS_SPOTPERP_001_V21_MEXC_SPOT_LONG_AUTHORITY_TEMPLATE_V0.3.json bundle\
           Copy-Item MEXC_LIVE_EXECUTION_V03_TIER2_OPERATOR_GUIDE.md bundle\
 
