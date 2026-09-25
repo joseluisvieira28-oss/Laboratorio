@@ -438,18 +438,21 @@ class AutoLiveSupervisor:
             self.last_decision_day = cache.signal_day
             return
 
-        try:
-            preflight_path, risk_path = self._refresh_preflight(current)
-        except Exception as exc:
-            _write(
-                decision_path,
-                {
-                    "status": "NO_TRADE_PREFLIGHT_OR_RISK_FAIL_CLOSED",
-                    "error": f"{type(exc).__name__}:{exc}",
-                },
-            )
-            self.last_decision_day = cache.signal_day
-            return
+        preflight_path = self.data_dir / "mexc_spot_authenticated_preflight_receipt.json"
+        risk_path = self.data_dir / "mexc_account_risk_state.json"
+        if not preflight_path.exists() or not risk_path.exists():
+            try:
+                preflight_path, risk_path = self._refresh_preflight(current)
+            except Exception as exc:
+                _write(
+                    decision_path,
+                    {
+                        "status": "NO_TRADE_PREFLIGHT_OR_RISK_FAIL_CLOSED",
+                        "error": f"{type(exc).__name__}:{exc}",
+                    },
+                )
+                self.last_decision_day = cache.signal_day
+                return
 
         quote = 10.0 * weight
         client_id = "o3e" + hashlib.sha256(immutable_key.encode()).hexdigest()[:20]
@@ -590,16 +593,21 @@ class AutoLiveSupervisor:
                 time.sleep(1)
                 continue
 
-            target = _next_boundary(now)
-            signal_day = target.date() - timedelta(days=1)
+            if self.cache is not None:
+                signal_day = self.cache.signal_day
+                target = _midnight(signal_day + timedelta(days=1))
+            else:
+                target = _next_boundary(now)
+                signal_day = target.date() - timedelta(days=1)
             remaining = (target - now).total_seconds()
 
             if self.last_decision_day == signal_day:
                 self._status("DAY_ALREADY_ADJUDICATED", signal_day=signal_day.isoformat())
+                self.cache = None
                 time.sleep(5)
                 continue
 
-            if self.cache is None or self.cache.signal_day != signal_day:
+            if self.cache is None:
                 self.cache = DayCache(signal_day)
 
             try:
