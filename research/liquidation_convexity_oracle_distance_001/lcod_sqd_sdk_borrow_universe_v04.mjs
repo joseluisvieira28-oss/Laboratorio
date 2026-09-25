@@ -28,7 +28,7 @@ const ADDRS=Object.values(SPOKES).map(x=>x[0])
 const VALID=new Set(ADDRS)
 const MIN_BLOCK=Math.min(...Object.values(SPOKES).map(x=>x[1]))
 
-function sha(s){return createHash('sha256').update(s).digest('hex')}
+function sha(s){return createHash('sha256').update(s).digest('hex')}\nfunction hx(v){const s=String(v||'').toLowerCase();return s.startsWith('0x')?s:'0x'+s}
 function walk(v,out=[]){
  if(Array.isArray(v)){for(const z of v) walk(z,out)}
  else if(v && typeof v==='object'){out.push(v); for(const z of Object.values(v)) walk(z,out)}
@@ -124,8 +124,8 @@ for await (const batch of source.getStream()){
   if(minSeen==null||height<minSeen) minSeen=height
   if(maxSeen==null||height>maxSeen) maxSeen=height
   for(const log of block.logs||[]){
-   const addr=String(log.address||'').toLowerCase()
-   const topics=(log.topics||[]).map(x=>String(x).toLowerCase())
+   const addr=hx(log.address)
+   const topics=(log.topics||[]).map(hx)
    if(!VALID.has(addr)||topics.length===0||topics[0]!==TOPIC) continue
    eventCount++
    if(addrName[addr]) spokeCounts[addrName[addr]]++
@@ -134,7 +134,7 @@ for await (const batch of source.getStream()){
    const user='0x'+raw.slice(-40)
    if(!/^0x[0-9a-f]{40}$/.test(user)){decodeErrors++;continue}
    eventPairs.add(addr+'::'+user)
-   const tx=String(log.transactionHash||'').toLowerCase()
+   const tx=hx(log.transactionHash)
    if(tx===FIXTURE_TX) fixturePresent=true
    canonical.push([height,addr,user,tx].join('|'))
   }
