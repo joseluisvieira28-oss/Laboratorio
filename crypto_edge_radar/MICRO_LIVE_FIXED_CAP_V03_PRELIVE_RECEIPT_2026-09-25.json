@@ -1,0 +1,39 @@
+{
+  "receipt_id": "MICRO-LIVE-FIXED-CAP-V03-PRELIVE-2026-09-25",
+  "status": "PREPARED_PENDING_CI_AND_LOCAL_AUTHENTICATED_PREFLIGHT",
+  "branch": "mexc-microlive-fixed-cap-v03-2026-09-25",
+  "policy": {
+    "max_trade_notional_usdt": 10,
+    "daily_stop_usdt": 2,
+    "rolling_7d_stop_usdt": 5,
+    "max_simultaneous_positions": 1,
+    "margin_mode": "ISOLATED",
+    "leverage": 1
+  },
+  "changes": [
+    "removed stale ETF 0.1%-of-equity sizing blocker from live gate",
+    "removed stale 0.1%-of-equity last-moment executor blocker",
+    "preflight candidate feasibility now uses fixed 10 USDT cap",
+    "risk state uses rolling 7-day loss window",
+    "account halts enforced in absolute USDT",
+    "execution token version advanced to V0.3"
+  ],
+  "live_order_authorized_now": false,
+  "prerequisites": [
+    "CI PASS",
+    "fresh local authenticated preflight PASS",
+    "fresh risk state PASS",
+    "canonical candidate signal",
+    "candidate-specific immutable authority",
+    "valid timing window",
+    "venue-compatible <=10 USDT order",
+    "no open position/order",
+    "kill switch absent"
+  ],
+  "exclusions": [
+    "OPTIONS route not yet reused from ETF executor",
+    "CED1D mapping not yet frozen",
+    "no main merge",
+    "no exchange mutation performed during preparation"
+  ]
+}
