@@ -99,10 +99,10 @@ def build_state(*,preflight_path:Path,receipt_root:Path,now:datetime|None=None)-
         "local_active_trade_receipts":active,
         "reconciliations_scanned":counted,
         "policy":{
-            "planned_validation_margin_fraction_equity":0.001,
-            "max_simultaneous_planned_risk_fraction_equity":0.003,
-            "daily_stop_fraction_equity":0.003,
-            "weekly_stop_fraction_equity":0.0075
+            "max_trade_notional_usdt":10.0,
+            "max_simultaneous_positions":1,
+            "daily_stop_usdt":2.0,
+            "rolling_7d_stop_usdt":5.0
         }
     }
 
