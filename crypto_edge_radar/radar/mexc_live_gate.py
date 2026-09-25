@@ -154,33 +154,15 @@ def validate_futures_short_execution(
     except LiveExecutionGateError:
         blockers.append("ACCOUNT_RISK_STATE_TIME_INVALID")
 
-    planned_fraction = float(
-        authority.get("max_initial_isolated_margin_fraction_of_equity", -1)
-    )
-    max_concurrent = float(
-        authority.get("max_concurrent_planned_risk_fraction_equity", -1)
-    )
-    daily_stop = float(authority.get("daily_stop_fraction_equity", -1))
-    weekly_stop = float(authority.get("weekly_stop_fraction_equity", -1))
-    daily_loss = float(risk_state.get("daily_realized_loss_fraction_equity", 999))
-    weekly_loss = float(risk_state.get("weekly_realized_loss_fraction_equity", 999))
-    concurrent_before = float(
-        risk_state.get("concurrent_planned_risk_fraction_equity", 999)
-    )
-    if planned_fraction != 0.001:
-        blockers.append("ETF_VALIDATION_RISK_FRACTION_NOT_FROZEN_0_001")
-    if max_concurrent != 0.003:
-        blockers.append("GLOBAL_CONCURRENT_RISK_LIMIT_NOT_FROZEN_0_003")
-    if daily_stop != 0.003:
-        blockers.append("GLOBAL_DAILY_STOP_NOT_FROZEN_0_003")
-    if weekly_stop != 0.0075:
-        blockers.append("GLOBAL_WEEKLY_STOP_NOT_FROZEN_0_0075")
-    if daily_loss >= daily_stop:
+    max_trade_notional_usdt = float(authority.get("max_trade_notional_usdt", -1))
+    daily_loss_usdt = float(risk_state.get("daily_realized_loss_usdt", 999))
+    rolling_7d_loss_usdt = float(risk_state.get("weekly_realized_loss_usdt", 999))
+    if max_trade_notional_usdt != 10.0:
+        blockers.append("MICROLIVE_FIXED_NOTIONAL_CAP_NOT_FROZEN_10_USDT")
+    if daily_loss_usdt >= 2.0:
         blockers.append("DAILY_HALT_ACTIVE")
-    if weekly_loss >= weekly_stop:
-        blockers.append("WEEKLY_HALT_ACTIVE")
-    if concurrent_before + planned_fraction > max_concurrent + 1e-12:
-        blockers.append("MAX_CONCURRENT_PLANNED_RISK_EXCEEDED")
+    if rolling_7d_loss_usdt >= 5.0:
+        blockers.append("ROLLING_7D_HALT_ACTIVE")
     if int(risk_state.get("open_micro_live_positions", 999)) != 0:
         blockers.append("MICRO_LIVE_POSITION_ALREADY_OPEN")
 
