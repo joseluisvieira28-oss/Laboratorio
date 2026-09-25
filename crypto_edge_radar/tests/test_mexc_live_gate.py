@@ -143,7 +143,7 @@ class GateTests(unittest.TestCase):
     def test_daily_halt_blocks(self):
         with tempfile.TemporaryDirectory() as td:
             risk=self._risk()
-            risk["daily_realized_loss_fraction_equity"]=0.02
+            risk["daily_realized_loss_usdt"]=2.0
             out=self._run(td,self._authority(),risk=risk)
             self.assertFalse(out["pass"])
             self.assertIn("DAILY_HALT_ACTIVE",out["blockers"])
