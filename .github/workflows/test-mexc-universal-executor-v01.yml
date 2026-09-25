@@ -8,7 +8,9 @@ on:
     paths:
       - 'crypto_edge_radar/execution/**'
       - 'crypto_edge_radar/scripts/mexc_universal_dispatcher_v01.py'
+      - 'crypto_edge_radar/radar/mexc_spot_generic_auth_v01.py'
       - 'crypto_edge_radar/tests/test_mexc_universal_dispatcher_v01.py'
+      - 'crypto_edge_radar/tests/test_mexc_spot_generic_auth_v01.py'
       - '.github/workflows/test-mexc-universal-executor-v01.yml'
   pull_request:
     branches:
@@ -38,6 +40,6 @@ jobs:
       - name: Compile universal dispatcher
         run: python -m compileall scripts/mexc_universal_dispatcher_v01.py tests/test_mexc_universal_dispatcher_v01.py
       - name: Run universal dispatcher tests
-        run: python -m unittest tests.test_mexc_universal_dispatcher_v01 -v
+        run: python -m unittest tests.test_mexc_universal_dispatcher_v01 tests.test_mexc_spot_generic_auth_v01 -v
       - name: Verify legacy Tier2 tests remain green
         run: python -m unittest discover -s tests -p "test_mexc_tier2_*.py" -v
