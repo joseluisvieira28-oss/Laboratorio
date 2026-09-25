@@ -30,3 +30,23 @@ The lock is intentionally independent of scientific merit. It protects chronolog
 Final rule:
 
 **NO AUTHORITY TRANSITION -> NO SCIENTIFIC ARMING.**
+
+
+## Freeze chronology hardening — 2026-09-25
+
+The future authority transition is now explicitly two-stage:
+
+1. H02_DESIGN_FREEZE authority may supersede this lock only for scientific
+   design/freeze work. Target observation must remain false while the protocol
+   is frozen.
+2. TARGET_OBSERVATION_OPEN is a later authority that may exist only after a
+   complete frozen protocol, official calendar manifest and implementation
+   manifest exist. The target-open receipt must bind all three exact
+   fingerprints and an earliest target timestamp after the freeze/authority
+   boundaries.
+
+Structural freeze validation therefore rejects any protocol that marks target
+observation authorized before freeze completion.
+
+Current state remains unchanged: this science lock is ACTIVE, no H02 authority
+receipt has been issued, and target observations remain locked.
