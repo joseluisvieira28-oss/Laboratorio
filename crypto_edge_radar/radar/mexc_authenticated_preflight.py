@@ -19,8 +19,8 @@ CANONICAL_SYMBOL = "BTCUSDT"
 MAX_ABS_CLOCK_OFFSET_MS = 500.0
 MAX_PUBLIC_RTT_MS = 1500.0
 
-# Frozen existing Crypto Lab execution-control value. This is not new science.
-ETF_VALIDATION_ALLOCATION_FRACTION = 0.001
+# Frozen operator micro-live validation cap. This is execution governance, not science.
+MICROLIVE_MAX_TRADE_NOTIONAL_USDT = 10.0
 
 # MEXC official API Futures schedule effective 2026-06-01.
 # API execution fees take precedence over web/app/promotional rates.
