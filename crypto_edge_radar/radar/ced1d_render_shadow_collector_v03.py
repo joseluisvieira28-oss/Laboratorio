@@ -146,7 +146,7 @@ def daily_bookdepth_url(day):
     return f"{VISION}/bookDepth/{SYMBOL}/{SYMBOL}-bookDepth-{ds}.zip"
 
 def archive_day_from_url(url:str):
-    m=re.search(r"(20\\d{2}-\\d{2}-\\d{2})",str(url))
+    m=re.search(r"(20\d{2}-\d{2}-\d{2})",str(url))
     return date.fromisoformat(m.group(1)) if m else None
 
 def latest_required_path_day(through_signal_day:date):
