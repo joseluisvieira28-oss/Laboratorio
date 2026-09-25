@@ -1,6 +1,6 @@
 # CMM-001 — SOURCE GATE RECEIPT V0.1
 
-Generated UTC: 2026-09-25T07:16:17.117217+00:00
+Generated UTC: 2026-09-25T07:19:05.658878+00:00
 Classification: **SOURCE_BLOCKED**
 
 No BTC forward returns, PnL, 2025 outcomes or 2026 outcomes were opened.
