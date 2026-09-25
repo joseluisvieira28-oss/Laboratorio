@@ -1,0 +1,27 @@
+name: microstructure-causality-guard-v01
+
+on:
+  pull_request:
+    paths:
+      - 'research/microstructure_scalping/dataset_builder_v01.py'
+      - 'research/microstructure_scalping/test_dataset_builder_v01.py'
+      - 'research/microstructure_scalping/partition_guard_v01.py'
+      - 'research/microstructure_scalping/test_partition_guard_v01.py'
+      - '.github/workflows/microstructure-causality-guard-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  causality-and-holdout:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Dataset causality tests
+        run: python -m unittest research.microstructure_scalping.test_dataset_builder_v01 -v
+      - name: Protected holdout tests
+        run: python -m unittest research.microstructure_scalping.test_partition_guard_v01 -v
