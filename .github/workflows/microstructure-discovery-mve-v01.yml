@@ -1,0 +1,36 @@
+name: microstructure-discovery-mve-v01
+
+on:
+  pull_request:
+    paths:
+      - 'research/microstructure_scalping/discovery_mve_v01.py'
+      - 'research/microstructure_scalping/dataset_builder_v01.py'
+      - 'research/microstructure_scalping/cost_model_v01.py'
+      - 'research/microstructure_scalping/partition_guard_v01.py'
+      - 'research/microstructure_scalping/DISCOVERY_FREEZE_V0_1.md'
+      - '.github/workflows/microstructure-discovery-mve-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  discovery-mve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Causality/cost unit tests
+        run: |
+          python -m unittest research.microstructure_scalping.test_l2_replay -v
+          python -m unittest research.microstructure_scalping.test_dataset_builder_v01 -v
+          python -m unittest research.microstructure_scalping.test_cost_model_v01 -v
+          python -m unittest research.microstructure_scalping.test_partition_guard_v01 -v
+      - name: Run frozen 2023 Discovery MVE
+        run: python research/microstructure_scalping/discovery_mve_v01.py
+      - name: Print receipt
+        if: always()
+        run: cat research/microstructure_scalping/receipts/discovery_mve_v01.json || true
