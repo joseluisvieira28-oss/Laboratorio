@@ -61,11 +61,48 @@ def main()->int:
     if free+1e-12<qty:
         print(json.dumps({"status":"FAIL_CLOSED","blocker":"SPOT_BTC_BALANCE_BELOW_MICROLIVE_SELL_QTY"},indent=2)); return 4
     cid="exit-"+hashlib.sha256(str(active["signal_identity"]).encode()).hexdigest()[:20]
-    ack=auth.submit_market_sell(quantity_btc=qty,client_order_id=cid); _write(session/"EXIT_EXCHANGE_ACK.json",{"receipt_type":"EXIT_EXCHANGE_ACK","exchange_response":ack})
-    order=_wait(auth,cid,timeout=10)
+    intent_path=session/"EXIT_SUBMISSION_INTENT.json"
+    if intent_path.exists():
+        try:
+            order=_wait(auth,cid,timeout=5)
+        except Exception as exc:
+            _write(session/"EXIT_RECONCILIATION_REQUIRED.json",{
+                "receipt_type":"EXIT_RECONCILIATION_REQUIRED",
+                "client_order_id":cid,
+                "reason":"PRIOR_EXIT_INTENT_EXISTS_BUT_EXCHANGE_STATE_UNRESOLVED__NO_RESUBMIT",
+                "error":f"{type(exc).__name__}:{exc}",
+                "execution_failure":True,
+            })
+            print(json.dumps({"status":"FAIL_CLOSED","blocker":"EXIT_STATE_UNKNOWN_NO_BLIND_RESUBMIT"},indent=2)); return 5
+    else:
+        _write(intent_path,{
+            "receipt_type":"EXIT_SUBMISSION_INTENT",
+            "client_order_id":cid,
+            "sell_quantity_btc":qty,
+            "created_at_utc":datetime.now(timezone.utc).isoformat().replace("+00:00","Z"),
+        })
+        try:
+            ack=auth.submit_market_sell(quantity_btc=qty,client_order_id=cid)
+        except Exception as exc:
+            _write(session/"EXIT_ACK_UNKNOWN.json",{
+                "receipt_type":"EXIT_ACK_UNKNOWN","client_order_id":cid,
+                "reason":"SUBMIT_RETURNED_EXCEPTION__RECONCILE_BEFORE_ANY_RETRY",
+                "error":f"{type(exc).__name__}:{exc}","execution_failure":True,
+            })
+            print(json.dumps({"status":"FAIL_CLOSED","blocker":"EXIT_ACK_UNKNOWN_NO_BLIND_RETRY"},indent=2)); return 5
+        _write(session/"EXIT_EXCHANGE_ACK.json",{"receipt_type":"EXIT_EXCHANGE_ACK","exchange_response":ack})
+        order=_wait(auth,cid,timeout=10)
+
     executed=float(order.get("executedQty",0) or 0); received=float(order.get("cummulativeQuoteQty",0) or 0)
-    if executed<=0:
-        print(json.dumps({"status":"FAIL_CLOSED","blocker":"SPOT_EXIT_NOT_FILLED"},indent=2)); return 5
+    status=str(order.get("status","")).upper()
+    if executed<=0 or status!="FILLED" or executed+1e-12<qty:
+        _write(session/"EXIT_PARTIAL_OR_UNRESOLVED.json",{
+            "receipt_type":"EXIT_PARTIAL_OR_UNRESOLVED","order":order,
+            "expected_sell_quantity_btc":qty,"executed_quantity_btc":executed,
+            "reason":"NO_AUTOMATIC_SECOND_SPOT_SELL_AFTER_PARTIAL_OR_UNRESOLVED_EXIT",
+            "execution_failure":True,
+        })
+        print(json.dumps({"status":"FAIL_CLOSED","blocker":"SPOT_EXIT_NOT_FULLY_FILLED_NO_SECOND_SELL"},indent=2)); return 5
     buy=float(active["entry_spent_usdt"])
     pf=session/"PRE_ORDER_RECEIPT.json"; fee_rate=0.002
     if pf.exists():
