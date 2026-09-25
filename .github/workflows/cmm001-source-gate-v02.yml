@@ -1,0 +1,47 @@
+name: CMM-001 Source Gate V0.2 Transport Remediation
+
+on:
+  push:
+    branches:
+      - cross-market-mispricing-001-source-gate-v0.1
+    paths:
+      - "cmm001/source_gate_probe_v02.py"
+      - "cmm001/CMM001_SOURCE_TRANSPORT_REMEDIATION_V02.md"
+      - ".github/workflows/cmm001-source-gate-v02.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  source-gate-v02:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout isolated branch
+        uses: actions/checkout@v4
+        with:
+          ref: cross-market-mispricing-001-source-gate-v0.1
+
+      - name: Run source-only transport remediation
+        id: gate
+        continue-on-error: true
+        run: |
+          python3 cmm001/source_gate_probe_v02.py
+
+      - name: Preserve V0.2 machine-verifiable receipt
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add cmm001/results/CMM001_SOURCE_GATE_RESULT_V02.json cmm001/results/CMM001_SOURCE_GATE_RECEIPT_V02.md
+          if ! git diff --cached --quiet; then
+            git commit -m "cmm001: record source gate v0.2 transport receipt [skip ci]"
+            git push
+          fi
+
+      - name: Enforce fail-closed source gate
+        if: steps.gate.outcome != 'success'
+        run: |
+          echo "CMM-001 V0.2 source gate did not pass. Protected outcomes remain closed."
+          exit 1
