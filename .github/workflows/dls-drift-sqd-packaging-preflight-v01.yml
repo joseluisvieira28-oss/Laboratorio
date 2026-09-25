@@ -1,0 +1,30 @@
+name: DLS Drift SQD Packaging Preflight V0.1
+
+on:
+  push:
+    branches:
+      - dls-drift-sqd-boundary-v01
+    paths:
+      - .github/workflows/dls-drift-sqd-packaging-preflight-v01.yml
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile frozen Drift source authority tooling
+        run: |
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/run_drift_sqd_first_success_partition_v0_1.py
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/aggregate_drift_sqd_census_v0_1.py
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/reconcile_drift_sqd_raw_sample_v0_1.py
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/finalize_drift_sqd_census_v0_1.py
+      - name: Firewall
+        run: echo SOURCE_ONLY_TRUE
