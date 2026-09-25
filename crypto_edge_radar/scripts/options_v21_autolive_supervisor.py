@@ -75,6 +75,17 @@ def _next_boundary(now: datetime) -> datetime:
     return _midnight(now.date() + timedelta(days=1))
 
 
+def resolve_cycle_target(
+    now: datetime,
+    cache: "DayCache | None",
+) -> tuple[date, datetime]:
+    if cache is not None:
+        signal_day = cache.signal_day
+        return signal_day, _midnight(signal_day + timedelta(days=1))
+    target = _next_boundary(now)
+    return target.date() - timedelta(days=1), target
+
+
 def _merge_trades(*groups: list[OptionTrade]) -> list[OptionTrade]:
     by_id: dict[str, OptionTrade] = {}
     for rows in groups:
@@ -593,12 +604,7 @@ class AutoLiveSupervisor:
                 time.sleep(1)
                 continue
 
-            if self.cache is not None:
-                signal_day = self.cache.signal_day
-                target = _midnight(signal_day + timedelta(days=1))
-            else:
-                target = _next_boundary(now)
-                signal_day = target.date() - timedelta(days=1)
+            signal_day, target = resolve_cycle_target(now, self.cache)
             remaining = (target - now).total_seconds()
 
             if self.last_decision_day == signal_day:
