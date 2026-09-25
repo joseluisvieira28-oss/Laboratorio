@@ -295,11 +295,11 @@ def main() -> int:
         * float(contract["contractSize"])
         * current_conservative_price
     )
-    current_budget = live_equity * 0.001
+    current_budget = float(authority.get("max_trade_notional_usdt", -1))
     if current_notional > current_budget + 1e-12:
         print(json.dumps({
             "status":"FAIL_CLOSED",
-            "blockers":["LAST_MOMENT_NOTIONAL_EXCEEDS_FROZEN_0_1PCT_BUDGET"],
+            "blockers":["LAST_MOMENT_NOTIONAL_EXCEEDS_FROZEN_10_USDT_CAP"],
             "current_notional_usdt":current_notional,
             "current_budget_usdt":current_budget
         },indent=2))
@@ -615,7 +615,7 @@ def main() -> int:
         "entry_exchange_update_ms": order.get("updateTime"),
         "entry_target_utc": authority["entry_target_utc"],
         "exit_target_utc": authority["exit_target_utc"],
-        "planned_risk_fraction_equity": 0.001,
+        "planned_risk_fraction_equity": current_notional / live_equity,\n        "planned_notional_usdt": current_notional,
         "authority_path": str(Path(args.authority).resolve()),
         "reference_entry_price": reference_price,
         "execution_failure": False,
