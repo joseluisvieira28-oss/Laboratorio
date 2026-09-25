@@ -1,0 +1,151 @@
+name: BUILD OPTIONS V21 AUTO MICROLIVE WINDOWS V0.1
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - options-v21-windows-bridge-v01-2026-09-25
+    paths:
+      - 'crypto_edge_radar/radar/options_v21_*'
+      - 'crypto_edge_radar/radar/mexc_*'
+      - 'crypto_edge_radar/scripts/options_v21_autolive_agent.py'
+      - 'crypto_edge_radar/scripts/mexc_authenticated_preflight.py'
+      - 'crypto_edge_radar/scripts/mexc_risk_state.py'
+      - 'crypto_edge_radar/tests/test_options_v21_*'
+      - 'crypto_edge_radar/tests/test_mexc_*'
+      - 'crypto_edge_radar/windows/*OPTIONS_V21*'
+      - 'crypto_edge_radar/windows/Set_MEXC_Preflight_Secrets.ps1'
+      - 'crypto_edge_radar/windows/Run_MEXC_Ready_Check_V02.ps1'
+      - 'crypto_edge_radar/OPTIONS_SPOTPERP_001_V21_AUTO_MICROLIVE_WINDOWS_V0.1.json'
+      - '.github/workflows/build-options-v21-autolive-windows-v01.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test-build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: crypto_edge_radar
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install
+        run: |
+          python -m pip install -e .
+          python -m pip install "pyinstaller>=6,<7"
+
+      - name: Compile all OPTIONS and MEXC modules
+        run: |
+          python -m compileall radar scripts tests
+
+      - name: Run existing MEXC safety suite
+        run: |
+          python -m unittest discover -s tests -p "test_mexc_*.py" -v
+
+      - name: Run OPTIONS V2.1 science and execution tests
+        run: |
+          python -m unittest tests.test_options_v21_live -v
+          python -m unittest tests.test_options_v21_watcher -v
+          python -m unittest tests.test_options_v21_metrics -v
+          python -m unittest tests.test_options_v21_execution_signal -v
+          python -m unittest tests.test_options_v21_autolive_engine -v
+
+      - name: Verify frozen implementation contract
+        shell: pwsh
+        run: |
+          $c=Get-Content OPTIONS_SPOTPERP_001_V21_AUTO_MICROLIVE_WINDOWS_V0.1.json | ConvertFrom-Json
+          if ($c.status -ne "FROZEN_PROSPECTIVE_IMPLEMENTATION_CONTRACT") { throw "contract not frozen" }
+          if ($c.risk.maximum_notional_usdt -ne 10) { throw "notional cap not 10 USDT" }
+          if ($c.routes.SHORT.leverage -ne 1) { throw "futures leverage not 1x" }
+          if ($c.routes.SHORT.margin_mode -ne "ISOLATED") { throw "futures margin not isolated" }
+          if ($c.routes.LONG.hold_hours -ne 24 -or $c.routes.SHORT.hold_hours -ne 24) { throw "24h horizon mismatch" }
+          if ($c.timing.operational_entry_ttl_seconds -ne 300) { throw "entry TTL mismatch" }
+          if ($c.exactly_once.blind_resend_after_uncertain_ack) { throw "blind resend unexpectedly enabled" }
+          if ($c.security.withdrawal_endpoint -or $c.security.transfer_endpoint) { throw "wallet mutation unexpectedly enabled" }
+
+      - name: Static authenticated mutation surface audit
+        shell: pwsh
+        run: |
+          $spot=Get-Content radar\mexc_spot_auth.py -Raw
+          if (-not $spot.Contains('/api/v3/order')) { throw "spot order endpoint missing" }
+          foreach ($forbidden in @('/api/v3/capital/transfer','/api/v3/capital/withdraw','/api/v3/capital/withdraw/apply')) {
+            if ($spot.Contains($forbidden)) { throw "forbidden wallet mutation surface present: $forbidden" }
+          }
+          $engine=Get-Content radar\options_v21_autolive_engine.py -Raw
+          foreach ($required in @('ORDER_INTENT','blind_resend_allowed','KILL_SWITCH','SCHEDULED_24H_EXIT')) {
+            if (-not $engine.Contains($required)) { throw "execution invariant missing: $required" }
+          }
+
+      - name: PowerShell syntax validation
+        shell: pwsh
+        run: |
+          foreach ($s in @(
+            "windows\Set_MEXC_Preflight_Secrets.ps1",
+            "windows\Run_MEXC_Ready_Check_V02.ps1",
+            "windows\Run_OPTIONS_V21_AutoLive.ps1",
+            "windows\Install_OPTIONS_V21_AutoLive.ps1",
+            "windows\Status_OPTIONS_V21_AutoLive.ps1",
+            "windows\Emergency_Kill_OPTIONS_V21.ps1",
+            "windows\Resume_OPTIONS_V21.ps1"
+          )) {
+            $errors=$null
+            [void][System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $s),[ref]$null,[ref]$errors)
+            if ($errors.Count -gt 0) { $errors | Format-List; throw "PowerShell syntax failure: $s" }
+          }
+
+      - name: Build OPTIONS V2.1 autonomous agent
+        run: |
+          pyinstaller --clean --onefile --name OptionsV21AutoLive --paths . scripts/options_v21_autolive_agent.py
+
+      - name: Build authenticated preflight
+        run: |
+          pyinstaller --clean --onefile --name MEXCAuthenticatedPreflight --paths . scripts/mexc_authenticated_preflight.py
+
+      - name: Build risk-state generator
+        run: |
+          pyinstaller --clean --onefile --name MEXCRiskState --paths . scripts/mexc_risk_state.py
+
+      - name: Hash binaries
+        shell: pwsh
+        run: |
+          foreach ($exe in @(
+            "OptionsV21AutoLive.exe",
+            "MEXCAuthenticatedPreflight.exe",
+            "MEXCRiskState.exe"
+          )) {
+            $hash=(Get-FileHash (Join-Path "dist" $exe) -Algorithm SHA256).Hash.ToLower()
+            "$exe sha256=$hash" | Set-Content -Path (Join-Path "dist" ($exe+".sha256.txt"))
+          }
+
+      - name: Assemble Windows bundle
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path bundle\dist | Out-Null
+          New-Item -ItemType Directory -Force -Path bundle\windows | Out-Null
+          Copy-Item dist\OptionsV21AutoLive.exe bundle\dist\
+          Copy-Item dist\MEXCAuthenticatedPreflight.exe bundle\dist\
+          Copy-Item dist\MEXCRiskState.exe bundle\dist\
+          Copy-Item dist\*.sha256.txt bundle\dist\
+          Copy-Item windows\Set_MEXC_Preflight_Secrets.ps1 bundle\windows\
+          Copy-Item windows\Run_MEXC_Ready_Check_V02.ps1 bundle\windows\
+          Copy-Item windows\Run_OPTIONS_V21_AutoLive.ps1 bundle\windows\
+          Copy-Item windows\Install_OPTIONS_V21_AutoLive.ps1 bundle\windows\
+          Copy-Item windows\Status_OPTIONS_V21_AutoLive.ps1 bundle\windows\
+          Copy-Item windows\Emergency_Kill_OPTIONS_V21.ps1 bundle\windows\
+          Copy-Item windows\Resume_OPTIONS_V21.ps1 bundle\windows\
+          Copy-Item OPTIONS_SPOTPERP_001_V21_AUTO_MICROLIVE_WINDOWS_V0.1.json bundle\
+
+      - name: Upload Windows bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: options-v21-auto-microlive-windows-v01
+          path: crypto_edge_radar/bundle/**
+          retention-days: 14
+          if-no-files-found: error
