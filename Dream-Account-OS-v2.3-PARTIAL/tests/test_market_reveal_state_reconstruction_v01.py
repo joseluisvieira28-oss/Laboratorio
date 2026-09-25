@@ -101,6 +101,10 @@ class StateReconstructionTests(unittest.TestCase):
         self.assertAlmostEqual(out.state["spread_vs_pre"], 1.5)
         self.assertAlmostEqual(out.state["spread_vs_max_to_decision"], 0.75)
         self.assertAlmostEqual(out.state["depth_vs_pre"], 0.8)
+        self.assertAlmostEqual(out.state["bid_depth_vs_pre"], 0.8)
+        self.assertAlmostEqual(out.state["ask_depth_vs_pre"], 0.8)
+        self.assertGreater(out.state["pre_spread_bps"], 0.0)
+        self.assertGreater(out.state["displacement_in_pre_spreads"], 0.0)
 
     def test_future_trade_is_rejected_not_silently_used(self):
         contaminated = list(self.trades)
