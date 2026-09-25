@@ -5,7 +5,7 @@ from datetime import datetime,timezone
 from pathlib import Path
 from typing import Any
 
-from radar.mexc_auth_readonly import MEXCCredentials
+from radar.mexc_auth_readonly import MEXCCredentials,MEXCFuturesAuthenticatedReadOnlyClient
 from radar.mexc_spot import MEXCSpotPublicFeed
 from radar.mexc_spot_auth import MEXCSpotAuthenticatedClient
 from radar.mexc_tier2_spot_gate import EXECUTION_TOKEN, validate_options_long_spot_execution
@@ -63,7 +63,13 @@ def main()->int:
     if os.getenv("CRYPTO_LAB_LIVE_EXECUTION_TOKEN")!=EXECUTION_TOKEN:
         print(json.dumps({"status":"FAIL_CLOSED","blockers":["LIVE_EXECUTION_TOKEN_MISSING_OR_WRONG"]},indent=2)); return 3
 
-    creds=MEXCCredentials.from_env(); auth=MEXCSpotAuthenticatedClient(creds); public=MEXCSpotPublicFeed()
+    creds=MEXCCredentials.from_env(); auth=MEXCSpotAuthenticatedClient(creds); public=MEXCSpotPublicFeed(); futures=MEXCFuturesAuthenticatedReadOnlyClient(creds)
+    try:
+        futures_positions=futures.open_positions(); futures_orders=futures.open_orders()
+    except Exception as exc:
+        print(json.dumps({"status":"FAIL_CLOSED","blockers":["FUTURES_CROSS_VENUE_RECONCILIATION_FAILED"],"error":f"{type(exc).__name__}:{exc}"},indent=2)); return 4
+    if futures_positions or futures_orders:
+        print(json.dumps({"status":"FAIL_CLOSED","blockers":["FUTURES_POSITION_OR_ORDER_PRESENT_CROSS_VENUE"]},indent=2)); return 4
     account=auth.account(); opens=auth.open_orders("BTCUSDT")
     if opens:
         print(json.dumps({"status":"FAIL_CLOSED","blockers":["LAST_MOMENT_OPEN_SPOT_ORDER_PRESENT"]},indent=2)); return 4
