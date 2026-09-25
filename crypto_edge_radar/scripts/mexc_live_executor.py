@@ -295,11 +295,18 @@ def main() -> int:
         * float(contract["contractSize"])
         * current_conservative_price
     )
-    current_budget = live_equity * 0.001
+    current_budget = float(authority.get("maximum_notional_usdt_equivalent", -1))
+    if current_budget != 10.0:
+        print(json.dumps({
+            "status":"FAIL_CLOSED",
+            "blockers":["LAST_MOMENT_MICROLIVE_CAP_NOT_FROZEN_10_USDT"],
+            "authority_cap_usdt":current_budget
+        },indent=2))
+        return 4
     if current_notional > current_budget + 1e-12:
         print(json.dumps({
             "status":"FAIL_CLOSED",
-            "blockers":["LAST_MOMENT_NOTIONAL_EXCEEDS_FROZEN_0_1PCT_BUDGET"],
+            "blockers":["LAST_MOMENT_NOTIONAL_EXCEEDS_FROZEN_10_USDT_CAP"],
             "current_notional_usdt":current_notional,
             "current_budget_usdt":current_budget
         },indent=2))
@@ -615,7 +622,9 @@ def main() -> int:
         "entry_exchange_update_ms": order.get("updateTime"),
         "entry_target_utc": authority["entry_target_utc"],
         "exit_target_utc": authority["exit_target_utc"],
-        "planned_risk_fraction_equity": 0.001,
+        "planned_risk_fraction_equity": 0.0,
+        "planned_notional_usdt": current_notional,
+        "micro_live_policy_id": "TIER2-MICROLIVE-POLICY-V1.0-FROZEN-2026-09-24",
         "authority_path": str(Path(args.authority).resolve()),
         "reference_entry_price": reference_price,
         "execution_failure": False,
