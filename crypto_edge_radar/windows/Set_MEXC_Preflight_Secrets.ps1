@@ -15,18 +15,20 @@ $apiSecretCipher = ConvertFrom-SecureString $apiSecret
 Set-Content -Path (Join-Path $secretDir "mexc_api_key.dpapi") -Value $apiKeyCipher -Encoding ASCII -NoNewline
 Set-Content -Path (Join-Path $secretDir "mexc_api_secret.dpapi") -Value $apiSecretCipher -Encoding ASCII -NoNewline
 
-$acl = Get-Acl $secretDir
-$acl.SetAccessRuleProtection($true, $false)
 $currentUser = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
-$rule = New-Object System.Security.AccessControl.FileSystemAccessRule(
-    $currentUser,
-    "FullControl",
-    "ContainerInherit,ObjectInherit",
-    "None",
-    "Allow"
-)
-$acl.SetAccessRule($rule)
-Set-Acl -Path $secretDir -AclObject $acl
+
+# Harden the local DPAPI secret directory without touching the SACL.
+# Set-Acl can require SeSecurityPrivilege on some Windows configurations,
+# even when the current user owns the directory. icacls only changes the DACL.
+& icacls.exe $secretDir /inheritance:r | Out-Null
+if ($LASTEXITCODE -ne 0) {
+    throw "Failed to disable inherited ACLs on secret directory."
+}
+
+& icacls.exe $secretDir /grant:r "${currentUser}:(OI)(CI)F" | Out-Null
+if ($LASTEXITCODE -ne 0) {
+    throw "Failed to grant current Windows user FullControl on secret directory."
+}
 
 Write-Host ""
 Write-Host "PASS: encrypted MEXC credentials stored under LOCALAPPDATA for the current Windows user."
