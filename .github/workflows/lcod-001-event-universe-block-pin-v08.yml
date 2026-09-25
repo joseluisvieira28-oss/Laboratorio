@@ -1,44 +1,67 @@
-name: LCOD-001 event-universe block-pin v0.8
+name: LCOD-001 event-universe block-pin V0.8
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
   push:
-    branches: [liquidation-convexity-oracle-distance-001-source-gate-v0.1]
-    paths: [.github/workflows/lcod-001-event-universe-block-pin-v08.yml]
-permissions: {contents: read}
+    branches:
+      - liquidation-convexity-oracle-distance-001-source-gate-v0.1
+    paths:
+      - .github/workflows/lcod-001-event-universe-block-pin-v08.yml
+permissions:
+  contents: read
 jobs:
   prepare:
     runs-on: ubuntu-latest
-    outputs: {matrix: ${{ steps.p.outputs.matrix }}}
+    outputs:
+      matrix: ${{ steps.p.outputs.matrix }}
     steps:
       - uses: actions/checkout@v4
-        with: {ref: liquidation-convexity-oracle-distance-001-source-gate-v0.1}
+        with:
+          ref: liquidation-convexity-oracle-distance-001-source-gate-v0.1
       - id: p
         run: node research/liquidation_convexity_oracle_distance_001/lcod_event_blockpin_prepare_v08.mjs
       - uses: actions/upload-artifact@v4
-        with: {name: prepare, path: artifacts/lcod_event_blockpin_prepare_v08.json}
+        with:
+          name: prepare
+          path: artifacts/lcod_event_blockpin_prepare_v08.json
   chunk:
     needs: prepare
-    strategy: {fail-fast: false, matrix: ${{ fromJSON(needs.prepare.outputs.matrix) }}}
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.prepare.outputs.matrix) }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with: {ref: liquidation-convexity-oracle-distance-001-source-gate-v0.1}
+        with:
+          ref: liquidation-convexity-oracle-distance-001-source-gate-v0.1
       - run: npm install --no-save @subsquid/evm-stream@0.1.5 ethers@6.15.0
       - run: node research/liquidation_convexity_oracle_distance_001/lcod_event_blockpin_chunk_v08.mjs
-        env: {CHUNK_ID: ${{ matrix.id }}, FROM_BLOCK: ${{ matrix.from }}, TO_BLOCK: ${{ matrix.to }}, PIN_BLOCK: ${{ matrix.pin }}}
+        env:
+          CHUNK_ID: ${{ matrix.id }}
+          FROM_BLOCK: ${{ matrix.from }}
+          TO_BLOCK: ${{ matrix.to }}
+          PIN_BLOCK: ${{ matrix.pin }}
       - uses: actions/upload-artifact@v4
         if: always()
-        with: {name: chunk-${{ matrix.id }}, path: artifacts/lcod_event_blockpin_chunk_*_v08.json}
+        with:
+          name: chunk-${{ matrix.id }}
+          path: artifacts/lcod_event_blockpin_chunk_*_v08.json
   aggregate:
     if: always()
-    needs: [prepare, chunk]
+    needs:
+      - prepare
+      - chunk
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with: {ref: liquidation-convexity-oracle-distance-001-source-gate-v0.1}
+        with:
+          ref: liquidation-convexity-oracle-distance-001-source-gate-v0.1
       - uses: actions/download-artifact@v4
-        with: {path: artifacts/all, merge-multiple: true}
+        with:
+          path: artifacts/all
+          merge-multiple: true
       - run: node research/liquidation_convexity_oracle_distance_001/lcod_event_blockpin_aggregate_v08.mjs
       - uses: actions/upload-artifact@v4
         if: always()
-        with: {name: aggregate, path: artifacts/lcod_event_universe_blockpin_v08.json}
+        with:
+          name: aggregate
+          path: artifacts/lcod_event_universe_blockpin_v08.json
