@@ -2,6 +2,12 @@ name: LCOD-001 prospective mechanical snapshot V0.1
 
 on:
   workflow_call:
+    inputs:
+      canonical_trigger:
+        description: "Count this invocation as the canonical scheduled forward observation"
+        required: false
+        type: boolean
+        default: false
   workflow_dispatch:
 
 permissions:
@@ -125,23 +131,29 @@ jobs:
       - name: Finalize prospective snapshot
         env:
           LCOD_SCIENTIFIC_CODE_SHA: ${{ needs.prepare.outputs.code_sha }}
+          LCOD_CANONICAL_TRIGGER: ${{ inputs.canonical_trigger || false }}
         run: python research/liquidation_convexity_oracle_distance_001/lcod_finalize_forward_snapshot_v01.py
       - name: Persist compact forward snapshot
         run: |
+          set -euo pipefail
           BLOCK=$(python -c "import json; print(json.load(open('artifacts/lcod_forward_mechanical_snapshot_v01.json'))['ethereum_block_number'])")
+          SNAP="/tmp/LCOD_FORWARD_SNAPSHOT_BLOCK_${BLOCK}.json"
           DEST="research/liquidation_convexity_oracle_distance_001/forward_snapshots/LCOD_FORWARD_SNAPSHOT_BLOCK_${BLOCK}.json"
-          mkdir -p research/liquidation_convexity_oracle_distance_001/forward_snapshots
-          cp artifacts/lcod_forward_mechanical_snapshot_v01.json "$DEST"
+          cp artifacts/lcod_forward_mechanical_snapshot_v01.json "$SNAP"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add "$DEST"
-          if git diff --cached --quiet; then
-            exit 0
-          fi
-          git commit -m "LCOD-001: record prospective mechanical snapshot block ${BLOCK} [skip ci]"
           for attempt in 1 2 3; do
+            git reset --hard
+            git clean -fd
             git fetch origin liquidation-convexity-oracle-distance-001-source-gate-v0.1
-            git rebase origin/liquidation-convexity-oracle-distance-001-source-gate-v0.1
+            git checkout -B lcod-forward-persist origin/liquidation-convexity-oracle-distance-001-source-gate-v0.1
+            mkdir -p "$(dirname "$DEST")"
+            cp "$SNAP" "$DEST"
+            git add "$DEST"
+            if git diff --cached --quiet; then
+              exit 0
+            fi
+            git commit -m "LCOD-001: record prospective mechanical snapshot block ${BLOCK} [skip ci]"
             if git push origin HEAD:liquidation-convexity-oracle-distance-001-source-gate-v0.1; then
               exit 0
             fi
