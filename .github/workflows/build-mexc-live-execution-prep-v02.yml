@@ -49,7 +49,8 @@ jobs:
         run: |
           $a=Get-Content ETF_CME_INSTFLOW_001_MICRO_LIVE_EXECUTION_AUTHORITY_TEMPLATE_V0.2.json | ConvertFrom-Json
           if ($a.status -ne "TEMPLATE_NOT_AUTHORITY") { throw "V0.3 template unexpectedly active" }
-          if ($a.orders_authorized_by_this_template) { throw "V0.3 template authorizes orders" }\n          if ($a.max_trade_notional_usdt -ne 10) { throw "V0.3 fixed cap not 10 USDT" }
+          if ($a.orders_authorized_by_this_template) { throw "V0.3 template authorizes orders" }
+          if ($a.max_trade_notional_usdt -ne 10) { throw "V0.3 fixed cap not 10 USDT" }
           if ($a.api_place_order_path -ne "/api/v1/private/order/create") { throw "stale place-order API path" }
           if ($a.leverage -ne 1) { throw "template leverage not exactly 1x" }
           if ($a.margin_mode -ne "ISOLATED") { throw "template margin mode not isolated" }
