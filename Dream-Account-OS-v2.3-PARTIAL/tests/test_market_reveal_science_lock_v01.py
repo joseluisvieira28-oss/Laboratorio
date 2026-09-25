@@ -19,17 +19,37 @@ CALENDAR = json.loads(
 READINESS = json.loads(
     (MODULE_DIR / "PRETARGET_READINESS_MATRIX_2026-09-24.json").read_text(encoding="utf-8")
 )
+AUTHORITY = json.loads(
+    (MODULE_DIR / "H02_DESIGN_FREEZE_AUTHORITY_V01.json").read_text(encoding="utf-8")
+)
+RULESET = json.loads(
+    (MODULE_DIR / "H02_SCIENTIFIC_RULESET_V01.json").read_text(encoding="utf-8")
+)
+CLASSIFIER = json.loads(
+    (MODULE_DIR / "H02_CLASSIFIER_SPEC_V01.json").read_text(encoding="utf-8")
+)
+CATALOG = (MODULE_DIR / "MEASUREMENT_CATALOG_V01.md").read_bytes()
 
 
 class ScienceLockTests(unittest.TestCase):
-    def test_current_templates_are_locked(self):
-        locked, violations = evaluate_science_lock(PROTOCOL, CALENDAR, READINESS)
+    def test_current_design_frozen_target_locked_state_is_valid(self):
+        locked, violations = evaluate_science_lock(
+            PROTOCOL,
+            CALENDAR,
+            READINESS,
+            AUTHORITY,
+            RULESET,
+            CLASSIFIER,
+            CATALOG,
+        )
         self.assertTrue(locked, violations)
 
     def test_arming_h02_breaks_lock(self):
         p = copy.deepcopy(PROTOCOL)
         p["governance"]["h02_authorized"] = True
-        locked, violations = evaluate_science_lock(p, CALENDAR, READINESS)
+        locked, violations = evaluate_science_lock(
+            p, CALENDAR, READINESS, AUTHORITY, RULESET, CLASSIFIER, CATALOG
+        )
         self.assertFalse(locked)
         self.assertIn("H02_ARMED_WITHOUT_AUTHORITY_TRANSITION", violations)
 
@@ -51,7 +71,9 @@ class ScienceLockTests(unittest.TestCase):
         c = copy.deepcopy(CALENDAR)
         c["complete_official_calendar"] = True
         c["event_families"] = ["SYNTHETIC"]
-        locked, violations = evaluate_science_lock(PROTOCOL, c, READINESS)
+        locked, violations = evaluate_science_lock(
+            PROTOCOL, c, READINESS, AUTHORITY, RULESET, CLASSIFIER, CATALOG
+        )
         self.assertFalse(locked)
         self.assertIn("CALENDAR_TEMPLATE_MARKED_COMPLETE", violations)
 
@@ -59,8 +81,10 @@ class ScienceLockTests(unittest.TestCase):
         r = copy.deepcopy(READINESS)
         for row in r["gates"]:
             if row["gate"] == "H02":
-                row["status"] = "AUTHORIZED"
-        locked, violations = evaluate_science_lock(PROTOCOL, CALENDAR, r)
+                row["status"] = "NOT_AUTHORIZED"
+        locked, violations = evaluate_science_lock(
+            PROTOCOL, CALENDAR, r, AUTHORITY, RULESET, CLASSIFIER, CATALOG
+        )
         self.assertFalse(locked)
         self.assertIn("READINESS_H02_STATUS_CHANGED", violations)
 
