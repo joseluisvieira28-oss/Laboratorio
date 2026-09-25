@@ -1,0 +1,119 @@
+{
+  "document_type": "MRCR_H02_DESIGN_SPEC_V01",
+  "lab_id": "MARKET-REVEAL-CONFIRMATION-REACTION-001",
+  "status": "FROZEN_PENDING_OFFICIAL_CALENDAR",
+  "authority_type": "H02_DESIGN_FREEZE",
+  "authority_receipt_sha256": "30c189762d05f33f88a1a6d8a9ad3af80355b4589564c70ca15f996dc7f4a155",
+  "frozen_at_utc": "2026-09-25T15:06:46Z",
+  "population": {
+    "calendar_year": 2027,
+    "event_families": [
+      "US_CPI",
+      "US_EMPLOYMENT_SITUATION",
+      "US_FOMC_SCHEDULED"
+    ],
+    "scheduled_regular_events_only": true,
+    "unscheduled_events_excluded": true,
+    "full_cohort_required": true,
+    "backfill_after_first_included_event_forbidden": true,
+    "minimum_official_event_counts": {
+      "US_CPI": 10,
+      "US_EMPLOYMENT_SITUATION": 10,
+      "US_FOMC_SCHEDULED": 6,
+      "TOTAL": 26
+    }
+  },
+  "market_scope": {
+    "venue": "BINANCE_SPOT",
+    "native_symbol": "BTCUSDT",
+    "cross_venue_merge_allowed": false,
+    "secondary_venue_credit": "NONE"
+  },
+  "clock": {
+    "event_t0": "official scheduled release timestamp from frozen calendar manifest",
+    "pre_book_reference_seconds": -1,
+    "decision_seconds": 60,
+    "outcome_seconds": 1800,
+    "feature_trade_window_seconds": [
+      0,
+      60
+    ],
+    "book_grid_seconds": 1,
+    "availability_rule": "SOURCE_AND_COLLECTOR_ARRIVAL",
+    "interpolation_allowed": false
+  },
+  "depth": {
+    "mode": "TOP_N",
+    "value": 3,
+    "rationale": "near-inside liquidity; fixed before target data"
+  },
+  "classifier": {
+    "required_nonzero": [
+      "flow_imbalance",
+      "decision_return_bps"
+    ],
+    "required_available": [
+      "retracement_fraction",
+      "spread_vs_pre",
+      "depth_vs_pre"
+    ],
+    "alignment_required": 1,
+    "persistent": {
+      "retracement_fraction": "<0.5",
+      "spread_vs_pre": ">1.0",
+      "depth_vs_pre": "<1.0"
+    },
+    "absorbed": {
+      "retracement_fraction": ">=0.5",
+      "spread_vs_pre": "<=1.0",
+      "depth_vs_pre": ">=1.0"
+    },
+    "otherwise": "ABSTAIN",
+    "direction": "sign(decision_return_bps)"
+  },
+  "outcome": {
+    "future_horizon_seconds_from_decision": 1740,
+    "definition": "direction * ln(mid_T0_plus_1800s / mid_T0_plus_60s) * 10000",
+    "direction_source": "sign(decision_return_bps_at_T0_plus_60s)",
+    "primary_estimand": "mean(PERSISTENT signed_forward_bps) - mean(ABSORBED signed_forward_bps)",
+    "benchmark": "ABSORBED state",
+    "family_breakdowns": "DESCRIPTIVE_ONLY_NO_PROMOTION_CREDIT"
+  },
+  "inference": {
+    "minimum_classified_per_state": 8,
+    "minimum_total_classified": 16,
+    "test": "ONE_SIDED_LABEL_PERMUTATION",
+    "alternative": "PERSISTENT_GREATER_THAN_ABSORBED",
+    "alpha": 0.05,
+    "exact_enumeration_max_combinations": 250000,
+    "monte_carlo_permutations": 100000,
+    "monte_carlo_seed": 26092501,
+    "survival_rule": [
+      "sample_floors_met",
+      "primary_estimand_bps>0",
+      "one_sided_p_value<=0.05"
+    ],
+    "insufficient_sample_state": "INSUFFICIENT_CLASSIFIED_SAMPLE",
+    "failure_state": "H02_NO_EDGE"
+  },
+  "economics": {
+    "tested": false,
+    "fee_model": null,
+    "slippage_model": null,
+    "latency_model": null,
+    "note": "mechanism test only; no economic promotion credit"
+  },
+  "contamination": {
+    "historical_2021_2026_target_outcomes_allowed": false,
+    "threshold_tuning_on_contaminated_history_allowed": false,
+    "post_outcome_rule_changes_allowed": false
+  },
+  "target_open": {
+    "authorized": false,
+    "requires_complete_official_calendar": true,
+    "requires_final_protocol_fingerprint": true,
+    "requires_implementation_manifest_fingerprint": true,
+    "requires_separate_TARGET_OBSERVATION_OPEN_authority": true
+  },
+  "design_fingerprint_sha256": "93680d8a620dcf6b8f666408403f4a96d12077b92a3b47a1aabbefc6257d86ab"
+}
