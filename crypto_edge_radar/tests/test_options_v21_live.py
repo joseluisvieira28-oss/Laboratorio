@@ -74,6 +74,55 @@ class OptionsV21LiveTests(unittest.TestCase):
         ids=[x.trade_id for x in rows]
         self.assertEqual(len(ids),len(set(ids)))
 
+    def test_invalid_iv_index_row_is_rejected_without_hiding_structural_failures(self):
+        class MixedFeed(DeribitBTCOptionTradeFeed):
+            def _get_json(self, query):
+                start=int(query["start_timestamp"])
+                return {
+                    "result": {
+                        "has_more": False,
+                        "trades": [
+                            {
+                                "trade_id":"bad-iv",
+                                "timestamp":start,
+                                "instrument_name":"BTC-30OCT26-100000-C",
+                                "iv":None,
+                                "index_price":90000.0,
+                            },
+                            {
+                                "trade_id":"good",
+                                "timestamp":start+1,
+                                "instrument_name":"BTC-30OCT26-100000-C",
+                                "iv":50.0,
+                                "index_price":90000.0,
+                            },
+                        ],
+                    }
+                }
+
+        feed=MixedFeed()
+        rows=feed.trades(start_ms=100,end_ms=200)
+        self.assertEqual([x.trade_id for x in rows],["good"])
+        self.assertEqual(feed.last_invalid_iv_index_rows,1)
+
+        class MissingIdFeed(MixedFeed):
+            def _get_json(self, query):
+                start=int(query["start_timestamp"])
+                return {
+                    "result": {
+                        "has_more": False,
+                        "trades": [{
+                            "timestamp":start,
+                            "instrument_name":"BTC-30OCT26-100000-C",
+                            "iv":50.0,
+                            "index_price":90000.0,
+                        }],
+                    }
+                }
+
+        with self.assertRaises(OptionsV21SourceError):
+            MissingIdFeed().trades(start_ms=100,end_ms=200)
+
     def test_pre_freeze_probe_is_forbidden(self):
         with self.assertRaises(OptionsV21SourceError):
             source_schema_probe(StubProbeFeed(),start_ms=FREEZE_MS-1,end_ms=FREEZE_MS+100)
