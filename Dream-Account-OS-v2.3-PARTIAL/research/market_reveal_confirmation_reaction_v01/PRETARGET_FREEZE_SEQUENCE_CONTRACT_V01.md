@@ -48,5 +48,10 @@ precede the scientific freeze.
 
 **FREEZE FIRST -> TARGET OPEN SECOND -> OUTCOMES LAST.**
 
-The current MRCR state remains before step 2. H02 is not authorized and target
-observation is locked.
+Current MRCR state:
+
+- step 2 COMPLETE: H02_DESIGN_FREEZE authority is ACTIVE;
+- scientific ruleset is FROZEN under that authority;
+- step 3 PENDING: complete official 2027 BLS calendar is not yet available;
+- target observation remains locked;
+- steps 5-6 are not authorized.
