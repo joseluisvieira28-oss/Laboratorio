@@ -43,8 +43,9 @@ if len(rows)!=int(comp.get("active_population_count",-1)):
     raise SystemExit("COMPONENT_ROW_COUNT_MISMATCH")
 
 event=os.environ.get("GITHUB_EVENT_NAME","local")
+canonical_trigger=str(os.environ.get("LCOD_CANONICAL_TRIGGER","false")).strip().lower() in ("1","true","yes")
 existing=list((HERE/"forward_snapshots").glob("LCOD_FORWARD_SNAPSHOT_BLOCK_*.json"))
-if event=="schedule":
+if canonical_trigger:
     role="FORWARD_OBSERVATION"
 elif event=="push" and not existing:
     role="FORWARD_OBSERVATION"
