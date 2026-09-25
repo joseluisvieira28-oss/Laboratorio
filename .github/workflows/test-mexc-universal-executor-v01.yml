@@ -1,0 +1,35 @@
+name: TEST MEXC UNIVERSAL EXECUTOR V0.1
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - mexc-universal-executor-v0.1-2026-09-25
+    paths:
+      - 'crypto_edge_radar/execution/**'
+      - 'crypto_edge_radar/scripts/mexc_universal_dispatcher_v01.py'
+      - 'crypto_edge_radar/tests/test_mexc_universal_dispatcher_v01.py'
+      - '.github/workflows/test-mexc-universal-executor-v01.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  fail-closed-contract:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: crypto_edge_radar
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install
+        run: python -m pip install -e .
+      - name: Compile universal dispatcher
+        run: python -m compileall scripts/mexc_universal_dispatcher_v01.py tests/test_mexc_universal_dispatcher_v01.py
+      - name: Run universal dispatcher tests
+        run: python -m unittest tests.test_mexc_universal_dispatcher_v01 -v
+      - name: Verify legacy Tier2 tests remain green
+        run: python -m unittest discover -s tests -p "test_mexc_tier2_*.py" -v
