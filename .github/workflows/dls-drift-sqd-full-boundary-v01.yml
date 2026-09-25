@@ -1,0 +1,121 @@
+name: DLS Drift SQD Full Boundary V0.1
+
+on:
+  push:
+    branches:
+      - dls-drift-sqd-boundary-v01
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_DRIFT_SQD_FULL_BOUNDARY_V01.marker
+
+permissions:
+  contents: read
+
+jobs:
+  partition:
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        include:
+          - start: '2022-11-04T15:17:54Z'
+            end: '2022-12-01T00:00:00Z'
+            id: drift-202211
+          - start: '2022-12-01T00:00:00Z'
+            end: '2023-01-01T00:00:00Z'
+            id: drift-202212
+          - start: '2023-01-01T00:00:00Z'
+            end: '2023-02-01T00:00:00Z'
+            id: drift-202301
+          - start: '2023-02-01T00:00:00Z'
+            end: '2023-03-01T00:00:00Z'
+            id: drift-202302
+          - start: '2023-03-01T00:00:00Z'
+            end: '2023-04-01T00:00:00Z'
+            id: drift-202303
+          - start: '2023-04-01T00:00:00Z'
+            end: '2023-05-01T00:00:00Z'
+            id: drift-202304
+          - start: '2023-05-01T00:00:00Z'
+            end: '2023-06-01T00:00:00Z'
+            id: drift-202305
+          - start: '2023-06-01T00:00:00Z'
+            end: '2023-07-01T00:00:00Z'
+            id: drift-202306
+          - start: '2023-07-01T00:00:00Z'
+            end: '2023-08-01T00:00:00Z'
+            id: drift-202307
+          - start: '2023-08-01T00:00:00Z'
+            end: '2023-09-01T00:00:00Z'
+            id: drift-202308
+          - start: '2023-09-01T00:00:00Z'
+            end: '2023-10-01T00:00:00Z'
+            id: drift-202309
+          - start: '2023-10-01T00:00:00Z'
+            end: '2023-11-01T00:00:00Z'
+            id: drift-202310
+          - start: '2023-11-01T00:00:00Z'
+            end: '2023-12-01T00:00:00Z'
+            id: drift-202311
+          - start: '2023-12-01T00:00:00Z'
+            end: '2024-01-01T00:00:00Z'
+            id: drift-202312
+          - start: '2024-01-01T00:00:00Z'
+            end: '2024-02-01T00:00:00Z'
+            id: drift-202401
+          - start: '2024-02-01T00:00:00Z'
+            end: '2024-03-01T00:00:00Z'
+            id: drift-202402
+          - start: '2024-03-01T00:00:00Z'
+            end: '2024-04-01T00:00:00Z'
+            id: drift-202403
+          - start: '2024-04-01T00:00:00Z'
+            end: '2024-05-01T00:00:00Z'
+            id: drift-202404
+          - start: '2024-05-01T00:00:00Z'
+            end: '2024-06-01T00:00:00Z'
+            id: drift-202405
+          - start: '2024-06-01T00:00:00Z'
+            end: '2024-07-01T00:00:00Z'
+            id: drift-202406
+          - start: '2024-07-01T00:00:00Z'
+            end: '2024-08-01T00:00:00Z'
+            id: drift-202407
+          - start: '2024-08-01T00:00:00Z'
+            end: '2024-09-01T00:00:00Z'
+            id: drift-202408
+          - start: '2024-09-01T00:00:00Z'
+            end: '2024-10-01T00:00:00Z'
+            id: drift-202409
+          - start: '2024-10-01T00:00:00Z'
+            end: '2024-11-01T00:00:00Z'
+            id: drift-202410
+          - start: '2024-11-01T00:00:00Z'
+            end: '2024-12-01T00:00:00Z'
+            id: drift-202411
+          - start: '2024-12-01T00:00:00Z'
+            end: '2025-01-01T00:00:00Z'
+            id: drift-202412
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile frozen runner
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/run_drift_sqd_first_success_partition_v0_1.py
+      - name: Run frozen monthly partition
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/run_drift_sqd_first_success_partition_v0_1.py --start "${{ matrix.start }}" --end "${{ matrix.end }}" --out "drift_boundary/${{ matrix.id }}"
+      - name: Upload partition
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-drift-sqd-boundary-${{ matrix.id }}
+          path: drift_boundary/${{ matrix.id }}
+          if-no-files-found: error
+          retention-days: 30
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_TRUE
