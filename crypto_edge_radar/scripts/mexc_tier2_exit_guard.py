@@ -66,13 +66,33 @@ def _short_position(client)->dict[str,Any]|None:
 def _close_once(*,transport,readonly,position,signal_identity,attempt,session)->dict[str,Any]:
     vol=int(float(position["holdVol"]))
     ext=f"exit-{attempt}-"+hashlib.sha256(f"{signal_identity}:exit:{attempt}".encode()).hexdigest()[:20]
-    _write(session/f"EXIT_ORDER_REQUEST_{attempt}.json",{
+    request_path=session/f"EXIT_ORDER_REQUEST_{attempt}.json"
+    if request_path.exists():
+        try:
+            return _wait_order(readonly,external_oid=ext,timeout=5)
+        except Exception as exc:
+            _write(session/f"EXIT_RECONCILIATION_REQUIRED_{attempt}.json",{
+                "receipt_type":"EXIT_RECONCILIATION_REQUIRED","attempt":attempt,
+                "external_oid":ext,
+                "reason":"PRIOR_EXIT_INTENT_EXISTS_BUT_EXCHANGE_STATE_UNRESOLVED__NO_RESUBMIT",
+                "error":f"{type(exc).__name__}:{exc}","execution_failure":True,
+            })
+            raise RuntimeError("EXIT_STATE_UNKNOWN_NO_BLIND_RESUBMIT") from exc
+    _write(request_path,{
         "receipt_type":"EXIT_ORDER_REQUEST","attempt":attempt,"symbol":"BTC_USDT",
         "position_id":int(position["positionId"]),"volume_contracts":vol,
         "side":2,"side_semantics":"CLOSE_SHORT","type":5,"openType":1,"leverage":1,
         "positionMode":1,"external_oid":ext
     })
-    ack=transport.submit_market_order(symbol="BTC_USDT",volume_contracts=vol,side=2,external_oid=ext,position_mode=1,position_id=int(position["positionId"]))
+    try:
+        ack=transport.submit_market_order(symbol="BTC_USDT",volume_contracts=vol,side=2,external_oid=ext,position_mode=1,position_id=int(position["positionId"]))
+    except Exception as exc:
+        _write(session/f"EXIT_ACK_UNKNOWN_{attempt}.json",{
+            "receipt_type":"EXIT_ACK_UNKNOWN","attempt":attempt,"external_oid":ext,
+            "reason":"SUBMIT_RETURNED_EXCEPTION__RECONCILE_BEFORE_ANY_RETRY",
+            "error":f"{type(exc).__name__}:{exc}","execution_failure":True,
+        })
+        raise RuntimeError("EXIT_ACK_UNKNOWN_NO_BLIND_RETRY") from exc
     _write(session/f"EXIT_EXCHANGE_ACK_{attempt}.json",{"receipt_type":"EXIT_EXCHANGE_ACK","attempt":attempt,"exchange_ack":ack,"external_oid":ext})
     order=_wait_order(readonly,external_oid=ext,timeout=10)
     if int(order.get("state",0) or 0) not in (3,4,5):
