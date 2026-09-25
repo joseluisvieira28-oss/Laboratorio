@@ -1,0 +1,18 @@
+name: SCL LIQPULL Forward QA V0.2
+on:
+  push:
+    paths:
+      - '.github/workflows/scl-liqpull-forward-qa-v02.yml'
+permissions:
+  contents: read
+jobs:
+  synthetic-qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m py_compile research/scalping_forward/scl_liqpull_raw_collector_v01.py research/scalping_forward/scl_liqpull_mechanism_eval_v02.py
+      - run: pip install pytest
+      - run: pytest -q research/scalping_forward/test_scl_liqpull_raw_collector_v01.py research/scalping_forward/test_scl_liqpull_mechanism_eval_v02.py
