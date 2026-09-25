@@ -22,6 +22,9 @@ def build_preflight(client: MEXCSpotAuthenticatedReadOnlyClient) -> dict:
     self_symbols = client.self_symbols()
     default_symbols = client.default_symbols()
     orders = client.open_orders(ALLOWED_SYMBOL)
+    mx_deduct = client.mx_deduct_enabled()
+    fee = client.trade_fee(ALLOWED_SYMBOL)
+    taker_bps = float(fee["takerCommission"]) * 10_000.0
     balances = {
         str(row.get("asset", "")).upper(): {
             "free": float(row.get("free", 0) or 0),
@@ -56,6 +59,14 @@ def build_preflight(client: MEXCSpotAuthenticatedReadOnlyClient) -> dict:
         "orders": {
             "pass": len(orders) == 0,
             "open_order_count": len(orders),
+        },
+        "fees": {
+            "pass": (not mx_deduct) and (2.0 * taker_bps <= 20.0 + 1e-12),
+            "mx_deduct_enabled": mx_deduct,
+            "taker_fee_bps_one_way": taker_bps,
+            "projected_taker_round_trip_bps": 2.0 * taker_bps,
+            "stress20_budget_bps": 20.0,
+            "reason": None if (not mx_deduct and 2.0*taker_bps <= 20.0 + 1e-12) else "MX_DEDUCT_OR_STRESS20_FEE_GATE_FAIL",
         },
         "positions": {
             "pass": True,
