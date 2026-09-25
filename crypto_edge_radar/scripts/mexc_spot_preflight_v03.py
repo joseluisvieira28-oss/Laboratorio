@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from radar.mexc_auth_readonly import MEXCCredentials,MEXCFuturesAuthenticatedReadOnlyClient
-from radar.mexc_spot import MEXCSpotPublicFeed
+from radar.mexc_spot import MEXCSpotPublicFeed, floor_market_quantity, market_quantity_rules
 from radar.mexc_spot_auth import MEXCSpotAuthenticatedClient
 
 def _balance(account,asset):
@@ -40,6 +40,16 @@ def run()->dict:
     usdt_free,_=_balance(account,"USDT")
     btc_free,btc_locked=_balance(account,"BTC")
     if usdt_free<10.0: candidate.append("SPOT_USDT_FREE_BELOW_10_USDT")
+    try:
+        book=public.book_ticker("BTCUSDT")
+        ask=float(book["askPrice"])
+        taker=float(info.get("takerCommission",0) or 0)
+        estimated_btc=(10.0/ask)*max(0.0,1.0-taker)
+        estimated_sell_qty=floor_market_quantity(estimated_btc,info)
+        qty_rules=market_quantity_rules(info)
+    except Exception:
+        estimated_sell_qty=None; qty_rules=None
+        candidate.append("SPOT_EXIT_QUANTITY_FEASIBILITY_FAILED")
     test_id="opt-v21-v03-test"
     try:
         auth.test_market_buy(quote_order_qty_usdt=10.0,client_order_id=test_id)
@@ -59,6 +69,7 @@ def run()->dict:
             "symbol":{"symbol":"BTCUSDT","default_symbol_supported":supported,"exchange_info":info},
             "account":{"can_trade":account.get("canTrade"),"usdt_free":usdt_free,"btc_free":btc_free,"btc_locked":btc_locked},
             "orders":{"open_order_count":len(open_orders)},
+            "exit_quantity":{"estimated_sell_quantity_btc":estimated_sell_qty,"rules":qty_rules},
             "order_test":{"pass":test_pass,"error":test_error,"matching_engine_submission":False}
         },
         "security":{"authenticated_api_used":True,"real_order_created":False,"exchange_mutation_to_matching_engine":False,"transfer_endpoint_implemented":False,"withdrawal_endpoint_implemented":False}
