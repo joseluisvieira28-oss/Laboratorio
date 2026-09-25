@@ -1,0 +1,46 @@
+name: DLS Drift SQD Single D8 Calibration V0.1
+
+on:
+  push:
+    branches:
+      - dls-drift-sqd-boundary-v01
+    paths:
+      - .github/workflows/dls-drift-sqd-single-d8-calibration-v01.yml
+
+permissions:
+  contents: write
+
+jobs:
+  calibrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/calibrate_drift_sqd_single_d8_v0_1.py
+      - name: Run exact-equivalence calibration
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/calibrate_drift_sqd_single_d8_v0_1.py
+      - name: Upload receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-drift-sqd-single-d8-calibration-v01
+          path: labs/DEFI_LIQUIDATION_SHOCK_001/DRIFT_SQD_SINGLE_D8_CALIBRATION_RECEIPT_V0.1.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Persist receipt
+        if: always()
+        run: |
+          git config user.name "crypto-lab-source-audit"
+          git config user.email "actions@users.noreply.github.com"
+          git add labs/DEFI_LIQUIDATION_SHOCK_001/DRIFT_SQD_SINGLE_D8_CALIBRATION_RECEIPT_V0.1.json || true
+          git commit -m "dls: persist Drift single-d8 calibration V0.1" || true
+          git push origin HEAD:dls-drift-sqd-boundary-v01
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_TRUE
