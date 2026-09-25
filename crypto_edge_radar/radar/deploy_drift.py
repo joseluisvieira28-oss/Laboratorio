@@ -15,6 +15,15 @@ BRANCH_ATOM_URL = (
     "crypto-edge-radar-postgres-v0.5.atom"
 )
 _COMMIT_LINK_RE = re.compile(r"/commit/([0-9a-f]{40})(?:[\"'<\\s?]|$)")
+_DIFF_PATH_RE = re.compile(r"^diff --git a/(.+?) b/(.+?)$", re.MULTILINE)
+SAFE_NON_RUNTIME_PREFIXES = (
+    ".github/workflows/",
+    "crypto_edge_radar/receipts/",
+    "crypto_edge_radar/tests/",
+)
+COMPARE_DIFF_URL = (
+    "https://github.com/joseluisvieira28-oss/Laboratorio/compare/{base}...{head}.diff"
+)
 
 
 def _fetch_json(url: str, timeout: int) -> Any:
@@ -46,6 +55,59 @@ def _head_from_atom(text: str) -> str:
     if not match:
         raise ValueError("canonical branch head SHA unavailable from Atom feed")
     return match.group(1)
+
+
+def _changed_files_from_diff(text: str) -> list[str]:
+    files = []
+    seen = set()
+    for match in _DIFF_PATH_RE.finditer(text):
+        path = match.group(2)
+        if path not in seen:
+            seen.add(path)
+            files.append(path)
+    if not files:
+        raise ValueError("no changed file paths parsed from compare diff")
+    return files
+
+
+def _is_safe_non_runtime_path(path: str) -> bool:
+    return any(path.startswith(prefix) for prefix in SAFE_NON_RUNTIME_PREFIXES)
+
+
+def _semantic_drift(
+    *,
+    deployed: str,
+    head: str,
+    timeout: int,
+) -> dict[str, Any]:
+    url = COMPARE_DIFF_URL.format(base=deployed, head=head)
+    try:
+        changed_files = _changed_files_from_diff(_fetch_text(url, timeout))
+    except Exception as exc:
+        return {
+            "classification": "STALE_RUNTIME",
+            "in_sync": False,
+            "git_head_equal": False,
+            "runtime_code_in_sync": False,
+            "changed_files": None,
+            "compare_source": "GITHUB_PUBLIC_COMPARE_DIFF",
+            "compare_error": f"{type(exc).__name__}:{exc}",
+        }
+
+    runtime_code_in_sync = all(_is_safe_non_runtime_path(p) for p in changed_files)
+    return {
+        "classification": (
+            "IN_SYNC_RUNTIME_CODE__NON_RUNTIME_BRANCH_DRIFT"
+            if runtime_code_in_sync
+            else "STALE_RUNTIME"
+        ),
+        "in_sync": runtime_code_in_sync,
+        "git_head_equal": False,
+        "runtime_code_in_sync": runtime_code_in_sync,
+        "changed_files": changed_files,
+        "compare_source": "GITHUB_PUBLIC_COMPARE_DIFF",
+        "compare_error": None,
+    }
 
 
 def deployment_drift_receipt(*, timeout: int = 15) -> dict[str, Any]:
@@ -84,11 +146,27 @@ def deployment_drift_receipt(*, timeout: int = 15) -> dict[str, Any]:
             }
 
     same = deployed == head
+    if same:
+        return {
+            "classification": "IN_SYNC",
+            "deployed_commit": deployed,
+            "canonical_head_commit": head,
+            "in_sync": True,
+            "git_head_equal": True,
+            "runtime_code_in_sync": True,
+            "changed_files": [],
+            "source": source,
+            "primary_error": primary_error,
+            "compare_source": None,
+            "compare_error": None,
+            "automatic_deploy_performed": False,
+        }
+
+    semantic = _semantic_drift(deployed=deployed, head=head, timeout=timeout)
     return {
-        "classification": "IN_SYNC" if same else "STALE_RUNTIME",
+        **semantic,
         "deployed_commit": deployed,
         "canonical_head_commit": head,
-        "in_sync": same,
         "source": source,
         "primary_error": primary_error,
         "automatic_deploy_performed": False,

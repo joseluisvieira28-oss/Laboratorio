@@ -28,14 +28,89 @@ class DeployDriftTests(TestCase):
     def test_stale_runtime(self):
         deployed = "a" * 40
         head = "b" * 40
+        diff = (
+            "diff --git a/crypto_edge_radar/radar/forward_web.py "
+            "b/crypto_edge_radar/radar/forward_web.py\n"
+        )
         with patch.dict(os.environ, {"RENDER_GIT_COMMIT": deployed}, clear=True), patch(
             "radar.deploy_drift._fetch_json",
             return_value={"commit": {"sha": head}},
+        ), patch(
+            "radar.deploy_drift._fetch_text",
+            return_value=diff,
         ):
             r = deployment_drift_receipt(timeout=1)
         self.assertEqual(r["classification"], "STALE_RUNTIME")
         self.assertFalse(r["in_sync"])
+        self.assertFalse(r["runtime_code_in_sync"])
         self.assertEqual(r["canonical_head_commit"], head)
+        self.assertEqual(
+            r["changed_files"],
+            ["crypto_edge_radar/radar/forward_web.py"],
+        )
+
+
+    def test_receipt_only_head_drift_is_not_runtime_stale(self):
+        deployed = "a" * 40
+        head = "b" * 40
+        diff = (
+            "diff --git a/crypto_edge_radar/receipts/X.json "
+            "b/crypto_edge_radar/receipts/X.json\n"
+            "diff --git a/crypto_edge_radar/tests/test_x.py "
+            "b/crypto_edge_radar/tests/test_x.py\n"
+            "diff --git a/.github/workflows/x.yml "
+            "b/.github/workflows/x.yml\n"
+        )
+        with patch.dict(os.environ, {"RENDER_GIT_COMMIT": deployed}, clear=True), patch(
+            "radar.deploy_drift._fetch_json",
+            return_value={"commit": {"sha": head}},
+        ), patch(
+            "radar.deploy_drift._fetch_text",
+            return_value=diff,
+        ):
+            r = deployment_drift_receipt(timeout=1)
+
+        self.assertEqual(
+            r["classification"],
+            "IN_SYNC_RUNTIME_CODE__NON_RUNTIME_BRANCH_DRIFT",
+        )
+        self.assertTrue(r["in_sync"])
+        self.assertFalse(r["git_head_equal"])
+        self.assertTrue(r["runtime_code_in_sync"])
+        self.assertEqual(len(r["changed_files"]), 3)
+
+    def test_authority_change_remains_runtime_relevant(self):
+        deployed = "a" * 40
+        head = "b" * 40
+        diff = (
+            "diff --git a/crypto_edge_radar/authorities/X.json "
+            "b/crypto_edge_radar/authorities/X.json\n"
+        )
+        with patch.dict(os.environ, {"RENDER_GIT_COMMIT": deployed}, clear=True), patch(
+            "radar.deploy_drift._fetch_json",
+            return_value={"commit": {"sha": head}},
+        ), patch(
+            "radar.deploy_drift._fetch_text",
+            return_value=diff,
+        ):
+            r = deployment_drift_receipt(timeout=1)
+        self.assertEqual(r["classification"], "STALE_RUNTIME")
+        self.assertFalse(r["runtime_code_in_sync"])
+
+    def test_compare_failure_is_conservatively_stale(self):
+        deployed = "a" * 40
+        head = "b" * 40
+        with patch.dict(os.environ, {"RENDER_GIT_COMMIT": deployed}, clear=True), patch(
+            "radar.deploy_drift._fetch_json",
+            return_value={"commit": {"sha": head}},
+        ), patch(
+            "radar.deploy_drift._fetch_text",
+            side_effect=RuntimeError("compare unavailable"),
+        ):
+            r = deployment_drift_receipt(timeout=1)
+        self.assertEqual(r["classification"], "STALE_RUNTIME")
+        self.assertFalse(r["in_sync"])
+        self.assertIn("compare unavailable", r["compare_error"])
 
     def test_api_failure_uses_atom_fallback(self):
         sha = "b" * 40
