@@ -22,6 +22,8 @@ LEDGER_EVENT = "CED1D_RENDER_SHADOW_V03_EVENT"
 FAILURE_EVENT = "CED1D_RENDER_SHADOW_V03_FAILURE"
 FIRST_SIGNAL_COMPLETION_UTC = "2026-09-23T00:00:00Z"
 FIRST_REFERENCE_ENTRY_UTC = "2026-09-23T00:01:00Z"
+BOOKDEPTH_TRANSPORT_AUTHORITY = "CED1D-0031-BOOKDEPTH-TIMESTAMP-TRANSPORT-V0.5"
+BOOKDEPTH_TRANSPORT_RECEIPT = "CED1D_0031_BOOKDEPTH_TRANSPORT_RECEIPT_V0.5.json"
 
 
 class CED1DRenderShadowRuntimeError(RuntimeError):
@@ -77,6 +79,27 @@ def _read_ledger(path: Path) -> list[dict[str, str]]:
         return []
     with path.open("r", encoding="utf-8", newline="") as fh:
         return list(csv.DictReader(fh))
+
+
+def _read_and_validate_transport_receipt(path: Path) -> dict[str, Any]:
+    if not path.exists():
+        raise CED1DRenderShadowRuntimeError("BOOKDEPTH_TRANSPORT_RECEIPT_MISSING")
+    receipt = json.loads(path.read_text(encoding="utf-8"))
+    if receipt.get("authority_id") != BOOKDEPTH_TRANSPORT_AUTHORITY:
+        raise CED1DRenderShadowRuntimeError("BOOKDEPTH_TRANSPORT_AUTHORITY_MISMATCH")
+    if receipt.get("scientific_rules_changed") is not False:
+        raise CED1DRenderShadowRuntimeError("BOOKDEPTH_TRANSPORT_SCIENCE_FIREWALL_FAIL")
+    for key in (
+        "authenticated_exchange_api_used",
+        "orders_created",
+        "exchange_mutation_performed",
+        "live_capital_enabled",
+    ):
+        if receipt.get(key) is not False:
+            raise CED1DRenderShadowRuntimeError(
+                f"BOOKDEPTH_TRANSPORT_SAFETY_FIREWALL_FAIL:{key}"
+            )
+    return receipt
 
 
 def _validate_complete_result(
@@ -176,7 +199,8 @@ class CED1DRenderShadowRunner:
         root = _root()
         activation = root / "authorities" / "CED1D_0031_RENDER_SHADOW_ACTIVATION_V0.3.json"
         collector = root / "radar" / "ced1d_render_shadow_collector_v03.py"
-        if not activation.exists() or not collector.exists():
+        adapter = root / "radar" / "ced1d_bookdepth_transport_adapter_v05.py"
+        if not activation.exists() or not collector.exists() or not adapter.exists():
             raise CED1DRenderShadowRuntimeError("PINNED_MIGRATION_FILE_MISSING")
 
         try:
@@ -187,7 +211,8 @@ class CED1DRenderShadowRunner:
                 output = temp / "output"
                 cmd = [
                     sys.executable,
-                    str(collector),
+                    "-m",
+                    "radar.ced1d_bookdepth_transport_adapter_v05",
                     "--activation", str(activation),
                     "--v03-runner-zip", str(runner_zip),
                     "--through-signal-day", through.isoformat(),
@@ -207,6 +232,9 @@ class CED1DRenderShadowRunner:
                         f"stderr={proc.stderr[-500:]}"
                     )
                 receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+                transport_receipt = _read_and_validate_transport_receipt(
+                    output / BOOKDEPTH_TRANSPORT_RECEIPT
+                )
                 if proc.returncode != 0 and retryable_latest_archive_404(receipt, through):
                     return {
                         "strategy_id": "CED1D-0031",
@@ -215,6 +243,7 @@ class CED1DRenderShadowRunner:
                         "latest_required_path_day": latest_required_path_day(through).isoformat(),
                         "retryable_source_archive_pending": True,
                         "pending_reason": receipt.get("error"),
+                        "bookdepth_transport": transport_receipt,
                         **safety,
                     }
                 if proc.returncode != 0:
@@ -224,6 +253,7 @@ class CED1DRenderShadowRunner:
                         "receipt": receipt,
                         "returncode": proc.returncode,
                         "runner_sha256": runner_sha,
+                        "bookdepth_transport": transport_receipt,
                         **safety,
                     }
                     self.store.append_once(
@@ -273,6 +303,7 @@ class CED1DRenderShadowRunner:
                     "ledger_rows": len(ledger),
                     "inserted_events": inserted_events,
                     "duplicate_events": duplicate_events,
+                    "bookdepth_transport": transport_receipt,
                     **safety,
                 }
                 result = self.store.append_once(
@@ -293,6 +324,7 @@ class CED1DRenderShadowRunner:
                     "duplicate_events": duplicate_events,
                     "receipt_fingerprint": receipt.get("fingerprint"),
                     "metrics": receipt.get("metrics"),
+                    "bookdepth_transport": transport_receipt,
                     **safety,
                 }
         except subprocess.TimeoutExpired as exc:

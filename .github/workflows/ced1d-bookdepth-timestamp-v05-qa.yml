@@ -1,0 +1,104 @@
+name: CED1D BookDepth Timestamp Transport V0.5 QA
+
+on:
+  pull_request:
+    branches:
+      - crypto-edge-radar-postgres-v0.5
+    paths:
+      - "crypto_edge_radar/radar/ced1d_bookdepth_transport_adapter_v05.py"
+      - "crypto_edge_radar/radar/ced1d_render_shadow_runtime.py"
+      - "crypto_edge_radar/tests/test_ced1d_bookdepth_transport_adapter_v05.py"
+      - "crypto_edge_radar/tests/test_ced1d_render_shadow_runtime.py"
+      - "governance/CED1D_0031_BOOKDEPTH_TIMESTAMP_TRANSPORT_ADAPTER_V0.5_2026-09-25.md"
+      - ".github/workflows/ced1d-bookdepth-timestamp-v05-qa.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deterministic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: |
+          cd crypto_edge_radar
+          python -m pip install -e .
+      - name: Compile
+        run: |
+          cd crypto_edge_radar
+          python -m compileall radar tests
+      - name: Targeted transport and runtime tests
+        run: |
+          cd crypto_edge_radar
+          python -m unittest -v             tests.test_ced1d_bookdepth_transport_adapter_v05             tests.test_ced1d_render_shadow_runtime
+      - name: Full deterministic Radar suite
+        run: |
+          cd crypto_edge_radar
+          python -m unittest discover -s tests -v
+      - name: Frozen collector no-diff guard
+        run: |
+          git fetch origin crypto-edge-radar-postgres-v0.5 --depth=1
+          git diff --exit-code origin/crypto-edge-radar-postgres-v0.5 --             crypto_edge_radar/radar/ced1d_render_shadow_collector_v03.py
+      - name: Safety guard
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          a=Path("crypto_edge_radar/radar/ced1d_bookdepth_transport_adapter_v05.py").read_text()
+          r=Path("crypto_edge_radar/radar/ced1d_render_shadow_runtime.py").read_text()
+          assert 'CED1D-0031-BOOKDEPTH-TIMESTAMP-TRANSPORT-V0.5' in a
+          assert 'TEXT_TIMESTAMP_FORMAT = "%Y-%m-%d %H:%M:%S"' in a
+          assert 'collector.parse_bookdepth_zip = patched_parse_bookdepth_zip' in a
+          assert '"radar.ced1d_bookdepth_transport_adapter_v05"' in r
+          for forbidden in ("create_order","place_order","private_key","api_secret","withdraw(","set_leverage("):
+              assert forbidden not in a.lower(), forbidden
+          print("CED1D_BOOKDEPTH_TIMESTAMP_V05_SAFETY_PASS")
+          PY
+
+  public_archive_replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: |
+          cd crypto_edge_radar
+          python -m pip install -e .
+      - name: Replay exact frozen public archives through adapter + frozen parser
+        run: |
+          cd crypto_edge_radar
+          python - <<'PY'
+          from datetime import date
+          import hashlib, urllib.request
+          from radar.ced1d_bookdepth_transport_adapter_v05 import normalize_bookdepth_zip
+          from radar.ced1d_render_shadow_collector_v03 import parse_bookdepth_zip
+
+          expected={
+            "2026-09-23":"47f0834067cf0cb8c19d9484036d24c6a2b9940fb6a78d34b681fddb002435c2",
+            "2026-09-24":"60c4a474743212e695bc6ce617717166d0b12ca768bc7c13bd1bc95524fb3b8f",
+          }
+          for day,sha in expected.items():
+              url=f"https://data.binance.vision/data/futures/um/daily/bookDepth/AVAXUSDT/AVAXUSDT-bookDepth-{day}.zip"
+              req=urllib.request.Request(url,headers={"User-Agent":"crypto-edge-radar-v05-public-replay/0.1"})
+              with urllib.request.urlopen(req,timeout=120) as response:
+                  raw=response.read()
+              actual=hashlib.sha256(raw).hexdigest()
+              assert actual==sha,(day,actual,sha)
+              normalized,event=normalize_bookdepth_zip(raw,date.fromisoformat(day))
+              snaps=parse_bookdepth_zip(normalized,date.fromisoformat(day))
+              assert event["text_timestamp_rows_normalized"]>0,event
+              assert event["raw_source_hash_preserved_by_collector"] is True,event
+              assert len(snaps)>0,day
+              print("PASS",day,"raw_sha256",actual,"snapshots",len(snaps),
+                    "normalized_rows",event["text_timestamp_rows_normalized"])
+          PY
