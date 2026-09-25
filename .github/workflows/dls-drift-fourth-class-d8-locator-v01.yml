@@ -1,0 +1,162 @@
+name: DLS Drift Fourth Class D8 Locator V0.1
+
+on:
+  push:
+    branches:
+      - dls-drift-sqd-boundary-v01
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_DRIFT_FOURTH_CLASS_D8_LOCATOR_V01.marker
+
+permissions:
+  contents: write
+
+jobs:
+  locate:
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix:
+        include:
+          - start: '2023-02-01T00:00:00Z'
+            end: '2023-03-01T00:00:00Z'
+            id: d4-202302
+          - start: '2023-03-01T00:00:00Z'
+            end: '2023-04-01T00:00:00Z'
+            id: d4-202303
+          - start: '2023-04-01T00:00:00Z'
+            end: '2023-05-01T00:00:00Z'
+            id: d4-202304
+          - start: '2023-05-01T00:00:00Z'
+            end: '2023-06-01T00:00:00Z'
+            id: d4-202305
+          - start: '2023-06-01T00:00:00Z'
+            end: '2023-07-01T00:00:00Z'
+            id: d4-202306
+          - start: '2023-07-01T00:00:00Z'
+            end: '2023-08-01T00:00:00Z'
+            id: d4-202307
+          - start: '2023-08-01T00:00:00Z'
+            end: '2023-09-01T00:00:00Z'
+            id: d4-202308
+          - start: '2023-09-01T00:00:00Z'
+            end: '2023-10-01T00:00:00Z'
+            id: d4-202309
+          - start: '2023-10-01T00:00:00Z'
+            end: '2023-11-01T00:00:00Z'
+            id: d4-202310
+          - start: '2023-11-01T00:00:00Z'
+            end: '2023-12-01T00:00:00Z'
+            id: d4-202311
+          - start: '2023-12-01T00:00:00Z'
+            end: '2024-01-01T00:00:00Z'
+            id: d4-202312
+          - start: '2024-01-01T00:00:00Z'
+            end: '2024-02-01T00:00:00Z'
+            id: d4-202401
+          - start: '2024-02-01T00:00:00Z'
+            end: '2024-03-01T00:00:00Z'
+            id: d4-202402
+          - start: '2024-03-01T00:00:00Z'
+            end: '2024-04-01T00:00:00Z'
+            id: d4-202403
+          - start: '2024-04-01T00:00:00Z'
+            end: '2024-05-01T00:00:00Z'
+            id: d4-202404
+          - start: '2024-05-01T00:00:00Z'
+            end: '2024-06-01T00:00:00Z'
+            id: d4-202405
+          - start: '2024-06-01T00:00:00Z'
+            end: '2024-07-01T00:00:00Z'
+            id: d4-202406
+          - start: '2024-07-01T00:00:00Z'
+            end: '2024-08-01T00:00:00Z'
+            id: d4-202407
+          - start: '2024-08-01T00:00:00Z'
+            end: '2024-09-01T00:00:00Z'
+            id: d4-202408
+          - start: '2024-09-01T00:00:00Z'
+            end: '2024-10-01T00:00:00Z'
+            id: d4-202409
+          - start: '2024-10-01T00:00:00Z'
+            end: '2024-11-01T00:00:00Z'
+            id: d4-202410
+          - start: '2024-11-01T00:00:00Z'
+            end: '2024-12-01T00:00:00Z'
+            id: d4-202411
+          - start: '2024-12-01T00:00:00Z'
+            end: '2025-01-01T00:00:00Z'
+            id: d4-202412
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify calibration authority
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path("labs/DEFI_LIQUIDATION_SHOCK_001/DRIFT_SQD_SINGLE_D8_CALIBRATION_RECEIPT_V0.1.json")
+          if not p.exists(): raise SystemExit("missing calibration receipt")
+          o=json.loads(p.read_text())
+          if o.get("classification")!="DRIFT_SQD_SINGLE_D8_EXACT_EQUIVALENCE_PASS":
+              raise SystemExit("d8 calibration not PASS")
+          print("D8_CALIBRATION_PASS")
+          PY
+      - name: Compile locator
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/run_drift_fourth_class_d8_locator_v0_1.py
+      - name: Run monthly fourth-class locator
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/run_drift_fourth_class_d8_locator_v0_1.py --start "${{ matrix.start }}" --end "${{ matrix.end }}" --out "locator/${{ matrix.id }}.json"
+      - name: Upload locator evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-drift-fourth-locator-${{ matrix.id }}
+          path: locator/${{ matrix.id }}.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_TRUE
+
+  adjudicate:
+    needs: locate
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: dls-drift-fourth-locator-*
+          path: locator_all
+          merge-multiple: false
+      - name: Compile adjudicator
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/adjudicate_drift_fourth_class_locator_v0_1.py
+      - name: Adjudicate earliest candidate and RAW verify
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/adjudicate_drift_fourth_class_locator_v0_1.py locator_all
+      - name: Upload final locator receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-drift-fourth-class-d8-locator-final-v01
+          path: labs/DEFI_LIQUIDATION_SHOCK_001/DRIFT_FOURTH_CLASS_D8_LOCATOR_RECEIPT_V0.1.json
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Persist final locator receipt
+        if: always()
+        run: |
+          git config user.name "crypto-lab-source-audit"
+          git config user.email "actions@users.noreply.github.com"
+          git add labs/DEFI_LIQUIDATION_SHOCK_001/DRIFT_FOURTH_CLASS_D8_LOCATOR_RECEIPT_V0.1.json || true
+          git commit -m "dls: persist Drift fourth-class D8 locator V0.1" || true
+          git push origin HEAD:dls-drift-sqd-boundary-v01
