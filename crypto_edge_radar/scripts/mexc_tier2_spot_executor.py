@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from radar.mexc_auth_readonly import MEXCCredentials,MEXCFuturesAuthenticatedReadOnlyClient
-from radar.mexc_spot import MEXCSpotPublicFeed
+from radar.mexc_spot import MEXCSpotPublicFeed, floor_market_quantity, market_quantity_rules
 from radar.mexc_spot_auth import MEXCSpotAuthenticatedClient
 from radar.mexc_tier2_spot_gate import EXECUTION_TOKEN, validate_options_long_spot_execution
 
@@ -105,11 +105,16 @@ def main()->int:
         except Exception: pass
         print(json.dumps({"status":"FAIL_CLOSED","blockers":["SPOT_ENTRY_NOT_FILLED"]},indent=2)); return 6
     btc_commission=_commission_btc(auth,str(order.get("orderId")))
-    sellable=max(0.0,executed-btc_commission)
+    raw_sellable=max(0.0,executed-btc_commission)
+    try:
+        sellable=floor_market_quantity(raw_sellable,info)
+        qty_rules=market_quantity_rules(info)
+    except Exception as exc:
+        print(json.dumps({"status":"FAIL_CLOSED","blockers":["SPOT_EXIT_QUANTITY_CANNOT_BE_SAFELY_QUANTIZED"],"error":f"{type(exc).__name__}:{exc}"},indent=2)); return 7
     if sellable<=0:
         print(json.dumps({"status":"FAIL_CLOSED","blockers":["NO_SELLABLE_BTC_AFTER_ENTRY_COMMISSION"]},indent=2)); return 7
     entry_price=spent/executed if executed>0 else None
-    _write(session/"FILL_RECEIPT.json",{"receipt_type":"FILL_RECEIPT","order":order,"executed_btc":executed,"spent_usdt":spent,"entry_price":entry_price,"btc_commission":btc_commission,"sellable_btc":sellable})
+    _write(session/"FILL_RECEIPT.json",{"receipt_type":"FILL_RECEIPT","order":order,"executed_btc":executed,"spent_usdt":spent,"entry_price":entry_price,"btc_commission":btc_commission,"raw_sellable_btc":raw_sellable,"sellable_btc":sellable,"exit_quantity_rules":qty_rules})
     active={
         "receipt_type":"ACTIVE_TRADE_STATE","state":"EXIT_PENDING","strategy_id":gate["strategy_id"],"signal_identity":key,
         "entry_order_id":order.get("orderId"),"entry_client_order_id":client_id,"entry_price":entry_price,
