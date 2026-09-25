@@ -95,6 +95,8 @@ class GateTests(unittest.TestCase):
         return {
             "status":"PASS",
             "as_of_utc":"2026-09-23T00:00:00Z",
+            "daily_realized_loss_usdt":0.0,
+            "weekly_realized_loss_usdt":0.0,
             "daily_realized_loss_fraction_equity":0.0,
             "weekly_realized_loss_fraction_equity":0.0,
             "concurrent_planned_risk_fraction_equity":0.0,
@@ -117,12 +119,11 @@ class GateTests(unittest.TestCase):
             self.assertFalse(out["pass"])
             self.assertIn("ACTIVE_CANDIDATE_SPECIFIC_AUTHORITY_ABSENT",out["blockers"])
 
-    def test_venue_minimum_above_frozen_budget_blocks(self):
+    def test_venue_minimum_above_fixed_10_usdt_cap_blocks(self):
         with tempfile.TemporaryDirectory() as td:
-            pf=self._preflight(equity=112.3763,min_notional=8.6,candidate_pass=False)
+            pf=self._preflight(equity=112.3763,min_notional=10.5,candidate_pass=True)
             out=self._run(td,self._authority(),preflight=pf)
             self.assertFalse(out["pass"])
-            self.assertIn("CANDIDATE_CAPITAL_FEASIBILITY_NOT_PASS",out["blockers"])
             self.assertIn("VENUE_MINIMUM_EXCEEDS_AUTHORITY_RISK_BUDGET",out["blockers"])
 
     def test_current_api_schema_is_required(self):
