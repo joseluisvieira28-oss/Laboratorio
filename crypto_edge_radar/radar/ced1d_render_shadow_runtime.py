@@ -185,6 +185,19 @@ class CED1DRenderShadowRunner:
                         f"stderr={proc.stderr[-500:]}"
                     )
                 receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+                if receipt.get("status") == "WAITING_SOURCE_ARCHIVE":
+                    return {
+                        "strategy_id": "CED1D-0031",
+                        "status": "WAITING_SOURCE_ARCHIVE",
+                        "latest_mature_signal_day": through.isoformat(),
+                        "latest_required_path_day": receipt.get("latest_required_path_day"),
+                        "pending_archive_url": receipt.get("pending_archive_url"),
+                        "retryable_source_archive_pending": bool(
+                            receipt.get("retryable_source_archive_pending")
+                        ),
+                        "pending_reason": receipt.get("error"),
+                        **safety,
+                    }
                 if proc.returncode != 0:
                     failure = {
                         "strategy_id": "CED1D-0031",
