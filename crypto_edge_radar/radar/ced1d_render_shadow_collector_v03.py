@@ -16,7 +16,7 @@ The collector is deterministic over the exact post-freeze signal-day interval
 V0.2 previously corrected lookback-input acquisition: the 20D signal uses 20 PRIOR VALID daily observations, so pre-boundary source acquisition walks backward until exactly that valid-observation requirement is satisfied. No real shadow collector run occurred under V0.1.\n\nV0.3 changes only the prospective runtime/boundary and source transport validated by the frozen Render source gate. It does not automatically promote or demote the candidate.
 """
 from __future__ import annotations
-import argparse,csv,hashlib,importlib,io,json,math,re,statistics,sys,tempfile,time,urllib.error,urllib.parse,urllib.request,zipfile
+import argparse,csv,hashlib,importlib,io,json,math,re,statistics,sys,tempfile,time,urllib.parse,urllib.request,zipfile
 from collections import defaultdict
 from datetime import date,datetime,timedelta,timezone
 from pathlib import Path
@@ -56,13 +56,6 @@ HEADER_ALIASES={"open_time","opentime","timestamp","time","start_time"}
 
 class GateError(RuntimeError): pass
 
-class VisionArchiveHTTP404(GateError):
-    """Public Binance Vision archive object is not published at this URL yet."""
-
-    def __init__(self, url: str) -> None:
-        self.url = str(url)
-        super().__init__(f"VISION_ARCHIVE_HTTP_404:{self.url}")
-
 def sha256_bytes(b:bytes)->str:return hashlib.sha256(b).hexdigest()
 def sha256_file(p:Path)->str:
     h=hashlib.sha256()
@@ -94,12 +87,6 @@ def fetch(url,attempts=3,timeout=180):
             with urllib.request.urlopen(req,timeout=timeout) as r:
                 if r.status!=200:raise GateError(f"HTTP_{r.status}:{url}")
                 return r.read()
-        except urllib.error.HTTPError as e:
-            if e.code==404 and url.startswith(VISION+"/"):
-                last=VisionArchiveHTTP404(url)
-            else:
-                last=e
-            if i+1<attempts:time.sleep(i+1)
         except Exception as e:
             last=e
             if i+1<attempts:time.sleep(i+1)
@@ -144,19 +131,6 @@ def daily_agg_url(day):
 def daily_bookdepth_url(day):
     ds=day.isoformat()
     return f"{VISION}/bookDepth/{SYMBOL}/{SYMBOL}-bookDepth-{ds}.zip"
-
-def archive_day_from_url(url:str):
-    m=re.search(r"(20\d{2}-\d{2}-\d{2})",str(url))
-    return date.fromisoformat(m.group(1)) if m else None
-
-def latest_required_path_day(through_signal_day:date):
-    return through_signal_day+timedelta(days=HORIZON+1)
-
-def retryable_latest_archive_404(exc:Exception,through_signal_day:date)->bool:
-    return (
-        isinstance(exc,VisionArchiveHTTP404)
-        and archive_day_from_url(exc.url)==latest_required_path_day(through_signal_day)
-    )
 
 def parse_price_zip(raw:bytes,expected_day:date):
     rows=[]
@@ -559,22 +533,15 @@ def main():
         status="SHADOW_COLLECTION_COMPLETE"
         error=None
     except Exception as e:
-        archive_pending=retryable_latest_archive_404(e,through)
-        status="WAITING_SOURCE_ARCHIVE" if archive_pending else "SHADOW_COLLECTION_FAIL_CLOSED"
-        error=f"{type(e).__name__}:{e}"
+        status="SHADOW_COLLECTION_FAIL_CLOSED";error=f"{type(e).__name__}:{e}"
         receipt={"document_id":"CED1D_0031_RENDER_SHADOW_RECEIPT_V0.3","status":status,
                  "candidate":TARGET,"through_signal_day":through.isoformat(),"error":error,
-                 "source":source,"retryable_source_archive_pending":archive_pending,
-                 "pending_archive_url":e.url if archive_pending else None,
-                 "latest_required_path_day":latest_required_path_day(through).isoformat(),
-                 "governance":{"pre_boundary_performance_backfill":False,"live_trading":False,
+                 "source":source,"governance":{"pre_boundary_performance_backfill":False,"live_trading":False,
                  "orders":False,"wallets":False,"exchange_mutation":False,"authenticated_trading_endpoints":False,
                  "parameter_changes":False,"merge_main":False}}
         receipt["fingerprint"]=sha256_bytes(canonical(receipt))
         (out/"CED1D_0031_RENDER_SHADOW_RECEIPT_V0.3.json").write_text(json.dumps(receipt,indent=2,sort_keys=True)+"\n")
         print(json.dumps(receipt,indent=2,sort_keys=True))
-        if archive_pending:
-            return
         raise
 
     write_csv(out/"CED1D_0031_RENDER_SHADOW_LEDGER_V0.3.csv",events)
