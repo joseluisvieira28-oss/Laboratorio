@@ -1,0 +1,46 @@
+name: DLS Drift SQD First Boundary V0.1
+
+on:
+  push:
+    branches:
+      - dls-drift-sqd-boundary-v01
+    paths:
+      - .github/workflows/dls-drift-sqd-first-boundary-v01.yml
+
+permissions:
+  contents: read
+
+jobs:
+  first-partition:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile frozen Drift SQD runner
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/run_drift_sqd_first_success_partition_v0_1.py
+      - name: Run frozen first partition
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/run_drift_sqd_first_success_partition_v0_1.py --start "2022-11-04T15:17:54Z" --end "2022-12-01T00:00:00Z" --out "drift_boundary/2022-11"
+      - name: Upload source evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-drift-sqd-first-boundary-202211
+          path: drift_boundary/2022-11
+          if-no-files-found: error
+          retention-days: 30
+      - name: Firewall
+        if: always()
+        run: |
+          echo SOURCE_ONLY_TRUE
+          echo PRICES_FALSE
+          echo RETURNS_FALSE
+          echo PNL_FALSE
+          echo DIRECTION_FALSE
+          echo ECONOMIC_OUTCOMES_FALSE
+          echo LIVE_TRADING_FALSE
+          echo MERGE_MAIN_FALSE
