@@ -1,0 +1,66 @@
+{
+  "contract_id": "OPTIONS-SPOTPERP-001-V2.1-FUTURES-ONLY-AUTOLIVE-V0.2",
+  "status": "FROZEN_PROSPECTIVE_EXECUTION_FORK",
+  "frozen_at_utc": "2026-09-25",
+  "governing_policy": "TIER2-AUTO-MICROLIVE-POLICY-V2.0-FROZEN-2026-09-25",
+  "strategy_id": "OPTIONS-SPOTPERP-001-V2.1",
+  "scientific_parent": {
+    "instrument": "BTCUSDT_SPOT",
+    "direction_rule": "positive=LONG; negative=SHORT",
+    "horizon_hours": 24,
+    "signal": "CALL_IV_MINUS_PUT_IV",
+    "risk_scaling": "frozen parent weight",
+    "unchanged": true
+  },
+  "execution_fork": {
+    "venue": "MEXC_FUTURES",
+    "instrument": "BTC_USDT_PERPETUAL",
+    "symbol": "BTC_USDT",
+    "long": {
+      "entry_side": 1,
+      "exit_side": 4
+    },
+    "short": {
+      "entry_side": 3,
+      "exit_side": 2
+    },
+    "leverage": 1,
+    "margin_mode": "ISOLATED",
+    "position_mode": "HEDGE",
+    "auto_margin_add": false,
+    "hold_hours": 24,
+    "promotion_credit_to_spot_parent": false
+  },
+  "timing": {
+    "parent_entry_boundary": "00:00:00 UTC t+1",
+    "exit_boundary": "00:00:00 UTC t+2",
+    "operational_entry_ttl_seconds": 300,
+    "late_chase_allowed": false
+  },
+  "risk": {
+    "maximum_notional_usdt": 10,
+    "notional_scaled_down_by_parent_weight": true,
+    "maximum_simultaneous_positions": 1,
+    "daily_realized_loss_kill_usdt": 2,
+    "rolling_7d_realized_loss_kill_usdt": 5,
+    "automatic_size_escalation": false
+  },
+  "exactly_once": {
+    "deterministic_external_oid": true,
+    "durable_order_intent_before_transport": true,
+    "blind_resend_after_uncertain_ack": false,
+    "restart_requires_exchange_reconciliation": true
+  },
+  "security": {
+    "spot_order_transport": false,
+    "transfer_endpoint": false,
+    "withdrawal_endpoint": false,
+    "cross_margin": false,
+    "leverage_above_1x": false
+  },
+  "windows": {
+    "scheduled_task": "CryptoLab-OPTIONS-V21-Futures-AutoLive",
+    "dpapi_current_user": true,
+    "prevents_automatic_sleep_while_running": true
+  }
+}
