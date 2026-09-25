@@ -1,0 +1,69 @@
+{
+  "receipt_type": "RADAR_SUPABASE_FREE_TARGET_PROVISION",
+  "date_utc": "2026-09-23",
+  "classification": "INFRASTRUCTURE_PASS__SUPABASE_TARGET_PROVISIONED__SECRET_HANDOFF_BLOCKED",
+  "target": {
+    "provider": "Supabase",
+    "project_name": "crypto-edge-radar-evidence-v05",
+    "project_ref": "jqzdvgjeuveiktftyrlz",
+    "region": "eu-central-1",
+    "plan_observed": "free",
+    "quoted_project_cost": {
+      "amount": 0,
+      "recurrence": "monthly"
+    },
+    "status": "ACTIVE_HEALTHY",
+    "postgres_engine": "17",
+    "postgres_version": "17.6"
+  },
+  "validation": {
+    "public_schema_tables_after_validation": 0,
+    "migrations_after_validation": 0,
+    "security_advisor_lints": 0,
+    "performance_advisor_lints": 0,
+    "portability_rehearsal": {
+      "mode": "TEMP_TABLES_AND_ROLLBACK",
+      "result": "PASS",
+      "tested": [
+        "BIGSERIAL primary key",
+        "explicit event ID insert",
+        "foreign key from event keys to events",
+        "pg_get_serial_sequence",
+        "setval",
+        "continuation next ID"
+      ],
+      "observed_next_id": 484,
+      "persistent_target_mutation": false
+    }
+  },
+  "connection_route": {
+    "recommended_runtime_mode": "Supavisor shared pooler session mode on port 5432 for persistent IPv4-only backend",
+    "secret_handoff_status": "BLOCKED",
+    "reason": "Available Supabase connector exposes no private database password/connection-string retrieval action. No credential was requested, printed, copied, committed, or written to logs.",
+    "render_database_url_changed": false,
+    "cutover_started": false
+  },
+  "free_tier_operational_cautions": {
+    "database_size_limit_mb": 500,
+    "automatic_pause_risk": "low activity over approximately 7 days",
+    "automatic_downloadable_backups": false,
+    "mitigation": "Keep independent off-site evidence snapshots and verify restores."
+  },
+  "governance": {
+    "science_changes": false,
+    "thresholds_changes": false,
+    "trading_changes": false,
+    "exchange_mutation": false,
+    "capital_used": false,
+    "paid_upgrade": false,
+    "main_merge": false,
+    "secrets_exposed": false
+  },
+  "next_gate": [
+    "Establish a secure out-of-band database credential handoff to Render without exposing the secret to chat/logs/repo.",
+    "Take and independently verify a fresh final snapshot from the current canonical Render Postgres immediately before cutover.",
+    "Quiesce evidence writes per frozen cutover protocol.",
+    "Restore exact rows and keys into the empty target and verify counts, payload hashes, chain links, event-key references, snapshot hash, and chain head.",
+    "Only after exact verification, update DATABASE_URL, redeploy, verify backend=postgres and chain health, then resume prospectively."
+  ]
+}
