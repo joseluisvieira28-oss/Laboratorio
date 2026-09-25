@@ -63,7 +63,7 @@ def main() -> int:
     keep_awake = _prevent_automatic_sleep()
     print(json.dumps({
         "status": "AGENT_START",
-        "version": "OPTIONS_FUTURES_ONLY_AUTO_MICROLIVE_V0.2",
+        "version": "OPTIONS_FUTURES_ONLY_AUTO_MICROLIVE_V0.2.1",
         "windows_automatic_sleep_prevented": keep_awake,
         "checked_at_utc": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
     }, sort_keys=True), flush=True)
@@ -77,7 +77,7 @@ def main() -> int:
                 return 0
             except Exception as exc:
                 payload = {
-                    "version": "OPTIONS_FUTURES_ONLY_AUTO_MICROLIVE_V0.2",
+                    "version": "OPTIONS_FUTURES_ONLY_AUTO_MICROLIVE_V0.2.1",
                     "status": "PROCESS_FAIL_CLOSED",
                     "checked_at_utc": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
                     "error": f"{type(exc).__name__}: {exc}",
