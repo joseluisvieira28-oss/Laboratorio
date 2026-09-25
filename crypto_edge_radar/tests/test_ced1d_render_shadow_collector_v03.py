@@ -93,6 +93,28 @@ class CED1DRenderShadowV03Tests(TestCase):
         source = Path(m.__file__).read_text()
         self.assertIn("if through>today-timedelta(days=3)", source)
 
+    def test_only_latest_required_path_archive_404_is_retryable(self):
+        through = date(2026, 9, 22)
+        latest = m.daily_kline_url("klines", date(2026, 9, 24))
+        warmup = m.daily_kline_url("klines", date(2026, 9, 20))
+
+        self.assertEqual(
+            m.latest_required_path_day(through),
+            date(2026, 9, 24),
+        )
+        self.assertTrue(
+            m.retryable_latest_archive_404(
+                m.VisionArchiveHTTP404(latest),
+                through,
+            )
+        )
+        self.assertFalse(
+            m.retryable_latest_archive_404(
+                m.VisionArchiveHTTP404(warmup),
+                through,
+            )
+        )
+
     def test_no_trading_surfaces_are_added(self):
         source = Path(m.__file__).read_text().lower()
         for forbidden in ("create_order", "place_order", "private_key", "api_secret"):
