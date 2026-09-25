@@ -1,0 +1,29 @@
+name: microstructure-maker-source-gate-v01
+
+on:
+  push:
+    branches:
+      - microstructure-scalping-lab-v0.1
+    paths:
+      - 'research/microstructure_scalping/probe_bybit_trades_v01.py'
+      - 'research/microstructure_scalping/MAKER_ASSISTED_GATE_V0_1_PRE_OUTCOME_FREEZE.md'
+      - '.github/workflows/microstructure-maker-source-gate-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  maker-source-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Probe historical Bybit public trades
+        run: python -m research.microstructure_scalping.probe_bybit_trades_v01
+      - name: Print receipt
+        if: always()
+        run: cat research/microstructure_scalping/receipts/bybit_trade_source_v01.json || true
