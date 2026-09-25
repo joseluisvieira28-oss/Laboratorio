@@ -1,0 +1,73 @@
+name: DLS Drift SQD Timeout Recovery V0.2
+
+on:
+  push:
+    branches:
+      - dls-drift-sqd-boundary-v01
+    paths:
+      - .github/workflows/dls-drift-sqd-timeout-recovery-v02.yml
+
+permissions:
+  contents: read
+
+jobs:
+  recover:
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        include:
+          - start: '2023-09-01T00:00:00Z'
+            end: '2023-09-08T00:00:00Z'
+            id: d202309a
+          - start: '2023-09-08T00:00:00Z'
+            end: '2023-09-15T00:00:00Z'
+            id: d202309b
+          - start: '2023-09-15T00:00:00Z'
+            end: '2023-09-22T00:00:00Z'
+            id: d202309c
+          - start: '2023-09-22T00:00:00Z'
+            end: '2023-09-29T00:00:00Z'
+            id: d202309d
+          - start: '2023-09-29T00:00:00Z'
+            end: '2023-10-01T00:00:00Z'
+            id: d202309e
+          - start: '2023-12-01T00:00:00Z'
+            end: '2023-12-08T00:00:00Z'
+            id: d202312a
+          - start: '2023-12-08T00:00:00Z'
+            end: '2023-12-15T00:00:00Z'
+            id: d202312b
+          - start: '2023-12-15T00:00:00Z'
+            end: '2023-12-22T00:00:00Z'
+            id: d202312c
+          - start: '2023-12-22T00:00:00Z'
+            end: '2023-12-29T00:00:00Z'
+            id: d202312d
+          - start: '2023-12-29T00:00:00Z'
+            end: '2024-01-01T00:00:00Z'
+            id: d202312e
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile frozen runner
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/run_drift_sqd_first_success_partition_v0_1.py
+      - name: Run frozen remediation shard
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/run_drift_sqd_first_success_partition_v0_1.py --start "${{ matrix.start }}" --end "${{ matrix.end }}" --out "drift_recovery_v02/${{ matrix.id }}"
+      - name: Upload remediation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-drift-sqd-recovery-v02-${{ matrix.id }}
+          path: drift_recovery_v02/${{ matrix.id }}
+          if-no-files-found: error
+          retention-days: 30
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_TRUE
