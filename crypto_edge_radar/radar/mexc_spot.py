@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+from decimal import Decimal, ROUND_DOWN
 from urllib.parse import urlencode, urlparse
 from urllib.request import Request, urlopen
 
@@ -117,3 +118,52 @@ class MEXCSpotPublicFeed:
         if not isinstance(bids, list) or not isinstance(asks, list) or not bids or not asks:
             raise MEXCSpotPublicError("spot depth has no usable book")
         return payload
+
+
+def market_quantity_rules(symbol_info: dict) -> dict:
+    filters = symbol_info.get("filters") or []
+    selected = None
+    for wanted in ("MARKET_LOT_SIZE", "LOT_SIZE"):
+        selected = next(
+            (row for row in filters if isinstance(row, dict) and str(row.get("filterType", "")).upper() == wanted),
+            None,
+        )
+        if selected is not None:
+            break
+    if selected is not None:
+        step = Decimal(str(selected.get("stepSize") or "0"))
+        minimum = Decimal(str(selected.get("minQty") or "0"))
+        maximum = Decimal(str(selected.get("maxQty") or "0"))
+        if step > 0:
+            return {
+                "source_filter": str(selected.get("filterType")),
+                "step_size": str(step),
+                "min_qty": str(minimum),
+                "max_qty": str(maximum),
+            }
+    precision = int(symbol_info.get("baseAssetPrecision", 8) or 8)
+    if precision < 0 or precision > 16:
+        raise MEXCSpotPublicError("invalid baseAssetPrecision")
+    step = Decimal(1).scaleb(-precision)
+    return {
+        "source_filter": "BASE_ASSET_PRECISION_FALLBACK",
+        "step_size": str(step),
+        "min_qty": "0",
+        "max_qty": "0",
+    }
+
+
+def floor_market_quantity(quantity: float, symbol_info: dict) -> float:
+    rules = market_quantity_rules(symbol_info)
+    step = Decimal(rules["step_size"])
+    qty = Decimal(str(quantity))
+    floored = (qty / step).to_integral_value(rounding=ROUND_DOWN) * step
+    if floored <= 0:
+        raise MEXCSpotPublicError("market quantity floors to zero")
+    minimum = Decimal(rules["min_qty"])
+    maximum = Decimal(rules["max_qty"])
+    if minimum > 0 and floored < minimum:
+        raise MEXCSpotPublicError("market quantity below exchange minimum")
+    if maximum > 0 and floored > maximum:
+        raise MEXCSpotPublicError("market quantity above exchange maximum")
+    return float(floored)
