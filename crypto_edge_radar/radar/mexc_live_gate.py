@@ -6,7 +6,7 @@ from math import isfinite
 from pathlib import Path
 from typing import Any
 
-EXECUTION_TOKEN = "CRYPTO_LAB_LIVE_EXECUTION_V0_2"
+EXECUTION_TOKEN = "CRYPTO_LAB_LIVE_EXECUTION_V0_3"
 REQUIRED_STRATEGY = "ETF-CME-INSTFLOW-001"
 REQUIRED_SYMBOL = "BTC_USDT"
 CURRENT_PLACE_ORDER_PATH = "/api/v1/private/order/create"
@@ -184,7 +184,7 @@ def validate_futures_short_execution(
     if int(risk_state.get("open_micro_live_positions", 999)) != 0:
         blockers.append("MICRO_LIVE_POSITION_ALREADY_OPEN")
 
-    # Quantity and venue minimum against the frozen 0.1% validation budget.
+    # Quantity and venue minimum against the frozen fixed 10 USDT micro-live cap.
     try:
         contract = checks.get("contract") or {}
         equity = _positive_float((checks.get("account") or {}).get("equity_usdt"), "equity")
@@ -199,7 +199,7 @@ def validate_futures_short_execution(
         if abs(step_units - round(step_units)) > 1e-9:
             blockers.append("ORDER_VOLUME_NOT_ON_VENUE_STEP")
         requested_notional = volume_contracts * contract_size * reference_price
-        max_notional = equity * planned_fraction
+        max_notional = max_trade_notional_usdt
         venue_min = _positive_float(
             contract.get("minimum_executable_notional_estimate_usdt"),
             "minimum_executable_notional_estimate_usdt",
@@ -263,7 +263,7 @@ def validate_futures_short_execution(
         blockers.append("DUPLICATE_PROTECTION_KEY_MISSING")
 
     return {
-        "gate_id": "MEXC_ETF_CME_SHORT_MICROLIVE_GATE_V0.2",
+        "gate_id": "MEXC_ETF_CME_SHORT_MICROLIVE_GATE_V0.3_FIXED_CAP",
         "checked_at_utc": now_utc.isoformat().replace("+00:00", "Z"),
         "pass": len(blockers) == 0,
         "blockers": blockers,
