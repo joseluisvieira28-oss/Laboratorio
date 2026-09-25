@@ -15,7 +15,7 @@ from decision_boundary import (
     epoch_ms_to_ns,
     rfc3339_to_ns,
 )
-from measurements import state_vector
+from measurements import ratio, state_vector
 from order_book import BookMetrics
 from source_adapters import CanonicalTrade
 
@@ -173,6 +173,26 @@ def reconstruct_state(
         max_spread_to_decision=float(max_spread),
         depth_pre=float(pre.metrics.total_depth_quote),
         depth_now=float(decision.metrics.total_depth_quote),
+    )
+
+    pre_spread_bps = float(pre.metrics.spread_bps)
+    if pre_spread_bps <= 0:
+        raise ValueError("pre-anchor spread_bps must be > 0")
+    decision_return_bps = state["decision_return_bps"]
+    if decision_return_bps is None:
+        raise ValueError("decision return unexpectedly missing")
+
+    state["pre_spread_bps"] = pre_spread_bps
+    state["displacement_in_pre_spreads"] = abs(
+        float(decision_return_bps)
+    ) / pre_spread_bps
+    state["bid_depth_vs_pre"] = ratio(
+        float(decision.metrics.bid_depth_quote),
+        float(pre.metrics.bid_depth_quote),
+    )
+    state["ask_depth_vs_pre"] = ratio(
+        float(decision.metrics.ask_depth_quote),
+        float(pre.metrics.ask_depth_quote),
     )
 
     return ReconstructedState(
