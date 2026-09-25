@@ -36,6 +36,7 @@ from .strategies.ema6h_50x200_regime_forward import (
 from .options_v21_live import BinanceBTCUSDTDailyFeed, DeribitBTCOptionTradeFeed
 from .options_v21_watcher import OptionsV21ForwardShadowWatcher
 from .options_v21_metrics import evaluate_options_v21_forward
+from .options_v21_execution_shadow import OptionsV21PublicExecutionShadow
 from .etf_cme_watcher import ETFCMEPublicSignalWatcher
 from .etf_cme_exact_scheduler import ETFCMEExactRuntimeScheduler
 from .external_freshness import all_external_freshness
@@ -153,6 +154,9 @@ class ForwardShadowRuntime:
             store=self.store,
             options_feed=DeribitBTCOptionTradeFeed(timeout=settings.http_timeout),
             btc_feed=BinanceBTCUSDTDailyFeed(timeout=settings.http_timeout),
+        )
+        self.options_v21_execution_shadow = OptionsV21PublicExecutionShadow(
+            store=self.store,
         )
         self.etf_cme_signal = ETFCMEPublicSignalWatcher(
             store=self.store,
@@ -471,6 +475,22 @@ class ForwardShadowRuntime:
             }
             errors["options_v21_metrics"] = options_v21_metrics["error"]
 
+        try:
+            options_v21_execution_shadow = self.options_v21_execution_shadow.run_once(
+                now_ms=now_ms
+            )
+        except Exception as exc:
+            options_v21_execution_shadow = {
+                "status": "FAIL_CLOSED",
+                "strategy_id": "OPTIONS-SPOTPERP-001-V2.1",
+                "error": f"{type(exc).__name__}:{exc}",
+                "authenticated_exchange_api_used": False,
+                "orders_created": False,
+                "exchange_mutation_performed": False,
+                "live_capital_enabled": False,
+            }
+            errors["options_v21_execution_shadow"] = options_v21_execution_shadow["error"]
+
         ced1d_enabled = os.getenv("CED1D_RENDER_SHADOW_V03_ENABLED", "").lower() == "true"
         ced1d_runtime_day = datetime.fromtimestamp(
             now_ms / 1000.0, tz=timezone.utc
@@ -568,6 +588,7 @@ class ForwardShadowRuntime:
             "etf_cme_exact_scheduler": self.etf_cme_exact_scheduler.state(),
             "options_v21": options_v21,
             "options_v21_metrics": options_v21_metrics,
+            "options_v21_execution_shadow": options_v21_execution_shadow,
             "ced1d_render_shadow": ced1d_render_shadow,
             "external_collectors": external_freshness,
             "deployment_drift": deploy_drift,

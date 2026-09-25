@@ -16,6 +16,8 @@ def build_diamond_board(state: dict[str, Any]) -> dict[str, Any]:
     mutate evidence, change any scientific threshold, or authorize capital.
     """
     options = state.get("options_v21_metrics") or {}
+    options_exec = state.get("options_v21_execution_shadow") or {}
+    options_exec_metrics = options_exec.get("metrics") or {}
     ced = state.get("ced1d_render_shadow") or {}
     bnb = state.get("bnb_launchpool") or {}
     bnb_diamond = state.get("bnb_diamond_v02") or {}
@@ -79,6 +81,15 @@ def build_diamond_board(state: dict[str, Any]) -> dict[str, Any]:
                 "base_pf_descriptive": options.get("base_profit_factor"),
                 "stress_mean_bps_descriptive": options.get("stress_net_mean_bps"),
                 "integrity_pass": (options.get("integrity") or {}).get("pass"),
+                "public_execution_shadow_status": options_exec.get("status"),
+                "public_execution_evidence_state": options_exec_metrics.get("status"),
+                "public_execution_observations": options_exec_metrics.get("complete_execution_observations"),
+                "public_execution_minimum_observations": options_exec_metrics.get("minimum_execution_observations"),
+                "public_execution_missed_observations": options_exec_metrics.get("missed_operational_observations"),
+                "public_execution_integrity_clean": options_exec_metrics.get("operational_sample_integrity_clean"),
+                "public_execution_capacity_100usdt_coverage": options_exec_metrics.get("capacity_100usdt_coverage"),
+                "public_execution_mean_nonfunding_proxy_bps": options_exec_metrics.get("mean_observable_nonfunding_round_trip_proxy_bps"),
+                "public_execution_is_readiness_not_authority": True,
                 "verdict_allowed_now": bool(opt_gate.get("first_50_window_locked")),
             },
             "CED1D-0031": {
