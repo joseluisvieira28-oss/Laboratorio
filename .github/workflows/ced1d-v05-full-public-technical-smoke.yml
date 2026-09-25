@@ -1,0 +1,48 @@
+name: CED1D V0.5 Full Public Technical Smoke
+
+on:
+  push:
+    branches:
+      - ced1d-bookdepth-timestamp-transport-v05-2026-09-25
+    paths:
+      - ".github/workflows/ced1d-v05-full-public-technical-smoke.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: |
+          cd crypto_edge_radar
+          python -m pip install -e .
+      - name: Run isolated full public technical smoke
+        run: |
+          cd crypto_edge_radar
+          python - <<'PY'
+          import json, os, tempfile
+          from datetime import datetime, timezone
+          from radar.evidence import EvidenceStore
+          from radar.ced1d_render_shadow_runtime import CED1DRenderShadowRunner, RECEIPT_EVENT, FAILURE_EVENT
+
+          print("CLASSIFICATION=TECHNICAL_SMOKE_ONLY_NOT_CANONICAL_EVIDENCE")
+          with tempfile.TemporaryDirectory() as td:
+              store=EvidenceStore(os.path.join(td,"smoke.sqlite3"))
+              runner=CED1DRenderShadowRunner(store=store,subprocess_timeout_seconds=1800)
+              now_ms=int(datetime.now(timezone.utc).timestamp()*1000)
+              try:
+                  result=runner.run_once(now_ms=now_ms)
+                  print("RESULT",json.dumps(result,sort_keys=True))
+              except Exception as exc:
+                  print("EXCEPTION",type(exc).__name__,str(exc))
+              print("RECEIPTS",json.dumps(store.read_payloads(RECEIPT_EVENT),sort_keys=True))
+              print("FAILURES",json.dumps(store.read_payloads(FAILURE_EVENT),sort_keys=True))
+          PY
