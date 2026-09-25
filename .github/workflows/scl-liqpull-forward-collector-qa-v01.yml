@@ -1,0 +1,32 @@
+name: SCL LIQPULL Forward Collector QA V0.1
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'research/scalping_forward/scl_liqpull_raw_collector_v01.py'
+      - 'research/scalping_forward/test_scl_liqpull_raw_collector_v01.py'
+      - 'research/scalping_forward/scl_liqpull_mechanism_eval_v01.py'
+      - 'research/scalping_forward/test_scl_liqpull_mechanism_eval_v01.py'
+      - '.github/workflows/scl-liqpull-forward-collector-qa-v01.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic-qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m py_compile research/scalping_forward/scl_liqpull_raw_collector_v01.py research/scalping_forward/scl_liqpull_mechanism_eval_v01.py
+      - run: pip install pytest
+      - run: pytest -q research/scalping_forward/test_scl_liqpull_raw_collector_v01.py research/scalping_forward/test_scl_liqpull_mechanism_eval_v01.py
+      - name: Guard against mutation primitives
+        shell: bash
+        run: |
+          set -euo pipefail
+          files='research/scalping_forward/scl_liqpull_raw_collector_v01.py research/scalping_forward/scl_liqpull_mechanism_eval_v01.py'
+          ! grep -Eqi 'place[_ -]?order|cancel[_ -]?order|private[_ -]?key|api[_ -]?secret' $files
