@@ -5,7 +5,7 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
-from radar.mexc_auth_readonly import MEXCCredentials
+from radar.mexc_auth_readonly import MEXCCredentials,MEXCFuturesAuthenticatedReadOnlyClient
 from radar.mexc_spot import MEXCSpotPublicFeed
 from radar.mexc_spot_auth import MEXCSpotAuthenticatedClient
 
@@ -20,6 +20,7 @@ def run()->dict:
     creds=MEXCCredentials.from_env()
     public=MEXCSpotPublicFeed(timeout=10)
     auth=MEXCSpotAuthenticatedClient(creds,timeout=10)
+    futures=MEXCFuturesAuthenticatedReadOnlyClient(creds,timeout=10)
     blockers=[]; candidate=[]
     info=public.exchange_info("BTCUSDT")
     supported="BTCUSDT" in public.default_symbols()
@@ -30,6 +31,12 @@ def run()->dict:
     if account.get("canTrade") is not True: blockers.append("SPOT_ACCOUNT_CANNOT_TRADE")
     open_orders=auth.open_orders("BTCUSDT")
     if open_orders: blockers.append("OPEN_BTCUSDT_SPOT_ORDER_PRESENT")
+    try:
+        futures_positions=futures.open_positions(); futures_orders=futures.open_orders()
+        if futures_positions: blockers.append("OPEN_FUTURES_POSITION_PRESENT_CROSS_VENUE")
+        if futures_orders: blockers.append("OPEN_FUTURES_ORDER_PRESENT_CROSS_VENUE")
+    except Exception:
+        blockers.append("FUTURES_CROSS_VENUE_RECONCILIATION_FAILED")
     usdt_free,_=_balance(account,"USDT")
     btc_free,btc_locked=_balance(account,"BTC")
     if usdt_free<10.0: candidate.append("SPOT_USDT_FREE_BELOW_10_USDT")
