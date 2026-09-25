@@ -8,7 +8,7 @@ const TOPIC='0xef18174796a5d2f91d51dc5e907a4d7867bbd6e800f6225168e0453d581d0dcd'
 const FROM=24720920, TO=26052830
 const FIX='0x23ab5a8b2d50db9ead1c17d59ddf7f246c6cc0f38d9f8e6a6d5c30f70f2cbf8f'
 const OUT='artifacts/lcod_sqd_sdk_bluechip_smoke_v01.json'
-const sha=s=>createHash('sha256').update(s).digest('hex')
+const sha=s=>createHash('sha256').update(s).digest('hex')\nconst hx=v=>{const s=String(v||'').toLowerCase();return s.startsWith('0x')?s:'0x'+s}
 
 const src=new DataSourceBuilder()
  .setPortal(PORTAL)
@@ -25,12 +25,12 @@ for await(const batch of src.getStream()){
     const h=Number(b.header.height)
     min=min==null?h:Math.min(min,h); max=max==null?h:Math.max(max,h)
     for(const l of b.logs||[]){
-      const a=String(l.address||'').toLowerCase()
-      const t=(l.topics||[]).map(x=>String(x).toLowerCase())
+      const a=hx(l.address)
+      const t=(l.topics||[]).map(hx)
       if(a!==ADDR||!t.length||t[0]!==TOPIC) continue
       logs++
       if(t.length<4){decodeErrors++;continue}
-      const tx=String(l.transactionHash||'').toLowerCase()
+      const tx=hx(l.transactionHash)
       if(tx===FIX) fixture=true
       const user='0x'+t[3].replace(/^0x/,'').slice(-40)
       tuples.push([h,a,user,tx].join('|'))
