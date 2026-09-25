@@ -117,12 +117,8 @@ def validate_futures_short_execution(
     # Exchange authenticated preflight must be healthy, fresh and candidate-feasible.
     if preflight.get("pass") is not True or preflight.get("status") != "PASS":
         blockers.append("AUTHENTICATED_EXCHANGE_PREFLIGHT_NOT_PASS")
-    candidate = (
-        (preflight.get("candidate_feasibility") or {}).get(REQUIRED_STRATEGY) or {}
-    )
-    if candidate.get("pass") is not True:
-        blockers.append("CANDIDATE_CAPITAL_FEASIBILITY_NOT_PASS")
-
+    # Legacy candidate_feasibility used the superseded 0.1%-of-equity budget.
+    # V0.3 recomputes feasibility below against the fixed 10 USDT cap.
     max_preflight_age = float(authority.get("max_preflight_age_seconds", 60))
     try:
         preflight_at = _parse_utc(preflight.get("checked_at_utc"), "preflight.checked_at_utc")
@@ -141,7 +137,7 @@ def validate_futures_short_execution(
     if not (checks.get("clock") or {}).get("pass"):
         blockers.append("CLOCK_PREFLIGHT_NOT_PASS")
 
-    # Account-level risk firewall from AUTO_EXECUTION_CONTROL_CONTRACT_V1.
+    # Account-level risk firewall from TIER2-MICROLIVE-POLICY-V1.
     if risk_state.get("status") != "PASS":
         blockers.append("ACCOUNT_RISK_STATE_NOT_PASS")
     max_risk_age = float(authority.get("max_risk_state_age_seconds", 60))
@@ -154,37 +150,33 @@ def validate_futures_short_execution(
     except LiveExecutionGateError:
         blockers.append("ACCOUNT_RISK_STATE_TIME_INVALID")
 
-    planned_fraction = float(
-        authority.get("max_initial_isolated_margin_fraction_of_equity", -1)
+    maximum_notional = float(authority.get("maximum_notional_usdt_equivalent", -1))
+    maximum_total_exposure = float(
+        authority.get("maximum_total_account_exposure_usdt_equivalent", -1)
     )
-    max_concurrent = float(
-        authority.get("max_concurrent_planned_risk_fraction_equity", -1)
+    daily_stop_usdt = float(authority.get("daily_realized_loss_kill_usdt", -1))
+    weekly_stop_usdt = float(authority.get("rolling_7d_realized_loss_kill_usdt", -1))
+    daily_loss_usdt = float(risk_state.get("daily_realized_loss_usdt", 999))
+    weekly_loss_usdt = float(risk_state.get("weekly_realized_loss_usdt", 999))
+    concurrent_before_usdt = float(
+        risk_state.get("concurrent_planned_notional_usdt", 0)
     )
-    daily_stop = float(authority.get("daily_stop_fraction_equity", -1))
-    weekly_stop = float(authority.get("weekly_stop_fraction_equity", -1))
-    daily_loss = float(risk_state.get("daily_realized_loss_fraction_equity", 999))
-    weekly_loss = float(risk_state.get("weekly_realized_loss_fraction_equity", 999))
-    concurrent_before = float(
-        risk_state.get("concurrent_planned_risk_fraction_equity", 999)
-    )
-    if planned_fraction != 0.001:
-        blockers.append("ETF_VALIDATION_RISK_FRACTION_NOT_FROZEN_0_001")
-    if max_concurrent != 0.003:
-        blockers.append("GLOBAL_CONCURRENT_RISK_LIMIT_NOT_FROZEN_0_003")
-    if daily_stop != 0.003:
-        blockers.append("GLOBAL_DAILY_STOP_NOT_FROZEN_0_003")
-    if weekly_stop != 0.0075:
-        blockers.append("GLOBAL_WEEKLY_STOP_NOT_FROZEN_0_0075")
-    if daily_loss >= daily_stop:
+    if maximum_notional != 10.0:
+        blockers.append("MICROLIVE_MAX_NOTIONAL_NOT_FROZEN_10_USDT")
+    if maximum_total_exposure != 10.0:
+        blockers.append("GLOBAL_EXPOSURE_LIMIT_NOT_FROZEN_10_USDT")
+    if daily_stop_usdt != 2.0:
+        blockers.append("GLOBAL_DAILY_LOSS_KILL_NOT_FROZEN_2_USDT")
+    if weekly_stop_usdt != 5.0:
+        blockers.append("GLOBAL_WEEKLY_LOSS_KILL_NOT_FROZEN_5_USDT")
+    if daily_loss_usdt >= daily_stop_usdt:
         blockers.append("DAILY_HALT_ACTIVE")
-    if weekly_loss >= weekly_stop:
+    if weekly_loss_usdt >= weekly_stop_usdt:
         blockers.append("WEEKLY_HALT_ACTIVE")
-    if concurrent_before + planned_fraction > max_concurrent + 1e-12:
-        blockers.append("MAX_CONCURRENT_PLANNED_RISK_EXCEEDED")
     if int(risk_state.get("open_micro_live_positions", 999)) != 0:
         blockers.append("MICRO_LIVE_POSITION_ALREADY_OPEN")
 
-    # Quantity and venue minimum against the frozen 0.1% validation budget.
+    # Quantity and venue minimum against the frozen fixed 10 USDT micro-live cap.
     try:
         contract = checks.get("contract") or {}
         equity = _positive_float((checks.get("account") or {}).get("equity_usdt"), "equity")
@@ -199,15 +191,17 @@ def validate_futures_short_execution(
         if abs(step_units - round(step_units)) > 1e-9:
             blockers.append("ORDER_VOLUME_NOT_ON_VENUE_STEP")
         requested_notional = volume_contracts * contract_size * reference_price
-        max_notional = equity * planned_fraction
+        max_notional = maximum_notional
         venue_min = _positive_float(
             contract.get("minimum_executable_notional_estimate_usdt"),
             "minimum_executable_notional_estimate_usdt",
         )
         if venue_min > max_notional:
-            blockers.append("VENUE_MINIMUM_EXCEEDS_AUTHORITY_RISK_BUDGET")
+            blockers.append("VENUE_MINIMUM_EXCEEDS_AUTHORITY_NOTIONAL_CAP")
         if requested_notional > max_notional + 1e-12:
-            blockers.append("REQUESTED_NOTIONAL_EXCEEDS_AUTHORITY_RISK_BUDGET")
+            blockers.append("REQUESTED_NOTIONAL_EXCEEDS_AUTHORITY_NOTIONAL_CAP")
+        if concurrent_before_usdt + requested_notional > maximum_total_exposure + 1e-12:
+            blockers.append("MAX_TOTAL_ACCOUNT_EXPOSURE_EXCEEDED")
     except Exception:
         requested_notional = None
         max_notional = None
