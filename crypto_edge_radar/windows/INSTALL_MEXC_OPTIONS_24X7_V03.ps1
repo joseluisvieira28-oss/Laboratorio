@@ -3,6 +3,9 @@ $ErrorActionPreference="Stop"
 $TaskName="CryptoEdgeRadarOptionsV21V03"
 $watchdog=Join-Path $PSScriptRoot "RUN_MEXC_OPTIONS_24X7_V03.ps1"
 if (-not (Test-Path $watchdog)) { throw "Watchdog missing: $watchdog" }
+$Root=Split-Path -Parent $PSScriptRoot
+$KillSwitch=Join-Path $Root "KILL_SWITCH"
+if (Test-Path $KillSwitch) { throw "KILL_SWITCH is active. Remove it explicitly before arming live execution." }
 
 $args='-NoProfile -ExecutionPolicy Bypass -File "' + $watchdog + '"'
 if ($Live) { $args+=' -Live' }
