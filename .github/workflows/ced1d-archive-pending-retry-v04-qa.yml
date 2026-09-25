@@ -53,6 +53,7 @@ jobs:
           python - <<'PY'
           from pathlib import Path
           c=Path("crypto_edge_radar/radar/ced1d_render_shadow_collector_v03.py").read_text()
+          r=Path("crypto_edge_radar/radar/ced1d_render_shadow_runtime.py").read_text()
           required=[
               'SYMBOL="AVAXUSDT"',
               'TARGET="CED1D-0031"',
@@ -69,6 +70,8 @@ jobs:
           forbidden=("create_order","place_order","private_key","api_secret")
           for x in forbidden:
               assert x not in c.lower(), x
-          assert 'WAITING_SOURCE_ARCHIVE' in c
+          assert 'WAITING_SOURCE_ARCHIVE' not in c
+          assert 'WAITING_SOURCE_ARCHIVE' in r
+          assert 'retryable_latest_archive_404' in r
           print("CED1D_V04_FROZEN_SCIENCE_GUARD_PASS")
           PY
