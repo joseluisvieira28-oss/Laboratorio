@@ -19,7 +19,7 @@ const src=new DataSourceBuilder()
 
 let batches=0,blocks=0,logs=0,fixture=false,min=null,max=null,decodeErrors=0
 const tuples=[]
-for await(const batch of src.getStream()){
+for await(const batch of src.getStream({from:FROM,to:TO})){
   batches++
   for(const b of batch.blocks){
     blocks++
