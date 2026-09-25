@@ -112,7 +112,7 @@
     {
       "gate": "OFFICIAL_2027_BLS_CPI_NFP_CALENDAR",
       "status": "BLOCKED_INCOMPLETE",
-      "meaning": "complete official 2027 CPI/Employment Situation schedule is not yet available"
+      "meaning": "official BLS CPI and Employment Situation schedules still do not provide complete 2027 calendars as of 2026-09-25"
     },
     {
       "gate": "PRETARGET_PROTOCOL",
@@ -133,13 +133,34 @@
       "gate": "LIVE_TRADING",
       "status": "PROHIBITED",
       "meaning": "no orders, paper orders, exchange mutation or execution route exists for MRCR"
+    },
+    {
+      "gate": "FREEZE_BEFORE_TARGET_OPEN_CHRONOLOGY",
+      "status": "PASS_SYNTHETIC",
+      "meaning": "pretarget freeze gate now requires target observation to remain locked; target opening is a separate later authority transition"
+    },
+    {
+      "gate": "AUTHORITY_TRANSITION_RECEIPT_VALIDATOR",
+      "status": "PASS_SYNTHETIC",
+      "meaning": "future H02 design/freeze and target-open receipts are machine-checkable, fingerprinted and fail closed on forbidden scopes or mutation"
+    },
+    {
+      "gate": "TARGET_OPEN_ARTIFACT_BINDING",
+      "status": "PASS_SYNTHETIC",
+      "meaning": "target-open authority must bind the exact protocol fingerprint, official calendar manifest and implementation manifest, with earliest target strictly after freeze/authority timestamps"
+    },
+    {
+      "gate": "H02_DESIGN_FREEZE_AUTHORITY",
+      "status": "NOT_ISSUED",
+      "meaning": "a separate explicit operator authority transition is still required; generic attack authorization does not supersede the science lock"
     }
   ],
   "objective_next_triggers": [
-    "complete official 2027 BLS CPI/Employment Situation calendar becomes available",
-    "separate governance authority explicitly authorizes H02 design/freeze",
-    "all pretarget protocol fields including SOURCE_AND_COLLECTOR_ARRIVAL are frozen before any independent target observation",
-    "implementation and calendar manifests are fingerprinted before target opening"
+    "separate explicit operator authority issues an ACTIVE H02_DESIGN_FREEZE receipt that supersedes the current science lock for design/freeze only",
+    "complete official 2027 BLS CPI/Employment Situation calendar becomes available and is fingerprinted",
+    "all pretarget protocol fields including SOURCE_AND_COLLECTOR_ARRIVAL are frozen without contaminated-outcome selection",
+    "protocol, calendar and implementation manifests are fingerprinted",
+    "only after freeze, a separate TARGET_OBSERVATION_OPEN authority binds those exact fingerprints and earliest target timestamp"
   ],
   "anti_zombie_rules": [
     "local shadow raw data is infrastructure evidence only and must not be used to select or promote MRCR scientific parameters",
