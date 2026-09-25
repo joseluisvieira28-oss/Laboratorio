@@ -7,7 +7,7 @@ from urllib.request import Request, urlopen
 
 
 MEXC_SPOT_BASE_URL = "https://api.mexc.com"
-MEXC_SPOT_ALLOWED_EXACT = {"/api/v3/defaultSymbols"}
+MEXC_SPOT_ALLOWED_EXACT = {"/api/v3/defaultSymbols", "/api/v3/exchangeInfo"}
 MEXC_SPOT_ALLOWED_PREFIXES = (
     "/api/v3/ticker/bookTicker",
     "/api/v3/ticker/price",
@@ -71,6 +71,20 @@ class MEXCSpotPublicFeed:
         if not out:
             raise MEXCSpotPublicError("defaultSymbols returned no symbols")
         return out
+
+    def exchange_info(self, symbol: str) -> dict:
+        symbol = self._validate_symbol(symbol)
+        payload = self._get_json(f"/api/v3/exchangeInfo?{urlencode({'symbol': symbol})}")
+        if not isinstance(payload, dict):
+            raise MEXCSpotPublicError("exchangeInfo payload invalid")
+        if isinstance(payload.get("symbols"), list):
+            rows = [x for x in payload["symbols"] if isinstance(x, dict) and str(x.get("symbol", "")).upper() == symbol]
+            if len(rows) != 1:
+                raise MEXCSpotPublicError("exchangeInfo symbol row missing or ambiguous")
+            return rows[0]
+        if str(payload.get("symbol", "")).upper() == symbol:
+            return payload
+        raise MEXCSpotPublicError("exchangeInfo symbol row missing")
 
     def book_ticker(self, symbol: str) -> dict:
         symbol = self._validate_symbol(symbol)
