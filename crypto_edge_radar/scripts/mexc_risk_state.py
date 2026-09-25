@@ -90,7 +90,7 @@ def build_state(*,preflight_path:Path,receipt_root:Path,now:datetime|None=None)-
         status="FAIL_CLOSED"
 
     return {
-        "risk_state_id":"MEXC_ACCOUNT_RISK_STATE_V0.1",
+        "risk_state_id":"MEXC_ACCOUNT_RISK_STATE_V0.3",
         "status":status,
         "blockers":blockers,
         "as_of_utc":now.isoformat().replace("+00:00","Z"),
