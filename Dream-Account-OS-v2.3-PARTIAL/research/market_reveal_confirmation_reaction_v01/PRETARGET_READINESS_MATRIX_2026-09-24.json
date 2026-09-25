@@ -2,7 +2,7 @@
   "document_type": "MRCR_PRETARGET_READINESS_MATRIX_V01",
   "lab_id": "MARKET-REVEAL-CONFIRMATION-REACTION-001",
   "as_of": "2026-09-25",
-  "overall_state": "PRETARGET_INFRA_HARDENED__SCIENCE_NOT_ARMED",
+  "overall_state": "H02_DESIGN_FROZEN__TARGET_LOCKED__CALENDAR_BINDING_PENDING",
   "gates": [
     {
       "gate": "NEW_MECHANISM_DESIGN",
@@ -116,8 +116,8 @@
     },
     {
       "gate": "PRETARGET_PROTOCOL",
-      "status": "LOCKED_UNARMED",
-      "meaning": "template exists but event families, venues/symbols, anchor, decision clock, availability rule, depth, classifier, outcome horizon and economics remain intentionally unset"
+      "status": "TEMPLATE_LOCKED_PENDING_CALENDAR_ASSEMBLY",
+      "meaning": "scientific ruleset is frozen separately; final protocol is assembled deterministically only after a complete official calendar exists"
     },
     {
       "gate": "H02",
@@ -151,8 +151,8 @@
     },
     {
       "gate": "H02_DESIGN_FREEZE_AUTHORITY",
-      "status": "NOT_ISSUED",
-      "meaning": "a separate explicit operator authority transition is still required; generic attack authorization does not supersede the science lock"
+      "status": "ACTIVE_ISSUED",
+      "meaning": "explicit operator H02_DESIGN_FREEZE authority is active; receipt SHA-256 30c189762d05f33f88a1a6d8a9ad3af80355b4589564c70ca15f996dc7f4a155"
     },
     {
       "gate": "COLLECTOR_CLOCK_INTEGRITY_DIAGNOSTICS",
@@ -161,20 +161,35 @@
     },
     {
       "gate": "H02_DESIGN_FREEZE_AUTHORITY_REQUEST",
-      "status": "DRAFT_NOT_AUTHORITY",
-      "meaning": "explicit future operator decision surface exists; generic continue/attack instructions cannot activate it"
+      "status": "FULFILLED",
+      "meaning": "authority request was fulfilled by explicit operator authorization; request document is no longer pending"
     },
     {
       "gate": "H02_SCIENTIFIC_RULESET",
       "status": "FROZEN_CALENDAR_BINDING_PENDING",
       "meaning": "classifier, scope, decision clock, depth, horizon, inference and stopping rules frozen under explicit authority; complete 2027 official calendar still required"
+    },
+    {
+      "gate": "H02_FINAL_PROTOCOL_BUILDER",
+      "status": "PASS_SYNTHETIC_CALENDAR_GATED",
+      "meaning": "deterministic builder copies the frozen ruleset and refuses assembly until the official calendar manifest validates"
+    },
+    {
+      "gate": "H02_BLIND_OUTCOME_REVEAL_GATE",
+      "status": "PASS_SYNTHETIC_TARGET_LOCKED",
+      "meaning": "reveal decision uses only official event counts and decision-time labels; future returns remain inaccessible until the single authorized reveal"
+    },
+    {
+      "gate": "H02_DUPLICATE_DESIGN_ARTIFACT",
+      "status": "CLOSED_NONAUTHORITATIVE",
+      "meaning": "later conflicting H02_DESIGN_SPEC_V01 is explicitly non-authoritative; earlier fingerprinted H02_SCIENTIFIC_RULESET_V01 retains precedence"
     }
   ],
   "objective_next_triggers": [
     "complete official 2027 BLS CPI/Employment Situation calendar becomes available and is fingerprinted",
-    "build final pretarget protocol by copying frozen H02 ruleset without scientific mutation and binding exact calendar + implementation manifests",
+    "assemble final pretarget protocol deterministically from H02_SCIENTIFIC_RULESET_V01 plus exact calendar and implementation bindings",
     "issue separate TARGET_OBSERVATION_OPEN authority bound to exact protocol/calendar/implementation fingerprints",
-    "only then begin prospective target observation"
+    "only then begin prospective target observation and keep outcomes blind until the frozen reveal gate permits the single reveal"
   ],
   "anti_zombie_rules": [
     "local shadow raw data is infrastructure evidence only and must not be used to select or promote MRCR scientific parameters",
