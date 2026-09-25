@@ -1,0 +1,38 @@
+name: DLS Save0c 202202 Runner Recovery V0.1
+
+on:
+  push:
+    branches:
+      - dls-marginfi-save0c-sqd-boundary-v01
+    paths:
+      - .github/workflows/dls-save0c-202202-runner-recovery-v01.yml
+
+permissions:
+  contents: read
+
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 40d42e4ffdc85502d5965115a434c29fc08a6704
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile frozen original runner
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/run_sqd_first_success_partition_v0_1.py
+      - name: Re-run exact failed window
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/run_sqd_first_success_partition_v0_1.py --protocol "save0c" --start "2022-02-01T00:00:00Z" --end "2022-03-01T00:00:00Z" --out "boundary/save0c-202202"
+      - name: Upload recovery evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-sqd-first-boundary-save0c-202202-recovery-v01
+          path: boundary/save0c-202202.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_TRUE
