@@ -41,29 +41,32 @@
       "authority_requirement": "CANDIDATE_SPECIFIC_EXECUTION_AUTHORITY_REQUIRED",
       "routes": {
         "LONG": {
-          "adapter_status": "TO_BUILD",
+          "adapter_status": "TRANSPORT_PREBUILT__RISK_AUTHORITY_BINDING_PENDING",
           "venue": "MEXC_SPOT",
           "symbol": "BNBBTC",
           "margin_mode": "SPOT_UNLEVERED",
           "leverage": 1,
           "max_notional_chf": 25,
-          "blocker": "EXECUTION_ADAPTER_AND_ACCOUNT_SPECIFIC_PREFLIGHT_NOT_YET_BOUND"
+          "blocker": "FROZEN_CHF_CAP_TO_QUOTE_ASSET_BINDING_ACCOUNT_FEE_PREFLIGHT_AND_EXECUTION_AUTHORITY_PENDING",
+          "transport_module": "radar.mexc_spot_generic_auth_v01.MEXCSpotPolicyBoundClient"
         }
       }
     },
     {
       "candidate_id": "CED1D-0031",
-      "execution_state": "SOURCE_BLOCKED",
-      "science_state": "TIER_2_POLICY_ELIGIBLE",
-      "authority_requirement": "SOURCE_RECOVERY_THEN_CANDIDATE_SPECIFIC_EXECUTION_AUTHORITY",
+      "execution_state": "PREPARED_LOCKED",
+      "science_state": "TIER_2_POLICY_ELIGIBLE__FORWARD_FRAGILITY",
+      "authority_requirement": "SOURCE_READY_AT_SIGNAL_TIME_PLUS_CANDIDATE_SPECIFIC_EXECUTION_MAPPING_AND_AUTHORITY",
       "routes": {
         "CONTINUATION": {
-          "adapter_status": "TO_BUILD_AFTER_SOURCE_PASS",
+          "adapter_status": "TRANSPORT_PREBUILD_AVAILABLE__SIDE_MAPPING_PENDING",
           "venue": "UNBOUND",
           "symbol": "AVAXUSDT",
-          "blocker": "LATEST_EXPECTED_BINANCE_VISION_ARCHIVE_UNAVAILABLE_AND_SIDE_TRANSLATION_NOT_YET_BOUND"
+          "blocker": "CONTINUATION_SIDE_TO_VENUE_MAPPING_AND_CANDIDATE_AUTHORITY_NOT_FROZEN",
+          "transport_module": "radar.mexc_spot_generic_auth_v01.MEXCSpotPolicyBoundClient"
         }
-      }
+      },
+      "source_state": "WAITING_SOURCE_ARCHIVE_RETRY_V0.4"
     },
     {
       "candidate_id": "ETF-CME-INSTFLOW-001",
@@ -127,9 +130,9 @@
       }
     },
     {
-      "candidate_id": "CIRV",
+      "candidate_id": "CRYPTO-INTRAWEEK-RV-001 / CIRV-HAR-DOW-BTCETH-001",
       "execution_state": "FORECAST_ONLY",
-      "science_state": "FORECAST_SHADOW_MOTOR",
+      "science_state": "L5_REPLICATED_OOS_FORECAST_MECHANISM__NOT_TRADING_EDGE",
       "authority_requirement": "NOT_A_TRADING_EDGE",
       "routes": {
         "NONE": {
