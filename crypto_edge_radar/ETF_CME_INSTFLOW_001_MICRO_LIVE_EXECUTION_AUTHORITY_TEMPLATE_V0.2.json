@@ -1,5 +1,5 @@
 {
-  "template_id": "ETF-CME-INSTFLOW-001-MICRO-LIVE-EXECUTION-AUTHORITY-TEMPLATE-V0.2",
+  "template_id": "ETF-CME-INSTFLOW-001-MICRO-LIVE-EXECUTION-AUTHORITY-TEMPLATE-V0.3",
   "status": "TEMPLATE_NOT_AUTHORITY",
   "strategy_id": "ETF-CME-INSTFLOW-001",
   "exchange": "MEXC",
@@ -12,7 +12,6 @@
   "exit_on_time_tolerance_seconds": 2,
   "max_preflight_age_seconds": 60,
   "max_risk_state_age_seconds": 60,
-  "max_initial_isolated_margin_fraction_of_equity": 0.001,
   "max_concurrent_planned_risk_fraction_equity": 0.003,
   "daily_stop_fraction_equity": 0.003,
   "weekly_stop_fraction_equity": 0.0075,
@@ -45,7 +44,7 @@
     "source or Radar motor unhealthy",
     "authenticated exchange preflight not PASS or stale",
     "candidate capital feasibility not PASS",
-    "venue minimum or requested order exceeds frozen 0.1% validation budget",
+    "venue minimum or requested order exceeds frozen 10 USDT micro-live cap",
     "effective fees/friction exceed frozen STRESS20 budget",
     "open Futures position or order exists",
     "account risk state stale or failed",
@@ -57,7 +56,8 @@
     "kill switch present",
     "API schema does not match current frozen V0.2 paths"
   ],
-  "activation_rule": "Create a separate immutable copy with status ACTIVE_MICRO_LIVE_EXECUTION_AUTHORITY only after a real canonical SHORT signal exists, information-safe time has passed, current preflight and risk state pass, sizing is venue-compatible, friction is frozen, mapping review is ACCEPTED_PRE_ORDER, and every nullable field is frozen before order transport.",
+  "activation_rule": "Create a separate immutable copy with status ACTIVE_MICRO_LIVE_EXECUTION_AUTHORITY only after a real canonical SHORT signal exists, information-safe time has passed, current preflight and risk state pass, sizing is venue-compatible and <= frozen 10 USDT micro-live cap, friction is frozen, mapping review is ACCEPTED_PRE_ORDER, and every nullable field is frozen before order transport.",
   "orders_authorized_by_this_template": false,
-  "main_merge_authorized": false
+  "main_merge_authorized": false,
+  "max_trade_notional_usdt": 10
 }
