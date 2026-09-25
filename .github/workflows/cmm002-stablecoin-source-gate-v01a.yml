@@ -1,0 +1,46 @@
+name: CMM-002 Stablecoin Source Gate V0.1A
+
+on:
+  push:
+    branches:
+      - cmm-002-funding-conditioned-divergence-oos-2025-v0.1
+    paths:
+      - "cmm002/CMM002_SOURCE_AMENDMENT_V01A.md"
+      - "cmm002/stablecoin_source_gate_v01a.py"
+      - ".github/workflows/cmm002-stablecoin-source-gate-v01a.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cmm002-stablecoin-source-v01a
+  cancel-in-progress: false
+
+jobs:
+  source-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: cmm-002-funding-conditioned-divergence-oos-2025-v0.1
+      - name: Run holdout-safe source gate only
+        id: gate
+        continue-on-error: true
+        run: python3 cmm002/stablecoin_source_gate_v01a.py
+      - name: Preserve source receipt
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add cmm002/source_results/
+          if ! git diff --cached --quiet; then
+            git commit -m "cmm002: record holdout-safe stablecoin source gate v0.1a [skip ci]"
+            git push
+          fi
+      - name: Fail closed
+        if: steps.gate.outcome != 'success'
+        run: |
+          echo "CMM-002 stablecoin source gate did not pass. 2025 BTC outcomes remain closed."
+          exit 1
