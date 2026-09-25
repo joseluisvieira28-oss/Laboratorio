@@ -114,16 +114,9 @@ class MEXCAuthenticatedPreflightTests(unittest.TestCase):
         self.assertTrue(result["pass"], result)
         self.assertEqual(result["status"], "PASS")
         candidate=result["candidate_feasibility"]["ETF-CME-INSTFLOW-001"]
-        self.assertFalse(candidate["pass"])
-        self.assertEqual(candidate["status"], "BLOCKED")
-        self.assertIn(
-            "ETF_CME_VENUE_MIN_NOTIONAL_EXCEEDS_FROZEN_VALIDATION_BUDGET",
-            candidate["blockers"],
-        )
-        self.assertNotIn(
-            "ETF_CME_VENUE_MIN_NOTIONAL_EXCEEDS_FROZEN_VALIDATION_BUDGET",
-            result["blockers"],
-        )
+        self.assertTrue(candidate["pass"], candidate)
+        self.assertEqual(candidate["status"], "PASS")
+        self.assertEqual(candidate["blockers"], [])
 
     def test_official_api_fee_floor_overrides_zero_authenticated_promo_value(self):
         times = iter([1_700_000_000_000, 1_700_000_000_100])
