@@ -1,0 +1,125 @@
+name: BUILD MEXC LIVE EXECUTION PREP V0.3 TIER2
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - mexc-live-execution-prep-v0.3-tier2-microlive
+    paths:
+      - 'crypto_edge_radar/radar/mexc_*'
+      - 'crypto_edge_radar/radar/options_v21_spot_live_gate.py'
+      - 'crypto_edge_radar/scripts/mexc_*'
+      - 'crypto_edge_radar/scripts/options_v21_spot_*'
+      - 'crypto_edge_radar/tests/test_mexc_*'
+      - 'crypto_edge_radar/tests/test_options_v21_spot_live_gate.py'
+      - 'crypto_edge_radar/windows/*V03*'
+      - 'crypto_edge_radar/OPTIONS_SPOTPERP_001_V21_MEXC_SPOT_LONG_AUTHORITY_TEMPLATE_V0.3.json'
+      - 'crypto_edge_radar/MEXC_LIVE_EXECUTION_V03_TIER2_OPERATOR_GUIDE.md'
+      - '.github/workflows/build-mexc-live-execution-prep-v03.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test-build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: crypto_edge_radar
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install
+        run: |
+          python -m pip install -e .
+          python -m pip install "pyinstaller>=6,<7"
+
+      - name: Compile execution surface
+        run: |
+          python -m compileall radar scripts tests
+
+      - name: Run existing and V0.3 MEXC safety tests
+        run: |
+          python -m unittest discover -s tests -p "test_mexc_*.py" -v
+          python -m unittest -v tests.test_options_v21_spot_live_gate
+
+      - name: Verify V0.3 Spot template is inert and capped
+        shell: pwsh
+        run: |
+          $a=Get-Content OPTIONS_SPOTPERP_001_V21_MEXC_SPOT_LONG_AUTHORITY_TEMPLATE_V0.3.json | ConvertFrom-Json
+          if ($a.status -ne "TEMPLATE_NOT_AUTHORITY") { throw "template unexpectedly active" }
+          if ($a.orders_authorized_by_this_template) { throw "template authorizes orders" }
+          if ($a.maximum_notional_usdt_equivalent -ne 10) { throw "cap is not 10 USDT" }
+          if ($a.maximum_total_account_exposure_usdt_equivalent -ne 10) { throw "exposure cap is not 10 USDT" }
+          if ($a.daily_realized_loss_kill_usdt -ne 2) { throw "daily kill mismatch" }
+          if ($a.rolling_7d_realized_loss_kill_usdt -ne 5) { throw "weekly kill mismatch" }
+          if ($a.market -ne "SPOT" -or $a.symbol -ne "BTCUSDT" -or $a.direction -ne "LONG") { throw "wrong exact lane" }
+
+      - name: Static Spot mutation-surface safety check
+        shell: pwsh
+        run: |
+          $src=Get-Content radar\mexc_spot_auth_v3.py -Raw
+          foreach ($forbidden in @("capital/withdraw","capital/transfer","internalTransfer","sub-account")) {
+            if ($src.Contains($forbidden)) { throw "forbidden wallet/transfer surface present: $forbidden" }
+          }
+          foreach ($required in @("/api/v3/order","/api/v3/order/test","/api/v3/account","/api/v3/openOrders","/api/v3/myTrades")) {
+            if (-not $src.Contains($required)) { throw "required Spot endpoint missing: $required" }
+          }
+
+      - name: PowerShell syntax validation
+        shell: pwsh
+        run: |
+          foreach ($s in @(
+            "windows\Set_MEXC_Preflight_Secrets.ps1",
+            "windows\Run_Tier2_MicroLive_Ready_Check_V03.ps1"
+          )) {
+            $errors=$null
+            [void][System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $s),[ref]$null,[ref]$errors)
+            if ($errors.Count -gt 0) { $errors | Format-List; throw "PowerShell syntax failure: $s" }
+          }
+
+      - name: Build shared risk-state
+        run: pyinstaller --clean --onefile --name MEXCRiskState --paths . scripts/mexc_risk_state.py
+
+      - name: Build Spot authenticated preflight
+        run: pyinstaller --clean --onefile --name MEXCSpotAuthenticatedPreflight --paths . scripts/mexc_spot_authenticated_preflight.py
+
+      - name: Build Spot order test
+        run: pyinstaller --clean --onefile --name MEXCSpotOrderTest --paths . scripts/mexc_spot_order_test.py
+
+      - name: Build OPTIONS Spot entry executor
+        run: pyinstaller --clean --onefile --name OptionsV21SpotLiveExecutor --paths . scripts/options_v21_spot_live_executor.py
+
+      - name: Build OPTIONS Spot exit guard
+        run: pyinstaller --clean --onefile --name OptionsV21SpotExitGuard --paths . scripts/options_v21_spot_exit_guard.py
+
+      - name: Hash binaries
+        shell: pwsh
+        run: |
+          foreach ($exe in Get-ChildItem dist\*.exe) {
+            $hash=(Get-FileHash $exe.FullName -Algorithm SHA256).Hash.ToLower()
+            "$($exe.Name) sha256=$hash" | Set-Content ($exe.FullName+".sha256.txt")
+          }
+
+      - name: Assemble V0.3 Windows bundle
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path bundle\dist,bundle\windows | Out-Null
+          Copy-Item dist\*.exe bundle\dist\
+          Copy-Item dist\*.sha256.txt bundle\dist\
+          Copy-Item windows\Set_MEXC_Preflight_Secrets.ps1 bundle\windows\
+          Copy-Item windows\Run_Tier2_MicroLive_Ready_Check_V03.ps1 bundle\windows\
+          Copy-Item windows\READY_CHECK_TIER2_MICROLIVE_V03.bat bundle\windows\
+          Copy-Item OPTIONS_SPOTPERP_001_V21_MEXC_SPOT_LONG_AUTHORITY_TEMPLATE_V0.3.json bundle\
+          Copy-Item MEXC_LIVE_EXECUTION_V03_TIER2_OPERATOR_GUIDE.md bundle\
+
+      - name: Upload V0.3 bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: mexc-live-execution-prep-v03-tier2
+          path: crypto_edge_radar/bundle/**
+          retention-days: 14
+          if-no-files-found: error
