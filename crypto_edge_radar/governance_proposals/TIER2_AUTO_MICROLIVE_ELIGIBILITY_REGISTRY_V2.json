@@ -1,0 +1,63 @@
+{
+  "registry_id": "TIER2_AUTO_MICROLIVE_ELIGIBILITY_REGISTRY_V2",
+  "policy_id": "TIER2-AUTO-MICROLIVE-POLICY-V2.0-FROZEN-2026-09-25",
+  "status": "FROZEN_PROSPECTIVE_GOVERNANCE_ELIGIBILITY",
+  "date": "2026-09-25",
+  "rule": {
+    "legitimate_tier2_implies_micro_live_eligibility": true,
+    "tier1_or_diamond_required": false,
+    "generic_wait_required": false,
+    "repeat_discovery_or_oos_required": false,
+    "per_trade_governance_review_required": false,
+    "later_forward_gates_role": "PROMOTION_EVIDENCE_ONLY"
+  },
+  "default_micro_live_envelope": {
+    "max_notional_usdt": 10,
+    "max_total_live_notional_usdt": 10,
+    "max_simultaneous_positions": 1,
+    "futures_leverage": 1,
+    "futures_margin_mode": "ISOLATED",
+    "auto_margin_add": false,
+    "daily_realized_loss_kill_usdt": 2,
+    "rolling_7d_realized_loss_kill_usdt": 5,
+    "automatic_size_escalation": false,
+    "late_entry_chase": false
+  },
+  "candidates": [
+    {
+      "candidate_id": "OPTIONS-SPOTPERP-001-V2.1",
+      "scientific_tier": 2,
+      "micro_live_eligible": true,
+      "promotion_gate": "FIRST_50_RESOLVED_FORWARD_TRADES",
+      "promotion_gate_blocks_microlive": false
+    },
+    {
+      "candidate_id": "BNB-LAUNCHPOOL-DEMAND-001",
+      "scientific_tier": 2,
+      "micro_live_eligible": true,
+      "promotion_gate": "BNB_DIAMOND_V0.2_FIRST_25",
+      "promotion_gate_blocks_microlive": false
+    },
+    {
+      "candidate_id": "CED1D-0031",
+      "scientific_tier": 2,
+      "micro_live_eligible": true,
+      "promotion_gate": "60_EVENTS_AND_8_COMPLETE_UTC_WEEKS",
+      "promotion_gate_blocks_microlive": false
+    },
+    {
+      "candidate_id": "ETF-CME-INSTFLOW-001",
+      "scientific_tier": 2,
+      "micro_live_eligible": true,
+      "execution_lane": "SEPARATE_EXECUTION_FORK",
+      "sealed_q4_lane_preserved": true,
+      "live_outcomes_credit_to_sealed_lane": false
+    }
+  ],
+  "future_rule": {
+    "any_future_legitimate_tier2_is_micro_live_eligible": true,
+    "no_generic_additional_wait": true,
+    "no_separate_policy_vote_required": true
+  },
+  "note": "Eligibility registry only. Actual order transport remains subject to exact implementation mapping and hard fail-closed operational checks."
+}
