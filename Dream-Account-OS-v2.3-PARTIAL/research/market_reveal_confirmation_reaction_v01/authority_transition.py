@@ -9,7 +9,11 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Any, Mapping
+
+from calendar_manifest import validate_calendar_manifest
+from pretarget_gate import protocol_fingerprint, validate_for_freeze
 
 LAB_ID = "MARKET-REVEAL-CONFIRMATION-REACTION-001"
 DOC_TYPE = "MRCR_AUTHORITY_TRANSITION_V01"
@@ -112,6 +116,113 @@ def validate_authority_receipt(receipt: Mapping[str, Any]) -> AuthorityResult:
         blockers.append("RECEIPT_SHA256_INVALID_OR_MISSING")
     elif claimed != receipt_fingerprint(receipt):
         blockers.append("RECEIPT_SHA256_MISMATCH")
+
+    return AuthorityResult(
+        ready=len(blockers) == 0,
+        blockers=tuple(sorted(set(blockers))),
+    )
+
+
+def _parse_utc(value: Any) -> datetime | None:
+    if not isinstance(value, str) or not value:
+        return None
+    text = value[:-1] + "+00:00" if value.endswith("Z") else value
+    try:
+        dt = datetime.fromisoformat(text)
+    except ValueError:
+        return None
+    if dt.tzinfo is None:
+        return None
+    return dt.astimezone(timezone.utc)
+
+
+def validate_freeze_binding(
+    protocol: Mapping[str, Any],
+    authority_receipt: Mapping[str, Any],
+) -> AuthorityResult:
+    blockers: list[str] = []
+
+    authority = validate_authority_receipt(authority_receipt)
+    blockers.extend(authority.blockers)
+    if authority_receipt.get("authority_type") != H02_DESIGN_FREEZE:
+        blockers.append("FREEZE_AUTHORITY_TYPE_INVALID")
+
+    structural = validate_for_freeze(protocol)
+    blockers.extend(structural.blockers)
+
+    gov = protocol.get("governance") or {}
+    if gov.get("h02_authorized") is not True:
+        blockers.append("PROTOCOL_H02_NOT_AUTHORIZED")
+    if gov.get("target_observation_authorized") is not False:
+        blockers.append("PROTOCOL_TARGET_OBSERVATION_NOT_LOCKED")
+
+    freeze = protocol.get("freeze") or {}
+    if freeze.get("operator_authority_receipt") != authority_receipt.get("receipt_sha256"):
+        blockers.append("FREEZE_AUTHORITY_RECEIPT_BINDING_MISMATCH")
+
+    return AuthorityResult(
+        ready=len(blockers) == 0,
+        blockers=tuple(sorted(set(blockers))),
+    )
+
+
+def validate_target_open_binding(
+    protocol: Mapping[str, Any],
+    calendar_manifest: Mapping[str, Any],
+    implementation_manifest_sha256: str,
+    authority_receipt: Mapping[str, Any],
+) -> AuthorityResult:
+    blockers: list[str] = []
+
+    authority = validate_authority_receipt(authority_receipt)
+    blockers.extend(authority.blockers)
+    if authority_receipt.get("authority_type") != TARGET_OBSERVATION_OPEN:
+        blockers.append("TARGET_OPEN_AUTHORITY_TYPE_INVALID")
+
+    structural = validate_for_freeze(protocol)
+    blockers.extend(structural.blockers)
+
+    calendar_ok, calendar_blockers = validate_calendar_manifest(calendar_manifest)
+    if not calendar_ok:
+        blockers.extend(calendar_blockers)
+
+    freeze = protocol.get("freeze") or {}
+    protocol_hash = freeze.get("protocol_fingerprint_sha256")
+    if protocol_hash != protocol_fingerprint(protocol):
+        blockers.append("PROTOCOL_FINGERPRINT_NOT_SELF_CONSISTENT")
+
+    calendar_hash = calendar_manifest.get("manifest_sha256")
+    protocol_calendar = protocol.get("calendar") or {}
+    if protocol_calendar.get("calendar_source_manifest_sha256") != calendar_hash:
+        blockers.append("PROTOCOL_CALENDAR_BINDING_MISMATCH")
+
+    bindings = authority_receipt.get("bindings") or {}
+    if bindings.get("protocol_fingerprint_sha256") != protocol_hash:
+        blockers.append("TARGET_AUTHORITY_PROTOCOL_BINDING_MISMATCH")
+    if bindings.get("calendar_source_manifest_sha256") != calendar_hash:
+        blockers.append("TARGET_AUTHORITY_CALENDAR_BINDING_MISMATCH")
+    if (
+        not _is_sha256(implementation_manifest_sha256)
+        or bindings.get("implementation_manifest_sha256")
+        != implementation_manifest_sha256
+    ):
+        blockers.append("TARGET_AUTHORITY_IMPLEMENTATION_BINDING_MISMATCH")
+
+    earliest = _parse_utc(bindings.get("earliest_target_utc"))
+    issued = _parse_utc(authority_receipt.get("issued_at_utc"))
+    frozen = _parse_utc(freeze.get("frozen_at_utc"))
+    calendar_frozen = _parse_utc(protocol_calendar.get("calendar_frozen_at_utc"))
+    if earliest is None:
+        blockers.append("EARLIEST_TARGET_UTC_INVALID")
+    for label, boundary in (
+        ("AUTHORITY_ISSUED", issued),
+        ("PROTOCOL_FROZEN", frozen),
+        ("CALENDAR_FROZEN", calendar_frozen),
+    ):
+        if boundary is None:
+            blockers.append(f"{label}_UTC_INVALID")
+        elif earliest is not None and earliest <= boundary:
+            blockers.append(f"EARLIEST_TARGET_NOT_AFTER_{label}")
 
     return AuthorityResult(
         ready=len(blockers) == 0,
