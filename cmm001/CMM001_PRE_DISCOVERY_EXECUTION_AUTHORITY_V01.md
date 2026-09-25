@@ -120,7 +120,7 @@ No direction flip is permitted after outcomes.
 The runner MUST build features first and MUST NOT compute event returns unless all pass:
 1. Binance Spot hourly archives 2021-01 through 2024-12: provider SHA256 CHECKSUM pass for every required monthly ZIP.
 2. Exact 17:00 state-open and 18:00 entry/exit hourly observations: >=99.5% candidate-day availability.
-3. Deribit options window: zero has_more truncation days; valid O_raw coverage >=75% of candidate days 2021-07-01 through 2024-12-27.
+3. Deribit options window: zero request/parse errors, zero has_more truncation days, and valid O_raw coverage >=75% of candidate days 2021-07-01 through 2024-12-27.
 4. FRED DGS2: >=900 numeric 2021-2024 observations.
 5. DefiLlama aggregate stablecoin: >=1400 dated 2021-2024 observations and valid totalCirculatingUSD.peggedUSD.
 6. Binance funding monthly archives 2021-2024: every required ZIP used for diagnostics passes provider SHA256.
