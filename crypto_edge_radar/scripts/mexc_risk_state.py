@@ -39,9 +39,9 @@ def build_state(*,preflight_path:Path,receipt_root:Path,now:datetime|None=None)-
     open_positions=int((checks.get("positions") or {}).get("open_position_count",999))
 
     day_start=now.replace(hour=0,minute=0,second=0,microsecond=0)
-    week_start=day_start-timedelta(days=day_start.weekday())
+    rolling_7d_start=now-timedelta(days=7)
     daily_loss_usdt=0.0
-    weekly_loss_usdt=0.0
+    rolling_7d_loss_usdt=0.0
     counted=[]
     for path,row in _reconciliations(receipt_root):
         try:
@@ -91,9 +91,9 @@ def build_state(*,preflight_path:Path,receipt_root:Path,now:datetime|None=None)-
         "as_of_utc":now.isoformat().replace("+00:00","Z"),
         "equity_usdt":equity,
         "daily_realized_loss_usdt":daily_loss_usdt,
-        "weekly_realized_loss_usdt":weekly_loss_usdt,
+        "weekly_realized_loss_usdt":rolling_7d_loss_usdt,
         "daily_realized_loss_fraction_equity":daily_loss_usdt/equity,
-        "weekly_realized_loss_fraction_equity":weekly_loss_usdt/equity,
+        "weekly_realized_loss_fraction_equity":rolling_7d_loss_usdt/equity,
         "concurrent_planned_risk_fraction_equity":planned_fraction,
         "open_micro_live_positions":open_micro_live_positions,
         "local_active_trade_receipts":active,
