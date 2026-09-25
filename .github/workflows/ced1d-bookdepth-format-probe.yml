@@ -1,0 +1,42 @@
+name: CED1D Binance Vision BookDepth Format Probe
+
+on:
+  push:
+    branches:
+      - ced1d-bookdepth-timestamp-transport-v05-2026-09-25
+    paths:
+      - ".github/workflows/ced1d-bookdepth-format-probe.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Probe exact public Binance Vision archives
+        run: |
+          python - <<'PY'
+          import csv, io, urllib.request, zipfile, hashlib, json
+          for day in ("2026-09-23","2026-09-24"):
+              url=f"https://data.binance.vision/data/futures/um/daily/bookDepth/AVAXUSDT/AVAXUSDT-bookDepth-{day}.zip"
+              req=urllib.request.Request(url,headers={"User-Agent":"crypto-edge-radar-source-probe/0.1"})
+              with urllib.request.urlopen(req,timeout=120) as r:
+                  raw=r.read()
+              print("DAY",day,"HTTP",200,"SHA256",hashlib.sha256(raw).hexdigest(),"BYTES",len(raw))
+              with zipfile.ZipFile(io.BytesIO(raw)) as z:
+                  member=[n for n in z.namelist() if not n.endswith("/")][0]
+                  print("MEMBER",member)
+                  rdr=csv.reader(io.TextIOWrapper(z.open(member),encoding="utf-8-sig",newline=""))
+                  rows=[]
+                  for i,row in enumerate(rdr):
+                      rows.append(row)
+                      if i>=5: break
+                  print("ROWS",json.dumps(rows))
+          PY
