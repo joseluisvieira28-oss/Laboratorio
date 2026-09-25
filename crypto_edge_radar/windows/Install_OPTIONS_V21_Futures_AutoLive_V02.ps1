@@ -23,12 +23,19 @@ if ($legacy) {
     Unregister-ScheduledTask -TaskName $legacyTaskName -Confirm:$false
 }
 
+$current = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
+if ($current) {
+    Stop-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 1
+    Unregister-ScheduledTask -TaskName $taskName -Confirm:$false
+}
+
 New-Item -ItemType Directory -Force -Path (Join-Path $root "data") | Out-Null
 New-Item -ItemType Directory -Force -Path (Join-Path $root "live_receipts\options_v21_futures") | Out-Null
 
 $armed = [ordered]@{
     authority = "TIER2-AUTO-MICROLIVE-POLICY-V2.0-FROZEN-2026-09-25"
-    execution_contract = "OPTIONS-SPOTPERP-001-V2.1-FUTURES-ONLY-AUTOLIVE-V0.2"
+    execution_contract = "OPTIONS-SPOTPERP-001-V2.1-FUTURES-ONLY-AUTOLIVE-V0.2.1-SOURCE-HOTFIX"
     strategy_id = "OPTIONS-SPOTPERP-001-V2.1"
     execution_fork = "FUTURES_ONLY"
     symbol = "BTC_USDT"
@@ -57,7 +64,7 @@ $task = Get-ScheduledTask -TaskName $taskName
 $info = Get-ScheduledTaskInfo -TaskName $taskName
 
 Write-Host ""
-Write-Host "=========== OPTIONS V2.1 FUTURES-ONLY AUTO-MICROLIVE V0.2 ==========="
+Write-Host "========== OPTIONS V2.1 FUTURES-ONLY AUTO-MICROLIVE V0.2.1 =========="
 Write-Host "Task                 : $taskName"
 Write-Host "Task state           : $($task.State)"
 Write-Host "Last task result     : $($info.LastTaskResult)"
