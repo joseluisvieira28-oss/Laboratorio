@@ -129,6 +129,26 @@ class MEXCSpotAuthenticatedReadOnlyClient(_BaseClient):
             raise MEXCSpotV3Error("order response not object")
         return row
 
+    def mx_deduct_enabled(self) -> bool:
+        row = self._signed("GET", "/api/v3/mxDeduct/enable")
+        try:
+            return bool(row["data"]["mxDeductEnable"])
+        except Exception as exc:
+            raise MEXCSpotV3Error("invalid MX deduct status") from exc
+
+    def trade_fee(self, symbol: str = ALLOWED_SYMBOL) -> dict[str, float]:
+        if symbol != ALLOWED_SYMBOL:
+            raise MEXCSpotV3Error("symbol outside V0.3 allowlist")
+        row = self._signed("GET", "/api/v3/tradeFee", {"symbol": symbol})
+        try:
+            data = row["data"]
+            return {
+                "makerCommission": float(data["makerCommission"]),
+                "takerCommission": float(data["takerCommission"]),
+            }
+        except Exception as exc:
+            raise MEXCSpotV3Error("invalid tradeFee response") from exc
+
     def trades_for_order(self, *, order_id: str, symbol: str = ALLOWED_SYMBOL) -> list[dict[str, Any]]:
         if symbol != ALLOWED_SYMBOL:
             raise MEXCSpotV3Error("symbol outside V0.3 allowlist")
