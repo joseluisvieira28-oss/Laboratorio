@@ -1,12 +1,6 @@
 name: CMM-001 Source Gate V0.1
 
 on:
-  push:
-    branches:
-      - cross-market-mispricing-001-source-gate-v0.1
-    paths:
-      - "cmm001/**"
-      - ".github/workflows/cmm001-source-gate-v01.yml"
   workflow_dispatch:
 
 permissions:
@@ -36,7 +30,8 @@ jobs:
           git add cmm001/results/
           if ! git diff --cached --quiet; then
             git commit -m "cmm001: record source gate v0.1 receipt [skip ci]"
-            git push
+            git pull --rebase origin cross-market-mispricing-001-source-gate-v0.1
+            git push origin HEAD:cross-market-mispricing-001-source-gate-v0.1
           fi
 
       - name: Enforce fail-closed source gate
