@@ -95,7 +95,8 @@ receipt={
     "github_run_id":os.environ.get("GITHUB_RUN_ID"),
     "github_run_attempt":os.environ.get("GITHUB_RUN_ATTEMPT"),
     "github_event_name":event,
-    "git_sha":os.environ.get("GITHUB_SHA")
+    "caller_git_sha":os.environ.get("GITHUB_SHA"),
+    "scientific_code_sha":os.environ.get("LCOD_SCIENTIFIC_CODE_SHA")
   },
   "predictor_only_accumulation_gate":{
     "minimum_canonical_successful_daily_observations":30,
