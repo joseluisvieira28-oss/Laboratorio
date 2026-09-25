@@ -76,3 +76,21 @@ A LONG OPTIONS signal is never silently converted to a SHORT. It is NO_TRADE on 
 - missing/incorrect live execution token.
 
 No active candidate authority and no API secret are included in the artifact.
+
+
+## Second executable lane — OPTIONS V2.1 LONG
+
+A positive canonical OPTIONS signal maps to **MEXC Spot BTCUSDT LONG**, not to Futures.
+
+- entry uses a MARKET BUY with `quoteOrderQty <= 10 USDT`;
+- leverage: none / 1x economic exposure;
+- no margin;
+- no Futures substitution;
+- no transfers or withdrawals are implemented;
+- Spot account must already contain enough free USDT;
+- exit sells only the BTC acquired by the micro-live entry, net of any BTC-denominated entry commission;
+- exact scientific hold remains t+1 00:00 UTC to t+2 00:00 UTC;
+- execution-translation latency budget is 30 seconds;
+- no automatic scientific promotion credit is granted.
+
+The official MEXC Spot V3 route is `POST /api/v3/order`; pre-live permission/schema validation uses `POST /api/v3/order/test`, which does not send an order into the matching engine.
