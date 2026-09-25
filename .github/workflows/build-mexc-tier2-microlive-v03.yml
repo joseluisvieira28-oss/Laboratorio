@@ -109,6 +109,23 @@ jobs:
           if (-not $src.Contains("/api/v3/order")) { throw "Spot order endpoint missing" }
           if (-not $src.Contains("/api/v3/order/test")) { throw "Spot test-order endpoint missing" }
 
+      - name: Verify safe stop and crash-idempotent exits
+        shell: pwsh
+        run: |
+          $stop=Get-Content windows\STOP_MEXC_OPTIONS_24X7_V03.ps1 -Raw
+          if (-not $stop.Contains("KILL_SWITCH")) { throw "safe stop does not create kill switch" }
+          if ($stop.Contains("Stop-Process")) { throw "safe stop must not kill exit guards" }
+          $installer=Get-Content windows\INSTALL_MEXC_OPTIONS_24X7_V03.ps1 -Raw
+          if (-not $installer.Contains("KILL_SWITCH is active")) { throw "live installer does not refuse active kill switch" }
+          $spotExit=Get-Content scripts\mexc_tier2_spot_exit_guard.py -Raw
+          if (-not $spotExit.Contains("NO_BLIND_RESUBMIT")) { throw "Spot exit lacks reconcile-before-resubmit guard" }
+          if (-not $spotExit.Contains("NO_BLIND_RETRY")) { throw "Spot exit lacks unknown-ack guard" }
+          $futuresExit=Get-Content scripts\mexc_tier2_exit_guard.py -Raw
+          if (-not $futuresExit.Contains("NO_BLIND_RESUBMIT")) { throw "Futures exit lacks reconcile-before-resubmit guard" }
+          if (-not $futuresExit.Contains("NO_BLIND_RETRY")) { throw "Futures exit lacks unknown-ack guard" }
+          $watch=Get-Content windows\RUN_MEXC_OPTIONS_24X7_V03.ps1 -Raw
+          if (-not $watch.Contains("powershell.exe")) { throw "watchdog child process isolation missing" }
+
       - name: PowerShell syntax
         shell: pwsh
         run: |
@@ -200,6 +217,7 @@ jobs:
           Copy-Item windows\02_READY_CHECK_MEXC_V03.bat bundle\windows\
           Copy-Item windows\03_ACTIVATE_OPTIONS_LIVE_24X7_V03.bat bundle\windows\
           Copy-Item windows\04_STOP_OPTIONS_LIVE_V03.bat bundle\windows\
+          Copy-Item windows\05_CLEAR_KILL_SWITCH_V03.bat bundle\windows\
           Copy-Item OPTIONS_SPOTPERP_001_V21_MICROLIVE_SHORT_AUTHORITY_TEMPLATE_V0.3.json bundle\
           Copy-Item OPTIONS_SPOTPERP_001_V21_MICROLIVE_LONG_SPOT_AUTHORITY_TEMPLATE_V0.3.json bundle\
           Copy-Item MEXC_TIER2_MICROLIVE_V03_OPERATOR_GUIDE.md bundle\
