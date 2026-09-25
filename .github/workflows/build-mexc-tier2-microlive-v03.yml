@@ -7,10 +7,14 @@ on:
       - mexc-tier2-microlive-v03-2026-09-25
     paths:
       - 'crypto_edge_radar/radar/mexc_tier2_*'
+      - 'crypto_edge_radar/radar/mexc_spot.py'
+      - 'crypto_edge_radar/radar/mexc_spot_auth.py'
       - 'crypto_edge_radar/scripts/mexc_tier2_*'
+      - 'crypto_edge_radar/scripts/mexc_spot_preflight_v03.py'
       - 'crypto_edge_radar/tests/test_mexc_tier2_*'
       - 'crypto_edge_radar/windows/Run_MEXC_Tier2_Ready_Check_V03.ps1'
       - 'crypto_edge_radar/OPTIONS_SPOTPERP_001_V21_MICROLIVE_SHORT_AUTHORITY_TEMPLATE_V0.3.json'
+      - 'crypto_edge_radar/OPTIONS_SPOTPERP_001_V21_MICROLIVE_LONG_SPOT_AUTHORITY_TEMPLATE_V0.3.json'
       - 'crypto_edge_radar/MEXC_TIER2_MICROLIVE_V03_OPERATOR_GUIDE.md'
       - '.github/workflows/build-mexc-tier2-microlive-v03.yml'
 
@@ -53,6 +57,17 @@ jobs:
           if ($a.margin_mode -ne "ISOLATED") { throw "V0.3 margin not isolated" }
           if ($a.direction -ne "SHORT") { throw "V0.3 first lane must remain SHORT-only" }
 
+      - name: Verify LONG Spot template cannot authorize orders
+        shell: pwsh
+        run: |
+          $a=Get-Content OPTIONS_SPOTPERP_001_V21_MICROLIVE_LONG_SPOT_AUTHORITY_TEMPLATE_V0.3.json | ConvertFrom-Json
+          if ($a.status -ne "TEMPLATE_NOT_AUTHORITY") { throw "LONG Spot template unexpectedly active" }
+          if ($a.orders_authorized_by_this_template) { throw "LONG Spot template authorizes orders" }
+          if ($a.max_quote_order_qty_usdt -ne 10) { throw "LONG Spot cap is not 10 USDT" }
+          if ($a.leverage -ne 1) { throw "LONG Spot leverage is not 1x" }
+          if ($a.margin_mode -ne "SPOT_UNLEVERED") { throw "LONG Spot margin mode invalid" }
+          if ($a.direction -ne "LONG") { throw "LONG Spot direction invalid" }
+
       - name: Static mutation-surface check
         shell: pwsh
         run: |
@@ -82,6 +97,16 @@ jobs:
           if ($exe.Contains("0.001")) { throw "old 0.1% budget leaked into V0.3 executor" }
           if (-not $gate.Contains("10.0")) { throw "10 USDT cap missing from gate" }
 
+      - name: Prove Spot transport has no transfer or withdrawal surface
+        shell: pwsh
+        run: |
+          $src=Get-Content radar\mexc_spot_auth.py -Raw
+          foreach ($forbidden in @("/api/v3/capital/transfer","/api/v3/capital/withdraw","/api/v3/sub-account/transfer")) {
+            if ($src.Contains($forbidden)) { throw "forbidden Spot money-movement endpoint present: $forbidden" }
+          }
+          if (-not $src.Contains("/api/v3/order")) { throw "Spot order endpoint missing" }
+          if (-not $src.Contains("/api/v3/order/test")) { throw "Spot test-order endpoint missing" }
+
       - name: PowerShell syntax
         shell: pwsh
         run: |
@@ -101,6 +126,18 @@ jobs:
       - name: Build Tier2 exit guard
         run: pyinstaller --clean --onefile --name MEXCTier2ExitGuard --paths . scripts/mexc_tier2_exit_guard.py
 
+      - name: Build Spot preflight
+        run: pyinstaller --clean --onefile --name MEXCSpotPreflight --paths . scripts/mexc_spot_preflight_v03.py
+
+      - name: Build Tier2 Spot risk state
+        run: pyinstaller --clean --onefile --name MEXCTier2SpotRiskState --paths . scripts/mexc_tier2_spot_risk_state.py
+
+      - name: Build Tier2 Spot executor
+        run: pyinstaller --clean --onefile --name MEXCTier2SpotExecutor --paths . scripts/mexc_tier2_spot_executor.py
+
+      - name: Build Tier2 Spot exit guard
+        run: pyinstaller --clean --onefile --name MEXCTier2SpotExitGuard --paths . scripts/mexc_tier2_spot_exit_guard.py
+
       - name: Hash binaries
         shell: pwsh
         run: |
@@ -108,7 +145,11 @@ jobs:
             "MEXCAuthenticatedPreflight.exe",
             "MEXCTier2RiskState.exe",
             "MEXCTier2LiveExecutor.exe",
-            "MEXCTier2ExitGuard.exe"
+            "MEXCTier2ExitGuard.exe",
+            "MEXCSpotPreflight.exe",
+            "MEXCTier2SpotRiskState.exe",
+            "MEXCTier2SpotExecutor.exe",
+            "MEXCTier2SpotExitGuard.exe"
           )) {
             $hash=(Get-FileHash (Join-Path "dist" $exe) -Algorithm SHA256).Hash.ToLower()
             "$exe sha256=$hash" | Tee-Object -FilePath (Join-Path "dist" ($exe+".sha256.txt"))
@@ -123,10 +164,15 @@ jobs:
           Copy-Item dist\MEXCTier2RiskState.exe bundle\dist\
           Copy-Item dist\MEXCTier2LiveExecutor.exe bundle\dist\
           Copy-Item dist\MEXCTier2ExitGuard.exe bundle\dist\
+          Copy-Item dist\MEXCSpotPreflight.exe bundle\dist\
+          Copy-Item dist\MEXCTier2SpotRiskState.exe bundle\dist\
+          Copy-Item dist\MEXCTier2SpotExecutor.exe bundle\dist\
+          Copy-Item dist\MEXCTier2SpotExitGuard.exe bundle\dist\
           Copy-Item dist\*.sha256.txt bundle\dist\
           Copy-Item windows\Set_MEXC_Preflight_Secrets.ps1 bundle\windows\
           Copy-Item windows\Run_MEXC_Tier2_Ready_Check_V03.ps1 bundle\windows\
           Copy-Item OPTIONS_SPOTPERP_001_V21_MICROLIVE_SHORT_AUTHORITY_TEMPLATE_V0.3.json bundle\
+          Copy-Item OPTIONS_SPOTPERP_001_V21_MICROLIVE_LONG_SPOT_AUTHORITY_TEMPLATE_V0.3.json bundle\
           Copy-Item MEXC_TIER2_MICROLIVE_V03_OPERATOR_GUIDE.md bundle\
 
       - name: Upload V0.3 bundle
