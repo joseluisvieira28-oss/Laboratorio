@@ -24,6 +24,7 @@ on:
       - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_calendar_manifest_v01.py'
       - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_freeze_manifest_v01.py'
       - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_science_lock_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_authority_transition_v01.py'
       - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_fault_injection_v01.py'
       - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_golden_corpus_v01.py'
       - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_metamorphic_v01.py'
@@ -92,6 +93,9 @@ jobs:
       - name: Run science lock regression tests
         run: |
           python "Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_science_lock_v01.py" -v
+      - name: Run authority transition fail-closed tests
+        run: |
+          python "Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_authority_transition_v01.py" -v
       - name: Run deterministic fault injection stress tests
         run: |
           python "Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_fault_injection_v01.py" -v
