@@ -1,0 +1,32 @@
+{
+  "hotfix_id": "OPTIONS-SPOTPERP-001-V2.1-FUTURES-ONLY-AUTOLIVE-V0.2.1-SOURCE-HOTFIX",
+  "date": "2026-09-25",
+  "status": "FROZEN_TECHNICAL_SOURCE_REMEDIATION",
+  "parent_execution_contract": "OPTIONS-SPOTPERP-001-V2.1-FUTURES-ONLY-AUTOLIVE-V0.2",
+  "authority": "OPTIONS-SPOTPERP-001 / V2.1 — INVALID IV/INDEX ROW HANDLING AMENDMENT 01",
+  "defect": "V0.2 Windows bundle aborted the entire immutable Deribit UTC source window on the first structurally valid row whose IV or index_price was invalid.",
+  "remediation": {
+    "invalid_iv_or_index_row": "REJECT_ROW_INCREMENT_COUNTER_CONTINUE_WINDOW",
+    "missing_required_field": "FAIL_CLOSED",
+    "invalid_or_out_of_window_timestamp": "FAIL_CLOSED",
+    "missing_trade_id": "FAIL_CLOSED",
+    "malformed_instrument": "FAIL_CLOSED",
+    "trade_id_collision": "FAIL_CLOSED",
+    "pagination_or_saturation_failure": "FAIL_CLOSED"
+  },
+  "unchanged": {
+    "signal": true,
+    "dte": true,
+    "moneyness": true,
+    "minimum_distinct_instruments_per_side": true,
+    "direction_mapping": true,
+    "rv20_and_weight": true,
+    "execution_fork_futures_only": true,
+    "max_notional_usdt": 10,
+    "leverage": 1,
+    "margin_mode": "ISOLATED",
+    "hold_hours": 24,
+    "entry_ttl_seconds": 300,
+    "spot_orders": false
+  }
+}
