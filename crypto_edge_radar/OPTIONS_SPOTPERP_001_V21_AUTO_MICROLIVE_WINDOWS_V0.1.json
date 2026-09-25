@@ -1,0 +1,61 @@
+{
+  "contract_id": "OPTIONS-SPOTPERP-001-V2.1-AUTO-MICROLIVE-WINDOWS-V0.1",
+  "status": "FROZEN_PROSPECTIVE_IMPLEMENTATION_CONTRACT",
+  "frozen_at": "2026-09-25",
+  "governing_policy": "TIER2-AUTO-MICROLIVE-POLICY-V2.0-FROZEN-2026-09-25",
+  "strategy_id": "OPTIONS-SPOTPERP-001-V2.1",
+  "prospective_first_entry_day_utc": "2026-09-26",
+  "signal_source_event": "OPTIONS_V21_FORWARD_ENTRY",
+  "routes": {
+    "LONG": {
+      "venue": "MEXC_SPOT",
+      "symbol": "BTCUSDT",
+      "order_type": "MARKET",
+      "entry_side": "BUY",
+      "exit_side": "SELL",
+      "hold_hours": 24
+    },
+    "SHORT": {
+      "venue": "MEXC_USDT_PERPETUAL",
+      "symbol": "BTC_USDT",
+      "order_type": "MARKET",
+      "entry_side": "OPEN_SHORT",
+      "exit_side": "CLOSE_SHORT",
+      "hold_hours": 24,
+      "leverage": 1,
+      "margin_mode": "ISOLATED",
+      "auto_margin_add": false
+    }
+  },
+  "timing": {
+    "scientific_entry_boundary": "00:00:00 UTC t+1",
+    "scientific_exit_boundary": "00:00:00 UTC t+2",
+    "operational_entry_ttl_seconds": 300,
+    "late_chase_allowed": false
+  },
+  "risk": {
+    "maximum_notional_usdt": 10,
+    "notional_is_scaled_by_parent_weight": true,
+    "maximum_concurrent_positions": 1,
+    "daily_realized_loss_kill_usdt": 2,
+    "rolling_7d_realized_loss_kill_usdt": 5,
+    "automatic_size_escalation": false
+  },
+  "exactly_once": {
+    "deterministic_exchange_client_id": true,
+    "durable_order_intent_before_transport": true,
+    "blind_resend_after_uncertain_ack": false,
+    "restart_requires_exchange_reconciliation": true
+  },
+  "security": {
+    "withdrawal_endpoint": false,
+    "transfer_endpoint": false,
+    "cross_margin": false,
+    "leverage_above_1x": false
+  },
+  "windows": {
+    "dpapi_current_user": true,
+    "scheduled_task": "CryptoLab-OPTIONS-V21-AutoLive",
+    "task_runs_under_current_user": true
+  }
+}
