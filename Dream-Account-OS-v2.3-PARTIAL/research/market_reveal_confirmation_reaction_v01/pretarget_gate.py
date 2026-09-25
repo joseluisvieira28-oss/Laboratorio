@@ -60,8 +60,8 @@ def validate_for_freeze(protocol: Mapping[str, Any]) -> GateResult:
     gov = protocol.get("governance") or {}
     if gov.get("h02_authorized") is not True:
         blockers.append("H02_NOT_AUTHORIZED")
-    if gov.get("target_observation_authorized") is not True:
-        blockers.append("TARGET_OBSERVATION_NOT_AUTHORIZED")
+    if gov.get("target_observation_authorized") is not False:
+        blockers.append("TARGET_OBSERVATION_MUST_REMAIN_LOCKED_DURING_FREEZE")
     if gov.get("historical_contaminated_data_allowed_for_selection") is not False:
         blockers.append("CONTAMINATED_SELECTION_POLICY_INVALID")
     if str(gov.get("earliest_target_period")) < "2027":
