@@ -1,0 +1,143 @@
+{
+  "manifest_version": "1.0",
+  "deny_by_default": true,
+  "generated_from": {
+    "base_branch": "mexc-tier2-microlive-v03-2026-09-25",
+    "base_commit": "fb6d255afd3613c4c0b7361361e47ecbdb82a612",
+    "policy_note": "Execution plumbing may be prepared in parallel; scientific/source/authority gates remain authoritative."
+  },
+  "candidates": [
+    {
+      "candidate_id": "OPTIONS-SPOTPERP-001-V2.1",
+      "execution_state": "ELIGIBLE_LOCAL_ARMING",
+      "science_state": "TIER_2_EXISTING__FORWARD_EVIDENCE_CONTINUES",
+      "authority_requirement": "LOCAL_V0.3_CANDIDATE_AUTHORITY_AND_ARMING_REQUIRED",
+      "routes": {
+        "LONG": {
+          "adapter_status": "READY",
+          "venue": "MEXC_SPOT",
+          "symbol": "BTCUSDT",
+          "margin_mode": "SPOT_UNLEVERED",
+          "leverage": 1,
+          "executor_script": "crypto_edge_radar/scripts/mexc_tier2_spot_executor.py",
+          "max_notional_usdt": 10
+        },
+        "SHORT": {
+          "adapter_status": "LOCKED",
+          "venue": "MEXC_FUTURES",
+          "symbol": "BTC_USDT",
+          "margin_mode": "ISOLATED",
+          "leverage": 1,
+          "executor_script": "crypto_edge_radar/scripts/mexc_tier2_live_executor.py",
+          "max_notional_usdt": 10,
+          "blocker": "UNATTENDED_ACCOUNT_IDENTITY_BINDING_NOT_YET_PRESERVED"
+        }
+      }
+    },
+    {
+      "candidate_id": "BNB-LAUNCHPOOL-DEMAND-001",
+      "execution_state": "PREPARED_LOCKED",
+      "science_state": "TIER_2_POLICY_ELIGIBLE",
+      "authority_requirement": "CANDIDATE_SPECIFIC_EXECUTION_AUTHORITY_REQUIRED",
+      "routes": {
+        "LONG": {
+          "adapter_status": "TO_BUILD",
+          "venue": "MEXC_SPOT",
+          "symbol": "BNBBTC",
+          "margin_mode": "SPOT_UNLEVERED",
+          "leverage": 1,
+          "max_notional_chf": 25,
+          "blocker": "EXECUTION_ADAPTER_AND_ACCOUNT_SPECIFIC_PREFLIGHT_NOT_YET_BOUND"
+        }
+      }
+    },
+    {
+      "candidate_id": "CED1D-0031",
+      "execution_state": "SOURCE_BLOCKED",
+      "science_state": "TIER_2_POLICY_ELIGIBLE",
+      "authority_requirement": "SOURCE_RECOVERY_THEN_CANDIDATE_SPECIFIC_EXECUTION_AUTHORITY",
+      "routes": {
+        "CONTINUATION": {
+          "adapter_status": "TO_BUILD_AFTER_SOURCE_PASS",
+          "venue": "UNBOUND",
+          "symbol": "AVAXUSDT",
+          "blocker": "LATEST_EXPECTED_BINANCE_VISION_ARCHIVE_UNAVAILABLE_AND_SIDE_TRANSLATION_NOT_YET_BOUND"
+        }
+      }
+    },
+    {
+      "candidate_id": "ETF-CME-INSTFLOW-001",
+      "execution_state": "SCIENCE_PROTECTED",
+      "science_state": "Q4_NO_PEEK_PROTECTED",
+      "authority_requirement": "NO_LIVE_ACTIVATION_BEFORE_PROTECTED_GATE",
+      "routes": {
+        "LONG": {
+          "adapter_status": "RESEARCH_MAPPING_ONLY",
+          "venue": "MEXC_SPOT",
+          "symbol": "BTCUSDT",
+          "margin_mode": "SPOT_UNLEVERED",
+          "leverage": 1
+        },
+        "SHORT": {
+          "adapter_status": "RESEARCH_MAPPING_ONLY",
+          "venue": "MEXC_FUTURES",
+          "symbol": "BTC_USDT",
+          "margin_mode": "ISOLATED",
+          "leverage": 1
+        }
+      }
+    },
+    {
+      "candidate_id": "TFG-DONCHIAN-REGIME-ADAPTATION-V1",
+      "execution_state": "SCIENCE_GATE",
+      "science_state": "FORWARD_EVIDENCE_ACCUMULATING",
+      "authority_requirement": "READINESS_GATE_AND_MICROLIVE_AUTHORITY_REQUIRED",
+      "routes": {
+        "ANY": {
+          "adapter_status": "PREBUILD_ALLOWED_NO_ORDER",
+          "venue": "UNBOUND",
+          "blocker": "FORWARD_READINESS_NOT_COMPLETE"
+        }
+      }
+    },
+    {
+      "candidate_id": "HTF-DH03-12H-STANDALONE-FORWARD-V1",
+      "execution_state": "SCIENCE_GATE",
+      "science_state": "PROSPECTIVE_FORWARD",
+      "authority_requirement": "PROSPECTIVE_GATE_AND_MICROLIVE_AUTHORITY_REQUIRED",
+      "routes": {
+        "LONG": {
+          "adapter_status": "PREBUILD_ALLOWED_NO_ORDER",
+          "venue": "UNBOUND",
+          "blocker": "PROSPECTIVE_GATE_NOT_COMPLETE"
+        }
+      }
+    },
+    {
+      "candidate_id": "EMA6H-50X200-REGIME-DEPENDENCY-001",
+      "execution_state": "SCIENCE_GATE",
+      "science_state": "REGIME_FORWARD_ONLY",
+      "authority_requirement": "PROSPECTIVE_GATE_AND_MICROLIVE_AUTHORITY_REQUIRED",
+      "routes": {
+        "ANY": {
+          "adapter_status": "PREBUILD_ALLOWED_NO_ORDER",
+          "venue": "UNBOUND",
+          "blocker": "PROSPECTIVE_GATE_NOT_COMPLETE"
+        }
+      }
+    },
+    {
+      "candidate_id": "CIRV",
+      "execution_state": "FORECAST_ONLY",
+      "science_state": "FORECAST_SHADOW_MOTOR",
+      "authority_requirement": "NOT_A_TRADING_EDGE",
+      "routes": {
+        "NONE": {
+          "adapter_status": "NO_ORDER_PATH",
+          "venue": "NONE",
+          "blocker": "FORECAST_ONLY"
+        }
+      }
+    }
+  ]
+}
