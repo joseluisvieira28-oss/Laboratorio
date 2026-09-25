@@ -13,17 +13,13 @@ HORIZONS_MS=(100,500,1000,5000,15000,30000)
 def contemporaneous_features(state):
     d=asdict(state)
     mid=d["mid"]
-    event_time = d["cts"] if d["cts"] is not None else d["ts"]
+    event_time=d["cts"] if d["cts"] is not None else d["ts"]
     return {
         "event_time_ms":event_time,
         "clock_source":"cts" if d["cts"] is not None else "ts",
-        "ts":d["ts"],
-        "cts":d["cts"],
-        "update_id":d["update_id"],
-        "seq":d["seq"],
-        "mid":mid,
-        "best_bid":d["best_bid"],
-        "best_ask":d["best_ask"],
+        "ts":d["ts"],"cts":d["cts"],
+        "update_id":d["update_id"],"seq":d["seq"],
+        "mid":mid,"best_bid":d["best_bid"],"best_ask":d["best_ask"],
         "spread_bps":d["spread_bps"],
         "microprice_displacement_bps":(d["microprice"]-mid)/mid*10000.0,
         "imbalance_l1":d["imbalance_l1"],
@@ -33,11 +29,6 @@ def contemporaneous_features(state):
 
 
 def build_rows(messages: Iterable[Dict], horizons_ms=HORIZONS_MS, anchor_interval_ms=0) -> List[Dict]:
-    """Build causal features at t and executable labels from first state at/after t+h.
-
-    anchor_interval_ms=0 creates an anchor for every message.
-    Positive values create at most one anchor per requested interval using event time.
-    """
     replay=L2Replay()
     horizons=tuple(sorted(int(h) for h in horizons_ms))
     pending=deque()
@@ -46,14 +37,24 @@ def build_rows(messages: Iterable[Dict], horizons_ms=HORIZONS_MS, anchor_interva
     last_anchor_time=None
 
     for msg in messages:
-        st=replay.apply(msg)
-        feat=contemporaneous_features(st)
-        now=feat["event_time_ms"]
+        raw_now=msg.get("cts")
+        if raw_now is None:
+            raw_now=msg.get("ts")
+        if raw_now is None:
+            raise ValueError("missing_event_clock")
 
-        # Resolve already-existing anchors using this current/future state.
+        anchor_due=(
+            anchor_interval_ms==0 or
+            last_anchor_time is None or
+            raw_now-last_anchor_time >= anchor_interval_ms
+        )
+        st=replay.apply(msg,compute_depth_features=anchor_due)
+        now=st.cts if st.cts is not None else st.ts
+
+        # Resolve existing anchors from this current/future state.
         for h in horizons:
             q=waiting[h]
-            while q and now >= q[0]["feature"]["event_time_ms"] + h:
+            while q and now >= q[0]["feature"]["event_time_ms"]+h:
                 item=q.popleft()
                 item["targets"][h]={
                     "mid":st.mid,
@@ -74,9 +75,10 @@ def build_rows(messages: Iterable[Dict], horizons_ms=HORIZONS_MS, anchor_interva
                 row[f"fwd_return_bps_{h}ms"]=(t["mid"]-base_mid)/base_mid*10000.0
             out.append(row)
 
-        if anchor_interval_ms and last_anchor_time is not None and now-last_anchor_time < anchor_interval_ms:
+        if not anchor_due:
             continue
 
+        feat=contemporaneous_features(st)
         item={"feature":feat,"targets":{h:None for h in horizons}}
         pending.append(item)
         for h in horizons:
