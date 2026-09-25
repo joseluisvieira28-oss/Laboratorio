@@ -1,10 +1,10 @@
-name: BUILD MEXC LIVE EXECUTION PREP V0.2 CURRENT API
+name: BUILD MEXC MICRO LIVE V0.3 FIXED CAP
 
 on:
   workflow_dispatch:
   push:
     branches:
-      - mexc-live-execution-prep-v0.2-current-api
+      - mexc-microlive-fixed-cap-v03-2026-09-25
     paths:
       - 'crypto_edge_radar/radar/mexc_*'
       - 'crypto_edge_radar/scripts/mexc_*'
@@ -44,12 +44,12 @@ jobs:
         run: |
           python -m unittest discover -s tests -p "test_mexc_*.py" -v
 
-      - name: Verify V0.2 template cannot authorize a live order
+      - name: Verify V0.3 template cannot authorize a live order
         shell: pwsh
         run: |
           $a=Get-Content ETF_CME_INSTFLOW_001_MICRO_LIVE_EXECUTION_AUTHORITY_TEMPLATE_V0.2.json | ConvertFrom-Json
-          if ($a.status -ne "TEMPLATE_NOT_AUTHORITY") { throw "V0.2 template unexpectedly active" }
-          if ($a.orders_authorized_by_this_template) { throw "V0.2 template authorizes orders" }
+          if ($a.status -ne "TEMPLATE_NOT_AUTHORITY") { throw "V0.3 template unexpectedly active" }
+          if ($a.orders_authorized_by_this_template) { throw "V0.3 template authorizes orders" }\n          if ($a.max_trade_notional_usdt -ne 10) { throw "V0.3 fixed cap not 10 USDT" }
           if ($a.api_place_order_path -ne "/api/v1/private/order/create") { throw "stale place-order API path" }
           if ($a.leverage -ne 1) { throw "template leverage not exactly 1x" }
           if ($a.margin_mode -ne "ISOLATED") { throw "template margin mode not isolated" }
@@ -117,7 +117,7 @@ jobs:
             "$exe sha256=$hash" | Tee-Object -FilePath (Join-Path "dist" ($exe+".sha256.txt"))
           }
 
-      - name: Assemble V0.2 Windows bundle
+      - name: Assemble V0.3 Windows bundle
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path bundle\dist | Out-Null
@@ -133,10 +133,10 @@ jobs:
           Copy-Item ETF_CME_INSTFLOW_001_MICRO_LIVE_EXECUTION_AUTHORITY_TEMPLATE_V0.2.json bundle\
           Copy-Item MEXC_LIVE_EXECUTION_V02_OPERATOR_GUIDE.md bundle\
 
-      - name: Upload V0.2 bundle
+      - name: Upload V0.3 bundle
         uses: actions/upload-artifact@v4
         with:
-          name: mexc-live-execution-prep-v02-current-api
+          name: mexc-microlive-v03-fixed-cap
           path: crypto_edge_radar/bundle/**
           retention-days: 14
           if-no-files-found: error
