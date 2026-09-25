@@ -3,7 +3,7 @@ $ErrorActionPreference="Stop"
 $cycle=Join-Path $PSScriptRoot "Run_MEXC_OPTIONS_Auto_Cycle_V03.ps1"
 $recover=Join-Path $PSScriptRoot "Recover_MEXC_OPTIONS_Exits_V03.ps1"
 
-if ($Live) { & $recover -Live } else { & $recover }
+if ($Live) { & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $recover -Live } else { & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $recover }
 
 Write-Host ("OPTIONS V2.1 V0.3 watchdog started. Mode=" + $(if($Live){"LIVE_GATED"}else{"DRY_RUN"}))
 while ($true) {
@@ -28,7 +28,7 @@ while ($true) {
   while (([DateTime]::UtcNow-$target.Date).TotalSeconds -lt 28 -and $attempt -lt 2) {
     $attempt++
     Write-Host ("UTC cycle attempt " + $attempt + " at " + [DateTime]::UtcNow.ToString("o"))
-    if ($Live) { & $cycle -Live } else { & $cycle }
+    if ($Live) { & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $cycle -Live } else { & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $cycle }
     if ($LASTEXITCODE -eq 0) { break }
     Start-Sleep -Seconds 2
   }
