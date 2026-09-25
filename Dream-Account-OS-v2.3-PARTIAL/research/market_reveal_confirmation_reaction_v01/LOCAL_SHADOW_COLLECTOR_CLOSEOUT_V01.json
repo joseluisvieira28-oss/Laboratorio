@@ -1,8 +1,8 @@
 {
   "document_type": "MRCR_LOCAL_SHADOW_COLLECTOR_CLOSEOUT_V01",
   "lab_id": "MARKET-REVEAL-CONFIRMATION-REACTION-001",
-  "date": "2026-09-24",
-  "classification": "LOCAL_SHADOW_PACKAGE_READY__NOT_EXECUTED_ON_OPERATOR_HOST",
+  "date": "2026-09-25",
+  "classification": "LOCAL_SOURCE_PATH_PASS_OPERATOR_WINDOWS",
   "validated_head_before_closeout": "9cc32d59c7b6ce9f90ddbad064cf25e4d24a3178",
   "validated_ci_run": 36051034433,
   "validated_ci_conclusion": "success",
@@ -57,6 +57,36 @@
     "render_deployment": false,
     "main_merge": false
   },
-  "next_objective_trigger": "OPERATOR_WINDOWS_RUN_RETURNS_COLLECTOR_PASS_AND_OFFLINE_VERIFIER_PASS",
-  "final_state": "SHADOW_COLLECTION_PIPELINE_SYNTHETICALLY_VALIDATED__LOCAL_SOURCE_PROOF_PENDING_OPERATOR_HOST"
+  "next_objective_trigger": "PRETARGET_GOVERNANCE_PREREQUISITES_REMAIN__NO_FURTHER_LOCAL_SOURCE_PROOF_REQUIRED",
+  "final_state": "LOCAL_SOURCE_PATH_PASS__INFRASTRUCTURE_EVIDENCE_ONLY__SCIENCE_NOT_ARMED",
+  "validated_scientific_runtime_head": "aeae95f3819d59ec3b03d7d1fb451f84d2c105c7",
+  "validated_scientific_runtime_ci_run": 36059475527,
+  "validated_scientific_runtime_ci_conclusion": "success",
+  "operator_receipt": {
+    "session_id": "424dcd73-dc4c-4d6c-80fd-290dba53d4c9",
+    "collector_status": "PASS",
+    "offline_verifier_status": "PASS",
+    "transport": "PASS",
+    "subscription_ack": true,
+    "l2_snapshot_seen": true,
+    "persisted_messages": 999,
+    "l2_update_messages": 997,
+    "sequence_anomaly": false,
+    "chain_integrity_pass": true,
+    "sqlite_integrity_pass": true,
+    "recovery_pass": true,
+    "recovered_final_sequence": 998,
+    "authentication_used": false,
+    "account_endpoints_used": false,
+    "signals_computed": false,
+    "outcomes_computed": false,
+    "orders_enabled": false,
+    "raw_payloads_remained_local": true
+  },
+  "implementation_corrections_proven_on_operator_host": [
+    "websockets 15 direct connection uses proxy=None for deterministic no-proxy transport",
+    "Coinbase level2 initial snapshot requires frame ceiling above 4 MB; bounded max_size set to 16 MB",
+    "Coinbase level2 side offer maps to canonical ASK",
+    "Coinbase sequence_num continuity is validated across the full websocket stream, including subscriptions messages; L2-only skips are accepted only when intervening stream sequence is persisted and verified"
+  ]
 }
