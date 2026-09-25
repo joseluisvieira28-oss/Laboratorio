@@ -17,10 +17,7 @@ class UniversalDispatcherTests(unittest.TestCase):
         td = tempfile.TemporaryDirectory()
         self.addCleanup(td.cleanup)
         path = Path(td.name) / "signal.json"
-        payload = {
-            "strategy_id": candidate_id,
-            "direction": direction,
-        }
+        payload = {"strategy_id": candidate_id, "direction": direction}
         if include_key:
             payload["immutable_signal_key"] = f"{candidate_id}:{direction}:TEST"
         path.write_text(json.dumps(payload), encoding="utf-8")
@@ -34,7 +31,10 @@ class UniversalDispatcherTests(unittest.TestCase):
         self.assertTrue(plan["pass"])
         self.assertEqual(plan["venue"], "MEXC_SPOT")
         self.assertEqual(plan["symbol"], "BTCUSDT")
-        self.assertEqual(plan["executor_script"], "crypto_edge_radar/scripts/mexc_tier2_spot_executor.py")
+        self.assertEqual(
+            plan["executor_script"],
+            "crypto_edge_radar/scripts/mexc_tier2_spot_executor.py",
+        )
         self.assertEqual(plan["max_notional_usdt"], 10)
 
     def test_options_short_remains_locked(self) -> None:
@@ -44,7 +44,10 @@ class UniversalDispatcherTests(unittest.TestCase):
         )
         self.assertFalse(plan["pass"])
         self.assertEqual(plan["status"], "EXECUTION_LOCKED")
-        self.assertIn("UNATTENDED_ACCOUNT_IDENTITY_BINDING_NOT_YET_PRESERVED", plan["blockers"])
+        self.assertIn(
+            "UNATTENDED_ACCOUNT_IDENTITY_BINDING_NOT_YET_PRESERVED",
+            plan["blockers"],
+        )
 
     def test_bnb_prebuilt_manifest_cannot_create_order_path(self) -> None:
         plan = build_dispatch_plan(
@@ -53,14 +56,16 @@ class UniversalDispatcherTests(unittest.TestCase):
         )
         self.assertFalse(plan["pass"])
         self.assertEqual(plan["status"], "EXECUTION_LOCKED")
+        self.assertEqual(plan["execution_state"], "PREPARED_LOCKED")
 
-    def test_source_blocked_ced1d_cannot_delegate(self) -> None:
+    def test_ced1d_prebuilt_manifest_remains_locked_while_source_retries(self) -> None:
         plan = build_dispatch_plan(
             MANIFESTS,
             self._signal("CED1D-0031", "CONTINUATION"),
         )
         self.assertFalse(plan["pass"])
-        self.assertEqual(plan["execution_state"], "SOURCE_BLOCKED")
+        self.assertEqual(plan["status"], "EXECUTION_LOCKED")
+        self.assertEqual(plan["execution_state"], "PREPARED_LOCKED")
 
     def test_forward_gate_candidates_cannot_delegate(self) -> None:
         for candidate in (
@@ -82,7 +87,13 @@ class UniversalDispatcherTests(unittest.TestCase):
         self.assertEqual(plan["execution_state"], "SCIENCE_PROTECTED")
 
     def test_cirv_has_no_order_path(self) -> None:
-        plan = build_dispatch_plan(MANIFESTS, self._signal("CIRV", "NONE"))
+        plan = build_dispatch_plan(
+            MANIFESTS,
+            self._signal(
+                "CRYPTO-INTRAWEEK-RV-001 / CIRV-HAR-DOW-BTCETH-001",
+                "NONE",
+            ),
+        )
         self.assertFalse(plan["pass"])
         self.assertEqual(plan["execution_state"], "FORECAST_ONLY")
 
