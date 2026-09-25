@@ -1,0 +1,53 @@
+name: SCL LIQPULL Source Cadence QA V0.2
+on:
+  push:
+    paths:
+      - '.github/workflows/scl-liqpull-source-cadence-v02.yml'
+permissions:
+  contents: read
+jobs:
+  source-cadence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install websockets
+      - run: python research/scalping_forward/scl_liqpull_raw_collector_v01.py --out-dir cadence_smoke --duration-seconds 120 --protocol-commit a07523a90e5f2101705bf4dab3742ba7d6ac9d78
+      - name: Report source timing only
+        run: |
+          python - <<'PY'
+          import json, statistics
+          from pathlib import Path
+          p=next(Path("cadence_smoke").glob("*.jsonl"))
+          counts={}
+          l2=[]
+          for line in p.read_text().splitlines():
+              r=json.loads(line); pl=r["provider_payload"]; ch=pl.get("channel")
+              counts[ch]=counts.get(ch,0)+1
+              if ch=="l2Book" and isinstance(pl.get("data"),dict):
+                  l2.append(int(pl["data"]["time"]))
+          gaps=[b-a for a,b in zip(l2,l2[1:]) if b>=a]
+          report={
+              "message_counts":counts,
+              "l2_snapshots":len(l2),
+              "l2_gap_count":len(gaps),
+              "l2_gap_min_ms":min(gaps) if gaps else None,
+              "l2_gap_median_ms":statistics.median(gaps) if gaps else None,
+              "l2_gap_max_ms":max(gaps) if gaps else None,
+              "l2_gap_le_1500_fraction":sum(g<=1500 for g in gaps)/len(gaps) if gaps else None,
+              "prices_accessed":False,
+              "markouts_computed":False,
+              "pnl_computed":False
+          }
+          Path("cadence_smoke/SOURCE_CADENCE_REPORT_V0_2.json").write_text(json.dumps(report,indent=2,sort_keys=True)+"\n")
+          print(json.dumps(report,indent=2,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: scl-liqpull-source-cadence-v02
+          path: cadence_smoke/
+          if-no-files-found: error
+          retention-days: 7
