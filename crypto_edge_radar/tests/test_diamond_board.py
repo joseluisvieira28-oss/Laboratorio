@@ -26,6 +26,37 @@ class DiamondBoardTests(unittest.TestCase):
         self.assertEqual(row["progress"], "4/50")
         self.assertFalse(row["verdict_allowed_now"])
 
+    def test_options_execution_shadow_is_visible_but_never_authority(self):
+        board = build_diamond_board({
+            "options_v21_metrics": {
+                "resolved_forward_trades": 5,
+                "integrity": {"pass": True},
+                "tier1_forward_gate": {
+                    "minimum_resolved_forward_trades": 50,
+                    "first_50_window_locked": False,
+                    "statistical_gate_pass": False,
+                },
+            },
+            "options_v21_execution_shadow": {
+                "status": "OK",
+                "metrics": {
+                    "status": "PUBLIC_EXECUTION_EVIDENCE_ACCUMULATING",
+                    "complete_execution_observations": 3,
+                    "minimum_execution_observations": 10,
+                    "missed_operational_observations": 0,
+                    "operational_sample_integrity_clean": True,
+                    "capacity_100usdt_coverage": 1.0,
+                    "mean_observable_nonfunding_round_trip_proxy_bps": 14.0,
+                },
+            },
+        })
+        row = board["candidates"]["OPTIONS-SPOTPERP-001-V2.1"]
+        self.assertEqual(row["public_execution_observations"], 3)
+        self.assertEqual(row["public_execution_minimum_observations"], 10)
+        self.assertTrue(row["public_execution_integrity_clean"])
+        self.assertTrue(row["public_execution_is_readiness_not_authority"])
+        self.assertFalse(row["verdict_allowed_now"])
+
     def test_etf_never_surfaces_interim_outcome_metrics(self):
         board = build_diamond_board({
             "etf_cme_signal": {
