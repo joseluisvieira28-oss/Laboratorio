@@ -32,6 +32,9 @@ on:
       - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_shadow_journal_v01.py'
       - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_shadow_recovery_v01.py'
       - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_shadow_collector_hygiene_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_h02_classifier_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_h02_analysis_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_h02_ruleset_v01.py'
       - '.github/workflows/market-reveal-confirmation-reaction-synthetic-ci-v01.yml'
 
 permissions:
@@ -100,6 +103,18 @@ jobs:
       - name: Run authority transition fail-closed tests
         run: |
           python "Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_authority_transition_v01.py" -v
+      - name: Run frozen H02 ruleset integrity gate
+        run: |
+          python "Dream-Account-OS-v2.3-PARTIAL/research/market_reveal_confirmation_reaction_v01/h02_ruleset.py"
+      - name: Run frozen H02 classifier tests
+        run: |
+          python "Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_h02_classifier_v01.py" -v
+      - name: Run frozen H02 primary analysis tests
+        run: |
+          python "Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_h02_analysis_v01.py" -v
+      - name: Run frozen H02 ruleset mutation tests
+        run: |
+          python "Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_h02_ruleset_v01.py" -v
       - name: Run deterministic fault injection stress tests
         run: |
           python "Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_fault_injection_v01.py" -v
