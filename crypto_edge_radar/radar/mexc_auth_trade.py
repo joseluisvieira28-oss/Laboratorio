@@ -104,7 +104,7 @@ class MEXCFuturesMutationTransport:
                 "Request-Time": str(request_time_ms),
                 "Signature": signature,
                 "Content-Type": "application/json",
-                "User-Agent": "crypto-lab-mexc-live-executor/0.2",
+                "User-Agent": "crypto-lab-mexc-live-executor/0.3-options-futures",
             },
         )
         try:
@@ -143,11 +143,11 @@ class MEXCFuturesMutationTransport:
         leverage: int = 1,
     ) -> Any:
         if symbol != "BTC_USDT":
-            raise MEXCTradeTransportError("only BTC_USDT is allowlisted in V0.2")
+            raise MEXCTradeTransportError("only BTC_USDT is allowlisted")
         if position_type not in (1, 2):
             raise MEXCTradeTransportError("position_type must be 1 long or 2 short")
         if leverage != 1:
-            raise MEXCTradeTransportError("V0.2 only permits exactly 1x leverage")
+            raise MEXCTradeTransportError("only exactly 1x leverage is permitted")
         return self._post_json(
             "/api/v1/private/position/change_leverage",
             {
@@ -209,18 +209,18 @@ class MEXCFuturesMutationTransport:
             raise MEXCTradeTransportError("only BTC_USDT is allowlisted in V0.2")
         if not isinstance(volume_contracts, int) or volume_contracts < 1:
             raise MEXCTradeTransportError("volume_contracts must be integer >= 1")
-        if side not in (2, 3):
+        if side not in (1, 2, 3, 4):
             raise MEXCTradeTransportError(
-                "V0.2 ETF-CME Futures path permits only open-short(3) or close-short(2)"
+                "side must be open-long(1), close-short(2), open-short(3), or close-long(4)"
             )
         if position_mode != 1:
-            raise MEXCTradeTransportError("V0.2 requires Hedge Mode (positionMode=1)")
+            raise MEXCTradeTransportError("Hedge Mode is required (positionMode=1)")
         if not EXTERNAL_OID_RE.fullmatch(external_oid):
             raise MEXCTradeTransportError("external_oid must be safe 1..32 chars")
-        if side == 2 and (not isinstance(position_id, int) or position_id <= 0):
-            raise MEXCTradeTransportError("close-short requires a positive position_id")
-        if side == 3 and position_id is not None:
-            raise MEXCTradeTransportError("open-short must not supply position_id")
+        if side in (2, 4) and (not isinstance(position_id, int) or position_id <= 0):
+            raise MEXCTradeTransportError("close order requires a positive position_id")
+        if side in (1, 3) and position_id is not None:
+            raise MEXCTradeTransportError("open order must not supply position_id")
 
         payload: dict[str, Any] = {
             "symbol": symbol,
