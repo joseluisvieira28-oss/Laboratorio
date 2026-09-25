@@ -1,0 +1,29 @@
+name: lvac001-economic-ceiling-mve-v01
+
+on:
+  push:
+    branches:
+      - microstructure-scalping-lab-v0.1
+    paths:
+      - 'research/microstructure_scalping/lvac001_ceiling_mve_v01.py'
+      - 'research/microstructure_scalping/LVAC_001_ECONOMIC_CEILING_FREEZE_V0_1.md'
+      - '.github/workflows/lvac001-economic-ceiling-mve-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lvac001-ceiling:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run LVAC-001 economic ceiling MVE
+        run: python -m research.microstructure_scalping.lvac001_ceiling_mve_v01
+      - name: Print receipt
+        if: always()
+        run: cat research/microstructure_scalping/receipts/lvac001_ceiling_mve_v01.json || true
