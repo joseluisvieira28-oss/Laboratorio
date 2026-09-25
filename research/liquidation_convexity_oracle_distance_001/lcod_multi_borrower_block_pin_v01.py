@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import base64,hashlib,json,re,urllib.request
+import base64,hashlib,json,re,urllib.request,time
 from datetime import datetime,timezone
 from pathlib import Path
 from web3 import Web3
@@ -81,6 +81,19 @@ def holder_addresses(x):
 def h(v):return hashlib.sha256(json.dumps(v,sort_keys=True,default=str,separators=(",",":")).encode()).hexdigest()
 
 w3=Web3(Web3.HTTPProvider(RPC,request_kwargs={"timeout":45}))
+
+def at_block(fn):
+    last=None
+    for attempt in range(8):
+        try:
+            return fn.call(block_identifier=N)
+        except Exception as e:
+            last=e
+            msg=str(e)
+            if "429" not in msg and attempt>=2:
+                raise
+            time.sleep(min(0.5*(2**attempt),8.0))
+    raise last
 final=w3.eth.get_block("finalized")
 N=int(final["number"]);block_hash=final["hash"].hex()
 
@@ -115,7 +128,7 @@ for spoke_l,user_l in ordered:
     spoke=Web3.to_checksum_address(spoke_l)
     user=Web3.to_checksum_address(user_l)
     contract=w3.eth.contract(address=spoke,abi=SPOKE_ABI)
-    try:uad=contract.functions.getUserAccountData(user).call(block_identifier=N)
+    try:uad=at_block(contract.functions.getUserAccountData(user))
     except Exception as e:
         selection_errors.append(f"uad:{spoke_l}:{type(e).__name__}");continue
     if int(uad[4])>0:
@@ -127,29 +140,29 @@ for spoke_l,user_l,uad in selected:
     spoke=Web3.to_checksum_address(spoke_l);user=Web3.to_checksum_address(user_l)
     contract=w3.eth.contract(address=spoke,abi=SPOKE_ABI)
     try:
-        oracle_addr=contract.functions.ORACLE().call(block_identifier=N)
+        oracle_addr=at_block(contract.functions.ORACLE())
         oracle=w3.eth.contract(address=oracle_addr,abi=ORACLE_ABI)
-        count=int(contract.functions.getReserveCount().call(block_identifier=N))
+        count=int(at_block(contract.functions.getReserveCount()))
         weighted=0;debt_value_ray=0;active=0
         for rid in range(count):
-            status=contract.functions.getUserReserveStatus(rid,user).call(block_identifier=N)
+            status=at_block(contract.functions.getUserReserveStatus(rid,user))
             collateral,borrowing=bool(status[0]),bool(status[1])
             if not collateral and not borrowing:continue
             active+=1
-            reserve=contract.functions.getReserve(rid).call(block_identifier=N)
+            reserve=at_block(contract.functions.getReserve(rid))
             underlying,hub_addr,asset_id,decimals,collateral_risk,flags,reserve_key=reserve
-            pos=contract.functions.getUserPosition(rid,user).call(block_identifier=N)
+            pos=at_block(contract.functions.getUserPosition(rid,user))
             drawn_shares,premium_shares,premium_offset,supplied_shares,user_key=map(int,pos)
-            price=int(oracle.functions.getReservePrice(rid).call(block_identifier=N))
+            price=int(at_block(oracle.functions.getReservePrice(rid)))
             scale=10**(18-int(decimals))
             if collateral:
-                cf=int(contract.functions.getDynamicReserveConfig(rid,user_key).call(block_identifier=N)[0])
-                supplied=int(contract.functions.getUserSuppliedAssets(rid,user).call(block_identifier=N))
+                cf=int(at_block(contract.functions.getDynamicReserveConfig(rid,user_key))[0])
+                supplied=int(at_block(contract.functions.getUserSuppliedAssets(rid,user)))
                 if cf>0 and supplied>0: weighted+=supplied*price*scale*cf
             if borrowing:
-                premium_ray=int(contract.functions.getUserPremiumDebtRay(rid,user).call(block_identifier=N))
+                premium_ray=int(at_block(contract.functions.getUserPremiumDebtRay(rid,user)))
                 hub=w3.eth.contract(address=Web3.to_checksum_address(hub_addr),abi=HUB_ABI)
-                drawn_index=int(hub.functions.getAssetDrawnIndex(int(asset_id)).call(block_identifier=N))
+                drawn_index=int(at_block(hub.functions.getAssetDrawnIndex(int(asset_id))))
                 debt_ray=drawn_shares*drawn_index+premium_ray
                 debt_value_ray+=debt_ray*price*scale
         if debt_value_ray<=0: raise RuntimeError("ZERO_DEBT_AT_BLOCK")
