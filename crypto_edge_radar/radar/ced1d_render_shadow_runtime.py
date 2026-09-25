@@ -12,7 +12,7 @@ import tempfile
 from typing import Any
 
 from .evidence import EvidenceStore, PostgresEvidenceStore
-from .ced1d_render_shadow_collector_v03 import FIRST_SIGNAL_DAY
+from .ced1d_render_shadow_collector_v03 import FIRST_SIGNAL_DAY, HORIZON
 
 Store = EvidenceStore | PostgresEvidenceStore
 
@@ -31,6 +31,28 @@ class CED1DRenderShadowRuntimeError(RuntimeError):
 def latest_mature_signal_day(today_utc: date) -> date | None:
     through = today_utc - timedelta(days=3)
     return through if through >= FIRST_SIGNAL_DAY else None
+
+
+BINANCE_VISION_DAILY_PREFIX = "https://data.binance.vision/data/futures/um/daily/"
+
+
+def latest_required_path_day(through_signal_day: date) -> date:
+    return through_signal_day + timedelta(days=HORIZON + 1)
+
+
+def retryable_latest_archive_404(
+    receipt: dict[str, Any],
+    through_signal_day: date,
+) -> bool:
+    if receipt.get("status") != "SHADOW_COLLECTION_FAIL_CLOSED":
+        return False
+    error = str(receipt.get("error") or "")
+    if "FETCH_FAIL:HTTPError:HTTP Error 404" not in error:
+        return False
+    if BINANCE_VISION_DAILY_PREFIX not in error:
+        return False
+    day = latest_required_path_day(through_signal_day).isoformat()
+    return f"-{day}.zip" in error
 
 
 def _root() -> Path:
@@ -185,6 +207,16 @@ class CED1DRenderShadowRunner:
                         f"stderr={proc.stderr[-500:]}"
                     )
                 receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+                if proc.returncode != 0 and retryable_latest_archive_404(receipt, through):
+                    return {
+                        "strategy_id": "CED1D-0031",
+                        "status": "WAITING_SOURCE_ARCHIVE",
+                        "latest_mature_signal_day": through.isoformat(),
+                        "latest_required_path_day": latest_required_path_day(through).isoformat(),
+                        "retryable_source_archive_pending": True,
+                        "pending_reason": receipt.get("error"),
+                        **safety,
+                    }
                 if proc.returncode != 0:
                     failure = {
                         "strategy_id": "CED1D-0031",

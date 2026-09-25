@@ -14,8 +14,10 @@ from radar.ced1d_render_shadow_runtime import (
     CED1DRenderShadowRuntimeError,
     RECEIPT_EVENT,
     LEDGER_EVENT,
+    FAILURE_EVENT,
     _validate_complete_result,
     latest_mature_signal_day,
+    retryable_latest_archive_404,
 )
 
 
@@ -67,6 +69,63 @@ class CED1DRenderShadowRuntimeTests(TestCase):
                 [{"event_id": "CED1D-0031:2026-09-21", "signal_day": "2026-09-21"}],
                 date(2026, 9, 22),
             )
+
+    def test_latest_archive_pending_is_retryable_and_not_persisted_as_failure(self):
+        with tempfile.TemporaryDirectory() as td:
+            store = EvidenceStore(os.path.join(td, "e.sqlite3"))
+            runner = CED1DRenderShadowRunner(store=store)
+
+            latest_url = (
+                "https://data.binance.vision/data/futures/um/daily/"
+                "klines/AVAXUSDT/1m/AVAXUSDT-1m-2026-09-24.zip"
+            )
+
+            def fake_run(cmd, **kwargs):
+                out = Path(cmd[cmd.index("--output") + 1])
+                out.mkdir(parents=True)
+                receipt = {
+                    "document_id": "CED1D_0031_RENDER_SHADOW_RECEIPT_V0.3",
+                    "status": "SHADOW_COLLECTION_FAIL_CLOSED",
+                    "candidate": "CED1D-0031",
+                    "through_signal_day": "2026-09-22",
+                    "error": (
+                        "GateError:FETCH_FAIL:HTTPError:HTTP Error 404: Not Found:"
+                        + latest_url
+                    ),
+                }
+                (out / "CED1D_0031_RENDER_SHADOW_RECEIPT_V0.3.json").write_text(
+                    json.dumps(receipt)
+                )
+                class P:
+                    returncode = 1
+                    stderr = "collector fail-closed"
+                return P()
+
+            with patch(
+                "radar.ced1d_render_shadow_runtime.subprocess.run",
+                side_effect=fake_run,
+            ):
+                result = runner.run_once(now_ms=ms(2026, 9, 25, 0, 10))
+
+            self.assertEqual(result["status"], "WAITING_SOURCE_ARCHIVE")
+            self.assertTrue(result["retryable_source_archive_pending"])
+            self.assertEqual(result["latest_required_path_day"], "2026-09-24")
+            self.assertEqual(len(store.read_payloads(FAILURE_EVENT)), 0)
+            self.assertEqual(len(store.read_payloads(RECEIPT_EVENT)), 0)
+            self.assertEqual(len(store.read_payloads(LEDGER_EVENT)), 0)
+
+    def test_earlier_archive_404_remains_fail_closed_not_retryable(self):
+        receipt = {
+            "status": "SHADOW_COLLECTION_FAIL_CLOSED",
+            "error": (
+                "GateError:FETCH_FAIL:HTTPError:HTTP Error 404: Not Found:"
+                "https://data.binance.vision/data/futures/um/daily/"
+                "klines/AVAXUSDT/1m/AVAXUSDT-1m-2026-09-20.zip"
+            ),
+        }
+        self.assertFalse(
+            retryable_latest_archive_404(receipt, date(2026, 9, 22))
+        )
 
     def test_successful_fake_run_persists_once_and_replays_without_reexecution(self):
         with tempfile.TemporaryDirectory() as td:

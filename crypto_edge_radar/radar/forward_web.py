@@ -49,6 +49,7 @@ RUNTIME_LIVENESS_EVENT = "RADAR_RUNTIME_LIVENESS"
 RUNTIME_GAP_EVENT = "RADAR_RUNTIME_GAP_DETECTED"
 RUNTIME_LIVENESS_BUCKET_MS = 15 * 60 * 1000
 RUNTIME_GAP_ALERT_SECONDS = 30 * 60
+CED1D_ARCHIVE_RETRY_MS = 15 * 60 * 1000
 
 
 def _runtime_identity() -> dict[str, Any]:
@@ -97,6 +98,24 @@ def normalized_poll_interval_seconds(value: float) -> float:
     if value <= 0:
         raise ValueError("poll interval must be positive")
     return max(value, 30.0)
+
+
+def ced1d_runtime_check_due(
+    *,
+    current_day: str,
+    last_check_day: str | None,
+    last_check_ms: int | None,
+    state_status: str | None,
+    now_ms: int,
+) -> bool:
+    if last_check_day != current_day or state_status == "STARTING":
+        return True
+    if state_status == "WAITING_SOURCE_ARCHIVE":
+        return (
+            last_check_ms is None
+            or now_ms - last_check_ms >= CED1D_ARCHIVE_RETRY_MS
+        )
+    return False
 
 
 def _atomic_json_write(path: str, payload: dict[str, Any]) -> None:
@@ -164,6 +183,7 @@ class ForwardShadowRuntime:
         self._last_deploy_drift_check_ms: int | None = None
         self._deploy_drift_state: dict[str, Any] = {"classification": "STARTING"}
         self._last_ced1d_render_shadow_check_date: str | None = None
+        self._last_ced1d_render_shadow_check_ms: int | None = None
         self._ced1d_render_shadow_state: dict[str, Any] = {
             "status": "DISABLED_NOT_ARMED",
             "strategy_id": "CED1D-0031",
@@ -465,14 +485,18 @@ class ForwardShadowRuntime:
                 "live_capital_enabled": False,
             }
             self._ced1d_render_shadow_state = ced1d_render_shadow
-        elif (
-            self._last_ced1d_render_shadow_check_date != ced1d_runtime_day
-            or self._ced1d_render_shadow_state.get("status") == "STARTING"
+        elif ced1d_runtime_check_due(
+            current_day=ced1d_runtime_day,
+            last_check_day=self._last_ced1d_render_shadow_check_date,
+            last_check_ms=self._last_ced1d_render_shadow_check_ms,
+            state_status=self._ced1d_render_shadow_state.get("status"),
+            now_ms=now_ms,
         ):
             try:
                 ced1d_render_shadow = self.ced1d_render_shadow.run_once(now_ms=now_ms)
                 self._ced1d_render_shadow_state = ced1d_render_shadow
                 self._last_ced1d_render_shadow_check_date = ced1d_runtime_day
+                self._last_ced1d_render_shadow_check_ms = now_ms
             except Exception as exc:
                 ced1d_render_shadow = {
                     "status": "FAIL_CLOSED",
@@ -485,6 +509,7 @@ class ForwardShadowRuntime:
                 }
                 self._ced1d_render_shadow_state = ced1d_render_shadow
                 self._last_ced1d_render_shadow_check_date = ced1d_runtime_day
+                self._last_ced1d_render_shadow_check_ms = now_ms
                 errors["ced1d_render_shadow"] = ced1d_render_shadow["error"]
         else:
             ced1d_render_shadow = self._ced1d_render_shadow_state
