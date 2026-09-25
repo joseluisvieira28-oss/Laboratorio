@@ -10,8 +10,10 @@ on:
       - 'crypto_edge_radar/radar/options_v21_spot_live_gate.py'
       - 'crypto_edge_radar/scripts/mexc_*'
       - 'crypto_edge_radar/scripts/options_v21_spot_*'
+      - 'crypto_edge_radar/scripts/options_v21_autolive_supervisor.py'
       - 'crypto_edge_radar/tests/test_mexc_*'
       - 'crypto_edge_radar/tests/test_options_v21_spot_live_gate.py'
+      - 'crypto_edge_radar/tests/test_options_v21_autolive_supervisor.py'
       - 'crypto_edge_radar/windows/*V03*'
       - 'crypto_edge_radar/OPTIONS_SPOTPERP_001_V21_MEXC_SPOT_LONG_AUTHORITY_TEMPLATE_V0.3.json'
       - 'crypto_edge_radar/MEXC_LIVE_EXECUTION_V03_TIER2_OPERATOR_GUIDE.md'
@@ -45,6 +47,8 @@ jobs:
         run: |
           python -m unittest discover -s tests -p "test_mexc_*.py" -v
           python -m unittest -v tests.test_options_v21_spot_live_gate
+          python -m unittest -v tests.test_options_v21_autolive_supervisor
+          python -m unittest -v tests.test_options_v21_live
 
       - name: Verify V0.3 Spot template is inert and capped
         shell: pwsh
@@ -96,6 +100,9 @@ jobs:
       - name: Build OPTIONS Spot exit guard
         run: pyinstaller --clean --onefile --name OptionsV21SpotExitGuard --paths . scripts/options_v21_spot_exit_guard.py
 
+      - name: Build OPTIONS Auto-Live supervisor
+        run: pyinstaller --clean --onefile --name OptionsV21AutoLiveSupervisor --paths . scripts/options_v21_autolive_supervisor.py
+
       - name: Hash binaries
         shell: pwsh
         run: |
@@ -113,6 +120,7 @@ jobs:
           Copy-Item windows\Set_MEXC_Preflight_Secrets.ps1 bundle\windows\
           Copy-Item windows\Run_Tier2_MicroLive_Ready_Check_V03.ps1 bundle\windows\
           Copy-Item windows\READY_CHECK_TIER2_MICROLIVE_V03.bat bundle\windows\
+          Copy-Item windows\ARM_TIER2_AUTOLIVE_V03.ps1 bundle\windows\
           Copy-Item OPTIONS_SPOTPERP_001_V21_MEXC_SPOT_LONG_AUTHORITY_TEMPLATE_V0.3.json bundle\
           Copy-Item MEXC_LIVE_EXECUTION_V03_TIER2_OPERATOR_GUIDE.md bundle\
 
