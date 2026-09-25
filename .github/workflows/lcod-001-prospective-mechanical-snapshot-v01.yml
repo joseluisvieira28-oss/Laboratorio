@@ -18,10 +18,13 @@ jobs:
       matrix: ${{ steps.prep.outputs.matrix }}
       block: ${{ steps.prep.outputs.block }}
       block_hash: ${{ steps.prep.outputs.block_hash }}
+      code_sha: ${{ steps.rev.outputs.code_sha }}
     steps:
       - uses: actions/checkout@v4
         with:
           ref: liquidation-convexity-oracle-distance-001-source-gate-v0.1
+      - id: rev
+        run: echo "code_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -44,7 +47,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: liquidation-convexity-oracle-distance-001-source-gate-v0.1
+          ref: ${{ needs.prepare.outputs.code_sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -73,7 +76,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: liquidation-convexity-oracle-distance-001-source-gate-v0.1
+          ref: ${{ needs.prepare.outputs.code_sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -92,13 +95,15 @@ jobs:
           if-no-files-found: error
 
   reconstruct_and_curve:
-    needs: aggregate_population
+    needs:
+      - prepare
+      - aggregate_population
     runs-on: ubuntu-latest
     timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: liquidation-convexity-oracle-distance-001-source-gate-v0.1
+          ref: ${{ needs.prepare.outputs.code_sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -118,6 +123,8 @@ jobs:
       - name: Open frozen mechanical curve
         run: python research/liquidation_convexity_oracle_distance_001/lcod_open_canonical_curve_v01.py
       - name: Finalize prospective snapshot
+        env:
+          LCOD_SCIENTIFIC_CODE_SHA: ${{ needs.prepare.outputs.code_sha }}
         run: python research/liquidation_convexity_oracle_distance_001/lcod_finalize_forward_snapshot_v01.py
       - name: Persist compact forward snapshot
         run: |
