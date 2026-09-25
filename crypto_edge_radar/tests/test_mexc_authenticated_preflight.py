@@ -103,7 +103,7 @@ class MEXCAuthenticatedPreflightTests(unittest.TestCase):
         self.assertFalse(result["security"]["exchange_mutation_performed"])
         self.assertFalse(result["security"]["order_endpoint_implemented"])
 
-    def test_exchange_preflight_stays_pass_when_only_candidate_minimum_exceeds_budget(self):
+    def test_exchange_preflight_passes_when_venue_minimum_fits_fixed_10_usdt_cap(self):
         times = iter([1_700_000_000_000, 1_700_000_000_100])
         result = run_authenticated_preflight(
             private_client=_PrivateClient(),
