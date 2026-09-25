@@ -1,0 +1,47 @@
+name: SCL LIQPULL Public Source Smoke V0.1
+
+on:
+  push:
+    paths:
+      - '.github/workflows/scl-liqpull-source-smoke-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  public-source-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install websockets
+      - name: Collect 30 seconds of prospective public raw data
+        run: |
+          python research/scalping_forward/scl_liqpull_raw_collector_v01.py             --out-dir source_smoke             --duration-seconds 30             --protocol-commit 5747e3ef38ab1dc490641f78d8a30a467ebfe21e
+      - name: Verify raw manifest is non-mutating
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          manifests=list(Path("source_smoke").glob("*.manifest.json"))
+          assert len(manifests)==1
+          m=json.loads(manifests[0].read_text())
+          assert m["authenticated_endpoint_used"] is False
+          assert m["orders_sent"] is False
+          assert m["exchange_mutation"] is False
+          assert m["outcomes_computed"] is False
+          assert m["historical_backfill"] is False
+          assert m["parse_errors"] == 0
+          assert m["line_count"] > 2
+          print(json.dumps(m, indent=2, sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: scl-liqpull-public-source-smoke-v01
+          path: source_smoke/
+          if-no-files-found: error
+          retention-days: 7
