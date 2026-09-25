@@ -36,10 +36,10 @@ class GateTests(unittest.TestCase):
             "max_simultaneous_positions":1,
             "api_place_order_path":"/api/v1/private/order/create",
             "signal_identity":"sig",
-            "max_initial_isolated_margin_fraction_of_equity":0.001,
-            "max_concurrent_planned_risk_fraction_equity":0.003,
-            "daily_stop_fraction_equity":0.003,
-            "weekly_stop_fraction_equity":0.0075,
+            "max_trade_notional_usdt":10.0,
+            "max_concurrent_planned_risk_fraction_equity":0.10,
+            "daily_stop_fraction_equity":0.02,
+            "weekly_stop_fraction_equity":0.05,
             "entry_target_utc":"2026-09-23T00:00:00Z",
             "exit_target_utc":"2026-09-30T00:00:00Z",
             "max_late_seconds":2,
@@ -143,7 +143,7 @@ class GateTests(unittest.TestCase):
     def test_daily_halt_blocks(self):
         with tempfile.TemporaryDirectory() as td:
             risk=self._risk()
-            risk["daily_realized_loss_fraction_equity"]=0.003
+            risk["daily_realized_loss_fraction_equity"]=0.02
             out=self._run(td,self._authority(),risk=risk)
             self.assertFalse(out["pass"])
             self.assertIn("DAILY_HALT_ACTIVE",out["blockers"])
