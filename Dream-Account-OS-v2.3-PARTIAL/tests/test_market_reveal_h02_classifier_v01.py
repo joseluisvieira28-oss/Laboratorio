@@ -1,3 +1,5 @@
+import hashlib
+import json
 import sys
 import unittest
 from pathlib import Path
@@ -31,6 +33,45 @@ def state(**overrides):
 
 
 class H02ClassifierTests(unittest.TestCase):
+    def test_classifier_spec_fingerprint_and_constants_match(self):
+        spec_path = MODULE_DIR / "H02_CLASSIFIER_SPEC_V01.json"
+        spec = json.loads(spec_path.read_text(encoding="utf-8"))
+        claimed = spec["spec_sha256"]
+        spec["spec_sha256"] = None
+        canonical = json.dumps(
+            spec,
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=False,
+            allow_nan=False,
+        ).encode("utf-8")
+        self.assertEqual(
+            hashlib.sha256(canonical).hexdigest(),
+            claimed,
+        )
+        from h02_classifier import (
+            MIN_DISPLACEMENT_IN_PRE_SPREADS,
+            MAX_SPREAD_VS_MAX_TO_DECISION,
+            MAX_ACCEPTANCE_RETRACEMENT,
+            MAX_ACCEPTANCE_RESISTANCE_DEPTH,
+        )
+        self.assertEqual(
+            MIN_DISPLACEMENT_IN_PRE_SPREADS,
+            spec["quality_gates"]["min_displacement_in_pre_spreads"],
+        )
+        self.assertEqual(
+            MAX_SPREAD_VS_MAX_TO_DECISION,
+            spec["quality_gates"]["max_spread_vs_max_to_decision"],
+        )
+        self.assertEqual(
+            MAX_ACCEPTANCE_RETRACEMENT,
+            spec["acceptance"]["retracement_fraction_lt"],
+        )
+        self.assertEqual(
+            MAX_ACCEPTANCE_RESISTANCE_DEPTH,
+            spec["acceptance"]["directional_resistance_depth_vs_pre_lt"],
+        )
+
     def test_acceptance_long(self):
         out = classify_venue_state(state())
         self.assertEqual(out.state, ACCEPTANCE)
