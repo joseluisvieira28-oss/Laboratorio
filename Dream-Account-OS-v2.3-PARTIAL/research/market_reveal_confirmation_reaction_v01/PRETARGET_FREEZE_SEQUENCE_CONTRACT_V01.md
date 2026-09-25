@@ -1,5 +1,5 @@
 # MRCR V0.1 — Pretarget Freeze Sequence Contract
-Status: ACTIVE GOVERNANCE HARDENING / SCIENCE UNARMED
+Status: ACTIVE / H02 DESIGN FROZEN / TARGET LOCKED
 Date: 2026-09-25
 
 ## Purpose
@@ -21,17 +21,18 @@ precede the scientific freeze.
    - target_observation must remain false;
    - it grants zero promotion credit.
 
-3. OFFICIAL CALENDAR COMPLETENESS
-   - the complete prospective official calendar required by the frozen design
-     must exist and be fingerprinted;
-   - no inferred or unofficial future dates may satisfy this gate.
+3. SCIENTIFIC DESIGN FREEZE
+   - COMPLETE: event families, venue/native symbols, anchor, decision clock,
+     availability mode, depth definition, classifier, abstention rule, outcome
+     horizon, benchmark, inference and economics flag are frozen in
+     H02_SCIENTIFIC_RULESET_V01;
+   - contaminated historical outcomes were not used to choose them.
 
-4. SCIENTIFIC FREEZE
-   - event families, venue/native symbols, anchor, decision clock, availability
-     mode, depth definition, classifier, abstention rule, outcome horizon,
-     benchmark and economics flag/models are frozen before target opening;
-   - contaminated historical outcomes may not be used to choose them;
-   - protocol and implementation manifests are fingerprinted.
+4. OFFICIAL CALENDAR + FINAL PROTOCOL BINDING
+   - PENDING: the complete prospective official calendar required by the frozen
+     design must exist and be fingerprinted;
+   - no inferred or unofficial future dates may satisfy this gate;
+   - only then may protocol and implementation manifests be bound and frozen.
 
 5. TARGET-OPEN AUTHORITY
    - only after a valid scientific freeze may a second ACTIVE authority receipt
