@@ -233,6 +233,23 @@ class MEXCSpotMutationTransport(_BaseClient):
             raise MEXCSpotV3Error("order response not object")
         return row
 
+    def test_market_sell(self, *, quantity: str, client_order_id: str, symbol: str = ALLOWED_SYMBOL) -> dict[str, Any]:
+        self._check(symbol)
+        row = self._signed(
+            "POST",
+            "/api/v3/order/test",
+            {
+                "symbol": symbol,
+                "side": "SELL",
+                "type": "MARKET",
+                "quantity": quantity,
+                "newClientOrderId": client_order_id,
+            },
+        )
+        if not isinstance(row, dict):
+            raise MEXCSpotV3Error("order/test response not object")
+        return row
+
     def market_sell(self, *, quantity: str, client_order_id: str, symbol: str = ALLOWED_SYMBOL) -> dict[str, Any]:
         self._check(symbol)
         row = self._signed(
