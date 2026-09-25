@@ -168,6 +168,22 @@ class MEXCSpotAuthenticatedReadOnlyClient(_BaseClient):
         except Exception as exc:
             raise MEXCSpotV3Error("invalid server time") from exc
 
+    def exchange_info(self, symbol: str = ALLOWED_SYMBOL) -> dict[str, Any]:
+        if symbol != ALLOWED_SYMBOL:
+            raise MEXCSpotV3Error("symbol outside V0.3 allowlist")
+        row = self._public("/api/v3/exchangeInfo?" + urlencode({"symbol": symbol}))
+        if not isinstance(row, dict):
+            raise MEXCSpotV3Error("exchangeInfo response not object")
+        symbols = row.get("symbols")
+        if isinstance(symbols, list):
+            match = next((x for x in symbols if isinstance(x, dict) and str(x.get("symbol","")).upper()==symbol), None)
+            if match is None:
+                raise MEXCSpotV3Error("exchangeInfo missing BTCUSDT")
+            return match
+        if str(row.get("symbol","")).upper() == symbol:
+            return row
+        raise MEXCSpotV3Error("exchangeInfo missing BTCUSDT")
+
     def default_symbols(self) -> set[str]:
         row = self._public("/api/v3/defaultSymbols")
         values = row
