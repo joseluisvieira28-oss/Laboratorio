@@ -58,6 +58,7 @@ def build_state(*,preflight_path:Path,receipt_root:Path,now:datetime|None=None)-
 
     active=[]
     planned_fraction=0.0
+    planned_notional_usdt=0.0
     for path in receipt_root.rglob("ACTIVE_TRADE_STATE.json"):
         try:
             row=_load(path)
@@ -67,10 +68,14 @@ def build_state(*,preflight_path:Path,receipt_root:Path,now:datetime|None=None)-
             continue
         if (path.parent/"POST_TRADE_RECONCILIATION.json").exists():
             continue
-        frac=float(row.get("planned_risk_fraction_equity",0))
+        frac=float(row.get("planned_risk_fraction_equity",0) or 0)
         if frac<0:
             raise ValueError("negative planned risk fraction")
         planned_fraction+=frac
+        notional=float(row.get("planned_notional_usdt",0) or 0)
+        if notional<0:
+            raise ValueError("negative planned notional")
+        planned_notional_usdt+=notional
         active.append(str(path))
 
     # Exchange truth dominates local receipt count if they disagree.
@@ -95,14 +100,21 @@ def build_state(*,preflight_path:Path,receipt_root:Path,now:datetime|None=None)-
         "daily_realized_loss_fraction_equity":daily_loss_usdt/equity,
         "weekly_realized_loss_fraction_equity":weekly_loss_usdt/equity,
         "concurrent_planned_risk_fraction_equity":planned_fraction,
+        "concurrent_planned_notional_usdt":planned_notional_usdt,
         "open_micro_live_positions":open_micro_live_positions,
         "local_active_trade_receipts":active,
         "reconciliations_scanned":counted,
         "policy":{
-            "planned_validation_margin_fraction_equity":0.001,
-            "max_simultaneous_planned_risk_fraction_equity":0.003,
-            "daily_stop_fraction_equity":0.003,
-            "weekly_stop_fraction_equity":0.0075
+            "policy_id":"TIER2-MICROLIVE-POLICY-V1.0-FROZEN-2026-09-24",
+            "maximum_notional_usdt_equivalent":10.0,
+            "maximum_total_account_exposure_usdt_equivalent":10.0,
+            "maximum_concurrent_positions":1,
+            "daily_realized_loss_kill_usdt":2.0,
+            "rolling_7d_realized_loss_kill_usdt":5.0,
+            "leverage":1,
+            "futures_margin_mode":"ISOLATED",
+            "cross_margin":False,
+            "auto_margin_add":False
         }
     }
 
