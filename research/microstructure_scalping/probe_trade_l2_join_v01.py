@@ -24,7 +24,7 @@ def apply(book,rows):
         else: book[p]=q
 
 def load_l2(path):
-    bids={}; asks={}; states=[]; prev=None
+    bids={}; asks={}; states=[]; prev=None; missing_cts=0
     with zipfile.ZipFile(path) as zf:
         if zf.testzip() is not None: raise RuntimeError("L2_CRC_FAIL")
         name=[n for n in zf.namelist() if not n.endswith("/")][0]
@@ -38,14 +38,17 @@ def load_l2(path):
                 else:
                     apply(bids,d.get("b")); apply(asks,d.get("a"))
                 cts=m.get("cts")
-                if cts is None: raise RuntimeError("MISSING_CTS")
-                if prev is not None and cts<prev: raise RuntimeError("NONMONOTONIC_CTS")
+                if cts is None:
+                    missing_cts += 1
+                    cts=m.get("ts")
+                if cts is None: raise RuntimeError("MISSING_EVENT_CLOCK")
+                if prev is not None and cts<prev: raise RuntimeError("NONMONOTONIC_EVENT_CLOCK")
                 prev=cts
                 if not bids or not asks: raise RuntimeError("EMPTY_BOOK")
                 bb=max(bids); ba=min(asks)
                 if bb>=ba: raise RuntimeError("CROSSED_BOOK")
                 states.append((int(cts),bb,ba))
-    return states
+    return states,missing_cts
 
 def audit_trades(path,states):
     times=[x[0] for x in states]
@@ -104,8 +107,10 @@ def main():
     try:
         receipt["l2_bytes"]=dl(L2_URL,l2)
         receipt["trade_bytes"]=dl(TRADES_URL,tr)
-        states=load_l2(l2)
+        states,missing_cts=load_l2(l2)
         receipt["l2_states"]=len(states)
+        receipt["l2_missing_cts_fallback_to_ts"]=missing_cts
+        receipt["l2_cts_coverage_rate"]=1.0-(missing_cts/len(states))
         receipt["audit"]=audit_trades(tr,states)
         a=receipt["audit"]; st=a["stats"]
         # Alignment gate is intentionally permissive about BBO consistency because
@@ -114,6 +119,7 @@ def main():
             len(states)>=100_000 and
             st["overlap_trades"]>=10_000 and
             st["timestamp_nonmonotonic"]==0 and
+            receipt["l2_cts_coverage_rate"]>=0.999 and
             (a["nearest_l2_lag_ms"] or {}).get("p95",9999)<=250
         ) else "BLOCKED"
     except Exception as e:
