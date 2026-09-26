@@ -1,0 +1,34 @@
+name: ETH-STAKING-FLOW-001 CBT transition source probe V0.1.5
+
+on:
+  push:
+    branches:
+      - eth-staking-flow-v3-stagea-cbt-transition-v015
+    paths:
+      - 'research/eth_staking_flow/ETH_STAKING_FLOW_001_V3_STAGEA_CBT_TRANSITION_SOURCE_REMEDIATION_V0_1_5.md'
+      - 'research/eth_staking_flow/cbt_transition_source_probe_v015.py'
+      - '.github/workflows/eth-staking-flow-v3-stagea-cbt-transition-probe-v015.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: eth-staking-flow-v3-stagea-cbt-transition-v015
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Probe frozen CBT transports and schema
+        run: python research/eth_staking_flow/cbt_transition_source_probe_v015.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ETH_STAKING_FLOW_001_CBT_TRANSITION_SOURCE_PROBE_V0_1_5
+          path: artifacts/ETH_STAKING_FLOW_001_CBT_TRANSITION_SOURCE_PROBE_V0_1_5.json
+          if-no-files-found: error
