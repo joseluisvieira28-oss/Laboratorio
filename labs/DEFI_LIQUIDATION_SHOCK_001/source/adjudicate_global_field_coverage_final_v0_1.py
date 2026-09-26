@@ -28,7 +28,7 @@ required={
  "marginfi_save0c_field":(["MARGINFI_SAVE0C_FIELD_ENRICHMENT_POPULATION_RECEIPT_V0.1.json"],"MARGINFI_SAVE0C_FIELD_ENRICHMENT_POPULATION_PASS"),
  "drift_field":(["DRIFT_FIELD_ENRICHMENT_POPULATION_RECEIPT_V0.1.json"],"DRIFT_FIELD_ENRICHMENT_POPULATION_PASS"),
  "kamino_save11_units":(["KAMINO_SAVE11_UNIT_METADATA_POPULATION_RECEIPT_V0.1.json"],"KAMINO_SAVE11_UNIT_METADATA_POPULATION_PASS"),
- "save0c_units":(["SAVE0C_UNIT_METADATA_POPULATION_RECEIPT_V0.2.json","SAVE0C_UNIT_METADATA_POPULATION_RECEIPT_V0.1.json"],"SAVE0C_UNIT_METADATA_POPULATION_PASS"),
+ "save0c_units":(["SAVE0C_UNIT_METADATA_POPULATION_RECEIPT_V0.3.json","SAVE0C_UNIT_METADATA_POPULATION_RECEIPT_V0.2.json","SAVE0C_UNIT_METADATA_POPULATION_RECEIPT_V0.1.json"],"SAVE0C_UNIT_METADATA_POPULATION_PASS"),
  "marginfi_units":(["MARGINFI_BANK_UNIT_REGISTRY_RECEIPT_V0.2.json","MARGINFI_BANK_UNIT_REGISTRY_RECEIPT_V0.1.json"],"MARGINFI_BANK_UNIT_REGISTRY_POPULATION_PASS"),
  "drift_units":(["DRIFT_MARKET_UNIT_REGISTRY_POPULATION_RECEIPT_V0.1.json"],"DRIFT_MARKET_UNIT_REGISTRY_POPULATION_PASS"),
 }
@@ -73,11 +73,29 @@ for key,(names,expected) in required.items():
       "unresolved_required_field_count","guessed_decimal_count","guessed_mapping_count"
     ],key)
     if key=="save0c_units":
-        if int(obj.get("collateral_underlying_unmapped_event_count") or 0)!=0:
-            errors.append({"reason":"save0c_unmapped_collateral_underlying","count":obj.get("collateral_underlying_unmapped_event_count")})
+        save_zero_fields=[
+          "collateral_underlying_unmapped_event_count",
+          "still_unmapped_event_count",
+          "unique_still_unmapped_reserve_count",
+          "pending_reserve_count",
+          "source_conflict_count",
+          "event_conflict_count",
+          "error_count"
+        ]
+        for f in save_zero_fields:
+            if f in obj and int(obj.get(f) or 0)!=0:
+                errors.append({"reason":"save0c_required_zero_field_nonzero","field":f,"value":obj.get(f),"selected_receipt":name})
     if key=="marginfi_units":
-        if int(obj.get("unmapped_asset_bank_count") or 0)!=0:
-            errors.append({"reason":"marginfi_unmapped_asset_banks","count":obj.get("unmapped_asset_bank_count")})
+        marginfi_zero_fields=[
+          "unmapped_asset_bank_count",
+          "still_unmapped_bank_count",
+          "pending_account_count",
+          "conflict_count",
+          "error_count"
+        ]
+        for f in marginfi_zero_fields:
+            if f in obj and int(obj.get(f) or 0)!=0:
+                errors.append({"reason":"marginfi_required_zero_field_nonzero","field":f,"value":obj.get(f),"selected_receipt":name})
     if key=="drift_units":
         if (obj.get("unresolved_spot_market_indexes") or []) or (obj.get("unresolved_perp_market_indexes") or []):
             errors.append({"reason":"drift_unresolved_market_indexes",
@@ -95,6 +113,7 @@ receipt={
  "schema_version":"0.1","lab_id":"DEFI-LIQUIDATION-SHOCK-001",
  "classification":classification,
  "frozen_gate":"GLOBAL_FIELD_COVERAGE_FINAL_GATE_FREEZE_V0.1.md",
+ "version_precedence_addendum":"GLOBAL_FIELD_COVERAGE_FINAL_GATE_VERSION_PRECEDENCE_ADDENDUM_V0.2.md",
  "checks":checks,"error_count":len(errors),"errors":errors,
  "source_authorities_already_closed":{
    "kamino_save11":"KAMINO_SAVE11_EVENT_CENSUS_SOURCE_PASS + independent audit PASS",
