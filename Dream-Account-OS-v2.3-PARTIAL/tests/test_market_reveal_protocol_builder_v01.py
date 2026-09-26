@@ -127,6 +127,10 @@ class ProtocolBuilderTests(unittest.TestCase):
             {"mode": "BPS_BAND", "value": 10},
         )
         self.assertEqual(protocol["outcome"]["future_horizon_seconds"], 900)
+        self.assertEqual(
+            protocol["freeze"]["ruleset_sha256"],
+            RULESET["ruleset_sha256"],
+        )
 
     def test_calendar_family_mutation_fails(self):
         calendar = synthetic_calendar()
