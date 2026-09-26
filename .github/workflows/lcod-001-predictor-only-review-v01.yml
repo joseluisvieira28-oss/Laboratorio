@@ -26,6 +26,9 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: liquidation-convexity-oracle-distance-001-source-gate-v0.1
+          fetch-depth: 0
+      - name: Require complete forward provenance chain PASS
+        run: python research/liquidation_convexity_oracle_distance_001/lcod_verify_forward_provenance_chain_v01.py
       - name: Run fail-closed predictor-only review
         run: python research/liquidation_convexity_oracle_distance_001/lcod_predictor_only_viability_review_v01.py
       - name: Verify current accumulation gate remains closed
