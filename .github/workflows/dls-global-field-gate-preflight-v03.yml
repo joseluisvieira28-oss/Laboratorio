@@ -1,0 +1,52 @@
+name: DLS Global Field Gate Preflight V0.3
+
+on:
+  push:
+    branches:
+      - dls-field-enrichment-v01
+    paths:
+      - .github/workflows/dls-global-field-gate-preflight-v03.yml
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Compile current field-gate authority tooling
+        run: |
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/build_drift_historical_market_unit_registry_v0_3.py
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/aggregate_drift_field_enrichment_v0_1.py
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/adjudicate_drift_market_unit_registry_population_v0_3.py
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/build_save0c_historical_reserve_registry_v0_1.py
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/resolve_save0c_unit_metadata_partial_v0_3.py
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/resolve_marginfi_bank_unit_partial_v0_2.py
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/adjudicate_global_field_coverage_final_v0_1.py
+
+      - name: Verify frozen authority documents exist
+        run: |
+          test -f labs/DEFI_LIQUIDATION_SHOCK_001/GLOBAL_FIELD_COVERAGE_FINAL_GATE_FREEZE_V0.1.md
+          test -f labs/DEFI_LIQUIDATION_SHOCK_001/GLOBAL_FIELD_COVERAGE_FINAL_GATE_VERSION_PRECEDENCE_ADDENDUM_V0.2.md
+          test -f labs/DEFI_LIQUIDATION_SHOCK_001/DRIFT_MARKET_UNIT_REGISTRY_TEMPORAL_ADDENDUM_V0.3.md
+          test -f labs/DEFI_LIQUIDATION_SHOCK_001/DRIFT_HISTORICAL_MARKET_UNIT_REGISTRY_TEMPORAL_AUTHORITY_RECEIPT_V0.3.json
+          test -f labs/DEFI_LIQUIDATION_SHOCK_001/SAVE0C_HISTORICAL_RESERVE_REGISTRY_FREEZE_V0.1.md
+          test -f labs/DEFI_LIQUIDATION_SHOCK_001/SAVE0C_UNIT_METADATA_SOURCE_COMPLETION_ADDENDUM_V0.3.md
+          test -f labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_BANK_UNIT_SOURCE_COMPLETION_FREEZE_V0.2.md
+
+      - name: Verify marker-gated workflows exist
+        run: |
+          test -f .github/workflows/dls-drift-field-enrichment-finalize-v03.yml
+          test -f .github/workflows/dls-save0c-unit-source-completion-v03.yml
+          test -f .github/workflows/dls-marginfi-bank-unit-source-completion-v02.yml
+
+      - name: Firewall
+        run: echo SOURCE_ONLY_TRUE
