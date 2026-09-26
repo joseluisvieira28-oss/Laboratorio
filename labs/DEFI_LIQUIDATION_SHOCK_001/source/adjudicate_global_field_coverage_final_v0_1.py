@@ -24,28 +24,38 @@ def find_json(name):
     return first,None
 
 required={
- "kamino_save11_field":("KAMINO_SAVE11_FIELD_ENRICHMENT_POPULATION_RECEIPT_V0.1.json","KAMINO_SAVE11_FIELD_ENRICHMENT_POPULATION_PASS"),
- "marginfi_save0c_field":("MARGINFI_SAVE0C_FIELD_ENRICHMENT_POPULATION_RECEIPT_V0.1.json","MARGINFI_SAVE0C_FIELD_ENRICHMENT_POPULATION_PASS"),
- "drift_field":("DRIFT_FIELD_ENRICHMENT_POPULATION_RECEIPT_V0.1.json","DRIFT_FIELD_ENRICHMENT_POPULATION_PASS"),
- "kamino_save11_units":("KAMINO_SAVE11_UNIT_METADATA_POPULATION_RECEIPT_V0.1.json","KAMINO_SAVE11_UNIT_METADATA_POPULATION_PASS"),
- "save0c_units":("SAVE0C_UNIT_METADATA_POPULATION_RECEIPT_V0.1.json","SAVE0C_UNIT_METADATA_POPULATION_PASS"),
- "marginfi_units":("MARGINFI_BANK_UNIT_REGISTRY_RECEIPT_V0.1.json","MARGINFI_BANK_UNIT_REGISTRY_POPULATION_PASS"),
- "drift_units":("DRIFT_MARKET_UNIT_REGISTRY_POPULATION_RECEIPT_V0.1.json","DRIFT_MARKET_UNIT_REGISTRY_POPULATION_PASS"),
+ "kamino_save11_field":(["KAMINO_SAVE11_FIELD_ENRICHMENT_POPULATION_RECEIPT_V0.1.json"],"KAMINO_SAVE11_FIELD_ENRICHMENT_POPULATION_PASS"),
+ "marginfi_save0c_field":(["MARGINFI_SAVE0C_FIELD_ENRICHMENT_POPULATION_RECEIPT_V0.1.json"],"MARGINFI_SAVE0C_FIELD_ENRICHMENT_POPULATION_PASS"),
+ "drift_field":(["DRIFT_FIELD_ENRICHMENT_POPULATION_RECEIPT_V0.1.json"],"DRIFT_FIELD_ENRICHMENT_POPULATION_PASS"),
+ "kamino_save11_units":(["KAMINO_SAVE11_UNIT_METADATA_POPULATION_RECEIPT_V0.1.json"],"KAMINO_SAVE11_UNIT_METADATA_POPULATION_PASS"),
+ "save0c_units":(["SAVE0C_UNIT_METADATA_POPULATION_RECEIPT_V0.2.json","SAVE0C_UNIT_METADATA_POPULATION_RECEIPT_V0.1.json"],"SAVE0C_UNIT_METADATA_POPULATION_PASS"),
+ "marginfi_units":(["MARGINFI_BANK_UNIT_REGISTRY_RECEIPT_V0.2.json","MARGINFI_BANK_UNIT_REGISTRY_RECEIPT_V0.1.json"],"MARGINFI_BANK_UNIT_REGISTRY_POPULATION_PASS"),
+ "drift_units":(["DRIFT_MARKET_UNIT_REGISTRY_POPULATION_RECEIPT_V0.1.json"],"DRIFT_MARKET_UNIT_REGISTRY_POPULATION_PASS"),
 }
-errors=[];checks={}
-for key,(name,expected) in required.items():
-    obj,conf=find_json(name)
+
+def select_receipt(names):
+    for name in names:
+        obj,conf=find_json(name)
+        if obj is not None or conf is not None:
+            return name,obj,conf
+    return None,None,None
+
+errors=[];checks={};selected={}
+for key,(names,expected) in required.items():
+    name,obj,conf=select_receipt(names)
+    selected[key]=(name,obj)
     if conf:
         errors.append(conf)
     if obj is None:
-        checks[key]={"present":False,"expected":expected}
-        errors.append({"reason":"missing_required_receipt","key":key,"name":name})
+        checks[key]={"present":False,"expected":expected,"candidate_names":names}
+        errors.append({"reason":"missing_required_receipt","key":key,"candidate_names":names})
         continue
     actual=obj.get("classification")
     ok=(actual==expected)
-    checks[key]={"present":True,"classification":actual,"expected":expected,"pass":ok}
+    checks[key]={"present":True,"selected_receipt":name,"classification":actual,"expected":expected,"pass":ok}
     if not ok:
-        errors.append({"reason":"required_classification_mismatch","key":key,"actual":actual,"expected":expected})
+        errors.append({"reason":"required_classification_mismatch","key":key,"selected_receipt":name,
+                       "actual":actual,"expected":expected})
 
 # Explicit zero-missing/conflict checks from available receipts.
 def nonzero(obj,fields,prefix):
@@ -54,8 +64,8 @@ def nonzero(obj,fields,prefix):
         if isinstance(v,(int,float)) and v!=0:
             errors.append({"reason":"required_zero_field_nonzero","receipt":prefix,"field":f,"value":v})
 
-for key,(name,expected) in required.items():
-    obj,_=find_json(name)
+for key,(names,expected) in required.items():
+    name,obj=selected.get(key,(None,None))
     if not obj:continue
     nonzero(obj,[
       "missing_count","extra_count","duplicate_count","semantic_conflict_count",
