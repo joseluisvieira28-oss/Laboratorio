@@ -67,7 +67,7 @@ if cp.exists():
             ent=agg.setdefault(target,{"target_identity":target,"contributors":set(),
                                       "first_t0":t0,"last_t0":t0,
                                       "discovery_cluster_count":0,"oos_cluster_count":0,
-                                      "monthly_probe_dates":{},"contributor_counts":{}})
+                                      "monthly_probe_dates":{},"daily_counts":{},"contributor_counts":{}})
             ent["contributors"].add((protocol,cls))
             ck=str(protocol)+"\u241f"+str(cls)
             cc=ent["contributor_counts"].setdefault(ck,{
@@ -80,17 +80,39 @@ if cp.exists():
                 day=t0[:10]
                 prior=ent["monthly_probe_dates"].get(month)
                 if prior is None or day<prior: ent["monthly_probe_dates"][month]=day
+                dc=ent["daily_counts"].setdefault(day,{
+                    "date":day,"discovery_cluster_count":0,"oos_cluster_count":0,
+                    "contributor_counts":{}})
+                dcc=dc["contributor_counts"].setdefault(ck,{
+                    "protocol":protocol,"instruction_class":cls,
+                    "discovery_cluster_count":0,"oos_cluster_count":0})
+            else:
+                dc=None
+                dcc=None
             if split=="discovery":
                 ent["discovery_cluster_count"]+=1
                 cc["discovery_cluster_count"]+=1
+                if dc is not None:
+                    dc["discovery_cluster_count"]+=1
+                    dcc["discovery_cluster_count"]+=1
             elif split=="oos":
                 ent["oos_cluster_count"]+=1
                 cc["oos_cluster_count"]+=1
+                if dc is not None:
+                    dc["oos_cluster_count"]+=1
+                    dcc["oos_cluster_count"]+=1
 
 requirements=[]
 for target,ent in sorted(agg.items()):
     contributors=[{"protocol":p,"instruction_class":c} for p,c in sorted(ent.pop("contributors"))]
     ent["monthly_probe_dates"]=[ent["monthly_probe_dates"][m] for m in sorted(ent["monthly_probe_dates"])]
+    daily=[]
+    for day in sorted(ent["daily_counts"]):
+        d=ent["daily_counts"][day]
+        d["contributor_counts"]=sorted(d["contributor_counts"].values(),
+                                        key=lambda x:(str(x.get("protocol")),str(x.get("instruction_class"))))
+        daily.append(d)
+    ent["daily_counts"]=daily
     ent["contributor_counts"]=sorted(ent["contributor_counts"].values(),
                                      key=lambda x:(str(x.get("protocol")),str(x.get("instruction_class"))))
     inferential=any(
