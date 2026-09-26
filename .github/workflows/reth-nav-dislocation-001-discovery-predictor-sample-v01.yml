@@ -1,0 +1,57 @@
+name: RETH-NAV-DISLOCATION-001 Discovery predictor sample gate V0.1
+
+on:
+  push:
+    branches:
+      - reth-nav-dislocation-001-source-gate-v01
+    paths:
+      - 'research/reth_nav_dislocation_001/RETH_DISCOVERY_PREDICTOR_TRIGGER_V0.1.md'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sample_gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: reth-nav-dislocation-001-source-gate-v01
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-save ethers@6.15.0
+      - name: Require calibration PASS
+        run: |
+          python - <<'PY'
+          import json
+          p="research/reth_nav_dislocation_001/RETH_STATE_CALIBRATION_RECEIPT_V0.1.json"
+          x=json.load(open(p))
+          assert x["classification"]=="PREDICTOR_STATE_CALIBRATION_PASS", x
+          PY
+      - name: Build outcome-blind Discovery predictor sample
+        env:
+          ETH_RPC_URL: https://rpc-eth.blockmachine.io
+        run: node research/reth_nav_dislocation_001/reth_discovery_predictor_sample_gate_v01.mjs
+      - name: Persist sample-gate evidence
+        shell: bash
+        run: |
+          cp artifacts/reth_discovery_predictor/RETH_DISCOVERY_PREDICTOR_SAMPLE_GATE_RECEIPT_V0.1.json /tmp/reth_disc_receipt.json
+          cp artifacts/reth_discovery_predictor/RETH_DISCOVERY_PREDICTOR_ROWS_V0.1.json /tmp/reth_disc_rows.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin reth-nav-dislocation-001-source-gate-v01
+          git checkout -B reth-discovery-predictor-persist origin/reth-nav-dislocation-001-source-gate-v01
+          cp /tmp/reth_disc_receipt.json research/reth_nav_dislocation_001/RETH_DISCOVERY_PREDICTOR_SAMPLE_GATE_RECEIPT_V0.1.json
+          cp /tmp/reth_disc_rows.json research/reth_nav_dislocation_001/RETH_DISCOVERY_PREDICTOR_ROWS_V0.1.json
+          git add research/reth_nav_dislocation_001/RETH_DISCOVERY_PREDICTOR_SAMPLE_GATE_RECEIPT_V0.1.json research/reth_nav_dislocation_001/RETH_DISCOVERY_PREDICTOR_ROWS_V0.1.json
+          git commit -m "RETH-NAV-DISLOCATION-001: persist Discovery predictor sample gate [skip ci]"
+          git push origin HEAD:reth-nav-dislocation-001-source-gate-v01
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: reth-discovery-predictor-sample-gate-v01
+          path: artifacts/reth_discovery_predictor/*
+          if-no-files-found: error
