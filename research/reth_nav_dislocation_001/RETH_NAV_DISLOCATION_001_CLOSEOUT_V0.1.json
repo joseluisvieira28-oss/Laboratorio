@@ -1,0 +1,68 @@
+{
+  "lab_id": "RETH-NAV-DISLOCATION-001",
+  "stage": "CLOSEOUT_V0.1",
+  "captured_at_utc": "2026-09-26T22:01:00Z",
+  "final_classification": "DISCOVERY_PREDICTOR_INSUFFICIENT_SAMPLE",
+  "source_gate": {
+    "classification": "SOURCE_PASS",
+    "source_transport": "BlockMachine historical state + PublicNode headers",
+    "block_binding": "EIP-1898 blockHash requireCanonical",
+    "split_transport_equivalence": "PASS",
+    "equivalence_blocks": [
+      20000000,
+      22000000,
+      24000000
+    ],
+    "block_hash_equality_all": true,
+    "exact_scientific_return_comparisons_passed": 12
+  },
+  "calibration_census": {
+    "classification": "PREDICTOR_SOURCE_CENSUS_PASS",
+    "expected_count": 556,
+    "valid_count": 556,
+    "invalid_count": 0,
+    "row_set_sha256": "e921eca64a3265533e95a87f381a23434b13490c99e643b91527972c828a2402",
+    "q05_ppb": -7390227,
+    "q95_ppb": 5729902,
+    "calibration_state_counts": {
+      "DISCOUNT_EXTREME": 28,
+      "NEUTRAL": 500,
+      "PREMIUM_EXTREME": 28
+    }
+  },
+  "discovery_predictor_gate": {
+    "classification": "DISCOVERY_PREDICTOR_INSUFFICIENT_SAMPLE",
+    "expected_state_count": 139,
+    "valid_state_count": 139,
+    "invalid_state_count": 0,
+    "state_counts": {
+      "DISCOUNT_EXTREME": 0,
+      "NEUTRAL": 139,
+      "PREMIUM_EXTREME": 0
+    },
+    "discovery_min_dislocation_ppb": -5830317,
+    "discovery_max_dislocation_ppb": 635364,
+    "boundary_predecessor_state": "NEUTRAL",
+    "boundary_predecessor_block": 23992800,
+    "transition_event_count": 0,
+    "discount_extreme_event_count": 0,
+    "premium_extreme_event_count": 0,
+    "predictor_evidence_sha256": "1dd62a9acf3fa864b07699266071896f4f9ffd811839b54865ece2daa84f9e2c"
+  },
+  "frozen_minimum_sample": {
+    "total_events": 30,
+    "discount_events": 10,
+    "premium_events": 10
+  },
+  "mechanism_discovery_opened": false,
+  "future_dislocation_outcomes_opened": false,
+  "market_returns_opened": false,
+  "oos_opened": false,
+  "protected_holdout_opened": false,
+  "pnl_opened": false,
+  "live_trading": false,
+  "mutation": false,
+  "promotion_credit": 0,
+  "rescue_allowed": false,
+  "resolution": "CLOSE exact lab. Do not widen q05/q95, change cadence, alter de-clustering, switch pool, change horizon, or open mechanism outcomes. A future investigation must be a scientifically distinct child hypothesis with its own pre-outcome freeze."
+}
