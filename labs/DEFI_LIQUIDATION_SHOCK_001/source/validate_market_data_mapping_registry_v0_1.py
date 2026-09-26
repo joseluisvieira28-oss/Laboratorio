@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import argparse,hashlib,json
+import argparse,datetime as dt,hashlib,json
 from collections import defaultdict
 from pathlib import Path
 
@@ -20,6 +20,9 @@ def find_one(root,name):
     hits=sorted(Path(root).rglob(name))
     if not hits:return None,None
     return json.loads(hits[0].read_text()),str(hits[0])
+
+def parse_dt(s):
+    return dt.datetime.fromisoformat(str(s).replace("Z","+00:00"))
 
 req,rp=find_one(args.requirements,"MARKET_MAPPING_REQUIREMENTS_RECEIPT_V0.1.json")
 reg=json.loads(Path(args.registry).read_text()) if Path(args.registry).exists() else None
@@ -50,6 +53,7 @@ if missing:errors.append({"reason":"missing_mapping_targets","targets":missing})
 
 QUOTE_RANK={"USDT":0,"USD":1,"USDC":2}
 direct_targets=set(); unavailable_targets=set()
+listing_by_target={}
 
 for target,need in requirements.items():
     row=by_target.get(target)
@@ -64,7 +68,7 @@ for target,need in requirements.items():
     if status=="BINANCE_DIRECT":
         direct_targets.add(target)
         required_fields=["symbol","base_asset","quote_asset","venue_metadata_authority",
-                         "archive_route_template","checksum_route_template"]
+                         "archive_route_template","checksum_route_template","listing_start_utc"]
         if not isinstance(row.get("current_product_metadata_expected"),bool):
             errors.append({"reason":"current_product_metadata_expected_missing","target_identity":target})
         if row.get("current_product_metadata_expected") is False and not row.get("historical_product_metadata_authority"):
@@ -77,8 +81,6 @@ for target,need in requirements.items():
             errors.append({"reason":"unsupported_quote","target_identity":target,"quote":quote})
         elif QUOTE_RANK[quote]>0 and not row.get("higher_priority_quote_unavailable_evidence"):
             errors.append({"reason":"lower_priority_quote_without_evidence","target_identity":target,"quote":quote})
-        if row.get("listing_start_utc") is None and row.get("listing_start_status")!="SOURCE_NOT_AVAILABLE":
-            errors.append({"reason":"listing_boundary_missing","target_identity":target})
 
     elif status=="OKX_DIRECT":
         direct_targets.add(target)
@@ -99,11 +101,55 @@ for target,need in requirements.items():
     else:
         errors.append({"reason":"invalid_mapping_status","target_identity":target,"status":status})
 
-# Source-only sample adequacy after deterministic mapping exclusion.
-mapped_discovery=sum(int(requirements[t].get("discovery_cluster_count") or 0) for t in direct_targets if t in requirements)
-mapped_oos=sum(int(requirements[t].get("oos_cluster_count") or 0) for t in direct_targets if t in requirements)
-unmapped_discovery=sum(int(requirements[t].get("discovery_cluster_count") or 0) for t in unavailable_targets if t in requirements)
-unmapped_oos=sum(int(requirements[t].get("oos_cluster_count") or 0) for t in unavailable_targets if t in requirements)
+    if target in direct_targets:
+        try:
+            listing_by_target[target]=parse_dt(row.get("listing_start_utc"))
+        except Exception:
+            errors.append({"reason":"invalid_listing_start_utc","target_identity":target,
+                           "value":row.get("listing_start_utc")})
+
+# Retain only source clusters after a source-supported listing boundary.
+mapped_discovery=0; mapped_oos=0
+unmapped_discovery=0; unmapped_oos=0
+prelisting_discovery=0; prelisting_oos=0
+mapped_sub=defaultdict(lambda:{"discovery_cluster_count":0,"oos_cluster_count":0})
+eligible_probe_dates_by_target={}
+
+for target,need in requirements.items():
+    if target in unavailable_targets:
+        unmapped_discovery+=int(need.get("discovery_cluster_count") or 0)
+        unmapped_oos+=int(need.get("oos_cluster_count") or 0)
+        continue
+    if target not in direct_targets or target not in listing_by_target:
+        continue
+
+    listing=listing_by_target[target]
+    month_first={}
+    for daily in need.get("daily_counts") or []:
+        try:
+            day_start=parse_dt(str(daily.get("date"))+"T00:00:00Z")
+        except Exception:
+            errors.append({"reason":"invalid_daily_source_date","target_identity":target,"entry":daily});continue
+        # Conservative: if listing occurred at any point after day start, exclude the full listing day.
+        eligible=day_start>=listing
+        d=int(daily.get("discovery_cluster_count") or 0)
+        o=int(daily.get("oos_cluster_count") or 0)
+        if not eligible:
+            prelisting_discovery+=d;prelisting_oos+=o
+            continue
+
+        mapped_discovery+=d;mapped_oos+=o
+        month=str(daily.get("date"))[:7]
+        day=str(daily.get("date"))[:10]
+        prior=month_first.get(month)
+        if prior is None or day<prior:month_first[month]=day
+
+        for cc in daily.get("contributor_counts") or []:
+            k=(cc.get("protocol"),cc.get("instruction_class"))
+            mapped_sub[k]["discovery_cluster_count"]+=int(cc.get("discovery_cluster_count") or 0)
+            mapped_sub[k]["oos_cluster_count"]+=int(cc.get("oos_cluster_count") or 0)
+
+    eligible_probe_dates_by_target[target]=[month_first[m] for m in sorted(month_first)]
 
 sample_errors=[]
 if mapped_discovery<1000:
@@ -111,33 +157,25 @@ if mapped_discovery<1000:
 if mapped_oos<500:
     sample_errors.append({"reason":"mapped_oos_clusters_below_gate","observed":mapped_oos,"required":500})
 
-mapped_sub=defaultdict(lambda:{"discovery_cluster_count":0,"oos_cluster_count":0})
-for t in direct_targets:
-    need=requirements.get(t) or {}
-    for cc in need.get("contributor_counts") or []:
-        k=(cc.get("protocol"),cc.get("instruction_class"))
-        mapped_sub[k]["discovery_cluster_count"]+=int(cc.get("discovery_cluster_count") or 0)
-        mapped_sub[k]["oos_cluster_count"]+=int(cc.get("oos_cluster_count") or 0)
-
 post_mapping_subgroups=[]
 for sg in (req or {}).get("source_sample_subgroups") or []:
     k=(sg.get("protocol"),sg.get("class"))
-    c=mapped_sub[k]
+    sc=mapped_sub[k]
     original=sg.get("status")
     if original=="INFERENTIAL_DISCOVERY_AND_OOS":
         status=("INFERENTIAL_DISCOVERY_AND_OOS"
-                if c["discovery_cluster_count"]>=200 and c["oos_cluster_count"]>=100
+                if sc["discovery_cluster_count"]>=200 and sc["oos_cluster_count"]>=100
                 else "DESCRIPTIVE_ONLY_AFTER_MARKET_MAPPING")
     elif original=="EXTERNAL_CONFIRMATORY_INFERENTIAL":
         status=("EXTERNAL_CONFIRMATORY_INFERENTIAL"
-                if c["oos_cluster_count"]>=200
+                if sc["oos_cluster_count"]>=200
                 else "DESCRIPTIVE_ONLY_AFTER_MARKET_MAPPING")
     else:
         status="DESCRIPTIVE_ONLY_INSUFFICIENT_INDEPENDENT_N"
     post_mapping_subgroups.append({
         "protocol":k[0],"class":k[1],"original_status":original,
-        "mapped_discovery_clusters":c["discovery_cluster_count"],
-        "mapped_oos_clusters":c["oos_cluster_count"],
+        "mapped_discovery_clusters":sc["discovery_cluster_count"],
+        "mapped_oos_clusters":sc["oos_cluster_count"],
         "post_mapping_status":status
     })
 
@@ -146,7 +184,7 @@ classification=("MARKET_DATA_MAPPING_REGISTRY_PASS"
                 else "MARKET_DATA_MAPPING_REGISTRY_BLOCKED_FAIL_CLOSED")
 
 receipt={
- "schema_version":"0.2","lab_id":"DEFI-LIQUIDATION-SHOCK-001","classification":classification,
+ "schema_version":"0.3","lab_id":"DEFI-LIQUIDATION-SHOCK-001","classification":classification,
  "requirements_classification":(req or {}).get("classification"),
  "requirements_count":len(requirements),"mapping_row_count":len(rows),
  "direct_mapped_target_count":len(direct_targets),"unavailable_target_count":len(unavailable_targets),
@@ -156,9 +194,12 @@ receipt={
    "mapped_oos_cluster_count":mapped_oos,
    "excluded_unavailable_discovery_cluster_count":unmapped_discovery,
    "excluded_unavailable_oos_cluster_count":unmapped_oos,
+   "excluded_prelisting_discovery_cluster_count":prelisting_discovery,
+   "excluded_prelisting_oos_cluster_count":prelisting_oos,
    "discovery_required":1000,"oos_required":500,
    "pass":not sample_errors
  },
+ "eligible_probe_dates_by_target":eligible_probe_dates_by_target,
  "post_mapping_subgroups":post_mapping_subgroups,
  "sample_error_count":len(sample_errors),"sample_errors":sample_errors,
  "error_count":len(errors),"errors":errors,
