@@ -35,14 +35,7 @@ def binance_event(o,local_ns):
             "venue_side":pressure,"pressure":pressure,"notional":binance_notional(o)}
 
 def calc_returns(entry,future,pressure):
-    if pressure=="SELL":
-        taker=(entry["bid"]-future["ask"])/entry["bid"]*10000.0
-        maker=(entry["ask"]-future["bid"])/entry["ask"]*10000.0
-    else:
-        taker=(future["bid"]-entry["ask"])/entry["ask"]*10000.0
-        maker=(future["ask"]-entry["bid"])/entry["bid"]*10000.0
-    return {"taker_gross_bps":taker,"mexc_taker_net_bps":taker-16.0,
-            "maker_ceiling_gross_bps":maker,"mexc_maker_ceiling_net_bps":maker-12.0}
+    return executable_returns(entry["bid"],entry["ask"],future["bid"],future["ask"],pressure)
 
 def fetch_oi(symbol):
     url=OI_URL+"?"+urllib.parse.urlencode({"symbol":symbol})
