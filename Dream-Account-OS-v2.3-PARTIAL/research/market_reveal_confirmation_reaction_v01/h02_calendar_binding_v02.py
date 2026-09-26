@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from collections import Counter
 from datetime import date, datetime, timezone
+import hashlib
+import json
 from typing import Any, Mapping
 from urllib.parse import urlparse
 
@@ -34,6 +36,22 @@ FOMC_ALLOWED_PLAN_STATUSES = {
     "OFFICIAL_CONFIRMED",
     "OFFICIAL_TENTATIVE",
 }
+
+
+def _canonical_json_bytes(value: Any) -> bytes:
+    return json.dumps(
+        value,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+        allow_nan=False,
+    ).encode("utf-8")
+
+
+def annual_plan_sha256(manifest: Mapping[str, Any]) -> str:
+    clean = json.loads(json.dumps(manifest))
+    clean["annual_plan_sha256"] = None
+    return hashlib.sha256(_canonical_json_bytes(clean)).hexdigest()
 
 
 def _host_matches(url: Any, expected_host: str) -> bool:
@@ -175,6 +193,12 @@ def validate_annual_plan_manifest(
         blockers.append("INFERRED_DATES_MUST_BE_FALSE")
     if manifest.get("target_observation_authorized") is not False:
         blockers.append("ANNUAL_PLAN_CANNOT_AUTHORIZE_TARGET")
+
+    claimed_hash = manifest.get("annual_plan_sha256")
+    if not isinstance(claimed_hash, str) or not claimed_hash:
+        blockers.append("ANNUAL_PLAN_SHA256_MISSING")
+    elif claimed_hash != annual_plan_sha256(manifest):
+        blockers.append("ANNUAL_PLAN_SHA256_MISMATCH")
 
     return len(blockers) == 0, tuple(sorted(set(blockers)))
 
