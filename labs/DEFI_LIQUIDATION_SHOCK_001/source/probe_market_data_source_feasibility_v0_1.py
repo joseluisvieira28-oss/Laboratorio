@@ -80,8 +80,11 @@ for target,need in sorted(needs.items()):
         symbols=(obj or {}).get("symbols") or []
         exact=[x for x in symbols if x.get("symbol")==symbol and x.get("baseAsset")==base and x.get("quoteAsset")==quote]
         res["product_metadata_exact_match"]=len(exact)==1
-        if len(exact)!=1:
-            res["reason"]="binance_product_metadata_mismatch"
+        current_expected=row.get("current_product_metadata_expected")
+        historical_ok=(current_expected is False and bool(row.get("historical_product_metadata_authority")))
+        res["historical_product_authority_used"]=bool(len(exact)!=1 and historical_ok)
+        if len(exact)!=1 and not historical_ok:
+            res["reason"]="binance_product_metadata_mismatch_without_historical_authority"
             if inferential:errors.append({"reason":"inferential_binance_product_mismatch","target_identity":target,"http_status":st})
             results.append(res);continue
 
