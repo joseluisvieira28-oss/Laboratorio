@@ -2,6 +2,15 @@ name: MRCR H02 Official Calendar Watch V0.2
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - market-reveal-confirmation-reaction-v0.1
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/market_reveal_confirmation_reaction_v01/official_2027_calendar_live_probe.py'
+      - '.github/workflows/mrcr-h02-official-calendar-watch-v02.yml'
+  # Scheduled workflows execute from the repository default branch only.
+  # This cron is intentionally staged and will not become active unless this
+  # workflow later exists on the default branch under separate merge authority.
   schedule:
     - cron: '17 7 * * *'
 
