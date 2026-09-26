@@ -11,6 +11,19 @@ from xml.etree import ElementTree
 
 
 API = "https://api.github.com/repos/joseluisvieira28-oss/Laboratorio/actions/runs"
+DH03_SAFE_PROGRESS_URL = (
+    "https://raw.githubusercontent.com/joseluisvieira28-oss/Laboratorio/"
+    "htf-dh03-12h-standalone-forward-v0.1/crypto_edge_radar/DH03_SAFE_PROGRESS.json"
+)
+DH03_SAFE_PROGRESS_SCHEMA = "DH03_SAFE_PROGRESS_V0.1"
+DH03_SAFE_PROGRESS_COUNTS = (
+    "signals",
+    "price_exits",
+    "final_resolutions",
+    "funding_pending",
+    "unresolved_price_paths",
+    "overlap_skipped",
+)
 _API_COOLDOWN_UNTIL_EPOCH = 0.0
 COLLECTORS = {
     "HTF-DH03-12H-STANDALONE-FORWARD-V1": {
@@ -75,6 +88,124 @@ def fetch_runs(*, branch: str, timeout: int = 15) -> list[dict[str, Any]]:
     if not isinstance(runs, list):
         raise ExternalFreshnessError("GitHub public runs payload missing workflow_runs")
     return runs
+
+
+def _safe_nonnegative_int(value: Any, name: str) -> int:
+    if isinstance(value, bool):
+        raise ExternalFreshnessError(f"DH03 safe progress invalid boolean count:{name}")
+    try:
+        out = int(value)
+    except (TypeError, ValueError) as exc:
+        raise ExternalFreshnessError(f"DH03 safe progress invalid count:{name}") from exc
+    if out < 0:
+        raise ExternalFreshnessError(f"DH03 safe progress negative count:{name}")
+    return out
+
+
+def validate_dh03_safe_progress(
+    payload: dict[str, Any],
+    *,
+    expected_run_id: int,
+) -> dict[str, Any]:
+    if payload.get("schema_version") != DH03_SAFE_PROGRESS_SCHEMA:
+        raise ExternalFreshnessError("DH03 safe progress schema mismatch")
+    if payload.get("strategy_id") != "HTF-DH03-12H-STANDALONE-FORWARD-V1":
+        raise ExternalFreshnessError("DH03 safe progress strategy mismatch")
+
+    run_id = _safe_nonnegative_int(
+        payload.get("source_workflow_run_id"),
+        "source_workflow_run_id",
+    )
+    if run_id != int(expected_run_id):
+        raise ExternalFreshnessError(
+            f"DH03 safe progress run mismatch:{run_id}:{int(expected_run_id)}"
+        )
+
+    for key in (
+        "outcomes_included",
+        "prices_included",
+        "returns_included",
+        "r_multiples_included",
+        "profit_factor_included",
+        "trade_rows_included",
+        "symbol_breakdown_included",
+        "science_changed",
+        "authenticated_exchange_api_used",
+        "orders_created",
+        "exchange_mutation_performed",
+        "live_capital_enabled",
+    ):
+        if payload.get(key) is not False:
+            raise ExternalFreshnessError(
+                f"DH03 safe progress firewall field not false:{key}"
+            )
+
+    counts = payload.get("counts")
+    if not isinstance(counts, dict):
+        raise ExternalFreshnessError("DH03 safe progress counts missing")
+    if set(counts) != set(DH03_SAFE_PROGRESS_COUNTS):
+        raise ExternalFreshnessError("DH03 safe progress count keys mismatch")
+    normalized_counts = {
+        key: _safe_nonnegative_int(counts.get(key), key)
+        for key in DH03_SAFE_PROGRESS_COUNTS
+    }
+
+    allowed_top = {
+        "schema_version",
+        "strategy_id",
+        "source_workflow_run_id",
+        "checked_at_utc",
+        "latest_archive_day",
+        "collector_status",
+        "used_as_forward_evidence",
+        "counts",
+        "outcomes_included",
+        "prices_included",
+        "returns_included",
+        "r_multiples_included",
+        "profit_factor_included",
+        "trade_rows_included",
+        "symbol_breakdown_included",
+        "science_changed",
+        "authenticated_exchange_api_used",
+        "orders_created",
+        "exchange_mutation_performed",
+        "live_capital_enabled",
+    }
+    extras = sorted(set(payload) - allowed_top)
+    if extras:
+        raise ExternalFreshnessError(
+            f"DH03 safe progress unexpected fields:{extras}"
+        )
+
+    out = dict(payload)
+    out["source_workflow_run_id"] = run_id
+    out["counts"] = normalized_counts
+    return out
+
+
+def fetch_dh03_safe_progress(
+    *,
+    expected_run_id: int,
+    timeout: int = 15,
+) -> dict[str, Any]:
+    request = Request(
+        DH03_SAFE_PROGRESS_URL,
+        headers={"User-Agent": "crypto-edge-radar-dh03-safe-progress/1"},
+    )
+    try:
+        with urlopen(request, timeout=timeout) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+    except Exception as exc:
+        raise ExternalFreshnessError(
+            f"DH03 safe progress unavailable:{type(exc).__name__}:{exc}"
+        ) from exc
+    if not isinstance(payload, dict):
+        raise ExternalFreshnessError("DH03 safe progress payload not object")
+    return validate_dh03_safe_progress(
+        payload,
+        expected_run_id=expected_run_id,
+    )
 
 
 def fetch_public_fallback(*, branch: str, workflow: str, timeout: int = 15) -> dict[str, Any]:
@@ -164,7 +295,7 @@ def collector_freshness(
     delay = max(0.0, (now - next_due).total_seconds())
     conclusion = latest.get("conclusion")
     freshness = _classification(conclusion=conclusion, delay_seconds=delay)
-    return {
+    state = {
         "strategy_id": candidate,
         "collector_status": "OK" if conclusion == "success" else "FAIL_CLOSED",
         "last_attempt_utc": _iso(attempted),
@@ -186,6 +317,36 @@ def collector_freshness(
         "exchange_mutation_performed": False,
         "live_capital_enabled": False,
     }
+    if (
+        candidate == "HTF-DH03-12H-STANDALONE-FORWARD-V1"
+        and conclusion == "success"
+        and latest.get("id") is not None
+    ):
+        try:
+            safe = fetch_dh03_safe_progress(
+                expected_run_id=int(latest["id"]),
+                timeout=timeout,
+            )
+            counts = safe["counts"]
+            state.update({
+                "eligible_event_count": counts["signals"],
+                "resolved_forward_count": counts["final_resolutions"],
+                "price_exit_count": counts["price_exits"],
+                "funding_pending_count": counts["funding_pending"],
+                "unresolved_price_path_count": counts["unresolved_price_paths"],
+                "overlap_skipped_count": counts["overlap_skipped"],
+                "count_visibility": "SAFE_AGGREGATE_PROGRESS_BOUND_TO_WORKFLOW_RUN__NO_OUTCOMES_IMPORTED",
+                "safe_progress_schema": safe["schema_version"],
+                "safe_progress_checked_at_utc": safe.get("checked_at_utc"),
+                "safe_progress_latest_archive_day": safe.get("latest_archive_day"),
+                "safe_progress_outcomes_imported": False,
+            })
+        except Exception as exc:
+            state["count_visibility"] = (
+                "SAFE_PROGRESS_UNAVAILABLE_FAIL_CLOSED__NO_OUTCOMES_IMPORTED"
+            )
+            state["safe_progress_error"] = f"{type(exc).__name__}:{exc}"
+    return state
 
 
 def all_external_freshness(*, now: datetime | None = None, timeout: int = 15) -> dict[str, Any]:
