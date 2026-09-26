@@ -21,3 +21,5 @@ Hard boundaries:
 - terminal failures close the exact lab with no rescue.
 
 Runner-pool remediation V0.1E: macos-15 retry, scientific design unchanged.
+
+Boundary-header failover V0.1D retry: raw eth_getBlockByNumber, PublicNode primary, BlockMachine fallback; source_gate_evaluated required before terminal SOURCE_BLOCKED.
