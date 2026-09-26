@@ -1,0 +1,30 @@
+name: licp001-feature-calibration-v01
+
+on:
+  push:
+    branches:
+      - liquidation-cascade-propagation-v0.1
+    paths:
+      - 'research/liquidation_cascade/LICP_001_FEATURE_CALIBRATION_FREEZE_V0_1.md'
+      - 'research/liquidation_cascade/licp001_feature_calibration_v01.py'
+      - '.github/workflows/licp001-feature-calibration-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  calibrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install 'websockets>=13,<16'
+      - name: Outcome-blind 5-minute feature calibration
+        run: python research/liquidation_cascade/licp001_feature_calibration_v01.py
+      - name: Print calibration receipt
+        if: always()
+        run: cat research/liquidation_cascade/receipts/licp001_feature_calibration_v01.json || true
