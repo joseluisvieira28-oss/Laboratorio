@@ -106,6 +106,63 @@ def verify_snapshot(snapshot: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+
+def verify_preseeded_target_prefix(
+    source_snapshot: dict[str, Any],
+    target_snapshot: dict[str, Any],
+) -> dict[str, Any]:
+    """Prove that a non-empty target is an exact prefix of the verified source."""
+    source_verified = verify_snapshot(source_snapshot)
+    target_verified = verify_snapshot(target_snapshot)
+    source_events = source_snapshot["events"]
+    target_events = target_snapshot["events"]
+    source_keys = source_snapshot["event_keys"]
+    target_keys = target_snapshot["event_keys"]
+
+    if len(target_events) > len(source_events):
+        raise ValueError("preseeded target is ahead of source")
+
+    for idx, target_row in enumerate(target_events):
+        if target_row != source_events[idx]:
+            raise ValueError(f"preseeded target event divergence at id {target_row.get('id')}")
+
+    source_key_map = {
+        (str(row["event_type"]), str(row["event_key"])): int(row["event_id"])
+        for row in source_keys
+    }
+    for row in target_keys:
+        key = (str(row["event_type"]), str(row["event_key"]))
+        event_id = int(row["event_id"])
+        if key not in source_key_map:
+            raise ValueError(f"preseeded target has extra event key: {key[0]}:{key[1]}")
+        if source_key_map[key] != event_id:
+            raise ValueError(f"preseeded target event-key divergence: {key[0]}:{key[1]}")
+        if event_id > len(target_events):
+            raise ValueError(f"preseeded target key points beyond target prefix: {event_id}")
+
+    expected_target_keys = [
+        row for row in source_keys if int(row["event_id"]) <= len(target_events)
+    ]
+    if len(target_keys) != len(expected_target_keys):
+        raise ValueError("preseeded target is missing event-key bindings within its event prefix")
+
+    classification = (
+        "PRESEEDED_TARGET_EXACT_EQUAL"
+        if len(target_events) == len(source_events) and len(target_keys) == len(source_keys)
+        else "PRESEEDED_TARGET_EXACT_PREFIX"
+    )
+    return {
+        "classification": classification,
+        "source_event_count": source_verified["event_count"],
+        "source_key_count": source_verified["key_count"],
+        "target_event_count": target_verified["event_count"],
+        "target_key_count": target_verified["key_count"],
+        "target_chain_head_sha256": target_verified["chain_head_sha256"],
+        "missing_event_suffix_count": len(source_events) - len(target_events),
+        "missing_key_suffix_count": len(source_keys) - len(target_keys),
+        "target_mutation": False,
+    }
+
 def restore_snapshot(
     snapshot: dict[str, Any],
     *,
