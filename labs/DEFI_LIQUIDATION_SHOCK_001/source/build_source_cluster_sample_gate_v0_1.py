@@ -234,8 +234,8 @@ for p in s0_files:
 # Original: kamino-YYYYMM.json / save11-YYYYMM.json
 # Recovery: unit-kamino-YYYYMM.json
 ks_root=Path(args.ks_units)
-expected_orig_k=[f"kamino-{y}{m:02d}.json" for y,m in [(2023,11),(2023,12),(2024,1),(2024,2),(2024,3),(2024,4),(2024,5)]]
-expected_rec_k=[f"unit-kamino-2024{m:02d}.json" for m in range(6,13)]
+expected_orig_k=[f"kamino-{y}{m:02d}.json" for y,m in [(2023,11),(2023,12),(2024,1),(2024,2)]]
+expected_rec_k=[f"unit-kamino-2024{m:02d}.json" for m in range(3,13)]
 expected_save=[f"save11-2024{m:02d}.json" for m in range(7,13)]
 ks_files=[]
 
