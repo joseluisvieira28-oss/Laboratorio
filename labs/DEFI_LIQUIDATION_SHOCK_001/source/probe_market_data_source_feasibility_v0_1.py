@@ -28,6 +28,7 @@ if not reg:errors.append({"reason":"mapping_registry_missing"})
 
 needs={x["target_identity"]:x for x in (req or {}).get("requirements") or []}
 mapping={x["target_identity"]:x for x in (reg or {}).get("mappings") or [] if x.get("target_identity")}
+eligible_probes=(val or {}).get("eligible_probe_dates_by_target") or {}
 
 def http_json(url,retries=5):
     last=None
@@ -68,8 +69,8 @@ for target,need in sorted(needs.items()):
          "monthly_probe_count":len(need.get("monthly_probe_dates") or []),"route_pass":False}
 
     if status=="MARKET_MAPPING_UNAVAILABLE":
-        res["reason"]="mapping_unavailable"
-        if inferential:errors.append({"reason":"inferential_mapping_unavailable","target_identity":target})
+        res["reason"]="mapping_unavailable_source_exclusion"
+        res["route_pass"]=False
         results.append(res);continue
 
     if status=="BINANCE_DIRECT":
@@ -85,19 +86,12 @@ for target,need in sorted(needs.items()):
         res["historical_product_authority_used"]=bool(len(exact)!=1 and historical_ok)
         if len(exact)!=1 and not historical_ok:
             res["reason"]="binance_product_metadata_mismatch_without_historical_authority"
-            if inferential:errors.append({"reason":"inferential_binance_product_mismatch","target_identity":target,"http_status":st})
+            errors.append({"reason":"binance_product_mapping_contradiction","target_identity":target,"http_status":st})
             results.append(res);continue
 
-        listing=row.get("listing_start_utc")
-        listing_date=parse_date(listing) if listing else None
         probes=[]
         all_ok=True
-        for day in need.get("monthly_probe_dates") or []:
-            d=parse_date(day)
-            if listing_date and d<listing_date:
-                probes.append({"date":day,"status":"PRE_LISTING_SOURCE_BOUNDARY"})
-                all_ok=False
-                continue
+        for day in eligible_probes.get(target) or []:
             zip_url=str(row.get("archive_route_template")).replace("{symbol}",symbol).replace("{date}",day)
             sum_url=str(row.get("checksum_route_template")).replace("{symbol}",symbol).replace("{date}",day)
             zs,zh=head(zip_url);cs,ch=head(sum_url)
@@ -106,8 +100,8 @@ for target,need in sorted(needs.items()):
             if not ok:all_ok=False
         res["monthly_probes"]=probes
         res["route_pass"]=all_ok
-        if inferential and not all_ok:
-            errors.append({"reason":"inferential_binance_route_probe_failed","target_identity":target})
+        if not all_ok:
+            errors.append({"reason":"binance_route_probe_failed_for_claimed_direct_target","target_identity":target})
         results.append(res);continue
 
     if status=="OKX_DIRECT":
@@ -121,8 +115,8 @@ for target,need in sorted(needs.items()):
         res["history_payload_probed"]=False
         res["route_authority_present"]=bool(row.get("historical_candle_route_authority"))
         res["route_pass"]=len(exact)==1 and res["route_authority_present"]
-        if inferential and not res["route_pass"]:
-            errors.append({"reason":"inferential_okx_metadata_route_failed","target_identity":target})
+        if not res["route_pass"]:
+            errors.append({"reason":"okx_metadata_route_failed_for_claimed_direct_target","target_identity":target})
         results.append(res);continue
 
     res["reason"]="invalid_mapping_status"
@@ -135,6 +129,8 @@ receipt={"schema_version":"0.1","lab_id":"DEFI-LIQUIDATION-SHOCK-001","classific
  "mapping_validation_classification":(val or {}).get("classification"),
  "mapping_registry_sha256":(val or {}).get("registry_sha256"),
  "mapping_requirements_receipt_sha256":(val or {}).get("requirements_receipt_sha256"),
+ "post_mapping_sample":(val or {}).get("post_mapping_sample"),
+ "post_mapping_subgroups":(val or {}).get("post_mapping_subgroups"),
  "target_count":len(results),"route_pass_count":sum(1 for x in results if x.get("route_pass")),
  "results":results,"error_count":len(errors),"errors":errors,
  "probe_freeze":"MARKET_DATA_ROUTE_METADATA_PROBE_FREEZE_V0.1.md",
