@@ -123,6 +123,26 @@ The probe:
 
 No final DATABASE_URL switch is authorized by pooler discovery alone.
 
+## Secret-safe final runtime override
+
+The runtime may prepare, but must not automatically activate, a target override using:
+- `RADAR_SUPABASE_POOLER_HOST` — non-secret, must match the audited eu-central-1 Supavisor hostname shape;
+- `RADAR_SUPABASE_POOLER_PASSWORD` — secret, stored directly in Render by the operator and never copied into GitHub/Drive/logs/chat;
+- `RADAR_USE_SUPABASE_TARGET=true` — explicit final switch flag.
+
+When the final switch flag is absent/false, the existing `RADAR_DATABASE_URL` source behavior remains unchanged.
+
+When the final switch flag is true:
+- both host and secret are mandatory or startup fails closed;
+- the target connection is assembled internally with SSL required;
+- the dedicated `radar_runtime.<project-ref>` identity is used;
+- preprovisioned/no-DDL mode is forced;
+- the existing source URL is ignored but need not be deleted, preserving pre-write rollback capability.
+
+The database URL field is excluded from `Settings` representation to prevent accidental credential logging.
+
+**This section only prepares the switch mechanism. It does not authorize setting the final switch flag.**
+
 ## Final cutover remains frozen
 
 The existing `RADAR_POSTGRES_CUTOVER_PROTOCOL_V0.1` remains authoritative.
