@@ -87,7 +87,7 @@ async function getPoint(index){
    };
   }catch(e){
    last=String(e?.shortMessage||e?.message||e);
-   if(attempt<10) await sleep(1500*attempt);
+   if(attempt<10) await sleep(2000*attempt);
   }
  }
  return {index,block_number:block,valid:false,block_pinned_by_hash:true,error:last};
@@ -97,7 +97,7 @@ const rows=[];
 for(let i=0;i<TOTAL;i++){
  rows.push(await getPoint(i));
  if((i+1)%25===0) console.log("progress",i+1,TOTAL);
- await sleep(250);
+ await sleep(1500);
 }
 
 const errors=[];
