@@ -1,0 +1,110 @@
+{
+  "experiment_id": "ARQ-001-DRF-001",
+  "name": "Dominance-Regime Conditioned BTC-to-ALT Residual Follower",
+  "version": "0.1",
+  "state": "PRE_DISCOVERY_FROZEN_SOURCE_GATE_BLOCKED",
+  "research_only": true,
+  "live_trading": false,
+  "exchange_mutation": false,
+  "main_merge_authorized": false,
+  "legacy_provenance": {
+    "idea_date": "2026-05-08",
+    "deep_research_date": "2026-09-04",
+    "archaeology_recovered_date": "2026-09-18",
+    "parent": "ARQ-001"
+  },
+  "research_question": "Among pre-frozen BTC-plus-residual follower signals, does contemporaneous BTC.D/USDT.D/TOTAL3 regime confirmation add reproducible incremental information about subsequent ALT returns after costs?",
+  "anti_duplication": {
+    "h180": "Simple hourly BTC-to-ALT lead-lag already closed NO EDGE.",
+    "ll_0004": "BTC-factor residual mean-reversion/continuation already tested; same residual-z mechanism may not be reopened.",
+    "family_e_f08": "Raw cross-sectional relative strength and factor-adjusted residual ranking already tested and later failed OOS.",
+    "queue06": "F07 rotation was recognized as overlapping but the exact dominance-conditioned residual-follower contract was not executed.",
+    "novel_dimension": "Incremental regime information from BTC.D, USDT.D and TOTAL3 applied prospectively to an otherwise frozen BTC-plus-residual follower baseline."
+  },
+  "universe": {
+    "factor": "BTCUSDT perpetual",
+    "alts": ["ETHUSDT","SOLUSDT","BNBUSDT","XRPUSDT","DOGEUSDT"],
+    "venue": "Binance USD-M Futures",
+    "price_frequency": "1m"
+  },
+  "source_contract": {
+    "binance": "checksum-verified Binance USD-M Futures 1m historical data",
+    "regime_series": {
+      "BTC.D": "TradingView CRYPTOCAP CSV export",
+      "USDT.D": "TradingView CRYPTOCAP CSV export",
+      "TOTAL3": "TradingView CRYPTOCAP CSV export"
+    },
+    "no_scraping_substitute": true,
+    "no_synthetic_backfill": true,
+    "missing_any_required_source": "SOURCE_GATE_BLOCKED"
+  },
+  "temporal_governance": {
+    "discovery": ["2022-01-01","2024-12-31"],
+    "confirmation_locked": ["2025-01-01","2025-12-31"],
+    "final_holdout_locked": ["2026-01-01","2026-12-31"],
+    "note": "This split modernizes governance before any ARQ-001 market outcome is opened; it does not change the legacy signal defaults."
+  },
+  "event_rule": {
+    "event": "top of each UTC hour",
+    "observation_seconds": 180,
+    "signal_uses_minutes": ["HH:00","HH:01","HH:02"],
+    "entry": "HH:03:00",
+    "no_lookahead": true
+  },
+  "signal_defaults": {
+    "btc_trigger_abs_z": 0.75,
+    "beta_window_days": 30,
+    "alt_gap_abs_z": 1.0,
+    "primary_horizon_minutes": 5,
+    "diagnostic_horizons_minutes": [1,3,10,15],
+    "first_model": "FOLLOWER",
+    "no_stop_or_take_profit_in_discovery": true,
+    "leverage": 1.0
+  },
+  "signal_semantics": {
+    "beta": "strictly backward-looking rolling 30-day beta of ALT 1m returns on BTC 1m returns",
+    "gap": "ALT 180s log return - beta * BTC 180s log return",
+    "normalization": "causal rolling z-scores using prior 30 calendar days only; current event excluded",
+    "long_baseline": "btc_z >= +0.75 AND gap_z <= -1.0",
+    "short_baseline": "btc_z <= -0.75 AND gap_z >= +1.0",
+    "regime_long": "delta_BTC.D < 0 AND delta_USDT.D < 0 AND TOTAL3_180_return > 0",
+    "regime_short": "delta_BTC.D > 0 AND delta_USDT.D > 0 AND TOTAL3_180_return < 0"
+  },
+  "ablation": {
+    "A": "BTC trigger + ALT residual baseline",
+    "B": "A + BTC.D sign confirmation",
+    "C": "B + USDT.D sign confirmation",
+    "D": "C + TOTAL3 sign confirmation",
+    "primary_incremental_test": "D-confirmed versus D-rejected baseline signals at 5m, plus D-confirmed net expectancy > 0"
+  },
+  "costs_bps_round_trip": {
+    "low": 10,
+    "base": 12,
+    "stress": 14,
+    "derivation": "4 bps taker fee per fill plus 1/2/3 bps slippage per fill"
+  },
+  "statistics": {
+    "primary_horizon": "5m",
+    "block_bootstrap": "UTC-day blocks",
+    "bootstrap_repetitions": 10000,
+    "multiple_testing": "BH-FDR 5% across five ALT primary tests",
+    "mandatory_robustness": [
+      "positive BASE12 D-confirmed pooled expectancy",
+      "positive STRESS14 D-confirmed pooled expectancy",
+      "positive D-confirmed minus D-rejected baseline delta",
+      "bootstrap lower 95% bound for primary pooled D-confirmed net expectancy > 0",
+      "at least 3 of 5 ALTs positive at BASE12",
+      "2024 positive at BASE12",
+      "remove best 1% trades and remain positive at BASE12",
+      "remove best ALT and remain positive at BASE12",
+      "top-of-hour effect must exceed predeclared placebo-hour diagnostics"
+    ]
+  },
+  "promotion_boundary": {
+    "discovery_survival_is_not_edge": true,
+    "discovery_survival_only_allows": "separate 2025 confirmation freeze",
+    "2025_access": false,
+    "2026_access": false,
+    "paper_trading": false
+  }
+}
