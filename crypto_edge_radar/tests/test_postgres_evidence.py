@@ -17,6 +17,19 @@ class FakeCursor:
 
     def execute(self, sql, params=None):
         statement = " ".join(sql.split()).upper()
+        self.database.statements.append(statement)
+        if statement == "SET TRANSACTION READ ONLY":
+            self.result = []
+            return
+        if statement.startswith("SELECT ID, EVENT_TS, EVENT_TYPE, PAYLOAD_JSON") and "LIMIT 0" in statement:
+            self.result = []
+            return
+        if statement.startswith("SELECT EVENT_TYPE, EVENT_KEY, EVENT_ID") and "LIMIT 0" in statement:
+            self.result = []
+            return
+        if statement == "SELECT LAST_VALUE FROM RADAR_EVENTS_ID_SEQ":
+            self.result = [(len(self.database.rows) or 1,)]
+            return
         if statement.startswith("CREATE TABLE") or statement.startswith("CREATE INDEX"):
             self.result = []
             return
@@ -107,6 +120,7 @@ class FakePsycopg:
     def __init__(self):
         self.rows = []
         self.keys = {}
+        self.statements = []
 
     def connect(self, database_url, connect_timeout=5):
         if not database_url.startswith("postgresql://"):
@@ -167,6 +181,37 @@ class PostgresEvidenceTests(unittest.TestCase):
             ok, detail = store.verify_chain()
             self.assertFalse(ok)
             self.assertIn("payload hash mismatch", detail)
+
+    def test_preprovisioned_mode_performs_no_ddl(self):
+        fake = FakePsycopg()
+        with patch.object(evidence, "psycopg", fake):
+            store = evidence.PostgresEvidenceStore(
+                "postgresql://example/test",
+                schema_preprovisioned=True,
+            )
+            self.assertEqual(store.backend, "postgres")
+            self.assertTrue(
+                any(x == "SET TRANSACTION READ ONLY" for x in fake.statements)
+            )
+            self.assertFalse(
+                any(x.startswith("CREATE ") for x in fake.statements),
+                fake.statements,
+            )
+            self.assertFalse(
+                any(x.startswith("ALTER ") for x in fake.statements),
+                fake.statements,
+            )
+
+    def test_factory_wires_preprovisioned_mode(self):
+        fake = FakePsycopg()
+        with patch.object(evidence, "psycopg", fake):
+            store = evidence.build_evidence_store(
+                "unused.sqlite3",
+                "postgresql://example/test",
+                schema_preprovisioned=True,
+            )
+            self.assertEqual(store.backend, "postgres")
+            self.assertFalse(any(x.startswith("CREATE ") for x in fake.statements))
 
     def test_postgres_initialization_fails_closed(self):
         with patch.object(evidence, "psycopg", BrokenPsycopg()):
