@@ -1,0 +1,38 @@
+name: DLS Instruction Token Balance Relation Calibration V0.1
+
+on:
+  push:
+    branches:
+      - dls-field-enrichment-v01
+    paths:
+      - .github/workflows/dls-instruction-token-balance-relation-calibration-v01.yml
+
+permissions:
+  contents: read
+
+jobs:
+  calibrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile calibration
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/calibrate_instruction_token_balance_relation_v0_1.py
+      - name: Calibrate instruction transaction-token-balance relation
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/calibrate_instruction_token_balance_relation_v0_1.py
+      - name: Upload receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-instruction-token-balance-relation-calibration-v01
+          path: labs/DEFI_LIQUIDATION_SHOCK_001/INSTRUCTION_TOKEN_BALANCE_RELATION_CALIBRATION_RECEIPT_V0.1.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_TRUE
