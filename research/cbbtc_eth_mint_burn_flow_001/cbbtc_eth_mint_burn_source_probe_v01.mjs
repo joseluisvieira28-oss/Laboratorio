@@ -3,6 +3,8 @@ import fs from "fs";
 
 const RPC=process.env.ETH_RPC_URL || "https://ethereum-rpc.publicnode.com";
 const provider=new JsonRpcProvider(RPC);
+const ARCHIVE_RPC=process.env.ETH_ARCHIVE_RPC_URL || "https://rpc-eth.blockmachine.io";
+const archiveProvider=new JsonRpcProvider(ARCHIVE_RPC);
 
 const TOKEN=getAddress("0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf");
 const ZERO_TOPIC="0x"+"0".repeat(64);
@@ -80,6 +82,7 @@ const receipt={
   stage:"SOURCE_GATE_V0.1",
   captured_at_utc:new Date().toISOString(),
   rpc:RPC,
+  archive_rpc:ARCHIVE_RPC,
   network:"ethereum",
   token:TOKEN,
   transfer_topic:TRANSFER_TOPIC,
@@ -115,7 +118,12 @@ try{
     const endMeta=await provider.getBlock(endBlock);
     if(!endMeta) throw new Error("WINDOW_END_META_MISSING_"+w.id);
 
-    const code=await provider.send("eth_getCode",[TOKEN,hex(endBlock)]);
+    let code;
+    try{
+      code=await archiveProvider.send("eth_getCode",[TOKEN,hex(endBlock)]);
+    }catch(e){
+      throw new Error("HISTORICAL_CODE_CHECK_FAILED_"+w.id+":"+String(e?.shortMessage||e?.message||e));
+    }
     const mint=await getLogsChunked(start.number,endBlock,[TRANSFER_TOPIC,ZERO_TOPIC]);
     const burn=await getLogsChunked(start.number,endBlock,[TRANSFER_TOPIC,null,ZERO_TOPIC]);
 
