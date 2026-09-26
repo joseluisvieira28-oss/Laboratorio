@@ -1,0 +1,86 @@
+name: DLS Marginfi Save0c Final Reassembly V0.3
+
+on:
+  push:
+    branches:
+      - dls-marginfi-save0c-sqd-boundary-v01
+    paths:
+      - .github/workflows/dls-marginfi-save0c-final-reassembly-v03.yml
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  reassemble:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download original census evidence
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36114038836
+          pattern: dls-sqd-first-boundary-*
+          path: evidence/original
+
+      - name: Download sharded Save0c recovery
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36230162177
+          pattern: dls-save0c-sqd-recovery-*
+          path: evidence/recovery
+
+      - name: Compile streaming authority tooling
+        run: |
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/aggregate_marginfi_save0c_sqd_census_v0_3.py
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/reconcile_marginfi_save0c_sqd_raw_sample_v0_1.py
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/finalize_marginfi_save0c_sqd_census_v0_1.py
+
+      - name: Reconstruct complete census with bounded memory
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/aggregate_marginfi_save0c_sqd_census_v0_3.py evidence
+
+      - name: RAW reconcile deterministic samples
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/reconcile_marginfi_save0c_sqd_raw_sample_v0_1.py
+
+      - name: Final source authority
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/finalize_marginfi_save0c_sqd_census_v0_1.py
+
+      - name: Upload final authority receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-marginfi-save0c-final-authority-v03
+          path: |
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_SAVE0C_SQD_EVENT_CENSUS_RECEIPT_V0.1.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_SAVE0C_RAW_SAMPLE_QUEUE_V0.1.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_SAVE0C_RAW_SAMPLE_RECONCILIATION_RECEIPT_V0.1.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_SAVE0C_EVENT_CENSUS_FINAL_AUTHORITY_RECEIPT_V0.1.json
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Persist final authority receipts
+        if: success()
+        run: |
+          git config user.name "crypto-lab-source-audit"
+          git config user.email "actions@users.noreply.github.com"
+          git fetch origin dls-marginfi-save0c-sqd-boundary-v01
+          git checkout -B dls-marginfi-save0c-sqd-boundary-v01 origin/dls-marginfi-save0c-sqd-boundary-v01
+          git add labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_SAVE0C_*V0.1.json
+          git commit -m "dls: persist reconstructed Marginfi Save0c authority V0.3" || true
+          git pull --rebase origin dls-marginfi-save0c-sqd-boundary-v01
+          git push origin HEAD:dls-marginfi-save0c-sqd-boundary-v01
+
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_TRUE
