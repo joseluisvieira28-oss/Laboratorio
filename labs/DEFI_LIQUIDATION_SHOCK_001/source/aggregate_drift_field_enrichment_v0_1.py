@@ -36,6 +36,8 @@ for p in sorted(ROOT.rglob("*.json")):
         r["_file"]=str(p);receipts.append(r)
 
 seen=set()
+observed_spot_indexes=set()
+observed_perp_indexes=set()
 for r in receipts:
     pid=r.get("partition_id")
     if not pid: errors.append({"reason":"missing_partition_id","file":r.get("_file")})
@@ -44,6 +46,18 @@ for r in receipts:
 
 if len(receipts)!=EXPECTED_PARTITIONS:
     errors.append({"reason":"partition_count_mismatch","observed":len(receipts),"expected":EXPECTED_PARTITIONS})
+for r in receipts:
+    for e in r.get("enriched_rows") or []:
+        mi=e.get("market_identity") or {}
+        if "asset_spot_market_index" in mi:
+            observed_spot_indexes.add(int(mi["asset_spot_market_index"]))
+        if "liability_spot_market_index" in mi:
+            observed_spot_indexes.add(int(mi["liability_spot_market_index"]))
+        if "spot_market_index" in mi:
+            observed_spot_indexes.add(int(mi["spot_market_index"]))
+        if "perp_market_index" in mi:
+            observed_perp_indexes.add(int(mi["perp_market_index"]))
+
 pass_count=sum(1 for r in receipts if r.get("classification")=="FIELD_ENRICHMENT_PARTITION_PASS")
 if pass_count!=EXPECTED_PARTITIONS:
     errors.append({"reason":"partition_pass_count_mismatch","observed":pass_count,"expected":EXPECTED_PARTITIONS})
@@ -86,7 +100,12 @@ receipt={"schema_version":"0.1","lab_id":"DEFI-LIQUIDATION-SHOCK-001",
  "source_authority_classification":final.get("classification"),"source_expected_class_counts":expected_classes,
  "partition_receipt_count":len(receipts),"partition_pass_count":pass_count,
  "baseline_success_count":baseline_total,"enriched_success_count":enriched_total,"expected_success_count":expected_total,
- "class_counts":class_obs,"missing_count":missing,"extra_count":extra,"duplicate_count":dup,
+ "class_counts":class_obs,
+ "observed_spot_market_indexes":sorted(observed_spot_indexes),
+ "observed_perp_market_indexes":sorted(observed_perp_indexes),
+ "observed_spot_market_index_count":len(observed_spot_indexes),
+ "observed_perp_market_index_count":len(observed_perp_indexes),
+ "missing_count":missing,"extra_count":extra,"duplicate_count":dup,
  "semantic_conflict_count":conflict,"baseline_anomaly_count":banom,"query_anomaly_count":qanom,
  "nonempty_accounts_count":accounts,"market_identity_count":market,"abi_shape_valid_count":abi,
  "error_count":len(errors),"errors":errors,
