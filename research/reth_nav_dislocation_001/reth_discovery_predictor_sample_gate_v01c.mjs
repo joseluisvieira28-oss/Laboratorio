@@ -85,7 +85,7 @@ async function point(block,index,role){
    };
   }catch(e){
    last=String(e?.shortMessage||e?.message||e);
-   if(attempt<10) await sleep(1500*attempt);
+   if(attempt<10) await sleep(2000*attempt);
   }
  }
  return {role,index,block_number:block,valid:false,block_pinned_by_hash:true,error:last};
@@ -96,7 +96,7 @@ const rows=[];
 for(let k=0;k<COUNT;k++){
  rows.push(await point(START+STEP*k,k,"DISCOVERY_PREDICTOR"));
  if((k+1)%20===0) console.log("progress",k+1,COUNT);
- await sleep(250);
+ await sleep(1500);
 }
 
 const errors=[];
