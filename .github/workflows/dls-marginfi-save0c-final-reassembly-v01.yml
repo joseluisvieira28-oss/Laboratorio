@@ -43,12 +43,12 @@ jobs:
 
       - name: Compile frozen authority tooling
         run: |
-          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/aggregate_marginfi_save0c_sqd_census_v0_1.py
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/aggregate_marginfi_save0c_sqd_census_v0_2.py
           python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/reconcile_marginfi_save0c_sqd_raw_sample_v0_1.py
           python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/finalize_marginfi_save0c_sqd_census_v0_1.py
 
       - name: Reconstruct complete Marginfi Save0c census
-        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/aggregate_marginfi_save0c_sqd_census_v0_1.py evidence
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/aggregate_marginfi_save0c_sqd_census_v0_2.py evidence
 
       - name: RAW reconcile deterministic samples
         run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/reconcile_marginfi_save0c_sqd_raw_sample_v0_1.py
