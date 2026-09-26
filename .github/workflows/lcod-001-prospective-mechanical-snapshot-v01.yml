@@ -18,7 +18,60 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  canonical_preflight:
+    runs-on: ubuntu-latest
+    outputs:
+      allow_run: ${{ steps.gate.outputs.allow_run }}
+      gate_reason: ${{ steps.gate.outputs.gate_reason }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: liquidation-convexity-oracle-distance-001-source-gate-v0.1
+      - id: gate
+        env:
+          LCOD_CANONICAL_TRIGGER: ${{ inputs.canonical_trigger || false }}
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json, os
+          from datetime import datetime, timezone
+          from pathlib import Path
+          canonical = str(os.environ.get("LCOD_CANONICAL_TRIGGER","false")).lower() in ("1","true","yes")
+          if not canonical:
+              print("allow_run=true")
+              print("gate_reason=diagnostic_or_noncanonical")
+              with open(os.environ["GITHUB_OUTPUT"],"a") as f:
+                  f.write("allow_run=true\n")
+                  f.write("gate_reason=diagnostic_or_noncanonical\n")
+              raise SystemExit(0)
+          today=datetime.now(timezone.utc).date().isoformat()
+          root=Path("research/liquidation_convexity_oracle_distance_001/forward_snapshots")
+          existing=[]
+          for p in sorted(root.glob("LCOD_FORWARD_SNAPSHOT_BLOCK_*.json")):
+              try:
+                  x=json.loads(p.read_text())
+              except Exception:
+                  continue
+              if x.get("classification")!="FORWARD_MECHANICAL_SNAPSHOT_PASS":
+                  continue
+              if x.get("observation_role")!="FORWARD_OBSERVATION":
+                  continue
+              ts=str(x.get("captured_at_utc",""))
+              if ts[:10]==today:
+                  existing.append(p.name)
+          allow=not existing
+          reason="no_same_day_canonical_observation" if allow else "same_day_canonical_observation_already_exists"
+          print(f"allow_run={str(allow).lower()}")
+          print(f"gate_reason={reason}")
+          print(f"existing={existing}")
+          with open(os.environ["GITHUB_OUTPUT"],"a") as f:
+              f.write(f"allow_run={str(allow).lower()}\n")
+              f.write(f"gate_reason={reason}\n")
+          PY
+
   prepare:
+    needs: canonical_preflight
+    if: ${{ needs.canonical_preflight.outputs.allow_run == 'true' }}
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.prep.outputs.matrix }}
@@ -75,9 +128,10 @@ jobs:
 
   aggregate_population:
     needs:
+      - canonical_preflight
       - prepare
       - classify_population
-    if: always()
+    if: ${{ always() && needs.canonical_preflight.outputs.allow_run == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -149,7 +203,8 @@ jobs:
             git checkout -B lcod-forward-persist origin/liquidation-convexity-oracle-distance-001-source-gate-v0.1
             mkdir -p "$(dirname "$DEST")"
             cp "$SNAP" "$DEST"
-            git add "$DEST"
+            python research/liquidation_convexity_oracle_distance_001/lcod_forward_series_index_v01.py
+            git add "$DEST" research/liquidation_convexity_oracle_distance_001/LCOD_FORWARD_SERIES_INDEX_V0.1.json
             if git diff --cached --quiet; then
               exit 0
             fi
