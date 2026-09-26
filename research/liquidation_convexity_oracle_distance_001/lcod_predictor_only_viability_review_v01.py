@@ -12,6 +12,7 @@ HERE = Path("research/liquidation_convexity_oracle_distance_001")
 INDEX = HERE / "LCOD_FORWARD_SERIES_INDEX_V0.1.json"
 SNAPDIR = HERE / "forward_snapshots"
 OUT = HERE / "LCOD_PREDICTOR_ONLY_VIABILITY_REVIEW_STATUS_V0.1.json"
+ADJ = HERE / "LCOD_FORWARD_PROVENANCE_ADJUDICATION_001.json"
 
 GRID = [0, 25, 50, 75, 100, 150, 200, 300, 500]
 
@@ -58,6 +59,34 @@ def frac_to_decimal(obj):
     return D(obj["numerator"]) / den
 
 index = load(INDEX)
+adjudication = load(ADJ) if ADJ.exists() else None
+
+def resolved_scientific_identity(snapshot, fname):
+    direct = snapshot.get("workflow", {}).get("scientific_code_sha")
+    if direct not in (None, ""):
+        return direct
+    if not adjudication:
+        return None
+    target = adjudication.get("target_snapshot", {})
+    if adjudication.get("classification") != "PROVENANCE_EQUIVALENCE_PASS":
+        return None
+    if target.get("file") != fname:
+        return None
+    if target.get("snapshot_sha256") != snapshot.get("snapshot_sha256"):
+        return None
+    if int(target.get("ethereum_block_number", -1)) != int(snapshot.get("ethereum_block_number", -2)):
+        return None
+    if adjudication.get("scientific_core_changed_between_observed_shas") is not False:
+        return None
+    for flag in ("outcome_data_opened", "market_returns_opened", "liquidation_outcomes_opened", "pnl_opened"):
+        if adjudication.get(flag) is not False:
+            return None
+    if adjudication.get("snapshot_mutated") is not False:
+        return None
+    fp = adjudication.get("scientific_core_fingerprint_sha256")
+    if not fp:
+        return None
+    return "ADJUDICATED_CORE_FINGERPRINT:" + fp
 
 base = {
     "lab_id": "LIQUIDATION-CONVEXITY-ORACLE-DISTANCE-001",
@@ -98,6 +127,7 @@ if len(obs) < 30:
     errors.append("INDEX_CANONICAL_OBSERVATION_LIST_TOO_SHORT")
 
 snaps = []
+resolved_scientific_identities = []
 for row in obs:
     fname = row.get("file")
     if not fname:
@@ -120,8 +150,11 @@ for row in obs:
         errors.append(f"GRID_MISMATCH:{fname}")
     if not x.get("curve", {}).get("curve_sha256"):
         errors.append(f"MISSING_CURVE_SHA:{fname}")
-    if x.get("workflow", {}).get("scientific_code_sha") in (None, ""):
-        errors.append(f"MISSING_SCIENTIFIC_CODE_SHA:{fname}")
+    resolved_identity = resolved_scientific_identity(x, fname)
+    if resolved_identity is None:
+        errors.append(f"MISSING_OR_UNRESOLVED_SCIENTIFIC_CODE_IDENTITY:{fname}")
+    else:
+        resolved_scientific_identities.append(resolved_identity)
     if x.get("population", {}).get("active_debt_pair_count") is None:
         errors.append(f"MISSING_ACTIVE_COUNT:{fname}")
     if x.get("components", {}).get("total_active_debt_value_ray") is None:
@@ -238,7 +271,7 @@ out.update({
         "duplicate_count": index.get("duplicate_same_day_observation_count"),
         "boundary_violation_count": index.get("boundary_violation_count"),
         "diagnostic_or_noncanonical_file_count": index.get("diagnostic_or_noncanonical_file_count"),
-        "unique_scientific_code_shas": sorted({x["workflow"]["scientific_code_sha"] for x in snaps}),
+        "unique_scientific_code_identities": sorted(set(resolved_scientific_identities)),
         "unique_workflow_event_names": sorted({x["workflow"].get("github_event_name") for x in snaps}),
         "full_component_coverage_snapshot_count": full_component_coverage_count,
         "zero_decode_and_uad_error_snapshot_count": zero_source_error_count,
