@@ -1,0 +1,26 @@
+{
+  "campaign_id": "HTF-DIAMOND-HUNT-001",
+  "status": "FROZEN_IMPLEMENTATION_AUTHORITY_PRE_OUTCOME",
+  "historical_authority_commit": "62422965b23e91671f6720b818bb26686b9d5bd2",
+  "exact_replication_modules": {
+    "DH-01": {
+      "path": "Dream-Account-OS-v2.3-PARTIAL/research/tfg_donchian_1d_discovery_runner_v01.py",
+      "git_blob": "ca2515ee40e62ed5543db0f6d27d69533e0f22ce"
+    },
+    "DH-04": {
+      "path": "Dream-Account-OS-v2.3-PARTIAL/research/tfg_ema_pullback_1d_discovery_runner_v01.py",
+      "git_blob": "4624b4338d3ef6d8a1c9face4bd611ac24b48241"
+    },
+    "DH-07_CORE": {
+      "path": "Dream-Account-OS-v2.3-PARTIAL/research/tfg_pbr01_4h_v01.py",
+      "git_blob": "c67e0c16cdd887a907b4be3fd7e562cce870680a"
+    },
+    "DH-07_DISCOVERY_WRAPPER_REFERENCE": {
+      "path": "Dream-Account-OS-v2.3-PARTIAL/research/tfg_pbr01_4h_discovery_runner_v01.py",
+      "git_blob": "d7ea040091c2703b089081191bb84fecb5db8f5d"
+    }
+  },
+  "runtime_policy": "The replication workflow must materialize these files and the PBR dependencies from historical_authority_commit using git object history at runtime. It must verify the listed blob IDs before any source artifact is opened. No hand-reimplementation is permitted for DH-01, DH-04 or DH-07.",
+  "pbr_dependency_policy": "Materialize dream_account/models.py, dream_account/engines/, research/phase_b_research_evaluator_v01.py, and research/phase_b_signal_formation_v01.py from the same historical authority commit before importing the exact PBR core.",
+  "outcomes_opened_before_this_freeze": false
+}
