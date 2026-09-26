@@ -64,22 +64,33 @@ async function archiveSendWithRetry(method,params,scope){
   throw new Error(scope+":"+last);
 }
 
+async function queryLogsAdaptive(fromBlock,toBlock,topics,kind,errors,depth=0){
+  let last=null;
+  for(let attempt=1;attempt<=6;attempt++){
+    try{
+      return await provider.getLogs({address:TOKEN,fromBlock,toBlock,topics});
+    }catch(e){
+      last=String(e?.shortMessage||e?.message||e);
+      if(attempt<6) await sleep(800*attempt);
+    }
+  }
+  if(fromBlock>=toBlock){
+    errors.push({kind,from_block:fromBlock,to_block:toBlock,error:last,depth});
+    return [];
+  }
+  const mid=Math.floor((fromBlock+toBlock)/2);
+  const left=await queryLogsAdaptive(fromBlock,mid,topics,kind,errors,depth+1);
+  await sleep(120);
+  const right=await queryLogsAdaptive(mid+1,toBlock,topics,kind,errors,depth+1);
+  return left.concat(right);
+}
+
 async function getLogsChunked(fromBlock,toBlock,topics,kind){
   const out=[],errors=[];
   for(let from=fromBlock;from<=toBlock;from+=CHUNK){
     const to=Math.min(toBlock,from+CHUNK-1);
-    let logs=null,last=null;
-    for(let attempt=1;attempt<=8;attempt++){
-      try{
-        logs=await provider.getLogs({address:TOKEN,fromBlock:from,toBlock:to,topics});
-        break;
-      }catch(e){
-        last=String(e?.shortMessage||e?.message||e);
-        if(attempt<8) await sleep(900*attempt);
-      }
-    }
-    if(logs===null) errors.push({kind,from_block:from,to_block:to,error:last});
-    else out.push(...logs);
+    const logs=await queryLogsAdaptive(from,to,topics,kind,errors,0);
+    out.push(...logs);
     if(((from-fromBlock)/CHUNK+1)%25===0) console.log(kind,"chunk",from,to,"logs",out.length);
     await sleep(100);
   }
