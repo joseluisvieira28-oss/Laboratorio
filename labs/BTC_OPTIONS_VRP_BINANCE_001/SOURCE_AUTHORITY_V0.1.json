@@ -1,0 +1,131 @@
+{
+  "lab_id": "BTC-OPTIONS-VRP-BINANCE-001",
+  "source_probe_id": "BOVRP-BINANCE-EOH-SOURCE-001",
+  "version": "0.1",
+  "date_frozen": "2026-09-19",
+  "branch": "btc-options-vrp-binance-eoh-source-v0.1",
+  "status": "FROZEN_SOURCE_ONLY_OUTCOME_BLIND",
+  "purpose": "Determine whether Binance's public retired BTCUSDT Options EOHSummary archive can support an independent, zero-cost BTC options volatility-risk-premium replication/execution study. This is a new venue/source lineage and must not rescue or rewrite BTC-OPTIONS-VRP-001.",
+  "source": {
+    "provider": "Binance public data portal",
+    "base_path": "https://data.binance.vision/data/option/daily/EOHSummary/BTCUSDT/",
+    "file_pattern": "BTCUSDT-EOHSummary-YYYY-MM-DD.zip",
+    "venue": "Binance Options",
+    "underlying": "BTCUSDT",
+    "access_cost_usd": 0,
+    "authentication": "none"
+  },
+  "frozen_envelope": {
+    "start_date": "2023-05-18",
+    "end_date": "2023-10-23",
+    "enumerate_every_calendar_day": true
+  },
+  "semantic_field_requirements": {
+    "point_in_time_timestamp": [
+      "timestamp",
+      "time",
+      "calc_time",
+      "quote_time",
+      "date",
+      "datetime",
+      "snapshot_time",
+      "data_time"
+    ],
+    "option_identity": [
+      "symbol",
+      "instrument",
+      "instrument_name",
+      "contract",
+      "contract_name"
+    ],
+    "expiry": [
+      "expiry",
+      "expiration",
+      "expiration_time",
+      "expiry_date"
+    ],
+    "strike": [
+      "strike",
+      "strike_price"
+    ],
+    "right": [
+      "side",
+      "right",
+      "option_type"
+    ],
+    "bid_price": [
+      "bid_price",
+      "bidprice",
+      "bid"
+    ],
+    "ask_price": [
+      "ask_price",
+      "askprice",
+      "ask"
+    ],
+    "bid_size": [
+      "bid_qty",
+      "bidqty",
+      "bid_size",
+      "bidsize",
+      "bid_amount"
+    ],
+    "ask_size": [
+      "ask_qty",
+      "askqty",
+      "ask_size",
+      "asksize",
+      "ask_amount"
+    ],
+    "underlying_price": [
+      "underlying_price",
+      "underlyingprice",
+      "spot_price",
+      "index_price"
+    ],
+    "implied_volatility": [
+      "mark_iv",
+      "markiv",
+      "iv",
+      "implied_volatility"
+    ]
+  },
+  "sample_dates": [
+    "2023-05-18",
+    "2023-07-01",
+    "2023-10-23"
+  ],
+  "pass_rule": {
+    "minimum_available_calendar_days": 100,
+    "all_three_fixed_sample_dates_available": true,
+    "all_three_fixed_samples_csv_parse": true,
+    "all_three_fixed_samples_have_bid_and_ask_price": true,
+    "all_three_fixed_samples_have_bid_and_ask_size": true,
+    "all_three_fixed_samples_have_option_identity_expiry_strike_right": true,
+    "terminal_pass_classification": "BINANCE_EOH_SOURCE_FEASIBLE"
+  },
+  "terminal_classifications": [
+    "BINANCE_EOH_SOURCE_FEASIBLE",
+    "BINANCE_EOH_SOURCE_PARTIAL_COVERAGE",
+    "BINANCE_EOH_SOURCE_SCHEMA_INSUFFICIENT",
+    "BINANCE_EOH_SOURCE_ACQUISITION_FAILURE"
+  ],
+  "scientific_boundary": {
+    "returns_authorized": false,
+    "realized_variance_authorized": false,
+    "vrp_authorized": false,
+    "strategy_pnl_authorized": false,
+    "expectancy_authorized": false,
+    "profit_factor_authorized": false,
+    "drawdown_authorized": false,
+    "parameter_tuning_authorized": false,
+    "cross_venue_parameter_copy_authorized": false,
+    "access_2025_authorized": false,
+    "access_2026_authorized": false,
+    "live_trading_authorized": false,
+    "exchange_mutation_authorized": false,
+    "wallets_authorized": false,
+    "merge_to_main_authorized": false
+  },
+  "next_gate_if_pass": "Separate prospective hypothesis/MVE freeze. No economic outcome may be opened automatically after source pass."
+}

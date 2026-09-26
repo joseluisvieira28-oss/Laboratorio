@@ -1,0 +1,40 @@
+{
+  "lab_id": "BTC-OPTIONS-VRP-BINANCE-001",
+  "version": "1.0",
+  "primary_family": "VOL",
+  "secondary_family": "CARRY",
+  "mechanism": "Option-implied variance may exceed subsequently realized variance because option buyers pay a premium for convexity, jump and crash insurance. This lab asks only whether an independent Binance-options data source can later test that mechanism under a new prospective design.",
+  "payer_or_counterparty": "Option buyers demanding convexity/tail-risk insurance; exact economic attribution remains a hypothesis until independently tested.",
+  "mathematical_engine": [
+    "variance_risk_premium",
+    "option_bid_ask_execution",
+    "tail_risk_accounting"
+  ],
+  "directional_forecast_required": false,
+  "payoff_profile_expected": "Potential negative-skew carry; exact payoff distribution not authorized in the source gate.",
+  "horizon": "Not frozen at source stage",
+  "primary_failure_modes": [
+    "Venue-specific microstructure differs materially from Deribit",
+    "Historical coverage too short for independent inference",
+    "Bid/ask fields are indicative rather than executable",
+    "Tail losses dominate average carry after costs",
+    "Selection/overlap creates pseudo-replication"
+  ],
+  "regime_dependencies": [
+    "volatility regime",
+    "liquidity",
+    "jump/crash risk",
+    "option demand"
+  ],
+  "exposure_fingerprint": [
+    "short-vol if later strategy sells premium",
+    "vega",
+    "gamma",
+    "liquidity",
+    "venue"
+  ],
+  "nearest_existing_lab": "BTC-OPTIONS-VRP-001",
+  "material_difference": "Independent venue and public free source. It is not a continuation, rescue, or parameter change to the Deribit lab.",
+  "maturity_level": "M2_SOURCE_VALIDATION",
+  "verdict": "UNRESOLVED_SOURCE_GATE"
+}
