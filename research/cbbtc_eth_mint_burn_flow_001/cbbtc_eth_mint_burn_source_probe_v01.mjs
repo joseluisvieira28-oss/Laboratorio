@@ -19,18 +19,32 @@ const windows=[
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const hex=n=>"0x"+BigInt(n).toString(16);
 
-async function firstBlockAtOrAfter(ts){
-  const latest=await provider.getBlock("latest");
+async function getBlockWithRetry(tag,scope){
+  let last=null;
+  for(let attempt=1;attempt<=8;attempt++){
+    try{
+      const b=await provider.getBlock(tag);
+      if(!b) throw new Error("NULL_BLOCK");
+      return b;
+    }catch(e){
+      last=String(e?.shortMessage||e?.message||e);
+      if(attempt<8) await sleep(500*attempt);
+    }
+  }
+  throw new Error(scope+":"+last);
+}
+
+async function firstBlockAtOrAfter(ts,label){
+  const latest=await getBlockWithRetry("latest","BOUNDARY_LATEST_FAILED_"+label);
   let lo=0, hi=Number(latest.number);
   while(lo<hi){
     const mid=Math.floor((lo+hi)/2);
-    const b=await provider.getBlock(mid);
-    if(!b) throw new Error("BLOCK_LOOKUP_FAILED_"+mid);
+    const b=await getBlockWithRetry(mid,"BOUNDARY_MID_FAILED_"+label+"_"+mid);
     if(Number(b.timestamp)>=ts) hi=mid;
     else lo=mid+1;
+    await sleep(100);
   }
-  const b=await provider.getBlock(lo);
-  if(!b) throw new Error("BOUNDARY_BLOCK_MISSING_"+lo);
+  const b=await getBlockWithRetry(lo,"BOUNDARY_FINAL_FAILED_"+label+"_"+lo);
   return {number:Number(b.number),hash:b.hash,timestamp:Number(b.timestamp)};
 }
 
@@ -112,8 +126,8 @@ try{
   for(const w of windows){
     const startTs=Math.floor(Date.parse(w.start_iso)/1000);
     const endTs=Math.floor(Date.parse(w.end_iso)/1000);
-    const start=await firstBlockAtOrAfter(startTs);
-    const endBoundary=await firstBlockAtOrAfter(endTs);
+    const start=await firstBlockAtOrAfter(startTs,w.id+"_START");
+    const endBoundary=await firstBlockAtOrAfter(endTs,w.id+"_END");
     const endBlock=endBoundary.number-1;
     const endMeta=await provider.getBlock(endBlock);
     if(!endMeta) throw new Error("WINDOW_END_META_MISSING_"+w.id);
