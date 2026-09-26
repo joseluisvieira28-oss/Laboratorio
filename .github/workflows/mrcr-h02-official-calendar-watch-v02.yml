@@ -1,0 +1,83 @@
+name: MRCR H02 Official Calendar Watch V0.2
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - market-reveal-confirmation-reaction-v0.1
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/market_reveal_confirmation_reaction_v01/official_2027_calendar_live_probe.py'
+      - '.github/workflows/mrcr-h02-official-calendar-watch-v02.yml'
+  # Scheduled workflows execute from the repository default branch only.
+  # This cron is intentionally staged and will not become active unless this
+  # workflow later exists on the default branch under separate merge authority.
+  schedule:
+    - cron: '17 7 * * *'
+
+permissions:
+  contents: read
+
+jobs:
+  official-calendar-watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: market-reveal-confirmation-reaction-v0.1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Probe official BLS and Federal Reserve calendars only
+        id: probe
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE="Dream-Account-OS-v2.3-PARTIAL/research/market_reveal_confirmation_reaction_v01"
+          python "$BASE/official_2027_calendar_live_probe.py" | tee mrcr_calendar_status_v02.json
+          READY="$(python - <<'PY'
+          import json
+          with open("mrcr_calendar_status_v02.json", "r", encoding="utf-8") as fh:
+              row=json.load(fh)
+          print("true" if row.get("annual_plan_trigger_ready_v02") is True else "false")
+          PY
+          )"
+          echo "annual_plan_ready=$READY" >> "$GITHUB_OUTPUT"
+
+      - name: Write blocked status summary
+        if: steps.probe.outputs.annual_plan_ready != 'true'
+        shell: bash
+        run: |
+          {
+            echo "## MRCR H02 Calendar Watch V0.2"
+            echo
+            echo "Status: **BLOCKED**"
+            echo
+            echo "The complete official V0.2 annual plan is not ready."
+            echo "No inferred dates were used and no target authority was changed."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Write ready notice
+        if: steps.probe.outputs.annual_plan_ready == 'true'
+        shell: bash
+        run: |
+          echo "::notice title=MRCR H02 Calendar Trigger A Ready::Official annual plan requirements are satisfied. Run the canonical V0.2 annual-plan build and final binding preflight; do not open target observation automatically."
+          {
+            echo "## MRCR H02 Calendar Watch V0.2"
+            echo
+            echo "Status: **READY_FOR_V02_ANNUAL_PLAN**"
+            echo
+            echo "Next action: construct and fingerprint the real annual plan, then run final_binding_preflight_v02."
+            echo "This workflow does **not** issue TARGET_OBSERVATION_OPEN."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload ready source-status receipt
+        if: steps.probe.outputs.annual_plan_ready == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: mrcr-h02-calendar-trigger-a-ready
+          path: mrcr_calendar_status_v02.json
+          if-no-files-found: error
+          retention-days: 30

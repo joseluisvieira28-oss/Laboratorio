@@ -1,0 +1,194 @@
+import sys
+import unittest
+from decimal import Decimal
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+MODULE_DIR = ROOT / "research" / "market_reveal_confirmation_reaction_v01"
+sys.path.insert(0, str(MODULE_DIR))
+
+from source_adapters import (
+    binance_depth_sequence_ok,
+    binance_snapshot_bridge_status,
+    coinbase_sequence_transition,
+    parse_binance_aggtrade,
+    parse_binance_depth_update,
+    parse_coinbase_level2_event,
+    parse_coinbase_level2_update,
+    parse_coinbase_market_trade,
+)
+
+
+class SourceAdapterTests(unittest.TestCase):
+    def test_binance_buyer_maker_means_sell_aggressor(self):
+        row = parse_binance_aggtrade({
+            "e": "aggTrade",
+            "E": 1672515782136,
+            "s": "BTCUSDT",
+            "a": 12345,
+            "p": "100.0",
+            "q": "2.0",
+            "T": 1672515782100,
+            "m": True,
+        })
+        self.assertEqual(row.aggressor_side, "SELL")
+        self.assertEqual(row.quote_notional, Decimal("200.00"))
+
+    def test_binance_buyer_taker_means_buy_aggressor(self):
+        row = parse_binance_aggtrade({
+            "e": "aggTrade",
+            "E": 1672515782136,
+            "s": "BTCUSDT",
+            "a": 12346,
+            "p": "100",
+            "q": "1",
+            "T": 1672515782101,
+            "m": False,
+        })
+        self.assertEqual(row.aggressor_side, "BUY")
+
+    def test_binance_depth_quantities_are_absolute_and_zero_is_valid(self):
+        rows = parse_binance_depth_update({
+            "e": "depthUpdate",
+            "E": 1672515782136,
+            "s": "BTCUSDT",
+            "U": 157,
+            "u": 160,
+            "b": [["100", "2"], ["99", "0"]],
+            "a": [["101", "3"]],
+        })
+        self.assertEqual(len(rows), 3)
+        self.assertEqual(rows[1].absolute_quantity, Decimal("0"))
+
+    def test_coinbase_level2_offer_maps_to_ask(self):
+        row = parse_coinbase_level2_update(
+            product_id="BTC-USD",
+            sequence_num=42,
+            update={
+                "side": "offer",
+                "event_time": "2026-01-01T00:00:00.123Z",
+                "price_level": "101",
+                "new_quantity": "1",
+            },
+        )
+        self.assertEqual(row.side, "ASK")
+
+    def test_coinbase_level2_absolute_quantity(self):
+        row = parse_coinbase_level2_update(
+            product_id="BTC-USD",
+            sequence_num=42,
+            update={
+                "side": "bid",
+                "event_time": "2026-01-01T00:00:00.123Z",
+                "price_level": "100",
+                "new_quantity": "0",
+            },
+        )
+        self.assertEqual(row.side, "BID")
+        self.assertEqual(row.absolute_quantity, Decimal("0"))
+        self.assertEqual(row.sequence_first, 42)
+
+    def test_coinbase_snapshot_uses_envelope_time_not_epoch_zero_level_time(self):
+        event_type, rows = parse_coinbase_level2_event(
+            event={
+                "type": "snapshot",
+                "product_id": "BTC-USD",
+                "updates": [
+                    {
+                        "side": "bid",
+                        "event_time": "1970-01-01T00:00:00Z",
+                        "price_level": "100",
+                        "new_quantity": "1",
+                    },
+                    {
+                        "side": "ask",
+                        "event_time": "1970-01-01T00:00:00Z",
+                        "price_level": "101",
+                        "new_quantity": "1",
+                    },
+                ],
+            },
+            sequence_num=0,
+            envelope_timestamp="2026-09-24T17:30:00.123456Z",
+        )
+        self.assertEqual(event_type, "snapshot")
+        self.assertEqual(len(rows), 2)
+        self.assertTrue(
+            all(
+                row.source_event_time == "2026-09-24T17:30:00.123456Z"
+                for row in rows
+            )
+        )
+
+    def test_coinbase_incremental_update_keeps_engine_event_time(self):
+        event_type, rows = parse_coinbase_level2_event(
+            event={
+                "type": "update",
+                "product_id": "BTC-USD",
+                "updates": [
+                    {
+                        "side": "bid",
+                        "event_time": "2026-09-24T17:30:01.111Z",
+                        "price_level": "100",
+                        "new_quantity": "2",
+                    }
+                ],
+            },
+            sequence_num=1,
+            envelope_timestamp="2026-09-24T17:30:01.222Z",
+        )
+        self.assertEqual(event_type, "update")
+        self.assertEqual(
+            rows[0].source_event_time,
+            "2026-09-24T17:30:01.111Z",
+        )
+
+    def test_binance_snapshot_bridge_states(self):
+        self.assertEqual(
+            binance_snapshot_bridge_status(160, 157, 160),
+            "STALE",
+        )
+        self.assertEqual(
+            binance_snapshot_bridge_status(160, 157, 165),
+            "BRIDGES",
+        )
+        self.assertEqual(
+            binance_snapshot_bridge_status(160, 161, 161),
+            "BRIDGES",
+        )
+        self.assertEqual(
+            binance_snapshot_bridge_status(160, 162, 163),
+            "GAP",
+        )
+        self.assertEqual(
+            binance_snapshot_bridge_status(160, 170, 169),
+            "INVALID_INTERVAL",
+        )
+
+    def test_binance_sequence_gap_detection(self):
+        self.assertTrue(binance_depth_sequence_ok(156, 157, 160))
+        self.assertTrue(binance_depth_sequence_ok(160, 159, 160))
+        self.assertFalse(binance_depth_sequence_ok(160, 162, 163))
+
+    def test_coinbase_sequence_transition(self):
+        self.assertEqual(coinbase_sequence_transition(10, 11), "OK")
+        self.assertEqual(coinbase_sequence_transition(10, 13), "GAP")
+        self.assertEqual(
+            coinbase_sequence_transition(10, 10),
+            "OUT_OF_ORDER_OR_DUPLICATE",
+        )
+
+    def test_invalid_ambiguous_side_fails_closed(self):
+        with self.assertRaises(ValueError):
+            parse_coinbase_market_trade({
+                "trade_id": "3",
+                "product_id": "BTC-USD",
+                "price": "100",
+                "size": "2",
+                "side": "UNKNOWN",
+                "time": "2026-01-01T00:00:00Z",
+            })
+
+
+if __name__ == "__main__":
+    unittest.main()

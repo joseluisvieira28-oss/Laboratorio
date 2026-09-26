@@ -1,0 +1,430 @@
+{
+  "document_type": "MRCR_PRETARGET_READINESS_MATRIX_V01",
+  "lab_id": "MARKET-REVEAL-CONFIRMATION-REACTION-001",
+  "as_of": "2026-09-26",
+  "overall_state": "H02_INTERNAL_PRETARGET_READY_V02__BLS_2027_ANNUAL_PLAN_BLOCKED",
+  "gates": [
+    {
+      "gate": "NEW_MECHANISM_DESIGN",
+      "status": "PASS_CONDITIONAL",
+      "meaning": "design/feasibility path open only; no edge or H02 claim"
+    },
+    {
+      "gate": "CONTAMINATION_MAP",
+      "status": "PASS",
+      "meaning": "previous News Shock/MSM outcome periods are excluded from independent promotion evidence"
+    },
+    {
+      "gate": "MEASUREMENT_SEMANTICS",
+      "status": "PASS",
+      "meaning": "continuous pre-decision measurements defined without classifier thresholds"
+    },
+    {
+      "gate": "TIMESTAMP_NANOSECOND_PRECISION",
+      "status": "PASS_SYNTHETIC",
+      "meaning": "strict RFC3339 parsing preserves 1-9 fractional digits with integer nanosecond arithmetic and rejects unsupported precision"
+    },
+    {
+      "gate": "SOURCE_AND_COLLECTOR_AVAILABILITY_BOUNDARY",
+      "status": "PASS_SYNTHETIC_PROTOCOL_UNARMED",
+      "meaning": "future target protocol must require both source time and collector arrival by decision; canonical template remains unset until authority transition"
+    },
+    {
+      "gate": "BINANCE_PUBLIC_SOURCE_SCHEMA",
+      "status": "PASS_OPERATOR_WINDOWS_EXACT_H02_SCOPE",
+      "meaning": "operator Windows observed schema-valid aggTrade and depth@100ms for both frozen H02 Binance symbols BTCUSDT and ETHUSDT"
+    },
+    {
+      "gate": "BINANCE_SNAPSHOT_BRIDGE_SEMANTICS",
+      "status": "PASS_SYNTHETIC",
+      "meaning": "snapshot-to-diff transitions are explicitly classified as STALE, BRIDGES, GAP or INVALID_INTERVAL"
+    },
+    {
+      "gate": "COINBASE_MARKET_TRADES_SCHEMA",
+      "status": "PASS_OPERATOR_WINDOWS_EXACT_H02_SCOPE",
+      "meaning": "operator Windows observed schema-valid public market_trades for both frozen H02 Coinbase products BTC-USD and ETH-USD"
+    },
+    {
+      "gate": "COINBASE_LEVEL2_SOURCE_TRANSPORT",
+      "status": "PASS_OPERATOR_WINDOWS",
+      "meaning": "public Coinbase Advanced level2 transport observed on operator Windows host/network; subscription ACK, snapshot and sustained updates received with no authentication"
+    },
+    {
+      "gate": "COINBASE_L2_LOCAL_SHADOW_PACKAGE",
+      "status": "PASS_OPERATOR_WINDOWS",
+      "meaning": "operator-host run completed collector PASS and separate offline verifier PASS on the locally persisted journal"
+    },
+    {
+      "gate": "SHADOW_JOURNAL_TAMPER_EVIDENCE",
+      "status": "PASS_SYNTHETIC",
+      "meaning": "raw SHA-256, per-session hash chain, SQLite integrity_check and metadata tamper detection pass synthetic CI"
+    },
+    {
+      "gate": "SHADOW_RESTART_RECOVERY",
+      "status": "PASS_SYNTHETIC_AND_OPERATOR",
+      "meaning": "synthetic close/reopen tests pass and separate operator-host offline verifier reconstructed the persisted session after collection"
+    },
+    {
+      "gate": "SHADOW_COLLECTOR_BOUNDARY_HYGIENE",
+      "status": "PASS_SYNTHETIC",
+      "meaning": "collector is restricted to the public Coinbase market-data websocket; offline components have no network imports and runtime code has no target/trading identifiers"
+    },
+    {
+      "gate": "COINBASE_MULTI_UPDATE_BATCH_TIMING",
+      "status": "PASS_SYNTHETIC",
+      "meaning": "post-batch book state is timestamped at the latest engine event_time represented in the Coinbase batch"
+    },
+    {
+      "gate": "LOCAL_ORDER_BOOK_RECONSTRUCTION",
+      "status": "PASS_SYNTHETIC",
+      "meaning": "snapshot/update replay, sequence gaps, stale duplicates and crossed-book atomicity tested"
+    },
+    {
+      "gate": "NO_LOOKAHEAD_BOUNDARY",
+      "status": "PASS_SYNTHETIC",
+      "meaning": "future feature trades and future book batches are rejected, including a one-nanosecond boundary violation"
+    },
+    {
+      "gate": "METAMORPHIC_MEASUREMENT_INVARIANTS",
+      "status": "PASS_SYNTHETIC",
+      "meaning": "scale/sign transformation invariants passed CI and detect silent measurement-semantic regressions"
+    },
+    {
+      "gate": "STATE_RECEIPT_PROVENANCE",
+      "status": "PASS_SYNTHETIC",
+      "meaning": "state vectors can carry deterministic tamper-evident provenance receipts without target fields"
+    },
+    {
+      "gate": "IMPLEMENTATION_FINGERPRINT_TOOLING",
+      "status": "PASS_SYNTHETIC",
+      "meaning": "fileset and byte-level manifest tooling passed CI; availability boundary is included in the scientific implementation fileset"
+    },
+    {
+      "gate": "LIVE_SCHEMA_SHAKEDOWN_TRIGGER",
+      "status": "MANUAL_ONLY",
+      "meaning": "GitHub source shakedown no longer auto-runs on push, enforcing the anti-zombie environment rule"
+    },
+    {
+      "gate": "OFFICIAL_2027_FOMC_CALENDAR",
+      "status": "ANNUAL_PLAN_AVAILABLE_OFFICIAL_TENTATIVE",
+      "meaning": "Federal Reserve officially lists eight 2027 meeting dates; V0.2 permits these date rows in the annual plan while requiring exact official confirmed T0 per event before capture"
+    },
+    {
+      "gate": "OFFICIAL_2027_BLS_CPI_NFP_CALENDAR",
+      "status": "BLOCKED_INCOMPLETE_AS_OF_2026-09-26",
+      "meaning": "official BLS CPI schedule currently ends at 2026-12-10 and Employment Situation at 2026-12-04; no complete official 2027 calendars are available"
+    },
+    {
+      "gate": "PRETARGET_PROTOCOL",
+      "status": "TEMPLATE_LOCKED_PENDING_CALENDAR_ASSEMBLY",
+      "meaning": "scientific ruleset is frozen separately; final protocol is assembled deterministically only after a complete official calendar exists"
+    },
+    {
+      "gate": "H02",
+      "status": "DESIGN_FREEZE_AUTHORIZED",
+      "meaning": "explicit H02_DESIGN_FREEZE authority issued; frozen ruleset allowed while target observation remains locked"
+    },
+    {
+      "gate": "TARGET_OBSERVATION",
+      "status": "NOT_AUTHORIZED",
+      "meaning": "separate TARGET_OBSERVATION_OPEN authority remains required after final protocol/calendar/implementation binding"
+    },
+    {
+      "gate": "LIVE_TRADING",
+      "status": "PROHIBITED",
+      "meaning": "no orders, paper orders, exchange mutation or execution route exists for MRCR"
+    },
+    {
+      "gate": "FREEZE_BEFORE_TARGET_OPEN_CHRONOLOGY",
+      "status": "PASS_SYNTHETIC",
+      "meaning": "pretarget freeze gate now requires target observation to remain locked; target opening is a separate later authority transition"
+    },
+    {
+      "gate": "AUTHORITY_TRANSITION_RECEIPT_VALIDATOR",
+      "status": "PASS_SYNTHETIC",
+      "meaning": "future H02 design/freeze and target-open receipts are machine-checkable, fingerprinted and fail closed on forbidden scopes or mutation"
+    },
+    {
+      "gate": "TARGET_OPEN_ARTIFACT_BINDING",
+      "status": "PASS_SYNTHETIC",
+      "meaning": "target-open authority must bind the exact protocol fingerprint, official calendar manifest and implementation manifest, with earliest target strictly after freeze/authority timestamps"
+    },
+    {
+      "gate": "H02_DESIGN_FREEZE_AUTHORITY",
+      "status": "ACTIVE_ISSUED",
+      "meaning": "explicit operator H02_DESIGN_FREEZE authority is active; receipt SHA-256 30c189762d05f33f88a1a6d8a9ad3af80355b4589564c70ca15f996dc7f4a155"
+    },
+    {
+      "gate": "COLLECTOR_CLOCK_INTEGRITY_DIAGNOSTICS",
+      "status": "PASS_SYNTHETIC_THRESHOLD_FREE",
+      "meaning": "wall-versus-monotonic clock residuals and reversals are measurable without choosing any scientific tolerance; monotonic reversal fails closed"
+    },
+    {
+      "gate": "H02_DESIGN_FREEZE_AUTHORITY_REQUEST",
+      "status": "FULFILLED",
+      "meaning": "authority request was fulfilled by explicit operator authorization; request document is no longer pending"
+    },
+    {
+      "gate": "H02_SCIENTIFIC_RULESET",
+      "status": "FROZEN_CALENDAR_BINDING_PENDING",
+      "meaning": "classifier, scope, decision clock, depth, horizon, inference and stopping rules frozen under explicit authority; complete 2027 official calendar still required"
+    },
+    {
+      "gate": "H02_FINAL_PROTOCOL_BUILDER",
+      "status": "PASS_SYNTHETIC_CALENDAR_GATED",
+      "meaning": "deterministic builder copies the frozen ruleset and refuses assembly until the official calendar manifest validates"
+    },
+    {
+      "gate": "H02_BLIND_OUTCOME_REVEAL_GATE",
+      "status": "PASS_SYNTHETIC_TARGET_LOCKED",
+      "meaning": "reveal decision uses only official event counts and decision-time labels; future returns remain inaccessible until the single authorized reveal"
+    },
+    {
+      "gate": "H02_DUPLICATE_DESIGN_ARTIFACT",
+      "status": "CLOSED_NONAUTHORITATIVE",
+      "meaning": "later conflicting H02_DESIGN_SPEC_V01 is explicitly non-authoritative; earlier fingerprinted H02_SCIENTIFIC_RULESET_V01 retains precedence"
+    },
+    {
+      "gate": "H02_EXACT_SOURCE_COVERAGE",
+      "status": "PASS_OPERATOR_WINDOWS",
+      "meaning": "operator Windows proved the exact frozen H02 public transport/schema scope: BTCUSDT+ETHUSDT Binance aggTrade/depth and BTC-USD+ETH-USD Coinbase market_trades/level2; no auth/raw persistence/outcomes/orders"
+    },
+    {
+      "gate": "TARGET_CAPTURE_RUNTIME_GUARD",
+      "status": "PASS_SYNTHETIC_TARGET_AUTHORITY_ABSENT",
+      "meaning": "future capture runtime requires complete calendar, frozen target-locked protocol, exact implementation binding, ACTIVE TARGET_OBSERVATION_OPEN authority and current time >= earliest target; current real runtime remains closed"
+    },
+    {
+      "gate": "H02_FROZEN_SCOPE_SHADOW_RUNTIME",
+      "status": "PASS_OPERATOR_WINDOWS",
+      "meaning": "operator Windows collector V01_1 completed the exact six-session frozen scope with all sessions PASS, local raw tamper-evident persistence, source+collector-arrival provenance and no target/trading capabilities"
+    },
+    {
+      "gate": "H02_FROZEN_SCOPE_SEQUENCE_AND_REPLAY",
+      "status": "PASS_OPERATOR_WINDOWS",
+      "meaning": "all six operator sessions passed chain integrity and recovery/replay; Binance snapshot bridge/replay and isolated Coinbase sequence checks passed on BTC+ETH"
+    },
+    {
+      "gate": "H02_FROZEN_SCOPE_RESTART_RECOVERY",
+      "status": "PASS_OPERATOR_WINDOWS",
+      "meaning": "collector batch a6d984b0-50c0-40fc-aff4-801a7c599eba completed 6/6 PASS and a separate offline process reopened SQLite with integrity PASS and reconstructed 6/6 sessions"
+    },
+    {
+      "gate": "H02_FROZEN_SCOPE_BINANCE_ARRIVAL_ORDER",
+      "status": "PASS_OPERATOR_WINDOWS_HOTFIX_VALIDATED",
+      "meaning": "V01_1 chronology hotfix was operator-validated on both BTCUSDT and ETHUSDT; chain integrity and recovery passed without false monotonic reversal"
+    },
+    {
+      "gate": "H02_STRICT_OFFICIAL_CALENDAR_BINDING",
+      "status": "SUPERSEDED_V01_DEADLOCK_PRESERVED",
+      "meaning": "V0.1 all-events-simultaneously-confirmed rule is preserved as historical governance evidence but superseded because Federal Reserve confirms 2027 meetings sequentially; no frozen H02 science changed"
+    },
+    {
+      "gate": "H02_FINAL_BINDING_PREFLIGHT",
+      "status": "SUPERSEDED_BY_V02",
+      "meaning": "legacy V0.1 preflight remains historical; canonical pretarget final binding uses final_binding_preflight_v02"
+    },
+    {
+      "gate": "IMPLEMENTATION_MANIFEST_SELF_VALIDATION",
+      "status": "PASS_SYNTHETIC",
+      "meaning": "runtime rejects mutated implementation file rows or inconsistent implementation manifest fingerprints before target-open"
+    },
+    {
+      "gate": "H02_RULESET_TO_PROTOCOL_BINDING",
+      "status": "PASS_SYNTHETIC",
+      "meaning": "final protocol explicitly carries the canonical H02 ruleset SHA-256 and target-open runtime rejects a mutated ruleset binding"
+    },
+    {
+      "gate": "FINAL_PRETARGET_INTERNAL_READINESS",
+      "status": "PASS_INTERNAL_V02_EXTERNAL_BLS_ANNUAL_PLAN_ONLY",
+      "meaning": "source/recovery/runtime infrastructure and V0.2 calendar/protocol/event-activation binding are internally ready; current Trigger A is blocked only by complete official 2027 BLS CPI and Employment annual schedules"
+    },
+    {
+      "gate": "H02_CALENDAR_BINDING_V02",
+      "status": "PASS_SYNTHETIC_CANONICAL_PRETARGET_PATH",
+      "meaning": "two-stage binding passed CI: complete official annual date plan first, then exact official per-event T0 activation before capture; FOMC OFFICIAL_TENTATIVE is allowed only in annual plan"
+    },
+    {
+      "gate": "H02_EVENT_ACTIVATION_GATE_V02",
+      "status": "PASS_SYNTHETIC_TARGET_LOCKED",
+      "meaning": "event capture requires tamper-evident activation receipt with exact official T0, official authority/domain, confirmation before T0 and annual-plan date match"
+    },
+    {
+      "gate": "H02_FINAL_BINDING_PREFLIGHT_V02",
+      "status": "PASS_SYNTHETIC_REAL_ANNUAL_PLAN_PENDING",
+      "meaning": "end-to-end V0.2 rehearsal bound frozen ruleset + annual plan + implementation + H02 authority and produced target-locked protocol; per-event runtime guard also passed with synthetic official activation"
+    },
+    {
+      "gate": "OFFICIAL_CALENDAR_LIVE_PROBE_V02",
+      "status": "PASS_LIVE_CURRENT_STATE_BLOCKED",
+      "meaning": "branch-push live self-test read official BLS/Federal Reserve sources successfully and correctly classified Trigger A as BLOCKED; no inferred dates, target authority or outcomes involved"
+    },
+    {
+      "gate": "OFFICIAL_CALENDAR_WATCHER_V02",
+      "status": "STAGED_BRANCH_SELFTEST_PASS_CRON_INACTIVE",
+      "meaning": "watcher workflow self-test run 36265570592 succeeded; daily cron is intentionally not claimed active because GitHub schedules execute from the default branch and main mutation/merge is not authorized"
+    }
+  ],
+  "objective_next_triggers": [
+    "BLS publishes complete official 2027 CPI and Employment Situation annual schedules",
+    "run official_2027_calendar_live_probe.py and construct/fingerprint MRCR_H02_ANNUAL_PLAN_MANIFEST_V02 with 12 CPI + 12 Employment + 8 official FOMC date rows",
+    "build real implementation manifest from canonical V0.2 fileset and run final_binding_preflight_v02",
+    "freeze target-locked protocol V0.2 and stop",
+    "require separate explicit TARGET_OBSERVATION_OPEN authority bound to protocol/annual-plan/implementation hashes",
+    "for each event, require a valid MRCR_H02_EVENT_ACTIVATION_RECEIPT_V02 with exact official T0 before capture"
+  ],
+  "anti_zombie_rules": [
+    "local shadow raw data is infrastructure evidence only and must not be used to select or promote MRCR scientific parameters",
+    "GitHub live schema shakedown is manual-only and must not be auto-repeated without an environment change",
+    "do not repeat the same GitHub Coinbase L2 source hunt without an environment change",
+    "do not reuse contaminated 2021-2026 outcomes for selection or promotion",
+    "do not choose depth/clock/horizon/classifier after seeing target outcomes",
+    "do not use exchange source timestamps alone to admit prospectively late-arriving data",
+    "do not convert source blockers into NO_EDGE",
+    "do not promote infrastructure readiness as scientific edge"
+  ],
+  "operator_local_source_receipt": {
+    "evidence_date": "2026-09-25",
+    "session_id": "424dcd73-dc4c-4d6c-80fd-290dba53d4c9",
+    "transport_fixture_product": "BTC-USD",
+    "transport_fixture_is_scientific_target": false,
+    "collector_status": "PASS",
+    "offline_verifier_status": "PASS",
+    "subscription_ack": true,
+    "l2_snapshot_seen": true,
+    "persisted_message_count": 999,
+    "update_message_count": 997,
+    "recovered_final_sequence": 998,
+    "sequence_anomaly": false,
+    "sqlite_integrity_pass": true,
+    "chain_integrity_pass": true,
+    "recovery_pass": true,
+    "authentication_used": false,
+    "account_endpoints_used": false,
+    "signals_computed": false,
+    "outcomes_computed": false,
+    "orders_enabled": false,
+    "raw_payloads_uploaded": false
+  },
+  "h02_exact_source_coverage_operator_receipt": {
+    "evidence_date": "2026-09-26",
+    "receipt_path": "H02_EXACT_SOURCE_COVERAGE_OPERATOR_RECEIPT_2026-09-26.json",
+    "status": "PASS",
+    "binance": {
+      "BTCUSDT": {
+        "aggtrade_messages": 25,
+        "depth_messages": 107,
+        "status": "PASS"
+      },
+      "ETHUSDT": {
+        "aggtrade_messages": 5,
+        "depth_messages": 106,
+        "status": "PASS"
+      }
+    },
+    "coinbase": {
+      "BTC-USD": {
+        "market_trade_messages": 30,
+        "level2_messages": 172,
+        "snapshot": true,
+        "update": true,
+        "status": "PASS"
+      },
+      "ETH-USD": {
+        "market_trade_messages": 8,
+        "level2_messages": 166,
+        "snapshot": true,
+        "update": true,
+        "status": "PASS"
+      }
+    },
+    "sequence_adjudicated": false,
+    "authentication_used": false,
+    "account_endpoints_used": false,
+    "raw_payloads_persisted": false,
+    "signals_computed": false,
+    "outcomes_computed": false,
+    "orders_enabled": false,
+    "scientific_use": "SOURCE_COVERAGE_ONLY",
+    "promotion_credit": "NONE"
+  },
+  "h02_frozen_scope_shadow_preop_closeout": {
+    "status": "PASS_SYNTHETIC_READY_OPERATOR",
+    "receipt_path": "H02_FROZEN_SCOPE_SHADOW_PREOP_CLOSEOUT_V01.json",
+    "validated_head_sha": "5c99f17a156ae72426498d9f0ed42e18cf06fb38",
+    "ci_run_id": 36261835589,
+    "ci_conclusion": "SUCCESS",
+    "target_observation_authorized": false,
+    "promotion_credit": "NONE"
+  },
+  "h02_frozen_scope_shadow_operator_attempt_2026_09_26": {
+    "receipt_path": "H02_FROZEN_SCOPE_SHADOW_OPERATOR_ATTEMPT_2026-09-26_V01.json",
+    "batch_id": "f175a974-f3ba-41e2-9caf-8d27a03262e0",
+    "status": "FAIL_CLOSED_INFRASTRUCTURE_BUG",
+    "coinbase_sessions_passed": 4,
+    "binance_sessions_failed": 2,
+    "root_cause": "ASYNC_REST_SNAPSHOT_APPEND_ORDER_FALSE_MONOTONIC_REVERSAL",
+    "hotfix": "IMPLEMENTED_PENDING_CI_AND_OPERATOR_RETRY",
+    "scientific_interpretation": "NONE",
+    "promotion_credit": "NONE"
+  },
+  "h02_frozen_scope_shadow_chronology_hotfix": {
+    "receipt_path": "H02_FROZEN_SCOPE_SHADOW_CHRONOLOGY_HOTFIX_V01.json",
+    "collector_version": "MRCR_H02_FROZEN_SCOPE_SHADOW_V01_1",
+    "ci_run_id": 36262730879,
+    "validated_head_sha": "b550d86a6ac90846b3b984a83ee0c17faf7dec89",
+    "conclusion": "SUCCESS",
+    "monotonic_guard_preserved": true,
+    "operator_retry_required": true
+  },
+  "h02_frozen_scope_shadow_operator_pass_2026_09_26": {
+    "receipt_path": "H02_FROZEN_SCOPE_SHADOW_OPERATOR_PASS_2026-09-26_V01.json",
+    "batch_id": "a6d984b0-50c0-40fc-aff4-801a7c599eba",
+    "collector": "MRCR_H02_FROZEN_SCOPE_SHADOW_V01_1",
+    "status": "PASS",
+    "session_count": 6,
+    "passed_session_count": 6,
+    "sqlite_integrity_pass": true,
+    "batch_recovery_pass": true,
+    "chronology_hotfix_operator_validated": true,
+    "authentication_used": false,
+    "account_endpoints_used": false,
+    "signals_computed": false,
+    "outcomes_computed": false,
+    "orders_enabled": false,
+    "target_observation_authorized": false,
+    "promotion_credit": "NONE"
+  },
+  "h02_final_binding_readiness_closeout": {
+    "receipt_path": "H02_FINAL_BINDING_READINESS_CLOSEOUT_2026-09-26.json",
+    "status": "PASS_SYNTHETIC_REAL_OFFICIAL_CALENDAR_BLOCKED",
+    "validated_head_sha": "5d0b4796dd64a2877aa34153a656a39eac9a8eb7",
+    "ci_run_id": 36263866838,
+    "successful_steps": 44,
+    "only_remaining_real_blocker": "COMPLETE_CONFIRMED_OFFICIAL_2027_CALENDAR",
+    "target_observation_authorized": false,
+    "promotion_credit": "NONE"
+  },
+  "h02_calendar_binding_v02_closeout": {
+    "receipt_path": "H02_CALENDAR_BINDING_V02_CLOSEOUT_2026-09-26.json",
+    "status": "PASS_SYNTHETIC_CANONICAL_PRETARGET_PATH",
+    "validated_head_sha": "1dce5072fbcfad4c6dd3c9a5a27d23599088a3c7",
+    "ci_run_id": 36265362506,
+    "successful_steps": 44,
+    "v01_status": "SUPERSEDED_GOVERNANCE_DEADLOCK_PRESERVED",
+    "current_trigger_a": "BLOCKED_BY_BLS_2027_ANNUAL_PLAN",
+    "target_observation_authorized": false,
+    "outcomes_authorized": false,
+    "promotion_credit": "NONE"
+  },
+  "official_calendar_watcher_v02_closeout": {
+    "receipt_path": "OFFICIAL_CALENDAR_WATCHER_V02_CLOSEOUT_2026-09-26.json",
+    "status": "PASS_LIVE_CURRENT_STATE_BLOCKED",
+    "live_selftest_run_id": 36265570592,
+    "live_selftest_head_sha": "19d8398489f3d304e0a206733f6fb0dd2f0adbb0",
+    "annual_plan_trigger_ready_v02": false,
+    "cron_state": "STAGED_NOT_ACTIVE_UNTIL_DEFAULT_BRANCH",
+    "target_observation_authorized": false,
+    "promotion_credit": "NONE"
+  }
+}

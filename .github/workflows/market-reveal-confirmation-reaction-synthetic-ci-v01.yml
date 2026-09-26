@@ -1,0 +1,202 @@
+name: MRCR V0.1 Synthetic Safety CI
+
+concurrency:
+  group: mrcr-synthetic-safety-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - market-reveal-confirmation-reaction-v0.1
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/market_reveal_confirmation_reaction_v01/**'
+      - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_confirmation_reaction_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_source_adapters_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_pretarget_guard_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_decision_boundary_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_availability_boundary_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_clock_integrity_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_order_book_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_state_reconstruction_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_book_replay_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_pretarget_gate_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_state_receipt_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_calendar_manifest_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_freeze_manifest_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_science_lock_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_authority_transition_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_fault_injection_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_golden_corpus_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_metamorphic_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_shadow_journal_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_shadow_recovery_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_shadow_collector_hygiene_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_h02_classifier_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_h02_analysis_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_h02_ruleset_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_protocol_builder_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_h02_reveal_gate_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_h02_source_coverage_hygiene_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_target_open_runtime_guard_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_h02_scope_journal_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_h02_scope_recovery_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_h02_frozen_scope_shadow_hygiene_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_h02_scope_batch_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_h02_calendar_binding_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_final_binding_preflight_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_h02_calendar_binding_v02.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_official_calendar_live_probe_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_final_binding_preflight_v02.py'
+      - '.github/workflows/market-reveal-confirmation-reaction-synthetic-ci-v01.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic-only:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compile portable source and shadow tooling
+        run: |
+          python -m py_compile "Dream-Account-OS-v2.3-PARTIAL/research/market_reveal_confirmation_reaction_v01/coinbase_level2_local_probe.py"
+          python -m py_compile "Dream-Account-OS-v2.3-PARTIAL/research/market_reveal_confirmation_reaction_v01/coinbase_l2_shadow_collector.py"
+          python -m py_compile "Dream-Account-OS-v2.3-PARTIAL/research/market_reveal_confirmation_reaction_v01/shadow_journal.py"
+          python -m py_compile "Dream-Account-OS-v2.3-PARTIAL/research/market_reveal_confirmation_reaction_v01/shadow_recovery.py"
+          python -m py_compile "Dream-Account-OS-v2.3-PARTIAL/research/market_reveal_confirmation_reaction_v01/verify_shadow_journal.py"
+          python -m py_compile "Dream-Account-OS-v2.3-PARTIAL/research/market_reveal_confirmation_reaction_v01/h02_source_coverage_probe.py"
+          python -m py_compile "Dream-Account-OS-v2.3-PARTIAL/research/market_reveal_confirmation_reaction_v01/target_open_runtime_guard.py"
+          python -m py_compile "Dream-Account-OS-v2.3-PARTIAL/research/market_reveal_confirmation_reaction_v01/final_binding_preflight.py"
+          python -m py_compile "Dream-Account-OS-v2.3-PARTIAL/research/market_reveal_confirmation_reaction_v01/h02_calendar_binding.py"
+          python -m py_compile "Dream-Account-OS-v2.3-PARTIAL/research/market_reveal_confirmation_reaction_v01/h02_scope_journal.py"
+          python -m py_compile "Dream-Account-OS-v2.3-PARTIAL/research/market_reveal_confirmation_reaction_v01/h02_scope_recovery.py"
+          python -m py_compile "Dream-Account-OS-v2.3-PARTIAL/research/market_reveal_confirmation_reaction_v01/h02_frozen_scope_shadow_collector.py"
+          python -m py_compile "Dream-Account-OS-v2.3-PARTIAL/research/market_reveal_confirmation_reaction_v01/verify_h02_frozen_scope_shadow.py"
+          python -m py_compile "Dream-Account-OS-v2.3-PARTIAL/research/market_reveal_confirmation_reaction_v01/h02_calendar_binding_v02.py"
+          python -m py_compile "Dream-Account-OS-v2.3-PARTIAL/research/market_reveal_confirmation_reaction_v01/official_2027_calendar_live_probe.py"
+          python -m py_compile "Dream-Account-OS-v2.3-PARTIAL/research/market_reveal_confirmation_reaction_v01/event_capture_runtime_guard_v02.py"
+          python -m py_compile "Dream-Account-OS-v2.3-PARTIAL/research/market_reveal_confirmation_reaction_v01/protocol_builder_v02.py"
+      - name: Run measurement tests
+        run: |
+          python "Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_confirmation_reaction_v01.py" -v
+      - name: Run source semantic tests
+        run: |
+          python "Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_source_adapters_v01.py" -v
+      - name: Run no-lookahead boundary tests
+        run: |
+          python "Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_decision_boundary_v01.py" -v
+      - name: Run source-plus-arrival availability tests
+        run: |
+          python "Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_availability_boundary_v01.py" -v
+      - name: Run collector clock integrity tests
+        run: |
+          python "Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_clock_integrity_v01.py" -v
+      - name: Run local order book tests
+        run: |
+          python "Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_order_book_v01.py" -v
+      - name: Run state reconstruction tests
+        run: |
+          python "Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_state_reconstruction_v01.py" -v
+      - name: Run bounded book replay tests
+        run: |
+          python "Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_book_replay_v01.py" -v
+      - name: Run pretarget registration gate tests
+        run: |
+          python "Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_pretarget_gate_v01.py" -v
+      - name: Run state evidence receipt tests
+        run: |
+          python "Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_state_receipt_v01.py" -v
+      - name: Run official calendar manifest tests
+        run: |
+          python "Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_calendar_manifest_v01.py" -v
+      - name: Run strict H02 official calendar binding tests
+        run: |
+          python "Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_h02_calendar_binding_v01.py" -v
+      - name: Run final binding preflight rehearsal tests
+        run: |
+          python "Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_final_binding_preflight_v01.py" -v
+      - name: Run implementation fingerprint tests
+        run: |
+          python "Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_freeze_manifest_v01.py" -v
+      - name: Build and verify current freeze candidate manifest
+        run: |
+          python "Dream-Account-OS-v2.3-PARTIAL/research/market_reveal_confirmation_reaction_v01/freeze_candidate_check.py" --head-sha "$GITHUB_SHA"
+      - name: Enforce pretarget science lock
+        run: |
+          python "Dream-Account-OS-v2.3-PARTIAL/research/market_reveal_confirmation_reaction_v01/science_lock.py"
+      - name: Run science lock regression tests
+        run: |
+          python "Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_science_lock_v01.py" -v
+      - name: Run authority transition fail-closed tests
+        run: |
+          python "Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_authority_transition_v01.py" -v
+      - name: Run frozen H02 ruleset integrity gate
+        run: |
+          python "Dream-Account-OS-v2.3-PARTIAL/research/market_reveal_confirmation_reaction_v01/h02_ruleset.py"
+      - name: Run frozen H02 classifier tests
+        run: |
+          python "Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_h02_classifier_v01.py" -v
+      - name: Run frozen H02 primary analysis tests
+        run: |
+          python "Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_h02_analysis_v01.py" -v
+      - name: Run frozen H02 ruleset mutation tests
+        run: |
+          python "Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_h02_ruleset_v01.py" -v
+      - name: Run final protocol builder tests
+        run: |
+          python "Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_protocol_builder_v01.py" -v
+      - name: Run blind outcome reveal gate tests
+        run: |
+          python "Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_h02_reveal_gate_v01.py" -v
+      - name: Run H02 exact source coverage hygiene tests
+        run: |
+          python "Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_h02_source_coverage_hygiene_v01.py" -v
+      - name: Run H02 frozen-scope journal tests
+        run: |
+          python "Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_h02_scope_journal_v01.py" -v
+      - name: Run H02 frozen-scope recovery tests
+        run: |
+          python "Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_h02_scope_recovery_v01.py" -v
+      - name: Run H02 exact six-session batch tests
+        run: |
+          python "Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_h02_scope_batch_v01.py" -v
+      - name: Run H02 calendar binding v02 tests
+        run: |
+          python "Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_h02_calendar_binding_v02.py" -v
+      - name: Run official calendar live probe v02 trigger tests
+        run: |
+          python "Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_official_calendar_live_probe_v01.py" -v
+      - name: Run H02 final binding preflight v02 tests
+        run: |
+          python "Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_final_binding_preflight_v02.py" -v
+      - name: Run H02 frozen-scope shadow hygiene tests
+        run: |
+          python "Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_h02_frozen_scope_shadow_hygiene_v01.py" -v
+      - name: Run target-open runtime guard tests
+        run: |
+          python "Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_target_open_runtime_guard_v01.py" -v
+      - name: Run deterministic fault injection stress tests
+        run: |
+          python "Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_fault_injection_v01.py" -v
+      - name: Run golden synthetic corpus regression
+        run: |
+          python "Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_golden_corpus_v01.py" -v
+      - name: Run metamorphic measurement invariants
+        run: |
+          python "Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_metamorphic_v01.py" -v
+      - name: Run shadow journal integrity tests
+        run: |
+          python "Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_shadow_journal_v01.py" -v
+      - name: Run shadow replay recovery tests
+        run: |
+          python "Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_shadow_recovery_v01.py" -v
+      - name: Run shadow collector boundary hygiene tests
+        run: |
+          python "Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_shadow_collector_hygiene_v01.py" -v
+      - name: Run pre-target anti-hindsight guards
+        run: |
+          python "Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_pretarget_guard_v01.py" -v
