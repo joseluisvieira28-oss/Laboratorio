@@ -2,7 +2,13 @@ import unittest
 from unittest.mock import patch
 from datetime import datetime, timezone
 
-from radar.external_freshness import all_external_freshness, collector_freshness, fallback_freshness
+from radar.external_freshness import (
+    ExternalFreshnessError,
+    all_external_freshness,
+    collector_freshness,
+    fallback_freshness,
+    validate_dh03_safe_progress,
+)
 
 
 def run(candidate, path, created="2026-09-18T15:00:00Z", conclusion="success"):
@@ -23,6 +29,114 @@ class ExternalFreshnessTests(unittest.TestCase):
         self.assertEqual(state["freshness_classification"], "FRESH")
         self.assertIsNone(state["eligible_event_count"])
         self.assertIn("NO_OUTCOMES", state["count_visibility"])
+
+    def test_dh03_safe_progress_counts_are_bound_to_latest_successful_run(self):
+        candidate = "HTF-DH03-12H-STANDALONE-FORWARD-V1"
+        rows = run(
+            candidate,
+            ".github/workflows/htf-dh03-12h-forward-shadow.yml",
+        )
+        rows[0]["id"] = 36216704993
+        safe = {
+            "schema_version": "DH03_SAFE_PROGRESS_V0.1",
+            "strategy_id": candidate,
+            "source_workflow_run_id": 36216704993,
+            "checked_at_utc": "2026-09-26T04:03:51Z",
+            "latest_archive_day": "2026-09-25",
+            "collector_status": "OK",
+            "used_as_forward_evidence": True,
+            "counts": {
+                "signals": 4,
+                "price_exits": 2,
+                "final_resolutions": 1,
+                "funding_pending": 1,
+                "unresolved_price_paths": 2,
+                "overlap_skipped": 3,
+            },
+            "outcomes_included": False,
+            "prices_included": False,
+            "returns_included": False,
+            "r_multiples_included": False,
+            "profit_factor_included": False,
+            "trade_rows_included": False,
+            "symbol_breakdown_included": False,
+            "science_changed": False,
+            "authenticated_exchange_api_used": False,
+            "orders_created": False,
+            "exchange_mutation_performed": False,
+            "live_capital_enabled": False,
+        }
+        with patch(
+            "radar.external_freshness.fetch_dh03_safe_progress",
+            return_value=safe,
+        ) as fetch:
+            state = collector_freshness(
+                candidate,
+                now=datetime(2026, 9, 19, 16, tzinfo=timezone.utc),
+                runs=rows,
+            )
+        fetch.assert_called_once_with(expected_run_id=36216704993, timeout=15)
+        self.assertEqual(state["eligible_event_count"], 4)
+        self.assertEqual(state["resolved_forward_count"], 1)
+        self.assertEqual(state["price_exit_count"], 2)
+        self.assertEqual(state["funding_pending_count"], 1)
+        self.assertEqual(state["unresolved_price_path_count"], 2)
+        self.assertEqual(state["overlap_skipped_count"], 3)
+        self.assertFalse(state["safe_progress_outcomes_imported"])
+        self.assertIn("NO_OUTCOMES_IMPORTED", state["count_visibility"])
+
+    def test_dh03_safe_progress_failure_keeps_counts_null(self):
+        candidate = "HTF-DH03-12H-STANDALONE-FORWARD-V1"
+        rows = run(
+            candidate,
+            ".github/workflows/htf-dh03-12h-forward-shadow.yml",
+        )
+        with patch(
+            "radar.external_freshness.fetch_dh03_safe_progress",
+            side_effect=ExternalFreshnessError("run mismatch"),
+        ):
+            state = collector_freshness(
+                candidate,
+                now=datetime(2026, 9, 19, 16, tzinfo=timezone.utc),
+                runs=rows,
+            )
+        self.assertIsNone(state["eligible_event_count"])
+        self.assertIsNone(state["resolved_forward_count"])
+        self.assertIn("FAIL_CLOSED", state["count_visibility"])
+        self.assertIn("run mismatch", state["safe_progress_error"])
+
+    def test_dh03_safe_progress_validator_rejects_outcome_firewall_flip(self):
+        payload = {
+            "schema_version": "DH03_SAFE_PROGRESS_V0.1",
+            "strategy_id": "HTF-DH03-12H-STANDALONE-FORWARD-V1",
+            "source_workflow_run_id": 123,
+            "checked_at_utc": "2026-09-26T04:03:51Z",
+            "latest_archive_day": "2026-09-25",
+            "collector_status": "OK",
+            "used_as_forward_evidence": True,
+            "counts": {
+                "signals": 1,
+                "price_exits": 1,
+                "final_resolutions": 1,
+                "funding_pending": 0,
+                "unresolved_price_paths": 0,
+                "overlap_skipped": 0,
+            },
+            "outcomes_included": False,
+            "prices_included": False,
+            "returns_included": True,
+            "r_multiples_included": False,
+            "profit_factor_included": False,
+            "trade_rows_included": False,
+            "symbol_breakdown_included": False,
+            "science_changed": False,
+            "authenticated_exchange_api_used": False,
+            "orders_created": False,
+            "exchange_mutation_performed": False,
+            "live_capital_enabled": False,
+        }
+        with self.assertRaisesRegex(ExternalFreshnessError, "firewall field not false"):
+            validate_dh03_safe_progress(payload, expected_run_id=123)
 
     def test_stale_is_explicit(self):
         candidate = "HTF-DH03-12H-STANDALONE-FORWARD-V1"
