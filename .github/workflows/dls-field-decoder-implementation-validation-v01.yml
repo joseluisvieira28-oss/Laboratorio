@@ -1,0 +1,38 @@
+name: DLS Field Decoder Implementation Validation V0.1
+
+on:
+  push:
+    branches:
+      - dls-drift-sqd-boundary-v01
+    paths:
+      - .github/workflows/dls-field-decoder-implementation-validation-v01.yml
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/validate_field_decoder_implementation_v0_1.py
+      - name: Validate 8 frozen decoders against exact references
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/validate_field_decoder_implementation_v0_1.py
+      - name: Upload receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-field-decoder-implementation-validation-v01
+          path: labs/DEFI_LIQUIDATION_SHOCK_001/FIELD_DECODER_IMPLEMENTATION_VALIDATION_RECEIPT_V0.1.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_TRUE
