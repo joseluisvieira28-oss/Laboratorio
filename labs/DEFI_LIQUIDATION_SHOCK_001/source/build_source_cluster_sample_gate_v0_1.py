@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import argparse, json
+import argparse, hashlib, json
 from collections import defaultdict
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
@@ -13,7 +13,7 @@ DISCOVERY_END=datetime.fromisoformat("2024-01-01T00:00:00+00:00")
 OOS_END=datetime.fromisoformat("2025-01-01T00:00:00+00:00")
 WINDOWS=[15,60,300]
 PRIMARY=60
-OUT=Path("labs/DEFI_LIQUIDATION_SHOCK_001/SOURCE_CLUSTER_SAMPLE_GATE_RECEIPT_V0.1.json")
+OUT=Path("labs/DEFI_LIQUIDATION_SHOCK_001/SOURCE_CLUSTER_SAMPLE_GATE_RECEIPT_V0.1.json")\nCLUSTER_OUT=Path("labs/DEFI_LIQUIDATION_SHOCK_001/SOURCE_PRIMARY_CLUSTER_CENSUS_V0.1.ndjson")
 
 def dtv(s):
     return datetime.fromisoformat(str(s).replace("Z","+00:00"))
@@ -48,7 +48,7 @@ def files_sorted(root,prefix):
     return sorted([p for p in Path(root).rglob("*.json") if p.name.startswith(prefix)])
 
 class ClusterCounter:
-    def __init__(self,quiet):
+    def __init__(self,quiet,emit_path=None):
         self.quiet=quiet
         self.open={}
         self.aggregate=defaultdict(int)
@@ -59,6 +59,12 @@ class ClusterCounter:
         self.total_events=0
         self.max_event_count=0
         self.event_count_hist=defaultdict(int)
+        self.emit_path=Path(emit_path) if emit_path else None
+        self.emit_fh=None
+        self.emitted_cluster_count=0
+        if self.emit_path:
+            self.emit_path.parent.mkdir(parents=True,exist_ok=True)
+            self.emit_fh=self.emit_path.open("w",encoding="utf-8")
 
     def _split(self,last_ts):
         t0=last_ts+timedelta(seconds=self.quiet)
@@ -84,13 +90,40 @@ class ClusterCounter:
         self.aggregate[split]+=1
         self.subgroup[(split,protocol,cls)]+=1
         self.asset[(split,protocol,cls,market)]+=1
+        if self.emit_fh is not None:
+            raw="|".join([
+                "DEFI-LIQUIDATION-SHOCK-001","cluster-v0.1",str(self.quiet),
+                protocol,cls,market,state["first"].isoformat(),state["last"].isoformat(),
+                state["first_signature"],state["last_signature"],str(n)
+            ])
+            cluster_id=hashlib.sha256(raw.encode()).hexdigest()
+            row={
+              "cluster_id":cluster_id,
+              "quiet_seconds":self.quiet,
+              "split":split,
+              "protocol":protocol,
+              "instruction_class":cls,
+              "primary_market_identity":market,
+              "first_event_timestamp":state["first"].isoformat().replace("+00:00","Z"),
+              "last_event_timestamp":state["last"].isoformat().replace("+00:00","Z"),
+              "t0":t0.isoformat().replace("+00:00","Z"),
+              "event_count":n,
+              "distinct_transaction_signature_count":len(state["signatures"]),
+              "first_signature":state["first_signature"],
+              "last_signature":state["last_signature"],
+              "source_only":True
+            }
+            self.emit_fh.write(json.dumps(row,separators=(",",":"),sort_keys=True)+"\n")
+            self.emitted_cluster_count+=1
 
     def add(self,protocol,cls,market,ts,signature):
         key=(protocol,cls,market)
         self.total_events+=1
         s=self.open.get(key)
         if s is None:
-            self.open[key]={"first":ts,"last":ts,"event_count":1,"last_signature":signature}
+            self.open[key]={"first":ts,"last":ts,"event_count":1,
+                            "first_signature":signature,"last_signature":signature,
+                            "signatures":{signature}}
             return
         if ts<s["last"]:
             raise RuntimeError(f"non_monotonic_event_time:{key}:{ts.isoformat()}<{s['last'].isoformat()}")
@@ -98,13 +131,20 @@ class ClusterCounter:
             s["last"]=ts
             s["event_count"]+=1
             s["last_signature"]=signature
+            s["signatures"].add(signature)
         else:
             self._finish(key,s)
-            self.open[key]={"first":ts,"last":ts,"event_count":1,"last_signature":signature}
+            self.open[key]={"first":ts,"last":ts,"event_count":1,
+                            "first_signature":signature,"last_signature":signature,
+                            "signatures":{signature}}
 
     def finish_all(self):
         for k,s in list(self.open.items()):self._finish(k,s)
         self.open.clear()
+        if self.emit_fh is not None:
+            self.emit_fh.flush()
+            self.emit_fh.close()
+            self.emit_fh=None
 
 ap=argparse.ArgumentParser()
 ap.add_argument("--global-evidence",required=True)
@@ -147,7 +187,7 @@ for x in (save0c_final or {}).get("registry_extension") or []:
     r=x.get("reserve");m=x.get("underlying_mint")
     if r and m:save_ext[r]=m
 
-counters={w:ClusterCounter(w) for w in WINDOWS}
+counters={w:ClusterCounter(w,CLUSTER_OUT if w==PRIMARY else None) for w in WINDOWS}
 first_event={}
 
 def add_event(protocol,cls,market,ts_s,sig):
@@ -291,6 +331,15 @@ elif sample_errors:
 else:
     classification="SOURCE_SAMPLE_GATE_PASS"
 
+def file_sha256(path):
+    h=hashlib.sha256()
+    with open(path,"rb") as fh:
+        for block in iter(lambda:fh.read(1024*1024),b""):h.update(block)
+    return h.hexdigest()
+
+cluster_file_sha=file_sha256(CLUSTER_OUT) if CLUSTER_OUT.exists() else None
+cluster_file_bytes=CLUSTER_OUT.stat().st_size if CLUSTER_OUT.exists() else 0
+
 receipt={
  "schema_version":"0.1","lab_id":"DEFI-LIQUIDATION-SHOCK-001","classification":classification,
  "global_field_classification":(global_receipt or {}).get("classification"),
@@ -300,7 +349,7 @@ receipt={
             "total_cluster_count_including_protected_boundary":primary.total_clusters,
             "total_realized_event_count":primary.total_events,
             "max_events_in_one_cluster":primary.max_event_count,
-            "cluster_event_count_histogram":dict(primary.event_count_hist)},
+            "cluster_event_count_histogram":dict(primary.event_count_hist),\n            "emitted_cluster_count":primary.emitted_cluster_count},
  "sensitivity":{
    str(w):{"discovery_cluster_count":int(c.aggregate.get("discovery",0)),
            "oos_cluster_count":int(c.aggregate.get("oos",0)),
@@ -310,7 +359,7 @@ receipt={
  "subgroups":subgroups,"asset_strata":assets,
  "source_identity_error_count":len(errors),"source_identity_errors":errors[:500],
  "sample_gate_error_count":len(sample_errors),"sample_gate_errors":sample_errors,
- "frozen_authorities":["CASCADE_CLUSTERING_FREEZE_V0.1.md",
+ "cluster_census":{"file":str(CLUSTER_OUT),"sha256":cluster_file_sha,\n                   "bytes":cluster_file_bytes,"row_count":primary.emitted_cluster_count,\n                   "contains_prices":False,"contains_returns":False},\n "frozen_authorities":["CASCADE_CLUSTERING_FREEZE_V0.1.md",
                        "SOURCE_SAMPLE_GATE_FREEZE_V0.1.md",
                        "PRE_DISCOVERY_TEMPORAL_HOLDOUT_FREEZE_V0.1.md"],
  "final_unit_receipts":{"marginfi":mr_path,"save0c":su_path},
