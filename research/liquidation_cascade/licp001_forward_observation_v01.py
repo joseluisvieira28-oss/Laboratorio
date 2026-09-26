@@ -6,6 +6,7 @@ import websockets
 from research.liquidation_cascade.licp001_trigger_engine_v01 import (
     load_config, btc_ignition, aggregate_burst
 )
+from research.liquidation_cascade.licp001_execution_math_v01 import executable_returns
 
 CONFIG="research/liquidation_cascade/LICP_001_TRIGGER_CONFIG_V0_1.json"
 SECONDS=600
@@ -14,7 +15,7 @@ COOLDOWN_NS=120*1_000_000_000
 BINANCE_WS="wss://fstream.binance.com/market/stream"
 BYBIT_WS="wss://stream.bybit.com/v5/public/linear"
 MEXC_WS="wss://contract.mexc.com/edge"
-OI_URL="https://fapi.binance.com/fapi/v1/openInterest"
+OI_URL="https://api.hyperliquid.xyz/info"
 
 def binance_notional(o):
     z=float(o.get("z",0) or 0); ap=float(o.get("ap",0) or 0)
@@ -37,12 +38,21 @@ def binance_event(o,local_ns):
 def calc_returns(entry,future,pressure):
     return executable_returns(entry["bid"],entry["ask"],future["bid"],future["ask"],pressure)
 
-def fetch_oi(symbol):
-    url=OI_URL+"?"+urllib.parse.urlencode({"symbol":symbol})
-    req=urllib.request.Request(url,headers={"User-Agent":"Crypto-Lab-LICP-Forward/0.1"})
+def fetch_btc_oi():
+    body=json.dumps({"type":"metaAndAssetCtxs"}).encode("utf-8")
+    req=urllib.request.Request(
+        OI_URL,data=body,
+        headers={"User-Agent":"Crypto-Lab-LICP-Forward/0.1","Content-Type":"application/json"},
+        method="POST")
     with urllib.request.urlopen(req,timeout=10) as r:
-        j=json.loads(r.read().decode())
-    return {"value":float(j["openInterest"]),"venue_ts":int(j["time"]),"local_ns":time.monotonic_ns()}
+        meta,ctxs=json.loads(r.read().decode())
+    for i,u in enumerate(meta["universe"]):
+        if u.get("name")=="BTC" and i<len(ctxs):
+            oi=ctxs[i].get("openInterest")
+            if oi is None:break
+            return {"value":float(oi),"venue_ts":int(time.time()*1000),
+                    "local_ns":time.monotonic_ns(),"source":"hyperliquid_metaAndAssetCtxs"}
+    raise RuntimeError("BTC_OI_NOT_FOUND")
 
 async def binance_stream(stop,q,health):
     health.update({"ack":False,"events":0,"malformed":0})
@@ -121,10 +131,10 @@ async def mexc_stream(sym,stop,q,health):
                 await q.put(("bbo",{"symbol":sym,"local_ns":now,"bid":bid,"ask":ask}))
 
 async def oi_poller(stop,q,health):
-    health.update({"rounds":0,"errors":0})
+    health.update({"rounds":0,"errors":0,"source":"hyperliquid_metaAndAssetCtxs"})
     while not stop.is_set():
         try:
-            x=await asyncio.to_thread(fetch_oi,"BTCUSDT")
+            x=await asyncio.to_thread(fetch_btc_oi)
             await q.put(("oi",x))
         except Exception:health["errors"]+=1
         health["rounds"]+=1
