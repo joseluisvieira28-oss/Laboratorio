@@ -85,3 +85,28 @@ jobs:
     with:
       canonical_trigger: true
     secrets: inherit
+
+
+  health:
+    needs:
+      - gate
+      - forward
+    if: ${{ always() && github.event.workflow_run.event == 'schedule' && github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: liquidation-convexity-oracle-distance-001-source-gate-v0.1
+      - name: Classify LCOD operational health
+        env:
+          HEARTBEAT_UTC: ${{ github.event.workflow_run.updated_at }}
+          RECOVERY_SHOULD_RUN: ${{ needs.gate.outputs.should_run }}
+          RECOVERY_GATE_REASON: ${{ needs.gate.outputs.reason }}
+          RECOVERY_FORWARD_RESULT: ${{ needs.forward.result }}
+        run: python research/liquidation_convexity_oracle_distance_001/lcod_operational_health_v01.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lcod-operational-health-v01
+          path: artifacts/lcod_operational_health_v01.json
+          if-no-files-found: error
