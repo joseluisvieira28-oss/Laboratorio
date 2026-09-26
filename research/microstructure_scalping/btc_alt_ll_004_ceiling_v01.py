@@ -79,7 +79,18 @@ def load_trades(date,symbol,path,lo,hi):
     return rows
 
 
-def last_trade_price(times,prices,t):
+def build_trade_index(rows):
+    times=[]; prices=[]; pb=[0.0]; ps=[0.0]
+    for t,side,px,sz in rows:
+        times.append(t); prices.append(px)
+        notion=px*sz
+        pb.append(pb[-1]+(notion if side=="Buy" else 0.0))
+        ps.append(ps[-1]+(notion if side=="Sell" else 0.0))
+    return {"times":times,"prices":prices,"pb":pb,"ps":ps}
+
+
+def last_trade_price(idx,t):
+    times=idx["times"]; prices=idx["prices"]
     i=bisect.bisect_right(times,t)-1
     if i<0: return None
     lag=t-times[i]
@@ -87,7 +98,8 @@ def last_trade_price(times,prices,t):
     return prices[i]
 
 
-def first_trade_price(times,prices,t):
+def first_trade_price(idx,t):
+    times=idx["times"]; prices=idx["prices"]
     i=bisect.bisect_left(times,t)
     if i>=len(times): return None
     lag=times[i]-t
@@ -95,48 +107,44 @@ def first_trade_price(times,prices,t):
     return prices[i]
 
 
-def btc_flow(trades,t,window):
-    times=[x[0] for x in trades]
+def indexed_flow(idx,t,window):
+    times=idx["times"]
     lo=bisect.bisect_left(times,t-window)
     hi=bisect.bisect_left(times,t)
-    b=s=0.0
-    for _,side,px,sz in trades[lo:hi]:
-        n=px*sz
-        if side=="Buy": b+=n
-        else: s+=n
+    b=idx["pb"][hi]-idx["pb"][lo]
+    s=idx["ps"][hi]-idx["ps"][lo]
     tot=b+s
     return (b-s)/tot if tot else 0.0
 
 
-def enrich_btc(anchors,trades):
-    for i,a in enumerate(anchors):
+def enrich_btc(anchors,trade_idx):
+    anchor_times=[a["t"] for a in anchors]
+    for a in anchors:
         for w in WINDOWS:
             target=a["t"]-w
-            j=bisect.bisect_right([x["t"] for x in anchors],target)-1
+            j=bisect.bisect_right(anchor_times,target)-1
             if j<0:
                 a[f"ret_{w}"]=None
             else:
-                lag=target-anchors[j]["t"]
+                lag=target-anchor_times[j]
                 if lag>ANCHOR_MS:
                     a[f"ret_{w}"]=None
                 else:
                     base=anchors[j]["mid"]
                     a[f"ret_{w}"]=(a["mid"]-base)/base*10000.0
-            a[f"flow_{w}"]=btc_flow(trades,a["t"],w)
+            a[f"flow_{w}"]=indexed_flow(trade_idx,a["t"],w)
 
 
-def follower_prior_return(trades,t,w):
-    times=[x[0] for x in trades]; prices=[x[2] for x in trades]
-    p1=last_trade_price(times,prices,t)
-    p0=last_trade_price(times,prices,t-w)
+def follower_prior_return(idx,t,w):
+    p1=last_trade_price(idx,t)
+    p0=last_trade_price(idx,t-w)
     if p1 is None or p0 is None: return None
     return (p1-p0)/p0*10000.0
 
 
-def follower_future_return(trades,t,h,d):
-    times=[x[0] for x in trades]; prices=[x[2] for x in trades]
-    p0=last_trade_price(times,prices,t)
-    p1=first_trade_price(times,prices,t+h)
+def follower_future_return(idx,t,h,d):
+    p0=last_trade_price(idx,t)
+    p1=first_trade_price(idx,t+h)
     if p0 is None or p1 is None: return None
     return d*(p1-p0)/p0*10000.0
 
@@ -176,14 +184,16 @@ def main():
         download(urls["BTC_L2"],lp); download(urls["BTC_TRADES"],bp)
         anchors=load_btc_l2(d,lp)
         lo,hi=anchors[0]["t"],anchors[-1]["t"]
-        btc_trades=load_trades(d,"BTCUSDT",bp,lo,hi)
-        enrich_btc(anchors,btc_trades)
+        btc_rows=load_trades(d,"BTCUSDT",bp,lo,hi)
+        btc_idx=build_trade_index(btc_rows)
+        enrich_btc(anchors,btc_idx)
         followers={}
         for s in FOLLOWERS:
             tp=root/f"{d}_{s}_trades.csv.gz"
             download(urls[f"{s}_TRADES"],tp)
-            followers[s]=load_trades(d,s,tp,lo,hi)
-        data[d]={"anchors":anchors,"btc_trades":btc_trades,"followers":followers}
+            follower_rows=load_trades(d,s,tp,lo,hi)
+            followers[s]=build_trade_index(follower_rows)
+        data[d]={"anchors":anchors,"followers":followers}
         try: lp.unlink(); bp.unlink()
         except OSError: pass
         for s in FOLLOWERS:
@@ -214,14 +224,14 @@ def main():
                         for d in DATES:
                             selected=[]
                             thr=thresholds[str(w)][pct]
-                            trades=data[d]["followers"][follower]
+                            idx=data[d]["followers"][follower]
                             for a in data[d]["anchors"]:
                                 r=a.get(f"ret_{w}")
                                 if r is None or abs(r)<thr or sign(r)==0: continue
                                 direction=sign(r)
                                 if flow_gate and direction*a[f"flow_{w}"]<=0: continue
                                 if lag_gate:
-                                    fr=follower_prior_return(trades,a["t"],w)
+                                    fr=follower_prior_return(idx,a["t"],w)
                                     if fr is None: continue
                                     if direction*fr >= abs(r): continue
                                 selected.append((a,direction))
@@ -229,7 +239,7 @@ def main():
                             for h in HORIZONS:
                                 vals=[]
                                 for a,direction in selected:
-                                    x=follower_future_return(trades,a["t"],h,direction)
+                                    x=follower_future_return(idx,a["t"],h,direction)
                                     if x is not None: vals.append(x)
                                 pooled[h].extend(vals)
                                 hr[str(h)]={"n":len(vals),
