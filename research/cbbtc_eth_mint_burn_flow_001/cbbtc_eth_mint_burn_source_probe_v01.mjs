@@ -5,6 +5,7 @@ const RPC=process.env.ETH_RPC_URL || "https://ethereum-rpc.publicnode.com";
 const provider=new JsonRpcProvider(RPC);
 const ARCHIVE_RPC=process.env.ETH_ARCHIVE_RPC_URL || "https://rpc-eth.blockmachine.io";
 const archiveProvider=new JsonRpcProvider(ARCHIVE_RPC);
+const HEADER_RPCS=[RPC,ARCHIVE_RPC];
 
 const TOKEN=getAddress("0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf");
 const ZERO_TOPIC="0x"+"0".repeat(64);
@@ -19,19 +20,45 @@ const windows=[
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const hex=n=>"0x"+BigInt(n).toString(16);
 
+function normalizeBlockTag(tag){
+  if(typeof tag==="number") return "0x"+BigInt(tag).toString(16);
+  if(typeof tag==="bigint") return "0x"+tag.toString(16);
+  return String(tag);
+}
+
+async function rawBlock(endpoint,tag){
+  const res=await fetch(endpoint,{
+    method:"POST",
+    headers:{"content-type":"application/json"},
+    body:JSON.stringify({jsonrpc:"2.0",id:1,method:"eth_getBlockByNumber",params:[normalizeBlockTag(tag),false]})
+  });
+  if(!res.ok) throw new Error("HTTP_"+res.status);
+  const x=await res.json();
+  if(x?.error) throw new Error("RPC_"+JSON.stringify(x.error));
+  if(!x?.result) throw new Error("NULL_BLOCK");
+  return {
+    number:Number(BigInt(x.result.number)),
+    hash:String(x.result.hash),
+    timestamp:Number(BigInt(x.result.timestamp)),
+    header_rpc:endpoint
+  };
+}
+
 async function getBlockWithRetry(tag,scope){
-  let last=null;
-  for(let attempt=1;attempt<=8;attempt++){
-    try{
-      const b=await provider.getBlock(tag);
-      if(!b) throw new Error("NULL_BLOCK");
-      return b;
-    }catch(e){
-      last=String(e?.shortMessage||e?.message||e);
-      if(attempt<8) await sleep(500*attempt);
+  const failures=[];
+  for(const endpoint of HEADER_RPCS){
+    let last=null;
+    for(let attempt=1;attempt<=6;attempt++){
+      try{
+        return await rawBlock(endpoint,tag);
+      }catch(e){
+        last=String(e?.shortMessage||e?.message||e);
+        if(attempt<6) await sleep(500*attempt);
+      }
     }
+    failures.push({endpoint,error:last});
   }
-  throw new Error(scope+":"+last);
+  throw new Error(scope+":"+JSON.stringify(failures));
 }
 
 async function firstBlockAtOrAfter(ts,label){
@@ -121,7 +148,9 @@ const receipt={
   pnl_opened:false,
   mutation:false,
   promotion_credit:0,
-  classification:"SOURCE_BLOCKED"
+  classification:"SOURCE_BLOCKED",
+  source_gate_evaluated:false,
+  completed_window_count:0
 };
 
 try{
@@ -140,8 +169,7 @@ try{
     const start=await firstBlockAtOrAfter(startTs,w.id+"_START");
     const endBoundary=await firstBlockAtOrAfter(endTs,w.id+"_END");
     const endBlock=endBoundary.number-1;
-    const endMeta=await provider.getBlock(endBlock);
-    if(!endMeta) throw new Error("WINDOW_END_META_MISSING_"+w.id);
+    const endMeta=await getBlockWithRetry(endBlock,"WINDOW_END_META_FAILED_"+w.id+"_"+endBlock);
 
     let code;
     try{
@@ -195,8 +223,10 @@ try{
       first_event:rows[0]||null,
       last_event:rows[rows.length-1]||null
     });
+    receipt.completed_window_count=receipt.windows.length;
   }
 
+  receipt.source_gate_evaluated=receipt.windows.length===2;
   const totalMint=receipt.windows.reduce((a,w)=>a+w.mint_count,0);
   const totalBurn=receipt.windows.reduce((a,w)=>a+w.burn_count,0);
   const pass=
