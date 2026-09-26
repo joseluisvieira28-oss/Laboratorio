@@ -1,0 +1,27 @@
+name: BTC-CONVEX-001 forward source probe
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/btc_convex_forward_source_probe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Probe public forward kline/funding sources only
+        run: python labs/btc-convex-trend-capture-001/forward_source_probe_v0_1.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: BTC-CONVEX-001-FORWARD-SOURCE-PROBE-V01
+          path: labs/btc-convex-trend-capture-001/evidence/FORWARD_SOURCE_PROBE_V0.1.json

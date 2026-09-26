@@ -1,0 +1,27 @@
+name: BTC-CONVEX-001 FINAL expansion source gate V0.1
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/btc_convex_expansion_source_gate_final.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-gate-final:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run authoritative expansion source gate only
+        run: python labs/btc-convex-trend-capture-001/expansion_source_gate_v0_1.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: BTC-CONVEX-001-FINAL-EXPANSION-SOURCE-GATE-V01
+          path: labs/btc-convex-trend-capture-001/evidence/EXPANSION_SOURCE_GATE_V0.1.json

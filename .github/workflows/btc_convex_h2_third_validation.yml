@@ -1,0 +1,27 @@
+name: BTC-CONVEX-001 FINAL H2 third-basket validation
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/btc_convex_h2_third_validation.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 70
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run frozen Parent vs H2 third-basket validation
+        run: python labs/btc-convex-trend-capture-001/h2_third_basket_validation_v0_1.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: BTC-CONVEX-001-FINAL-H2-THIRD-BASKET-V01
+          path: labs/btc-convex-trend-capture-001/evidence/H2_THIRD_BASKET_VALIDATION_V0.1.json
