@@ -1,0 +1,66 @@
+name: DLS Save0c Unit Source Completion V0.2
+
+on:
+  push:
+    branches:
+      - dls-field-enrichment-v01
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_SAVE0C_UNIT_SOURCE_COMPLETION_V02.marker
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  complete:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download V0.1 aggregate
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36265836324
+          pattern: dls-save0c-unit-metadata-population-v01
+          path: aggregate_v01
+          merge-multiple: true
+
+      - name: Download V0.1 partition receipts
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36265836324
+          pattern: dls-save0c-unit-*
+          path: partitions_v01
+          merge-multiple: true
+
+      - name: Compile conditional resolver
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/resolve_save0c_unit_metadata_partial_v0_2.py
+
+      - name: Resolve exact unmapped reserves only
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/resolve_save0c_unit_metadata_partial_v0_2.py
+          --aggregate aggregate_v01
+          --partitions partitions_v01
+
+      - name: Upload V0.2 unit coverage receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-save0c-unit-metadata-source-completion-v02
+          path: labs/DEFI_LIQUIDATION_SHOCK_001/SAVE0C_UNIT_METADATA_POPULATION_RECEIPT_V0.2.json
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_TRUE
