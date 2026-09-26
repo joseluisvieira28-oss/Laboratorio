@@ -75,7 +75,8 @@ required=[
 for name,obj,expected,path in required:
     actual=(obj or {}).get("classification")
     ok=actual==expected
-    checks[name]={"path":path,"classification":actual,"expected":expected,"pass":ok}
+    checks[name]={"path":path,"receipt_sha256":sha256(path) if path else None,
+                  "classification":actual,"expected":expected,"pass":ok}
     if obj is None:
         errors.append({"reason":"missing_prerequisite_receipt","name":name})
     elif not ok:
