@@ -28,7 +28,7 @@ The existence, sign, speed, or profitability of any reversion is NOT assumed at 
 
 Token:
 rETH mainnet
-0xae78736Cd615f374D3085123A210448E74Fc6393A
+0xae78736Cd615f374D3085123A210448E74Fc6393
 
 Authority:
 Rocket Pool rETH contract method:
