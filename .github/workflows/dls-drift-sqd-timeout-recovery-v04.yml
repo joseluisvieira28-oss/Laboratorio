@@ -1,0 +1,148 @@
+name: DLS Drift SQD Timeout Recovery V0.4
+
+on:
+  push:
+    branches:
+      - dls-drift-sqd-boundary-v01
+    paths:
+      - .github/workflows/dls-drift-sqd-timeout-recovery-v04.yml
+
+permissions:
+  contents: read
+
+jobs:
+  recover:
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        include:
+          - start: '2024-06-01T00:00:00Z'
+            end: '2024-06-08T00:00:00Z'
+            id: d202406a
+          - start: '2024-06-08T00:00:00Z'
+            end: '2024-06-15T00:00:00Z'
+            id: d202406b
+          - start: '2024-06-15T00:00:00Z'
+            end: '2024-06-22T00:00:00Z'
+            id: d202406c
+          - start: '2024-06-22T00:00:00Z'
+            end: '2024-06-29T00:00:00Z'
+            id: d202406d
+          - start: '2024-06-29T00:00:00Z'
+            end: '2024-07-01T00:00:00Z'
+            id: d202406e
+          - start: '2024-07-01T00:00:00Z'
+            end: '2024-07-08T00:00:00Z'
+            id: d202407a
+          - start: '2024-07-08T00:00:00Z'
+            end: '2024-07-15T00:00:00Z'
+            id: d202407b
+          - start: '2024-07-15T00:00:00Z'
+            end: '2024-07-22T00:00:00Z'
+            id: d202407c
+          - start: '2024-07-22T00:00:00Z'
+            end: '2024-07-29T00:00:00Z'
+            id: d202407d
+          - start: '2024-07-29T00:00:00Z'
+            end: '2024-08-01T00:00:00Z'
+            id: d202407e
+          - start: '2024-08-01T00:00:00Z'
+            end: '2024-08-08T00:00:00Z'
+            id: d202408a
+          - start: '2024-08-08T00:00:00Z'
+            end: '2024-08-15T00:00:00Z'
+            id: d202408b
+          - start: '2024-08-15T00:00:00Z'
+            end: '2024-08-22T00:00:00Z'
+            id: d202408c
+          - start: '2024-08-22T00:00:00Z'
+            end: '2024-08-29T00:00:00Z'
+            id: d202408d
+          - start: '2024-08-29T00:00:00Z'
+            end: '2024-09-01T00:00:00Z'
+            id: d202408e
+          - start: '2024-09-01T00:00:00Z'
+            end: '2024-09-08T00:00:00Z'
+            id: d202409a
+          - start: '2024-09-08T00:00:00Z'
+            end: '2024-09-15T00:00:00Z'
+            id: d202409b
+          - start: '2024-09-15T00:00:00Z'
+            end: '2024-09-22T00:00:00Z'
+            id: d202409c
+          - start: '2024-09-22T00:00:00Z'
+            end: '2024-09-29T00:00:00Z'
+            id: d202409d
+          - start: '2024-09-29T00:00:00Z'
+            end: '2024-10-01T00:00:00Z'
+            id: d202409e
+          - start: '2024-10-01T00:00:00Z'
+            end: '2024-10-08T00:00:00Z'
+            id: d202410a
+          - start: '2024-10-08T00:00:00Z'
+            end: '2024-10-15T00:00:00Z'
+            id: d202410b
+          - start: '2024-10-15T00:00:00Z'
+            end: '2024-10-22T00:00:00Z'
+            id: d202410c
+          - start: '2024-10-22T00:00:00Z'
+            end: '2024-10-29T00:00:00Z'
+            id: d202410d
+          - start: '2024-10-29T00:00:00Z'
+            end: '2024-11-01T00:00:00Z'
+            id: d202410e
+          - start: '2024-11-01T00:00:00Z'
+            end: '2024-11-08T00:00:00Z'
+            id: d202411a
+          - start: '2024-11-08T00:00:00Z'
+            end: '2024-11-15T00:00:00Z'
+            id: d202411b
+          - start: '2024-11-15T00:00:00Z'
+            end: '2024-11-22T00:00:00Z'
+            id: d202411c
+          - start: '2024-11-22T00:00:00Z'
+            end: '2024-11-29T00:00:00Z'
+            id: d202411d
+          - start: '2024-11-29T00:00:00Z'
+            end: '2024-12-01T00:00:00Z'
+            id: d202411e
+          - start: '2024-12-01T00:00:00Z'
+            end: '2024-12-08T00:00:00Z'
+            id: d202412a
+          - start: '2024-12-08T00:00:00Z'
+            end: '2024-12-15T00:00:00Z'
+            id: d202412b
+          - start: '2024-12-15T00:00:00Z'
+            end: '2024-12-22T00:00:00Z'
+            id: d202412c
+          - start: '2024-12-22T00:00:00Z'
+            end: '2024-12-29T00:00:00Z'
+            id: d202412d
+          - start: '2024-12-29T00:00:00Z'
+            end: '2025-01-01T00:00:00Z'
+            id: d202412e
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile frozen runner
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/run_drift_sqd_first_success_partition_v0_1.py
+      - name: Run frozen remediation shard
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/run_drift_sqd_first_success_partition_v0_1.py --start "${{ matrix.start }}" --end "${{ matrix.end }}" --out "drift_recovery_v04/${{ matrix.id }}"
+      - name: Upload remediation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-drift-sqd-recovery-v04-${{ matrix.id }}
+          path: drift_recovery_v04/${{ matrix.id }}
+          if-no-files-found: error
+          retention-days: 30
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_TRUE
