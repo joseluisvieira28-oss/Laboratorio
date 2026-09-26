@@ -67,8 +67,12 @@ if cp.exists():
             ent=agg.setdefault(target,{"target_identity":target,"contributors":set(),
                                       "first_t0":t0,"last_t0":t0,
                                       "discovery_cluster_count":0,"oos_cluster_count":0,
-                                      "monthly_probe_dates":{}})
+                                      "monthly_probe_dates":{},"contributor_counts":{}})
             ent["contributors"].add((protocol,cls))
+            ck=str(protocol)+"\u241f"+str(cls)
+            cc=ent["contributor_counts"].setdefault(ck,{
+                "protocol":protocol,"instruction_class":cls,
+                "discovery_cluster_count":0,"oos_cluster_count":0})
             if t0 and (ent["first_t0"] is None or t0<ent["first_t0"]):ent["first_t0"]=t0
             if t0 and (ent["last_t0"] is None or t0>ent["last_t0"]):ent["last_t0"]=t0
             if t0:
@@ -76,13 +80,19 @@ if cp.exists():
                 day=t0[:10]
                 prior=ent["monthly_probe_dates"].get(month)
                 if prior is None or day<prior: ent["monthly_probe_dates"][month]=day
-            if split=="discovery":ent["discovery_cluster_count"]+=1
-            elif split=="oos":ent["oos_cluster_count"]+=1
+            if split=="discovery":
+                ent["discovery_cluster_count"]+=1
+                cc["discovery_cluster_count"]+=1
+            elif split=="oos":
+                ent["oos_cluster_count"]+=1
+                cc["oos_cluster_count"]+=1
 
 requirements=[]
 for target,ent in sorted(agg.items()):
     contributors=[{"protocol":p,"instruction_class":c} for p,c in sorted(ent.pop("contributors"))]
     ent["monthly_probe_dates"]=[ent["monthly_probe_dates"][m] for m in sorted(ent["monthly_probe_dates"])]
+    ent["contributor_counts"]=sorted(ent["contributor_counts"].values(),
+                                     key=lambda x:(str(x.get("protocol")),str(x.get("instruction_class"))))
     inferential=any(
       (x.get("protocol"),x.get("class")) in {(c["protocol"],c["instruction_class"]) for c in contributors}
       and x.get("status") not in (None,"DESCRIPTIVE_ONLY_INSUFFICIENT_INDEPENDENT_N")
@@ -96,6 +106,8 @@ receipt={
  "sample_gate_classification":(sample or {}).get("classification"),
  "cluster_census_path":str(cp),"cluster_row_count":row_count,
  "unique_target_count":len(requirements),"requirements":requirements,
+ "source_sample_primary":(sample or {}).get("primary"),
+ "source_sample_subgroups":(sample or {}).get("subgroups") or [],
  "error_count":len(errors),"errors":errors[:500],
  "frozen_authorities":["MARKET_MAPPING_REQUIREMENTS_FREEZE_V0.1.md",
                        "OUTCOME_STATISTICAL_AUTHORITY_FREEZE_V0.1.md",
