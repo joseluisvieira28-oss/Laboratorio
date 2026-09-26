@@ -48,24 +48,35 @@ async function firstBlockAtOrAfter(ts,label){
   return {number:Number(b.number),hash:b.hash,timestamp:Number(b.timestamp)};
 }
 
+async function queryLogsAdaptive(fromBlock,toBlock,topics,errors,depth=0){
+  let last=null;
+  for(let attempt=1;attempt<=5;attempt++){
+    try{
+      const logs=await provider.getLogs({address:TOKEN,fromBlock,toBlock,topics});
+      return logs;
+    }catch(e){
+      last=String(e?.shortMessage||e?.message||e);
+      if(attempt<5) await sleep(600*attempt);
+    }
+  }
+  if(fromBlock>=toBlock){
+    errors.push({from_block:fromBlock,to_block:toBlock,error:last,depth});
+    return [];
+  }
+  const mid=Math.floor((fromBlock+toBlock)/2);
+  const left=await queryLogsAdaptive(fromBlock,mid,topics,errors,depth+1);
+  await sleep(100);
+  const right=await queryLogsAdaptive(mid+1,toBlock,topics,errors,depth+1);
+  return left.concat(right);
+}
+
 async function getLogsChunked(fromBlock,toBlock,topics){
   const out=[];
   const errors=[];
   for(let from=fromBlock;from<=toBlock;from+=CHUNK){
     const to=Math.min(toBlock,from+CHUNK-1);
-    let ok=false,last=null;
-    for(let attempt=1;attempt<=6;attempt++){
-      try{
-        const logs=await provider.getLogs({address:TOKEN,fromBlock:from,toBlock:to,topics});
-        out.push(...logs);
-        ok=true;
-        break;
-      }catch(e){
-        last=String(e?.shortMessage||e?.message||e);
-        if(attempt<6) await sleep(700*attempt);
-      }
-    }
-    if(!ok) errors.push({from_block:from,to_block:to,error:last});
+    const logs=await queryLogsAdaptive(from,to,topics,errors,0);
+    out.push(...logs);
     await sleep(80);
   }
   return {logs:out,errors};
