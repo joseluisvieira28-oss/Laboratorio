@@ -42,7 +42,7 @@ summary={"schema_version":"0.2","lab_id":"DEFI-LIQUIDATION-SHOCK-001",
          "wallets":False,"exchange_mutation":False,"paid_source":False,"account_creation":False,
          "post_outcome_tuning":False,"merge_main":False}}
 
-slices={}; rows=[]
+slices={}; row_files=[]
 bad_hash=[]; duplicate_slices=[]; chunk_errors=[]; anomalies=[]
 for mp,m in accepted:
     base=mp.parent
@@ -65,7 +65,7 @@ for mp,m in accepted:
             duplicate_slices.append({"start":k[0],"end":k[1],"existing":str(slices[k][0]),"duplicate":str(fp)})
             continue
         slices[k]=(fp,rec)
-        rows.extend(rec.get("rows") or [])
+        row_files.append(fp)
 
 ordered=sorted(((parse(a),parse(b),a,b) for a,b in slices),key=lambda x:(x[0],x[1]))
 cursor=LOWER; gaps=[]; overlaps=[]; used_ranges=[]
@@ -84,29 +84,39 @@ if cursor<UPPER:
     gaps.append({"expected_start":cursor.isoformat().replace("+00:00","Z"),"observed_end":UPPER.isoformat().replace("+00:00","Z")})
 
 ded={}; duplicate_instruction_keys=[]
-for r in rows:
-    cls=r.get("class"); sig=r.get("signature"); addr=r.get("instructionAddress")
-    key=(cls,sig,addr_key(addr))
-    if key in ded:
-        duplicate_instruction_keys.append(key)
-        if ded[key]!=r: anomalies.append({"reason":"dedup_key_collision","key":key})
-    ded[key]=r
-rows=list(ded.values())
+class_success={c:[] for c in CLASSES}; class_failed={c:0 for c in CLASSES}; class_local_anom={c:[] for c in CLASSES}
+for fp in row_files:
+    rec=json.loads(fp.read_text())
+    for r in (rec.get("rows") or []):
+        cls=r.get("class"); sig=r.get("signature"); addr=r.get("instructionAddress")
+        if cls not in CLASSES:
+            anomalies.append({"reason":"unexpected_class","signature":sig,"class":cls}); continue
+        key=(cls,sig,addr_key(addr))
+        fpv=(r.get("timestamp"),r.get("slot"),r.get("classification"),r.get("instructionAddress"),r.get("transactionIndex"))
+        if key in ded:
+            duplicate_instruction_keys.append(key)
+            if ded[key]!=fpv: anomalies.append({"reason":"dedup_key_collision","key":key})
+            continue
+        ded[key]=fpv
+        try:t=parse(r.get("timestamp"))
+        except Exception:
+            class_local_anom[cls].append({"reason":"bad_timestamp","signature":sig}); continue
+        if not (LOWER<=t<UPPER):
+            class_local_anom[cls].append({"reason":"outside_window","signature":sig,"timestamp":r.get("timestamp")})
+        state=r.get("classification")
+        if state=="SUCCESSFUL_REFERENCE_CANDIDATE_PENDING_RAW_SAMPLE_RECONCILIATION":
+            class_success[cls].append({
+              "class":cls,"signature":sig,"slot":r.get("slot"),"timestamp":r.get("timestamp"),
+              "instructionAddress":addr,"transactionIndex":r.get("transactionIndex")
+            })
+        elif state=="LIQUIDATION_ATTEMPT_FAILED_NOT_REALIZED":
+            class_failed[cls]+=1
+        else:
+            class_local_anom[cls].append({"reason":"unexpected_row_class","signature":sig,"classification":state})
 
 queues={}
 for cls,prefix in CLASSES.items():
-    rs=[r for r in rows if r.get("class")==cls]
-    successful=[]; failed=[]; local_anom=[]
-    for r in rs:
-        try:t=parse(r.get("timestamp"))
-        except Exception:
-            local_anom.append({"reason":"bad_timestamp","signature":r.get("signature")}); continue
-        if not (LOWER<=t<UPPER):
-            local_anom.append({"reason":"outside_window","signature":r.get("signature"),"timestamp":r.get("timestamp")})
-        state=r.get("classification")
-        if state=="SUCCESSFUL_REFERENCE_CANDIDATE_PENDING_RAW_SAMPLE_RECONCILIATION": successful.append(r)
-        elif state=="LIQUIDATION_ATTEMPT_FAILED_NOT_REALIZED": failed.append(r)
-        else: local_anom.append({"reason":"unexpected_row_class","signature":r.get("signature"),"classification":state})
+    successful=class_success[cls]; failed_count=class_failed[cls]; local_anom=class_local_anom[cls]
     successful.sort(key=lambda r:(parse(r["timestamp"]),r.get("slot",-1),r.get("signature",""),addr_key(r.get("instructionAddress"))))
     first=successful[0] if successful else None; last=successful[-1] if successful else None
     bysig={}
@@ -123,9 +133,9 @@ for cls,prefix in CLASSES.items():
     sigs=sorted(bysig); mandatory=[]
     if first and first.get("signature"): mandatory.append(first["signature"])
     if last and last.get("signature") and last["signature"] not in mandatory: mandatory.append(last["signature"])
-    rank=sorted((hashlib.sha256(("drift:"+cls+":"+s).encode()).hexdigest(),s) for s in sigs if s not in mandatory)
-    selected=mandatory+[s for _,s in rank[:30]]
-    entries=[bysig[s] for s in selected if s in bysig]
+    rank=sorted((hashlib.sha256(("drift:"+cls+":"+sig).encode()).hexdigest(),sig) for sig in sigs if sig not in mandatory)
+    selected=mandatory+[sig for _,sig in rank[:30]]
+    entries=[bysig[sig] for sig in selected if sig in bysig]
     queues[cls]={"mandatory_first":first.get("signature") if first else None,
                  "mandatory_last":last.get("signature") if last else None,
                  "selected_count":len(entries),"distinct_successful_signatures":len(sigs),"entries":entries}
@@ -133,7 +143,7 @@ for cls,prefix in CLASSES.items():
       "discriminator":prefix,
       "successful_instruction_count":len(successful),
       "distinct_successful_signatures":len(sigs),
-      "failed_attempt_count":len(failed),
+      "failed_attempt_count":failed_count,
       "anomaly_count":len(local_anom),
       "first_success":first,"last_success":last
     }
