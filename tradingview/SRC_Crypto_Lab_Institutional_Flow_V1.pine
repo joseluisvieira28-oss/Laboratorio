@@ -1,0 +1,132 @@
+//@version=6
+import TradingView/LibraryCOT/6 as cot
+
+indicator("SRC Crypto Lab — Institutional Flow V1", shorttitle="SRC InstFlow V1", overlay=true, max_labels_count=200)
+
+// ============================================================================
+// RESEARCH-ONLY MIRROR OF ETF-CME-INSTFLOW-001
+// Frozen mechanism. No optimization. No live orders. No alerts/webhooks.
+// Exact research target: BINANCE:BTCUSDT, 1D, 2025 OOS only.
+// 2026 remains locked by governance.
+// ============================================================================
+
+const string CFTC_CODE = "133741"
+const string COT_TYPE = "Legacy"
+const bool INCLUDE_OPTIONS = false
+const string METRIC_TYPE = "All"
+const int EXPECTED_WEEKS = 50
+const int RELEASE_TO_SAFE_BARS = 5   // Friday release -> Wednesday 00:00 UTC on 24/7 daily BTC bars.
+const int HOLD_BARS = 7              // Frozen 7-calendar-day holding horizon on 24/7 daily BTC bars.
+
+int FIRST_ENTRY = timestamp("UTC", 2025, 1, 15, 0, 0)
+int LAST_ENTRY  = timestamp("UTC", 2025, 12, 24, 0, 0)
+int LAST_EXIT   = timestamp("UTC", 2025, 12, 31, 0, 0)
+
+// Fail closed outside the exact chart context used by the frozen OOS mechanism.
+if barstate.isfirst and not timeframe.isdaily
+    runtime.error("FAIL-CLOSED: use the 1D timeframe. The frozen timing is defined on daily BTCUSDT bars.")
+
+if barstate.isfirst and syminfo.tickerid != "BINANCE:BTCUSDT"
+    runtime.error("FAIL-CLOSED: use BINANCE:BTCUSDT. The frozen OOS outcome source is Binance Vision BTCUSDT spot 1D.")
+
+// Official TradingView COT mirror of the exact Legacy Futures Only inputs.
+float ncLongRaw = cot.requestCommitmentOfTraders(COT_TYPE, CFTC_CODE, INCLUDE_OPTIONS, "Noncommercial Positions", "Long", METRIC_TYPE)
+float ncShortRaw = cot.requestCommitmentOfTraders(COT_TYPE, CFTC_CODE, INCLUDE_OPTIONS, "Noncommercial Positions", "Short", METRIC_TYPE)
+float openInterestRaw = cot.requestCommitmentOfTraders(COT_TYPE, CFTC_CODE, INCLUDE_OPTIONS, "Open Interest", "No direction", METRIC_TYPE)
+
+// The CFTC report is as-of Tuesday and normally released Friday. The research
+// protocol deliberately waits until as-of + 8 calendar days = next Wednesday.
+// On BTCUSDT 1D (24/7), a five-bar delay from the Friday release mirrors that
+// conservative information-safe timestamp. We additionally require the delayed
+// COT record to refresh on each authorized Wednesday; otherwise the mirror fails closed.
+float ncLongSafe = ncLongRaw[RELEASE_TO_SAFE_BARS]
+float ncShortSafe = ncShortRaw[RELEASE_TO_SAFE_BARS]
+float openInterestSafe = openInterestRaw[RELEASE_TO_SAFE_BARS]
+float netNoncommercialSafe = ncLongSafe - ncShortSafe
+float priorNetNoncommercialSafe = ncLongSafe[7] - ncShortSafe[7]
+
+bool authorizedEntryDate = dayofweek == dayofweek.wednesday and time >= FIRST_ENTRY and time <= LAST_ENTRY
+bool safeDataAvailable = not na(ncLongSafe) and not na(ncShortSafe) and not na(openInterestSafe) and openInterestSafe > 0 and not na(priorNetNoncommercialSafe)
+bool delayedRecordRefreshed = (not na(ncLongSafe[1]) and ncLongSafe != ncLongSafe[1]) or (not na(ncShortSafe[1]) and ncShortSafe != ncShortSafe[1]) or (not na(openInterestSafe[1]) and openInterestSafe != openInterestSafe[1])
+
+float candidateSignal = safeDataAvailable ? (netNoncommercialSafe - priorNetNoncommercialSafe) / openInterestSafe : na
+
+var int activePosition = 0
+var float activeSignal = na
+var int activeEntryTime = na
+var int evaluableWeeks = 0
+var int mirrorFaults = 0
+var float lastOosSignal = na
+var int lastOosPosition = 0
+
+// Expire the previous frozen seven-day position exactly at entry + 7 calendar days.
+bool exitPulse = not na(activeEntryTime) and time >= activeEntryTime + HOLD_BARS * 24 * 60 * 60 * 1000
+if exitPulse
+    activePosition := 0
+    activeSignal := na
+    activeEntryTime := na
+
+// One and only one candidate observation per authorized Wednesday.
+bool validEntryPulse = false
+if authorizedEntryDate
+    evaluableWeeks += 1
+    if safeDataAvailable and delayedRecordRefreshed
+        activeSignal := candidateSignal
+        activePosition := candidateSignal > 0 ? 1 : candidateSignal < 0 ? -1 : 0
+        activeEntryTime := time
+        lastOosSignal := candidateSignal
+        lastOosPosition := activePosition
+        validEntryPulse := true
+    else
+        mirrorFaults += 1
+        activePosition := 0
+        activeSignal := na
+        activeEntryTime := na
+
+// Hard temporal firewall: never expose or infer a 2026 signal in this version.
+bool protected2026 = time > LAST_EXIT
+if protected2026
+    activePosition := 0
+    activeSignal := na
+    activeEntryTime := na
+
+// Visual layer: deliberately non-executable. No strategy.* / alertcondition / webhook logic.
+bgcolor(activePosition == 1 ? color.new(color.green, 90) : activePosition == -1 ? color.new(color.red, 90) : na, title="Frozen 7D COT bias")
+
+plotshape(validEntryPulse and activePosition == 1, title="LONG CFTC Flow", style=shape.labelup, location=location.belowbar, text="LONG\nCFTC", size=size.tiny, color=color.new(color.green, 0), textcolor=color.white)
+plotshape(validEntryPulse and activePosition == -1, title="SHORT CFTC Flow", style=shape.labeldown, location=location.abovebar, text="SHORT\nCFTC", size=size.tiny, color=color.new(color.red, 0), textcolor=color.white)
+plotshape(validEntryPulse and activePosition == 0, title="FLAT CFTC Flow", style=shape.circle, location=location.belowbar, size=size.tiny, color=color.new(color.gray, 0))
+
+// Mark an integrity failure on an authorized observation date instead of silently using stale/missing COT data.
+plotshape(authorizedEntryDate and not validEntryPulse, title="Mirror fault", style=shape.xcross, location=location.abovebar, text="COT\nFAIL", size=size.small, color=color.orange, textcolor=color.white)
+
+// OOS boundaries.
+plotshape(time == FIRST_ENTRY, title="OOS start", style=shape.flag, location=location.bottom, text="OOS\nSTART", size=size.tiny, color=color.new(color.blue, 0), textcolor=color.white)
+plotshape(time == LAST_EXIT, title="OOS end", style=shape.flag, location=location.bottom, text="OOS\nEND", size=size.tiny, color=color.new(color.blue, 0), textcolor=color.white)
+
+// Dashboard.
+var table dash = table.new(position.top_right, 2, 8, border_width=1)
+if barstate.islast
+    bool fullWindowLoaded = time >= LAST_EXIT
+    bool structuralPass = fullWindowLoaded and evaluableWeeks == EXPECTED_WEEKS and mirrorFaults == 0
+    string mirrorStatus = not fullWindowLoaded ? "WAITING FOR FULL 2025 HISTORY" : structuralPass ? "PASS — 50/50" : "FAIL-CLOSED"
+    color mirrorColor = structuralPass ? color.new(color.green, 70) : color.new(color.red, 65)
+    string lastBias = lastOosPosition > 0 ? "LONG" : lastOosPosition < 0 ? "SHORT" : "FLAT"
+    string lastSignalText = na(lastOosSignal) ? "n/a" : str.tostring(lastOosSignal * 100.0, "#.####") + "%"
+
+    table.cell(dash, 0, 0, "SRC CRYPTO LAB", text_color=color.white, bgcolor=color.new(color.blue, 45))
+    table.cell(dash, 1, 0, "INSTFLOW V1", text_color=color.white, bgcolor=color.new(color.blue, 45))
+    table.cell(dash, 0, 1, "Status")
+    table.cell(dash, 1, 1, "TIER 2 — FRAGILE")
+    table.cell(dash, 0, 2, "Mirror gate")
+    table.cell(dash, 1, 2, mirrorStatus, bgcolor=mirrorColor)
+    table.cell(dash, 0, 3, "OOS weeks")
+    table.cell(dash, 1, 3, str.tostring(evaluableWeeks) + " / " + str.tostring(EXPECTED_WEEKS))
+    table.cell(dash, 0, 4, "Mirror faults")
+    table.cell(dash, 1, 4, str.tostring(mirrorFaults))
+    table.cell(dash, 0, 5, "Last OOS bias")
+    table.cell(dash, 1, 5, lastBias)
+    table.cell(dash, 0, 6, "Last signal/OI")
+    table.cell(dash, 1, 6, lastSignalText)
+    table.cell(dash, 0, 7, "2026")
+    table.cell(dash, 1, 7, "LOCKED — NO SIGNALS", bgcolor=color.new(color.orange, 55))
