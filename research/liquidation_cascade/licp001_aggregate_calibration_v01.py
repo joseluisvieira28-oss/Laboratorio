@@ -50,13 +50,27 @@ def main():
     for hp in health_files:
         h=json.loads(hp.read_text())
         if h.get("outcome_blind") is not True: raise SystemExit("NON_OUTCOME_BLIND_SHARD")
+        if h.get("schema")!="licp001.health.v2": raise SystemExit("UNSUPPORTED_HEALTH_SCHEMA")
+        shard_sched=float(h.get("scheduled_seconds",0))
+        if shard_sched < 60: raise SystemExit("INVALID_SCHEDULED_SECONDS")
+        hh=h.get("health",{})
+        for v in ("bybit","binance","mexc"):
+            if int(hh.get(v,{}).get("acks",0)) < 1: raise SystemExit("SOURCE_ACK_MISSING:"+v)
+        if int(hh["mexc"].get("depth_updates",0)) < 1: raise SystemExit("MEXC_DEPTH_MISSING")
+        if int(hh["bybit"].get("malformed",0)) or int(hh["binance"].get("malformed",0)):
+            raise SystemExit("MALFORMED_LIQUIDATION_PAYLOAD")
         starts.append(int(h["started_wall_ms"])); ends.append(parse_end(h["ended_at"]))
-        scheduled+=float(h["scheduled_seconds"])
+        scheduled+=shard_sched
         for v in conn:
-            vh=h.get("health",{}).get(v,{})
-            conn[v]+=float(vh.get("connected_seconds",0))
+            vh=hh.get(v,{})
+            conn[v]+=min(float(vh.get("connected_seconds",0)),shard_sched)
             regressions+=int(vh.get("clock_regressions",0))
         ep=hp.parent/"liquidations.jsonl"
+        actual_event_sha=hashlib.sha256(ep.read_bytes() if ep.exists() else b"").hexdigest()
+        if actual_event_sha != h.get("event_log_sha256"): raise SystemExit("EVENT_LOG_HASH_MISMATCH")
+        gp=hp.parent/"gaps.jsonl"
+        actual_gap_sha=hashlib.sha256(gp.read_bytes() if gp.exists() else b"").hexdigest()
+        if actual_gap_sha != h.get("gaps_log_sha256"): raise SystemExit("GAPS_LOG_HASH_MISMATCH")
         count=0
         if ep.exists():
             for line in ep.read_text().splitlines():
@@ -69,7 +83,7 @@ def main():
     events=list(events_by_key.values())
     bybit=[e for e in events if e["source"]=="bybit"]
     bybit_btc=[e for e in bybit if e["symbol"]=="BTCUSDT"]
-    uptime={v:(conn[v]/scheduled*100.0 if scheduled else 0.0) for v in conn}
+    uptime={v:(min(100.0,conn[v]/scheduled*100.0) if scheduled else 0.0) for v in conn}
     span_days=(max(ends)-min(starts))/86400000.0
     eligibility={
       "span_days":span_days,
