@@ -1,7 +1,7 @@
 {
   "document_type": "MRCR_PRETARGET_READINESS_MATRIX_V01",
   "lab_id": "MARKET-REVEAL-CONFIRMATION-REACTION-001",
-  "as_of": "2026-09-25",
+  "as_of": "2026-09-26",
   "overall_state": "H02_DESIGN_FROZEN__TARGET_LOCKED__CALENDAR_BINDING_PENDING",
   "gates": [
     {
@@ -31,8 +31,8 @@
     },
     {
       "gate": "BINANCE_PUBLIC_SOURCE_SCHEMA",
-      "status": "PASS",
-      "meaning": "live non-target source schema verified on public market-data-only transport"
+      "status": "PASS_OPERATOR_WINDOWS_EXACT_H02_SCOPE",
+      "meaning": "operator Windows observed schema-valid aggTrade and depth@100ms for both frozen H02 Binance symbols BTCUSDT and ETHUSDT"
     },
     {
       "gate": "BINANCE_SNAPSHOT_BRIDGE_SEMANTICS",
@@ -41,8 +41,8 @@
     },
     {
       "gate": "COINBASE_MARKET_TRADES_SCHEMA",
-      "status": "PARTIAL_PASS",
-      "meaning": "public market_trades schema observed; this does not establish level2 transport"
+      "status": "PASS_OPERATOR_WINDOWS_EXACT_H02_SCOPE",
+      "meaning": "operator Windows observed schema-valid public market_trades for both frozen H02 Coinbase products BTC-USD and ETH-USD"
     },
     {
       "gate": "COINBASE_LEVEL2_SOURCE_TRANSPORT",
@@ -186,8 +186,8 @@
     },
     {
       "gate": "H02_EXACT_SOURCE_COVERAGE",
-      "status": "READY_NOT_EXECUTED_OPERATOR",
-      "meaning": "Windows source-only probe prepared for frozen BTC+ETH x Binance+Coinbase trades+L2 scope; GitHub network execution intentionally not used"
+      "status": "PASS_OPERATOR_WINDOWS",
+      "meaning": "operator Windows proved the exact frozen H02 public transport/schema scope: BTCUSDT+ETHUSDT Binance aggTrade/depth and BTC-USD+ETH-USD Coinbase market_trades/level2; no auth/raw persistence/outcomes/orders"
     },
     {
       "gate": "TARGET_CAPTURE_RUNTIME_GUARD",
@@ -196,8 +196,8 @@
     }
   ],
   "objective_next_triggers": [
-    "operator Windows H02 exact source coverage probe returns PASS for BTC+ETH x Binance+Coinbase trades+L2",
     "complete official 2027 BLS CPI/Employment Situation calendar becomes available and is fingerprinted",
+    "harden prospective frozen-scope collectors/persistence for BTC+ETH x Binance+Coinbase without changing H02 science",
     "assemble final pretarget protocol deterministically from H02_SCIENTIFIC_RULESET_V01 plus exact calendar and implementation bindings",
     "issue separate TARGET_OBSERVATION_OPEN authority bound to exact protocol/calendar/implementation fingerprints",
     "only then begin prospective target observation and keep outcomes blind until the frozen reveal gate permits the single reveal"
@@ -234,5 +234,47 @@
     "outcomes_computed": false,
     "orders_enabled": false,
     "raw_payloads_uploaded": false
+  },
+  "h02_exact_source_coverage_operator_receipt": {
+    "evidence_date": "2026-09-26",
+    "receipt_path": "H02_EXACT_SOURCE_COVERAGE_OPERATOR_RECEIPT_2026-09-26.json",
+    "status": "PASS",
+    "binance": {
+      "BTCUSDT": {
+        "aggtrade_messages": 25,
+        "depth_messages": 107,
+        "status": "PASS"
+      },
+      "ETHUSDT": {
+        "aggtrade_messages": 5,
+        "depth_messages": 106,
+        "status": "PASS"
+      }
+    },
+    "coinbase": {
+      "BTC-USD": {
+        "market_trade_messages": 30,
+        "level2_messages": 172,
+        "snapshot": true,
+        "update": true,
+        "status": "PASS"
+      },
+      "ETH-USD": {
+        "market_trade_messages": 8,
+        "level2_messages": 166,
+        "snapshot": true,
+        "update": true,
+        "status": "PASS"
+      }
+    },
+    "sequence_adjudicated": false,
+    "authentication_used": false,
+    "account_endpoints_used": false,
+    "raw_payloads_persisted": false,
+    "signals_computed": false,
+    "outcomes_computed": false,
+    "orders_enabled": false,
+    "scientific_use": "SOURCE_COVERAGE_ONLY",
+    "promotion_credit": "NONE"
   }
 }
