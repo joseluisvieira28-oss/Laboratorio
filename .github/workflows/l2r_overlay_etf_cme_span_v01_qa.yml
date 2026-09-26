@@ -1,0 +1,33 @@
+name: L2R Span Overlay ETF-CME V0.1 QA
+
+on:
+  push:
+    branches:
+      - l2r-overlay-etf-cme-span-v0.1
+    paths:
+      - research/l2_resiliency_overlay_span/QA_TRIGGER_SPAN_V0_1.txt
+  pull_request:
+    branches:
+      - l2r-overlay-etf-cme-v0.1
+    paths:
+      - research/l2_resiliency_overlay_span/**
+      - .github/workflows/l2r_overlay_etf_cme_span_v01_qa.yml
+
+permissions:
+  contents: read
+
+jobs:
+  qa:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: l2r-overlay-etf-cme-span-v0.1
+      - name: Compile and synthetic self-test
+        run: |
+          set -euo pipefail
+          RUNNER="research/l2_resiliency_overlay_span/l2r_overlay_etf_cme_span_2025_development_v01.py"
+          python -m py_compile "$RUNNER"
+          python "$RUNNER" --self-test | tee /tmp/selftest.txt
+          grep -Fx "SELF_TEST_PASS" /tmp/selftest.txt
+          sha256sum "$RUNNER"
