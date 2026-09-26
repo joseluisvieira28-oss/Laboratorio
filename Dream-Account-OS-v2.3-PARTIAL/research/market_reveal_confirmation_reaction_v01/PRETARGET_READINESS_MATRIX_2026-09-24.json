@@ -2,7 +2,7 @@
   "document_type": "MRCR_PRETARGET_READINESS_MATRIX_V01",
   "lab_id": "MARKET-REVEAL-CONFIRMATION-REACTION-001",
   "as_of": "2026-09-26",
-  "overall_state": "H02_DESIGN_FROZEN__TARGET_LOCKED__CALENDAR_BINDING_PENDING",
+  "overall_state": "H02_INTERNAL_PRETARGET_READY__REAL_OFFICIAL_2027_CALENDAR_BLOCKED",
   "gates": [
     {
       "gate": "NEW_MECHANISM_DESIGN",
@@ -217,25 +217,35 @@
     {
       "gate": "H02_STRICT_OFFICIAL_CALENDAR_BINDING",
       "status": "PASS_SYNTHETIC_REAL_CALENDAR_BLOCKED",
-      "meaning": "final H02 calendar requires exact 2027 families, 12 CPI + 12 Employment Situation + 8 FOMC, confirmed events only, exact official domains, full family completeness declarations and no tentative events"
+      "meaning": "strict 2027 calendar provenance/completeness gate passed CI; real manifest remains blocked until 12 CPI + 12 Employment Situation + 8 FOMC are all officially confirmed"
     },
     {
       "gate": "H02_FINAL_BINDING_PREFLIGHT",
-      "status": "PASS_DESIGN_CI_PENDING",
-      "meaning": "offline preflight now binds canonical ruleset hash, strict calendar hash and self-consistent implementation manifest into a target-locked protocol before any target-open authority can be considered"
+      "status": "PASS_SYNTHETIC_REAL_INPUT_PENDING",
+      "meaning": "end-to-end synthetic rehearsal successfully built a target-locked protocol and validated exact ruleset/calendar/implementation/H02-authority bindings before a synthetic target-open runtime check"
     },
     {
       "gate": "IMPLEMENTATION_MANIFEST_SELF_VALIDATION",
-      "status": "PASS_DESIGN_CI_PENDING",
-      "meaning": "target-open runtime now rejects malformed/mutated implementation manifests even when a claimed manifest hash string exists"
+      "status": "PASS_SYNTHETIC",
+      "meaning": "runtime rejects mutated implementation file rows or inconsistent implementation manifest fingerprints before target-open"
+    },
+    {
+      "gate": "H02_RULESET_TO_PROTOCOL_BINDING",
+      "status": "PASS_SYNTHETIC",
+      "meaning": "final protocol explicitly carries the canonical H02 ruleset SHA-256 and target-open runtime rejects a mutated ruleset binding"
+    },
+    {
+      "gate": "FINAL_PRETARGET_INTERNAL_READINESS",
+      "status": "PASS_INTERNAL_EXTERNAL_CALENDAR_ONLY",
+      "meaning": "source infrastructure, persistence/recovery, strict calendar validation, implementation fingerprint validation, final protocol assembly rehearsal and target-open guards are internally ready; only the real complete confirmed official 2027 calendar remains external"
     }
   ],
   "objective_next_triggers": [
-    "strict calendar/final-binding CI passes on the current head",
-    "official BLS publishes complete 2027 CPI and Employment Situation schedules and the required FOMC dates become confirmed under the strict gate",
-    "construct and fingerprint the real complete official 2027 calendar manifest without inferred dates",
-    "run offline final-binding preflight to produce the exact target-locked protocol candidate bound to canonical ruleset/calendar/implementation hashes",
-    "only after that issue a separate TARGET_OBSERVATION_OPEN authority bound to those exact hashes"
+    "complete confirmed official 2027 calendar becomes available under the strict H02 gate",
+    "construct and fingerprint the real official calendar manifest without inferred/tentative dates",
+    "build the real implementation manifest from the canonical fileset and run final_binding_preflight",
+    "freeze the exact target-locked protocol and stop",
+    "require a separate explicit TARGET_OBSERVATION_OPEN authority bound to the exact protocol/calendar/implementation hashes"
   ],
   "anti_zombie_rules": [
     "local shadow raw data is infrastructure evidence only and must not be used to select or promote MRCR scientific parameters",
@@ -356,6 +366,16 @@
     "signals_computed": false,
     "outcomes_computed": false,
     "orders_enabled": false,
+    "target_observation_authorized": false,
+    "promotion_credit": "NONE"
+  },
+  "h02_final_binding_readiness_closeout": {
+    "receipt_path": "H02_FINAL_BINDING_READINESS_CLOSEOUT_2026-09-26.json",
+    "status": "PASS_SYNTHETIC_REAL_OFFICIAL_CALENDAR_BLOCKED",
+    "validated_head_sha": "5d0b4796dd64a2877aa34153a656a39eac9a8eb7",
+    "ci_run_id": 36263866838,
+    "successful_steps": 44,
+    "only_remaining_real_blocker": "COMPLETE_CONFIRMED_OFFICIAL_2027_CALENDAR",
     "target_observation_authorized": false,
     "promotion_credit": "NONE"
   }
