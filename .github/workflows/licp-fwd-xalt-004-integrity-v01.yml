@@ -7,7 +7,9 @@ on:
     paths:
       - 'research/liquidation_cascade/LICP_FWD_XALT_004_PRE_OUTCOME_FREEZE_V0_1.md'
       - 'research/liquidation_cascade/licp_fwd_xalt_004_observer_v01.py'
+      - 'research/liquidation_cascade/licp_fwd_xalt_004_state_v01.py'
       - 'research/liquidation_cascade/test_licp_fwd_xalt_004_v01.py'
+      - 'research/liquidation_cascade/test_licp_fwd_xalt_004_state_v01.py'
       - '.github/workflows/licp-fwd-xalt-004-integrity-v01.yml'
   workflow_dispatch:
 
@@ -26,7 +28,7 @@ jobs:
       - name: Frozen-candidate unit tests
         env:
           PYTHONPATH: .
-        run: python -m pytest -q research/liquidation_cascade/test_licp_fwd_xalt_004_v01.py
+        run: python -m pytest -q research/liquidation_cascade/test_licp_fwd_xalt_004_v01.py research/liquidation_cascade/test_licp_fwd_xalt_004_state_v01.py
       - name: Confirm observer fails closed while trigger config is UNFROZEN
         env:
           PYTHONPATH: .
