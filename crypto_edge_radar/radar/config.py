@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import os
 import re
 from urllib.parse import quote
@@ -81,7 +81,7 @@ def _supabase_target_url_from_env() -> str | None:
 @dataclass(frozen=True)
 class Settings:
     db_path: str = "radar_evidence.sqlite3"
-    database_url: str | None = None
+    database_url: str | None = field(default=None, repr=False)
     database_schema_preprovisioned: bool = False
     database_target_mode: str = "SOURCE"
     status_path: str = "radar_status.json"
