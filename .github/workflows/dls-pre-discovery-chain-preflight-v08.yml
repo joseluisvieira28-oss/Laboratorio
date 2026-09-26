@@ -1,0 +1,72 @@
+name: DLS Pre-Discovery Chain Preflight V0.8
+
+on:
+  push:
+    branches:
+      - dls-field-enrichment-v01
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_PRE_DISCOVERY_CHAIN_PREFLIGHT_V08.marker
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Compile current source and authority chain
+        run: |
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/run_kamino_save11_field_enrichment_partition_v0_2.py
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/run_kamino_save11_unit_metadata_partition_v0_2.py
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/aggregate_kamino_save11_field_enrichment_v0_2.py
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/aggregate_kamino_save11_unit_metadata_v0_3.py
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/adjudicate_drift_market_unit_registry_population_v0_3.py
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/resolve_save0c_unit_metadata_partial_v0_2.py
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/resolve_marginfi_bank_unit_partial_v0_2.py
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/collect_global_field_gate_artifacts_v0_1.py
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/adjudicate_global_field_coverage_final_v0_1.py
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/build_source_cluster_sample_gate_v0_1.py
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/collect_source_sample_gate_artifact_v0_1.py
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/build_market_mapping_requirements_v0_1.py
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/collect_market_mapping_requirements_artifact_v0_1.py
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/validate_market_data_mapping_registry_v0_1.py
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/probe_market_data_source_feasibility_v0_1.py
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/collect_final_pre_discovery_prerequisites_v0_1.py
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/finalize_pre_discovery_authority_v0_1.py
+
+      - name: Verify staged workflows
+        run: |
+          test -f .github/workflows/dls-kamino-save11-authority-finalize-v03.yml
+          test -f .github/workflows/dls-drift-field-enrichment-finalize-v03.yml
+          test -f .github/workflows/dls-global-field-coverage-finalize-v01.yml
+          test -f .github/workflows/dls-source-cluster-sample-gate-v01.yml
+          test -f .github/workflows/dls-market-mapping-requirements-v01.yml
+          test -f .github/workflows/dls-market-data-source-feasibility-v01.yml
+          test -f .github/workflows/dls-final-pre-discovery-authority-v01.yml
+
+      - name: Verify current precedence and authority documents
+        run: |
+          test -f labs/DEFI_LIQUIDATION_SHOCK_001/GLOBAL_FIELD_FINALIZER_ARTIFACT_SELECTION_ADDENDUM_V0.3.md
+          test -f labs/DEFI_LIQUIDATION_SHOCK_001/SOURCE_SAMPLE_GATE_KAMINO_UNIT_PRECEDENCE_ADDENDUM_V0.2.md
+          test -f labs/DEFI_LIQUIDATION_SHOCK_001/MARKET_MAPPING_REQUIREMENTS_FREEZE_V0.1.md
+          test -f labs/DEFI_LIQUIDATION_SHOCK_001/MARKET_MAPPING_REQUIREMENTS_ARTIFACT_SELECTION_FREEZE_V0.1.md
+          test -f labs/DEFI_LIQUIDATION_SHOCK_001/MARKET_DATA_MAPPING_REGISTRY_FREEZE_V0.1.md
+          test -f labs/DEFI_LIQUIDATION_SHOCK_001/MARKET_DATA_ROUTE_METADATA_PROBE_FREEZE_V0.1.md
+          test -f labs/DEFI_LIQUIDATION_SHOCK_001/FINAL_PRE_DISCOVERY_PREREQUISITE_ARTIFACT_SELECTION_FREEZE_V0.1.md
+          test -f labs/DEFI_LIQUIDATION_SHOCK_001/FINAL_PRE_DISCOVERY_AUTHORITY_DOCUMENT_SET_ADDENDUM_V0.3.md
+
+      - name: Verify outcome firewall before final authority
+        run: |
+          grep -q 'archive_payload_downloaded":False' labs/DEFI_LIQUIDATION_SHOCK_001/source/probe_market_data_source_feasibility_v0_1.py
+          grep -q 'prices_opened":False' labs/DEFI_LIQUIDATION_SHOCK_001/source/finalize_pre_discovery_authority_v0_1.py
+          grep -q 'protected_market_outcomes_2025_2026":False' labs/DEFI_LIQUIDATION_SHOCK_001/source/build_source_cluster_sample_gate_v0_1.py
+
+      - name: Firewall
+        run: echo FULL_PRE_DISCOVERY_CHAIN_COMPILES_OUTCOMES_CLOSED
