@@ -29,19 +29,20 @@ jobs:
       - run: python -m pip install 'websockets>=13,<16'
       - name: Validate bounded duration
         env:
-          SECONDS: ${{ inputs.seconds }}
+          CAPTURE_SECONDS: ${{ inputs.seconds }}
         run: |
           python - <<'PY'
           import os
-          s=int(os.environ["SECONDS"])
+          s=int(os.environ.get("CAPTURE_SECONDS") or "20700")
           assert 60 <= s <= 20700, s
           PY
       - name: Collect outcome-blind liquidation block
         env:
-          SECONDS: ${{ inputs.seconds }}
+          CAPTURE_SECONDS: ${{ inputs.seconds }}
         run: |
           mkdir -p /tmp/licp001-block
-          python research/liquidation_cascade/licp001_forward_collector_v01.py             --seconds "$SECONDS"             --outdir /tmp/licp001-block
+          if [ -z "$CAPTURE_SECONDS" ]; then CAPTURE_SECONDS=20700; fi
+          python research/liquidation_cascade/licp001_forward_collector_v01.py             --seconds "$CAPTURE_SECONDS"             --outdir /tmp/licp001-block
       - name: Verify outcome blindness and integrity
         if: always()
         run: |
