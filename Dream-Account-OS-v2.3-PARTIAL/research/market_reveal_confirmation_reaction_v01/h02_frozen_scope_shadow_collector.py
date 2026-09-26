@@ -42,7 +42,7 @@ from h02_scope_recovery import (
 )
 
 
-COLLECTOR_VERSION = "MRCR_H02_FROZEN_SCOPE_SHADOW_V01"
+COLLECTOR_VERSION = "MRCR_H02_FROZEN_SCOPE_SHADOW_V01_1"
 BINANCE_WS_BASE = "wss://data-stream.binance.vision:443/stream?streams="
 BINANCE_REST_DEPTH = "https://data-api.binance.vision/api/v3/depth"
 COINBASE_WS = "wss://advanced-trade-ws.coinbase.com"
@@ -174,9 +174,31 @@ async def _collect_binance_symbol(
     error_class: str | None = None
     close_code: int | None = None
     snapshot_task: asyncio.Task | None = None
+    buffered_before_snapshot: list[dict[str, Any]] = []
 
-    async def persist_snapshot_if_ready(*, wait: bool = False) -> None:
-        nonlocal snapshot_seen, inserted, deduped, snapshot_task
+    def persist_record(record: dict[str, Any]) -> None:
+        nonlocal inserted, deduped
+        result = ingest_scope_record(
+            conn,
+            session_id=session_id,
+            venue="BINANCE_SPOT",
+            native_symbol=symbol,
+            transport=str(record["transport"]),
+            message_kind=str(record["message_kind"]),
+            channel=str(record["channel"]),
+            sequence_first=record["sequence_first"],
+            sequence_last=record["sequence_last"],
+            source_time_min_ns=record["source_time_min_ns"],
+            source_time_max_ns=record["source_time_max_ns"],
+            collector_wall_ns=int(record["collector_wall_ns"]),
+            collector_monotonic_ns=int(record["collector_monotonic_ns"]),
+            raw_payload=bytes(record["raw_payload"]),
+        )
+        inserted += int(result.inserted)
+        deduped += int(not result.inserted)
+
+    async def flush_snapshot_and_buffer(*, wait: bool = False) -> None:
+        nonlocal snapshot_seen, snapshot_task, buffered_before_snapshot
         if snapshot_seen or snapshot_task is None:
             return
         if not snapshot_task.done() and not wait:
@@ -187,24 +209,30 @@ async def _collect_binance_symbol(
             )
         else:
             raw, last_id, wall_ns, mono_ns = snapshot_task.result()
-        result = ingest_scope_record(
-            conn,
-            session_id=session_id,
-            venue="BINANCE_SPOT",
-            native_symbol=symbol,
-            transport="REST",
-            message_kind="BINANCE_DEPTH_SNAPSHOT",
-            channel="REST_DEPTH_SNAPSHOT",
-            sequence_first=last_id,
-            sequence_last=last_id,
-            source_time_min_ns=None,
-            source_time_max_ns=None,
-            collector_wall_ns=wall_ns,
-            collector_monotonic_ns=mono_ns,
-            raw_payload=raw,
+
+        snapshot_record = {
+            "transport": "REST",
+            "message_kind": "BINANCE_DEPTH_SNAPSHOT",
+            "channel": "REST_DEPTH_SNAPSHOT",
+            "sequence_first": last_id,
+            "sequence_last": last_id,
+            "source_time_min_ns": None,
+            "source_time_max_ns": None,
+            "collector_wall_ns": wall_ns,
+            "collector_monotonic_ns": mono_ns,
+            "raw_payload": raw,
+        }
+        pending = [*buffered_before_snapshot, snapshot_record]
+        pending.sort(
+            key=lambda row: (
+                int(row["collector_monotonic_ns"]),
+                int(row["collector_wall_ns"]),
+                str(row["message_kind"]),
+            )
         )
-        inserted += int(result.inserted)
-        deduped += int(not result.inserted)
+        for record in pending:
+            persist_record(record)
+        buffered_before_snapshot = []
         snapshot_seen = True
 
     try:
@@ -224,7 +252,7 @@ async def _collect_binance_symbol(
             deadline = time.monotonic() + seconds
 
             while time.monotonic() < deadline:
-                await persist_snapshot_if_ready()
+                await flush_snapshot_and_buffer()
                 try:
                     raw_text = await asyncio.wait_for(ws.recv(), timeout=1.0)
                 except asyncio.TimeoutError:
@@ -263,26 +291,24 @@ async def _collect_binance_symbol(
                     raise RuntimeError(f"unexpected Binance event type: {event}")
 
                 source_min, source_max = _binance_source_bounds(data)
-                result = ingest_scope_record(
-                    conn,
-                    session_id=session_id,
-                    venue="BINANCE_SPOT",
-                    native_symbol=symbol,
-                    transport="WEBSOCKET",
-                    message_kind=kind,
-                    channel=channel,
-                    sequence_first=sequence_first,
-                    sequence_last=sequence_last,
-                    source_time_min_ns=source_min,
-                    source_time_max_ns=source_max,
-                    collector_wall_ns=wall_ns,
-                    collector_monotonic_ns=mono_ns,
-                    raw_payload=raw,
-                )
-                inserted += int(result.inserted)
-                deduped += int(not result.inserted)
+                record = {
+                    "transport": "WEBSOCKET",
+                    "message_kind": kind,
+                    "channel": channel,
+                    "sequence_first": sequence_first,
+                    "sequence_last": sequence_last,
+                    "source_time_min_ns": source_min,
+                    "source_time_max_ns": source_max,
+                    "collector_wall_ns": wall_ns,
+                    "collector_monotonic_ns": mono_ns,
+                    "raw_payload": raw,
+                }
+                if snapshot_seen:
+                    persist_record(record)
+                else:
+                    buffered_before_snapshot.append(record)
 
-            await persist_snapshot_if_ready(wait=True)
+            await flush_snapshot_and_buffer(wait=True)
 
     except ConnectionClosed as exc:
         transport = "FAIL"
