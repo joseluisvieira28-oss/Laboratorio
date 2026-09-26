@@ -16,6 +16,7 @@ from h02_scope_journal import (
     start_scope_session,
 )
 from h02_scope_recovery import verify_scope_session_chain
+from h02_frozen_scope_shadow_collector import _ordered_by_collector_arrival
 
 
 class H02ScopeJournalTests(unittest.TestCase):
@@ -217,6 +218,31 @@ class H02ScopeJournalTests(unittest.TestCase):
             self.assertFalse(result.ok)
             self.assertEqual(result.failure_reason, "SOURCE_TIME_MISSING")
             conn.close()
+
+
+    def test_binance_async_snapshot_records_are_sorted_before_journaling(self):
+        records = [
+            {
+                "message_kind": "BINANCE_DEPTH_DIFF",
+                "collector_monotonic_ns": 300,
+                "collector_wall_ns": 3000,
+            },
+            {
+                "message_kind": "BINANCE_DEPTH_SNAPSHOT",
+                "collector_monotonic_ns": 200,
+                "collector_wall_ns": 2000,
+            },
+            {
+                "message_kind": "BINANCE_AGGTRADE",
+                "collector_monotonic_ns": 100,
+                "collector_wall_ns": 1000,
+            },
+        ]
+        ordered = _ordered_by_collector_arrival(records)
+        self.assertEqual(
+            [row["collector_monotonic_ns"] for row in ordered],
+            [100, 200, 300],
+        )
 
 
 if __name__ == "__main__":
