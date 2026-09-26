@@ -1,0 +1,87 @@
+name: DLS Drift Field Enrichment Finalize V0.3
+
+on:
+  push:
+    branches:
+      - dls-field-enrichment-v01
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_DRIFT_FIELD_ENRICHMENT_FINALIZE_V03.marker
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download Drift enrichment partition receipts
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36264543005
+          pattern: dls-field-enrichment-drift-*
+          path: population_receipts
+          merge-multiple: true
+
+      - name: Download final Drift source authority
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36262823596
+          pattern: dls-drift-sqd-final-authority-v04
+          path: source_authority
+          merge-multiple: true
+
+      - name: Download temporal Drift market registry
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36270121026
+          pattern: dls-drift-historical-market-unit-registry-v03
+          path: temporal_registry
+          merge-multiple: true
+
+      - name: Compile finalizers
+        run: |
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/aggregate_drift_field_enrichment_v0_1.py
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/adjudicate_drift_market_unit_registry_population_v0_3.py
+
+      - name: Re-aggregate Drift field enrichment
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/aggregate_drift_field_enrichment_v0_1.py
+          --receipts population_receipts
+          --source-authority source_authority
+
+      - name: Adjudicate temporal Drift market-unit population
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/adjudicate_drift_market_unit_registry_population_v0_3.py
+          --receipts population_receipts
+          --field-coverage labs/DEFI_LIQUIDATION_SHOCK_001
+          --registry temporal_registry
+
+      - name: Upload final Drift field/unit receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-drift-field-unit-final-v03
+          path: |
+            labs/DEFI_LIQUIDATION_SHOCK_001/DRIFT_FIELD_ENRICHMENT_POPULATION_RECEIPT_V0.1.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/DRIFT_MARKET_UNIT_REGISTRY_POPULATION_RECEIPT_V0.1.json
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_TRUE
