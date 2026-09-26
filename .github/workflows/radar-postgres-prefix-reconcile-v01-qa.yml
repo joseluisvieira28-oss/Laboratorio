@@ -59,6 +59,8 @@ jobs:
           assert "TARGET_KEYS_NOT_EXACT_SOURCE_PREFIX" in p
           assert "TARGET_SEQUENCE_NOT_ALIGNED_TO_PREFIX_MAX_ID" in p
           assert "sequence_finalization_required" in p
+          assert "pg_advisory_xact_lock" in p
+          assert "POSTGRES_CHAIN_LOCK_ID" in p
 
           segment=p[p.index("def reconcile_target_prefix"):p.index("def restore_snapshot")]
           upper=segment.upper()
