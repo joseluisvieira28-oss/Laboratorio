@@ -133,6 +133,8 @@ classification="MARKET_DATA_SOURCE_PASS" if not errors else "MARKET_DATA_SOURCE_
 receipt={"schema_version":"0.1","lab_id":"DEFI-LIQUIDATION-SHOCK-001","classification":classification,
  "requirements_classification":(req or {}).get("classification"),
  "mapping_validation_classification":(val or {}).get("classification"),
+ "mapping_registry_sha256":(val or {}).get("registry_sha256"),
+ "mapping_requirements_receipt_sha256":(val or {}).get("requirements_receipt_sha256"),
  "target_count":len(results),"route_pass_count":sum(1 for x in results if x.get("route_pass")),
  "results":results,"error_count":len(errors),"errors":errors,
  "probe_freeze":"MARKET_DATA_ROUTE_METADATA_PROBE_FREEZE_V0.1.md",
