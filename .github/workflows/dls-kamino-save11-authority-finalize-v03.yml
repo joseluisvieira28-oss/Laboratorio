@@ -1,0 +1,103 @@
+name: DLS Kamino Save11 Authority Finalize V0.3
+
+on:
+  push:
+    branches:
+      - dls-field-enrichment-v01
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_KAMINO_SAVE11_AUTHORITY_FINALIZE_V03.marker
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download original field receipts
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36264171014
+          pattern: dls-field-enrichment-ks-*
+          path: original_field
+          merge-multiple: true
+
+      - name: Download V1.6 field recovery receipts
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36277918751
+          pattern: dls-kamino-v16-field-*
+          path: recovery_field
+          merge-multiple: true
+
+      - name: Download original unit receipts
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36265646820
+          pattern: dls-ks-unit-*
+          path: original_unit
+          merge-multiple: true
+
+      - name: Download V0.3 Kamino unit authority receipts
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36278635010
+          pattern: dls-kamino-unit-v03-*
+          path: recovery_unit_v03
+          merge-multiple: true
+
+      - name: Compile current aggregators
+        run: |
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/aggregate_kamino_save11_field_enrichment_v0_2.py
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/aggregate_kamino_save11_unit_metadata_v0_3.py
+
+      - name: Aggregate field population with historical-layout precedence
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/aggregate_kamino_save11_field_enrichment_v0_2.py
+          --original original_field
+          --recovery recovery_field
+
+      - name: Aggregate unit population with V0.3 precedence
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/aggregate_kamino_save11_unit_metadata_v0_3.py
+          --original original_unit
+          --recovery recovery_unit_v03
+
+      - name: Upload current field authority
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-kamino-save11-field-enrichment-population-v02
+          path: labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_SAVE11_FIELD_ENRICHMENT_POPULATION_RECEIPT_V0.2.json
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Upload current unit authority
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-kamino-save11-unit-metadata-population-v03
+          path: labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_SAVE11_UNIT_METADATA_POPULATION_RECEIPT_V0.3.json
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_TRUE
