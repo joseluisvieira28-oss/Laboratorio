@@ -1,0 +1,123 @@
+name: Radar Evidence Backup Refresh V0.2
+
+on:
+  pull_request:
+    branches:
+      - crypto-edge-radar-postgres-v0.5
+    paths:
+      - "governance/RADAR_EVIDENCE_BACKUP_REFRESH_V0.2_2026-09-27.md"
+      - "crypto_edge_radar/tools/verify_evidence_snapshot_independent.py"
+      - ".github/workflows/radar-evidence-backup-refresh-v02.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backup-refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: crypto_edge_radar
+    env:
+      RADAR_DATABASE_URL: ${{ secrets.RADAR_DATABASE_URL }}
+      SOURCE_POSTGRES_ID: dpg-dalqi4qd0e5s738a77kg-a
+      BACKUP_WORKFLOW_RUN_ID: ${{ github.run_id }}
+      BACKUP_SOURCE_COMMIT: ${{ github.sha }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install runtime
+        run: python -m pip install -e .
+
+      - name: Assert authorization exists without exposing secret
+        shell: bash
+        run: |
+          test -n "$RADAR_DATABASE_URL"
+          echo "RADAR_DATABASE_URL_CONFIGURED=true"
+
+      - name: Export canonical evidence read-only
+        run: python tools/export_evidence_snapshot_readonly.py
+
+      - name: Independently recompute hashes, chain and key references
+        run: python tools/verify_evidence_snapshot_independent.py
+
+      - name: Build backup refresh receipt
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          snap=json.loads(Path("evidence_snapshot/SNAPSHOT_RECEIPT.json").read_text())
+          verify=json.loads(Path("evidence_snapshot/INDEPENDENT_REVERIFY.json").read_text())
+          assert snap["classification"]=="READ_ONLY_EVIDENCE_SNAPSHOT_COMPLETE"
+          assert verify["classification"]=="INDEPENDENT_READ_ONLY_BACKUP_REVERIFY_PASS"
+          assert snap["event_count"]==verify["event_count"]
+          assert snap["key_count"]==verify["key_count"]
+          assert snap["chain_head_sha256"]==verify["chain_head_sha256"]
+          receipt={
+              "classification":"RADAR_EVIDENCE_BACKUP_REFRESH_V0.2_VERIFIED",
+              "source_postgres_id":os.environ["SOURCE_POSTGRES_ID"],
+              "workflow_run_id":int(os.environ["BACKUP_WORKFLOW_RUN_ID"]),
+              "source_commit":os.environ["BACKUP_SOURCE_COMMIT"],
+              "event_count":verify["event_count"],
+              "key_count":verify["key_count"],
+              "chain_head_sha256":verify["chain_head_sha256"],
+              "canonical_snapshot_sha256":verify["canonical_snapshot_sha256"],
+              "database_mutation":False,
+              "secret_value_exposed":False,
+              "independent_reverify":True,
+              "external_durable_copy_required":True,
+          }
+          Path("evidence_snapshot/BACKUP_REFRESH_RECEIPT.json").write_text(
+              json.dumps(receipt,indent=2,sort_keys=True)+"\n",encoding="utf-8"
+          )
+          print(json.dumps(receipt,sort_keys=True))
+          PY
+
+      - name: Package final verified snapshot
+        run: |
+          rm -f RADAR_EVIDENCE_BACKUP_REFRESH_V02.zip
+          python - <<'PY'
+          import zipfile
+          from pathlib import Path
+          out=Path("evidence_snapshot")
+          with zipfile.ZipFile("RADAR_EVIDENCE_BACKUP_REFRESH_V02.zip","w",zipfile.ZIP_DEFLATED) as z:
+              for p in sorted(out.iterdir()):
+                  if p.is_file():
+                      z.write(p,arcname=p.name)
+          PY
+          python - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+          p=Path("RADAR_EVIDENCE_BACKUP_REFRESH_V02.zip")
+          h=hashlib.sha256(p.read_bytes()).hexdigest()
+          print(json.dumps({"artifact_file":p.name,"artifact_sha256":h,"bytes":p.stat().st_size},sort_keys=True))
+          PY
+
+      - name: Final firewalls
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          a=json.loads(Path("evidence_snapshot/BACKUP_REFRESH_RECEIPT.json").read_text())
+          b=json.loads(Path("evidence_snapshot/INDEPENDENT_REVERIFY.json").read_text())
+          assert a["database_mutation"] is False
+          assert a["secret_value_exposed"] is False
+          assert a["independent_reverify"] is True
+          assert b["database_mutation"] is False
+          assert b["secret_value_exposed"] is False
+          assert Path("RADAR_EVIDENCE_BACKUP_REFRESH_V02.zip").stat().st_size > 0
+          print("RADAR_EVIDENCE_BACKUP_REFRESH_V02_FIREWALL_PASS")
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: radar-evidence-backup-refresh-v02
+          path: crypto_edge_radar/RADAR_EVIDENCE_BACKUP_REFRESH_V02.zip
+          if-no-files-found: error
+          retention-days: 90
