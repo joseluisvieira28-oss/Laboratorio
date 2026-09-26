@@ -1,0 +1,81 @@
+name: DLS Market Data Source Feasibility V0.1
+
+on:
+  push:
+    branches:
+      - dls-field-enrichment-v01
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_MARKET_DATA_SOURCE_FEASIBILITY_V01.marker
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  feasibility:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Require frozen market mapping registry
+        run: test -f labs/DEFI_LIQUIDATION_SHOCK_001/MARKET_DATA_MAPPING_REGISTRY_V0.1.json
+
+      - name: Compile metadata-only market source tools
+        run: |
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/collect_market_mapping_requirements_artifact_v0_1.py
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/validate_market_data_mapping_registry_v0_1.py
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/probe_market_data_source_feasibility_v0_1.py
+
+      - name: Collect newest authoritative mapping requirements
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/collect_market_mapping_requirements_artifact_v0_1.py
+          --repository "${{ github.repository }}"
+          --out mapping_requirements
+
+      - name: Validate frozen target-to-venue mapping registry
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/validate_market_data_mapping_registry_v0_1.py
+          --requirements mapping_requirements
+          --registry labs/DEFI_LIQUIDATION_SHOCK_001/MARKET_DATA_MAPPING_REGISTRY_V0.1.json
+
+      - name: Probe source routes without candle payloads
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/probe_market_data_source_feasibility_v0_1.py
+          --requirements mapping_requirements
+          --registry labs/DEFI_LIQUIDATION_SHOCK_001/MARKET_DATA_MAPPING_REGISTRY_V0.1.json
+          --validation labs/DEFI_LIQUIDATION_SHOCK_001
+
+      - name: Assert no market payload was opened
+        run: |
+          python - <<'PY'
+          import json
+          p='labs/DEFI_LIQUIDATION_SHOCK_001/MARKET_DATA_SOURCE_FEASIBILITY_RECEIPT_V0.1.json'
+          r=json.load(open(p))
+          assert r.get('archive_payload_downloaded') is False
+          assert r.get('candles_opened') is False
+          assert r.get('prices_opened') is False
+          PY
+
+      - name: Upload market-data source authority
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-market-data-source-feasibility-v01
+          path: |
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARKET_DATA_REQUIREMENTS_ARTIFACT_SELECTION_RECEIPT_V0.1.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARKET_DATA_MAPPING_REGISTRY_VALIDATION_RECEIPT_V0.1.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARKET_DATA_SOURCE_FEASIBILITY_RECEIPT_V0.1.json
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Firewall
+        if: always()
+        run: echo NO_CANDLE_PAYLOAD_NO_PRICES
