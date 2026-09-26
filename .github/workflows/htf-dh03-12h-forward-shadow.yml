@@ -109,10 +109,23 @@ jobs:
           from radar.dh03_safe_progress import validate_safe_payload
           p=json.loads(Path("DH03_SAFE_PROGRESS.json").read_text())
           validate_safe_payload(p,expected_run_id=int(p["source_workflow_run_id"]))
-          forbidden=("exit_price","funding_rate","base_net_r","stress_net_r","profit_factor","drawdown")
           raw=Path("DH03_SAFE_PROGRESS.json").read_text().lower()
-          for token in forbidden:
+          forbidden_exact_keys=(
+              '"entry_price":',
+              '"exit_price":',
+              '"funding_rate":',
+              '"base_net_r":',
+              '"stress_net_r":',
+              '"price_gross_return":',
+              '"economic_gross_return":',
+              '"profit_factor":',
+              '"drawdown":',
+          )
+          for token in forbidden_exact_keys:
               assert token not in raw, token
+          assert p["profit_factor_included"] is False
+          assert p["returns_included"] is False
+          assert p["r_multiples_included"] is False
           print("DH03_SAFE_PROGRESS_FIREWALL_PASS")
           PY
       - name: Publish sanitized progress telemetry to DH03 branch
