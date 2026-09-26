@@ -1,0 +1,87 @@
+name: LCOD-001 Recovery Heartbeat V0.1
+
+on:
+  workflow_run:
+    workflows:
+      - "Radar V0.9 Keepalive"
+    types:
+      - completed
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: lcod-001-recovery-heartbeat-v01
+  cancel-in-progress: false
+
+jobs:
+  gate:
+    if: ${{ github.event.workflow_run.event == 'schedule' && github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.gate.outputs.should_run }}
+      reason: ${{ steps.gate.outputs.reason }}
+      heartbeat_utc: ${{ steps.gate.outputs.heartbeat_utc }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: liquidation-convexity-oracle-distance-001-source-gate-v0.1
+      - id: gate
+        env:
+          HEARTBEAT_UTC: ${{ github.event.workflow_run.updated_at }}
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json, os
+          from datetime import datetime, timezone, time
+          from pathlib import Path
+
+          raw=os.environ["HEARTBEAT_UTC"]
+          dt=datetime.fromisoformat(raw.replace("Z","+00:00")).astimezone(timezone.utc)
+          now_t=dt.time().replace(tzinfo=None)
+          in_window=(now_t >= time(3,17) and now_t < time(12,0))
+          today=dt.date().isoformat()
+
+          root=Path("research/liquidation_convexity_oracle_distance_001/forward_snapshots")
+          existing=[]
+          for p in sorted(root.glob("LCOD_FORWARD_SNAPSHOT_BLOCK_*.json")):
+              try:
+                  x=json.loads(p.read_text())
+              except Exception:
+                  continue
+              if x.get("classification")!="FORWARD_MECHANICAL_SNAPSHOT_PASS":
+                  continue
+              if x.get("observation_role")!="FORWARD_OBSERVATION":
+                  continue
+              if str(x.get("captured_at_utc",""))[:10]==today:
+                  existing.append(p.name)
+
+          should=in_window and not existing
+          if not in_window:
+              reason="outside_frozen_recovery_window"
+          elif existing:
+              reason="same_day_canonical_observation_already_exists"
+          else:
+              reason="scheduled_recovery_eligible"
+
+          print(f"heartbeat_utc={dt.isoformat()}")
+          print(f"today={today}")
+          print(f"in_window={in_window}")
+          print(f"existing={existing}")
+          print(f"should_run={str(should).lower()}")
+          print(f"reason={reason}")
+
+          with open(os.environ["GITHUB_OUTPUT"],"a") as f:
+              f.write(f"should_run={str(should).lower()}\n")
+              f.write(f"reason={reason}\n")
+              f.write(f"heartbeat_utc={dt.isoformat()}\n")
+          PY
+
+  forward:
+    needs: gate
+    if: ${{ needs.gate.outputs.should_run == 'true' }}
+    uses: joseluisvieira28-oss/Laboratorio/.github/workflows/lcod-001-prospective-mechanical-snapshot-v01.yml@liquidation-convexity-oracle-distance-001-source-gate-v0.1
+    with:
+      canonical_trigger: true
+    secrets: inherit
