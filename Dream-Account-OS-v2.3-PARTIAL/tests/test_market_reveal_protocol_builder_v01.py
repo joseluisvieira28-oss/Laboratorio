@@ -136,7 +136,7 @@ class ProtocolBuilderTests(unittest.TestCase):
         calendar = synthetic_calendar()
         calendar["event_families"] = ["US_CPI"]
         calendar["manifest_sha256"] = manifest_sha256(calendar)
-        with self.assertRaisesRegex(ValueError, "calendar event families"):
+        with self.assertRaisesRegex(ValueError, "CALENDAR_NOT_READY"):
             build_final_protocol(
                 ruleset=RULESET,
                 calendar_manifest=calendar,
