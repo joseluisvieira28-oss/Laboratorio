@@ -25,7 +25,14 @@ PR: #107
 | MEXC 2025 public history | SOURCE_BLOCKED |
 | LICP-HIST-XALT-003 Discovery | SURVIVOR — SOL SHORT / 60m selected |
 | LICP-HIST-XALT-003 Holdout | HOLDOUT_SURVIVES_WITH_EXECUTION_DEVIATION — canonical run #36234052123; duplicate identical recomputation audited |
-| LICP-FWD-XALT-004 transfer | LOCKED — waits for frozen numeric trigger config |\n| Outcome-blind collector quiet-feed hardening | PASS — no false reconnects in post-fix smoke |\n| Calibration shard aggregator | PASS tests — enforces 7d / 250 Bybit / 50 BTC / 95% uptime / clock/hash gates |\n| Long calibration block | COLLECTING / outcome-blind artifact path |
+| LICP-FWD-XALT-004 transfer | LOCKED — waits for frozen numeric trigger config |
+| Outcome-blind collector quiet-feed hardening | PASS — no false reconnects in post-fix smoke |
+| Calibration shard aggregator | PASS tests — enforces 7d / 250 Bybit / 50 BTC / 95% uptime / clock/hash gates |
+| First long calibration block | PASS — 20700s, Bybit 81 incl. BTC 22, Binance 211, MEXC depth 90057, zero disconnects/regressions |
+| Current calibration block | COLLECTING — GitHub run 36261304688 |
+| XALT-004 persistent state/restart layer | PASS — integrity run 36261561814 |
+| OKX liquidation-orders robustness source | PASS_SAMPLE — public WS ack, 3 rows / 120s |
+| BitMEX liquidation:XBTUSD robustness source | PASS_SAMPLE — public WS ack, quiet sample |
 | Live trading | NOT AUTHORIZED |
 
 ## Frozen causal chain
@@ -116,3 +123,45 @@ Canonical scientific state:
 A permanent repository lock now prevents any further XALT-003 holdout opening.
 
 Forward MEXC validation remains mandatory before any promotion.
+
+
+## Infrastructure hardening update — 2026-09-26 evening
+
+### XALT-004 lifecycle
+The forward SOL/60m observer was hardened before any forward outcomes:
+- persistent episode state;
+- deterministic episode IDs and duplicate protection;
+- exact +60s entry and +60m exit logic;
+- stale/crossed BBO rejection;
+- restart gaps crossing an entry/exit deadline are marked missing, never backfilled;
+- forward verdict remains locked behind >=20 matured episodes, >=3 UTC dates and <=10% missing/unresolved coverage;
+- no orders, auth or exchange mutation.
+
+Integrity workflow:
+- run 36261561814 = PASS.
+
+### Additional liquidation robustness sources
+OKX:
+- public endpoint accepted channel liquidation-orders / SWAP;
+- 120s sample: 3 liquidation rows;
+- decision: PASS_SAMPLE;
+- role: robustness only, NOT primary trigger.
+
+BitMEX:
+- public endpoint accepted liquidation:XBTUSD;
+- 120s sample quiet: 0 liquidation rows;
+- decision: PASS_SAMPLE;
+- role: robustness only, NOT primary trigger.
+
+Primary frozen source-transfer design remains Bybit allLiquidation + Binance forceOrder.
+No source substitution occurred.
+
+### Branch orchestration limitation
+GitHub workflow_dispatch cannot dispatch a workflow that does not exist on the default branch.
+This was proven by dispatch smoke run 36261600279 (HTTP 404 for branch-only workflow).
+
+Therefore:
+- no fake claim of autonomous 7-day chaining;
+- valid calibration blocks remain artifact-backed;
+- the current long block continues independently;
+- no merge to main was performed.
