@@ -150,14 +150,13 @@ def run(base:Path, etf_artifact:Path):
         rec["snapshotted"]=False
         rec["cells"]={name:{"class":"SOURCE_GATED" if not rec["source_gate"] else None} for name,_,_ in CELLS}
 
-    t0s=sorted(r for r in nonzero if r["source_gate"] for r in r["t0_ns"],)
-    # The above comprehension syntax is intentionally avoided below for Python compatibility.
     t0s=sorted([r["t0_ns"] for r in nonzero if r["source_gate"]])
     rec_by_t0={r["t0_ns"]:r for r in nonzero if r["source_gate"]}
     t0_index=0
+    mid_index=0
 
     active={}
-    archived={}
+    selected_archive={}
     queues={h:deque() for h in HORIZONS_MS}
     eid=0
     prev=None
@@ -166,14 +165,14 @@ def run(base:Path, etf_artifact:Path):
     totals=Counter()
 
     def resolve_event(i,h,env,st):
-        ev=active.get(i) or archived.get(i)
+        ev=active.get(i) or selected_archive.get(i)
         if ev is None or h in ev["resolved"]: return
         ev["resolved"].add(h)
         ev["h"][h]={"env":env,"st":st} if st is not None else None
         # If selected anywhere, retain; otherwise delete once max horizon resolved.
         if len(ev["resolved"])==len(HORIZONS_MS):
             if ev.get("selected_count",0)>0:
-                archived[i]=ev
+                selected_archive[i]=ev
             active.pop(i,None)
 
     def resolve_due(env,st):
@@ -227,15 +226,17 @@ def run(base:Path, etf_artifact:Path):
             t0_index+=1
 
     def after_state(env,st):
-        nonlocal t0_index
+        nonlocal t0_index,mid_index
         # Exact equality can use the accepted state at T0 causally.
         while t0_index<len(t0s) and t0s[t0_index]==env:
             snapshot(rec_by_t0[t0s[t0_index]])
             t0_index+=1
-        # First accepted midpoint at/after T0, within 1100ms.
-        for rec in nonzero:
-            if rec["source_gate"] and rec["t0_mid"] is None and rec["t0_ns"]<=env<=rec["t0_ns"]+MAX_LATENESS_NS:
-                rec["t0_mid"]=st["mid"]
+        # First accepted midpoint at/after each exact T0, max lateness 1100ms.
+        while mid_index<len(t0s) and t0s[mid_index]<=env:
+            t0=t0s[mid_index]
+            if env-t0<=MAX_LATENESS_NS:
+                rec_by_t0[t0]["t0_mid"]=st["mid"]
+            mid_index+=1
 
     def consume(env,st):
         nonlocal prev
@@ -257,7 +258,7 @@ def run(base:Path, etf_artifact:Path):
     for seg_i,seg in enumerate(segments,1):
         prev=None; last_payload=None; last_env=None
         # active events cannot cross immutable source gaps.
-        active.clear(); archived.clear()
+        active.clear()
         for h in HORIZONS_MS: queues[h].clear()
         for row in seg:
             key=row["key"]
@@ -298,7 +299,7 @@ def run(base:Path, etf_artifact:Path):
         if last_env is not None: snapshot_before(last_env+1)
         # unresolved selected events at a segment end cannot produce Y and remain outcome-gated.
         for ev in list(active.values()):
-            if ev.get("selected_count",0)>0: archived[ev["id"]]=ev
+            if ev.get("selected_count",0)>0: selected_archive[ev["id"]]=ev
 
     # Any T0 with present keys but never snapshotted is source/timing gated.
     while t0_index<len(t0s):
@@ -315,7 +316,7 @@ def run(base:Path, etf_artifact:Path):
             counts[cls]+=1
             residual=None
             if cls in ("ALIGNED","OPPOSED"):
-                ev=archived.get(c["event_id"]) or active.get(c["event_id"])
+                ev=selected_archive.get(c["event_id"]) or active.get(c["event_id"])
                 y=ev["h"].get(yh) if ev else None
                 if rec["t0_mid"] is None or y is None or y["st"] is None:
                     cls="SOURCE_GATED"; counts[c["class"]]-=1; counts[cls]+=1
