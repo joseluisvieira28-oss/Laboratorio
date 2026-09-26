@@ -15,6 +15,8 @@ jobs:
   requirements:
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    env:
+      GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -23,18 +25,16 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Download source sample gate
-        uses: actions/download-artifact@v4
-        with:
-          github-token: ${{ github.token }}
-          repository: ${{ github.repository }}
-          run-id: SOURCE_SAMPLE_GATE_RUN_ID_REPLACED_AT_LAUNCH
-          pattern: dls-source-cluster-sample-gate-v01
-          path: sample_gate
-          merge-multiple: true
+      - name: Compile source-only market mapping tools
+        run: |
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/collect_source_sample_gate_artifact_v0_1.py
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/build_market_mapping_requirements_v0_1.py
 
-      - name: Compile requirements builder
-        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/build_market_mapping_requirements_v0_1.py
+      - name: Collect newest authoritative Sample Gate artifact
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/collect_source_sample_gate_artifact_v0_1.py
+          --repository "${{ github.repository }}"
+          --out sample_gate
 
       - name: Build exact market target requirements
         run: >
@@ -42,12 +42,14 @@ jobs:
           --sample-gate sample_gate
           --clusters sample_gate
 
-      - name: Upload mapping requirements receipt
+      - name: Upload mapping requirements authority
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: dls-market-mapping-requirements-v01
-          path: labs/DEFI_LIQUIDATION_SHOCK_001/MARKET_MAPPING_REQUIREMENTS_RECEIPT_V0.1.json
+          path: |
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARKET_MAPPING_SAMPLE_ARTIFACT_SELECTION_RECEIPT_V0.1.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARKET_MAPPING_REQUIREMENTS_RECEIPT_V0.1.json
           if-no-files-found: warn
           retention-days: 30
 
