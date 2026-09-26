@@ -12,9 +12,15 @@ def write_shard(root,name,start_ms,seconds,bybit_events=0,btc_events=0,uptime=1.
     (d/"liquidations.jsonl").write_text("\n".join(json.dumps(x) for x in events))
     from datetime import datetime,timezone
     end=datetime.fromtimestamp((start_ms+seconds*1000)/1000,tz=timezone.utc).isoformat()
-    h={"outcome_blind":True,"started_wall_ms":start_ms,"ended_at":end,"scheduled_seconds":seconds,
-       "event_log_sha256":"0"*64,"health":{
-         v:{"connected_seconds":seconds*uptime,"clock_regressions":0} for v in ("bybit","binance","mexc")}}
+    import hashlib
+    event_sha=hashlib.sha256((d/"liquidations.jsonl").read_bytes()).hexdigest()
+    gap_sha=hashlib.sha256(b"").hexdigest()
+    h={"schema":"licp001.health.v2","outcome_blind":True,"started_wall_ms":start_ms,"ended_at":end,
+       "scheduled_seconds":seconds,"event_log_sha256":event_sha,"gaps_log_sha256":gap_sha,
+       "health":{
+         "bybit":{"connected_seconds":seconds*uptime,"clock_regressions":0,"acks":1,"malformed":0},
+         "binance":{"connected_seconds":seconds*uptime,"clock_regressions":0,"acks":1,"malformed":0},
+         "mexc":{"connected_seconds":seconds*uptime,"clock_regressions":0,"acks":1,"depth_updates":1}}}
     (d/"health.json").write_text(json.dumps(h))
 
 def test_aggregate_refuses_to_be_ready_before_seven_days(tmp_path):
