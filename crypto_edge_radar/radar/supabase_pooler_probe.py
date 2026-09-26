@@ -34,8 +34,10 @@ def _indices_from_env(raw: str | None) -> tuple[int, ...]:
     return tuple(out)
 
 
-def _sanitized_error(exc: BaseException) -> str:
+def _sanitized_error(exc: BaseException, *, secret: str = "") -> str:
     text = str(exc).replace("\n", " ").strip()
+    if secret:
+        text = text.replace(secret, "[REDACTED]")
     if len(text) > 240:
         text = text[:240] + "..."
     return f"{type(exc).__name__}:{text}"
@@ -112,7 +114,7 @@ def probe_one(
             {
                 "status": "CONNECT_FAIL",
                 "accepted": False,
-                "error": _sanitized_error(exc),
+                "error": _sanitized_error(exc, secret=password),
             }
         )
         return result
