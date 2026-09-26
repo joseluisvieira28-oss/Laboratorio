@@ -200,7 +200,8 @@ def eval_variant(event,pre,states,trades,name):
         if pdir>0:
             tg=bps(eask,fbid);mg=bps(ebid,fask)
         else:
-            tg=bps(fask,ebid);mg=bps(fbid,eask)
+            tg=(ebid-fask)/ebid*10000.0
+            mg=(eask-fbid)/eask*10000.0
         out["horizons"][str(h)]={
             "directional_mid_bps":mid,
             "taker_gross_bps":tg,
