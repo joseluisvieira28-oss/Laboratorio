@@ -4,7 +4,7 @@ import hashlib
 import json
 from typing import Any
 
-from .evidence import GENESIS_HASH
+from .evidence import GENESIS_HASH, POSTGRES_CHAIN_LOCK_ID
 
 try:
     import psycopg
@@ -319,6 +319,10 @@ def reconcile_target_prefix(
 
     with psycopg.connect(target_url.strip(), connect_timeout=10) as conn:
         with conn.cursor() as cur:
+            cur.execute(
+                "SELECT pg_advisory_xact_lock(%s)",
+                (POSTGRES_CHAIN_LOCK_ID,),
+            )
             target_before = _read_target_snapshot(cur)
             verify_snapshot(target_before)
             sequence_last, sequence_called = _target_sequence_state(cur)
