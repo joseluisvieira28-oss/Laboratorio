@@ -195,13 +195,26 @@ try{
   const endMeta=await getBlockWithRetry(endBlock,"END_META_FAILED_"+endBlock);
   const startAnchorBlock=start.number-1;
   if(startAnchorBlock<0) throw new Error("BAD_START_ANCHOR_BLOCK");
-  const startSupplyRaw=await archiveSendWithRetry("eth_call",[{to:TOKEN,data:TOTAL_SUPPLY_SELECTOR},hex(startAnchorBlock)],"START_SUPPLY_CALL_FAILED");
-  const endSupplyRaw=await archiveSendWithRetry("eth_call",[{to:TOKEN,data:TOTAL_SUPPLY_SELECTOR},hex(endBlock)],"END_SUPPLY_CALL_FAILED");
+  const startAnchorMeta=await getBlockWithRetry(startAnchorBlock,"START_ANCHOR_META_FAILED_"+startAnchorBlock);
+  const startSupplyRaw=await archiveSendWithRetry(
+    "eth_call",
+    [{to:TOKEN,data:TOTAL_SUPPLY_SELECTOR},{blockHash:startAnchorMeta.hash,requireCanonical:true}],
+    "START_SUPPLY_BLOCKHASH_CALL_FAILED"
+  );
+  const endSupplyRaw=await archiveSendWithRetry(
+    "eth_call",
+    [{to:TOKEN,data:TOTAL_SUPPLY_SELECTOR},{blockHash:endMeta.hash,requireCanonical:true}],
+    "END_SUPPLY_BLOCKHASH_CALL_FAILED"
+  );
   const archiveStartSupply=BigInt(startSupplyRaw);
   const archiveEndSupply=BigInt(endSupplyRaw);
   receipt.boundaries={start_block:start,end_block:{number:endBlock,hash:endMeta.hash,timestamp:Number(endMeta.timestamp)},end_boundary_block:endBoundary};
   receipt.supply_anchor={
+    block_binding:"EIP-1898 blockHash requireCanonical",
     start_anchor_block:startAnchorBlock,
+    start_anchor_hash:startAnchorMeta.hash,
+    end_anchor_block:endBlock,
+    end_anchor_hash:endMeta.hash,
     archive_start_total_supply_raw:archiveStartSupply.toString(),
     archive_end_total_supply_raw:archiveEndSupply.toString()
   };
