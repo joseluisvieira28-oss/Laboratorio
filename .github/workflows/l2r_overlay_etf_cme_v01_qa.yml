@@ -14,6 +14,7 @@ on:
       - .github/workflows/l2r_overlay_etf_cme_v01_qa.yml
 
 permissions:
+  actions: read
   contents: write
   actions: read
 
@@ -109,3 +110,17 @@ jobs:
           retention-days: 30
           compression-level: 6
           if-no-files-found: error
+
+  source_identity_probe:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: etf-cme-instflow-001-oos-2025-34815006815-1
+          run-id: 34815006815
+          github-token: ${{ github.token }}
+          path: parent_artifact
+      - name: Hash immutable parent files
+        run: |
+          set -euo pipefail
+          find parent_artifact -maxdepth 2 -type f -print -exec sha256sum {} \;
