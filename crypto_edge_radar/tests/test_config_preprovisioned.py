@@ -80,6 +80,14 @@ class PreprovisionedPostgresConfigTests(unittest.TestCase):
             ):
                 Settings.from_env()
 
+    def test_settings_repr_never_exposes_database_url(self):
+        secret_url = "postgresql://user:super-secret@example/db"
+        settings = Settings(database_url=secret_url)
+        rendered = repr(settings)
+        self.assertNotIn("super-secret", rendered)
+        self.assertNotIn(secret_url, rendered)
+        self.assertNotIn("database_url=", rendered)
+
     def test_invalid_boolean_fails_closed(self):
         with patch.dict(
             os.environ,
