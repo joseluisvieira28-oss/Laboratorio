@@ -84,6 +84,19 @@ def _fetch_binance_snapshot(symbol: str) -> tuple[bytes, int, int, int]:
     return raw, last_update_id, wall_ns, monotonic_ns
 
 
+def _ordered_by_collector_arrival(
+    records: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    return sorted(
+        records,
+        key=lambda row: (
+            int(row["collector_monotonic_ns"]),
+            int(row["collector_wall_ns"]),
+            str(row["message_kind"]),
+        ),
+    )
+
+
 def _binance_source_bounds(data: dict[str, Any]) -> tuple[int | None, int | None]:
     values: list[int] = []
     for key in ("T", "E"):
@@ -222,13 +235,8 @@ async def _collect_binance_symbol(
             "collector_monotonic_ns": mono_ns,
             "raw_payload": raw,
         }
-        pending = [*buffered_before_snapshot, snapshot_record]
-        pending.sort(
-            key=lambda row: (
-                int(row["collector_monotonic_ns"]),
-                int(row["collector_wall_ns"]),
-                str(row["message_kind"]),
-            )
+        pending = _ordered_by_collector_arrival(
+            [*buffered_before_snapshot, snapshot_record]
         )
         for record in pending:
             persist_record(record)
