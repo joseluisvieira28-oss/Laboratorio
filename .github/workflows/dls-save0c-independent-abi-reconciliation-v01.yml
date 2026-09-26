@@ -1,0 +1,38 @@
+name: DLS Save0c Independent ABI Reconciliation V0.1
+
+on:
+  push:
+    branches:
+      - dls-drift-sqd-boundary-v01
+    paths:
+      - .github/workflows/dls-save0c-independent-abi-reconciliation-v01.yml
+
+permissions:
+  contents: read
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/reconcile_save0c_independent_abi_v0_1.py
+      - name: Reconcile historical ABI against official Solana RPC
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/reconcile_save0c_independent_abi_v0_1.py
+      - name: Upload receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-save0c-independent-abi-reconciliation-v01
+          path: labs/DEFI_LIQUIDATION_SHOCK_001/SAVE0C_INDEPENDENT_ABI_RECONCILIATION_RECEIPT_V0.1.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_TRUE
