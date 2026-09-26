@@ -80,11 +80,11 @@ out={
     "NEUTRAL":neutral,
     "PREMIUM_EXTREME":premium
   },
-  "direction_opened":false,
-  "market_returns_opened":false,
-  "holding_horizon_outcomes_opened":false,
-  "pnl_opened":false,
-  "mutation":false,
+  "direction_opened":False,
+  "market_returns_opened":False,
+  "holding_horizon_outcomes_opened":False,
+  "pnl_opened":False,
+  "mutation":False,
   "promotion_credit":0
 }
 OUT.write_text(json.dumps(out,indent=2,sort_keys=True)+"\n")
