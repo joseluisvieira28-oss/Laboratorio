@@ -14,10 +14,18 @@ on:
       - 'crypto_edge_radar/tests/test_dh03_12h_forward.py'
       - 'crypto_edge_radar/HTF_DH03_12H_STANDALONE_FORWARD_V1_ARCHIVE_SHADOW_FREEZE.json'
       - '.github/workflows/htf-dh03-12h-forward-shadow.yml'
+  pull_request:
+    branches:
+      - htf-dh03-12h-standalone-forward-v0.1
+    paths:
+      - 'crypto_edge_radar/radar/dh03_safe_progress.py'
+      - 'crypto_edge_radar/tests/test_dh03_safe_progress.py'
+      - 'governance/HTF_DH03_12H_SAFE_PROGRESS_TELEMETRY_V0.1_2026-09-26.md'
+      - '.github/workflows/htf-dh03-12h-forward-shadow.yml'
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   actions: read
 
 concurrency:
@@ -41,7 +49,7 @@ jobs:
       - name: Compile and exact watcher tests
         run: |
           python -m compileall radar tests
-          python -m unittest tests.test_dh03_12h_forward tests.test_dh03_archive_watcher -v
+          python -m unittest tests.test_dh03_12h_forward tests.test_dh03_archive_watcher tests.test_dh03_safe_progress -v
       - name: Restore previous append-only evidence state when available
         env:
           GH_TOKEN: ${{ github.token }}
@@ -87,6 +95,38 @@ jobs:
               'forward_evidence_used':r.get('used_as_forward_evidence',False),
           },sort_keys=True))
           PY
+      - name: Build sanitized progress telemetry
+        env:
+          DH03_SOURCE_WORKFLOW_RUN_ID: ${{ github.run_id }}
+        run: |
+          python -m radar.dh03_safe_progress \
+            --receipt dh03_state/latest_receipt.json \
+            --run-id "$DH03_SOURCE_WORKFLOW_RUN_ID" \
+            --output DH03_SAFE_PROGRESS.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from radar.dh03_safe_progress import validate_safe_payload
+          p=json.loads(Path("DH03_SAFE_PROGRESS.json").read_text())
+          validate_safe_payload(p,expected_run_id=int(p["source_workflow_run_id"]))
+          forbidden=("exit_price","funding_rate","base_net_r","stress_net_r","profit_factor","drawdown")
+          raw=Path("DH03_SAFE_PROGRESS.json").read_text().lower()
+          for token in forbidden:
+              assert token not in raw, token
+          print("DH03_SAFE_PROGRESS_FIREWALL_PASS")
+          PY
+      - name: Publish sanitized progress telemetry to DH03 branch
+        if: github.event_name != 'pull_request' && github.ref_name == 'htf-dh03-12h-standalone-forward-v0.1'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add DH03_SAFE_PROGRESS.json
+          if git diff --cached --quiet; then
+            echo "SAFE_PROGRESS_UNCHANGED"
+          else
+            git commit -m "telemetry: update DH03 safe progress [skip ci]"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi
       - name: Upload persistent shadow state
         uses: actions/upload-artifact@v4
         with:
