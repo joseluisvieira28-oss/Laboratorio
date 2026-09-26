@@ -11,12 +11,12 @@ sys.path.insert(0, str(MODULE_DIR))
 from h02_scope_journal import (
     connect_scope_journal,
     ingest_scope_record,
+    ordered_by_collector_arrival,
     session_record_count,
     sqlite_integrity_ok,
     start_scope_session,
 )
 from h02_scope_recovery import verify_scope_session_chain
-from h02_frozen_scope_shadow_collector import _ordered_by_collector_arrival
 
 
 class H02ScopeJournalTests(unittest.TestCase):
@@ -238,7 +238,7 @@ class H02ScopeJournalTests(unittest.TestCase):
                 "collector_wall_ns": 1000,
             },
         ]
-        ordered = _ordered_by_collector_arrival(records)
+        ordered = ordered_by_collector_arrival(records)
         self.assertEqual(
             [row["collector_monotonic_ns"] for row in ordered],
             [100, 200, 300],
