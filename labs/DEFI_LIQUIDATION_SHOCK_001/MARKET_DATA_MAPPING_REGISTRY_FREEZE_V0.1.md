@@ -32,6 +32,8 @@ Required:
 - base_asset
 - quote_asset
 - venue_metadata_authority
+- current_product_metadata_expected: boolean
+- if current_product_metadata_expected=false: historical_product_metadata_authority
 - listing_start_utc or explicit SOURCE_NOT_AVAILABLE
 - archive_route_template
 - checksum_route_template
@@ -40,6 +42,14 @@ Quote asset must respect:
 USDT > USD > USDC
 
 A lower-priority quote requires explicit source-only evidence that higher-priority quotes are unavailable for the required period.
+
+A historically valid Binance product that is no longer returned by current exchangeInfo may remain BINANCE_DIRECT only when:
+- current_product_metadata_expected=false;
+- historical_product_metadata_authority is non-empty;
+- frozen symbol/base/quote identity is source-supported;
+- required archive/checksum HEAD probes pass for its applicable historical event dates.
+
+Current delisting is not itself evidence that historical archives are invalid.
 
 ### OKX_DIRECT
 
