@@ -25,8 +25,8 @@ BOOT_REPS=10_000
 BOOT_SEED=730031
 RESTART_PROB=0.25
 
-STAGEA_RECEIPT=Path("research/eth_staking_flow/ETH_STAKING_FLOW_001_V3_REPLICATION_SOURCE_V0_1_6.json")
-STAGEA_LEDGER=Path("research/eth_staking_flow/ETH_STAKING_FLOW_001_V3_REPLICATION_SOURCE_LEDGER_V0_1_6.json")
+STAGEA_RECEIPT=Path("research/eth_staking_flow/ETH_STAKING_FLOW_001_V3_REPLICATION_SOURCE_V0_1_7.json")
+STAGEA_LEDGER=Path("research/eth_staking_flow/ETH_STAKING_FLOW_001_V3_REPLICATION_SOURCE_LEDGER_V0_1_7.json")
 
 OUT=Path("artifacts/stageb_v3")
 OUT.mkdir(parents=True,exist_ok=True)
