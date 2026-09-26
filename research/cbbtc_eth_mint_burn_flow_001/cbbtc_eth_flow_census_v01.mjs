@@ -23,18 +23,45 @@ if(source.classification!=="SOURCE_PASS") throw new Error("SOURCE_GATE_NOT_PASS"
 
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 
-async function firstBlockAtOrAfter(ts){
-  const latest=await provider.getBlock("latest");
+async function getBlockWithRetry(tag,scope){
+  let last=null;
+  for(let attempt=1;attempt<=8;attempt++){
+    try{
+      const b=await provider.getBlock(tag);
+      if(!b) throw new Error("NULL_BLOCK");
+      return b;
+    }catch(e){
+      last=String(e?.shortMessage||e?.message||e);
+      if(attempt<8) await sleep(500*attempt);
+    }
+  }
+  throw new Error(scope+":"+last);
+}
+
+async function firstBlockAtOrAfter(ts,label){
+  const latest=await getBlockWithRetry("latest","BOUNDARY_LATEST_FAILED_"+label);
   let lo=0,hi=Number(latest.number);
   while(lo<hi){
     const mid=Math.floor((lo+hi)/2);
-    const b=await provider.getBlock(mid);
-    if(!b) throw new Error("BLOCK_LOOKUP_FAILED_"+mid);
+    const b=await getBlockWithRetry(mid,"BOUNDARY_MID_FAILED_"+label+"_"+mid);
     if(Number(b.timestamp)>=ts) hi=mid; else lo=mid+1;
+    await sleep(100);
   }
-  const b=await provider.getBlock(lo);
-  if(!b) throw new Error("BOUNDARY_BLOCK_MISSING_"+lo);
+  const b=await getBlockWithRetry(lo,"BOUNDARY_FINAL_FAILED_"+label+"_"+lo);
   return {number:Number(b.number),hash:b.hash,timestamp:Number(b.timestamp)};
+}
+
+async function archiveSendWithRetry(method,params,scope){
+  let last=null;
+  for(let attempt=1;attempt<=8;attempt++){
+    try{
+      return await archiveProvider.send(method,params);
+    }catch(e){
+      last=String(e?.shortMessage||e?.message||e);
+      if(attempt<8) await sleep(700*attempt);
+    }
+  }
+  throw new Error(scope+":"+last);
 }
 
 async function getLogsChunked(fromBlock,toBlock,topics,kind){
@@ -151,15 +178,14 @@ const receipt={
 };
 
 try{
-  const start=await firstBlockAtOrAfter(Math.floor(Date.parse(START_ISO)/1000));
-  const endBoundary=await firstBlockAtOrAfter(Math.floor(Date.parse(END_ISO)/1000));
+  const start=await firstBlockAtOrAfter(Math.floor(Date.parse(START_ISO)/1000),"CENSUS_START");
+  const endBoundary=await firstBlockAtOrAfter(Math.floor(Date.parse(END_ISO)/1000),"CENSUS_END");
   const endBlock=endBoundary.number-1;
-  const endMeta=await provider.getBlock(endBlock);
-  if(!endMeta) throw new Error("END_META_MISSING");
+  const endMeta=await getBlockWithRetry(endBlock,"END_META_FAILED_"+endBlock);
   const startAnchorBlock=start.number-1;
   if(startAnchorBlock<0) throw new Error("BAD_START_ANCHOR_BLOCK");
-  const startSupplyRaw=await archiveProvider.send("eth_call",[{to:TOKEN,data:TOTAL_SUPPLY_SELECTOR},hex(startAnchorBlock)]);
-  const endSupplyRaw=await archiveProvider.send("eth_call",[{to:TOKEN,data:TOTAL_SUPPLY_SELECTOR},hex(endBlock)]);
+  const startSupplyRaw=await archiveSendWithRetry("eth_call",[{to:TOKEN,data:TOTAL_SUPPLY_SELECTOR},hex(startAnchorBlock)],"START_SUPPLY_CALL_FAILED");
+  const endSupplyRaw=await archiveSendWithRetry("eth_call",[{to:TOKEN,data:TOTAL_SUPPLY_SELECTOR},hex(endBlock)],"END_SUPPLY_CALL_FAILED");
   const archiveStartSupply=BigInt(startSupplyRaw);
   const archiveEndSupply=BigInt(endSupplyRaw);
   receipt.boundaries={start_block:start,end_block:{number:endBlock,hash:endMeta.hash,timestamp:Number(endMeta.timestamp)},end_boundary_block:endBoundary};
