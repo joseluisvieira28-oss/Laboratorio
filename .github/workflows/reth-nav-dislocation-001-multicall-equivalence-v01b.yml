@@ -1,0 +1,37 @@
+name: RETH-NAV-DISLOCATION-001 Multicall transport equivalence V0.1B
+
+on:
+  push:
+    branches:
+      - reth-nav-dislocation-001-source-gate-v01
+    paths:
+      - 'research/reth_nav_dislocation_001/MULTICALL_TRANSPORT_EQUIVALENCE_FREEZE_V0.1B.md'
+      - 'research/reth_nav_dislocation_001/reth_multicall_transport_equivalence_v01b.mjs'
+      - '.github/workflows/reth-nav-dislocation-001-multicall-equivalence-v01b.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: reth-nav-dislocation-001-source-gate-v01
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-save ethers@6.15.0
+      - name: Verify direct-vs-Multicall exact return bytes
+        env:
+          ETH_RPC_URL: https://rpc-eth.blockmachine.io
+        run: node research/reth_nav_dislocation_001/reth_multicall_transport_equivalence_v01b.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: reth-multicall-transport-equivalence-v01b
+          path: artifacts/reth_multicall_transport_equivalence_v01b.json
+          if-no-files-found: error
