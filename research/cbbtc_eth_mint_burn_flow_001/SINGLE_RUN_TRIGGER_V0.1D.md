@@ -19,3 +19,5 @@ Hard boundaries:
 - no live trading;
 - no main merge;
 - terminal failures close the exact lab with no rescue.
+
+Runner-pool remediation V0.1E: macos-15 retry, scientific design unchanged.
