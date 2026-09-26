@@ -1,14 +1,17 @@
 from __future__ import annotations
 
 import unittest
+from unittest.mock import patch
 
 from radar.supabase_pooler_probe import (
-    EXPECTED_CHAIN_HEAD,
     PROJECT_REGION,
     SupabasePoolerProbeError,
     discover_session_pooler,
     probe_one,
+    probe_from_env,
 )
+
+EXPECTED_CHAIN_HEAD = "f8b85ba3d45dcb426e37d1a1da543cff61a85d9ea0a01ddc1a07662b9e7c02cd"
 
 
 class FakeCursor:
@@ -69,6 +72,9 @@ class SupabasePoolerProbeTests(unittest.TestCase):
     def test_one_exact_host_is_selected_without_mutation(self):
         result = discover_session_pooler(
             password="secret",
+            expected_events=1032,
+            expected_keys=954,
+            expected_chain_head=EXPECTED_CHAIN_HEAD,
             indices=(0, 1, 2),
             connect_fn=connector_for_index(1),
         )
@@ -88,6 +94,9 @@ class SupabasePoolerProbeTests(unittest.TestCase):
     def test_no_matching_host_fails_closed(self):
         result = discover_session_pooler(
             password="secret",
+            expected_events=1032,
+            expected_keys=954,
+            expected_chain_head=EXPECTED_CHAIN_HEAD,
             indices=(0, 1),
             connect_fn=connector_for_index(9),
         )
@@ -120,6 +129,9 @@ class SupabasePoolerProbeTests(unittest.TestCase):
         item = probe_one(
             host="aws-0-eu-central-1.pooler.supabase.com",
             password="secret",
+            expected_events=1032,
+            expected_keys=954,
+            expected_chain_head=EXPECTED_CHAIN_HEAD,
             connect_fn=lambda **_kwargs: WrongConnection(),
         )
         self.assertEqual(item["status"], "REACHABLE_NOT_EQUIVALENT")
@@ -130,8 +142,41 @@ class SupabasePoolerProbeTests(unittest.TestCase):
             probe_one(
                 host="aws-0-eu-central-1.pooler.supabase.com",
                 password="",
+                expected_events=1032,
+                expected_keys=954,
+                expected_chain_head=EXPECTED_CHAIN_HEAD,
                 connect_fn=connector_for_index(0),
             )
+
+
+    def test_env_probe_requires_explicit_audited_identity(self):
+        with patch.dict(
+            "os.environ",
+            {"RADAR_SUPABASE_POOLER_PASSWORD": "secret"},
+            clear=True,
+        ):
+            with self.assertRaisesRegex(
+                SupabasePoolerProbeError,
+                "RADAR_SUPABASE_POOLER_EXPECTED_EVENTS is required",
+            ):
+                probe_from_env()
+
+    def test_env_probe_rejects_invalid_chain_head(self):
+        with patch.dict(
+            "os.environ",
+            {
+                "RADAR_SUPABASE_POOLER_PASSWORD": "secret",
+                "RADAR_SUPABASE_POOLER_EXPECTED_EVENTS": "1035",
+                "RADAR_SUPABASE_POOLER_EXPECTED_KEYS": "957",
+                "RADAR_SUPABASE_POOLER_EXPECTED_CHAIN_HEAD": "not-a-hash",
+            },
+            clear=True,
+        ):
+            with self.assertRaisesRegex(
+                SupabasePoolerProbeError,
+                "must be 64 hex chars",
+            ):
+                probe_from_env()
 
 
 if __name__ == "__main__":
