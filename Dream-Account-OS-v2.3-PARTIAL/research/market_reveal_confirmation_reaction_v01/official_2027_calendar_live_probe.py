@@ -148,7 +148,8 @@ def _fed_2027_status(text: str) -> dict:
     )
     explicitly_tentative = tentative_note in text
     confirmed_count = 0 if explicitly_tentative else len(observed)
-    complete_confirmed = len(observed) == 8 and confirmed_count == 8
+    complete_published_plan = len(observed) == 8
+    complete_confirmed = complete_published_plan and confirmed_count == 8
 
     return {
         "authority": "FEDERAL_RESERVE",
@@ -168,8 +169,10 @@ def _fed_2027_status(text: str) -> dict:
         "confirmed_2027_event_count": confirmed_count,
         "expected_2027_event_count": 8,
         "official_tentative_note_present": explicitly_tentative,
+        "complete_official_2027_plan_available": complete_published_plan,
         "complete_confirmed_2027_schedule_available": complete_confirmed,
-        "bindable": complete_confirmed,
+        "annual_plan_bindable_v02": complete_published_plan,
+        "all_events_confirmed_v01": complete_confirmed,
     }
 
 
@@ -183,19 +186,33 @@ def evaluate_official_calendar_status(
     cpi = _bls_2027_status(cpi_text, family="US_CPI")
     empsit = _bls_2027_status(empsit_text, family="US_EMPLOYMENT_SITUATION")
     fomc = _fed_2027_status(fomc_text)
-    ready = cpi["bindable"] and empsit["bindable"] and fomc["bindable"]
+    annual_plan_ready = (
+        cpi["bindable"]
+        and empsit["bindable"]
+        and fomc["annual_plan_bindable_v02"]
+    )
+    strict_v01_ready = (
+        cpi["bindable"]
+        and empsit["bindable"]
+        and fomc["all_events_confirmed_v01"]
+    )
     return {
         "document_type": "MRCR_OFFICIAL_2027_CALENDAR_LIVE_STATUS_V01",
         "lab_id": "MARKET-REVEAL-CONFIRMATION-REACTION-001",
         "h02_id": "MRCR-H02-ACCEPTANCE-REJECTION-V01",
         "checked_at_utc": checked_at_utc,
-        "status": "READY_FOR_REAL_CALENDAR_MANIFEST" if ready else "BLOCKED",
+        "status": (
+            "READY_FOR_V02_ANNUAL_PLAN"
+            if annual_plan_ready
+            else "BLOCKED"
+        ),
         "sources": {
             "US_CPI": cpi,
             "US_EMPLOYMENT_SITUATION": empsit,
             "FOMC_STATEMENT": fomc,
         },
-        "strict_trigger_ready": ready,
+        "annual_plan_trigger_ready_v02": annual_plan_ready,
+        "strict_v01_all_confirmed_trigger_ready": strict_v01_ready,
         "inferred_dates_used": False,
         "target_observation_authorized": False,
         "outcomes_authorized": False,
@@ -220,7 +237,8 @@ def main() -> int:
             "checked_at_utc": now,
             "status": "FAIL_CLOSED_SOURCE_PROBE",
             "error_class": type(exc).__name__,
-            "strict_trigger_ready": False,
+            "annual_plan_trigger_ready_v02": False,
+            "strict_v01_all_confirmed_trigger_ready": False,
             "inferred_dates_used": False,
             "target_observation_authorized": False,
             "outcomes_authorized": False,
