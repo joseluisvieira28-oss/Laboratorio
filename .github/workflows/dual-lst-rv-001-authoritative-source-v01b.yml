@@ -1,0 +1,50 @@
+name: DUAL-LST-RV-001 authoritative source gate V0.1B
+
+on:
+  push:
+    branches:
+      - dual-lst-relative-nav-001-source-gate-v0.1
+    paths:
+      - 'research/dual_lst_rv_001/AUTHORITATIVE_SOURCE_TRIGGER_V0.1B.md'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: dual-lst-rv-001-authoritative-source-v01b
+  cancel-in-progress: true
+
+jobs:
+  source_gate:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-save ethers@6.15.0
+      - name: Run authoritative four-sentinel, common-numeraire source gate
+        run: node research/dual_lst_rv_001/dual_lst_source_probe_v01b.mjs
+      - name: Persist exact PASS receipt
+        if: success()
+        shell: bash
+        run: |
+          cp artifacts/dual_lst_rv_001/DUAL_LST_RV_001_SOURCE_GATE_RECEIPT_V0.1B.json /tmp/dual_lst_source.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin dual-lst-relative-nav-001-source-gate-v0.1
+          git checkout -B dual-lst-source-persist origin/dual-lst-relative-nav-001-source-gate-v0.1
+          cp /tmp/dual_lst_source.json research/dual_lst_rv_001/DUAL_LST_RV_001_SOURCE_GATE_RECEIPT_V0.1B.json
+          git add research/dual_lst_rv_001/DUAL_LST_RV_001_SOURCE_GATE_RECEIPT_V0.1B.json
+          git commit -m "DUAL-LST-RV-001: persist authoritative source PASS V0.1B [skip ci]"
+          git push origin HEAD:dual-lst-relative-nav-001-source-gate-v0.1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dual-lst-rv-001-authoritative-source-v01b
+          path: artifacts/dual_lst_rv_001/DUAL_LST_RV_001_SOURCE_GATE_RECEIPT_V0.1B.json
+          if-no-files-found: error
