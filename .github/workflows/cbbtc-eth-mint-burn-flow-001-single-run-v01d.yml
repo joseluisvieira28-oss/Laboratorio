@@ -62,7 +62,7 @@ jobs:
         continue-on-error: true
         run: python research/cbbtc_eth_mint_burn_flow_001/cbbtc_finalize_continuation_v01.py
 
-      - name: Create source-blocked closeout if source gate fails
+      - name: Classify source failure without premature scientific closeout
         if: ${{ always() && steps.source.outcome == 'failure' }}
         shell: bash
         run: |
@@ -73,30 +73,52 @@ jobs:
           here=Path("research/cbbtc_eth_mint_burn_flow_001")
           p=here/"SOURCE_GATE_RECEIPT_V0.1.json"
           x=json.load(open(p)) if p.exists() else {}
-          rec={
-            "lab_id":"CBBTC-ETH-MINT-BURN-FLOW-001",
-            "stage":"CLOSEOUT_V0.1",
-            "closed_at_utc":datetime.now(timezone.utc).isoformat().replace("+00:00","Z"),
-            "final_classification":"SOURCE_BLOCKED",
-            "terminal":True,
-            "source_receipt_classification":x.get("classification"),
-            "source_errors":x.get("errors",[]),
-            "market_returns_opened":False,
-            "protected_2026_opened":False,
-            "pnl_opened":False,
-            "live_trading":False,
-            "mutation":False,
-            "promotion_credit":0,
-            "rescue_allowed":False
-          }
-          (here/"CLOSEOUT_RECEIPT_V0.1.json").write_text(json.dumps(rec,indent=2,sort_keys=True)+"\n")
-          (here/"CLOSEOUT_V0.1.md").write_text(
-            "# CBBTC-ETH-MINT-BURN-FLOW-001 — CLOSEOUT V0.1\n\n"
-            "Final classification: **SOURCE_BLOCKED**\n\n"
-            "The frozen source gate did not pass after the authorized transport-only remediation.\n"
-            "No BTC market outcomes, 2026 data, PnL or trading data were opened.\n"
-            "Per GOVERNANCE_DECISION_TREE_V0.1, the exact lab is closed with no rescue.\n"
-          )
+          evaluated=x.get("source_gate_evaluated") is True
+          now=datetime.now(timezone.utc).isoformat().replace("+00:00","Z")
+          if evaluated:
+              rec={
+                "lab_id":"CBBTC-ETH-MINT-BURN-FLOW-001",
+                "stage":"CLOSEOUT_V0.1",
+                "closed_at_utc":now,
+                "final_classification":"SOURCE_BLOCKED",
+                "terminal":True,
+                "source_gate_evaluated":True,
+                "source_receipt_classification":x.get("classification"),
+                "source_errors":x.get("errors",[]),
+                "market_returns_opened":False,
+                "protected_2026_opened":False,
+                "pnl_opened":False,
+                "live_trading":False,
+                "mutation":False,
+                "promotion_credit":0,
+                "rescue_allowed":False
+              }
+              (here/"CLOSEOUT_RECEIPT_V0.1.json").write_text(json.dumps(rec,indent=2,sort_keys=True)+"\n")
+              (here/"CLOSEOUT_V0.1.md").write_text(
+                "# CBBTC-ETH-MINT-BURN-FLOW-001 — CLOSEOUT V0.1\n\n"
+                "Final classification: **SOURCE_BLOCKED**\n\n"
+                "The two frozen source windows were evaluated and the frozen Gate-1 criteria did not pass.\n"
+                "No BTC market outcomes, 2026 data, PnL or trading data were opened.\n"
+                "Per GOVERNANCE_DECISION_TREE_V0.1, the exact lab is closed with no rescue.\n"
+              )
+          else:
+              rec={
+                "lab_id":"CBBTC-ETH-MINT-BURN-FLOW-001",
+                "stage":"TECHNICAL_SOURCE_TRANSPORT_STATUS_V0.1",
+                "captured_at_utc":now,
+                "classification":"TECHNICAL_SOURCE_TRANSPORT_BLOCKED",
+                "terminal":False,
+                "source_gate_evaluated":False,
+                "completed_window_count":x.get("completed_window_count",0),
+                "source_errors":x.get("errors",[]),
+                "market_returns_opened":False,
+                "protected_2026_opened":False,
+                "pnl_opened":False,
+                "live_trading":False,
+                "mutation":False,
+                "promotion_credit":0
+              }
+              (here/"TECHNICAL_SOURCE_TRANSPORT_STATUS_V0.1.json").write_text(json.dumps(rec,indent=2,sort_keys=True)+"\n")
           PY
 
       - name: Persist durable evidence
@@ -107,7 +129,8 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git fetch origin cbbtc-eth-mint-burn-flow-001-source-gate-v01
-          git add research/cbbtc_eth_mint_burn_flow_001/SOURCE_GATE_RECEIPT_V0.1.json                   research/cbbtc_eth_mint_burn_flow_001/FLOW_*.json                   research/cbbtc_eth_mint_burn_flow_001/DISCOVERY_*.json                   research/cbbtc_eth_mint_burn_flow_001/DAILY_FLOW_V0.1.json                   research/cbbtc_eth_mint_burn_flow_001/CLOSEOUT_*.json                   research/cbbtc_eth_mint_burn_flow_001/CLOSEOUT_*.md 2>/dev/null || true
+          git add research/cbbtc_eth_mint_burn_flow_001/SOURCE_GATE_RECEIPT_V0.1.json                   research/cbbtc_eth_mint_burn_flow_001/FLOW_*.json                   research/cbbtc_eth_mint_burn_flow_001/DISCOVERY_*.json                   research/cbbtc_eth_mint_burn_flow_001/DAILY_FLOW_V0.1.json                   research/cbbtc_eth_mint_burn_flow_001/CLOSEOUT_*.json                   research/cbbtc_eth_mint_burn_flow_001/CLOSEOUT_*.md \
+                  research/cbbtc_eth_mint_burn_flow_001/TECHNICAL_SOURCE_TRANSPORT_STATUS_V0.1.json 2>/dev/null || true
           if git diff --cached --quiet; then
             echo "No new durable evidence."
           else
@@ -128,6 +151,7 @@ jobs:
             research/cbbtc_eth_mint_burn_flow_001/DISCOVERY_FLOW_PREDICTOR_SAMPLE_RECEIPT_V0.1.json
             research/cbbtc_eth_mint_burn_flow_001/FLOW_DISCOVERY_RESULT_V0.1.json
             research/cbbtc_eth_mint_burn_flow_001/CLOSEOUT_RECEIPT_V0.1.json
+            research/cbbtc_eth_mint_burn_flow_001/TECHNICAL_SOURCE_TRANSPORT_STATUS_V0.1.json
           if-no-files-found: warn
 
       - name: Preserve fail-closed blocker
