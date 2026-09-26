@@ -34,7 +34,7 @@ jobs:
         run: |
           python - <<'PY'
           import json, os
-          from datetime import datetime, timezone
+          from datetime import datetime, timezone, time
           from pathlib import Path
           canonical = str(os.environ.get("LCOD_CANONICAL_TRIGGER","false")).lower() in ("1","true","yes")
           if not canonical:
@@ -44,7 +44,17 @@ jobs:
                   f.write("allow_run=true\n")
                   f.write("gate_reason=diagnostic_or_noncanonical\n")
               raise SystemExit(0)
-          today=datetime.now(timezone.utc).date().isoformat()
+          now=datetime.now(timezone.utc)
+          today=now.date().isoformat()
+          now_t=now.time().replace(tzinfo=None)
+          in_window=(now_t >= time(3,17) and now_t < time(12,0))
+          if not in_window:
+              print("allow_run=false")
+              print("gate_reason=outside_frozen_canonical_window")
+              with open(os.environ["GITHUB_OUTPUT"],"a") as f:
+                  f.write("allow_run=false\n")
+                  f.write("gate_reason=outside_frozen_canonical_window\n")
+              raise SystemExit(0)
           root=Path("research/liquidation_convexity_oracle_distance_001/forward_snapshots")
           existing=[]
           for p in sorted(root.glob("LCOD_FORWARD_SNAPSHOT_BLOCK_*.json")):
