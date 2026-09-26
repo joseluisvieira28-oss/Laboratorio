@@ -57,6 +57,7 @@ jobs:
 
           probe=Path("crypto_edge_radar/radar/supabase_pooler_probe.py").read_text()
           evidence=Path("crypto_edge_radar/radar/evidence.py").read_text()
+          config=Path("crypto_edge_radar/radar/config.py").read_text()
           authority=Path(
               "crypto_edge_radar/authorities/"
               "RADAR_SUPABASE_RUNTIME_ROLE_POOLER_DISCOVERY_V0.1_2026-09-27.md"
@@ -76,7 +77,13 @@ jobs:
           assert "_verify_preprovisioned_schema" in evidence
           assert "schema_preprovisioned" in evidence
           assert "CREATE TABLE IF NOT EXISTS radar_events" in evidence
+          assert "RADAR_USE_SUPABASE_TARGET" in config
+          assert "RADAR_SUPABASE_POOLER_HOST" in config
+          assert "RADAR_SUPABASE_POOLER_PASSWORD" in config
+          assert "sslmode=require" in config
+          assert "repr=False" in config
           assert "no-DDL" in authority or "no DDL" in authority
+          assert "does not authorize setting the final switch flag" in authority
 
           receipt=Path(
               "crypto_edge_radar/receipts/"
