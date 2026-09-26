@@ -1,0 +1,25 @@
+name: licp001-trigger-engine-v01
+
+on:
+  push:
+    branches:
+      - liquidation-cascade-propagation-v0.1
+    paths:
+      - 'research/liquidation_cascade/licp001_trigger_engine_v01.py'
+      - 'research/liquidation_cascade/test_licp001_trigger_engine_v01.py'
+      - 'research/liquidation_cascade/LICP_001_TRIGGER_CONFIG_V0_1.json'
+      - '.github/workflows/licp001-trigger-engine-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m unittest research.liquidation_cascade.test_licp001_trigger_engine_v01 -v
