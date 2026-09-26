@@ -67,7 +67,9 @@ def array_body(text,name):
     marker=f"export const {name}"
     p=text.find(marker)
     if p<0: raise ValueError(f"missing_array:{name}")
-    lb=text.find("[",p)
+    eq=text.find("=",p)
+    if eq<0: raise ValueError(f"missing_array_assignment:{name}")
+    lb=text.find("[",eq)
     if lb<0: raise ValueError(f"missing_array_open:{name}")
     depth=0; quote=None; esc=False
     for i in range(lb,len(text)):
