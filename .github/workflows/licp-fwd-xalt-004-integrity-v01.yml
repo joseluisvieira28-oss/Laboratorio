@@ -23,7 +23,17 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m pip install pytest 'websockets>=13,<16'
-      - run: pytest -q research/liquidation_cascade/test_licp_fwd_xalt_004_v01.py
-      - name: Confirm current config fails closed while UNFROZEN
+      - name: Frozen-candidate unit tests
+        env:
+          PYTHONPATH: .
+        run: python -m pytest -q research/liquidation_cascade/test_licp_fwd_xalt_004_v01.py
+      - name: Confirm observer fails closed while trigger config is UNFROZEN
+        env:
+          PYTHONPATH: .
         run: |
-          python research/liquidation_cascade/licp_fwd_xalt_004_observer_v01.py && exit 1 || true
+          if python research/liquidation_cascade/licp_fwd_xalt_004_observer_v01.py; then
+            echo "ERROR: observer unexpectedly initialized with UNFROZEN config"
+            exit 1
+          else
+            echo "PASS: observer refused UNFROZEN config as required"
+          fi
