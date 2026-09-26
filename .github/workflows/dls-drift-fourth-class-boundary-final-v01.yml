@@ -1,0 +1,66 @@
+name: DLS Drift Fourth Class Boundary Final V0.1
+
+on:
+  push:
+    branches:
+      - dls-drift-sqd-boundary-v01
+    paths:
+      - .github/workflows/dls-drift-fourth-class-boundary-final-v01.yml
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download original Drift census evidence
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36113874801
+          pattern: dls-drift-sqd-boundary-*
+          path: evidence/original
+      - name: Download V0.1 recovery evidence
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36149398441
+          pattern: dls-drift-sqd-recovery-*
+          path: evidence/recovery_v01
+      - name: Compile boundary finalizer
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/finalize_drift_fourth_class_boundary_v0_1.py
+      - name: Finalize fourth-class boundary
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/finalize_drift_fourth_class_boundary_v0_1.py evidence
+      - name: Upload boundary receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-drift-fourth-class-boundary-final-v01
+          path: labs/DEFI_LIQUIDATION_SHOCK_001/DRIFT_FOURTH_CLASS_FIRST_SUCCESS_BOUNDARY_RECEIPT_V0.1.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Persist boundary receipt
+        if: success()
+        run: |
+          git config user.name "crypto-lab-source-audit"
+          git config user.email "actions@users.noreply.github.com"
+          git fetch origin dls-drift-sqd-boundary-v01
+          git checkout -B dls-drift-sqd-boundary-v01 origin/dls-drift-sqd-boundary-v01
+          git add labs/DEFI_LIQUIDATION_SHOCK_001/DRIFT_FOURTH_CLASS_FIRST_SUCCESS_BOUNDARY_RECEIPT_V0.1.json
+          git commit -m "dls: persist fourth Drift class boundary PASS V0.1" || true
+          git pull --rebase origin dls-drift-sqd-boundary-v01
+          git push origin HEAD:dls-drift-sqd-boundary-v01
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_TRUE
