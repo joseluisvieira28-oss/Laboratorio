@@ -193,5 +193,31 @@ class H02ScopeJournalTests(unittest.TestCase):
             conn.close()
 
 
+    def test_market_data_without_source_time_fails_chain(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "scope.sqlite3"
+            conn = self._start(path)
+            ingest_scope_record(
+                conn,
+                session_id="S1",
+                venue="BINANCE_SPOT",
+                native_symbol="BTCUSDT",
+                transport="WEBSOCKET",
+                message_kind="BINANCE_DEPTH_DIFF",
+                channel="btcusdt@depth@100ms",
+                sequence_first=1,
+                sequence_last=1,
+                source_time_min_ns=None,
+                source_time_max_ns=None,
+                collector_wall_ns=100,
+                collector_monotonic_ns=200,
+                raw_payload=b'{"seq":1}',
+            )
+            result = verify_scope_session_chain(conn, session_id="S1")
+            self.assertFalse(result.ok)
+            self.assertEqual(result.failure_reason, "SOURCE_TIME_MISSING")
+            conn.close()
+
+
 if __name__ == "__main__":
     unittest.main()
