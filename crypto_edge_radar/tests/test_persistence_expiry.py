@@ -30,6 +30,18 @@ class PersistenceExpiryTests(TestCase):
             ok["backup_drive_file_id"],
             "1oam9hmileBQbV80C6o0cQUicXfu-vzvZ",
         )
+        self.assertEqual(ok["target_provider"], "SUPABASE")
+        self.assertEqual(ok["target_project_ref"], "jqzdvgjeuveiktftyrlz")
+        self.assertTrue(ok["target_provisioned"])
+        self.assertTrue(ok["target_equivalence_verified_at_backup_boundary"])
+        self.assertEqual(ok["target_event_count_at_backup_boundary"], 1032)
+        self.assertEqual(ok["target_key_count_at_backup_boundary"], 954)
+        self.assertFalse(ok["target_url_configured"])
+        self.assertEqual(
+            ok["cutover_blocker"],
+            "TARGET_CONNECTION_CREDENTIAL_NOT_CONFIGURED",
+        )
+        self.assertTrue(ok["final_quiesced_refresh_required"])
 
         warn=persistence_expiry_state(
             expiry, now=datetime(2026,10,5,8,47,15,tzinfo=timezone.utc)
