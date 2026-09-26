@@ -37,6 +37,11 @@ jobs:
         name: Execute frozen cbBTC gate chain
         run: python research/cbbtc_eth_mint_burn_flow_001/cbbtc_continue_v01.py
 
+      - name: Finalize terminal/no-OOS status
+        if: always()
+        continue-on-error: true
+        run: python research/cbbtc_eth_mint_burn_flow_001/cbbtc_finalize_continuation_v01.py
+
       - name: Persist durable gate evidence
         if: always()
         shell: bash
@@ -44,7 +49,7 @@ jobs:
           set -e
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add research/cbbtc_eth_mint_burn_flow_001/FLOW_*.json research/cbbtc_eth_mint_burn_flow_001/DISCOVERY_*.json research/cbbtc_eth_mint_burn_flow_001/DAILY_FLOW_V0.1.json research/cbbtc_eth_mint_burn_flow_001/FLOW_LEDGER_V0.1.json 2>/dev/null || true
+          git add research/cbbtc_eth_mint_burn_flow_001/FLOW_*.json research/cbbtc_eth_mint_burn_flow_001/DISCOVERY_*.json research/cbbtc_eth_mint_burn_flow_001/DAILY_FLOW_V0.1.json research/cbbtc_eth_mint_burn_flow_001/FLOW_LEDGER_V0.1.json research/cbbtc_eth_mint_burn_flow_001/CLOSEOUT_*.json research/cbbtc_eth_mint_burn_flow_001/CLOSEOUT_*.md 2>/dev/null || true
           if git diff --cached --quiet; then
             echo "No new durable evidence."
           else
