@@ -1,0 +1,75 @@
+{
+  "schema_version": "0.1",
+  "recovery_id": "CVFB_NATIVE_ORACLE_PROVENANCE_RECOVERY_V0.5",
+  "stage": "P0D_OFFICIAL_PUBLIC_SCHEMA_IDENTITY_AUDIT",
+  "status": "FROZEN_BEFORE_PUBLIC_SCHEMA_AUDIT",
+  "scientific_design_changed": false,
+  "parent_primary_remains_closed": true,
+  "parent_classification": "REPLICATION_INCONCLUSIVE",
+  "parent_edge_status": "UNPROVEN",
+  "activation_basis": {
+    "explorer_decision": "FAIL_NO_NATIVE_ORACLE_SCHEMA_VISIBLE",
+    "explorer_scan_block_count": 301,
+    "explorer_oracle_key_paths": 0,
+    "explorer_oracle_type_labels": 0,
+    "official_s3_decision": "BLOCKED_REQUESTER_PAYS_NO_AUTHORIZED_CREDENTIALS",
+    "official_s3_unsigned_statuses": {
+      "explorer_blocks": 403,
+      "replica_cmds": 403
+    }
+  },
+  "purpose": "Determine whether official Hyperliquid public documentation or official public source code explicitly identifies the native validator-published oracle update message/schema and its relationship, if any, to the documented historical node-history surfaces. This is source-provenance research only. It cannot substitute for historical bytes, prove historical completeness, or reopen the parent economic replication.",
+  "allowed_source_classes": [
+    "official Hyperliquid documentation on hyperliquid.gitbook.io or docs.hyperliquid.xyz",
+    "official public GitHub repositories owned by hyperliquid-dex",
+    "official Hyperliquid public API/schema documentation"
+  ],
+  "forbidden_source_classes": [
+    "third-party mirrors as authority",
+    "community reverse-engineering as authority",
+    "commercial datasets",
+    "credentialed/requester-pays historical object access",
+    "market-price data",
+    "oracle numeric values"
+  ],
+  "frozen_questions": [
+    "Is the native validator-published oracle update message or action explicitly named or structurally defined in an official public source?",
+    "Does an official public source explicitly map that native-oracle message/schema to explorer_blocks, replica_cmds, or another documented historical node-history surface?",
+    "Does the public source provide enough ordering/timestamp semantics to define a deterministic historical reconstruction contract in principle, without viewing historical values?"
+  ],
+  "allowed_outputs": [
+    "official source URLs/repository paths",
+    "schema/message/action names",
+    "field names only where they do not reveal market numeric values",
+    "documented ordering/timestamp semantics",
+    "explicit mapping or absence of mapping to official historical node-history surfaces",
+    "source-version/commit identifiers where available"
+  ],
+  "forbidden_outputs": [
+    "oracle numeric values",
+    "mark/mid/price numeric values",
+    "funding cashflow",
+    "basis PnL",
+    "full-mechanism return",
+    "orientation comparison",
+    "asset ranking",
+    "2026 market data",
+    "paper/live trading",
+    "exchange mutation",
+    "merge to main",
+    "reopening the parent primary replication"
+  ],
+  "decision_rule": {
+    "PASS_PUBLIC_SCHEMA_IDENTITY_ONLY": "Official public sources explicitly identify the native validator-oracle message/schema and its mapping to a historical node-history surface with sufficient ordering/timestamp semantics to define a separately frozen reconstruction contract. This still does not prove historical bytes are accessible or complete.",
+    "PARTIAL_SCHEMA_IDENTITY_NO_HISTORY_MAPPING": "Official public sources identify the native validator-oracle message/schema but do not explicitly map it to the accessible/documented historical node-history surfaces. Historical reconstruction remains unproven.",
+    "FAIL_PUBLIC_SCHEMA_IDENTITY_UNRESOLVED": "Official public sources do not unambiguously identify the required native validator-oracle schema or distinguish it from HIP-3/deployer oracle mechanisms.",
+    "TECHNICAL_BLOCKED": "Official documentation/repository access or source-version ambiguity prevents complete adjudication."
+  },
+  "economic_outcomes_authorized": false,
+  "historical_object_bytes_authorized": false,
+  "requester_pays_charges_authorized": false,
+  "aws_credentials_authorized": false,
+  "2026_authorized": false,
+  "live_trading_authorized": false,
+  "merge_to_main_authorized": false
+}

@@ -1,0 +1,59 @@
+{
+  "schema_version": "0.1",
+  "recovery_id": "CVFB_NATIVE_ORACLE_PROVENANCE_RECOVERY_V0.5",
+  "stage": "P0C_OFFICIAL_NODE_HISTORY_SCHEMA_PROBE",
+  "status": "FROZEN_CONDITIONAL_ON_EXPLORER_TECHNICAL_BLOCK",
+  "activation_condition": "Execute only if the semantic-validating Explorer V0.1B run ends TECHNICAL_BLOCKED without a PASS/FAIL schema adjudication.",
+  "scientific_design_changed": false,
+  "purpose": "Determine whether official Hyperliquid historical node data exposes a deterministic native validator-oracle update schema around the same frozen historical boundary, without opening oracle numeric values or any economic outcome.",
+  "official_sources": [
+    "s3://hl-mainnet-node-data/explorer_blocks",
+    "s3://hl-mainnet-node-data/replica_cmds"
+  ],
+  "frozen_target": {
+    "target_utc": "2024-09-01T00:00:00Z",
+    "target_epoch_ms": 1725148800000,
+    "assets": ["BTC", "ETH"],
+    "time_scope": "Only records needed to establish schema and deterministic temporal coverage around the frozen target boundary; no adaptive date selection based on economic values."
+  },
+  "allowed_outputs": [
+    "object/path presence",
+    "byte counts",
+    "raw object SHA256 fingerprints",
+    "record counts",
+    "timestamps",
+    "JSON/message key paths",
+    "action/type labels",
+    "whether a native-oracle-related schema is visible",
+    "coverage/completeness diagnostics"
+  ],
+  "forbidden_outputs": [
+    "oracle numeric values",
+    "mark/mid/price numeric values",
+    "funding cashflow",
+    "basis PnL",
+    "full-mechanism return",
+    "orientation comparison",
+    "asset ranking",
+    "nearest-neighbor reconstruction",
+    "forward/backward fill",
+    "interpolation",
+    "HIP-3 deployer-oracle substitution for native BTC/ETH validator oracle",
+    "third-party source substitution",
+    "2026 market data",
+    "paper/live trading",
+    "exchange mutation",
+    "merge to main",
+    "reopening the parent primary replication"
+  ],
+  "decision_rule": {
+    "PASS_NATIVE_ORACLE_SCHEMA_CANDIDATE": "Official node-history data exposes an unambiguous native-validator-oracle-related action/schema with sufficient timestamp/ordering information to justify a separately frozen deterministic reconstruction audit.",
+    "FAIL_NO_NATIVE_ORACLE_SCHEMA_VISIBLE": "The conditional source probe completes over the frozen target scope but exposes no native-validator-oracle-related schema. This source path cannot support reconstruction.",
+    "TECHNICAL_BLOCKED": "Official S3 access/auth/requester-pays, object availability, decompression, or schema parsing prevents a complete source-only adjudication."
+  },
+  "economic_outcomes_authorized": false,
+  "primary_replication_reopened": false,
+  "2026_authorized": false,
+  "live_trading_authorized": false,
+  "merge_to_main_authorized": false
+}

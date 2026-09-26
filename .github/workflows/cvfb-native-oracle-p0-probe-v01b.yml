@@ -1,0 +1,20 @@
+name: cvfb-native-oracle-p0-probe-v01b-adjudicated
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  adjudicated:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Final adjudication guard
+        run: |
+          echo 'V0.1B Explorer source-only adjudication is FINAL.'
+          echo 'Canonical run: 35236928927.'
+          echo '301/301 frozen blocks scanned; oracle key paths=0; oracle type labels=0.'
+          echo 'Decision: FAIL_NO_NATIVE_ORACLE_SCHEMA_VISIBLE.'
+          echo 'Do not rerun to rescue the closed source path.'
+          exit 1

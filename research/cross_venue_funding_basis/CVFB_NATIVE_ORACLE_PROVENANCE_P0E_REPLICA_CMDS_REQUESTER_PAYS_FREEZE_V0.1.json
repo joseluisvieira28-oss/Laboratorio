@@ -1,0 +1,93 @@
+{
+  "schema_version": "0.1",
+  "recovery_id": "CVFB_NATIVE_ORACLE_PROVENANCE_RECOVERY_V0.5",
+  "stage": "P0E_REPLICA_CMDS_BOUNDED_REQUESTER_PAYS_SCHEMA_PROBE",
+  "status": "FROZEN_PRE_EXECUTION_NOT_AUTHORIZED",
+  "scientific_design_changed": false,
+  "parent_primary_remains_closed": true,
+  "parent_classification": "REPLICATION_INCONCLUSIVE",
+  "parent_edge_status": "UNPROVEN",
+  "activation_basis": {
+    "explorer_p0_v01b": "FAIL_NO_NATIVE_ORACLE_SCHEMA_VISIBLE",
+    "public_schema_p0d": "FAIL_PUBLIC_SCHEMA_IDENTITY_UNRESOLVED",
+    "unsigned_s3_gate": "BLOCKED_REQUESTER_PAYS_NO_AUTHORIZED_CREDENTIALS"
+  },
+  "authorization_gate": {
+    "requester_pays_charges_authorized": false,
+    "aws_credentials_authorized": false,
+    "execution_authorized": false,
+    "required_before_any_s3_request": "SEPARATE_EXPLICIT_USER_AUTHORIZATION_FOR_REQUESTER_PAYS_AND_AWS_CREDENTIAL_USE",
+    "rule": "Preparation of this freeze and runner does not authorize execution. Any implementation must fail before the first S3 API call unless all authorization gates are explicitly enabled in a later immutable amendment."
+  },
+  "official_source": {
+    "bucket": "hl-mainnet-node-data",
+    "prefix_family": "replica_cmds",
+    "authority": "Hyperliquid official historical node data",
+    "explorer_blocks_excluded": true,
+    "reason_explorer_blocks_excluded": "Official Explorer semantic probe already completed 301/301 blocks with zero oracle key paths and zero oracle type labels; paying to obtain equivalent explorer-block bytes is not justified for P0E."
+  },
+  "frozen_target": {
+    "target_utc": "2024-09-01T00:00:00Z",
+    "target_epoch_ms": 1725148800000,
+    "center_height": 280538302,
+    "scan_radius_blocks_each_side": 150,
+    "scan_height_start": 280538152,
+    "scan_height_end": 280538452,
+    "scan_block_count": 301,
+    "assets": ["BTC", "ETH"]
+  },
+  "deterministic_key_resolution": {
+    "step_1": "Requester-pays ListObjectsV2 on replica_cmds/ with delimiter '/' and MaxKeys<=1000 to enumerate canonical start_time common prefixes. If listing is truncated, fail closed rather than paginate adaptively.",
+    "step_2": "For every returned start_time prefix, issue a requester-pays existence/list probe for the exact date component 20240901. Exactly one start_time prefix must expose target-date objects; zero => TECHNICAL_BLOCKED_TARGET_DATE_NOT_FOUND; more than one => TECHNICAL_BLOCKED_AMBIGUOUS_START_TIME_PREFIX.",
+    "step_3": "Under the unique target-date prefix, ListObjectsV2 with prefix equal to the decimal center_height token. Exactly one object whose final path component begins with center_height and differs only by a stable suffix/extension may resolve the key template; otherwise fail closed.",
+    "step_4": "Derive keys for all 301 frozen heights by substituting only the decimal height token while preserving the resolved prefix and suffix. No date, height, radius or object-selection adaptation after inspecting bytes."
+  },
+  "pre_download_cost_caps": {
+    "max_list_requests": 1100,
+    "max_head_requests": 301,
+    "max_get_requests": 301,
+    "max_total_compressed_object_bytes": 33554432,
+    "max_single_object_bytes": 1048576,
+    "rule": "HEAD every frozen object before GET. If any object is missing/ambiguous or any byte/request cap would be exceeded, stop before object-body downloads and classify TECHNICAL_BLOCKED_COST_OR_COMPLETENESS_CAP."
+  },
+  "allowed_decoders_frozen_pre_execution": [
+    "raw UTF-8 JSON",
+    "UTF-8 JSON Lines",
+    "LZ4 frame then UTF-8 JSON/JSON Lines",
+    "MessagePack stream",
+    "LZ4 frame then MessagePack stream"
+  ],
+  "schema_extraction_policy": {
+    "emit_market_numeric_values": false,
+    "emit_raw_object_bodies": false,
+    "emit_key_paths": true,
+    "emit_action_type_variant_kind_labels": true,
+    "emit_object_sha256": true,
+    "emit_object_byte_counts": true,
+    "candidate_token": "oracle",
+    "hip3_guard": "Any perpDeploy/setOracle or HIP-3 deployer-oracle record is explicitly insufficient for native BTC/ETH validator-oracle reconstruction."
+  },
+  "decision_rule": {
+    "PASS_NATIVE_ORACLE_SCHEMA_CANDIDATE": "All 301 frozen replica_cmds objects are uniquely resolved, downloaded within the pre-frozen caps, parsed, and at least one non-HIP-3 native-oracle-related key path or action/type label is visible. This only permits a separately frozen P1 deterministic reconstruction audit; it does not reopen economic outcomes.",
+    "FAIL_NO_NATIVE_ORACLE_SCHEMA_VISIBLE": "All 301 frozen replica_cmds objects are uniquely resolved, downloaded and parsed within caps, but no non-HIP-3 native-oracle-related schema path/action/type label is visible.",
+    "TECHNICAL_BLOCKED_COST_OR_COMPLETENESS_CAP": "Object/key resolution, completeness, decoder support, request caps or byte caps prevent complete adjudication.",
+    "BLOCKED_NO_AUTHORIZATION": "Requester-pays/AWS credential execution was not explicitly authorized before the first S3 request."
+  },
+  "forbidden_outputs": [
+    "oracle numeric values",
+    "mark/mid/price numeric values",
+    "funding cashflow",
+    "basis PnL",
+    "full-mechanism return",
+    "orientation comparison",
+    "asset ranking",
+    "2026 market data"
+  ],
+  "economic_outcomes_authorized": false,
+  "primary_replication_reopened": false,
+  "2026_authorized": false,
+  "paper_trading_authorized": false,
+  "live_trading_authorized": false,
+  "exchange_mutation_authorized": false,
+  "merge_to_main_authorized": false
+}
