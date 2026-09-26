@@ -1,0 +1,44 @@
+name: BTC Options VRP optionsDX Full Variation Census V0.1
+on:
+  push:
+    branches:
+      - btc-options-vrp-optionsdx-full-census-v0.1
+    paths:
+      - 'labs/BTC_OPTIONS_VRP_001/optionsdx_full_variation_census_v01.py'
+      - '.github/workflows/btc-options-vrp-optionsdx-full-census-v01.yml'
+permissions:
+  contents: read
+jobs:
+  census:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile
+        run: python -m py_compile labs/BTC_OPTIONS_VRP_001/optionsdx_full_variation_census_v01.py
+      - name: Public metadata census
+        run: python labs/BTC_OPTIONS_VRP_001/optionsdx_full_variation_census_v01.py
+      - name: Firewall and classification
+        run: |
+          python - <<'PY'
+          import json
+          x=json.load(open('optionsdx_full_variation_census_v01.json'))
+          assert x['cash_spend_usd']==0
+          assert x['cart_used'] is False and x['checkout_used'] is False
+          assert x['account_created'] is False and x['order_created'] is False
+          assert x['market_payload_opened'] is False and x['outcomes_opened'] is False
+          print('CLASSIFICATION',x['classification'])
+          print('RESOLVED',x['resolved_price_count'],'OF',x['lookup_count'])
+          print('PRICES',x['distinct_display_prices'])
+          print('ZERO_TOTAL',x['zero_price_variation_count'])
+          print('ZERO_INTRADAY',x['zero_price_intraday_count'])
+          print('ZERO_ROWS',json.dumps(x['zero_price_variations'],sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BTC_OPTIONS_VRP_001_OPTIONSDX_FULL_VARIATION_CENSUS_V0_1
+          path: optionsdx_full_variation_census_v01.json
+          retention-days: 90
