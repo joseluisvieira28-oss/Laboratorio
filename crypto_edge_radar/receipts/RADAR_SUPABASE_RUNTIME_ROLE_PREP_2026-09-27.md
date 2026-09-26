@@ -70,7 +70,7 @@ Frozen connection mode:
 
 The pooler cluster index is not inferred. The final host must be discovered from an authenticated connection or copied from the Supabase Connect dialog.
 
-A read-only bounded pooler discovery probe is implemented separately and accepts a host only if it matches the frozen target evidence boundary. It never logs a password or a full connection URL.
+A read-only bounded pooler discovery probe is implemented separately. It requires an explicitly supplied audited target identity (event count, key count and chain head) and fails closed when that identity is absent or mismatched. Host discovery does not imply source/target equivalence or authorize cutover.
 
 ## Evidence target observation
 
