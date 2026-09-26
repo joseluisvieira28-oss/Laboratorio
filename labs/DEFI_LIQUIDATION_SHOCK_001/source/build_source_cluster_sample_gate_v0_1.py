@@ -190,15 +190,49 @@ for p in s0_files:
             continue
         add_event("save0c","LiquidateObligation","mint:"+mint,e.get("timestamp"),e.get("signature"))
 
-# Kamino + Save11: terminal population PASS requires event_units complete.
-ks_files=sorted([p for p in Path(args.ks_units).rglob("*.json")
-                 if p.name.startswith("kamino-") or p.name.startswith("save11-")])
+# Kamino + Save11: select frozen receipt precedence.
+# V0.1: Kamino 202311..202405 and all Save11.
+# V0.2 recovery: Kamino 202406..202412.
+ks_candidates=defaultdict(list)
+for p in sorted(Path(args.ks_units).rglob("*.json")):
+    clsf=top_scalar(p,"classification")
+    if not isinstance(clsf,str) or not clsf.startswith("KAMINO_SAVE11_UNIT_METADATA_PARTITION_"):
+        continue
+    pid=top_scalar(p,"partition_id"); proto=top_scalar(p,"protocol")
+    if pid and proto in ("kamino","save11"):
+        ks_candidates[pid].append(p)
+
+expected_ks=(
+    [f"kamino-{y}{m:02d}" for y,m in [(2023,11),(2023,12),(2024,1),(2024,2),(2024,3),(2024,4),(2024,5)]]
+    + [f"kamino-2024{m:02d}" for m in range(6,13)]
+    + [f"save11-2024{m:02d}" for m in range(7,13)]
+)
+ks_files=[]
+for pid in expected_ks:
+    hits=ks_candidates.get(pid,[])
+    chosen=[]
+    if pid.startswith("kamino-2024") and int(pid[-2:])>=6:
+        for p in hits:
+            schema=str(top_scalar(p,"schema_version"))
+            add=top_scalar(p,"authority_addendum")
+            if schema.startswith("0.2") and add=="KAMINO_HISTORICAL_ACCOUNT_LAYOUT_ADDENDUM_V0.2.md":
+                chosen.append(p)
+    else:
+        for p in hits:
+            schema=str(top_scalar(p,"schema_version"))
+            if schema.startswith("0.1"):
+                chosen.append(p)
+    if len(chosen)!=1:
+        errors.append({"reason":"kamino_save11_partition_precedence_selection",
+                       "partition_id":pid,"candidate_count":len(hits),"selected_count":len(chosen),
+                       "files":[str(x) for x in hits]})
+        continue
+    ks_files.append(chosen[0])
+
 if len(ks_files)!=20:
-    errors.append({"reason":"kamino_save11_partition_file_count","observed":len(ks_files),"expected":20})
+    errors.append({"reason":"kamino_save11_selected_partition_file_count","observed":len(ks_files),"expected":20})
 for p in ks_files:
     proto=top_scalar(p,"protocol")
-    if proto not in ("kamino","save11"):
-        errors.append({"reason":"unexpected_ks_protocol","file":str(p),"protocol":proto});continue
     cls=("liquidate_obligation_and_redeem_reserve_collateral" if proto=="kamino"
          else "LiquidateObligationAndRedeemReserveCollateral")
     for e in iter_array(p,"event_units"):
