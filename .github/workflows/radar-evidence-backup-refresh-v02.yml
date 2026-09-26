@@ -47,6 +47,58 @@ jobs:
       - name: Independently recompute hashes, chain and key references
         run: python tools/verify_evidence_snapshot_independent.py
 
+      - name: Build canonical portable snapshot and prove restore dry-run
+        run: |
+          python - <<'PY'
+          import csv, gzip, json
+          from pathlib import Path
+          from radar.evidence_portability import canonical_snapshot_sha, restore_snapshot
+
+          root=Path("evidence_snapshot")
+          events=[
+              json.loads(line)
+              for line in (root/"radar_events.jsonl").read_text(encoding="utf-8").splitlines()
+              if line.strip()
+          ]
+          with (root/"radar_event_keys.csv").open("r",encoding="utf-8",newline="") as fh:
+              keys=[
+                  {
+                      "event_type":row["event_type"],
+                      "event_key":row["event_key"],
+                      "event_id":int(row["event_id"]),
+                  }
+                  for row in csv.DictReader(fh)
+              ]
+          source=json.loads((root/"SNAPSHOT_RECEIPT.json").read_text())
+          snapshot={
+              "events":events,
+              "event_keys":keys,
+              "event_count":len(events),
+              "key_count":len(keys),
+              "chain_head_sha256":source["chain_head_sha256"],
+          }
+          snapshot["snapshot_sha256"]=canonical_snapshot_sha(snapshot)
+          raw=json.dumps(snapshot,sort_keys=True,separators=(",",":"),ensure_ascii=False).encode("utf-8")
+          (root/"RADAR_CANONICAL_SNAPSHOT.json.gz").write_bytes(gzip.compress(raw,compresslevel=9))
+
+          dry=restore_snapshot(
+              snapshot,
+              target_url="DRY_RUN_PLACEHOLDER_NOT_A_REAL_CREDENTIAL",
+              apply=False,
+          )
+          assert dry["classification"]=="DRY_RUN_VERIFIED_NO_TARGET_MUTATION"
+          assert dry["target_mutation"] is False
+          assert dry["secret_value_exposed"] is False
+          assert dry["event_count"]==len(events)
+          assert dry["key_count"]==len(keys)
+          assert dry["chain_head_sha256"]==source["chain_head_sha256"]
+          assert dry["snapshot_sha256"]==snapshot["snapshot_sha256"]
+          (root/"PORTABILITY_DRY_RUN.json").write_text(
+              json.dumps(dry,indent=2,sort_keys=True)+"\n",encoding="utf-8"
+          )
+          print(json.dumps(dry,sort_keys=True))
+          PY
+
       - name: Build backup refresh receipt
         run: |
           python - <<'PY'
