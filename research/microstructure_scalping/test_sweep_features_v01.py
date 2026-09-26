@@ -19,7 +19,7 @@ class SweepFeatureTests(unittest.TestCase):
             2000,100,101,10,10,100,102,10,5,times,pb,ps,
             burst_window_ms=1000,baseline_window_ms=1000)
         self.assertEqual(f["direction"],1)
-        self.assertEqual(f["buy_notional_1s"],100)
+        self.assertEqual(f["buy_notional_1s"],200)
         self.assertEqual(f["sell_notional_1s"],0)
 
     def test_buy_sweep_uses_ask_displacement_and_depth(self):
