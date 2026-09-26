@@ -36,6 +36,24 @@ def _canonical_bytes(value: Any) -> bytes:
     ).encode("utf-8")
 
 
+def ordered_by_collector_arrival(
+    records: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Return pending records in observed collector-arrival order.
+
+    This is required when a concurrently fetched REST snapshot completes before
+    it is appended to the journal while WebSocket messages are also arriving.
+    """
+    return sorted(
+        records,
+        key=lambda row: (
+            int(row["collector_monotonic_ns"]),
+            int(row["collector_wall_ns"]),
+            str(row["message_kind"]),
+        ),
+    )
+
+
 def raw_sha256(raw_payload: bytes) -> str:
     if not isinstance(raw_payload, (bytes, bytearray)):
         raise TypeError("raw_payload must be bytes")
