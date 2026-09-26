@@ -58,6 +58,10 @@ for target,need in requirements.items():
         mapped+=1
         required_fields=["symbol","base_asset","quote_asset","venue_metadata_authority",
                          "archive_route_template","checksum_route_template"]
+        if not isinstance(row.get("current_product_metadata_expected"),bool):
+            errors.append({"reason":"current_product_metadata_expected_missing","target_identity":target})
+        if row.get("current_product_metadata_expected") is False and not row.get("historical_product_metadata_authority"):
+            errors.append({"reason":"historical_product_authority_missing","target_identity":target})
         for f in required_fields:
             if not row.get(f):errors.append({"reason":"binance_field_missing","target_identity":target,"field":f})
         quote=row.get("quote_asset")
