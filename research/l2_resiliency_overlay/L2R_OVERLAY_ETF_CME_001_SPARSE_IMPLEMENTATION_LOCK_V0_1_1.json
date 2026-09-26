@@ -1,0 +1,43 @@
+{
+  "schema_version": "0.1.1",
+  "status": "FROZEN_PRE_COMBINED_OUTCOME",
+  "lab_id": "L2R-OVERLAY-ETF-CME-001",
+  "remediation": "SPARSE_RUNTIME_EQUIVALENCE_ONLY",
+  "parent_branch": "l2r-overlay-etf-cme-v0.1",
+  "original_runner_sha256": "495129040193b01218d867bd8a29f50039e5229203d118571f38445746942b2a",
+  "sparse_runner_sha256": "ed17bbc54afede0888b5b4cea56b2d5c6396bede46a7c723bfd2ca0c6a07cc63",
+  "canonical_l2_manifest_sha256": "767e75594864344c75dd2669ec4fad8c738710c218322b11fd43a83077ef17c3",
+  "etf_parent_artifact_sha256": "40bd341c300532e5b67127a098c82ecf2f41e1cc4a3ce646ac824b27529f9bd1",
+  "qa": {
+    "py_compile": "PASS",
+    "synthetic_self_test": "PASS",
+    "sparse_equivalence_preflight": "PASS",
+    "preflight_sha256": "0a8469490c6ecbc26df34050a0d0b44d151bb3996cab41438303d066d7f02a58",
+    "parent_rows": 50,
+    "parent_nonzero_rows": 49,
+    "source_evaluable_rows": 46,
+    "source_gated_dates": [
+      "2025-10-22",
+      "2025-11-18",
+      "2025-11-26"
+    ],
+    "raw_objects_byte_verified": 92,
+    "minimum_stabilization_margin_seconds": 3455.382308889,
+    "outcomes_opened": false
+  },
+  "equivalence_rule": "previous complete UTC hour warm-up + complete T0 UTC hour; all potentially active events satisfy event_env > T0-60s; fail closed unless normalization state converges before cutoff",
+  "protected": {
+    "access_2026": false
+  },
+  "prohibited": {
+    "parent_pnl_filtering": true,
+    "cell_selection": true,
+    "threshold_retuning": true,
+    "sample_gate_retuning": true,
+    "rerun_after_valid_outcome": true,
+    "live_trading": true,
+    "orders": true,
+    "exchange_mutation": true,
+    "main_merge": true
+  }
+}
