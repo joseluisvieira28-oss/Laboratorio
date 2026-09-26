@@ -13,7 +13,8 @@ DISCOVERY_END=datetime.fromisoformat("2024-01-01T00:00:00+00:00")
 OOS_END=datetime.fromisoformat("2025-01-01T00:00:00+00:00")
 WINDOWS=[15,60,300]
 PRIMARY=60
-OUT=Path("labs/DEFI_LIQUIDATION_SHOCK_001/SOURCE_CLUSTER_SAMPLE_GATE_RECEIPT_V0.1.json")\nCLUSTER_OUT=Path("labs/DEFI_LIQUIDATION_SHOCK_001/SOURCE_PRIMARY_CLUSTER_CENSUS_V0.1.ndjson")
+OUT=Path("labs/DEFI_LIQUIDATION_SHOCK_001/SOURCE_CLUSTER_SAMPLE_GATE_RECEIPT_V0.1.json")
+CLUSTER_OUT=Path("labs/DEFI_LIQUIDATION_SHOCK_001/SOURCE_PRIMARY_CLUSTER_CENSUS_V0.1.ndjson")
 
 def dtv(s):
     return datetime.fromisoformat(str(s).replace("Z","+00:00"))
@@ -349,7 +350,8 @@ receipt={
             "total_cluster_count_including_protected_boundary":primary.total_clusters,
             "total_realized_event_count":primary.total_events,
             "max_events_in_one_cluster":primary.max_event_count,
-            "cluster_event_count_histogram":dict(primary.event_count_hist),\n            "emitted_cluster_count":primary.emitted_cluster_count},
+            "cluster_event_count_histogram":dict(primary.event_count_hist),
+            "emitted_cluster_count":primary.emitted_cluster_count},
  "sensitivity":{
    str(w):{"discovery_cluster_count":int(c.aggregate.get("discovery",0)),
            "oos_cluster_count":int(c.aggregate.get("oos",0)),
@@ -359,7 +361,10 @@ receipt={
  "subgroups":subgroups,"asset_strata":assets,
  "source_identity_error_count":len(errors),"source_identity_errors":errors[:500],
  "sample_gate_error_count":len(sample_errors),"sample_gate_errors":sample_errors,
- "cluster_census":{"file":str(CLUSTER_OUT),"sha256":cluster_file_sha,\n                   "bytes":cluster_file_bytes,"row_count":primary.emitted_cluster_count,\n                   "contains_prices":False,"contains_returns":False},\n "frozen_authorities":["CASCADE_CLUSTERING_FREEZE_V0.1.md",
+ "cluster_census":{"file":str(CLUSTER_OUT),"sha256":cluster_file_sha,
+                   "bytes":cluster_file_bytes,"row_count":primary.emitted_cluster_count,
+                   "contains_prices":False,"contains_returns":False},
+ "frozen_authorities":["CASCADE_CLUSTERING_FREEZE_V0.1.md",
                        "SOURCE_SAMPLE_GATE_FREEZE_V0.1.md",
                        "PRE_DISCOVERY_TEMPORAL_HOLDOUT_FREEZE_V0.1.md"],
  "final_unit_receipts":{"marginfi":mr_path,"save0c":su_path},
