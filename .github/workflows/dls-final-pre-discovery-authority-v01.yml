@@ -1,0 +1,59 @@
+name: DLS Final Pre-Discovery Authority V0.1
+
+on:
+  push:
+    branches:
+      - dls-field-enrichment-v01
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_FINAL_PRE_DISCOVERY_AUTHORITY_V01.marker
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Compile authority tooling
+        run: |
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/collect_final_pre_discovery_prerequisites_v0_1.py
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/finalize_pre_discovery_authority_v0_1.py
+
+      - name: Collect newest frozen prerequisites
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/collect_final_pre_discovery_prerequisites_v0_1.py
+          --repository "${{ github.repository }}"
+          --out prerequisite_evidence
+
+      - name: Finalize pre-discovery authority
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/finalize_pre_discovery_authority_v0_1.py
+          --global-field prerequisite_evidence/global_field
+          --sample-gate prerequisite_evidence/sample_gate
+          --market-data prerequisite_evidence/market_data
+
+      - name: Upload final authority receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-final-pre-discovery-authority-v01
+          path: |
+            labs/DEFI_LIQUIDATION_SHOCK_001/FINAL_PRE_DISCOVERY_PREREQUISITE_SELECTION_RECEIPT_V0.1.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/FINAL_PRE_DISCOVERY_AUTHORITY_RECEIPT_V0.1.json
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Firewall
+        if: always()
+        run: echo OUTCOMES_STILL_CLOSED_UNTIL_AUTHORITY_RECEIPT_PASS
