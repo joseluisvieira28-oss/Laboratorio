@@ -50,13 +50,17 @@ jobs:
           assert "safe_progress_outcomes_imported" in p
           assert '"eligible_event_count": counts["signals"]' in p
           assert '"resolved_forward_count": counts["final_resolutions"]' in p
-          for forbidden in (
-              'base_net_r',
-              'stress_net_r',
-              'entry_price',
-              'exit_price',
-              'profit_factor',
+          for forbidden_exact_key in (
+              '"base_net_r"',
+              '"stress_net_r"',
+              '"entry_price"',
+              '"exit_price"',
+              '"price_gross_return"',
+              '"economic_gross_return"',
           ):
-              assert forbidden not in p, forbidden
+              assert forbidden_exact_key not in p, forbidden_exact_key
+          assert '"profit_factor_included"' in p
+          assert '"returns_included"' in p
+          assert '"r_multiples_included"' in p
           print("RADAR_DH03_SAFE_PROGRESS_BINDING_V01_GUARD_PASS")
           PY
