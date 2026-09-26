@@ -36,8 +36,13 @@ for p in sorted(SNAPDIR.glob("LCOD_FORWARD_SNAPSHOT_BLOCK_*.json")):
 
 boundary=int(idx.get("boundary_violation_count",0))
 dupes=int(idx.get("duplicate_same_day_observation_count",0))
+recovery_should_run=str(os.environ.get("RECOVERY_SHOULD_RUN","false")).lower() in ("1","true","yes")
+recovery_forward_result=str(os.environ.get("RECOVERY_FORWARD_RESULT","unknown"))
+recovery_gate_reason=str(os.environ.get("RECOVERY_GATE_REASON","unknown"))
 
-if boundary:
+if recovery_should_run and recovery_forward_result not in ("success","unknown"):
+    classification="RECOVERY_FORWARD_FAILED"
+elif boundary:
     classification="BOUNDARY_BLOCKED"
 elif dupes:
     classification="DUPLICATE_WARNING"
@@ -64,6 +69,9 @@ out={
   "required_distinct_utc_days":idx.get("required_distinct_utc_days"),
   "boundary_violation_count":boundary,
   "duplicate_same_day_observation_count":dupes,
+  "recovery_should_run":recovery_should_run,
+  "recovery_forward_result":recovery_forward_result,
+  "recovery_gate_reason":recovery_gate_reason,
   "latest_canonical_observation":latest,
   "market_returns_opened":False,
   "future_liquidation_outcomes_opened":False,
@@ -75,5 +83,5 @@ OUT.parent.mkdir(parents=True,exist_ok=True)
 OUT.write_text(json.dumps(out,indent=2,sort_keys=True)+"\n")
 print(json.dumps(out,indent=2,sort_keys=True))
 
-if classification in ("BOUNDARY_BLOCKED","DUPLICATE_WARNING","MISSED_CANONICAL_DAY"):
+if classification in ("RECOVERY_FORWARD_FAILED","BOUNDARY_BLOCKED","DUPLICATE_WARNING","MISSED_CANONICAL_DAY"):
     raise SystemExit(2)
