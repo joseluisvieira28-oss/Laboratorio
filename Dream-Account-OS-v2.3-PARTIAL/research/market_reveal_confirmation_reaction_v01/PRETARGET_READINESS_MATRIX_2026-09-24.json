@@ -206,16 +206,21 @@
     },
     {
       "gate": "H02_FROZEN_SCOPE_RESTART_RECOVERY",
-      "status": "READY_NOT_EXECUTED_OPERATOR",
-      "meaning": "operator Windows must run collection then independent verifier process against the reopened local SQLite journal; PASS requires all six sessions"
+      "status": "OPERATOR_FAIL_CLOSED_BUG_FIXED_RETRY_REQUIRED",
+      "meaning": "first Windows batch had Coinbase 4/4 PASS and Binance transport/data PASS but both Binance sessions failed journal integrity on a false COLLECTOR_MONOTONIC_REVERSAL caused by async snapshot append ordering; hotfix preserves monotonic guard and requires operator retry"
+    },
+    {
+      "gate": "H02_FROZEN_SCOPE_BINANCE_ARRIVAL_ORDER",
+      "status": "FIX_IMPLEMENTED_CI_PENDING",
+      "meaning": "pre-snapshot WebSocket records and concurrent REST snapshot are buffered and appended in deterministic collector-monotonic arrival order; no science or source scope change"
     }
   ],
   "objective_next_triggers": [
-    "operator Windows frozen-scope shadow collector + independent restart/recovery verifier both return PASS for all six exact-scope sessions",
+    "hotfix Synthetic Safety CI passes with Binance async snapshot chronology regression coverage",
+    "operator reruns frozen-scope shadow collector and independent verifier; all six exact-scope sessions must PASS",
     "complete official 2027 BLS CPI/Employment Situation calendar becomes available and is fingerprinted",
     "assemble final pretarget protocol deterministically from H02_SCIENTIFIC_RULESET_V01 plus exact calendar and implementation bindings",
-    "issue separate TARGET_OBSERVATION_OPEN authority bound to exact protocol/calendar/implementation fingerprints",
-    "only then begin prospective target observation and keep outcomes blind until the frozen reveal gate permits the single reveal"
+    "issue separate TARGET_OBSERVATION_OPEN authority bound to exact protocol/calendar/implementation fingerprints"
   ],
   "anti_zombie_rules": [
     "local shadow raw data is infrastructure evidence only and must not be used to select or promote MRCR scientific parameters",
@@ -299,6 +304,17 @@
     "ci_run_id": 36261835589,
     "ci_conclusion": "SUCCESS",
     "target_observation_authorized": false,
+    "promotion_credit": "NONE"
+  },
+  "h02_frozen_scope_shadow_operator_attempt_2026_09_26": {
+    "receipt_path": "H02_FROZEN_SCOPE_SHADOW_OPERATOR_ATTEMPT_2026-09-26_V01.json",
+    "batch_id": "f175a974-f3ba-41e2-9caf-8d27a03262e0",
+    "status": "FAIL_CLOSED_INFRASTRUCTURE_BUG",
+    "coinbase_sessions_passed": 4,
+    "binance_sessions_failed": 2,
+    "root_cause": "ASYNC_REST_SNAPSHOT_APPEND_ORDER_FALSE_MONOTONIC_REVERSAL",
+    "hotfix": "IMPLEMENTED_PENDING_CI_AND_OPERATOR_RETRY",
+    "scientific_interpretation": "NONE",
     "promotion_credit": "NONE"
   }
 }
