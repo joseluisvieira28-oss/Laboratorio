@@ -1,0 +1,21 @@
+name: RETH-NAV-DISLOCATION-001 cancel obsolete census retry V0.1A
+
+on:
+  push:
+    branches:
+      - reth-nav-dislocation-001-source-gate-v01
+    paths:
+      - '.github/workflows/reth-nav-dislocation-001-cancel-obsolete-retry-v01a.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: reth-nav-dislocation-001-predictor-census-retry-v01a
+  cancel-in-progress: true
+
+jobs:
+  cancel_sentinel:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Obsolete low-concurrency retry superseded by transport diagnosis; no scientific state changed."
