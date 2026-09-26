@@ -1,0 +1,56 @@
+name: L2R Overlay ETF-CME V0.1 QA
+
+on:
+  push:
+    branches:
+      - l2r-overlay-etf-cme-v0.1
+    paths:
+      - research/l2_resiliency_overlay/QA_TRIGGER_V0_1.txt
+
+permissions:
+  contents: write
+
+jobs:
+  qa:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: l2r-overlay-etf-cme-v0.1
+          fetch-depth: 0
+      - name: Compile and synthetic self-test
+        run: |
+          set -euo pipefail
+          RUNNER="research/l2_resiliency_overlay/l2r_overlay_etf_cme_2025_development_v01.py"
+          python -m py_compile "$RUNNER"
+          python "$RUNNER" --self-test | tee /tmp/selftest.txt
+          grep -Fx "SELF_TEST_PASS" /tmp/selftest.txt
+          sha256sum "$RUNNER" | tee /tmp/runner.sha
+      - name: Persist immutable QA receipt
+        run: |
+          set -euo pipefail
+          RUNNER="research/l2_resiliency_overlay/l2r_overlay_etf_cme_2025_development_v01.py"
+          SHA="$(sha256sum "$RUNNER" | awk '{print $1}')"
+          python - <<PY
+          import json
+          from pathlib import Path
+          out={
+            "lab_id":"L2R-OVERLAY-ETF-CME-001",
+            "implementation_version":"0.1",
+            "classification":"IMPLEMENTATION_QA_PASS",
+            "runner_sha256":"${SHA}",
+            "py_compile":"PASS",
+            "synthetic_self_test":"PASS",
+            "market_data_accessed":False,
+            "year_2026_accessed":False,
+            "orders":False,
+            "exchange_mutation":False,
+            "live_trading":False
+          }
+          Path("research/l2_resiliency_overlay/L2R_OVERLAY_ETF_CME_001_IMPLEMENTATION_QA_V0_1.json").write_text(json.dumps(out,indent=2,sort_keys=True)+"\n")
+          PY
+          git config user.name "crypto-lab-qa"
+          git config user.email "actions@users.noreply.github.com"
+          git add research/l2_resiliency_overlay/L2R_OVERLAY_ETF_CME_001_IMPLEMENTATION_QA_V0_1.json
+          git commit -m "L2R overlay: persist implementation QA receipt"
+          git push origin HEAD:l2r-overlay-etf-cme-v0.1
