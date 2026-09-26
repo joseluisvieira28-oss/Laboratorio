@@ -45,6 +45,8 @@ on:
       - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_h02_scope_batch_v01.py'
       - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_h02_calendar_binding_v01.py'
       - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_final_binding_preflight_v01.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_h02_calendar_binding_v02.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_official_calendar_live_probe_v01.py'
       - '.github/workflows/market-reveal-confirmation-reaction-synthetic-ci-v01.yml'
 
 permissions:
@@ -73,6 +75,8 @@ jobs:
           python -m py_compile "Dream-Account-OS-v2.3-PARTIAL/research/market_reveal_confirmation_reaction_v01/h02_scope_recovery.py"
           python -m py_compile "Dream-Account-OS-v2.3-PARTIAL/research/market_reveal_confirmation_reaction_v01/h02_frozen_scope_shadow_collector.py"
           python -m py_compile "Dream-Account-OS-v2.3-PARTIAL/research/market_reveal_confirmation_reaction_v01/verify_h02_frozen_scope_shadow.py"
+          python -m py_compile "Dream-Account-OS-v2.3-PARTIAL/research/market_reveal_confirmation_reaction_v01/h02_calendar_binding_v02.py"
+          python -m py_compile "Dream-Account-OS-v2.3-PARTIAL/research/market_reveal_confirmation_reaction_v01/official_2027_calendar_live_probe.py"
       - name: Run measurement tests
         run: |
           python "Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_confirmation_reaction_v01.py" -v
@@ -157,6 +161,12 @@ jobs:
       - name: Run H02 exact six-session batch tests
         run: |
           python "Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_h02_scope_batch_v01.py" -v
+      - name: Run H02 calendar binding v02 tests
+        run: |
+          python "Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_h02_calendar_binding_v02.py" -v
+      - name: Run official calendar live probe v02 trigger tests
+        run: |
+          python "Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_official_calendar_live_probe_v01.py" -v
       - name: Run H02 frozen-scope shadow hygiene tests
         run: |
           python "Dream-Account-OS-v2.3-PARTIAL/tests/test_market_reveal_h02_frozen_scope_shadow_hygiene_v01.py" -v
