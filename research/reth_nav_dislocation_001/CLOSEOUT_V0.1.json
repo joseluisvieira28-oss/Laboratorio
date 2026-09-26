@@ -1,0 +1,79 @@
+{
+  "lab_id": "RETH-NAV-DISLOCATION-001",
+  "closeout_version": "V0.1",
+  "closed_at_utc": "2026-09-26",
+  "final_classification": "DISCOVERY_PREDICTOR_INSUFFICIENT_SAMPLE",
+  "exact_lab_closed": true,
+  "source_gate": {
+    "classification": "SOURCE_PASS",
+    "archive_transport": "https://rpc-eth.blockmachine.io",
+    "header_transport": "https://ethereum-rpc.publicnode.com",
+    "block_binding": "EIP-1898 blockHash requireCanonical"
+  },
+  "transport_equivalence": {
+    "classification": "SPLIT_TRANSPORT_BLOCKHASH_EQUIVALENCE_PASS",
+    "sentinel_blocks": [
+      20000000,
+      22000000,
+      24000000
+    ],
+    "direct_vs_multicall_exact": true,
+    "multicall_number_vs_blockhash_exact": true,
+    "block_hashes_cross_source_equal": true
+  },
+  "calibration_census": {
+    "classification": "PREDICTOR_SOURCE_CENSUS_PASS",
+    "expected_count": 556,
+    "valid_count": 556,
+    "invalid_count": 0,
+    "row_set_sha256": "e921eca64a3265533e95a87f381a23434b13490c99e643b91527972c828a2402",
+    "min_dislocation_ppb": -10691503,
+    "max_dislocation_ppb": 7297710,
+    "mean_dislocation_ppb_trunc": -1729012,
+    "negative_count": 401,
+    "positive_count": 155
+  },
+  "frozen_state_calibration": {
+    "classification": "PREDICTOR_STATE_CALIBRATION_PASS",
+    "q05_ppb_trunc": -7390227,
+    "q95_ppb_trunc": 5729902,
+    "calibration_discount_extreme_count": 28,
+    "calibration_neutral_count": 500,
+    "calibration_premium_extreme_count": 28
+  },
+  "discovery_predictor_gate": {
+    "classification": "DISCOVERY_PREDICTOR_INSUFFICIENT_SAMPLE",
+    "expected_state_count": 139,
+    "valid_state_count": 139,
+    "invalid_state_count": 0,
+    "predecessor_state": "NEUTRAL",
+    "discount_extreme_state_count": 0,
+    "neutral_state_count": 139,
+    "premium_extreme_state_count": 0,
+    "transition_event_count": 0,
+    "discount_transition_event_count": 0,
+    "premium_transition_event_count": 0,
+    "predictor_evidence_sha256": "1dd62a9acf3fa864b07699266071896f4f9ffd811839b54865ece2daa84f9e2c"
+  },
+  "gates_not_opened": {
+    "mechanism_discovery": true,
+    "oos": true,
+    "protected_holdout": true,
+    "market_returns": true,
+    "pnl": true,
+    "live_trading": true
+  },
+  "no_rescue_enforced": true,
+  "forbidden_rescues": [
+    "change q05/q95",
+    "change cadence",
+    "change pool",
+    "drop one tail",
+    "change de-clustering",
+    "open mechanism outcomes despite insufficient sample",
+    "open OOS or protected holdout",
+    "tune horizon from outcomes"
+  ],
+  "promotion_credit": 0,
+  "conclusion": "The exact frozen lab is closed before mechanism outcomes because the fully valid Discovery predictor census produced zero extreme states and zero transition-entry events under the pre-registered q05/q95 rule."
+}
