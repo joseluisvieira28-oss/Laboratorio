@@ -10,6 +10,8 @@ sys.path.insert(0, str(MODULE_DIR))
 from authority_transition import receipt_fingerprint
 from calendar_manifest import manifest_sha256
 from pretarget_gate import protocol_fingerprint
+from freeze_manifest import manifest_sha256 as implementation_manifest_sha256
+from h02_ruleset import EXPECTED_RULESET_HASH
 from target_open_runtime_guard import validate_target_capture_open
 
 
@@ -84,6 +86,7 @@ def synthetic_artifacts():
         },
         "freeze": {
             "protocol_fingerprint_sha256": None,
+            "ruleset_sha256": EXPECTED_RULESET_HASH,
             "frozen_at_utc": "2099-01-01T00:00:01Z",
             "operator_authority_receipt": "f" * 64,
         },
@@ -94,8 +97,10 @@ def synthetic_artifacts():
         "document_type": "MRCR_IMPLEMENTATION_MANIFEST_V01",
         "implementation_head_sha": "c" * 40,
         "files": [{"path": "synthetic.py", "bytes": 1, "sha256": "a" * 64}],
-        "manifest_sha256": "e" * 64,
     }
+    implementation["manifest_sha256"] = implementation_manifest_sha256(
+        implementation
+    )
 
     authority = {
         "document_type": "MRCR_AUTHORITY_TRANSITION_V01",
@@ -201,6 +206,35 @@ class TargetOpenRuntimeGuardTests(unittest.TestCase):
         )
         self.assertFalse(result.ready)
         self.assertIn("TARGET_OBSERVATION_OPEN_AUTHORITY_REQUIRED", result.blockers)
+
+    def test_mutated_implementation_manifest_fails(self):
+        p, c, i, a = synthetic_artifacts()
+        i["files"][0]["bytes"] = 2
+        result = validate_target_capture_open(
+            protocol=p,
+            calendar_manifest=c,
+            implementation_manifest=i,
+            authority_receipt=a,
+            now_utc="2099-01-02T00:00:00Z",
+        )
+        self.assertFalse(result.ready)
+        self.assertIn("IMPLEMENTATION:MANIFEST_SHA256_MISMATCH", result.blockers)
+
+    def test_wrong_ruleset_hash_fails(self):
+        p, c, i, a = synthetic_artifacts()
+        p["freeze"]["ruleset_sha256"] = "9" * 64
+        p["freeze"]["protocol_fingerprint_sha256"] = protocol_fingerprint(p)
+        a["bindings"]["protocol_fingerprint_sha256"] = p["freeze"]["protocol_fingerprint_sha256"]
+        a["receipt_sha256"] = receipt_fingerprint(a)
+        result = validate_target_capture_open(
+            protocol=p,
+            calendar_manifest=c,
+            implementation_manifest=i,
+            authority_receipt=a,
+            now_utc="2099-01-02T00:00:00Z",
+        )
+        self.assertFalse(result.ready)
+        self.assertIn("PROTOCOL_RULESET_HASH_MISMATCH", result.blockers)
 
 
 if __name__ == "__main__":
