@@ -1,0 +1,25 @@
+name: AMM-LVR-CROSSVENUE-001 Inclusion Cost Probe
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inclusion-cost-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Attribute observable on-chain inclusion costs
+        run: python labs/amm-lvr-crossvenue-001/inclusion_cost_attribution_v0_1.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AMM-LVR-CROSSVENUE-001-INCLUSION-COST-EVIDENCE
+          path: |
+            labs/amm-lvr-crossvenue-001/evidence/inclusion_cost_attribution_v0_1.json
+            labs/amm-lvr-crossvenue-001/evidence/inclusion_cost_attribution_v0_1_summary.json
