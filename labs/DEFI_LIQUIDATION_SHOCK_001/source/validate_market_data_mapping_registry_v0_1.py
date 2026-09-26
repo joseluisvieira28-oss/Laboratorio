@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import argparse,json
+import argparse,hashlib,json
 from pathlib import Path
 
 ap=argparse.ArgumentParser()
@@ -8,6 +8,12 @@ ap.add_argument("--registry",required=True)
 args=ap.parse_args()
 
 OUT=Path("labs/DEFI_LIQUIDATION_SHOCK_001/MARKET_DATA_MAPPING_REGISTRY_VALIDATION_RECEIPT_V0.1.json")
+
+def sha256_file(path):
+    h=hashlib.sha256()
+    with open(path,"rb") as fh:
+        for block in iter(lambda:fh.read(1024*1024),b""):h.update(block)
+    return h.hexdigest()
 
 def find_one(root,name):
     hits=sorted(Path(root).rglob(name))
@@ -98,6 +104,9 @@ receipt={
  "missing_target_count":len(missing),"extra_target_count":len(extra),
  "error_count":len(errors),"errors":errors,
  "registry_path":str(Path(args.registry)),
+ "registry_sha256":sha256_file(args.registry) if Path(args.registry).exists() else None,
+ "requirements_receipt_path":rp,
+ "requirements_receipt_sha256":sha256_file(rp) if rp else None,
  "frozen_authority":"MARKET_DATA_MAPPING_REGISTRY_FREEZE_V0.1.md",
  "firewall":{"archive_payload_downloaded":False,"candles_opened":False,"prices_opened":False,
              "returns_computed":False,"pnl_computed":False,"economic_outcomes_opened":False,
