@@ -1,0 +1,54 @@
+name: RETH-NAV-DISLOCATION-001 source persistence V0.1B
+
+on:
+  push:
+    branches:
+      - reth-nav-dislocation-001-source-gate-v01
+    paths:
+      - '.github/workflows/reth-nav-dislocation-001-source-persist-v01b.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  confirm_and_persist:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: reth-nav-dislocation-001-source-gate-v01
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-save ethers@6.15.0
+      - name: Re-run frozen source gate on passing transport
+        env:
+          ETH_RPC_URL: https://rpc-eth.blockmachine.io
+        run: node research/reth_nav_dislocation_001/reth_nav_source_probe_v01.mjs
+      - name: Require SOURCE_PASS and persist exact receipt
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json, shutil
+          src="artifacts/reth_nav_source_gate_v01.json"
+          x=json.load(open(src))
+          assert x["classification"]=="SOURCE_PASS", x
+          assert x["gates"]["protocol_anchor_all_sentinels_plus_finalized"] is True, x
+          assert x["gates"]["usable_historical_pool_count"] >= 1, x
+          assert x["gates"]["silent_latest_fallback"] is False, x
+          dst="research/reth_nav_dislocation_001/SOURCE_GATE_RECEIPT_V0.1.json"
+          shutil.copyfile(src,dst)
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/reth_nav_dislocation_001/SOURCE_GATE_RECEIPT_V0.1.json
+          git commit -m "RETH-NAV-DISLOCATION-001: persist source gate PASS receipt [skip ci]"
+          git push origin HEAD:reth-nav-dislocation-001-source-gate-v01
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: reth-nav-source-persist-v01b
+          path: artifacts/reth_nav_source_gate_v01.json
+          if-no-files-found: error
