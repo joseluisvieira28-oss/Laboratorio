@@ -1,0 +1,86 @@
+name: QBC Discovery V0.2 Runner Correction
+
+on:
+  push:
+    branches:
+      - quarterly-basis-convergence-v02-runner-correction
+
+permissions:
+  contents: write
+
+jobs:
+  discovery:
+    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout frozen branch
+        uses: actions/checkout@v4
+        with:
+          ref: quarterly-basis-convergence-v02-runner-correction
+          fetch-depth: 1
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Frozen Discovery V0.2 preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/quarterly_basis_convergence_001'
+          python -m py_compile "$BASE/discovery_runner_v02.py"
+          python - <<'PY'
+          import json
+          base='Dream-Account-OS-v2.3-PARTIAL/research/quarterly_basis_convergence_001'
+          p=json.load(open(base+'/FROZEN_PROTOCOL_V01.json'))
+          s=json.load(open(base+'/source_evidence/QBC_SOURCE_GATE_V01.json'))
+          assert s['receipt']['classification']=='SOURCE_DATA_PASS'
+          assert p['source']['discovery_expiry_years']==[2021,2022,2023]
+          assert p['source']['independent_validation_expiry_year']==2024
+          assert p['independent_validation']['status']=='LOCKED_UNTIL_DISCOVERY_SURVIVES'
+          assert p['strategy']['minimum_entry_basis_fraction']==0.007
+          assert p['strategy']['target_basis_fraction']==0.001
+          assert p['strategy']['basis_stop_additive_fraction']==0.015
+          assert p['strategy']['base_pair_round_trip_cost_fraction_of_single_leg_notional']==0.003
+          assert p['strategy']['stress_pair_round_trip_cost_fraction_of_single_leg_notional']==0.005
+          assert p['discovery']['sample_floor_resolved_trades']==12
+          assert p['discovery']['asset_trade_floor']==4
+          assert p['protected_holdout']['year_2025']=='LOCKED'
+          assert p['protected_holdout']['year_2026']=='LOCKED'
+          PY
+      - name: Execute frozen 2021-2023 Discovery with runner correction
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/quarterly_basis_convergence_001'
+          python "$BASE/discovery_runner_v02.py"
+          test -f "$BASE/discovery_evidence/QBC_DISCOVERY_RESULT_V02.json"
+      - name: Audit protected years and classification
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          f='Dream-Account-OS-v2.3-PARTIAL/research/quarterly_basis_convergence_001/discovery_evidence/QBC_DISCOVERY_RESULT_V02.json'
+          d=json.load(open(f));g=d['guards']
+          assert d['classification'] in {'SOURCE_ACCESS_BLOCKED','TECHNICAL_FAILURE','DATA_FAILURE','INSUFFICIENT_EVALUABLE_SAMPLE','DISCOVERY_NO_EDGE','DISCOVERY_SURVIVES'}
+          assert g['year_2024_price_fields_opened'] is False
+          assert g['year_2025_market_data_requested'] is False
+          assert g['year_2026_market_data_requested'] is False
+          assert g['live_trading'] is False
+          assert g['exchange_mutation'] is False
+          assert g['orders'] is False
+          print(json.dumps({k:v for k,v in d.items() if k!='route_records'},indent=2,sort_keys=True))
+          PY
+      - name: Persist additive Discovery V0.2 result
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/quarterly_basis_convergence_001'
+          git config user.name 'crypto-lab-qbc-bot'
+          git config user.email 'crypto-lab-qbc-bot@users.noreply.github.com'
+          git add "$BASE/discovery_evidence/QBC_DISCOVERY_RESULT_V02.json"
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'QUARTERLY-BASIS-CONVERGENCE-001: Discovery closeout [skip ci]'
+          git pull --rebase origin quarterly-basis-convergence-v02-runner-correction
+          git push origin HEAD:quarterly-basis-convergence-v02-runner-correction
