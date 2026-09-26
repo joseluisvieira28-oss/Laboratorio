@@ -113,7 +113,8 @@ receipt={
  "schema_version":"0.1","lab_id":"DEFI-LIQUIDATION-SHOCK-001",
  "classification":classification,
  "frozen_gate":"GLOBAL_FIELD_COVERAGE_FINAL_GATE_FREEZE_V0.1.md",
- "version_precedence_addendum":"GLOBAL_FIELD_COVERAGE_FINAL_GATE_VERSION_PRECEDENCE_ADDENDUM_V0.2.md + GLOBAL_FIELD_FINALIZER_ARTIFACT_SELECTION_ADDENDUM_V0.3.md",\n "kamino_layout_precedence_addendum":"KAMINO_LAYOUT_RECOVERY_PRECEDENCE_ADDENDUM_V0.2.md",
+ "version_precedence_addendum":"GLOBAL_FIELD_COVERAGE_FINAL_GATE_VERSION_PRECEDENCE_ADDENDUM_V0.2.md + GLOBAL_FIELD_FINALIZER_ARTIFACT_SELECTION_ADDENDUM_V0.3.md",
+ "kamino_layout_precedence_addendum":"KAMINO_LAYOUT_RECOVERY_PRECEDENCE_ADDENDUM_V0.2.md",
  "checks":checks,"error_count":len(errors),"errors":errors,
  "source_authorities_already_closed":{
    "kamino_save11":"KAMINO_SAVE11_EVENT_CENSUS_SOURCE_PASS + independent audit PASS",
