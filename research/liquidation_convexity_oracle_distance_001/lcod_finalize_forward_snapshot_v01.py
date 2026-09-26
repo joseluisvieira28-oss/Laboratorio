@@ -8,6 +8,7 @@ HERE=Path("research/liquidation_convexity_oracle_distance_001")
 POP=HERE/"LCOD_BLOCK_PINNED_ACTIVE_POPULATION_RECEIPT.json"
 COMP=HERE/"LCOD_FULL_SAME_BLOCK_COMPONENT_RECONSTRUCTION_RECEIPT.json"
 CURVE=HERE/"LCOD_CANONICAL_COLLATERAL_STRESS_CURVE_RECEIPT.json"
+CORE_LOCK=HERE/"LCOD_SCIENTIFIC_CORE_LOCK_V0.1.json"
 OUT=Path("artifacts/lcod_forward_mechanical_snapshot_v01.json")
 
 def load(p):
@@ -18,6 +19,9 @@ def sha_obj(x):
     return hashlib.sha256(raw).hexdigest()
 
 pop,comp,curve=map(load,(POP,COMP,CURVE))
+core_lock=load(CORE_LOCK)
+if core_lock.get("classification")!="SCIENTIFIC_CORE_LOCK_FROZEN":
+    raise SystemExit("SCIENTIFIC_CORE_LOCK_NOT_FROZEN")
 
 if pop.get("classification")!="BLOCK_PINNED_ACTIVE_POPULATION_PASS":
     raise SystemExit("POPULATION_GATE_NOT_PASS")
@@ -97,7 +101,9 @@ receipt={
     "github_run_attempt":os.environ.get("GITHUB_RUN_ATTEMPT"),
     "github_event_name":event,
     "caller_git_sha":os.environ.get("GITHUB_SHA"),
-    "scientific_code_sha":os.environ.get("LCOD_SCIENTIFIC_CODE_SHA")
+    "scientific_code_sha":os.environ.get("LCOD_SCIENTIFIC_CODE_SHA"),
+    "scientific_core_fingerprint_sha256":core_lock.get("scientific_core_fingerprint_sha256"),
+    "scientific_core_lock_classification":core_lock.get("classification")
   },
   "predictor_only_accumulation_gate":{
     "minimum_canonical_successful_daily_observations":30,
