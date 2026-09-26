@@ -1,0 +1,464 @@
+name: DLS Marginfi Save0c Field Enrichment Population V0.1
+
+on:
+  push:
+    branches:
+      - dls-field-enrichment-v01
+    paths:
+      - .github/workflows/dls-marginfi-save0c-field-enrichment-population-v01.yml
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  enrich:
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        include:
+          - protocol: marginfi
+            start: '2023-02-07T15:47:04Z'
+            end: '2023-03-01T00:00:00Z'
+            id: marginfi-202302
+            baseline_run: '36114038836'
+            baseline_pattern: 'dls-sqd-first-boundary-marginfi-202302'
+          - protocol: marginfi
+            start: '2023-03-01T00:00:00Z'
+            end: '2023-04-01T00:00:00Z'
+            id: marginfi-202303
+            baseline_run: '36114038836'
+            baseline_pattern: 'dls-sqd-first-boundary-marginfi-202303'
+          - protocol: marginfi
+            start: '2023-04-01T00:00:00Z'
+            end: '2023-05-01T00:00:00Z'
+            id: marginfi-202304
+            baseline_run: '36114038836'
+            baseline_pattern: 'dls-sqd-first-boundary-marginfi-202304'
+          - protocol: marginfi
+            start: '2023-05-01T00:00:00Z'
+            end: '2023-06-01T00:00:00Z'
+            id: marginfi-202305
+            baseline_run: '36114038836'
+            baseline_pattern: 'dls-sqd-first-boundary-marginfi-202305'
+          - protocol: marginfi
+            start: '2023-06-01T00:00:00Z'
+            end: '2023-07-01T00:00:00Z'
+            id: marginfi-202306
+            baseline_run: '36114038836'
+            baseline_pattern: 'dls-sqd-first-boundary-marginfi-202306'
+          - protocol: marginfi
+            start: '2023-07-01T00:00:00Z'
+            end: '2023-08-01T00:00:00Z'
+            id: marginfi-202307
+            baseline_run: '36114038836'
+            baseline_pattern: 'dls-sqd-first-boundary-marginfi-202307'
+          - protocol: marginfi
+            start: '2023-08-01T00:00:00Z'
+            end: '2023-09-01T00:00:00Z'
+            id: marginfi-202308
+            baseline_run: '36114038836'
+            baseline_pattern: 'dls-sqd-first-boundary-marginfi-202308'
+          - protocol: marginfi
+            start: '2023-09-01T00:00:00Z'
+            end: '2023-10-01T00:00:00Z'
+            id: marginfi-202309
+            baseline_run: '36114038836'
+            baseline_pattern: 'dls-sqd-first-boundary-marginfi-202309'
+          - protocol: marginfi
+            start: '2023-10-01T00:00:00Z'
+            end: '2023-11-01T00:00:00Z'
+            id: marginfi-202310
+            baseline_run: '36114038836'
+            baseline_pattern: 'dls-sqd-first-boundary-marginfi-202310'
+          - protocol: marginfi
+            start: '2023-11-01T00:00:00Z'
+            end: '2023-12-01T00:00:00Z'
+            id: marginfi-202311
+            baseline_run: '36114038836'
+            baseline_pattern: 'dls-sqd-first-boundary-marginfi-202311'
+          - protocol: marginfi
+            start: '2023-12-01T00:00:00Z'
+            end: '2024-01-01T00:00:00Z'
+            id: marginfi-202312
+            baseline_run: '36114038836'
+            baseline_pattern: 'dls-sqd-first-boundary-marginfi-202312'
+          - protocol: marginfi
+            start: '2024-01-01T00:00:00Z'
+            end: '2024-02-01T00:00:00Z'
+            id: marginfi-202401
+            baseline_run: '36114038836'
+            baseline_pattern: 'dls-sqd-first-boundary-marginfi-202401'
+          - protocol: marginfi
+            start: '2024-02-01T00:00:00Z'
+            end: '2024-03-01T00:00:00Z'
+            id: marginfi-202402
+            baseline_run: '36114038836'
+            baseline_pattern: 'dls-sqd-first-boundary-marginfi-202402'
+          - protocol: marginfi
+            start: '2024-03-01T00:00:00Z'
+            end: '2024-04-01T00:00:00Z'
+            id: marginfi-202403
+            baseline_run: '36114038836'
+            baseline_pattern: 'dls-sqd-first-boundary-marginfi-202403'
+          - protocol: marginfi
+            start: '2024-04-01T00:00:00Z'
+            end: '2024-05-01T00:00:00Z'
+            id: marginfi-202404
+            baseline_run: '36114038836'
+            baseline_pattern: 'dls-sqd-first-boundary-marginfi-202404'
+          - protocol: marginfi
+            start: '2024-05-01T00:00:00Z'
+            end: '2024-06-01T00:00:00Z'
+            id: marginfi-202405
+            baseline_run: '36114038836'
+            baseline_pattern: 'dls-sqd-first-boundary-marginfi-202405'
+          - protocol: marginfi
+            start: '2024-06-01T00:00:00Z'
+            end: '2024-07-01T00:00:00Z'
+            id: marginfi-202406
+            baseline_run: '36114038836'
+            baseline_pattern: 'dls-sqd-first-boundary-marginfi-202406'
+          - protocol: marginfi
+            start: '2024-07-01T00:00:00Z'
+            end: '2024-08-01T00:00:00Z'
+            id: marginfi-202407
+            baseline_run: '36114038836'
+            baseline_pattern: 'dls-sqd-first-boundary-marginfi-202407'
+          - protocol: marginfi
+            start: '2024-08-01T00:00:00Z'
+            end: '2024-09-01T00:00:00Z'
+            id: marginfi-202408
+            baseline_run: '36114038836'
+            baseline_pattern: 'dls-sqd-first-boundary-marginfi-202408'
+          - protocol: marginfi
+            start: '2024-09-01T00:00:00Z'
+            end: '2024-10-01T00:00:00Z'
+            id: marginfi-202409
+            baseline_run: '36114038836'
+            baseline_pattern: 'dls-sqd-first-boundary-marginfi-202409'
+          - protocol: marginfi
+            start: '2024-10-01T00:00:00Z'
+            end: '2024-11-01T00:00:00Z'
+            id: marginfi-202410
+            baseline_run: '36114038836'
+            baseline_pattern: 'dls-sqd-first-boundary-marginfi-202410'
+          - protocol: marginfi
+            start: '2024-11-01T00:00:00Z'
+            end: '2024-12-01T00:00:00Z'
+            id: marginfi-202411
+            baseline_run: '36114038836'
+            baseline_pattern: 'dls-sqd-first-boundary-marginfi-202411'
+          - protocol: marginfi
+            start: '2024-12-01T00:00:00Z'
+            end: '2025-01-01T00:00:00Z'
+            id: marginfi-202412
+            baseline_run: '36114038836'
+            baseline_pattern: 'dls-sqd-first-boundary-marginfi-202412'
+          - protocol: save0c
+            start: '2021-12-08T00:00:00Z'
+            end: '2022-01-01T00:00:00Z'
+            id: save0c-202112
+            baseline_run: '36114038836'
+            baseline_pattern: 'dls-sqd-first-boundary-save0c-202112'
+          - protocol: save0c
+            start: '2022-01-01T00:00:00Z'
+            end: '2022-02-01T00:00:00Z'
+            id: save0c-202201
+            baseline_run: '36114038836'
+            baseline_pattern: 'dls-sqd-first-boundary-save0c-202201'
+          - protocol: save0c
+            start: '2022-02-01T00:00:00Z'
+            end: '2022-03-01T00:00:00Z'
+            id: save0c-202202
+            baseline_run: '36230162177'
+            baseline_pattern: 'dls-save0c-sqd-recovery-s202202*'
+          - protocol: save0c
+            start: '2022-03-01T00:00:00Z'
+            end: '2022-04-01T00:00:00Z'
+            id: save0c-202203
+            baseline_run: '36114038836'
+            baseline_pattern: 'dls-sqd-first-boundary-save0c-202203'
+          - protocol: save0c
+            start: '2022-04-01T00:00:00Z'
+            end: '2022-05-01T00:00:00Z'
+            id: save0c-202204
+            baseline_run: '36114038836'
+            baseline_pattern: 'dls-sqd-first-boundary-save0c-202204'
+          - protocol: save0c
+            start: '2022-05-01T00:00:00Z'
+            end: '2022-06-01T00:00:00Z'
+            id: save0c-202205
+            baseline_run: '36114038836'
+            baseline_pattern: 'dls-sqd-first-boundary-save0c-202205'
+          - protocol: save0c
+            start: '2022-06-01T00:00:00Z'
+            end: '2022-07-01T00:00:00Z'
+            id: save0c-202206
+            baseline_run: '36114038836'
+            baseline_pattern: 'dls-sqd-first-boundary-save0c-202206'
+          - protocol: save0c
+            start: '2022-07-01T00:00:00Z'
+            end: '2022-08-01T00:00:00Z'
+            id: save0c-202207
+            baseline_run: '36114038836'
+            baseline_pattern: 'dls-sqd-first-boundary-save0c-202207'
+          - protocol: save0c
+            start: '2022-08-01T00:00:00Z'
+            end: '2022-09-01T00:00:00Z'
+            id: save0c-202208
+            baseline_run: '36114038836'
+            baseline_pattern: 'dls-sqd-first-boundary-save0c-202208'
+          - protocol: save0c
+            start: '2022-09-01T00:00:00Z'
+            end: '2022-10-01T00:00:00Z'
+            id: save0c-202209
+            baseline_run: '36114038836'
+            baseline_pattern: 'dls-sqd-first-boundary-save0c-202209'
+          - protocol: save0c
+            start: '2022-10-01T00:00:00Z'
+            end: '2022-11-01T00:00:00Z'
+            id: save0c-202210
+            baseline_run: '36114038836'
+            baseline_pattern: 'dls-sqd-first-boundary-save0c-202210'
+          - protocol: save0c
+            start: '2022-11-01T00:00:00Z'
+            end: '2022-12-01T00:00:00Z'
+            id: save0c-202211
+            baseline_run: '36114038836'
+            baseline_pattern: 'dls-sqd-first-boundary-save0c-202211'
+          - protocol: save0c
+            start: '2022-12-01T00:00:00Z'
+            end: '2023-01-01T00:00:00Z'
+            id: save0c-202212
+            baseline_run: '36114038836'
+            baseline_pattern: 'dls-sqd-first-boundary-save0c-202212'
+          - protocol: save0c
+            start: '2023-01-01T00:00:00Z'
+            end: '2023-02-01T00:00:00Z'
+            id: save0c-202301
+            baseline_run: '36114038836'
+            baseline_pattern: 'dls-sqd-first-boundary-save0c-202301'
+          - protocol: save0c
+            start: '2023-02-01T00:00:00Z'
+            end: '2023-03-01T00:00:00Z'
+            id: save0c-202302
+            baseline_run: '36114038836'
+            baseline_pattern: 'dls-sqd-first-boundary-save0c-202302'
+          - protocol: save0c
+            start: '2023-03-01T00:00:00Z'
+            end: '2023-04-01T00:00:00Z'
+            id: save0c-202303
+            baseline_run: '36114038836'
+            baseline_pattern: 'dls-sqd-first-boundary-save0c-202303'
+          - protocol: save0c
+            start: '2023-04-01T00:00:00Z'
+            end: '2023-05-01T00:00:00Z'
+            id: save0c-202304
+            baseline_run: '36114038836'
+            baseline_pattern: 'dls-sqd-first-boundary-save0c-202304'
+          - protocol: save0c
+            start: '2023-05-01T00:00:00Z'
+            end: '2023-06-01T00:00:00Z'
+            id: save0c-202305
+            baseline_run: '36114038836'
+            baseline_pattern: 'dls-sqd-first-boundary-save0c-202305'
+          - protocol: save0c
+            start: '2023-06-01T00:00:00Z'
+            end: '2023-07-01T00:00:00Z'
+            id: save0c-202306
+            baseline_run: '36114038836'
+            baseline_pattern: 'dls-sqd-first-boundary-save0c-202306'
+          - protocol: save0c
+            start: '2023-07-01T00:00:00Z'
+            end: '2023-08-01T00:00:00Z'
+            id: save0c-202307
+            baseline_run: '36114038836'
+            baseline_pattern: 'dls-sqd-first-boundary-save0c-202307'
+          - protocol: save0c
+            start: '2023-08-01T00:00:00Z'
+            end: '2023-09-01T00:00:00Z'
+            id: save0c-202308
+            baseline_run: '36114038836'
+            baseline_pattern: 'dls-sqd-first-boundary-save0c-202308'
+          - protocol: save0c
+            start: '2023-09-01T00:00:00Z'
+            end: '2023-10-01T00:00:00Z'
+            id: save0c-202309
+            baseline_run: '36114038836'
+            baseline_pattern: 'dls-sqd-first-boundary-save0c-202309'
+          - protocol: save0c
+            start: '2023-10-01T00:00:00Z'
+            end: '2023-11-01T00:00:00Z'
+            id: save0c-202310
+            baseline_run: '36114038836'
+            baseline_pattern: 'dls-sqd-first-boundary-save0c-202310'
+          - protocol: save0c
+            start: '2023-11-01T00:00:00Z'
+            end: '2023-12-01T00:00:00Z'
+            id: save0c-202311
+            baseline_run: '36114038836'
+            baseline_pattern: 'dls-sqd-first-boundary-save0c-202311'
+          - protocol: save0c
+            start: '2023-12-01T00:00:00Z'
+            end: '2024-01-01T00:00:00Z'
+            id: save0c-202312
+            baseline_run: '36114038836'
+            baseline_pattern: 'dls-sqd-first-boundary-save0c-202312'
+          - protocol: save0c
+            start: '2024-01-01T00:00:00Z'
+            end: '2024-02-01T00:00:00Z'
+            id: save0c-202401
+            baseline_run: '36114038836'
+            baseline_pattern: 'dls-sqd-first-boundary-save0c-202401'
+          - protocol: save0c
+            start: '2024-02-01T00:00:00Z'
+            end: '2024-03-01T00:00:00Z'
+            id: save0c-202402
+            baseline_run: '36114038836'
+            baseline_pattern: 'dls-sqd-first-boundary-save0c-202402'
+          - protocol: save0c
+            start: '2024-03-01T00:00:00Z'
+            end: '2024-04-01T00:00:00Z'
+            id: save0c-202403
+            baseline_run: '36114038836'
+            baseline_pattern: 'dls-sqd-first-boundary-save0c-202403'
+          - protocol: save0c
+            start: '2024-04-01T00:00:00Z'
+            end: '2024-05-01T00:00:00Z'
+            id: save0c-202404
+            baseline_run: '36114038836'
+            baseline_pattern: 'dls-sqd-first-boundary-save0c-202404'
+          - protocol: save0c
+            start: '2024-05-01T00:00:00Z'
+            end: '2024-06-01T00:00:00Z'
+            id: save0c-202405
+            baseline_run: '36114038836'
+            baseline_pattern: 'dls-sqd-first-boundary-save0c-202405'
+          - protocol: save0c
+            start: '2024-06-01T00:00:00Z'
+            end: '2024-07-01T00:00:00Z'
+            id: save0c-202406
+            baseline_run: '36114038836'
+            baseline_pattern: 'dls-sqd-first-boundary-save0c-202406'
+          - protocol: save0c
+            start: '2024-07-01T00:00:00Z'
+            end: '2024-08-01T00:00:00Z'
+            id: save0c-202407
+            baseline_run: '36114038836'
+            baseline_pattern: 'dls-sqd-first-boundary-save0c-202407'
+          - protocol: save0c
+            start: '2024-08-01T00:00:00Z'
+            end: '2024-09-01T00:00:00Z'
+            id: save0c-202408
+            baseline_run: '36114038836'
+            baseline_pattern: 'dls-sqd-first-boundary-save0c-202408'
+          - protocol: save0c
+            start: '2024-09-01T00:00:00Z'
+            end: '2024-10-01T00:00:00Z'
+            id: save0c-202409
+            baseline_run: '36114038836'
+            baseline_pattern: 'dls-sqd-first-boundary-save0c-202409'
+          - protocol: save0c
+            start: '2024-10-01T00:00:00Z'
+            end: '2024-11-01T00:00:00Z'
+            id: save0c-202410
+            baseline_run: '36230162177'
+            baseline_pattern: 'dls-save0c-sqd-recovery-s202410*'
+          - protocol: save0c
+            start: '2024-11-01T00:00:00Z'
+            end: '2024-12-01T00:00:00Z'
+            id: save0c-202411
+            baseline_run: '36230162177'
+            baseline_pattern: 'dls-save0c-sqd-recovery-s202411*'
+          - protocol: save0c
+            start: '2024-12-01T00:00:00Z'
+            end: '2025-01-01T00:00:00Z'
+            id: save0c-202412
+            baseline_run: '36230162177'
+            baseline_pattern: 'dls-save0c-sqd-recovery-s202412*'
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download canonical baseline evidence
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ matrix.baseline_run }}
+          pattern: ${{ matrix.baseline_pattern }}
+          path: baseline
+          merge-multiple: true
+
+      - name: Compile source-only enrichment runner
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/run_marginfi_save0c_field_enrichment_partition_v0_1.py
+
+      - name: Re-query and exact-join canonical population
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/run_marginfi_save0c_field_enrichment_partition_v0_1.py
+          --protocol "${{ matrix.protocol }}"
+          --start "${{ matrix.start }}"
+          --end "${{ matrix.end }}"
+          --baseline baseline
+          --partition-id "${{ matrix.id }}"
+          --out "enrichment/${{ matrix.id }}.json"
+
+      - name: Upload enrichment partition receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-field-enrichment-ms-${{ matrix.id }}
+          path: enrichment/${{ matrix.id }}.json
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_TRUE
+
+  aggregate:
+    needs: enrich
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download all partition receipts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: dls-field-enrichment-ms-*
+          path: population_receipts
+          merge-multiple: true
+
+      - name: Compile aggregator
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/aggregate_marginfi_save0c_field_enrichment_v0_1.py
+
+      - name: Aggregate population field coverage
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/aggregate_marginfi_save0c_field_enrichment_v0_1.py population_receipts
+
+      - name: Upload population authority receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-marginfi-save0c-field-enrichment-population-v01
+          path: labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_SAVE0C_FIELD_ENRICHMENT_POPULATION_RECEIPT_V0.1.json
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_TRUE
