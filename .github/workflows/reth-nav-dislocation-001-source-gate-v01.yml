@@ -1,0 +1,35 @@
+name: RETH-NAV-DISLOCATION-001 source gate V0.1
+
+on:
+  push:
+    branches:
+      - reth-nav-dislocation-001-source-gate-v01
+    paths:
+      - 'research/reth_nav_dislocation_001/SOURCE_GATE_FREEZE_V0.1.md'
+      - 'research/reth_nav_dislocation_001/reth_nav_source_probe_v01.mjs'
+      - '.github/workflows/reth-nav-dislocation-001-source-gate-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source_gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: reth-nav-dislocation-001-source-gate-v01
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-save ethers@6.15.0
+      - name: Run frozen outcome-blind source probe
+        run: node research/reth_nav_dislocation_001/reth_nav_source_probe_v01.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: reth-nav-source-gate-v01
+          path: artifacts/reth_nav_source_gate_v01.json
+          if-no-files-found: error
