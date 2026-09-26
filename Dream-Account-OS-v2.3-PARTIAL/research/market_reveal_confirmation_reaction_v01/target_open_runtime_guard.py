@@ -18,6 +18,8 @@ from authority_transition import (
     validate_target_open_binding,
 )
 from calendar_manifest import validate_calendar_manifest
+from freeze_manifest import validate_implementation_manifest_structure
+from h02_ruleset import EXPECTED_RULESET_HASH
 
 
 @dataclass(frozen=True)
@@ -52,6 +54,12 @@ def validate_target_capture_open(
     if authority_receipt.get("authority_type") != TARGET_OBSERVATION_OPEN:
         blockers.append("TARGET_OBSERVATION_OPEN_AUTHORITY_REQUIRED")
 
+    implementation_ok, implementation_blockers = (
+        validate_implementation_manifest_structure(dict(implementation_manifest))
+    )
+    if not implementation_ok:
+        blockers.extend(f"IMPLEMENTATION:{x}" for x in implementation_blockers)
+
     implementation_hash = implementation_manifest.get("manifest_sha256")
     if not isinstance(implementation_hash, str) or len(implementation_hash) != 64:
         blockers.append("IMPLEMENTATION_MANIFEST_SHA256_INVALID_OR_MISSING")
@@ -82,6 +90,10 @@ def validate_target_capture_open(
         blockers.append("EARLIEST_TARGET_UTC_INVALID")
     if now is not None and earliest is not None and now < earliest:
         blockers.append("TARGET_WINDOW_NOT_STARTED")
+
+    freeze = protocol.get("freeze") or {}
+    if freeze.get("ruleset_sha256") != EXPECTED_RULESET_HASH:
+        blockers.append("PROTOCOL_RULESET_HASH_MISMATCH")
 
     gov = protocol.get("governance") or {}
     if gov.get("h02_authorized") is not True:
