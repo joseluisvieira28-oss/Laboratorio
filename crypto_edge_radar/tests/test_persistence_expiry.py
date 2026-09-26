@@ -16,6 +16,20 @@ class PersistenceExpiryTests(TestCase):
         self.assertEqual(ok["classification"],"OK")
         self.assertFalse(ok["migration_required"])
         self.assertTrue(ok["verified_backup_exists"])
+        self.assertEqual(
+            ok["backup_receipt"],
+            "RADAR_EVIDENCE_BACKUP_CLOSEOUT_2026-09-27.json",
+        )
+        self.assertEqual(ok["backup_event_count"], 1032)
+        self.assertEqual(ok["backup_key_count"], 954)
+        self.assertEqual(
+            ok["backup_canonical_snapshot_sha256"],
+            "6c74bdcf1013b1ab49fdcefd2e046db6471ea2816c6b425f4a6378dda22de9cb",
+        )
+        self.assertEqual(
+            ok["backup_drive_file_id"],
+            "1oam9hmileBQbV80C6o0cQUicXfu-vzvZ",
+        )
 
         warn=persistence_expiry_state(
             expiry, now=datetime(2026,10,5,8,47,15,tzinfo=timezone.utc)
