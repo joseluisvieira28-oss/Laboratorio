@@ -115,7 +115,11 @@ The probe:
 - performs no INSERT/UPDATE/DELETE/DDL;
 - logs host + success/failure classification only;
 - never logs password or full connection URL;
-- accepts a host only if target identity matches the frozen 1032-event backup boundary during this pre-cutover phase.
+- has no mutable target boundary hardcoded in source;
+- requires explicit audited target identity values for event count, key count and chain head;
+- fails closed if any expected identity value is missing or invalid;
+- accepts a host only when the live target exactly matches the explicitly supplied audited identity;
+- host discovery alone does not prove source/target equivalence and cannot authorize cutover.
 
 No final DATABASE_URL switch is authorized by pooler discovery alone.
 
