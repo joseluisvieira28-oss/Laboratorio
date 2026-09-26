@@ -1,0 +1,51 @@
+name: RETH-NAV-DISLOCATION-001 archive redundancy probe V0.1C
+
+on:
+  push:
+    branches:
+      - reth-nav-dislocation-001-source-gate-v01
+    paths:
+      - 'research/reth_nav_dislocation_001/ARCHIVE_SOURCE_REDUNDANCY_PROBE_V0.1C.md'
+      - '.github/workflows/reth-nav-dislocation-001-archive-redundancy-v01c.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { slug: one_rpc, url: https://public.1rpc.io/eth }
+          - { slug: llama, url: https://eth.llamarpc.com }
+          - { slug: builder, url: https://rpc.builder0x69.io }
+          - { slug: flashbots, url: https://rpc.flashbots.net }
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: reth-nav-dislocation-001-source-gate-v01
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-save ethers@6.15.0
+      - name: Run unchanged frozen source probe
+        env:
+          ETH_RPC_URL: ${{ matrix.url }}
+        run: node research/reth_nav_dislocation_001/reth_nav_source_probe_v01.mjs
+      - name: Preserve receipt
+        if: always()
+        run: |
+          if [ -f artifacts/reth_nav_source_gate_v01.json ]; then
+            cp artifacts/reth_nav_source_gate_v01.json "artifacts/reth_nav_source_gate_${{ matrix.slug }}_v01c.json"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: reth-archive-redundancy-${{ matrix.slug }}-v01c
+          path: artifacts/reth_nav_source_gate_${{ matrix.slug }}_v01c.json
+          if-no-files-found: warn
