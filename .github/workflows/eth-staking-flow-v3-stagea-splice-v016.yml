@@ -1,0 +1,47 @@
+name: ETH-STAKING-FLOW-001 Stage-A splice V0.1.6
+
+on:
+  push:
+    branches:
+      - eth-staking-flow-v3-stagea-public-beacon-v016
+    paths:
+      - 'research/eth_staking_flow/ETH_STAKING_FLOW_001_BEACON_ARCHIVE_RECOVERY_V0_1_6.json'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  aggregate:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: eth-staking-flow-v3-stagea-public-beacon-v016
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download immutable original 20 monthly Stage-A artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh run download 35387477455 --repo joseluisvieira28-oss/Laboratorio --pattern 'ETH_V3_REP_SOURCE_*' --dir legacy_artifacts
+      - name: Splice exact seven recovered dates and enforce 608/608
+        run: python research/eth_staking_flow/stagea_splice_v016.py
+      - name: Persist Stage-A SOURCE_REPLICATION_PASS
+        shell: bash
+        run: |
+          cp artifacts/stagea_v016/ETH_STAKING_FLOW_001_V3_REPLICATION_SOURCE_V0_1_6.json research/eth_staking_flow/
+          cp artifacts/stagea_v016/ETH_STAKING_FLOW_001_V3_REPLICATION_SOURCE_LEDGER_V0_1_6.json research/eth_staking_flow/
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/eth_staking_flow/ETH_STAKING_FLOW_001_V3_REPLICATION_SOURCE_V0_1_6.json research/eth_staking_flow/ETH_STAKING_FLOW_001_V3_REPLICATION_SOURCE_LEDGER_V0_1_6.json
+          git commit -m "ETH-STAKING-FLOW-001: persist V0.1.6 Stage-A SOURCE_REPLICATION_PASS [skip ci]"
+          git push origin HEAD:eth-staking-flow-v3-stagea-public-beacon-v016
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ETH_STAKING_FLOW_001_STAGEA_V0_1_6
+          path: artifacts/stagea_v016/*
+          if-no-files-found: error
