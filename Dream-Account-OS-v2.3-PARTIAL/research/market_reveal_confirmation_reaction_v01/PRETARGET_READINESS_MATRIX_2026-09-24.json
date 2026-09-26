@@ -2,7 +2,7 @@
   "document_type": "MRCR_PRETARGET_READINESS_MATRIX_V01",
   "lab_id": "MARKET-REVEAL-CONFIRMATION-REACTION-001",
   "as_of": "2026-09-26",
-  "overall_state": "H02_INTERNAL_PRETARGET_READY__REAL_OFFICIAL_2027_CALENDAR_BLOCKED",
+  "overall_state": "H02_INTERNAL_PRETARGET_READY_V02__BLS_2027_ANNUAL_PLAN_BLOCKED",
   "gates": [
     {
       "gate": "NEW_MECHANISM_DESIGN",
@@ -106,8 +106,8 @@
     },
     {
       "gate": "OFFICIAL_2027_FOMC_CALENDAR",
-      "status": "AVAILABLE_TENTATIVE_NOT_BINDABLE",
-      "meaning": "Federal Reserve publishes eight 2027 scheduled meetings but states each date is tentative until confirmed at the immediately preceding meeting; strict final calendar gate rejects tentative events"
+      "status": "ANNUAL_PLAN_AVAILABLE_OFFICIAL_TENTATIVE",
+      "meaning": "Federal Reserve officially lists eight 2027 meeting dates; V0.2 permits these date rows in the annual plan while requiring exact official confirmed T0 per event before capture"
     },
     {
       "gate": "OFFICIAL_2027_BLS_CPI_NFP_CALENDAR",
@@ -216,13 +216,13 @@
     },
     {
       "gate": "H02_STRICT_OFFICIAL_CALENDAR_BINDING",
-      "status": "PASS_SYNTHETIC_REAL_CALENDAR_BLOCKED",
-      "meaning": "strict 2027 calendar provenance/completeness gate passed CI; real manifest remains blocked until 12 CPI + 12 Employment Situation + 8 FOMC are all officially confirmed"
+      "status": "SUPERSEDED_V01_DEADLOCK_PRESERVED",
+      "meaning": "V0.1 all-events-simultaneously-confirmed rule is preserved as historical governance evidence but superseded because Federal Reserve confirms 2027 meetings sequentially; no frozen H02 science changed"
     },
     {
       "gate": "H02_FINAL_BINDING_PREFLIGHT",
-      "status": "PASS_SYNTHETIC_REAL_INPUT_PENDING",
-      "meaning": "end-to-end synthetic rehearsal successfully built a target-locked protocol and validated exact ruleset/calendar/implementation/H02-authority bindings before a synthetic target-open runtime check"
+      "status": "SUPERSEDED_BY_V02",
+      "meaning": "legacy V0.1 preflight remains historical; canonical pretarget final binding uses final_binding_preflight_v02"
     },
     {
       "gate": "IMPLEMENTATION_MANIFEST_SELF_VALIDATION",
@@ -236,16 +236,32 @@
     },
     {
       "gate": "FINAL_PRETARGET_INTERNAL_READINESS",
-      "status": "PASS_INTERNAL_EXTERNAL_CALENDAR_ONLY",
-      "meaning": "source infrastructure, persistence/recovery, strict calendar validation, implementation fingerprint validation, final protocol assembly rehearsal and target-open guards are internally ready; only the real complete confirmed official 2027 calendar remains external"
+      "status": "PASS_INTERNAL_V02_EXTERNAL_BLS_ANNUAL_PLAN_ONLY",
+      "meaning": "source/recovery/runtime infrastructure and V0.2 calendar/protocol/event-activation binding are internally ready; current Trigger A is blocked only by complete official 2027 BLS CPI and Employment annual schedules"
+    },
+    {
+      "gate": "H02_CALENDAR_BINDING_V02",
+      "status": "PASS_SYNTHETIC_CANONICAL_PRETARGET_PATH",
+      "meaning": "two-stage binding passed CI: complete official annual date plan first, then exact official per-event T0 activation before capture; FOMC OFFICIAL_TENTATIVE is allowed only in annual plan"
+    },
+    {
+      "gate": "H02_EVENT_ACTIVATION_GATE_V02",
+      "status": "PASS_SYNTHETIC_TARGET_LOCKED",
+      "meaning": "event capture requires tamper-evident activation receipt with exact official T0, official authority/domain, confirmation before T0 and annual-plan date match"
+    },
+    {
+      "gate": "H02_FINAL_BINDING_PREFLIGHT_V02",
+      "status": "PASS_SYNTHETIC_REAL_ANNUAL_PLAN_PENDING",
+      "meaning": "end-to-end V0.2 rehearsal bound frozen ruleset + annual plan + implementation + H02 authority and produced target-locked protocol; per-event runtime guard also passed with synthetic official activation"
     }
   ],
   "objective_next_triggers": [
-    "complete confirmed official 2027 calendar becomes available under the strict H02 gate",
-    "construct and fingerprint the real official calendar manifest without inferred/tentative dates",
-    "build the real implementation manifest from the canonical fileset and run final_binding_preflight",
-    "freeze the exact target-locked protocol and stop",
-    "require a separate explicit TARGET_OBSERVATION_OPEN authority bound to the exact protocol/calendar/implementation hashes"
+    "BLS publishes complete official 2027 CPI and Employment Situation annual schedules",
+    "run official_2027_calendar_live_probe.py and construct/fingerprint MRCR_H02_ANNUAL_PLAN_MANIFEST_V02 with 12 CPI + 12 Employment + 8 official FOMC date rows",
+    "build real implementation manifest from canonical V0.2 fileset and run final_binding_preflight_v02",
+    "freeze target-locked protocol V0.2 and stop",
+    "require separate explicit TARGET_OBSERVATION_OPEN authority bound to protocol/annual-plan/implementation hashes",
+    "for each event, require a valid MRCR_H02_EVENT_ACTIVATION_RECEIPT_V02 with exact official T0 before capture"
   ],
   "anti_zombie_rules": [
     "local shadow raw data is infrastructure evidence only and must not be used to select or promote MRCR scientific parameters",
@@ -377,6 +393,18 @@
     "successful_steps": 44,
     "only_remaining_real_blocker": "COMPLETE_CONFIRMED_OFFICIAL_2027_CALENDAR",
     "target_observation_authorized": false,
+    "promotion_credit": "NONE"
+  },
+  "h02_calendar_binding_v02_closeout": {
+    "receipt_path": "H02_CALENDAR_BINDING_V02_CLOSEOUT_2026-09-26.json",
+    "status": "PASS_SYNTHETIC_CANONICAL_PRETARGET_PATH",
+    "validated_head_sha": "1dce5072fbcfad4c6dd3c9a5a27d23599088a3c7",
+    "ci_run_id": 36265362506,
+    "successful_steps": 44,
+    "v01_status": "SUPERSEDED_GOVERNANCE_DEADLOCK_PRESERVED",
+    "current_trigger_a": "BLOCKED_BY_BLS_2027_ANNUAL_PLAN",
+    "target_observation_authorized": false,
+    "outcomes_authorized": false,
     "promotion_credit": "NONE"
   }
 }
