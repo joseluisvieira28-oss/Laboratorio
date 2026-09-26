@@ -5,7 +5,7 @@ import json
 from unittest import TestCase
 
 from radar.evidence import GENESIS_HASH
-from radar.evidence_portability import canonical_snapshot_sha, restore_snapshot, verify_snapshot
+from radar.evidence_portability import (canonical_snapshot_sha, restore_snapshot, verify_preseeded_target_prefix, verify_snapshot)
 
 
 def make_snapshot():
@@ -67,6 +67,56 @@ class EvidencePortabilityTests(TestCase):
         s["key_count"]=3
         with self.assertRaisesRegex(ValueError,"duplicate event key"):
             verify_snapshot(s)
+
+
+    def test_preseeded_target_exact_equal_passes(self):
+        source=make_snapshot()
+        target=json.loads(json.dumps(source))
+        r=verify_preseeded_target_prefix(source,target)
+        self.assertEqual(r["classification"],"PRESEEDED_TARGET_EXACT_EQUAL")
+        self.assertEqual(r["missing_event_suffix_count"],0)
+        self.assertFalse(r["target_mutation"])
+
+    def test_preseeded_target_exact_prefix_passes(self):
+        source=make_snapshot()
+        target=json.loads(json.dumps(source))
+        target["events"]=target["events"][:1]
+        target["event_keys"]=target["event_keys"][:1]
+        target["event_count"]=1
+        target["key_count"]=1
+        target["chain_head_sha256"]=target["events"][0]["chain_sha256"]
+        target["snapshot_sha256"]=canonical_snapshot_sha(target)
+        r=verify_preseeded_target_prefix(source,target)
+        self.assertEqual(r["classification"],"PRESEEDED_TARGET_EXACT_PREFIX")
+        self.assertEqual(r["missing_event_suffix_count"],1)
+        self.assertEqual(r["missing_key_suffix_count"],1)
+
+    def test_preseeded_target_divergence_fails_closed(self):
+        source=make_snapshot()
+        target=json.loads(json.dumps(source))
+        target["events"][1]["event_type"]="EVIL"
+        target["events"][1]["payload_sha256"]=hashlib.sha256(target["events"][1]["payload_json"].encode()).hexdigest()
+        material="|".join((target["events"][1]["prev_chain_sha256"],target["events"][1]["event_ts"],"EVIL",target["events"][1]["payload_sha256"]))
+        target["events"][1]["chain_sha256"]=hashlib.sha256(material.encode()).hexdigest()
+        target["chain_head_sha256"]=target["events"][1]["chain_sha256"]
+        target["snapshot_sha256"]=canonical_snapshot_sha(target)
+        with self.assertRaisesRegex(ValueError,"event divergence"):
+            verify_preseeded_target_prefix(source,target)
+
+    def test_preseeded_target_ahead_fails_closed(self):
+        source=make_snapshot()
+        target=json.loads(json.dumps(source))
+        extra=dict(target["events"][-1])
+        extra["id"]=3
+        extra["event_ts"]="2026-09-22T00:00:03.000000Z"
+        extra["prev_chain_sha256"]=target["events"][-1]["chain_sha256"]
+        extra["chain_sha256"]=hashlib.sha256("|".join((extra["prev_chain_sha256"],extra["event_ts"],extra["event_type"],extra["payload_sha256"])).encode()).hexdigest()
+        target["events"].append(extra)
+        target["event_count"]=3
+        target["chain_head_sha256"]=extra["chain_sha256"]
+        target["snapshot_sha256"]=canonical_snapshot_sha(target)
+        with self.assertRaisesRegex(ValueError,"ahead of source"):
+            verify_preseeded_target_prefix(source,target)
 
 
 if __name__=="__main__":
