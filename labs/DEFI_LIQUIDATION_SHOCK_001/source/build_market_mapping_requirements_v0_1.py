@@ -66,16 +66,23 @@ if cp.exists():
             t0=r.get("t0");split=r.get("split")
             ent=agg.setdefault(target,{"target_identity":target,"contributors":set(),
                                       "first_t0":t0,"last_t0":t0,
-                                      "discovery_cluster_count":0,"oos_cluster_count":0})
+                                      "discovery_cluster_count":0,"oos_cluster_count":0,
+                                      "monthly_probe_dates":{}})
             ent["contributors"].add((protocol,cls))
             if t0 and (ent["first_t0"] is None or t0<ent["first_t0"]):ent["first_t0"]=t0
             if t0 and (ent["last_t0"] is None or t0>ent["last_t0"]):ent["last_t0"]=t0
+            if t0:
+                month=t0[:7]
+                day=t0[:10]
+                prior=ent["monthly_probe_dates"].get(month)
+                if prior is None or day<prior: ent["monthly_probe_dates"][month]=day
             if split=="discovery":ent["discovery_cluster_count"]+=1
             elif split=="oos":ent["oos_cluster_count"]+=1
 
 requirements=[]
 for target,ent in sorted(agg.items()):
     contributors=[{"protocol":p,"instruction_class":c} for p,c in sorted(ent.pop("contributors"))]
+    ent["monthly_probe_dates"]=[ent["monthly_probe_dates"][m] for m in sorted(ent["monthly_probe_dates"])]
     inferential=any(
       (x.get("protocol"),x.get("class")) in {(c["protocol"],c["instruction_class"]) for c in contributors}
       and x.get("status") not in (None,"DESCRIPTIVE_ONLY_INSUFFICIENT_INDEPENDENT_N")
