@@ -12,9 +12,6 @@ PROJECT_REF = "jqzdvgjeuveiktftyrlz"
 PROJECT_REGION = "eu-central-1"
 RUNTIME_ROLE = "radar_runtime"
 SESSION_PORT = 5432
-EXPECTED_EVENTS = 1032
-EXPECTED_KEYS = 954
-EXPECTED_CHAIN_HEAD = "f8b85ba3d45dcb426e37d1a1da543cff61a85d9ea0a01ddc1a07662b9e7c02cd"
 DEFAULT_INDICES = tuple(range(0, 10))
 
 
@@ -48,6 +45,9 @@ def probe_one(
     *,
     host: str,
     password: str,
+    expected_events: int,
+    expected_keys: int,
+    expected_chain_head: str,
     connect_fn: Callable[..., Any] | None = None,
     timeout: int = 4,
 ) -> dict[str, Any]:
@@ -89,11 +89,11 @@ def probe_one(
                 key_count = cur.fetchone()[0]
 
         exact = (
-            int(event_count) == EXPECTED_EVENTS
-            and int(key_count) == EXPECTED_KEYS
+            int(event_count) == int(expected_events)
+            and int(key_count) == int(expected_keys)
             and int(min_id) == 1
-            and int(max_id) == EXPECTED_EVENTS
-            and str(chain_head) == EXPECTED_CHAIN_HEAD
+            and int(max_id) == int(expected_events)
+            and str(chain_head) == str(expected_chain_head)
         )
         result.update(
             {
@@ -102,7 +102,7 @@ def probe_one(
                 "key_count": int(key_count),
                 "min_event_id": int(min_id),
                 "max_event_id": int(max_id),
-                "chain_head_matches": str(chain_head) == EXPECTED_CHAIN_HEAD,
+                "chain_head_matches": str(chain_head) == str(expected_chain_head),
                 "accepted": exact,
             }
         )
@@ -121,6 +121,9 @@ def probe_one(
 def discover_session_pooler(
     *,
     password: str,
+    expected_events: int,
+    expected_keys: int,
+    expected_chain_head: str,
     indices: tuple[int, ...] = DEFAULT_INDICES,
     connect_fn: Callable[..., Any] | None = None,
     timeout: int = 4,
@@ -132,6 +135,9 @@ def discover_session_pooler(
         item = probe_one(
             host=host,
             password=password,
+            expected_events=expected_events,
+            expected_keys=expected_keys,
+            expected_chain_head=expected_chain_head,
             connect_fn=connect_fn,
             timeout=timeout,
         )
@@ -157,6 +163,11 @@ def discover_session_pooler(
         "session_port": SESSION_PORT,
         "selected_host": selected_host,
         "tested_indices": list(indices),
+        "expected_identity": {
+            "event_count": int(expected_events),
+            "key_count": int(expected_keys),
+            "chain_head_sha256": str(expected_chain_head),
+        },
         "results": results,
         "database_mutation": False,
         "secret_value_exposed": False,
@@ -164,14 +175,48 @@ def discover_session_pooler(
     }
 
 
+def _required_int_env(name: str) -> int:
+    raw = os.getenv(name)
+    if raw is None or not raw.strip():
+        raise SupabasePoolerProbeError(f"{name} is required")
+    value = int(raw)
+    if value < 0:
+        raise SupabasePoolerProbeError(f"{name} must be non-negative")
+    return value
+
+
+def _required_chain_head_env() -> str:
+    raw = os.getenv("RADAR_SUPABASE_POOLER_EXPECTED_CHAIN_HEAD")
+    if raw is None or not raw.strip():
+        raise SupabasePoolerProbeError(
+            "RADAR_SUPABASE_POOLER_EXPECTED_CHAIN_HEAD is required"
+        )
+    value = raw.strip().lower()
+    if len(value) != 64 or any(ch not in "0123456789abcdef" for ch in value):
+        raise SupabasePoolerProbeError(
+            "RADAR_SUPABASE_POOLER_EXPECTED_CHAIN_HEAD must be 64 hex chars"
+        )
+    return value
+
+
 def probe_from_env() -> dict[str, Any]:
     password = os.getenv("RADAR_SUPABASE_POOLER_PASSWORD", "")
+    expected_events = _required_int_env(
+        "RADAR_SUPABASE_POOLER_EXPECTED_EVENTS"
+    )
+    expected_keys = _required_int_env(
+        "RADAR_SUPABASE_POOLER_EXPECTED_KEYS"
+    )
+    expected_chain_head = _required_chain_head_env()
     indices = _indices_from_env(os.getenv("RADAR_SUPABASE_POOLER_INDICES"))
     timeout = int(os.getenv("RADAR_SUPABASE_POOLER_TIMEOUT_SECONDS", "4"))
     if timeout < 1 or timeout > 15:
         raise ValueError("RADAR_SUPABASE_POOLER_TIMEOUT_SECONDS must be 1..15")
     return discover_session_pooler(
         password=password,
+        expected_events=expected_events,
+        expected_keys=expected_keys,
+        expected_chain_head=expected_chain_head,
         indices=indices,
         timeout=timeout,
     )
