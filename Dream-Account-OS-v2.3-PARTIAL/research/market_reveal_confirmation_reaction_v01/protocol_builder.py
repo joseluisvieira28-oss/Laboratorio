@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Any, Mapping
 
-from calendar_manifest import validate_calendar_manifest
+from h02_calendar_binding import validate_h02_calendar_manifest
 from pretarget_gate import protocol_fingerprint, validate_for_freeze
 
 
@@ -21,7 +21,10 @@ def build_final_protocol(
     protocol_frozen_at_utc: str,
     authority_receipt_sha256: str,
 ) -> dict[str, Any]:
-    calendar_ready, blockers = validate_calendar_manifest(calendar_manifest)
+    calendar_ready, blockers = validate_h02_calendar_manifest(
+        calendar_manifest,
+        ruleset=ruleset,
+    )
     if not calendar_ready:
         raise ValueError("CALENDAR_NOT_READY:" + ",".join(blockers))
 
