@@ -1,0 +1,40 @@
+name: DLS Drift Historical Market Unit Registry V0.2
+
+on:
+  push:
+    branches:
+      - dls-field-enrichment-v01
+    paths:
+      - .github/workflows/dls-drift-historical-market-unit-registry-v02.yml
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile corrected registry builder
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/build_drift_historical_market_unit_registry_v0_1.py
+      - name: Build corrected historical source registry
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/build_drift_historical_market_unit_registry_v0_1.py
+      - name: Upload corrected registry receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-drift-historical-market-unit-registry-v02
+          path: labs/DEFI_LIQUIDATION_SHOCK_001/DRIFT_HISTORICAL_MARKET_UNIT_REGISTRY_RECEIPT_V0.1.json
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_TRUE
