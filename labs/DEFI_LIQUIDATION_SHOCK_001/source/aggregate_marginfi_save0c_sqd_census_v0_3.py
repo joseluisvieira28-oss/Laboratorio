@@ -76,7 +76,7 @@ for protocol,cfg in CFG.items():
         gaps.append({"expected_start":cursor.isoformat().replace("+00:00","Z"),"observed_end":cfg["upper"]})
 
     success_count=0; failed_count=0; anomalies=[]
-    success_sig_hashes=set()
+    success_signatures=set()
     top_heap=[] # max-heap emulation: (-rank_int, signature)
     top_sigs=set()
     meta_by_sig={}
@@ -173,7 +173,7 @@ for protocol,cfg in CFG.items():
     selected_sigs += [s for s in ordered_top if s not in selected_sigs]
     entries=[meta_by_sig[s] for s in selected_sigs if s in meta_by_sig]
     queues[protocol]={"mandatory_first":first_sig,"mandatory_last":last_sig,
-                      "selected_count":len(entries),"distinct_successful_signatures":len(success_sig_hashes),
+                      "selected_count":len(entries),"distinct_successful_signatures":len(success_signatures),
                       "entries":entries}
 
     summary["protocols"][protocol]={
@@ -190,7 +190,7 @@ for protocol,cfg in CFG.items():
     }
     if (not coverage_ok or anomalies or duplicate_instruction_key_count or first_row is None):
         globally_blocked=True
-    del success_sig_hashes,meta_by_sig,top_heap,top_sigs
+    del success_signatures,meta_by_sig,top_heap,top_sigs
     gc.collect()
 
 if globally_blocked:
