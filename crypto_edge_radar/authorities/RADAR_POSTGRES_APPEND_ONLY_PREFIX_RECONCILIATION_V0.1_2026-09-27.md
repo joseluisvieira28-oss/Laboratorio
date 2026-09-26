@@ -50,6 +50,7 @@ A dedicated regression test is part of this hardening and must prove no scientif
 ## Apply mode
 
 Apply mode may:
+- acquire the same PostgreSQL transaction-scoped advisory chain lock used by the canonical EvidenceStore before re-reading or inserting target evidence;
 - INSERT only the missing source events;
 - preserve the exact source event ids explicitly;
 - INSERT only the missing source event-key bindings;
