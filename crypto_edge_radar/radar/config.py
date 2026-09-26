@@ -18,6 +18,18 @@ def _int_env(name: str, default: int) -> int:
     return value
 
 
+def _bool_env(name: str, default: bool = False) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    value = raw.strip().lower()
+    if value in {"1", "true", "yes", "on"}:
+        return True
+    if value in {"0", "false", "no", "off"}:
+        return False
+    raise ValueError(f"{name} must be a boolean")
+
+
 def _float_env(name: str, default: float) -> float:
     raw = os.getenv(name)
     if raw is None:
@@ -32,6 +44,7 @@ def _float_env(name: str, default: float) -> float:
 class Settings:
     db_path: str = "radar_evidence.sqlite3"
     database_url: str | None = None
+    database_schema_preprovisioned: bool = False
     status_path: str = "radar_status.json"
     notification_path: str = "radar_notifications.jsonl"
     provider: str = "binance_usdm"
@@ -56,6 +69,10 @@ class Settings:
         return cls(
             db_path=os.getenv("RADAR_DB", "radar_evidence.sqlite3"),
             database_url=database_url,
+            database_schema_preprovisioned=_bool_env(
+                "RADAR_POSTGRES_SCHEMA_PREPROVISIONED",
+                False,
+            ),
             status_path=os.getenv("RADAR_STATUS", "radar_status.json"),
             notification_path=os.getenv(
                 "RADAR_NOTIFICATIONS", "radar_notifications.jsonl"
