@@ -185,7 +185,7 @@ def enrich(protocol,start,end):
 ap=argparse.ArgumentParser()
 ap.add_argument("--protocol",choices=sorted(CFG),required=True)
 ap.add_argument("--start",required=True); ap.add_argument("--end",required=True)
-ap.add_argument("--baseline",required=True); ap.add_argument("--out",required=True)
+ap.add_argument("--baseline",required=True); ap.add_argument("--out",required=True); ap.add_argument("--partition-id",required=True)
 args=ap.parse_args()
 
 c=CFG[args.protocol]
@@ -216,7 +216,7 @@ passed=(not baseline_anom and not duplicate_keys and not semantic_conflicts and 
 
 receipt={
   "schema_version":"0.1","lab_id":"DEFI-LIQUIDATION-SHOCK-001",
-  "protocol":args.protocol,"instruction_class":c["instruction_class"],
+  "protocol":args.protocol,"instruction_class":c["instruction_class"],"partition_id":args.partition_id,
   "effective_start":start,"effective_end":end,
   "classification":"FIELD_ENRICHMENT_PARTITION_PASS" if passed else "FIELD_ENRICHMENT_PARTITION_FAIL_CLOSED",
   "baseline_source_files":source_files,
