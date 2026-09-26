@@ -1,0 +1,56 @@
+name: RETH-NAV-DISLOCATION-001 archive transport matrix V0.1A
+
+on:
+  push:
+    branches:
+      - reth-nav-dislocation-001-source-gate-v01
+    paths:
+      - 'research/reth_nav_dislocation_001/SOURCE_TRANSPORT_REMEDIATION_V0.1A.md'
+      - '.github/workflows/reth-nav-dislocation-001-archive-matrix-v01a.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - slug: rpcfree
+            url: https://rpcfree.com/ethereum-rpc
+          - slug: blockreq
+            url: https://ethereum-rpc.blockreq.com/v1/rpc/public
+          - slug: blockmachine
+            url: https://rpc-eth.blockmachine.io
+          - slug: routemesh
+            url: https://lb.routeme.sh/rpc/evm/1
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: reth-nav-dislocation-001-source-gate-v01
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-save ethers@6.15.0
+      - name: Run frozen source probe on ${{ matrix.slug }}
+        env:
+          ETH_RPC_URL: ${{ matrix.url }}
+        run: node research/reth_nav_dislocation_001/reth_nav_source_probe_v01.mjs
+      - name: Preserve endpoint receipt
+        if: always()
+        shell: bash
+        run: |
+          if [ -f artifacts/reth_nav_source_gate_v01.json ]; then
+            cp artifacts/reth_nav_source_gate_v01.json "artifacts/reth_nav_source_gate_${{ matrix.slug }}_v01a.json"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: reth-nav-source-${{ matrix.slug }}-v01a
+          path: artifacts/reth_nav_source_gate_${{ matrix.slug }}_v01a.json
+          if-no-files-found: warn
