@@ -4,11 +4,11 @@ from collections import defaultdict
 from pathlib import Path
 import websockets
 
-SECONDS=300
+SECONDS=600
 SYMBOLS=("BTCUSDT","ETHUSDT","SOLUSDT")
 BINANCE_WS="wss://fstream.binance.com/market/stream"
 BYBIT_WS="wss://stream.bybit.com/v5/public/linear"
-OI_URL="https://fapi.binance.com/fapi/v1/openInterest"
+OI_URL="https://api.hyperliquid.xyz/info"
 PCTS=(.50,.75,.90,.95,.99)
 
 
@@ -90,21 +90,36 @@ async def bybit_collector(stop,events,health):
                     health["malformed"]+=1
 
 
-def fetch_oi(symbol):
-    url=OI_URL+"?"+urllib.parse.urlencode({"symbol":symbol})
-    req=urllib.request.Request(url,headers={"User-Agent":"Crypto-Lab-LICP/0.1"})
+def fetch_all_oi():
+    body=json.dumps({"type":"metaAndAssetCtxs"}).encode("utf-8")
+    req=urllib.request.Request(
+        OI_URL,data=body,
+        headers={"User-Agent":"Crypto-Lab-LICP/0.1","Content-Type":"application/json"},
+        method="POST")
     with urllib.request.urlopen(req,timeout=10) as r:
         j=json.loads(r.read().decode())
-    return {"symbol":symbol,"openInterest":float(j["openInterest"]),
-            "venue_ts":int(j["time"]),"local_ns":time.monotonic_ns()}
-
+    meta,ctxs=j
+    universe=meta["universe"]
+    out={}
+    now=time.monotonic_ns()
+    for i,u in enumerate(universe):
+        name=u.get("name")
+        if name in ("BTC","ETH","SOL") and i<len(ctxs):
+            oi=ctxs[i].get("openInterest")
+            if oi is not None:
+                out[name+"USDT"]={"symbol":name+"USDT","openInterest":float(oi),
+                                  "venue_ts":int(time.time()*1000),"local_ns":now}
+    return out
 
 async def oi_poller(stop,snaps,health):
-    health.update({"poll_rounds":0,"errors":0})
+    health.update({"poll_rounds":0,"errors":0,"source":"hyperliquid_metaAndAssetCtxs"})
     while not stop.is_set():
-        for s in SYMBOLS:
-            try:snaps[s].append(await asyncio.to_thread(fetch_oi,s))
-            except Exception:health["errors"]+=1
+        try:
+            rows=await asyncio.to_thread(fetch_all_oi)
+            for s,x in rows.items():
+                if s in snaps:snaps[s].append(x)
+        except Exception:
+            health["errors"]+=1
         health["poll_rounds"]+=1
         try:await asyncio.wait_for(stop.wait(),timeout=5)
         except asyncio.TimeoutError:pass
