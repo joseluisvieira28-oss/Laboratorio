@@ -1,0 +1,40 @@
+name: DLS Save0c Historical Reserve Registry V0.1
+
+on:
+  push:
+    branches:
+      - dls-field-enrichment-v01
+    paths:
+      - .github/workflows/dls-save0c-historical-reserve-registry-v01.yml
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile registry builder
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/build_save0c_historical_reserve_registry_v0_1.py
+      - name: Build historical reserve registry
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/build_save0c_historical_reserve_registry_v0_1.py
+      - name: Upload registry receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-save0c-historical-reserve-registry-v01
+          path: labs/DEFI_LIQUIDATION_SHOCK_001/SAVE0C_HISTORICAL_RESERVE_REGISTRY_RECEIPT_V0.1.json
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_TRUE
