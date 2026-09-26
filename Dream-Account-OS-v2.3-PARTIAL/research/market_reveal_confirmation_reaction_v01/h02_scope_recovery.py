@@ -100,6 +100,12 @@ def verify_scope_session_chain(
     previous_chain = ZERO_HASH
     expected_ordinal = 1
     previous_monotonic_ns: int | None = None
+    source_time_required_kinds = {
+        "BINANCE_AGGTRADE",
+        "BINANCE_DEPTH_DIFF",
+        "COINBASE_LEVEL2",
+        "COINBASE_MARKET_TRADES",
+    }
     for row in rows:
         ordinal = int(row["ordinal"])
         if ordinal != expected_ordinal:
@@ -115,6 +121,13 @@ def verify_scope_session_chain(
         if row["previous_chain_sha256"] != previous_chain:
             return ScopeChainVerification(
                 False, len(rows), None, "PREVIOUS_CHAIN_MISMATCH"
+            )
+        if (
+            row["message_kind"] in source_time_required_kinds
+            and row["source_time_max_ns"] is None
+        ):
+            return ScopeChainVerification(
+                False, len(rows), None, "SOURCE_TIME_MISSING"
             )
         current_monotonic_ns = int(row["collector_monotonic_ns"])
         if (
