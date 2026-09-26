@@ -1,0 +1,104 @@
+name: RETH-NAV-DISLOCATION-001 predictor census Multicall V0.1B
+
+on:
+  push:
+    branches:
+      - reth-nav-dislocation-001-source-gate-v01
+    paths:
+      - 'research/reth_nav_dislocation_001/RETH_MULTICALL_CENSUS_TRIGGER_V0.1B.md'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: reth-nav-dislocation-001-predictor-census-multicall-v01b
+  cancel-in-progress: false
+
+jobs:
+  shard:
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        include:
+          - { id: 0, start: 0, end: 69 }
+          - { id: 1, start: 70, end: 139 }
+          - { id: 2, start: 140, end: 209 }
+          - { id: 3, start: 210, end: 279 }
+          - { id: 4, start: 280, end: 349 }
+          - { id: 5, start: 350, end: 419 }
+          - { id: 6, start: 420, end: 489 }
+          - { id: 7, start: 490, end: 555 }
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-save ethers@6.15.0
+      - name: Require exact Multicall transport equivalence PASS
+        run: |
+          python - <<'PY'
+          import json
+          p="research/reth_nav_dislocation_001/MULTICALL_TRANSPORT_EQUIVALENCE_RECEIPT_V0.1B.json"
+          x=json.load(open(p))
+          assert x["classification"]=="MULTICALL_TRANSPORT_EQUIVALENCE_PASS", x
+          assert len(x["blocks"])==3, x
+          assert all(b["all_exact"] for b in x["blocks"]), x
+          PY
+      - name: Rebuild exact frozen census shard through equivalent Multicall transport
+        env:
+          ETH_RPC_URL: https://rpc-eth.blockmachine.io
+          START_INDEX: ${{ matrix.start }}
+          END_INDEX: ${{ matrix.end }}
+        run: node research/reth_nav_dislocation_001/reth_predictor_census_multicall_chunk_v01b.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: reth-predictor-census-multicall-shard-${{ matrix.id }}
+          path: artifacts/reth_predictor_census_chunk_*_v01.json
+          if-no-files-found: error
+
+  aggregate:
+    needs: shard
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: reth-predictor-census-multicall-shard-*
+          path: artifacts/chunks
+          merge-multiple: true
+      - name: Enforce unchanged frozen 556-point census gate
+        run: node research/reth_nav_dislocation_001/reth_predictor_census_aggregate_v01.mjs
+      - name: Persist exact passing census
+        shell: bash
+        run: |
+          cp artifacts/out/RETH_PREDICTOR_ONLY_CENSUS_RECEIPT_V0.1.json /tmp/reth_census_receipt.json
+          cp artifacts/out/RETH_PREDICTOR_ONLY_CENSUS_ROWS_V0.1.json /tmp/reth_census_rows.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin reth-nav-dislocation-001-source-gate-v01
+          git checkout -B reth-multicall-census-persist origin/reth-nav-dislocation-001-source-gate-v01
+          cp /tmp/reth_census_receipt.json research/reth_nav_dislocation_001/RETH_PREDICTOR_ONLY_CENSUS_RECEIPT_V0.1.json
+          cp /tmp/reth_census_rows.json research/reth_nav_dislocation_001/RETH_PREDICTOR_ONLY_CENSUS_ROWS_V0.1.json
+          git add research/reth_nav_dislocation_001/RETH_PREDICTOR_ONLY_CENSUS_RECEIPT_V0.1.json research/reth_nav_dislocation_001/RETH_PREDICTOR_ONLY_CENSUS_ROWS_V0.1.json
+          git commit -m "RETH-NAV-DISLOCATION-001: persist Multicall predictor census PASS [skip ci]"
+          git push origin HEAD:reth-nav-dislocation-001-source-gate-v01
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: reth-predictor-only-census-multicall-v01b
+          path: artifacts/out/*
+          if-no-files-found: error
