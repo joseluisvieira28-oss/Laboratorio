@@ -10,6 +10,7 @@ sys.path.insert(0, str(MODULE_DIR))
 
 from h02_calendar_binding_v02 import (
     annual_plan_sha256,
+    event_activation_sha256,
     validate_annual_plan_manifest,
     validate_event_activation_receipt,
 )
@@ -136,7 +137,9 @@ class CalendarBindingV02Tests(unittest.TestCase):
             "official_status": "OFFICIAL_CONFIRMED_FOR_CAPTURE",
             "target_observation_authorized": False,
             "outcomes_authorized": False,
+            "activation_receipt_sha256": None,
         }
+        receipt["activation_receipt_sha256"] = event_activation_sha256(receipt)
         ok, blockers = validate_event_activation_receipt(
             receipt,
             annual_plan=plan,
@@ -159,7 +162,9 @@ class CalendarBindingV02Tests(unittest.TestCase):
             "official_status": "OFFICIAL_CONFIRMED_FOR_CAPTURE",
             "target_observation_authorized": False,
             "outcomes_authorized": False,
+            "activation_receipt_sha256": None,
         }
+        receipt["activation_receipt_sha256"] = event_activation_sha256(receipt)
         ok, blockers = validate_event_activation_receipt(
             receipt,
             annual_plan=plan,
@@ -183,7 +188,9 @@ class CalendarBindingV02Tests(unittest.TestCase):
             "official_status": "OFFICIAL_CONFIRMED_FOR_CAPTURE",
             "target_observation_authorized": False,
             "outcomes_authorized": False,
+            "activation_receipt_sha256": None,
         }
+        receipt["activation_receipt_sha256"] = event_activation_sha256(receipt)
         ok, blockers = validate_event_activation_receipt(
             receipt,
             annual_plan=plan,
