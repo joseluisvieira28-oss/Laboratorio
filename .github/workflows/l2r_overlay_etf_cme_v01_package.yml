@@ -1,0 +1,55 @@
+name: L2R Overlay ETF-CME V0.1 Package
+
+on:
+  push:
+    branches:
+      - l2r-overlay-etf-cme-v0.1
+    paths:
+      - research/l2_resiliency_overlay/PACKAGE_TRIGGER_V0_1.txt
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: l2r-overlay-etf-cme-v0.1
+
+      - name: Download immutable ETF-CME parent artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: etf-cme-instflow-001-oos-2025-34815006815-1
+          run-id: 34815006815
+          github-token: ${{ github.token }}
+          path: parent_artifact
+
+      - name: Build deterministic operator package
+        run: |
+          set -euo pipefail
+          mkdir -p package
+          cp research/l2_resiliency_overlay/RUN_L2R_OVERLAY_ETF_CME_V01.ps1 package/
+          cp research/l2_resiliency_overlay/RUN_L2R_OVERLAY_ETF_CME_V01.cmd package/
+          cp research/l2_resiliency_overlay/L2R_OVERLAY_ETF_CME_V01_README.txt package/
+          cp research/l2_resiliency_overlay/l2r_overlay_etf_cme_2025_development_v01.py package/
+          cp research/l2_resiliency_overlay/L2R_OVERLAY_ETF_CME_001_2025_DEVELOPMENT_PROTOCOL_V0_1.md package/
+          cp research/l2_resiliency_overlay/L2R_OVERLAY_ETF_CME_001_IMPLEMENTATION_LOCK_V0_1.json package/
+          cp research/l2_resiliency_overlay/L2R_OVERLAY_ETF_CME_001_2025_DEVELOPMENT_ONE_SHOT_AUTHORIZATION_V0_1.md package/
+          cp parent_artifact/oos_2025_closeout.json package/
+          cp parent_artifact/oos_2025_observations.csv package/
+          (cd parent_artifact && zip -q ../package/ETF_CME_INSTFLOW_001_OOS_2025.zip oos_2025_closeout.json oos_2025_observations.csv)
+          ACTUAL_PARENT_SHA="$(sha256sum package/ETF_CME_INSTFLOW_001_OOS_2025.zip | awk '{print $1}')"
+          echo "parent_artifact_repacked_sha256=$ACTUAL_PARENT_SHA" > package/PACKAGE_BUILD_INFO.txt
+          sha256sum package/* > package/PACKAGE_MANIFEST_SHA256.txt
+          zip -qr L2R_OVERLAY_ETF_CME_V01_ONE_SHOT.zip package
+
+      - name: Upload operator package
+        uses: actions/upload-artifact@v4
+        with:
+          name: L2R_OVERLAY_ETF_CME_V01_ONE_SHOT
+          path: L2R_OVERLAY_ETF_CME_V01_ONE_SHOT.zip
+          retention-days: 90
+          if-no-files-found: error
