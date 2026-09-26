@@ -1,0 +1,68 @@
+name: RETH-NAV-DISLOCATION-001 continuation V0.1C
+
+on:
+  push:
+    branches:
+      - reth-nav-dislocation-001-source-gate-v01
+    paths:
+      - 'research/reth_nav_dislocation_001/RETH_CONTINUATION_TRIGGER_V0.1C.md'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: reth-nav-dislocation-001-continuation-v01c
+  cancel-in-progress: false
+
+jobs:
+  attack:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-save ethers@6.15.0
+
+      - id: chain
+        name: Execute frozen gate chain
+        continue-on-error: true
+        run: python research/reth_nav_dislocation_001/reth_continue_until_discovery_v01c.py
+
+      - name: Persist every durable gate receipt produced
+        if: always()
+        shell: bash
+        run: |
+          set -e
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/reth_nav_dislocation_001/RETH_*.json || true
+          if git diff --cached --quiet; then
+            echo "No new durable receipts to persist."
+          else
+            git commit -m "RETH-NAV-DISLOCATION-001: persist continuation gate evidence [skip ci]"
+            git push origin HEAD:reth-nav-dislocation-001-source-gate-v01
+          fi
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: reth-continuation-v01c
+          path: |
+            artifacts/continuation/*
+            artifacts/RETH_SPLIT_TRANSPORT_BLOCKHASH_EQUIVALENCE_RECEIPT_V0.1C.json
+            artifacts/out/*
+            artifacts/reth_discovery_predictor/*
+            artifacts/reth_mechanism_discovery/*
+          if-no-files-found: warn
+
+      - name: Preserve fail-closed technical/source blockers
+        if: ${{ steps.chain.outcome == 'failure' }}
+        run: |
+          echo "Frozen continuation chain stopped at a blocking gate."
+          exit 2
