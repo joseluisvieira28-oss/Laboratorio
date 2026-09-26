@@ -1,0 +1,33 @@
+name: LCOD-001 Borrow-event transport fixture V0.2
+on:
+  push:
+    branches: [liquidation-convexity-oracle-distance-001-source-gate-v0.1]
+    paths:
+      - 'research/liquidation_convexity_oracle_distance_001/lcod_borrow_event_transport_fixture_v02.py'
+      - '.github/workflows/lcod-001-borrow-transport-fixture-v02.yml'
+permissions:
+  contents: write
+jobs:
+  fixture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: liquidation-convexity-oracle-distance-001-source-gate-v0.1}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: python research/liquidation_convexity_oracle_distance_001/lcod_borrow_event_transport_fixture_v02.py
+      - name: Persist
+        run: |
+          cp artifacts/lcod_borrow_transport_fixture_v02.json research/liquidation_convexity_oracle_distance_001/LCOD_BORROW_EVENT_TRANSPORT_FIXTURE_RECEIPT.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/liquidation_convexity_oracle_distance_001/LCOD_BORROW_EVENT_TRANSPORT_FIXTURE_RECEIPT.json
+          git commit -m "LCOD-001: record Borrow-event transport fixture [skip ci]" || exit 0
+          git pull --rebase origin liquidation-convexity-oracle-distance-001-source-gate-v0.1
+          git push origin HEAD:liquidation-convexity-oracle-distance-001-source-gate-v0.1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lcod-borrow-transport-fixture-v02
+          path: artifacts/lcod_borrow_transport_fixture_v02.json
+          if-no-files-found: error
