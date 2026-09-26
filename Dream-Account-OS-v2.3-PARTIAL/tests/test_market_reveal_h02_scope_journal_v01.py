@@ -151,5 +151,47 @@ class H02ScopeJournalTests(unittest.TestCase):
             conn.close()
 
 
+    def test_monotonic_reversal_fails_chain(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "scope.sqlite3"
+            conn = self._start(path)
+            ingest_scope_record(
+                conn,
+                session_id="S1",
+                venue="BINANCE_SPOT",
+                native_symbol="BTCUSDT",
+                transport="WEBSOCKET",
+                message_kind="BINANCE_DEPTH_DIFF",
+                channel="btcusdt@depth@100ms",
+                sequence_first=1,
+                sequence_last=1,
+                source_time_min_ns=1,
+                source_time_max_ns=1,
+                collector_wall_ns=100,
+                collector_monotonic_ns=200,
+                raw_payload=b'{"seq":1}',
+            )
+            ingest_scope_record(
+                conn,
+                session_id="S1",
+                venue="BINANCE_SPOT",
+                native_symbol="BTCUSDT",
+                transport="WEBSOCKET",
+                message_kind="BINANCE_DEPTH_DIFF",
+                channel="btcusdt@depth@100ms",
+                sequence_first=2,
+                sequence_last=2,
+                source_time_min_ns=2,
+                source_time_max_ns=2,
+                collector_wall_ns=101,
+                collector_monotonic_ns=199,
+                raw_payload=b'{"seq":2}',
+            )
+            result = verify_scope_session_chain(conn, session_id="S1")
+            self.assertFalse(result.ok)
+            self.assertEqual(result.failure_reason, "COLLECTOR_MONOTONIC_REVERSAL")
+            conn.close()
+
+
 if __name__ == "__main__":
     unittest.main()
