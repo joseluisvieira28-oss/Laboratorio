@@ -30,7 +30,7 @@ def sha256(path):
     return h.hexdigest()
 
 async def bybit(stop,events,health,gaps):
-    backoff=1
+    backoff=1; last_mono=None
     while not stop.is_set():
         connected_at=None
         try:
@@ -44,7 +44,9 @@ async def bybit(stop,events,health,gaps):
                     except asyncio.TimeoutError:
                         health["bybit"]["idle_timeouts"]+=1
                         continue
-                    recv=utc_ms(); mono=time.monotonic_ns(); msg=json.loads(raw)
+                    recv=utc_ms(); mono=time.monotonic_ns()
+                    if last_mono is not None and mono<last_mono: health["bybit"]["clock_regressions"]+=1
+                    last_mono=mono; msg=json.loads(raw)
                     if msg.get("op")=="subscribe":
                         health["bybit"]["acks"]+=int(msg.get("success") is True); continue
                     if not msg.get("topic","").startswith("allLiquidation."): continue
@@ -70,7 +72,7 @@ async def bybit(stop,events,health,gaps):
                 health["bybit"]["connected_seconds"]+=(time.monotonic_ns()-connected_at)/1e9
 
 async def binance(stop,events,health,gaps):
-    backoff=1
+    backoff=1; last_mono=None
     while not stop.is_set():
         connected_at=None
         try:
@@ -84,7 +86,9 @@ async def binance(stop,events,health,gaps):
                     except asyncio.TimeoutError:
                         health["binance"]["idle_timeouts"]+=1
                         continue
-                    recv=utc_ms(); mono=time.monotonic_ns(); msg=json.loads(raw)
+                    recv=utc_ms(); mono=time.monotonic_ns()
+                    if last_mono is not None and mono<last_mono: health["binance"]["clock_regressions"]+=1
+                    last_mono=mono; msg=json.loads(raw)
                     if msg.get("id")==1:
                         health["binance"]["acks"]+=int(msg.get("result") is None); continue
                     d=msg.get("data",msg)
@@ -111,7 +115,7 @@ async def binance(stop,events,health,gaps):
                 health["binance"]["connected_seconds"]+=(time.monotonic_ns()-connected_at)/1e9
 
 async def mexc_health(stop,health,gaps):
-    backoff=1
+    backoff=1; last_mono=None
     while not stop.is_set():
         connected_at=None
         try:
@@ -129,7 +133,9 @@ async def mexc_health(stop,health,gaps):
                         health["mexc"]["heartbeats"]+=1
                         next_ping=time.monotonic()+10
                     if not raw: continue
-                    msg=json.loads(raw)
+                    mono=time.monotonic_ns()
+                    if last_mono is not None and mono<last_mono: health["mexc"]["clock_regressions"]+=1
+                    last_mono=mono; msg=json.loads(raw)
                     if msg.get("channel")=="rs.sub.depth" and msg.get("data")=="success":
                         health["mexc"]["acks"]+=1
                     elif msg.get("channel")=="push.depth":
@@ -148,9 +154,9 @@ async def run(seconds,outdir):
     outdir.mkdir(parents=True,exist_ok=True)
     stop=asyncio.Event()
     health={
-        "bybit":{"connects":0,"acks":0,"events":0,"malformed":0,"disconnects":0,"idle_timeouts":0,"connected_seconds":0.0},
-        "binance":{"connects":0,"acks":0,"events":0,"malformed":0,"disconnects":0,"idle_timeouts":0,"connected_seconds":0.0},
-        "mexc":{"connects":0,"acks":0,"depth_updates":0,"disconnects":0,"heartbeats":0,"connected_seconds":0.0},
+        "bybit":{"connects":0,"acks":0,"events":0,"malformed":0,"disconnects":0,"idle_timeouts":0,"connected_seconds":0.0,"clock_regressions":0},
+        "binance":{"connects":0,"acks":0,"events":0,"malformed":0,"disconnects":0,"idle_timeouts":0,"connected_seconds":0.0,"clock_regressions":0},
+        "mexc":{"connects":0,"acks":0,"depth_updates":0,"disconnects":0,"heartbeats":0,"connected_seconds":0.0,"clock_regressions":0},
     }
     loop=asyncio.get_running_loop()
     for s in (signal.SIGINT,signal.SIGTERM):
