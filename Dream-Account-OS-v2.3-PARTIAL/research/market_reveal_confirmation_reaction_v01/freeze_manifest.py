@@ -98,3 +98,80 @@ def verify_implementation_manifest(*, root: Path, manifest: dict[str, Any]) -> b
         rebuilt_rows == files
         and manifest_sha256(preimage) == claimed
     )
+
+
+def _is_sha256(value: Any) -> bool:
+    return (
+        isinstance(value, str)
+        and len(value) == 64
+        and all(ch in "0123456789abcdef" for ch in value.lower())
+    )
+
+
+def validate_implementation_manifest_structure(
+    manifest: dict[str, Any],
+) -> tuple[bool, tuple[str, ...]]:
+    blockers: list[str] = []
+
+    if manifest.get("document_type") != "MRCR_IMPLEMENTATION_MANIFEST_V01":
+        blockers.append("DOCUMENT_TYPE_MISMATCH")
+
+    head = manifest.get("implementation_head_sha")
+    if (
+        not isinstance(head, str)
+        or len(head) != 40
+        or not all(ch in "0123456789abcdef" for ch in head.lower())
+    ):
+        blockers.append("IMPLEMENTATION_HEAD_SHA_INVALID")
+
+    files = manifest.get("files")
+    if not isinstance(files, list) or not files:
+        blockers.append("FILES_MISSING")
+        files = []
+
+    seen_paths: set[str] = set()
+    normalized_rows = []
+    for index, row in enumerate(files):
+        if not isinstance(row, dict):
+            blockers.append(f"FILE_{index}_INVALID")
+            continue
+        path = row.get("path")
+        size = row.get("bytes")
+        sha = row.get("sha256")
+        if not isinstance(path, str) or not path:
+            blockers.append(f"FILE_{index}_PATH_INVALID")
+        elif path in seen_paths:
+            blockers.append("DUPLICATE_FILE_PATH")
+        else:
+            seen_paths.add(path)
+        if isinstance(size, bool) or not isinstance(size, int) or size < 0:
+            blockers.append(f"FILE_{index}_BYTES_INVALID")
+        if not _is_sha256(sha):
+            blockers.append(f"FILE_{index}_SHA256_INVALID")
+        if (
+            isinstance(path, str)
+            and path
+            and isinstance(size, int)
+            and not isinstance(size, bool)
+            and size >= 0
+            and _is_sha256(sha)
+        ):
+            normalized_rows.append({
+                "path": path,
+                "bytes": size,
+                "sha256": sha,
+            })
+
+    claimed = manifest.get("manifest_sha256")
+    if not _is_sha256(claimed):
+        blockers.append("MANIFEST_SHA256_INVALID_OR_MISSING")
+    elif len(normalized_rows) == len(files):
+        preimage = {
+            "document_type": manifest.get("document_type"),
+            "implementation_head_sha": head,
+            "files": normalized_rows,
+        }
+        if manifest_sha256(preimage) != claimed:
+            blockers.append("MANIFEST_SHA256_MISMATCH")
+
+    return len(blockers) == 0, tuple(sorted(set(blockers)))
