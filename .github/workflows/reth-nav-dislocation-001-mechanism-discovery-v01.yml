@@ -1,0 +1,62 @@
+name: RETH-NAV-DISLOCATION-001 mechanism Discovery V0.1
+
+on:
+  push:
+    branches:
+      - reth-nav-dislocation-001-source-gate-v01
+    paths:
+      - 'research/reth_nav_dislocation_001/RETH_MECHANISM_DISCOVERY_TRIGGER_V0.1.md'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  discovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: reth-nav-dislocation-001-source-gate-v01
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-save ethers@6.15.0
+      - name: Require frozen Discovery predictor sample PASS
+        run: |
+          python - <<'PY'
+          import json
+          p="research/reth_nav_dislocation_001/RETH_DISCOVERY_PREDICTOR_SAMPLE_GATE_RECEIPT_V0.1.json"
+          x=json.load(open(p))
+          assert x["classification"]=="DISCOVERY_PREDICTOR_SAMPLE_PASS", x
+          assert x["transition_event_count"] >= 30, x
+          assert x["discount_extreme_event_count"] >= 10, x
+          assert x["premium_extreme_event_count"] >= 10, x
+          PY
+      - name: Query exact frozen future dislocation states
+        env:
+          ETH_RPC_URL: https://rpc-eth.blockmachine.io
+        run: node research/reth_nav_dislocation_001/reth_mechanism_discovery_source_v01.mjs
+      - name: Apply frozen mechanism statistical gate
+        run: python research/reth_nav_dislocation_001/reth_mechanism_discovery_analyze_v01.py
+      - name: Persist Discovery result
+        shell: bash
+        run: |
+          cp artifacts/reth_mechanism_discovery/RETH_MECHANISM_DISCOVERY_SOURCE_V0.1.json /tmp/reth_mech_source.json
+          cp artifacts/reth_mechanism_discovery/RETH_MECHANISM_DISCOVERY_RESULT_V0.1.json /tmp/reth_mech_result.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin reth-nav-dislocation-001-source-gate-v01
+          git checkout -B reth-mechanism-discovery-persist origin/reth-nav-dislocation-001-source-gate-v01
+          cp /tmp/reth_mech_source.json research/reth_nav_dislocation_001/RETH_MECHANISM_DISCOVERY_SOURCE_V0.1.json
+          cp /tmp/reth_mech_result.json research/reth_nav_dislocation_001/RETH_MECHANISM_DISCOVERY_RESULT_V0.1.json
+          git add research/reth_nav_dislocation_001/RETH_MECHANISM_DISCOVERY_SOURCE_V0.1.json research/reth_nav_dislocation_001/RETH_MECHANISM_DISCOVERY_RESULT_V0.1.json
+          git commit -m "RETH-NAV-DISLOCATION-001: persist mechanism Discovery result [skip ci]"
+          git push origin HEAD:reth-nav-dislocation-001-source-gate-v01
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: reth-mechanism-discovery-v01
+          path: artifacts/reth_mechanism_discovery/*
+          if-no-files-found: error
