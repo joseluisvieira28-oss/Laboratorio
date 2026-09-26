@@ -439,7 +439,7 @@ def verify_scope_batch(
 ) -> BatchRecovery:
     sessions = conn.execute(
         """
-        SELECT session_id, venue, native_symbol, stream_group
+        SELECT session_id, venue, native_symbol, stream_group, status
         FROM scope_sessions
         WHERE batch_id=?
         ORDER BY venue, native_symbol, stream_group
@@ -460,6 +460,11 @@ def verify_scope_batch(
         session_id = str(row["session_id"])
         venue = str(row["venue"])
         group = str(row["stream_group"])
+        if row["status"] != "PASS":
+            blockers.append(
+                f"SESSION_STATUS_NOT_PASS:{venue}:{row['native_symbol']}:{group}:{row['status']}"
+            )
+            continue
         if venue == "BINANCE_SPOT":
             result = replay_binance_scope_session(conn, session_id=session_id)
         elif group == "COINBASE_LEVEL2":
