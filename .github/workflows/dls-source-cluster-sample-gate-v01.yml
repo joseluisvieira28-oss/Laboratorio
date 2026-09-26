@@ -67,7 +67,17 @@ jobs:
           repository: ${{ github.repository }}
           run-id: 36265646820
           pattern: dls-ks-unit-*
-          path: ks_units
+          path: ks_units/original
+          merge-multiple: true
+
+      - name: Download corrected Kamino unit recovery partitions
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36277918751
+          pattern: dls-kamino-v16-unit-*
+          path: ks_units/recovery
           merge-multiple: true
 
       - name: Download Drift field partitions
