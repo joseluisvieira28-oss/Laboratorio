@@ -101,6 +101,10 @@ class FakeCursor:
             self.result = []
             return
 
+        if "PG_ADVISORY_XACT_LOCK" in statement:
+            self.result = [(None,)]
+            return
+
         if statement.startswith(
             "SELECT ID,EVENT_TS,EVENT_TYPE,PAYLOAD_JSON,PAYLOAD_SHA256,"
         ):
