@@ -1,0 +1,546 @@
+name: DLS Drift Field Enrichment Population V0.1
+
+on:
+  push:
+    branches:
+      - dls-field-enrichment-v01
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_DRIFT_FIELD_ENRICHMENT_V01.marker
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  enrich:
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        include:
+          - id: drift-202211
+            start: '2022-11-04T15:17:54Z'
+            end: '2022-12-01T00:00:00Z'
+            baseline_run: '36113874801'
+            baseline_pattern: 'dls-drift-sqd-boundary-drift-202211'
+          - id: drift-202212
+            start: '2022-12-01T00:00:00Z'
+            end: '2023-01-01T00:00:00Z'
+            baseline_run: '36113874801'
+            baseline_pattern: 'dls-drift-sqd-boundary-drift-202212'
+          - id: drift-202301
+            start: '2023-01-01T00:00:00Z'
+            end: '2023-02-01T00:00:00Z'
+            baseline_run: '36113874801'
+            baseline_pattern: 'dls-drift-sqd-boundary-drift-202301'
+          - id: drift-202302
+            start: '2023-02-01T00:00:00Z'
+            end: '2023-03-01T00:00:00Z'
+            baseline_run: '36113874801'
+            baseline_pattern: 'dls-drift-sqd-boundary-drift-202302'
+          - id: drift-202303
+            start: '2023-03-01T00:00:00Z'
+            end: '2023-04-01T00:00:00Z'
+            baseline_run: '36113874801'
+            baseline_pattern: 'dls-drift-sqd-boundary-drift-202303'
+          - id: drift-202304
+            start: '2023-04-01T00:00:00Z'
+            end: '2023-05-01T00:00:00Z'
+            baseline_run: '36113874801'
+            baseline_pattern: 'dls-drift-sqd-boundary-drift-202304'
+          - id: drift-202305a
+            start: '2023-05-01T00:00:00Z'
+            end: '2023-05-08T00:00:00Z'
+            baseline_run: '36149398441'
+            baseline_pattern: 'dls-drift-sqd-recovery-d202305a'
+          - id: drift-202305b
+            start: '2023-05-08T00:00:00Z'
+            end: '2023-05-15T00:00:00Z'
+            baseline_run: '36149398441'
+            baseline_pattern: 'dls-drift-sqd-recovery-d202305b'
+          - id: drift-202305c
+            start: '2023-05-15T00:00:00Z'
+            end: '2023-05-22T00:00:00Z'
+            baseline_run: '36149398441'
+            baseline_pattern: 'dls-drift-sqd-recovery-d202305c'
+          - id: drift-202305d
+            start: '2023-05-22T00:00:00Z'
+            end: '2023-05-29T00:00:00Z'
+            baseline_run: '36149398441'
+            baseline_pattern: 'dls-drift-sqd-recovery-d202305d'
+          - id: drift-202305e
+            start: '2023-05-29T00:00:00Z'
+            end: '2023-06-01T00:00:00Z'
+            baseline_run: '36149398441'
+            baseline_pattern: 'dls-drift-sqd-recovery-d202305e'
+          - id: drift-202306a
+            start: '2023-06-01T00:00:00Z'
+            end: '2023-06-08T00:00:00Z'
+            baseline_run: '36149398441'
+            baseline_pattern: 'dls-drift-sqd-recovery-d202306a'
+          - id: drift-202306b
+            start: '2023-06-08T00:00:00Z'
+            end: '2023-06-15T00:00:00Z'
+            baseline_run: '36149398441'
+            baseline_pattern: 'dls-drift-sqd-recovery-d202306b'
+          - id: drift-202306c
+            start: '2023-06-15T00:00:00Z'
+            end: '2023-06-22T00:00:00Z'
+            baseline_run: '36149398441'
+            baseline_pattern: 'dls-drift-sqd-recovery-d202306c'
+          - id: drift-202306d
+            start: '2023-06-22T00:00:00Z'
+            end: '2023-06-29T00:00:00Z'
+            baseline_run: '36149398441'
+            baseline_pattern: 'dls-drift-sqd-recovery-d202306d'
+          - id: drift-202306e
+            start: '2023-06-29T00:00:00Z'
+            end: '2023-07-01T00:00:00Z'
+            baseline_run: '36149398441'
+            baseline_pattern: 'dls-drift-sqd-recovery-d202306e'
+          - id: drift-202307
+            start: '2023-07-01T00:00:00Z'
+            end: '2023-08-01T00:00:00Z'
+            baseline_run: '36113874801'
+            baseline_pattern: 'dls-drift-sqd-boundary-drift-202307'
+          - id: drift-202308
+            start: '2023-08-01T00:00:00Z'
+            end: '2023-09-01T00:00:00Z'
+            baseline_run: '36113874801'
+            baseline_pattern: 'dls-drift-sqd-boundary-drift-202308'
+          - id: drift-202309a
+            start: '2023-09-01T00:00:00Z'
+            end: '2023-09-08T00:00:00Z'
+            baseline_run: '36186079694'
+            baseline_pattern: 'dls-drift-sqd-recovery-v02-d202309a'
+          - id: drift-202309b
+            start: '2023-09-08T00:00:00Z'
+            end: '2023-09-15T00:00:00Z'
+            baseline_run: '36186079694'
+            baseline_pattern: 'dls-drift-sqd-recovery-v02-d202309b'
+          - id: drift-202309c
+            start: '2023-09-15T00:00:00Z'
+            end: '2023-09-22T00:00:00Z'
+            baseline_run: '36186079694'
+            baseline_pattern: 'dls-drift-sqd-recovery-v02-d202309c'
+          - id: drift-202309d
+            start: '2023-09-22T00:00:00Z'
+            end: '2023-09-29T00:00:00Z'
+            baseline_run: '36186079694'
+            baseline_pattern: 'dls-drift-sqd-recovery-v02-d202309d'
+          - id: drift-202309e
+            start: '2023-09-29T00:00:00Z'
+            end: '2023-10-01T00:00:00Z'
+            baseline_run: '36186079694'
+            baseline_pattern: 'dls-drift-sqd-recovery-v02-d202309e'
+          - id: drift-202310
+            start: '2023-10-01T00:00:00Z'
+            end: '2023-11-01T00:00:00Z'
+            baseline_run: '36113874801'
+            baseline_pattern: 'dls-drift-sqd-boundary-drift-202310'
+          - id: drift-202311
+            start: '2023-11-01T00:00:00Z'
+            end: '2023-12-01T00:00:00Z'
+            baseline_run: '36113874801'
+            baseline_pattern: 'dls-drift-sqd-boundary-drift-202311'
+          - id: drift-202312a
+            start: '2023-12-01T00:00:00Z'
+            end: '2023-12-08T00:00:00Z'
+            baseline_run: '36186079694'
+            baseline_pattern: 'dls-drift-sqd-recovery-v02-d202312a'
+          - id: drift-202312b
+            start: '2023-12-08T00:00:00Z'
+            end: '2023-12-15T00:00:00Z'
+            baseline_run: '36186079694'
+            baseline_pattern: 'dls-drift-sqd-recovery-v02-d202312b'
+          - id: drift-202312c
+            start: '2023-12-15T00:00:00Z'
+            end: '2023-12-22T00:00:00Z'
+            baseline_run: '36186079694'
+            baseline_pattern: 'dls-drift-sqd-recovery-v02-d202312c'
+          - id: drift-202312d
+            start: '2023-12-22T00:00:00Z'
+            end: '2023-12-29T00:00:00Z'
+            baseline_run: '36186079694'
+            baseline_pattern: 'dls-drift-sqd-recovery-v02-d202312d'
+          - id: drift-202312e
+            start: '2023-12-29T00:00:00Z'
+            end: '2024-01-01T00:00:00Z'
+            baseline_run: '36186079694'
+            baseline_pattern: 'dls-drift-sqd-recovery-v02-d202312e'
+          - id: drift-202401
+            start: '2024-01-01T00:00:00Z'
+            end: '2024-02-01T00:00:00Z'
+            baseline_run: '36113874801'
+            baseline_pattern: 'dls-drift-sqd-boundary-drift-202401'
+          - id: drift-202402a
+            start: '2024-02-01T00:00:00Z'
+            end: '2024-02-08T00:00:00Z'
+            baseline_run: '36186050288'
+            baseline_pattern: 'dls-drift-sqd-recovery-v03-d202402a'
+          - id: drift-202402b
+            start: '2024-02-08T00:00:00Z'
+            end: '2024-02-15T00:00:00Z'
+            baseline_run: '36186050288'
+            baseline_pattern: 'dls-drift-sqd-recovery-v03-d202402b'
+          - id: drift-202402c
+            start: '2024-02-15T00:00:00Z'
+            end: '2024-02-22T00:00:00Z'
+            baseline_run: '36186050288'
+            baseline_pattern: 'dls-drift-sqd-recovery-v03-d202402c'
+          - id: drift-202402d
+            start: '2024-02-22T00:00:00Z'
+            end: '2024-02-29T00:00:00Z'
+            baseline_run: '36186050288'
+            baseline_pattern: 'dls-drift-sqd-recovery-v03-d202402d'
+          - id: drift-202402e
+            start: '2024-02-29T00:00:00Z'
+            end: '2024-03-01T00:00:00Z'
+            baseline_run: '36186050288'
+            baseline_pattern: 'dls-drift-sqd-recovery-v03-d202402e'
+          - id: drift-202403a
+            start: '2024-03-01T00:00:00Z'
+            end: '2024-03-08T00:00:00Z'
+            baseline_run: '36186050288'
+            baseline_pattern: 'dls-drift-sqd-recovery-v03-d202403a'
+          - id: drift-202403b
+            start: '2024-03-08T00:00:00Z'
+            end: '2024-03-15T00:00:00Z'
+            baseline_run: '36186050288'
+            baseline_pattern: 'dls-drift-sqd-recovery-v03-d202403b'
+          - id: drift-202403c
+            start: '2024-03-15T00:00:00Z'
+            end: '2024-03-22T00:00:00Z'
+            baseline_run: '36186050288'
+            baseline_pattern: 'dls-drift-sqd-recovery-v03-d202403c'
+          - id: drift-202403d
+            start: '2024-03-22T00:00:00Z'
+            end: '2024-03-29T00:00:00Z'
+            baseline_run: '36186050288'
+            baseline_pattern: 'dls-drift-sqd-recovery-v03-d202403d'
+          - id: drift-202403e
+            start: '2024-03-29T00:00:00Z'
+            end: '2024-04-01T00:00:00Z'
+            baseline_run: '36186050288'
+            baseline_pattern: 'dls-drift-sqd-recovery-v03-d202403e'
+          - id: drift-202404a
+            start: '2024-04-01T00:00:00Z'
+            end: '2024-04-08T00:00:00Z'
+            baseline_run: '36186050288'
+            baseline_pattern: 'dls-drift-sqd-recovery-v03-d202404a'
+          - id: drift-202404b
+            start: '2024-04-08T00:00:00Z'
+            end: '2024-04-15T00:00:00Z'
+            baseline_run: '36186050288'
+            baseline_pattern: 'dls-drift-sqd-recovery-v03-d202404b'
+          - id: drift-202404c
+            start: '2024-04-15T00:00:00Z'
+            end: '2024-04-22T00:00:00Z'
+            baseline_run: '36186050288'
+            baseline_pattern: 'dls-drift-sqd-recovery-v03-d202404c'
+          - id: drift-202404d
+            start: '2024-04-22T00:00:00Z'
+            end: '2024-04-29T00:00:00Z'
+            baseline_run: '36186050288'
+            baseline_pattern: 'dls-drift-sqd-recovery-v03-d202404d'
+          - id: drift-202404e
+            start: '2024-04-29T00:00:00Z'
+            end: '2024-05-01T00:00:00Z'
+            baseline_run: '36186050288'
+            baseline_pattern: 'dls-drift-sqd-recovery-v03-d202404e'
+          - id: drift-202405a
+            start: '2024-05-01T00:00:00Z'
+            end: '2024-05-08T00:00:00Z'
+            baseline_run: '36186050288'
+            baseline_pattern: 'dls-drift-sqd-recovery-v03-d202405a'
+          - id: drift-202405b
+            start: '2024-05-08T00:00:00Z'
+            end: '2024-05-15T00:00:00Z'
+            baseline_run: '36186050288'
+            baseline_pattern: 'dls-drift-sqd-recovery-v03-d202405b'
+          - id: drift-202405c
+            start: '2024-05-15T00:00:00Z'
+            end: '2024-05-22T00:00:00Z'
+            baseline_run: '36186050288'
+            baseline_pattern: 'dls-drift-sqd-recovery-v03-d202405c'
+          - id: drift-202405d
+            start: '2024-05-22T00:00:00Z'
+            end: '2024-05-29T00:00:00Z'
+            baseline_run: '36186050288'
+            baseline_pattern: 'dls-drift-sqd-recovery-v03-d202405d'
+          - id: drift-202405e
+            start: '2024-05-29T00:00:00Z'
+            end: '2024-06-01T00:00:00Z'
+            baseline_run: '36186050288'
+            baseline_pattern: 'dls-drift-sqd-recovery-v03-d202405e'
+          - id: drift-202406a
+            start: '2024-06-01T00:00:00Z'
+            end: '2024-06-08T00:00:00Z'
+            baseline_run: '36230135405'
+            baseline_pattern: 'dls-drift-sqd-recovery-v04-d202406a'
+          - id: drift-202406b
+            start: '2024-06-08T00:00:00Z'
+            end: '2024-06-15T00:00:00Z'
+            baseline_run: '36230135405'
+            baseline_pattern: 'dls-drift-sqd-recovery-v04-d202406b'
+          - id: drift-202406c
+            start: '2024-06-15T00:00:00Z'
+            end: '2024-06-22T00:00:00Z'
+            baseline_run: '36230135405'
+            baseline_pattern: 'dls-drift-sqd-recovery-v04-d202406c'
+          - id: drift-202406d
+            start: '2024-06-22T00:00:00Z'
+            end: '2024-06-29T00:00:00Z'
+            baseline_run: '36230135405'
+            baseline_pattern: 'dls-drift-sqd-recovery-v04-d202406d'
+          - id: drift-202406e
+            start: '2024-06-29T00:00:00Z'
+            end: '2024-07-01T00:00:00Z'
+            baseline_run: '36230135405'
+            baseline_pattern: 'dls-drift-sqd-recovery-v04-d202406e'
+          - id: drift-202407a
+            start: '2024-07-01T00:00:00Z'
+            end: '2024-07-08T00:00:00Z'
+            baseline_run: '36230135405'
+            baseline_pattern: 'dls-drift-sqd-recovery-v04-d202407a'
+          - id: drift-202407b
+            start: '2024-07-08T00:00:00Z'
+            end: '2024-07-15T00:00:00Z'
+            baseline_run: '36230135405'
+            baseline_pattern: 'dls-drift-sqd-recovery-v04-d202407b'
+          - id: drift-202407c
+            start: '2024-07-15T00:00:00Z'
+            end: '2024-07-22T00:00:00Z'
+            baseline_run: '36230135405'
+            baseline_pattern: 'dls-drift-sqd-recovery-v04-d202407c'
+          - id: drift-202407d
+            start: '2024-07-22T00:00:00Z'
+            end: '2024-07-29T00:00:00Z'
+            baseline_run: '36230135405'
+            baseline_pattern: 'dls-drift-sqd-recovery-v04-d202407d'
+          - id: drift-202407e
+            start: '2024-07-29T00:00:00Z'
+            end: '2024-08-01T00:00:00Z'
+            baseline_run: '36230135405'
+            baseline_pattern: 'dls-drift-sqd-recovery-v04-d202407e'
+          - id: drift-202408a
+            start: '2024-08-01T00:00:00Z'
+            end: '2024-08-08T00:00:00Z'
+            baseline_run: '36230135405'
+            baseline_pattern: 'dls-drift-sqd-recovery-v04-d202408a'
+          - id: drift-202408b
+            start: '2024-08-08T00:00:00Z'
+            end: '2024-08-15T00:00:00Z'
+            baseline_run: '36230135405'
+            baseline_pattern: 'dls-drift-sqd-recovery-v04-d202408b'
+          - id: drift-202408c
+            start: '2024-08-15T00:00:00Z'
+            end: '2024-08-22T00:00:00Z'
+            baseline_run: '36230135405'
+            baseline_pattern: 'dls-drift-sqd-recovery-v04-d202408c'
+          - id: drift-202408d
+            start: '2024-08-22T00:00:00Z'
+            end: '2024-08-29T00:00:00Z'
+            baseline_run: '36230135405'
+            baseline_pattern: 'dls-drift-sqd-recovery-v04-d202408d'
+          - id: drift-202408e
+            start: '2024-08-29T00:00:00Z'
+            end: '2024-09-01T00:00:00Z'
+            baseline_run: '36230135405'
+            baseline_pattern: 'dls-drift-sqd-recovery-v04-d202408e'
+          - id: drift-202409a
+            start: '2024-09-01T00:00:00Z'
+            end: '2024-09-08T00:00:00Z'
+            baseline_run: '36230135405'
+            baseline_pattern: 'dls-drift-sqd-recovery-v04-d202409a'
+          - id: drift-202409b
+            start: '2024-09-08T00:00:00Z'
+            end: '2024-09-15T00:00:00Z'
+            baseline_run: '36230135405'
+            baseline_pattern: 'dls-drift-sqd-recovery-v04-d202409b'
+          - id: drift-202409c
+            start: '2024-09-15T00:00:00Z'
+            end: '2024-09-22T00:00:00Z'
+            baseline_run: '36230135405'
+            baseline_pattern: 'dls-drift-sqd-recovery-v04-d202409c'
+          - id: drift-202409d
+            start: '2024-09-22T00:00:00Z'
+            end: '2024-09-29T00:00:00Z'
+            baseline_run: '36230135405'
+            baseline_pattern: 'dls-drift-sqd-recovery-v04-d202409d'
+          - id: drift-202409e
+            start: '2024-09-29T00:00:00Z'
+            end: '2024-10-01T00:00:00Z'
+            baseline_run: '36230135405'
+            baseline_pattern: 'dls-drift-sqd-recovery-v04-d202409e'
+          - id: drift-202410a
+            start: '2024-10-01T00:00:00Z'
+            end: '2024-10-08T00:00:00Z'
+            baseline_run: '36230135405'
+            baseline_pattern: 'dls-drift-sqd-recovery-v04-d202410a'
+          - id: drift-202410b
+            start: '2024-10-08T00:00:00Z'
+            end: '2024-10-15T00:00:00Z'
+            baseline_run: '36230135405'
+            baseline_pattern: 'dls-drift-sqd-recovery-v04-d202410b'
+          - id: drift-202410c
+            start: '2024-10-15T00:00:00Z'
+            end: '2024-10-22T00:00:00Z'
+            baseline_run: '36230135405'
+            baseline_pattern: 'dls-drift-sqd-recovery-v04-d202410c'
+          - id: drift-202410d
+            start: '2024-10-22T00:00:00Z'
+            end: '2024-10-29T00:00:00Z'
+            baseline_run: '36230135405'
+            baseline_pattern: 'dls-drift-sqd-recovery-v04-d202410d'
+          - id: drift-202410e
+            start: '2024-10-29T00:00:00Z'
+            end: '2024-11-01T00:00:00Z'
+            baseline_run: '36230135405'
+            baseline_pattern: 'dls-drift-sqd-recovery-v04-d202410e'
+          - id: drift-202411a
+            start: '2024-11-01T00:00:00Z'
+            end: '2024-11-08T00:00:00Z'
+            baseline_run: '36230135405'
+            baseline_pattern: 'dls-drift-sqd-recovery-v04-d202411a'
+          - id: drift-202411b
+            start: '2024-11-08T00:00:00Z'
+            end: '2024-11-15T00:00:00Z'
+            baseline_run: '36230135405'
+            baseline_pattern: 'dls-drift-sqd-recovery-v04-d202411b'
+          - id: drift-202411c
+            start: '2024-11-15T00:00:00Z'
+            end: '2024-11-22T00:00:00Z'
+            baseline_run: '36230135405'
+            baseline_pattern: 'dls-drift-sqd-recovery-v04-d202411c'
+          - id: drift-202411d
+            start: '2024-11-22T00:00:00Z'
+            end: '2024-11-29T00:00:00Z'
+            baseline_run: '36230135405'
+            baseline_pattern: 'dls-drift-sqd-recovery-v04-d202411d'
+          - id: drift-202411e
+            start: '2024-11-29T00:00:00Z'
+            end: '2024-12-01T00:00:00Z'
+            baseline_run: '36230135405'
+            baseline_pattern: 'dls-drift-sqd-recovery-v04-d202411e'
+          - id: drift-202412a
+            start: '2024-12-01T00:00:00Z'
+            end: '2024-12-08T00:00:00Z'
+            baseline_run: '36230135405'
+            baseline_pattern: 'dls-drift-sqd-recovery-v04-d202412a'
+          - id: drift-202412b
+            start: '2024-12-08T00:00:00Z'
+            end: '2024-12-15T00:00:00Z'
+            baseline_run: '36230135405'
+            baseline_pattern: 'dls-drift-sqd-recovery-v04-d202412b'
+          - id: drift-202412c
+            start: '2024-12-15T00:00:00Z'
+            end: '2024-12-22T00:00:00Z'
+            baseline_run: '36230135405'
+            baseline_pattern: 'dls-drift-sqd-recovery-v04-d202412c'
+          - id: drift-202412d
+            start: '2024-12-22T00:00:00Z'
+            end: '2024-12-29T00:00:00Z'
+            baseline_run: '36230135405'
+            baseline_pattern: 'dls-drift-sqd-recovery-v04-d202412d'
+          - id: drift-202412e
+            start: '2024-12-29T00:00:00Z'
+            end: '2025-01-01T00:00:00Z'
+            baseline_run: '36230135405'
+            baseline_pattern: 'dls-drift-sqd-recovery-v04-d202412e'
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download accepted canonical baseline evidence
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ matrix.baseline_run }}
+          pattern: ${{ matrix.baseline_pattern }}
+          path: baseline
+          merge-multiple: true
+
+      - name: Compile source-only Drift enrichment runner
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/run_drift_field_enrichment_partition_v0_1.py
+
+      - name: Re-query and exact-join canonical Drift population
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/run_drift_field_enrichment_partition_v0_1.py
+          --start "${{ matrix.start }}"
+          --end "${{ matrix.end }}"
+          --baseline baseline
+          --partition-id "${{ matrix.id }}"
+          --out "enrichment/${{ matrix.id }}.json"
+
+      - name: Upload enrichment partition receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-field-enrichment-drift-${{ matrix.id }}
+          path: enrichment/${{ matrix.id }}.json
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_TRUE
+
+  aggregate:
+    needs: enrich
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download all Drift enrichment receipts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: dls-field-enrichment-drift-*
+          path: population_receipts
+          merge-multiple: true
+
+      - name: Download final Drift source authority
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36262823596
+          pattern: dls-drift-sqd-final-authority-v04
+          path: source_authority
+          merge-multiple: true
+
+      - name: Compile aggregate authority
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/aggregate_drift_field_enrichment_v0_1.py
+
+      - name: Aggregate Drift population field coverage
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/aggregate_drift_field_enrichment_v0_1.py
+          --receipts population_receipts
+          --source-authority source_authority
+
+      - name: Upload Drift population field receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-drift-field-enrichment-population-v01
+          path: labs/DEFI_LIQUIDATION_SHOCK_001/DRIFT_FIELD_ENRICHMENT_POPULATION_RECEIPT_V0.1.json
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_TRUE
