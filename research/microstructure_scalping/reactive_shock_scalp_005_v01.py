@@ -9,6 +9,8 @@ from zoneinfo import ZoneInfo
 from bs4 import BeautifulSoup
 
 BLS_URL="https://www.bls.gov/schedule/2023/home.htm"
+MANIFEST_PATH=Path(__file__).with_name("REACTIVE_SHOCK_SCALP_005_BLS_2023_MANIFEST.json")
+ARCHIVE_CUTOFF=date(2023,1,18)
 BYBIT_L2="https://quote-saver.bycsi.com/orderbook/linear/BTCUSDT/{date}_BTCUSDT_ob500.data.zip"
 BYBIT_TRADES="https://public.bybit.com/trading/BTCUSDT/BTCUSDT{date}.csv.gz"
 UA={"User-Agent":"Crypto-Lab-Reactive-Shock-005/0.1 research-only"}
@@ -41,46 +43,45 @@ def fetch(url,path=None):
 
 
 def parse_bls_events():
-    html=fetch(BLS_URL).decode("utf-8","replace")
-    soup=BeautifulSoup(html,"html.parser")
-    rows=[]
-    for tr in soup.find_all("tr"):
-        cells=[re.sub(r"\s+"," ",c.get_text(" ",strip=True)).strip()
-               for c in tr.find_all(["th","td"])]
-        if len(cells)<3:continue
-        ds,ts=cells[0],cells[1]
-        release=" ".join(cells[2:]).strip()
-        if ts!="08:30 AM":continue
-        typ=None
-        if release.startswith("Consumer Price Index"):typ="CPI"
-        elif release.startswith("Employment Situation"):typ="NFP"
-        if typ is None:continue
-        try:d=datetime.strptime(ds,"%A, %B %d, %Y").date()
-        except ValueError:continue
-        if d.year!=2023:continue
+    """Load the persisted official-BLS-derived manifest.
+
+    The CI runner receives HTTP 403 from BLS, so source retrieval is separated
+    from execution. This does not alter event selection or scientific rules.
+    """
+    raw=json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
+    if raw.get("authority")!="U.S. Bureau of Labor Statistics official 2023 release calendar":
+        raise RuntimeError("BLS_MANIFEST_AUTHORITY_MISMATCH")
+    events=[]
+    seen=set()
+    for x in raw.get("events",[]):
+        d=date.fromisoformat(x["date"])
+        if d<ARCHIVE_CUTOFF or d.year!=2023:
+            raise RuntimeError("EVENT_OUTSIDE_BYBIT_ARCHIVE_ELIGIBILITY")
+        if x["type"] not in {"CPI","NFP"}:
+            raise RuntimeError("INVALID_EVENT_TYPE")
+        if x.get("release_time_et")!="08:30 AM":
+            raise RuntimeError("INVALID_RELEASE_TIME")
+        key=(x["type"],x["date"])
+        if key in seen:
+            raise RuntimeError("DUPLICATE_EVENT")
+        seen.add(key)
         local=datetime(d.year,d.month,d.day,8,30,tzinfo=NY)
         utc=local.astimezone(timezone.utc)
-        rows.append({"type":typ,"date":d.isoformat(),
-                     "release_name":release,
-                     "t0_ms":int(utc.timestamp()*1000),
-                     "release_utc":utc.isoformat().replace("+00:00","Z")})
-    rows.sort(key=lambda x:(x["date"],x["type"]))
-    if len([x for x in rows if x["type"]=="CPI"])!=12:
-        raise RuntimeError("BLS_2023_CPI_CARDINALITY")
-    if len([x for x in rows if x["type"]=="NFP"])!=12:
-        raise RuntimeError("BLS_2023_NFP_CARDINALITY")
-
-    selected=[]
-    for q in (1,2,3,4):
-        months=range((q-1)*3+1,q*3+1)
-        for typ in ("CPI","NFP"):
-            cand=[x for x in rows if x["type"]==typ and
-                  date.fromisoformat(x["date"]).month in months]
-            if not cand:raise RuntimeError(f"MISSING_{typ}_Q{q}")
-            selected.append(cand[0])
-    selected.sort(key=lambda x:x["t0_ms"])
-    return selected
-
+        events.append({
+            "type":x["type"],"date":x["date"],
+            "release_name":x["release_name"],
+            "t0_ms":int(utc.timestamp()*1000),
+            "release_utc":utc.isoformat().replace("+00:00","Z")
+        })
+    events.sort(key=lambda x:x["t0_ms"])
+    if len(events)!=8:
+        raise RuntimeError("SELECTED_EVENT_CARDINALITY")
+    if sum(x["type"]=="CPI" for x in events)!=4 or sum(x["type"]=="NFP" for x in events)!=4:
+        raise RuntimeError("TYPE_CARDINALITY")
+    quarters={(x["type"],(date.fromisoformat(x["date"]).month-1)//3+1) for x in events}
+    if len(quarters)!=8:
+        raise RuntimeError("QUARTER_TYPE_COVERAGE")
+    return events
 
 def row_price_qty(row):
     return float(row[0]),float(row[-1])
