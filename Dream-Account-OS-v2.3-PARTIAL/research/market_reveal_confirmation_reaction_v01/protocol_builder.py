@@ -117,6 +117,7 @@ def build_final_protocol(
         },
         "freeze": {
             "protocol_fingerprint_sha256": None,
+            "ruleset_sha256": ruleset["ruleset_sha256"],
             "frozen_at_utc": protocol_frozen_at_utc,
             "operator_authority_receipt": authority_receipt_sha256,
         },
