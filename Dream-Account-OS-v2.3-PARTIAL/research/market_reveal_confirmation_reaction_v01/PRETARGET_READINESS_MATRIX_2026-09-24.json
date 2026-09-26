@@ -106,13 +106,13 @@
     },
     {
       "gate": "OFFICIAL_2027_FOMC_CALENDAR",
-      "status": "AVAILABLE_TENTATIVE",
-      "meaning": "official Federal Reserve 2027 meeting schedule exists but dates remain tentative until confirmed"
+      "status": "AVAILABLE_TENTATIVE_NOT_BINDABLE",
+      "meaning": "Federal Reserve publishes eight 2027 scheduled meetings but states each date is tentative until confirmed at the immediately preceding meeting; strict final calendar gate rejects tentative events"
     },
     {
       "gate": "OFFICIAL_2027_BLS_CPI_NFP_CALENDAR",
-      "status": "BLOCKED_INCOMPLETE",
-      "meaning": "official BLS CPI and Employment Situation schedules still do not provide complete 2027 calendars as of 2026-09-25"
+      "status": "BLOCKED_INCOMPLETE_AS_OF_2026-09-26",
+      "meaning": "official BLS CPI schedule currently ends at 2026-12-10 and Employment Situation at 2026-12-04; no complete official 2027 calendars are available"
     },
     {
       "gate": "PRETARGET_PROTOCOL",
@@ -213,13 +213,29 @@
       "gate": "H02_FROZEN_SCOPE_BINANCE_ARRIVAL_ORDER",
       "status": "PASS_OPERATOR_WINDOWS_HOTFIX_VALIDATED",
       "meaning": "V01_1 chronology hotfix was operator-validated on both BTCUSDT and ETHUSDT; chain integrity and recovery passed without false monotonic reversal"
+    },
+    {
+      "gate": "H02_STRICT_OFFICIAL_CALENDAR_BINDING",
+      "status": "PASS_SYNTHETIC_REAL_CALENDAR_BLOCKED",
+      "meaning": "final H02 calendar requires exact 2027 families, 12 CPI + 12 Employment Situation + 8 FOMC, confirmed events only, exact official domains, full family completeness declarations and no tentative events"
+    },
+    {
+      "gate": "H02_FINAL_BINDING_PREFLIGHT",
+      "status": "PASS_DESIGN_CI_PENDING",
+      "meaning": "offline preflight now binds canonical ruleset hash, strict calendar hash and self-consistent implementation manifest into a target-locked protocol before any target-open authority can be considered"
+    },
+    {
+      "gate": "IMPLEMENTATION_MANIFEST_SELF_VALIDATION",
+      "status": "PASS_DESIGN_CI_PENDING",
+      "meaning": "target-open runtime now rejects malformed/mutated implementation manifests even when a claimed manifest hash string exists"
     }
   ],
   "objective_next_triggers": [
-    "complete official 2027 BLS CPI/Employment Situation calendar becomes available and is fingerprinted",
-    "assemble final pretarget protocol deterministically from H02_SCIENTIFIC_RULESET_V01 plus exact calendar and implementation bindings",
-    "issue separate TARGET_OBSERVATION_OPEN authority bound to exact protocol/calendar/implementation fingerprints",
-    "only then begin prospective target observation and keep outcomes blind until the frozen reveal gate permits the single reveal"
+    "strict calendar/final-binding CI passes on the current head",
+    "official BLS publishes complete 2027 CPI and Employment Situation schedules and the required FOMC dates become confirmed under the strict gate",
+    "construct and fingerprint the real complete official 2027 calendar manifest without inferred dates",
+    "run offline final-binding preflight to produce the exact target-locked protocol candidate bound to canonical ruleset/calendar/implementation hashes",
+    "only after that issue a separate TARGET_OBSERVATION_OPEN authority bound to those exact hashes"
   ],
   "anti_zombie_rules": [
     "local shadow raw data is infrastructure evidence only and must not be used to select or promote MRCR scientific parameters",
