@@ -6,6 +6,7 @@ on:
       - reth-nav-dislocation-001-source-gate-v01
     paths:
       - 'research/reth_nav_dislocation_001/RETH_CONTINUATION_TRIGGER_V0.1C.md'
+      - 'research/reth_nav_dislocation_001/RETH_CONTINUATION_RETRY_TRIGGER_V0.1D.md'
   workflow_dispatch:
 
 permissions:
@@ -13,11 +14,11 @@ permissions:
 
 concurrency:
   group: reth-nav-dislocation-001-continuation-v01c
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   attack:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
@@ -27,6 +28,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
       - run: npm install --no-save ethers@6.15.0
 
       - id: chain
