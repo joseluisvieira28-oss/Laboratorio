@@ -99,6 +99,7 @@ def verify_scope_session_chain(
 
     previous_chain = ZERO_HASH
     expected_ordinal = 1
+    previous_monotonic_ns: int | None = None
     for row in rows:
         ordinal = int(row["ordinal"])
         if ordinal != expected_ordinal:
@@ -114,6 +115,14 @@ def verify_scope_session_chain(
         if row["previous_chain_sha256"] != previous_chain:
             return ScopeChainVerification(
                 False, len(rows), None, "PREVIOUS_CHAIN_MISMATCH"
+            )
+        current_monotonic_ns = int(row["collector_monotonic_ns"])
+        if (
+            previous_monotonic_ns is not None
+            and current_monotonic_ns < previous_monotonic_ns
+        ):
+            return ScopeChainVerification(
+                False, len(rows), None, "COLLECTOR_MONOTONIC_REVERSAL"
             )
         computed_chain = chain_sha256(
             previous_chain_sha256=previous_chain,
@@ -137,6 +146,7 @@ def verify_scope_session_chain(
                 False, len(rows), None, "CHAIN_SHA256_MISMATCH"
             )
         previous_chain = computed_chain
+        previous_monotonic_ns = current_monotonic_ns
         expected_ordinal += 1
 
     return ScopeChainVerification(
