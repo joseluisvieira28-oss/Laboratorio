@@ -197,17 +197,17 @@
     {
       "gate": "H02_FROZEN_SCOPE_SHADOW_RUNTIME",
       "status": "PASS_SYNTHETIC_READY_OPERATOR",
-      "meaning": "exact frozen BTC+ETH x Binance+Coinbase source-only collector implemented with local raw tamper-evident persistence; target schedule/outcomes/auth/accounts/orders absent"
+      "meaning": "exact six-session frozen-scope collector/journal/recovery runtime passed Synthetic Safety CI 36261835589 at head 5c99f17a156ae72426498d9f0ed42e18cf06fb38; operator-host persistence proof remains pending"
     },
     {
       "gate": "H02_FROZEN_SCOPE_SEQUENCE_AND_REPLAY",
-      "status": "PASS_SYNTHETIC_READY_OPERATOR",
-      "meaning": "synthetic recovery validates Binance snapshot bridge/gap fail-closed, isolated Coinbase channel sequences, raw/hash-chain integrity and six-session batch reconstruction"
+      "status": "PASS_SYNTHETIC",
+      "meaning": "CI proves raw/hash-chain tamper detection, required source timestamps, monotonic-clock fail-closed, Binance snapshot bridge/gap handling, isolated Coinbase sequence replay and exact six-session batch recovery"
     },
     {
       "gate": "H02_FROZEN_SCOPE_RESTART_RECOVERY",
       "status": "READY_NOT_EXECUTED_OPERATOR",
-      "meaning": "Windows launcher performs collection then a separate offline process reopens SQLite and must recover all six frozen-scope sessions"
+      "meaning": "operator Windows must run collection then independent verifier process against the reopened local SQLite journal; PASS requires all six sessions"
     }
   ],
   "objective_next_triggers": [
@@ -290,6 +290,15 @@
     "outcomes_computed": false,
     "orders_enabled": false,
     "scientific_use": "SOURCE_COVERAGE_ONLY",
+    "promotion_credit": "NONE"
+  },
+  "h02_frozen_scope_shadow_preop_closeout": {
+    "status": "PASS_SYNTHETIC_READY_OPERATOR",
+    "receipt_path": "H02_FROZEN_SCOPE_SHADOW_PREOP_CLOSEOUT_V01.json",
+    "validated_head_sha": "5c99f17a156ae72426498d9f0ed42e18cf06fb38",
+    "ci_run_id": 36261835589,
+    "ci_conclusion": "SUCCESS",
+    "target_observation_authorized": false,
     "promotion_credit": "NONE"
   }
 }
