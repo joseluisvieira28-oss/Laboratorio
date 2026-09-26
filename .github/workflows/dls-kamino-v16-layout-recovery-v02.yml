@@ -1,0 +1,114 @@
+name: DLS Kamino V1.6 Layout Recovery V0.2
+
+on:
+  push:
+    branches:
+      - dls-field-enrichment-v01
+    paths:
+      - .github/workflows/dls-kamino-v16-layout-recovery-v02.yml
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  recover:
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        include:
+          - id: kamino-202406
+            start: '2024-06-01T00:00:00Z'
+            end: '2024-07-01T00:00:00Z'
+            baseline_pattern: 'dls-census-v043-k202406'
+          - id: kamino-202407
+            start: '2024-07-01T00:00:00Z'
+            end: '2024-08-01T00:00:00Z'
+            baseline_pattern: 'dls-census-v043-k202407'
+          - id: kamino-202408
+            start: '2024-08-01T00:00:00Z'
+            end: '2024-09-01T00:00:00Z'
+            baseline_pattern: 'dls-census-v043-k202408'
+          - id: kamino-202409
+            start: '2024-09-01T00:00:00Z'
+            end: '2024-10-01T00:00:00Z'
+            baseline_pattern: 'dls-census-v043-k202409'
+          - id: kamino-202410
+            start: '2024-10-01T00:00:00Z'
+            end: '2024-11-01T00:00:00Z'
+            baseline_pattern: 'dls-census-v043-k202410'
+          - id: kamino-202411
+            start: '2024-11-01T00:00:00Z'
+            end: '2024-12-01T00:00:00Z'
+            baseline_pattern: 'dls-census-v043-k202411'
+          - id: kamino-202412
+            start: '2024-12-01T00:00:00Z'
+            end: '2025-01-01T00:00:00Z'
+            baseline_pattern: 'dls-census-v043-k202412'
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download canonical Kamino census baseline
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 35958824070
+          pattern: ${{ matrix.baseline_pattern }}
+          path: baseline
+          merge-multiple: true
+
+      - name: Compile historical-layout runners
+        run: |
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/run_kamino_save11_field_enrichment_partition_v0_2.py
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/run_kamino_save11_unit_metadata_partition_v0_2.py
+
+      - name: Rebuild field enrichment with versioned Kamino ABI
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/run_kamino_save11_field_enrichment_partition_v0_2.py
+          --protocol kamino
+          --start "${{ matrix.start }}"
+          --end "${{ matrix.end }}"
+          --baseline baseline
+          --partition-id "${{ matrix.id }}"
+          --out "recovery/field-${{ matrix.id }}.json"
+
+      - name: Rebuild unit metadata with versioned Kamino ABI
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/run_kamino_save11_unit_metadata_partition_v0_2.py
+          --protocol kamino
+          --start "${{ matrix.start }}"
+          --end "${{ matrix.end }}"
+          --baseline baseline
+          --partition-id "${{ matrix.id }}"
+          --out "recovery/unit-${{ matrix.id }}.json"
+
+      - name: Upload corrected field receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-kamino-v16-field-${{ matrix.id }}
+          path: recovery/field-${{ matrix.id }}.json
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Upload corrected unit receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-kamino-v16-unit-${{ matrix.id }}
+          path: recovery/unit-${{ matrix.id }}.json
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_TRUE
