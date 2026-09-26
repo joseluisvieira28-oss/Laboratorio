@@ -111,7 +111,7 @@ for protocol,cfg in CFG.items():
                     if not sig:
                         anomalies.append({"reason":"successful_row_missing_signature"}); continue
                     sh=hashlib.sha256(sig.encode()).digest()
-                    success_sig_hashes.add(sh)
+                    success_signatures.add(sh)
                     if first_row is None or (t,r.get("slot",-1),sig,addr_key(addr)) < (parse(first_row["timestamp"]),first_row.get("slot",-1),first_row.get("signature",""),addr_key(first_row.get("instructionAddress"))):
                         first_row=r; first_sig=sig
                     if last_row is None or (t,r.get("slot",-1),sig,addr_key(addr)) > (parse(last_row["timestamp"]),last_row.get("slot",-1),last_row.get("signature",""),addr_key(last_row.get("instructionAddress"))):
@@ -183,7 +183,7 @@ for protocol,cfg in CFG.items():
       "gap_count":len(gaps),"gaps":gaps,"overlap_count":len(overlaps),"overlaps":overlaps,
       "duplicate_range_count":len(duplicate_ranges),"duplicate_ranges":duplicate_ranges,
       "successful_instruction_count":success_count,
-      "distinct_successful_signatures":len(success_sig_hashes),
+      "distinct_successful_signatures":len(success_signatures),
       "failed_attempt_count":failed_count,"anomaly_count":len(anomalies),
       "duplicate_instruction_key_count":duplicate_instruction_key_count,
       "first_success":first_row,"last_success":last_row
