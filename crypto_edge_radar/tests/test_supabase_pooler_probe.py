@@ -137,6 +137,24 @@ class SupabasePoolerProbeTests(unittest.TestCase):
         self.assertEqual(item["status"], "REACHABLE_NOT_EQUIVALENT")
         self.assertFalse(item["accepted"])
 
+    def test_connection_error_redacts_password(self):
+        secret = "super-secret-value"
+
+        def broken(**_kwargs):
+            raise OSError(f"synthetic failure leaked {secret}")
+
+        item = probe_one(
+            host="aws-0-eu-central-1.pooler.supabase.com",
+            password=secret,
+            expected_events=1032,
+            expected_keys=954,
+            expected_chain_head=EXPECTED_CHAIN_HEAD,
+            connect_fn=broken,
+        )
+        self.assertEqual(item["status"], "CONNECT_FAIL")
+        self.assertNotIn(secret, item["error"])
+        self.assertIn("[REDACTED]", item["error"])
+
     def test_password_is_required(self):
         with self.assertRaisesRegex(SupabasePoolerProbeError, "password is required"):
             probe_one(
