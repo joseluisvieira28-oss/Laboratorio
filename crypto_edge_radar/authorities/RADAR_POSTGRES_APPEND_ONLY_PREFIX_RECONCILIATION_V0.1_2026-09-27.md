@@ -32,6 +32,21 @@ The target is eligible only if all are true before any write:
 
 If any condition fails: **FAIL CLOSED, ZERO TARGET ROW MUTATION**.
 
+## Existing write-quiescence mechanism
+
+The canonical Radar already exposes:
+`RADAR_EVIDENCE_WRITES_QUIESCED=true`.
+
+In this mode `serve_forward_shadow()`:
+- verifies the current evidence chain;
+- sets mode `EVIDENCE_WRITES_QUIESCED`;
+- does not call the normal forward `run_cycle()`;
+- does not start the ETF exact-timing scheduler thread;
+- does not start the forward-shadow watcher thread;
+- can still emit the explicitly enabled private backup snapshot.
+
+A dedicated regression test is part of this hardening and must prove no scientific worker/thread starts while quiesced.
+
 ## Apply mode
 
 Apply mode may:
