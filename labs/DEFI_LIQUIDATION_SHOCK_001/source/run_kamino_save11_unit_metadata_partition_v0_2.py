@@ -89,17 +89,32 @@ def pairs_for(tb):
     if isinstance(tb.get("postMint"),str) and isinstance(tb.get("postDecimals"),int):s.add((tb["postMint"],int(tb["postDecimals"])))
     return s
 
-def role_pair(accounts,tbmap,positions):
+def role_pair(accounts,tbmap,positions,allow_transfer_identity_fallback=False):
     observed=[]
     for pos in positions:
         if pos>=len(accounts):return None,{"reason":"account_position_missing","position":pos}
         a=accounts[pos];pairs=sorted(tbmap.get(a,set()))
         observed.append({"position":pos,"account":a,"pairs":[{"mint":m,"decimals":d} for m,d in pairs]})
-        if len(pairs)!=1:return None,{"reason":"token_metadata_not_exactly_one_pair","observed":observed}
-    if observed[0]["pairs"]!=observed[1]["pairs"]:
-        return None,{"reason":"paired_accounts_unit_mismatch","observed":observed}
-    p=observed[0]["pairs"][0]
-    return {"mint":p["mint"],"decimals":p["decimals"],"source_accounts":[observed[0]["account"],observed[1]["account"]]},None
+        if len(pairs)>1:
+            return None,{"reason":"token_metadata_multiple_pairs","observed":observed}
+    counts=[len(x["pairs"]) for x in observed]
+    if counts==[1,1]:
+        if observed[0]["pairs"]!=observed[1]["pairs"]:
+            return None,{"reason":"paired_accounts_unit_mismatch","observed":observed}
+        p=observed[0]["pairs"][0]
+        return {"mint":p["mint"],"decimals":p["decimals"],
+                "source_accounts":[observed[0]["account"],observed[1]["account"]],
+                "resolution":"TOKEN_BALANCE_PAIR_DIRECT"},None
+    if allow_transfer_identity_fallback and sorted(counts)==[0,1]:
+        src=observed[0] if counts[0]==1 else observed[1]
+        missing=observed[1] if counts[0]==1 else observed[0]
+        p=src["pairs"][0]
+        return {"mint":p["mint"],"decimals":p["decimals"],
+                "source_accounts":[src["account"]],
+                "metadata_missing_account":missing["account"],
+                "resolution":"SINGLE_TOKEN_BALANCE_PLUS_SUCCESSFUL_TRANSFER_IDENTITY"},None
+    return None,{"reason":"token_metadata_pair_incomplete","observed":observed,
+                 "transfer_identity_fallback_allowed":allow_transfer_identity_fallback}
 
 def layout_and_roles(protocol,accounts,data_len):
     if protocol=="save11":
@@ -193,7 +208,7 @@ while current<=to_slot:
             units={};errs=[]
             tbmap=tb_by_tx.get(ti,{})
             for role,positions in roles.items():
-                pair,err=role_pair(accounts,tbmap,positions)
+                pair,err=role_pair(accounts,tbmap,positions,allow_transfer_identity_fallback=(args.protocol=="kamino"))
                 if err:errs.append({"role":role,**err})
                 else:units[role]=pair
             if errs or layout_errs:
@@ -216,6 +231,8 @@ receipt={"schema_version":"0.2","lab_id":"DEFI-LIQUIDATION-SHOCK-001","protocol"
  "missing_count":len(missing),"extra_count":len(extra),"baseline_anomaly_count":len(banom),
  "query_anomaly_count":len(qanom),"unit_conflict_count":len(conflicts),
  "historical_layout_counts":dict(layout_counts),
+ "direct_pair_resolution_role_count":sum(1 for e in event_units for role in ("debt_underlying","collateral_token","collateral_underlying") if (e.get(role) or {}).get("resolution")=="TOKEN_BALANCE_PAIR_DIRECT"),
+ "transfer_identity_fallback_role_count":sum(1 for e in event_units for role in ("debt_underlying","collateral_token","collateral_underlying") if (e.get(role) or {}).get("resolution")=="SINGLE_TOKEN_BALANCE_PLUS_SUCCESSFUL_TRANSFER_IDENTITY"),
  "event_units":event_units,"conflict_examples":conflicts[:100],"query_anomaly_examples":qanom[:100],
  "request_count":reqs,"termination_evidence":terms,"amount_fields_requested":False,
  "firewall":{"prices":False,"usd_notional":False,"returns":False,"pnl":False,"direction":False,
