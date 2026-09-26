@@ -1,0 +1,106 @@
+name: DLS Source Cluster Sample Gate V0.1
+
+on:
+  push:
+    branches:
+      - dls-field-enrichment-v01
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_SOURCE_CLUSTER_SAMPLE_GATE_V01.marker
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  sample-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install pinned streaming parser
+        run: python -m pip install --disable-pip-version-check ijson==3.3.0
+
+      - name: Re-collect terminal global field evidence
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/collect_global_field_gate_artifacts_v0_1.py
+          --repository "${{ github.repository }}"
+          --out global_field_evidence
+
+      - name: Re-adjudicate Global Field Coverage
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/adjudicate_global_field_coverage_final_v0_1.py
+          --root global_field_evidence
+
+      - name: Download Marginfi field partitions
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36263998920
+          pattern: dls-field-enrichment-ms-marginfi-*
+          path: marginfi_field
+          merge-multiple: true
+
+      - name: Download Save0c unit partitions
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36265836324
+          pattern: dls-save0c-unit-save0c-*
+          path: save0c_units
+          merge-multiple: true
+
+      - name: Download Kamino Save11 unit partitions
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36265646820
+          pattern: dls-ks-unit-*
+          path: ks_units
+          merge-multiple: true
+
+      - name: Download Drift field partitions
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36264543005
+          pattern: dls-field-enrichment-drift-*
+          path: drift_field
+          merge-multiple: true
+
+      - name: Compile cluster sample gate
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/build_source_cluster_sample_gate_v0_1.py
+
+      - name: Build source-only cascade census and sample gate
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/build_source_cluster_sample_gate_v0_1.py
+          --global-evidence global_field_evidence
+          --marginfi-field marginfi_field
+          --save0c-units save0c_units
+          --ks-units ks_units
+          --drift-field drift_field
+
+      - name: Upload sample gate receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-source-cluster-sample-gate-v01
+          path: labs/DEFI_LIQUIDATION_SHOCK_001/SOURCE_CLUSTER_SAMPLE_GATE_RECEIPT_V0.1.json
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_TRUE
