@@ -1,0 +1,29 @@
+name: lvac-tf-002-fresh-discovery-ceiling-v01
+
+on:
+  push:
+    branches:
+      - microstructure-scalping-lab-v0.1
+    paths:
+      - 'research/microstructure_scalping/lvac_tf_002_fresh_discovery_ceiling_v01.py'
+      - 'research/microstructure_scalping/LVAC_TF_002_FRESH_DISCOVERY_FREEZE_V0_1.md'
+      - '.github/workflows/lvac-tf-002-fresh-discovery-ceiling-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lvac-tf-002:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run frozen fresh-Discovery LVAC-TF-002 ceiling
+        run: python -m research.microstructure_scalping.lvac_tf_002_fresh_discovery_ceiling_v01
+      - name: Print receipt
+        if: always()
+        run: cat research/microstructure_scalping/receipts/lvac_tf_002_fresh_discovery_ceiling_v01.json || true
