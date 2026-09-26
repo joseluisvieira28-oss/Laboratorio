@@ -23,6 +23,9 @@ PR: #107
 | Numeric trigger config | UNFROZEN |
 | MEXC post-trigger outcomes | NOT OPENED |
 | MEXC 2025 public history | SOURCE_BLOCKED |
+| LICP-HIST-XALT-003 Discovery | SURVIVOR — SOL SHORT / 60m selected |
+| LICP-HIST-XALT-003 Holdout | HOLDOUT_SURVIVES — n=35, mean +25.07 bps gross |
+| LICP-FWD-XALT-004 transfer | LOCKED — waits for frozen numeric trigger config |
 | Live trading | NOT AUTHORIZED |
 
 ## Frozen causal chain
@@ -64,3 +67,32 @@ Forward observer is wired to run only when
 `LICP_001_TRIGGER_CONFIG_V0_1.json` changes to a valid `FROZEN` configuration.
 
 Sparse or missing calibration values do not unlock it.
+
+
+## Historical XALT validation update — 2026-09-26
+
+LICP-HIST-XALT-003 frozen candidate:
+- BTC liquidation ignition
+- SOL short continuation
+- entry proxy t0 + 6m
+- horizon 60m
+
+Single-pass holdout 2025-11..2025-12:
+- n = 35
+- mean gross = +25.0714 bps
+- median gross = +16.8824 bps
+- transfer-ceiling net after 16 bps hurdle = +9.0714 bps
+- decision = HOLDOUT_SURVIVES
+
+This is not MEXC executable validation.
+
+Forward transfer gate LICP-FWD-XALT-004 is pre-frozen to:
+- Bybit BTC ignition + Binance confirmation
+- SELL pressure only
+- 60s post-confirmation entry delay
+- MEXC SOL_USDT taker SHORT
+- 60m exit
+- 16 bps round-trip fee hurdle
+- >=20 independent episodes across >=3 UTC dates before verdict
+
+The forward observer must fail closed while the numeric trigger config remains UNFROZEN.
