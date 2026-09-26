@@ -150,7 +150,7 @@ try{
     denominator:(10n**18n*stSupply).toString()
    };
    row.relative_protocol_nav_wsteth_per_reth_exact={
-    numerator:(rr*10n**18n*stSupply).toString(),
+    numerator:(rr*stSupply).toString(),
     denominator:(wChosen*pooled).toString()
    };
    row.wsteth_methods={
