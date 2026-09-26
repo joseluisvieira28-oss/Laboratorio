@@ -1,0 +1,56 @@
+name: DLS Market Mapping Requirements V0.1
+
+on:
+  push:
+    branches:
+      - dls-field-enrichment-v01
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_MARKET_MAPPING_REQUIREMENTS_V01.marker
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  requirements:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download source sample gate
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: SOURCE_SAMPLE_GATE_RUN_ID_REPLACED_AT_LAUNCH
+          pattern: dls-source-cluster-sample-gate-v01
+          path: sample_gate
+          merge-multiple: true
+
+      - name: Compile requirements builder
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/build_market_mapping_requirements_v0_1.py
+
+      - name: Build exact market target requirements
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/build_market_mapping_requirements_v0_1.py
+          --sample-gate sample_gate
+          --clusters sample_gate
+
+      - name: Upload mapping requirements receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-market-mapping-requirements-v01
+          path: labs/DEFI_LIQUIDATION_SHOCK_001/MARKET_MAPPING_REQUIREMENTS_RECEIPT_V0.1.json
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_TRUE
