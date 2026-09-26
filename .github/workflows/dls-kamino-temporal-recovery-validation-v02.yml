@@ -1,0 +1,95 @@
+name: DLS Kamino Temporal Recovery Validation V0.2
+
+on:
+  push:
+    branches:
+      - dls-field-enrichment-v01
+    paths:
+      - .github/workflows/dls-kamino-temporal-recovery-validation-v02.yml
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  field_june_2024:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download canonical baseline
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 35958824070
+          pattern: dls-census-v043-k202406
+          path: baseline
+          merge-multiple: true
+      - name: Compile temporal field runner
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/run_kamino_field_enrichment_partition_v0_2.py
+      - name: Recover June field semantics
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/run_kamino_field_enrichment_partition_v0_2.py
+          --start "2024-06-01T00:00:00Z"
+          --end "2024-07-01T00:00:00Z"
+          --baseline baseline
+          --partition-id "kamino-202406"
+          --out recovery/kamino-field-202406-v02.json
+      - name: Upload
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-kamino-field-recovery-kamino-202406-v02
+          path: recovery/kamino-field-202406-v02.json
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_TRUE
+
+  unit_march_2024:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download canonical baseline
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 35958824070
+          pattern: dls-census-v043-k202403
+          path: baseline
+          merge-multiple: true
+      - name: Compile temporal unit runner
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/run_kamino_unit_metadata_partition_v0_2.py
+      - name: Recover March unit semantics
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/run_kamino_unit_metadata_partition_v0_2.py
+          --start "2024-03-01T00:00:00Z"
+          --end "2024-04-01T00:00:00Z"
+          --baseline baseline
+          --partition-id "kamino-202403"
+          --out recovery/kamino-unit-202403-v02.json
+      - name: Upload
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-kamino-unit-recovery-kamino-202403-v02
+          path: recovery/kamino-unit-202403-v02.json
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_TRUE
