@@ -1,14 +1,7 @@
 name: licp-hist-xalt-003-holdout-v01
 
 on:
-  push:
-    branches:
-      - liquidation-cascade-propagation-v0.1
-    paths:
-      - 'research/liquidation_cascade/licp_hist_xalt_003_holdout_v01.py'
-      - 'research/liquidation_cascade/LICP_HIST_XALT_003_SELECTED_CANDIDATE_HOLDOUT_FREEZE_V0_1.md'
-      - 'research/liquidation_cascade/LICP_HIST_XALT_003_HOLDOUT_CANDIDATE_FREEZE_V0_1.md'
-      - '.github/workflows/licp-hist-xalt-003-holdout-v01.yml'
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -19,6 +12,12 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+      - name: Fail closed — holdout already opened
+        run: |
+          if test -f research/liquidation_cascade/LICP_HIST_XALT_003_HOLDOUT_OPENED.lock; then
+            echo "LICP-HIST-XALT-003 holdout is permanently closed after canonical run 36234052123."
+            exit 42
+          fi
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
