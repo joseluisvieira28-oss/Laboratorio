@@ -4,6 +4,8 @@ import crypto from "crypto";
 
 const RPC=process.env.ETH_RPC_URL || "https://ethereum-rpc.publicnode.com";
 const provider=new JsonRpcProvider(RPC);
+const ARCHIVE_RPC=process.env.ETH_ARCHIVE_RPC_URL || "https://rpc-eth.blockmachine.io";
+const archiveProvider=new JsonRpcProvider(ARCHIVE_RPC);
 
 const TOKEN=getAddress("0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf");
 const SOURCE="research/cbbtc_eth_mint_burn_flow_001/SOURCE_GATE_RECEIPT_V0.1.json";
@@ -12,6 +14,8 @@ const END_ISO="2026-01-01T00:00:00Z";
 const TRANSFER_TOPIC=id("Transfer(address,address,uint256)").toLowerCase();
 const ZERO_TOPIC="0x"+"0".repeat(64);
 const CHUNK=20_000;
+const TOTAL_SUPPLY_SELECTOR="0x18160ddd";
+const hex=n=>"0x"+BigInt(n).toString(16);
 
 if(!fs.existsSync(SOURCE)) throw new Error("SOURCE_GATE_RECEIPT_MISSING");
 const source=JSON.parse(fs.readFileSync(SOURCE,"utf8"));
@@ -130,6 +134,7 @@ const receipt={
   stage:"OUTCOME_BLIND_FLOW_CENSUS_V0.1",
   captured_at_utc:new Date().toISOString(),
   rpc:RPC,
+  archive_rpc:ARCHIVE_RPC,
   token:TOKEN,
   period:{start_iso:START_ISO,end_iso_exclusive:END_ISO},
   classification:"PREDICTOR_FLOW_CENSUS_BLOCKED",
@@ -151,7 +156,18 @@ try{
   const endBlock=endBoundary.number-1;
   const endMeta=await provider.getBlock(endBlock);
   if(!endMeta) throw new Error("END_META_MISSING");
+  const startAnchorBlock=start.number-1;
+  if(startAnchorBlock<0) throw new Error("BAD_START_ANCHOR_BLOCK");
+  const startSupplyRaw=await archiveProvider.send("eth_call",[{to:TOKEN,data:TOTAL_SUPPLY_SELECTOR},hex(startAnchorBlock)]);
+  const endSupplyRaw=await archiveProvider.send("eth_call",[{to:TOKEN,data:TOTAL_SUPPLY_SELECTOR},hex(endBlock)]);
+  const archiveStartSupply=BigInt(startSupplyRaw);
+  const archiveEndSupply=BigInt(endSupplyRaw);
   receipt.boundaries={start_block:start,end_block:{number:endBlock,hash:endMeta.hash,timestamp:Number(endMeta.timestamp)},end_boundary_block:endBoundary};
+  receipt.supply_anchor={
+    start_anchor_block:startAnchorBlock,
+    archive_start_total_supply_raw:archiveStartSupply.toString(),
+    archive_end_total_supply_raw:archiveEndSupply.toString()
+  };
 
   const mint=await getLogsChunked(start.number,endBlock,[TRANSFER_TOPIC,ZERO_TOPIC],"MINT");
   const burn=await getLogsChunked(start.number,endBlock,[TRANSFER_TOPIC,null,ZERO_TOPIC],"BURN");
@@ -193,13 +209,27 @@ try{
     d.first_event_block=d.first_event_block===null?r.block_number:Math.min(d.first_event_block,r.block_number);
     d.last_event_block=d.last_event_block===null?r.block_number:Math.max(d.last_event_block,r.block_number);
   }
+  let reconstructedSupply=archiveStartSupply;
   const daily=days.map(day=>{
     const d=map.get(day);
     const m=BigInt(d.mint_amount_raw),b=BigInt(d.burn_amount_raw);
-    d.net_mint_minus_burn_raw=(m-b).toString();
+    const net=m-b;
+    const priorSupply=reconstructedSupply;
+    const endSupply=priorSupply+net;
+    if(endSupply<0n) throw new Error("NEGATIVE_RECONSTRUCTED_SUPPLY_"+day);
+    d.net_mint_minus_burn_raw=net.toString();
     d.gross_flow_raw=(m+b).toString();
+    d.prior_supply_raw=priorSupply.toString();
+    d.end_supply_raw=endSupply.toString();
+    d.net_flow_rate_exact=priorSupply>0n?{numerator:net.toString(),denominator:priorSupply.toString()}:null;
+    reconstructedSupply=endSupply;
     return d;
   });
+  receipt.supply_reconciliation={
+    reconstructed_end_total_supply_raw:reconstructedSupply.toString(),
+    archive_end_total_supply_raw:archiveEndSupply.toString(),
+    exact_equal:reconstructedSupply===archiveEndSupply
+  };
 
   const ledgerCanonical=ledger.map(r=>({...r}));
   const dailyCanonical=daily.map(r=>({...r}));
@@ -241,6 +271,7 @@ try{
     ledger.length>0 &&
     receipt.mint_event_count>0 &&
     receipt.burn_event_count>0 &&
+    receipt.supply_reconciliation?.exact_equal===true &&
     daily.length===expectedDays &&
     daily[0].utc_day==="2024-09-12" &&
     daily[daily.length-1].utc_day==="2025-12-31";
