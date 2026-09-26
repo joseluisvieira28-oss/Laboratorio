@@ -132,7 +132,11 @@ class ForwardShadowRuntime:
 
     def __init__(self, *, settings: Settings) -> None:
         self.settings = settings
-        self.store = build_evidence_store(settings.db_path, settings.database_url)
+        self.store = build_evidence_store(
+            settings.db_path,
+            settings.database_url,
+            schema_preprovisioned=settings.database_schema_preprovisioned,
+        )
         self.tfg = TFGForwardShadowWatcher(
             store=self.store,
             feed=MEXCSpotKlineFeed(timeout=settings.http_timeout),
