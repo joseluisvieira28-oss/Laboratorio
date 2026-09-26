@@ -196,30 +196,30 @@
     },
     {
       "gate": "H02_FROZEN_SCOPE_SHADOW_RUNTIME",
-      "status": "PASS_SYNTHETIC_READY_OPERATOR",
-      "meaning": "exact six-session frozen-scope collector/journal/recovery runtime passed Synthetic Safety CI 36261835589 at head 5c99f17a156ae72426498d9f0ed42e18cf06fb38; operator-host persistence proof remains pending"
+      "status": "PASS_OPERATOR_WINDOWS",
+      "meaning": "operator Windows collector V01_1 completed the exact six-session frozen scope with all sessions PASS, local raw tamper-evident persistence, source+collector-arrival provenance and no target/trading capabilities"
     },
     {
       "gate": "H02_FROZEN_SCOPE_SEQUENCE_AND_REPLAY",
-      "status": "PASS_SYNTHETIC",
-      "meaning": "CI proves raw/hash-chain tamper detection, required source timestamps, monotonic-clock fail-closed, Binance snapshot bridge/gap handling, isolated Coinbase sequence replay and exact six-session batch recovery"
+      "status": "PASS_OPERATOR_WINDOWS",
+      "meaning": "all six operator sessions passed chain integrity and recovery/replay; Binance snapshot bridge/replay and isolated Coinbase sequence checks passed on BTC+ETH"
     },
     {
       "gate": "H02_FROZEN_SCOPE_RESTART_RECOVERY",
-      "status": "RETRY_READY_AFTER_HOTFIX",
-      "meaning": "first operator run exposed only an infrastructure append-order defect; hotfix is CI-green and exact six-session Windows rerun is now the active gate"
+      "status": "PASS_OPERATOR_WINDOWS",
+      "meaning": "collector batch a6d984b0-50c0-40fc-aff4-801a7c599eba completed 6/6 PASS and a separate offline process reopened SQLite with integrity PASS and reconstructed 6/6 sessions"
     },
     {
       "gate": "H02_FROZEN_SCOPE_BINANCE_ARRIVAL_ORDER",
-      "status": "PASS_SYNTHETIC_HOTFIX_OPERATOR_RETRY_REQUIRED",
-      "meaning": "async REST snapshot chronology hotfix preserves the monotonic fail-closed guard and passed Synthetic Safety CI 36262730879; operator rerun is required"
+      "status": "PASS_OPERATOR_WINDOWS_HOTFIX_VALIDATED",
+      "meaning": "V01_1 chronology hotfix was operator-validated on both BTCUSDT and ETHUSDT; chain integrity and recovery passed without false monotonic reversal"
     }
   ],
   "objective_next_triggers": [
-    "operator reruns V01_1 frozen-scope shadow collector and independent verifier; all six exact-scope sessions must PASS",
     "complete official 2027 BLS CPI/Employment Situation calendar becomes available and is fingerprinted",
     "assemble final pretarget protocol deterministically from H02_SCIENTIFIC_RULESET_V01 plus exact calendar and implementation bindings",
-    "issue separate TARGET_OBSERVATION_OPEN authority bound to exact protocol/calendar/implementation fingerprints"
+    "issue separate TARGET_OBSERVATION_OPEN authority bound to exact protocol/calendar/implementation fingerprints",
+    "only then begin prospective target observation and keep outcomes blind until the frozen reveal gate permits the single reveal"
   ],
   "anti_zombie_rules": [
     "local shadow raw data is infrastructure evidence only and must not be used to select or promote MRCR scientific parameters",
@@ -324,5 +324,23 @@
     "conclusion": "SUCCESS",
     "monotonic_guard_preserved": true,
     "operator_retry_required": true
+  },
+  "h02_frozen_scope_shadow_operator_pass_2026_09_26": {
+    "receipt_path": "H02_FROZEN_SCOPE_SHADOW_OPERATOR_PASS_2026-09-26_V01.json",
+    "batch_id": "a6d984b0-50c0-40fc-aff4-801a7c599eba",
+    "collector": "MRCR_H02_FROZEN_SCOPE_SHADOW_V01_1",
+    "status": "PASS",
+    "session_count": 6,
+    "passed_session_count": 6,
+    "sqlite_integrity_pass": true,
+    "batch_recovery_pass": true,
+    "chronology_hotfix_operator_validated": true,
+    "authentication_used": false,
+    "account_endpoints_used": false,
+    "signals_computed": false,
+    "outcomes_computed": false,
+    "orders_enabled": false,
+    "target_observation_authorized": false,
+    "promotion_credit": "NONE"
   }
 }
