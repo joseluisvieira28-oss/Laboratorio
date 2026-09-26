@@ -1,0 +1,66 @@
+name: DLS Marginfi Bank Unit Source Completion V0.2
+
+on:
+  push:
+    branches:
+      - dls-field-enrichment-v01
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_MARGINFI_BANK_UNIT_SOURCE_COMPLETION_V02.marker
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  complete:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download V0.1 bank registry aggregate
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36265364184
+          pattern: dls-marginfi-bank-unit-registry-population-v01
+          path: aggregate_v01
+          merge-multiple: true
+
+      - name: Download Bank dataslice calibration
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36267398275
+          pattern: dls-marginfi-bank-metadata-dataslice-calibration-v01
+          path: calibration
+          merge-multiple: true
+
+      - name: Compile conditional resolver
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/resolve_marginfi_bank_unit_partial_v0_2.py
+
+      - name: Resolve exact unmapped asset banks only
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/resolve_marginfi_bank_unit_partial_v0_2.py
+          --aggregate aggregate_v01
+          --calibration calibration
+
+      - name: Upload V0.2 registry receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-marginfi-bank-unit-source-completion-v02
+          path: labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_BANK_UNIT_REGISTRY_RECEIPT_V0.2.json
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_TRUE
