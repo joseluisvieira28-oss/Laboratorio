@@ -137,17 +137,8 @@ jobs:
           path: /tmp/licp001-block/
           retention-days: 30
           if-no-files-found: error
-      - name: Dispatch next block or final aggregation
-        env:
-          REMAINING: ${{ steps.chain.outputs.remaining }}
-          CHAIN_ID: ${{ steps.chain.outputs.chain_id }}
-          CAPTURE_SECONDS: ${{ steps.chain.outputs.seconds }}
+      - name: Record branch-dispatch limitation
         run: |
-          if [ "$REMAINING" -gt 0 ]; then
-            NEXT=$((REMAINING-1))
-            gh workflow run licp001-calibration-chain-v01.yml               --ref liquidation-cascade-propagation-v0.1               -f remaining_after_current="$NEXT"               -f chain_id="$CHAIN_ID"               -f capture_seconds="$CAPTURE_SECONDS"
-            echo "DISPATCHED_NEXT_BLOCK remaining_after_current=$NEXT"
-          else
-            gh workflow run licp001-aggregate-calibration-blocks-v01.yml               --ref liquidation-cascade-propagation-v0.1
-            echo "CHAIN_COMPLETE_AGGREGATION_DISPATCHED"
-          fi
+          echo "BLOCK_COMPLETE"
+          echo "Feature-branch workflows cannot self-dispatch because the workflow is absent from main."
+          echo "Artifact is valid; no automatic follow-on dispatch attempted."
