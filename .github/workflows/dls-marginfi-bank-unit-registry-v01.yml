@@ -1,0 +1,184 @@
+name: DLS Marginfi Bank Unit Registry V0.1
+
+on:
+  push:
+    branches:
+      - dls-field-enrichment-v01
+    paths:
+      - .github/workflows/dls-marginfi-bank-unit-registry-v01.yml
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  registry:
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        include:
+          - id: marginfi-202302
+            start: '2023-02-07T15:47:04Z'
+            end: '2023-03-01T00:00:00Z'
+            baseline_pattern: 'dls-sqd-first-boundary-marginfi-202302'
+          - id: marginfi-202303
+            start: '2023-03-01T00:00:00Z'
+            end: '2023-04-01T00:00:00Z'
+            baseline_pattern: 'dls-sqd-first-boundary-marginfi-202303'
+          - id: marginfi-202304
+            start: '2023-04-01T00:00:00Z'
+            end: '2023-05-01T00:00:00Z'
+            baseline_pattern: 'dls-sqd-first-boundary-marginfi-202304'
+          - id: marginfi-202305
+            start: '2023-05-01T00:00:00Z'
+            end: '2023-06-01T00:00:00Z'
+            baseline_pattern: 'dls-sqd-first-boundary-marginfi-202305'
+          - id: marginfi-202306
+            start: '2023-06-01T00:00:00Z'
+            end: '2023-07-01T00:00:00Z'
+            baseline_pattern: 'dls-sqd-first-boundary-marginfi-202306'
+          - id: marginfi-202307
+            start: '2023-07-01T00:00:00Z'
+            end: '2023-08-01T00:00:00Z'
+            baseline_pattern: 'dls-sqd-first-boundary-marginfi-202307'
+          - id: marginfi-202308
+            start: '2023-08-01T00:00:00Z'
+            end: '2023-09-01T00:00:00Z'
+            baseline_pattern: 'dls-sqd-first-boundary-marginfi-202308'
+          - id: marginfi-202309
+            start: '2023-09-01T00:00:00Z'
+            end: '2023-10-01T00:00:00Z'
+            baseline_pattern: 'dls-sqd-first-boundary-marginfi-202309'
+          - id: marginfi-202310
+            start: '2023-10-01T00:00:00Z'
+            end: '2023-11-01T00:00:00Z'
+            baseline_pattern: 'dls-sqd-first-boundary-marginfi-202310'
+          - id: marginfi-202311
+            start: '2023-11-01T00:00:00Z'
+            end: '2023-12-01T00:00:00Z'
+            baseline_pattern: 'dls-sqd-first-boundary-marginfi-202311'
+          - id: marginfi-202312
+            start: '2023-12-01T00:00:00Z'
+            end: '2024-01-01T00:00:00Z'
+            baseline_pattern: 'dls-sqd-first-boundary-marginfi-202312'
+          - id: marginfi-202401
+            start: '2024-01-01T00:00:00Z'
+            end: '2024-02-01T00:00:00Z'
+            baseline_pattern: 'dls-sqd-first-boundary-marginfi-202401'
+          - id: marginfi-202402
+            start: '2024-02-01T00:00:00Z'
+            end: '2024-03-01T00:00:00Z'
+            baseline_pattern: 'dls-sqd-first-boundary-marginfi-202402'
+          - id: marginfi-202403
+            start: '2024-03-01T00:00:00Z'
+            end: '2024-04-01T00:00:00Z'
+            baseline_pattern: 'dls-sqd-first-boundary-marginfi-202403'
+          - id: marginfi-202404
+            start: '2024-04-01T00:00:00Z'
+            end: '2024-05-01T00:00:00Z'
+            baseline_pattern: 'dls-sqd-first-boundary-marginfi-202404'
+          - id: marginfi-202405
+            start: '2024-05-01T00:00:00Z'
+            end: '2024-06-01T00:00:00Z'
+            baseline_pattern: 'dls-sqd-first-boundary-marginfi-202405'
+          - id: marginfi-202406
+            start: '2024-06-01T00:00:00Z'
+            end: '2024-07-01T00:00:00Z'
+            baseline_pattern: 'dls-sqd-first-boundary-marginfi-202406'
+          - id: marginfi-202407
+            start: '2024-07-01T00:00:00Z'
+            end: '2024-08-01T00:00:00Z'
+            baseline_pattern: 'dls-sqd-first-boundary-marginfi-202407'
+          - id: marginfi-202408
+            start: '2024-08-01T00:00:00Z'
+            end: '2024-09-01T00:00:00Z'
+            baseline_pattern: 'dls-sqd-first-boundary-marginfi-202408'
+          - id: marginfi-202409
+            start: '2024-09-01T00:00:00Z'
+            end: '2024-10-01T00:00:00Z'
+            baseline_pattern: 'dls-sqd-first-boundary-marginfi-202409'
+          - id: marginfi-202410
+            start: '2024-10-01T00:00:00Z'
+            end: '2024-11-01T00:00:00Z'
+            baseline_pattern: 'dls-sqd-first-boundary-marginfi-202410'
+          - id: marginfi-202411
+            start: '2024-11-01T00:00:00Z'
+            end: '2024-12-01T00:00:00Z'
+            baseline_pattern: 'dls-sqd-first-boundary-marginfi-202411'
+          - id: marginfi-202412
+            start: '2024-12-01T00:00:00Z'
+            end: '2025-01-01T00:00:00Z'
+            baseline_pattern: 'dls-sqd-first-boundary-marginfi-202412'
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download canonical Marginfi baseline
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36114038836
+          pattern: ${{ matrix.baseline_pattern }}
+          path: baseline
+          merge-multiple: true
+      - name: Compile registry runner
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/run_marginfi_bank_unit_registry_partition_v0_1.py
+      - name: Build liability-bank unit observations
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/run_marginfi_bank_unit_registry_partition_v0_1.py
+          --start "${{ matrix.start }}"
+          --end "${{ matrix.end }}"
+          --baseline baseline
+          --partition-id "${{ matrix.id }}"
+          --out "registry/${{ matrix.id }}.json"
+      - name: Upload partition registry
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-marginfi-bank-unit-${{ matrix.id }}
+          path: registry/${{ matrix.id }}.json
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_TRUE
+
+  aggregate:
+    needs: registry
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: dls-marginfi-bank-unit-*
+          path: registry_receipts
+          merge-multiple: true
+      - name: Compile aggregator
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/aggregate_marginfi_bank_unit_registry_v0_1.py
+      - name: Aggregate bank unit registry
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/aggregate_marginfi_bank_unit_registry_v0_1.py registry_receipts
+      - name: Upload registry receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-marginfi-bank-unit-registry-v01
+          path: labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_BANK_UNIT_REGISTRY_RECEIPT_V0.1.json
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_TRUE
