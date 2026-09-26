@@ -3,9 +3,9 @@ name: ETH-STAKING-FLOW-001 V3 independent replication Stage B
 on:
   push:
     branches:
-      - eth-staking-flow-v3-stagea-public-beacon-v016
+      - eth-staking-flow-v3-stagea-parquet-duckdb-v017
     paths:
-      - 'research/eth_staking_flow/ETH_STAKING_FLOW_001_V3_REPLICATION_SOURCE_V0_1_6.json'
+      - 'research/eth_staking_flow/ETH_STAKING_FLOW_001_V3_REPLICATION_SOURCE_V0_1_7.json'
   workflow_dispatch:
 
 permissions:
@@ -46,7 +46,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add research/eth_staking_flow/ETH_STAKING_FLOW_001_V3_REPLICATION_RESULT_V0_1.json
           git commit -m "ETH-STAKING-FLOW-001: persist frozen V3 independent replication result [skip ci]"
-          git push origin HEAD:eth-staking-flow-v3-stagea-public-beacon-v016
+          git push origin HEAD:eth-staking-flow-v3-stagea-parquet-duckdb-v017
       - uses: actions/upload-artifact@v4
         if: always()
         with:
