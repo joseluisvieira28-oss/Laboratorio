@@ -67,7 +67,7 @@ async function dAt(block){
    };
   }catch(e){
    last=String(e?.shortMessage||e?.message||e);
-   if(attempt<10) await sleep(1500*attempt);
+   if(attempt<10) await sleep(2000*attempt);
   }
  }
  return {block_number:block,valid:false,block_pinned_by_hash:true,error:last};
@@ -77,7 +77,7 @@ const rows=[];
 for(let i=0;i<events.length;i++){
  const e=events[i];
  const primary=await dAt(Number(e.block_number)+7200);
- await sleep(250);
+ await sleep(1500);
  const secondary=await dAt(Number(e.block_number)+21600);
  rows.push({
   event_index:i,entry_block_number:e.block_number,entry_block_hash:e.block_hash,entry_block_timestamp:e.block_timestamp,
@@ -86,7 +86,7 @@ for(let i=0;i<events.length;i++){
   market_returns_opened:false,pnl_opened:false
  });
  console.log("progress",i+1,events.length);
- await sleep(250);
+ await sleep(1500);
 }
 
 const invalidPrimary=rows.filter(x=>!x.primary.valid).length;
