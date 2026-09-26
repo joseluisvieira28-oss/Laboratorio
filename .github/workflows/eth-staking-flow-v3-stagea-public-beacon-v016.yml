@@ -1,0 +1,44 @@
+name: ETH-STAKING-FLOW-001 public Beacon archive matrix V0.1.6
+
+on:
+  push:
+    branches:
+      - eth-staking-flow-v3-stagea-public-beacon-v016
+    paths:
+      - 'research/eth_staking_flow/ETH_STAKING_FLOW_001_V3_STAGEA_PUBLIC_BEACON_ARCHIVE_MATRIX_V0_1_6.md'
+      - 'research/eth_staking_flow/public_beacon_archive_matrix_v016.py'
+      - '.github/workflows/eth-staking-flow-v3-stagea-public-beacon-v016.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: eth-staking-flow-v3-stagea-public-beacon-v016
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Execute frozen public Beacon archive matrix
+        run: python research/eth_staking_flow/public_beacon_archive_matrix_v016.py
+      - name: Persist recovery receipt only on quorum PASS
+        if: success()
+        shell: bash
+        run: |
+          cp artifacts/ETH_STAKING_FLOW_001_BEACON_ARCHIVE_RECOVERY_V0_1_6.json research/eth_staking_flow/
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/eth_staking_flow/ETH_STAKING_FLOW_001_BEACON_ARCHIVE_RECOVERY_V0_1_6.json
+          git commit -m "ETH-STAKING-FLOW-001: persist V0.1.6 Beacon recovery PASS [skip ci]"
+          git push origin HEAD:eth-staking-flow-v3-stagea-public-beacon-v016
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ETH_STAKING_FLOW_001_PUBLIC_BEACON_ARCHIVE_V0_1_6
+          path: artifacts/ETH_STAKING_FLOW_001_BEACON_ARCHIVE_RECOVERY_V0_1_6.json
+          if-no-files-found: error
