@@ -5,11 +5,11 @@ on:
     branches:
       - dls-drift-sqd-boundary-v01
     paths:
-      - .github/workflows/dls-drift-sqd-final-reassembly-v02.yml
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_DRIFT_FINAL_REASSEMBLY_V02.marker
 
 permissions:
   actions: read
-  contents: read
+  contents: write
 
 jobs:
   reassemble:
@@ -68,14 +68,14 @@ jobs:
           pattern: dls-drift-sqd-recovery-v04-*
           path: evidence/recovery_v04
 
-      - name: Compile disk-backed authority tooling
+      - name: Compile frozen authority tooling
         run: |
-          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/aggregate_drift_sqd_census_v0_3.py
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/aggregate_drift_sqd_census_v0_2.py
           python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/reconcile_drift_sqd_raw_sample_v0_1.py
           python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/finalize_drift_sqd_census_v0_1.py
 
-      - name: Reconstruct complete Drift census disk-backed
-        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/aggregate_drift_sqd_census_v0_3.py evidence
+      - name: Reconstruct complete Drift census
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/aggregate_drift_sqd_census_v0_2.py evidence
 
       - name: RAW reconcile deterministic sample
         run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/reconcile_drift_sqd_raw_sample_v0_1.py
@@ -87,7 +87,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: dls-drift-sqd-final-authority-v02
+          name: dls-drift-sqd-final-authority-v01
           path: |
             labs/DEFI_LIQUIDATION_SHOCK_001/DRIFT_SQD_EVENT_CENSUS_RECEIPT_V0.1.json
             labs/DEFI_LIQUIDATION_SHOCK_001/DRIFT_RAW_SAMPLE_QUEUE_V0.1.json
@@ -95,6 +95,18 @@ jobs:
             labs/DEFI_LIQUIDATION_SHOCK_001/DRIFT_EVENT_CENSUS_FINAL_AUTHORITY_RECEIPT_V0.1.json
           if-no-files-found: warn
           retention-days: 30
+
+      - name: Persist final authority receipts
+        if: success()
+        run: |
+          git config user.name "crypto-lab-source-audit"
+          git config user.email "actions@users.noreply.github.com"
+          git fetch origin dls-drift-sqd-boundary-v01
+          git checkout -B dls-drift-sqd-boundary-v01 origin/dls-drift-sqd-boundary-v01
+          git add labs/DEFI_LIQUIDATION_SHOCK_001/DRIFT_*V0.1.json
+          git commit -m "dls: persist reconstructed Drift source authority V0.1" || true
+          git pull --rebase origin dls-drift-sqd-boundary-v01
+          git push origin HEAD:dls-drift-sqd-boundary-v01
 
       - name: Firewall
         if: always()
