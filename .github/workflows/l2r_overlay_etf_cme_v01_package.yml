@@ -1,0 +1,90 @@
+name: L2R Overlay ETF-CME V0.1 Package
+
+on:
+  push:
+    branches:
+      - l2r-overlay-etf-cme-v0.1
+    paths:
+      - research/l2_resiliency_overlay/PACKAGE_TRIGGER_V0_1.txt
+  pull_request:
+    branches:
+      - l2-resiliency-exec-translation-v0.1
+    paths:
+      - research/l2_resiliency_overlay/PACKAGE_TRIGGER_V0_1.txt
+      - .github/workflows/l2r_overlay_etf_cme_v01_package.yml
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: l2r-overlay-etf-cme-v0.1
+
+      - name: Download exact immutable ETF-CME artifact ZIP bytes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_PARENT_SHA: 40bd341c300532e5b67127a098c82ecf2f41e1cc4a3ce646ac824b27529f9bd1
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/10335473231/zip" \
+            -o ETF_CME_INSTFLOW_001_OOS_2025.zip
+          ACTUAL_PARENT_SHA="$(sha256sum ETF_CME_INSTFLOW_001_OOS_2025.zip | awk '{print $1}')"
+          echo "original_parent_artifact_sha256=$ACTUAL_PARENT_SHA"
+          test "$ACTUAL_PARENT_SHA" = "$EXPECTED_PARENT_SHA"
+          unzip -t ETF_CME_INSTFLOW_001_OOS_2025.zip
+          unzip -l ETF_CME_INSTFLOW_001_OOS_2025.zip
+
+      - name: Build operator package preserving exact parent bytes
+        env:
+          EXPECTED_PARENT_SHA: 40bd341c300532e5b67127a098c82ecf2f41e1cc4a3ce646ac824b27529f9bd1
+        run: |
+          set -euo pipefail
+          mkdir -p package
+          cp research/l2_resiliency_overlay/RUN_L2R_OVERLAY_ETF_CME_V01.ps1 package/
+          cp research/l2_resiliency_overlay/RUN_L2R_OVERLAY_ETF_CME_V01.cmd package/
+          cp research/l2_resiliency_overlay/L2R_OVERLAY_ETF_CME_V01_README.txt package/
+          cp research/l2_resiliency_overlay/l2r_overlay_etf_cme_2025_development_v01.py package/
+          cp research/l2_resiliency_overlay/L2R_OVERLAY_ETF_CME_001_2025_DEVELOPMENT_PROTOCOL_V0_1.md package/
+          cp research/l2_resiliency_overlay/L2R_OVERLAY_ETF_CME_001_IMPLEMENTATION_LOCK_V0_1.json package/
+          cp research/l2_resiliency_overlay/L2R_OVERLAY_ETF_CME_001_2025_DEVELOPMENT_ONE_SHOT_AUTHORIZATION_V0_1.md package/
+          cp ETF_CME_INSTFLOW_001_OOS_2025.zip package/
+          ACTUAL_PARENT_SHA="$(sha256sum package/ETF_CME_INSTFLOW_001_OOS_2025.zip | awk '{print $1}')"
+          test "$ACTUAL_PARENT_SHA" = "$EXPECTED_PARENT_SHA"
+          {
+            echo "parent_artifact_mode=EXACT_ORIGINAL_GITHUB_ARTIFACT_ZIP_BYTES"
+            echo "parent_artifact_sha256=$ACTUAL_PARENT_SHA"
+            echo "source_artifact_id=10335473231"
+            echo "source_run_id=34815006815"
+          } > package/PACKAGE_BUILD_INFO.txt
+          sha256sum package/* > package/PACKAGE_MANIFEST_SHA256.txt
+          zip -qr L2R_OVERLAY_ETF_CME_V01_ONE_SHOT_FIXED.zip package
+
+      - name: Verify final package contains exact parent artifact
+        env:
+          EXPECTED_PARENT_SHA: 40bd341c300532e5b67127a098c82ecf2f41e1cc4a3ce646ac824b27529f9bd1
+        run: |
+          set -euo pipefail
+          rm -rf verify_package
+          mkdir verify_package
+          unzip -q L2R_OVERLAY_ETF_CME_V01_ONE_SHOT_FIXED.zip -d verify_package
+          ACTUAL_PARENT_SHA="$(sha256sum verify_package/package/ETF_CME_INSTFLOW_001_OOS_2025.zip | awk '{print $1}')"
+          echo "verified_embedded_parent_sha256=$ACTUAL_PARENT_SHA"
+          test "$ACTUAL_PARENT_SHA" = "$EXPECTED_PARENT_SHA"
+          echo "PACKAGE_EXACT_PARENT_BYTES_PASS"
+
+      - name: Upload corrected operator package
+        uses: actions/upload-artifact@v4
+        with:
+          name: L2R_OVERLAY_ETF_CME_V01_ONE_SHOT_FIXED
+          path: L2R_OVERLAY_ETF_CME_V01_ONE_SHOT_FIXED.zip
+          retention-days: 90
+          if-no-files-found: error
