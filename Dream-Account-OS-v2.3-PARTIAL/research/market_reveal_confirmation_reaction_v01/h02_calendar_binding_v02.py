@@ -54,6 +54,12 @@ def annual_plan_sha256(manifest: Mapping[str, Any]) -> str:
     return hashlib.sha256(_canonical_json_bytes(clean)).hexdigest()
 
 
+def event_activation_sha256(receipt: Mapping[str, Any]) -> str:
+    clean = json.loads(json.dumps(receipt))
+    clean["activation_receipt_sha256"] = None
+    return hashlib.sha256(_canonical_json_bytes(clean)).hexdigest()
+
+
 def _host_matches(url: Any, expected_host: str) -> bool:
     if not isinstance(url, str) or not url:
         return False
@@ -273,5 +279,11 @@ def validate_event_activation_receipt(
         blockers.append("EVENT_RECEIPT_CANNOT_SELF_AUTHORIZE_TARGET")
     if receipt.get("outcomes_authorized") is not False:
         blockers.append("EVENT_RECEIPT_CANNOT_AUTHORIZE_OUTCOMES")
+
+    claimed_hash = receipt.get("activation_receipt_sha256")
+    if not isinstance(claimed_hash, str) or not claimed_hash:
+        blockers.append("ACTIVATION_RECEIPT_SHA256_MISSING")
+    elif claimed_hash != event_activation_sha256(receipt):
+        blockers.append("ACTIVATION_RECEIPT_SHA256_MISMATCH")
 
     return len(blockers) == 0, tuple(sorted(set(blockers)))
