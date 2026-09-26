@@ -24,8 +24,8 @@ PR: #107
 | MEXC post-trigger outcomes | NOT OPENED |
 | MEXC 2025 public history | SOURCE_BLOCKED |
 | LICP-HIST-XALT-003 Discovery | SURVIVOR — SOL SHORT / 60m selected |
-| LICP-HIST-XALT-003 Holdout | HOLDOUT_SURVIVES — n=35, mean +25.07 bps gross |
-| LICP-FWD-XALT-004 transfer | LOCKED — waits for frozen numeric trigger config |
+| LICP-HIST-XALT-003 Holdout | HOLDOUT_SURVIVES_WITH_EXECUTION_DEVIATION — canonical run #36234052123; duplicate identical recomputation audited |
+| LICP-FWD-XALT-004 transfer | LOCKED — waits for frozen numeric trigger config |\n| Outcome-blind collector quiet-feed hardening | PASS — no false reconnects in post-fix smoke |\n| Calibration shard aggregator | PASS tests — enforces 7d / 250 Bybit / 50 BTC / 95% uptime / clock/hash gates |\n| Long calibration block | COLLECTING / outcome-blind artifact path |
 | Live trading | NOT AUTHORIZED |
 
 ## Frozen causal chain
@@ -96,3 +96,23 @@ Forward transfer gate LICP-FWD-XALT-004 is pre-frozen to:
 - >=20 independent episodes across >=3 UTC dates before verdict
 
 The forward observer must fail closed while the numeric trigger config remains UNFROZEN.
+
+
+## Holdout integrity caveat — 2026-09-26
+
+The XALT-003 holdout was unintentionally recomputed once after the canonical first opening because a workflow-only commit retriggered the job.
+
+- canonical run: 36234052123
+- unintended duplicate: 36234349727
+- scientific holdout script blob identical across both runs
+- selected-candidate freeze blob identical across both runs
+- numerical results identical
+- no tuning or rescue occurred
+
+The literal single-pass procedure was nevertheless violated.
+Canonical scientific state:
+**HOLDOUT_SURVIVES_WITH_EXECUTION_DEVIATION**.
+
+A permanent repository lock now prevents any further XALT-003 holdout opening.
+
+Forward MEXC validation remains mandatory before any promotion.
