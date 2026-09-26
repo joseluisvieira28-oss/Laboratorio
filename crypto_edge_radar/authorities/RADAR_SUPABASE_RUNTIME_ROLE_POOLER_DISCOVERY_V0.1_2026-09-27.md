@@ -66,7 +66,15 @@ Allowed privileges:
 - USAGE, SELECT on `public.radar_events_id_seq`.
 
 RLS note:
-the two evidence tables are deny-by-default to Data API roles and have no policies. The dedicated Postgres runtime role is not an API role. Before cutover, direct SQL role behavior must be explicitly verified; no RLS bypass privilege is allowed.
+the two evidence tables are deny-by-default to Data API roles and initially have no policies. The dedicated Postgres runtime role is not an API role. No RLS bypass privilege is allowed.
+
+To make the least-privilege role usable while preserving RLS, four role-scoped policies are authorized:
+- SELECT on radar_events TO radar_runtime USING (true);
+- INSERT on radar_events TO radar_runtime WITH CHECK (true);
+- SELECT on radar_event_keys TO radar_runtime USING (true);
+- INSERT on radar_event_keys TO radar_runtime WITH CHECK (true).
+
+These policies are role-specific. They do not grant or create access for anon, authenticated, PUBLIC, or any other role. Table grants remain separately limited to SELECT/INSERT for radar_runtime.
 
 ## EvidenceStore no-DDL mode
 
