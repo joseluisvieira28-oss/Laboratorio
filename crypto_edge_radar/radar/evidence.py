@@ -239,18 +239,60 @@ class PostgresEvidenceStore:
     backend = "postgres"
     db_path: None = None
 
-    def __init__(self, database_url: str) -> None:
+    def __init__(
+        self,
+        database_url: str,
+        *,
+        schema_preprovisioned: bool = False,
+    ) -> None:
         if not database_url or not database_url.strip():
             raise ValueError("database_url is required")
         if psycopg is None:
             raise RuntimeError("Postgres evidence store requires psycopg")
         self._database_url = database_url.strip()
-        self._init_db()
+        self._schema_preprovisioned = bool(schema_preprovisioned)
+        if self._schema_preprovisioned:
+            self._verify_preprovisioned_schema()
+        else:
+            self._init_db()
 
     def _connect(self):
         if psycopg is None:
             raise RuntimeError("Postgres evidence store requires psycopg")
         return psycopg.connect(self._database_url, connect_timeout=5)
+
+    def _verify_preprovisioned_schema(self) -> None:
+        """Fail closed against an already-created least-privilege schema without DDL."""
+        try:
+            with self._connect() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SET TRANSACTION READ ONLY")
+                    cur.execute(
+                        """
+                        SELECT id, event_ts, event_type, payload_json, payload_sha256,
+                               prev_chain_sha256, chain_sha256
+                        FROM radar_events
+                        LIMIT 0
+                        """
+                    )
+                    cur.fetchall()
+                    cur.execute(
+                        """
+                        SELECT event_type, event_key, event_id
+                        FROM radar_event_keys
+                        LIMIT 0
+                        """
+                    )
+                    cur.fetchall()
+                    cur.execute("SELECT last_value FROM radar_events_id_seq")
+                    row = cur.fetchone()
+                    if row is None:
+                        raise RuntimeError("radar_events_id_seq unavailable")
+        except Exception as exc:
+            raise RuntimeError(
+                "postgres preprovisioned schema verification failed: "
+                f"{type(exc).__name__}: {exc}"
+            ) from exc
 
     def _init_db(self) -> None:
         try:
@@ -457,8 +499,16 @@ class PostgresEvidenceStore:
         return True, f"verified {len(rows)} events via postgres"
 
 
-def build_evidence_store(db_path: str, database_url: str | None = None):
+def build_evidence_store(
+    db_path: str,
+    database_url: str | None = None,
+    *,
+    schema_preprovisioned: bool = False,
+):
     """Use remote Postgres when explicitly configured; otherwise retain SQLite."""
     if database_url:
-        return PostgresEvidenceStore(database_url)
+        return PostgresEvidenceStore(
+            database_url,
+            schema_preprovisioned=schema_preprovisioned,
+        )
     return EvidenceStore(db_path)
