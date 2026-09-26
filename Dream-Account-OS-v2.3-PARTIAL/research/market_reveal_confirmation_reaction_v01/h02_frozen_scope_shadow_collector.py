@@ -30,6 +30,7 @@ from h02_scope_journal import (
     connect_scope_journal,
     finish_scope_session,
     ingest_scope_record,
+    ordered_by_collector_arrival,
     session_record_count,
     start_scope_session,
 )
@@ -82,19 +83,6 @@ def _fetch_binance_snapshot(symbol: str) -> tuple[bytes, int, int, int]:
     if not isinstance(value.get("bids"), list) or not isinstance(value.get("asks"), list):
         raise ValueError("Binance snapshot missing bids/asks")
     return raw, last_update_id, wall_ns, monotonic_ns
-
-
-def _ordered_by_collector_arrival(
-    records: list[dict[str, Any]],
-) -> list[dict[str, Any]]:
-    return sorted(
-        records,
-        key=lambda row: (
-            int(row["collector_monotonic_ns"]),
-            int(row["collector_wall_ns"]),
-            str(row["message_kind"]),
-        ),
-    )
 
 
 def _binance_source_bounds(data: dict[str, Any]) -> tuple[int | None, int | None]:
@@ -235,7 +223,7 @@ async def _collect_binance_symbol(
             "collector_monotonic_ns": mono_ns,
             "raw_payload": raw,
         }
-        pending = _ordered_by_collector_arrival(
+        pending = ordered_by_collector_arrival(
             [*buffered_before_snapshot, snapshot_record]
         )
         for record in pending:
