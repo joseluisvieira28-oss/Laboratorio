@@ -20,6 +20,48 @@ AUTHORITY = json.loads(
 
 
 def synthetic_calendar():
+    sources = [
+        {
+            "authority": "BLS",
+            "source_url": "https://www.bls.gov/schedule/news_release/cpi.htm",
+            "retrieved_at_utc": "2026-12-20T00:00:00Z",
+            "publication_status": "OFFICIAL_COMPLETE",
+        },
+        {
+            "authority": "BLS",
+            "source_url": "https://www.bls.gov/schedule/news_release/empsit.htm",
+            "retrieved_at_utc": "2026-12-20T00:00:00Z",
+            "publication_status": "OFFICIAL_COMPLETE",
+        },
+        {
+            "authority": "FEDERAL_RESERVE",
+            "source_url": "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm",
+            "retrieved_at_utc": "2026-12-20T00:00:00Z",
+            "publication_status": "OFFICIAL_COMPLETE",
+        },
+    ]
+    counts = {
+        "US_CPI": 12,
+        "US_EMPLOYMENT_SITUATION": 12,
+        "FOMC_STATEMENT": 8,
+    }
+    source_ref = {
+        "US_CPI": 0,
+        "US_EMPLOYMENT_SITUATION": 1,
+        "FOMC_STATEMENT": 2,
+    }
+    events = []
+    for family, count in counts.items():
+        for index in range(count):
+            month = index + 1 if count == 12 else index + 1
+            day = 10 if family == "US_CPI" else 5 if family == "US_EMPLOYMENT_SITUATION" else 20
+            events.append({
+                "event_id": f"{family}-2027-{index+1:02d}",
+                "event_family": family,
+                "scheduled_time_utc": f"2027-{month:02d}-{day:02d}T13:30:00Z",
+                "official_source_ref": source_ref[family],
+                "official_status": "CONFIRMED",
+            })
     m = {
         "document_type": "MRCR_OFFICIAL_CALENDAR_MANIFEST_V01",
         "lab_id": "MARKET-REVEAL-CONFIRMATION-REACTION-001",
@@ -30,22 +72,40 @@ def synthetic_calendar():
             "US_EMPLOYMENT_SITUATION",
             "FOMC_STATEMENT",
         ],
-        "official_sources": [{
-            "authority": "SYNTHETIC_AUTHORITY",
-            "source_url": "https://example.invalid/calendar",
-            "retrieved_at_utc": "2026-12-01T00:00:00Z",
-        }],
-        "events": [{
-            "event_id": "SYNTH-1",
-            "event_family": "US_CPI",
-            "scheduled_time_utc": "2027-01-01T13:30:00Z",
-            "official_source_ref": 0,
-        }],
+        "official_sources": sources,
+        "events": events,
+        "family_completeness": {
+            "US_CPI": {
+                "status": "COMPLETE_OFFICIAL_CONFIRMED",
+                "calendar_year": 2027,
+                "expected_event_count": 12,
+                "confirmed_event_count": 12,
+                "authority": "BLS",
+                "source_url": "https://www.bls.gov/schedule/news_release/cpi.htm",
+            },
+            "US_EMPLOYMENT_SITUATION": {
+                "status": "COMPLETE_OFFICIAL_CONFIRMED",
+                "calendar_year": 2027,
+                "expected_event_count": 12,
+                "confirmed_event_count": 12,
+                "authority": "BLS",
+                "source_url": "https://www.bls.gov/schedule/news_release/empsit.htm",
+            },
+            "FOMC_STATEMENT": {
+                "status": "COMPLETE_OFFICIAL_CONFIRMED",
+                "calendar_year": 2027,
+                "expected_event_count": 8,
+                "confirmed_event_count": 8,
+                "authority": "FEDERAL_RESERVE",
+                "source_url": "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm",
+            },
+        },
+        "all_events_confirmed": True,
+        "tentative_events_allowed": False,
         "manifest_sha256": None,
     }
     m["manifest_sha256"] = manifest_sha256(m)
     return m
-
 
 class ProtocolBuilderTests(unittest.TestCase):
     def test_builds_target_locked_structurally_valid_protocol(self):
