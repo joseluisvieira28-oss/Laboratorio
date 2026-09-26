@@ -1,0 +1,90 @@
+name: DLS Drift SQD Final Reassembly V0.4
+
+on:
+  push:
+    branches:
+      - dls-drift-sqd-boundary-v01
+    paths:
+      - .github/workflows/dls-drift-sqd-final-reassembly-v04.yml
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  reassemble:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download original full-census evidence
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36113874801
+          pattern: dls-drift-sqd-boundary-*
+          path: evidence/original
+      - name: Download V0.1 recovery
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36149398441
+          pattern: dls-drift-sqd-recovery-*
+          path: evidence/recovery_v01
+      - name: Download V0.2 recovery
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36186079694
+          pattern: dls-drift-sqd-recovery-v02-*
+          path: evidence/recovery_v02
+      - name: Download V0.3 recovery
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36186050288
+          pattern: dls-drift-sqd-recovery-v03-*
+          path: evidence/recovery_v03
+      - name: Download V0.4 recovery
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36230135405
+          pattern: dls-drift-sqd-recovery-v04-*
+          path: evidence/recovery_v04
+      - name: Compile compositional authority tooling
+        run: |
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/aggregate_drift_sqd_census_v0_4.py
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/reconcile_drift_sqd_raw_sample_v0_1.py
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/finalize_drift_sqd_census_v0_1.py
+      - name: Reconstruct complete Drift census compositional
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/aggregate_drift_sqd_census_v0_4.py evidence
+      - name: RAW reconcile deterministic sample
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/reconcile_drift_sqd_raw_sample_v0_1.py
+      - name: Final Drift authority
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/finalize_drift_sqd_census_v0_1.py
+      - name: Upload final authority receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-drift-sqd-final-authority-v04
+          path: |
+            labs/DEFI_LIQUIDATION_SHOCK_001/DRIFT_SQD_EVENT_CENSUS_RECEIPT_V0.1.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/DRIFT_RAW_SAMPLE_QUEUE_V0.1.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/DRIFT_RAW_SAMPLE_RECONCILIATION_RECEIPT_V0.1.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/DRIFT_EVENT_CENSUS_FINAL_AUTHORITY_RECEIPT_V0.1.json
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_TRUE
