@@ -1,0 +1,57 @@
+name: DLS Global Field Coverage Finalize V0.1
+
+on:
+  push:
+    branches:
+      - dls-field-enrichment-v01
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_GLOBAL_FIELD_COVERAGE_FINAL_V01.marker
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Compile finalizer tooling
+        run: |
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/collect_global_field_gate_artifacts_v0_1.py
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/adjudicate_global_field_coverage_final_v0_1.py
+
+      - name: Collect terminal evidence by frozen artifact precedence
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/collect_global_field_gate_artifacts_v0_1.py
+          --repository "${{ github.repository }}"
+          --out global_field_evidence
+
+      - name: Adjudicate Global Field Coverage
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/adjudicate_global_field_coverage_final_v0_1.py
+          --root global_field_evidence
+
+      - name: Upload final gate receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-global-field-coverage-final-v01
+          path: |
+            labs/DEFI_LIQUIDATION_SHOCK_001/GLOBAL_FIELD_FINALIZER_ARTIFACT_SELECTION_RECEIPT_V0.1.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/GLOBAL_FIELD_COVERAGE_FINAL_RECEIPT_V0.1.json
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_TRUE
