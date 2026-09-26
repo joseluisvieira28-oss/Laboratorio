@@ -1,0 +1,89 @@
+{
+  "schema_version": "0.2",
+  "lab_id": "DEFI-LIQUIDATION-SHOCK-001",
+  "classification": "SAVE0C_INDEPENDENT_ABI_RECONCILIATION_PASS",
+  "direct_solend_tag_authority": {
+    "repository": "solendprotocol/solend-sdk",
+    "commit": "c93fbc81fcc68610ad64fbce4a170a38335b7d7f",
+    "date": "2021-12-08",
+    "fact": "LiquidateObligation = 12"
+  },
+  "independent_historical_abi_authority": {
+    "repository": "solana-labs/solana-program-library",
+    "commit": "fd662e5f878d58ad06d3cb6365171ebaec41b39d",
+    "date": "2021-08-18",
+    "instruction": "LiquidateObligation",
+    "data_layout": [
+      "tag=12",
+      "liquidity_amount:u64 little-endian"
+    ],
+    "account_count": 12
+  },
+  "onchain_structural_reconciliation": {
+    "signature": "3kbwGTtWnZMi9rdTVpqS3EaJdRTp9Dyhf7A8TVfdjYP7hGkYSHBETcWyfc5qicFJ3eKQVMkCdWwi93peVNYzTD1V",
+    "slot": 110526981,
+    "timestamp": "2021-12-08T00:03:43Z",
+    "program": "So1endDq2YkqhipRh3WViPa8hdiSpxWy6z3Z6tMCpAo",
+    "instruction_address": [
+      3
+    ],
+    "transaction_success": true,
+    "instruction_data_byte_length": 9,
+    "tag_hex": "0c",
+    "account_count": 12,
+    "exact_account_identity_match": true,
+    "clock_token_tail_pass": true,
+    "stable_program_owner_checks_pass": true,
+    "note": "V0.1 current-state owner check failed only for historical user token accounts at positions 0 and 1 because those accounts are now closed."
+  },
+  "historical_token_identity_reconciliation": {
+    "receipt_classification": "SAVE0C_HISTORICAL_TOKEN_IDENTITY_2_OF_2_PASS",
+    "slot": 110526981,
+    "requested_fields": [
+      "account",
+      "preMint",
+      "postMint"
+    ],
+    "forbidden_amount_fields_requested": false,
+    "account_0_token_identity_pass": true,
+    "account_1_token_identity_pass": true
+  },
+  "frozen_semantics": {
+    "data_byte_0": "native tag 0x0c",
+    "data_bytes_1_8": "requested liquidity_amount u64 little-endian",
+    "requested_amount_is_realized_transfer": false,
+    "account_roles": [
+      "source_liquidity_token_account",
+      "destination_collateral_token_account",
+      "repay_reserve",
+      "repay_reserve_liquidity_supply",
+      "withdraw_reserve",
+      "withdraw_reserve_collateral_supply",
+      "obligation",
+      "lending_market",
+      "derived_lending_market_authority",
+      "user_transfer_authority",
+      "clock_sysvar",
+      "token_program"
+    ]
+  },
+  "firewall": {
+    "prices": false,
+    "returns": false,
+    "pnl": false,
+    "direction": false,
+    "economic_outcomes": false,
+    "balances": false,
+    "token_amounts": false,
+    "token_decimals": false,
+    "protected_market_outcomes_2025_2026": false,
+    "live_trading": false,
+    "orders": false,
+    "wallets": false,
+    "exchange_mutation": false,
+    "paid_source": false,
+    "account_creation": false,
+    "post_outcome_tuning": false,
+    "merge_main": false
+  }
+}
