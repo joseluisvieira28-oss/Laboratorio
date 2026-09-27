@@ -30,3 +30,7 @@ Scientific contract unchanged. This edit exists only to trigger the existing sin
 ## Relaunch — V0.1R
 
 Relaunch after digest-verified ordered log fallback: PublicNode -> BlockMachine -> MEVBlocker, fixed 10,000-block outer range. Scientific contract unchanged; promotion credit 0.
+
+## Relaunch — V0.1S
+
+Relaunch after probe-verified historical header failover. Header order: PublicNode -> BlockMachine -> 1RPC -> Flashbots. Log transport remains V0.1R. Scientific contract unchanged.
