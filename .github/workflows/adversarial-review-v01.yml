@@ -1,14 +1,14 @@
 name: Adversarial Review V0.1
 
 on:
-  push:
-    paths:
-      - "adversarial_review/**"
-      - ".github/workflows/adversarial-review-v01.yml"
   pull_request:
     paths:
       - "adversarial_review/**"
       - ".github/workflows/adversarial-review-v01.yml"
+
+concurrency:
+  group: adversarial-review-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
