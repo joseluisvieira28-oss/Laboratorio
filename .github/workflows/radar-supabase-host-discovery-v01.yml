@@ -1,0 +1,65 @@
+name: Radar Supabase Host Discovery V0.1
+
+on:
+  push:
+    branches:
+      - radar-supabase-host-discovery-v01-2026-09-27
+    paths:
+      - ".github/workflows/radar-supabase-host-discovery-v01.yml"
+      - "crypto_edge_radar/authorities/RADAR_SUPABASE_SESSION_POOLER_HOST_DISCOVERY_V0.1_2026-09-27.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install psycopg
+        run: python -m pip install "psycopg[binary]>=3.2,<4"
+      - name: Discover documented Supavisor cluster signal
+        run: |
+          python - <<'PY'
+          import psycopg
+          project="jqzdvgjeuveiktftyrlz"
+          user=f"radar_runtime.{project}"
+          fake="HOST_DISCOVERY_ONLY_INVALID_PASSWORD_V0_1"
+          selected=None
+          results=[]
+          for i in range(10):
+              host=f"aws-{i}-eu-central-1.pooler.supabase.com"
+              try:
+                  psycopg.connect(
+                      host=host, port=5432, dbname="postgres",
+                      user=user, password=fake, sslmode="require",
+                      connect_timeout=4,
+                  ).close()
+                  status="UNEXPECTED_AUTH_SUCCESS_FAIL_CLOSED"
+                  results.append((host,status))
+                  print("HOST_DISCOVERY",host,status)
+                  raise SystemExit(3)
+              except psycopg.OperationalError as exc:
+                  msg=str(exc).replace("\n"," ").lower()
+                  if "password authentication failed" in msg:
+                      status="DOCUMENTED_CORRECT_TENANT_SIGNAL"
+                      results.append((host,status))
+                      selected=host
+                      print("HOST_DISCOVERY",host,status)
+                      break
+                  if "tenant or user not found" in msg or "tenant/user" in msg:
+                      status="DOCUMENTED_WRONG_TENANT_SIGNAL"
+                  elif "could not translate host name" in msg:
+                      status="DNS_NOT_FOUND"
+                  else:
+                      status="OTHER_FAIL_CLOSED"
+                  results.append((host,status))
+                  print("HOST_DISCOVERY",host,status)
+          print("HOST_DISCOVERY_RESULT",selected or "NONE")
+          if selected is None:
+              raise SystemExit(2)
+          PY
