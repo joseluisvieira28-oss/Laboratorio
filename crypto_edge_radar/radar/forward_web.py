@@ -30,6 +30,10 @@ from .tfg_forward_watcher import (
 from .tfg_forward_metrics import evaluate_tfg_forward_evidence
 from .ema6h_regime_watcher import EMA6HRegimeForwardWatcher
 from .ema6h_regime_metrics import evaluate_ema6h_regime_forward
+from .ema6h_render_source_probe import (
+    CANONICAL_RENDER_SERVICE_ID as EMA6H_PROBE_CANONICAL_SERVICE_ID,
+    emit_probe_log as emit_ema6h_render_source_probe,
+)
 from .strategies.ema6h_50x200_regime_forward import (
     BinanceSpotKlineFeed as EMA6HBinanceSpotKlineFeed,
     latest_certifiable_signal_close_ms as latest_ema6h_certifiable_signal_close_ms,
@@ -1114,6 +1118,18 @@ def serve_forward_shadow(*, port: int, interval: float) -> int:
             daemon=True,
         )
         worker.start()
+
+    if (
+        os.getenv("RENDER", "").lower() == "true"
+        and os.getenv("RENDER_SERVICE_ID") == EMA6H_PROBE_CANONICAL_SERVICE_ID
+    ):
+        probe_thread = threading.Thread(
+            target=emit_ema6h_render_source_probe,
+            kwargs={"timeout": min(int(settings.http_timeout), 5)},
+            name="ema6h-render-source-probe-v01",
+            daemon=True,
+        )
+        probe_thread.start()
 
     handler = type("ForwardShadowHandler", (_Handler,), {"runtime": runtime})
     server = ThreadingHTTPServer(("0.0.0.0", int(port)), handler)
