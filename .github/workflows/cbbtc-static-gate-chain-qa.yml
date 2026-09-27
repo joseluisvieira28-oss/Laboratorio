@@ -1,0 +1,31 @@
+name: CBBTC-001 static gate-chain QA
+
+on:
+  push:
+    branches:
+      - cbbtc-eth-mint-burn-flow-001-source-gate-v01
+    paths:
+      - '.github/workflows/cbbtc-static-gate-chain-qa.yml'
+  workflow_dispatch:
+
+jobs:
+  qa:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Parse JavaScript gates
+        run: |
+          node --check research/cbbtc_eth_mint_burn_flow_001/cbbtc_eth_mint_burn_source_probe_v01.mjs
+          node --check research/cbbtc_eth_mint_burn_flow_001/cbbtc_eth_flow_census_v01.mjs
+      - name: Compile Python gates
+        run: |
+          python -m py_compile             research/cbbtc_eth_mint_burn_flow_001/cbbtc_continue_v01.py             research/cbbtc_eth_mint_burn_flow_001/cbbtc_finalize_continuation_v01.py             research/cbbtc_eth_mint_burn_flow_001/cbbtc_flow_state_calibration_v01.py             research/cbbtc_eth_mint_burn_flow_001/cbbtc_discovery_flow_sample_gate_v01.py             research/cbbtc_eth_mint_burn_flow_001/cbbtc_flow_discovery_v01.py
