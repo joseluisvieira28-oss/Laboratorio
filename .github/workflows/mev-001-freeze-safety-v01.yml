@@ -1,0 +1,44 @@
+name: MEV-001 Freeze Safety CI
+
+on:
+  push:
+    branches:
+      - macro-expectation-violation-v0.1
+    paths:
+      - "Dream-Account-OS-v2.3-PARTIAL/research/macro_expectation_violation_v0_1/**"
+      - ".github/workflows/mev-001-freeze-safety-v01.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  freeze-safety:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout frozen branch
+        uses: actions/checkout@v4
+
+      - name: Validate Python syntax
+        run: |
+          python3 -m py_compile Dream-Account-OS-v2.3-PARTIAL/research/macro_expectation_violation_v0_1/validate_mev001_freeze.py
+
+      - name: Validate fail-closed freeze
+        run: |
+          python3 Dream-Account-OS-v2.3-PARTIAL/research/macro_expectation_violation_v0_1/validate_mev001_freeze.py
+
+      - name: Enforce no target or execution arming
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path("Dream-Account-OS-v2.3-PARTIAL/research/macro_expectation_violation_v0_1/MEV_001_PRE_SOURCE_FREEZE_V01.json")
+          x=json.loads(p.read_text())
+          assert x["target_policy"]["target_observation_open"] is False
+          assert x["target_policy"]["outcomes_open"] is False
+          assert x["traditional_reference"]["materiality_rule"] == "UNARMED_PENDING_SOURCE_PASS"
+          assert x["traditional_reference"]["exact_contract_resolution"] == "UNARMED_PENDING_SOURCE_PASS"
+          for k,v in x["prohibited"].items():
+              assert v is True, (k,v)
+          print("MEV001_FAIL_CLOSED_POLICY_PASS")
+          PY
