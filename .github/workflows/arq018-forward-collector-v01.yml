@@ -17,6 +17,13 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: arq018-forward-v0.1
+          fetch-depth: 0
+      - name: Verify frozen scientific artifacts
+        run: |
+          test "$(git hash-object research/breakout_acceptance/BREAKOUT_ACCEPTANCE_PROSPECTIVE_FREEZE_V0_1.md)" = "fab6e370d46dc1ada141a73567aaa1d99438930c"
+          test "$(git hash-object research/breakout_acceptance/forward_collector_v01.py)" = "6604e098013d356cd112f82c4ceb7c11e14772fd"
       - uses: actions/setup-python@v5
         with: {python-version: '3.12'}
       - name: Run frozen forward collector
