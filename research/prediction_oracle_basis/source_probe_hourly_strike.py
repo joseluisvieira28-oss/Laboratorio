@@ -221,7 +221,24 @@ def fetch_poly_for_times(times: list[dt.datetime], probe_now: dt.datetime) -> tu
                     and ("1 hour candle" in combined or "1h" in combined)
                     and "close" in combined
                 )
-                strike = money(str(market.get("question") or "") + "\n" + str(market.get("title") or ""))
+                strike = None
+                raw_group = str(market.get("groupItemTitle") or "").strip().replace(",", "")
+                if raw_group:
+                    try:
+                        strike = Decimal(raw_group)
+                    except InvalidOperation:
+                        strike = None
+                if strike is None:
+                    strike = money(str(market.get("question") or "") + "\n" + str(market.get("title") or ""))
+                if strike is None:
+                    # Last-resort source parser for questions that expose the integer
+                    # strike without a currency symbol. This is parsing only, not selection.
+                    mq = re.search(r"bitcoin\s+above\s+([0-9][0-9,]*(?:\.[0-9]+)?)", str(market.get("question") or ""), re.I)
+                    if mq:
+                        try:
+                            strike = Decimal(mq.group(1).replace(",", ""))
+                        except InvalidOperation:
+                            strike = None
                 if strike is None:
                     continue
                 mid = str(market.get("id") or market.get("conditionId") or market.get("slug") or "")
