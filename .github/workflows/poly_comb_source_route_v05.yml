@@ -1,0 +1,33 @@
+name: POLY-COMB Bounded Source Route V0.5
+on:
+  push:
+    branches: [prediction-combinatorial-arb-v0.5-source-route]
+    paths:
+      - 'research/polymarket_combinatorial_arb/BOUNDED_SOURCE_ROUTE_SPEC_V0.5.md'
+      - 'research/polymarket_combinatorial_arb/bounded_source_route_v05.py'
+      - '.github/workflows/poly_comb_source_route_v05.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  route:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - run: python research/polymarket_combinatorial_arb/bounded_source_route_v05.py
+      - name: Assert source firewall
+        run: |
+          python - <<'PY'
+          import json
+          x=json.load(open('artifacts/POLY_COMB_SOURCE_ROUTE_V0.5.json'))
+          for k in ('economic_outputs_computed','package_price_sums_computed','arbitrage_spreads_computed','profitability_computed','authenticated_endpoints_used','orders_sent'):
+              assert x[k] is False
+          assert x['future_nearest_joins']==0 and x['silent_imputations']==0
+          print('SOURCE FIREWALL PASS:',x['status'])
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: POLY_COMB_SOURCE_ROUTE_V0.5
+          path: artifacts/POLY_COMB_SOURCE_ROUTE_V0.5.json
+          if-no-files-found: error
