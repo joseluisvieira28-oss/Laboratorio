@@ -231,27 +231,39 @@ for p in s0_files:
             continue
         add_event("save0c","LiquidateObligation","mint:"+mint,e.get("timestamp"),e.get("signature"))
 
-# Kamino + Save11: select frozen receipt precedence by immutable receipt basename.
-# Original: kamino-YYYYMM.json / save11-YYYYMM.json
-# Recovery: unit-kamino-YYYYMM.json
+# Kamino + Save11: select frozen receipt precedence from explicit authority directories.
+# Kamino original V0.1: kamino-YYYYMM.json
+# Kamino V0.3 recovery: unit-kamino-YYYYMM.json
+# Save11 V0.4 authority: save11-YYYYMM.json from save11_v04 only.
 ks_root=Path(args.ks_units)
+ks_original=ks_root/"original"
+ks_recovery=ks_root/"recovery"
+ks_save11_v04=ks_root/"save11_v04"
 expected_orig_k=[f"kamino-{y}{m:02d}.json" for y,m in [(2023,11),(2023,12),(2024,1),(2024,2)]]
 expected_rec_k=[f"unit-kamino-2024{m:02d}.json" for m in range(3,13)]
 expected_save=[f"save11-2024{m:02d}.json" for m in range(7,13)]
 ks_files=[]
 
-for name in expected_orig_k+expected_save:
-    hits=sorted(ks_root.rglob(name))
+for name in expected_orig_k:
+    hits=sorted(ks_original.rglob(name))
     if len(hits)!=1:
-        errors.append({"reason":"kamino_save11_original_receipt_selection","basename":name,
+        errors.append({"reason":"kamino_original_receipt_selection","basename":name,
                        "observed":len(hits),"files":[str(x) for x in hits]})
     else:
         ks_files.append(hits[0])
 
 for name in expected_rec_k:
-    hits=sorted(ks_root.rglob(name))
+    hits=sorted(ks_recovery.rglob(name))
     if len(hits)!=1:
         errors.append({"reason":"kamino_recovery_receipt_selection","basename":name,
+                       "observed":len(hits),"files":[str(x) for x in hits]})
+    else:
+        ks_files.append(hits[0])
+
+for name in expected_save:
+    hits=sorted(ks_save11_v04.rglob(name))
+    if len(hits)!=1:
+        errors.append({"reason":"save11_v04_receipt_selection","basename":name,
                        "observed":len(hits),"files":[str(x) for x in hits]})
     else:
         ks_files.append(hits[0])
@@ -366,6 +378,8 @@ receipt={
                    "contains_prices":False,"contains_returns":False},
  "frozen_authorities":["CASCADE_CLUSTERING_FREEZE_V0.1.md",
                        "SOURCE_SAMPLE_GATE_FREEZE_V0.1.md",
+                       "SOURCE_SAMPLE_GATE_KAMINO_UNIT_PRECEDENCE_ADDENDUM_V0.2.md",
+                       "SOURCE_SAMPLE_GATE_SAVE11_UNIT_PRECEDENCE_ADDENDUM_V0.3.md",
                        "PRE_DISCOVERY_TEMPORAL_HOLDOUT_FREEZE_V0.1.md"],
  "final_unit_receipts":{"marginfi":mr_path,"save0c":su_path},
  "firewall":{"prices":False,"returns":False,"pnl":False,"directional_outcomes":False,
