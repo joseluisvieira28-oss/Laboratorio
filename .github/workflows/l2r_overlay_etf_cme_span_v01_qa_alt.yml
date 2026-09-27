@@ -1,0 +1,37 @@
+name: L2R Span Overlay ETF-CME V0.1 QA Alt
+
+on:
+  push:
+    branches:
+      - l2r-overlay-etf-cme-span-v0.1
+    paths:
+      - research/l2_resiliency_overlay_span/QA_TRIGGER_SPAN_ALT_V0_1.txt
+  pull_request:
+    branches:
+      - l2r-overlay-etf-cme-v0.1
+    paths:
+      - research/l2_resiliency_overlay_span/**
+      - .github/workflows/l2r_overlay_etf_cme_span_v01_qa_alt.yml
+
+permissions:
+  contents: read
+
+jobs:
+  qa_alt:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: l2r-overlay-etf-cme-span-v0.1
+      - name: Compile, self-test, hash
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $Runner = "research/l2_resiliency_overlay_span/l2r_overlay_etf_cme_span_2025_development_v01.py"
+          python -m py_compile $Runner
+          $out = python $Runner --self-test
+          $out
+          if ($out -notcontains "SELF_TEST_PASS") { throw "SELF_TEST did not pass" }
+          $sha = (Get-FileHash -Algorithm SHA256 -LiteralPath $Runner).Hash.ToLower()
+          Write-Host "RUNNER_SHA256=$sha"
+          Write-Host "QA_ALT_PASS"
