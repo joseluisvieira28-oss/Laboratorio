@@ -23,13 +23,40 @@ if(source.classification!=="SOURCE_PASS") throw new Error("SOURCE_GATE_NOT_PASS"
 
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 
+function normalizeBlockTag(tag){
+  if(tag==="latest"||tag==="finalized"||tag==="safe") return tag;
+  if(typeof tag==="number") return "0x"+BigInt(tag).toString(16);
+  return String(tag);
+}
+
+async function rawRpc(endpoint,method,params){
+  const res=await fetch(endpoint,{
+    method:"POST",
+    headers:{"content-type":"application/json"},
+    body:JSON.stringify({jsonrpc:"2.0",id:1,method,params}),
+    signal:AbortSignal.timeout(30_000)
+  });
+  if(!res.ok) throw new Error("HTTP_"+res.status);
+  const x=await res.json();
+  if(x?.error) throw new Error("RPC_"+JSON.stringify(x.error));
+  return x?.result;
+}
+
+function rawBlockToInternal(x){
+  if(!x) throw new Error("NULL_BLOCK");
+  return {
+    number:Number(BigInt(x.number)),
+    hash:String(x.hash),
+    timestamp:Number(BigInt(x.timestamp))
+  };
+}
+
 async function getBlockWithRetry(tag,scope){
   let last=null;
   for(let attempt=1;attempt<=8;attempt++){
     try{
-      const b=await provider.getBlock(tag);
-      if(!b) throw new Error("NULL_BLOCK");
-      return b;
+      const x=await rawRpc(RPC,"eth_getBlockByNumber",[normalizeBlockTag(tag),false]);
+      return rawBlockToInternal(x);
     }catch(e){
       last=String(e?.shortMessage||e?.message||e);
       if(attempt<8) await sleep(500*attempt);
@@ -55,7 +82,7 @@ async function archiveSendWithRetry(method,params,scope){
   let last=null;
   for(let attempt=1;attempt<=8;attempt++){
     try{
-      return await archiveProvider.send(method,params);
+      return await rawRpc(ARCHIVE_RPC,method,params);
     }catch(e){
       last=String(e?.shortMessage||e?.message||e);
       if(attempt<8) await sleep(700*attempt);
@@ -64,11 +91,30 @@ async function archiveSendWithRetry(method,params,scope){
   throw new Error(scope+":"+last);
 }
 
+async function rawLogs(fromBlock,toBlock,topics){
+  const logs=await rawRpc(RPC,"eth_getLogs",[{
+    address:TOKEN,
+    fromBlock:hex(fromBlock),
+    toBlock:hex(toBlock),
+    topics
+  }]);
+  if(!Array.isArray(logs)) throw new Error("BAD_LOG_RESULT");
+  return logs.map(log=>({
+    address:log.address,
+    topics:log.topics||[],
+    data:log.data,
+    blockNumber:Number(BigInt(log.blockNumber)),
+    blockHash:log.blockHash,
+    transactionHash:log.transactionHash,
+    index:Number(BigInt(log.logIndex))
+  }));
+}
+
 async function queryLogsAdaptive(fromBlock,toBlock,topics,kind,errors,depth=0){
   let last=null;
   for(let attempt=1;attempt<=6;attempt++){
     try{
-      return await provider.getLogs({address:TOKEN,fromBlock,toBlock,topics});
+      return await rawLogs(fromBlock,toBlock,topics);
     }catch(e){
       last=String(e?.shortMessage||e?.message||e);
       if(attempt<6) await sleep(800*attempt);
@@ -127,7 +173,8 @@ async function batchBlockHeaders(blockNumbers){
         const res=await fetch(RPC,{
           method:"POST",
           headers:{"content-type":"application/json"},
-          body:JSON.stringify(batch)
+          body:JSON.stringify(batch),
+          signal:AbortSignal.timeout(30_000)
         });
         if(!res.ok) throw new Error("HTTP_"+res.status);
         payload=await res.json();
