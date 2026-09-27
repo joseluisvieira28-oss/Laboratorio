@@ -1,0 +1,50 @@
+name: UKLS Common Crawl Raw CDX Transport V0.2.5C
+on:
+  push:
+    branches:
+      - upbit-krw-listing-shock-commoncrawl-rawindex-v0.2.5c
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/upbit_krw_listing_shock_001/common_crawl_raw_cdx_v025c.py'
+      - '.github/workflows/upbit-krw-listing-shock-commoncrawl-rawindex-v025c.yml'
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify frozen authority
+        run: |
+          test -f Dream-Account-OS-v2.3-PARTIAL/research/upbit_krw_listing_shock_001/COMMON_CRAWL_RAW_CDX_INDEX_AUTHORITY_V0_2_5C.md
+          python -m py_compile Dream-Account-OS-v2.3-PARTIAL/research/upbit_krw_listing_shock_001/common_crawl_raw_cdx_v025c.py
+      - name: Execute raw URL-index transport probe
+        run: python Dream-Account-OS-v2.3-PARTIAL/research/upbit_krw_listing_shock_001/common_crawl_raw_cdx_v025c.py
+      - name: Enforce firewall
+        run: |
+          python - <<'PY'
+          import json
+          x=json.load(open('artifacts/UKLS_COMMON_CRAWL_RAW_INDEX_V0_2_5C.json'))
+          assert x['warc_payload_opened'] is False
+          assert x['archived_response_payload_opened'] is False
+          assert x['event_values_opened'] is False
+          assert x['binance_opened'] is False
+          print('CLASSIFICATION',x['classification'])
+          print('CLUSTER',x.get('cluster_http_status'),x.get('cluster_bytes'),x.get('secondary_index_row_count'))
+          print('SHARDS',x.get('selected_shards'))
+          print('MATCHED',x.get('matched_index_rows'))
+          print('PATH_COUNTS',x.get('path_family_counts'))
+          print('CRAWL_RANGE',x.get('earliest_crawl_timestamp'),x.get('latest_crawl_timestamp'))
+          print('FAILURE',x.get('failure'))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: UKLS_COMMON_CRAWL_RAW_INDEX_V0_2_5C
+          path: |
+            artifacts/UKLS_COMMON_CRAWL_RAW_INDEX_V0_2_5C.json
+            artifacts/UKLS_COMMON_CRAWL_RAW_INDEX_V0_2_5C_ROWS.json
+          if-no-files-found: error
+          retention-days: 90
