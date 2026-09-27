@@ -36,7 +36,7 @@ def main()->int:
     # Reproduce normalized source deterministically; it has no market access.
     subprocess.run([sys.executable,"research/crypto_index_rebalance_flow/event_normalization.py"],check=True)
     norm=json.loads((OUT/"event_normalization_v0.1.json").read_text())
-    assert norm["result_sha256"]=="a44c3ca006f06a258314e683c44aeb31e5b1788145d9ffe4603e4994a33bb876"
+    assert norm["event_set_sha256"]=="fffaa5aab3ba17456358af230c3aeda10a74ba55078b6c98b3d1585916db5a17"
     events=[e for e in norm["events"] if e["period_role"]=="DISCOVERY_SOURCE"]
     assert all(e["rebalance_date"].startswith(("2022-","2023-","2024-")) for e in events)
 
@@ -95,7 +95,7 @@ def main()->int:
     out={
         "schema":"BITWISE_BINANCE_SOURCE_COVERAGE_V0.1",
         "generated_at_utc":dt.datetime.now(dt.timezone.utc).isoformat(),
-        "normalization_result_sha256":norm["result_sha256"],
+        "normalization_event_set_sha256":norm["event_set_sha256"],
         "classification":classification,
         "eligible_events":eligible,
         "excluded_events":excluded,
