@@ -1,0 +1,36 @@
+name: POLY-COMB Prospective Economic V0.8
+on:
+  push:
+    branches: [prediction-combinatorial-arb-v0.8-prospective-economic]
+    paths:
+      - 'research/polymarket_combinatorial_arb/PROSPECTIVE_ECONOMIC_MVE_V0.8.md'
+      - 'research/polymarket_combinatorial_arb/prospective_economic_v08.py'
+      - '.github/workflows/poly_comb_prospective_economic_v08.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  economic-mve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run frozen prospective economic MVE
+        run: python research/polymarket_combinatorial_arb/prospective_economic_v08.py
+      - name: Assert safety and fixed sample
+        run: |
+          python - <<'PY'
+          import json
+          x=json.load(open('artifacts/POLY_COMB_PROSPECTIVE_ECONOMIC_V0.8.json'))
+          assert x['authenticated_endpoints_used'] is False
+          assert x['orders_sent'] is False
+          assert x['capital_used'] is False
+          if x['summary']['pilot_adjudication'] != 'FAIL_CLOSED_IDENTITY_OR_FEE_DRIFT':
+              assert len(x['snapshots']) == 120
+          print('PROSPECTIVE ECONOMIC SAFETY PASS:',x['summary']['pilot_adjudication'])
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: POLY_COMB_PROSPECTIVE_ECONOMIC_V0.8
+          path: artifacts/POLY_COMB_PROSPECTIVE_ECONOMIC_V0.8.json
+          if-no-files-found: error
