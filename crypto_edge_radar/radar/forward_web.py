@@ -870,6 +870,12 @@ h1{margin:0 0 6px;font-size:28px}.sub{color:#9aa4b2;margin-bottom:22px}
 <div class="row"><span>Chain</span><span id="chain">—</span></div>
 <div class="row"><span>Checked</span><span id="checked">—</span></div></section>
 
+<section class="card"><div class="k">Persistence</div><div id="persistStatus" class="v">—</div>
+<div class="row"><span>Target mode</span><span id="persistTarget">—</span></div>
+<div class="row"><span>Events / keys</span><span id="persistCounts">—</span></div>
+<div class="row"><span>Max ID / sequence</span><span id="persistSequence">—</span></div>
+<div class="row"><span>Historical source</span><span id="persistSource">—</span></div></section>
+
 <section class="card"><div class="k">TFG Donchian Regime</div><div id="tfgStatus" class="v">—</div>
 <div class="row"><span>Provider</span><span id="tfgProvider">—</span></div>
 <div class="row"><span>Latest boundary</span><span id="tfgBoundary">—</span></div>
@@ -939,6 +945,12 @@ async function refresh(){
     $("mode").textContent=val(s.mode); $("evidence").textContent=val(s.evidence_backend);
     $("chain").textContent=(s.evidence_chain_ok?"OK · ":"FAIL · ")+val(s.evidence_chain_detail);
     $("checked").textContent=val(s.checked_at_utc);
+    const pw=s.persistence_watchdog||{}, pp=pw.integrity_proof||{}, pe=s.persistence_expiry||{};
+    paint("persistStatus",pw.classification,pw.pass===true);
+    $("persistTarget").textContent=val(s.database_target_mode);
+    $("persistCounts").textContent=val(pp.event_count)+" / "+val(pp.key_count);
+    $("persistSequence").textContent=val(pp.max_event_id)+" / "+val(pp.sequence_last_value);
+    $("persistSource").textContent=val(pe.historical_source_role);
     const t=s.tfg||{}; paint("tfgStatus",t.status,t.status==="OK"||String(t.status||"").startsWith("IDLE_"));
     $("tfgProvider").textContent=val(t.provider); $("tfgBoundary").textContent=val(t.latest_due_signal_close_utc,val(t.latest_seen_boundary_ms));
     $("tfgRegime").textContent=val(t.regime_on_boundaries); $("tfgSignals").textContent=val(t.eligible_signal_count);
