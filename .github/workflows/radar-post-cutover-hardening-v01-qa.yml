@@ -1,0 +1,35 @@
+name: RADAR POST-CUTOVER HARDENING V0.1 QA
+
+on:
+  push:
+    branches:
+      - radar-post-cutover-hardening-v0.1-2026-09-27
+    paths:
+      - 'crypto_edge_radar/**'
+      - '.github/workflows/radar-post-cutover-hardening-v01-qa.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: radar-post-cutover-hardening-v01-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  deterministic-safety:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: crypto_edge_radar
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install runtime dependencies
+        run: python -m pip install -e .
+      - name: Compile radar and tests
+        run: python -m compileall radar tests
+      - name: Full deterministic unit suite
+        run: python -m unittest discover -s tests -v
