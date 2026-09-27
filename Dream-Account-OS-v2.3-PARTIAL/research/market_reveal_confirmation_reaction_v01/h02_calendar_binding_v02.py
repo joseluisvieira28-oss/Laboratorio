@@ -60,6 +60,14 @@ def event_activation_sha256(receipt: Mapping[str, Any]) -> str:
     return hashlib.sha256(_canonical_json_bytes(clean)).hexdigest()
 
 
+def _is_sha256(value: Any) -> bool:
+    return (
+        isinstance(value, str)
+        and len(value) == 64
+        and all(ch in "0123456789abcdef" for ch in value.lower())
+    )
+
+
 def _host_matches(url: Any, expected_host: str) -> bool:
     if not isinstance(url, str) or not url:
         return False
@@ -188,6 +196,8 @@ def validate_annual_plan_manifest(
             blockers.append(f"EVENT_{index}_DOMAIN_MISMATCH")
         if _parse_utc(source.get("retrieved_at_utc")) is None:
             blockers.append(f"EVENT_{index}_SOURCE_RETRIEVED_AT_INVALID")
+        if not _is_sha256(source.get("extracted_text_sha256")):
+            blockers.append(f"EVENT_{index}_SOURCE_TEXT_SHA256_INVALID")
 
     for family, expected in EXPECTED_COUNTS.items():
         if counts[family] != expected:
@@ -279,6 +289,47 @@ def validate_event_activation_receipt(
         blockers.append("EVENT_RECEIPT_CANNOT_SELF_AUTHORIZE_TARGET")
     if receipt.get("outcomes_authorized") is not False:
         blockers.append("EVENT_RECEIPT_CANNOT_AUTHORIZE_OUTCOMES")
+
+    evidence_roles = receipt.get("evidence_roles")
+    supporting_sources = receipt.get("supporting_official_sources")
+    if not isinstance(evidence_roles, list) or not evidence_roles:
+        blockers.append("EVIDENCE_ROLES_MISSING")
+        evidence_roles = []
+    if not isinstance(supporting_sources, list) or not supporting_sources:
+        blockers.append("SUPPORTING_OFFICIAL_SOURCES_MISSING")
+        supporting_sources = []
+
+    seen_roles: set[str] = set()
+    expected_domain = (
+        EXPECTED_SOURCE[str(family)][1]
+        if family in EXPECTED_SOURCE
+        else None
+    )
+    for index, source in enumerate(supporting_sources):
+        if not isinstance(source, Mapping):
+            blockers.append(f"SUPPORTING_SOURCE_{index}_INVALID")
+            continue
+        role = source.get("role")
+        if not isinstance(role, str) or not role:
+            blockers.append(f"SUPPORTING_SOURCE_{index}_ROLE_INVALID")
+        elif role in seen_roles:
+            blockers.append("DUPLICATE_SUPPORTING_SOURCE_ROLE")
+        else:
+            seen_roles.add(role)
+        if expected_domain is not None and not _host_matches(
+            source.get("url"), expected_domain
+        ):
+            blockers.append(f"SUPPORTING_SOURCE_{index}_DOMAIN_MISMATCH")
+        retrieved_at = _parse_utc(source.get("retrieved_at_utc"))
+        if retrieved_at is None:
+            blockers.append(f"SUPPORTING_SOURCE_{index}_RETRIEVED_AT_INVALID")
+        elif confirmed_at is not None and retrieved_at > confirmed_at:
+            blockers.append(f"SUPPORTING_SOURCE_{index}_AFTER_CONFIRMATION")
+        if not _is_sha256(source.get("extracted_text_sha256")):
+            blockers.append(f"SUPPORTING_SOURCE_{index}_TEXT_SHA256_INVALID")
+
+    if set(evidence_roles) != seen_roles:
+        blockers.append("EVIDENCE_ROLE_SOURCE_SET_MISMATCH")
 
     claimed_hash = receipt.get("activation_receipt_sha256")
     if not isinstance(claimed_hash, str) or not claimed_hash:
