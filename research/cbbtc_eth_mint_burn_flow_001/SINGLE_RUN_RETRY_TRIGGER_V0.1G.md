@@ -34,3 +34,7 @@ Relaunch after digest-verified ordered log fallback: PublicNode -> BlockMachine 
 ## Relaunch — V0.1S
 
 Relaunch after probe-verified historical header failover. Header order: PublicNode -> BlockMachine -> 1RPC -> Flashbots. Log transport remains V0.1R. Scientific contract unchanged.
+
+## Relaunch — V0.1U
+
+Relaunch after exact Window-B historical eth_getCode crosscheck. CODE_RPCS: BlockMachine -> MEVBlocker -> PublicNode. Scientific contract unchanged.
