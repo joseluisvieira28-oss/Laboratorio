@@ -1,0 +1,49 @@
+name: ETH-STAKING-FLOW-001 CBT API Contract V0.1.9
+on:
+  push:
+    branches:
+      - eth-staking-flow-v3-stagea-cbt-contract-v019
+    paths:
+      - 'research/eth_staking_flow/cbt_api_contract_v019.py'
+      - '.github/workflows/eth-staking-flow-v3-stagea-cbt-contract-v019.yml'
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify authority and compile
+        run: |
+          test -f research/eth_staking_flow/ETH_STAKING_FLOW_001_V3_STAGEA_CBT_API_CONTRACT_REMEDIATION_V0_1_9.md
+          python -m py_compile research/eth_staking_flow/cbt_api_contract_v019.py
+      - name: Execute source-only API contract probe
+        run: python research/eth_staking_flow/cbt_api_contract_v019.py
+      - name: Enforce firewall
+        if: always()
+        run: |
+          python - <<'PY'
+          import json, pathlib
+          p=pathlib.Path('artifacts/ETH_STAKING_FLOW_001_CBT_API_CONTRACT_V0_1_9.json')
+          assert p.exists()
+          x=json.loads(p.read_text())
+          assert x['source_only'] is True
+          assert x['market_data_opened'] is False
+          assert x['signal_evaluated'] is False
+          assert x['returns_opened'] is False
+          assert x['pnl_opened'] is False
+          assert x['source_after_2026_08_31_opened'] is False
+          print('CLASSIFICATION',x['classification'])
+          print('USABLE_CONTRACTS',len(x['usable_contracts']))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ETH_STAKING_FLOW_001_CBT_API_CONTRACT_V0_1_9
+          path: artifacts/ETH_STAKING_FLOW_001_CBT_API_CONTRACT_V0_1_9.json
+          if-no-files-found: error
+          retention-days: 90
