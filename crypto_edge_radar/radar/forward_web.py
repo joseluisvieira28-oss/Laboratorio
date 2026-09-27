@@ -18,6 +18,7 @@ from .config import Settings
 from .ced1d_source_probe import ced1d_render_source_probe
 from .ced1d_render_shadow_runtime import CED1DRenderShadowRunner
 from .evidence import build_evidence_store
+from .evidence_identity import build_evidence_identity
 from .strategies.bnb_launchpool_demand import BinanceSpotBNBBTCKlineFeed
 from .strategies.tfg_donchian_regime_forward import MEXCSpotKlineFeed
 from .spot_mapping import spot_perp_mapping_receipt
@@ -442,6 +443,18 @@ class ForwardShadowRuntime:
             errors["evidence_chain"] = chain_detail
 
         try:
+            evidence_identity = build_evidence_identity(self.store)
+        except Exception as exc:
+            evidence_identity = {
+                "schema_version": "RADAR_EVIDENCE_IDENTITY_V0.1",
+                "status": "FAIL_CLOSED",
+                "error": f"{type(exc).__name__}:{exc}",
+                "payloads_exposed": False,
+                "science_changed": False,
+                "database_mutation": False,
+            }
+
+        try:
             tfg_forward_metrics = evaluate_tfg_forward_evidence(self.store)
         except Exception as exc:
             tfg_forward_metrics = {
@@ -680,6 +693,7 @@ class ForwardShadowRuntime:
             "evidence_backend": self.store.backend,
             "evidence_chain_ok": chain_ok,
             "evidence_chain_detail": chain_detail,
+            "evidence_identity": evidence_identity,
             "runtime_liveness": runtime_liveness,
             "persistence_expiry": persistence_expiry,
             "tfg": tfg_state,
