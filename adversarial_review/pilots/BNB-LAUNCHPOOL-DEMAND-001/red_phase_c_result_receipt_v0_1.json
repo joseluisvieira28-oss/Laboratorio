@@ -1,0 +1,85 @@
+{
+  "protocol_id": "BNB-ADVERSARIAL-PHASE-C-PREPOSITIONING-DIAGNOSTIC-V0.1",
+  "protocol_commit": "ad84beaf221d02ada107c039764ef99c4869e9a4",
+  "status": "EXECUTED_POST_HOC_DIAGNOSTIC_ZERO_PROMOTION_CREDIT",
+  "result_sha256": "34b1f85848b16b880c4b1e2855f71cb1da758f7dbf95dc8fe4261755fbbe2197",
+  "c01_paired_pre_post": {
+    "n": 65,
+    "coverage": 0.9848484848484849,
+    "pre_base20_mean_bps": 221.0239617698774,
+    "pre_pf": 7.9335552524782615,
+    "post_base20_mean_bps": 73.40890147856682,
+    "post_pf": 1.6066468210544649,
+    "paired_mean_post_minus_pre_bps": -147.61506029131056,
+    "post_gt_pre_count": 25,
+    "signflip_replications": 10000,
+    "two_sided_fraction_abs_perm_mean_gte_observed": 0.0083
+  },
+  "c02_pre_tail_dependency": {
+    "remove_best_1": {
+      "n": 64,
+      "mean_bps": 166.7598857687194,
+      "pf": 6.150801669953415
+    },
+    "remove_best_5": {
+      "n": 60,
+      "mean_bps": 125.06409583460773,
+      "pf": 4.621488937746903
+    }
+  },
+  "c03_event_window_decomposition": {
+    "T-24_T-12": {
+      "n": 65,
+      "mean_gross_bps": 7.350946266739568,
+      "median_gross_bps": -37.52651329743784,
+      "positive_fraction": 0.36923076923076925
+    },
+    "T-12_T0": {
+      "n": 65,
+      "mean_gross_bps": 232.13067699195577,
+      "median_gross_bps": 204.7139537457121,
+      "positive_fraction": 0.8307692307692308
+    },
+    "T0_T+12": {
+      "n": 66,
+      "mean_gross_bps": 72.69312377816817,
+      "median_gross_bps": 40.13702847154077,
+      "positive_fraction": 0.5606060606060606
+    },
+    "T+12_T+24": {
+      "n": 66,
+      "mean_gross_bps": 24.80390541193478,
+      "median_gross_bps": 18.064001304722854,
+      "positive_fraction": 0.5454545454545454
+    }
+  },
+  "c04_momentum_matched_placebo": {
+    "status": "EXECUTED",
+    "matchable_events": 65,
+    "coverage": 0.9848484848484849,
+    "replications": 10000,
+    "seed": 20260927,
+    "actual_common_post_base20_mean_bps": 73.40890147856682,
+    "actual_common_post_pf": 1.6066468210544649,
+    "placebo_mean_mean_bps": -11.98109406123537,
+    "placebo_mean_median_bps": -13.4955195445418,
+    "placebo_p05_bps": -65.98443534211317,
+    "placebo_p95_bps": 46.027033982948446,
+    "fraction_placebo_mean_gte_actual": 0.0105,
+    "actual_percentile": 0.9895,
+    "median_abs_pre_return_match_error_bps": 45.80160835089498
+  },
+  "interpretation": [
+    "The pre-event effect is broad enough to survive removal of the five largest pre-event winners.",
+    "Most pre-event strength is concentrated in T-12h to T0 and appears in all three historical blocks.",
+    "The official-announcement post-event return is weaker than the preceding 24h return on the paired cohort.",
+    "Nevertheless, post-event returns remain unusually strong versus controls matched on prior 24h momentum, so pre-event momentum alone does not explain the post-event effect.",
+    "This phase was generated after Phase B and receives zero promotion credit."
+  ],
+  "guards": {
+    "access_2026": false,
+    "candidate_rule_changed": false,
+    "live_trading": false,
+    "promotion_credit": false
+  }
+}
