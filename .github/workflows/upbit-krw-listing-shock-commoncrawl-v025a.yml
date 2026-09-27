@@ -1,0 +1,40 @@
+name: UKLS Common Crawl Transport Remediation V0.2.5A
+on:
+  push:
+    branches:
+      - upbit-krw-listing-shock-commoncrawl-transport-v0.2.5a
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/upbit_krw_listing_shock_001/common_crawl_index_v025a.py'
+      - '.github/workflows/upbit-krw-listing-shock-commoncrawl-v025a.yml'
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify frozen authority
+        run: |
+          test -f Dream-Account-OS-v2.3-PARTIAL/research/upbit_krw_listing_shock_001/COMMON_CRAWL_TRANSPORT_REMEDIATION_V0_2_5A.md
+          python -m py_compile Dream-Account-OS-v2.3-PARTIAL/research/upbit_krw_listing_shock_001/common_crawl_index_v025a.py
+      - name: Execute index-only transport remediation
+        run: python Dream-Account-OS-v2.3-PARTIAL/research/upbit_krw_listing_shock_001/common_crawl_index_v025a.py
+      - name: Enforce firewall and print classification
+        run: |
+          python - <<'PY'
+          import json
+          x=json.load(open('artifacts/UKLS_COMMON_CRAWL_INDEX_V0_2_5A.json'))
+          assert x['warc_payload_opened'] is False
+          assert x['event_values_opened'] is False
+          print('CLASSIFICATION',x['classification'])
+          print('AGGREGATE',x.get('aggregate'))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: UKLS_COMMON_CRAWL_INDEX_V0_2_5A
+          path: artifacts/UKLS_COMMON_CRAWL_INDEX_V0_2_5A.json
+          retention-days: 90
