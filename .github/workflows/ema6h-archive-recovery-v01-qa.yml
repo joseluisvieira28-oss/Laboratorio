@@ -1,0 +1,143 @@
+name: EMA6H ARCHIVE RECOVERY V0.1 QA
+
+on:
+  pull_request:
+    branches:
+      - crypto-edge-radar-postgres-v0.5
+    paths:
+      - 'crypto_edge_radar/radar/ema6h_archive_recovery.py'
+      - 'crypto_edge_radar/tests/test_ema6h_archive_recovery.py'
+      - '.github/workflows/ema6h-archive-recovery-v01-qa.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install
+        run: pip install -e crypto_edge_radar
+      - name: Compile and deterministic suite
+        run: |
+          cd crypto_edge_radar
+          python -m compileall radar tests
+          python -m unittest discover -s tests -v
+      - name: Full frozen-warmup REST vs archive equivalence
+        run: |
+          cd crypto_edge_radar
+          python - <<'PY'
+          from datetime import datetime, timezone
+          import hashlib,json
+          from radar.ema6h_archive_recovery import BinanceOfficialKlineArchiveRecovery
+          from radar.strategies.ema6h_50x200_regime_forward import (
+              BinanceSpotKlineFeed,
+              WARMUP_15M_MS,
+              WARMUP_1D_MS,
+          )
+
+          def ms(x):
+              return int(datetime.fromisoformat(x.replace("Z","+00:00")).timestamp()*1000)
+
+          end_ms=ms("2026-09-27T00:00:00Z")
+          now_ms=ms("2026-09-27T18:45:00Z")
+          cases=[
+              ("BTCUSDT","15m",end_ms-WARMUP_15M_MS,end_ms),
+              ("SOLUSDT","15m",end_ms-WARMUP_15M_MS,end_ms),
+              ("BTCUSDT","1d",end_ms-WARMUP_1D_MS,end_ms),
+          ]
+
+          receipt={
+              "schema_version":"EMA6H_FULL_WARMUP_ARCHIVE_EQUIVALENCE_V0.1",
+              "pass":True,
+              "cases":[],
+              "science_changed":False,
+              "authenticated_exchange_api_used":False,
+              "orders_created":False,
+              "exchange_mutation_performed":False,
+              "live_capital_enabled":False,
+          }
+
+          def fields(rows):
+              return [
+                  [c.open_time,c.open,c.high,c.low,c.close,c.volume,c.close_time]
+                  for c in rows
+              ]
+
+          for symbol,interval,start_ms,end_ms_case in cases:
+              rest=BinanceSpotKlineFeed(timeout=20,max_attempts=1,retry_backoff_seconds=0)
+              rest_rows=rest.klines(
+                  symbol,interval,
+                  start_ms=start_ms,
+                  end_ms=end_ms_case,
+                  now_ms=now_ms,
+              )
+              archive=BinanceOfficialKlineArchiveRecovery(timeout=20)
+              archive_rows=archive.klines(
+                  symbol,interval,
+                  start_ms=start_ms,
+                  end_ms=end_ms_case,
+                  now_ms=now_ms,
+              )
+              a=fields(rest_rows); b=fields(archive_rows)
+              exact=a==b
+              ah=hashlib.sha256(json.dumps(a,separators=(",",":")).encode()).hexdigest()
+              bh=hashlib.sha256(json.dumps(b,separators=(",",":")).encode()).hexdigest()
+              receipt["pass"]=receipt["pass"] and exact
+              receipt["cases"].append({
+                  "symbol":symbol,
+                  "interval":interval,
+                  "start_ms":start_ms,
+                  "end_ms":end_ms_case,
+                  "rest_rows":len(a),
+                  "archive_rows":len(b),
+                  "exact_scientific_fields":exact,
+                  "rest_sha256":ah,
+                  "archive_sha256":bh,
+                  "archive_period_receipts":len(archive.last_receipts),
+                  "archive_all_checksums_verified":all(
+                      x.checksum_verified for x in archive.last_receipts
+                  ),
+              })
+
+          receipt["classification"]=(
+              "PASS_FULL_FROZEN_WARMUP_EXACT_EQUIVALENCE"
+              if receipt["pass"]
+              else "FAIL_CLOSED_FULL_WARMUP_DIVERGENCE"
+          )
+          print(json.dumps(receipt,sort_keys=True))
+          assert receipt["pass"],receipt
+          PY
+      - name: REST vs checksum-verified official archive equivalence
+        run: |
+          cd crypto_edge_radar
+          python - <<'PY'
+          from datetime import datetime
+          import hashlib,json
+          from radar.ema6h_archive_recovery import BinanceOfficialDailyKlineArchive
+          from radar.strategies.ema6h_50x200_regime_forward import BinanceSpotKlineFeed
+          def ms(x): return int(datetime.fromisoformat(x.replace("Z","+00:00")).timestamp()*1000)
+          now_ms=ms("2026-09-27T18:45:00Z")
+          cases=[
+            ("BTCUSDT","15m",ms("2026-09-26T00:00:00Z"),ms("2026-09-27T00:00:00Z")),
+            ("SOLUSDT","15m",ms("2026-09-26T00:00:00Z"),ms("2026-09-27T00:00:00Z")),
+          ]
+          receipt={"schema_version":"EMA6H_REST_ARCHIVE_EQUIVALENCE_V0.1","cases":[],"pass":True,"science_changed":False,"authenticated_exchange_api_used":False,"orders_created":False,"exchange_mutation_performed":False,"live_capital_enabled":False}
+          for symbol,interval,start_ms,end_ms in cases:
+              rest=BinanceSpotKlineFeed(timeout=15,max_attempts=1,retry_backoff_seconds=0)
+              rest_rows=rest.klines(symbol,interval,start_ms=start_ms,end_ms=end_ms,now_ms=now_ms)
+              archive=BinanceOfficialDailyKlineArchive(timeout=15)
+              archive_rows=archive.klines(symbol,interval,start_ms=start_ms,end_ms=end_ms,now_ms=now_ms)
+              def fields(rows): return [[c.open_time,c.open,c.high,c.low,c.close,c.volume,c.close_time] for c in rows]
+              a=fields(rest_rows); b=fields(archive_rows); exact=a==b
+              receipt["pass"]=receipt["pass"] and exact
+              receipt["cases"].append({"symbol":symbol,"interval":interval,"rest_rows":len(a),"archive_rows":len(b),"exact_scientific_fields":exact,"rest_sha256":hashlib.sha256(json.dumps(a,separators=(",",":")).encode()).hexdigest(),"archive_sha256":hashlib.sha256(json.dumps(b,separators=(",",":")).encode()).hexdigest(),"archive_checksum_verified":archive.last_receipt.checksum_verified,"archive_microseconds_normalized":archive.last_receipt.normalized_microseconds_to_milliseconds})
+          receipt["classification"]="PASS_REST_ARCHIVE_EXACT_EQUIVALENCE" if receipt["pass"] else "FAIL_CLOSED_REST_ARCHIVE_DIVERGENCE"
+          print(json.dumps(receipt,sort_keys=True))
+          assert receipt["pass"],receipt
+          PY
