@@ -43,6 +43,11 @@ from .etf_cme_exact_scheduler import ETFCMEExactRuntimeScheduler
 from .external_freshness import all_external_freshness
 from .private_evidence_backup import emit_snapshot_json_chunks, emit_snapshot_log_chunks
 from .persistence_expiry import persistence_expiry_state
+from .persistence_hardening import (
+    historical_preflight_view,
+    persistence_watchdog_state,
+    post_cutover_persistence_state,
+)
 from .target_connection_preflight import target_connection_preflight
 from .supabase_pooler_probe import probe_from_env as supabase_pooler_probe_from_env
 from .deploy_drift import deployment_drift_receipt
@@ -132,6 +137,32 @@ def _parse_utc_ms(value: Any) -> int | None:
         )
     except Exception:
         return None
+
+
+def _persistence_guard_snapshot(*, settings: Settings, store: Any) -> dict[str, Any]:
+    chain_ok, chain_detail = store.verify_chain()
+    try:
+        identity = build_evidence_identity(store)
+    except Exception as exc:
+        identity = {
+            "schema_version": "RADAR_EVIDENCE_IDENTITY_V0.1",
+            "status": "FAIL_CLOSED",
+            "backend": getattr(store, "backend", None),
+            "chain_verified": False,
+            "error": f"{type(exc).__name__}:{exc}",
+            "payloads_exposed": False,
+            "science_changed": False,
+            "database_mutation": False,
+        }
+
+    watchdog = persistence_watchdog_state(
+        database_target_mode=settings.database_target_mode,
+        evidence_backend=getattr(store, "backend", "unknown"),
+        evidence_chain_ok=chain_ok,
+        evidence_identity=identity,
+    )
+    watchdog["chain_detail"] = chain_detail
+    return watchdog
 
 
 class CachingBinanceOfficialLaunchpoolSource(BinanceOfficialLaunchpoolSource):
@@ -355,6 +386,35 @@ class ForwardShadowRuntime:
             now_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
         checked = datetime.fromtimestamp(now_ms / 1000.0, tz=timezone.utc).isoformat().replace("+00:00", "Z")
         errors: dict[str, str] = {}
+
+        prewrite_watchdog = _persistence_guard_snapshot(
+            settings=self.settings,
+            store=self.store,
+        )
+        if not prewrite_watchdog.get("writes_allowed"):
+            fatal = {
+                "health": "DEGRADED_FAIL_CLOSED",
+                "mode": "PERSISTENCE_ROUTE_FAIL_CLOSED",
+                "checked_at_utc": checked,
+                "version": "0.9",
+                "runtime_identity": _runtime_identity(),
+                "evidence_backend": self.store.backend,
+                "database_target_mode": self.settings.database_target_mode,
+                "persistence_watchdog": prewrite_watchdog,
+                "errors": {
+                    "persistence_watchdog": prewrite_watchdog.get(
+                        "classification",
+                        "FAIL_CLOSED_PERSISTENCE_ROUTE",
+                    )
+                },
+                "authenticated_exchange_api_used": False,
+                "orders_created": False,
+                "exchange_mutation_performed": False,
+                "live_capital_enabled": False,
+            }
+            self._set_state(fatal)
+            print(json.dumps(fatal, sort_keys=True), flush=True)
+            return fatal
 
         try:
             bnb_state = self.bnb.run_once(now_ms=now_ms)
@@ -682,20 +742,30 @@ class ForwardShadowRuntime:
         else:
             deploy_drift = self._deploy_drift_state
 
-        persistence_expiry = persistence_expiry_state(
+        persistence_watchdog = persistence_watchdog_state(
+            database_target_mode=self.settings.database_target_mode,
+            evidence_backend=self.store.backend,
+            evidence_chain_ok=chain_ok,
+            evidence_identity=evidence_identity,
+        )
+        if not persistence_watchdog.get("pass"):
+            errors["persistence_watchdog"] = persistence_watchdog.get(
+                "classification",
+                "FAIL_CLOSED_PERSISTENCE_ROUTE",
+            )
+
+        legacy_persistence_expiry = persistence_expiry_state(
             os.getenv("RADAR_PERSISTENCE_EXPIRY_UTC"),
             now=datetime.fromtimestamp(now_ms / 1000.0, tz=timezone.utc),
         )
-        target_preflight = self._target_preflight_state
-        persistence_expiry["target_url_configured"] = bool(
-            target_preflight.get("target_url_configured")
+        persistence_expiry = post_cutover_persistence_state(
+            legacy_persistence_expiry,
+            watchdog=persistence_watchdog,
         )
-        if target_preflight.get("classification") == "TARGET_PREFLIGHT_PASS_BACKUP_PREFIX_CURRENT_CHAIN_OK":
-            persistence_expiry["cutover_blocker"] = "FINAL_QUIESCED_REFRESH_REQUIRED"
-        elif target_preflight.get("target_url_configured"):
-            persistence_expiry["cutover_blocker"] = target_preflight.get("classification")
-        else:
-            persistence_expiry["cutover_blocker"] = "TARGET_CONNECTION_CREDENTIAL_NOT_CONFIGURED"
+        target_preflight = historical_preflight_view(
+            self._target_preflight_state,
+            cutover_complete=bool(persistence_watchdog.get("cutover_complete")),
+        )
 
         state = {
             "health": "OK" if not errors else "DEGRADED_FAIL_CLOSED",
@@ -709,6 +779,7 @@ class ForwardShadowRuntime:
             "evidence_chain_detail": chain_detail,
             "evidence_identity": evidence_identity,
             "runtime_liveness": runtime_liveness,
+            "persistence_watchdog": persistence_watchdog,
             "persistence_expiry": persistence_expiry,
             "target_connection_preflight": target_preflight,
             "tfg": tfg_state,
@@ -961,6 +1032,8 @@ def serve_forward_shadow(*, port: int, interval: float) -> int:
     runtime = ForwardShadowRuntime(settings=settings)
     quiesced = os.getenv("RADAR_EVIDENCE_WRITES_QUIESCED", "").lower() == "true"
 
+    initial_state: dict[str, Any] | None = None
+
     if quiesced:
         chain_ok, chain_detail = runtime.store.verify_chain()
         state = {
@@ -982,7 +1055,7 @@ def serve_forward_shadow(*, port: int, interval: float) -> int:
         runtime._set_state(state)
         print(json.dumps(state, sort_keys=True), flush=True)
     else:
-        runtime.run_cycle()
+        initial_state = runtime.run_cycle()
 
     if os.getenv("RADAR_BACKUP_LOG_EMIT_ON_START", "").lower() == "true":
         emit_snapshot_log_chunks(runtime.store)
@@ -1006,7 +1079,15 @@ def serve_forward_shadow(*, port: int, interval: float) -> int:
             flush=True,
         )
 
-    if not quiesced:
+    persistence_writes_allowed = bool(
+        initial_state is None
+        or (initial_state.get("persistence_watchdog") or {}).get(
+            "writes_allowed",
+            True,
+        )
+    )
+
+    if not quiesced and persistence_writes_allowed:
         exact_etf_worker = threading.Thread(
             target=runtime.etf_cme_exact_scheduler.run_loop,
             name="etf-cme-exact-timing-scheduler",
