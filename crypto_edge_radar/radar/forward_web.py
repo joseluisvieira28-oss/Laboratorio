@@ -67,6 +67,9 @@ BINANCE_RATE_LIMIT_COOLDOWN_MS = 60 * 60 * 1000
 
 
 def is_binance_public_rate_limit_error(exc: BaseException | str) -> bool:
+    status = getattr(exc, "http_status", None)
+    if status in {418, 429}:
+        return True
     text = str(exc)
     return any(
         token in text
@@ -77,6 +80,22 @@ def is_binance_public_rate_limit_error(exc: BaseException | str) -> bool:
             "HTTP 429",
         )
     )
+
+
+def binance_rate_limit_retry_plan(
+    *,
+    error: BaseException | str,
+    now_ms: int,
+) -> tuple[int, str]:
+    ban_until_ms = getattr(error, "ban_until_ms", None)
+    if isinstance(ban_until_ms, int) and ban_until_ms > now_ms:
+        return ban_until_ms + 60_000, "SERVER_BAN_UNTIL_PLUS_60S"
+
+    retry_after_seconds = getattr(error, "retry_after_seconds", None)
+    if isinstance(retry_after_seconds, int) and retry_after_seconds > 0:
+        return now_ms + retry_after_seconds * 1000 + 60_000, "SERVER_RETRY_AFTER_PLUS_60S"
+
+    return now_ms + BINANCE_RATE_LIMIT_COOLDOWN_MS, "FALLBACK_FIXED_1H"
 
 
 def source_rate_limit_retry_due(
@@ -96,18 +115,33 @@ def source_rate_limit_wait_state(
     now_ms: int,
     error: BaseException | str,
 ) -> dict[str, Any]:
-    retry_ms = now_ms + BINANCE_RATE_LIMIT_COOLDOWN_MS
+    retry_ms, cooldown_source = binance_rate_limit_retry_plan(
+        error=error,
+        now_ms=now_ms,
+    )
     retry_utc = (
         datetime.fromtimestamp(retry_ms / 1000.0, tz=timezone.utc)
         .isoformat()
         .replace("+00:00", "Z")
+    )
+    ban_until_ms = getattr(error, "ban_until_ms", None)
+    ban_until_utc = (
+        datetime.fromtimestamp(ban_until_ms / 1000.0, tz=timezone.utc)
+        .isoformat()
+        .replace("+00:00", "Z")
+        if isinstance(ban_until_ms, int)
+        else None
     )
     return {
         "watcher_id": watcher_id,
         "status": "WAITING_SOURCE_RATE_LIMIT",
         "source": "BINANCE_PUBLIC",
         "http_class": "418_OR_429",
-        "cooldown_seconds": BINANCE_RATE_LIMIT_COOLDOWN_MS // 1000,
+        "http_status": getattr(error, "http_status", None),
+        "cooldown_seconds": max(0, (retry_ms - now_ms) // 1000),
+        "cooldown_source": cooldown_source,
+        "server_retry_after_seconds": getattr(error, "retry_after_seconds", None),
+        "server_ban_until_utc": ban_until_utc,
         "retry_not_before_utc": retry_utc,
         "evidence_advanced": False,
         "last_source_error": str(error),
@@ -478,8 +512,8 @@ class ForwardShadowRuntime:
                         now_ms=now_ms,
                         error=exc,
                     )
-                    self._ema6h_retry_not_before_ms = (
-                        now_ms + BINANCE_RATE_LIMIT_COOLDOWN_MS
+                    self._ema6h_retry_not_before_ms = _parse_utc_ms(
+                        ema6h_state.get("retry_not_before_utc")
                     )
                     self._ema6h_state = ema6h_state
                 else:
@@ -1122,6 +1156,7 @@ def serve_forward_shadow(*, port: int, interval: float) -> int:
     if (
         not quiesced
         and persistence_writes_allowed
+        and os.getenv("RADAR_EMA6H_RENDER_SOURCE_PROBE_ON_START", "").lower() == "true"
         and os.getenv("RENDER", "").lower() == "true"
         and os.getenv("RENDER_SERVICE_ID") == EMA6H_PROBE_CANONICAL_SERVICE_ID
     ):
