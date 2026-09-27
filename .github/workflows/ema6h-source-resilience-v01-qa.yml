@@ -1,0 +1,28 @@
+name: EMA6H SOURCE RESILIENCE V0.1 QA
+
+on:
+  push:
+    branches:
+      - ema6h-source-resilience-v0.1-2026-09-27
+    paths:
+      - 'crypto_edge_radar/**'
+      - '.github/workflows/ema6h-source-resilience-v01-qa.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deterministic:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: crypto_edge_radar
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -e .
+      - run: python -m compileall radar tests
+      - run: python -m unittest discover -s tests -v

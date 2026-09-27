@@ -6,6 +6,8 @@ on:
       - crypto-edge-radar-postgres-v0.5
     paths:
       - "crypto_edge_radar/radar/forward_web.py"
+      - "crypto_edge_radar/radar/ema6h_source_resilience.py"
+      - "crypto_edge_radar/tests/test_ema6h_source_resilience.py"
       - "crypto_edge_radar/tests/test_forward_web_dashboard.py"
       - "governance/RADAR_BINANCE_PUBLIC_SOURCE_RATE_LIMIT_COOLDOWN_V0.1_2026-09-27.md"
       - ".github/workflows/radar-binance-418-cooldown-v01-qa.yml"
@@ -43,6 +45,102 @@ jobs:
         run: |
           cd crypto_edge_radar
           python -m unittest discover -s tests -v
+
+      - name: Real public Binance multi-host equivalence gate
+        run: |
+          cd crypto_edge_radar
+          mkdir -p source_resilience_artifacts
+          python - <<'PY'
+          from __future__ import annotations
+          from dataclasses import asdict
+          from datetime import datetime, timezone
+          import hashlib
+          import json
+          from pathlib import Path
+
+          from radar.ema6h_source_resilience import OFFICIAL_BINANCE_SPOT_ENDPOINTS
+          from radar.strategies.ema6h_50x200_regime_forward import BinanceSpotKlineFeed
+
+          def ms(iso):
+              return int(datetime.fromisoformat(iso.replace("Z","+00:00")).timestamp()*1000)
+
+          samples = [
+              ("BTCUSDT","15m",ms("2026-09-26T00:00:00Z"),ms("2026-09-26T02:00:00Z")),
+              ("SOLUSDT","15m",ms("2026-09-26T00:00:00Z"),ms("2026-09-26T02:00:00Z")),
+              ("BTCUSDT","1d",ms("2026-09-22T00:00:00Z"),ms("2026-09-27T00:00:00Z")),
+          ]
+          now_ms=ms("2026-09-27T18:45:00Z")
+          rows=[]
+          good={}
+          for label,url in OFFICIAL_BINANCE_SPOT_ENDPOINTS:
+              endpoint={"label":label,"base_url":url,"samples":{}}
+              ok=True
+              for symbol,interval,start_ms,end_ms in samples:
+                  key=f"{symbol}:{interval}:{start_ms}:{end_ms}"
+                  try:
+                      feed=BinanceSpotKlineFeed(timeout=12,max_attempts=1,retry_backoff_seconds=0)
+                      feed.base_url=url
+                      candles=feed.klines(symbol,interval,start_ms=start_ms,end_ms=end_ms,now_ms=now_ms)
+                      scientific=[
+                          [c.open_time,c.open,c.high,c.low,c.close,c.volume,c.close_time]
+                          for c in candles
+                      ]
+                      encoded=json.dumps(scientific,separators=(",",":"),sort_keys=False).encode()
+                      digest=hashlib.sha256(encoded).hexdigest()
+                      endpoint["samples"][key]={"status":"PASS","rows":len(candles),"sha256":digest}
+                      good.setdefault(key,{}).setdefault(digest,[]).append(label)
+                  except Exception as exc:
+                      ok=False
+                      endpoint["samples"][key]={
+                          "status":"ERROR",
+                          "error_class":type(exc).__name__,
+                          "error":str(exc)[:240],
+                      }
+              endpoint["all_samples_pass"]=ok
+              rows.append(endpoint)
+
+          successful=[x for x in rows if x["all_samples_pass"]]
+          divergence={
+              key:{digest:labels for digest,labels in hashes.items()}
+              for key,hashes in good.items()
+              if len(hashes)!=1
+          }
+          coverage_ok=len(successful)>=2
+          all_samples_have_two=all(
+              sum(len(labels) for labels in hashes.values())>=2
+              for hashes in good.values()
+          ) and len(good)==len(samples)
+          passed=coverage_ok and all_samples_have_two and not divergence
+          receipt={
+              "schema_version":"EMA6H_BINANCE_OFFICIAL_HOST_EQUIVALENCE_V0.1",
+              "classification":"PASS_EXACT_SCIENTIFIC_FIELD_EQUIVALENCE" if passed else "FAIL_CLOSED_SOURCE_EQUIVALENCE",
+              "pass":passed,
+              "minimum_fully_successful_hosts":2,
+              "fully_successful_hosts":[x["label"] for x in successful],
+              "sample_count":len(samples),
+              "divergence":divergence,
+              "endpoints":rows,
+              "science_changed":False,
+              "authenticated_exchange_api_used":False,
+              "orders_created":False,
+              "exchange_mutation_performed":False,
+              "live_capital_enabled":False,
+          }
+          Path("source_resilience_artifacts/official_host_equivalence.json").write_text(
+              json.dumps(receipt,indent=2,sort_keys=True)+"\n",encoding="utf-8"
+          )
+          print(json.dumps(receipt,sort_keys=True))
+          assert passed, receipt
+          PY
+
+      - name: Upload EMA6H source equivalence receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ema6h-source-resilience-v01-equivalence
+          path: crypto_edge_radar/source_resilience_artifacts/
+          if-no-files-found: error
+          retention-days: 30
 
       - name: Frozen-science transport-only guard
         run: |
