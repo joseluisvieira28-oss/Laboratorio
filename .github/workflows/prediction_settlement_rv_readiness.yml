@@ -1,0 +1,44 @@
+name: PSRV Source Readiness Probe
+
+on:
+  push:
+    branches: [prediction-settlement-rv-v0.1]
+    paths:
+      - 'research/prediction_settlement_rv/source_readiness_probe.py'
+      - '.github/workflows/prediction_settlement_rv_readiness.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  readiness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Probe fee metadata and USDT/USD route
+        run: python research/prediction_settlement_rv/source_readiness_probe.py
+      - name: Enforce source firewall
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path("artifacts/prediction_settlement_rv/readiness/readiness_receipt.json")
+          x=json.loads(p.read_text())
+          assert x["economic_outputs_computed"] is False
+          assert x["matured_outcomes_read"] is False
+          assert x["orders"] is False
+          assert x["authenticated_trading_endpoints"] is False
+          assert x["adjudication"]["source_data_pass"] is False
+          print("READINESS_FIREWALL_PASS")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: PSRV_SOURCE_READINESS_RECEIPT
+          path: artifacts/prediction_settlement_rv/readiness/readiness_receipt.json
+          if-no-files-found: error
