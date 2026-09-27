@@ -43,16 +43,22 @@ def ready_status():
         "sources": {
             "US_CPI": {
                 "source_url": "https://www.bls.gov/schedule/news_release/cpi.htm",
+                "evidence_format": "HTML_EXTRACTED_TEXT_UTF8",
+                "extracted_text_sha256": "a" * 64,
                 "confirmed_2027_event_count": 12,
                 "events_2027": bls_events(),
             },
             "US_EMPLOYMENT_SITUATION": {
                 "source_url": "https://www.bls.gov/schedule/news_release/empsit.htm",
+                "evidence_format": "HTML_EXTRACTED_TEXT_UTF8",
+                "extracted_text_sha256": "b" * 64,
                 "confirmed_2027_event_count": 12,
                 "events_2027": bls_events(),
             },
             "FOMC_STATEMENT": {
                 "source_url": "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm",
+                "evidence_format": "HTML_EXTRACTED_TEXT_UTF8",
+                "extracted_text_sha256": "c" * 64,
                 "observed_2027_meeting_count": 8,
                 "annual_plan_bindable_v02": True,
                 "official_tentative_note_present": True,
