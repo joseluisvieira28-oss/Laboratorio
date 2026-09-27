@@ -69,7 +69,8 @@ jobs:
           set -euo pipefail
           BASE="Dream-Account-OS-v2.3-PARTIAL/research/market_reveal_confirmation_reaction_v01"
           FREEZE_AT="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
-          python "$BASE/trigger_a_finalizer_v02.py"             --implementation-head-sha "$GITHUB_SHA"             --output-dir trigger_a_package_v02             --live-status mrcr_calendar_status_v02.json             --protocol-frozen-at-utc "$FREEZE_AT"             | tee trigger_a_finalizer_stdout.json
+          IMPL_HEAD="$(git rev-parse HEAD)"
+          python "$BASE/trigger_a_finalizer_v02.py" --implementation-head-sha "$IMPL_HEAD" --output-dir trigger_a_package_v02 --live-status mrcr_calendar_status_v02.json --protocol-frozen-at-utc "$FREEZE_AT" | tee trigger_a_finalizer_stdout.json
 
       - name: Verify hard stop before target-open
         if: steps.probe.outputs.annual_plan_ready == 'true'
