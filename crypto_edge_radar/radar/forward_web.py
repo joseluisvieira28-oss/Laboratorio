@@ -29,6 +29,7 @@ from .tfg_forward_watcher import (
 )
 from .tfg_forward_metrics import evaluate_tfg_forward_evidence
 from .ema6h_regime_watcher import EMA6HRegimeForwardWatcher
+from .ema6h_archive_sidecar import EMA6HArchiveRecoverySidecar
 from .ema6h_regime_metrics import evaluate_ema6h_regime_forward
 from .ema6h_render_source_probe import (
     CANONICAL_RENDER_SERVICE_ID as EMA6H_PROBE_CANONICAL_SERVICE_ID,
@@ -63,6 +64,7 @@ RUNTIME_GAP_EVENT = "RADAR_RUNTIME_GAP_DETECTED"
 RUNTIME_LIVENESS_BUCKET_MS = 15 * 60 * 1000
 RUNTIME_GAP_ALERT_SECONDS = 30 * 60
 CED1D_ARCHIVE_RETRY_MS = 15 * 60 * 1000
+EMA6H_ARCHIVE_RETRY_MS = 30 * 60 * 1000
 BINANCE_RATE_LIMIT_COOLDOWN_MS = 60 * 60 * 1000
 
 
@@ -107,6 +109,29 @@ def source_rate_limit_retry_due(
     if state_status != "WAITING_SOURCE_RATE_LIMIT":
         return True
     return retry_not_before_ms is None or now_ms >= retry_not_before_ms
+
+
+def ema6h_archive_recovery_due(
+    *,
+    primary_status: str | None,
+    retry_not_before_ms: int | None,
+    now_ms: int,
+) -> bool:
+    if primary_status != "WAITING_SOURCE_RATE_LIMIT":
+        return False
+    return retry_not_before_ms is None or now_ms >= retry_not_before_ms
+
+
+def ema6h_archive_next_retry_ms(
+    *,
+    sidecar_status: str | None,
+    now_ms: int,
+) -> int:
+    if sidecar_status == "ARCHIVE_RECOVERY_OK":
+        day_ms = 24 * 60 * 60 * 1000
+        next_utc_day_ms = ((now_ms // day_ms) + 1) * day_ms
+        return next_utc_day_ms + 15 * 60 * 1000
+    return now_ms + EMA6H_ARCHIVE_RETRY_MS
 
 
 def source_rate_limit_wait_state(
@@ -270,6 +295,10 @@ class ForwardShadowRuntime:
             store=self.store,
             feed=EMA6HBinanceSpotKlineFeed(timeout=settings.http_timeout),
         )
+        self.ema6h_archive_recovery = EMA6HArchiveRecoverySidecar(
+            store=self.store,
+            timeout=settings.http_timeout,
+        )
         self.bnb = BNBLaunchpoolForwardShadowWatcher(
             store=self.store,
             source=CachingBinanceOfficialLaunchpoolSource(timeout=settings.http_timeout),
@@ -311,6 +340,13 @@ class ForwardShadowRuntime:
         self._ema6h_state: dict[str, Any] = {
             "status": "STARTING",
             "watcher_id": "EMA6H-50X200-REGIME-DEPENDENCY-001-FORWARD-SHADOW",
+        }
+        self._ema6h_archive_retry_not_before_ms: int | None = None
+        self._ema6h_archive_state: dict[str, Any] = {
+            "status": "IDLE_PRIMARY_SOURCE_NOT_RATE_LIMITED",
+            "sidecar_id": "EMA6H-50X200-REGIME-ARCHIVE-RECOVERY-V0.1",
+            "evidence_advanced": False,
+            "science_changed": False,
         }
         self._last_etf_public_check_ms: int | None = None
         self._last_etf_signal_check_ms: int | None = None
@@ -525,6 +561,46 @@ class ForwardShadowRuntime:
                     errors["ema6h_regime"] = ema6h_state["error"]
         else:
             ema6h_state = self._ema6h_state
+
+        archive_due = ema6h_archive_recovery_due(
+            primary_status=self._ema6h_state.get("status"),
+            retry_not_before_ms=self._ema6h_archive_retry_not_before_ms,
+            now_ms=now_ms,
+        )
+        if archive_due:
+            ema6h_archive_state = self.ema6h_archive_recovery.run_once(
+                now_ms=now_ms
+            )
+            self._ema6h_archive_state = ema6h_archive_state
+            self._ema6h_archive_retry_not_before_ms = (
+                ema6h_archive_next_retry_ms(
+                    sidecar_status=ema6h_archive_state.get("status"),
+                    now_ms=now_ms,
+                )
+            )
+            if (
+                ema6h_archive_state.get("status")
+                == "ARCHIVE_RECOVERY_FAIL_CLOSED"
+            ):
+                errors["ema6h_archive_recovery"] = str(
+                    ema6h_archive_state.get("error")
+                    or "ARCHIVE_RECOVERY_FAIL_CLOSED"
+                )
+        elif self._ema6h_state.get("status") == "WAITING_SOURCE_RATE_LIMIT":
+            ema6h_archive_state = self._ema6h_archive_state
+        else:
+            ema6h_archive_state = {
+                "status": "IDLE_PRIMARY_SOURCE_NOT_RATE_LIMITED",
+                "sidecar_id": "EMA6H-50X200-REGIME-ARCHIVE-RECOVERY-V0.1",
+                "evidence_advanced": False,
+                "science_changed": False,
+                "authenticated_exchange_api_used": False,
+                "orders_created": False,
+                "exchange_mutation_performed": False,
+                "live_capital_enabled": False,
+            }
+            self._ema6h_archive_state = ema6h_archive_state
+            self._ema6h_archive_retry_not_before_ms = None
 
         try:
             ema6h_metrics = evaluate_ema6h_regime_forward(self.store)
@@ -823,6 +899,7 @@ class ForwardShadowRuntime:
             "tfg": tfg_state,
             "tfg_forward_metrics": tfg_forward_metrics,
             "ema6h_regime": ema6h_state,
+            "ema6h_archive_recovery": ema6h_archive_state,
             "ema6h_regime_metrics": ema6h_metrics,
             "bnb_launchpool": bnb_state,
             "bnb_diamond_v02": bnb_diamond_v02,

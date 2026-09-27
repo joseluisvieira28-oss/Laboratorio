@@ -3,8 +3,11 @@ import unittest
 from radar.forward_web import (
     BINANCE_RATE_LIMIT_COOLDOWN_MS,
     CED1D_ARCHIVE_RETRY_MS,
+    EMA6H_ARCHIVE_RETRY_MS,
     binance_rate_limit_retry_plan,
     ced1d_runtime_check_due,
+    ema6h_archive_next_retry_ms,
+    ema6h_archive_recovery_due,
     is_binance_public_rate_limit_error,
     source_rate_limit_retry_due,
     source_rate_limit_wait_state,
@@ -88,6 +91,63 @@ class ForwardWebDashboardTests(unittest.TestCase):
                 retry_not_before_ms=now_ms + BINANCE_RATE_LIMIT_COOLDOWN_MS,
                 now_ms=now_ms,
             )
+        )
+
+    def test_ema6h_archive_sidecar_only_runs_during_primary_rate_limit(self):
+        now_ms = 1_800_000_000_000
+        self.assertFalse(
+            ema6h_archive_recovery_due(
+                primary_status="OK",
+                retry_not_before_ms=None,
+                now_ms=now_ms,
+            )
+        )
+        self.assertTrue(
+            ema6h_archive_recovery_due(
+                primary_status="WAITING_SOURCE_RATE_LIMIT",
+                retry_not_before_ms=None,
+                now_ms=now_ms,
+            )
+        )
+        self.assertFalse(
+            ema6h_archive_recovery_due(
+                primary_status="WAITING_SOURCE_RATE_LIMIT",
+                retry_not_before_ms=now_ms + 1,
+                now_ms=now_ms,
+            )
+        )
+        self.assertTrue(
+            ema6h_archive_recovery_due(
+                primary_status="WAITING_SOURCE_RATE_LIMIT",
+                retry_not_before_ms=now_ms,
+                now_ms=now_ms,
+            )
+        )
+
+    def test_ema6h_archive_retry_sleeps_until_next_utc_day_after_success(self):
+        now_ms = 1_800_000_000_000
+        day_ms = 24 * 60 * 60 * 1000
+        expected = ((now_ms // day_ms) + 1) * day_ms + 15 * 60 * 1000
+        self.assertEqual(
+            ema6h_archive_next_retry_ms(
+                sidecar_status="ARCHIVE_RECOVERY_OK",
+                now_ms=now_ms,
+            ),
+            expected,
+        )
+        self.assertEqual(
+            ema6h_archive_next_retry_ms(
+                sidecar_status="WAITING_ARCHIVE_T_PLUS_1_PUBLICATION",
+                now_ms=now_ms,
+            ),
+            now_ms + EMA6H_ARCHIVE_RETRY_MS,
+        )
+        self.assertEqual(
+            ema6h_archive_next_retry_ms(
+                sidecar_status="ARCHIVE_RECOVERY_FAIL_CLOSED",
+                now_ms=now_ms,
+            ),
+            now_ms + EMA6H_ARCHIVE_RETRY_MS,
         )
 
     def test_rate_limit_wait_state_never_claims_evidence_or_capital(self):
