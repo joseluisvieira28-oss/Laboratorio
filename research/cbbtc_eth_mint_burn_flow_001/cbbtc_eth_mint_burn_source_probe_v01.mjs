@@ -128,22 +128,30 @@ async function historicalCode(blockNumber,scope){
 }
 
 async function rawLogs(fromBlock,toBlock,topics){
-  const result=await rawRpc(RPC,"eth_getLogs",[{
-    address:TOKEN,
-    fromBlock:hex(fromBlock),
-    toBlock:hex(toBlock),
-    topics
-  }]);
-  if(!Array.isArray(result)) throw new Error("BAD_LOG_RESULT");
-  return result.map(log=>({
-    address:log.address,
-    topics:log.topics||[],
-    data:log.data,
-    blockNumber:Number(BigInt(log.blockNumber)),
-    blockHash:log.blockHash,
-    transactionHash:log.transactionHash,
-    index:Number(BigInt(log.logIndex))
-  }));
+  const failures=[];
+  for(const endpoint of LOG_RPCS){
+    try{
+      const result=await rawRpc(endpoint,"eth_getLogs",[{
+        address:TOKEN,
+        fromBlock:hex(fromBlock),
+        toBlock:hex(toBlock),
+        topics
+      }]);
+      if(!Array.isArray(result)) throw new Error("BAD_LOG_RESULT");
+      return result.map(log=>({
+        address:log.address,
+        topics:log.topics||[],
+        data:log.data,
+        blockNumber:Number(BigInt(log.blockNumber)),
+        blockHash:log.blockHash,
+        transactionHash:log.transactionHash,
+        index:Number(BigInt(log.logIndex))
+      }));
+    }catch(e){
+      failures.push({endpoint,error:String(e?.shortMessage||e?.message||e).slice(0,500)});
+    }
+  }
+  throw new Error("LOG_RPC_FAILOVER_EXHAUSTED:"+JSON.stringify(failures));
 }
 
 async function queryLogsAdaptive(fromBlock,toBlock,topics,errors,depth=0){
@@ -210,7 +218,7 @@ function normalizeLog(log,kind){
 const receipt={
   lab_id:"CBBTC-ETH-MINT-BURN-FLOW-001",
   stage:"SOURCE_GATE_V0.1",
-  transport_revision:"V0.1H",
+  transport_revision:"V0.1K",
   captured_at_utc:new Date().toISOString(),
   rpc:RPC,
   archive_rpc:ARCHIVE_RPC,
@@ -218,7 +226,7 @@ const receipt={
   token:TOKEN,
   transfer_topic:TRANSFER_TOPIC,
   zero_topic:ZERO_TOPIC,
-  transport:{chunk_blocks:CHUNK,rpc_timeout_ms:RPC_TIMEOUT_MS,range_attempts:RANGE_ATTEMPTS,failover_attempts:FAILOVER_ATTEMPTS},
+  transport:{chunk_blocks:CHUNK,rpc_timeout_ms:RPC_TIMEOUT_MS,range_attempts:RANGE_ATTEMPTS,failover_attempts:FAILOVER_ATTEMPTS,log_rpc_failover_order:LOG_RPCS},
   windows:[],
   errors:[],
   decode_errors:[],
