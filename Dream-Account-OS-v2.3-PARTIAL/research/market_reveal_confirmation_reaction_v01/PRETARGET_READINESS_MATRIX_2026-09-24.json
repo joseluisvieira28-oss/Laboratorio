@@ -2,7 +2,7 @@
   "document_type": "MRCR_PRETARGET_READINESS_MATRIX_V01",
   "lab_id": "MARKET-REVEAL-CONFIRMATION-REACTION-001",
   "as_of": "2026-09-26",
-  "overall_state": "H02_INTERNAL_PRETARGET_READY_V02__BLS_2027_ANNUAL_PLAN_BLOCKED",
+  "overall_state": "H02_PRETARGET_AUTOMATION_COMPLETE_V02__BLS_2027_ANNUAL_PLAN_BLOCKED",
   "gates": [
     {
       "gate": "NEW_MECHANISM_DESIGN",
@@ -236,8 +236,8 @@
     },
     {
       "gate": "FINAL_PRETARGET_INTERNAL_READINESS",
-      "status": "PASS_INTERNAL_V02_EXTERNAL_BLS_ANNUAL_PLAN_ONLY",
-      "meaning": "source/recovery/runtime infrastructure and V0.2 calendar/protocol/event-activation binding are internally ready; current Trigger A is blocked only by complete official 2027 BLS CPI and Employment annual schedules"
+      "status": "PASS_INTERNAL_AUTOMATED_V02_EXTERNAL_BLS_ANNUAL_PLAN_ONLY",
+      "meaning": "source/recovery/runtime, calendar V0.2, deterministic annual-plan build, Trigger-A target-locked finalizer, official T0 extraction and per-event activation guard are complete; remaining pretarget dependency is the complete official BLS 2027 annual plan"
     },
     {
       "gate": "H02_CALENDAR_BINDING_V02",
@@ -263,15 +263,34 @@
       "gate": "OFFICIAL_CALENDAR_WATCHER_V02",
       "status": "STAGED_BRANCH_SELFTEST_PASS_CRON_INACTIVE",
       "meaning": "watcher workflow self-test run 36265570592 succeeded; daily cron is intentionally not claimed active because GitHub schedules execute from the default branch and main mutation/merge is not authorized"
+    },
+    {
+      "gate": "H02_TRIGGER_A_FINALIZER_V02",
+      "status": "PASS_SYNTHETIC_AUTOMATIC_LIVE_TRIGGER_PENDING",
+      "meaning": "one-shot finalizer deterministically performs live-status -> annual plan -> SHA-256 -> implementation manifest -> V0.2 preflight -> target-locked protocol and hard-stops before TARGET_OBSERVATION_OPEN; current live trigger remains blocked only by incomplete BLS 2027 annual plan"
+    },
+    {
+      "gate": "H02_LIVE_EVENT_ACTIVATION_PROBE_V02",
+      "status": "PASS_SYNTHETIC_RECEIPT_AND_RUNTIME_GUARD",
+      "meaning": "official-source activation probe can build tamper-evident exact-T0 receipts in target-locked mode and can reach READY_FOR_EVENT_CAPTURE only when a separately valid TARGET_OBSERVATION_OPEN authority and all bindings are supplied; it never starts capture"
+    },
+    {
+      "gate": "OFFICIAL_EVENT_T0_LIVE_SMOKE_V02",
+      "status": "PASS_LIVE_OFFICIAL_SOURCES",
+      "meaning": "live BLS/Federal Reserve source-format smoke run 36323198410 succeeded with exact UTC T0 extraction, four official text SHA-256 fingerprints, and zero target/outcome/order authority"
+    },
+    {
+      "gate": "OFFICIAL_EVIDENCE_TEXT_HASH_BINDING_V02",
+      "status": "PASS_SYNTHETIC_AND_LIVE",
+      "meaning": "annual calendar sources and per-event supporting official sources require extracted-text SHA-256; missing/mutated evidence hashes fail closed and live T0 smoke produces valid official-source fingerprints"
     }
   ],
   "objective_next_triggers": [
     "BLS publishes complete official 2027 CPI and Employment Situation annual schedules",
-    "run official_2027_calendar_live_probe.py and construct/fingerprint MRCR_H02_ANNUAL_PLAN_MANIFEST_V02 with 12 CPI + 12 Employment + 8 official FOMC date rows",
-    "build real implementation manifest from canonical V0.2 fileset and run final_binding_preflight_v02",
-    "freeze target-locked protocol V0.2 and stop",
-    "require separate explicit TARGET_OBSERVATION_OPEN authority bound to protocol/annual-plan/implementation hashes",
-    "for each event, require a valid MRCR_H02_EVENT_ACTIVATION_RECEIPT_V02 with exact official T0 before capture"
+    "official calendar watcher automatically detects annual_plan_trigger_ready_v02=true and runs Trigger-A finalizer",
+    "verify uploaded Trigger-A package is PASS_TARGET_LOCKED_PROTOCOL_FROZEN and preserve its annual-plan/implementation/protocol fingerprints",
+    "obtain separate explicit TARGET_OBSERVATION_OPEN authority bound to those exact fingerprints",
+    "before each event, run live_event_activation_probe_v02; only READY_FOR_EVENT_CAPTURE may arm the prospective collector while outcomes remain blind"
   ],
   "anti_zombie_rules": [
     "local shadow raw data is infrastructure evidence only and must not be used to select or promote MRCR scientific parameters",
@@ -425,6 +444,21 @@
     "annual_plan_trigger_ready_v02": false,
     "cron_state": "STAGED_NOT_ACTIVE_UNTIL_DEFAULT_BRANCH",
     "target_observation_authorized": false,
+    "promotion_credit": "NONE"
+  },
+  "h02_pretarget_automation_completion_v02": {
+    "receipt_path": "H02_PRETARGET_AUTOMATION_COMPLETION_V02_2026-09-27.json",
+    "status": "PASS_PRETARGET_AUTOMATION_COMPLETE__EXTERNAL_BLS_TRIGGER_PENDING",
+    "synthetic_ci_run_id": 36323164976,
+    "synthetic_ci_steps": 51,
+    "live_t0_smoke_run_id": 36323198410,
+    "live_t0_smoke_steps": 9,
+    "source_text_hash_binding": true,
+    "trigger_a_auto_finalizer_ready": true,
+    "event_activation_probe_ready": true,
+    "current_external_blocker": "BLS_2027_ANNUAL_PLAN_INCOMPLETE",
+    "target_observation_authorized": false,
+    "outcomes_authorized": false,
     "promotion_credit": "NONE"
   }
 }
