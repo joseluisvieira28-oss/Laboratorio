@@ -1,0 +1,37 @@
+name: POLY-COMB Source Probe V0.1
+on:
+  push:
+    branches: [prediction-combinatorial-arb-v0.1]
+    paths:
+      - 'research/polymarket_combinatorial_arb/**'
+      - '.github/workflows/poly_comb_source_probe_v01.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run source-only probe
+        run: python research/polymarket_combinatorial_arb/source_probe_v01.py
+      - name: Assert firewall markers
+        run: |
+          python - <<'PY'
+          import json
+          p='artifacts/POLY_COMB_SOURCE_PROBE_V0.1.json'
+          x=json.load(open(p))
+          assert x['economic_outputs_computed'] is False
+          assert x['profitability_computed'] is False
+          assert x['orders_sent'] is False
+          assert x['authenticated_endpoints_used'] is False
+          assert x['future_nearest_joins']==0
+          assert x['silent_imputations']==0
+          print('SOURCE-ONLY FIREWALL PASS')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: POLY_COMB_SOURCE_PROBE_V0.1
+          path: artifacts/POLY_COMB_SOURCE_PROBE_V0.1.json
+          if-no-files-found: error
