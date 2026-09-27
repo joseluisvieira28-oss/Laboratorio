@@ -1,0 +1,41 @@
+name: UKLS WWW First-Party Transport Probe V0.2.1
+on:
+  push:
+    branches:
+      - upbit-krw-listing-shock-source-recovery-v0.2
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/upbit_krw_listing_shock_001/www_firstparty_probe_v021.py'
+      - '.github/workflows/upbit-krw-listing-shock-www-firstparty-v021.yml'
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify authority
+        run: |
+          test -f Dream-Account-OS-v2.3-PARTIAL/research/upbit_krw_listing_shock_001/WWW_FRONTEND_TRANSPORT_AUTHORITY_V0_2_1.md
+          python -m py_compile Dream-Account-OS-v2.3-PARTIAL/research/upbit_krw_listing_shock_001/www_firstparty_probe_v021.py
+      - name: Execute first-party transport probe
+        run: python Dream-Account-OS-v2.3-PARTIAL/research/upbit_krw_listing_shock_001/www_firstparty_probe_v021.py
+      - name: Enforce firewall
+        run: |
+          python - <<'PY'
+          import json
+          x=json.load(open('artifacts/UKLS_WWW_FIRSTPARTY_PROBE_V0_2_1.json'))
+          assert x['historical_enumeration_opened'] is False
+          assert x['event_values_emitted'] is False
+          print('CLASSIFICATION',x['classification'])
+          for r in x['results']:
+            print(r['name'],r['http_status'],r['response_bytes'],r.get('final_url'),r.get('string_presence'),r.get('referenced_hostnames'))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: UKLS_WWW_FIRSTPARTY_PROBE_V0_2_1
+          path: artifacts/UKLS_WWW_FIRSTPARTY_PROBE_V0_2_1.json
+          retention-days: 90
