@@ -24,6 +24,11 @@ jobs:
         with:
           ref: eth-blockspace-state-transition-v0.1
           fetch-depth: 0
+      - name: Verify frozen scientific artifacts
+        run: |
+          test "$(git hash-object research/eth_blockspace_state_transition/ETH_BLOCKSPACE_STATE_TRANSITION_FREEZE_V0_1.json)" = "d234b5006f799e939c72f3654af6149f48726e31"
+          test "$(git hash-object research/eth_blockspace_state_transition/source_warmup_v01.py)" = "488bca8326c19ecb1bbceb83272e1d1dd03515eb"
+          test "$(git hash-object research/eth_blockspace_state_transition/forward_economic_v01.py)" = "7c3bc63a2bd2f359c3ed656504979231eb608ae7"
       - uses: actions/setup-python@v5
         with: {python-version: '3.12'}
       - name: Push preflight
