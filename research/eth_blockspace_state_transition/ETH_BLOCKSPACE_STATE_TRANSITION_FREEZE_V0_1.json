@@ -1,0 +1,74 @@
+{
+  "schema_version":"ETH_BLOCKSPACE_STATE_TRANSITION_FREEZE_V0.1",
+  "date_utc":"2026-09-27",
+  "status":"FROZEN_BEFORE_ANY_SUCCESSOR_MARKET_OUTCOME_ACCESS",
+  "lab_id":"ETH-BLOCKSPACE-STATE-TRANSITION-001",
+  "candidate_id":"EBST-L1BLOB-PERSIST-ETHBTC-H72-001",
+  "parent_reference":"ETH-BLOCKSPACE-DEMAND-001 / EBD-BURN80-UTIL50-LONG-H24-001 remains terminal DISCOVERY_NO_EDGE",
+  "governance":"CRYPTO-LAB-GOVERNANCE-V4.0-DEATH-FROZEN",
+  "mechanism":{
+    "primary_family":"SUPPLY/FLOW",
+    "secondary_family":"RELATIVE_VALUE",
+    "statement":"A transition into sustained joint demand for Ethereum execution blockspace and blobspace may represent Ethereum-specific settlement/data-availability demand that is not fully reflected immediately in ETH relative to BTC.",
+    "independent_rationale":[
+      "EIP-1559 burns execution base fees and makes execution demand observable through block gas utilization/base fee.",
+      "EIP-4844 created a separate blob fee market for rollup data availability with blobGasUsed and excessBlobGas in execution headers.",
+      "This candidate tests persistence and joint L1+L2 settlement demand, not the parent's one-day burn/utilization spike."
+    ],
+    "failure_mode":"Joint blockspace-demand state transitions do not precede positive ETHBTC relative returns after costs, or the effect is unstable/concentrated."
+  },
+  "material_novelty":{
+    "old_signal":"single-day burn >= prior90 p80 AND utilization >= prior90 median",
+    "new_signal":"two-day persistent transition into joint high execution-utilization and blob-usage percentile states",
+    "old_target":"ETHUSDT LONG 24h",
+    "new_target":"ETHBTC LONG 72h",
+    "old_data_dimensions":["execution gas utilization","base-fee burn"],
+    "new_data_dimensions":["execution gas utilization","blobGasUsed","excessBlobGas context"],
+    "not_novelty_by_asset_or_horizon_alone":true,
+    "zero_inherited_promotion_credit":true
+  },
+  "source_contract":{
+    "network":"Ethereum mainnet",
+    "providers":["https://eth.drpc.org","https://rpc.flashbots.net"],
+    "required_header_fields":["number","hash","timestamp","gasLimit","gasUsed","baseFeePerGas","blobGasUsed","excessBlobGas"],
+    "source_mode":"PUBLIC_READ_ONLY_JSON_RPC",
+    "cross_provider_audit_required":true,
+    "market_source_later":"Binance public ETHBTC spot candles",
+    "paid_data":false
+  },
+  "signal_contract":{
+    "aggregation":"UTC daily medians from evenly spaced header samples",
+    "warmup_days":30,
+    "execution_utilization":"gasUsed/gasLimit",
+    "daily_exec_high":"current daily median >= prior-30-day empirical 75th percentile",
+    "daily_blob_high":"current daily median blobGasUsed >= prior-30-day empirical 75th percentile",
+    "joint_high":"daily_exec_high AND daily_blob_high",
+    "transition":"joint_high on two consecutive complete UTC days AND at least one of the preceding two complete days was not joint_high",
+    "entry":"next UTC-day ETHBTC open after second confirming day",
+    "exit":"ETHBTC open 72 hours after entry",
+    "direction":"LONG_ETHBTC",
+    "base_round_trip_cost_bps":20,
+    "stress_round_trip_cost_bps":30,
+    "no_stop_target_or_leverage":true
+  },
+  "forward_boundary":{
+    "activation_utc":"2026-09-28T00:00:00Z",
+    "all_market_outcomes_before_boundary_forbidden":true,
+    "old_parent_2024_holdout_forbidden":true,
+    "old_parent_2025_2026_rescue_forbidden":true,
+    "source_only_warmup_before_boundary_allowed":true
+  },
+  "adjudication":{
+    "first_descriptive_checkpoint_resolved_events":10,
+    "formal_review_min_resolved_events":25,
+    "formal_review_min_calendar_weeks":8,
+    "required":["BASE mean > 0","BASE PF > 1","STRESS mean > 0","largest positive event share <= 40%","zero source/timing deviations"],
+    "bootstrap_and_p_value":"DIAGNOSTIC_NOT_TERMINAL_BY_THEMSELVES",
+    "no_early_promotion":true
+  },
+  "firewalls":{
+    "live_trading":false,"orders":false,"exchange_mutation":false,"wallets":false,
+    "merge_main":false,"render_deploy":false,"post_outcome_tuning":false,
+    "protected_parent_holdout_opening":false
+  }
+}
