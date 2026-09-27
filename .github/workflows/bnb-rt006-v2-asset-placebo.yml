@@ -3,10 +3,16 @@ name: BNB RT006 V2 Asset Placebo
 on:
   workflow_dispatch:
   push:
+    branches:
+      - crypto-lab-adversarial-review-v0.1
     paths:
       - "adversarial_review/pilots/BNB-LAUNCHPOOL-DEMAND-001/rt006_v2_asset_placebo_protocol_v0_1.json"
       - "adversarial_review/pilots/BNB-LAUNCHPOOL-DEMAND-001/rt006_v2_asset_placebo_runner_v0_1.py"
       - ".github/workflows/bnb-rt006-v2-asset-placebo.yml"
+
+concurrency:
+  group: bnb-rt006-v2-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
