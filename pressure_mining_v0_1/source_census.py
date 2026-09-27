@@ -44,7 +44,10 @@ def block_timestamp(ep,n):
 
 def first_block_at_or_after(ep,target_ts):
     hi=int(rpc(ep,"eth_blockNumber",[]),16)
-    lo=0
+    # PublicNode's current Ethereum archive floor is block 15,500,000.
+    # The frozen census starts in 2023, safely after this floor; never query
+    # older blocks merely as a binary-search artifact.
+    lo=15_500_000
     while lo<hi:
         mid=(lo+hi)//2
         ts=block_timestamp(ep,mid)
