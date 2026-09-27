@@ -92,16 +92,22 @@ async function firstBlockAtOrAfter(ts,label){
 }
 
 async function archiveSendWithRetry(method,params,scope){
-  let last=null;
-  for(let attempt=1;attempt<=ARCHIVE_ATTEMPTS;attempt++){
-    try{
-      return await rawRpc(ARCHIVE_RPC,method,params);
-    }catch(e){
-      last=String(e?.shortMessage||e?.message||e);
-      if(attempt<ARCHIVE_ATTEMPTS) await sleep(400*attempt);
+  const failures=[];
+  for(const endpoint of [ARCHIVE_RPC,MEV_LOG_RPC]){
+    let last=null;
+    for(let attempt=1;attempt<=ARCHIVE_ATTEMPTS;attempt++){
+      try{
+        const result=await rawRpc(endpoint,method,params);
+        console.log("ARCHIVE_RPC_USED",scope,endpoint);
+        return {result,endpoint};
+      }catch(e){
+        last=String(e?.shortMessage||e?.message||e);
+        if(attempt<ARCHIVE_ATTEMPTS) await sleep(400*attempt);
+      }
     }
+    failures.push({endpoint,error:last});
   }
-  throw new Error(scope+":"+last);
+  throw new Error(scope+":"+JSON.stringify(failures));
 }
 
 async function rawLogs(fromBlock,toBlock,topics){
@@ -238,18 +244,18 @@ try{
   const startAnchorBlock=start.number-1;
   if(startAnchorBlock<0) throw new Error("BAD_START_ANCHOR_BLOCK");
   const startAnchorMeta=await getBlockWithRetry(startAnchorBlock,"START_ANCHOR_META_FAILED_"+startAnchorBlock);
-  const startSupplyRaw=await archiveSendWithRetry(
+  const startSupplyCall=await archiveSendWithRetry(
     "eth_call",
     [{to:TOKEN,data:TOTAL_SUPPLY_SELECTOR},{blockHash:startAnchorMeta.hash,requireCanonical:true}],
     "START_SUPPLY_BLOCKHASH_CALL_FAILED"
   );
-  const endSupplyRaw=await archiveSendWithRetry(
+  const endSupplyCall=await archiveSendWithRetry(
     "eth_call",
     [{to:TOKEN,data:TOTAL_SUPPLY_SELECTOR},{blockHash:endMeta.hash,requireCanonical:true}],
     "END_SUPPLY_BLOCKHASH_CALL_FAILED"
   );
-  const archiveStartSupply=BigInt(startSupplyRaw);
-  const archiveEndSupply=BigInt(endSupplyRaw);
+  const archiveStartSupply=BigInt(startSupplyCall.result);
+  const archiveEndSupply=BigInt(endSupplyCall.result);
   receipt.boundaries={start_block:start,end_block:{number:endBlock,hash:endMeta.hash,timestamp:Number(endMeta.timestamp)},end_boundary_block:endBoundary};
   receipt.supply_anchor={
     block_binding:"EIP-1898 blockHash requireCanonical",
@@ -258,7 +264,9 @@ try{
     end_anchor_block:endBlock,
     end_anchor_hash:endMeta.hash,
     archive_start_total_supply_raw:archiveStartSupply.toString(),
-    archive_end_total_supply_raw:archiveEndSupply.toString()
+    archive_end_total_supply_raw:archiveEndSupply.toString(),
+    archive_start_rpc:startSupplyCall.endpoint,
+    archive_end_rpc:endSupplyCall.endpoint
   };
 
   const mint=await getLogsChunked(start.number,endBlock,[TRANSFER_TOPIC,ZERO_TOPIC],"MINT");
