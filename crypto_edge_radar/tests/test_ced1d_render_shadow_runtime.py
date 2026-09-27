@@ -134,6 +134,74 @@ class CED1DRenderShadowRuntimeTests(TestCase):
             self.assertEqual(len(store.read_payloads(RECEIPT_EVENT)), 0)
             self.assertEqual(len(store.read_payloads(LEDGER_EVENT)), 0)
 
+    def test_waiting_new_archive_preserves_latest_persisted_progress_metrics(self):
+        with tempfile.TemporaryDirectory() as td:
+            store = EvidenceStore(os.path.join(td, "e.sqlite3"))
+            runner = CED1DRenderShadowRunner(store=store)
+            previous_metrics = {
+                "resolved_trade_events": 2,
+                "complete_utc_signal_weeks": 0,
+                "execution": {"complete_pairs": 2},
+                "routing": "SHADOW_ACCUMULATING",
+            }
+            store.append_once(
+                RECEIPT_EVENT,
+                "CED1D-0031:V0.3:2026-09-23",
+                {
+                    "candidate": "CED1D-0031",
+                    "through_signal_day": "2026-09-23",
+                    "metrics": previous_metrics,
+                    "fingerprint": "previous",
+                },
+            )
+
+            latest_url = (
+                "https://data.binance.vision/data/futures/um/daily/"
+                "klines/AVAXUSDT/1m/AVAXUSDT-1m-2026-09-26.zip"
+            )
+
+            def fake_run(cmd, **kwargs):
+                out = Path(cmd[cmd.index("--output") + 1])
+                out.mkdir(parents=True)
+                receipt = {
+                    "document_id": "CED1D_0031_RENDER_SHADOW_RECEIPT_V0.3",
+                    "status": "SHADOW_COLLECTION_FAIL_CLOSED",
+                    "candidate": "CED1D-0031",
+                    "through_signal_day": "2026-09-24",
+                    "error": (
+                        "GateError:FETCH_FAIL:HTTPError:HTTP Error 404: Not Found:"
+                        + latest_url
+                    ),
+                }
+                (out / "CED1D_0031_RENDER_SHADOW_RECEIPT_V0.3.json").write_text(
+                    json.dumps(receipt)
+                )
+                write_transport_receipt(
+                    out,
+                    status="TRANSPORT_ADAPTER_COLLECTOR_FAIL_CLOSED",
+                )
+                class P:
+                    returncode = 1
+                    stderr = "collector fail-closed"
+                return P()
+
+            with patch(
+                "radar.ced1d_render_shadow_runtime.subprocess.run",
+                side_effect=fake_run,
+            ):
+                result = runner.run_once(now_ms=ms(2026, 9, 27, 0, 10))
+
+            self.assertEqual(result["status"], "WAITING_SOURCE_ARCHIVE")
+            self.assertEqual(result["metrics"], previous_metrics)
+            self.assertTrue(result["progress_metrics_preserved"])
+            self.assertEqual(
+                result["progress_metrics_source_through_signal_day"],
+                "2026-09-23",
+            )
+            self.assertFalse(result["progress_metrics_are_current_through_day"])
+            self.assertEqual(len(store.read_payloads(RECEIPT_EVENT)), 1)
+            self.assertEqual(len(store.read_payloads(FAILURE_EVENT)), 0)
+
     def test_earlier_archive_404_remains_fail_closed_not_retryable(self):
         receipt = {
             "status": "SHADOW_COLLECTION_FAIL_CLOSED",
