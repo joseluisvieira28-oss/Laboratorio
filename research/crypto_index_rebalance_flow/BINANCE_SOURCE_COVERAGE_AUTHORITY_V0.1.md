@@ -5,7 +5,17 @@ Status: FROZEN_SOURCE_ONLY / NO PRICE BYTES
 Normalized-source run: 36329760208
 Normalized-source artifact: 10935685669
 Normalized-source artifact ZIP SHA256: 1614bf1520a1c56b8a9b7bab46a607aa3b56df05713fc0e14390f4dc8515ca80
-Normalized result SHA256: a44c3ca006f06a258314e683c44aeb31e5b1788145d9ffe4603e4994a33bb876
+Stable normalized event-set SHA256: fffaa5aab3ba17456358af230c3aeda10a74ba55078b6c98b3d1585916db5a17
+
+## Technical amendment 001 — identity hash
+The first coverage run (36329914764) stopped before any Binance HEAD request because the normalization `result_sha256` included `generated_at_utc` and was therefore intentionally non-reproducible across executions.
+
+This is a technical identity bug only. No market bytes or outcomes were accessed.
+
+The controlling identity is now the stable hash of the frozen normalized `events + ambiguous_source_records` payload:
+`fffaa5aab3ba17456358af230c3aeda10a74ba55078b6c98b3d1585916db5a17`.
+
+No event, ticker, direction, date, source exclusion, sample gate, market source, horizon or scientific rule changed.
 
 ## Purpose
 Before opening any historical market outcome, prove that the exact official Binance Spot 1-minute archives required by the frozen 24-hour event geometry exist for a sufficiently large 2022-2024 corpus.
