@@ -1,0 +1,34 @@
+name: UKLS Wayback Numeric Detail Census V0.2.8B
+on:
+  push:
+    branches: [upbit-krw-listing-shock-detail-census-v0.2.8b]
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/upbit_krw_listing_shock_001/wayback_numeric_detail_census_v028b.py'
+      - '.github/workflows/upbit-krw-listing-shock-detail-census-v028b.yml'
+permissions:
+  contents: read
+jobs:
+  census:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: |
+          test -f Dream-Account-OS-v2.3-PARTIAL/research/upbit_krw_listing_shock_001/WAYBACK_NUMERIC_DETAIL_CENSUS_TRANSPORT_V0_2_8B.md
+          python -m py_compile Dream-Account-OS-v2.3-PARTIAL/research/upbit_krw_listing_shock_001/wayback_numeric_detail_census_v028b.py
+      - run: python Dream-Account-OS-v2.3-PARTIAL/research/upbit_krw_listing_shock_001/wayback_numeric_detail_census_v028b.py
+      - run: |
+          python - <<'PY'
+          import json
+          x=json.load(open('artifacts/UKLS_WAYBACK_NUMERIC_DETAIL_CENSUS_V0_2_8B.json'))
+          assert x['archived_payload_opened'] is False and x['event_values_opened'] is False and x['binance_opened'] is False
+          print('CLASSIFICATION',x['classification'])
+          for k,v in x['families'].items(): print(k,v['distinct_numeric_id_count'],v['numeric_coverage_fraction'],v['missing_numeric_id_count'],v['max_internal_numeric_id_gap'],v['earliest_capture'],v['latest_capture'],v['completeness_candidate_pass'])
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: UKLS_WAYBACK_NUMERIC_DETAIL_CENSUS_V0_2_8B
+          path: artifacts/UKLS_WAYBACK_NUMERIC_DETAIL_CENSUS_V0_2_8B.json
+          retention-days: 90
