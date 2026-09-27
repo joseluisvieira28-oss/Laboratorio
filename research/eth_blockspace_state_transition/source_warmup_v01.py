@@ -88,7 +88,7 @@ def main():
         if heights[-1]!=tipn: heights.append(tipn)
         rows=[]
         audit_pass=0
-        chunk=2
+        chunk=5
         for base in range(0,len(heights),chunk):
             hs=heights[base:base+chunk]
             bulk=batch_fetch(EPS[0],hs)
@@ -99,7 +99,7 @@ def main():
                         raise RuntimeError(f"provider disagreement {h}")
                     audit_pass+=1
                 rows.append(a)
-            time.sleep(0.25)
+            time.sleep(0.75)
         by=defaultdict(list)
         current_utc=datetime.now(timezone.utc).date().isoformat()
         for r in rows:
