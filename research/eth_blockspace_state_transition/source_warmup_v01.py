@@ -85,7 +85,7 @@ def main():
         if heights[-1]!=tipn: heights.append(tipn)
         rows=[]
         audit_pass=0
-        chunk=40
+        chunk=2
         for base in range(0,len(heights),chunk):
             hs=heights[base:base+chunk]
             bulk=batch_fetch(EPS[0],hs)
