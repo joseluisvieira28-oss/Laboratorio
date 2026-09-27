@@ -161,6 +161,18 @@ class CED1DRenderShadowRunner:
                 return payload
         return None
 
+    def _latest_existing_through(self, through: date) -> dict[str, Any] | None:
+        eligible: list[tuple[str, dict[str, Any]]] = []
+        max_day = through.isoformat()
+        for payload in self.store.read_payloads(RECEIPT_EVENT):
+            day = payload.get("through_signal_day")
+            if isinstance(day, str) and day <= max_day:
+                eligible.append((day, payload))
+        if not eligible:
+            return None
+        eligible.sort(key=lambda item: item[0])
+        return eligible[-1][1]
+
     def run_once(self, *, now_ms: int | None = None) -> dict[str, Any]:
         if now_ms is None:
             now_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
@@ -236,6 +248,9 @@ class CED1DRenderShadowRunner:
                     output / BOOKDEPTH_TRANSPORT_RECEIPT
                 )
                 if proc.returncode != 0 and retryable_latest_archive_404(receipt, through):
+                    previous = self._latest_existing_through(through)
+                    previous_metrics = None if previous is None else previous.get("metrics")
+                    previous_through = None if previous is None else previous.get("through_signal_day")
                     return {
                         "strategy_id": "CED1D-0031",
                         "status": "WAITING_SOURCE_ARCHIVE",
@@ -243,6 +258,10 @@ class CED1DRenderShadowRunner:
                         "latest_required_path_day": latest_required_path_day(through).isoformat(),
                         "retryable_source_archive_pending": True,
                         "pending_reason": receipt.get("error"),
+                        "metrics": previous_metrics,
+                        "progress_metrics_preserved": previous_metrics is not None,
+                        "progress_metrics_source_through_signal_day": previous_through,
+                        "progress_metrics_are_current_through_day": previous_through == through.isoformat(),
                         "bookdepth_transport": transport_receipt,
                         **safety,
                     }
