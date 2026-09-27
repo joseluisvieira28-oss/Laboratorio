@@ -1,0 +1,30 @@
+name: CBBTC-001 RPC log-range probe V0.1L
+
+on:
+  push:
+    branches:
+      - cbbtc-eth-mint-burn-flow-001-source-gate-v01
+    paths:
+      - 'research/cbbtc_eth_mint_burn_flow_001/cbbtc_rpc_log_range_probe_v01l.mjs'
+      - '.github/workflows/cbbtc-rpc-log-range-probe-v01l.yml'
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Probe safe historical log ranges
+        run: node research/cbbtc_eth_mint_burn_flow_001/cbbtc_rpc_log_range_probe_v01l.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cbbtc-rpc-log-range-probe-v01l
+          path: artifacts/CBBTC_RPC_LOG_RANGE_PROBE_V0.1L.json
+          if-no-files-found: error
