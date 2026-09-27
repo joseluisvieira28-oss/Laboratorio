@@ -73,6 +73,19 @@ if rc!=0 or source.get("classification")!="SOURCE_PASS":
 manifest["completed_stages"].append("SOURCE_PASS")
 write()
 
+# Gate 1.5: prove direct-vs-Multicall scientific bytes are identical.
+rc=run(["node",str(HERE/"cbeth_multicall_equivalence_v01c.mjs")])
+eq_art=ART/"cbeth_transport"/"CBETH_MULTICALL_TRANSPORT_EQUIVALENCE_RECEIPT_V0.1C.json"
+eq_dst=HERE/"MULTICALL_TRANSPORT_EQUIVALENCE_RECEIPT_V0.1C.json"
+if not copy_if(eq_art,eq_dst):
+    stop("TECHNICAL_MULTICALL_EQUIVALENCE_BLOCKED",2,"equivalence_receipt_missing")
+eq=load(eq_dst)
+manifest["multicall_equivalence_classification"]=eq.get("classification")
+if rc!=0 or eq.get("classification")!="MULTICALL_TRANSPORT_EQUIVALENCE_PASS":
+    stop("MULTICALL_TRANSPORT_EQUIVALENCE_BLOCKED",2)
+manifest["completed_stages"].append("MULTICALL_TRANSPORT_EQUIVALENCE_PASS")
+write()
+
 # Gate 2: complete 2023-2024 predictor-only census.
 rc=run(["node",str(HERE/"cbeth_predictor_census_v01.mjs")])
 census_art=ART/"cbeth_census"/"CBETH_PREDICTOR_CENSUS_RECEIPT_V0.1.json"
