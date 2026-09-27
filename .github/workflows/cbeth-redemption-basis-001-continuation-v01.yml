@@ -1,0 +1,62 @@
+name: CBETH-REDEMPTION-BASIS-001 frozen continuation V0.1
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cbeth-redemption-basis-001-v01
+  cancel-in-progress: false
+
+jobs:
+  attack:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: cbeth-redemption-basis-001-source-gate-v01
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: npm install --no-save ethers@6.15.0
+
+      - id: chain
+        name: Execute frozen source-to-Discovery chain
+        continue-on-error: true
+        run: python research/cbeth_redemption_basis_001/cbeth_continue_v01.py
+
+      - name: Persist durable gate receipts
+        if: always()
+        shell: bash
+        run: |
+          set -e
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/cbeth_redemption_basis_001/*.json || true
+          if git diff --cached --quiet; then
+            echo "No durable receipts produced."
+          else
+            git commit -m "CBETH-REDEMPTION-BASIS-001: persist frozen gate evidence [skip ci]"
+            git push origin HEAD:cbeth-redemption-basis-001-source-gate-v01
+          fi
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cbeth-redemption-basis-continuation-v01
+          path: |
+            artifacts/CBETH_REDEMPTION_BASIS_SOURCE_GATE_RECEIPT_V0.1.json
+            artifacts/cbeth_census/*
+            artifacts/cbeth_continuation/*
+          if-no-files-found: warn
+
+      - name: Preserve technical failure signal
+        if: ${{ steps.chain.outcome == 'failure' }}
+        run: exit 2
