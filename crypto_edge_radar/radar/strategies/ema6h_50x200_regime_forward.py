@@ -5,8 +5,10 @@ from datetime import datetime, timezone
 import json
 from math import isfinite
 from statistics import mean
+import re
 import time
 from typing import Any, Iterable
+from urllib.error import HTTPError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
@@ -29,6 +31,67 @@ WARMUP_1D_MS = 240 * DAY_MS
 
 class EMA6HRegimeSourceError(RuntimeError):
     pass
+
+
+class EMA6HRegimeRateLimitError(EMA6HRegimeSourceError):
+    def __init__(
+        self,
+        message: str,
+        *,
+        http_status: int,
+        retry_after_seconds: int | None = None,
+        ban_until_ms: int | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.http_status = int(http_status)
+        self.retry_after_seconds = retry_after_seconds
+        self.ban_until_ms = ban_until_ms
+
+
+def _rate_limit_metadata(exc: HTTPError) -> tuple[int | None, int | None]:
+    retry_after_seconds = None
+    raw_retry = exc.headers.get("Retry-After") if exc.headers is not None else None
+    if raw_retry is not None:
+        try:
+            value = int(float(str(raw_retry).strip()))
+            if value > 0:
+                retry_after_seconds = value
+        except (TypeError, ValueError):
+            pass
+
+    ban_until_ms = None
+    try:
+        body = exc.read().decode("utf-8", errors="replace")
+    except Exception:
+        body = ""
+
+    if body:
+        try:
+            payload = json.loads(body)
+        except Exception:
+            payload = None
+        if isinstance(payload, dict):
+            candidates = [
+                payload.get("retryAfter"),
+                (payload.get("data") or {}).get("retryAfter")
+                if isinstance(payload.get("data"), dict)
+                else None,
+            ]
+            for candidate in candidates:
+                try:
+                    value = int(candidate)
+                except (TypeError, ValueError):
+                    continue
+                if value >= 1_000_000_000_000:
+                    ban_until_ms = value
+                    break
+        if ban_until_ms is None:
+            match = re.search(r"banned until\s+(\d{13})", body, flags=re.IGNORECASE)
+            if match:
+                ban_until_ms = int(match.group(1))
+
+    return retry_after_seconds, ban_until_ms
+
 
 @dataclass(frozen=True)
 class Candle:
@@ -115,6 +178,17 @@ class BinanceSpotKlineFeed:
                 with urlopen(req,timeout=self.timeout) as response:
                     if response.status!=200:raise EMA6HRegimeSourceError(f"Binance spot HTTP {response.status}")
                     return json.loads(response.read().decode("utf-8"))
+            except HTTPError as exc:
+                if exc.code in {418,429}:
+                    retry_after_seconds, ban_until_ms = _rate_limit_metadata(exc)
+                    raise EMA6HRegimeRateLimitError(
+                        f"Binance source rate limited: HTTP {exc.code}",
+                        http_status=exc.code,
+                        retry_after_seconds=retry_after_seconds,
+                        ban_until_ms=ban_until_ms,
+                    ) from exc
+                last=exc
+                if attempt<self.max_attempts and self.retry_backoff_seconds:time.sleep(self.retry_backoff_seconds*attempt)
             except Exception as exc:
                 if isinstance(exc,EMA6HRegimeSourceError):raise
                 last=exc
