@@ -1,0 +1,61 @@
+name: SLAS Source Reaudit V0.2
+on:
+  push:
+    branches:
+      - spot-listing-access-shock-source-reaudit-v0.2
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/spot_listing_access_shock_001/SOURCE_REAUDIT_AUTHORITY_V0_2.md'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/spot_listing_access_shock_001/source_reaudit_compare_v02.py'
+      - '.github/workflows/spot-listing-access-shock-source-reaudit-v02.yml'
+permissions:
+  contents: read
+jobs:
+  reaudit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify immutable V0.1 authority
+        run: |
+          set -euo pipefail
+          BASE='Dream-Account-OS-v2.3-PARTIAL/research/spot_listing_access_shock_001'
+          test "$(git hash-object "$BASE/FROZEN_PROTOCOL_V01.json")" = "7791a0d903e5ddaf19000879cf27b658cde3d260"
+          test "$(git hash-object "$BASE/source_gate_v01.py")" = "24cf7fae9477af00cf4c2b1e5e81486918044736"
+          test "$(git hash-object "$BASE/source_evidence/SLAS_SOURCE_GATE_V01.json")" = "23a88844476313b520350b9343834790c496bbaa"
+          python -m py_compile "$BASE/source_gate_v01.py" "$BASE/source_reaudit_compare_v02.py"
+      - name: Preserve canonical receipt
+        run: |
+          mkdir -p artifacts/slas_reaudit
+          cp Dream-Account-OS-v2.3-PARTIAL/research/spot_listing_access_shock_001/source_evidence/SLAS_SOURCE_GATE_V01.json artifacts/slas_reaudit/canonical_source_gate.json
+      - name: Execute exact frozen source gate
+        run: python Dream-Account-OS-v2.3-PARTIAL/research/spot_listing_access_shock_001/source_gate_v01.py
+      - name: Compare current source to canonical
+        run: python Dream-Account-OS-v2.3-PARTIAL/research/spot_listing_access_shock_001/source_reaudit_compare_v02.py
+      - name: Enforce outcome firewall
+        run: |
+          python - <<'PY'
+          import json
+          x=json.load(open('artifacts/slas_reaudit/SLAS_SOURCE_REAUDIT_V0_2.json'))
+          assert x['market_price_values_opened'] is False
+          assert x['ohlc_opened'] is False
+          assert x['returns_computed'] is False
+          assert x['pnl_computed'] is False
+          assert x['year_2025_opened'] is False
+          assert x['year_2026_opened'] is False
+          assert x['discovery_authorized'] is False
+          print('CLASSIFICATION',x['classification'])
+          print('CANONICAL',x['canonical']['qualified_events'],x['canonical']['qualified_year_counts'],x['canonical']['root_spot_exact_usdt_symbols'])
+          print('REAUDIT',x['reaudit']['qualified_events'],x['reaudit']['qualified_year_counts'],x['reaudit']['root_spot_exact_usdt_symbols'])
+          print('CHANGED_FIELDS',sorted(x['changed_fields']))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SLAS_SOURCE_REAUDIT_V0_2
+          path: |
+            artifacts/slas_reaudit/SLAS_SOURCE_REAUDIT_V0_2.json
+            artifacts/slas_reaudit/canonical_source_gate.json
+            Dream-Account-OS-v2.3-PARTIAL/research/spot_listing_access_shock_001/source_evidence/SLAS_SOURCE_GATE_V01.json
+          retention-days: 90
