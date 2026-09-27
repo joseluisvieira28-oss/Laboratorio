@@ -2,8 +2,11 @@
 from __future__ import annotations
 import json, random
 from fractions import Fraction
+from decimal import Decimal, getcontext
 from pathlib import Path
 from datetime import date,timedelta
+
+getcontext().prec=60
 
 HERE=Path("research/cbeth_redemption_basis_001")
 REC=HERE/"PREDICTOR_CENSUS_RECEIPT_V0.1.json"
@@ -119,7 +122,7 @@ def mean(xs):
 
 def fstr(x:Fraction|None):
     if x is None: return None
-    return format(float(x),".18g")
+    return format(Decimal(x.numerator)/Decimal(x.denominator),"f")
 
 rng=random.Random(20260927)
 boots=[]
