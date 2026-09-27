@@ -1,0 +1,119 @@
+name: DLS Kamino Save11 Authority Finalize V0.4
+
+on:
+  push:
+    branches:
+      - dls-field-enrichment-v01
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_KAMINO_SAVE11_AUTHORITY_FINALIZE_V04.marker
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download original field receipts
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36264171014
+          pattern: dls-field-enrichment-ks-*
+          path: original_field
+          merge-multiple: true
+
+      - name: Download Kamino field recovery receipts
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36277918751
+          pattern: dls-kamino-v16-field-*
+          path: kamino_field_recovery
+          merge-multiple: true
+
+      - name: Download original unit receipts
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36265646820
+          pattern: dls-ks-unit-*
+          path: original_unit
+          merge-multiple: true
+
+      - name: Download Kamino unit V0.3 receipts
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36278635010
+          pattern: dls-kamino-unit-v03-*
+          path: kamino_unit_v03
+          merge-multiple: true
+
+      - name: Download Save11 field V0.4 receipts
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36313729668
+          pattern: dls-save11-field-v04-*
+          path: save11_field_v04
+          merge-multiple: true
+
+      - name: Download Save11 unit V0.4 receipts
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36313729668
+          pattern: dls-save11-unit-v04-*
+          path: save11_unit_v04
+          merge-multiple: true
+
+      - name: Compile finalizer
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/finalize_kamino_save11_authority_v0_4.py
+
+      - name: Finalize current Kamino Save11 authorities
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/finalize_kamino_save11_authority_v0_4.py
+          --original-field original_field
+          --kamino-field-recovery kamino_field_recovery
+          --original-unit original_unit
+          --kamino-unit-v03 kamino_unit_v03
+          --save11-field-v04 save11_field_v04
+          --save11-unit-v04 save11_unit_v04
+
+      - name: Upload field population authority V0.3
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-kamino-save11-field-enrichment-population-v03
+          path: labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_SAVE11_FIELD_ENRICHMENT_POPULATION_RECEIPT_V0.3.json
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Upload unit population authority V0.4
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-kamino-save11-unit-metadata-population-v04
+          path: labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_SAVE11_UNIT_METADATA_POPULATION_RECEIPT_V0.4.json
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_TRUE
