@@ -676,7 +676,7 @@ class ForwardShadowRuntime:
         persistence_expiry["target_url_configured"] = bool(
             target_preflight.get("target_url_configured")
         )
-        if target_preflight.get("classification") == "TARGET_PREFLIGHT_PASS_AT_BACKUP_BOUNDARY":
+        if target_preflight.get("classification") == "TARGET_PREFLIGHT_PASS_BACKUP_PREFIX_CURRENT_CHAIN_OK":
             persistence_expiry["cutover_blocker"] = "FINAL_QUIESCED_REFRESH_REQUIRED"
         elif target_preflight.get("target_url_configured"):
             persistence_expiry["cutover_blocker"] = target_preflight.get("classification")
