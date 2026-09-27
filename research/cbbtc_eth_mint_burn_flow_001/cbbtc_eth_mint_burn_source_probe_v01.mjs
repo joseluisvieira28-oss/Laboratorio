@@ -1,16 +1,21 @@
-import { JsonRpcProvider, Contract, getAddress, id } from "ethers";
+import { AbiCoder, getAddress, id } from "ethers";
 import fs from "fs";
 
 const RPC=process.env.ETH_RPC_URL || "https://ethereum-rpc.publicnode.com";
-const provider=new JsonRpcProvider(RPC);
 const ARCHIVE_RPC=process.env.ETH_ARCHIVE_RPC_URL || "https://rpc-eth.blockmachine.io";
-const archiveProvider=new JsonRpcProvider(ARCHIVE_RPC);
 const HEADER_RPCS=[RPC,ARCHIVE_RPC];
+const CODE_RPCS=[ARCHIVE_RPC,RPC];
 
 const TOKEN=getAddress("0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf");
 const ZERO_TOPIC="0x"+"0".repeat(64);
 const TRANSFER_TOPIC=id("Transfer(address,address,uint256)").toLowerCase();
-const CHUNK=20_000;
+const CHUNK=2_000;
+const RPC_TIMEOUT_MS=10_000;
+const RANGE_ATTEMPTS=2;
+const FAILOVER_ATTEMPTS=3;
+const SYMBOL_SELECTOR="0x95d89b41";
+const DECIMALS_SELECTOR="0x313ce567";
+const coder=AbiCoder.defaultAbiCoder();
 
 const windows=[
   {id:"A",start_iso:"2024-09-12T00:00:00Z",end_iso:"2024-10-12T00:00:00Z"},
@@ -26,40 +31,55 @@ function normalizeBlockTag(tag){
   return String(tag);
 }
 
-async function rawBlock(endpoint,tag){
+async function rawRpc(endpoint,method,params,timeoutMs=RPC_TIMEOUT_MS){
   const res=await fetch(endpoint,{
     method:"POST",
     headers:{"content-type":"application/json"},
-    body:JSON.stringify({jsonrpc:"2.0",id:1,method:"eth_getBlockByNumber",params:[normalizeBlockTag(tag),false]}),
-    signal:AbortSignal.timeout(30_000)
+    body:JSON.stringify({jsonrpc:"2.0",id:1,method,params}),
+    signal:AbortSignal.timeout(timeoutMs)
   });
   if(!res.ok) throw new Error("HTTP_"+res.status);
   const x=await res.json();
   if(x?.error) throw new Error("RPC_"+JSON.stringify(x.error));
-  if(!x?.result) throw new Error("NULL_BLOCK");
-  return {
-    number:Number(BigInt(x.result.number)),
-    hash:String(x.result.hash),
-    timestamp:Number(BigInt(x.result.timestamp)),
-    header_rpc:endpoint
-  };
+  if(!Object.prototype.hasOwnProperty.call(x||{},"result")) throw new Error("RPC_RESULT_MISSING");
+  return x.result;
 }
 
-async function getBlockWithRetry(tag,scope){
+async function rpcFailover(endpoints,method,params,scope){
   const failures=[];
-  for(const endpoint of HEADER_RPCS){
+  for(const endpoint of endpoints){
     let last=null;
-    for(let attempt=1;attempt<=6;attempt++){
+    for(let attempt=1;attempt<=FAILOVER_ATTEMPTS;attempt++){
       try{
-        return await rawBlock(endpoint,tag);
+        return {result:await rawRpc(endpoint,method,params),endpoint};
       }catch(e){
         last=String(e?.shortMessage||e?.message||e);
-        if(attempt<6) await sleep(500*attempt);
+        if(attempt<FAILOVER_ATTEMPTS) await sleep(300*attempt);
       }
     }
     failures.push({endpoint,error:last});
   }
   throw new Error(scope+":"+JSON.stringify(failures));
+}
+
+function rawBlockToInternal(x,endpoint){
+  if(!x) throw new Error("NULL_BLOCK");
+  return {
+    number:Number(BigInt(x.number)),
+    hash:String(x.hash),
+    timestamp:Number(BigInt(x.timestamp)),
+    header_rpc:endpoint
+  };
+}
+
+async function getBlockWithRetry(tag,scope){
+  const {result,endpoint}=await rpcFailover(
+    HEADER_RPCS,
+    "eth_getBlockByNumber",
+    [normalizeBlockTag(tag),false],
+    scope
+  );
+  return rawBlockToInternal(result,endpoint);
 }
 
 async function firstBlockAtOrAfter(ts,label){
@@ -70,34 +90,52 @@ async function firstBlockAtOrAfter(ts,label){
     const b=await getBlockWithRetry(mid,"BOUNDARY_MID_FAILED_"+label+"_"+mid);
     if(Number(b.timestamp)>=ts) hi=mid;
     else lo=mid+1;
-    await sleep(100);
+    await sleep(25);
   }
   const b=await getBlockWithRetry(lo,"BOUNDARY_FINAL_FAILED_"+label+"_"+lo);
   return {number:Number(b.number),hash:b.hash,timestamp:Number(b.timestamp)};
 }
 
-async function rawLogs(endpoint,fromBlock,toBlock,topics){
-  const res=await fetch(endpoint,{
-    method:"POST",
-    headers:{"content-type":"application/json"},
-    body:JSON.stringify({
-      jsonrpc:"2.0",
-      id:1,
-      method:"eth_getLogs",
-      params:[{
-        address:TOKEN,
-        fromBlock:hex(fromBlock),
-        toBlock:hex(toBlock),
-        topics
-      }]
-    }),
-    signal:AbortSignal.timeout(30_000)
-  });
-  if(!res.ok) throw new Error("HTTP_"+res.status);
-  const x=await res.json();
-  if(x?.error) throw new Error("RPC_"+JSON.stringify(x.error));
-  if(!Array.isArray(x?.result)) throw new Error("BAD_LOG_RESULT");
-  return x.result.map(log=>({
+async function currentIdentity(){
+  const sym=await rpcFailover(
+    HEADER_RPCS,
+    "eth_call",
+    [{to:TOKEN,data:SYMBOL_SELECTOR},"latest"],
+    "CURRENT_SYMBOL_CALL_FAILED"
+  );
+  const dec=await rpcFailover(
+    HEADER_RPCS,
+    "eth_call",
+    [{to:TOKEN,data:DECIMALS_SELECTOR},"latest"],
+    "CURRENT_DECIMALS_CALL_FAILED"
+  );
+  return {
+    symbol:String(coder.decode(["string"],sym.result)[0]),
+    decimals:Number(coder.decode(["uint8"],dec.result)[0]),
+    symbol_rpc:sym.endpoint,
+    decimals_rpc:dec.endpoint
+  };
+}
+
+async function historicalCode(blockNumber,scope){
+  const {result,endpoint}=await rpcFailover(
+    CODE_RPCS,
+    "eth_getCode",
+    [TOKEN,hex(blockNumber)],
+    scope
+  );
+  return {code:result,endpoint};
+}
+
+async function rawLogs(fromBlock,toBlock,topics){
+  const result=await rawRpc(RPC,"eth_getLogs",[{
+    address:TOKEN,
+    fromBlock:hex(fromBlock),
+    toBlock:hex(toBlock),
+    topics
+  }]);
+  if(!Array.isArray(result)) throw new Error("BAD_LOG_RESULT");
+  return result.map(log=>({
     address:log.address,
     topics:log.topics||[],
     data:log.data,
@@ -110,13 +148,12 @@ async function rawLogs(endpoint,fromBlock,toBlock,topics){
 
 async function queryLogsAdaptive(fromBlock,toBlock,topics,errors,depth=0){
   let last=null;
-  for(let attempt=1;attempt<=5;attempt++){
+  for(let attempt=1;attempt<=RANGE_ATTEMPTS;attempt++){
     try{
-      const logs=await rawLogs(RPC,fromBlock,toBlock,topics);
-      return logs;
+      return await rawLogs(fromBlock,toBlock,topics);
     }catch(e){
       last=String(e?.shortMessage||e?.message||e);
-      if(attempt<5) await sleep(600*attempt);
+      if(attempt<RANGE_ATTEMPTS) await sleep(250*attempt);
     }
   }
   if(fromBlock>=toBlock){
@@ -125,19 +162,27 @@ async function queryLogsAdaptive(fromBlock,toBlock,topics,errors,depth=0){
   }
   const mid=Math.floor((fromBlock+toBlock)/2);
   const left=await queryLogsAdaptive(fromBlock,mid,topics,errors,depth+1);
-  await sleep(100);
   const right=await queryLogsAdaptive(mid+1,toBlock,topics,errors,depth+1);
   return left.concat(right);
 }
 
-async function getLogsChunked(fromBlock,toBlock,topics){
+async function getLogsChunked(fromBlock,toBlock,topics,kind,windowId){
   const out=[];
   const errors=[];
+  let n=0;
+  const total=Math.floor((toBlock-fromBlock)/CHUNK)+1;
   for(let from=fromBlock;from<=toBlock;from+=CHUNK){
     const to=Math.min(toBlock,from+CHUNK-1);
     const logs=await queryLogsAdaptive(from,to,topics,errors,0);
     out.push(...logs);
-    await sleep(80);
+    n++;
+    if(n===1||n%25===0||n===total){
+      console.log(JSON.stringify({
+        progress:true,window:windowId,kind,chunk:n,total_chunks:total,
+        from_block:from,to_block:to,logs_so_far:out.length,errors_so_far:errors.length
+      }));
+    }
+    await sleep(20);
   }
   return {logs:out,errors};
 }
@@ -165,6 +210,7 @@ function normalizeLog(log,kind){
 const receipt={
   lab_id:"CBBTC-ETH-MINT-BURN-FLOW-001",
   stage:"SOURCE_GATE_V0.1",
+  transport_revision:"V0.1H",
   captured_at_utc:new Date().toISOString(),
   rpc:RPC,
   archive_rpc:ARCHIVE_RPC,
@@ -172,6 +218,7 @@ const receipt={
   token:TOKEN,
   transfer_topic:TRANSFER_TOPIC,
   zero_topic:ZERO_TOPIC,
+  transport:{chunk_blocks:CHUNK,rpc_timeout_ms:RPC_TIMEOUT_MS,range_attempts:RANGE_ATTEMPTS,failover_attempts:FAILOVER_ATTEMPTS},
   windows:[],
   errors:[],
   decode_errors:[],
@@ -187,16 +234,10 @@ const receipt={
 };
 
 try{
-  const token=new Contract(TOKEN,[
-    "function symbol() view returns (string)",
-    "function decimals() view returns (uint8)"
-  ],provider);
-  receipt.current_identity={
-    symbol:await token.symbol(),
-    decimals:Number(await token.decimals())
-  };
+  receipt.current_identity=await currentIdentity();
 
   for(const w of windows){
+    console.log("BEGIN_WINDOW",w.id,w.start_iso,w.end_iso);
     const startTs=Math.floor(Date.parse(w.start_iso)/1000);
     const endTs=Math.floor(Date.parse(w.end_iso)/1000);
     const start=await firstBlockAtOrAfter(startTs,w.id+"_START");
@@ -204,14 +245,10 @@ try{
     const endBlock=endBoundary.number-1;
     const endMeta=await getBlockWithRetry(endBlock,"WINDOW_END_META_FAILED_"+w.id+"_"+endBlock);
 
-    let code;
-    try{
-      code=await archiveProvider.send("eth_getCode",[TOKEN,hex(endBlock)]);
-    }catch(e){
-      throw new Error("HISTORICAL_CODE_CHECK_FAILED_"+w.id+":"+String(e?.shortMessage||e?.message||e));
-    }
-    const mint=await getLogsChunked(start.number,endBlock,[TRANSFER_TOPIC,ZERO_TOPIC]);
-    const burn=await getLogsChunked(start.number,endBlock,[TRANSFER_TOPIC,null,ZERO_TOPIC]);
+    const codeCheck=await historicalCode(endBlock,"HISTORICAL_CODE_CHECK_FAILED_"+w.id);
+
+    const mint=await getLogsChunked(start.number,endBlock,[TRANSFER_TOPIC,ZERO_TOPIC],"MINT",w.id);
+    const burn=await getLogsChunked(start.number,endBlock,[TRANSFER_TOPIC,null,ZERO_TOPIC],"BURN",w.id);
 
     receipt.errors.push(...mint.errors.map(e=>({window:w.id,kind:"MINT",...e})));
     receipt.errors.push(...burn.errors.map(e=>({window:w.id,kind:"BURN",...e})));
@@ -246,7 +283,8 @@ try{
       start_block:start,
       end_block:{number:endBlock,hash:endMeta.hash,timestamp:Number(endMeta.timestamp)},
       end_boundary_block:endBoundary,
-      contract_code_present:typeof code==="string" && code!=="0x",
+      historical_code_rpc:codeCheck.endpoint,
+      contract_code_present:typeof codeCheck.code==="string" && codeCheck.code!=="0x",
       mint_count:mints.length,
       burn_count:burns.length,
       zero_address_event_count:rows.length,
@@ -257,6 +295,7 @@ try{
       last_event:rows[rows.length-1]||null
     });
     receipt.completed_window_count=receipt.windows.length;
+    console.log("END_WINDOW",w.id,"events",rows.length,"mints",mints.length,"burns",burns.length);
   }
 
   receipt.source_gate_evaluated=receipt.windows.length===2;
