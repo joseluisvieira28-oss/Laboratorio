@@ -1120,7 +1120,9 @@ def serve_forward_shadow(*, port: int, interval: float) -> int:
         worker.start()
 
     if (
-        os.getenv("RENDER", "").lower() == "true"
+        not quiesced
+        and persistence_writes_allowed
+        and os.getenv("RENDER", "").lower() == "true"
         and os.getenv("RENDER_SERVICE_ID") == EMA6H_PROBE_CANONICAL_SERVICE_ID
     ):
         probe_thread = threading.Thread(
