@@ -1,0 +1,49 @@
+name: ETH-STAKING-FLOW-001 CBT Envelope Probe V0.1.9
+on:
+  push:
+    branches:
+      - eth-staking-flow-v3-stagea-cbt-envelope-v019
+    paths:
+      - 'research/eth_staking_flow/cbt_response_envelope_probe_v019.py'
+      - '.github/workflows/eth-staking-flow-v3-stagea-cbt-envelope-v019.yml'
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify authority and compile
+        run: |
+          test -f research/eth_staking_flow/ETH_STAKING_FLOW_001_V3_STAGEA_CBT_RESPONSE_ENVELOPE_REMEDIATION_V0_1_9.md
+          python -m py_compile research/eth_staking_flow/cbt_response_envelope_probe_v019.py
+      - name: Probe source response envelope only
+        run: python research/eth_staking_flow/cbt_response_envelope_probe_v019.py
+      - name: Firewall
+        if: always()
+        run: |
+          python - <<'PY'
+          import json, pathlib
+          p=pathlib.Path('artifacts/ETH_STAKING_FLOW_001_CBT_ENVELOPE_V0_1_9.json')
+          assert p.exists()
+          x=json.loads(p.read_text())
+          assert x['signal_evaluated'] is False
+          assert x['market_prices_opened'] is False
+          assert x['returns_opened'] is False
+          assert x['pnl_opened'] is False
+          assert x['source_after_2026_08_31_opened'] is False
+          print('CLASSIFICATION',x.get('classification'))
+          print('ROOT',x.get('json_root_type'))
+          print('TOP_KEYS',x.get('top_level_keys'))
+          print('FIRST_ROW_KEYS',x.get('first_row_keys'))
+          print('ROW_COUNT',x.get('row_count'))
+          print('NEXT_PAGE_TOKEN_PRESENT',x.get('next_page_token_present'))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ETH_STAKING_FLOW_001_CBT_ENVELOPE_V0_1_9
+          path: artifacts/ETH_STAKING_FLOW_001_CBT_ENVELOPE_V0_1_9.json
+          if-no-files-found: error
+          retention-days: 90
