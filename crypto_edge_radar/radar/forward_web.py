@@ -31,9 +31,11 @@ from .tfg_forward_metrics import evaluate_tfg_forward_evidence
 from .ema6h_regime_watcher import EMA6HRegimeForwardWatcher
 from .ema6h_regime_metrics import evaluate_ema6h_regime_forward
 from .ema6h_source_resilience import (
-    ResilientBinanceSpotKlineFeed as EMA6HBinanceSpotKlineFeed,
+    BinanceDailyArchiveKlineFeed as EMA6HArchiveKlineFeed,
+    latest_archive_safe_now_ms,
 )
 from .strategies.ema6h_50x200_regime_forward import (
+    BinanceSpotKlineFeed as EMA6HBinanceSpotKlineFeed,
     latest_certifiable_signal_close_ms as latest_ema6h_certifiable_signal_close_ms,
 )
 from .options_v21_live import BinanceBTCUSDTDailyFeed, DeribitBTCOptionTradeFeed
@@ -233,6 +235,10 @@ class ForwardShadowRuntime:
         self.ema6h_regime = EMA6HRegimeForwardWatcher(
             store=self.store,
             feed=EMA6HBinanceSpotKlineFeed(timeout=settings.http_timeout),
+        )
+        self.ema6h_regime_archive = EMA6HRegimeForwardWatcher(
+            store=self.store,
+            feed=EMA6HArchiveKlineFeed(timeout=settings.http_timeout),
         )
         self.bnb = BNBLaunchpoolForwardShadowWatcher(
             store=self.store,
@@ -466,46 +472,80 @@ class ForwardShadowRuntime:
         if ema6h_should_attempt:
             try:
                 ema6h_state = self.ema6h_regime.run_once(now_ms=now_ms)
-                transport_receipt = getattr(
-                    self.ema6h_regime.feed,
-                    "transport_receipt",
-                    None,
-                )
-                if callable(transport_receipt):
-                    ema6h_state["source_transport"] = transport_receipt()
                 self._ema6h_state = ema6h_state
                 self._last_ema6h_due = ema6h_due
                 self._ema6h_retry_not_before_ms = None
             except Exception as exc:
-                transport_receipt_fn = getattr(
-                    self.ema6h_regime.feed,
-                    "transport_receipt",
-                    None,
-                )
-                transport_receipt = (
-                    transport_receipt_fn()
-                    if callable(transport_receipt_fn)
-                    else None
-                )
                 if is_binance_public_rate_limit_error(exc):
-                    ema6h_state = source_rate_limit_wait_state(
+                    live_wait = source_rate_limit_wait_state(
                         watcher_id="EMA6H-50X200-REGIME-DEPENDENCY-001-FORWARD-SHADOW",
                         now_ms=now_ms,
                         error=exc,
                     )
-                    if transport_receipt is not None:
-                        ema6h_state["source_transport"] = transport_receipt
                     self._ema6h_retry_not_before_ms = (
                         now_ms + BINANCE_RATE_LIMIT_COOLDOWN_MS
                     )
-                    self._ema6h_state = ema6h_state
+                    try:
+                        archive_now_ms = latest_archive_safe_now_ms(now_ms)
+                        archive_feed = self.ema6h_regime_archive.feed
+                        begin_cycle = getattr(archive_feed, "begin_cycle", None)
+                        if callable(begin_cycle):
+                            begin_cycle()
+                        archive_state = self.ema6h_regime_archive.run_once(
+                            now_ms=archive_now_ms
+                        )
+                        archive_receipt_fn = getattr(
+                            archive_feed,
+                            "transport_receipt",
+                            None,
+                        )
+                        archive_receipt = (
+                            archive_receipt_fn()
+                            if callable(archive_receipt_fn)
+                            else None
+                        )
+                        if archive_state.get("status") == "OK":
+                            archive_state["status"] = "OK_ARCHIVE_T_PLUS_1_FALLBACK"
+                        archive_state["live_source_status"] = live_wait["status"]
+                        archive_state["live_source_error"] = live_wait["last_source_error"]
+                        archive_state["live_source_retry_not_before_utc"] = live_wait[
+                            "retry_not_before_utc"
+                        ]
+                        archive_state["archive_safe_now_utc"] = (
+                            datetime.fromtimestamp(
+                                archive_now_ms / 1000.0,
+                                tz=timezone.utc,
+                            )
+                            .isoformat()
+                            .replace("+00:00", "Z")
+                        )
+                        archive_state["source_latency_mode"] = (
+                            "OFFICIAL_DAILY_ARCHIVE_T_PLUS_1"
+                        )
+                        archive_state["current_day_boundary_deferred"] = True
+                        archive_state["future_data_used"] = False
+                        archive_state["science_changed"] = False
+                        if archive_receipt is not None:
+                            archive_state["source_transport"] = archive_receipt
+                        self._ema6h_state = archive_state
+                        self._last_ema6h_due = ema6h_due
+                        ema6h_state = archive_state
+                    except Exception as archive_exc:
+                        ema6h_state = live_wait
+                        ema6h_state["archive_fallback"] = {
+                            "status": "FAIL_CLOSED",
+                            "error": (
+                                f"{type(archive_exc).__name__}:{archive_exc}"
+                            ),
+                            "science_changed": False,
+                            "future_data_used": False,
+                        }
+                        self._ema6h_state = ema6h_state
                 else:
                     ema6h_state = {
                         "status": "FAIL_CLOSED",
                         "error": f"{type(exc).__name__}:{exc}",
                     }
-                    if transport_receipt is not None:
-                        ema6h_state["source_transport"] = transport_receipt
                     self._ema6h_state = ema6h_state
                     errors["ema6h_regime"] = ema6h_state["error"]
         else:
