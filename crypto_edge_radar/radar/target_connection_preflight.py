@@ -262,9 +262,16 @@ def evaluate_target_snapshot(
 
 def target_connection_preflight(target_url: str | None = None) -> dict[str, Any]:
     configured = bool(target_url and target_url.strip())
+    if target_url is None:
+        configured = bool(
+            os.getenv("RADAR_MIGRATION_TARGET_URL", "").strip()
+            or os.getenv("RADAR_SUPABASE_POOLER_HOST", "").strip()
+            or os.getenv("RADAR_SUPABASE_POOLER_PASSWORD", "")
+        )
     try:
         if target_url is None:
-            target_url, configured = _target_url_from_env_for_preflight()
+            target_url, _resolved_configured = _target_url_from_env_for_preflight()
+            configured = configured or _resolved_configured
         if not target_url or not target_url.strip():
             return {
                 **_safe_base(),
