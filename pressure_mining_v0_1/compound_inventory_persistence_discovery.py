@@ -2,7 +2,7 @@
 import csv, hashlib, io, json, math, os, random, statistics, time, zipfile
 from collections import defaultdict, Counter
 from datetime import datetime, timezone
-from urllib.request import Request, urlopen\nfrom urllib.error import HTTPError
+from urllib.request import Request, urlopen
 
 OUTDIR=os.path.join(os.path.dirname(__file__),"receipts")
 os.makedirs(OUTDIR,exist_ok=True)
