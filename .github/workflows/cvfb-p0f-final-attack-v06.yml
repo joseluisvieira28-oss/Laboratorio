@@ -1,0 +1,138 @@
+name: CVFB P0F Final Attack V0.6
+
+on:
+  push:
+    branches:
+      - cross-venue-funding-basis-p0f-final-attack-v0.6
+    paths:
+      - '.github/workflows/cvfb-p0f-final-attack-v06.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  p0f:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install frozen runtime
+        run: python -m pip install --disable-pip-version-check -r research/cross_venue_funding_basis/requirements_p0e_v01.txt
+
+      - name: Verify frozen authority
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          freeze=json.loads(Path('research/cross_venue_funding_basis/CVFB_NATIVE_ORACLE_PROVENANCE_P0F_EXPLORER_BLOCKS_RAW_FREEZE_V0.1A.json').read_text())
+          auth=json.loads(Path('research/cross_venue_funding_basis/CVFB_NATIVE_ORACLE_PROVENANCE_P0F_EXPLORER_BLOCKS_REQUESTER_PAYS_AUTHORIZATION_V0.1.json').read_text())
+          assert auth['status']=='AUTHORIZED_BEFORE_FIRST_REQUESTER_PAYS_S3_REQUEST'
+          assert auth['freeze_git_blob_sha']=='3517c354b0ad6e7e79e7a85d0755127aa9c367ba'
+          assert auth['requester_pays_charges_authorized'] is True
+          assert auth['aws_credentials_authorized'] is True
+          assert auth['execution_authorized'] is True
+          assert auth['economic_outcomes_authorized'] is False
+          assert auth['2026_authorized'] is False
+          assert freeze['cost_and_completeness_caps']['max_list_requests']==0
+          assert freeze['cost_and_completeness_caps']['max_head_requests']==4
+          assert freeze['cost_and_completeness_caps']['max_get_requests']==4
+          assert len(freeze['deterministic_object_hypothesis']['exact_keys'])==4
+          print('P0F_AUTHORITY_PASS')
+          PY
+
+      - name: Select existing AWS secret alias without disclosure
+        id: creds
+        env:
+          CVFB_AK: ${{ secrets.CVFB_P0E_AWS_ACCESS_KEY_ID }}
+          CVFB_SK: ${{ secrets.CVFB_P0E_AWS_SECRET_ACCESS_KEY }}
+          CVFB_ST: ${{ secrets.CVFB_P0E_AWS_SESSION_TOKEN }}
+          L2R_AK: ${{ secrets.L2R_AWS_ACCESS_KEY_ID }}
+          L2R_SK: ${{ secrets.L2R_AWS_SECRET_ACCESS_KEY }}
+          L2R_ST: ${{ secrets.L2R_AWS_SESSION_TOKEN }}
+        run: |
+          set -euo pipefail
+          family=NONE
+          if [ -n "$CVFB_AK" ] && [ -n "$CVFB_SK" ]; then
+            family=CVFB
+          elif [ -n "$L2R_AK" ] && [ -n "$L2R_SK" ]; then
+            family=L2R
+          fi
+          echo "family=$family" >> "$GITHUB_OUTPUT"
+          echo "credential_alias_family=$family"
+          if [ "$family" = "NONE" ]; then
+            echo "mandatory_credentials_present=false"
+          else
+            echo "mandatory_credentials_present=true"
+          fi
+
+      - name: Execute exact frozen P0F with selected alias
+        id: execute
+        env:
+          FAMILY: ${{ steps.creds.outputs.family }}
+          CVFB_AK: ${{ secrets.CVFB_P0E_AWS_ACCESS_KEY_ID }}
+          CVFB_SK: ${{ secrets.CVFB_P0E_AWS_SECRET_ACCESS_KEY }}
+          CVFB_ST: ${{ secrets.CVFB_P0E_AWS_SESSION_TOKEN }}
+          L2R_AK: ${{ secrets.L2R_AWS_ACCESS_KEY_ID }}
+          L2R_SK: ${{ secrets.L2R_AWS_SECRET_ACCESS_KEY }}
+          L2R_ST: ${{ secrets.L2R_AWS_SESSION_TOKEN }}
+          CVFB_P0F_EXPLORER_BLOCKS_REQUESTER_PAYS_AUTHORIZED: YES
+        run: |
+          set -euo pipefail
+          mkdir -p out/cvfb_p0f_v06
+          if [ "$FAMILY" = "CVFB" ]; then
+            export AWS_ACCESS_KEY_ID="$CVFB_AK"
+            export AWS_SECRET_ACCESS_KEY="$CVFB_SK"
+            export AWS_SESSION_TOKEN="$CVFB_ST"
+          elif [ "$FAMILY" = "L2R" ]; then
+            export AWS_ACCESS_KEY_ID="$L2R_AK"
+            export AWS_SECRET_ACCESS_KEY="$L2R_SK"
+            export AWS_SESSION_TOKEN="$L2R_ST"
+          else
+            unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN || true
+          fi
+          set +e
+          python research/cross_venue_funding_basis/cvfb_native_oracle_p0f_explorer_blocks_v01a.py             --execute             --authorization-confirmation 'I_EXPLICITLY_AUTHORIZE_CVFB_P0F_EXPLORER_BLOCKS_REQUESTER_PAYS'             --out out/cvfb_p0f_v06/CVFB_NATIVE_ORACLE_PROVENANCE_P0F_RECEIPT_V0.6.json
+          rc=$?
+          set -e
+          echo "probe_rc=$rc" >> "$GITHUB_OUTPUT"
+          if [ "$rc" -ne 0 ] && [ "$rc" -ne 3 ]; then
+            exit "$rc"
+          fi
+
+      - name: Enforce source-only firewall
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('out/cvfb_p0f_v06/CVFB_NATIVE_ORACLE_PROVENANCE_P0F_RECEIPT_V0.6.json')
+          assert p.exists()
+          x=json.loads(p.read_text())
+          assert x['freeze_git_blob_sha']=='3517c354b0ad6e7e79e7a85d0755127aa9c367ba'
+          assert x['raw_object_bodies_emitted'] is False
+          assert x['market_numeric_values_emitted'] is False
+          assert x['oracle_numeric_values_emitted'] is False
+          assert x['economic_outcomes_computed'] is False
+          assert x['primary_replication_reopened'] is False
+          assert x['2026_opened'] is False
+          assert x['live_trading_authorized'] is False
+          assert x['merge_to_main_authorized'] is False
+          print('P0F_STATUS',x['status'])
+          print('P0F_DECISION',x['decision'])
+          if x['status']=='COMPLETE':
+            s=x['source']
+            assert s['list_requests']==0 and s['head_requests']==4 and s['get_requests']==4
+            assert s['compressed_bytes']<=33554432
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: CVFB_P0F_FINAL_ATTACK_V0_6
+          path: out/cvfb_p0f_v06/CVFB_NATIVE_ORACLE_PROVENANCE_P0F_RECEIPT_V0.6.json
+          if-no-files-found: error
+          retention-days: 90
