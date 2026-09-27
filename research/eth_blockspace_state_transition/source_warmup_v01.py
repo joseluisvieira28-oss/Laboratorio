@@ -5,7 +5,7 @@ from collections import defaultdict
 from datetime import datetime, timezone
 
 LAB="ETH-BLOCKSPACE-STATE-TRANSITION-001"
-EPS=["https://public.1rpc.io/eth","https://rpc.flashbots.net"]
+EPS=["https://rpc.flashbots.net","https://public.1rpc.io/eth"]
 REQ=["number","hash","timestamp","gasLimit","gasUsed","baseFeePerGas","blobGasUsed","excessBlobGas"]
 STEP_BLOCKS=600
 LOOKBACK_BLOCKS=40*7200
@@ -88,15 +88,10 @@ def main():
         chunk=40
         for base in range(0,len(heights),chunk):
             hs=heights[base:base+chunk]
-            even_h=[h for j,h in enumerate(hs,start=base) if j%2==0]
-            odd_h=[h for j,h in enumerate(hs,start=base) if j%2==1]
-            even_rows=batch_fetch(EPS[0],even_h) if even_h else []
-            odd_rows=batch_fetch(EPS[1],odd_h) if odd_h else []
-            merged={r["number"]:r for r in even_rows+odd_rows}
-            for j,h in enumerate(hs,start=base):
-                a=merged[h]
+            bulk=batch_fetch(EPS[0],hs)
+            for j,(h,a) in enumerate(zip(hs,bulk),start=base):
                 if j%40==0:
-                    b=fetch(EPS[0],h)
+                    b=fetch(EPS[1],h)
                     if a["hash"]!=b["hash"] or a["timestamp"]!=b["timestamp"]:
                         raise RuntimeError(f"provider disagreement {h}")
                     audit_pass+=1
