@@ -34,6 +34,7 @@ def _source(authority, url):
         "authority": authority,
         "source_url": url,
         "retrieved_at_utc": "2026-12-15T12:00:00Z",
+        "extracted_text_sha256": "1" * 64,
     }
 
 
@@ -135,6 +136,13 @@ class CalendarBindingV02Tests(unittest.TestCase):
             "official_authority": "FEDERAL_RESERVE",
             "official_source_url": "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm",
             "official_status": "OFFICIAL_CONFIRMED_FOR_CAPTURE",
+            "evidence_roles": ["FOMC_ANNUAL_SCHEDULE_ANNOUNCEMENT"],
+            "supporting_official_sources": [{
+                "role": "FOMC_ANNUAL_SCHEDULE_ANNOUNCEMENT",
+                "url": "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm",
+                "retrieved_at_utc": "2026-12-10T15:00:00Z",
+                "extracted_text_sha256": "2" * 64,
+            }],
             "target_observation_authorized": False,
             "outcomes_authorized": False,
             "activation_receipt_sha256": None,
@@ -160,6 +168,13 @@ class CalendarBindingV02Tests(unittest.TestCase):
             "official_authority": "FEDERAL_RESERVE",
             "official_source_url": "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm",
             "official_status": "OFFICIAL_CONFIRMED_FOR_CAPTURE",
+            "evidence_roles": ["FOMC_ANNUAL_SCHEDULE_ANNOUNCEMENT"],
+            "supporting_official_sources": [{
+                "role": "FOMC_ANNUAL_SCHEDULE_ANNOUNCEMENT",
+                "url": "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm",
+                "retrieved_at_utc": "2026-12-10T15:00:00Z",
+                "extracted_text_sha256": "2" * 64,
+            }],
             "target_observation_authorized": False,
             "outcomes_authorized": False,
             "activation_receipt_sha256": None,
@@ -186,6 +201,13 @@ class CalendarBindingV02Tests(unittest.TestCase):
             "official_authority": "BLS",
             "official_source_url": "https://www.bls.gov/schedule/news_release/cpi.htm",
             "official_status": "OFFICIAL_CONFIRMED_FOR_CAPTURE",
+            "evidence_roles": ["BLS_RELEASE_SCHEDULE"],
+            "supporting_official_sources": [{
+                "role": "BLS_RELEASE_SCHEDULE",
+                "url": "https://www.bls.gov/schedule/news_release/cpi.htm",
+                "retrieved_at_utc": "2027-01-15T13:31:00Z",
+                "extracted_text_sha256": "3" * 64,
+            }],
             "target_observation_authorized": False,
             "outcomes_authorized": False,
             "activation_receipt_sha256": None,
