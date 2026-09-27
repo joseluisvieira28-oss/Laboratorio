@@ -26,3 +26,7 @@ No PnL, orders, exchange/wallet mutation or main merge.
 
 Relaunch authorized after bounded transport hardening V0.1H, V0.1I and implementation correction V0.1J.
 Scientific contract unchanged. This edit exists only to trigger the existing single-run workflow on the hardened branch head.
+
+## Relaunch — V0.1R
+
+Relaunch after digest-verified ordered log fallback: PublicNode -> BlockMachine -> MEVBlocker, fixed 10,000-block outer range. Scientific contract unchanged; promotion credit 0.
