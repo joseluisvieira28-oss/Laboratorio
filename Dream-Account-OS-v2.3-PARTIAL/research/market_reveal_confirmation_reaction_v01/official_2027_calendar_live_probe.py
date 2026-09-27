@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
+import hashlib
 import html
 from html.parser import HTMLParser
 import json
@@ -51,6 +52,10 @@ class _TextExtractor(HTMLParser):
 
     def text(self) -> str:
         return "\n".join(self.parts)
+
+
+def _text_sha256(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
 def _fetch_text(url: str) -> str:
@@ -102,6 +107,8 @@ def _bls_2027_status(text: str, *, family: str) -> dict:
         "authority": "BLS",
         "family": family,
         "source_url": BLS_CPI_URL if family == "US_CPI" else BLS_EMPSIT_URL,
+        "evidence_format": "HTML_EXTRACTED_TEXT_UTF8",
+        "extracted_text_sha256": _text_sha256(text),
         "status": (
             "COMPLETE_OFFICIAL_CONFIRMED"
             if complete else "INCOMPLETE_FOR_2027"
@@ -155,6 +162,8 @@ def _fed_2027_status(text: str) -> dict:
         "authority": "FEDERAL_RESERVE",
         "family": "FOMC_STATEMENT",
         "source_url": FED_FOMC_URL,
+        "evidence_format": "HTML_EXTRACTED_TEXT_UTF8",
+        "extracted_text_sha256": _text_sha256(text),
         "status": (
             "COMPLETE_OFFICIAL_CONFIRMED"
             if complete_confirmed
