@@ -1,0 +1,53 @@
+name: ETH-STAKING-FLOW-001 ClickHouse Parquet Recovery V0.1.8
+on:
+  push:
+    branches:
+      - eth-staking-flow-v3-stagea-parquet-clickhouse-v018
+    paths:
+      - 'research/eth_staking_flow/clickhouse_parquet_reader_v018.py'
+      - '.github/workflows/eth-staking-flow-v3-stagea-parquet-clickhouse-v018.yml'
+permissions:
+  contents: read
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify source-only authority exists
+        run: |
+          test -f research/eth_staking_flow/ETH_STAKING_FLOW_001_V3_STAGEA_CLICKHOUSE_PARQUET_READER_V0_1_8.md
+          python -m py_compile research/eth_staking_flow/clickhouse_parquet_reader_v018.py
+      - name: Pull frozen ClickHouse reader
+        run: docker pull clickhouse/clickhouse-server:25.8
+      - name: Record immutable image identity
+        run: |
+          docker image inspect clickhouse/clickhouse-server:25.8 --format '{{json .RepoDigests}}'
+          docker image inspect clickhouse/clickhouse-server:25.8 --format '{{.Id}}'
+      - name: Execute exact source-only recovery
+        run: python research/eth_staking_flow/clickhouse_parquet_reader_v018.py
+      - name: Enforce firewall
+        if: always()
+        run: |
+          python - <<'PY'
+          import json, pathlib
+          p=pathlib.Path('artifacts/ETH_STAKING_FLOW_001_CLICKHOUSE_PARQUET_RECOVERY_V0_1_8.json')
+          assert p.exists()
+          x=json.loads(p.read_text())
+          assert x['source_only'] is True
+          assert x['market_data_opened'] is False
+          assert x['signal_evaluated'] is False
+          assert x['returns_opened'] is False
+          assert x['pnl_opened'] is False
+          assert x['source_after_2026_08_31_opened'] is False
+          print('CLASSIFICATION',x.get('classification'))
+          print('CONTROL_EXACT',x.get('control_exact_count'))
+          print('RECOVERED_MISSING',x.get('recovered_missing_date_count'))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ETH_STAKING_FLOW_001_CLICKHOUSE_PARQUET_RECOVERY_V0_1_8
+          path: artifacts/ETH_STAKING_FLOW_001_CLICKHOUSE_PARQUET_RECOVERY_V0_1_8.json
+          if-no-files-found: error
+          retention-days: 90
