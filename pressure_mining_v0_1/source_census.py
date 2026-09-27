@@ -92,14 +92,29 @@ receipt={
 try:
     roots,_=fetch_json("https://raw.githubusercontent.com/compound-finance/comet/main/deployments/mainnet/usdc/roots.json")
     comet=roots["comet"]
-    ep,ep_errs=choose_rpc()
     t0=int(datetime(2023,1,1,tzinfo=timezone.utc).timestamp())
     t1=int(datetime(2025,1,1,tzinfo=timezone.utc).timestamp())-1
-    b0=first_block_at_or_after(ep,t0)
-    b1=first_block_at_or_after(ep,t1)
     absorb=topic("AbsorbCollateral(address,address,address,uint256,uint256)")
     buy=topic("BuyCollateral(address,address,uint256,uint256)")
-    logs,failures=get_logs_adaptive(ep,comet,[absorb,buy],b0,b1)
+    attempts=[]
+    selected=None
+    result=None
+    for ep in RPC_ENDPOINTS:
+        try:
+            if rpc(ep,"eth_chainId",[])!="0x1":
+                raise RuntimeError("wrong chain")
+            b0=first_block_at_or_after(ep,t0)
+            b1=first_block_at_or_after(ep,t1)
+            logs,failures=get_logs_adaptive(ep,comet,[absorb,buy],b0,b1)
+            selected=ep
+            result=(b0,b1,logs,failures)
+            attempts.append({"endpoint":ep,"pass":True,"logs":len(logs),"block_range":[b0,b1]})
+            break
+        except Exception as inner:
+            attempts.append({"endpoint":ep,"pass":False,"error":repr(inner)})
+    if selected is None:
+        raise RuntimeError(f"all archive census routes failed: {attempts}")
+    b0,b1,logs,failures=result
     counts={"AbsorbCollateral":0,"BuyCollateral":0,"other":0}
     unique_assets=set()
     unique_borrowers=set()
@@ -116,8 +131,8 @@ try:
     receipt["compound"]={
       "lab_id":"COMPOUND-INVENTORY-LIQUIDATION-001",
       "status":"SOURCE_CENSUS_PASS",
-      "rpc":ep,
-      "rpc_prior_errors":ep_errs,
+      "rpc":selected,
+      "rpc_attempts":attempts,
       "comet_address":comet,
       "window_utc":["2023-01-01T00:00:00Z","2024-12-31T23:59:59Z"],
       "block_range":[b0,b1],
@@ -129,7 +144,7 @@ try:
       "sample_viability_note":"Counts are source feasibility only. No market response or economic result computed."
     }
 except Exception as e:
-    receipt["compound"]={"lab_id":"COMPOUND-INVENTORY-LIQUIDATION-001","status":"SOURCE_CENSUS_PARTIAL","error":repr(e)}
+    receipt["compound"]={"lab_id":"COMPOUND-INVENTORY-LIQUIDATION-001","status":"SOURCE_CENSUS_PARTIAL","error":repr(e),"rpc_attempts":locals().get("attempts",[])}
 
 # Pendle metadata census only. No price/convergence values are read into the receipt.
 try:
