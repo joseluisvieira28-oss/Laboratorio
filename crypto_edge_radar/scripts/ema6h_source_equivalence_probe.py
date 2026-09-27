@@ -1,18 +1,20 @@
 from __future__ import annotations
 
-from dataclasses import asdict
 from datetime import datetime, timezone
 import hashlib
 import json
 from pathlib import Path
 
-from radar.ema6h_source_resilience import OFFICIAL_BINANCE_SPOT_ENDPOINTS
+from radar.ema6h_source_resilience import (
+    BinanceSpotWebSocketKlineFeed,
+    OFFICIAL_BINANCE_SPOT_TRANSPORTS,
+)
 from radar.strategies.ema6h_50x200_regime_forward import (
     BinanceSpotKlineFeed,
     FROZEN_UNIVERSE,
 )
 
-OUT = Path("artifacts/ema6h_source_equivalence_v01.json")
+OUT = Path("artifacts/ema6h_source_equivalence_v02.json")
 
 
 def ms(text: str) -> int:
@@ -71,13 +73,24 @@ def digest(rows) -> str:
     return hashlib.sha256(raw).hexdigest()
 
 
-def fetch_case(base_url: str, case: dict) -> dict:
-    feed = BinanceSpotKlineFeed(
-        timeout=15,
-        max_attempts=1,
-        retry_backoff_seconds=0,
-    )
-    feed.base_url = base_url
+def feed_for(kind: str, url: str):
+    if kind == "REST":
+        feed = BinanceSpotKlineFeed(
+            timeout=15,
+            max_attempts=1,
+            retry_backoff_seconds=0,
+        )
+        feed.base_url = url
+        return feed
+    if kind == "WEBSOCKET_API":
+        feed = BinanceSpotWebSocketKlineFeed(timeout=15)
+        feed.endpoint_url = url
+        return feed
+    raise ValueError(f"unsupported transport kind {kind}")
+
+
+def fetch_case(kind: str, url: str, case: dict) -> dict:
+    feed = feed_for(kind, url)
     rows = feed.klines(
         case["symbol"],
         case["interval"],
@@ -87,7 +100,7 @@ def fetch_case(base_url: str, case: dict) -> dict:
     )
     if len(rows) != case["expected_rows"]:
         raise AssertionError(
-            f"{base_url} {case['symbol']} {case['interval']}: "
+            f"{kind} {url} {case['symbol']} {case['interval']}: "
             f"expected {case['expected_rows']} rows, got {len(rows)}"
         )
     return {
@@ -100,85 +113,93 @@ def fetch_case(base_url: str, case: dict) -> dict:
 
 def main() -> int:
     OUT.parent.mkdir(parents=True, exist_ok=True)
-    endpoint_results = {}
-    for label, base_url in OFFICIAL_BINANCE_SPOT_ENDPOINTS:
+    transport_results = {}
+
+    for label, kind, url in OFFICIAL_BINANCE_SPOT_TRANSPORTS:
         item = {
             "label": label,
-            "base_url": base_url,
+            "kind": kind,
+            "url": url,
             "status": "UNKNOWN",
             "cases": {},
         }
         try:
             for case in CASES:
                 key = f"{case['symbol']}:{case['interval']}"
-                item["cases"][key] = fetch_case(base_url, case)
+                item["cases"][key] = fetch_case(kind, url, case)
             item["status"] = "PASS_FETCH"
         except Exception as exc:
             item["status"] = "UNAVAILABLE"
             item["error"] = f"{type(exc).__name__}:{exc}"
-        endpoint_results[label] = item
+        transport_results[label] = item
 
-    baseline = endpoint_results["MARKET_DATA_ONLY"]
+    baseline = transport_results["MARKET_DATA_ONLY"]
+    websocket = transport_results["WS_API"]
+
     if baseline["status"] != "PASS_FETCH":
-        classification = "SOURCE_GATE_FAIL_PRIMARY_UNAVAILABLE"
-        receipt = {
-            "schema_version": "EMA6H_SOURCE_EQUIVALENCE_PROBE_V0.1",
-            "classification": classification,
-            "primary": "MARKET_DATA_ONLY",
-            "endpoints": endpoint_results,
-            "minimum_equivalent_endpoints": 2,
-            "science_changed": False,
-            "authenticated_exchange_api_used": False,
-            "orders_created": False,
-            "exchange_mutation_performed": False,
-            "live_capital_enabled": False,
-        }
-        OUT.write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n")
-        print(json.dumps(receipt, sort_keys=True))
-        return 2
+        classification = "SOURCE_GATE_FAIL_PRIMARY_MARKET_DATA_UNAVAILABLE"
+        passed = False
+        mismatches = []
+    else:
+        baseline_cases = baseline["cases"]
+        mismatches = []
+        for row in transport_results.values():
+            if row["status"] != "PASS_FETCH":
+                continue
+            for key, base_case in baseline_cases.items():
+                candidate = row["cases"].get(key)
+                if candidate is None or candidate["sha256"] != base_case["sha256"]:
+                    mismatches.append(
+                        {
+                            "transport": row["label"],
+                            "kind": row["kind"],
+                            "case": key,
+                            "baseline_sha256": base_case["sha256"],
+                            "candidate_sha256": (
+                                None if candidate is None else candidate["sha256"]
+                            ),
+                        }
+                    )
+
+        ws_equivalent = bool(
+            websocket["status"] == "PASS_FETCH"
+            and all(
+                websocket["cases"].get(key, {}).get("sha256")
+                == baseline_cases[key]["sha256"]
+                for key in baseline_cases
+            )
+        )
+        passed = not mismatches and ws_equivalent
+        if passed:
+            classification = "PASS_REST_WSAPI_CANDLE_EQUIVALENCE"
+        elif websocket["status"] != "PASS_FETCH":
+            classification = "SOURCE_GATE_FAIL_WSAPI_UNAVAILABLE"
+        else:
+            classification = "FAIL_CLOSED_TRANSPORT_CANDLE_DIVERGENCE"
 
     available = [
-        row for row in endpoint_results.values()
+        row["label"]
+        for row in transport_results.values()
         if row["status"] == "PASS_FETCH"
     ]
-    mismatches = []
-    baseline_cases = baseline["cases"]
-    for row in available:
-        for key, base_case in baseline_cases.items():
-            candidate = row["cases"].get(key)
-            if candidate is None or candidate["sha256"] != base_case["sha256"]:
-                mismatches.append(
-                    {
-                        "endpoint": row["label"],
-                        "case": key,
-                        "baseline_sha256": base_case["sha256"],
-                        "candidate_sha256": (
-                            None if candidate is None else candidate["sha256"]
-                        ),
-                    }
-                )
-
-    equivalent_alternates = [
-        row["label"]
-        for row in available
-        if row["label"] != "MARKET_DATA_ONLY"
-        and all(
-            row["cases"][key]["sha256"] == baseline_cases[key]["sha256"]
-            for key in baseline_cases
-        )
+    unavailable = [
+        {
+            "transport": row["label"],
+            "kind": row["kind"],
+            "error": row.get("error"),
+        }
+        for row in transport_results.values()
+        if row["status"] != "PASS_FETCH"
     ]
 
-    passed = not mismatches and len(equivalent_alternates) >= 1
     receipt = {
-        "schema_version": "EMA6H_SOURCE_EQUIVALENCE_PROBE_V0.1",
-        "classification": (
-            "PASS_OFFICIAL_ENDPOINT_CANDLE_EQUIVALENCE"
-            if passed
-            else "FAIL_CLOSED_ENDPOINT_EQUIVALENCE"
-        ),
+        "schema_version": "EMA6H_SOURCE_EQUIVALENCE_PROBE_V0.2",
+        "classification": classification,
+        "pass": passed,
         "primary": "MARKET_DATA_ONLY",
-        "available_endpoint_count": len(available),
-        "equivalent_alternates": equivalent_alternates,
+        "required_fallback": "WS_API",
+        "available_transports": available,
+        "unavailable_transports": unavailable,
         "mismatches": mismatches,
         "cases": [
             {
@@ -190,7 +211,7 @@ def main() -> int:
             }
             for case in CASES
         ],
-        "endpoints": endpoint_results,
+        "transports": transport_results,
         "science_changed": False,
         "authenticated_exchange_api_used": False,
         "orders_created": False,
