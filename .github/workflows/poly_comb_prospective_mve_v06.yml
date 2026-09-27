@@ -1,0 +1,35 @@
+name: POLY-COMB Prospective MVE V0.6
+on:
+  push:
+    branches: [prediction-combinatorial-arb-v0.6-prospective-mve]
+    paths:
+      - 'research/polymarket_combinatorial_arb/PROSPECTIVE_MVE_FREEZE_V0.6.md'
+      - 'research/polymarket_combinatorial_arb/prospective_mve_v06.py'
+      - '.github/workflows/poly_comb_prospective_mve_v06.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  prospective-mve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run frozen prospective MVE
+        run: python research/polymarket_combinatorial_arb/prospective_mve_v06.py
+      - name: Assert no-mutation safety
+        run: |
+          python - <<'PY'
+          import json
+          x=json.load(open('artifacts/POLY_COMB_PROSPECTIVE_MVE_V0.6.json'))
+          assert x['authenticated_endpoints_used'] is False
+          assert x['orders_sent'] is False
+          assert x['capital_used'] is False
+          assert len(x['snapshots']) == 60
+          print('PROSPECTIVE SAFETY PASS:',x['summary']['pilot_adjudication'])
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: POLY_COMB_PROSPECTIVE_MVE_V0.6
+          path: artifacts/POLY_COMB_PROSPECTIVE_MVE_V0.6.json
+          if-no-files-found: error
