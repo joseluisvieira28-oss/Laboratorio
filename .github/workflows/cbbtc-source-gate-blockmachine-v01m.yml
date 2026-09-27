@@ -1,0 +1,54 @@
+name: CBBTC-001 source gate BlockMachine V0.1M
+on:
+  push:
+    branches:
+      - cbbtc-eth-mint-burn-flow-001-source-gate-v01
+    paths:
+      - '.github/workflows/cbbtc-source-gate-blockmachine-v01m.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cbbtc-source-gate-blockmachine-v01m
+  cancel-in-progress: true
+
+jobs:
+  source_gate:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-save ethers@6.15.0
+      - id: source
+        name: Run frozen Gate 1 on verified public archive transport
+        env:
+          ETH_RPC_URL: https://rpc-eth.blockmachine.io
+          ETH_ARCHIVE_RPC_URL: https://rpc-eth.blockmachine.io
+        run: node research/cbbtc_eth_mint_burn_flow_001/cbbtc_eth_mint_burn_source_probe_v01.mjs
+      - name: Persist SOURCE_PASS receipt
+        if: success()
+        shell: bash
+        run: |
+          cp artifacts/CBBTC_ETH_MINT_BURN_SOURCE_GATE_RECEIPT_V0.1.json /tmp/cbbtc_source_receipt.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin cbbtc-eth-mint-burn-flow-001-source-gate-v01
+          git checkout -B cbbtc-source-persist origin/cbbtc-eth-mint-burn-flow-001-source-gate-v01
+          cp /tmp/cbbtc_source_receipt.json research/cbbtc_eth_mint_burn_flow_001/SOURCE_GATE_RECEIPT_V0.1.json
+          git add research/cbbtc_eth_mint_burn_flow_001/SOURCE_GATE_RECEIPT_V0.1.json
+          git commit -m "CBBTC-001: persist verified BlockMachine SOURCE_PASS [skip ci]"
+          git push origin HEAD:cbbtc-eth-mint-burn-flow-001-source-gate-v01
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cbbtc-source-gate-blockmachine-v01m
+          path: artifacts/CBBTC_ETH_MINT_BURN_SOURCE_GATE_RECEIPT_V0.1.json
+          if-no-files-found: error
