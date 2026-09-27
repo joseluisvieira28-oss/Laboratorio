@@ -30,8 +30,10 @@ from .tfg_forward_watcher import (
 from .tfg_forward_metrics import evaluate_tfg_forward_evidence
 from .ema6h_regime_watcher import EMA6HRegimeForwardWatcher
 from .ema6h_regime_metrics import evaluate_ema6h_regime_forward
+from .ema6h_source_resilience import (
+    ResilientBinanceSpotKlineFeed as EMA6HBinanceSpotKlineFeed,
+)
 from .strategies.ema6h_50x200_regime_forward import (
-    BinanceSpotKlineFeed as EMA6HBinanceSpotKlineFeed,
     latest_certifiable_signal_close_ms as latest_ema6h_certifiable_signal_close_ms,
 )
 from .options_v21_live import BinanceBTCUSDTDailyFeed, DeribitBTCOptionTradeFeed
@@ -464,16 +466,35 @@ class ForwardShadowRuntime:
         if ema6h_should_attempt:
             try:
                 ema6h_state = self.ema6h_regime.run_once(now_ms=now_ms)
+                transport_receipt = getattr(
+                    self.ema6h_regime.feed,
+                    "transport_receipt",
+                    None,
+                )
+                if callable(transport_receipt):
+                    ema6h_state["source_transport"] = transport_receipt()
                 self._ema6h_state = ema6h_state
                 self._last_ema6h_due = ema6h_due
                 self._ema6h_retry_not_before_ms = None
             except Exception as exc:
+                transport_receipt_fn = getattr(
+                    self.ema6h_regime.feed,
+                    "transport_receipt",
+                    None,
+                )
+                transport_receipt = (
+                    transport_receipt_fn()
+                    if callable(transport_receipt_fn)
+                    else None
+                )
                 if is_binance_public_rate_limit_error(exc):
                     ema6h_state = source_rate_limit_wait_state(
                         watcher_id="EMA6H-50X200-REGIME-DEPENDENCY-001-FORWARD-SHADOW",
                         now_ms=now_ms,
                         error=exc,
                     )
+                    if transport_receipt is not None:
+                        ema6h_state["source_transport"] = transport_receipt
                     self._ema6h_retry_not_before_ms = (
                         now_ms + BINANCE_RATE_LIMIT_COOLDOWN_MS
                     )
@@ -483,6 +504,8 @@ class ForwardShadowRuntime:
                         "status": "FAIL_CLOSED",
                         "error": f"{type(exc).__name__}:{exc}",
                     }
+                    if transport_receipt is not None:
+                        ema6h_state["source_transport"] = transport_receipt
                     self._ema6h_state = ema6h_state
                     errors["ema6h_regime"] = ema6h_state["error"]
         else:
