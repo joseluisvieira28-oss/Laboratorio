@@ -8,6 +8,8 @@ on:
       - "pressure_mining_v0_1/lido_wq_source_snapshot.py"
       - "pressure_mining_v0_1/labs/LIDO_WITHDRAWAL_QUEUE_PRESSURE_001_SOURCE_COLLECTION_PROTOCOL_V0.1.md"
       - ".github/workflows/lido-wq-source-snapshot-v0.1.yml"
+  schedule:
+    - cron: "17 * * * *"
   workflow_dispatch:
 
 permissions:
@@ -31,6 +33,9 @@ jobs:
 
       - name: Collect source-only queue snapshot
         run: python pressure_mining_v0_1/lido_wq_source_snapshot.py
+
+      - name: Verify snapshot receipt
+        run: test -s pressure_mining_v0_1/receipts/LIDO_WQ_SOURCE_SNAPSHOT_V0.1.json
 
       - name: Upload immutable snapshot artifact
         uses: actions/upload-artifact@v4
