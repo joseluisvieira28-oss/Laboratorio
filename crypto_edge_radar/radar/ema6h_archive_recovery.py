@@ -92,9 +92,11 @@ class BinanceOfficialKlineArchiveRecovery:
         *,
         timeout: int = 15,
         opener: Callable[..., Any] = urlopen,
+        availability_now_ms: int | None = None,
     ) -> None:
         self.timeout = timeout
         self.opener = opener
+        self.availability_now_ms = availability_now_ms
         self.last_receipt: ArchiveReceipt | None = None
         self.last_receipts: list[ArchiveReceipt] = []
         self._cache: dict[tuple[str, str, str, str], list[Candle]] = {}
@@ -297,8 +299,13 @@ class BinanceOfficialKlineArchiveRecovery:
         if end_ms <= start_ms:
             return []
 
+        availability_ms = (
+            self.availability_now_ms
+            if self.availability_now_ms is not None
+            else now_ms
+        )
         today = datetime.fromtimestamp(
-            now_ms / 1000.0,
+            availability_ms / 1000.0,
             tz=timezone.utc,
         ).date()
         today_start_ms = int(
