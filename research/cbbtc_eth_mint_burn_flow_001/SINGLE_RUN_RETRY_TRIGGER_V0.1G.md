@@ -38,3 +38,15 @@ Relaunch after probe-verified historical header failover. Header order: PublicNo
 ## Relaunch — V0.1U
 
 Relaunch after exact Window-B historical eth_getCode crosscheck. CODE_RPCS: BlockMachine -> MEVBlocker -> PublicNode. Scientific contract unchanged.
+
+## Final hardened relaunch — 2026-09-27
+
+Gate 1 previously achieved SOURCE_PASS on the unchanged frozen source contract. Gate 2 then stopped only on BlockMachine HTTP 429 during the start EIP-1898 totalSupply anchor call.
+
+Before this relaunch:
+- event-header failover was routed through the already verified historical header paths;
+- V0.1W proved exact BlockMachine/MEVBlocker equality for both frozen census supply anchors and totalSupply values;
+- Gate 2 archive calls now use BlockMachine -> MEVBlocker failover while retaining EIP-1898 blockHash requireCanonical semantics;
+- static gate-chain QA run #36342306579 passed.
+
+Scientific contract unchanged; promotion credit = 0.
