@@ -1,0 +1,43 @@
+name: DLS Pre-Discovery Wiring Audit V0.9
+
+on:
+  push:
+    branches:
+      - dls-field-enrichment-v01
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_PRE_DISCOVERY_WIRING_AUDIT_V09.marker
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile current pre-discovery tooling
+        run: |
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/collect_global_field_gate_artifacts_v0_1.py
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/adjudicate_global_field_coverage_final_v0_1.py
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/build_source_cluster_sample_gate_v0_1.py
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/finalize_pre_discovery_authority_v0_1.py
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/validate_dls_pre_discovery_wiring_v0_9.py
+      - name: Validate authority wiring
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/validate_dls_pre_discovery_wiring_v0_9.py
+      - name: Upload audit receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-pre-discovery-wiring-audit-v09
+          path: labs/DEFI_LIQUIDATION_SHOCK_001/DLS_PRE_DISCOVERY_WIRING_AUDIT_RECEIPT_V0.9.json
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Firewall
+        if: always()
+        run: echo OUTCOME_BLIND_WIRING_AUDIT_ONLY
