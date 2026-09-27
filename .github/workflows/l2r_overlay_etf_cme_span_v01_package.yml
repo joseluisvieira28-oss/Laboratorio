@@ -1,0 +1,95 @@
+name: L2R Span Overlay ETF-CME V0.1 Package
+
+on:
+  push:
+    branches:
+      - l2r-overlay-etf-cme-span-v0.1
+    paths:
+      - research/l2_resiliency_overlay_span/PACKAGE_TRIGGER_SPAN_V0_1.txt
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: l2r-overlay-etf-cme-span-v0.1
+
+      - name: Require frozen implementation lock and one-shot authorization
+        run: |
+          set -euo pipefail
+          test -f research/l2_resiliency_overlay_span/L2R_OVERLAY_ETF_CME_SPAN_001_IMPLEMENTATION_LOCK_V0_1.json
+          test -f research/l2_resiliency_overlay_span/L2R_OVERLAY_ETF_CME_SPAN_001_2025_DEVELOPMENT_ONE_SHOT_AUTHORIZATION_V0_1.md
+
+      - name: Verify runner against frozen lock
+        run: |
+          set -euo pipefail
+          RUNNER="research/l2_resiliency_overlay_span/l2r_overlay_etf_cme_span_2025_development_v01.py"
+          LOCK="research/l2_resiliency_overlay_span/L2R_OVERLAY_ETF_CME_SPAN_001_IMPLEMENTATION_LOCK_V0_1.json"
+          ACTUAL="$(sha256sum "$RUNNER" | awk '{print $1}')"
+          EXPECTED="$(python -c "import json; print(json.load(open('$LOCK'))['runner_sha256'])")"
+          echo "runner_actual=$ACTUAL"
+          echo "runner_expected=$EXPECTED"
+          test "$ACTUAL" = "$EXPECTED"
+
+      - name: Download exact immutable ETF-CME artifact ZIP bytes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_PARENT_SHA: 40bd341c300532e5b67127a098c82ecf2f41e1cc4a3ce646ac824b27529f9bd1
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/10335473231/zip" \
+            -o ETF_CME_INSTFLOW_001_OOS_2025.zip
+          ACTUAL_PARENT_SHA="$(sha256sum ETF_CME_INSTFLOW_001_OOS_2025.zip | awk '{print $1}')"
+          echo "parent_artifact_sha256=$ACTUAL_PARENT_SHA"
+          test "$ACTUAL_PARENT_SHA" = "$EXPECTED_PARENT_SHA"
+
+      - name: Build one-shot operator package
+        run: |
+          set -euo pipefail
+          mkdir -p package
+          ROOT="research/l2_resiliency_overlay_span"
+          RUNNER="$ROOT/l2r_overlay_etf_cme_span_2025_development_v01.py"
+          RUNNER_SHA="$(sha256sum "$RUNNER" | awk '{print $1}')"
+          cp "$ROOT/RUN_L2R_OVERLAY_ETF_CME_SPAN_V01.ps1" package/
+          cp "$ROOT/RUN_L2R_OVERLAY_ETF_CME_SPAN_V01.cmd" package/
+          cp "$ROOT/L2R_OVERLAY_ETF_CME_SPAN_V01_README.txt" package/
+          cp "$RUNNER" package/
+          cp "$ROOT/L2R_OVERLAY_ETF_CME_SPAN_001_2025_DEVELOPMENT_PROTOCOL_V0_1.md" package/
+          cp "$ROOT/L2R_OVERLAY_ETF_CME_SPAN_001_SOURCE_SAMPLE_PREFLIGHT_V0_1.json" package/
+          cp "$ROOT/L2R_OVERLAY_ETF_CME_SPAN_001_IMPLEMENTATION_LOCK_V0_1.json" package/
+          cp "$ROOT/L2R_OVERLAY_ETF_CME_SPAN_001_2025_DEVELOPMENT_ONE_SHOT_AUTHORIZATION_V0_1.md" package/
+          cp ETF_CME_INSTFLOW_001_OOS_2025.zip package/
+          printf '%s\n' "$RUNNER_SHA" > package/RUNNER_SHA256.txt
+          sha256sum package/* > package/PACKAGE_MANIFEST_SHA256.txt
+          zip -qr L2R_OVERLAY_ETF_CME_SPAN_001_ONE_SHOT.zip package
+
+      - name: Verify embedded hashes
+        run: |
+          set -euo pipefail
+          rm -rf verify
+          mkdir verify
+          unzip -q L2R_OVERLAY_ETF_CME_SPAN_001_ONE_SHOT.zip -d verify
+          LOCK="verify/package/L2R_OVERLAY_ETF_CME_SPAN_001_IMPLEMENTATION_LOCK_V0_1.json"
+          EXPECTED_RUNNER="$(python -c "import json; print(json.load(open('$LOCK'))['runner_sha256'])")"
+          ACTUAL_RUNNER="$(sha256sum verify/package/l2r_overlay_etf_cme_span_2025_development_v01.py | awk '{print $1}')"
+          ACTUAL_PARENT="$(sha256sum verify/package/ETF_CME_INSTFLOW_001_OOS_2025.zip | awk '{print $1}')"
+          test "$ACTUAL_RUNNER" = "$EXPECTED_RUNNER"
+          test "$ACTUAL_PARENT" = "40bd341c300532e5b67127a098c82ecf2f41e1cc4a3ce646ac824b27529f9bd1"
+          echo "PACKAGE_HASH_BINDING_PASS"
+
+      - name: Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: L2R_OVERLAY_ETF_CME_SPAN_001_ONE_SHOT
+          path: L2R_OVERLAY_ETF_CME_SPAN_001_ONE_SHOT.zip
+          retention-days: 90
+          if-no-files-found: error
