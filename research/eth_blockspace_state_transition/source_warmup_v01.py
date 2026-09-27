@@ -12,28 +12,30 @@ LOOKBACK_BLOCKS=40*7200
 MIN_SAMPLES_PER_DAY=8
 PRIOR_DAYS=30
 
-def rpc(ep,method,params,retries=4):
+def post(ep,payload,retries=5):
     last=None
     for i in range(retries):
         try:
-            body=json.dumps({"jsonrpc":"2.0","id":1,"method":method,"params":params}).encode()
-            req=urllib.request.Request(ep,data=body,headers={"Content-Type":"application/json","User-Agent":"EBST-warmup-v0.1"})
-            with urllib.request.urlopen(req,timeout=30) as r:
-                o=json.loads(r.read().decode())
-            if o.get("error") is not None:
-                raise RuntimeError(str(o["error"]))
-            return o.get("result")
+            body=json.dumps(payload).encode()
+            req=urllib.request.Request(ep,data=body,headers={"Content-Type":"application/json","User-Agent":"EBST-warmup-v0.1b"})
+            with urllib.request.urlopen(req,timeout=45) as r:
+                return json.loads(r.read().decode())
         except Exception as e:
             last=e
-            if i+1<retries: time.sleep(min(0.5*(2**i),4))
+            if i+1<retries: time.sleep(min(1.0*(2**i),8))
     raise RuntimeError(f"{type(last).__name__}:{last}")
+
+def rpc(ep,method,params):
+    o=post(ep,{"jsonrpc":"2.0","id":1,"method":method,"params":params})
+    if not isinstance(o,dict) or o.get("error") is not None:
+        raise RuntimeError(str(o))
+    return o.get("result")
 
 def qi(x):
     if not isinstance(x,str) or not x.startswith("0x"): raise ValueError("quantity")
     return int(x,16)
 
-def fetch(ep,h):
-    o=rpc(ep,"eth_getBlockByNumber",[hex(h),False])
+def parse_block(o,h):
     if not isinstance(o,dict): raise RuntimeError("null block")
     miss=[k for k in REQ if o.get(k) is None]
     if miss: raise RuntimeError("missing:"+",".join(miss))
@@ -43,6 +45,23 @@ def fetch(ep,h):
         raise RuntimeError("header sanity")
     return {"number":n,"hash":o["hash"].lower(),"timestamp":qi(o["timestamp"]),
             "gas_utilization":gu/gl,"blob_gas_used":bg,"excess_blob_gas":ex}
+
+def fetch(ep,h):
+    return parse_block(rpc(ep,"eth_getBlockByNumber",[hex(h),False]),h)
+
+def batch_fetch(ep,heights):
+    reqs=[{"jsonrpc":"2.0","id":i,"method":"eth_getBlockByNumber","params":[hex(h),False]}
+          for i,h in enumerate(heights)]
+    raw=post(ep,reqs)
+    if not isinstance(raw,list): raise RuntimeError("batch non-list")
+    byid={int(x["id"]):x for x in raw if isinstance(x,dict) and "id" in x}
+    out=[]
+    for i,h in enumerate(heights):
+        x=byid.get(i)
+        if x is None or x.get("error") is not None:
+            raise RuntimeError(f"batch item failure {h}")
+        out.append(parse_block(x.get("result"),h))
+    return out
 
 def percentile(vals,p):
     x=sorted(vals)
@@ -66,16 +85,23 @@ def main():
         if heights[-1]!=tipn: heights.append(tipn)
         rows=[]
         audit_pass=0
-        for i,h in enumerate(heights):
-            ep=EPS[i%2]
-            a=fetch(ep,h)
-            if i%40==0:
-                b=fetch(EPS[1-(i%2)],h)
-                if a["hash"]!=b["hash"] or a["timestamp"]!=b["timestamp"]:
-                    raise RuntimeError(f"provider disagreement {h}")
-                audit_pass+=1
-            rows.append(a)
-            time.sleep(0.02)
+        chunk=40
+        for base in range(0,len(heights),chunk):
+            hs=heights[base:base+chunk]
+            even_h=[h for j,h in enumerate(hs,start=base) if j%2==0]
+            odd_h=[h for j,h in enumerate(hs,start=base) if j%2==1]
+            even_rows=batch_fetch(EPS[0],even_h) if even_h else []
+            odd_rows=batch_fetch(EPS[1],odd_h) if odd_h else []
+            merged={r["number"]:r for r in even_rows+odd_rows}
+            for j,h in enumerate(hs,start=base):
+                a=merged[h]
+                if j%40==0:
+                    b=fetch(EPS[1-(j%2)],h)
+                    if a["hash"]!=b["hash"] or a["timestamp"]!=b["timestamp"]:
+                        raise RuntimeError(f"provider disagreement {h}")
+                    audit_pass+=1
+                rows.append(a)
+            time.sleep(0.25)
         by=defaultdict(list)
         current_utc=datetime.now(timezone.utc).date().isoformat()
         for r in rows:
