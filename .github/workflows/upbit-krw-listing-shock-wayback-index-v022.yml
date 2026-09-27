@@ -1,0 +1,43 @@
+name: UKLS Wayback Index Probe V0.2.2
+on:
+  push:
+    branches:
+      - upbit-krw-listing-shock-source-recovery-v0.2
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/upbit_krw_listing_shock_001/wayback_index_probe_v022.py'
+      - '.github/workflows/upbit-krw-listing-shock-wayback-index-v022.yml'
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify authority
+        run: |
+          test -f Dream-Account-OS-v2.3-PARTIAL/research/upbit_krw_listing_shock_001/WAYBACK_INDEX_AUTHORITY_V0_2_2.md
+          python -m py_compile Dream-Account-OS-v2.3-PARTIAL/research/upbit_krw_listing_shock_001/wayback_index_probe_v022.py
+      - name: Execute archive index-only probe
+        run: python Dream-Account-OS-v2.3-PARTIAL/research/upbit_krw_listing_shock_001/wayback_index_probe_v022.py
+      - name: Enforce firewall
+        run: |
+          python - <<'PY'
+          import json
+          x=json.load(open('artifacts/UKLS_WAYBACK_INDEX_V0_2_2.json'))
+          assert x['archived_payload_opened'] is False
+          assert x['event_values_opened'] is False
+          print('CLASSIFICATION',x['classification'])
+          print('TOTAL_CAPTURES',x['total_capture_rows'])
+          for r in x['results']:
+              print(r['name'],r['query_http_status'],r['capture_rows'],r['earliest_capture'],r['latest_capture'],r['distinct_original_urls'],r['distinct_digests'],r['query_params_preserved'])
+              print('TEMPLATES',r['redacted_original_templates'])
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: UKLS_WAYBACK_INDEX_V0_2_2
+          path: artifacts/UKLS_WAYBACK_INDEX_V0_2_2.json
+          retention-days: 90
