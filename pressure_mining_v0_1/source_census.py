@@ -75,18 +75,40 @@ def get_logs_adaptive(ep,address,topic0,start,end):
     # of tiny eth_getLogs calls. The documented endpoint caps responses at 1,000
     # logs, therefore exactly 1,000 is treated as possible truncation and fails.
     if ep=="https://eth.blockscout.com/api/eth-rpc":
-        q=(
-            "https://eth.blockscout.com/api/?module=logs&action=getLogs"
-            f"&fromBlock={start}&toBlock={end}"
-            f"&address={address}&topic0={topic0}"
-        )
-        obj,_=fetch_json(q,timeout=120)
-        logs=obj.get("result") if isinstance(obj,dict) else None
-        if not isinstance(logs,list):
-            raise RuntimeError(f"Blockscout getLogs invalid response: {obj!r}")
-        if len(logs)>=1000:
-            raise RuntimeError("Blockscout getLogs possible 1000-row truncation")
-        return logs,0
+        # The legacy endpoint documents a maximum of 1,000 logs per response.
+        # Segment the frozen range so no single response can silently truncate a
+        # near-cap population. Deduplicate by block/tx/log index across segments.
+        all_logs=[]
+        failures=0
+        cur=start
+        chunk=250_000
+        seen=set()
+        while cur<=end:
+            stop=min(end,cur+chunk-1)
+            q=(
+                "https://eth.blockscout.com/api/?module=logs&action=getLogs"
+                f"&fromBlock={cur}&toBlock={stop}"
+                f"&address={address}&topic0={topic0}"
+            )
+            obj,_=fetch_json(q,timeout=120)
+            logs=obj.get("result") if isinstance(obj,dict) else None
+            if not isinstance(logs,list):
+                raise RuntimeError(f"Blockscout getLogs invalid response: {obj!r}")
+            if len(logs)>=1000:
+                raise RuntimeError(
+                    f"Blockscout getLogs possible truncation in {cur}-{stop}: {len(logs)} rows"
+                )
+            for lg in logs:
+                key=(
+                    str(lg.get("blockNumber","")).lower(),
+                    str(lg.get("transactionHash","")).lower(),
+                    str(lg.get("logIndex","")).lower(),
+                )
+                if key not in seen:
+                    seen.add(key)
+                    all_logs.append(lg)
+            cur=stop+1
+        return all_logs,failures
 
     all_logs=[]
     cur=start
