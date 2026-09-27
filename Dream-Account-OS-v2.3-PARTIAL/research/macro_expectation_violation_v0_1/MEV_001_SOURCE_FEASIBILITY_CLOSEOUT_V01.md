@@ -80,14 +80,59 @@ Reference:
 - https://www.cboe.com/delayed_quotes/qqq/
 
 ### F. Nasdaq Data Link
-Nasdaq Data Link offers delayed/historical bars, but the relevant market-data service
-is subscriber access. No no-cost, permission-clean, exchange-time NQ + 2Y futures path
-was established in this gate.
+Nasdaq Data Link offers delayed/historical bars, but no no-cost, permission-clean,
+exchange-time NQ + 2Y futures path was established in this gate.
 
 Result: NOT ESTABLISHED / no authority to assume free entitlement.
 
 Reference:
 - https://www.nasdaq.com/products/data/data-link/api
+
+### G. CME DataMine
+CME DataMine exposes historical Time & Sales, Top-of-Book and other high-resolution
+datasets, but its API is entitlement-based and its documentation describes access to
+purchased/entitled historical files after licensing/order setup.
+
+This is useful as a future historical/provenance route, but it does not provide the
+currently authorized free prospective real-time path required by MEV-001.
+
+Result: TECHNICALLY RELEVANT / ENTITLEMENT OR PURCHASE REQUIRED / NOT AUTHORIZED.
+
+References:
+- https://www.cmegroup.com/datamine.html
+- https://www.cmegroup.com/datamine/datamine-api.html
+
+### H. Databento CME feed
+Databento is listed by CME as a market-data provider and offers CME futures tick,
+top-of-book and minute data. Its public pricing describes paid live access and
+usage/subscription pricing. New-user credits apply to onboarding/historical use but do
+not establish a standing permission-clean free live feed for the 2027 decision-time
+requirement under current authority.
+
+Result: TECHNICALLY SUITABLE IN PRINCIPLE / LIVE ENTITLEMENT NOT CURRENTLY AUTHORIZED.
+
+References:
+- https://www.cmegroup.com/solutions/market-tech-and-data-services/technology-vendor-services/databento.html
+- https://databento.com/futures
+- https://databento.com/pricing
+
+## Exhaustion decision
+
+The blocker was actively attacked across direct exchange pages, official U.S. Treasury
+data, delayed third-party routes, historical exchange datasets and a licensed CME vendor.
+No currently authorized zero-cost route was established that simultaneously satisfies:
+
+- NQ + 2Y Treasury futures;
+- <=60-second event-time reconstruction;
+- availability compatible with a T0+180s decision;
+- timestamp provenance;
+- machine-use permission;
+- deterministic contract identity;
+- prospective 2027 capture.
+
+Therefore further source hunting is now anti-zombie work unless an objective reopening
+trigger occurs. The correct state remains SOURCE_BLOCKED rather than weakening the source
+contract.
 
 ## Current scientific state
 
