@@ -1,0 +1,24 @@
+name: EBST Flashbots batch qualification v0.1
+on:
+  push:
+    branches: [eth-blockspace-state-transition-v0.1]
+    paths:
+      - 'research/eth_blockspace_state_transition/flashbots_batch_qual_v01.py'
+      - '.github/workflows/ebst-flashbots-batch-qual-v01.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  qualify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: python research/eth_blockspace_state_transition/flashbots_batch_qual_v01.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ebst-flashbots-batch-qual-v01
+          path: EBST_FLASHBOTS_BATCH_QUAL_V0_1.json
