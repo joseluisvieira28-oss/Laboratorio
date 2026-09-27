@@ -1,0 +1,32 @@
+{
+  "protocol_id": "BNB-RT006-V2-CANONICAL-ALT-BTC-CONTROLS-V0.1",
+  "status": "FROZEN_BEFORE_CONTROL_MARKET_RESULTS",
+  "relation_to_rt006_v1": "RT006 V1 remains BLOCKED because no control universe had been frozen. V2 is a separately frozen post-hoc Red diagnostic and receives zero promotion credit.",
+  "control_universe_authority": "Reuse the established six-asset Crypto Lab major-asset universe concept; exclude BTC (denominator) and BNB (target). Fixed controls: ETHBTC, SOLBTC, XRPBTC, DOGEBTC.",
+  "target": "BNBBTC",
+  "historical_event_set": "Exactly the 66 already-open selected Launchpool events across pre-Discovery, Discovery and independent 2025 OOS. No event additions/deletions.",
+  "data_source": "Binance Data Vision Spot monthly 15m archives; provider CHECKSUM mandatory. For BNBBTC target, downloaded monthly hash must also equal the canonical historical source-manifest hash where available.",
+  "alignment": {
+    "entry": "first 15m open strictly greater than the frozen Launchpool signal timestamp",
+    "exit": "15m open exactly 24h after entry",
+    "round_trip_cost_bps": 20
+  },
+  "outputs": {
+    "per_control": [
+      "N",
+      "mean NET20",
+      "PF"
+    ],
+    "basket": "For each event with at least 3 of 4 controls complete, equal event weight; basket return = median control gross return. Report BNB minus control-basket gross differential.",
+    "differential_test": "10,000 event-level sign-flip permutations of BNB minus median-control differential, seed 20260927; report two-sided fraction abs(permutation mean) >= abs(observed mean).",
+    "availability_gate": "At least 80% of the 66 events must have >=3 controls; otherwise BLOCKED."
+  },
+  "interpretation": "If broad alt/BTC controls show similar event-aligned strength and BNB-specific differential is weak, challenge the BNB-specific utility mechanism. If BNB materially exceeds controls, asset placebo does not falsify BNB specificity. Diagnostic only.",
+  "guards": {
+    "no_2026": true,
+    "no_candidate_rule_change": true,
+    "no_live_trading": true,
+    "no_promotion_credit": true,
+    "no_asset_selection_after_results": true
+  }
+}
