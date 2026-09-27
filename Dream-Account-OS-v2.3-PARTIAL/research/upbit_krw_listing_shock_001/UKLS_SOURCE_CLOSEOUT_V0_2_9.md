@@ -171,6 +171,8 @@ Even a detail-index candidate would still need to prove:
 
 Those requirements are not presently satisfied.
 
+Final low-load numeric-detail transport V0.2.8B run `36326856314` completed with `WAYBACK_NUMERIC_DETAIL_CENSUS_TECHNICAL_FAILURE`: LEGACY CDX returned HTTP 504 and MODERN CDX returned HTTP 503. No payloads or event values were opened. This is transport evidence only and does not convert the source verdict into a sample or edge verdict.
+
 ## CURRENT UPBIT API NOTE
 
 In 2026 Upbit introduced an official Announcement WebSocket with fields including:
