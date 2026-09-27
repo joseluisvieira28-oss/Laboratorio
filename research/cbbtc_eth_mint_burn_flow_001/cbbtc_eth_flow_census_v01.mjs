@@ -13,7 +13,7 @@ const START_ISO="2024-09-12T00:00:00Z";
 const END_ISO="2026-01-01T00:00:00Z";
 const TRANSFER_TOPIC=id("Transfer(address,address,uint256)").toLowerCase();
 const ZERO_TOPIC="0x"+"0".repeat(64);
-const CHUNK=20_000;
+const CHUNK=2_000;\nconst RPC_TIMEOUT_MS=10_000;\nconst HEADER_ATTEMPTS=3;\nconst ARCHIVE_ATTEMPTS=3;\nconst RANGE_ATTEMPTS=2;
 const TOTAL_SUPPLY_SELECTOR="0x18160ddd";
 const hex=n=>"0x"+BigInt(n).toString(16);
 
@@ -34,7 +34,7 @@ async function rawRpc(endpoint,method,params){
     method:"POST",
     headers:{"content-type":"application/json"},
     body:JSON.stringify({jsonrpc:"2.0",id:1,method,params}),
-    signal:AbortSignal.timeout(30_000)
+    signal:AbortSignal.timeout(RPC_TIMEOUT_MS)
   });
   if(!res.ok) throw new Error("HTTP_"+res.status);
   const x=await res.json();
@@ -59,7 +59,7 @@ async function getBlockWithRetry(tag,scope){
       return rawBlockToInternal(x);
     }catch(e){
       last=String(e?.shortMessage||e?.message||e);
-      if(attempt<8) await sleep(500*attempt);
+      if(attempt<HEADER_ATTEMPTS) await sleep(300*attempt);
     }
   }
   throw new Error(scope+":"+last);
@@ -85,7 +85,7 @@ async function archiveSendWithRetry(method,params,scope){
       return await rawRpc(ARCHIVE_RPC,method,params);
     }catch(e){
       last=String(e?.shortMessage||e?.message||e);
-      if(attempt<8) await sleep(700*attempt);
+      if(attempt<ARCHIVE_ATTEMPTS) await sleep(400*attempt);
     }
   }
   throw new Error(scope+":"+last);
@@ -117,7 +117,7 @@ async function queryLogsAdaptive(fromBlock,toBlock,topics,kind,errors,depth=0){
       return await rawLogs(fromBlock,toBlock,topics);
     }catch(e){
       last=String(e?.shortMessage||e?.message||e);
-      if(attempt<6) await sleep(800*attempt);
+      if(attempt<RANGE_ATTEMPTS) await sleep(300*attempt);
     }
   }
   if(fromBlock>=toBlock){
@@ -137,7 +137,7 @@ async function getLogsChunked(fromBlock,toBlock,topics,kind){
     const to=Math.min(toBlock,from+CHUNK-1);
     const logs=await queryLogsAdaptive(from,to,topics,kind,errors,0);
     out.push(...logs);
-    if(((from-fromBlock)/CHUNK+1)%25===0) console.log(kind,"chunk",from,to,"logs",out.length);
+    if(((from-fromBlock)/CHUNK+1)%100===0) console.log(kind,"chunk",from,to,"logs",out.length,"errors",errors.length);
     await sleep(100);
   }
   return {logs:out,errors};
@@ -174,14 +174,14 @@ async function batchBlockHeaders(blockNumbers){
           method:"POST",
           headers:{"content-type":"application/json"},
           body:JSON.stringify(batch),
-          signal:AbortSignal.timeout(30_000)
+          signal:AbortSignal.timeout(RPC_TIMEOUT_MS)
         });
         if(!res.ok) throw new Error("HTTP_"+res.status);
         payload=await res.json();
         break;
       }catch(e){
         last=String(e?.message||e);
-        if(attempt<8) await sleep(900*attempt);
+        if(attempt<HEADER_ATTEMPTS) await sleep(400*attempt);
       }
     }
     if(payload===null) throw new Error("BLOCK_HEADER_BATCH_FAILED:"+last);
