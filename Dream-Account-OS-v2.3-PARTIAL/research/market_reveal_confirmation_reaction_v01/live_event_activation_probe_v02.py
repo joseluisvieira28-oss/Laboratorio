@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 from datetime import date, datetime, timezone
+import hashlib
 import html
 from html.parser import HTMLParser
 import json
@@ -75,6 +76,10 @@ class _TextExtractor(HTMLParser):
 
     def text(self) -> str:
         return "\n".join(self.parts)
+
+
+def _text_sha256(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
 def _fetch_text(url: str) -> str:
@@ -200,11 +205,13 @@ def _evaluate_receipt_only(
                 "role": "BLS_RELEASE_SCHEDULE",
                 "url": BLS_CPI_URL,
                 "retrieved_at_utc": retrieved_at_utc,
+                "extracted_text_sha256": _text_sha256(bls_schedule_text),
             },
             {
                 "role": "BLS_DISSEMINATION_POLICY",
                 "url": BLS_POLICY_URL,
                 "retrieved_at_utc": retrieved_at_utc,
+                "extracted_text_sha256": _text_sha256(bls_policy_text),
             },
         ]
     elif family == "US_EMPLOYMENT_SITUATION":
@@ -222,11 +229,13 @@ def _evaluate_receipt_only(
                 "role": "BLS_RELEASE_SCHEDULE",
                 "url": BLS_EMPSIT_URL,
                 "retrieved_at_utc": retrieved_at_utc,
+                "extracted_text_sha256": _text_sha256(bls_schedule_text),
             },
             {
                 "role": "BLS_DISSEMINATION_POLICY",
                 "url": BLS_POLICY_URL,
                 "retrieved_at_utc": retrieved_at_utc,
+                "extracted_text_sha256": _text_sha256(bls_policy_text),
             },
         ]
     elif family == "FOMC_STATEMENT":
@@ -252,11 +261,13 @@ def _evaluate_receipt_only(
                 "role": "FOMC_ANNUAL_SCHEDULE_ANNOUNCEMENT",
                 "url": FED_2027_ANNOUNCEMENT_URL,
                 "retrieved_at_utc": retrieved_at_utc,
+                "extracted_text_sha256": _text_sha256(fomc_announcement_text),
             },
             {
                 "role": "FOMC_PRECEDING_MEETING_MINUTES_CONFIRMATION",
                 "url": preceding_minutes_url,
                 "retrieved_at_utc": retrieved_at_utc,
+                "extracted_text_sha256": _text_sha256(preceding_minutes_text),
             },
         ]
     else:
