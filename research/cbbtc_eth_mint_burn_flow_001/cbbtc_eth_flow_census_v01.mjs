@@ -5,6 +5,7 @@ import crypto from "crypto";
 const RPC=process.env.ETH_RPC_URL || "https://ethereum-rpc.publicnode.com";
 const provider=new JsonRpcProvider(RPC);
 const ARCHIVE_RPC=process.env.ETH_ARCHIVE_RPC_URL || "https://rpc-eth.blockmachine.io";
+const LOG_RPCS=[RPC]; // frozen primary PublicNode only; no log-source substitution
 const archiveProvider=new JsonRpcProvider(ARCHIVE_RPC);
 
 const TOKEN=getAddress("0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf");
@@ -13,7 +14,7 @@ const START_ISO="2024-09-12T00:00:00Z";
 const END_ISO="2026-01-01T00:00:00Z";
 const TRANSFER_TOPIC=id("Transfer(address,address,uint256)").toLowerCase();
 const ZERO_TOPIC="0x"+"0".repeat(64);
-const CHUNK=10_000;
+const CHUNK=2_000;
 const RPC_TIMEOUT_MS=10_000;
 const HEADER_ATTEMPTS=3;
 const ARCHIVE_ATTEMPTS=3;
