@@ -1,0 +1,42 @@
+name: UKLS Wayback Numeric Detail Census V0.2.8A
+on:
+  push:
+    branches:
+      - upbit-krw-listing-shock-detail-census-v0.2.8a
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/upbit_krw_listing_shock_001/wayback_numeric_detail_census_v028a.py'
+      - '.github/workflows/upbit-krw-listing-shock-detail-census-v028a.yml'
+permissions:
+  contents: read
+jobs:
+  census:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify authority and compile
+        run: |
+          test -f Dream-Account-OS-v2.3-PARTIAL/research/upbit_krw_listing_shock_001/WAYBACK_NUMERIC_DETAIL_CENSUS_TRANSPORT_REMEDIATION_V0_2_8A.md
+          python -m py_compile Dream-Account-OS-v2.3-PARTIAL/research/upbit_krw_listing_shock_001/wayback_numeric_detail_census_v028a.py
+      - name: Execute low-load index census
+        run: python Dream-Account-OS-v2.3-PARTIAL/research/upbit_krw_listing_shock_001/wayback_numeric_detail_census_v028a.py
+      - name: Enforce firewall
+        run: |
+          python - <<'PY'
+          import json
+          x=json.load(open('artifacts/UKLS_WAYBACK_NUMERIC_DETAIL_CENSUS_V0_2_8A.json'))
+          assert x['archived_payload_opened'] is False
+          assert x['event_values_opened'] is False
+          assert x['binance_opened'] is False
+          print('CLASSIFICATION',x['classification'])
+          for k,v in x['families'].items():
+              print(k,v['distinct_numeric_id_count'],v['numeric_coverage_fraction'],v['missing_numeric_id_count'],v['max_internal_numeric_id_gap'],v['earliest_capture'],v['latest_capture'],v['completeness_candidate_pass'])
+      PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: UKLS_WAYBACK_NUMERIC_DETAIL_CENSUS_V0_2_8A
+          path: artifacts/UKLS_WAYBACK_NUMERIC_DETAIL_CENSUS_V0_2_8A.json
+          retention-days: 90
