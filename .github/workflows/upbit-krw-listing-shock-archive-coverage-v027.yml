@@ -1,0 +1,47 @@
+name: UKLS Archive List Continuity V0.2.7
+on:
+  push:
+    branches:
+      - upbit-krw-listing-shock-archive-coverage-v0.2.7
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/upbit_krw_listing_shock_001/archive_list_continuity_v027.py'
+      - '.github/workflows/upbit-krw-listing-shock-archive-coverage-v027.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check brotli
+      - name: Verify frozen authority
+        run: |
+          test -f Dream-Account-OS-v2.3-PARTIAL/research/upbit_krw_listing_shock_001/ARCHIVE_LIST_CONTINUITY_AUTHORITY_V0_2_7.md
+          python -m py_compile Dream-Account-OS-v2.3-PARTIAL/research/upbit_krw_listing_shock_001/archive_list_continuity_v027.py
+      - name: Execute archive continuity audit
+        run: python Dream-Account-OS-v2.3-PARTIAL/research/upbit_krw_listing_shock_001/archive_list_continuity_v027.py
+      - name: Enforce firewall
+        run: |
+          python - <<'PY'
+          import json
+          x=json.load(open('artifacts/UKLS_ARCHIVE_LIST_CONTINUITY_V0_2_7.json'))
+          assert x['event_values_emitted'] is False
+          assert x['title_parser_opened'] is False
+          assert x['source_gate_opened'] is False
+          assert x['binance_opened'] is False
+          print('CLASSIFICATION',x['classification'])
+          print('LEGACY_START',x['legacy_start_boundary_pass'])
+          print('MODERN_END',x['modern_end_boundary_pass'])
+          print('OVERLAP_DAYS',x['cross_family_overlap_days'])
+          print('FAMILIES',x['families'])
+          print('AGG_SHA',x['audit_aggregate_sha256'])
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: UKLS_ARCHIVE_LIST_CONTINUITY_V0_2_7
+          path: artifacts/UKLS_ARCHIVE_LIST_CONTINUITY_V0_2_7.json
+          retention-days: 90
