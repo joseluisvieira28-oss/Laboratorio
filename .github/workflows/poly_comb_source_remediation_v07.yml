@@ -1,0 +1,35 @@
+name: POLY-COMB Source Remediation V0.7
+on:
+  push:
+    branches: [prediction-combinatorial-arb-v0.7-source-remediation]
+    paths:
+      - 'research/polymarket_combinatorial_arb/SOURCE_REMEDIATION_FREEZE_V0.7.md'
+      - 'research/polymarket_combinatorial_arb/source_remediation_v07.py'
+      - '.github/workflows/poly_comb_source_remediation_v07.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  remediation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install public websocket client
+        run: python -m pip install --disable-pip-version-check websocket-client==1.8.0
+      - name: Run source-only remediation
+        run: python research/polymarket_combinatorial_arb/source_remediation_v07.py
+      - name: Assert economic firewall
+        run: |
+          python - <<'PY'
+          import json
+          x=json.load(open('artifacts/POLY_COMB_SOURCE_REMEDIATION_V0.7.json'))
+          for k in ('economic_outputs_computed','prices_serialized','sizes_serialized','package_sums_computed','fee_dollars_computed','arbitrage_labels_computed','authenticated_endpoints_used','orders_sent','capital_used'):
+              assert x[k] is False, (k,x[k])
+          print('SOURCE-ONLY FIREWALL PASS:',x['status'])
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: POLY_COMB_SOURCE_REMEDIATION_V0.7
+          path: artifacts/POLY_COMB_SOURCE_REMEDIATION_V0.7.json
+          if-no-files-found: error
