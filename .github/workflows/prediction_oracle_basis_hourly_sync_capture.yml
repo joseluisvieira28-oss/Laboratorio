@@ -1,0 +1,89 @@
+name: POB Hourly Synchronized Capture V0.1
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'research/prediction_oracle_basis/POB_HOURLY_SYNC_CAPTURE_AUTHORITY_V0.1.md'
+      - 'research/prediction_oracle_basis/source_capture_hourly_sync.py'
+      - '.github/workflows/prediction_oracle_basis_hourly_sync_capture.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  prospective-source-capture:
+    if: github.head_ref == 'prediction-oracle-basis-v0.1' || github.ref_name == 'prediction-oracle-basis-v0.1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Run frozen synchronized source capture
+        id: capture
+        continue-on-error: true
+        run: python research/prediction_oracle_basis/source_capture_hourly_sync.py
+
+      - name: Verify scientific firewall
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          p = Path("artifacts/prediction_oracle_basis/hourly_sync/capture_receipt.json")
+          if not p.exists():
+              raise SystemExit("capture receipt missing")
+
+          x = json.loads(p.read_text())
+          raw = p.read_text().lower()
+
+          banned = {
+              '"pnl"', '"profitability"', '"win_rate"', '"expected_return"',
+              '"arbitrage_profit"', '"package_cost"', '"best_hour"',
+              '"best_direction"', '"optimal_threshold"'
+          }
+          bad = sorted(k for k in banned if k in raw)
+          if bad:
+              raise SystemExit(f"banned economic outputs present: {bad}")
+
+          a = x["adjudication"]
+          assert a["economic_outputs_computed"] is False
+          assert a["matured_outcomes_read"] is False
+          assert a["future_nearest_joins"] == 0
+          assert a["silent_imputations"] == 0
+          assert a["orders"] is False
+          assert a["authenticated_trading_endpoints"] is False
+          assert x["schedule"]["snapshot_count"] == 10
+          assert x["schedule"]["interval_seconds"] == 15
+          assert x["selection"]["selected_pair_count"] <= 3
+          print("SCIENTIFIC_FIREWALL_PASS")
+          print(json.dumps(a, indent=2, sort_keys=True))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: POB_HOURLY_SYNC_CAPTURE_V01_RECEIPT
+          path: artifacts/prediction_oracle_basis/hourly_sync/capture_receipt.json
+          if-no-files-found: error
+
+      - name: Enforce frozen transport gate
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path("artifacts/prediction_oracle_basis/hourly_sync/capture_receipt.json")
+          if not p.exists():
+              raise SystemExit("SOURCE_TRANSPORT_BLOCKED: receipt missing")
+          a = json.loads(p.read_text())["adjudication"]
+          if not a.get("sync_capture_pass", False):
+              raise SystemExit("SOURCE_TRANSPORT_BLOCKED")
+          print(a["classification"])
+          PY
