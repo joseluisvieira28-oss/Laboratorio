@@ -1,0 +1,42 @@
+name: ETH-STAKING-FLOW-001 CBT Coverage Unix Correction V0.2.1A
+on:
+  push:
+    branches:
+      - eth-staking-flow-v3-stagea-cbt-coverage-v021a
+    paths:
+      - 'research/eth_staking_flow/cbt_exact_time_coverage_v021a.py'
+      - '.github/workflows/eth-staking-flow-v3-stagea-cbt-coverage-v021a.yml'
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify prospective correction authority
+        run: |
+          test -f research/eth_staking_flow/ETH_STAKING_FLOW_001_V3_STAGEA_CBT_COVERAGE_UNIT_CORRECTION_V0_2_1A.md
+          python -m py_compile research/eth_staking_flow/cbt_exact_time_coverage_v021a.py
+      - name: Run corrected official coverage probe
+        run: python research/eth_staking_flow/cbt_exact_time_coverage_v021a.py
+      - name: Enforce firewall and print
+        run: |
+          python - <<'PY'
+          import json
+          x=json.load(open('artifacts/ETH_STAKING_FLOW_001_CBT_COVERAGE_V0_2_1A.json'))
+          assert x['position_unit']=='unix_seconds'
+          for k in ('validator_rows_opened','queue_counts_opened','market_data_opened','signal_evaluated','returns_opened','pnl_opened','source_after_2026_08_31_opened'):
+              assert x[k] is False
+          print('CLASSIFICATION',x['classification'])
+          print('RANGES',json.dumps(x.get('processed_ranges'),sort_keys=True))
+          print('TARGETS_INSIDE',x.get('targets_inside_processed_ranges'))
+          print('TARGETS_FULL',x.get('targets_debug_full_coverage'))
+          for r in x.get('debug',[]):
+              print('TARGET',r['name'],r['position'],r.get('inside_processed_ranges'),r.get('model_coverage_status'),r.get('model_blocking'),r.get('validation_in_bounds'),r.get('can_process'))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ETH_STAKING_FLOW_001_CBT_COVERAGE_V0_2_1A
+          path: artifacts/ETH_STAKING_FLOW_001_CBT_COVERAGE_V0_2_1A.json
+          retention-days: 90
