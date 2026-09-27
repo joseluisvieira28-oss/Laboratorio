@@ -87,6 +87,7 @@ class TriggerAFinalizerV02Tests(unittest.TestCase):
                 live_status=ready_status(),
                 protocol_frozen_at_utc="2026-12-15T12:00:01Z",
                 project_root=ROOT,
+                enforce_git_head_match=False,
             )
             self.assertEqual(
                 receipt["status"],
@@ -138,6 +139,7 @@ class TriggerAFinalizerV02Tests(unittest.TestCase):
                 live_status=status,
                 protocol_frozen_at_utc="2026-12-15T12:00:01Z",
                 project_root=ROOT,
+                enforce_git_head_match=False,
             )
             self.assertEqual(
                 receipt["status"],
@@ -170,6 +172,7 @@ class TriggerAFinalizerV02Tests(unittest.TestCase):
                     live_status=ready_status(),
                     protocol_frozen_at_utc="2026-12-15T11:59:59Z",
                     project_root=ROOT,
+                    enforce_git_head_match=False,
                 )
 
 
