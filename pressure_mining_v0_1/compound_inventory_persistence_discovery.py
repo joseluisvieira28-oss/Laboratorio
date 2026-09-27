@@ -2,7 +2,7 @@
 import csv, hashlib, io, json, math, os, random, statistics, time, zipfile
 from collections import defaultdict, Counter
 from datetime import datetime, timezone
-from urllib.request import Request, urlopen
+from urllib.request import Request, urlopen\nfrom urllib.error import HTTPError
 
 OUTDIR=os.path.join(os.path.dirname(__file__),"receipts")
 os.makedirs(OUTDIR,exist_ok=True)
@@ -12,7 +12,7 @@ B0=16_308_190
 B1=21_525_890
 ABSORB_TOPIC="0x9850ab1af75177e4a9201c65a2cf7976d5d28e40ef63494b44366f86b2f9412e"
 BUY_TOPIC="0xf891b2a411b0e66a5f0a6ff1368670fefa287a13f541eb633a386a1a9cc7046b"
-BLOCKSCOUT_RPC="https://eth.blockscout.com/api/eth-rpc"
+BLOCK_RPCS=["https://eth.blockscout.com/api/eth-rpc","https://ethereum-rpc.publicnode.com","https://rpc.flashbots.net","https://eth.llamarpc.com"]
 BINANCE="https://data.binance.vision/data/spot/monthly/klines"
 
 ASSET_MAP={
@@ -39,8 +39,8 @@ def fetch_json(url, method="GET", data=None, timeout=120):
     b,s,h=fetch(url,method,data,timeout)
     return json.loads(b.decode()),sha256(b),s
 
-def rpc(method,params):
-    obj,_,_=fetch_json(BLOCKSCOUT_RPC,"POST",{"jsonrpc":"2.0","id":1,"method":method,"params":params})
+def rpc(endpoint,method,params):
+    obj,_,_=fetch_json(endpoint,"POST",{"jsonrpc":"2.0","id":1,"method":method,"params":params})
     if "error" in obj: raise RuntimeError(f"{method}: {obj['error']}")
     return obj["result"]
 
@@ -82,10 +82,29 @@ def asset_buy(x):
     t=x.get("topics") or []
     return ("0x"+str(t[2])[-40:]).lower() if len(t)>2 else None
 
+def parse_source_ts(v):
+    if v in (None,""): return None
+    try:
+        s=str(v)
+        n=int(s,16) if s.startswith("0x") else int(s)
+        if n>10_000_000_000: n//=1000
+        return n
+    except Exception:
+        return None
+
 def block_ts(block):
-    obj=rpc("eth_getBlockByNumber",[hex(block),False])
-    if not isinstance(obj,dict) or "timestamp" not in obj: raise RuntimeError(f"missing block {block}")
-    return int(obj["timestamp"],16)
+    errors=[]
+    for endpoint in BLOCK_RPCS:
+        for attempt in range(3):
+            try:
+                obj=rpc(endpoint,"eth_getBlockByNumber",[hex(block),False])
+                if not isinstance(obj,dict) or "timestamp" not in obj:
+                    raise RuntimeError(f"missing block {block}")
+                return int(obj["timestamp"],16)
+            except Exception as e:
+                errors.append({"endpoint":endpoint,"attempt":attempt+1,"error":repr(e)})
+                time.sleep(0.75*(attempt+1))
+    raise RuntimeError(f"all block timestamp routes failed for {block}: {errors}")
 
 def month_key(ms):
     d=datetime.fromtimestamp(ms/1000,tz=timezone.utc)
@@ -134,12 +153,12 @@ for x in absorbs:
     a=asset_absorb(x)
     if a not in ASSET_MAP: continue
     w=words(x.get("data"))
-    events.append({"kind":"ABSORB","asset":a,"block":pos(x)[0],"txi":pos(x)[1],"logi":pos(x)[2],"amount":w[0]})
+    events.append({"kind":"ABSORB","asset":a,"block":pos(x)[0],"txi":pos(x)[1],"logi":pos(x)[2],"amount":w[0],"source_ts":x.get("timeStamp") or x.get("timestamp")})
 for x in buys:
     a=asset_buy(x)
     if a not in ASSET_MAP: continue
     w=words(x.get("data"))
-    events.append({"kind":"BUY","asset":a,"block":pos(x)[0],"txi":pos(x)[1],"logi":pos(x)[2],"amount":w[1]})
+    events.append({"kind":"BUY","asset":a,"block":pos(x)[0],"txi":pos(x)[1],"logi":pos(x)[2],"amount":w[1],"source_ts":x.get("timeStamp") or x.get("timestamp")})
 events.sort(key=lambda e:(e["block"],e["txi"],e["logi"]))
 
 by_asset=defaultdict(list)
@@ -159,7 +178,7 @@ for asset,rows in sorted(by_asset.items()):
         for e in block_rows:
             if e["kind"]=="ABSORB":
                 if inv==0:
-                    active={"asset":asset,"symbol":ASSET_MAP[asset],"start_block":block,"start_amount_raw":0}
+                    active={"asset":asset,"symbol":ASSET_MAP[asset],"start_block":block,"start_amount_raw":0,"start_source_ts":e.get("source_ts")}
                     started_this_block=True
                 inv+=e["amount"]
                 if active is not None: active["start_amount_raw"]+=e["amount"]
@@ -186,7 +205,9 @@ episodes=sorted(tmp.values(),key=lambda e:(e["start_block"],e["asset"]))
 rows=[]; excluded=[]; block_time_cache={}
 for ep in episodes:
     b=ep["start_block"]
-    if b not in block_time_cache: block_time_cache[b]=block_ts(b)
+    if b not in block_time_cache:
+        source_ts=parse_source_ts(ep.get("start_source_ts"))
+        block_time_cache[b]=source_ts if source_ts is not None else block_ts(b)
     ts=block_time_cache[b]
     entry_ms=((ts//60)+1)*60*1000
     exit_ms=entry_ms+24*60*60*1000
