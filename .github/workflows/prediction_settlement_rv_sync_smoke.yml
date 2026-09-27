@@ -1,0 +1,48 @@
+name: PSRV Synchronized Capture Smoke
+
+on:
+  push:
+    branches: [prediction-settlement-rv-v0.1]
+    paths:
+      - 'research/prediction_settlement_rv/SYNC_CAPTURE_SMOKE_AUTHORITY_V0.1.md'
+      - 'research/prediction_settlement_rv/sync_capture_smoke.py'
+      - '.github/workflows/prediction_settlement_rv_sync_smoke.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sync-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run sealed synchronized source capture
+        run: python research/prediction_settlement_rv/sync_capture_smoke.py
+      - name: Enforce quote-value firewall
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path("artifacts/prediction_settlement_rv/sync_smoke/sync_smoke_receipt.json")
+          x=json.loads(p.read_text())
+          assert x["economic_values_reported"] is False
+          assert x["economic_outputs_computed"] is False
+          assert x["matured_outcomes_read"] is False
+          assert x["orders"] is False
+          assert x["authenticated_trading_endpoints"] is False
+          assert x["future_nearest_joins"] == 0
+          assert x["silent_imputations"] == 0
+          assert x["source_data_pass"] is False
+          print("SYNC_SOURCE_FIREWALL_PASS")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: PSRV_SYNC_CAPTURE_SMOKE
+          path: artifacts/prediction_settlement_rv/sync_smoke/
+          if-no-files-found: error
