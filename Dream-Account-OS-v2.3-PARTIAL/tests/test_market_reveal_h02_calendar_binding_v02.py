@@ -223,5 +223,50 @@ class CalendarBindingV02Tests(unittest.TestCase):
         self.assertIn("ACTIVATION_CHECK_AT_OR_AFTER_T0", blockers)
 
 
+    def test_annual_plan_source_text_hash_is_required(self):
+        plan = annual_plan()
+        plan["official_sources"][0]["extracted_text_sha256"] = None
+        plan["annual_plan_sha256"] = annual_plan_sha256(plan)
+        ok, blockers = validate_annual_plan_manifest(plan, ruleset=RULESET)
+        self.assertFalse(ok)
+        self.assertTrue(
+            any("SOURCE_TEXT_SHA256_INVALID" in blocker for blocker in blockers),
+            blockers,
+        )
+
+    def test_activation_supporting_source_text_hash_is_required(self):
+        plan = annual_plan()
+        receipt = {
+            "document_type": "MRCR_H02_EVENT_ACTIVATION_RECEIPT_V02",
+            "lab_id": "MARKET-REVEAL-CONFIRMATION-REACTION-001",
+            "h02_id": "MRCR-H02-ACCEPTANCE-REJECTION-V01",
+            "event_id": "FOMC-01",
+            "event_family": "FOMC_STATEMENT",
+            "scheduled_time_utc": "2027-01-27T19:00:00Z",
+            "confirmed_at_utc": "2026-12-10T15:00:00Z",
+            "official_authority": "FEDERAL_RESERVE",
+            "official_source_url": "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm",
+            "official_status": "OFFICIAL_CONFIRMED_FOR_CAPTURE",
+            "evidence_roles": ["FOMC_ANNUAL_SCHEDULE_ANNOUNCEMENT"],
+            "supporting_official_sources": [{
+                "role": "FOMC_ANNUAL_SCHEDULE_ANNOUNCEMENT",
+                "url": "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm",
+                "retrieved_at_utc": "2026-12-10T15:00:00Z",
+                "extracted_text_sha256": None,
+            }],
+            "target_observation_authorized": False,
+            "outcomes_authorized": False,
+            "activation_receipt_sha256": None,
+        }
+        receipt["activation_receipt_sha256"] = event_activation_sha256(receipt)
+        ok, blockers = validate_event_activation_receipt(
+            receipt,
+            annual_plan=plan,
+            now_utc="2027-01-20T12:00:00Z",
+        )
+        self.assertFalse(ok)
+        self.assertIn("SUPPORTING_SOURCE_0_TEXT_SHA256_INVALID", blockers)
+
+
 if __name__ == "__main__":
     unittest.main()
