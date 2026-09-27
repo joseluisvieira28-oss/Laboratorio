@@ -17,6 +17,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import subprocess
 import sys
 from typing import Any, Mapping
 
@@ -71,6 +72,26 @@ def _utc_z(dt: datetime) -> str:
     return dt.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
+def _git_head_sha(root: Path) -> str:
+    try:
+        completed = subprocess.run(
+            ["git", "-C", str(root), "rev-parse", "HEAD"],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+    except Exception as exc:
+        raise RuntimeError("GIT_HEAD_UNAVAILABLE") from exc
+    head = completed.stdout.strip().lower()
+    if (
+        len(head) != 40
+        or any(ch not in "0123456789abcdef" for ch in head)
+    ):
+        raise RuntimeError("GIT_HEAD_INVALID")
+    return head
+
+
 def _sha256_receipt(value: Mapping[str, Any]) -> str:
     clean = json.loads(json.dumps(value))
     clean["receipt_sha256"] = None
@@ -84,6 +105,7 @@ def run_trigger_a_finalizer_v02(
     live_status: Mapping[str, Any] | None = None,
     protocol_frozen_at_utc: str | None = None,
     project_root: Path = PROJECT_ROOT,
+    enforce_git_head_match: bool = True,
 ) -> dict[str, Any]:
     ruleset = _load_json(RULESET_PATH)
     h02_authority = _load_json(H02_AUTHORITY_PATH)
@@ -95,6 +117,15 @@ def run_trigger_a_finalizer_v02(
         or any(ch not in "0123456789abcdefABCDEF" for ch in implementation_head_sha)
     ):
         raise ValueError("implementation_head_sha must be a 40-character hex SHA")
+    implementation_head_sha = implementation_head_sha.lower()
+
+    if enforce_git_head_match:
+        actual_head = _git_head_sha(project_root)
+        if actual_head != implementation_head_sha:
+            raise RuntimeError(
+                "IMPLEMENTATION_HEAD_DOES_NOT_MATCH_CHECKOUT:"
+                + actual_head
+            )
 
     status = (
         dict(live_status)
