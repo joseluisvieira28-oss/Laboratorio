@@ -21,3 +21,8 @@ Execution order:
 Evaluated SOURCE_BLOCKED / census BLOCKED / insufficient sample / Discovery FAIL are terminal under the existing decision tree.
 
 No PnL, orders, exchange/wallet mutation or main merge.
+
+## Relaunch — 2026-09-27
+
+Relaunch authorized after bounded transport hardening V0.1H, V0.1I and implementation correction V0.1J.
+Scientific contract unchanged. This edit exists only to trigger the existing single-run workflow on the hardened branch head.
