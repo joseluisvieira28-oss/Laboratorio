@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import os
 from typing import Any
+from urllib.parse import quote
 
+from .config import SUPABASE_POOLER_HOST_RE, SUPABASE_PROJECT_REF
 from .evidence_portability import canonical_snapshot_sha, verify_snapshot
 
 try:
@@ -21,6 +23,37 @@ EXPECTED_SNAPSHOT_SHA = "6c74bdcf1013b1ab49fdcefd2e046db6471ea2816c6b425f4a6378d
 
 class TargetPreflightError(RuntimeError):
     pass
+
+
+def _target_url_from_env_for_preflight() -> tuple[str, bool]:
+    legacy = os.getenv("RADAR_MIGRATION_TARGET_URL", "").strip()
+    if legacy:
+        return legacy, True
+
+    host = os.getenv("RADAR_SUPABASE_POOLER_HOST", "").strip().lower()
+    password = os.getenv("RADAR_SUPABASE_POOLER_PASSWORD", "")
+    configured = bool(host or password)
+    if not configured:
+        return "", False
+    if not host or not password:
+        raise TargetPreflightError(
+            "Supabase pooler preflight components are incomplete"
+        )
+    if not SUPABASE_POOLER_HOST_RE.fullmatch(host):
+        raise TargetPreflightError(
+            "RADAR_SUPABASE_POOLER_HOST is not an audited eu-central-1 Supavisor host"
+        )
+    user = f"radar_runtime.{SUPABASE_PROJECT_REF}"
+    return (
+        "postgresql://"
+        + quote(user, safe=".")
+        + ":"
+        + quote(password, safe="")
+        + "@"
+        + host
+        + ":5432/postgres?sslmode=require",
+        True,
+    )
 
 
 def _safe_base() -> dict[str, Any]:
@@ -228,18 +261,19 @@ def evaluate_target_snapshot(
 
 
 def target_connection_preflight(target_url: str | None = None) -> dict[str, Any]:
-    if target_url is None:
-        target_url = os.getenv("RADAR_MIGRATION_TARGET_URL", "")
-    if not target_url or not target_url.strip():
-        return {
-            **_safe_base(),
-            "classification": "AUTH_REQUIRED_NOT_EXECUTED",
-            "connected": False,
-            "target_url_configured": False,
-            "final_quiesced_refresh_required": True,
-            "database_url_switch_authorized": False,
-        }
+    configured = bool(target_url and target_url.strip())
     try:
+        if target_url is None:
+            target_url, configured = _target_url_from_env_for_preflight()
+        if not target_url or not target_url.strip():
+            return {
+                **_safe_base(),
+                "classification": "AUTH_REQUIRED_NOT_EXECUTED",
+                "connected": False,
+                "target_url_configured": False,
+                "final_quiesced_refresh_required": True,
+                "database_url_switch_authorized": False,
+            }
         snapshot, sequence_last, identity = _read_target_snapshot(target_url)
         out = evaluate_target_snapshot(
             snapshot,
@@ -253,7 +287,7 @@ def target_connection_preflight(target_url: str | None = None) -> dict[str, Any]
             **_safe_base(),
             "classification": "TARGET_PREFLIGHT_FAIL_CLOSED",
             "connected": False,
-            "target_url_configured": True,
+            "target_url_configured": configured,
             "error": f"{type(exc).__name__}:{exc}",
             "final_quiesced_refresh_required": True,
             "database_url_switch_authorized": False,
