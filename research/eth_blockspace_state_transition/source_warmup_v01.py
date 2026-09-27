@@ -5,7 +5,7 @@ from collections import defaultdict
 from datetime import datetime, timezone
 
 LAB="ETH-BLOCKSPACE-STATE-TRANSITION-001"
-EPS=["https://eth.drpc.org","https://rpc.flashbots.net"]
+EPS=["https://public.1rpc.io/eth","https://rpc.flashbots.net"]
 REQ=["number","hash","timestamp","gasLimit","gasUsed","baseFeePerGas","blobGasUsed","excessBlobGas"]
 STEP_BLOCKS=600
 LOOKBACK_BLOCKS=40*7200
