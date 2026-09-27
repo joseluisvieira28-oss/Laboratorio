@@ -353,6 +353,22 @@ def evaluate_event_activation_from_official_texts_v02(
         ruleset=ruleset,
         now_utc=retrieved_at_utc,
     )
+    authority_binding_blockers = (
+        "TARGET_OBSERVATION_OPEN_AUTHORITY_REQUIRED",
+        "TARGET_AUTHORITY_PROTOCOL_BINDING_MISMATCH",
+        "TARGET_AUTHORITY_ANNUAL_PLAN_BINDING_MISMATCH",
+        "TARGET_AUTHORITY_IMPLEMENTATION_BINDING_MISMATCH",
+    )
+    effective_target_authority = (
+        target_open_authority.get("authority_type")
+        == "TARGET_OBSERVATION_OPEN"
+        and not any(
+            blocker.startswith("AUTHORITY:")
+            or blocker in authority_binding_blockers
+            for blocker in guard.blockers
+        )
+    )
+
     return {
         "document_type": "MRCR_H02_LIVE_EVENT_ACTIVATION_STATUS_V02",
         "status": (
@@ -366,10 +382,7 @@ def evaluate_event_activation_from_official_texts_v02(
         "activation_receipt": receipt,
         "event_capture_runtime_ready": guard.ready,
         "runtime_blockers": list(guard.blockers),
-        "target_observation_authorized": (
-            target_open_authority.get("authority_type")
-            == "TARGET_OBSERVATION_OPEN"
-        ),
+        "target_observation_authorized": effective_target_authority,
         "outcomes_authorized": False,
         "orders_enabled": False,
         "promotion_credit": "NONE",
