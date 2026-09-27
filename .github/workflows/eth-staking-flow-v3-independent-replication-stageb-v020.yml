@@ -1,0 +1,60 @@
+name: ETH-STAKING-FLOW-001 V3 independent replication Stage B V0.2.0
+
+on:
+  push:
+    branches:
+      - eth-staking-flow-v3-stagea-cbt-reconstruct-v020
+    paths:
+      - 'research/eth_staking_flow/ETH_STAKING_FLOW_001_V3_REPLICATION_SOURCE_V0_2_0.json'
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: eth-staking-flow-v3-independent-replication-stageb-v020
+  cancel-in-progress: false
+
+jobs:
+  replicate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install requests
+      - name: Verify prospective Stage-B authority
+        run: |
+          test -f research/eth_staking_flow/ETH_STAKING_FLOW_001_V3_STAGEB_SOURCE_BINDING_V0_2_0.md
+          test -f research/eth_staking_flow/ETH_STAKING_FLOW_001_V3_STAGEB_MARKET_IMPLEMENTATION_ADDENDUM_V0_1.md
+          python -m py_compile research/eth_staking_flow/eth_staking_flow_v3_replication_stageb_v020.py
+      - name: Download canonical 2023-2024 queue authority
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh run download 35384444641 --repo joseluisvieira28-oss/Laboratorio --name ETH_STAKING_FLOW_001_XATU_FULL_QUEUE_V0_3D --dir historical_queue
+      - name: Download immutable Discovery D authority
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh run download 35387086232 --repo joseluisvieira28-oss/Laboratorio --name ETH_STAKING_FLOW_001_DISCOVERY_V0_1 --dir historical_discovery
+      - name: Execute frozen R1/R2 independent outcome replication
+        run: python research/eth_staking_flow/eth_staking_flow_v3_replication_stageb_v020.py
+      - name: Persist terminal V3 replication result
+        run: |
+          set -euo pipefail
+          cp artifacts/stageb_v3/ETH_STAKING_FLOW_001_V3_REPLICATION_RESULT_V0_2_0.json research/eth_staking_flow/
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/eth_staking_flow/ETH_STAKING_FLOW_001_V3_REPLICATION_RESULT_V0_2_0.json
+          git commit -m "ETH-STAKING-FLOW-001: persist frozen V3 replication V0.2.0 [skip ci]"
+          git push origin HEAD:eth-staking-flow-v3-stagea-cbt-reconstruct-v020
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ETH_STAKING_FLOW_001_V3_REPLICATION_RESULT_V0_2_0
+          path: artifacts/stageb_v3/*
+          if-no-files-found: error
+          retention-days: 90
