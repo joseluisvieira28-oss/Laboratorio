@@ -1,0 +1,36 @@
+name: POLY-COMB Source Route V0.2
+on:
+  push:
+    branches: [prediction-combinatorial-arb-v0.2]
+    paths:
+      - 'research/polymarket_combinatorial_arb/SOURCE_ROUTE_SPEC_V0.2.md'
+      - 'research/polymarket_combinatorial_arb/source_route_probe_v02.py'
+      - '.github/workflows/poly_comb_source_route_v02.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source-route:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - run: python research/polymarket_combinatorial_arb/source_route_probe_v02.py
+      - name: Assert source-only firewall
+        run: |
+          python - <<'PY'
+          import json
+          x=json.load(open('artifacts/POLY_COMB_SOURCE_ROUTE_V0.2.json'))
+          assert x['economic_outputs_computed'] is False
+          assert x['package_price_sums_computed'] is False
+          assert x['profitability_computed'] is False
+          assert x['orders_sent'] is False
+          assert x['authenticated_endpoints_used'] is False
+          assert x['future_nearest_joins']==0 and x['silent_imputations']==0
+          print('SOURCE-ONLY FIREWALL PASS:',x['status'])
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: POLY_COMB_SOURCE_ROUTE_V0.2
+          path: artifacts/POLY_COMB_SOURCE_ROUTE_V0.2.json
+          if-no-files-found: error
