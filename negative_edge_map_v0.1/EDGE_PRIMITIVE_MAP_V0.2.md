@@ -224,3 +224,13 @@ The cemetery and the survivors together imply a sharper hypothesis:
 That shifts the Crypto Lab from **pattern mining** toward **pressure mining**.
 
 No new market outcome was opened to produce this map.
+
+
+## 11. Drive mirror
+
+Operator-readable mirror:
+- Title: `CRYPTO LAB — EDGE PRIMITIVE MAP V0.2 — 2026-09-27`
+- Drive ID: `1MRq4MyWtEc9h1f_iDlcYY-3PXvnkz_MtF6L-zJVMxt8`
+- URL: https://docs.google.com/document/d/1MRq4MyWtEc9h1f_iDlcYY-3PXvnkz_MtF6L-zJVMxt8/edit
+
+The Google Drive Edge Classification Board was also updated additively with the mandatory `Diamond DNA mechanism-first preflight` rule. Historical candidate verdicts remain immutable.
