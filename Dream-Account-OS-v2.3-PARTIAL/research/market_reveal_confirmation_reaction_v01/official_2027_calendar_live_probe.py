@@ -220,15 +220,27 @@ def evaluate_official_calendar_status(
     }
 
 
+def fetch_official_calendar_status(
+    *,
+    checked_at_utc: str | None = None,
+) -> dict:
+    now = (
+        checked_at_utc
+        if checked_at_utc is not None
+        else datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    )
+    return evaluate_official_calendar_status(
+        cpi_text=_fetch_text(BLS_CPI_URL),
+        empsit_text=_fetch_text(BLS_EMPSIT_URL),
+        fomc_text=_fetch_text(FED_FOMC_URL),
+        checked_at_utc=now,
+    )
+
+
 def main() -> int:
     now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     try:
-        receipt = evaluate_official_calendar_status(
-            cpi_text=_fetch_text(BLS_CPI_URL),
-            empsit_text=_fetch_text(BLS_EMPSIT_URL),
-            fomc_text=_fetch_text(FED_FOMC_URL),
-            checked_at_utc=now,
-        )
+        receipt = fetch_official_calendar_status(checked_at_utc=now)
     except Exception as exc:
         receipt = {
             "document_type": "MRCR_OFFICIAL_2027_CALENDAR_LIVE_STATUS_V01",
