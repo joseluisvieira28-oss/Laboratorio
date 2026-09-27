@@ -310,7 +310,14 @@ def match(poly: list[dict[str, Any]], kalshi: list[dict[str, Any]]) -> list[dict
 
 def book_shape(url: str, params: dict[str, Any] | None = None) -> tuple[dict[str, Any], dict[str, Any]]:
     obj, meta, raw = get_json(url, params)
-    payload = obj.get("orderbook", obj) if isinstance(obj, dict) else {}
+
+    provider_shape = "UNKNOWN"
+    payload: Any = obj
+    if isinstance(obj, dict) and isinstance(obj.get("orderbook_fp"), dict):
+        provider_shape = "KALSHI_ORDERBOOK_FP"
+        payload = obj["orderbook_fp"]
+    elif isinstance(obj, dict):
+        provider_shape = "POLYMARKET_CLOB"
 
     def arr(k: str) -> Any:
         return payload.get(k) if isinstance(payload, dict) else None
@@ -325,16 +332,33 @@ def book_shape(url: str, params: dict[str, Any] | None = None) -> tuple[dict[str
             return [f"index_{i}" for i in range(len(first))]
         return [type(first).__name__]
 
+    if provider_shape == "KALSHI_ORDERBOOK_FP":
+        yes = arr("yes_dollars")
+        no = arr("no_dollars")
+        schema_valid = isinstance(yes, list) and isinstance(no, list)
+        return {
+            "provider_shape": provider_shape,
+            "schema_valid": schema_valid,
+            "raw_sha256": sha(raw),
+            "yes_dollars_count": len(yes) if isinstance(yes, list) else None,
+            "no_dollars_count": len(no) if isinstance(no, list) else None,
+            "yes_dollars_schema": schema(yes),
+            "no_dollars_schema": schema(no),
+            "has_any_levels": bool((isinstance(yes, list) and yes) or (isinstance(no, list) and no)),
+        }, meta
+
+    bids = arr("bids")
+    asks = arr("asks")
+    schema_valid = isinstance(bids, list) and isinstance(asks, list)
     return {
+        "provider_shape": provider_shape,
+        "schema_valid": schema_valid,
         "raw_sha256": sha(raw),
-        "bids_count": len(arr("bids")) if isinstance(arr("bids"), list) else None,
-        "asks_count": len(arr("asks")) if isinstance(arr("asks"), list) else None,
-        "yes_count": len(arr("yes")) if isinstance(arr("yes"), list) else None,
-        "no_count": len(arr("no")) if isinstance(arr("no"), list) else None,
-        "bids_schema": schema(arr("bids")),
-        "asks_schema": schema(arr("asks")),
-        "yes_schema": schema(arr("yes")),
-        "no_schema": schema(arr("no")),
+        "bids_count": len(bids) if isinstance(bids, list) else None,
+        "asks_count": len(asks) if isinstance(asks, list) else None,
+        "bids_schema": schema(bids),
+        "asks_schema": schema(asks),
+        "has_any_levels": bool((isinstance(bids, list) and bids) or (isinstance(asks, list) and asks)),
     }, meta
 
 
@@ -352,7 +376,7 @@ def add_books(pairs: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], list[d
             try:
                 shape, meta = book_shape(POLY_BOOK, {"token_id": token})
                 fetches.append(meta)
-                row[f"polymarket_{side}_book"] = {"source_ready": True, **shape}
+                row[f"polymarket_{side}_book"] = {"source_ready": bool(shape.get("schema_valid")), **shape}
             except Exception as exc:
                 row[f"polymarket_{side}_book"] = {"source_ready": False, "error": type(exc).__name__ + ": " + str(exc)}
 
@@ -360,7 +384,7 @@ def add_books(pairs: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], list[d
             ticker = urllib.parse.quote(str(row["kalshi_ticker"]))
             shape, meta = book_shape(f"{KALSHI_BASE}/markets/{ticker}/orderbook")
             fetches.append(meta)
-            row["kalshi_book"] = {"source_ready": True, **shape}
+            row["kalshi_book"] = {"source_ready": bool(shape.get("schema_valid")), **shape}
         except Exception as exc:
             row["kalshi_book"] = {"source_ready": False, "error": type(exc).__name__ + ": " + str(exc)}
 
