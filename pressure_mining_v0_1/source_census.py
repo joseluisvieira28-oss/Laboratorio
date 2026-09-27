@@ -21,6 +21,11 @@ def fetch_json(url, method="GET", data=None, timeout=90):
         return json.loads(b.decode()), sha256_bytes(b)
 
 RPC_ENDPOINTS=[
+    # Blockscout's Ethereum mainnet ETH-RPC is an indexed public fallback and
+    # supports eth_getTransactionReceipt + eth_getLogs. It is especially useful
+    # for the historical anchor sanity check when ordinary free RPC nodes prune
+    # or refuse old receipts.
+    "https://eth.blockscout.com/api/eth-rpc",
     "https://ethereum-rpc.publicnode.com",
     "https://rpc.flashbots.net",
     "https://eth.llamarpc.com",
