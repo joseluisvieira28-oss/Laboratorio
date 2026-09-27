@@ -47,6 +47,8 @@ jobs:
           from pathlib import Path
           p=Path("crypto_edge_radar/radar/target_connection_preflight.py").read_text()
           assert "RADAR_MIGRATION_TARGET_URL" in p
+          assert "RADAR_SUPABASE_POOLER_HOST" in p
+          assert "RADAR_SUPABASE_POOLER_PASSWORD" in p
           assert "SET TRANSACTION READ ONLY" in p
           assert "TARGET_PREFLIGHT_PASS_BACKUP_PREFIX_CURRENT_CHAIN_OK" in p
           assert "database_url_switch_authorized" in p
