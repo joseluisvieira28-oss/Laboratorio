@@ -14,9 +14,9 @@ MANIFEST=Path("labs/DEFI_LIQUIDATION_SHOCK_001/GLOBAL_FIELD_FINALIZER_ARTIFACT_S
 
 GROUPS={
  "marginfi_save0c_field":["dls-marginfi-save0c-field-enrichment-population-v01"],
- "kamino_save11_field":["dls-kamino-save11-field-enrichment-population-v02","dls-kamino-save11-field-enrichment-population-v01"],
+ "kamino_save11_field":["dls-kamino-save11-field-enrichment-population-v03","dls-kamino-save11-field-enrichment-population-v02","dls-kamino-save11-field-enrichment-population-v01"],
  "drift_field_and_units":["dls-drift-field-unit-final-v03"],
- "kamino_save11_units":["dls-kamino-save11-unit-metadata-population-v03","dls-kamino-save11-unit-metadata-population-v02","dls-kamino-save11-unit-metadata-population-v01"],
+ "kamino_save11_units":["dls-kamino-save11-unit-metadata-population-v04","dls-kamino-save11-unit-metadata-population-v03","dls-kamino-save11-unit-metadata-population-v02","dls-kamino-save11-unit-metadata-population-v01"],
  "save0c_units":[
    "dls-save0c-unit-metadata-source-completion-v03",
    "dls-save0c-unit-metadata-source-completion-v02",
