@@ -210,3 +210,12 @@ Canonical working mirror created in Google Drive:
 - URL: https://docs.google.com/document/d/17QO40pQLtaImmUxJUVeUU7jCCH3hNewdJK6uAs-gwNc/edit
 
 The GitHub branch remains the versioned implementation/evidence surface. The Drive document is the operator-readable mirror.
+
+
+## 12. Governance integration
+
+The canonical Drive board `CRYPTO_LAB_EDGE_CLASSIFICATION_BOARD_V1 — 2026-09-17` was updated additively in `RULES!A15:C15` with a mandatory **Negative Edge Map preflight**.
+
+The rule requires every new lab to consult this V0.1 map and complete `NEGATIVE_MAP_PRECHECK_V0.1`; it also explicitly preserves the distinction between scientific negative evidence and `SOURCE_BLOCKED`, `DATA_FAILURE`, `PROVENANCE_FAILURE`, `TECHNICAL_FAILURE` and `INSUFFICIENT_SAMPLE`.
+
+No existing rule, historical verdict, lab status or protected outcome was modified.
