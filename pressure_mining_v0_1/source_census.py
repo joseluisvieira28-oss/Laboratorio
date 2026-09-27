@@ -70,6 +70,24 @@ def topic(sig):
 
 def get_logs_adaptive(ep,address,topic0,start,end):
     """Query one event signature at a time; fail closed on provider errors."""
+    # Blockscout exposes an indexed legacy-compatible logs route. Use it for the
+    # Blockscout archive fallback so a two-year census does not require thousands
+    # of tiny eth_getLogs calls. The documented endpoint caps responses at 1,000
+    # logs, therefore exactly 1,000 is treated as possible truncation and fails.
+    if ep=="https://eth.blockscout.com/api/eth-rpc":
+        q=(
+            "https://eth.blockscout.com/api/?module=logs&action=getLogs"
+            f"&fromBlock={start}&toBlock={end}"
+            f"&address={address}&topic0={topic0}"
+        )
+        obj,_=fetch_json(q,timeout=120)
+        logs=obj.get("result") if isinstance(obj,dict) else None
+        if not isinstance(logs,list):
+            raise RuntimeError(f"Blockscout getLogs invalid response: {obj!r}")
+        if len(logs)>=1000:
+            raise RuntimeError("Blockscout getLogs possible 1000-row truncation")
+        return logs,0
+
     all_logs=[]
     cur=start
     chunk=100_000
