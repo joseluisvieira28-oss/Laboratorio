@@ -35,11 +35,25 @@ def api(url):
     with urllib.request.urlopen(req,timeout=90) as r:
         return json.loads(r.read())
 
+class StripCrossHostAuthRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        redirected=super().redirect_request(req,fp,code,msg,headers,newurl)
+        if redirected is not None:
+            old_host=urllib.parse.urlparse(req.full_url).netloc
+            new_host=urllib.parse.urlparse(newurl).netloc
+            if old_host!=new_host:
+                for bag in (redirected.headers, redirected.unredirected_hdrs):
+                    for key in list(bag):
+                        if key.lower()=="authorization":
+                            del bag[key]
+        return redirected
+
 def download(url):
     headers={"Accept":"application/vnd.github+json","User-Agent":"crypto-lab-dls-global-field-finalizer/0.1"}
     if TOKEN: headers["Authorization"]=f"Bearer {TOKEN}"
     req=urllib.request.Request(url,headers=headers)
-    with urllib.request.urlopen(req,timeout=180) as r:
+    opener=urllib.request.build_opener(StripCrossHostAuthRedirect())
+    with opener.open(req,timeout=180) as r:
         return r.read()
 
 def candidates(name):
