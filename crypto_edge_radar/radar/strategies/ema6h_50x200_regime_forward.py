@@ -7,8 +7,8 @@ from math import isfinite
 from statistics import mean
 import time
 from typing import Any, Iterable
-from . import __name__ as _strategy_module_name
-from ..binance_source_resilience import BinanceOfficialKlineTransport
+from urllib.parse import urlencode
+from urllib.request import Request, urlopen
 
 BINANCE_SPOT_BASE_URL = "https://data-api.binance.vision"
 FROZEN_UNIVERSE = ("BTCUSDT","ETHUSDT","SOLUSDT","BNBUSDT","XRPUSDT","DOGEUSDT")
@@ -105,20 +105,21 @@ class BinanceSpotKlineFeed:
     def __init__(self,timeout:int=10,*,max_attempts:int=3,retry_backoff_seconds:float=0.5)->None:
         self.timeout=timeout;self.max_attempts=max_attempts;self.retry_backoff_seconds=retry_backoff_seconds
         if max_attempts<1:raise ValueError("max_attempts must be >=1")
-        self.transport=BinanceOfficialKlineTransport(
-            timeout=timeout,
-            max_attempts_per_host=1,
-            retry_backoff_seconds=retry_backoff_seconds,
-        )
-        self.provider=self.transport.provider
 
     def _get_json(self,query:dict[str,Any])->Any:
-        try:
-            return self.transport.get_klines(query)
-        except Exception as exc:
-            raise EMA6HRegimeSourceError(
-                f"Binance official public sources unavailable: {type(exc).__name__}: {exc}"
-            ) from exc
+        url=f"{self.base_url}{self.path}?{urlencode(query)}"
+        req=Request(url,method="GET",headers={"User-Agent":"crypto-edge-radar/ema6h-regime-forward"})
+        last=None
+        for attempt in range(1,self.max_attempts+1):
+            try:
+                with urlopen(req,timeout=self.timeout) as response:
+                    if response.status!=200:raise EMA6HRegimeSourceError(f"Binance spot HTTP {response.status}")
+                    return json.loads(response.read().decode("utf-8"))
+            except Exception as exc:
+                if isinstance(exc,EMA6HRegimeSourceError):raise
+                last=exc
+                if attempt<self.max_attempts and self.retry_backoff_seconds:time.sleep(self.retry_backoff_seconds*attempt)
+        raise EMA6HRegimeSourceError(f"Binance source unavailable: {type(last).__name__}: {last}") from last
 
     def klines(self,symbol:str,interval:str,*,start_ms:int,end_ms:int,now_ms:int)->list[Candle]:
         symbol=_validate_symbol(symbol);step=_duration_ms(interval)
