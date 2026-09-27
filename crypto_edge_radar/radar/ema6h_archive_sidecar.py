@@ -117,6 +117,7 @@ class EMA6HArchiveRecoverySidecar:
             or int(result.get("inserted_signals") or 0)
             or int(result.get("inserted_resolutions") or 0)
         )
+        receipt_count = len(self.archive.last_receipts)
         return {
             **base,
             "status": (
@@ -134,11 +135,13 @@ class EMA6HArchiveRecoverySidecar:
             "missing_boundaries": int(
                 result.get("missing_boundaries") or 0
             ),
-            "archive_period_receipts": len(
-                self.archive.last_receipts
-            ),
-            "archive_all_checksums_verified": all(
-                receipt.checksum_verified
-                for receipt in self.archive.last_receipts
+            "archive_period_receipts": receipt_count,
+            "archive_all_checksums_verified": (
+                all(
+                    receipt.checksum_verified
+                    for receipt in self.archive.last_receipts
+                )
+                if receipt_count
+                else None
             ),
         }
