@@ -47,6 +47,18 @@ jobs:
           assert row["target_observation_authorized"] is False
           assert row["outcomes_authorized"] is False
           assert row["orders_enabled"] is False
+          hashes = [
+              row["bls"]["schedule_text_sha256"],
+              row["bls"]["policy_text_sha256"],
+              row["fomc"]["announcement_text_sha256"],
+              row["fomc"]["preceding_minutes_text_sha256"],
+          ]
+          assert all(
+              isinstance(value, str)
+              and len(value) == 64
+              and all(ch in "0123456789abcdef" for ch in value.lower())
+              for value in hashes
+          ), "OFFICIAL SOURCE HASHES INVALID"
           PY
 
       - name: Upload live smoke receipt
