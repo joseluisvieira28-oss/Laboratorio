@@ -107,6 +107,7 @@ def _bls_2027_status(text: str, *, family: str) -> dict:
         "authority": "BLS",
         "family": family,
         "source_url": BLS_CPI_URL if family == "US_CPI" else BLS_EMPSIT_URL,
+        "extracted_text_sha256": _text_sha256(text),
         "evidence_format": "HTML_EXTRACTED_TEXT_UTF8",
         "extracted_text_sha256": _text_sha256(text),
         "status": (
@@ -162,6 +163,7 @@ def _fed_2027_status(text: str) -> dict:
         "authority": "FEDERAL_RESERVE",
         "family": "FOMC_STATEMENT",
         "source_url": FED_FOMC_URL,
+        "extracted_text_sha256": _text_sha256(text),
         "evidence_format": "HTML_EXTRACTED_TEXT_UTF8",
         "extracted_text_sha256": _text_sha256(text),
         "status": (
