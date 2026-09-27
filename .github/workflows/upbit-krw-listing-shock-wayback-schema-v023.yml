@@ -1,0 +1,45 @@
+name: UKLS Wayback Schema Equivalence V0.2.3
+on:
+  push:
+    branches:
+      - upbit-krw-listing-shock-source-recovery-v0.2
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/upbit_krw_listing_shock_001/wayback_schema_v023.py'
+      - '.github/workflows/upbit-krw-listing-shock-wayback-schema-v023.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify authority
+        run: |
+          test -f Dream-Account-OS-v2.3-PARTIAL/research/upbit_krw_listing_shock_001/WAYBACK_SCHEMA_EQUIVALENCE_AUTHORITY_V0_2_3.md
+          python -m py_compile Dream-Account-OS-v2.3-PARTIAL/research/upbit_krw_listing_shock_001/wayback_schema_v023.py
+      - name: Execute deterministic archive schema audit
+        run: python Dream-Account-OS-v2.3-PARTIAL/research/upbit_krw_listing_shock_001/wayback_schema_v023.py
+      - name: Enforce firewall and print metadata
+        run: |
+          python - <<'PY'
+          import json
+          x=json.load(open('artifacts/UKLS_WAYBACK_SCHEMA_V0_2_3.json'))
+          assert x['event_values_emitted'] is False
+          assert x['historical_enumeration_opened'] is False
+          assert x['binance_opened'] is False
+          print('CLASSIFICATION',x['classification'])
+          for f in x['families']:
+              print('FAMILY',f['family'],'LIST_CAPTURES',f['exact_list_capture_count'],'URLS',f['distinct_list_urls'],'PAGES',f['observed_page_values'])
+              print('ORIGINAL_URLS',f['original_list_urls'])
+          for s in x['samples']:
+              print('SAMPLE',s['family'],s['capture_timestamp'],s['archive_http_status'],s.get('row_path'),s.get('row_count'),s.get('row_field_names'),s.get('semantic_fields'),s.get('pagination'),s.get('modern_exact_pass'),s.get('legacy_candidate_pass'))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: UKLS_WAYBACK_SCHEMA_V0_2_3
+          path: artifacts/UKLS_WAYBACK_SCHEMA_V0_2_3.json
+          retention-days: 90
