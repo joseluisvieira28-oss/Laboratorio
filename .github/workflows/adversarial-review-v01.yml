@@ -40,7 +40,14 @@ jobs:
               Path("adversarial_review/adversarial_matrix_v0_1.json"),
               Path("adversarial_review/review_bundle_schema_v0_1.json"),
               Path("adversarial_review/pilots/BNB-LAUNCHPOOL-DEMAND-001/pilot_manifest_v0_1.json"),
+              Path("adversarial_review/pilots/BNB-LAUNCHPOOL-DEMAND-001/red_attack_plan_v0_1.json"),
+              Path("adversarial_review/pilots/BNB-LAUNCHPOOL-DEMAND-001/review_bundle_phase_a_v0_1.json"),
           ]:
               json.loads(p.read_text(encoding="utf-8"))
               print("PASS", p)
           PY
+
+      - name: Validate BNB Phase A review bundle
+        run: |
+          python adversarial_review/tools/validate_review_bundle.py \
+            adversarial_review/pilots/BNB-LAUNCHPOOL-DEMAND-001/review_bundle_phase_a_v0_1.json
