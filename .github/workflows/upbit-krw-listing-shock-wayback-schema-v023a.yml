@@ -1,0 +1,44 @@
+name: UKLS Wayback Schema Gzip Retry V0.2.3A
+on:
+  push:
+    branches:
+      - upbit-krw-listing-shock-source-recovery-v0.2
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/upbit_krw_listing_shock_001/wayback_schema_v023a.py'
+      - '.github/workflows/upbit-krw-listing-shock-wayback-schema-v023a.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify remediation authority
+        run: |
+          test -f Dream-Account-OS-v2.3-PARTIAL/research/upbit_krw_listing_shock_001/WAYBACK_GZIP_TRANSPORT_REMEDIATION_V0_2_3A.md
+          python -m py_compile Dream-Account-OS-v2.3-PARTIAL/research/upbit_krw_listing_shock_001/wayback_schema_v023a.py
+      - name: Replay exact frozen samples with gzip detection
+        run: python Dream-Account-OS-v2.3-PARTIAL/research/upbit_krw_listing_shock_001/wayback_schema_v023a.py
+      - name: Enforce firewall and print schema
+        run: |
+          python - <<'PY'
+          import json
+          x=json.load(open('artifacts/UKLS_WAYBACK_SCHEMA_V0_2_3A.json'))
+          assert x['event_values_emitted'] is False
+          assert x['historical_enumeration_opened'] is False
+          assert x['binance_opened'] is False
+          print('CLASSIFICATION',x['classification'])
+          for s in x['samples']:
+              print('SAMPLE',s['family'],s['capture_timestamp'],s['archive_http_status'],'GZIP',s.get('gzip_magic_detected'),
+                    'ROW',s.get('row_path'),s.get('row_count'),'FIELDS',s.get('row_field_names'),'SEM',s.get('semantic_fields'),
+                    'PAG',s.get('pagination'),'MODPASS',s.get('modern_exact_pass'),'LEGCAND',s.get('legacy_candidate_pass'))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: UKLS_WAYBACK_SCHEMA_V0_2_3A
+          path: artifacts/UKLS_WAYBACK_SCHEMA_V0_2_3A.json
+          retention-days: 90
