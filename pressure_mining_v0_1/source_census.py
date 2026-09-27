@@ -81,7 +81,7 @@ def get_logs_adaptive(ep,address,topic0,start,end):
         all_logs=[]
         failures=0
         cur=start
-        chunk=250_000
+        chunk=1_000_000
         seen=set()
         while cur<=end:
             stop=min(end,cur+chunk-1)
@@ -255,47 +255,14 @@ try:
             "error":repr(inner),
         })
 
-    # Conservative fallback: only if the indexed route fails.
+    # The legacy public RPC fallbacks were already demonstrated in V0.2 to be
+    # non-authoritative for this historical anchor. Do not burn CI time retrying
+    # them or reinterpret their zero-log answers. Fail closed immediately.
     if selected is None:
-        for ep in RPC_ENDPOINTS:
-            if ep==blockscout_ep:
-                continue
-            try:
-                if rpc(ep,"eth_chainId",[])!="0x1":
-                    raise RuntimeError("wrong chain")
-
-                anchor=receipt_contains_event(ep,absorb_anchor_tx,comet,absorb)
-                b0=first_block_at_or_after(ep,t0)
-                b1=first_block_at_or_after(ep,t1)
-                if not (b0 <= anchor["block_number"] <= b1):
-                    raise RuntimeError(
-                        f"anchor block {anchor['block_number']} outside frozen window {b0}-{b1}"
-                    )
-
-                absorb_logs,fail_a=get_logs_adaptive(ep,comet,absorb,b0,b1)
-                buy_logs,fail_b=get_logs_adaptive(ep,comet,buy,b0,b1)
-
-                txs={str(x.get("transactionHash","")).lower() for x in absorb_logs}
-                if absorb_anchor_tx.lower() not in txs:
-                    raise RuntimeError(
-                        "archive sanity failure: anchor receipt exists but eth_getLogs did not recover it"
-                    )
-                if len(absorb_logs)==0:
-                    raise RuntimeError("archive sanity failure: zero AbsorbCollateral logs")
-
-                selected=ep
-                result=(b0,b1,absorb_logs,buy_logs,fail_a+fail_b,anchor)
-                attempts.append({
-                    "endpoint":ep,
-                    "pass":True,
-                    "absorb_logs":len(absorb_logs),
-                    "buy_logs":len(buy_logs),
-                    "block_range":[b0,b1],
-                    "anchor_recovered":True,
-                })
-                break
-            except Exception as inner:
-                attempts.append({"endpoint":ep,"pass":False,"error":repr(inner)})
+        raise RuntimeError(
+            "indexed Blockscout archive route failed; prior generic public RPC "
+            "routes are not accepted as historical authority"
+        )
 
     if selected is None:
         raise RuntimeError(f"all archive census routes failed sanity checks: {attempts}")
