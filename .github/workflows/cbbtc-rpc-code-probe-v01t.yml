@@ -1,0 +1,21 @@
+name: CBBTC-001 historical code probe V0.1T
+on:
+  push:
+    branches:
+      - cbbtc-eth-mint-burn-flow-001-source-gate-v01
+    paths:
+      - 'research/cbbtc_eth_mint_burn_flow_001/CBBTC_RPC_CODE_PROBE_TRIGGER_V0.1T.md'
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node research/cbbtc_eth_mint_burn_flow_001/cbbtc_rpc_code_probe_v01t.mjs
