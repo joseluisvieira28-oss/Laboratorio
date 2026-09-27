@@ -1,0 +1,27 @@
+name: ARQ018 forward collector v0.1
+on:
+  push:
+    branches: [arq018-forward-v0.1]
+    paths:
+      - 'research/breakout_acceptance/forward_collector_v01.py'
+      - '.github/workflows/arq018-forward-collector-v01.yml'
+  workflow_dispatch:
+  schedule:
+    - cron: '20 0,4,8,12,16,20 * * *'
+permissions:
+  contents: read
+jobs:
+  forward:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Run frozen forward collector
+        run: python research/breakout_acceptance/forward_collector_v01.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: arq018-forward-v01
+          path: BREAKOUT_ACCEPTANCE_FORWARD_V0_1.json
