@@ -59,7 +59,10 @@ def batch_fetch(ep,heights):
     for i,h in enumerate(heights):
         x=byid.get(i)
         if x is None or x.get("error") is not None:
-            raise RuntimeError(f"batch item failure {h}")
+            # Transport-only retry of the exact same predeclared height.
+            # Never skip, interpolate, replace, or change sampling density.
+            out.append(fetch(ep,h))
+            continue
         out.append(parse_block(x.get("result"),h))
     return out
 
