@@ -1,0 +1,41 @@
+name: Lido WQ Source Snapshot V0.1
+
+on:
+  push:
+    branches:
+      - pressure-mining-program-v0.1
+    paths:
+      - "pressure_mining_v0_1/lido_wq_source_snapshot.py"
+      - "pressure_mining_v0_1/labs/LIDO_WITHDRAWAL_QUEUE_PRESSURE_001_SOURCE_COLLECTION_PROTOCOL_V0.1.md"
+      - ".github/workflows/lido-wq-source-snapshot-v0.1.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Compile collector
+        run: python -m py_compile pressure_mining_v0_1/lido_wq_source_snapshot.py
+
+      - name: Collect source-only queue snapshot
+        run: python pressure_mining_v0_1/lido_wq_source_snapshot.py
+
+      - name: Upload immutable snapshot artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: lido-wq-source-snapshot-v01
+          path: pressure_mining_v0_1/receipts/LIDO_WQ_SOURCE_SNAPSHOT_V0.1.json
+          if-no-files-found: error
+          retention-days: 90
