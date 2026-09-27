@@ -25,6 +25,7 @@ class PreprovisionedPostgresConfigTests(unittest.TestCase):
         with patch.dict(os.environ, {}, clear=True):
             settings = Settings.from_env()
         self.assertFalse(settings.database_schema_preprovisioned)
+        self.assertEqual(settings.database_target_mode, "SOURCE")
 
     def test_supabase_target_override_is_explicit_and_forces_preprovisioned(self):
         with patch.dict(
