@@ -25,6 +25,9 @@ RPC_ENDPOINTS=[
     "https://rpc.flashbots.net",
     "https://eth.llamarpc.com",
     "https://cloudflare-eth.com",
+    "https://eth.drpc.org",
+    "https://ethereum.public.blockpi.network/v1/rpc/public",
+    "https://public.1rpc.io/eth",
 ]
 
 def rpc(endpoint, method, params):
