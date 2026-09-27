@@ -1,0 +1,48 @@
+name: ETH-STAKING-FLOW-001 CBT Exact-Slot Coverage V0.2.1
+on:
+  push:
+    branches:
+      - eth-staking-flow-v3-stagea-cbt-coverage-v021
+    paths:
+      - 'research/eth_staking_flow/cbt_exact_slot_coverage_v021.py'
+      - '.github/workflows/eth-staking-flow-v3-stagea-cbt-coverage-v021.yml'
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify authority and compile
+        run: |
+          test -f research/eth_staking_flow/ETH_STAKING_FLOW_001_V3_STAGEA_CBT_COVERAGE_AUTHORITY_V0_2_1.md
+          python -m py_compile research/eth_staking_flow/cbt_exact_slot_coverage_v021.py
+      - name: Query official public CBT coverage metadata
+        run: python research/eth_staking_flow/cbt_exact_slot_coverage_v021.py
+      - name: Enforce source-only firewall
+        run: |
+          python - <<'PY'
+          import json
+          x=json.load(open('artifacts/ETH_STAKING_FLOW_001_CBT_COVERAGE_V0_2_1.json'))
+          assert x['validator_rows_opened'] is False
+          assert x['queue_counts_opened'] is False
+          assert x['market_data_opened'] is False
+          assert x['signal_evaluated'] is False
+          assert x['returns_opened'] is False
+          assert x['pnl_opened'] is False
+          assert x['source_after_2026_08_31_opened'] is False
+          print('CLASSIFICATION',x['classification'])
+          print('PROCESSED_RANGE_COUNT',x.get('processed_range_count'))
+          print('PROCESSED_MIN',x.get('processed_min_position'))
+          print('PROCESSED_MAX_END',x.get('processed_max_end_exclusive'))
+          print('TARGETS_INSIDE',x.get('targets_inside_processed_ranges'))
+          print('TARGETS_FULL_COVERAGE',x.get('targets_debug_full_coverage'))
+          for r in x.get('debug',[]):
+              print('TARGET',r['name'],r['slot'],r.get('inside_processed_ranges'),r.get('coverage_status'),r.get('blocking'))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ETH_STAKING_FLOW_001_CBT_COVERAGE_V0_2_1
+          path: artifacts/ETH_STAKING_FLOW_001_CBT_COVERAGE_V0_2_1.json
+          retention-days: 90
