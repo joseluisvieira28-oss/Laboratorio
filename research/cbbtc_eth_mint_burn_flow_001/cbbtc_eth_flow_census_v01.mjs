@@ -96,22 +96,30 @@ async function archiveSendWithRetry(method,params,scope){
 }
 
 async function rawLogs(fromBlock,toBlock,topics){
-  const logs=await rawRpc(RPC,"eth_getLogs",[{
-    address:TOKEN,
-    fromBlock:hex(fromBlock),
-    toBlock:hex(toBlock),
-    topics
-  }]);
-  if(!Array.isArray(logs)) throw new Error("BAD_LOG_RESULT");
-  return logs.map(log=>({
-    address:log.address,
-    topics:log.topics||[],
-    data:log.data,
-    blockNumber:Number(BigInt(log.blockNumber)),
-    blockHash:log.blockHash,
-    transactionHash:log.transactionHash,
-    index:Number(BigInt(log.logIndex))
-  }));
+  const failures=[];
+  for(const endpoint of LOG_RPCS){
+    try{
+      const logs=await rawRpc(endpoint,"eth_getLogs",[{
+        address:TOKEN,
+        fromBlock:hex(fromBlock),
+        toBlock:hex(toBlock),
+        topics
+      }]);
+      if(!Array.isArray(logs)) throw new Error("BAD_LOG_RESULT");
+      return logs.map(log=>({
+        address:log.address,
+        topics:log.topics||[],
+        data:log.data,
+        blockNumber:Number(BigInt(log.blockNumber)),
+        blockHash:log.blockHash,
+        transactionHash:log.transactionHash,
+        index:Number(BigInt(log.logIndex))
+      }));
+    }catch(e){
+      failures.push({endpoint,error:String(e?.shortMessage||e?.message||e).slice(0,500)});
+    }
+  }
+  throw new Error("LOG_RPC_FAILOVER_EXHAUSTED:"+JSON.stringify(failures));
 }
 
 async function queryLogsAdaptive(fromBlock,toBlock,topics,kind,errors,depth=0){
