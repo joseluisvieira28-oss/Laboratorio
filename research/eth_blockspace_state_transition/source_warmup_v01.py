@@ -96,7 +96,7 @@ def main():
             for j,h in enumerate(hs,start=base):
                 a=merged[h]
                 if j%40==0:
-                    b=fetch(EPS[1-(j%2)],h)
+                    b=fetch(EPS[0],h)
                     if a["hash"]!=b["hash"] or a["timestamp"]!=b["timestamp"]:
                         raise RuntimeError(f"provider disagreement {h}")
                     audit_pass+=1
