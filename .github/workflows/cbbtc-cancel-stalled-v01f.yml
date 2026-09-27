@@ -1,0 +1,21 @@
+name: CBBTC-001 cancel stalled pre-gate run V0.1F
+
+on:
+  push:
+    branches:
+      - cbbtc-source-timeout-remediation-v01
+    paths:
+      - '.github/workflows/cbbtc-cancel-stalled-v01f.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cbbtc-eth-mint-burn-flow-001-source-gate-v01
+  cancel-in-progress: true
+
+jobs:
+  cancel_sentinel:
+    runs-on: ubuntu-22.04
+    steps:
+      - run: echo "Cancel stalled pre-Gate-1 transport run only; no scientific state changed."
