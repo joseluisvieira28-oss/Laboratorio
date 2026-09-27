@@ -1,0 +1,91 @@
+name: CBBTC-001 Authorized H1-2026 OOS Launch V0.1
+
+on:
+  push:
+    branches:
+      - cbbtc-eth-mint-burn-flow-001-oos-h1-2026-v01
+    paths:
+      - 'research/cbbtc_eth_mint_burn_flow_001/OOS_H1_2026_OPEN_AUTHORITY_V0.1.json'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cbbtc-eth-mint-burn-flow-001-oos-h1-2026-authorized
+  cancel-in-progress: false
+
+jobs:
+  authorized_oos:
+    runs-on: macos-15
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Verify explicit opening authority receipt
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path("research/cbbtc_eth_mint_burn_flow_001/OOS_H1_2026_OPEN_AUTHORITY_V0.1.json")
+          x=json.loads(p.read_text())
+          assert x["lab_id"]=="CBBTC-ETH-MINT-BURN-FLOW-001"
+          assert x["authorized"] is True
+          assert x["scope"]=="OPEN_H1_2026_OOS_TO_VERDICT"
+          assert x["holdout_start"]=="2026-01-01"
+          assert x["holdout_end"]=="2026-06-30"
+          assert x["h2_2026_remains_closed"] is True
+          assert x["pnl_authorized"] is False
+          assert x["live_trading_authorized"] is False
+          assert x["main_merge_authorized"] is False
+          print("EXPLICIT_OOS_OPEN_AUTHORITY_VERIFIED")
+          PY
+
+      - run: npm install --no-save ethers@6.15.0
+
+      - name: Open protected H1-2026 predictor census
+        env:
+          CBBTC_OOS_OPEN_AUTHORITY: AUTHORIZED
+          ETH_RPC_URL: https://ethereum-rpc.publicnode.com
+          ETH_ARCHIVE_RPC_URL: https://rpc-eth.blockmachine.io
+        run: node research/cbbtc_eth_mint_burn_flow_001/cbbtc_oos_h1_2026_census_v01.mjs
+
+      - name: Run frozen sample gate and conditional H1-2026 OOS outcome
+        env:
+          CBBTC_OOS_OPEN_AUTHORITY: AUTHORIZED
+        run: python research/cbbtc_eth_mint_burn_flow_001/cbbtc_oos_h1_2026_eval_v01.py
+
+      - name: Persist OOS verdict evidence
+        if: always()
+        shell: bash
+        run: |
+          set -e
+          mkdir -p research/cbbtc_eth_mint_burn_flow_001/oos_h1_2026_evidence
+          cp -f artifacts/oos_h1_2026/*.json research/cbbtc_eth_mint_burn_flow_001/oos_h1_2026_evidence/ 2>/dev/null || true
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/cbbtc_eth_mint_burn_flow_001/oos_h1_2026_evidence/*.json 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "No durable OOS evidence to commit."
+          else
+            git commit -m "CBBTC-001: persist H1-2026 OOS verdict evidence [skip ci]"
+            git push origin HEAD:cbbtc-eth-mint-burn-flow-001-oos-h1-2026-v01
+          fi
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cbbtc-oos-h1-2026-authorized-v01
+          path: artifacts/oos_h1_2026/*
+          if-no-files-found: warn
