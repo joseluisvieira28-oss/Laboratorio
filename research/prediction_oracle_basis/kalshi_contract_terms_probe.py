@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any
 
 BASE="https://external-api.kalshi.com/trade-api/v2"
-UA="CryptoLab-KXBTC15M-TermsProbe/0.1 research-only"
+UA="CryptoLab-KXBTC15M-TermsProbe/0.2 research-only"
 OUT=Path("artifacts/prediction_oracle_basis/kalshi_terms")
 
 
@@ -28,16 +28,36 @@ def fetch(url: str) -> tuple[int, bytes, str]:
         return int(r.status), raw, r.headers.get("content-type","")
 
 
+def preserve(label: str, url: str | None, result: dict[str,Any]) -> None:
+    if not url or not str(url).startswith("http"):
+        result[f"{label}_fetch_state"]="NO_HTTP_URL"
+        return
+    status, raw, ctype=fetch(str(url))
+    suffix=".pdf" if "pdf" in ctype.lower() or str(url).lower().endswith(".pdf") else ".bin"
+    path=OUT/(label+suffix)
+    path.write_bytes(raw)
+    result.update({
+        f"{label}_http_status":status,
+        f"{label}_content_type":ctype,
+        f"{label}_bytes":len(raw),
+        f"{label}_sha256":hashlib.sha256(raw).hexdigest(),
+        f"{label}_artifact_path":str(path),
+    })
+    print(f"{label.upper()}_HTTP_STATUS=", status)
+    print(f"{label.upper()}_CONTENT_TYPE=", ctype)
+    print(f"{label.upper()}_SHA256=", result[f"{label}_sha256"])
+
+
 def main() -> int:
     OUT.mkdir(parents=True, exist_ok=True)
-    status, raw, ctype=fetch(f"{BASE}/series/KXBTC15M")
+    status, raw, _=fetch(f"{BASE}/series/KXBTC15M")
     payload=json.loads(raw.decode("utf-8"))
     series=payload.get("series", payload)
     terms_url=series.get("contract_terms_url")
     contract_url=series.get("contract_url")
     settlement=series.get("settlement_sources")
     result: dict[str,Any]={
-        "schema":"KXBTC15M_CONTRACT_TERMS_PROVENANCE_V0.1",
+        "schema":"KXBTC15M_CONTRACT_PROVENANCE_V0.2",
         "generated_at_utc":now(),
         "series_http_status":status,
         "series_raw_sha256":hashlib.sha256(raw).hexdigest(),
@@ -55,23 +75,8 @@ def main() -> int:
     print("CONTRACT_TERMS_URL=", terms_url)
     print("CONTRACT_URL=", contract_url)
     print("SETTLEMENT_SOURCES=", json.dumps(settlement, sort_keys=True))
-    if terms_url and str(terms_url).startswith("http"):
-        tstatus,traw,tctype=fetch(str(terms_url))
-        suffix=".pdf" if "pdf" in tctype.lower() or str(terms_url).lower().endswith(".pdf") else ".bin"
-        term_path=OUT/("contract_terms"+suffix)
-        term_path.write_bytes(traw)
-        result.update({
-            "terms_http_status":tstatus,
-            "terms_content_type":tctype,
-            "terms_bytes":len(traw),
-            "terms_sha256":hashlib.sha256(traw).hexdigest(),
-            "terms_artifact_path":str(term_path),
-        })
-        print("TERMS_HTTP_STATUS=", tstatus)
-        print("TERMS_CONTENT_TYPE=", tctype)
-        print("TERMS_SHA256=", result["terms_sha256"])
-    else:
-        result["terms_fetch_state"]="NO_HTTP_CONTRACT_TERMS_URL"
+    preserve("contract_terms", terms_url, result)
+    preserve("product_certification", contract_url, result)
 
     out=OUT/"terms_provenance_receipt.json"
     out.write_text(json.dumps(result,indent=2,sort_keys=True),encoding="utf-8")
