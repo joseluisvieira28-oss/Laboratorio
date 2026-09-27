@@ -25,6 +25,18 @@ def build_event_activation_receipt_v02(
         if evidence.event_family == "FOMC_STATEMENT"
         else "BLS"
     )
+    normalized_sources: list[dict[str, Any]] = []
+    for row in supporting_official_sources:
+        item = dict(row)
+        digest = item.get("extracted_text_sha256")
+        if (
+            not isinstance(digest, str)
+            or len(digest) != 64
+            or any(ch not in "0123456789abcdefABCDEF" for ch in digest)
+        ):
+            raise ValueError("SUPPORTING_SOURCE_TEXT_HASH_REQUIRED")
+        normalized_sources.append(item)
+
     receipt: dict[str, Any] = {
         "document_type": "MRCR_H02_EVENT_ACTIVATION_RECEIPT_V02",
         "lab_id": "MARKET-REVEAL-CONFIRMATION-REACTION-001",
@@ -39,9 +51,7 @@ def build_event_activation_receipt_v02(
         "official_status": "OFFICIAL_CONFIRMED_FOR_CAPTURE",
         "confirmation_mode": evidence.confirmation_mode,
         "evidence_roles": list(evidence.evidence_roles),
-        "supporting_official_sources": [
-            dict(row) for row in supporting_official_sources
-        ],
+        "supporting_official_sources": normalized_sources,
         "target_observation_authorized": False,
         "outcomes_authorized": False,
         "promotion_credit": "NONE",
