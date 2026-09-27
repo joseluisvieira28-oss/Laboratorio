@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import json, urllib.request, urllib.parse, time, sys
 SYMS=["BTCUSDT","ETHUSDT","SOLUSDT","BNBUSDT","XRPUSDT","DOGEUSDT"]
-BASE="https://api.binance.com"
+BASE="https://data-api.binance.vision"
 STEP=14400000
 def main():
  out={"lab_id":"BREAKOUT-ACCEPTANCE-001","phase":"SOURCE_ONLY","classification":"SOURCE_FAIL","market_outcomes_computed":False,"symbols":{}}
