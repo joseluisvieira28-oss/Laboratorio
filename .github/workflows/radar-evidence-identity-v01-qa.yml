@@ -1,0 +1,62 @@
+name: Radar Evidence Identity V0.1 QA
+
+on:
+  pull_request:
+    branches:
+      - crypto-edge-radar-postgres-v0.5
+    paths:
+      - "crypto_edge_radar/radar/evidence_identity.py"
+      - "crypto_edge_radar/radar/forward_web.py"
+      - "crypto_edge_radar/tests/test_evidence_identity.py"
+      - ".github/workflows/radar-evidence-identity-v01-qa.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: |
+          cd crypto_edge_radar
+          python -m pip install -e .
+      - name: Compile
+        run: |
+          cd crypto_edge_radar
+          python -m compileall radar tests
+      - name: Targeted evidence identity tests
+        run: |
+          cd crypto_edge_radar
+          python -m unittest -v tests.test_evidence_identity
+      - name: Full deterministic Radar suite
+        run: |
+          cd crypto_edge_radar
+          python -m unittest discover -s tests -v
+      - name: Secret-safe identity firewall
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path("crypto_edge_radar/radar/evidence_identity.py").read_text()
+          assert "payloads_exposed" in p
+          assert '"database_mutation": False' in p
+          assert "chain_head_sha256" in p
+          assert "key_binding_sha256" in p
+          assert "sequence_last_value" in p
+          for forbidden in (
+              "DATABASE_URL",
+              "RADAR_SUPABASE_POOLER_PASSWORD",
+              "api_key",
+              "secret_key",
+              "create_order",
+              "place_order",
+          ):
+              assert forbidden not in p, forbidden
+          print("RADAR_EVIDENCE_IDENTITY_V01_FIREWALL_PASS")
+          PY
