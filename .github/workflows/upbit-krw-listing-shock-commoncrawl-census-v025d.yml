@@ -1,0 +1,71 @@
+name: UKLS Common Crawl Raw Index Census V0.2.5D
+on:
+  push:
+    branches:
+      - upbit-krw-listing-shock-commoncrawl-census-v0.2.5d
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/upbit_krw_listing_shock_001/common_crawl_raw_index_census_v025d.py'
+      - '.github/workflows/upbit-krw-listing-shock-commoncrawl-census-v025d.yml'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  census:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify V0.2.5C transport PASS trigger
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p trigger
+          gh run download 36325097130 --repo joseluisvieira28-oss/Laboratorio --name UKLS_COMMON_CRAWL_RAW_INDEX_V0_2_5C --dir trigger
+          python - <<'PY'
+          import json,glob
+          fs=glob.glob('trigger/**/UKLS_COMMON_CRAWL_RAW_INDEX_V0_2_5C.json',recursive=True)
+          assert len(fs)==1,fs
+          x=json.load(open(fs[0]))
+          assert x['classification']=='COMMON_CRAWL_RAW_INDEX_TRANSPORT_PASS',x['classification']
+          assert x['warc_payload_opened'] is False
+          print('V025C_TRIGGER_PASS',x['classification'])
+          PY
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify frozen census authority
+        run: |
+          test -f Dream-Account-OS-v2.3-PARTIAL/research/upbit_krw_listing_shock_001/COMMON_CRAWL_RAW_INDEX_CENSUS_AUTHORITY_V0_2_5D.md
+          test -f Dream-Account-OS-v2.3-PARTIAL/research/upbit_krw_listing_shock_001/COMMON_CRAWL_RAW_INDEX_RANGE_IMPLEMENTATION_V0_2_5D1.md
+          python -m py_compile Dream-Account-OS-v2.3-PARTIAL/research/upbit_krw_listing_shock_001/common_crawl_raw_index_census_v025d.py
+      - name: Execute 15-crawl index-only census
+        run: python Dream-Account-OS-v2.3-PARTIAL/research/upbit_krw_listing_shock_001/common_crawl_raw_index_census_v025d.py
+      - name: Enforce firewall
+        run: |
+          python - <<'PY'
+          import json
+          x=json.load(open('artifacts/UKLS_COMMON_CRAWL_RAW_INDEX_CENSUS_V0_2_5D.json'))
+          assert x['warc_payload_opened'] is False
+          assert x['archived_response_payload_opened'] is False
+          assert x['event_values_opened'] is False
+          assert x['binance_opened'] is False
+          print('CLASSIFICATION',x['classification'])
+          print('TECH_FAILS',x['technical_failure_count'])
+          print('BLOCKS',x['total_selected_blocks'])
+          print('COMPRESSED_RANGE_BYTES',x['total_compressed_range_bytes'])
+          print('MATCHED_INDEX_ROWS',x['matched_index_rows'])
+          print('MODERN_2023_LIST_200',x['modern_list_2023_http200'])
+          print('MODERN_2024_LIST_200',x['modern_list_2024_http200'])
+          print('LEGACY_2023_LIST_200',x['legacy_list_2023_http200'])
+          print('LEGACY_2024_LIST_200',x['legacy_list_2024_http200'])
+          print('PATH_COUNTS',x['aggregate_path_class_counts'])
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: UKLS_COMMON_CRAWL_RAW_INDEX_CENSUS_V0_2_5D
+          path: |
+            artifacts/UKLS_COMMON_CRAWL_RAW_INDEX_CENSUS_V0_2_5D.json
+            artifacts/UKLS_COMMON_CRAWL_RAW_INDEX_CENSUS_V0_2_5D_ROWS.json
+          if-no-files-found: error
+          retention-days: 90
