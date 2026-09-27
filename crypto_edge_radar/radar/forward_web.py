@@ -42,6 +42,7 @@ from .etf_cme_exact_scheduler import ETFCMEExactRuntimeScheduler
 from .external_freshness import all_external_freshness
 from .private_evidence_backup import emit_snapshot_json_chunks, emit_snapshot_log_chunks
 from .persistence_expiry import persistence_expiry_state
+from .target_connection_preflight import target_connection_preflight
 from .supabase_pooler_probe import probe_from_env as supabase_pooler_probe_from_env
 from .deploy_drift import deployment_drift_receipt
 from .diamond_board import build_diamond_board
@@ -224,6 +225,7 @@ class ForwardShadowRuntime:
             watcher=self.etf_cme_signal,
         )
         self.ced1d_render_shadow = CED1DRenderShadowRunner(store=self.store)
+        self._target_preflight_state = target_connection_preflight()
         self.status_path = os.getenv("RADAR_FORWARD_STATUS", settings.status_path)
         self._lock = threading.Lock()
         self._state: dict[str, Any] = {
@@ -670,6 +672,16 @@ class ForwardShadowRuntime:
             os.getenv("RADAR_PERSISTENCE_EXPIRY_UTC"),
             now=datetime.fromtimestamp(now_ms / 1000.0, tz=timezone.utc),
         )
+        target_preflight = self._target_preflight_state
+        persistence_expiry["target_url_configured"] = bool(
+            target_preflight.get("target_url_configured")
+        )
+        if target_preflight.get("classification") == "TARGET_PREFLIGHT_PASS_BACKUP_PREFIX_CURRENT_CHAIN_OK":
+            persistence_expiry["cutover_blocker"] = "FINAL_QUIESCED_REFRESH_REQUIRED"
+        elif target_preflight.get("target_url_configured"):
+            persistence_expiry["cutover_blocker"] = target_preflight.get("classification")
+        else:
+            persistence_expiry["cutover_blocker"] = "TARGET_CONNECTION_CREDENTIAL_NOT_CONFIGURED"
 
         state = {
             "health": "OK" if not errors else "DEGRADED_FAIL_CLOSED",
@@ -682,6 +694,7 @@ class ForwardShadowRuntime:
             "evidence_chain_detail": chain_detail,
             "runtime_liveness": runtime_liveness,
             "persistence_expiry": persistence_expiry,
+            "target_connection_preflight": target_preflight,
             "tfg": tfg_state,
             "tfg_forward_metrics": tfg_forward_metrics,
             "ema6h_regime": ema6h_state,
