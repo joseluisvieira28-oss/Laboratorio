@@ -111,6 +111,29 @@ def source_rate_limit_retry_due(
     return retry_not_before_ms is None or now_ms >= retry_not_before_ms
 
 
+def ema6h_archive_recovery_due(
+    *,
+    primary_status: str | None,
+    retry_not_before_ms: int | None,
+    now_ms: int,
+) -> bool:
+    if primary_status != "WAITING_SOURCE_RATE_LIMIT":
+        return False
+    return retry_not_before_ms is None or now_ms >= retry_not_before_ms
+
+
+def ema6h_archive_next_retry_ms(
+    *,
+    sidecar_status: str | None,
+    now_ms: int,
+) -> int:
+    if sidecar_status == "ARCHIVE_RECOVERY_OK":
+        day_ms = 24 * 60 * 60 * 1000
+        next_utc_day_ms = ((now_ms // day_ms) + 1) * day_ms
+        return next_utc_day_ms + 15 * 60 * 1000
+    return now_ms + EMA6H_ARCHIVE_RETRY_MS
+
+
 def source_rate_limit_wait_state(
     *,
     watcher_id: str,
@@ -539,38 +562,32 @@ class ForwardShadowRuntime:
         else:
             ema6h_state = self._ema6h_state
 
-        if self._ema6h_state.get("status") == "WAITING_SOURCE_RATE_LIMIT":
-            archive_due = (
-                self._ema6h_archive_retry_not_before_ms is None
-                or now_ms >= self._ema6h_archive_retry_not_before_ms
+        archive_due = ema6h_archive_recovery_due(
+            primary_status=self._ema6h_state.get("status"),
+            retry_not_before_ms=self._ema6h_archive_retry_not_before_ms,
+            now_ms=now_ms,
+        )
+        if archive_due:
+            ema6h_archive_state = self.ema6h_archive_recovery.run_once(
+                now_ms=now_ms
             )
-            if archive_due:
-                ema6h_archive_state = self.ema6h_archive_recovery.run_once(
-                    now_ms=now_ms
+            self._ema6h_archive_state = ema6h_archive_state
+            self._ema6h_archive_retry_not_before_ms = (
+                ema6h_archive_next_retry_ms(
+                    sidecar_status=ema6h_archive_state.get("status"),
+                    now_ms=now_ms,
                 )
-                self._ema6h_archive_state = ema6h_archive_state
-                if ema6h_archive_state.get("status") == "ARCHIVE_RECOVERY_OK":
-                    next_utc_day_ms = (
-                        ((now_ms // (24 * 60 * 60 * 1000)) + 1)
-                        * (24 * 60 * 60 * 1000)
-                    )
-                    self._ema6h_archive_retry_not_before_ms = (
-                        next_utc_day_ms + 15 * 60 * 1000
-                    )
-                else:
-                    self._ema6h_archive_retry_not_before_ms = (
-                        now_ms + EMA6H_ARCHIVE_RETRY_MS
-                    )
-                    if (
-                        ema6h_archive_state.get("status")
-                        == "ARCHIVE_RECOVERY_FAIL_CLOSED"
-                    ):
-                        errors["ema6h_archive_recovery"] = str(
-                            ema6h_archive_state.get("error")
-                            or "ARCHIVE_RECOVERY_FAIL_CLOSED"
-                        )
-            else:
-                ema6h_archive_state = self._ema6h_archive_state
+            )
+            if (
+                ema6h_archive_state.get("status")
+                == "ARCHIVE_RECOVERY_FAIL_CLOSED"
+            ):
+                errors["ema6h_archive_recovery"] = str(
+                    ema6h_archive_state.get("error")
+                    or "ARCHIVE_RECOVERY_FAIL_CLOSED"
+                )
+        elif self._ema6h_state.get("status") == "WAITING_SOURCE_RATE_LIMIT":
+            ema6h_archive_state = self._ema6h_archive_state
         else:
             ema6h_archive_state = {
                 "status": "IDLE_PRIMARY_SOURCE_NOT_RATE_LIMITED",
