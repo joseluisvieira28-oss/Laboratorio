@@ -1,0 +1,49 @@
+name: CBBTC-001 OOS H1-2026 static QA
+
+on:
+  push:
+    branches:
+      - cbbtc-eth-mint-burn-flow-001-oos-h1-2026-v01
+    paths:
+      - 'research/cbbtc_eth_mint_burn_flow_001/OOS_H1_2026_PRE_OPENING_AUTHORITY_V0.1.md'
+      - 'research/cbbtc_eth_mint_burn_flow_001/cbbtc_oos_h1_2026_census_v01.mjs'
+      - 'research/cbbtc_eth_mint_burn_flow_001/cbbtc_oos_h1_2026_eval_v01.py'
+      - '.github/workflows/cbbtc-eth-mint-burn-flow-001-oos-h1-2026-v01.yml'
+      - '.github/workflows/cbbtc-eth-mint-burn-flow-001-oos-static-qa-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Syntax check only
+        run: |
+          node --check research/cbbtc_eth_mint_burn_flow_001/cbbtc_oos_h1_2026_census_v01.mjs
+          python -m py_compile research/cbbtc_eth_mint_burn_flow_001/cbbtc_oos_h1_2026_eval_v01.py
+
+      - name: Verify protected-data guardrails
+        shell: bash
+        run: |
+          set -e
+          grep -q 'PROTECTED_2026_OPEN_AUTHORITY_MISSING' research/cbbtc_eth_mint_burn_flow_001/cbbtc_oos_h1_2026_census_v01.mjs
+          grep -q '2025-12-31T00:00:00Z' research/cbbtc_eth_mint_burn_flow_001/cbbtc_oos_h1_2026_census_v01.mjs
+          grep -q '2026-07-01T00:00:00Z' research/cbbtc_eth_mint_burn_flow_001/cbbtc_oos_h1_2026_census_v01.mjs
+          grep -q 'OOS_PREDICTOR_SAMPLE_PASS' research/cbbtc_eth_mint_burn_flow_001/cbbtc_oos_h1_2026_eval_v01.py
+          grep -q '2026-06-28' research/cbbtc_eth_mint_burn_flow_001/cbbtc_oos_h1_2026_eval_v01.py
+          grep -q 'OPEN_CBBTC_H1_2026_OOS' .github/workflows/cbbtc-eth-mint-burn-flow-001-oos-h1-2026-v01.yml
+          if grep -q '^  push:' .github/workflows/cbbtc-eth-mint-burn-flow-001-oos-h1-2026-v01.yml; then
+            echo "Protected OOS workflow must not have push trigger"
+            exit 2
+          fi
+          echo "STATIC_QA_PASS_NO_2026_ACCESS"
