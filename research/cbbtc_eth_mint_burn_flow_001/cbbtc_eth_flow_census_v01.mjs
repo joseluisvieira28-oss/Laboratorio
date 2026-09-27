@@ -184,40 +184,14 @@ function normalize(log,kind){
 async function batchBlockHeaders(blockNumbers){
   const result=new Map();
   const nums=[...new Set(blockNumbers)].sort((a,b)=>a-b);
-  for(let i=0;i<nums.length;i+=50){
-    const batch=nums.slice(i,i+50).map((n,j)=>({
-      jsonrpc:"2.0",id:j+1,method:"eth_getBlockByNumber",params:["0x"+BigInt(n).toString(16),false]
-    }));
-    let payload=null,last=null;
-    for(let attempt=1;attempt<=HEADER_ATTEMPTS;attempt++){
-      try{
-        const res=await fetch(RPC,{
-          method:"POST",
-          headers:{"content-type":"application/json"},
-          body:JSON.stringify(batch),
-          signal:AbortSignal.timeout(RPC_TIMEOUT_MS)
-        });
-        if(!res.ok) throw new Error("HTTP_"+res.status);
-        payload=await res.json();
-        break;
-      }catch(e){
-        last=String(e?.message||e);
-        if(attempt<HEADER_ATTEMPTS) await sleep(400*attempt);
-      }
+  for(let i=0;i<nums.length;i++){
+    const n=nums[i];
+    const h=await getBlockWithRetry(n,"EVENT_HEADER_FAILED_"+n);
+    result.set(n,h);
+    if(i===0||(i+1)%50===0||i===nums.length-1){
+      console.log("HEADER_PROGRESS",i+1,nums.length,n,h.header_rpc||"unknown");
     }
-    if(payload===null) throw new Error("BLOCK_HEADER_BATCH_FAILED:"+last);
-    const byId=new Map(payload.map(x=>[x.id,x]));
-    for(let j=0;j<batch.length;j++){
-      const n=nums[i+j];
-      const x=byId.get(j+1);
-      if(!x||x.error||!x.result) throw new Error("BLOCK_HEADER_MISSING_"+n);
-      result.set(n,{
-        number:Number(BigInt(x.result.number)),
-        hash:String(x.result.hash),
-        timestamp:Number(BigInt(x.result.timestamp))
-      });
-    }
-    await sleep(120);
+    await sleep(40);
   }
   return result;
 }
