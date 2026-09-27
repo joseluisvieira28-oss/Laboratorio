@@ -1,0 +1,59 @@
+name: ETH-STAKING-FLOW-001 CBT Reconstruction V0.2.0
+on:
+  push:
+    branches:
+      - eth-staking-flow-v3-stagea-cbt-reconstruct-v020
+    paths:
+      - 'research/eth_staking_flow/cbt_transition_reconstruct_v020.py'
+      - '.github/workflows/eth-staking-flow-v3-stagea-cbt-reconstruct-v020.yml'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  reconstruct:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify frozen authority
+        run: |
+          test -f research/eth_staking_flow/ETH_STAKING_FLOW_001_V3_STAGEA_CBT_CONTRACT_BOUND_RECONSTRUCTION_V0_2_0.md
+          test -f research/eth_staking_flow/ETH_STAKING_FLOW_001_V3_STAGEA_CBT_API_CONTRACT_REMEDIATION_V0_1_9.md
+          python -m py_compile research/eth_staking_flow/cbt_transition_reconstruct_v020.py
+      - name: Download immutable legacy Stage-A monthly artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh run download 35387477455 --repo joseluisvieira28-oss/Laboratorio --pattern 'ETH_V3_REP_SOURCE_*' --dir legacy_artifacts
+      - name: Execute source-only 608-day reconstruction
+        run: python research/eth_staking_flow/cbt_transition_reconstruct_v020.py
+      - name: Enforce Stage-A firewall
+        if: always()
+        run: |
+          python - <<'PY'
+          import json, pathlib
+          p=pathlib.Path('artifacts/cbt_v020/ETH_STAKING_FLOW_001_V3_REPLICATION_SOURCE_V0_2_0.json')
+          assert p.exists()
+          x=json.loads(p.read_text())
+          assert x['source_only'] is True
+          assert x['signal_evaluated'] is False
+          assert x['market_prices_opened'] is False
+          assert x['returns_opened'] is False
+          assert x['pnl_opened'] is False
+          assert x['source_after_2026_08_31_opened'] is False
+          print('CLASSIFICATION',x['classification'])
+          print('CONTROLS',x.get('control_exact_match_count'))
+          print('OVERLAP',x.get('legacy_overlap_exact_match_count'))
+          print('MISSING',x.get('recovered_missing_date_count'))
+          print('DATES',x.get('observed_date_count'))
+          print('SERIES_SHA',x.get('daily_series_sha256'))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ETH_STAKING_FLOW_001_V3_STAGEA_CBT_RECONSTRUCTION_V0_2_0
+          path: artifacts/cbt_v020/*
+          if-no-files-found: error
+          retention-days: 90
