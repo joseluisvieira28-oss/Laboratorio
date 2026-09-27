@@ -1,0 +1,83 @@
+name: licp-fwd-xalt-004-shadow-block-v01
+
+on:
+  push:
+    branches:
+      - liquidation-cascade-propagation-v0.1
+    paths:
+      - 'research/liquidation_cascade/LICP_001_TRIGGER_CONFIG_V0_1.json'
+      - 'research/liquidation_cascade/LICP_FWD_XALT_004_FORWARD_RUN_TOKEN_V0_1.json'
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  shadow:
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install 'websockets>=13,<16'
+      - name: Refuse to open forward outcomes until numeric trigger is frozen
+        run: |
+          python - <<'PY'
+          import json,pathlib
+          p=pathlib.Path("research/liquidation_cascade/LICP_001_TRIGGER_CONFIG_V0_1.json")
+          j=json.loads(p.read_text())
+          assert j.get("status")=="FROZEN","LICP_TRIGGER_CONFIG_NOT_FROZEN"
+          PY
+      - name: Restore latest durable XALT-004 state when available
+        run: |
+          mkdir -p /tmp/xalt004
+          gh api --paginate "/repos/${GITHUB_REPOSITORY}/actions/artifacts?per_page=100" > /tmp/xalt-artifacts.json
+          python - <<'PY'
+          import json,pathlib,subprocess
+          raw=pathlib.Path("/tmp/xalt-artifacts.json").read_text()
+          dec=json.JSONDecoder();pos=0;arts=[]
+          while pos<len(raw):
+              while pos<len(raw) and raw[pos].isspace():pos+=1
+              if pos>=len(raw):break
+              obj,end=dec.raw_decode(raw,pos);pos=end;arts.extend(obj.get("artifacts",[]))
+          xs=[a for a in arts if a.get("name","").startswith("licp-fwd-xalt-004-state-") and not a.get("expired")]
+          if not xs:
+              print("NO_PREVIOUS_STATE")
+              raise SystemExit(0)
+          a=max(xs,key=lambda x:x["created_at"])
+          z=pathlib.Path("/tmp/xalt-prev.zip")
+          with z.open("wb") as f:
+              subprocess.check_call(["gh","api",f"/repos/${GITHUB_REPOSITORY}/actions/artifacts/{a['id']}/zip"],stdout=f)
+          subprocess.check_call(["unzip","-q",str(z),"-d","/tmp/xalt-prev"])
+          hits=list(pathlib.Path("/tmp/xalt-prev").rglob("state.json"))
+          if hits:
+              pathlib.Path("/tmp/xalt004/state.json").write_bytes(hits[0].read_bytes())
+              print("RESTORED_STATE",a["id"])
+          PY
+      - name: Run frozen SOL 60m shadow observer
+        env:
+          PYTHONPATH: .
+        run: |
+          python research/liquidation_cascade/licp_fwd_xalt_004_observer_v01.py             --seconds 20700             --state /tmp/xalt004/state.json             --receipt /tmp/xalt004/receipt.json
+      - name: Verify shadow-only receipt
+        run: |
+          python - <<'PY'
+          import json,pathlib
+          r=json.loads(pathlib.Path("/tmp/xalt004/receipt.json").read_text())
+          assert r["live_trading"] is False
+          assert r["persistent_state"] is True
+          assert r["entry_delay_ms"]==60000
+          assert r["horizon_ms"]==3600000
+          assert r["fee_bps"]==16.0
+          print(json.dumps(r["evidence"],indent=2,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: licp-fwd-xalt-004-state-${{ github.run_id }}
+          path: /tmp/xalt004/
+          retention-days: 30
+          if-no-files-found: error

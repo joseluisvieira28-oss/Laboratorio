@@ -1,0 +1,47 @@
+name: licp001-calibration-shard-v01
+
+on:
+  push:
+    branches: [liquidation-cascade-propagation-v0.1]
+    paths:
+      - '.github/workflows/licp001-calibration-shard-v01.yml'
+  workflow_dispatch:
+    inputs:
+      seconds:
+        description: Outcome-blind capture duration in seconds
+        required: false
+        default: '300'
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 65
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: python -m pip install 'websockets>=13,<16'
+      - name: Collect outcome-blind shard
+        run: |
+          CAPTURE_SECONDS="${{ inputs.seconds }}"
+          if [ -z "$CAPTURE_SECONDS" ]; then CAPTURE_SECONDS=300; fi
+          python research/liquidation_cascade/licp001_forward_collector_v01.py --seconds "$CAPTURE_SECONDS" --outdir /tmp/licp001-shard
+      - name: Verify shard is outcome blind
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          h=json.loads(Path('/tmp/licp001-shard/health.json').read_text())
+          assert h['outcome_blind'] is True
+          assert h['schema']=='licp001.health.v2'
+          assert all(h['health'][v]['clock_regressions']==0 for v in ('bybit','binance','mexc'))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: licp001-calibration-shard-${{ github.run_id }}-${{ github.run_attempt }}
+          path: /tmp/licp001-shard/
+          retention-days: 30
+          if-no-files-found: error

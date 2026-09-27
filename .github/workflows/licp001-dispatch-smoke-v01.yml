@@ -1,0 +1,21 @@
+name: licp001-dispatch-smoke-v01
+on:
+  push:
+    branches:
+      - liquidation-cascade-propagation-v0.1
+    paths:
+      - '.github/workflows/licp001-dispatch-smoke-v01.yml'
+permissions:
+  actions: write
+  contents: read
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prove branch workflow self-dispatch capability
+        run: |
+          gh workflow run licp001-aggregate-calibration-blocks-v01.yml             --ref liquidation-cascade-propagation-v0.1
+          echo DISPATCH_REQUEST_ACCEPTED
