@@ -1,0 +1,48 @@
+name: PSRV Source Gate Probe
+
+on:
+  push:
+    branches: [prediction-settlement-rv-v0.1]
+    paths:
+      - 'research/prediction_settlement_rv/PRE_SOURCE_AUTHORITY_V0.1.md'
+      - 'research/prediction_settlement_rv/source_probe.py'
+      - '.github/workflows/prediction_settlement_rv_source_probe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run independent source-only probe
+        run: python research/prediction_settlement_rv/source_probe.py
+      - name: Enforce source-only firewall
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path("artifacts/prediction_settlement_rv/source_gate/source_probe_receipt.json")
+          x=json.loads(p.read_text())
+          a=x["adjudication"]
+          assert a["economic_outputs_computed"] is False
+          assert a["matured_outcomes_read"] is False
+          assert a["future_nearest_joins"] == 0
+          assert a["silent_imputations"] == 0
+          assert a["orders"] is False
+          assert a["authenticated_trading_endpoints"] is False
+          assert a["source_data_pass"] is False
+          print("SOURCE_ONLY_FIREWALL_PASS")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: PSRV_SOURCE_GATE_RECEIPT
+          path: artifacts/prediction_settlement_rv/source_gate/source_probe_receipt.json
+          if-no-files-found: error
