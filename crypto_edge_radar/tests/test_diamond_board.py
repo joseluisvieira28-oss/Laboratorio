@@ -57,6 +57,25 @@ class DiamondBoardTests(unittest.TestCase):
         self.assertTrue(row["public_execution_is_readiness_not_authority"])
         self.assertFalse(row["verdict_allowed_now"])
 
+    def test_ced1d_waiting_archive_preserves_persisted_progress(self):
+        board = build_diamond_board({
+            "ced1d_render_shadow": {
+                "status": "WAITING_SOURCE_ARCHIVE",
+                "progress_metrics_preserved": True,
+                "progress_metrics_source_through_signal_day": "2026-09-23",
+                "metrics": {
+                    "resolved_trade_events": 2,
+                    "complete_utc_signal_weeks": 0,
+                    "routing": "SHADOW_ACCUMULATING",
+                },
+            },
+        })
+        row = board["candidates"]["CED1D-0031"]
+        self.assertEqual(row["resolved_events"], 2)
+        self.assertEqual(row["progress_events"], "2/60")
+        self.assertEqual(row["runtime_status"], "WAITING_SOURCE_ARCHIVE")
+        self.assertFalse(row["verdict_allowed_now"])
+
     def test_etf_never_surfaces_interim_outcome_metrics(self):
         board = build_diamond_board({
             "etf_cme_signal": {
