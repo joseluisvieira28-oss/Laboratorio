@@ -3,6 +3,7 @@ import unittest
 from radar.forward_web import (
     BINANCE_RATE_LIMIT_COOLDOWN_MS,
     CED1D_ARCHIVE_RETRY_MS,
+    binance_rate_limit_retry_plan,
     ced1d_runtime_check_due,
     is_binance_public_rate_limit_error,
     source_rate_limit_retry_due,
@@ -100,11 +101,60 @@ class ForwardWebDashboardTests(unittest.TestCase):
         self.assertEqual(state["source"], "BINANCE_PUBLIC")
         self.assertEqual(state["http_class"], "418_OR_429")
         self.assertEqual(state["cooldown_seconds"], 3600)
+        self.assertEqual(state["cooldown_source"], "FALLBACK_FIXED_1H")
         self.assertFalse(state["evidence_advanced"])
         self.assertFalse(state["authenticated_exchange_api_used"])
         self.assertFalse(state["orders_created"])
         self.assertFalse(state["exchange_mutation_performed"])
         self.assertFalse(state["live_capital_enabled"])
+
+    def test_server_retry_after_controls_retry_deadline(self):
+        class RateLimitError(RuntimeError):
+            http_status = 418
+            retry_after_seconds = 7200
+            ban_until_ms = None
+
+        now_ms = 1_800_000_000_000
+        state = source_rate_limit_wait_state(
+            watcher_id="EMA6H-50X200-REGIME-DEPENDENCY-001-FORWARD-SHADOW",
+            now_ms=now_ms,
+            error=RateLimitError("Binance source rate limited: HTTP 418"),
+        )
+        self.assertEqual(
+            state["cooldown_source"],
+            "SERVER_RETRY_AFTER_PLUS_60S",
+        )
+        self.assertEqual(state["cooldown_seconds"], 7260)
+        self.assertEqual(state["server_retry_after_seconds"], 7200)
+        self.assertIsNone(state["server_ban_until_utc"])
+        expected_ms = now_ms + 7_260_000
+        expected_utc = (
+            __import__("datetime").datetime.fromtimestamp(
+                expected_ms / 1000.0,
+                tz=__import__("datetime").timezone.utc,
+            )
+            .isoformat()
+            .replace("+00:00", "Z")
+        )
+        self.assertEqual(state["retry_not_before_utc"], expected_utc)
+
+    def test_server_ban_until_takes_precedence_over_retry_after(self):
+        class RateLimitError(RuntimeError):
+            http_status = 418
+            retry_after_seconds = 60
+
+            def __init__(self, ban_until_ms):
+                super().__init__("Binance source rate limited: HTTP 418")
+                self.ban_until_ms = ban_until_ms
+
+        now_ms = 1_800_000_000_000
+        ban_until_ms = now_ms + 3 * 60 * 60 * 1000
+        retry_ms, source = binance_rate_limit_retry_plan(
+            error=RateLimitError(ban_until_ms),
+            now_ms=now_ms,
+        )
+        self.assertEqual(source, "SERVER_BAN_UNTIL_PLUS_60S")
+        self.assertEqual(retry_ms, ban_until_ms + 60_000)
 
     def test_dashboard_is_read_only_and_exposes_shadow_state(self):
         html = dashboard_html()

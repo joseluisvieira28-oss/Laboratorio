@@ -1,10 +1,15 @@
 from __future__ import annotations
 
+from email.message import Message
+from io import BytesIO
 from unittest import TestCase
+from unittest.mock import patch
+from urllib.error import HTTPError
 
 from radar.strategies.ema6h_50x200_regime_forward import (
     DAY_MS,FIFTEEN_MIN_MS,SIX_HOUR_MS,FIRST_ELIGIBLE_SIGNAL_CLOSE_MS,
-    Candle,aggregate_15m_to_6h,detect_cross,ema_series,regime_bucket,regime_state,
+    BinanceSpotKlineFeed,Candle,EMA6HRegimeRateLimitError,
+    aggregate_15m_to_6h,detect_cross,ema_series,regime_bucket,regime_state,
     latest_certifiable_signal_close_ms
 )
 
@@ -48,6 +53,55 @@ class EMA6HRegimeMechanicsTests(TestCase):
         b=FIRST_ELIGIBLE_SIGNAL_CLOSE_MS
         self.assertIsNone(latest_certifiable_signal_close_ms(b+FIFTEEN_MIN_MS-1))
         self.assertEqual(latest_certifiable_signal_close_ms(b+FIFTEEN_MIN_MS),b)
+
+    def test_418_is_not_retried_and_preserves_retry_after(self):
+        headers=Message()
+        headers["Retry-After"]="7200"
+        err=HTTPError(
+            "https://data-api.binance.vision/api/v3/klines",
+            418,
+            "I'm a teapot",
+            headers,
+            BytesIO(b'{"code":-1003}'),
+        )
+        feed=BinanceSpotKlineFeed(
+            timeout=1,
+            max_attempts=3,
+            retry_backoff_seconds=0,
+        )
+        target="radar.strategies.ema6h_50x200_regime_forward.urlopen"
+        with patch(target,side_effect=err) as mocked:
+            with self.assertRaises(EMA6HRegimeRateLimitError) as ctx:
+                feed._get_json({"symbol":"BTCUSDT","interval":"15m","limit":1})
+        self.assertEqual(mocked.call_count,1)
+        self.assertEqual(ctx.exception.http_status,418)
+        self.assertEqual(ctx.exception.retry_after_seconds,7200)
+        self.assertIsNone(ctx.exception.ban_until_ms)
+
+    def test_418_body_ban_until_is_preserved_when_header_missing(self):
+        headers=Message()
+        ban_until=1_800_007_200_000
+        body=(
+            '{"code":-1003,"msg":"Way too much request weight used; '
+            'IP banned until 1800007200000."}'
+        ).encode()
+        err=HTTPError(
+            "https://data-api.binance.vision/api/v3/klines",
+            418,
+            "I'm a teapot",
+            headers,
+            BytesIO(body),
+        )
+        feed=BinanceSpotKlineFeed(
+            timeout=1,
+            max_attempts=3,
+            retry_backoff_seconds=0,
+        )
+        target="radar.strategies.ema6h_50x200_regime_forward.urlopen"
+        with patch(target,side_effect=err):
+            with self.assertRaises(EMA6HRegimeRateLimitError) as ctx:
+                feed._get_json({"symbol":"BTCUSDT","interval":"15m","limit":1})
+        self.assertEqual(ctx.exception.ban_until_ms,ban_until)
 
 if __name__=="__main__":
     import unittest;unittest.main()
