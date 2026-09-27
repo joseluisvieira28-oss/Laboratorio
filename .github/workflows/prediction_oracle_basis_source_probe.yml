@@ -23,6 +23,8 @@ jobs:
           python-version: '3.12'
       - name: Run public source-only probe
         run: python research/prediction_oracle_basis/source_probe_15m.py
+      - name: Fetch first-party Kalshi contract-term provenance
+        run: python research/prediction_oracle_basis/kalshi_contract_terms_probe.py
       - name: Verify no economic field names
         run: |
           python - <<'PY'
@@ -36,11 +38,16 @@ jobs:
           if bad:
               raise SystemExit(f"banned economic outputs present: {bad}")
           assert x["adjudication"]["economic_outputs_computed"] is False
+          t=Path("artifacts/prediction_oracle_basis/kalshi_terms/terms_provenance_receipt.json")
+          tx=json.loads(t.read_text())
+          assert tx["prices_read"] is False and tx["returns_computed"] is False and tx["pnl_computed"] is False
           print("OUTCOME_FIREWALL_PASS")
           PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: POB_15M_SOURCE_PROBE_RECEIPT
-          path: artifacts/prediction_oracle_basis/source_probe_receipt.json
+          path: |
+            artifacts/prediction_oracle_basis/source_probe_receipt.json
+            artifacts/prediction_oracle_basis/kalshi_terms/**
           if-no-files-found: error
