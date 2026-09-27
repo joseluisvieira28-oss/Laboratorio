@@ -170,10 +170,14 @@ class OfficialEventT0V02Tests(unittest.TestCase):
                 {
                     "role": "FOMC_ANNUAL_SCHEDULE_ANNOUNCEMENT",
                     "url": "https://www.federalreserve.gov/newsevents/pressreleases/monetary20250905a.htm",
+                    "retrieved_at_utc": "2027-10-10T12:00:00Z",
+                    "extracted_text_sha256": "6" * 64,
                 },
                 {
                     "role": "FOMC_PRECEDING_MEETING_MINUTES_CONFIRMATION",
                     "url": "https://www.federalreserve.gov/monetarypolicy/example-minutes.htm",
+                    "retrieved_at_utc": "2027-10-10T12:00:00Z",
+                    "extracted_text_sha256": "7" * 64,
                 },
             ],
         )
@@ -201,8 +205,16 @@ class OfficialEventT0V02Tests(unittest.TestCase):
             ),
             supporting_official_sources=[
                 {
+                    "role": "BLS_RELEASE_SCHEDULE",
+                    "url": "https://www.bls.gov/schedule/news_release/cpi.htm",
+                    "retrieved_at_utc": "2026-09-27T12:00:00Z",
+                    "extracted_text_sha256": "8" * 64,
+                },
+                {
                     "role": "BLS_DISSEMINATION_POLICY",
                     "url": "https://www.bls.gov/about-bls/dissemination.htm",
+                    "retrieved_at_utc": "2026-09-27T12:00:00Z",
+                    "extracted_text_sha256": "9" * 64,
                 }
             ],
         )
