@@ -5,7 +5,9 @@ from collections import defaultdict
 from datetime import datetime, timezone
 
 LAB="ETH-BLOCKSPACE-STATE-TRANSITION-001"
-EPS=["https://rpc.flashbots.net","https://public.1rpc.io/eth"]
+BULK_EPS=["https://rpc.flashbots.net","https://eth.drpc.org"]
+AUDIT_EP="https://public.1rpc.io/eth"
+ALL_EPS=BULK_EPS+[AUDIT_EP]
 REQ=["number","hash","timestamp","gasLimit","gasUsed","baseFeePerGas","blobGasUsed","excessBlobGas"]
 STEP_BLOCKS=600
 LOOKBACK_BLOCKS=40*7200
@@ -49,6 +51,17 @@ def parse_block(o,h):
 def fetch(ep,h):
     return parse_block(rpc(ep,"eth_getBlockByNumber",[hex(h),False]),h)
 
+def fetch_any(h,preferred):
+    ordered=[preferred]+[x for x in ALL_EPS if x!=preferred]
+    last=None
+    for ep in ordered:
+        try:
+            return fetch(ep,h)
+        except Exception as e:
+            last=e
+            time.sleep(0.5)
+    raise RuntimeError(f"single-height transport failed {h}: {type(last).__name__}:{last}")
+
 def batch_fetch(ep,heights):
     reqs=[{"jsonrpc":"2.0","id":i,"method":"eth_getBlockByNumber","params":[hex(h),False]}
           for i,h in enumerate(heights)]
@@ -59,9 +72,7 @@ def batch_fetch(ep,heights):
     for i,h in enumerate(heights):
         x=byid.get(i)
         if x is None or x.get("error") is not None:
-            # Transport-only retry of the exact same predeclared height.
-            # Never skip, interpolate, replace, or change sampling density.
-            out.append(fetch(ep,h))
+            out.append(fetch_any(h,ep))
             continue
         out.append(parse_block(x.get("result"),h))
     return out
@@ -79,26 +90,36 @@ def main():
          "market_prices_opened":False,"returns_opened":False,"pnl_opened":False,
          "parent_protected_holdout_opened":False}
     try:
-        for ep in EPS:
+        for ep in ALL_EPS:
             if rpc(ep,"eth_chainId",[])!="0x1": raise RuntimeError("wrong chain")
-        tip=rpc(EPS[0],"eth_getBlockByNumber",["finalized",False])
+        tip=rpc(BULK_EPS[0],"eth_getBlockByNumber",["finalized",False])
         tipn=qi(tip["number"])
         start=max(0,tipn-LOOKBACK_BLOCKS)
         heights=list(range(start,tipn+1,STEP_BLOCKS))
         if heights[-1]!=tipn: heights.append(tipn)
         rows=[]
         audit_pass=0
-        chunk=5
-        for base in range(0,len(heights),chunk):
-            hs=heights[base:base+chunk]
-            bulk=batch_fetch(EPS[0],hs)
-            for j,(h,a) in enumerate(zip(hs,bulk),start=base):
-                if j%40==0:
-                    b=fetch(EPS[1],h)
+        pos=0
+        turn=0
+        while pos < len(heights):
+            if turn%2==0:
+                ep=BULK_EPS[0]
+                capacity=5
+            else:
+                ep=BULK_EPS[1]
+                capacity=2
+            hs=heights[pos:pos+capacity]
+            bulk=batch_fetch(ep,hs)
+            for local_idx,(h,a) in enumerate(zip(hs,bulk)):
+                global_idx=pos+local_idx
+                if global_idx%40==0:
+                    b=fetch(AUDIT_EP,h)
                     if a["hash"]!=b["hash"] or a["timestamp"]!=b["timestamp"]:
                         raise RuntimeError(f"provider disagreement {h}")
                     audit_pass+=1
                 rows.append(a)
+            pos+=len(hs)
+            turn+=1
             time.sleep(0.75)
         by=defaultdict(list)
         current_utc=datetime.now(timezone.utc).date().isoformat()
