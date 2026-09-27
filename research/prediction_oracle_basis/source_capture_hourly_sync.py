@@ -26,7 +26,7 @@ OUT = Path("artifacts/prediction_oracle_basis/hourly_sync")
 POLY_EVENTS = "https://gamma-api.polymarket.com/events"
 POLY_BOOK = "https://clob.polymarket.com/book"
 KALSHI_BASE = "https://api.elections.kalshi.com/trade-api/v2"
-BINANCE_BOOK = "https://api.binance.com/api/v3/ticker/bookTicker"
+BINANCE_BOOK = "https://data-api.binance.vision/api/v3/ticker/bookTicker"
 BRTI_ROUTE = "https://www.cfbenchmarks.com/api/v1/values?id=BRTI"
 NY = ZoneInfo("America/New_York")
 FORWARD_HOURS = 12
