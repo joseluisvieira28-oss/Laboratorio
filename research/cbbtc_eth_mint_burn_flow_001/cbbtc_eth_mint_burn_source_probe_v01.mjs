@@ -4,7 +4,8 @@ import fs from "fs";
 const RPC=process.env.ETH_RPC_URL || "https://ethereum-rpc.publicnode.com";
 const ARCHIVE_RPC=process.env.ETH_ARCHIVE_RPC_URL || "https://rpc-eth.blockmachine.io";
 const HEADER_RPCS=[RPC,ARCHIVE_RPC];
-const CODE_RPCS=[ARCHIVE_RPC,RPC];\nconst LOG_RPCS=[RPC,ARCHIVE_RPC,"https://rpc.flashbots.net"];
+const CODE_RPCS=[ARCHIVE_RPC,RPC];
+const LOG_RPCS=[RPC,ARCHIVE_RPC,"https://rpc.flashbots.net"];
 
 const TOKEN=getAddress("0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf");
 const ZERO_TOPIC="0x"+"0".repeat(64);
