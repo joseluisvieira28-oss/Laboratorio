@@ -233,6 +233,7 @@ class ForwardShadowRuntime:
             "health": "STARTING",
             "mode": "PUBLIC_SHADOW_ONLY",
             "evidence_backend": self.store.backend,
+            "database_target_mode": self.settings.database_target_mode,
             "orders_created": False,
         }
         self._last_tfg_due: int | None = None
@@ -703,6 +704,7 @@ class ForwardShadowRuntime:
             "version": "0.9",
             "runtime_identity": _runtime_identity(),
             "evidence_backend": self.store.backend,
+            "database_target_mode": self.settings.database_target_mode,
             "evidence_chain_ok": chain_ok,
             "evidence_chain_detail": chain_detail,
             "evidence_identity": evidence_identity,
@@ -754,6 +756,7 @@ class ForwardShadowRuntime:
                     "checked_at_utc": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
                     "runtime_identity": _runtime_identity(),
                     "evidence_backend": self.store.backend,
+                    "database_target_mode": self.settings.database_target_mode,
                     "errors": {"runtime": f"{type(exc).__name__}:{exc}"},
                     "authenticated_exchange_api_used": False,
                     "orders_created": False,
@@ -967,6 +970,7 @@ def serve_forward_shadow(*, port: int, interval: float) -> int:
             "version": "0.9",
             "runtime_identity": _runtime_identity(),
             "evidence_backend": runtime.store.backend,
+            "database_target_mode": runtime.settings.database_target_mode,
             "evidence_chain_ok": chain_ok,
             "evidence_chain_detail": chain_detail,
             "maintenance_quiesce": True,
