@@ -51,6 +51,59 @@ RUNTIME_GAP_EVENT = "RADAR_RUNTIME_GAP_DETECTED"
 RUNTIME_LIVENESS_BUCKET_MS = 15 * 60 * 1000
 RUNTIME_GAP_ALERT_SECONDS = 30 * 60
 CED1D_ARCHIVE_RETRY_MS = 15 * 60 * 1000
+BINANCE_RATE_LIMIT_COOLDOWN_MS = 60 * 60 * 1000
+
+
+def is_binance_public_rate_limit_error(exc: BaseException | str) -> bool:
+    text = str(exc)
+    return any(
+        token in text
+        for token in (
+            "HTTP Error 418",
+            "HTTP 418",
+            "HTTP Error 429",
+            "HTTP 429",
+        )
+    )
+
+
+def source_rate_limit_retry_due(
+    *,
+    state_status: str | None,
+    retry_not_before_ms: int | None,
+    now_ms: int,
+) -> bool:
+    if state_status != "WAITING_SOURCE_RATE_LIMIT":
+        return True
+    return retry_not_before_ms is None or now_ms >= retry_not_before_ms
+
+
+def source_rate_limit_wait_state(
+    *,
+    watcher_id: str,
+    now_ms: int,
+    error: BaseException | str,
+) -> dict[str, Any]:
+    retry_ms = now_ms + BINANCE_RATE_LIMIT_COOLDOWN_MS
+    retry_utc = (
+        datetime.fromtimestamp(retry_ms / 1000.0, tz=timezone.utc)
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
+    return {
+        "watcher_id": watcher_id,
+        "status": "WAITING_SOURCE_RATE_LIMIT",
+        "source": "BINANCE_PUBLIC",
+        "http_class": "418_OR_429",
+        "cooldown_seconds": BINANCE_RATE_LIMIT_COOLDOWN_MS // 1000,
+        "retry_not_before_utc": retry_utc,
+        "evidence_advanced": False,
+        "last_source_error": str(error),
+        "authenticated_exchange_api_used": False,
+        "orders_created": False,
+        "exchange_mutation_performed": False,
+        "live_capital_enabled": False,
+    }
 
 
 def _runtime_identity() -> dict[str, Any]:
@@ -176,6 +229,7 @@ class ForwardShadowRuntime:
         }
         self._last_tfg_due: int | None = None
         self._last_ema6h_due: int | None = None
+        self._ema6h_retry_not_before_ms: int | None = None
         self._ema6h_state: dict[str, Any] = {
             "status": "STARTING",
             "watcher_id": "EMA6H-50X200-REGIME-DEPENDENCY-001-FORWARD-SHADOW",
@@ -183,6 +237,7 @@ class ForwardShadowRuntime:
         self._last_etf_public_check_ms: int | None = None
         self._last_etf_signal_check_ms: int | None = None
         self._last_options_runtime_day: str | None = None
+        self._options_retry_not_before_ms: int | None = None
         self._last_external_freshness_check_ms: int | None = None
         self._last_deploy_drift_check_ms: int | None = None
         self._deploy_drift_state: dict[str, Any] = {"classification": "STARTING"}
@@ -328,15 +383,39 @@ class ForwardShadowRuntime:
             }
 
         ema6h_due = latest_ema6h_certifiable_signal_close_ms(now_ms)
-        if ema6h_due != self._last_ema6h_due or self._ema6h_state.get("status") == "STARTING":
+        ema6h_retry_due = source_rate_limit_retry_due(
+            state_status=self._ema6h_state.get("status"),
+            retry_not_before_ms=self._ema6h_retry_not_before_ms,
+            now_ms=now_ms,
+        )
+        ema6h_should_attempt = ema6h_retry_due and (
+            ema6h_due != self._last_ema6h_due
+            or self._ema6h_state.get("status") in {"STARTING", "WAITING_SOURCE_RATE_LIMIT"}
+        )
+        if ema6h_should_attempt:
             try:
                 ema6h_state = self.ema6h_regime.run_once(now_ms=now_ms)
                 self._ema6h_state = ema6h_state
                 self._last_ema6h_due = ema6h_due
+                self._ema6h_retry_not_before_ms = None
             except Exception as exc:
-                ema6h_state = {"status": "FAIL_CLOSED", "error": f"{type(exc).__name__}:{exc}"}
-                self._ema6h_state = ema6h_state
-                errors["ema6h_regime"] = ema6h_state["error"]
+                if is_binance_public_rate_limit_error(exc):
+                    ema6h_state = source_rate_limit_wait_state(
+                        watcher_id="EMA6H-50X200-REGIME-DEPENDENCY-001-FORWARD-SHADOW",
+                        now_ms=now_ms,
+                        error=exc,
+                    )
+                    self._ema6h_retry_not_before_ms = (
+                        now_ms + BINANCE_RATE_LIMIT_COOLDOWN_MS
+                    )
+                    self._ema6h_state = ema6h_state
+                else:
+                    ema6h_state = {
+                        "status": "FAIL_CLOSED",
+                        "error": f"{type(exc).__name__}:{exc}",
+                    }
+                    self._ema6h_state = ema6h_state
+                    errors["ema6h_regime"] = ema6h_state["error"]
         else:
             ema6h_state = self._ema6h_state
 
@@ -449,18 +528,39 @@ class ForwardShadowRuntime:
         options_runtime_day = datetime.fromtimestamp(
             now_ms / 1000.0, tz=timezone.utc
         ).date().isoformat()
-        if options_runtime_day != self._last_options_runtime_day:
+        options_retry_due = source_rate_limit_retry_due(
+            state_status=self._options_state.get("status"),
+            retry_not_before_ms=self._options_retry_not_before_ms,
+            now_ms=now_ms,
+        )
+        options_should_attempt = options_retry_due and (
+            options_runtime_day != self._last_options_runtime_day
+            or self._options_state.get("status") in {"STARTING", "WAITING_SOURCE_RATE_LIMIT"}
+        )
+        if options_should_attempt:
             try:
                 options_v21 = self.options_v21.run_once(now_ms=now_ms)
                 self._options_state = options_v21
                 self._last_options_runtime_day = options_runtime_day
+                self._options_retry_not_before_ms = None
             except Exception as exc:
-                options_v21 = {
-                    "status": "FAIL_CLOSED",
-                    "error": f"{type(exc).__name__}:{exc}",
-                }
-                self._options_state = options_v21
-                errors["options_v21"] = options_v21["error"]
+                if is_binance_public_rate_limit_error(exc):
+                    options_v21 = source_rate_limit_wait_state(
+                        watcher_id="OPTIONS-SPOTPERP-001-V2.1-FORWARD-SHADOW",
+                        now_ms=now_ms,
+                        error=exc,
+                    )
+                    self._options_retry_not_before_ms = (
+                        now_ms + BINANCE_RATE_LIMIT_COOLDOWN_MS
+                    )
+                    self._options_state = options_v21
+                else:
+                    options_v21 = {
+                        "status": "FAIL_CLOSED",
+                        "error": f"{type(exc).__name__}:{exc}",
+                    }
+                    self._options_state = options_v21
+                    errors["options_v21"] = options_v21["error"]
         else:
             options_v21 = self._options_state
 
