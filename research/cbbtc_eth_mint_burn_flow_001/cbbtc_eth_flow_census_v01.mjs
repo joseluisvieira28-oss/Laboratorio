@@ -6,6 +6,9 @@ const RPC=process.env.ETH_RPC_URL || "https://ethereum-rpc.publicnode.com";
 const provider=new JsonRpcProvider(RPC);
 const ARCHIVE_RPC=process.env.ETH_ARCHIVE_RPC_URL || "https://rpc-eth.blockmachine.io";
 const MEV_LOG_RPC="https://rpc.mevblocker.io";
+const ONE_RPC="https://public.1rpc.io/eth";
+const FLASHBOTS_RPC="https://rpc.flashbots.net";
+const HEADER_RPCS=[RPC,ARCHIVE_RPC,ONE_RPC,FLASHBOTS_RPC];
 const LOG_RPCS=[RPC,ARCHIVE_RPC,MEV_LOG_RPC];
 const archiveProvider=new JsonRpcProvider(ARCHIVE_RPC);
 
@@ -58,17 +61,21 @@ function rawBlockToInternal(x){
 }
 
 async function getBlockWithRetry(tag,scope){
-  let last=null;
-  for(let attempt=1;attempt<=HEADER_ATTEMPTS;attempt++){
-    try{
-      const x=await rawRpc(RPC,"eth_getBlockByNumber",[normalizeBlockTag(tag),false]);
-      return rawBlockToInternal(x);
-    }catch(e){
-      last=String(e?.shortMessage||e?.message||e);
-      if(attempt<HEADER_ATTEMPTS) await sleep(300*attempt);
+  const failures=[];
+  for(const endpoint of HEADER_RPCS){
+    let last=null;
+    for(let attempt=1;attempt<=HEADER_ATTEMPTS;attempt++){
+      try{
+        const x=await rawRpc(endpoint,"eth_getBlockByNumber",[normalizeBlockTag(tag),false]);
+        return rawBlockToInternal(x);
+      }catch(e){
+        last=String(e?.shortMessage||e?.message||e);
+        if(attempt<HEADER_ATTEMPTS) await sleep(300*attempt);
+      }
     }
+    failures.push({endpoint,error:last});
   }
-  throw new Error(scope+":"+last);
+  throw new Error(scope+":"+JSON.stringify(failures));
 }
 
 async function firstBlockAtOrAfter(ts,label){
