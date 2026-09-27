@@ -1,0 +1,49 @@
+name: POB Kalshi Event Live Data Source Probe
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'research/prediction_oracle_basis/POB_HOURLY_KALSHI_LIVE_DATA_AUTHORITY_V0.1.md'
+      - 'research/prediction_oracle_basis/source_probe_kalshi_event_live_data.py'
+      - '.github/workflows/prediction_oracle_basis_kalshi_live_data_probe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-only:
+    if: github.head_ref == 'prediction-oracle-basis-v0.1' || github.ref_name == 'prediction-oracle-basis-v0.1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Probe public Kalshi event live-data schema
+        run: python research/prediction_oracle_basis/source_probe_kalshi_event_live_data.py
+      - name: Verify firewall
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path("artifacts/prediction_oracle_basis/kalshi_live_data/source_probe_receipt.json")
+          x=json.loads(p.read_text())
+          a=x["adjudication"]
+          assert a["economic_outputs_computed"] is False
+          assert a["matured_outcomes_read"] is False
+          assert a["market_quotes_compared"] is False
+          assert a["orders"] is False
+          assert a["authenticated_trading_endpoints"] is False
+          assert x["schema_observation"]["numeric_reference_values_persisted"] is False
+          print("SOURCE_FIREWALL_PASS")
+          print(a["classification"])
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: POB_KALSHI_EVENT_LIVE_DATA_SOURCE_PROBE
+          path: artifacts/prediction_oracle_basis/kalshi_live_data/source_probe_receipt.json
+          if-no-files-found: error
