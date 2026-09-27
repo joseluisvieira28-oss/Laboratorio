@@ -97,16 +97,22 @@ def build_annual_plan_v02_from_live_status(
             "authority": "BLS",
             "source_url": str(cpi["source_url"]),
             "retrieved_at_utc": checked_at,
+            "evidence_format": str(cpi.get("evidence_format") or ""),
+            "extracted_text_sha256": str(cpi.get("extracted_text_sha256") or ""),
         },
         {
             "authority": "BLS",
             "source_url": str(jobs["source_url"]),
             "retrieved_at_utc": checked_at,
+            "evidence_format": str(jobs.get("evidence_format") or ""),
+            "extracted_text_sha256": str(jobs.get("extracted_text_sha256") or ""),
         },
         {
             "authority": "FEDERAL_RESERVE",
             "source_url": str(fomc["source_url"]),
             "retrieved_at_utc": checked_at,
+            "evidence_format": str(fomc.get("evidence_format") or ""),
+            "extracted_text_sha256": str(fomc.get("extracted_text_sha256") or ""),
         },
     ]
 
