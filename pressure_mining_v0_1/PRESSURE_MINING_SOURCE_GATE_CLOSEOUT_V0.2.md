@@ -8,7 +8,7 @@ No market-return or PnL outcomes were opened.
 ## Canonical source-only execution
 
 GitHub Actions run: 36333172871  
-Job: 108659096021  
+Job: 108658899784  
 Artifact: 10936007015  
 Artifact digest: sha256:48ed6de1b04a91ef479d43f184b2469ae82f96f824c2ad0eaab10403edfc7ad6
 
