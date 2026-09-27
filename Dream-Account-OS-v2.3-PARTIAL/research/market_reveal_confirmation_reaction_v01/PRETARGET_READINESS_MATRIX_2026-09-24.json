@@ -283,11 +283,17 @@
       "gate": "OFFICIAL_EVIDENCE_TEXT_HASH_BINDING_V02",
       "status": "PASS_SYNTHETIC_AND_LIVE",
       "meaning": "annual calendar sources and per-event supporting official sources require extracted-text SHA-256; missing/mutated evidence hashes fail closed and live T0 smoke produces valid official-source fingerprints"
+    },
+    {
+      "gate": "TRIGGER_A_EXTERNAL_WAKEUP_V02",
+      "status": "STAGED_MONITOR_NOT_ACTIVE_AUTOMATION_CAPACITY",
+      "meaning": "the branch watcher accepts TRIGGER_A_WAKEUP_V02.json as a safe wakeup path and always re-probes official BLS/Federal Reserve sources before finalizing; however no continuous external condition-watch could be activated because the account is already at the active-task limit, and the GitHub schedule remains inactive off the default branch"
     }
   ],
   "objective_next_triggers": [
     "BLS publishes complete official 2027 CPI and Employment Situation annual schedules",
-    "official calendar watcher automatically detects annual_plan_trigger_ready_v02=true and runs Trigger-A finalizer",
+    "invoke MRCR H02 Official Calendar Watch V0.2 manually or via the staged TRIGGER_A_WAKEUP_V02.json path; continuous external wakeup monitoring is currently not active because the account is at its active-task limit",
+    "watcher re-probes official sources and, only if annual_plan_trigger_ready_v02=true, automatically runs Trigger-A finalizer",
     "verify uploaded Trigger-A package is PASS_TARGET_LOCKED_PROTOCOL_FROZEN and preserve its annual-plan/implementation/protocol fingerprints",
     "obtain separate explicit TARGET_OBSERVATION_OPEN authority bound to those exact fingerprints",
     "before each event, run live_event_activation_probe_v02; only READY_FOR_EVENT_CAPTURE may arm the prospective collector while outcomes remain blind"
@@ -459,6 +465,16 @@
     "current_external_blocker": "BLS_2027_ANNUAL_PLAN_INCOMPLETE",
     "target_observation_authorized": false,
     "outcomes_authorized": false,
-    "promotion_credit": "NONE"
+    "promotion_credit": "NONE",
+    "external_wakeup": {
+      "wakeup_path": "Dream-Account-OS-v2.3-PARTIAL/research/market_reveal_confirmation_reaction_v01/TRIGGER_A_WAKEUP_V02.json",
+      "github_branch_wakeup_ready": true,
+      "github_default_branch_cron_active": false,
+      "chatgpt_condition_watch_active": false,
+      "blocker": "ACTIVE_AUTOMATION_LIMIT_REACHED",
+      "manual_workflow_dispatch_available": true,
+      "scientific_effect": "NONE",
+      "target_observation_authorized": false
+    }
   }
 }
