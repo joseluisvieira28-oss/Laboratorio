@@ -13,7 +13,11 @@ const START_ISO="2024-09-12T00:00:00Z";
 const END_ISO="2026-01-01T00:00:00Z";
 const TRANSFER_TOPIC=id("Transfer(address,address,uint256)").toLowerCase();
 const ZERO_TOPIC="0x"+"0".repeat(64);
-const CHUNK=2_000;\nconst RPC_TIMEOUT_MS=10_000;\nconst HEADER_ATTEMPTS=3;\nconst ARCHIVE_ATTEMPTS=3;\nconst RANGE_ATTEMPTS=2;
+const CHUNK=2_000;
+const RPC_TIMEOUT_MS=10_000;
+const HEADER_ATTEMPTS=3;
+const ARCHIVE_ATTEMPTS=3;
+const RANGE_ATTEMPTS=2;
 const TOTAL_SUPPLY_SELECTOR="0x18160ddd";
 const hex=n=>"0x"+BigInt(n).toString(16);
 
@@ -53,7 +57,7 @@ function rawBlockToInternal(x){
 
 async function getBlockWithRetry(tag,scope){
   let last=null;
-  for(let attempt=1;attempt<=8;attempt++){
+  for(let attempt=1;attempt<=HEADER_ATTEMPTS;attempt++){
     try{
       const x=await rawRpc(RPC,"eth_getBlockByNumber",[normalizeBlockTag(tag),false]);
       return rawBlockToInternal(x);
@@ -80,7 +84,7 @@ async function firstBlockAtOrAfter(ts,label){
 
 async function archiveSendWithRetry(method,params,scope){
   let last=null;
-  for(let attempt=1;attempt<=8;attempt++){
+  for(let attempt=1;attempt<=ARCHIVE_ATTEMPTS;attempt++){
     try{
       return await rawRpc(ARCHIVE_RPC,method,params);
     }catch(e){
@@ -112,7 +116,7 @@ async function rawLogs(fromBlock,toBlock,topics){
 
 async function queryLogsAdaptive(fromBlock,toBlock,topics,kind,errors,depth=0){
   let last=null;
-  for(let attempt=1;attempt<=6;attempt++){
+  for(let attempt=1;attempt<=RANGE_ATTEMPTS;attempt++){
     try{
       return await rawLogs(fromBlock,toBlock,topics);
     }catch(e){
@@ -168,7 +172,7 @@ async function batchBlockHeaders(blockNumbers){
       jsonrpc:"2.0",id:j+1,method:"eth_getBlockByNumber",params:["0x"+BigInt(n).toString(16),false]
     }));
     let payload=null,last=null;
-    for(let attempt=1;attempt<=8;attempt++){
+    for(let attempt=1;attempt<=HEADER_ATTEMPTS;attempt++){
       try{
         const res=await fetch(RPC,{
           method:"POST",
