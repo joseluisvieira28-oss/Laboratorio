@@ -50,6 +50,7 @@ class QuiesceModeTests(unittest.TestCase):
     def test_quiesce_starts_no_scientific_worker_and_performs_no_cycle(self):
         settings = MagicMock()
         settings.http_timeout = 10
+        settings.database_target_mode = "SOURCE"
 
         with patch.dict(
             os.environ,
@@ -91,6 +92,7 @@ class QuiesceModeTests(unittest.TestCase):
         state = runtime.state()
         self.assertEqual(state["health"], "OK")
         self.assertEqual(state["mode"], "EVIDENCE_WRITES_QUIESCED")
+        self.assertEqual(state["database_target_mode"], "SOURCE")
         self.assertTrue(state["maintenance_quiesce"])
         self.assertTrue(state["evidence_chain_ok"])
         self.assertIn("1035 events", state["evidence_chain_detail"])
