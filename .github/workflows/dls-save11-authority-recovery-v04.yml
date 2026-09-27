@@ -1,0 +1,92 @@
+name: DLS Save11 Authority Recovery V0.4
+
+on:
+  push:
+    branches:
+      - dls-field-enrichment-v01
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_SAVE11_AUTHORITY_RECOVERY_V04.marker
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  recover:
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        include:
+          - id: save11-202407
+            start: '2024-07-19T19:30:52Z'
+            end: '2024-08-01T00:00:00Z'
+            baseline_pattern: 'dls-census-v043-s202407'
+          - id: save11-202408
+            start: '2024-08-01T00:00:00Z'
+            end: '2024-09-01T00:00:00Z'
+            baseline_pattern: 'dls-census-v043-s202408'
+          - id: save11-202409
+            start: '2024-09-01T00:00:00Z'
+            end: '2024-10-01T00:00:00Z'
+            baseline_pattern: 'dls-census-v043-s202409'
+          - id: save11-202410
+            start: '2024-10-01T00:00:00Z'
+            end: '2024-11-01T00:00:00Z'
+            baseline_pattern: 'dls-census-v043-s202410'
+          - id: save11-202411
+            start: '2024-11-01T00:00:00Z'
+            end: '2024-12-01T00:00:00Z'
+            baseline_pattern: 'dls-census-v043-s202411'
+          - id: save11-202412
+            start: '2024-12-01T00:00:00Z'
+            end: '2025-01-01T00:00:00Z'
+            baseline_pattern: 'dls-census-v043-s202412'
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download canonical Save11 census baseline
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 35958824070
+          pattern: ${{ matrix.baseline_pattern }}
+          path: baseline
+          merge-multiple: true
+      - name: Compile Save11 V0.4 authority runner
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/run_save11_authority_recovery_partition_v0_4.py
+      - name: Recover field and unit authority
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/run_save11_authority_recovery_partition_v0_4.py
+          --start "${{ matrix.start }}"
+          --end "${{ matrix.end }}"
+          --baseline baseline
+          --partition-id "${{ matrix.id }}"
+          --field-out "field/${{ matrix.id }}.json"
+          --unit-out "unit/${{ matrix.id }}.json"
+      - name: Upload Save11 V0.4 field receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-save11-field-v04-${{ matrix.id }}
+          path: field/${{ matrix.id }}.json
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Upload Save11 V0.4 unit receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-save11-unit-v04-${{ matrix.id }}
+          path: unit/${{ matrix.id }}.json
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_TRUE
