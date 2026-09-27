@@ -1,0 +1,32 @@
+name: CBBTC getLogs transport diagnostic V0.1
+
+on:
+  push:
+    branches:
+      - cbbtc-getlogs-transport-diag-v01
+    paths:
+      - 'research/cbbtc_eth_mint_burn_flow_001/cbbtc_getlogs_transport_diag_v01.mjs'
+      - '.github/workflows/cbbtc-getlogs-transport-diag-v01.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  diag:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: cbbtc-getlogs-transport-diag-v01
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Probe raw eth_getLogs spans only
+        run: node research/cbbtc_eth_mint_burn_flow_001/cbbtc_getlogs_transport_diag_v01.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cbbtc-getlogs-transport-diag-v01
+          path: artifacts/cbbtc_getlogs_transport_diag_v01.json
+          if-no-files-found: error
