@@ -25,8 +25,8 @@ def fetch_json(url, **kw):
     return r
 
 RPC="https://ethereum-rpc.publicnode.com"
-def rpc(method, params):
-    r=fetch_json(RPC,method="POST",data={"jsonrpc":"2.0","id":1,"method":method,"params":params},timeout=60)
+def rpc(method, params, endpoint=RPC):
+    r=fetch_json(endpoint,method="POST",data={"jsonrpc":"2.0","id":1,"method":method,"params":params},timeout=60)
     j=r["json"]
     if "error" in j:
         raise RuntimeError(f"{method}: {j['error']}")
@@ -89,21 +89,44 @@ lido={"lab_id":"LIDO-WITHDRAWAL-QUEUE-PRESSURE-001","status":"SOURCE_BLOCKED"}
 try:
     queue="0x889edC2eDab5f40e902b864aD4d7AdE8E412F9B1"
     activation=17266004
-    code,code_sha=rpc("eth_getCode",[queue,"latest"])
-    hist_logs,hist_sha=rpc("eth_getLogs",[{"address":queue,"fromBlock":hex(activation),"toBlock":hex(activation+500)}])
+    endpoints=[
+      "https://ethereum-rpc.publicnode.com",
+      "https://eth.llamarpc.com",
+      "https://cloudflare-eth.com",
+      "https://rpc.flashbots.net"
+    ]
+    attempts=[]
+    chosen=None
+    code=None
+    hist_logs=None
+    hist_sha=None
+    for ep in endpoints:
+        try:
+            c0,csha=rpc("eth_getCode",[queue,"latest"],endpoint=ep)
+            logs,lsha=rpc("eth_getLogs",[{"address":queue,"fromBlock":hex(activation),"toBlock":hex(activation+500)}],endpoint=ep)
+            attempts.append({"endpoint":ep,"pass":True,"code_present":c0 not in ("0x","0x0"),"logs":len(logs)})
+            if c0 not in ("0x","0x0"):
+                chosen=ep; code=c0; hist_logs=logs; hist_sha=lsha; break
+        except Exception as inner:
+            attempts.append({"endpoint":ep,"pass":False,"error":repr(inner)})
+    if chosen is None:
+        raise RuntimeError("all public RPC fallbacks failed")
     lido.update({
-      "status":"SOURCE_PASS_PROSPECTIVE_ONLY" if code not in ("0x","0x0") else "SOURCE_PARTIAL",
+      "status":"SOURCE_PASS_PROSPECTIVE_ONLY",
       "queue_address":queue,
       "canonical_activation_block_from_prior_authority":activation,
-      "code_present":code not in ("0x","0x0"),
+      "code_present":True,
       "historical_probe_blocks":500,
       "historical_logs_returned":len(hist_logs),
       "historical_log_query_pass":True,
+      "selected_rpc":chosen,
+      "rpc_attempts":attempts,
       "rpc_receipt_sha256":hist_sha,
       "contamination_note":"2023-2024 market-response outcomes remain prohibited for new ID; source accessibility only."
     })
 except Exception as e:
     lido["error"]=repr(e)
+    lido["rpc_attempts"]=locals().get("attempts",[])
 receipt["probes"]["lido"]=lido
 
 # 3) Pendle public API source feasibility
