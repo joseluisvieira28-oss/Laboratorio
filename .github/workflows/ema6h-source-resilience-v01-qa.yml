@@ -7,13 +7,21 @@ on:
     paths:
       - 'crypto_edge_radar/**'
       - '.github/workflows/ema6h-source-resilience-v01-qa.yml'
+  pull_request:
+    paths:
+      - 'crypto_edge_radar/**'
+      - '.github/workflows/ema6h-source-resilience-v01-qa.yml'
   workflow_dispatch:
+
+concurrency:
+  group: ema6h-source-resilience-v01-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
-  deterministic:
+  deterministic-safety:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -23,6 +31,19 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: python -m pip install -e .
-      - run: python -m compileall radar tests
-      - run: python -m unittest discover -s tests -v
+      - name: Install runtime dependencies
+        run: python -m pip install -e .
+      - name: Compile radar and tests
+        run: python -m compileall radar tests scripts
+      - name: Full deterministic unit suite
+        run: python -m unittest discover -s tests -v
+      - name: Official Binance endpoint candle-equivalence gate
+        run: python scripts/ema6h_source_equivalence_probe.py
+      - name: Upload source-equivalence receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ema6h-source-equivalence-v01
+          path: crypto_edge_radar/artifacts/ema6h_source_equivalence_v01.json
+          if-no-files-found: error
+          retention-days: 30
