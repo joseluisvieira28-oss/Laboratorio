@@ -55,6 +55,17 @@ if isinstance(ob,dict):
                     print("LIST_SCHEMA",k,type(first).__name__)
         elif isinstance(v,dict):
             print("DICT_FIELD",k,"KEYS",sorted(v.keys()))
+            for nk,nv in sorted(v.items()):
+                if isinstance(nv,list):
+                    print("NESTED_LIST_FIELD",k+"."+nk,"COUNT",len(nv))
+                    if nv:
+                        first=nv[0]
+                        if isinstance(first,dict):
+                            print("NESTED_LIST_SCHEMA",k+"."+nk,sorted(first.keys()))
+                        elif isinstance(first,list):
+                            print("NESTED_LIST_SCHEMA",k+"."+nk,[f"index_{i}" for i in range(len(first))])
+                        else:
+                            print("NESTED_LIST_SCHEMA",k+"."+nk,type(first).__name__)
         else:
             print("SCALAR_FIELD",k,"TYPE",type(v).__name__)
 print("NO_PRICE_VALUES_NO_SIZE_VALUES_NO_OUTCOMES_NO_PNL")
