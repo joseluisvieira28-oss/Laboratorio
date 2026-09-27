@@ -1,0 +1,43 @@
+name: ETH-STAKING-FLOW-001 CBT Model Coverage V0.2.0
+on:
+  push:
+    branches:
+      - eth-staking-flow-v3-stagea-cbt-model-coverage-v020
+    paths:
+      - 'research/eth_staking_flow/cbt_model_coverage_probe_v020.py'
+      - '.github/workflows/eth-staking-flow-v3-stagea-cbt-model-coverage-v020.yml'
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify authority and compile
+        run: |
+          test -f research/eth_staking_flow/ETH_STAKING_FLOW_001_V3_STAGEA_CBT_MODEL_COVERAGE_PROBE_V0_2_0.md
+          python -m py_compile research/eth_staking_flow/cbt_model_coverage_probe_v020.py
+      - name: Probe public CBT model metadata
+        run: python research/eth_staking_flow/cbt_model_coverage_probe_v020.py
+      - name: Firewall and print
+        run: |
+          python - <<'PY'
+          import json
+          x=json.load(open('artifacts/ETH_STAKING_FLOW_001_CBT_MODEL_COVERAGE_V0_2_0.json'))
+          assert x['validator_rows_opened'] is False
+          assert x['market_data_opened'] is False
+          assert x['signal_evaluated'] is False
+          assert x['returns_opened'] is False
+          assert x['pnl_opened'] is False
+          assert x['source_after_2026_08_31_opened'] is False
+          print('CLASSIFICATION',x['classification'])
+          print('ATTEMPTS',json.dumps(x['attempts'],sort_keys=True))
+          print('MODEL_METADATA',json.dumps(x.get('model_metadata'),sort_keys=True))
+          print('BOUND_CANDIDATES',json.dumps(x.get('numeric_bound_candidates'),sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ETH_STAKING_FLOW_001_CBT_MODEL_COVERAGE_V0_2_0
+          path: artifacts/ETH_STAKING_FLOW_001_CBT_MODEL_COVERAGE_V0_2_0.json
+          retention-days: 90
