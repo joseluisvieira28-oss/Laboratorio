@@ -1,0 +1,73 @@
+name: CBBTC-ETH-MINT-BURN-FLOW-001 OOS H1-2026 V0.1
+
+on:
+  workflow_dispatch:
+    inputs:
+      authorization_token:
+        description: 'Type OPEN_CBBTC_H1_2026_OOS to authorize protected H1-2026 opening'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cbbtc-eth-mint-burn-flow-001-oos-h1-2026-v01
+  cancel-in-progress: false
+
+jobs:
+  guarded_oos:
+    if: ${{ inputs.authorization_token == 'OPEN_CBBTC_H1_2026_OOS' }}
+    runs-on: macos-15
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - run: npm install --no-save ethers@6.15.0
+
+      - name: Open protected H1-2026 predictor census under explicit authority
+        env:
+          CBBTC_OOS_OPEN_AUTHORITY: AUTHORIZED
+          ETH_RPC_URL: https://ethereum-rpc.publicnode.com
+          ETH_ARCHIVE_RPC_URL: https://rpc-eth.blockmachine.io
+        run: node research/cbbtc_eth_mint_burn_flow_001/cbbtc_oos_h1_2026_census_v01.mjs
+
+      - name: Run frozen outcome-blind sample gate and conditional OOS outcome
+        env:
+          CBBTC_OOS_OPEN_AUTHORITY: AUTHORIZED
+        run: python research/cbbtc_eth_mint_burn_flow_001/cbbtc_oos_h1_2026_eval_v01.py
+
+      - name: Persist OOS evidence
+        if: always()
+        shell: bash
+        run: |
+          set -e
+          mkdir -p research/cbbtc_eth_mint_burn_flow_001/oos_h1_2026_evidence
+          cp -f artifacts/oos_h1_2026/*.json research/cbbtc_eth_mint_burn_flow_001/oos_h1_2026_evidence/ 2>/dev/null || true
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/cbbtc_eth_mint_burn_flow_001/oos_h1_2026_evidence/*.json 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "No durable OOS evidence to commit."
+          else
+            git commit -m "CBBTC-001: persist guarded H1-2026 OOS evidence [skip ci]"
+            git push origin HEAD:cbbtc-eth-mint-burn-flow-001-oos-h1-2026-v01
+          fi
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cbbtc-oos-h1-2026-v01
+          path: artifacts/oos_h1_2026/*
+          if-no-files-found: warn
