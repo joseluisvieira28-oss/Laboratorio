@@ -9,18 +9,26 @@ const header=new JsonRpcProvider(HEADER_RPC);
 const CBETH=getAddress("0xBe9895146f7AF43049ca1c1AE358B0541Ea49704");
 const WETH=getAddress("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2");
 const SOURCE="research/cbeth_redemption_basis_001/SOURCE_GATE_RECEIPT_V0.1.json";
+const EQ="research/cbeth_redemption_basis_001/MULTICALL_TRANSPORT_EQUIVALENCE_RECEIPT_V0.1C.json";
+const MULTI=getAddress("0xcA11bde05977b3631167028862bE2a173976CA11");
 const START_DAY="2023-01-01";
 const END_DAY="2024-12-31";
 const OBS_HOUR_UTC=17;
 
 if(!fs.existsSync(SOURCE)) throw new Error("SOURCE_GATE_RECEIPT_MISSING");
+if(!fs.existsSync(EQ)) throw new Error("MULTICALL_EQUIVALENCE_RECEIPT_MISSING");
 const source=JSON.parse(fs.readFileSync(SOURCE,"utf8"));
+const equivalence=JSON.parse(fs.readFileSync(EQ,"utf8"));
 if(source.classification!=="SOURCE_PASS") throw new Error("SOURCE_GATE_NOT_PASS");
+if(equivalence.classification!=="MULTICALL_TRANSPORT_EQUIVALENCE_PASS") throw new Error("MULTICALL_EQUIVALENCE_NOT_PASS");
 
 const cbI=new Interface(["function exchangeRate() view returns (uint256)"]);
 const poolI=new Interface([
  "function slot0() view returns (uint160 sqrtPriceX96,int24 tick,uint16 observationIndex,uint16 observationCardinality,uint16 observationCardinalityNext,uint8 feeProtocol,bool unlocked)",
  "function liquidity() view returns (uint128)"
+]);
+const multiI=new Interface([
+ "function aggregate3(tuple(address target,bool allowFailure,bytes callData)[] calls) payable returns (tuple(bool success,bytes returnData)[] returnData)"
 ]);
 
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -148,6 +156,18 @@ function exactMarket(token0,token1,sqrt){
 }
 
 const selected=selectPool();
+if(
+  Number(equivalence.selected_pool?.fee)!==selected.fee ||
+  String(equivalence.selected_pool?.pool||"").toLowerCase()!==selected.pool.toLowerCase()
+) throw new Error("EQUIVALENCE_SELECTED_POOL_MISMATCH");
+
+const aggregateCalls=[
+  {target:CBETH,allowFailure:false,callData:cbI.encodeFunctionData("exchangeRate")},
+  {target:selected.pool,allowFailure:false,callData:poolI.encodeFunctionData("slot0")},
+  {target:selected.pool,allowFailure:false,callData:poolI.encodeFunctionData("liquidity")}
+];
+const aggregateCalldata=multiI.encodeFunctionData("aggregate3",[aggregateCalls]);
+
 const days=isoDayRange(START_DAY,END_DAY);
 const rows=[];
 const errors=[];
@@ -168,19 +188,15 @@ for(let i=0;i<days.length;i++){
       if(prev.timestamp>=targetTs) throw new Error("NOT_FIRST_BLOCK_AT_OR_AFTER");
     }
 
-    const rateRaw=await archiveCall(
-      CBETH,cbI.encodeFunctionData("exchangeRate"),meta.hash,"RATE_"+day
+    const aggregateRaw=await archiveCall(
+      MULTI,aggregateCalldata,meta.hash,"MULTICALL_"+day
     );
-    const slotRaw=await archiveCall(
-      selected.pool,poolI.encodeFunctionData("slot0"),meta.hash,"SLOT0_"+day
-    );
-    const liqRaw=await archiveCall(
-      selected.pool,poolI.encodeFunctionData("liquidity"),meta.hash,"LIQ_"+day
-    );
+    const aggregate=multiI.decodeFunctionResult("aggregate3",aggregateRaw)[0];
+    if(aggregate.length!==3||aggregate.some(x=>!x.success)) throw new Error("MULTICALL_SUBCALL_FAIL");
 
-    const rate=BigInt(cbI.decodeFunctionResult("exchangeRate",rateRaw)[0]);
-    const slot=poolI.decodeFunctionResult("slot0",slotRaw);
-    const liquidity=BigInt(poolI.decodeFunctionResult("liquidity",liqRaw)[0]);
+    const rate=BigInt(cbI.decodeFunctionResult("exchangeRate",aggregate[0].returnData)[0]);
+    const slot=poolI.decodeFunctionResult("slot0",aggregate[1].returnData);
+    const liquidity=BigInt(poolI.decodeFunctionResult("liquidity",aggregate[2].returnData)[0]);
     if(rate<=0n) throw new Error("NONPOSITIVE_PROTOCOL_RATE");
     if(liquidity<=0n) throw new Error("NONPOSITIVE_POOL_LIQUIDITY");
 
@@ -203,6 +219,7 @@ for(let i=0;i<days.length;i++){
       signed_basis_exact:{numerator:basisNum.toString(),denominator:basisDen.toString()},
       signed_basis_ppb_trunc:ppb.toString(),
       block_pinned_by_hash:true,
+      transport:"MULTICALL3_EQUIVALENCE_VERIFIED",
       valid:true
     });
   }catch(e){
@@ -243,6 +260,13 @@ const receipt={
     historical_positive_count:selected.historical_positive_count,
     finalized_liquidity:selected.finalized_liquidity.toString(),
     selection_rule:"historical valid count > finalized liquidity > lower fee"
+  },
+  transport:{
+    archive_rpc:ARCHIVE_RPC,
+    multicall3:MULTI,
+    equivalence_stage:equivalence.stage,
+    equivalence_classification:equivalence.classification,
+    block_binding:"EIP-1898 blockHash requireCanonical"
   },
   period:{start_day:START_DAY,end_day:END_DAY,observation_time_utc:"17:00:00"},
   expected_day_count:days.length,
