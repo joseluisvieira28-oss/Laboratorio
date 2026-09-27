@@ -46,6 +46,12 @@ jobs:
       - name: Collect Lido prospective source-only snapshot
         run: python pressure_mining_v0_1/lido_wq_source_snapshot.py
 
+      - name: Verify expected receipts
+        run: |
+          test -s pressure_mining_v0_1/receipts/PRESSURE_MINING_SOURCE_PROBE_RECEIPT_V0.1.json
+          test -s pressure_mining_v0_1/receipts/PRESSURE_MINING_SOURCE_CENSUS_RECEIPT_V0.2.json
+          test -s pressure_mining_v0_1/receipts/LIDO_WQ_SOURCE_SNAPSHOT_V0.1.json
+
       - name: Upload immutable receipt
         uses: actions/upload-artifact@v4
         with:
