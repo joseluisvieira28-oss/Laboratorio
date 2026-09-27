@@ -1,0 +1,46 @@
+name: UKLS Legacy Official Source Probe V0.2
+on:
+  push:
+    branches:
+      - upbit-krw-listing-shock-source-recovery-v0.2
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/upbit_krw_listing_shock_001/source_recovery_probe_v02.py'
+      - '.github/workflows/upbit-krw-listing-shock-source-recovery-v02.yml'
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify frozen authority
+        run: |
+          test -f Dream-Account-OS-v2.3-PARTIAL/research/upbit_krw_listing_shock_001/SOURCE_RECOVERY_AUTHORITY_V0_2.md
+          python -m py_compile Dream-Account-OS-v2.3-PARTIAL/research/upbit_krw_listing_shock_001/source_recovery_probe_v02.py
+      - name: Execute page-1 schema-only probe
+        run: python Dream-Account-OS-v2.3-PARTIAL/research/upbit_krw_listing_shock_001/source_recovery_probe_v02.py
+      - name: Enforce firewall
+        run: |
+          python - <<'PY'
+          import json
+          x=json.load(open('artifacts/UKLS_SOURCE_RECOVERY_PROBE_V0_2.json'))
+          assert x['page_limit']==1
+          assert x['historical_enumeration_opened'] is False
+          assert x['titles_emitted'] is False
+          assert x['ids_emitted'] is False
+          assert x['timestamps_emitted'] is False
+          assert x['binance_opened'] is False
+          print('CLASSIFICATION',x['classification'])
+          print('CANDIDATES',x['usable_legacy_candidates'])
+          for r in x['results']:
+              print(r['name'],r['http_status'],r['response_bytes'],r.get('row_field'),r.get('row_count'),r.get('row_field_names'),r.get('semantic_field_presence'))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: UKLS_SOURCE_RECOVERY_PROBE_V0_2
+          path: artifacts/UKLS_SOURCE_RECOVERY_PROBE_V0_2.json
+          retention-days: 90
