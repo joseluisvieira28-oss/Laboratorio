@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from unittest import TestCase
 from unittest.mock import patch
 
@@ -49,6 +50,44 @@ class TargetConnectionPreflightTests(TestCase):
         self.assertFalse(result["database_mutation"])
         self.assertFalse(result["database_url_switch_authorized"])
         self.assertFalse(result["secret_value_exposed"])
+
+    def test_pooler_components_are_reused_without_final_switch(self):
+        secret = "S3cret with spaces # and ?"
+        with patch.dict(
+            os.environ,
+            {
+                "RADAR_SUPABASE_POOLER_HOST": "aws-1-eu-central-1.pooler.supabase.com",
+                "RADAR_SUPABASE_POOLER_PASSWORD": secret,
+            },
+            clear=False,
+        ), patch(
+            "radar.target_connection_preflight._read_target_snapshot",
+            side_effect=RuntimeError("synthetic component-path connectivity failure"),
+        ) as read_target:
+            result = target_connection_preflight()
+        called_url = read_target.call_args.args[0]
+        self.assertIn("radar_runtime.jqzdvgjeuveiktftyrlz", called_url)
+        self.assertIn("aws-1-eu-central-1.pooler.supabase.com:5432", called_url)
+        self.assertNotIn(secret, str(result))
+        self.assertTrue(result["target_url_configured"])
+        self.assertEqual(result["classification"], "TARGET_PREFLIGHT_FAIL_CLOSED")
+        self.assertNotIn("RADAR_USE_SUPABASE_TARGET", called_url)
+
+    def test_partial_pooler_components_fail_closed_without_secret_reflection(self):
+        secret = "ONLY_PASSWORD_NO_HOST"
+        with patch.dict(
+            os.environ,
+            {
+                "RADAR_SUPABASE_POOLER_HOST": "",
+                "RADAR_SUPABASE_POOLER_PASSWORD": secret,
+            },
+            clear=False,
+        ):
+            result = target_connection_preflight()
+        self.assertEqual(result["classification"], "TARGET_PREFLIGHT_FAIL_CLOSED")
+        self.assertTrue(result["target_url_configured"])
+        self.assertFalse(result["connected"])
+        self.assertNotIn(secret, str(result))
 
     def test_connect_failure_is_fail_closed_and_secret_is_not_reflected(self):
         secret = "SUPER_SECRET_PASSWORD_123"
