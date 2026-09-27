@@ -7,7 +7,7 @@ const MEV_LOG_RPC="https://rpc.mevblocker.io";
 const ONE_RPC="https://public.1rpc.io/eth";
 const FLASHBOTS_RPC="https://rpc.flashbots.net";
 const HEADER_RPCS=[RPC,ARCHIVE_RPC,ONE_RPC,FLASHBOTS_RPC];
-const CODE_RPCS=[ARCHIVE_RPC,RPC];
+const CODE_RPCS=[ARCHIVE_RPC,MEV_LOG_RPC,RPC];
 const LOG_RPCS=[RPC,ARCHIVE_RPC,MEV_LOG_RPC];
 
 const TOKEN=getAddress("0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf");
