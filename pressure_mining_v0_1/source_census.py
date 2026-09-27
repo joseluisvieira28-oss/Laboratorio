@@ -290,8 +290,28 @@ try:
     coverage_pass=0
     historical_row_key_union=set()
     market_key_union=set()
+    protocol_counts={}
+    accounting_asset_counts={}
+    expired_with_points=0
+    expired_with_reward_tokens=0
     for m,_ in expired:
         market_key_union.update(m.keys())
+        proto=m.get("protocol")
+        if isinstance(proto,dict):
+            proto=proto.get("name") or proto.get("id")
+        if isinstance(proto,str) and proto:
+            protocol_counts[proto]=protocol_counts.get(proto,0)+1
+        aa=m.get("accountingAsset")
+        if isinstance(aa,dict):
+            aa=aa.get("symbol") or aa.get("name") or aa.get("address")
+        if isinstance(aa,str) and aa:
+            accounting_asset_counts[aa]=accounting_asset_counts.get(aa,0)+1
+        pts=m.get("points")
+        if pts not in (None,False,[],{},""):
+            expired_with_points+=1
+        rewards=m.get("rewardTokens")
+        if rewards not in (None,False,[],{},""):
+            expired_with_reward_tokens+=1
 
     for m,exp in expired[:10]:
         addr=m.get("address")
@@ -332,6 +352,10 @@ try:
       "markets_enumerated":len(allm),
       "ethereum_markets":len(eth),
       "ethereum_markets_expired_before_2025":len(expired),
+      "expired_with_points_metadata":expired_with_points,
+      "expired_with_reward_tokens":expired_with_reward_tokens,
+      "protocol_counts":dict(sorted(protocol_counts.items(), key=lambda kv:(-kv[1],kv[0]))),
+      "accounting_asset_counts":dict(sorted(accounting_asset_counts.items(), key=lambda kv:(-kv[1],kv[0]))),
       "market_metadata_keys":sorted(market_key_union),
       "historical_row_key_union":sorted(historical_row_key_union),
       "historical_coverage_probe_pass_count":coverage_pass,
