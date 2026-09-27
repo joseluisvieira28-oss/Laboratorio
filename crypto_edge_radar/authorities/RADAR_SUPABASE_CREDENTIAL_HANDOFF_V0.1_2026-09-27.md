@@ -59,13 +59,16 @@ The exact pooler host must not be guessed or frozen before that probe succeeds.
 
 ## Current verified equality boundary
 
-Point-in-time equality was verified at:
-- events: 1098
-- keys: 1020
-- max id: 1098
-- chain head: `2f673358393bfc3903077d57a83a4e575bbc4052bed1ab36d10c9b267b597425`
-- key-binding SHA256: `fb42a5353c1fbb28cef971f538b66458548ba4d01c4069255ea4cb9656b483a9`
-- sequence: 1098 / called=true
+Point-in-time equality was most recently verified at:
+- observed source/target boundary: 2026-09-27 10:45 UTC
+- events: 1099
+- keys: 1021
+- max id: 1099
+- chain head: `c2111ee37f4b1312b3cec36f93d6f6e6235b9908bdbe568a84ecda5b71020fa3`
+- key-binding SHA256: `997ed29199048fd5f3a4de9e3f4d7cdce2caf5326b08e6bd54ec412fde1f824f`
+- sequence: 1099 / called=true
+
+Source identity was produced by the canonical secret-safe `RADAR_EVIDENCE_IDENTITY_V0.1`; target identity was independently queried through the connected Supabase project. This remains a point-in-time observation, not final cutover authority.
 
 This boundary is observational only and will age as the source continues collecting. The discovery probe must therefore use a fresh identity at execution time.
 
