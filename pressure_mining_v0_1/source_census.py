@@ -175,43 +175,105 @@ try:
     attempts=[]
     selected=None
     result=None
-    for ep in RPC_ENDPOINTS:
-        try:
-            if rpc(ep,"eth_chainId",[])!="0x1":
-                raise RuntimeError("wrong chain")
 
-            anchor=receipt_contains_event(ep,absorb_anchor_tx,comet,absorb)
-            b0=first_block_at_or_after(ep,t0)
-            b1=first_block_at_or_after(ep,t1)
-            if not (b0 <= anchor["block_number"] <= b1):
-                raise RuntimeError(
-                    f"anchor block {anchor['block_number']} outside frozen window {b0}-{b1}"
-                )
+    # V0.1 independently resolved these exact timestamp boundaries using
+    # Ethereum block timestamps before the zero-log provider defect was found.
+    # Preserve that valid source-only boundary and use Blockscout's indexed log
+    # route to avoid a multi-thousand-call archive scan.
+    frozen_b0=16_308_190
+    frozen_b1=21_525_890
+    blockscout_ep="https://eth.blockscout.com/api/eth-rpc"
+    try:
+        absorb_logs,fail_a=get_logs_adaptive(
+            blockscout_ep,comet,absorb,frozen_b0,frozen_b1
+        )
+        buy_logs,fail_b=get_logs_adaptive(
+            blockscout_ep,comet,buy,frozen_b0,frozen_b1
+        )
+        txs={str(x.get("transactionHash","")).lower() for x in absorb_logs}
+        if absorb_anchor_tx.lower() not in txs:
+            raise RuntimeError(
+                "indexed archive sanity failure: known AbsorbCollateral anchor not recovered"
+            )
+        if len(absorb_logs)==0:
+            raise RuntimeError("indexed archive sanity failure: zero AbsorbCollateral logs")
+        anchor_log=next(
+            x for x in absorb_logs
+            if str(x.get("transactionHash","")).lower()==absorb_anchor_tx.lower()
+        )
+        anchor={
+            "tx_hash":absorb_anchor_tx,
+            "block_number":int(str(anchor_log["blockNumber"]),16)
+                if str(anchor_log["blockNumber"]).startswith("0x")
+                else int(anchor_log["blockNumber"]),
+            "matching_logs":sum(
+                1 for x in absorb_logs
+                if str(x.get("transactionHash","")).lower()==absorb_anchor_tx.lower()
+            ),
+            "authority":"BLOCKSCOUT_INDEXED_LOG",
+        }
+        selected=blockscout_ep
+        result=(
+            frozen_b0,frozen_b1,absorb_logs,buy_logs,
+            fail_a+fail_b,anchor
+        )
+        attempts.append({
+            "endpoint":"https://eth.blockscout.com/api/?module=logs&action=getLogs",
+            "pass":True,
+            "absorb_logs":len(absorb_logs),
+            "buy_logs":len(buy_logs),
+            "block_range":[frozen_b0,frozen_b1],
+            "anchor_recovered":True,
+            "boundary_source":"V0.1 timestamp boundary preserved",
+        })
+    except Exception as inner:
+        attempts.append({
+            "endpoint":"https://eth.blockscout.com/api/?module=logs&action=getLogs",
+            "pass":False,
+            "error":repr(inner),
+        })
 
-            absorb_logs,fail_a=get_logs_adaptive(ep,comet,absorb,b0,b1)
-            buy_logs,fail_b=get_logs_adaptive(ep,comet,buy,b0,b1)
+    # Conservative fallback: only if the indexed route fails.
+    if selected is None:
+        for ep in RPC_ENDPOINTS:
+            if ep==blockscout_ep:
+                continue
+            try:
+                if rpc(ep,"eth_chainId",[])!="0x1":
+                    raise RuntimeError("wrong chain")
 
-            txs={str(x.get("transactionHash","")).lower() for x in absorb_logs}
-            if absorb_anchor_tx.lower() not in txs:
-                raise RuntimeError(
-                    "archive sanity failure: anchor receipt exists but eth_getLogs did not recover it"
-                )
-            if len(absorb_logs)==0:
-                raise RuntimeError("archive sanity failure: zero AbsorbCollateral logs")
+                anchor=receipt_contains_event(ep,absorb_anchor_tx,comet,absorb)
+                b0=first_block_at_or_after(ep,t0)
+                b1=first_block_at_or_after(ep,t1)
+                if not (b0 <= anchor["block_number"] <= b1):
+                    raise RuntimeError(
+                        f"anchor block {anchor['block_number']} outside frozen window {b0}-{b1}"
+                    )
 
-            selected=ep
-            result=(b0,b1,absorb_logs,buy_logs,fail_a+fail_b,anchor)
-            attempts.append({
-                "endpoint":ep,
-                "pass":True,
-                "absorb_logs":len(absorb_logs),
-                "buy_logs":len(buy_logs),
-                "block_range":[b0,b1],
-                "anchor_recovered":True,
-            })
-            break
-        except Exception as inner:
-            attempts.append({"endpoint":ep,"pass":False,"error":repr(inner)})
+                absorb_logs,fail_a=get_logs_adaptive(ep,comet,absorb,b0,b1)
+                buy_logs,fail_b=get_logs_adaptive(ep,comet,buy,b0,b1)
+
+                txs={str(x.get("transactionHash","")).lower() for x in absorb_logs}
+                if absorb_anchor_tx.lower() not in txs:
+                    raise RuntimeError(
+                        "archive sanity failure: anchor receipt exists but eth_getLogs did not recover it"
+                    )
+                if len(absorb_logs)==0:
+                    raise RuntimeError("archive sanity failure: zero AbsorbCollateral logs")
+
+                selected=ep
+                result=(b0,b1,absorb_logs,buy_logs,fail_a+fail_b,anchor)
+                attempts.append({
+                    "endpoint":ep,
+                    "pass":True,
+                    "absorb_logs":len(absorb_logs),
+                    "buy_logs":len(buy_logs),
+                    "block_range":[b0,b1],
+                    "anchor_recovered":True,
+                })
+                break
+            except Exception as inner:
+                attempts.append({"endpoint":ep,"pass":False,"error":repr(inner)})
 
     if selected is None:
         raise RuntimeError(f"all archive census routes failed sanity checks: {attempts}")
