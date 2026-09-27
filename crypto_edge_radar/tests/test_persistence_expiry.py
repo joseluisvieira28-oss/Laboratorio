@@ -36,12 +36,23 @@ class PersistenceExpiryTests(TestCase):
         self.assertTrue(ok["target_equivalence_verified_at_backup_boundary"])
         self.assertEqual(ok["target_event_count_at_backup_boundary"], 1032)
         self.assertEqual(ok["target_key_count_at_backup_boundary"], 954)
+        self.assertEqual(ok["target_runtime_role"], "radar_runtime")
+        self.assertTrue(ok["target_runtime_role_prepared"])
+        self.assertTrue(ok["target_runtime_role_least_privilege"])
+        self.assertEqual(
+            ok["target_connection_mode"],
+            "SUPAVISOR_SHARED_SESSION_5432_IPV4",
+        )
+        self.assertTrue(ok["target_schema_preprovisioned_required"])
         self.assertFalse(ok["target_url_configured"])
+        self.assertFalse(ok["target_pooler_host_discovered"])
+        self.assertFalse(ok["target_connection_credential_configured"])
         self.assertEqual(
             ok["cutover_blocker"],
             "TARGET_CONNECTION_CREDENTIAL_NOT_CONFIGURED",
         )
         self.assertTrue(ok["final_quiesced_refresh_required"])
+        self.assertFalse(ok["final_cutover_authorized"])
 
         warn=persistence_expiry_state(
             expiry, now=datetime(2026,10,5,8,47,15,tzinfo=timezone.utc)

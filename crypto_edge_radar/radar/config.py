@@ -1,7 +1,9 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import os
+import re
+from urllib.parse import quote
 
 CORE5 = ("BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT")
 ALLOWED_UNIVERSE_MODES = {"core5", "liquid"}
@@ -18,6 +20,18 @@ def _int_env(name: str, default: int) -> int:
     return value
 
 
+def _bool_env(name: str, default: bool = False) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    value = raw.strip().lower()
+    if value in {"1", "true", "yes", "on"}:
+        return True
+    if value in {"0", "false", "no", "off"}:
+        return False
+    raise ValueError(f"{name} must be a boolean")
+
+
 def _float_env(name: str, default: float) -> float:
     raw = os.getenv(name)
     if raw is None:
@@ -28,10 +42,48 @@ def _float_env(name: str, default: float) -> float:
     return value
 
 
+SUPABASE_PROJECT_REF = "jqzdvgjeuveiktftyrlz"
+SUPABASE_POOLER_HOST_RE = re.compile(
+    r"^aws-[0-9]+-eu-central-1[.]pooler[.]supabase[.]com$"
+)
+
+
+def _supabase_target_url_from_env() -> str | None:
+    if not _bool_env("RADAR_USE_SUPABASE_TARGET", False):
+        return None
+
+    host = os.getenv("RADAR_SUPABASE_POOLER_HOST", "").strip().lower()
+    if not SUPABASE_POOLER_HOST_RE.fullmatch(host):
+        raise ValueError(
+            "RADAR_SUPABASE_POOLER_HOST must be an audited eu-central-1 "
+            "Supavisor host"
+        )
+
+    password = os.getenv("RADAR_SUPABASE_POOLER_PASSWORD", "")
+    if not password:
+        raise ValueError(
+            "RADAR_SUPABASE_POOLER_PASSWORD is required when "
+            "RADAR_USE_SUPABASE_TARGET=true"
+        )
+
+    user = f"radar_runtime.{SUPABASE_PROJECT_REF}"
+    return (
+        "postgresql://"
+        + quote(user, safe=".")
+        + ":"
+        + quote(password, safe="")
+        + "@"
+        + host
+        + ":5432/postgres?sslmode=require"
+    )
+
+
 @dataclass(frozen=True)
 class Settings:
     db_path: str = "radar_evidence.sqlite3"
-    database_url: str | None = None
+    database_url: str | None = field(default=None, repr=False)
+    database_schema_preprovisioned: bool = False
+    database_target_mode: str = "SOURCE"
     status_path: str = "radar_status.json"
     notification_path: str = "radar_notifications.jsonl"
     provider: str = "binance_usdm"
@@ -50,12 +102,28 @@ class Settings:
         provider = os.getenv("RADAR_PROVIDER", "binance_usdm").strip().lower()
         if provider not in ALLOWED_PROVIDERS:
             raise ValueError(f"RADAR_PROVIDER must be one of {sorted(ALLOWED_PROVIDERS)}")
-        database_url = os.getenv("RADAR_DATABASE_URL")
-        if database_url is not None:
-            database_url = database_url.strip() or None
+        source_database_url = os.getenv("RADAR_DATABASE_URL")
+        if source_database_url is not None:
+            source_database_url = source_database_url.strip() or None
+
+        target_database_url = _supabase_target_url_from_env()
+        if target_database_url is not None:
+            database_url = target_database_url
+            database_schema_preprovisioned = True
+            database_target_mode = "SUPABASE_POOLER"
+        else:
+            database_url = source_database_url
+            database_schema_preprovisioned = _bool_env(
+                "RADAR_POSTGRES_SCHEMA_PREPROVISIONED",
+                False,
+            )
+            database_target_mode = "SOURCE"
+
         return cls(
             db_path=os.getenv("RADAR_DB", "radar_evidence.sqlite3"),
             database_url=database_url,
+            database_schema_preprovisioned=database_schema_preprovisioned,
+            database_target_mode=database_target_mode,
             status_path=os.getenv("RADAR_STATUS", "radar_status.json"),
             notification_path=os.getenv(
                 "RADAR_NOTIFICATIONS", "radar_notifications.jsonl"

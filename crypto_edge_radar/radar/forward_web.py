@@ -42,6 +42,7 @@ from .etf_cme_exact_scheduler import ETFCMEExactRuntimeScheduler
 from .external_freshness import all_external_freshness
 from .private_evidence_backup import emit_snapshot_json_chunks, emit_snapshot_log_chunks
 from .persistence_expiry import persistence_expiry_state
+from .supabase_pooler_probe import probe_from_env as supabase_pooler_probe_from_env
 from .deploy_drift import deployment_drift_receipt
 from .diamond_board import build_diamond_board
 
@@ -185,7 +186,11 @@ class ForwardShadowRuntime:
 
     def __init__(self, *, settings: Settings) -> None:
         self.settings = settings
-        self.store = build_evidence_store(settings.db_path, settings.database_url)
+        self.store = build_evidence_store(
+            settings.db_path,
+            settings.database_url,
+            schema_preprovisioned=settings.database_schema_preprovisioned,
+        )
         self.tfg = TFGForwardShadowWatcher(
             store=self.store,
             feed=MEXCSpotKlineFeed(timeout=settings.http_timeout),
@@ -952,6 +957,23 @@ def serve_forward_shadow(*, port: int, interval: float) -> int:
         emit_snapshot_log_chunks(runtime.store)
     if os.getenv("RADAR_BACKUP_JSON_LOG_EMIT_ON_START", "").lower() == "true":
         emit_snapshot_json_chunks(runtime.store)
+
+    if os.getenv("RADAR_SUPABASE_POOLER_PROBE_ON_START", "").lower() == "true":
+        try:
+            pooler_probe = supabase_pooler_probe_from_env()
+        except Exception as exc:
+            pooler_probe = {
+                "classification": "POOLER_PROBE_FAIL_CLOSED",
+                "error": f"{type(exc).__name__}:{exc}",
+                "database_mutation": False,
+                "secret_value_exposed": False,
+                "final_cutover_authorized": False,
+            }
+        print(
+            "RADAR_SUPABASE_POOLER_PROBE "
+            + json.dumps(pooler_probe, sort_keys=True),
+            flush=True,
+        )
 
     if not quiesced:
         exact_etf_worker = threading.Thread(
