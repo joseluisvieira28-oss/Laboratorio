@@ -1,0 +1,48 @@
+name: UKLS Title-Linked Legacy Modern Equivalence V0.2.6
+on:
+  push:
+    branches:
+      - upbit-krw-listing-shock-title-equivalence-v0.2.6
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/upbit_krw_listing_shock_001/title_linked_equivalence_v026.py'
+      - '.github/workflows/upbit-krw-listing-shock-title-equivalence-v026.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check brotli
+      - name: Verify frozen authority
+        run: |
+          test -f Dream-Account-OS-v2.3-PARTIAL/research/upbit_krw_listing_shock_001/TITLE_LINKED_LEGACY_MODERN_EQUIVALENCE_AUTHORITY_V0_2_6.md
+          python -m py_compile Dream-Account-OS-v2.3-PARTIAL/research/upbit_krw_listing_shock_001/title_linked_equivalence_v026.py
+      - name: Execute source-only title-linked equivalence
+        run: python Dream-Account-OS-v2.3-PARTIAL/research/upbit_krw_listing_shock_001/title_linked_equivalence_v026.py
+      - name: Enforce firewall
+        run: |
+          python - <<'PY'
+          import json
+          x=json.load(open('artifacts/UKLS_TITLE_LINKED_EQUIVALENCE_V0_2_6.json'))
+          assert x['event_values_emitted'] is False
+          assert x['historical_enumeration_opened'] is False
+          assert x['source_gate_opened'] is False
+          assert x['binance_opened'] is False
+          print('CLASSIFICATION',x['classification'])
+          print('COMPARABLE_TITLES',x['comparable_exact_title_count'])
+          print('CREATED_FIRST_EXACT',x['created_to_first_exact_count'])
+          print('UPDATED_LISTED_EXACT',x['updated_to_listed_exact_count'])
+          print('ALL_EXACT',x['all_timestamp_fields_exact_count'])
+          print('FAMILIES',x['families'])
+          print('AGG_SHA',x['comparison_aggregate_sha256'])
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: UKLS_TITLE_LINKED_EQUIVALENCE_V0_2_6
+          path: artifacts/UKLS_TITLE_LINKED_EQUIVALENCE_V0_2_6.json
+          retention-days: 90
