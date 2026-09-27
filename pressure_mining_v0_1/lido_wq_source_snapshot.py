@@ -41,6 +41,16 @@ missing=sorted(required-set(payload.keys()))
 if missing:
     raise RuntimeError(f"SOURCE_SCHEMA_FAIL missing={missing}")
 
+request_info=payload["requestInfo"]
+if isinstance(request_info,dict):
+    request_info_schema={"type":"dict","keys":sorted(request_info.keys())}
+elif isinstance(request_info,list):
+    request_info_schema={"type":"list","length":len(request_info)}
+    if request_info and isinstance(request_info[0],dict):
+        request_info_schema["first_item_keys"]=sorted(request_info[0].keys())
+else:
+    request_info_schema={"type":type(request_info).__name__}
+
 snapshot={
     "lab_id":"LIDO-WITHDRAWAL-QUEUE-PRESSURE-001",
     "protocol":"LIDO_WQ_SOURCE_COLLECTION_PROTOCOL_V0.1",
@@ -50,6 +60,7 @@ snapshot={
     "http_status":status,
     "raw_payload_sha256":sha256_bytes(raw),
     "top_level_keys":sorted(payload.keys()),
+    "request_info_schema":request_info_schema,
     "raw_payload":payload,
     "firewall":{
         "source_only":True,
@@ -80,5 +91,6 @@ print(json.dumps({
     "raw_payload_sha256":snapshot["raw_payload_sha256"],
     "snapshot_sha256_pre_self_field":snapshot["snapshot_sha256_pre_self_field"],
     "top_level_keys":snapshot["top_level_keys"],
+    "request_info_schema":snapshot["request_info_schema"],
 },sort_keys=True,indent=2))
 print(f"snapshot={out}")
