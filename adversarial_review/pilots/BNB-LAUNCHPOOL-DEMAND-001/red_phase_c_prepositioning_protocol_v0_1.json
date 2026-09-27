@@ -1,0 +1,73 @@
+{
+  "protocol_id": "BNB-ADVERSARIAL-PHASE-C-PREPOSITIONING-DIAGNOSTIC-V0.1",
+  "status": "FROZEN_AFTER_PHASE_B_FINDING_BEFORE_PHASE_C_RESULTS",
+  "origin": "Generated only because pre-frozen RT-005 Phase B found the -1 day arm materially stronger than the post-announcement arm.",
+  "evidentiary_role": "POST_HOC_DIAGNOSTIC_ONLY_ZERO_PROMOTION_CREDIT",
+  "candidate": "BNB-LAUNCHPOOL-DEMAND-001",
+  "historical_raw_only": true,
+  "protected_2026_access": false,
+  "tests": {
+    "c01_paired_pre_post": {
+      "cohort": "All original selected historical trades with complete T-24h, T0 and T+24h opens in canonical RAW.",
+      "pre_return": "T-24h open to T0 entry open, BASE20 applied for comparability",
+      "post_return": "T0 entry open to T+24h open, BASE20",
+      "report": [
+        "N",
+        "pre_mean",
+        "pre_pf",
+        "post_mean",
+        "post_pf",
+        "paired_mean_post_minus_pre",
+        "post_gt_pre_count"
+      ],
+      "inference": "10,000 paired sign-flip permutations of (post-pre), seed 20260927; report two-sided fraction |perm_mean| >= |observed_mean|."
+    },
+    "c02_pre_tail_dependency": {
+      "tests": [
+        "remove largest pre-event winner",
+        "remove five largest pre-event winners"
+      ],
+      "metrics": [
+        "mean BASE20",
+        "PF"
+      ],
+      "role": "Characterize whether the pre-event anomaly is itself tail-driven."
+    },
+    "c03_event_window_decomposition": {
+      "windows": [
+        "T-24h to T-12h",
+        "T-12h to T0",
+        "T0 to T+12h",
+        "T+12h to T+24h"
+      ],
+      "price": "15m open at exact window boundary",
+      "cost": "No trading-cost claim for subwindows; report gross bps only because this is mechanism decomposition, not an executable strategy.",
+      "report": [
+        "pooled mean",
+        "median",
+        "positive fraction",
+        "block means"
+      ]
+    },
+    "c04_momentum_matched_placebo": {
+      "seed": 20260927,
+      "replications": 10000,
+      "cohort": "Original selected trades with complete pre24h and post24h data.",
+      "candidate_pool": "Same YYYY-MM and same UTC quarter-hour, actual date ±1 day excluded, complete pre24h and post24h required.",
+      "matching": "For each event select the five candidate dates with smallest absolute difference between candidate pre24h gross return and actual event pre24h gross return; deterministic timestamp tie-break.",
+      "minimum_event_coverage_fraction": 0.9,
+      "overlap": "Reject and redraw any placebo portfolio with overlapping 24h post windows within a historical block.",
+      "statistic": "post24h BASE20 pooled mean",
+      "report": [
+        "actual common-cohort post mean",
+        "matched placebo distribution",
+        "fraction placebo >= actual",
+        "coverage",
+        "pre-return matching error distribution"
+      ],
+      "interpretation": "If matched momentum controls reproduce the post-event return, that challenges event-specific incremental information. If they do not, event timing retains incremental evidence. Diagnostic only."
+    }
+  },
+  "anti_rescue": true,
+  "execution_authority": false
+}
