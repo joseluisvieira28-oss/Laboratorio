@@ -1,0 +1,56 @@
+name: EBST forward economic shadow v0.1
+on:
+  push:
+    branches: [eth-blockspace-state-transition-v0.1]
+    paths:
+      - 'research/eth_blockspace_state_transition/forward_economic_v01.py'
+      - '.github/workflows/ebst-forward-economic-v01.yml'
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ebst-forward-economic-v01
+  cancel-in-progress: false
+
+jobs:
+  forward:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: eth-blockspace-state-transition-v0.1
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Push preflight
+        if: github.event_name == 'push'
+        run: python research/eth_blockspace_state_transition/forward_economic_v01.py --preflight
+      - name: Rebuild canonical source state
+        if: github.event_name != 'push'
+        run: python research/eth_blockspace_state_transition/source_warmup_v01.py
+      - name: Evaluate successor forward shadow
+        if: github.event_name != 'push'
+        run: python research/eth_blockspace_state_transition/forward_economic_v01.py --source-receipt EBST_SOURCE_WARMUP_V0_1.json
+      - name: Persist successor event ledger
+        if: github.event_name != 'push'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add forward_state/ebst_economic
+          if git diff --cached --quiet; then
+            echo "No economic-state change"
+          else
+            git commit -m "EBST forward economic shadow state"
+            git push origin HEAD:eth-blockspace-state-transition-v0.1
+          fi
+      - uses: actions/upload-artifact@v4
+        if: github.event_name != 'push'
+        with:
+          name: ebst-forward-economic-v01
+          path: |
+            EBST_SOURCE_WARMUP_V0_1.json
+            forward_state/ebst_economic/
