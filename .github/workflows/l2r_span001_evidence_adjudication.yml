@@ -1,0 +1,171 @@
+name: L2R SPAN-001 Evidence Adjudication
+
+on:
+  push:
+    branches:
+      - l2r-overlay-etf-cme-span-v0.1
+    paths:
+      - research/l2_resiliency_overlay_span/_evidence_inputs/SPAN001_EVIDENCE_V0_1.b64.txt
+
+permissions:
+  contents: read
+
+jobs:
+  adjudicate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: l2r-overlay-etf-cme-span-v0.1
+
+      - name: Reconstruct and verify evidence
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/span001
+          base64 -d research/l2_resiliency_overlay_span/_evidence_inputs/SPAN001_EVIDENCE_V0_1.b64.txt > /tmp/span001/evidence.zip
+          echo "EVIDENCE_ZIP_SHA256=$(sha256sum /tmp/span001/evidence.zip | awk '{print $1}')"
+          unzip -t /tmp/span001/evidence.zip
+          unzip -q /tmp/span001/evidence.zip -d /tmp/span001/unpacked
+          find /tmp/span001/unpacked -maxdepth 1 -type f -print -exec sha256sum {} \;
+
+      - name: Apply frozen SPAN-001 gate
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import csv, glob, hashlib, json, math, os, statistics, zipfile
+          from pathlib import Path
+
+          root=Path('/tmp/span001/unpacked')
+          receipt_path=next(root.glob('*RECEIPT*.json'))
+          cells_path=next(root.glob('*CELL_SUMMARY*.csv'))
+          ledger_path=next(root.glob('*LEDGER*.csv'))
+
+          receipt=json.loads(receipt_path.read_text(encoding='utf-8-sig'))
+          with cells_path.open('r',encoding='utf-8-sig',newline='') as f:
+              cells=list(csv.DictReader(f))
+          with ledger_path.open('r',encoding='utf-8-sig',newline='') as f:
+              ledger=list(csv.DictReader(f))
+
+          expected_etf='40bd341c300532e5b67127a098c82ecf2f41e1cc4a3ce646ac824b27529f9bd1'
+          expected_l2='767e75594864344c75dd2669ec4fad8c738710c218322b11fd43a83077ef17c3'
+
+          assert receipt['lab_id']=='L2R-OVERLAY-ETF-CME-SPAN-001'
+          assert receipt['parent_etf_artifact_sha256']==expected_etf
+          assert receipt['parent_l2_manifest_sha256']==expected_l2
+          assert receipt['parent_etf_rows']==50
+          assert receipt['parent_nonzero_rows']==49
+          assert len(cells)==6
+          assert len(ledger)==49*6
+
+          fw=receipt['firewalls']
+          for k in ['access_2026','market_data_network','orders','live_trading','exchange_mutation','main_merge']:
+              assert fw[k] is False, (k,fw[k])
+
+          raw=receipt['raw_scan']
+          assert raw['objects_verified']==8400
+
+          parsed={}
+          for r in cells:
+              name=r['cell']
+              parsed[name]={
+                'selected_n':int(r['selected_n']),
+                'aligned_n':int(r['aligned_n']),
+                'opposed_n':int(r['opposed_n']),
+                'no_active_weak_n':int(r['no_active_weak_n']),
+                'source_gated_n':int(r['source_gated_n']),
+                'sample_viable':r['sample_viable'].strip().lower()=='true',
+                'aligned_mean':None if r['aligned_mean_parent_span_bps']=='' else float(r['aligned_mean_parent_span_bps']),
+                'opposed_mean':None if r['opposed_mean_parent_span_bps']=='' else float(r['opposed_mean_parent_span_bps']),
+                'separation':None if r['separation_bps']=='' else float(r['separation_bps']),
+              }
+
+          expected_cells=['R1_Y5','R1_Y15','R1_Y60','R5_Y15','R5_Y60','R15_Y60']
+          assert list(parsed)==expected_cells
+          # frozen sample rule
+          for name,s in parsed.items():
+              viable=(s['selected_n']>=10 and s['aligned_n']>=3 and s['opposed_n']>=3)
+              assert s['sample_viable']==viable, (name,s,viable)
+              assert s['aligned_n']+s['opposed_n']==s['selected_n'], name
+              assert s['selected_n']+s['no_active_weak_n']+s['source_gated_n']==49, name
+
+          source_present=receipt['source_present_parent_rows']
+          viable_names=[n for n in expected_cells if parsed[n]['sample_viable']]
+          viable_by_r={
+              '1000': any(parsed[n]['sample_viable'] for n in ['R1_Y5','R1_Y15','R1_Y60']),
+              '5000': any(parsed[n]['sample_viable'] for n in ['R5_Y15','R5_Y60']),
+              '15000': any(parsed[n]['sample_viable'] for n in ['R15_Y60']),
+          }
+          global_sample_ok=(source_present>=40 and len(viable_names)>=4 and all(viable_by_r.values()))
+
+          seps=[parsed[n]['separation'] for n in viable_names]
+          am=[parsed[n]['aligned_mean'] for n in viable_names]
+          om=[parsed[n]['opposed_mean'] for n in viable_names]
+          assert all(x is not None and math.isfinite(x) for x in seps+am+om)
+
+          pos_cells=sum(parsed[n]['separation']>0 for n in viable_names)
+          pos_by_r={
+              '1000': any(parsed[n]['sample_viable'] and parsed[n]['separation']>0 for n in ['R1_Y5','R1_Y15','R1_Y60']),
+              '5000': any(parsed[n]['sample_viable'] and parsed[n]['separation']>0 for n in ['R5_Y15','R5_Y60']),
+              '15000': any(parsed[n]['sample_viable'] and parsed[n]['separation']>0 for n in ['R15_Y60']),
+          }
+
+          mean_sep=sum(seps)/len(seps) if seps else None
+          mean_a=sum(am)/len(am) if am else None
+          mean_o=sum(om)/len(om) if om else None
+
+          gate={
+              'global_sample_viability':global_sample_ok,
+              'panel_equal_weight_separation_positive':bool(global_sample_ok and mean_sep>0),
+              'at_least_4_positive_viable_cells':bool(global_sample_ok and pos_cells>=4),
+              'each_R_family_positive':bool(global_sample_ok and all(pos_by_r.values())),
+              'panel_aligned_mean_positive':bool(global_sample_ok and mean_a>0),
+              'panel_opposed_mean_negative':bool(global_sample_ok and mean_o<0),
+          }
+          if not global_sample_ok:
+              adjudicated='DEVELOPMENT_SPAN_INSUFFICIENT_SAMPLE_OR_SOURCE'
+          elif all(gate.values()):
+              adjudicated='DEVELOPMENT_SPAN_SIGNAL_SUPPORTED'
+          else:
+              adjudicated='DEVELOPMENT_SPAN_NO_SUPPORT'
+
+          assert receipt['classification']==adjudicated, (receipt['classification'],adjudicated)
+
+          # Ledger-to-cell reconciliation.
+          counts={}
+          vals={}
+          for row in ledger:
+              key=(row['cell'],row['classification'])
+              counts[key]=counts.get(key,0)+1
+              if row['parent_span_bps'].strip():
+                  vals.setdefault(row['cell'],[]).append((row['classification'],float(row['parent_span_bps'])))
+          for name,s in parsed.items():
+              assert counts.get((name,'ALIGNED'),0)==s['aligned_n'], name
+              assert counts.get((name,'OPPOSED'),0)==s['opposed_n'], name
+              assert counts.get((name,'NO_ACTIVE_WEAK'),0)==s['no_active_weak_n'], name
+              assert counts.get((name,'SOURCE_GATED'),0)==s['source_gated_n'], name
+              a=[v for c,v in vals.get(name,[]) if c=='ALIGNED']
+              o=[v for c,v in vals.get(name,[]) if c=='OPPOSED']
+              if a:
+                  assert abs(sum(a)/len(a)-s['aligned_mean'])<1e-10
+              if o:
+                  assert abs(sum(o)/len(o)-s['opposed_mean'])<1e-10
+              if a and o:
+                  assert abs((sum(a)/len(a)-sum(o)/len(o))-s['separation'])<1e-10
+
+          print('ADJUDICATION_PASS')
+          print('CLASSIFICATION='+adjudicated)
+          print('SOURCE_PRESENT_PARENT_ROWS='+str(source_present))
+          print('VIABLE_CELLS='+','.join(viable_names))
+          print('VIABLE_CELL_COUNT='+str(len(viable_names)))
+          print('POSITIVE_VIABLE_CELLS='+str(pos_cells))
+          print('PANEL_EQUAL_WEIGHT_SEPARATION_BPS='+str(mean_sep))
+          print('PANEL_ALIGNED_MEAN_BPS='+str(mean_a))
+          print('PANEL_OPPOSED_MEAN_BPS='+str(mean_o))
+          print('POSITIVE_BY_R='+json.dumps(pos_by_r,sort_keys=True))
+          print('SUPPORT_GATE='+json.dumps(gate,sort_keys=True))
+          print('RAW_SCAN='+json.dumps(raw,sort_keys=True))
+          print('CELL_SUMMARY='+json.dumps(parsed,sort_keys=True))
+          print('RECEIPT_SHA256='+hashlib.sha256(receipt_path.read_bytes()).hexdigest())
+          print('CELL_SUMMARY_SHA256='+hashlib.sha256(cells_path.read_bytes()).hexdigest())
+          print('LEDGER_SHA256='+hashlib.sha256(ledger_path.read_bytes()).hexdigest())
+          PY
