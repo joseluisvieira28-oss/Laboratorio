@@ -1,0 +1,75 @@
+name: DLS Global Field Gate Preflight V0.8
+
+on:
+  push:
+    branches:
+      - dls-field-enrichment-v01
+    paths:
+      - .github/workflows/dls-global-field-gate-preflight-v08.yml
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Compile full current pre-discovery chain
+        run: |
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/run_kamino_save11_field_enrichment_partition_v0_2.py
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/run_kamino_save11_unit_metadata_partition_v0_2.py
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/aggregate_kamino_save11_field_enrichment_v0_2.py
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/aggregate_kamino_save11_unit_metadata_v0_3.py
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/adjudicate_drift_market_unit_registry_population_v0_3.py
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/resolve_save0c_unit_metadata_partial_v0_2.py
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/resolve_marginfi_bank_unit_partial_v0_2.py
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/collect_global_field_gate_artifacts_v0_1.py
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/adjudicate_global_field_coverage_final_v0_1.py
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/build_source_cluster_sample_gate_v0_1.py
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/finalize_pre_discovery_authority_v0_1.py
+
+      - name: Assert current Kamino population precedence
+        run: |
+          test -f labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_HISTORICAL_ACCOUNT_LAYOUT_ADDENDUM_V0.2.md
+          test -f labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_UNIT_METADATA_TRANSFER_IDENTITY_ADDENDUM_V0.2.md
+          test -f labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_UNIT_METADATA_RECOVERY_PRECEDENCE_ADDENDUM_V0.3.md
+          test -f labs/DEFI_LIQUIDATION_SHOCK_001/KAMINO_TEMPORAL_DECODER_AND_UNIT_AUTHORITY_ADDENDUM_V0.3.md
+          test -f .github/workflows/dls-kamino-v16-layout-recovery-v02.yml
+          test -f .github/workflows/dls-kamino-unit-metadata-authority-v03.yml
+          test -f .github/workflows/dls-kamino-save11-authority-finalize-v03.yml
+
+      - name: Assert Global Field V0.3 selection
+        run: |
+          test -f labs/DEFI_LIQUIDATION_SHOCK_001/GLOBAL_FIELD_FINALIZER_ARTIFACT_SELECTION_ADDENDUM_V0.3.md
+          grep -q 'dls-kamino-save11-unit-metadata-population-v03' labs/DEFI_LIQUIDATION_SHOCK_001/source/collect_global_field_gate_artifacts_v0_1.py
+          grep -q 'KAMINO_SAVE11_UNIT_METADATA_POPULATION_RECEIPT_V0.3.json' labs/DEFI_LIQUIDATION_SHOCK_001/source/adjudicate_global_field_coverage_final_v0_1.py
+          test -f .github/workflows/dls-global-field-coverage-finalize-v01.yml
+
+      - name: Assert Sample Gate current source chain
+        run: |
+          test -f labs/DEFI_LIQUIDATION_SHOCK_001/SOURCE_SAMPLE_GATE_KAMINO_UNIT_PRECEDENCE_ADDENDUM_V0.2.md
+          grep -q 'run-id: 36278635010' .github/workflows/dls-source-cluster-sample-gate-v01.yml
+          grep -q 'dls-kamino-unit-v03-' .github/workflows/dls-source-cluster-sample-gate-v01.yml
+          grep -q 'range(3,13)' labs/DEFI_LIQUIDATION_SHOCK_001/source/build_source_cluster_sample_gate_v0_1.py
+
+      - name: Assert final authority hashes current addenda
+        run: |
+          grep -q 'KAMINO_UNIT_METADATA_RECOVERY_PRECEDENCE_ADDENDUM_V0.3.md' labs/DEFI_LIQUIDATION_SHOCK_001/source/finalize_pre_discovery_authority_v0_1.py
+          grep -q 'GLOBAL_FIELD_FINALIZER_ARTIFACT_SELECTION_ADDENDUM_V0.3.md' labs/DEFI_LIQUIDATION_SHOCK_001/source/finalize_pre_discovery_authority_v0_1.py
+          grep -q 'SOURCE_SAMPLE_GATE_KAMINO_UNIT_PRECEDENCE_ADDENDUM_V0.2.md' labs/DEFI_LIQUIDATION_SHOCK_001/source/finalize_pre_discovery_authority_v0_1.py
+          grep -q 'DRIFT_MARKET_UNIT_REGISTRY_TEMPORAL_ADDENDUM_V0.3.md' labs/DEFI_LIQUIDATION_SHOCK_001/source/finalize_pre_discovery_authority_v0_1.py
+
+      - name: Assert outcome firewall still closed
+        run: |
+          grep -q 'prices_opened":False' labs/DEFI_LIQUIDATION_SHOCK_001/source/finalize_pre_discovery_authority_v0_1.py
+          grep -q 'protected_market_outcomes_2025_2026":False' labs/DEFI_LIQUIDATION_SHOCK_001/source/build_source_cluster_sample_gate_v0_1.py
+
+      - name: Firewall
+        run: echo SOURCE_ONLY_TRUE
