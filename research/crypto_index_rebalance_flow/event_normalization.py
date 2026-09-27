@@ -155,6 +155,14 @@ def main()->int:
         "pnl_computed":False,
         "holdout_2025_market_data_opened":False,
     }
+    stable_payload={
+        "schema":"BITWISE_EVENT_SET_V0.1",
+        "events":events,
+        "ambiguous_source_records":ambiguous,
+    }
+    result["event_set_sha256"]=hashlib.sha256(
+        json.dumps(stable_payload,sort_keys=True,separators=(",",":")).encode()
+    ).hexdigest()
     encoded=json.dumps(result,sort_keys=True,separators=(",",":")).encode()
     result["result_sha256"]=hashlib.sha256(encoded).hexdigest()
     path=OUT/"event_normalization_v0.1.json"
