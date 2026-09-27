@@ -1,0 +1,39 @@
+name: ETH-STAKING-FLOW-001 Tracoor Availability V0.2.2
+on:
+  push:
+    branches:
+      - eth-staking-flow-v3-stagea-tracoor-v022
+    paths:
+      - 'research/eth_staking_flow/tracoor_availability_v022.py'
+      - '.github/workflows/eth-staking-flow-v3-stagea-tracoor-v022.yml'
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify authority and compile
+        run: |
+          test -f research/eth_staking_flow/ETH_STAKING_FLOW_001_V3_STAGEA_TRACOOR_ARCHIVE_AVAILABILITY_V0_2_2.md
+          python -m py_compile research/eth_staking_flow/tracoor_availability_v022.py
+      - name: Query exact state metadata
+        run: python research/eth_staking_flow/tracoor_availability_v022.py
+      - name: Firewall and summary
+        run: |
+          python - <<'PY'
+          import json
+          x=json.load(open('artifacts/ETH_STAKING_FLOW_001_TRACOOR_AVAILABILITY_V0_2_2.json'))
+          for k in ('ssz_bodies_downloaded','validator_counts_opened','market_data_opened','signal_evaluated','returns_opened','pnl_opened','source_after_2026_08_31_opened'):
+              assert x[k] is False
+          print('CLASSIFICATION',x['classification'])
+          print('EXACT_SLOTS_AVAILABLE',x['exact_slots_available'])
+          for r in x['targets']:
+              print('TARGET',r['name'],r['target_slot'],r.get('record_count'),r.get('exact_mainnet_count'),r.get('distinct_nodes'),r.get('distinct_implementations'),r.get('exact_state_roots'),r.get('error'))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ETH_STAKING_FLOW_001_TRACOOR_AVAILABILITY_V0_2_2
+          path: artifacts/ETH_STAKING_FLOW_001_TRACOOR_AVAILABILITY_V0_2_2.json
+          retention-days: 90
