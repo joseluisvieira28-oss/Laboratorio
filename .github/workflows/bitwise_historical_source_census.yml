@@ -1,0 +1,46 @@
+name: Bitwise Historical Source Census
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'research/crypto_index_rebalance_flow/HISTORICAL_SOURCE_CENSUS_AUTHORITY_V0.1.md'
+      - 'research/crypto_index_rebalance_flow/historical_source_census.py'
+      - '.github/workflows/bitwise_historical_source_census.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  census:
+    if: github.head_ref == 'crypto-index-rebalance-flow-v0.1' || github.ref_name == 'crypto-index-rebalance-flow-v0.1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run Bitwise source-only historical census
+        run: python research/crypto_index_rebalance_flow/historical_source_census.py
+      - name: Enforce market-outcome firewall
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path("artifacts/crypto_index_rebalance_flow/historical_source_census_v0.1.json")
+          x=json.loads(p.read_text())
+          assert x["market_prices_read"] is False
+          assert x["returns_computed"] is False
+          assert x["pnl_computed"] is False
+          assert x["2026_result_pages_fetched"] is False
+          print("MARKET_OUTCOME_FIREWALL_PASS")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: BITWISE_HISTORICAL_SOURCE_CENSUS_V0.1
+          path: artifacts/crypto_index_rebalance_flow/historical_source_census_v0.1.json
+          if-no-files-found: error
