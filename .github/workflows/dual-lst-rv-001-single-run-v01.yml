@@ -1,0 +1,61 @@
+name: DUAL-LST-RV-001 single-run attack V0.1
+
+on:
+  push:
+    branches:
+      - dual-lst-relative-nav-001-source-gate-v0.1
+    paths:
+      - 'research/dual_lst_rv_001/SINGLE_RUN_TRIGGER_V0.1.md'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: dual-lst-rv-001-single-run-v01
+  cancel-in-progress: true
+
+jobs:
+  attack:
+    runs-on: macos-15
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: npm install --no-save ethers@6.15.0
+      - id: chain
+        continue-on-error: true
+        run: python research/dual_lst_rv_001/dual_lst_continue_v01.py
+      - name: Persist all produced evidence
+        if: always()
+        shell: bash
+        run: |
+          set -e
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/dual_lst_rv_001/*.json research/dual_lst_rv_001/CLOSEOUT_V0.1.md 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "No new durable evidence."
+          else
+            git commit -m "DUAL-LST-RV-001: persist single-run gate evidence [skip ci]"
+            git push origin HEAD:dual-lst-relative-nav-001-source-gate-v0.1
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dual-lst-rv-001-single-run-v01
+          path: |
+            artifacts/dual_lst_rv_001/*
+            research/dual_lst_rv_001/*.json
+          if-no-files-found: warn
+      - name: Preserve fail-closed blocker
+        if: ${{ steps.chain.outcome == 'failure' }}
+        run: exit 2
