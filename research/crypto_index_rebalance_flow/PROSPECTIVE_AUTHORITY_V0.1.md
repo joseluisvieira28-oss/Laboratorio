@@ -65,10 +65,17 @@ Mechanism fingerprint expectation:
 positive signed pressure approaching/at implementation, with partial post-implementation normalization.
 Failure is allowed and must be preserved.
 
-## T0 rule
-T0 must be taken from the official index provider's documented implementation timestamp. If an exact timestamp cannot be established from official methodology/notice, the Sep 30 pilot is SOURCE_TIME_BLOCKED and no event-time result may be computed.
+## T0 rule — SOURCE_TIME_PASS
+Official Bitwise Crypto Asset Index Methodology states that, unless otherwise disclaimed, indexes are reconstituted monthly at 4:00 p.m. Eastern Time on the last Business Day of the month.
 
-Do not infer T0 from price/volume spikes.
+For the 2026-09-30 event:
+- T0 = 2026-09-30 16:00 America/New_York
+- T0 = 2026-09-30T20:00:00Z
+- T0 = 2026-09-30 22:00 Europe/Zurich
+
+Source-time classification: SOURCE_TIME_PASS.
+
+Do not infer or alter T0 from price, volume, spread, news or later observations.
 
 ## Costs and trading
 This phase is observational only.
@@ -91,7 +98,6 @@ No historical backtest may be started until:
 - traders front-run all predictable flow before T0;
 - trackers use OTC/TWAP/derivatives and avoid visible spot impact;
 - effect is dominated by idiosyncratic token news;
-- implementation timestamp cannot be sourced exactly;
 - one or two tokens drive the entire result;
 - costs/slippage exceed any later economic effect.
 
