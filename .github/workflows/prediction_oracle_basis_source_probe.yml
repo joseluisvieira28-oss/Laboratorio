@@ -1,0 +1,46 @@
+name: POB 15m Source Probe
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'research/prediction_oracle_basis/**'
+      - '.github/workflows/prediction_oracle_basis_source_probe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-probe:
+    if: github.head_ref == 'prediction-oracle-basis-v0.1' || github.ref_name == 'prediction-oracle-basis-v0.1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run public source-only probe
+        run: python research/prediction_oracle_basis/source_probe_15m.py
+      - name: Verify no economic field names
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path("artifacts/prediction_oracle_basis/source_probe_receipt.json")
+          x=json.loads(p.read_text())
+          banned={"pnl","profitability","win_rate","expected_return","best_direction","optimal_threshold"}
+          flat=p.read_text().lower()
+          bad=[k for k in banned if f'"{k}"' in flat]
+          if bad:
+              raise SystemExit(f"banned economic outputs present: {bad}")
+          assert x["adjudication"]["economic_outputs_computed"] is False
+          print("OUTCOME_FIREWALL_PASS")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: POB_15M_SOURCE_PROBE_RECEIPT
+          path: artifacts/prediction_oracle_basis/source_probe_receipt.json
+          if-no-files-found: error
