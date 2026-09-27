@@ -30,7 +30,8 @@ async function rawBlock(endpoint,tag){
   const res=await fetch(endpoint,{
     method:"POST",
     headers:{"content-type":"application/json"},
-    body:JSON.stringify({jsonrpc:"2.0",id:1,method:"eth_getBlockByNumber",params:[normalizeBlockTag(tag),false]})
+    body:JSON.stringify({jsonrpc:"2.0",id:1,method:"eth_getBlockByNumber",params:[normalizeBlockTag(tag),false]}),
+    signal:AbortSignal.timeout(30_000)
   });
   if(!res.ok) throw new Error("HTTP_"+res.status);
   const x=await res.json();
@@ -75,11 +76,43 @@ async function firstBlockAtOrAfter(ts,label){
   return {number:Number(b.number),hash:b.hash,timestamp:Number(b.timestamp)};
 }
 
+async function rawLogs(endpoint,fromBlock,toBlock,topics){
+  const res=await fetch(endpoint,{
+    method:"POST",
+    headers:{"content-type":"application/json"},
+    body:JSON.stringify({
+      jsonrpc:"2.0",
+      id:1,
+      method:"eth_getLogs",
+      params:[{
+        address:TOKEN,
+        fromBlock:hex(fromBlock),
+        toBlock:hex(toBlock),
+        topics
+      }]
+    }),
+    signal:AbortSignal.timeout(30_000)
+  });
+  if(!res.ok) throw new Error("HTTP_"+res.status);
+  const x=await res.json();
+  if(x?.error) throw new Error("RPC_"+JSON.stringify(x.error));
+  if(!Array.isArray(x?.result)) throw new Error("BAD_LOG_RESULT");
+  return x.result.map(log=>({
+    address:log.address,
+    topics:log.topics||[],
+    data:log.data,
+    blockNumber:Number(BigInt(log.blockNumber)),
+    blockHash:log.blockHash,
+    transactionHash:log.transactionHash,
+    index:Number(BigInt(log.logIndex))
+  }));
+}
+
 async function queryLogsAdaptive(fromBlock,toBlock,topics,errors,depth=0){
   let last=null;
   for(let attempt=1;attempt<=5;attempt++){
     try{
-      const logs=await provider.getLogs({address:TOKEN,fromBlock,toBlock,topics});
+      const logs=await rawLogs(RPC,fromBlock,toBlock,topics);
       return logs;
     }catch(e){
       last=String(e?.shortMessage||e?.message||e);
