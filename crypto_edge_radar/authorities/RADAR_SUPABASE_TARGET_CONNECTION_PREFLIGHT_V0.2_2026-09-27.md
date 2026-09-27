@@ -56,8 +56,13 @@ It does **not** prove final source/target equality.
 
 ## Secret handling
 
-Input remains:
-`RADAR_MIGRATION_TARGET_URL`
+Preferred preflight inputs reuse the final-switch components without enabling the final switch:
+- `RADAR_SUPABASE_POOLER_HOST` — non-secret audited Session Pooler hostname;
+- `RADAR_SUPABASE_POOLER_PASSWORD` — secret runtime-role password.
+
+The preflight assembles its connection URL only in memory. It does **not** require `RADAR_USE_SUPABASE_TARGET=true` and therefore cannot switch the canonical evidence backend merely by running the preflight.
+
+`RADAR_MIGRATION_TARGET_URL` remains accepted only as a backwards-compatible explicit preflight input.
 
 The URL/password must never be logged, hashed, persisted, committed or surfaced in state.
 
