@@ -200,3 +200,13 @@ No historical verdict changed.
 No protected outcome opened.  
 No live trading / exchange mutation / main merge authorized or performed.  
 The `MECHANISM_EXHAUSTED` labels in this document are **new routing labels**, not replacements for the original scientific verdicts.
+
+
+## 11. Drive mirror
+
+Canonical working mirror created in Google Drive:
+- Title: `CRYPTO LAB — NEGATIVE EDGE MAP V0.1 — 2026-09-27`
+- Drive ID: `17QO40pQLtaImmUxJUVeUU7jCCH3hNewdJK6uAs-gwNc`
+- URL: https://docs.google.com/document/d/17QO40pQLtaImmUxJUVeUU7jCCH3hNewdJK6uAs-gwNc/edit
+
+The GitHub branch remains the versioned implementation/evidence surface. The Drive document is the operator-readable mirror.
