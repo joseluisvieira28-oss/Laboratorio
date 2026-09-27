@@ -92,6 +92,19 @@ def build_annual_plan_v02_from_live_status(
     if fomc.get("annual_plan_bindable_v02") is not True:
         raise ValueError("FOMC_ANNUAL_PLAN_NOT_BINDABLE")
 
+    for label, source in (
+        ("CPI", cpi),
+        ("EMPLOYMENT", jobs),
+        ("FOMC", fomc),
+    ):
+        digest = source.get("extracted_text_sha256")
+        if (
+            not isinstance(digest, str)
+            or len(digest) != 64
+            or any(ch not in "0123456789abcdefABCDEF" for ch in digest)
+        ):
+            raise ValueError(f"{label}_CALENDAR_SOURCE_TEXT_HASH_MISSING")
+
     official_sources = [
         {
             "authority": "BLS",
