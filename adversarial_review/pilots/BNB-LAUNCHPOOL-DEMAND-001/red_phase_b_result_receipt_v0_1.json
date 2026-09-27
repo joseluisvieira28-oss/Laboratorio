@@ -1,0 +1,132 @@
+{
+  "protocol_id": "BNB-ADVERSARIAL-PHASE-B-PLACEBO-V0.1",
+  "protocol_commit": "c6a38ba84566eb7ed52da46c43a0606e43fac0d1",
+  "status": "EXECUTED_ON_CANONICAL_HISTORICAL_RAW",
+  "full_local_result_sha256": "59aafa7c5ed25e35bb560bb24223afdd8500f694c7bcf72c2250d02dc8d4f59d",
+  "raw_artifact_integrity": {
+    "discovery": {
+      "artifact_id": 10460668190,
+      "sha256": "06ab4dee2c8db98a2e19a4d41636afaa71b0c6f6b6eac6b545535b5f28984dbf",
+      "monthly_checksums_verified": 27
+    },
+    "oos_2025": {
+      "artifact_id": 10464554979,
+      "sha256": "f777558a3643c3411868ab7b49bce2fcb1c728a2a8d317b8d47deb4e8c575fcd",
+      "monthly_checksums_verified": 12
+    },
+    "presample": {
+      "artifact_id": 10467734255,
+      "sha256": "51f7b09d78bb90410983e37f1b19f2f5e8b2498619a35bc0052c5ca8b8980dd9",
+      "monthly_checksums_verified": 15
+    }
+  },
+  "actual_recomputed": {
+    "n": 66,
+    "base20_mean_bps": 80.16393782027569,
+    "base20_pf": 1.6726618887474112,
+    "total_base20_bps": 5290.819896138196
+  },
+  "rt004_random_signal_placebo": {
+    "result": "PASS_ATTACK_DID_NOT_FALSIFY",
+    "replications": 10000,
+    "seed": 20260927,
+    "actual_mean_bps": 80.16393782027569,
+    "placebo_mean_bps": -4.291742373289161,
+    "placebo_median_bps": -6.194810454361297,
+    "placebo_p05_bps": -72.13543682030222,
+    "placebo_p95_bps": 69.47762154099244,
+    "fraction_placebo_mean_gte_actual": 0.0317,
+    "actual_percentile": 0.9683,
+    "min_candidate_pool": 24,
+    "median_candidate_pool": 28
+  },
+  "rt005_time_shift_placebo": {
+    "result": "CHALLENGE",
+    "arms": [
+      {
+        "offset_days": -7,
+        "n": 64,
+        "coverage": 0.9696969696969697,
+        "mean_net_bps": -31.48881700902112,
+        "pf": 0.7222470136886768
+      },
+      {
+        "offset_days": -3,
+        "n": 65,
+        "coverage": 0.9848484848484849,
+        "mean_net_bps": -34.2750303887591,
+        "pf": 0.7571119416753591
+      },
+      {
+        "offset_days": -1,
+        "n": 65,
+        "coverage": 0.9848484848484849,
+        "mean_net_bps": 221.0239617698774,
+        "pf": 7.9335552524782615
+      },
+      {
+        "offset_days": 1,
+        "n": 66,
+        "coverage": 1,
+        "mean_net_bps": 27.22443707687461,
+        "pf": 1.2711009851580637
+      },
+      {
+        "offset_days": 3,
+        "n": 65,
+        "coverage": 0.9848484848484849,
+        "mean_net_bps": -48.305465094218924,
+        "pf": 0.6539510418750418
+      },
+      {
+        "offset_days": 7,
+        "n": 63,
+        "coverage": 0.9545454545454546,
+        "mean_net_bps": 33.88047424422457,
+        "pf": 1.3841423815705312
+      }
+    ],
+    "key_finding": "The -1 day arm materially outperforms the post-announcement 24h window. This challenges a simple announcement-causes-post-return mechanism and raises pre-positioning/anticipation/regime explanations. It is not a rescue signal and cannot change the frozen strategy."
+  },
+  "rt007_parameter_perturbation": {
+    "result": "PASS_ATTACK_DID_NOT_FIND_PARAMETER_CLIFF",
+    "variants": [
+      {
+        "id": "ENTRY_PLUS_15M",
+        "n": 66,
+        "mean_net_bps": 67.08234783786307,
+        "pf": 1.5950471688294965
+      },
+      {
+        "id": "ENTRY_PLUS_30M",
+        "n": 66,
+        "mean_net_bps": 71.12447026226222,
+        "pf": 1.6218953421664661
+      },
+      {
+        "id": "HOLD_12H",
+        "n": 66,
+        "mean_net_bps": 52.69312377816817,
+        "pf": 1.6610651539718
+      },
+      {
+        "id": "HOLD_36H",
+        "n": 66,
+        "mean_net_bps": 142.0680061389118,
+        "pf": 1.9376875603857686
+      }
+    ],
+    "interpretation": "All frozen diagnostic perturbations remain positive across the pooled historical corpus. These variants are diagnostic only and cannot replace the frozen rule."
+  },
+  "rt017_volatility_matched_placebo": {
+    "result": "BLOCKED",
+    "blocked_event_count": 22,
+    "reason": "The pre-frozen ±20% volatility matching band produced fewer than 5 controls for 22 events or lacked a complete pre-entry volatility window. Per protocol the band must not be widened after seeing results."
+  },
+  "guards": {
+    "access_2026": false,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "candidate_rules_changed": false
+  }
+}

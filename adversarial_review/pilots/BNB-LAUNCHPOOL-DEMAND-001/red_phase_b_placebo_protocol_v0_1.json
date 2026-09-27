@@ -1,0 +1,127 @@
+{
+  "protocol_id": "BNB-ADVERSARIAL-PHASE-B-PLACEBO-V0.1",
+  "status": "FROZEN_BEFORE_PHASE_B_PLACEBO_RESULTS",
+  "candidate": "BNB-LAUNCHPOOL-DEMAND-001",
+  "candidate_version": "DIAMOND-V0.2",
+  "scope": "Historical already-open periods only. No 2026 prospective outcome access.",
+  "canonical_raw_artifacts": [
+    {
+      "block": "discovery_2022_2024",
+      "run_id": 35131193961,
+      "artifact_id": 10460668190,
+      "sha256": "06ab4dee2c8db98a2e19a4d41636afaa71b0c6f6b6eac6b545535b5f28984dbf"
+    },
+    {
+      "block": "oos_2025",
+      "run_id": 35141584819,
+      "artifact_id": 10464554979,
+      "sha256": "f777558a3643c3411868ab7b49bce2fcb1c728a2a8d317b8d47deb4e8c575fcd"
+    },
+    {
+      "block": "presample_1_30",
+      "run_id": 35147813097,
+      "artifact_id": 10467734255,
+      "sha256": "51f7b09d78bb90410983e37f1b19f2f5e8b2498619a35bc0052c5ca8b8980dd9"
+    }
+  ],
+  "common_rules": {
+    "pair": "BNBBTC Spot",
+    "interval": "15m",
+    "base_round_trip_cost_bps": 20,
+    "entry_semantics": "first available 15m open strictly after signal timestamp; where a test perturbs entry, the perturbation is applied exactly as declared below",
+    "actual_hold_hours": 24,
+    "no_forward_data": true,
+    "no_candidate_rule_change": true,
+    "no_promotion_or_demotion_from_phase_b_alone": true,
+    "no_rescue": true
+  },
+  "rt004_random_signal_placebo": {
+    "seed": 20260927,
+    "replications": 10000,
+    "matching": "For each actual selected trade, choose a placebo calendar date from the same YYYY-MM and preserve the actual entry UTC quarter-hour. Candidate placebo dates require both entry and +24h exit opens in the canonical raw artifact.",
+    "exclusion": "Exclude the actual entry UTC date and the immediately previous/next UTC dates for that event.",
+    "overlap": "Reject and redraw a replication if any placebo trade overlaps another placebo trade under the frozen one-active-trade rule.",
+    "statistic": "pooled BASE20 mean bps/trade",
+    "report": [
+      "actual_mean",
+      "placebo_mean_distribution",
+      "one_sided_fraction_placebo_mean_gte_actual",
+      "percentile_of_actual"
+    ],
+    "interpretation": "Diagnostic adversarial evidence only; does not change candidate identity or historical tier."
+  },
+  "rt005_time_shift_placebo": {
+    "offsets_days": [
+      -7,
+      -3,
+      -1,
+      1,
+      3,
+      7
+    ],
+    "method": "Shift each selected signal timestamp by the fixed offset, then apply the original strict-after 15m entry and 24h exit rule.",
+    "minimum_coverage_fraction_for_interpretable_arm": 0.9,
+    "costs_bps": [
+      20
+    ],
+    "report": [
+      "n",
+      "coverage_fraction",
+      "mean_net_bps",
+      "profit_factor"
+    ],
+    "interpretation": "If an offset arm is unavailable because canonical raw coverage is incomplete, report BLOCKED_ARM; never substitute another offset."
+  },
+  "rt007_parameter_perturbation": {
+    "variants": [
+      {
+        "id": "ENTRY_PLUS_15M",
+        "entry_delay_minutes": 15,
+        "hold_hours": 24
+      },
+      {
+        "id": "ENTRY_PLUS_30M",
+        "entry_delay_minutes": 30,
+        "hold_hours": 24
+      },
+      {
+        "id": "HOLD_12H",
+        "entry_delay_minutes": 0,
+        "hold_hours": 12
+      },
+      {
+        "id": "HOLD_36H",
+        "entry_delay_minutes": 0,
+        "hold_hours": 36
+      }
+    ],
+    "minimum_coverage_fraction_for_interpretable_variant": 0.9,
+    "cost_bps": 20,
+    "interpretation": "Robustness diagnostic only. No variant may replace the frozen rule or receive promotion credit."
+  },
+  "rt017_volatility_matched_placebo": {
+    "seed": 20260927,
+    "replications": 10000,
+    "pre_entry_window_hours": 24,
+    "volatility_measure": "standard deviation of 15m log-close returns over the 24h immediately before entry",
+    "matching": "Same YYYY-MM and same entry UTC quarter-hour, with control pre-entry volatility within ±20% of the actual event pre-entry volatility; require full pre-window, entry and +24h exit.",
+    "exclusion": "Exclude actual entry date ±1 UTC day.",
+    "fallback": "If fewer than 5 matched control dates exist for any event, the volatility-matched test is BLOCKED; do not widen the band.",
+    "statistic": "pooled BASE20 mean bps/trade",
+    "report": [
+      "matched_control_counts",
+      "actual_mean",
+      "placebo_distribution",
+      "one_sided_fraction_placebo_mean_gte_actual"
+    ],
+    "interpretation": "Tests whether ordinary high-volatility states can explain the observed event return. Diagnostic only."
+  },
+  "stop_conditions": [
+    "Any artifact SHA256 mismatch",
+    "Any Binance monthly CHECKSUM mismatch",
+    "Any required historical ledger mismatch",
+    "Any attempt to access 2026/prospective outcomes",
+    "Any methodology change after Phase B results are computed"
+  ],
+  "execution_authority": false
+}

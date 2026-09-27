@@ -1,0 +1,52 @@
+{
+  "schema_version": "0.1",
+  "required_top_level": [
+    "candidate",
+    "freeze",
+    "blue",
+    "red",
+    "referee",
+    "boundaries",
+    "evidence"
+  ],
+  "candidate_required": [
+    "id",
+    "version"
+  ],
+  "freeze_required": [
+    "complete",
+    "mechanism",
+    "failure_mode",
+    "controlling_authority",
+    "source_manifest",
+    "code_commit",
+    "parameters",
+    "entry_exit_rules",
+    "cost_model",
+    "protected_periods",
+    "promotion_gates",
+    "scientific_identity_changed_after_outcome_access"
+  ],
+  "report_required": {
+    "blue": [
+      "verdict",
+      "checks"
+    ],
+    "red": [
+      "verdict",
+      "attack_plan_prepared_before_blue_conclusion_review",
+      "attacks"
+    ],
+    "referee": [
+      "verdict",
+      "higher_precedence_authority_reconciled"
+    ]
+  },
+  "boundaries_required": [
+    "live_trading_authorized",
+    "main_merge_authorized",
+    "exchange_mutation_authorized",
+    "sealed_holdout_open_authorized"
+  ],
+  "invariant": "This schema validates process completeness only. It never grants promotion or execution authority."
+}
