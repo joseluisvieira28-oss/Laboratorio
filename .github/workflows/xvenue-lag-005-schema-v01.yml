@@ -1,0 +1,29 @@
+name: xvenue-lag-005-schema-v01
+
+on:
+  push:
+    branches:
+      - microstructure-scalping-lab-v0.1
+    paths:
+      - 'research/microstructure_scalping/xvenue_lag_005_schema_v01.py'
+      - 'research/microstructure_scalping/XVENUE_LAG_005_SOURCE_GATE_FREEZE_V0_1.md'
+      - '.github/workflows/xvenue-lag-005-schema-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  schema:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install 'websockets>=13,<16'
+      - run: python -m research.microstructure_scalping.xvenue_lag_005_schema_v01
+      - name: Print receipt
+        if: always()
+        run: cat research/microstructure_scalping/receipts/xvenue_lag_005_schema_v01.json || true
