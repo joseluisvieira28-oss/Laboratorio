@@ -81,7 +81,7 @@ def get_logs_adaptive(ep,address,topic0,start,end):
         all_logs=[]
         failures=0
         cur=start
-        chunk=1_000_000
+        chunk=2_000_000
         seen=set()
         while cur<=end:
             stop=min(end,cur+chunk-1)
@@ -90,6 +90,8 @@ def get_logs_adaptive(ep,address,topic0,start,end):
                 f"&fromBlock={cur}&toBlock={stop}"
                 f"&address={address}&topic0={topic0}"
             )
+            # Be deliberately gentle with the public indexed API.
+            time.sleep(1.1)
             obj,_=fetch_json(q,timeout=120)
             logs=obj.get("result") if isinstance(obj,dict) else None
             if not isinstance(logs,list):
