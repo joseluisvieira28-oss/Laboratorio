@@ -5,12 +5,12 @@ const RPC=process.env.ETH_RPC_URL || "https://ethereum-rpc.publicnode.com";
 const ARCHIVE_RPC=process.env.ETH_ARCHIVE_RPC_URL || "https://rpc-eth.blockmachine.io";
 const HEADER_RPCS=[RPC,ARCHIVE_RPC];
 const CODE_RPCS=[ARCHIVE_RPC,RPC];
-const LOG_RPCS=[RPC,ARCHIVE_RPC,"https://rpc.flashbots.net"];
+const LOG_RPCS=[RPC,ARCHIVE_RPC];
 
 const TOKEN=getAddress("0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf");
 const ZERO_TOPIC="0x"+"0".repeat(64);
 const TRANSFER_TOPIC=id("Transfer(address,address,uint256)").toLowerCase();
-const CHUNK=2_000;
+const CHUNK=10_000;
 const RPC_TIMEOUT_MS=10_000;
 const RANGE_ATTEMPTS=2;
 const FAILOVER_ATTEMPTS=3;
@@ -219,7 +219,7 @@ function normalizeLog(log,kind){
 const receipt={
   lab_id:"CBBTC-ETH-MINT-BURN-FLOW-001",
   stage:"SOURCE_GATE_V0.1",
-  transport_revision:"V0.1K",
+  transport_revision:"V0.1M",
   captured_at_utc:new Date().toISOString(),
   rpc:RPC,
   archive_rpc:ARCHIVE_RPC,
