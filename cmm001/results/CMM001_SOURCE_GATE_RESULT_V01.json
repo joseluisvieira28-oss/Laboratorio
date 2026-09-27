@@ -1,0 +1,212 @@
+{
+  "classification": "SOURCE_BLOCKED",
+  "core_pass_map": {
+    "funding_binance": false,
+    "options_deribit": true,
+    "positioning_cftc_tff": true,
+    "rates_fred_dgs2": true,
+    "stablecoin_defillama": true
+  },
+  "generated_at_utc": "2026-09-25T07:19:05.658878+00:00",
+  "lab_id": "CMM-001",
+  "next_authorized_state": "REMEDIATE_SOURCE_ONLY",
+  "optional_exclusions": {
+    "binance_open_interest_history": {
+      "admissible_in_v01": false,
+      "error": "<HTTPError 451: ''>",
+      "reason": "provider documentation limits public historical OI stats to latest ~1 month",
+      "url": "https://fapi.binance.com/futures/data/openInterestHist?symbol=BTCUSDT&period=1h&startTime=1704067200000&endTime=1704153600000&limit=500"
+    }
+  },
+  "period_touched": "2021-2024 source/provenance only",
+  "protected_outcomes_opened": false,
+  "run_type": "SOURCE_GATE_ONLY",
+  "source_data_pass": false,
+  "sources": {
+    "funding_binance": {
+      "probes": [
+        {
+          "error": "<HTTPError 451: ''>",
+          "ok": false,
+          "url": "https://fapi.binance.com/fapi/v1/fundingRate?symbol=BTCUSDT&startTime=1609459200000&endTime=1612137599999&limit=1000",
+          "year": 2021
+        },
+        {
+          "error": "<HTTPError 451: ''>",
+          "ok": false,
+          "url": "https://fapi.binance.com/fapi/v1/fundingRate?symbol=BTCUSDT&startTime=1640995200000&endTime=1643673599999&limit=1000",
+          "year": 2022
+        },
+        {
+          "error": "<HTTPError 451: ''>",
+          "ok": false,
+          "url": "https://fapi.binance.com/fapi/v1/fundingRate?symbol=BTCUSDT&startTime=1672531200000&endTime=1675209599999&limit=1000",
+          "year": 2023
+        },
+        {
+          "error": "<HTTPError 451: ''>",
+          "ok": false,
+          "url": "https://fapi.binance.com/fapi/v1/fundingRate?symbol=BTCUSDT&startTime=1704067200000&endTime=1706745599999&limit=1000",
+          "year": 2024
+        }
+      ],
+      "rule": "Jan probe in each 2021-2024 year returns >=80 authentic historical funding records",
+      "status": "FAIL"
+    },
+    "options_deribit": {
+      "pass_windows": 8,
+      "rule": ">=6/8 deterministic pre-2025 daily probes have >=20 IV-valid trades and >=5 calls + >=5 puts",
+      "source_role": "trade-implied IV source only; no historical order-book claim",
+      "status": "PASS",
+      "total_windows": 8,
+      "windows": [
+        {
+          "calls": 626,
+          "date": "2021-01-11",
+          "iv_valid": 1000,
+          "ok": true,
+          "puts": 374,
+          "status": 200,
+          "trade_count": 1000,
+          "url": "https://history.deribit.com/api/v2/public/get_last_trades_by_currency_and_time?currency=BTC&kind=option&start_timestamp=1610323200000&end_timestamp=1610409599999&count=1000&include_old=true&sorting=asc"
+        },
+        {
+          "calls": 518,
+          "date": "2021-07-12",
+          "iv_valid": 1000,
+          "ok": true,
+          "puts": 482,
+          "status": 200,
+          "trade_count": 1000,
+          "url": "https://history.deribit.com/api/v2/public/get_last_trades_by_currency_and_time?currency=BTC&kind=option&start_timestamp=1626048000000&end_timestamp=1626134399999&count=1000&include_old=true&sorting=asc"
+        },
+        {
+          "calls": 538,
+          "date": "2022-01-10",
+          "iv_valid": 1000,
+          "ok": true,
+          "puts": 462,
+          "status": 200,
+          "trade_count": 1000,
+          "url": "https://history.deribit.com/api/v2/public/get_last_trades_by_currency_and_time?currency=BTC&kind=option&start_timestamp=1641772800000&end_timestamp=1641859199999&count=1000&include_old=true&sorting=asc"
+        },
+        {
+          "calls": 572,
+          "date": "2022-07-11",
+          "iv_valid": 1000,
+          "ok": true,
+          "puts": 428,
+          "status": 200,
+          "trade_count": 1000,
+          "url": "https://history.deribit.com/api/v2/public/get_last_trades_by_currency_and_time?currency=BTC&kind=option&start_timestamp=1657497600000&end_timestamp=1657583999999&count=1000&include_old=true&sorting=asc"
+        },
+        {
+          "calls": 523,
+          "date": "2023-01-09",
+          "iv_valid": 1000,
+          "ok": true,
+          "puts": 477,
+          "status": 200,
+          "trade_count": 1000,
+          "url": "https://history.deribit.com/api/v2/public/get_last_trades_by_currency_and_time?currency=BTC&kind=option&start_timestamp=1673222400000&end_timestamp=1673308799999&count=1000&include_old=true&sorting=asc"
+        },
+        {
+          "calls": 620,
+          "date": "2023-07-10",
+          "iv_valid": 1000,
+          "ok": true,
+          "puts": 380,
+          "status": 200,
+          "trade_count": 1000,
+          "url": "https://history.deribit.com/api/v2/public/get_last_trades_by_currency_and_time?currency=BTC&kind=option&start_timestamp=1688947200000&end_timestamp=1689033599999&count=1000&include_old=true&sorting=asc"
+        },
+        {
+          "calls": 385,
+          "date": "2024-01-08",
+          "iv_valid": 1000,
+          "ok": true,
+          "puts": 615,
+          "status": 200,
+          "trade_count": 1000,
+          "url": "https://history.deribit.com/api/v2/public/get_last_trades_by_currency_and_time?currency=BTC&kind=option&start_timestamp=1704672000000&end_timestamp=1704758399999&count=1000&include_old=true&sorting=asc"
+        },
+        {
+          "calls": 528,
+          "date": "2024-07-08",
+          "iv_valid": 1000,
+          "ok": true,
+          "puts": 472,
+          "status": 200,
+          "trade_count": 1000,
+          "url": "https://history.deribit.com/api/v2/public/get_last_trades_by_currency_and_time?currency=BTC&kind=option&start_timestamp=1720396800000&end_timestamp=1720483199999&count=1000&include_old=true&sorting=asc"
+        }
+      ]
+    },
+    "positioning_cftc_tff": {
+      "rule": "each 2021-2024 official annual TFF archive contains >=40 BTC CME weekly records",
+      "status": "PASS",
+      "years": [
+        {
+          "btc_name_mentions": 87,
+          "code_133741_mentions": 104,
+          "http_status": 200,
+          "ok": true,
+          "url": "https://www.cftc.gov/files/dea/history/fut_fin_txt_2021.zip",
+          "year": 2021,
+          "zip_members": [
+            "FinFutYY.txt"
+          ]
+        },
+        {
+          "btc_name_mentions": 104,
+          "code_133741_mentions": 104,
+          "http_status": 200,
+          "ok": true,
+          "url": "https://www.cftc.gov/files/dea/history/fut_fin_txt_2022.zip",
+          "year": 2022,
+          "zip_members": [
+            "FinFutYY.txt"
+          ]
+        },
+        {
+          "btc_name_mentions": 104,
+          "code_133741_mentions": 104,
+          "http_status": 200,
+          "ok": true,
+          "url": "https://www.cftc.gov/files/dea/history/fut_fin_txt_2023.zip",
+          "year": 2023,
+          "zip_members": [
+            "FinFutYY.txt"
+          ]
+        },
+        {
+          "btc_name_mentions": 106,
+          "code_133741_mentions": 106,
+          "http_status": 200,
+          "ok": true,
+          "url": "https://www.cftc.gov/files/dea/history/fut_fin_txt_2024.zip",
+          "year": 2024,
+          "zip_members": [
+            "FinFutYY.txt"
+          ]
+        }
+      ]
+    },
+    "rates_fred_dgs2": {
+      "first": "2021-01-04",
+      "http_status": 200,
+      "last": "2024-12-31",
+      "numeric_observations": 1000,
+      "rule": ">=900 numeric daily observations across 2021-2024",
+      "status": "PASS",
+      "url": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=DGS2&cosd=2021-01-01&coed=2024-12-31"
+    },
+    "stablecoin_defillama": {
+      "http_status": 200,
+      "observations_2021_2024": 1461,
+      "rule": ">=1400 dated observations in 2021-2024",
+      "status": "PASS",
+      "url": "https://stablecoins.llama.fi/stablecoincharts/all"
+    }
+  }
+}

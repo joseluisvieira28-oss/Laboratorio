@@ -1,0 +1,51 @@
+name: CMM-001 Discovery V0.1
+
+on:
+  push:
+    branches:
+      - cross-market-mispricing-001-discovery-v0.1
+    paths:
+      - "cmm001/CMM001_PRE_DISCOVERY_EXECUTION_AUTHORITY_V01.md"
+      - "cmm001/discovery_runner_v01.py"
+      - ".github/workflows/cmm001-discovery-v01.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cmm001-discovery-v01
+  cancel-in-progress: false
+
+jobs:
+  discovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - name: Checkout frozen discovery branch
+        uses: actions/checkout@v4
+        with:
+          ref: cross-market-mispricing-001-discovery-v0.1
+
+      - name: Run CMM-001 frozen discovery
+        id: discovery
+        continue-on-error: true
+        run: |
+          python3 cmm001/discovery_runner_v01.py
+
+      - name: Preserve evidence
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add cmm001/discovery_results/
+          if ! git diff --cached --quiet; then
+            git commit -m "cmm001: record discovery v0.1 evidence [skip ci]"
+            git push
+          fi
+
+      - name: Fail closed on source or runner failure
+        if: steps.discovery.outcome != 'success'
+        run: |
+          echo "CMM-001 Discovery V0.1 did not complete cleanly. See preserved source/closeout evidence."
+          exit 1
