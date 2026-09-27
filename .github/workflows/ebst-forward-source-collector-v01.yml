@@ -1,0 +1,47 @@
+name: EBST forward source collector v0.1
+on:
+  push:
+    branches: [eth-blockspace-state-transition-v0.1]
+    paths:
+      - 'research/eth_blockspace_state_transition/forward_source_collector_v01.py'
+      - '.github/workflows/ebst-forward-source-collector-v01.yml'
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ebst-forward-source-collector-v01
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: eth-blockspace-state-transition-v0.1
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Run collector or push preflight
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            python research/eth_blockspace_state_transition/forward_source_collector_v01.py --preflight
+          else
+            python research/eth_blockspace_state_transition/forward_source_collector_v01.py --collect
+          fi
+      - name: Persist forward source ledger
+        if: github.event_name != 'push'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add forward_state/ebst
+          if git diff --cached --quiet; then
+            echo "No state change"
+          else
+            git commit -m "EBST forward source sample"
+            git push origin HEAD:eth-blockspace-state-transition-v0.1
+          fi
