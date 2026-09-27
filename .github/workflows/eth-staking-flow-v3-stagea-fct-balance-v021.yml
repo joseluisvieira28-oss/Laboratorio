@@ -1,0 +1,58 @@
+name: ETH-STAKING-FLOW-001 FctValidatorBalance Recovery V0.2.1
+on:
+  push:
+    branches:
+      - eth-staking-flow-v3-stagea-fct-balance-v021
+    paths:
+      - 'research/eth_staking_flow/fct_validator_balance_recovery_v021.py'
+      - '.github/workflows/eth-staking-flow-v3-stagea-fct-balance-v021.yml'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify frozen authority
+        run: |
+          test -f research/eth_staking_flow/ETH_STAKING_FLOW_001_V3_STAGEA_FCT_VALIDATOR_BALANCE_REMEDIATION_V0_2_1.md
+          python -m py_compile research/eth_staking_flow/fct_validator_balance_recovery_v021.py
+      - name: Download immutable 601-date Stage-A legacy source
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh run download 35387477455 --repo joseluisvieira28-oss/Laboratorio --pattern 'ETH_V3_REP_SOURCE_*' --dir legacy_artifacts
+      - name: Execute exact-epoch source remediation and splice
+        run: python research/eth_staking_flow/fct_validator_balance_recovery_v021.py
+      - name: Enforce source-only firewall
+        if: always()
+        run: |
+          python - <<'PY'
+          import json, pathlib
+          p=pathlib.Path('artifacts/fct_balance_v021/ETH_STAKING_FLOW_001_V3_REPLICATION_SOURCE_V0_2_1.json')
+          assert p.exists()
+          x=json.loads(p.read_text())
+          assert x['source_only'] is True
+          assert x['signal_evaluated'] is False
+          assert x['market_prices_opened'] is False
+          assert x['returns_opened'] is False
+          assert x['pnl_opened'] is False
+          assert x['source_after_2026_08_31_opened'] is False
+          print('CLASSIFICATION',x['classification'])
+          print('CONTROL_EXACT',x.get('control_exact_match_count'))
+          print('MISSING_RECOVERED',x.get('recovered_missing_date_count'))
+          print('LEGACY_PRESERVED',x.get('legacy_preserved_date_count'))
+          print('OBSERVED_DATES',x.get('observed_date_count'))
+          print('SERIES_SHA',x.get('daily_series_sha256'))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ETH_STAKING_FLOW_001_V3_STAGEA_FCT_BALANCE_V0_2_1
+          path: artifacts/fct_balance_v021/*
+          if-no-files-found: error
+          retention-days: 90
