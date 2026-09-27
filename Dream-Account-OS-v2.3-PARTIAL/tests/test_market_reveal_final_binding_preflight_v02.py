@@ -33,16 +33,19 @@ def annual_plan():
             "authority": "BLS",
             "source_url": "https://www.bls.gov/schedule/news_release/cpi.htm",
             "retrieved_at_utc": "2026-12-20T00:00:00Z",
+            "extracted_text_sha256": "4" * 64,
         },
         {
             "authority": "BLS",
             "source_url": "https://www.bls.gov/schedule/news_release/empsit.htm",
             "retrieved_at_utc": "2026-12-20T00:00:00Z",
+            "extracted_text_sha256": "4" * 64,
         },
         {
             "authority": "FEDERAL_RESERVE",
             "source_url": "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm",
             "retrieved_at_utc": "2026-12-20T00:00:00Z",
+            "extracted_text_sha256": "4" * 64,
         },
     ]
     events = []
@@ -160,6 +163,13 @@ def activation(event_id="FOMC-01", t0="2027-01-27T19:00:00Z"):
         "official_authority": "FEDERAL_RESERVE",
         "official_source_url": "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm",
         "official_status": "OFFICIAL_CONFIRMED_FOR_CAPTURE",
+        "evidence_roles": ["FOMC_ANNUAL_SCHEDULE_ANNOUNCEMENT"],
+        "supporting_official_sources": [{
+            "role": "FOMC_ANNUAL_SCHEDULE_ANNOUNCEMENT",
+            "url": "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm",
+            "retrieved_at_utc": "2026-12-10T15:00:00Z",
+            "extracted_text_sha256": "5" * 64,
+        }],
         "target_observation_authorized": False,
         "outcomes_authorized": False,
         "activation_receipt_sha256": None,
