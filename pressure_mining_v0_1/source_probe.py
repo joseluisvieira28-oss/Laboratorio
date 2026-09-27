@@ -84,11 +84,30 @@ except Exception as e:
     compound["error"]=repr(e)
 receipt["probes"]["compound"]=compound
 
-# 2) Lido queue source accessibility only; no market response
+# 2) Lido queue prospective source feasibility only; no market response.
+#
+# Primary authority is Lido's official read-only Withdrawals API. Public RPC is
+# secondary contract-existence evidence only; a zero-log archive probe cannot
+# create SOURCE_PASS.
 lido={"lab_id":"LIDO-WITHDRAWAL-QUEUE-PRESSURE-001","status":"SOURCE_BLOCKED"}
 try:
     queue="0x889edC2eDab5f40e902b864aD4d7AdE8E412F9B1"
-    activation=17266004
+    official_api="https://wq-api.lido.fi/v2/request-time/calculate"
+    wq=fetch_json(official_api,timeout=90)
+    wqj=wq["json"]
+    if not isinstance(wqj,(dict,list)):
+        raise RuntimeError("official Withdrawals API returned unsupported JSON type")
+    if isinstance(wqj,dict):
+        api_schema={"type":"dict","top_level_keys":sorted(wqj.keys())[:100]}
+        api_nonempty=bool(wqj)
+    else:
+        api_schema={"type":"list","length":len(wqj)}
+        if wqj and isinstance(wqj[0],dict):
+            api_schema["first_item_keys"]=sorted(wqj[0].keys())[:100]
+        api_nonempty=len(wqj)>0
+    if not api_nonempty:
+        raise RuntimeError("official Withdrawals API returned empty payload")
+
     endpoints=[
       "https://ethereum-rpc.publicnode.com",
       "https://eth.llamarpc.com",
@@ -96,37 +115,38 @@ try:
       "https://rpc.flashbots.net"
     ]
     attempts=[]
-    chosen=None
-    code=None
-    hist_logs=None
-    hist_sha=None
+    code_present=False
+    selected_rpc=None
     for ep in endpoints:
         try:
             c0,csha=rpc("eth_getCode",[queue,"latest"],endpoint=ep)
-            logs,lsha=rpc("eth_getLogs",[{"address":queue,"fromBlock":hex(activation),"toBlock":hex(activation+500)}],endpoint=ep)
-            attempts.append({"endpoint":ep,"pass":True,"code_present":c0 not in ("0x","0x0"),"logs":len(logs)})
-            if c0 not in ("0x","0x0"):
-                chosen=ep; code=c0; hist_logs=logs; hist_sha=lsha; break
+            present=c0 not in ("0x","0x0")
+            attempts.append({"endpoint":ep,"pass":present,"code_present":present})
+            if present:
+                code_present=True
+                selected_rpc=ep
+                break
         except Exception as inner:
             attempts.append({"endpoint":ep,"pass":False,"error":repr(inner)})
-    if chosen is None:
-        raise RuntimeError("all public RPC fallbacks failed")
+
     lido.update({
       "status":"SOURCE_PASS_PROSPECTIVE_ONLY",
+      "primary_source":"OFFICIAL_LIDO_WITHDRAWALS_API",
+      "official_api":official_api,
+      "official_api_http_status":wq["status"],
+      "official_api_payload_sha256":wq["sha256"],
+      "official_api_schema":api_schema,
       "queue_address":queue,
-      "canonical_activation_block_from_prior_authority":activation,
-      "code_present":True,
-      "historical_probe_blocks":500,
-      "historical_logs_returned":len(hist_logs),
-      "historical_log_query_pass":True,
-      "selected_rpc":chosen,
-      "rpc_attempts":attempts,
-      "rpc_receipt_sha256":hist_sha,
-      "contamination_note":"2023-2024 market-response outcomes remain prohibited for new ID; source accessibility only."
+      "contract_code_present_secondary":code_present,
+      "selected_rpc_secondary":selected_rpc,
+      "rpc_attempts_secondary":attempts,
+      "historical_archive_pass_claimed":False,
+      "contamination_note":"2023-2024 market-response outcomes remain prohibited for new ID; source/schema access only. New queue-state observations must be prospective and earn zero inherited promotion credit."
     })
 except Exception as e:
+    lido["status"]="SOURCE_BLOCKED"
     lido["error"]=repr(e)
-    lido["rpc_attempts"]=locals().get("attempts",[])
+    lido["primary_source"]="OFFICIAL_LIDO_WITHDRAWALS_API"
 receipt["probes"]["lido"]=lido
 
 # 3) Pendle public API source feasibility
