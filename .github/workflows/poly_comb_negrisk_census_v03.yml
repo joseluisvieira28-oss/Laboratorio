@@ -1,0 +1,33 @@
+name: POLY-COMB Active NegRisk Census V0.3
+on:
+  push:
+    branches: [prediction-combinatorial-arb-v0.3-source-census]
+    paths:
+      - 'research/polymarket_combinatorial_arb/ACTIVE_NEGRISK_CENSUS_SPEC_V0.3.md'
+      - 'research/polymarket_combinatorial_arb/active_negrisk_census_v03.py'
+      - '.github/workflows/poly_comb_negrisk_census_v03.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  census:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - run: python research/polymarket_combinatorial_arb/active_negrisk_census_v03.py
+      - name: Assert no-economic firewall
+        run: |
+          python - <<'PY'
+          import json
+          x=json.load(open('artifacts/POLY_COMB_ACTIVE_NEGRISK_CENSUS_V0.3.json'))
+          for k in ('prices_opened','books_opened','fees_opened','economic_outputs_computed','authenticated_endpoints_used','orders_sent'):
+              assert x[k] is False, (k,x[k])
+          assert x['summary']['pagination_complete'] is True
+          print('SOURCE METADATA FIREWALL PASS')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: POLY_COMB_ACTIVE_NEGRISK_CENSUS_V0.3
+          path: artifacts/POLY_COMB_ACTIVE_NEGRISK_CENSUS_V0.3.json
+          if-no-files-found: error
