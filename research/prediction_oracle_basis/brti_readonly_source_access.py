@@ -29,6 +29,14 @@ QUERY = "?id=BRTI"
 URL = BASE + PATH + QUERY
 ACTIVATION = "POB_BRTI_READONLY_SOURCE_PROBE_V0.1"
 
+IDENTITY_KEYS = {"id", "index", "index_id", "indexid", "symbol", "ticker", "name"}
+TIMESTAMP_KEYS = {
+    "time", "timestamp", "ts", "source_ts_ms", "received_at",
+    "time_ms", "timestamp_ms",
+}
+VALUE_KEYS = {"value", "value_usd", "price", "index_value", "indexvalue"}
+EMBEDDED_JSON_KEYS = {"data", "payload", "raw"}
+
 
 def utc_now() -> dt.datetime:
     return dt.datetime.now(dt.timezone.utc)
@@ -86,6 +94,162 @@ def rsa_pss_sha256_sign(private_pem: str, message: bytes) -> bytes:
             pass
 
 
+def finite_number_like(v: Any) -> bool:
+    if isinstance(v, bool):
+        return False
+    if isinstance(v, (int, float)):
+        return math.isfinite(float(v))
+    if isinstance(v, str):
+        s = v.strip()
+        if not s:
+            return False
+        try:
+            return math.isfinite(float(s))
+        except ValueError:
+            return False
+    return False
+
+
+def observation_presence(x: Any, inherited_brti: bool = False) -> tuple[bool, bool, bool]:
+    """Require BRTI identity, timestamp and finite value in the same observation branch.
+
+    This deliberately rejects loose-document matches where an unrelated numeric field
+    elsewhere in the response could accidentally satisfy the PASS contract.
+    """
+    if isinstance(x, list):
+        for item in x:
+            b, t, v = observation_presence(item, inherited_brti)
+            if b and t and v:
+                return True, True, True
+        return False, False, False
+
+    if not isinstance(x, dict):
+        return False, False, False
+
+    local_brti = inherited_brti
+
+    # Some APIs encode the stream identity as a map key, e.g. {"BRTI": {...}}.
+    for key, value in x.items():
+        kl = str(key).lower()
+        if kl == "brti":
+            b, t, v = observation_presence(value, True)
+            if b and t and v:
+                return True, True, True
+        if (
+            kl in IDENTITY_KEYS
+            and isinstance(value, str)
+            and value.strip().upper() == "BRTI"
+        ):
+            local_brti = True
+
+    timestamp_here = any(
+        str(k).lower() in TIMESTAMP_KEYS and v not in (None, "")
+        for k, v in x.items()
+    )
+    value_here = any(
+        str(k).lower() in VALUE_KEYS and finite_number_like(v)
+        for k, v in x.items()
+    )
+
+    if local_brti and timestamp_here and value_here:
+        return True, True, True
+
+    # Kalshi's documented CF Benchmarks websocket shape may carry the raw
+    # benchmark observation as JSON text inside a data field. Support that
+    # structural form without treating arbitrary strings as evidence.
+    for key, value in x.items():
+        if isinstance(value, str) and str(key).lower() in EMBEDDED_JSON_KEYS:
+            s = value.strip()
+            if s.startswith(("{", "[")):
+                try:
+                    nested = json.loads(s)
+                except Exception:
+                    nested = None
+                if nested is not None:
+                    b, t, v = observation_presence(nested, local_brti)
+                    if b and t and v:
+                        return True, True, True
+
+    for value in x.values():
+        if isinstance(value, (dict, list)):
+            b, t, v = observation_presence(value, local_brti)
+            if b and t and v:
+                return True, True, True
+
+    return False, False, False
+
+
+def parser_self_test() -> dict[str, Any]:
+    cases = [
+        (
+            "direct_numeric_string",
+            {"id": "BRTI", "time": 1710000000323, "value": "68000.12"},
+            True,
+        ),
+        (
+            "wrapped_value_usd",
+            {"payload": [{"index_id": "BRTI", "source_ts_ms": 1710000000323, "value_usd": "68000.12000000"}]},
+            True,
+        ),
+        (
+            "map_key_identity",
+            {"latest_values": {"BRTI": {"time": 1710000000323, "value": "68000.12"}}},
+            True,
+        ),
+        (
+            "embedded_raw_observation",
+            {
+                "index_id": "BRTI",
+                "received_at": 1710000000341,
+                "data": '{"type":"value","id":"BRTI","time":1710000000323,"value":"68000.12"}',
+            },
+            True,
+        ),
+        (
+            "reject_unrelated_numeric",
+            {"id": "BRTI", "time": 1710000000323, "status_code": 200},
+            False,
+        ),
+        (
+            "reject_cross_record_value",
+            {
+                "payload": [
+                    {"id": "ETHUSD_RTI", "time": 1710000000323, "value": "2000.0"},
+                    {"id": "BRTI", "time": 1710000000323, "status": 200},
+                ]
+            },
+            False,
+        ),
+        (
+            "reject_nan",
+            {"id": "BRTI", "time": 1710000000323, "value": "NaN"},
+            False,
+        ),
+    ]
+
+    results = []
+    all_pass = True
+    for name, fixture, expected in cases:
+        b, t, v = observation_presence(fixture)
+        observed = bool(b and t and v)
+        ok = observed == expected
+        all_pass = all_pass and ok
+        results.append(
+            {
+                "name": name,
+                "expected_pass": expected,
+                "observed_pass": observed,
+                "test_pass": ok,
+            }
+        )
+
+    return {
+        "classification": "PARSER_SELF_TEST_PASS" if all_pass else "PARSER_SELF_TEST_FAIL",
+        "case_count": len(results),
+        "cases": results,
+    }
+
+
 def self_test() -> dict[str, Any]:
     with tempfile.TemporaryDirectory() as td:
         priv = pathlib.Path(td) / "synthetic.key"
@@ -132,12 +296,16 @@ def self_test() -> dict[str, Any]:
         )
 
         b64 = base64.b64encode(signature).decode("ascii")
+        parser = parser_self_test()
+        crypto_ok = v.returncode == 0 and base64.b64decode(b64) == signature
+        all_ok = crypto_ok and parser["classification"] == "PARSER_SELF_TEST_PASS"
         return {
-            "classification": "SELF_TEST_PASS" if v.returncode == 0 else "SELF_TEST_FAIL",
+            "classification": "SELF_TEST_PASS" if all_ok else "SELF_TEST_FAIL",
             "signing_path": PATH,
             "query_excluded_from_signature": True,
             "algorithm": "RSA-PSS-SHA256",
             "signature_base64_roundtrip": base64.b64decode(b64) == signature,
+            "parser": parser,
             "private_key_persisted": False,
             "real_credentials_used": False,
             "network_request_made": False,
@@ -157,35 +325,6 @@ def key_paths(x: Any, prefix: str = "$", out: list[str] | None = None) -> list[s
         for item in x[:1]:
             key_paths(item, prefix + "[]", out)
     return out
-
-
-def scan_identity_and_value_presence(x: Any) -> tuple[bool, bool, bool]:
-    brti = False
-    timestamp = False
-    finite_numeric = False
-
-    def walk(v: Any, key: str = ""):
-        nonlocal brti, timestamp, finite_numeric
-        if isinstance(v, dict):
-            for k, z in v.items():
-                kl = str(k).lower()
-                if any(t in kl for t in ("time", "timestamp", "date")) and z not in (None, ""):
-                    timestamp = True
-                walk(z, kl)
-        elif isinstance(v, list):
-            for z in v:
-                walk(z, key)
-        elif isinstance(v, str):
-            if "brti" in v.lower():
-                brti = True
-            if key in ("id", "index", "indexid", "symbol", "ticker", "name") and "brti" in v.lower():
-                brti = True
-        elif isinstance(v, (int, float)) and not isinstance(v, bool):
-            if math.isfinite(float(v)):
-                finite_numeric = True
-
-    walk(x)
-    return brti, timestamp, finite_numeric
 
 
 def execute_authenticated() -> dict[str, Any]:
@@ -251,10 +390,10 @@ def execute_authenticated() -> dict[str, Any]:
     except Exception:
         pass
 
-    brti, timestamp_present, numeric_present = scan_identity_and_value_presence(obj)
+    brti, timestamp_present, numeric_present = observation_presence(obj)
     schema_paths = sorted(set(key_paths(obj)))[:200] if obj is not None else []
 
-    if status in (401, 403, 503):
+    if status in (401, 403):
         classification = "BRTI_AUTH_OR_ENTITLEMENT_BLOCKED"
     elif status is not None and 200 <= status < 300 and obj is not None and brti and timestamp_present and numeric_present:
         classification = "BRTI_SOURCE_ACCESS_PASS"
@@ -282,6 +421,7 @@ def execute_authenticated() -> dict[str, Any]:
         "brti_identity_present": brti,
         "point_in_time_timestamp_present": timestamp_present,
         "finite_numeric_index_value_present": numeric_present,
+        "observation_fields_bound_to_same_branch": bool(brti and timestamp_present and numeric_present),
         "numeric_index_value_persisted": False,
         "api_key_value_persisted": False,
         "private_key_value_persisted": False,
@@ -332,6 +472,7 @@ def main() -> int:
     p.write_text(json.dumps(receipt, indent=2, sort_keys=True), encoding="utf-8")
     print(json.dumps({
         "self_test": receipt["self_test"]["classification"],
+        "parser_self_test": receipt["self_test"].get("parser", {}).get("classification"),
         "source_access": receipt["source_access"]["classification"],
         "firewall": receipt["firewall"],
     }, indent=2, sort_keys=True))
