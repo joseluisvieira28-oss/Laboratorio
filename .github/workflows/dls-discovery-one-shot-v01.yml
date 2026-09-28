@@ -1,0 +1,81 @@
+name: DLS Discovery One-Shot V0.1
+
+on:
+  push:
+    branches:
+      - dls-field-enrichment-v01
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_DISCOVERY_V01.marker
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  discovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download Final Pre-Discovery authority
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36483501137
+          name: dls-final-pre-discovery-authority-v01
+          path: authority
+
+      - name: Download canonical source-cluster census
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36465385517
+          name: dls-source-cluster-sample-gate-v01
+          path: sample_gate
+
+      - name: Download Market Data Source authority
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36483390920
+          name: dls-market-data-source-feasibility-v01
+          path: market_source
+
+      - name: Compile frozen Discovery executor
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/run_discovery_v0_1.py
+
+      - name: Execute Discovery only
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/run_discovery_v0_1.py
+          --authority authority
+          --sample-gate sample_gate
+          --market-source market_source
+          --registry labs/DEFI_LIQUIDATION_SHOCK_001/MARKET_DATA_MAPPING_REGISTRY_V0.1.json
+          --workers 16
+
+      - name: Upload immutable Discovery receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-discovery-v01
+          path: |
+            labs/DEFI_LIQUIDATION_SHOCK_001/DISCOVERY_MARKET_DATA_ACQUISITION_RECEIPT_V0.1.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/DISCOVERY_MARKET_DATA_ARCHIVE_MANIFEST_V0.1.ndjson
+            labs/DEFI_LIQUIDATION_SHOCK_001/DISCOVERY_RESULT_RECEIPT_V0.1.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/DISCOVERY_PAIRED_OUTCOMES_V0.1.ndjson
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Firewall
+        if: always()
+        run: echo DISCOVERY_ONLY_2024_OOS_CLOSED_2025_2026_PROTECTED_NO_TRADING
