@@ -1,0 +1,83 @@
+name: DLS Discovery V0.1
+
+on:
+  push:
+    branches:
+      - dls-field-enrichment-v01
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_DLS_DISCOVERY_V01.marker
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  discovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download frozen Final Pre-Discovery authority
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36483526738
+          name: dls-final-pre-discovery-authority-v01
+          path: authority
+
+      - name: Download frozen market-data source authority
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36483390920
+          name: dls-market-data-source-feasibility-v01
+          path: market_data
+
+      - name: Download frozen source-cluster census
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36465385517
+          name: dls-source-cluster-sample-gate-v01
+          path: sample_gate
+
+      - name: Compile frozen Discovery runner
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/run_dls_market_outcome_split_v0_1.py
+
+      - name: Execute Discovery only
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/run_dls_market_outcome_split_v0_1.py
+          --split discovery
+          --sample-root sample_gate
+          --market-root market_data
+          --authority-root authority
+          --registry labs/DEFI_LIQUIDATION_SHOCK_001/MARKET_DATA_MAPPING_REGISTRY_V0.1.json
+
+      - name: Upload Discovery evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-discovery-v01
+          path: |
+            labs/DEFI_LIQUIDATION_SHOCK_001/DLS_DISCOVERY_RECEIPT_V0.1.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/DLS_DISCOVERY_MARKET_DATA_QA_V0.1.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/DLS_DISCOVERY_MATCHED_PAIR_OUTCOMES_V0.1.ndjson
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Firewall
+        if: always()
+        run: |
+          echo PROTECTED_2025_2026_CLOSED
+          echo OOS_NOT_OPENED_BY_THIS_WORKFLOW
+          echo NO_TRADING_NO_ORDERS_NO_WALLETS_NO_MAIN_MERGE
