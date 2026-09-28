@@ -75,8 +75,18 @@ for target,need in sorted(needs.items()):
 
     if status=="BINANCE_DIRECT":
         symbol=row.get("symbol");base=row.get("base_asset");quote=row.get("quote_asset")
-        url="https://api.binance.com/api/v3/exchangeInfo?"+urllib.parse.urlencode({"symbol":symbol})
-        st,obj=http_json(url)
+        urls=[
+            "https://api.binance.com/api/v3/exchangeInfo?"+urllib.parse.urlencode({"symbol":symbol}),
+            "https://data-api.binance.vision/api/v3/exchangeInfo?"+urllib.parse.urlencode({"symbol":symbol})
+        ]
+        st=obj=None; metadata_route=None
+        for url in urls:
+            st,obj=http_json(url)
+            if st==200:
+                metadata_route=url.split("/api/v3/")[0]; break
+            if st not in (451,403):
+                break
+        res["product_metadata_route"]=metadata_route
         res["product_metadata_http_status"]=st
         symbols=(obj or {}).get("symbols") or []
         exact=[x for x in symbols if x.get("symbol")==symbol and x.get("baseAsset")==base and x.get("quoteAsset")==quote]
