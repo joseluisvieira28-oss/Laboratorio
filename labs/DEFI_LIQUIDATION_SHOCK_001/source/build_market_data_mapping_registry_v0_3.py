@@ -37,5 +37,5 @@ out={"schema_version":"0.3","lab_id":"DEFI-LIQUIDATION-SHOCK-001",
  "firewall":{"archive_payload_downloaded":False,"candles_opened":False,"prices_opened":False,
  "returns_computed":False,"pnl_computed":False,"economic_outcomes_opened":False,
  "protected_2025_2026_opened":False,"post_outcome_tuning":False,"live_trading":False,"merge_main":False}}
-Path("labs/DEFI_LIQUIDATION_SHOCK_001/MARKET_DATA_MAPPING_REGISTRY_V0.1.json").write_text(json.dumps(out,indent=2,sort_keys=True)+"\\n")
+Path("labs/DEFI_LIQUIDATION_SHOCK_001/MARKET_DATA_MAPPING_REGISTRY_V0.1.json").write_text(json.dumps(out,indent=2,sort_keys=True)+chr(10))
 print(json.dumps({"mapping_count":len(rows),"direct_count":1,"unavailable_count":len(rows)-1},indent=2))
