@@ -1,0 +1,40 @@
+name: Compound Realized Disposal Primary Readiness V0.1
+
+on:
+  push:
+    branches: [pressure-mining-program-v0.1]
+    paths:
+      - "pressure_mining_v0_1/compound_realized_disposal_primary_readiness.py"
+      - ".github/workflows/compound-realized-disposal-primary-readiness-v0.1.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  readiness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m py_compile pressure_mining_v0_1/compound_realized_disposal_primary_readiness.py
+      - name: Run source-only primary readiness census
+        run: python pressure_mining_v0_1/compound_realized_disposal_primary_readiness.py
+      - name: Verify receipt
+        run: |
+          python - <<'PY'
+          import json
+          p="pressure_mining_v0_1/receipts/COMPOUND_REALIZED_DISPOSAL_FLOW_001_PRIMARY_READINESS_RECEIPT_V0.1.json"
+          j=json.load(open(p))
+          print("scientific_status=",j.get("status"))
+          if j.get("status")=="TECHNICAL_FAILURE":raise SystemExit(2)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: compound-realized-disposal-primary-readiness-v01
+          path: pressure_mining_v0_1/receipts/COMPOUND_REALIZED_DISPOSAL_FLOW_001_PRIMARY_READINESS_RECEIPT_V0.1.json
+          if-no-files-found: error

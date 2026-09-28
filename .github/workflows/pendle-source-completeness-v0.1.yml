@@ -1,0 +1,51 @@
+name: Pendle Source Completeness V0.1
+
+on:
+  push:
+    branches:
+      - pressure-mining-program-v0.1
+    paths:
+      - "pressure_mining_v0_1/pendle_source_completeness.py"
+      - "pressure_mining_v0_1/labs/PENDLE_FIXED_VARIABLE_YIELD_PREMIUM_001_SOURCE_COMPLETENESS_PROTOCOL_V0.1.md"
+      - ".github/workflows/pendle-source-completeness-v0.1.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "pressure_mining_v0_1/pendle_source_completeness.py"
+      - "pressure_mining_v0_1/labs/PENDLE_FIXED_VARIABLE_YIELD_PREMIUM_001_SOURCE_COMPLETENESS_PROTOCOL_V0.1.md"
+      - ".github/workflows/pendle-source-completeness-v0.1.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-completeness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Compile collector
+        run: python -m py_compile pressure_mining_v0_1/pendle_source_completeness.py
+
+      - name: Run source-only completeness census
+        run: python pressure_mining_v0_1/pendle_source_completeness.py
+
+      - name: Verify receipt
+        run: test -s pressure_mining_v0_1/receipts/PENDLE_SOURCE_COMPLETENESS_RECEIPT_V0.1.json
+
+      - name: Upload immutable receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: pendle-source-completeness-v01
+          path: pressure_mining_v0_1/receipts/PENDLE_SOURCE_COMPLETENESS_RECEIPT_V0.1.json
+          if-no-files-found: error
+          retention-days: 90

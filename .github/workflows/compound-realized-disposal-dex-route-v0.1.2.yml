@@ -1,0 +1,49 @@
+name: Compound Realized Disposal DEX Route V0.1.2
+
+on:
+  push:
+    branches: [pressure-mining-program-v0.1]
+    paths:
+      - "pressure_mining_v0_1/compound_realized_disposal_dex_route_v0_1_2.py"
+      - ".github/workflows/compound-realized-disposal-dex-route-v0.1.2.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  route-classification:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install "eth-hash[pycryptodome]"
+      - run: python -m py_compile pressure_mining_v0_1/compound_realized_disposal_dex_route_v0_1_2.py
+      - name: Run corrected source-only DEX route classification
+        run: python pressure_mining_v0_1/compound_realized_disposal_dex_route_v0_1_2.py
+      - name: Verify receipt and invariants
+        run: |
+          python - <<'PY'
+          import json
+          p="pressure_mining_v0_1/receipts/COMPOUND_REALIZED_DISPOSAL_FLOW_001_DEX_ROUTE_RECEIPT_V0.1.2.json"
+          j=json.load(open(p))
+          print("scientific_status=",j.get("status"))
+          if j.get("status")=="TECHNICAL_FAILURE": raise SystemExit(2)
+          s=j["sample"]
+          inf=s["recipient_inferred_events"]
+          on=s["same_tx_onward_transfer_events"]
+          ro=s["recognized_dex_swap_on_onward_events"]
+          if not (0 <= ro <= on <= inf): raise SystemExit(f"count invariant failed: {ro=} {on=} {inf=}")
+          x=s.get("recognized_dex_swap_share_of_onward_pct")
+          if x is not None and not (0 <= x <= 100): raise SystemExit(f"invalid percentage {x}")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: compound-realized-disposal-dex-route-v012
+          path: pressure_mining_v0_1/receipts/COMPOUND_REALIZED_DISPOSAL_FLOW_001_DEX_ROUTE_RECEIPT_V0.1.2.json
+          if-no-files-found: error
+# technical trigger: V0.1.2 canonical rerun

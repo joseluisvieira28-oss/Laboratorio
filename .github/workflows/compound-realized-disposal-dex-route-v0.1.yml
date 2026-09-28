@@ -1,0 +1,41 @@
+name: Compound Realized Disposal DEX Route V0.1
+
+on:
+  push:
+    branches: [pressure-mining-program-v0.1]
+    paths:
+      - "pressure_mining_v0_1/compound_realized_disposal_dex_route.py"
+      - ".github/workflows/compound-realized-disposal-dex-route-v0.1.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  route-classification:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install "eth-hash[pycryptodome]"
+      - run: python -m py_compile pressure_mining_v0_1/compound_realized_disposal_dex_route.py
+      - name: Run source-only DEX route classification
+        run: python pressure_mining_v0_1/compound_realized_disposal_dex_route.py
+      - name: Verify receipt
+        run: |
+          python - <<'PY'
+          import json
+          p="pressure_mining_v0_1/receipts/COMPOUND_REALIZED_DISPOSAL_FLOW_001_DEX_ROUTE_RECEIPT_V0.1.json"
+          j=json.load(open(p))
+          print("scientific_status=",j.get("status"))
+          if j.get("status")=="TECHNICAL_FAILURE": raise SystemExit(2)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: compound-realized-disposal-dex-route-v01
+          path: pressure_mining_v0_1/receipts/COMPOUND_REALIZED_DISPOSAL_FLOW_001_DEX_ROUTE_RECEIPT_V0.1.json
+          if-no-files-found: error
