@@ -64,6 +64,16 @@ exit_open * (1 + slippage)
 
 Missing exit OPEN => NO_TRADE_MISSING_EXIT_BAR.
 
+## Funding-boundary rule
+
+V0.2 development V0.1 does not model historical funding cashflows.
+
+To prevent unmodeled funding from entering PnL, any prospective trade whose interval from trigger-bar open through exit timestamp includes a standard 8-hour funding boundary at 00:00, 08:00 or 16:00 UTC is:
+
+NO_TRADE_FUNDING_BOUNDARY
+
+This exclusion is timestamp-only and is applied before PnL inspection.
+
 ## Fee accounting
 
 fee = 0.0008 per side.
