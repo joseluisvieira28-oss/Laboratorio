@@ -74,12 +74,14 @@ def http_json(url,retries=6):
     try:return st,json.loads(b)
     except Exception:return st,None
 
-def frozen_percentile(vals,q,upper=False):
+def qtype7(vals,q):
     s=sorted(vals); n=len(s)
     if not n:return None
     if n==1:return s[0]
-    idx=int(math.ceil((n-1)*q)) if upper else int(math.floor((n-1)*q))
-    return s[idx]
+    h=(n-1)*q
+    lo=int(math.floor(h)); hi=int(math.ceil(h))
+    if lo==hi:return s[lo]
+    return s[lo]+(s[hi]-s[lo])*(h-lo)
 def mean(xs): return sum(xs)/len(xs) if xs else None
 
 def file_sha256(path):
@@ -110,7 +112,7 @@ def bootstrap_stats(pairs,hlabel):
         "repetitions":BOOTSTRAP_N,
         "block_day_count":len(days),
         "seed_sha256":hashlib.sha256((LAB+"discovery"+hlabel+"V0.1").encode()).hexdigest(),
-        "ci95":[frozen_percentile(boots,0.025,False),frozen_percentile(boots,0.975,True)],
+        "ci95":[qtype7(boots,0.025),qtype7(boots,0.975)],
         "one_sided_p":p_one
     }
 
@@ -271,17 +273,14 @@ archive_rows.sort(key=lambda x:(x["symbol"],x["date"]))
 with MANIFEST.open("w") as f:
     for r in archive_rows:f.write(json.dumps(r,sort_keys=True,separators=(",",":"))+"\n")
 
-# REST reconciliation: up to 16 deterministic timestamps per symbol/year.
+# REST reconciliation: 5 deterministic timestamps per symbol/year.
 reconciliation=[]
 for symbol in symbols:
     ts_all=sorted(bars[symbol])
     years=sorted(set(dt.datetime.fromtimestamp(t/1000,dt.timezone.utc).year for t in ts_all))
     for year in years:
         ys=[t for t in ts_all if dt.datetime.fromtimestamp(t/1000,dt.timezone.utc).year==year]
-        def recon_rank(t):
-            canon=dt.datetime.fromtimestamp(t/1000,dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:00Z")
-            return hashlib.sha256((LAB+symbol+str(year)+canon).encode()).hexdigest()
-        ranked=sorted(ys,key=lambda t:(recon_rank(t),t))[:16]
+        ranked=sorted(ys,key=lambda t:hashlib.sha256((symbol+"|"+str(year)+"|"+str(t)+"|DLS_RECON_V0.1").encode()).hexdigest())[:5]
         for t in ranked:
             q=urllib.parse.urlencode({"symbol":symbol,"interval":"1m","startTime":t,"endTime":t+59999,"limit":1})
             st,obj=http_json("https://data-api.binance.vision/api/v3/klines?"+q)
@@ -328,7 +327,7 @@ for c in clusters:
     d=month_start.date()
     while d<month_end.date():
         for minute in range(60):
-            x=dt.datetime(d.year,d.month,d.day,A.hour,minute,tzinfo=dt.timezone.utc)
+            x=dt.datetime(d.year,d.month,d.day,t0.hour,minute,tzinfo=dt.timezone.utc)
             if x<listing or x>=DISCOVERY_END: continue
             if x+dt.timedelta(minutes=240)>=DISCOVERY_END: continue
             if near_event(symbol,x): continue
