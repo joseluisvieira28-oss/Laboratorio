@@ -1,0 +1,50 @@
+{
+  "receipt_id": "OPTIONS_SPOTPERP_001_V21_EXECUTION_ECONOMICS_TRUTH_GATE_V0.1_2026-09-28",
+  "status": "VALIDATED__EVIDENCE_GATE_INSTALLED__CURRENT_MEXC_MARKET_ROUTE_COST_FRAGILE",
+  "branch": "options-v21-execution-economics-truth-gate-v0.1-2026-09-28",
+  "pr": 156,
+  "base_branch": "options-v21-futures-only-autolive-v02-2026-09-25",
+  "validation": {
+    "workflow_run_id": 36447158206,
+    "job_id": 109012303854,
+    "conclusion": "success",
+    "checks": [
+      "compile",
+      "execution economics unit tests",
+      "futures-only executor regression tests",
+      "MEXC authenticated trade regression tests",
+      "official API taker floor 8 bps/fill invariant"
+    ]
+  },
+  "scientific_parent": {
+    "strategy_id": "OPTIONS-SPOTPERP-001-V2.1",
+    "oos_2025_entered_scaled_trades": 363,
+    "net10_mean_bps_per_parent_opportunity": 5.0427663334,
+    "net20_mean_bps_per_parent_opportunity": -4.6759378383,
+    "implied_average_executed_weight": 0.97187041717,
+    "implied_gross_mean_bps_per_parent_opportunity": 14.7614705051,
+    "implied_net_at_16bps_full_notional_cost": -0.78845616962,
+    "science_changed": false,
+    "promotion_changed": false
+  },
+  "mexc_current_route": {
+    "order_type": "MARKET",
+    "official_api_taker_fee_fraction_per_fill": 0.0008,
+    "official_api_taker_bps_per_fill": 8,
+    "official_fee_only_round_trip_bps": 16,
+    "operator_export_observed_fill_fee_bps_approx": "7.94-7.97",
+    "operator_export_two_fill_equivalent_bps_approx": 15.9,
+    "base10_compatible_on_fees_alone": false,
+    "stress20_headroom_before_other_friction_bps": 4
+  },
+  "corrections": [
+    "executor OFFICIAL_API_TAKER_FLOOR hardened from 0.0005 to 0.0008",
+    "future exits now persist PRE_EXIT_MARKET_SNAPSHOT.json",
+    "future exits now persist EXIT_FILL_RECEIPT.json",
+    "truth gate requires complete immutable signal-to-reconciliation identity before economic verdict"
+  ],
+  "current_limitation": "Existing PDF order-history rows cannot be attributed to V2.1 because they do not expose the executor signal identity/external OID. Historical local Windows receipts were not available through GitHub/Drive in this run.",
+  "order_created_by_this_mission": false,
+  "exchange_mutation_by_this_mission": false,
+  "main_merged": false
+}
