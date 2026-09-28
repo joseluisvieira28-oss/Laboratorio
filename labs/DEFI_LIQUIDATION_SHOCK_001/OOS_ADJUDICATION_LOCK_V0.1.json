@@ -2,72 +2,120 @@
   "schema_version": "0.1",
   "lab_id": "DEFI-LIQUIDATION-SHOCK-001",
   "classification": "SURVIVES_OOS",
-  "canonical_oos": {
-    "workflow_run_id": 36486030304,
-    "job_id": 109143022870,
-    "artifact_id": 10999436846,
-    "head_sha": "44f7fcf82af20c2872e6fc5781b7ed9fba8d46e8",
-    "artifact_digest": "sha256:36bc7643ef95e564237a670fe363c4ea12d5a555a195af7c2714c0cdba603dcd",
-    "result_receipt_sha256": "322114ca7813acd1cb0d74d0278c063eca13869250e74355fda6564545df02d3",
-    "acquisition_manifest_sha256": "6b78c627e7e3a20c7ed7e7cd3f4ee5217bed6752c5d4d1d12946a1eb42c34bc7",
-    "paired_rows_sha256": "f9751027d738d19dd4a8efeb870e60cc168845ae81a5364ef351f3f406bf0611"
+  "canonical": true,
+  "discovery": {
+    "run_id": 36485865469,
+    "job_id": 109142489175,
+    "artifact_id": 10999736255,
+    "result_receipt_sha256": "d75081066e885e835ecf915673d10af64a53fe4f298e5b2a8d4a287f9c12ea2d",
+    "classification": "SURVIVES_DISCOVERY"
   },
-  "discovery_lock": {
-    "workflow_run_id": 36485119508,
-    "artifact_id": 10997938881,
-    "classification": "SURVIVES_DISCOVERY",
-    "result_receipt_sha256": "e8bd60398111339f95b82302fe22335665959949adfc357a6ee89d3c1c318a0c"
-  },
-  "result": {
-    "mapped_oos_clusters": 9931,
+  "oos": {
+    "run_id": 36486620726,
+    "job_id": 109144970128,
+    "artifact_id": 10998958189,
+    "result_receipt_sha256": "ac5852c1a1cbc2f8f29d6bbfcc7527bf00c3420e0e5e54b729fcaa310ae74da3",
+    "acquisition_receipt_sha256": "74b7a898232569367de635d257ec34709c6cf86ca8bbc4a4aeda0ad9f6014b97",
+    "archive_manifest_sha256": "fedc04778b0aafd7c83b67c479368487df40fd4fa93e46bcc497504dad9668c3",
+    "paired_outcomes_sha256": "fc0154fcd1a65f60342bcb8eb786289f621c53394ff10a753f6944382c135c24",
+    "classification": "SURVIVES_OOS",
+    "mapped_source_n": 9931,
     "paired_n": 9929,
-    "aggregate_coverage": 0.9997986104118417,
-    "excluded_boundary_horizon": 2,
-    "primary_5m": {
-      "mean_paired_difference": 0.0014562064315711174,
-      "relative_uplift": 0.808704956907289,
-      "bootstrap_ci95": [
-        0.0010233675821834868,
-        0.0019805261175959497
-      ],
-      "one_sided_bootstrap_p": 0.0001999600079984003
-    },
-    "gates": {
-      "paired_n": true,
-      "mean_d5_positive": true,
-      "ci95_d5_low_positive": true,
-      "relative_uplift_5m_ge_10pct": true,
-      "two_inferential_protocol_families_positive": true,
-      "two_secondary_horizons_positive": true
-    },
-    "positive_inferential_families": [
-      "kamino",
-      "marginfi",
-      "save11"
+    "pair_coverage": 0.9997986104118417,
+    "excluded_split_boundary": 2,
+    "hard_error_count": 0
+  },
+  "primary_5m": {
+    "mean_event_abs": 0.0032568710857610117,
+    "mean_control_abs": 0.0018006646541898945,
+    "mean_paired_difference": 0.0014562064315711174,
+    "relative_uplift": 0.808704956907289,
+    "bootstrap_ci95": [
+      0.0010233675821834868,
+      0.0019805261175959497
     ],
-    "positive_secondary_horizons": [
-      "1m",
-      "30m",
-      "240m"
-    ]
+    "one_sided_p": 0.0001999600079984003
   },
-  "scientific_status": {
-    "oos_survived": true,
-    "live_trading_authority": false,
-    "protected_holdout_authority": false,
-    "post_outcome_tuning_allowed": false
+  "protocol_family_5m": [
+    {
+      "protocol": "kamino",
+      "n": 2123,
+      "mean_d_5m": 0.0025814313333364577,
+      "positive": true
+    },
+    {
+      "protocol": "marginfi",
+      "n": 6019,
+      "mean_d_5m": 0.0011462500035786304,
+      "positive": true
+    },
+    {
+      "protocol": "save11",
+      "n": 1787,
+      "mean_d_5m": 0.0011634113972336594,
+      "positive": true
+    }
+  ],
+  "secondary_horizons": {
+    "1m": {
+      "mean_paired_difference": 0.0006036934296652091,
+      "relative_uplift": 0.7402158615726713,
+      "ci95": [
+        0.00043851693286984746,
+        0.0007981930022562467
+      ]
+    },
+    "30m": {
+      "mean_paired_difference": 0.003104006892437073,
+      "relative_uplift": 0.7231433943789023,
+      "ci95": [
+        0.0020575854740170238,
+        0.004224026690418332
+      ]
+    },
+    "240m": {
+      "mean_paired_difference": 0.007477361016211148,
+      "relative_uplift": 0.662006618846499,
+      "ci95": [
+        0.004185947853936939,
+        0.011179260799174164
+      ]
+    }
   },
-  "firewall": {
-    "protected_2025_2026_opened": false,
-    "post_outcome_tuning": false,
-    "live_trading": false,
-    "orders": false,
-    "wallets": false,
-    "exchange_mutation": false,
-    "merge_main": false
+  "oos_checks": {
+    "paired_n_ge_500": true,
+    "mean_d_5m_positive": true,
+    "bootstrap_ci_5m_lower_positive": true,
+    "relative_uplift_5m_ge_10pct": true,
+    "two_inferential_families_positive_5m": true,
+    "two_secondary_horizons_positive": true
   },
-  "noncanonical_parallel_runs_excluded_from_adjudication": [
+  "conformance": {
+    "discovery_implementation_freeze_commit": "0cdc8728ce9dc8495c26b443a81bc2d7e1d75730",
+    "canonical_discovery_executor_restore_commit": "3ab9974cc7fe7abda1de1bc2a7e1d66d9edc2b0d",
+    "oos_execution_binding_commit": "a35e73787ef081c5897ee5bef3536316723aebec",
+    "oos_executor_restore_commit": "e191cca93ba19914ec8e3013f06b50843a3aa18b",
+    "oos_prelaunch_conformance_commit": "83e075afb03e7f1220e38c31d38b9b339803dad0",
+    "oos_workflow_commit": "8dfd5cf8ecfdcae5333ac92e682e1e393bbf045f",
+    "oos_launch_commit": "b9955030d089520d569a25df33515add4ad5412f"
+  },
+  "superseded_or_noncanonical_runs": [
+    36485119508,
     36485809687,
-    36485813772
-  ]
+    36485813772,
+    36486030304,
+    36486083656
+  ],
+  "authority_boundary": {
+    "discovery_complete": true,
+    "oos_2024_complete": true,
+    "protected_2025_2026_opened": false,
+    "protected_holdout_authorized": false,
+    "live_trading_authorized": false,
+    "orders_authorized": false,
+    "wallets_authorized": false,
+    "exchange_mutation_authorized": false,
+    "merge_main_authorized": false,
+    "post_outcome_tuning_authorized": false
+  }
 }
