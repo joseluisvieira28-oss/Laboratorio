@@ -23,6 +23,7 @@ EXPECTED_SAMPLE_RECEIPT_SHA256 = "abfd67aed58ef9a486995d5b211606a7e007ad49eeef8c
 EXPECTED_FEASIBILITY_RECEIPT_SHA256 = "4537e4e4b85dab3bcd1a79f38b76dafe1c715057f23b28c77f3ba111a0f1e67d"
 EXPECTED_FINAL_AUTHORITY_RECEIPT_SHA256 = "1d9ad1290f0cfc7959c709a2623bb09863365ee9ee920358420d086047455d5c"
 EXPECTED_MAPPING_REGISTRY_SHA256 = "97ff771dbeb2ec9c3b0a408edd8733701a973ffc1ae597413fbfed4455482f90"
+EXPECTED_DISCOVERY_RESULT_SHA256 = "e8bd60398111339f95b82302fe22335665959949adfc357a6ee89d3c1c318a0c"
 ARCHIVE_TEMPLATE = "https://data.binance.vision/data/spot/daily/klines/{symbol}/1m/{symbol}-1m-{date}.zip"
 CHECKSUM_TEMPLATE = ARCHIVE_TEMPLATE + ".CHECKSUM"
 API_BASES = [
@@ -420,7 +421,10 @@ def main():
     if args.split=="oos":
         if not args.discovery_receipt:
             raise ContractError("OOS requires discovery receipt")
-        dr=json.loads(Path(args.discovery_receipt).read_text())
+        drp=Path(args.discovery_receipt)
+        if sha256_file(drp)!=EXPECTED_DISCOVERY_RESULT_SHA256:
+            raise ContractError(f"Discovery receipt sha mismatch {sha256_file(drp)}")
+        dr=json.loads(drp.read_text())
         if dr.get("classification")!="SURVIVES_DISCOVERY":
             raise ContractError("OOS forbidden unless SURVIVES_DISCOVERY")
         start,end=OOS_START,OOS_END
@@ -436,6 +440,10 @@ def main():
             clusters.append(c)
     if not clusters:
         raise SourceBlocked("no directly mapped clusters in split")
+    expected_mapped=int(((feas.get("post_mapping_sample") or {}).get(
+        "mapped_discovery_cluster_count" if args.split=="discovery" else "mapped_oos_cluster_count") or 0))
+    if len(clusters)!=expected_mapped:
+        raise ContractError(f"mapped cluster count mismatch observed={len(clusters)} expected={expected_mapped}")
 
     event_months={(parse_iso(c["t0"]).year,parse_iso(c["t0"]).month) for c in clusters}
     data_months=set()
