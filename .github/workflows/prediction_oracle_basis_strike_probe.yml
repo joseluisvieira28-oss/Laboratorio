@@ -1,0 +1,47 @@
+name: POB Explicit Strike Source Probe
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-probe:
+    if: github.ref_name == 'prediction-oracle-basis-v0.1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run explicit-strike source-only probe
+        run: python research/prediction_oracle_basis/source_probe_strike.py
+      - name: Verify outcome firewall
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path("artifacts/prediction_oracle_basis/strike/source_probe_receipt.json")
+          x=json.loads(p.read_text())
+          raw=p.read_text().lower()
+          banned={'"pnl"', '"profitability"', '"win_rate"', '"expected_return"', '"best_hour"', '"best_direction"', '"optimal_threshold"'}
+          bad=sorted(k for k in banned if k in raw)
+          if bad:
+              raise SystemExit(f"banned economic outputs present: {bad}")
+          a=x["adjudication"]
+          assert a["economic_outputs_computed"] is False
+          assert a["matured_outcomes_read"] is False
+          assert a["future_nearest_joins"] == 0
+          assert a["silent_imputations"] == 0
+          assert a["orders"] is False
+          assert a["authenticated_trading_endpoints"] is False
+          print("OUTCOME_FIREWALL_PASS")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: POB_STRIKE_SOURCE_PROBE_RECEIPT
+          path: artifacts/prediction_oracle_basis/strike/source_probe_receipt.json
+          if-no-files-found: error

@@ -1,0 +1,68 @@
+name: POB Synthetic Safety Tests
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'research/prediction_oracle_basis/brti_readonly_source_access.py'
+      - 'research/prediction_oracle_basis/boundary_semantics_selftest.py'
+      - '.github/workflows/prediction_oracle_basis_synthetic_safety.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic-safety:
+    if: github.head_ref == 'prediction-oracle-basis-v0.1' || github.ref_name == 'prediction-oracle-basis-v0.1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: BRTI signing and parser self-test
+        run: python research/prediction_oracle_basis/brti_readonly_source_access.py --self-test
+
+      - name: One-cent boundary semantics self-test
+        run: python research/prediction_oracle_basis/boundary_semantics_selftest.py
+
+      - name: Verify synthetic-only firewall
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          b = json.loads(Path("artifacts/prediction_oracle_basis/brti_readonly_source/brti_source_access_receipt.json").read_text())
+          s = b["self_test"]
+          assert s["classification"] == "SELF_TEST_PASS"
+          assert s["parser"]["classification"] == "PARSER_SELF_TEST_PASS"
+          assert s["network_request_made"] is False
+          assert s["real_credentials_used"] is False
+          assert b["source_access"]["network_request_made"] is False
+          assert b["firewall"]["economic_outputs_computed"] is False
+          assert b["firewall"]["market_quotes_compared"] is False
+          assert b["firewall"]["matured_outcomes_read"] is False
+          assert b["firewall"]["orders"] is False
+
+          x = json.loads(Path("artifacts/prediction_oracle_basis/synthetic_safety/boundary_semantics_receipt.json").read_text())
+          assert x["classification"] == "BOUNDARY_SEMANTICS_SELF_TEST_PASS"
+          assert x["one_cent_boundary_mismatch_at_exact_nominal_preserved"] is True
+          assert x["classification_must_not_be_exact_except_oracle"] is True
+          assert x["synthetic_only"] is True
+          assert x["network_requests"] is False
+          assert x["economic_outputs_computed"] is False
+          assert x["orders"] is False
+          print("POB_SYNTHETIC_SAFETY_FIREWALL_PASS")
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: POB_SYNTHETIC_SAFETY_V01
+          path: |
+            artifacts/prediction_oracle_basis/brti_readonly_source/brti_source_access_receipt.json
+            artifacts/prediction_oracle_basis/synthetic_safety/boundary_semantics_receipt.json
+          if-no-files-found: error

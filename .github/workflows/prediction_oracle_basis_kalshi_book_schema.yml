@@ -1,0 +1,20 @@
+name: POB Kalshi Book Schema Diagnostic
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  schema-only:
+    if: github.ref_name == 'prediction-oracle-basis-v0.1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Inspect Kalshi order-book schema only
+        run: python research/prediction_oracle_basis/source_probe_kalshi_book_schema.py
