@@ -17,7 +17,7 @@ ap=argparse.ArgumentParser()
 ap.add_argument("--authority",required=True)
 ap.add_argument("--sample-gate",required=True)
 ap.add_argument("--market-source",required=True)
-ap.add_argument("--oos",required=True)
+ap.add_argument("--discovery",required=True)
 ap.add_argument("--registry",required=True)
 ap.add_argument("--outdir",default="labs/DEFI_LIQUIDATION_SHOCK_001")
 ap.add_argument("--workers",type=int,default=12)
@@ -130,7 +130,7 @@ def holm(pmap,alpha=0.05):
 authority,_=find_one(args.authority,"FINAL_PRE_DISCOVERY_AUTHORITY_RECEIPT_V0.1.json")
 sample_receipt,_=find_one(args.sample_gate,"SOURCE_CLUSTER_SAMPLE_GATE_RECEIPT_V0.1.json")
 source_receipt,_=find_one(args.market_source,"MARKET_DATA_SOURCE_FEASIBILITY_RECEIPT_V0.1.json")
-oos_receipt,_=find_one(args.oos,"DISCOVERY_RESULT_RECEIPT_V0.1.json")
+discovery_receipt,_=find_one(args.discovery,"DISCOVERY_RESULT_RECEIPT_V0.1.json")
 census_hits=sorted(Path(args.sample_gate).rglob("SOURCE_PRIMARY_CLUSTER_CENSUS_V0.1.ndjson"))
 registry_path=Path(args.registry)
 hard_errors=[]
@@ -147,8 +147,8 @@ if not sample_receipt or sample_receipt.get("classification")!="SOURCE_SAMPLE_GA
     hard_errors.append({"reason":"sample_gate_not_pass","classification":(sample_receipt or {}).get("classification")})
 if not source_receipt or source_receipt.get("classification")!="MARKET_DATA_SOURCE_PASS":
     hard_errors.append({"reason":"market_source_not_pass","classification":(source_receipt or {}).get("classification")})
-if not oos_receipt or oos_receipt.get("classification")!="SURVIVES_DISCOVERY":
-    hard_errors.append({"reason":"oos_not_survived","classification":(oos_receipt or {}).get("classification")})
+if not discovery_receipt or discovery_receipt.get("classification")!="SURVIVES_DISCOVERY":
+    hard_errors.append({"reason":"discovery_not_survived","classification":(discovery_receipt or {}).get("classification")})
 if not census_hits: hard_errors.append({"reason":"cluster_census_missing"})
 if not registry_path.exists(): hard_errors.append({"reason":"mapping_registry_missing"})
 if hard_errors:
@@ -190,13 +190,13 @@ if hard_errors:
       "schema_version":"0.1","lab_id":LAB,"classification":"MARKET_DATA_SOURCE_BLOCKED",
       "stage":"pre_acquisition_authority_check","error_count":len(hard_errors),"errors":hard_errors,
       "market_payload_opened":False,"candles_opened":False,"returns_computed":False,
-      "oos_2024_opened":True,"protected_2025_2026_opened":False
+      "oos_2024_opened":False,"protected_2025_2026_opened":False
     }
     ACQ.write_text(json.dumps(pre,indent=2,sort_keys=True)+"\n")
     RES.write_text(json.dumps({
       "schema_version":"0.1","lab_id":LAB,"classification":"MARKET_DATA_SOURCE_BLOCKED",
       "stage":"pre_acquisition_authority_check","economic_hypothesis_tested":False,
-      "oos_2024_opened":True,"protected_2025_2026_opened":False
+      "oos_2024_opened":False,"protected_2025_2026_opened":False
     },indent=2,sort_keys=True)+"\n")
     print(json.dumps({"classification":"MARKET_DATA_SOURCE_BLOCKED","stage":"pre_acquisition_authority_check","errors":hard_errors},indent=2))
     raise SystemExit(2)
@@ -373,7 +373,7 @@ if hard_errors or coverage<0.95 or any(x["coverage"]<0.90 for x in subgroup_cov)
 acq={
  "schema_version":"0.1","lab_id":LAB,"classification":acq_class,
  "authority_classification":authority.get("classification"),"sample_gate_classification":sample_receipt.get("classification"),
- "market_source_classification":source_receipt.get("classification"),"oos_classification":oos_receipt.get("classification"),"registry_sha256":registry_sha,
+ "market_source_classification":source_receipt.get("classification"),"discovery_classification":discovery_receipt.get("classification"),"registry_sha256":registry_sha,
  "mapped_oos_cluster_count":mapped_n,"paired_oos_count":pair_n,"aggregate_pair_coverage":coverage,
  "inferential_subgroup_coverage":subgroup_cov,"exclusions":dict(exclusions),
  "archive_manifest_path":str(MANIFEST),"archive_day_count":len(archive_rows),
