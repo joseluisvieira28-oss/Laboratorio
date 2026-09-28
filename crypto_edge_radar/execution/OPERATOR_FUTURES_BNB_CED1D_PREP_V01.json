@@ -1,29 +1,50 @@
 {
-  "schema_version": "0.1",
-  "created_utc": "2026-09-27",
+  "schema_version": "0.2",
+  "updated_utc": "2026-09-28",
   "lane_classification": "OPERATOR_REAL_MONEY_PREP__NO_SCIENTIFIC_CREDIT",
   "live_activation_authorized": false,
+  "governing_authorities": {
+    "aggressive_policy": {
+      "policy_id": "ND-PROMOTION-POLICY-V3.0-FROZEN",
+      "drive_id": "1_6hxn44ndVpryKCVjjPoLViHV5gpyzXqD7T2ObkNkNU",
+      "interpretation": "AGGRESSIVE removes arbitrary waiting after legitimate gates pass; it never lowers standards after outcomes."
+    },
+    "standing_mexc_futures_operator_authority": {
+      "drive_id": "1qIjSWPxvEZBatQ811IjXMLSs7E2h73XtSyfiMLOrHno",
+      "status": "ACTIVE_STANDING_OPERATOR_AUTHORIZATION__VALIDATED",
+      "per_trade_reconfirmation_after_all_gates": false
+    },
+    "fee_truth_source": {
+      "drive_id": "1NrBD1pX0kMP6PPG1KNxSYQTe423CzLGJ9AuBRuXSlJc",
+      "as_of": "2026-09-28",
+      "policy_file": "execution/MEXC_FUTURES_FEE_TRUTH_POLICY_V01.json"
+    }
+  },
   "science_isolation": {
     "scientific_credit": false,
     "tier_or_diamond_credit": false,
     "forward_sample_credit": false,
-    "parent_science_mutated": false
+    "parent_science_mutated": false,
+    "observed_operator_pnl_may_not_rewrite_parent_costs_or_verdicts": true
   },
   "global_fail_closed": {
-    "current_options_position_must_be_closed_and_reconciled_before_new_operator_lane_activation": true,
-    "max_simultaneous_operator_positions_pending_separate_risk_authority": 1,
+    "prior_options_live_trade_must_be_closed_and_reconciled_before_new_operator_lane_activation": true,
+    "max_simultaneous_operator_positions": 1,
+    "max_notional_usdt_per_operator_position": 10,
     "fresh_authenticated_preflight_required": true,
     "fresh_account_risk_state_required": true,
     "kill_switch_required": true,
     "duplicate_signal_and_duplicate_order_protection_required": true,
-    "unknown_or_stale_state": "NO_ORDER"
+    "unknown_or_stale_state": "NO_ORDER",
+    "no_chase": true
   },
   "candidates": [
     {
       "candidate_id": "BNB-LAUNCHPOOL-DEMAND-001",
+      "scientific_tier": 2,
       "parent_scientific_instrument": "BNBBTC_SPOT",
-      "operator_futures_state": "PREPARED_LOCKED",
-      "canonical_trigger_source": "existing frozen BNB Launchpool event watcher",
+      "operator_futures_state": "PREARMED_LOCKED",
+      "canonical_trigger_source": "existing frozen BNB Launchpool official-event watcher",
       "routes": {
         "DIRECT_PROXY": {
           "venue": "MEXC_FUTURES",
@@ -31,13 +52,21 @@
           "direction": "LONG_ONLY_ON_CANONICAL_BNB_EVENT",
           "margin_mode": "ISOLATED",
           "leverage": 1,
+          "max_notional_usdt": 10,
+          "entry_timing": "first 15m open strictly after canonical announcement timestamp",
+          "max_late_seconds": 2,
+          "exit_timing": "exactly 24h after frozen entry timestamp",
           "scientific_equivalence_to_parent": false,
           "scientific_credit": false,
-          "status": "PREPARED_LOCKED",
+          "status": "PREARMED_LOCKED",
+          "modeled_fee_only_roundtrip_bps": 16,
+          "parent_stress_roundtrip_bps_reference_only": 30,
           "blockers": [
-            "candidate-specific operator execution authority not frozen",
-            "fresh account-specific fee/minimum-notional preflight required",
-            "current OPTIONS live position must close and reconcile first"
+            "fresh BNB_USDT account fee/minimum-notional/contract preflight required",
+            "tested generic Futures mutation transport and candidate executor/gate required",
+            "prior OPTIONS trade must be closed and reconciled",
+            "canonical eligible BNB Launchpool event required",
+            "candidate ACTIVE execution receipt must be persisted immediately before any order"
           ]
         },
         "RELATIVE_VALUE_SYNTHETIC": {
@@ -51,48 +80,59 @@
           "leverage": 1,
           "scientific_equivalence_to_parent": "NOT_CLAIMED",
           "scientific_credit": false,
-          "status": "DESIGN_ONLY_LOCKED",
-          "blockers": [
-            "two-leg sizing contract not frozen",
-            "leg-failure unwind/reconciliation not implemented",
-            "candidate-specific operator execution authority not frozen",
-            "fresh account-specific fee/minimum-notional preflight required",
-            "current OPTIONS live position must close and reconcile first"
-          ]
+          "status": "COST_BLOCKED_DESIGN_ONLY",
+          "modeled_fee_only_roundtrip_bps": 32,
+          "parent_stress_roundtrip_bps_reference_only": 30,
+          "blocker": "FOUR_TAKER_FILLS_AT_8BPS_EACH_EXCEED_PARENT_STRESS30_BEFORE_SPREAD_SLIPPAGE_FUNDING",
+          "live_activation_allowed": false
         }
       }
     },
     {
       "candidate_id": "CED1D-0031",
-      "parent_scientific_instrument": "AVAXUSDT",
-      "operator_futures_state": "PREPARED_LOCKED",
-      "canonical_trigger_source": "existing frozen CED1D prospective signal source",
+      "scientific_tier": 2,
+      "parent_scientific_instrument": "BINANCE_USDM_AVAXUSDT",
+      "operator_futures_state": "PREARMED_LOCKED",
+      "canonical_trigger_source": "existing frozen CED1D prospective event stream",
       "route": {
         "venue": "MEXC_FUTURES",
         "symbol": "AVAX_USDT",
+        "direction_source": "canonical CED1D event.direction only",
+        "direction_mapping": {
+          "1": "LONG",
+          "-1": "SHORT"
+        },
         "margin_mode": "ISOLATED",
         "leverage": 1,
+        "max_notional_usdt": 10,
+        "entry_target_utc": "00:01:00 UTC after signal completion",
+        "entry_ttl_seconds": 5,
+        "exit_target": "00:01:00 UTC next calendar day",
+        "scientific_equivalence_to_parent": false,
         "scientific_credit": false,
-        "status": "PREPARED_LOCKED",
+        "status": "PREARMED_LOCKED",
+        "modeled_fee_only_roundtrip_bps": 16,
+        "parent_base_roundtrip_bps_reference_only": 14,
+        "parent_stress_roundtrip_bps_reference_only": 20,
         "blockers": [
-          "exact frozen CONTINUATION side mapping must be recovered from authoritative protocol before freeze",
-          "source must be healthy at signal time",
-          "candidate-specific operator execution authority not frozen",
-          "fresh account-specific fee/minimum-notional preflight required",
-          "current OPTIONS live position must close and reconcile first"
+          "source must be healthy and canonical signal available on time; WAITING_SOURCE_ARCHIVE is not entry-ready",
+          "fresh AVAX_USDT account fee/minimum-notional/contract preflight required",
+          "tested generic Futures mutation transport and candidate executor/gate required",
+          "prior OPTIONS trade must be closed and reconciled",
+          "candidate ACTIVE execution receipt must be persisted immediately before any order"
         ]
       }
     }
   ],
   "runtime_requirements": {
-    "fees": "read account-specific fees immediately before arming/entry",
+    "fees": "pre-entry market-fee model uses max(route-specific authenticated taker bps, 8 bps/fill) until superseded prospectively; post-trade uses exact attributable fill receipts",
     "contract_metadata": "read live MEXC contract metadata immediately before arming/entry",
     "margin": "isolated only",
     "leverage": "exactly 1x",
     "auto_margin_add": "OFF",
-    "no_chase": true,
     "blind_resend": false,
     "partial_fill_chase": false,
-    "secret_storage": "local DPAPI only"
+    "secret_storage": "local DPAPI only",
+    "main_merge": false
   }
 }
