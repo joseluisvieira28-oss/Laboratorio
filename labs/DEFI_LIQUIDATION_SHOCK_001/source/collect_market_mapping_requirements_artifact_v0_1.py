@@ -8,6 +8,18 @@ ap.add_argument("--out",required=True)
 args=ap.parse_args()
 
 TOKEN=os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")
+class StripCrossHostAuthRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        new_req=super().redirect_request(req,fp,code,msg,headers,newurl)
+        if new_req is not None:
+            old_host=urllib.parse.urlsplit(req.full_url).netloc.lower()
+            new_host=urllib.parse.urlsplit(newurl).netloc.lower()
+            if old_host!=new_host:
+                new_req.remove_header("Authorization")
+        return new_req
+
+OPENER=urllib.request.build_opener(StripCrossHostAuthRedirect())
+
 NAME="dls-market-mapping-requirements-v01"
 OUT=Path(args.out);OUT.mkdir(parents=True,exist_ok=True)
 RECEIPT=Path("labs/DEFI_LIQUIDATION_SHOCK_001/MARKET_DATA_REQUIREMENTS_ARTIFACT_SELECTION_RECEIPT_V0.1.json")
@@ -16,7 +28,7 @@ def api(url,binary=False):
     h={"Accept":"application/vnd.github+json","User-Agent":"crypto-lab-dls-market-data-collector/0.1"}
     if TOKEN:h["Authorization"]=f"Bearer {TOKEN}"
     q=urllib.request.Request(url,headers=h)
-    with urllib.request.urlopen(q,timeout=180) as r:raw=r.read()
+    with OPENER.open(q,timeout=180) as r:raw=r.read()
     return raw if binary else json.loads(raw)
 
 q=urllib.parse.urlencode({"name":NAME,"per_page":100})
