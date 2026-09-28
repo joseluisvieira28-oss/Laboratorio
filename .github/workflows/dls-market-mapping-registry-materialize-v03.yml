@@ -19,7 +19,13 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Download frozen mapping requirements artifact
+        run: |
+          mkdir -p mapping_requirements
+          gh run download 36466079808 -n dls-market-mapping-requirements-v01 -D mapping_requirements
       - name: Build conservative source-only registry
+        env:
+          MAPPING_REQUIREMENTS_ARTIFACT_ID: "10989478596"
         run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/build_market_data_mapping_registry_v0_3.py
       - name: Commit registry to same non-main branch
         run: |
