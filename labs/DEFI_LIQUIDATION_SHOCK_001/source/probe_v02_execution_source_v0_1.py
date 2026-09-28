@@ -64,12 +64,16 @@ meta={
  "base_asset":exact[0].get("baseAsset") if len(exact)==1 else None,
  "quote_asset":exact[0].get("quoteAsset") if len(exact)==1 else None
 }
-if len(exact)!=1:
-    errors.append({"reason":"binance_um_solusdt_metadata_exact_match_failed","metadata":meta})
-else:
+metadata_transport_unavailable=(st is None and len(exact)==0)
+metadata_contradiction=False
+if len(exact)==1:
     row=exact[0]
     if row.get("contractType")!="PERPETUAL" or row.get("baseAsset")!="SOL" or row.get("quoteAsset")!="USDT":
+        metadata_contradiction=True
         errors.append({"reason":"binance_um_solusdt_contract_identity_mismatch","metadata":meta})
+elif st==200:
+    metadata_contradiction=True
+    errors.append({"reason":"binance_um_solusdt_metadata_exact_match_failed","metadata":meta})
 
 # Deterministic metadata-only monthly archive probes: 15th of each month 2021-12..2024-12.
 dates=[]
@@ -92,13 +96,19 @@ for day in dates:
     if not ok:
         errors.append({"reason":"monthly_archive_probe_failed","date":day,"zip_status":zs,"checksum_status":ss})
 
+archive_probe_pass_count=sum(1 for x in probes if x["pass"])
+archive_identity_fallback_used=(metadata_transport_unavailable and archive_probe_pass_count==len(probes))
+if metadata_transport_unavailable and archive_probe_pass_count!=len(probes):
+    errors.append({"reason":"metadata_unavailable_and_archive_probe_incomplete","probe_pass":archive_probe_pass_count,"probe_total":len(probes)})
 classification="V02_EXECUTION_SOURCE_PASS" if not errors else "V02_EXECUTION_SOURCE_BLOCKED"
 receipt={
  "schema_version":"0.1","lab_id":LAB,"classification":classification,
  "development_market":"BINANCE_USDTM_SOLUSDT_PERPETUAL",
  "market_metadata":meta,
  "monthly_probe_count":len(probes),
- "monthly_probe_pass_count":sum(1 for x in probes if x["pass"]),
+ "monthly_probe_pass_count":archive_probe_pass_count,
+ "archive_identity_fallback_used":archive_identity_fallback_used,
+ "identity_authority":("BINANCE_PUBLIC_DATA_USD_M_ARCHIVE_NAMESPACE_FALLBACK" if archive_identity_fallback_used else "LIVE_FAPI_EXCHANGE_INFO"),
  "monthly_probes":probes,
  "cost_stress_authority":{
    "reference_venue":"MEXC_API_FUTURES",
