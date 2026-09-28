@@ -40,6 +40,11 @@ jobs:
           python labs/DEFI_LIQUIDATION_SHOCK_001/source/adjudicate_global_field_coverage_final_v0_1.py
           --root global_field_evidence
 
+      - name: Stage re-adjudicated Global Field receipt
+        run: |
+          cp labs/DEFI_LIQUIDATION_SHOCK_001/GLOBAL_FIELD_COVERAGE_FINAL_RECEIPT_V0.1.json \
+             global_field_evidence/GLOBAL_FIELD_COVERAGE_FINAL_RECEIPT_V0.1.json
+
       - name: Download Marginfi field partitions
         uses: actions/download-artifact@v4
         with:
