@@ -1,0 +1,47 @@
+name: Compound Realized Disposal Direct DEX Link V0.2
+
+on:
+  push:
+    branches: [pressure-mining-program-v0.1]
+    paths:
+      - "pressure_mining_v0_1/compound_realized_disposal_direct_dex_link_v0_2.py"
+      - ".github/workflows/compound-realized-disposal-direct-dex-link-v0.2.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  direct-dex-link:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install "eth-hash[pycryptodome]"
+      - run: python -m py_compile pressure_mining_v0_1/compound_realized_disposal_direct_dex_link_v0_2.py
+      - name: Run direct DEX link classification
+        run: python pressure_mining_v0_1/compound_realized_disposal_direct_dex_link_v0_2.py
+      - name: Verify receipt
+        run: |
+          python - <<'PY'
+          import json
+          p="pressure_mining_v0_1/receipts/COMPOUND_REALIZED_DISPOSAL_FLOW_001_DIRECT_DEX_LINK_RECEIPT_V0.2.json"
+          j=json.load(open(p))
+          print("scientific_status=",j.get("status"))
+          if j.get("status")=="TECHNICAL_FAILURE": raise SystemExit(2)
+          s=j["sample"]
+          n=s.get("direct_dex_link_events",0)
+          d=s.get("same_tx_onward_transfer_events",0)
+          x=s.get("direct_dex_link_share_of_onward_pct")
+          if n>d: raise SystemExit("invalid direct-link intersection")
+          if x is not None and not (0<=x<=100): raise SystemExit("invalid percentage")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: compound-realized-disposal-direct-dex-link-v02
+          path: pressure_mining_v0_1/receipts/COMPOUND_REALIZED_DISPOSAL_FLOW_001_DIRECT_DEX_LINK_RECEIPT_V0.2.json
+          if-no-files-found: error
