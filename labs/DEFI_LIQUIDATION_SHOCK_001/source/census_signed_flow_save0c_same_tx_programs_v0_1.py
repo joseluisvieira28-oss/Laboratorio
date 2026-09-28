@@ -16,7 +16,7 @@ def req(slot,retries=8):
         "transaction":{"transactionIndex":True,"signatures":True,"err":True},
         "instruction":{"programId":True,"accounts":True,"data":True,"transactionIndex":True,"instructionAddress":True,"isCommitted":True,"error":True}
       },
-      "instructions":[{}]}
+      "instructions":[{"transaction":True}]}
     data=json.dumps(body,separators=(",",":")).encode()
     q=urllib.request.Request(STREAM,data=data,headers={"Accept":"application/x-ndjson,application/json","Content-Type":"application/json","User-Agent":"crypto-lab-dls-same-tx-program-census/0.1"},method="POST")
     last=None
