@@ -51,7 +51,7 @@ for ref in REFS:
                             "preOwner":True,"postOwner":True,"preAmount":True,"postAmount":True}
           },"instructions":[filt]}
     st,raw=req(body)
-    rr={"name":ref["name"],"http_status":st,"instruction_match":False,"target_rows":[],"parseable_target_count":0,"nonzero_delta_target_count":0,"pass":False}
+    rr={"name":ref["name"],"http_status":st,"instruction_match":False,"token_balance_total":0,"token_balance_tx_indices":[],"raw_token_balance_sample":[],"target_rows":[],"parseable_target_count":0,"nonzero_delta_target_count":0,"pass":False}
     if st!=200:
         rr["error_body"]=raw[:1000].decode("utf-8","replace");results.append(rr);continue
     for line in raw.decode("utf-8","replace").splitlines():
@@ -60,6 +60,17 @@ for ref in REFS:
         tx_by={}
         for pos,tx in enumerate(b.get("transactions") or []):
             tx_by[tx.get("transactionIndex",tx.get("index",pos))]=tx
+        tbs_all=b.get("tokenBalances") or []
+        rr["token_balance_total"]+=len(tbs_all)
+        rr["token_balance_tx_indices"]+=sorted({tb.get("transactionIndex") for tb in tbs_all if tb.get("transactionIndex") is not None})
+        for tb in tbs_all[:20]:
+            rr["raw_token_balance_sample"].append({
+              "transactionIndex":tb.get("transactionIndex"),"account":tb.get("account"),
+              "preMint":tb.get("preMint"),"postMint":tb.get("postMint"),
+              "preAmount":str(tb.get("preAmount")) if tb.get("preAmount") is not None else None,
+              "postAmount":str(tb.get("postAmount")) if tb.get("postAmount") is not None else None,
+              "preOwner":tb.get("preOwner"),"postOwner":tb.get("postOwner")
+            })
         wanted_ti=None
         for ix in b.get("instructions") or []:
             tx=tx_by.get(ix.get("transactionIndex")) or {}
