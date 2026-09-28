@@ -16,7 +16,6 @@ const TOKEN=getAddress("0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf");
 const START_ISO="2026-09-29T00:00:00Z";
 const NOW=new Date();
 const END_ISO=new Date(Date.UTC(NOW.getUTCFullYear(),NOW.getUTCMonth(),NOW.getUTCDate())).toISOString();
-const END_ISO="2026-07-01T00:00:00Z";
 const TRANSFER_TOPIC=id("Transfer(address,address,uint256)").toLowerCase();
 const ZERO_TOPIC="0x"+"0".repeat(64);
 const CHUNK=10_000;
