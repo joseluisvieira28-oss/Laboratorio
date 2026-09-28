@@ -1,12 +1,6 @@
 name: POB Explicit Strike Source Probe V0.2
 
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - 'research/prediction_oracle_basis/POB_STRIKE_SOURCE_TRANSPORT_REMEDIATION_V0.2.md'
-      - 'research/prediction_oracle_basis/source_probe_strike_v02.py'
-      - '.github/workflows/prediction_oracle_basis_strike_probe_v02.yml'
   workflow_dispatch:
 
 permissions:
@@ -14,7 +8,7 @@ permissions:
 
 jobs:
   source-probe-v02:
-    if: github.head_ref == 'prediction-oracle-basis-v0.1' || github.ref_name == 'prediction-oracle-basis-v0.1'
+    if: github.ref_name == 'prediction-oracle-basis-v0.1'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
