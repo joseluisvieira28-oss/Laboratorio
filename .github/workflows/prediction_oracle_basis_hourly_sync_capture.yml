@@ -1,12 +1,6 @@
 name: POB Hourly Synchronized Capture V0.1
 
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - 'research/prediction_oracle_basis/POB_HOURLY_SYNC_CAPTURE_AUTHORITY_V0.1.md'
-      - 'research/prediction_oracle_basis/source_capture_hourly_sync.py'
-      - '.github/workflows/prediction_oracle_basis_hourly_sync_capture.yml'
   workflow_dispatch:
 
 permissions:
@@ -14,7 +8,7 @@ permissions:
 
 jobs:
   prospective-source-capture:
-    if: github.head_ref == 'prediction-oracle-basis-v0.1' || github.ref_name == 'prediction-oracle-basis-v0.1'
+    if: github.ref_name == 'prediction-oracle-basis-v0.1'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
