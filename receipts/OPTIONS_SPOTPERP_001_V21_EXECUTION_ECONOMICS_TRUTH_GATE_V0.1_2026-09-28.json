@@ -1,0 +1,93 @@
+{
+  "receipt_id": "OPTIONS_SPOTPERP_001_V21_EXECUTION_ECONOMICS_TRUTH_GATE_V0.1_2026-09-28",
+  "status": "VALIDATED__EXACT_ACCOUNTING_AND_WINDOWS_EVIDENCE_BUNDLE_READY__REALIZED_V21_ATTRIBUTION_PENDING_LOCAL_RECEIPTS",
+  "branch": "options-v21-execution-economics-truth-gate-v0.1-2026-09-28",
+  "pr": 156,
+  "base_branch": "options-v21-futures-only-autolive-v02-2026-09-25",
+  "validated_code_commit": "9dcd842534c6eec27b87723873f23f306da02be7",
+  "bundle_commit": "6cc911781979107da92bccd453a9e330ec5f4622",
+  "validation": {
+    "exact_accounting_workflow_run_id": 36448109615,
+    "exact_accounting_conclusion": "success",
+    "windows_build_workflow_run_id": 36448633213,
+    "windows_build_conclusion": "success",
+    "checks": [
+      "compile",
+      "existing MEXC safety tests",
+      "frozen OPTIONS science tests",
+      "Futures-only execution fork tests",
+      "execution economics exact-accounting tests",
+      "MEXC authenticated trade regression tests",
+      "frozen Futures-only contract/source hotfix verification",
+      "static Futures-only safety audit",
+      "PowerShell syntax validation",
+      "Windows PyInstaller builds",
+      "binary hashing",
+      "bundle assembly and upload"
+    ]
+  },
+  "scientific_parent": {
+    "strategy_id": "OPTIONS-SPOTPERP-001-V2.1",
+    "oos_2025_entered_scaled_trades": 363,
+    "net10_mean_bps_per_parent_opportunity": 5.0427663334,
+    "net20_mean_bps_per_parent_opportunity": -4.6759378383,
+    "implied_average_executed_weight": 0.97187041717,
+    "implied_gross_mean_bps_per_parent_opportunity": 14.7614705051,
+    "implied_full_notional_cost_break_even_bps": 15.188722945270918,
+    "sensitivity_full_notional_cost_bps": {
+      "10": 5.0427663334,
+      "12": 3.09902549906,
+      "14": 1.15528466472,
+      "15": 0.18341424755,
+      "16": -0.78845616962,
+      "20": -4.6759378383,
+      "15.9": -0.691269127903
+    },
+    "science_changed": false,
+    "promotion_changed": false
+  },
+  "mexc_current_route": {
+    "order_type": "MARKET",
+    "official_api_taker_fee_fraction_per_fill": 0.0008,
+    "official_api_taker_bps_per_fill": 8,
+    "official_fee_only_round_trip_bps": 16,
+    "operator_export_observed_fill_fee_bps_approx": "7.94-7.97",
+    "operator_export_two_fill_equivalent_bps_approx": 15.9,
+    "base10_compatible_on_fees_alone": false,
+    "historical_implied_break_even_bps": 15.188722945270918,
+    "note": "Historical sensitivity bridge only; Futures fork requires its own attributable realized receipts."
+  },
+  "exact_accounting_hardening": [
+    "round-trip fee bps = entry_fee/entry_fill_notional + exit_fee/exit_fill_notional",
+    "gross/net/funding bps normalized to entry fill notional",
+    "accounting identity net = gross + signed funding - entry fee - exit fee must pass",
+    "contract size recorded by executor/gate when available; frozen 0.0001 BTC fallback disclosed",
+    "PRE_ENTRY_MARKET_SNAPSHOT captured immediately before entry submit for future slippage attribution",
+    "PRE_EXIT_MARKET_SNAPSHOT and EXIT_FILL_RECEIPT preserved",
+    "receipt-root aggregate audit requires 10 complete attributable trades for operational review only"
+  ],
+  "windows_artifact": {
+    "artifact_id": 10982830184,
+    "name": "options-v21-futures-only-auto-microlive-v021-evidence-hardened",
+    "size_bytes": 39251198,
+    "digest": "sha256:f664f7dbc1f51603df181552203608d2aa817121e61908763b7618861f55226c",
+    "expires_at": "2026-10-12T16:08:01Z",
+    "executables": {
+      "OptionsV21FuturesAutoLive.exe": "03f7a95ae70150a2190060690cbc4e3d720a56903bef858e8bb81df8edc50722",
+      "OptionsV21ExecutionEconomicsAudit.exe": "fc59a425ced765e6723f35e1f5c45432e2685a9e8b6eebf5590de1182ad2d0f9",
+      "MEXCAuthenticatedPreflight.exe": "f0daf0b58e5a4c403bc6d9d36c251211d9101875d50b6576df429befad040291",
+      "MEXCRiskState.exe": "c195d6637df48fe3ec70caa4ec0678c91b44ae7cf1a01d36ab97d304055a263a"
+    },
+    "audit_wrapper": "windows/Audit_OPTIONS_V21_Execution_Economics.ps1",
+    "audit_requires_api_credentials": false,
+    "install_while_live_position_active": false
+  },
+  "current_blocker": {
+    "code": "LOCAL_IMMUTABLE_RECEIPTS_NOT_AVAILABLE_TO_CLOUD_AUDIT",
+    "explanation": "The MEXC PDF rows do not expose the executor signal identity/external OID. Exact realized V2.1 economics require the local live_receipts/options_v21_futures chain.",
+    "next_evidence": "Run the read-only audit against the existing local receipt root. Do not replace/restart the executor while a live position or order is active."
+  },
+  "order_created_by_this_mission": false,
+  "exchange_mutation_by_this_mission": false,
+  "main_merged": false
+}

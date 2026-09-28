@@ -1,0 +1,50 @@
+name: OPTIONS V21 EXECUTION ECONOMICS TRUTH GATE V0.1
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - options-v21-execution-economics-truth-gate-v0.1-2026-09-28
+    paths:
+      - 'crypto_edge_radar/radar/options_v21_execution_economics.py'
+      - 'crypto_edge_radar/radar/options_v21_futures_autolive_engine.py'
+      - 'crypto_edge_radar/tests/test_options_v21_execution_economics.py'
+      - 'crypto_edge_radar/scripts/options_v21_execution_economics_truth_gate.py'
+      - 'governance/OPTIONS_SPOTPERP_001_V21_EXECUTION_ECONOMICS_TRUTH_GATE_V0.1.md'
+      - 'receipts/OPTIONS_SPOTPERP_001_V21_EXECUTION_ECONOMICS_TRUTH_GATE_V0.1_2026-09-28.json'
+      - '.github/workflows/options-v21-execution-economics-truth-gate-v01.yml'
+  pull_request:
+    branches:
+      - options-v21-futures-only-autolive-v02-2026-09-25
+
+permissions:
+  contents: read
+
+jobs:
+  truth-gate:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: crypto_edge_radar
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install
+        run: python -m pip install -e .
+      - name: Compile
+        run: python -m compileall radar scripts tests
+      - name: Run execution economics tests
+        run: python -m unittest tests.test_options_v21_execution_economics -v
+      - name: Run Futures-only regression tests
+        run: |
+          python -m unittest tests.test_options_v21_futures_autolive_engine -v
+          python -m unittest tests.test_mexc_auth_trade_options_v02 -v
+      - name: Verify current MEXC API taker floor
+        run: |
+          python - <<'PY'
+          from radar.options_v21_futures_autolive_engine import OFFICIAL_API_TAKER_FLOOR
+          assert OFFICIAL_API_TAKER_FLOOR == 0.0008, OFFICIAL_API_TAKER_FLOOR
+          print("PASS official API taker floor = 8 bps/fill")
+          PY

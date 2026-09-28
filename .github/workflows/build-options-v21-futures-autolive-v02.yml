@@ -5,15 +5,20 @@ on:
   push:
     branches:
       - options-v21-futures-only-autolive-v02-2026-09-25
+      - options-v21-execution-economics-truth-gate-v0.1-2026-09-28
     paths:
       - 'crypto_edge_radar/radar/options_v21_futures_*'
       - 'crypto_edge_radar/radar/options_v21_live.py'
       - 'crypto_edge_radar/radar/mexc_auth_trade.py'
       - 'crypto_edge_radar/scripts/options_v21_futures_autolive_agent.py'
+      - 'crypto_edge_radar/scripts/options_v21_execution_economics_truth_gate.py'
       - 'crypto_edge_radar/tests/test_options_v21_futures_*'
+      - 'crypto_edge_radar/tests/test_options_v21_execution_economics.py'
       - 'crypto_edge_radar/tests/test_options_v21_live.py'
       - 'crypto_edge_radar/tests/test_mexc_auth_trade*.py'
       - 'crypto_edge_radar/windows/*OPTIONS_V21_Futures*'
+      - 'crypto_edge_radar/windows/Audit_OPTIONS_V21_Execution_Economics.ps1'
+      - 'crypto_edge_radar/README_OPTIONS_V21_EXECUTION_ECONOMICS.txt'
       - 'crypto_edge_radar/windows/Set_MEXC_Preflight_Secrets.ps1'
       - 'crypto_edge_radar/windows/Run_MEXC_Ready_Check_V02.ps1'
       - 'crypto_edge_radar/OPTIONS_SPOTPERP_001_V21_FUTURES_ONLY_AUTOLIVE_V0.2.json'
@@ -61,6 +66,7 @@ jobs:
         run: |
           python -m unittest tests.test_options_v21_futures_execution_signal -v
           python -m unittest tests.test_options_v21_futures_autolive_engine -v
+          python -m unittest tests.test_options_v21_execution_economics -v
           python -m unittest tests.test_mexc_auth_trade_options_v02 -v
 
       - name: Verify frozen Futures-only contract and source hotfix
@@ -141,6 +147,10 @@ jobs:
         run: |
           pyinstaller --clean --onefile --name OptionsV21FuturesAutoLive --paths . scripts/options_v21_futures_autolive_agent.py
 
+      - name: Build read-only execution economics audit
+        run: |
+          pyinstaller --clean --onefile --name OptionsV21ExecutionEconomicsAudit --paths . scripts/options_v21_execution_economics_truth_gate.py
+
       - name: Build authenticated preflight
         run: |
           pyinstaller --clean --onefile --name MEXCAuthenticatedPreflight --paths . scripts/mexc_authenticated_preflight.py
@@ -154,6 +164,7 @@ jobs:
         run: |
           foreach ($exe in @(
             "OptionsV21FuturesAutoLive.exe",
+            "OptionsV21ExecutionEconomicsAudit.exe",
             "MEXCAuthenticatedPreflight.exe",
             "MEXCRiskState.exe"
           )) {
@@ -167,6 +178,7 @@ jobs:
           New-Item -ItemType Directory -Force -Path bundle\dist | Out-Null
           New-Item -ItemType Directory -Force -Path bundle\windows | Out-Null
           Copy-Item dist\OptionsV21FuturesAutoLive.exe bundle\dist\
+          Copy-Item dist\OptionsV21ExecutionEconomicsAudit.exe bundle\dist\
           Copy-Item dist\MEXCAuthenticatedPreflight.exe bundle\dist\
           Copy-Item dist\MEXCRiskState.exe bundle\dist\
           Copy-Item dist\*.sha256.txt bundle\dist\
@@ -178,14 +190,17 @@ jobs:
           Copy-Item windows\Emergency_Kill_OPTIONS_V21_Futures_V02.ps1 bundle\windows\
           Copy-Item windows\Resume_OPTIONS_V21_Futures_V02.ps1 bundle\windows\
           Copy-Item windows\Disarm_OPTIONS_V21_Futures_V02.ps1 bundle\windows\
+          Copy-Item windows\Audit_OPTIONS_V21_Execution_Economics.ps1 bundle\windows\
+          Copy-Item README_OPTIONS_V21_EXECUTION_ECONOMICS.txt bundle\
           Copy-Item OPTIONS_SPOTPERP_001_V21_FUTURES_ONLY_AUTOLIVE_V0.2.json bundle\
           Copy-Item OPTIONS_SPOTPERP_001_V21_FUTURES_ONLY_AUTOLIVE_V0.2.1_SOURCE_HOTFIX.json bundle\
           Copy-Item authorities\OPTIONS_SPOTPERP_001_V21_INVALID_IV_INDEX_ROW_HANDLING_AMENDMENT_01.md bundle\
+          Copy-Item ..\governance\OPTIONS_SPOTPERP_001_V21_EXECUTION_ECONOMICS_TRUTH_GATE_V0.1.md bundle\
 
       - name: Upload Futures-only bundle
         uses: actions/upload-artifact@v4
         with:
-          name: options-v21-futures-only-auto-microlive-v021
+          name: options-v21-futures-only-auto-microlive-v021-evidence-hardened
           path: crypto_edge_radar/bundle/**
           retention-days: 14
           if-no-files-found: error
