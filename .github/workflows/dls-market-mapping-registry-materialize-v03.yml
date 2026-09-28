@@ -1,0 +1,33 @@
+name: DLS Market Mapping Registry Materialize V0.3
+on:
+  push:
+    branches: [dls-field-enrichment-v01]
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_MARKET_MAPPING_REGISTRY_V03.marker
+permissions:
+  actions: read
+  contents: write
+jobs:
+  materialize:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build conservative source-only registry
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/build_market_data_mapping_registry_v0_3.py
+      - name: Commit registry to same non-main branch
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add labs/DEFI_LIQUIDATION_SHOCK_001/MARKET_DATA_MAPPING_REGISTRY_V0.1.json
+          git commit -m "dls: materialize frozen market mapping registry v0.3"
+          git push origin HEAD:dls-field-enrichment-v01
+      - name: Firewall
+        if: always()
+        run: echo NO_CANDLE_PAYLOAD_NO_PRICES
