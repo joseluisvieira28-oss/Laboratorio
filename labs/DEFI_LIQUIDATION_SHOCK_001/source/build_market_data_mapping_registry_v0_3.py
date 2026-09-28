@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import json,os,urllib.request,zipfile,io
+import json,os,urllib.request,urllib.error,zipfile,io
 from pathlib import Path
 req_path=Path("mapping_requirements/MARKET_MAPPING_REQUIREMENTS_RECEIPT_V0.1.json")
 if not req_path.exists(): raise SystemExit("NO_MAPPING_REQUIREMENTS_RECEIPT")
