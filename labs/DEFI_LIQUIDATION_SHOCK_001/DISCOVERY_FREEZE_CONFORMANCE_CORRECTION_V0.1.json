@@ -1,0 +1,47 @@
+{
+  "schema_version": "0.1",
+  "lab_id": "DEFI-LIQUIDATION-SHOCK-001",
+  "classification": "DISCOVERY_PRIOR_RESULT_SUPERSEDED_FREEZE_CONFORMANCE_RETRY_REQUIRED",
+  "superseded_run_id": 36485119508,
+  "superseded_artifact_id": 10997938881,
+  "superseded_result_sha256": "e8bd60398111339f95b82302fe22335665959949adfc357a6ee89d3c1c318a0c",
+  "reason": "Executor at superseded run diverged from DISCOVERY_EXECUTION_IMPLEMENTATION_FREEZE_V0.1 despite preserving the higher-level scientific design.",
+  "static_differences_restored": [
+    {
+      "field": "bootstrap_percentile_method",
+      "superseded_executor": "floor/ceil nearest stored order statistic",
+      "frozen_required": "Hyndman-Fan type 7 linear interpolation"
+    },
+    {
+      "field": "REST_reconciliation_sample",
+      "superseded_executor": "up to 16 timestamps/year with alternate ranking serialization",
+      "frozen_required": "5 timestamps/year ranked by SHA256(symbol|year|timestamp_ms|DLS_RECON_V0.1)"
+    },
+    {
+      "field": "control_hour_reference",
+      "superseded_executor": "aligned event minute A.hour",
+      "frozen_required": "exact cascade T0 hour"
+    }
+  ],
+  "preserved_hardening": [
+    "cluster census SHA256 binding",
+    "out-of-day archive timestamp rejection",
+    "returns computed only after source/coverage gate passes",
+    "protocol-level family aggregation matching frozen protocol-family guardrail",
+    "deterministic tie-break for theoretical SHA256 rank collision"
+  ],
+  "restoration_commit": "3ab9974cc7fe7abda1de1bc2a7e1d66d9edc2b0d",
+  "governance": {
+    "correction_basis": "pre-outcome frozen document only",
+    "partial_or_prior_metrics_used_to_choose_correction": false,
+    "thresholds_changed": false,
+    "horizons_changed": false,
+    "controls_changed_beyond_restoring_frozen_hour_reference": false,
+    "mapping_changed": false,
+    "temporal_split_changed": false,
+    "promotion_taxonomy_changed": false,
+    "oos_2024_opened": false,
+    "protected_2025_2026_opened": false,
+    "post_outcome_tuning": false
+  }
+}
