@@ -24,16 +24,16 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Download Final Pre-Discovery authority
+      - name: Download locked Final Pre-Discovery authority
         uses: actions/download-artifact@v4
         with:
           github-token: ${{ github.token }}
           repository: ${{ github.repository }}
           run-id: 36483501137
           name: dls-final-pre-discovery-authority-v01
-          path: authority
+          path: final_authority
 
-      - name: Download canonical source-cluster census
+      - name: Download locked source-cluster census
         uses: actions/download-artifact@v4
         with:
           github-token: ${{ github.token }}
@@ -42,50 +42,69 @@ jobs:
           name: dls-source-cluster-sample-gate-v01
           path: sample_gate
 
-      - name: Download Market Data Source authority
+      - name: Download locked Market Data Source authority
         uses: actions/download-artifact@v4
         with:
           github-token: ${{ github.token }}
           repository: ${{ github.repository }}
           run-id: 36483390920
           name: dls-market-data-source-feasibility-v01
-          path: market_source
+          path: market_data
 
-      - name: Download immutable Discovery SURVIVES receipt
+      - name: Download immutable SURVIVES_DISCOVERY receipt
         uses: actions/download-artifact@v4
         with:
           github-token: ${{ github.token }}
           repository: ${{ github.repository }}
-          run-id: 36485204623
+          run-id: 36485119508
           name: dls-discovery-v01
           path: discovery
 
       - name: Compile frozen OOS executor
-        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/run_oos_v0_1.py
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/run_dls_outcome_experiment_v0_1.py
 
-      - name: Execute OOS 2024 only
+      - name: Assert prelaunch conformance and Discovery lock
+        run: |
+          python - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          lock=json.loads(Path("labs/DEFI_LIQUIDATION_SHOCK_001/DISCOVERY_ADJUDICATION_LOCK_V0.1.json").read_text())
+          conf=json.loads(Path("labs/DEFI_LIQUIDATION_SHOCK_001/OOS_PRELAUNCH_CONFORMANCE_RECEIPT_V0.1.json").read_text())
+          p=Path("discovery/DISCOVERY_RESULT_RECEIPT_V0.1.json")
+          assert lock["classification"]=="SURVIVES_DISCOVERY"
+          assert conf["classification"]=="OOS_PRELAUNCH_IMPLEMENTATION_CONFORMANCE_PASS"
+          assert conf["oos_market_payload_opened"] is False
+          assert hashlib.sha256(p.read_bytes()).hexdigest()=="e8bd60398111339f95b82302fe22335665959949adfc357a6ee89d3c1c318a0c"
+          PY
+
+      - name: Execute frozen OOS 2024 only
         run: >
-          python labs/DEFI_LIQUIDATION_SHOCK_001/source/run_oos_v0_1.py
-          --authority authority
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/run_dls_outcome_experiment_v0_1.py
+          --split oos
           --sample-gate sample_gate
-          --market-source market_source
-          --discovery discovery
+          --final-authority final_authority
+          --market-data-authority market_data
           --registry labs/DEFI_LIQUIDATION_SHOCK_001/MARKET_DATA_MAPPING_REGISTRY_V0.1.json
-          --workers 16
+          --discovery-receipt discovery/DISCOVERY_RESULT_RECEIPT_V0.1.json
+          --outdir oos_evidence
+          --cache oos_market_cache
 
-      - name: Upload immutable OOS receipts
+      - name: Upload immutable OOS evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: dls-oos-v01
           path: |
-            labs/DEFI_LIQUIDATION_SHOCK_001/OOS_MARKET_DATA_ACQUISITION_RECEIPT_V0.1.json
-            labs/DEFI_LIQUIDATION_SHOCK_001/OOS_MARKET_DATA_ARCHIVE_MANIFEST_V0.1.ndjson
-            labs/DEFI_LIQUIDATION_SHOCK_001/OOS_RESULT_RECEIPT_V0.1.json
-            labs/DEFI_LIQUIDATION_SHOCK_001/OOS_PAIRED_OUTCOMES_V0.1.ndjson
+            oos_evidence/DLS_OOS_RECEIPT_V0.1.json
+            oos_evidence/DLS_OOS_MARKET_DATA_ACQUISITION_MANIFEST_V0.1.json
+            oos_evidence/DLS_OOS_PAIRED_ROWS_V0.1.ndjson
           if-no-files-found: warn
           retention-days: 90
 
       - name: Firewall
         if: always()
-        run: echo OOS_2024_ONLY_2025_2026_PROTECTED_NO_TRADING
+        run: |
+          echo OOS_2024_ONLY
+          echo PROTECTED_2025_2026_CLOSED
+          echo NO_POST_OUTCOME_TUNING
+          echo NO_TRADING_NO_ORDERS_NO_WALLETS_NO_EXCHANGE_MUTATION_NO_MAIN_MERGE
