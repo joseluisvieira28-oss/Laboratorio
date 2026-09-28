@@ -67,13 +67,13 @@ jobs:
           import hashlib,json
           from pathlib import Path
           lock=json.loads(Path("labs/DEFI_LIQUIDATION_SHOCK_001/DISCOVERY_ADJUDICATION_LOCK_V0.1.json").read_text())
-          conf=json.loads(Path("labs/DEFI_LIQUIDATION_SHOCK_001/OOS_PRELAUNCH_CONFORMANCE_RECEIPT_V0.1.json").read_text())
+          conf=json.loads(Path("labs/DEFI_LIQUIDATION_SHOCK_001/OOS_CANONICAL_DISCOVERY_LINEAGE_REBIND_V0.2.json").read_text())
           p=Path("discovery/DISCOVERY_RESULT_RECEIPT_V0.1.json")
           r=json.loads(p.read_text())
           assert lock["classification"]=="SURVIVES_DISCOVERY"
           assert lock["canonical"] is True
           assert lock["workflow_run_id"]==36485865469
-          assert conf["classification"]=="OOS_PRELAUNCH_IMPLEMENTATION_CONFORMANCE_PASS"
+          assert conf["classification"]=="OOS_CANONICAL_DISCOVERY_LINEAGE_REBIND"
           assert conf["canonical_discovery"]["run_id"]==36485865469
           assert r["classification"]=="SURVIVES_DISCOVERY"
           assert r["oos_2024_opened"] is False
