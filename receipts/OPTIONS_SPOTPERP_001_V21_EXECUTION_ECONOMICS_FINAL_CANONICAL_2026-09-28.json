@@ -1,0 +1,79 @@
+{
+  "receipt_id": "OPTIONS_SPOTPERP_001_V21_EXECUTION_ECONOMICS_FINAL_CANONICAL_2026-09-28",
+  "status": "FINAL_CANONICAL_EVIDENCE_HARDENED_BUNDLE_READY__WAITING_LOCAL_READ_ONLY_AUDIT",
+  "strategy_id": "OPTIONS-SPOTPERP-001-V2.1",
+  "canonical_executor_branch": "options-v21-futures-only-autolive-v02-2026-09-25",
+  "canonical_branch_head": "b7bec806722c0a124bd639b7adf5ade7fcf72cf1",
+  "lineage": {
+    "truth_gate_pr": 156,
+    "truth_gate_merge_commit": "416c77cf6bdcff4ca9d159db49f1893bed08afc2",
+    "exact_accounting_commit": "9dcd842534c6eec27b87723873f23f306da02be7",
+    "receipt_autodiscovery_commit": "b7bec806722c0a124bd639b7adf5ade7fcf72cf1"
+  },
+  "validations": [
+    {
+      "run_id": 36448109615,
+      "purpose": "exact accounting truth gate",
+      "conclusion": "success"
+    },
+    {
+      "run_id": 36449229170,
+      "purpose": "post-merge canonical Windows build",
+      "conclusion": "success"
+    },
+    {
+      "run_id": 36449944469,
+      "purpose": "final Windows build with installed-receipt autodiscovery",
+      "conclusion": "success"
+    }
+  ],
+  "final_operator_artifact": {
+    "artifact_id": 10983720218,
+    "artifact_name": "options-v21-futures-only-auto-microlive-v021-evidence-hardened",
+    "size_bytes": 39251607,
+    "digest": "sha256:d6a469e53d527a7e94b283eb27dd5ea65b866e24c80388424343810cd971c3dc",
+    "expires_at": "2026-10-12T16:18:38Z",
+    "supersedes_intermediate_operator_artifacts": [
+      10982830184,
+      10982716044
+    ],
+    "executables": {
+      "OptionsV21FuturesAutoLive.exe": "3155c04d8c392b8a30b112e118909553ffbf8d79269d590dd1e064f359114b4b",
+      "OptionsV21ExecutionEconomicsAudit.exe": "5ea51c7cd4d6ed3dea75dc5bdfef7bc3b8e27b0853f62c579b2e750b2b1cc7dc",
+      "MEXCAuthenticatedPreflight.exe": "1f4be73ba3b89cd4920d4e9069b3c4bbe8d2371668b6bc69b301eb1cd2a1524e",
+      "MEXCRiskState.exe": "095482bd1cb54a71d3d6f017b430db51b23cfb7d8edf393ddab46273190cfb27"
+    }
+  },
+  "read_only_audit": {
+    "wrapper": "windows/Audit_OPTIONS_V21_Execution_Economics.ps1",
+    "auto_discovers_scheduled_task": "CryptoLab-OPTIONS-V21-Futures-AutoLive",
+    "resolved_target_suffix": "live_receipts/options_v21_futures",
+    "explicit_receipt_root_override_supported": true,
+    "requires_api_credentials": false,
+    "restarts_scheduled_task": false,
+    "creates_orders": false,
+    "exchange_mutation": false,
+    "safe_to_extract_separately": true
+  },
+  "economics": {
+    "frozen_oos_net10_bps_per_opportunity": 5.0427663334,
+    "frozen_oos_net20_bps_per_opportunity": -4.6759378383,
+    "implied_full_notional_break_even_cost_bps": 15.188722945270918,
+    "mexc_api_market_taker_bps_per_fill": 8,
+    "mexc_api_market_fee_only_round_trip_bps": 16,
+    "historical_sensitivity_net_at_16bps": -0.78845616962,
+    "verdict_scope": "SENSITIVITY_ONLY_UNTIL_ATTRIBUTABLE_LOCAL_RECEIPTS_ARE_AUDITED"
+  },
+  "blocker": {
+    "code": "WAITING_LOCAL_READ_ONLY_RECEIPT_AUDIT",
+    "required_output": "EXECUTION_ECONOMICS_TRUTH_GATE.json",
+    "reason": "No cloud source has the complete local immutable V2.1 signal/order/fill/reconciliation identity chain."
+  },
+  "safety": {
+    "parent_science_changed": false,
+    "discretionary_test_order_created": false,
+    "exchange_mutation_by_mission": false,
+    "main_merged": false,
+    "executor_replacement_required_for_audit": false
+  }
+}
