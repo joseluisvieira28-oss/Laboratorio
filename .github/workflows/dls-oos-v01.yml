@@ -1,0 +1,105 @@
+name: DLS OOS V0.1
+
+on:
+  push:
+    branches:
+      - dls-field-enrichment-v01
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_DLS_OOS_V01.marker
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  oos:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: \${{ github.sha }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download same frozen Final Pre-Discovery authority
+        uses: actions/download-artifact@v4
+        with:
+          github-token: \${{ github.token }}
+          repository: \${{ github.repository }}
+          run-id: 36483526738
+          name: dls-final-pre-discovery-authority-v01
+          path: authority
+
+      - name: Download same frozen market-data source authority
+        uses: actions/download-artifact@v4
+        with:
+          github-token: \${{ github.token }}
+          repository: \${{ github.repository }}
+          run-id: 36483390920
+          name: dls-market-data-source-feasibility-v01
+          path: market_data
+
+      - name: Download same frozen source-cluster census
+        uses: actions/download-artifact@v4
+        with:
+          github-token: \${{ github.token }}
+          repository: \${{ github.repository }}
+          run-id: 36465385517
+          name: dls-source-cluster-sample-gate-v01
+          path: sample_gate
+
+      - name: Download canonical bifasic Discovery receipt
+        uses: actions/download-artifact@v4
+        with:
+          github-token: \${{ github.token }}
+          repository: \${{ github.repository }}
+          run-id: 36484802236
+          name: dls-discovery-v01
+          path: discovery
+
+      - name: Require frozen pre-outcome OOS implementation
+        run: |
+          test -f labs/DEFI_LIQUIDATION_SHOCK_001/DISCOVERY_EXECUTION_IMPLEMENTATION_FREEZE_V0.1.md
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/run_dls_market_outcome_split_v0_1.py
+          python - <<'PY'
+          import json, pathlib
+          p=pathlib.Path("discovery/DLS_DISCOVERY_RECEIPT_V0.1.json")
+          r=json.loads(p.read_text())
+          assert r["classification"]=="SURVIVES_DISCOVERY"
+          assert r["protected_2025_2026_opened"] is False
+          assert r["post_outcome_tuning"] is False
+          print("OOS_AUTHORIZED_FROM_SURVIVES_DISCOVERY")
+          PY
+
+      - name: Execute frozen OOS 2024 only
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/run_dls_market_outcome_split_v0_1.py
+          --split oos
+          --sample-root sample_gate
+          --market-root market_data
+          --authority-root authority
+          --registry labs/DEFI_LIQUIDATION_SHOCK_001/MARKET_DATA_MAPPING_REGISTRY_V0.1.json
+          --discovery-receipt discovery/DLS_DISCOVERY_RECEIPT_V0.1.json
+
+      - name: Upload immutable OOS evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-oos-v01
+          path: |
+            labs/DEFI_LIQUIDATION_SHOCK_001/DLS_OOS_RECEIPT_V0.1.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/DLS_OOS_MARKET_DATA_QA_V0.1.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/DLS_OOS_MATCHED_PAIR_OUTCOMES_V0.1.ndjson
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Protected-period firewall
+        if: always()
+        run: |
+          echo OOS_2024_ONLY
+          echo PROTECTED_2025_2026_CLOSED
+          echo NO_POST_OUTCOME_TUNING
+          echo NO_TRADING_NO_ORDERS_NO_WALLETS_NO_MAIN_MERGE
