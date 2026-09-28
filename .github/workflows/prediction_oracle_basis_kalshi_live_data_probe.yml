@@ -1,12 +1,6 @@
 name: POB Kalshi Event Live Data Source Probe
 
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - 'research/prediction_oracle_basis/POB_HOURLY_KALSHI_LIVE_DATA_AUTHORITY_V0.1.md'
-      - 'research/prediction_oracle_basis/source_probe_kalshi_event_live_data.py'
-      - '.github/workflows/prediction_oracle_basis_kalshi_live_data_probe.yml'
   workflow_dispatch:
 
 permissions:
@@ -14,7 +8,7 @@ permissions:
 
 jobs:
   source-only:
-    if: github.head_ref == 'prediction-oracle-basis-v0.1' || github.ref_name == 'prediction-oracle-basis-v0.1'
+    if: github.ref_name == 'prediction-oracle-basis-v0.1'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
