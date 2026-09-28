@@ -1,164 +1,135 @@
 # DEFI-LIQUIDATION-SHOCK-001 — DISCOVERY EXECUTION IMPLEMENTATION FREEZE V0.1
 
 Date: 2026-09-28
-Status: FROZEN / OUTCOME-BLIND / PRE-FIRST-PRICE-ACCESS
+Status: FROZEN IMPLEMENTATION DETAIL / BEFORE FIRST MARKET-OUTCOME ACCESS
 
 ## Authority
 
-This implementation freeze is subordinate to and may not relax:
-- FINAL_PRE_DISCOVERY_AUTHORITY_PASS
-- PRE_DISCOVERY_TEMPORAL_HOLDOUT_FREEZE_V0.1.md
-- CASCADE_CLUSTERING_FREEZE_V0.1.md
-- SOURCE_SAMPLE_GATE_FREEZE_V0.1.md
-- MARKET_DATA_SOURCE_GATE_FREEZE_V0.1.md
-- OUTCOME_STATISTICAL_AUTHORITY_FREEZE_V0.1.md
-- MARKET_DATA_MAPPING_SAMPLE_ADEQUACY_ADDENDUM_V0.2.md
+This document operationalizes, without changing, FINAL_PRE_DISCOVERY_AUTHORITY_PASS and OUTCOME_STATISTICAL_AUTHORITY_FREEZE_V0.1.
 
-It resolves implementation serialization and inference mechanics only. No scientific threshold, horizon, target, split, mapping, control concept, or promotion rule changes.
+It is frozen before the Discovery workflow is launched and before any candle archive is downloaded/decompressed.
 
-## Canonical authority chain
+## Phase isolation
 
-Discovery binds to:
-- Global Field run 36464851648: GLOBAL_FIELD_COVERAGE_FINAL_PASS
-- Sample Gate run 36465385517 / artifact 10988887983: SOURCE_SAMPLE_GATE_PASS
-- Market Data Source run 36483390920 / artifact 10997661391: MARKET_DATA_SOURCE_PASS
-- Final Pre-Discovery run 36483501137 / artifact 10998125981: FINAL_PRE_DISCOVERY_AUTHORITY_PASS
-- mapping registry semantic SHA256: 97ff771dbeb2ec9c3b0a408edd8733701a973ffc1ae597413fbfed4455482f90
-- mapping requirements receipt SHA256: b17164cd6735cae47bb3323cb82789ca2fa492f81eb4e70439b281a58a48bbe4
+- Discovery may download/decompress only bars with UTC open timestamps before 2024-01-01T00:00:00Z.
+- OOS may execute only after a durable SURVIVES_DISCOVERY receipt and may download/decompress only 2024 bars.
+- No required event/control horizon may cross its split end.
+- 2025/2026 remains closed.
 
-## Discovery market-data boundary
+## Market-data acquisition
 
-The Discovery executor may download/decompress only Binance public Spot 1m DAILY archives with open timestamps:
-- >= the frozen listing boundary for each direct mapped product; and
-- < 2024-01-01T00:00:00Z.
+For every required SOLUSDT daily Binance Spot 1m archive:
+- use the frozen data.binance.vision DAILY route;
+- fetch the companion CHECKSUM;
+- verify SHA256 before decompression;
+- require numeric open timestamp and OPEN;
+- require timestamps to be exact UTC minute boundaries;
+- reject duplicates and non-monotonic timestamps;
+- never forward-fill a missing bar.
 
-No 2024 price payload is opened during Discovery.
-No 2025/2026 payload is ever opened.
+A missing archive/bar is treated as prospective market-data missingness. A checksum mismatch, duplicate timestamp, non-monotonic archive, or out-of-day timestamp is a source-integrity conflict and blocks the split.
 
-If an event or control requires a horizon bar at or after 2024-01-01T00:00:00Z, that pair is ineligible under the Discovery split-boundary firewall. The split is not widened.
+## REST reconciliation
 
-## Binance source implementation
+For each accepted symbol/year in the active split, choose up to 16 archive timestamps by ascending SHA256 of:
 
-Primary archive:
-`https://data.binance.vision/data/spot/daily/klines/{symbol}/1m/{symbol}-1m-{YYYY-MM-DD}.zip`
+DEFI-LIQUIDATION-SHOCK-001 || symbol || year || canonical_UTC_minute
 
-Companion checksum:
-same URL plus `.CHECKSUM`.
+Selection uses timestamp identity only, never price magnitude.
 
-Each downloaded ZIP must:
-- match the companion SHA256 exactly;
-- contain 1m records keyed by exact UTC minute open timestamps;
-- have no duplicate open timestamp;
-- be strictly monotonic within the archive.
+Query the Binance public Spot 1m kline route for exactly that minute and require:
+- identical open timestamp;
+- Decimal equality of archive OPEN and REST OPEN.
 
-Missing files/minutes are preserved as missing source coverage and never forward-filled.
-
-REST reconciliation endpoint:
-`https://data-api.binance.vision/api/v3/klines`
-
-For each accepted symbol/calendar year in Discovery:
-- rank archived minute timestamps by SHA256(`symbol|year|timestamp_ms|DLS_RECON_V0.1`);
-- select the first 5;
-- require REST open timestamp equality and exact Decimal open-price equality.
-
-Any archive checksum mismatch or archive/REST open conflict is fail-closed:
-`MARKET_DATA_SOURCE_BLOCKED`.
+Any reconciliation mismatch blocks the split.
 
 ## Event alignment
 
-For cluster T0:
+For cascade T0:
 - A = first exact UTC minute boundary >= T0.
-- P0 = OPEN at A.
-- Ph = OPEN at A+h for h in 1m, 5m, 30m, 240m.
-- r_h = ln(Ph/P0).
+- P0 = OPEN(A).
+- Ph = OPEN(A+h) for h in 1, 5, 30, 240 minutes.
+- A and every required horizon must remain inside the active split.
 
-No bar close is used.
+## Control implementation
 
-## Control timestamp canonicalization
+For each eligible cluster:
+- same direct market;
+- same split;
+- same calendar month as T0;
+- same UTC hour as aligned entry A;
+- candidate is an exact minute boundary;
+- candidate must be at/after the frozen listing boundary;
+- candidate and its 240m horizon must remain inside the split;
+- candidate must be more than 4 hours from every primary 60-second cascade T0 for the same market;
+- candidate must have OPEN bars at 0, 1, 5, 30 and 240 minutes.
 
-The frozen control rule is implemented as follows:
-- calendar month and UTC hour-of-day are taken from the exact cascade T0;
-- candidate timestamps are exact UTC minute boundaries formatted canonically as `YYYY-MM-DDTHH:MM:00Z`;
-- candidate must be within the same Discovery split, at/after product listing boundary, and have all required horizon bars before the Discovery split end;
-- candidate must not lie within +/-4 hours, inclusive, of any 60-second primary cascade T0 mapped to the same market.
+Candidate timestamp canonical form:
+YYYY-MM-DDTHH:MM:00Z
 
-Control ranking key is the lowercase hexadecimal value of:
-`SHA256(UTF8(cluster_id + candidate_timestamp_canonical))`
+Rank candidates by ascending SHA256 of the exact UTF-8 concatenation:
 
-No delimiter is inserted because the frozen rule specifies concatenation.
-Candidates sort lexicographically by the 64-character SHA256 hex digest.
-The first candidate with all required bars is selected.
-Control reuse across different clusters is allowed because the frozen rule does not prohibit it.
+cluster_id || candidate_timestamp
 
-## Overlap / dependence
+No separator is inserted because the frozen rule specifies direct concatenation.
 
-Primary clusters are not dropped merely because future windows overlap.
-The already frozen calendar-day block bootstrap is the explicit dependence-aware treatment:
-all matched pairs from the same UTC event-T0 date travel together in every resample.
+Select the first admissible candidate. Controls are not forced unique across clusters because the frozen authority did not impose uniqueness.
+
+Bar existence may affect eligibility; price magnitude may not affect control selection.
+
+## Coverage before inference
+
+Before computing any return:
+- pooled paired coverage must be >=95% of directly mapped clusters in the active split;
+- every subgroup still inferential after market mapping must have >=90% paired coverage;
+- paired N must satisfy the frozen split gate.
+
+If not, classify SOURCE_BLOCKED and do not compute economic inference.
 
 ## Bootstrap implementation
 
-Repetitions: 5,000.
-
-For each split/horizon:
+For each horizon:
+- D = |ln(Ph/P0)_event| - |ln(Ph/P0)_control|;
 - block key = UTC calendar date of event cascade T0;
-- sample the same number of calendar-day blocks with replacement;
-- concatenate all pairs belonging to each sampled day, including multiplicity from repeated sampled days;
-- statistic = cluster-weighted mean paired difference.
+- B = 5000;
+- resample the set of UTC day blocks with replacement, drawing exactly the observed number of distinct days;
+- every pair in a sampled day travels with that day;
+- bootstrap mean is the pair-weighted mean over sampled blocks;
+- PRNG = Python random.Random seeded by the full unsigned integer represented by
+  SHA256("DEFI-LIQUIDATION-SHOCK-001" || split || horizon || "V0.1").
 
-PRNG seed is the full integer value of:
-`SHA256("DEFI-LIQUIDATION-SHOCK-001" + split + horizon_label + "V0.1")`.
+95% percentile CI uses the empirical sorted bootstrap means:
+- lower index floor(0.025*(B-1));
+- upper index ceil(0.975*(B-1)).
 
-Percentile CI uses deterministic linear interpolation (Hyndman-Fan type 7) at 2.5% and 97.5%.
+One-sided secondary bootstrap p-value:
+(1 + count(bootstrap_mean <= 0)) / (B + 1).
 
-One-sided bootstrap p-value for H1 mean(D_h)>0:
-`p = (1 + count(bootstrap_mean <= 0)) / (5000 + 1)`.
+Holm-Bonferroni at alpha 0.05 is applied to 1m, 30m, 240m, sorting by p-value then horizon.
 
-The three secondary p-values (1m, 30m, 240m) use standard sequential Holm-Bonferroni FWER alpha=0.05.
+## Classification
 
-## Coverage
+Discovery:
+- apply OUTCOME_STATISTICAL_AUTHORITY_FREEZE_V0.1 exactly;
+- PASS => SURVIVES_DISCOVERY;
+- valid-data gate failure => NO_EDGE_DISCOVERY;
+- source/coverage failure => SOURCE_BLOCKED.
 
-Discovery paired coverage denominator:
-all source-eligible, directly mapped Discovery primary 60-second clusters fixed before price access.
+OOS:
+- may run only after SURVIVES_DISCOVERY;
+- apply the frozen OOS rules exactly;
+- PASS => SURVIVES_OOS;
+- valid-data gate failure => NO_EDGE_OOS;
+- source/coverage failure => SOURCE_BLOCKED.
 
-Aggregate eligible-pair coverage must be >=95%.
+No sensitivity cluster result can rescue the 60-second primary result.
 
-For every subgroup retained as INFERENTIAL_DISCOVERY_AND_OOS after mapping, eligible-pair coverage must be >=90%.
+## Firewall
 
-No unavailable mapping may be replaced by a proxy.
-
-## Discovery verdict
-
-If source integrity or required coverage fails:
-`MARKET_DATA_SOURCE_BLOCKED`.
-
-Otherwise apply OUTCOME_STATISTICAL_AUTHORITY_FREEZE_V0.1.md exactly:
-- paired Discovery N >= 1,000;
-- mean(D_5m) > 0;
-- 95% day-block bootstrap lower bound > 0;
-- 5m relative uplift >=10%;
-- >=2 inferential protocol families with positive 5m mean D;
-- >=2 of 1m/30m/240m with positive mean D;
-- >=1 secondary horizon significant after Holm.
-
-All pass:
-`SURVIVES_DISCOVERY`.
-
-Otherwise:
-`NO_EDGE_DISCOVERY`.
-
-OOS remains unopened until the immutable Discovery receipt is adjudicated.
-
-## Firewall at freeze
-
-prices_opened=false
-returns_opened=false
-economic_outcomes_opened=false
-oos_2024_opened=false
-protected_2025_2026_opened=false
-post_outcome_tuning=false
 live_trading=false
 orders=false
 wallets=false
 exchange_mutation=false
 merge_main=false
+protected_2025_2026_opened=false
+post_outcome_tuning=false
