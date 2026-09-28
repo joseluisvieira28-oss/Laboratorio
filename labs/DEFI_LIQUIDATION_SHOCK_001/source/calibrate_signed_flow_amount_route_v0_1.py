@@ -47,7 +47,7 @@ for ref in REFS:
           "fields":{
             "transaction":{"transactionIndex":True,"signatures":True,"err":True},
             "instruction":{"programId":True,"transactionIndex":True,"instructionAddress":True,"isCommitted":True,"error":True},
-            "tokenBalance":{"account":True,"preMint":True,"postMint":True,"preDecimals":True,"postDecimals":True,
+            "tokenBalance":{"transactionIndex":True,"account":True,"preMint":True,"postMint":True,"preDecimals":True,"postDecimals":True,
                             "preOwner":True,"postOwner":True,"preAmount":True,"postAmount":True}
           },"instructions":[filt]}
     st,raw=req(body)
@@ -79,9 +79,22 @@ for ref in REFS:
             if ix.get("programId")==ref["program"] and sig==ref["signature"] and tx.get("err") is None and ix.get("isCommitted") is True and ix.get("error") is None:
                 rr["instruction_match"]=True;wanted_ti=ix.get("transactionIndex");break
         if wanted_ti is None:continue
+        exact_matches=[]
+        for ix in b.get("instructions") or []:
+            tx=tx_by.get(ix.get("transactionIndex")) or {}
+            sigs=tx.get("signatures") or []
+            sig=sigs[0] if sigs else None
+            if ix.get("programId")==ref["program"] and sig==ref["signature"] and tx.get("err") is None and ix.get("isCommitted") is True and ix.get("error") is None:
+                exact_matches.append(ix)
+        if len(exact_matches)!=1:
+            rr["binding_error"]="exact_reference_instruction_match_count_"+str(len(exact_matches))
+            continue
+        wanted_ti=exact_matches[0].get("transactionIndex")
         merged={}
         for tb in b.get("tokenBalances") or []:
-            if tb.get("transactionIndex")!=wanted_ti or tb.get("account") not in ref["targets"]:continue
+            if tb.get("account") not in ref["targets"]:continue
+            tb_ti=tb.get("transactionIndex")
+            if tb_ti is not None and tb_ti!=wanted_ti:continue
             a=tb.get("account")
             m=merged.setdefault(a,{"account":a})
             for k in ("preMint","postMint","preDecimals","postDecimals","preOwner","postOwner","preAmount","postAmount"):
