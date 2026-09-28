@@ -2,45 +2,46 @@
   "schema_version": "0.1",
   "lab_id": "DEFI-LIQUIDATION-SHOCK-001",
   "classification": "OOS_PRELAUNCH_IMPLEMENTATION_CONFORMANCE_PASS",
-  "oos_market_payload_opened": false,
-  "protected_2025_2026_opened": false,
   "canonical_discovery": {
-    "run_id": 36485119508,
-    "artifact_id": 10997938881,
-    "result_receipt_sha256": "e8bd60398111339f95b82302fe22335665959949adfc357a6ee89d3c1c318a0c",
-    "classification": "SURVIVES_DISCOVERY"
+    "run_id": 36485865469,
+    "job_id": 109142489175,
+    "artifact_id": 10999736255,
+    "result_receipt_sha256": "d75081066e885e835ecf915673d10af64a53fe4f298e5b2a8d4a287f9c12ea2d",
+    "acquisition_receipt_sha256": "6d5264323ed04f341029bdc4e49cc22582d513a9f8cb5cca1a41250c7bff3e76",
+    "classification": "SURVIVES_DISCOVERY",
+    "adjudication_lock_commit": "536cc10f2d97c74302ab0907e1358b662e25fd4e"
   },
-  "corrections_before_first_oos_payload": [
+  "oos_executor": {
+    "path": "labs/DEFI_LIQUIDATION_SHOCK_001/source/run_oos_v0_1.py",
+    "conformance_restore_commit": "e191cca93ba19914ec8e3013f06b50843a3aa18b",
+    "inherits": "DISCOVERY_EXECUTION_IMPLEMENTATION_FREEZE_V0.1.md",
+    "oos_binding": "OOS_EXECUTION_IMPLEMENTATION_BINDING_V0.1.md"
+  },
+  "noncanonical_oos_runs": [
     {
-      "field": "rest_reconciliation_sample_count",
-      "from": 8,
-      "to": 5,
-      "authority": "DISCOVERY_EXECUTION_IMPLEMENTATION_FREEZE_V0.1.md"
+      "run_id": 36485809687,
+      "reason": "launched before canonical freeze-conformant Discovery adjudication and bound superseded Discovery"
     },
     {
-      "field": "rest_reconciliation_rank_serialization",
-      "from": "LAB|SYMBOL|year|timestamp",
-      "to": "symbol|year|timestamp_ms|DLS_RECON_V0.1",
-      "authority": "DISCOVERY_EXECUTION_IMPLEMENTATION_FREEZE_V0.1.md"
+      "run_id": 36485813772,
+      "reason": "launched before canonical freeze-conformant Discovery adjudication and bound alternate Discovery receipt"
     },
     {
-      "field": "bootstrap_seed_integer",
-      "from": "first_8_sha256_bytes",
-      "to": "full_sha256_integer",
-      "authority": "DISCOVERY_EXECUTION_IMPLEMENTATION_FREEZE_V0.1.md"
+      "run_id": 36486030304,
+      "reason": "workflow bound superseded Discovery run 36485119508"
     },
     {
-      "field": "missing_daily_archive",
-      "from": "hard_transport_block_on_404",
-      "to": "preserve_as_missingness_then_apply_frozen_pair_coverage_gate",
-      "authority": "DISCOVERY_EXECUTION_IMPLEMENTATION_FREEZE_V0.1.md"
-    },
-    {
-      "field": "active_split_acquisition",
-      "from": "event_months_plus_optional_next",
-      "to": "all days in active OOS split",
-      "authority": "canonical Discovery execution behavior; no 2025 bars"
+      "run_id": 36486083656,
+      "reason": "workflow bound alternate Discovery run 36484802236"
     }
+  ],
+  "restored_frozen_implementation": [
+    "Hyndman-Fan type 7 bootstrap percentiles",
+    "5 deterministic REST reconciliation timestamps per symbol/year",
+    "SHA256(symbol|year|timestamp_ms|DLS_RECON_V0.1) reconciliation ranking",
+    "same UTC hour-of-day derived from exact cascade T0",
+    "full SHA256 integer bootstrap seed",
+    "2024 OOS only; 2025/2026 protected"
   ],
   "scientific_invariants": {
     "target_unchanged": true,
@@ -56,6 +57,11 @@
     "uplift_threshold_unchanged": true,
     "promotion_taxonomy_unchanged": true,
     "temporal_split_unchanged": true
+  },
+  "outcome_state": {
+    "noncanonical_oos_outcomes_not_used_for_rule_selection": true,
+    "canonical_oos_market_payload_opened": false,
+    "protected_2025_2026_opened": false
   },
   "firewall": {
     "post_outcome_tuning": false,
