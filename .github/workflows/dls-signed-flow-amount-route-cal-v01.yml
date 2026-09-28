@@ -1,0 +1,38 @@
+name: DLS Signed Flow Amount Route Calibration V0.1
+
+on:
+  push:
+    branches:
+      - dls-signed-flow-authority-v01
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_SIGNED_FLOW_AMOUNT_ROUTE_CAL_V01.marker
+
+permissions:
+  contents: read
+
+jobs:
+  calibrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/calibrate_signed_flow_amount_route_v0_1.py
+      - name: Execute exact three-reference amount calibration
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/calibrate_signed_flow_amount_route_v0_1.py
+      - name: Upload immutable receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-signed-flow-amount-route-cal-v01
+          path: labs/DEFI_LIQUIDATION_SHOCK_001/SIGNED_FLOW_AMOUNT_ROUTE_CALIBRATION_RECEIPT_V0.1.json
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_NO_PRICES_2025_2026_CLOSED_NO_TRADING
