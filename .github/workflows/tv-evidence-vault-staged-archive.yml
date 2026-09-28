@@ -1,0 +1,49 @@
+name: TV Evidence Vault V0.1 staged archive
+
+on:
+  push:
+    branches:
+      - tv-evidence-vault-v0.1
+    paths:
+      - "tradingview_evidence_vault/staging/*.raw.jsonl"
+
+permissions:
+  contents: write
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tv-evidence-vault-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate vault tooling
+        run: python -m unittest tradingview_evidence_vault/test_vault.py
+      - name: Build immutable daily archives
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          for f in tradingview_evidence_vault/staging/*.raw.jsonl; do
+            id="$(basename "$f" .raw.jsonl)"
+            out="tradingview_evidence_vault/archive/$id"
+            if [ -e "$out/$id.manifest.json" ] || [ -e "$out/$id.jsonl" ]; then
+              echo "Archive already exists for $id; refusing overwrite."
+              continue
+            fi
+            python tradingview_evidence_vault/vault.py "$f" --outdir "$out" --snapshot-id "$id"
+          done
+      - name: Commit newly built archives only
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "crypto-lab-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add tradingview_evidence_vault/archive
+          git diff --cached --quiet && exit 0
+          git commit -m "vault: archive staged TVFP daily evidence"
+          git pull --rebase origin tv-evidence-vault-v0.1
+          git push origin HEAD:tv-evidence-vault-v0.1
