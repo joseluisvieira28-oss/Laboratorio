@@ -1,0 +1,68 @@
+name: BUILD OPERATOR FUTURES BNB CED1D READINESS V0.1
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - operator-futures-bnb-ced1d-prep-v0.1-2026-09-27
+    paths:
+      - 'crypto_edge_radar/execution/MEXC_FUTURES_FEE_TRUTH_POLICY_V01.json'
+      - 'crypto_edge_radar/execution/OPERATOR_FUTURES_BNB_CED1D_AUTHORITY_V01.json'
+      - 'crypto_edge_radar/execution/OPERATOR_FUTURES_BNB_CED1D_PREP_V01.json'
+      - 'crypto_edge_radar/radar/mexc_auth_readonly.py'
+      - 'crypto_edge_radar/radar/mexc_symbol_readiness_v01.py'
+      - 'crypto_edge_radar/radar/mexc_futures_policy_transport_v01.py'
+      - 'crypto_edge_radar/scripts/mexc_operator_futures_readiness_v01.py'
+      - 'crypto_edge_radar/windows/Run_MEXC_Operator_Futures_Readiness_V01.ps1'
+      - 'crypto_edge_radar/tests/test_mexc_symbol_readiness_v01.py'
+      - 'crypto_edge_radar/tests/test_mexc_futures_policy_transport_v01.py'
+      - 'crypto_edge_radar/tests/test_operator_futures_policy_v01.py'
+      - 'crypto_edge_radar/tests/test_mexc_operator_futures_readiness_v01.py'
+      - '.github/workflows/build-operator-futures-bnb-ced1d-readiness-v01.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: crypto_edge_radar
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install package and packager
+        run: |
+          python -m pip install -e .
+          python -m pip install "pyinstaller>=6,<7"
+      - name: Compile
+        run: |
+          python -m compileall radar/mexc_symbol_readiness_v01.py radar/mexc_futures_policy_transport_v01.py scripts/mexc_operator_futures_readiness_v01.py tests/test_mexc_symbol_readiness_v01.py tests/test_mexc_futures_policy_transport_v01.py tests/test_operator_futures_policy_v01.py tests/test_mexc_operator_futures_readiness_v01.py
+      - name: Run operator readiness tests
+        run: |
+          python -m unittest tests.test_mexc_symbol_readiness_v01 tests.test_mexc_futures_policy_transport_v01 tests.test_operator_futures_policy_v01 tests.test_mexc_operator_futures_readiness_v01 -v
+      - name: Build read-only readiness EXE
+        run: |
+          pyinstaller --clean --onefile --name MEXCOperatorFuturesReadiness --paths . scripts/mexc_operator_futures_readiness_v01.py
+      - name: Hash executable
+        shell: pwsh
+        run: |
+          $hash = (Get-FileHash dist\MEXCOperatorFuturesReadiness.exe -Algorithm SHA256).Hash.ToLower()
+          "sha256=$hash" | Out-File -FilePath dist\MEXCOperatorFuturesReadiness.sha256.txt -Encoding ascii
+          Get-Content dist\MEXCOperatorFuturesReadiness.sha256.txt
+      - name: Upload read-only operator readiness bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: mexc-operator-futures-bnb-ced1d-readiness-v01
+          path: |
+            crypto_edge_radar/dist/MEXCOperatorFuturesReadiness.exe
+            crypto_edge_radar/dist/MEXCOperatorFuturesReadiness.sha256.txt
+            crypto_edge_radar/windows/Run_MEXC_Operator_Futures_Readiness_V01.ps1
+            crypto_edge_radar/execution/MEXC_FUTURES_FEE_TRUTH_POLICY_V01.json
+            crypto_edge_radar/execution/OPERATOR_FUTURES_BNB_CED1D_AUTHORITY_V01.json
+            crypto_edge_radar/execution/OPERATOR_FUTURES_BNB_CED1D_PREP_V01.json
+          if-no-files-found: error
+          retention-days: 7
