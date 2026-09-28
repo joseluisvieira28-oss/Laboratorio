@@ -400,7 +400,7 @@ checks={
  "bootstrap_ci_5m_lower_positive":boot["5m"]["ci95"][0]>0,
  "relative_uplift_5m_ge_10pct":metrics["5m"]["relative_uplift"] is not None and metrics["5m"]["relative_uplift"]>=0.10,
  "two_inferential_families_positive_5m":sum(1 for x in family5 if x["positive"])>=2,
- "two_secondary_horizons_positive":sum(1 for h in ("1m","30m","240m") if metrics[h]["positive"])>=2,
+ "two_secondary_horizons_positive":sum(1 for h in ("1m","30m","240m") if metrics[h]["positive_mean"])>=2,
  "one_secondary_holm_significant":sum(1 for v in holm_sig.values() if v)>=1
 }
 classification="SURVIVES_DISCOVERY" if all(checks.values()) else "NO_EDGE_DISCOVERY"
