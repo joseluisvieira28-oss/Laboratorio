@@ -74,15 +74,12 @@ def http_json(url,retries=6):
     try:return st,json.loads(b)
     except Exception:return st,None
 
-def qtype7(vals,q):
+def frozen_percentile(vals,q,upper=False):
     s=sorted(vals); n=len(s)
     if not n:return None
     if n==1:return s[0]
-    h=(n-1)*q
-    lo=int(math.floor(h)); hi=int(math.ceil(h))
-    if lo==hi:return s[lo]
-    return s[lo]+(s[hi]-s[lo])*(h-lo)
-
+    idx=int(math.ceil((n-1)*q)) if upper else int(math.floor((n-1)*q))
+    return s[idx]
 def mean(xs): return sum(xs)/len(xs) if xs else None
 
 def bootstrap_stats(pairs,hlabel):
@@ -106,7 +103,7 @@ def bootstrap_stats(pairs,hlabel):
         "repetitions":BOOTSTRAP_N,
         "block_day_count":len(days),
         "seed_sha256":hashlib.sha256((LAB+"discovery"+hlabel+"V0.1").encode()).hexdigest(),
-        "ci95":[qtype7(boots,0.025),qtype7(boots,0.975)],
+        "ci95":[frozen_percentile(boots,0.025,False),frozen_percentile(boots,0.975,True)],
         "one_sided_p":p_one
     }
 
@@ -199,24 +196,25 @@ def acquire_day(symbol,row,day):
         names=[n for n in z.namelist() if not n.endswith("/")]
         if len(names)!=1:
             base.update({"status":"ZIP_MEMBER_COUNT_INVALID","members":names}); return base,{}
+        start=ms(dt.datetime.combine(day,dt.time(0),tzinfo=dt.timezone.utc))
+        end=start+86400000
         out={}; prev=None; dup=0; nonmono=0
         with z.open(names[0]) as fh:
             reader=csv.reader(io.TextIOWrapper(fh,encoding="utf-8"))
             for rec in reader:
                 if not rec: continue
-                t=int(rec[0]); 
+                t=int(rec[0])
                 if t>10**14:t//=1000
-                if t%60000!=0: 
+                if t%60000!=0:
                     base.update({"status":"TIMESTAMP_NOT_MINUTE_ALIGNED","timestamp":t}); return base,{}
+                if not (start<=t<end):
+                    base.update({"status":"OUT_OF_DAY_TIMESTAMP","timestamp":t}); return base,{}
                 if prev is not None and t<=prev:
                     if t==prev: dup+=1
                     else: nonmono+=1
                 prev=t
                 if t in out: dup+=1
                 out[t]=rec[1]
-        start=ms(dt.datetime.combine(day,dt.time(0),tzinfo=dt.timezone.utc))
-        end=start+86400000
-        out={t:v for t,v in out.items() if start<=t<end}
         missing=1440-len(out)
         base.update({"status":"PASS","observed_bars":len(out),"missing_minutes":missing,"duplicate_count":dup,"non_monotonic_count":nonmono})
         if dup or nonmono:
@@ -244,14 +242,17 @@ archive_rows.sort(key=lambda x:(x["symbol"],x["date"]))
 with MANIFEST.open("w") as f:
     for r in archive_rows:f.write(json.dumps(r,sort_keys=True,separators=(",",":"))+"\n")
 
-# REST reconciliation: 5 deterministic timestamps per symbol/year.
+# REST reconciliation: up to 16 deterministic timestamps per symbol/year.
 reconciliation=[]
 for symbol in symbols:
     ts_all=sorted(bars[symbol])
     years=sorted(set(dt.datetime.fromtimestamp(t/1000,dt.timezone.utc).year for t in ts_all))
     for year in years:
         ys=[t for t in ts_all if dt.datetime.fromtimestamp(t/1000,dt.timezone.utc).year==year]
-        ranked=sorted(ys,key=lambda t:hashlib.sha256((symbol+"|"+str(year)+"|"+str(t)+"|DLS_RECON_V0.1").encode()).hexdigest())[:5]
+        def recon_rank(t):
+            canon=dt.datetime.fromtimestamp(t/1000,dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:00Z")
+            return hashlib.sha256((LAB+symbol+str(year)+canon).encode()).hexdigest()
+        ranked=sorted(ys,key=lambda t:(recon_rank(t),t))[:16]
         for t in ranked:
             q=urllib.parse.urlencode({"symbol":symbol,"interval":"1m","startTime":t,"endTime":t+59999,"limit":1})
             st,obj=http_json("https://data-api.binance.vision/api/v3/klines?"+q)
@@ -261,11 +262,11 @@ for symbol in symbols:
                 ok=(rt==t and Decimal(ro)==Decimal(ao))
                 if not ok: reason="archive_rest_open_conflict"
             else: reason="rest_reconciliation_transport_or_shape_failure"
-            reconciliation.append({"symbol":symbol,"year":year,"timestamp_ms":t,"http_status":st,"pass":ok,"reason":reason})
+            reconciliation.append({"symbol":symbol,"year":year,"timestamp_ms":t,"canonical_minute":dt.datetime.fromtimestamp(t/1000,dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:00Z"),"http_status":st,"pass":ok,"reason":reason})
             if not ok: hard_errors.append({"reason":reason,"symbol":symbol,"year":year,"timestamp_ms":t,"http_status":st})
 
 for r in transport_errors:
-    if r["status"] in ("CHECKSUM_MISMATCH","ARCHIVE_STRUCTURE_CONFLICT","TIMESTAMP_NOT_MINUTE_ALIGNED"):
+    if r["status"] in ("CHECKSUM_MISMATCH","ARCHIVE_STRUCTURE_CONFLICT","TIMESTAMP_NOT_MINUTE_ALIGNED","OUT_OF_DAY_TIMESTAMP"):
         hard_errors.append({"reason":r["status"],"symbol":r["symbol"],"date":r["date"]})
 
 # Build event proximity indexes by mapped symbol using all mapped Discovery T0s.
@@ -281,7 +282,7 @@ def near_event(symbol,candidate_dt):
 def all_required(symbol,t0ms):
     return all((t0ms+m*60000) in bars[symbol] for m in (0,1,5,30,240))
 
-pairs=[]; exclusions=defaultdict(int)
+pair_specs=[]; exclusions=defaultdict(int)
 for c in clusters:
     symbol=c["symbol"]; t0=parse_iso(c["t0"]); A=ceil_minute(t0)
     listing=parse_iso(c["listing_start_utc"])
@@ -298,43 +299,37 @@ for c in clusters:
     d=month_start.date()
     while d<month_end.date():
         for minute in range(60):
-            x=dt.datetime(d.year,d.month,d.day,t0.hour,minute,tzinfo=dt.timezone.utc)
+            x=dt.datetime(d.year,d.month,d.day,A.hour,minute,tzinfo=dt.timezone.utc)
             if x<listing or x>=DISCOVERY_END: continue
             if x+dt.timedelta(minutes=240)>=DISCOVERY_END: continue
             if near_event(symbol,x): continue
             canon=iso_minute(x)
             rank=hashlib.sha256((c["cluster_id"]+canon).encode()).hexdigest()
-            cand.append((rank,x,canon))
+            cand.append((rank,canon,x))
         d+=dt.timedelta(days=1)
-    cand.sort(key=lambda x:x[0])
+    cand.sort(key=lambda x:(x[0],x[1]))
     chosen=None
-    for rank,x,canon in cand:
+    for rank,canon,x in cand:
         cm=ms(x)
         if all_required(symbol,cm):
-            chosen=(rank,x,canon,cm); break
+            chosen=(rank,canon,x,cm); break
     if chosen is None:
         exclusions["no_admissible_control"]+=1; continue
 
-    _,ctrl,ctrl_iso,ctrl_ms=chosen
-    p={"cluster_id":c["cluster_id"],"protocol":c["protocol"],"instruction_class":c["instruction_class"],
+    _,ctrl_iso,ctrl,ctrl_ms=chosen
+    pair_specs.append({
+       "cluster_id":c["cluster_id"],"protocol":c["protocol"],"instruction_class":c["instruction_class"],
        "primary_market_identity":c["primary_market_identity"],"symbol":symbol,"event_t0":c["t0"],
-       "event_aligned":iso_minute(A),"control_aligned":ctrl_iso}
-    for hl,mn in HORIZONS.items():
-        e0=Decimal(bars[symbol][event_ms]); eh=Decimal(bars[symbol][event_ms+mn*60000])
-        c0=Decimal(bars[symbol][ctrl_ms]); ch=Decimal(bars[symbol][ctrl_ms+mn*60000])
-        er=math.log(float(eh/e0)); cr=math.log(float(ch/c0))
-        p["event_abs_"+hl]=abs(er); p["control_abs_"+hl]=abs(cr); p["d_"+hl]=abs(er)-abs(cr)
-    pairs.append(p)
+       "event_aligned":iso_minute(A),"control_aligned":ctrl_iso,
+       "_event_ms":event_ms,"_control_ms":ctrl_ms
+    })
 
-with PAIRS.open("w") as f:
-    for p in pairs:f.write(json.dumps(p,sort_keys=True,separators=(",",":"))+"\n")
-
-mapped_n=len(clusters); pair_n=len(pairs); coverage=pair_n/mapped_n if mapped_n else 0.0
+mapped_n=len(clusters); pair_n=len(pair_specs); coverage=pair_n/mapped_n if mapped_n else 0.0
 inferential=[x for x in (source_receipt.get("post_mapping_subgroups") or []) if x.get("post_mapping_status")=="INFERENTIAL_DISCOVERY_AND_OOS"]
 subgroup_cov=[]
 for g in inferential:
     den=sum(1 for c in clusters if c["protocol"]==g["protocol"] and c["instruction_class"]==g["class"])
-    num=sum(1 for p in pairs if p["protocol"]==g["protocol"] and p["instruction_class"]==g["class"])
+    num=sum(1 for p in pair_specs if p["protocol"]==g["protocol"] and p["instruction_class"]==g["class"])
     subgroup_cov.append({"protocol":g["protocol"],"class":g["class"],"mapped_n":den,"paired_n":num,"coverage":num/den if den else 0.0})
 
 archive_missing=sum(int(x.get("missing_minutes") or 0) for x in archive_rows)
@@ -350,6 +345,7 @@ acq={
  "archive_manifest_path":str(MANIFEST),"archive_day_count":len(archive_rows),
  "archive_missing_minute_count":archive_missing,"reconciliation":reconciliation,
  "hard_error_count":len(hard_errors),"hard_errors":hard_errors,
+ "returns_computed_before_coverage_gate":False,
  "firewall":{"discovery_only":True,"oos_2024_opened":False,"protected_2025_2026_opened":False,
              "post_outcome_tuning":False,"live_trading":False,"orders":False,"wallets":False,
              "exchange_mutation":False,"merge_main":False}
@@ -363,6 +359,21 @@ if acq_class!="DISCOVERY_MARKET_DATA_ACQUISITION_PASS":
     print(json.dumps({"classification":"MARKET_DATA_SOURCE_BLOCKED","paired_n":pair_n,"coverage":coverage,"hard_errors":len(hard_errors)},indent=2))
     raise SystemExit(2)
 
+# Compute economic outcomes only after the frozen source/coverage gate passes.
+pairs=[]
+for spec in pair_specs:
+    symbol=spec["symbol"]; event_ms=spec["_event_ms"]; ctrl_ms=spec["_control_ms"]
+    p={k:v for k,v in spec.items() if not k.startswith("_")}
+    for hl,mn in HORIZONS.items():
+        e0=Decimal(bars[symbol][event_ms]); eh=Decimal(bars[symbol][event_ms+mn*60000])
+        c0=Decimal(bars[symbol][ctrl_ms]); ch=Decimal(bars[symbol][ctrl_ms+mn*60000])
+        er=math.log(float(eh/e0)); cr=math.log(float(ch/c0))
+        p["event_abs_"+hl]=abs(er); p["control_abs_"+hl]=abs(cr); p["d_"+hl]=abs(er)-abs(cr)
+    pairs.append(p)
+
+with PAIRS.open("w") as f:
+    for p in pairs:f.write(json.dumps(p,sort_keys=True,separators=(",",":"))+"\n")
+
 metrics={}
 boot={}
 for hl in HORIZONS:
@@ -375,11 +386,12 @@ for hl in HORIZONS:
     boot[hl]=bootstrap_stats(pairs,hl)
 
 family5=[]
-for g in inferential:
-    ps=[p for p in pairs if p["protocol"]==g["protocol"] and p["instruction_class"]==g["class"]]
-    family5.append({"protocol":g["protocol"],"class":g["class"],"n":len(ps),"mean_d_5m":mean([p["d_5m"] for p in ps]),
-                    "positive":bool(ps) and mean([p["d_5m"] for p in ps])>0})
-
+inferential_protocols=sorted(set(g["protocol"] for g in inferential))
+for protocol in inferential_protocols:
+    ps=[p for p in pairs if p["protocol"]==protocol]
+    md=mean([p["d_5m"] for p in ps]) if ps else None
+    family5.append({"protocol":protocol,"n":len(ps),"mean_d_5m":md,
+                    "positive":md is not None and md>0})
 sec_p={h:boot[h]["one_sided_p"] for h in ("1m","30m","240m")}
 holm_sig,holm_rows=holm(sec_p)
 checks={
