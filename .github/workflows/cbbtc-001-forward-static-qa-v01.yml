@@ -1,0 +1,49 @@
+name: CBBTC-001 Forward Static QA V0.1
+
+on:
+  push:
+    branches:
+      - cbbtc-001-forward-post-h1-v01
+    paths:
+      - 'research/cbbtc_eth_mint_burn_flow_001/FORWARD_POST_H1_PREOPEN_FREEZE_V0.1.md'
+      - 'research/cbbtc_eth_mint_burn_flow_001/FORWARD_POST_H1_OPEN_AUTHORITY_V0.1.json'
+      - 'research/cbbtc_eth_mint_burn_flow_001/cbbtc_forward_post_h1_census_v01.mjs'
+      - 'research/cbbtc_eth_mint_burn_flow_001/cbbtc_forward_post_h1_eval_v01.py'
+      - '.github/workflows/cbbtc-001-forward-post-h1-v01.yml'
+      - '.github/workflows/cbbtc-001-forward-static-qa-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Syntax checks
+        run: |
+          node --check research/cbbtc_eth_mint_burn_flow_001/cbbtc_forward_post_h1_census_v01.mjs
+          python -m py_compile research/cbbtc_eth_mint_burn_flow_001/cbbtc_forward_post_h1_eval_v01.py
+      - name: Boundary and sample firewalls
+        shell: bash
+        run: |
+          set -e
+          grep -q '2026-09-29T00:00:00Z' research/cbbtc_eth_mint_burn_flow_001/cbbtc_forward_post_h1_census_v01.mjs
+          grep -q 'FORWARD_OPEN_AUTHORITY_MISSING' research/cbbtc_eth_mint_burn_flow_001/cbbtc_forward_post_h1_census_v01.mjs
+          grep -q 'FIRST_EVENT_DAY="2026-09-30"' research/cbbtc_eth_mint_burn_flow_001/cbbtc_forward_post_h1_eval_v01.py
+          grep -q 'MIN_TOTAL=20' research/cbbtc_eth_mint_burn_flow_001/cbbtc_forward_post_h1_eval_v01.py
+          grep -q 'MIN_EACH=6' research/cbbtc_eth_mint_burn_flow_001/cbbtc_forward_post_h1_eval_v01.py
+          grep -q 'if not sample_ready:' research/cbbtc_eth_mint_burn_flow_001/cbbtc_forward_post_h1_eval_v01.py
+          grep -q 'market_returns_opened":False' research/cbbtc_eth_mint_burn_flow_001/cbbtc_forward_post_h1_eval_v01.py
+          if grep -q '2026-07-01T00:00:00Z' research/cbbtc_eth_mint_burn_flow_001/cbbtc_forward_post_h1_census_v01.mjs; then
+            echo "Retrospective H2 boundary leaked into forward census"
+            exit 2
+          fi
+          echo "FORWARD_STATIC_QA_PASS"
