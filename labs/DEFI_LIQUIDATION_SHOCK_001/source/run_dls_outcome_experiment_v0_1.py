@@ -83,7 +83,7 @@ def ceil_minute_ms(x:dt.datetime)->int:
     t=ms(x)
     return ((t+59999)//60000)*60000
 
-def http_get_bytes(url:str,retries=6,timeout=60)->bytes:
+def http_get_bytes(url:str,retries=6,timeout=60,allow_404=False):
     last=None
     for i in range(retries):
         try:
@@ -94,6 +94,8 @@ def http_get_bytes(url:str,retries=6,timeout=60)->bytes:
                 return r.read()
         except urllib.error.HTTPError as e:
             last=f"HTTP_{e.code}"
+            if allow_404 and e.code==404:
+                return None
             if e.code in (429,500,502,503,504):
                 time.sleep(min(20,2**i))
                 continue
@@ -174,10 +176,14 @@ def download_market(months:set[tuple[int,int]],start:dt.datetime,end:dt.datetime
             cp=cache/(fn+".CHECKSUM")
             url=ARCHIVE_TEMPLATE.format(symbol=SYMBOL,date=ds)
             curl=CHECKSUM_TEMPLATE.format(symbol=SYMBOL,date=ds)
-            if not zp.exists():
-                zp.write_bytes(http_get_bytes(url))
-            if not cp.exists():
-                cp.write_bytes(http_get_bytes(curl))
+            if not zp.exists() or not cp.exists():
+                zb=http_get_bytes(url,allow_404=True)
+                cb=http_get_bytes(curl,allow_404=True)
+                if zb is None or cb is None:
+                    manifests.append({"date":ds,"archive":fn,"checksum_object":fn+".CHECKSUM","status":"MISSING_ARCHIVE","row_count":0})
+                    continue
+                zp.write_bytes(zb)
+                cp.write_bytes(cb)
             zbytes=zp.read_bytes()
             checksum_text=cp.read_text(errors="replace").strip()
             expected=checksum_text.split()[0].lower() if checksum_text else ""
@@ -189,7 +195,7 @@ def download_market(months:set[tuple[int,int]],start:dt.datetime,end:dt.datetime
                 if t in prices:
                     raise SourceBlocked(f"duplicate_global_timestamp {t}")
                 prices[t]=op
-            manifests.append({"date":ds,"archive":fn,"archive_sha256":actual,"checksum_object":fn+".CHECKSUM","row_count":len(dayrows)})
+            manifests.append({"date":ds,"archive":fn,"archive_sha256":actual,"checksum_object":fn+".CHECKSUM","status":"PASS","row_count":len(dayrows)})
     for y,m in months:
         a=max(dt.datetime(y,m,1,tzinfo=dt.timezone.utc),start)
         b=min(dt.datetime(y+1,1,1,tzinfo=dt.timezone.utc) if m==12 else dt.datetime(y,m+1,1,tzinfo=dt.timezone.utc),end)
@@ -217,7 +223,7 @@ def reconcile_rest(prices:dict[int,Decimal], split:str):
         byyear[dt.datetime.fromtimestamp(t/1000,dt.timezone.utc).year].append(t)
     results=[]
     for year,times in sorted(byyear.items()):
-        ranked=sorted(times,key=lambda t: hashlib.sha256(f"{LAB_ID}|{SYMBOL}|{year}|{t}".encode()).hexdigest())[:8]
+        ranked=sorted(times,key=lambda t: hashlib.sha256(f"{SYMBOL}|{year}|{t}|DLS_RECON_V0.1".encode()).hexdigest())[:5]
         for t in ranked:
             qs=urllib.parse.urlencode({"symbol":SYMBOL,"interval":"1m","startTime":t,"endTime":t+59999,"limit":1})
             obj,attempts=http_json_fallback("/api/v3/klines?"+qs)
@@ -320,7 +326,7 @@ def bootstrap_stats(pairs,h,split):
     days=sorted(byday)
     observed=sum(vals)/len(vals)
     seed_text=LAB_ID+split+f"{h}m"+"V0.1"
-    seed=int.from_bytes(hashlib.sha256(seed_text.encode()).digest()[:8],"big",signed=False)
+    seed=int(hashlib.sha256(seed_text.encode()).hexdigest(),16)
     rng=random.Random(seed)
     boots=[]
     for _ in range(BOOTSTRAP_REPS):
@@ -340,7 +346,7 @@ def bootstrap_stats(pairs,h,split):
         "bootstrap_reps":BOOTSTRAP_REPS,
         "block_day_count":len(days),
         "seed_text":seed_text,
-        "seed_uint64_be":seed
+        "seed_full_sha256_int":seed
     }
 
 def holm(pvals:dict[str,float],alpha=.05):
@@ -432,11 +438,12 @@ def main():
         raise SourceBlocked("no directly mapped clusters in split")
 
     event_months={(parse_iso(c["t0"]).year,parse_iso(c["t0"]).month) for c in clusters}
-    data_months=set(event_months)
-    for y,m in list(event_months):
-        ny,nm=(y+1,1) if m==12 else (y,m+1)
-        if dt.datetime(ny,nm,1,tzinfo=dt.timezone.utc)<end:
-            data_months.add((ny,nm))
+    data_months=set()
+    cursor=dt.datetime(start.year,start.month,1,tzinfo=dt.timezone.utc)
+    while cursor<end:
+        data_months.add((cursor.year,cursor.month))
+        cursor=(dt.datetime(cursor.year+1,1,1,tzinfo=dt.timezone.utc)
+                if cursor.month==12 else dt.datetime(cursor.year,cursor.month+1,1,tzinfo=dt.timezone.utc))
 
     prices,manifest=download_market(data_months,start,end,Path(args.cache))
     manifest["event_months"]=[f"{y:04d}-{m:02d}" for y,m in sorted(event_months)]
