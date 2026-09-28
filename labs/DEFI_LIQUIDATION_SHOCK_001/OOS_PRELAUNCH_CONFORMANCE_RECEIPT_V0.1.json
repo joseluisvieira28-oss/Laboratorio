@@ -1,0 +1,68 @@
+{
+  "schema_version": "0.1",
+  "lab_id": "DEFI-LIQUIDATION-SHOCK-001",
+  "classification": "OOS_PRELAUNCH_IMPLEMENTATION_CONFORMANCE_PASS",
+  "oos_market_payload_opened": false,
+  "protected_2025_2026_opened": false,
+  "canonical_discovery": {
+    "run_id": 36485119508,
+    "artifact_id": 10997938881,
+    "result_receipt_sha256": "e8bd60398111339f95b82302fe22335665959949adfc357a6ee89d3c1c318a0c",
+    "classification": "SURVIVES_DISCOVERY"
+  },
+  "corrections_before_first_oos_payload": [
+    {
+      "field": "rest_reconciliation_sample_count",
+      "from": 8,
+      "to": 5,
+      "authority": "DISCOVERY_EXECUTION_IMPLEMENTATION_FREEZE_V0.1.md"
+    },
+    {
+      "field": "rest_reconciliation_rank_serialization",
+      "from": "LAB|SYMBOL|year|timestamp",
+      "to": "symbol|year|timestamp_ms|DLS_RECON_V0.1",
+      "authority": "DISCOVERY_EXECUTION_IMPLEMENTATION_FREEZE_V0.1.md"
+    },
+    {
+      "field": "bootstrap_seed_integer",
+      "from": "first_8_sha256_bytes",
+      "to": "full_sha256_integer",
+      "authority": "DISCOVERY_EXECUTION_IMPLEMENTATION_FREEZE_V0.1.md"
+    },
+    {
+      "field": "missing_daily_archive",
+      "from": "hard_transport_block_on_404",
+      "to": "preserve_as_missingness_then_apply_frozen_pair_coverage_gate",
+      "authority": "DISCOVERY_EXECUTION_IMPLEMENTATION_FREEZE_V0.1.md"
+    },
+    {
+      "field": "active_split_acquisition",
+      "from": "event_months_plus_optional_next",
+      "to": "all days in active OOS split",
+      "authority": "canonical Discovery execution behavior; no 2025 bars"
+    }
+  ],
+  "scientific_invariants": {
+    "target_unchanged": true,
+    "venue_unchanged": true,
+    "cluster_rule_unchanged": true,
+    "control_rule_unchanged": true,
+    "horizons_unchanged": true,
+    "primary_outcome_unchanged": true,
+    "coverage_gates_unchanged": true,
+    "sample_gates_unchanged": true,
+    "bootstrap_repetitions_unchanged": true,
+    "multiplicity_unchanged": true,
+    "uplift_threshold_unchanged": true,
+    "promotion_taxonomy_unchanged": true,
+    "temporal_split_unchanged": true
+  },
+  "firewall": {
+    "post_outcome_tuning": false,
+    "live_trading": false,
+    "orders": false,
+    "wallets": false,
+    "exchange_mutation": false,
+    "merge_main": false
+  }
+}
