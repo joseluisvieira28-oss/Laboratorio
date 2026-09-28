@@ -1,0 +1,80 @@
+name: CBBTC-001 Prospective Forward Post-H1 V0.1
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - cbbtc-001-forward-post-h1-v01
+    paths:
+      - 'research/cbbtc_eth_mint_burn_flow_001/FORWARD_RUN_TRIGGER_V0.1.json'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cbbtc-001-forward-post-h1-v01
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: macos-15
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify forward authority
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          x=json.load(open("research/cbbtc_eth_mint_burn_flow_001/FORWARD_POST_H1_OPEN_AUTHORITY_V0.1.json"))
+          assert x["authorized"] is True
+          assert x["scope"]=="FORWARD_OPEN_PROSPECTIVE_POST_H1"
+          assert x["prospective_anchor_day"]=="2026-09-29"
+          assert x["first_event_eligible_day"]=="2026-09-30"
+          assert x["retrospective_h2_import_allowed"] is False
+          assert x["h1_splice_allowed"] is False
+          assert x["thresholds_recalibration_allowed"] is False
+          print("FORWARD_AUTHORITY_VERIFIED")
+          PY
+      - run: npm install --no-save ethers@6.15.0
+      - name: Rebuild prospective predictor ledger only
+        env:
+          CBBTC_FORWARD_OPEN_AUTHORITY: AUTHORIZED
+          ETH_RPC_URL: https://ethereum-rpc.publicnode.com
+          ETH_ARCHIVE_RPC_URL: https://rpc-eth.blockmachine.io
+        run: node research/cbbtc_eth_mint_burn_flow_001/cbbtc_forward_post_h1_census_v01.mjs
+      - name: Apply frozen sample firewall and conditional outcome
+        env:
+          CBBTC_FORWARD_OPEN_AUTHORITY: AUTHORIZED
+        run: python research/cbbtc_eth_mint_burn_flow_001/cbbtc_forward_post_h1_eval_v01.py
+      - name: Persist forward evidence
+        if: always()
+        shell: bash
+        run: |
+          set -e
+          mkdir -p research/cbbtc_eth_mint_burn_flow_001/forward_post_h1_evidence
+          cp -f artifacts/cbbtc_forward/*.json research/cbbtc_eth_mint_burn_flow_001/forward_post_h1_evidence/ 2>/dev/null || true
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/cbbtc_eth_mint_burn_flow_001/forward_post_h1_evidence/*.json 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "No new forward evidence."
+          else
+            git commit -m "CBBTC-001: persist prospective forward evidence [skip ci]"
+            git push origin HEAD:cbbtc-001-forward-post-h1-v01
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cbbtc-forward-post-h1-v01
+          path: artifacts/cbbtc_forward/*
+          if-no-files-found: warn
