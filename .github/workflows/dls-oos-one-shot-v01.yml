@@ -51,53 +51,57 @@ jobs:
           name: dls-market-data-source-feasibility-v01
           path: market_data
 
-      - name: Download immutable SURVIVES_DISCOVERY receipt
+      - name: Download canonical freeze-conformant Discovery receipt
         uses: actions/download-artifact@v4
         with:
           github-token: ${{ github.token }}
           repository: ${{ github.repository }}
-          run-id: 36485119508
+          run-id: 36485865469
           name: dls-discovery-v01
           path: discovery
 
-      - name: Compile frozen OOS executor
-        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/run_dls_outcome_experiment_v0_1.py
-
-      - name: Assert prelaunch conformance and Discovery lock
+      - name: Assert canonical Discovery and OOS conformance
         run: |
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/run_oos_v0_1.py
           python - <<'PY'
           import hashlib,json
           from pathlib import Path
           lock=json.loads(Path("labs/DEFI_LIQUIDATION_SHOCK_001/DISCOVERY_ADJUDICATION_LOCK_V0.1.json").read_text())
           conf=json.loads(Path("labs/DEFI_LIQUIDATION_SHOCK_001/OOS_PRELAUNCH_CONFORMANCE_RECEIPT_V0.1.json").read_text())
           p=Path("discovery/DISCOVERY_RESULT_RECEIPT_V0.1.json")
+          r=json.loads(p.read_text())
           assert lock["classification"]=="SURVIVES_DISCOVERY"
+          assert lock["canonical"] is True
+          assert lock["workflow_run_id"]==36485865469
           assert conf["classification"]=="OOS_PRELAUNCH_IMPLEMENTATION_CONFORMANCE_PASS"
-          assert conf["oos_market_payload_opened"] is False
-          assert hashlib.sha256(p.read_bytes()).hexdigest()=="e8bd60398111339f95b82302fe22335665959949adfc357a6ee89d3c1c318a0c"
+          assert conf["canonical_discovery"]["run_id"]==36485865469
+          assert r["classification"]=="SURVIVES_DISCOVERY"
+          assert r["oos_2024_opened"] is False
+          assert r["protected_2025_2026_opened"] is False
+          assert hashlib.sha256(p.read_bytes()).hexdigest()=="d75081066e885e835ecf915673d10af64a53fe4f298e5b2a8d4a287f9c12ea2d"
+          print("CANONICAL_OOS_AUTHORITY_PASS")
           PY
 
       - name: Execute frozen OOS 2024 only
         run: >
-          python labs/DEFI_LIQUIDATION_SHOCK_001/source/run_dls_outcome_experiment_v0_1.py
-          --split oos
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/run_oos_v0_1.py
+          --authority final_authority
           --sample-gate sample_gate
-          --final-authority final_authority
-          --market-data-authority market_data
+          --market-source market_data
+          --discovery discovery
           --registry labs/DEFI_LIQUIDATION_SHOCK_001/MARKET_DATA_MAPPING_REGISTRY_V0.1.json
-          --discovery-receipt discovery/DISCOVERY_RESULT_RECEIPT_V0.1.json
-          --outdir oos_evidence
-          --cache oos_market_cache
+          --workers 16
 
-      - name: Upload immutable OOS evidence
+      - name: Upload immutable canonical OOS evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: dls-oos-v01
+          name: dls-oos-v01-canonical
           path: |
-            oos_evidence/DLS_OOS_RECEIPT_V0.1.json
-            oos_evidence/DLS_OOS_MARKET_DATA_ACQUISITION_MANIFEST_V0.1.json
-            oos_evidence/DLS_OOS_PAIRED_ROWS_V0.1.ndjson
+            labs/DEFI_LIQUIDATION_SHOCK_001/OOS_MARKET_DATA_ACQUISITION_RECEIPT_V0.1.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/OOS_MARKET_DATA_ARCHIVE_MANIFEST_V0.1.ndjson
+            labs/DEFI_LIQUIDATION_SHOCK_001/OOS_RESULT_RECEIPT_V0.1.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/OOS_PAIRED_OUTCOMES_V0.1.ndjson
           if-no-files-found: warn
           retention-days: 90
 
