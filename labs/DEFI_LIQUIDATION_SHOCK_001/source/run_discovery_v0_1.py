@@ -82,6 +82,13 @@ def frozen_percentile(vals,q,upper=False):
     return s[idx]
 def mean(xs): return sum(xs)/len(xs) if xs else None
 
+def file_sha256(path):
+    h=hashlib.sha256()
+    with open(path,"rb") as fh:
+        for block in iter(lambda:fh.read(1024*1024),b""):
+            h.update(block)
+    return h.hexdigest()
+
 def bootstrap_stats(pairs,hlabel):
     by=defaultdict(lambda:[0.0,0])
     key="d_"+hlabel
@@ -125,6 +132,12 @@ census_hits=sorted(Path(args.sample_gate).rglob("SOURCE_PRIMARY_CLUSTER_CENSUS_V
 registry_path=Path(args.registry)
 hard_errors=[]
 
+if census_hits:
+    observed_census_sha=file_sha256(census_hits[0])
+    expected_census_sha=((sample_receipt or {}).get("cluster_census") or {}).get("sha256")
+    if not expected_census_sha or observed_census_sha!=expected_census_sha:
+        hard_errors.append({"reason":"cluster_census_sha256_mismatch","observed":observed_census_sha,"expected":expected_census_sha})
+
 if not authority or authority.get("classification")!="FINAL_PRE_DISCOVERY_AUTHORITY_PASS":
     hard_errors.append({"reason":"final_authority_not_pass","classification":(authority or {}).get("classification")})
 if not sample_receipt or sample_receipt.get("classification")!="SOURCE_SAMPLE_GATE_PASS":
@@ -166,6 +179,22 @@ if len(clusters)!=expected_mapped:
 symbols=sorted(set(x["symbol"] for x in clusters))
 if not symbols:
     hard_errors.append({"reason":"no_direct_discovery_symbols"})
+
+if hard_errors:
+    pre={
+      "schema_version":"0.1","lab_id":LAB,"classification":"MARKET_DATA_SOURCE_BLOCKED",
+      "stage":"pre_acquisition_authority_check","error_count":len(hard_errors),"errors":hard_errors,
+      "market_payload_opened":False,"candles_opened":False,"returns_computed":False,
+      "oos_2024_opened":False,"protected_2025_2026_opened":False
+    }
+    ACQ.write_text(json.dumps(pre,indent=2,sort_keys=True)+"\n")
+    RES.write_text(json.dumps({
+      "schema_version":"0.1","lab_id":LAB,"classification":"MARKET_DATA_SOURCE_BLOCKED",
+      "stage":"pre_acquisition_authority_check","economic_hypothesis_tested":False,
+      "oos_2024_opened":False,"protected_2025_2026_opened":False
+    },indent=2,sort_keys=True)+"\n")
+    print(json.dumps({"classification":"MARKET_DATA_SOURCE_BLOCKED","stage":"pre_acquisition_authority_check","errors":hard_errors},indent=2))
+    raise SystemExit(2)
 
 bars={s:{} for s in symbols}
 archive_rows=[]
