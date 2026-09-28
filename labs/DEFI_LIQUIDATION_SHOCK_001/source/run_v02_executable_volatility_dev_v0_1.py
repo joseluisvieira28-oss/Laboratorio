@@ -98,6 +98,7 @@ def acquire_day(day):
             rdr=csv.reader(io.TextIOWrapper(fh,encoding="utf-8"))
             for row in rdr:
                 if not row:continue
+                if str(row[0]).strip().lower()=="open_time":continue
                 t=int(row[0])
                 if t>10**14:t//=1000
                 if t%60000!=0 or not(start<=t<end):
