@@ -1,11 +1,6 @@
 name: POB Hourly Schema Diagnostic
 
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - 'research/prediction_oracle_basis/source_probe_hourly_schema.py'
-      - '.github/workflows/prediction_oracle_basis_hourly_schema.yml'
   workflow_dispatch:
 
 permissions:
@@ -13,7 +8,7 @@ permissions:
 
 jobs:
   schema-only:
-    if: github.head_ref == 'prediction-oracle-basis-v0.1' || github.ref_name == 'prediction-oracle-basis-v0.1'
+    if: github.ref_name == 'prediction-oracle-basis-v0.1'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
