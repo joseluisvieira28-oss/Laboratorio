@@ -1,0 +1,73 @@
+{
+  "receipt_id": "OPTIONS_SPOTPERP_001_V21_EXECUTION_ECONOMICS_CANONICAL_BASE_CLOSEOUT_2026-09-28",
+  "status": "CANONICAL_EXECUTOR_BASE_HARDENED__BUILD_PASS__WAITING_LOCAL_RECEIPT_AUDIT",
+  "strategy_id": "OPTIONS-SPOTPERP-001-V2.1",
+  "branch": "options-v21-futures-only-autolive-v02-2026-09-25",
+  "merge_pr": 156,
+  "merge_commit": "416c77cf6bdcff4ca9d159db49f1893bed08afc2",
+  "source_truth_gate_branch": "options-v21-execution-economics-truth-gate-v0.1-2026-09-28",
+  "exact_accounting_validation": {
+    "commit": "9dcd842534c6eec27b87723873f23f306da02be7",
+    "run_id": 36448109615,
+    "conclusion": "success"
+  },
+  "canonical_windows_validation": {
+    "run_id": 36449229170,
+    "conclusion": "success",
+    "artifact_id": 10982716044,
+    "artifact_name": "options-v21-futures-only-auto-microlive-v021-evidence-hardened",
+    "artifact_size_bytes": 39254368,
+    "artifact_digest": "sha256:6bc114f7cbabf4c20f051eabaca9da4a72ebd1edf6be5dccbb3a81f123e0525c",
+    "artifact_expires_at": "2026-10-12T16:13:00Z",
+    "executables": {
+      "OptionsV21FuturesAutoLive.exe": "fe1200c37b5705f35b2d3c1c2d374791e1cb9d9339ab7c22ea75f8d485b2f3eb",
+      "OptionsV21ExecutionEconomicsAudit.exe": "065ab29fa2184a44f254862022ef7f3d964cfcc8d39313737151dd895103442d",
+      "MEXCAuthenticatedPreflight.exe": "7b8566cdd98b52ba99fce7783388e03502dcaa548d08139f483544aa7a480da7",
+      "MEXCRiskState.exe": "024fc34e581db1eee3cbb023e1b734d2b61de3b2e850948a5f763861e763f478"
+    }
+  },
+  "economics": {
+    "oos_net10_bps_per_opportunity": 5.0427663334,
+    "oos_net20_bps_per_opportunity": -4.6759378383,
+    "implied_average_executed_weight": 0.97187041717,
+    "implied_gross_bps_per_opportunity": 14.7614705051,
+    "implied_full_notional_break_even_cost_bps": 15.188722945270918,
+    "mexc_api_market_fee_floor_bps_per_fill": 8,
+    "mexc_api_market_fee_only_round_trip_bps": 16,
+    "operator_export_observed_fee_bps_per_fill_approx": "7.94-7.97",
+    "historical_sensitivity_net_at_16bps": -0.78845616962,
+    "interpretation": "Current MEXC MARKET route is cost-fragile and slightly beyond the frozen historical implied break-even on fees alone; this is not a realized Futures-fork verdict."
+  },
+  "evidence_layer": {
+    "exact_leg_fee_normalization": true,
+    "pnl_reference": "ENTRY_FILL_NOTIONAL",
+    "accounting_identity_fail_closed": true,
+    "contract_size_provenance": true,
+    "pre_entry_market_snapshot": true,
+    "pre_exit_market_snapshot": true,
+    "exit_fill_receipt": true,
+    "receipt_root_aggregate_audit": true,
+    "operational_review_min_complete_trades": 10,
+    "promotion_threshold": false
+  },
+  "current_blocker": {
+    "code": "WAITING_LOCAL_IMMUTABLE_RECEIPT_AUDIT",
+    "local_receipt_root": "live_receipts/options_v21_futures",
+    "output": "EXECUTION_ECONOMICS_TRUTH_GATE.json",
+    "reason": "Cloud/Drive/GitHub do not contain the full local signal-to-fill-to-reconciliation chain. MEXC PDF rows cannot be attributed by signal identity/external OID."
+  },
+  "operator_safety": {
+    "do_not_replace_or_restart_executor_with_live_position_or_order": true,
+    "audit_tool_requires_api_credentials": false,
+    "audit_tool_exchange_mutation": false,
+    "new_test_order_required": false
+  },
+  "drive_handoff": {
+    "document_id": "1NrBD1pX0kMP6PPG1KNxSYQTe423CzLGJ9AuBRuXSlJc",
+    "updated": true,
+    "verified_revision": "ANLCKQmivAjVITHhY1Ptwx2pndLss-ZuuHSDKn5WRc4YVJjhTbFFcRc8caBX6Wxqs0kM6RSHLLWjZHWpzc3zt-K0mRe541mJZpzYVf0z0Dw"
+  },
+  "main_merged": false,
+  "order_created_by_closeout": false,
+  "exchange_mutation_by_closeout": false
+}
