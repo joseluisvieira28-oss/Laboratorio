@@ -68,16 +68,24 @@ for ref in REFS:
             if ix.get("programId")==ref["program"] and sig==ref["signature"] and tx.get("err") is None and ix.get("isCommitted") is True and ix.get("error") is None:
                 rr["instruction_match"]=True;wanted_ti=ix.get("transactionIndex");break
         if wanted_ti is None:continue
+        merged={}
         for tb in b.get("tokenBalances") or []:
             if tb.get("transactionIndex")!=wanted_ti or tb.get("account") not in ref["targets"]:continue
-            pre=as_int(tb.get("preAmount"));post=as_int(tb.get("postAmount"))
-            row={"account":tb.get("account"),"preMint":tb.get("preMint"),"postMint":tb.get("postMint"),
-                 "preDecimals":tb.get("preDecimals"),"postDecimals":tb.get("postDecimals"),
-                 "preOwner":tb.get("preOwner"),"postOwner":tb.get("postOwner"),
-                 "preAmount":str(tb.get("preAmount")) if tb.get("preAmount") is not None else None,
-                 "postAmount":str(tb.get("postAmount")) if tb.get("postAmount") is not None else None,
-                 "delta_raw":(post-pre) if pre is not None and post is not None else None}
-            rr["target_rows"].append(row)
+            a=tb.get("account")
+            m=merged.setdefault(a,{"account":a})
+            for k in ("preMint","postMint","preDecimals","postDecimals","preOwner","postOwner","preAmount","postAmount"):
+                if tb.get(k) is not None:m[k]=tb.get(k)
+        for a,m in sorted(merged.items()):
+            pre=as_int(m.get("preAmount"));post=as_int(m.get("postAmount"))
+            rr["target_rows"].append({
+                "account":a,
+                "preMint":m.get("preMint"),"postMint":m.get("postMint"),
+                "preDecimals":m.get("preDecimals"),"postDecimals":m.get("postDecimals"),
+                "preOwner":m.get("preOwner"),"postOwner":m.get("postOwner"),
+                "preAmount":str(m.get("preAmount")) if m.get("preAmount") is not None else None,
+                "postAmount":str(m.get("postAmount")) if m.get("postAmount") is not None else None,
+                "delta_raw":(post-pre) if pre is not None and post is not None else None
+            })
     rr["parseable_target_count"]=sum(1 for x in rr["target_rows"] if x["delta_raw"] is not None)
     rr["nonzero_delta_target_count"]=sum(1 for x in rr["target_rows"] if x["delta_raw"] not in (None,0))
     rr["pass"]=rr["instruction_match"] and rr["parseable_target_count"]>=2 and rr["nonzero_delta_target_count"]>=1
