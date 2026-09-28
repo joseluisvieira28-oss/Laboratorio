@@ -25,7 +25,7 @@ DAILY_LOSS_KILL_USDT = 2.0
 ROLLING_7D_LOSS_KILL_USDT = 5.0
 MAX_CLOCK_OFFSET_MS = 500.0
 STATUS_VERSION = "OPTIONS_FUTURES_ONLY_AUTO_MICROLIVE_V0.2.1"
-OFFICIAL_API_TAKER_FLOOR = 0.0005
+OFFICIAL_API_TAKER_FLOOR = 0.0008
 
 
 class OptionsFuturesAutoLiveError(RuntimeError):
@@ -619,6 +619,32 @@ class OptionsV21FuturesAutoLiveEngine:
 
         preclose_hold_fee = float(position.get("holdFee", 0) or 0) if position else 0.0
 
+        # Evidence-only snapshot for execution-economics reconciliation.
+        # Failure to capture this diagnostic must never alter the frozen exit timing.
+        try:
+            snap = self.futures_public.all_market_snapshots()["BTCUSDT"]
+            funding = self.futures_public.funding_rate("BTC_USDT")
+            _atomic_write(
+                session / "PRE_EXIT_MARKET_SNAPSHOT.json",
+                {
+                    "captured_at_utc": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+                    "bid": float(snap.bid_price),
+                    "ask": float(snap.ask_price),
+                    "last": float(snap.last_price),
+                    "funding_rate": float(funding.get("fundingRate", 0) or 0),
+                    "evidence_only": True,
+                },
+            )
+        except Exception as exc:
+            _atomic_write(
+                session / "PRE_EXIT_MARKET_SNAPSHOT.json",
+                {
+                    "captured_at_utc": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+                    "capture_error": f"{type(exc).__name__}: {exc}",
+                    "evidence_only": True,
+                },
+            )
+
         if not _exclusive_write(intent_path, intent):
             try:
                 order = self.futures_ro.order_by_external(symbol="BTC_USDT", external_oid=oid)
@@ -651,6 +677,16 @@ class OptionsV21FuturesAutoLiveEngine:
                 {"external_oid": oid, "direction": direction, "exchange_ack": ack},
             )
             order = self._wait_order(oid)
+
+        _atomic_write(
+            session / "EXIT_FILL_RECEIPT.json",
+            {
+                "direction": direction,
+                "external_oid": oid,
+                "order": order,
+                "captured_at_utc": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            },
+        )
 
         if self._position(direction) is not None:
             return {
