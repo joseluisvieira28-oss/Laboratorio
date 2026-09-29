@@ -1,0 +1,41 @@
+name: IPG-001 public forward source smoke V0.1
+on:
+  push:
+    branches: [information-propagation-graph-001-source-gate-v0.1]
+    paths:
+      - 'research/information_propagation_graph_001/IPG_PUBLIC_FORWARD_SOURCE_SMOKE_FREEZE_V0.1.md'
+      - 'research/information_propagation_graph_001/ipg_public_forward_source_smoke_v01.py'
+      - '.github/workflows/ipg001-public-forward-source-smoke-v01.yml'
+      - 'research/information_propagation_graph_001/IPG_PUBLIC_SOURCE_SMOKE_TRIGGER.txt'
+permissions:
+  contents: write
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: information-propagation-graph-001-source-gate-v0.1}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: python -m pip install --disable-pip-version-check --quiet websockets
+      - run: python research/information_propagation_graph_001/ipg_public_forward_source_smoke_v01.py
+      - name: Persist receipt
+        if: always()
+        run: |
+          if [ -f artifacts/ipg001_public_forward_source_smoke_v01.json ]; then
+            cp artifacts/ipg001_public_forward_source_smoke_v01.json research/information_propagation_graph_001/IPG_PUBLIC_FORWARD_SOURCE_SMOKE_RECEIPT.json
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add research/information_propagation_graph_001/IPG_PUBLIC_FORWARD_SOURCE_SMOKE_RECEIPT.json
+            if ! git diff --cached --quiet; then
+              git commit -m "IPG-001: record public forward source smoke [skip ci]"
+              git push origin HEAD:information-propagation-graph-001-source-gate-v0.1
+            fi
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ipg001-public-forward-source-smoke-v01
+          path: artifacts/ipg001_public_forward_source_smoke_v01.json
+          if-no-files-found: error

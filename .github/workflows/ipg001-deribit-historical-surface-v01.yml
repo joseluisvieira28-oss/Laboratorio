@@ -1,0 +1,34 @@
+name: IPG-001 Deribit historical surface source probe V0.1
+on:
+  push:
+    branches: [information-propagation-graph-001-source-gate-v0.1]
+    paths:
+      - 'research/information_propagation_graph_001/IPG_DERIBIT_HISTORICAL_SURFACE_FREEZE_V0.1.md'
+      - 'research/information_propagation_graph_001/ipg_deribit_historical_surface_probe_v01.py'
+      - '.github/workflows/ipg001-deribit-historical-surface-v01.yml'
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: information-propagation-graph-001-source-gate-v0.1}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: python research/information_propagation_graph_001/ipg_deribit_historical_surface_probe_v01.py
+      - name: Persist receipt
+        run: |
+          cp artifacts/ipg_deribit_historical_surface_probe_v01.json research/information_propagation_graph_001/IPG_DERIBIT_HISTORICAL_SURFACE_RECEIPT.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/information_propagation_graph_001/IPG_DERIBIT_HISTORICAL_SURFACE_RECEIPT.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "IPG-001: record Deribit historical surface source probe [skip ci]"
+          git push origin HEAD:information-propagation-graph-001-source-gate-v0.1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ipg001-deribit-historical-surface-v01
+          path: artifacts/ipg_deribit_historical_surface_probe_v01.json
+          if-no-files-found: error

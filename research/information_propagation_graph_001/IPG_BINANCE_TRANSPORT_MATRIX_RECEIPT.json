@@ -1,0 +1,107 @@
+{
+  "captured_at_utc": "2026-09-24T18:59:55.496707+00:00",
+  "classification": "BINANCE_SPOT_WS_PASS_FUTURES_WS_BLOCKED",
+  "futures_websocket_probes": [
+    {
+      "error": "TimeoutError:",
+      "events": [],
+      "mode": "raw",
+      "name": "futures_raw",
+      "pass": false,
+      "url": "wss://fstream.binance.com/ws/btcusdt@aggTrade"
+    },
+    {
+      "error": "TimeoutError:",
+      "events": [],
+      "mode": "combined",
+      "name": "futures_combined",
+      "pass": false,
+      "url": "wss://fstream.binance.com/stream?streams=btcusdt@aggTrade"
+    },
+    {
+      "error": "TimeoutError:",
+      "events": [],
+      "mode": "subscribe",
+      "name": "futures_subscribe",
+      "pass": false,
+      "url": "wss://fstream.binance.com/ws"
+    }
+  ],
+  "futures_ws_pass": false,
+  "lab_id": "INFORMATION-PROPAGATION-GRAPH-001",
+  "market_outcomes_opened": false,
+  "mutation": false,
+  "pnl_opened": false,
+  "rest_can_satisfy_forward_timing_gate": false,
+  "rest_diagnostics": [
+    {
+      "body_sha256": "5196d491f5673879eec0230ad3e97f31200fe645ddc31586452b61a2f9635f2c",
+      "diagnostic_only": true,
+      "http_status": 200,
+      "name": "spot_data_api",
+      "pass": true,
+      "row_count": 5,
+      "url": "https://data-api.binance.vision/api/v3/aggTrades?symbol=BTCUSDT&limit=5"
+    },
+    {
+      "diagnostic_only": true,
+      "error": "HTTPError:451:{\n  \"code\": 0,\n  \"msg\": \"Service unavailable from a restricted location according to 'b. Eligibility' in https://www.binance.com/en/terms. Please contact customer service if you believe you received this message in error.\"\n}",
+      "http_status": 451,
+      "name": "futures_fapi",
+      "pass": false,
+      "url": "https://fapi.binance.com/fapi/v1/aggTrades?symbol=BTCUSDT&limit=5"
+    }
+  ],
+  "spot_websocket_probes": [
+    {
+      "error": "InvalidStatus:server rejected WebSocket connection: HTTP 451",
+      "events": [],
+      "mode": "raw",
+      "name": "spot_9443",
+      "pass": false,
+      "url": "wss://stream.binance.com:9443/ws/btcusdt@aggTrade"
+    },
+    {
+      "error": "InvalidStatus:server rejected WebSocket connection: HTTP 451",
+      "events": [],
+      "mode": "raw",
+      "name": "spot_443",
+      "pass": false,
+      "url": "wss://stream.binance.com:443/ws/btcusdt@aggTrade"
+    },
+    {
+      "events": [
+        {
+          "agg_trade_id": 4073180920,
+          "event_ts_ms": 1790276376487,
+          "publish_ts_ms": 1790276376487,
+          "raw_sha256": "9226032b66d98bb6dd71bfe026a6be706093c7c9cc18cd98e0abae3a63a31b5b",
+          "recv_wall_ts_ms": 1790276376541,
+          "symbol": "BTCUSDT"
+        },
+        {
+          "agg_trade_id": 4073180921,
+          "event_ts_ms": 1790276376497,
+          "publish_ts_ms": 1790276376497,
+          "raw_sha256": "db0c87ea2cf4b7264248aa94fbcf15d09c279523186744e5cb46305e5a134dfb",
+          "recv_wall_ts_ms": 1790276376551,
+          "symbol": "BTCUSDT"
+        },
+        {
+          "agg_trade_id": 4073180922,
+          "event_ts_ms": 1790276376504,
+          "publish_ts_ms": 1790276376505,
+          "raw_sha256": "5f5ebaea029db891a465c5cb638a49ef418ce23c1387f2d7e0b76d9c9f85759e",
+          "recv_wall_ts_ms": 1790276376560,
+          "symbol": "BTCUSDT"
+        }
+      ],
+      "mode": "raw",
+      "name": "spot_marketdata_only",
+      "pass": true,
+      "url": "wss://data-stream.binance.vision/ws/btcusdt@aggTrade"
+    }
+  ],
+  "spot_ws_pass": true,
+  "stage": "BINANCE_PUBLIC_TRANSPORT_MATRIX_V0.1"
+}

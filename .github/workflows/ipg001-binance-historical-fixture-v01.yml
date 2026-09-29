@@ -1,0 +1,40 @@
+name: IPG-001 Binance historical archive fixture V0.1
+on:
+  push:
+    branches: [information-propagation-graph-001-source-gate-v0.1]
+    paths:
+      - 'research/information_propagation_graph_001/IPG_BINANCE_HISTORICAL_FIXTURE_FREEZE_V0.1.md'
+      - 'research/information_propagation_graph_001/ipg_binance_historical_fixture_v01.py'
+      - '.github/workflows/ipg001-binance-historical-fixture-v01.yml'
+      - 'research/information_propagation_graph_001/IPG_BINANCE_HISTORICAL_TRIGGER.txt'
+permissions:
+  contents: write
+jobs:
+  fixture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: information-propagation-graph-001-source-gate-v0.1}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: python research/information_propagation_graph_001/ipg_binance_historical_fixture_v01.py
+      - name: Persist receipt
+        if: always()
+        run: |
+          if [ -f artifacts/ipg001_binance_historical_fixture_v01.json ]; then
+            cp artifacts/ipg001_binance_historical_fixture_v01.json research/information_propagation_graph_001/IPG_BINANCE_HISTORICAL_FIXTURE_RECEIPT.json
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add research/information_propagation_graph_001/IPG_BINANCE_HISTORICAL_FIXTURE_RECEIPT.json
+            if ! git diff --cached --quiet; then
+              git commit -m "IPG-001: record Binance historical archive fixture [skip ci]"
+              git push origin HEAD:information-propagation-graph-001-source-gate-v0.1
+            fi
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ipg001-binance-historical-fixture-v01
+          path: artifacts/ipg001_binance_historical_fixture_v01.json
+          if-no-files-found: error
