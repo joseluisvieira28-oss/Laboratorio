@@ -1,0 +1,66 @@
+{
+  "schema_version": "0.1",
+  "recovery_id": "CVFB_NATIVE_ORACLE_PROVENANCE_RECOVERY_V0.5",
+  "stage": "P0D_OFFICIAL_PUBLIC_SCHEMA_IDENTITY_AUDIT",
+  "status": "COMPLETE",
+  "decision": "FAIL_PUBLIC_SCHEMA_IDENTITY_UNRESOLVED",
+  "scientific_design_changed": false,
+  "parent_primary_remains_closed": true,
+  "parent_classification": "REPLICATION_INCONCLUSIVE",
+  "parent_edge_status": "UNPROVEN",
+  "frozen_questions": {
+    "native_validator_oracle_message_or_action_explicitly_named_or_structurally_defined": false,
+    "explicit_mapping_to_explorer_blocks_or_replica_cmds": false,
+    "ordering_timestamp_semantics_sufficient_for_deterministic_historical_reconstruction_without_historical_bytes": false
+  },
+  "official_source_evidence": [
+    {
+      "source": "https://hyperliquid.gitbook.io/hyperliquid-docs/hypercore/oracle",
+      "finding": "Official docs state validators publish spot oracle prices for each perp asset approximately every 3 seconds and the final clearinghouse oracle is the stake-weighted median of validator submissions. The page does not expose the native publish action/message schema or historical serialization mapping."
+    },
+    {
+      "source": "https://hyperliquid.gitbook.io/hyperliquid-docs/historical-data",
+      "finding": "Official docs identify s3://hl-mainnet-node-data/explorer_blocks and s3://hl-mainnet-node-data/replica_cmds as historical explorer blocks and L1 transactions, respectively, and state requester-paid transfer costs apply. No native-oracle mapping is documented."
+    },
+    {
+      "source": "https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/nodes/l1-data-schemas",
+      "finding": "Official L1 schema docs identify replica_cmds as transaction blocks at ~/hl/data/replica_cmds/{start_time}/{date}/{height}. No native validator-oracle transaction/action schema is documented."
+    },
+    {
+      "source": "https://github.com/hyperliquid-dex/node/blob/405cc08b17a727ee51b0f9128918955a84439915/README.md",
+      "finding": "Official node README documents --replica-cmds-style actions/actions-and-responses and separately documents --write-hip3-oracle-updates for HIP-3 deployer oracle actions. It does not identify a native BTC/ETH validator-oracle action/schema in replica_cmds."
+    },
+    {
+      "source": "official hyperliquid-dex GitHub organization code search at current indexed heads",
+      "finding": "Searches for oracle/validatorL1/replica_cmds exposed HIP-3 setOracle/deployer update APIs and read-side oraclePx fields, but no public native validator-oracle publish action/message schema. This absence evidence is supportive only and is not treated as proof that historical raw bytes lack such data."
+    }
+  ],
+  "historical_explorer_cross_check": {
+    "target_utc": "2024-09-01T00:00:00Z",
+    "center_height": 280538302,
+    "scanned_blocks": 301,
+    "oracle_key_path_count": 0,
+    "oracle_type_label_count": 0,
+    "decision": "FAIL_NO_NATIVE_ORACLE_SCHEMA_VISIBLE"
+  },
+  "hip3_identity_guard": {
+    "hip3_setOracle_is_publicly_documented": true,
+    "hip3_setOracle_sufficient_for_native_btc_eth_validator_oracle": false,
+    "reason": "HIP-3 deployer oracle updates are a distinct builder/deployer mechanism and cannot be substituted for the validator-operated native BTC/ETH oracle."
+  },
+  "interpretation": "Official public sources establish the economic role and cadence of the native validator oracle and establish that replica_cmds stores L1 transaction blocks, but they do not publicly expose an unambiguous native validator-oracle publish message/action schema nor an explicit mapping of that schema into replica_cmds/explorer_blocks. P0D therefore fails its frozen public-schema identity gate. This does not prove the raw requester-pays node-history bytes lack reconstructable oracle state; that remains an access-blocked source question.",
+  "next_source_path": {
+    "status": "BLOCKED_PENDING_SEPARATE_EXPLICIT_REQUESTER_PAYS_AUTHORIZATION",
+    "candidate": "minimal bounded raw replica_cmds schema probe around frozen target height 280538302",
+    "explorer_blocks_paid_probe_needed": false,
+    "reason_explorer_not_needed": "The complete 301-block official Explorer semantic probe already exposed no native-oracle schema; paying for equivalent explorer-block bytes has low incremental provenance value.",
+    "historical_object_bytes_opened_in_p0d": false
+  },
+  "economic_outcomes_computed": false,
+  "market_numeric_values_emitted": false,
+  "requester_pays_charges_incurred_in_p0d": false,
+  "aws_credentials_used_in_p0d": false,
+  "2026_opened": false,
+  "live_trading_authorized": false,
+  "merge_to_main_authorized": false
+}

@@ -1,0 +1,111 @@
+{
+  "schema_version": "0.1A",
+  "recovery_id": "CVFB_NATIVE_ORACLE_PROVENANCE_RECOVERY_V0.5",
+  "stage": "P0F_EXPLORER_BLOCKS_RAW_BOUNDED_REQUESTER_PAYS_SCHEMA_PROBE",
+  "status": "FROZEN_PRE_EXECUTION_NOT_AUTHORIZED",
+  "supersedes": "CVFB_NATIVE_ORACLE_PROVENANCE_P0F_EXPLORER_BLOCKS_RAW_FREEZE_V0.1.json",
+  "supersession_reason": "Pre-execution refinement only: avoid false-negative classification if raw schema exposes an ambiguous setOracle label without enough context to distinguish native validator-oracle from HIP-3/deployer oracle. No source bytes were opened under V0.1.",
+  "freeze_date": "2026-09-18",
+  "scientific_design_changed_from_parent": false,
+  "parent_primary_remains_closed": true,
+  "parent_classification": "REPLICATION_INCONCLUSIVE",
+  "parent_edge_status": "UNPROVEN",
+  "activation_basis": {
+    "explorer_api_p0": "FAIL_NO_NATIVE_ORACLE_SCHEMA_VISIBLE",
+    "public_schema_p0d": "FAIL_PUBLIC_SCHEMA_IDENTITY_UNRESOLVED",
+    "replica_cmds_p0e": "TECHNICAL_BLOCKED_TARGET_DATE_NOT_FOUND"
+  },
+  "source_rationale": "Raw S3 explorer_blocks objects are a materially different storage representation from the Explorer blockDetails JSON surface already tested. This is source-schema recovery only and does not reopen economic outcomes.",
+  "authorization_gate": {
+    "requester_pays_charges_authorized": false,
+    "aws_credentials_authorized": false,
+    "execution_authorized": false,
+    "required_runtime_confirmation": "I_EXPLICITLY_AUTHORIZE_CVFB_P0F_EXPLORER_BLOCKS_REQUESTER_PAYS",
+    "required_env": "CVFB_P0F_EXPLORER_BLOCKS_REQUESTER_PAYS_AUTHORIZED=YES",
+    "rule": "No S3 request may occur without a separate immutable P0F authorization amendment and exact runtime confirmation."
+  },
+  "official_source": {
+    "bucket": "hl-mainnet-node-data",
+    "prefix_family": "explorer_blocks",
+    "authority": "Hyperliquid official historical node data"
+  },
+  "frozen_target": {
+    "target_utc": "2024-09-01T00:00:00Z",
+    "center_height": 280538302,
+    "scan_height_start": 280538152,
+    "scan_height_end": 280538452,
+    "scan_block_count": 301,
+    "assets": [
+      "BTC",
+      "ETH"
+    ]
+  },
+  "deterministic_object_hypothesis": {
+    "basis": "Pre-execution observed archive hierarchy groups explorer_blocks into 100,000,000 / 1,000,000 / 100-height buckets with .rmp.lz4 objects.",
+    "top_100m": 200000000,
+    "mid_1m": 280000000,
+    "chunk_anchors": [
+      280538100,
+      280538200,
+      280538300,
+      280538400
+    ],
+    "exact_keys": [
+      "explorer_blocks/200000000/280000000/280538100.rmp.lz4",
+      "explorer_blocks/200000000/280000000/280538200.rmp.lz4",
+      "explorer_blocks/200000000/280000000/280538300.rmp.lz4",
+      "explorer_blocks/200000000/280000000/280538400.rmp.lz4"
+    ],
+    "adaptation_after_source_access_forbidden": true
+  },
+  "cost_and_completeness_caps": {
+    "max_list_requests": 0,
+    "max_head_requests": 4,
+    "max_get_requests": 4,
+    "max_single_object_bytes": 12582912,
+    "max_total_compressed_object_bytes": 33554432,
+    "planning_cost_ceiling_usd": 0.05,
+    "rule": "HEAD all four exact frozen keys before any GET. If any key is missing or caps would be exceeded, fail closed before body download."
+  },
+  "frozen_decoder": "LZ4 frame -> MessagePack stream",
+  "schema_extraction_policy": {
+    "emit_raw_object_bodies": false,
+    "emit_market_numeric_values": false,
+    "emit_oracle_numeric_values": false,
+    "emit_key_paths": true,
+    "emit_action_type_variant_kind_labels": true,
+    "emit_object_sha256": true,
+    "emit_object_byte_counts": true,
+    "candidate_token": "oracle",
+    "identity_context_tokens": [
+      "perpDeploy",
+      "hip3",
+      "hip-3",
+      "deployer"
+    ],
+    "rule": "Any oracle-related path or type/action/variant/kind label is a schema candidate. P0F must not declare it native merely from the token setOracle; identity is deferred to a separately frozen audit."
+  },
+  "decision_rule": {
+    "PASS_ORACLE_SCHEMA_CANDIDATE_REQUIRES_IDENTITY_AUDIT": "All four frozen raw objects exist, fit caps, decode under the frozen decoder, and expose at least one oracle-related key path or action/type/variant/kind label. This does not establish native BTC/ETH oracle identity; it only permits a separately frozen identity/reconstruction audit.",
+    "FAIL_NO_ORACLE_SCHEMA_VISIBLE": "All four frozen raw objects exist and decode within caps but expose no oracle-related key path or action/type/variant/kind label.",
+    "TECHNICAL_BLOCKED_SOURCE_COVERAGE": "At least one frozen exact key is absent.",
+    "TECHNICAL_BLOCKED_COST_OR_DECODER": "Byte caps or the frozen decoder prevent complete source-schema adjudication.",
+    "BLOCKED_NO_AUTHORIZATION": "Separate P0F requester-pays authorization is absent."
+  },
+  "forbidden_outputs": [
+    "oracle numeric values",
+    "mark/mid/price numeric values",
+    "funding cashflow",
+    "basis PnL",
+    "full-mechanism return",
+    "orientation comparison",
+    "asset ranking",
+    "2026 market data"
+  ],
+  "economic_outcomes_authorized": false,
+  "primary_replication_reopened": false,
+  "2026_authorized": false,
+  "live_trading_authorized": false,
+  "exchange_mutation_authorized": false,
+  "merge_to_main_authorized": false
+}

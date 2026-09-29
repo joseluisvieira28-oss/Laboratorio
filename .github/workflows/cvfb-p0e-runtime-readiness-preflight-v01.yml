@@ -1,0 +1,94 @@
+name: cvfb-p0e-runtime-readiness-preflight-v01
+
+on:
+  push:
+    branches:
+      - cross-venue-funding-basis-provenance-v0.5
+    paths:
+      - '.github/workflows/cvfb-p0e-runtime-readiness-preflight-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  zero-s3-readiness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Validate immutable authorization and freeze pin
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('research/cross_venue_funding_basis/CVFB_NATIVE_ORACLE_PROVENANCE_P0E_REQUESTER_PAYS_AUTHORIZATION_V0.1.json')
+          x=json.loads(p.read_text(encoding='utf-8'))
+          assert x['status']=='AUTHORIZED_BEFORE_FIRST_REQUESTER_PAYS_S3_REQUEST'
+          assert x['freeze_git_blob_sha']=='3f4e3a43636ea9a17a1c9cbc60e25410bff6a6fe'
+          assert x['requester_pays_charges_authorized'] is True
+          assert x['aws_credentials_authorized'] is True
+          assert x['execution_authorized'] is True
+          assert x['economic_outcomes_authorized'] is False
+          assert x['primary_replication_reopened'] is False
+          assert x['2026_authorized'] is False
+          print('P0E_AUTHORIZATION_AND_FREEZE_GUARD_PASS')
+          PY
+
+      - name: Install frozen P0E runtime
+        run: python -m pip install --disable-pip-version-check -r research/cross_venue_funding_basis/requirements_p0e_v01.txt
+
+      - name: Compile runner and execute zero-S3 synthetic guards
+        env:
+          AWS_ACCESS_KEY_ID: ''
+          AWS_SECRET_ACCESS_KEY: ''
+          AWS_SESSION_TOKEN: ''
+          CVFB_P0E_REQUESTER_PAYS_AUTHORIZED: ''
+        run: |
+          python -m py_compile research/cross_venue_funding_basis/cvfb_native_oracle_p0e_replica_cmds_v01.py
+          python research/cross_venue_funding_basis/cvfb_native_oracle_p0e_synthetic_v01.py
+
+      - name: Check AWS secret presence only
+        env:
+          CVFB_ACCESS: ${{ secrets.CVFB_P0E_AWS_ACCESS_KEY_ID }}
+          CVFB_SECRET: ${{ secrets.CVFB_P0E_AWS_SECRET_ACCESS_KEY }}
+          CVFB_SESSION: ${{ secrets.CVFB_P0E_AWS_SESSION_TOKEN }}
+        run: |
+          mkdir -p out/cvfb_p0e_readiness
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          access=bool(os.environ.get('CVFB_ACCESS'))
+          secret=bool(os.environ.get('CVFB_SECRET'))
+          session=bool(os.environ.get('CVFB_SESSION'))
+          status='P0E_RUNTIME_READY' if access and secret else 'P0E_RUNTIME_CREDENTIALS_MISSING'
+          out={
+            'schema_version':'0.1',
+            'status':status,
+            'mandatory_access_key_present':access,
+            'mandatory_secret_key_present':secret,
+            'optional_session_token_present':session,
+            's3_requests_made':False,
+            'requester_pays_charges_incurred':False,
+            'secret_values_emitted':False,
+            'economic_outcomes_computed':False,
+            'primary_replication_reopened':False,
+            '2026_opened':False
+          }
+          Path('out/cvfb_p0e_readiness/CVFB_P0E_RUNTIME_READINESS_V0.1.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n',encoding='utf-8')
+          print(json.dumps({'status':status,'s3_requests_made':False,'secret_values_emitted':False},sort_keys=True))
+          PY
+
+      - name: Upload zero-S3 readiness receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CVFB_P0E_RUNTIME_READINESS_V01
+          path: out/cvfb_p0e_readiness/CVFB_P0E_RUNTIME_READINESS_V0.1.json
+          if-no-files-found: error
+          retention-days: 30

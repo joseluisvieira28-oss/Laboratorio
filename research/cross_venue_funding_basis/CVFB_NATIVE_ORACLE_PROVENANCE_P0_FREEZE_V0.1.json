@@ -1,0 +1,72 @@
+{
+  "schema_version": "0.1",
+  "lab_id": "CROSS_VENUE_FUNDING_BASIS_LAB_V01",
+  "recovery_id": "CVFB_NATIVE_ORACLE_PROVENANCE_RECOVERY_V0.5",
+  "stage": "P0_SOURCE_SCHEMA_PROBE",
+  "status": "FROZEN_BEFORE_PROBE",
+  "parent_primary_closeout": {
+    "branch": "funding-slot-diag-v03",
+    "commit": "2cb425ffe99dcc11fca58288ce30ff32d3bd09a9",
+    "file": "Dream-Account-OS-v2.3-PARTIAL/research/CROSS_VENUE_FUNDING_BASIS_DISCOVERY_FULL_MECHANISM_INCONCLUSIVE_CLOSEOUT_V01.json",
+    "blob_sha": "c5d7d391f6747cc617a094fba6d96fe4ac8e602d",
+    "classification": "REPLICATION_INCONCLUSIVE",
+    "edge_status": "UNPROVEN"
+  },
+  "purpose": "Test whether the official Hyperliquid historical Explorer/L1 surface exposes a deterministic native validator-oracle schema around a frozen historical settlement boundary. This is source-provenance research only and does not reopen or rescue the closed primary replication.",
+  "official_source": {
+    "provider": "Hyperliquid",
+    "endpoint": "https://rpc.hyperliquid.xyz/explorer",
+    "request_type": "blockDetails",
+    "historical_data_authority_note": "Hyperliquid official historical-data documentation identifies explorer_blocks and replica_cmds as historical node data; official oracle documentation states validators publish native perp oracle prices approximately every 3 seconds."
+  },
+  "frozen_probe": {
+    "target_utc": "2024-09-01T00:00:00Z",
+    "target_epoch_ms": 1725148800000,
+    "height_bracket": [100000000, 600000000],
+    "scan_radius_blocks_each_side": 150,
+    "assets": ["BTC", "ETH"],
+    "selection": "Binary-search the first block whose blockTime is >= target; scan the fixed +/-150-height neighborhood. Do not adapt radius after viewing results.",
+    "key_tokens": ["oracle", "funding", "mark", "price", "premium"],
+    "type_label_tokens": ["oracle"],
+    "leaf_value_policy": "DO_NOT_EMIT_MARKET_NUMERIC_VALUES"
+  },
+  "allowed_outputs": [
+    "queried historical block heights and block timestamps",
+    "HTTP/status completeness",
+    "canonical SHA256 fingerprints of raw block responses",
+    "top-level and nested JSON key paths",
+    "transaction/action type labels",
+    "counts of key-path and type-label matches",
+    "whether an oracle-related schema key or action/type label exists"
+  ],
+  "forbidden_outputs": [
+    "oracle numeric values",
+    "mark or mid numeric values",
+    "funding cashflow",
+    "basis PnL",
+    "full-mechanism return",
+    "asset ranking",
+    "orientation rescue",
+    "window changes",
+    "nearest-neighbor price reconstruction",
+    "forward/backward fill",
+    "interpolation",
+    "third-party price substitution",
+    "2026 market data",
+    "paper trading",
+    "live trading",
+    "exchange mutation",
+    "merge to main",
+    "post-outcome tuning"
+  ],
+  "decision_rule": {
+    "PASS_SCHEMA_CANDIDATE": "At least one oracle-related JSON key path OR an oracle-related transaction/action type label is present in the fixed historical block neighborhood; this only permits a separately frozen P1 deterministic reconstruction audit.",
+    "FAIL_NO_NATIVE_ORACLE_SCHEMA_VISIBLE": "Probe completes but neither oracle-related key paths nor oracle-related transaction/action type labels are visible; Explorer blockDetails is not sufficient for native-oracle reconstruction under this path.",
+    "TECHNICAL_BLOCKED": "Endpoint unavailable, historical bracket cannot be established, response schema invalid, or fixed scan incomplete."
+  },
+  "economic_outcomes_authorized": false,
+  "primary_replication_reopened": false,
+  "2026_authorized": false,
+  "live_trading_authorized": false,
+  "merge_to_main_authorized": false
+}

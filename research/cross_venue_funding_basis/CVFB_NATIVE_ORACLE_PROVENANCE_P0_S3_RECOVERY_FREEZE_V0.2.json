@@ -1,0 +1,78 @@
+{
+  "schema_version": "0.2",
+  "recovery_id": "CVFB_NATIVE_ORACLE_PROVENANCE_RECOVERY_V0.5",
+  "stage": "P0C_OFFICIAL_S3_ACCESS_AND_SCHEMA_GATE",
+  "status": "FROZEN_BEFORE_S3_ACCESS_PROBE",
+  "activation_basis": {
+    "explorer_run_id": 35234777145,
+    "explorer_decision": "FAIL_NO_NATIVE_ORACLE_SCHEMA_VISIBLE",
+    "explorer_receipt_file_sha256": "bed604c1edbd0b992b32becaddcf8f80a9ed521bd0f069514a907ca957ef4143",
+    "explorer_scan_block_count": 301,
+    "explorer_oracle_key_paths": 0,
+    "explorer_oracle_type_labels": 0
+  },
+  "parent_primary_remains_closed": true,
+  "parent_classification": "REPLICATION_INCONCLUSIVE",
+  "parent_edge_status": "UNPROVEN",
+  "purpose": "Continue the parent-closeout's predeclared official-node-history provenance investigation after the prospectively frozen Explorer blockDetails path completed without exposing native-validator-oracle schema. This is source-only and is not a rescue or reopening of economic outcomes.",
+  "official_sources": [
+    "s3://hl-mainnet-node-data/explorer_blocks",
+    "s3://hl-mainnet-node-data/replica_cmds"
+  ],
+  "frozen_target": {
+    "target_utc": "2024-09-01T00:00:00Z",
+    "target_epoch_ms": 1725148800000,
+    "assets": ["BTC", "ETH"],
+    "source_scope": "Schema/access/coverage only around the same frozen historical target; no adaptive date selection based on market values."
+  },
+  "access_cost_gate": {
+    "first_probe": "anonymous/unsigned official-bucket metadata/list access only",
+    "aws_credentials_authorized": false,
+    "requester_pays_charges_authorized": false,
+    "rule": "Do not use credentials, secrets, requester-pays billing, or paid transfer without a separate explicit authorization. A credential/payment requirement is a provenance-access blocker, not an economic result."
+  },
+  "native_oracle_identity_rule": {
+    "required": "Evidence must refer to the native validator-published oracle used by Hyperliquid funding for native BTC/ETH perps.",
+    "hip3_setOracle_sufficient": false,
+    "reason": "HIP-3 deployer setOracle actions are a separate builder/deployer oracle mechanism and may not substitute for the native validator oracle."
+  },
+  "allowed_outputs": [
+    "HTTP/AWS access status",
+    "requester-pays/authentication requirement",
+    "bucket/object/prefix presence without economic values",
+    "object names needed for frozen-target schema audit",
+    "byte counts and SHA256 fingerprints if access is free and available",
+    "record counts/timestamps/schema key paths/action type labels",
+    "native-oracle schema candidate yes/no"
+  ],
+  "forbidden_outputs": [
+    "oracle numeric values",
+    "mark/mid/price numeric values",
+    "funding cashflow",
+    "basis PnL",
+    "full-mechanism return",
+    "orientation comparison",
+    "asset ranking",
+    "nearest-neighbor reconstruction",
+    "forward/backward fill",
+    "interpolation",
+    "HIP-3 substitution for native oracle",
+    "third-party source substitution",
+    "2026 market data",
+    "paper/live trading",
+    "exchange mutation",
+    "merge to main",
+    "reopening the parent primary replication"
+  ],
+  "decision_rule": {
+    "BLOCKED_REQUESTER_PAYS_NO_AUTHORIZED_CREDENTIALS": "Official S3 source requires authenticated requester-pays access or otherwise charge-bearing credentials, while no such access/cost is authorized.",
+    "PASS_NATIVE_ORACLE_SCHEMA_CANDIDATE": "Free authorized official-source bytes expose an unambiguous native-validator-oracle-related schema with sufficient timestamp/ordering information for a separately frozen deterministic reconstruction audit.",
+    "FAIL_NO_NATIVE_ORACLE_SCHEMA_VISIBLE": "A complete free authorized official-source schema probe over the frozen target scope exposes no native-validator-oracle-related schema.",
+    "TECHNICAL_BLOCKED": "Other official-source access, object-availability, decompression or schema-parsing failure prevents complete adjudication."
+  },
+  "economic_outcomes_authorized": false,
+  "primary_replication_reopened": false,
+  "2026_authorized": false,
+  "live_trading_authorized": false,
+  "merge_to_main_authorized": false
+}

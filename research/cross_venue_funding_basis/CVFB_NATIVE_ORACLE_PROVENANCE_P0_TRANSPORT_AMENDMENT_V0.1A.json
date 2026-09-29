@@ -1,0 +1,46 @@
+{
+  "schema_version": "0.1A",
+  "recovery_id": "CVFB_NATIVE_ORACLE_PROVENANCE_RECOVERY_V0.5",
+  "stage": "P0_SOURCE_SCHEMA_PROBE",
+  "status": "FROZEN_BEFORE_V0.1A_RERUN",
+  "supersedes_execution_only": "V0.1_MONOLITHIC_HTTP_TRANSPORT",
+  "scientific_design_changed": false,
+  "reason": "V0.1 hit HTTP 429 before completing the frozen source-schema probe. Hyperliquid documents explorer requests as rate-limited per IP and recommends S3 for large historical batches. V0.1A preserves the official Explorer blockDetails source and changes only request scheduling/parallelization.",
+  "unchanged_scientific_contract": {
+    "target_utc": "2024-09-01T00:00:00Z",
+    "target_epoch_ms": 1725148800000,
+    "height_bracket": [100000000, 600000000],
+    "scan_radius_blocks_each_side": 150,
+    "scan_block_count": 301,
+    "assets": ["BTC", "ETH"],
+    "boundary_selection": "first block whose blockTime is >= target, with previous block strictly before target",
+    "schema_candidate_gate": "oracle-related JSON key path OR oracle-related action/type label",
+    "market_numeric_values_emitted": false,
+    "economic_outcomes_authorized": false
+  },
+  "transport_only_changes": {
+    "boundary_job": "single paced binary-search job",
+    "boundary_min_interval_seconds": 2.3,
+    "scan_shards": 12,
+    "scan_partition": "deterministic contiguous partition of the same frozen 301 heights; no omission and no overlap",
+    "scan_min_interval_seconds": 2.3,
+    "http_429_policy": "respect Retry-After when present; otherwise sleep 65 seconds; retry same height without changing selection",
+    "aggregation": "fail closed unless all 301 unique frozen heights are present and contiguous"
+  },
+  "forbidden": [
+    "change target timestamp",
+    "change frozen height bracket",
+    "change +/-150 scan radius",
+    "drop blocks",
+    "adaptive scan radius",
+    "use nearest block as substitute for failed height",
+    "emit oracle/mark/price numeric values",
+    "compute funding cashflow or PnL",
+    "use 2026 market data",
+    "third-party price substitution",
+    "reopen primary replication",
+    "paper/live trading",
+    "merge to main"
+  ],
+  "decision_rule_unchanged": true
+}
