@@ -39,16 +39,15 @@ for proto,(p,r) in by.items():
 groups=defaultdict(list)
 for e in events:groups[(e["protocol"],e["instruction_class"])].append(e)
 clusters=[]
-cross_2026=0
+cross_2026=[0]
 for (proto,cls),items in sorted(groups.items()):
     items.sort(key=lambda e:(e["timestamp"],e["signature"]))
     state=None
     def finish(s):
-        nonlocal cross_2026
         last=datetime.fromisoformat(s["last"].replace("Z","+00:00"))
         t0=last+timedelta(seconds=60)
         if t0>=END:
-            cross_2026+=1;return
+            cross_2026[0]+=1;return
         raw="|".join(["DEFI-LIQUIDATION-SHOCK-001","cluster-v0.1","60",proto,cls,
                       "mint:"+TARGET,s["first"],s["last"],s["first_signature"],s["last_signature"],str(s["n"])])
         clusters.append({"cluster_id":hashlib.sha256(raw.encode()).hexdigest(),"quiet_seconds":60,
@@ -87,7 +86,7 @@ receipt={"schema_version":"0.1","lab_id":"DEFI-LIQUIDATION-SHOCK-001","classific
    "successful_instruction_count":r["successful_instruction_count"],
    "sol_collateral_event_count":r["sol_collateral_event_count"]} for p,(path,r) in sorted(by.items())],
  "sol_collateral_event_count":len(events),"sol_cluster_count":len(clusters),
- "clusters_by_protocol":dict(sorted(by_proto.items())),"clusters_crossing_2026_excluded":cross_2026,
+ "clusters_by_protocol":dict(sorted(by_proto.items())),"clusters_crossing_2026_excluded":cross_2026[0],
  "error_count":len(errors),"errors":errors,
  "strategy_translation_freeze":"STRATEGY_TRANSLATION_FREEZE_V0.1.md",
  "execution_cost_freeze":"EXECUTION_COST_FREEZE_V0.1.md",
