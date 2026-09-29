@@ -17,7 +17,7 @@ recs=[];errors=[]
 for p in sorted(Path(args.root).rglob("*.json")):
     try:r=json.loads(p.read_text())
     except Exception:continue
-    if r.get("classification") in ("PROTECTED_2025_PROTOCOL_SOURCE_PASS","PROTECTED_2025_PROTOCOL_SOURCE_BLOCKED"):
+    if r.get("classification") in ("FINAL_2026_PROTOCOL_SOURCE_PASS","FINAL_2026_PROTOCOL_SOURCE_BLOCKED"):
         recs.append((p,r))
 by={}
 for p,r in recs:
@@ -26,7 +26,7 @@ for p,r in recs:
     by[proto]=(p,r)
 for proto in CLASSES:
     if proto not in by:errors.append({"reason":"missing_protocol_receipt","protocol":proto})
-    elif by[proto][1].get("classification")!="PROTECTED_2025_PROTOCOL_SOURCE_PASS":
+    elif by[proto][1].get("classification")!="FINAL_2026_PROTOCOL_SOURCE_PASS":
         errors.append({"reason":"protocol_not_pass","protocol":proto,"classification":by[proto][1].get("classification")})
 
 events=[]
