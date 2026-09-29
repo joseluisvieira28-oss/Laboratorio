@@ -1,0 +1,51 @@
+name: CROSS-ASSET-VOL-STRESS-001 Discovery V0.1
+on:
+  push:
+    branches: [cross-asset-vol-stress-v0.1]
+    paths:
+      - '.github/workflows/cross-asset-vol-stress-discovery-v01.yml'
+jobs:
+  discovery:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: cross-asset-vol-stress-v0.1
+      - name: Verify prospective authorities
+        run: |
+          set -euo pipefail
+          test -f labs/CROSS_ASSET_VOL_STRESS_001/DISCOVERY_AUTHORITY_V0.1.json
+          test -f labs/CROSS_ASSET_VOL_STRESS_001/TIMING_ADDENDUM_V0.1.md
+          test -f labs/CROSS_ASSET_VOL_STRESS_001/DISCOVERY_IMPLEMENTATION_FREEZE_V0.1.md
+          python - <<'PY'
+          import json
+          p='labs/CROSS_ASSET_VOL_STRESS_001/DISCOVERY_AUTHORITY_V0.1.json'
+          a=json.load(open(p))
+          assert a['discovery_authorized'] is True
+          assert a['source_gate']['classification']=='SOURCE_DATA_PASS'
+          assert a['source_gate']['canonical_count']==366
+          assert a['timing_authority']['entry_rule'].startswith('provider_expire_date_plus_2_')
+          assert a['oos_2025_authorized'] is False
+          assert a['access_2026_authorized'] is False
+          assert a['post_outcome_tuning_authorized'] is False
+          assert a['live_trading_authorized'] is False
+          print('DISCOVERY_AUTHORITY_PASS')
+          PY
+      - name: Compile frozen runner and tests
+        run: |
+          python -m py_compile labs/CROSS_ASSET_VOL_STRESS_001/discovery_v01.py
+          python -m py_compile labs/CROSS_ASSET_VOL_STRESS_001/test_discovery_v01.py
+      - name: Run outcome-blind self-tests
+        run: PYTHONPATH="$GITHUB_WORKSPACE" python labs/CROSS_ASSET_VOL_STRESS_001/test_discovery_v01.py
+      - name: Execute one-shot Discovery 2018-2024 only
+        run: python labs/CROSS_ASSET_VOL_STRESS_001/discovery_v01.py
+      - name: Upload immutable Discovery evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cross-asset-vol-stress-001-discovery-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/cross_asset_vol_stress_discovery_v01/
+          retention-days: 90
+          if-no-files-found: warn
