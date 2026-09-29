@@ -1,0 +1,44 @@
+name: DLS Signed Flow Save11 Same-Tx Sample V0.1
+on:
+  push:
+    branches:
+      - dls-signed-flow-authority-v01
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_SIGNED_FLOW_SAVE11_SAME_TX_SAMPLE_V01.marker
+permissions:
+  actions: read
+  contents: read
+jobs:
+  sample:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download canonical Save11 partition
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36313729668
+          name: dls-save11-field-v04-save11-202407
+          path: event_source
+      - name: Compile
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/sample_signed_flow_save11_same_tx_v0_1.py
+      - name: Execute deterministic 64-event same-tx sample
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/sample_signed_flow_save11_same_tx_v0_1.py
+      - name: Upload receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-signed-flow-save11-same-tx-sample-v01
+          path: labs/DEFI_LIQUIDATION_SHOCK_001/SIGNED_FLOW_SAVE11_SAME_TX_PROGRAM_SAMPLE_RECEIPT_V0.1.json
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_NO_PRICES_2025_2026_CLOSED
