@@ -1,0 +1,21 @@
+{
+  "campaign_id":"HTF-DIAMOND-HUNT-001",
+  "phase":"PHASE_5_EXACT_RULE_FORWARD_HOLDOUT",
+  "status":"FROZEN_BEFORE_PHASE5_SOURCE_ACCESS_OR_OUTCOMES",
+  "freeze_date":"2026-09-16",
+  "authority":"USER_EXPLICIT_CONTINUE_HUNT_GO_WITH_ALL",
+  "scientific_scope_note":"2023-2024 is untouched by the exact Donchian 6H/12H Binance USD-M minute+funding implementation, but it is not family-discovery-independent because the earlier MEXC Donchian 1D precursor used 2023-2024. Earlier 2019-2020 and 2021-2022 validations provide the family-level temporally disjoint evidence.",
+  "primary_candidate":"DH-02-HO1",
+  "secondary_family_cell":"DH-03-HO1",
+  "dataset":{"provider":"Binance public data","market":"USD-M perpetual futures","price_archive_family":"futures/um/monthly/klines","funding_archive_family":"futures/um/monthly/fundingRate","symbols":["BTCUSDT","ETHUSDT","SOLUSDT","BNBUSDT","XRPUSDT","DOGEUSDT"],"price_interval":"1m","start_utc_inclusive":"2023-01-01T00:00:00Z","end_utc_exclusive":"2025-01-01T00:00:00Z","allowed_source_years":[2023,2024],"forbidden_source_years":[2025,2026],"provider_checksum_required":true,"no_alternate_provider":true,"no_synthetic_fill":true,"no_interpolation":true},
+  "execution_and_funding":"IDENTICAL_TO_PHASE4",
+  "cells":[
+    {"cell_id":"DH-02-HO1","lineage":"DH-02-FX1","signal_timeframe":"6H","rule":{"direction":"LONG_ONLY","donchian_lookback_complete_bars":80,"atr_length":56,"entry":"next 6H open","stop":"signal low minus 0.25*ATR56","target_r":3.0,"max_hold_bars":160,"one_active_trade_per_symbol":true}},
+    {"cell_id":"DH-03-HO1","lineage":"DH-03-FX1","signal_timeframe":"12H","rule":{"direction":"LONG_ONLY","donchian_lookback_complete_bars":40,"atr_length":28,"entry":"next 12H open","stop":"signal low minus 0.25*ATR28","target_r":3.0,"max_hold_bars":80,"one_active_trade_per_symbol":true}}
+  ],
+  "costs":{"base_round_trip_pct":0.20,"stress_round_trip_pct":0.30},
+  "bootstrap":{"repetitions":5000,"seed":230911,"unit":"UTC_ENTRY_DAY_BLOCK","confidence":0.95},
+  "gates_per_cell":{"minimum_resolved_trades":100,"base_expectancy_r":">0","base_profit_factor":">1","bootstrap_lower_95":">0","stress_expectancy_r":">0","calendar_year_2023_expectancy_r":">0","calendar_year_2024_expectancy_r":">0","maximum_single_symbol_positive_net_r_share":0.70,"maximum_single_quarter_positive_net_r_share":0.70},
+  "promotion_policy":{"primary_DH02_all_gates_pass":"RESEARCH_GRADE_DIAMOND_CANDIDATE","primary_DH02_any_gate_fail":"NO_RESEARCH_GRADE_PROMOTION","secondary_DH03":"reported independently; cannot rescue primary failure","live_trading_authorized_even_if_pass":false},
+  "governance":{"research_only":true,"no_live_trading":true,"no_exchange_mutation":true,"no_orders":true,"no_alerts_webhooks":true,"no_merge_to_main":true,"no_render_deploy":true,"no_post_outcome_tuning":true,"evaluate_both_cells":true,"no_asset_selection":true,"no_timeframe_substitution":true,"2025_access":false,"2026_access":false}
+}

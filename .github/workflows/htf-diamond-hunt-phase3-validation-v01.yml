@@ -1,0 +1,74 @@
+name: HTF Diamond Hunt Phase3 Cross-Market Validation V0.1
+
+on:
+  push:
+    branches:
+      - htf-diamond-hunt-v0.1
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/htf_diamond_hunt/PHASE3_VALIDATION_RUN_TRIGGER_V0.1.txt'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  cross-market-validation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout frozen campaign
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Verify Phase3 freeze and source binding before artifact
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=Path('research/htf_diamond_hunt')
+          f=json.loads((r/'HTF_DIAMOND_HUNT_001_PHASE3_CROSSMARKET_FREEZE_V0.1.json').read_text())
+          b=json.loads((r/'HTF_DIAMOND_HUNT_001_PHASE3_SOURCE_BINDING_V0.1.json').read_text())
+          assert f['status']=='FROZEN_BEFORE_PHASE3_SOURCE_ACCESS_OR_OUTCOMES'
+          assert f['dataset']['market']=='USD-M perpetual futures'
+          assert f['dataset']['allowed_source_years']==[2020,2021,2022]
+          assert f['dataset']['forbidden_source_years']==[2023,2024,2025,2026]
+          assert [x['cell_id'] for x in f['cells']]==['DH-02-XM1','DH-03-XM1']
+          assert f['governance']['no_post_outcome_tuning'] is True
+          assert f['governance']['evaluate_both_6h_and_12h'] is True
+          assert b['status']=='FROZEN_EXACT_PHASE3_SOURCE_BEFORE_ANY_CROSSMARKET_OUTCOME'
+          assert b['artifact_id']==10437750562
+          assert b['artifact_digest']=='sha256:2db89a8d381d10f83d94ea34936786294f249e3cf6c0404e91e30746a277d95b'
+          assert b['source_fingerprint']=='1a92d2330106e229701eea3697a0c73ecb58076325a8979a843e42c7c058d981'
+          print('PHASE3_AUTHORITY_BINDING_PASS')
+          PY
+
+      - name: Compile Phase3 validation runner
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: python -m py_compile research/htf_diamond_hunt/htf_diamond_hunt_phase3_validation_v01.py
+
+      - name: Download exact frozen Phase3 source artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: HTF_DIAMOND_HUNT_001_PHASE3_SOURCE_V01
+          path: Dream-Account-OS-v2.3-PARTIAL/research/local_data/htf_diamond_hunt_phase3_source_v01
+          github-token: ${{ github.token }}
+          run-id: 35073537580
+
+      - name: Run frozen Phase3 cross-market validation
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        env:
+          PYTHONPATH: ${{ github.workspace }}/Dream-Account-OS-v2.3-PARTIAL
+        run: python research/htf_diamond_hunt/htf_diamond_hunt_phase3_validation_v01.py research/local_data/htf_diamond_hunt_phase3_source_v01
+
+      - name: Upload Phase3 cross-market evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: HTF_DIAMOND_HUNT_001_PHASE3_VALIDATION_V01
+          path: Dream-Account-OS-v2.3-PARTIAL/research/local_data/htf_diamond_hunt_phase3_validation_v01/
+          if-no-files-found: error
+          retention-days: 90

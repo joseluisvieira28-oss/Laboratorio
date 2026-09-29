@@ -1,0 +1,82 @@
+{
+  "campaign_id": "HTF-DIAMOND-HUNT-001",
+  "phase": "PHASE_2_DONCHIAN_FAMILY_TEMPORAL_VALIDATION",
+  "status": "PHASE2_COMPLETE_TEMPORAL_VALIDATION_SURVIVOR",
+  "closeout_date": "2026-09-16",
+  "phase2_source": {
+    "provider": "Binance public data",
+    "market": "Spot",
+    "period": "2019-01-01 through 2020-12-31, listing-aware",
+    "source_run_id": 35072596130,
+    "artifact_id": 10437002278,
+    "artifact_digest": "sha256:895d0cdb4b67bc81b8e00183f9e7f9e901f9a0d23b9dd9e6bffede602ca767bb",
+    "source_fingerprint": "f6a7cec6302e4b3ec6c225600960471b033fabccfcc3534c83a951a2edbdad2b",
+    "available_archive_count": 119,
+    "protected_years_accessed": []
+  },
+  "validation_run": {
+    "run_id": 35073244790,
+    "artifact_id": 10437490105,
+    "artifact_digest": "sha256:f7d29194a05855355b1c33c0334b59b94e7920bc60efa430e5812cfd8c930d13"
+  },
+  "technical_history": {
+    "run_35073120682": "TECHNICAL_FAILURE_PRE_OUTCOME: Python import path only; source bytes rebound successfully; zero signals/trades/outcomes calculated",
+    "correction": "PYTHONPATH only; scientific design unchanged"
+  },
+  "results": {
+    "DH-02-V1": {
+      "lineage": "DH-02 Donchian 6H",
+      "classification": "VALIDATION_SURVIVES",
+      "resolved_trades": 104,
+      "selected_trades": 116,
+      "base_expectancy_r": 0.49919584245433757,
+      "base_profit_factor": 1.824069327226208,
+      "base_win_rate": 0.3942307692307692,
+      "stress_expectancy_r": 0.4643796318129396,
+      "stress_profit_factor": 1.766594947754694,
+      "bootstrap_95": [0.09070955922725825, 0.8851701997756898],
+      "bootstrap_sample_days": 70,
+      "failed_conditions": [],
+      "symbol_distribution": {"BNBUSDT": 24, "BTCUSDT": 21, "DOGEUSDT": 12, "ETHUSDT": 26, "SOLUSDT": 2, "XRPUSDT": 19}
+    },
+    "DH-03-V1": {
+      "lineage": "DH-03 Donchian 12H",
+      "classification": "INSUFFICIENT_SAMPLE",
+      "resolved_trades": 75,
+      "selected_trades": 89,
+      "base_expectancy_r": 0.5845665959683004,
+      "base_profit_factor": 1.9964203340368756,
+      "base_win_rate": 0.41333333333333333,
+      "stress_expectancy_r": 0.5535559210161254,
+      "stress_profit_factor": 1.9435612290047592,
+      "bootstrap_95": [0.10069998194267821, 1.0692320763822423],
+      "bootstrap_sample_days": 54,
+      "failed_conditions": ["resolved_trade_count_below_100"],
+      "symbol_distribution": {"BNBUSDT": 18, "BTCUSDT": 20, "DOGEUSDT": 6, "ETHUSDT": 15, "SOLUSDT": 2, "XRPUSDT": 14}
+    }
+  },
+  "evidence_chain": {
+    "phase1_DH02_2021_2022": {"classification": "SURVIVES", "resolved_trades": 114, "base_expectancy_r": 0.3949673036174697, "base_profit_factor": 1.6167982549642677, "stress_expectancy_r": 0.37435921018039153, "bootstrap_95": [0.04296613631425037, 0.7457176605585701]},
+    "phase2_DH02_2019_2020": {"classification": "VALIDATION_SURVIVES", "resolved_trades": 104, "base_expectancy_r": 0.49919584245433757, "base_profit_factor": 1.824069327226208, "stress_expectancy_r": 0.4643796318129396, "bootstrap_95": [0.09070955922725825, 0.8851701997756898]}
+  },
+  "scientific_interpretation": {
+    "temporal_validation_survivor": "DH-02 6H Donchian",
+    "same_rule_survived_two_disjoint_periods": true,
+    "periods": ["2019-2020", "2021-2022"],
+    "same_venue_market": "Binance Spot",
+    "validated_edge_claim": "SUPPORTED_WITHIN_BINANCE_SPOT_TEMPORAL_VALIDATION_ONLY",
+    "cross_market_or_cross_venue_validated": false,
+    "diamond_claim_authorized": false,
+    "live_trading_authorized": false,
+    "why_not_diamond_yet": "Both successful tests are on the same venue/market. A materially independent market or venue validation is still required before any stronger project-level diamond designation."
+  },
+  "governance": {
+    "no_2021_2026_phase2_access": true,
+    "no_post_outcome_tuning": true,
+    "no_asset_selection": true,
+    "no_timeframe_winner_selection": true,
+    "no_merge_to_main": true,
+    "no_live_trading": true,
+    "next_step": "Prospectively freeze cross-market/cross-venue Phase 3 before source access or outcomes."
+  }
+}
