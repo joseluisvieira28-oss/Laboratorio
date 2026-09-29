@@ -89,18 +89,24 @@ def _floor_step(value: float, step: float) -> float:
 
 
 def _fee(order: dict[str, Any]) -> float:
+    total_fee: float | None = None
     if order.get("totalFee") is not None:
         try:
-            return abs(float(order["totalFee"]))
+            total_fee = abs(float(order["totalFee"]))
+            if total_fee > 0:
+                return total_fee
         except (TypeError, ValueError):
-            pass
-    total = 0.0
+            total_fee = None
+
+    component_total = 0.0
     for key in ("takerFee", "makerFee"):
         try:
-            total += abs(float(order.get(key, 0) or 0))
+            component_total += abs(float(order.get(key, 0) or 0))
         except (TypeError, ValueError):
             pass
-    return total
+    if component_total > 0:
+        return component_total
+    return total_fee or 0.0
 
 
 def _direction_meta(direction: str) -> dict[str, Any]:
