@@ -1,0 +1,34 @@
+name: DLS V0.2 Futures Source Gate V0.1
+on:
+  push:
+    branches:
+      - dls-v02-executable-volatility-v01
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_DLS_V0_2_FUTURES_SOURCE_GATE_V01.marker
+permissions:
+  contents: read
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile gate
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/probe_dls_v0_2_futures_source_v0_1.py
+      - name: Probe metadata only
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/probe_dls_v0_2_futures_source_v0_1.py
+      - name: Upload receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-v02-futures-source-gate-v01
+          path: labs/DEFI_LIQUIDATION_SHOCK_001/DLS_V0_2_FUTURES_SOURCE_GATE_RECEIPT_V0.1.json
+          retention-days: 90
+      - name: Firewall
+        if: always()
+        run: echo METADATA_ONLY_2025_2026_CLOSED_NO_TRADING
