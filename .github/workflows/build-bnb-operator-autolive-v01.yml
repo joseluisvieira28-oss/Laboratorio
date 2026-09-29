@@ -1,0 +1,101 @@
+name: BUILD BNB OPERATOR AUTOLIVE V0.1 / RISK V0.2
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - operator-risk-v02-2026-09-29
+    paths:
+      - 'crypto_edge_radar/execution/OPERATOR_GLOBAL_RISK_V02.json'
+      - 'crypto_edge_radar/execution/OPERATOR_FUTURES_GLOBAL_AUTHORITY_V02.json'
+      - 'crypto_edge_radar/radar/mexc_operator_futures_transport_v02.py'
+      - 'crypto_edge_radar/radar/operator_risk_v02.py'
+      - 'crypto_edge_radar/radar/operator_futures_engine_v02.py'
+      - 'crypto_edge_radar/radar/global_fishing_dispatcher_v02.py'
+      - 'crypto_edge_radar/scripts/mexc_operator_ready_v02.py'
+      - 'crypto_edge_radar/scripts/mexc_bnb_operator_autolive_v01.py'
+      - 'crypto_edge_radar/windows/Run_MEXC_BNB_Operator_AutoLive_V01.ps1'
+      - 'crypto_edge_radar/windows/Ready_And_Arm_MEXC_Operator_V02.ps1'
+      - 'crypto_edge_radar/windows/Install_MEXC_BNB_Operator_AutoLive_V01.ps1'
+      - 'crypto_edge_radar/windows/Status_MEXC_Operator_V02.ps1'
+      - 'crypto_edge_radar/windows/Disarm_MEXC_Operator_V02.ps1'
+      - 'crypto_edge_radar/windows/Emergency_Stop_MEXC_Operator_V02.ps1'
+      - 'crypto_edge_radar/windows/Clear_Kill_Switch_MEXC_Operator_V02.ps1'
+      - 'crypto_edge_radar/windows/README_MEXC_BNB_OPERATOR_V02.md'
+      - 'crypto_edge_radar/tests/test_mexc_operator_futures_transport_v02.py'
+      - 'crypto_edge_radar/tests/test_operator_risk_v02.py'
+      - 'crypto_edge_radar/tests/test_operator_futures_engine_v02.py'
+      - 'crypto_edge_radar/tests/test_global_fishing_dispatcher_v02.py'
+      - 'crypto_edge_radar/tests/test_mexc_bnb_operator_autolive_v01.py'
+      - '.github/workflows/build-bnb-operator-autolive-v01.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: crypto_edge_radar
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install package and PyInstaller
+        run: |
+          python -m pip install -e .
+          python -m pip install "pyinstaller>=6,<7"
+
+      - name: Compile operator V0.2
+        run: |
+          python -m compileall radar/mexc_operator_futures_transport_v02.py radar/operator_risk_v02.py radar/operator_futures_engine_v02.py radar/global_fishing_dispatcher_v02.py scripts/mexc_operator_ready_v02.py scripts/mexc_bnb_operator_autolive_v01.py tests/test_mexc_operator_futures_transport_v02.py tests/test_operator_risk_v02.py tests/test_operator_futures_engine_v02.py tests/test_global_fishing_dispatcher_v02.py tests/test_mexc_bnb_operator_autolive_v01.py
+
+      - name: Run operator V0.2 tests
+        run: |
+          python -m unittest tests.test_mexc_operator_futures_transport_v02 tests.test_operator_risk_v02 tests.test_operator_futures_engine_v02 tests.test_global_fishing_dispatcher_v02 tests.test_mexc_bnb_operator_autolive_v01 -v
+
+      - name: Regression existing operator transport/readiness
+        run: |
+          python -m unittest tests.test_mexc_futures_policy_transport_v01 tests.test_mexc_operator_futures_readiness_v01 tests.test_operator_futures_policy_v01 -v
+
+      - name: Build operator readiness EXE
+        run: |
+          pyinstaller --clean --onefile --name MEXCOperatorReadyV02 --paths . scripts/mexc_operator_ready_v02.py
+
+      - name: Build BNB AutoLive EXE
+        run: |
+          pyinstaller --clean --onefile --name MEXCBNBOperatorAutoLive --paths . scripts/mexc_bnb_operator_autolive_v01.py
+
+      - name: Hash executables
+        shell: pwsh
+        run: |
+          $h1 = (Get-FileHash dist\MEXCOperatorReadyV02.exe -Algorithm SHA256).Hash.ToLower()
+          $h2 = (Get-FileHash dist\MEXCBNBOperatorAutoLive.exe -Algorithm SHA256).Hash.ToLower()
+          "MEXCOperatorReadyV02.exe  $h1" | Out-File -FilePath dist\SHA256SUMS.txt -Encoding ascii
+          "MEXCBNBOperatorAutoLive.exe  $h2" | Out-File -FilePath dist\SHA256SUMS.txt -Encoding ascii -Append
+          Get-Content dist\SHA256SUMS.txt
+
+      - name: Upload BNB operator bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: mexc-bnb-operator-autolive-v01-risk-v02
+          path: |
+            crypto_edge_radar/dist/MEXCOperatorReadyV02.exe
+            crypto_edge_radar/dist/MEXCBNBOperatorAutoLive.exe
+            crypto_edge_radar/dist/SHA256SUMS.txt
+            crypto_edge_radar/windows/Run_MEXC_BNB_Operator_AutoLive_V01.ps1
+            crypto_edge_radar/windows/Ready_And_Arm_MEXC_Operator_V02.ps1
+            crypto_edge_radar/windows/Install_MEXC_BNB_Operator_AutoLive_V01.ps1
+            crypto_edge_radar/windows/Status_MEXC_Operator_V02.ps1
+            crypto_edge_radar/windows/Disarm_MEXC_Operator_V02.ps1
+            crypto_edge_radar/windows/Emergency_Stop_MEXC_Operator_V02.ps1
+            crypto_edge_radar/windows/Clear_Kill_Switch_MEXC_Operator_V02.ps1
+            crypto_edge_radar/windows/README_MEXC_BNB_OPERATOR_V02.md
+            crypto_edge_radar/execution/OPERATOR_GLOBAL_RISK_V02.json
+            crypto_edge_radar/execution/OPERATOR_FUTURES_GLOBAL_AUTHORITY_V02.json
+          if-no-files-found: error
+          retention-days: 7
