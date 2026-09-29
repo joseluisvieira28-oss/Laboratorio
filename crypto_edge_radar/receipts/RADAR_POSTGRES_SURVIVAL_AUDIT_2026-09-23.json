@@ -1,0 +1,122 @@
+{
+  "schema_version": "0.1",
+  "date": "2026-09-23",
+  "classification": "INFRASTRUCTURE_PASS__BACKUP_INDEPENDENTLY_REVERIFIED__CUTOVER_TARGET_PROVISIONING_PENDING",
+  "scope": "Operational persistence/evidence continuity only. No scientific promotion or trading conclusion.",
+  "canonical_runtime_observation": {
+    "service": "crypto-edge-radar-v05-canary",
+    "branch": "crypto-edge-radar-postgres-v0.5",
+    "deployed_commit": "c3ce1af5e3c8ec45f338e9d1a2cbda629c387af7",
+    "observed_at_utc": "2026-09-23T05:16:53.466Z",
+    "health": "OK",
+    "evidence_backend": "postgres",
+    "evidence_chain_ok": true,
+    "verified_event_count": 554,
+    "deployment_drift": "IN_SYNC",
+    "authenticated_exchange_api_used": false,
+    "orders_created": false,
+    "exchange_mutation_performed": false,
+    "live_capital_enabled": false
+  },
+  "private_backup_reverification": {
+    "source_backup_date": "2026-09-22",
+    "event_count": 483,
+    "key_count": 405,
+    "payload_hashes_verified": 483,
+    "chain_links_verified": 483,
+    "event_key_references_verified": 405,
+    "gzip_sha256": "e2c4b20018d1b78c0653296f223efe1caf9a24bff6e7271184c464434cfb56e0",
+    "raw_json_sha256": "0d7a3069cd7fb1db7161658a296b7a76dccc96cdc40509e854d46ea11995ca2c",
+    "canonical_events_keys_snapshot_sha256": "d495e3a202e77a870a2aa152288a1a859e96b6f1d462108decee1a080d0e3cbe",
+    "chain_head_sha256": "7ed78f2e343c8695daa50e4b73a73097e876524b928528f409d98a9973c268fa",
+    "independent_reverification": "PASS",
+    "hash_semantics_reconciled": true,
+    "database_mutation": false,
+    "secret_values_exposed": false
+  },
+  "continuity_since_backup": {
+    "backup_event_count": 483,
+    "current_verified_event_count_observed": 554,
+    "new_events_since_backup": 71,
+    "event_count_regression": false,
+    "canonical_chain_currently_verifies": true,
+    "interpretation": "The source evidence chain continued prospectively after the verified backup; the backup is a disaster-recovery checkpoint, not a current mirror."
+  },
+  "temporary_export_surface": {
+    "http_backup_route_present_in_current_canonical_source": false,
+    "temporary_log_transport_present_in_current_canonical_source": false,
+    "cleanup_receipt": "RADAR_EVIDENCE_BACKUP_CLOSEOUT_2026-09-22.json",
+    "cleanup_status": "PASS"
+  },
+  "postgres_expiry": {
+    "render_database": "crypto-edge-radar-evidence-v04",
+    "plan": "free",
+    "expires_at_utc": "2026-10-17T08:47:15.2559Z",
+    "status": "AVAILABLE_BUT_EXPIRING",
+    "risk": "CONTINUITY_TARGET_REQUIRED_BEFORE_EXPIRY"
+  },
+  "free_target_reconnaissance": {
+    "supabase_free": {
+      "account_access": "AUTHORIZED_CONNECTOR_AVAILABLE",
+      "connected_free_organization_count": 1,
+      "existing_projects": 0,
+      "database_quota": "500 MB per project",
+      "automatic_backups": false,
+      "inactivity_pause_risk": "Free projects may pause after low activity over 7 days",
+      "ipv4_path": "Supavisor session pooler supports IPv4 application connectivity",
+      "assessment": "DEFENSIBLE_CANDIDATE_PENDING_PROVIDER_PROJECT_CONFIRMATION_AND_SECURE_SECRET_HANDOFF",
+      "project_created": false,
+      "credentials_read_or_copied": false
+    },
+    "neon_free": {
+      "public_free_tier_identified": true,
+      "storage_quota": "0.5 GB per project",
+      "connected_authorized_account_path": false,
+      "assessment": "PUBLIC_CANDIDATE_NOT_PROVISIONABLE_FROM_CURRENT_AUTHORIZED_TOOLING"
+    }
+  },
+  "cutover_readiness": {
+    "restore_tooling_validated": true,
+    "isolated_restore_dry_run_passed": true,
+    "cutover_protocol_frozen": true,
+    "target_postgres_provisioned": false,
+    "target_credentials_available_without_secret_exposure": false,
+    "cutover_authorized_now": false,
+    "next_safe_action": "Obtain provider-required explicit project/org cost confirmation for a zero-cost Supabase target, then validate an empty target and secure credential handoff before any restore or DATABASE_URL change."
+  },
+  "forward_evidence_snapshot": {
+    "options_spotperp_v21": {
+      "signal_days": 4,
+      "resolved_forward_trades": 3,
+      "classification": "FORWARD_EVIDENCE_ACCUMULATING_TIER1_GATE_FROZEN",
+      "scientific_conclusion": "INSUFFICIENT_SAMPLE__NO_PROMOTION__NO_NO_EDGE_DECLARATION"
+    },
+    "tfg_donchian_regime_adaptation_v1": {
+      "resolved_forward_trades": 1,
+      "readiness_progress": "1/10",
+      "unresolved_maturing": 10,
+      "overdue": 0,
+      "classification": "FORWARD_EVIDENCE_ACCUMULATING"
+    },
+    "ced1d_0031": {
+      "status": "WAITING_SOURCE_READINESS",
+      "retrospective_backfill": false,
+      "github_collector": "SUPERSEDED"
+    }
+  },
+  "governance": {
+    "scientific_rules_changed": false,
+    "thresholds_changed": false,
+    "costs_changed": false,
+    "signals_changed": false,
+    "post_outcome_tuning": false,
+    "live_trading": false,
+    "orders": false,
+    "exchange_mutation": false,
+    "wallets": false,
+    "capital": false,
+    "paid_upgrade": false,
+    "main_merge": false,
+    "scientific_edge_claimed": false
+  }
+}
