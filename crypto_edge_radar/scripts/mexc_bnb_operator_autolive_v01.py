@@ -95,6 +95,8 @@ def build_signal(cluster: list[Any]) -> dict[str, Any]:
         "source": "BINANCE_SUPPORT_CMS_PUBLIC",
         "signal_article_code": anchor.article_code,
         "cluster_article_codes": [event.article_code for event in cluster],
+        "cluster_detail_sha256": {event.article_code: event.detail_sha256 for event in cluster},
+        "cluster_publication_timestamps_utc": [event.published_utc for event in cluster],
         "signal_timestamp_utc": anchor.published_utc,
         "symbol": SYMBOL,
         "direction": "LONG",
@@ -253,9 +255,12 @@ class BNBOperatorAutoLiveV01:
                 arbitration=decision,
             )
 
-        winner = decision["winner"]
-        result = self.engine.enter_signal(winner)
+        winner = dict(decision["winner"])
         winner_key = winner["immutable_signal_key"]
+        event_row = self.state["events"].get(winner_key) or {}
+        winner["first_observed_at_utc"] = event_row.get("first_observed_at_utc")
+        winner["first_observed_before_entry_target"] = True
+        result = self.engine.enter_signal(winner)
         result_status = str(result.get("status") or "")
         if result_status == "FILLED_EXIT_PENDING":
             self.state["events"][winner_key]["status"] = "CONSUMED_ACTIVE_REAL_MONEY"
@@ -285,6 +290,8 @@ class BNBOperatorAutoLiveV01:
             if status == "PREARMED_FOR_BNB_ENTRY":
                 seconds = float(state.get("seconds_to_entry", 0) or 0)
                 sleep_for = max(0.02, min(0.25, seconds))
+            elif status == "MANAGING_ACTIVE_OPERATOR_POSITION":
+                sleep_for = 1.0
             else:
                 sleep_for = self.poll_seconds
             elapsed = time.monotonic() - started
