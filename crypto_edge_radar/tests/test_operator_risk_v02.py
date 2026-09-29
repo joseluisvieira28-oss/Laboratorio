@@ -1,0 +1,102 @@
+from __future__ import annotations
+
+import json
+import tempfile
+from datetime import datetime, timezone
+from pathlib import Path
+import unittest
+
+from radar.operator_risk_v02 import (
+    DAILY_REALIZED_LOSS_KILL_USDT,
+    MAX_INITIAL_MARGIN_USDT,
+    MAX_NOTIONAL_USDT,
+    REQUIRED_LEVERAGE,
+    ROLLING_7D_REALIZED_LOSS_KILL_USDT,
+    build_operator_risk_state,
+    realized_loss_state,
+)
+
+
+class FakePrivate:
+    def __init__(self, *, positions=None, orders=None, equity=112.0, available=100.0):
+        self._positions = positions or []
+        self._orders = orders or []
+        self._equity = equity
+        self._available = available
+
+    def open_positions(self, symbol=None):
+        return list(self._positions)
+
+    def open_orders(self, symbol=None):
+        return list(self._orders)
+
+    def assets(self):
+        return [{
+            "currency": "USDT",
+            "equity": self._equity,
+            "availableBalance": self._available,
+        }]
+
+
+class OperatorRiskV02Tests(unittest.TestCase):
+    def test_frozen_envelope(self):
+        self.assertEqual(MAX_INITIAL_MARGIN_USDT, 10.0)
+        self.assertEqual(MAX_NOTIONAL_USDT, 50.0)
+        self.assertEqual(REQUIRED_LEVERAGE, 5)
+        self.assertEqual(DAILY_REALIZED_LOSS_KILL_USDT, 5.0)
+        self.assertEqual(ROLLING_7D_REALIZED_LOSS_KILL_USDT, 5.0)
+
+    def test_pass_when_account_is_clean(self):
+        with tempfile.TemporaryDirectory() as td:
+            state = build_operator_risk_state(
+                private_client=FakePrivate(),
+                receipt_root=td,
+                now=datetime(2026, 9, 29, 12, 0, tzinfo=timezone.utc),
+            )
+            self.assertTrue(state["pass"])
+            self.assertEqual(state["status"], "PASS")
+
+    def test_open_position_occupies_only_slot(self):
+        with tempfile.TemporaryDirectory() as td:
+            state = build_operator_risk_state(
+                private_client=FakePrivate(positions=[{"symbol": "BTC_USDT"}]),
+                receipt_root=td,
+                now=datetime(2026, 9, 29, 12, 0, tzinfo=timezone.utc),
+            )
+            self.assertFalse(state["pass"])
+            self.assertIn("GLOBAL_POSITION_SLOT_OCCUPIED", state["blockers"])
+
+    def test_daily_realized_loss_kill_at_5(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td) / "s"
+            root.mkdir()
+            (root / "POST_TRADE_RECONCILIATION.json").write_text(json.dumps({
+                "closed_at_utc": "2026-09-29T10:00:00Z",
+                "realized_net_pnl_usdt": -5.01,
+            }), encoding="utf-8")
+            state = build_operator_risk_state(
+                private_client=FakePrivate(),
+                receipt_root=td,
+                now=datetime(2026, 9, 29, 12, 0, tzinfo=timezone.utc),
+            )
+            self.assertFalse(state["pass"])
+            self.assertIn("DAILY_5_USDT_REALIZED_LOSS_KILL_ACTIVE", state["blockers"])
+
+    def test_corrected_pnl_has_precedence(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td) / "s"
+            root.mkdir()
+            (root / "POST_TRADE_RECONCILIATION.json").write_text(json.dumps({
+                "closed_at_utc": "2026-09-29T10:00:00Z",
+                "realized_net_pnl_usdt": 1.0,
+                "corrected_realized_net_pnl_usdt": -2.0,
+            }), encoding="utf-8")
+            loss = realized_loss_state(
+                td,
+                now=datetime(2026, 9, 29, 12, 0, tzinfo=timezone.utc),
+            )
+            self.assertEqual(loss["daily_realized_loss_usdt"], 2.0)
+
+
+if __name__ == "__main__":
+    unittest.main()

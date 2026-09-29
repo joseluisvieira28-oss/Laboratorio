@@ -1,0 +1,78 @@
+{
+  "authority_id": "OPERATOR-FUTURES-GLOBAL-V0.2",
+  "frozen_utc": "2026-09-29T14:12:00Z",
+  "status": "PREARMED_LOCKED_UNTIL_CURRENT_OPTIONS_POSITION_CLOSED_RECONCILED_AND_LOCAL_INSTALL",
+  "purpose": "Authorize unattended operator-only Futures execution under one global slot after all frozen runtime gates pass. No scientific credit.",
+  "supersedes_for_operator_lane": "OPERATOR-FUTURES-BNB-CED1D-V0.1",
+  "science": {
+    "credit": false,
+    "tier_credit": false,
+    "forward_sample_credit": false,
+    "parent_rules_changed": false
+  },
+  "risk": {
+    "max_simultaneous_positions": 1,
+    "initial_isolated_margin_usdt": 10,
+    "leverage": 5,
+    "maximum_notional_usdt": 50,
+    "daily_realized_loss_kill_usdt": 5,
+    "rolling_7d_realized_loss_kill_usdt": 5,
+    "margin_mode": "ISOLATED",
+    "auto_margin_add": false,
+    "stop_loss": "NONE",
+    "note": "Daily realized-loss kill blocks new entries; it does not cap an already-open trade. Isolated margin is the only per-position loss container.",
+    "martingale": false,
+    "averaging": false,
+    "pyramiding": false,
+    "late_chase": false,
+    "blind_resend": false
+  },
+  "arbitration": {
+    "existing_position_keeps_slot": true,
+    "otherwise": "earliest immutable entry target",
+    "exact_tie": "lexicographic candidate_id then signal_identity",
+    "losing_due_signal": "MISSED_CONFLICT_NO_CHASE"
+  },
+  "candidates": {
+    "BNB-LAUNCHPOOL-DEMAND-001": {
+      "live_operator_execution_when_gates_pass": true,
+      "route": "MEXC BNB_USDT perpetual",
+      "direction": "LONG",
+      "entry": "first 15m open strictly after canonical eligible Binance Launchpool announcement",
+      "max_late_seconds": 2,
+      "exit": "exactly 24h after entry target",
+      "max_projected_roundtrip_friction_bps": 30,
+      "scientific_equivalence": false,
+      "scientific_credit": false
+    },
+    "CED1D-0031": {
+      "live_operator_execution_when_gates_pass": false,
+      "current_state": "SOURCE_LOCKED",
+      "route": "MEXC AVAX_USDT perpetual",
+      "future_direction_rule": "+1 LONG / -1 SHORT from immutable canonical event.direction only",
+      "reason": "no live activation while source is not entry-ready"
+    },
+    "ETF-CME-INSTFLOW-001": {
+      "live_operator_execution_when_gates_pass": false,
+      "current_state": "Q4_NO_PEEK_SHADOW_ONLY",
+      "reason": "higher-precedence protected Q4 authority"
+    }
+  },
+  "activation_gates": [
+    "current OPTIONS position closed and reconciled",
+    "no open Futures position/order",
+    "5x isolated post-configuration verification",
+    "Auto Margin Add OFF post-fill verification",
+    "fresh account fee/contract/funding/clock reads",
+    "daily and rolling loss firewall PASS",
+    "candidate source healthy and signal strictly on time",
+    "friction ceiling PASS",
+    "armed marker present",
+    "kill switch absent",
+    "exactly-once intent/externalOid reconciliation",
+    "local V0.2 package hash verified"
+  ],
+  "current_file_can_submit_order": false,
+  "operator_reconfirmation_per_trade": false,
+  "no_main_merge": true
+}

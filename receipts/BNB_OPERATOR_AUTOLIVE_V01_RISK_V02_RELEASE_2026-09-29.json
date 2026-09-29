@@ -1,0 +1,87 @@
+{
+  "receipt_id": "BNB-OPERATOR-AUTOLIVE-V0.1-RISK-V0.2-RELEASE-2026-09-29",
+  "status": "BUILD_VALIDATED__NOT_YET_INSTALLED_OR_LIVE_ARMED",
+  "branch": "operator-risk-v02-2026-09-29",
+  "build_head": "6c96606efd28dc35982a2062104e9a1f16a1363b",
+  "workflow": {
+    "run_id": 36587006500,
+    "conclusion": "SUCCESS",
+    "operator_v02_tests": "25/25 PASS",
+    "regression_tests": "11/11 PASS"
+  },
+  "artifact": {
+    "id": 11042456545,
+    "name": "mexc-bnb-operator-autolive-v01-risk-v02",
+    "digest": "sha256:71d19329dc9a2a1043e575de81b76f0eeb959badff2d9c10baaf53013a0b895e",
+    "expires_at": "2026-10-06T15:02:35Z",
+    "executables": {
+      "MEXCOperatorReadyV02.exe": "dbe0d549687d37028e63a7f47f010827219b6de7636ce06bf5691cd89412659a",
+      "MEXCBNBOperatorAutoLive.exe": "e286fa514bb058958f28481534c21d4cfc26f9e896c7a2001d5d17920196acbe"
+    }
+  },
+  "user_requested_risk_interpretation": {
+    "requested": "10 USDT / position; 5x isolated; 1 global position; -5 USDT/day",
+    "frozen_interpretation": "10 USDT INITIAL ISOLATED MARGIN x 5 = up to 50 USDT NOTIONAL",
+    "daily_realized_loss_kill_usdt": 5,
+    "rolling_7d_realized_loss_kill_usdt": 5,
+    "max_simultaneous_positions": 1,
+    "per_position_stop_loss": null,
+    "warning": "Daily realized-loss kill blocks new entries after realized loss threshold; it is not an open-position stop. A 5x isolated position can lose more than 5 USDT before scheduled exit or liquidation."
+  },
+  "live_lane": {
+    "candidate_id": "BNB-LAUNCHPOOL-DEMAND-001",
+    "classification": "OPERATOR_REAL_MONEY__NO_SCIENTIFIC_CREDIT",
+    "route": "MEXC BNB_USDT perpetual",
+    "direction": "LONG",
+    "source": "official Binance Launchpool CMS",
+    "entry": "first 15m open strictly after canonical eligible announcement",
+    "max_late_seconds": 2,
+    "exit": "entry +24h",
+    "max_projected_roundtrip_friction_bps": 30,
+    "auto_margin_add": false,
+    "cross_margin": false,
+    "martingale": false,
+    "averaging": false,
+    "late_chase": false,
+    "blind_resend": false
+  },
+  "global_dispatcher": {
+    "single_slot": true,
+    "conflict_rule": "existing position keeps slot; else earliest immutable entry target; exact ties lexicographic candidate_id then signal key; losers no-chase",
+    "current_lanes": {
+      "OPTIONS": "external active manager; do not replace while open",
+      "BNB": "prepared AutoLive real-money lane",
+      "CED1D": "source locked; 5x contract prepared only",
+      "ETF_CME": "Q4 no-peek shadow only"
+    }
+  },
+  "operational_hardening": [
+    "exact 5x isolated policy-bound transport",
+    "Auto Margin Add OFF verification",
+    "global position/order conflict checks",
+    "5 USDT daily realized-loss kill",
+    "5 USDT rolling-7d realized-loss kill retained",
+    "fee floor and exact fee receipts",
+    "zero-totalFee fallback to takerFee+makerFee",
+    "exactly-once intent/externalOid reconciliation",
+    "position identity checked every active cycle",
+    "liquidation/manual-close reconciliation required",
+    "active 5x position polled every second",
+    "emergency kill-switch exit path",
+    "source first-observation-before-entry proof",
+    "no scientific credit for BNB_USDT operator proxy"
+  ],
+  "activation_boundary": {
+    "current_options_executor_must_not_be_replaced_while_active": true,
+    "bnb_supervisor_can_be_installed_unarmed": true,
+    "real_money_arming_requires_clean_authenticated_readiness_pass": true,
+    "current_file_or_build_did_not_create_order": true
+  },
+  "safety": {
+    "exchange_mutation_performed": false,
+    "order_created": false,
+    "main_merged": false,
+    "current_options_executor_modified": false,
+    "scientific_rules_changed": false
+  }
+}

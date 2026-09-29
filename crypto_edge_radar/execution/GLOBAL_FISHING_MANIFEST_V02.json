@@ -1,0 +1,50 @@
+{
+  "manifest_id": "CRYPTO-LAB-GLOBAL-FISHING-MANIFEST-V0.2",
+  "frozen_utc": "2026-09-29T14:12:00Z",
+  "deny_by_default": true,
+  "single_global_position_slot": true,
+  "arbitration": "existing position keeps slot; otherwise earliest immutable entry_target_utc; ties candidate_id lexical; losers no-chase",
+  "lanes": [
+    {
+      "candidate_id": "OPTIONS-SPOTPERP-001-V2.1",
+      "state": "EXTERNAL_EXECUTOR_ACTIVE_UNTIL_CURRENT_POSITION_CLOSE",
+      "order_path_owned_here": false,
+      "arming": false,
+      "note": "Do not stop/replace/reconfigure active OPTIONS executor."
+    },
+    {
+      "candidate_id": "BNB-LAUNCHPOOL-DEMAND-001",
+      "state": "OPERATOR_AUTOLIVE_READY_AFTER_LOCAL_INSTALL_AND_ARM",
+      "order_path_owned_here": true,
+      "venue": "MEXC_FUTURES",
+      "symbol": "BNB_USDT",
+      "direction": "LONG",
+      "initial_margin_usdt": 10,
+      "leverage": 5,
+      "max_notional_usdt": 50,
+      "scientific_credit": false,
+      "source": "BINANCE_SUPPORT_CMS_PUBLIC",
+      "exact_entry": "first 15m open strictly after eligible announcement",
+      "max_late_seconds": 2,
+      "exit": "entry + 24h",
+      "friction_ceiling_bps": 30
+    },
+    {
+      "candidate_id": "CED1D-0031",
+      "state": "SOURCE_LOCKED",
+      "order_path_owned_here": false,
+      "future_symbol": "AVAX_USDT",
+      "future_direction_source": "canonical event.direction (+1 LONG / -1 SHORT)",
+      "scientific_credit": false
+    },
+    {
+      "candidate_id": "ETF-CME-INSTFLOW-001",
+      "state": "Q4_NO_PEEK_SHADOW_ONLY",
+      "order_path_owned_here": false,
+      "live_allowed": false
+    }
+  ],
+  "global_risk_policy": "execution/OPERATOR_GLOBAL_RISK_V02.json",
+  "global_authority": "execution/OPERATOR_FUTURES_GLOBAL_AUTHORITY_V02.json",
+  "main_merge": false
+}

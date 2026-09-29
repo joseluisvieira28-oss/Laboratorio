@@ -1,0 +1,85 @@
+{
+  "policy_id": "CRYPTO-LAB-OPERATOR-GLOBAL-RISK-V0.2",
+  "frozen_utc": "2026-09-29T14:12:00Z",
+  "status": "PREARMED__LIVE_ACTIVATION_DEFERRED_UNTIL_CURRENT_OPTIONS_POSITION_CLOSED_RECONCILED",
+  "interpretation": {
+    "user_requested_position_usdt": "TREATED_AS_INITIAL_ISOLATED_MARGIN, NOT NOTIONAL",
+    "initial_isolated_margin_usdt": 10,
+    "leverage": 5,
+    "maximum_position_notional_usdt": 50,
+    "note": "If '10 USDT / position' was intended to mean 10 USDT notional, this policy must not be activated; 5x on a fixed 10 USDT notional does not increase PnL exposure."
+  },
+  "global_risk": {
+    "max_simultaneous_positions": 1,
+    "margin_mode": "ISOLATED",
+    "leverage": 5,
+    "auto_margin_add": false,
+    "max_initial_margin_usdt_per_position": 10,
+    "max_notional_usdt_per_position": 50,
+    "daily_realized_loss_kill_usdt": 5,
+    "rolling_7d_realized_loss_kill_usdt": 5,
+    "per_position_stop_loss": "NONE",
+    "per_position_loss_container": "ISOLATED_MARGIN_ONLY",
+    "warning": "The -5 USDT daily realized-loss kill blocks NEW entries after realized losses reach 5 USDT. It is not a stop-loss on an already-open 5x position, which can lose more than 5 USDT before the scheduled exit or liquidation.",
+    "martingale": false,
+    "averaging": false,
+    "pyramiding": false,
+    "cross_margin": false,
+    "late_chase": false,
+    "blind_resend": false
+  },
+  "current_candidate_states": {
+    "OPTIONS-SPOTPERP-001-V2.1": {
+      "state": "EXTERNAL_ACTIVE_POSITION_MANAGER",
+      "live_reconfiguration_allowed": false,
+      "note": "Current installed OPTIONS executor remains untouched while active. FUTURES ARMED is false."
+    },
+    "BNB-LAUNCHPOOL-DEMAND-001": {
+      "state": "PREARMED_FOR_AUTOMATED_OPERATOR_LIVE",
+      "route": "MEXC_FUTURES_BNB_USDT",
+      "direction": "LONG",
+      "scientific_credit": false,
+      "max_initial_margin_usdt": 10,
+      "max_notional_usdt": 50,
+      "leverage": 5,
+      "entry_rule": "first 15m open strictly after canonical eligible Binance Launchpool announcement",
+      "max_late_seconds": 2,
+      "exit_rule": "24h after frozen entry target",
+      "max_projected_roundtrip_friction_bps": 30
+    },
+    "CED1D-0031": {
+      "state": "SOURCE_LOCKED",
+      "route": "MEXC_FUTURES_AVAX_USDT",
+      "scientific_credit": false,
+      "activation_requires": "fresh canonical event.direction and source ready at signal time"
+    },
+    "ETF-CME-INSTFLOW-001": {
+      "state": "Q4_NO_PEEK_SHADOW_ONLY",
+      "live_order_allowed": false,
+      "reason": "higher-precedence Q4 protected no-peek authority"
+    }
+  },
+  "conflict_arbitration": {
+    "rule": "existing position owns the only slot; otherwise earliest immutable entry_target_utc wins; exact timestamp ties resolve by lexicographic candidate_id; losers are MISSED_CONFLICT_NO_CHASE",
+    "post_outcome_selection": false
+  },
+  "activation_gates": [
+    "current OPTIONS live position CLOSED and POST_TRADE_RECONCILIATION present",
+    "no open Futures position/order on account",
+    "fresh authenticated MEXC preflight PASS",
+    "fresh global operator risk state PASS",
+    "candidate canonical source healthy and signal on time",
+    "candidate symbol readiness PASS",
+    "projected route friction inside frozen ceiling",
+    "kill switch absent",
+    "duplicate protection available",
+    "candidate operator armed marker present",
+    "tested V0.2 executor and exit guard installed"
+  ],
+  "governance": {
+    "scientific_rules_changed": false,
+    "scientific_credit_for_operator_forks": false,
+    "main_merge": false,
+    "no_order_created_by_this_policy": true
+  }
+}
