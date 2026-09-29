@@ -1,0 +1,24 @@
+name: Binance BTC Options Strike Semantics Diagnostic V0.1
+on:
+  push:
+    branches: [btc-options-vrp-binance-eoh-source-v0.1]
+    paths:
+      - "labs/BTC_OPTIONS_VRP_BINANCE_001/STRIKE_SEMANTICS_DIAGNOSTIC_V0.1.md"
+      - "labs/BTC_OPTIONS_VRP_BINANCE_001/strike_semantics_diag_v01.py"
+      - ".github/workflows/btc-options-vrp-binance-strike-semantics-v01.yml"
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: python labs/BTC_OPTIONS_VRP_BINANCE_001/strike_semantics_diag_v01.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BTC_OPTIONS_VRP_BINANCE_001_STRIKE_SEMANTICS_V0_1
+          path: binance_strike_semantics_diag_v01.json
+          retention-days: 30

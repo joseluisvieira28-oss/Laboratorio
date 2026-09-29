@@ -1,0 +1,56 @@
+name: Binance BTC Options EOH Source Gate V0.1
+
+on:
+  push:
+    branches:
+      - btc-options-vrp-binance-eoh-source-v0.1
+    paths:
+      - "labs/BTC_OPTIONS_VRP_BINANCE_001/SOURCE_AUTHORITY_V0.1.json"
+      - "labs/BTC_OPTIONS_VRP_BINANCE_001/source_probe_v01.py"
+      - "labs/BTC_OPTIONS_VRP_BINANCE_001/SOURCE_PARSER_TECHNICAL_AMENDMENT_V0.1A.md"
+      - "labs/BTC_OPTIONS_VRP_BINANCE_001/SOURCE_PARSER_TECHNICAL_AMENDMENT_V0.1B.md"
+      - ".github/workflows/btc-options-vrp-binance-eoh-source-v01.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile source-only probe
+        run: python -m py_compile labs/BTC_OPTIONS_VRP_BINANCE_001/source_probe_v01.py
+      - name: Run frozen source gate
+        id: gate
+        continue-on-error: true
+        run: python labs/BTC_OPTIONS_VRP_BINANCE_001/source_probe_v01.py
+      - name: Upload source receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: BTC_OPTIONS_VRP_BINANCE_001_SOURCE_V0_1
+          path: binance_eoh_source_receipt_v01.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Enforce frozen pass
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path("binance_eoh_source_receipt_v01.json")
+          if not p.exists():
+              raise SystemExit("receipt missing")
+          x=json.loads(p.read_text())
+          print("classification=",x["classification"])
+          print("available_day_count=",x["available_day_count"])
+          print("fixed_samples_semantic_pass=",x["fixed_samples_semantic_pass"])
+          if x["classification"] != "BINANCE_EOH_SOURCE_FEASIBLE":
+              raise SystemExit(2)
+          PY

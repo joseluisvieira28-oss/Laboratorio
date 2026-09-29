@@ -1,0 +1,99 @@
+{
+  "lab_id": "BTC-OPTIONS-VRP-BINANCE-001",
+  "census_id": "BOVRP-BINANCE-PREDISCOVERY-GEOMETRY-001",
+  "version": "0.1",
+  "date_frozen": "2026-09-19",
+  "branch": "btc-options-vrp-binance-eoh-source-v0.1",
+  "status": "FROZEN_SOURCE_GEOMETRY_ONLY_OUTCOME_BLIND",
+  "activation_condition": "BINANCE_EOH_SOURCE_FEASIBLE",
+  "purpose": "Measure whether the free Binance Options EOH archive contains enough point-in-time, non-overlapping 24-hour executable option-pair geometry to justify a later prospectively frozen Discovery. No option returns, future spot returns, variance, VRP, PnL or parameter performance may be computed.",
+  "decision_clock_utc_hour": 8,
+  "hold_geometry_hours": 24,
+  "rationale": "08:00 UTC is the documented Binance options expiry/listing boundary. A 24-hour hold yields non-overlapping daily decision intervals and avoids treating multiple hourly snapshots of the same day as independent observations.",
+  "source": {
+    "base_path": "https://data.binance.vision/data/option/daily/EOHSummary/BTCUSDT/",
+    "envelope_start": "2023-05-18",
+    "envelope_end": "2023-10-23",
+    "use_only_available_source_days": true,
+    "authentication": "none",
+    "cash_cost_usd": 0
+  },
+  "dte_bins_days": [
+    {
+      "id": "DTE_1_2",
+      "min_inclusive": 1,
+      "max_exclusive": 2
+    },
+    {
+      "id": "DTE_2_4",
+      "min_inclusive": 2,
+      "max_exclusive": 4
+    },
+    {
+      "id": "DTE_4_8",
+      "min_inclusive": 4,
+      "max_exclusive": 8
+    },
+    {
+      "id": "DTE_8_15",
+      "min_inclusive": 8,
+      "max_exclusive": 15
+    },
+    {
+      "id": "DTE_15_31",
+      "min_inclusive": 15,
+      "max_exclusive": 31
+    }
+  ],
+  "candidate_pair_definition": {
+    "same_entry_expiry": true,
+    "same_entry_strike": true,
+    "one_call_and_one_put": true,
+    "all_four_entry_bbo_fields_nonempty": true,
+    "both_instruments_present_at_next_calendar_day_08_utc": true,
+    "all_four_exit_bbo_fields_nonempty": true,
+    "delta_present_on_both_entry_legs": true,
+    "no_price_level_thresholds": true,
+    "no_iv_thresholds": true,
+    "no_volume_thresholds": true,
+    "no_open_interest_thresholds": true
+  },
+  "outputs_allowed": [
+    "available/missing date counts",
+    "08:00 source row counts",
+    "candidate paired-strike counts by frozen DTE bin",
+    "number of distinct non-overlapping 24h episode starts with at least one valid pair by frozen DTE bin",
+    "number of next-day persistent instruments",
+    "structural provenance and file hashes"
+  ],
+  "geometry_pass_rule": {
+    "minimum_distinct_24h_episode_starts_in_any_single_frozen_dte_bin": 80,
+    "minimum_calendar_months_represented": 4,
+    "terminal_pass_classification": "PREDISCOVERY_GEOMETRY_PASS",
+    "note": "This gate only authorizes writing a later pre-discovery protocol. It does not authorize selecting the best-performing DTE bin because no performance is opened."
+  },
+  "terminal_classifications": [
+    "PREDISCOVERY_GEOMETRY_PASS",
+    "PREDISCOVERY_GEOMETRY_INSUFFICIENT",
+    "PREDISCOVERY_SOURCE_TECHNICAL_FAILURE",
+    "PREDISCOVERY_PROVENANCE_FAILURE"
+  ],
+  "safety": {
+    "option_prices_emitted": false,
+    "option_returns_authorized": false,
+    "spot_or_perp_returns_authorized": false,
+    "realized_variance_authorized": false,
+    "implied_realized_spread_authorized": false,
+    "vrp_authorized": false,
+    "pnl_authorized": false,
+    "expectancy_authorized": false,
+    "profit_factor_authorized": false,
+    "parameter_tuning_authorized": false,
+    "access_2025_authorized": false,
+    "access_2026_authorized": false,
+    "live_trading_authorized": false,
+    "exchange_mutation_authorized": false,
+    "wallet_access_authorized": false,
+    "merge_to_main_authorized": false
+  }
+}

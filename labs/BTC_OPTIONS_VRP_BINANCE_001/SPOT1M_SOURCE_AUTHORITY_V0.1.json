@@ -1,0 +1,56 @@
+{
+  "lab_id": "BTC-OPTIONS-VRP-BINANCE-001",
+  "source_probe_id": "BOVRP-BINANCE-SPOT1M-SOURCE-001",
+  "version": "0.1",
+  "date_frozen": "2026-09-19",
+  "status": "FROZEN_SOURCE_ONLY_OUTCOME_BLIND",
+  "purpose": "Bind a zero-cost point-in-time BTCUSDT spot source for a possible later Binance-options VRP Discovery. Verify availability/schema only; do not compute returns or realized variance.",
+  "source": {
+    "provider": "Binance public data portal",
+    "market": "spot",
+    "symbol": "BTCUSDT",
+    "interval": "1m",
+    "base_path": "https://data.binance.vision/data/spot/daily/klines/BTCUSDT/1m/",
+    "file_pattern": "BTCUSDT-1m-YYYY-MM-DD.zip",
+    "authentication": "none",
+    "cash_cost_usd": 0
+  },
+  "fixed_sample_dates": [
+    "2023-05-18",
+    "2023-07-01",
+    "2023-10-23"
+  ],
+  "required_structure": {
+    "expected_rows_per_full_day": 1440,
+    "required_column_count_at_least": 6,
+    "open_time_present": true,
+    "close_time_present": true,
+    "ohlc_present": true
+  },
+  "pass_rule": {
+    "all_fixed_sample_dates_downloadable": true,
+    "all_fixed_sample_dates_parseable": true,
+    "minimum_rows_each_sample": 1430,
+    "monotonic_open_times": true,
+    "contains_08utc_bar": true,
+    "terminal_pass_classification": "BINANCE_SPOT1M_SOURCE_FEASIBLE"
+  },
+  "terminal_classifications": [
+    "BINANCE_SPOT1M_SOURCE_FEASIBLE",
+    "BINANCE_SPOT1M_SOURCE_PARTIAL",
+    "BINANCE_SPOT1M_SOURCE_ACQUISITION_FAILURE"
+  ],
+  "safety": {
+    "price_values_emitted": false,
+    "returns_authorized": false,
+    "realized_variance_authorized": false,
+    "vrp_authorized": false,
+    "pnl_authorized": false,
+    "tuning_authorized": false,
+    "access_2025_authorized": false,
+    "access_2026_authorized": false,
+    "live_trading_authorized": false,
+    "exchange_mutation_authorized": false,
+    "merge_to_main_authorized": false
+  }
+}

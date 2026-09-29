@@ -1,0 +1,45 @@
+name: Binance BTC Options VRP Discovery V0.1
+on:
+  push:
+    branches: [btc-options-vrp-binance-eoh-source-v0.1]
+    paths:
+      - "labs/BTC_OPTIONS_VRP_BINANCE_001/DISCOVERY_PREFREEZE_V0.1.json"
+      - "labs/BTC_OPTIONS_VRP_BINANCE_001/DISCOVERY_ACTIVATION_RECEIPT_V0.1.md"
+      - "labs/BTC_OPTIONS_VRP_BINANCE_001/discovery_v01.py"
+      - ".github/workflows/btc-options-vrp-binance-discovery-v01.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  discovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - name: Compile frozen Discovery
+        run: python -m py_compile labs/BTC_OPTIONS_VRP_BINANCE_001/discovery_v01.py
+      - name: Run frozen primary Discovery
+        id: discovery
+        continue-on-error: true
+        run: python labs/BTC_OPTIONS_VRP_BINANCE_001/discovery_v01.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: BTC_OPTIONS_VRP_BINANCE_001_DISCOVERY_V0_1
+          path: binance_vrp_discovery_receipt_v01.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Report adjudication
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          x=json.load(open("binance_vrp_discovery_receipt_v01.json"))
+          print("verdict=",x["verdict"])
+          print("N=",x.get("stats",{}).get("N"))
+          print("gates=",x.get("gates"))
+          if x["verdict"]!="DISCOVERY_PASS_SHORT_VOL_CARRY_SIGNAL":
+              raise SystemExit(2)
+          PY

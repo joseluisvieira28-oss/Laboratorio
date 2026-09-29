@@ -1,0 +1,58 @@
+name: Binance BTC Options Prediscovery Geometry V0.1
+
+on:
+  push:
+    branches:
+      - btc-options-vrp-binance-eoh-source-v0.1
+    paths:
+      - "labs/BTC_OPTIONS_VRP_BINANCE_001/PREDISCOVERY_GEOMETRY_AUTHORITY_V0.1.json"
+      - "labs/BTC_OPTIONS_VRP_BINANCE_001/prediscovery_geometry_v01.py"
+      - ".github/workflows/btc-options-vrp-binance-prediscovery-geometry-v01.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  geometry:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile source-only geometry census
+        run: python -m py_compile labs/BTC_OPTIONS_VRP_BINANCE_001/prediscovery_geometry_v01.py
+      - name: Run frozen geometry census
+        id: census
+        continue-on-error: true
+        run: python labs/BTC_OPTIONS_VRP_BINANCE_001/prediscovery_geometry_v01.py
+      - name: Upload source geometry receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: BTC_OPTIONS_VRP_BINANCE_001_PREDISCOVERY_GEOMETRY_V0_1
+          path: binance_prediscovery_geometry_receipt_v01.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Enforce frozen geometry gate
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path("binance_prediscovery_geometry_receipt_v01.json")
+          if not p.exists():
+              raise SystemExit("receipt missing")
+          x=json.loads(p.read_text())
+          print("classification=",x["classification"])
+          print("qualifying_bins=",x["qualifying_bins"])
+          print("episode_counts=",{k:v["distinct_24h_episode_starts"] for k,v in x["bins"].items()})
+          assert x["outcomes_opened"] is False
+          assert x["returns_computed"] is False
+          assert x["vrp_computed"] is False
+          assert x["pnl_computed"] is False
+          if x["classification"] != "PREDISCOVERY_GEOMETRY_PASS":
+              raise SystemExit(2)
+          PY
