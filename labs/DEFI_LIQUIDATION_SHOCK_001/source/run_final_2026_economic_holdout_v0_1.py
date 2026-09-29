@@ -171,7 +171,7 @@ for c,e,x in sorted(resolved,key=lambda z:(z[1],z[0]["cluster_id"])):
                      "net_return_26bps":gross-PRIMARY_COST,"net_return_40bps":gross-HARD_STRESS})
     current_exit=x
 
-qa={"schema_version":"0.1","lab_id":LAB,"classification":"PROTECTED_2026_MARKET_DATA_PASS",
+qa={"schema_version":"0.1","lab_id":LAB,"classification":"FINAL_2026_MARKET_DATA_PASS",
     "source_cluster_count":len(clusters),"market_resolved_cluster_count":len(resolved),
     "market_pair_coverage":coverage,"missing_cluster_count":len(missing),"missing_examples":missing[:100],
     "archive_day_count":len(qas),"accepted_archive_day_count":sum(1 for q in qas if q.get("accepted")),
@@ -179,16 +179,16 @@ qa={"schema_version":"0.1","lab_id":LAB,"classification":"PROTECTED_2026_MARKET_
     "reconciliation":recon,"post_cutoff_2026_opened":False}
 if conflicts or coverage<0.95:
     qa["classification"]="SOURCE_BLOCKED_2026_FINAL_HOLDOUT"
-Path(OUT/"PROTECTED_2026_ECONOMIC_MARKET_QA_V0.1.json").write_text(json.dumps(qa,indent=2,sort_keys=True)+"\n")
-if qa["classification"]!="PROTECTED_2026_MARKET_DATA_PASS":
+Path(OUT/"FINAL_2026_ECONOMIC_MARKET_QA_V0.1.json").write_text(json.dumps(qa,indent=2,sort_keys=True)+"\n")
+if qa["classification"]!="FINAL_2026_MARKET_DATA_PASS":
     result={"schema_version":"0.1","lab_id":LAB,"classification":"SOURCE_BLOCKED_2026_FINAL_HOLDOUT",
             "economic_inference_computed":False,"source_cluster_count":len(clusters),
             "market_pair_coverage":coverage,"post_cutoff_2026_opened":False,
             "firewall":{"post_outcome_tuning":False,"live_trading":False,"orders":False,"wallets":False,"exchange_mutation":False,"merge_main":False}}
-    Path(OUT/"PROTECTED_2026_ECONOMIC_HOLDOUT_RECEIPT_V0.1.json").write_text(json.dumps(result,indent=2,sort_keys=True)+"\n")
+    Path(OUT/"FINAL_2026_ECONOMIC_HOLDOUT_RECEIPT_V0.1.json").write_text(json.dumps(result,indent=2,sort_keys=True)+"\n")
     print(json.dumps(result,indent=2));raise SystemExit(2)
 
-with Path(OUT/"PROTECTED_2026_SERIALIZED_TRADES_V0.1.ndjson").open("w") as f:
+with Path(OUT/"FINAL_2026_SERIALIZED_TRADES_V0.1.ndjson").open("w") as f:
     for r in accepted:f.write(json.dumps(r,sort_keys=True,separators=(",",":"))+"\n")
 
 def qtype7(vals,q):
@@ -241,5 +241,5 @@ result={"schema_version":"0.1","lab_id":LAB,
         "strategy_freeze":"STRATEGY_TRANSLATION_FREEZE_V0.1.md",
         "cost_freeze":"EXECUTION_COST_FREEZE_V0.1.md",
         "firewall":{"post_outcome_tuning":False,"live_trading":False,"orders":False,"wallets":False,"exchange_mutation":False,"merge_main":False}}
-Path(OUT/"PROTECTED_2026_ECONOMIC_HOLDOUT_RECEIPT_V0.1.json").write_text(json.dumps(result,indent=2,sort_keys=True)+"\n")
+Path(OUT/"FINAL_2026_ECONOMIC_HOLDOUT_RECEIPT_V0.1.json").write_text(json.dumps(result,indent=2,sort_keys=True)+"\n")
 print(json.dumps(result,indent=2,sort_keys=True))
