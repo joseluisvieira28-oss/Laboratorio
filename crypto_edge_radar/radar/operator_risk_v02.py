@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -39,21 +40,39 @@ def _receipt_pnl(row: dict[str, Any]) -> float:
     raise ValueError("reconciliation missing realized net PnL")
 
 
+def _receipt_roots(receipt_root: str | Path) -> list[Path]:
+    roots = [Path(receipt_root)]
+    extra = os.getenv("CRYPTO_LAB_EXTERNAL_RECEIPT_ROOTS", "").strip()
+    if extra:
+        for raw in extra.split(os.pathsep):
+            raw = raw.strip()
+            if raw:
+                roots.append(Path(raw))
+    unique: list[Path] = []
+    seen: set[str] = set()
+    for root in roots:
+        key = str(root.resolve()) if root.exists() else str(root)
+        if key not in seen:
+            seen.add(key)
+            unique.append(root)
+    return unique
+
+
 def local_active_trade_paths(receipt_root: str | Path) -> list[str]:
-    root = Path(receipt_root)
-    if not root.exists():
-        return []
     out: list[str] = []
-    for path in root.rglob("ACTIVE_TRADE_STATE.json"):
-        try:
-            row = _load(path)
-        except Exception:
+    for root in _receipt_roots(receipt_root):
+        if not root.exists():
             continue
-        if row.get("state") not in {"FILLED", "EXIT_PENDING"}:
-            continue
-        if (path.parent / "POST_TRADE_RECONCILIATION.json").exists():
-            continue
-        out.append(str(path))
+        for path in root.rglob("ACTIVE_TRADE_STATE.json"):
+            try:
+                row = _load(path)
+            except Exception:
+                continue
+            if row.get("state") not in {"FILLED", "EXIT_PENDING"}:
+                continue
+            if (path.parent / "POST_TRADE_RECONCILIATION.json").exists():
+                continue
+            out.append(str(path))
     return sorted(out)
 
 
@@ -69,8 +88,9 @@ def realized_loss_state(
     rolling = 0.0
     counted: list[str] = []
 
-    root = Path(receipt_root)
-    if root.exists():
+    for root in _receipt_roots(receipt_root):
+        if not root.exists():
+            continue
         for path in root.rglob("POST_TRADE_RECONCILIATION.json"):
             try:
                 row = _load(path)
