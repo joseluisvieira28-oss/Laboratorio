@@ -1,0 +1,49 @@
+name: DLS Direction Source Audit V0.1
+
+on:
+  push:
+    branches: [dls-field-enrichment-v01]
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_DIRECTION_SOURCE_AUDIT_V01.marker
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download immutable source-cluster census
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36465385517
+          name: dls-source-cluster-sample-gate-v01
+          path: sample_gate
+      - name: Compile audit
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/audit_direction_source_v0_1.py
+      - name: Execute source-role audit only
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/audit_direction_source_v0_1.py
+          --sample-root sample_gate
+          --builder labs/DEFI_LIQUIDATION_SHOCK_001/source/build_source_cluster_sample_gate_v0_1.py
+          --oos-lock labs/DEFI_LIQUIDATION_SHOCK_001/OOS_ADJUDICATION_LOCK_V0.1.json
+      - name: Upload immutable audit receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-direction-source-audit-v01
+          path: labs/DEFI_LIQUIDATION_SHOCK_001/DIRECTION_SOURCE_AUDIT_RECEIPT_V0.1.json
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Firewall
+        if: always()
+        run: echo NO_2025_2026_OUTCOMES_NO_TRADING_NO_MAIN_MERGE
