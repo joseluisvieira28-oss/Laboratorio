@@ -1,0 +1,50 @@
+name: LIQUIDATION-PRESSURE-002 Forward Economic Capture
+
+on:
+  push:
+    branches:
+      - liquidation-pressure-002-forward-v0.1
+    paths:
+      - 'labs/LIQUIDATION_PRESSURE_002_FORWARD/FORWARD_TRIGGER.txt'
+      - '.github/workflows/liquidation_pressure_002_forward_economic_capture.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  forward-capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 65
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pinned websocket client
+        run: pip install websockets==15.0.1
+      - name: Verify canonical source-only threshold receipt
+        run: |
+          python - <<'PY'
+          import json, pathlib
+          p=pathlib.Path('labs/LIQUIDATION_PRESSURE_002_FORWARD/calibration/source_calibration_status_v0_1.json')
+          x=json.loads(p.read_text())
+          assert x.get('canonical_thresholds_emitted') is True
+          assert x.get('verdict') == 'SOURCE_CALIBRATION_PASS_READY_TO_FREEZE'
+          assert x.get('economic_outcomes_opened') is False
+          print('CANONICAL_THRESHOLD_RECEIPT_PASS', x['generated_at_utc'])
+          PY
+      - name: Collect 45 minutes of strictly forward public evidence
+        run: python labs/LIQUIDATION_PRESSURE_002_FORWARD/forward_collector_v0_1.py --seconds 2700
+      - name: Run frozen economic engine on this forward shard
+        run: |
+          python labs/LIQUIDATION_PRESSURE_002_FORWARD/economic_engine_v0_1.py \
+            --thresholds labs/LIQUIDATION_PRESSURE_002_FORWARD/calibration/source_calibration_status_v0_1.json \
+            --input labs/LIQUIDATION_PRESSURE_002_FORWARD/evidence/forward_raw_v0_1.jsonl \
+            --output-dir labs/LIQUIDATION_PRESSURE_002_FORWARD/evidence/economic
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: LP2-FORWARD-ECONOMIC-${{ github.run_id }}
+          retention-days: 30
+          path: labs/LIQUIDATION_PRESSURE_002_FORWARD/evidence/
