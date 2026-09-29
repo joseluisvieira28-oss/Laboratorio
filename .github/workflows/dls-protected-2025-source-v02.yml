@@ -1,4 +1,4 @@
-name: DLS Protected 2025 Source Partitioned V0.2
+name: DLS Protected 2025 Source Authority V0.2 Partitioned
 
 on:
   push:
@@ -16,25 +16,10 @@ jobs:
       fail-fast: false
       max-parallel: 4
       matrix:
-        include:
-          - {protocol: marginfi, part: 2025Q1, start: '2025-01-01T00:00:00Z', end: '2025-04-01T00:00:00Z'}
-          - {protocol: marginfi, part: 2025Q2, start: '2025-04-01T00:00:00Z', end: '2025-07-01T00:00:00Z'}
-          - {protocol: marginfi, part: 2025Q3, start: '2025-07-01T00:00:00Z', end: '2025-10-01T00:00:00Z'}
-          - {protocol: marginfi, part: 2025Q4, start: '2025-10-01T00:00:00Z', end: '2026-01-01T00:00:00Z'}
-          - {protocol: save0c, part: 2025Q1, start: '2025-01-01T00:00:00Z', end: '2025-04-01T00:00:00Z'}
-          - {protocol: save0c, part: 2025Q2, start: '2025-04-01T00:00:00Z', end: '2025-07-01T00:00:00Z'}
-          - {protocol: save0c, part: 2025Q3, start: '2025-07-01T00:00:00Z', end: '2025-10-01T00:00:00Z'}
-          - {protocol: save0c, part: 2025Q4, start: '2025-10-01T00:00:00Z', end: '2026-01-01T00:00:00Z'}
-          - {protocol: kamino, part: 2025Q1, start: '2025-01-01T00:00:00Z', end: '2025-04-01T00:00:00Z'}
-          - {protocol: kamino, part: 2025Q2, start: '2025-04-01T00:00:00Z', end: '2025-07-01T00:00:00Z'}
-          - {protocol: kamino, part: 2025Q3, start: '2025-07-01T00:00:00Z', end: '2025-10-01T00:00:00Z'}
-          - {protocol: kamino, part: 2025Q4, start: '2025-10-01T00:00:00Z', end: '2026-01-01T00:00:00Z'}
-          - {protocol: save11, part: 2025Q1, start: '2025-01-01T00:00:00Z', end: '2025-04-01T00:00:00Z'}
-          - {protocol: save11, part: 2025Q2, start: '2025-04-01T00:00:00Z', end: '2025-07-01T00:00:00Z'}
-          - {protocol: save11, part: 2025Q3, start: '2025-07-01T00:00:00Z', end: '2025-10-01T00:00:00Z'}
-          - {protocol: save11, part: 2025Q4, start: '2025-10-01T00:00:00Z', end: '2026-01-01T00:00:00Z'}
+        protocol: [marginfi, save0c, kamino, save11]
+        month: ["01","02","03","04","05","06","07","08","09","10","11","12"]
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
         with:
@@ -42,21 +27,34 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Collect partition source-only
-        run: >
-          python labs/DEFI_LIQUIDATION_SHOCK_001/source/collect_protected_2025_source_v0_1.py
-          --protocol ${{ matrix.protocol }}
-          --start ${{ matrix.start }}
-          --end ${{ matrix.end }}
-          --out protected_parts/${{ matrix.protocol }}-${{ matrix.part }}.json
+      - name: Compile collector
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/collect_protected_2025_source_v0_1.py
+      - name: Collect one frozen month
+        env:
+          PROTOCOL: ${{ matrix.protocol }}
+          MONTH: ${{ matrix.month }}
+        run: |
+          python - <<'PY'
+          import os,subprocess,sys
+          m=int(os.environ["MONTH"]);p=os.environ["PROTOCOL"]
+          start=f"2025-{m:02d}-01T00:00:00Z"
+          end=("2026-01-01T00:00:00Z" if m==12 else f"2025-{m+1:02d}-01T00:00:00Z")
+          out=f"protected_source/{p}-2025{m:02d}.json"
+          subprocess.check_call([sys.executable,
+            "labs/DEFI_LIQUIDATION_SHOCK_001/source/collect_protected_2025_source_v0_1.py",
+            "--protocol",p,"--start",start,"--end",end,"--out",out])
+          PY
       - name: Upload partition receipt
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: dls-protected-2025-v02-${{ matrix.protocol }}-${{ matrix.part }}
-          path: protected_parts/${{ matrix.protocol }}-${{ matrix.part }}.json
+          name: dls-protected-2025-source-v02-${{ matrix.protocol }}-${{ matrix.month }}
+          path: protected_source/${{ matrix.protocol }}-2025${{ matrix.month }}.json
           if-no-files-found: warn
           retention-days: 90
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_NO_2025_PRICES_NO_2026_NO_TRADING
 
   finalize:
     needs: collect
@@ -69,23 +67,22 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - uses: actions/download-artifact@v4
+      - name: Download all partition receipts
+        uses: actions/download-artifact@v4
         with:
-          pattern: dls-protected-2025-v02-*
-          path: protected_parts
+          pattern: dls-protected-2025-source-v02-*
+          path: protected_source
           merge-multiple: true
-      - name: Compile exact-union finalizer
-        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/finalize_protected_2025_source_partitioned_v0_2.py
-      - name: Finalize exact source union
-        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/finalize_protected_2025_source_partitioned_v0_2.py --root protected_parts
-      - name: Upload source authority
+      - name: Finalize global 2025 source authority
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/finalize_protected_2025_source_v0_2.py --root protected_source
+      - name: Upload authority
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: dls-protected-2025-source-authority-v01
+          name: dls-protected-2025-source-authority-v02
           path: |
-            labs/DEFI_LIQUIDATION_SHOCK_001/PROTECTED_2025_SOURCE_AUTHORITY_RECEIPT_V0.1.json
-            labs/DEFI_LIQUIDATION_SHOCK_001/PROTECTED_2025_SOURCE_CLUSTER_CENSUS_V0.1.ndjson
+            labs/DEFI_LIQUIDATION_SHOCK_001/PROTECTED_2025_SOURCE_AUTHORITY_RECEIPT_V0.2.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/PROTECTED_2025_SOURCE_CLUSTER_CENSUS_V0.2.ndjson
           if-no-files-found: warn
           retention-days: 90
       - name: Firewall
