@@ -1,0 +1,44 @@
+name: DLS Post-Liquidator Hedge Drift Route Probe V0.1
+on:
+  push:
+    branches:
+      - dls-post-liquidator-hedge-v01
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_POST_LIQUIDATOR_HEDGE_DRIFT_ROUTE_V01.marker
+permissions:
+  actions: read
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download canonical Drift source partition
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36264543005
+          name: dls-field-enrichment-drift-drift-202301
+          path: drift_source
+      - name: Compile
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/probe_post_liquidator_hedge_drift_route_v0_1.py
+      - name: Execute source-only 60s route probe
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/probe_post_liquidator_hedge_drift_route_v0_1.py
+      - name: Upload receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-post-liquidator-hedge-drift-route-v01
+          path: labs/DEFI_LIQUIDATION_SHOCK_001/POST_LIQUIDATOR_HEDGE_DRIFT_ROUTE_PROBE_RECEIPT_V0.1.json
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_60S_NO_PRICES_2025_2026_CLOSED
