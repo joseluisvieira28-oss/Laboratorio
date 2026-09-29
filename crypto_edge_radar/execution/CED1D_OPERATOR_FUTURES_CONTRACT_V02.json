@@ -1,0 +1,45 @@
+{
+  "contract_id": "CED1D-0031-OPERATOR-FUTURES-V0.2",
+  "frozen_utc": "2026-09-29T14:12:00Z",
+  "status": "SOURCE_LOCKED__TRANSPORT_AND_RISK_MAPPING_PREPARED",
+  "candidate_id": "CED1D-0031",
+  "scientific_credit": false,
+  "parent_scientific_instrument": "BINANCE_USDM_AVAXUSDT",
+  "operator_route": {
+    "venue": "MEXC_FUTURES",
+    "symbol": "AVAX_USDT",
+    "direction_source": "immutable canonical CED1D event.direction",
+    "mapping": {
+      "1": "LONG",
+      "-1": "SHORT"
+    },
+    "any_other_direction": "NO_ORDER",
+    "entry_target": "00:01:00 UTC after canonical signal completion",
+    "max_late_seconds": 5,
+    "exit_target": "00:01:00 UTC next calendar day",
+    "initial_isolated_margin_usdt": 10,
+    "leverage": 5,
+    "max_notional_usdt": 50,
+    "margin_mode": "ISOLATED",
+    "auto_margin_add": false,
+    "market_orders_only": true,
+    "max_projected_roundtrip_friction_bps": 20
+  },
+  "activation_blockers": [
+    "CED1D source must be fresh and entry-ready; WAITING_SOURCE_ARCHIVE is not a live signal",
+    "canonical immutable event.direction required",
+    "no global Futures position/order",
+    "global operator risk state PASS",
+    "AVAX_USDT fee/contract/funding/clock readiness PASS",
+    "friction <=20 bps",
+    "candidate-specific ARMED state enabled prospectively before the signal",
+    "tested CED1D signal bridge installed"
+  ],
+  "reuse": {
+    "transport": "radar.mexc_operator_futures_transport_v02.MEXCOperatorFuturesTransportV02",
+    "engine": "radar.operator_futures_engine_v02.OperatorFuturesEngineV02",
+    "arbitration": "radar.global_fishing_dispatcher_v02.arbitrate_due_signals"
+  },
+  "live_activation_allowed_now": false,
+  "main_merge": false
+}
