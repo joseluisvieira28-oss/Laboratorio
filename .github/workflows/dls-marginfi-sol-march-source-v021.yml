@@ -1,0 +1,120 @@
+name: DLS Marginfi SOL March Source Hotfix V0.2.1
+
+on:
+  push:
+    branches:
+      - dls-marginfi-transient-reversion-v01
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_MARGINFI_SOL_MARCH_SOURCE_V021.marker
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  march:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download canonical March field-enrichment partition
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36263998920
+          name: dls-field-enrichment-ms-marginfi-202403
+          path: field_month
+
+      - name: Download source-authoritative Marginfi bank registry
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36312418451
+          name: dls-marginfi-bank-unit-source-completion-v02
+          path: bank_registry
+
+      - name: Compile rate-limit hardened collector
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/census_marginfi_sol_march_v0_2_1.py
+
+      - name: Execute March SOL-only source census
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/census_marginfi_sol_march_v0_2_1.py
+          --field-root field_month
+          --bank-registry-root bank_registry
+          --month 202403
+          --workers 4
+
+      - name: Upload immutable March source evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-marginfi-sol-march-source-v021
+          path: |
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_SOL_FEBMAR_SOURCE_202403_RECEIPT_V0.2.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_SOL_FEBMAR_SOURCE_202403_ROWS_V0.2.ndjson
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_SOL_FEBMAR_POPULATION_202403_V0.2.ndjson
+          if-no-files-found: warn
+          retention-days: 90
+
+  merge:
+    if: always()
+    needs: march
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download immutable February PASS
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36589912203
+          name: dls-marginfi-sol-febmar-source-202402-v02
+          path: months/feb
+
+      - name: Download current March source evidence
+        uses: actions/download-artifact@v4
+        with:
+          pattern: dls-marginfi-sol-march-source-v021
+          path: months/mar
+          merge-multiple: false
+
+      - name: Compile frozen SOL source merge
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/merge_marginfi_sol_febmar_source_v0_2.py
+
+      - name: Merge February PASS + March V0.2.1
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/merge_marginfi_sol_febmar_source_v0_2.py
+          --root months
+
+      - name: Upload terminal SOL Feb-Mar source evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-marginfi-sol-febmar-signed-flow-source-v021
+          path: |
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_SOL_FEBMAR_SIGNED_FLOW_SOURCE_RECEIPT_V0.2.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_SOL_FEBMAR_SIGNED_FLOW_SOURCE_ROWS_V0.2.ndjson
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_SOL_FEBMAR_SOURCE_POPULATION_V0.2.ndjson
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_RATE_LIMIT_HOTFIX_NO_MARKET_OUTCOMES_NO_TRADING
