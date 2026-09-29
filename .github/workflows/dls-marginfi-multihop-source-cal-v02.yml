@@ -1,0 +1,66 @@
+name: DLS Marginfi Multi-Hop Source Calibration V0.2
+
+on:
+  push:
+    branches:
+      - dls-signed-flow-authority-v01
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_MARGINFI_MULTIHOP_SOURCE_CAL_V02.marker
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  calibrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download immutable Marginfi membership evidence
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36549220851
+          name: dls-marginfi-jupiter-swap-direction-cal-v01
+          path: members
+
+      - name: Download source-authoritative Marginfi bank registry
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36312418451
+          name: dls-marginfi-bank-unit-source-completion-v02
+          path: bank_registry
+
+      - name: Compile frozen V0.2 source calibration
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/calibrate_marginfi_jupiter_multihop_direction_v0_2.py
+
+      - name: Execute disjoint ranks 65-128 calibration
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/calibrate_marginfi_jupiter_multihop_direction_v0_2.py
+          --members-root members
+          --bank-registry-root bank_registry
+
+      - name: Upload immutable V0.2 calibration evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-marginfi-multihop-source-cal-v02
+          path: |
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_JUPITER_MULTI_HOP_DIRECTION_CALIBRATION_RECEIPT_V0.2.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_JUPITER_MULTI_HOP_DIRECTION_CALIBRATION_ROWS_V0.2.ndjson
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_DISJOINT_SAMPLE_NO_PRICES_NO_RETURNS_NO_TRADING
