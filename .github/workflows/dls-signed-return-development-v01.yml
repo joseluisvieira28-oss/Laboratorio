@@ -1,0 +1,62 @@
+name: DLS Signed Return Development V0.1
+
+on:
+  push:
+    branches:
+      - dls-signed-return-v01
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_DLS_SIGNED_RETURN_DEV_V01.marker
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  development:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download canonical Jan-2023 signed source
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36525438771
+          name: dls-drift-jan2023-signed-flow-population-v01
+          path: signed_source
+      - name: Download frozen execution source gate
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36487730407
+          name: dls-v02-execution-source-v01
+          path: execution_source_gate
+      - name: Compile frozen executor
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/run_dls_signed_return_dev_v0_1.py
+      - name: Execute signed-return development
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/run_dls_signed_return_dev_v0_1.py
+          --signed-source signed_source
+          --execution-source-gate execution_source_gate
+          --workers 8
+      - name: Upload immutable development evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-signed-return-development-v01
+          path: |
+            labs/DEFI_LIQUIDATION_SHOCK_001/DLS_SIGNED_RETURN_V01_DEVELOPMENT_RECEIPT_V0.1.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/DLS_SIGNED_RETURN_V01_MARKET_DATA_MANIFEST_V0.1.ndjson
+            labs/DEFI_LIQUIDATION_SHOCK_001/DLS_SIGNED_RETURN_V01_DEVELOPMENT_TRADE_LEDGER_V0.1.ndjson
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Firewall
+        if: always()
+        run: echo DEVELOPMENT_JAN2023_ONLY_OOS_HOLDOUT_2025_2026_CLOSED_NO_TRADING
