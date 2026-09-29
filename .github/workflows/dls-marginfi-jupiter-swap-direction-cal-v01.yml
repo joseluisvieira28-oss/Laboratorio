@@ -22,14 +22,24 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Download Marginfi Jupiter membership PASS
+
+      - name: Download immutable Marginfi Jupiter shard evidence
         uses: actions/download-artifact@v4
         with:
           github-token: ${{ github.token }}
           repository: ${{ github.repository }}
           run-id: 36546170744
-          name: dls-marginfi-jupiter-route-class-v02
-          path: members
+          pattern: dls-marginfi-jupiter-route-mfi-*-v02
+          path: shard_evidence
+
+      - name: Compile frozen membership merge
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/merge_marginfi_jupiter_route_shards_v0_2.py
+
+      - name: Recompute and require membership PASS
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/merge_marginfi_jupiter_route_shards_v0_2.py
+          --root shard_evidence
+
       - name: Download source-authoritative Marginfi bank registry
         uses: actions/download-artifact@v4
         with:
@@ -38,23 +48,29 @@ jobs:
           run-id: 36312418451
           name: dls-marginfi-bank-unit-source-completion-v02
           path: bank_registry
+
       - name: Compile frozen calibration decoder
         run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/calibrate_marginfi_jupiter_swap_direction_v0_1.py
-      - name: Execute source-only calibration
+
+      - name: Execute source-only calibration after membership PASS
         run: >
           python labs/DEFI_LIQUIDATION_SHOCK_001/source/calibrate_marginfi_jupiter_swap_direction_v0_1.py
-          --members-root members
+          --members-root labs/DEFI_LIQUIDATION_SHOCK_001
           --bank-registry-root bank_registry
+
       - name: Upload immutable calibration evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: dls-marginfi-jupiter-swap-direction-cal-v01
           path: |
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_JUPITER_ROUTE_CLASS_MEMBERSHIP_RECEIPT_V0.2.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_JUPITER_ROUTE_CLASS_MEMBERS_V0.2.ndjson
             labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_JUPITER_SWAP_DIRECTION_CALIBRATION_RECEIPT_V0.1.json
             labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_JUPITER_SWAP_DIRECTION_CALIBRATION_ROWS_V0.1.ndjson
           if-no-files-found: warn
           retention-days: 90
+
       - name: Firewall
         if: always()
-        run: echo SOURCE_ONLY_NO_PRICES_NO_RETURNS_2025_2026_CLOSED_NO_TRADING
+        run: echo MEMBERSHIP_GATE_THEN_SOURCE_ONLY_CALIBRATION_NO_PRICES_NO_RETURNS_2025_2026_CLOSED
