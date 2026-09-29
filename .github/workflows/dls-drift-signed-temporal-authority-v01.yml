@@ -1,0 +1,34 @@
+name: DLS Drift 2022-2024 Signed Semantics Temporal Authority V0.1
+on:
+  push:
+    branches: [dls-signed-flow-authority-v01]
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_DRIFT_SIGNED_TEMPORAL_AUTHORITY_V01.marker
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: "${{ github.sha }}"}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Clone canonical historical protocol repository
+        run: git clone --filter=blob:none https://github.com/velocity-exchange/protocol-v2.git protocol_source
+      - name: Compile temporal authority auditor
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/audit_drift_signed_semantics_temporal_v0_1.py
+      - name: Audit all canonical source states
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/audit_drift_signed_semantics_temporal_v0_1.py --protocol-repo protocol_source
+      - name: Upload immutable authority receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-drift-signed-semantics-temporal-authority-v01
+          path: labs/DEFI_LIQUIDATION_SHOCK_001/DRIFT_2022_2024_SIGNED_SEMANTICS_TEMPORAL_AUTHORITY_RECEIPT_V0.1.json
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_NO_PRICES_NO_RETURNS_2025_2026_CLOSED_NO_TRADING
