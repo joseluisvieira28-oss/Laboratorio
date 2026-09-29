@@ -1,0 +1,73 @@
+{
+  "receipt_id": "OPTIONS-SPOTPERP-001-V2.1-FEE-ZERO-TOTALFEE-HOTFIX-EVIDENCE-V0.1",
+  "observed_at_utc": "2026-09-29T11:31:05Z",
+  "source": "LOCAL_OPERATOR_READONLY_RECONCILIATION",
+  "status": "BUG_CONFIRMED__HOTFIX_VALIDATED__INSTALL_DEFERRED_WHILE_LIVE_POSITION_ACTIVE",
+  "active_runtime": {
+    "signal_identity": "OPTIONS-SPOTPERP-001:V2.1:2026-09-28",
+    "direction": "SHORT",
+    "status": "ACTIVE_WAITING_EXIT",
+    "exit_target_utc": "2026-09-30T00:00:00Z",
+    "futures_armed": false,
+    "kill_switch": false,
+    "note": "Existing live position remains managed; removal of ARMED marker blocks future entries only."
+  },
+  "bug": {
+    "symptom": "MEXC order payload exposes totalFee=0 while takerFee is non-zero. Legacy fee extractor returned totalFee whenever the field existed, thereby dropping the non-zero taker fee.",
+    "legacy_effect": "entry_fee_usdt and exit_fee_usdt could be recorded as zero even when MEXC charged taker fees.",
+    "fix": "Use positive totalFee when available; otherwise sum absolute takerFee+makerFee components."
+  },
+  "reconciled_closed_trades": [
+    {
+      "signal_identity": "OPTIONS-SPOTPERP-001:V2.1:2026-09-25",
+      "entry_order_id": "858617735603639296",
+      "exit_order_id": "858980098269861888",
+      "order_id_match": true,
+      "entry_fee_usdt": 0.00672396,
+      "exit_fee_usdt": 0.00675169,
+      "gross_close_profit_usdt": -0.03466,
+      "funding_hold_fee_usdt": 0.0007,
+      "stored_net_pnl_usdt": -0.033960000000000004,
+      "corrected_net_pnl_usdt": -0.04743565
+    },
+    {
+      "signal_identity": "OPTIONS-SPOTPERP-001:V2.1:2026-09-26",
+      "entry_order_id": "858980216788309504",
+      "exit_order_id": "859342455743534612",
+      "order_id_match": true,
+      "entry_fee_usdt": 0.00675228,
+      "exit_fee_usdt": 0.00675464,
+      "gross_close_profit_usdt": -0.00295,
+      "funding_hold_fee_usdt": 0.0003,
+      "stored_net_pnl_usdt": -0.00265,
+      "corrected_net_pnl_usdt": -0.01615692
+    },
+    {
+      "signal_identity": "OPTIONS-SPOTPERP-001:V2.1:2026-09-27",
+      "entry_order_id": "859342585796317696",
+      "exit_order_id": "859704833945458176",
+      "order_id_match": true,
+      "entry_fee_usdt": 0.00675284,
+      "exit_fee_usdt": 0.00667683,
+      "gross_close_profit_usdt": 0.09501,
+      "funding_hold_fee_usdt": 0.0006,
+      "stored_net_pnl_usdt": 0.09561,
+      "corrected_net_pnl_usdt": 0.08218033
+    }
+  ],
+  "aggregate": {
+    "stored_net_sum_usdt": 0.059,
+    "total_attributable_fees_usdt": 0.04041224,
+    "corrected_net_sum_usdt": 0.01858776,
+    "corrected_positive_trade_count": 1,
+    "corrected_negative_trade_count": 2,
+    "note": "This is execution-fork accounting evidence only. It does not change or promote the scientific parent."
+  },
+  "safety": {
+    "exchange_mutation_performed": false,
+    "new_order_performed": false,
+    "live_executor_replaced": false,
+    "main_merged": false,
+    "scientific_parent_changed": false
+  }
+}
