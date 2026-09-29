@@ -100,6 +100,15 @@ The cutoff is the last fully closed UTC day before this freeze was made. Data at
 
 If opened, the 2026 final holdout uses this exact same strategy, 26 bps primary cost hurdle, 40 bps supportive stress, source mapping, timing, serialization, bootstrap and classification with no parameter change. It requires serialized trade N >= 500 and the same PASS gates as 2025.
 
+2026 deterministic bootstrap seed text is prospectively fixed as:
+DEFI-LIQUIDATION-SHOCK-001 + "2026-final-holdout" + "5m" + "V0.1"
+using the full unsigned SHA256 integer, exactly analogous to the 2025 gate.
+
+2026 terminal taxonomy is prospectively fixed:
+- SURVIVES_2026_FINAL_HOLDOUT
+- NO_EDGE_2026_FINAL_HOLDOUT
+- SOURCE_BLOCKED_2026_FINAL_HOLDOUT
+
 ## Firewall
 protected_2025_outcomes_opened=false
 protected_2026_outcomes_opened=false
