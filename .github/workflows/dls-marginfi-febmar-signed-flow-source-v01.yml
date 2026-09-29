@@ -1,0 +1,111 @@
+name: DLS Marginfi Feb-Mar Signed Flow Source V0.1
+
+on:
+  push:
+    branches:
+      - dls-marginfi-transient-reversion-v01
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_MARGINFI_FEBMAR_SIGNED_FLOW_SOURCE_V01.marker
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  shard:
+    strategy:
+      fail-fast: false
+      max-parallel: 12
+      matrix:
+        include:
+          - {sid: fm-01, start: "2024-02-01T00:00:00Z", end: "2024-02-06T00:00:00Z"}
+          - {sid: fm-02, start: "2024-02-06T00:00:00Z", end: "2024-02-11T00:00:00Z"}
+          - {sid: fm-03, start: "2024-02-11T00:00:00Z", end: "2024-02-16T00:00:00Z"}
+          - {sid: fm-04, start: "2024-02-16T00:00:00Z", end: "2024-02-21T00:00:00Z"}
+          - {sid: fm-05, start: "2024-02-21T00:00:00Z", end: "2024-02-26T00:00:00Z"}
+          - {sid: fm-06, start: "2024-02-26T00:00:00Z", end: "2024-03-02T00:00:00Z"}
+          - {sid: fm-07, start: "2024-03-02T00:00:00Z", end: "2024-03-07T00:00:00Z"}
+          - {sid: fm-08, start: "2024-03-07T00:00:00Z", end: "2024-03-12T00:00:00Z"}
+          - {sid: fm-09, start: "2024-03-12T00:00:00Z", end: "2024-03-17T00:00:00Z"}
+          - {sid: fm-10, start: "2024-03-17T00:00:00Z", end: "2024-03-22T00:00:00Z"}
+          - {sid: fm-11, start: "2024-03-22T00:00:00Z", end: "2024-03-27T00:00:00Z"}
+          - {sid: fm-12, start: "2024-03-27T00:00:00Z", end: "2024-04-01T00:00:00Z"}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download source-authoritative Marginfi bank registry
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36312418451
+          name: dls-marginfi-bank-unit-source-completion-v02
+          path: bank_registry
+      - name: Compile frozen source shard
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/census_marginfi_febmar_signed_flow_shard_v0_1.py
+      - name: Execute source-only shard
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/census_marginfi_febmar_signed_flow_shard_v0_1.py
+          --start "${{ matrix.start }}"
+          --end "${{ matrix.end }}"
+          --shard-id "${{ matrix.sid }}"
+          --bank-registry-root bank_registry
+      - name: Upload immutable shard evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-marginfi-febmar-source-${{ matrix.sid }}-v01
+          path: |
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_FEBMAR_SOURCE_SHARD_${{ matrix.sid }}_RECEIPT_V0.1.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_FEBMAR_SOURCE_SHARD_${{ matrix.sid }}_POPULATION_V0.1.ndjson
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_FEBMAR_SOURCE_SHARD_${{ matrix.sid }}_MEMBERS_V0.1.ndjson
+          if-no-files-found: warn
+          retention-days: 90
+
+  merge:
+    if: always()
+    needs: shard
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download source shards
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ github.run_id }}
+          pattern: dls-marginfi-febmar-source-*-v01
+          path: shard_evidence
+          merge-multiple: false
+      - name: Compile frozen merge
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/merge_marginfi_febmar_signed_flow_v0_1.py
+      - name: Merge and adjudicate source gate
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/merge_marginfi_febmar_signed_flow_v0_1.py
+          --root shard_evidence
+      - name: Upload terminal source evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-marginfi-febmar-signed-flow-source-v01
+          path: |
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_JUPITER_FEBMAR_SIGNED_FLOW_SOURCE_RECEIPT_V0.1.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_JUPITER_FEBMAR_SOURCE_POPULATION_V0.1.ndjson
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_JUPITER_FEBMAR_SIGNED_FLOW_SOURCE_ROWS_V0.1.ndjson
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_NO_FEBMAR_MARKET_OUTCOMES_NO_TRADING
