@@ -75,6 +75,8 @@ class BNBAutoLiveV01Tests(unittest.TestCase):
                 state_path=str(Path(td) / "state.json"),
                 source=FakeSource([event]),
             )
+            pre_ms = int(datetime(2026, 9, 29, 11, 59, 30, tzinfo=timezone.utc).timestamp() * 1000)
+            sup.run_cycle(now_ms=pre_ms)
             state = sup.run_cycle(now_ms=now_ms)
             self.assertEqual(state["status"], "GLOBAL_SLOT_OCCUPIED")
             self.assertEqual(engine.entered, [])
@@ -90,6 +92,8 @@ class BNBAutoLiveV01Tests(unittest.TestCase):
                 state_path=str(Path(td) / "state.json"),
                 source=FakeSource([event]),
             )
+            pre_ms = int(datetime(2026, 9, 29, 11, 59, 30, tzinfo=timezone.utc).timestamp() * 1000)
+            sup.run_cycle(now_ms=pre_ms)
             state = sup.run_cycle(now_ms=now_ms)
             self.assertEqual(state["status"], "FILLED_EXIT_PENDING")
             self.assertEqual(len(engine.entered), 1)
