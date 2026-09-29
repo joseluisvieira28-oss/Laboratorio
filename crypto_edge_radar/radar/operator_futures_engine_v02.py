@@ -741,34 +741,6 @@ class OperatorFuturesEngineV02:
                 session_dir=str(session),
             )
 
-        try:
-            position = self._ensure_position_risk(
-                transport=transport,
-                symbol=symbol,
-                direction=direction,
-                position=position,
-                session=session,
-            )
-        except Exception as exc:
-            try:
-                self._flatten_position(
-                    transport=transport,
-                    symbol=symbol,
-                    direction=direction,
-                    position=position,
-                    signal_key=signal_key,
-                    session=session,
-                    reason=f"POST_FILL_RISK_VERIFY_FAILED:{type(exc).__name__}",
-                )
-            finally:
-                return self._status(
-                    "FAIL_CLOSED_EMERGENCY_EXIT_SUBMITTED",
-                    candidate_id=candidate_id,
-                    signal_identity=signal_key,
-                    error=f"{type(exc).__name__}:{exc}",
-                    session_dir=str(session),
-                )
-
         entry_fee = order_fee_usdt(order)
         fill_price = float(order.get("dealAvgPrice") or position.get("openAvgPrice"))
         _atomic_write(session / "FILL_RECEIPT.json", {
@@ -781,6 +753,9 @@ class OperatorFuturesEngineV02:
             "deal_volume_contracts": order.get("dealVol"),
         })
 
+        # Persist active state immediately after a provable fill, before any
+        # post-fill risk mutation/verification. A crash or risk failure can
+        # therefore never leave a filled position invisible to the supervisor.
         active = {
             "receipt_type": "ACTIVE_TRADE_STATE",
             "state": "EXIT_PENDING",
@@ -802,11 +777,37 @@ class OperatorFuturesEngineV02:
             "planned_initial_margin_usdt": sizing["estimated_initial_margin_usdt"],
             "leverage": REQUIRED_LEVERAGE,
             "margin_mode": "ISOLATED",
-            "auto_margin_add": False,
+            "auto_margin_add": None,
+            "post_fill_risk_verified": False,
             "scientific_credit": False,
             "execution_failure": False,
         }
-        _atomic_write(session / "ACTIVE_TRADE_STATE.json", active)
+        active_path = session / "ACTIVE_TRADE_STATE.json"
+        _atomic_write(active_path, active)
+
+        try:
+            position = self._ensure_position_risk(
+                transport=transport,
+                symbol=symbol,
+                direction=direction,
+                position=position,
+                session=session,
+            )
+        except Exception as exc:
+            active["execution_failure"] = True
+            active["post_fill_risk_verified"] = False
+            active["post_fill_risk_error"] = f"{type(exc).__name__}:{exc}"
+            _atomic_write(active_path, active)
+            return self._exit_active(
+                active_path=active_path,
+                active=active,
+                reason="POST_FILL_RISK_FAILURE",
+            )
+
+        active["volume_contracts"] = int(float(position["holdVol"]))
+        active["auto_margin_add"] = False
+        active["post_fill_risk_verified"] = True
+        _atomic_write(active_path, active)
         return self._status(
             "FILLED_EXIT_PENDING",
             candidate_id=candidate_id,
