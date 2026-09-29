@@ -6,7 +6,7 @@ import json
 from .config import Settings
 from .dashboard import render
 from .database import Journal
-from .engines import calculate_costs, confirmed_breakout_retest, position_size, score_candidate
+from .engines import calculate_costs, confirmed_breakout_retest, score_candidate, total_risk_position_size
 from .fixtures import candles, liquid_book
 from .mexc_client import MEXCClient
 from .models import Candidate, utc_now
@@ -22,7 +22,14 @@ def fixture_scan(settings: Settings, journal: Journal) -> ScanResult:
     candidate = Candidate("SOLUSDT", "SPOT", 107.15, 20_000_000, book.spread_pct, {"15m": 0.2, "1h": 2.1, "24h": 4.2}, 1.8, "RISK_ON_TREND", "BREAKOUT_RETEST", 107.15, 103.8, 114, 120)
     candidate.status = "LONG_CANDIDATE" if active else "NO_TRADE"
     score_candidate(candidate, settings, costs.net_rr, catalyst_confirmed=True)
-    sizing = position_size(56, 2, candidate.entry, candidate.stop, 56)
+    sizing = total_risk_position_size(
+        settings.balance_chf,
+        settings.normal_risk_pct,
+        candidate.entry,
+        candidate.stop,
+        costs.estimated_cost_pct,
+        settings.balance_chf,
+    )
     payload = {"fixture": True, "evidence": evidence, "costs": costs.__dict__, "sizing": sizing}
     result = ScanResult("OFFLINE_FIXTURE_ONLY", now, "FIXTURE", "RISK_ON_TREND", 1, 1, 1 if not candidate.rejection_reasons else 0, [candidate], [])
     scan_id = journal.record_scan(now, "FIXTURE", result.status, result.regime, payload)
