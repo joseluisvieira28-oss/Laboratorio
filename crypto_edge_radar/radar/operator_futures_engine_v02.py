@@ -773,6 +773,7 @@ class OperatorFuturesEngineV02:
             "entry_order_id": order.get("orderId"),
             "entry_target_utc": gate["entry_target_utc"],
             "exit_target_utc": gate["exit_target_utc"],
+            "exit_tolerance_seconds": float(signal.get("exit_tolerance_seconds", signal.get("max_late_seconds", 2.0)) or 2.0),
             "planned_notional_usdt": sizing["estimated_notional_usdt"],
             "planned_initial_margin_usdt": sizing["estimated_initial_margin_usdt"],
             "leverage": REQUIRED_LEVERAGE,
@@ -1037,6 +1038,60 @@ class OperatorFuturesEngineV02:
         active_path, row = active[0]
         exit_target = _utc(row["exit_target_utc"])
         now = datetime.now(timezone.utc)
+        symbol = str(row.get("symbol") or "").upper()
+        direction = str(row.get("direction") or "").upper()
+
+        # Exchange truth is checked on every active-management cycle. At 5x,
+        # liquidation/manual closure or a risk-setting drift must never remain
+        # invisible until the scheduled exit.
+        try:
+            position = self._position(symbol=symbol, direction=direction)
+        except Exception as exc:
+            return self._status(
+                "ACTIVE_POSITION_READ_FAIL_CLOSED",
+                candidate_id=row.get("candidate_id"),
+                signal_identity=row.get("signal_identity"),
+                error=f"{type(exc).__name__}:{exc}",
+                session_dir=str(active_path.parent),
+            )
+
+        if position is None:
+            _atomic_write(active_path.parent / "POSITION_MISSING_BEFORE_RECONCILIATION.json", {
+                "receipt_type": "POSITION_MISSING_BEFORE_RECONCILIATION",
+                "observed_at_utc": _iso(now),
+                "candidate_id": row.get("candidate_id"),
+                "signal_identity": row.get("signal_identity"),
+                "reason": "EXCHANGE_POSITION_MISSING_WHILE_LOCAL_ACTIVE_STATE_EXISTS",
+                "possible_causes": ["LIQUIDATION", "MANUAL_OR_EXTERNAL_CLOSE", "EXCHANGE_RECONCILIATION_GAP"],
+                "new_entry_allowed": False,
+            })
+            return self._status(
+                "EXTERNAL_OR_LIQUIDATION_RECONCILIATION_REQUIRED",
+                candidate_id=row.get("candidate_id"),
+                signal_identity=row.get("signal_identity"),
+                session_dir=str(active_path.parent),
+            )
+
+        if int(position.get("positionId", 0) or 0) != int(row.get("position_id", 0) or 0):
+            return self._status(
+                "ACTIVE_POSITION_IDENTITY_MISMATCH",
+                candidate_id=row.get("candidate_id"),
+                signal_identity=row.get("signal_identity"),
+                session_dir=str(active_path.parent),
+            )
+
+        invariant_breach = (
+            int(position.get("openType", 0) or 0) != 1
+            or int(position.get("leverage", 0) or 0) != REQUIRED_LEVERAGE
+            or position.get("autoAddIm") is not False
+        )
+        if invariant_breach:
+            return self._exit_active(
+                active_path=active_path,
+                active=row,
+                reason="ACTIVE_POSITION_RISK_INVARIANT_BREACH",
+            )
+
         if self.kill_switch_path.exists():
             return self._exit_active(
                 active_path=active_path,
@@ -1053,13 +1108,17 @@ class OperatorFuturesEngineV02:
             "ACTIVE_WAITING_EXIT",
             candidate_id=row.get("candidate_id"),
             signal_identity=row.get("signal_identity"),
-            symbol=row.get("symbol"),
-            direction=row.get("direction"),
+            symbol=symbol,
+            direction=direction,
+            position_id=position.get("positionId"),
+            hold_volume_contracts=position.get("holdVol"),
             exit_target_utc=row.get("exit_target_utc"),
             seconds_to_exit=(exit_target - now).total_seconds(),
             planned_notional_usdt=row.get("planned_notional_usdt"),
             planned_initial_margin_usdt=row.get("planned_initial_margin_usdt"),
             leverage=REQUIRED_LEVERAGE,
+            margin_mode="ISOLATED",
+            auto_margin_add=False,
         )
 
 
