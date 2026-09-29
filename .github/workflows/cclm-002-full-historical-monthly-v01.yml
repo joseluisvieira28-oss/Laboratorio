@@ -1,0 +1,107 @@
+name: CCLM-002 full historical monthly source scale V0.1
+on:
+  push:
+    branches: [crosschain-liquidity-migration-001-source-gate-v0.1]
+    paths:
+      - 'research/crosschain_liquidity_migration_001/cctp_settled_flow_002_month_v01.py'
+      - 'research/crosschain_liquidity_migration_001/CCLM_SETTLED_FLOW_FULL_PILOT_MONTHLY_FREEZE_V0.1.md'
+      - '.github/workflows/cclm-002-full-historical-monthly-v01.yml'
+permissions:
+  contents: write
+
+jobs:
+  month:
+    strategy:
+      fail-fast: false
+      matrix:
+        month: ['2023-05','2023-06','2023-07','2023-08','2023-09','2023-10','2023-11','2023-12','2024-01','2024-02','2024-03','2024-04','2024-05','2024-06','2024-07','2024-08','2024-09','2024-10','2024-11','2024-12']
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: crosschain-liquidity-migration-001-source-gate-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run frozen monthly source reconstruction
+        env:
+          CCLM_MONTH: ${{ matrix.month }}
+        run: python research/crosschain_liquidity_migration_001/cctp_settled_flow_002_month_v01.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cclm-002-month-${{ matrix.month }}
+          path: artifacts/cclm_cctp_settled_flow_002_month_${{ matrix.month }}.json
+          if-no-files-found: error
+
+  aggregate:
+    needs: month
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: crosschain-liquidity-migration-001-source-gate-v0.1
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: cclm-002-month-*
+          path: artifacts/months
+          merge-multiple: true
+      - name: Aggregate monthly source receipts
+        run: |
+          python - <<'PY'
+          import glob,json
+          from datetime import datetime,timezone
+          from pathlib import Path
+          expected=["2023-05","2023-06","2023-07","2023-08","2023-09","2023-10","2023-11","2023-12","2024-01","2024-02","2024-03","2024-04","2024-05","2024-06","2024-07","2024-08","2024-09","2024-10","2024-11","2024-12"]
+          files=sorted(glob.glob("artifacts/months/*.json"))
+          rows=[json.load(open(p)) for p in files]
+          by={r.get("window_month"):r for r in rows}
+          missing=[m for m in expected if m not in by]
+          tech={m:r.get("classification") for m,r in by.items() if r.get("classification")=="SOURCE_SETTLED_FLOW_MONTH_TECHNICAL_FAILURE"}
+          mismatches=sum(int(r.get("semantic_mismatch_count") or 0) for r in rows)
+          flows=sum(int(r.get("canonical_settled_flows_total") or 0) for r in rows)
+          route_totals={}
+          for r in rows:
+            for x in r.get("routes",[]):
+              k=f"{x.get('source_domain')}->{x.get('destination_domain')}"
+              route_totals[k]=route_totals.get(k,0)+int(x.get("canonical_settled_flows") or 0)
+          ok=(not missing and not tech and mismatches==0 and len(rows)==20)
+          out={
+            "lab_id":"CROSSCHAIN-LIQUIDITY-MIGRATION-001",
+            "child_id":"CCLM-CCTP-SETTLED-FLOW-002",
+            "stage":"FULL_HISTORICAL_SETTLED_FLOW_SOURCE_SCALE_V0.1",
+            "captured_at_utc":datetime.now(timezone.utc).isoformat(),
+            "classification":"FULL_HISTORICAL_SETTLED_FLOW_SOURCE_PASS" if ok else "FULL_HISTORICAL_SETTLED_FLOW_SOURCE_BLOCKED",
+            "expected_months":expected,
+            "received_months":sorted(by),
+            "missing_months":missing,
+            "monthly_classifications":{m:by[m].get("classification") for m in sorted(by)},
+            "canonical_settled_flows_total":flows,
+            "route_totals":route_totals,
+            "semantic_mismatch_count":mismatches,
+            "technical_failure_months":tech,
+            "market_outcomes_opened":False,
+            "pnl_opened":False,
+            "mutation":False,
+            "access_2025":False,
+            "access_2026":False
+          }
+          Path("artifacts/cclm_cctp_settled_flow_002_full_historical_aggregate_v01.json").write_text(json.dumps(out,indent=2,sort_keys=True)+"\n")
+          print(json.dumps(out,indent=2))
+          PY
+      - name: Persist aggregate receipt
+        run: |
+          cp artifacts/cclm_cctp_settled_flow_002_full_historical_aggregate_v01.json research/crosschain_liquidity_migration_001/CCLM_CCTP_SETTLED_FLOW_002_FULL_HISTORICAL_RECEIPT.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/crosschain_liquidity_migration_001/CCLM_CCTP_SETTLED_FLOW_002_FULL_HISTORICAL_RECEIPT.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "CCLM-002: record full historical settled-flow source scale [skip ci]"
+          git push origin HEAD:crosschain-liquidity-migration-001-source-gate-v0.1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cclm-002-full-historical-aggregate-v01
+          path: artifacts/cclm_cctp_settled_flow_002_full_historical_aggregate_v01.json
+          if-no-files-found: error

@@ -1,0 +1,106 @@
+name: CCLM-002 frozen Discovery V0.1
+on:
+  push:
+    branches: [crosschain-liquidity-migration-001-source-gate-v0.1]
+    paths:
+      - 'research/crosschain_liquidity_migration_001/CCLM_002_NULL_ROTATION_DIRECTION_ADDENDUM_V0.1B.md'
+      - 'research/crosschain_liquidity_migration_001/cclm002_discovery_prepare_v01.py'
+      - 'research/crosschain_liquidity_migration_001/cclm002_discovery_null_v01.cpp'
+      - 'research/crosschain_liquidity_migration_001/cclm002_discovery_finalize_v01.py'
+      - '.github/workflows/cclm-002-discovery-v01.yml'
+permissions:
+  contents: write
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    outputs:
+      ok: ${{ steps.g.outputs.ok }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: crosschain-liquidity-migration-001-source-gate-v0.1
+      - id: g
+        run: |
+          python - <<'PY'
+          import json,os
+          a=json.load(open("research/crosschain_liquidity_migration_001/CCLM_CCTP_SETTLED_FLOW_002_FULL_HISTORICAL_RECEIPT.json"))
+          b=json.load(open("research/crosschain_liquidity_migration_001/CCLM_002_DISCOVERY_PREDICTOR_VIABILITY_RECEIPT.json"))
+          c=json.load(open("research/crosschain_liquidity_migration_001/CCLM_002_BINANCE_HOURLY_TARGET_SOURCE_RECEIPT.json"))
+          ok=(a.get("classification")=="FULL_HISTORICAL_SETTLED_FLOW_SOURCE_PASS" and
+              b.get("classification")=="DISCOVERY_PREDICTOR_SAMPLE_PASS" and
+              int(b.get("independent_trigger_count",0))>=30 and
+              c.get("classification")=="BINANCE_HOURLY_TARGET_SOURCE_PASS")
+          with open(os.environ["GITHUB_OUTPUT"],"a") as f:f.write(f"ok={'true' if ok else 'false'}\n")
+          if not ok: raise SystemExit("DISCOVERY_GUARD_BLOCKED")
+          PY
+
+  flow:
+    needs: guard
+    if: needs.guard.outputs.ok == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        month: ['2023-05','2023-06','2023-07','2023-08','2023-09','2023-10','2023-11','2023-12']
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: crosschain-liquidity-migration-001-source-gate-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Reconstruct exact frozen flow month
+        env:
+          CCLM_MONTH: ${{ matrix.month }}
+        run: python research/crosschain_liquidity_migration_001/cclm002_discovery_flow_month_v01.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: discovery-flow-${{ matrix.month }}
+          path: artifacts/cclm002_discovery_flow_month_${{ matrix.month }}.json
+          if-no-files-found: error
+
+  discovery:
+    needs: [guard,flow]
+    if: needs.guard.outputs.ok == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: crosschain-liquidity-migration-001-source-gate-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: discovery-flow-*
+          path: artifacts/flow_months
+          merge-multiple: true
+      - run: python -m pip install --disable-pip-version-check --quiet numpy
+      - name: Verify flow identity and open frozen Discovery targets
+        run: python research/crosschain_liquidity_migration_001/cclm002_discovery_prepare_v01.py
+      - name: Compile exact frozen null engine
+        run: g++ -O3 -std=c++17 research/crosschain_liquidity_migration_001/cclm002_discovery_null_v01.cpp -o artifacts/discovery/null_engine
+      - name: Run exactly 10,000 raw-flow monthly nulls
+        run: artifacts/discovery/null_engine
+      - name: Finalize frozen Discovery verdict
+        run: python research/crosschain_liquidity_migration_001/cclm002_discovery_finalize_v01.py
+      - name: Persist Discovery receipt
+        run: |
+          cp artifacts/discovery/CCLM_002_DISCOVERY_V01_RECEIPT.json research/crosschain_liquidity_migration_001/CCLM_002_DISCOVERY_V01_RECEIPT.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/crosschain_liquidity_migration_001/CCLM_002_DISCOVERY_V01_RECEIPT.json
+          if git diff --cached --quiet; then exit 0; fi
+          git pull --rebase origin crosschain-liquidity-migration-001-source-gate-v0.1
+          git push origin HEAD:crosschain-liquidity-migration-001-source-gate-v0.1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cclm-002-discovery-v01
+          path: |
+            artifacts/discovery/observed_receipt.json
+            artifacts/discovery/null_stats.csv
+            artifacts/discovery/CCLM_002_DISCOVERY_V01_RECEIPT.json
+          if-no-files-found: error

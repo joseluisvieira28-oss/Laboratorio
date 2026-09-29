@@ -1,0 +1,35 @@
+name: CCLM-002 settled-flow destination smoke V0.1
+on:
+  push:
+    branches: [crosschain-liquidity-migration-001-source-gate-v0.1]
+    paths:
+      - 'research/crosschain_liquidity_migration_001/cctp_settled_flow_002_smoke_v01.py'
+      - 'research/crosschain_liquidity_migration_001/CCLM_CCTP_SETTLED_FLOW_002_FREEZE_V0.1.md'
+      - '.github/workflows/cclm-002-settled-flow-smoke-v01.yml'
+      - 'research/crosschain_liquidity_migration_001/CCLM_SETTLED_FLOW_002_TRIGGER.txt'
+permissions:
+  contents: write
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: crosschain-liquidity-migration-001-source-gate-v0.1}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: python research/crosschain_liquidity_migration_001/cctp_settled_flow_002_smoke_v01.py
+      - name: Persist receipt
+        run: |
+          cp artifacts/cclm_cctp_settled_flow_002_smoke_v01.json research/crosschain_liquidity_migration_001/CCLM_CCTP_SETTLED_FLOW_002_SMOKE_RECEIPT.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/crosschain_liquidity_migration_001/CCLM_CCTP_SETTLED_FLOW_002_SMOKE_RECEIPT.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "CCLM-002: record settled-flow destination smoke [skip ci]"
+          git push origin HEAD:crosschain-liquidity-migration-001-source-gate-v0.1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cclm-002-settled-flow-smoke-v01
+          path: artifacts/cclm_cctp_settled_flow_002_smoke_v01.json
+          if-no-files-found: error

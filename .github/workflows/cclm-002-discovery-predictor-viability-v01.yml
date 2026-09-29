@@ -1,0 +1,150 @@
+name: CCLM-002 Discovery predictor viability V0.1
+on:
+  push:
+    branches: [crosschain-liquidity-migration-001-source-gate-v0.1]
+    paths:
+      - 'research/crosschain_liquidity_migration_001/CCLM_CCTP_SETTLED_FLOW_002_FULL_HISTORICAL_RECEIPT.json'
+      - 'research/crosschain_liquidity_migration_001/CCLM_002_DISCOVERY_PREDICTOR_VIABILITY_FREEZE_V0.1.md'
+      - 'research/crosschain_liquidity_migration_001/cclm002_discovery_flow_month_v01.py'
+      - '.github/workflows/cclm-002-discovery-predictor-viability-v01.yml'
+permissions:
+  contents: write
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    outputs:
+      source_ok: ${{ steps.g.outputs.source_ok }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: crosschain-liquidity-migration-001-source-gate-v0.1
+      - id: g
+        run: |
+          python - <<'PY'
+          import json,os
+          p="research/crosschain_liquidity_migration_001/CCLM_CCTP_SETTLED_FLOW_002_FULL_HISTORICAL_RECEIPT.json"
+          x=json.load(open(p))
+          ok=x.get("classification")=="FULL_HISTORICAL_SETTLED_FLOW_SOURCE_PASS"
+          with open(os.environ["GITHUB_OUTPUT"],"a") as f:f.write(f"source_ok={'true' if ok else 'false'}\n")
+          if not ok: print("SOURCE_GUARD_BLOCKED",x.get("classification"))
+          PY
+
+  month:
+    needs: guard
+    if: needs.guard.outputs.source_ok == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        month: ['2023-05','2023-06','2023-07','2023-08','2023-09','2023-10','2023-11','2023-12']
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: crosschain-liquidity-migration-001-source-gate-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Reconstruct frozen Discovery flow month
+        env:
+          CCLM_MONTH: ${{ matrix.month }}
+        run: python research/crosschain_liquidity_migration_001/cclm002_discovery_flow_month_v01.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cclm002-discovery-flow-${{ matrix.month }}
+          path: artifacts/cclm002_discovery_flow_month_${{ matrix.month }}.json
+          if-no-files-found: error
+
+  aggregate:
+    needs: [guard,month]
+    if: always() && needs.guard.outputs.source_ok == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: crosschain-liquidity-migration-001-source-gate-v0.1
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: cclm002-discovery-flow-*
+          path: artifacts/months
+          merge-multiple: true
+      - name: Compute outcome-blind predictor viability
+        run: |
+          python - <<'PY'
+          import glob,json,statistics,hashlib
+          from datetime import datetime,timezone,timedelta
+          from pathlib import Path
+
+          expected=["2023-05","2023-06","2023-07","2023-08","2023-09","2023-10","2023-11","2023-12"]
+          rows=[json.load(open(p)) for p in sorted(glob.glob("artifacts/months/*.json"))]
+          by={r.get("window_month"):r for r in rows}
+          missing=[m for m in expected if m not in by]
+          blocked={m:r.get("classification") for m,r in by.items() if r.get("classification")!="DISCOVERY_FLOW_MONTH_SOURCE_PASS"}
+          start=int(datetime(2023,5,1,tzinfo=timezone.utc).timestamp())
+          end=int(datetime(2024,1,1,tzinfo=timezone.utc).timestamp())
+          hours=list(range(start,end,3600))
+          flow={h:0 for h in hours}
+          events=0
+          for r in rows:
+            for route in r.get("routes",[]):
+              for ev in route.get("canonical_events",[]):
+                ts=int(ev["settled_ts_s"]); h=(ts//3600)*3600
+                if h in flow:
+                  flow[h]+=int(ev["signed_amount_atomic"]); events+=1
+          vals=[flow[h] for h in hours]
+          raw=[]; independent=[]
+          last_accept=None
+          for i,v in enumerate(vals):
+            lo=max(0,i-720)
+            window=vals[lo:i]
+            if len(window)<672: continue
+            med=statistics.median(window)
+            absdev=[abs(x-med) for x in window]
+            mad=statistics.median(absdev)
+            if mad==0: continue
+            z=(v-med)/(1.4826*mad)
+            if abs(z)>=3.0:
+              raw.append((i,z))
+              if last_accept is None or i-last_accept>6:
+                independent.append((i,z)); last_accept=i
+          payload="\n".join(f"{h}:{flow[h]}" for h in hours).encode()
+          cls="DISCOVERY_PREDICTOR_SAMPLE_PASS" if (not missing and not blocked and len(independent)>=30) else ("INSUFFICIENT_SAMPLE" if not missing and not blocked else "PREDICTOR_SOURCE_BLOCKED")
+          out={
+            "lab_id":"CROSSCHAIN-LIQUIDITY-MIGRATION-001",
+            "child_id":"CCLM-CCTP-SETTLED-FLOW-002",
+            "stage":"DISCOVERY_PREDICTOR_VIABILITY_V0.1",
+            "captured_at_utc":datetime.now(timezone.utc).isoformat(),
+            "classification":cls,
+            "expected_months":expected,"missing_months":missing,"blocked_months":blocked,
+            "canonical_settled_events_in_discovery":events,
+            "hour_count":len(hours),
+            "hourly_flow_sha256":hashlib.sha256(payload).hexdigest(),
+            "raw_trigger_count":len(raw),
+            "independent_trigger_count":len(independent),
+            "positive_independent_triggers":sum(z>0 for _,z in independent),
+            "negative_independent_triggers":sum(z<0 for _,z in independent),
+            "first_independent_trigger_utc":datetime.fromtimestamp(hours[independent[0][0]],tz=timezone.utc).isoformat() if independent else None,
+            "last_independent_trigger_utc":datetime.fromtimestamp(hours[independent[-1][0]],tz=timezone.utc).isoformat() if independent else None,
+            "threshold_abs_robust_z":3.0,"lookback_hours":720,"minimum_valid_prior_hours":672,
+            "decluster_hours":6,"price_outcomes_opened":False,"returns_computed":False,
+            "pnl_opened":False,"mutation":False
+          }
+          Path("artifacts/cclm002_discovery_predictor_viability_v01.json").write_text(json.dumps(out,indent=2,sort_keys=True)+"\n")
+          print(json.dumps(out,indent=2))
+          PY
+      - name: Persist viability receipt
+        run: |
+          cp artifacts/cclm002_discovery_predictor_viability_v01.json research/crosschain_liquidity_migration_001/CCLM_002_DISCOVERY_PREDICTOR_VIABILITY_RECEIPT.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/crosschain_liquidity_migration_001/CCLM_002_DISCOVERY_PREDICTOR_VIABILITY_RECEIPT.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "CCLM-002: record outcome-blind Discovery predictor viability [skip ci]"
+          git push origin HEAD:crosschain-liquidity-migration-001-source-gate-v0.1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cclm002-discovery-predictor-viability-v01
+          path: artifacts/cclm002_discovery_predictor_viability_v01.json
+          if-no-files-found: error
