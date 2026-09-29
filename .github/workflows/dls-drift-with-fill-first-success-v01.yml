@@ -1,0 +1,35 @@
+name: DLS Drift With-Fill First Success Locator V0.1
+on:
+  push:
+    branches:
+      - dls-signed-flow-authority-v01
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_DRIFT_WITH_FILL_FIRST_SUCCESS_V01.marker
+permissions:
+  contents: read
+jobs:
+  locator:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/locate_drift_with_fill_first_success_v0_1.py
+      - name: Execute source-only first-success locator
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/locate_drift_with_fill_first_success_v0_1.py
+      - name: Upload receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-drift-with-fill-first-success-v01
+          path: labs/DEFI_LIQUIDATION_SHOCK_001/DRIFT_WITH_FILL_FIRST_SUCCESS_LOCATOR_RECEIPT_V0.1.json
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_LOCATOR_NO_PRICES_2025_2026_CLOSED
