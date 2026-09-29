@@ -1,0 +1,19 @@
+name: DLS Cancel Obsolete Source Transport V0.1
+on:
+  push:
+    branches: [dls-field-enrichment-v01]
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/CANCEL_OBSOLETE_SOURCE_RUN_36545901561.marker
+permissions:
+  actions: write
+  contents: read
+jobs:
+  cancel:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cancel obsolete monolithic source transport
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api --method POST repos/${{ github.repository }}/actions/runs/36545901561/cancel
+      - name: Record semantics
+        run: echo CANCEL_TRANSPORT_ONLY_SCIENCE_UNCHANGED
