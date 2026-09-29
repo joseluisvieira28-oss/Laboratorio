@@ -77,7 +77,7 @@ Required for SURVIVES_2025_ECONOMIC_HOLDOUT:
 - source/market pair coverage >= 95%;
 - mean R_net(primary cost hurdle) > 0;
 - day-block bootstrap 95% CI lower bound for mean R_net(primary cost hurdle) > 0;
-- at least 2 inferential protocol families have positive mean R_net(primary cost hurdle).
+- at least 2 protocol families each with >=100 serialized trades have positive mean R_net(primary cost hurdle).
 
 Bootstrap:
 - UTC event-T0 calendar day blocks;
