@@ -1,0 +1,24 @@
+name: BTC-CONVEX-001 entry fingerprint forensic probe
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fingerprint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run frozen standard-family entry fingerprint probe
+        run: python labs/btc-convex-trend-capture-001/entry_fingerprint_probe_v0_1.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: BTC-CONVEX-001-ENTRY-FINGERPRINT
+          path: labs/btc-convex-trend-capture-001/evidence/ENTRY_FINGERPRINT_PROBE_V0.1.json

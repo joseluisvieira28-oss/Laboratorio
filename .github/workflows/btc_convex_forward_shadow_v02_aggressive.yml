@@ -1,0 +1,30 @@
+name: BTC-CONVEX-001 V0.2 aggressive shadow snapshot
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/btc_convex_forward_shadow_v02_aggressive.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run V0.2 deterministic aggressive shadow snapshot
+        run: python labs/btc-convex-trend-capture-001/prospective_shadow_snapshot_v0_2_aggressive.py
+      - name: Fail-closed validate V0.2 evidence contract
+        run: python labs/btc-convex-trend-capture-001/validate_prospective_shadow_v0_2.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: BTC-CONVEX-001-V02-AGGRESSIVE-SHADOW-SNAPSHOT
+          path: labs/btc-convex-trend-capture-001/evidence/PROSPECTIVE_SHADOW_SNAPSHOT_V0.2_AGGRESSIVE.json
+# forward-watch trigger 2026-09-24T07:47Z — operational only; no scientific change

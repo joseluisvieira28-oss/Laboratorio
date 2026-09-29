@@ -1,0 +1,24 @@
+name: BTC-CONVEX-001 activation-boundary forensic probe
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  forensic-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Probe frozen winner/loser activation boundary against Binance Futures klines
+        run: python labs/btc-convex-trend-capture-001/activation_boundary_probe_v0_1.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: BTC-CONVEX-001-ACTIVATION-BOUNDARY-PROBE
+          path: labs/btc-convex-trend-capture-001/evidence/ACTIVATION_BOUNDARY_PROBE_V0.1.json
