@@ -157,8 +157,8 @@ if not gate:errors.append("execution_source_gate_missing")
 if signed:
     if signed.get("classification")!=EXPECTED_CLASSIFICATION:errors.append("signed_source_classification_not_authorized")
     if int(signed.get("population_candidate_count",-1))!=EXPECTED_POPULATION:errors.append("signed_source_population_count_mismatch")
-    fam=signed.get("family") or {}
-    if fam.get("protocol")!="Drift" and fam.get("protocol")!="DRIFT":errors.append("signed_source_protocol_mismatch")
+    fam=signed.get("family")
+    if fam!="drift/liquidate_perp":errors.append("signed_source_family_mismatch")
 if gate and gate.get("classification")!="V02_EXECUTION_SOURCE_PASS":errors.append("execution_source_gate_not_pass")
 if errors:
     RECEIPT.write_text(json.dumps({"classification":"SIGNED_RETURN_DEVELOPMENT_SOURCE_BLOCKED","stage":"authority","errors":errors,
