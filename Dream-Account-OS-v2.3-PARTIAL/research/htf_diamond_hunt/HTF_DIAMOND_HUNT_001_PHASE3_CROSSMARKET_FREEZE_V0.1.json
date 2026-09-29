@@ -1,0 +1,47 @@
+{
+  "campaign_id": "HTF-DIAMOND-HUNT-001",
+  "phase": "PHASE_3_CROSS_MARKET_PRICE_PATH_VALIDATION",
+  "status": "FROZEN_BEFORE_PHASE3_SOURCE_ACCESS_OR_OUTCOMES",
+  "freeze_date": "2026-09-16",
+  "authority": "USER_EXPLICIT_CONTINUE_HUNT_GO_WITH_ALL",
+  "rationale": "DH-02 6H survived Phase 1 on Binance Spot 2021-2022 and independently validated on Binance Spot 2019-2020. Phase 3 tests the same frozen Donchian sibling family on a materially different Binance market, USD-M perpetual futures, without selecting a single winning timeframe and without opening 2023-2026.",
+  "scope": "Structural price-path validation only. Funding cashflows are not included because bar-level stop/target execution does not identify a unique intrabar exit timestamp relative to funding events. Therefore a Phase 3 survivor is not a funding-adjusted perpetual trading PnL claim and does not authorize live trading.",
+  "governance": {
+    "research_only": true,
+    "no_live_trading": true,
+    "no_exchange_mutation": true,
+    "no_orders": true,
+    "no_alerts_or_webhooks": true,
+    "no_merge_to_main": true,
+    "no_render_deploy": true,
+    "no_post_outcome_tuning": true,
+    "no_asset_selection": true,
+    "no_timeframe_winner_selection": true,
+    "evaluate_both_6h_and_12h": true,
+    "no_rule_changes": true,
+    "no_cost_changes": true
+  },
+  "dataset": {
+    "provider": "Binance public data",
+    "market": "USD-M perpetual futures",
+    "archive_family": "futures/um/monthly/klines",
+    "symbols": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "DOGEUSDT"],
+    "raw_interval": "1m",
+    "start_utc_inclusive": "2020-01-01T00:00:00Z",
+    "end_utc_exclusive": "2023-01-01T00:00:00Z",
+    "allowed_source_years": [2020, 2021, 2022],
+    "forbidden_source_years": [2023, 2024, 2025, 2026],
+    "listing_aware_policy": "Monthly archives absent before a symbol's first official available USD-M archive are PRE_LISTING_UNAVAILABLE and not filled. After first availability, any later missing month inside 2020-2022 is SOURCE_GAP_BLOCKED. No alternate provider, synthetic fill, interpolation or spot backfill.",
+    "canonicalization": "Only complete consecutive 1m rows form UTC-aligned 15m bars. Incomplete buckets dropped. Higher-timeframe continuity split across gaps.",
+    "source_gate_outcome_blind": true
+  },
+  "costs": {"base_round_trip_pct": 0.20, "stress_round_trip_pct": 0.30, "note": "Same conservative synthetic transaction-cost model as Spot validation; funding excluded and separately caveated."},
+  "statistics": {"minimum_resolved_trades": 100, "bootstrap_repetitions": 5000, "bootstrap_seed": 230911, "bootstrap_unit": "UTC_ENTRY_DAY_BLOCK", "confidence_interval": 0.95},
+  "cells": [
+    {"cell_id":"DH-02-XM1","lineage":"DH-02","signal_timeframe":"6H","rule":{"direction":"LONG_ONLY","donchian_lookback_complete_bars":80,"entry":"next 6H open","atr_length":56,"stop":"signal low minus 0.25*ATR56","target_r":3.0,"max_hold_bars":160,"one_active_trade_per_symbol":true}},
+    {"cell_id":"DH-03-XM1","lineage":"DH-03","signal_timeframe":"12H","rule":{"direction":"LONG_ONLY","donchian_lookback_complete_bars":40,"entry":"next 12H open","atr_length":28,"stop":"signal low minus 0.25*ATR28","target_r":3.0,"max_hold_bars":80,"one_active_trade_per_symbol":true}}
+  ],
+  "decision_rules_per_cell": {"minimum_sample":"resolved trades >= 100","base_expectancy":"> 0","base_profit_factor":"> 1","bootstrap_lower_95":"> 0","stress_expectancy":"> 0","survivor_label":"CROSS_MARKET_SURVIVES","sample_failure_label":"INSUFFICIENT_SAMPLE","other_failure_label":"CROSS_MARKET_FAIL"},
+  "family_policy": "Both 6H and 12H are always reported. No post-outcome winner selection. Cross-market survival is additional structural evidence only and is not equivalent to funding-adjusted execution validation.",
+  "protected_data": {"2023_access": false, "2024_access": false, "2025_access": false, "2026_access": false}
+}

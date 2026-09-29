@@ -1,0 +1,27 @@
+{
+  "experiment_id":"HTF-DONCHIAN-SHADOW-001",
+  "phase":"PHASE_6_2026_PROTECTED_SHADOW_BLOCK",
+  "clarification_date":"2026-09-16",
+  "status":"FROZEN_BEFORE_SIGNAL_OR_OUTCOME_CALCULATION",
+  "purpose":"Resolve right-edge observation semantics without changing the signal, costs, assets, timeframe, stop, target, hold, source block or readiness thresholds.",
+  "rules": {
+    "signal_generation":"unchanged DH-02-HO1 exact 6H rule",
+    "all_signals_after_2026_only_warmup":"recorded in append-only signal ledger",
+    "readiness_resolved_cohort":"only signals whose entry timestamp plus the frozen 160x6H maximum-hold window is fully observable before 2026-09-01T00:00:00Z",
+    "right_censored_signals":"reported separately as RIGHT_CENSORED_NOT_ELIGIBLE_FOR_READINESS_OUTCOME; they are not counted as wins, losses, resolved trades, or unresolved execution-path errors",
+    "unresolved_execution_path_gate":"applies only to eligible signals with a fully observable max-hold window and measures price-path ambiguity/data failure, not ordinary right censoring",
+    "quarter_assignment":"UTC entry timestamp",
+    "concentration_basis":"positive BASE net-R contributions only, identical semantics to Phase 5 clarification",
+    "source_gap_gate":"sum of source-gate detected minute gaps and incomplete canonical 15m bars must be zero"
+  },
+  "anti_rescue": {
+    "outcomes_inspected_before_clarification": false,
+    "parameter_change": false,
+    "asset_change": false,
+    "timeframe_change": false,
+    "cost_change": false,
+    "threshold_change": false,
+    "secondary_12h_opened": false,
+    "2025_opened": false
+  }
+}

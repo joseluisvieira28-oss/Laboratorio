@@ -1,0 +1,65 @@
+name: HTF Donchian Shadow 2026 Execution V0.1
+
+on:
+  pull_request:
+    branches: [ htf-diamond-hunt-v0.1 ]
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/htf_diamond_hunt/HTF_DONCHIAN_SHADOW_001_2026_SOURCE_BINDING_V0.1.json'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/htf_diamond_hunt/HTF_DONCHIAN_SHADOW_001_2026_IMPLEMENTATION_CLARIFICATION_01.json'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/htf_diamond_hunt/htf_donchian_shadow_2026_execution_v01.py'
+      - '.github/workflows/htf-donchian-shadow-2026-execution-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  execute-shadow:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile exact shadow runner
+        run: python -m py_compile Dream-Account-OS-v2.3-PARTIAL/research/htf_diamond_hunt/htf_donchian_shadow_2026_execution_v01.py
+      - name: Download exact frozen 2026 source artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: HTF_DONCHIAN_SHADOW_001_2026_SOURCE_V01
+          path: phase6_source
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: 35082752107
+      - name: Execute exact 6H paper shadow
+        env:
+          PYTHONPATH: Dream-Account-OS-v2.3-PARTIAL
+        run: python Dream-Account-OS-v2.3-PARTIAL/research/htf_diamond_hunt/htf_donchian_shadow_2026_execution_v01.py phase6_source
+      - name: Assert production firewall
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('Dream-Account-OS-v2.3-PARTIAL/research/local_data/htf_donchian_shadow_2026_execution_v01/HTF_DONCHIAN_SHADOW_001_2026_EXECUTION_RECEIPT_V0.1.json')
+          x=json.loads(p.read_text())
+          assert x['access_2025_performed'] is False
+          assert x['access_2026_performed'] is True
+          assert x['access_partial_september_2026_performed'] is False
+          assert x['secondary_12h_evaluated'] is False
+          assert x['live_trading'] is False
+          assert x['exchange_mutation'] is False
+          assert x['orders_created'] is False
+          assert x['api_keys_used'] is False
+          assert x['post_outcome_tuning'] is False
+          assert x['main_merge'] is False
+          print('PHASE6_2026_SHADOW_FIREWALL_PASS')
+          PY
+      - name: Upload exact shadow evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: HTF_DONCHIAN_SHADOW_001_2026_EXECUTION_V01
+          path: Dream-Account-OS-v2.3-PARTIAL/research/local_data/htf_donchian_shadow_2026_execution_v01
+          if-no-files-found: error
+          retention-days: 30

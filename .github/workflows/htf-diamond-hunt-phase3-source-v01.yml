@@ -1,0 +1,49 @@
+name: HTF Diamond Hunt Phase3 Source Gate V0.1
+
+on:
+  push:
+    branches:
+      - htf-diamond-hunt-v0.1
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/htf_diamond_hunt/PHASE3_SOURCE_RUN_TRIGGER_V0.1.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  source-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify Phase3 freeze before network
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          f=json.loads(Path('research/htf_diamond_hunt/HTF_DIAMOND_HUNT_001_PHASE3_CROSSMARKET_FREEZE_V0.1.json').read_text())
+          assert f['status']=='FROZEN_BEFORE_PHASE3_SOURCE_ACCESS_OR_OUTCOMES'
+          assert f['dataset']['market']=='USD-M perpetual futures'
+          assert f['dataset']['allowed_source_years']==[2020,2021,2022]
+          assert f['dataset']['forbidden_source_years']==[2023,2024,2025,2026]
+          assert [x['cell_id'] for x in f['cells']]==['DH-02-XM1','DH-03-XM1']
+          print('PHASE3_FREEZE_GATE_PASS')
+          PY
+      - name: Compile Phase3 source gate
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: python -m py_compile research/htf_diamond_hunt/htf_diamond_hunt_phase3_source_gate_v01.py
+      - name: Run listing-aware USD-M source gate only
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: python research/htf_diamond_hunt/htf_diamond_hunt_phase3_source_gate_v01.py
+      - name: Upload Phase3 source evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: HTF_DIAMOND_HUNT_001_PHASE3_SOURCE_V01
+          path: Dream-Account-OS-v2.3-PARTIAL/research/local_data/htf_diamond_hunt_phase3_source_v01/
+          if-no-files-found: error
+          retention-days: 90

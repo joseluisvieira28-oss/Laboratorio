@@ -1,0 +1,78 @@
+{
+  "experiment_id": "HTF-DONCHIAN-SHADOW-001",
+  "phase": "PHASE_6_2026_PROTECTED_SHADOW_BLOCK",
+  "freeze_date": "2026-09-16",
+  "status": "FROZEN_BEFORE_2026_MARKET_ACCESS",
+  "authorization_file": "HTF_DONCHIAN_SHADOW_001_2026_DATA_ACCESS_AUTHORIZATION_V0.1.json",
+  "selection_basis": "All complete 2026 calendar months available before the authorization date; exclude the current partial September month. This selection is calendar/source-availability based and outcome-blind.",
+  "dataset": {
+    "provider": "Binance public data",
+    "market": "USD-M perpetual futures",
+    "symbols": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "DOGEUSDT"],
+    "price_archive_family": "futures/um/monthly/klines",
+    "funding_archive_family": "futures/um/monthly/fundingRate",
+    "price_interval": "1m",
+    "months": ["2026-01","2026-02","2026-03","2026-04","2026-05","2026-06","2026-07","2026-08"],
+    "start_utc_inclusive": "2026-01-01T00:00:00Z",
+    "end_utc_exclusive": "2026-09-01T00:00:00Z",
+    "2025_access_allowed": false,
+    "september_2026_partial_access_allowed": false,
+    "provider_checksum_required": true,
+    "no_alternate_provider": true,
+    "no_synthetic_fill": true,
+    "no_interpolation": true
+  },
+  "candidate": {
+    "cell_id": "DH-02-HO1",
+    "timeframe": "6H",
+    "direction": "LONG_ONLY",
+    "donchian_lookback_complete_bars": 80,
+    "atr_length": 56,
+    "entry": "next 6H open",
+    "stop": "signal low minus 0.25*ATR56",
+    "target_r": 3.0,
+    "max_hold_bars": 160,
+    "one_active_trade_per_symbol": true,
+    "base_round_trip_cost_pct": 0.20,
+    "stress_round_trip_cost_pct": 0.30,
+    "funding_model": "IDENTICAL_TO_PHASE4_AND_PHASE5",
+    "minute_path_resolution": "IDENTICAL_TO_PHASE4_AND_PHASE5"
+  },
+  "warmup_policy": {
+    "2025_warmup_forbidden": true,
+    "use_2026_data_only": true,
+    "no_signal_before_required_2026_complete_bar_history_exists": true
+  },
+  "readiness_gates": {
+    "minimum_elapsed_calendar_days": 60,
+    "minimum_resolved_shadow_trades": 30,
+    "signal_rule_deviations": 0,
+    "duplicate_hypothetical_entries": 0,
+    "unresolved_execution_paths": 0,
+    "unreconciled_source_gaps": 0,
+    "base_expectancy_r": ">0",
+    "base_profit_factor": ">1",
+    "stress_expectancy_r": ">0",
+    "maximum_single_symbol_positive_net_r_share": 0.70,
+    "maximum_single_quarter_positive_net_r_share": 0.70
+  },
+  "classification_rule": {
+    "all_readiness_gates_pass": "SHADOW_READINESS_PASS_ELIGIBLE_FOR_SEPARATE_RISK_REVIEW",
+    "any_readiness_gate_fail": "SHADOW_READINESS_FAIL",
+    "live_trading_authorized_even_if_pass": false
+  },
+  "governance": {
+    "paper_shadow_only": true,
+    "no_live_trading": true,
+    "no_exchange_mutation": true,
+    "no_orders": true,
+    "no_api_keys": true,
+    "no_alerts_webhooks": true,
+    "no_main_merge": true,
+    "no_render_deploy": true,
+    "no_post_outcome_tuning": true,
+    "no_asset_selection": true,
+    "no_timeframe_substitution": true,
+    "secondary_12h_not_evaluated": true
+  }
+}

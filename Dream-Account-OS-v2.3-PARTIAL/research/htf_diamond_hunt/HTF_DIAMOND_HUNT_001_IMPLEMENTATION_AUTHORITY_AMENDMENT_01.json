@@ -1,0 +1,64 @@
+{
+  "campaign_id": "HTF-DIAMOND-HUNT-001",
+  "amendment_id": "HTF-DIAMOND-HUNT-001-IMPLEMENTATION-AUTHORITY-AMENDMENT-01",
+  "status": "FROZEN_DEPENDENCY_PROVENANCE_CORRECTION_PRE_OUTCOME",
+  "date": "2026-09-16",
+  "scientific_design_changed": false,
+  "outcomes_opened_before_amendment": false,
+  "prior_attempts": [
+    {
+      "run_id": 35068887667,
+      "classification": "TECHNICAL_FAILURE_PRE_SOURCE_PRE_OUTCOME",
+      "failure_stage": "historical dependency materialization",
+      "source_artifact_downloaded": false,
+      "market_outcomes_opened": false
+    },
+    {
+      "run_id": 35069103317,
+      "classification": "TECHNICAL_FAILURE_PRE_SOURCE_PRE_OUTCOME",
+      "failure_stage": "historical dependency materialization",
+      "source_artifact_downloaded": false,
+      "market_outcomes_opened": false
+    }
+  ],
+  "dh01_donchian_authority": {
+    "commit": "62422965b23e91671f6720b818bb26686b9d5bd2",
+    "path": "Dream-Account-OS-v2.3-PARTIAL/research/tfg_donchian_1d_discovery_runner_v01.py",
+    "blob": "ca2515ee40e62ed5543db0f6d27d69533e0f22ce",
+    "change_from_original_authority": false
+  },
+  "dh04_ema_authority": {
+    "commit": "62422965b23e91671f6720b818bb26686b9d5bd2",
+    "path": "Dream-Account-OS-v2.3-PARTIAL/research/tfg_ema_pullback_1d_discovery_runner_v01.py",
+    "blob": "4624b4338d3ef6d8a1c9face4bd611ac24b48241",
+    "change_from_original_authority": false
+  },
+  "dh07_pbr_authority": {
+    "branch": "tf-gap-pbr01-4h-v0.1",
+    "commit": "6cbf17e00a314d7f39b09d3d046ddd2ec71680dc",
+    "package_root": "Dream-Account-OS-v2.3-PARTIAL/src",
+    "pyproject_evidence": "[tool.pytest.ini_options] pythonpath = [\"src\"]",
+    "paths_to_materialize_from_same_commit": [
+      "Dream-Account-OS-v2.3-PARTIAL/src/dream_account",
+      "Dream-Account-OS-v2.3-PARTIAL/research/tfg_pbr01_4h_v01.py",
+      "Dream-Account-OS-v2.3-PARTIAL/research/phase_b_research_evaluator_v01.py",
+      "Dream-Account-OS-v2.3-PARTIAL/research/phase_b_signal_formation_v01.py"
+    ],
+    "reason": "The first two execution attempts incorrectly assumed a repository-root dream_account package. The historical PBR branch declares src as its Python package root. Pinning the exact PBR branch commit and materializing its src/dream_account stack corrects dependency provenance only; PBR scientific parameters and execution semantics remain unchanged."
+  },
+  "runtime_pythonpath": [
+    "Dream-Account-OS-v2.3-PARTIAL/src",
+    "Dream-Account-OS-v2.3-PARTIAL"
+  ],
+  "source_authority_unchanged": {
+    "artifact_id": 10434938955,
+    "artifact_digest": "sha256:39fa00e9c3e022b6135f5efdeef0868c1dfb25a80e31331625ace79156212c62",
+    "source_fingerprint": "08402ecb8931e42a0766370f55e46adc3de02474ce3a6128f4b2cdd89bb4ac78"
+  },
+  "campaign_rules_unchanged": true,
+  "costs_unchanged": true,
+  "sample_gate_unchanged": true,
+  "bootstrap_unchanged": true,
+  "protected_years_unchanged": [2023, 2024, 2025, 2026],
+  "freeze_statement": "This amendment is frozen before any HTF-DIAMOND-HUNT-001 market outcome. It corrects dependency provenance and Python package roots only."
+}
