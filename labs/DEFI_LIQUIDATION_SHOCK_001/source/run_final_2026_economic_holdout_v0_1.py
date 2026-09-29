@@ -82,8 +82,10 @@ def acquire_day(day):
     ds=day.isoformat();zu=ARCHIVE.format(symbol=SYMBOL,date=ds);cu=CHECKSUM.format(symbol=SYMBOL,date=ds)
     cs,cb=get_bytes(cu,allow_404=True);zs,zb=get_bytes(zu,allow_404=True)
     qa={"date":ds,"checksum_http":cs,"zip_http":zs,"accepted":False,"observed_bars":0}
-    if cs==404 or zs==404 or cb is None or zb is None:
+    if cs==404 or zs==404:
         qa["reason"]="missing_archive";return qa,{},[]
+    if cs!=200 or zs!=200 or cb is None or zb is None:
+        qa["reason"]="transport_exhausted";return qa,{},["transport_exhausted"]
     txt=cb.decode("utf-8","replace")
     m=re.search(r"([0-9a-fA-F]{64})",txt)
     if not m:
@@ -104,7 +106,9 @@ def acquire_day(day):
                     if len(row)<2:bad+=1;continue
                     try:
                         t=int(row[0])
-                        if t<10**14:t*=1000
+                        # Binance Spot public archives use microseconds from 2025-01-01 onward.
+                        # Normalize archive open time to milliseconds to match REST and internal keys.
+                        if t>10**14:t//=1000
                         if t%60000!=0:bad+=1;continue
                         Decimal(row[1])
                     except Exception:bad+=1;continue
