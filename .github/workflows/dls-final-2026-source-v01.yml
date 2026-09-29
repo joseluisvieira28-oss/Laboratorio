@@ -1,0 +1,87 @@
+name: DLS Final 2026 Source Authority V0.1
+
+on:
+  push:
+    branches: [dls-field-enrichment-v01]
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_FINAL_2026_SOURCE_V01.marker
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  collect:
+    strategy:
+      fail-fast: false
+      matrix:
+        protocol: [marginfi, save0c, kamino, save11]
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Require locked 2025 PASS before source scan
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path("labs/DEFI_LIQUIDATION_SHOCK_001/PROTECTED_2025_ECONOMIC_ADJUDICATION_LOCK_V0.1.json")
+          r=json.loads(p.read_text())
+          assert r["classification"]=="SURVIVES_2025_ECONOMIC_HOLDOUT"
+          PY
+      - name: Collect final 2026 source population
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/collect_protected_2025_source_v0_1.py
+          --protocol ${{ matrix.protocol }}
+          --start 2026-01-01T00:00:00Z
+          --end 2026-09-28T00:00:00Z
+          --out final_source/${{ matrix.protocol }}.json
+      - name: Upload protocol receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-final-2026-source-${{ matrix.protocol }}
+          path: final_source/${{ matrix.protocol }}.json
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_NO_2026_PRICES_NO_TRADING
+
+  finalize:
+    needs: collect
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download protocol receipts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: dls-final-2026-source-*
+          path: final_source
+          merge-multiple: true
+      - name: Aggregate frozen 60s SOL source clusters
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/finalize_final_2026_source_v0_1.py --root final_source
+      - name: Upload final source authority
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-final-2026-source-authority-v01
+          path: |
+            labs/DEFI_LIQUIDATION_SHOCK_001/FINAL_2026_SOURCE_AUTHORITY_RECEIPT_V0.1.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/FINAL_2026_SOURCE_CLUSTER_CENSUS_V0.1.ndjson
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_NO_2026_PRICES_NO_TRADING
