@@ -1,0 +1,128 @@
+{
+  "lab_id": "CRYPTO-INTRAWEEK-RV-001",
+  "translation_id": "CIRV-VOLTARGET-BTCETH-SPOT-001",
+  "version": "0.1",
+  "date_frozen": "2026-09-22",
+  "branch": "cirv-economic-voltarget-v0.1",
+  "status": "FROZEN_BEFORE_ANY_TRANSLATION_PNL_OR_RETURN_OUTCOMES",
+  "parent_forecast_mve": "CIRV-HAR-DOW-BTCETH-001",
+  "parent_authority_commit": "54e8fd6d554b0a9c764fcbcda3a725be94455064",
+  "rationale": "Risk-management / position-sizing is explicitly named in the parent CIRV pre-freeze as a separate future application requiring its own freeze. This translation is frozen before any CIRV economic PnL is computed.",
+  "economic_family": "VOL / RISK-MANAGEMENT",
+  "venue": "Binance Spot",
+  "assets": [
+    "BTCUSDT",
+    "ETHUSDT"
+  ],
+  "source": {
+    "historical": "Binance Vision Spot 5m klines",
+    "route_monthly": "https://data.binance.vision/data/spot/monthly/klines/{SYMBOL}/5m/{SYMBOL}-5m-YYYY-MM.zip",
+    "source_gate_required_before_outcomes": true,
+    "forecast_inputs": "D-1 and earlier only",
+    "target_day_market_data_for_sizing": "FORBIDDEN"
+  },
+  "chronology": {
+    "warmup": [
+      "2021-01-01",
+      "2022-12-31"
+    ],
+    "discovery": [
+      "2023-01-01",
+      "2023-12-31"
+    ],
+    "independent_replication": [
+      "2024-01-01",
+      "2024-12-31"
+    ],
+    "holdout_2025": "LOCKED until both 2023 Discovery and 2024 independent replication pass all frozen gates",
+    "year_2026_locked": true
+  },
+  "forecast_models": {
+    "baseline": "Exact parent plain HAR: logRV1/logRV5/logRV22; OLS; rolling previous 730 valid feature rows; min 500",
+    "challenger": "Exact parent HAR-DOW: baseline + target-day Tue-Sun dummies; Monday base",
+    "realized_variance": "sum squared 5m close-to-close log returns over UTC day; >=270 valid returns",
+    "no_refit_or_tuning": true
+  },
+  "economic_application": {
+    "purpose": "Test whether the already-validated HAR-DOW variance forecast improves an executable no-leverage volatility-targeting overlay versus the exact plain-HAR forecast.",
+    "decision_time_utc": "09:05",
+    "entry": "first complete Binance Spot 5m bar open at 09:05 UTC",
+    "exit": "23:55 UTC 5m bar close",
+    "flat_outside_window": true,
+    "target_volatility": "sqrt(mean realized variance of previous 22 valid UTC days), computed using D-1 and earlier only",
+    "exposure_formula": "min(1.0, target_sigma / forecast_sigma)",
+    "long_only": true,
+    "leverage_cap": 1,
+    "shorting": false,
+    "portfolio": "50% capital sleeve BTCUSDT + 50% capital sleeve ETHUSDT; each sleeve multiplied by its own frozen exposure",
+    "baseline_application": "same rule using plain-HAR forecast",
+    "challenger_application": "same rule using HAR-DOW forecast",
+    "missing_data_rule": "if required forecast or 09:05/23:55 execution bar is missing for an asset/day, that asset/day is unevaluable; no interpolation or later rescue entry",
+    "capital_reallocation": "none; unused sleeve exposure remains cash"
+  },
+  "costs": {
+    "base_round_trip_bps": 20,
+    "stress_round_trip_bps": 30,
+    "application": "cost * deployed sleeve notional each evaluated day; flat-to-long entry plus long-to-flat exit",
+    "funding": "none because Spot",
+    "fee_discount_assumption": false
+  },
+  "metrics": [
+    "portfolio daily net return BASE and STRESS",
+    "mean daily net return",
+    "profit factor",
+    "annualized Sharpe sqrt(365)",
+    "annualized realized volatility sqrt(365)",
+    "maximum drawdown",
+    "turnover / average deployed gross exposure",
+    "HAR-DOW minus HAR daily net-return differential",
+    "per-asset diagnostics"
+  ],
+  "gates": {
+    "discovery_2023": {
+      "min_evaluable_portfolio_days": 330,
+      "challenger_base_mean_gt_0": true,
+      "challenger_base_pf_gt_1": true,
+      "challenger_stress_mean_gt_0": true,
+      "challenger_stress_pf_gt_1": true,
+      "challenger_sharpe_gt_baseline_har": true,
+      "challenger_annualized_vol_lte_baseline_har": true,
+      "challenger_max_drawdown_not_worse_than_baseline_har": true
+    },
+    "replication_2024": "same gates as Discovery, on the untouched 2024 block",
+    "holdout_2025": "same gates as Discovery, one-shot only after Discovery+Replication PASS",
+    "promotion_interpretation": "Passing all three blocks can make the translation eligible for V3 Tier-2 economic review; it does not automatically promote or authorize live capital."
+  },
+  "terminal_classes": [
+    "SOURCE_DATA_PASS",
+    "SOURCE_BLOCKED",
+    "DISCOVERY_FAIL_NO_PROMOTION",
+    "DISCOVERY_PASS_REPLICATION_FAIL",
+    "DISCOVERY_REPLICATION_PASS_HOLDOUT_LOCKED",
+    "ECONOMIC_OOS_SURVIVES_2025",
+    "ECONOMIC_OOS_FAIL",
+    "INSUFFICIENT_SAMPLE",
+    "TECHNICAL_FAILURE"
+  ],
+  "anti_hindsight": [
+    "No direction inversion.",
+    "No alternate entry/exit time after outcomes.",
+    "No changing 22-day target-vol lookback.",
+    "No leverage above 1x.",
+    "No asset dropping after outcomes.",
+    "No changing BASE/STRESS costs after outcomes.",
+    "No changing HAR/HAR-DOW model, rolling windows, weekday encoding or RV construction.",
+    "No using 2025 until both 2023 and 2024 gates pass.",
+    "No 2026 outcomes in this translation.",
+    "No options, futures, trend filter, regime filter, threshold filter or alternative sizing rule as rescue."
+  ],
+  "governance": {
+    "research_only": true,
+    "orders": false,
+    "exchange_mutation": false,
+    "wallets": false,
+    "live_capital": false,
+    "merge_main": false,
+    "automatic_tier_promotion": false
+  }
+}

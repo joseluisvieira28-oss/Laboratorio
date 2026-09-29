@@ -1,0 +1,88 @@
+name: CIRV Economic VolTarget V0.1
+
+on:
+  push:
+    branches:
+      - cirv-economic-voltarget-v0.1
+    paths:
+      - 'labs/CRYPTO_INTRAWEEK_RV_001/ECON_TRANSLATION_STAGE.txt'
+      - 'labs/CRYPTO_INTRAWEEK_RV_001/econ_voltarget_v01.py'
+      - '.github/workflows/cirv-economic-voltarget-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  run-stage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify immutable economic pre-freeze
+        shell: bash
+        run: |
+          set -euo pipefail
+          EXPECTED="61b98963a938f52106840b5affbb18cac00db5ac"
+          ACTUAL="$(git rev-parse HEAD:labs/CRYPTO_INTRAWEEK_RV_001/ECON_TRANSLATION_PREFREEZE_V0.1.json)"
+          test "$ACTUAL" = "$EXPECTED"
+          grep -q '"status": "FROZEN_BEFORE_ANY_TRANSLATION_PNL_OR_RETURN_OUTCOMES"' labs/CRYPTO_INTRAWEEK_RV_001/ECON_TRANSLATION_PREFREEZE_V0.1.json
+          grep -q '"year_2026_locked": true' labs/CRYPTO_INTRAWEEK_RV_001/ECON_TRANSLATION_PREFREEZE_V0.1.json
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install numerical runtime
+        run: python -m pip install --disable-pip-version-check numpy pandas
+
+      - name: Read frozen stage
+        id: stage
+        shell: bash
+        run: |
+          set -euo pipefail
+          STAGE="$(sed -n 's/^stage=//p' labs/CRYPTO_INTRAWEEK_RV_001/ECON_TRANSLATION_STAGE.txt | head -n1)"
+          case "$STAGE" in
+            SOURCE_ONLY|DISCOVERY_2023|REPLICATION_2024|OOS_2025) ;;
+            *) echo "invalid stage: $STAGE"; exit 1 ;;
+          esac
+          echo "stage=$STAGE" >> "$GITHUB_OUTPUT"
+          echo "Frozen stage: $STAGE"
+
+      - name: Run frozen stage
+        run: |
+          mkdir -p cirv_econ_artifact
+          python labs/CRYPTO_INTRAWEEK_RV_001/econ_voltarget_v01.py \
+            --stage "${{ steps.stage.outputs.stage }}" \
+            --out "cirv_econ_artifact/result.json"
+
+      - name: Fail closed on governance breach
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path("cirv_econ_artifact/result.json").read_text())
+          assert p["translation_id"]=="CIRV-VOLTARGET-BTCETH-SPOT-001"
+          assert p["frozen_commit"]=="79577d02184113a4c67486b42f30b360bfdab76e"
+          assert p.get("year_2026_accessed") is False
+          if p.get("mode")=="SOURCE_ONLY":
+              assert p.get("outcomes_opened") is False
+              assert p.get("prices_read") is False
+              assert p.get("returns_computed") is False
+              assert p.get("pnl_computed") is False
+          else:
+              assert p.get("orders_created") is False
+              assert p.get("exchange_mutation_performed") is False
+              assert p.get("live_capital_enabled") is False
+          print("GOVERNANCE_FIREWALL_PASS")
+          PY
+
+      - name: Upload immutable stage result
+        uses: actions/upload-artifact@v4
+        with:
+          name: cirv-economic-voltarget-${{ steps.stage.outputs.stage }}
+          path: cirv_econ_artifact/result.json
+          if-no-files-found: error
+          retention-days: 30
