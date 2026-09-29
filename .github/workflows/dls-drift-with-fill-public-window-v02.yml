@@ -1,0 +1,101 @@
+name: DLS Drift With-Fill Public Window Sharded V0.2
+
+on:
+  push:
+    branches:
+      - dls-signed-flow-authority-v01
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_DRIFT_WITH_FILL_PUBLIC_WINDOW_SHARDED_V02.marker
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  shard:
+    strategy:
+      fail-fast: false
+      max-parallel: 15
+      matrix:
+        include:
+          - {id: wf2-01, start: "2024-07-30T17:21:13Z", end: "2024-08-10T00:00:00Z"}
+          - {id: wf2-02, start: "2024-08-10T00:00:00Z", end: "2024-08-20T00:00:00Z"}
+          - {id: wf2-03, start: "2024-08-20T00:00:00Z", end: "2024-09-01T00:00:00Z"}
+          - {id: wf2-04, start: "2024-09-01T00:00:00Z", end: "2024-09-11T00:00:00Z"}
+          - {id: wf2-05, start: "2024-09-11T00:00:00Z", end: "2024-09-21T00:00:00Z"}
+          - {id: wf2-06, start: "2024-09-21T00:00:00Z", end: "2024-10-01T00:00:00Z"}
+          - {id: wf2-07, start: "2024-10-01T00:00:00Z", end: "2024-10-11T00:00:00Z"}
+          - {id: wf2-08, start: "2024-10-11T00:00:00Z", end: "2024-10-21T00:00:00Z"}
+          - {id: wf2-09, start: "2024-10-21T00:00:00Z", end: "2024-11-01T00:00:00Z"}
+          - {id: wf2-10, start: "2024-11-01T00:00:00Z", end: "2024-11-11T00:00:00Z"}
+          - {id: wf2-11, start: "2024-11-11T00:00:00Z", end: "2024-11-21T00:00:00Z"}
+          - {id: wf2-12, start: "2024-11-21T00:00:00Z", end: "2024-12-01T00:00:00Z"}
+          - {id: wf2-13, start: "2024-12-01T00:00:00Z", end: "2024-12-11T00:00:00Z"}
+          - {id: wf2-14, start: "2024-12-11T00:00:00Z", end: "2024-12-21T00:00:00Z"}
+          - {id: wf2-15, start: "2024-12-21T00:00:00Z", end: "2025-01-01T00:00:00Z"}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      DLS_PARTITION: ${{ matrix.id }}
+      DLS_START: ${{ matrix.start }}
+      DLS_END: ${{ matrix.end }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile frozen shard census
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/census_drift_with_fill_partition_v0_1.py
+      - name: Execute source-only shard census
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/census_drift_with_fill_partition_v0_1.py
+      - name: Upload shard evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-drift-with-fill-${{ matrix.id }}-v02
+          path: |
+            labs/DEFI_LIQUIDATION_SHOCK_001/DRIFT_WITH_FILL_CENSUS_${{ matrix.id }}_RECEIPT_V0.1.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/DRIFT_WITH_FILL_CENSUS_${{ matrix.id }}_V0.1.ndjson
+          if-no-files-found: warn
+          retention-days: 90
+
+  merge:
+    if: always()
+    needs: shard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download shard evidence
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ github.run_id }}
+          pattern: dls-drift-with-fill-*-v02
+          path: shard_evidence
+      - name: Compile merge
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/merge_drift_with_fill_public_window_v0_2.py
+      - name: Merge and adjudicate
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/merge_drift_with_fill_public_window_v0_2.py
+          --root shard_evidence
+      - name: Upload global window evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-drift-with-fill-public-window-v02
+          path: |
+            labs/DEFI_LIQUIDATION_SHOCK_001/DRIFT_WITH_FILL_PUBLIC_WINDOW_RECEIPT_V0.2.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/DRIFT_WITH_FILL_PUBLIC_WINDOW_V0.2.ndjson
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_NO_PRICES_NO_DIRECTION_2025_2026_CLOSED
