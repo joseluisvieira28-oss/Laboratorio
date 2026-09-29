@@ -93,7 +93,12 @@ source/integrity/coverage failure => SOURCE_BLOCKED_2025_ECONOMIC_HOLDOUT
 ## 2026 final holdout
 2026 remains closed unless 2025 = SURVIVES_2025_ECONOMIC_HOLDOUT.
 
-If opened, 2026 uses this exact same strategy, cost hurdle, source mapping, timing, serialization, bootstrap and classification with no parameter change.
+The final holdout window is prospectively fixed now, before 2025 outcomes are opened:
+2026-01-01T00:00:00Z <= event timestamp < 2026-09-28T00:00:00Z.
+
+The cutoff is the last fully closed UTC day before this freeze was made. Data at/after 2026-09-28T00:00:00Z is reserved for later forward/live-shadow observation and may not be pulled into the final holdout.
+
+If opened, the 2026 final holdout uses this exact same strategy, 26 bps primary cost hurdle, 40 bps supportive stress, source mapping, timing, serialization, bootstrap and classification with no parameter change. It requires serialized trade N >= 500 and the same PASS gates as 2025.
 
 ## Firewall
 protected_2025_outcomes_opened=false
