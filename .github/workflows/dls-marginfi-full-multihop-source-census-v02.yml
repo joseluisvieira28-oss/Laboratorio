@@ -1,0 +1,142 @@
+name: DLS Marginfi Full Multi-Hop Source Census V0.2
+
+on:
+  push:
+    branches:
+      - dls-signed-flow-authority-v01
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_MARGINFI_FULL_MULTIHOP_CENSUS_V02.marker
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  shard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download canonical Marginfi membership PASS
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36546170744
+          name: dls-marginfi-jupiter-route-class-v02
+          path: members
+
+      - name: Download source-authoritative Marginfi bank registry
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36312418451
+          name: dls-marginfi-bank-unit-source-completion-v02
+          path: bank_registry
+
+      - name: Download independent V0.2 calibration PASS
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36550385681
+          name: dls-marginfi-multihop-source-cal-v02
+          path: calibration
+
+      - name: Compile frozen full-census shard
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/census_marginfi_jupiter_multihop_shard_v0_2.py
+
+      - name: Execute frozen source-only shard
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/census_marginfi_jupiter_multihop_shard_v0_2.py
+          --members-root members
+          --bank-registry-root bank_registry
+          --calibration-root calibration
+          --shard-index ${{ matrix.shard }}
+          --shard-count 16
+
+      - name: Upload immutable shard evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-marginfi-multihop-source-shard-${{ matrix.shard }}-v02
+          path: |
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_JUPITER_MULTI_HOP_SOURCE_SHARD_*_RECEIPT_V0.2.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_JUPITER_MULTI_HOP_SOURCE_SHARD_*_ROWS_V0.2.ndjson
+          if-no-files-found: warn
+          retention-days: 90
+
+  merge:
+    needs: shard
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download all full-census shard evidence
+        uses: actions/download-artifact@v4
+        with:
+          pattern: dls-marginfi-multihop-source-shard-*-v02
+          path: shards
+          merge-multiple: false
+
+      - name: Download canonical Marginfi membership PASS
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36546170744
+          name: dls-marginfi-jupiter-route-class-v02
+          path: members
+
+      - name: Download independent V0.2 calibration PASS
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36550385681
+          name: dls-marginfi-multihop-source-cal-v02
+          path: calibration
+
+      - name: Compile deterministic merge
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/merge_marginfi_jupiter_multihop_census_v0_2.py
+
+      - name: Merge and adjudicate frozen full census
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/merge_marginfi_jupiter_multihop_census_v0_2.py
+          --members-root members
+          --shards-root shards
+          --calibration-root calibration
+
+      - name: Upload terminal full-census evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-marginfi-multihop-signed-flow-source-v02
+          path: |
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_JUPITER_MULTI_HOP_SIGNED_FLOW_SOURCE_RECEIPT_V0.2.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_JUPITER_MULTI_HOP_SIGNED_FLOW_SOURCE_ROWS_V0.2.ndjson
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_NO_PRICES_NO_RETURNS_NO_PNL_NO_TRADING
