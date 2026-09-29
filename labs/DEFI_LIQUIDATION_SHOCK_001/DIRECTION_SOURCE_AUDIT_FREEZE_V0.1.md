@@ -5,8 +5,8 @@ Status: FROZEN / SOURCE-ROLE ONLY / BEFORE 2025 HOLDOUT
 
 ## Prerequisite
 - canonical OOS lock: SURVIVES_OOS
-- canonical OOS run: 36486030304
-- canonical OOS artifact: 10999436846
+- canonical OOS run: 36486620726
+- canonical OOS artifact: 10998958189
 - 2025/2026 outcomes remain closed.
 
 ## Purpose
