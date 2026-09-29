@@ -1,0 +1,53 @@
+name: DLS Basis Dislocation Development V0.1
+
+on:
+  push:
+    branches:
+      - dls-basis-dislocation-v01
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_DLS_BASIS_DISLOCATION_DEV_V01.marker
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  development:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download canonical cluster source
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36465385517
+          name: dls-source-cluster-sample-gate-v01
+          path: cluster_source
+      - name: Compile frozen executor
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/run_dls_basis_dislocation_dev_v0_1.py
+      - name: Execute basis-dislocation development
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/run_dls_basis_dislocation_dev_v0_1.py
+          --cluster-source cluster_source
+          --workers 16
+      - name: Upload immutable development evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-basis-dislocation-development-v01
+          path: |
+            labs/DEFI_LIQUIDATION_SHOCK_001/DLS_BASIS_DISLOCATION_V01_DEVELOPMENT_RECEIPT_V0.1.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/DLS_BASIS_DISLOCATION_V01_DEVELOPMENT_LEDGER_V0.1.ndjson
+            labs/DEFI_LIQUIDATION_SHOCK_001/DLS_BASIS_DISLOCATION_V01_MARKET_DATA_MANIFEST_V0.1.ndjson
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Firewall
+        if: always()
+        run: echo BASIS_DEV_2021_2022_ONLY_2023_2024_2025_2026_CLOSED_NO_TRADING
