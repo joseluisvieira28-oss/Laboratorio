@@ -48,8 +48,10 @@ for url in urls:
         route=url; break
 symbols=(obj or {}).get("symbols") or []
 exact=[x for x in symbols if x.get("symbol")==symbol and x.get("contractType")=="PERPETUAL" and x.get("quoteAsset")=="USDT" and x.get("baseAsset")=="SOL"]
-if len(exact)!=1:
-    errors.append({"reason":"futures_product_metadata_mismatch","http_status":st,"match_count":len(exact)})
+metadata_reachable=(st==200 and isinstance(obj,dict))
+metadata_conflict=(metadata_reachable and len(exact)!=1)
+if metadata_conflict:
+    errors.append({"reason":"futures_product_metadata_conflict","http_status":st,"match_count":len(exact)})
 
 # Metadata-only route probes, one deterministic day per quarter over open development period.
 dates=[
@@ -65,7 +67,9 @@ for day in dates:
     probes.append({"date":day,"zip_head_status":zs,"checksum_head_status":cs,"pass":ok})
     if not ok: errors.append({"reason":"archive_route_probe_failed","date":day,"zip":zs,"checksum":cs})
 
-classification="DLS_V0_2_FUTURES_SOURCE_PASS" if not errors else "DLS_V0_2_FUTURES_SOURCE_BLOCKED"
+archive_identity_pass=(all(p["pass"] for p in probes) and len(probes)==13)
+historical_fallback_used=(not metadata_reachable and archive_identity_pass)
+classification="DLS_V0_2_FUTURES_SOURCE_PASS" if not errors and (len(exact)==1 or historical_fallback_used) else "DLS_V0_2_FUTURES_SOURCE_BLOCKED"
 receipt={
  "schema_version":"0.1","lab_id":"DEFI-LIQUIDATION-SHOCK-001",
  "mission":"V0.2_EXECUTABLE_VOLATILITY",
@@ -73,6 +77,10 @@ receipt={
  "symbol":symbol,"market":"BINANCE_USDM_PERPETUAL","interval":"1m",
  "product_metadata_route":route,"product_metadata_http_status":st,
  "product_metadata_exact_match":len(exact)==1,
+ "product_metadata_reachable":metadata_reachable,
+ "historical_archive_product_identity_pass":archive_identity_pass,
+ "historical_archive_identity_fallback_used":historical_fallback_used,
+ "identity_addendum":"DLS_V0_2_FUTURES_ARCHIVE_IDENTITY_ADDENDUM_V0.1.md",
  "archive_route_template":"https://data.binance.vision/data/futures/um/daily/klines/{symbol}/1m/{symbol}-1m-{date}.zip",
  "checksum_route_template":"https://data.binance.vision/data/futures/um/daily/klines/{symbol}/1m/{symbol}-1m-{date}.zip.CHECKSUM",
  "development_start":"2021-12-08T00:00:00Z","development_end_exclusive":"2025-01-01T00:00:00Z",
