@@ -19,9 +19,10 @@ from radar.operator_risk_v02 import (
 
 
 class FakePrivate:
-    def __init__(self, *, positions=None, orders=None, equity=112.0, available=100.0):
+    def __init__(self, *, positions=None, orders=None, tpsl=None, equity=112.0, available=100.0):
         self._positions = positions or []
         self._orders = orders or []
+        self._tpsl = tpsl or []
         self._equity = equity
         self._available = available
 
@@ -30,6 +31,9 @@ class FakePrivate:
 
     def open_orders(self, symbol=None):
         return list(self._orders)
+
+    def open_tpsl_orders(self, symbol=None):
+        return list(self._tpsl)
 
     def assets(self):
         return [{
@@ -232,6 +236,23 @@ class OperatorRiskV02Tests(unittest.TestCase):
                 )
             self.assertFalse(state["pass"])
             self.assertIn("LOCAL_RECONCILIATION_ACCOUNTING_INVALID", state["blockers"])
+
+
+    def test_open_tpsl_order_blocks_global_slot_clean_state(self):
+        with tempfile.TemporaryDirectory() as td:
+            state = build_operator_risk_state(
+                private_client=FakePrivate(tpsl=[{
+                    "id": 123,
+                    "positionId": 77,
+                    "state": 1,
+                    "symbol": "BTC_USDT",
+                }]),
+                receipt_root=td,
+                now=datetime(2026, 9, 30, 12, 0, tzinfo=timezone.utc),
+            )
+            self.assertFalse(state["pass"])
+            self.assertIn("GLOBAL_OPEN_TPSL_ORDER_PRESENT", state["blockers"])
+            self.assertEqual(state["exchange_open_tpsl_order_count"], 1)
 
 
 if __name__ == "__main__":
