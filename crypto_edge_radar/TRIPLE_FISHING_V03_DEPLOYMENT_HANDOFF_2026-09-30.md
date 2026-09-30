@@ -3,7 +3,7 @@
 Date: 2026-09-30
 Branch: `triple-fishing-operator-v0.3-2026-09-30`
 PR: #160 (DRAFT)
-Build source SHA: `47ec9997dbd9d68afe2316c9693fcbc4f15f0579`
+Build source SHA: `e581823ae82c6c14ab9ae9d984430ba6e248a9ea`
 Release metadata receipt commit: `b2f99ef0bee4d3fad7d39583aa021307a698d479`
 
 ## Result
@@ -18,12 +18,12 @@ Lanes packaged behind one persistent global Futures slot:
 
 ## Validation
 
-Release audit run `36712859411`: SUCCESS.
+Release audit run `36722713131`: SUCCESS.
 - six original synthetic release failures: 6/6 fixed;
 - failed invariants: 0;
 - targeted regressions: 74 PASS.
 
-Windows build run `36712851727`: SUCCESS.
+Windows build run `36722620249`: SUCCESS.
 - compile PASS;
 - release audit PASS;
 - 74 tests PASS;
@@ -33,14 +33,14 @@ Windows build run `36712851727`: SUCCESS.
 
 Artifact:
 - name: `mexc-triple-fishing-operator-v03-windows`
-- ID: `11094842456`
-- ZIP SHA256: `eab3d9015e4b6fa39441f349147e799d8547fd97a6b5e46ec018028c9c56770c`
-- expiry: 2026-10-07T12:12:46Z
+- ID: `11101231947`
+- ZIP SHA256: `33991b881f43f112bee10ce895a3c5abff25113c047b74873a5d0698ca3f8b4a`
+- expiry: 2026-10-07T13:40:03Z
 
 EXE SHA256:
-- `MEXCTripleFishingOperatorV03.exe` = `4fb9ee43361ec7765efba43e627918c7cb48ccdec3ddc48bbbc4d33c37309c32`
-- `MEXCTripleFishingReadyV03.exe` = `79515772d66d5d4dea2b69398376c1507a34a71396260829b3826d99d0551139`
-- `BuildOptionsCorrectionOverlayV01.exe` = `0f9de73236213d6becae90a82625f9d7ea61efe2e31f601ba83e5c35b42f7de4`
+- `MEXCTripleFishingOperatorV03.exe` = `3fc834c2a26514861cfd51ae3ff47776c49042748baf4a969b1639c06c68af35`
+- `MEXCTripleFishingReadyV03.exe` = `aa47f4ed3e009d20c4bfbada458ccb2b03a6b74a6ad2d2a857c84c0e4a98d733`
+- `BuildOptionsCorrectionOverlayV01.exe` = `4e2827ac12b3faba5e049cbb94df3389c59acb108ae29510cd33b5b655110291`
 
 ## Frozen operator envelope
 
@@ -92,3 +92,24 @@ Evidence:
 - rebuilt Windows package `36712851727`: SUCCESS.
 
 The currently installed first V0.3 package predates this source hotfix and should remain UNARMED. Replace it with artifact `11094842456` before the controlled switch.
+
+
+## Supervisor freshness race hotfix
+
+A fresh read-only pre-switch check on 2026-09-30 showed all account/source gates healthy but returned `TRIPLE_SUPERVISOR_STATE_STALE` with `age_seconds=-1.872183`. Root cause: readiness captured `now` before network/account checks, while the supervisor kept updating its state concurrently. By the time readiness loaded the supervisor JSON, its `checked_at_utc` could legitimately be later than the old readiness-start timestamp.
+
+Hotfix:
+- supervisor freshness is measured against a fresh UTC timestamp captured after loading the supervisor state;
+- genuine future timestamps still fail closed when age < 0;
+- stale timestamps still fail closed when age > 15 seconds;
+- no science, risk, source, signal, fee, sizing or execution threshold changed.
+
+Evidence:
+- fix commit `e581823ae82c6c14ab9ae9d984430ba6e248a9ea`;
+- regression commit `0d70b5e0b093a348e66125da677406224270594f`;
+- audited branch head `6e216b30e5e063a4ed63cec78bad20886280c490`;
+- release audit run `36722713131`: SUCCESS;
+- Windows build run `36722620249`: SUCCESS;
+- artifact `11101231947`, SHA256 `33991b881f43f112bee10ce895a3c5abff25113c047b74873a5d0698ca3f8b4a`.
+
+The production-code diff from build source `e581823a...` to audited head `6e216b30...` contains only the two CI workflow files and the new readiness regression test. No production runtime code differs.
