@@ -1,0 +1,121 @@
+{
+  "receipt_id": "TRIPLE_FISHING_OPERATOR_V03_RELEASE_2026-09-30",
+  "recorded_at_utc": "2026-09-30T11:20:00Z",
+  "status": "BUILD_VALIDATED__DEPLOYMENT_PENDING_FRESH_PC_READINESS",
+  "source": {
+    "branch": "triple-fishing-operator-v0.3-2026-09-30",
+    "build_source_sha": "59192ee2748796885c67bc77c892e963c60b01a1",
+    "pull_request": 160,
+    "pull_request_state": "DRAFT",
+    "base_branch": "operator-risk-v02-2026-09-29",
+    "main_merged": false
+  },
+  "release_gate": {
+    "workflow_run_id": 36706573491,
+    "conclusion": "success",
+    "synthetic_probe_count": 6,
+    "failed_invariant_count": 0,
+    "regression_test_count": 74,
+    "regression_tests": "PASS"
+  },
+  "windows_build": {
+    "workflow_run_id": 36706573593,
+    "conclusion": "success",
+    "artifact_name": "mexc-triple-fishing-operator-v03-windows",
+    "artifact_id": 11092198218,
+    "artifact_size_bytes": 31595892,
+    "artifact_sha256": "818f9aa128bed21b4e4cfb8f7fe91767e398be174062f0fd3b38a0730fb9cfd2",
+    "expires_at_utc": "2026-10-07T11:14:15Z",
+    "executable_sha256": {
+      "MEXCTripleFishingOperatorV03.exe": "c92e91314e5b71605e23c3a6e5df52d2313ae0d50f24bb08618ce68b3c7dcfaf",
+      "MEXCTripleFishingReadyV03.exe": "769a5e192bf5c08d3385a8f21561c3ad8512d104097e299003fe01c64c4eed72",
+      "BuildOptionsCorrectionOverlayV01.exe": "fe7d64c1c83581c260caed756ccaca0d6adb2c31ace8bddaa7e955a954925ac0"
+    }
+  },
+  "lanes": {
+    "BNB-LAUNCHPOOL-DEMAND-001": {
+      "mode": "OPERATOR_REAL_MONEY_NO_SCIENTIFIC_CREDIT",
+      "status": "PACKAGED_FOR_V03_CONTROLLED_HANDOVER",
+      "route": "MEXC BNB_USDT FUTURES",
+      "note": "Existing V0.2 installed BNB remains authoritative until V0.3 controlled switch passes fresh readiness."
+    },
+    "OPTIONS-SPOTPERP-001-V2.1": {
+      "mode": "OPERATOR_FUTURES_FORK_NO_SCIENTIFIC_CREDIT",
+      "status": "PACKAGED",
+      "route": "MEXC BTC_USDT FUTURES",
+      "fee_hotfix": "positive totalFee else abs(takerFee)+abs(makerFee)",
+      "historical_accounting_overlay": "HASH_BOUND_IMMUTABLE_ORIGINALS",
+      "parent_science_changed": false
+    },
+    "HTF-DH03-12H-STANDALONE-FORWARD-V1": {
+      "mode": "OPERATOR_FORK_NO_SCIENTIFIC_CREDIT",
+      "status": "PACKAGED_PROSPECTIVE_ONLY",
+      "source": "BINANCE_USDM_PUBLIC",
+      "route": "MEXC FUTURES SAME-ASSET_USDT_CONTRACT",
+      "receipt_time_gate_ms": 2000,
+      "late_chase_allowed": false,
+      "protective_exit": "MEXC_EXCHANGE_HOSTED_POSITION_TPSL",
+      "restart_recovery": "VALIDATED_BY_SYNTHETIC_REGRESSION"
+    }
+  },
+  "global_operator_envelope": {
+    "max_initial_isolated_margin_usdt_per_position": 10,
+    "leverage": 5,
+    "max_notional_usdt_per_position": 50,
+    "max_simultaneous_positions": 1,
+    "daily_realized_loss_kill_usdt": 5,
+    "rolling_7d_realized_loss_kill_usdt": 5,
+    "auto_add_margin": false,
+    "martingale": false,
+    "averaging": false,
+    "pyramiding": false,
+    "late_chase": false,
+    "blind_resend": false
+  },
+  "safety_invariants": {
+    "persistent_non_expiring_global_slot": true,
+    "unknown_exchange_ack_reserves_slot": true,
+    "corrupt_receipts_fail_closed": true,
+    "nonfinite_accounting_rejected": true,
+    "overlapping_receipt_roots_deduplicated": true,
+    "paginated_open_orders_scanned": true,
+    "global_open_tpsl_orders_gate": true,
+    "exchange_mutation_performed_by_build": false,
+    "real_order_created_by_build": false,
+    "v03_armed_by_build": false,
+    "installed_bnb_modified_by_build": false,
+    "historical_receipts_rewritten": false
+  },
+  "external_api_validation": {
+    "mexc_official_postman": {
+      "repository": "mexcdevelop/mexc-api-postman",
+      "file": "MEXC V1 contract.postman_collection.json",
+      "latest_relevant_commit": "0174c98ccdd7965026e134eb51ac55cfb2e825bf",
+      "commit_date_utc": "2026-03-31T12:28:37Z",
+      "confirmed_endpoints": [
+        "POST /api/v1/private/stoporder/place",
+        "GET /api/v1/private/stoporder/open_orders",
+        "GET /api/v1/private/stoporder/list/orders",
+        "GET /api/v1/private/position/list/history_positions"
+      ]
+    },
+    "corroboration": {
+      "repository": "JKorf/Mexc.Net",
+      "observed_default_branch": "main",
+      "observed_pushed_at_utc": "2026-09-30T08:18:52Z",
+      "tpsl_semantics": [
+        "volType=2 means position TP/SL",
+        "takeProfitType=0 means market",
+        "stopLossType=0 means market",
+        "trigger type 1 means last price",
+        "profitLossVolType SAME means same quantities"
+      ],
+      "funding_endpoint": "GET /api/v1/private/position/funding_records"
+    }
+  },
+  "deployment_gate": {
+    "live_on_pc": false,
+    "required_next_step": "Fresh local BNB/account status, then install V0.3 UNARMED, then controlled authenticated readiness/switch.",
+    "prohibition": "Do not stop legacy BNB if it owns an open position; do not bypass readiness blockers."
+  }
+}
