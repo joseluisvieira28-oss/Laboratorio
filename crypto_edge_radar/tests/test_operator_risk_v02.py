@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import tempfile
 from datetime import datetime, timezone
@@ -170,6 +171,67 @@ class OperatorRiskV02Tests(unittest.TestCase):
                     now=datetime(2026, 9, 30, 12, 0, tzinfo=timezone.utc),
                 )
             self.assertEqual(loss["daily_realized_loss_usdt"], 3.0)
+
+
+    def test_hash_bound_correction_overlay_changes_loss_without_mutating_receipt(self):
+        import os
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            receipt = root / "POST_TRADE_RECONCILIATION.json"
+            original = {
+                "signal_identity": "OPTIONS-SPOTPERP-001:V2.1:2026-09-28",
+                "closed_at_utc": "2026-09-30T00:00:06Z",
+                "realized_net_pnl_usdt": -0.01696,
+            }
+            receipt.write_text(json.dumps(original, sort_keys=True), encoding="utf-8")
+            digest = hashlib.sha256(receipt.read_bytes()).hexdigest()
+            overlay = root / "overlay.json"
+            overlay.write_text(json.dumps({
+                "entries": [{
+                    "signal_identity": original["signal_identity"],
+                    "original_receipt_sha256": digest,
+                    "stored_net_pnl_usdt": -0.01696,
+                    "corrected_realized_net_pnl_usdt": -0.03032779,
+                }]
+            }), encoding="utf-8")
+            before = receipt.read_bytes()
+            with patch.dict(os.environ, {"CRYPTO_LAB_PNL_CORRECTION_OVERLAY": str(overlay)}):
+                loss = realized_loss_state(
+                    root,
+                    now=datetime(2026, 9, 30, 12, 0, tzinfo=timezone.utc),
+                )
+            self.assertAlmostEqual(loss["daily_realized_loss_usdt"], 0.03032779)
+            self.assertEqual(receipt.read_bytes(), before)
+
+    def test_correction_overlay_hash_mismatch_fails_closed(self):
+        import os
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            receipt = root / "POST_TRADE_RECONCILIATION.json"
+            receipt.write_text(json.dumps({
+                "signal_identity": "OPTIONS-SPOTPERP-001:V2.1:2026-09-28",
+                "closed_at_utc": "2026-09-30T00:00:06Z",
+                "realized_net_pnl_usdt": -0.01696,
+            }), encoding="utf-8")
+            overlay = root / "overlay.json"
+            overlay.write_text(json.dumps({
+                "entries": [{
+                    "signal_identity": "OPTIONS-SPOTPERP-001:V2.1:2026-09-28",
+                    "original_receipt_sha256": "0" * 64,
+                    "stored_net_pnl_usdt": -0.01696,
+                    "corrected_realized_net_pnl_usdt": -0.03032779,
+                }]
+            }), encoding="utf-8")
+            with patch.dict(os.environ, {"CRYPTO_LAB_PNL_CORRECTION_OVERLAY": str(overlay)}):
+                state = build_operator_risk_state(
+                    private_client=FakePrivate(),
+                    receipt_root=root,
+                    now=datetime(2026, 9, 30, 12, 0, tzinfo=timezone.utc),
+                )
+            self.assertFalse(state["pass"])
+            self.assertIn("LOCAL_RECONCILIATION_ACCOUNTING_INVALID", state["blockers"])
 
 
 if __name__ == "__main__":
