@@ -1,0 +1,57 @@
+name: DLS Marginfi Orca Route Rebound V0.2 Pre-Outcome
+
+on:
+  push:
+    branches:
+      - dls-marginfi-orca-route-rebound-v02
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_MARGINFI_ORCA_ROUTE_REBOUND_V02_PRECHECK.marker
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  precheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download canonical Oct-Dec Orca source PASS
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36782337541
+          artifact-ids: 11127978050
+          path: source_gate
+
+      - name: Compile balanced precheck
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/precheck_marginfi_orca_route_rebound_v0_2.py
+
+      - name: Execute source-only balanced precheck
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/precheck_marginfi_orca_route_rebound_v0_2.py
+          --source-root source_gate
+
+      - name: Upload immutable pre-outcome evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-marginfi-orca-route-rebound-v02-precheck
+          path: |
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_ORCA_ROUTE_REBOUND_V02_PREOUTCOME_RECEIPT.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_ORCA_ROUTE_REBOUND_V02_PREOUTCOME_CASCADES.ndjson
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_BALANCED_FOLDS_NO_OCTDEC_OUTCOMES_NO_TRADING
