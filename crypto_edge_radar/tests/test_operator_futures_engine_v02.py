@@ -8,6 +8,7 @@ from radar.operator_futures_engine_v02 import (
     compute_contract_volume,
     order_fee_usdt,
     timing_state,
+    protective_prices,
 )
 
 
@@ -85,6 +86,29 @@ class OperatorFuturesEngineV02Tests(unittest.TestCase):
             ),
             "MISSED_NO_CHASE",
         )
+
+
+    def test_protective_prices_round_conservatively_for_long(self):
+        out = protective_prices(
+            entry_price=100.0,
+            direction="LONG",
+            stop_distance_fraction=0.051,
+            take_profit_distance_fraction=0.153,
+            price_unit=0.1,
+        )
+        self.assertEqual(out["stop_loss_price"], 94.9)
+        self.assertEqual(out["take_profit_price"], 115.3)
+
+    def test_protective_prices_round_conservatively_for_short(self):
+        out = protective_prices(
+            entry_price=100.0,
+            direction="SHORT",
+            stop_distance_fraction=0.051,
+            take_profit_distance_fraction=0.153,
+            price_unit=0.1,
+        )
+        self.assertEqual(out["stop_loss_price"], 105.1)
+        self.assertEqual(out["take_profit_price"], 84.7)
 
 
 if __name__ == "__main__":
