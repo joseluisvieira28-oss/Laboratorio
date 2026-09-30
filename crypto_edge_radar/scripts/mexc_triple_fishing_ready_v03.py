@@ -7,7 +7,7 @@ import math
 import os
 from pathlib import Path
 import time
-from typing import Any
+from typing import Any, Callable
 
 from radar.global_slot_reservation_v03 import GlobalSlotReservationV03
 from radar.market import MEXCFuturesPublicFeed
@@ -51,8 +51,10 @@ def build_readiness(
     kill_switch_path:Path,
     legacy_bnb_armed_path:Path|None=None,
     legacy_options_armed_path:Path|None=None,
+    now_fn:Callable[[],datetime]|None=None,
 )->dict[str,Any]:
-    now=datetime.now(timezone.utc)
+    clock_utc=now_fn or (lambda: datetime.now(timezone.utc))
+    started_at=clock_utc()
     blockers:list[str]=[]
 
     try:
@@ -74,7 +76,7 @@ def build_readiness(
         risk=build_operator_risk_state(
             private_client=private,
             receipt_root=receipt_root,
-            now=now,
+            now=started_at,
         )
         blockers.extend(risk.get("blockers") or [])
     except Exception as exc:
@@ -120,7 +122,11 @@ def build_readiness(
         if supervisor.get("version")!="TRIPLE_FISHING_OPERATOR_V0.3":
             raise RuntimeError("unexpected supervisor version")
         checked=_utc(supervisor["checked_at_utc"])
-        age=(now-checked).total_seconds()
+        # Freshness must be measured against a timestamp captured after the
+        # concurrently-updated supervisor state is read. Using the readiness
+        # start time can create a false negative age while network checks run.
+        supervisor_now=clock_utc()
+        age=(supervisor_now-checked).total_seconds()
         if age<0 or age>MAX_SUPERVISOR_STATE_AGE_SECONDS:
             blockers.append("TRIPLE_SUPERVISOR_STATE_STALE")
         source_state=supervisor.get("source_state") or {}
@@ -201,9 +207,10 @@ def build_readiness(
         blockers.append("LEGACY_OPTIONS_OPERATOR_STILL_ARMED")
 
     blockers=list(dict.fromkeys(blockers))
+    completed_at=clock_utc()
     return {
         "readiness_id":"MEXC-TRIPLE-FISHING-READY-V0.3",
-        "checked_at_utc":now.isoformat().replace("+00:00","Z"),
+        "checked_at_utc":completed_at.isoformat().replace("+00:00","Z"),
         "status":"PASS_READY_TO_ARM" if not blockers else "FAIL_CLOSED",
         "pass":not blockers,
         "blockers":blockers,
