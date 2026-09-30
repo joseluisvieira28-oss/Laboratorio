@@ -28,8 +28,8 @@ args=ap.parse_args()
 if not 0<=args.shard<16: raise SystemExit("shard must be 0..15")
 SID=f"orca-{args.shard:02d}"
 OUT=Path(args.outdir);OUT.mkdir(parents=True,exist_ok=True)
-RECEIPT=OUT/f"MARGINFI_ORCA_OCTDEC_FULL_SOURCE_SHARD_{SID}_RECEIPT_V0.1.json"
-ROWS=OUT/f"MARGINFI_ORCA_OCTDEC_FULL_SOURCE_SHARD_{SID}_ROWS_V0.1.ndjson"
+RECEIPT=OUT/f"MARGINFI_ORCA_OCTDEC_FULL_SOURCE_SHARD_{SID}_RECEIPT_V0.2.json"
+ROWS=OUT/f"MARGINFI_ORCA_OCTDEC_FULL_SOURCE_SHARD_{SID}_ROWS_V0.2.ndjson"
 
 def addrkey(v):return json.dumps(v,separators=(",",":"),sort_keys=True)
 def ident(r):return r["signature"]+"|"+addrkey(r["instructionAddress"])
@@ -174,7 +174,7 @@ def fetch_pool_mints(pools):
     return out,errs
 
 def blocked(stage,errors,**extra):
-    rec={"schema_version":"0.1","lab_id":"DLS-MARGINFI-ORCA-EXTREME-FLOW-REBOUND-002",
+    rec={"schema_version":"0.2","lab_id":"DLS-MARGINFI-ORCA-EXTREME-FLOW-REBOUND-002",
          "classification":"MARGINFI_ORCA_OCTDEC_FULL_SOURCE_SHARD_BLOCKED","shard_id":SID,
          "stage":stage,"errors":errors if isinstance(errors,list) else [str(errors)],
          "firewall":{"prices":False,"ohlc":False,"returns":False,"pnl":False,
@@ -352,7 +352,7 @@ D=sum(1 for r in rows if r.get("classification")=="DIRECTION_PROVEN")
 A=sum(1 for r in rows if r.get("classification")=="DIRECTION_AMBIGUOUS")
 C=sum(1 for r in rows if r.get("classification")=="CONTRADICTION")
 exact=sum(1 for r in rows if r.get("classification")=="DIRECTION_PROVEN" and r.get("exact_route_input_amount") is not None)
-rec={"schema_version":"0.1","lab_id":"DLS-MARGINFI-ORCA-EXTREME-FLOW-REBOUND-002",
+rec={"schema_version":"0.2","lab_id":"DLS-MARGINFI-ORCA-EXTREME-FLOW-REBOUND-002",
  "classification":"MARGINFI_ORCA_OCTDEC_FULL_SOURCE_SHARD_PASS","shard_id":SID,
  "authority":"MARGINFI_ORCA_EXTREME_FLOW_REBOUND_V0_2_PRE_OUTCOME_FREEZE_2026-09-30.md",
  "canonical_population_count":canonical_count,"assigned_count":len(assigned),"adjudication_count":len(rows),
