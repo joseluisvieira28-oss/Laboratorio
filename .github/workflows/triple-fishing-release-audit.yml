@@ -5,6 +5,8 @@ on:
   pull_request:
     paths:
       - crypto_edge_radar/scripts/audit_triple_fishing_v03.py
+      - crypto_edge_radar/scripts/mexc_triple_fishing_ready_v03.py
+      - crypto_edge_radar/tests/test_mexc_triple_fishing_ready_v03.py
       - crypto_edge_radar/radar/options_v21_live.py
       - crypto_edge_radar/tests/test_options_v21_live.py
       - .github/workflows/triple-fishing-release-audit.yml
@@ -42,6 +44,7 @@ jobs:
           tests.test_dh03_12h_local
           tests.test_dh03_operator_source_v03
           tests.test_mexc_triple_fishing_operator_v03
+          tests.test_mexc_triple_fishing_ready_v03
       - uses: actions/upload-artifact@v4
         if: always()
         with:
