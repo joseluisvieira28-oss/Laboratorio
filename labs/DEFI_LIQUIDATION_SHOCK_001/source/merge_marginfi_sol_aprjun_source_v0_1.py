@@ -68,7 +68,7 @@ liabs=Counter(r.get("liab_mint") for r in rows if r.get("liab_mint"))
 reasons=Counter(r.get("reason") for r in rows if r.get("classification")=="SOURCE_EVIDENCE_INCOMPLETE" and r.get("reason"))
 
 receipt={"schema_version":"0.1","lab_id":"DEFI-LIQUIDATION-SHOCK-001","classification":classification,
- "authority":"MARGINFI_SOL_APRJUN_SOURCE_PREREQUISITE_ADDENDUM_V0.2.md",
+ "authority":"MARGINFI_SOL_FLOW_TURNOVER_IMPACT_V0_1_PRE_OUTCOME_FREEZE_2026-09-30.md",
  "monthly_receipt_count":len(receipts),"sol_population_count":len(pop),"route_member_count":len(rows),
  "population_duplicate_count":pdup,"route_duplicate_count":rdup,
  "source_evidence_incomplete":I,"source_complete_count":complete,"source_complete_rate":source_complete_rate,
