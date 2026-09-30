@@ -66,6 +66,8 @@ class DH03OperatorSourceV03:
         self._runtime_status = "NOT_STARTED"
         self._runtime_error: str | None = None
         self._bootstrap: dict[str, Any] | None = None
+        self._last_message_ms: int | None = None
+        self._last_persisted_heartbeat_ms: int | None = None
         if self.state_path.exists():
             try:
                 payload = json.loads(self.state_path.read_text(encoding="utf-8"))
@@ -96,11 +98,22 @@ class DH03OperatorSourceV03:
                 self._bootstrap = bootstrap
                 self._runtime_status = "COLLECTING"
                 self._save()
-            self.collector.run_forever()
+            self.collector.run_forever(on_message=self._on_message)
         except Exception as exc:
             with self._lock:
                 self._runtime_status = "FAIL_CLOSED"
                 self._runtime_error = f"{type(exc).__name__}:{exc}"
+                self._save()
+
+    def _on_message(self, observed_ms: int) -> None:
+        with self._lock:
+            self._last_message_ms = int(observed_ms)
+            if (
+                self._last_persisted_heartbeat_ms is None
+                or observed_ms - self._last_persisted_heartbeat_ms >= 5_000
+            ):
+                self._last_persisted_heartbeat_ms = int(observed_ms)
+                self.state["last_websocket_message_at_ms"] = int(observed_ms)
                 self._save()
 
     def start(self) -> None:
@@ -212,12 +225,26 @@ class DH03OperatorSourceV03:
             signals.append(signal)
 
         with self._lock:
+            heartbeat = self._last_message_ms
+            if heartbeat is None:
+                raw = self.state.get("last_websocket_message_at_ms")
+                heartbeat = int(raw) if raw is not None else None
+            age_ms = (now_ms - heartbeat) if heartbeat is not None else None
+            if self._runtime_status == "COLLECTING":
+                if age_ms is None:
+                    status = "CONNECTING_NO_HEARTBEAT"
+                elif age_ms <= 5_000:
+                    status = "COLLECTING_LIVE"
+                else:
+                    status = "FAIL_CLOSED_SOURCE_STALE"
+            else:
+                status = self._runtime_status
             self._save()
-            status = self._runtime_status
             error = self._runtime_error
         return {
             "source_id": "DH03_OPERATOR_SOURCE_V0.3",
             "status": status,
+            "last_websocket_message_age_ms": age_ms,
             "error": error,
             "signals": sorted(
                 signals,
