@@ -1,0 +1,133 @@
+name: DLS Marginfi SOL April Source Fallback V0.1
+
+on:
+  push:
+    branches:
+      - dls-marginfi-flow-turnover-impact-v01
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_MARGINFI_SOL_APRIL_SOURCE_FALLBACK_V01.marker
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  shard:
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        include:
+          - {sid: a1, start: "2024-04-01T00:00:00Z", end: "2024-04-13T00:00:00Z"}
+          - {sid: a2, start: "2024-04-13T00:00:00Z", end: "2024-04-14T00:00:00Z"}
+          - {sid: a3, start: "2024-04-14T00:00:00Z", end: "2024-04-16T00:00:00Z"}
+          - {sid: a4, start: "2024-04-16T00:00:00Z", end: "2024-04-17T00:00:00Z"}
+          - {sid: a5, start: "2024-04-17T00:00:00Z", end: "2024-05-01T00:00:00Z"}
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download canonical April Marginfi field-enrichment
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36263998920
+          name: dls-field-enrichment-ms-marginfi-202404
+          path: field_month
+      - name: Download source-authoritative Marginfi bank registry
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36312418451
+          name: dls-marginfi-bank-unit-source-completion-v02
+          path: bank_registry
+      - name: Compile shard collector
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/census_marginfi_sol_april_shard_v0_1.py
+      - name: Execute source-only shard
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/census_marginfi_sol_april_shard_v0_1.py
+          --field-root field_month
+          --bank-registry-root bank_registry
+          --month 202404
+          --start "${{ matrix.start }}"
+          --end "${{ matrix.end }}"
+          --shard-id "${{ matrix.sid }}"
+          --workers 2
+      - name: Upload immutable shard evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-marginfi-sol-april-source-${{ matrix.sid }}-v01
+          path: |
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_SOL_APRIL_SHARD_${{ matrix.sid }}_RECEIPT_V0.1.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_SOL_APRIL_SHARD_${{ matrix.sid }}_ROWS_V0.1.ndjson
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_SOL_APRIL_SHARD_${{ matrix.sid }}_POPULATION_V0.1.ndjson
+          if-no-files-found: warn
+          retention-days: 90
+
+  merge:
+    if: always()
+    needs: shard
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download April shard evidence
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ github.run_id }}
+          pattern: dls-marginfi-sol-april-source-*-v01
+          path: shard_evidence
+          merge-multiple: false
+      - name: Download canonical April field-enrichment
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36263998920
+          name: dls-field-enrichment-ms-marginfi-202404
+          path: field_month
+      - name: Download source-authoritative Marginfi bank registry
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36312418451
+          name: dls-marginfi-bank-unit-source-completion-v02
+          path: bank_registry
+      - name: Compile April reconciliation
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/merge_marginfi_sol_april_shards_v0_1.py
+      - name: Reconcile exact canonical April population
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/merge_marginfi_sol_april_shards_v0_1.py
+          --root shard_evidence
+          --field-root field_month
+          --bank-registry-root bank_registry
+      - name: Upload reconciled April evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-marginfi-sol-aprjun-source-202404-fallback-v01
+          path: |
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_SOL_APRJUN_SOURCE_202404_RECEIPT_V0.1.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_SOL_APRJUN_SOURCE_202404_ROWS_V0.1.ndjson
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_SOL_APRJUN_POPULATION_202404_V0.1.ndjson
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_APRIL_FALLBACK_NO_MARKET_OUTCOMES_NO_TRADING
