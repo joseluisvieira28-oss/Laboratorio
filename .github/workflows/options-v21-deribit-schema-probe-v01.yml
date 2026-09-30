@@ -22,6 +22,8 @@ jobs:
           python-version: '3.12'
       - name: Probe current public Deribit BTC option trade schema
         working-directory: crypto_edge_radar
+        env:
+          PYTHONPATH: .
         run: python scripts/probe_options_v21_deribit_invalid_rows_v01.py
       - uses: actions/upload-artifact@v4
         if: always()
