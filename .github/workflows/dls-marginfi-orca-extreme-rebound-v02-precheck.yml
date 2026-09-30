@@ -1,0 +1,69 @@
+name: DLS Marginfi Orca Extreme Rebound V0.2 Pre-Outcome Gate
+
+on:
+  push:
+    branches:
+      - dls-marginfi-orca-impact-v02
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_MARGINFI_ORCA_EXTREME_REBOUND_V02_PRECHECK.marker
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  precheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download exact canonical Oct-Dec Orca source PASS
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36782337541
+          artifact-ids: 11127978050
+          path: source_gate
+
+      - name: Download exact feature-only Q90 calibration
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36686002313
+          artifact-ids: 11083738178
+          path: calibration
+
+      - name: Compile V02 pre-outcome gate
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/precheck_marginfi_orca_extreme_rebound_v0_2.py
+
+      - name: Execute feature-only V02 pre-outcome selection
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/precheck_marginfi_orca_extreme_rebound_v0_2.py
+          --source-root source_gate
+          --calibration-root calibration
+          --workers 12
+
+      - name: Upload immutable V02 pre-outcome evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-marginfi-orca-extreme-rebound-v02-precheck
+          path: |
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_ORCA_EXTREME_REBOUND_V02_PREOUTCOME_SELECTION_RECEIPT.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_ORCA_EXTREME_REBOUND_V02_PREOUTCOME_SELECTION_ROWS.ndjson
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_ORCA_EXTREME_REBOUND_V02_PREOUTCOME_VOLUME_MANIFEST.ndjson
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Firewall
+        if: always()
+        run: echo FEATURE_ONLY_NO_OCTDEC_OHLC_RETURNS_PNL_NO_TRADING
