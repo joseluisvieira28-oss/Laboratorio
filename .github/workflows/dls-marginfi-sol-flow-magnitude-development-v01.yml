@@ -1,0 +1,63 @@
+name: DLS Marginfi SOL Flow Magnitude Development V0.1
+
+on:
+  push:
+    branches:
+      - dls-marginfi-flow-magnitude-v01
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_MARGINFI_SOL_FLOW_MAGNITUDE_DEV_V01.marker
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  development:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download Apr-Jun source authority
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36713452889
+          name: dls-marginfi-sol-aprjun-signed-flow-source-v01
+          path: source
+      - name: Download frozen Q75 calibration
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36713252128
+          name: dls-marginfi-sol-flow-magnitude-q75-v01
+          path: calibration
+      - name: Compile frozen Development executor
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/run_marginfi_sol_flow_magnitude_dev_v0_1.py
+      - name: Execute untouched Apr-Jun Development
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/run_marginfi_sol_flow_magnitude_dev_v0_1.py
+          --source-root source
+          --calibration-root calibration
+          --workers 12
+      - name: Upload immutable Development evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-marginfi-sol-flow-magnitude-development-v01
+          path: |
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_SOL_FLOW_MAGNITUDE_V01_DEVELOPMENT_RECEIPT.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_SOL_FLOW_MAGNITUDE_V01_DEVELOPMENT_LEDGER.ndjson
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_SOL_FLOW_MAGNITUDE_V01_SOURCE_CASCADES.ndjson
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_SOL_FLOW_MAGNITUDE_V01_MARKET_DATA_MANIFEST.ndjson
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Firewall
+        if: always()
+        run: echo APRJUN_DEV_ONLY_JULSEP_OOS_OCTDEC_HOLDOUT_2025_2026_CLOSED_NO_TRADING
