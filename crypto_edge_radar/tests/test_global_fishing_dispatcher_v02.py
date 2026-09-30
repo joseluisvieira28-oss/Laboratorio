@@ -62,5 +62,19 @@ class GlobalFishingDispatcherV02Tests(unittest.TestCase):
         self.assertEqual(out["rejected"][0]["reason"], "MISSED_NO_CHASE")
 
 
+    def test_nonfinite_lateness_is_rejected(self):
+        now = datetime(2026, 9, 29, 13, 0, 0, tzinfo=timezone.utc)
+        signal = self.signal("BNB", "2026-09-29T12:00:00Z")
+        signal["max_late_seconds"] = "NaN"
+        out = arbitrate_due_signals(
+            [signal],
+            now=now,
+            global_slot_occupied=False,
+        )
+        self.assertIsNone(out["winner"])
+        self.assertEqual(out["status"], "NO_DUE_SIGNAL")
+        self.assertTrue(out["rejected"][0]["reason"].startswith("TIMING_INVALID:"))
+
+
 if __name__ == "__main__":
     unittest.main()

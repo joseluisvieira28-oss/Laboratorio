@@ -41,8 +41,8 @@ class OptionTrade:
     trade_id: str
     timestamp: int
     instrument_name: str
-    iv: float
-    index_price: float
+    iv: Any
+    index_price: Any
 
 
 @dataclass(frozen=True)
@@ -80,14 +80,15 @@ def _parse_trade(row: Any, *, start_ms: int, end_ms: int) -> OptionTrade:
         raise OptionsV21SourceError("Deribit trade row missing frozen signal field")
     try:
         ts = int(row["timestamp"])
-        iv = float(row["iv"])
-        index_price = float(row["index_price"])
     except (TypeError, ValueError) as exc:
-        raise OptionsV21SourceError("Deribit trade row has invalid numeric field") from exc
+        raise OptionsV21SourceError("Deribit trade row has invalid timestamp") from exc
     if not start_ms <= ts <= end_ms:
         raise OptionsV21SourceError("Deribit returned trade outside requested time window")
-    if not isfinite(iv) or iv <= 0 or not isfinite(index_price) or index_price <= 0:
-        raise OptionsV21SourceError("Deribit trade has invalid IV/index")
+    # Keep raw IV/index until frozen eligibility is known. Deribit can emit
+    # zero-IV rows for expiries outside the V2.1 30..120 DTE universe. Those
+    # rows are deterministically rejected before IV is scientifically used.
+    iv = row["iv"]
+    index_price = row["index_price"]
     trade_id = str(row.get("trade_id") or "")
     if not trade_id:
         # Fail closed rather than deduplicating with a guessed identity.
@@ -186,7 +187,17 @@ def build_daily_skew(day: date, trades: list[OptionTrade]) -> dict[str, Any]:
         if not MIN_DTE <= dte <= MAX_DTE:
             rejected_dte += 1
             continue
-        moneyness = strike / row.index_price
+        try:
+            index_price = float(row.index_price)
+        except (TypeError, ValueError) as exc:
+            raise OptionsV21SourceError(
+                "eligible-DTE Deribit trade has invalid index"
+            ) from exc
+        if not isfinite(index_price) or index_price <= 0:
+            raise OptionsV21SourceError(
+                "eligible-DTE Deribit trade has invalid index"
+            )
+        moneyness = strike / index_price
         eligible = (
             side == "C" and CALL_MIN <= moneyness <= CALL_MAX
         ) or (
@@ -195,8 +206,18 @@ def build_daily_skew(day: date, trades: list[OptionTrade]) -> dict[str, Any]:
         if not eligible:
             rejected_moneyness += 1
             continue
+        try:
+            iv = float(row.iv)
+        except (TypeError, ValueError) as exc:
+            raise OptionsV21SourceError(
+                "frozen-eligible Deribit trade has invalid IV"
+            ) from exc
+        if not isfinite(iv) or iv <= 0:
+            raise OptionsV21SourceError(
+                "frozen-eligible Deribit trade has invalid IV"
+            )
         target = call_by_inst if side == "C" else put_by_inst
-        target.setdefault(row.instrument_name, []).append(row.iv)
+        target.setdefault(row.instrument_name, []).append(iv)
         eligible_rows += 1
 
     calls = [float(median(values)) for values in call_by_inst.values()]

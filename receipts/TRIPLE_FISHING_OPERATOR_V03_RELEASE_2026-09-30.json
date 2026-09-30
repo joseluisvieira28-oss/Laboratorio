@@ -1,0 +1,157 @@
+{
+  "receipt_id": "TRIPLE_FISHING_OPERATOR_V03_RELEASE_2026-09-30",
+  "recorded_at_utc": "2026-09-30T11:20:00Z",
+  "status": "BUILD_VALIDATED__SUPERVISOR_FRESHNESS_RACE_FIXED__DEPLOYMENT_PENDING_FRESH_PC_READINESS",
+  "source": {
+    "branch": "triple-fishing-operator-v0.3-2026-09-30",
+    "build_source_sha": "e581823ae82c6c14ab9ae9d984430ba6e248a9ea",
+    "pull_request": 160,
+    "pull_request_state": "DRAFT",
+    "base_branch": "operator-risk-v02-2026-09-29",
+    "main_merged": false
+  },
+  "release_gate": {
+    "workflow_run_id": 36722713131,
+    "conclusion": "success",
+    "regression_tests": "PASS_INCLUDING_SUPERVISOR_FRESHNESS_RACE_AND_OPTIONS_ZERO_IV"
+  },
+  "windows_build": {
+    "workflow_run_id": 36722620249,
+    "conclusion": "success",
+    "artifact_name": "mexc-triple-fishing-operator-v03-windows",
+    "artifact_id": 11101231947,
+    "artifact_size_bytes": 31596823,
+    "artifact_sha256": "33991b881f43f112bee10ce895a3c5abff25113c047b74873a5d0698ca3f8b4a",
+    "expires_at_utc": "2026-10-07T13:40:03Z",
+    "executable_sha256": {
+      "MEXCTripleFishingOperatorV03.exe": "3fc834c2a26514861cfd51ae3ff47776c49042748baf4a969b1639c06c68af35",
+      "MEXCTripleFishingReadyV03.exe": "aa47f4ed3e009d20c4bfbada458ccb2b03a6b74a6ad2d2a857c84c0e4a98d733",
+      "BuildOptionsCorrectionOverlayV01.exe": "4e2827ac12b3faba5e049cbb94df3389c59acb108ae29510cd33b5b655110291"
+    }
+  },
+  "lanes": {
+    "BNB-LAUNCHPOOL-DEMAND-001": {
+      "mode": "OPERATOR_REAL_MONEY_NO_SCIENTIFIC_CREDIT",
+      "status": "PACKAGED_FOR_V03_CONTROLLED_HANDOVER",
+      "route": "MEXC BNB_USDT FUTURES",
+      "note": "Existing V0.2 installed BNB remains authoritative until V0.3 controlled switch passes fresh readiness."
+    },
+    "OPTIONS-SPOTPERP-001-V2.1": {
+      "mode": "OPERATOR_FUTURES_FORK_NO_SCIENTIFIC_CREDIT",
+      "status": "PACKAGED",
+      "route": "MEXC BTC_USDT FUTURES",
+      "fee_hotfix": "positive totalFee else abs(takerFee)+abs(makerFee)",
+      "historical_accounting_overlay": "HASH_BOUND_IMMUTABLE_ORIGINALS",
+      "parent_science_changed": false
+    },
+    "HTF-DH03-12H-STANDALONE-FORWARD-V1": {
+      "mode": "OPERATOR_FORK_NO_SCIENTIFIC_CREDIT",
+      "status": "PACKAGED_PROSPECTIVE_ONLY",
+      "source": "BINANCE_USDM_PUBLIC",
+      "route": "MEXC FUTURES SAME-ASSET_USDT_CONTRACT",
+      "receipt_time_gate_ms": 2000,
+      "late_chase_allowed": false,
+      "protective_exit": "MEXC_EXCHANGE_HOSTED_POSITION_TPSL",
+      "restart_recovery": "VALIDATED_BY_SYNTHETIC_REGRESSION"
+    }
+  },
+  "global_operator_envelope": {
+    "max_initial_isolated_margin_usdt_per_position": 10,
+    "leverage": 5,
+    "max_notional_usdt_per_position": 50,
+    "max_simultaneous_positions": 1,
+    "daily_realized_loss_kill_usdt": 5,
+    "rolling_7d_realized_loss_kill_usdt": 5,
+    "auto_add_margin": false,
+    "martingale": false,
+    "averaging": false,
+    "pyramiding": false,
+    "late_chase": false,
+    "blind_resend": false
+  },
+  "safety_invariants": {
+    "persistent_non_expiring_global_slot": true,
+    "unknown_exchange_ack_reserves_slot": true,
+    "corrupt_receipts_fail_closed": true,
+    "nonfinite_accounting_rejected": true,
+    "overlapping_receipt_roots_deduplicated": true,
+    "paginated_open_orders_scanned": true,
+    "global_open_tpsl_orders_gate": true,
+    "exchange_mutation_performed_by_build": false,
+    "real_order_created_by_build": false,
+    "v03_armed_by_build": false,
+    "installed_bnb_modified_by_build": false,
+    "historical_receipts_rewritten": false
+  },
+  "external_api_validation": {
+    "mexc_official_postman": {
+      "repository": "mexcdevelop/mexc-api-postman",
+      "file": "MEXC V1 contract.postman_collection.json",
+      "latest_relevant_commit": "0174c98ccdd7965026e134eb51ac55cfb2e825bf",
+      "commit_date_utc": "2026-03-31T12:28:37Z",
+      "confirmed_endpoints": [
+        "POST /api/v1/private/stoporder/place",
+        "GET /api/v1/private/stoporder/open_orders",
+        "GET /api/v1/private/stoporder/list/orders",
+        "GET /api/v1/private/position/list/history_positions"
+      ]
+    },
+    "corroboration": {
+      "repository": "JKorf/Mexc.Net",
+      "observed_default_branch": "main",
+      "observed_pushed_at_utc": "2026-09-30T08:18:52Z",
+      "tpsl_semantics": [
+        "volType=2 means position TP/SL",
+        "takeProfitType=0 means market",
+        "stopLossType=0 means market",
+        "trigger type 1 means last price",
+        "profitLossVolType SAME means same quantities"
+      ],
+      "funding_endpoint": "GET /api/v1/private/position/funding_records"
+    }
+  },
+  "deployment_gate": {
+    "live_on_pc": false,
+    "required_next_step": "Fresh local BNB/account status, then install V0.3 UNARMED, then controlled authenticated readiness/switch.",
+    "prohibition": "Do not stop legacy BNB if it owns an open position; do not bypass readiness blockers."
+  },
+  "options_source_hotfix": {
+    "issue": "Deribit currently emits some BTC option trade rows with iv=0 even though those rows are already outside the frozen V2.1 30..120 DTE universe.",
+    "raw_public_probe_run_id": 36712636956,
+    "raw_probe_observation": "4 zero-IV rows observed in 2255 rows; all four samples were 0-2 DTE and therefore frozen-ineligible.",
+    "fix_commit": "c6dba558da8c857b1d1a0108172db00a21f178f0",
+    "regression_commit": "39cf05961c3441c62b496325ffee302447349da2",
+    "semantics": "Apply frozen DTE rejection before validating IV. Within frozen-eligible DTE, index must remain finite/positive; within frozen-eligible moneyness, IV must remain finite/positive. No threshold or scientific signal rule changed.",
+    "live_public_parser_probe_run_id": 36713492494,
+    "live_public_parser_probe_result": {
+      "status": "PASS",
+      "trade_count": 2266,
+      "rejected_dte": 1606,
+      "rejected_moneyness": 364,
+      "invalid_zero_iv_sample_count": 4
+    },
+    "authenticated_api_used": false,
+    "orders_created": false,
+    "exchange_mutation_performed": false
+  },
+  "readiness_freshness_hotfix": {
+    "issue": "Readiness captured one UTC timestamp before network/account checks and later compared it to a supervisor state that continued updating concurrently, producing a false negative age and TRIPLE_SUPERVISOR_STATE_STALE.",
+    "observed_operator_receipt": {
+      "blocker": "TRIPLE_SUPERVISOR_STATE_STALE",
+      "observed_age_seconds": -1.872183,
+      "supervisor_sources_healthy": true,
+      "exchange_open_position_count": 0,
+      "exchange_open_order_count": 0,
+      "local_active_trade_count": 0
+    },
+    "fix_commit": "e581823ae82c6c14ab9ae9d984430ba6e248a9ea",
+    "semantics": "Supervisor age is now measured against a fresh UTC reference captured after reading the supervisor state. Genuine future timestamps (<0 age) and stale timestamps (>15s) still fail closed. No science, risk, source, signal or execution threshold changed.",
+    "regression_commit": "0d70b5e0b093a348e66125da677406224270594f",
+    "regression_result": "PASS",
+    "release_audit_run_id": 36722713131,
+    "build_run_id": 36722620249,
+    "production_code_diff_after_build": "Only CI workflow files and the new regression test differ from build source SHA e581823a to audited branch head 6e216b30; no production code differs.",
+    "exchange_mutation_performed": false,
+    "orders_created": false
+  }
+}

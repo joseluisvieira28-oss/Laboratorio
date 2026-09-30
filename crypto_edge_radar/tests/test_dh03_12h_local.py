@@ -185,5 +185,55 @@ class DH0312HLocalTests(unittest.TestCase):
             self.assertEqual(len(evidence.read_payloads("DH03_LOCAL_FUNDING_SETTLEMENT")),1)
 
 
+    def test_operator_candidate_requires_true_receipt_inside_two_seconds(self):
+        with tempfile.TemporaryDirectory() as td:
+            base=FREEZE_MS-(FREEZE_MS%TWELVE_H_MS)+TWELVE_H_MS
+            activation=base+39*TWELVE_H_MS
+            market,evidence,engine=self._make(td,activation)
+            history=build_15m_history(base)
+            for row in history[:-1]:
+                market.put_15m("BTCUSDT",row,"TEST")
+            engine.on_closed_15m("BTCUSDT",history[-1],"TEST")
+            sig=evidence.read_payloads("DH03_LOCAL_SIGNAL")[0]
+            entry_time=int(sig["candidate"]["signal_close_time"])
+            engine.on_open_1m(
+                "BTCUSDT",
+                entry_time,
+                100.0,
+                "TEST",
+                observed_at_ms=entry_time+900,
+                source_event_time_ms=entry_time+500,
+            )
+            entry=evidence.read_payloads("DH03_LOCAL_ENTRY")[0]
+            op=entry["operator_candidate"]
+            self.assertTrue(op["eligible"])
+            self.assertEqual(op["receipt_latency_ms"],900)
+            self.assertFalse(op["science_credit"])
+
+    def test_operator_candidate_late_reception_is_not_live_eligible(self):
+        with tempfile.TemporaryDirectory() as td:
+            base=FREEZE_MS-(FREEZE_MS%TWELVE_H_MS)+TWELVE_H_MS
+            activation=base+39*TWELVE_H_MS
+            market,evidence,engine=self._make(td,activation)
+            history=build_15m_history(base)
+            for row in history[:-1]:
+                market.put_15m("BNBUSDT",row,"TEST")
+            engine.on_closed_15m("BNBUSDT",history[-1],"TEST")
+            sig=evidence.read_payloads("DH03_LOCAL_SIGNAL")[0]
+            entry_time=int(sig["candidate"]["signal_close_time"])
+            engine.on_open_1m(
+                "BNBUSDT",
+                entry_time,
+                100.0,
+                "TEST",
+                observed_at_ms=entry_time+2501,
+                source_event_time_ms=entry_time+600,
+            )
+            entry=evidence.read_payloads("DH03_LOCAL_ENTRY")[0]
+            op=entry["operator_candidate"]
+            self.assertFalse(op["eligible"])
+            self.assertEqual(op["reason"],"RECEPTION_WINDOW_MISSED_NO_CHASE")
+
+
 if __name__=="__main__":
     unittest.main()

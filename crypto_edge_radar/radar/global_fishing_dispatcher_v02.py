@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import math
 from typing import Any
 
 
@@ -39,6 +40,8 @@ def arbitrate_due_signals(
         try:
             target = _utc(signal["entry_target_utc"])
             max_late = float(signal.get("max_late_seconds", 2.0) or 2.0)
+            if not math.isfinite(max_late) or max_late < 0:
+                raise ValueError("max_late_seconds must be finite and non-negative")
         except Exception as exc:
             rejected.append({
                 "candidate_id": candidate_id,

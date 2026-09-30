@@ -27,6 +27,7 @@ from .evidence import EvidenceStore
 WS_BASE="wss://fstream.binance.com/market"
 ARCHIVE_WARMUP_DAYS=24
 CELL_ID="HTF-DH03-12H-STANDALONE-FORWARD-V1"
+OPERATOR_MAX_RECEIPT_LATENCY_MS=2_000
 
 
 class DH03CollectorError(RuntimeError):
@@ -333,6 +334,8 @@ class DH03ShadowEngine:
         open_time:int,
         open_price:float,
         source:str="BINANCE_USDM_PUBLIC_WEBSOCKET",
+        observed_at_ms:int|None=None,
+        source_event_time_ms:int|None=None,
     )->list[dict[str,Any]]:
         signals=self._payloads("DH03_LOCAL_SIGNAL")
         entries=self._payloads("DH03_LOCAL_ENTRY")
@@ -364,9 +367,29 @@ class DH03ShadowEngine:
                 self.evidence.append_once("DH03_LOCAL_DEVIATION",key,d)
                 changes.append(d)
                 continue
+            received_ms=int(observed_at_ms if observed_at_ms is not None else time.time_ns()/1_000_000)
+            source_event_ms=int(source_event_time_ms) if source_event_time_ms is not None else None
+            receipt_latency_ms=received_ms-entry_time
+            source_event_latency_ms=(source_event_ms-entry_time) if source_event_ms is not None else None
+            operator_eligible=(
+                0<=receipt_latency_ms<=OPERATOR_MAX_RECEIPT_LATENCY_MS
+                and source_event_latency_ms is not None
+                and 0<=source_event_latency_ms<=OPERATOR_MAX_RECEIPT_LATENCY_MS
+            )
             entry={
                 "event_key":key,"symbol":symbol,"signal":asdict(signal),
                 "source":source,"orders_created":False,"live_capital_enabled":False,
+                "operator_candidate":{
+                    "eligible":operator_eligible,
+                    "received_at_ms":received_ms,
+                    "source_event_time_ms":source_event_ms,
+                    "receipt_latency_ms":receipt_latency_ms,
+                    "source_event_latency_ms":source_event_latency_ms,
+                    "max_receipt_latency_ms":OPERATOR_MAX_RECEIPT_LATENCY_MS,
+                    "late_chase_allowed":False,
+                    "science_credit":False,
+                    "reason":"ELIGIBLE_PROSPECTIVE_RECEIPT" if operator_eligible else "RECEPTION_WINDOW_MISSED_NO_CHASE",
+                },
             }
             self.evidence.append_once("DH03_LOCAL_ENTRY",key,entry)
             changes.append({"status":"ENTRY_BOUND","event_key":key})
@@ -469,7 +492,11 @@ class DH03LocalCollector:
             "orders_created":False,"live_capital_enabled":False,
         }
 
-    def run_forever(self)->None:
+    def run_forever(
+        self,
+        *,
+        on_message:Callable[[int],None]|None=None,
+    )->None:
         try:
             from websockets.sync.client import connect
         except Exception as exc:
@@ -482,6 +509,8 @@ class DH03LocalCollector:
         url=f"{WS_BASE}/stream?streams={'/'.join(streams)}"
         while True:
             try:
+                clock=require_dh03_clock_preflight()
+                self.evidence.append("DH03_LOCAL_CLOCK_PREFLIGHT",clock)
                 with connect(url,open_timeout=10,close_timeout=3,ping_interval=120,ping_timeout=30) as ws:
                     self.evidence.append("DH03_LOCAL_COLLECTOR_CONNECTION",{
                         "status":"CONNECTED","url_host":"fstream.binance.com",
@@ -489,6 +518,9 @@ class DH03LocalCollector:
                     })
                     while True:
                         raw=ws.recv(timeout=180)
+                        received_at_ms=int(time.time_ns()/1_000_000)
+                        if on_message is not None:
+                            on_message(received_at_ms)
                         obj=json.loads(raw)
                         data=obj.get("data") if isinstance(obj,dict) else None
                         if not isinstance(data,dict):
@@ -503,7 +535,13 @@ class DH03LocalCollector:
                                 continue
                             interval=str(k.get("i"))
                             if interval=="1m":
-                                self.engine.on_open_1m(symbol,int(k["t"]),float(k["o"]))
+                                self.engine.on_open_1m(
+                                    symbol,
+                                    int(k["t"]),
+                                    float(k["o"]),
+                                    observed_at_ms=received_at_ms,
+                                    source_event_time_ms=int(data.get("E",0) or 0),
+                                )
                                 if bool(k.get("x")):
                                     row=(int(k["t"]),float(k["o"]),float(k["h"]),float(k["l"]),float(k["c"]))
                                     self.engine.on_closed_1m(symbol,row)

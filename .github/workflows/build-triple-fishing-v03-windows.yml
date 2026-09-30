@@ -1,0 +1,172 @@
+name: BUILD TRIPLE FISHING OPERATOR V0.3 WINDOWS
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - triple-fishing-operator-v0.3-2026-09-30
+    paths:
+      - 'crypto_edge_radar/radar/operator_risk_v02.py'
+      - 'crypto_edge_radar/radar/global_slot_reservation_v03.py'
+      - 'crypto_edge_radar/radar/global_fishing_dispatcher_v02.py'
+      - 'crypto_edge_radar/radar/mexc_auth_readonly.py'
+      - 'crypto_edge_radar/radar/mexc_operator_futures_transport_v02.py'
+      - 'crypto_edge_radar/radar/operator_futures_engine_v02.py'
+      - 'crypto_edge_radar/radar/bnb_operator_source_v03.py'
+      - 'crypto_edge_radar/radar/options_v21_operator_signal_v03.py'
+      - 'crypto_edge_radar/radar/options_v21_operator_source_v03.py'
+      - 'crypto_edge_radar/radar/options_v21_live.py'
+      - 'crypto_edge_radar/radar/dh03_12h_core.py'
+      - 'crypto_edge_radar/radar/dh03_12h_local.py'
+      - 'crypto_edge_radar/radar/dh03_operator_source_v03.py'
+      - 'crypto_edge_radar/scripts/mexc_triple_fishing_operator_v03.py'
+      - 'crypto_edge_radar/scripts/mexc_triple_fishing_ready_v03.py'
+      - 'crypto_edge_radar/scripts/build_options_v21_pnl_correction_overlay_v01.py'
+      - 'crypto_edge_radar/scripts/audit_triple_fishing_v03.py'
+      - 'crypto_edge_radar/execution/OPTIONS_V21_HISTORICAL_FEE_CORRECTION_CATALOG_V01.json'
+      - 'crypto_edge_radar/windows/*Triple_Fishing_V03.ps1'
+      - 'crypto_edge_radar/windows/README_MEXC_TRIPLE_FISHING_V03.md'
+      - 'crypto_edge_radar/tests/test_operator_risk_v02.py'
+      - 'crypto_edge_radar/tests/test_global_slot_reservation_v03.py'
+      - 'crypto_edge_radar/tests/test_global_fishing_dispatcher_v02.py'
+      - 'crypto_edge_radar/tests/test_mexc_auth_readonly.py'
+      - 'crypto_edge_radar/tests/test_mexc_operator_futures_transport_v02.py'
+      - 'crypto_edge_radar/tests/test_operator_futures_engine_v02.py'
+      - 'crypto_edge_radar/tests/test_options_v21_operator_signal_v03.py'
+      - 'crypto_edge_radar/tests/test_build_options_v21_pnl_correction_overlay_v01.py'
+      - 'crypto_edge_radar/tests/test_dh03_12h_local.py'
+      - 'crypto_edge_radar/tests/test_dh03_operator_source_v03.py'
+      - 'crypto_edge_radar/tests/test_mexc_triple_fishing_operator_v03.py'
+      - 'crypto_edge_radar/tests/test_mexc_triple_fishing_ready_v03.py'
+      - '.github/workflows/build-triple-fishing-v03-windows.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test-build-package:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: crypto_edge_radar
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install package and PyInstaller
+        run: |
+          python -m pip install -e .
+          python -m pip install "pyinstaller>=6,<7"
+
+      - name: Compile Triple Fishing V0.3
+        run: |
+          python -m compileall radar scripts tests
+
+      - name: Run offline release probes
+        env:
+          PYTHONPATH: .
+        run: |
+          python scripts/audit_triple_fishing_v03.py --output build-release-audit.json
+
+      - name: Run Triple Fishing V0.3 regressions
+        env:
+          PYTHONPATH: .
+        run: >
+          python -m unittest
+          tests.test_operator_risk_v02
+          tests.test_global_slot_reservation_v03
+          tests.test_global_fishing_dispatcher_v02
+          tests.test_mexc_auth_readonly
+          tests.test_mexc_operator_futures_transport_v02
+          tests.test_operator_futures_engine_v02
+          tests.test_options_v21_live
+          tests.test_options_v21_operator_signal_v03
+          tests.test_build_options_v21_pnl_correction_overlay_v01
+          tests.test_dh03_12h_local
+          tests.test_dh03_operator_source_v03
+          tests.test_mexc_triple_fishing_operator_v03
+          tests.test_mexc_triple_fishing_ready_v03
+          -v
+
+      - name: Build Triple Fishing supervisor EXE
+        run: |
+          pyinstaller --clean --onefile --name MEXCTripleFishingOperatorV03 --paths . scripts/mexc_triple_fishing_operator_v03.py
+
+      - name: Build Triple Fishing readiness EXE
+        run: |
+          pyinstaller --clean --onefile --name MEXCTripleFishingReadyV03 --paths . scripts/mexc_triple_fishing_ready_v03.py
+
+      - name: Build OPTIONS correction-overlay EXE
+        run: |
+          pyinstaller --clean --onefile --name BuildOptionsCorrectionOverlayV01 --paths . scripts/build_options_v21_pnl_correction_overlay_v01.py
+
+      - name: Smoke executable entrypoints without credentials
+        shell: pwsh
+        run: |
+          & .\dist\MEXCTripleFishingOperatorV03.exe --help | Out-Null
+          if ($LASTEXITCODE -ne 0) { throw "MEXCTripleFishingOperatorV03 --help failed" }
+          & .\dist\MEXCTripleFishingReadyV03.exe --help | Out-Null
+          if ($LASTEXITCODE -ne 0) { throw "MEXCTripleFishingReadyV03 --help failed" }
+          & .\dist\BuildOptionsCorrectionOverlayV01.exe --help | Out-Null
+          if ($LASTEXITCODE -ne 0) { throw "BuildOptionsCorrectionOverlayV01 --help failed" }
+
+      - name: Stage flat Windows bundle and hashes
+        shell: pwsh
+        run: |
+          $bundle = "dist\triple_fishing_v03_bundle"
+          New-Item -ItemType Directory -Force -Path $bundle | Out-Null
+
+          Copy-Item "dist\MEXCTripleFishingOperatorV03.exe" $bundle
+          Copy-Item "dist\MEXCTripleFishingReadyV03.exe" $bundle
+          Copy-Item "dist\BuildOptionsCorrectionOverlayV01.exe" $bundle
+
+          Copy-Item "windows\Run_MEXC_Triple_Fishing_V03.ps1" $bundle
+          Copy-Item "windows\Install_MEXC_Triple_Fishing_V03.ps1" $bundle
+          Copy-Item "windows\Ready_And_Arm_MEXC_Triple_Fishing_V03.ps1" $bundle
+          Copy-Item "windows\Switch_From_BNB_To_Triple_V03.ps1" $bundle
+          Copy-Item "windows\Status_MEXC_Triple_Fishing_V03.ps1" $bundle
+          Copy-Item "windows\Disarm_MEXC_Triple_Fishing_V03.ps1" $bundle
+          Copy-Item "windows\Emergency_Stop_MEXC_Triple_Fishing_V03.ps1" $bundle
+          Copy-Item "windows\README_MEXC_TRIPLE_FISHING_V03.md" $bundle
+
+          Copy-Item "execution\OPTIONS_V21_HISTORICAL_FEE_CORRECTION_CATALOG_V01.json" $bundle
+          Copy-Item "build-release-audit.json" $bundle
+
+          $hashFile = Join-Path $bundle "SHA256SUMS.txt"
+          Get-ChildItem $bundle -File |
+            Where-Object { $_.Name -ne "SHA256SUMS.txt" } |
+            Sort-Object Name |
+            ForEach-Object {
+              $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower()
+              "$($_.Name)  $hash" | Out-File -FilePath $hashFile -Encoding ascii -Append
+            }
+
+          $buildInfo = [ordered]@{
+            build = "TRIPLE_FISHING_OPERATOR_V0.3"
+            branch = "${{ github.ref_name }}"
+            source_sha = "${{ github.sha }}"
+            built_at_utc = (Get-Date).ToUniversalTime().ToString("o")
+            live_armed_by_build = $false
+            exchange_contacted_by_build = $false
+            order_created_by_build = $false
+            main_merged = $false
+          }
+          $buildInfo | ConvertTo-Json -Depth 4 | Set-Content -Path (Join-Path $bundle "BUILD_INFO.json") -Encoding UTF8
+
+          $buildInfoHash = (Get-FileHash (Join-Path $bundle "BUILD_INFO.json") -Algorithm SHA256).Hash.ToLower()
+          "BUILD_INFO.json  $buildInfoHash" | Out-File -FilePath $hashFile -Encoding ascii -Append
+
+          Get-ChildItem $bundle | Select-Object Name,Length
+          Get-Content $hashFile
+
+      - name: Upload flat Triple Fishing V0.3 bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: mexc-triple-fishing-operator-v03-windows
+          path: crypto_edge_radar/dist/triple_fishing_v03_bundle/*
+          if-no-files-found: error
+          retention-days: 7

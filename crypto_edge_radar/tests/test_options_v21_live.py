@@ -12,6 +12,7 @@ from radar.options_v21_live import (
     build_daily_skew,
     rv20_and_weight,
     source_schema_probe,
+    _parse_trade,
 )
 
 
@@ -83,6 +84,34 @@ class OptionsV21LiveTests(unittest.TestCase):
         self.assertEqual(out["status"],"PASS_SOURCE_SCHEMA")
         self.assertFalse(out["used_as_forward_evidence"])
         self.assertFalse(out["authenticated_api_used"])
+
+    def test_zero_iv_outside_frozen_dte_is_rejected_by_dte_not_source(self):
+        day=date(2026,9,30)
+        ts=1790726400000
+        raw={
+            "timestamp":ts,
+            "instrument_name":"BTC-30SEP26-84000-P",
+            "iv":0.0,
+            "index_price":82954.53,
+            "trade_id":"zero-iv-expiring-today",
+        }
+        row=_parse_trade(raw,start_ms=ts,end_ms=ts)
+        out=build_daily_skew(day,[row])
+        self.assertFalse(out["valid"])
+        self.assertEqual(out["rejected_dte"],1)
+
+    def test_zero_iv_inside_frozen_eligible_universe_fails_closed(self):
+        day=date(2026,9,30)
+        ts=1790726400000
+        row=OptionTrade(
+            "zero-iv-eligible",
+            ts,
+            "BTC-30OCT26-95000-C",
+            0.0,
+            90000.0,
+        )
+        with self.assertRaises(OptionsV21SourceError):
+            build_daily_skew(day,[row])
 
     def test_rv20_weight_uses_full_expanding_history(self):
         start=1617235200000  # 2021-04-01 UTC

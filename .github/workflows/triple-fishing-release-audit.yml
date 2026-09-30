@@ -1,0 +1,53 @@
+name: Triple fishing V0.3 offline release audit
+on:
+  push:
+    branches: [triple-fishing-operator-v0.3-2026-09-30]
+  pull_request:
+    paths:
+      - crypto_edge_radar/scripts/audit_triple_fishing_v03.py
+      - crypto_edge_radar/scripts/mexc_triple_fishing_ready_v03.py
+      - crypto_edge_radar/tests/test_mexc_triple_fishing_ready_v03.py
+      - crypto_edge_radar/radar/options_v21_live.py
+      - crypto_edge_radar/tests/test_options_v21_live.py
+      - .github/workflows/triple-fishing-release-audit.yml
+permissions:
+  contents: read
+jobs:
+  release-invariants:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Probe release invariants with synthetic local data
+        working-directory: crypto_edge_radar
+        env:
+          PYTHONPATH: .
+        run: python scripts/audit_triple_fishing_v03.py --output release-audit.json
+
+      - name: Run operator risk, slot, dispatcher, auth and engine regression tests
+        working-directory: crypto_edge_radar
+        env:
+          PYTHONPATH: .
+        run: >
+          python -m unittest
+          tests.test_operator_risk_v02
+          tests.test_global_slot_reservation_v03
+          tests.test_global_fishing_dispatcher_v02
+          tests.test_mexc_auth_readonly
+          tests.test_mexc_operator_futures_transport_v02
+          tests.test_operator_futures_engine_v02
+          tests.test_options_v21_live
+          tests.test_options_v21_operator_signal_v03
+          tests.test_build_options_v21_pnl_correction_overlay_v01
+          tests.test_dh03_12h_local
+          tests.test_dh03_operator_source_v03
+          tests.test_mexc_triple_fishing_operator_v03
+          tests.test_mexc_triple_fishing_ready_v03
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: triple-fishing-v03-offline-audit
+          path: crypto_edge_radar/release-audit.json
+          if-no-files-found: error
