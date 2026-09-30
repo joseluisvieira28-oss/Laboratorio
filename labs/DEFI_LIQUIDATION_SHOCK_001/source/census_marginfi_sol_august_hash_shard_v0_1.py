@@ -15,12 +15,17 @@ MAP={c:i for i,c in enumerate(ALPH)}
 ap=argparse.ArgumentParser()
 ap.add_argument("--field-root",required=True)
 ap.add_argument("--bank-registry-root",required=True)
-ap.add_argument("--shard-index",type=int,required=True)\nap.add_argument("--shard-count",type=int,default=16)
+ap.add_argument("--shard-index",type=int,required=True)
+ap.add_argument("--shard-count",type=int,default=16)
 ap.add_argument("--workers",type=int,default=6)
 ap.add_argument("--outdir",default="labs/DEFI_LIQUIDATION_SHOCK_001")
 args=ap.parse_args()
 OUT=Path(args.outdir);OUT.mkdir(parents=True,exist_ok=True)
-M="202408"\nSI=args.shard_index\nSC=args.shard_count\nif SC!=16 or not(0<=SI<SC):\n    raise SystemExit("invalid frozen shard config")
+M="202408"
+SI=args.shard_index
+SC=args.shard_count
+if SC!=16 or not(0<=SI<SC):
+    raise SystemExit("invalid frozen shard config")
 RECEIPT=OUT/f"MARGINFI_SOL_AUGUST_SOURCE_SHARD_{SI:02d}_RECEIPT_V0.1.json"
 ROWS=OUT/f"MARGINFI_SOL_AUGUST_SOURCE_SHARD_{SI:02d}_ROWS_V0.1.ndjson"
 POP=OUT/f"MARGINFI_SOL_AUGUST_SOURCE_SHARD_{SI:02d}_POPULATION_V0.1.ndjson"
