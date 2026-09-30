@@ -30,7 +30,7 @@ from .operator_risk_v02 import (
 
 OFFICIAL_API_TAKER_FLOOR = 0.0008
 MAX_CLOCK_OFFSET_MS = 500.0
-STATUS_VERSION = "OPERATOR_FUTURES_ENGINE_V0.2"
+STATUS_VERSION = "OPERATOR_FUTURES_ENGINE_V0.3"
 
 
 class OperatorEngineError(RuntimeError):
@@ -239,15 +239,19 @@ class OperatorFuturesEngineV02:
         armed_path: str,
         kill_switch_path: str,
         status_path: str,
+        global_slot_path: str | None = None,
     ) -> None:
         self.credentials = credentials
         self.receipt_root = Path(receipt_root)
         self.armed_path = Path(armed_path)
         self.kill_switch_path = Path(kill_switch_path)
         self.status_path = Path(status_path)
-        self.global_slot = GlobalSlotReservationV03(
-            self.receipt_root.parent / "live_state" / "GLOBAL_POSITION_SLOT_V03.json"
+        slot_path = (
+            Path(global_slot_path)
+            if global_slot_path
+            else self.receipt_root.parent / "live_state" / "GLOBAL_POSITION_SLOT_V03.json"
         )
+        self.global_slot = GlobalSlotReservationV03(slot_path)
         self.readonly = MEXCFuturesAuthenticatedReadOnlyClient(credentials)
         self.public = MEXCFuturesPublicFeed(timeout=10)
 
