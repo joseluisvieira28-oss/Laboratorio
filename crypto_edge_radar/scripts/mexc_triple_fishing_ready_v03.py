@@ -49,6 +49,8 @@ def build_readiness(
     supervisor_state_path:Path,
     global_slot_path:Path,
     kill_switch_path:Path,
+    legacy_bnb_armed_path:Path|None=None,
+    legacy_options_armed_path:Path|None=None,
 )->dict[str,Any]:
     now=datetime.now(timezone.utc)
     blockers:list[str]=[]
@@ -193,6 +195,10 @@ def build_readiness(
 
     if kill_switch_path.exists():
         blockers.append("KILL_SWITCH_PRESENT")
+    if legacy_bnb_armed_path is not None and legacy_bnb_armed_path.exists():
+        blockers.append("LEGACY_BNB_OPERATOR_STILL_ARMED")
+    if legacy_options_armed_path is not None and legacy_options_armed_path.exists():
+        blockers.append("LEGACY_OPTIONS_OPERATOR_STILL_ARMED")
 
     blockers=list(dict.fromkeys(blockers))
     return {
@@ -225,6 +231,8 @@ def main()->int:
     ap.add_argument("--armed-path",required=True)
     ap.add_argument("--kill-switch",required=True)
     ap.add_argument("--out",required=True)
+    ap.add_argument("--legacy-bnb-armed-path")
+    ap.add_argument("--legacy-options-armed-path")
     ap.add_argument("--arm",action="store_true")
     args=ap.parse_args()
     try:
@@ -235,6 +243,8 @@ def main()->int:
             supervisor_state_path=Path(args.supervisor_state),
             global_slot_path=Path(args.global_slot_path),
             kill_switch_path=Path(args.kill_switch),
+            legacy_bnb_armed_path=Path(args.legacy_bnb_armed_path) if args.legacy_bnb_armed_path else None,
+            legacy_options_armed_path=Path(args.legacy_options_armed_path) if args.legacy_options_armed_path else None,
         )
     except Exception as exc:
         result={
