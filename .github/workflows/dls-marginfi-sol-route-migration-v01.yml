@@ -1,0 +1,116 @@
+name: DLS Marginfi SOL Route Migration Source V0.1
+
+on:
+  push:
+    branches:
+      - dls-marginfi-route-migration-v01
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_MARGINFI_SOL_ROUTE_MIGRATION_V01.marker
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  month:
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        include:
+          - {month: "202407", artifact_id: 10924100354}
+          - {month: "202408", artifact_id: 10925020784}
+          - {month: "202409", artifact_id: 10924302485}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download canonical monthly Marginfi field-enrichment
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36263998920
+          artifact-ids: ${{ matrix.artifact_id }}
+          path: field_month
+
+      - name: Download source-authoritative Marginfi bank registry
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36312418451
+          artifact-ids: 10929339072
+          path: bank_registry
+
+      - name: Compile route-migration sampler
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/sample_marginfi_sol_route_migration_month_v0_1.py
+
+      - name: Execute deterministic same-tx sample
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/sample_marginfi_sol_route_migration_month_v0_1.py
+          --field-root field_month
+          --bank-registry-root bank_registry
+          --month ${{ matrix.month }}
+          --workers 4
+
+      - name: Upload immutable monthly program census
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-marginfi-sol-route-migration-${{ matrix.month }}-v01
+          path: labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_SOL_ROUTE_MIGRATION_${{ matrix.month }}_RECEIPT_V0.1.json
+          if-no-files-found: warn
+          retention-days: 90
+
+  merge:
+    if: always()
+    needs: month
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download monthly route samples
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ github.run_id }}
+          pattern: dls-marginfi-sol-route-migration-*-v01
+          path: months
+          merge-multiple: false
+
+      - name: Compile route-migration merge
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/merge_marginfi_sol_route_migration_v0_1.py
+
+      - name: Merge and identify route-migration candidates
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/merge_marginfi_sol_route_migration_v0_1.py
+          --root months
+
+      - name: Upload terminal route-migration evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-marginfi-sol-route-migration-source-v01
+          path: labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_SOL_ROUTE_MIGRATION_SOURCE_RECEIPT_V0.1.json
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_NO_MARKET_OUTCOMES_NO_TRADING
