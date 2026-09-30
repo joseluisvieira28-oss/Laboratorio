@@ -538,15 +538,27 @@ class OperatorFuturesEngineV02:
             blockers.append(f"FUNDING_READ_FAILED:{type(exc).__name__}")
 
         projected = None
+        projected_total_with_funding = None
+        funding_separate = bool(
+            signal.get("transaction_cost_ceiling_excludes_funding") is True
+        )
+        if funding_separate and candidate_id != "HTF-DH03-12H-STANDALONE-FORWARD-V1":
+            blockers.append("FUNDING_SEPARATE_COST_MODEL_NOT_AUTHORIZED")
         if (
             round_trip_fee_bps is not None
             and spread_bps is not None
             and funding_burden_bps is not None
         ):
-            projected = round_trip_fee_bps + 2.0 * spread_bps + funding_burden_bps
+            transaction_cost_bps = round_trip_fee_bps + 2.0 * spread_bps
+            projected_total_with_funding = transaction_cost_bps + funding_burden_bps
+            projected = (
+                transaction_cost_bps
+                if funding_separate
+                else projected_total_with_funding
+            )
             ceiling = float(signal.get("max_projected_roundtrip_friction_bps", 0) or 0)
-            if ceiling <= 0:
-                blockers.append("FRICTION_CEILING_MISSING")
+            if not math.isfinite(ceiling) or ceiling <= 0:
+                blockers.append("FRICTION_CEILING_MISSING_OR_INVALID")
             elif projected > ceiling:
                 blockers.append("PROJECTED_FRICTION_EXCEEDS_ROUTE_CEILING")
 
@@ -587,6 +599,8 @@ class OperatorFuturesEngineV02:
             "spread_bps": spread_bps,
             "conservative_funding_burden_bps": funding_burden_bps,
             "projected_roundtrip_friction_bps": projected,
+            "projected_roundtrip_with_funding_bps": projected_total_with_funding,
+            "transaction_cost_ceiling_excludes_funding": funding_separate,
             "friction_ceiling_bps": signal.get("max_projected_roundtrip_friction_bps"),
             "required_leverage": REQUIRED_LEVERAGE,
             "margin_mode": "ISOLATED",
