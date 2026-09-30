@@ -7,6 +7,8 @@ from pathlib import Path
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
+from radar.options_v21_live import DeribitBTCOptionTradeFeed, build_daily_skew
+
 BASE="https://www.deribit.com"
 PATH="/api/v2/public/get_last_trades_by_currency_and_time"
 COUNT=1000
@@ -72,14 +74,25 @@ def main():
     start=datetime(now.year,now.month,now.day,tzinfo=timezone.utc)
     start_ms=int(start.timestamp()*1000)
     end_ms=int(now.timestamp()*1000)
+    production_feed=DeribitBTCOptionTradeFeed(timeout=20)
+    production_rows=production_feed.trades(start_ms=start_ms,end_ms=end_ms)
+    production_skew=build_daily_skew(now.date(),production_rows)
     report={
-        "probe_id":"OPTIONS_V21_DERIBIT_INVALID_ROW_PROBE_V0.1",
+        "probe_id":"OPTIONS_V21_DERIBIT_INVALID_ROW_PROBE_V0.2",
         "probed_at_utc":now.isoformat().replace("+00:00","Z"),
         "window_start_utc":start.isoformat().replace("+00:00","Z"),
         "window_end_utc":now.isoformat().replace("+00:00","Z"),
         "provider":"DERIBIT_PUBLIC_HTTP",
         "endpoint":PATH,
         "result":inspect_day(start_ms,end_ms),
+        "production_parser":{
+            "status":"PASS",
+            "trade_count":len(production_rows),
+            "rejected_dte":production_skew.get("rejected_dte"),
+            "rejected_moneyness":production_skew.get("rejected_moneyness"),
+            "valid_partial_day_signal":production_skew.get("valid"),
+            "note":"Diagnostic only; current UTC day is incomplete and is not forward evidence."
+        },
         "authenticated_api_used":False,
         "orders_created":False,
         "exchange_mutation_performed":False,
