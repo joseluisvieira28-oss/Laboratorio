@@ -369,7 +369,13 @@ class OperatorFuturesEngineV02:
             exit_target = now
             blockers.append(f"TIMING_PARSE_FAILED:{type(exc).__name__}")
 
-        max_late = float(signal.get("max_late_seconds", 2.0) or 2.0)
+        try:
+            max_late = float(signal.get("max_late_seconds", 2.0) or 2.0)
+            if not math.isfinite(max_late) or max_late < 0:
+                raise ValueError("max_late_seconds must be finite and non-negative")
+        except Exception as exc:
+            max_late = 0.0
+            blockers.append(f"MAX_LATE_INVALID:{type(exc).__name__}")
         timing = timing_state(
             now=now,
             entry_target=entry_target,
@@ -379,6 +385,35 @@ class OperatorFuturesEngineV02:
             blockers.append("ENTRY_TARGET_NOT_DUE")
         elif timing == "MISSED_NO_CHASE":
             blockers.append("ENTRY_WINDOW_MISSED_NO_CHASE")
+
+        protective = signal.get("protective_exit")
+        protective_gate: dict[str, Any] | None = None
+        if protective is not None:
+            if not isinstance(protective, dict) or protective.get("required") is not True:
+                blockers.append("PROTECTIVE_EXIT_SCHEMA_INVALID")
+            else:
+                try:
+                    stop_fraction = float(protective["stop_distance_fraction"])
+                    target_fraction = float(protective["take_profit_distance_fraction"])
+                    if (
+                        not math.isfinite(stop_fraction)
+                        or not math.isfinite(target_fraction)
+                        or stop_fraction <= 0
+                        or target_fraction <= 0
+                        or stop_fraction >= 1
+                        or target_fraction >= 5
+                    ):
+                        raise ValueError("protective distances outside finite range")
+                    if str(protective.get("trigger_basis")) != "LATEST_PRICE":
+                        raise ValueError("only latest-price protection is supported")
+                    protective_gate = {
+                        "required": True,
+                        "stop_distance_fraction": stop_fraction,
+                        "take_profit_distance_fraction": target_fraction,
+                        "trigger_basis": "LATEST_PRICE",
+                    }
+                except Exception as exc:
+                    blockers.append(f"PROTECTIVE_EXIT_INVALID:{type(exc).__name__}:{exc}")
 
         if not self.armed_path.exists():
             blockers.append("OPERATOR_FUTURES_NOT_ARMED")
@@ -424,6 +459,11 @@ class OperatorFuturesEngineV02:
             contract_size = float(contract["contractSize"])
             min_vol = float(contract["minVol"])
             vol_unit = float(contract["volUnit"])
+            price_unit = float(contract.get("priceUnit") or 0)
+            if protective_gate is not None and (
+                not math.isfinite(price_unit) or price_unit <= 0
+            ):
+                blockers.append("PROTECTIVE_PRICE_UNIT_UNAVAILABLE")
             conservative_price = max(float(snap.last_price), float(snap.ask_price))
             bid = float(snap.bid_price)
             ask = float(snap.ask_price)
@@ -450,6 +490,7 @@ class OperatorFuturesEngineV02:
             contract = {}
             snap = None
             contract_size = None
+            price_unit = None
             spread_bps = None
             requested_margin = None
             requested_notional = None
@@ -523,7 +564,9 @@ class OperatorFuturesEngineV02:
                 "contract_size": contract_size,
                 "min_vol": contract.get("minVol"),
                 "vol_unit": contract.get("volUnit"),
+                "price_unit": price_unit,
             },
+            "protective_exit": protective_gate,
             "sizing": sizing,
             "account_taker_fee_fraction": account_taker,
             "effective_taker_fee_fraction": effective_taker,
