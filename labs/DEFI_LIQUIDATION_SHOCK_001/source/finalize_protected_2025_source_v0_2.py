@@ -77,7 +77,7 @@ for (proto,cls),items in sorted(groups.items()):
     items.sort(key=lambda e:(e["timestamp"],e["signature"],json.dumps(e["instructionAddress"],separators=(",",":"),sort_keys=True)))
     state=None
     def finish(s):
-        nonlocal cross_2026
+        global cross_2026
         last=iso(s["last"])
         t0=last+timedelta(seconds=60)
         if t0>=END:
