@@ -112,5 +112,42 @@ class OperatorTransportV02Tests(unittest.TestCase):
             client.set_auto_add_margin(position_id=1, enabled=True)
 
 
+    def test_position_tpsl_uses_documented_market_trigger_payload(self):
+        client, rec = self.build(directions=("LONG", "SHORT"))
+        client.place_position_tpsl(
+            symbol="BNB_USDT",
+            direction="LONG",
+            position_id=77,
+            volume_contracts=3,
+            stop_loss_price=90.0,
+            take_profit_price=130.0,
+        )
+        url, method, body = rec.requests[-1]
+        self.assertTrue(url.endswith("/api/v1/private/stoporder/place"))
+        self.assertEqual(method, "POST")
+        self.assertEqual(body["positionId"], 77)
+        self.assertEqual(body["vol"], 3)
+        self.assertEqual(body["lossTrend"], 1)
+        self.assertEqual(body["profitTrend"], 1)
+        self.assertEqual(body["stopLossPrice"], 90.0)
+        self.assertEqual(body["takeProfitPrice"], 130.0)
+        self.assertEqual(body["takeProfitType"], 0)
+        self.assertEqual(body["stopLossType"], 0)
+        self.assertEqual(body["takeProfitReverse"], 2)
+        self.assertEqual(body["stopLossReverse"], 2)
+
+    def test_tpsl_geometry_fails_closed(self):
+        client, _ = self.build(directions=("LONG", "SHORT"))
+        with self.assertRaises(MEXCOperatorTransportError):
+            client.place_position_tpsl(
+                symbol="BNB_USDT",
+                direction="LONG",
+                position_id=1,
+                volume_contracts=1,
+                stop_loss_price=110.0,
+                take_profit_price=100.0,
+            )
+
+
 if __name__ == "__main__":
     unittest.main()
