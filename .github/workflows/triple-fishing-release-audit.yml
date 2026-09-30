@@ -1,0 +1,29 @@
+name: Triple fishing V0.3 offline release audit
+on:
+  push:
+    branches: [triple-fishing-operator-v0.3-2026-09-30]
+  pull_request:
+    paths:
+      - crypto_edge_radar/scripts/audit_triple_fishing_v03.py
+      - .github/workflows/triple-fishing-release-audit.yml
+permissions:
+  contents: read
+jobs:
+  release-invariants:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Probe release invariants with synthetic local data
+        working-directory: crypto_edge_radar
+        env:
+          PYTHONPATH: .
+        run: python scripts/audit_triple_fishing_v03.py --output release-audit.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: triple-fishing-v03-offline-audit
+          path: crypto_edge_radar/release-audit.json
+          if-no-files-found: error

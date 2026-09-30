@@ -1,0 +1,66 @@
+{
+  "audit_id": "TRIPLE_FISHING_V03_OFFLINE_RELEASE_AUDIT",
+  "status": "BLOCKED",
+  "live_readiness_verified": false,
+  "exchange_contacted": false,
+  "runtime_modified": false,
+  "synthetic_probe_count": 6,
+  "failed_invariant_count": 6,
+  "source_sha256": {
+    "radar/operator_risk_v02.py": "5522298e2dac7064a9b261e2c2e4ff1879f5b2d82801cc0985a7957644c96866",
+    "radar/global_fishing_dispatcher_v02.py": "44d73163aa6f0ce2e2455c504dd299d913d5506264248add793232527f06a859",
+    "radar/operator_futures_engine_v02.py": "d21ad56c235e3b3abc12350bcedfb471812941ec4e5d53195374ee7f9c746f70",
+    "radar/dh03_12h_local.py": "39f648c9110f53a6e3ba0723950d5870e925c06fc344175679797186af3ceda7",
+    "radar/dh03_12h_core.py": "43768c36438c8edcf3d01a1c3ee88c233a148325bd43066d5e95476e880eb132"
+  },
+  "checks": [
+    {
+      "code": "CORRUPT_RECONCILIATION",
+      "pass": false,
+      "observed": {
+        "risk_pass": true,
+        "blockers": []
+      },
+      "required": "FAIL_CLOSED until the receipt or intent is reconciled"
+    },
+    {
+      "code": "CORRUPT_ACTIVE_STATE",
+      "pass": false,
+      "observed": {
+        "risk_pass": true,
+        "blockers": []
+      },
+      "required": "FAIL_CLOSED until the receipt or intent is reconciled"
+    },
+    {
+      "code": "UNRESOLVED_INTENT",
+      "pass": false,
+      "observed": {
+        "risk_pass": true,
+        "blockers": []
+      },
+      "required": "FAIL_CLOSED until the receipt or intent is reconciled"
+    },
+    {
+      "code": "NONFINITE_PNL",
+      "pass": false,
+      "observed": {
+        "risk_pass": true,
+        "blockers": []
+      },
+      "required": "FAIL_CLOSED until the receipt or intent is reconciled"
+    },
+    {
+      "code": "OVERLAPPING_RECEIPT_ROOTS",
+      "pass": false,
+      "observed": 6.0,
+      "required": "Count this one receipt once: 3 USDT"
+    },
+    {
+      "code": "NONFINITE_LATENESS",
+      "pass": false,
+      "observed": "WINNER_SELECTED",
+      "required": "Reject non-finite timing; a one-hour-old signal must not win"
+    }
+  ]
+}
