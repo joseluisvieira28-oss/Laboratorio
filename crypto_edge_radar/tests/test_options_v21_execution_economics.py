@@ -6,6 +6,7 @@ from pathlib import Path
 import unittest
 
 from radar.options_v21_execution_economics import (
+    _order_fee,
     analyze_receipt_root,
     analyze_session,
     observed_fill_fee_summary,
@@ -56,6 +57,10 @@ class ExecutionEconomicsTruthGateTests(unittest.TestCase):
         self.assertAlmostEqual(oos_net_at_full_notional_cost(10.0), 5.0427663334, places=9)
         self.assertAlmostEqual(oos_net_at_full_notional_cost(20.0), -4.6759378383, places=9)
         self.assertLess(oos_net_at_full_notional_cost(16.0), 0.0)
+
+    def test_zero_total_fee_falls_back_to_taker_component(self):
+        order = {"totalFee": 0, "takerFee": 0.00675284, "makerFee": 0}
+        self.assertAlmostEqual(_order_fee(order), 0.00675284, places=10)
 
     def test_observed_mexc_five_fill_fee_rate(self):
         rows = [

@@ -10,6 +10,7 @@ from radar.options_v21_futures_autolive_engine import (
     OptionsV21FuturesAutoLiveEngine,
     _direction_meta,
     _exclusive_write,
+    _fee,
     _floor_step,
 )
 
@@ -28,6 +29,14 @@ class EngineSafetyV02Tests(unittest.TestCase):
 
     def test_floor_step_never_rounds_up(self):
         self.assertEqual(_floor_step(3.99, 1.0), 3.0)
+
+    def test_fee_uses_taker_component_when_total_fee_is_zero(self):
+        order = {"totalFee": 0, "takerFee": 0.00675284, "makerFee": 0}
+        self.assertAlmostEqual(_fee(order), 0.00675284, places=10)
+
+    def test_fee_prefers_nonzero_total_fee_when_present(self):
+        order = {"totalFee": 0.01, "takerFee": 0.006, "makerFee": 0.004}
+        self.assertAlmostEqual(_fee(order), 0.01, places=10)
 
     def test_order_intent_is_exclusive(self):
         with tempfile.TemporaryDirectory() as td:

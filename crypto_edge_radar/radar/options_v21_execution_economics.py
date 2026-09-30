@@ -68,9 +68,24 @@ def _order(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 def _order_fee(order: dict[str, Any]) -> float:
+    total_fee: float | None = None
     if order.get("totalFee") is not None:
-        return abs(float(order.get("totalFee") or 0))
-    return abs(float(order.get("takerFee", 0) or 0)) + abs(float(order.get("makerFee", 0) or 0))
+        try:
+            total_fee = abs(float(order.get("totalFee") or 0))
+            if total_fee > 0:
+                return total_fee
+        except (TypeError, ValueError):
+            total_fee = None
+
+    component_total = 0.0
+    for key in ("takerFee", "makerFee"):
+        try:
+            component_total += abs(float(order.get(key, 0) or 0))
+        except (TypeError, ValueError):
+            pass
+    if component_total > 0:
+        return component_total
+    return total_fee or 0.0
 
 
 def _order_notional(order: dict[str, Any], contract_size_btc: float) -> float:
