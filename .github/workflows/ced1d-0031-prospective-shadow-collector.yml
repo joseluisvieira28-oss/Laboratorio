@@ -13,7 +13,7 @@ on:
   workflow_dispatch:
     inputs:
       through_signal_day:
-        description: 'Inclusive eligible signal day YYYY-MM-DD; collector enforces <= UTC today - 4 days (source-publication-safe operational lag)'
+        description: 'Inclusive eligible signal day YYYY-MM-DD; collector enforces <= UTC today - 3 days'
         required: true
         type: string
 
@@ -61,13 +61,13 @@ jobs:
           from datetime import date,datetime,timedelta,timezone
           today=datetime.now(timezone.utc).date()
           manual=(os.environ.get("MANUAL_THROUGH") or "").strip()
-          through=date.fromisoformat(manual) if manual else today-timedelta(days=4)
+          through=date.fromisoformat(manual) if manual else today-timedelta(days=3)
           first=date(2026,9,18)
           if through < first:
               print("eligible=false")
               print(f"through_signal_day={through.isoformat()}")
           else:
-              assert through<=today-timedelta(days=4),(through,today)
+              assert through<=today-timedelta(days=3),(through,today)
               print("eligible=true")
               print(f"through_signal_day={through.isoformat()}")
           PY
@@ -84,14 +84,14 @@ jobs:
           first=date.fromisoformat("2026-09-18")
           today=datetime.now(timezone.utc).date()
           assert through>=first,(through,first)
-          assert through<=today-timedelta(days=4),(through,today)
+          assert through<=today-timedelta(days=3),(through,today)
           print("PROSPECTIVE_BOUNDARY_PASS",through.isoformat(),today.isoformat())
           print("NO_PRE_BOUNDARY_PERFORMANCE_BACKFILL")
           PY
 
-      - name: No eligible T+4 day yet
+      - name: No eligible T+3 day yet
         if: steps.through.outputs.eligible != 'true'
-        run: echo "WAITING_FIRST_TPLUS4_SIGNAL_DAY"
+        run: echo "WAITING_FIRST_TPLUS3_SIGNAL_DAY"
 
       - name: Collect frozen prospective shadow evidence
         if: steps.through.outputs.eligible == 'true'
