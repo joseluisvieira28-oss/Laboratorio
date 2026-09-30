@@ -417,6 +417,19 @@ class OperatorFuturesEngineV02:
 
         if not self.armed_path.exists():
             blockers.append("OPERATOR_FUTURES_NOT_ARMED")
+        if row.get("protective_tpsl_required") is True:
+            try:
+                self._verify_active_protection(active=row)
+            except Exception as exc:
+                row["execution_failure"] = True
+                row["protective_tpsl_runtime_error"] = f"{type(exc).__name__}:{exc}"
+                _atomic_write(active_path, row)
+                return self._exit_active(
+                    active_path=active_path,
+                    active=row,
+                    reason="ACTIVE_PROTECTIVE_TPSL_NOT_VERIFIED",
+                )
+
         if self.kill_switch_path.exists():
             blockers.append("KILL_SWITCH_PRESENT")
 
@@ -1765,6 +1778,21 @@ class OperatorFuturesEngineV02:
             )
 
         if position is None:
+            if row.get("protective_tpsl_required") is True:
+                try:
+                    return self._reconcile_protected_exchange_close(
+                        active_path=active_path,
+                        active=row,
+                        now=now,
+                    )
+                except Exception as exc:
+                    return self._status(
+                        "PROTECTED_EXIT_RECONCILIATION_REQUIRED",
+                        candidate_id=row.get("candidate_id"),
+                        signal_identity=row.get("signal_identity"),
+                        reason=f"{type(exc).__name__}:{exc}",
+                        session_dir=str(active_path.parent),
+                    )
             _atomic_write(active_path.parent / "POSITION_MISSING_BEFORE_RECONCILIATION.json", {
                 "receipt_type": "POSITION_MISSING_BEFORE_RECONCILIATION",
                 "observed_at_utc": _iso(now),
@@ -1828,6 +1856,10 @@ class OperatorFuturesEngineV02:
             leverage=REQUIRED_LEVERAGE,
             margin_mode="ISOLATED",
             auto_margin_add=False,
+            protective_tpsl_required=bool(row.get("protective_tpsl_required")),
+            protective_tpsl_verified=bool(row.get("protective_tpsl_verified")),
+            protective_stop_loss_price=row.get("protective_stop_loss_price"),
+            protective_take_profit_price=row.get("protective_take_profit_price"),
         )
 
 
