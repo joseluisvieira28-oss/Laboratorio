@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+import hashlib
 import json
 import math
 import os
@@ -46,6 +47,60 @@ def _receipt_pnl(row: dict[str, Any]) -> float:
         if row.get(key) is not None:
             return _finite_float(row[key], field=key)
     raise ValueError("reconciliation missing realized net PnL")
+
+
+
+def _load_correction_overlay() -> dict[str, dict[str, Any]]:
+    raw = os.getenv("CRYPTO_LAB_PNL_CORRECTION_OVERLAY", "").strip()
+    if not raw:
+        return {}
+    path = Path(raw)
+    payload = _load(path)
+    rows = payload.get("entries")
+    if not isinstance(rows, list):
+        raise ValueError("correction overlay entries must be a list")
+    out: dict[str, dict[str, Any]] = {}
+    for row in rows:
+        if not isinstance(row, dict):
+            raise ValueError("correction overlay row must be object")
+        signal = str(row.get("signal_identity") or "")
+        receipt_hash = str(row.get("original_receipt_sha256") or "")
+        if not signal or len(receipt_hash) != 64:
+            raise ValueError("correction overlay identity/hash missing")
+        if signal in out:
+            raise ValueError(f"duplicate correction overlay identity: {signal}")
+        _finite_float(row.get("corrected_realized_net_pnl_usdt"), field="corrected_realized_net_pnl_usdt")
+        out[signal] = row
+    return out
+
+
+def _pnl_with_overlay(
+    *,
+    path: Path,
+    row: dict[str, Any],
+    overlay: dict[str, dict[str, Any]],
+) -> float:
+    signal = str(row.get("signal_identity") or "")
+    correction = overlay.get(signal)
+    if correction is None:
+        return _receipt_pnl(row)
+    digest = hashlib.sha256(path.read_bytes()).hexdigest()
+    if digest != str(correction["original_receipt_sha256"]):
+        raise ValueError(f"correction receipt hash mismatch for {signal}")
+    expected_stored = _finite_float(
+        correction.get("stored_net_pnl_usdt"),
+        field="stored_net_pnl_usdt",
+    )
+    actual_stored = _finite_float(
+        row.get("realized_net_pnl_usdt"),
+        field="realized_net_pnl_usdt",
+    )
+    if abs(actual_stored - expected_stored) > 1e-12:
+        raise ValueError(f"correction stored net mismatch for {signal}")
+    return _finite_float(
+        correction["corrected_realized_net_pnl_usdt"],
+        field="corrected_realized_net_pnl_usdt",
+    )
 
 
 def _receipt_roots(receipt_root: str | Path) -> list[Path]:
@@ -155,12 +210,17 @@ def realized_loss_state(
     rolling = 0.0
     counted: list[str] = []
     invalid: list[str] = []
+    try:
+        overlay = _load_correction_overlay()
+    except Exception as exc:
+        overlay = {}
+        invalid.append(f"CORRECTION_OVERLAY:{type(exc).__name__}:{exc}")
 
     for path in _unique_files(receipt_root, "POST_TRADE_RECONCILIATION.json"):
         try:
             row = _load(path)
             closed = _utc(row["closed_at_utc"])
-            pnl = _receipt_pnl(row)
+            pnl = _pnl_with_overlay(path=path, row=row, overlay=overlay)
         except Exception as exc:
             invalid.append(f"{path}:{type(exc).__name__}")
             continue
