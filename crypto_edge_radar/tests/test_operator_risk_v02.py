@@ -98,5 +98,79 @@ class OperatorRiskV02Tests(unittest.TestCase):
             self.assertEqual(loss["daily_realized_loss_usdt"], 2.0)
 
 
+    def test_corrupt_reconciliation_fails_closed(self):
+        with tempfile.TemporaryDirectory() as td:
+            p = Path(td) / "POST_TRADE_RECONCILIATION.json"
+            p.write_text("{", encoding="utf-8")
+            state = build_operator_risk_state(
+                private_client=FakePrivate(),
+                receipt_root=td,
+                now=datetime(2026, 9, 30, 12, 0, tzinfo=timezone.utc),
+            )
+            self.assertFalse(state["pass"])
+            self.assertIn("LOCAL_RECONCILIATION_ACCOUNTING_INVALID", state["blockers"])
+
+    def test_corrupt_active_state_fails_closed(self):
+        with tempfile.TemporaryDirectory() as td:
+            p = Path(td) / "ACTIVE_TRADE_STATE.json"
+            p.write_text("{", encoding="utf-8")
+            state = build_operator_risk_state(
+                private_client=FakePrivate(),
+                receipt_root=td,
+                now=datetime(2026, 9, 30, 12, 0, tzinfo=timezone.utc),
+            )
+            self.assertFalse(state["pass"])
+            self.assertTrue(any(x.startswith("LOCAL_ACTIVE_STATE_INVALID:") for x in state["blockers"]))
+
+    def test_unresolved_order_intent_reserves_slot(self):
+        with tempfile.TemporaryDirectory() as td:
+            p = Path(td) / "ORDER_INTENT.json"
+            p.write_text(json.dumps({
+                "external_oid": "pending",
+                "signal_identity": "synthetic",
+            }), encoding="utf-8")
+            state = build_operator_risk_state(
+                private_client=FakePrivate(),
+                receipt_root=td,
+                now=datetime(2026, 9, 30, 12, 0, tzinfo=timezone.utc),
+            )
+            self.assertFalse(state["pass"])
+            self.assertIn("GLOBAL_POSITION_SLOT_OCCUPIED", state["blockers"])
+            self.assertTrue(any(x.startswith("UNRESOLVED_ORDER_INTENT_RESERVES_GLOBAL_SLOT:") for x in state["blockers"]))
+
+    def test_nonfinite_pnl_fails_closed(self):
+        with tempfile.TemporaryDirectory() as td:
+            p = Path(td) / "POST_TRADE_RECONCILIATION.json"
+            p.write_text(json.dumps({
+                "closed_at_utc": "2026-09-30T10:00:00Z",
+                "realized_net_pnl_usdt": "NaN",
+            }), encoding="utf-8")
+            state = build_operator_risk_state(
+                private_client=FakePrivate(),
+                receipt_root=td,
+                now=datetime(2026, 9, 30, 12, 0, tzinfo=timezone.utc),
+            )
+            self.assertFalse(state["pass"])
+            self.assertIn("LOCAL_RECONCILIATION_ACCOUNTING_INVALID", state["blockers"])
+
+    def test_overlapping_roots_count_receipt_once(self):
+        import os
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            child = root / "trade"
+            child.mkdir()
+            (child / "POST_TRADE_RECONCILIATION.json").write_text(json.dumps({
+                "closed_at_utc": "2026-09-30T10:00:00Z",
+                "realized_net_pnl_usdt": -3.0,
+            }), encoding="utf-8")
+            with patch.dict(os.environ, {"CRYPTO_LAB_EXTERNAL_RECEIPT_ROOTS": str(child)}):
+                loss = realized_loss_state(
+                    root,
+                    now=datetime(2026, 9, 30, 12, 0, tzinfo=timezone.utc),
+                )
+            self.assertEqual(loss["daily_realized_loss_usdt"], 3.0)
+
+
 if __name__ == "__main__":
     unittest.main()
