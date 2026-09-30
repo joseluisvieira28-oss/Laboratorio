@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from decimal import Decimal, ROUND_DOWN
+from decimal import Decimal, ROUND_CEILING, ROUND_DOWN
 import hashlib
 import json
 import math
@@ -90,6 +90,56 @@ def _floor_step(value: float, step: float) -> float:
     ds = Decimal(str(step))
     units = (dv / ds).to_integral_value(rounding=ROUND_DOWN)
     return float(units * ds)
+
+
+
+def _ceil_step(value: float, step: float) -> float:
+    if value <= 0 or step <= 0:
+        return 0.0
+    dv = Decimal(str(value))
+    ds = Decimal(str(step))
+    units = (dv / ds).to_integral_value(rounding=ROUND_CEILING)
+    return float(units * ds)
+
+
+def protective_prices(
+    *,
+    entry_price: float,
+    direction: str,
+    stop_distance_fraction: float,
+    take_profit_distance_fraction: float,
+    price_unit: float,
+) -> dict[str, float]:
+    vals = (
+        entry_price,
+        stop_distance_fraction,
+        take_profit_distance_fraction,
+        price_unit,
+    )
+    if any(not math.isfinite(float(v)) or float(v) <= 0 for v in vals):
+        raise OperatorEngineError("protective price inputs must be positive finite")
+    direction = direction.upper()
+    if direction == "LONG":
+        stop_raw = entry_price * (1.0 - stop_distance_fraction)
+        target_raw = entry_price * (1.0 + take_profit_distance_fraction)
+        stop = _ceil_step(stop_raw, price_unit)
+        target = _floor_step(target_raw, price_unit)
+        if not 0 < stop < entry_price < target:
+            raise OperatorEngineError("LONG protective geometry invalid after rounding")
+    elif direction == "SHORT":
+        stop_raw = entry_price * (1.0 + stop_distance_fraction)
+        target_raw = entry_price * (1.0 - take_profit_distance_fraction)
+        stop = _floor_step(stop_raw, price_unit)
+        target = _ceil_step(target_raw, price_unit)
+        if not 0 < target < entry_price < stop:
+            raise OperatorEngineError("SHORT protective geometry invalid after rounding")
+    else:
+        raise OperatorEngineError("protective direction invalid")
+    return {
+        "stop_loss_price": stop,
+        "take_profit_price": target,
+        "price_unit": price_unit,
+    }
 
 
 def order_fee_usdt(order: dict[str, Any]) -> float:
