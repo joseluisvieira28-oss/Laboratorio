@@ -421,18 +421,6 @@ class OperatorFuturesEngineV02:
 
         if not self.armed_path.exists():
             blockers.append("OPERATOR_FUTURES_NOT_ARMED")
-        if row.get("protective_tpsl_required") is True:
-            try:
-                self._verify_active_protection(active=row)
-            except Exception as exc:
-                row["execution_failure"] = True
-                row["protective_tpsl_runtime_error"] = f"{type(exc).__name__}:{exc}"
-                _atomic_write(active_path, row)
-                return self._exit_active(
-                    active_path=active_path,
-                    active=row,
-                    reason="ACTIVE_PROTECTIVE_TPSL_NOT_VERIFIED",
-                )
 
         if self.kill_switch_path.exists():
             blockers.append("KILL_SWITCH_PRESENT")
@@ -1846,6 +1834,19 @@ class OperatorFuturesEngineV02:
                 active=row,
                 reason="ACTIVE_POSITION_RISK_INVARIANT_BREACH",
             )
+
+        if row.get("protective_tpsl_required") is True:
+            try:
+                self._verify_active_protection(active=row)
+            except Exception as exc:
+                row["execution_failure"] = True
+                row["protective_tpsl_runtime_error"] = f"{type(exc).__name__}:{exc}"
+                _atomic_write(active_path, row)
+                return self._exit_active(
+                    active_path=active_path,
+                    active=row,
+                    reason="ACTIVE_PROTECTIVE_TPSL_NOT_VERIFIED",
+                )
 
         if self.kill_switch_path.exists():
             return self._exit_active(
