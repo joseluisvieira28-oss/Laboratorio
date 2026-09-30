@@ -11,7 +11,7 @@ $slot = Join-Path $stateDir "GLOBAL_POSITION_SLOT_V03.json"
 $readyExe = Join-Path $BundleRoot "MEXCTripleFishingReadyV03.exe"
 
 $legacyBnbArmed = Join-Path $env:LOCALAPPDATA "CryptoLab\OperatorFuturesV02\OPERATOR_FUTURES_V02_ARMED.json"
-$legacyOptionsArmed = Join-Path $env:USERPROFILE "Desktop\OPTIONS_V21_FUTURES_ONLY_AUTOLIVE_V021\OPERATOR_FUTURES_V02_ARMED.json"
+$legacyOptionsArmed = Join-Path $env:USERPROFILE "Desktop\OPTIONS_V21_FUTURES_ONLY_AUTOLIVE_V021\AUTO_MICROLIVE_FUTURES_ARMED.json"
 
 $secretDir = Join-Path $env:LOCALAPPDATA "CryptoEdgeRadar\secrets"
 function Unprotect-LocalSecret {
