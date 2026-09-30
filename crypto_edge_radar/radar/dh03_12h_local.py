@@ -492,7 +492,11 @@ class DH03LocalCollector:
             "orders_created":False,"live_capital_enabled":False,
         }
 
-    def run_forever(self)->None:
+    def run_forever(
+        self,
+        *,
+        on_message:Callable[[int],None]|None=None,
+    )->None:
         try:
             from websockets.sync.client import connect
         except Exception as exc:
@@ -515,6 +519,8 @@ class DH03LocalCollector:
                     while True:
                         raw=ws.recv(timeout=180)
                         received_at_ms=int(time.time_ns()/1_000_000)
+                        if on_message is not None:
+                            on_message(received_at_ms)
                         obj=json.loads(raw)
                         data=obj.get("data") if isinstance(obj,dict) else None
                         if not isinstance(data,dict):
