@@ -1377,6 +1377,7 @@ class OperatorFuturesEngineV02:
             "entry_external_oid": ext,
             "entry_order_id": order.get("orderId"),
             "entry_target_utc": gate["entry_target_utc"],
+            "opened_at_utc": _iso(datetime.now(timezone.utc)),
             "exit_target_utc": gate["exit_target_utc"],
             "exit_tolerance_seconds": float(signal.get("exit_tolerance_seconds", signal.get("max_late_seconds", 2.0)) or 2.0),
             "planned_notional_usdt": sizing["estimated_notional_usdt"],
@@ -1388,6 +1389,8 @@ class OperatorFuturesEngineV02:
             "scientific_credit": False,
             "execution_failure": False,
             "global_slot_reserved": True,
+            "protective_tpsl_required": bool(gate.get("protective_exit")),
+            "protective_tpsl_verified": False,
         }
         active_path = session / "ACTIVE_TRADE_STATE.json"
         _atomic_write(active_path, active)
@@ -1423,6 +1426,36 @@ class OperatorFuturesEngineV02:
         active["auto_margin_add"] = False
         active["post_fill_risk_verified"] = True
         _atomic_write(active_path, active)
+
+        if gate.get("protective_exit"):
+            try:
+                protection = self._install_position_protection(
+                    transport=transport,
+                    position=position,
+                    direction=direction,
+                    fill_price=fill_price,
+                    protective=gate["protective_exit"],
+                    price_unit=float(gate["contract"]["price_unit"]),
+                    session=session,
+                )
+                active["protective_tpsl_order_id"] = protection["protective_order_id"]
+                active["protective_stop_loss_price"] = protection["stop_loss_price"]
+                active["protective_take_profit_price"] = protection["take_profit_price"]
+                active["protective_price_unit"] = protection["price_unit"]
+                active["protective_trigger_basis"] = protection["trigger_basis"]
+                active["protective_tpsl_verified"] = True
+                _atomic_write(active_path, active)
+            except Exception as exc:
+                active["execution_failure"] = True
+                active["protective_tpsl_verified"] = False
+                active["protective_tpsl_error"] = f"{type(exc).__name__}:{exc}"
+                _atomic_write(active_path, active)
+                return self._exit_active(
+                    active_path=active_path,
+                    active=active,
+                    reason="POST_FILL_PROTECTIVE_TPSL_FAILURE",
+                )
+
         return self._status(
             "FILLED_EXIT_PENDING",
             candidate_id=candidate_id,
@@ -1448,7 +1481,7 @@ class OperatorFuturesEngineV02:
         direction = str(active["direction"]).upper()
         signal_key = str(active["signal_identity"])
         policy = OperatorFuturesPolicy(
-            policy_id=f"{active.get('candidate_id')}:OPERATOR-V0.2",
+            policy_id=f"{active.get('candidate_id')}:OPERATOR-V0.3",
             symbol=symbol,
             allowed_directions=(direction,),
             required_leverage=REQUIRED_LEVERAGE,
