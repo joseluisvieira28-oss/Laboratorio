@@ -1,0 +1,49 @@
+name: L2R PRET0 Sparse V0.1.1 QA
+
+on:
+  push:
+    branches:
+      - l2r-overlay-etf-cme-pret0-v0.1
+    paths:
+      - 'research/l2_resiliency_overlay_pret0/l2r_overlay_etf_cme_pret0_sparse_v011.py'
+      - 'research/l2_resiliency_overlay_pret0/L2R_OVERLAY_ETF_CME_PRET0_001_SPARSE_TRANSPORT_REMEDIATION_V0_1_1.md'
+      - '.github/workflows/l2r_pret0_sparse_v011_qa.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sparse_qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: l2r-overlay-etf-cme-pret0-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install runtime dependency
+        run: python -m pip install --disable-pip-version-check lz4==4.4.4
+      - name: Compile sparse runner
+        run: python -m py_compile research/l2_resiliency_overlay_pret0/l2r_overlay_etf_cme_pret0_sparse_v011.py
+      - name: Synthetic self-test
+        run: python research/l2_resiliency_overlay_pret0/l2r_overlay_etf_cme_pret0_sparse_v011.py --self-test
+      - name: Assert PRET0 firewalls
+        run: |
+          set -euo pipefail
+          R=research/l2_resiliency_overlay_pret0/l2r_overlay_etf_cme_pret0_sparse_v011.py
+          D=research/l2_resiliency_overlay_pret0/L2R_OVERLAY_ETF_CME_PRET0_001_SPARSE_TRANSPORT_REMEDIATION_V0_1_1.md
+          grep -q 'LAB_ID="L2R-OVERLAY-ETF-CME-PRET0-001"' "$R"
+          grep -q 'PRET0_MAX_STALENESS_NS=1_100_000_000' "$R"
+          grep -q 'SOURCE_GATED_DATES={"2025-10-22","2025-11-18","2025-11-26"}' "$R"
+          grep -q 'max staleness 1,100 ms' "$D"
+          grep -q '2026 CLOSED' "$D"
+          echo PRET0_SPARSE_SYNTHETIC_QA_PASS
+          echo OUTCOMES_OPENED=false
+          echo ACCESS_2026=false
+      - name: Emit hashes
+        run: |
+          sha256sum             research/l2_resiliency_overlay_pret0/l2r_overlay_etf_cme_pret0_sparse_v011.py             research/l2_resiliency_overlay_pret0/L2R_OVERLAY_ETF_CME_PRET0_001_SPARSE_TRANSPORT_REMEDIATION_V0_1_1.md             research/l2_resiliency_overlay_pret0/L2R_OVERLAY_ETF_CME_PRET0_001_SPARSE_SOURCE_MANIFEST_V0_1_1.csv
+          git hash-object             research/l2_resiliency_overlay_pret0/l2r_overlay_etf_cme_pret0_sparse_v011.py             research/l2_resiliency_overlay_pret0/L2R_OVERLAY_ETF_CME_PRET0_001_SPARSE_TRANSPORT_REMEDIATION_V0_1_1.md             research/l2_resiliency_overlay_pret0/L2R_OVERLAY_ETF_CME_PRET0_001_SPARSE_SOURCE_MANIFEST_V0_1_1.csv
