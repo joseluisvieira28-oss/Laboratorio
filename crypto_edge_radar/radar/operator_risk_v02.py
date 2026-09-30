@@ -122,6 +122,8 @@ def _local_receipt_uncertainty(receipt_root: str | Path) -> list[str]:
             continue
         if (session / "ENTRY_NOT_SUBMITTED_FINAL.json").exists():
             continue
+        if (session / "ENTRY_TERMINAL_NO_FILL_CONFIRMED.json").exists():
+            continue
         # An intent without a terminal reconciliation or explicit pre-submit abort
         # reserves the only global slot indefinitely until reconciled.
         blockers.append(f"UNRESOLVED_ORDER_INTENT_RESERVES_GLOBAL_SLOT:{path}")
