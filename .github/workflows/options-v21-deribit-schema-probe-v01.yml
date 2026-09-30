@@ -1,0 +1,32 @@
+name: OPTIONS V2.1 Deribit live schema probe V0.1
+
+on:
+  push:
+    branches:
+      - triple-fishing-operator-v0.3-2026-09-30
+    paths:
+      - 'crypto_edge_radar/scripts/probe_options_v21_deribit_invalid_rows_v01.py'
+      - '.github/workflows/options-v21-deribit-schema-probe-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Probe current public Deribit BTC option trade schema
+        working-directory: crypto_edge_radar
+        run: python scripts/probe_options_v21_deribit_invalid_rows_v01.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: options-v21-deribit-schema-probe-v01
+          path: crypto_edge_radar/options-v21-deribit-probe.json
+          if-no-files-found: error
+          retention-days: 7
