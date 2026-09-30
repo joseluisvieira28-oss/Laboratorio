@@ -24,9 +24,14 @@ _PRIVATE_EXACT_PATHS = {
     "/api/v1/private/account/risk_limit",
     "/api/v1/private/account/tiered_fee_rate/v2",
     "/api/v1/private/order/list/open_orders",
+    "/api/v1/private/stoporder/open_orders",
+    "/api/v1/private/stoporder/list/orders",
+    "/api/v1/private/position/list/history_positions",
+    "/api/v1/private/position/funding_records",
 }
 _PRIVATE_PREFIX_PATHS = (
     "/api/v1/private/order/external/",
+    "/api/v1/private/order/get/",
 )
 
 
@@ -232,6 +237,168 @@ class MEXCFuturesAuthenticatedReadOnlyClient:
             wanted = _contract(symbol)
             return [row for row in rows if str(row.get("symbol", "")).upper() == wanted]
         return rows
+
+
+    def open_tpsl_orders(self, symbol: str | None = None) -> list[dict[str, Any]]:
+        params = {"symbol": _contract(symbol)} if symbol else None
+        data = self._get_json("/api/v1/private/stoporder/open_orders", params)
+        if data is None:
+            return []
+        if not isinstance(data, list):
+            raise MEXCAuthenticatedReadError("TP/SL open orders payload missing list")
+        return data
+
+    def tpsl_orders(
+        self,
+        *,
+        symbol: str | None = None,
+        is_finished: int | None = None,
+        position_type: int | None = None,
+        start_time: int | None = None,
+        end_time: int | None = None,
+    ) -> list[dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
+        page = 1
+        page_size = 100
+        while True:
+            params: dict[str, Any] = {
+                "page_num": page,
+                "page_size": page_size,
+                "symbol": _contract(symbol) if symbol else None,
+                "is_finished": is_finished,
+                "type": position_type,
+                "start_time": start_time,
+                "end_time": end_time,
+            }
+            data = self._get_json("/api/v1/private/stoporder/list/orders", params)
+            if data is None:
+                batch = []
+                total_pages = page
+            elif isinstance(data, dict) and isinstance(data.get("resultList"), list):
+                batch = data["resultList"]
+                raw_total = data.get("totalPage") or data.get("total_page")
+                total_pages = int(raw_total) if raw_total is not None else None
+            elif isinstance(data, list):
+                batch = data
+                total_pages = page
+            else:
+                raise MEXCAuthenticatedReadError("TP/SL order list payload unsupported")
+            rows.extend(batch)
+            if total_pages is not None:
+                if page >= total_pages:
+                    break
+            elif len(batch) < page_size:
+                break
+            page += 1
+            if page > 100:
+                raise MEXCAuthenticatedReadError("TP/SL pagination exceeded safety bound")
+        return rows
+
+    def historical_positions(
+        self,
+        *,
+        symbol: str | None = None,
+        position_type: int | None = None,
+        start_time: int | None = None,
+        end_time: int | None = None,
+    ) -> list[dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
+        page = 1
+        page_size = 100
+        while True:
+            params: dict[str, Any] = {
+                "page_num": page,
+                "page_size": page_size,
+                "symbol": _contract(symbol) if symbol else None,
+                "position_type": position_type,
+                "start_time": start_time,
+                "end_time": end_time,
+            }
+            data = self._get_json(
+                "/api/v1/private/position/list/history_positions",
+                params,
+            )
+            if data is None:
+                batch = []
+                total_pages = page
+            elif isinstance(data, dict) and isinstance(data.get("resultList"), list):
+                batch = data["resultList"]
+                raw_total = data.get("totalPage") or data.get("total_page")
+                total_pages = int(raw_total) if raw_total is not None else None
+            elif isinstance(data, list):
+                batch = data
+                total_pages = page
+            else:
+                raise MEXCAuthenticatedReadError(
+                    "historical positions payload unsupported"
+                )
+            rows.extend(batch)
+            if total_pages is not None:
+                if page >= total_pages:
+                    break
+            elif len(batch) < page_size:
+                break
+            page += 1
+            if page > 100:
+                raise MEXCAuthenticatedReadError(
+                    "historical positions pagination exceeded safety bound"
+                )
+        return rows
+
+    def funding_records(
+        self,
+        *,
+        symbol: str | None = None,
+        position_id: int | None = None,
+        position_type: int | None = None,
+        start_time: int | None = None,
+        end_time: int | None = None,
+    ) -> list[dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
+        page = 1
+        page_size = 100
+        while True:
+            params: dict[str, Any] = {
+                "page_num": page,
+                "page_size": page_size,
+                "symbol": _contract(symbol) if symbol else None,
+                "position_id": position_id,
+                "position_type": position_type,
+                "start_time": start_time,
+                "end_time": end_time,
+            }
+            data = self._get_json("/api/v1/private/position/funding_records", params)
+            if data is None:
+                batch = []
+                total_pages = page
+            elif isinstance(data, dict) and isinstance(data.get("resultList"), list):
+                batch = data["resultList"]
+                raw_total = data.get("totalPage") or data.get("total_page")
+                total_pages = int(raw_total) if raw_total is not None else None
+            elif isinstance(data, list):
+                batch = data
+                total_pages = page
+            else:
+                raise MEXCAuthenticatedReadError("funding records payload unsupported")
+            rows.extend(batch)
+            if total_pages is not None:
+                if page >= total_pages:
+                    break
+            elif len(batch) < page_size:
+                break
+            page += 1
+            if page > 100:
+                raise MEXCAuthenticatedReadError("funding pagination exceeded safety bound")
+        return rows
+
+    def order_by_id(self, order_id: str | int) -> dict[str, Any]:
+        value = str(order_id)
+        if not value.isdigit() or len(value) > 32:
+            raise MEXCAuthenticatedReadError("invalid order_id")
+        data = self._get_json(f"/api/v1/private/order/get/{value}")
+        if not isinstance(data, dict):
+            raise MEXCAuthenticatedReadError("order lookup missing object")
+        return data
 
     def fee_details(self, symbol: str = "BTC_USDT") -> dict[str, Any]:
         data = self._get_json(
