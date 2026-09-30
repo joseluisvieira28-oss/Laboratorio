@@ -8,7 +8,8 @@ RPC="https://api.mainnet-beta.solana.com"
 TOKEN_PROGRAM="TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
 SYSVAR_INSTRUCTIONS="Sysvar1nstructions1111111111111111111111111"
 ALPH="123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
-MAP={c:i for i,c in enumerate(ALPH)}\nSTREAM_SLOT_SPAN=250000  # transport-only bounded SQD request window; scientific interval unchanged
+MAP={c:i for i,c in enumerate(ALPH)}
+STREAM_SLOT_SPAN=250000  # transport-only bounded SQD request window; scientific interval unchanged
 
 CFG={
  "marginfi":{"program":"MFv2hWf31Z9kbCa1snEPYctwafyhdvnV7FZnsebVacA",
