@@ -618,6 +618,315 @@ class OperatorFuturesEngineV02:
         })
         return position
 
+    def _install_position_protection(
+        self,
+        *,
+        transport: MEXCOperatorFuturesTransportV02,
+        position: dict[str, Any],
+        direction: str,
+        fill_price: float,
+        protective: dict[str, Any],
+        price_unit: float,
+        session: Path,
+    ) -> dict[str, Any]:
+        prices = protective_prices(
+            entry_price=fill_price,
+            direction=direction,
+            stop_distance_fraction=float(protective["stop_distance_fraction"]),
+            take_profit_distance_fraction=float(
+                protective["take_profit_distance_fraction"]
+            ),
+            price_unit=float(price_unit),
+        )
+        volume = int(float(position.get("holdVol", 0) or 0))
+        position_id = int(position.get("positionId", 0) or 0)
+        if volume <= 0 or position_id <= 0:
+            raise OperatorEngineError("PROTECTIVE_POSITION_ID_OR_VOLUME_INVALID")
+
+        ack = transport.place_position_tpsl(
+            symbol=str(position.get("symbol") or "").upper(),
+            direction=direction,
+            position_id=position_id,
+            volume_contracts=volume,
+            stop_loss_price=prices["stop_loss_price"],
+            take_profit_price=prices["take_profit_price"],
+        )
+        _atomic_write(session / "PROTECTIVE_TPSL_ACK.json", {
+            "receipt_type": "PROTECTIVE_TPSL_ACK",
+            "position_id": position_id,
+            "volume_contracts": volume,
+            "direction": direction,
+            **prices,
+            "exchange_ack": ack,
+        })
+
+        time.sleep(0.35)
+        rows = self.readonly.open_tpsl_orders(
+            str(position.get("symbol") or "").upper()
+        )
+        matches: list[dict[str, Any]] = []
+        for row in rows:
+            try:
+                if int(row.get("positionId", 0) or 0) != position_id:
+                    continue
+                if int(row.get("state", 1) or 1) != 1:
+                    continue
+                row_stop = float(row.get("stopLossPrice", 0) or 0)
+                row_target = float(row.get("takeProfitPrice", 0) or 0)
+                row_vol = float(row.get("vol", 0) or 0)
+                if abs(row_stop - prices["stop_loss_price"]) > float(price_unit) / 2.0:
+                    continue
+                if abs(row_target - prices["take_profit_price"]) > float(price_unit) / 2.0:
+                    continue
+                if abs(row_vol - volume) > 1e-9:
+                    continue
+            except (TypeError, ValueError):
+                continue
+            matches.append(row)
+
+        if len(matches) != 1:
+            raise OperatorEngineError(
+                f"PROTECTIVE_TPSL_POST_VERIFY_FAILED:matches={len(matches)}"
+            )
+        order = matches[0]
+        protective_id = int(order.get("id", 0) or 0)
+        if protective_id <= 0:
+            raise OperatorEngineError("PROTECTIVE_TPSL_ID_INVALID")
+
+        receipt = {
+            "receipt_type": "PROTECTIVE_TPSL_VERIFY",
+            "pass": True,
+            "position_id": position_id,
+            "protective_order_id": protective_id,
+            "volume_contracts": volume,
+            "stop_loss_price": prices["stop_loss_price"],
+            "take_profit_price": prices["take_profit_price"],
+            "price_unit": prices["price_unit"],
+            "trigger_basis": "LATEST_PRICE",
+            "market_on_trigger": True,
+            "exchange_row": order,
+        }
+        _atomic_write(session / "PROTECTIVE_TPSL_VERIFY.json", receipt)
+        return receipt
+
+    def _verify_active_protection(
+        self,
+        *,
+        active: dict[str, Any],
+    ) -> dict[str, Any]:
+        symbol = str(active["symbol"]).upper()
+        position_id = int(active["position_id"])
+        protective_id = int(active.get("protective_tpsl_order_id", 0) or 0)
+        if protective_id <= 0:
+            raise OperatorEngineError("ACTIVE_PROTECTIVE_TPSL_ID_MISSING")
+        rows = self.readonly.open_tpsl_orders(symbol)
+        matches = [
+            row for row in rows
+            if int(row.get("id", 0) or 0) == protective_id
+            and int(row.get("positionId", 0) or 0) == position_id
+            and int(row.get("state", 1) or 1) == 1
+        ]
+        if len(matches) != 1:
+            raise OperatorEngineError(
+                f"ACTIVE_PROTECTIVE_TPSL_NOT_VERIFIED:matches={len(matches)}"
+            )
+        row = matches[0]
+        unit = float(active.get("protective_price_unit", 0) or 0)
+        if unit <= 0:
+            raise OperatorEngineError("ACTIVE_PROTECTIVE_PRICE_UNIT_INVALID")
+        stop = float(row.get("stopLossPrice", 0) or 0)
+        target = float(row.get("takeProfitPrice", 0) or 0)
+        if (
+            abs(stop - float(active["protective_stop_loss_price"])) > unit / 2.0
+            or abs(target - float(active["protective_take_profit_price"])) > unit / 2.0
+        ):
+            raise OperatorEngineError("ACTIVE_PROTECTIVE_TPSL_PRICE_DRIFT")
+        return row
+
+    def _historical_position(
+        self,
+        *,
+        active: dict[str, Any],
+        now: datetime,
+    ) -> dict[str, Any] | None:
+        symbol = str(active["symbol"]).upper()
+        direction = str(active["direction"]).upper()
+        position_type = direction_meta(direction)["position_type"]
+        opened = _utc(
+            active.get("opened_at_utc")
+            or active.get("entry_target_utc")
+        )
+        start_ms = int((opened.timestamp() - 3600.0) * 1000)
+        end_ms = int((now.timestamp() + 60.0) * 1000)
+        rows = self.readonly.historical_positions(
+            symbol=symbol,
+            position_type=position_type,
+            start_time=start_ms,
+            end_time=end_ms,
+        )
+        matches = [
+            row for row in rows
+            if int(row.get("positionId", 0) or 0) == int(active["position_id"])
+        ]
+        if len(matches) > 1:
+            raise OperatorEngineError("MULTIPLE_HISTORICAL_POSITION_ID_MATCHES")
+        return matches[0] if matches else None
+
+    def _reconcile_protected_exchange_close(
+        self,
+        *,
+        active_path: Path,
+        active: dict[str, Any],
+        now: datetime,
+    ) -> dict[str, Any]:
+        session = active_path.parent
+        symbol = str(active["symbol"]).upper()
+        direction = str(active["direction"]).upper()
+        signal_key = str(active["signal_identity"])
+        hist = self._historical_position(active=active, now=now)
+        if hist is None or int(hist.get("state", 0) or 0) != 3:
+            return self._status(
+                "PROTECTED_EXIT_RECONCILIATION_REQUIRED",
+                candidate_id=active.get("candidate_id"),
+                signal_identity=signal_key,
+                reason="POSITION_MISSING_BUT_CLOSED_HISTORY_NOT_YET_PROVEN",
+                session_dir=str(session),
+            )
+
+        opened = _utc(active.get("opened_at_utc") or active["entry_target_utc"])
+        rows = self.readonly.tpsl_orders(
+            symbol=symbol,
+            is_finished=1,
+            position_type=direction_meta(direction)["position_type"],
+            start_time=int((opened.timestamp() - 3600.0) * 1000),
+            end_time=int((now.timestamp() + 60.0) * 1000),
+        )
+        protective_id = int(active.get("protective_tpsl_order_id", 0) or 0)
+        matches = [
+            row for row in rows
+            if int(row.get("id", 0) or 0) == protective_id
+            and int(row.get("positionId", 0) or 0) == int(active["position_id"])
+        ]
+        if len(matches) != 1:
+            return self._status(
+                "PROTECTED_EXIT_RECONCILIATION_REQUIRED",
+                candidate_id=active.get("candidate_id"),
+                signal_identity=signal_key,
+                reason=f"PROTECTIVE_HISTORY_MATCH_COUNT_{len(matches)}",
+                session_dir=str(session),
+            )
+        tpsl = matches[0]
+        if int(tpsl.get("state", 0) or 0) != 3:
+            return self._status(
+                "PROTECTED_EXIT_RECONCILIATION_REQUIRED",
+                candidate_id=active.get("candidate_id"),
+                signal_identity=signal_key,
+                reason=f"PROTECTIVE_ORDER_NOT_EXECUTED_STATE_{tpsl.get('state')}",
+                session_dir=str(session),
+            )
+
+        trigger_side = int(tpsl.get("triggerSide", 0) or 0)
+        if trigger_side == 1:
+            exit_reason = "MEXC_TAKE_PROFIT_TRIGGER"
+        elif trigger_side == 2:
+            exit_reason = "MEXC_STOP_LOSS_TRIGGER"
+        else:
+            return self._status(
+                "PROTECTED_EXIT_RECONCILIATION_REQUIRED",
+                candidate_id=active.get("candidate_id"),
+                signal_identity=signal_key,
+                reason="PROTECTIVE_TRIGGER_SIDE_UNKNOWN",
+                session_dir=str(session),
+            )
+
+        def finite(name: str, default: Any = None) -> float:
+            raw = hist.get(name, default)
+            value = float(raw)
+            if not math.isfinite(value):
+                raise OperatorEngineError(f"HISTORICAL_POSITION_{name}_NONFINITE")
+            return value
+
+        try:
+            gross = finite("closeProfitLoss", 0)
+            funding = finite("holdFee", 0)
+            total_fee = abs(finite("totalFee", hist.get("fee", 0) or 0))
+            realized = finite("realised")
+            exit_price = finite("closeAvgPrice")
+            expected = gross + funding - total_fee
+            if abs(realized - expected) > max(1e-6, abs(realized) * 1e-6):
+                raise OperatorEngineError(
+                    f"HISTORICAL_POSITION_ACCOUNTING_IDENTITY_MISMATCH:{realized}:{expected}"
+                )
+        except Exception as exc:
+            return self._status(
+                "PROTECTED_EXIT_RECONCILIATION_REQUIRED",
+                candidate_id=active.get("candidate_id"),
+                signal_identity=signal_key,
+                reason=f"{type(exc).__name__}:{exc}",
+                session_dir=str(session),
+            )
+
+        entry_fee = float(active.get("entry_fee_usdt", 0) or 0)
+        exit_fee = max(0.0, total_fee - entry_fee)
+        _atomic_write(session / "PROTECTIVE_TPSL_FINAL.json", {
+            "receipt_type": "PROTECTIVE_TPSL_FINAL",
+            "protective_order": tpsl,
+            "historical_position": hist,
+            "trigger_side": trigger_side,
+            "exit_reason": exit_reason,
+        })
+        reconciliation = {
+            "receipt_type": "POST_TRADE_RECONCILIATION",
+            "candidate_id": active.get("candidate_id"),
+            "strategy_id": active.get("strategy_id"),
+            "signal_identity": signal_key,
+            "closed_at_utc": _iso(now),
+            "gross_close_profit_usdt": gross,
+            "funding_hold_fee_usdt": funding,
+            "entry_fee_usdt": entry_fee,
+            "exit_fee_usdt": exit_fee,
+            "total_position_fee_usdt": total_fee,
+            "realized_net_pnl_usdt": realized,
+            "entry_price": active.get("entry_price"),
+            "exit_price": exit_price,
+            "planned_notional_usdt": active.get("planned_notional_usdt"),
+            "planned_initial_margin_usdt": active.get("planned_initial_margin_usdt"),
+            "leverage": REQUIRED_LEVERAGE,
+            "margin_mode": "ISOLATED",
+            "scientific_credit": False,
+            "exit_reason": exit_reason,
+            "protective_order_id": protective_id,
+            "open_position_after_reconciliation": False,
+        }
+        _atomic_write(session / "POST_TRADE_RECONCILIATION.json", reconciliation)
+        active["state"] = "CLOSED"
+        active["closed_at_utc"] = reconciliation["closed_at_utc"]
+        active["exit_reason"] = exit_reason
+        _atomic_write(active_path, active)
+        try:
+            release = self.global_slot.release(
+                signal_identity=signal_key,
+                reason="POST_TRADE_RECONCILIATION_CONFIRMED",
+            )
+        except Exception as exc:
+            return self._status(
+                "CLOSED_RECONCILED_SLOT_RELEASE_REQUIRED",
+                candidate_id=active.get("candidate_id"),
+                signal_identity=signal_key,
+                realized_net_pnl_usdt=realized,
+                error=f"{type(exc).__name__}:{exc}",
+                session_dir=str(session),
+            )
+        return self._status(
+            "CLOSED_RECONCILED",
+            candidate_id=active.get("candidate_id"),
+            signal_identity=signal_key,
+            realized_net_pnl_usdt=realized,
+            exit_reason=exit_reason,
+            global_slot_release=release,
+            session_dir=str(session),
+        )
+
     def _flatten_position(
         self,
         *,
