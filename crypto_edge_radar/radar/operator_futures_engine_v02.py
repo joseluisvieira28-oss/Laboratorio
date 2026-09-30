@@ -12,6 +12,10 @@ from typing import Any
 
 from .market import MEXCFuturesPublicFeed
 from .mexc_auth_readonly import MEXCCredentials, MEXCFuturesAuthenticatedReadOnlyClient
+from .global_slot_reservation_v03 import (
+    GlobalSlotReservationError,
+    GlobalSlotReservationV03,
+)
 from .mexc_operator_futures_transport_v02 import (
     MEXCOperatorFuturesTransportV02,
     OperatorFuturesPolicy,
@@ -191,6 +195,9 @@ class OperatorFuturesEngineV02:
         self.armed_path = Path(armed_path)
         self.kill_switch_path = Path(kill_switch_path)
         self.status_path = Path(status_path)
+        self.global_slot = GlobalSlotReservationV03(
+            self.receipt_root.parent / "live_state" / "GLOBAL_POSITION_SLOT_V03.json"
+        )
         self.readonly = MEXCFuturesAuthenticatedReadOnlyClient(credentials)
         self.public = MEXCFuturesPublicFeed(timeout=10)
 
@@ -559,103 +566,38 @@ class OperatorFuturesEngineV02:
 
     def enter_signal(self, signal: dict[str, Any]) -> dict[str, Any]:
         now = datetime.now(timezone.utc)
-        gate = self._entry_gate(signal, now=now)
-        candidate_id = gate["candidate_id"] or "unknown"
-        signal_key = gate["signal_identity"] or "unknown"
+        candidate_id = str(signal.get("candidate_id") or signal.get("strategy_id") or "unknown")
+        signal_key = str(signal.get("immutable_signal_key") or "unknown")
+        symbol_hint = str(signal.get("symbol") or "").upper()
+        direction_hint = str(signal.get("direction") or "").upper()
+        ext = _oid(signal_key, "entry", 1)
         session = self.receipt_root / _session_name(candidate_id, signal_key)
         session.mkdir(parents=True, exist_ok=True)
-        _atomic_write(session / "CANONICAL_OPERATOR_SIGNAL.json", signal)
-        _atomic_write(session / "PRE_ORDER_GATE.json", gate)
+        intent_path = session / "ORDER_INTENT.json"
 
-        if not gate["pass"]:
-            status = "WAITING_ENTRY_TARGET" if gate["timing_state"] == "WAITING" else "FAIL_CLOSED"
-            return self._status(
-                status,
-                candidate_id=candidate_id,
-                signal_identity=signal_key,
-                blockers=gate["blockers"],
-                session_dir=str(session),
-            )
-
-        symbol = gate["symbol"]
-        direction = gate["direction"]
-        sizing = gate["sizing"]
-        if not isinstance(sizing, dict):
-            raise OperatorEngineError("SIZING_MISSING_AFTER_PASS")
-
-        policy = OperatorFuturesPolicy(
-            policy_id=f"{candidate_id}:OPERATOR-V0.2",
-            symbol=symbol,
-            allowed_directions=(direction,),
-            required_leverage=REQUIRED_LEVERAGE,
-        )
-        transport = MEXCOperatorFuturesTransportV02(self.credentials, policy)
-
-        configure_ack = transport.configure_isolated_leverage(
-            symbol=symbol,
-            direction=direction,
-        )
-        _atomic_write(session / "LEVERAGE_CONFIGURATION_ACK.json", {
-            "receipt_type": "LEVERAGE_CONFIGURATION_ACK",
-            "symbol": symbol,
-            "direction": direction,
-            "leverage": REQUIRED_LEVERAGE,
-            "margin_mode": "ISOLATED",
-            "exchange_ack": configure_ack,
-        })
-
-        meta = direction_meta(direction)
-        lev = [
-            row for row in self.readonly.leverage(symbol)
-            if int(row.get("positionType", 0) or 0) == meta["position_type"]
-        ]
-        leverage_ok = (
-            len(lev) == 1
-            and int(lev[0].get("leverage", 0) or 0) == REQUIRED_LEVERAGE
-            and int(lev[0].get("openType", 0) or 0) == 1
-        )
-        _atomic_write(session / "LEVERAGE_POST_VERIFY.json", {
-            "receipt_type": "LEVERAGE_POST_VERIFY",
-            "pass": leverage_ok,
-            "rows": lev,
-        })
-        if not leverage_ok:
-            return self._status(
-                "FAIL_CLOSED",
-                candidate_id=candidate_id,
-                signal_identity=signal_key,
-                blockers=["ISOLATED_5X_POST_VERIFY_FAILED"],
-                session_dir=str(session),
-            )
-
-        # Re-check account conflict after leverage configuration and before intent.
-        if self.kill_switch_path.exists():
-            return self._status("FAIL_CLOSED", blockers=["KILL_SWITCH_PRESENT_BEFORE_ORDER"])
-        if self.readonly.open_positions() or self.readonly.open_orders():
-            return self._status(
-                "FAIL_CLOSED",
-                blockers=["LAST_MOMENT_POSITION_OR_ORDER_CONFLICT"],
-            )
-
-        ext = _oid(signal_key, "entry", 1)
-        intent = {
-            "receipt_type": "ORDER_INTENT",
-            "candidate_id": candidate_id,
-            "signal_identity": signal_key,
-            "symbol": symbol,
-            "direction": direction,
-            "entry_target_utc": gate["entry_target_utc"],
-            "exit_target_utc": gate["exit_target_utc"],
-            "volume_contracts": int(sizing["volume_contracts"]),
-            "estimated_notional_usdt": sizing["estimated_notional_usdt"],
-            "estimated_initial_margin_usdt": sizing["estimated_initial_margin_usdt"],
-            "leverage": REQUIRED_LEVERAGE,
-            "margin_mode": "ISOLATED",
-            "external_oid": ext,
-        }
-        if not _exclusive_write(session / "ORDER_INTENT.json", intent):
-            # Never blind-resend. Reconcile an existing intent instead.
+        # Recovery takes precedence over timing. Once an intent exists, restart
+        # must reconcile it by immutable externalOid instead of treating the
+        # opportunity as late or blindly resending.
+        if intent_path.exists():
             try:
+                intent = _load(intent_path)
+                symbol = str(intent["symbol"]).upper()
+                direction = str(intent["direction"]).upper()
+                ext = str(intent["external_oid"])
+                claim = self.global_slot.claim(
+                    candidate_id=str(intent.get("candidate_id") or candidate_id),
+                    signal_identity=str(intent.get("signal_identity") or signal_key),
+                    external_oid=ext,
+                )
+                if claim.get("claim_status") == "OCCUPIED_BY_OTHER_SIGNAL":
+                    return self._status(
+                        "FAIL_CLOSED",
+                        candidate_id=candidate_id,
+                        signal_identity=signal_key,
+                        blockers=["GLOBAL_SLOT_OCCUPIED_BY_OTHER_SIGNAL"],
+                        global_slot_owner=claim.get("owner"),
+                        session_dir=str(session),
+                    )
                 order = self.readonly.order_by_external(
                     symbol=symbol,
                     external_oid=ext,
@@ -670,7 +612,39 @@ class OperatorFuturesEngineV02:
                     blind_resend_allowed=False,
                     session_dir=str(session),
                 )
-            if position is None or float(order.get("dealVol", 0) or 0) <= 0:
+
+            deal_vol = float(order.get("dealVol", 0) or 0)
+            terminal_state = int(order.get("state", 0) or 0) in (3, 4, 5)
+            if deal_vol <= 0:
+                if terminal_state and position is None:
+                    marker = {
+                        "receipt_type": "ENTRY_TERMINAL_NO_FILL_CONFIRMED",
+                        "signal_identity": signal_key,
+                        "external_oid": ext,
+                        "order": order,
+                        "trade_opened": False,
+                    }
+                    _atomic_write(session / "ENTRY_TERMINAL_NO_FILL_CONFIRMED.json", marker)
+                    try:
+                        self.global_slot.release(
+                            signal_identity=signal_key,
+                            reason="ENTRY_TERMINAL_NO_FILL_CONFIRMED",
+                        )
+                    except Exception as exc:
+                        return self._status(
+                            "FAIL_CLOSED",
+                            candidate_id=candidate_id,
+                            signal_identity=signal_key,
+                            blockers=[f"GLOBAL_SLOT_RELEASE_FAILED:{type(exc).__name__}"],
+                            session_dir=str(session),
+                        )
+                    return self._status(
+                        "FAIL_CLOSED",
+                        candidate_id=candidate_id,
+                        signal_identity=signal_key,
+                        blockers=["ENTRY_ORDER_TERMINAL_NO_FILL"],
+                        session_dir=str(session),
+                    )
                 return self._status(
                     "ENTRY_RECONCILIATION_REQUIRED",
                     candidate_id=candidate_id,
@@ -679,7 +653,212 @@ class OperatorFuturesEngineV02:
                     blind_resend_allowed=False,
                     session_dir=str(session),
                 )
+            if position is None:
+                return self._status(
+                    "ENTRY_RECONCILIATION_REQUIRED",
+                    candidate_id=candidate_id,
+                    signal_identity=signal_key,
+                    reason="FILLED_ORDER_WITHOUT_MATCHING_POSITION",
+                    blind_resend_allowed=False,
+                    session_dir=str(session),
+                )
+
+            gate_path = session / "PRE_ORDER_GATE.json"
+            if not gate_path.exists():
+                return self._status(
+                    "ENTRY_RECONCILIATION_REQUIRED",
+                    candidate_id=candidate_id,
+                    signal_identity=signal_key,
+                    reason="RECOVERY_GATE_RECEIPT_MISSING",
+                    blind_resend_allowed=False,
+                    session_dir=str(session),
+                )
+            gate = _load(gate_path)
+            sizing = gate.get("sizing")
+            if not isinstance(sizing, dict):
+                return self._status(
+                    "ENTRY_RECONCILIATION_REQUIRED",
+                    candidate_id=candidate_id,
+                    signal_identity=signal_key,
+                    reason="RECOVERY_SIZING_MISSING",
+                    blind_resend_allowed=False,
+                    session_dir=str(session),
+                )
         else:
+            gate = self._entry_gate(signal, now=now)
+            candidate_id = gate["candidate_id"] or "unknown"
+            signal_key = gate["signal_identity"] or "unknown"
+            session = self.receipt_root / _session_name(candidate_id, signal_key)
+            session.mkdir(parents=True, exist_ok=True)
+            intent_path = session / "ORDER_INTENT.json"
+            _atomic_write(session / "CANONICAL_OPERATOR_SIGNAL.json", signal)
+            _atomic_write(session / "PRE_ORDER_GATE.json", gate)
+
+            if not gate["pass"]:
+                status = "WAITING_ENTRY_TARGET" if gate["timing_state"] == "WAITING" else "FAIL_CLOSED"
+                return self._status(
+                    status,
+                    candidate_id=candidate_id,
+                    signal_identity=signal_key,
+                    blockers=gate["blockers"],
+                    session_dir=str(session),
+                )
+
+            symbol = gate["symbol"]
+            direction = gate["direction"]
+            sizing = gate["sizing"]
+            if not isinstance(sizing, dict):
+                raise OperatorEngineError("SIZING_MISSING_AFTER_PASS")
+            ext = _oid(signal_key, "entry", 1)
+
+            try:
+                claim = self.global_slot.claim(
+                    candidate_id=candidate_id,
+                    signal_identity=signal_key,
+                    external_oid=ext,
+                )
+            except Exception as exc:
+                return self._status(
+                    "FAIL_CLOSED",
+                    candidate_id=candidate_id,
+                    signal_identity=signal_key,
+                    blockers=[f"GLOBAL_SLOT_RESERVATION_ERROR:{type(exc).__name__}:{exc}"],
+                    session_dir=str(session),
+                )
+            if claim.get("claim_status") == "OCCUPIED_BY_OTHER_SIGNAL":
+                return self._status(
+                    "FAIL_CLOSED",
+                    candidate_id=candidate_id,
+                    signal_identity=signal_key,
+                    blockers=["GLOBAL_SLOT_OCCUPIED_BY_OTHER_SIGNAL"],
+                    global_slot_owner=claim.get("owner"),
+                    session_dir=str(session),
+                )
+
+            policy = OperatorFuturesPolicy(
+                policy_id=f"{candidate_id}:OPERATOR-V0.3",
+                symbol=symbol,
+                allowed_directions=(direction,),
+                required_leverage=REQUIRED_LEVERAGE,
+            )
+            transport = MEXCOperatorFuturesTransportV02(self.credentials, policy)
+
+            try:
+                configure_ack = transport.configure_isolated_leverage(
+                    symbol=symbol,
+                    direction=direction,
+                )
+                _atomic_write(session / "LEVERAGE_CONFIGURATION_ACK.json", {
+                    "receipt_type": "LEVERAGE_CONFIGURATION_ACK",
+                    "symbol": symbol,
+                    "direction": direction,
+                    "leverage": REQUIRED_LEVERAGE,
+                    "margin_mode": "ISOLATED",
+                    "exchange_ack": configure_ack,
+                })
+
+                meta = direction_meta(direction)
+                lev = [
+                    row for row in self.readonly.leverage(symbol)
+                    if int(row.get("positionType", 0) or 0) == meta["position_type"]
+                ]
+                leverage_ok = (
+                    len(lev) == 1
+                    and int(lev[0].get("leverage", 0) or 0) == REQUIRED_LEVERAGE
+                    and int(lev[0].get("openType", 0) or 0) == 1
+                )
+                _atomic_write(session / "LEVERAGE_POST_VERIFY.json", {
+                    "receipt_type": "LEVERAGE_POST_VERIFY",
+                    "pass": leverage_ok,
+                    "rows": lev,
+                })
+                if not leverage_ok:
+                    raise OperatorEngineError("ISOLATED_5X_POST_VERIFY_FAILED")
+
+                # Last exchange/account check while the process owns the global
+                # reservation. The reservation serializes competing executors.
+                if self.readonly.open_positions() or self.readonly.open_orders():
+                    raise OperatorEngineError("LAST_MOMENT_POSITION_OR_ORDER_CONFLICT")
+            except Exception as exc:
+                _atomic_write(session / "ENTRY_NOT_SUBMITTED_FINAL.json", {
+                    "receipt_type": "ENTRY_NOT_SUBMITTED_FINAL",
+                    "signal_identity": signal_key,
+                    "external_oid": ext,
+                    "reason": f"{type(exc).__name__}:{exc}",
+                    "order_submitted": False,
+                })
+                try:
+                    self.global_slot.release(
+                        signal_identity=signal_key,
+                        reason="PRE_SUBMIT_ABORT_CONFIRMED",
+                    )
+                except Exception as release_exc:
+                    return self._status(
+                        "FAIL_CLOSED",
+                        candidate_id=candidate_id,
+                        signal_identity=signal_key,
+                        blockers=[
+                            f"PRE_SUBMIT_ABORT:{type(exc).__name__}:{exc}",
+                            f"GLOBAL_SLOT_RELEASE_FAILED:{type(release_exc).__name__}",
+                        ],
+                        session_dir=str(session),
+                    )
+                return self._status(
+                    "FAIL_CLOSED",
+                    candidate_id=candidate_id,
+                    signal_identity=signal_key,
+                    blockers=[f"PRE_SUBMIT_ABORT:{type(exc).__name__}:{exc}"],
+                    session_dir=str(session),
+                )
+
+            intent = {
+                "receipt_type": "ORDER_INTENT",
+                "candidate_id": candidate_id,
+                "signal_identity": signal_key,
+                "symbol": symbol,
+                "direction": direction,
+                "entry_target_utc": gate["entry_target_utc"],
+                "exit_target_utc": gate["exit_target_utc"],
+                "volume_contracts": int(sizing["volume_contracts"]),
+                "estimated_notional_usdt": sizing["estimated_notional_usdt"],
+                "estimated_initial_margin_usdt": sizing["estimated_initial_margin_usdt"],
+                "leverage": REQUIRED_LEVERAGE,
+                "margin_mode": "ISOLATED",
+                "external_oid": ext,
+            }
+            if not _exclusive_write(intent_path, intent):
+                return self._status(
+                    "ENTRY_RECONCILIATION_REQUIRED",
+                    candidate_id=candidate_id,
+                    signal_identity=signal_key,
+                    reason="ORDER_INTENT_RACE_DETECTED",
+                    blind_resend_allowed=False,
+                    session_dir=str(session),
+                )
+
+            # Close the race between validation and actual submission. If the
+            # kill switch appears here, no order is sent and the reservation can
+            # be released only after writing an explicit terminal marker.
+            if self.kill_switch_path.exists():
+                _atomic_write(session / "ENTRY_NOT_SUBMITTED_FINAL.json", {
+                    "receipt_type": "ENTRY_NOT_SUBMITTED_FINAL",
+                    "signal_identity": signal_key,
+                    "external_oid": ext,
+                    "reason": "KILL_SWITCH_PRESENT_AT_FINAL_SEND_GATE",
+                    "order_submitted": False,
+                })
+                self.global_slot.release(
+                    signal_identity=signal_key,
+                    reason="PRE_SUBMIT_ABORT_CONFIRMED",
+                )
+                return self._status(
+                    "FAIL_CLOSED",
+                    candidate_id=candidate_id,
+                    signal_identity=signal_key,
+                    blockers=["KILL_SWITCH_PRESENT_AT_FINAL_SEND_GATE"],
+                    session_dir=str(session),
+                )
+
             try:
                 ack = transport.submit_market_order(
                     symbol=symbol,
@@ -700,6 +879,7 @@ class OperatorFuturesEngineV02:
                     candidate_id=candidate_id,
                     signal_identity=signal_key,
                     blind_resend_allowed=False,
+                    global_slot_reserved=True,
                     session_dir=str(session),
                 )
             _atomic_write(session / "ENTRY_EXCHANGE_ACK.json", {
@@ -717,12 +897,26 @@ class OperatorFuturesEngineV02:
                 })
                 order = self._wait_order(symbol=symbol, external_oid=ext, timeout=3)
             if float(order.get("dealVol", 0) or 0) <= 0:
-                _atomic_write(session / "EXECUTION_FAILURE.json", {
-                    "receipt_type": "EXECUTION_FAILURE",
-                    "reason": "ENTRY_ORDER_NOT_FILLED",
+                _atomic_write(session / "ENTRY_TERMINAL_NO_FILL_CONFIRMED.json", {
+                    "receipt_type": "ENTRY_TERMINAL_NO_FILL_CONFIRMED",
+                    "signal_identity": signal_key,
+                    "external_oid": ext,
                     "order": order,
                     "trade_opened": False,
                 })
+                try:
+                    self.global_slot.release(
+                        signal_identity=signal_key,
+                        reason="ENTRY_TERMINAL_NO_FILL_CONFIRMED",
+                    )
+                except Exception as exc:
+                    return self._status(
+                        "FAIL_CLOSED",
+                        candidate_id=candidate_id,
+                        signal_identity=signal_key,
+                        blockers=[f"GLOBAL_SLOT_RELEASE_FAILED:{type(exc).__name__}"],
+                        session_dir=str(session),
+                    )
                 return self._status(
                     "FAIL_CLOSED",
                     candidate_id=candidate_id,
@@ -734,15 +928,27 @@ class OperatorFuturesEngineV02:
 
         if position is None:
             return self._status(
-                "FAIL_CLOSED",
+                "ENTRY_RECONCILIATION_REQUIRED",
                 candidate_id=candidate_id,
                 signal_identity=signal_key,
-                blockers=["FILLED_ORDER_WITHOUT_MATCHING_POSITION"],
+                reason="FILLED_ORDER_WITHOUT_MATCHING_POSITION",
+                blind_resend_allowed=False,
+                global_slot_reserved=True,
                 session_dir=str(session),
             )
 
         entry_fee = order_fee_usdt(order)
         fill_price = float(order.get("dealAvgPrice") or position.get("openAvgPrice"))
+        if not math.isfinite(entry_fee) or not math.isfinite(fill_price) or fill_price <= 0:
+            return self._status(
+                "ENTRY_RECONCILIATION_REQUIRED",
+                candidate_id=candidate_id,
+                signal_identity=signal_key,
+                reason="NONFINITE_ENTRY_ACCOUNTING",
+                blind_resend_allowed=False,
+                global_slot_reserved=True,
+                session_dir=str(session),
+            )
         _atomic_write(session / "FILL_RECEIPT.json", {
             "receipt_type": "FILL_RECEIPT",
             "order": order,
@@ -753,9 +959,6 @@ class OperatorFuturesEngineV02:
             "deal_volume_contracts": order.get("dealVol"),
         })
 
-        # Persist active state immediately after a provable fill, before any
-        # post-fill risk mutation/verification. A crash or risk failure can
-        # therefore never leave a filled position invisible to the supervisor.
         active = {
             "receipt_type": "ACTIVE_TRADE_STATE",
             "state": "EXIT_PENDING",
@@ -782,9 +985,18 @@ class OperatorFuturesEngineV02:
             "post_fill_risk_verified": False,
             "scientific_credit": False,
             "execution_failure": False,
+            "global_slot_reserved": True,
         }
         active_path = session / "ACTIVE_TRADE_STATE.json"
         _atomic_write(active_path, active)
+
+        policy = OperatorFuturesPolicy(
+            policy_id=f"{candidate_id}:OPERATOR-V0.3",
+            symbol=symbol,
+            allowed_directions=(direction,),
+            required_leverage=REQUIRED_LEVERAGE,
+        )
+        transport = MEXCOperatorFuturesTransportV02(self.credentials, policy)
 
         try:
             position = self._ensure_position_risk(
@@ -818,6 +1030,7 @@ class OperatorFuturesEngineV02:
             exit_target_utc=active["exit_target_utc"],
             planned_notional_usdt=active["planned_notional_usdt"],
             planned_initial_margin_usdt=active["planned_initial_margin_usdt"],
+            global_slot_reserved=True,
             session_dir=str(session),
         )
 
