@@ -1,0 +1,39 @@
+name: DLS Route A2 Zero RPC Readiness V0.1
+on:
+  push:
+    branches: [dls-field-enrichment-v01]
+    paths: ['.github/workflows/dls-route-a2-readiness-v01.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: dls-route-a2-readiness
+  cancel-in-progress: false
+jobs:
+  readiness:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Existing archival credential preflight semantics
+        env:
+          HELIUS_API_KEY: ${{ secrets.HELIUS_API_KEY }}
+          DLS_RPC_URL: ${{ secrets.DLS_RPC_URL }}
+        run: |
+          python - <<'PY'
+          import os,json
+          from pathlib import Path
+          a=bool(os.environ.get('HELIUS_API_KEY'))
+          b=bool(os.environ.get('DLS_RPC_URL'))
+          r={'schema_version':'0.1','lab_id':'DEFI-LIQUIDATION-SHOCK-001','route':'A2',
+             'classification':'ARCHIVAL_RPC_CREDENTIAL_PRESENT' if a or b else 'ARCHIVAL_RPC_CREDENTIAL_ABSENT',
+             'helius_api_key_present':a,'dls_rpc_url_present':b,
+             'rpc_request_made':False,'secret_values_exposed':False,
+             'scientific_equivalence_claimed':False,'protected_2025_acquisition_launched':False,
+             'protected_economic_outcomes_opened':False,'science_changed':False,
+             'commit':os.environ['GITHUB_SHA'],'run_id':os.environ['GITHUB_RUN_ID']}
+          Path('DLS_ROUTE_A2_CREDENTIAL_READINESS_RECEIPT_V0.1.json').write_text(json.dumps(r,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(r,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dls-route-a2-readiness-v01
+          path: DLS_ROUTE_A2_CREDENTIAL_READINESS_RECEIPT_V0.1.json
