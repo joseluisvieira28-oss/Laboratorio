@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 import json
 import os
 from pathlib import Path
+import time
 from typing import Any
 
 
@@ -34,18 +35,27 @@ def _atomic_create(path: Path, payload: dict[str, Any]) -> bool:
 
 
 def _load(path: Path) -> dict[str, Any]:
-    try:
-        payload = json.loads(path.read_text(encoding="utf-8"))
-    except Exception as exc:
-        raise GlobalSlotReservationError(
-            f"GLOBAL_SLOT_RESERVATION_UNREADABLE:{type(exc).__name__}"
-        ) from exc
-    if not isinstance(payload, dict):
-        raise GlobalSlotReservationError("GLOBAL_SLOT_RESERVATION_NOT_OBJECT")
-    required = ("candidate_id", "signal_identity", "external_oid", "reserved_at_utc")
-    if any(not str(payload.get(key) or "") for key in required):
-        raise GlobalSlotReservationError("GLOBAL_SLOT_RESERVATION_IDENTITY_INVALID")
-    return payload
+    last: Exception | None = None
+    # O_EXCL creates the file before the winning process finishes writing it.
+    # Briefly retry that publication window; a persistently corrupt reservation
+    # still fails closed and is never expired automatically.
+    for _attempt in range(25):
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            if not isinstance(payload, dict):
+                raise GlobalSlotReservationError("GLOBAL_SLOT_RESERVATION_NOT_OBJECT")
+            required = ("candidate_id", "signal_identity", "external_oid", "reserved_at_utc")
+            if any(not str(payload.get(key) or "") for key in required):
+                raise GlobalSlotReservationError("GLOBAL_SLOT_RESERVATION_IDENTITY_INVALID")
+            return payload
+        except GlobalSlotReservationError:
+            raise
+        except Exception as exc:
+            last = exc
+            time.sleep(0.01)
+    raise GlobalSlotReservationError(
+        f"GLOBAL_SLOT_RESERVATION_UNREADABLE:{type(last).__name__ if last else 'UNKNOWN'}"
+    ) from last
 
 
 class GlobalSlotReservationV03:
