@@ -19,7 +19,7 @@ def load_nd(p):return [json.loads(x) for x in p.read_text().splitlines() if x.st
 errors=[];receipts=[];pop=[];rows=[]
 for m in ("202404","202405","202406"):
     rh=sorted(ROOT.rglob(f"MARGINFI_SOL_APRJUN_SOURCE_{m}_RECEIPT_V0.1.json"))
-    ph=sorted(ROOT.rglob(f"MARGINFI_SOL_FEBMAR_POPULATION_{m}_V0.1.ndjson"))
+    ph=sorted(ROOT.rglob(f"MARGINFI_SOL_APRJUN_POPULATION_{m}_V0.1.ndjson"))
     wh=sorted(ROOT.rglob(f"MARGINFI_SOL_APRJUN_SOURCE_{m}_ROWS_V0.1.ndjson"))
     if len(rh)!=1 or len(ph)!=1 or len(wh)!=1:
         errors.append(f"{m}:file_count:{len(rh)}/{len(ph)}/{len(wh)}");continue
