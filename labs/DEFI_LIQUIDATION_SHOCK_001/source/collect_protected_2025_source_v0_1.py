@@ -132,7 +132,8 @@ while current<=to_slot:
     if args.protocol=="save11":
         fields["tokenBalance"]={"transactionIndex":True,"account":True,"preMint":True,"postMint":True,
                                 "preDecimals":True,"postDecimals":True}
-    request_to=min(to_slot,current+STREAM_SLOT_SPAN-1)\n    body={"type":"solana","fromBlock":current,"toBlock":request_to,"fields":fields,"instructions":[filt]}
+    request_to=min(to_slot,current+STREAM_SLOT_SPAN-1)
+    body={"type":"solana","fromBlock":current,"toBlock":request_to,"fields":fields,"instructions":[filt]}
     st,h,raw=req(STREAM,body);reqs+=1
     if st==204:
         terms.append({"http_status":204,"from_slot":current,"to_slot":request_to,"reason":"EMPTY_TRANSPORT_WINDOW_ADVANCE"})
