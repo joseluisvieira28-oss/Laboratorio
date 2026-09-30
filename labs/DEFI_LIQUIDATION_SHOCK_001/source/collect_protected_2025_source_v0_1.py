@@ -8,7 +8,7 @@ RPC="https://api.mainnet-beta.solana.com"
 TOKEN_PROGRAM="TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
 SYSVAR_INSTRUCTIONS="Sysvar1nstructions1111111111111111111111111"
 ALPH="123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
-MAP={c:i for i,c in enumerate(ALPH)}
+MAP={c:i for i,c in enumerate(ALPH)}\nSTREAM_SLOT_SPAN=250000  # transport-only bounded SQD request window; scientific interval unchanged
 
 CFG={
  "marginfi":{"program":"MFv2hWf31Z9kbCa1snEPYctwafyhdvnV7FZnsebVacA",
@@ -48,7 +48,7 @@ def norm(v):
     return None
 def addrkey(v): return json.dumps(v,separators=(",",":"),sort_keys=True)
 
-def req(url,body=None,retries=12):
+def req(url,body=None,retries=8):
     data=None if body is None else json.dumps(body,separators=(",",":")).encode()
     h={"Accept":"application/x-ndjson,application/json","User-Agent":"crypto-lab-dls-protected2025-source/0.1"}
     if data is not None:h["Content-Type"]="application/json"
@@ -56,14 +56,18 @@ def req(url,body=None,retries=12):
     last=None
     for i in range(retries):
         try:
-            with urllib.request.urlopen(q,timeout=120) as r:return int(r.status),dict(r.headers),r.read()
+            with urllib.request.urlopen(q,timeout=60) as r:return int(r.status),dict(r.headers),r.read()
         except urllib.error.HTTPError as e:
             raw=e.read()
             if e.code==429 or 500<=e.code<600:
-                last={"http":e.code,"body":raw[:240].decode("utf-8","replace")};time.sleep(min(90,2**i));continue
+                last={"http":e.code,"body":raw[:240].decode("utf-8","replace")}
+                retry_after=e.headers.get("Retry-After")
+                try: delay=float(retry_after) if retry_after is not None else min(60,2**i)
+                except Exception: delay=min(60,2**i)
+                time.sleep(max(0,min(120,delay)));continue
             return int(e.code),dict(e.headers),raw
         except Exception as e:
-            last={"error":type(e).__name__,"detail":str(e)[:240]};time.sleep(min(90,2**i))
+            last={"error":type(e).__name__,"detail":str(e)[:240]};time.sleep(min(60,2**i))
     raise RuntimeError(f"transport_exhausted:{last}")
 
 def ts_slot(s):
@@ -127,14 +131,18 @@ while current<=to_slot:
     if args.protocol=="save11":
         fields["tokenBalance"]={"transactionIndex":True,"account":True,"preMint":True,"postMint":True,
                                 "preDecimals":True,"postDecimals":True}
-    body={"type":"solana","fromBlock":current,"toBlock":to_slot,"fields":fields,"instructions":[filt]}
+    body={"type":"solana","fromBlock":current,"toBlock":request_to,"fields":fields,"instructions":[filt]}
     st,h,raw=req(STREAM,body);reqs+=1
     if st==204:
-        terms.append({"http_status":204,"from_slot":current,"reason":"NO_CONTENT_TERMINATION"});break
+        terms.append({"http_status":204,"from_slot":current,"to_slot":request_to,"reason":"EMPTY_TRANSPORT_WINDOW_ADVANCE"})
+        current=request_to+1
+        continue
     if st!=200:raise RuntimeError(f"stream_http_{st}")
     lines=[x for x in raw.decode("utf-8","replace").splitlines() if x.strip()]
     if not lines:
-        terms.append({"http_status":200,"from_slot":current,"reason":"EMPTY_NDJSON_TERMINATION"});break
+        terms.append({"http_status":200,"from_slot":current,"to_slot":request_to,"reason":"EMPTY_TRANSPORT_WINDOW_ADVANCE"})
+        current=request_to+1
+        continue
     batch=[json.loads(x) for x in lines];last=None
     for b in batch:
         hdr=b.get("header") or {};slot=hdr.get("number");ts=norm(hdr.get("timestamp"))
