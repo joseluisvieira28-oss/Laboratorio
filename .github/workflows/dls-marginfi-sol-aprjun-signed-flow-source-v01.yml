@@ -1,0 +1,109 @@
+name: DLS Marginfi SOL Apr-Jun Signed Flow Source V0.1
+
+on:
+  push:
+    branches:
+      - dls-marginfi-flow-magnitude-v01
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_MARGINFI_SOL_APRJUN_SIGNED_FLOW_SOURCE_V01.marker
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  month:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {month: "202404", artifact: "dls-field-enrichment-ms-marginfi-202404"}
+          - {month: "202405", artifact: "dls-field-enrichment-ms-marginfi-202405"}
+          - {month: "202406", artifact: "dls-field-enrichment-ms-marginfi-202406"}
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download canonical monthly field enrichment
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36263998920
+          name: ${{ matrix.artifact }}
+          path: field
+      - name: Download source-authoritative Marginfi bank registry
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36312418451
+          name: dls-marginfi-bank-unit-source-completion-v02
+          path: bank
+      - name: Compile frozen source census
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/census_marginfi_sol_aprjun_month_v0_1.py
+      - name: Execute exact source-only month
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/census_marginfi_sol_aprjun_month_v0_1.py
+          --field-root field
+          --bank-registry-root bank
+          --month "${{ matrix.month }}"
+          --workers 24
+      - name: Upload month evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-marginfi-sol-aprjun-source-${{ matrix.month }}-v01
+          path: |
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_SOL_APRJUN_SOURCE_${{ matrix.month }}_RECEIPT_V0.2.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_SOL_APRJUN_SOURCE_${{ matrix.month }}_ROWS_V0.2.ndjson
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_SOL_APRJUN_POPULATION_${{ matrix.month }}_V0.2.ndjson
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_NO_PRICES_NO_RETURNS_NO_PNL
+
+  merge:
+    needs: month
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download month evidence
+        uses: actions/download-artifact@v4
+        with:
+          pattern: dls-marginfi-sol-aprjun-source-*-v01
+          path: source
+          merge-multiple: false
+      - name: Compile deterministic merge
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/merge_marginfi_sol_aprjun_source_v0_1.py
+      - name: Merge and adjudicate source gate
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/merge_marginfi_sol_aprjun_source_v0_1.py
+          --root source
+      - name: Upload terminal source evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-marginfi-sol-aprjun-signed-flow-source-v01
+          path: |
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_SOL_APRJUN_SIGNED_FLOW_SOURCE_RECEIPT_V0.2.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_SOL_APRJUN_SIGNED_FLOW_SOURCE_ROWS_V0.2.ndjson
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_SOL_APRJUN_SOURCE_POPULATION_V0.2.ndjson
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_APRJUN_MARKET_UNOPENED
