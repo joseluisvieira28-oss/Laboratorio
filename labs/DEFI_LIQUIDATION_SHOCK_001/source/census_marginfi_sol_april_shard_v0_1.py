@@ -15,15 +15,21 @@ MAP={c:i for i,c in enumerate(ALPH)}
 ap=argparse.ArgumentParser()
 ap.add_argument("--field-root",required=True)
 ap.add_argument("--bank-registry-root",required=True)
-ap.add_argument("--month",choices=["202404"],required=True)\nap.add_argument("--start",required=True)\nap.add_argument("--end",required=True)\nap.add_argument("--shard-id",required=True)
+ap.add_argument("--month",choices=["202404"],required=True)
+ap.add_argument("--start",required=True)
+ap.add_argument("--end",required=True)
+ap.add_argument("--shard-id",required=True)
 ap.add_argument("--workers",type=int,default=2)
 ap.add_argument("--outdir",default="labs/DEFI_LIQUIDATION_SHOCK_001")
 args=ap.parse_args()
 OUT=Path(args.outdir);OUT.mkdir(parents=True,exist_ok=True)
 M=args.month
-RECEIPT=OUT/f"MARGINFI_SOL_APRJUN_SOURCE_{M}_RECEIPT_V0.1.json"
-ROWS=OUT/f"MARGINFI_SOL_APRJUN_SOURCE_{M}_ROWS_V0.1.ndjson"
-POP=OUT/f"MARGINFI_SOL_APRJUN_POPULATION_{M}_V0.1.ndjson"
+SID=args.shard_id
+START=args.start
+END=args.end
+RECEIPT=OUT/f"MARGINFI_SOL_APRIL_SHARD_{SID}_RECEIPT_V0.1.json"
+ROWS=OUT/f"MARGINFI_SOL_APRIL_SHARD_{SID}_ROWS_V0.1.ndjson"
+POP=OUT/f"MARGINFI_SOL_APRIL_SHARD_{SID}_POPULATION_V0.1.ndjson"
 
 EXPECTED={
  "202404":{"partition_id":"marginfi-202404","start":"2024-04-01T00:00:00Z","end":"2024-05-01T00:00:00Z",
@@ -278,7 +284,7 @@ A=sum(1 for r in members if r.get("classification")=="DIRECTION_AMBIGUOUS")
 C=sum(1 for r in members if r.get("classification")=="CONTRADICTION")
 complete=len(members)-I
 rec={"schema_version":"0.1","lab_id":"DEFI-LIQUIDATION-SHOCK-001",
- "classification":"MARGINFI_SOL_APRIL_SOURCE_SHARD_COMPLETE","month":M,"shard_id":SID,
+ "classification":"MARGINFI_SOL_APRIL_SOURCE_SHARD_COMPLETE","month":M,"shard_id":SID,"start":START,"end":END,"shard_id":SID,
  "start":START,"end":END,
  "authority":"MARGINFI_SOL_FLOW_TURNOVER_IMPACT_V0_1_PRE_OUTCOME_FREEZE_2026-09-30.md",
  "transport_fallback":"MARGINFI_SOL_APRJUN_SOURCE_DAILY_TRANSPORT_FALLBACK_V0.1.md",
