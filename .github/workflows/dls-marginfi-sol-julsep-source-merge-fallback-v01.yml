@@ -1,0 +1,76 @@
+name: DLS Marginfi SOL Jul-Sep Source Merge Fallback V0.1
+
+on:
+  push:
+    branches:
+      - dls-marginfi-flow-turnover-rebound-v01
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_MARGINFI_SOL_JULSEP_SOURCE_MERGE_FALLBACK_V01.marker
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  merge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download canonical July source
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36767743962
+          artifact-ids: 11122546357
+          path: months/july
+
+      - name: Download reconstructed August source
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36768690907
+          name: dls-marginfi-sol-julsep-source-202408-hash-v01
+          path: months/august
+
+      - name: Download canonical September source
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36767743962
+          artifact-ids: 11122336129
+          path: months/september
+
+      - name: Compile frozen Jul-Sep source merge
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/merge_marginfi_sol_julsep_source_v0_1.py
+
+      - name: Merge and adjudicate Jul-Sep source
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/merge_marginfi_sol_julsep_source_v0_1.py
+          --root months
+
+      - name: Upload terminal Jul-Sep source evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-marginfi-sol-julsep-signed-flow-source-v01-fallback
+          path: |
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_SOL_JULSEP_SIGNED_FLOW_SOURCE_RECEIPT_V0.1.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_SOL_JULSEP_SIGNED_FLOW_SOURCE_ROWS_V0.1.ndjson
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_SOL_JULSEP_SOURCE_POPULATION_V0.1.ndjson
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_FALLBACK_MERGE_JULSEP_MARKET_OUTCOMES_CLOSED
