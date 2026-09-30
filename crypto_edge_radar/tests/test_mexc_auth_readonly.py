@@ -31,6 +31,23 @@ class _Opener:
         return _Response(self.payload)
 
 
+
+class _PagedOpenOrdersOpener:
+    def __init__(self):
+        self.requests = []
+    def __call__(self, request, timeout):
+        self.requests.append((request, timeout))
+        query = urlparse(request.full_url).query
+        page = 1
+        for item in query.split("&"):
+            if item.startswith("page_num="):
+                page = int(item.split("=", 1)[1])
+        if page == 1:
+            data = {"resultList": [{"orderId": "1", "symbol": "BTC_USDT"}], "totalPage": 2}
+        else:
+            data = {"resultList": [{"orderId": "2", "symbol": "ETH_USDT"}], "totalPage": 2}
+        return _Response({"success": True, "code": 0, "data": data})
+
 class MEXCAuthReadOnlyTests(unittest.TestCase):
     def test_query_is_sorted_and_encoded(self):
         self.assertEqual(
@@ -104,6 +121,29 @@ class MEXCAuthReadOnlyTests(unittest.TestCase):
             with self.assertRaises(MEXCAuthenticatedReadError):
                 client._get_json(path)
         self.assertEqual(opener.requests, [])
+
+
+    def test_open_orders_scans_all_reported_pages(self):
+        opener = _PagedOpenOrdersOpener()
+        client = MEXCFuturesAuthenticatedReadOnlyClient(
+            MEXCCredentials("K", "S"),
+            clock_ms=lambda: 1700000000000,
+            opener=opener,
+        )
+        rows = client.open_orders()
+        self.assertEqual([row["orderId"] for row in rows], ["1", "2"])
+        self.assertEqual(len(opener.requests), 2)
+
+    def test_symbol_filter_applies_after_all_pages_are_scanned(self):
+        opener = _PagedOpenOrdersOpener()
+        client = MEXCFuturesAuthenticatedReadOnlyClient(
+            MEXCCredentials("K", "S"),
+            clock_ms=lambda: 1700000000000,
+            opener=opener,
+        )
+        rows = client.open_orders("ETH_USDT")
+        self.assertEqual([row["orderId"] for row in rows], ["2"])
+        self.assertEqual(len(opener.requests), 2)
 
 
 if __name__ == "__main__":
