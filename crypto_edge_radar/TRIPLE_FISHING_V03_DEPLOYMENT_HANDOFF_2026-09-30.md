@@ -3,7 +3,7 @@
 Date: 2026-09-30
 Branch: `triple-fishing-operator-v0.3-2026-09-30`
 PR: #160 (DRAFT)
-Build source SHA: `59192ee2748796885c67bc77c892e963c60b01a1`
+Build source SHA: `47ec9997dbd9d68afe2316c9693fcbc4f15f0579`
 Release metadata receipt commit: `b2f99ef0bee4d3fad7d39583aa021307a698d479`
 
 ## Result
@@ -18,12 +18,12 @@ Lanes packaged behind one persistent global Futures slot:
 
 ## Validation
 
-Release audit run `36706573491`: SUCCESS.
+Release audit run `36712859411`: SUCCESS.
 - six original synthetic release failures: 6/6 fixed;
 - failed invariants: 0;
 - targeted regressions: 74 PASS.
 
-Windows build run `36706573593`: SUCCESS.
+Windows build run `36712851727`: SUCCESS.
 - compile PASS;
 - release audit PASS;
 - 74 tests PASS;
@@ -33,14 +33,14 @@ Windows build run `36706573593`: SUCCESS.
 
 Artifact:
 - name: `mexc-triple-fishing-operator-v03-windows`
-- ID: `11092198218`
-- ZIP SHA256: `818f9aa128bed21b4e4cfb8f7fe91767e398be174062f0fd3b38a0730fb9cfd2`
-- expiry: 2026-10-07T11:14:15Z
+- ID: `11094842456`
+- ZIP SHA256: `eab3d9015e4b6fa39441f349147e799d8547fd97a6b5e46ec018028c9c56770c`
+- expiry: 2026-10-07T12:12:46Z
 
 EXE SHA256:
-- `MEXCTripleFishingOperatorV03.exe` = `c92e91314e5b71605e23c3a6e5df52d2313ae0d50f24bb08618ce68b3c7dcfaf`
-- `MEXCTripleFishingReadyV03.exe` = `769a5e192bf5c08d3385a8f21561c3ad8512d104097e299003fe01c64c4eed72`
-- `BuildOptionsCorrectionOverlayV01.exe` = `fe7d64c1c83581c260caed756ccaca0d6adb2c31ace8bddaa7e955a954925ac0`
+- `MEXCTripleFishingOperatorV03.exe` = `4fb9ee43361ec7765efba43e627918c7cb48ccdec3ddc48bbbc4d33c37309c32`
+- `MEXCTripleFishingReadyV03.exe` = `79515772d66d5d4dea2b69398376c1507a34a71396260829b3826d99d0551139`
+- `BuildOptionsCorrectionOverlayV01.exe` = `0f9de73236213d6becae90a82625f9d7ea61efe2e31f601ba83e5c35b42f7de4`
 
 ## Frozen operator envelope
 
@@ -73,3 +73,22 @@ Safe sequence:
 7. legacy tasks are disabled only after clean V0.3 readiness.
 
 No order or account mutation was performed by CI/build. Main remains untouched.
+
+
+## OPTIONS Deribit zero-IV source hotfix
+
+Fresh public-source probing on 2026-09-30 reproduced the installed V0.3 blocker. Deribit returned four BTC option rows with `iv=0`; every observed invalid sample was 0-2 DTE, already outside the frozen V2.1 30..120 DTE universe. The old parser validated IV before applying the frozen DTE filter, so scientifically ineligible rows could poison the entire source.
+
+The hotfix changes only validation order:
+- frozen DTE rejection happens before IV validation;
+- an in-range DTE row still requires a finite positive index to determine moneyness;
+- a frozen-eligible moneyness row still requires finite positive IV;
+- no DTE, moneyness, signal, risk-weight, cost or execution threshold changed.
+
+Evidence:
+- raw schema probe run `36712636956`: 4 zero-IV samples / 2255 rows;
+- fixed production-parser live probe run `36713492494`: PASS on 2266 current rows, 1606 rejected by frozen DTE and 364 by frozen moneyness;
+- release audit `36712859411`: SUCCESS;
+- rebuilt Windows package `36712851727`: SUCCESS.
+
+The currently installed first V0.3 package predates this source hotfix and should remain UNARMED. Replace it with artifact `11094842456` before the controlled switch.
