@@ -1,0 +1,68 @@
+name: DLS Marginfi Orca Oct-Dec Source Merge Hotfix V0.2.1
+
+on:
+  push:
+    branches:
+      - dls-marginfi-orca-impact-v02
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_MARGINFI_ORCA_OCTDEC_SOURCE_MERGE_V021.marker
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  merge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download immutable Oct-Dec Orca shards
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36781844349
+          pattern: dls-marginfi-orca-octdec-source-shard-*-v02
+          path: shard_evidence
+          merge-multiple: false
+
+      - name: Download canonical Oct-Dec SOL population
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36781624393
+          artifact-ids: 11128590550
+          path: source_authority
+
+      - name: Compile merge hotfix
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/merge_marginfi_orca_octdec_census_v0_2.py
+
+      - name: Merge immutable source evidence
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/merge_marginfi_orca_octdec_census_v0_2.py
+          --root shard_evidence
+          --source-root source_authority
+
+      - name: Upload canonical terminal Oct-Dec Orca source evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-marginfi-orca-octdec-signed-flow-source-v021
+          path: |
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_ORCA_OCTDEC_SIGNED_FLOW_SOURCE_RECEIPT_V0.2.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_ORCA_OCTDEC_SIGNED_FLOW_SOURCE_ROWS_V0.2.ndjson
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_FILENAME_HOTFIX_NO_OCTDEC_MARKET_OUTCOMES_NO_TRADING
