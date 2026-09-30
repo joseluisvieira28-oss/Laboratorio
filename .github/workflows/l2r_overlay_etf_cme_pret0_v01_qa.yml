@@ -1,0 +1,56 @@
+name: L2R Overlay ETF-CME PRET0 V0.1 Synthetic QA
+
+on:
+  push:
+    branches:
+      - l2r-overlay-etf-cme-pret0-v0.1
+    paths:
+      - 'research/l2_resiliency_overlay_pret0/**'
+      - '.github/workflows/l2r_overlay_etf_cme_pret0_v01_qa.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic_qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: l2r-overlay-etf-cme-pret0-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Compile outcome-sealed successor
+        run: |
+          python -m py_compile research/l2_resiliency_overlay_pret0/l2r_overlay_etf_cme_pret0_2025_development_v01.py
+
+      - name: Run network-free synthetic QA
+        run: |
+          python research/l2_resiliency_overlay_pret0/l2r_overlay_etf_cme_pret0_2025_development_v01.py --self-test
+
+      - name: Assert frozen pre-outcome semantics
+        run: |
+          set -euo pipefail
+          P=research/l2_resiliency_overlay_pret0/L2R_OVERLAY_ETF_CME_PRET0_001_2025_DEVELOPMENT_PROTOCOL_V0_1.md
+          R=research/l2_resiliency_overlay_pret0/l2r_overlay_etf_cme_pret0_2025_development_v01.py
+          grep -q 'LAB_ID: `L2R-OVERLAY-ETF-CME-PRET0-001`' "$P"
+          grep -q 'staleness <= \*\*1,100 ms\*\*' "$P"
+          grep -q 'no future/after-T0 state' "$P"
+          grep -q 'Calendar 2026 remains CLOSED' "$P"
+          grep -q 'LAB_ID="L2R-OVERLAY-ETF-CME-PRET0-001"' "$R"
+          grep -q 'PRET0_MAX_STALENESS_NS=1_100_000_000' "$R"
+          grep -q 'LAST_ACCEPTED_AT_OR_BEFORE_T0' "$R"
+          ! grep -q 'urllib' "$R"
+          echo PREOUTCOME_SEMANTICS_PASS
+          echo MARKET_DATA_ACCESSED=false
+          echo ETF_ARTIFACT_OPENED=false
+          echo ACCESS_2026=false
+
+      - name: Emit implementation hashes
+        run: |
+          sha256sum             research/l2_resiliency_overlay_pret0/L2R_OVERLAY_ETF_CME_PRET0_001_2025_DEVELOPMENT_PROTOCOL_V0_1.md             research/l2_resiliency_overlay_pret0/l2r_overlay_etf_cme_pret0_2025_development_v01.py             .github/workflows/l2r_overlay_etf_cme_pret0_v01_qa.yml
+          git hash-object             research/l2_resiliency_overlay_pret0/L2R_OVERLAY_ETF_CME_PRET0_001_2025_DEVELOPMENT_PROTOCOL_V0_1.md             research/l2_resiliency_overlay_pret0/l2r_overlay_etf_cme_pret0_2025_development_v01.py             .github/workflows/l2r_overlay_etf_cme_pret0_v01_qa.yml
