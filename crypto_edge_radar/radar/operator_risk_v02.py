@@ -268,6 +268,16 @@ def build_operator_risk_state(
         blockers.append(f"GLOBAL_ORDER_READ_FAILED:{type(exc).__name__}")
 
     try:
+        tpsl_orders = (
+            private_client.open_tpsl_orders()
+            if hasattr(private_client, "open_tpsl_orders")
+            else []
+        )
+    except Exception as exc:
+        tpsl_orders = []
+        blockers.append(f"GLOBAL_TPSL_ORDER_READ_FAILED:{type(exc).__name__}")
+
+    try:
         assets = private_client.assets()
         usdt = next(
             row for row in assets
@@ -302,6 +312,8 @@ def build_operator_risk_state(
         blockers.append("GLOBAL_POSITION_SLOT_OCCUPIED")
     if orders:
         blockers.append("GLOBAL_OPEN_ORDER_PRESENT")
+    if tpsl_orders:
+        blockers.append("GLOBAL_OPEN_TPSL_ORDER_PRESENT")
     if losses["daily_realized_loss_usdt"] >= DAILY_REALIZED_LOSS_KILL_USDT:
         blockers.append("DAILY_5_USDT_REALIZED_LOSS_KILL_ACTIVE")
     if losses["rolling_7d_realized_loss_usdt"] >= ROLLING_7D_REALIZED_LOSS_KILL_USDT:
@@ -320,6 +332,7 @@ def build_operator_risk_state(
         "available_usdt": available,
         "exchange_open_position_count": exchange_open_count,
         "exchange_open_order_count": len(orders),
+        "exchange_open_tpsl_order_count": len(tpsl_orders),
         "local_active_trade_count": len(local_active),
         "local_active_trade_receipts": local_active,
         **losses,
