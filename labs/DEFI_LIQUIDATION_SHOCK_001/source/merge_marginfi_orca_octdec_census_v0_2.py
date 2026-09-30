@@ -20,7 +20,7 @@ def find_one(root,name):
     return hits[0] if len(hits)==1 else None
 
 sp=find_one(SRC,"MARGINFI_SOL_OCTDEC_SOURCE_POPULATION_V0.2.ndjson")
-sr=find_one(SRC,"MARGINFI_SOL_JULSEP_SIGNED_FLOW_SOURCE_RECEIPT_V0.2.json")
+sr=find_one(SRC,"MARGINFI_SOL_OCTDEC_SOURCE_POPULATION_RECEIPT_V0.2.json")
 errors=[]
 if sp is None or sr is None:
     errors.append("canonical_source_population_or_receipt_missing")
