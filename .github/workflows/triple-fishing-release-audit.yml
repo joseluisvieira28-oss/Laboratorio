@@ -21,6 +21,18 @@ jobs:
         env:
           PYTHONPATH: .
         run: python scripts/audit_triple_fishing_v03.py --output release-audit.json
+
+      - name: Run operator risk, slot, dispatcher, auth and engine regression tests
+        working-directory: crypto_edge_radar
+        env:
+          PYTHONPATH: .
+        run: >
+          python -m unittest
+          tests.test_operator_risk_v02
+          tests.test_global_slot_reservation_v03
+          tests.test_global_fishing_dispatcher_v02
+          tests.test_mexc_auth_readonly
+          tests.test_operator_futures_engine_v02
       - uses: actions/upload-artifact@v4
         if: always()
         with:
