@@ -1,0 +1,73 @@
+name: DLS Marginfi SOL Flow-Turnover Development V0.2 Corrected
+
+on:
+  push:
+    branches:
+      - dls-marginfi-flow-turnover-impact-v01
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_MARGINFI_SOL_FLOW_TURNOVER_DEV_V02.marker
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  development:
+    runs-on: windows-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download exact canonical Apr-Jun source PASS
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36688264174
+          artifact-ids: 11083994743
+          path: source_gate
+
+      - name: Download frozen feature-only Q90 calibration
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36686002313
+          artifact-ids: 11083738178
+          path: calibration_gate
+
+      - name: Compile frozen Development executor
+        shell: pwsh
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/run_marginfi_sol_flow_turnover_dev_v0_1.py
+
+      - name: Execute frozen Apr-Jun Development
+        shell: pwsh
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/run_marginfi_sol_flow_turnover_dev_v0_1.py
+          --source-root source_gate
+          --calibration-root calibration_gate
+          --workers 12
+
+      - name: Upload immutable Development evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-marginfi-sol-flow-turnover-development-v02
+          path: |
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_SOL_FLOW_TURNOVER_V01_DEVELOPMENT_RECEIPT.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_SOL_FLOW_TURNOVER_V01_DEVELOPMENT_LEDGER.ndjson
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_SOL_FLOW_TURNOVER_V01_CASCADE_FEATURES.ndjson
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_SOL_FLOW_TURNOVER_V01_MARKET_DATA_MANIFEST.ndjson
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Firewall
+        if: always()
+        shell: pwsh
+        run: Write-Output "EXACT_SOURCE_PASS_Q90_FROZEN_APRJUN_DEV_ONLY_JULSEP_2025_2026_CLOSED_NO_TRADING"
