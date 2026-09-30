@@ -21,6 +21,7 @@ _ALLOWED_POST_PATHS = {
     "/api/v1/private/position/change_auto_add_im",
     "/api/v1/private/order/create",
     "/api/v1/private/order/cancel_with_external",
+    "/api/v1/private/stoporder/place",
 }
 
 
@@ -209,6 +210,57 @@ class MEXCOperatorFuturesTransportV02:
         return self._post_json(
             "/api/v1/private/order/cancel_with_external",
             {"symbol": symbol, "externalOid": external_oid},
+        )
+
+    def place_position_tpsl(
+        self,
+        *,
+        symbol: str,
+        direction: str,
+        position_id: int,
+        volume_contracts: int,
+        stop_loss_price: float,
+        take_profit_price: float,
+    ) -> Any:
+        symbol = self._assert_symbol(symbol)
+        direction = self._assert_direction(direction)
+        if not isinstance(position_id, int) or position_id <= 0:
+            raise MEXCOperatorTransportError("position_id must be positive integer")
+        if not isinstance(volume_contracts, int) or volume_contracts < 1:
+            raise MEXCOperatorTransportError("volume_contracts must be integer >= 1")
+        try:
+            stop = float(stop_loss_price)
+            target = float(take_profit_price)
+        except (TypeError, ValueError) as exc:
+            raise MEXCOperatorTransportError("TP/SL prices must be numeric") from exc
+        if not (stop > 0 and target > 0):
+            raise MEXCOperatorTransportError("TP/SL prices must be positive")
+        if direction == "LONG" and not stop < target:
+            raise MEXCOperatorTransportError("LONG TP/SL geometry invalid")
+        if direction == "SHORT" and not target < stop:
+            raise MEXCOperatorTransportError("SHORT TP/SL geometry invalid")
+
+        # MEXC documented position TP/SL endpoint. Both exits are market-on-trigger
+        # using latest price, no reverse position, same full position volume.
+        return self._post_json(
+            "/api/v1/private/stoporder/place",
+            {
+                "lossTrend": 1,
+                "profitTrend": 1,
+                "positionId": position_id,
+                "vol": volume_contracts,
+                "stopLossPrice": stop,
+                "takeProfitPrice": target,
+                "priceProtect": 0,
+                "profitLossVolType": "SAME",
+                "volType": 2,
+                "takeProfitReverse": 2,
+                "stopLossReverse": 2,
+                "takeProfitType": 0,
+                "takeProfitOrderPrice": 0,
+                "stopLossType": 0,
+                "stopLossOrderPrice": 0,
+            },
         )
 
     def submit_market_order(
