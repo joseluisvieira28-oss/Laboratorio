@@ -1226,6 +1226,28 @@ class OperatorFuturesEngineV02:
         active["closed_at_utc"] = reconciliation["closed_at_utc"]
         active["execution_failure"] = execution_failure
         _atomic_write(active_path, active)
+        try:
+            release = self.global_slot.release(
+                signal_identity=signal_key,
+                reason="POST_TRADE_RECONCILIATION_CONFIRMED",
+            )
+        except Exception as exc:
+            _atomic_write(session / "GLOBAL_SLOT_RELEASE_REQUIRED.json", {
+                "receipt_type": "GLOBAL_SLOT_RELEASE_REQUIRED",
+                "signal_identity": signal_key,
+                "reason": f"{type(exc).__name__}:{exc}",
+                "new_entry_allowed": False,
+            })
+            return self._status(
+                "CLOSED_RECONCILED_SLOT_RELEASE_REQUIRED",
+                candidate_id=active.get("candidate_id"),
+                signal_identity=signal_key,
+                realized_net_pnl_usdt=net,
+                entry_fee_usdt=entry_fee,
+                exit_fee_usdt=exit_fee,
+                funding_hold_fee_usdt=hold_fee,
+                session_dir=str(session),
+            )
         return self._status(
             "CLOSED_RECONCILED",
             candidate_id=active.get("candidate_id"),
@@ -1234,12 +1256,28 @@ class OperatorFuturesEngineV02:
             entry_fee_usdt=entry_fee,
             exit_fee_usdt=exit_fee,
             funding_hold_fee_usdt=hold_fee,
+            global_slot_release=release,
             session_dir=str(session),
         )
 
     def manage_active(self) -> dict[str, Any]:
         active = self._active_states()
         if not active:
+            try:
+                reservation = self.global_slot.current()
+            except Exception as exc:
+                return self._status(
+                    "FAIL_CLOSED",
+                    blockers=[f"GLOBAL_SLOT_RESERVATION_INVALID:{type(exc).__name__}:{exc}"],
+                )
+            if reservation is not None:
+                return self._status(
+                    "GLOBAL_SLOT_RESERVED_RECONCILIATION_REQUIRED",
+                    signal_identity=reservation.get("signal_identity"),
+                    candidate_id=reservation.get("candidate_id"),
+                    external_oid=reservation.get("external_oid"),
+                    blind_resend_allowed=False,
+                )
             return self._status("IDLE_NO_OPERATOR_POSITION")
         if len(active) > 1:
             return self._status(
@@ -1249,6 +1287,29 @@ class OperatorFuturesEngineV02:
             )
 
         active_path, row = active[0]
+        try:
+            claim = self.global_slot.claim(
+                candidate_id=str(row.get("candidate_id") or row.get("strategy_id") or "unknown"),
+                signal_identity=str(row.get("signal_identity") or ""),
+                external_oid=str(row.get("entry_external_oid") or ""),
+            )
+        except Exception as exc:
+            return self._status(
+                "FAIL_CLOSED",
+                candidate_id=row.get("candidate_id"),
+                signal_identity=row.get("signal_identity"),
+                blockers=[f"GLOBAL_SLOT_RECOVERY_FAILED:{type(exc).__name__}:{exc}"],
+                session_dir=str(active_path.parent),
+            )
+        if claim.get("claim_status") == "OCCUPIED_BY_OTHER_SIGNAL":
+            return self._status(
+                "FAIL_CLOSED",
+                candidate_id=row.get("candidate_id"),
+                signal_identity=row.get("signal_identity"),
+                blockers=["GLOBAL_SLOT_OWNER_MISMATCH_WITH_ACTIVE_POSITION"],
+                global_slot_owner=claim.get("owner"),
+                session_dir=str(active_path.parent),
+            )
         exit_target = _utc(row["exit_target_utc"])
         now = datetime.now(timezone.utc)
         symbol = str(row.get("symbol") or "").upper()
