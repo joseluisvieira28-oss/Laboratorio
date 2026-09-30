@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import json
 from pathlib import Path
+from types import SimpleNamespace
 import tempfile
 import unittest
 
@@ -43,6 +44,58 @@ class _Slot:
             "signal_identity": signal_identity,
             "reason": reason,
         }
+
+
+
+
+class _EntryGateReadOnly:
+    def open_positions(self, symbol=None):
+        return []
+
+    def open_orders(self, symbol=None):
+        return []
+
+    def open_tpsl_orders(self, symbol=None):
+        return []
+
+    def assets(self):
+        return [{"currency": "USDT", "equity": 100.0, "availableBalance": 100.0}]
+
+    def position_mode(self):
+        return 1
+
+    def fee_details(self, symbol):
+        return {"realTakerFee": 0.0005}
+
+
+class _EntryGatePublic:
+    def contract_row(self, symbol):
+        return {
+            "apiAllowed": True,
+            "state": 0,
+            "futureType": 1,
+            "contractSize": 0.01,
+            "minVol": 1,
+            "volUnit": 1,
+            "priceUnit": 0.1,
+        }
+
+    def all_market_snapshots(self):
+        return {
+            "BNBUSDT": SimpleNamespace(
+                last_price=100.0,
+                bid_price=99.99,
+                ask_price=100.01,
+            )
+        }
+
+    def funding_rate(self, symbol):
+        return {"fundingRate": 0.0, "collectCycle": 8}
+
+
+class _ManagingSlot(_Slot):
+    def claim(self, **kwargs):
+        return {"claim_status": "RECOVERED_EXISTING_OWNER", **kwargs}
 
 
 class OperatorFuturesEngineV02Tests(unittest.TestCase):
@@ -303,6 +356,99 @@ class OperatorFuturesEngineV02Tests(unittest.TestCase):
             self.assertFalse(
                 (session / "POST_TRADE_RECONCILIATION.json").exists()
             )
+
+
+
+    def test_entry_gate_for_clean_bnb_signal_has_no_active_state_dependency(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            armed = root / "ARMED.json"
+            armed.write_text("{}", encoding="utf-8")
+            engine = object.__new__(OperatorFuturesEngineV02)
+            engine.receipt_root = root / "receipts"
+            engine.receipt_root.mkdir()
+            engine.armed_path = armed
+            engine.kill_switch_path = root / "KILL"
+            engine.status_path = root / "status.json"
+            engine.readonly = _EntryGateReadOnly()
+            engine.public = _EntryGatePublic()
+            engine._clock_gate = lambda: {
+                "pass": True,
+                "server_minus_local_midpoint_ms": 0.0,
+                "request_rtt_ms": 1.0,
+                "max_abs_offset_ms": 500.0,
+            }
+            now = datetime.now(timezone.utc)
+            signal = {
+                "candidate_id": "BNB-LAUNCHPOOL-DEMAND-001",
+                "strategy_id": "BNB-LAUNCHPOOL-DEMAND-001",
+                "immutable_signal_key": "BNB:test",
+                "symbol": "BNB_USDT",
+                "direction": "LONG",
+                "entry_target_utc": (now - timedelta(seconds=0.5)).isoformat().replace("+00:00", "Z"),
+                "exit_target_utc": (now + timedelta(hours=24)).isoformat().replace("+00:00", "Z"),
+                "max_late_seconds": 2.0,
+                "max_initial_margin_usdt": 10.0,
+                "max_notional_usdt": 50.0,
+                "max_projected_roundtrip_friction_bps": 30.0,
+            }
+            gate = engine._entry_gate(signal, now=now)
+            self.assertTrue(gate["pass"], gate["blockers"])
+
+    def test_manage_active_verifies_exchange_protection_before_waiting(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            session = root / "receipts" / "trade"
+            session.mkdir(parents=True)
+            active = {
+                "state": "EXIT_PENDING",
+                "candidate_id": "HTF-DH03-12H-STANDALONE-FORWARD-V1",
+                "strategy_id": "HTF-DH03-12H-STANDALONE-FORWARD-V1",
+                "signal_identity": "DH03:BTC:test",
+                "symbol": "BTC_USDT",
+                "direction": "LONG",
+                "position_id": 77,
+                "entry_external_oid": "op2-ent-test",
+                "entry_target_utc": "2026-09-30T10:00:00Z",
+                "exit_target_utc": "2026-10-01T10:00:00Z",
+                "protective_tpsl_required": True,
+                "protective_tpsl_order_id": 456,
+                "protective_price_unit": 0.1,
+                "protective_stop_loss_price": 95.0,
+                "protective_take_profit_price": 115.0,
+            }
+            active_path = session / "ACTIVE_TRADE_STATE.json"
+            active_path.write_text(json.dumps(active), encoding="utf-8")
+
+            engine = object.__new__(OperatorFuturesEngineV02)
+            engine.receipt_root = root / "receipts"
+            engine.status_path = root / "status.json"
+            engine.kill_switch_path = root / "KILL"
+            engine.global_slot = _ManagingSlot()
+            engine._position = lambda **kwargs: {
+                "positionId": 77,
+                "openType": 1,
+                "leverage": 5,
+                "autoAddIm": False,
+                "holdVol": 1,
+            }
+            engine._verify_active_protection = (
+                lambda **kwargs: (_ for _ in ()).throw(
+                    OperatorEngineError("synthetic missing protection")
+                )
+            )
+            seen = {}
+            def fake_exit_active(*, active_path, active, reason):
+                seen["reason"] = reason
+                return {"status": "EXIT_REQUESTED", "reason": reason}
+            engine._exit_active = fake_exit_active
+
+            out = engine.manage_active()
+            self.assertEqual(out["status"], "EXIT_REQUESTED")
+            self.assertEqual(seen["reason"], "ACTIVE_PROTECTIVE_TPSL_NOT_VERIFIED")
+            persisted = json.loads(active_path.read_text(encoding="utf-8"))
+            self.assertTrue(persisted["execution_failure"])
+            self.assertIn("protective_tpsl_runtime_error", persisted)
 
 
 if __name__ == "__main__":
