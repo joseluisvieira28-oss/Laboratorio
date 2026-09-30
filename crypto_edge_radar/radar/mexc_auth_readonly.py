@@ -187,18 +187,47 @@ class MEXCFuturesAuthenticatedReadOnlyClient:
         return data
 
     def open_orders(self, symbol: str | None = None) -> list[dict[str, Any]]:
-        data = self._get_json(
-            "/api/v1/private/order/list/open_orders",
-            {"page_num": 1, "page_size": 100},
-        )
-        if data is None:
-            rows: list[dict[str, Any]] = []
-        elif isinstance(data, dict) and isinstance(data.get("resultList"), list):
-            rows = data["resultList"]
-        elif isinstance(data, list):
-            rows = data
-        else:
-            raise MEXCAuthenticatedReadError("open orders payload has unsupported shape")
+        rows: list[dict[str, Any]] = []
+        page = 1
+        page_size = 100
+        while True:
+            data = self._get_json(
+                "/api/v1/private/order/list/open_orders",
+                {"page_num": page, "page_size": page_size},
+            )
+            if data is None:
+                batch: list[dict[str, Any]] = []
+                total_pages = page
+            elif isinstance(data, dict) and isinstance(data.get("resultList"), list):
+                batch = data["resultList"]
+                raw_total = (
+                    data.get("totalPage")
+                    or data.get("total_page")
+                    or data.get("pageCount")
+                    or data.get("page_count")
+                )
+                try:
+                    total_pages = int(raw_total) if raw_total is not None else None
+                except (TypeError, ValueError):
+                    raise MEXCAuthenticatedReadError("open orders pagination metadata invalid")
+            elif isinstance(data, list):
+                batch = data
+                total_pages = page
+            else:
+                raise MEXCAuthenticatedReadError("open orders payload has unsupported shape")
+
+            rows.extend(batch)
+
+            if total_pages is not None:
+                if page >= total_pages:
+                    break
+            elif len(batch) < page_size:
+                break
+
+            page += 1
+            if page > 100:
+                raise MEXCAuthenticatedReadError("open orders pagination exceeded safety bound")
+
         if symbol:
             wanted = _contract(symbol)
             return [row for row in rows if str(row.get("symbol", "")).upper() == wanted]
