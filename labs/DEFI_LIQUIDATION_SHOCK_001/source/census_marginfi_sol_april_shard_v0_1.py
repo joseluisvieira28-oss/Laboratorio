@@ -173,6 +173,8 @@ population=[]
 for r in field.get("enriched_rows") or []:
     sem=r.get("semantic_accounts") or {}
     if sem.get("asset_bank") not in solbanks:continue
+    ts=str(r.get("timestamp") or "")
+    if not(START <= ts < END):continue
     population.append({
       "signature":r["signature"],"slot":r["slot"],"timestamp":r["timestamp"],
       "transactionIndex":r.get("transactionIndex"),"instructionAddress":r["instructionAddress"],
@@ -284,7 +286,7 @@ A=sum(1 for r in members if r.get("classification")=="DIRECTION_AMBIGUOUS")
 C=sum(1 for r in members if r.get("classification")=="CONTRADICTION")
 complete=len(members)-I
 rec={"schema_version":"0.1","lab_id":"DEFI-LIQUIDATION-SHOCK-001",
- "classification":"MARGINFI_SOL_APRIL_SOURCE_SHARD_COMPLETE","month":M,"shard_id":SID,"start":START,"end":END,"shard_id":SID,
+ "classification":"MARGINFI_SOL_APRIL_SOURCE_SHARD_COMPLETE","month":M,"shard_id":SID,"start":START,"end":END,
  "start":START,"end":END,
  "authority":"MARGINFI_SOL_FLOW_TURNOVER_IMPACT_V0_1_PRE_OUTCOME_FREEZE_2026-09-30.md",
  "transport_fallback":"MARGINFI_SOL_APRJUN_SOURCE_DAILY_TRANSPORT_FALLBACK_V0.1.md",
