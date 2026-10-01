@@ -56,7 +56,7 @@ checks={"eligible_ge_500":len(ev)>=500,"cascades_ge_100":len(out)>=100,"days_ge_
 cl="MARGINFI_ORCA_IMPACT_V02_PREOUTCOME_READY" if all(checks.values()) else "MARGINFI_ORCA_IMPACT_V02_PREOUTCOME_INSUFFICIENT_SAMPLE"
 receipt={"schema_version":"0.1","classification":cl,"authority":"MARGINFI_ORCA_FORCED_FLOW_IMPACT_V0_2_CLEAN_PERIOD_FREEZE_2026-10-01.md",
          **g,"gates":checks,"market_outcomes_read":False,
-         "firewall":{"prices":False,"ohlc":False,"returns":False,"pnl":False,"inspect_quarantined_julsep_outcomes":False,
+         "firewall":{"prices":False,"ohlc":False,"returns":False,"pnl":False,"julsep_observed":True,
                      "oct_dec_market_outcomes_opened":False,"market_2025_opened":False,"market_2026_opened":False,
                      "live_trading":False,"orders":False,"exchange_mutation":False,"merge_main":False}}
 R.write_text(json.dumps(receipt,indent=2,sort_keys=True)+"\n")
