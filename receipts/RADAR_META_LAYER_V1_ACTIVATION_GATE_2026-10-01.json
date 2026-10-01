@@ -2,34 +2,49 @@
   "receipt_id": "RADAR_META_LAYER_V1_ACTIVATION_GATE_2026-10-01",
   "branch": "radar-meta-layer-v01-2026-10-01",
   "pr": 161,
-  "status": "BLOCKED_CI_NOT_EXECUTED",
+  "status": "PREACTIVATION_GATES_PASS__RUNTIME_FLAG_NOT_YET_WIRED",
   "scientific_status": "PREOUTCOME_FREEZE_VALID__NO_OUTCOME_ANALYSIS_OPENED",
   "completed": [
     "preoutcome shadow-only contract frozen before analysis",
+    "preoutcome amendment freezes stable per-signal idempotency identity before outcomes",
     "T0 recorder core implemented",
     "future-dated market/context rejected",
     "missing-at-T0 values preserved as unavailable",
     "stable per-signal idempotency key implemented",
     "persistence requires append_once and fails closed otherwise",
-    "existing SQLite and Postgres evidence implementations inspected and both expose transactional append_once",
-    "restart idempotency regression authored",
-    "parent dispatcher non-interference regression authored",
+    "SQLite restart persistence and duplicate suppression PASS",
+    "SQLite evidence hash-chain verification after restart PASS",
+    "Triple Fishing Meta observer ON/OFF operational equivalence PASS",
+    "Meta observer failure cannot block or change parent execution path PASS",
+    "parent dispatcher regression PASS",
+    "full Triple Fishing Windows release audit PASS",
     "canonical eight-motor identity reconciled from registry v3.7",
     "CIRV classified context-only; no economic trading edge claimed"
   ],
   "not_yet_claimed": [
-    "tests PASS",
-    "byte-for-byte runtime integration PASS",
-    "live/shadow runtime recorder activated",
+    "runtime recorder activated",
+    "first real T0 captured",
     "Postgres integration execution PASS"
   ],
   "blocker": {
-    "code": "GITHUB_ACTIONS_NO_RUN_CREATED",
-    "observation": "The branch contains the validation workflow but GitHub reports no workflow runs and no combined status for the current commits.",
-    "classification": "OPERATIONAL_VALIDATION_BLOCKED_NOT_SCIENTIFIC_FAILURE"
+    "code": "RUNTIME_ACTIVATION_FLAG_NOT_WIRED",
+    "observation": "Supervisor accepts an injected observer but main() intentionally does not instantiate one. Runtime remains default OFF.",
+    "classification": "PREACTIVATION_OPERATIONAL_WIRING"
   },
   "activation_allowed": false,
   "orders_created": false,
   "exchange_mutation_performed": false,
-  "main_modified": false
+  "main_modified": false,
+  "validation": {
+    "dedicated_run_id": 36911080556,
+    "dedicated_conclusion": "SUCCESS",
+    "dedicated_steps": [
+      "Meta-layer deterministic tests PASS",
+      "Sidecar restart persistence PASS",
+      "Triple-fishing shadow wiring equivalence PASS",
+      "Parent dispatcher regression PASS"
+    ],
+    "windows_release_run_id": 36911080477,
+    "windows_release_conclusion": "SUCCESS"
+  }
 }
