@@ -20,7 +20,7 @@ QUOTE_FIREWALL={"USDT","USDC","FDUSD","BUSD","BTC","ETH","BNB","EUR","TRY","BRL"
 
 def checksum(url):
     try:
-        b=v2.get(url).decode("utf-8","replace").strip().split()
+        b=v2.get(url, attempts=1).decode("utf-8","replace").strip().split()
         dg=b[0].lower() if b else ""
         ok=len(dg)==64 and all(c in "0123456789abcdef" for c in dg)
         return {"ok":ok,"sha256":dg if ok else None,"url":url,"status":200}
