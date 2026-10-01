@@ -62,8 +62,8 @@ def sig(candidate, key, target):
 
 
 class TripleFishingOperatorTests(unittest.TestCase):
-    def build(self, td, *, active=False):
-        now=datetime.now(timezone.utc)-timedelta(milliseconds=100)
+    def build(self, td, *, active=False, signal_time=None):
+        now=signal_time or (datetime.now(timezone.utc)-timedelta(milliseconds=100))
         b=FakeSource({"status":"OK","signals":[sig(BNB,"b",now)]})
         o=FakeSource({"status":"SIGNAL_AVAILABLE","signal":sig(OPTIONS,"o",now)})
         d=FakeSource({"status":"COLLECTING","signals":[sig(DH03,"d",now)]})
@@ -111,8 +111,9 @@ class TripleFishingOperatorTests(unittest.TestCase):
                 return {"status":"RECORDED"}
 
         with tempfile.TemporaryDirectory() as td_off, tempfile.TemporaryDirectory() as td_on:
-            off,engine_off,b_off,o_off,d_off=self.build(td_off)
-            on,engine_on,b_on,o_on,d_on=self.build(td_on)
+            frozen_time=datetime.now(timezone.utc)-timedelta(milliseconds=100)
+            off,engine_off,b_off,o_off,d_off=self.build(td_off,signal_time=frozen_time)
+            on,engine_on,b_on,o_on,d_on=self.build(td_on,signal_time=frozen_time)
             observer=Observer()
             on.meta_observer=observer
 
