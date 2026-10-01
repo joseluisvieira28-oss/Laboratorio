@@ -2,7 +2,7 @@
 
 Date: 2026-09-30
 
-Status: **SOURCE_TIMING_READY / PARENT_EVENT_STATE_MATERIALIZATION_BLOCKED**
+Status: **SOURCE_TIMING_READY / ANCHOR_IDENTITY_VERIFIED / PARENT_EVENT_STATE_MATERIALIZATION_BLOCKED**
 
 ## Source facts
 
@@ -103,3 +103,25 @@ The native Library was also searched for 2024 `BTC.lz4` / `HL_L2R_2024_BTC_RAW` 
 
 No requester-pays Hyperliquid reacquisition was attempted.
 No Binance price response was opened.
+
+
+## 2026-10-01 parent anchor recovery — PASS
+
+The historical anchor ZIP was supplied to the current conversation runtime and inspected byte-authoritatively.
+
+Verified:
+- ZIP SHA256: `b7565a330e635e84a64f68b252c1e31fa071832238984a23fab5210793dbaf27`;
+- inner CSV: `L2_RESILIENCY_001_SWEEP_EVENT_ANCHORS_V0_1.csv`;
+- inner CSV size: 1,140,393,913 bytes;
+- inner CSV SHA256: `be2c2d795a55ac3522fc6f3cdeb2d2c2ccf38bef8640a505934cbc76d9337eb3` = exact frozen expected identity;
+- rows excluding header: 9,181,478 = exact expected anchor count.
+
+Recovered schema:
+`segment_id,key,record_index_1based,event_envelope_ns,event_payload_ms,side,pre_best_price,post_best_price,transition_gap_ms`.
+
+Therefore the anchor-identity/materialization sub-blocker is CLOSED.
+
+However the CSV does not contain same-side top-5 depth at the pre-sweep state or at R=1s/5s/15s, replenishment ratio, or WEAK/STRONG labels. The parent event-state blocker therefore remains exactly as specified above. No Binance price values or cross-venue outcomes were opened during this recovery.
+
+Canonical verification receipt:
+`L2R_CROSSVENUE_001_PARENT_ANCHOR_IDENTITY_RECEIPT_V0_1.json`.
