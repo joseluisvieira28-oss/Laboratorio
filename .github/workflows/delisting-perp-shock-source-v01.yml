@@ -1,0 +1,70 @@
+name: DELISTING-PERP-SHOCK-001 Source Gate V0.1
+
+on:
+  push:
+    branches: [delisting-perp-shock-v0.1]
+    paths:
+      - "labs/DELISTING_PERP_SHOCK_001/SOURCE_TRIGGER.json"
+
+permissions:
+  contents: read
+
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Verify frozen source authority
+        shell: python
+        run: |
+          import json
+          from pathlib import Path
+          f=json.loads(Path("labs/DELISTING_PERP_SHOCK_001/SOURCE_FREEZE.json").read_text())
+          t=json.loads(Path("labs/DELISTING_PERP_SHOCK_001/SOURCE_TRIGGER.json").read_text())
+          assert f["lab_id"]=="DELISTING-PERP-SHOCK-001"
+          assert f["state"]=="FROZEN_SOURCE_ONLY_OUTCOME_BLIND"
+          assert f["identity_rule"]=="OFFICIAL_TITLE_TICKERS_ONLY"
+          assert f["market_price_values_opened"] is False
+          assert f["returns_computed"] is False
+          assert f["pnl_computed"] is False
+          assert f["access_2025"] is False and f["access_2026"] is False
+          assert f["trading_authority"]=="NONE"
+          assert t["action"]=="RUN_SOURCE_GATE_ONLY"
+          assert t["protocol_commit"]=="520b37ab80548929b5c07ff7a80976de0e3fad6b"
+          assert t["freeze_commit"]=="8c8f7181ffaf2bcab866659c07ae1d8d1ee469ad"
+          print("PASS: source-only authority")
+
+      - name: Syntax check
+        run: python -m py_compile labs/DELISTING_PERP_SHOCK_001/source_gate_v01.py
+
+      - name: Run source gate
+        env:
+          PYTHONUNBUFFERED: "1"
+        run: python labs/DELISTING_PERP_SHOCK_001/source_gate_v01.py
+
+      - name: Enforce no outcomes
+        shell: python
+        run: |
+          import json
+          from pathlib import Path
+          x=json.loads(Path("labs/DELISTING_PERP_SHOCK_001/source_output/SOURCE_GATE_RESULT.json").read_text())
+          r=x["receipt"]
+          assert r["market_price_values_opened"] is False
+          assert r["returns_computed"] is False
+          assert r["pnl_computed"] is False
+          assert r["access_2025"] is False and r["access_2026"] is False
+          assert r["trading_authority"]=="NONE"
+          print("PASS: outcomes remain sealed")
+
+      - name: Upload source evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: delisting-perp-shock-source-v01
+          path: labs/DELISTING_PERP_SHOCK_001/source_output/
+          if-no-files-found: error
+          retention-days: 90
