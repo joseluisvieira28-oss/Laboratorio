@@ -21,10 +21,18 @@ jobs:
           run-id: 36780139559
           artifact-ids: 11127536853
           path: source_gate
+      - name: Download exact PREOUTCOME READY gate
+        uses: actions/download-artifact@v4
+        with:
+          github-token: "${{ github.token }}"
+          repository: "${{ github.repository }}"
+          run-id: 36816757093
+          artifact-ids: 11141084742
+          path: precheck_gate
       - name: Compile frozen Development executor
         run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/run_marginfi_orca_impact_dev_v0_1.py
       - name: Execute frozen Jul-Sep Development
-        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/run_marginfi_orca_impact_dev_v0_1.py --source-root source_gate --workers 12
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/run_marginfi_orca_impact_dev_v0_1.py --source-root source_gate --precheck-root precheck_gate --workers 12
       - name: Upload immutable Development evidence
         if: always()
         uses: actions/upload-artifact@v4
