@@ -1,0 +1,44 @@
+name: PERP-LAUNCH-POSTLAUNCH-SHORT-001 Monthly Transport
+
+on:
+  push:
+    branches: [perp-launch-postlaunch-short-v0.1]
+    paths:
+      - "labs/PERP_LAUNCH_POSTLAUNCH_SHORT_001/FAST_TRIGGER.json"
+
+permissions:
+  contents: read
+
+jobs:
+  sequential:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Verify unchanged scientific authority
+        shell: python
+        run: |
+          import json
+          from pathlib import Path
+          f=json.loads(Path("labs/PERP_LAUNCH_POSTLAUNCH_SHORT_001/FREEZE.json").read_text())
+          t=json.loads(Path("labs/PERP_LAUNCH_POSTLAUNCH_SHORT_001/FAST_TRIGGER.json").read_text())
+          assert f["lab_id"]=="PERP-LAUNCH-POSTLAUNCH-SHORT-001"
+          assert f["state"]=="FROZEN_PRE_DISCOVERY"
+          assert f["base_cost_bps"]==60 and f["stress_cost_bps"]==160
+          assert t["transport_change_only"] is True
+          assert t["protocol_commit"]=="deb1855430b4393c67993c7ae325c523fe022951"
+          assert t["freeze_commit"]=="114459b88b1d2611efbcc12639e4158e7243f2a2"
+          print("PASS: science unchanged; monthly transport only")
+      - name: Run equivalent monthly transport
+        env:
+          PYTHONUNBUFFERED: "1"
+        run: python labs/PERP_LAUNCH_POSTLAUNCH_SHORT_001/run_v01_monthly_transport.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: perp-launch-postlaunch-short-v01-monthly
+          path: labs/PERP_LAUNCH_POSTLAUNCH_SHORT_001/run_output/
+          if-no-files-found: error
+          retention-days: 90
