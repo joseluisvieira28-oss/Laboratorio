@@ -11,7 +11,7 @@ Purpose: prevent duplicate mining and preserve scientific distinctions.
 | L2R-OVERLAY-ETF-CME-001 | NO TERMINAL DIRECTIONAL RESULT | Original implementation was source/timing blocked; retries remained technical. | Do not claim support or no-edge from this identity. |
 | L2R-OVERLAY-ETF-CME-SPAN-001 | CLOSED / DEVELOPMENT_SPAN_NO_SUPPORT | Aggregate panel positive but failed frozen robustness gates; R15 failed. | No rescue under same identity. |
 | L2R-OVERLAY-ETF-CME-PRET0-001 | CLOSED / INSUFFICIENT_SAMPLE_OR_SOURCE | Frozen 1,100 ms causal PRET0 reference passes only 11/46 source pairs vs minimum 40. Directional outcomes were not opened. | No threshold widening under same identity. |
-| L2R-CROSSVENUE-001 | SOURCE_TIMING_READY / PARENT_ANCHOR_BYTES_BLOCKED | Binance 2024 source + timestamp cadence preflight PASS; external lookup frozen at first aggTrade at/after target with 2,000 ms max lateness. Exact anchor ZIP is located in Library, but its raw bytes are not exportable to the current runtime. | Materialize the existing anchor ZIP/CSV and verify SHA be2c2d...37eb3. Do not open 2024 cross-venue outcomes before that byte check. |
+| L2R-CROSSVENUE-001 | SOURCE_TIMING_READY / PARENT_EVENT_STATE_MATERIALIZATION_BLOCKED | Binance 2024 source + timestamp cadence PASS; external lookup frozen at first aggTrade at/after target with 2,000 ms max lateness. Anchor ZIP is located but non-exportable; moreover parent preflight proves anchors predate replenishment labels, and no event-level WEAK/STRONG ledger is preserved. | Recover byte-authoritative event-level parent state sufficient for RR/WEAK-STRONG per R horizon, or restore/reacquire exact 2024 RAW and replay frozen parent rules. Anchor timestamps alone are insufficient. |
 
 ## MEXC fee reconciliation
 
@@ -23,7 +23,7 @@ Only one materially new L2 research path remains open without changing a failed 
 
 **L2R-CROSSVENUE-001**
 
-2026-10-01 update: Binance timestamp-only cadence gate PASS on 20/20 frozen 2024 dates (26,709,512 gaps); p99.9=1,947 ms; external lookup tolerance prospectively frozen to 2,000 ms. Parent anchor bytes remain the sole source blocker.
+2026-10-01 update: Binance timestamp-only cadence gate PASS on 20/20 frozen 2024 dates (26,709,512 gaps); p99.9=1,947 ms; external lookup tolerance prospectively frozen to 2,000 ms. Parent event-state materialization is the sole remaining scientific/source blocker: event timestamps alone are insufficient because replenishment labels were computed later and only aggregate Discovery outputs were preserved.
 
 Do not spend additional research effort on direct Hyperliquid execution, SPAN, or PRET0 rescue unless a pre-existing frozen reopen condition is objectively satisfied.
 
