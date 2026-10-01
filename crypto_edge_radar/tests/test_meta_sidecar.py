@@ -40,5 +40,7 @@ def test_sidecar_restart_is_durably_idempotent():
         assert first["idempotency_key"]==second["idempotency_key"]
 
         store=EvidenceStore(db)
-        rows=[x for x in store.read_all() if x["event_type"]=="RADAR_META_T0_SNAPSHOT"]
+        rows=store.read_payloads("RADAR_META_T0_SNAPSHOT")
         assert len(rows)==1
+        ok, detail=store.verify_chain()
+        assert ok, detail
