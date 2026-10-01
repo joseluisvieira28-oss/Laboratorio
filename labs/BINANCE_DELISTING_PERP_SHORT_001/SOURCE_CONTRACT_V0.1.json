@@ -1,0 +1,64 @@
+{
+  "lab_id": "BINANCE-DELISTING-PERP-SHORT-001",
+  "source_gate_id": "BDPS-TITLE-SYMBOL-FUTURES-ROUTE-001",
+  "state": "FROZEN_PRE_SOURCE_OUTCOME_BLIND",
+  "parent_lab": "EXCHANGE-DELISTING-SHOCK-001",
+  "parent_blocker": "OFFICIAL_NAME_SYMBOL_LIST_ABSENT_IN_REAL_CMS_BODIES",
+  "event_identity": {
+    "primary_source": "OFFICIAL_BINANCE_SUPPORT_ONLY",
+    "title_rule": "Title must match Binance Will Delist ... on YYYY-MM-DD",
+    "symbol_rule": "Symbols are parsed only from the official article title between 'Delist' and the terminal date clause; each symbol must also appear in the article's exact trading-pairs section.",
+    "full_token_name_required": false,
+    "pair_orientation_inference": false,
+    "first_qualifying_announcement_only": true,
+    "years": [
+      2023,
+      2024
+    ]
+  },
+  "required_source_fields": [
+    "article_code",
+    "title",
+    "publication_timestamp_utc",
+    "token_symbol",
+    "all_pairs_cessation_timestamp_utc",
+    "exact_pairs_for_token",
+    "article_response_sha256"
+  ],
+  "source_minimums": {
+    "events": 30,
+    "distinct_symbols": 20,
+    "year_2023": 10,
+    "year_2024": 10
+  },
+  "execution_route": {
+    "instrument": "Binance USD-M perpetual exact SYMBOLUSDT",
+    "hedge": "BTCUSDT USD-M perpetual",
+    "route_check_only": true,
+    "entry_boundary": "FIRST_WHOLE_UTC_HOUR_AT_LEAST_60_MINUTES_AFTER_PUBLICATION",
+    "exit_boundary": "ENTRY_PLUS_24H",
+    "token_perp_daily_archive_required_at_entry_and_exit": true,
+    "btc_perp_daily_archive_required_at_entry_and_exit": true,
+    "route_minimums": {
+      "events": 20,
+      "distinct_symbols": 15,
+      "year_2023": 8,
+      "year_2024": 8
+    }
+  },
+  "protected_periods": {
+    "access_2025": false,
+    "access_2026": false
+  },
+  "hard_firewalls": {
+    "market_prices_opened": false,
+    "returns_computed": false,
+    "pnl_computed": false,
+    "live_trading": false,
+    "orders": false,
+    "exchange_mutation": false,
+    "merge_to_main": false,
+    "post_outcome_tuning": false
+  },
+  "post_source_rule": "SOURCE_DATA_PASS requires a separate final pre-discovery protocol before any OHLC value is opened."
+}
