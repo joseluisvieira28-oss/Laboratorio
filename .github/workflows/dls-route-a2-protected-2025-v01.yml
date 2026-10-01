@@ -1,0 +1,126 @@
+name: DLS Route A2 Protected 2025 Source V0.1
+
+on:
+  push:
+    branches: [dls-field-enrichment-v01]
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_ROUTE_A2_PROTECTED_2025_V01.marker
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  collect:
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        group: [marginfi, solend, kamino]
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Verify A2 equivalence authority
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          curl --fail --location --retry 5 \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/artifacts/11181427969/zip" \
+            -o /tmp/equiv.zip
+          echo "1d9a597c60a730eecc2c0c3b5aace08f396d70a8d3947a3600c361649a430c80  /tmp/equiv.zip" | sha256sum -c -
+          mkdir -p /tmp/equiv
+          unzip -q /tmp/equiv.zip -d /tmp/equiv
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          hits=list(Path("/tmp/equiv").rglob("DLS_ALTERNATIVE_SOURCE_EQUIVALENCE_RECEIPT_V0.3.json"))
+          assert len(hits)==1,hits
+          x=json.loads(hits[0].read_text())
+          assert x["classification"]=="ALTERNATIVE_SOURCE_EQUIVALENCE_PASS"
+          assert x["four_class_paired_evidence_v02"]["classification"]=="FOUR_CLASS_ARCHIVAL_PAIRED_EVIDENCE_PASS"
+          assert x["blockers"]==[]
+          assert x["firewall"]["economic_outcomes_opened"] is False
+          print("PASS: A2 equivalence authority")
+          PY
+
+      - name: Verify source-only credential presence
+        env:
+          HELIUS_API_KEY: ${{ secrets.HELIUS_API_KEY }}
+        run: |
+          python - <<'PY'
+          import os
+          assert bool(os.environ.get("HELIUS_API_KEY")),"HELIUS_API_KEY_ABSENT"
+          print("PASS: archival credential present")
+          PY
+
+      - name: Compile frozen A2 collector
+        run: |
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/run_alternative_source_equivalence_v0_1.py
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/collect_protected_2025_route_a2_v0_1.py
+
+      - name: Collect complete 2025 program history
+        env:
+          HELIUS_API_KEY: ${{ secrets.HELIUS_API_KEY }}
+          PYTHONUNBUFFERED: "1"
+        run: |
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/collect_protected_2025_route_a2_v0_1.py \
+            --group "${{ matrix.group }}" \
+            --outdir "protected_a2/${{ matrix.group }}"
+
+      - name: Upload A2 monthly receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-route-a2-protected-2025-${{ matrix.group }}
+          path: protected_a2/${{ matrix.group }}/
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_NO_PRICES_NO_RETURNS_NO_PNL_NO_2026_NO_TRADING
+
+  finalize:
+    needs: collect
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Download A2 receipts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: dls-route-a2-protected-2025-*
+          path: protected_a2_all
+          merge-multiple: true
+      - name: Compile canonical 48-month finalizer
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/finalize_protected_2025_source_v0_2.py
+      - name: Finalize protected 2025 source authority
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/finalize_protected_2025_source_v0_2.py --root protected_a2_all
+      - name: Upload immutable source authority
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-route-a2-protected-2025-source-authority-v01
+          path: |
+            labs/DEFI_LIQUIDATION_SHOCK_001/PROTECTED_2025_SOURCE_AUTHORITY_RECEIPT_V0.2.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/PROTECTED_2025_SOURCE_CLUSTER_CENSUS_V0.2.ndjson
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Firewall
+        if: always()
+        run: echo PROTECTED_2025_MARKET_OUTCOMES_CLOSED_NO_TRADING
