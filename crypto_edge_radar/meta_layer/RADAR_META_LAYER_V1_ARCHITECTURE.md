@@ -70,3 +70,28 @@ Before wiring the recorder into any live/shadow runtime:
 ## Later experiments — not authorized by this V1 freeze
 
 Regime filtering, confluence weighting, execution selection and dynamic sizing each require a separate pre-analysis freeze and prospective/OOS adjudication. No result from this recorder automatically promotes or demotes a parent strategy.
+
+
+## Triple Fishing T0 binding — prepared, not activated
+
+The existing operator signal builders already expose the required immutable fields without modification:
+
+| Candidate | Existing source | T0 identity |
+|---|---|---|
+| BNB-LAUNCHPOOL-DEMAND-001 | radar/bnb_operator_source_v03.py | immutable_signal_key + entry_target_utc |
+| OPTIONS-SPOTPERP-001-V2.1 | radar/options_v21_operator_signal_v03.py | immutable_signal_key + entry_target_utc |
+| HTF-DH03-12H-STANDALONE-FORWARD-V1 | radar/dh03_operator_source_v03.py | immutable_signal_key + entry_target_utc |
+
+All three also expose symbol and direction. Therefore Meta-Layer V1 requires no mutation of the parent signal builders.
+
+Activation remains prohibited until CI executes and passes. When activated, the recorder must be observational only, disabled by default before that gate, must use only context observable at or before T0, must preserve missing values as UNAVAILABLE_AT_T0, and recorder failure must never change parent signal, dispatcher, sizing, risk, order path, or exchange state.
+
+CIRV remains context-only: it is a realized-variance forecast shadow and has no economic execution mapping under this authority.
+
+### Remaining activation wall
+
+1. Execute Meta-Layer deterministic tests.
+2. Execute dispatcher regression/equivalence tests.
+3. Execute durable append_once restart/idempotency regression.
+4. Only after all PASS, wire the observational recorder into the Triple Fishing runtime.
+5. Do not merge main under this authority.
