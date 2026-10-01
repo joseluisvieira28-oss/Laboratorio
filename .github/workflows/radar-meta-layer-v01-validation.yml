@@ -32,6 +32,12 @@ jobs:
         run: python -m pip install -U pip pytest
       - name: Meta-layer deterministic tests
         run: python -m pytest -q tests/test_meta_layer.py
+      - name: Sidecar restart persistence
+        working-directory: crypto_edge_radar
+        env:
+          PYTHONPATH: .
+        run: python -m pytest -q tests/test_meta_sidecar.py
+
       - name: Triple-fishing shadow wiring equivalence
         working-directory: crypto_edge_radar
         env:
