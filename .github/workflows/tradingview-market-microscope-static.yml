@@ -1,0 +1,78 @@
+name: TradingView Market Microscope V1 audit
+
+on:
+  push:
+    branches:
+      - tradingview-market-microscope-v0.1
+  pull_request:
+    paths:
+      - "tradingview/**"
+      - ".github/workflows/tradingview-market-microscope-static.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  static-and-unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Unit tests
+        run: python -m unittest tradingview/test_tv_footprint_calibration_001.py
+
+      - name: Fail-closed Pine governance audit
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+          import subprocess
+
+          frozen = Path("tradingview/SRC_Crypto_Lab_Institutional_Flow_V1.pine")
+          microscope = Path("tradingview/SRC_Crypto_Lab_Market_Microscope_V1.pine")
+          assert frozen.exists(), "Frozen Institutional Flow V1 mirror missing"
+          assert microscope.exists(), "Market Microscope V1 missing"
+
+          frozen_blob = subprocess.check_output(
+              ["git", "hash-object", str(frozen)], text=True
+          ).strip()
+          assert frozen_blob == "a41656cb71458ee60462a26f98e48842ab0900a8", (
+              "FAIL-CLOSED: frozen Institutional Flow V1 changed"
+          )
+
+          src = microscope.read_text(encoding="utf-8")
+          code = "\n".join(line.split("//", 1)[0] for line in src.splitlines())
+
+          assert code.count("request.footprint(") == 1, (
+              "FAIL-CLOSED: exactly one footprint request is required"
+          )
+          assert "strategy." not in code, (
+              "FAIL-CLOSED: strategy/order API found in research instrument"
+          )
+          assert "request.security_lower_tf(" in code
+          assert code.count("request.security(") == 5
+          assert code.count("lookahead=barmerge.lookahead_off") == 5
+          assert 'timestamp("UTC", 2026, 9, 24, 11, 0)' in code
+          assert 'const string LAB_ID = "TV-FOOTPRINT-CALIBRATION-001"' in code
+          assert 'alert(payload, alert.freq_once_per_bar_close)' in code
+
+          forbidden_json_keys = [
+              '\\"action\\"', '\\"side\\"', '\\"order_type\\"',
+              '\\"quantity\\"', '\\"leverage\\"'
+          ]
+          for key in forbidden_json_keys:
+              assert key not in code, (
+                  f"FAIL-CLOSED: execution-like telemetry key present: {key}"
+              )
+
+          print("PASS: frozen mirror unchanged")
+          print("PASS: one footprint request")
+          print("PASS: no strategy/order API")
+          print("PASS: cross-market requests are lookahead_off")
+          print("PASS: forward boundary frozen")
+          print("PASS: telemetry contains no execution instruction")
