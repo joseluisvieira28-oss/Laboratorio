@@ -192,7 +192,7 @@ def phase(year,events):
     (OUT/f"{year}_REPORT.json").write_text(json.dumps(report,indent=2,sort_keys=True,allow_nan=False)+"\n")
     (OUT/f"{year}_REJECTED.json").write_text(json.dumps(rejected,indent=2,sort_keys=True)+"\n")
     (OUT/f"{year}_PROVENANCE.json").write_text(json.dumps(prov,indent=2,sort_keys=True)+"\n")
-    fields=["symbol","event_timestamp_utc","launch_date_utc","entry_timestamp_utc","exit_timestamp_utc","spot_entry","perp_entry","spot_exit","perp_exit","basis_entry_bps","executed","gross_pair_bps","base_net_bps","stress_net_bps","trading_authority"]
+    fields=["lab_id","symbol","event_timestamp_utc","launch_date_utc","entry_timestamp_utc","exit_timestamp_utc","spot_entry","perp_entry","spot_exit","perp_exit","basis_entry_bps","executed","gross_pair_bps","base_net_bps","stress_net_bps","trading_authority"]
     with (OUT/f"{year}_EVENTS.csv").open("w",newline="") as fh:
         w=csv.DictWriter(fh,fieldnames=fields);w.writeheader();w.writerows(rows)
     print(json.dumps(report,indent=2,sort_keys=True),flush=True)
