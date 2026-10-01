@@ -1,0 +1,27 @@
+name: DLS Route A2 frozen four class paired evidence
+on:
+  push:
+    branches: [dls-field-enrichment-v01]
+    paths: ['.github/workflows/dls-route-a2-four-class-pair-v01.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  paired-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Exact existing four class references
+        env:
+          HELIUS_API_KEY: ${{ secrets.HELIUS_API_KEY }}
+          DLS_RPC_URL: ${{ secrets.DLS_RPC_URL }}
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/run_route_a2_four_class_pair_v0_1.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dls-route-a2-four-class-pair-v01
+          path: route_a2_evidence/
+          if-no-files-found: error
+          retention-days: 30
+
