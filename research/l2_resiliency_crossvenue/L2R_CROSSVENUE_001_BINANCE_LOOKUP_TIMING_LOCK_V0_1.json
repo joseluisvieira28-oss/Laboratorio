@@ -1,0 +1,58 @@
+{
+  "schema_version": "0.1",
+  "lab_id": "L2R-CROSSVENUE-001",
+  "status": "FROZEN_PRE_OUTCOME_SOURCE_TIMING_ONLY",
+  "date": "2026-10-01",
+  "source": {
+    "venue": "Binance",
+    "market": "spot",
+    "symbol": "BTCUSDT",
+    "dataset": "official daily aggTrades",
+    "frozen_days": 20,
+    "rows": 26709532,
+    "gaps": 26709512,
+    "checksum_days_verified": 20
+  },
+  "cadence_ms": {
+    "p50": 1,
+    "p90": 194,
+    "p95": 385,
+    "p99": 946,
+    "p999": 1947,
+    "max": 10830
+  },
+  "frozen_lookup": {
+    "direction": "FIRST_AT_OR_AFTER_TARGET",
+    "interpolation": false,
+    "backward_fill": false,
+    "max_lateness_ms": 2000,
+    "derivation": "ceil(global_timestamp_only_p999_ms/100ms)*100ms"
+  },
+  "gap_coverage_pct": {
+    "1100": 99.32834040547053,
+    "1500": 99.73812325736239,
+    "2000": 99.9113836299218,
+    "3000": 99.98677624660458
+  },
+  "evidence": {
+    "github_actions_run_id": 36816039423,
+    "artifact_id": 11141960210,
+    "artifact_digest_sha256": "22de1277f5b87da2c1ff0bb8c6a89b75170d6830bee9eca469880956cdc3a336",
+    "runner_git_blob_sha": "f61720a1040b23e02829e2fc549fca9fbf3f33a6"
+  },
+  "outcome_blind": {
+    "price_column_parsed": false,
+    "returns_computed": false,
+    "signed_response_computed": false,
+    "crossvenue_contrast_computed": false,
+    "pnl_computed": false
+  },
+  "protected": {
+    "access_2025": false,
+    "access_2026": false
+  },
+  "remaining_blocker": {
+    "artifact": "L2_RESILIENCY_001_SWEEP_EVENT_ANCHORS_V0_1.csv",
+    "expected_sha256": "be2c2d795a55ac3522fc6f3cdeb2d2c2ccf38bef8640a505934cbc76d9337eb3"
+  }
+}
