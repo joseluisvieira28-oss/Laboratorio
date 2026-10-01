@@ -102,5 +102,51 @@ class TripleFishingOperatorTests(unittest.TestCase):
             self.assertEqual(out["status"],"MANAGING_GLOBAL_SLOT_WITH_THREE_SOURCES_WATCHING")
 
 
+    def test_meta_observer_on_off_preserves_operational_decision(self):
+        class Observer:
+            def __init__(self):
+                self.seen=[]
+            def observe(self, **kwargs):
+                self.seen.append(kwargs)
+                return {"status":"RECORDED"}
+
+        with tempfile.TemporaryDirectory() as td_off, tempfile.TemporaryDirectory() as td_on:
+            off,engine_off,b_off,o_off,d_off=self.build(td_off)
+            on,engine_on,b_on,o_on,d_on=self.build(td_on)
+            observer=Observer()
+            on.meta_observer=observer
+
+            out_off=off.run_cycle()
+            out_on=on.run_cycle()
+
+            self.assertEqual(engine_off.entered,engine_on.entered)
+            self.assertEqual(b_off.marks,b_on.marks)
+            self.assertEqual(o_off.marks,o_on.marks)
+            self.assertEqual(d_off.marks,d_on.marks)
+            self.assertEqual(out_off["status"],out_on["status"])
+            self.assertEqual(out_off.get("arbitration"),out_on.get("arbitration"))
+            self.assertEqual(out_off.get("entry_result"),out_on.get("entry_result"))
+            self.assertEqual(len(observer.seen),3)
+
+    def test_meta_observer_failure_cannot_block_or_change_parent(self):
+        class BrokenObserver:
+            def observe(self, **kwargs):
+                raise RuntimeError("synthetic recorder failure")
+
+        with tempfile.TemporaryDirectory() as td:
+            sup,engine,b,o,d=self.build(td)
+            sup.meta_observer=BrokenObserver()
+            out=sup.run_cycle()
+
+            self.assertEqual(len(engine.entered),1)
+            self.assertEqual(engine.entered[0]["candidate_id"],BNB)
+            self.assertEqual(out["status"],"FILLED_EXIT_PENDING")
+            self.assertEqual(len(sup.meta_state),3)
+            self.assertTrue(all(
+                row["status"]=="RECORDER_FAIL_CLOSED_PARENT_UNCHANGED"
+                for row in sup.meta_state.values()
+            ))
+
+
 if __name__=="__main__":
     unittest.main()
