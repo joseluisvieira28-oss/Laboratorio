@@ -1,0 +1,67 @@
+name: DLS Marginfi Orca December Regime Source Audit V0.1
+
+on:
+  push:
+    branches:
+      - dls-marginfi-orca-dec-regime-v01
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_MARGINFI_ORCA_DEC_REGIME_AUDIT_V01.marker
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download exact Oct-Dec Orca source PASS
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36814861360
+          artifact-ids: 11140129257
+          path: source
+
+      - name: Download exact Oct-Dec feature-only artifact
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36815199005
+          artifact-ids: 11140992589
+          path: feature
+
+      - name: Compile frozen source audit
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/audit_marginfi_orca_dec_regime_v0_1.py
+
+      - name: Execute source/feature-only audit
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/audit_marginfi_orca_dec_regime_v0_1.py
+          --source-root source
+          --feature-root feature
+
+      - name: Upload immutable audit evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-marginfi-orca-dec-regime-audit-v01
+          path: |
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_ORCA_DEC_REGIME_SOURCE_AUDIT_RECEIPT_V0.1.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_ORCA_DEC_REGIME_SOURCE_AUDIT_MONTHLY_V0.1.json
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_FEATURE_ONLY_2025_2026_CLOSED_NO_TRADING
