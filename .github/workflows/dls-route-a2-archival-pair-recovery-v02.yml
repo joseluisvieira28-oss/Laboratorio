@@ -1,0 +1,126 @@
+name: DLS Route A2 archival pair recovery V0.2
+
+on:
+  push:
+    branches: [dls-field-enrichment-v01]
+    paths:
+      - "labs/DEFI_LIQUIDATION_SHOCK_001/DLS_ROUTE_A2_ARCHIVAL_PAIR_TRIGGER_V0.2.json"
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Verify frozen recovery authority
+        shell: python
+        run: |
+          import json
+          from pathlib import Path
+          t=json.loads(Path("labs/DEFI_LIQUIDATION_SHOCK_001/DLS_ROUTE_A2_ARCHIVAL_PAIR_TRIGGER_V0.2.json").read_text())
+          assert t["action"]=="RUN_ARCHIVAL_PAIR_RECOVERY_V0_2"
+          assert t["freeze_commit"]=="07f94fe825212b2bb39c468f00becd332487fafd"
+          assert t["protected_2025_outcomes_opened"] is False
+          assert t["trading_authority"]=="NONE"
+          print("PASS: archival pair recovery authority frozen")
+
+      - name: Download previous equivalence evidence
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: 36898066100
+          name: dls-route-a2-equivalence-v01
+          path: pair_recovery/previous
+
+      - name: Download current RAW four-ref evidence
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: 36897600425
+          name: dls-route-a2-four-class-pair-v01
+          path: pair_recovery/raw
+
+      - name: Download pre-Discovery Save0c SQD artifact
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: 36263998920
+          name: dls-field-enrichment-ms-save0c-202112
+          path: pair_recovery/save0c
+
+      - name: Download pre-Discovery Marginfi SQD artifact
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: 36263998920
+          name: dls-field-enrichment-ms-marginfi-202302
+          path: pair_recovery/marginfi
+
+      - name: Download pre-Discovery Kamino SQD artifact
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: 36264171014
+          name: dls-field-enrichment-ks-kamino-202311
+          path: pair_recovery/kamino
+
+      - name: Download pre-Discovery Save11 V0.4 field artifact
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: 36313729668
+          name: dls-save11-field-v04-save11-202407
+          path: pair_recovery/save11
+
+      - name: Download pre-Discovery Save11 V0.4 unit artifact
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: 36313729668
+          name: dls-save11-unit-v04-save11-202407
+          path: pair_recovery/save11_unit
+
+      - name: Syntax check
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/run_route_a2_archival_pair_recovery_v0_2.py
+
+      - name: Reconstruct exact frozen pair and finalize equivalence
+        env:
+          PYTHONUNBUFFERED: "1"
+        run: |
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/run_route_a2_archival_pair_recovery_v0_2.py \
+            --save0c pair_recovery/save0c \
+            --save11 pair_recovery/save11 \
+            --marginfi pair_recovery/marginfi \
+            --kamino pair_recovery/kamino \
+            --save11-unit pair_recovery/save11_unit \
+            --raw pair_recovery/raw \
+            --previous pair_recovery/previous \
+            --out pair_recovery/out
+
+      - name: Enforce protected-outcome firewall
+        shell: python
+        run: |
+          import json
+          from pathlib import Path
+          x=json.loads(Path("pair_recovery/out/DLS_ALTERNATIVE_SOURCE_EQUIVALENCE_RECEIPT_V0.3.json").read_text())
+          assert x["firewall"]["economic_outcomes_opened"] is False
+          assert x["firewall"]["protected_2025_acquisition"] is False
+          assert x["firewall"]["purchases"] is False
+          assert x["trading_authority"]=="NONE"
+          print("PASS:",x["classification"])
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dls-route-a2-archival-pair-recovery-v02
+          path: pair_recovery/out/
+          if-no-files-found: error
+          retention-days: 30
