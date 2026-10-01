@@ -1,0 +1,69 @@
+name: DLS Marginfi Orca Flow-Turnover Development V0.1
+
+on:
+  push:
+    branches:
+      - dls-marginfi-orca-flow-turnover-v01
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_MARGINFI_ORCA_FLOW_TURNOVER_DEV_V01.marker
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  development:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download canonical Orca Oct-Dec source PASS
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36816791726
+          artifact-ids: 11141209600
+          path: source_gate
+
+      - name: Download canonical Orca flow-turnover calibration PASS
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36816611039
+          artifact-ids: 11141731925
+          path: calibration
+
+      - name: Compile frozen Development executor
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/run_marginfi_orca_flow_turnover_dev_v0_1.py
+
+      - name: Execute frozen Oct-Dec Development
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/run_marginfi_orca_flow_turnover_dev_v0_1.py
+          --source-root source_gate
+          --calibration-root calibration
+          --workers 12
+
+      - name: Upload immutable Development evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-marginfi-orca-flow-turnover-development-v01
+          path: |
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_ORCA_FLOW_TURNOVER_V01_DEVELOPMENT_RECEIPT.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_ORCA_FLOW_TURNOVER_V01_DEVELOPMENT_LEDGER.ndjson
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_ORCA_FLOW_TURNOVER_V01_CASCADE_FEATURES.ndjson
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_ORCA_FLOW_TURNOVER_V01_MARKET_DATA_MANIFEST.ndjson
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Firewall
+        if: always()
+        run: echo OCTDEC_DEV_ONLY_2025_2026_CLOSED_NO_TRADING
