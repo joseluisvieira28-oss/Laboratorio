@@ -49,9 +49,67 @@ jobs:
         run: |
           git fetch --depth=1 origin tv-evidence-vault-v0.1:refs/remotes/origin/tv-evidence-vault-v0.1
           mkdir -p /tmp/vault
-          for d in 2026-09-24 2026-09-25 2026-09-26 2026-09-27 2026-09-28 2026-09-29 2026-09-30; do
-            git show "refs/remotes/origin/tv-evidence-vault-v0.1:tradingview_evidence_vault/archive/$d/$d.jsonl" > "/tmp/vault/$d.jsonl"
-          done
+          git ls-tree -r --name-only refs/remotes/origin/tv-evidence-vault-v0.1 tradingview_evidence_vault/archive \
+            | grep '/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]\.jsonl
+      - name: Run outcome-blind event classifier
+        env:
+          PYTHONUNBUFFERED: "1"
+        run: |
+          CURRENT_INTAKE="$(python - <<'PY'
+          import json
+          from pathlib import Path
+          t=json.loads(Path("absorption_failed_auction/COLLECT_TRIGGER.json").read_text())
+          p=t["intake_path"]
+          if not p.startswith("absorption_failed_auction/intake/") or not p.endswith(".csv"):
+              raise SystemExit("invalid sanitized intake path")
+          print(p)
+          PY
+          )"
+          test -f "$CURRENT_INTAKE"
+          python absorption_failed_auction/collector.py \
+            --vault /tmp/vault/*.jsonl \
+            --current "$CURRENT_INTAKE" \
+            --terminal-comparison /tmp/parent/TVFP_TERMINAL_BAR_COMPARISON.csv \
+            --authority absorption_failed_auction/PARENT_AUTHORITY.json \
+            --outdir /tmp/absorption_forward
+
+      - name: Enforce outcome seal
+        shell: python
+        run: |
+          import json,re
+          from pathlib import Path
+          for line in Path("/tmp/absorption_forward/EVENT_LEDGER.jsonl").read_text().splitlines():
+              x=json.loads(line)
+              assert x["economic_outcomes_unlocked"] is False
+              assert x["trading_authority"]=="NONE"
+              assert not any(re.fullmatch(r"R\d+",str(k)) for k in x)
+          s=json.loads(Path("/tmp/absorption_forward/COLLECTOR_STATE.json").read_text())
+          assert s["economic_outcomes_unlocked"] is False
+          assert s["outcome_fields_present"] is False
+          print("PASS: no economic outcome fields opened")
+
+      - name: Persist deterministic forward ledger
+        run: |
+          mkdir -p absorption_failed_auction/forward
+          cp /tmp/absorption_forward/EVENT_LEDGER.jsonl absorption_failed_auction/forward/EVENT_LEDGER.jsonl
+          cp /tmp/absorption_forward/COLLECTOR_STATE.json absorption_failed_auction/forward/COLLECTOR_STATE.json
+          cp /tmp/absorption_forward/COLLECTOR_RECEIPT.json absorption_failed_auction/forward/COLLECTOR_RECEIPT.json
+          git add absorption_failed_auction/forward
+          if git diff --cached --quiet -- absorption_failed_auction/forward; then
+            echo "No forward ledger change"
+            exit 0
+          fi
+          git config user.name "crypto-lab-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git commit -m "absorption: append outcome-blind forward event state"
+          git push origin HEAD:absorption-failed-auction-v0.1
+ \
+            | sort > /tmp/vault_paths.txt
+          test -s /tmp/vault_paths.txt
+          while IFS= read -r p; do
+            d="$(basename "$p" .jsonl)"
+            git show "refs/remotes/origin/tv-evidence-vault-v0.1:$p" > "/tmp/vault/$d.jsonl"
+          done < /tmp/vault_paths.txt
 
       - name: Run outcome-blind event classifier
         env:
