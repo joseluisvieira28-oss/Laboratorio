@@ -1,0 +1,52 @@
+name: L2R Crossvenue Binance Cadence Preflight V0.1
+
+on:
+  push:
+    branches:
+      - l2r-crossvenue-binance-v0.1
+    paths:
+      - 'research/l2_resiliency_crossvenue/l2r_crossvenue_binance_cadence_preflight_v01.py'
+      - '.github/workflows/l2r_crossvenue_binance_cadence_preflight_v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cadence-preflight:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: l2r-crossvenue-binance-v0.1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Compile
+        run: python -m py_compile research/l2_resiliency_crossvenue/l2r_crossvenue_binance_cadence_preflight_v01.py
+
+      - name: Enforce source-only boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          f='research/l2_resiliency_crossvenue/l2r_crossvenue_binance_cadence_preflight_v01.py'
+          grep -q 'price_column_parsed.*False' "$f"
+          grep -q 'returns_computed.*False' "$f"
+          grep -q 'signed_response_computed.*False' "$f"
+          grep -q 'access_2025.*False' "$f"
+          grep -q 'access_2026.*False' "$f"
+          ! grep -Eq 'pct_change|profit_factor|sharpe|position_size|create_order|place_order' "$f"
+
+      - name: Run timestamp cadence preflight
+        run: python research/l2_resiliency_crossvenue/l2r_crossvenue_binance_cadence_preflight_v01.py
+
+      - name: Upload source-only receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: L2R_CROSSVENUE_001_BINANCE_TIMESTAMP_CADENCE_PREFLIGHT_V0_1
+          path: L2R_CROSSVENUE_001_BINANCE_TIMESTAMP_CADENCE_PREFLIGHT_V0_1.json
+          retention-days: 90
+          if-no-files-found: error
