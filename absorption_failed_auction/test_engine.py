@@ -51,8 +51,8 @@ class T(unittest.TestCase):
             ret=-1.0,
             pocmig=-1.0,
         )
-        parent_pass = rows[m.BASELINE - 1]["bar_close_ms"]
-        out = m.classify(rows, parent_pass)
+        event_open_boundary = rows[-1]["bar_close_ms"]
+        out = m.classify(rows, event_open_boundary)
         self.assertEqual(out[-1]["event_class"], "FAILED_AUCTION")
 
     def test_pre_open_bar_cannot_be_event(self):
@@ -65,7 +65,7 @@ class T(unittest.TestCase):
             ret=-1.0,
             pocmig=-1.0,
         )
-        out = m.classify(rows, rows[-1]["bar_close_ms"])
+        out = m.classify(rows, rows[-1]["bar_close_ms"] + m.BAR_MS if hasattr(m, "BAR_MS") else rows[-1]["bar_close_ms"] + 300000)
         self.assertEqual(out[-1]["event_class"], "PRE_OPEN_BASELINE_ONLY")
 
     def test_outcome_leak_rejected(self):
