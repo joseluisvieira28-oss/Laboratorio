@@ -1,0 +1,70 @@
+name: DLS Marginfi SOL Binance Fee-Floor Validation V0.1
+
+on:
+  push:
+    branches:
+      - dls-marginfi-binance-bbo-execution-v01
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_MARGINFI_SOL_BINANCE_FEE_FLOOR_V01.marker
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  development:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download canonical Oct-Dec signed-flow source PASS
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36898128660
+          artifact-ids: 11180268284
+          path: source_gate
+
+      - name: Download immutable Q90 feature calibration PASS
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36686002313
+          artifact-ids: 11083738178
+          path: calibration_gate
+
+      - name: Compile frozen fee-floor executor
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/run_marginfi_sol_binance_fee_floor_v0_1.py
+
+      - name: Execute frozen Oct-Dec fee-floor validation
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/run_marginfi_sol_binance_fee_floor_v0_1.py
+          --source-root source_gate
+          --calibration-root calibration_gate
+          --workers 12
+
+      - name: Upload immutable fee-floor evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-marginfi-sol-binance-fee-floor-v01
+          path: |
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_SOL_BINANCE_FEE_FLOOR_V01_DEVELOPMENT_RECEIPT.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_SOL_BINANCE_FEE_FLOOR_V01_DEVELOPMENT_LEDGER.ndjson
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_SOL_BINANCE_FEE_FLOOR_V01_CASCADE_FEATURES.ndjson
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_SOL_BINANCE_FEE_FLOOR_V01_MARKET_DATA_MANIFEST.ndjson
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Firewall
+        if: always()
+        run: echo FEE_FLOOR_ONLY_NO_2025_NO_2026_NO_TRADING
