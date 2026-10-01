@@ -1,0 +1,55 @@
+name: EXTREME-FLOW-HIGHVOL-REVERSION-2026-001 V0.1
+
+on:
+  push:
+    branches: [extreme-flow-highvol-reversion-2026-v0.1]
+    paths:
+      - "extreme_flow_highvol_reversion_2026/RUN_TRIGGER.json"
+
+permissions:
+  contents: read
+
+jobs:
+  holdout:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Verify frozen holdout authority
+        shell: python
+        run: |
+          import json
+          from pathlib import Path
+          f=json.loads(Path("extreme_flow_highvol_reversion_2026/FREEZE.json").read_text())
+          t=json.loads(Path("extreme_flow_highvol_reversion_2026/RUN_TRIGGER.json").read_text())
+          assert f["lab_id"]=="EXTREME-FLOW-HIGHVOL-REVERSION-2026-001"
+          assert f["state"]=="FROZEN_PRE_HOLDOUT"
+          assert f["post_outcome_tuning"] is False
+          assert f["trading_authority"]=="NONE"
+          assert t["action"]=="RUN_2026_HOLDOUT_ONCE"
+          assert t["protocol_commit"]=="af75510656e2ef89bbc3b51c98610003feae0c54"
+          assert t["freeze_commit"]=="c6ea87fbc95fcd92ca6f93711ec99638c33f87cd"
+          assert t["trading_authority"]=="NONE"
+          print("PASS: 2026 holdout authority frozen")
+
+      - name: Syntax check
+        run: |
+          python -m py_compile flow_path_absorption_hist_v02/run_v02.py
+          python -m py_compile extreme_flow_highvol_reversion_2026/run_v01.py
+
+      - name: Run frozen 2026 holdout
+        env:
+          PYTHONUNBUFFERED: "1"
+        run: python extreme_flow_highvol_reversion_2026/run_v01.py
+
+      - name: Upload immutable evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: extreme-flow-highvol-reversion-2026-v01
+          path: extreme_flow_highvol_reversion_2026/run_output/
+          if-no-files-found: error
+          retention-days: 90
