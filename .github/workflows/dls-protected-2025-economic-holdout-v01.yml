@@ -21,13 +21,23 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Resolve immutable protected source pin
+        id: source
+        shell: bash
+        run: |
+          run_id="$(grep '^SOURCE_RUN_ID=' labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_PROTECTED_2025_ECONOMIC_HOLDOUT_V01.marker | cut -d= -f2)"
+          artifact_name="$(grep '^SOURCE_ARTIFACT_NAME=' labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_PROTECTED_2025_ECONOMIC_HOLDOUT_V01.marker | cut -d= -f2-)"
+          test -n "$run_id"
+          test -n "$artifact_name"
+          echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
+          echo "artifact_name=$artifact_name" >> "$GITHUB_OUTPUT"
       - name: Download canonical protected 2025 source authority
         uses: actions/download-artifact@v4
         with:
           github-token: ${{ github.token }}
           repository: ${{ github.repository }}
-          run-id: 36547754265
-          name: dls-protected-2025-source-authority-v01
+          run-id: ${{ steps.source.outputs.run_id }}
+          name: ${{ steps.source.outputs.artifact_name }}
           path: protected_source
       - name: Fail closed before any market payload unless source authority PASS
         run: |
