@@ -1,0 +1,44 @@
+name: BINANCE-DELISTING-PERP-SHORT-001 Source Gate
+
+on:
+  push:
+    branches: [binance-delisting-perp-short-v0.1]
+    paths:
+      - "labs/BINANCE_DELISTING_PERP_SHORT_001/SOURCE_TRIGGER.json"
+
+permissions:
+  contents: read
+
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Verify source freeze
+        shell: python
+        run: |
+          import json
+          from pathlib import Path
+          a=json.loads(Path("labs/BINANCE_DELISTING_PERP_SHORT_001/SOURCE_CONTRACT_V0.1.json").read_text())
+          t=json.loads(Path("labs/BINANCE_DELISTING_PERP_SHORT_001/SOURCE_TRIGGER.json").read_text())
+          assert a["state"]=="FROZEN_PRE_SOURCE_OUTCOME_BLIND"
+          assert a["hard_firewalls"]["market_prices_opened"] is False
+          assert a["hard_firewalls"]["returns_computed"] is False
+          assert a["hard_firewalls"]["pnl_computed"] is False
+          assert t["action"]=="RUN_SOURCE_GATE_ONLY"
+          assert t["source_contract_commit"]=="76ff68ca4264358f9f7a705ba3083e5267f4034e"
+          print("PASS: source authority frozen")
+      - name: Run source gate
+        env:
+          PYTHONUNBUFFERED: "1"
+        run: python labs/BINANCE_DELISTING_PERP_SHORT_001/source_gate_v01.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bdps-source-v01
+          path: labs/BINANCE_DELISTING_PERP_SHORT_001/source_gate_receipt_v0.1.json
+          if-no-files-found: error
+          retention-days: 90
