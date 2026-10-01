@@ -92,7 +92,7 @@ def main():
     assert len(DATES)==20 and len(set(DATES))==20
     assert all(d.startswith("2024-") for d in DATES)
 
-    all_gaps=[]
+    gap_hist=Counter()
     day_rows=[]
     totals=Counter()
     with tempfile.TemporaryDirectory(prefix="l2r_cv_cadence_") as td:
@@ -129,7 +129,7 @@ def main():
                 raise RuntimeError(f"timestamp outside UTC date on {d}: {ts[0]}..{ts[-1]}")
 
             gaps=[ts[i]-ts[i-1] for i in range(1,len(ts))]
-            all_gaps.extend(gaps)
+            gap_hist.update(gaps)
             s=sorted(gaps)
             day_rows.append({
                 "date":d,
