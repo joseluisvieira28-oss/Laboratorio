@@ -1,5 +1,5 @@
 name: DLS Route A2 historical equivalence V0.1
-# Cross-platform ZIP member-path normalization, original bytes unchanged.
+# Resume exact frozen census from hash-verified historical RAW checkpoint.
 on:
   push:
     branches: [dls-field-enrichment-v01]
@@ -7,6 +7,7 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+  actions: read
 concurrency:
   group: dls-route-a2-equivalence
   cancel-in-progress: false
@@ -16,6 +17,20 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: 36897267932
+          name: dls-route-a2-equivalence-v01
+          path: route_a2_evidence
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: 36897600425
+          name: dls-route-a2-four-class-pair-v01
+          path: route_a2_pair
+      - name: Retain paired diagnostic receipt
+        run: cp route_a2_pair/FOUR_CLASS_PAIRED_SOURCE_RECEIPT_V0.1.json route_a2_evidence/
       - name: Six empirical source checks
         env:
           HELIUS_API_KEY: ${{ secrets.HELIUS_API_KEY }}

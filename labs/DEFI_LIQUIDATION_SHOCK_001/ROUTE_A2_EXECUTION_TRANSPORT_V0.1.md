@@ -18,3 +18,9 @@ RAW fidelity compares all 23 original signatures, slots/times, explicit status, 
 
 No Protected-2025 acquisition or economic launch is wired into this execution. Any blocked component stops Route A2 promotion. 2026 data and all economic outcomes remain closed. No main merge.
 
+## Technical checkpoint continuation
+
+Run 36897267932 reached the lower historical boundary after three signature pages: 1,868 in-window program signatures, 1,708 explicit successes. Its 500-transaction resource ceiling left the census incomplete; that immutable receipt remains BLOCKED. Resume raises only the transport transaction ceiling to 2,000, retaining the identical interval, expected set, raw success predicate, decoder and zero-discrepancy gate. Restore artifact 11180241996 (ZIP SHA256 f7ee507403ebab70044de4111e9cd1d6dcb2be673e9bf671a0115ae4204b85b8), verify every RAW member against its ledger before reuse, fetch only missing signatures, and checkpoint every 200 validations. This does not relax a scientific threshold or select a new sample.
+
+Four-class source pairing used the first four already-frozen references in validate_field_decoder_implementation_v0_1.py, including Save0c and Marginfi. Run 36897600425 independently observed archival RAW for all four but SQD HTTP 403 for every paired request. Original pair receipt is retained. Save0c and Marginfi old RAW also contained missing CPI stackHeight; no nesting is fabricated.
+

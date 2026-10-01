@@ -53,6 +53,19 @@ class RPC:
         self.ledger = []
         self.cache = {}
         self.disabled = False
+        previous = OUT/'RPC_LEDGER.json'
+        if previous.exists():
+            self.ledger = json.loads(previous.read_text())
+            for entry in self.ledger:
+                if 'file' not in entry:
+                    continue
+                raw = (OUT/entry['file']).read_bytes()
+                assert digest(raw)==entry['sha256'], 'resume_raw_hash_mismatch'
+                if entry['method']=='getTransaction':
+                    result=json.loads(raw)['result']
+                    if result is not None:
+                        assert type(result.get('blockTime')) is int and result['blockTime']<1735689600, 'resume_time_firewall'
+                        self.cache[result['transaction']['signatures'][0]]=result
 
     def call(self, method, params):
         if method not in ('getTransaction', 'getSignaturesForAddress'):
@@ -351,7 +364,7 @@ def main():
             raise ValueError('signature_err_missing')
         candidates = [r for r in candidates if r['err'] is None]
         census['successful_program_signatures']=len(candidates)
-        for r in candidates[:500]:
+        for index,r in enumerate(candidates[:2000]):
             n = get(r['signature'])
             if n['timestamp']!=r['blockTime'] or n['slot']!=r['slot'] or n['err'] is not None:
                 raise ValueError('signature_transaction_metadata_conflict')
@@ -361,7 +374,10 @@ def main():
                     if ix['path'] is None:
                         raise ValueError('census_cpi_ambiguous')
                     actual_paths.add((r['signature'],tuple(ix['path'])))
-        if len(candidates)>500:
+            if (index+1)%200==0:
+                print(json.dumps({'phase':'census','validated':index+1,'total':len(candidates)}),flush=True)
+                dump(OUT/'RPC_LEDGER.json',rpc.ledger)
+        if len(candidates)>2000:
             raise ValueError('census_transaction_safety_cap')
         census['complete']=True
     except (ValueError,AssertionError,KeyError,TypeError) as e:
@@ -381,10 +397,13 @@ def main():
     }
     # Additional paired evidence is mandatory; scoped checks cannot authorize global PASS.
     blockers = [name for name,v in tests.items() if v['status']!='PASS']
-    blockers += ['FOUR_CLASS_PAIRED_SQD_RAW_ACCOUNT_DATA_AND_UNIT_EVIDENCE_INCOMPLETE']
+    pair_path=OUT/'FOUR_CLASS_PAIRED_SOURCE_RECEIPT_V0.1.json'
+    paired=json.loads(pair_path.read_text()) if pair_path.exists() else None
+    if not paired or not paired.get('pass'):
+        blockers += ['FOUR_CLASS_PAIRED_SQD_RAW_ACCOUNT_DATA_AND_UNIT_EVIDENCE_INCOMPLETE']
     receipt = {'schema_version':'0.2','lab_id':'DEFI-LIQUIDATION-SHOCK-001',
        'classification':'ALTERNATIVE_SOURCE_EQUIVALENCE_BLOCKED' if blockers or errors else 'ALTERNATIVE_SOURCE_EQUIVALENCE_PASS',
-       'blockers':blockers,'tests':tests,'errors':errors,'credential_presence':present,
+       'blockers':blockers,'tests':tests,'errors':errors,'credential_presence':present,'four_class_paired_evidence':paired,
        'original_zip_sha256':ZIP_SHA,'commit':os.environ.get('GITHUB_SHA'),'run_id':os.environ.get('GITHUB_RUN_ID'),
        'rpc_request_count':len(rpc.ledger),'firewall':{'economic_outcomes_opened':False,'protected_2025_acquisition':False,
        'data_2026':False,'science_changed':False,'secret_values_exposed':False,'purchases':False,'live_trading':False,'merge_main':False}}
