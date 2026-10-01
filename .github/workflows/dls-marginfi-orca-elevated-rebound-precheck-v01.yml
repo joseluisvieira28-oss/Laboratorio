@@ -1,0 +1,66 @@
+name: DLS Marginfi Orca Elevated Rebound Pre-Outcome Gate V0.1
+
+on:
+  push:
+    branches:
+      - dls-marginfi-orca-elevated-flow-rebound-v01
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_MARGINFI_ORCA_ELEVATED_REBOUND_PRECHECK_V01.marker
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  precheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download parent Orca feature calibration
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36816611039
+          artifact-ids: 11141731925
+          path: calibration
+
+      - name: Download frozen Q75 receipt
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36817395624
+          artifact-ids: 11141539211
+          path: q75
+
+      - name: Compile feature-only precheck
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/precheck_marginfi_orca_elevated_rebound_v0_1.py
+
+      - name: Execute feature-only precheck
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/precheck_marginfi_orca_elevated_rebound_v0_1.py
+          --calibration-root calibration
+          --q75-root q75
+
+      - name: Upload immutable precheck evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-marginfi-orca-elevated-rebound-precheck-v01
+          path: |
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_ORCA_ELEVATED_REBOUND_PREOUTCOME_RECEIPT_V0.1.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_ORCA_ELEVATED_REBOUND_PREOUTCOME_SELECTED_V0.1.ndjson
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Firewall
+        if: always()
+        run: echo FEATURE_ONLY_JULSEP_OUTCOMES_CLOSED
