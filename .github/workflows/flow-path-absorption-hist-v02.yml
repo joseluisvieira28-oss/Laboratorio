@@ -1,0 +1,55 @@
+name: FLOW-PATH-ABSORPTION-HIST-002 V0.2
+
+on:
+  push:
+    branches: [flow-path-absorption-hist-v0.2]
+    paths:
+      - "flow_path_absorption_hist_v02/RUN_TRIGGER.json"
+
+permissions:
+  contents: read
+
+jobs:
+  historical:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Verify frozen authority
+        shell: python
+        run: |
+          import json
+          from pathlib import Path
+          f=json.loads(Path("flow_path_absorption_hist_v02/FREEZE.json").read_text())
+          t=json.loads(Path("flow_path_absorption_hist_v02/RUN_TRIGGER.json").read_text())
+          assert f["lab_id"]=="FLOW-PATH-ABSORPTION-HIST-002"
+          assert f["state"]=="FROZEN_PRE_OUTCOME"
+          assert f["extension_reason"]=="SAMPLE_SIZE_ONLY_FAILED_AUCTION_76_LT_100_NO_EFFECT_METRIC_USED"
+          assert f["post_outcome_tuning"] is False
+          assert f["trading_authority"]=="NONE"
+          assert t["action"]=="RUN_DISCOVERY_THEN_OOS_IF_AUTHORIZED"
+          assert t["protocol_commit"]=="beb04d7632c666e1bc7bea6d87e67a044d00cee3"
+          assert t["freeze_commit"]=="9472a804022f299c6ef3ba7677c40c98a2bf595d"
+          assert t["trading_authority"]=="NONE"
+          print("PASS: V0.2 pre-outcome authority frozen")
+
+      - name: Syntax check
+        run: python -m py_compile flow_path_absorption_hist_v02/run_v02.py
+
+      - name: Run frozen historical test
+        env:
+          PYTHONUNBUFFERED: "1"
+        run: python flow_path_absorption_hist_v02/run_v02.py
+
+      - name: Upload immutable evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: flow-path-absorption-hist-v02
+          path: flow_path_absorption_hist_v02/run_output/
+          if-no-files-found: error
+          retention-days: 90
