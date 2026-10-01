@@ -234,7 +234,7 @@ def main():
     with zipfile.ZipFile(zpath) as z:
         assert z.testzip() is None, 'zip_crc'
         for name in z.namelist():
-            if '/candidate_transactions/' in name and name.endswith('.json'):
+            if '/candidate_transactions/' in name.replace('\\', '/') and name.endswith('.json'):
                 r = json.loads(z.read(name))['result']
                 originals[r['transaction']['signatures'][0]] = r
     assert len(originals)==23, 'original_23_required'
