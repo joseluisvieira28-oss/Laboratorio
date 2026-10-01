@@ -45,7 +45,7 @@ def _to_ms(value: str) -> int:
     s = s.replace("Z", "+00:00")
     dt = datetime.fromisoformat(s)
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
+        raise ValueError("naive timestamp forbidden; supply epoch or timezone-aware ISO timestamp")
     return int(dt.astimezone(timezone.utc).timestamp() * 1000)
 
 
@@ -219,18 +219,102 @@ def _median(vals: List[float]) -> float:
     return vals[m] if n % 2 else (vals[m - 1] + vals[m]) / 2.0
 
 
-def calibrate(tv_rows: List[Dict[str, float]], agg_rows: List[Dict[str, float]]) -> Dict[str, object]:
-    tv_map = {int(r["bar_open_ms"]): r for r in tv_rows}
-    agg_map = {int(r["bar_open_ms"]): r for r in agg_rows}
-    if len(tv_map) != len(tv_rows):
-        raise ValueError("duplicate TradingView bar_open_ms")
-    if len(agg_map) != len(agg_rows):
-        raise ValueError("duplicate Binance bar_open_ms")
-    if not agg_map:
-        raise ValueError("no Binance rows")
+def load_tv_receipts_jsonl(paths: Iterable[Path]) -> List[Dict[str, float]]:
+    """Load canonical TVFP receipt JSONL without timestamp reconstruction."""
+    out = []
+    seen = set()
+    for path in paths:
+        with path.open("r", encoding="utf-8") as fh:
+            for line_no, line in enumerate(fh, 1):
+                if not line.strip():
+                    continue
+                obj = json.loads(line)
+                if obj.get("trading_authority") != "NONE":
+                    raise ValueError(f"{path}:{line_no}: trading_authority must be NONE")
+                p = obj.get("payload")
+                if not isinstance(p, dict):
+                    raise ValueError(f"{path}:{line_no}: payload missing")
+                if (
+                    p.get("lab_id") != "TV-FOOTPRINT-CALIBRATION-001"
+                    or p.get("sensor_version") != "MM-V1"
+                    or p.get("symbol") != "BINANCE:BTCUSDT"
+                    or str(p.get("timeframe")) != "5"
+                ):
+                    raise ValueError(f"{path}:{line_no}: receipt identity mismatch")
+                bo = int(p["bar_open_ms"])
+                bc = int(p["bar_close_ms"])
+                if bc - bo != BAR_MS or bo % BAR_MS != 0:
+                    raise ValueError(f"{path}:{line_no}: invalid 5-minute alignment")
+                if bc < FORWARD_START_MS:
+                    continue
+                if bo in seen:
+                    raise ValueError(f"duplicate TradingView bar_open_ms: {bo}")
+                seen.add(bo)
+                out.append({
+                    "bar_open_ms": bo,
+                    "bar_close_ms": bc,
+                    "tv_total_volume": float(p["tv_total_volume"]),
+                    "tv_buy_volume": float(p["tv_buy_volume"]),
+                    "tv_sell_volume": float(p["tv_sell_volume"]),
+                    "tv_delta": float(p["tv_delta"]),
+                    "tv_delta_pct": float(p["tv_delta_pct"]),
+                })
+    return sorted(out, key=lambda r: r["bar_open_ms"])
 
+
+def calibrate(tv_rows: List[Dict[str, float]], agg_rows: List[Dict[str, float]]) -> Dict[str, object]:
+    """Apply the frozen gate to the first terminal 2,016-bar TV sample.
+
+    Pre-outcome hardening:
+    - terminal TV sample is the first 2,016 unique consecutive observed bars;
+    - Binance source completeness is measured only inside that exact interval;
+    - matched coverage is separate from Binance source completeness;
+    - bars outside the terminal interval cannot affect the verdict.
+    """
+    tv_sorted = sorted(tv_rows, key=lambda r: int(r["bar_open_ms"]))
+    tv_map_all = {int(r["bar_open_ms"]): r for r in tv_sorted}
+    if len(tv_map_all) != len(tv_sorted):
+        raise ValueError("duplicate TradingView bar_open_ms")
+
+    if len(tv_sorted) < MIN_MATCHED_BARS:
+        return {
+            "lab_id": "TV-FOOTPRINT-CALIBRATION-001",
+            "forward_start_ms": FORWARD_START_MS,
+            "matched_bars": 0,
+            "tv_bars_available": len(tv_sorted),
+            "terminal_tv_bars": 0,
+            "binance_bars_in_terminal_interval": 0,
+            "expected_terminal_slots": MIN_MATCHED_BARS,
+            "binance_source_completeness": 0.0,
+            "matched_bar_coverage": 0.0,
+            "minimum_evidence_satisfied": False,
+            "classification": "INSUFFICIENT_SAMPLE",
+            "authority": "measurement_only_no_trading_authority",
+        }
+
+    terminal_tv = tv_sorted[:MIN_MATCHED_BARS]
+    for a, b in zip(terminal_tv, terminal_tv[1:]):
+        if int(b["bar_open_ms"]) - int(a["bar_open_ms"]) != BAR_MS:
+            raise ValueError("terminal TradingView sample is not consecutive 5-minute bars")
+
+    eval_start = int(terminal_tv[0]["bar_open_ms"])
+    eval_end = int(terminal_tv[-1]["bar_close_ms"])
+    expected_slots = (eval_end - eval_start) // BAR_MS
+    if expected_slots != MIN_MATCHED_BARS:
+        raise ValueError("terminal interval length does not equal 2,016 bars")
+
+    tv_map = {int(r["bar_open_ms"]): r for r in terminal_tv}
+    agg_interval = [
+        r for r in agg_rows
+        if eval_start <= int(r["bar_open_ms"]) < eval_end
+    ]
+    agg_map = {int(r["bar_open_ms"]): r for r in agg_interval}
+    if len(agg_map) != len(agg_interval):
+        raise ValueError("duplicate Binance bar_open_ms")
+
+    binance_source_completeness = len(agg_map) / expected_slots
     keys = sorted(set(tv_map).intersection(agg_map))
-    coverage = len(keys) / len(agg_map)
+    matched_coverage = len(keys) / expected_slots
 
     rel_errors = []
     tv_delta = []
@@ -241,7 +325,9 @@ def calibrate(tv_rows: List[Dict[str, float]], agg_rows: List[Dict[str, float]])
     for k in keys:
         t, a = tv_map[k], agg_map[k]
         if a["agg_base_volume"] > 0:
-            rel_errors.append(abs(t["tv_total_volume"] - a["agg_base_volume"]) / a["agg_base_volume"])
+            rel_errors.append(
+                abs(t["tv_total_volume"] - a["agg_base_volume"]) / a["agg_base_volume"]
+            )
         if math.isfinite(t["tv_delta"]) and math.isfinite(a["agg_delta"]):
             tv_delta.append(t["tv_delta"])
             agg_delta.append(a["agg_delta"])
@@ -256,14 +342,27 @@ def calibrate(tv_rows: List[Dict[str, float]], agg_rows: List[Dict[str, float]])
     pearson = _pearson(tv_delta, agg_delta)
     spearman = _spearman(tv_delta, agg_delta)
 
-    min_evidence = len(keys) >= MIN_MATCHED_BARS and coverage >= 0.99
+    min_evidence = (
+        len(keys) >= MIN_MATCHED_BARS
+        and binance_source_completeness >= 0.99
+    )
+
     if not min_evidence:
         classification = "INSUFFICIENT_SAMPLE"
-    elif (coverage >= 0.99 and median_rel <= 0.01 and sign_agreement >= 0.70
-          and spearman >= 0.65 and pearson >= 0.60):
+    elif (
+        matched_coverage >= 0.99
+        and median_rel <= 0.01
+        and sign_agreement >= 0.70
+        and spearman >= 0.65
+        and pearson >= 0.60
+    ):
         classification = "PASS_STRONG"
-    elif (coverage >= 0.98 and median_rel <= 0.02 and sign_agreement >= 0.60
-          and spearman >= 0.50):
+    elif (
+        matched_coverage >= 0.98
+        and median_rel <= 0.02
+        and sign_agreement >= 0.60
+        and spearman >= 0.50
+    ):
         classification = "PASS_LIMITED"
     else:
         classification = "FAIL_SENSOR"
@@ -271,10 +370,15 @@ def calibrate(tv_rows: List[Dict[str, float]], agg_rows: List[Dict[str, float]])
     return {
         "lab_id": "TV-FOOTPRINT-CALIBRATION-001",
         "forward_start_ms": FORWARD_START_MS,
+        "terminal_interval_start_ms": eval_start,
+        "terminal_interval_end_ms": eval_end,
+        "expected_terminal_slots": expected_slots,
         "matched_bars": len(keys),
-        "tv_bars": len(tv_map),
-        "binance_bars": len(agg_map),
-        "coverage": coverage,
+        "tv_bars_available": len(tv_sorted),
+        "terminal_tv_bars": len(tv_map),
+        "binance_bars_in_terminal_interval": len(agg_map),
+        "binance_source_completeness": binance_source_completeness,
+        "matched_bar_coverage": matched_coverage,
         "median_abs_relative_total_volume_error": median_rel,
         "delta_sign_comparable_bars": sign_n,
         "delta_sign_agreement": sign_agreement,
