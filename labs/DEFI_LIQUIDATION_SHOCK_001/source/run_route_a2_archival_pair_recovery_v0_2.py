@@ -111,7 +111,7 @@ def main():
             up,uc,ur=find_unit(roots["save11_unit"],ref["sig"])
             pair,opt=g.unit(n,ms[0])
             u=ur["collateral_underlying"]
-            expected=[[u["mint"],u["decimals"]]]
+            expected=[(u["mint"],u["decimals"])]
             unit_evidence={
               "unit_partition_classification":uc,
               "unit_artifact_row":str(up),
