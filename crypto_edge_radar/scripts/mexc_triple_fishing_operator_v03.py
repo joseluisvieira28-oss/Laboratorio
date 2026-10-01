@@ -13,6 +13,8 @@ from radar.global_fishing_dispatcher_v02 import arbitrate_due_signals
 from radar.mexc_auth_readonly import MEXCCredentials
 from radar.operator_futures_engine_v02 import OperatorFuturesEngineV02
 from radar.options_v21_operator_source_v03 import OptionsV21OperatorSourceV03
+from radar.evidence import EvidenceStore
+from radar.meta_sidecar import MetaT0Observer
 
 
 BNB = "BNB-LAUNCHPOOL-DEMAND-001"
@@ -316,6 +318,7 @@ def main()->int:
     ap.add_argument("--dh03-market-db",required=True)
     ap.add_argument("--dh03-evidence-db",required=True)
     ap.add_argument("--dh03-state",required=True)
+    ap.add_argument("--meta-t0-evidence-db",default=None,help="Enable observational Meta-Layer T0 recording to this SQLite evidence DB. Default OFF.")
     args=ap.parse_args()
 
     credentials=MEXCCredentials.from_env()
@@ -327,6 +330,10 @@ def main()->int:
         status_path=args.status_path,
         global_slot_path=args.global_slot_path,
     )
+    meta_observer=None
+    if args.meta_t0_evidence_db:
+        meta_observer=MetaT0Observer(EvidenceStore(args.meta_t0_evidence_db))
+
     supervisor=TripleFishingOperatorV03(
         engine=engine,
         bnb_source=BNBOperatorSourceV03(state_path=args.bnb_state),
@@ -340,6 +347,7 @@ def main()->int:
             state_path=args.dh03_state,
         ),
         state_path=args.supervisor_state,
+        meta_observer=meta_observer,
     )
     supervisor.run_forever()
     return 0
