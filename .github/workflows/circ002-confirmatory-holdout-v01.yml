@@ -1,0 +1,97 @@
+name: CIRC002 Confirmatory Holdout V0.1
+
+on:
+  push:
+    branches: [crypto-index-rebalance-continuation-v0.1]
+    paths:
+      - "research/crypto_index_rebalance_continuation_002/HOLDOUT_TRIGGER.json"
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  holdout:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Verify frozen scientific authority
+        shell: python
+        run: |
+          import json,subprocess
+          from pathlib import Path
+          f=json.loads(Path("research/crypto_index_rebalance_continuation_002/HOLDOUT_FREEZE_V0.1.json").read_text())
+          t=json.loads(Path("research/crypto_index_rebalance_continuation_002/HOLDOUT_TRIGGER.json").read_text())
+          assert f["lab_id"]=="CRYPTO-INDEX-REBALANCE-CONTINUATION-002"
+          assert f["state"]=="FROZEN_PRE_HOLDOUT"
+          assert f["route_identity_sha256"]=="a5411273d65be311d40fea168f3b616375cb41f23cf4322f353abffdef7216f0"
+          assert f["eligible_legs"]==32
+          assert f["entry_utc_time"]=="06:00:00"
+          assert f["cost_bps"]=={"fee_floor":20,"base_all_in":30,"stress_all_in":50}
+          assert f["post_outcome_tuning"] is False
+          assert f["market_prices_opened"] is False
+          assert f["trading_authority"]=="NONE"
+          assert t["action"]=="RUN_CONFIRMATORY_HOLDOUT_ONCE"
+          sha=subprocess.check_output(["git","hash-object","research/crypto_index_rebalance_continuation_002/run_holdout_v01.py"],text=True).strip()
+          assert sha=="91363a8afccea70adb31a1ba26dfc90eb994ac13",sha
+          print("PASS: frozen protocol + implementation binding")
+
+      - name: Fetch immutable source and route artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          curl --fail --location --retry 5 \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/artifacts/11179568574/zip" \
+            -o /tmp/source.zip
+          echo "a958b731ffefaae7a8a6754653dd7b5f6b6da26c168859341ab9a25fe71c46f9  /tmp/source.zip" | sha256sum -c -
+          curl --fail --location --retry 5 \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/artifacts/11179995821/zip" \
+            -o /tmp/route.zip
+          echo "b3a7328fd0ca1bc0c117df59a579639e0303ed8d0e61c9fd09615dab6dfcd46b  /tmp/route.zip" | sha256sum -c -
+          mkdir -p /tmp/source /tmp/route
+          unzip -q /tmp/source.zip -d /tmp/source
+          unzip -q /tmp/route.zip -d /tmp/route
+          test -f /tmp/source/SOURCE_CENSUS_V0.1.json
+          test -f /tmp/route/USD_M_ROUTE_GATE_V0.1.json
+
+      - name: Syntax check
+        run: python -m py_compile research/crypto_index_rebalance_continuation_002/run_holdout_v01.py
+
+      - name: Open frozen confirmatory holdout once
+        env:
+          PYTHONUNBUFFERED: "1"
+        run: |
+          python research/crypto_index_rebalance_continuation_002/run_holdout_v01.py \
+            --source /tmp/source/SOURCE_CENSUS_V0.1.json \
+            --route /tmp/route/USD_M_ROUTE_GATE_V0.1.json
+
+      - name: Enforce no trading authority
+        shell: python
+        run: |
+          import json
+          from pathlib import Path
+          x=json.loads(Path("artifacts/crypto_index_rebalance_continuation_002/HOLDOUT_REPORT_V0.1.json").read_text())
+          assert x["trading_authority"]=="NONE"
+          print("SCIENTIFIC VERDICT:",x["classification"])
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: circ002-confirmatory-holdout-v01
+          path: |
+            artifacts/crypto_index_rebalance_continuation_002/HOLDOUT_REPORT_V0.1.json
+            artifacts/crypto_index_rebalance_continuation_002/HOLDOUT_EVENTS_V0.1.csv
+            artifacts/crypto_index_rebalance_continuation_002/HOLDOUT_REJECTED_V0.1.json
+            artifacts/crypto_index_rebalance_continuation_002/HOLDOUT_PROVENANCE_V0.1.json
+          if-no-files-found: error
+          retention-days: 90
