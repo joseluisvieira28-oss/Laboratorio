@@ -1,0 +1,86 @@
+name: DLS Marginfi SOL Oct-Dec Population V0.1
+
+on:
+  push:
+    branches:
+      - dls-marginfi-orca-flow-turnover-v01
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_MARGINFI_SOL_OCTDEC_POPULATION_V01.marker
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  population:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download October field enrichment
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36263998920
+          artifact-ids: 10924878593
+          path: oct
+
+      - name: Download November field enrichment
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36263998920
+          artifact-ids: 10925847270
+          path: nov
+
+      - name: Download December field enrichment
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36263998920
+          artifact-ids: 10927608033
+          path: dec
+
+      - name: Download Marginfi bank registry
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36312418451
+          artifact-ids: 10929339072
+          path: bank_registry
+
+      - name: Compile population builder
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/build_marginfi_sol_octdec_population_v0_1.py
+
+      - name: Build canonical Oct-Dec SOL population
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/build_marginfi_sol_octdec_population_v0_1.py
+          --oct-root oct
+          --nov-root nov
+          --dec-root dec
+          --bank-registry-root bank_registry
+
+      - name: Upload canonical population
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-marginfi-sol-octdec-source-population-v01
+          path: |
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_SOL_OCTDEC_SOURCE_POPULATION_RECEIPT_V0.1.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_SOL_OCTDEC_SOURCE_POPULATION_V0.1.ndjson
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_NO_OCTDEC_MARKET_OUTCOMES
