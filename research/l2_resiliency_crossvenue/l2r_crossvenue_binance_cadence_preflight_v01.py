@@ -148,13 +148,31 @@ def main():
             totals["gaps"] += len(gaps)
             print(f"DATE_PASS {d} rows={len(ts)} p99_ms={day_rows[-1]['gap_p99_ms']} max_ms={max(gaps)}", flush=True)
 
-    all_gaps.sort()
+    def hist_quantile(q):
+        if totals["gaps"] <= 0:
+            return None
+        pos=(totals["gaps"]-1)*q
+        lo=int(math.floor(pos)); hi=int(math.ceil(pos))
+        def value_at(rank):
+            seen=0
+            for gap,count in sorted(gap_hist.items()):
+                if seen+count > rank:
+                    return gap
+                seen += count
+            raise RuntimeError("histogram rank overflow")
+        vlo=value_at(lo); vhi=value_at(hi)
+        if lo==hi:
+            return float(vlo)
+        w=pos-lo
+        return float(vlo*(1-w)+vhi*w)
+
     threshold_coverage={}
-    n=len(all_gaps)
+    n=totals["gaps"]
+    sorted_hist=sorted(gap_hist.items())
     for t in CHECK_THRESHOLDS_MS:
         # proportion of observed inter-aggTrade gaps <= t; source cadence only.
-        c=sum(1 for g in all_gaps if g<=t)
-        threshold_coverage[str(t)]={"count":c,"pct":100.0*c/n}
+        count_le=sum(count for gap,count in sorted_hist if gap<=t)
+        threshold_coverage[str(t)]={"count":count_le,"pct":100.0*count_le/n}
 
     receipt={
         "schema_version":"0.1",
@@ -169,12 +187,12 @@ def main():
         "rows_total":totals["rows"],
         "gaps_total":totals["gaps"],
         "cadence_ms":{
-            "p50":percentile_type7_sorted(all_gaps,0.50),
-            "p90":percentile_type7_sorted(all_gaps,0.90),
-            "p95":percentile_type7_sorted(all_gaps,0.95),
-            "p99":percentile_type7_sorted(all_gaps,0.99),
-            "p999":percentile_type7_sorted(all_gaps,0.999),
-            "max":max(all_gaps),
+            "p50":hist_quantile(0.50),
+            "p90":hist_quantile(0.90),
+            "p95":hist_quantile(0.95),
+            "p99":hist_quantile(0.99),
+            "p999":hist_quantile(0.999),
+            "max":max(gap_hist),
         },
         "threshold_gap_coverage":threshold_coverage,
         "per_day":day_rows,
