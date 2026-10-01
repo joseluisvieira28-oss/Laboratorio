@@ -1,0 +1,63 @@
+{
+  "schema_version": "0.1",
+  "status": "CONTROL_PLANE_INDEX_NON_AUTHORITATIVE_SUMMARY",
+  "generated_date": "2026-10-01",
+  "repository": "joseluisvieira28-oss/Laboratorio",
+  "warning": "This index points to authorities; it never overrides exact experiment freezes, receipts or closeouts.",
+  "anchors": [
+    {
+      "plane": "LIFECYCLE_GOVERNANCE",
+      "id": "CRYPTO-LAB-GOVERNANCE-V4.0-DEATH-FROZEN",
+      "branch": "governance-v4-death-audit-2026-09-21",
+      "commit": "5dff7473d103d198adf5bc79778f12cd1803b1b1",
+      "path": "governance/CRYPTO_LAB_GOVERNANCE_V4_DEATH_POLICY.md",
+      "status": "FROZEN"
+    },
+    {
+      "plane": "PROMOTION",
+      "id": "ND-PROMOTION-POLICY-V3.0-FROZEN",
+      "branch": "promotion-policy-v3-aggressive-2026-09-17",
+      "commit": "17217dc514f10665dcbca8eaed41176fd4ac3f40",
+      "path": "governance/PROMOTION_POLICY_V3_AGGRESSIVE_FROZEN_2026-09-17.md",
+      "status": "FROZEN"
+    },
+    {
+      "plane": "OPERATOR_EXECUTION",
+      "id": "OPERATOR-FUTURES-GLOBAL-V0.2",
+      "branch": "operator-risk-v02-2026-09-29",
+      "commit": "e5a2cda443a0316887b8fa4d89cc5610b0fac1c2",
+      "path": "crypto_edge_radar/execution/OPERATOR_FUTURES_GLOBAL_AUTHORITY_V02.json",
+      "status": "PREARMED_LOCKED",
+      "note": "Explicitly supersedes OPERATOR-FUTURES-BNB-CED1D-V0.1 for operator lane; does not rewrite science."
+    },
+    {
+      "plane": "OPERATOR_RISK",
+      "id": "CRYPTO-LAB-OPERATOR-GLOBAL-RISK-V0.2",
+      "branch": "operator-risk-v02-2026-09-29",
+      "commit": "e5a2cda443a0316887b8fa4d89cc5610b0fac1c2",
+      "path": "crypto_edge_radar/execution/OPERATOR_GLOBAL_RISK_V02.json",
+      "status": "PREARMED"
+    },
+    {
+      "plane": "HISTORICAL_EXECUTION_AUTHORITY",
+      "id": "MEXC_FUTURES_STANDING_MICROLIVE_OPERATOR_AUTHORITY_V0.1",
+      "branch": "radar-v01432-live-state-reconciliation-v0.1",
+      "commit": "60aef0ff562b4a236d68afea5408908c361fa7ea",
+      "path": "crypto_edge_radar/MEXC_FUTURES_STANDING_MICROLIVE_OPERATOR_AUTHORITY_V0.1.json",
+      "status": "HISTORICAL_REFERENCE_REQUIRES_LINEAGE_RESOLUTION",
+      "note": "Do not assume current applicability where later candidate/operator authorities exist."
+    }
+  ],
+  "precedence": {
+    "exact_science": [
+      "frozen_experiment_protocol_and_canonical_receipt_and_terminal_closeout",
+      "prospectively_frozen_candidate_amendment",
+      "frozen_global_policy_at_adjudication",
+      "current_registry_or_board",
+      "archive_or_roadmap",
+      "branch_name_or_chat"
+    ],
+    "cross_plane_rule": "No plane may silently override another plane.",
+    "conflict_rule": "FAIL_CLOSED_UNTIL_EXPLICIT_SUPERSESSION_OR_IDENTITY_SCOPING_IS_PROVEN"
+  }
+}
