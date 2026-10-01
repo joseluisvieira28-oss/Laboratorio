@@ -1,0 +1,117 @@
+name: DLS Marginfi Orca Full Oct-Dec Signed Flow Census V0.1
+
+on:
+  push:
+    branches:
+      - dls-marginfi-orca-rebound-oos-v01
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_MARGINFI_ORCA_OCTDEC_SOURCE_V01.marker
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  shard:
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        shard: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download canonical Oct-Dec SOL population
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36814752093
+          artifact-ids: 11140604962
+          path: source_authority
+
+      - name: Compile frozen Orca source shard
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/census_marginfi_orca_octdec_shard_v0_1.py
+
+      - name: Execute frozen Orca source shard
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/census_marginfi_orca_octdec_shard_v0_1.py
+          --source-root source_authority
+          --shard ${{ matrix.shard }}
+          --workers 4
+
+      - name: Upload immutable shard evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-marginfi-orca-octdec-source-shard-${{ matrix.shard }}-v01
+          path: |
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_ORCA_OCTDEC_SOURCE_SHARD_orca-*_RECEIPT_V0.1.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_ORCA_OCTDEC_SOURCE_SHARD_orca-*_ROWS_V0.1.ndjson
+          if-no-files-found: warn
+          retention-days: 90
+
+  merge:
+    if: always()
+    needs: shard
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download full source shards
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ github.run_id }}
+          pattern: dls-marginfi-orca-octdec-source-shard-*-v01
+          path: shard_evidence
+          merge-multiple: false
+
+      - name: Download canonical Oct-Dec SOL population
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36814752093
+          artifact-ids: 11140604962
+          path: source_authority
+
+      - name: Compile frozen source merge
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/merge_marginfi_orca_octdec_census_v0_1.py
+
+      - name: Merge and adjudicate Oct-Dec Orca source census
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/merge_marginfi_orca_octdec_census_v0_1.py
+          --root shard_evidence
+          --source-root source_authority
+
+      - name: Upload terminal Oct-Dec source evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-marginfi-orca-octdec-signed-flow-source-v01
+          path: |
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_ORCA_OCTDEC_SIGNED_FLOW_SOURCE_RECEIPT_V0.1.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_ORCA_OCTDEC_SIGNED_FLOW_SOURCE_ROWS_V0.1.ndjson
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_OCTDEC_NO_MARKET_OUTCOMES_NO_TRADING
