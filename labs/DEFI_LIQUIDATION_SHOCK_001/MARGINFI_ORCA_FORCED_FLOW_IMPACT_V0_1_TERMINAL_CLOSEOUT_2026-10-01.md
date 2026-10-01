@@ -1,3 +1,8 @@
+> AUTHORITY CORRECTION — 2026-10-01
+>
+> The SHORT directional inference and executable gross-edge interpretation below are superseded by MARGINFI_ORCA_EXECUTION_FEASIBILITY_INTEGRITY_AUDIT_2026-10-01.md (commit eba7542ac3fdb270ba24fd5344543be155fda12a).
+> Run 36816846032 used LONG arithmetic labeled SHORT at fcfdaf9badff8aa1cd762d017ff6445cbd73a2ce. The existing outcome quarantine applies. Retrospective cascade-end entry also precedes causal termination knowledge. Quoted historical metrics below are preserved as a record, not valid SHORT evidence or a cost budget. No promotion, rerun or new market-outcome authority follows. Source PASS remains distinct and preserved.
+
 # MARGINFI ORCA FORCED-FLOW IMPACT V0.1 — TERMINAL DEVELOPMENT CLOSEOUT
 
 Date: 2026-10-01
