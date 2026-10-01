@@ -1,4 +1,7 @@
-param([string]$BundleRoot = $PSScriptRoot)
+param(
+    [string]$BundleRoot = $PSScriptRoot,
+    [switch]$EnableMetaT0Shadow
+)
 
 $ErrorActionPreference = "Stop"
 
@@ -65,6 +68,10 @@ try {
         "--dh03-evidence-db",(Join-Path $dataDir "dh03_evidence.sqlite3"),
         "--dh03-state",(Join-Path $stateDir "dh03_operator_source_v03.json")
     )
+    if ($EnableMetaT0Shadow) {
+        $metaEvidence = Join-Path $dataDir "radar_meta_t0_v1.sqlite3"
+        $mainArgs += @("--meta-t0-evidence-db",$metaEvidence)
+    }
     & $mainExe @mainArgs
     exit $LASTEXITCODE
 }
