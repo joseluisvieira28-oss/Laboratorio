@@ -1,0 +1,51 @@
+{
+  "authority_id": "RADAR-META-LAYER-V1-PREOUTCOME-FREEZE",
+  "frozen_date": "2026-10-01",
+  "mode": "SHADOW_RESEARCH_ONLY",
+  "purpose": "Record immutable T0 context around existing Radar signals so later experiments can test regime, confluence, execution context and portfolio overlap without changing parent strategies.",
+  "parent_runtime_branch": "triple-fishing-operator-v0.3-2026-09-30",
+  "hard_boundaries": {
+    "may_create_signals": false,
+    "may_block_signals": false,
+    "may_change_signal_direction": false,
+    "may_change_entry_or_exit": false,
+    "may_change_thresholds": false,
+    "may_change_sizing": false,
+    "may_change_arbitration": false,
+    "may_send_orders": false,
+    "may_mutate_exchange": false,
+    "may_enable_live_capital": false,
+    "may_merge_main": false
+  },
+  "time_integrity": {
+    "feature_availability_rule": "A feature is admissible only if its value and source timestamp are available no later than snapshot captured_at_utc.",
+    "missing_policy": "UNAVAILABLE_AT_T0",
+    "retroactive_fill": false,
+    "outcome_fields_in_t0_snapshot": false
+  },
+  "identity": {
+    "required": ["candidate_id", "immutable_signal_key", "captured_at_utc"],
+    "idempotency_key": "sha256(candidate_id + immutable_signal_key + captured_at_utc + schema_version)"
+  },
+  "feature_families_v1": [
+    "signal_identity_and_timing",
+    "market_price_and_return_context",
+    "realized_volatility_context",
+    "volume_context",
+    "funding_context_when_publicly_available",
+    "open_interest_context_when_publicly_available",
+    "spot_perp_basis_when_publicly_available",
+    "spread_and_liquidity_context_when_publicly_available",
+    "btc_market_regime_context",
+    "simultaneous_radar_signal_context",
+    "execution_friction_context_when_publicly_available"
+  ],
+  "analysis_gates": {
+    "recorder_validation_before_outcome_analysis": true,
+    "regime_experiment_requires_separate_preanalysis_freeze": true,
+    "confluence_experiment_requires_separate_preanalysis_freeze": true,
+    "execution_experiment_requires_separate_preanalysis_freeze": true,
+    "sizing_experiment_requires_separate_preanalysis_freeze": true,
+    "no_automatic_parent_strategy_promotion": true
+  }
+}
