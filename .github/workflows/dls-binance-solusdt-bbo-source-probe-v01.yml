@@ -1,0 +1,32 @@
+name: DLS Binance SOLUSDT Historical BBO Source Probe V0.1
+
+on:
+  push:
+    branches:
+      - dls-marginfi-binance-bbo-execution-v01
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_BINANCE_SOLUSDT_BBO_SOURCE_PROBE_V01.marker
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/probe_binance_solusdt_bbo_history_v0_1.py
+      - run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/probe_binance_solusdt_bbo_history_v0_1.py
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-binance-solusdt-bbo-source-probe-v01
+          path: labs/DEFI_LIQUIDATION_SHOCK_001/BINANCE_SOLUSDT_BBO_HISTORICAL_SOURCE_PROBE_V0.1.json
+          if-no-files-found: warn
+          retention-days: 90
