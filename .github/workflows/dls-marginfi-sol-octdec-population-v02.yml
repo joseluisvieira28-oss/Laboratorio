@@ -1,0 +1,45 @@
+name: DLS Marginfi SOL Oct-Dec Population V0.2
+on:
+  push:
+    branches: [dls-marginfi-route-migration-v01]
+    paths: [labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_MARGINFI_SOL_OCTDEC_POP_V02.marker]
+permissions: {actions: read, contents: read}
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: "${{ github.sha }}"}
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - name: Download Oct-Dec canonical field partitions
+        uses: actions/download-artifact@v4
+        with:
+          github-token: "${{ github.token }}"
+          repository: "${{ github.repository }}"
+          run-id: 36263998920
+          artifact-ids: 10924878593,10925847270,10927608033
+          path: fields
+      - name: Download bank registry
+        uses: actions/download-artifact@v4
+        with:
+          github-token: "${{ github.token }}"
+          repository: "${{ github.repository }}"
+          run-id: 36312418451
+          artifact-ids: 10929339072
+          path: banks
+      - name: Build source-only SOL population
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/build_marginfi_sol_octdec_population_v0_2.py --field-root fields --bank-root banks
+      - name: Upload population
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-marginfi-sol-octdec-population-v02
+          path: |
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_SOL_OCTDEC_SOURCE_POPULATION_V0.2.ndjson
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_SOL_OCTDEC_SOURCE_POPULATION_RECEIPT_V0.2.json
+          retention-days: 90
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_NO_OCTDEC_MARKET_OUTCOMES
