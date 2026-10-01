@@ -1,0 +1,29 @@
+name: BTC Options VRP Source Closeout Integrity V0.4
+on:
+  workflow_dispatch:
+  push:
+    branches: [btc-options-vrp-final-source-closeout-v0.4]
+    paths:
+      - labs/BTC_OPTIONS_VRP_001/SOURCE_EXECUTION_VERDICT_V0.4.*
+      - labs/BTC_OPTIONS_VRP_001/validate_source_closeout_v04.py
+      - receipts/btc_options_vrp_final_20261001/**
+      - .github/workflows/btc-options-vrp-source-closeout-v04.yml
+permissions:
+  contents: read
+jobs:
+  integrity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Offline source closeout validation
+        run: python labs/BTC_OPTIONS_VRP_001/validate_source_closeout_v04.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BTC_OPTIONS_VRP_001_CLOSEOUT_INTEGRITY_V0_4
+          path: receipts/btc_options_vrp_final_20261001/validator_receipt.json
+          if-no-files-found: error
+          retention-days: 90

@@ -1,0 +1,87 @@
+{
+  "lab_id": "BTC-OPTIONS-VRP-001",
+  "closeout_version": "V0.4",
+  "date_utc": "2026-10-01",
+  "branch": "btc-options-vrp-final-source-closeout-v0.4",
+  "canonical_parent": {
+    "branch": "btc-options-vrp-source-verdict-v0.3",
+    "commit": "e2bd241fc489a7df3cdce737064fbafce90015ff",
+    "classification": "DISCOVERY_PASS_VRP_EXISTS / EXECUTION_NOT_ADJUDICATED / HISTORICAL_BBO_SOURCE_ACCESS_BLOCKED"
+  },
+  "canonical_classification": "SOURCE_ACCESS_BLOCKED / EXECUTION_NOT_ADJUDICATED",
+  "parent_discovery_classification": "DISCOVERY_PASS_VRP_EXISTS",
+  "vrp_phenomenon_survives": true,
+  "source_access_blocked_is_no_edge": false,
+  "scientific_scope": "Access adjudication within USD0/no-account/no-payment constraints. No claim that all conceivable free datasets are impossible.",
+  "execution_mve_id": "OVRP-EXEC-BBO-ATM30-7D-STATICDELTA-002",
+  "minimum_executable_n": 120,
+  "frozen_anchor_count": 192,
+  "bbo_staleness_seconds_max": 30,
+  "source_gate": {
+    "status": "NOT_RUN_NO_ADMISSIBLE_CORPUS",
+    "pass": false,
+    "performance": null
+  },
+  "execution": {
+    "classification": "EXECUTION_NOT_ADJUDICATED",
+    "performance": null,
+    "old_trade_print_mve_reopened": false
+  },
+  "census": {
+    "classification": "OPTIONSDX_ZERO_PRICE_EOD_ONLY",
+    "resolved": 200,
+    "total": 200,
+    "retained_rows": 200,
+    "zero_price": 40,
+    "zero_intraday": 0,
+    "workflow_run": 36866864117,
+    "receipt": "receipts/btc_options_vrp_final_20261001/optionsdx_census_complete.json"
+  },
+  "forward_health": {
+    "classification": "PUBLIC_FORWARD_BBO_SOURCE_CAPTURE_PASS",
+    "captured_instrument_count": 112,
+    "failure_count": 0,
+    "workflow_run": 35458192591,
+    "historical_coverage_claim": false
+  },
+  "route_matrix": "receipts/btc_options_vrp_final_20261001/route_matrix.json",
+  "commercial_bom": "labs/BTC_OPTIONS_VRP_001/MINIMUM_COMMERCIAL_BOM_V0.4.md",
+  "admissible_free_source_routes": 0,
+  "reopen_trigger": {
+    "required": [
+      "Lawfully accessible measured pre-2025 Deribit BTC BBO corpus with bid/ask price AND bid/ask size",
+      "Immutable source-only acquisition authority frozen before opening any new payload",
+      "Provenance, timestamps, as-of ordering, <=30-second freshness and frozen windows validated",
+      "Source gate PASS proving >=120 executable anchors without modifying the frozen MVE",
+      "Explicit existing BBO-MVE next-gate authority before any execution outcome"
+    ],
+    "new_free_route_or_authorized_existing_paid_entitlement": true
+  },
+  "safety": {
+    "cash_spend_usd": 0,
+    "checkout": false,
+    "account_creation": false,
+    "identity_submission": false,
+    "payment": false,
+    "protected_2025_payload_opened": false,
+    "protected_2026_historical_payload_opened": false,
+    "protected_outcomes_opened": false,
+    "forward_current_capture_source_only": true,
+    "forward_snapshot_locally_opened": false,
+    "strategy_outcomes_computed": false,
+    "post_outcome_tuning": false,
+    "gates_lowered": false,
+    "orders": false,
+    "exchange_mutation": false,
+    "live_trading": false,
+    "main_merge": false
+  },
+  "promotion": "NO",
+  "micro_live": "NO",
+  "limitations": [
+    "No anonymous BBO route sufficient for the frozen MVE was established; access-gated routes remain untested, not failed.",
+    "crypto-data.io transport failure does not establish dataset nonexistence.",
+    "Census JSON recovered from job logs; ZIP digest provider-reported, local artifact ZIP transfer unavailable (HTTP403).",
+    "Canonical V0.3 documents frozen BBO rules; no separate executable BBO authority was found in the examined branches. Old -001 authority does not authorize -002."
+  ]
+}
