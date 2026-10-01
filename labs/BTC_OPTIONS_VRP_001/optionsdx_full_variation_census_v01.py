@@ -78,7 +78,8 @@ def main():
             intraday.append(r)
 
     out.update(lookup_count=len(combos),resolved_price_count=len(rows),unresolved_lookup_count=len(unresolved),
-               error_count=len(errors),errors=errors[:20],distinct_display_prices=sorted({r["display_price"] for r in rows}),
+               error_count=len(errors),errors=errors[:20],resolved_variations=rows,
+               distinct_display_prices=sorted({r["display_price"] for r in rows}),
                zero_price_variation_count=len(zero),zero_price_variations=zero,
                zero_price_intraday_count=len(intraday),zero_price_intraday_variations=intraday)
     if intraday: cls="OPTIONSDX_FREE_INTRADAY_VARIATION_FOUND"
