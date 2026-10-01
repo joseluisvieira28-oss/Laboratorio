@@ -151,3 +151,41 @@ class TripleFishingOperatorTests(unittest.TestCase):
 
 if __name__=="__main__":
     unittest.main()
+
+
+def test_meta_flag_defaults_off_in_cli():
+    import sys
+    from unittest.mock import patch
+    import scripts.mexc_triple_fishing_operator_v03 as module
+
+    required=[
+        "--receipt-root","r","--armed-path","a","--kill-switch","k","--status-path","s",
+        "--global-slot-path","g","--supervisor-state","ss","--bnb-state","b",
+        "--options-db","o","--options-state","os","--dh03-market-db","dm",
+        "--dh03-evidence-db","de","--dh03-state","ds",
+    ]
+    with patch.object(sys,"argv",["prog",*required]), \
+         patch.object(module.MEXCCredentials,"from_env",side_effect=RuntimeError("STOP_AFTER_PARSE")):
+        try:
+            module.main()
+        except RuntimeError as exc:
+            assert str(exc)=="STOP_AFTER_PARSE"
+
+
+def test_meta_flag_requires_explicit_path_to_enable():
+    import sys
+    from unittest.mock import patch
+    import scripts.mexc_triple_fishing_operator_v03 as module
+
+    required=[
+        "--receipt-root","r","--armed-path","a","--kill-switch","k","--status-path","s",
+        "--global-slot-path","g","--supervisor-state","ss","--bnb-state","b",
+        "--options-db","o","--options-state","os","--dh03-market-db","dm",
+        "--dh03-evidence-db","de","--dh03-state","ds","--meta-t0-evidence-db","meta.db",
+    ]
+    with patch.object(sys,"argv",["prog",*required]), \
+         patch.object(module.MEXCCredentials,"from_env",side_effect=RuntimeError("STOP_AFTER_PARSE")):
+        try:
+            module.main()
+        except RuntimeError as exc:
+            assert str(exc)=="STOP_AFTER_PARSE"
