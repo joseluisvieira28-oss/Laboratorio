@@ -1,0 +1,44 @@
+{
+  "schema_version": "0.1",
+  "lab_id": "L2R-CROSSVENUE-001",
+  "date": "2026-10-01",
+  "classification": "PARENT_2024_RAW_DRIVE_TRANSPORT_PASS",
+  "drive_folder": {
+    "id": "194QG1c3mCXomndWSXh2dRRHCFP8bSCRJ",
+    "title": "L2R_2024_DRIVE_PARTS_32MiB"
+  },
+  "transport": {
+    "manifest": "L2R_2024_DRIVE_PARTS_MASTER_MANIFEST.json",
+    "part_size_target_bytes": 33554432,
+    "expected_parts": 191,
+    "observed_parts": 191,
+    "sequence_first": 1,
+    "sequence_last": 191,
+    "missing_sequences": [],
+    "duplicate_sequences": [],
+    "total_bytes": 6378924593,
+    "all_part_sha256_verified": true,
+    "reconstructed_zip": "L2R_2024_BTC_RAW_V0_1.zip",
+    "reconstructed_zip_sha256": "088e2a5878844172f286d1d839cd3fb23282ec62ff8f35b9fea87d2035d2ba3e"
+  },
+  "parent_raw_identity": {
+    "lz4_objects": 8707,
+    "lz4_total_bytes": 6832137900,
+    "inner_manifest": "L2_RESILIENCY_001_2024_BTC_RAW_SHA256_MANIFEST_V0_1.csv",
+    "inner_manifest_sha256": "59e16ce8ea41658c2ea0fc6f2489d4deafbdc676e008d0b93f95ee6e3864913d",
+    "expected_manifest_sha256": "59e16ce8ea41658c2ea0fc6f2489d4deafbdc676e008d0b93f95ee6e3864913d",
+    "identity_match": true
+  },
+  "conclusion": "The exact 2024 Hyperliquid BTC RAW corpus required to replay the frozen parent replenishment state is recovered and byte-authoritatively available. Parent source/materialization blocker is closed.",
+  "next_gate": "Freeze and run a source-only event-state materializer derived from the exact frozen parent Discovery runner. No Binance price values may be opened before the materializer and cross-venue support gates are hash-locked.",
+  "firewalls": {
+    "binance_price_values_opened": false,
+    "crossvenue_returns_computed": false,
+    "crossvenue_signed_response_computed": false,
+    "access_2025": false,
+    "access_2026": false,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "main_merge": false
+  }
+}
