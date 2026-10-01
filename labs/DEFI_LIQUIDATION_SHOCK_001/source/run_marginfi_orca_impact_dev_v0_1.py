@@ -19,6 +19,7 @@ BOOT_SEED=26100101
 
 ap=argparse.ArgumentParser()
 ap.add_argument("--source-root",required=True)
+ap.add_argument("--precheck-root",required=True)
 ap.add_argument("--workers",type=int,default=12)
 ap.add_argument("--outdir",default="labs/DEFI_LIQUIDATION_SHOCK_001")
 args=ap.parse_args()
@@ -116,10 +117,11 @@ def crosses_funding(a,x):
 
 def short_return(entry_open,exit_open,slip_bps):
     slip=slip_bps/10000.0;fee=FEE_BPS/10000.0
-    entry_exec=entry_open*(1+slip);exit_exec=exit_open*(1-slip)
+    # SHORT: sell entry suffers downward slippage; buy-to-cover exit suffers upward slippage.
+    entry_exec=entry_open*(1-slip);exit_exec=exit_open*(1+slip)
     ratio=exit_exec/entry_exec
-    gross=exit_open/entry_open-1.0
-    net=(ratio-1.0)-fee*(1.0+ratio)
+    gross=1.0-(exit_open/entry_open)
+    net=(1.0-ratio)-fee*(1.0+ratio)
     return gross,net
 
 def metrics(rows,key):
@@ -148,6 +150,17 @@ def day_boot(rows):
         if lo==hi:return vals[lo]
         return vals[lo]+(vals[hi]-vals[lo])*(i-lo)
     return {"replicates":BOOT_N,"day_count":len(days),"seed":BOOT_SEED,"lower":q(.025),"upper":q(.975)}
+
+prec=find_one(args.precheck_root,"MARGINFI_ORCA_IMPACT_PREOUTCOME_RECEIPT_V0.1.json")
+if prec is None:
+    RECEIPT.write_text(json.dumps({"classification":"MARGINFI_ORCA_IMPACT_DEVELOPMENT_SOURCE_BLOCKED",
+      "stage":"preoutcome_authority","errors":["precheck_receipt_missing_or_duplicate"],"market_data_opened":False},indent=2)+"\n")
+    raise SystemExit(2)
+pr=json.loads(prec.read_text())
+if pr.get("classification")!="MARGINFI_ORCA_IMPACT_PREOUTCOME_READY":
+    RECEIPT.write_text(json.dumps({"classification":"MARGINFI_ORCA_IMPACT_DEVELOPMENT_SOURCE_BLOCKED",
+      "stage":"preoutcome_authority","precheck_classification":pr.get("classification"),"market_data_opened":False},indent=2)+"\n")
+    raise SystemExit(2)
 
 srec=find_one(args.source_root,"MARGINFI_ORCA_JULSEP_SIGNED_FLOW_SOURCE_RECEIPT_V0.1.json")
 srows=find_one(args.source_root,"MARGINFI_ORCA_JULSEP_SIGNED_FLOW_SOURCE_ROWS_V0.1.ndjson")
@@ -265,6 +278,7 @@ classification="MARGINFI_ORCA_IMPACT_DEVELOPMENT_SURVIVES" if all(gate.values())
 receipt={
  "schema_version":"0.1","lab_id":LAB,"classification":classification,
  "freeze":"MARGINFI_ORCA_FORCED_FLOW_IMPACT_V0_1_PRE_OUTCOME_FREEZE_2026-10-01.md",
+ "preoutcome":{"run_id":36816757093,"artifact_id":11141084742,"classification":pr.get("classification")},
  "source":{"source_run_id":36780139559,"source_classification":sr.get("classification"),
            "eligible_sol_source_events":len(eligible),"source_cascade_count":len(cascades)},
  "rule":{"cascade_link_minutes":LINK_MIN,"side":"SHORT","symbol":SYMBOL,"hold_minutes":HOLD_MIN,
