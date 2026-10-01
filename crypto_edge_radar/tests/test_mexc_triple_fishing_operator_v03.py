@@ -189,3 +189,15 @@ def test_meta_flag_is_accepted_only_when_explicitly_supplied():
             module.main()
         except RuntimeError as exc:
             assert str(exc)=="STOP_AFTER_PARSE"
+
+
+def test_meta_observer_factory_is_default_off_and_explicit_on():
+    import scripts.mexc_triple_fishing_operator_v03 as module
+    from radar.meta_sidecar import MetaT0Observer
+
+    assert module.build_meta_observer(None) is None
+    assert module.build_meta_observer("") is None
+    with tempfile.TemporaryDirectory() as td:
+        observer=module.build_meta_observer(str(Path(td)/"meta.db"))
+        assert isinstance(observer,MetaT0Observer)
+        assert observer.store.backend=="sqlite"
