@@ -1,6 +1,6 @@
 # L2R-CROSSVENUE-001 — PARENT ANCHOR RECOVERY STATUS — 2026-10-01
 
-Status: **ARTIFACT_PRESENT / RAW BYTES UNAVAILABLE TO CURRENT RUNTIME**
+Status: **ANCHOR_ARTIFACT_PRESENT / PARENT EVENT-STATE STILL INSUFFICIENT**
 
 ## Exact artifact located
 
@@ -49,3 +49,29 @@ Frozen external lookup:
 2025 remains protected holdout.
 2026 remains forbidden.
 No outcome opening, live trading, orders, exchange mutation or main merge.
+
+
+## Scientific sufficiency correction
+
+The anchor artifact is not, by itself, proven sufficient for the intended Crossvenue Discovery.
+
+The original sweep-event preflight receipt explicitly records:
+- `replenishment_computed=false`
+- `weak_strong_labels_computed=false`
+
+and the horizon-timing preflight records:
+- `forward_book_depth_read=false`
+- `replenishment_computed=false`
+
+The later parent Discovery receipt records `replenishment_computed=true`, but its preserved evidence files are aggregate-only:
+- cell summary;
+- daily cell stats;
+- side diagnostics.
+
+No separate event-level replenishment / WEAK-STRONG ledger was located in the Library or repository.
+
+Therefore the valid recovery target is now:
+- either a byte-authoritative event-level parent state/label artifact;
+- or the exact 2024 RAW Hyperliquid bodies for deterministic replay.
+
+Do not treat recovery of the anchor ZIP alone as a license to open Binance price outcomes.
