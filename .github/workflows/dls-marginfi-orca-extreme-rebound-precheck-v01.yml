@@ -1,0 +1,56 @@
+name: DLS Marginfi Orca Extreme Rebound Pre-Outcome Gate V0.1
+
+on:
+  push:
+    branches:
+      - dls-marginfi-orca-extreme-rebound-v01
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_MARGINFI_ORCA_EXTREME_REBOUND_PRECHECK_V01.marker
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  precheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download canonical Orca flow-turnover calibration PASS
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36816611039
+          artifact-ids: 11141731925
+          path: calibration
+
+      - name: Compile feature-only precheck
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/precheck_marginfi_orca_extreme_rebound_v0_1.py
+
+      - name: Execute feature-only precheck
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/precheck_marginfi_orca_extreme_rebound_v0_1.py
+          --calibration-root calibration
+
+      - name: Upload immutable precheck evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-marginfi-orca-extreme-rebound-precheck-v01
+          path: |
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_ORCA_EXTREME_REBOUND_PREOUTCOME_RECEIPT_V0.1.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_ORCA_EXTREME_REBOUND_PREOUTCOME_SELECTED_V0.1.ndjson
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Firewall
+        if: always()
+        run: echo FEATURE_ONLY_JULSEP_OUTCOMES_CLOSED
