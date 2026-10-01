@@ -1,0 +1,122 @@
+name: DLS Marginfi SOL Jul-Sep Signed Flow Source V0.1
+
+on:
+  push:
+    branches:
+      - dls-marginfi-flow-exhaustion-rebound-v01
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_MARGINFI_SOL_JULSEP_SOURCE_V01.marker
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  month:
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        include:
+          - {month: "202407", artifact: "dls-field-enrichment-ms-marginfi-202407"}
+          - {month: "202408", artifact: "dls-field-enrichment-ms-marginfi-202408"}
+          - {month: "202409", artifact: "dls-field-enrichment-ms-marginfi-202409"}
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download canonical monthly Marginfi field-enrichment
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36263998920
+          name: ${{ matrix.artifact }}
+          path: field_month
+
+      - name: Download source-authoritative Marginfi bank registry
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36312418451
+          name: dls-marginfi-bank-unit-source-completion-v02
+          path: bank_registry
+
+      - name: Compile Jul-Sep SOL source census
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/census_marginfi_sol_julsep_month_v0_1.py
+
+      - name: Execute exact-slot SOL-only source census
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/census_marginfi_sol_julsep_month_v0_1.py
+          --field-root field_month
+          --bank-registry-root bank_registry
+          --month "${{ matrix.month }}"
+          --workers 6
+
+      - name: Upload immutable monthly source evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-marginfi-sol-julsep-source-${{ matrix.month }}-v01
+          path: |
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_SOL_JULSEP_SOURCE_${{ matrix.month }}_RECEIPT_V0.1.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_SOL_JULSEP_SOURCE_${{ matrix.month }}_ROWS_V0.1.ndjson
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_SOL_JULSEP_POPULATION_${{ matrix.month }}_V0.1.ndjson
+          if-no-files-found: warn
+          retention-days: 90
+
+  merge:
+    if: always()
+    needs: month
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download Jul-Sep source evidence
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ github.run_id }}
+          pattern: dls-marginfi-sol-julsep-source-*-v01
+          path: monthly
+          merge-multiple: false
+
+      - name: Compile source merge
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/merge_marginfi_sol_julsep_source_v0_1.py
+
+      - name: Merge and adjudicate Jul-Sep source gate
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/merge_marginfi_sol_julsep_source_v0_1.py
+          --root monthly
+
+      - name: Upload terminal Jul-Sep source evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-marginfi-sol-julsep-signed-flow-source-v01
+          path: |
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_SOL_JULSEP_SIGNED_FLOW_SOURCE_RECEIPT_V0.1.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_SOL_JULSEP_SIGNED_FLOW_SOURCE_ROWS_V0.1.ndjson
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_SOL_JULSEP_SOURCE_POPULATION_V0.1.ndjson
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_NO_JULSEP_MARKET_OUTCOMES_NO_TRADING
