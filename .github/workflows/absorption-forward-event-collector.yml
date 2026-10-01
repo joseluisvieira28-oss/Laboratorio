@@ -80,12 +80,12 @@ jobs:
           cp /tmp/absorption_forward/EVENT_LEDGER.jsonl absorption_failed_auction/forward/EVENT_LEDGER.jsonl
           cp /tmp/absorption_forward/COLLECTOR_STATE.json absorption_failed_auction/forward/COLLECTOR_STATE.json
           cp /tmp/absorption_forward/COLLECTOR_RECEIPT.json absorption_failed_auction/forward/COLLECTOR_RECEIPT.json
-          if git diff --quiet -- absorption_failed_auction/forward; then
+          git add absorption_failed_auction/forward
+          if git diff --cached --quiet -- absorption_failed_auction/forward; then
             echo "No forward ledger change"
             exit 0
           fi
           git config user.name "crypto-lab-bot"
           git config user.email "actions@users.noreply.github.com"
-          git add absorption_failed_auction/forward
           git commit -m "absorption: append outcome-blind forward event state"
           git push origin HEAD:absorption-failed-auction-v0.1
