@@ -47,7 +47,7 @@ def blocked(stage,detail,**extra):
     rec={"schema_version":"0.1","lab_id":LAB,
       "classification":"MARGINFI_ORCA_TOPQ_REBOUND_OOS_SOURCE_BLOCKED",
       "stage":stage,"detail":str(detail)[:1600],
-      "firewall":{"market_2025_opened":False,"market_2025_opened":False,"market_2026_opened":False,
+      "firewall":{"oct_dec_market_outcomes_opened":True,"market_2025_opened":False,"market_2026_opened":False,
                   "live_trading":False,"orders":False,"wallets":False,"exchange_mutation":False,
                   "merge_main":False,"post_outcome_tuning":False},**extra}
     RECEIPT.write_text(json.dumps(rec,indent=2,sort_keys=True)+"\n")
