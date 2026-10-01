@@ -11,7 +11,7 @@ Purpose: prevent duplicate mining and preserve scientific distinctions.
 | L2R-OVERLAY-ETF-CME-001 | NO TERMINAL DIRECTIONAL RESULT | Original implementation was source/timing blocked; retries remained technical. | Do not claim support or no-edge from this identity. |
 | L2R-OVERLAY-ETF-CME-SPAN-001 | CLOSED / DEVELOPMENT_SPAN_NO_SUPPORT | Aggregate panel positive but failed frozen robustness gates; R15 failed. | No rescue under same identity. |
 | L2R-OVERLAY-ETF-CME-PRET0-001 | CLOSED / INSUFFICIENT_SAMPLE_OR_SOURCE | Frozen 1,100 ms causal PRET0 reference passes only 11/46 source pairs vs minimum 40. Directional outcomes were not opened. | No threshold widening under same identity. |
-| L2R-CROSSVENUE-001 | SOURCE_TIMING_READY / PARENT_EVENT_STATE_MATERIALIZATION_BLOCKED | Binance 2024 source + timestamp cadence PASS; external lookup frozen at first aggTrade at/after target with 2,000 ms max lateness. Anchor ZIP is located but non-exportable; moreover parent preflight proves anchors predate replenishment labels, and no event-level WEAK/STRONG ledger is preserved. | Recover byte-authoritative event-level parent state sufficient for RR/WEAK-STRONG per R horizon, or restore/reacquire exact 2024 RAW and replay frozen parent rules. Anchor timestamps alone are insufficient. |
+| L2R-CROSSVENUE-001 | SOURCE_TIMING_READY / ANCHOR_IDENTITY_VERIFIED / PARENT_EVENT_STATE_MATERIALIZATION_BLOCKED | Binance 2024 source + timestamp cadence PASS; external lookup frozen at first aggTrade at/after target with 2,000 ms max lateness. Historical anchor CSV recovered and byte-verified exactly (SHA256 be2c2d...37eb3; 9,181,478 rows), but its schema contains timestamps/direction/top-price fields only and no event-level replenishment state. | Recover byte-authoritative event-level parent state sufficient for RR/WEAK-STRONG per R horizon, or restore/reacquire exact 2024 RAW and replay frozen parent rules. Anchor timestamps alone are insufficient. |
 
 ## MEXC fee reconciliation
 
@@ -31,3 +31,5 @@ Do not spend additional research effort on direct Hyperliquid execution, SPAN, o
 2026 remains forbidden for retrospective cross-venue discovery.
 
 No main merge. No live trading.
+
+2026-10-01 anchor recovery update: the exact historical anchor ZIP/CSV is now byte-verified and no longer a transport blocker. The sole remaining parent-side blocker is event-state reconstruction for the frozen replenishment horizons; no cross-venue outcome has been opened.
