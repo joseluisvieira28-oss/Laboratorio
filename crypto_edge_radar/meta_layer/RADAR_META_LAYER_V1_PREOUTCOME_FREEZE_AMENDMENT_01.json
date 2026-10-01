@@ -1,0 +1,19 @@
+{
+  "authority": "RADAR-META-LAYER-V1-PREOUTCOME-FREEZE-AMENDMENT-01",
+  "date": "2026-10-01",
+  "status": "PREOUTCOME_TECHNICAL_GOVERNANCE_CORRECTION",
+  "parent": "RADAR-META-LAYER-V1-PREOUTCOME-FREEZE",
+  "reason": "Retry/restart idempotency requires one durable identity per immutable parent signal. Including capture time in the idempotency key would create a new identity on retry.",
+  "corrected_idempotency_rule": "sha256(candidate_id + immutable_signal_key + schema_version)",
+  "capture_time_role": "captured_at_utc remains evidence inside the snapshot payload and is not part of the idempotency identity",
+  "outcome_exposure_before_amendment": false,
+  "scientific_change": false,
+  "signal_rule_change": false,
+  "threshold_change": false,
+  "sizing_change": false,
+  "arbitration_change": false,
+  "execution_change": false,
+  "orders_allowed": false,
+  "exchange_mutation_allowed": false,
+  "main_merge_allowed": false
+}
