@@ -15,7 +15,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: {python-version: "3.12"}
-      - name: Verify pre-outcome supersession only
+      - name: Verify pre-outcome supersession and current authority
         shell: python
         run: |
           import json
@@ -30,6 +30,17 @@ jobs:
           assert freeze["state"] == "FROZEN_OUTCOME_BLIND"
           assert freeze["required_parent_state"] == "PASS_STRONG"
           assert gate["economic_outcomes_unlocked"] is False
-          assert gate["event_collection_open"] is False
+          assert gate["trading_authority"] == "NONE"
           assert "No future price outcomes for this lab were opened" in receipt
-          print("PASS: preliminary V0.1 is superseded only in the pre-outcome state")
+
+          if gate["parent_classification"] == "PASS_STRONG":
+              assert gate["event_collection_open"] is True
+              assert isinstance(gate["event_open_boundary_ms"], int)
+              assert gate["event_open_boundary_ms"] > 0
+              assert gate["parent_receipt_commit"]
+              assert gate["evidence_vault_state"] == "PASS"
+              print("PASS: V0.1.1 supersession preserved; PASS_STRONG opens collection only")
+          else:
+              assert gate["event_collection_open"] is False
+              assert gate["event_open_boundary_ms"] is None
+              print("PASS: V0.1.1 remains outcome-blind and collection-locked")
