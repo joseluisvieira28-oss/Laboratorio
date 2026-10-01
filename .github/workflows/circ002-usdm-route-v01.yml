@@ -1,0 +1,74 @@
+name: CIRC002 USD-M Route Gate V0.1
+
+on:
+  push:
+    branches: [crypto-index-rebalance-continuation-v0.1]
+    paths:
+      - "research/crypto_index_rebalance_continuation_002/ROUTE_TRIGGER.json"
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  route:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Verify route authority
+        shell: python
+        run: |
+          import json
+          from pathlib import Path
+          f=json.loads(Path("research/crypto_index_rebalance_continuation_002/ROUTE_FREEZE_V0.1.json").read_text())
+          t=json.loads(Path("research/crypto_index_rebalance_continuation_002/ROUTE_TRIGGER.json").read_text())
+          assert f["state"]=="FROZEN_PRE_ROUTE"
+          assert f["source_artifact_id"]==11179568574
+          assert f["market_price_values_opened"] is False
+          assert f["returns_computed"] is False
+          assert f["pnl_computed"] is False
+          assert f["trading_authority"]=="NONE"
+          assert t["action"]=="RUN_ROUTE_GATE_ONLY"
+          print("PASS: route-only authority")
+      - name: Fetch immutable source census artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          curl --fail --location --retry 5 \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/artifacts/11179568574/zip" \
+            -o /tmp/source.zip
+          echo "a958b731ffefaae7a8a6754653dd7b5f6b6da26c168859341ab9a25fe71c46f9  /tmp/source.zip" | sha256sum -c -
+          mkdir -p /tmp/source
+          unzip -q /tmp/source.zip -d /tmp/source
+          test -f /tmp/source/SOURCE_CENSUS_V0.1.json
+      - name: Syntax check
+        run: python -m py_compile research/crypto_index_rebalance_continuation_002/route_gate_v01.py
+      - name: Run source-only route gate
+        env:
+          PYTHONUNBUFFERED: "1"
+        run: python research/crypto_index_rebalance_continuation_002/route_gate_v01.py --source /tmp/source/SOURCE_CENSUS_V0.1.json
+      - name: Enforce outcome firewall
+        shell: python
+        run: |
+          import json
+          from pathlib import Path
+          x=json.loads(Path("artifacts/crypto_index_rebalance_continuation_002/USD_M_ROUTE_GATE_V0.1.json").read_text())
+          assert x["zip_body_bytes_read"]==0
+          assert x["price_values_read"] is False
+          assert x["returns_computed"] is False
+          assert x["pnl_computed"] is False
+          assert x["trading_authority"]=="NONE"
+          print("PASS: zero price/outcome access")
+      - uses: actions/upload-artifact@v4
+        with:
+          name: circ002-usdm-route-v01
+          path: artifacts/crypto_index_rebalance_continuation_002/USD_M_ROUTE_GATE_V0.1.json
+          if-no-files-found: error
+          retention-days: 90
