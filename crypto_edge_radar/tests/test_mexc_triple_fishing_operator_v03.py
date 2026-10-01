@@ -172,7 +172,7 @@ def test_meta_flag_defaults_off_in_cli():
             assert str(exc)=="STOP_AFTER_PARSE"
 
 
-def test_meta_flag_requires_explicit_path_to_enable():
+def test_meta_flag_is_accepted_only_when_explicitly_supplied():
     import sys
     from unittest.mock import patch
     import scripts.mexc_triple_fishing_operator_v03 as module
