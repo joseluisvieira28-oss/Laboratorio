@@ -1,0 +1,59 @@
+name: TVFP Terminal Calibration V0.1
+
+on:
+  push:
+    branches:
+      - tradingview-market-microscope-v0.1
+    paths:
+      - "tradingview/TVFP_TERMINAL_CALIBRATION_TRIGGER_V0.1.json"
+
+permissions:
+  contents: read
+
+jobs:
+  terminal-calibration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Verify frozen pre-outcome inputs
+        shell: python
+        run: |
+          import csv, json
+          from pathlib import Path
+          a=list(csv.DictReader(Path("tradingview/terminal/TVFP_TERMINAL_SAMPLE_2016_PART_A.csv").open()))
+          b=list(csv.DictReader(Path("tradingview/terminal/TVFP_TERMINAL_SAMPLE_2016_PART_B.csv").open()))
+          assert len(a)==1008 and len(b)==1008
+          rows=a+b
+          opens=[int(r["bar_open_ms"]) for r in rows]
+          closes=[int(r["bar_close_ms"]) for r in rows]
+          assert len(set(opens))==2016
+          assert all(y-x==300000 for x,y in zip(opens,opens[1:]))
+          assert closes[-1] == 1790858100000
+          trigger=json.loads(Path("tradingview/TVFP_TERMINAL_CALIBRATION_TRIGGER_V0.1.json").read_text())
+          assert trigger["terminal_bar_close_ms"] == 1790858100000
+          assert trigger["expected_tv_receipts"] == 2016
+          assert trigger["post_outcome_tuning"] is False
+          assert trigger["trading_authority"] == "NONE"
+          print("PASS: terminal TV sample frozen at exactly 2016 bars")
+
+      - name: Run official Binance comparator
+        run: python tradingview/tvfp_terminal_runner_v01.py
+
+      - name: Upload immutable terminal evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: tvfp-terminal-calibration-v01
+          path: |
+            tradingview/terminal/run_output/TVFP_TERMINAL_CALIBRATION_REPORT.json
+            tradingview/terminal/run_output/BINANCE_SOURCE_PROVENANCE.json
+            tradingview/terminal/run_output/TVFP_TERMINAL_BAR_COMPARISON.csv
+            tradingview/terminal/run_output/binance_raw/*.CHECKSUM
+            tradingview/terminal/run_output/binance_raw/*.jsonl
+          if-no-files-found: error
+          retention-days: 90
