@@ -9,14 +9,20 @@ url=("https://mainnet.helius-rpc.com/?api-key="+os.environ["HELIUS_API_KEY"]) if
 if not url: raise SystemExit("credential_absent")
 def call(method,params):
   payload=json.dumps({"jsonrpc":"2.0","id":1,"method":method,"params":params}).encode()
-  for n in range(3):
+  for n in range(8):
     try:
       with urllib.request.urlopen(urllib.request.Request(url,data=payload,headers={"Content-Type":"application/json"}),timeout=30) as r:o=json.loads(r.read())
       if o.get("error"): raise RuntimeError("rpc_error")
-      time.sleep(.26); return o["result"]
+      time.sleep(1.05); return o["result"]
+    except urllib.error.HTTPError as e:
+      if e.code not in (429,500,502,503,504) or n==7: raise
+      retry=e.headers.get("Retry-After")
+      try: delay=float(retry) if retry else min(60,2**n)
+      except Exception: delay=min(60,2**n)
+      time.sleep(max(1,min(120,delay)))
     except (urllib.error.URLError,TimeoutError,OSError):
-      if n==2: raise
-      time.sleep(2**n)
+      if n==7: raise
+      time.sleep(min(60,2**n))
 def iso(ts): return dt.datetime.fromtimestamp(ts,dt.timezone.utc).isoformat().replace("+00:00","Z")
 receipt={"schema_version":"0.1","lab_id":"DEFI-LIQUIDATION-SHOCK-001","classification":"ROUTE_A2_BOUNDARY_INDEX_BLOCKED","programs":{},"firewall":{"economic_outcomes_opened":False,"prices_2025":False,"returns_2025":False,"pnl_2025":False,"data_2026_transactions_opened":False,"science_changed":False,"live_trading":False,"merge_main":False}}
 errors=[]
