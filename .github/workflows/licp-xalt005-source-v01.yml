@@ -1,0 +1,64 @@
+name: LICP XALT005 2026 Source Gate V0.1
+
+on:
+  push:
+    branches: [licp-xalt-005-2026-confirmatory-v0.1]
+    paths:
+      - "research/liquidation_cascade/LICP_XALT005_SOURCE_TRIGGER.json"
+
+permissions:
+  contents: read
+
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Verify frozen source authority
+        shell: python
+        run: |
+          import json
+          from pathlib import Path
+          f=json.loads(Path("research/liquidation_cascade/LICP_HIST_XALT_005_SOURCE_FREEZE_V0_1.json").read_text())
+          t=json.loads(Path("research/liquidation_cascade/LICP_XALT005_SOURCE_TRIGGER.json").read_text())
+          assert f["lab_id"]=="LICP-HIST-XALT-005"
+          assert f["state"]=="FROZEN_PRE_SOURCE"
+          assert f["price_rows_opened"] is False
+          assert f["outcomes_opened"] is False
+          assert f["post_outcome_tuning"] is False
+          assert f["trading_authority"]=="NONE"
+          assert t["action"]=="RUN_2026_SOURCE_GATE_ONLY"
+          print("PASS: source-only authority frozen")
+      - name: Install parquet reader
+        run: python -m pip install pandas pyarrow
+      - name: Syntax check
+        run: python -m py_compile research/liquidation_cascade/licp_hist_xalt_005_source_v01.py
+      - name: Run source-only gate
+        env:
+          PYTHONUNBUFFERED: "1"
+        run: python research/liquidation_cascade/licp_hist_xalt_005_source_v01.py
+      - name: Enforce outcome firewall
+        if: always()
+        shell: python
+        run: |
+          import json
+          from pathlib import Path
+          p=Path("research/liquidation_cascade/receipts/LICP_XALT005_SOURCE_GATE_V0_1.json")
+          if p.exists():
+              x=json.loads(p.read_text())
+              assert x["sol_price_rows_read"] is False
+              assert x["outcomes_opened"] is False
+              assert x["pnl_computed"] is False
+              assert x["trading_authority"]=="NONE"
+              print("PASS: no SOL outcomes opened")
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: licp-xalt005-source-v01
+          path: research/liquidation_cascade/receipts/LICP_XALT005_SOURCE_GATE_V0_1.json
+          if-no-files-found: warn
+          retention-days: 90
