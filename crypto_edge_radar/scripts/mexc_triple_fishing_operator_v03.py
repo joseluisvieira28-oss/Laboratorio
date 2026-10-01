@@ -61,6 +61,7 @@ class TripleFishingOperatorV03:
         options_source: OptionsV21OperatorSourceV03,
         dh03_source: DH03OperatorSourceV03,
         state_path: str,
+        meta_observer: Any | None = None,
     ) -> None:
         self.engine=engine
         self.sources={
@@ -69,6 +70,8 @@ class TripleFishingOperatorV03:
             DH03:dh03_source,
         }
         self.state_path=Path(state_path)
+        self.meta_observer=meta_observer
+        self.meta_state:dict[str,dict[str,Any]]={}
         self.pending:dict[str,dict[str,Any]]={}
         self.source_state:dict[str,dict[str,Any]]={}
         now=time.monotonic()
@@ -105,6 +108,7 @@ class TripleFishingOperatorV03:
             ],
             "source_state":self.source_state,
             "engine":self.last_engine,
+            "meta_layer":{"enabled":self.meta_observer is not None,"state":self.meta_state},
             **extra,
         }
         _atomic_write(self.state_path,payload)
@@ -127,6 +131,28 @@ class TripleFishingOperatorV03:
             if str(signal.get("candidate_id") or "")!=candidate_id:
                 continue
             self.pending[self._pending_key(signal)]=signal
+
+    def _observe_meta(self, signals:list[dict[str,Any]], captured_at:datetime)->None:
+        if self.meta_observer is None:
+            return
+        captured=captured_at.astimezone(timezone.utc).isoformat().replace("+00:00","Z")
+        frozen=[dict(s) for s in signals]
+        for signal in frozen:
+            candidate=str(signal.get("candidate_id") or "")
+            key=str(signal.get("immutable_signal_key") or "")
+            identity=f"{candidate}|{key}"
+            try:
+                result=self.meta_observer.observe(
+                    signal=dict(signal),
+                    captured_at_utc=captured,
+                    simultaneous_signals=[dict(s) for s in frozen],
+                )
+                self.meta_state[identity]=result if isinstance(result,dict) else {"status":"RECORDED"}
+            except Exception as exc:
+                self.meta_state[identity]={
+                    "status":"RECORDER_FAIL_CLOSED_PARENT_UNCHANGED",
+                    "error":f"{type(exc).__name__}:{exc}",
+                }
 
     def _poll_sources(self)->None:
         now_mono=time.monotonic()
@@ -182,6 +208,7 @@ class TripleFishingOperatorV03:
 
         now=datetime.now(timezone.utc)
         signals=list(self.pending.values())
+        self._observe_meta(signals,now)
         probe=arbitrate_due_signals(
             signals,
             now=now,
