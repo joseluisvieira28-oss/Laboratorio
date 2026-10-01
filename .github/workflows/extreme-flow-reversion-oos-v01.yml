@@ -1,0 +1,57 @@
+name: EXTREME-FLOW-REVERSION-OOS-001 V0.1
+
+on:
+  push:
+    branches: [extreme-flow-reversion-oos-v0.1]
+    paths:
+      - "extreme_flow_reversion_oos/RUN_TRIGGER.json"
+
+permissions:
+  contents: read
+
+jobs:
+  oos:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Verify frozen OOS authority
+        shell: python
+        run: |
+          import json
+          from pathlib import Path
+          f=json.loads(Path("extreme_flow_reversion_oos/FREEZE.json").read_text())
+          t=json.loads(Path("extreme_flow_reversion_oos/RUN_TRIGGER.json").read_text())
+          assert f["lab_id"]=="EXTREME-FLOW-REVERSION-OOS-001"
+          assert f["state"]=="FROZEN_PRE_OOS"
+          assert f["oos_previously_opened"] is False
+          assert f["post_outcome_tuning"] is False
+          assert f["trading_authority"]=="NONE"
+          assert t["action"]=="RUN_2025_OOS_ONCE"
+          assert t["protocol_commit"]=="4fcef20986f99d868b74ae938d8de469436b8647"
+          assert t["freeze_commit"]=="ff0ed9ceb092e33266ef652656000dbf16199375"
+          assert t["trading_authority"]=="NONE"
+          print("PASS: 2025 OOS authority frozen")
+
+      - name: Syntax check
+        run: |
+          python -m py_compile flow_path_absorption_hist_v02/run_v02.py
+          python -m py_compile extreme_flow_reversion_oos/run_v01.py
+
+      - name: Run untouched 2025 OOS
+        env:
+          PYTHONUNBUFFERED: "1"
+        run: python extreme_flow_reversion_oos/run_v01.py
+
+      - name: Upload immutable OOS evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: extreme-flow-reversion-oos-v01
+          path: extreme_flow_reversion_oos/run_output/
+          if-no-files-found: error
+          retention-days: 90
