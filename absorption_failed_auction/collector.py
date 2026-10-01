@@ -150,8 +150,26 @@ def load_sensor(vault_paths,current_path):
         for line in Path(path).read_text(encoding="utf-8").splitlines():
             if line.strip(): add_obj(json.loads(line),str(path))
 
-    for line in Path(current_path).read_text(encoding="utf-8").splitlines():
-        if line.strip(): add_obj(json.loads(line),str(current_path))
+    current_path=Path(current_path)
+    if current_path.suffix.lower()==".csv":
+        with current_path.open(newline="",encoding="utf-8") as fh:
+            for raw in csv.DictReader(fh):
+                row={}
+                for k in REQUIRED_SENSOR:
+                    if k not in raw or raw[k] in (None,""):
+                        raise CollectorError(f"current intake missing {k}")
+                    if k in ("bar_open_ms","bar_close_ms","buy_imbalance_rows","sell_imbalance_rows","footprint_rows","ltf_intrabars"):
+                        row[k]=int(raw[k])
+                    else:
+                        row[k]=float(raw[k])
+                bo=row["bar_open_ms"]
+                sig=json.dumps(row,sort_keys=True,separators=(",",":"))
+                if bo in by and by[bo][1]!=sig:
+                    raise CollectorError(f"conflicting structural intake {bo}")
+                by[bo]=(row,sig,str(current_path))
+    else:
+        for line in current_path.read_text(encoding="utf-8").splitlines():
+            if line.strip(): add_obj(json.loads(line),str(current_path))
 
     rows=[v[0] for k,v in sorted(by.items())]
     for a,b in zip(rows,rows[1:]):
