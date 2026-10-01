@@ -1,0 +1,42 @@
+name: DLS Marginfi Orca Forced-Flow Impact Development V0.1
+on:
+  push:
+    branches: [dls-marginfi-route-migration-v01]
+    paths: [labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_MARGINFI_ORCA_IMPACT_DEV_V01.marker]
+permissions: {actions: read, contents: read}
+jobs:
+  development:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: "${{ github.sha }}"}
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - name: Download exact canonical Orca source PASS
+        uses: actions/download-artifact@v4
+        with:
+          github-token: "${{ github.token }}"
+          repository: "${{ github.repository }}"
+          run-id: 36780139559
+          artifact-ids: 11127536853
+          path: source_gate
+      - name: Compile frozen Development executor
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/run_marginfi_orca_impact_dev_v0_1.py
+      - name: Execute frozen Jul-Sep Development
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/run_marginfi_orca_impact_dev_v0_1.py --source-root source_gate --workers 12
+      - name: Upload immutable Development evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-marginfi-orca-impact-development-v01
+          path: |
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_ORCA_IMPACT_V01_DEVELOPMENT_RECEIPT.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_ORCA_IMPACT_V01_DEVELOPMENT_LEDGER.ndjson
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_ORCA_IMPACT_V01_SOURCE_CASCADES.ndjson
+            labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_ORCA_IMPACT_V01_MARKET_DATA_MANIFEST.ndjson
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Firewall
+        if: always()
+        run: echo JULSEP_DEVELOPMENT_ONLY_OCTDEC_2025_2026_CLOSED_NO_TRADING
