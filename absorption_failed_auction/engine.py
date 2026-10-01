@@ -79,12 +79,13 @@ def validate_structure(row):
         raise LabError("ltf_intrabars outside 0..5")
 
 
-def classify(rows, parent_pass_bar_close_ms):
+def classify(rows, event_open_boundary_ms):
     """Outcome-blind event classification.
 
     rows must be chronological. Any outcome-like R* field is rejected here.
-    Bars <= parent_pass_bar_close_ms may seed the rolling baseline but can never
-    become events.
+    Bars with close strictly before event_open_boundary_ms may seed the rolling
+    baseline but can never become events. A bar closing exactly at the frozen
+    event-open boundary is the first eligible event candidate.
     """
     out = []
     cooldown_until_index = -1
@@ -119,7 +120,7 @@ def classify(rows, parent_pass_bar_close_ms):
             "q25_abs_bar_return_bps": thr_ret,
         })
 
-        if row["bar_close_ms"] <= parent_pass_bar_close_ms:
+        if row["bar_close_ms"] < event_open_boundary_ms:
             rec["event_class"] = "PRE_OPEN_BASELINE_ONLY"
             out.append(rec)
             continue
