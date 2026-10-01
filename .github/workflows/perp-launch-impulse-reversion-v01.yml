@@ -1,0 +1,57 @@
+name: PERP-LAUNCH-IMPULSE-REVERSION-001 V0.1
+
+on:
+  push:
+    branches: [perp-launch-impulse-reversion-v0.1]
+    paths:
+      - "labs/PERP_LAUNCH_IMPULSE_REVERSION_001/RUN_TRIGGER.json"
+
+permissions:
+  contents: read
+
+jobs:
+  sequential:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Verify frozen authority
+        shell: python
+        run: |
+          import json
+          from pathlib import Path
+          f=json.loads(Path("labs/PERP_LAUNCH_IMPULSE_REVERSION_001/FREEZE.json").read_text())
+          t=json.loads(Path("labs/PERP_LAUNCH_IMPULSE_REVERSION_001/RUN_TRIGGER.json").read_text())
+          assert f["lab_id"]=="PERP-LAUNCH-IMPULSE-REVERSION-001"
+          assert f["state"]=="FROZEN_PRE_DISCOVERY"
+          assert f["observation_minutes"]==15
+          assert f["hold_minutes"]==360
+          assert f["base_cost_bps"]==60
+          assert f["stress_cost_bps"]==160
+          assert f["oos_open_only_if_discovery_survives"] is True
+          assert f["post_outcome_tuning"] is False
+          assert f["trading_authority"]=="NONE"
+          assert t["action"]=="RUN_DISCOVERY_THEN_OOS_IF_AUTHORIZED"
+          assert t["protocol_commit"]=="67827569d82ae33bb3c3ba37486b794599ff0e8e"
+          assert t["freeze_commit"]=="f8c5d86176f6d9a9581ac0b251f6d20c1c35af1d"
+          print("PASS: PLIR authority frozen")
+
+      - name: Syntax check
+        run: python -m py_compile labs/PERP_LAUNCH_IMPULSE_REVERSION_001/run_v01.py
+
+      - name: Run frozen sequential test
+        env:
+          PYTHONUNBUFFERED: "1"
+        run: python labs/PERP_LAUNCH_IMPULSE_REVERSION_001/run_v01.py
+
+      - name: Upload immutable evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: perp-launch-impulse-reversion-v01
+          path: labs/PERP_LAUNCH_IMPULSE_REVERSION_001/run_output/
+          if-no-files-found: error
+          retention-days: 90
