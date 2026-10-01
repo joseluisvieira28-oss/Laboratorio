@@ -2,7 +2,7 @@
 
 Date: 2026-09-30
 
-Status: **SOURCE_TIMING_READY / ANCHOR_IDENTITY_VERIFIED / PARENT_EVENT_STATE_MATERIALIZATION_BLOCKED**
+Status: **SOURCE_READY / PARENT_RAW_RECOVERED / EVENT_STATE_MATERIALIZER_PENDING**
 
 ## Source facts
 
@@ -125,3 +125,17 @@ However the CSV does not contain same-side top-5 depth at the pre-sweep state or
 
 Canonical verification receipt:
 `L2R_CROSSVENUE_001_PARENT_ANCHOR_IDENTITY_RECEIPT_V0_1.json`.
+
+
+## 2026-10-01 exact 2024 RAW recovery — PASS
+
+Drive transport folder `L2R_2024_DRIVE_PARTS_32MiB` was audited end-to-end:
+- 191/191 transport parts present, contiguous and unique;
+- every part SHA256 matched the transport manifest;
+- reconstructed ZIP size = 6,378,924,593 bytes;
+- reconstructed ZIP SHA256 = `088e2a5878844172f286d1d839cd3fb23282ec62ff8f35b9fea87d2035d2ba3e`;
+- 8,707 BTC `.lz4` source objects present;
+- total LZ4 bytes = 6,832,137,900;
+- inner canonical raw manifest SHA256 = `59e16ce8ea41658c2ea0fc6f2489d4deafbdc676e008d0b93f95ee6e3864913d` = exact frozen expected identity.
+
+Therefore the parent RAW materialization blocker is CLOSED. No Binance price values or cross-venue outcomes were opened. The next gate is a hash-locked source-only event-state materializer derived from the exact frozen parent runner.
