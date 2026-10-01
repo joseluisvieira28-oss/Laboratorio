@@ -1,0 +1,39 @@
+{
+  "lab_id": "PERP-LAUNCH-BASIS-CONVERGENCE-001",
+  "version": "V0.1",
+  "state": "FROZEN_PRE_DISCOVERY",
+  "source_parent": "PERPETUAL-LAUNCH-SHOCK-001",
+  "source_mve_id": "PLS-BINANCE-USDTM-LAUNCH-001",
+  "source_population": {
+    "qualified_events": 170,
+    "year_2023": 83,
+    "year_2024": 87
+  },
+  "discovery_year": 2023,
+  "oos_year": 2024,
+  "oos_open_only_if_discovery_survives": true,
+  "observation_delay_minutes": 5,
+  "hold_minutes": 60,
+  "entry_basis_rule": "POSITIVE_LOG_PERP_MINUS_SPOT_ONLY",
+  "position": "LONG_SPOT_SHORT_PERP_EQUAL_USD",
+  "base_cost_bps": 60,
+  "stress_cost_bps": 160,
+  "min_eligible_events": 60,
+  "min_executed_trades": 25,
+  "cluster_bootstrap": {
+    "cluster": "UTC_LAUNCH_DATE",
+    "replications": 10000,
+    "seed": 20261001,
+    "confidence": 0.95
+  },
+  "gate": {
+    "mean_stress_all_eligible_gt_zero": true,
+    "bootstrap_stress_mean_ci95_lower_gt_zero": true,
+    "median_stress_executed_gt_zero": true,
+    "stress_hit_rate_min": 0.52,
+    "stress_profit_factor_min": 1.2,
+    "mean_base_all_eligible_gt_zero": true
+  },
+  "post_outcome_tuning": false,
+  "trading_authority": "NONE"
+}
