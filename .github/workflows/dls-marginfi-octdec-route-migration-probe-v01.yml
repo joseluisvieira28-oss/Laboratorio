@@ -1,0 +1,74 @@
+name: DLS Marginfi Oct-Dec Route Migration Probe V0.1
+
+on:
+  push:
+    branches:
+      - dls-marginfi-binance-bbo-execution-v01
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_MARGINFI_OCTDEC_ROUTE_MIGRATION_PROBE_V01.marker
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download October population
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36898128660
+          artifact-ids: 11181190441
+          path: source_months/oct
+
+      - name: Download November population
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36898128660
+          artifact-ids: 11180746151
+          path: source_months/nov
+
+      - name: Download December population
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36898128660
+          artifact-ids: 11180388140
+          path: source_months/dec
+
+      - name: Compile source-only route migration probe
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/probe_marginfi_octdec_route_migration_v0_1.py
+
+      - name: Execute source-only route migration probe
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/probe_marginfi_octdec_route_migration_v0_1.py
+          --root source_months
+          --sample-per-month 5
+
+      - name: Upload route migration evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-marginfi-octdec-route-migration-probe-v01
+          path: labs/DEFI_LIQUIDATION_SHOCK_001/MARGINFI_OCTDEC_POST_LIQUIDATION_ROUTE_MIGRATION_PROBE_V0.1.json
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_NO_MARKET_OUTCOMES_NO_TRADING
