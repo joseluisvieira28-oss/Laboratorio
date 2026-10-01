@@ -1,0 +1,58 @@
+name: CIRC002 Source Census V0.1
+
+on:
+  push:
+    branches: [crypto-index-rebalance-continuation-v0.1]
+    paths:
+      - "research/crypto_index_rebalance_continuation_002/SOURCE_TRIGGER.json"
+
+permissions:
+  contents: read
+
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Verify source authority
+        shell: python
+        run: |
+          import json
+          from pathlib import Path
+          f=json.loads(Path("research/crypto_index_rebalance_continuation_002/FREEZE_SOURCE_V0.1.json").read_text())
+          t=json.loads(Path("research/crypto_index_rebalance_continuation_002/SOURCE_TRIGGER.json").read_text())
+          assert f["lab_id"]=="CRYPTO-INDEX-REBALANCE-CONTINUATION-002"
+          assert f["state"]=="FROZEN_PRE_SOURCE"
+          assert f["market_prices_opened"] is False
+          assert f["returns_computed"] is False
+          assert f["pnl_computed"] is False
+          assert f["trading_authority"]=="NONE"
+          assert t["action"]=="RUN_SOURCE_CENSUS_ONLY"
+          print("PASS: source-only authority")
+      - name: Syntax check
+        run: python -m py_compile research/crypto_index_rebalance_continuation_002/source_census_v01.py
+      - name: Run source census
+        env:
+          PYTHONUNBUFFERED: "1"
+        run: python research/crypto_index_rebalance_continuation_002/source_census_v01.py
+      - name: Enforce market-outcome firewall
+        shell: python
+        run: |
+          import json
+          from pathlib import Path
+          x=json.loads(Path("artifacts/crypto_index_rebalance_continuation_002/SOURCE_CENSUS_V0.1.json").read_text())
+          assert x["market_prices_read"] is False
+          assert x["returns_computed"] is False
+          assert x["pnl_computed"] is False
+          assert x["trading_authority"]=="NONE"
+          print("PASS: zero market outcomes")
+      - uses: actions/upload-artifact@v4
+        with:
+          name: circ002-source-census-v01
+          path: artifacts/crypto_index_rebalance_continuation_002/SOURCE_CENSUS_V0.1.json
+          if-no-files-found: error
+          retention-days: 90
