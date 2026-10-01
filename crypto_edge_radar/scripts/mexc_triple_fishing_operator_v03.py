@@ -302,6 +302,13 @@ class TripleFishingOperatorV03:
             time.sleep(max(0.02,MAIN_LOOP_FLOOR_SECONDS-elapsed))
 
 
+def build_meta_observer(meta_t0_evidence_db:str|None)->MetaT0Observer|None:
+    """Explicit default-off factory for the observational recorder."""
+    if not meta_t0_evidence_db:
+        return None
+    return MetaT0Observer(EvidenceStore(meta_t0_evidence_db))
+
+
 def main()->int:
     ap=argparse.ArgumentParser(
         description="Single-owner BNB + OPTIONS + DH03 MEXC operator supervisor."
@@ -330,9 +337,7 @@ def main()->int:
         status_path=args.status_path,
         global_slot_path=args.global_slot_path,
     )
-    meta_observer=None
-    if args.meta_t0_evidence_db:
-        meta_observer=MetaT0Observer(EvidenceStore(args.meta_t0_evidence_db))
+    meta_observer=build_meta_observer(args.meta_t0_evidence_db)
 
     supervisor=TripleFishingOperatorV03(
         engine=engine,
