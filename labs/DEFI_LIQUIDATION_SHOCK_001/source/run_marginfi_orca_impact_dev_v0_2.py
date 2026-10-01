@@ -293,7 +293,7 @@ receipt={
  "gross":gross,"nominal":nom,"stress":stress,"F1":f1,"F2":f2,
  "bootstrap_day_block_95ci":boot,"gate":gate,
  "future_boundary":{"oos_candidate":null,"requires_separate_untouched_period_authority":True},
- "firewall":{"inspect_quarantined_julsep_outcomes":False,"oct_dec_market_outcomes_opened":True,
+ "firewall":{"julsep_observed":True,"oct_dec_market_outcomes_opened":True,
              "market_2025_opened":False,"market_2026_opened":False,"live_trading":False,
              "orders":False,"wallets":False,"exchange_mutation":False,"merge_main":False,
              "post_outcome_tuning":False}
