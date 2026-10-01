@@ -33,13 +33,7 @@ def build_t0_snapshot(
     public_context: dict[str, Any] | None = None,
     simultaneous_signals: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
-    """Build a shadow-only T0 feature snapshot.
-
-    The function deliberately has no order, sizing, arbitration or strategy
-    mutation path. Caller-supplied context must already have been observable
-    at or before captured_at_utc. Future-dated context is rejected rather than
-    silently backfilled.
-    """
+    """Build a shadow-only T0 feature snapshot without changing parent logic."""
     captured = _parse_utc(captured_at_utc)
     candidate_id = str(signal.get("candidate_id") or signal.get("strategy_id") or "")
     signal_key = str(signal.get("immutable_signal_key") or signal.get("signal_identity") or "")
@@ -57,13 +51,8 @@ def build_t0_snapshot(
         raise ValueError("public context is future-dated relative to T0")
 
     allowed_context = {
-        "realized_volatility_bps",
-        "volume_ratio",
-        "funding_rate",
-        "open_interest",
-        "spot_perp_basis_bps",
-        "btc_regime",
-        "execution_friction_bps",
+        "realized_volatility_bps", "volume_ratio", "funding_rate", "open_interest",
+        "spot_perp_basis_bps", "btc_regime", "execution_friction_bps",
     }
     normalized_context = {
         key: (ctx.get(key) if key == "btc_regime" and ctx.get(key) is not None
@@ -93,7 +82,9 @@ def build_t0_snapshot(
             })
     peers.sort(key=lambda row: (row["candidate_id"], row["signal_identity"]))
 
-    identity_material = "|".join([candidate_id, signal_key, captured_at_utc, SCHEMA_VERSION])
+    # Stable per-signal identity: retries/restarts for the same immutable signal
+    # resolve to one persistence key. Capture time remains evidence, not identity.
+    identity_material = "|".join([candidate_id, signal_key, SCHEMA_VERSION])
     snapshot = {
         "schema_version": SCHEMA_VERSION,
         "mode": "SHADOW_RESEARCH_ONLY",
@@ -125,7 +116,7 @@ def build_t0_snapshot(
 
 
 def append_t0_snapshot(store: Any, snapshot: dict[str, Any]) -> dict[str, Any]:
-    """Append to the existing evidence backend without any execution side effect."""
+    """Append only when the store can enforce durable per-signal idempotency."""
     if snapshot.get("mode") != "SHADOW_RESEARCH_ONLY":
         raise ValueError("meta-layer snapshot must be shadow-only")
     safety = snapshot.get("safety") or {}
@@ -134,7 +125,15 @@ def append_t0_snapshot(store: Any, snapshot: dict[str, Any]) -> dict[str, Any]:
         "changes_arbitration", "orders_allowed", "exchange_mutation_allowed"
     )):
         raise ValueError("meta-layer safety contract violated")
-    return store.append("RADAR_META_T0_SNAPSHOT", snapshot)
+
+    key = str(snapshot.get("idempotency_key") or "")
+    if not key:
+        raise ValueError("meta-layer idempotency key missing")
+
+    append_once = getattr(store, "append_once", None)
+    if not callable(append_once):
+        raise RuntimeError("META_LAYER_PERSISTENCE_IDEMPOTENCY_UNSUPPORTED")
+    return append_once("RADAR_META_T0_SNAPSHOT", key, snapshot)
 
 
 __all__ = ["SCHEMA_VERSION", "build_t0_snapshot", "append_t0_snapshot"]
