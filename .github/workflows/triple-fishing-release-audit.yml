@@ -10,6 +10,9 @@ on:
       - crypto_edge_radar/radar/options_v21_live.py
       - crypto_edge_radar/tests/test_options_v21_live.py
       - .github/workflows/triple-fishing-release-audit.yml
+      - crypto_edge_radar/radar/meta_layer.py
+      - crypto_edge_radar/tests/test_meta_layer.py
+      - crypto_edge_radar/meta_layer/**
 permissions:
   contents: read
 jobs:
@@ -45,6 +48,12 @@ jobs:
           tests.test_dh03_operator_source_v03
           tests.test_mexc_triple_fishing_operator_v03
           tests.test_mexc_triple_fishing_ready_v03
+
+      - name: Run Radar Meta-Layer V1 isolation tests
+        working-directory: crypto_edge_radar
+        env:
+          PYTHONPATH: .
+        run: python -m pytest -q tests/test_meta_layer.py
       - uses: actions/upload-artifact@v4
         if: always()
         with:
