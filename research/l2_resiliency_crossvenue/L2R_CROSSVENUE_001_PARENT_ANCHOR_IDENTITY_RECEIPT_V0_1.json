@@ -1,0 +1,49 @@
+{
+  "schema_version": "0.1",
+  "lab_id": "L2R-CROSSVENUE-001",
+  "date": "2026-10-01",
+  "classification": "ANCHOR_ARTIFACT_IDENTITY_PASS_PARENT_EVENT_STATE_INSUFFICIENT",
+  "source": "operator-supplied historical ZIP",
+  "zip_name": "L2_RESILIENCY_001_SWEEP_EVENT_ANCHORS_V0_1.zip",
+  "zip_size_bytes": 200205120,
+  "zip_sha256": "b7565a330e635e84a64f68b252c1e31fa071832238984a23fab5210793dbaf27",
+  "inner_csv_name": "L2_RESILIENCY_001_SWEEP_EVENT_ANCHORS_V0_1.csv",
+  "inner_csv_size_bytes": 1140393913,
+  "inner_csv_sha256_expected": "be2c2d795a55ac3522fc6f3cdeb2d2c2ccf38bef8640a505934cbc76d9337eb3",
+  "inner_csv_sha256_observed": "be2c2d795a55ac3522fc6f3cdeb2d2c2ccf38bef8640a505934cbc76d9337eb3",
+  "sha256_match": true,
+  "csv_rows_excluding_header": 9181478,
+  "csv_columns": [
+    "segment_id",
+    "key",
+    "record_index_1based",
+    "event_envelope_ns",
+    "event_payload_ms",
+    "side",
+    "pre_best_price",
+    "post_best_price",
+    "transition_gap_ms"
+  ],
+  "expected_anchor_rows": 9181478,
+  "row_count_match": true,
+  "event_state_fields_present": {
+    "pre_sweep_same_side_top5_depth": false,
+    "r1_same_side_top5_depth": false,
+    "r5_same_side_top5_depth": false,
+    "r15_same_side_top5_depth": false,
+    "replenishment_ratio": false,
+    "weak_strong_label": false
+  },
+  "scientific_conclusion": "The historical anchor artifact is byte-authoritatively recovered and verified, but it cannot by itself reconstruct the frozen parent replenishment state required for the WEAK-vs-STRONG cross-venue contrast.",
+  "next_valid_requirement": "Recover an event-level parent state artifact sufficient to reproduce RR/WEAK-STRONG for R=1s/5s/15s, or replay the frozen parent rules from the exact 2024 Hyperliquid RAW corpus with manifest SHA256 59e16ce8ea41658c2ea0fc6f2489d4deafbdc676e008d0b93f95ee6e3864913d.",
+  "firewalls": {
+    "binance_price_values_opened": false,
+    "returns_computed": false,
+    "crossvenue_signed_response_computed": false,
+    "access_2025": false,
+    "access_2026": false,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "main_merge": false
+  }
+}
