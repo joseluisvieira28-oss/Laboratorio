@@ -32,5 +32,11 @@ jobs:
         run: python -m pip install -U pip pytest
       - name: Meta-layer deterministic tests
         run: python -m pytest -q tests/test_meta_layer.py
+      - name: Triple-fishing shadow wiring equivalence
+        working-directory: crypto_edge_radar
+        env:
+          PYTHONPATH: .
+        run: python -m pytest -q tests/test_mexc_triple_fishing_operator_v03.py
+
       - name: Parent dispatcher regression
         run: python -m pytest -q tests/test_global_fishing_dispatcher_v02.py
