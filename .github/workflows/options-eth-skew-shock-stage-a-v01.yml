@@ -1,0 +1,199 @@
+name: OPTIONS ETH Skew Shock Stage A V0.1
+
+on:
+  push:
+    branches:
+      - options-eth-skew-shock-v01-2026-10-02
+    paths:
+      - '.github/workflows/options-eth-skew-shock-stage-a-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify frozen science and firewalls
+        working-directory: crypto_edge_radar
+        run: |
+          python3 -m unittest tests.test_options_eth_skew_shock_v01
+          python3 - <<'PY'
+          import json
+          p="eth_skew_shock/OPTIONS_ETH_SKEW_SHOCK_001_PRE_OUTCOME_FREEZE_V0.1.json"
+          f=json.load(open(p,encoding="utf-8"))
+          assert f["status"]=="FROZEN_PRE_OUTCOME"
+          assert f["calendar_2024_for_promotion"] is False
+          assert f["protected_2025"]["locked_until_stage_a_pass"] is True
+          assert f["protected_2025"]["one_shot"] is True
+          assert f["live_trading_authorized"] is False
+          assert f["exchange_mutation_authorized"] is False
+          print("FREEZE_PREFLIGHT_PASS")
+          PY
+
+  source-shard:
+    needs: preflight
+    strategy:
+      fail-fast: false
+      max-parallel: 16
+      matrix:
+        include:
+          - month: '2021-01'
+          - month: '2021-02'
+          - month: '2021-03'
+          - month: '2021-04'
+          - month: '2021-05'
+          - month: '2021-06'
+          - month: '2021-07'
+          - month: '2021-08'
+          - month: '2021-09'
+          - month: '2021-10'
+          - month: '2021-11'
+          - month: '2021-12'
+          - month: '2022-01'
+          - month: '2022-02'
+          - month: '2022-03'
+          - month: '2022-04'
+          - month: '2022-05'
+          - month: '2022-06'
+          - month: '2022-07'
+          - month: '2022-08'
+          - month: '2022-09'
+          - month: '2022-10'
+          - month: '2022-11'
+          - month: '2022-12'
+          - month: '2023-01'
+          - month: '2023-02'
+          - month: '2023-03'
+          - month: '2023-04'
+          - month: '2023-05'
+          - month: '2023-06'
+          - month: '2023-07'
+          - month: '2023-08'
+          - month: '2023-09'
+          - month: '2023-10'
+          - month: '2023-11'
+          - month: '2023-12'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build frozen ETH daily-skew source shard
+        id: shard
+        working-directory: crypto_edge_radar
+        shell: bash
+        run: |
+          set +e
+          python3 eth_skew_shock/options_eth_skew_shock_source_shard_v01.py \
+            --month '${{ matrix.month }}' \
+            --out-dir eth_skew_shock_source
+          rc=$?
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Assert source/outcome firewall
+        if: always()
+        working-directory: crypto_edge_radar
+        env:
+          MONTH: '${{ matrix.month }}'
+        run: |
+          python3 - <<'PY'
+          import json,os
+          p=f"eth_skew_shock_source/eth_{os.environ['MONTH']}_source_receipt.json"
+          r=json.load(open(p,encoding="utf-8"))
+          assert r["skew_shock_computed"] is False
+          assert r["forward_returns_computed"] is False
+          assert r["pnl_computed"] is False
+          assert r["outcome_source_contacted"] is False
+          assert r["calendar_2024_accessed"] is False
+          assert r["year_2026_accessed"] is False
+          print("SOURCE_FIREWALL_PASS",r["month"],r["status"],"valid_skew_days",r["valid_daily_skew_days"])
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eth-skew-shock-stage-a-source-${{ matrix.month }}
+          retention-days: 90
+          if-no-files-found: error
+          path: crypto_edge_radar/eth_skew_shock_source/*
+
+      - name: Preserve source-shard classification
+        if: always()
+        shell: bash
+        run: |
+          rc='${{ steps.shard.outputs.rc }}'
+          if [ "$rc" = "0" ]; then exit 0; fi
+          if [ "$rc" = "12" ]; then echo SOURCE_BLOCKED_TRANSPORT; exit 12; fi
+          echo SOURCE_FAIL_DATA
+          exit 2
+
+  backvalidate:
+    if: always()
+    needs: source-shard
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download frozen source shards
+        uses: actions/download-artifact@v4
+        with:
+          pattern: eth-skew-shock-stage-a-source-*
+          path: stage_a_source
+          merge-multiple: true
+
+      - name: Execute frozen unseen 2021-2023 back-validation
+        id: evaluate
+        shell: bash
+        run: |
+          set +e
+          python3 crypto_edge_radar/eth_skew_shock/options_eth_skew_shock_stage_a_v01.py \
+            --source-root stage_a_source \
+            --repo-root "$GITHUB_WORKSPACE" \
+            --out-dir crypto_edge_radar/eth_skew_shock_stage_a_closeout
+          rc=$?
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Assert protected-period firewall
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import json
+          p="crypto_edge_radar/eth_skew_shock_stage_a_closeout/OPTIONS_ETH_SKEW_SHOCK_001_STAGE_A_CLOSEOUT_V0.1.json"
+          r=json.load(open(p,encoding="utf-8"))
+          assert r["holdout_2025_accessed"] is False
+          assert r["calendar_2024_outcome_accessed_by_this_runner"] is False
+          assert r["year_2026_accessed"] is False
+          assert r["live_trading_authorized"] is False
+          assert r["exchange_mutation_authorized"] is False
+          print("STAGE_A_FIREWALL_PASS",r["classification"])
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: options-ETH-skew-shock-stage-a-v01
+          retention-days: 90
+          if-no-files-found: error
+          path: crypto_edge_radar/eth_skew_shock_stage_a_closeout/*
+
+      - name: Terminal Stage-A classification
+        if: always()
+        shell: bash
+        run: |
+          rc='${{ steps.evaluate.outputs.rc }}'
+          if [ "$rc" = "0" ]; then
+            echo BACKVALIDATION_SURVIVES__2025_OOS_UNLOCKED
+            exit 0
+          fi
+          if [ "$rc" = "3" ]; then
+            echo BACKVALIDATION_REJECTED__2025_REMAINS_LOCKED
+            exit 3
+          fi
+          echo BACKVALIDATION_BLOCKED_SOURCE_PROVENANCE
+          exit 2
