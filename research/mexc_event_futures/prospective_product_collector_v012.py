@@ -57,6 +57,7 @@ async def main():
         "blocked_non_gets":[],
         "blocked_sensitive_gets":[],
         "detail_capture":None,
+        "detail_candidates":[],
         "schedule_responses":[],
         "rows":[],
         "page":{},
@@ -114,8 +115,28 @@ async def main():
                     rec["json"]=json.loads(b.decode("utf-8","replace"))
             except Exception as e:
                 rec["error"]=repr(e)
-            ev["detail_capture"]=rec
-            detail_event.set()
+
+            j=rec.get("json")
+            valid=(
+                rec.get("status")==200
+                and isinstance(j,dict)
+                and j.get("success") is True
+                and isinstance(j.get("data"),list)
+                and len(j.get("data"))>0
+            )
+            ev["detail_candidates"].append({
+                "received_at_utc":rec.get("received_at_utc"),
+                "url":rec.get("url"),
+                "status":rec.get("status"),
+                "content_type":rec.get("content_type"),
+                "bytes":rec.get("bytes"),
+                "sha256":rec.get("sha256"),
+                "valid":valid,
+                "error":rec.get("error"),
+            })
+            if valid:
+                ev["detail_capture"]=rec
+                detail_event.set()
 
         page.on("response",on_response)
 
