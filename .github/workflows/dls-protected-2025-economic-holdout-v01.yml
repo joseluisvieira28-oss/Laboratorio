@@ -18,39 +18,66 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.sha }}
+
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Resolve immutable protected source pin
+
+      - name: Resolve immutable protected-source pin
         id: source
         shell: bash
         run: |
-          run_id="$(grep '^SOURCE_RUN_ID=' labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_PROTECTED_2025_ECONOMIC_HOLDOUT_V01.marker | cut -d= -f2)"
-          artifact_name="$(grep '^SOURCE_ARTIFACT_NAME=' labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_PROTECTED_2025_ECONOMIC_HOLDOUT_V01.marker | cut -d= -f2-)"
-          test -n "$run_id"
-          test -n "$artifact_name"
+          marker="labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_PROTECTED_2025_ECONOMIC_HOLDOUT_V01.marker"
+          run_id="$(grep '^SOURCE_RUN_ID=' "$marker" | cut -d= -f2)"
+          artifact="$(grep '^SOURCE_ARTIFACT_NAME=' "$marker" | cut -d= -f2-)"
+          test -n "$run_id" && test -n "$artifact"
           echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
-          echo "artifact_name=$artifact_name" >> "$GITHUB_OUTPUT"
-      - name: Download canonical protected 2025 source authority
+          echo "artifact=$artifact" >> "$GITHUB_OUTPUT"
+
+      - name: Download immutable protected 2025 source authority
         uses: actions/download-artifact@v4
         with:
           github-token: ${{ github.token }}
           repository: ${{ github.repository }}
           run-id: ${{ steps.source.outputs.run_id }}
-          name: ${{ steps.source.outputs.artifact_name }}
+          name: ${{ steps.source.outputs.artifact }}
           path: protected_source
+
       - name: Fail closed before any market payload unless source authority PASS
+        shell: python
         run: |
-          python - <<'PY'
           import json
           from pathlib import Path
-          hits=list(Path("protected_source").rglob("PROTECTED_2025_SOURCE_AUTHORITY_RECEIPT_V0.1.json"))+list(Path("protected_source").rglob("PROTECTED_2025_SOURCE_AUTHORITY_RECEIPT_V0.2.json"))
-          assert len(hits)==1, hits
+          hits=(list(Path("protected_source").rglob("PROTECTED_2025_SOURCE_AUTHORITY_RECEIPT_V0.1.json"))
+                +list(Path("protected_source").rglob("PROTECTED_2025_SOURCE_AUTHORITY_RECEIPT_V0.2.json")))
+          assert len(hits)==1,hits
           r=json.loads(hits[0].read_text())
-          assert r["classification"]=="PROTECTED_2025_SOURCE_AUTHORITY_PASS", r["classification"]
-          PY
+          assert r["classification"]=="PROTECTED_2025_SOURCE_AUTHORITY_PASS",r["classification"]
+          f=r["firewall"]
+          assert f["prices_2025_opened"] is False
+          assert f["returns_2025_opened"] is False
+          assert f["pnl_2025_opened"] is False
+          assert f["prices_2026_opened"] is False
+          print("PASS: immutable protected-2025 source authority")
+
+      - name: Require frozen strategy / costs / direction locks
+        shell: python
+        run: |
+          import json
+          from pathlib import Path
+          assert Path("labs/DEFI_LIQUIDATION_SHOCK_001/STRATEGY_TRANSLATION_FREEZE_V0.1.md").is_file()
+          assert Path("labs/DEFI_LIQUIDATION_SHOCK_001/EXECUTION_COST_FREEZE_V0.1.md").is_file()
+          d=json.loads(Path("labs/DEFI_LIQUIDATION_SHOCK_001/DIRECTION_SOURCE_AUDIT_LOCK_V0.1.json").read_text())
+          o=json.loads(Path("labs/DEFI_LIQUIDATION_SHOCK_001/OOS_ADJUDICATION_LOCK_V0.1.json").read_text())
+          fee=json.loads(Path("labs/DEFI_LIQUIDATION_SHOCK_001/MEXC_API_FUTURES_FEE_AUTHORITY_RECEIPT_V0.1.json").read_text())
+          assert d["classification"]=="DIRECTION_SOURCE_ROLE_AUDIT_PASS"
+          assert o["classification"]=="SURVIVES_OOS"
+          assert fee["classification"]=="MEXC_API_FUTURES_FEE_AUTHORITY_PASS"
+          print("PASS: strategy/direction/cost authority frozen")
+
       - name: Compile frozen holdout runner
         run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/run_protected_2025_economic_holdout_v0_1.py
+
       - name: Execute 2025 protected economic holdout
         run: >
           python labs/DEFI_LIQUIDATION_SHOCK_001/source/run_protected_2025_economic_holdout_v0_1.py
@@ -58,6 +85,7 @@ jobs:
           --oos-lock labs/DEFI_LIQUIDATION_SHOCK_001/OOS_ADJUDICATION_LOCK_V0.1.json
           --direction-lock labs/DEFI_LIQUIDATION_SHOCK_001/DIRECTION_SOURCE_AUDIT_LOCK_V0.1.json
           --fee-authority labs/DEFI_LIQUIDATION_SHOCK_001/MEXC_API_FUTURES_FEE_AUTHORITY_RECEIPT_V0.1.json
+
       - name: Upload immutable holdout evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -69,6 +97,7 @@ jobs:
             labs/DEFI_LIQUIDATION_SHOCK_001/PROTECTED_2025_ECONOMIC_HOLDOUT_TRADES_V0.1.ndjson
           if-no-files-found: warn
           retention-days: 90
+
       - name: Firewall
         if: always()
         run: |
