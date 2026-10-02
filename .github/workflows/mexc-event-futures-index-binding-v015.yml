@@ -1,0 +1,50 @@
+name: MEXC Event Futures Index Binding V0.15
+
+on:
+  push:
+    branches:
+      - mexc-event-futures-index-binding-v0.15-2026-10-02
+    paths:
+      - 'research/mexc_event_futures/**'
+      - '.github/workflows/mexc-event-futures-index-binding-v015.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  index-binding:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install
+        run: python -m pip install --upgrade pip playwright
+      - name: Install Chromium
+        run: python -m playwright install --with-deps chromium
+      - name: Syntax check
+        run: python -m py_compile research/mexc_event_futures/index_binding_v015.py
+      - name: Capture Event Futures market-data bindings
+        run: python research/mexc_event_futures/index_binding_v015.py
+      - name: Verify boundary
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          j=json.load(open('artifacts/mexc_event_futures/index_binding_v015.json',encoding='utf-8'))
+          assert j['authenticated_requests']==0
+          assert j['orders']==0
+          assert j['account_mutations']==0
+          print('BOUNDARY=PASS')
+          print('VERDICT='+j['verdict'])
+          print('KEY_RESPONSES='+str(len(j['key_responses'])))
+          PY
+      - name: Upload evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: mexc-event-futures-index-binding-v015-evidence
+          path: artifacts/mexc_event_futures/index_binding_v015.json
+          if-no-files-found: error
