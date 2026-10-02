@@ -1,0 +1,36 @@
+name: MEXC Event Futures Horizon Selector Census V0.6.2.1
+
+on:
+  push:
+    branches:
+      - mexc-event-futures-selector-census-v0.6.2.1-2026-10-02
+    paths:
+      - 'research/mexc_event_futures/**'
+      - '.github/workflows/mexc-event-futures-selector-census-v0621.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  census:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install playwright
+          python -m playwright install --with-deps chromium
+      - name: Run selector census
+        run: python research/mexc_event_futures/horizon_selector_census_v0621.py
+      - name: Upload evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: mexc-event-futures-selector-census-v0621-evidence
+          path: artifacts/mexc_event_futures/horizon_selector_census_v0621.json
+          if-no-files-found: error
