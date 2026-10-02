@@ -1,0 +1,58 @@
+name: MEXC Event Futures Lab V0.1
+
+on:
+  push:
+    branches:
+      - mexc-event-futures-lab-v0.1-2026-10-02
+    paths:
+      - 'research/mexc_event_futures/**'
+      - '.github/workflows/mexc-event-futures-lab-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-and-proxy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout frozen branch
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip requests
+
+      - name: Source probe
+        run: python research/mexc_event_futures/source_probe_v01.py
+
+      - name: Frozen proxy backtest
+        run: python research/mexc_event_futures/proxy_backtest_v01.py
+
+      - name: Verify holdout boundary
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          p='artifacts/mexc_event_futures/proxy_backtest_v01.json'
+          j=json.load(open(p, encoding='utf-8'))
+          assert j['holdout_sep_2026']=='LOCKED_NOT_FETCHED'
+          assert j['exact_product_verdict']=='BLOCKED'
+          print('HOLDOUT_LOCK=PASS')
+          print('EXACT_PRODUCT_FAIL_CLOSED=PASS')
+          print('PROXY_VERDICT='+j['proxy_verdict'])
+          print('DISCOVERY_PASSERS='+str(len(j['discovery_passers'])))
+          print('OOS_SURVIVORS='+str(len(j['oos_survivors'])))
+          PY
+
+      - name: Upload evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: mexc-event-futures-lab-v01-evidence
+          path: artifacts/mexc_event_futures/
+          if-no-files-found: error
