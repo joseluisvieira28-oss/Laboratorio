@@ -49,7 +49,7 @@ async def get_horizon_group(page):
       for(const el of nodes){
         const s=getComputedStyle(el),r=el.getBoundingClientRect();
         if(s.display==='none'||s.visibility==='hidden'||r.width<=0||r.height<=0) continue;
-        const txt=(el.innerText||'').trim().split(/\n+/).map(x=>x.trim()).filter(Boolean);
+        const txt=(el.innerText||'').trim().split(/\\n+/).map(x=>x.trim()).filter(Boolean);
         const found=labels.every(x=>txt.includes(x));
         if(!found) continue;
         const extra=txt.filter(x=>/^\d+\s*[mMhHdD]$/.test(x));
@@ -80,7 +80,7 @@ async def click_horizon_in_group(page,label):
       const group=anchors[0].parentElement && anchors[0].parentElement.parentElement;
       if(!group) return {clicked:false,reason:'GROUP_GRANDPARENT_MISSING'};
 
-      const short=(group.innerText||'').trim().split(/\n+/).map(x=>x.trim()).filter(x=>/^\d+\s*[mMhHdD]$/.test(x));
+      const short=(group.innerText||'').trim().split(/\\n+/).map(x=>x.trim()).filter(x=>/^\d+\s*[mMhHdD]$/.test(x));
       const normalized=[...new Set(short)];
       const required=['10m','30m','1H','1D'];
       if(normalized.length!==4 || !required.every(x=>normalized.includes(x))){
@@ -171,7 +171,7 @@ async def inspect(browser,display,symbol):
 
 async def main():
     out={
-      "lab":"MEXC_EVENT_FUTURES_EXACT_PAYOUT_COLLECTOR_V0.6.3.2",
+      "lab":"MEXC_EVENT_FUTURES_EXACT_PAYOUT_COLLECTOR_V0.6.3.3",
       "run_started_at_utc":datetime.now(timezone.utc).isoformat(),
       "assets":[]
     }
