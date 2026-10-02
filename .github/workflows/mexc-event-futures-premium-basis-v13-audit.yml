@@ -1,0 +1,61 @@
+name: MEXC Event Futures Premium Basis V1.3 Audit
+
+on:
+  push:
+    branches:
+      - mexc-event-futures-premium-basis-v1.3-audit-2026-10-02
+    paths:
+      - 'research/mexc_event_futures/**'
+      - '.github/workflows/mexc-event-futures-premium-basis-v13-audit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  integrity-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install
+        run: python -m pip install --upgrade pip requests
+
+      - name: Syntax check
+        run: python -m py_compile research/mexc_event_futures/premium_basis_v13_audit.py
+
+      - name: Run frozen V1.3 audit
+        run: python research/mexc_event_futures/premium_basis_v13_audit.py
+
+      - name: Verify hard integrity boundary
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          p='artifacts/mexc_event_futures/premium_basis_v13_audit.json'
+          j=json.load(open(p, encoding='utf-8'))
+          assert j['october_outcomes_accessed'] is False
+          assert j['strategy_retuned'] is False
+          assert j['new_threshold_selected'] is False
+          assert j['exact_event_futures_settlement']=='NOT_PROVEN'
+          print('AUDIT_CLASSIFICATION='+j['audit_classification'])
+          print('OCTOBER_BOUNDARY=PASS')
+          print('PARENT_REPRO='+str(j['hard_integrity_gates']['exact_september_parent_reproduction']))
+          print('OVERLAP_GATE='+str(j['hard_integrity_gates']['no_same_cell_overlap_violations']))
+          print('FORWARD_GATE='+str(j['hard_integrity_gates']['no_feature_forward_violations']))
+          if j['audit_classification']!='INTEGRITY_PASS_ROBUSTNESS_REPORTED':
+              raise SystemExit('integrity audit failed closed')
+          PY
+
+      - name: Upload evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: mexc-event-futures-premium-basis-v13-audit
+          path: |
+            artifacts/mexc_event_futures/premium_basis_v13_audit.json
+            artifacts/mexc_event_futures/premium_basis_v13_signal_ledger.jsonl
+          if-no-files-found: error
