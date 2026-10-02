@@ -1,0 +1,92 @@
+name: MEXC Event Futures ETF-CME Signal Transfer V0.9
+
+on:
+  push:
+    branches:
+      - mexc-event-futures-etf-cme-transfer-v0.9-2026-10-02
+    paths:
+      - 'research/mexc_event_futures/**'
+      - '.github/workflows/mexc-event-futures-etf-cme-transfer-v09.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  etf-cme-transfer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install
+        run: python -m pip install --upgrade pip requests scipy
+
+      - name: Download immutable ETF-CME Discovery artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: etf-cme-instflow-001-discovery-34814321802-1
+          path: parent_discovery
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: 34814321802
+          github-token: ${{ github.token }}
+
+      - name: Download immutable ETF-CME 2025 OOS artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: etf-cme-instflow-001-oos-2025-34815006815-1
+          path: parent_oos
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: 34815006815
+          github-token: ${{ github.token }}
+
+      - name: Verify immutable parent ledgers
+        shell: bash
+        run: |
+          test -f parent_discovery/discovery_ledger.csv
+          test -f parent_oos/oos_2025_observations.csv
+          DISC_ROWS=$(( $(wc -l < parent_discovery/discovery_ledger.csv) - 1 ))
+          OOS_ROWS=$(( $(wc -l < parent_oos/oos_2025_observations.csv) - 1 ))
+          test "$DISC_ROWS" -eq 348
+          test "$OOS_ROWS" -eq 50
+          echo "DISCOVERY_ROWS=$DISC_ROWS"
+          echo "OOS_ROWS=$OOS_ROWS"
+
+      - name: Syntax check
+        run: python -m py_compile research/mexc_event_futures/etf_cme_signal_transfer_v09.py
+
+      - name: Run frozen V0.9 ETF-CME transfer
+        run: |
+          python research/mexc_event_futures/etf_cme_signal_transfer_v09.py             --discovery-artifact parent_discovery             --oos-artifact parent_oos             --output artifacts/mexc_event_futures
+
+      - name: Verify boundaries
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          p='artifacts/mexc_event_futures/etf_cme_signal_transfer_v09.json'
+          j=json.load(open(p,encoding='utf-8'))
+          assert j['year_2026_accessed'] is False
+          assert j['exact_event_futures']=='NOT_PROVEN'
+          assert j['promotion_status']=='NO_EXACT_EVENT_FUTURES_PROMOTION'
+          assert j['parent_discovery_rows']==348
+          assert j['parent_oos_rows']==50
+          print('NO_2026_ACCESS=PASS')
+          print('EXACT_PRODUCT_FAIL_CLOSED=PASS')
+          print('VERDICT='+j['verdict'])
+          print('PRICE_POINTS='+str(j['resolved_price_points'])+'/'+str(j['needed_price_points']))
+          print('BH_SELECTED='+str(len(j['bh_selected'])))
+          print('OOS_SURVIVORS='+str(len(j['oos_survivors'])))
+          PY
+
+      - name: Upload evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: mexc-event-futures-etf-cme-transfer-v09-evidence
+          path: artifacts/mexc_event_futures/etf_cme_signal_transfer_v09.json
+          if-no-files-found: error
