@@ -1,0 +1,54 @@
+name: MEXC Event Futures Config Resolution V0.11.4
+
+on:
+  push:
+    branches:
+      - mexc-event-futures-browser-source-v0.11.4-config-resolution-2026-10-02
+    paths:
+      - 'research/mexc_event_futures/**'
+      - '.github/workflows/mexc-event-futures-config-resolution-v0114.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  config-resolution:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Python deps
+        run: python -m pip install --upgrade pip playwright
+      - name: Install Chromium
+        run: python -m playwright install --with-deps chromium
+      - name: Syntax check
+        run: python -m py_compile research/mexc_event_futures/config_resolution_v0114.py
+      - name: Run config resolution
+        run: python research/mexc_event_futures/config_resolution_v0114.py
+      - name: Verify safety boundary
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          p='artifacts/mexc_event_futures/config_resolution_v0114.json'
+          j=json.load(open(p,encoding='utf-8'))
+          assert j['authenticated_requests']==0
+          assert j['orders']==0
+          assert j['account_mutations']==0
+          print('NO_AUTH=PASS')
+          print('NO_ORDERS=PASS')
+          print('NO_MUTATION=PASS')
+          print('MODULES='+str(len(j['module_853411_snippets'])))
+          print('NEW_SWAP_OCCURRENCES='+str(len(j['new_swap_api_occurrences'])))
+          print('URL_LITERALS='+str(len(j['url_literals'])))
+          PY
+      - name: Upload evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: mexc-event-futures-config-resolution-v0114-evidence
+          path: artifacts/mexc_event_futures/config_resolution_v0114.json
+          if-no-files-found: error
