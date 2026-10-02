@@ -1,0 +1,101 @@
+name: BUILD TRIPLE FISHING MULTI-SLOT V0.4 READINESS WINDOWS
+
+on:
+  push:
+    branches:
+      - triple-fishing-multislot-v04-2026-10-02
+    paths:
+      - 'crypto_edge_radar/scripts/mexc_triple_fishing_multislot_ready_v04.py'
+      - 'crypto_edge_radar/radar/multi_slot_reservation_v04.py'
+      - 'crypto_edge_radar/radar/global_fishing_dispatcher_v04.py'
+      - 'crypto_edge_radar/radar/multislot_shadow_capacity_v04.py'
+      - 'crypto_edge_radar/radar/multislot_shadow_lifecycle_v04.py'
+      - 'crypto_edge_radar/tests/test_multislot_v04.py'
+      - 'crypto_edge_radar/tests/test_mexc_triple_fishing_multislot_ready_v04.py'
+      - 'crypto_edge_radar/execution/TRIPLE_FISHING_MULTI_SLOT_SMALL_AGGRESSIVE_V04.json'
+      - 'crypto_edge_radar/execution/TRIPLE_FISHING_V04_PUBLIC_MEXC_FEASIBILITY_2026-10-02.json'
+      - '.github/workflows/build-triple-fishing-multislot-v04-readiness-windows.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-build:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: crypto_edge_radar
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install package and PyInstaller
+        run: |
+          python -m pip install -e .
+          python -m pip install "pyinstaller>=6,<7"
+
+      - name: Compile and test three-slot shadow/readiness code
+        env:
+          PYTHONPATH: .
+        run: |
+          python -m py_compile radar/multi_slot_reservation_v04.py radar/global_fishing_dispatcher_v04.py radar/multislot_shadow_capacity_v04.py radar/multislot_shadow_lifecycle_v04.py scripts/mexc_triple_fishing_multislot_ready_v04.py
+          python -m unittest tests.test_multislot_v04 tests.test_mexc_triple_fishing_multislot_ready_v04 -v
+
+      - name: Build read-only readiness EXE
+        run: |
+          pyinstaller --clean --onefile --name MEXCTripleFishingMultiSlotReadyV04 --paths . scripts/mexc_triple_fishing_multislot_ready_v04.py
+
+      - name: Smoke readiness executable without credentials
+        shell: pwsh
+        run: |
+          & .\dist\MEXCTripleFishingMultiSlotReadyV04.exe --help | Out-Null
+          if ($LASTEXITCODE -ne 0) { throw "V0.4 readiness --help failed" }
+
+      - name: Stage readiness-only Windows bundle
+        shell: pwsh
+        run: |
+          $bundle = "dist\triple_fishing_multislot_v04_readiness"
+          New-Item -ItemType Directory -Force -Path $bundle | Out-Null
+
+          Copy-Item "dist\MEXCTripleFishingMultiSlotReadyV04.exe" $bundle
+          Copy-Item "execution\TRIPLE_FISHING_MULTI_SLOT_SMALL_AGGRESSIVE_V04.json" $bundle
+          Copy-Item "execution\TRIPLE_FISHING_V04_PUBLIC_MEXC_FEASIBILITY_2026-10-02.json" $bundle
+          Copy-Item "governance\TRIPLE_FISHING_MULTI_SLOT_V04_PRELIVE_FREEZE.md" $bundle
+
+          $info = [ordered]@{
+            build = "TRIPLE_FISHING_MULTI_SLOT_V0.4_READINESS_ONLY"
+            branch = "${{ github.ref_name }}"
+            source_sha = "${{ github.sha }}"
+            built_at_utc = (Get-Date).ToUniversalTime().ToString("o")
+            max_simultaneous_positions_target = 3
+            readiness_only = $true
+            executor_included = $false
+            live_authority_included = $false
+            armed_by_build = $false
+            exchange_contacted_by_build = $false
+            order_created_by_build = $false
+          }
+          $info | ConvertTo-Json -Depth 4 | Set-Content -Path (Join-Path $bundle "BUILD_INFO.json") -Encoding UTF8
+
+          $hashFile = Join-Path $bundle "SHA256SUMS.txt"
+          Get-ChildItem $bundle -File |
+            Where-Object { $_.Name -ne "SHA256SUMS.txt" } |
+            Sort-Object Name |
+            ForEach-Object {
+              $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower()
+              "$($_.Name)  $hash" | Out-File -FilePath $hashFile -Encoding ascii -Append
+            }
+          Get-Content $hashFile
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mexc-triple-fishing-multislot-v04-readiness-windows
+          path: crypto_edge_radar/dist/triple_fishing_multislot_v04_readiness/*
+          if-no-files-found: error
+          retention-days: 14
