@@ -16,7 +16,7 @@ SENSITIVE_URL_TERMS=[
 ]
 STATIC_TERMS=[
     "event_contract","EventContractPositionChange","payout","profitRate","profit_rate",
-    "winRate","upPayout","downPayout","cycleAmount","timeUnit","priceLimit",
+    "winRate","upPayout","downPayout","upPayRate","downPayRate","cycleConfigMap","cycleAmount","timeUnit","priceLimit",
     "minAmount","maxAmount","settle","settlement","indexPrice","index_price"
 ]
 MAX_BODY=2*1024*1024
@@ -84,7 +84,7 @@ def contains_payout_signal(obj):
         low=json.dumps(obj,ensure_ascii=False).lower()
     except Exception:
         low=str(obj).lower()
-    keys=["payout","profitrate","profit_rate","uppayout","downpayout","winrate","rewardrate","yieldrate"]
+    keys=["payout","profitrate","profit_rate","uppayout","downpayout","uppayrate","downpayrate","winrate","rewardrate","yieldrate"]
     return any(k in low for k in keys)
 
 def contains_product_signal(obj):
@@ -93,7 +93,7 @@ def contains_product_signal(obj):
     except Exception:
         low=str(obj).lower()
     return "event_contract" in low or any(k in low for k in [
-        "cycleamount","timeunit","pricelimit","minamount","maxamount","settlement","indexprice"
+        "cycleconfigmap","cycleamount","timeunit","pricelimit","minamount","maxamount","settlement","indexprice"
     ])
 
 async def main():
@@ -271,7 +271,7 @@ async def main():
         for r in ev["public_fetches"]
     )
     static_mapping=any(
-        x.get("term") in ["payout","profitRate","profit_rate","upPayout","downPayout","cycleAmount","timeUnit","priceLimit","EventContractPositionChange"]
+        x.get("term") in ["payout","profitRate","profit_rate","upPayout","downPayout","upPayRate","downPayRate","cycleConfigMap","cycleAmount","timeUnit","priceLimit","EventContractPositionChange"]
         for x in ev["static_snippets"]
     )
     event_blocked=any(r.get("status") in (401,403,429) for r in ev["event_responses"]+ev["public_fetches"])
