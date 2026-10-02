@@ -1,0 +1,93 @@
+name: MEXC Event Futures Options Signal Transfer V0.8B Binance
+
+on:
+  push:
+    branches:
+      - mexc-event-futures-options-transfer-v0.8b-binance-proxy-2026-10-02
+    paths:
+      - 'research/mexc_event_futures/**'
+      - '.github/workflows/mexc-event-futures-options-signal-transfer-v08b-binance.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  signal-transfer-binance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install
+        run: python -m pip install --upgrade pip requests scipy
+
+      - name: Download immutable parent Discovery artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: options-spotperp-001-discovery-v01-34858777691-1
+          path: parent_discovery
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: 34858777691
+          github-token: ${{ github.token }}
+
+      - name: Download immutable parent 2025 OOS artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: options-spotperp-001-v21-oos-2025-35231711508-1
+          path: parent_oos
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: 35231711508
+          github-token: ${{ github.token }}
+
+      - name: Verify immutable parent ledgers
+        shell: bash
+        run: |
+          test -f parent_discovery/OPTIONS_SPOTPERP_001_DISCOVERY_LEDGER_V01.csv
+          test -f parent_oos/v21_oos_output_2025/OPTIONS_SPOTPERP_001_V21_2025_OOS_LEDGER_V01.csv
+          DISC_ROWS=$(( $(wc -l < parent_discovery/OPTIONS_SPOTPERP_001_DISCOVERY_LEDGER_V01.csv) - 1 ))
+          OOS_ROWS=$(( $(wc -l < parent_oos/v21_oos_output_2025/OPTIONS_SPOTPERP_001_V21_2025_OOS_LEDGER_V01.csv) - 1 ))
+          test "$DISC_ROWS" -eq 1210
+          test "$OOS_ROWS" -eq 363
+          echo "DISCOVERY_ROWS=$DISC_ROWS"
+          echo "OOS_ROWS=$OOS_ROWS"
+
+      - name: Syntax check
+        run: python -m py_compile research/mexc_event_futures/options_signal_transfer_v08b_binance.py
+
+      - name: Run frozen V0.8B Binance cross-source proxy
+        run: |
+          python research/mexc_event_futures/options_signal_transfer_v08b_binance.py             --discovery-artifact parent_discovery             --oos-artifact parent_oos             --output artifacts/mexc_event_futures
+
+      - name: Verify scientific boundaries
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          p='artifacts/mexc_event_futures/options_signal_transfer_v08b_binance.json'
+          j=json.load(open(p,encoding='utf-8'))
+          assert j['year_2026_accessed'] is False
+          assert j['exact_event_futures']=='NOT_PROVEN'
+          assert j['promotion_status']=='NO_EXACT_EVENT_FUTURES_PROMOTION'
+          assert j['parent_discovery_rows']==1210
+          assert j['parent_oos_rows']==363
+          print('NO_2026_ACCESS=PASS')
+          print('EXACT_PRODUCT_FAIL_CLOSED=PASS')
+          print('VERDICT='+j['verdict'])
+          print('PRICE_POINTS='+str(j['resolved_price_points'])+'/'+str(j['needed_price_points']))
+          print('BH_SELECTED='+str(len(j['bh_selected'])))
+          print('OOS_SURVIVORS='+str(len(j['oos_survivors'])))
+          PY
+
+      - name: Upload evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: mexc-event-futures-options-signal-transfer-v08b-binance-evidence
+          path: artifacts/mexc_event_futures/options_signal_transfer_v08b_binance.json
+          if-no-files-found: error
