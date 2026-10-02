@@ -62,8 +62,8 @@ def sig(candidate, key, target):
 
 
 class TripleFishingOperatorTests(unittest.TestCase):
-    def build(self, td, *, active=False):
-        now=datetime.now(timezone.utc)-timedelta(milliseconds=100)
+    def build(self, td, *, active=False, signal_time=None):
+        now=signal_time or (datetime.now(timezone.utc)-timedelta(milliseconds=100))
         b=FakeSource({"status":"OK","signals":[sig(BNB,"b",now)]})
         o=FakeSource({"status":"SIGNAL_AVAILABLE","signal":sig(OPTIONS,"o",now)})
         d=FakeSource({"status":"COLLECTING","signals":[sig(DH03,"d",now)]})
@@ -102,5 +102,102 @@ class TripleFishingOperatorTests(unittest.TestCase):
             self.assertEqual(out["status"],"MANAGING_GLOBAL_SLOT_WITH_THREE_SOURCES_WATCHING")
 
 
+    def test_meta_observer_on_off_preserves_operational_decision(self):
+        class Observer:
+            def __init__(self):
+                self.seen=[]
+            def observe(self, **kwargs):
+                self.seen.append(kwargs)
+                return {"status":"RECORDED"}
+
+        with tempfile.TemporaryDirectory() as td_off, tempfile.TemporaryDirectory() as td_on:
+            frozen_time=datetime.now(timezone.utc)-timedelta(milliseconds=100)
+            off,engine_off,b_off,o_off,d_off=self.build(td_off,signal_time=frozen_time)
+            on,engine_on,b_on,o_on,d_on=self.build(td_on,signal_time=frozen_time)
+            observer=Observer()
+            on.meta_observer=observer
+
+            out_off=off.run_cycle()
+            out_on=on.run_cycle()
+
+            self.assertEqual(engine_off.entered,engine_on.entered)
+            self.assertEqual(b_off.marks,b_on.marks)
+            self.assertEqual(o_off.marks,o_on.marks)
+            self.assertEqual(d_off.marks,d_on.marks)
+            self.assertEqual(out_off["status"],out_on["status"])
+            self.assertEqual(out_off.get("arbitration"),out_on.get("arbitration"))
+            self.assertEqual(out_off.get("entry_result"),out_on.get("entry_result"))
+            self.assertEqual(len(observer.seen),3)
+
+    def test_meta_observer_failure_cannot_block_or_change_parent(self):
+        class BrokenObserver:
+            def observe(self, **kwargs):
+                raise RuntimeError("synthetic recorder failure")
+
+        with tempfile.TemporaryDirectory() as td:
+            sup,engine,b,o,d=self.build(td)
+            sup.meta_observer=BrokenObserver()
+            out=sup.run_cycle()
+
+            self.assertEqual(len(engine.entered),1)
+            self.assertEqual(engine.entered[0]["candidate_id"],BNB)
+            self.assertEqual(out["status"],"FILLED_EXIT_PENDING")
+            self.assertEqual(len(sup.meta_state),3)
+            self.assertTrue(all(
+                row["status"]=="RECORDER_FAIL_CLOSED_PARENT_UNCHANGED"
+                for row in sup.meta_state.values()
+            ))
+
+
 if __name__=="__main__":
     unittest.main()
+
+
+def test_meta_flag_defaults_off_in_cli():
+    import sys
+    from unittest.mock import patch
+    import scripts.mexc_triple_fishing_operator_v03 as module
+
+    required=[
+        "--receipt-root","r","--armed-path","a","--kill-switch","k","--status-path","s",
+        "--global-slot-path","g","--supervisor-state","ss","--bnb-state","b",
+        "--options-db","o","--options-state","os","--dh03-market-db","dm",
+        "--dh03-evidence-db","de","--dh03-state","ds",
+    ]
+    with patch.object(sys,"argv",["prog",*required]), \
+         patch.object(module.MEXCCredentials,"from_env",side_effect=RuntimeError("STOP_AFTER_PARSE")):
+        try:
+            module.main()
+        except RuntimeError as exc:
+            assert str(exc)=="STOP_AFTER_PARSE"
+
+
+def test_meta_flag_is_accepted_only_when_explicitly_supplied():
+    import sys
+    from unittest.mock import patch
+    import scripts.mexc_triple_fishing_operator_v03 as module
+
+    required=[
+        "--receipt-root","r","--armed-path","a","--kill-switch","k","--status-path","s",
+        "--global-slot-path","g","--supervisor-state","ss","--bnb-state","b",
+        "--options-db","o","--options-state","os","--dh03-market-db","dm",
+        "--dh03-evidence-db","de","--dh03-state","ds","--meta-t0-evidence-db","meta.db",
+    ]
+    with patch.object(sys,"argv",["prog",*required]), \
+         patch.object(module.MEXCCredentials,"from_env",side_effect=RuntimeError("STOP_AFTER_PARSE")):
+        try:
+            module.main()
+        except RuntimeError as exc:
+            assert str(exc)=="STOP_AFTER_PARSE"
+
+
+def test_meta_observer_factory_is_default_off_and_explicit_on():
+    import scripts.mexc_triple_fishing_operator_v03 as module
+    from radar.meta_sidecar import MetaT0Observer
+
+    assert module.build_meta_observer(None) is None
+    assert module.build_meta_observer("") is None
+    with tempfile.TemporaryDirectory() as td:
+        observer=module.build_meta_observer(str(Path(td)/"meta.db"))
+        assert isinstance(observer,MetaT0Observer)
+        assert observer.store.backend=="sqlite"

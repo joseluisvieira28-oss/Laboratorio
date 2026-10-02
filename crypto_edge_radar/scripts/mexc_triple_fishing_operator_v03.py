@@ -13,6 +13,8 @@ from radar.global_fishing_dispatcher_v02 import arbitrate_due_signals
 from radar.mexc_auth_readonly import MEXCCredentials
 from radar.operator_futures_engine_v02 import OperatorFuturesEngineV02
 from radar.options_v21_operator_source_v03 import OptionsV21OperatorSourceV03
+from radar.evidence import EvidenceStore
+from radar.meta_sidecar import MetaT0Observer
 
 
 BNB = "BNB-LAUNCHPOOL-DEMAND-001"
@@ -61,6 +63,7 @@ class TripleFishingOperatorV03:
         options_source: OptionsV21OperatorSourceV03,
         dh03_source: DH03OperatorSourceV03,
         state_path: str,
+        meta_observer: Any | None = None,
     ) -> None:
         self.engine=engine
         self.sources={
@@ -69,6 +72,8 @@ class TripleFishingOperatorV03:
             DH03:dh03_source,
         }
         self.state_path=Path(state_path)
+        self.meta_observer=meta_observer
+        self.meta_state:dict[str,dict[str,Any]]={}
         self.pending:dict[str,dict[str,Any]]={}
         self.source_state:dict[str,dict[str,Any]]={}
         now=time.monotonic()
@@ -105,6 +110,7 @@ class TripleFishingOperatorV03:
             ],
             "source_state":self.source_state,
             "engine":self.last_engine,
+            "meta_layer":{"enabled":self.meta_observer is not None,"state":self.meta_state},
             **extra,
         }
         _atomic_write(self.state_path,payload)
@@ -127,6 +133,28 @@ class TripleFishingOperatorV03:
             if str(signal.get("candidate_id") or "")!=candidate_id:
                 continue
             self.pending[self._pending_key(signal)]=signal
+
+    def _observe_meta(self, signals:list[dict[str,Any]], captured_at:datetime)->None:
+        if self.meta_observer is None:
+            return
+        captured=captured_at.astimezone(timezone.utc).isoformat().replace("+00:00","Z")
+        frozen=[dict(s) for s in signals]
+        for signal in frozen:
+            candidate=str(signal.get("candidate_id") or "")
+            key=str(signal.get("immutable_signal_key") or "")
+            identity=f"{candidate}|{key}"
+            try:
+                result=self.meta_observer.observe(
+                    signal=dict(signal),
+                    captured_at_utc=captured,
+                    simultaneous_signals=[dict(s) for s in frozen],
+                )
+                self.meta_state[identity]=result if isinstance(result,dict) else {"status":"RECORDED"}
+            except Exception as exc:
+                self.meta_state[identity]={
+                    "status":"RECORDER_FAIL_CLOSED_PARENT_UNCHANGED",
+                    "error":f"{type(exc).__name__}:{exc}",
+                }
 
     def _poll_sources(self)->None:
         now_mono=time.monotonic()
@@ -182,6 +210,7 @@ class TripleFishingOperatorV03:
 
         now=datetime.now(timezone.utc)
         signals=list(self.pending.values())
+        self._observe_meta(signals,now)
         probe=arbitrate_due_signals(
             signals,
             now=now,
@@ -273,6 +302,13 @@ class TripleFishingOperatorV03:
             time.sleep(max(0.02,MAIN_LOOP_FLOOR_SECONDS-elapsed))
 
 
+def build_meta_observer(meta_t0_evidence_db:str|None)->MetaT0Observer|None:
+    """Explicit default-off factory for the observational recorder."""
+    if not meta_t0_evidence_db:
+        return None
+    return MetaT0Observer(EvidenceStore(meta_t0_evidence_db))
+
+
 def main()->int:
     ap=argparse.ArgumentParser(
         description="Single-owner BNB + OPTIONS + DH03 MEXC operator supervisor."
@@ -289,6 +325,7 @@ def main()->int:
     ap.add_argument("--dh03-market-db",required=True)
     ap.add_argument("--dh03-evidence-db",required=True)
     ap.add_argument("--dh03-state",required=True)
+    ap.add_argument("--meta-t0-evidence-db",default=None,help="Enable observational Meta-Layer T0 recording to this SQLite evidence DB. Default OFF.")
     args=ap.parse_args()
 
     credentials=MEXCCredentials.from_env()
@@ -300,6 +337,8 @@ def main()->int:
         status_path=args.status_path,
         global_slot_path=args.global_slot_path,
     )
+    meta_observer=build_meta_observer(args.meta_t0_evidence_db)
+
     supervisor=TripleFishingOperatorV03(
         engine=engine,
         bnb_source=BNBOperatorSourceV03(state_path=args.bnb_state),
@@ -313,6 +352,7 @@ def main()->int:
             state_path=args.dh03_state,
         ),
         state_path=args.supervisor_state,
+        meta_observer=meta_observer,
     )
     supervisor.run_forever()
     return 0

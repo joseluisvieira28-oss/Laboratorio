@@ -58,3 +58,14 @@ Original receipts are not rewritten. An invalid or ambiguous overlay fails close
 ## Safety
 
 Never stop or replace a supervisor that may still own an open position until the account and local reconciliation prove that the position is closed. Never delete a global-slot reservation merely to make readiness pass. Unknown order acknowledgement, missing protection, receipt corruption, stale source heartbeat or accounting ambiguity remain fail-closed.
+
+
+## Meta-Layer V1 shadow recorder
+
+The Meta T0 recorder is observational and **OFF by default**. Normal installation and scheduled-task startup do not enable it.
+
+For a controlled shadow session, the Windows runner accepts `-EnableMetaT0Shadow`. This only adds the local evidence path `data\radar_meta_t0_v1.sqlite3` to the supervisor. The recorder has no credentials, engine, slot, sizing, arbitration, order or exchange-mutation authority.
+
+A recorder exception is contained and reported as `RECORDER_FAIL_CLOSED_PARENT_UNCHANGED`; it must not block, create or modify the parent operational decision. T0 evidence is append-once and retry/restart idempotent.
+
+Enabling this recorder is not a scientific promotion and does not claim Meta-Layer edge. It starts prospective evidence collection only.

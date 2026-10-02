@@ -1,0 +1,48 @@
+name: Radar Meta-Layer V1 Validation
+
+on:
+  pull_request:
+    branches:
+      - triple-fishing-operator-v0.3-2026-09-30
+    paths:
+      - "crypto_edge_radar/radar/meta_layer.py"
+      - "crypto_edge_radar/tests/test_meta_layer.py"
+      - "crypto_edge_radar/meta_layer/**"
+      - ".github/workflows/radar-meta-layer-v01-validation.yml"
+  push:
+    branches:
+      - radar-meta-layer-v01-2026-10-01
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: crypto_edge_radar
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install test dependencies
+        run: python -m pip install -U pip pytest
+      - name: Meta-layer deterministic tests
+        run: python -m pytest -q tests/test_meta_layer.py
+      - name: Sidecar restart persistence
+        working-directory: crypto_edge_radar
+        env:
+          PYTHONPATH: .
+        run: python -m pytest -q tests/test_meta_sidecar.py
+
+      - name: Triple-fishing shadow wiring equivalence
+        working-directory: crypto_edge_radar
+        env:
+          PYTHONPATH: .
+        run: python -m pytest -q tests/test_mexc_triple_fishing_operator_v03.py
+
+      - name: Parent dispatcher regression
+        run: python -m pytest -q tests/test_global_fishing_dispatcher_v02.py
