@@ -1,0 +1,35 @@
+name: MEXC Event Futures V0.13 Prereg Engine Self-Test
+
+on:
+  push:
+    branches:
+      - mexc-event-futures-event-conditioned-v0.13-prereg-2026-10-03
+    paths:
+      - 'research/mexc_event_futures/**'
+      - '.github/workflows/mexc-event-futures-v013-prereg-selftest.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  frozen-engine-selftest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Syntax check
+        run: python -m py_compile research/mexc_event_futures/shadow_event_evaluator_v013.py
+      - name: Run deterministic synthetic mechanics self-test
+        run: python research/mexc_event_futures/shadow_event_evaluator_v013.py --self-test | tee v013_selftest.txt
+      - name: Assert non-evidence label and PASS
+        shell: bash
+        run: |
+          grep -q 'ENGINE_SELF_TEST_PASS' v013_selftest.txt
+          grep -q 'SYNTHETIC_FIXTURE_NOT_RESEARCH_EVIDENCE' v013_selftest.txt
+          echo 'V013_ENGINE_MECHANICS=PASS'
+          echo 'RESEARCH_OUTCOMES_OPENED=0'
+          echo 'ACTIVE_FAMILIES=0'
