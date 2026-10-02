@@ -23,6 +23,9 @@ COUNT = 1000
 MAX_RETRIES = 5
 MIN_WINDOW_MS = 1000
 
+ROUTE_CURRENCY = {"ETH": "ETH", "SOL": "USDC", "XRP": "USDC"}
+TARGET_PREFIX = {"ETH": "ETH-", "SOL": "SOL_USDC-", "XRP": "XRP_USDC-"}
+
 WINDOWS = {
     "ETH": (
         dt.datetime(2024, 1, 1, tzinfo=UTC),
@@ -82,7 +85,7 @@ def build_url(asset: str, start_ms: int, end_ms: int) -> str:
         raise RuntimeError("2025+ request blocked")
     q = urllib.parse.urlencode(
         {
-            "currency": asset,
+            "currency": ROUTE_CURRENCY[asset],
             "kind": "option",
             "include_old": "true",
             "start_timestamp": start_ms,
@@ -190,6 +193,15 @@ def run(asset: str, out_dir: Path) -> tuple[dict[str, Any], int]:
         for a, b in day_windows(start, end):
             rows = fetch_complete(asset=asset, start_ms=a, end_ms=b, manifest=manifest)
             for row in rows:
+                totals["source_rows"] += 1
+                name = str(row.get("instrument_name") or "")
+                if not name:
+                    totals["unroutable_source_rows"] += 1
+                    continue
+                if not name.startswith(TARGET_PREFIX[asset]):
+                    totals["non_target_rows_filtered"] += 1
+                    continue
+
                 totals["rows"] += 1
                 trade_id = str(row.get("trade_id") or "")
                 if not trade_id:
@@ -208,10 +220,6 @@ def run(asset: str, out_dir: Path) -> tuple[dict[str, Any], int]:
                     totals["timestamp_violations"] += 1
                     continue
 
-                name = str(row.get("instrument_name") or "")
-                if not name:
-                    totals["missing_structural"] += 1
-                    continue
                 try:
                     parse_instrument(asset, name)
                 except Exception:
@@ -273,6 +281,11 @@ def run(asset: str, out_dir: Path) -> tuple[dict[str, Any], int]:
         "first_observed_trade_utc": None if first_ts is None else dt.datetime.fromtimestamp(first_ts / 1000, tz=UTC).isoformat(),
         "last_observed_trade_utc": None if last_ts is None else dt.datetime.fromtimestamp(last_ts / 1000, tz=UTC).isoformat(),
         "first_full_listed_month": first_full,
+        "source_rows": totals["source_rows"],
+        "non_target_rows_filtered": totals["non_target_rows_filtered"],
+        "unroutable_source_rows": totals["unroutable_source_rows"],
+        "request_currency": ROUTE_CURRENCY[asset],
+        "target_instrument_prefix": TARGET_PREFIX[asset],
         "rows": totals["rows"],
         "unique_trade_ids": len(seen),
         "duplicate_trade_ids": totals["duplicates"],
@@ -332,6 +345,10 @@ def main() -> int:
         "empty_required_months": report["empty_required_months"],
         "invalid_iv_rows": report["invalid_iv_rows"],
         "invalid_index_price_rows": report["invalid_index_price_rows"],
+        "source_error": report["source_error"],
+        "transport_error": report["transport_error"],
+        "request_currency": report["request_currency"],
+        "non_target_rows_filtered": report["non_target_rows_filtered"],
     }, indent=2))
     return rc
 
