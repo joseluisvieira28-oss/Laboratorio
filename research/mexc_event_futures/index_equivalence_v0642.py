@@ -57,10 +57,9 @@ async def dom_index_close(page):
         text=x.get("grandparent_text","")
         # strip directional/invisible marks; parse the current candle Close field
         clean=text.replace("\u200e","").replace("\u200f","")
-        m=re.search(r'Close:\s*([^\n]+)',clean,re.I)
+        m=re.search(r'Close:\s*([+-]?[0-9][0-9,]*(?:\.[0-9]+)?)',clean,re.I)
         if not m: continue
-        raw=m.group(1).strip()
-        raw=re.sub(r'[^0-9.,\-]','',raw).replace(',','')
+        raw=m.group(1).replace(',','')
         try:
             val=float(raw)
         except Exception:
