@@ -55,71 +55,18 @@ class RPC:
             time.sleep(min(30,2**n))
         raise RuntimeError("rpc_transport_exhausted:"+str(last))
 
-def block_sig(rpc,slot0,direction,predicate,max_steps=1500):
-    slot=slot0
-    for i in range(max_steps):
+def block_sig(rpc,slot0,direction,predicate):
+    # Transport-only sparse search: stay ~30-90 minutes outside the scientific boundary,
+    # avoiding rate-limit-heavy slot-by-slot archival block scans.
+    offsets=(6000,9000,12000,15000,18000,24000)
+    tried=[]
+    for off in offsets:
+        slot=slot0 + direction*off
         r=rpc.call("getBlock",[slot,{"transactionDetails":"signatures","rewards":False,"maxSupportedTransactionVersion":0}])
+        tried.append(slot)
         if isinstance(r,dict):
             bt=r.get("blockTime"); sigs=r.get("signatures") or []
             if isinstance(bt,int) and sigs and predicate(bt):
-                return {"slot":slot,"blockTime":bt,"signature":sigs[0],"steps":i}
-        slot+=direction
-        if slot<0:break
-    raise RuntimeError("cursor_block_not_found")
+                return {"slot":slot,"blockTime":bt,"signature":sigs[0],"offset":off,"tried":tried}
+    raise RuntimeError("cursor_block_not_found_sparse:"+str(tried))
 
-def main():
-    OUT.mkdir(exist_ok=True)
-    rpc=RPC()
-    ss=ts_slot(START); es=ts_slot(END)
-    lower=block_sig(rpc,ss,-1,lambda x:x<START)
-    upper=block_sig(rpc,es,1,lambda x:x>=END)
-    assert lower["blockTime"]<START and upper["blockTime"]>=END
-    before=upper["signature"]; until=lower["signature"]
-    seen=set(); rows=[]; pages=[]; dup=0
-    for page in range(20):
-        params=[TARGET,{"before":before,"until":until,"limit":1000,"commitment":"finalized"}]
-        got=rpc.call("getSignaturesForAddress",params)
-        if not isinstance(got,list):raise RuntimeError("signature_page_schema")
-        if not got:
-            pages.append({"page":page+1,"count":0,"before":before})
-            break
-        if any(type(x.get("blockTime")) is not int for x in got):
-            raise RuntimeError("signature_blocktime_missing")
-        if any(got[i]["slot"]<got[i+1]["slot"] for i in range(len(got)-1)):
-            raise RuntimeError("non_descending_slot_page")
-        for x in got:
-            sig=x.get("signature")
-            if sig in seen:dup+=1
-            seen.add(sig)
-            if START<=x["blockTime"]<END:rows.append(x)
-        nxt=got[-1]["signature"]
-        pages.append({"page":page+1,"count":len(got),"first_slot":got[0]["slot"],"last_slot":got[-1]["slot"],"before":before,"next_before":nxt})
-        if nxt==before:raise RuntimeError("nonadvancing_cursor")
-        before=nxt
-        if got[-1]["blockTime"]<START:break
-    unique_in={x["signature"] for x in rows}
-    classification="TIME_CURSOR_TRANSPORT_PASS" if len(unique_in)==EXPECTED and dup==0 else "TIME_CURSOR_TRANSPORT_BLOCKED"
-    receipt={
-      "lab_id":"DEFI-LIQUIDATION-SHOCK-001",
-      "classification":classification,
-      "target":TARGET,
-      "interval":{"start_unix":START,"end_unix":END},
-      "resolved_slots":{"start":ss,"end":es},
-      "lower_cursor":lower,"upper_cursor":upper,
-      "expected_in_window_signatures":EXPECTED,
-      "observed_in_window_signatures":len(unique_in),
-      "duplicate_count":dup,
-      "page_count":len(pages),"pages":pages,
-      "rpc_request_count":rpc.calls,
-      "paid_getTransactionsForAddress_used":False,
-      "transaction_payloads_opened":False,
-      "market_outcomes_opened":False,
-      "protected_2025_acquisition":False,
-      "science_changed":False,
-      "trading_authority":"NONE"
-    }
-    (OUT/"DLS_ROUTE_A2_TIME_CURSOR_PROBE_RECEIPT_V0.1.json").write_text(json.dumps(receipt,indent=2,sort_keys=True)+"\n")
-    print(json.dumps(receipt,indent=2,sort_keys=True))
-    if classification!="TIME_CURSOR_TRANSPORT_PASS":raise SystemExit(2)
-
-if __name__=="__main__":main()
