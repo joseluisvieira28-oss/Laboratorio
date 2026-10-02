@@ -1,0 +1,152 @@
+name: OPTIONS Multi-Asset 2025 OOS One-Shot V0.1
+
+on:
+  push:
+    branches:
+      - options-multiasset-fourhook-prep-v0.1-2026-10-02
+    paths:
+      - 'crypto_edge_radar/oos_trigger/OPTIONS_MULTI_ASSET_2025_OOS_TRIGGER_V0.1.json'
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      source_matrix: ${{ steps.plan.outputs.source_matrix }}
+      assets: ${{ steps.plan.outputs.assets }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: plan
+        run: |
+          python3 - <<'PY'
+          import json,os
+          p="crypto_edge_radar/receipts/OPTIONS_MULTI_ASSET_TRANSFER_DEV_CLOSEOUT_V0.1.json"
+          d=json.load(open(p,encoding="utf-8"))
+          assets=[a for a in ("ETH","SOL","XRP") if d.get("hooks",{}).get(a,{}).get("classification")=="DEV_SURVIVES__OOS_2025_UNLOCKED"]
+          assert assets, "No Development survivor; OOS trigger is invalid"
+          include=[{"asset":a,"month":f"2025-{m:02d}"} for a in assets for m in range(1,13)]
+          with open(os.environ["GITHUB_OUTPUT"],"a",encoding="utf-8") as f:
+              f.write("source_matrix="+json.dumps({"include":include},separators=(",",":"))+"\n")
+              f.write("assets="+json.dumps(assets,separators=(",",":"))+"\n")
+          print("OOS_SURVIVORS",assets)
+          print("OOS_SOURCE_SHARDS",len(include))
+          PY
+
+  source-signal-oos:
+    needs: plan
+    strategy:
+      fail-fast: false
+      max-parallel: 16
+      matrix: ${{ fromJSON(needs.plan.outputs.source_matrix) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build frozen 2025 source-only monthly signal
+        id: shard
+        working-directory: crypto_edge_radar
+        shell: bash
+        run: |
+          set +e
+          python3 scripts/options_multiasset_transfer_signal_shard_v01.py \
+            --asset '${{ matrix.asset }}' \
+            --month '${{ matrix.month }}' \
+            --out-dir transfer_oos_source
+          rc=$?
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Assert source firewall
+        if: always()
+        working-directory: crypto_edge_radar
+        env:
+          ASSET: '${{ matrix.asset }}'
+          MONTH: '${{ matrix.month }}'
+        run: |
+          python3 - <<'PY'
+          import json,os
+          p=f"transfer_oos_source/{os.environ['ASSET'].lower()}_{os.environ['MONTH']}_source_receipt.json"
+          r=json.load(open(p,encoding="utf-8"))
+          assert r["forward_returns_computed"] is False
+          assert r["pnl_computed"] is False
+          assert r["outcome_source_contacted"] is False
+          assert r["year_2026_accessed"] is False
+          print("OOS_SOURCE_FIREWALL_PASS",r["asset"],r["month"],r["status"])
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: options-${{ matrix.asset }}-oos-source-${{ matrix.month }}
+          retention-days: 90
+          if-no-files-found: error
+          path: crypto_edge_radar/transfer_oos_source/*
+      - name: Preserve source classification
+        if: always()
+        shell: bash
+        run: |
+          rc='${{ steps.shard.outputs.rc }}'
+          if [ "$rc" = "0" ]; then exit 0; fi
+          if [ "$rc" = "12" ]; then exit 12; fi
+          exit 2
+
+  oos-evaluate:
+    if: always()
+    needs: [plan, source-signal-oos]
+    strategy:
+      fail-fast: false
+      matrix:
+        asset: ${{ fromJSON(needs.plan.outputs.assets) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: options-${{ matrix.asset }}-oos-source-*
+          path: transfer_oos_download
+          merge-multiple: true
+      - name: Execute frozen one-shot 2025 OOS
+        id: oos
+        shell: bash
+        run: |
+          set +e
+          python3 crypto_edge_radar/scripts/options_multiasset_transfer_oos_v01.py \
+            --asset '${{ matrix.asset }}' \
+            --signals-root transfer_oos_download \
+            --repo-root "$GITHUB_WORKSPACE" \
+            --out-dir crypto_edge_radar/transfer_oos_closeout
+          rc=$?
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Assert 2026 firewall
+        if: always()
+        env:
+          ASSET: '${{ matrix.asset }}'
+        run: |
+          python3 - <<'PY'
+          import json,os
+          p=f"crypto_edge_radar/transfer_oos_closeout/OPTIONS_{os.environ['ASSET']}_001_V01_2025_OOS_CLOSEOUT.json"
+          r=json.load(open(p,encoding="utf-8"))
+          assert r["year_2026_accessed"] is False
+          assert r["live_trading_authorized"] is False
+          assert r["exchange_mutation_authorized"] is False
+          print("OOS_2026_FIREWALL_PASS",r["asset"],r["classification"])
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: options-${{ matrix.asset }}-2025-oos-v01
+          retention-days: 90
+          if-no-files-found: error
+          path: crypto_edge_radar/transfer_oos_closeout/*
+      - name: Terminal OOS classification
+        if: always()
+        shell: bash
+        run: |
+          rc='${{ steps.oos.outputs.rc }}'
+          if [ "$rc" = "0" ]; then echo TRANSFER_SURVIVES_2025_OOS__FORWARD_ELIGIBLE; exit 0; fi
+          if [ "$rc" = "5" ]; then echo INSUFFICIENT_OOS_SAMPLE; exit 5; fi
+          if [ "$rc" = "4" ]; then echo OOS_REJECTED_EXACT_TRANSFER; exit 4; fi
+          echo OOS_BLOCKED_SOURCE_PROVENANCE
+          exit 2
