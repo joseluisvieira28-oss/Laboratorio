@@ -4,6 +4,7 @@ import argparse
 from datetime import datetime, timezone
 import json
 import math
+import os
 from pathlib import Path
 import time
 from typing import Any
@@ -11,6 +12,7 @@ from typing import Any
 from radar.market import MEXCFuturesPublicFeed
 from radar.mexc_auth_readonly import MEXCCredentials, MEXCFuturesAuthenticatedReadOnlyClient
 from radar.multi_slot_reservation_v04 import MultiSlotReservationV04
+from radar.operator_risk_v02 import realized_loss_state
 
 
 CANDIDATES = (
@@ -105,6 +107,9 @@ def build_readiness(
     policy_path: Path,
     ledger_path: Path,
     kill_switch_path: Path,
+    receipt_root: Path,
+    legacy_receipt_roots: list[Path] | None = None,
+    correction_overlay: Path | None = None,
     legacy_v03_armed_path: Path | None = None,
     legacy_options_armed_path: Path | None = None,
     legacy_bnb_armed_path: Path | None = None,
@@ -121,6 +126,29 @@ def build_readiness(
 
     global_cfg=policy.get("global_risk") or {}
     lane_cap=10.0
+
+    receipt_root.mkdir(parents=True, exist_ok=True)
+    legacy_receipt_roots = legacy_receipt_roots or []
+    existing_roots = [str(p) for p in legacy_receipt_roots if p.exists()]
+    if existing_roots:
+        os.environ["CRYPTO_LAB_EXTERNAL_RECEIPT_ROOTS"] = os.pathsep.join(existing_roots)
+    if correction_overlay is not None:
+        if not correction_overlay.exists():
+            blockers.append("CORRECTION_OVERLAY_MISSING")
+        else:
+            os.environ["CRYPTO_LAB_PNL_CORRECTION_OVERLAY"] = str(correction_overlay)
+
+    try:
+        losses = realized_loss_state(receipt_root, now=checked)
+        if losses.get("invalid_reconciliations"):
+            blockers.append("LEGACY_OR_LOCAL_RECONCILIATION_ACCOUNTING_INVALID")
+        if float(losses.get("daily_realized_loss_usdt", 0)) >= float(global_cfg.get("daily_realized_loss_kill_usdt", 5)):
+            blockers.append("DAILY_REALIZED_LOSS_KILL_ALREADY_ACTIVE")
+        if float(losses.get("rolling_7d_realized_loss_usdt", 0)) >= float(global_cfg.get("rolling_7d_realized_loss_kill_usdt", 5)):
+            blockers.append("ROLLING_7D_REALIZED_LOSS_KILL_ALREADY_ACTIVE")
+    except Exception as exc:
+        losses = {"error": f"{type(exc).__name__}:{exc}"}
+        blockers.append("REALIZED_LOSS_CONTINUITY_CHECK_FAILED")
 
     private=MEXCFuturesAuthenticatedReadOnlyClient(credentials)
     public=MEXCFuturesPublicFeed(timeout=10)
@@ -238,6 +266,9 @@ def build_readiness(
         "contracts":contracts,
         "fees":fee_checks,
         "ledger":ledger_check,
+        "realized_loss_continuity":losses,
+        "legacy_receipt_roots":[str(p) for p in legacy_receipt_roots if p.exists()],
+        "correction_overlay":str(correction_overlay) if correction_overlay is not None and correction_overlay.exists() else None,
         "live_authority_created":False,
         "armed_marker_created":False,
         "orders_created":False,
@@ -250,6 +281,9 @@ def main()->int:
     ap.add_argument("--policy",required=True)
     ap.add_argument("--ledger",required=True)
     ap.add_argument("--kill-switch",required=True)
+    ap.add_argument("--receipt-root",required=True)
+    ap.add_argument("--legacy-receipt-root",action="append",default=[])
+    ap.add_argument("--correction-overlay")
     ap.add_argument("--out",required=True)
     ap.add_argument("--legacy-v03-armed-path")
     ap.add_argument("--legacy-options-armed-path")
@@ -261,6 +295,9 @@ def main()->int:
             policy_path=Path(args.policy),
             ledger_path=Path(args.ledger),
             kill_switch_path=Path(args.kill_switch),
+            receipt_root=Path(args.receipt_root),
+            legacy_receipt_roots=[Path(x) for x in args.legacy_receipt_root],
+            correction_overlay=Path(args.correction_overlay) if args.correction_overlay else None,
             legacy_v03_armed_path=Path(args.legacy_v03_armed_path) if args.legacy_v03_armed_path else None,
             legacy_options_armed_path=Path(args.legacy_options_armed_path) if args.legacy_options_armed_path else None,
             legacy_bnb_armed_path=Path(args.legacy_bnb_armed_path) if args.legacy_bnb_armed_path else None,
