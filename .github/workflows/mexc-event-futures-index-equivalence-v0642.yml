@@ -1,0 +1,56 @@
+name: MEXC Event Futures Index Equivalence V0.6.4.2
+
+on:
+  push:
+    branches:
+      - mexc-event-futures-index-equivalence-v0.6.4.2-parserfix-2026-10-02
+    paths:
+      - 'research/mexc_event_futures/**'
+      - '.github/workflows/mexc-event-futures-index-equivalence-v0642.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  equivalence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip requests playwright
+          python -m playwright install --with-deps chromium
+
+      - name: Syntax check
+        run: python -m py_compile research/mexc_event_futures/index_equivalence_v0642.py
+
+      - name: Run current-display equivalence probe
+        run: python research/mexc_event_futures/index_equivalence_v0642.py
+
+      - name: Verify boundaries
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          p='artifacts/mexc_event_futures/index_equivalence_v0642.json'
+          j=json.load(open(p, encoding='utf-8'))
+          assert j['settlement_equivalence']=='NOT_PROVEN'
+          print('SOURCE_GATE='+j['source_gate'])
+          print('VALID_PAIRS='+str(j['valid_pairs']))
+          print('WITHIN_1BP='+str(j['within_1bp_fraction']))
+          print('MEDIAN_BPS='+str(j['median_difference_bps']))
+          print('SETTLEMENT_EQUIVALENCE='+j['settlement_equivalence'])
+          PY
+
+      - name: Upload evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: mexc-event-futures-index-equivalence-v0642
+          path: artifacts/mexc_event_futures/index_equivalence_v0642.json
+          if-no-files-found: error
