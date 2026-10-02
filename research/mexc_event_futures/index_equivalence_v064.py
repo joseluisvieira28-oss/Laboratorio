@@ -102,7 +102,7 @@ async def inspect(browser,display,symbol):
 
 async def main():
     report={
-      "lab":"MEXC_EVENT_FUTURES_INDEX_EQUIVALENCE_V0.6.4",
+      "lab":"MEXC_EVENT_FUTURES_INDEX_EQUIVALENCE_V0.6.4.1",
       "started_at_utc":datetime.now(timezone.utc).isoformat(),
       "assets":[]
     }
@@ -151,7 +151,8 @@ async def main():
       "by_asset":{
         a["asset"]:{
           "valid":sum(s.get("valid_pair",False) for s in a.get("samples",[])),
-          "bps":[s.get("difference_bps") for s in a.get("samples",[]) if s.get("valid_pair")]
+          "bps":[s.get("difference_bps") for s in a.get("samples",[]) if s.get("valid_pair")],
+          "first_sample":a.get("samples",[None])[0] if a.get("samples") else None
         } for a in report["assets"]
       },
       "settlement_equivalence":report["settlement_equivalence"]
