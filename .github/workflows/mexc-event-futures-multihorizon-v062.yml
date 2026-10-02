@@ -1,9 +1,9 @@
-name: MEXC Event Futures Current Product Matrix V0.6.3.4
+name: MEXC Event Futures Index Equivalence V0.6.4
 
 on:
   push:
     branches:
-      - mexc-event-futures-product-matrix-v0.6.3.4-2026-10-02
+      - mexc-event-futures-index-equivalence-v0.6.4-2026-10-02
     paths:
       - 'research/mexc_event_futures/**'
       - '.github/workflows/mexc-event-futures-multihorizon-v062.yml'
@@ -13,7 +13,7 @@ permissions:
   contents: read
 
 jobs:
-  snapshot:
+  equivalence:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -26,27 +26,25 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install playwright requests
           python -m playwright install --with-deps chromium
-      - name: Collect current product matrix
-        run: python research/mexc_event_futures/current_product_matrix_v0634.py
+      - name: Run current-display index equivalence probe
+        run: python research/mexc_event_futures/index_equivalence_v064.py
       - name: Verify source gate
         shell: bash
         run: |
           python - <<'PY'
           import json
-          p='artifacts/mexc_event_futures/current_product_matrix_v0634.json'
+          p='artifacts/mexc_event_futures/index_equivalence_v064.json'
           j=json.load(open(p,encoding='utf-8'))
           print('SOURCE_GATE='+j['source_gate'])
-          print('PASS_COUNT='+str(j['pass_count']))
-          print('HORIZON_MATRIX='+json.dumps(j['current_horizon_matrix'],sort_keys=True))
-          if j['source_gate']!='PASS_CURRENT_PRODUCT_MATRIX':
-              raise SystemExit('current product matrix source gate did not fully pass')
+          print('VALID_PAIRS='+str(j['valid_pairs']))
+          print('WITHIN_1BP='+str(j['within_1bp_fraction']))
+          print('MEDIAN_BPS='+str(j['median_difference_bps']))
+          assert j['settlement_equivalence']=='NOT_PROVEN'
           PY
       - name: Upload evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: mexc-event-futures-current-product-matrix-v0634
-          path: |
-            artifacts/mexc_event_futures/current_product_matrix_v0634.json
-            artifacts/mexc_event_futures/current_product_matrix_v0634.jsonl
+          name: mexc-event-futures-index-equivalence-v064
+          path: artifacts/mexc_event_futures/index_equivalence_v064.json
           if-no-files-found: error
