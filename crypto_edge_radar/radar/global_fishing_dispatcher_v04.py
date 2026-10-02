@@ -83,7 +83,8 @@ def arbitrate_due_signals_multislot(
     selected_symbols = set(active_symbols)
     selected_lanes = Counter(active_lanes)
 
-    for _target, candidate, key, signal in due:
+    def reject_or_select(row, *, allow_extra_same_lane: bool) -> str:
+        _target, candidate, key, signal = row
         symbol = str(signal["symbol"]).upper()
         if symbol in selected_symbols:
             losers.append({
@@ -91,7 +92,7 @@ def arbitrate_due_signals_multislot(
                 "signal_identity": key,
                 "reason": "MISSED_SYMBOL_CONFLICT_NO_CHASE",
             })
-            continue
+            return "TERMINAL"
         cap = int(lane_caps.get(candidate, capacity))
         if selected_lanes[candidate] >= cap:
             losers.append({
@@ -99,17 +100,47 @@ def arbitrate_due_signals_multislot(
                 "signal_identity": key,
                 "reason": "MISSED_LANE_CAP_NO_CHASE",
             })
-            continue
+            return "TERMINAL"
         if occupied + len(winners) >= capacity:
             losers.append({
                 "candidate_id": candidate,
                 "signal_identity": key,
                 "reason": "MISSED_CAPACITY_NO_CHASE",
             })
-            continue
+            return "TERMINAL"
         winners.append(signal)
         selected_symbols.add(symbol)
         selected_lanes[candidate] += 1
+        return "SELECTED"
+
+    # Preserve earliest target as the primary ordering. When several signals
+    # have exactly the same target, first give each eligible lane one chance
+    # before allowing a second signal from the same lane. This prevents one
+    # multi-symbol lane from consuming all three slots merely because its
+    # candidate id sorts earlier, while still allowing that lane to use spare
+    # capacity when the other rods have no simultaneous fish.
+    index = 0
+    while index < len(due):
+        target = due[index][0]
+        group = []
+        while index < len(due) and due[index][0] == target:
+            group.append(due[index])
+            index += 1
+
+        served_this_target: set[str] = set()
+        deferred = []
+        for row in group:
+            candidate = row[1]
+            if candidate in served_this_target:
+                deferred.append(row)
+                continue
+            before = len(winners)
+            outcome = reject_or_select(row, allow_extra_same_lane=False)
+            if outcome == "SELECTED" and len(winners) > before:
+                served_this_target.add(candidate)
+
+        for row in deferred:
+            reject_or_select(row, allow_extra_same_lane=True)
 
     status = "WINNERS_SELECTED" if winners else ("CAPACITY_OCCUPIED" if occupied >= capacity else "NO_DUE_ADMISSIBLE_SIGNAL")
     return {
@@ -121,7 +152,7 @@ def arbitrate_due_signals_multislot(
         "capacity": capacity,
         "occupied_before": occupied,
         "free_before": capacity - occupied,
-        "tie_break_rule": "EARLIEST_ENTRY_TARGET_THEN_LEXICOGRAPHIC_CANDIDATE_ID_THEN_SIGNAL_KEY",
+        "tie_break_rule": "EARLIEST_ENTRY_TARGET__WITHIN_EQUAL_TARGET_ONE_PER_LANE_FIRST__THEN_CANDIDATE_ID_SIGNAL_KEY__THEN_FILL_SPARE_CAPACITY",
         "late_chase_allowed": False,
     }
 
