@@ -127,8 +127,28 @@ def main() -> int:
     standalone_lev = int(options_standalone["execution_fork"]["leverage"])
     standalone_notional = float(options_standalone["risk"]["maximum_notional_usdt"])
 
+    authority_candidates = set((authority.get("candidates") or {}).keys())
+    manifest_lanes = {
+        str(x.get("candidate_id") or "")
+        for x in manifest.get("lanes", [])
+        if isinstance(x, dict)
+    }
+    manifest_options = next(
+        (x for x in manifest.get("lanes", []) if isinstance(x, dict) and x.get("candidate_id") == OPTIONS_ID),
+        {},
+    )
+
     findings = {
         "single_global_slot_is_current_authority": current_single_slot,
+        "global_authority_missing_options_lane": OPTIONS_ID not in authority_candidates,
+        "global_authority_missing_dh03_lane": DH03_ID not in authority_candidates,
+        "global_manifest_missing_dh03_lane": DH03_ID not in manifest_lanes,
+        "global_manifest_options_state": manifest_options.get("state"),
+        "authority_manifest_lane_drift": (
+            OPTIONS_ID not in authority_candidates
+            or DH03_ID not in authority_candidates
+            or DH03_ID not in manifest_lanes
+        ),
         "single_slot_drops_due_signals_no_chase": "MISSED_CONFLICT_NO_CHASE" in str(authority),
         "dh03_parent_rule_is_one_active_trade_per_symbol": True,
         "dh03_prospective_selected_signals": len(intervals),
@@ -180,6 +200,7 @@ def main() -> int:
             "prove restart/reconciliation with 2+ simultaneous positions and unknown acknowledgements",
             "prove independent TP/SL/scheduled-exit ownership for every active session",
             "fresh authenticated read-only account/position/order reconciliation before activation",
+            "reconcile authority/manifest lane inventory with actual Triple Fishing supervisor before any activation",
             "new explicit authority required; current authority remains max_simultaneous_positions=1",
         ],
         "suggested_staged_target": {
@@ -214,6 +235,17 @@ The present one-slot design is not merely conservative; in the currently availab
 - Authority max simultaneous positions: **{authority.get('risk',{}).get('max_simultaneous_positions')}**
 - Risk policy max simultaneous positions: **{global_risk.get('global_risk',{}).get('max_simultaneous_positions')}**
 - Conflict loser: **MISSED_CONFLICT_NO_CHASE**
+
+## Authority / manifest reconciliation
+
+The current Triple Fishing supervisor contains OPTIONS, BNB and DH03, but the frozen global authority/manifest are not aligned with that runtime inventory:
+
+- Global authority missing OPTIONS lane: **{findings['global_authority_missing_options_lane']}**
+- Global authority missing DH03 lane: **{findings['global_authority_missing_dh03_lane']}**
+- Global manifest missing DH03 lane: **{findings['global_manifest_missing_dh03_lane']}**
+- Manifest OPTIONS state: **{findings['global_manifest_options_state']}**
+
+This drift is an independent activation blocker. A multi-slot redesign cannot be authorized by changing capacity alone.
 
 ## Prospective DH03 capacity evidence
 
