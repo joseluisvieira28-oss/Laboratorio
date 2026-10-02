@@ -65,31 +65,37 @@ async def get_horizon_group(page):
     """)
 
 async def click_horizon_in_group(page,label):
-    # Select a visible label whose nearest short-time-label container contains exactly
-    # the Event Futures horizon set 10m/30m/1H/1D and not 1m/5m/15m/4H.
     return await page.evaluate("""
     (label) => {
       const wanted=['10m','30m','1H','1D'];
       const bad=['1m','5m','15m','4H'];
-      const els=[...document.querySelectorAll('span,button,[role="button"],div')].filter(el=>{
+      const visibleLeaf=(txt)=>[...document.querySelectorAll('span,button,[role="button"],div')].filter(el=>{
+        if((el.innerText||'').trim()!==txt) return false;
+        const s=getComputedStyle(el),r=el.getBoundingClientRect();
+        if(s.display==='none'||s.visibility==='hidden'||r.width<=0||r.height<=0) return false;
+        return ![...el.children].some(ch=>(ch.innerText||'').trim()===txt);
+      });
+
+      const anchors=visibleLeaf('10m');
+      if(anchors.length!==1) return {clicked:false,reason:'ANCHOR_10M_NOT_UNIQUE',count:anchors.length};
+      let p=anchors[0];
+      let group=null;
+      for(let depth=0; depth<6 && p; depth++,p=p.parentElement){
+        const lines=(p.innerText||'').trim().split(/\n+/).map(x=>x.trim()).filter(Boolean);
+        if(wanted.every(x=>lines.includes(x)) && !bad.some(x=>lines.includes(x))){
+          group=p; break;
+        }
+      }
+      if(!group) return {clicked:false,reason:'EVENT_GROUP_NOT_FOUND'};
+
+      const candidates=[...group.querySelectorAll('span,button,[role="button"],div')].filter(el=>{
         if((el.innerText||'').trim()!==label) return false;
         const s=getComputedStyle(el),r=el.getBoundingClientRect();
-        return s.display!=='none'&&s.visibility!=='hidden'&&r.width>0&&r.height>0;
+        if(s.display==='none'||s.visibility==='hidden'||r.width<=0||r.height<=0) return false;
+        return ![...el.children].some(ch=>(ch.innerText||'').trim()===label);
       });
-      const good=[];
-      for(const el of els){
-        let p=el;
-        let chosen=null;
-        for(let depth=0; depth<5 && p; depth++,p=p.parentElement){
-          const lines=(p.innerText||'').trim().split(/\n+/).map(x=>x.trim()).filter(Boolean);
-          if(wanted.every(x=>lines.includes(x)) && !bad.some(x=>lines.includes(x))){
-            chosen=p; break;
-          }
-        }
-        if(chosen) good.push({el,chosen});
-      }
-      if(good.length!==1) return {clicked:false,count:good.length};
-      const target=good[0].el;
+      if(candidates.length!==1) return {clicked:false,reason:'TARGET_NOT_UNIQUE_IN_GROUP',count:candidates.length};
+      const target=candidates[0];
       target.click();
       const r=target.getBoundingClientRect();
       return {clicked:true,count:1,tag:target.tagName,className:String(target.className||''),x:r.x,y:r.y};
@@ -162,7 +168,7 @@ async def inspect(browser,display,symbol):
 
 async def main():
     out={
-      "lab":"MEXC_EVENT_FUTURES_EXACT_PAYOUT_COLLECTOR_V0.6.3",
+      "lab":"MEXC_EVENT_FUTURES_EXACT_PAYOUT_COLLECTOR_V0.6.3.1",
       "run_started_at_utc":datetime.now(timezone.utc).isoformat(),
       "assets":[]
     }
