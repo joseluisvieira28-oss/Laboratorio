@@ -145,7 +145,7 @@ async def main():
                 ev["browser_gets"].append({"method":method,"url":url})
             await route.continue_()
 
-        await page.route("**/*",route_handler)
+        await ctx.route("**/*",route_handler)
 
         async def on_response(resp):
             u=resp.url
