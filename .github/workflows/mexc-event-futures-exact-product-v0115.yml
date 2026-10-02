@@ -1,0 +1,54 @@
+name: MEXC Event Futures Exact Product V0.11.5
+
+on:
+  push:
+    branches:
+      - mexc-event-futures-exact-product-v0.11.5-2026-10-02
+    paths:
+      - 'research/mexc_event_futures/**'
+      - '.github/workflows/mexc-event-futures-exact-product-v0115.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  exact-product:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install
+        run: python -m pip install --upgrade pip requests
+      - name: Syntax check
+        run: python -m py_compile research/mexc_event_futures/exact_product_v0115.py
+      - name: Run exact public product probe
+        run: python research/mexc_event_futures/exact_product_v0115.py
+      - name: Verify safety boundary
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          p='artifacts/mexc_event_futures/exact_product_v0115.json'
+          j=json.load(open(p,encoding='utf-8'))
+          assert j['authenticated_requests']==0
+          assert j['orders']==0
+          assert j['account_mutations']==0
+          assert j['private_routes_called']==0
+          print('NO_AUTH=PASS')
+          print('NO_ORDERS=PASS')
+          print('NO_MUTATION=PASS')
+          print('NO_PRIVATE=PASS')
+          print('VERDICT='+j['verdict'])
+          print('PAYOUT_FIELDS_FOUND='+str(j['payout_fields_found']))
+          print('PRODUCT_SCHEMA_FOUND='+str(j['product_schema_found']))
+          PY
+      - name: Upload evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: mexc-event-futures-exact-product-v0115-evidence
+          path: artifacts/mexc_event_futures/exact_product_v0115.json
+          if-no-files-found: error
