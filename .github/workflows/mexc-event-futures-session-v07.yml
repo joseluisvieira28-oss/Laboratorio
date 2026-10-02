@@ -1,0 +1,56 @@
+name: MEXC Event Futures Session V0.7
+
+on:
+  push:
+    branches:
+      - mexc-event-futures-session-v0.7-2026-10-02
+    paths:
+      - 'research/mexc_event_futures/**'
+      - '.github/workflows/mexc-event-futures-session-v07.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  session-lab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install
+        run: python -m pip install --upgrade pip requests scipy
+      - name: Syntax check
+        run: python -m py_compile research/mexc_event_futures/session_v07.py
+      - name: Run frozen V0.7 session lab
+        run: python research/mexc_event_futures/session_v07.py
+      - name: Verify boundaries
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          p='artifacts/mexc_event_futures/session_v07.json'
+          j=json.load(open(p, encoding='utf-8'))
+          assert j['historical_holdout_sep_2026']=='LOCKED_NOT_FETCHED'
+          assert j['exact_event_futures']=='NOT_PROVEN'
+          assert j['promotion_status']=='NO_EXACT_EVENT_FUTURES_PROMOTION'
+          print('HOLDOUT_LOCK=PASS')
+          print('EXACT_PRODUCT_FAIL_CLOSED=PASS')
+          print('VERDICT='+j['verdict'])
+          print('CONDITIONS='+str(j['condition_count']))
+          print('DISCOVERY_CELLS='+str(len(j['discovery_cells'])))
+          print('BH_ELIGIBLE='+str(j['bh_eligible_count']))
+          print('BH_SELECTED='+str(len(j['bh_selected'])))
+          print('OOS_SURVIVORS='+str(len(j['oos_survivors'])))
+          PY
+      - name: Upload evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: mexc-event-futures-session-v07-evidence
+          path: |
+            artifacts/mexc_event_futures/session_v07.json
+            artifacts/mexc_event_futures/session_matrix_v07.csv
+          if-no-files-found: error
