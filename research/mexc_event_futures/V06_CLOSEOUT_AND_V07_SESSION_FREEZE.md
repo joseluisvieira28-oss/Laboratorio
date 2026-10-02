@@ -105,10 +105,14 @@ Cartesian product of:
 
 ## Entry spacing
 
-To avoid overlapping Event outcomes:
-`entry_stride = event_horizon`
+To avoid overlapping Event outcomes, each calendar cell is sampled deterministically on the 5-minute proxy grid:
 
-Candidate timestamps are aligned to the horizon from Unix epoch and then filtered by the frozen calendar condition.
+- scan eligible timestamps in chronological order;
+- keep the earliest eligible timestamp;
+- after keeping an entry at `t`, do not keep another entry for that cell until `t + event_horizon`;
+- when a calendar window closes and later reopens, the first eligible timestamp after reopening may be kept if the non-overlap rule is satisfied.
+
+This preserves session-specific start times (for example 13:30 UTC) while preventing overlapping outcomes inside each cell.
 
 ## Partitions
 
