@@ -1,0 +1,58 @@
+name: DLS Marginfi Stream-Paged Jan2025 Probe V0.3A
+
+on:
+  push:
+    branches: [dls-field-enrichment-v01]
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_MARGINFI_STREAM_PAGED_JAN2025_V03A.marker
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify frozen blob
+        shell: bash
+        run: test "$(git hash-object labs/DEFI_LIQUIDATION_SHOCK_001/source/collect_protected_2025_marginfi_stream_paged_v0_3a.py)" = "f0cd93f46d1099f81c7e5adb79a26c5ce2d02180"
+      - name: Compile
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/collect_protected_2025_marginfi_stream_paged_v0_3a.py
+      - name: Collect January 2025 source only
+        env:
+          PYTHONUNBUFFERED: "1"
+        run: >-
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/collect_protected_2025_marginfi_stream_paged_v0_3a.py
+          --protocol marginfi
+          --start 2025-01-01T00:00:00Z
+          --end 2025-02-01T00:00:00Z
+          --out protected_source/marginfi-202501.json
+      - name: Verify PASS
+        shell: python
+        run: |
+          import json
+          from pathlib import Path
+          x=json.loads(Path("protected_source/marginfi-202501.json").read_text())
+          assert x["classification"]=="PROTECTED_2025_PROTOCOL_SOURCE_PASS"
+          assert x["duplicate_count"]==0 and x["error_count"]==0
+          assert x["firewall"]["prices_2025"] is False
+          assert x["firewall"]["returns_2025"] is False
+          assert x["firewall"]["pnl_2025"] is False
+          print("PASS",x["successful_instruction_count"],x["sol_collateral_event_count"],x["request_count"])
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dls-marginfi-stream-paged-v03a-202501
+          path: protected_source/marginfi-202501.json
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_NO_MARKET_OUTCOMES_NO_TRADING
