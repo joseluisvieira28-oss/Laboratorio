@@ -1,0 +1,41 @@
+name: mexc-event-futures-directional-v01
+
+on:
+  push:
+    branches:
+      - mexc-event-futures-multiasset-v01-2026-10-02
+    paths:
+      - 'crypto_edge_radar/event_futures/MEXC_EVENT_FUTURES_DIRECTIONAL_PREOUTCOME_FREEZE_V0.1.md'
+      - 'crypto_edge_radar/event_futures/mexc_event_futures_directional_v01.py'
+      - '.github/workflows/mexc-event-futures-directional-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  directional-research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Verify freeze exists before outcomes
+        run: |
+          test -f crypto_edge_radar/event_futures/MEXC_EVENT_FUTURES_DIRECTIONAL_PREOUTCOME_FREEZE_V0.1.md
+
+      - name: Run frozen directional experiment
+        run: |
+          python crypto_edge_radar/event_futures/mexc_event_futures_directional_v01.py
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mexc-event-futures-directional-v01
+          path: event_futures_v01_output/
+          if-no-files-found: warn
+          retention-days: 90
