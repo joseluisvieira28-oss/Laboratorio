@@ -154,7 +154,7 @@ def canonical_2025_shape(proto,ix):
     if proto=="save0c":return len(a)==12 and len(d)==9
     if proto=="save11":return len(a)==15 and len(d) in (9,10)
     if proto=="kamino":
-        return len(d)==32 and len(a)>=20 and a[16]==TOKEN and a[17]==TOKEN and a[18]==TOKEN and a[19]==SYSVAR
+        return len(d)==32 and len(a)>=20 and a[16]==TOKEN and bool(a[17]) and bool(a[18]) and a[19]==SYSVAR
     return False
 
 def resolve_marginfi(rows,rpc,cfg,errors):
