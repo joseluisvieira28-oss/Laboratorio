@@ -1,0 +1,102 @@
+name: DLS Protected 2025 Economic Holdout V0.2 Source-Pinned
+
+on:
+  push:
+    branches: [dls-field-enrichment-v01]
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_PROTECTED_2025_ECONOMIC_HOLDOUT_V02.marker
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  holdout:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Resolve immutable source run
+        id: source
+        shell: bash
+        run: |
+          marker="labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_PROTECTED_2025_ECONOMIC_HOLDOUT_V02.marker"
+          run_id="$(grep '^SOURCE_RUN_ID=' "$marker" | cut -d= -f2)"
+          test -n "$run_id"
+          echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
+
+      - name: Download exact source authority
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ steps.source.outputs.run_id }}
+          name: dls-protected-2025-source-authority-a3a-v01
+          path: protected_source
+
+      - name: Fail closed before any market payload
+        shell: python
+        run: |
+          import json
+          from pathlib import Path
+          rh=list(Path("protected_source").rglob("PROTECTED_2025_SOURCE_AUTHORITY_RECEIPT_V0.2.json"))
+          ch=list(Path("protected_source").rglob("PROTECTED_2025_SOURCE_CLUSTER_CENSUS_V0.2.ndjson"))
+          assert len(rh)==1,rh
+          assert len(ch)==1,ch
+          r=json.loads(rh[0].read_text())
+          assert r["classification"]=="PROTECTED_2025_SOURCE_AUTHORITY_PASS",r["classification"]
+          f=r["firewall"]
+          assert f["prices_2025_opened"] is False
+          assert f["returns_2025_opened"] is False
+          assert f["pnl_2025_opened"] is False
+          assert f["prices_2026_opened"] is False
+          print("PASS: immutable protected-2025 source authority")
+
+      - name: Verify unchanged economic authority
+        shell: python
+        run: |
+          from pathlib import Path
+          import py_compile
+          for p in [
+            "labs/DEFI_LIQUIDATION_SHOCK_001/STRATEGY_TRANSLATION_FREEZE_V0.1.md",
+            "labs/DEFI_LIQUIDATION_SHOCK_001/EXECUTION_COST_FREEZE_V0.1.md",
+            "labs/DEFI_LIQUIDATION_SHOCK_001/PROTECTED_2025_ECONOMIC_HOLDOUT_IMPLEMENTATION_FREEZE_V0.1.md",
+            "labs/DEFI_LIQUIDATION_SHOCK_001/OOS_ADJUDICATION_LOCK_V0.1.json",
+            "labs/DEFI_LIQUIDATION_SHOCK_001/DIRECTION_SOURCE_AUDIT_LOCK_V0.1.json",
+            "labs/DEFI_LIQUIDATION_SHOCK_001/MEXC_API_FUTURES_FEE_AUTHORITY_RECEIPT_V0.1.json"
+          ]: assert Path(p).is_file(),p
+          py_compile.compile("labs/DEFI_LIQUIDATION_SHOCK_001/source/run_protected_2025_economic_holdout_v0_1.py",doraise=True)
+          print("PASS: unchanged frozen economic implementation")
+
+      - name: Execute protected 2025 economic holdout ONCE
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/run_protected_2025_economic_holdout_v0_1.py
+          --source-root protected_source
+          --oos-lock labs/DEFI_LIQUIDATION_SHOCK_001/OOS_ADJUDICATION_LOCK_V0.1.json
+          --direction-lock labs/DEFI_LIQUIDATION_SHOCK_001/DIRECTION_SOURCE_AUDIT_LOCK_V0.1.json
+          --fee-authority labs/DEFI_LIQUIDATION_SHOCK_001/MEXC_API_FUTURES_FEE_AUTHORITY_RECEIPT_V0.1.json
+
+      - name: Upload immutable holdout evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dls-protected-2025-economic-holdout-v02
+          path: |
+            labs/DEFI_LIQUIDATION_SHOCK_001/PROTECTED_2025_ECONOMIC_HOLDOUT_ACQUISITION_RECEIPT_V0.1.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/PROTECTED_2025_ECONOMIC_HOLDOUT_RECEIPT_V0.1.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/PROTECTED_2025_ECONOMIC_HOLDOUT_TRADES_V0.1.ndjson
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Firewall
+        if: always()
+        run: |
+          echo PROTECTED_2026_CLOSED
+          echo NO_POST_OUTCOME_TUNING
+          echo NO_TRADING_NO_ORDERS_NO_WALLETS_NO_EXCHANGE_MUTATION_NO_MAIN_MERGE
