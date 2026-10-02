@@ -1,0 +1,52 @@
+name: DLS A5 gTFA Full Limit Capability V0.1
+
+on:
+  push:
+    branches: [dls-field-enrichment-v01]
+    paths:
+      - "labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_A5_FULL_LIMIT_CAPABILITY_V01.marker"
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Probe full-detail page size on frozen narrow source account
+        env:
+          HELIUS_API_KEY: ${{ secrets.HELIUS_API_KEY }}
+        shell: python
+        run: |
+          import json,os,urllib.request
+          address="8jVVXXxzC9N5FeHUxKBgXLM8xARzLpnzXz8dqZHzpykY"
+          opts={"transactionDetails":"full","sortOrder":"asc","limit":1000,
+                "filters":{"blockTime":{"gte":1704067200,"lt":1735689600},"status":"succeeded"}}
+          payload=json.dumps({"jsonrpc":"2.0","id":1,"method":"getTransactionsForAddress",
+                              "params":[address,opts]},separators=(",",":")).encode()
+          url="https://mainnet.helius-rpc.com/?api-key="+os.environ["HELIUS_API_KEY"]
+          req=urllib.request.Request(url,data=payload,headers={"Content-Type":"application/json"},method="POST")
+          with urllib.request.urlopen(req,timeout=60) as r: obj=json.loads(r.read())
+          assert not obj.get("error"), (obj.get("error") or {}).get("code")
+          res=obj["result"]; data=res["data"]
+          receipt={"lab_id":"DEFI-LIQUIDATION-SHOCK-001","classification":"A5_FULL_LIMIT_CAPABILITY_OBSERVED",
+                   "requested_limit":1000,"returned_full_transactions":len(data),
+                   "pagination_token_present":bool(res.get("paginationToken")),
+                   "expected_signatures_only_count_from_A5_capacity":194,
+                   "transaction_payload_persisted":False,
+                   "protected_2025_acquisition":False,"prices_opened":False,"returns_opened":False,
+                   "pnl_opened":False,"purchases":False,"trading_authority":"NONE"}
+          import pathlib
+          pathlib.Path("a5_full_limit").mkdir(exist_ok=True)
+          pathlib.Path("a5_full_limit/RECEIPT.json").write_text(json.dumps(receipt,indent=2,sort_keys=True)+"\n")
+          print(json.dumps(receipt,indent=2,sort_keys=True))
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dls-a5-full-limit-capability-v01
+          path: a5_full_limit/RECEIPT.json
+          retention-days: 30
