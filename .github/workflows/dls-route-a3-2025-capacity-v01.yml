@@ -1,0 +1,52 @@
+name: DLS Route A3 2025 Capacity Probe V0.1
+
+on:
+  push:
+    branches: [dls-field-enrichment-v01]
+    paths:
+      - "labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_ROUTE_A3_2025_CAPACITY_V01.marker"
+
+permissions:
+  contents: read
+
+jobs:
+  capacity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Verify freeze and compile
+        run: |
+          test -f labs/DEFI_LIQUIDATION_SHOCK_001/DLS_ROUTE_A3_2025_CAPACITY_PROBE_FREEZE_V0.1.md
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/run_route_a3_2025_capacity_probe_v0_1.py
+      - name: Run bounded signatures-only capacity probe
+        env:
+          HELIUS_API_KEY: ${{ secrets.HELIUS_API_KEY }}
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/run_route_a3_2025_capacity_probe_v0_1.py
+      - name: Firewall
+        if: always()
+        shell: python
+        run: |
+          import json
+          from pathlib import Path
+          p=Path("route_a3_capacity/DLS_ROUTE_A3_2025_CAPACITY_RECEIPT_V0.1.json")
+          if p.exists():
+              x=json.loads(p.read_text())
+              assert x["market_prices_opened"] is False
+              assert x["returns_opened"] is False
+              assert x["pnl_opened"] is False
+              assert x["purchases"] is False
+              assert x["trading_authority"]=="NONE"
+              print("CAPACITY:",x["classification"])
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dls-route-a3-2025-capacity-v01
+          path: route_a3_capacity/
+          if-no-files-found: warn
+          retention-days: 30
