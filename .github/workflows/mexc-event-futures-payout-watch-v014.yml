@@ -1,0 +1,52 @@
+name: MEXC Event Futures Payout Watch V0.14
+
+on:
+  push:
+    branches:
+      - mexc-event-futures-payout-watch-v0.14-2026-10-02
+    paths:
+      - 'research/mexc_event_futures/**'
+      - '.github/workflows/mexc-event-futures-payout-watch-v014.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  payout-watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install
+        run: python -m pip install --upgrade pip playwright
+      - name: Install Chromium
+        run: python -m playwright install --with-deps chromium
+      - name: Syntax check
+        run: python -m py_compile research/mexc_event_futures/payout_watch_v014.py
+      - name: Capture prospective payout series
+        run: python research/mexc_event_futures/payout_watch_v014.py
+      - name: Verify boundary
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          j=json.load(open('artifacts/mexc_event_futures/payout_watch_v014.json',encoding='utf-8'))
+          assert j['authenticated_requests']==0
+          assert j['orders']==0
+          assert j['account_mutations']==0
+          print('BOUNDARY=PASS')
+          print('VERDICT='+j['verdict'])
+          print('STATS='+str(len(j['stats'])))
+          PY
+      - name: Upload evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: mexc-event-futures-payout-watch-v014-evidence
+          path: |
+            artifacts/mexc_event_futures/payout_watch_v014.json
+            artifacts/mexc_event_futures/payout_watch_v014.csv
+          if-no-files-found: error
