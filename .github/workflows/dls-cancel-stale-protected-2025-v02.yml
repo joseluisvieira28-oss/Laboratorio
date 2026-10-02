@@ -1,0 +1,24 @@
+name: DLS Cancel Stale Protected 2025 Source V0.2
+
+on:
+  push:
+    branches: [dls-field-enrichment-v01]
+    paths:
+      - "labs/DEFI_LIQUIDATION_SHOCK_001/CANCEL_STALE_PROTECTED_2025_V02.marker"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dls-protected-2025-source-v02
+  cancel-in-progress: true
+
+jobs:
+  cancel-stale:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: |
+          echo "Technical concurrency reset only"
+          echo "NO_SOURCE_COLLECTION"
+          echo "NO_PRICES_NO_RETURNS_NO_PNL_NO_TRADING"
