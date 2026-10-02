@@ -52,14 +52,15 @@ class FakeSource:
         self.marks.append((signal_identity, status))
 
 
-def sig(candidate, key, symbol):
+def sig(candidate, key, symbol, target=None):
     now = datetime.now(timezone.utc)
+    target = target or (now - timedelta(seconds=0.25))
     return {
         "candidate_id": candidate,
         "strategy_id": candidate,
         "immutable_signal_key": key,
         "symbol": symbol,
-        "entry_target_utc": (now - timedelta(seconds=0.25)).isoformat().replace("+00:00", "Z"),
+        "entry_target_utc": target.isoformat().replace("+00:00", "Z"),
         "exit_target_utc": (now + timedelta(hours=24)).isoformat().replace("+00:00", "Z"),
         "max_late_seconds": 5,
     }
@@ -98,18 +99,19 @@ class SupervisorV04Tests(unittest.TestCase):
         self.assertEqual({x["candidate_id"] for x in engine.entered}, {OPTIONS, BNB, DH03})
 
     def test_fourth_due_signal_is_marked_capacity_no_chase(self):
+        target = datetime.now(timezone.utc) - timedelta(seconds=0.25)
         dh = FakeSource(
             {
                 "status": "OK",
                 "signals": [
-                    sig(DH03, "d1", "XRP_USDT"),
-                    sig(DH03, "d2", "DOGE_USDT"),
+                    sig(DH03, "d1", "XRP_USDT", target),
+                    sig(DH03, "d2", "DOGE_USDT", target),
                 ],
             }
         )
         sup, engine, bnb, options, dh03 = self.build(
-            bnb=FakeSource({"status": "OK", "signals": [sig(BNB, "b", "BNB_USDT")]}),
-            options=FakeSource({"status": "OK", "signal": sig(OPTIONS, "o", "BTC_USDT")}),
+            bnb=FakeSource({"status": "OK", "signals": [sig(BNB, "b", "BNB_USDT", target)]}),
+            options=FakeSource({"status": "OK", "signal": sig(OPTIONS, "o", "BTC_USDT", target)}),
             dh03=dh,
         )
         sup.run_cycle()
