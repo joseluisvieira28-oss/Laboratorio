@@ -44,9 +44,15 @@ class RPC:
             except urllib.error.HTTPError as e:
                 last=f"http_{e.code}"
                 if e.code in (401,402,403):raise RuntimeError("credential_or_plan_rejected")
+                if e.code==429:
+                    ra=e.headers.get("Retry-After")
+                    try: delay=float(ra) if ra else min(30,2**(n+1))
+                    except Exception: delay=min(30,2**(n+1))
+                    time.sleep(max(2.0,delay))
+                    continue
             except Exception as e:
                 last=type(e).__name__
-            time.sleep(2**n)
+            time.sleep(min(30,2**n))
         raise RuntimeError("rpc_transport_exhausted:"+str(last))
 
 def block_sig(rpc,slot0,direction,predicate,max_steps=1500):
