@@ -1,0 +1,75 @@
+{
+  "closeout_id": "TRIPLE_FISHING_MULTI_SLOT_V04_PRELIVE_EXECUTOR_CLOSEOUT",
+  "date": "2026-10-02",
+  "branch": "triple-fishing-multislot-v04-2026-10-02",
+  "verdict": "EXECUTOR_V04_PRELIVE_PASS__LOCAL_READY_CHECK_AND_CONTROLLED_HANDOVER_REMAIN",
+  "canonical_build": {
+    "run_id": 37002662000,
+    "source_head": "b82e7d1e4189db6914e264bc763c664d06bd1ed6",
+    "conclusion": "SUCCESS",
+    "tests_passed": 33,
+    "artifact_id": 11223574491,
+    "artifact_name": "mexc-triple-fishing-multislot-v04-windows-prelive",
+    "artifact_size_bytes": 23441566,
+    "artifact_sha256": "903a46dd54dc98da2e441318d6cdf1046d5f98eae21767529ed221138eab7921",
+    "artifact_expires_at": "2026-10-16T11:45:41Z"
+  },
+  "risk": {
+    "max_simultaneous_positions": 3,
+    "one_active_position_per_symbol": true,
+    "max_total_notional_usdt": 30,
+    "max_total_initial_margin_usdt": 14,
+    "daily_realized_loss_kill_usdt": 5,
+    "rolling_7d_realized_loss_kill_usdt": 5,
+    "no_late_chase": true,
+    "no_blind_resend": true
+  },
+  "lanes": {
+    "OPTIONS": {
+      "candidate_id": "OPTIONS-SPOTPERP-001-V2.1",
+      "symbol": "BTC_USDT",
+      "leverage": 1,
+      "max_notional_usdt": 10,
+      "max_positions": 1,
+      "parent_weight_preserved": true
+    },
+    "BNB": {
+      "candidate_id": "BNB-LAUNCHPOOL-DEMAND-001",
+      "symbol": "BNB_USDT",
+      "leverage": 5,
+      "max_notional_usdt": 10,
+      "max_initial_margin_usdt": 2,
+      "max_positions": 1
+    },
+    "DH03": {
+      "candidate_id": "HTF-DH03-12H-STANDALONE-FORWARD-V1",
+      "leverage": 5,
+      "max_notional_usdt": 10,
+      "max_initial_margin_usdt": 2,
+      "max_positions": 3,
+      "one_active_per_symbol": true,
+      "protective_tpsl_required": true
+    }
+  },
+  "ready_check": {
+    "script": "Ready_Check_MEXC_Triple_Fishing_V04.ps1",
+    "authenticated_exchange_access": "GET_READ_ONLY_ONLY",
+    "output": "%LOCALAPPDATA%\\CryptoLab\\TripleFishingV04\\live_state\\triple_ready_v04.json",
+    "prints_sha256": true,
+    "must_pass_before_activation": true
+  },
+  "activation": {
+    "active_authority_present": false,
+    "armed_marker_present": false,
+    "active_authority_id_required": "OPERATOR-FUTURES-GLOBAL-V0.4-ACTIVE",
+    "readiness_hash_binding_required": true,
+    "authority_hash_binding_required": true,
+    "controlled_handover_pending": true
+  },
+  "governance": {
+    "real_orders_created": false,
+    "exchange_mutation_performed": false,
+    "current_v03_authority_replaced": false,
+    "main_merge": false
+  }
+}
