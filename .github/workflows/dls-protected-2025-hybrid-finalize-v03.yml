@@ -1,0 +1,118 @@
+name: DLS Protected 2025 Hybrid Source Finalize V0.3
+
+on:
+  push:
+    branches: [dls-field-enrichment-v01]
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_PROTECTED_2025_HYBRID_FINALIZE_V03.marker
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Read dynamic recovery run IDs
+        id: ids
+        shell: bash
+        run: |
+          sqd="$(grep '^TARGETED_SQD_RUN_ID=' labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_PROTECTED_2025_HYBRID_FINALIZE_V03.marker | cut -d= -f2)"
+          mfi="$(grep '^MARGINFI_RUN_ID=' labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_PROTECTED_2025_HYBRID_FINALIZE_V03.marker | cut -d= -f2)"
+          test -n "$sqd" && test -n "$mfi"
+          echo "sqd=$sqd" >> "$GITHUB_OUTPUT"
+          echo "mfi=$mfi" >> "$GITHUB_OUTPUT"
+
+      - name: Download 15 pinned PASS partitions from run 36733498831
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36733498831
+          pattern: dls-protected-2025-source-v02-*
+          path: protected_source
+          merge-multiple: true
+
+      - name: Download 13 pinned PASS partitions from run 36740555628
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36740555628
+          pattern: dls-protected-2025-source-v02-*
+          path: protected_source
+          merge-multiple: true
+
+      - name: Download 8 targeted SQD recovery partitions
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ steps.ids.outputs.sqd }}
+          pattern: dls-protected-2025-targeted-v03-*
+          path: protected_source
+          merge-multiple: true
+
+      - name: Download 12 Marginfi program-only recovery partitions
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ steps.ids.outputs.mfi }}
+          pattern: dls-protected-2025-marginfi-program-only-v03-*
+          path: protected_source
+          merge-multiple: true
+
+      - name: Assert exact 48 monthly receipt files before finalizer
+        shell: python
+        run: |
+          from pathlib import Path
+          expected=[]
+          for p in ("marginfi","save0c","kamino","save11"):
+              for m in range(1,13):
+                  expected.append(f"{p}-2025{m:02d}.json")
+          found=sorted(p.name for p in Path("protected_source").glob("*.json"))
+          assert sorted(expected)==found, {"expected":len(expected),"found":len(found),"missing":sorted(set(expected)-set(found)),"extra":sorted(set(found)-set(expected))}
+          print("PASS: exact 48 protocol-month receipts")
+
+      - name: Compile unchanged canonical finalizer
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/finalize_protected_2025_source_v0_2.py
+
+      - name: Finalize canonical Protected-2025 source authority
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/finalize_protected_2025_source_v0_2.py --root protected_source
+
+      - name: Require authority PASS before upload
+        shell: python
+        run: |
+          import json
+          from pathlib import Path
+          r=json.loads(Path("labs/DEFI_LIQUIDATION_SHOCK_001/PROTECTED_2025_SOURCE_AUTHORITY_RECEIPT_V0.2.json").read_text())
+          assert r["classification"]=="PROTECTED_2025_SOURCE_AUTHORITY_PASS",r["classification"]
+          assert r["partition_count"]==48
+          assert r["error_count"]==0
+          fw=r["firewall"]
+          assert fw["prices_2025_opened"] is False and fw["returns_2025_opened"] is False and fw["pnl_2025_opened"] is False
+          assert fw["prices_2026_opened"] is False and fw["returns_2026_opened"] is False
+          print("PASS",r["sol_collateral_event_count"],r["sol_cluster_count"],r["clusters_by_protocol"])
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dls-protected-2025-source-authority-v03-hybrid
+          path: |
+            labs/DEFI_LIQUIDATION_SHOCK_001/PROTECTED_2025_SOURCE_AUTHORITY_RECEIPT_V0.2.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/PROTECTED_2025_SOURCE_CLUSTER_CENSUS_V0.2.ndjson
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_NO_MARKET_OUTCOMES_NO_2026_NO_TRADING
