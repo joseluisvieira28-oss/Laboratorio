@@ -1,0 +1,53 @@
+name: MEXC Event Futures Premium Basis V1.2 Holdout
+
+on:
+  push:
+    branches:
+      - mexc-event-futures-premium-basis-v1.2-holdout-2026-10-02
+    paths:
+      - 'research/mexc_event_futures/**'
+      - '.github/workflows/mexc-event-futures-premium-basis-v12-holdout.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  final-holdout:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install
+        run: python -m pip install --upgrade pip requests scipy
+      - name: Syntax check
+        run: python -m py_compile research/mexc_event_futures/premium_basis_v12_holdout.py
+      - name: Run frozen September final holdout
+        run: python research/mexc_event_futures/premium_basis_v12_holdout.py
+      - name: Verify boundaries
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          p='artifacts/mexc_event_futures/premium_basis_v12_holdout.json'
+          j=json.load(open(p, encoding='utf-8'))
+          assert j['october_outcomes_accessed'] is False
+          assert j['exact_event_futures_settlement']=='NOT_PROVEN'
+          assert j['historical_payout_series']=='NOT_AVAILABLE'
+          print('OCTOBER_BOUNDARY=PASS')
+          print('VERDICT='+j['verdict'])
+          print('SURVIVORS='+str(j['survivor_count']))
+          for c in j['cells']:
+              print('CELL',c['horizon_min'],c['z_threshold'],c['accuracy'],c['holm_adjusted_p'],c['final_survivor'])
+          PY
+      - name: Upload evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: mexc-event-futures-premium-basis-v12-final-holdout
+          path: |
+            artifacts/mexc_event_futures/premium_basis_v12_holdout.json
+            artifacts/mexc_event_futures/premium_basis_v12_holdout.csv
+          if-no-files-found: error
