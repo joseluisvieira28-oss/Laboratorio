@@ -105,7 +105,10 @@ def parse_instrument(asset: str, name: str) -> tuple[dt.datetime, float, str]:
     if prefix not in {asset, f"{asset}_USDC"}:
         raise ValueError(name)
     expiry = dt.datetime.strptime(parts[1].upper(), "%d%b%y").replace(tzinfo=UTC)
-    strike = float(parts[2])
+    strike_token = parts[2]
+    if asset == "XRP" and strike_token.count("d") == 1:
+        strike_token = strike_token.replace("d", ".")
+    strike = float(strike_token)
     if not math.isfinite(strike) or strike <= 0:
         raise ValueError(name)
     return expiry, strike, parts[3]
