@@ -1,0 +1,93 @@
+name: OPTIONS Multi-Asset Source Gate V0.1
+
+on:
+  push:
+    branches:
+      - options-multiasset-fourhook-prep-v0.1-2026-10-02
+    paths:
+      - 'crypto_edge_radar/multiasset/**'
+      - 'crypto_edge_radar/scripts/options_multiasset_source_gate_v01.py'
+      - 'crypto_edge_radar/tests/test_options_multiasset_source_gate_v01.py'
+      - '.github/workflows/options-multiasset-source-gate-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-gate:
+    strategy:
+      fail-fast: false
+      matrix:
+        asset: [ETH, SOL, XRP]
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    steps:
+      - name: Checkout frozen branch
+        uses: actions/checkout@v4
+
+      - name: Outcome firewall tests
+        working-directory: crypto_edge_radar
+        run: |
+          python3 --version
+          python3 -m unittest tests.test_options_multiasset_source_gate_v01
+
+      - name: Execute source-only census
+        id: gate
+        working-directory: crypto_edge_radar
+        shell: bash
+        run: |
+          set +e
+          python3 scripts/options_multiasset_source_gate_v01.py --asset '${{ matrix.asset }}' --out-dir multiasset_source_gate_receipts
+          rc=$?
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Assert no outcomes were computed
+        if: always()
+        working-directory: crypto_edge_radar
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, os
+          asset=os.environ["ASSET"].lower()
+          p=f"multiasset_source_gate_receipts/{asset}_source_gate_receipt.json"
+          r=json.load(open(p,encoding="utf-8"))
+          assert r["skew_computed"] is False
+          assert r["signal_computed"] is False
+          assert r["forward_return_computed"] is False
+          assert r["pnl_computed"] is False
+          assert r["outcome_source_contacted"] is False
+          assert r["year_2025_option_rows_requested"] is False
+          print("OUTCOME_FIREWALL_PASS", r["asset"], r["verdict"])
+          PY
+        env:
+          ASSET: '${{ matrix.asset }}'
+
+      - name: Upload source-gate receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: options-${{ matrix.asset }}-source-gate-v01
+          retention-days: 90
+          if-no-files-found: warn
+          path: |
+            crypto_edge_radar/multiasset_source_gate_receipts/${{ matrix.asset == 'ETH' && 'eth' || matrix.asset == 'SOL' && 'sol' || 'xrp' }}_source_gate_receipt.json
+            crypto_edge_radar/multiasset_source_gate_receipts/${{ matrix.asset == 'ETH' && 'eth' || matrix.asset == 'SOL' && 'sol' || 'xrp' }}_page_hash_manifest.json
+
+      - name: Preserve source-gate terminal classification
+        if: always()
+        shell: bash
+        run: |
+          rc='${{ steps.gate.outputs.rc }}'
+          echo "Source gate exit code: $rc"
+          if [ "$rc" = "0" ]; then
+            echo SOURCE_GATE_PASS
+            exit 0
+          elif [ "$rc" = "12" ]; then
+            echo SOURCE_GATE_BLOCKED_TRANSPORT
+            exit 12
+          else
+            echo SOURCE_GATE_FAIL_DATA
+            exit 2
+          fi
