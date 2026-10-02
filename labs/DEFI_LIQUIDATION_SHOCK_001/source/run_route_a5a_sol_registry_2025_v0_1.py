@@ -26,7 +26,7 @@ HIST={
  "kamino:withdraw_reserve_liquidity_supply":{
    "GafNuUXj9rxGLn4y79dPu6MHSuPWeJR6UtTWuexpGh3U"},
  "save11:withdraw_reserve_liquidity_supply":{
-   "8UviNr47S8eLJ3WfDxMRa3hvLta1VDJwNWqsDgtN3Cv".replace("LJ3","L6J3"),
+   "8UviNr47S8eL6J3WfDxMRa3hvLta1VDJwNWqsDgtN3Cv",
    "5cSfC32xBUYqGfkURLGfANuK64naHmMp27jUT7LQSujY",
    "8jVVXXxzC9N5FeHUxKBgXLM8xARzLpnzXz8dqZHzpykY",
    "APJAFijv9XrtnrAvktzsqgJboq4Uhs3mu7YN7DQ5bFMH",
