@@ -29,7 +29,14 @@ def canonical_payload(r):
       "sol_collateral_event_count":r.get("sol_collateral_event_count"),
       "duplicate_count":r.get("duplicate_count"),
       "error_count":r.get("error_count"),
-      "rows":r.get("rows") or [],
+      "rows":[
+        {k:row.get(k) for k in (
+          "protocol","instruction_class","signature","instructionAddress","slot","timestamp",
+          "account_count","data_length","collateral_mint","collateral_decimals",
+          "collateral_token_mint","unit_resolution"
+        ) if k in row}
+        for row in (r.get("rows") or [])
+      ],
       "firewall":r.get("firewall") or {}
     }
     raw=json.dumps(keep,sort_keys=True,separators=(",",":")).encode()
