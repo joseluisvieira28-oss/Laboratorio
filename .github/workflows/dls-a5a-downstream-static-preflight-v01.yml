@@ -1,0 +1,44 @@
+name: DLS A5A Downstream Static Preflight V0.1
+
+on:
+  push:
+    branches: [dls-field-enrichment-v01]
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_A5A_DOWNSTREAM_STATIC_PREFLIGHT_V01.marker
+
+permissions:
+  contents: read
+
+jobs:
+  static:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile downstream runners
+        run: |
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/run_route_a5a_sol_registry_2025_v0_1.py
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/run_route_a5a_protected_2025_partition_v0_1.py
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/finalize_protected_2025_source_v0_2.py
+      - name: Static authority sanity
+        shell: python
+        run: |
+          from pathlib import Path
+          import ast
+          p=Path("labs/DEFI_LIQUIDATION_SHOCK_001/source/run_route_a5a_sol_registry_2025_v0_1.py")
+          mod=ast.parse(p.read_text())
+          assert mod
+          text=p.read_text()
+          assert "SOL_ROLE_ACCOUNT_REGISTRY_2025_PASS" in text
+          assert "market_data_read" in text
+          assert "prices_read" in text
+          q=Path("labs/DEFI_LIQUIDATION_SHOCK_001/source/run_route_a5a_protected_2025_partition_v0_1.py").read_text()
+          assert "PROTECTED_2025_PROTOCOL_SOURCE_PASS" in q
+          assert "collateral_mint" in q
+          print("PASS: downstream A5A static preflight")
+      - name: Firewall
+        run: echo STATIC_ONLY_NO_SOURCE_NO_MARKET_DATA_NO_OUTCOMES_NO_TRADING
