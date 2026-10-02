@@ -31,6 +31,13 @@ class MultiAssetSourceGateTests(unittest.TestCase):
         self.assertEqual(strike, 3500)
         self.assertEqual(side, "C")
 
+    def test_linear_assets_use_usdc_history_namespace(self):
+        start = int(dt.datetime(2024, 6, 1, tzinfo=dt.timezone.utc).timestamp() * 1000)
+        end = int(dt.datetime(2024, 6, 2, tzinfo=dt.timezone.utc).timestamp() * 1000) - 1
+        self.assertIn("currency=USDC", mod.build_url("SOL", start, end))
+        self.assertIn("currency=USDC", mod.build_url("XRP", start, end))
+        self.assertIn("currency=ETH", mod.build_url("ETH", start, end))
+
     def test_2025_request_is_blocked(self):
         with self.assertRaises(RuntimeError):
             mod.build_url(
