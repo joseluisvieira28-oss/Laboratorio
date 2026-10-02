@@ -1,0 +1,54 @@
+name: MEXC Event Futures Exact Public GET V0.11.3
+
+on:
+  push:
+    branches:
+      - mexc-event-futures-browser-source-v0.11.3-exact-get-2026-10-02
+    paths:
+      - 'research/mexc_event_futures/**'
+      - '.github/workflows/mexc-event-futures-exact-public-get-v0113.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  exact-public-get:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Python deps
+        run: python -m pip install --upgrade pip playwright
+      - name: Install Chromium
+        run: python -m playwright install --with-deps chromium
+      - name: Syntax check
+        run: python -m py_compile research/mexc_event_futures/exact_public_get_v0113.py
+      - name: Run exact public GET source probe
+        run: python research/mexc_event_futures/exact_public_get_v0113.py
+      - name: Verify safety boundary
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          p='artifacts/mexc_event_futures/exact_public_get_v0113.json'
+          j=json.load(open(p,encoding='utf-8'))
+          assert j['authenticated_requests']==0
+          assert j['orders']==0
+          assert j['account_mutations']==0
+          print('NO_AUTH=PASS')
+          print('NO_ORDERS=PASS')
+          print('NO_MUTATION=PASS')
+          print('VERDICT='+j['verdict'])
+          print('BASES='+str(len(j['base_candidates'])))
+          print('EXACT_HITS='+str(len(j['exact_hits'])))
+          PY
+      - name: Upload evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: mexc-event-futures-exact-public-get-v0113-evidence
+          path: artifacts/mexc_event_futures/exact_public_get_v0113.json
+          if-no-files-found: error
