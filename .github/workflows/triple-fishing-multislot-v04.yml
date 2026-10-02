@@ -8,6 +8,7 @@ on:
       - 'crypto_edge_radar/radar/multi_slot_reservation_v04.py'
       - 'crypto_edge_radar/radar/global_fishing_dispatcher_v04.py'
       - 'crypto_edge_radar/radar/multislot_shadow_capacity_v04.py'
+      - 'crypto_edge_radar/radar/multislot_shadow_lifecycle_v04.py'
       - 'crypto_edge_radar/tests/test_multislot_v04.py'
       - 'crypto_edge_radar/execution/TRIPLE_FISHING_MULTI_SLOT_SMALL_AGGRESSIVE_V04.json'
       - 'crypto_edge_radar/governance/TRIPLE_FISHING_MULTI_SLOT_V04_PRELIVE_FREEZE.md'
@@ -36,7 +37,8 @@ jobs:
 
       - name: Compile V0.4 modules
         run: |
-          python -m py_compile             radar/multi_slot_reservation_v04.py             radar/global_fishing_dispatcher_v04.py             radar/multislot_shadow_capacity_v04.py
+          python -m py_compile             radar/multi_slot_reservation_v04.py             radar/global_fishing_dispatcher_v04.py             radar/multislot_shadow_capacity_v04.py \
+            radar/multislot_shadow_lifecycle_v04.py
 
       - name: Run deterministic multi-slot tests
         run: PYTHONPATH=. python -m unittest tests.test_multislot_v04 -v
