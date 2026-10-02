@@ -60,11 +60,13 @@
     }
   ],
   "arbitration": {
-    "rule": "existing reservations keep capacity; due signals sorted earliest entry target then candidate_id then signal identity",
+    "rule": "existing reservations keep capacity; earliest entry target first; for identical entry targets select at most one eligible signal per lane before allowing a second signal from the same lane; deterministic candidate_id/signal_key ordering inside each pass",
     "same_symbol_conflict": "MISSED_SYMBOL_CONFLICT_NO_CHASE",
     "lane_cap_conflict": "MISSED_LANE_CAP_NO_CHASE",
     "total_capacity_conflict": "MISSED_CAPACITY_NO_CHASE",
-    "late_chase": false
+    "late_chase": false,
+    "equal_target_lane_diversity_first": true,
+    "scientific_credit": false
   },
   "risk_policy": "execution/TRIPLE_FISHING_MULTI_SLOT_SMALL_AGGRESSIVE_V04.json",
   "current_v03_authority_superseded": false,
