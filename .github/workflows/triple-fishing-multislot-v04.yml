@@ -11,6 +11,8 @@ on:
       - 'crypto_edge_radar/radar/multislot_shadow_lifecycle_v04.py'
       - 'crypto_edge_radar/tests/test_multislot_v04.py'
       - 'crypto_edge_radar/execution/TRIPLE_FISHING_MULTI_SLOT_SMALL_AGGRESSIVE_V04.json'
+      - 'crypto_edge_radar/execution/GLOBAL_FISHING_MANIFEST_V04_DRAFT.json'
+      - 'crypto_edge_radar/execution/OPERATOR_FUTURES_GLOBAL_AUTHORITY_V04_DRAFT.json'
       - 'crypto_edge_radar/governance/TRIPLE_FISHING_MULTI_SLOT_V04_PRELIVE_FREEZE.md'
       - '.github/workflows/triple-fishing-multislot-v04.yml'
   workflow_dispatch:
@@ -55,5 +57,19 @@ jobs:
           assert p["lanes"]["OPTIONS-SPOTPERP-001-V2.1"]["max_notional_usdt"] == 10
           assert p["governance"]["current_v03_authority_unchanged"] is True
           assert p["status"] == "ENGINEERING_FREEZE__LIVE_ACTIVATION_NOT_YET_AUTHORIZED"
+          m=json.load(open("execution/GLOBAL_FISHING_MANIFEST_V04_DRAFT.json",encoding="utf-8"))
+          a=json.load(open("execution/OPERATOR_FUTURES_GLOBAL_AUTHORITY_V04_DRAFT.json",encoding="utf-8"))
+          expected={
+            "OPTIONS-SPOTPERP-001-V2.1",
+            "BNB-LAUNCHPOOL-DEMAND-001",
+            "HTF-DH03-12H-STANDALONE-FORWARD-V1",
+          }
+          assert {x["candidate_id"] for x in m["lanes"]} == expected
+          assert set(a["candidates"]) == expected
+          assert m["max_simultaneous_positions"] == 3
+          assert a["risk"]["max_simultaneous_positions"] == 3
+          assert m["current_file_can_submit_order"] is False
+          assert a["current_file_can_submit_order"] is False
+          assert a["armed_marker_allowed"] is False
           print("MULTISLOT_V04_ENGINEERING_POLICY_PASS")
           PY
