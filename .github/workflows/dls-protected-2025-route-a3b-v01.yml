@@ -1,0 +1,157 @@
+name: DLS Route A3B Protected 2025 Source V0.1
+
+on:
+  push:
+    branches: [dls-field-enrichment-v01]
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_PROTECTED_2025_ROUTE_A3B_V01.marker
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: dls-protected-2025-route-a3a-v01
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Download immutable A3 equivalence
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36969189081
+          name: dls-route-a3-gtfa-equivalence-v01
+          path: prereq_a3
+      - name: Verify source authority and implementation
+        shell: python
+        run: |
+          import json,py_compile
+          from pathlib import Path
+          p=next(Path("prereq_a3").rglob("DLS_ROUTE_A3_GTFA_EQUIVALENCE_RECEIPT_V0.1.json"))
+          x=json.loads(p.read_text())
+          assert x["classification"]=="ROUTE_A3_GTFA_EQUIVALENCE_PASS"
+          assert x["trading_authority"]=="NONE"
+          assert Path("labs/DEFI_LIQUIDATION_SHOCK_001/DLS_ROUTE_A3B_STREAMING_PROGRAM_TRANSPORT_ADDENDUM_V0.1.md").is_file()
+          py_compile.compile("labs/DEFI_LIQUIDATION_SHOCK_001/source/run_route_a3a_protected_2025_partition_v0_1.py",doraise=True)
+          py_compile.compile("labs/DEFI_LIQUIDATION_SHOCK_001/source/run_route_a3b_protected_2025_partition_v0_1.py",doraise=True)
+          py_compile.compile("labs/DEFI_LIQUIDATION_SHOCK_001/source/finalize_protected_2025_source_v0_2.py",doraise=True)
+          print("PASS: A3 authority + A3B streaming implementation")
+
+      - name: Source-only streaming smoke — marginfi Jan 2025
+        env:
+          HELIUS_API_KEY: ${{ secrets.HELIUS_API_KEY }}
+          PYTHONUNBUFFERED: "1"
+        run: |
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/run_route_a3b_protected_2025_partition_v0_1.py \
+            --group marginfi --month 01 --outdir smoke_source
+
+      - name: Enforce smoke firewall
+        shell: python
+        run: |
+          import json
+          from pathlib import Path
+          x=json.loads(Path("smoke_source/marginfi-202501.json").read_text())
+          assert x["classification"]=="PROTECTED_2025_PROTOCOL_SOURCE_PASS"
+          assert x["window_start"]=="2025-01-01T00:00:00Z"
+          assert x["window_end"]=="2025-02-01T00:00:00Z"
+          assert x["transport"]["route"]=="A3B_GTFA_STREAMING_PROGRAM_HISTORY"
+          assert x["transport"]["market_data_read"] is False
+          assert x["transport"]["economic_outcomes_opened"] is False
+          assert x["transport"]["trading_authority"]=="NONE"
+          print("PASS: A3B source-only smoke")
+
+  collect:
+    needs: smoke
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        group: [marginfi, kamino, save]
+        month: ["01","02","03","04","05","06","07","08","09","10","11","12"]
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Collect exact program-month source partition
+        env:
+          HELIUS_API_KEY: ${{ secrets.HELIUS_API_KEY }}
+          GROUP: ${{ matrix.group }}
+          MONTH: ${{ matrix.month }}
+          PYTHONUNBUFFERED: "1"
+        run: |
+          mkdir -p protected_source
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/run_route_a3b_protected_2025_partition_v0_1.py \
+            --group "$GROUP" --month "$MONTH" --outdir protected_source
+      - name: Partition firewall
+        if: always()
+        run: echo SOURCE_ONLY_NO_2025_PRICES_NO_RETURNS_NO_PNL_NO_2026_NO_TRADING
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dls-protected-2025-a3b-${{ matrix.group }}-${{ matrix.month }}
+          path: protected_source/*.json
+          if-no-files-found: warn
+          retention-days: 90
+
+  finalize:
+    needs: collect
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Download all A3B source partitions
+        uses: actions/download-artifact@v4
+        with:
+          pattern: dls-protected-2025-a3b-*
+          path: protected_source
+          merge-multiple: true
+      - name: Finalize with unchanged V0.2 authority
+        run: |
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/finalize_protected_2025_source_v0_2.py
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/finalize_protected_2025_source_v0_2.py --root protected_source
+      - name: Enforce final source firewall
+        if: always()
+        shell: python
+        run: |
+          import json
+          from pathlib import Path
+          p=Path("labs/DEFI_LIQUIDATION_SHOCK_001/PROTECTED_2025_SOURCE_AUTHORITY_RECEIPT_V0.2.json")
+          if p.exists():
+              x=json.loads(p.read_text())
+              f=x["firewall"]
+              assert f["prices_2025_opened"] is False and f["returns_2025_opened"] is False
+              assert f["pnl_2025_opened"] is False and f["prices_2026_opened"] is False
+              print("FINAL SOURCE:",x["classification"])
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dls-protected-2025-source-authority-a3b-v01
+          path: |
+            labs/DEFI_LIQUIDATION_SHOCK_001/PROTECTED_2025_SOURCE_AUTHORITY_RECEIPT_V0.2.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/PROTECTED_2025_SOURCE_CLUSTER_CENSUS_V0.2.ndjson
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_NO_MARKET_OUTCOMES_NO_2026_NO_TRADING
