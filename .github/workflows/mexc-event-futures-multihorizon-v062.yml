@@ -1,9 +1,9 @@
-name: MEXC Event Futures Exact Payout Collector V0.6.3
+name: MEXC Event Futures Exact Payout Collector V0.6.3.1
 
 on:
   push:
     branches:
-      - mexc-event-futures-exact-payout-collector-v0.6.3-2026-10-02
+      - mexc-event-futures-exact-payout-collector-v0.6.3.1-2026-10-02
     paths:
       - 'research/mexc_event_futures/**'
       - '.github/workflows/mexc-event-futures-multihorizon-v062.yml'
@@ -41,6 +41,7 @@ jobs:
               raise SystemExit('multi-horizon source gate did not fully pass')
           PY
       - name: Upload evidence
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: mexc-event-futures-exact-payout-v063-evidence
