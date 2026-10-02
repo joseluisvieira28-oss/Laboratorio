@@ -40,7 +40,11 @@ try {
     $rc=$LASTEXITCODE
     Write-Host ""
     Write-Host "=== V0.4 READY CHECK RECEIPT ==="
-    if (Test-Path -LiteralPath $out) { Get-Content -Raw -LiteralPath $out }
+    if (Test-Path -LiteralPath $out) {
+        Get-Content -Raw -LiteralPath $out
+        $readyHash = (Get-FileHash -LiteralPath $out -Algorithm SHA256).Hash.ToLower()
+        Write-Host ("READY_RECEIPT_SHA256=" + $readyHash)
+    }
     exit $rc
 }
 finally {
