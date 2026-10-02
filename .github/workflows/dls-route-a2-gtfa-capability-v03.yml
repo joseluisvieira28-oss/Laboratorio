@@ -1,0 +1,54 @@
+name: DLS Route A2 gTFA Capability V0.3
+
+on:
+  push:
+    branches: [dls-field-enrichment-v01]
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_DLS_ROUTE_A2_GTFA_PROBE_V03.marker
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Verify source-only authority
+        shell: python
+        run: |
+          from pathlib import Path
+          f=Path("labs/DEFI_LIQUIDATION_SHOCK_001/DLS_ROUTE_A2_GTFA_TRANSPORT_FREEZE_V0.3.md").read_text()
+          assert "FROZEN SOURCE-ONLY TRANSPORT OPTIMIZATION" in f
+          assert "Trading authority: NONE" in f
+          print("PASS: source-only transport authority")
+      - name: Compile probe
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/probe_route_a2_gtfa_v0_3.py
+      - name: Probe Helius gTFA capability
+        env:
+          HELIUS_API_KEY: ${{ secrets.HELIUS_API_KEY }}
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/probe_route_a2_gtfa_v0_3.py
+      - name: Enforce firewall
+        shell: python
+        run: |
+          import json
+          from pathlib import Path
+          x=json.loads(Path("labs/DEFI_LIQUIDATION_SHOCK_001/DLS_ROUTE_A2_GTFA_CAPABILITY_RECEIPT_V0.3.json").read_text())
+          assert x["transaction_payload_persisted"] is False
+          assert x["protected_2025_market_prices_opened"] is False
+          assert x["returns_opened"] is False
+          assert x["pnl_opened"] is False
+          assert x["protected_2026_opened"] is False
+          assert x["science_changed"] is False
+          assert x["trading_authority"]=="NONE"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dls-route-a2-gtfa-capability-v03
+          path: labs/DEFI_LIQUIDATION_SHOCK_001/DLS_ROUTE_A2_GTFA_CAPABILITY_RECEIPT_V0.3.json
+          if-no-files-found: error
+          retention-days: 30
