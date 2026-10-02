@@ -13,6 +13,11 @@ $ready = Join-Path $stateDir "triple_ready_v04.json"
 $armed = Join-Path $runtime "OPERATOR_FUTURES_V04_ARMED.json"
 $kill = Join-Path $runtime "OPERATOR_FUTURES_V04_KILL_SWITCH"
 $ledger = Join-Path $stateDir "MULTI_SLOT_LEDGER_V04.json"
+$v03Runtime = Join-Path $env:LOCALAPPDATA "CryptoLab\TripleFishingV03"
+$v03Receipts = Join-Path $v03Runtime "live_receipts\operator_futures_v03"
+$v03Archive = Join-Path $v03Runtime "historical_options_receipts"
+$v03Overlay = Join-Path $v03Runtime "live_state\OPTIONS_V21_PNL_CORRECTION_OVERLAY_V01.json"
+$legacyBnbReceipts = Join-Path $env:LOCALAPPDATA "CryptoLab\OperatorFuturesV02\live_receipts"
 
 if (-not (Test-Path -LiteralPath $exe)) { throw "Missing V0.4 executor: $exe" }
 if (-not (Test-Path -LiteralPath $authority)) { throw "V0.4 ACTIVE authority missing. Do not bypass." }
@@ -37,12 +42,24 @@ try {
     $env:MEXC_API_KEY=$apiKey
     $env:MEXC_API_SECRET=$apiSecret
 
+    $roots = @()
+    foreach ($root in @($v03Receipts,$v03Archive,$legacyBnbReceipts)) {
+        if (Test-Path -LiteralPath $root) { $roots += $root }
+    }
+    if ($roots.Count -gt 0) { $env:CRYPTO_LAB_EXTERNAL_RECEIPT_ROOTS = ($roots -join [IO.Path]::PathSeparator) }
+    if (Test-Path -LiteralPath $v03Archive) {
+        if (-not (Test-Path -LiteralPath $v03Overlay)) { throw "Historical OPTIONS receipts exist but correction overlay is missing: $v03Overlay" }
+        $env:CRYPTO_LAB_PNL_CORRECTION_OVERLAY = $v03Overlay
+    }
+
     & $exe --receipt-root $receiptRoot --policy $policy --activation-authority $authority --readiness-receipt $ready --armed-path $armed --kill-switch $kill --ledger-path $ledger --engine-status (Join-Path $stateDir "operator_futures_engine_v04.json") --supervisor-state (Join-Path $stateDir "triple_fishing_operator_v04.json") --bnb-state (Join-Path $stateDir "bnb_operator_source_v04.json") --options-db (Join-Path $stateDir "options_v21_operator_v04.sqlite3") --options-state (Join-Path $stateDir "options_v21_operator_source_v04.json") --dh03-market-db (Join-Path $stateDir "dh03_operator_market_v04.sqlite3") --dh03-evidence-db (Join-Path $stateDir "dh03_operator_evidence_v04.sqlite3") --dh03-state (Join-Path $stateDir "dh03_operator_source_v04.json")
     exit $LASTEXITCODE
 }
 finally {
     Remove-Item Env:MEXC_API_KEY -ErrorAction SilentlyContinue
     Remove-Item Env:MEXC_API_SECRET -ErrorAction SilentlyContinue
+    Remove-Item Env:CRYPTO_LAB_EXTERNAL_RECEIPT_ROOTS -ErrorAction SilentlyContinue
+    Remove-Item Env:CRYPTO_LAB_PNL_CORRECTION_OVERLAY -ErrorAction SilentlyContinue
     $apiKey=$null
     $apiSecret=$null
 }
