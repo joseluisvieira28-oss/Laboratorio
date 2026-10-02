@@ -1,0 +1,49 @@
+name: DLS Route A2 Time Cursor Probe V0.1
+
+on:
+  push:
+    branches: [dls-field-enrichment-v01]
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_ROUTE_A2_TIME_CURSOR_PROBE_V01.marker
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify credential presence only
+        shell: python
+        env:
+          HELIUS_API_KEY: ${{ secrets.HELIUS_API_KEY }}
+          DLS_RPC_URL: ${{ secrets.DLS_RPC_URL }}
+        run: |
+          import os
+          assert bool(os.environ.get("HELIUS_API_KEY")) or bool(os.environ.get("DLS_RPC_URL"))
+          print("PASS: archival credential present; value not exposed")
+      - name: Compile probe
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/probe_route_a2_time_cursor_v0_1.py
+      - name: Execute source-only cursor probe
+        env:
+          HELIUS_API_KEY: ${{ secrets.HELIUS_API_KEY }}
+          DLS_RPC_URL: ${{ secrets.DLS_RPC_URL }}
+          PYTHONUNBUFFERED: "1"
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/probe_route_a2_time_cursor_v0_1.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dls-route-a2-time-cursor-probe-v01
+          path: route_a2_time_cursor_probe/DLS_ROUTE_A2_TIME_CURSOR_PROBE_RECEIPT_V0.1.json
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_NO_2025_ACQUISITION_NO_MARKET_OUTCOMES_NO_TRADING
