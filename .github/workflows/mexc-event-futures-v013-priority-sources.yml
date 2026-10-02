@@ -1,0 +1,39 @@
+name: MEXC V0.13 Public Priority Source Gates
+on:
+  push:
+    branches:
+      - mexc-event-futures-event-conditioned-v0.13-prereg-2026-10-03
+    paths:
+      - research/mexc_event_futures/priority_source_gates_v013.py
+      - research/mexc_event_futures/V013_PRIORITY_SOURCE_GATE_FREEZE_2026-10-03.md
+      - .github/workflows/mexc-event-futures-v013-priority-sources.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  public-source-gates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        family: [liquidation, options]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Public websocket transport dependency
+        run: python -m pip install websockets==15.0.1
+      - name: Validate source rejection mechanics
+        run: python research/mexc_event_futures/priority_source_gates_v013.py --self-test
+      - name: Run source-only gate without secrets or MEXC outcomes
+        run: python research/mexc_event_futures/priority_source_gates_v013.py --family ${{ matrix.family }} --seconds 600 --output evidence/${{ matrix.family }}
+      - name: Preserve raw source evidence even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v013-public-source-${{ matrix.family }}
+          path: evidence/${{ matrix.family }}/
+          if-no-files-found: error
+          retention-days: 30
