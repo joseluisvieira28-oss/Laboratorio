@@ -43,12 +43,20 @@ jobs:
           import json
           from pathlib import Path
           p=Path("canonical/SOURCE_CLUSTER_SAMPLE_GATE_RECEIPT_V0.1.json")
+          c=Path("canonical/SOURCE_PRIMARY_CLUSTER_CENSUS_V0.1.ndjson")
           x=json.loads(p.read_text())
           assert x["classification"]=="SOURCE_SAMPLE_GATE_PASS"
-          assert x["primary"]["oos_cluster_count"]==9931
           assert x["firewall"]["protected_market_outcomes_2025_2026"] is False
-          assert Path("canonical/SOURCE_PRIMARY_CLUSTER_CENSUS_V0.1.ndjson").is_file()
-          print("PASS: canonical source-only 2024 truth")
+          assert c.is_file()
+          target="mint:So11111111111111111111111111111111111111112"
+          n=0
+          for line in c.read_text().splitlines():
+              if not line.strip(): continue
+              r=json.loads(line)
+              if r.get("split")=="oos" and r.get("primary_market_identity")==target:
+                  n+=1
+          assert n==9931,n
+          print("PASS: canonical 2024 SOL source truth =",n)
 
       - name: Run adaptive source equivalence
         env:
