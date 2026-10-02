@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "mexc-event-futures-shadow-event-v013.schema.json",
+  "title": "MEXC Event Futures V0.13 finalized shadow event",
+  "type": "object",
+  "required": [
+    "family_id","family_version","signal_id","symbol","direction","horizon_minutes",
+    "decision_ts_ms","decision_index","payout","break_even_probability",
+    "expiry_target_ts_ms","expiry_ts_ms","expiry_index","outcome","unit_return",
+    "payout_source_sha256","decision_index_raw_sha256","expiry_index_raw_sha256",
+    "rule_hash","status"
+  ],
+  "properties": {
+    "family_id": {"type":"string","minLength":1},
+    "family_version": {"type":"string","minLength":1},
+    "signal_id": {"type":"string","minLength":1},
+    "symbol": {"type":"string","minLength":1},
+    "direction": {"enum":["UP","DOWN"]},
+    "direction_policy": {"type":"string"},
+    "horizon_minutes": {"type":"integer","minimum":1},
+    "decision_ts_ms": {"type":"integer","minimum":1},
+    "decision_index": {"type":"number","exclusiveMinimum":0},
+    "payout": {"type":"number","exclusiveMinimum":0},
+    "break_even_probability": {"type":"number","exclusiveMinimum":0,"exclusiveMaximum":1},
+    "expiry_target_ts_ms": {"type":"integer","minimum":1},
+    "expiry_ts_ms": {"type":"integer","minimum":1},
+    "expiry_index": {"type":"number","exclusiveMinimum":0},
+    "outcome": {"enum":["WIN","LOSS","TIE"]},
+    "unit_return": {"type":"number"},
+    "payout_source_sha256": {"type":"string","pattern":"^[0-9a-f]{64}$"},
+    "decision_index_raw_sha256": {"type":"string","pattern":"^[0-9a-f]{64}$"},
+    "expiry_index_raw_sha256": {"type":"string","pattern":"^[0-9a-f]{64}$"},
+    "rule_hash": {"type":"string","minLength":1},
+    "status": {"enum":["RESOLVED"]},
+    "source_integrity_ok": {"type":"boolean"}
+  },
+  "additionalProperties": true
+}
