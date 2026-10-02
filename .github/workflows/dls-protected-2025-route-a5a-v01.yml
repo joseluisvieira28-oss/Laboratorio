@@ -1,0 +1,156 @@
+name: DLS Protected 2025 Route A5A Source V0.1
+
+on:
+  push:
+    branches: [dls-field-enrichment-v01]
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_PROTECTED_2025_ROUTE_A5A_V01.marker
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: dls-protected-2025-route-a5a-v01
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        protocol: [marginfi, save0c, kamino, save11]
+        month: ["01","02","03","04","05","06","07","08","09","10","11","12"]
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Resolve immutable prerequisite runs
+        id: pins
+        shell: bash
+        run: |
+          marker="labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_PROTECTED_2025_ROUTE_A5A_V01.marker"
+          a5a="$(grep '^A5A_EQUIV_RUN_ID=' "$marker" | cut -d= -f2)"
+          registry="$(grep '^REGISTRY_RUN_ID=' "$marker" | cut -d= -f2)"
+          test -n "$a5a" && test -n "$registry"
+          echo "a5a=$a5a" >> "$GITHUB_OUTPUT"
+          echo "registry=$registry" >> "$GITHUB_OUTPUT"
+
+      - name: Download A5A equivalence receipt
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ steps.pins.outputs.a5a }}
+          name: dls-route-a5a-2024-equivalence-v01
+          path: prereq_a5a
+
+      - name: Download SOL role registry
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ steps.pins.outputs.registry }}
+          name: dls-route-a5a-sol-role-registry-2025-v01
+          path: prereq_registry
+
+      - name: Fail closed on prerequisite authority
+        shell: python
+        run: |
+          import json
+          from pathlib import Path
+          a=json.loads(next(Path("prereq_a5a").rglob("DLS_ROUTE_A5A_EQUIVALENCE_RECEIPT_V0.1.json")).read_text())
+          r=json.loads(next(Path("prereq_registry").rglob("DLS_ROUTE_A5A_SOL_ROLE_ACCOUNT_REGISTRY_2025_RECEIPT_V0.1.json")).read_text())
+          assert a["classification"]=="ROUTE_A5A_SOL_ACCOUNT_EQUIVALENCE_PASS"
+          assert a["canonical_cluster_count"]==9931 and a["reconstructed_cluster_count"]==9931
+          assert a["missing_cluster_count"]==0 and a["extra_cluster_count"]==0 and a["field_mismatch_count"]==0
+          assert r["classification"]=="SOL_ROLE_ACCOUNT_REGISTRY_2025_PASS"
+          assert r["trading_authority"]=="NONE"
+          print("PASS: A5A equivalence + 2025 registry")
+
+      - name: Compile frozen partition collector
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/run_route_a5a_protected_2025_partition_v0_1.py
+
+      - name: Collect one protected source month
+        env:
+          HELIUS_API_KEY: ${{ secrets.HELIUS_API_KEY }}
+          PROTOCOL: ${{ matrix.protocol }}
+          MONTH: ${{ matrix.month }}
+          PYTHONUNBUFFERED: "1"
+        run: |
+          registry="$(find prereq_registry -name DLS_ROUTE_A5A_SOL_ROLE_ACCOUNT_REGISTRY_2025_RECEIPT_V0.1.json -print -quit)"
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/run_route_a5a_protected_2025_partition_v0_1.py \
+            --protocol "$PROTOCOL" --month "$MONTH" --registry "$registry" \
+            --out "protected_source/$PROTOCOL-2025$MONTH.json"
+
+      - name: Partition firewall
+        if: always()
+        run: echo SOURCE_ONLY_NO_2025_PRICES_NO_RETURNS_NO_PNL_NO_2026_NO_TRADING
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dls-protected-2025-a5a-${{ matrix.protocol }}-${{ matrix.month }}
+          path: protected_source/${{ matrix.protocol }}-2025${{ matrix.month }}.json
+          if-no-files-found: warn
+          retention-days: 90
+
+  finalize:
+    needs: collect
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download all A5A partition receipts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: dls-protected-2025-a5a-*
+          path: protected_source
+          merge-multiple: true
+
+      - name: Compile frozen finalizer
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/finalize_protected_2025_source_v0_2.py
+
+      - name: Finalize protected-2025 source authority
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/finalize_protected_2025_source_v0_2.py --root protected_source
+
+      - name: Enforce final source firewall
+        if: always()
+        shell: python
+        run: |
+          import json
+          from pathlib import Path
+          p=Path("labs/DEFI_LIQUIDATION_SHOCK_001/PROTECTED_2025_SOURCE_AUTHORITY_RECEIPT_V0.2.json")
+          if p.exists():
+              x=json.loads(p.read_text())
+              f=x["firewall"]
+              assert f["prices_2025_opened"] is False and f["returns_2025_opened"] is False
+              assert f["pnl_2025_opened"] is False and f["prices_2026_opened"] is False
+              print("FINAL SOURCE:",x["classification"])
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dls-protected-2025-source-authority-a5a-v01
+          path: |
+            labs/DEFI_LIQUIDATION_SHOCK_001/PROTECTED_2025_SOURCE_AUTHORITY_RECEIPT_V0.2.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/PROTECTED_2025_SOURCE_CLUSTER_CENSUS_V0.2.ndjson
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_NO_MARKET_OUTCOMES_NO_2026_NO_TRADING
