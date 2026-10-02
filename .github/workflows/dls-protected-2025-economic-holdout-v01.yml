@@ -73,7 +73,15 @@ jobs:
           assert d["classification"]=="DIRECTION_SOURCE_ROLE_AUDIT_PASS"
           assert o["classification"]=="SURVIVES_OOS"
           assert fee["classification"]=="MEXC_API_FUTURES_FEE_AUTHORITY_PASS"
+          assert Path("labs/DEFI_LIQUIDATION_SHOCK_001/PROTECTED_2025_ECONOMIC_HOLDOUT_PRELAUNCH_BINDING_V0.1.md").is_file()
           print("PASS: strategy/direction/cost authority frozen")
+
+      - name: Verify frozen economic runner blob
+        shell: bash
+        run: |
+          actual="$(git hash-object labs/DEFI_LIQUIDATION_SHOCK_001/source/run_protected_2025_economic_holdout_v0_1.py)"
+          test "$actual" = "88b46b3dfa058c85d52f99cd62a14ee550a99e30"
+          echo "PASS: exact frozen economic runner $actual"
 
       - name: Compile frozen holdout runner
         run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/run_protected_2025_economic_holdout_v0_1.py
