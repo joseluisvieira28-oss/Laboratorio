@@ -47,5 +47,8 @@ Do not manually disarm an old executor while it owns an open position. The Ready
 - `Run_MEXC_Triple_Fishing_V04.ps1` — guarded runtime entrypoint. It refuses to run without a separately issued ACTIVE authority, PASS readiness receipt and armed marker.
 - `Status_MEXC_Triple_Fishing_V04.ps1` — local state display.
 - `Arm_After_Approved_Handover_MEXC_Triple_Fishing_V04.ps1` — creates the armed marker only after a separately issued ACTIVE authority is present and hash-bound to a fresh (<15 min) PASS readiness receipt. The current pre-live bundle contains no ACTIVE authority, so this script cannot arm by itself.
+- `Install_And_Start_MEXC_Triple_Fishing_V04.ps1` — installs/starts the long-running scheduled task only after V0.4 is already armed.
+- `Emergency_Stop_MEXC_Triple_Fishing_V04.ps1` — creates the kill switch, blocks new entries and keeps the task available to manage owned exits.
+- `Disarm_MEXC_Triple_Fishing_V04.ps1` — refuses to disarm while the reservation ledger is non-empty.
 - `OPERATOR_FUTURES_GLOBAL_AUTHORITY_V04_DRAFT.json` — draft only, cannot authorize orders.
 - `GLOBAL_FISHING_MANIFEST_V04_DRAFT.json` — reconciled three-lane draft manifest.
