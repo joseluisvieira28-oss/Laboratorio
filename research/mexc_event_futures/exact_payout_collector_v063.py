@@ -67,8 +67,6 @@ async def get_horizon_group(page):
 async def click_horizon_in_group(page,label):
     return await page.evaluate("""
     (label) => {
-      const wanted=['10m','30m','1H','1D'];
-      const bad=['1m','5m','15m','4H'];
       const visibleLeaf=(txt)=>[...document.querySelectorAll('span,button,[role="button"],div')].filter(el=>{
         if((el.innerText||'').trim()!==txt) return false;
         const s=getComputedStyle(el),r=el.getBoundingClientRect();
@@ -78,15 +76,16 @@ async def click_horizon_in_group(page,label):
 
       const anchors=visibleLeaf('10m');
       if(anchors.length!==1) return {clicked:false,reason:'ANCHOR_10M_NOT_UNIQUE',count:anchors.length};
-      let p=anchors[0];
-      let group=null;
-      for(let depth=0; depth<6 && p; depth++,p=p.parentElement){
-        const lines=(p.innerText||'').trim().split(/\n+/).map(x=>x.trim()).filter(Boolean);
-        if(wanted.every(x=>lines.includes(x)) && !bad.some(x=>lines.includes(x))){
-          group=p; break;
-        }
+
+      const group=anchors[0].parentElement && anchors[0].parentElement.parentElement;
+      if(!group) return {clicked:false,reason:'GROUP_GRANDPARENT_MISSING'};
+
+      const short=(group.innerText||'').trim().split(/\n+/).map(x=>x.trim()).filter(x=>/^\d+\s*[mMhHdD]$/.test(x));
+      const normalized=[...new Set(short)];
+      const required=['10m','30m','1H','1D'];
+      if(normalized.length!==4 || !required.every(x=>normalized.includes(x))){
+        return {clicked:false,reason:'GROUP_VALIDATION_FAILED',short_labels:normalized,text:(group.innerText||'').trim().slice(0,500)};
       }
-      if(!group) return {clicked:false,reason:'EVENT_GROUP_NOT_FOUND'};
 
       const candidates=[...group.querySelectorAll('span,button,[role="button"],div')].filter(el=>{
         if((el.innerText||'').trim()!==label) return false;
@@ -94,11 +93,15 @@ async def click_horizon_in_group(page,label):
         if(s.display==='none'||s.visibility==='hidden'||r.width<=0||r.height<=0) return false;
         return ![...el.children].some(ch=>(ch.innerText||'').trim()===label);
       });
-      if(candidates.length!==1) return {clicked:false,reason:'TARGET_NOT_UNIQUE_IN_GROUP',count:candidates.length};
+      if(candidates.length!==1) return {clicked:false,reason:'TARGET_NOT_UNIQUE_IN_VALIDATED_GROUP',count:candidates.length};
+
       const target=candidates[0];
       target.click();
       const r=target.getBoundingClientRect();
-      return {clicked:true,count:1,tag:target.tagName,className:String(target.className||''),x:r.x,y:r.y};
+      return {
+        clicked:true,count:1,tag:target.tagName,className:String(target.className||''),
+        x:r.x,y:r.y,group_text:(group.innerText||'').trim().slice(0,500)
+      };
     }
     """,label)
 
@@ -168,7 +171,7 @@ async def inspect(browser,display,symbol):
 
 async def main():
     out={
-      "lab":"MEXC_EVENT_FUTURES_EXACT_PAYOUT_COLLECTOR_V0.6.3.1",
+      "lab":"MEXC_EVENT_FUTURES_EXACT_PAYOUT_COLLECTOR_V0.6.3.2",
       "run_started_at_utc":datetime.now(timezone.utc).isoformat(),
       "assets":[]
     }
@@ -202,7 +205,12 @@ async def main():
         "observed_at_utc":r["observed_at_utc"],
         "proxy_index":r.get("proxy_index",{}).get("index_price"),
         "index_context":r.get("event_dom_index_context",[])[:3]
-      } for r in records]
+      } for r in records],
+      "all_statuses":[{
+        "asset":a["asset"],
+        "error":a.get("error"),
+        "records":a.get("records",[])
+      } for a in out["assets"]]
     },indent=2,ensure_ascii=False))
     print("WROTE",jp)
     print("WROTE",jl)
