@@ -1,0 +1,57 @@
+name: MEXC Event Futures Premium Basis V1.1
+
+on:
+  push:
+    branches:
+      - mexc-event-futures-premium-basis-v1.1-2026-10-02
+    paths:
+      - 'research/mexc_event_futures/**'
+      - '.github/workflows/mexc-event-futures-premium-basis-v11.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  premium-basis:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install
+        run: python -m pip install --upgrade pip requests scipy
+      - name: Syntax check
+        run: python -m py_compile research/mexc_event_futures/premium_basis_v11.py
+      - name: Run frozen V1.1 premium-basis lab
+        run: python research/mexc_event_futures/premium_basis_v11.py
+      - name: Verify boundaries
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          p='artifacts/mexc_event_futures/premium_basis_v11.json'
+          j=json.load(open(p, encoding='utf-8'))
+          assert j['historical_holdout_sep_2026']=='LOCKED_NOT_FETCHED'
+          assert j['exact_event_futures_settlement']=='NOT_PROVEN'
+          assert j['promotion_status']=='NO_EXACT_EVENT_FUTURES_PROMOTION'
+          print('HOLDOUT_LOCK=PASS')
+          print('EXACT_SETTLEMENT_FAIL_CLOSED=PASS')
+          print('VERDICT='+j['verdict'])
+          print('SOURCE_AVAILABLE='+','.join(j['source_available_assets']))
+          print('SOURCE_BLOCKED='+','.join(j['source_blocked_assets']))
+          print('DISCOVERY_CELLS='+str(len(j['discovery_cells'])))
+          print('BH_ELIGIBLE='+str(j['bh_eligible_count']))
+          print('BH_SELECTED='+str(len(j['bh_selected'])))
+          print('OOS_SURVIVORS='+str(len(j['oos_survivors'])))
+          PY
+      - name: Upload evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: mexc-event-futures-premium-basis-v11-evidence
+          path: |
+            artifacts/mexc_event_futures/premium_basis_v11.json
+            artifacts/mexc_event_futures/premium_basis_matrix_v11.csv
+          if-no-files-found: error
