@@ -1,0 +1,24 @@
+name: OPTIONS XRP Source Format Diagnostic V0.1
+
+on:
+  push:
+    branches:
+      - options-multiasset-fourhook-prep-v0.1-2026-10-02
+    paths:
+      - '.github/workflows/options-xrp-source-format-diag-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnostic:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Source-format diagnostic only
+        working-directory: crypto_edge_radar
+        run: python3 diagnostics/options_xrp_source_format_diag_v01.py
+      - name: Governance
+        run: |
+          echo 'NO OUTCOMES / NO SIGNAL / NO PNL / NO 2025+'
