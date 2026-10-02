@@ -150,7 +150,7 @@ def extract_candidates(text):
 
     # Absolute URLs.
     for m in re.finditer(r'https://[A-Za-z0-9._~:/?#\[\]@!$&()*+,;=%-]{8,300}', text):
-        s = m.group(0).rstrip('"')]}>,;')
+        s = m.group(0).rstrip("\"')]}>,;")
         if any(k in s.lower() for k in ("event", "predict", "payout")):
             cands.add(s)
 
@@ -174,7 +174,7 @@ def extract_candidates(text):
                 break
             window = text[max(0, i-500):min(len(text), i+700)]
             for m in re.finditer(r'/[A-Za-z0-9._~{}$:/?&=+%-]{3,220}', window):
-                s = m.group(0).rstrip('"')]}>,;')
+                s = m.group(0).rstrip("\"')]}>,;")
                 if ("/api/" in s.lower() or "event" in s.lower() or "predict" in s.lower()):
                     cands.add(s)
             pos = i + len(kw)
