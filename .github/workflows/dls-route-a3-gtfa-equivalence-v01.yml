@@ -1,0 +1,102 @@
+name: DLS Route A3 Helius gTFA Equivalence V0.1
+
+on:
+  push:
+    branches: [dls-field-enrichment-v01]
+    paths:
+      - "labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_ROUTE_A3_GTFA_EQUIVALENCE_V01.marker"
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  equivalence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Verify frozen A3 authority
+        run: |
+          test -f labs/DEFI_LIQUIDATION_SHOCK_001/DLS_ROUTE_A3_GTFA_EQUIVALENCE_FREEZE_V0.1.md
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/run_route_a3_gtfa_equivalence_v0_1.py
+          echo "PASS: source-only A3 authority"
+
+      - name: Download immutable A2 paired receipt
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36900517788
+          name: dls-route-a2-archival-pair-recovery-v02
+          path: a2_pair
+
+      - name: Download immutable A2 raw four-class evidence
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36897600425
+          name: dls-route-a2-four-class-pair-v01
+          path: a2_raw
+
+      - name: Verify artifact digests
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          # Artifact actions validate provider digests during download; assert required receipts exist.
+          assert list(Path("a2_pair").rglob("FOUR_CLASS_PAIRED_SOURCE_RECEIPT_V0.2.json"))
+          raws=[]
+          for p in Path("a2_raw").rglob("*.json"):
+              try:
+                  x=json.loads(p.read_text())
+              except Exception:
+                  continue
+              r=x.get("result") if isinstance(x,dict) else None
+              if isinstance(r,dict) and ((r.get("transaction") or {}).get("signatures") or []):
+                  raws.append(p)
+          assert len(raws)>=4, len(raws)
+          print("PASS: A2 evidence available")
+          PY
+
+      - name: Probe Helius gTFA against exact frozen references
+        env:
+          HELIUS_API_KEY: ${{ secrets.HELIUS_API_KEY }}
+        run: |
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/run_route_a3_gtfa_equivalence_v0_1.py \
+            --pair-root a2_pair \
+            --raw-root a2_raw \
+            --out route_a3_evidence
+
+      - name: Enforce source-only firewall
+        if: always()
+        shell: python
+        run: |
+          import json
+          from pathlib import Path
+          p=Path("route_a3_evidence/DLS_ROUTE_A3_GTFA_EQUIVALENCE_RECEIPT_V0.1.json")
+          if p.exists():
+              x=json.loads(p.read_text())
+              assert x["firewall"]["protected_2025_acquisition"] is False
+              assert x["firewall"]["prices"] is False
+              assert x["firewall"]["returns"] is False
+              assert x["firewall"]["pnl"] is False
+              assert x["firewall"]["purchases"] is False
+              assert x["trading_authority"]=="NONE"
+              print("A3:",x["classification"])
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dls-route-a3-gtfa-equivalence-v01
+          path: route_a3_evidence/
+          if-no-files-found: warn
+          retention-days: 30
