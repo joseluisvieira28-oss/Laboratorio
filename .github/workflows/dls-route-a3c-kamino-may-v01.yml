@@ -1,0 +1,100 @@
+name: DLS Route A3C Kamino May 2025 Sharded Source V0.1
+
+on:
+  push:
+    branches: [dls-field-enrichment-v01]
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_DLS_ROUTE_A3C_KAMINO_MAY_V01.marker
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dls-route-a3c-kamino-may-v01
+  cancel-in-progress: true
+
+jobs:
+  shard:
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        shard: [0,1,2,3]
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify source-only authority
+        shell: python
+        run: |
+          import py_compile
+          from pathlib import Path
+          assert Path("labs/DEFI_LIQUIDATION_SHOCK_001/DLS_ROUTE_A3C_KAMINO_MAY_SHARDED_TRANSPORT_FREEZE_V0.1.md").is_file()
+          py_compile.compile("labs/DEFI_LIQUIDATION_SHOCK_001/source/run_route_a3c_kamino_may_shard_v0_1.py",doraise=True)
+          print("PASS: A3C source-only authority")
+      - name: Collect fixed Kamino May shard
+        env:
+          HELIUS_API_KEY: ${{ secrets.HELIUS_API_KEY }}
+          PYTHONUNBUFFERED: "1"
+        run: |
+          mkdir -p shard_out
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/run_route_a3c_kamino_may_shard_v0_1.py \
+            --shard "${{ matrix.shard }}" --outdir shard_out
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_NO_PRICES_NO_RETURNS_NO_PNL_NO_2026_NO_TRADING
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dls-a3c-kamino-may-shard-${{ matrix.shard }}
+          path: shard_out/*.json
+          if-no-files-found: warn
+          retention-days: 90
+
+  merge:
+    needs: shard
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: dls-a3c-kamino-may-shard-*
+          path: shard_in
+          merge-multiple: true
+      - name: Merge only if 4/4 source shards pass
+        run: |
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/merge_route_a3c_kamino_may_v0_1.py
+          mkdir -p merged
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/merge_route_a3c_kamino_may_v0_1.py \
+            --root shard_in --out merged/kamino-202505.json
+      - name: Verify canonical month receipt firewall
+        shell: python
+        run: |
+          import json
+          from pathlib import Path
+          x=json.loads(Path("merged/kamino-202505.json").read_text())
+          assert x["classification"]=="PROTECTED_2025_PROTOCOL_SOURCE_PASS"
+          assert x["window_start"]=="2025-05-01T00:00:00Z"
+          assert x["window_end"]=="2025-06-01T00:00:00Z"
+          assert x["error_count"]==0 and x["duplicate_count"]==0
+          assert x["transport"]["market_data_read"] is False
+          assert x["transport"]["economic_outcomes_opened"] is False
+          assert x["transport"]["trading_authority"]=="NONE"
+          print("PASS: canonical Kamino May receipt")
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dls-protected-2025-a3c-kamino-05
+          path: merged/kamino-202505.json
+          if-no-files-found: error
+          retention-days: 90
