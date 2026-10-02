@@ -1,0 +1,104 @@
+name: OPTIONS ETH Sharded Source Gate V0.1
+
+on:
+  push:
+    branches:
+      - options-multiasset-fourhook-prep-v0.1-2026-10-02
+    paths:
+      - '.github/workflows/options-eth-source-gate-sharded-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  month-shard:
+    strategy:
+      fail-fast: false
+      max-parallel: 12
+      matrix:
+        month: ['2024-01','2024-02','2024-03','2024-04','2024-05','2024-06','2024-07','2024-08','2024-09','2024-10','2024-11','2024-12']
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run outcome-blind ETH source shard
+        id: shard
+        working-directory: crypto_edge_radar
+        shell: bash
+        run: |
+          set +e
+          python3 diagnostics/options_eth_source_shard_v01.py --month '${{ matrix.month }}' --out-dir eth_shard
+          rc=$?
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Assert outcome firewall
+        working-directory: crypto_edge_radar
+        env:
+          MONTH: '${{ matrix.month }}'
+        run: |
+          python3 - <<'PY'
+          import json,os
+          p=f"eth_shard/eth_{os.environ['MONTH']}_receipt.json"
+          r=json.load(open(p))
+          for k in ("skew_computed","signal_computed","forward_return_computed","pnl_computed","outcome_source_contacted","year_2025_accessed"):
+              assert r[k] is False
+          print("OUTCOME_FIREWALL_PASS",r["month"],"rows",r["rows"])
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: eth-source-shard-${{ matrix.month }}
+          retention-days: 90
+          if-no-files-found: error
+          path: crypto_edge_radar/eth_shard/*
+      - name: Preserve shard transport status
+        shell: bash
+        run: |
+          rc='${{ steps.shard.outputs.rc }}'
+          if [ "$rc" = "0" ]; then exit 0; fi
+          if [ "$rc" = "12" ]; then exit 12; fi
+          exit 2
+
+  aggregate:
+    if: always()
+    needs: month-shard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: eth-source-shard-*
+          path: eth_all
+      - name: Aggregate exact 2024 census
+        id: agg
+        working-directory: crypto_edge_radar
+        shell: bash
+        run: |
+          set +e
+          python3 diagnostics/options_eth_source_aggregate_v01.py --root ../eth_all --out eth_source_gate_receipt.json
+          rc=$?
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Assert aggregate outcome firewall
+        working-directory: crypto_edge_radar
+        run: |
+          python3 - <<'PY'
+          import json
+          r=json.load(open("eth_source_gate_receipt.json"))
+          for k in ("skew_computed","signal_computed","forward_return_computed","pnl_computed","outcome_source_contacted","year_2025_accessed"):
+              assert r[k] is False
+          print("ETH_AGGREGATE_OUTCOME_FIREWALL_PASS",r["verdict"])
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: options-ETH-source-gate-sharded-v01
+          retention-days: 90
+          path: crypto_edge_radar/eth_source_gate_receipt.json
+      - name: Terminal classification
+        shell: bash
+        run: |
+          rc='${{ steps.agg.outputs.rc }}'
+          if [ "$rc" = "0" ]; then echo SOURCE_GATE_PASS; exit 0; fi
+          if [ "$rc" = "12" ]; then echo SOURCE_GATE_BLOCKED_TRANSPORT; exit 12; fi
+          echo SOURCE_GATE_FAIL_DATA
+          exit 2
