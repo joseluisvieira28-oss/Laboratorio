@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+import hashlib
 import json
+import time
 from pathlib import Path
 import tempfile
 import unittest
@@ -128,6 +130,9 @@ class FakeReadOnly:
     def fee_details(self, symbol):
         return {"realTakerFee": 0.0002}
 
+    def position_mode(self):
+        return 1
+
     def leverage(self, symbol):
         return [
             {
@@ -173,6 +178,9 @@ class FakePublic:
             "SOL_USDT": 0.1,
             "ETH_USDT": 0.01,
         }
+
+    def server_time_ms(self):
+        return int(time.time_ns() / 1_000_000)
 
     def contract_row(self, symbol):
         return {
@@ -306,26 +314,8 @@ class EngineHarness:
             ),
             encoding="utf-8",
         )
-        self.authority.write_text(
-            json.dumps(
-                {
-                    "authority_id": "OPERATOR-FUTURES-GLOBAL-V0.4-ACTIVE",
-                    "status": "ACTIVE",
-                    "risk": {"max_simultaneous_positions": 3},
-                }
-            ),
-            encoding="utf-8",
-        )
         self.write_readiness(datetime.now(timezone.utc))
-        self.armed.write_text(
-            json.dumps(
-                {
-                    "authority": "OPERATOR-FUTURES-GLOBAL-V0.4-ACTIVE",
-                    "max_simultaneous_positions": 3,
-                }
-            ),
-            encoding="utf-8",
-        )
+        self.bind_authorization()
 
         self.engine = OperatorFuturesEngineV04(
             credentials=MEXCCredentials("k", "s"),
@@ -349,6 +339,32 @@ class EngineHarness:
                     "readiness_id": "MEXC-TRIPLE-FISHING-MULTISLOT-READY-V0.4",
                     "pass": True,
                     "checked_at_utc": checked_at.astimezone(timezone.utc).isoformat().replace("+00:00", "Z"),
+                }
+            ),
+            encoding="utf-8",
+        )
+
+    def bind_authorization(self):
+        ready_hash = hashlib.sha256(self.readiness.read_bytes()).hexdigest()
+        self.authority.write_text(
+            json.dumps(
+                {
+                    "authority_id": "OPERATOR-FUTURES-GLOBAL-V0.4-ACTIVE",
+                    "status": "ACTIVE",
+                    "risk": {"max_simultaneous_positions": 3},
+                    "readiness_receipt_sha256": ready_hash,
+                }
+            ),
+            encoding="utf-8",
+        )
+        authority_hash = hashlib.sha256(self.authority.read_bytes()).hexdigest()
+        self.armed.write_text(
+            json.dumps(
+                {
+                    "authority": "OPERATOR-FUTURES-GLOBAL-V0.4-ACTIVE",
+                    "max_simultaneous_positions": 3,
+                    "readiness_receipt_sha256": ready_hash,
+                    "active_authority_sha256": authority_hash,
                 }
             ),
             encoding="utf-8",
@@ -490,12 +506,12 @@ class OperatorEngineV04Tests(unittest.TestCase):
         self.assertEqual(len(self.h.engine.ledger.current()["reservations"]), 0)
         self.assertEqual(len(self.h.exchange.positions), 0)
 
-    def test_stale_readiness_blocks_new_entry_but_not_exit(self):
+    def test_readiness_tamper_blocks_new_entry_but_not_exit(self):
         self.assertEqual(self.h.engine.enter_signal(self.h.bnb())["status"], "FILLED_EXIT_PENDING")
         self.h.write_readiness(datetime.now(timezone.utc) - timedelta(hours=1))
         blocked = self.h.engine.enter_signal(self.h.dh03())
         self.assertEqual(blocked["status"], "FAIL_CLOSED_NOT_AUTHORIZED")
-        self.assertIn("V04_READINESS_STALE_OVER_15_MIN", blocked["blockers"])
+        self.assertIn("V04_ARMED_MARKER_READINESS_HASH_MISMATCH", blocked["blockers"])
 
         self.h.kill.write_text("kill", encoding="utf-8")
         out = self.h.engine.manage_all()
