@@ -1,0 +1,49 @@
+name: MEXC Event Futures ETF-CME Min30 Transfer V1.0.2
+
+on:
+  push:
+    branches:
+      - mexc-event-futures-etfcme-transfer-v1.0.2-min30-2026-10-02
+    paths:
+      - 'research/mexc_event_futures/**'
+      - '.github/workflows/mexc-event-futures-etfcme-min30-v102.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  transfer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install
+        run: python -m pip install --upgrade pip requests scipy
+      - name: Syntax check
+        run: python -m py_compile research/mexc_event_futures/etf_cme_min30_transfer_v102.py
+      - name: Run frozen V1.0.2 transfer
+        run: python research/mexc_event_futures/etf_cme_min30_transfer_v102.py
+      - name: Verify boundaries
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          j=json.load(open('artifacts/mexc_event_futures/etf_cme_min30_transfer_v102.json',encoding='utf-8'))
+          assert j['year_2026']=='LOCKED_NOT_SCORED_OR_FETCHED'
+          assert 10 in j['source_unobservable_horizons_min']
+          assert j['exact_event_futures']=='NOT_PROVEN'
+          assert j['authenticated_requests']==0 and j['orders']==0 and j['account_mutations']==0
+          print('BOUNDARY=PASS')
+          print('VERDICT='+j['verdict'])
+          print('BH_SELECTED='+str(len(j['bh_selected_horizons'])))
+          print('SURVIVORS='+str(len(j['survivors'])))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mexc-event-futures-etfcme-min30-v102
+          path: artifacts/mexc_event_futures/etf_cme_min30_transfer_v102.json
+          if-no-files-found: error
