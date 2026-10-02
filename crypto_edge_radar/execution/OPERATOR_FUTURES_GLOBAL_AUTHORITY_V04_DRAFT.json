@@ -1,0 +1,97 @@
+{
+  "authority_id": "OPERATOR-FUTURES-GLOBAL-V0.4-DRAFT",
+  "frozen_utc": "2026-10-02T11:05:00Z",
+  "status": "DRAFT_PRELIVE__ENGINEERING_AND_READINESS_ONLY",
+  "purpose": "Prospective three-slot small-exposure operator authority candidate. It cannot submit orders until a separate activation closeout is issued after all gates pass.",
+  "user_capacity_request": "minimum 3 slots; small position size preferred",
+  "science": {
+    "credit": false,
+    "parent_rules_changed": false,
+    "blocked_signal_scientific_validity_unchanged": true
+  },
+  "risk": {
+    "max_simultaneous_positions": 3,
+    "one_active_position_per_symbol": true,
+    "max_total_notional_usdt": 30,
+    "max_total_initial_margin_usdt": 14,
+    "daily_realized_loss_kill_usdt": 5,
+    "rolling_7d_realized_loss_kill_usdt": 5,
+    "margin_mode": "ISOLATED",
+    "auto_margin_add": false,
+    "martingale": false,
+    "averaging": false,
+    "pyramiding": false,
+    "late_chase": false,
+    "blind_resend": false
+  },
+  "candidates": {
+    "OPTIONS-SPOTPERP-001-V2.1": {
+      "candidate_id": "OPTIONS-SPOTPERP-001-V2.1",
+      "order_path_owned_by_v04_when_activated": true,
+      "venue": "MEXC_FUTURES",
+      "symbol": "BTC_USDT",
+      "directions": [
+        "LONG",
+        "SHORT"
+      ],
+      "leverage": 1,
+      "max_notional_usdt": 10,
+      "max_initial_margin_usdt": 10,
+      "max_positions": 1,
+      "scientific_credit": false
+    },
+    "BNB-LAUNCHPOOL-DEMAND-001": {
+      "candidate_id": "BNB-LAUNCHPOOL-DEMAND-001",
+      "order_path_owned_by_v04_when_activated": true,
+      "venue": "MEXC_FUTURES",
+      "symbol": "BNB_USDT",
+      "directions": [
+        "LONG"
+      ],
+      "leverage": 5,
+      "max_notional_usdt": 10,
+      "max_initial_margin_usdt": 2,
+      "max_positions": 1,
+      "scientific_credit": false
+    },
+    "HTF-DH03-12H-STANDALONE-FORWARD-V1": {
+      "candidate_id": "HTF-DH03-12H-STANDALONE-FORWARD-V1",
+      "order_path_owned_by_v04_when_activated": true,
+      "venue": "MEXC_FUTURES",
+      "symbols": [
+        "BTC_USDT",
+        "ETH_USDT",
+        "SOL_USDT",
+        "BNB_USDT",
+        "XRP_USDT",
+        "DOGE_USDT"
+      ],
+      "directions": [
+        "LONG"
+      ],
+      "leverage": 5,
+      "max_notional_usdt": 10,
+      "max_initial_margin_usdt": 2,
+      "max_positions": 3,
+      "one_active_per_symbol": true,
+      "protective_tpsl_required": true,
+      "scientific_credit": false
+    }
+  },
+  "activation_gates": [
+    "capacity-3 reservation ledger PASS",
+    "capacity-aware dispatcher PASS",
+    "synthetic three-position restart/reconciliation PASS",
+    "per-lane leverage transport validated",
+    "public minimum-notional feasibility PASS at activation time",
+    "fresh authenticated read-only account feasibility PASS",
+    "zero open position/order/TP-SL controlled handover",
+    "legacy V0.3/OPTIONS/BNB executors disarmed only after clean handover",
+    "Windows executor build PASS",
+    "explicit activation closeout"
+  ],
+  "current_file_can_submit_order": false,
+  "armed_marker_allowed": false,
+  "current_v03_authority_superseded": false,
+  "no_main_merge": true
+}
