@@ -14,6 +14,7 @@ This freeze is intentionally aggressive on capacity and conservative on absolute
 - one active position per symbol: **required**
 - late chase: **forbidden**
 - blind resend: **forbidden**
+- equal-target arbitration: **one eligible signal per lane first**, then fill any spare slot deterministically; earliest entry target remains primary
 - isolated margin only
 - Auto Margin Add OFF
 - no martingale / averaging / pyramiding
