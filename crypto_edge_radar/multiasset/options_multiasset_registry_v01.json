@@ -1,0 +1,109 @@
+{
+  "registry_id": "OPTIONS_MULTI_ASSET_FOUR_HOOK_REGISTRY_V0.1",
+  "frozen_utc": "2026-10-02T00:00:00Z",
+  "status": "PREPARATION_ONLY",
+  "futures_only_target": true,
+  "shared_supervisor": true,
+  "shared_global_real_money_position_limit": 1,
+  "no_spot_execution": true,
+  "hooks": [
+    {
+      "hook_id": "OPTIONS-BTC-001",
+      "asset": "BTC",
+      "scientific_parent": "OPTIONS-SPOTPERP-001-V2.1",
+      "science_state": "EXISTING_FROZEN_PARENT__DO_NOT_MODIFY",
+      "options_source_family": "DERIBIT",
+      "options_instrument_convention": "EXISTING_BTC_V21_BINDING",
+      "execution_venue": "MEXC_FUTURES",
+      "execution_symbol": "BTC_USDT",
+      "allowed_directions": [
+        "LONG",
+        "SHORT"
+      ],
+      "direction_rule": {
+        "positive_signal": "LONG",
+        "negative_signal": "SHORT"
+      },
+      "execution_state": "EXISTING_FUTURES_ONLY_REFERENCE__SEPARATE_AUTHORITY_REQUIRED",
+      "protected_outcomes_locked": false
+    },
+    {
+      "hook_id": "OPTIONS-ETH-001",
+      "asset": "ETH",
+      "scientific_parent": null,
+      "science_state": "NEW_UNTESTED_HYPOTHESIS__PRE_OUTCOME_FREEZE_REQUIRED",
+      "options_source_family": "DERIBIT",
+      "options_instrument_convention": "ASSET_ADAPTER_MUST_PROVE",
+      "execution_venue": "MEXC_FUTURES",
+      "execution_symbol": "ETH_USDT",
+      "allowed_directions": [
+        "LONG",
+        "SHORT"
+      ],
+      "direction_rule": {
+        "positive_signal": "LONG",
+        "negative_signal": "SHORT"
+      },
+      "execution_state": "NO_LIVE_AUTHORITY__SOURCE_AND_SCIENCE_GATES_REQUIRED",
+      "protected_outcomes_locked": true
+    },
+    {
+      "hook_id": "OPTIONS-SOL-001",
+      "asset": "SOL",
+      "scientific_parent": null,
+      "science_state": "NEW_UNTESTED_HYPOTHESIS__PRE_OUTCOME_FREEZE_REQUIRED",
+      "options_source_family": "DERIBIT",
+      "options_instrument_convention": "ASSET_ADAPTER_MUST_PROVE",
+      "execution_venue": "MEXC_FUTURES",
+      "execution_symbol": "SOL_USDT",
+      "allowed_directions": [
+        "LONG",
+        "SHORT"
+      ],
+      "direction_rule": {
+        "positive_signal": "LONG",
+        "negative_signal": "SHORT"
+      },
+      "execution_state": "NO_LIVE_AUTHORITY__SOURCE_AND_SCIENCE_GATES_REQUIRED",
+      "protected_outcomes_locked": true
+    },
+    {
+      "hook_id": "OPTIONS-XRP-001",
+      "asset": "XRP",
+      "scientific_parent": null,
+      "science_state": "NEW_UNTESTED_HYPOTHESIS__PRE_OUTCOME_FREEZE_REQUIRED",
+      "options_source_family": "DERIBIT",
+      "options_instrument_convention": "ASSET_ADAPTER_MUST_PROVE",
+      "execution_venue": "MEXC_FUTURES",
+      "execution_symbol": "XRP_USDT",
+      "allowed_directions": [
+        "LONG",
+        "SHORT"
+      ],
+      "direction_rule": {
+        "positive_signal": "LONG",
+        "negative_signal": "SHORT"
+      },
+      "execution_state": "NO_LIVE_AUTHORITY__SOURCE_AND_SCIENCE_GATES_REQUIRED",
+      "protected_outcomes_locked": true
+    }
+  ],
+  "execution_preflight_requirements": [
+    "CONTRACT_AVAILABLE",
+    "MIN_VOLUME_AND_STEP_VALID",
+    "MIN_EXECUTABLE_NOTIONAL_WITHIN_FROZEN_CAP",
+    "ISOLATED_MARGIN_SUPPORTED",
+    "POSITION_MODE_MATCH",
+    "FEE_READ_FRESH",
+    "FUNDING_READ_FRESH",
+    "AVAILABLE_BALANCE_SUFFICIENT",
+    "GLOBAL_POSITION_SLOT_AVAILABLE",
+    "CANDIDATE_SPECIFIC_AUTHORITY_ACTIVE"
+  ],
+  "governance": {
+    "merge_to_main": false,
+    "live_orders_authorized": false,
+    "exchange_mutation_authorized": false,
+    "post_outcome_tuning": false
+  }
+}
