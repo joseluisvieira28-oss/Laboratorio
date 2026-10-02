@@ -1,0 +1,63 @@
+name: DLS Protected-2025 Source Consolidation V0.1
+
+on:
+  push:
+    branches: [dls-field-enrichment-v01]
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/DLS_SOURCE_CONSOLIDATION_TRIGGER_V0.1.json
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  consolidate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Fetch reusable PASS candidates from run A
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36740555628
+          pattern: dls-protected-2025-source-v02-*
+          path: /tmp/source_reuse/runA
+          merge-multiple: true
+      - name: Fetch reusable PASS candidates from run B
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36733498831
+          pattern: dls-protected-2025-source-v02-*
+          path: /tmp/source_reuse/runB
+          merge-multiple: true
+      - name: Compile consolidation
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/consolidate_protected_2025_source_v0_1.py
+      - name: Consolidate immutable PASS partitions
+        run: >
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/consolidate_protected_2025_source_v0_1.py
+          --root /tmp/source_reuse
+          --out labs/DEFI_LIQUIDATION_SHOCK_001/DLS_PROTECTED_2025_SOURCE_CONSOLIDATION_RECEIPT_V0.1.json
+      - name: Enforce source-only firewall
+        shell: python
+        run: |
+          import json
+          from pathlib import Path
+          x=json.loads(Path("labs/DEFI_LIQUIDATION_SHOCK_001/DLS_PROTECTED_2025_SOURCE_CONSOLIDATION_RECEIPT_V0.1.json").read_text())
+          assert x["classification"]=="CONSOLIDATION_PASS"
+          assert x["market_outcomes_opened"] is False
+          assert x["trading_authority"]=="NONE"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dls-protected-2025-source-consolidation-v01
+          path: labs/DEFI_LIQUIDATION_SHOCK_001/DLS_PROTECTED_2025_SOURCE_CONSOLIDATION_RECEIPT_V0.1.json
+          if-no-files-found: error
+          retention-days: 90
