@@ -21,7 +21,7 @@ ASSETS = {
     "MUUSDT": "MUSTOCK_USDT",
     "SPCXUSDT": "SPCXSTOCK_USDT",
 }
-LOOKBACKS = (1, 5, 15, 60, 240, 1440)
+LOOKBACKS = (5, 15, 60, 240, 1440)
 HORIZONS = (10, 30, 60, 1440)
 FAMILIES = ("MOMENTUM", "REVERSAL")
 
@@ -134,12 +134,12 @@ def fetch_series(
     points: dict[int, float] = {}
     manifest: list[dict[str, Any]] = []
     cur = start_s
-    chunk_seconds = CHUNK_MINUTES * 60
+    chunk_seconds = CHUNK_BARS * BAR_SECONDS
     request_no = 0
     while cur < end_s:
         stop = min(end_s - 60, cur + chunk_seconds - 60)
         q = urllib.parse.urlencode(
-            {"interval": "Min1", "start": str(cur), "end": str(stop)}
+            {"interval": "Min5", "start": str(cur), "end": str(stop)}
         )
         url = f"{API_BASE}/api/v1/contract/kline/index_price/{symbol}?{q}"
         payload, digest = http_json(url)
@@ -161,7 +161,7 @@ def fetch_series(
             }
         )
         request_no += 1
-        cur = stop + 60
+        cur = stop + BAR_SECONDS
         time.sleep(REQUEST_SLEEP_SECONDS)
 
     ordered = sorted(points)
@@ -251,7 +251,7 @@ def evaluate_cell(
     wins = losses = ties = target_up = target_down = 0
     margins: list[float] = []
 
-    for ts in range(part_start, part_end, 60):
+    for ts in range(part_start, part_end, BAR_SECONDS):
         if not is_entry_grid(ts, horizon):
             continue
         target_ts = ts + horizon * 60
@@ -443,7 +443,7 @@ def write_markdown(
     lines: list[str] = []
     lines.append("# MEXC EVENT FUTURES — DIRECTIONAL V0.1 RESULT")
     lines.append("")
-    lines.append("Status: RESEARCH ONLY — MINUTE_GRID_DIRECTIONAL_PROXY")
+    lines.append("Status: RESEARCH ONLY — FIVE_MINUTE_GRID_DIRECTIONAL_PROXY")
     lines.append("")
     lines.append(f"- Development survivors: **{len(dev_keys)}**")
     lines.append(f"- OOS survivors: **{len(oos_keys)}**")
@@ -490,7 +490,7 @@ def write_markdown(
     lines.append("## Interpretation firewall")
     lines.append("")
     lines.append(
-        "A DIRECTIONAL_HOLDOUT_SURVIVOR is evidence only for the frozen minute-grid "
+        "A DIRECTIONAL_HOLDOUT_SURVIVOR is evidence only for the frozen five-minute-grid "
         "directional proxy. It is not proof of Event Futures profitability because "
         "historical payout-at-entry remains unproven and Event Futures cannot be "
         "automated through the official MEXC API."
@@ -551,8 +551,8 @@ def main() -> int:
     result = {
         "lab_id": "MEXC_EVENT_FUTURES_DIRECTIONAL_V0.1",
         "created_utc": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
-        "science_freeze": "MEXC_EVENT_FUTURES_DIRECTIONAL_PREOUTCOME_FREEZE_V0.1",
-        "proxy": "MINUTE_GRID_DIRECTIONAL_PROXY",
+        "science_freeze": "MEXC_EVENT_FUTURES_DIRECTIONAL_PREOUTCOME_FREEZE_V0.1 + TRANSPORT_AMENDMENT_01",
+        "proxy": "FIVE_MINUTE_GRID_DIRECTIONAL_PROXY",
         "assets": ASSETS,
         "lookbacks_min": list(LOOKBACKS),
         "settlement_horizons_min": list(HORIZONS),
