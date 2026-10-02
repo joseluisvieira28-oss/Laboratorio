@@ -1,0 +1,92 @@
+name: DLS Protected 2025 Targeted SQD Recovery V0.3
+
+on:
+  push:
+    branches: [dls-field-enrichment-v01]
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_PROTECTED_2025_TARGETED_SQD_RECOVERY_V03.marker
+
+permissions:
+  contents: read
+
+jobs:
+  collect:
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        include:
+          - { protocol: kamino, month: "05" }
+          - { protocol: kamino, month: "06" }
+          - { protocol: kamino, month: "07" }
+          - { protocol: save0c, month: "01" }
+          - { protocol: save0c, month: "02" }
+          - { protocol: save0c, month: "03" }
+          - { protocol: save11, month: "01" }
+          - { protocol: save11, month: "05" }
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify recovery manifest
+        shell: python
+        run: |
+          import json,os
+          from pathlib import Path
+          m=json.loads(Path("labs/DEFI_LIQUIDATION_SHOCK_001/PROTECTED_2025_SOURCE_RECOVERY_MANIFEST_V0.3.json").read_text())
+          pair={"protocol":os.environ["PROTOCOL"],"month":os.environ["MONTH"]}
+          assert pair in m["sqd_targeted_recovery"], pair
+          assert m["protected_2025_market_outcomes_opened"] is False
+          assert m["science_changed"] is False
+          assert m["trading_authority"]=="NONE"
+          print("PASS: targeted source-only partition",pair)
+        env:
+          PROTOCOL: ${{ matrix.protocol }}
+          MONTH: ${{ matrix.month }}
+      - name: Compile canonical collector
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/collect_protected_2025_source_v0_1.py
+      - name: Collect exact missing partition
+        env:
+          PROTOCOL: ${{ matrix.protocol }}
+          MONTH: ${{ matrix.month }}
+        run: |
+          python - <<'PY'
+          import os,subprocess,sys
+          p=os.environ["PROTOCOL"]; m=int(os.environ["MONTH"])
+          start=f"2025-{m:02d}-01T00:00:00Z"
+          end="2026-01-01T00:00:00Z" if m==12 else f"2025-{m+1:02d}-01T00:00:00Z"
+          out=f"protected_source/{p}-2025{m:02d}.json"
+          subprocess.check_call([sys.executable,
+            "labs/DEFI_LIQUIDATION_SHOCK_001/source/collect_protected_2025_source_v0_1.py",
+            "--protocol",p,"--start",start,"--end",end,"--out",out])
+          PY
+      - name: Verify source-only PASS
+        shell: python
+        env:
+          PROTOCOL: ${{ matrix.protocol }}
+          MONTH: ${{ matrix.month }}
+        run: |
+          import json,os
+          from pathlib import Path
+          p=os.environ["PROTOCOL"];m=os.environ["MONTH"]
+          x=json.loads(Path(f"protected_source/{p}-2025{m}.json").read_text())
+          assert x["classification"]=="PROTECTED_2025_PROTOCOL_SOURCE_PASS"
+          fw=x["firewall"]
+          assert fw["prices_2025"] is False and fw["returns_2025"] is False and fw["pnl_2025"] is False
+          assert fw["prices_2026"] is False and fw["returns_2026"] is False
+          print("PASS",p,m,x["successful_instruction_count"],x["sol_collateral_event_count"])
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dls-protected-2025-targeted-v03-${{ matrix.protocol }}-${{ matrix.month }}
+          path: protected_source/${{ matrix.protocol }}-2025${{ matrix.month }}.json
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_NO_MARKET_OUTCOMES_NO_TRADING
