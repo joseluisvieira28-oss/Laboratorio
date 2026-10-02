@@ -1,0 +1,122 @@
+{
+  "closeout_id": "TRIPLE_FISHING_CAPACITY_AUDIT_CLOSEOUT_V0.1",
+  "date": "2026-10-02",
+  "branch": "triple-fishing-capacity-audit-v01-2026-10-02",
+  "workflow_run_id": 36997114686,
+  "workflow_head": "ad5182258222957ab43a5e148c7b339d3a84f146",
+  "workflow_conclusion": "SUCCESS",
+  "artifact_id": 11222615360,
+  "artifact_sha256": "94aa0aae9d54c0d53fc97a3a19cb3b1700850836a11b09bc9d45d2afc6ad9cf5",
+  "verdict": "REDESIGN_JUSTIFIED__DO_NOT_ACTIVATE_MULTI_SLOT_UNTIL_PER_LANE_RISK_AND_MULTI_POSITION_RECOVERY_PASS",
+  "evidence": {
+    "dh03": {
+      "selected_cross_symbol_signals": 6,
+      "same_symbol_parent_overlap_skipped": 7,
+      "one_global_slot_admitted": 1,
+      "one_global_slot_blocked": 5,
+      "one_global_slot_blocked_fraction": 0.8333333333333334,
+      "observed_peak_concurrency": 6,
+      "capacity_replay": [
+        {
+          "slots": 1,
+          "admitted": 1,
+          "blocked": 5
+        },
+        {
+          "slots": 2,
+          "admitted": 2,
+          "blocked": 4
+        },
+        {
+          "slots": 3,
+          "admitted": 3,
+          "blocked": 3
+        },
+        {
+          "slots": 4,
+          "admitted": 4,
+          "blocked": 2
+        },
+        {
+          "slots": 5,
+          "admitted": 5,
+          "blocked": 1
+        },
+        {
+          "slots": 6,
+          "admitted": 6,
+          "blocked": 0
+        }
+      ],
+      "interpretation": "operational capacity truncation of valid parent selections; not evidence that blocked trades would have been profitable"
+    },
+    "options": {
+      "frozen_2025_oos_resolved_scaled_trades": 363,
+      "hold_hours": 24,
+      "calendar_day_density_proxy": 0.9945205479452055,
+      "density_proxy_is_not_2026_forecast": true,
+      "standalone_execution_profile": {
+        "leverage": 1,
+        "max_notional_usdt": 10,
+        "daily_realized_loss_kill_usdt": 2,
+        "rolling_7d_realized_loss_kill_usdt": 5
+      },
+      "generic_triple_profile": {
+        "leverage": 5,
+        "max_initial_isolated_margin_usdt": 10,
+        "max_notional_usdt": 50,
+        "daily_realized_loss_kill_usdt": 5,
+        "rolling_7d_realized_loss_kill_usdt": 5
+      },
+      "per_lane_risk_profile_required": true
+    },
+    "bnb_public_snapshot": {
+      "checked_at_utc": "2026-10-02T10:44:25Z",
+      "status": "PASS_PUBLIC_SOURCE",
+      "eligible_events_visible": 0,
+      "authenticated_exchange_api_used": false,
+      "orders_created": false,
+      "exchange_mutation_performed": false
+    },
+    "authority_manifest_drift": {
+      "actual_supervisor_lanes": [
+        "OPTIONS-SPOTPERP-001-V2.1",
+        "BNB-LAUNCHPOOL-DEMAND-001",
+        "HTF-DH03-12H-STANDALONE-FORWARD-V1"
+      ],
+      "global_authority_missing_options": true,
+      "global_authority_missing_dh03": true,
+      "global_manifest_missing_dh03": true,
+      "manifest_options_state": "EXTERNAL_EXECUTOR_ACTIVE_UNTIL_CURRENT_POSITION_CLOSE",
+      "activation_blocker": true
+    }
+  },
+  "redesign": {
+    "justified": true,
+    "safe_first_engineering_target_simultaneous_positions": 2,
+    "target_mode": "SHADOW_SYNTHETIC_ONLY",
+    "final_live_capacity_not_decided": true,
+    "direct_slot_constant_change_forbidden": true,
+    "required_gates": [
+      "MULTI_RESERVATION_LEDGER",
+      "MULTI_ACTIVE_POSITION_ENGINE",
+      "PER_LANE_RISK_PROFILES",
+      "AGGREGATE_MARGIN_NOTIONAL_CAPS",
+      "ONE_ACTIVE_PER_SYMBOL_DUPLICATE_PROTECTION",
+      "PORTFOLIO_LOSS_FIREWALL",
+      "INDEPENDENT_POSITION_EXIT_OWNERSHIP",
+      "MULTI_POSITION_RESTART_RECONCILIATION",
+      "FRESH_AUTHENTICATED_READ_ONLY_ACCOUNT_RECONCILIATION",
+      "AUTHORITY_MANIFEST_RUNTIME_RECONCILIATION",
+      "NEW_EXPLICIT_MULTI_SLOT_AUTHORITY"
+    ]
+  },
+  "governance": {
+    "live_trading_authorized": false,
+    "orders_created": false,
+    "exchange_mutation_performed": false,
+    "current_authority_modified": false,
+    "main_merge": false,
+    "scientific_rules_changed": false
+  }
+}
