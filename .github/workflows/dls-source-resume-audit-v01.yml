@@ -1,0 +1,36 @@
+name: DLS reuse completed monthly source audit V0.1
+on:
+  push:
+    branches: [dls-field-enrichment-v01]
+    paths: ['.github/workflows/dls-source-resume-audit-v01.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  reuse-and-adjudicate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify finalizer remained frozen
+        shell: python
+        run: |
+          import subprocess
+          expected='d4345422aaf4f2f4042fe311c333352d9a208652'
+          actual=subprocess.check_output(['git','hash-object','labs/DEFI_LIQUIDATION_SHOCK_001/source/finalize_protected_2025_source_v0_2.py'],text=True).strip()
+          assert actual==expected
+      - name: Reuse and validate complete source evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/audit_resumed_source_snapshot_v0_1.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dls-source-resume-audit-v01
+          path: |
+            source_resume_audit/PINNED_ARTIFACT_LEDGER.json
+            source_resume_audit/DLS_PROTECTED_2025_SOURCE_RESUME_RECEIPT_V0.1.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/PROTECTED_2025_SOURCE_AUTHORITY_RECEIPT_V0.2.json
+          if-no-files-found: error
+          retention-days: 90
+
