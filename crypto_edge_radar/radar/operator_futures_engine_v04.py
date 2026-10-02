@@ -87,6 +87,10 @@ def _finite(value: Any, field: str) -> float:
     return x
 
 
+def _sha256_file(path: str | Path) -> str:
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
 def _floor_step(value: float, step: float) -> float:
     if value <= 0 or step <= 0:
         return 0.0
@@ -247,11 +251,9 @@ class OperatorFuturesEngineV04:
                     blockers.append("V04_READINESS_ID_INVALID")
                 if readiness.get("pass") is not True:
                     blockers.append("V04_READINESS_NOT_PASS")
-                checked = _utc(readiness["checked_at_utc"])
-                age = (datetime.now(timezone.utc) - checked).total_seconds()
-                if age < 0 or age > 900:
-                    blockers.append("V04_READINESS_STALE_OVER_15_MIN")
+                readiness_sha256 = _sha256_file(self.readiness_receipt_path)
             except Exception as exc:
+                readiness_sha256 = None
                 blockers.append(f"V04_READINESS_INVALID:{type(exc).__name__}")
 
         if not self.armed_path.exists():
@@ -263,6 +265,18 @@ class OperatorFuturesEngineV04:
                     blockers.append("V04_ARMED_MARKER_AUTHORITY_INVALID")
                 if int(armed.get("max_simultaneous_positions", 0)) != 3:
                     blockers.append("V04_ARMED_MARKER_CAPACITY_INVALID")
+                if readiness is not None:
+                    expected_ready = str(armed.get("readiness_receipt_sha256") or "")
+                    if not expected_ready or expected_ready != readiness_sha256:
+                        blockers.append("V04_ARMED_MARKER_READINESS_HASH_MISMATCH")
+                if authority is not None:
+                    authority_sha256 = _sha256_file(self.activation_authority_path)
+                    expected_authority = str(armed.get("active_authority_sha256") or "")
+                    if not expected_authority or expected_authority != authority_sha256:
+                        blockers.append("V04_ARMED_MARKER_AUTHORITY_HASH_MISMATCH")
+                    bound_ready = str(authority.get("readiness_receipt_sha256") or "")
+                    if not bound_ready or bound_ready != readiness_sha256:
+                        blockers.append("V04_ACTIVE_AUTHORITY_READINESS_HASH_MISMATCH")
             except Exception as exc:
                 blockers.append(f"V04_ARMED_MARKER_INVALID:{type(exc).__name__}")
 
@@ -613,6 +627,23 @@ class OperatorFuturesEngineV04:
             blockers.append("GLOBAL_NOTIONAL_CAP_EXCEEDED")
         if projected_margin > float(global_cfg["max_total_initial_margin_usdt"]) + 1e-9:
             blockers.append("GLOBAL_INITIAL_MARGIN_CAP_EXCEEDED")
+
+        try:
+            mode = self.readonly.position_mode()
+            if int(mode) != 1:
+                blockers.append("FUTURES_POSITION_MODE_NOT_HEDGE")
+        except Exception as exc:
+            blockers.append(f"POSITION_MODE_READ_FAILED:{type(exc).__name__}")
+
+        try:
+            before = time.time_ns() / 1_000_000.0
+            server = float(self.public.server_time_ms())
+            after = time.time_ns() / 1_000_000.0
+            midpoint = (before + after) / 2.0
+            if abs(server - midpoint) > MAX_CLOCK_OFFSET_MS:
+                blockers.append("CLOCK_OFFSET_OUTSIDE_500MS")
+        except Exception as exc:
+            blockers.append(f"CLOCK_CHECK_FAILED:{type(exc).__name__}")
 
         losses = realized_loss_state(self.receipt_root, now=datetime.now(timezone.utc))
         if losses["invalid_reconciliations"]:
