@@ -31,6 +31,12 @@ class MultiAssetSourceGateTests(unittest.TestCase):
         self.assertEqual(strike, 3500)
         self.assertEqual(side, "C")
 
+    def test_xrp_historical_d_decimal_strike_parses(self):
+        expiry, strike, side = mod.parse_instrument("XRP", "XRP_USDC-13MAR24-0d645-P")
+        self.assertEqual(expiry.date().isoformat(), "2024-03-13")
+        self.assertAlmostEqual(strike, 0.645)
+        self.assertEqual(side, "P")
+
     def test_linear_assets_use_usdc_history_namespace(self):
         start = int(dt.datetime(2024, 6, 1, tzinfo=dt.timezone.utc).timestamp() * 1000)
         end = int(dt.datetime(2024, 6, 2, tzinfo=dt.timezone.utc).timestamp() * 1000) - 1
