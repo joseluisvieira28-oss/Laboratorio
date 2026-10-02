@@ -1,0 +1,71 @@
+name: MEXC Event Futures Prospective Product V0.12
+
+on:
+  push:
+    branches:
+      - mexc-event-futures-prospective-product-v0.12-2026-10-03
+    paths:
+      - 'research/mexc_event_futures/**'
+      - '.github/workflows/mexc-event-futures-prospective-product-v012.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  prospective-snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Playwright
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install playwright
+          python -m playwright install --with-deps chromium
+      - name: Syntax check
+        run: python -m py_compile research/mexc_event_futures/prospective_product_collector_v012.py
+      - name: Run prospective snapshot
+        run: python research/mexc_event_futures/prospective_product_collector_v012.py
+      - name: Verify frozen safety and schema
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json, math
+          p='artifacts/mexc_event_futures/v012/prospective_snapshot_v012.json'
+          j=json.load(open(p,encoding='utf-8'))
+          assert j['verdict']=='PROSPECTIVE_SNAPSHOT_PASS'
+          s=j['safety']
+          assert s['authenticated_requests']==0
+          assert s['orders']==0
+          assert s['account_mutations']==0
+          assert s['private_routes_called']==0
+          assert s['transmitted_non_gets']==0
+          assert j['rows']
+          for r in j['rows']:
+              if r['up_pay_rate'] is not None:
+                  q=float(r['up_pay_rate'])
+                  assert abs(r['up_break_even_probability'] - 1/(1+q)) < 1e-12
+              if r['down_pay_rate'] is not None:
+                  q=float(r['down_pay_rate'])
+                  assert abs(r['down_break_even_probability'] - 1/(1+q)) < 1e-12
+          print('V012_SCHEMA=PASS')
+          print('NO_AUTH=PASS')
+          print('NO_ORDERS=PASS')
+          print('NO_MUTATION=PASS')
+          print('NO_PRIVATE=PASS')
+          print('GET_ONLY_TRANSMITTED=PASS')
+          print('ROWS='+str(len(j['rows'])))
+          print('SOURCE_SHA256='+str(j['detail_capture']['sha256']))
+          PY
+      - name: Upload exact forward snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: mexc-event-futures-prospective-product-v012
+          path: |
+            artifacts/mexc_event_futures/v012/prospective_snapshot_v012.json
+            artifacts/mexc_event_futures/v012/prospective_product_cycles_v012.csv
+          if-no-files-found: error
