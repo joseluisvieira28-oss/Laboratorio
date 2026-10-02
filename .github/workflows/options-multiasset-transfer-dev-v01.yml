@@ -1,0 +1,205 @@
+name: OPTIONS Multi-Asset Transfer DEV 2024 V0.1
+
+on:
+  push:
+    branches:
+      - options-multiasset-fourhook-prep-v0.1-2026-10-02
+    paths:
+      - '.github/workflows/options-multiasset-transfer-dev-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-signal-shard:
+    strategy:
+      fail-fast: false
+      max-parallel: 16
+      matrix:
+        include:
+          - asset: ETH
+            month: '2024-01'
+          - asset: ETH
+            month: '2024-02'
+          - asset: ETH
+            month: '2024-03'
+          - asset: ETH
+            month: '2024-04'
+          - asset: ETH
+            month: '2024-05'
+          - asset: ETH
+            month: '2024-06'
+          - asset: ETH
+            month: '2024-07'
+          - asset: ETH
+            month: '2024-08'
+          - asset: ETH
+            month: '2024-09'
+          - asset: ETH
+            month: '2024-10'
+          - asset: ETH
+            month: '2024-11'
+          - asset: ETH
+            month: '2024-12'
+          - asset: SOL
+            month: '2024-03'
+          - asset: SOL
+            month: '2024-04'
+          - asset: SOL
+            month: '2024-05'
+          - asset: SOL
+            month: '2024-06'
+          - asset: SOL
+            month: '2024-07'
+          - asset: SOL
+            month: '2024-08'
+          - asset: SOL
+            month: '2024-09'
+          - asset: SOL
+            month: '2024-10'
+          - asset: SOL
+            month: '2024-11'
+          - asset: SOL
+            month: '2024-12'
+          - asset: XRP
+            month: '2024-03'
+          - asset: XRP
+            month: '2024-04'
+          - asset: XRP
+            month: '2024-05'
+          - asset: XRP
+            month: '2024-06'
+          - asset: XRP
+            month: '2024-07'
+          - asset: XRP
+            month: '2024-08'
+          - asset: XRP
+            month: '2024-09'
+          - asset: XRP
+            month: '2024-10'
+          - asset: XRP
+            month: '2024-11'
+          - asset: XRP
+            month: '2024-12'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build frozen source-only monthly signal
+        id: shard
+        working-directory: crypto_edge_radar
+        shell: bash
+        run: |
+          set +e
+          python3 scripts/options_multiasset_transfer_signal_shard_v01.py \
+            --asset '${{ matrix.asset }}' \
+            --month '${{ matrix.month }}' \
+            --out-dir transfer_dev_source
+          rc=$?
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Assert pre-outcome source firewall
+        if: always()
+        working-directory: crypto_edge_radar
+        env:
+          ASSET: '${{ matrix.asset }}'
+          MONTH: '${{ matrix.month }}'
+        run: |
+          python3 - <<'PY'
+          import json,os
+          p=f"transfer_dev_source/{os.environ['ASSET'].lower()}_{os.environ['MONTH']}_source_receipt.json"
+          r=json.load(open(p,encoding="utf-8"))
+          assert r["forward_returns_computed"] is False
+          assert r["pnl_computed"] is False
+          assert r["outcome_source_contacted"] is False
+          assert r["year_2026_accessed"] is False
+          print("SOURCE_FIREWALL_PASS",r["asset"],r["month"],r["status"],"valid_days",r["valid_signal_days"])
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: options-${{ matrix.asset }}-dev-source-${{ matrix.month }}
+          retention-days: 90
+          if-no-files-found: error
+          path: crypto_edge_radar/transfer_dev_source/*
+
+      - name: Preserve source-shard classification
+        if: always()
+        shell: bash
+        run: |
+          rc='${{ steps.shard.outputs.rc }}'
+          if [ "$rc" = "0" ]; then exit 0; fi
+          if [ "$rc" = "12" ]; then echo SOURCE_BLOCKED_TRANSPORT; exit 12; fi
+          echo SOURCE_FAIL_DATA
+          exit 2
+
+  dev-evaluate:
+    if: always()
+    needs: source-signal-shard
+    strategy:
+      fail-fast: false
+      matrix:
+        asset: [ETH, SOL, XRP]
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download this asset source-signal shards
+        uses: actions/download-artifact@v4
+        with:
+          pattern: options-${{ matrix.asset }}-dev-source-*
+          path: transfer_dev_download
+          merge-multiple: true
+
+      - name: Execute frozen Development outcome evaluation
+        id: dev
+        shell: bash
+        run: |
+          set +e
+          python3 crypto_edge_radar/scripts/options_multiasset_transfer_dev_v01.py \
+            --asset '${{ matrix.asset }}' \
+            --signals-root transfer_dev_download \
+            --repo-root "$GITHUB_WORKSPACE" \
+            --out-dir crypto_edge_radar/transfer_dev_closeout
+          rc=$?
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Assert protected holdout untouched
+        if: always()
+        env:
+          ASSET: '${{ matrix.asset }}'
+        run: |
+          python3 - <<'PY'
+          import json,os
+          p=f"crypto_edge_radar/transfer_dev_closeout/OPTIONS_{os.environ['ASSET']}_001_V01_DEV_CLOSEOUT.json"
+          r=json.load(open(p,encoding="utf-8"))
+          assert r["holdout_2025_accessed"] is False
+          assert r["year_2026_accessed"] is False
+          assert r["live_trading_authorized"] is False
+          assert r["exchange_mutation_authorized"] is False
+          print("DEV_HOLDOUT_FIREWALL_PASS",r["asset"],r["classification"])
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: options-${{ matrix.asset }}-transfer-dev-v01
+          retention-days: 90
+          if-no-files-found: error
+          path: crypto_edge_radar/transfer_dev_closeout/*
+
+      - name: Terminal Development classification
+        if: always()
+        shell: bash
+        run: |
+          rc='${{ steps.dev.outputs.rc }}'
+          if [ "$rc" = "0" ]; then echo DEV_SURVIVES__OOS_2025_UNLOCKED; exit 0; fi
+          if [ "$rc" = "3" ]; then echo DEV_REJECTED_EXACT_TRANSFER__2025_REMAINS_LOCKED; exit 3; fi
+          echo DEV_BLOCKED_SOURCE_PROVENANCE
+          exit 2
