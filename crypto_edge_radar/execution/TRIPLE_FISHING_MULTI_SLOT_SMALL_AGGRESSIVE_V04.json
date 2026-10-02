@@ -1,0 +1,84 @@
+{
+  "policy_id": "TRIPLE_FISHING_MULTI_SLOT_SMALL_AGGRESSIVE_V0.4",
+  "frozen_at_utc": "2026-10-02T10:55:00Z",
+  "status": "ENGINEERING_FREEZE__LIVE_ACTIVATION_NOT_YET_AUTHORIZED",
+  "intent": "Allow up to three independent operator positions while keeping absolute exposure small and fail-closed.",
+  "capacity": {
+    "max_simultaneous_positions": 3,
+    "one_active_position_per_symbol": true,
+    "no_late_chase": true,
+    "no_blind_resend": true
+  },
+  "global_risk": {
+    "max_total_notional_usdt": 30,
+    "max_total_initial_margin_usdt": 14,
+    "daily_realized_loss_kill_usdt": 5,
+    "rolling_7d_realized_loss_kill_usdt": 5,
+    "margin_mode": "ISOLATED",
+    "auto_margin_add": false,
+    "cross_margin": false,
+    "martingale": false,
+    "averaging": false,
+    "pyramiding": false
+  },
+  "lanes": {
+    "OPTIONS-SPOTPERP-001-V2.1": {
+      "symbol_policy": [
+        "BTC_USDT"
+      ],
+      "leverage": 1,
+      "max_notional_usdt": 10,
+      "max_initial_margin_usdt": 10,
+      "max_positions": 1,
+      "hold": "24h frozen parent operator horizon",
+      "scientific_credit": false,
+      "source_parent_unchanged": true
+    },
+    "BNB-LAUNCHPOOL-DEMAND-001": {
+      "symbol_policy": [
+        "BNB_USDT"
+      ],
+      "leverage": 5,
+      "max_notional_usdt": 10,
+      "max_initial_margin_usdt": 2,
+      "max_positions": 1,
+      "hold": "24h frozen operator horizon",
+      "scientific_credit": false
+    },
+    "HTF-DH03-12H-STANDALONE-FORWARD-V1": {
+      "symbol_policy": [
+        "BTC_USDT",
+        "ETH_USDT",
+        "SOL_USDT",
+        "BNB_USDT",
+        "XRP_USDT",
+        "DOGE_USDT"
+      ],
+      "leverage": 5,
+      "max_notional_usdt": 10,
+      "max_initial_margin_usdt": 2,
+      "max_positions": 3,
+      "one_active_per_symbol": true,
+      "protective_tpsl_required": true,
+      "scientific_credit": false
+    }
+  },
+  "venue_minimum_rule": "If the venue minimum executable notional exceeds the lane cap, reject the signal. Never raise the cap to chase an opportunity.",
+  "activation_gates": [
+    "multi-slot reservation ledger synthetic tests pass",
+    "multi-slot dispatcher synthetic tests pass",
+    "portfolio risk firewall synthetic tests pass",
+    "multi-position restart/reconciliation fault-injection pass",
+    "per-lane leverage transport supports 1x OPTIONS and 5x BNB/DH03",
+    "authority/manifest/runtime lane inventory reconciled",
+    "fresh authenticated read-only MEXC account and symbol feasibility pass",
+    "Windows build and readiness pass",
+    "explicit live activation authority after all gates"
+  ],
+  "governance": {
+    "no_main_merge": true,
+    "no_order_from_this_file": true,
+    "no_exchange_mutation_from_this_file": true,
+    "current_v03_authority_unchanged": true
+  }
+}
