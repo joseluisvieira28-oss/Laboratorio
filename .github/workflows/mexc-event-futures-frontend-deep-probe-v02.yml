@@ -1,0 +1,25 @@
+name: mexc-event-futures-frontend-deep-probe-v02
+on:
+  push:
+    branches: [mexc-event-futures-multiasset-v01-2026-10-02]
+    paths:
+      - 'crypto_edge_radar/event_futures/mexc_event_futures_frontend_deep_probe_v02.py'
+      - '.github/workflows/mexc-event-futures-frontend-deep-probe-v02.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python crypto_edge_radar/event_futures/mexc_event_futures_frontend_deep_probe_v02.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mexc-event-futures-frontend-deep-probe-v02
+          path: mexc_event_futures_frontend_deep_probe_v02.json
