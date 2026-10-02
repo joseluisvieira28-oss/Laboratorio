@@ -1,0 +1,72 @@
+name: DLS Route A5A SOL Role Registry 2025 V0.1
+
+on:
+  push:
+    branches: [dls-field-enrichment-v01]
+    paths:
+      - labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_ROUTE_A5A_SOL_ROLE_REGISTRY_2025_V01.marker
+
+permissions:
+  contents: read
+
+jobs:
+  registry:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Verify frozen source authority
+        shell: python
+        run: |
+          from pathlib import Path
+          m=Path("labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_ROUTE_A5A_SOL_ROLE_REGISTRY_2025_V01.marker").read_text()
+          assert "A5A_2024_EQUIVALENCE_CLASSIFICATION=ROUTE_A5A_SOL_ACCOUNT_EQUIVALENCE_PASS" in m
+          assert "PROTECTED_2025_MARKET_OUTCOMES=false" in m
+          assert "TRADING_AUTHORITY=NONE" in m
+          assert Path("labs/DEFI_LIQUIDATION_SHOCK_001/DLS_ROUTE_A5A_SOL_ROLE_ACCOUNT_REGISTRY_2025_FREEZE_V0.1.md").is_file()
+          print("PASS: registry source-only authority")
+
+      - name: Compile registry runner
+        run: python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/run_route_a5a_sol_registry_2025_v0_1.py
+
+      - name: Run creation-history SOL role census
+        env:
+          PYTHONUNBUFFERED: "1"
+        run: python labs/DEFI_LIQUIDATION_SHOCK_001/source/run_route_a5a_sol_registry_2025_v0_1.py
+
+      - name: Enforce market firewall
+        if: always()
+        shell: python
+        run: |
+          import json
+          from pathlib import Path
+          p=Path("route_a5a_registry/DLS_ROUTE_A5A_SOL_ROLE_ACCOUNT_REGISTRY_2025_RECEIPT_V0.1.json")
+          if p.exists():
+              x=json.loads(p.read_text())
+              f=x["firewall"]
+              assert f["protected_2025_prices_opened"] is False
+              assert f["protected_2025_returns_opened"] is False
+              assert f["protected_2025_pnl_opened"] is False
+              assert f["market_data_read"] is False and f["prices_read"] is False
+              assert f["purchases"] is False and f["trading"] is False
+              assert x["trading_authority"]=="NONE"
+              print("REGISTRY:",x["classification"])
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dls-route-a5a-sol-role-registry-2025-v01
+          path: route_a5a_registry/
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_NO_2025_PRICES_NO_RETURNS_NO_PNL_NO_2026_NO_TRADING
