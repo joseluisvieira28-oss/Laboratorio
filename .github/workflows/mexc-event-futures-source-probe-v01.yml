@@ -1,0 +1,37 @@
+name: mexc-event-futures-source-probe-v01
+
+on:
+  push:
+    branches:
+      - mexc-event-futures-multiasset-v01-2026-10-02
+    paths:
+      - 'crypto_edge_radar/event_futures/**'
+      - '.github/workflows/mexc-event-futures-source-probe-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Run source capability probe
+        run: |
+          python crypto_edge_radar/event_futures/mexc_event_futures_source_probe_v01.py \
+            --hours 3 \
+            --output mexc_event_futures_source_probe_receipt_v01.json
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mexc-event-futures-source-probe-v01
+          path: mexc_event_futures_source_probe_receipt_v01.json
+          if-no-files-found: warn
