@@ -9,6 +9,7 @@ import unittest
 from radar.multi_slot_reservation_v04 import MultiSlotReservationV04, MultiSlotReservationError
 from radar.global_fishing_dispatcher_v04 import arbitrate_due_signals_multislot
 from radar.multislot_shadow_capacity_v04 import evaluate_shadow_capacity
+from radar.multislot_shadow_lifecycle_v04 import MultiSlotShadowLifecycleV04
 
 
 POLICY = {
@@ -214,6 +215,64 @@ class ShadowCapacityV04Tests(unittest.TestCase):
         )
         self.assertFalse(out["pass"])
         self.assertIn("DAILY_KILL_ACTIVE", out["blockers"])
+
+
+class ShadowLifecycleV04Tests(unittest.TestCase):
+    def _reserve(self, life, lane, signal, symbol, leverage, notional, margin):
+        return life.reserve_intent(
+            candidate_id=lane,
+            signal_identity=signal,
+            external_oid=f"oid-{signal}",
+            symbol=symbol,
+            leverage=leverage,
+            max_notional_usdt=notional,
+            max_initial_margin_usdt=margin,
+        )
+
+    def test_restart_recovers_three_reserved_sessions(self):
+        with tempfile.TemporaryDirectory() as td:
+            life = MultiSlotShadowLifecycleV04(root=td, capacity=3)
+            self._reserve(life, "OPTIONS", "o", "BTC_USDT", 1, 10, 10)
+            self._reserve(life, "BNB", "b", "BNB_USDT", 5, 10, 2)
+            self._reserve(life, "DH03", "d", "XRP_USDT", 5, 10, 2)
+            life.mark_filled(candidate_id="OPTIONS", signal_identity="o", estimated_notional_usdt=10, estimated_initial_margin_usdt=10)
+            life.mark_filled(candidate_id="BNB", signal_identity="b", estimated_notional_usdt=10, estimated_initial_margin_usdt=2)
+            life.mark_filled(candidate_id="DH03", signal_identity="d", estimated_notional_usdt=10, estimated_initial_margin_usdt=2)
+
+            restarted = MultiSlotShadowLifecycleV04(root=td, capacity=3)
+            out = restarted.recover()
+            self.assertEqual(out["status"], "RECOVERY_PASS")
+            self.assertEqual(out["reserved_count"], 3)
+            self.assertEqual(out["active_count"], 3)
+            self.assertEqual(out["free_slots"], 0)
+
+    def test_unknown_ack_survives_restart_and_keeps_slot(self):
+        with tempfile.TemporaryDirectory() as td:
+            life = MultiSlotShadowLifecycleV04(root=td, capacity=3)
+            self._reserve(life, "BNB", "b", "BNB_USDT", 5, 10, 2)
+            life.mark_unknown_ack(candidate_id="BNB", signal_identity="b")
+            restarted = MultiSlotShadowLifecycleV04(root=td, capacity=3)
+            out = restarted.recover()
+            self.assertEqual(out["status"], "RECOVERY_PASS")
+            self.assertEqual(out["unknown_ack_count"], 1)
+            self.assertEqual(out["free_slots"], 2)
+
+    def test_close_releases_exactly_one_of_three(self):
+        with tempfile.TemporaryDirectory() as td:
+            life = MultiSlotShadowLifecycleV04(root=td, capacity=3)
+            for lane, sig, symbol, lev, margin in [
+                ("OPTIONS", "o", "BTC_USDT", 1, 10),
+                ("BNB", "b", "BNB_USDT", 5, 2),
+                ("DH03", "d", "XRP_USDT", 5, 2),
+            ]:
+                self._reserve(life, lane, sig, symbol, lev, 10, margin)
+                life.mark_filled(candidate_id=lane, signal_identity=sig, estimated_notional_usdt=10, estimated_initial_margin_usdt=margin)
+            life.reconcile_close(candidate_id="BNB", signal_identity="b", realized_net_pnl_usdt=0)
+            out = MultiSlotShadowLifecycleV04(root=td, capacity=3).recover()
+            self.assertEqual(out["status"], "RECOVERY_PASS")
+            self.assertEqual(out["reserved_count"], 2)
+            self.assertEqual(out["active_count"], 2)
+            self.assertEqual(out["free_slots"], 1)
 
 
 if __name__ == "__main__":
