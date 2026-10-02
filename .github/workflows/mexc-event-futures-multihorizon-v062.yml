@@ -1,9 +1,9 @@
-name: MEXC Event Futures Horizon Selector Census V0.6.2.1
+name: MEXC Event Futures Exact Payout Collector V0.6.3
 
 on:
   push:
     branches:
-      - mexc-event-futures-selector-census-v0.6.2.1-2026-10-02
+      - mexc-event-futures-exact-payout-collector-v0.6.3-2026-10-02
     paths:
       - 'research/mexc_event_futures/**'
       - '.github/workflows/mexc-event-futures-multihorizon-v062.yml'
@@ -13,9 +13,9 @@ permissions:
   contents: read
 
 jobs:
-  census:
+  snapshot:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -24,13 +24,27 @@ jobs:
       - name: Install
         run: |
           python -m pip install --upgrade pip
-          python -m pip install playwright
+          python -m pip install playwright requests
           python -m playwright install --with-deps chromium
-      - name: Run selector census
-        run: python research/mexc_event_futures/horizon_selector_census_v0621.py
+      - name: Collect exact current payouts
+        run: python research/mexc_event_futures/exact_payout_collector_v063.py
+      - name: Verify source gate
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          p='artifacts/mexc_event_futures/exact_payout_snapshot_v063.json'
+          j=json.load(open(p,encoding='utf-8'))
+          print('SOURCE_GATE='+j['source_gate'])
+          print('PASS_COUNT='+str(j['pass_count']))
+          if j['source_gate']!='PASS_20_OF_20':
+              raise SystemExit('multi-horizon source gate did not fully pass')
+          PY
       - name: Upload evidence
         uses: actions/upload-artifact@v4
         with:
-          name: mexc-event-futures-selector-census-v0621-evidence
-          path: artifacts/mexc_event_futures/horizon_selector_census_v0621.json
+          name: mexc-event-futures-exact-payout-v063-evidence
+          path: |
+            artifacts/mexc_event_futures/exact_payout_snapshot_v063.json
+            artifacts/mexc_event_futures/exact_payout_snapshot_v063.jsonl
           if-no-files-found: error
