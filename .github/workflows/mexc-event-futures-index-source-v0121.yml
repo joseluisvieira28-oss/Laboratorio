@@ -1,0 +1,56 @@
+name: MEXC Event Futures Public Index Source V0.12.1
+
+on:
+  push:
+    branches:
+      - mexc-event-futures-index-source-v0.12.1-2026-10-03
+    paths:
+      - 'research/mexc_event_futures/**'
+      - '.github/workflows/mexc-event-futures-index-source-v0121.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  public-index-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependency
+        run: python -m pip install --upgrade websockets
+      - name: Syntax check
+        run: python -m py_compile research/mexc_event_futures/public_index_source_v0121.py
+      - name: Run read-only public index source gate
+        run: python research/mexc_event_futures/public_index_source_v0121.py
+      - name: Verify safety and source gate
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          p='artifacts/mexc_event_futures/v0121/public_index_source_v0121.json'
+          j=json.load(open(p,encoding='utf-8'))
+          assert j['authenticated'] is False
+          assert j['private_channels']==0
+          assert j['orders']==0
+          assert j['account_mutations']==0
+          assert j['verdict']=='PUBLIC_INDEX_STREAM_PASS'
+          syms={r['symbol'] for r in j['index_records']}
+          assert {'BTC_USDT','ETH_USDT'} <= syms
+          print('PUBLIC_INDEX_STREAM=PASS')
+          print('NO_AUTH=PASS')
+          print('NO_PRIVATE=PASS')
+          print('NO_ORDERS=PASS')
+          print('NO_MUTATION=PASS')
+          print('INDEX_RECORDS='+str(len(j['index_records'])))
+          PY
+      - name: Upload evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: mexc-event-futures-index-source-v0121
+          path: artifacts/mexc_event_futures/v0121/public_index_source_v0121.json
+          if-no-files-found: error
