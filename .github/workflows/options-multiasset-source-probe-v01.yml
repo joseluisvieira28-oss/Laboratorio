@@ -1,0 +1,30 @@
+name: options-multiasset-source-probe-v01
+on:
+  workflow_dispatch:
+    inputs:
+      start:
+        description: UTC start
+        required: true
+        default: '2026-10-01T00:00:00Z'
+      end:
+        description: UTC end
+        required: true
+        default: '2026-10-01T23:59:59Z'
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Public source probe only
+        run: |
+          python crypto_edge_radar/multiasset/options_multiasset_source_probe_v01.py --start "${{ inputs.start }}" --end "${{ inputs.end }}" --output options_multiasset_source_probe_receipt_v01.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: options-multiasset-source-probe-v01
+          path: options_multiasset_source_probe_receipt_v01.json
