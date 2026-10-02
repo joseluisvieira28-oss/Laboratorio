@@ -1,0 +1,78 @@
+name: DLS Route A5M Exact 2024 Equivalence V0.1
+
+on:
+  push:
+    branches: [dls-field-enrichment-v01]
+    paths:
+      - "labs/DEFI_LIQUIDATION_SHOCK_001/LAUNCH_ROUTE_A5M_2024_EQUIVALENCE_V01.marker"
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  equivalence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Verify A5M frozen authority
+        run: |
+          test -f labs/DEFI_LIQUIDATION_SHOCK_001/DLS_ROUTE_A5_SOL_ACCOUNT_FILTER_EQUIVALENCE_FREEZE_V0.1.md
+          test -f labs/DEFI_LIQUIDATION_SHOCK_001/DLS_ROUTE_A5M_MONTHLY_SHARDING_EQUIVALENCE_FREEZE_V0.1.md
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/run_route_a5m_2024_equivalence_v0_1.py
+      - name: Download immutable canonical cluster census
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36465385517
+          name: dls-source-cluster-sample-gate-v01
+          path: canonical
+      - name: Verify canonical artifact identity
+        run: |
+          test -f canonical/SOURCE_PRIMARY_CLUSTER_CENSUS_V0.1.ndjson
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path("canonical/SOURCE_CLUSTER_SAMPLE_GATE_RECEIPT_V0.1.json")
+          x=json.loads(p.read_text())
+          assert x["classification"]=="SOURCE_SAMPLE_GATE_PASS"
+          assert x["primary"]["oos_cluster_count"]>=500
+          assert x["firewall"]["protected_market_outcomes_2025_2026"] is False
+          print("PASS: canonical source-only truth loaded")
+          PY
+      - name: Execute exact monthly-sharded 2024 source equivalence
+        env:
+          HELIUS_API_KEY: ${{ secrets.HELIUS_API_KEY }}
+          PYTHONUNBUFFERED: "1"
+        run: |
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/run_route_a5m_2024_equivalence_v0_1.py \
+            --canonical canonical/SOURCE_PRIMARY_CLUSTER_CENSUS_V0.1.ndjson
+      - name: Enforce source-only firewall
+        if: always()
+        shell: python
+        run: |
+          import json
+          from pathlib import Path
+          p=Path("route_a5m_equivalence/DLS_ROUTE_A5M_EQUIVALENCE_RECEIPT_V0.1.json")
+          if p.exists():
+              x=json.loads(p.read_text())
+              f=x["firewall"]
+              assert f["protected_2025_acquisition"] is False
+              assert f["prices"] is False and f["returns"] is False and f["pnl"] is False
+              assert f["purchases"] is False and f["trading"] is False
+              assert x["trading_authority"]=="NONE"
+              print("A5M:",x["classification"])
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dls-route-a5m-2024-equivalence-v01
+          path: route_a5m_equivalence/
+          if-no-files-found: warn
+          retention-days: 30
