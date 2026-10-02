@@ -1,0 +1,25 @@
+name: mexc-event-futures-public-api-extract-v03
+on:
+  push:
+    branches: [mexc-event-futures-multiasset-v01-2026-10-02]
+    paths:
+      - 'crypto_edge_radar/event_futures/mexc_event_futures_public_api_extract_v03.py'
+      - '.github/workflows/mexc-event-futures-public-api-extract-v03.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python crypto_edge_radar/event_futures/mexc_event_futures_public_api_extract_v03.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mexc-event-futures-public-api-extract-v03
+          path: mexc_event_futures_public_api_extract_v03.json
