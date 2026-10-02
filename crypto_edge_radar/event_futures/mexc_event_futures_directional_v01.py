@@ -137,7 +137,7 @@ def fetch_series(
     chunk_seconds = CHUNK_BARS * BAR_SECONDS
     request_no = 0
     while cur < end_s:
-        stop = min(end_s - 60, cur + chunk_seconds - 60)
+        stop = min(end_s - BAR_SECONDS, cur + chunk_seconds - BAR_SECONDS)
         q = urllib.parse.urlencode(
             {"interval": "Min5", "start": str(cur), "end": str(stop)}
         )
