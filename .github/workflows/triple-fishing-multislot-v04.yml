@@ -9,6 +9,12 @@ on:
       - 'crypto_edge_radar/radar/global_fishing_dispatcher_v04.py'
       - 'crypto_edge_radar/radar/multislot_shadow_capacity_v04.py'
       - 'crypto_edge_radar/radar/multislot_shadow_lifecycle_v04.py'
+      - 'crypto_edge_radar/radar/mexc_operator_futures_transport_v04.py'
+      - 'crypto_edge_radar/radar/operator_futures_engine_v04.py'
+      - 'crypto_edge_radar/scripts/mexc_triple_fishing_operator_v04.py'
+      - 'crypto_edge_radar/tests/test_mexc_operator_futures_transport_v04.py'
+      - 'crypto_edge_radar/tests/test_operator_futures_engine_v04.py'
+      - 'crypto_edge_radar/tests/test_mexc_triple_fishing_operator_v04.py'
       - 'crypto_edge_radar/tests/test_multislot_v04.py'
       - 'crypto_edge_radar/execution/TRIPLE_FISHING_MULTI_SLOT_SMALL_AGGRESSIVE_V04.json'
       - 'crypto_edge_radar/execution/GLOBAL_FISHING_MANIFEST_V04_DRAFT.json'
@@ -39,11 +45,23 @@ jobs:
 
       - name: Compile V0.4 modules
         run: |
-          python -m py_compile             radar/multi_slot_reservation_v04.py             radar/global_fishing_dispatcher_v04.py             radar/multislot_shadow_capacity_v04.py \
-            radar/multislot_shadow_lifecycle_v04.py
+          python -m py_compile \
+            radar/multi_slot_reservation_v04.py \
+            radar/global_fishing_dispatcher_v04.py \
+            radar/multislot_shadow_capacity_v04.py \
+            radar/multislot_shadow_lifecycle_v04.py \
+            radar/mexc_operator_futures_transport_v04.py \
+            radar/operator_futures_engine_v04.py \
+            scripts/mexc_triple_fishing_operator_v04.py
 
-      - name: Run deterministic multi-slot tests
-        run: PYTHONPATH=. python -m unittest tests.test_multislot_v04 -v
+      - name: Run deterministic multi-slot and executor fault-injection tests
+        run: >
+          PYTHONPATH=. python -m unittest
+          tests.test_multislot_v04
+          tests.test_mexc_operator_futures_transport_v04
+          tests.test_operator_futures_engine_v04
+          tests.test_mexc_triple_fishing_operator_v04
+          -v
 
       - name: Verify frozen policy is exactly three slots and non-live
         run: |
