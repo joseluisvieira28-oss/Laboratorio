@@ -83,6 +83,22 @@ jobs:
           & .\dist\MEXCTripleFishingMultiSlotReadyV04.exe --help | Out-Null
           if ($LASTEXITCODE -ne 0) { throw "MEXCTripleFishingMultiSlotReadyV04 --help failed" }
 
+      - name: Parse all V0.4 PowerShell scripts without executing them
+        shell: pwsh
+        run: |
+          $scripts = @(
+            "windows\Ready_Check_MEXC_Triple_Fishing_V04.ps1",
+            "windows\Run_MEXC_Triple_Fishing_V04.ps1",
+            "windows\Status_MEXC_Triple_Fishing_V04.ps1",
+            "windows\Arm_After_Approved_Handover_MEXC_Triple_Fishing_V04.ps1"
+          )
+          foreach ($script in $scripts) {
+            $tokens=$null
+            $errors=$null
+            [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $script),[ref]$tokens,[ref]$errors) | Out-Null
+            if ($errors.Count -gt 0) { throw ("PowerShell parse failure in " + $script + ": " + ($errors | Out-String)) }
+          }
+
       - name: Stage pre-live Windows bundle
         shell: pwsh
         run: |
@@ -94,6 +110,7 @@ jobs:
           Copy-Item "windows\Ready_Check_MEXC_Triple_Fishing_V04.ps1" $bundle
           Copy-Item "windows\Run_MEXC_Triple_Fishing_V04.ps1" $bundle
           Copy-Item "windows\Status_MEXC_Triple_Fishing_V04.ps1" $bundle
+          Copy-Item "windows\Arm_After_Approved_Handover_MEXC_Triple_Fishing_V04.ps1" $bundle
           Copy-Item "windows\README_MEXC_TRIPLE_FISHING_V04.md" $bundle
 
           Copy-Item "execution\TRIPLE_FISHING_MULTI_SLOT_SMALL_AGGRESSIVE_V04.json" $bundle
