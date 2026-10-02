@@ -1,0 +1,47 @@
+name: MEXC Event Futures ETF-CME Source V1.0.1
+
+on:
+  push:
+    branches:
+      - mexc-event-futures-etfcme-source-v1.0.1-2026-10-02
+    paths:
+      - 'research/mexc_event_futures/**'
+      - '.github/workflows/mexc-event-futures-etfcme-source-v101.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-remediation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install
+        run: python -m pip install --upgrade pip requests
+      - name: Syntax check
+        run: python -m py_compile research/mexc_event_futures/etf_cme_source_v101.py
+      - name: Run source-only historical coverage diagnostics
+        run: python research/mexc_event_futures/etf_cme_source_v101.py
+      - name: Verify no-outcome boundary
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          j=json.load(open('artifacts/mexc_event_futures/etf_cme_source_v101.json',encoding='utf-8'))
+          assert j['mode']=='SOURCE_ONLY'
+          assert j['authenticated_requests']==0
+          assert j['orders']==0
+          assert j['account_mutations']==0
+          print('SOURCE_ONLY=PASS')
+          print('VERDICT='+j['verdict'])
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mexc-event-futures-etfcme-source-v101
+          path: artifacts/mexc_event_futures/etf_cme_source_v101.json
+          if-no-files-found: error
