@@ -274,6 +274,49 @@ class OperatorFuturesEngineV04:
             "armed": armed,
         }
 
+
+    def _assert_exit_authorized(self) -> dict[str, Any]:
+        """Exits stay available after entry-readiness ages out or kill is raised.
+
+        A live position must never become trapped merely because the 15-minute
+        pre-entry readiness receipt is stale. Exit authority still requires the
+        explicit ACTIVE V0.4 authority and the V0.4 armed marker.
+        """
+        blockers: list[str] = []
+        authority = None
+        armed = None
+        if not self.activation_authority_path.exists():
+            blockers.append("V04_ACTIVE_AUTHORITY_MISSING")
+        else:
+            try:
+                authority = _load(self.activation_authority_path)
+                if authority.get("authority_id") != "OPERATOR-FUTURES-GLOBAL-V0.4-ACTIVE":
+                    blockers.append("V04_ACTIVE_AUTHORITY_ID_INVALID")
+                if authority.get("status") != "ACTIVE":
+                    blockers.append("V04_ACTIVE_AUTHORITY_NOT_ACTIVE")
+                if int(authority.get("risk", {}).get("max_simultaneous_positions", 0)) != 3:
+                    blockers.append("V04_ACTIVE_AUTHORITY_CAPACITY_INVALID")
+            except Exception as exc:
+                blockers.append(f"V04_ACTIVE_AUTHORITY_INVALID:{type(exc).__name__}")
+
+        if not self.armed_path.exists():
+            blockers.append("V04_NOT_ARMED")
+        else:
+            try:
+                armed = _load(self.armed_path)
+                if armed.get("authority") != "OPERATOR-FUTURES-GLOBAL-V0.4-ACTIVE":
+                    blockers.append("V04_ARMED_MARKER_AUTHORITY_INVALID")
+            except Exception as exc:
+                blockers.append(f"V04_ARMED_MARKER_INVALID:{type(exc).__name__}")
+
+        return {
+            "pass": not blockers,
+            "blockers": blockers,
+            "authority": authority,
+            "armed": armed,
+            "kill_switch_present": self.kill_switch_path.exists(),
+        }
+
     def _lane_profile(self, signal: dict[str, Any]) -> dict[str, Any]:
         candidate = str(signal.get("candidate_id") or signal.get("strategy_id") or "")
         symbol = str(signal.get("symbol") or "").upper()
@@ -1274,7 +1317,7 @@ class OperatorFuturesEngineV04:
         position: dict[str, Any],
         reason: str,
     ) -> dict[str, Any]:
-        auth = self._assert_live_authorized()
+        auth = self._assert_exit_authorized()
         if not auth["pass"]:
             return {
                 "status": "EXIT_BLOCKED_NOT_AUTHORIZED",
@@ -1418,6 +1461,13 @@ class OperatorFuturesEngineV04:
             return self._reconcile_closed(active_path, active, exit_reason=reason)
 
         position = matches[0]
+        if self.kill_switch_path.exists():
+            return self._request_exit(
+                active_path=active_path,
+                active=active,
+                position=position,
+                reason="KILL_SWITCH_EMERGENCY_EXIT",
+            )
         if int(position.get("leverage", 0) or 0) != int(active["leverage"]):
             return self._request_exit(
                 active_path=active_path,
