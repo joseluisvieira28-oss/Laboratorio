@@ -1,0 +1,75 @@
+name: MEXC V0.13.1 Liquidation Forward Calibration Chunk B
+
+on:
+  push:
+    branches:
+      - mexc-event-futures-v013-source-completion-2026-10-03
+    paths:
+      - '.github/workflows/mexc-event-futures-v0131-liquidation-calibration-chunk-b.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  calibration-chunk-b:
+    runs-on: ubuntu-latest
+    timeout-minutes: 190
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - run: python -m pip install websockets==15.0.1
+
+      - name: Validate frozen calibration tooling
+        run: |
+          python -m py_compile research/mexc_event_futures/liquidation_flow_calibration_chunk_v0131.py
+          python research/mexc_event_futures/liquidation_flow_calibration_chunk_v0131.py --self-test
+
+      - name: Enforce strict non-overlap with canonical Chunk A
+        run: |
+          python - <<'PY'
+          import time, os
+          last_a=1791054660000
+          next_full=((time.time_ns()//1_000_000)//60000 + 1)*60000
+          assert next_full > last_a, f'NON_OVERLAP_FAIL next={next_full} last_a={last_a}'
+          with open(os.environ['GITHUB_ENV'],'a') as f:
+              f.write(f'CHUNK_A_LAST_MINUTE_MS={last_a}\n')
+              f.write(f'CHUNK_B_EXPECTED_FIRST_MINUTE_MS={next_full}\n')
+          print('CHUNK_A_LAST_MINUTE_MS',last_a)
+          print('CHUNK_B_EXPECTED_FIRST_MINUTE_MS',next_full)
+          print('NON_OVERLAP_PREFLIGHT=PASS')
+          PY
+
+      - name: Run three-hour source-only calibration chunk B
+        run: |
+          python research/mexc_event_futures/liquidation_flow_calibration_chunk_v0131.py             --minutes 180             --gate-anchor "run=37100077597;artifact=11268610332;digest=sha256:a144f33f12e31c9f948fdaf609078122119899368fb136cb3ed0f6cf8eb48098;closeout=5ee9e53296ea52f5df61ec10d6e9a40b7a5cb381;chunk_a_artifact=11282671683;chunk_a_digest=sha256:1ba446912f5507e92f519dde3c03e00f761db621c9212cc22e9e6c91e0741cd6"             --output evidence/liquidation-calibration-chunk-b
+
+      - name: Verify chunk B starts after Chunk A
+        if: success()
+        run: |
+          python - <<'PY'
+          import json,pathlib,os
+          j=json.loads(pathlib.Path('evidence/liquidation-calibration-chunk-b/receipt.json').read_text())
+          first=int(j['first_full_minute_ms'])
+          last_a=int(os.environ['CHUNK_A_LAST_MINUTE_MS'])
+          assert first > last_a, f'POSTRUN_NON_OVERLAP_FAIL first={first} last_a={last_a}'
+          assert j['mexc_subscriptions']==0
+          assert j['research_outcomes_opened']==0
+          assert j['threshold_computed'] is False
+          assert j['activation_allowed'] is False
+          print('CHUNK_B_POSTRUN_NON_OVERLAP=PASS')
+          PY
+
+      - name: Preserve calibration evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v0131-liquidation-calibration-chunk-b
+          path: evidence/liquidation-calibration-chunk-b/
+          if-no-files-found: error
+          retention-days: 90
