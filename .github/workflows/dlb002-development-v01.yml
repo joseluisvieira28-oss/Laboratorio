@@ -1,0 +1,121 @@
+name: DLB002 Development 2021-2025 V0.1
+
+on:
+  push:
+    branches: [dls-liquidation-breakout-002-v0.1]
+    paths:
+      - "labs/DEFI_LIQUIDATION_BREAKOUT_002/RUN_DEVELOPMENT_V0.1.json"
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  development:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Verify frozen development authority
+        shell: python
+        run: |
+          import json,subprocess
+          from pathlib import Path
+          f=json.loads(Path("labs/DEFI_LIQUIDATION_BREAKOUT_002/FREEZE_V0.1.json").read_text())
+          t=json.loads(Path("labs/DEFI_LIQUIDATION_BREAKOUT_002/RUN_DEVELOPMENT_V0.1.json").read_text())
+          assert f["lab_id"]=="DEFI-LIQUIDATION-BREAKOUT-002"
+          assert f["state"]=="FROZEN_PRE_DEVELOPMENT"
+          assert f["final_holdout_2026"]["opened"] is False
+          assert f["post_outcome_tuning"] is False
+          assert f["trading_authority"]=="NONE"
+          assert t["action"]=="RUN_DEVELOPMENT_2021_2025_ONCE"
+          assert t["protocol_commit"]=="669ec9ad9eec9d55643dd421fc35511597709452"
+          assert t["freeze_commit"]=="1bae027c9a53a2577d6379d7832a206a70c46c6a"
+          assert t["implementation_receipt_commit"]=="471c55c731b023e116e4417d74d82ea9aa434072"
+          sha=subprocess.check_output(["git","hash-object","labs/DEFI_LIQUIDATION_BREAKOUT_002/run_development_v0_1.py"],text=True).strip()
+          assert sha=="15785ea875d73a755039572a1eda30a7e0b122aa",sha
+          assert t["protected_2026_opened_before_trigger"] is False
+          assert t["trading_authority"]=="NONE"
+          print("PASS: DLB002 frozen development authority")
+
+      - name: Download parent 2021-2024 source census
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36465385517
+          name: dls-source-cluster-sample-gate-v01
+          path: source_parent
+
+      - name: Download protected 2025 source census
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 37134450131
+          name: dls-protected-2025-source-authority-final48-v02
+          path: source_2025
+
+      - name: Verify immutable source members and 2026 firewall
+        run: |
+          echo "0a10bf5ff4d7ad41f4764c4c1eb592c28f25b01b0a854b144944adf46363d46b  source_parent/SOURCE_PRIMARY_CLUSTER_CENSUS_V0.1.ndjson" | sha256sum -c -
+          echo "f89889c2b2f184e54ddd8b0ba83cfce47d75b0e5ba59c8fd863cbe8e0051717c  source_2025/PROTECTED_2025_SOURCE_CLUSTER_CENSUS_V0.2.ndjson" | sha256sum -c -
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path("source_2025/PROTECTED_2025_SOURCE_AUTHORITY_RECEIPT_V0.2.json").read_text())
+          assert r["classification"]=="PROTECTED_2025_SOURCE_AUTHORITY_PASS"
+          assert r["firewall"]["prices_2026_opened"] is False
+          assert r["firewall"]["returns_2026_opened"] is False
+          print("PASS: exact source censuses, protected 2026 closed")
+          PY
+
+      - name: Compile frozen development runner
+        run: python -m py_compile labs/DEFI_LIQUIDATION_BREAKOUT_002/run_development_v0_1.py
+
+      - name: Execute frozen development
+        env:
+          PYTHONUNBUFFERED: "1"
+        run: >
+          python labs/DEFI_LIQUIDATION_BREAKOUT_002/run_development_v0_1.py
+          --parent-census source_parent/SOURCE_PRIMARY_CLUSTER_CENSUS_V0.1.ndjson
+          --y2025-census source_2025/PROTECTED_2025_SOURCE_CLUSTER_CENSUS_V0.2.ndjson
+          --workers 12
+
+      - name: Enforce terminal 2026 firewall
+        if: always()
+        shell: python
+        run: |
+          import json
+          from pathlib import Path
+          p=Path("labs/DEFI_LIQUIDATION_BREAKOUT_002/run_output/DEVELOPMENT_RECEIPT_V0.1.json")
+          if p.exists():
+              x=json.loads(p.read_text())
+              assert x["protected_2026_source_opened"] is False
+              assert x["protected_2026_market_opened"] is False
+              assert x["trading_authority"]=="NONE"
+              print("SCIENTIFIC_VERDICT",x["classification"])
+          print("PROTECTED_2026_CLOSED")
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dlb002-development-v01
+          path: |
+            labs/DEFI_LIQUIDATION_BREAKOUT_002/run_output/DEVELOPMENT_ACQUISITION_RECEIPT_V0.1.json
+            labs/DEFI_LIQUIDATION_BREAKOUT_002/run_output/DEVELOPMENT_MARKET_ARCHIVE_MANIFEST_V0.1.json
+            labs/DEFI_LIQUIDATION_BREAKOUT_002/run_output/DEVELOPMENT_RECEIPT_V0.1.json
+            labs/DEFI_LIQUIDATION_BREAKOUT_002/run_output/DEVELOPMENT_TRADES_V0.1.ndjson
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Firewall
+        if: always()
+        run: echo NO_2026_NO_TUNING_NO_LIVE_TRADING_NO_ORDERS_NO_WALLETS_NO_EXCHANGE_MUTATION_NO_MAIN_MERGE
