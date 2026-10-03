@@ -1,0 +1,31 @@
+name: CIRV BTC ETH Forward Preflight V0.1
+on:
+  push:
+    branches: [crypto-intraweek-rv-forward-v0.1]
+    paths:
+      - "labs/CRYPTO_INTRAWEEK_RV_001/FORWARD_PREFREEZE_V0.1.json"
+      - "labs/CRYPTO_INTRAWEEK_RV_001/forward_watcher_v01.py"
+      - ".github/workflows/cirv-forward-preflight-v01.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: python -m pip install --disable-pip-version-check -q pandas numpy
+      - name: Compile
+        run: python -m py_compile labs/CRYPTO_INTRAWEEK_RV_001/forward_watcher_v01.py
+      - name: Forward source preflight only
+        run: python labs/CRYPTO_INTRAWEEK_RV_001/forward_watcher_v01.py preflight
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: CIRV_FORWARD_PREFLIGHT_V0_1
+          path: cirv_forward_preflight_v01.json
+          if-no-files-found: warn
+          retention-days: 30
