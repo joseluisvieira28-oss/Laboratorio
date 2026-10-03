@@ -1,0 +1,21 @@
+name: MEXC V0.13 Options V0.2 Calibration Merge Self-Test
+on:
+  push:
+    branches:
+      - mexc-event-futures-options-vol-v0.2-sourcecal-2026-10-03
+    paths:
+      - '.github/workflows/mexc-event-futures-options-v02-merge-selftest.yml'
+permissions:
+  contents: read
+jobs:
+  selftest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: |
+          python -m py_compile research/mexc_event_futures/options_vol_source_calibration_merge_v02.py
+          python research/mexc_event_futures/options_vol_source_calibration_merge_v02.py --self-test
