@@ -1,0 +1,46 @@
+name: ARQ001 TradingView Chunked Source Gate V0.3
+on:
+  push:
+    branches:
+      - arq001-dominance-regime-follower-source-chunks-v0.3
+    paths:
+      - 'research/ARQ001_TRADINGVIEW_CHUNKED_SOURCE_RECOVERY_AUTHORITY_V0.3.md'
+      - 'research/arq001_tradingview_chunk_source_audit_v03.py'
+      - 'research/arq001_source_inputs_v03/**'
+      - '.github/workflows/arq001-tradingview-chunk-source-v03.yml'
+permissions:
+  contents: read
+jobs:
+  source-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify frozen source authority
+        run: |
+          test -f research/ARQ001_TRADINGVIEW_CHUNKED_SOURCE_RECOVERY_AUTHORITY_V0.3.md
+          python -m py_compile research/arq001_tradingview_chunk_source_audit_v03.py
+      - name: Execute source-only audit
+        run: python research/arq001_tradingview_chunk_source_audit_v03.py
+      - name: Enforce firewall
+        run: |
+          python - <<'PY'
+          import json
+          p='research/arq001_source_evidence_v03/ARQ001_TRADINGVIEW_CHUNK_SOURCE_RECEIPT_V0_3.json'
+          x=json.load(open(p))
+          assert x['source_only'] is True
+          assert x['outcomes_opened'] is False
+          assert x['year_2025_accessed'] is False
+          assert x['year_2026_accessed'] is False
+          print('CLASSIFICATION',x['classification'])
+          for s,v in x['series'].items():
+              print(s,v.get('classification'),v.get('required_regime_minutes_present'),v.get('required_regime_minutes_missing'))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ARQ001_TRADINGVIEW_CHUNK_SOURCE_V0_3
+          path: research/arq001_source_evidence_v03/*
+          retention-days: 90
