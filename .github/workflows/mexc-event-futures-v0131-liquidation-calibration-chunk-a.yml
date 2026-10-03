@@ -1,0 +1,39 @@
+name: MEXC V0.13.1 Liquidation Forward Calibration Chunk A
+
+on:
+  push:
+    branches:
+      - mexc-event-futures-v013-source-completion-2026-10-03
+    paths:
+      - '.github/workflows/mexc-event-futures-v0131-liquidation-calibration-chunk-a.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  calibration-chunk-a:
+    runs-on: ubuntu-latest
+    timeout-minutes: 190
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install websockets==15.0.1
+      - name: Validate frozen calibration tooling
+        run: |
+          python -m py_compile research/mexc_event_futures/liquidation_flow_calibration_chunk_v0131.py
+          python research/mexc_event_futures/liquidation_flow_calibration_chunk_v0131.py --self-test
+      - name: Run three-hour source-only calibration chunk
+        run: |
+          python research/mexc_event_futures/liquidation_flow_calibration_chunk_v0131.py             --minutes 180             --gate-anchor "run=37100077597;artifact=11268610332;digest=sha256:a144f33f12e31c9f948fdaf609078122119899368fb136cb3ed0f6cf8eb48098;closeout=5ee9e53296ea52f5df61ec10d6e9a40b7a5cb381"             --output evidence/liquidation-calibration-chunk-a
+      - name: Preserve calibration evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v0131-liquidation-calibration-chunk-a
+          path: evidence/liquidation-calibration-chunk-a/
+          if-no-files-found: error
+          retention-days: 90
