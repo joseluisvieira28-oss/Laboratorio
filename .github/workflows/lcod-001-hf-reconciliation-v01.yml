@@ -1,0 +1,42 @@
+name: LCOD-001 HF component reconciliation
+
+on:
+  push:
+    branches:
+      - liquidation-convexity-oracle-distance-001-source-gate-v0.1
+    paths:
+      - 'research/liquidation_convexity_oracle_distance_001/lcod_hf_reconciliation_v01.py'
+      - '.github/workflows/lcod-001-hf-reconciliation-v01.yml'
+      - 'research/liquidation_convexity_oracle_distance_001/LCOD_HF_RECON_TRIGGER.txt'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: liquidation-convexity-oracle-distance-001-source-gate-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run source-only HF reconciliation
+        run: python research/liquidation_convexity_oracle_distance_001/lcod_hf_reconciliation_v01.py
+      - name: Persist source calibration receipt
+        run: |
+          cp artifacts/lcod_hf_reconciliation_v01.json research/liquidation_convexity_oracle_distance_001/LCOD_HF_RECONCILIATION_RECEIPT.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/liquidation_convexity_oracle_distance_001/LCOD_HF_RECONCILIATION_RECEIPT.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "LCOD-001: record HF component reconciliation receipt [skip ci]"
+          git push origin HEAD:liquidation-convexity-oracle-distance-001-source-gate-v0.1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lcod-001-hf-reconciliation-v01
+          path: artifacts/lcod_hf_reconciliation_v01.json
+          if-no-files-found: error
