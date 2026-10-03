@@ -66,26 +66,39 @@ class RPC:
             raise RuntimeError("unauthorized_rpc_method")
         payload=json.dumps({"jsonrpc":"2.0","id":1,"method":method,"params":params},separators=(",",":")).encode()
         last=None
-        for attempt in range(6):
-            time.sleep(.27)
+        for attempt in range(12):
+            time.sleep(1.25)
             try:
-                req=urllib.request.Request(self.url,data=payload,headers={"Content-Type":"application/json","User-Agent":"CryptoLab-DLS-A3A/0.1"},method="POST")
-                with urllib.request.urlopen(req,timeout=90) as r: raw=r.read()
+                req=urllib.request.Request(self.url,data=payload,headers={"Content-Type":"application/json","User-Agent":"CryptoLab-DLS-A3-SourceOnly/0.2"},method="POST")
+                with urllib.request.urlopen(req,timeout=120) as r:
+                    raw=r.read()
+                    retry_after=r.headers.get("Retry-After")
                 obj=json.loads(raw)
                 if obj.get("error"):
                     code=(obj.get("error") or {}).get("code")
                     msg=str((obj.get("error") or {}).get("message",""))[:160]
-                    if code in (-32005,429) or "rate" in msg.lower():
-                        last=f"rpc_rate_or_capacity:{code}";time.sleep(min(30,2**attempt));continue
+                    if code in (-32005,429) or "rate" in msg.lower() or "capacity" in msg.lower():
+                        last=f"rpc_rate_or_capacity:{code}"
+                        time.sleep(min(120,max(2,2**min(attempt,6))))
+                        continue
                     raise RuntimeError(f"rpc_error_code:{code}")
                 self.calls+=1
                 return obj.get("result"),hashlib.sha256(raw).hexdigest()
             except urllib.error.HTTPError as e:
-                if e.code in (401,402,403):raise RuntimeError(f"capability_or_credential_rejected:{e.code}") from None
+                if e.code in (401,402,403):
+                    raise RuntimeError(f"capability_or_credential_rejected:{e.code}") from None
+                if e.code==429:
+                    last="http_429"
+                    ra=e.headers.get("Retry-After")
+                    try: delay=float(ra) if ra is not None else min(120,max(3,2**min(attempt,6)))
+                    except Exception: delay=min(120,max(3,2**min(attempt,6)))
+                    time.sleep(delay)
+                    continue
                 last=f"http_{e.code}"
             except (urllib.error.URLError,TimeoutError,OSError):
                 last="transport"
-            if attempt<5:time.sleep(min(30,2**attempt))
+            if attempt<11:
+                time.sleep(min(120,max(2,2**min(attempt,6))))
         raise RuntimeError("rpc_transport_exhausted:"+str(last))
 
     def gtfa(self,address,start,end,details,page_cap):
