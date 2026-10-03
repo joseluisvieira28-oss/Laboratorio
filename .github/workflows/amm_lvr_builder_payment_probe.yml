@@ -1,0 +1,24 @@
+name: AMM-LVR-CROSSVENUE-001 Builder Payment Probe
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  builder-payment-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Bind transaction-local priority and direct fee-recipient payment
+        run: python labs/amm-lvr-crossvenue-001/builder_payment_binding_probe_v0_1.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: AMM-LVR-CROSSVENUE-001-BUILDER-PAYMENT-BINDING
+          path: labs/amm-lvr-crossvenue-001/evidence/builder_payment_binding_probe_v0_1_receipt.json
