@@ -1,0 +1,141 @@
+name: DLS Protected-2025 Finalizer-Only Reuse V0.2
+
+on:
+  push:
+    branches: [dls-field-enrichment-v01]
+    paths:
+      - "labs/DEFI_LIQUIDATION_SHOCK_001/DLS_PROTECTED_2025_FINALIZER_ONLY_TRIGGER_V0.2.json"
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Verify frozen finalizer-only authority
+        shell: python
+        run: |
+          import json,subprocess
+          from pathlib import Path
+          t=json.loads(Path("labs/DEFI_LIQUIDATION_SHOCK_001/DLS_PROTECTED_2025_FINALIZER_ONLY_TRIGGER_V0.2.json").read_text())
+          assert t["action"]=="FINALIZE_PROTECTED_2025_FROM_IMMUTABLE_PASS_ARTIFACTS_ONLY"
+          assert t["state"]=="FROZEN_SOURCE_ONLY"
+          assert t["source_runs"]==[36740555628,36733498831,36986263576,36996055142,36992630389]
+          assert t["new_source_collection"] is False
+          assert t["protected_2025_market_outcomes_opened"] is False
+          assert t["protected_2026_outcomes_opened"] is False
+          assert t["science_changed"] is False
+          assert t["trading_authority"]=="NONE"
+          m=subprocess.check_output(["git","hash-object","labs/DEFI_LIQUIDATION_SHOCK_001/source/materialize_hybrid_protected_2025_source_v0_1.py"],text=True).strip()
+          f=subprocess.check_output(["git","hash-object","labs/DEFI_LIQUIDATION_SHOCK_001/source/finalize_protected_2025_source_v0_2.py"],text=True).strip()
+          assert m=="fb7607385833db7c98dc14f46d2d7381acb7b6f1",m
+          assert f=="d4345422aaf4f2f4042fe311c333352d9a208652",f
+          print("PASS: exact finalizer-only scientific binding")
+
+      - name: Download canonical SQD PASS candidates A
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36740555628
+          pattern: dls-protected-2025-source-v02-*
+          path: /tmp/final48/runA
+          merge-multiple: true
+
+      - name: Download canonical SQD PASS candidates B
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36733498831
+          pattern: dls-protected-2025-source-v02-*
+          path: /tmp/final48/runB
+          merge-multiple: true
+
+      - name: Download A3B Marginfi 12-month candidates
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36986263576
+          pattern: dls-protected-2025-a3b-marginfi-*
+          path: /tmp/final48/marginfi
+          merge-multiple: true
+
+      - name: Download targeted SQD recovery candidates
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36996055142
+          pattern: dls-protected-2025-targeted-v03-*
+          path: /tmp/final48/targeted
+          merge-multiple: true
+
+      - name: Download A3B hybrid gap candidates
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36992630389
+          pattern: dls-protected-2025-gap-*
+          path: /tmp/final48/hybrid
+          merge-multiple: true
+
+      - name: Materialize exact scientific 48
+        run: |
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/materialize_hybrid_protected_2025_source_v0_1.py
+          mkdir -p /tmp/selected48
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/materialize_hybrid_protected_2025_source_v0_1.py \
+            --root /tmp/final48 \
+            --outdir /tmp/selected48 \
+            --receipt labs/DEFI_LIQUIDATION_SHOCK_001/DLS_PROTECTED_2025_FINAL48_MATERIALIZATION_RECEIPT_V0.2.json
+
+      - name: Run unchanged canonical source finalizer
+        run: |
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/finalize_protected_2025_source_v0_2.py
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/finalize_protected_2025_source_v0_2.py --root /tmp/selected48
+
+      - name: Enforce source PASS and outcome firewall
+        shell: python
+        run: |
+          import json
+          from pathlib import Path
+          m=json.loads(Path("labs/DEFI_LIQUIDATION_SHOCK_001/DLS_PROTECTED_2025_FINAL48_MATERIALIZATION_RECEIPT_V0.2.json").read_text())
+          assert m["classification"]=="HYBRID_48_PARTITION_PASS"
+          assert m["selected_partition_count"]==48
+          x=json.loads(Path("labs/DEFI_LIQUIDATION_SHOCK_001/PROTECTED_2025_SOURCE_AUTHORITY_RECEIPT_V0.2.json").read_text())
+          assert x["classification"]=="PROTECTED_2025_SOURCE_AUTHORITY_PASS"
+          assert x["partition_count"]==48
+          fw=x["firewall"]
+          assert fw["prices_2025_opened"] is False
+          assert fw["returns_2025_opened"] is False
+          assert fw["pnl_2025_opened"] is False
+          assert fw["prices_2026_opened"] is False
+          assert fw["returns_2026_opened"] is False
+          print("PASS:",x["classification"],"clusters",x["sol_cluster_count"])
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dls-protected-2025-source-authority-final48-v02
+          path: |
+            labs/DEFI_LIQUIDATION_SHOCK_001/DLS_PROTECTED_2025_FINAL48_MATERIALIZATION_RECEIPT_V0.2.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/PROTECTED_2025_SOURCE_AUTHORITY_RECEIPT_V0.2.json
+            labs/DEFI_LIQUIDATION_SHOCK_001/PROTECTED_2025_SOURCE_CLUSTER_CENSUS_V0.2.ndjson
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Firewall
+        if: always()
+        run: echo SOURCE_ONLY_NO_2025_PRICES_NO_2026_NO_TRADING
