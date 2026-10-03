@@ -1,0 +1,137 @@
+{
+  "authority_id": "OPERATOR-FUTURES-GLOBAL-V0.4-ACTIVE",
+  "frozen_utc": "2026-10-02T11:05:00Z",
+  "status": "ACTIVE",
+  "purpose": "Explicit prospective V0.4 activation authority issued at owner request, subject to exact receipt binding, existing arm freshness gate and clean controlled handover.",
+  "user_capacity_request": "minimum 3 slots; small position size preferred",
+  "science": {
+    "credit": false,
+    "parent_rules_changed": false,
+    "blocked_signal_scientific_validity_unchanged": true
+  },
+  "risk": {
+    "max_simultaneous_positions": 3,
+    "one_active_position_per_symbol": true,
+    "max_total_notional_usdt": 30,
+    "max_total_initial_margin_usdt": 14,
+    "daily_realized_loss_kill_usdt": 5,
+    "rolling_7d_realized_loss_kill_usdt": 5,
+    "margin_mode": "ISOLATED",
+    "auto_margin_add": false,
+    "martingale": false,
+    "averaging": false,
+    "pyramiding": false,
+    "late_chase": false,
+    "blind_resend": false
+  },
+  "candidates": {
+    "OPTIONS-SPOTPERP-001-V2.1": {
+      "candidate_id": "OPTIONS-SPOTPERP-001-V2.1",
+      "order_path_owned_by_v04_when_activated": true,
+      "venue": "MEXC_FUTURES",
+      "symbol": "BTC_USDT",
+      "directions": [
+        "LONG",
+        "SHORT"
+      ],
+      "leverage": 1,
+      "max_notional_usdt": 10,
+      "max_initial_margin_usdt": 10,
+      "max_positions": 1,
+      "scientific_credit": false
+    },
+    "BNB-LAUNCHPOOL-DEMAND-001": {
+      "candidate_id": "BNB-LAUNCHPOOL-DEMAND-001",
+      "order_path_owned_by_v04_when_activated": true,
+      "venue": "MEXC_FUTURES",
+      "symbol": "BNB_USDT",
+      "directions": [
+        "LONG"
+      ],
+      "leverage": 5,
+      "max_notional_usdt": 10,
+      "max_initial_margin_usdt": 2,
+      "max_positions": 1,
+      "scientific_credit": false
+    },
+    "HTF-DH03-12H-STANDALONE-FORWARD-V1": {
+      "candidate_id": "HTF-DH03-12H-STANDALONE-FORWARD-V1",
+      "order_path_owned_by_v04_when_activated": true,
+      "venue": "MEXC_FUTURES",
+      "symbols": [
+        "BTC_USDT",
+        "ETH_USDT",
+        "SOL_USDT",
+        "BNB_USDT",
+        "XRP_USDT",
+        "DOGE_USDT"
+      ],
+      "directions": [
+        "LONG"
+      ],
+      "leverage": 5,
+      "max_notional_usdt": 10,
+      "max_initial_margin_usdt": 2,
+      "max_positions": 3,
+      "one_active_per_symbol": true,
+      "protective_tpsl_required": true,
+      "scientific_credit": false
+    }
+  },
+  "activation_gates": [
+    "capacity-3 reservation ledger PASS",
+    "capacity-aware dispatcher PASS",
+    "synthetic three-position restart/reconciliation PASS",
+    "per-lane leverage transport validated",
+    "public minimum-notional feasibility PASS at activation time",
+    "fresh authenticated read-only account feasibility PASS",
+    "zero open position/order/TP-SL controlled handover",
+    "legacy V0.3/OPTIONS/BNB executors disarmed only after clean handover",
+    "Windows executor build PASS",
+    "explicit activation closeout"
+  ],
+  "current_file_can_submit_order": false,
+  "armed_marker_allowed": true,
+  "current_v03_authority_superseded": false,
+  "no_main_merge": true,
+  "arbitration": {
+    "earliest_entry_target_first": true,
+    "equal_target_lane_diversity_first": true,
+    "fill_spare_capacity_after_one_per_lane_pass": true,
+    "same_symbol_conflict": "MISSED_SYMBOL_CONFLICT_NO_CHASE",
+    "lane_cap_conflict": "MISSED_LANE_CAP_NO_CHASE",
+    "total_capacity_conflict": "MISSED_CAPACITY_NO_CHASE",
+    "late_chase": false,
+    "scientific_credit": false
+  },
+  "issued_at_utc": "2026-10-03T06:23:57.033892Z",
+  "readiness_receipt_sha256": "024024b3482f5d93ecb0e53fe2925374f870b873e031a11b926cc0e2b9baf604",
+  "execution_authorized_when_guards_pass": true,
+  "legacy_supersession": "Only on completed clean Windows handover; issuance alone does not stop, arm or replace any runtime.",
+  "readiness_evidence": {
+    "source": "OWNER_REPORTED_LOCAL_READY_CHECK; raw receipt not independently fetched or reconstructed",
+    "checked_at_utc": "2026-10-03T06:20:39Z",
+    "status": "PASS_PRELIVE_ACCOUNT_FEASIBILITY",
+    "blockers": [],
+    "open_position_count": 0,
+    "open_order_count": 0,
+    "open_tpsl_count": 0,
+    "capacity_target": 3,
+    "position_mode": 1,
+    "available_usdt": 111.77710045695,
+    "equity_usdt": 111.77710045
+  },
+  "arm_window": {
+    "max_readiness_age_seconds": 900,
+    "expires_at_utc": "2026-10-03T06:35:39Z",
+    "expired_action": "STOP; obtain new read-only PASS receipt and separately reissue authority bound to its new hash. Never edit time/hash or bypass guard."
+  },
+  "governance": {
+    "orders_created": false,
+    "exchange_mutation_performed": false,
+    "runtime_armed_by_issuance": false,
+    "main_merge": false,
+    "futures_only": true,
+    "scientific_credit": false
+  }
+}
