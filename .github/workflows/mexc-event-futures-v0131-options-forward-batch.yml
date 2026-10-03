@@ -1,0 +1,54 @@
+name: MEXC V0.13.1 Options Frozen Forward Batch
+
+on:
+  push:
+    branches:
+      - mexc-event-futures-v013-source-completion-2026-10-03
+    paths:
+      - '.github/workflows/mexc-event-futures-v0131-options-forward-batch.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  bounded-forward-batch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 205
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install public transport and browser
+        run: |
+          python -m pip install websockets==15.0.1 playwright==1.58.0
+          python -m playwright install --with-deps chromium
+      - name: Frozen mechanics and continuity checks
+        run: |
+          python -m py_compile             research/mexc_event_futures/options_pair_source_v013.py             research/mexc_event_futures/options_forward_smoke_v013.py             research/mexc_event_futures/options_forward_batch_v0131.py
+          python research/mexc_event_futures/priority_source_gates_v013.py --self-test
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          rule=json.loads(Path('research/mexc_event_futures/OPTIONS_VOL_RULE_V013_V01.json').read_text())
+          import hashlib
+          h=hashlib.sha256(json.dumps(rule,sort_keys=True,separators=(',',':')).encode()).hexdigest()
+          assert h=='edd02c530398465cb35e481f96e336ebd0dcccc73235aaffe6c1d984c3986517'
+          print('RULE_HASH_CONTINUITY=PASS')
+          print('PRIOR_RESOLVED_N=0')
+          print('PRIOR_PENDING_N=0')
+          PY
+      - name: Run three-hour frozen forward shadow batch
+        run: |
+          python research/mexc_event_futures/options_forward_batch_v0131.py             --boundary-ms 1790981451000             --accept-seconds 10800             --output evidence/options-forward-batch-v0131
+      - name: Preserve forward ledger
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v0131-options-frozen-forward-batch
+          path: evidence/options-forward-batch-v0131/
+          if-no-files-found: error
+          retention-days: 30
