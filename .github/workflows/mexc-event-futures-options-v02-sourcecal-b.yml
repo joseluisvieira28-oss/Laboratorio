@@ -1,0 +1,78 @@
+name: MEXC V0.13 Options V0.2 Source Calibration Chunk B
+
+on:
+  push:
+    branches:
+      - mexc-event-futures-options-vol-v0.2-sourcecal-2026-10-03
+    paths:
+      - '.github/workflows/mexc-event-futures-options-v02-sourcecal-b.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  source-calibration-b:
+    runs-on: ubuntu-latest
+    timeout-minutes: 190
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Compile frozen collector
+        run: |
+          python -m py_compile             research/mexc_event_futures/priority_source_gates_v013.py             research/mexc_event_futures/options_pair_source_v013.py             research/mexc_event_futures/options_vol_source_calibration_v02.py
+
+      - name: Establish original boundary and enforce non-overlap
+        run: |
+          python - <<'PY'
+          import subprocess,datetime,os,time
+          freeze='b3d33d6e0b97421e27009ce684dd8bd7af0903a4'
+          stamp=subprocess.check_output(['git','show','-s','--format=%cI',freeze],text=True).strip()
+          boundary=int(datetime.datetime.fromisoformat(stamp).timestamp()*1000)
+          last_a=1791046560000
+          next_minute=((time.time_ns()//1_000_000)//60000 + 1)*60000
+          assert next_minute > last_a, f'NON_OVERLAP_FAIL next={next_minute} last_a={last_a}'
+          with open(os.environ['GITHUB_ENV'],'a') as f:
+              f.write(f'V02_CAL_BOUNDARY_MS={boundary}\n')
+              f.write(f'CHUNK_A_LAST_MINUTE_MS={last_a}\n')
+              f.write(f'CHUNK_B_EXPECTED_FIRST_MINUTE_MS={next_minute}\n')
+          print('V02_CAL_BOUNDARY_MS',boundary)
+          print('CHUNK_A_LAST_MINUTE_MS',last_a)
+          print('CHUNK_B_EXPECTED_FIRST_MINUTE_MS',next_minute)
+          print('NON_OVERLAP_PREFLIGHT=PASS')
+          PY
+
+      - name: Run 180-minute Deribit source-only calibration chunk B
+        run: |
+          python research/mexc_event_futures/options_vol_source_calibration_v02.py             --minutes 180             --boundary-ms "$V02_CAL_BOUNDARY_MS"             --output evidence/options-v02-sourcecal-b
+
+      - name: Verify chunk B starts after chunk A
+        if: success()
+        run: |
+          python - <<'PY'
+          import json,pathlib,os
+          p=pathlib.Path('evidence/options-v02-sourcecal-b/receipt.json')
+          j=json.loads(p.read_text())
+          first=int(j['first_minute_ms'])
+          last_a=int(os.environ['CHUNK_A_LAST_MINUTE_MS'])
+          assert first > last_a, f'POSTRUN_NON_OVERLAP_FAIL first={first} last_a={last_a}'
+          assert j['mexc_data_accessed'] is False
+          assert j['research_outcomes_opened']==0
+          assert j['threshold_committed'] is False
+          print('CHUNK_B_POSTRUN_NON_OVERLAP=PASS')
+          PY
+
+      - name: Preserve source-only evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v013-options-v02-sourcecal-b
+          path: evidence/options-v02-sourcecal-b/
+          if-no-files-found: error
+          retention-days: 90
