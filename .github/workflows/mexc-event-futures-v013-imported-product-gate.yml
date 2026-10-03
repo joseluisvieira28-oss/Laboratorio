@@ -1,0 +1,51 @@
+name: MEXC V0.13 Imported Signal Fresh Product Gate
+
+on:
+  push:
+    branches:
+      - mexc-event-futures-v013-imported-signal-audit-2026-10-03
+    paths:
+      - '.github/workflows/mexc-event-futures-v013-imported-product-gate.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  fresh-product-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install browser
+        run: |
+          python -m pip install playwright==1.58.0
+          python -m playwright install --with-deps chromium
+      - name: Fresh passive exact-product snapshot
+        run: python research/mexc_event_futures/prospective_product_collector_v012.py
+      - name: Audit current import product availability
+        run: |
+          python - <<'PY'
+          import csv,json
+          p='artifacts/mexc_event_futures/v012/prospective_product_cycles_v012.csv'
+          rows=list(csv.DictReader(open(p,encoding='utf-8')))
+          by={}
+          for r in rows:
+              by.setdefault(r['symbol'],[]).append((r['product_state'],r['cycle_unit'],r['cycle_value']))
+          print('CURRENT_PRODUCTS='+json.dumps(by,sort_keys=True))
+          print('HAS_AVAX_USDT='+str('AVAX_USDT' in by))
+          print('HAS_BNBBTC='+str('BNBBTC' in by))
+          print('RESEARCH_OUTCOMES_OPENED=0')
+          PY
+      - name: Preserve audit snapshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v013-imported-signal-fresh-product-gate
+          path: artifacts/mexc_event_futures/v012/
+          if-no-files-found: error
+          retention-days: 90
