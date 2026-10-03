@@ -1,0 +1,85 @@
+name: MEXC V0.13 Macro V0.1 Prearm Audit
+
+on:
+  push:
+    branches:
+      - mexc-event-futures-macro-postrelease-v013-source-gate-2026-10-03
+    paths:
+      - '.github/workflows/mexc-event-futures-v013-macro-prearm-audit.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  prearm-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install public tooling
+        run: |
+          python -m pip install websockets==15.0.1 playwright==1.58.0
+          python -m playwright install --with-deps chromium
+      - name: Verify frozen rule hash
+        run: |
+          python - <<'PY'
+          import hashlib,json,pathlib
+          p=pathlib.Path('research/mexc_event_futures/MACRO_POSTRELEASE_RULE_V01.json')
+          j=json.loads(p.read_text())
+          h=hashlib.sha256(json.dumps(j,sort_keys=True,separators=(',',':')).encode()).hexdigest()
+          assert h=='2e91d8375770b9e3d6a887813e17387eae83594c889988b3329e65a699f57af6'
+          print('MACRO_RULE_HASH=PASS')
+          PY
+      - name: Refresh public macro source receipt
+        run: |
+          python research/mexc_event_futures/macro_postrelease_source_gate_v0131.py             --output evidence/macro-v01-prearm-source
+      - name: Fresh passive exact-product snapshot
+        run: python research/mexc_event_futures/prospective_product_collector_v012.py
+      - name: Enforce first-event and product readiness
+        run: |
+          python - <<'PY'
+          import csv,json,pathlib
+          source=json.loads(pathlib.Path('evidence/macro-v01-prearm-source/receipt.json').read_text())
+          assert source['verdict']=='SOURCE_GATE_PASS'
+          target_uid='7d17bd53-87ad-4c74-a328-528f5e2b1e82'
+          target_utc='2026-10-14T12:30:00Z'
+          hits=[e for e in source['future_eligible_events']
+                if e.get('UID')==target_uid and e.get('DTSTART_UTC')==target_utc and e.get('kind')=='CPI']
+          assert len(hits)==1, 'FIRST_ELIGIBLE_EVENT_CHANGED_OR_MISSING'
+          rows=list(csv.DictReader(open('artifacts/mexc_event_futures/v012/prospective_product_cycles_v012.csv',encoding='utf-8')))
+          for symbol in ('BTC_USDT','ETH_USDT'):
+              exact=[r for r in rows if r['symbol']==symbol and r['product_state']=='ONLINE'
+                     and r['cycle_unit']=='MINUTE' and r['cycle_value']=='10']
+              assert len(exact)==1, f'{symbol}_ONLINE_10M_NOT_EXACTLY_ONE'
+              assert float(exact[0]['up_pay_rate'])>0 and float(exact[0]['down_pay_rate'])>0
+              assert exact[0]['source_sha256']
+          receipt={
+            'family_id':'MACRO-POSTRELEASE-FWD-001',
+            'family_version':'0.1',
+            'verdict':'ARMED_AWAITING_FIRST_ELIGIBLE_RELEASE',
+            'rule_hash':'2e91d8375770b9e3d6a887813e17387eae83594c889988b3329e65a699f57af6',
+            'first_event':hits[0],
+            'products':['BTC_USDT:ONLINE:10m','ETH_USDT:ONLINE:10m'],
+            'research_outcomes_opened':0,
+            'orders':0,
+            'trading':0
+          }
+          pathlib.Path('evidence/macro-v01-prearm-receipt.json').write_text(json.dumps(receipt,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(receipt,indent=2,sort_keys=True))
+          PY
+      - name: Preserve prearm evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v013-macro-v01-prearm-audit
+          path: |
+            evidence/macro-v01-prearm-source/
+            evidence/macro-v01-prearm-receipt.json
+            artifacts/mexc_event_futures/v012/
+          if-no-files-found: error
+          retention-days: 90
