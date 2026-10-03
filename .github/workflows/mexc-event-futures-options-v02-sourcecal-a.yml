@@ -1,0 +1,49 @@
+name: MEXC V0.13 Options V0.2 Source Calibration Chunk A
+
+on:
+  push:
+    branches:
+      - mexc-event-futures-options-vol-v0.2-sourcecal-2026-10-03
+    paths:
+      - '.github/workflows/mexc-event-futures-options-v02-sourcecal-a.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  source-calibration-a:
+    runs-on: ubuntu-latest
+    timeout-minutes: 190
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile frozen collector
+        run: |
+          python -m py_compile             research/mexc_event_futures/priority_source_gates_v013.py             research/mexc_event_futures/options_pair_source_v013.py             research/mexc_event_futures/options_vol_source_calibration_v02.py
+      - name: Establish V0.2 calibration boundary
+        run: |
+          python - <<'PY'
+          import subprocess,datetime,os
+          freeze='b3d33d6e0b97421e27009ce684dd8bd7af0903a4'
+          stamp=subprocess.check_output(['git','show','-s','--format=%cI',freeze],text=True).strip()
+          boundary=int(datetime.datetime.fromisoformat(stamp).timestamp()*1000)
+          with open(os.environ['GITHUB_ENV'],'a') as f:
+              f.write(f'V02_CAL_BOUNDARY_MS={boundary}\n')
+          print('V02_CAL_BOUNDARY_MS',boundary)
+          PY
+      - name: Run 180-minute Deribit source-only calibration chunk
+        run: |
+          python research/mexc_event_futures/options_vol_source_calibration_v02.py             --minutes 180             --boundary-ms "$V02_CAL_BOUNDARY_MS"             --output evidence/options-v02-sourcecal-a
+      - name: Preserve source-only evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v013-options-v02-sourcecal-a
+          path: evidence/options-v02-sourcecal-a/
+          if-no-files-found: error
+          retention-days: 90
