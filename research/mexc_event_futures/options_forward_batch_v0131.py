@@ -59,14 +59,42 @@ async def run_batch(boundary_ms, accept_seconds, evidence):
 
     try:
         await capture.start()
-        snap=await capture.capture(initial=True)
+        # Technical preflight only: retain the exact 5s join, but retry fresh
+        # payout snapshots because push.index.price is change-driven.
+        preflight_attempts=[]
+        initial=True
         for symbol in base.RULE["symbols"]:
-            tick=await stream.first(symbol,snap["received_at_ms"],snap["received_at_ms"],5)
-            if not 0<=tick["received_at_ms"]-snap["received_at_ms"]<=5000:
-                raise ValueError("PREFLIGHT_STALE_JOIN")
-            for direction in ("UP","DOWN"):
-                base.payout(snap,symbol,direction)
+            symbol_pass=False
+            for attempt in range(1,13):
+                snap=await capture.capture(initial=initial)
+                initial=False
+                row={"symbol":symbol,"attempt":attempt,
+                     "payout_received_at_ms":snap["received_at_ms"],
+                     "payout_source_sha256":snap["raw_sha256"]}
+                try:
+                    for direction in ("UP","DOWN"):
+                        base.payout(snap,symbol,direction)
+                    tick=await stream.first(symbol,snap["received_at_ms"],snap["received_at_ms"],5)
+                    join=tick["received_at_ms"]-snap["received_at_ms"]
+                    if not 0<=join<=5000:
+                        raise ValueError("PREFLIGHT_STALE_JOIN")
+                    row.update(status="PASS",index_ts_ms=tick["ts"],
+                               index_received_at_ms=tick["received_at_ms"],
+                               index_raw_sha256=tick["raw_sha256"],join_ms=join)
+                    preflight_attempts.append(row)
+                    symbol_pass=True
+                    break
+                except Exception as exc:
+                    row.update(status="BLOCKED",reason=str(exc))
+                    preflight_attempts.append(row)
+                    if attempt<12:
+                        await asyncio.sleep(2)
+            if not symbol_pass:
+                raise ValueError("PREFLIGHT_RETRIES_EXHAUSTED_"+symbol)
         preflight=True
+        base.journal(evidence,"preflight_attempts.jsonl",{
+            "status":"RUNTIME_PREFLIGHT_PASS","attempts":preflight_attempts,
+            "observed_at_ms":base.now_ms(),"outcomes_opened":0})
         base.journal(evidence,"continuity_receipt.jsonl",{
             "status":"CONTINUITY_PASS",
             "prior":PRIOR,
