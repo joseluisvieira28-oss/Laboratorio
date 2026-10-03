@@ -1,0 +1,36 @@
+name: MEXC V0.13.1 Liquidation ETH Source Completion
+
+on:
+  push:
+    branches:
+      - mexc-event-futures-v013-source-completion-2026-10-03
+    paths:
+      - '.github/workflows/mexc-event-futures-v0131-liquidation-source-completion.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  eth-source-completion:
+    runs-on: ubuntu-latest
+    timeout-minutes: 190
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install websockets==15.0.1
+      - name: Frozen validator self-test
+        run: python research/mexc_event_futures/priority_source_gates_v013.py --self-test
+      - name: Independent BTC/ETH source completion, public only
+        run: python research/mexc_event_futures/liquidation_eth_source_completion_v0131.py --seconds 10800 --output evidence/liquidation-v0131-source-completion
+      - name: Preserve source completion evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v0131-liquidation-eth-source-completion
+          path: evidence/liquidation-v0131-source-completion/
+          if-no-files-found: error
+          retention-days: 90
