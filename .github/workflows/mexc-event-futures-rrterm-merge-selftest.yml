@@ -1,0 +1,23 @@
+name: MEXC V0.13 RR Term Calibration Merge Self-Test
+on:
+  push:
+    branches:
+      - mexc-event-futures-options-rrterm-v013-sourcecal-2026-10-03
+    paths:
+      - '.github/workflows/mexc-event-futures-rrterm-merge-selftest.yml'
+permissions:
+  contents: read
+jobs:
+  selftest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: |
+          python -m py_compile research/mexc_event_futures/options_rr_term_source_calibration_merge_v01.py
+          python research/mexc_event_futures/options_rr_term_source_calibration_merge_v01.py --self-test
