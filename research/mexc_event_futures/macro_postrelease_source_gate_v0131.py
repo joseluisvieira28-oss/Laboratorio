@@ -45,6 +45,8 @@ def parse_dt(value,params):
         dt=datetime.strptime(value,"%Y%m%dT%H%M%SZ").replace(tzinfo=timezone.utc)
         return dt
     tzid=params.get("TZID")
+    if tzid in ("US-Eastern","US/Eastern","EST5EDT"):
+        tzid="America/New_York"
     tz=ZoneInfo(tzid) if tzid else ZoneInfo("America/New_York")
     fmt="%Y%m%dT%H%M%S" if len(value)>=15 else "%Y%m%dT%H%M"
     return datetime.strptime(value,fmt).replace(tzinfo=tz).astimezone(timezone.utc)
