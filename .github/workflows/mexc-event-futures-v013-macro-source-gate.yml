@@ -1,0 +1,37 @@
+name: MEXC V0.13 Macro Postrelease Public Source Gate
+
+on:
+  push:
+    branches:
+      - mexc-event-futures-macro-postrelease-v013-source-gate-2026-10-03
+    paths:
+      - '.github/workflows/mexc-event-futures-v013-macro-source-gate.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  source-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install websockets==15.0.1
+      - name: Compile
+        run: python -m py_compile research/mexc_event_futures/macro_postrelease_source_gate_v0131.py
+      - name: Run public source gate
+        run: |
+          python research/mexc_event_futures/macro_postrelease_source_gate_v0131.py             --output evidence/macro-postrelease-source-gate-v0131
+      - name: Preserve evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v013-macro-postrelease-public-source-gate
+          path: evidence/macro-postrelease-source-gate-v0131/
+          if-no-files-found: error
+          retention-days: 90
