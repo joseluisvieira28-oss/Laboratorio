@@ -1,0 +1,29 @@
+name: MEXC V0.13.1 Liquidation Calibration Tooling Self-Test
+
+on:
+  push:
+    branches:
+      - mexc-event-futures-v013-source-completion-2026-10-03
+    paths:
+      - '.github/workflows/mexc-event-futures-v0131-liquidation-calibration-selftest.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  calibration-tooling-selftest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile and synthetic mechanics test
+        run: |
+          python -m py_compile research/mexc_event_futures/liquidation_flow_calibration_chunk_v0131.py
+          python research/mexc_event_futures/liquidation_flow_calibration_chunk_v0131.py --self-test
+          echo 'REAL_CALIBRATION_STARTED=0'
+          echo 'RESEARCH_OUTCOMES_OPENED=0'
