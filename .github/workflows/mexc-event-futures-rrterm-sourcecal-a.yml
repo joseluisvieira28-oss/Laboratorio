@@ -1,0 +1,49 @@
+name: MEXC V0.13 RR Term Source Calibration Chunk A
+
+on:
+  push:
+    branches:
+      - mexc-event-futures-options-rrterm-v013-sourcecal-2026-10-03
+    paths:
+      - '.github/workflows/mexc-event-futures-rrterm-sourcecal-a.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  calibration-a:
+    runs-on: ubuntu-latest
+    timeout-minutes: 190
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile frozen source/calibration code
+        run: |
+          python -m py_compile             research/mexc_event_futures/priority_source_gates_v013.py             research/mexc_event_futures/options_rr_term_source_gate_v01.py             research/mexc_event_futures/options_rr_term_source_calibration_v01.py
+      - name: Establish frozen calibration boundary
+        run: |
+          python - <<'PY'
+          import subprocess,datetime,os
+          freeze='3b6072afe34c7cde286cf14882e27ff025cb011c'
+          stamp=subprocess.check_output(['git','show','-s','--format=%cI',freeze],text=True).strip()
+          boundary=int(datetime.datetime.fromisoformat(stamp).timestamp()*1000)
+          with open(os.environ['GITHUB_ENV'],'a') as f:
+              f.write(f'RRTERM_CAL_BOUNDARY_MS={boundary}\n')
+          print('RRTERM_CAL_BOUNDARY_MS',boundary)
+          PY
+      - name: Run 180-minute public source-only calibration
+        run: |
+          python research/mexc_event_futures/options_rr_term_source_calibration_v01.py             --minutes 180             --boundary-ms "$RRTERM_CAL_BOUNDARY_MS"             --output evidence/options-rrterm-sourcecal-a
+      - name: Preserve calibration evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: options-rrterm-sourcecal-a
+          path: evidence/options-rrterm-sourcecal-a/
+          if-no-files-found: error
+          retention-days: 90
