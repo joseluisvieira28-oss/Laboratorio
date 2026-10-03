@@ -1,0 +1,62 @@
+{
+  "lab_id": "DEFI-LIQUIDATION-BREAKOUT-002",
+  "version": "V0.1",
+  "state": "FROZEN_PRE_DEVELOPMENT",
+  "parent": "DEFI-LIQUIDATION-SHOCK-001",
+  "parent_short_translation": "NO_EDGE_2025_ECONOMIC_HOLDOUT",
+  "development": {
+    "start": "2021-01-01T00:00:00Z",
+    "end": "2026-01-01T00:00:00Z",
+    "years": [
+      2021,
+      2022,
+      2023,
+      2024,
+      2025
+    ]
+  },
+  "final_holdout_2026": {
+    "open_only_if_development_survives": true,
+    "start": "2026-01-01T00:00:00Z",
+    "end": "2026-09-28T00:00:00Z",
+    "opened": false
+  },
+  "timing": {
+    "quiet_seconds": 60,
+    "entry_base": "STRICT_NEXT_MINUTE_AFTER_T0",
+    "confirmation_minutes": 1,
+    "entry_after_confirmation_minutes": 1,
+    "exit_from_e0_minutes": 5,
+    "holding_minutes": 4
+  },
+  "direction_rule": "SIGN_OF_FIRST_MINUTE_OPEN_TO_OPEN_RETURN",
+  "zero_confirmation_return": "NO_TRADE",
+  "costs": {
+    "primary_bps": 26,
+    "stress_bps": 40
+  },
+  "serialization": "SORT_E1_THEN_CLUSTER_ID_SUPPRESS_E1_LT_OPEN_EXIT",
+  "development_gates": {
+    "min_coverage": 0.95,
+    "min_serialized_n": 3000,
+    "min_days": 250,
+    "all_five_years": true,
+    "min_protocol_families_with_100_trades": 3,
+    "mean_primary_gt_zero": true,
+    "bootstrap_lower_gt_zero": true,
+    "mean_stress_gt_zero": true,
+    "profit_factor_min": 1.1,
+    "min_positive_years": 4,
+    "min_positive_protocol_families": 3,
+    "max_positive_pnl_day_concentration": 0.25,
+    "max_positive_pnl_year_concentration": 0.4
+  },
+  "bootstrap": {
+    "repetitions": 5000,
+    "block": "UTC_SOURCE_T0_DAY",
+    "seed_text": "DEFI-LIQUIDATION-BREAKOUT-002development-2021-20251m-confirm-4m-holdV0.1"
+  },
+  "post_outcome_tuning": false,
+  "live_trading": false,
+  "trading_authority": "NONE"
+}
