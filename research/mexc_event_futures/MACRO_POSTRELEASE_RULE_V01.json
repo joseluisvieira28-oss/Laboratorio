@@ -1,0 +1,36 @@
+{
+  "consensus_data": false,
+  "decision_join_max_seconds": 5,
+  "dedup_identity": "BLS_UID_PLUS_SYMBOL",
+  "direction_rule": {
+    "equal": "NO_SIGNAL",
+    "reaction_gt_release": "UP",
+    "reaction_lt_release": "DOWN"
+  },
+  "eligible_releases": [
+    "CPI",
+    "EMPLOYMENT_SITUATION"
+  ],
+  "expiry_lateness_max_seconds": 5,
+  "family_id": "MACRO-POSTRELEASE-FWD-001",
+  "family_version": "0.1",
+  "first_eligible_event": {
+    "kind": "CPI",
+    "release_utc": "2026-10-14T12:30:00Z",
+    "uid": "7d17bd53-87ad-4c74-a328-528f5e2b1e82"
+  },
+  "historical_backfill_2026": false,
+  "horizon_minutes": 10,
+  "interpolation": false,
+  "max_signal_age_seconds": 5,
+  "min_n_per_symbol": 20,
+  "overlap_rule": "FIRST_ONLY_WHILE_UNRESOLVED_PER_SYMBOL",
+  "payout_filter": "NUMERIC_GT_0_ONLY",
+  "reaction_index": "first public MEXC push.index.price server timestamp >= T+300000ms, max lateness 5s",
+  "release_index": "first public MEXC push.index.price server timestamp >= official release T, max lateness 5s",
+  "signal": "FIVE_MINUTE_POST_RELEASE_CONTINUATION",
+  "symbols": [
+    "BTC_USDT",
+    "ETH_USDT"
+  ]
+}
