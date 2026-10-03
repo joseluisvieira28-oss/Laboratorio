@@ -1,0 +1,39 @@
+name: MEXC Event Futures Premium Basis V1.4 Forward Watcher
+
+on:
+  push:
+    branches:
+      - mexc-event-futures-premium-basis-v1.4-watcher-2026-10-03
+    paths:
+      - '.github/workflows/mexc-event-futures-premium-basis-v14-forward.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  forward-watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 190
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install requests==2.32.5
+      - name: Validate frozen implementation
+        run: |
+          python -m py_compile research/mexc_event_futures/premium_basis_v14_forward_watcher.py
+          python research/mexc_event_futures/premium_basis_v14_forward_watcher.py --self-test
+      - name: Run three-hour prospective directional watcher
+        run: |
+          python research/mexc_event_futures/premium_basis_v14_forward_watcher.py             --duration-seconds 10800             --poll-seconds 30             --output evidence/premium-basis-v14-forward-a
+      - name: Preserve forward evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: premium-basis-v14-forward-a
+          path: evidence/premium-basis-v14-forward-a/
+          if-no-files-found: error
+          retention-days: 90
