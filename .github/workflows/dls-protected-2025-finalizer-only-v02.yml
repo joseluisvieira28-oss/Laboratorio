@@ -37,9 +37,9 @@ jobs:
           assert t["protected_2026_outcomes_opened"] is False
           assert t["science_changed"] is False
           assert t["trading_authority"]=="NONE"
-          m=subprocess.check_output(["git","hash-object","labs/DEFI_LIQUIDATION_SHOCK_001/source/materialize_hybrid_protected_2025_source_v0_1.py"],text=True).strip()
+          m=subprocess.check_output(["git","hash-object","labs/DEFI_LIQUIDATION_SHOCK_001/source/materialize_hybrid_protected_2025_source_v0_2.py"],text=True).strip()
           f=subprocess.check_output(["git","hash-object","labs/DEFI_LIQUIDATION_SHOCK_001/source/finalize_protected_2025_source_v0_2.py"],text=True).strip()
-          assert m=="fb7607385833db7c98dc14f46d2d7381acb7b6f1",m
+          assert m=="e5a5a3ff63cc28a231dbf5feeaa91d4cec63f2b6",m
           assert f=="d4345422aaf4f2f4042fe311c333352d9a208652",f
           print("PASS: exact finalizer-only scientific binding")
 
@@ -95,9 +95,9 @@ jobs:
 
       - name: Materialize exact scientific 48
         run: |
-          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/materialize_hybrid_protected_2025_source_v0_1.py
+          python -m py_compile labs/DEFI_LIQUIDATION_SHOCK_001/source/materialize_hybrid_protected_2025_source_v0_2.py
           mkdir -p /tmp/selected48
-          python labs/DEFI_LIQUIDATION_SHOCK_001/source/materialize_hybrid_protected_2025_source_v0_1.py \
+          python labs/DEFI_LIQUIDATION_SHOCK_001/source/materialize_hybrid_protected_2025_source_v0_2.py \
             --root /tmp/final48 \
             --outdir /tmp/selected48 \
             --receipt labs/DEFI_LIQUIDATION_SHOCK_001/DLS_PROTECTED_2025_FINAL48_MATERIALIZATION_RECEIPT_V0.2.json
