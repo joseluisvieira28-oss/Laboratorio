@@ -1,0 +1,37 @@
+name: MEXC V0.13 RR Term Source Gate
+
+on:
+  push:
+    branches:
+      - mexc-event-futures-options-rrterm-v013-sourcecal-2026-10-03
+    paths:
+      - '.github/workflows/mexc-event-futures-rrterm-source-gate.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  source-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate source-gate code
+        run: |
+          python -m py_compile             research/mexc_event_futures/priority_source_gates_v013.py             research/mexc_event_futures/options_rr_term_source_gate_v01.py
+      - name: Run public source gate
+        run: |
+          python research/mexc_event_futures/options_rr_term_source_gate_v01.py             --output evidence/options-rrterm-source-gate-v01
+      - name: Preserve source evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: options-rrterm-source-gate-v01
+          path: evidence/options-rrterm-source-gate-v01/
+          if-no-files-found: error
+          retention-days: 90
