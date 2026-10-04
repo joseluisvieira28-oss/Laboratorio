@@ -1,0 +1,77 @@
+name: MEXC HL NAS100 LeadLag V0.6 Frozen Discovery
+
+on:
+  push:
+    branches:
+      - mexc-hl-nas100-leadlag-v0.6-prereg-2026-10-04
+    paths:
+      - 'research/mexc_global_assets/MEXC_HL_NAS100_SOURCE_BINDING_V0.5.1.json'
+      - 'research/mexc_global_assets/MEXC_HL_NAS100_LEADLAG_RULE_V0.6.json'
+      - 'research/mexc_global_assets/MEXC_HL_NAS100_LEADLAG_FREEZE_V0.6.md'
+      - 'research/mexc_global_assets/mexc_hl_nas100_leadlag_v06.py'
+      - '.github/workflows/mexc-hl-nas100-leadlag-v06-discovery.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  frozen-discovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependency
+        run: python -m pip install --disable-pip-version-check requests
+
+      - name: Bind pre-outcome authority
+        run: |
+          test "$GITHUB_REF_NAME" = "mexc-hl-nas100-leadlag-v0.6-prereg-2026-10-04"
+          python -m py_compile research/mexc_global_assets/mexc_hl_nas100_leadlag_v06.py
+          python - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          rp=Path('research/mexc_global_assets/MEXC_HL_NAS100_LEADLAG_RULE_V0.6.json')
+          bp=Path('research/mexc_global_assets/MEXC_HL_NAS100_SOURCE_BINDING_V0.5.1.json')
+          r=json.loads(rp.read_text())
+          b=json.loads(bp.read_text())
+          assert b['verdict']=='HYPERLIQUID_NAS100_SOURCE_PASS__XYZ_XYZ100'
+          assert r['outcomes_opened_at_freeze']==0
+          assert r['mexc_symbol']=='NAS100_USDT'
+          assert r['hyperliquid_coin']=='xyz:XYZ100'
+          assert r['signal']['direction']=='FOLLOW_HYPERLIQUID'
+          assert r['signal']['hl_shock_thresholds_bps']==[5,10,20,40]
+          assert r['signal']['lag_gap_thresholds_bps']==[3,5,10,20]
+          assert r['signal']['horizons_min']==[1,2,5,15]
+          assert r['discovery_start']=='2026-10-01T00:00:00Z'
+          assert r['discovery_end_exclusive']=='2026-10-04T09:00:00Z'
+          assert r['retrospective_oos_authorized'] is False
+          assert r['live_trading_authorized'] is False
+          print('RULE_SHA256='+hashlib.sha256(rp.read_bytes()).hexdigest())
+          print('BINDING_SHA256='+hashlib.sha256(bp.read_bytes()).hexdigest())
+          print('PRE_OUTCOME_FREEZE_PASS')
+          PY
+
+      - name: Execute frozen NAS100 cross-venue discovery
+        run: python research/mexc_global_assets/mexc_hl_nas100_leadlag_v06.py
+
+      - name: Upload immutable discovery closeout
+        uses: actions/upload-artifact@v4
+        with:
+          name: mexc-hl-nas100-leadlag-v06-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/mexc_global_assets/mexc_hl_nas100_leadlag_v06
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Governance closeout
+        run: |
+          echo 'DISCOVERY ONLY'
+          echo 'NO RETROSPECTIVE OOS'
+          echo 'NO DATA >= 2026-10-04T09:00:00Z'
+          echo 'NO PARAMETER RESCUE'
+          echo 'NO PRIVATE ENDPOINTS / NO ACCOUNT READS / NO WALLETS'
+          echo 'NO ORDERS / NO MUTATION / NO LIVE TRADING'
