@@ -1,0 +1,87 @@
+{
+  "family_id": "MEXC-HL-WTI-LEADLAG-001",
+  "version": "1.8",
+  "frozen_at_utc": "2026-10-04T12:36:00Z",
+  "source_binding": "HYPERLIQUID_WTI_SOURCE_PASS__XYZ_CL",
+  "source_binding_run": 37202372389,
+  "source_binding_artifact_sha256": "16545835c6ad9d91634bbf86e25f1e5ed0e75adff2d85b392191bb257391f7e7",
+  "outcomes_opened_at_freeze": 0,
+  "mexc_symbol": "USOIL_USDT",
+  "hyperliquid_dex": "xyz",
+  "hyperliquid_coin": "xyz:CL",
+  "interval": "1m",
+  "signal_mode": "FOLLOW_HL_UNDERREACTION",
+  "shock_thresholds_bps": [
+    5,
+    10,
+    20,
+    40
+  ],
+  "lag_gap_thresholds_bps": [
+    2,
+    5,
+    10,
+    20
+  ],
+  "horizons_min": [
+    1,
+    2,
+    5,
+    15
+  ],
+  "entry_proxy": "MEXC_NEXT_MINUTE_OPEN",
+  "overlap_rule": "per_cell cooldown through exit",
+  "windows": {
+    "discovery_start": "2026-10-01T00:15:00Z",
+    "discovery_end": "2026-10-03T00:00:00Z",
+    "oos_start": "2026-10-03T00:00:00Z",
+    "oos_end": "2026-10-04T09:00:00Z",
+    "hard_fetch_end_exclusive": "2026-10-04T09:00:00Z"
+  },
+  "discovery_gate": {
+    "min_n": 50,
+    "mean_gross_signed_bps_gt": 0,
+    "win_rate_gt": 0.5,
+    "thirds_mean_gross_signed_bps_gt": 0,
+    "multiple_testing": "HOLM_BONFERRONI",
+    "family_wise_alpha": 0.05
+  },
+  "oos_gate": {
+    "min_n": 20,
+    "mean_gross_signed_bps_gt": 0,
+    "win_rate_gt": 0.5,
+    "exact_one_sided_binomial_p_lt": 0.05,
+    "halves_mean_gross_signed_bps_gte": 0
+  },
+  "current_mexc_fee_snapshot": {
+    "maker_fee_rate": 0,
+    "taker_fee_rate": 0.0001,
+    "source_binding_captured_2026_10_04": true,
+    "historical_fee_authority": false
+  },
+  "cost_scenarios_roundtrip_bps": [
+    0,
+    1,
+    2,
+    3,
+    5,
+    10
+  ],
+  "economic_hurdles_roundtrip_bps": [
+    1,
+    2,
+    3
+  ],
+  "costs_are_scientific_gate": false,
+  "october_after_0900_authorized": false,
+  "parameter_rescue_authorized": false,
+  "private_endpoints_authorized": false,
+  "account_reads_authorized": false,
+  "wallets_authorized": false,
+  "orders_authorized": false,
+  "exchange_mutation_authorized": false,
+  "live_trading_authorized": false,
+  "promotion_ceiling": "WTI_CROSSVENUE_OOS_SIGNAL_CANDIDATE",
+  "v17_source_closeout": "SOURCE_BLOCKED_HL_WTI_HISTORICAL_RETENTION__NO_SCORING",
+  "source_boundary_only_successor": true
+}
