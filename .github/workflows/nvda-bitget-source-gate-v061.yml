@@ -1,0 +1,47 @@
+name: NVDA Bitget MEXC Source Gate V0.6.1
+
+on:
+  push:
+    branches:
+      - mexc-nvda-bitget-crossvenue-v0.6.1-source-gate-2026-10-04
+    paths:
+      - 'research/mexc_global_assets/NVDA_BITGET_SOURCE_AMENDMENT_V0.6.1.md'
+      - 'research/mexc_global_assets/nvda_bitget_source_probe_v061.py'
+      - '.github/workflows/nvda-bitget-source-gate-v061.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  source-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependency
+        run: python -m pip install --disable-pip-version-check requests
+      - name: Governance preflight
+        run: |
+          test "$GITHUB_REF_NAME" = "mexc-nvda-bitget-crossvenue-v0.6.1-source-gate-2026-10-04"
+          python -m py_compile research/mexc_global_assets/nvda_bitget_source_probe_v061.py
+          grep -q 'SOURCE-ONLY' research/mexc_global_assets/NVDA_BITGET_SOURCE_AMENDMENT_V0.6.1.md
+          grep -q 'historical outcomes remain CLOSED' research/mexc_global_assets/NVDA_BITGET_SOURCE_AMENDMENT_V0.6.1.md
+          echo 'NVDA_BITGET_SOURCE_PREOUTCOME_PASS'
+      - name: Execute public Bitget to MEXC source gate
+        run: python research/mexc_global_assets/nvda_bitget_source_probe_v061.py
+      - name: Upload immutable source evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: nvda-bitget-source-gate-v061-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/mexc_global_assets/nvda_bitget_source_gate_v061
+          if-no-files-found: error
+          retention-days: 90
+      - name: Governance closeout
+        run: |
+          echo 'SOURCE ONLY'
+          echo 'NO HISTORICAL OUTCOMES / NO LEAD-LAG SCORING'
+          echo 'NO ACCOUNT / WALLET / PRIVATE ENDPOINT'
+          echo 'NO ORDERS / NO MUTATION / NO LIVE TRADING'
