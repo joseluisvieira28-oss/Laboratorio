@@ -1,0 +1,51 @@
+{
+  "lab": "MEXC_GLOBAL_ASSET_LAB_V0_1",
+  "frozen_at_utc": "2026-10-04T00:00:00Z",
+  "research_only": true,
+  "live_trading_authorized": false,
+  "exchange_mutation_authorized": false,
+  "outcomes_opened": 0,
+  "mexc": {
+    "base_url": "https://api.mexc.com",
+    "auth": "NONE",
+    "endpoints": {
+      "detail": "/api/v1/contract/detail",
+      "index_price": "/api/v1/contract/index_price/{symbol}",
+      "contract_kline": "/api/v1/contract/kline/{symbol}",
+      "index_kline": "/api/v1/contract/kline/index_price/{symbol}"
+    },
+    "symbols": {
+      "NAS100": "NAS100_USDT",
+      "SP500": "SPX500_USDT",
+      "NVIDIA": "NVIDIA_USDT",
+      "GOLD_XAU": "XAU_USDT"
+    }
+  },
+  "external_reference_candidates": {
+    "CME_PUBLIC_WEB": {
+      "status": "FAIL_FOR_SHORT_HORIZON_REALTIME_SIGNAL",
+      "reason": "official public quotes delayed at least 10 minutes"
+    },
+    "YAHOO_CHART": {
+      "status": "SECONDARY_SANITY_ONLY",
+      "auth": "NONE",
+      "symbols": {
+        "NAS100": "^NDX",
+        "SP500": "^GSPC",
+        "NVIDIA": "NVDA",
+        "GOLD": "GC=F"
+      },
+      "reason": "unofficial interface; delay/retention semantics not exchange-grade"
+    }
+  },
+  "families": {
+    "GLOBAL-ASSET-CROSSVENUE-RT-001": {
+      "status": "SOURCE_BLOCKED_PRIMARY_REFERENCE",
+      "outcomes_opened": 0
+    },
+    "GLOBAL-ASSET-INDEX-BASIS-001": {
+      "status": "PREACTIVATION_DOCS_PASS_RUNTIME_CAPTURE_REQUIRED",
+      "outcomes_opened": 0
+    }
+  }
+}
