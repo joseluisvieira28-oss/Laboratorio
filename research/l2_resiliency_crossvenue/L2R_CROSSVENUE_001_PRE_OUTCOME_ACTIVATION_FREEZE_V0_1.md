@@ -46,3 +46,8 @@ Resolve only from canonical pre-outcome authority or an explicit prospective sci
 ## Firewalls
 
 2024 source only. No Binance data read during this audit. No 2025/2026 source access, new returns, PnL, main merge, live trading, orders, exchange mutation, private endpoints, account reads, wallets or spending.
+
+
+## Implementation correction before source planning
+
+The first price-blind planning attempt stopped before any price field was parsed because the bounded mmap index cache used a plain dict that does not support ordered eviction. The cache was corrected to `OrderedDict`; a five-index eviction regression passes. This changes no lookup rule, source, sample threshold, timing threshold, or outcome method. The implementation lock was refreshed and the fix was committed before resuming source planning.

@@ -2,7 +2,7 @@
 """Frozen price-blind source planner and one-shot Binance Discovery runner."""
 from __future__ import annotations
 import argparse,csv,datetime as dt,gzip,hashlib,io,json,math,mmap,os,random,re,struct,urllib.request,zipfile
-from collections import Counter,defaultdict
+from collections import Counter,defaultdict,OrderedDict
 import subprocess
 from pathlib import Path
 
@@ -83,7 +83,7 @@ def open_idx(path):
 def clear_indexes():
  for value in INDEX_CACHE.values(): value.close()
  INDEX_CACHE.clear()
-INDEX_CACHE={}
+INDEX_CACHE=OrderedDict()
 def idx_lookup(cache,target_ns):
  day=dt.datetime.fromtimestamp(target_ns//1_000_000_000,tz=dt.timezone.utc).date()
  if day.year!=2024: return None

@@ -14,6 +14,16 @@ class PlannerTests(unittest.TestCase):
    p.write_bytes(d.REC.pack(base+2101,0))
    self.assertIsNone(d.idx_lookup(td,base*1_000_000+100_100_001))
    d.clear_indexes()
+ def test_index_lru_evicts_oldest_mapping(self):
+  with tempfile.TemporaryDirectory() as td:
+   paths=[]
+   for i in range(5):
+    p=Path(td)/(str(i)+".idx"); p.write_bytes(d.REC.pack(100+i,0)); paths.append(p)
+   try:
+    for p in paths: self.assertEqual(len(d.open_idx(str(p))),d.REC.size)
+    self.assertEqual(len(d.INDEX_CACHE),4)
+    self.assertEqual(list(d.INDEX_CACHE.keys()),[str(p) for p in paths[1:]])
+   finally: d.clear_indexes()
  def test_checksum_parser_requires_filename_binding(self):
   fn='BTCUSDT-aggTrades-2024-01-01.zip'; text='a'*64+'  '+fn
   m=d.SHA_RE.fullmatch(text); self.assertIsNotNone(m); self.assertEqual(m.group(2),fn)
