@@ -81,7 +81,7 @@ def schema(xlsx):
 
 def main():
     OUT.mkdir(parents=True,exist_ok=True)
-    report={"gate_id":"BITGET_DEPTH_SCHEMA_V0_1_9","source_only":True,"burned_date":DATE,
+    report={"gate_id":"BITGET_DEPTH_SCHEMA_V0_1_9_1","source_only":True,"burned_date":DATE,
             "market_depth_prices_persisted":False,"symbols":{}}
     for sym in SYMBOLS:
         report["symbols"][sym]={}
@@ -97,7 +97,8 @@ def main():
                 print(" SHEET",sh["title"],"rows",sh["data_row_count"],"cols",sh["column_count"],
                       "header",sh["header"],"first",sh["first_column_first_value"],"last",sh["first_column_last_value"],
                       "types",sh["column_types"],"maxlen",sh["max_string_lengths"])
-    required={"timestamp","asks","bids"}
+    required_l1={"timestamp","ask_price","bid_price","ask_volume","bid_volume"}
+    required_l500={"timestamp","asks","bids"}
     passes={}
     for sym,d in report["symbols"].items():
         passes[sym]={}
@@ -105,6 +106,7 @@ def main():
             ok=False
             for sh in x["sheets"]:
                 hs={h.lower() for h in sh["header"]}
+                required = required_l1 if dept=="1" else required_l500
                 ok=ok or (required.issubset(hs) and sh["data_row_count"]>0)
             passes[sym][dept]=ok
     report["passes"]=passes
