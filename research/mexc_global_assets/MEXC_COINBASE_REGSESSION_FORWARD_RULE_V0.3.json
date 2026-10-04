@@ -1,0 +1,68 @@
+{
+  "study_id": "MEXC-COINBASE-REGSESSION-FORWARD-001",
+  "version": "0.3",
+  "frozen_at_utc": "2026-10-04T19:52:00Z",
+  "future_outcomes_opened_at_freeze": 0,
+  "source_binding": "MEXC_COINBASE_REGSESSION_FORWARD_BINDING_V0_3",
+  "forward_start_date": "2026-10-05",
+  "forward_end_date_inclusive": "2026-10-30",
+  "expected_weekday_sessions": 20,
+  "session_signal_window_utc": [
+    "14:31",
+    "18:44"
+  ],
+  "interval": "1m",
+  "frozen_cell": {
+    "shock_threshold_bps": 20,
+    "lag_gap_threshold_bps": 10,
+    "horizon_min": 5,
+    "direction": "FOLLOW_EXTERNAL_CONSENSUS",
+    "external_return_bps": "mean(Binance COINUSDT 1m return, Bitget COINUSDT 1m return)",
+    "mexc_return_bps": "MEXC COINBASE_USDT 1m return",
+    "lag_gap_bps": "external_return_bps - mexc_return_bps",
+    "overlap_rule": "5-minute cooldown"
+  },
+  "scientific_validation_gate": {
+    "min_n": 60,
+    "min_distinct_signal_sessions": 15,
+    "mean_gross_signed_bps_gt": 0,
+    "median_gross_signed_bps_gt": 0,
+    "win_rate_gt": 0.5,
+    "chronological_halves_mean_gt": 0,
+    "exact_one_sided_binomial_p_lt": 0.05,
+    "multiplicity_correction": "NONE_SINGLE_FROZEN_CELL"
+  },
+  "execution_screen_descriptive_only": {
+    "standard_api_maker_maker_roundtrip_bps": 12,
+    "standard_api_taker_taker_roundtrip_bps": 16,
+    "fee_only_survival_requires_mean_gross_bps_gt": 16,
+    "conservative_fee_plus_2bps_reserve_requires_mean_gross_bps_gt": 18,
+    "does_not_include": [
+      "spread",
+      "slippage",
+      "latency",
+      "adverse_selection",
+      "funding",
+      "fill_probability"
+    ]
+  },
+  "cost_scenarios_roundtrip_bps": [
+    0,
+    2,
+    5,
+    10,
+    12,
+    14,
+    16,
+    18,
+    20
+  ],
+  "interim_promotion_authorized": false,
+  "evaluate_only_after_forward_end": true,
+  "post_outcome_tuning_authorized": false,
+  "private_endpoints_authorized": false,
+  "account_reads_authorized": false,
+  "orders_authorized": false,
+  "exchange_mutation_authorized": false,
+  "live_trading_authorized": false
+}
