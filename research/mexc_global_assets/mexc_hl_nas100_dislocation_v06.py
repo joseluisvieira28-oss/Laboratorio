@@ -287,6 +287,17 @@ def main():
     alignment=len(overlap)/minrows
     calendar=(OOS_END-DISC_START)//60
     calendar_cov=len(overlap)/calendar
+    print(json.dumps({
+      "SOURCE_COVERAGE_ONLY": True,
+      "mexc_rows": len(mexc),
+      "hl_rows": len(hl),
+      "exact_overlap_rows": len(overlap),
+      "alignment_ratio": alignment,
+      "calendar_coverage_ratio": calendar_cov,
+      "first_overlap_utc": datetime.fromtimestamp(overlap[0],tz=timezone.utc).isoformat(),
+      "last_overlap_utc": datetime.fromtimestamp(overlap[-1],tz=timezone.utc).isoformat(),
+      "SCORING_NOT_YET_STARTED": True
+    }, indent=2, sort_keys=True))
     if alignment<0.98:
         raise RuntimeError(f"CLOCK_ALIGNMENT_FAIL:{alignment}")
     if calendar_cov<0.60:
