@@ -1,0 +1,85 @@
+name: Binance Bitget Stock LeadLag V0.1
+
+on:
+  push:
+    branches:
+      - binance-bitget-stock-leadlag-v0.1-prereg-2026-10-05
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: matrix
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json, os
+          p="research/cross_venue_stock/BINANCE_BITGET_STOCK_SOURCE_BINDING_V0.1.json"
+          d=json.load(open(p))
+          m={"include":[{"symbol":s} for s in d["candidates"]]}
+          assert len(m["include"])==34
+          with open(os.environ["GITHUB_OUTPUT"],"a") as f:
+              f.write("matrix="+json.dumps(m,separators=(",",":"))+"\n")
+          print(json.dumps(m,indent=2))
+          PY
+
+  evaluate:
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix: ${{ fromJSON(needs.prepare.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependency
+        run: python -m pip install --disable-pip-version-check requests
+      - name: Freeze check
+        run: |
+          test "$GITHUB_REF_NAME" = "binance-bitget-stock-leadlag-v0.1-prereg-2026-10-05"
+          test -f research/cross_venue_stock/BINANCE_BITGET_STOCK_SOURCE_BINDING_V0.1.json
+          test -f research/cross_venue_stock/BINANCE_BITGET_STOCK_RULE_V0.1.json
+          test -f research/cross_venue_stock/BINANCE_BITGET_STOCK_FREEZE_V0.1.md
+          test -f research/cross_venue_stock/BINANCE_BITGET_FEE_AUTHORITY_V0.1.md
+          python -m py_compile research/cross_venue_stock/binance_bitget_stock_asset_v01.py
+          echo CROSS_VENUE_PRE_OUTCOME_FREEZE_PASS
+      - name: Evaluate frozen asset
+        run: python research/cross_venue_stock/binance_bitget_stock_asset_v01.py --symbol "${{ matrix.symbol }}"
+      - name: Upload asset receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: bb-v01-${{ matrix.symbol }}
+          path: artifacts/cross_venue_stock/binance_bitget_v01/assets/${{ matrix.symbol }}.json
+          if-no-files-found: error
+          retention-days: 90
+
+  aggregate:
+    needs: evaluate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: bb-v01-*
+          path: artifacts/cross_venue_stock/binance_bitget_v01/assets
+          merge-multiple: true
+      - name: Aggregate frozen family
+        run: python research/cross_venue_stock/binance_bitget_stock_aggregate_v01.py
+      - name: Upload closeout
+        uses: actions/upload-artifact@v4
+        with:
+          name: binance-bitget-stock-v01-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/cross_venue_stock/binance_bitget_v01
+          if-no-files-found: error
+          retention-days: 90
