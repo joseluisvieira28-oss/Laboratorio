@@ -1,0 +1,37 @@
+name: MEXC NVIDIA RegSession LeadLag V0.5 Discovery
+
+on:
+  push:
+    branches:
+      - mexc-nvidia-regsession-leadlag-v0.5-prereg-2026-10-04
+
+permissions:
+  contents: read
+
+jobs:
+  discovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependency
+        run: python -m pip install --disable-pip-version-check requests
+      - name: Freeze check
+        run: |
+          test "$GITHUB_REF_NAME" = "mexc-nvidia-regsession-leadlag-v0.5-prereg-2026-10-04"
+          test -f research/mexc_global_assets/MEXC_NVIDIA_REGSESSION_LEADLAG_RULE_V0.5.json
+          test -f research/mexc_global_assets/MEXC_NVIDIA_REGSESSION_SOURCE_BINDING_V0.5.json
+          python -m py_compile research/mexc_global_assets/mexc_nvidia_regsession_leadlag_v05.py
+          echo PRE_OUTCOME_FREEZE_PASS
+      - name: Run regular-session discovery
+        run: python research/mexc_global_assets/mexc_nvidia_regsession_leadlag_v05.py
+      - name: Upload immutable discovery evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: mexc-nvidia-regsession-v05-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/mexc_global_assets/nvidia_regsession_leadlag_v05
+          if-no-files-found: error
+          retention-days: 90
