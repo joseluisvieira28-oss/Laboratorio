@@ -1,0 +1,36 @@
+name: MEXC NVIDIA CashClose Source V0.3
+
+on:
+  push:
+    branches:
+      - mexc-nvidia-cashclose-v0.3-prereg-2026-10-04
+
+permissions:
+  contents: read
+
+jobs:
+  source-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependency
+        run: python -m pip install --disable-pip-version-check requests
+      - name: Source-only check
+        run: |
+          test "$GITHUB_REF_NAME" = "mexc-nvidia-cashclose-v0.3-prereg-2026-10-04"
+          test -f research/mexc_global_assets/MEXC_NVIDIA_CASHCLOSE_SOURCE_FREEZE_V0.3.md
+          python -m py_compile research/mexc_global_assets/mexc_nvidia_cashclose_source_v03.py
+          echo SOURCE_ONLY_PASS
+      - name: Run cash-close source gate
+        run: python research/mexc_global_assets/mexc_nvidia_cashclose_source_v03.py
+      - name: Upload source evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: mexc-nvidia-cashclose-source-v03-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/mexc_global_assets/nvidia_cashclose_source_v03
+          if-no-files-found: error
+          retention-days: 90
