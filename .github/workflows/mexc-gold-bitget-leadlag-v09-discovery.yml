@@ -1,0 +1,63 @@
+name: MEXC GOLD Bitget LeadLag V0.9 Discovery
+
+on:
+  push:
+    branches:
+      - mexc-gold-bitget-leadlag-v0.9-prereg-2026-10-04
+    paths:
+      - 'research/mexc_global_assets/MEXC_GOLD_BITGET_LEADLAG_RULE_V0.9.json'
+      - 'research/mexc_global_assets/MEXC_GOLD_BITGET_LEADLAG_FREEZE_V0.9.md'
+      - 'research/mexc_global_assets/mexc_gold_bitget_leadlag_v09.py'
+      - '.github/workflows/mexc-gold-bitget-leadlag-v09-discovery.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  discovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependency
+        run: python -m pip install --disable-pip-version-check requests
+      - name: Bind frozen authority
+        run: |
+          test "$GITHUB_REF_NAME" = "mexc-gold-bitget-leadlag-v0.9-prereg-2026-10-04"
+          python -m py_compile research/mexc_global_assets/mexc_gold_bitget_leadlag_v09.py
+          python - <<'PY'
+          import json,hashlib
+          from pathlib import Path
+          p=Path('research/mexc_global_assets/MEXC_GOLD_BITGET_LEADLAG_RULE_V0.9.json')
+          x=json.loads(p.read_text())
+          assert x['outcomes_opened_at_freeze']==0
+          assert x['signal']['direction']=='FOLLOW_BITGET'
+          assert x['signal']['leader_shock_thresholds_bps']==[3,5,10]
+          assert x['signal']['lag_gap_thresholds_bps']==[2,3,5]
+          assert x['signal']['horizons_min']==[1,2,5,15]
+          assert x['discovery_end_exclusive']=='2026-10-04T09:00:00Z'
+          assert x['retrospective_oos_authorized'] is False
+          assert x['live_trading_authorized'] is False
+          print('RULE_SHA256='+hashlib.sha256(p.read_bytes()).hexdigest())
+          print('PRE_OUTCOME_FREEZE_PASS')
+          PY
+      - name: Execute frozen GOLD discovery
+        run: python research/mexc_global_assets/mexc_gold_bitget_leadlag_v09.py
+      - name: Upload immutable discovery evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: mexc-gold-bitget-leadlag-v09-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/mexc_global_assets/gold_bitget_leadlag_v09
+          if-no-files-found: error
+          retention-days: 90
+      - name: Governance closeout
+        run: |
+          echo 'DISCOVERY ONLY'
+          echo 'NO RETROSPECTIVE OOS'
+          echo 'NO DATA >= 2026-10-04T09:00:00Z'
+          echo 'NO PARAMETER RESCUE'
+          echo 'NO ACCOUNT / WALLET / PRIVATE ENDPOINT'
+          echo 'NO ORDERS / NO MUTATION / NO LIVE TRADING'
