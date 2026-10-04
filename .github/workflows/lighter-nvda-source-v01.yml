@@ -1,0 +1,30 @@
+name: Lighter NVDA Source Gate V0.1
+on:
+  push:
+    branches:
+      - lighter-nvda-portability-v0.1-source-gate-2026-10-05
+permissions:
+  contents: read
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install --disable-pip-version-check requests
+      - name: Freeze check
+        run: |
+          test "$GITHUB_REF_NAME" = "lighter-nvda-portability-v0.1-source-gate-2026-10-05"
+          test -f research/lighter_nvda/LIGHTER_NVDA_SOURCE_GATE_FREEZE_V0.1.md
+          python -m py_compile research/lighter_nvda/lighter_nvda_source_probe_v01.py
+          echo PRE_OUTCOME_SOURCE_FREEZE_PASS
+      - run: python research/lighter_nvda/lighter_nvda_source_probe_v01.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lighter-nvda-source-v01-${{ github.run_id }}
+          path: artifacts/lighter_nvda/v01_source_gate
+          if-no-files-found: error
+          retention-days: 90
