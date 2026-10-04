@@ -1,0 +1,106 @@
+{
+  "family_id": "MEXC-WTI-EIA-FUNDAMENTAL-001",
+  "version": "1.5",
+  "frozen_at_utc": "2026-10-04T12:22:00Z",
+  "source_authority": {
+    "release_schedule": "EIA_WPSR_OFFICIAL_RELEASE_SCHEDULE",
+    "stock_series_id": "WCESTUS1",
+    "stock_series_name": "Weekly U.S. Ending Stocks excluding SPR of Crude Oil",
+    "stock_series_unit": "Thousand Barrels",
+    "public_xls": "https://www.eia.gov/dnav/pet/hist_xls/WCESTUS1w.xls"
+  },
+  "mexc_symbol": "USOIL_USDT",
+  "mexc_interval": "Min5",
+  "outcomes_opened_at_freeze": 0,
+  "discovery_events_utc": [
+    "2026-02-04T15:30:00Z",
+    "2026-02-11T15:30:00Z",
+    "2026-02-19T17:00:00Z",
+    "2026-02-25T15:30:00Z",
+    "2026-03-04T15:30:00Z",
+    "2026-03-11T14:30:00Z",
+    "2026-03-18T14:30:00Z",
+    "2026-03-25T14:30:00Z",
+    "2026-04-01T14:30:00Z",
+    "2026-04-08T14:30:00Z",
+    "2026-04-15T14:30:00Z",
+    "2026-04-22T14:30:00Z",
+    "2026-04-29T14:30:00Z",
+    "2026-05-06T14:30:00Z",
+    "2026-05-13T14:30:00Z",
+    "2026-05-20T14:30:00Z",
+    "2026-05-28T16:00:00Z",
+    "2026-06-03T14:30:00Z",
+    "2026-06-10T14:30:00Z",
+    "2026-06-17T14:30:00Z",
+    "2026-06-24T14:30:00Z",
+    "2026-07-01T14:30:00Z",
+    "2026-07-08T14:30:00Z",
+    "2026-07-15T14:30:00Z",
+    "2026-07-22T14:30:00Z",
+    "2026-07-29T14:30:00Z",
+    "2026-08-05T14:30:00Z",
+    "2026-08-12T14:30:00Z",
+    "2026-08-19T14:30:00Z",
+    "2026-08-26T14:30:00Z"
+  ],
+  "retrospective_oos_authorized": false,
+  "september_holdout_status": "CONTAMINATED_BY_V14_RAW_COVERAGE_FETCH",
+  "stock_mapping_rule": "for each release, current stock=end-date value on latest Friday strictly before release date; prior stock=immediately previous weekly observation",
+  "inventory_delta_formula": "current_stock_kb - prior_stock_kb",
+  "signal_mode": "DRAW_LONG_BUILD_SHORT_ONLY",
+  "signal_rule": {
+    "delta_lt_0": "LONG",
+    "delta_gt_0": "SHORT",
+    "delta_eq_0": "NO_SIGNAL"
+  },
+  "abs_inventory_change_thresholds_kb": [
+    0,
+    2000,
+    5000
+  ],
+  "entry_proxy": "MEXC_OPEN_OF_NEXT_MIN5_BUCKET_AT_T0_PLUS_5_MINUTES",
+  "horizons_min": [
+    5,
+    15,
+    30,
+    60
+  ],
+  "discovery_gate": {
+    "min_n": 12,
+    "mean_gross_signed_bps_gt": 0,
+    "win_rate_gt": 0.5,
+    "thirds_mean_gross_signed_bps_gt": 0,
+    "multiple_testing": "HOLM_BONFERRONI",
+    "family_wise_alpha": 0.05
+  },
+  "promotion_ceiling": "WTI_EIA_FUNDAMENTAL_DISCOVERY_CANDIDATE__FORWARD_ONLY",
+  "current_fee_snapshot": {
+    "maker_fee_rate": 0,
+    "taker_fee_rate": 0.0001,
+    "fee_snapshot_is_historical_authority": false
+  },
+  "cost_scenarios_roundtrip_bps": [
+    0,
+    1,
+    2,
+    3,
+    5,
+    10
+  ],
+  "economic_hurdles_roundtrip_bps": [
+    1,
+    2
+  ],
+  "inventory_thresholds_frozen_before_xls_values": true,
+  "inverse_mode_authorized": false,
+  "consensus_authorized": false,
+  "post_outcome_tuning_authorized": false,
+  "future_forward_required_for_confirmation": true,
+  "private_endpoints_authorized": false,
+  "account_reads_authorized": false,
+  "wallets_authorized": false,
+  "orders_authorized": false,
+  "exchange_mutation_authorized": false,
+  "live_trading_authorized": false
+}
