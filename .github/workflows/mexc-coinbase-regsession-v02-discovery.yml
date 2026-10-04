@@ -1,0 +1,38 @@
+name: MEXC COINBASE RegSession V0.2 Discovery
+
+on:
+  push:
+    branches:
+      - mexc-coinbase-regsession-v0.2-prereg-2026-10-04
+
+permissions:
+  contents: read
+
+jobs:
+  discovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependency
+        run: python -m pip install --disable-pip-version-check requests
+      - name: Freeze check
+        run: |
+          test "$GITHUB_REF_NAME" = "mexc-coinbase-regsession-v0.2-prereg-2026-10-04"
+          test -f research/mexc_global_assets/MEXC_COINBASE_REGSESSION_RULE_V0.2.json
+          test -f research/mexc_global_assets/MEXC_COINBASE_REGSESSION_SOURCE_BINDING_V0.2.json
+          test -f research/mexc_global_assets/MEXC_COINBASE_REGSESSION_FREEZE_V0.2.md
+          python -m py_compile research/mexc_global_assets/mexc_coinbase_regsession_v02.py
+          echo PRE_OUTCOME_FREEZE_PASS
+      - name: Run frozen COINBASE study
+        run: python research/mexc_global_assets/mexc_coinbase_regsession_v02.py
+      - name: Upload immutable evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: mexc-coinbase-regsession-v02-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/mexc_global_assets/coinbase_regsession_v02
+          if-no-files-found: error
+          retention-days: 90
