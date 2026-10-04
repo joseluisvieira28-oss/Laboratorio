@@ -104,8 +104,22 @@ def archive_discovery():
         hits=extract_interesting(u,text)
         if hits:
             discovered.update(hits)
+            api_paths=set(re.findall(r'''/(?:api|v[123])/[A-Za-z0-9_?=&.%:/\\-]{4,240}''',text,re.I))
+            file_urls=set(re.findall(r'''https?://[^"'\\\\\\s]{5,400}(?:\\.zip|\\.csv|\\.gz|download)[^"'\\\\\\s]{0,200}''',text,re.I))
+            contexts=[]
+            low=text.lower()
+            for key in ("futures-historical-transaction-record","order book depth data","historical market data","downloadurl","fileurl","oss","depthdata"):
+                pos=0
+                while len(contexts)<30:
+                    i=low.find(key,pos)
+                    if i<0: break
+                    contexts.append(text[max(0,i-220):min(len(text),i+420)])
+                    pos=i+len(key)
             bundle_hits.append({"url":u,"sha256":h(r.content),"bytes":len(r.content),
-                                "hits":sorted(hits)[:50]})
+                                "hits":sorted(hits)[:50],
+                                "api_paths":sorted(api_paths)[:100],
+                                "file_urls":sorted(file_urls)[:100],
+                                "contexts":contexts[:30]})
     # Probe only route surfaces discovered/guessed; do not download market files.
     guesses=[
       "https://www.bitget.com/data-download/futures-historical-depth-data",
@@ -139,21 +153,28 @@ def main():
     arc=archive_discovery()
     all_trade=all(x["schema_ok"] for x in trades.values())
     depth_hints=[u for u in arc["discovered_urls"] if "depth" in u.lower()]
-    depth_surface=bool(depth_hints or any(p.get("http")==200 and "depth" in p["url"] for p in arc["route_probes"]))
+    concrete_depth_evidence=[]
+    for b in arc["bundle_hits"]:
+        for x in (b.get("api_paths",[])+b.get("file_urls",[])+b.get("hits",[])):
+            xl=x.lower()
+            if "depth" in xl and ("/api/" in xl or ".zip" in xl or ".csv" in xl or "download" in xl):
+                concrete_depth_evidence.append(x)
+    depth_surface=bool(concrete_depth_evidence)
     verdict=("BITGET_TRADE_SOURCE_PASS__DEPTH_ARCHIVE_SURFACE_DISCOVERED"
              if all_trade and depth_surface else
              "BITGET_TRADE_SOURCE_PASS__DEPTH_ARCHIVE_DISCOVERY_PENDING"
              if all_trade else "BITGET_MICROSTRUCTURE_SOURCE_BLOCKED")
-    rep={"gate_id":CFG["gate_id"],"technical_amendment":"V0.1.1_bundle_discovery",
+    rep={"gate_id":CFG["gate_id"],"technical_amendment":"V0.1.2_concrete_depth_evidence_only",
       "source_only":True,"burned_source_date":CFG["burned_source_date"],"trade_probes":trades,
       "archive_discovery":arc,"depth_url_hints":depth_hints,"verdict":verdict,
       "microstructure_outcomes_opened":0,"private_endpoints_used":False,"account_reads":False,
       "orders":False,"exchange_mutation":False,"live_trading_authorized":False}
     (OUT/"BITGET_MAKER_MICROSTRUCTURE_SOURCE_GATE_V01.json").write_text(json.dumps(rep,indent=2,sort_keys=True))
     print(json.dumps({"verdict":verdict,"trade_source_pass":all_trade,
-      "depth_surface":depth_surface,"depth_hint_count":len(depth_hints),
+      "depth_surface":depth_surface,"concrete_depth_evidence":concrete_depth_evidence[:50],"depth_hint_count":len(depth_hints),
       "depth_hints":depth_hints[:30],
       "bundle_hit_count":len(arc["bundle_hits"]),
+      "bundle_hits":arc["bundle_hits"],
       "route_probes":arc["route_probes"]},indent=2))
 
 if __name__=="__main__": main()
