@@ -27,21 +27,21 @@ def main():
          "historical_outcomes_opened":0,"signal_tested":False,
          "verification_date":DAY,"venues":{}}
 
-    r=req("https://api.mexc.com/api/v1/contract/detail",{"symbol":"MSTR_USDT"})
+    r=req("https://api.mexc.com/api/v1/contract/detail",{"symbol":"MSTRSTOCK_USDT"})
     save("mexc_mstr_detail.json",r)
     if r.status_code!=200: raise RuntimeError(f"MEXC_DETAIL_HTTP_{r.status_code}")
     j=r.json()
     if j.get("success") is not True: raise RuntimeError(f"MEXC_DETAIL_NON_SUCCESS:{j}")
     d=j.get("data")
     if isinstance(d,list):
-        d=next((x for x in d if x.get("symbol")=="MSTR_USDT"),None)
+        d=next((x for x in d if x.get("symbol")=="MSTRSTOCK_USDT"),None)
     if not isinstance(d,dict): raise RuntimeError("MEXC_MSTR_DETAIL_MISSING")
     rep["mexc_detail"]={k:d.get(k) for k in [
       "symbol","indexOrigin","apiAllowed","isZeroFeeSymbol","makerFeeRate",
       "takerFeeRate","contractSize","maxLeverage","state"
     ]}
 
-    r=req("https://api.mexc.com/api/v1/contract/index_price/MSTR_USDT")
+    r=req("https://api.mexc.com/api/v1/contract/index_price/MSTRSTOCK_USDT")
     save("mexc_mstr_index.json",r)
     rep["mexc_index_status"]=r.status_code
     if r.status_code==200:
@@ -51,7 +51,7 @@ def main():
     start=int(datetime.fromisoformat(DAY+"T14:30:00+00:00").timestamp())
     end=int(datetime.fromisoformat(DAY+"T19:00:00+00:00").timestamp())
 
-    r=req("https://api.mexc.com/api/v1/contract/kline/MSTR_USDT",
+    r=req("https://api.mexc.com/api/v1/contract/kline/MSTRSTOCK_USDT",
           {"interval":"Min1","start":str(start),"end":str(end)})
     save("mexc_mstr_regsession_history.json",r)
     mj=r.json() if r.status_code==200 else {}
@@ -124,7 +124,7 @@ def main():
     rep["mexc_index_origin_normalized"]=sorted(set(aliases.get(x,x) for x in origins))
 
     gates={
-      "mexc_contract_exists":d.get("symbol")=="MSTR_USDT",
+      "mexc_contract_exists":d.get("symbol")=="MSTRSTOCK_USDT",
       "mexc_regsession_1m_transport":rep["venues"]["MEXC"]["schema_ok"],
       "binance_regsession_1m_transport":rep["venues"]["BINANCE"]["schema_ok"],
       "bitget_regsession_1m_transport":rep["venues"]["BITGET"]["schema_ok"],
