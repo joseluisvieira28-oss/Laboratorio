@@ -1,0 +1,76 @@
+{
+  "study_id": "MEXC-EQUITY-CASHOPEN-BASISFADE-001",
+  "version": "0.2",
+  "frozen_at_utc": "2026-10-04T20:13:00Z",
+  "outcomes_opened_at_freeze": 0,
+  "source_binding": "MEXC_EQUITY_CASHOPEN_BASISFADE_BINDING_V0_2",
+  "sample_start_date": "2026-09-09",
+  "sample_end_date_inclusive": "2026-10-02",
+  "excluded_dates": [
+    "2026-09-30"
+  ],
+  "signal_time_observable_utc": "13:29",
+  "horizon_min": 30,
+  "interval": "1m",
+  "assets": {
+    "TSLA": {
+      "target": "TESLA_USDT",
+      "external": "TSLAUSDT"
+    },
+    "AAPL": {
+      "target": "AAPLSTOCK_USDT",
+      "external": "AAPLUSDT"
+    },
+    "PLTR": {
+      "target": "PLTRSTOCK_USDT",
+      "external": "PLTRUSDT"
+    },
+    "META": {
+      "target": "METASTOCK_USDT",
+      "external": "METAUSDT"
+    },
+    "AMZN": {
+      "target": "AMZNSTOCK_USDT",
+      "external": "AMZNUSDT"
+    },
+    "MSFT": {
+      "target": "MSFTSTOCK_USDT",
+      "external": "MSFTUSDT"
+    }
+  },
+  "predictor": "basis_bps = 10000*(MEXC_close_13:29 / mean(Binance_close_13:29, Bitget_close_13:29) - 1)",
+  "direction": "FADE_BASIS = -sign(basis_bps)",
+  "basis_threshold_bps": null,
+  "outcome": "side * 10000 * (MEXC_close_13:59 / MEXC_close_13:29 - 1)",
+  "scientific_gate": {
+    "min_n": 15,
+    "mean_gross_signed_bps_gt": 0,
+    "median_gross_signed_bps_gt": 0,
+    "win_rate_gt": 0.5,
+    "chronological_halves_mean_gt": 0,
+    "exact_one_sided_binomial_p": true,
+    "multiple_testing": "HOLM_BONFERRONI_ACROSS_6_ASSETS",
+    "family_wise_alpha": 0.05
+  },
+  "execution_scale_gate": {
+    "mean_gross_signed_bps_gt": 16,
+    "median_gross_signed_bps_gt": 12
+  },
+  "cost_scenarios_roundtrip_bps": [
+    0,
+    2,
+    5,
+    10,
+    12,
+    14,
+    16,
+    20
+  ],
+  "promotion_if_science_and_scale": "CASHOPEN_BASISFADE_EXECUTION_SCALE_CANDIDATE__FORWARD_VALIDATION_REQUIRED",
+  "science_only_classification": "CASHOPEN_BASISFADE_SCIENTIFIC_SIGNAL__EXECUTION_SCALE_FAIL",
+  "underpowered_classification": "CASHOPEN_BASISFADE_UNDERPOWERED",
+  "fail_classification": "NO_EDGE_CASHOPEN_BASISFADE",
+  "evaluate_all_assets_regardless_of_earlier_result": true,
+  "post_outcome_tuning_authorized": false,
+  "live_trading_authorized": false
+}
