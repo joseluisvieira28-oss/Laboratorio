@@ -1,0 +1,110 @@
+name: MEXC Global Assets V0.1.1 Boundary-Safe One-Shot
+
+on:
+  push:
+    branches:
+      - mexc-global-assets-index-basis-v0.1.1-boundary-safe-2026-10-04
+    paths:
+      - 'research/mexc_global_assets/**'
+      - '.github/workflows/mexc-global-assets-v011-boundary-safe-one-shot.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  source-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install minimal public-source dependency
+        run: python -m pip install --disable-pip-version-check requests
+
+      - name: Verify frozen files and syntax
+        run: |
+          test "$GITHUB_REF_NAME" = "mexc-global-assets-crossvenue-v0.1-source-gate-2026-10-04"
+          python -m py_compile research/mexc_global_assets/global_asset_source_probe_v01.py
+          python -m py_compile research/mexc_global_assets/global_asset_index_basis_v01.py
+          grep -q 'last_raw_start = end - 2 \* STEP' research/mexc_global_assets/global_asset_index_basis_v01.py
+          grep -q 'SOURCE_RETURNED_TIMESTAMP_OUTSIDE_REQUEST' research/mexc_global_assets/global_asset_index_basis_v01.py
+          python - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+          p=Path('research/mexc_global_assets/GLOBAL_ASSET_INDEX_BASIS_RULE_V0.1.json')
+          x=json.loads(p.read_text())
+          assert x['outcomes_opened_at_freeze']==0
+          assert x['signal_mode']=='FADE_BASIS_ONLY'
+          assert x['windows']['hard_fetch_end_exclusive']=='2026-09-01T00:00:00Z'
+          assert x['live_trading_authorized'] is False
+          print('RULE_SHA256='+hashlib.sha256(p.read_bytes()).hexdigest())
+          print('PRE_OUTCOME_FREEZE_PASS')
+          PY
+
+      - name: Execute public no-auth source gate
+        run: python research/mexc_global_assets/global_asset_source_probe_v01.py
+
+      - name: Upload immutable source gate evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: mexc-global-assets-source-gate-v01-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/mexc_global_assets/source_gate_v01
+          if-no-files-found: error
+          retention-days: 90
+
+  frozen-outcomes:
+    needs: source-gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install minimal public-source dependency
+        run: python -m pip install --disable-pip-version-check requests
+
+      - name: Download exact PASS source receipt
+        uses: actions/download-artifact@v4
+        with:
+          name: mexc-global-assets-source-gate-v01-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/mexc_global_assets/source_gate_v01
+
+      - name: Fail closed unless source gate PASS
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('artifacts/mexc_global_assets/source_gate_v01/GLOBAL_ASSET_SOURCE_GATE_RECEIPT_V01.json')
+          x=json.loads(p.read_text())
+          assert x['verdict']=='MEXC_MARKET_SOURCE_PASS', x['verdict']
+          assert x['outcomes_opened']==0
+          assert x['auth_used'] is False
+          assert x['private_endpoints_used'] is False
+          assert x['orders'] is False
+          assert x['exchange_mutation'] is False
+          print('SOURCE_GATE_PASS_BOUND')
+          PY
+
+      - name: Execute frozen historical discovery and authorized August OOS
+        run: python research/mexc_global_assets/global_asset_index_basis_v01.py
+
+      - name: Upload scientific closeout
+        uses: actions/upload-artifact@v4
+        with:
+          name: mexc-global-assets-index-basis-v01-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/mexc_global_assets/index_basis_v01
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Governance closeout
+        run: |
+          echo 'NO SEPTEMBER 2026 OR LATER FETCH'
+          echo 'NO PRIVATE ENDPOINTS / NO ACCOUNT READS / NO ORDERS / NO MUTATION'
+          echo 'NO LIVE TRADING AUTHORIZATION'
