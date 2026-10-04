@@ -1,0 +1,45 @@
+name: MEXC V0.13.1 Liquidation Forward Calibration Chunk C
+on:
+  push:
+    branches:
+      - mexc-event-futures-v013-source-completion-2026-10-03
+    paths:
+      - '.github/workflows/mexc-event-futures-v0131-liquidation-calibration-chunk-c.yml'
+permissions:
+  contents: read
+jobs:
+  calibration-chunk-c:
+    runs-on: ubuntu-latest
+    timeout-minutes: 190
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install websockets==15.0.1
+      - name: Validate frozen calibration tooling
+        run: |
+          python -m py_compile research/mexc_event_futures/liquidation_flow_calibration_chunk_v0131.py
+          python research/mexc_event_futures/liquidation_flow_calibration_chunk_v0131.py --self-test
+      - name: Strict non-overlap preflight
+        run: |
+          python - <<'PY'
+          import time
+          last_b=1791066540000
+          first=((time.time_ns()//1_000_000)//60000+1)*60000
+          assert first>last_b
+          print("NON_OVERLAP_PREFLIGHT=PASS")
+          PY
+      - name: Collect 180 source-only minutes
+        run: |
+          python research/mexc_event_futures/liquidation_flow_calibration_chunk_v0131.py             --minutes 180             --gate-anchor "run=37100077597;artifact=11268610332;chunk_b_artifact=11287305139"             --output evidence/liquidation-calibration-chunk-c
+      - name: Preserve evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v0131-liquidation-calibration-chunk-c
+          path: evidence/liquidation-calibration-chunk-c/
+          if-no-files-found: error
+          retention-days: 90
