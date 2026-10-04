@@ -1,0 +1,36 @@
+name: MEXC TESLA RegSession Source V0.1
+
+on:
+  push:
+    branches:
+      - mexc-tesla-regsession-v0.1-source-gate-2026-10-04
+
+permissions:
+  contents: read
+
+jobs:
+  source-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependency
+        run: python -m pip install --disable-pip-version-check requests
+      - name: Source-only freeze check
+        run: |
+          test "$GITHUB_REF_NAME" = "mexc-tesla-regsession-v0.1-source-gate-2026-10-04"
+          test -f research/mexc_global_assets/MEXC_TESLA_SOURCE_GATE_FREEZE_V0.1.md
+          python -m py_compile research/mexc_global_assets/mexc_tesla_source_probe_v01.py
+          echo TESLA_SOURCE_ONLY_PASS
+      - name: Run TESLA source gate
+        run: python research/mexc_global_assets/mexc_tesla_source_probe_v01.py
+      - name: Upload immutable source evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: mexc-tesla-source-v01-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/mexc_global_assets/tesla_source_gate_v01
+          if-no-files-found: error
+          retention-days: 90
