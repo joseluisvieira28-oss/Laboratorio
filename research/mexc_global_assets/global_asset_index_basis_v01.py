@@ -49,7 +49,7 @@ def fetch_json(path, params, retries=5):
     raise last
 
 def fetch_prices(symbol, start, end):
-    if end >= HARD_END:
+    if end > HARD_END:
         raise RuntimeError("HARD_FETCH_BOUNDARY_VIOLATION")
     out_c, out_i = {}, {}
     chunk = 5 * 86400
