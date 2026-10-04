@@ -1,0 +1,38 @@
+name: MEXC FeeAware Equity Pack V0.3
+
+on:
+  push:
+    branches:
+      - mexc-feeaware-equity-pack-v0.3-prereg-2026-10-04
+
+permissions:
+  contents: read
+
+jobs:
+  feeaware-pack:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependency
+        run: python -m pip install --disable-pip-version-check requests
+      - name: Pre-outcome freeze check
+        run: |
+          test "$GITHUB_REF_NAME" = "mexc-feeaware-equity-pack-v0.3-prereg-2026-10-04"
+          test -f research/mexc_global_assets/MEXC_FEEAWARE_EQUITY_PACK_FREEZE_V0.3.md
+          test -f research/mexc_global_assets/MEXC_FEEAWARE_EQUITY_PACK_RULE_V0.3.json
+          test -f research/mexc_global_assets/MEXC_FEEAWARE_EQUITY_PACK_BINDING_V0.3.json
+          python -m py_compile research/mexc_global_assets/mexc_feeaware_equity_pack_v03.py
+          echo FEEAWARE_PACK_PRE_OUTCOME_FREEZE_PASS
+      - name: Run all frozen fee-aware assets
+        run: python research/mexc_global_assets/mexc_feeaware_equity_pack_v03.py
+      - name: Upload immutable evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: mexc-feeaware-equity-pack-v03-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/mexc_global_assets/feeaware_equity_pack_v03
+          if-no-files-found: error
+          retention-days: 90
