@@ -1,0 +1,65 @@
+{
+  "study_id": "MEXC-APPLE-NVDA-RULE-TRANSFER-001",
+  "version": "0.2",
+  "frozen_at_utc": "2026-10-04T19:53:00Z",
+  "outcomes_opened_at_freeze": 0,
+  "source_binding": "MEXC_APPLE_REGSESSION_TRANSFER_BINDING_V0_2",
+  "target_symbol": "AAPLSTOCK_USDT",
+  "external_symbols": [
+    "BINANCE:AAPLUSDT",
+    "BITGET:AAPLUSDT"
+  ],
+  "sample_start_date": "2026-09-09",
+  "sample_end_date_inclusive": "2026-10-02",
+  "excluded_dates": [
+    "2026-09-30"
+  ],
+  "session_signal_window_utc": [
+    "14:31",
+    "18:44"
+  ],
+  "interval": "1m",
+  "frozen_cell": {
+    "shock_threshold_bps": 5,
+    "lag_gap_threshold_bps": 3,
+    "horizon_min": 1,
+    "direction": "FOLLOW_EXTERNAL_CONSENSUS",
+    "external_return_bps": "mean(Binance AAPLUSDT 1m return, Bitget AAPLUSDT 1m return)",
+    "mexc_return_bps": "MEXC AAPLSTOCK_USDT 1m return",
+    "lag_gap_bps": "external_return_bps - mexc_return_bps",
+    "overlap_rule": "1-minute cooldown"
+  },
+  "validation_gate": {
+    "min_n": 50,
+    "min_distinct_signal_sessions": 12,
+    "mean_gross_signed_bps_gt": 0,
+    "median_gross_signed_bps_gt": 0,
+    "win_rate_gt": 0.5,
+    "chronological_thirds_mean_gt": 0,
+    "exact_one_sided_binomial_p_lt": 0.0125,
+    "multiplicity_control": "SEQUENTIAL_CROSS_ASSET_ALPHA_SPEND"
+  },
+  "sequential_alpha_spend": {
+    "rationale": "Avoid repeated cross-asset testing until one passes.",
+    "tesla_replication_alpha": 0.025,
+    "apple_replication_alpha": 0.0125,
+    "next_unallocated_replication_alpha_ceiling": 0.00625
+  },
+  "cost_scenarios_roundtrip_bps": [
+    0,
+    2,
+    5,
+    10,
+    12,
+    14,
+    16,
+    20
+  ],
+  "costs_are_scientific_gate": false,
+  "promotion_if_pass": "THIRD_ASSET_TRANSFER_REPLICATION_PASS__FORWARD_VALIDATION_REQUIRED",
+  "underpowered_outcome": "APPLE_TRANSFER_UNDERPOWERED",
+  "fail_outcome": "APPLE_TRANSFER_FAIL",
+  "retrospective_oos_authorized": false,
+  "post_outcome_tuning_authorized": false,
+  "live_trading_authorized": false
+}
