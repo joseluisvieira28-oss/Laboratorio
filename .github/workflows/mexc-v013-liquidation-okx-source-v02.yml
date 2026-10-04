@@ -1,0 +1,53 @@
+name: MEXC V0.13 OKX Liquidation Source Gate V0.2
+
+on:
+  push:
+    branches:
+      - mexc-event-futures-liquidation-okx-v0.2-source-gate-2026-10-04
+    paths:
+      - 'research/mexc_event_futures/LIQUIDATION_FLOW_OKX_SOURCE_GATE_V02.md'
+      - 'research/mexc_event_futures/liquidation_okx_source_gate_v02.py'
+      - '.github/workflows/mexc-v013-liquidation-okx-source-v02.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  source-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install public websocket dependencies
+        run: python -m pip install --disable-pip-version-check requests websockets==15.0.1
+
+      - name: Governance preflight
+        run: |
+          test "$GITHUB_REF_NAME" = "mexc-event-futures-liquidation-okx-v0.2-source-gate-2026-10-04"
+          python -m py_compile research/mexc_event_futures/liquidation_okx_source_gate_v02.py
+          grep -q 'SOURCE-ONLY' research/mexc_event_futures/LIQUIDATION_FLOW_OKX_SOURCE_GATE_V02.md
+          grep -q 'Research outcomes opened must remain exactly 0' research/mexc_event_futures/LIQUIDATION_FLOW_OKX_SOURCE_GATE_V02.md
+          echo 'OKX_LIQUIDATION_PREOUTCOME_PASS'
+
+      - name: Observe OKX public liquidation source for 600 seconds
+        run: python research/mexc_event_futures/liquidation_okx_source_gate_v02.py
+
+      - name: Upload immutable source evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: v013-okx-liquidation-source-v02-${{ github.run_id }}-${{ github.run_attempt }}
+          path: evidence/liquidation-okx-source-v02
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Governance closeout
+        run: |
+          echo 'SOURCE ONLY'
+          echo 'NO MEXC EVENT FUTURES / NO OUTCOMES'
+          echo 'NO AUTH / NO ACCOUNT / NO WALLET / NO ORDER / NO MUTATION'
+          echo 'NO FAMILY ACTIVATION'
