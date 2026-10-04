@@ -97,7 +97,15 @@ def main():
     report["venues"]["BITGET"]={"bid":gb,"ask":ga,"mid":gmid,"last":f(gg.get("lastPr")),"time":gg.get("ts")}
 
     expected={"BINANCE","BITGET","BYBIT"}
-    origin=set(str(x).upper() for x in (d.get("indexOrigin") or []))
+    raw_origin=[str(x).upper() for x in (d.get("indexOrigin") or [])]
+    aliases={
+      "BINANCE_FUTURE":"BINANCE",
+      "BITGET_FUTURE":"BITGET",
+      "BYBIT_FUTURE":"BYBIT",
+      "BINANCETICKER":"BINANCE",
+    }
+    origin=set(aliases.get(x,x) for x in raw_origin)
+    report["mexc_index_origin_raw"]=raw_origin
     report["mexc_index_origin_normalized"]=sorted(origin)
     report["expected_origins"]=sorted(expected)
 
