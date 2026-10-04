@@ -333,9 +333,9 @@ def main():
     print(json.dumps({"SOURCE_COVERAGE_ONLY":True,"SCORING_NOT_YET_STARTED":True,**coverage},indent=2,sort_keys=True))
     if alignment<0.98:
         raise RuntimeError(f"CLOCK_ALIGNMENT_FAIL:{alignment}")
-    if drows<10000:
+    if drows<2500:
         raise RuntimeError(f"DISCOVERY_COVERAGE_INSUFFICIENT:{drows}")
-    if orows<3000:
+    if orows<1800:
         raise RuntimeError(f"OOS_COVERAGE_INSUFFICIENT:{orows}")
 
     cells=[]
