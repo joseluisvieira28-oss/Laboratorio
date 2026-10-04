@@ -1,0 +1,21 @@
+name: Aster NVDA Portability V0.2
+on:
+  push:
+    branches: [aster-nvda-portability-v0.2-prereg-2026-10-05]
+permissions: {contents: read}
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: pip install requests
+      - run: |
+          test -f research/aster_nvda/ASTER_NVDA_PORTABILITY_FREEZE_V0.2.md
+          python research/aster_nvda/aster_nvda_portability_v02.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: aster-nvda-v02-${{ github.run_id }}
+          path: artifacts/aster_nvda/v02
