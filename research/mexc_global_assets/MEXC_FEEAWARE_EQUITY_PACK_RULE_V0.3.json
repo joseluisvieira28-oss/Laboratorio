@@ -1,0 +1,74 @@
+{
+  "study_id": "MEXC-FEEAWARE-EQUITY-PACK-001",
+  "version": "0.3",
+  "frozen_at_utc": "2026-10-04T20:09:00Z",
+  "outcomes_opened_at_freeze": 0,
+  "source_binding": "MEXC_FEEAWARE_EQUITY_PACK_BINDING_V0_3",
+  "sample_start_date": "2026-09-09",
+  "sample_end_date_inclusive": "2026-10-02",
+  "excluded_dates": [
+    "2026-09-30"
+  ],
+  "session_signal_window_utc": [
+    "14:31",
+    "18:44"
+  ],
+  "interval": "1m",
+  "assets": {
+    "NFLX": {
+      "target": "NFLXSTOCK_USDT",
+      "external": "NFLXUSDT"
+    },
+    "BABA": {
+      "target": "BABASTOCK_USDT",
+      "external": "BABAUSDT"
+    },
+    "GOOGL": {
+      "target": "GOOGLSTOCK_USDT",
+      "external": "GOOGLUSDT"
+    },
+    "ORCL": {
+      "target": "ORCLSTOCK_USDT",
+      "external": "ORCLUSDT"
+    }
+  },
+  "frozen_cell": {
+    "shock_threshold_bps": 20,
+    "lag_gap_threshold_bps": 10,
+    "horizon_min": 1,
+    "direction": "FOLLOW_EXTERNAL_CONSENSUS",
+    "overlap_rule": "1-minute cooldown"
+  },
+  "scientific_gate": {
+    "min_n": 20,
+    "min_distinct_signal_sessions": 8,
+    "mean_gross_signed_bps_gt": 0,
+    "median_gross_signed_bps_gt": 0,
+    "win_rate_gt": 0.5,
+    "chronological_thirds_mean_gt": 0,
+    "exact_one_sided_binomial_p": true,
+    "multiple_testing": "HOLM_BONFERRONI_ACROSS_4_ASSETS",
+    "family_wise_alpha": 0.05
+  },
+  "execution_scale_gate": {
+    "mean_gross_signed_bps_gt": 16,
+    "median_gross_signed_bps_gt": 12
+  },
+  "cost_scenarios_roundtrip_bps": [
+    0,
+    2,
+    5,
+    10,
+    12,
+    14,
+    16,
+    20
+  ],
+  "promotion_if_science_and_scale": "FEEAWARE_MULTI_ASSET_EXECUTION_SCALE_CANDIDATE__FORWARD_VALIDATION_REQUIRED",
+  "science_only_classification": "FEEAWARE_SCIENTIFIC_SIGNAL__EXECUTION_SCALE_FAIL",
+  "underpowered_classification": "FEEAWARE_UNDERPOWERED",
+  "fail_classification": "NO_EDGE_FEEAWARE",
+  "evaluate_all_assets_regardless_of_earlier_result": true,
+  "post_outcome_tuning_authorized": false,
+  "live_trading_authorized": false
+}
