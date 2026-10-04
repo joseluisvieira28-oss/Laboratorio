@@ -1,0 +1,45 @@
+name: MEXC COINBASE V0.3 Forward Freeze Preflight
+
+on:
+  push:
+    branches:
+      - mexc-coinbase-regsession-v0.3-forward-freeze-2026-10-04
+    paths:
+      - 'research/mexc_global_assets/MEXC_COINBASE_REGSESSION_FORWARD_BINDING_V0.3.json'
+      - 'research/mexc_global_assets/MEXC_COINBASE_REGSESSION_FORWARD_RULE_V0.3.json'
+      - 'research/mexc_global_assets/MEXC_COINBASE_REGSESSION_FORWARD_FREEZE_V0.3.md'
+      - 'research/mexc_global_assets/mexc_coinbase_regsession_forward_v03.py'
+      - '.github/workflows/mexc-coinbase-regsession-v03-forward-preflight.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Validate frozen package without outcomes
+        run: |
+          python -m py_compile research/mexc_global_assets/mexc_coinbase_regsession_forward_v03.py
+          python - <<'PY'
+          import json,hashlib
+          from pathlib import Path
+          rp=Path('research/mexc_global_assets/MEXC_COINBASE_REGSESSION_FORWARD_RULE_V0.3.json')
+          bp=Path('research/mexc_global_assets/MEXC_COINBASE_REGSESSION_FORWARD_BINDING_V0.3.json')
+          r=json.loads(rp.read_text()); b=json.loads(bp.read_text())
+          c=r['frozen_cell']
+          assert r['future_outcomes_opened_at_freeze']==0
+          assert b['future_outcomes_opened_at_binding']==0
+          assert [c['shock_threshold_bps'],c['lag_gap_threshold_bps'],c['horizon_min']]==[20,10,5]
+          assert c['direction']=='FOLLOW_EXTERNAL_CONSENSUS'
+          assert r['forward_start_date']=='2026-10-05'
+          assert r['forward_end_date_inclusive']=='2026-10-30'
+          assert r['interim_promotion_authorized'] is False
+          print('RULE_SHA256='+hashlib.sha256(rp.read_bytes()).hexdigest())
+          print('BINDING_SHA256='+hashlib.sha256(bp.read_bytes()).hexdigest())
+          print('COINBASE_FORWARD_PRE_OUTCOME_PREFLIGHT_PASS')
+          PY
