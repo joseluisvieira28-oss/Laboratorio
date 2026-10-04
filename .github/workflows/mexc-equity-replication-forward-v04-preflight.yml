@@ -1,0 +1,43 @@
+name: MEXC Equity Replication Forward V0.4 Preflight
+
+on:
+  push:
+    branches:
+      - mexc-equity-replication-forward-pack-v0.4-freeze-2026-10-04
+    paths:
+      - 'research/mexc_global_assets/MEXC_EQUITY_REPLICATION_FORWARD_PACK_BINDING_V0.4.json'
+      - 'research/mexc_global_assets/MEXC_EQUITY_REPLICATION_FORWARD_PACK_RULE_V0.4.json'
+      - 'research/mexc_global_assets/MEXC_EQUITY_REPLICATION_FORWARD_PACK_FREEZE_V0.4.md'
+      - '.github/workflows/mexc-equity-replication-forward-v04-preflight.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Validate forward freeze
+        run: |
+          python - <<'PY'
+          import json, hashlib
+          from pathlib import Path
+          rp=Path('research/mexc_global_assets/MEXC_EQUITY_REPLICATION_FORWARD_PACK_RULE_V0.4.json')
+          bp=Path('research/mexc_global_assets/MEXC_EQUITY_REPLICATION_FORWARD_PACK_BINDING_V0.4.json')
+          r=json.loads(rp.read_text()); b=json.loads(bp.read_text())
+          assert r['future_outcomes_opened_at_freeze']==0
+          assert b['future_outcomes_opened_at_binding']==0
+          c=r['exact_cell']
+          assert [c['shock_threshold_bps'],c['lag_gap_threshold_bps'],c['horizon_min']]==[5,3,1]
+          assert r['assets']==['PLTR','META','AMZN']
+          assert r['forward_start_date']=='2026-10-05'
+          assert r['forward_end_date_inclusive']=='2026-10-30'
+          assert r['interim_promotion_authorized'] is False
+          print('RULE_SHA256='+hashlib.sha256(rp.read_bytes()).hexdigest())
+          print('BINDING_SHA256='+hashlib.sha256(bp.read_bytes()).hexdigest())
+          print('MULTIASSET_FORWARD_PRE_OUTCOME_PREFLIGHT_PASS')
+          PY
