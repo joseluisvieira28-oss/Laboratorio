@@ -1,0 +1,42 @@
+name: MEXC V0.13 Options V0.2 Source Calibration Chunk C
+on:
+  push:
+    branches:
+      - mexc-event-futures-options-vol-v0.2-sourcecal-2026-10-03
+    paths:
+      - '.github/workflows/mexc-event-futures-options-v02-sourcecal-c.yml'
+permissions:
+  contents: read
+jobs:
+  source-calibration-c:
+    runs-on: ubuntu-latest
+    timeout-minutes: 190
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate collector
+        run: python -m py_compile research/mexc_event_futures/options_vol_source_calibration_v02.py
+      - name: Non-overlap preflight
+        run: |
+          python - <<'PY'
+          import time
+          last_b=1791065160000
+          first=((time.time_ns()//1_000_000)//60000+1)*60000
+          assert first>last_b
+          print("NON_OVERLAP_PREFLIGHT=PASS")
+          PY
+      - name: Collect 180 source-only minutes
+        run: |
+          python research/mexc_event_futures/options_vol_source_calibration_v02.py             --minutes 180             --boundary-ms 1791035711000             --output evidence/options-v02-sourcecal-c
+      - name: Preserve evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v013-options-v02-sourcecal-c
+          path: evidence/options-v02-sourcecal-c/
+          if-no-files-found: error
+          retention-days: 90
