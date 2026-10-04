@@ -1,0 +1,83 @@
+{
+  "family_id": "MEXC-NVIDIA-REGSESSION-LEADLAG-001",
+  "version": "0.5",
+  "frozen_at_utc": "2026-10-04T19:14:00Z",
+  "outcomes_opened_at_freeze": 0,
+  "source_binding": "MEXC_NVIDIA_REGSESSION_SOURCE_BINDING_V0_5",
+  "target_symbol": "NVIDIA_USDT",
+  "external_symbols": [
+    "BINANCE:NVDAUSDT",
+    "BITGET:NVDAUSDT"
+  ],
+  "discovery_start_date": "2026-09-09",
+  "discovery_end_date_inclusive": "2026-10-02",
+  "excluded_dates": [
+    "2026-09-30"
+  ],
+  "session_signal_window_utc": [
+    "14:31",
+    "18:44"
+  ],
+  "interval": "1m",
+  "clock": {
+    "candle_observable_lag_seconds": 60,
+    "exact_observable_timestamp_alignment": true,
+    "no_forward_fill": true,
+    "no_interpolation": true
+  },
+  "signal": {
+    "external_return_bps": "mean(Binance 1m return bps, Bitget 1m return bps)",
+    "mexc_return_bps": "MEXC 1m close-to-close return bps",
+    "lag_gap_bps": "external_return_bps - mexc_return_bps",
+    "shock_thresholds_bps": [
+      5,
+      10,
+      20,
+      40
+    ],
+    "lag_gap_thresholds_bps": [
+      3,
+      5,
+      10,
+      20
+    ],
+    "horizons_min": [
+      1,
+      2,
+      5,
+      15
+    ],
+    "direction": "FOLLOW_EXTERNAL_CONSENSUS",
+    "conditions": [
+      "abs(external_return_bps) >= shock_threshold_bps",
+      "sign(lag_gap_bps) == sign(external_return_bps)",
+      "abs(lag_gap_bps) >= lag_gap_threshold_bps"
+    ],
+    "overlap_rule": "per-cell cooldown equals horizon"
+  },
+  "discovery_gate": {
+    "min_n": 20,
+    "mean_gross_signed_bps_gt": 0,
+    "median_gross_signed_bps_gt": 0,
+    "win_rate_gt": 0.5,
+    "chronological_thirds_mean_gt": 0,
+    "exact_one_sided_binomial_p_vs_50": true,
+    "multiple_testing": "HOLM_BONFERRONI_ACROSS_ALL_64_CELLS",
+    "family_wise_alpha": 0.05
+  },
+  "cost_scenarios_roundtrip_bps": [
+    0,
+    2,
+    5,
+    10,
+    12,
+    14,
+    16,
+    20
+  ],
+  "costs_are_scientific_gate": false,
+  "promotion_ceiling": "NVIDIA_REGSESSION_DISCOVERY_CANDIDATE_ONLY",
+  "retrospective_oos_authorized": false,
+  "post_outcome_tuning_authorized": false,
+  "live_trading_authorized": false
+}
