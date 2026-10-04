@@ -1,0 +1,60 @@
+name: NVDA V09 Frozen LeadLag
+
+on:
+  push:
+    branches:
+      - mexc-bitget-nvda-leadlag-v0.9-prereg-2026-10-04
+    paths:
+      - 'research/mexc_global_assets/MEXC_BITGET_NVDA_LEADLAG_RULE_V0.9.json'
+      - 'research/mexc_global_assets/MEXC_BITGET_NVDA_LEADLAG_FREEZE_V0.9.md'
+      - 'research/mexc_global_assets/mexc_bitget_nvda_leadlag_v09.py'
+      - '.github/workflows/nvda-v09-leadlag.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  frozen-research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install requests
+        run: python -m pip install --disable-pip-version-check requests
+      - name: Pre-outcome freeze check
+        run: |
+          test "$GITHUB_REF_NAME" = "mexc-bitget-nvda-leadlag-v0.9-prereg-2026-10-04"
+          python -m py_compile research/mexc_global_assets/mexc_bitget_nvda_leadlag_v09.py
+          python - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          p=Path('research/mexc_global_assets/MEXC_BITGET_NVDA_LEADLAG_RULE_V0.9.json')
+          x=json.loads(p.read_text())
+          assert x['source_gate']=='MEXC_BITGET_NVDA_SOURCE_PASS'
+          assert x['outcomes_opened_at_freeze']==0
+          assert x['signal_mode']=='FOLLOW_BITGET_UNDERREACTION'
+          assert x['shock_thresholds_bps']==[10,20,40,80]
+          assert x['lag_gap_thresholds_bps']==[5,10,20,40]
+          assert x['horizons_min']==[1,2,5,15]
+          assert x['entry_proxy']=='MEXC_NEXT_MINUTE_OPEN'
+          assert x['windows']['discovery_start']=='2026-09-05T00:00:00Z'
+          assert x['windows']['discovery_end']=='2026-09-20T00:00:00Z'
+          assert x['windows']['oos_start']=='2026-09-20T00:00:00Z'
+          assert x['windows']['oos_end']=='2026-10-01T00:00:00Z'
+          assert x['parameter_rescue_authorized'] is False
+          assert x['live_trading_authorized'] is False
+          print('RULE_SHA256='+hashlib.sha256(p.read_bytes()).hexdigest())
+          print('PRE_OUTCOME_FREEZE_PASS')
+          PY
+      - name: Execute frozen September Discovery and selected OOS
+        run: python research/mexc_global_assets/mexc_bitget_nvda_leadlag_v09.py
+      - name: Upload immutable evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: nvda-v09-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/mexc_global_assets/mexc_bitget_nvda_leadlag_v09
+          if-no-files-found: error
+          retention-days: 90
