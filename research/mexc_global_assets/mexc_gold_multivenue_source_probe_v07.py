@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """MEXC GOLD multi-venue public source gate V0.7."""
 from __future__ import annotations
-import hashlib,json,io,zipfile,csv
+import hashlib,json,io,zipfile,csv,gzip
 from datetime import datetime,timezone
 from pathlib import Path
 import requests
@@ -66,16 +66,24 @@ def main():
     if len(rows)<100: raise RuntimeError(f"BINANCE_VISION_TOO_FEW_ROWS:{len(rows)}")
     report["venues"]["BINANCE"]={"archive_url":burl,"archive_sha256":bm["sha256"],"csv_file":names[0],"row_count":len(rows),"verification_date":"2026-09-30","outcome_scored":False}
 
-    # Bybit
-    raw,y,m=get("https://api.bybit.com/v5/market/tickers",{"category":"linear","symbol":"XAUUSDT"})
-    save("bybit_xau_ticker.json",raw,m)
-    if y.get("retCode")!=0: raise RuntimeError(f"BYBIT_NONZERO:{y}")
-    yl=((y.get("result") or {}).get("list") or [])
-    if not yl: raise RuntimeError("BYBIT_XAU_MISSING")
-    yy=yl[0]
-    yb,ya=f(yy.get("bid1Price")),f(yy.get("ask1Price"))
-    ymid=(yb+ya)/2 if yb and ya else f(yy.get("lastPrice"))
-    report["venues"]["BYBIT"]={"bid":yb,"ask":ya,"mid":ymid,"last":f(yy.get("lastPrice")),"time":y.get("time")}
+    # Bybit public trading-history archive. V5 API is geo-blocked from GitHub-hosted runners.
+    yurl="https://public.bybit.com/trading/XAUUSDT/XAUUSDT2026-09-30.csv.gz"
+    yr=requests.get(yurl,headers={"User-Agent":UA},timeout=60)
+    yraw=yr.content
+    ym={"url":yurl,"status_code":yr.status_code,"captured_at_utc":now(),"sha256":sha(yraw),"bytes":len(yraw)}
+    if yr.status_code!=200: raise RuntimeError(f"BYBIT_PUBLIC_HTTP_{yr.status_code}:{yraw[:200]!r}")
+    save("bybit_xau_2026-09-30_trades.csv.gz",yraw,ym)
+    try:
+        ytxt=gzip.decompress(yraw).decode("utf-8")
+    except Exception as e:
+        raise RuntimeError(f"BYBIT_PUBLIC_GZIP_FAIL:{e!r}")
+    yrows=list(csv.reader(io.StringIO(ytxt)))
+    if len(yrows)<100: raise RuntimeError(f"BYBIT_PUBLIC_TOO_FEW_ROWS:{len(yrows)}")
+    header=[x.strip().lower() for x in yrows[0]]
+    if "price" not in header or "timestamp" not in header:
+        raise RuntimeError(f"BYBIT_PUBLIC_SCHEMA_FAIL:{yrows[0]}")
+    report["venues"]["BYBIT"]={"archive_url":yurl,"archive_sha256":ym["sha256"],"row_count":len(yrows)-1,
+                                  "header":yrows[0],"verification_date":"2026-09-30","outcome_scored":False}
 
     # Bitget
     raw,g,m=get("https://api.bitget.com/api/v2/mix/market/ticker",{"symbol":"XAUUSDT","productType":"USDT-FUTURES"})
@@ -94,7 +102,6 @@ def main():
     report["expected_origins"]=sorted(expected)
 
     scale={
-      "BYBIT":10000*(mexc/ymid-1) if ymid and ymid>0 else None,
       "BITGET":10000*(mexc/gmid-1) if gmid and gmid>0 else None,
     }
     report["mexc_vs_external_mid_bps"]=scale
@@ -102,9 +109,8 @@ def main():
     gates={
       "index_origin_contains_expected": expected.issubset(origin),
       "binance_official_archive_accessible": report["venues"]["BINANCE"]["row_count"]>=100,
-      "bybit_public_bbo": ymid is not None,
+      "bybit_public_archive_accessible": report["venues"]["BYBIT"]["row_count"]>=100,
       "bitget_public_bbo": gmid is not None,
-      "bybit_scale_within_500bps": scale["BYBIT"] is not None and abs(scale["BYBIT"])<500,
       "bitget_scale_within_500bps": scale["BITGET"] is not None and abs(scale["BITGET"])<500,
     }
     report["gates"]=gates
