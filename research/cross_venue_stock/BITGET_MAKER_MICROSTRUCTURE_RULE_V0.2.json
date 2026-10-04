@@ -1,0 +1,97 @@
+{
+  "family_id": "BITGET-MAKER-MICROSTRUCTURE-V0.2",
+  "frozen_at_utc": "2026-10-04T22:36:00Z",
+  "purpose": "Conditional execution-feasibility test for the four parent maker-only survivors; not an independent scientific re-validation.",
+  "candidate_count": 4,
+  "candidates": [
+    "HOODUSDT",
+    "COINUSDT",
+    "ARMUSDT",
+    "AAPLUSDT"
+  ],
+  "parent_signal_rule": {
+    "route": "BINANCE_LEADER__BITGET_TARGET",
+    "window_start": "2026-08-17",
+    "window_end_inclusive": "2026-09-04",
+    "signal_window_utc": [
+      "14:31",
+      "18:44"
+    ],
+    "leader_shock_threshold_bps": 5,
+    "lag_gap_threshold_bps": 3,
+    "direction": "FOLLOW_LEADER",
+    "horizon_min": 1,
+    "cooldown_min": 1,
+    "exact_closed_candle_timestamps": true
+  },
+  "passive_execution_model": {
+    "strategy_latency_seconds": 1,
+    "max_quote_staleness_seconds": 5,
+    "entry_order_type": "POST_ONLY_LIMIT",
+    "entry_price": "best_bid_if_long__best_ask_if_short",
+    "queue_ahead": "100_PERCENT_OF_DISPLAYED_LEVEL1_VOLUME_AT_PLACEMENT",
+    "own_order_size_assumption": "DE_MINIMIS_FOR_QUEUE_DEPLETION_AND_PNL_BPS_ONLY",
+    "cancellations_reduce_queue_ahead": false,
+    "entry_ttl_seconds": 10,
+    "fill_rule": [
+      "For long buy: fill at posted bid once cumulative public trade size at exactly the order price >= initial displayed bid queue ahead; any public trade below the order price implies price-through and immediate fill.",
+      "For short sell: fill at posted ask once cumulative public trade size at exactly the order price >= initial displayed ask queue ahead; any public trade above the order price implies price-through and immediate fill."
+    ],
+    "public_trade_side_field_required": false,
+    "fill_price": "POSTED_LIMIT_PRICE",
+    "exit_clock": "SIGNAL_CLOSE_PLUS_60_SECONDS",
+    "exit_strategy_latency_seconds": 1,
+    "exit_order_type": "POST_ONLY_LIMIT",
+    "exit_price": "best_ask_to_close_long__best_bid_to_close_short",
+    "exit_ttl_seconds": 10,
+    "maker_exit_fill_rule": "SAME_QUEUE_AHEAD_AND_PRICE_THROUGH_RULE",
+    "forced_exit_if_maker_unfilled": "IMMEDIATE_TAKER_AT_EXIT_TTL_USING_CURRENT_BEST_BID_TO_SELL_LONG_OR_BEST_ASK_TO_BUY_SHORT",
+    "forced_exit_quote_max_staleness_seconds": 5,
+    "entry_unfilled_action": "CANCEL_NO_TRADE",
+    "missing_required_quote_or_exit_data": "DATA_UNVERIFIABLE_FAIL_CLOSED_FOR_SIGNAL",
+    "fees_bps": {
+      "maker_entry": 2,
+      "maker_exit": 2,
+      "taker_exit": 6,
+      "maker_maker_roundtrip": 4,
+      "maker_taker_roundtrip": 8
+    },
+    "spread_included_via_actual_quote_execution_prices": true,
+    "no_cancellation_queue_credit": true,
+    "no_hidden_queue_priority_advantage": true
+  },
+  "execution_gate": {
+    "min_parent_signal_quote_observability": 0.9,
+    "min_entered_positions": 30,
+    "min_distinct_entered_sessions": 8,
+    "require_all_entered_positions_closed_or_data_fail": true,
+    "mean_realized_net_bps_gt": 0,
+    "median_realized_net_bps_gt": 0,
+    "win_rate_gt": 0.5,
+    "all_chronological_thirds_mean_net_bps_gt": 0,
+    "exact_one_sided_binomial_p": true,
+    "multiple_testing": "HOLM_BONFERRONI_ACROSS_4_CARRIED_FORWARD_ASSETS",
+    "family_wise_alpha": 0.05
+  },
+  "reported_not_gated": [
+    "entry_fill_rate",
+    "maker_exit_fill_rate",
+    "forced_taker_exit_rate",
+    "mean_net_bps_per_parent_signal_with_unfilled_entries_zero",
+    "queue_ahead_distribution",
+    "entry_and_exit_latency_distribution"
+  ],
+  "classification": {
+    "pass": "MAKER_EXECUTION_FEASIBILITY_SURVIVOR__FORWARD_VALIDATION_REQUIRED",
+    "fail": "MAKER_EXECUTION_FEASIBILITY_FAIL",
+    "data_blocked": "MICROSTRUCTURE_DATA_BLOCKED"
+  },
+  "no_parameter_tuning_after_outcomes": true,
+  "no_candidate_dropping": true,
+  "no_claim_of_independent_oos": true,
+  "private_endpoints_authorized": false,
+  "account_reads_authorized": false,
+  "orders_authorized": false,
+  "exchange_mutation_authorized": false,
+  "live_trading_authorized": false
+}
