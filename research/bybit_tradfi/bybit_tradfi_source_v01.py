@@ -9,7 +9,7 @@ HERE=Path(__file__).resolve().parent
 CFG=json.loads((HERE/"BYBIT_TRADFI_TRANSFER_SOURCE_MAP_V0.1.json").read_text())
 OUT=Path("artifacts/bybit_tradfi/source_v01")
 DAY=CFG["source_verification_date"]
-UA="CryptoLab-Bybit-TradFi-SourceGate/0.1"
+UA="CryptoLab-Bybit-TradFi-SourceGate/0.1.1"
 
 def h(b):return hashlib.sha256(b).hexdigest()
 def sec(s):return int(datetime.fromisoformat(s.replace("Z","+00:00")).timestamp())
@@ -17,24 +17,28 @@ def req(url,params=None,timeout=70,retries=4):
     last=None
     for i in range(retries):
         try:
-            r=requests.get(url,params=params,headers={"User-Agent":UA},timeout=timeout)
-            return r
+            return requests.get(url,params=params,headers={"User-Agent":UA},timeout=timeout)
         except Exception as e:
             last=e;time.sleep(.5*(i+1))
     raise last
 
 def bybit_instrument(symbol):
-    r=req("https://api.bybit.com/v5/market/instruments-info",{"category":"linear","symbol":symbol})
-    rec={"http":r.status_code,"sha256":h(r.content),"exists":False,"status":None}
+    r=req("https://api.bybit.com/v5/market/instruments-info",{
+      "category":"linear","symbol":symbol,"symbolType":"stock"})
+    rec={"http":r.status_code,"sha256":h(r.content),"exists":False,"status":None,
+         "retCode":None,"retMsg":None}
     if r.status_code==200:
         try:
-            j=r.json();lst=((j.get("result") or {}).get("list") or [])
+            j=r.json();rec["retCode"]=j.get("retCode");rec["retMsg"]=j.get("retMsg")
+            lst=((j.get("result") or {}).get("list") or [])
             m=next((x for x in lst if x.get("symbol")==symbol),None)
             if m:
                 rec["exists"]=True;rec["status"]=m.get("status")
                 rec["contractType"]=m.get("contractType")
+                rec["symbolType"]=m.get("symbolType")
                 rec["launchTime"]=m.get("launchTime")
                 rec["fundingInterval"]=m.get("fundingInterval")
+                rec["settleCoin"]=m.get("settleCoin")
         except Exception:pass
     return rec
 
@@ -42,16 +46,17 @@ def bybit_kline(symbol,start,end):
     r=req("https://api.bybit.com/v5/market/kline",{
       "category":"linear","symbol":symbol,"interval":"1",
       "start":str(start*1000),"end":str(end*1000),"limit":"1000"})
-    out={};ok=False
+    out={};ok=False;ret=None;msg=None
     if r.status_code==200:
         try:
-            j=r.json();lst=((j.get("result") or {}).get("list") or [])
+            j=r.json();ret=j.get("retCode");msg=j.get("retMsg")
+            lst=((j.get("result") or {}).get("list") or [])
             for row in lst:
                 t=int(row[0])//1000
                 if start<=t<=end:out[t+60]=float(row[4])
-            ok=(j.get("retCode")==0 and len(out)>=260)
+            ok=(ret==0 and len(out)>=260)
         except Exception:pass
-    return {"http":r.status_code,"rows":len(out),"ok":ok,"sha256":h(r.content)}
+    return {"http":r.status_code,"rows":len(out),"ok":ok,"retCode":ret,"retMsg":msg,"sha256":h(r.content)}
 
 def binance(symbol,start,end):
     r=req(f"https://data.binance.vision/data/futures/um/daily/klines/{symbol}/1m/{symbol}-1m-{DAY}.zip",timeout=90)
@@ -97,11 +102,12 @@ def main():
         rec={**c,"bybit_instrument":ins,"bybit_history":bk,"binance_history":bn,"bitget_history":bg,
              "source_pass":p,"outcomes_opened":0}
         results.append(rec)
-        print(s,"PASS" if p else "FAIL","BY",bk["rows"],"BN",bn["core_rows"],"BG",bg["rows"],"status",ins["status"])
+        print(s,"PASS" if p else "FAIL","BY",bk["rows"],"BN",bn["core_rows"],"BG",bg["rows"],
+              "status",ins["status"],"type",ins.get("symbolType"),"ret",ins.get("retCode"),ins.get("retMsg"))
     passed=[x for x in results if x["source_pass"]]
-    rep={"gate_id":CFG["gate_id"],"source_only":True,"verification_date":DAY,
-         "verification_date_burned_from_outcomes":True,"candidate_count":len(results),
-         "source_pass_count":len(passed),
+    rep={"gate_id":CFG["gate_id"],"technical_amendment":"V0.1.1_symbolType_stock",
+         "source_only":True,"verification_date":DAY,"verification_date_burned_from_outcomes":True,
+         "candidate_count":len(results),"source_pass_count":len(passed),
          "source_pass":[{"target":x["bybit_target"],"external":x["binance_external"],"root":x["root"]} for x in passed],
          "results":results,
          "verdict":"BYBIT_TRADFI_SOURCE_PASS_CANDIDATES_FOUND" if passed else "BYBIT_TRADFI_SOURCE_BLOCKED",
