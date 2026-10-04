@@ -1,0 +1,112 @@
+{
+  "family_pack": "MEXC-COINBASE-REGSESSION-V0.2",
+  "frozen_at_utc": "2026-10-04T19:49:00Z",
+  "outcomes_opened_at_freeze": 0,
+  "source_binding": "MEXC_COINBASE_REGSESSION_SOURCE_BINDING_V0_2",
+  "target_symbol": "COINBASE_USDT",
+  "external_symbols": [
+    "BINANCE:COINUSDT",
+    "BITGET:COINUSDT"
+  ],
+  "discovery_start_date": "2026-09-09",
+  "discovery_end_date_inclusive": "2026-10-02",
+  "excluded_dates": [
+    "2026-09-30"
+  ],
+  "session_signal_window_utc": [
+    "14:31",
+    "18:44"
+  ],
+  "interval": "1m",
+  "clock": {
+    "candle_observable_lag_seconds": 60,
+    "exact_observable_timestamp_alignment": true,
+    "no_forward_fill": true,
+    "no_interpolation": true
+  },
+  "familywise_alpha_budget": {
+    "total": 0.05,
+    "confirmatory_transfer": 0.025,
+    "exploratory_grid": 0.025
+  },
+  "confirmatory_transfer": {
+    "family_id": "MEXC-COINBASE-NVDA-TSLA-RULE-TRANSFER-001",
+    "origin_rule": "Exact 5/3/1m FOLLOW rule independently survived NVIDIA V0.5 and TESLA V0.2",
+    "shock_threshold_bps": 5,
+    "lag_gap_threshold_bps": 3,
+    "horizon_min": 1,
+    "direction": "FOLLOW_EXTERNAL_CONSENSUS",
+    "external_return_bps": "mean(Binance COINUSDT 1m return, Bitget COINUSDT 1m return)",
+    "mexc_return_bps": "MEXC COINBASE_USDT 1m return",
+    "lag_gap_bps": "external_return_bps - mexc_return_bps",
+    "overlap_rule": "1-minute cooldown",
+    "validation_gate": {
+      "min_n": 50,
+      "min_distinct_signal_sessions": 12,
+      "mean_gross_signed_bps_gt": 0,
+      "median_gross_signed_bps_gt": 0,
+      "win_rate_gt": 0.5,
+      "chronological_thirds_mean_gt": 0,
+      "exact_one_sided_binomial_p_lt": 0.025
+    },
+    "multiplicity": "SINGLE_PREDEFINED_TRANSFER_TEST",
+    "promotion_if_pass": "THREE_ASSET_REPLICATION_SURVIVOR__FORWARD_VALIDATION_REQUIRED"
+  },
+  "exploratory_grid": {
+    "family_id": "MEXC-COINBASE-REGSESSION-LEADLAG-DISCOVERY-001",
+    "shock_thresholds_bps": [
+      5,
+      10,
+      20,
+      40
+    ],
+    "lag_gap_thresholds_bps": [
+      3,
+      5,
+      10,
+      20
+    ],
+    "horizons_min": [
+      1,
+      2,
+      5,
+      15
+    ],
+    "direction": "FOLLOW_EXTERNAL_CONSENSUS",
+    "external_return_bps": "mean(Binance COINUSDT 1m return, Bitget COINUSDT 1m return)",
+    "mexc_return_bps": "MEXC COINBASE_USDT 1m return",
+    "lag_gap_bps": "external_return_bps - mexc_return_bps",
+    "overlap_rule": "per-cell cooldown equals horizon",
+    "discovery_gate": {
+      "min_n": 20,
+      "mean_gross_signed_bps_gt": 0,
+      "median_gross_signed_bps_gt": 0,
+      "win_rate_gt": 0.5,
+      "chronological_thirds_mean_gt": 0,
+      "exact_one_sided_binomial_p_vs_50": true,
+      "multiple_testing": "HOLM_BONFERRONI_ACROSS_64_CELLS",
+      "family_wise_alpha": 0.025
+    },
+    "promotion_ceiling": "COINBASE_REGSESSION_DISCOVERY_CANDIDATE_ONLY"
+  },
+  "cost_scenarios_roundtrip_bps": [
+    0,
+    2,
+    5,
+    10,
+    12,
+    14,
+    16,
+    20
+  ],
+  "standard_api_fee_floor_reference_bps": 12,
+  "cost_survival_is_descriptive_only": true,
+  "costs_are_scientific_gate": false,
+  "retrospective_oos_authorized": false,
+  "post_outcome_tuning_authorized": false,
+  "private_endpoints_authorized": false,
+  "account_reads_authorized": false,
+  "orders_authorized": false,
+  "exchange_mutation_authorized": false,
+  "live_trading_authorized": false
+}
