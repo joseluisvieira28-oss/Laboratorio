@@ -96,6 +96,40 @@ def main():
     gmid=(gb+ga)/2 if gb and ga else f(gg.get("lastPr"))
     report["venues"]["BITGET"]={"bid":gb,"ask":ga,"mid":gmid,"last":f(gg.get("lastPr")),"time":gg.get("ts")}
 
+    # Historical transport verification day: 2026-09-30 only, outside future discovery.
+    verify_start_ms=1790726400000
+    verify_end_ms=1790729940000
+
+    raw,bh,bhm=get("https://api.bitget.com/api/v2/mix/market/candles",{
+        "symbol":"XAUUSDT","productType":"USDT-FUTURES","granularity":"1m",
+        "startTime":str(verify_start_ms),"endTime":str(verify_end_ms),"limit":"1000"
+    })
+    save("bitget_xau_2026-09-30_history_probe.json",raw,bhm)
+    if bh.get("code")!="00000": raise RuntimeError(f"BITGET_HISTORY_NONZERO:{bh}")
+    bdata=bh.get("data") or []
+    if len(bdata)<30: raise RuntimeError(f"BITGET_HISTORY_TOO_FEW_ROWS:{len(bdata)}")
+    report["venues"]["BITGET"]["history_probe"]={
+        "row_count":len(bdata),"verification_date":"2026-09-30","outcome_scored":False,
+        "first_ts":bdata[-1][0] if bdata else None,"last_ts":bdata[0][0] if bdata else None
+    }
+
+    verify_start_s=verify_start_ms//1000
+    verify_end_s=verify_end_ms//1000
+    raw,mh,mhm=get("https://api.mexc.com/api/v1/contract/kline/XAU_USDT",{
+        "interval":"Min1","start":str(verify_start_s),"end":str(verify_end_s)
+    })
+    save("mexc_xau_2026-09-30_history_probe.json",raw,mhm)
+    if mh.get("success") is not True: raise RuntimeError(f"MEXC_HISTORY_NON_SUCCESS:{mh}")
+    mdh=mh.get("data") or {}
+    mts=mdh.get("time") or []
+    mcl=mdh.get("close") or []
+    if len(mts)<30 or len(mcl)!=len(mts):
+        raise RuntimeError(f"MEXC_HISTORY_STRUCTURE_FAIL:{len(mts)}:{len(mcl)}")
+    report["mexc_history_probe"]={
+        "row_count":len(mts),"verification_date":"2026-09-30","outcome_scored":False,
+        "first_ts":mts[0] if mts else None,"last_ts":mts[-1] if mts else None
+    }
+
     expected={"BINANCE","BITGET","BYBIT"}
     raw_origin=[str(x).upper() for x in (d.get("indexOrigin") or [])]
     aliases={
@@ -119,6 +153,8 @@ def main():
       "binance_official_archive_accessible": report["venues"]["BINANCE"]["row_count"]>=100,
       "bybit_public_archive_accessible": report["venues"]["BYBIT"]["row_count"]>=100,
       "bitget_public_bbo": gmid is not None,
+      "bitget_historical_1m_accessible": report["venues"]["BITGET"]["history_probe"]["row_count"]>=30,
+      "mexc_historical_1m_accessible": report["mexc_history_probe"]["row_count"]>=30,
       "bitget_scale_within_500bps": scale["BITGET"] is not None and abs(scale["BITGET"])<500,
     }
     report["gates"]=gates
