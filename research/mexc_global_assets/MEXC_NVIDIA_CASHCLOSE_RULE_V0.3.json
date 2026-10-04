@@ -1,0 +1,76 @@
+{
+  "family_pack": "MEXC-NVIDIA-CASHCLOSE-V0.3",
+  "frozen_at_utc": "2026-10-04T19:09:00Z",
+  "outcomes_opened_at_freeze": 0,
+  "source_binding": "MEXC_NVIDIA_CASHCLOSE_SOURCE_BINDING_V0_3",
+  "discovery_start_date": "2026-09-09",
+  "discovery_end_date_inclusive": "2026-10-02",
+  "excluded_dates": [
+    "2026-09-30"
+  ],
+  "session_calendar": "weekdays only; 2026-09-30 excluded because used for source verification",
+  "cash_close_utc": "20:00",
+  "signal_time_observable_utc": "19:59",
+  "external_consensus": "arithmetic mean of Binance NVDAUSDT and Bitget NVDAUSDT 1m close prices",
+  "clock": {
+    "candle_interval": "1m",
+    "candle_observable_lag_seconds": 60,
+    "no_forward_fill": true,
+    "exact_observable_timestamp_alignment": true
+  },
+  "families": {
+    "cashclose_basis_fade": {
+      "family_id": "MEXC-NVIDIA-CASHCLOSE-BASIS-FADE-001",
+      "predictor": "basis_bps = 10000*(MEXC_close_19:59 / external_consensus_close_19:59 - 1)",
+      "direction": "FADE_BASIS = -sign(basis_bps)",
+      "threshold_bps": null,
+      "horizons_min": [
+        2,
+        5,
+        15,
+        30
+      ],
+      "mechanism": "cash-close unanchoring: as regular-session equity sources stop updating, MEXC may converge toward 24/7 crypto venues",
+      "multiple_testing": "HOLM_BONFERRONI_WITHIN_FAMILY",
+      "alpha": 0.05
+    },
+    "cashclose_external_momentum": {
+      "family_id": "MEXC-NVIDIA-CASHCLOSE-EXTMOM-FOLLOW-001",
+      "predictor": "external_momentum_5m_bps = 10000*(external_consensus_19:59 / external_consensus_19:54 - 1)",
+      "direction": "FOLLOW_EXTERNAL_MOMENTUM = sign(external_momentum_5m_bps)",
+      "threshold_bps": null,
+      "horizons_min": [
+        2,
+        5,
+        15,
+        30
+      ],
+      "mechanism": "24/7 external repricing immediately before cash close may persist after regular-session anchors stop updating",
+      "multiple_testing": "HOLM_BONFERRONI_WITHIN_FAMILY",
+      "alpha": 0.05
+    }
+  },
+  "discovery_gate": {
+    "min_n": 15,
+    "mean_gross_signed_bps_gt": 0,
+    "median_gross_signed_bps_gt": 0,
+    "win_rate_gt": 0.5,
+    "chronological_halves_mean_gt": 0,
+    "exact_one_sided_binomial_p_vs_50": true
+  },
+  "cost_scenarios_roundtrip_bps": [
+    0,
+    2,
+    5,
+    10,
+    12,
+    14,
+    16,
+    20
+  ],
+  "costs_are_scientific_gate": false,
+  "promotion_ceiling": "NVIDIA_CASHCLOSE_DISCOVERY_CANDIDATE_ONLY",
+  "retrospective_oos_authorized": false,
+  "post_outcome_tuning_authorized": false,
+  "live_trading_authorized": false
+}
