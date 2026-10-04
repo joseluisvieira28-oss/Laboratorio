@@ -1,0 +1,73 @@
+{
+  "family_id": "MEXC-HL-SP500-LEADLAG-001",
+  "version": "0.4",
+  "frozen_at_utc": "2026-10-04T09:27:00Z",
+  "source_binding": "MEXC_HL_SP500_SOURCE_BINDING_V0_3_1",
+  "outcomes_opened_at_freeze": 0,
+  "mexc_symbol": "SPX500_USDT",
+  "hyperliquid_coin": "xyz:SP500",
+  "hyperliquid_dex": "xyz",
+  "interval": "1m",
+  "clock_mapping": {
+    "mexc": "raw bucket start s seconds -> observable at s+60",
+    "hyperliquid": "candle open t milliseconds -> observable at t/1000+60",
+    "alignment": "exact observable minute"
+  },
+  "discovery_start": "2026-10-01T00:00:00Z",
+  "discovery_end_exclusive": "2026-10-04T09:00:00Z",
+  "signal": {
+    "mechanism": "HYPERLIQUID_SHOCK_WITH_MEXC_UNDERREACTION",
+    "hl_shock_thresholds_bps": [
+      5,
+      10,
+      20
+    ],
+    "lag_gap_thresholds_bps": [
+      3,
+      5,
+      10
+    ],
+    "horizons_min": [
+      1,
+      2,
+      5,
+      15
+    ],
+    "direction": "FOLLOW_HYPERLIQUID",
+    "conditions": [
+      "abs(hl_return_1m_bps) >= hl_shock_threshold_bps",
+      "sign(hl_return_1m_bps - mexc_return_1m_bps) == sign(hl_return_1m_bps)",
+      "abs(hl_return_1m_bps - mexc_return_1m_bps) >= lag_gap_threshold_bps"
+    ],
+    "overlap_rule": "per_cell cooldown equals horizon"
+  },
+  "discovery_gate": {
+    "min_n": 20,
+    "mean_gross_signed_bps_gt": 0,
+    "win_rate_gt": 0.5,
+    "thirds_mean_gross_signed_bps_gt": 0,
+    "exact_binomial_p_defined": true,
+    "multiple_testing": "HOLM_BONFERRONI",
+    "family_wise_alpha": 0.05
+  },
+  "cost_scenarios_roundtrip_bps": [
+    0,
+    2,
+    5,
+    10,
+    12,
+    14,
+    16,
+    20
+  ],
+  "costs_are_discovery_gate": false,
+  "promotion_ceiling": "CROSSVENUE_DISCOVERY_CANDIDATE_ONLY",
+  "retrospective_oos_authorized": false,
+  "parameter_rescue_authorized": false,
+  "private_endpoints_authorized": false,
+  "account_reads_authorized": false,
+  "wallets_authorized": false,
+  "orders_authorized": false,
+  "exchange_mutation_authorized": false,
+  "live_trading_authorized": false
+}
