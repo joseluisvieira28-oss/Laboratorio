@@ -1,0 +1,60 @@
+{
+  "family_id": "LIGHTER-NVDA-PORTABILITY-001-V0.2",
+  "frozen_at_utc": "2026-10-04T22:12:00Z",
+  "outcomes_opened_at_freeze": 0,
+  "sample_start": "2026-09-10",
+  "sample_end_inclusive": "2026-10-01",
+  "excluded_dates": [
+    "2026-09-30"
+  ],
+  "signal_window_utc": [
+    "14:31",
+    "18:44"
+  ],
+  "interval": "1m",
+  "exact_rule": {
+    "shock_threshold_bps": 5,
+    "lag_gap_threshold_bps": 3,
+    "horizon_min": 1,
+    "direction": "FOLLOW_EXTERNAL_CONSENSUS",
+    "external_return": "mean(Binance NVDAUSDT 1m return, Bitget NVDAUSDT 1m return)",
+    "target_return": "Lighter NVDA market_id 110 1m return",
+    "lag_gap": "external_return - Lighter target return",
+    "cooldown_min": 1,
+    "exact_timestamp_alignment": true,
+    "no_forward_fill": true,
+    "no_interpolation": true
+  },
+  "scientific_gate": {
+    "min_n": 30,
+    "min_distinct_signal_sessions": 10,
+    "mean_gross_bps_gt": 0,
+    "median_gross_bps_gt": 0,
+    "win_rate_gt": 0.5,
+    "both_chronological_halves_mean_gt_bps": 0,
+    "exact_one_sided_binomial_p_lt": 0.05
+  },
+  "execution": {
+    "published_market_fee_roundtrip_bps": 0,
+    "cost_scenarios_roundtrip_bps": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      8,
+      10
+    ],
+    "execution_pass_requires": "scientific PASS; then separately measure spread/slippage/latency/fill against break-even gross edge"
+  },
+  "no_parameter_tuning": true,
+  "no_retrospective_oos": true,
+  "no_post_outcome_rescue": true,
+  "private_endpoints_authorized": false,
+  "account_reads_authorized": false,
+  "wallets_authorized": false,
+  "orders_authorized": false,
+  "live_trading_authorized": false
+}
