@@ -54,24 +54,39 @@ def fetch_prices(symbol, start, end):
     out_c, out_i = {}, {}
     chunk = 5 * 86400
     cur = start - STEP
-    while cur < end:
-        e = min(cur + chunk, end - STEP)
+    # Raw bucket start s becomes observable at s + STEP. Because end is
+    # exclusive in observable-time space, the latest permissible raw bucket
+    # start is end - 2*STEP.
+    last_raw_start = end - 2 * STEP
+    while cur <= last_raw_start:
+        e = min(cur + chunk, last_raw_start)
         for kind, path, out in [
             ("contract", f"/api/v1/contract/kline/{symbol}", out_c),
             ("index", f"/api/v1/contract/kline/index_price/{symbol}", out_i),
         ]:
             j = fetch_json(path, {"interval":"Min5","start":cur,"end":e})
             d = j.get("data") or {}
-            for s, p in zip(d.get("time") or [], d.get("close") or []):
+            times = d.get("time") or []
+            closes = d.get("close") or []
+            for s, p in zip(times, closes):
                 try:
-                    mapped = int(s) + STEP
+                    raw_s = int(s)
+                except Exception:
+                    continue
+                # Timestamp firewall first: do not parse a price for any row
+                # outside the exact requested raw bucket range.
+                if raw_s < cur or raw_s > e:
+                    raise RuntimeError("SOURCE_RETURNED_TIMESTAMP_OUTSIDE_REQUEST")
+                mapped = raw_s + STEP
+                if mapped >= HARD_END:
+                    raise RuntimeError("SOURCE_RETURNED_PROTECTED_OBSERVABLE_TIMESTAMP")
+                if mapped < start or mapped >= end:
+                    continue
+                try:
                     px = float(p)
                 except Exception:
                     continue
-                if mapped >= HARD_END:
-                    raise RuntimeError("SOURCE_RETURNED_PROTECTED_TIMESTAMP")
-                if start <= mapped < end:
-                    out[mapped] = px
+                out[mapped] = px
         cur = e + STEP
         time.sleep(0.08)
     return out_c, out_i
