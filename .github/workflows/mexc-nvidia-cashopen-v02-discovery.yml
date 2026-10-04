@@ -1,1 +1,37 @@
-name: MEXC NVIDIA CashOpen V0.2 Discovery\n\non:\n  push:\n    branches:\n      - mexc-nvidia-cashopen-v0.2-prereg-2026-10-04\n\npermissions:\n  contents: read\n\njobs:\n  discovery:\n    runs-on: ubuntu-latest\n    timeout-minutes: 45\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-python@v5\n        with:\n          python-version: '3.11'\n      - name: Install dependency\n        run: python -m pip install --disable-pip-version-check requests\n      - name: Freeze check\n        run: |\n          test "$GITHUB_REF_NAME" = "mexc-nvidia-cashopen-v0.2-prereg-2026-10-04"\n          python -m py_compile research/mexc_global_assets/mexc_nvidia_cashopen_v02.py\n          test -f research/mexc_global_assets/MEXC_NVIDIA_CASHOPEN_RULE_V0.2.json\n          test -f research/mexc_global_assets/MEXC_NVIDIA_CASHOPEN_SOURCE_BINDING_V0.2.json\n          echo PRE_OUTCOME_FREEZE_PASS\n      - name: Run discovery\n        run: python research/mexc_global_assets/mexc_nvidia_cashopen_v02.py\n      - name: Upload evidence\n        uses: actions/upload-artifact@v4\n        with:\n          name: mexc-nvidia-cashopen-v02-${{ github.run_id }}-${{ github.run_attempt }}\n          path: artifacts/mexc_global_assets/nvidia_cashopen_v02\n          if-no-files-found: error\n          retention-days: 90
+name: MEXC NVIDIA CashOpen V0.2 Discovery
+
+on:
+  push:
+    branches:
+      - mexc-nvidia-cashopen-v0.2-prereg-2026-10-04
+
+permissions:
+  contents: read
+
+jobs:
+  discovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependency
+        run: python -m pip install --disable-pip-version-check requests
+      - name: Freeze check
+        run: |
+          test "$GITHUB_REF_NAME" = "mexc-nvidia-cashopen-v0.2-prereg-2026-10-04"
+          python -m py_compile research/mexc_global_assets/mexc_nvidia_cashopen_v02.py
+          test -f research/mexc_global_assets/MEXC_NVIDIA_CASHOPEN_RULE_V0.2.json
+          test -f research/mexc_global_assets/MEXC_NVIDIA_CASHOPEN_SOURCE_BINDING_V0.2.json
+          echo PRE_OUTCOME_FREEZE_PASS
+      - name: Run discovery
+        run: python research/mexc_global_assets/mexc_nvidia_cashopen_v02.py
+      - name: Upload evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: mexc-nvidia-cashopen-v02-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/mexc_global_assets/nvidia_cashopen_v02
+          if-no-files-found: error
+          retention-days: 90
