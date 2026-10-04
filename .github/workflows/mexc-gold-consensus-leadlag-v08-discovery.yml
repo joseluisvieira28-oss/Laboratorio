@@ -1,0 +1,65 @@
+name: MEXC GOLD Consensus LeadLag V0.8 Discovery
+
+on:
+  push:
+    branches:
+      - mexc-gold-consensus-leadlag-v0.8-prereg-2026-10-04
+    paths:
+      - 'research/mexc_global_assets/MEXC_GOLD_MULTIVENUE_SOURCE_BINDING_V0.7.4.json'
+      - 'research/mexc_global_assets/MEXC_GOLD_CONSENSUS_LEADLAG_RULE_V0.8.json'
+      - 'research/mexc_global_assets/MEXC_GOLD_CONSENSUS_LEADLAG_FREEZE_V0.8.md'
+      - 'research/mexc_global_assets/mexc_gold_consensus_leadlag_v08.py'
+      - '.github/workflows/mexc-gold-consensus-leadlag-v08-discovery.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  discovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependency
+        run: python -m pip install --disable-pip-version-check requests
+      - name: Bind frozen authority
+        run: |
+          test "$GITHUB_REF_NAME" = "mexc-gold-consensus-leadlag-v0.8-prereg-2026-10-04"
+          python -m py_compile research/mexc_global_assets/mexc_gold_consensus_leadlag_v08.py
+          python - <<'PY'
+          import json,hashlib
+          from pathlib import Path
+          rp=Path('research/mexc_global_assets/MEXC_GOLD_CONSENSUS_LEADLAG_RULE_V0.8.json')
+          bp=Path('research/mexc_global_assets/MEXC_GOLD_MULTIVENUE_SOURCE_BINDING_V0.7.4.json')
+          r=json.loads(rp.read_text()); b=json.loads(bp.read_text())
+          assert b['source_gate_verdict']=='MEXC_GOLD_MULTIVENUE_SOURCE_PASS'
+          assert r['outcomes_opened_at_freeze']==0
+          assert r['signal']['direction']=='FOLLOW_EXTERNAL_CONSENSUS'
+          assert r['signal']['shock_thresholds_bps']==[5,10,20,40]
+          assert r['signal']['lag_gap_thresholds_bps']==[3,5,10,20]
+          assert r['signal']['horizons_min']==[1,2,5,15]
+          assert r['discovery_end_exclusive']=='2026-10-04T00:00:00Z'
+          assert r['retrospective_oos_authorized'] is False
+          print('RULE_SHA256='+hashlib.sha256(rp.read_bytes()).hexdigest())
+          print('BINDING_SHA256='+hashlib.sha256(bp.read_bytes()).hexdigest())
+          print('PRE_OUTCOME_FREEZE_PASS')
+          PY
+      - name: Execute frozen GOLD discovery
+        run: python research/mexc_global_assets/mexc_gold_consensus_leadlag_v08.py
+      - name: Upload discovery closeout
+        uses: actions/upload-artifact@v4
+        with:
+          name: mexc-gold-consensus-v08-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/mexc_global_assets/gold_consensus_leadlag_v08
+          if-no-files-found: error
+          retention-days: 90
+      - name: Governance closeout
+        run: |
+          echo 'DISCOVERY ONLY'
+          echo 'NO 04 OCTOBER OUTCOMES'
+          echo 'NO RETROSPECTIVE OOS'
+          echo 'NO PARAMETER RESCUE'
+          echo 'NO LIVE TRADING'
