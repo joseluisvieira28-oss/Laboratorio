@@ -1,0 +1,19 @@
+name: Aster NVDA Source V0.1
+on:
+  push:
+    branches: [aster-nvda-portability-v0.1-source-gate-2026-10-05]
+permissions:
+  contents: read
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: pip install requests
+      - run: python research/aster_nvda/aster_nvda_source_v01.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: aster-nvda-source-v01-${{ github.run_id }}
+          path: artifacts/aster_nvda/v01_source
