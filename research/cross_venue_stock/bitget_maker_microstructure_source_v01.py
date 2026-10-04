@@ -9,7 +9,7 @@ import requests
 HERE=Path(__file__).resolve().parent
 CFG=json.loads((HERE/"BITGET_MAKER_MICROSTRUCTURE_SOURCE_CONFIG_V0.1.json").read_text())
 OUT=Path("artifacts/cross_venue_stock/bitget_maker_microstructure_source_v01")
-UA="CryptoLab-Bitget-MakerMicrostructure-SourceGate/0.1.1"
+UA="CryptoLab-Bitget-MakerMicrostructure-SourceGate/0.1.3"
 
 def h(b): return hashlib.sha256(b).hexdigest()
 def ms(s): return int(datetime.fromisoformat(s.replace("Z","+00:00")).timestamp()*1000)
@@ -79,7 +79,7 @@ def archive_discovery():
       "https://www.bitget.com/asia/data-download/futures-historical-transaction-record",
       "https://www.bitget.com/data-download/futures-historical-transaction-record"
     ]
-    pages=[]; discovered=set(); scripts=set(); bundle_hits=[]
+    pages=[]; discovered=set(); scripts=set(); bundle_hits=[]; download_function_hits=[]
     for url in seeds:
         try:r=req(url,timeout=50)
         except Exception as e:
@@ -95,13 +95,32 @@ def archive_discovery():
         pages.append({"url":url,"http":r.status_code,"content_type":r.headers.get("content-type"),
           "bytes":len(r.content),"sha256":h(r.content),"script_count":len(scripts)})
     # Technical-only bundle inspection. No market outcomes or prices are opened.
-    for u in sorted(scripts)[:60]:
+    for u in sorted(scripts):
         try:r=req(u,timeout=40)
         except Exception: continue
         ct=r.headers.get("content-type","")
         if r.status_code!=200 or len(r.content)>12_000_000: continue
         text=r.text
         hits=extract_interesting(u,text)
+        low=text.lower()
+        special_keys=("getdownloadfiles","fileurl","filename","downloadallfiles","downloadfile","depth data","historical market data")
+        special_contexts=[]
+        for key in special_keys:
+            pos=0
+            while len(special_contexts)<80:
+                i=low.find(key,pos)
+                if i<0: break
+                special_contexts.append({"key":key,"context":text[max(0,i-1800):min(len(text),i+3200)]})
+                pos=i+len(key)
+        if special_contexts:
+            # Capture webpack module references and nearby string literals to resolve the imported API helper.
+            module_refs=sorted(set(re.findall(r'''\b(?:n|a|t|e)\((\d{2,7})\)''',text)))
+            quoted=sorted(set(x for x in re.findall(r'''["']([^"']{3,220})["']''',text)
+                              if any(k in x.lower() for k in ("download","fileurl","file-name","history","depth","market-data"))))
+            download_function_hits.append({
+              "url":u,"sha256":h(r.content),"bytes":len(r.content),
+              "contexts":special_contexts[:80],"module_refs":module_refs[:500],"related_strings":quoted[:300]
+            })
         if hits:
             discovered.update(hits)
             api_paths=set(re.findall(r'''/(?:api|v[123])/[A-Za-z0-9_?=&.%:/\\-]{4,240}''',text,re.I))
@@ -142,6 +161,7 @@ def archive_discovery():
         if r.status_code==200:
             discovered.update(extract_interesting(r.url,r.text))
     return {"pages":pages,"script_count":len(scripts),"bundle_hits":bundle_hits,
+            "download_function_hits":download_function_hits,
             "route_probes":probes,"discovered_urls":sorted(discovered)[:500]}
 
 def main():
@@ -164,7 +184,7 @@ def main():
              if all_trade and depth_surface else
              "BITGET_TRADE_SOURCE_PASS__DEPTH_ARCHIVE_DISCOVERY_PENDING"
              if all_trade else "BITGET_MICROSTRUCTURE_SOURCE_BLOCKED")
-    rep={"gate_id":CFG["gate_id"],"technical_amendment":"V0.1.2_concrete_depth_evidence_only",
+    rep={"gate_id":CFG["gate_id"],"technical_amendment":"V0.1.3_download_function_resolution",
       "source_only":True,"burned_source_date":CFG["burned_source_date"],"trade_probes":trades,
       "archive_discovery":arc,"depth_url_hints":depth_hints,"verdict":verdict,
       "microstructure_outcomes_opened":0,"private_endpoints_used":False,"account_reads":False,
@@ -175,6 +195,7 @@ def main():
       "depth_hints":depth_hints[:30],
       "bundle_hit_count":len(arc["bundle_hits"]),
       "bundle_hits":arc["bundle_hits"],
+      "download_function_hits":arc["download_function_hits"],
       "route_probes":arc["route_probes"]},indent=2))
 
 if __name__=="__main__": main()
