@@ -1,0 +1,40 @@
+name: NVDA V08 Source Gate
+
+on:
+  push:
+    branches:
+      - mexc-nvda-crossvenue-v0.8-source-gate-2026-10-04
+    paths:
+      - 'research/mexc_global_assets/MEXC_BINANCE_NVDA_SOURCE_GATE_V0.8.md'
+      - 'research/mexc_global_assets/mexc_binance_nvda_source_probe_v08.py'
+      - '.github/workflows/nvda-v08-source-gate.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  source-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install requests
+        run: python -m pip install --disable-pip-version-check requests
+      - name: Source-only preflight
+        run: |
+          test "$GITHUB_REF_NAME" = "mexc-nvda-crossvenue-v0.8-source-gate-2026-10-04"
+          python -m py_compile research/mexc_global_assets/mexc_binance_nvda_source_probe_v08.py
+          grep -q 'SOURCE-ONLY' research/mexc_global_assets/MEXC_BINANCE_NVDA_SOURCE_GATE_V0.8.md
+          grep -q 'OUTCOMES CLOSED' research/mexc_global_assets/MEXC_BINANCE_NVDA_SOURCE_GATE_V0.8.md
+      - name: Execute public source gate
+        run: python research/mexc_global_assets/mexc_binance_nvda_source_probe_v08.py
+      - name: Upload source evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: nvda-v08-source-gate-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/mexc_global_assets/nvda_source_gate_v08
+          if-no-files-found: error
+          retention-days: 90
