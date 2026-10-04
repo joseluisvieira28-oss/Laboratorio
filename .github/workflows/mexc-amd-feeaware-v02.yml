@@ -1,0 +1,38 @@
+name: MEXC AMD FeeAware V0.2
+
+on:
+  push:
+    branches:
+      - mexc-amd-feeaware-v0.2-prereg-2026-10-04
+
+permissions:
+  contents: read
+
+jobs:
+  feeaware:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependency
+        run: python -m pip install --disable-pip-version-check requests
+      - name: Pre-outcome freeze check
+        run: |
+          test "$GITHUB_REF_NAME" = "mexc-amd-feeaware-v0.2-prereg-2026-10-04"
+          test -f research/mexc_global_assets/MEXC_AMD_FEEAWARE_FREEZE_V0.2.md
+          test -f research/mexc_global_assets/MEXC_AMD_FEEAWARE_RULE_V0.2.json
+          test -f research/mexc_global_assets/MEXC_AMD_FEEAWARE_BINDING_V0.2.json
+          python -m py_compile research/mexc_global_assets/mexc_amd_feeaware_v02.py
+          echo AMD_FEEAWARE_PRE_OUTCOME_FREEZE_PASS
+      - name: Run frozen AMD fee-aware test
+        run: python research/mexc_global_assets/mexc_amd_feeaware_v02.py
+      - name: Upload immutable evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: mexc-amd-feeaware-v02-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/mexc_global_assets/amd_feeaware_v02
+          if-no-files-found: error
+          retention-days: 90
