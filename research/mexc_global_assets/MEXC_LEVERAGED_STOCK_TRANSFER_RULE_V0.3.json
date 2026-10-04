@@ -1,0 +1,61 @@
+{
+  "family_id": "MEXC-LEVERAGED-STOCK-NVDA-TSLA-RULE-TRANSFER-V0.3",
+  "frozen_at_utc": "2026-10-04T21:15:00Z",
+  "outcomes_opened_at_freeze": 0,
+  "binding": "MEXC_LEVERAGED_STOCK_TRANSFER_SOURCE_BINDING_V0_3",
+  "discovery_start_date": "2026-09-09",
+  "discovery_end_date_inclusive": "2026-10-02",
+  "excluded_dates": [
+    "2026-09-30"
+  ],
+  "signal_window_utc": [
+    "14:31",
+    "18:44"
+  ],
+  "interval": "1m",
+  "exact_transfer_rule": {
+    "shock_threshold_bps": 5,
+    "lag_gap_threshold_bps": 3,
+    "horizon_min": 1,
+    "direction": "FOLLOW_EXTERNAL_CONSENSUS",
+    "external_return": "mean(Binance 1m return, Bitget 1m return)",
+    "mexc_return": "MEXC target 1m return",
+    "lag_gap": "external_return - mexc_return",
+    "cooldown_min": 1,
+    "no_parameter_tuning_by_asset": true
+  },
+  "scientific_gate": {
+    "min_n": 50,
+    "min_distinct_signal_sessions": 12,
+    "mean_gross_gt_bps": 0,
+    "median_gross_gt_bps": 0,
+    "win_rate_gt": 0.5,
+    "all_chronological_thirds_mean_gt_bps": 0,
+    "exact_one_sided_binomial_p": true,
+    "multiple_testing": "HOLM_BONFERRONI_ACROSS_2_ASSETS",
+    "family_wise_alpha": 0.05
+  },
+  "execution_fee_scenarios_roundtrip_bps": [
+    0,
+    12,
+    14,
+    16,
+    20
+  ],
+  "operational_classification": {
+    "standard_mexc_api_maker_maker_roundtrip_bps": 12,
+    "standard_mexc_api_maker_taker_roundtrip_bps": 14,
+    "standard_mexc_api_taker_taker_roundtrip_bps": 16,
+    "fee_floor_survivor": "scientific PASS AND mean net after 12 bps > 0",
+    "robust_fee_survivor": "scientific PASS AND mean net after 16 bps > 0",
+    "robust_fee_survivor_is_not_live_go": true,
+    "spread_slippage_latency_still_required": true
+  },
+  "retrospective_oos_authorized": false,
+  "post_outcome_tuning_authorized": false,
+  "private_endpoints_authorized": false,
+  "account_reads_authorized": false,
+  "orders_authorized": false,
+  "exchange_mutation_authorized": false,
+  "live_trading_authorized": false
+}
