@@ -1,0 +1,63 @@
+name: MEXC NVDA Bitget LeadLag V0.7 Discovery
+
+on:
+  push:
+    branches:
+      - mexc-nvda-bitget-leadlag-v0.7-prereg-2026-10-04
+    paths:
+      - 'research/mexc_global_assets/MEXC_NVDA_BITGET_LEADLAG_RULE_V0.7.json'
+      - 'research/mexc_global_assets/MEXC_NVDA_BITGET_LEADLAG_FREEZE_V0.7.md'
+      - 'research/mexc_global_assets/mexc_nvda_bitget_leadlag_v07.py'
+      - '.github/workflows/mexc-nvda-bitget-leadlag-v07-discovery.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  discovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependency
+        run: python -m pip install --disable-pip-version-check requests
+      - name: Bind frozen authority
+        run: |
+          test "$GITHUB_REF_NAME" = "mexc-nvda-bitget-leadlag-v0.7-prereg-2026-10-04"
+          python -m py_compile research/mexc_global_assets/mexc_nvda_bitget_leadlag_v07.py
+          python - <<'PY'
+          import json,hashlib
+          from pathlib import Path
+          p=Path('research/mexc_global_assets/MEXC_NVDA_BITGET_LEADLAG_RULE_V0.7.json')
+          x=json.loads(p.read_text())
+          assert x['outcomes_opened_at_freeze']==0
+          assert x['signal']['direction']=='FOLLOW_BITGET'
+          assert x['signal']['leader_shock_thresholds_bps']==[10,20,40]
+          assert x['signal']['lag_gap_thresholds_bps']==[5,10,20]
+          assert x['signal']['horizons_min']==[1,2,5,15]
+          assert x['discovery_end_exclusive']=='2026-10-04T09:00:00Z'
+          assert x['retrospective_oos_authorized'] is False
+          assert x['live_trading_authorized'] is False
+          print('RULE_SHA256='+hashlib.sha256(p.read_bytes()).hexdigest())
+          print('PRE_OUTCOME_FREEZE_PASS')
+          PY
+      - name: Execute frozen NVDA cross-venue discovery
+        run: python research/mexc_global_assets/mexc_nvda_bitget_leadlag_v07.py
+      - name: Upload immutable discovery evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: mexc-nvda-bitget-leadlag-v07-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/mexc_global_assets/nvda_bitget_leadlag_v07
+          if-no-files-found: error
+          retention-days: 90
+      - name: Governance closeout
+        run: |
+          echo 'DISCOVERY ONLY'
+          echo 'NO RETROSPECTIVE OOS'
+          echo 'NO DATA >= 2026-10-04T09:00:00Z'
+          echo 'NO PARAMETER RESCUE'
+          echo 'NO ACCOUNT / WALLET / PRIVATE ENDPOINT'
+          echo 'NO ORDERS / NO MUTATION / NO LIVE TRADING'
