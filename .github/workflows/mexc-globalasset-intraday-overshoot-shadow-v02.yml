@@ -1,0 +1,44 @@
+name: MEXC Overshoot Shadow Capture V0.2
+on:
+  push:
+    branches: [mexc-globalasset-intraday-overshoot-exec-v0.2-frozen-2026-10-05]
+    paths:
+      - 'research/mexc_global_assets/shadow_trigger/**'
+permissions: {contents: read}
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 235
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 2}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: pip install requests
+      - id: trigger
+        shell: bash
+        run: |
+          P=$(git diff-tree --no-commit-id --name-only -r HEAD | grep '^research/mexc_global_assets/shadow_trigger/' | tail -1)
+          test -n "$P"
+          echo "path=$P" >> "$GITHUB_OUTPUT"
+          python - <<'PY'
+          import json,os
+          p=os.environ['P']
+          j=json.load(open(p))
+          with open(os.environ['GITHUB_OUTPUT'],'a') as f:
+              for k in ('date','start','end','segment'):
+                  f.write(f"{k}={j[k]}\n")
+          PY
+        env:
+          P: ${{ steps.trigger.outputs.path }}
+      - name: capture
+        run: |
+          python research/mexc_global_assets/mexc_globalasset_intraday_overshoot_shadow_v02.py \
+            --date "${{ steps.trigger.outputs.date }}" \
+            --start "${{ steps.trigger.outputs.start }}" \
+            --end "${{ steps.trigger.outputs.end }}" \
+            --segment "${{ steps.trigger.outputs.segment }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: overshoot-shadow-v02-${{ steps.trigger.outputs.date }}-${{ steps.trigger.outputs.segment }}-${{ github.run_id }}
+          path: artifacts/mexc_global_assets/intraday_overshoot_shadow_v02
