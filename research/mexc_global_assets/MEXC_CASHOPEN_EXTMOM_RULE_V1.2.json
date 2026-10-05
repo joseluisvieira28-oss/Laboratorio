@@ -1,0 +1,49 @@
+{
+  "family_id": "MEXC-CASHOPEN-EXTMOM-FOLLOW-30M-BASKET-V1.2",
+  "provenance": "Exact cross-asset basket transfer of NVIDIA V0.2 CASHOPEN external-momentum FOLLOW arm at 30m; frozen before these 35 assets' extmom outcomes.",
+  "frozen_at_utc": "2026-10-05T04:53:30Z",
+  "outcomes_opened_at_freeze": 0,
+  "sample_start": "2026-09-09",
+  "sample_end_inclusive": "2026-10-02",
+  "excluded_dates": [
+    "2026-09-30"
+  ],
+  "predictor_start_utc": "13:24",
+  "predictor_end_utc": "13:29",
+  "entry_utc": "13:29",
+  "exit_utc": "13:59",
+  "horizon_min": 30,
+  "external_momentum_5m_bps": "10000*(mean(Binance_1329,Bitget_1329)/mean(Binance_1324,Bitget_1324)-1)",
+  "direction": "FOLLOW_EXTERNAL_MOMENTUM",
+  "side": "sign(external_momentum_5m_bps)",
+  "no_threshold": true,
+  "basket_construction": "equal-weight average across all assets with complete nonzero predictor each date",
+  "scientific_unit": "daily basket return",
+  "scientific_gate": {
+    "min_complete_basket_days": 15,
+    "mean_daily_gross_bps_gt": 0,
+    "median_daily_gross_bps_gt": 0,
+    "winning_day_rate_gt": 0.5,
+    "both_chronological_halves_mean_gt_bps": 0,
+    "exact_one_sided_binomial_p_lt": 0.05
+  },
+  "cost_scenarios_roundtrip_bps": [
+    0,
+    12,
+    14,
+    16,
+    20
+  ],
+  "operational_gate": {
+    "robust_api_fee_survivor": "scientific PASS AND mean daily net after 16 bps >0 AND median daily net after 16 bps >0",
+    "robust_api_fee_survivor_not_live_go": true
+  },
+  "no_asset_selection": true,
+  "no_threshold_grid": true,
+  "no_horizon_grid": true,
+  "no_post_outcome_rescue": true,
+  "private_endpoints_authorized": false,
+  "account_reads_authorized": false,
+  "orders_authorized": false,
+  "live_trading_authorized": false
+}
