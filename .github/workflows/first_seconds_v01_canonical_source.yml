@@ -1,13 +1,12 @@
-name: First Seconds Cascade V0.1 Canonical Source Census
+name: First Seconds Cascade V0.1 2025 Development ONE SHOT
 on:
   push:
     branches: [binance-listing-first-seconds-cascade-v0.1-prereg-2026-10-05]
     paths:
       - '.github/workflows/first_seconds_v01_canonical_source.yml'
-      - 'research/binance_listing_first_seconds_cascade/v01_gate_canonical_source_census.py'
 permissions: {contents: read}
 jobs:
-  source_census:
+  development:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -16,4 +15,4 @@ jobs:
           ref: ${{ github.sha }}
       - uses: actions/setup-python@v5
         with: {python-version: '3.12'}
-      - run: python research/binance_listing_first_seconds_cascade/v01_gate_canonical_source_census.py
+      - run: python research/binance_listing_first_seconds_cascade/run_v01_2025_subminute_once.py
