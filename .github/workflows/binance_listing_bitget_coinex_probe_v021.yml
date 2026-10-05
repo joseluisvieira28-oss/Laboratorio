@@ -1,0 +1,21 @@
+name: Listing Cascade Bitget CoinEx Probe
+on:
+  push:
+    branches:
+      - binance-listing-information-cascade-v0.1-prereg-2026-10-05
+    paths:
+      - 'research/binance_listing_information_cascade/source_probe_bitget_coinex_v021.py'
+      - '.github/workflows/binance_listing_bitget_coinex_probe_v021.yml'
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: binance-listing-information-cascade-v0.1-prereg-2026-10-05
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python research/binance_listing_information_cascade/source_probe_bitget_coinex_v021.py
