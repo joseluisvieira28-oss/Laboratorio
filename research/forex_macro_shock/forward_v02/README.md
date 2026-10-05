@@ -1,7 +1,7 @@
 # FOREX EUR/ECB V0.2 — technical setup, activation locked
 
 Current implementation: see `CONTINUOUS_RUNTIME_V02_1.md` for timestamped WS
-feeds, semantic ECB first-seen logic, pooled HTTP, 31 tests and the Windows
+feeds, semantic ECB first-seen logic, pooled HTTP, 32 tests and the Windows
 foreground launcher. The original sampler described below remains a separate
 stdlib source smoke, not the continuous runtime. Current verdict is still
 `OPERATIONALLY_BLOCKED`; no process is claimed active between completed runs.

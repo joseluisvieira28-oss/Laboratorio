@@ -16,8 +16,9 @@ MEXC EUR_USDT uses the current official public `sub.depth` channel with unmerged
 updates, full REST bootstrap and strict version+1. It requires the documented
 `data.cts` matching-engine timestamp; root `ts` is archived, not silently treated
 as matching-engine time. Missing cts fails closed. Gaps rebootstrap live; they
-never backfill a missed observation. This path is implemented but not live
-qualified while the MEXC handshake is inaccessible here.
+never backfill a missed observation. The local MEXC handshake is inaccessible here, but the public GitHub
+runner established and maintained this path. Full timing/coverage qualification
+is still unpassed; live access is not the full source gate.
 
 `ecb_watcher.py`: exact official release URL/date, semantic title/policy content,
 placeholder rejection, immutable content hash and first-seen evidence across
