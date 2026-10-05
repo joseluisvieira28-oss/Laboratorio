@@ -58,3 +58,5 @@ async def main():
         raise SystemExit(2)
 
 asyncio.run(main())
+
+# trigger after workflow registration
