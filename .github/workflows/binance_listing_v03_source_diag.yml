@@ -2,16 +2,17 @@ name: Binance Listing V0.4 2025 Source Metric Diagnostic
 on:
   push:
     branches: [binance-listing-cascade-v0.4-2025-holdout-prereg-2026-10-05]
-    paths: ['.github/workflows/binance_listing_v03_source_diag.yml']
+    paths:
+      - '.github/workflows/binance_listing_v03_source_diag.yml'
+      - 'research/binance_listing_information_cascade/diagnose_v03_source_runtime.py'
 permissions: {contents: read}
 jobs:
   diag:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with: {ref: binance-listing-cascade-v0.4-2025-holdout-prereg-2026-10-05}
+        with:
+          ref: ${{ github.sha }}
       - uses: actions/setup-python@v5
         with: {python-version: '3.12'}
       - run: python research/binance_listing_information_cascade/diagnose_v03_source_runtime.py
-
-# trigger
