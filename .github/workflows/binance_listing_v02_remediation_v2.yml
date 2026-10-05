@@ -1,0 +1,21 @@
+name: Binance Listing V0.2 Final Technical Remediation
+on:
+  push:
+    branches: [binance-listing-information-cascade-v0.1-prereg-2026-10-05]
+    paths: ['.github/workflows/binance_listing_v02_remediation_v2.yml']
+permissions: {contents: write}
+jobs:
+  remediate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: binance-listing-information-cascade-v0.1-prereg-2026-10-05}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: python research/binance_listing_information_cascade/run_v02_remediated_v2.py
+      - run: |
+          git pull --rebase
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/binance_listing_information_cascade/results_v02_remediated_v2
+          git diff --cached --quiet || (git commit -m "Record final technically remediated V0.2 result" && git push)
