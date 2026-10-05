@@ -50,8 +50,36 @@ def next_whole_minute_strict(dt: datetime) -> datetime:
     return floored + timedelta(minutes=1)
 
 
-def fingerprint(row: dict) -> str:
-    return json.dumps(row["tiers"], sort_keys=True, separators=(",", ":"))
+MONEY_REL_TOL = 1e-12
+MONEY_ABS_TOL = 1e-6
+BIAS_REL_TOL = 1e-12
+BIAS_ABS_TOL = 1e-12
+
+def tiers_semantically_equal(a, b) -> bool:
+    if len(a) != len(b):
+        return False
+
+    def key(t):
+        return (
+            -1 if t.get("min") is None else int(t["min"]),
+            -1 if t.get("max") is None else int(t["max"]),
+            str(t.get("size")),
+        )
+
+    aa = sorted(a, key=key)
+    bb = sorted(b, key=key)
+
+    for x, y in zip(aa, bb):
+        if key(x) != key(y):
+            return False
+        if int(x["position_count"]) != int(y["position_count"]):
+            return False
+        for field in ("total_position_value", "total_position_value_long", "value_close_to_liquidation"):
+            if not math.isclose(float(x[field]), float(y[field]), rel_tol=MONEY_REL_TOL, abs_tol=MONEY_ABS_TOL):
+                return False
+        if not math.isclose(float(x["bias"]), float(y["bias"]), rel_tol=BIAS_REL_TOL, abs_tol=BIAS_ABS_TOL):
+            return False
+    return True
 
 
 def http_get_bytes(url: str, timeout: int = 30) -> bytes:
@@ -179,24 +207,25 @@ def classify_rows(rows):
     for payload, row in rows:
         symbol = row["symbol"]
         src = parse_iso(row["source_created_at_utc"])
-        fp = fingerprint(row)
+        tiers = row["tiers"]
         if symbol not in prev:
             cls = "BASELINE_ONLY"
         else:
-            prev_src, prev_fp = prev[symbol]
+            prev_src, prev_tiers = prev[symbol]
+            same_payload = tiers_semantically_equal(tiers, prev_tiers)
             if src < prev_src:
                 raise RuntimeError(f"{row['observation_id']}: source timestamp regressed")
-            if src == prev_src and fp == prev_fp:
+            if src == prev_src and same_payload:
                 cls = "DUPLICATE_SOURCE_SNAPSHOT"
-            elif src > prev_src and fp != prev_fp:
+            elif src > prev_src and not same_payload:
                 cls = "EVENT_ELIGIBLE"
-            elif src > prev_src and fp == prev_fp:
+            elif src > prev_src and same_payload:
                 cls = "SOURCE_TIMESTAMP_ONLY"
             else:
                 raise RuntimeError(
                     f"{row['observation_id']}: SOURCE_INTEGRITY_CONFLICT payload changed without source timestamp advance"
                 )
-        prev[symbol] = (src, fp)
+        prev[symbol] = (src, tiers)
         classified.append((payload, row, cls))
     return classified
 
