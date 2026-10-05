@@ -1,0 +1,19 @@
+name: CD20 Rebalance V0.2 One-Shot Discovery
+on:
+  push:
+    branches: [coindesk20-rebalance-forced-flow-001-source-v0.1-2026-10-05]
+    paths:
+      - 'research/coindesk20_rebalance_forced_flow/V02_OUTCOME_ACTIVATION_RECEIPT_2026-10-05.md'
+permissions:
+  contents: read
+jobs:
+  discovery:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python research/coindesk20_rebalance_forced_flow/run_v02_discovery_once.py
