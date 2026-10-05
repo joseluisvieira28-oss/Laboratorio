@@ -33,7 +33,7 @@ def bybit(sym,start,end):
     return sorted(out)
 
 def okx(sym,start,end):
-    u="https://www.okx.com/api/v5/market/history-candles?"+urllib.parse.urlencode({"instId":sym+"-USDT","bar":"1m","after":start-1,"before":end+1,"limit":300})
+    u="https://www.okx.com/api/v5/market/history-candles?"+urllib.parse.urlencode({"instId":sym+"-USDT","bar":"1m","after":end+1,"before":start-1,"limit":300})
     j=get(u); out=[]
     for x in j.get("data",[]): out.append((int(x[0]),float(x[1]),float(x[2]),float(x[3]),float(x[4]),float(x[5])))
     return sorted(out)
@@ -55,8 +55,12 @@ def fetch_venue(ticker,t0):
     # baseline in <=1000m chunks, and the event window separately.
     windows=[
       (t0-25*3600_000,t0-24*3600_000+10*60_000),
-      (t0-23*3600_000,t0-12*3600_000),
-      (t0-12*3600_000,t0-3600_000),
+      (t0-23*3600_000,t0-19*3600_000),
+      (t0-19*3600_000,t0-15*3600_000),
+      (t0-15*3600_000,t0-11*3600_000),
+      (t0-11*3600_000,t0-7*3600_000),
+      (t0-7*3600_000,t0-3*3600_000),
+      (t0-3*3600_000,t0-3600_000),
       (t0-10*60_000,t0+65*60_000),
     ]
     for venue,fn in [("BYBIT",bybit),("OKX",okx),("GATE",gate)]:
