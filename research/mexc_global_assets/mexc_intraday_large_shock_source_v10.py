@@ -34,11 +34,15 @@ def main():
      except:continue
      if start<=x<=end:bc+=1
    except:pass
-  gr=req("https://api.bitget.com/api/v2/mix/market/history-candles",{"symbol":e,"productType":"USDT-FUTURES","granularity":"1m","startTime":str(start*1000),"endTime":str(end*1000),"limit":"1000"})
-  try:gc=len(gr.json().get("data") or []) if gr.status_code==200 else 0
-  except:gc=0
+  gc=0; ghash=[]
+  chunks=[(start,min(end,start+149*60)),(start+150*60,end)]
+  for ga,gb in chunks:
+   gr=req("https://api.bitget.com/api/v2/mix/market/history-candles",{"symbol":e,"productType":"USDT-FUTURES","granularity":"1m","startTime":str(ga*1000),"endTime":str(gb*1000),"limit":"200"})
+   try:gc+=len(gr.json().get("data") or []) if gr.status_code==200 else 0
+   except:pass
+   ghash.append(H(gr.content))
   rec.update({"mexc_rows":mc,"binance_rows":bc,"bitget_rows":gc,"source_pass":mc>=270 and bc>=270 and gc>=260,
-   "mexc_sha256":H(mr.content),"binance_sha256":H(br.content) if br.status_code==200 else None,"bitget_sha256":H(gr.content)})
+   "mexc_sha256":H(mr.content),"binance_sha256":H(br.content) if br.status_code==200 else None,"bitget_sha256":ghash})
   rows.append(rec);print(t,rec["source_pass"],mc,bc,gc);time.sleep(.02)
  rep={"gate_id":"MEXC_INTRADAY_LARGE_SHOCK_SOURCE_V1_0","source_only":True,"verification_date":DAY,"window":["14:20","19:05"],
   "source_pass_count":sum(x["source_pass"] for x in rows),"results":rows,"outcomes_opened":0,
