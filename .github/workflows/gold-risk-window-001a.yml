@@ -1,0 +1,31 @@
+name: gold-risk-window-001a
+
+on:
+  push:
+    branches:
+      - gold-risk-window-001a-chat-attack-2026-10-05
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  historical-1m:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: python -m pip install --disable-pip-version-check requests pandas numpy
+      - name: Run GOLD-RISK-WINDOW-001A
+        run: python research/mexc_gold_risk_window/run_gold_risk_window_001a.py
+      - name: Upload research artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gold-risk-window-001a-results
+          path: research/mexc_gold_risk_window/results
+          if-no-files-found: warn
