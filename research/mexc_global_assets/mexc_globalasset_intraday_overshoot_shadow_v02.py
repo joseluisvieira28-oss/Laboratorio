@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from __future__ import annotations
-import argparse,json,time,math
+import argparse,json,time,math,os
 from datetime import datetime,timezone,timedelta
 from pathlib import Path
 import requests
@@ -92,9 +92,19 @@ def contract_sizes():
     j=r.json();out={}
     for x in j.get("data") or []:
         if isinstance(x,dict) and x.get("symbol"):
-            try:out[x["symbol"]]=float(x.get("contractSize") or 1.0)
-            except:out[x["symbol"]]=1.0
+            raw=x.get("contractSize")
+            try:
+                v=float(raw)
+                if not math.isfinite(v) or v<=0: raise ValueError("INVALID_CONTRACT_SIZE")
+                out[x["symbol"]]=v
+            except Exception:
+                out[x["symbol"]]=None
     return out
+
+def atomic_json(path,obj):
+    tmp=path.with_suffix(path.suffix+".tmp")
+    tmp.write_text(json.dumps(obj,indent=2,sort_keys=True))
+    os.replace(tmp,path)
 
 def fill(book,action,notional,contract_size):
     levels=book["asks"] if action=="BUY" else book["bids"]
@@ -151,6 +161,15 @@ def main():
     pending=[]
     rows=[]
     errors=[]
+    state_path=outdir/f"state_{a.date}_{a.segment}.json"
+    seen=set()
+    last_admitted_ts=None
+    if state_path.exists():
+        st=json.loads(state_path.read_text())
+        rows=st.get("rows",[])
+        pending=st.get("pending",[])
+        seen=set(st.get("seen_timestamps",[]))
+        last_admitted_ts=st.get("last_admitted_ts")
     wait_until(start+timedelta(seconds=2))
     minute=start
     while minute<=end:
@@ -159,7 +178,13 @@ def main():
         now=datetime.now(timezone.utc)
         t=int(minute.timestamp())
         if (now-minute).total_seconds()>45:
-            errors.append({"minute":minute.isoformat(),"error":"LATE_SCAN","observed_at":now.isoformat()})
+            errors.append({"minute":minute.isoformat(),"error":"LATE_SCAN_FAIL_CLOSED","observed_at":now.isoformat()})
+            atomic_json(state_path,{"rows":rows,"pending":pending,"seen_timestamps":sorted(seen),"last_admitted_ts":last_admitted_ts,"errors":errors})
+            minute+=timedelta(minutes=1)
+            continue
+        if t in seen:
+            minute+=timedelta(minutes=1)
+            continue
         triggers=[]
         for c in B["candidates"]:
             try:
@@ -170,17 +195,30 @@ def main():
             except Exception as e:
                 errors.append({"minute":minute.isoformat(),"target":c["target"],"error":str(e)})
         if triggers:
+            if last_admitted_ts is not None and t-int(last_admitted_ts)<R["global_cooldown_min"]*60:
+                seen.add(t)
+                atomic_json(state_path,{"rows":rows,"pending":pending,"seen_timestamps":sorted(seen),"last_admitted_ts":last_admitted_ts,"errors":errors})
+                minute+=timedelta(minutes=1)
+                continue
             event={"timestamp":t,"signal_utc":minute.isoformat(),"assets":[]}
             for sig in triggers:
                 try:
+                    cs=sizes.get(sig["target"])
+                    if cs is None: raise RuntimeError("INVALID_OR_MISSING_CONTRACT_SIZE")
                     book=depth(sig["target"])
+                    age=(datetime.now(timezone.utc)-minute).total_seconds()
+                    if age>45: raise RuntimeError("STALE_ENTRY_BOOK_FAIL_CLOSED")
                     side=sig["side"];action="BUY" if side>0 else "SELL"
-                    fills={str(int(n)):fill(book,action,n,sizes.get(sig["target"],1.0)) for n in NOTIONALS}
+                    fills={str(int(n)):fill(book,action,n,cs) for n in NOTIONALS}
                     event["assets"].append({**sig,"entry_book":book,"entry_action":action,"entry_fills":fills})
                 except Exception as e:
                     event["assets"].append({**sig,"entry_error":str(e)})
-            pending.append({"due":minute+timedelta(minutes=5),"event":event})
-        due=[x for x in pending if x["due"]<=datetime.now(timezone.utc)]
+            if event["assets"]:
+                pending.append({"due_utc":(minute+timedelta(minutes=5)).isoformat(),"event":event})
+                last_admitted_ts=t
+            seen.add(t)
+            atomic_json(state_path,{"rows":rows,"pending":pending,"seen_timestamps":sorted(seen),"last_admitted_ts":last_admitted_ts,"errors":errors})
+        due=[x for x in pending if datetime.fromisoformat(x["due_utc"])<=datetime.now(timezone.utc)]
         pending=[x for x in pending if x not in due]
         for p in due:
             ev=p["event"]
@@ -190,26 +228,32 @@ def main():
                     book=depth(x["target"])
                     action="SELL" if x["side"]>0 else "BUY"
                     x["exit_book"]=book;x["exit_action"]=action
-                    x["exit_fills"]={str(int(n)):fill(book,action,n,sizes.get(x["target"],1.0)) for n in NOTIONALS}
+                    cs=sizes.get(x["target"])
+                    if cs is None: raise RuntimeError("INVALID_OR_MISSING_CONTRACT_SIZE")
+                    x["exit_fills"]={str(int(n)):fill(book,action,n,cs) for n in NOTIONALS}
                 except Exception as e:x["exit_error"]=str(e)
             rows.append(ev)
+            atomic_json(state_path,{"rows":rows,"pending":pending,"seen_timestamps":sorted(seen),"last_admitted_ts":last_admitted_ts,"errors":errors})
         minute+=timedelta(minutes=1)
     # flush exits for last 5 minutes
-    for p in sorted(pending,key=lambda z:z["due"]):
-        wait_until(p["due"]+timedelta(seconds=2))
+    for p in sorted(pending,key=lambda z:z["due_utc"]):
+        due_dt=datetime.fromisoformat(p["due_utc"])
+        wait_until(due_dt+timedelta(seconds=2))
         ev=p["event"]
         for x in ev["assets"]:
             if "entry_book" not in x:continue
             try:
                 book=depth(x["target"]);action="SELL" if x["side"]>0 else "BUY"
                 x["exit_book"]=book;x["exit_action"]=action
-                x["exit_fills"]={str(int(n)):fill(book,action,n,sizes.get(x["target"],1.0)) for n in NOTIONALS}
+                cs=sizes.get(x["target"])
+                if cs is None: raise RuntimeError("INVALID_OR_MISSING_CONTRACT_SIZE")
+                x["exit_fills"]={str(int(n)):fill(book,action,n,cs) for n in NOTIONALS}
             except Exception as e:x["exit_error"]=str(e)
         rows.append(ev)
     receipt={"family_id":R["family_id"],"shadow_version":"0.2","date":a.date,"segment":a.segment,
              "start_utc":a.start,"end_utc":a.end,"raw_event_timestamps":len(rows),
              "events":rows,"errors":errors,"notionals_usdt":NOTIONALS,"fee_scenarios_rt_bps":FEES,
-             "cooldown_applied_online":False,"cooldown_policy":"apply deterministic frozen 10m global cooldown in final aggregator across all segments",
+             "cooldown_applied_online":True,"cooldown_policy":"frozen 10m global cooldown applied online within durable segment state",
              "orders":False,"account_reads":False,"private_endpoints_used":False,"exchange_mutation":False,"live_trading":False}
     p=outdir/f"shadow_{a.date}_{a.segment}.json"
     p.write_text(json.dumps(receipt,indent=2,sort_keys=True))
