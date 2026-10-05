@@ -3,23 +3,15 @@ import json,time,urllib.parse,urllib.request
 from datetime import datetime,timezone
 
 E=[
-("ACH",1641794176091),("IMX",1641794176091),("GLMR",1641881720254),("LOKA",1642673590158),
-("API3",1642746484252),("ACA",1643076171074),("ANC",1643086336145),("WOO",1644286833903),
-("ALPINE",1645437604601),("ASTR",1646033043037),("GMT",1646820132231),("KDA",1646975827515),
-("APE",1647500570924),("BSW",1647855364219),("MOB",1651211915653),("NEXO",1651211915653),
-("LDO",1652079437647),("LUNA",1653751029671),("OP",1654045214413),("STG",1660889501192),
-("GMX",1664949629449),("APT",1666055040591),("OSMO",1666929652539),("HOOK",1669896165754),
-("MAGIC",1670818244836),("RPL",1674014406526),("GNS",1676619260939),("SYN",1677047419653),
-("LQTY",1677568518334),("ARB",1679306561345),("ID",1679479216978),("RDNT",1680146454557),
-("EDU",1682676023060),("SUI",1683097345887),("FLOKI",1683285604106),("PEPE",1683285604106),
-("MAV",1687856418603),("PENDLE",1688365335567),("ARKM",1689663609545),("WLD",1690182131620),
-("CYBER",1691982500188),("SEI",1691982500188),("NTRN",1696923917379),("TIA",1698671932206),
-("MEME",1698912078594),("ORDI",1699339453500),("BLUR",1700806187186),("JTO",1701950138787),
-("1000SATS",1702361370579),("BONK",1702612713180),
+("AIXBT",1736499327639),("CGPT",1736499327639),("COOKIE",1736499327639),
+("TRUMP",1737259542151),("1000CHEEMS",1739085031264),("TST",1739085031264),
+("SYRUP",1746530720814),("KMNO",1746530720814),("WLFI",1756691345082),
+("PUMP",1757590673797),("AVNT",1757908021934),("ASTER",1759736929954),
+("GIGGLE",1761361338417),("F",1761361338417),("BANK",1763028026501),("MET",1763028026501),
 ]
-# Stablecoins FDUSD/AEUR excluded mechanically before source scan.
+# 2025 stable/fiat-like announcements were excluded mechanically before source scan. F remains identity-ambiguous and is not admissible by ticker alone.
 def req(url):
- r=urllib.request.Request(url,headers={"User-Agent":"Mozilla/5.0 CryptoLabV03Source/1.0","Accept":"application/json"})
+ r=urllib.request.Request(url,headers={"User-Agent":"Mozilla/5.0 CryptoLabV04Source/1.0","Accept":"application/json"})
  try:
   with urllib.request.urlopen(r,timeout=20) as x:return x.status,json.load(x),None
  except urllib.error.HTTPError as e:return e.code,None,e.read().decode("utf-8","replace")[:250]
@@ -52,12 +44,12 @@ for sym,t0 in E:
  rows.append({"ticker":sym,"t0":iso(t0),"kucoin_pass":ko,"bitget_pass":bo,
               "kucoin_pre":compact(kp),"kucoin_event":compact(ke),
               "bitget_pre":compact(bp),"bitget_event":compact(be)})
-print("PRE2024_SOURCE_BEGIN")
+print("V04_2025_SOURCE_BEGIN")
 print(json.dumps({"n_assets":len(E),
  "kucoin_valid":[r["ticker"] for r in rows if r["kucoin_pass"]],
  "bitget_valid":[r["ticker"] for r in rows if r["bitget_pass"]],
  "union_valid":[r["ticker"] for r in rows if r["kucoin_pass"] or r["bitget_pass"]],
  "rows":rows},indent=2))
-print("PRE2024_SOURCE_END")
+print("V04_2025_SOURCE_END")
 
 # trigger after workflow registration
