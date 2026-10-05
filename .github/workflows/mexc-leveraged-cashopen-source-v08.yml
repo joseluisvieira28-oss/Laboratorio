@@ -1,0 +1,21 @@
+name: MEXC Leveraged CashOpen Source V0.8
+on:
+  push:
+    branches: [mexc-leveraged-cashopen-v0.8-source-gate-2026-10-05]
+permissions: {contents: read}
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: pip install requests
+      - run: |
+          test -f research/mexc_global_assets/MEXC_LEVERAGED_CASHOPEN_SOURCE_FREEZE_V0.8.md
+          python research/mexc_global_assets/mexc_leveraged_cashopen_source_v08.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: leveraged-cashopen-source-v08-${{ github.run_id }}
+          path: artifacts/mexc_global_assets/leveraged_cashopen_v08_source
