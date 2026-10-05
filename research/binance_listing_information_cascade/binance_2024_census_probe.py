@@ -41,3 +41,5 @@ for r in rows:
   if y==2024 and ("will list" in t or "new spot trading pairs" in t or "listing" in t):
     cand.append(r)
 print(json.dumps({"raw_count":len(rows),"candidate_2024_count":len(cand),"candidates":cand},ensure_ascii=False,indent=2))
+
+# trigger after workflow registration
