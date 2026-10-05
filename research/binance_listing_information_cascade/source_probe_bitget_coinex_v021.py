@@ -69,3 +69,5 @@ print(json.dumps({"bitget_valid":[r["ticker"] for r in rows if r["bitget_pass"]]
                   "coinex_valid":[r["ticker"] for r in rows if r["coinex_pass"]],
                   "rows":rows},indent=2))
 print("ALT2_SOURCE_JSON_END")
+
+# trigger after workflow registration
