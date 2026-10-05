@@ -1,9 +1,9 @@
-name: MEXC Overshoot Shadow V0.2.1 Self-Test
+name: MEXC Overshoot Shadow V0.2.3 Self-Test
 
 on:
   push:
     branches:
-      - mexc-globalasset-intraday-overshoot-shadow-v0.2.1-remediation-2026-10-05
+      - mexc-globalasset-intraday-overshoot-shadow-v0.2.3-remediation-2026-10-05
     paths:
       - 'research/mexc_global_assets/mexc_globalasset_intraday_overshoot_shadow_v022.py'
       - 'research/mexc_global_assets/mexc_globalasset_intraday_overshoot_shadow_aggregate_v022.py'
@@ -27,6 +27,19 @@ jobs:
         run: |
           python -m py_compile research/mexc_global_assets/mexc_globalasset_intraday_overshoot_shadow_v022.py
           python -m py_compile research/mexc_global_assets/mexc_globalasset_intraday_overshoot_shadow_aggregate_v022.py
+      - name: Instantiate frozen Binance cache
+        run: |
+          python - <<'PY'
+          import importlib.util
+          p='research/mexc_global_assets/mexc_globalasset_intraday_overshoot_shadow_v022.py'
+          s=importlib.util.spec_from_file_location('shadow',p)
+          m=importlib.util.module_from_spec(s); s.loader.exec_module(m)
+          assert callable(m.ws_connect)
+          cache=m.BinanceKlineCache(m.B['candidates'])
+          assert len(cache.symbols) == 35
+          assert cache.url.startswith('wss://fstream.binance.com/market/stream?streams=')
+          print({'cache_instantiation':'PASS','symbols':len(cache.symbols)})
+          PY
       - name: Synthetic same-contract fill invariant
         run: |
           python - <<'PY'
