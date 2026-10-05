@@ -1,0 +1,52 @@
+name: gold-risk-window-fast-probe
+
+on:
+  push:
+    branches:
+      - gold-risk-window-001a-chat-attack-2026-10-05
+    paths:
+      - '.github/workflows/gold-risk-window-fast-probe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: gold-risk-window-001a-chat-attack-2026-10-05
+      - name: Probe MEXC public endpoints
+        shell: bash
+        run: |
+          set +e
+          mkdir -p research/mexc_gold_risk_window/results
+          OUT=research/mexc_gold_risk_window/results/api_probe.txt
+          : > "$OUT"
+          echo "probe_utc=$(date -u +%FT%TZ)" >> "$OUT"
+          for U in \
+            "https://contract.mexc.com/api/v1/contract/ping" \
+            "https://contract.mexc.com/api/v1/contract/detail" \
+            "https://contract.mexc.com/api/v1/contract/kline/XAU_USDT?interval=Min1&start=1789126200&end=1789133400" \
+            "https://contract.mexc.com/api/v1/contract/kline/index_price/XAU_USDT?interval=Min1&start=1789126200&end=1789133400" \
+            "https://contract.mexc.com/api/v1/contract/kline/fair_price/XAU_USDT?interval=Min1&start=1789126200&end=1789133400" \
+            "https://contract.mexc.com/api/v1/contract/funding_rate/history?symbol=XAU_USDT&page_num=1&page_size=20"
+          do
+            echo "=== $U" >> "$OUT"
+            CODE=$(curl -L -sS --connect-timeout 4 --max-time 8 -A 'CryptoLab-GOLD-RISK-PROBE/1.0' -o /tmp/body.txt -w '%{http_code}' "$U")
+            RC=$?
+            echo "curl_rc=$RC http=$CODE bytes=$(wc -c </tmp/body.txt 2>/dev/null || echo 0)" >> "$OUT"
+            head -c 1200 /tmp/body.txt >> "$OUT" 2>/dev/null
+            echo >> "$OUT"
+          done
+          cat "$OUT"
+      - name: Persist probe
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/mexc_gold_risk_window/results/api_probe.txt
+          git commit -m "research: record MEXC GOLD API probe" || exit 0
+          git push origin HEAD:gold-risk-window-001a-chat-attack-2026-10-05
