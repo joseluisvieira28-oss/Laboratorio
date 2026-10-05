@@ -1,0 +1,21 @@
+name: MEXC GlobalAsset CashOpen Source V0.6
+on:
+  push:
+    branches: [mexc-globalasset-cashopen-v0.6-source-gate-2026-10-05]
+permissions: {contents: read}
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: pip install requests
+      - run: |
+          test -f research/mexc_global_assets/MEXC_GLOBALASSET_CASHOPEN_SOURCE_FREEZE_V0.6.md
+          python research/mexc_global_assets/mexc_globalasset_cashopen_source_v06.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cashopen-source-v06-${{ github.run_id }}
+          path: artifacts/mexc_global_assets/cashopen_v06_source
