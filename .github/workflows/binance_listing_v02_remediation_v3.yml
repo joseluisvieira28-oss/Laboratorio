@@ -1,0 +1,25 @@
+name: Binance Listing V0.2 Remediation V3 Final Gate
+on:
+  push:
+    branches: [binance-listing-information-cascade-v0.1-prereg-2026-10-05]
+    paths:
+      - '.github/workflows/binance_listing_v02_remediation_v3.yml'
+permissions:
+  contents: write
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: binance-listing-information-cascade-v0.1-prereg-2026-10-05
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python research/binance_listing_information_cascade/run_v02_remediated_v3.py
+      - run: |
+          git pull --rebase
+          git config user.name github-actions
+          git config user.email github-actions@users.noreply.github.com
+          git add research/binance_listing_information_cascade/results_v02_remediated_v3
+          git diff --cached --quiet || (git commit -m "Record V0.2 remediation V3 final gate" && git push)
