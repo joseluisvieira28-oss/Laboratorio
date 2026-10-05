@@ -20,7 +20,7 @@ jobs:
       - id: trigger
         shell: bash
         run: |
-          P=$(git diff-tree --no-commit-id --name-only -r HEAD | grep '^research/mexc_global_assets/shadow_trigger_v022/' | tail -1)
+          P=$(find research/mexc_global_assets/shadow_trigger_v022 -maxdepth 1 -type f -name '*.json' | sort | tail -1)
           test -n "$P"
           DATE=$(python -c "import json; print(json.load(open('$P'))['date'])")
           python - <<PY
