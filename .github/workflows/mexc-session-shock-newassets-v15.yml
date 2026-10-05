@@ -1,0 +1,56 @@
+name: MEXC Session Shock NewAssets V1.5
+on:
+  push:
+    branches: [mexc-session-shock-newassets-v1.5-prereg-2026-10-05]
+permissions: {contents: read}
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.m.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: m
+        run: |
+          python - <<'PY'
+          import json,os
+          b=json.load(open('research/mexc_global_assets/MEXC_SESSION_SHOCK_NEWASSETS_SOURCE_BINDING_V1.5.json'))
+          m={'include':[{'target':x['target'],'external':x['external_binance']} for x in b['candidates']]}
+          assert len(m['include'])==34
+          with open(os.environ['GITHUB_OUTPUT'],'a') as f:f.write('matrix='+json.dumps(m,separators=(',',':'))+'\n')
+          PY
+  evaluate:
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      max-parallel: 10
+      matrix: ${{ fromJSON(needs.prepare.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: pip install requests
+      - run: |
+          test -f research/mexc_global_assets/MEXC_SESSION_SHOCK_NEWASSETS_FREEZE_V1.5.md
+          python research/mexc_global_assets/mexc_session_shock_newassets_asset_v15.py --target "${{ matrix.target }}" --external "${{ matrix.external }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: session-shock-v15-${{ matrix.target }}
+          path: artifacts/mexc_global_assets/session_shock_newassets_v15/assets/${{ matrix.target }}.json
+  aggregate:
+    needs: evaluate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: session-shock-v15-*
+          path: artifacts/mexc_global_assets/session_shock_newassets_v15/assets
+          merge-multiple: true
+      - run: python research/mexc_global_assets/mexc_session_shock_newassets_aggregate_v15.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: session-shock-v15-closeout-${{ github.run_id }}
+          path: artifacts/mexc_global_assets/session_shock_newassets_v15
