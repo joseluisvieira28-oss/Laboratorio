@@ -321,18 +321,18 @@ def main():
 
     gates = {}
     gates["source_integrity"] = True
-    gates["min_n_40"] = len(portfolio) >= MIN_PRIMARY_N
-    gates["mean_gross_positive"] = gross.mean() > 0
-    gates["mean_net8_positive"] = (gross - PRIMARY_COST_BPS/10000.0).mean() > 0
-    gates["bootstrap_lower_positive"] = lo > 0
-    gates["all_thirds_positive"] = all(t["mean_bps"] is not None and t["mean_bps"] > 0 for t in thirds)
+    gates["min_n_40"] = bool(len(portfolio) >= MIN_PRIMARY_N)
+    gates["mean_gross_positive"] = bool(gross.mean() > 0)
+    gates["mean_net8_positive"] = bool((gross - PRIMARY_COST_BPS/10000.0).mean() > 0)
+    gates["bootstrap_lower_positive"] = bool(lo > 0)
+    gates["all_thirds_positive"] = bool(all(t["mean_bps"] is not None and t["mean_bps"] > 0 for t in thirds))
     asset_gate = True
     for s in SYMBOLS:
         d = events[events.symbol==s]["ret_4h"].to_numpy(float)
         if len(d) >= MIN_ASSET_N:
             asset_gate = asset_gate and (d.mean() > 0)
     gates["btc_eth_same_sign_if_n10"] = bool(asset_gate)
-    gates["no_2026"] = max_year <= END_YEAR
+    gates["no_2026"] = bool(max_year <= END_YEAR)
     results["gates"] = gates
     results["verdict"] = "SURVIVES_V0.1" if all(gates.values()) else "NO_EDGE_V0.1"
 
