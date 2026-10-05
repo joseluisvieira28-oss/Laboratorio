@@ -1,0 +1,38 @@
+{
+  "lab_id": "L2R-CROSSVENUE-001",
+  "date": "2026-10-05",
+  "classification": "DISCOVERY_2024_ONE_SHOT_TECHNICAL_BLOCKED_NO_RETRY",
+  "authority_v0_2_commit": "9bb8d4619a084c5b7fa9aa14e0b42c1d98cdbf06",
+  "authority_sha256": null,
+  "runner_sha256": "95c1e7fbd6b3efbb25c3f1bd3a237e2af9321df888d02ed5c5eb87ab6a8cd805",
+  "price_blind_plan_receipt_sha256": "4f7f07ee81800e4f77f5b0d673b8386913b425febb9afd9d9d8f5b26122240f5",
+  "one_shot_marker_sha256": "8cd389b28ce7e15ea8335f94ae120b09ff7e1110311bb5b8283e84fb665d4d7f",
+  "failure_receipt_sha256": "291124c47363ba9eb983d8e82f1dab0117c748469a32463967157b54862f38d0",
+  "error": null,
+  "execution_facts": {
+    "authority_consumed": true,
+    "marker_authority_commit": "9bb8d4619a084c5b7fa9aa14e0b42c1d98cdbf06",
+    "runner_announced_first_price_read_after_marker": true,
+    "price_values_may_have_been_opened": true,
+    "valid_discovery_result_persisted": false,
+    "response_aggregation_completion": "UNKNOWN; some in-memory aggregation may have begun before failure; no valid final receipt was persisted",
+    "retry_or_rerun_permitted": false
+  },
+  "protocol_interpretation": "Technical block after one-shot consumption. This is neither DISCOVERY_FAIL_NO_SUPPORT nor NO_EDGE. No further Binance outcome execution, tuning, threshold changes or outcome inspection is authorized by the frozen one-shot protocol.",
+  "firewalls": {
+    "access_2025": false,
+    "access_2026": false,
+    "trading": false,
+    "orders": false,
+    "exchange_mutation": false,
+    "private_endpoints": false,
+    "account_reads": false,
+    "wallets": false,
+    "spending": false,
+    "main_merge": false,
+    "post_outcome_tuning": false
+  },
+  "outer_wrapper_receipt_sha256": "a9e2dc4af3304c17304013326db78e321c068896949ffd85a0e9bb6cef6177f2",
+  "failure_point": "outcome plan-row validation: nonempty group label had missing external Y row index; source price rows may have been parsed after marker consumption",
+  "receipt_note": "Runner emitted a detailed terminal failure receipt with prices_may_have_been_opened=true; CLI outer exception wrapper overwrote the on-disk receipt with a generic price_values_parsed=false object. Both are preserved; conservative incident classification follows the detailed runner output."
+}
