@@ -10,6 +10,7 @@ import ecb_watcher as e
 import runtime
 import supervisor
 import calibration
+import quality
 from transport import PublicHTTP
 
 NOW = 1791198000000
@@ -47,6 +48,20 @@ class Books(unittest.TestCase):
         self.assertFalse(self.b.observation(NOW+1001)['valid'])
         with self.assertRaises(ValueError):self.b.delta(self.delta(102,102,ts=NOW-1),NOW)
 
+    def test_grid_cannot_see_update_received_after_cutoff(self):
+        self.b.delta(self.delta(ts=NOW-100),NOW-90)
+        self.b.delta(self.delta(102,102,ts=NOW,bids=[['1.01','8']]),NOW+2)
+        before=self.b.observation(NOW)
+        self.assertEqual(before['sequence'],101)
+        self.assertEqual(before['bid'],1)
+        self.assertEqual(self.b.observation(NOW+2)['sequence'],102)
+
+    def test_future_only_book_and_duplicate_cannot_refresh_grid(self):
+        obj=self.delta();self.b.delta(obj,NOW+1)
+        self.assertFalse(self.b.observation(NOW)['valid'])
+        self.b.delta(obj,NOW+900)
+        self.assertFalse(self.b.observation(NOW+1002)['valid'])
+
     def test_reconnect_requires_new_bootstrap(self):
         self.b.delta(self.delta(),NOW);self.b.reset()
         with self.assertRaises(ValueError):self.b.delta(self.delta(102,102),NOW)
@@ -62,6 +77,38 @@ class Books(unittest.TestCase):
         row={'started_ms':NOW,'received_ms':NOW+400,'rtt_ms':400}
         self.assertTrue(clock_quality(row,{'schema_valid':True,'exchange_ms':NOW+200}))
         self.assertFalse(clock_quality(row,{'schema_valid':True,'exchange_ms':NOW+300}))
+
+
+class GridQuality(unittest.TestCase):
+    def grid(self):
+        book={'exchange_ms':NOW-100,'received_ms':NOW-20,'bid':1.,'ask':1.1,'mid':1.05,'sequence':1}
+        clock={'valid':True,'schema_valid':True,'exchange_ms':NOW-1000,
+               'started_ms':NOW-1100,'received_ms':NOW-900,'rtt_ms':200}
+        return {'grid_ms':NOW,'captured_ms':NOW+5,'clock_step':False,
+                'observations':{v:dict(book) for v in ['binance','mexc']},
+                'clocks':{v:dict(clock) for v in ['binance','mexc']},
+                'metadata':{v:{'valid':True,'received_ms':NOW-1000} for v in ['binance','mexc']},
+                'outcomes_opened':0,'signals_emitted':0,'quality_version':2}
+
+    def test_independent_rejection_of_future_quote_and_clock(self):
+        g=self.grid();self.assertEqual(quality.reasons(g),[])
+        g['observations']['mexc']['received_ms']=NOW+1
+        self.assertIn('MEXC_RECEIPT_AGE',quality.reasons(g))
+        g=self.grid();g['clocks']['mexc']['exchange_ms']+=300
+        self.assertIn('MEXC_CLOCKS',quality.reasons(g))
+
+    def test_calibration_rejects_falsely_valid_and_fabricated_measurement(self):
+        for kind in ['future','measurement']:
+            with tempfile.TemporaryDirectory() as tmp:
+                s=c.Store(Path(tmp)/'db');g=self.grid()
+                g.update(source_valid=True,basis_bps=0.,mexc_spread_bps=0.)
+                if kind=='future':g['observations']['mexc']['received_ms']=NOW+1
+                raw=c.canonical(g).encode()
+                s.append(kind,{'source':'paired_grid','raw_sha256':c.digest(raw),'freeze_sha256':runtime.FREEZE_HASH},raw)
+                result=calibration.evaluate(s)
+                self.assertEqual(result['valid_paired_grids'],0)
+                self.assertIn('GRID_QUALITY_FLAG_CONFLICT' if kind=='future' else 'GRID_MEASUREMENT_CONFLICT',result['blockers'])
+                s.db.close()
 
 
 class Watcher(unittest.TestCase):

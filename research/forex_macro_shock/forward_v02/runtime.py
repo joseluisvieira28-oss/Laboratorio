@@ -7,6 +7,7 @@ import argparse
 import asyncio
 import json
 import math
+import quality
 import signal
 import time
 import urllib.request
@@ -157,9 +158,12 @@ class Runtime:
                     validation = c.validate(row, raw)
                     self.record(source, {}, validation, raw, row)
                     if field == 'clock':
-                        self.clock[venue] = {'valid': clock_quality(row, validation), 'received_ms': row['received_ms']}
+                        self.clock[venue] = {'valid': clock_quality(row, validation), 'received_ms': row['received_ms'],
+                                             'started_ms': row['started_ms'], 'rtt_ms': row['rtt_ms'],
+                                             'schema_valid': validation.get('schema_valid', False),
+                                             'exchange_ms': validation.get('exchange_ms'), 'raw_sha256': row['raw_sha256']}
                     else:
-                        self.metadata[venue] = {'valid': validation['schema_valid'], 'received_ms': row['received_ms']}
+                        self.metadata[venue] = {'valid': validation['schema_valid'], 'received_ms': row['received_ms'], 'raw_sha256': row['raw_sha256']}
             try: await asyncio.wait_for(self.stop.wait(), 60)
             except asyncio.TimeoutError: pass
 
@@ -196,17 +200,17 @@ class Runtime:
             clock_step = (self.last_wall is not None and abs((now-self.last_wall)-(mono-self.last_mono)) > 250)
             self.last_wall, self.last_mono = now, mono
             self.store.acquire(self.owner, now)
-            observations = {venue: self.books[venue].observation(now) for venue in WS}
-            valid = now-due <= 250 and not clock_step and all(x['valid'] for x in observations.values())
-            valid = valid and all(self.clock.get(v, {}).get('valid', False) and now-self.clock[v]['received_ms'] <= 120000 for v in WS)
-            valid = valid and all(self.metadata.get(v, {}).get('valid', False) and now-self.metadata[v]['received_ms'] <= 3600000 for v in WS)
-            if all(x['valid'] for x in observations.values()):
-                valid = valid and abs(observations['mexc']['exchange_ms']-observations['binance']['exchange_ms']) <= 500
+            observations = {venue: self.books[venue].observation(due) for venue in WS}
             current = datetime.fromtimestamp(due/1000, timezone.utc)
             eligible = current.weekday()<5 and 10 <= current.hour < 16
             payload = {'grid_ms': due, 'captured_ms': now, 'grid_lateness_ms': now-due,
-                       'clock_step': clock_step, 'source_valid': bool(valid), 'burnin_eligible': eligible,
-                       'observations': observations, 'outcomes_opened': 0, 'signals_emitted': 0}
+                       'clock_step': clock_step, 'burnin_eligible': eligible,
+                       'observations': observations, 'clocks': dict(self.clock),
+                       'metadata': dict(self.metadata), 'quality_version': 2,
+                       'outcomes_opened': 0, 'signals_emitted': 0}
+            payload['invalid_reasons'] = quality.reasons(payload)
+            valid = not payload['invalid_reasons']
+            payload['source_valid'] = valid
             if valid and eligible:
                 mexc = observations['mexc']; binance=observations['binance']
                 payload['basis_bps'] = 10000*math.log(mexc['mid']/binance['mid'])
@@ -246,11 +250,14 @@ async def main_async(args):
         await runtime.run(args.seconds)
         integrity = runtime.store.verify()
         grid_count=0;valid_count=0;ages=[]
+        from collections import Counter
+        invalid_reasons=Counter()
         for payload, in runtime.store.db.execute("SELECT payload FROM receipts WHERE json_extract(payload,'$.source') IN ('paired_grid','binance_ws') ORDER BY seq"):
             row=json.loads(payload)
             if row['source']=='paired_grid':
                 grid=json.loads(runtime.store.db.execute('SELECT body FROM raw WHERE hash=?',(row['raw_sha256'],)).fetchone()[0])
                 grid_count+=1;valid_count+=bool(grid['source_valid'] and grid['burnin_eligible'])
+                invalid_reasons.update(grid.get('invalid_reasons', ['LEGACY_UNAUDITED_GRID']))
             elif row.get('validation',{}).get('applied'):
                 ages.append(row['validation']['source_age_ms'])
         import statistics
@@ -258,6 +265,7 @@ async def main_async(args):
                   'status': runtime.status, 'verdict': 'OPERATIONALLY_BLOCKED', 'activation': False,
                   'outcomes_opened': 0, 'economic_events': 0, 'paired_grids': grid_count,
                   'valid_burnin_grids': valid_count, 'runtime_active':False,
+                  'invalid_reason_counts_overlapping':dict(invalid_reasons),
                   'binance_applied_deltas': len(ages),
                   'binance_age_ms': {'n': len(ages), 'median': statistics.median(ages) if ages else None, 'max': max(ages) if ages else None},
                   'freeze_sha256': FREEZE_HASH,

@@ -8,6 +8,8 @@ from pathlib import Path
 
 import collector as c
 import model
+import quality
+import math
 
 
 def evaluate(store):
@@ -29,6 +31,23 @@ def evaluate(store):
         dt=datetime.fromtimestamp(tick/1000,timezone.utc)
         # Eligibility is computed from the committed clock rules, not trusted labels.
         if dt.weekday()>=5 or not 10<=dt.hour<16:continue
+        # Old receipts lack the facts needed to reproduce timing decisions.
+        # Preserve them, but never qualify them from a boolean source_valid label.
+        try:
+            if g.get('quality_version') != 2:
+                raise ValueError('LEGACY_GRID_QUALITY_UNPROVEN')
+            checked = not quality.reasons(g)
+            if checked != g.get('source_valid'):
+                raise ValueError('GRID_QUALITY_FLAG_CONFLICT')
+            if checked:
+                m=g['observations']['mexc']; b=g['observations']['binance']
+                expected_basis=10000*math.log(m['mid']/b['mid'])
+                expected_spread=10000*(m['ask']-m['bid'])/m['mid']
+                for key, expected in [('basis_bps',expected_basis),('mexc_spread_bps',expected_spread)]:
+                    if not isinstance(g.get(key),(int,float)) or not math.isfinite(g[key]) or not math.isclose(g[key],expected,rel_tol=1e-12,abs_tol=1e-10):
+                        raise ValueError('GRID_MEASUREMENT_CONFLICT')
+        except (KeyError, TypeError, ValueError) as exc:
+            errors.append(str(exc));g={**g,'source_valid':False}
         grids.append(g)
     days={}
     for g in grids:

@@ -1,5 +1,6 @@
 """Timestamped order book reconstruction; pure adapters, no execution."""
 from decimal import Decimal
+from collections import deque
 import collector as c
 
 
@@ -14,6 +15,7 @@ class DepthBook:
         self.bids = {}; self.asks = {}; self.last = None
         self.exchange_ms = None; self.received_ms = None
         self.ready = False; self.last_delta_hash = None
+        self.history = deque()
 
     def snapshot(self, obj):
         data = obj['data'] if self.venue == 'mexc' else obj
@@ -77,6 +79,11 @@ class DepthBook:
             self.reset(); raise
         self.last = last; self.exchange_ms = exchange_ms; self.received_ms = receipt_ms
         self.last_delta_hash = payload_hash; self.ready = True
+        self.history.append({'exchange_ms': exchange_ms, 'received_ms': receipt_ms,
+                             'sequence': last, **c.book(result)})
+        # Keep bounded recent state, including the predecessor of the retention edge.
+        while len(self.history) > 1 and self.history[1]['received_ms'] < receipt_ms-3000:
+            self.history.popleft()
         return True
 
     def levels(self):
@@ -84,15 +91,15 @@ class DepthBook:
                 'asks': [[str(p), str(q)] for p, q in sorted(self.asks.items())]}
 
     def observation(self, now_ms):
-        if not self.ready:
-            return {'valid': False, 'reason': 'NO_CONTINUOUS_BOOK'}
-        age = now_ms - self.exchange_ms
-        receipt_age = now_ms - self.received_ms
+        # The decision timestamp is a cutoff, never the delayed loop wake-up time.
+        selected = next((x for x in reversed(self.history) if x['received_ms'] <= now_ms), None)
+        if not self.ready or selected is None:
+            return {'valid': False, 'reason': 'NO_BOOK_RECEIVED_BY_GRID'}
+        age = now_ms - selected['exchange_ms']
+        receipt_age = now_ms - selected['received_ms']
         valid = -250 <= age <= 1000 and 0 <= receipt_age <= 1000
-        return {'valid': valid, 'exchange_ms': self.exchange_ms,
-                'received_ms': self.received_ms, 'source_age_ms': age,
-                'receipt_age_ms': receipt_age, 'sequence': self.last,
-                **c.book(self.levels())}
+        return {**selected, 'valid': valid, 'source_age_ms': age,
+                'receipt_age_ms': receipt_age}
 
 
 def clock_quality(row, validation):
