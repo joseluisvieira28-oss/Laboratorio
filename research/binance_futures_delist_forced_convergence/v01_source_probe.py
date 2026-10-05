@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SOURCE-ONLY probe. Does not open market values.
-import json, urllib.parse, urllib.request, re, time
+import json, urllib.parse, urllib.request, re, time, html
 from datetime import datetime, timezone
 
 UA={"User-Agent":"Mozilla/5.0 CryptoLabForcedDelistSource/1.1","Accept":"application/json,text/plain,*/*"}
@@ -42,6 +42,16 @@ def flatten_strings(obj):
     elif isinstance(obj,list):
         for v in obj: vals.extend(flatten_strings(v))
     return "\n".join(vals)
+
+def normalize_article_body(j):
+    data=(j or {}).get("data") or {}
+    raw=data.get("body") or data.get("content") or data.get("articleBody") or ""
+    if not isinstance(raw,str):
+        raw=flatten_strings(raw)
+    txt=html.unescape(raw)
+    txt=re.sub(r"<[^>]+>"," ",txt)
+    txt=re.sub(r"\\s+"," ",txt).strip()
+    return txt
 
 # Known article proves detail route and may reveal category metadata.
 detail_status,detail=get_json(DETAIL+"?"+urllib.parse.urlencode({"articleCode":KNOWN_CODE}))
@@ -127,13 +137,13 @@ mechanical=[]
 for i,(code,r) in enumerate(cand.items()):
     try:
         st,j=get_json(DETAIL+"?"+urllib.parse.urlencode({"articleCode":code}))
-        body=flatten_strings(j)
+        body=normalize_article_body(j)
     except Exception:
         continue
     low=body.lower()
-    phrase=("close all positions and conduct an automatic settlement" in low or
-            "close all positions and perform automatic settlement" in low or
-            "conduct automatic settlements" in low)
+    closes=("close all positions" in low)
+    settles=("automatic settlement" in low or "automatically settle" in low)
+    phrase=(closes and settles)
     if not phrase: continue
     syms=sorted(set(re.findall(r"\b([A-Z0-9]{2,24}USDT)\b",body)))
     # Keep only USD-M style contracts evidenced in article body.
@@ -168,4 +178,4 @@ print("FORCED_DELIST_SOURCE_PROBE_END")
 if detail_status!=200 or not res["archive_core_pass"] or not res["sample_ge_12"]:
     raise SystemExit(2)
 
-# trigger hardened V0.1.1 source probe after workflow registration
+# V0.1.2 HTML-normalized detail parser; source-only
