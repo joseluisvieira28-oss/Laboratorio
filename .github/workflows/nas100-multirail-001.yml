@@ -1,0 +1,49 @@
+name: nas100-multirail-001
+
+on:
+  push:
+    branches:
+      - nas100-multirail-001-chat-attack-2026-10-05
+    paths:
+      - 'research/mexc_nas100_multirail/NAS100_MULTIRAIL_001_PREOUTCOME_FREEZE_2026-10-05.md'
+      - 'research/mexc_nas100_multirail/run_nas100_multirail_001.py'
+      - '.github/workflows/nas100-multirail-001.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  historical-1m:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: nas100-multirail-001-chat-attack-2026-10-05
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: python -m pip install --disable-pip-version-check requests pandas numpy
+      - name: Run NAS100 multirail study
+        run: python research/mexc_nas100_multirail/run_nas100_multirail_001.py
+      - name: Commit compact research outputs
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/mexc_nas100_multirail/results/summary.json                   research/mexc_nas100_multirail/results/manifest.json                   research/mexc_nas100_multirail/results/architecture.json                   research/mexc_nas100_multirail/results/hypothesis_metrics.csv || true
+          if git diff --cached --quiet; then
+            echo "No compact results to commit."
+          else
+            git commit -m "research: record NAS100 multirail 001 results"
+            git push origin HEAD:nas100-multirail-001-chat-attack-2026-10-05
+          fi
+      - name: Upload full corpus artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nas100-multirail-001-results
+          path: research/mexc_nas100_multirail/results
+          if-no-files-found: warn
