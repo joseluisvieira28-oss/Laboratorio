@@ -1,0 +1,43 @@
+name: MEXC V0.13 RR Term Source Calibration Chunk C
+on:
+  push:
+    branches:
+      - mexc-event-futures-options-rrterm-v013-sourcecal-2026-10-03
+    paths:
+      - '.github/workflows/mexc-event-futures-rrterm-sourcecal-c.yml'
+permissions:
+  contents: read
+jobs:
+  calibration-c:
+    runs-on: ubuntu-latest
+    timeout-minutes: 190
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate frozen source/calibration code
+        run: |
+          python -m py_compile             research/mexc_event_futures/priority_source_gates_v013.py             research/mexc_event_futures/options_rr_term_source_gate_v01.py             research/mexc_event_futures/options_rr_term_source_calibration_v01.py
+      - name: Strict non-overlap preflight
+        run: |
+          python - <<'PY'
+          import time
+          last_b=1791118800000
+          first=((time.time_ns()//1_000_000)//60000+1)*60000
+          assert first>last_b
+          print("NON_OVERLAP_PREFLIGHT=PASS")
+          PY
+      - name: Collect 180 source-only minutes
+        run: |
+          python research/mexc_event_futures/options_rr_term_source_calibration_v01.py             --minutes 180             --boundary-ms 1791045328000             --output evidence/options-rrterm-sourcecal-c
+      - name: Preserve evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: options-rrterm-sourcecal-c
+          path: evidence/options-rrterm-sourcecal-c/
+          if-no-files-found: error
+          retention-days: 90
