@@ -78,3 +78,5 @@ for ticker,t0,venue in EVENTS:
 print("V20_TRANSPORT_DIAG_BEGIN")
 print(json.dumps({"rows":rows},indent=2,sort_keys=True))
 print("V20_TRANSPORT_DIAG_END")
+
+# trigger after workflow registration
