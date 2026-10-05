@@ -36,7 +36,11 @@ def fetch_all(venue,sym,a,b):
  while cur<=b:
   end=min(cur+step,b)
   for x in fn(sym,cur,end): out[x[0]]=x
-  cur=end+60000
+  if end>=b: break
+  # Technical remediation V0.3.1: overlap the boundary timestamp.
+  # Bitget history-candles behaves end-exclusive at chunk boundaries;
+  # advancing by +1m skipped one bar per chunk. Deduplication by ts makes overlap safe.
+  cur=end
   time.sleep(.05)
  return sorted(out.values())
 def ceil_min(ms): return ((ms+59999)//60000)*60000
