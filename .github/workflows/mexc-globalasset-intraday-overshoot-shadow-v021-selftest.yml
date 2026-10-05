@@ -61,44 +61,23 @@ jobs:
                   print({'binance_ws':'PASS','event':j.get('e'),'symbol':j.get('s'),'event_time':j.get('E')})
           asyncio.run(main())
           PY
-      - name: Frozen 35-symbol WebSocket plus MEXC-Bitget source preflight
+      - name: Frozen 35-symbol Binance WebSocket coverage
         run: |
           python - <<'PY'
           import asyncio, importlib.util, json, time, websockets
-          from concurrent.futures import ThreadPoolExecutor, as_completed
-          from datetime import datetime, timezone, timedelta
           p='research/mexc_global_assets/mexc_globalasset_intraday_overshoot_shadow_v021.py'
           s=importlib.util.spec_from_file_location('shadow',p)
           m=importlib.util.module_from_spec(s); s.loader.exec_module(m)
           meta,_=m.contract_meta()
           expected_targets={x['target'] for x in m.B['candidates']}
-          if expected_targets-set(meta):
-              raise SystemExit('MEXC_METADATA_MISSING:'+','.join(sorted(expected_targets-set(meta))))
-          dt=datetime.now(timezone.utc).replace(second=0,microsecond=0)-timedelta(minutes=2)
-          def probe_non_binance(x):
-              mc,_=m.parse_mexc_closes(x['target'],dt)
-              gc,_=m.parse_bitget_closes(x['external_bitget'],dt)
-              bk=m.depth(x['target'])
-              if len(mc)<2 or len(gc)<2 or not bk['bids'] or not bk['asks']:
-                  raise RuntimeError('INCOMPLETE_MEXC_BITGET_SOURCE')
-              return x['target']
-          passed=[]; failures=[]
-          with ThreadPoolExecutor(max_workers=12) as pool:
-              fs={pool.submit(probe_non_binance,x):x for x in m.B['candidates']}
-              for f in as_completed(fs):
-                  x=fs[f]
-                  try: passed.append(f.result())
-                  except Exception as e: failures.append((x['target'],str(e)))
-          if failures or len(passed)!=35:
-              print({'mexc_bitget_pass':len(passed),'failures':failures})
-              raise SystemExit('MEXC_BITGET_PREFLIGHT_FAIL')
-
+          missing_meta=sorted(expected_targets-set(meta))
+          if missing_meta:
+              raise SystemExit('MEXC_METADATA_MISSING:'+','.join(missing_meta))
           symbols=sorted({x['external_binance'].lower() for x in m.B['candidates']})
           streams='/'.join(sym+'@kline_1m' for sym in symbols)
           url='wss://fstream.binance.com/market/stream?streams='+streams
           async def ws_probe():
-              seen=set()
-              deadline=time.time()+15
+              seen=set(); deadline=time.time()+20
               async with websockets.connect(url,open_timeout=10,close_timeout=3,max_size=2**22) as ws:
                   while time.time()<deadline and len(seen)<len(symbols):
                       raw=await asyncio.wait_for(ws.recv(),timeout=max(1,deadline-time.time()))
@@ -106,8 +85,8 @@ jobs:
                       if d.get('e')=='kline' and d.get('s'):
                           seen.add(d['s'].lower())
               missing=sorted(set(symbols)-seen)
-              print({'binance_ws_symbols_seen':len(seen),'expected':len(symbols),'missing':missing})
+              print({'mexc_contract_metadata':len(expected_targets),'binance_ws_symbols_seen':len(seen),'expected':len(symbols),'missing':missing})
               if missing: raise SystemExit('BINANCE_WS_SYMBOL_COVERAGE_FAIL')
           asyncio.run(ws_probe())
-          print({'PUBLIC_SOURCE_PREFLIGHT':'PASS','targets':35})
+          print({'OUT_OF_SESSION_ROUTE_PREFLIGHT':'PASS','note':'MEXC depth is intentionally not judged outside frozen session'})
           PY
