@@ -4,10 +4,14 @@ on:
   push:
     branches:
       - gold-risk-window-001a-chat-attack-2026-10-05
+    paths:
+      - 'research/mexc_gold_risk_window/run_gold_risk_window_001a.py'
+      - 'research/mexc_gold_risk_window/README.md'
+      - '.github/workflows/gold-risk-window-001a.yml'
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   historical-1m:
@@ -15,6 +19,8 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: gold-risk-window-001a-chat-attack-2026-10-05
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -22,6 +28,18 @@ jobs:
         run: python -m pip install --disable-pip-version-check requests pandas numpy
       - name: Run GOLD-RISK-WINDOW-001A
         run: python research/mexc_gold_risk_window/run_gold_risk_window_001a.py
+      - name: Commit research outputs to isolated branch
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/mexc_gold_risk_window/results || true
+          if git diff --cached --quiet; then
+            echo "No result files to commit."
+          else
+            git commit -m "research: record GOLD risk-window 001A outputs"
+            git push origin HEAD:gold-risk-window-001a-chat-attack-2026-10-05
+          fi
       - name: Upload research artifact
         if: always()
         uses: actions/upload-artifact@v4
