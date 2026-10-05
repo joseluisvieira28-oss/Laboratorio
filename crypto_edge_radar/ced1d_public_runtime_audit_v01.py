@@ -60,6 +60,9 @@ def main():
       "live_trading_authorized":False
     }
     (OUT/"CED1D_0031_PUBLIC_RUNTIME_AUDIT_V01.json").write_text(json.dumps(receipt,indent=2,sort_keys=True),encoding="utf-8")
+    print("CED1D_SUMMARY")
     print(json.dumps(receipt["summary"],indent=2,sort_keys=True))
+    print("DIAMOND_BOARD")
+    print(json.dumps(diamond,indent=2,sort_keys=True))
 if __name__=="__main__":
     main()
