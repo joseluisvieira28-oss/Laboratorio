@@ -1,0 +1,120 @@
+name: MEXC Overshoot Prospective Shadow V0.2.2
+
+on:
+  push:
+    branches:
+      - mexc-globalasset-intraday-overshoot-shadow-v0.2.1-remediation-2026-10-05
+    paths:
+      - 'research/mexc_global_assets/shadow_trigger_v022/**'
+
+permissions:
+  contents: write
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      date: ${{ steps.trigger.outputs.date }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: trigger
+        shell: bash
+        run: |
+          P=$(git diff-tree --no-commit-id --name-only -r HEAD | grep '^research/mexc_global_assets/shadow_trigger_v022/' | tail -1)
+          test -n "$P"
+          DATE=$(python -c "import json; print(json.load(open('$P'))['date'])")
+          python - <<PY
+          from datetime import date
+          d=date.fromisoformat("$DATE")
+          assert d.weekday() < 5, "weekday only"
+          assert d.isoformat() >= "2026-10-05"
+          PY
+          echo "date=$DATE" >> "$GITHUB_OUTPUT"
+
+  first:
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: pip install requests websockets
+      - name: Capture 13:35-16:44 UTC
+        run: |
+          python research/mexc_global_assets/mexc_globalasset_intraday_overshoot_shadow_v022.py             --date "${{ needs.plan.outputs.date }}" --start "13:35" --end "16:44" --segment "A"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: overshoot-shadow-v022-${{ needs.plan.outputs.date }}-A-${{ github.run_id }}
+          path: artifacts/mexc_global_assets/intraday_overshoot_shadow_v022
+          if-no-files-found: warn
+
+  relay:
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 280
+    steps:
+      - name: Hold until second-segment warmup
+        shell: python
+        run: |
+          from datetime import datetime, timezone
+          import time
+          target=datetime.fromisoformat("${{ needs.plan.outputs.date }}T16:39:00+00:00")
+          while True:
+              s=(target-datetime.now(timezone.utc)).total_seconds()
+              if s<=0: break
+              time.sleep(min(s,30))
+
+  second:
+    needs: [plan, relay]
+    runs-on: ubuntu-latest
+    timeout-minutes: 250
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: pip install requests websockets
+      - name: Capture 16:45-19:55 UTC
+        run: |
+          python research/mexc_global_assets/mexc_globalasset_intraday_overshoot_shadow_v022.py             --date "${{ needs.plan.outputs.date }}" --start "16:45" --end "19:55" --segment "B"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: overshoot-shadow-v022-${{ needs.plan.outputs.date }}-B-${{ github.run_id }}
+          path: artifacts/mexc_global_assets/intraday_overshoot_shadow_v022
+          if-no-files-found: warn
+
+  aggregate-and-persist:
+    needs: [plan, first, second]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: overshoot-shadow-v022-${{ needs.plan.outputs.date }}-*
+          path: downloaded_shadow
+          merge-multiple: true
+      - name: Persist raw receipts
+        shell: bash
+        run: |
+          DATE="${{ needs.plan.outputs.date }}"
+          DEST="research/mexc_global_assets/shadow_forward_receipts_v022/$DATE"
+          mkdir -p "$DEST"
+          find downloaded_shadow -type f -name 'shadow_*.json' -exec cp {} "$DEST/" \;
+          test "$(find "$DEST" -type f -name 'shadow_*.json' | wc -l)" -ge 2
+      - name: Aggregate all durable forward receipts
+        run: |
+          python research/mexc_global_assets/mexc_globalasset_intraday_overshoot_shadow_aggregate_v022.py             --root research/mexc_global_assets/shadow_forward_receipts_v022             --out research/mexc_global_assets/shadow_forward_receipts_v022/CUMULATIVE_AGGREGATE_V022.json
+      - name: Commit evidence
+        shell: bash
+        run: |
+          git config user.name "crypto-lab-shadow-bot"
+          git config user.email "crypto-lab-shadow-bot@users.noreply.github.com"
+          git add research/mexc_global_assets/shadow_forward_receipts_v022
+          git diff --cached --quiet && exit 0
+          git commit -m "record overshoot shadow ${{ needs.plan.outputs.date }}"
+          git push origin HEAD:mexc-globalasset-intraday-overshoot-shadow-v0.2.1-remediation-2026-10-05
