@@ -310,84 +310,133 @@ fx.to_csv(RAW/"USD1USDT_1m.csv.gz",index=False,compression="gzip")
 
 u=frames["NAS100_USDT"].rename(columns={c:"usdt_"+c for c in frames["NAS100_USDT"].columns if c!="ts"})
 d=frames["NAS100_USD1"].rename(columns={c:"usd1_"+c for c in frames["NAS100_USD1"].columns if c!="ts"})
-m=u.merge(d,on="ts",how="inner").merge(fx,on="ts",how="inner").sort_values("ts").reset_index(drop=True)
-m["utc"]=pd.to_datetime(m["ts"],unit="s",utc=True)
-m["split"]=m["ts"].map(split_label)
+m_raw=u.merge(d,on="ts",how="inner").sort_values("ts").reset_index(drop=True)
+m_raw["utc"]=pd.to_datetime(m_raw["ts"],unit="s",utc=True)
+m_raw["split"]=m_raw["ts"].map(split_label)
 
-# Coverage checks
-expected=int((END-START).total_seconds()/60)+1
+# Technical coverage QC: compare rail intersection to actual futures bars, not wall-clock calendar.
+usdt_n=int(frames["NAS100_USDT"]["ts"].nunique())
+usd1_n=int(frames["NAS100_USD1"]["ts"].nunique())
+common_n=int(m_raw["ts"].nunique())
+futures_common_ratio=common_n/min(usdt_n,usd1_n) if min(usdt_n,usd1_n)>0 else 0.0
+
+# Strict known-at-T FX normalization: latest USD1USDT print no older than 5 minutes.
+fx_asof=fx[["ts","fx_open","fx_close"]].copy().rename(columns={"ts":"fx_ts"}).sort_values("fx_ts")
+m_fx=pd.merge_asof(
+    m_raw.sort_values("ts"), fx_asof,
+    left_on="ts", right_on="fx_ts",
+    direction="backward", tolerance=300
+)
+m_fx["fx_age_sec"]=m_fx["ts"]-m_fx["fx_ts"]
+m_fx_valid=m_fx[m_fx["fx_close"].notna()].copy()
+fx_valid_n=int(len(m_fx_valid))
+fx_valid_ratio=fx_valid_n/common_n if common_n else 0.0
+
 coverage={
-    "expected_minutes":expected,
-    "usdt_minutes":int(frames["NAS100_USDT"]["ts"].nunique()),
-    "usd1_minutes":int(frames["NAS100_USD1"]["ts"].nunique()),
-    "fx_minutes":int(fx["ts"].nunique()),
-    "aligned_minutes":int(m["ts"].nunique()),
+    "calendar_expected_minutes":int((END-START).total_seconds()/60)+1,
+    "usdt_futures_minutes":usdt_n,
+    "usd1_futures_minutes":usd1_n,
+    "common_futures_minutes":common_n,
+    "futures_common_ratio":futures_common_ratio,
+    "usd1usdt_print_minutes":int(fx["ts"].nunique()),
+    "fx_asof_valid_minutes_5m":fx_valid_n,
+    "fx_valid_ratio_of_common_futures":fx_valid_ratio,
 }
-coverage["aligned_ratio"]=coverage["aligned_minutes"]/expected if expected else 0
 manifest["coverage"]=coverage
 
-if coverage["aligned_ratio"]<0.85:
-    summary={"study":"MEXC-NAS100-MULTIRAIL-001","verdict":"BLOCKED","reason":"aligned 1m coverage below 85%","coverage":coverage,"architecture":arch}
+if futures_common_ratio<0.95:
+    summary={"study":"MEXC-NAS100-MULTIRAIL-001","verdict":"BLOCKED","reason":"futures timestamp intersection below 95%","coverage":coverage,"architecture":arch}
     (OUT/"summary.json").write_text(json.dumps(summary,indent=2),encoding="utf-8")
     (OUT/"manifest.json").write_text(json.dumps(manifest,indent=2),encoding="utf-8")
     print(json.dumps(summary,indent=2)); raise SystemExit(0)
 
-# Prices/basis
-m["usd1_last_close_usdt"]=m["usd1_last_close"]*m["fx_close"]
-m["usd1_last_open_usdt"]=m["usd1_last_open"]*m["fx_open"]
-m["basis_raw_bps"]=(m["usdt_last_close"]/m["usd1_last_close"]-1.0)*10000.0
-m["basis_fx_bps"]=(m["usdt_last_close"]/m["usd1_last_close_usdt"]-1.0)*10000.0
-m["index_basis_raw_bps"]=(m["usdt_index_close"]/m["usd1_index_close"]-1.0)*10000.0
-m["fair_basis_raw_bps"]=(m["usdt_fair_close"]/m["usd1_fair_close"]-1.0)*10000.0
-m["r_usdt_bps"]=m["usdt_last_close"].pct_change()*10000.0
-m["r_usd1norm_bps"]=m["usd1_last_close_usdt"].pct_change()*10000.0
-m.to_csv(RAW/"aligned_1m.csv.gz",index=False,compression="gzip")
+# H1 raw basis does not require USD1USDT.
+m_raw["basis_raw_bps"]=(m_raw["usdt_last_close"]/m_raw["usd1_last_close"]-1.0)*10000.0
+m_raw["index_basis_raw_bps"]=(m_raw["usdt_index_close"]/m_raw["usd1_index_close"]-1.0)*10000.0
+m_raw["fair_basis_raw_bps"]=(m_raw["usdt_fair_close"]/m_raw["usd1_fair_close"]-1.0)*10000.0
+m_raw.to_csv(RAW/"aligned_futures_1m.csv.gz",index=False,compression="gzip")
 
-# Hypotheses
 events={}
-events["H1_raw_pair_15m"]=simulate_pair(m,"basis_raw_bps",15,PAIR_TAKER_RT)
-events["H1_raw_pair_60m"]=simulate_pair(m,"basis_raw_bps",60,PAIR_TAKER_RT)
-events["H2_fx_pair_15m"]=simulate_pair(m,"basis_fx_bps",15,PAIR_TAKER_RT)
-events["H2_fx_pair_60m"]=simulate_pair(m,"basis_fx_bps",60,PAIR_TAKER_RT)
-events["H3_USDT_leads_1m"]=simulate_lead(m,"USDT",1,ONELEG_TAKER_RT)
-events["H3_USDT_leads_5m"]=simulate_lead(m,"USDT",5,ONELEG_TAKER_RT)
-events["H4_USD1_leads_1m"]=simulate_lead(m,"USD1",1,ONELEG_TAKER_RT)
-events["H4_USD1_leads_5m"]=simulate_lead(m,"USD1",5,ONELEG_TAKER_RT)
-
-for n,e in events.items():
-    e.to_csv(RAW/f"{n}.csv.gz",index=False,compression="gzip")
+events["H1_raw_pair_15m"]=simulate_pair(m_raw,"basis_raw_bps",15,PAIR_TAKER_RT)
+events["H1_raw_pair_60m"]=simulate_pair(m_raw,"basis_raw_bps",60,PAIR_TAKER_RT)
 
 metrics=[]
 metrics += metric_rows("H1_raw_pair",15,events["H1_raw_pair_15m"])
 metrics += metric_rows("H1_raw_pair",60,events["H1_raw_pair_60m"])
-metrics += metric_rows("H2_fx_pair",15,events["H2_fx_pair_15m"])
-metrics += metric_rows("H2_fx_pair",60,events["H2_fx_pair_60m"])
-metrics += metric_rows("H3_USDT_leads",1,events["H3_USDT_leads_1m"])
-metrics += metric_rows("H3_USDT_leads",5,events["H3_USDT_leads_5m"])
-metrics += metric_rows("H4_USD1_leads",1,events["H4_USD1_leads_1m"])
-metrics += metric_rows("H4_USD1_leads",5,events["H4_USD1_leads_5m"])
+
+fx_hypotheses_enabled = fx_valid_ratio>=0.80
+if fx_hypotheses_enabled:
+    m=m_fx_valid.copy()
+    m["usd1_last_close_usdt"]=m["usd1_last_close"]*m["fx_close"]
+    m["usd1_last_open_usdt"]=m["usd1_last_open"]*m["fx_open"]
+    m["basis_fx_bps"]=(m["usdt_last_close"]/m["usd1_last_close_usdt"]-1.0)*10000.0
+
+    # Exact previous-minute returns only; no return is computed across session/data gaps.
+    prev=m[["ts","usdt_last_close","usd1_last_close_usdt"]].copy()
+    prev["ts"]=prev["ts"]+60
+    prev=prev.rename(columns={"usdt_last_close":"prev_usdt_close","usd1_last_close_usdt":"prev_usd1norm_close"})
+    m=m.merge(prev,on="ts",how="left")
+    m["r_usdt_bps"]=(m["usdt_last_close"]/m["prev_usdt_close"]-1.0)*10000.0
+    m["r_usd1norm_bps"]=(m["usd1_last_close_usdt"]/m["prev_usd1norm_close"]-1.0)*10000.0
+    m.to_csv(RAW/"aligned_fx_normalized_1m.csv.gz",index=False,compression="gzip")
+
+    events["H2_fx_pair_15m"]=simulate_pair(m,"basis_fx_bps",15,PAIR_TAKER_RT)
+    events["H2_fx_pair_60m"]=simulate_pair(m,"basis_fx_bps",60,PAIR_TAKER_RT)
+    events["H3_USDT_leads_1m"]=simulate_lead(m,"USDT",1,ONELEG_TAKER_RT)
+    events["H3_USDT_leads_5m"]=simulate_lead(m,"USDT",5,ONELEG_TAKER_RT)
+    events["H4_USD1_leads_1m"]=simulate_lead(m,"USD1",1,ONELEG_TAKER_RT)
+    events["H4_USD1_leads_5m"]=simulate_lead(m,"USD1",5,ONELEG_TAKER_RT)
+
+    metrics += metric_rows("H2_fx_pair",15,events["H2_fx_pair_15m"])
+    metrics += metric_rows("H2_fx_pair",60,events["H2_fx_pair_60m"])
+    metrics += metric_rows("H3_USDT_leads",1,events["H3_USDT_leads_1m"])
+    metrics += metric_rows("H3_USDT_leads",5,events["H3_USDT_leads_5m"])
+    metrics += metric_rows("H4_USD1_leads",1,events["H4_USD1_leads_1m"])
+    metrics += metric_rows("H4_USD1_leads",5,events["H4_USD1_leads_5m"])
+
+for n,e in events.items():
+    e.to_csv(RAW/f"{n}.csv.gz",index=False,compression="gzip")
+
 mdf=pd.DataFrame(metrics)
 mdf.to_csv(OUT/"hypothesis_metrics.csv",index=False)
 
-# Descriptive distributions, frozen and non-rescuing
 desc={}
-for col in ["basis_raw_bps","basis_fx_bps","index_basis_raw_bps","fair_basis_raw_bps"]:
-    s=m[col].dropna().abs()
+for col in ["basis_raw_bps","index_basis_raw_bps","fair_basis_raw_bps"]:
+    s=m_raw[col].dropna().abs()
     desc[col]={
         "n":int(len(s)),"median_abs_bps":float(s.median()),"p95_abs_bps":float(s.quantile(.95)),
         "p99_abs_bps":float(s.quantile(.99)),"max_abs_bps":float(s.max()),
         "count_ge_20":int((s>=20).sum()),"count_ge_40":int((s>=40).sum())
     }
+if fx_hypotheses_enabled:
+    s=m["basis_fx_bps"].dropna().abs()
+    desc["basis_fx_bps"]={
+        "n":int(len(s)),"median_abs_bps":float(s.median()),"p95_abs_bps":float(s.quantile(.95)),
+        "p99_abs_bps":float(s.quantile(.99)),"max_abs_bps":float(s.max()),
+        "count_ge_20":int((s>=20).sum()),"count_ge_40":int((s>=40).sum())
+    }
 
-verdicts={
-    "H1_raw_pair":eval_primary("H1_raw_pair",metrics),
-    "H2_fx_pair":eval_primary("H2_fx_pair",metrics),
-    "H3_USDT_leads":eval_primary("H3_USDT_leads",metrics),
-    "H4_USD1_leads":eval_primary("H4_USD1_leads",metrics),
-}
+verdicts={"H1_raw_pair":eval_primary("H1_raw_pair",metrics)}
+if fx_hypotheses_enabled:
+    verdicts.update({
+        "H2_fx_pair":eval_primary("H2_fx_pair",metrics),
+        "H3_USDT_leads":eval_primary("H3_USDT_leads",metrics),
+        "H4_USD1_leads":eval_primary("H4_USD1_leads",metrics),
+    })
+else:
+    verdicts.update({
+        "H2_fx_pair":"BLOCKED_FX_COVERAGE",
+        "H3_USDT_leads":"BLOCKED_FX_COVERAGE",
+        "H4_USD1_leads":"BLOCKED_FX_COVERAGE",
+    })
+
 if any(v=="SURVIVES_CANDLE_EXECUTION_PENDING" for v in verdicts.values()):
     global_verdict="SURVIVES_CANDLE_EXECUTION_PENDING"
-elif any(v=="BLOCKED" for v in verdicts.values()):
+elif all(v=="NO_EDGE" for v in verdicts.values()):
+    global_verdict="NO_EDGE"
+elif verdicts["H1_raw_pair"]=="NO_EDGE" and not fx_hypotheses_enabled:
+    global_verdict="PARTIAL_NO_EDGE_H1_NORMALIZED_HYPOTHESES_BLOCKED"
+elif any(v.startswith("BLOCKED") for v in verdicts.values()):
     global_verdict="BLOCKED"
 else:
     global_verdict="NO_EDGE"
@@ -407,7 +456,9 @@ summary={
         "pair_basis_trigger_bps":H1_H2_TRIGGER_BPS,
         "lead_return_bps":H3_H4_LEADER_BPS,
         "lagger_max_fraction_of_leader":H3_H4_RATIO,
-        "near_zero_bps":NEAR_ZERO_BPS
+        "near_zero_bps":NEAR_ZERO_BPS,
+        "fx_max_staleness_sec":300,
+        "fx_required_coverage_ratio":0.80
     },
     "basis_descriptives":desc,
     "architecture":arch,
