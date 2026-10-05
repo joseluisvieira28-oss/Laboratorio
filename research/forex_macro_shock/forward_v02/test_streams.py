@@ -8,6 +8,7 @@ import collector as c
 from feeds import DepthBook, clock_quality
 import ecb_watcher as e
 import runtime
+import supervisor
 import calibration
 from transport import PublicHTTP
 
@@ -127,6 +128,14 @@ class Watcher(unittest.TestCase):
         row,raw=http.fetch('binance_clock')
         self.assertIn('REDIRECT_NOT_ALLOWED',row['error'])
         self.assertEqual(raw,b'redirect')
+
+    def test_supervisor_uses_prospective_full_weekday(self):
+        from datetime import datetime,timezone
+        start,end=supervisor.next_window(datetime(2026,10,5,13,tzinfo=timezone.utc))
+        self.assertEqual(start.isoformat(),'2026-10-06T09:58:00+00:00')
+        self.assertEqual(end.isoformat(),'2026-10-06T16:00:00+00:00')
+        start,_=supervisor.next_window(datetime(2026,10,9,13,tzinfo=timezone.utc))
+        self.assertEqual(start.isoformat(),'2026-10-12T09:58:00+00:00')
 
 
 if __name__=='__main__':unittest.main()

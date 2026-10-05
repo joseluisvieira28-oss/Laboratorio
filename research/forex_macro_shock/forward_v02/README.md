@@ -1,5 +1,11 @@
 # FOREX EUR/ECB V0.2 — technical setup, activation locked
 
+Current implementation: see `CONTINUOUS_RUNTIME_V02_1.md` for timestamped WS
+feeds, semantic ECB first-seen logic, pooled HTTP, 31 tests and the Windows
+foreground launcher. The original sampler described below remains a separate
+stdlib source smoke, not the continuous runtime. Current verdict is still
+`OPERATIONALLY_BLOCKED`; no process is claimed active between completed runs.
+
 Candidate: `FOREX-ECB-EURUSDT-DISLOCATION-FWD-001`.
 Parent: `94813ec386d0a94579eaab38ce2b0fa5fd4d7bdd`.
 Historical V0.1 stays `SOURCE_BLOCKED`, scientific mechanism untested.
@@ -42,10 +48,10 @@ stream and continuity checks remain required. The official public Binance
 market-data-only domain is selected prospectively, on access/documentation
 grounds, not outcomes. The MEXC reference index is not an independent venue.
 
-ECB index/calendar raw capture is implemented. Semantic target-release discovery,
-first-publication detection and persisted first-seen event identity are **not yet
-implemented or event-tested**. Generic page hash changes never create a T0. This
-is a blocker, not an armed watcher. Server timestamps are not global publication
+ECB index/calendar raw capture is implemented in this original sampler. Semantic
+target-release discovery and persisted first-seen identity are implemented and
+synthetically tested in V0.2.1, but not yet target-event-tested or armed. Generic
+page hash changes never create a T0. Server timestamps are not global publication
 times. The setup collector hard-stops on 23 October 2026 UTC and cannot open the
 protected 29 October event. No event-capture mode or automated arm flag exists.
 

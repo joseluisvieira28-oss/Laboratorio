@@ -38,9 +38,12 @@ quotes, timestamp mismatch, invalid metadata and >250ms grid lateness invalidate
 the grid. No retroactive catch-up/interpolation. Missing paired inputs stay
 invalid. Source clock uncertainty follows the frozen RTT/offset gates.
 
-`supervisor.py`: foreground restart on persistent operator disk. Processes run
-in bounded one-hour segments, reuse the same SQLite archive, and stop before
-23 October UTC. Five consecutive runtime failures stop the supervisor. Source
+`supervisor.py`: foreground controller on persistent operator disk. Processes run
+for the next complete weekday 10:00-16:00 UTC window, warm feeds at 09:58 UTC,
+reuse the same SQLite archive, and stop before
+23 October UTC. Selection is prospective by clock alone, not source quality or
+returns. A late launch waits for the next complete weekday; an interrupted day
+is retained as invalid, never retrospectively deleted or rescued. Five consecutive runtime failures stop the supervisor. Source
 outages within a healthy process are recorded/invalidated and retried with a
 bounded 2..30s backoff. It does not install a service, scheduled task or login.
 
@@ -48,9 +51,11 @@ bounded 2..30s backoff. It does not install a service, scheduled task or login.
 
 On Windows: download this directory from the named branch; Python 3.11+ must be
 installed. Run `start-burnin.cmd`. It creates a project-local virtual environment,
-installs `websockets==16.0` and `httpx==0.28.1`, then starts the foreground supervisor. Keep the
+installs `websockets==16.0` and `httpx[socks]==0.28.1`, then starts the foreground supervisor. Keep the
 window open and the computer awake. Stop with Ctrl+C, then restart the same file
-to resume the archive. No credentials, MEXC login, accounts, orders or wallets.
+to resume the archive at the next complete declared window. This avoids planned
+hourly reconnect gaps that would undermine the frozen continuity gate. No
+credentials, MEXC login, accounts, orders or wallets.
 
 On Linux/macOS:
 
@@ -104,3 +109,7 @@ proxy settings (`trust_env=True`), explicit URL allowlist and redirects disabled
 Every actual send/receive/RTT is still recorded. No RTT is subtracted, no clock gate
 relaxed, and stale quotes never refreshed by receipt alone. A subsequent smoke
 must prove whether real measured RTT meets the unchanged gate.
+
+The SOCKS optional dependency supports an already configured environment proxy;
+no new proxy/VPN or location override is installed or selected. Missing proxy
+support fails closed rather than disabling `trust_env` to make a request work.

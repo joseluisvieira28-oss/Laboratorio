@@ -245,16 +245,20 @@ async def main_async(args):
     try:
         await runtime.run(args.seconds)
         integrity = runtime.store.verify()
-        rows = [json.loads(x[0]) for x in runtime.store.db.execute('SELECT payload FROM receipts ORDER BY seq')]
-        grids = [json.loads(runtime.store.db.execute('SELECT body FROM raw WHERE hash=?', (r['raw_sha256'],)).fetchone()[0]) for r in rows if r['source']=='paired_grid']
-        ws_rows = [r for r in rows if r['source']=='binance_ws' and r.get('validation',{}).get('applied')]
-        ages = [r['validation']['source_age_ms'] for r in ws_rows]
+        grid_count=0;valid_count=0;ages=[]
+        for payload, in runtime.store.db.execute("SELECT payload FROM receipts WHERE json_extract(payload,'$.source') IN ('paired_grid','binance_ws') ORDER BY seq"):
+            row=json.loads(payload)
+            if row['source']=='paired_grid':
+                grid=json.loads(runtime.store.db.execute('SELECT body FROM raw WHERE hash=?',(row['raw_sha256'],)).fetchone()[0])
+                grid_count+=1;valid_count+=bool(grid['source_valid'] and grid['burnin_eligible'])
+            elif row.get('validation',{}).get('applied'):
+                ages.append(row['validation']['source_age_ms'])
         import statistics
         report = {**integrity, 'candidate_id': 'FOREX-ECB-EURUSDT-DISLOCATION-FWD-001',
                   'status': runtime.status, 'verdict': 'OPERATIONALLY_BLOCKED', 'activation': False,
-                  'outcomes_opened': 0, 'economic_events': 0, 'paired_grids': len(grids),
-                  'valid_burnin_grids': sum(g['source_valid'] and g['burnin_eligible'] for g in grids),
-                  'binance_applied_deltas': len(ws_rows),
+                  'outcomes_opened': 0, 'economic_events': 0, 'paired_grids': grid_count,
+                  'valid_burnin_grids': valid_count, 'runtime_active':False,
+                  'binance_applied_deltas': len(ages),
                   'binance_age_ms': {'n': len(ages), 'median': statistics.median(ages) if ages else None, 'max': max(ages) if ages else None},
                   'freeze_sha256': FREEZE_HASH,
                   'blockers': ['Paired source/clock/burn-in gates must pass', 'Event capture remains locked; setup stops 23 Oct', 'No qualified continuous operator runtime receipt']}
