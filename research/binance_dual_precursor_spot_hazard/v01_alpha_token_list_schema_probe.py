@@ -46,3 +46,5 @@ if not res["source_reachable"]:
     raise SystemExit(2)
 
 # trigger after workflow YAML repair
+
+# retry after GitHub-hosted runner cancellation; science unchanged
