@@ -1,0 +1,27 @@
+name: BNB Launchpool Prospective Source Audit V0.3
+on:
+  push:
+    branches: [bnb-launchpool-prospective-source-audit-v0.3-2026-10-05]
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Freeze check
+        run: |
+          test -f governance/BNB_LAUNCHPOOL_PROSPECTIVE_SOURCE_AUDIT_V0.3_2026-10-05.md
+          python -m compileall crypto_edge_radar/radar crypto_edge_radar/bnb_launchpool_prospective_source_audit_v03.py
+      - name: Run canonical public source audit
+        run: |
+          cd crypto_edge_radar
+          python bnb_launchpool_prospective_source_audit_v03.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bnb-launchpool-prospective-source-audit-v03-${{ github.run_id }}
+          path: crypto_edge_radar/artifacts/bnb_launchpool/prospective_source_audit_v03
+          if-no-files-found: error
+          retention-days: 90
