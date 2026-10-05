@@ -57,3 +57,5 @@ print(json.dumps(result,indent=2,sort_keys=True))
 print("FIRST_SECONDS_V01_ANNOUNCEMENT_SOURCE_END")
 if not result["trigger_source_gate_pass"]:
     raise SystemExit(2)
+
+# retry after cancelled GitHub Actions job
