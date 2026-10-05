@@ -1,0 +1,19 @@
+name: MEXC Intraday Large Shock Source V1.0
+on:
+  push:
+    branches: [mexc-intraday-large-shock-v1.0-source-gate-2026-10-05]
+permissions: {contents: read}
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: pip install requests
+      - run: python research/mexc_global_assets/mexc_intraday_large_shock_source_v10.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: intraday-large-shock-source-v10-${{ github.run_id }}
+          path: artifacts/mexc_global_assets/intraday_large_shock_v10_source
