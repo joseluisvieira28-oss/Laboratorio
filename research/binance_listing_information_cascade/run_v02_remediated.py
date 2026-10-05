@@ -41,7 +41,7 @@ def one(ticker,t0):
     bars=allbars(fn,sym,t0);d={x[0]:x for x in bars}
     p0bar=d.get(minute-60000)
     targets={n:d.get(minute+n*60000) for n in [1,5,15,60]}
-    witness=d.get(minute-24*3600000)
+    witness=[x for x in bars if x[0] <= t0-23*3600000]
     if not(p0bar and witness and all(targets.values())):continue
     p0=p0bar[4];r={"ticker":ticker,"venue":venue,"symbol":sym,"t0":t0,"p0":p0}
     for n,b in targets.items():
@@ -49,13 +49,12 @@ def one(ticker,t0):
       win=[x for x in bars if minute<=x[0]<=minute+n*60000]
       r[f"mfe{n}"]=max(x[2]/p0-1 for x in win)
       r[f"mae{n}"]=min(x[3]/p0-1 for x in win)
-    first=[d.get(minute+i*60000) for i in range(5)]
-    if not all(first):continue
-    hist=[d.get(minute-24*3600000+i*60000) for i in range(23*60)]
-    if not all(hist):continue
-    chunks=[sum(x[5] for x in hist[i:i+5]) for i in range(0,len(hist),5)]
+    first=[x for x in bars if minute<=x[0]<minute+5*60000]
+    hist=[x for x in bars if t0-24*3600000<=x[0]<t0-3600000]
+    chunks=[sum(x[5] for x in hist[i:i+5]) for i in range(0,len(hist)-4,5)]
+    if not chunks:continue
     base=statistics.median(chunks)
-    r["volume_shock_5m"]=sum(x[5] for x in first)/base if base>0 else None
+    r["volume_shock_5m"]=sum(x[5] for x in first)/base if first and base>0 else None
     return r
    except Exception as e: print("ERR",ticker,venue,sym,repr(e))
  return {"ticker":ticker,"status":"SOURCE_FAIL"}
