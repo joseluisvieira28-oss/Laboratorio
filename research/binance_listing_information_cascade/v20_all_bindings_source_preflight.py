@@ -137,3 +137,5 @@ print(json.dumps({"n":len(rows),"all_ok":all_ok,"rows":rows},indent=2,sort_keys=
 print("V20_ALL_BINDINGS_SOURCE_PREFLIGHT_END")
 if not all_ok:
     raise SystemExit(2)
+
+# trigger after workflow registration
