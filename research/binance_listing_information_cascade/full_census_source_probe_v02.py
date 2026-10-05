@@ -76,3 +76,5 @@ valid=[r for r in rows if r["status"]=="SOURCE_COVERAGE_PASS"]
 print("FULL_SOURCE_COVERAGE_JSON_BEGIN")
 print(json.dumps({"n_assets":len(EVENTS),"n_valid":len(valid),"valid_tickers":[r["ticker"] for r in valid],"rows":rows},indent=2))
 print("FULL_SOURCE_COVERAGE_JSON_END")
+
+# trigger after workflow registration
