@@ -1,0 +1,18 @@
+name: Binance Listing V2.0 LBank SYRUP Source Gate
+on:
+  push:
+    branches: [binance-listing-cascade-v2-lbank-2025-prereg-2026-10-05]
+    paths:
+      - '.github/workflows/binance_listing_v20_lbank_syrup_source.yml'
+      - 'research/binance_listing_information_cascade/v20_lbank_syrup_source_probe.py'
+permissions: {contents: read}
+jobs:
+  source_gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: python research/binance_listing_information_cascade/v20_lbank_syrup_source_probe.py
