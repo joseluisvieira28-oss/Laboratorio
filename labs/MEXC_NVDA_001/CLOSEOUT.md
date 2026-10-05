@@ -2,7 +2,7 @@
 
 No executable edge validated. No thresholds retuned. No merge, trading, private exchange endpoints, account reads or exchange mutation.
 
-Architecture and pre-outcome freeze committed locally before data acquisition (6749dae) and published through GitHub connector (0c418a4bb326c47edefa2015f42ca6a9b0e6a8b5). The two hashes differ because commit metadata differ; frozen file content is identical. Base main f263c6c6f3a57f26666a7aee28e782f2cbd08418. Dated addendum adds source evidence without adding event tests.
+Architecture and pre-outcome freeze committed locally before data acquisition (6749dae) and published through GitHub connector (0c418a4bb326c47edefa2015f42ca6a9b0e6a8b5). The immutable protocol JSON is identical. Commit metadata differ; the connector's original architecture title had a UTF-8 decoding artifact, corrected in final publication without changing any architecture fact or strategy rule. Original freezes remain in Git history. Base main f263c6c6f3a57f26666a7aee28e782f2cbd08418. Dated addendum adds source evidence without adding event tests.
 
 ## Legitimate sample
 

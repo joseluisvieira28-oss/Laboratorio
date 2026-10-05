@@ -1,4 +1,4 @@
-# NVDA architecture freeze â€” 2026-10-05
+# NVDA architecture freeze — 2026-10-05
 
 Base: fetched GitHub main f263c6c6f3a57f26666a7aee28e782f2cbd08418. Public GET only. No account or exchange mutations.
 
