@@ -1,0 +1,17 @@
+name: Listing Cascade Pre2024 Source Coverage
+on:
+  push:
+    branches: [binance-listing-cascade-v0.3-clean-pre2024-source-2026-10-05]
+    paths:
+      - 'research/binance_listing_information_cascade/pre2024_source_probe_v03.py'
+      - '.github/workflows/binance_listing_pre2024_source_v03.yml'
+permissions: {contents: read}
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: binance-listing-cascade-v0.3-clean-pre2024-source-2026-10-05}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: python research/binance_listing_information_cascade/pre2024_source_probe_v03.py
