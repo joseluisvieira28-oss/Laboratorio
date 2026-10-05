@@ -53,3 +53,5 @@ for ticker,t in EVENTS:
       print(json.dumps({"ticker":ticker,"alias":alias,"window":w,
         "kucoin":kucoin(alias,a,b),"mexc":mexc(alias,a,b)},sort_keys=True))
       time.sleep(.12)
+
+# trigger after workflow registration
