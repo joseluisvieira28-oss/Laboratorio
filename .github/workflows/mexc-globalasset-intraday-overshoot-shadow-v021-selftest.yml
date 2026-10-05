@@ -1,0 +1,50 @@
+name: MEXC Overshoot Shadow V0.2.1 Self-Test
+
+on:
+  push:
+    branches:
+      - mexc-globalasset-intraday-overshoot-shadow-v0.2.1-remediation-2026-10-05
+    paths:
+      - 'research/mexc_global_assets/mexc_globalasset_intraday_overshoot_shadow_v021.py'
+      - 'research/mexc_global_assets/mexc_globalasset_intraday_overshoot_shadow_aggregate_v021.py'
+      - 'research/mexc_global_assets/MEXC_GLOBALASSET_INTRADAY_OVERSHOOT_SHADOW_AMENDMENT_V0.2.1.md'
+      - '.github/workflows/mexc-globalasset-intraday-overshoot-shadow-v021-selftest.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  selftest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install requests
+      - name: Compile
+        run: |
+          python -m py_compile research/mexc_global_assets/mexc_globalasset_intraday_overshoot_shadow_v021.py
+          python -m py_compile research/mexc_global_assets/mexc_globalasset_intraday_overshoot_shadow_aggregate_v021.py
+      - name: Synthetic same-contract fill invariant
+        run: |
+          python - <<'PY'
+          import importlib.util
+          p='research/mexc_global_assets/mexc_globalasset_intraday_overshoot_shadow_v021.py'
+          s=importlib.util.spec_from_file_location('shadow',p)
+          m=importlib.util.module_from_spec(s); s.loader.exec_module(m)
+          book={'asks':[(100.0,1000.0),(101.0,1000.0)],'bids':[(99.0,1000.0),(98.0,1000.0)]}
+          meta={'contract_size':0.01,'vol_unit':1.0,'min_vol':1.0,'max_vol':100000.0}
+          e=m.entry_fill(book,'BUY',25.0,meta)
+          assert e['fillable'] and e['contracts'] >= 1
+          x=m.fill_contracts(book,'SELL',e['contracts'],meta['contract_size'])
+          assert x['fillable']
+          assert abs(x['contracts']-e['contracts']) < 1e-12
+          print({'entry_contracts':e['contracts'],'exit_contracts':x['contracts'],'same_contracts':True})
+          PY
+      - name: Empty prospective sample is underpowered
+        run: |
+          mkdir -p /tmp/empty-shadow
+          python research/mexc_global_assets/mexc_globalasset_intraday_overshoot_shadow_aggregate_v021.py             --root /tmp/empty-shadow --out /tmp/aggregate.json
+          grep -q '"overall_verdict": "EXECUTION_SHADOW_UNDERPOWERED"' /tmp/aggregate.json
