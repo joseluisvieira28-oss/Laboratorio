@@ -1,0 +1,58 @@
+{
+  "family_id": "MEXC-INTRADAY-LARGE-SHOCK-CATCHUP-BASKET-V1.2",
+  "frozen_at_utc": "2026-10-05T07:40:00Z",
+  "outcomes_opened_at_freeze": 0,
+  "sample_start": "2026-09-09",
+  "sample_end_inclusive": "2026-10-02",
+  "excluded_dates": [
+    "2026-09-30"
+  ],
+  "signal_window_utc": [
+    "14:35",
+    "18:39"
+  ],
+  "lookback_min": 5,
+  "horizon_min": 5,
+  "cooldown_min": 5,
+  "external_return": "mean(Binance 5m return, Bitget 5m return)",
+  "mexc_return": "MEXC 5m return",
+  "lag_gap": "external_return - mexc_return",
+  "trigger": {
+    "abs_external_return_gte_bps": 30,
+    "same_sign_lag_gap_and_external": true,
+    "abs_lag_gap_gte_bps": 20
+  },
+  "direction": "FOLLOW_EXTERNAL_CONSENSUS",
+  "entry": "MEXC close at signal timestamp",
+  "exit": "MEXC close 5m later",
+  "basket_construction": "equal-weight average of all triggered trade gross returns per UTC date",
+  "scientific_unit": "daily basket return",
+  "scientific_gate": {
+    "min_total_triggered_trades": 50,
+    "min_triggered_days": 10,
+    "mean_daily_gross_bps_gt": 0,
+    "median_daily_gross_bps_gt": 0,
+    "win_day_rate_gt": 0.5,
+    "both_chronological_halves_mean_gt_bps": 0,
+    "exact_one_sided_binomial_p_lt": 0.05
+  },
+  "costs_roundtrip_bps": [
+    0,
+    12,
+    14,
+    16,
+    20
+  ],
+  "operational_gate": {
+    "robust_api_fee_survivor": "scientific PASS AND mean daily net after 16 bps >0 AND median daily net after 16 bps >0",
+    "robust_api_fee_survivor_not_live_go": true
+  },
+  "no_asset_specific_tuning": true,
+  "no_threshold_grid": true,
+  "no_horizon_grid": true,
+  "no_retrospective_rescue": true,
+  "private_endpoints_authorized": false,
+  "account_reads_authorized": false,
+  "orders_authorized": false,
+  "live_trading_authorized": false
+}
