@@ -1,8 +1,13 @@
 #!/usr/bin/env python3
-# V2.0 all-binding source-only preflight.
-# No prices/returns/PnL/MFE/MAE are emitted.
+# V2.0 all-binding SOURCE-ONLY preflight, technically remediated.
+# Emits counts/booleans only. No prices, returns, PnL, MFE or MAE.
 
-import json, statistics, time, urllib.parse, urllib.request
+import json
+import statistics
+import time
+import urllib.parse
+import urllib.request
+import urllib.error
 
 EVENTS = [
     ("AIXBT",1736499327639,"KUCOIN"),
@@ -19,10 +24,21 @@ EVENTS = [
     ("MET",1763028026501,"KUCOIN"),
 ]
 
+UA={"User-Agent":"Mozilla/5.0 CryptoLabV20PreflightRemediated/1.0","Accept":"application/json"}
+
 def req_json(url):
-    r=urllib.request.Request(url,headers={"User-Agent":"Mozilla/5.0 CryptoLabV20Preflight/1.0","Accept":"application/json"})
-    with urllib.request.urlopen(r,timeout=30) as x:
-        return json.load(x)
+    last=None
+    for attempt in range(5):
+        try:
+            r=urllib.request.Request(url,headers=UA)
+            with urllib.request.urlopen(r,timeout=30) as x:
+                return json.load(x)
+        except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError) as e:
+            last=e
+            if attempt==4:
+                raise
+            time.sleep(0.5*(attempt+1))
+    raise last
 
 def kc(sym,a,b):
     q=urllib.parse.urlencode({"symbol":sym+"-USDT","type":"1min","startAt":a//1000,"endAt":b//1000})
@@ -53,25 +69,30 @@ def lb(sym,a,b):
         except Exception: pass
     return out
 
-def fetch(venue,sym,a,b):
+def paged_fetch(fn,sym,a,b,window_minutes,overlap_minutes,sleep_s):
     out={}
-    if venue=="KUCOIN":
-        cur=a;span=699*60000
-        while cur<=b:
-            end=min(cur+span,b)
-            for x in kc(sym,cur,end): out[x[0]]=x
-            cur=end+60000; time.sleep(.04)
-    elif venue=="BITGET":
-        cur=a;span=89*60000
-        while cur<=b:
-            end=min(cur+span,b)
-            for x in bg(sym,cur,end): out[x[0]]=x
-            cur=end+60000; time.sleep(.04)
-    elif venue=="LBANK":
-        for x in lb(sym,a,b): out[x[0]]=x
+    cur=a
+    while cur<=b:
+        end=min(cur+window_minutes*60000,b)
+        for x in fn(sym,cur,end):
+            out[x[0]]=x
+        if end>=b:
+            break
+        cur=end-overlap_minutes*60000
+        time.sleep(sleep_s)
     return [out[k] for k in sorted(out)]
 
-def ceilmin(x): return ((x+59999)//60000)*60000
+def fetch(venue,sym,a,b):
+    if venue=="KUCOIN":
+        return paged_fetch(kc,sym,a,b,850,2,0.08)
+    if venue=="BITGET":
+        return paged_fetch(bg,sym,a,b,80,2,0.20)
+    if venue=="LBANK":
+        return sorted({x[0]:x for x in lb(sym,a,b)}.values())
+    raise ValueError("unknown venue")
+
+def ceilmin(x):
+    return ((x+59999)//60000)*60000
 
 def one(ticker,t0,venue):
     floor=(t0//60000)*60000
@@ -79,8 +100,10 @@ def one(ticker,t0,venue):
     entry=ceilmin(t0+60000)
     start=floor-24*3600000-10*60000
     finish=max(floor+70*60000,entry+59*60000)
+
     bars=fetch(venue,ticker,start,finish)
     ts={x[0] for x in bars}
+
     witness=[x for x in bars if x[0]<=t0-24*3600000]
     near=[x for x in bars if t0-10*60000<=x[0]<floor]
     first5=[x for x in bars if ceil<=x[0]<ceil+5*60000]
@@ -89,7 +112,7 @@ def one(ticker,t0,venue):
     med=statistics.median(chunks) if chunks else None
     gaps=sum(1 for a,b in zip(hist,hist[1:]) if b[0]-a[0]!=60000)
 
-    btc=fetch(venue,"BTC",entry,entry+59*60000)
+    btc=fetch(venue,"BTC",entry-2*60000,entry+61*60000)
     bts={x[0] for x in btc}
 
     required_asset=[
@@ -106,7 +129,13 @@ def one(ticker,t0,venue):
     required_btc=[entry,entry+4*60000,entry+14*60000,entry+59*60000]
 
     source_ok=bool(
-        witness and near and len(first5)==5 and chunks and med is not None and med>0
+        witness
+        and near
+        and len(first5)==5
+        and chunks
+        and med is not None
+        and med>0
+        and gaps==0
         and all(x in ts for x in required_asset)
         and all(x in bts for x in required_btc)
     )
@@ -128,14 +157,14 @@ def one(ticker,t0,venue):
 
 rows=[]
 for e in EVENTS:
-    try: rows.append(one(*e))
+    try:
+        rows.append(one(*e))
     except Exception as ex:
         rows.append({"ticker":e[0],"venue":e[2],"source_ok":False,"error_type":type(ex).__name__})
+
 all_ok=len(rows)==12 and all(r.get("source_ok") for r in rows)
 print("V20_ALL_BINDINGS_SOURCE_PREFLIGHT_BEGIN")
 print(json.dumps({"n":len(rows),"all_ok":all_ok,"rows":rows},indent=2,sort_keys=True))
 print("V20_ALL_BINDINGS_SOURCE_PREFLIGHT_END")
 if not all_ok:
     raise SystemExit(2)
-
-# trigger after workflow registration
