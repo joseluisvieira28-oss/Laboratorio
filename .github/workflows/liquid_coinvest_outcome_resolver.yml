@@ -1,0 +1,55 @@
+name: Liquid Co-Invest Frozen Outcome Resolver
+
+on:
+  push:
+    branches:
+      - liquid-coinvest-forward-v0.1-prereg-2026-10-05
+    paths:
+      - "research/liquid_coinvest_forward/observations/*.json"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: liquid-coinvest-outcome-resolver-v01
+  cancel-in-progress: false
+
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout research branch
+        uses: actions/checkout@v4
+        with:
+          ref: liquid-coinvest-forward-v0.1-prereg-2026-10-05
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Validate pre-outcome receipts
+        run: python research/liquid_coinvest_forward/validate_forward_receipts.py
+
+      - name: Resolve only matured frozen outcomes
+        run: python research/liquid_coinvest_forward/resolve_outcomes.py
+
+      - name: Validate outcome receipts
+        run: python research/liquid_coinvest_forward/validate_outcomes.py
+
+      - name: Commit new append-only outcomes if any
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git status --porcelain -- research/liquid_coinvest_forward/outcomes/ | grep -q .; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add research/liquid_coinvest_forward/outcomes/
+            git commit -m "research: resolve matured Co-Invest frozen outcomes"
+            git push origin HEAD:liquid-coinvest-forward-v0.1-prereg-2026-10-05
+          else
+            echo "No newly matured outcomes."
+          fi
