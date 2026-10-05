@@ -168,8 +168,14 @@ async def coordinator(q,stop,cfg):
             if b:
                 targets[sym]={"entry":b,"outcomes":{}}
         if not targets:return None
+        root_episode=meta.get("btc_episode",meta)
+        ignition=(root_episode.get("ignition") or {})
+        ignition_ts=int(ignition.get("ignition_venue_ts") or 0)
+        eid_raw=f"{cfg['version']}|{ignition_ts}|{pressure}".encode("utf-8")
         rec={"family":family,"propagation_asset":asset,"pressure":pressure,
-             "event_local_ns":now_ns,"meta":meta,"targets":targets}
+             "event_local_ns":now_ns,"event_wall_ms":int(time.time()*1000),
+             "episode_id":hashlib.sha256(eid_raw).hexdigest()[:24],
+             "meta":meta,"targets":targets}
         records.append(rec);return rec
 
     while not stop.is_set() or not q.empty():
@@ -248,7 +254,9 @@ async def coordinator(q,stop,cfg):
 async def main_async():
     started_wall_ms=int(time.time()*1000)
     cfg=load_config(CONFIG)
+    epoch=json.loads(Path(EPOCH).read_text())
     config_sha256=hashlib.sha256(Path(CONFIG).read_bytes()).hexdigest()
+    verdict_eligible_run=started_wall_ms>=int(epoch["not_before_wall_ms"])
     q=asyncio.Queue();stop=asyncio.Event()
     health={"binance":{},"bybit":{},"mexc":{},"oi":{}}
     tasks=[
@@ -274,6 +282,10 @@ async def main_async():
             "github_run_id":os.environ.get("GITHUB_RUN_ID"),
             "github_run_attempt":os.environ.get("GITHUB_RUN_ATTEMPT"),
             "github_sha":os.environ.get("GITHUB_SHA"),
+            "verdict_epoch_version":epoch["version"],
+            "verdict_policy_freeze_commit":epoch["verdict_policy_freeze_commit"],
+            "verdict_not_before_wall_ms":epoch["not_before_wall_ms"],
+            "verdict_eligible_run":verdict_eligible_run,
             "health":health,"records":completed,"record_count":len(completed),
             "live_trading":False}
     result["evidence_state"]="FORWARD_INSUFFICIENT"
