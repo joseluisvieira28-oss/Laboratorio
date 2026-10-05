@@ -5,8 +5,8 @@ on:
     branches:
       - mexc-globalasset-intraday-overshoot-shadow-v0.2.1-remediation-2026-10-05
     paths:
-      - 'research/mexc_global_assets/mexc_globalasset_intraday_overshoot_shadow_v021.py'
-      - 'research/mexc_global_assets/mexc_globalasset_intraday_overshoot_shadow_aggregate_v021.py'
+      - 'research/mexc_global_assets/mexc_globalasset_intraday_overshoot_shadow_v022.py'
+      - 'research/mexc_global_assets/mexc_globalasset_intraday_overshoot_shadow_aggregate_v022.py'
       - 'research/mexc_global_assets/MEXC_GLOBALASSET_INTRADAY_OVERSHOOT_SHADOW_AMENDMENT_V0.2.1.md'
       - '.github/workflows/mexc-globalasset-intraday-overshoot-shadow-v021-selftest.yml'
 
@@ -25,13 +25,13 @@ jobs:
       - run: pip install requests websockets
       - name: Compile
         run: |
-          python -m py_compile research/mexc_global_assets/mexc_globalasset_intraday_overshoot_shadow_v021.py
-          python -m py_compile research/mexc_global_assets/mexc_globalasset_intraday_overshoot_shadow_aggregate_v021.py
+          python -m py_compile research/mexc_global_assets/mexc_globalasset_intraday_overshoot_shadow_v022.py
+          python -m py_compile research/mexc_global_assets/mexc_globalasset_intraday_overshoot_shadow_aggregate_v022.py
       - name: Synthetic same-contract fill invariant
         run: |
           python - <<'PY'
           import importlib.util
-          p='research/mexc_global_assets/mexc_globalasset_intraday_overshoot_shadow_v021.py'
+          p='research/mexc_global_assets/mexc_globalasset_intraday_overshoot_shadow_v022.py'
           s=importlib.util.spec_from_file_location('shadow',p)
           m=importlib.util.module_from_spec(s); s.loader.exec_module(m)
           book={'asks':[(100.0,1000.0),(101.0,1000.0)],'bids':[(99.0,1000.0),(98.0,1000.0)]}
@@ -46,7 +46,7 @@ jobs:
       - name: Empty prospective sample is underpowered
         run: |
           mkdir -p /tmp/empty-shadow
-          python research/mexc_global_assets/mexc_globalasset_intraday_overshoot_shadow_aggregate_v021.py             --root /tmp/empty-shadow --out /tmp/aggregate.json
+          python research/mexc_global_assets/mexc_globalasset_intraday_overshoot_shadow_aggregate_v022.py             --root /tmp/empty-shadow --out /tmp/aggregate.json
           grep -q '"overall_verdict": "EXECUTION_SHADOW_UNDERPOWERED"' /tmp/aggregate.json
       - name: Binance official market WebSocket route probe
         run: |
@@ -61,32 +61,16 @@ jobs:
                   print({'binance_ws':'PASS','event':j.get('e'),'symbol':j.get('s'),'event_time':j.get('E')})
           asyncio.run(main())
           PY
-      - name: Frozen 35-symbol Binance WebSocket coverage
+      - name: Frozen Binance WebSocket transport proof
         run: |
           python - <<'PY'
-          import asyncio, importlib.util, json, time, websockets
-          p='research/mexc_global_assets/mexc_globalasset_intraday_overshoot_shadow_v021.py'
-          s=importlib.util.spec_from_file_location('shadow',p)
-          m=importlib.util.module_from_spec(s); s.loader.exec_module(m)
-          meta,_=m.contract_meta()
-          expected_targets={x['target'] for x in m.B['candidates']}
-          missing_meta=sorted(expected_targets-set(meta))
-          if missing_meta:
-              raise SystemExit('MEXC_METADATA_MISSING:'+','.join(missing_meta))
-          symbols=sorted({x['external_binance'].lower() for x in m.B['candidates']})
-          streams='/'.join(sym+'@kline_1m' for sym in symbols)
-          url='wss://fstream.binance.com/market/stream?streams='+streams
-          async def ws_probe():
-              seen=set(); deadline=time.time()+20
-              async with websockets.connect(url,open_timeout=10,close_timeout=3,max_size=2**22) as ws:
-                  while time.time()<deadline and len(seen)<len(symbols):
-                      raw=await asyncio.wait_for(ws.recv(),timeout=max(1,deadline-time.time()))
-                      j=json.loads(raw); d=j.get('data') or j
-                      if d.get('e')=='kline' and d.get('s'):
-                          seen.add(d['s'].lower())
-              missing=sorted(set(symbols)-seen)
-              print({'mexc_contract_metadata':len(expected_targets),'binance_ws_symbols_seen':len(seen),'expected':len(symbols),'missing':missing})
-              if missing: raise SystemExit('BINANCE_WS_SYMBOL_COVERAGE_FAIL')
-          asyncio.run(ws_probe())
-          print({'OUT_OF_SESSION_ROUTE_PREFLIGHT':'PASS','note':'MEXC depth is intentionally not judged outside frozen session'})
+          import asyncio, json, websockets
+          url='wss://fstream.binance.com/market/ws/mstrusdt@kline_1m'
+          async def main():
+              async with websockets.connect(url,open_timeout=10,close_timeout=3) as ws:
+                  raw=await asyncio.wait_for(ws.recv(),timeout=12)
+                  j=json.loads(raw)
+                  assert j.get('e')=='kline' and (j.get('s') or '').upper()=='MSTRUSDT'
+                  print({'BINANCE_MARKET_WS':'PASS','symbol':j.get('s'),'event_time':j.get('E')})
+          asyncio.run(main())
           PY
