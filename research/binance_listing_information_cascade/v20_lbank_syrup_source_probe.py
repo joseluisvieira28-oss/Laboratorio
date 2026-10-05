@@ -78,3 +78,5 @@ res = {
 print("V20_LBANK_SYRUP_SOURCE_BEGIN")
 print(json.dumps(res, indent=2, sort_keys=True))
 print("V20_LBANK_SYRUP_SOURCE_END")
+
+# trigger after workflow registration
