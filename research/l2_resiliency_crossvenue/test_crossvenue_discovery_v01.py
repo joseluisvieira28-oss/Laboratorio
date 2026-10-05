@@ -24,6 +24,10 @@ class PlannerTests(unittest.TestCase):
     self.assertEqual(len(d.INDEX_CACHE),4)
     self.assertEqual(list(d.INDEX_CACHE.keys()),[str(p) for p in paths[1:]])
    finally: d.clear_indexes()
+ def test_parent_segment_filename_binding(self):
+  self.assertEqual(d.parent_segment_id('parent_state_segment_01.csv.gz'),1)
+  self.assertEqual(d.parent_segment_id('parent_state_segment_11.csv.gz'),11)
+  with self.assertRaises(d.Blocked): d.parent_segment_id('parent_state_segment_01.csv')
  def test_checksum_parser_requires_filename_binding(self):
   fn='BTCUSDT-aggTrades-2024-01-01.zip'; text='a'*64+'  '+fn
   m=d.SHA_RE.fullmatch(text); self.assertIsNotNone(m); self.assertEqual(m.group(2),fn)

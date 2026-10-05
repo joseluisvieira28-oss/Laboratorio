@@ -20,6 +20,10 @@ def sha(p):
  with Path(p).open('rb') as f:
   for b in iter(lambda:f.read(8*1024*1024),b''): h.update(b)
  return h.hexdigest()
+def parent_segment_id(path):
+ m=re.fullmatch(r'parent_state_segment_(\d+)\.csv\.gz',Path(path).name)
+ if not m: raise Blocked('invalid parent ledger segment filename')
+ return int(m.group(1))
 def dates():
  d=dt.date(2024,1,1)
  while d.year==2024:
@@ -210,7 +214,7 @@ def outcome(cache,source_receipt,parent_receipt,plan_receipt,plan_dir,protocol,r
  committed=subprocess.check_output(['git','show',f'{authority_commit}:{rel}'],cwd=repo).decode('utf-8')
  if hashlib.sha256(committed.encode()).hexdigest()!=sha(authority): raise Blocked('authority bytes are not present in claimed commit')
  for p in ledger:
-  if sha(p)!=next(x['sha256'] for x in pr['segments'] if x['segment_id']==int(p.stem.split('_')[-1])): raise Blocked('parent ledger changed')
+  if sha(p)!=next(x['sha256'] for x in pr['segments'] if x['segment_id']==parent_segment_id(p)): raise Blocked('parent ledger changed')
  for it in sr['items']:
   z=cache/it['zip']; idx=cache/(it['date']+'.idx')
   if not z.is_file() or sha(z)!=it['sha256'] or not idx.is_file() or sha(idx)!=it['index_sha256']: raise Blocked(f'source bytes changed {it["date"]}')
