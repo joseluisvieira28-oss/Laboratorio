@@ -78,7 +78,12 @@ def reconstruct_signals(bn,bg,d):
     for t in sorted(set(bn)&set(bg)):
         if t<start or t>stop or t<next_allowed:continue
         prev=t-60
-        if prev not in bn or prev not in bg:continue
+        ex=t+R["horizon_min"]*60
+        # Technical identity fix V0.2.1: the frozen parent score() required the
+        # target exit candle to exist before a signal could enter the parent ledger.
+        # Reproduce that exact parent eligibility condition here; no threshold,
+        # direction, horizon, fee, queue or execution-model parameter changes.
+        if prev not in bn or prev not in bg or ex not in bg:continue
         lr=10000*(bn[t]/bn[prev]-1)
         tr=10000*(bg[t]/bg[prev]-1)
         gap=lr-tr
