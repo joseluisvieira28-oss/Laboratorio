@@ -1,0 +1,265 @@
+name: MEXC V0.13 Options V0.2 Source Calibration E-H
+on:
+  push:
+    branches:
+      - mexc-event-futures-options-vol-v0.2-sourcecal-2026-10-03
+    paths:
+      - '.github/workflows/mexc-event-futures-options-v02-sourcecal-e-h.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  chunk-e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 190
+    outputs:
+      last_minute_ms: ${{ steps.state.outputs.last_minute_ms }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate collector and frozen non-overlap
+        run: |
+          python -m py_compile research/mexc_event_futures/options_vol_source_calibration_v02.py
+          python - <<'PY'
+          import time
+          last_d=1791184980000
+          first=((time.time_ns()//1_000_000)//60000+1)*60000
+          assert first>last_d
+          print("CHUNK_E_NON_OVERLAP_PREFLIGHT=PASS", first)
+          PY
+      - name: Collect chunk E
+        run: |
+          python research/mexc_event_futures/options_vol_source_calibration_v02.py \
+            --minutes 180 \
+            --boundary-ms 1791035711000 \
+            --output evidence/options-v02-sourcecal-e
+      - id: state
+        name: Emit chunk E last minute
+        run: |
+          python - <<'PY'
+          import json, os, pathlib
+          p=pathlib.Path("evidence/options-v02-sourcecal-e/source_calibration_rows.jsonl")
+          rows=[json.loads(x) for x in p.read_text().splitlines() if x.strip()]
+          last=max(r["minute_start_ms"] for r in rows)
+          with open(os.environ["GITHUB_OUTPUT"],"a") as f:f.write(f"last_minute_ms={last}\n")
+          print("CHUNK_E_LAST_MINUTE_MS",last)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v013-options-v02-sourcecal-e
+          path: evidence/options-v02-sourcecal-e/
+          if-no-files-found: error
+          retention-days: 90
+
+  chunk-f:
+    needs: chunk-e
+    runs-on: ubuntu-latest
+    timeout-minutes: 190
+    outputs:
+      last_minute_ms: ${{ steps.state.outputs.last_minute_ms }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate collector and frozen non-overlap
+        env:
+          PRIOR_LAST: ${{ needs.chunk-e.outputs.last_minute_ms }}
+        run: |
+          python -m py_compile research/mexc_event_futures/options_vol_source_calibration_v02.py
+          python - <<'PY'
+          import os,time
+          prior=int(os.environ["PRIOR_LAST"])
+          first=((time.time_ns()//1_000_000)//60000+1)*60000
+          assert first>prior
+          print("CHUNK_F_NON_OVERLAP_PREFLIGHT=PASS",prior,first)
+          PY
+      - name: Collect chunk F
+        run: |
+          python research/mexc_event_futures/options_vol_source_calibration_v02.py \
+            --minutes 180 \
+            --boundary-ms 1791035711000 \
+            --output evidence/options-v02-sourcecal-f
+      - id: state
+        name: Emit chunk F last minute
+        run: |
+          python - <<'PY'
+          import json, os, pathlib
+          p=pathlib.Path("evidence/options-v02-sourcecal-f/source_calibration_rows.jsonl")
+          rows=[json.loads(x) for x in p.read_text().splitlines() if x.strip()]
+          last=max(r["minute_start_ms"] for r in rows)
+          with open(os.environ["GITHUB_OUTPUT"],"a") as f:f.write(f"last_minute_ms={last}\n")
+          print("CHUNK_F_LAST_MINUTE_MS",last)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v013-options-v02-sourcecal-f
+          path: evidence/options-v02-sourcecal-f/
+          if-no-files-found: error
+          retention-days: 90
+
+  chunk-g:
+    needs: chunk-f
+    runs-on: ubuntu-latest
+    timeout-minutes: 190
+    outputs:
+      last_minute_ms: ${{ steps.state.outputs.last_minute_ms }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate collector and frozen non-overlap
+        env:
+          PRIOR_LAST: ${{ needs.chunk-f.outputs.last_minute_ms }}
+        run: |
+          python -m py_compile research/mexc_event_futures/options_vol_source_calibration_v02.py
+          python - <<'PY'
+          import os,time
+          prior=int(os.environ["PRIOR_LAST"])
+          first=((time.time_ns()//1_000_000)//60000+1)*60000
+          assert first>prior
+          print("CHUNK_G_NON_OVERLAP_PREFLIGHT=PASS",prior,first)
+          PY
+      - name: Collect chunk G
+        run: |
+          python research/mexc_event_futures/options_vol_source_calibration_v02.py \
+            --minutes 180 \
+            --boundary-ms 1791035711000 \
+            --output evidence/options-v02-sourcecal-g
+      - id: state
+        name: Emit chunk G last minute
+        run: |
+          python - <<'PY'
+          import json, os, pathlib
+          p=pathlib.Path("evidence/options-v02-sourcecal-g/source_calibration_rows.jsonl")
+          rows=[json.loads(x) for x in p.read_text().splitlines() if x.strip()]
+          last=max(r["minute_start_ms"] for r in rows)
+          with open(os.environ["GITHUB_OUTPUT"],"a") as f:f.write(f"last_minute_ms={last}\n")
+          print("CHUNK_G_LAST_MINUTE_MS",last)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v013-options-v02-sourcecal-g
+          path: evidence/options-v02-sourcecal-g/
+          if-no-files-found: error
+          retention-days: 90
+
+  chunk-h:
+    needs: chunk-g
+    runs-on: ubuntu-latest
+    timeout-minutes: 190
+    outputs:
+      last_minute_ms: ${{ steps.state.outputs.last_minute_ms }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate collector and frozen non-overlap
+        env:
+          PRIOR_LAST: ${{ needs.chunk-g.outputs.last_minute_ms }}
+        run: |
+          python -m py_compile research/mexc_event_futures/options_vol_source_calibration_v02.py
+          python - <<'PY'
+          import os,time
+          prior=int(os.environ["PRIOR_LAST"])
+          first=((time.time_ns()//1_000_000)//60000+1)*60000
+          assert first>prior
+          print("CHUNK_H_NON_OVERLAP_PREFLIGHT=PASS",prior,first)
+          PY
+      - name: Collect chunk H
+        run: |
+          python research/mexc_event_futures/options_vol_source_calibration_v02.py \
+            --minutes 180 \
+            --boundary-ms 1791035711000 \
+            --output evidence/options-v02-sourcecal-h
+      - id: state
+        name: Emit chunk H last minute
+        run: |
+          python - <<'PY'
+          import json, os, pathlib
+          p=pathlib.Path("evidence/options-v02-sourcecal-h/source_calibration_rows.jsonl")
+          rows=[json.loads(x) for x in p.read_text().splitlines() if x.strip()]
+          last=max(r["minute_start_ms"] for r in rows)
+          with open(os.environ["GITHUB_OUTPUT"],"a") as f:f.write(f"last_minute_ms={last}\n")
+          print("CHUNK_H_LAST_MINUTE_MS",last)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v013-options-v02-sourcecal-h
+          path: evidence/options-v02-sourcecal-h/
+          if-no-files-found: error
+          retention-days: 90
+
+  merge-a-h:
+    needs: chunk-h
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate frozen merge
+        run: |
+          python research/mexc_event_futures/options_vol_source_calibration_merge_v02.py --self-test
+      - name: Download canonical prior chunks A-D
+        run: |
+          mkdir -p inputs/a inputs/b inputs/c inputs/d
+          gh run download 37127908110 -n v013-options-v02-sourcecal-a -D inputs/a
+          gh run download 37146717638 -n v013-options-v02-sourcecal-b -D inputs/b
+          gh run download 37193926660 -n v013-options-v02-sourcecal-c -D inputs/c
+          gh run download 37263283375 -n v013-options-v02-sourcecal-d -D inputs/d
+      - uses: actions/download-artifact@v4
+        with:
+          name: v013-options-v02-sourcecal-e
+          path: inputs/e
+      - uses: actions/download-artifact@v4
+        with:
+          name: v013-options-v02-sourcecal-f
+          path: inputs/f
+      - uses: actions/download-artifact@v4
+        with:
+          name: v013-options-v02-sourcecal-g
+          path: inputs/g
+      - uses: actions/download-artifact@v4
+        with:
+          name: v013-options-v02-sourcecal-h
+          path: inputs/h
+      - name: Merge A-H and evaluate calibration gate only
+        run: |
+          mkdir -p evidence/options-v02-merged-a-h
+          mapfile -t files < <(find inputs -type f -name source_calibration_rows.jsonl | sort)
+          test "${#files[@]}" -eq 8
+          args=()
+          for f in "${files[@]}"; do args+=(--input "$f"); done
+          python research/mexc_event_futures/options_vol_source_calibration_merge_v02.py \
+            "${args[@]}" \
+            --output evidence/options-v02-merged-a-h/calibration_merge_result.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v013-options-v02-sourcecal-merged-a-h
+          path: evidence/options-v02-merged-a-h/
+          if-no-files-found: error
+          retention-days: 90
