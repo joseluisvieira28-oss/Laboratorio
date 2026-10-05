@@ -1,3 +1,7 @@
+> **NON-CANONICAL / SUPERSEDED — DO NOT USE FOR LICP-001 V0.1 VERDICT**
+>
+> Canonical authority is `LICP_001_FORWARD_ECONOMIC_VERDICT_FREEZE_V0_1.md`, frozen in commit `cfd107cd806a1e662e5a780e4118483d07757c58` at 2026-10-05T12:43:57Z, before any forward outcome receipt was inspected. This later document must not alter, replace, or rescue that pre-registered rule.
+
 # LICP-001 — FORWARD VERDICT POLICY FREEZE V0.1
 
 Date: 2026-10-05
