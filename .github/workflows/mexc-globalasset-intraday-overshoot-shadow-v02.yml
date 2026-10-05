@@ -20,7 +20,7 @@ jobs:
         run: |
           P=$(git diff-tree --no-commit-id --name-only -r HEAD | grep '^research/mexc_global_assets/shadow_trigger/' | tail -1)
           test -n "$P"
-          echo "path=$P" >> "$GITHUB_OUTPUT"
+          export P
           python - <<'PY'
           import json,os
           p=os.environ['P']
@@ -29,8 +29,6 @@ jobs:
               for k in ('date','start','end','segment'):
                   f.write(f"{k}={j[k]}\n")
           PY
-        env:
-          P: ${{ steps.trigger.outputs.path }}
       - name: capture
         run: |
           python research/mexc_global_assets/mexc_globalasset_intraday_overshoot_shadow_v02.py \
