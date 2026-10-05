@@ -50,14 +50,26 @@ def gate(sym,start,end):
 
 def fetch_venue(ticker,t0):
     aliases=ALIASES.get(ticker,[ticker])
-    start=t0-25*3600_000; end=t0+65*60_000
+    # Technical remediation V0.1.1: API candle caps require chunked windows.
+    # Science is unchanged: fetch a 60m witness around T-24h, a T-23h..T-1h
+    # baseline in <=1000m chunks, and the event window separately.
+    windows=[
+      (t0-25*3600_000,t0-24*3600_000+10*60_000),
+      (t0-23*3600_000,t0-12*3600_000),
+      (t0-12*3600_000,t0-3600_000),
+      (t0-10*60_000,t0+65*60_000),
+    ]
     for venue,fn in [("BYBIT",bybit),("OKX",okx),("GATE",gate)]:
       for a in aliases:
         try:
-          bars=fn(a,start,end)
+          merged={}
+          for ws,we in windows:
+            for b in fn(a,ws,we): merged[b[0]]=b
+            time.sleep(.10)
+          bars=sorted(merged.values())
           if bars:
             pre=[b for b in bars if b[0] < (t0//60000)*60000]
-            old=[b for b in bars if b[0] <= t0-24*3600_000]
+            old=[b for b in bars if b[0] <= t0-24*3600_000+10*60_000]
             if pre and old:return venue,a,bars
         except Exception as e: pass
         time.sleep(.15)
