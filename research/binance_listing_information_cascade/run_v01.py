@@ -48,6 +48,27 @@ def gate(sym,start,end):
         out.append((int(x[0])*1000,float(x[5]),float(x[3]),float(x[4]),float(x[2]),float(x[6]) if len(x)>6 else float(x[1])))
     return sorted(out)
 
+def gate_bulk(sym,t0):
+    # Official Gate bulk public trade archive; reconstruct 1m OHLCV locally.
+    import csv as _csv, gzip as _gzip, io as _io
+    dt=datetime.fromtimestamp(t0/1000,timezone.utc)
+    ym=dt.strftime("%Y%m")
+    url=f"https://download.gatedata.org/spot/deals/{ym}/{sym}_USDT-{ym}.csv.gz"
+    req=urllib.request.Request(url,headers={"User-Agent":"Mozilla/5.0 CryptoLabResearch/1.0"})
+    try:
+      with urllib.request.urlopen(req,timeout=45) as r: raw=_gzip.decompress(r.read()).decode("utf-8",errors="replace")
+    except Exception: return []
+    mins={}
+    for row in _csv.reader(_io.StringIO(raw)):
+      try:
+        ts=int(float(row[0])*1000); price=float(row[2]); amt=float(row[3])
+      except Exception: continue
+      if not (t0-25*3600_000 <= ts <= t0+65*60_000): continue
+      m=(ts//60000)*60000
+      if m not in mins: mins[m]=[m,price,price,price,price,0.0]
+      b=mins[m]; b[2]=max(b[2],price); b[3]=min(b[3],price); b[4]=price; b[5]+=amt
+    return [tuple(mins[k]) for k in sorted(mins)]
+
 def fetch_venue(ticker,t0):
     aliases=ALIASES.get(ticker,[ticker])
     # Technical remediation V0.1.1: API candle caps require chunked windows.
@@ -78,6 +99,15 @@ def fetch_venue(ticker,t0):
         except Exception as e:
           print(f'DIAG {ticker} {venue} {a}: {type(e).__name__}: {e}')
         time.sleep(.15)
+    # Frozen venue hierarchy ends at Gate. This is a source-only fallback
+    # for the SAME Gate venue using Gate's official bulk historical archive.
+    for a in aliases:
+      bars=gate_bulk(a,t0)
+      if bars:
+        minute=(t0//60000)*60000
+        pre=[b for b in bars if b[0] < minute]
+        old=[b for b in bars if b[0] <= t0-24*3600_000+10*60_000]
+        if pre and old:return "GATE_BULK",a,bars
     return None,None,[]
 
 def analyze(ticker,ts,url):
