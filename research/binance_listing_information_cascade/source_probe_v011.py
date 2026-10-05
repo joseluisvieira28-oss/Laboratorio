@@ -60,3 +60,5 @@ for ticker,t in EVENTS:
         print(json.dumps({"ticker":ticker,"alias":alias,"window":w,
           "bybit":bybit(alias,a,b),"okx":okx(alias,a,b),"gate":gate(alias,a,b)},sort_keys=True))
         time.sleep(.2)
+
+# trigger after workflow registration
