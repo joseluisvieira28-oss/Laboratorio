@@ -1,0 +1,52 @@
+{
+  "family_id": "MEXC-LEVERAGED-CASHOPEN-BASIS-FADE-30M-V0.9",
+  "frozen_at_utc": "2026-10-05T04:29:30Z",
+  "source_gate_run_id": 37263663817,
+  "source_artifact_id": 11325497298,
+  "source_artifact_sha256": "f4243a0fc1ec294029d81ecf3a85d707d0ba2a20e35164313167ac1b0e24d4ce",
+  "candidates": [
+    {
+      "target": "MUU_USDT",
+      "external": "MUUUSDT"
+    },
+    {
+      "target": "MVLL_USDT",
+      "external": "MVLLUSDT"
+    }
+  ],
+  "start": "2026-09-09",
+  "end": "2026-10-02",
+  "excluded": [
+    "2026-09-30"
+  ],
+  "signal_time_utc": "13:29",
+  "exit_time_utc": "13:59",
+  "horizon_min": 30,
+  "external_price": "mean(Binance close, Bitget close) at 13:29",
+  "basis_bps": "10000*(MEXC_1329/external_1329-1)",
+  "side": "-sign(basis_bps)",
+  "no_threshold": true,
+  "scientific_gate": {
+    "min_n": 15,
+    "mean_gt": 0,
+    "median_gt": 0,
+    "win_rate_gt": 0.5,
+    "halves_gt": 0,
+    "exact_binomial": true,
+    "holm_across_assets": 2,
+    "alpha": 0.05
+  },
+  "costs": [
+    0,
+    12,
+    14,
+    16,
+    20
+  ],
+  "fee_floor_survivor": "scientific PASS and mean net 12bps >0",
+  "robust_fee_survivor": "scientific PASS and mean net 16bps >0",
+  "no_tuning": true,
+  "no_retrospective_rescue": true,
+  "orders": false,
+  "live_trading": false
+}
