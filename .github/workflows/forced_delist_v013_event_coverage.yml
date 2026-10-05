@@ -1,0 +1,20 @@
+name: Forced Delist Convergence V0.1.3 Event Coverage
+on:
+  push:
+    branches: [binance-futures-delist-forced-convergence-001-source-v0.1-2026-10-05]
+    paths:
+      - '.github/workflows/forced_delist_v013_event_coverage.yml'
+      - 'research/binance_futures_delist_forced_convergence/v013_event_coverage_probe.py'
+permissions:
+  contents: read
+jobs:
+  source_coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python research/binance_futures_delist_forced_convergence/v013_event_coverage_probe.py
