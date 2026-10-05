@@ -1,0 +1,18 @@
+name: First Seconds Cascade V0.1 Public Announcement Source Gate
+on:
+  push:
+    branches: [binance-listing-first-seconds-cascade-002-forward-v0.1-2026-10-05]
+    paths:
+      - '.github/workflows/first_seconds_v01_announcement_source.yml'
+      - 'research/binance_listing_first_seconds_cascade/v01_announcement_source_probe.py'
+permissions: {contents: read}
+jobs:
+  source_gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: python research/binance_listing_first_seconds_cascade/v01_announcement_source_probe.py
