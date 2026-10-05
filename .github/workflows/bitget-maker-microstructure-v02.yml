@@ -1,9 +1,9 @@
-name: Bitget Maker Microstructure V0.2
+name: Bitget Maker Microstructure V0.2.1 Identity Fix
 
 on:
   push:
     branches:
-      - bitget-maker-microstructure-v0.2-prereg-2026-10-05
+      - bitget-maker-microstructure-v0.2.1-identityfix-2026-10-05
 
 permissions:
   contents: read
@@ -44,7 +44,7 @@ jobs:
       - run: python -m pip install --disable-pip-version-check requests openpyxl
       - name: Freeze check
         run: |
-          test "$GITHUB_REF_NAME" = "bitget-maker-microstructure-v0.2-prereg-2026-10-05"
+          test "$GITHUB_REF_NAME" = "bitget-maker-microstructure-v0.2.1-identityfix-2026-10-05"
           test -f research/cross_venue_stock/BITGET_MAKER_MICROSTRUCTURE_SOURCE_BINDING_V0.2.json
           test -f research/cross_venue_stock/BITGET_MAKER_MICROSTRUCTURE_RULE_V0.2.json
           test -f research/cross_venue_stock/BITGET_MAKER_MICROSTRUCTURE_FREEZE_V0.2.md
@@ -55,7 +55,7 @@ jobs:
         run: python research/cross_venue_stock/bitget_maker_microstructure_asset_v02.py --symbol "${{ matrix.symbol }}"
       - uses: actions/upload-artifact@v4
         with:
-          name: bitget-maker-v02-${{ matrix.symbol }}
+          name: bitget-maker-v021-${{ matrix.symbol }}
           path: artifacts/cross_venue_stock/bitget_maker_v02/assets/${{ matrix.symbol }}.json
           if-no-files-found: error
           retention-days: 90
@@ -68,14 +68,14 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
-          pattern: bitget-maker-v02-*
+          pattern: bitget-maker-v021-*
           path: artifacts/cross_venue_stock/bitget_maker_v02/assets
           merge-multiple: true
       - name: Aggregate frozen family
         run: python research/cross_venue_stock/bitget_maker_microstructure_aggregate_v02.py
       - uses: actions/upload-artifact@v4
         with:
-          name: bitget-maker-microstructure-v02-${{ github.run_id }}-${{ github.run_attempt }}
+          name: bitget-maker-microstructure-v021-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/cross_venue_stock/bitget_maker_v02
           if-no-files-found: error
           retention-days: 90
