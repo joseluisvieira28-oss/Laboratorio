@@ -44,3 +44,5 @@ print(json.dumps(res,indent=2,ensure_ascii=False,sort_keys=True))
 print("DUAL_PRECURSOR_ALPHA_SCHEMA_END")
 if not res["source_reachable"]:
     raise SystemExit(2)
+
+# trigger after workflow YAML repair
