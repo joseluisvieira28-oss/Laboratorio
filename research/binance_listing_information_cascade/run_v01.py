@@ -71,7 +71,8 @@ def fetch_venue(ticker,t0):
             pre=[b for b in bars if b[0] < (t0//60000)*60000]
             old=[b for b in bars if b[0] <= t0-24*3600_000+10*60_000]
             if pre and old:return venue,a,bars
-        except Exception as e: pass
+        except Exception as e:
+          print(f'DIAG {ticker} {venue} {a}: {type(e).__name__}: {e}')
         time.sleep(.15)
     return None,None,[]
 
