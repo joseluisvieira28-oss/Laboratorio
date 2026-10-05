@@ -3,13 +3,14 @@
 # Does not compute/print prices, returns, PnL, thresholds, or change V0.3 science.
 import json,statistics,time,urllib.parse,urllib.request
 EVENTS=[
-("IMX",1641794176091),("API3",1642746484252),("WOO",1644286833903),("ASTR",1646033043037),
-("LDO",1652079437647),("STG",1660889501192),("FLOKI",1683285604106),("PEPE",1683285604106),
-("PENDLE",1688365335567),("ORDI",1699339453500),("BLUR",1700806187186),("BONK",1702612713180)]
-BIND={"IMX":"KUCOIN","API3":"KUCOIN","WOO":"KUCOIN","ASTR":"KUCOIN","LDO":"BITGET","STG":"KUCOIN",
-"FLOKI":"KUCOIN","PEPE":"BITGET","PENDLE":"BITGET","ORDI":"KUCOIN","BLUR":"KUCOIN","BONK":"KUCOIN"}
+("AIXBT",1736499327639),("CGPT",1736499327639),("COOKIE",1736499327639),
+("SYRUP",1746530720814),("KMNO",1746530720814),("PUMP",1757590673797),
+("AVNT",1757908021934),("ASTER",1759736929954),("GIGGLE",1761361338417),
+("F",1761361338417),("BANK",1763028026501),("MET",1763028026501)]
+BIND={"AIXBT":"KUCOIN","CGPT":"KUCOIN","COOKIE":"KUCOIN","SYRUP":"KUCOIN","KMNO":"KUCOIN",
+"PUMP":"KUCOIN","AVNT":"KUCOIN","ASTER":"KUCOIN","GIGGLE":"KUCOIN","F":"KUCOIN","BANK":"BITGET","MET":"KUCOIN"}
 def req(url):
- r=urllib.request.Request(url,headers={"User-Agent":"Mozilla/5.0 CryptoLabV03Diag/1.0","Accept":"application/json"})
+ r=urllib.request.Request(url,headers={"User-Agent":"Mozilla/5.0 CryptoLabV04Diag/1.0","Accept":"application/json"})
  with urllib.request.urlopen(r,timeout=25) as x:return json.load(x)
 def kucoin(sym,a,b):
  q=urllib.parse.urlencode({"symbol":sym+"-USDT","type":"1min","startAt":a//1000,"endAt":b//1000})
@@ -22,7 +23,7 @@ def bitget(sym,a,b):
  for x in j.get("data") or []:o.append((int(x[0]),float(x[5])))
  return sorted(o)
 def fetch(venue,sym,a,b):
- fn=kucoin if venue=="KUCOIN" else bitget; step=(700 if venue=="KUCOIN" else 90)*60000
+ fn=kucoin if venue=="KUCOIN" else bitget; step=(699 if venue=="KUCOIN" else 89)*60000
  out={};cur=a
  while cur<=b:
   z=min(cur+step,b)
@@ -52,6 +53,6 @@ for ticker,t0 in EVENTS:
     "volume_metric_possible":bool(len(first5)==5 and chunks and medvol and medvol>0)})
  except Exception as e:
   rows.append({"ticker":ticker,"venue":venue,"error":type(e).__name__+":"+str(e)[:200]})
-print("V03_SOURCE_DIAG_BEGIN")
+print("V04_SOURCE_DIAG_BEGIN")
 print(json.dumps(rows,indent=2))
-print("V03_SOURCE_DIAG_END")
+print("V04_SOURCE_DIAG_END")
