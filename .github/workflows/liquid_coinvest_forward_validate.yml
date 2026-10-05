@@ -1,0 +1,29 @@
+name: Liquid Co-Invest Forward Receipt Validation
+
+on:
+  push:
+    branches:
+      - liquid-coinvest-forward-v0.1-prereg-2026-10-05
+    paths:
+      - "research/liquid_coinvest_forward/**"
+      - ".github/workflows/liquid_coinvest_forward_validate.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Validate append-only forward receipts
+        run: python research/liquid_coinvest_forward/validate_forward_receipts.py
