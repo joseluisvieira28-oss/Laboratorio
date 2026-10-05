@@ -70,7 +70,7 @@ H2 is the cleaner economic test because it removes quote-stablecoin FX.
 ### H3 — USDT rail leads USD1 rail
 At minute t:
 - absolute USDT one-minute return >= 20 bps;
-- USD1 normalized one-minute return has the same sign or is near zero;
+- USD1 normalized one-minute return has the same sign or is near zero (near-zero is frozen as <= 2 bps absolute return);
 - absolute USD1 normalized return <= 50% of absolute USDT return.
 
 Signal direction = sign of USDT return.
@@ -81,7 +81,7 @@ Primary hurdle: 16 bps taker fees before spread/slippage.
 ### H4 — USD1 rail leads USDT rail
 Mirror of H3:
 - absolute normalized USD1 one-minute return >= 20 bps;
-- USDT return same sign or near zero;
+- USDT return same sign or near zero (near-zero is frozen as <= 2 bps absolute return);
 - absolute USDT return <= 50% of absolute USD1 normalized return.
 
 Trade only NAS100_USDT at t+1 OPEN, exit t+1 CLOSE.
