@@ -167,3 +167,5 @@ print(json.dumps(res,indent=2,ensure_ascii=False,sort_keys=True))
 print("FORCED_DELIST_SOURCE_PROBE_END")
 if detail_status!=200 or not res["archive_core_pass"] or not res["sample_ge_12"]:
     raise SystemExit(2)
+
+# trigger hardened V0.1.1 source probe after workflow registration
