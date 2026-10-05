@@ -50,3 +50,5 @@ for ticker,t0 in EVENTS:
 print("FIRST_SECONDS_V01_ARCHIVE_CENSUS_BEGIN")
 print(json.dumps({"n_candidates":len(rows),"rows":rows},indent=2,sort_keys=True))
 print("FIRST_SECONDS_V01_ARCHIVE_CENSUS_END")
+
+# trigger after workflow registration
