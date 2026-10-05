@@ -52,3 +52,5 @@ print(json.dumps({"catalog_hits":hits,"hit_count":len(hits)},indent=2,ensure_asc
 print("DUAL_PRECURSOR_CATALOG_DISCOVERY_END")
 if not hits:
     raise SystemExit(2)
+
+# trigger after workflow registration
