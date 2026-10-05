@@ -1,0 +1,52 @@
+name: FOREX ECB public source smoke V0.2
+
+on:
+  push:
+    branches:
+      - forex-ecb-eurusdt-v0.2-forward-setup-2026-10-05
+    paths:
+      - research/forex_macro_shock/forward_v02/runtime.py
+      - research/forex_macro_shock/forward_v02/feeds.py
+      - research/forex_macro_shock/forward_v02/ecb_watcher.py
+      - .github/workflows/forex-ecb-source-smoke-v02.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: forex-ecb-public-source-smoke-v02
+  cancel-in-progress: false
+
+jobs:
+  source-smoke:
+    if: github.ref == 'refs/heads/forex-ecb-eurusdt-v0.2-forward-setup-2026-10-05'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: research/forex_macro_shock/forward_v02
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install public stream dependency
+        working-directory: research/forex_macro_shock/forward_v02
+        run: python -m pip install -r requirements-runtime.txt
+      - name: Synthetic and recovery tests
+        working-directory: research/forex_macro_shock/forward_v02
+        run: python -m unittest -v test_forward.py test_streams.py
+      - name: Bounded public source runtime, no outcomes
+        working-directory: research/forex_macro_shock/forward_v02
+        run: python runtime.py --seconds 90
+      - name: Archive raw state and verified report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: forex-ecb-public-source-${{ github.sha }}
+          path: |
+            research/forex_macro_shock/forward_v02/evidence/RUNTIME_RECEIPT_V02_1.json
+            research/forex_macro_shock/forward_v02/state/continuous.sqlite3*
+          retention-days: 90
+          if-no-files-found: error
