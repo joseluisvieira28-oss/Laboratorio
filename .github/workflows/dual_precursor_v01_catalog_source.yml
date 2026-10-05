@@ -1,0 +1,18 @@
+name: Dual Precursor V0.1 Binance CMS Catalog Source Gate
+on:
+  push:
+    branches: [binance-dual-precursor-spot-hazard-003-v0.1-prereg-2026-10-05]
+    paths:
+      - '.github/workflows/dual_precursor_v01_catalog_source.yml'
+      - 'research/binance_dual_precursor_spot_hazard/v01_catalog_source_probe.py'
+permissions: {contents: read}
+jobs:
+  source_gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: python research/binance_dual_precursor_spot_hazard/v01_catalog_source_probe.py
