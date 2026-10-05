@@ -4,7 +4,6 @@ on:
     branches: [binance-listing-cascade-v2-lbank-2025-prereg-2026-10-05]
     paths:
       - '.github/workflows/binance_listing_v20_all_bindings_source.yml'
-      - 'research/binance_listing_information_cascade/v20_all_bindings_source_preflight.py'
 permissions: {contents: read}
 jobs:
   preflight:
@@ -15,4 +14,4 @@ jobs:
           ref: ${{ github.sha }}
       - uses: actions/setup-python@v5
         with: {python-version: '3.12'}
-      - run: python research/binance_listing_information_cascade/v20_all_bindings_source_preflight.py
+      - run: python research/binance_listing_information_cascade/v20_transport_diag.py
