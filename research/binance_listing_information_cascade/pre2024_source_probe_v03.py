@@ -59,3 +59,5 @@ print(json.dumps({"n_assets":len(E),
  "union_valid":[r["ticker"] for r in rows if r["kucoin_pass"] or r["bitget_pass"]],
  "rows":rows},indent=2))
 print("PRE2024_SOURCE_END")
+
+# trigger after workflow registration
