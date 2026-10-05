@@ -1,0 +1,16 @@
+name: BOME Source Timestamp Map
+on:
+  push:
+    branches: [binance-listing-information-cascade-v0.1-prereg-2026-10-05]
+    paths: ['.github/workflows/bome_source_timestamp_map.yml']
+jobs:
+  map:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: binance-listing-information-cascade-v0.1-prereg-2026-10-05
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python research/binance_listing_information_cascade/bome_source_timestamp_map.py
