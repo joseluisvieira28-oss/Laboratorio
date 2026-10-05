@@ -48,6 +48,22 @@ jobs:
           mkdir -p /tmp/empty-shadow
           python research/mexc_global_assets/mexc_globalasset_intraday_overshoot_shadow_aggregate_v021.py             --root /tmp/empty-shadow --out /tmp/aggregate.json
           grep -q '"overall_verdict": "EXECUTION_SHADOW_UNDERPOWERED"' /tmp/aggregate.json
+      - name: Binance public endpoint route probe
+        run: |
+          python - <<'PY'
+          import requests
+          hosts=['fapi.binance.com','fapi1.binance.com','fapi2.binance.com','fapi3.binance.com','fapi4.binance.com']
+          out=[]
+          for h in hosts:
+              try:
+                  r=requests.get(f'https://{h}/fapi/v1/klines',params={'symbol':'MSTRUSDT','interval':'1m','limit':2},timeout=10)
+                  out.append((h,r.status_code,len(r.content),r.text[:120]))
+              except Exception as e:
+                  out.append((h,'ERR',0,str(e)))
+          print(out)
+          if not any(x[1]==200 for x in out):
+              raise SystemExit('NO_BINANCE_PUBLIC_FUTURES_ROUTE_FROM_RUNNER')
+          PY
       - name: Public source-only 35/35 preflight
         run: |
           python - <<'PY'
