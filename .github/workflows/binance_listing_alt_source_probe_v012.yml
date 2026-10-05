@@ -1,0 +1,21 @@
+name: Listing Cascade Alt Source Probe
+on:
+  push:
+    branches:
+      - binance-listing-information-cascade-v0.1-prereg-2026-10-05
+    paths:
+      - 'research/binance_listing_information_cascade/source_probe_alt_v012.py'
+      - '.github/workflows/binance_listing_alt_source_probe_v012.yml'
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: binance-listing-information-cascade-v0.1-prereg-2026-10-05
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python research/binance_listing_information_cascade/source_probe_alt_v012.py
