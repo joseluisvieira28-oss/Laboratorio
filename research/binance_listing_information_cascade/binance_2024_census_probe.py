@@ -14,7 +14,7 @@ def year_of(x):
     return datetime.fromtimestamp(v/1000 if v>10**12 else v,tz=timezone.utc).year
   except:return None
 
-rows=[]; found2024=False
+rows=[]; found2025=False
 for page in range(1,101):
   j=get(page)
   catalogs=(j.get("data") or {}).get("catalogs") or []
@@ -27,17 +27,17 @@ for page in range(1,101):
     r={"title":a.get("title",""),"code":a.get("code") or a.get("id"),"release":a.get("releaseDate")}
     rows.append(r)
     y=year_of(r["release"]); years.append(y)
-    if y==2024: found2024=True
+    if y==2025: found2025=True
   print(json.dumps({"page":page,"n":len(arts),"years":sorted(set(y for y in years if y))}))
-  if found2024 and years and min(y for y in years if y)<2024: break
+  if found2025 and years and min(y for y in years if y)<2025: break
 
 cand=[]
 for r in rows:
   y=year_of(r["release"])
   title=r["title"].strip()
-  if y==2024 and title.lower().startswith("binance will list "):
+  if y==2025 and title.lower().startswith("binance will list "):
     cand.append(r)
 cand.sort(key=lambda x:int(x["release"]))
-print("CENSUS_JSON_BEGIN")
-print(json.dumps({"raw_count":len(rows),"candidate_2024_count":len(cand),"candidates":cand},ensure_ascii=False,indent=2))
-print("CENSUS_JSON_END")
+print("V04_2025_CENSUS_BEGIN")
+print(json.dumps({"raw_count":len(rows),"candidate_2025_count":len(cand),"candidates":cand},ensure_ascii=False,indent=2))
+print("V04_2025_CENSUS_END")
