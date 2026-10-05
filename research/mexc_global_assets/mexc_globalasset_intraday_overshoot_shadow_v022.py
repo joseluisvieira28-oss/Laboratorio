@@ -7,12 +7,14 @@ import json
 import math
 import os
 import tempfile
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 import requests
+from websockets.sync.client import connect as ws_connect
 
 HERE = Path(__file__).resolve().parent
 R = json.loads((HERE / "MEXC_GLOBALASSET_INTRADAY_OVERSHOOT_RULE_V1.0.json").read_text())
