@@ -1,0 +1,21 @@
+name: MEXC Earnings Shock Source V2.0.1
+on:
+  push:
+    branches: [mexc-earnings-shock-v2.0-source-gate-2026-10-05]
+permissions: {contents: read}
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: pip install requests
+      - run: |
+          test -f research/mexc_global_assets/MEXC_EARNINGS_SHOCK_SOURCE_FREEZE_V2.0.1.md
+          python research/mexc_global_assets/mexc_earnings_shock_source_v201.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: earnings-shock-source-v201-${{ github.run_id }}
+          path: artifacts/mexc_global_assets/earnings_shock_v201_source
