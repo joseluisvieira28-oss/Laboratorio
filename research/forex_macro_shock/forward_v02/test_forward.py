@@ -53,8 +53,8 @@ class Persistence(unittest.TestCase):
         second = c.Store(self.path)
         try:
             with self.assertRaises(RuntimeError): second.acquire('b', 200)
-            second.acquire('b', 60101)
-            with self.assertRaises(RuntimeError): self.store.acquire('a', 60102)
+            second.acquire('b', 180101)
+            with self.assertRaises(RuntimeError): self.store.acquire('a', 180102)
         finally: second.db.close()
 
 

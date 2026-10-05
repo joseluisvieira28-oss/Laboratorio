@@ -188,7 +188,7 @@ class Store:
             row = self.db.execute('SELECT owner,until_ms FROM lock WHERE id=1').fetchone()
             if row and row[1] > now_ms and row[0] != owner:
                 raise RuntimeError('COLLECTOR_ALREADY_RUNNING')
-            self.db.execute('INSERT OR REPLACE INTO lock VALUES(1,?,?)', (owner, now_ms + 60_000))
+            self.db.execute('INSERT OR REPLACE INTO lock VALUES(1,?,?)', (owner, now_ms + 180_000))
 
     def release(self, owner):
         with self.db:
@@ -272,8 +272,8 @@ def main():
     parser.add_argument('--export', default=str(ROOT / 'evidence'))
     parser.add_argument('--verify-only', action='store_true')
     args = parser.parse_args()
-    if not 1 <= args.cycles <= 10000 or args.interval < 5:
-        parser.error('cycles 1..10000 and interval >=5 seconds required; no event mode exists')
+    if not 1 <= args.cycles <= 10000 or not 5 <= args.interval <= 30:
+        parser.error('cycles 1..10000 and interval 5..30 seconds required; no event mode exists')
     store = Store(args.state)
     store.verify()  # detect corruption before accepting new observations
     if args.verify_only:

@@ -24,7 +24,7 @@ Run these commands from this directory on a persistent runtime. On Windows use
 do not delete or overwrite earlier observations. Keep `state/burnin.sqlite3` and
 exported `evidence/raw` on persistent disk, back them up after a graceful stop.
 The default run is bounded and safe to repeat. A process killed mid-transaction
-rolls back its incomplete write; its lease expires after 60 seconds. There is no
+rolls back its incomplete write; its lease expires after 180 seconds. There is no
 promise of uninterrupted capture after the ChatGPT session ends.
 
 The sampler captures metadata, clocks, depth, recent public trades, ticker,
