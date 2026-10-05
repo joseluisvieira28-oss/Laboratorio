@@ -1,0 +1,21 @@
+name: Funding Dispersion DN001 Stage A
+on:
+  push:
+    branches: [funding-dispersion-deltaneutral-v0.1]
+  workflow_dispatch:
+jobs:
+  stage-a:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run frozen Stage A
+        run: python research/funding_dispersion/run_stage_a.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: funding-dispersion-dn001-stage-a
+          path: research/funding_dispersion/out/
