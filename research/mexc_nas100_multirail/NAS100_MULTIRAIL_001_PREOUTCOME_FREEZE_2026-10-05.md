@@ -122,3 +122,18 @@ No threshold tuning after outcomes.
 No changing primary horizons after outcomes.
 No mid-price or close-as-fill fiction: entries use next-minute open.
 If candle test survives, a new forward microstructure experiment must be preregistered before L1/L2 collection.
+
+
+## Technical QC amendment — 2026-10-05, before any hypothesis outcome metrics
+
+The first runner stopped at the coverage gate **before H1-H4 simulation**, because calendar minutes were incorrectly used as the coverage denominator. Observed raw futures counts were equal (44,321 each), indicating sparse/session candles rather than missing one rail.
+
+This is a data-engineering correction, not outcome tuning. All signal thresholds, horizons and cost hurdles above remain unchanged.
+
+Corrected QC:
+- H1 uses the exact timestamp intersection of NAS100_USDT and NAS100_USD1 futures.
+- Futures coverage passes when intersection / min(rail row counts) >= 95%.
+- H2-H4 require USD1USDT normalization.
+- USD1USDT is joined strictly backward/as-of, using only a quote already known at T, with maximum staleness frozen at **5 minutes**.
+- If valid FX-normalized coverage is <80% of common futures minutes, H2-H4 are **BLOCKED_FX_COVERAGE** and are not simulated.
+- No forward-filling beyond 5 minutes.
