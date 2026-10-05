@@ -17,6 +17,7 @@ from pathlib import Path
 import collector as c
 from feeds import DepthBook, clock_quality
 import ecb_watcher as ecb
+from transport import PublicHTTP
 
 
 WS = {'binance': 'wss://data-stream.binance.vision/ws/eurusdt@depth@100ms',
@@ -53,7 +54,7 @@ def fetch_allowed(url, source):
 
 
 class Runtime:
-    def __init__(self, state):
+    def __init__(self, state, http=None):
         self.store = c.Store(state); self.store.verify()
         self.owner = c.digest(str(time.time_ns()).encode())
         self.store.acquire(self.owner, ms())
@@ -62,7 +63,8 @@ class Runtime:
         self.status = {}; self.last_negative = None
         self.last_wall = None; self.last_mono = None
         self.freeze_hash = FREEZE_HASH
-        hashes = {p.name: c.digest(p.read_bytes()) for p in [c.ROOT/'runtime.py', c.ROOT/'feeds.py', c.ROOT/'ecb_watcher.py', c.ROOT/'collector.py']}
+        self.http=http
+        hashes = {p.name: c.digest(p.read_bytes()) for p in c.ROOT.glob('*.py')}
         self.record('runtime_start', {'code_hashes': hashes, 'previous_chain': self.store.verify()['chain_head'], 'outcomes_opened': 0})
 
     def record(self, source, payload, validation=None, raw=None, row=None):
@@ -92,7 +94,7 @@ class Runtime:
                     self.status[venue] = {'connected': True, 'ready': False}
                     if venue == 'mexc':
                         await ws.send(c.canonical({'method': 'sub.depth', 'param': {'symbol': 'EUR_USDT', 'compress': False}, 'gzip': False}))
-                    bootstrap = asyncio.create_task(asyncio.to_thread(fetch_allowed, SNAPSHOT_URL[venue], venue+'_bootstrap'))
+                    bootstrap = asyncio.create_task(asyncio.to_thread(self.http.fetch, venue+'_bootstrap', SNAPSHOT_URL[venue]))
                     buffer = []
                     try:
                         # Receive and timestamp while REST bootstrap is pending.
@@ -151,7 +153,7 @@ class Runtime:
             for venue in WS:
                 for field in ['metadata', 'clock']:
                     source = venue+'_'+field
-                    row, raw = await asyncio.to_thread(c.fetch, source)
+                    row, raw = await asyncio.to_thread(self.http.fetch, source)
                     validation = c.validate(row, raw)
                     self.record(source, {}, validation, raw, row)
                     if field == 'clock':
@@ -164,7 +166,7 @@ class Runtime:
     async def watcher(self):
         while not self.stop.is_set() and setup_allowed(time.time()):
             try:
-                row, raw = await asyncio.to_thread(c.fetch, 'ecb_index')
+                row, raw = await asyncio.to_thread(self.http.fetch, 'ecb_index')
                 validated = c.validate(row, raw)
                 self.record('ecb_index', {}, validated, raw, row)
                 if not validated['schema_valid']: raise ValueError('INVALID_ECB_INDEX')
@@ -172,7 +174,7 @@ class Runtime:
                 if not urls:
                     self.last_negative = row['received_ms']
                 for url in urls:
-                    release_row, body = await asyncio.to_thread(fetch_allowed, url, 'ecb_release')
+                    release_row, body = await asyncio.to_thread(self.http.fetch, 'ecb_release', url)
                     if release_row.get('http_status') != 200 or release_row.get('error'):
                         raise ValueError('INVALID_ECB_RELEASE_HTTP')
                     parsed = ecb.publication(body, url, '2026-10-29')
@@ -234,7 +236,8 @@ class Runtime:
 
 async def main_async(args):
     if not setup_allowed(time.time()): raise RuntimeError('PROTECTED_EVENT_LOCK')
-    runtime = Runtime(args.state)
+    http=PublicHTTP()
+    runtime = Runtime(args.state,http)
     loop = asyncio.get_running_loop()
     for sig in [signal.SIGINT, signal.SIGTERM]:
         try: loop.add_signal_handler(sig, runtime.stop.set)
@@ -257,7 +260,8 @@ async def main_async(args):
                   'blockers': ['Paired source/clock/burn-in gates must pass', 'Event capture remains locked; setup stops 23 Oct', 'No qualified continuous operator runtime receipt']}
         target=Path(args.report);target.parent.mkdir(parents=True,exist_ok=True)
         target.write_text(json.dumps(report,indent=2));print(c.canonical(report))
-    finally: runtime.store.db.close()
+    finally:
+        runtime.store.db.close();http.close()
 
 
 def main():

@@ -8,6 +8,8 @@ import collector as c
 from feeds import DepthBook, clock_quality
 import ecb_watcher as e
 import runtime
+import calibration
+from transport import PublicHTTP
 
 NOW = 1791198000000
 URL='https://www.ecb.europa.eu/press/pr/date/2026/html/ecb.mp261029~abc123.en.html'
@@ -100,6 +102,31 @@ class Watcher(unittest.TestCase):
             try:
                 with self.assertRaises(RuntimeError):runtime.Runtime(Path(tmp)/'db')
             finally:a.store.release(a.owner);a.store.db.close()
+
+    def test_calibration_cannot_promote_short_or_invalid_capture(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            s=c.Store(Path(tmp)/'db')
+            raw=c.canonical({'grid_ms':1791198000000,'source_valid':False}).encode()
+            s.append('grid',{'source':'paired_grid','raw_sha256':c.digest(raw),'freeze_sha256':runtime.FREEZE_HASH},raw)
+            result=calibration.evaluate(s)
+            self.assertEqual(result['verdict'],'OPERATIONALLY_BLOCKED')
+            self.assertEqual(result['valid_paired_grids'],0)
+            self.assertFalse(result['activation']);self.assertIsNone(result['calibration'])
+            s.db.close()
+
+    def test_pooled_http_rejects_private_and_redirects(self):
+        class Response:
+            status_code=302;headers={}
+            def __enter__(self):return self
+            def __exit__(self,*args):pass
+            def iter_raw(self):yield b'redirect'
+        class Client:
+            def stream(self,*args):return Response()
+        http=PublicHTTP(Client())
+        with self.assertRaises(PermissionError):http.fetch('bad','https://api.mexc.com/api/v1/private/account/assets')
+        row,raw=http.fetch('binance_clock')
+        self.assertIn('REDIRECT_NOT_ALLOWED',row['error'])
+        self.assertEqual(raw,b'redirect')
 
 
 if __name__=='__main__':unittest.main()

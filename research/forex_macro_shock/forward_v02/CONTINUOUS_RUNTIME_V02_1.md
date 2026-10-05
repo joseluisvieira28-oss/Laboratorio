@@ -48,7 +48,7 @@ bounded 2..30s backoff. It does not install a service, scheduled task or login.
 
 On Windows: download this directory from the named branch; Python 3.11+ must be
 installed. Run `start-burnin.cmd`. It creates a project-local virtual environment,
-installs only `websockets==16.0`, then starts the foreground supervisor. Keep the
+installs `websockets==16.0` and `httpx==0.28.1`, then starts the foreground supervisor. Keep the
 window open and the computer awake. Stop with Ctrl+C, then restart the same file
 to resume the archive. No credentials, MEXC login, accounts, orders or wallets.
 
@@ -93,3 +93,14 @@ because the tests or bounded workflow succeed.
 References: official MEXC native WS/order-book/maintenance docs and Binance Spot
 diff-depth docs. No methodological source, threshold, horizon, fee, event list,
 minimum N or statistical gate was changed.
+
+## HTTP timing repair
+
+The first GitHub smoke proved real MEXC/Binance public stream access and sequence
+maintenance, but zero paired grids qualified. Its two cold Binance clock requests
+took 667/675ms; reopening HTTP/TLS per request unnecessarily adds transport cost.
+`transport.py` now reuses HTTP connections with TLS verification, normal environment
+proxy settings (`trust_env=True`), explicit URL allowlist and redirects disabled.
+Every actual send/receive/RTT is still recorded. No RTT is subtracted, no clock gate
+relaxed, and stale quotes never refreshed by receipt alone. A subsequent smoke
+must prove whether real measured RTT meets the unchanged gate.
