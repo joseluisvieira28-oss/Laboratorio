@@ -1,0 +1,21 @@
+name: Binance Listing V0.2 Cross-Venue Integrity Audit
+on:
+  push:
+    branches: [binance-listing-information-cascade-v0.1-prereg-2026-10-05]
+    paths: ['.github/workflows/binance_listing_v02_crossvenue_audit.yml']
+permissions: {contents: write}
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: binance-listing-information-cascade-v0.1-prereg-2026-10-05}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: python research/binance_listing_information_cascade/audit_v02_crossvenue.py
+      - run: |
+          git pull --rebase
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/binance_listing_information_cascade/audits
+          git diff --cached --quiet || (git commit -m "Record V0.2 cross-venue integrity audit" && git push)
