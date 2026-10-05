@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Bitget public historical depth cadence audit. Source-only; no strategy outcomes."""
 from __future__ import annotations
-import io,json,statistics,zipfile
+import io,json,statistics,zipfile,time
 from datetime import datetime,timezone
 from pathlib import Path
 import requests
@@ -43,7 +43,20 @@ def to_ms(v):
 def get_rows(sym,dept):
     payload={"displaySymbol":[sym],"businessLine":2,"businessType":3,"dateType":1,
              "beginTimeStr":DATE,"endTimeStr":DATE,"deptType":dept}
-    r=requests.post(API,json=payload,headers=HEADERS,timeout=60);r.raise_for_status()
+    r=None
+    for attempt in range(6):
+        r=requests.post(API,json=payload,headers=HEADERS,timeout=60)
+        if r.status_code==200:
+            break
+        if r.status_code==429:
+            retry=r.headers.get("Retry-After")
+            try:delay=max(1.0,float(retry)) if retry else 2.0*(attempt+1)
+            except Exception:delay=2.0*(attempt+1)
+            time.sleep(min(delay,12.0))
+            continue
+        r.raise_for_status()
+    if r is None or r.status_code!=200:
+        raise RuntimeError(f"DEPTH_API_HTTP_{None if r is None else r.status_code}_{sym}_{dept}")
     j=r.json();data=j.get("data") or []
     if not data or not data[0].get("fileUrl"):raise RuntimeError(f"NO_FILE_{sym}_{dept}")
     q=requests.get(data[0]["fileUrl"],headers={"User-Agent":HEADERS["User-Agent"]},timeout=120);q.raise_for_status()
@@ -109,6 +122,7 @@ def main():
             report["symbols"][sym][str(dept)]=rec
             print(sym,"dept",dept,"snapshots",len(ts),"median_gap_ms",rec["median_gap_ms"],
                   "coverage_5s",rec["signal_window_neutral_coverage"]["observable_fraction_at_5s"])
+            time.sleep(1.0)
     l1=[report["symbols"][s]["1"]["signal_window_neutral_coverage"]["observable_fraction_at_5s"] for s in SYMBOLS]
     l500=[report["symbols"][s]["2"]["signal_window_neutral_coverage"]["observable_fraction_at_5s"] for s in SYMBOLS]
     report["level1_mean_neutral_5s_coverage"]=sum(l1)/len(l1)
