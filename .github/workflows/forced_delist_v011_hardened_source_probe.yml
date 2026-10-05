@@ -1,0 +1,20 @@
+name: Forced Delist Convergence V0.1.1 Hardened Source Probe
+on:
+  push:
+    branches: [binance-futures-delist-forced-convergence-001-source-v0.1-2026-10-05]
+    paths:
+      - '.github/workflows/forced_delist_v011_hardened_source_probe.yml'
+      - 'research/binance_futures_delist_forced_convergence/v01_source_probe.py'
+permissions:
+  contents: read
+jobs:
+  source_probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python research/binance_futures_delist_forced_convergence/v01_source_probe.py
