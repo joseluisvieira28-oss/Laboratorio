@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import asyncio, collections, json, time, urllib.parse, urllib.request
+import asyncio, collections, hashlib, json, os, time, urllib.parse, urllib.request
 from pathlib import Path
 import websockets
 
@@ -9,7 +9,7 @@ from research.liquidation_cascade.licp001_trigger_engine_v01 import (
 from research.liquidation_cascade.licp001_execution_math_v01 import executable_returns
 
 CONFIG="research/liquidation_cascade/LICP_001_TRIGGER_CONFIG_V0_1.json"
-SECONDS=600
+SECONDS=int(os.environ.get("LICP_OBSERVE_SECONDS","600"))
 STALE_MS=1000
 COOLDOWN_NS=120*1_000_000_000
 BINANCE_WS="wss://fstream.binance.com/market/stream"
@@ -246,7 +246,9 @@ async def coordinator(q,stop,cfg):
     return records
 
 async def main_async():
+    started_wall_ms=int(time.time()*1000)
     cfg=load_config(CONFIG)
+    config_sha256=hashlib.sha256(Path(CONFIG).read_bytes()).hexdigest()
     q=asyncio.Queue();stop=asyncio.Event()
     health={"binance":{},"bybit":{},"mexc":{},"oi":{}}
     tasks=[
@@ -265,7 +267,13 @@ async def main_async():
         for sym,t in rr["targets"].items():
             t["complete_horizons"]=len(t["outcomes"])
         completed.append(rr)
+    ended_wall_ms=int(time.time()*1000)
     result={"status":"FORWARD_OBSERVATION","seconds":SECONDS,"config_version":cfg["version"],
+            "config_sha256":config_sha256,
+            "started_wall_ms":started_wall_ms,"ended_wall_ms":ended_wall_ms,
+            "github_run_id":os.environ.get("GITHUB_RUN_ID"),
+            "github_run_attempt":os.environ.get("GITHUB_RUN_ATTEMPT"),
+            "github_sha":os.environ.get("GITHUB_SHA"),
             "health":health,"records":completed,"record_count":len(completed),
             "live_trading":False}
     result["evidence_state"]="FORWARD_INSUFFICIENT"
