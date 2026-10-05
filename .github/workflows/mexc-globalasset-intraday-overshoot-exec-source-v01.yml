@@ -1,0 +1,21 @@
+name: MEXC GlobalAsset Overshoot Public Exec Source V0.1
+on:
+  push:
+    branches: [mexc-globalasset-intraday-overshoot-exec-v0.1-2026-10-05]
+permissions: {contents: read}
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: pip install requests
+      - run: |
+          test -f research/mexc_global_assets/MEXC_GLOBALASSET_INTRADAY_OVERSHOOT_EXEC_SOURCE_FREEZE_V0.1.md
+          python research/mexc_global_assets/mexc_globalasset_intraday_overshoot_exec_source_v01.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: intraday-overshoot-exec-source-v01-${{ github.run_id }}
+          path: artifacts/mexc_global_assets/intraday_overshoot_exec_v01
