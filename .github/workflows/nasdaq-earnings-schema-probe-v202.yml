@@ -1,0 +1,15 @@
+name: Nasdaq Earnings Schema Probe V2.0.2
+on:
+  push:
+    branches: [mexc-earnings-shock-v2.0-source-gate-2026-10-05]
+permissions: {contents: read}
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: pip install requests
+      - run: python research/mexc_global_assets/nasdaq_earnings_schema_probe_v202.py
