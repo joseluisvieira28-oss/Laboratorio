@@ -1,0 +1,65 @@
+{
+  "family_id": "MEXC-GLOBALASSET-INTRADAY-OVERSHOOT-SNAPBACK-V1.0",
+  "frozen_at_utc": "2026-10-05T08:28:00Z",
+  "outcomes_opened_at_freeze": 0,
+  "source_gate_authority_run_id": 37282772060,
+  "source_gate_report_sha256": "9f38273c7ed4673bd4da05c2a4268412b76e052fd7570d9da4bd00ec7a7fb61c",
+  "sample_start": "2026-09-09",
+  "sample_end_inclusive": "2026-10-02",
+  "excluded_dates": [
+    "2026-09-30"
+  ],
+  "session_utc": [
+    "13:30",
+    "20:00"
+  ],
+  "scan_closed_timestamp_start": "13:35",
+  "scan_closed_timestamp_end": "19:55",
+  "lookback_min": 5,
+  "forward_horizon_min": 5,
+  "external_return": "mean(Binance 5m return, Bitget 5m return)",
+  "leader_quality": "abs(Binance 5m return - Bitget 5m return) <= 10 bps",
+  "mexc_excess_bps": "MEXC 5m return - external mean 5m return",
+  "trigger": {
+    "max_external_leader_dispersion_bps": 10,
+    "abs_mexc_5m_return_gte_bps": 40,
+    "abs_mexc_excess_gte_bps": 35,
+    "same_sign_excess_and_mexc": true
+  },
+  "direction": "FADE_MEXC_EXCESS",
+  "entry": "MEXC close at signal closed-candle timestamp",
+  "exit": "MEXC close exactly 5 minutes later",
+  "global_cooldown_min": 10,
+  "simultaneous_asset_handling": "all qualifying assets at the same timestamp form one equal-weight event basket",
+  "daily_aggregation": "equal-weight mean of admitted event-basket gross returns per UTC date",
+  "scientific_unit": "daily basket return",
+  "scientific_gate": {
+    "min_admitted_event_baskets": 20,
+    "min_triggered_days": 8,
+    "mean_daily_gross_bps_gt": 0,
+    "median_daily_gross_bps_gt": 0,
+    "win_day_rate_gt": 0.5,
+    "both_chronological_halves_mean_gt_bps": 0,
+    "exact_one_sided_binomial_p_lt": 0.05
+  },
+  "cost_scenarios_roundtrip_bps": [
+    0,
+    12,
+    14,
+    16,
+    20
+  ],
+  "operational_gate": {
+    "robust_api_fee_survivor": "scientific PASS AND mean daily net after 16 bps >0 AND median daily net after 16 bps >0",
+    "robust_api_fee_survivor_not_live_go": true
+  },
+  "no_asset_specific_tuning": true,
+  "no_threshold_grid": true,
+  "no_horizon_grid": true,
+  "no_retrospective_rescue": true,
+  "private_endpoints_authorized": false,
+  "account_reads_authorized": false,
+  "orders_authorized": false,
+  "exchange_mutation_authorized": false,
+  "live_trading_authorized": false
+}
