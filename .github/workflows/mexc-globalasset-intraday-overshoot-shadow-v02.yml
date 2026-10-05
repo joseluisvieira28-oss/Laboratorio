@@ -1,9 +1,9 @@
-name: MEXC Overshoot Shadow Capture V0.2
+name: MEXC Overshoot Shadow Capture V0.2.3
 on:
   push:
-    branches: [mexc-globalasset-intraday-overshoot-exec-v0.2-frozen-2026-10-05]
+    branches: [mexc-globalasset-intraday-overshoot-shadow-v0.2.3-remediation-2026-10-05]
     paths:
-      - 'research/mexc_global_assets/shadow_trigger/**'
+      - 'research/mexc_global_assets/shadow_trigger_v023/**'
 permissions: {contents: read}
 jobs:
   capture:
@@ -14,11 +14,11 @@ jobs:
         with: {fetch-depth: 2}
       - uses: actions/setup-python@v5
         with: {python-version: '3.11'}
-      - run: pip install requests
+      - run: pip install requests websockets
       - id: trigger
         shell: bash
         run: |
-          P=$(git diff-tree --no-commit-id --name-only -r HEAD | grep '^research/mexc_global_assets/shadow_trigger/' | tail -1)
+          P=$(git diff-tree --no-commit-id --name-only -r HEAD | grep '^research/mexc_global_assets/shadow_trigger_v023/' | tail -1)
           test -n "$P"
           export P
           python - <<'PY'
@@ -31,12 +31,12 @@ jobs:
           PY
       - name: capture
         run: |
-          python research/mexc_global_assets/mexc_globalasset_intraday_overshoot_shadow_v02.py \
+          python research/mexc_global_assets/mexc_globalasset_intraday_overshoot_shadow_v022.py \
             --date "${{ steps.trigger.outputs.date }}" \
             --start "${{ steps.trigger.outputs.start }}" \
             --end "${{ steps.trigger.outputs.end }}" \
             --segment "${{ steps.trigger.outputs.segment }}"
       - uses: actions/upload-artifact@v4
         with:
-          name: overshoot-shadow-v02-${{ steps.trigger.outputs.date }}-${{ steps.trigger.outputs.segment }}-${{ github.run_id }}
-          path: artifacts/mexc_global_assets/intraday_overshoot_shadow_v02
+          name: overshoot-shadow-v023-${{ steps.trigger.outputs.date }}-${{ steps.trigger.outputs.segment }}-${{ github.run_id }}
+          path: artifacts/mexc_global_assets/intraday_overshoot_shadow_v022
