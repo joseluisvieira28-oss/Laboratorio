@@ -369,3 +369,5 @@ print("FIRST_SECONDS_V01_2025_DEVELOPMENT_SUMMARY_END")
 print("FIRST_SECONDS_V01_2025_DEVELOPMENT_EVENTS_BEGIN")
 print(json.dumps(events,indent=2,sort_keys=True))
 print("FIRST_SECONDS_V01_2025_DEVELOPMENT_EVENTS_END")
+
+# technical trigger after workflow registration; scientific logic unchanged
