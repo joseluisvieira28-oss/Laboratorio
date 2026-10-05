@@ -97,4 +97,3 @@ During the TLS documentation retry four preliminary web-document snapshots were 
 Raw source bytes, timestamps, headers and SHA-256 evidence are preserved in the accompanying local evidence bundle; 86 raw request references verified at packaging. Git stores source tooling, compact receipts and the bundle fingerprint rather than redistributing the full raw market/doc archive. The full recon inventories are in the same bundle. Retrieval scripts make public source requests only; source availability can change, so replay is not guaranteed to yield identical current snapshots.
 
 No main merge, login, private APIs, account reads, positions, balances, orders, wallets, spending or live trading. Verdict remains **SOURCE_BLOCKED**; scientific mechanism untested.
-
