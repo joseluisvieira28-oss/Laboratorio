@@ -11,7 +11,7 @@ OUT=Path("research/mexc_gold_risk_window/results")
 RAW=OUT/"raw"
 RAW.mkdir(parents=True, exist_ok=True)
 
-SYMBOLS=["XAU_USDT","XAUT_USDT","XAG_USDT"]
+SYMBOLS=["XAU_USDT","XAUT_USDT","SILVER_USDT"]
 EVENTS={
     "SEP11_2026_CPI":{
         "macro":"2026-09-11T12:30:00Z",
@@ -41,11 +41,11 @@ def iso_dt(s):
 def sec(s):
     return int(iso_dt(s).timestamp())
 
-def get_json(url, params=None, tries=5):
+def get_json(url, params=None, tries=3):
     err=None
     for i in range(tries):
         try:
-            r=requests.get(url, params=params, timeout=30, headers={"User-Agent":"CryptoLab-GOLD-RISK-WINDOW-001A/1.0"})
+            r=requests.get(url, params=params, timeout=12, headers={"User-Agent":"CryptoLab-GOLD-RISK-WINDOW-001A/1.0"})
             if r.status_code==200:
                 j=r.json()
                 if isinstance(j,dict) and j.get("success") is False:
