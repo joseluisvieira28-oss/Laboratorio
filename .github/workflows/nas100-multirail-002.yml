@@ -1,0 +1,49 @@
+name: nas100-multirail-002
+
+on:
+  push:
+    branches:
+      - nas100-multirail-001-chat-attack-2026-10-05
+    paths:
+      - 'research/mexc_nas100_multirail/NAS100_MULTIRAIL_002_INDEX_RESIDUAL_FREEZE_2026-10-05.md'
+      - 'research/mexc_nas100_multirail/run_nas100_multirail_002.py'
+      - '.github/workflows/nas100-multirail-002.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  index-residual:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: nas100-multirail-001-chat-attack-2026-10-05
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check requests pandas numpy
+      - name: Run MULTIRAIL-002
+        run: python research/mexc_nas100_multirail/run_nas100_multirail_002.py
+      - name: Persist compact outputs
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git pull --rebase origin nas100-multirail-001-chat-attack-2026-10-05 || true
+          git add research/mexc_nas100_multirail/results_002/*.json research/mexc_nas100_multirail/results_002/*.csv || true
+          if git diff --cached --quiet; then
+            echo "No outputs."
+          else
+            git commit -m "research: record NAS100 multirail 002 results"
+            git push origin HEAD:nas100-multirail-001-chat-attack-2026-10-05
+          fi
+      - name: Upload full artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nas100-multirail-002-results
+          path: research/mexc_nas100_multirail/results_002
+          if-no-files-found: warn
