@@ -1,0 +1,15 @@
+name: Binance Listing V0.7 2023 Census Source-Only
+on:
+  push:
+    branches: [binance-listing-information-cascade-v0.1-prereg-2026-10-05]
+    paths: ['.github/workflows/binance_listing_v07_2023_census.yml']
+permissions: {contents: read}
+jobs:
+  census:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: binance-listing-information-cascade-v0.1-prereg-2026-10-05}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: python research/binance_listing_information_cascade/binance_2023_census_probe.py
