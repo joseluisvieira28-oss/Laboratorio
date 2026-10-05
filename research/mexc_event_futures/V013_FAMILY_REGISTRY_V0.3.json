@@ -1,0 +1,82 @@
+{
+  "registry": "MEXC_EVENT_FUTURES_V013_FAMILY_REGISTRY",
+  "version": "0.3",
+  "frozen_at": "2026-10-05T00:00:00Z",
+  "core_min_n_floor": 20,
+  "families": [
+    {
+      "family_id": "MACRO-POSTRELEASE-FWD-001",
+      "status": "SOURCE_GATE_REQUIRED",
+      "economic_basis": "scheduled macro release information and post-release market response",
+      "activation_requires": [
+        "source_freeze",
+        "direction_rule",
+        "horizon_map",
+        "max_signal_age_s",
+        "dedup_rule",
+        "min_n",
+        "rule_hash"
+      ]
+    },
+    {
+      "family_id": "OPTIONS-VOL-FWD-001",
+      "status": "ACTIVE",
+      "economic_basis": "options-implied volatility or skew information distinct from spot chart-only signals",
+      "activation_requires": [
+        "source_freeze",
+        "direction_rule",
+        "horizon_map",
+        "max_signal_age_s",
+        "dedup_rule",
+        "min_n",
+        "rule_hash"
+      ],
+      "family_version": "0.1",
+      "source_gate_run": 37073818293,
+      "activation_freeze": "OPTIONS_VOL_ACTIVATION_FREEZE_V013_2026-10-03.md",
+      "rule_file": "OPTIONS_VOL_RULE_V013_V01.json",
+      "rule_hash": "edd02c530398465cb35e481f96e336ebd0dcccc73235aaffe6c1d984c3986517",
+      "min_n": 100,
+      "runtime_preflight_required": true
+    },
+    {
+      "family_id": "LIQUIDATION-FLOW-FWD-001",
+      "status": "PARTIAL_SOURCE__ACTIVATION_BLOCKED",
+      "economic_basis": "forced-liquidation / aggressive-flow stress distinct from close-only indicators",
+      "activation_requires": [
+        "source_freeze",
+        "direction_rule",
+        "horizon_map",
+        "max_signal_age_s",
+        "dedup_rule",
+        "min_n",
+        "rule_hash"
+      ],
+      "source_gate_initial_run": 37073818293,
+      "source_gate_extended_run": 37075262340,
+      "extended_source_artifact_id": 11257963990,
+      "extended_source_artifact_sha256": "1521ef40603b46a3e76fc148c1e6df9d830faae7c00030ed720e23c45c3e1a5f",
+      "valid_events_by_symbol": {
+        "BTCUSDT": 3,
+        "ETHUSDT": 0
+      },
+      "closeout": "LIQUIDATION_FLOW_EXTENDED_SOURCE_CLOSEOUT_V013_2026-10-05.md",
+      "activation_allowed": false,
+      "edge_tested": false
+    },
+    {
+      "family_id": "IMPORTED-FROZEN-SIGNAL-FWD-001",
+      "status": "SOURCE_GATE_REQUIRED",
+      "economic_basis": "independent pre-existing Crypto Lab signal receipts with no V0.13 reinterpretation",
+      "activation_requires": [
+        "candidate_whitelist",
+        "authority_receipt",
+        "horizon_map",
+        "max_signal_age_s",
+        "dedup_rule",
+        "min_n",
+        "rule_hash"
+      ]
+    }
+  ]
+}
