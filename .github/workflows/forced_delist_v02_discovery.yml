@@ -1,0 +1,28 @@
+name: Forced Delist Convergence V0.2 Discovery
+on:
+  push:
+    branches: [binance-futures-delist-forced-convergence-001-source-v0.1-2026-10-05]
+    paths:
+      - '.github/workflows/forced_delist_v02_discovery.yml'
+      - 'research/binance_futures_delist_forced_convergence/run_v02_discovery.py'
+      - 'research/binance_futures_delist_forced_convergence/V02_PRE_OUTCOME_DISCOVERY_FREEZE_2026-10-06.md'
+      - 'research/binance_futures_delist_forced_convergence/V021_PRE_OUTCOME_CLUSTER_INDEPENDENCE_AMENDMENT_2026-10-06.md'
+permissions:
+  contents: read
+jobs:
+  discovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python research/binance_futures_delist_forced_convergence/run_v02_discovery.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: forced-delist-v02-discovery
+          path: research/binance_futures_delist_forced_convergence/results_v02_mechanism_discovery
+          if-no-files-found: error
