@@ -120,3 +120,5 @@ print("DUAL_PRECURSOR_V012_SOURCE_BEGIN")
 print(json.dumps(res,indent=2,ensure_ascii=False,sort_keys=True))
 print("DUAL_PRECURSOR_V012_SOURCE_END")
 if not res["sample_ge_12"]:raise SystemExit(2)
+
+# trigger registered V0.1.2 workflow
