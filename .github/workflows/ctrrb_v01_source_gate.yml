@@ -28,11 +28,8 @@ jobs:
       - name: Install source-only dependencies
         run: pip install requests beautifulsoup4
 
-      - name: Diagnose official incident archive enumeration
-        run: python research/cex_transfer_rail_recovery_basis/source_diagnostic_fast_v02.py
-
-      - name: Inspect official history structure
-        run: python research/cex_transfer_rail_recovery_basis/history_structure_diag_v03.py
+      - name: Inspect Statuspage embedded history state
+        run: python research/cex_transfer_rail_recovery_basis/embedded_state_diag_v04.py
 
       - name: Run outcome-blind source gate
         run: python research/cex_transfer_rail_recovery_basis/source_gate_v01.py
@@ -61,6 +58,5 @@ jobs:
           name: ctrrb-v01-source-gate-receipt
           path: |
             ctrrb_v01_source_gate_report.json
-            ctrrb_source_diag_fast.json
-            ctrrb_history_structure_diag.json
+            ctrrb_embedded_state_diag.json
           retention-days: 30
