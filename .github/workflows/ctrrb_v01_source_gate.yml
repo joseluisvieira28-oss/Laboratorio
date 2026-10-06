@@ -28,8 +28,8 @@ jobs:
       - name: Install source-only dependencies
         run: pip install requests beautifulsoup4
 
-      - name: Inspect Statuspage embedded history state
-        run: python research/cex_transfer_rail_recovery_basis/embedded_state_diag_v04.py
+      - name: Decode official HistoryIndex props
+        run: python research/cex_transfer_rail_recovery_basis/history_props_diag_v05.py
 
       - name: Run outcome-blind source gate
         run: python research/cex_transfer_rail_recovery_basis/source_gate_v01.py
@@ -58,5 +58,5 @@ jobs:
           name: ctrrb-v01-source-gate-receipt
           path: |
             ctrrb_v01_source_gate_report.json
-            ctrrb_embedded_state_diag.json
+            ctrrb_history_props_diag.json
           retention-days: 30
