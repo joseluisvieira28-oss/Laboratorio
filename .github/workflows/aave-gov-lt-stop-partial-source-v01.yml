@@ -1,0 +1,30 @@
+name: Aave Gov LT Stop Redundant Partial Source Scan
+on:
+  push:
+    branches: [aave-gov-lt-forced-deleveraging-v0.1]
+    paths: [.github/workflows/aave-gov-lt-stop-partial-source-v01.yml]
+permissions:
+  contents: read
+  actions: write
+jobs:
+  stop:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Stop redundant source-only scan after incomplete transport closeout
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p evidence
+          gh api --method POST repos/joseluisvieira28-oss/Laboratorio/actions/runs/37443854148/cancel > evidence/cancel_response.json || true
+          for attempt in 1 2 3 4 5 6; do
+            gh api repos/joseluisvieira28-oss/Laboratorio/actions/runs/37443854148 --jq '{id,status,conclusion,head_sha}' > evidence/source_scan_stop_receipt.json
+            if [ "$(python -c 'import json; print(json.load(open("evidence/source_scan_stop_receipt.json"))["status"])')" = "completed" ]; then break; fi
+            sleep 3
+          done
+          cat evidence/source_scan_stop_receipt.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: aave-gov-lt-redundant-source-scan-stop-receipt
+          path: evidence/
+          retention-days: 30
