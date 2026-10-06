@@ -55,13 +55,8 @@ while lo<hi:
  if ts<=END_TS: lo=mid
  else: hi=mid-1
 LAST=lo
-# first block where the official address-book configurator proxy has code
-lo,hi=0,LAST
-while lo<hi:
- mid=(lo+hi)//2; code,_=rpc("eth_getCode",[CONFIG,hex(mid)])
- if code=="0x": lo=mid+1
- else: hi=mid
-FIRST=lo
+# Historical state is not required: scan logs from genesis so a non-archive public RPC cannot hide pre-deployment history.
+FIRST=0
 first_header,_=rpc("eth_getBlockByNumber",[hex(FIRST),False])
 terminal_header,_=rpc("eth_getBlockByNumber",[hex(LAST),False])
 assert int(first_header["number"],16)==FIRST and int(terminal_header["number"],16)==LAST
