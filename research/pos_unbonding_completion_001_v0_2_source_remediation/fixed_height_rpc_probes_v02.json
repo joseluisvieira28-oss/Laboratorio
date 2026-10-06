@@ -1,96 +1,507 @@
 {
-  "freeze": "V0.2 source capability only",
-  "interval": "2023-01-01/2024-12-31",
-  "prices_returns_market_payloads_volume_values_accessed": false,
-  "sample_or_materiality_counts_computed": false,
+  "freeze": "V0.2 SOURCE CAPABILITY ONLY",
+  "frozen_window_utc": [
+    "2023-01-01",
+    "2024-12-31"
+  ],
+  "prices_returns_market_payloads_or_volume_values_accessed": false,
+  "event_counts_or_materiality_computed": false,
+  "method": "Fixed historical heights only. Every block timestamp was checked before event requests. No status/latest/unbounded query was used. Event attribute values were not retained.",
   "probes": [
     {
-      "chain": "cosmoshub-4",
-      "provider": "Citizen Web3",
-      "height": 20000000,
-      "time": "2024-04-14T20:16:23.418357167Z",
-      "block": 200,
-      "block_sha256": "a540c6db9a420e3d0995fe92c4dd03bb1719ee4ab2a8ef96c19b151c93f453a5",
-      "block_results": 200,
-      "block_results_sha256": "01ca9e5de7c84542bafecc67fc73754eaaf2d31e12d3c5304b90f3a21cc04d91",
-      "tx_search": 500
+      "chain": "cosmoshub",
+      "provider": "citizenweb3",
+      "fixed_height": 20000000,
+      "block": {
+        "http_status": 200,
+        "response_sha256": "a540c6db9a420e3d0995fe92c4dd03bb1719ee4ab2a8ef96c19b151c93f453a5",
+        "returned_height": "20000000",
+        "time": "2024-04-14T20:16:23.418357167Z",
+        "chain_id": "cosmoshub-4",
+        "block_id_present": true
+      },
+      "block_results": {
+        "http_status": 200,
+        "response_sha256": "01ca9e5de7c84542bafecc67fc73754eaaf2d31e12d3c5304b90f3a21cc04d91",
+        "returned_height": "20000000",
+        "schema_keys": [
+          "app_hash",
+          "consensus_param_updates",
+          "finalize_block_events",
+          "height",
+          "txs_results",
+          "validator_updates"
+        ],
+        "event_schemas": [
+          {
+            "phase": "finalize_block_events",
+            "type": "coin_received",
+            "attribute_keys": [
+              "amount",
+              "mode",
+              "receiver"
+            ]
+          },
+          {
+            "phase": "finalize_block_events",
+            "type": "coinbase",
+            "attribute_keys": [
+              "amount",
+              "minter",
+              "mode"
+            ]
+          },
+          {
+            "phase": "finalize_block_events",
+            "type": "coin_spent",
+            "attribute_keys": [
+              "amount",
+              "mode",
+              "spender"
+            ]
+          },
+          {
+            "phase": "finalize_block_events",
+            "type": "transfer",
+            "attribute_keys": [
+              "amount",
+              "mode",
+              "recipient",
+              "sender"
+            ]
+          },
+          {
+            "phase": "finalize_block_events",
+            "type": "message",
+            "attribute_keys": [
+              "mode",
+              "sender"
+            ]
+          },
+          {
+            "phase": "finalize_block_events",
+            "type": "mint",
+            "attribute_keys": [
+              "amount",
+              "annual_provisions",
+              "bonded_ratio",
+              "inflation",
+              "mode"
+            ]
+          },
+          {
+            "phase": "finalize_block_events",
+            "type": "commission",
+            "attribute_keys": [
+              "amount",
+              "mode",
+              "validator"
+            ]
+          },
+          {
+            "phase": "finalize_block_events",
+            "type": "rewards",
+            "attribute_keys": [
+              "amount",
+              "mode",
+              "validator"
+            ]
+          },
+          {
+            "phase": "finalize_block_events",
+            "type": "liveness",
+            "attribute_keys": [
+              "address",
+              "height",
+              "missed_blocks",
+              "mode"
+            ]
+          }
+        ]
+      },
+      "tx_search": {
+        "http_status": 500,
+        "error_class": "HTTPError"
+      },
+      "stop_reason": null,
+      "error": "HTTP Error 500: Internal Server Error"
     },
     {
-      "chain": "cosmoshub-4",
-      "provider": "CryptoCrew",
-      "height": 20000000,
-      "time": "2024-04-14T20:16:23.418357167Z",
-      "block": 200,
-      "block_sha256": "a540c6db9a420e3d0995fe92c4dd03bb1719ee4ab2a8ef96c19b151c93f453a5",
-      "block_results": 200,
-      "block_results_sha256": "01ca9e5de7c84542bafecc67fc73754eaaf2d31e12d3c5304b90f3a21cc04d91",
-      "tx_search": 429
+      "chain": "cosmoshub",
+      "provider": "cryptocrew",
+      "fixed_height": 20000000,
+      "block": {
+        "http_status": 200,
+        "response_sha256": "a540c6db9a420e3d0995fe92c4dd03bb1719ee4ab2a8ef96c19b151c93f453a5",
+        "returned_height": "20000000",
+        "time": "2024-04-14T20:16:23.418357167Z",
+        "chain_id": "cosmoshub-4",
+        "block_id_present": true
+      },
+      "block_results": {
+        "http_status": 200,
+        "response_sha256": "01ca9e5de7c84542bafecc67fc73754eaaf2d31e12d3c5304b90f3a21cc04d91",
+        "returned_height": "20000000",
+        "retry_note": "first request rate-limited (429); retry succeeded and matched Citizen Web3 response digest"
+      },
+      "tx_search": {
+        "http_status": 429,
+        "error_class": "HTTPError"
+      },
+      "stop_reason": null,
+      "error": "HTTP Error 429: Too Many Requests"
     },
     {
-      "chain": "osmosis-1",
-      "provider": "Osmosis Zone",
-      "height": 15000000,
-      "time": "2024-04-17T20:44:16.967782983Z",
-      "block": 200,
-      "block_sha256": "d06c7c2b2e9afcf12bd35bf3106168887141ecf1e3b56c84eeaba38c9465477b",
-      "block_results": 200,
-      "block_results_sha256": "37bc7b3050973223f0e218cae6714c3ad5296abf87eeaae4eac225625ddb13bb",
-      "tx_search": 500
+      "chain": "osmosis",
+      "provider": "osmosis-zone",
+      "fixed_height": 15000000,
+      "block": {
+        "http_status": 200,
+        "response_sha256": "d06c7c2b2e9afcf12bd35bf3106168887141ecf1e3b56c84eeaba38c9465477b",
+        "returned_height": "15000000",
+        "time": "2024-04-17T20:44:16.967782983Z",
+        "chain_id": "osmosis-1",
+        "block_id_present": true
+      },
+      "block_results": {
+        "http_status": 200,
+        "response_sha256": "37bc7b3050973223f0e218cae6714c3ad5296abf87eeaae4eac225625ddb13bb",
+        "returned_height": "15000000",
+        "schema_keys": [
+          "app_hash",
+          "consensus_param_updates",
+          "finalize_block_events",
+          "height",
+          "txs_results",
+          "validator_updates"
+        ],
+        "event_schemas": [
+          {
+            "phase": "finalize_block_events",
+            "type": "coin_spent",
+            "attribute_keys": [
+              "amount",
+              "mode",
+              "spender"
+            ]
+          },
+          {
+            "phase": "finalize_block_events",
+            "type": "coin_received",
+            "attribute_keys": [
+              "amount",
+              "mode",
+              "receiver"
+            ]
+          },
+          {
+            "phase": "finalize_block_events",
+            "type": "transfer",
+            "attribute_keys": [
+              "amount",
+              "mode",
+              "recipient",
+              "sender"
+            ]
+          },
+          {
+            "phase": "finalize_block_events",
+            "type": "message",
+            "attribute_keys": [
+              "mode",
+              "sender"
+            ]
+          },
+          {
+            "phase": "finalize_block_events",
+            "type": "commission",
+            "attribute_keys": [
+              "amount",
+              "mode",
+              "validator"
+            ]
+          },
+          {
+            "phase": "finalize_block_events",
+            "type": "rewards",
+            "attribute_keys": [
+              "amount",
+              "mode",
+              "validator"
+            ]
+          },
+          {
+            "phase": "finalize_block_events",
+            "type": "liveness",
+            "attribute_keys": [
+              "address",
+              "height",
+              "missed_blocks",
+              "mode"
+            ]
+          }
+        ]
+      },
+      "tx_search": {
+        "http_status": 500,
+        "error_class": "HTTPError"
+      },
+      "stop_reason": null,
+      "error": "HTTP Error 500: Internal Server Error"
     },
     {
-      "chain": "osmosis-1",
-      "provider": "Validatus",
-      "height": 15000000,
-      "time": "2024-04-17T20:44:16.967782983Z",
-      "block": 200,
-      "block_sha256": "d06c7c2b2e9afcf12bd35bf3106168887141ecf1e3b56c84eeaba38c9465477b",
-      "block_results": 200,
-      "block_results_sha256": "37bc7b3050973223f0e218cae6714c3ad5296abf87eeaae4eac225625ddb13bb",
-      "tx_search": 500
+      "chain": "osmosis",
+      "provider": "validatus",
+      "fixed_height": 15000000,
+      "block": {
+        "http_status": 200,
+        "response_sha256": "d06c7c2b2e9afcf12bd35bf3106168887141ecf1e3b56c84eeaba38c9465477b",
+        "returned_height": "15000000",
+        "time": "2024-04-17T20:44:16.967782983Z",
+        "chain_id": "osmosis-1",
+        "block_id_present": true
+      },
+      "block_results": {
+        "http_status": 200,
+        "response_sha256": "37bc7b3050973223f0e218cae6714c3ad5296abf87eeaae4eac225625ddb13bb",
+        "returned_height": "15000000",
+        "schema_keys": [
+          "app_hash",
+          "consensus_param_updates",
+          "finalize_block_events",
+          "height",
+          "txs_results",
+          "validator_updates"
+        ]
+      },
+      "tx_search": {
+        "http_status": 500,
+        "error_class": "HTTPError"
+      },
+      "stop_reason": null,
+      "error": "HTTP Error 500: Internal Server Error",
+      "source_reconciliation_note": "Block response digest matched osmosis.zone at same fixed height; block_results returned HTTP 200."
     },
     {
-      "chain": "kava_2222-10",
-      "provider": "Kava Labs",
-      "height": 9500000,
-      "time": "2024-04-20T05:02:33.015922027Z",
-      "block": 200,
-      "block_sha256": "f3ab69ca10a1af7da3a61cfe0dece137c77cfbf40d19c64820b438545ba2d69d",
-      "block_results": 200,
-      "block_results_sha256": "e836ca964d7dc2f27f9bb9f70c7477b6819b22ed72da877053c7b967e0dc6411",
-      "tx_search": 500
+      "chain": "kava",
+      "provider": "kava-labs",
+      "fixed_height": 9500000,
+      "block": {
+        "http_status": 200,
+        "response_sha256": "f3ab69ca10a1af7da3a61cfe0dece137c77cfbf40d19c64820b438545ba2d69d",
+        "returned_height": "9500000",
+        "time": "2024-04-20T05:02:33.015922027Z",
+        "chain_id": "kava_2222-10",
+        "block_id_present": true
+      },
+      "block_results": {
+        "http_status": 200,
+        "response_sha256": "e836ca964d7dc2f27f9bb9f70c7477b6819b22ed72da877053c7b967e0dc6411",
+        "returned_height": "9500000",
+        "schema_keys": [
+          "begin_block_events",
+          "consensus_param_updates",
+          "end_block_events",
+          "height",
+          "txs_results",
+          "validator_updates"
+        ],
+        "event_schemas": [
+          {
+            "phase": "begin_block_events",
+            "type": "coin_spent",
+            "attribute_keys": [
+              "amount",
+              "spender"
+            ]
+          },
+          {
+            "phase": "begin_block_events",
+            "type": "coin_received",
+            "attribute_keys": [
+              "amount",
+              "receiver"
+            ]
+          },
+          {
+            "phase": "begin_block_events",
+            "type": "transfer",
+            "attribute_keys": [
+              "amount",
+              "recipient",
+              "sender"
+            ]
+          },
+          {
+            "phase": "begin_block_events",
+            "type": "message",
+            "attribute_keys": [
+              "sender"
+            ]
+          },
+          {
+            "phase": "begin_block_events",
+            "type": "staking_rewards_paid",
+            "attribute_keys": [
+              "staking_reward_amount"
+            ]
+          },
+          {
+            "phase": "begin_block_events",
+            "type": "mint",
+            "attribute_keys": [
+              "amount",
+              "annual_provisions",
+              "bonded_ratio",
+              "inflation"
+            ]
+          },
+          {
+            "phase": "begin_block_events",
+            "type": "proposer_reward",
+            "attribute_keys": [
+              "amount",
+              "validator"
+            ]
+          },
+          {
+            "phase": "begin_block_events",
+            "type": "commission",
+            "attribute_keys": [
+              "amount",
+              "validator"
+            ]
+          },
+          {
+            "phase": "begin_block_events",
+            "type": "rewards",
+            "attribute_keys": [
+              "amount",
+              "validator"
+            ]
+          },
+          {
+            "phase": "begin_block_events",
+            "type": "liveness",
+            "attribute_keys": [
+              "address",
+              "height",
+              "missed_blocks"
+            ]
+          },
+          {
+            "phase": "begin_block_events",
+            "type": "kavadist",
+            "attribute_keys": [
+              "kava_dist_status"
+            ]
+          },
+          {
+            "phase": "begin_block_events",
+            "type": "coinbase",
+            "attribute_keys": [
+              "amount",
+              "minter"
+            ]
+          },
+          {
+            "phase": "begin_block_events",
+            "type": "burn",
+            "attribute_keys": [
+              "amount",
+              "burner"
+            ]
+          },
+          {
+            "phase": "begin_block_events",
+            "type": "swaps_expired",
+            "attribute_keys": [
+              "atomic_swap_ids",
+              "expiration_block"
+            ]
+          },
+          {
+            "phase": "begin_block_events",
+            "type": "withdraw_rewards",
+            "attribute_keys": [
+              "amount",
+              "delegator",
+              "validator"
+            ]
+          },
+          {
+            "phase": "end_block_events",
+            "type": "block_bloom",
+            "attribute_keys": [
+              "bloom"
+            ]
+          },
+          {
+            "phase": "end_block_events",
+            "type": "block_gas",
+            "attribute_keys": [
+              "amount",
+              "height"
+            ]
+          }
+        ]
+      },
+      "tx_search": {
+        "http_status": 500,
+        "error_class": "HTTPError"
+      },
+      "stop_reason": null,
+      "error": "HTTP Error 500: Internal Server Error"
     },
     {
-      "chain": "kava_2222-10",
-      "provider": "Chainstack",
-      "height": 9500000,
-      "error": "DNS resolution failure"
+      "chain": "kava",
+      "provider": "chainstack",
+      "fixed_height": 9500000,
+      "block": null,
+      "block_results": null,
+      "tx_search": null,
+      "stop_reason": null,
+      "error": "<urlopen error [Errno 11001] getaddrinfo failed>"
     },
     {
       "chain": "celestia",
-      "provider": "Polkachu",
-      "height": 2500000,
-      "time": "2024-10-06T00:47:34.967040066Z",
-      "block": 200,
-      "block_sha256": "f78b3f3e8cf0eb2f4a1907d3b8c5c24d135b33db94a78ed68f8f97c7440db895",
-      "block_results": 500,
-      "tx_search": 500
+      "provider": "polkachu",
+      "fixed_height": 2500000,
+      "block": {
+        "http_status": 200,
+        "response_sha256": "f78b3f3e8cf0eb2f4a1907d3b8c5c24d135b33db94a78ed68f8f97c7440db895",
+        "returned_height": "2500000",
+        "time": "2024-10-06T00:47:34.967040066Z",
+        "chain_id": "celestia",
+        "block_id_present": true
+      },
+      "block_results": null,
+      "tx_search": {
+        "http_status": 500,
+        "error_class": "HTTPError"
+      },
+      "stop_reason": null,
+      "error": "block_results returned HTTP 500 at validated in-window height 2,500,000"
     },
     {
       "chain": "celestia",
-      "provider": "StakeMe",
-      "height": 2500000,
-      "error": "block HTTP 500"
+      "provider": "stakeme",
+      "fixed_height": 2500000,
+      "block": null,
+      "block_results": null,
+      "tx_search": null,
+      "stop_reason": null,
+      "error": "block request returned HTTP 500 at fixed in-window height 2,500,000"
     },
     {
-      "chain": "dydx-mainnet-1",
-      "provider": "Polkachu",
-      "height": 15000000,
-      "time": "2024-05-07T02:26:27.6649283Z",
-      "block": 200,
-      "block_sha256": "f47fd7198ba747cb00c58631185abcce7ae0a2729e31a13b649abd62293d38e6",
-      "block_results": 200,
-      "block_results_sha256": "440b25445cbe097fa60fffc1a5b292520ff66dcbf8a55db53ac1d255daf70aa3",
-      "tx_search": 500
+      "chain": "kava",
+      "provider": "chainstack",
+      "fixed_height": 9500000,
+      "block": null,
+      "block_results": null,
+      "tx_search": null,
+      "error": "DNS resolution failed for documented archive host rpc.data.kava.chainstacklabs.com"
     }
   ]
 }
+
