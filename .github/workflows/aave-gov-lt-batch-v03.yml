@@ -1,0 +1,23 @@
+name: Aave Gov LT Public RPC Batch Census V03
+on:
+  push:
+    branches: [aave-gov-lt-forced-deleveraging-v0.1]
+    paths: [research/aave_gov_lt_forced_deleveraging/ethereum_2025_batch_census_v03.py, .github/workflows/aave-gov-lt-batch-v03.yml]
+permissions:
+  contents: read
+jobs:
+  census:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python research/aave_gov_lt_forced_deleveraging/ethereum_2025_batch_census_v03.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: aave-gov-lt-batch-v03
+          path: out/aave_batch_v03/
+          retention-days: 30
