@@ -25,31 +25,18 @@ jobs:
           python-version: '3.12'
       - name: Install source-only dependencies
         run: pip install requests beautifulsoup4
-      - name: Diagnose Binance announcement list envelope
+      - name: Diagnose Binance announcement catalogs
         run: |
           python - <<'PY'
-          import requests, json
+          import requests
           ep='https://www.binance.com/bapi/apex/v1/public/apex/cms/article/list/query'
           h={'User-Agent':'Mozilla/5.0 Chrome/140 CryptoLab','Accept-Language':'en-US,en;q=0.9','lang':'en','Referer':'https://www.binance.com/en/support/announcement'}
-          r=requests.get(ep,params={'type':'1','pageNo':1,'pageSize':3},headers=h,timeout=30)
-          print('DIAG_HTTP',r.status_code,'CT',r.headers.get('content-type'))
+          r=requests.get(ep,params={'type':'1','pageNo':1,'pageSize':20},headers=h,timeout=30)
           obj=r.json()
           cats=(obj.get('data') or {}).get('catalogs') or []
-          print('DIAG_CATALOGS',len(cats))
-          for c in cats[:3]:
-              arts=c.get('articles') or []
-              print('DIAG_CATALOG_KEYS',sorted(c.keys()))
-              if arts:
-                  a=arts[0]
-                  print('DIAG_ARTICLE_KEYS',sorted(a.keys()))
-                  print('DIAG_ARTICLE_TYPES',json.dumps({k:type(v).__name__ for k,v in a.items()},sort_keys=True))
-                  for k in ['code','articleCode','id','title','releaseDate','releaseTime','publishTime']:
-                      if k in a:
-                          v=a[k]
-                          safe=(len(v) if isinstance(v,str) else v if isinstance(v,(int,float)) else type(v).__name__)
-                          print('DIAG_FIELD',k,'TYPE',type(v).__name__,'SAFE',safe)
-                  break
-          print('DIAG_SAFETY: structure/types only, no market endpoints/outcomes')
+          for c in cats:
+              print('DIAG_CATALOG',c.get('catalogId'),repr(c.get('catalogName')), 'TOTAL',c.get('total'),'ARTICLES',len(c.get('articles') or []))
+          print('DIAG_SAFETY: source metadata only, no market endpoints/outcomes')
           PY
       - name: Compile gate
         run: python -m py_compile research/binance_perp_margin_tier_forced_deleveraging/source_gate_v01.py
