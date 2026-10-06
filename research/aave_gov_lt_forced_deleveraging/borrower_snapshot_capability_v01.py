@@ -13,7 +13,7 @@ try:
  r['snapshot_header']=block(URL,SNAPSHOT)
  # The identity-only source window is January 2023, before every known
  # eligible Ethereum governance shock in the independently audited census.
- query={'address':POOL,'fromBlock':hex(16498000),'toBlock':hex(16500000),'topics':[sig('Borrow(address,address,address,uint256,uint8,uint256,uint16)')]}
+ query={'address':POOL,'fromBlock':hex(16498100),'toBlock':hex(16498199),'topics':[sig('Borrow(address,address,address,uint256,uint8,uint256,uint16)')]}
  logs=rpc(URL,'eth_getLogs',[query])
  assert logs
  first=min(logs,key=lambda l:(int(l['blockNumber'],16),int(l['logIndex'],16)))
