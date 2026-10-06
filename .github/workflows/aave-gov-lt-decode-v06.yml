@@ -1,0 +1,44 @@
+name: Aave Gov LT ABI Decode V06
+on:
+  push:
+    branches: [aave-gov-lt-forced-deleveraging-v0.1]
+    paths:
+      - '.github/workflows/aave-gov-lt-decode-v06.yml'
+      - 'research/aave_gov_lt_forced_deleveraging/decode_v05_configurator_v06.py'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  decode:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install pycryptodome==3.23.0
+      - name: Fetch frozen V05 artifact and pinned official ABI
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p input
+          curl --fail --location --retry 3 \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/artifacts/11414119373/zip" \
+            -o input/v05.zip
+          echo "8b8f6d9ab50dca646227f89f411b4b7b50d5a9da06bf29e8ab2e8d638dcfd57f  input/v05.zip" | sha256sum -c -
+          unzip -q input/v05.zip -d input/v05
+          cp input/v05/checkpoint.json input/checkpoint.json
+          curl --fail --location --retry 3 \
+            "https://raw.githubusercontent.com/aave/protocol-subgraphs/85dae6bde68229efe9c9555046fd5bbd336782c9/abis/v3/PoolConfigurator.json" \
+            -o input/PoolConfigurator.json
+      - run: python research/aave_gov_lt_forced_deleveraging/decode_v05_configurator_v06.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: aave-gov-lt-decode-v06
+          path: out/aave_decode_v06
+          retention-days: 30
