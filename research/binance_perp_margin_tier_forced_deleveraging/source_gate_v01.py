@@ -136,6 +136,34 @@ def strings(x):
         for v in x: out.extend(strings(v))
     return out
 
+def render_body_json(raw):
+    """Render Binance rich-text JSON body to simple HTML for deterministic source parsing."""
+    if not isinstance(raw,str) or not raw.strip():
+        return ""
+    try:
+        root=json.loads(raw)
+    except Exception:
+        return raw if "<" in raw else html.escape(raw)
+
+    def rec(x):
+        if isinstance(x,list):
+            return "".join(rec(v) for v in x)
+        if not isinstance(x,dict):
+            return ""
+        if x.get("node")=="text":
+            return html.escape(str(x.get("text","")))
+        tag=x.get("tag")
+        children=x.get("child",[])
+        inner=rec(children)
+        if isinstance(tag,str) and re.fullmatch(r"[A-Za-z0-9]+",tag):
+            return f"<{tag}>{inner}</{tag}>"
+        return inner
+    return rec(root)
+
+def body_plain_text(raw):
+    rendered=render_body_json(raw)
+    return BeautifulSoup(rendered,"html.parser").get_text(" ",strip=True)
+
 def extract_release(obj, fallback):
     keys={"releasedate","releasetime","publishtime","publishdate","publishedat","publishedtime"}
     vals=[]
@@ -251,15 +279,27 @@ def main():
     for i,meta in enumerate(sorted(candidates,key=lambda x:x["release_ms"])):
         ep,r,obj=detail(meta["code"])
         ss=strings(obj)
-        htmls=[s for s in ss if "<table" in s.lower()]
-        joined=norm(" ".join(BeautifulSoup(s,"html.parser").get_text(" ",strip=True) if "<" in s else s for s in ss))
+        data=obj.get("data",{}) if isinstance(obj,dict) else {}
+        raw_body=data.get("body","") if isinstance(data,dict) else ""
+        rendered_body=render_body_json(raw_body)
+        htmls=([rendered_body] if "<table" in rendered_body.lower() else [])
+        # Legacy HTML strings remain supported, but modern Binance bodies are rich-text JSON.
+        htmls += [s for s in ss if "<table" in s.lower() and s != raw_body]
+        joined=norm(body_plain_text(raw_body)+" "+" ".join(
+            BeautifulSoup(s,"html.parser").get_text(" ",strip=True)
+            if "<" in s and s != raw_body else (s if s != raw_body else "")
+            for s in ss
+        ))
         title=extract_title(obj,meta["title"])
         rel=extract_release(obj,meta["release_ms"])
         lo=(title+" "+joined).lower()
-        affected=bool(re.search(r"existing positions.{0,90}will be affected",lo,re.S) or "avoid any potential liquidation" in lo)
-        not_affected=bool(re.search(r"existing positions.{0,90}will not be affected",lo,re.S))
+        affected=bool(re.search(r"existing positions.{0,120}will be affected",lo,re.S) or "avoid any potential liquidation" in lo)
+        not_affected=bool(re.search(r"existing positions.{0,120}will not be affected",lo,re.S))
         delist=("delist" in lo or "automatic settlement" in lo)
-        funding=("funding rate settlement frequency" in lo or "capped funding rate multiplier" in lo)
+        funding=("funding rate settlement frequency" in lo or
+                 "capped funding rate multiplier" in lo or
+                 "capped funding rate" in lo or
+                 "funding rate cap" in lo)
         all_times=times_in_text(joined)
         parsed=[]; tables=[]
         for h in htmls:
