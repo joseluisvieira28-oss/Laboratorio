@@ -1,0 +1,20 @@
+name: Forced Delist Metrics Cadence Source Probe
+on:
+  push:
+    branches: [binance-futures-delist-forced-convergence-001-source-v0.1-2026-10-05]
+    paths:
+      - '.github/workflows/forced_delist_metrics_cadence.yml'
+      - 'research/binance_futures_delist_forced_convergence/metrics_cadence_source_probe.py'
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python research/binance_futures_delist_forced_convergence/metrics_cadence_source_probe.py
