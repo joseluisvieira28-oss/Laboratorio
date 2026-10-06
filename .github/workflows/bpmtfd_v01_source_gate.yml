@@ -13,9 +13,9 @@ permissions:
   contents: read
 
 jobs:
-  source-diagnostic:
+  source-gate:
     runs-on: ubuntu-24.04
-    timeout-minutes: 8
+    timeout-minutes: 30
     steps:
       - name: Checkout frozen branch
         uses: actions/checkout@v4
@@ -23,7 +23,31 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Install diagnostic dependency
+      - name: Install source-only dependencies
         run: pip install requests beautifulsoup4
-      - name: Inspect official article content structure
-        run: python research/binance_perp_margin_tier_forced_deleveraging/detail_structure_diag_v011.py
+      - name: Compile corrected source gate
+        run: python -m py_compile research/binance_perp_margin_tier_forced_deleveraging/source_gate_v01.py
+      - name: Run outcome-blind corrected source gate
+        run: python research/binance_perp_margin_tier_forced_deleveraging/source_gate_v01.py
+      - name: Assert source-gate safety
+        run: |
+          python - <<'PY'
+          import json
+          d=json.load(open('bpmtfd_v01_source_gate_report.json'))
+          assert all(v is False for v in d['safety'].values())
+          print('SAFETY_ASSERT_PASS')
+          print('VERDICT='+d['verdict'])
+          print('OFFICIAL_ARTICLES='+str(d['official_articles_in_window']))
+          print('CANDIDATE_ARTICLES='+str(d['candidate_articles']))
+          print('CLUSTERS='+str(d['independent_clusters']))
+          print('EVENTS='+str(d['eligible_asset_events']))
+          print('UNIQUE_CONTRACTS='+str(d['unique_contracts']))
+          print('YEARS='+str(d['years']))
+          print('MAX_CLUSTER_CONCENTRATION='+str(d['max_cluster_concentration']))
+          PY
+      - name: Upload corrected source-gate receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: bpmtfd-v01-corrected-source-gate-receipt
+          path: bpmtfd_v01_source_gate_report.json
+          retention-days: 30
