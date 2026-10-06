@@ -1,0 +1,23 @@
+name: Aave Gov LT Sustainable Public Source V05
+on:
+  push:
+    branches: [aave-gov-lt-forced-deleveraging-v0.1]
+    paths: [research/aave_gov_lt_forced_deleveraging/sustainable_census_v05.py, .github/workflows/aave-gov-lt-sustainable-v05.yml]
+permissions:
+  contents: read
+jobs:
+  census:
+    runs-on: ubuntu-latest
+    timeout-minutes: 190
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python research/aave_gov_lt_forced_deleveraging/sustainable_census_v05.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: aave-gov-lt-sustainable-v05
+          path: out/aave_sustainable_v05/
+          retention-days: 30
