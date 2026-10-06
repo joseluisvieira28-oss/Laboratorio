@@ -59,3 +59,5 @@ print(json.dumps(out,indent=2))
 print("METRICS_CADENCE_SOURCE_END")
 if not out or any(x["row_count"]<2 for x in out):
     raise SystemExit(2)
+
+# trigger registered workflow
