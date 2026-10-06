@@ -13,9 +13,9 @@ permissions:
   contents: read
 
 jobs:
-  source-gate:
+  source-diagnostic:
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 8
     steps:
       - name: Checkout frozen branch
         uses: actions/checkout@v4
@@ -23,39 +23,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Install source-only dependencies
-        run: pip install requests beautifulsoup4
-      - name: Diagnose Binance announcement catalogs
-        run: |
-          python - <<'PY'
-          import requests
-          ep='https://www.binance.com/bapi/apex/v1/public/apex/cms/article/list/query'
-          h={'User-Agent':'Mozilla/5.0 Chrome/140 CryptoLab','Accept-Language':'en-US,en;q=0.9','lang':'en','Referer':'https://www.binance.com/en/support/announcement'}
-          r=requests.get(ep,params={'type':'1','pageNo':1,'pageSize':20},headers=h,timeout=30)
-          obj=r.json()
-          cats=(obj.get('data') or {}).get('catalogs') or []
-          for c in cats:
-              print('DIAG_CATALOG',c.get('catalogId'),repr(c.get('catalogName')), 'TOTAL',c.get('total'),'ARTICLES',len(c.get('articles') or []))
-          print('DIAG_SAFETY: source metadata only, no market endpoints/outcomes')
-          PY
-      - name: Compile gate
-        run: python -m py_compile research/binance_perp_margin_tier_forced_deleveraging/source_gate_v01.py
-      - name: Run outcome-blind source gate
-        run: python research/binance_perp_margin_tier_forced_deleveraging/source_gate_v01.py
-      - name: Assert report safety
-        run: |
-          python - <<'PY'
-          import json
-          d=json.load(open('bpmtfd_v01_source_gate_report.json'))
-          assert all(v is False for v in d['safety'].values())
-          print('SAFETY_ASSERT_PASS')
-          print('VERDICT='+d['verdict'])
-          print('CLUSTERS='+str(d['independent_clusters']))
-          print('EVENTS='+str(d['eligible_asset_events']))
-          PY
-      - name: Upload source-gate receipt
-        uses: actions/upload-artifact@v4
-        with:
-          name: bpmtfd-v01-source-gate-receipt
-          path: bpmtfd_v01_source_gate_report.json
-          retention-days: 30
+      - name: Install diagnostic dependency
+        run: pip install requests
+      - name: Inspect official article content structure
+        run: python research/binance_perp_margin_tier_forced_deleveraging/detail_structure_diag_v011.py
