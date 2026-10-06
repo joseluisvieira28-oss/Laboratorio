@@ -1,0 +1,83 @@
+name: CTRRB V0.2 One-Shot Development
+
+on:
+  push:
+    branches:
+      - cex-transfer-rail-recovery-basis-v0.1-source-2026-10-06
+    paths:
+      - 'research/cex_transfer_rail_recovery_basis/DEVELOPMENT_RUN_TRIGGER_V02.txt'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  development:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Checkout frozen branch
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install requests numpy
+
+      - name: Compile frozen Development runner before outcome access
+        run: python -m py_compile research/cex_transfer_rail_recovery_basis/development_v02.py
+
+      - name: Verify pinned source artifact identity
+        run: |
+          set -euo pipefail
+          DIGEST="$(gh api repos/${GITHUB_REPOSITORY}/actions/artifacts/11424097342 --jq .digest)"
+          test "$DIGEST" = "sha256:464c3d35924ac525e15ec08dc2a620ad111cbf6c49254294f98afd1307dab54d"
+          echo "PINNED_SOURCE_ARTIFACT_DIGEST_PASS=$DIGEST"
+
+      - name: Download exact frozen source universe
+        run: |
+          set -euo pipefail
+          mkdir -p pinned_source
+          gh run download 37487514764 --repo "${GITHUB_REPOSITORY}" --name ctrrb-v011-source-gate-receipt --dir pinned_source
+          test -f pinned_source/ctrrb_v011_source_gate_report.json
+          python - <<'PY'
+          import json
+          p='pinned_source/ctrrb_v011_source_gate_report.json'
+          d=json.load(open(p))
+          assert d['verdict']=='SOURCE_GATE_PASS'
+          assert len(d['eligible_events'])==136
+          assert all(int(e['year']) <= 2025 for e in d['eligible_events'])
+          print('PINNED_SOURCE_UNIVERSE_PASS=136')
+          PY
+
+      - name: Run ONE-SHOT Development
+        run: |
+          python research/cex_transfer_rail_recovery_basis/development_v02.py             --source-report pinned_source/ctrrb_v011_source_gate_report.json             --out ctrrb_v02_development_report.json             --events-csv ctrrb_v02_event_metrics.csv
+
+      - name: Governance assertions
+        run: |
+          python - <<'PY'
+          import json
+          d=json.load(open('ctrrb_v02_development_report.json'))
+          assert d['governance']['2026_opened'] is False
+          assert d['governance']['trading_actions'] is False
+          assert d['governance']['authenticated_exchange_endpoints'] is False
+          assert d['source_pin']['run_id']==37487514764
+          assert d['source_pin']['artifact_id']==11424097342
+          assert d['verdict'] in ['NO_EDGE_DISCOVERY','SURVIVES_RAIL_RECOVERY_DISCOVERY']
+          print('GOVERNANCE_ASSERT_PASS')
+          PY
+
+      - name: Upload immutable Development receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: ctrrb-v02-development-receipt
+          path: |
+            ctrrb_v02_development_report.json
+            ctrrb_v02_event_metrics.csv
+          retention-days: 30
