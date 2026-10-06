@@ -1,0 +1,24 @@
+# Governance amendment V0.1.1 — source design only
+
+Parent freeze: `SOURCE_MECHANISM_FREEZE_V01.md`, GitHub commit `3894a2649b7d5ccde67a809808d900acc3cfef2b`.
+Date: 2026-10-06. Added before outcome access. No market values or outcomes informed this amendment.
+
+## Primary regime
+The primary universe is restricted to chains whose production mechanism is verified from chain/version-pinned Cosmos SDK `x/staking` code and chain-specific modifications. DOT/KSM, NEAR, and other era-based, manual-withdrawal, epoch-reset or otherwise non-comparable mechanisms are outside this family and may only be studied under separate authorities. A Cosmos SDK label is insufficient if production code bypasses or changes the relevant keeper lifecycle.
+
+## Economic completion and cohort ledger
+For every initiation, retain transaction/block time, amount, delegator/validator, chain binary/source version and the committed per-entry `completion_time`. `T_completion` is the first canonical block/EndBlock application where the same voluntary undelegated principal actually exits unbonding state and becomes liquid under that chain's rules, corroborated by state/transfer evidence. A nominal duration, UTC-day bucket, expected queue time, or validator status transition alone cannot substitute. Maturity with no proven release is not a completion event.
+
+Each cohort ledger must explicitly resolve or mark unknown: `CancelUnbondingDelegation` (including partial amount and cancellation time), slashing during unbonding and slash-adjusted released principal, validator state/forced validator unbonding, ICS and other unbonding holds/counters, redelegation and duplicate-principal paths, LST/module-controlled or asynchronous redemption, and delegators identifiable as CEX/custodian/service contracts. These are source classifications and controls, never post-market exclusions. Unresolved material ambiguity blocks the affected cohort and can block the gate.
+
+## Outcome-blind materiality
+Test source-only dose using released native units divided by a predeclared contemporaneous on-chain supply and/or staking-state denominator reconstructed from the same historical state. Never choose shocks by return, price or post-event activity. Preserve zero/small events and the full eligible population; any material threshold must be frozen with its source feasibility, before outcomes. The prior minimum count remains 40 material chain-days across >=5 chains unless a separately committed source-only amendment establishes an ex-ante effective-independence equivalent before outcomes. Market volume/ADV materiality cannot establish this primary gate by itself.
+
+## Paired initiation/completion identification for later freeze
+If source-feasible, the separate PRE-OUTCOME ANALYSIS FREEZE must define one matched cohort-level event study comparing the same principal at `T_signal` (public undelegation initiation) and actual `T_completion` (economic liquidity). It must freeze controls, leakage-safe non-overlapping windows, anticipation period and exact incremental completion estimand. The proposed mechanism requires completion-associated response beyond any response already present at initiation. Report both legs and their contrast. If event timestamps or outcome windows cannot identify this contrast without overlap/contamination, record that limitation and do not claim completion-specific supply-release causality. This clause does not authorize opening outcomes before the full source gate and separate analysis freeze pass.
+
+## Independent source reconciliation
+Prefer at least two independent historical evidence paths: chain-native canonical block/transaction or archival node data, reconciled against independently operated archival/indexed source plus event/state/transfer balances. Pin provider, chain ID, height/time bounds, pagination/coverage proof, schemas, response hashes and source-specific caveats. Compare cohort IDs, principal, maturity, release blocks/amounts, gaps and state totals. Unexplained differences, provider pruning or incomplete pagination are explicit blockers; provider agreement on a subset is not completeness. All requests must be bounded to the frozen pre-2025 source interval. No current-state or 2026 reads.
+
+## Effect on current status
+This amendment strengthens source gates G1-G7 in the parent freeze; it does not relax or replace any threshold. Until historical event reconstruction, source-only materiality, >=5-chain independence, >=12-month market provenance/liquidity qualification, and independent reconciliation all pass, status remains SOURCE GATE PENDING/BLOCKED. No PRE-OUTCOME FREEZE or Development is authorized by this amendment.
