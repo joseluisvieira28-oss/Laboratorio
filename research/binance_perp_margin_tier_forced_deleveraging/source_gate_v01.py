@@ -24,18 +24,29 @@ HEADERS={"User-Agent":"Mozilla/5.0 Chrome/140 CryptoLab-SourceGate/0.1","Accept-
 MAX_PAGES=160
 PAGE_SIZE=100
 OUT=Path("bpmtfd_v01_source_gate_report.json")
+SESSION=requests.Session()
+SESSION.headers.update({**HEADERS,"Referer":REFERER})
 
-def req(url, params=None, method="GET", attempts=5):
+def req(url, params=None, method="GET", attempts=8):
     last=None
     for i in range(attempts):
         try:
-            r=requests.request(method,url,params=params,headers={**HEADERS,"Referer":REFERER},timeout=35,allow_redirects=True)
-            if r.status_code in (429,) or r.status_code>=500:
-                raise RuntimeError(f"retryable HTTP {r.status_code}")
+            r=SESSION.request(method,url,params=params,timeout=40,allow_redirects=True)
+            if r.status_code==429:
+                ra=r.headers.get("retry-after")
+                try: wait=max(3,min(75,int(float(ra)))) if ra else min(75,5*(2**i))
+                except: wait=min(75,5*(2**i))
+                last=RuntimeError("HTTP 429")
+                if i+1<attempts:
+                    print(f"SOURCE_RATE_LIMIT wait={wait}s attempt={i+1}/{attempts}")
+                    time.sleep(wait); continue
+            if r.status_code>=500:
+                last=RuntimeError(f"HTTP {r.status_code}")
+                if i+1<attempts: time.sleep(min(30,2*(2**i))); continue
             return r
         except Exception as e:
             last=e
-            if i+1<attempts: time.sleep(min(12,1.4*(2**i)))
+            if i+1<attempts: time.sleep(min(30,2*(2**i)))
     raise RuntimeError(str(last))
 
 def iter_dicts(x:Any)->Iterable[dict]:
@@ -99,6 +110,8 @@ def list_universe():
                 articles[x["code"]]=x
         if min(dates)<START_MS:
             crossed=True; break
+        time.sleep(0.35)
+        if p % 40 == 0: time.sleep(4)
     return endpoint,list(articles.values()),pages,crossed
 
 def detail(code):
@@ -224,11 +237,16 @@ def data_capability(symbol,effective_utc):
 
 def main():
     endpoint,universe,pages,crossed=list_universe()
+    print("LIST_ENUM_PAGES="+str(len(pages)))
+    print("LIST_ENUM_CROSSED_PRE2023="+str(crossed))
+    print("LIST_ENUM_UNIVERSE="+str(len(universe)))
+    time.sleep(12)
     candidates=[]
     for x in universe:
         lo=x["title"].lower()
         if ("margin tier" in lo or "margin tiers" in lo) and ("leverage" in lo or "maintenance margin" in lo):
             candidates.append(x)
+    print("LIST_ENUM_CANDIDATES="+str(len(candidates)))
     inspected=[]; eligible=[]
     for i,meta in enumerate(sorted(candidates,key=lambda x:x["release_ms"])):
         ep,r,obj=detail(meta["code"])
@@ -270,7 +288,8 @@ def main():
              "tightening_table_events":len(parsed),"eligible_events":len(valid_events),
              "reject":";".join(reasons) if reasons else None,"tables":tables}
         inspected.append(rec); eligible.extend(valid_events)
-        time.sleep(0.15)
+        print(f"DETAIL_PROGRESS={i+1}/{len(candidates)} code={meta['code']} eligible={len(valid_events)} reject={rec['reject']}")
+        time.sleep(1.1)
 
     # de-dupe exact asset-event
     dd={}
