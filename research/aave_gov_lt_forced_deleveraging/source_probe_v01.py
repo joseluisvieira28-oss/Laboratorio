@@ -59,8 +59,7 @@ def block(url, n):
  # Timestamp-only boundary queries are not market/borrower outcomes.
  return {'number':integer(b['number']),'timestamp':integer(b['timestamp']),'hash':b['hash']}
 
-def lower_bound(url, ts, high):
- low=0
+def lower_bound(url, ts, high, low=0):
  while low < high:
   mid=(low+high)//2
   if block(url,mid)['timestamp'] < ts: low=mid+1
@@ -72,22 +71,23 @@ def capability(net):
  result={'dataset':name,'rpc':url,'chain_id':chain,'configurator':config,'pool':pool,'status':'SOURCE_BLOCKED'}
  try:
   if integer(rpc(url,'eth_chainId',[])) != chain: raise RuntimeError('wrong chain')
-  # Genesis is enough to prove transport; no latest state query.
-  result['genesis']=block(url,0)
+  # Genesis pruning is irrelevant to the V3 deployment; do not require it.
   # Resolve timestamps using header-only search; never log/state outcomes from 2026.
   high={'ethereum-mainnet':27000000,'polygon-mainnet':100000000,'avalanche-mainnet':100000000,'arbitrum-one':700000000,'optimism-mainnet':180000000,'base-mainnet':60000000}[name]
   # Upper bound may not exist; historical sentinel estimates use December 2025
   # start, then expand header-only until the end date is bracketed.
-  for _ in range(8):
+  for _ in range(30):
    try: hb=block(url,high); break
    except RuntimeError: high=high*9//10
   else: raise RuntimeError('cannot bracket historical boundary')
   if hb['timestamp'] <= END_TS: raise RuntimeError('upper header does not bracket 2025 end')
-  first=lower_bound(url,START_TS,high); last=lower_bound(url,END_TS+1,high)-1
+  floor=16490000 if name=='ethereum-mainnet' else 0
+  first=lower_bound(url,START_TS,high,floor); last=lower_bound(url,END_TS+1,high,floor)-1
   result['from_block']=first;result['through_block']=last
   result['first_header']=block(url,first);result['last_header']=block(url,last)
   assert START_TS <= result['first_header']['timestamp'] <= END_TS
   assert result['last_header']['timestamp'] <= END_TS
+  result['boundary_status']='PASS'
   code=rpc(url,'eth_getCode',[config,hex(last)])
   if code=='0x':raise RuntimeError('canonical configurator absent at historical boundary')
   result['configurator_code_sha256']=digest(code.encode())
@@ -103,10 +103,10 @@ def census(net, capability_result):
  name,url,chain,config,pool=net
  portal='https://portal.sqd.dev/datasets/'+name+'/stream'
  first,last=capability_result['from_block'],capability_result['through_block']
- topics=[sig(s) for s in ['CollateralConfigurationChanged(address,uint256,uint256,uint256)','EModeCategoryAdded(uint8,uint256,uint256,uint256,address,string)','EModeCategoryCollateralConfigUpdated(uint8,uint16,uint16,uint16)','EModeAssetCategoryChanged(address,uint8,uint8)']]
+ topics=[sig(s) for s in ['CollateralConfigurationChanged(address,uint256,uint256,uint256)','EModeCategoryAdded(uint8,uint256,uint256,uint256,address,string)','EModeCategoryCollateralConfigUpdated(uint8,uint16,uint16,uint16)','EModeAssetCategoryChanged(address,uint8,uint8)','AssetCollateralInEModeChanged(address,uint8,bool)']]
  rows=[];seen=set();cursor=first;pages=[]
  while cursor<=last:
-  stop=min(last,cursor+74999)
+  stop=min(last,cursor+4999999)
   body={'type':'evm','fromBlock':cursor,'toBlock':stop,'fields':{'block':{'number':True,'timestamp':True,'hash':True},'log':{'address':True,'topics':True,'data':True,'transactionHash':True,'logIndex':True}},'logs':[{'address':[config],'topic0':topics}]}
   raw=post(portal,body,120); blocks=[json.loads(line) for line in raw.splitlines() if line.strip()]
   tail=None
@@ -145,7 +145,7 @@ def main():
  results=[]
  for net in NETWORKS:
   cap=capability(net);print(json.dumps(cap),flush=True);results.append(cap)
-  if cap['status']=='HISTORICAL_PROTOCOL_RPC_CAPABILITY_PASS':
+  if cap.get('boundary_status')=='PASS':
    try:cap['census']=census(net,cap)
    except Exception as e:cap['census']={'status':'SOURCE_BLOCKED','failure':str(e)}
  receipt={'lab_id':LAB,'phase':'SOURCE_ONLY','classification':'SOURCE_BLOCKED','reason':'Historical governance linkage / pre-signal borrower reconstruction not yet proved; never infer NO_EDGE from acquisition failure.','freeze_commit':'54743a9200eac68c0348c280379d6bfc5c3b8ace','start_timestamp':START_TS,'end_timestamp':END_TS,'networks':results,'requests':RECEIPTS,'economic_outcomes_opened':0,'borrower_behavior_opened':False,'development_runs':0,'2026_outcomes_opened':False}
