@@ -3,7 +3,8 @@
 import json
 from source_probe_v01 import OUT, RECEIPTS, rpc, block, sig, digest, lower_bound
 
-URL='https://eth.drpc.org'
+URL='https://eth-mainnet.g.alchemy.com/public'
+FALLBACK_URL='https://ethereum-rpc.publicnode.com'
 PC='0xdabad81af85554e9ae636395611c58f7ec1aaec5'
 GV2='0xec568fffba86c094cf06b22134b23074dfe2252c'
 EXECUTIONS=[
@@ -19,7 +20,11 @@ for bn,tx in EXECUTIONS:
  row={'effect_block':bn,'effect_tx':tx,'status':'SOURCE_BLOCKED'}
  try:
   row['effect_header']=block(URL,bn)
-  logs=rpc(URL,'eth_getLogs',[{'address':[PC,GV2],'fromBlock':hex(bn),'toBlock':hex(bn),'topics':[[sig('PayloadExecuted(uint40)'),sig('ProposalExecuted(uint256,address)')]]}])
+  logs=[]
+  for address,signature in [(PC,'PayloadExecuted(uint40)'),(GV2,'ProposalExecuted(uint256,address)')]:
+   query={'address':address,'fromBlock':hex(bn),'toBlock':hex(bn),'topics':[sig(signature)]}
+   try:logs.extend(rpc(URL,'eth_getLogs',[query]))
+   except Exception:logs.extend(rpc(FALLBACK_URL,'eth_getLogs',[query]))
   logs=[l for l in logs if l['transactionHash'].lower()==tx]
   row['governance_execution_logs']=logs
   payloads=[l for l in logs if l['address'].lower()==PC and l['topics'][0].lower()==sig('PayloadExecuted(uint40)')]
