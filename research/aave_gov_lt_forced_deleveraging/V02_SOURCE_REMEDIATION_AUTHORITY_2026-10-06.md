@@ -1,0 +1,4 @@
+# V0.2 source transport continuation
+Operator renewed continuation 2026-10-06 after V0.1 SOURCE_BLOCKED. Preserve 54743a92 source/mechanism freeze, historical universe, n>=12, independent clustering, 2026 closed, and separate pre-outcome freeze requirement. No scientific amendments or outcomes. V0.1 closeout remains authoritative for its completed attempt.
+
+Repair transport via public RPC configuration logs; compare providers at a known configuration interval, preserve error response bodies/hashes and exact contiguous range checkpoints. Probe borrower identity in January 2023 and historical getters at existing pre-signal block only. Getter capability is not complete enumeration. Resume only from locally validated saved contiguous checkpoints; no zero-fill of gaps. Reuse prior hashed configuration evidence where compatible, without pretending this completes eMode/upgrade lineage. All economic outcomes remain closed. No new paid or authenticated endpoints.
