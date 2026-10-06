@@ -26,7 +26,7 @@ def main():
             raw=r.read()
         seen=datetime.now(timezone.utc)
         p=Text(); p.feed(raw.decode('utf-8'))
-        full='\n'.join(p.parts)
+        full=' '.join(p.parts)
         start=full.find('Date:')
         end=full.find('A team of crypto experts',start)
         if start<0 or end<start: raise ValueError('unrecognized notification layout')
