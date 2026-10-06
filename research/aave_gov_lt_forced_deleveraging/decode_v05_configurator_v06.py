@@ -20,6 +20,14 @@ for x in abi:
  if x.get("type")!="event": continue
  sig=x["name"]+"("+",".join(i["type"] for i in x["inputs"])+")"
  events[topic(sig)]={"name":x["name"],"signature":sig,"inputs":x["inputs"]}
+# Events introduced after the legacy ABI, pinned to aave-dao/aave-v3-origin
+# commit 8305565ae342f1773c42cd2e4593f175fe5968a0 IPoolConfigurator.sol.
+for name,sig in {
+ "ReserveInterestRateDataChanged":"ReserveInterestRateDataChanged(address,address,bytes)",
+ "PendingLtvChanged":"PendingLtvChanged(address,uint256)",
+ "LiquidationGracePeriodDisabled":"LiquidationGracePeriodDisabled(address)",
+ "ReserveFlashLoaning":"ReserveFlashLoaning(address,bool)",
+}.items(): events[topic(sig)]={"name":name,"signature":sig,"inputs":[]}
 rows=checkpoint["rows"]
 unknown=Counter(x["topics"][0] for x in rows if x["topics"][0] not in events)
 decoded_counts=Counter(events[x["topics"][0]]["name"] if x["topics"][0] in events else "UNKNOWN:"+x["topics"][0] for x in rows)
@@ -77,10 +85,11 @@ receipt={
  "prior_independent_episodes_2023_2024":prior["independent_24h_episode_count"],
  "independent_fully_source_gated_shocks":0,
  "defensible_independent_shock_universe":"UNKNOWN",
- "unresolved":["ABI/upgrade identity for unknown event topics","pre-2025 eMode category state/history","governance approved/queued lineage for all candidates","upgrade semantic boundaries","complete borrower exposure reconstruction"],
+ "unresolved":["pre-2025 eMode category state/history","governance approved/queued lineage for all candidates","upgrade semantic boundaries","complete borrower exposure reconstruction"],
  "economic_outcomes_opened":0,"development_runs":0,"outcomes_2026_opened":False
 }
 assert receipt["input_terminal"]==24136052 and receipt["input_unique_logs"]==1386
+assert receipt["unknown_topic_count"]==0
 (OUT/"RECEIPT.json").write_text(json.dumps(receipt,indent=2,sort_keys=True))
 (OUT/"DECODED_EVENTS.json").write_text(json.dumps({"receipt":receipt,"base_rows":base_rows,"base_decreases":base_decreases,"base_disablements":base_disablements,"emode_rows":emode_rows,"emode_decreases":emode_decreases},indent=2,sort_keys=True))
 print(json.dumps(receipt,sort_keys=True))
