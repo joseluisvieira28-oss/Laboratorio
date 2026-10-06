@@ -165,21 +165,19 @@ def body_plain_text(raw):
     return BeautifulSoup(rendered,"html.parser").get_text(" ",strip=True)
 
 def extract_release(obj, fallback):
-    keys={"releasedate","releasetime","publishtime","publishdate","publishedat","publishedtime"}
-    vals=[]
-    for d in iter_dicts(obj):
-        for k,v in d.items():
-            if k.lower() in keys:
-                z=parse_ts(v)
-                if z: vals.append(z)
-    inwin=[z for z in vals if START_MS<=z<=END_MS]
-    return min(inwin) if inwin else fallback
+    # Current article only. Do not traverse relatedArticles/footer metadata.
+    data=obj.get("data",{}) if isinstance(obj,dict) else {}
+    if isinstance(data,dict):
+        for k in ("publishDate","releaseDate","releaseTime","publishTime","publishedAt","publishedTime"):
+            z=parse_ts(data.get(k))
+            if z and START_MS<=z<=END_MS:
+                return z
+    return fallback
 
 def extract_title(obj,fallback):
-    for d in iter_dicts(obj):
-        v=d.get("title")
-        if isinstance(v,str) and v.strip(): return norm(v)
-    return fallback
+    data=obj.get("data",{}) if isinstance(obj,dict) else {}
+    v=data.get("title") if isinstance(data,dict) else None
+    return norm(v) if isinstance(v,str) and v.strip() else fallback
 
 DATE_RE=re.compile(r"(202[3-5])[-/](\d{1,2})[-/](\d{1,2})[^0-9]{0,20}(\d{1,2}):(\d{2})\s*(?:\(UTC\)|UTC)",re.I)
 DATE_RE2=re.compile(r"(202[3-5])[-/](\d{1,2})[-/](\d{1,2})[^0-9]{0,30}at\s+(\d{1,2}):(\d{2})\s*(?:\(UTC\)|UTC)",re.I)
@@ -278,19 +276,14 @@ def main():
     inspected=[]; eligible=[]
     for i,meta in enumerate(sorted(candidates,key=lambda x:x["release_ms"])):
         ep,r,obj=detail(meta["code"])
-        ss=strings(obj)
         data=obj.get("data",{}) if isinstance(obj,dict) else {}
         raw_body=data.get("body","") if isinstance(data,dict) else ""
         rendered_body=render_body_json(raw_body)
         htmls=([rendered_body] if "<table" in rendered_body.lower() else [])
-        # Legacy HTML strings remain supported, but modern Binance bodies are rich-text JSON.
-        htmls += [s for s in ss if "<table" in s.lower() and s != raw_body]
-        joined=norm(body_plain_text(raw_body)+" "+" ".join(
-            BeautifulSoup(s,"html.parser").get_text(" ",strip=True)
-            if "<" in s and s != raw_body else (s if s != raw_body else "")
-            for s in ss
-        ))
+        # Parse only the current article. Related articles/footer are intentionally excluded.
         title=extract_title(obj,meta["title"])
+        seo_desc=data.get("seoDesc","") if isinstance(data,dict) else ""
+        joined=norm(title+" "+str(seo_desc or "")+" "+body_plain_text(raw_body))
         rel=extract_release(obj,meta["release_ms"])
         lo=(title+" "+joined).lower()
         affected=bool(re.search(r"existing positions.{0,120}will be affected",lo,re.S) or "avoid any potential liquidation" in lo)
