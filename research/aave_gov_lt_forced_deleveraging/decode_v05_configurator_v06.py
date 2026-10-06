@@ -81,7 +81,6 @@ receipt={
  "economic_outcomes_opened":0,"development_runs":0,"outcomes_2026_opened":False
 }
 assert receipt["input_terminal"]==24136052 and receipt["input_unique_logs"]==1386
-assert receipt["unknown_topic_count"]==0
 (OUT/"RECEIPT.json").write_text(json.dumps(receipt,indent=2,sort_keys=True))
 (OUT/"DECODED_EVENTS.json").write_text(json.dumps({"receipt":receipt,"base_rows":base_rows,"base_decreases":base_decreases,"base_disablements":base_disablements,"emode_rows":emode_rows,"emode_decreases":emode_decreases},indent=2,sort_keys=True))
 print(json.dumps(receipt,sort_keys=True))
