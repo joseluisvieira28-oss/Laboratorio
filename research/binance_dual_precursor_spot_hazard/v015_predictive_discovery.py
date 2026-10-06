@@ -257,3 +257,5 @@ summary={
 print("DUAL_PRECURSOR_DISCOVERY_BEGIN")
 print(json.dumps(summary,indent=2,sort_keys=True))
 print("DUAL_PRECURSOR_DISCOVERY_END")
+
+# trigger registered predictive discovery workflow
