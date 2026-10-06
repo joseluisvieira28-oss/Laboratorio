@@ -26,7 +26,8 @@ for name,sig in {
  "ReserveInterestRateDataChanged":"ReserveInterestRateDataChanged(address,address,bytes)",
  "PendingLtvChanged":"PendingLtvChanged(address,uint256)",
  "LiquidationGracePeriodDisabled":"LiquidationGracePeriodDisabled(address)",
- "ReserveFlashLoaning":"ReserveFlashLoaning(address,bool)",\n "ConfiguratorProxyUpgraded":"Upgraded(address)",
+ "ReserveFlashLoaning":"ReserveFlashLoaning(address,bool)",
+ "ConfiguratorProxyUpgraded":"Upgraded(address)",
 }.items(): events[topic(sig)]={"name":name,"signature":sig,"inputs":[]}
 rows=checkpoint["rows"]
 unknown=Counter(x["topics"][0] for x in rows if x["topics"][0] not in events)
