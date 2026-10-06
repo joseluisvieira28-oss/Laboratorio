@@ -1,0 +1,101 @@
+name: BPMTFD V0.2 One-Shot Development
+
+on:
+  push:
+    branches:
+      - binance-perp-margin-tier-forced-deleveraging-v0.2-development-2026-10-06
+    paths:
+      - '.github/workflows/bpmtfd_v02_development.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  development:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Checkout frozen Development branch
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Verify pre-outcome freeze identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          FILE='research/binance_perp_margin_tier_forced_deleveraging/BPMTFD_V02_PRE_OUTCOME_ANALYSIS_FREEZE_2026-10-06.md'
+          ACTUAL="$(git hash-object "$FILE")"
+          EXPECTED='496b63f5fbd315bf5d7bf870524e1c69938aa83c'
+          echo "FREEZE_BLOB_SHA=$ACTUAL"
+          test "$ACTUAL" = "$EXPECTED"
+
+      - name: Install public-data dependency
+        run: pip install requests
+
+      - name: Compile runner before any market outcome access
+        run: python -m py_compile research/binance_perp_margin_tier_forced_deleveraging/development_v02.py
+
+      - name: Download exact frozen V0.1 source receipt
+        uses: actions/download-artifact@v4
+        with:
+          name: bpmtfd-v01-corrected-source-gate-receipt
+          path: source_receipt
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: '37498232442'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify pinned source universe before outcomes
+        run: |
+          python - <<'PY'
+          import json
+          p='source_receipt/bpmtfd_v01_source_gate_report.json'
+          d=json.load(open(p,encoding='utf-8'))
+          assert d['family']=='BINANCE-PERP-MARGIN-TIER-FORCED-DELEVERAGING-001'
+          assert d['verdict']=='SOURCE_GATE_PASS'
+          assert d['outcome_access']=='NONE'
+          assert d['eligible_asset_events']==98
+          assert d['unique_contracts']==89
+          assert d['years']==[2023,2024,2025]
+          assert all(int(e['effective_utc'][:4]) <= 2025 for e in d['eligible_events'])
+          print('PINNED_SOURCE_RECEIPT_PASS')
+          print('EVENTS='+str(d['eligible_asset_events']))
+          print('CLUSTERS='+str(d['independent_clusters']))
+          print('UNIQUE_CONTRACTS='+str(d['unique_contracts']))
+          PY
+
+      - name: Run ONE-SHOT V0.2 Development
+        run: python research/binance_perp_margin_tier_forced_deleveraging/development_v02.py
+
+      - name: Assert frozen verdict and governance
+        run: |
+          python - <<'PY'
+          import json
+          d=json.load(open('bpmtfd_v02_development_report.json',encoding='utf-8'))
+          assert d['verdict'] in {'NO_EDGE_DISCOVERY','SURVIVES_MARGIN_TIER_DISCOVERY'}
+          g=d['governance']
+          assert g['year_2026_opened'] is False
+          assert g['authenticated_endpoint_used'] is False
+          assert g['private_endpoint_used'] is False
+          assert g['trading_or_order_mutation'] is False
+          assert g['main_modified'] is False
+          assert g['post_outcome_tuning'] is False
+          print('VERDICT='+d['verdict'])
+          print('ANALYZABLE_EVENTS='+str(d['analyzable_asset_events']))
+          print('ANALYZABLE_CLUSTERS='+str(d['analyzable_clusters']))
+          print('SAMPLE_GATES='+json.dumps(d['sample_gates'],sort_keys=True))
+          print('PRIMARY_GATES='+json.dumps(d['primary_gates'],sort_keys=True))
+          print('PRIMARY_METRICS='+json.dumps(d['primary_metrics'],sort_keys=True))
+          PY
+
+      - name: Upload immutable Development receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: bpmtfd-v02-development-receipt
+          path: bpmtfd_v02_development_report.json
+          retention-days: 30
