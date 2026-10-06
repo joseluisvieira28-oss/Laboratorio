@@ -1,0 +1,24 @@
+name: Aave Gov LT Public Archive Fallback V0.1
+on:
+  push:
+    branches: [aave-gov-lt-forced-deleveraging-v0.1]
+    paths: [research/aave_gov_lt_forced_deleveraging/archive_fallback_probe_v01.py]
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install pycryptodome==3.23.0
+      - run: python research/aave_gov_lt_forced_deleveraging/archive_fallback_probe_v01.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: aave-gov-lt-public-archive-fallback-v01
+          path: out/aave_gov_lt_forced_deleveraging/
+          retention-days: 30
