@@ -1,0 +1,50 @@
+name: BPMTFD V0.1 Source Gate
+
+on:
+  push:
+    branches:
+      - binance-perp-margin-tier-forced-deleveraging-v0.1-source-2026-10-06
+    paths:
+      - 'research/binance_perp_margin_tier_forced_deleveraging/**'
+      - '.github/workflows/bpmtfd_v01_source_gate.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-gate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Checkout frozen branch
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install source-only dependencies
+        run: pip install requests beautifulsoup4
+      - name: Compile gate
+        run: python -m py_compile research/binance_perp_margin_tier_forced_deleveraging/source_gate_v01.py
+      - name: Run outcome-blind source gate
+        run: python research/binance_perp_margin_tier_forced_deleveraging/source_gate_v01.py
+      - name: Assert report safety
+        run: |
+          python - <<'PY'
+          import json
+          p='bpmtfd_v01_source_gate_report.json'
+          d=json.load(open(p))
+          s=d['safety']
+          assert all(v is False for v in s.values())
+          print('SAFETY_ASSERT_PASS')
+          print('VERDICT='+d['verdict'])
+          print('CLUSTERS='+str(d['independent_clusters']))
+          print('EVENTS='+str(d['eligible_asset_events']))
+          PY
+      - name: Upload source-gate receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: bpmtfd-v01-source-gate-receipt
+          path: bpmtfd_v01_source_gate_report.json
+          retention-days: 30
