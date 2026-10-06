@@ -16,12 +16,12 @@ OUT = Path(os.environ.get('AAVE_SOURCE_OUT', 'out/aave_gov_lt_forced_deleveragin
 OUT.mkdir(parents=True, exist_ok=True)
 RECEIPTS = []
 NETWORKS = [
- ('ethereum-mainnet', 'https://ethereum-rpc.publicnode.com', 1, '0x64b761d848206f447fe2dd461b0c635ec39ebb27', '0x87870bca3f3fd6335c3f4ce8392d69350b4fa4e2'),
- ('polygon-mainnet', 'https://polygon-bor-rpc.publicnode.com', 137, '0x8145edddf43f50276641b55bd3ad95944510021e', '0x794a61358d6845594f94dc1db02a252b5b4814ad'),
- ('avalanche-mainnet', 'https://avalanche-c-chain-rpc.publicnode.com', 43114, '0x8145edddf43f50276641b55bd3ad95944510021e', '0x794a61358d6845594f94dc1db02a252b5b4814ad'),
- ('arbitrum-one', 'https://arbitrum-one-rpc.publicnode.com', 42161, '0x8145edddf43f50276641b55bd3ad95944510021e', '0x794a61358d6845594f94dc1db02a252b5b4814ad'),
- ('optimism-mainnet', 'https://optimism-rpc.publicnode.com', 10, '0x8145edddf43f50276641b55bd3ad95944510021e', '0x794a61358d6845594f94dc1db02a252b5b4814ad'),
- ('base-mainnet', 'https://base-rpc.publicnode.com', 8453, '0x5731a04b1e775f0fdd454bf70f3335886e9a96be', '0xa238dd80c259a72e81d7e4664a9801593f98d1c5'),
+ ('ethereum-mainnet', 'https://eth-mainnet.g.alchemy.com/public', 1, '0x64b761d848206f447fe2dd461b0c635ec39ebb27', '0x87870bca3f3fd6335c3f4ce8392d69350b4fa4e2'),
+ ('polygon-mainnet', 'https://polygon.drpc.org', 137, '0x8145edddf43f50276641b55bd3ad95944510021e', '0x794a61358d6845594f94dc1db02a252b5b4814ad'),
+ ('avalanche-mainnet', 'https://avalanche.drpc.org', 43114, '0x8145edddf43f50276641b55bd3ad95944510021e', '0x794a61358d6845594f94dc1db02a252b5b4814ad'),
+ ('arbitrum-one', 'https://arbitrum.drpc.org', 42161, '0x8145edddf43f50276641b55bd3ad95944510021e', '0x794a61358d6845594f94dc1db02a252b5b4814ad'),
+ ('optimism-mainnet', 'https://optimism.drpc.org', 10, '0x8145edddf43f50276641b55bd3ad95944510021e', '0x794a61358d6845594f94dc1db02a252b5b4814ad'),
+ ('base-mainnet', 'https://base.drpc.org', 8453, '0x5731a04b1e775f0fdd454bf70f3335886e9a96be', '0xa238dd80c259a72e81d7e4664a9801593f98d1c5'),
 ]
 
 def digest(b): return hashlib.sha256(b).hexdigest()
@@ -76,11 +76,22 @@ def capability(net):
   high={'ethereum-mainnet':27000000,'polygon-mainnet':100000000,'avalanche-mainnet':100000000,'arbitrum-one':700000000,'optimism-mainnet':180000000,'base-mainnet':60000000}[name]
   # Upper bound may not exist; historical sentinel estimates use December 2025
   # start, then expand header-only until the end date is bracketed.
+  invalid_high=None
   for _ in range(30):
    try: hb=block(url,high); break
-   except RuntimeError: high=high*9//10
+   except RuntimeError:
+    invalid_high=high; high=high*9//10
   else: raise RuntimeError('cannot bracket historical boundary')
-  if hb['timestamp'] <= END_TS: raise RuntimeError('upper header does not bracket 2025 end')
+  if hb['timestamp'] <= END_TS:
+   if invalid_high is None:raise RuntimeError('upper header does not bracket 2025 end')
+   lo_h,hi_h=high,invalid_high
+   for _ in range(30):
+    mid=(lo_h+hi_h)//2
+    try:mb=block(url,mid)
+    except RuntimeError:hi_h=mid;continue
+    if mb['timestamp']>END_TS:high=mid;hb=mb;break
+    lo_h=mid
+   else:raise RuntimeError('cannot bracket exact 2025 boundary')
   floor=16490000 if name=='ethereum-mainnet' else 0
   first=lower_bound(url,START_TS,high,floor); last=lower_bound(url,END_TS+1,high,floor)-1
   result['from_block']=first;result['through_block']=last
@@ -108,7 +119,7 @@ def census(net, capability_result):
  while cursor<=last:
   stop=min(last,cursor+4999999)
   body={'type':'evm','fromBlock':cursor,'toBlock':stop,'fields':{'block':{'number':True,'timestamp':True,'hash':True},'log':{'address':True,'topics':True,'data':True,'transactionHash':True,'logIndex':True}},'logs':[{'address':[config],'topic0':topics}]}
-  raw=post(portal,body,120); blocks=[json.loads(line) for line in raw.splitlines() if line.strip()]
+  raw=post(portal,body,45); blocks=[json.loads(line) for line in raw.splitlines() if line.strip()]
   tail=None
   for obj in blocks:
    h=obj.get('header',obj.get('block',{}));bn=integer(h['number']);ts=integer(h['timestamp'])
@@ -121,6 +132,7 @@ def census(net, capability_result):
     row={'chain_id':chain,'block':bn,'timestamp':ts,'block_hash':h.get('hash'),**log};rows.append(row)
   # Sparse/partial responses continue after last returned header. Empty response
   # is accepted only as a completed exact bounded SQD query, and is recorded.
+  print(json.dumps({'dataset':name,'request_from':cursor,'request_to':stop,'last_returned':tail,'logs':len(rows)}),flush=True)
   pages.append({'from':cursor,'to':stop,'last_returned':tail,'raw_sha256':digest(raw)})
   cursor=(tail+1) if tail is not None else stop+1
   if len(pages)%20==0:print(json.dumps({'dataset':name,'covered':cursor-1,'logs':len(rows)}),flush=True)
@@ -148,6 +160,7 @@ def main():
   if cap.get('boundary_status')=='PASS':
    try:cap['census']=census(net,cap)
    except Exception as e:cap['census']={'status':'SOURCE_BLOCKED','failure':str(e)}
+  (OUT/'PARTIAL_SOURCE_PROBE_RECEIPT.json').write_text(json.dumps({'phase':'SOURCE_ONLY_PARTIAL','networks':results,'requests':RECEIPTS,'economic_outcomes_opened':0},indent=2)+'\n')
  receipt={'lab_id':LAB,'phase':'SOURCE_ONLY','classification':'SOURCE_BLOCKED','reason':'Historical governance linkage / pre-signal borrower reconstruction not yet proved; never infer NO_EDGE from acquisition failure.','freeze_commit':'54743a9200eac68c0348c280379d6bfc5c3b8ace','start_timestamp':START_TS,'end_timestamp':END_TS,'networks':results,'requests':RECEIPTS,'economic_outcomes_opened':0,'borrower_behavior_opened':False,'development_runs':0,'2026_outcomes_opened':False}
  (OUT/'SOURCE_PROBE_RECEIPT.json').write_text(json.dumps(receipt,indent=2)+'\n')
  print(json.dumps({'classification':receipt['classification'],'networks':len(results),'requests':len(RECEIPTS),'development_runs':0}),flush=True)
