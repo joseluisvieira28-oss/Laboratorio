@@ -28,6 +28,9 @@ jobs:
       - name: Install source-only dependencies
         run: pip install requests beautifulsoup4
 
+      - name: Diagnose official incident archive enumeration
+        run: python research/cex_transfer_rail_recovery_basis/source_diagnostic_v01.py
+
       - name: Run outcome-blind source gate
         run: python research/cex_transfer_rail_recovery_basis/source_gate_v01.py
 
@@ -53,5 +56,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ctrrb-v01-source-gate-receipt
-          path: ctrrb_v01_source_gate_report.json
+          path: |
+            ctrrb_v01_source_gate_report.json
+            ctrrb_source_diagnostic.json
           retention-days: 30
