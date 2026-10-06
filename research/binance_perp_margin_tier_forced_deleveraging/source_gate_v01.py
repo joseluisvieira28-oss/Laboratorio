@@ -82,7 +82,7 @@ def list_universe():
         r=None
         for ep in ([endpoint] if endpoint else []) + [x for x in LIST_ENDPOINTS if x!=endpoint]:
             if not ep: continue
-            rr=req(ep,{"type":"1","pageNo":p,"pageSize":PAGE_SIZE})
+            rr=req(ep,{"type":"1","catalogId":"49","pageNo":p,"pageSize":20})
             try: obj=rr.json()
             except: continue
             rows=article_meta_from_list(obj)
@@ -92,7 +92,7 @@ def list_universe():
             pages.append({"page":p,"ok":False}); break
         rows=article_meta_from_list(r.json())
         dates=[x["release_ms"] for x in rows]
-        pages.append({"page":p,"count":len(rows),"min_release_ms":min(dates),"max_release_ms":max(dates),
+        pages.append({"page":p,"catalogId":49,"count":len(rows),"min_release_ms":min(dates),"max_release_ms":max(dates),
                       "sha256":hashlib.sha256(r.content).hexdigest()})
         for x in rows:
             if START_MS<=x["release_ms"]<=END_MS:
