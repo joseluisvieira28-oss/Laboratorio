@@ -1,0 +1,26 @@
+name: Dual Precursor V0.1 Predictive Discovery
+on:
+  push:
+    branches: [binance-dual-precursor-spot-hazard-003-v0.1-prereg-2026-10-05]
+    paths:
+      - '.github/workflows/dual_precursor_v01_predictive_discovery.yml'
+      - 'research/binance_dual_precursor_spot_hazard/v015_predictive_discovery.py'
+permissions:
+  contents: read
+jobs:
+  discovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python research/binance_dual_precursor_spot_hazard/v015_predictive_discovery.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dual-precursor-v01-predictive-discovery
+          path: research/binance_dual_precursor_spot_hazard/results_v01_predictive_discovery
+          if-no-files-found: error
