@@ -1,0 +1,57 @@
+name: CTRRB V0.1 Source Gate
+
+on:
+  push:
+    branches:
+      - cex-transfer-rail-recovery-basis-v0.1-source-2026-10-06
+    paths:
+      - 'research/cex_transfer_rail_recovery_basis/**'
+      - '.github/workflows/ctrrb_v01_source_gate.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout frozen branch
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install source-only dependencies
+        run: pip install requests beautifulsoup4
+
+      - name: Run outcome-blind source gate
+        run: python research/cex_transfer_rail_recovery_basis/source_gate_v01.py
+
+      - name: Assert no forbidden outcome keys in report
+        run: |
+          python - <<'PY'
+          import json
+          p='ctrrb_v01_source_gate_report.json'
+          d=json.load(open(p))
+          raw=json.dumps(d).lower()
+          forbidden=['"open":','"high":','"low":','"close":','"volume":','"price":','"basis":']
+          bad=[k for k in forbidden if k in raw]
+          if bad:
+              raise SystemExit('Forbidden market-value keys found: '+repr(bad))
+          assert d['safety']['prices_logged'] is False
+          assert d['safety']['ohlcv_logged'] is False
+          assert d['safety']['volumes_logged'] is False
+          assert d['safety']['basis_logged'] is False
+          print('SAFETY_ASSERT_PASS')
+          PY
+
+      - name: Upload source-gate receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: ctrrb-v01-source-gate-receipt
+          path: ctrrb_v01_source_gate_report.json
+          retention-days: 30
