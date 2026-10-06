@@ -237,3 +237,5 @@ summary={
 print("FORCED_DELIST_DISCOVERY_BEGIN")
 print(json.dumps(summary,indent=2,sort_keys=True))
 print("FORCED_DELIST_DISCOVERY_END")
+
+# trigger registered discovery workflow
