@@ -106,7 +106,7 @@ res={
  "alpha_endpoint_total_rows":len(rows),
  "alpha_2025_identity_rows":len(alpha),
  "alpha_2025_unique_symbols":len(unique),
- "alpha_2025_ambiguous_symbols":amb,
+ "alpha_2025_ambiguous_symbols":amb,\n "alpha_unique_2025":sorted(unique.values(),key=lambda x:(x["listingTime"],x["symbol"])),
  "futures_catalog_candidates":cids,
  "futures_launch_rows_through_2025":len(fr),
  "futures_unique_symbols_through_2025":len(first),
