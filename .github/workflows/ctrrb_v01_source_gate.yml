@@ -1,4 +1,4 @@
-name: CTRRB V0.1 Source Gate
+name: CTRRB V0.1.1 Source Gate
 
 on:
   push:
@@ -28,35 +28,31 @@ jobs:
       - name: Install source-only dependencies
         run: pip install requests beautifulsoup4
 
-      - name: Enumerate official 2022-2025 transfer incident rows
-        run: python research/cex_transfer_rail_recovery_basis/transfer_census_diag_v06.py
+      - name: Run official-source gate V0.1.1
+        run: python research/cex_transfer_rail_recovery_basis/source_gate_v011.py
 
-      - name: Run outcome-blind source gate
-        run: python research/cex_transfer_rail_recovery_basis/source_gate_v01.py
-
-      - name: Assert no forbidden outcome keys in report
+      - name: Assert no forbidden outcome keys or values
         run: |
           python - <<'PY'
           import json
-          p='ctrrb_v01_source_gate_report.json'
+          p='ctrrb_v011_source_gate_report.json'
           d=json.load(open(p))
           raw=json.dumps(d).lower()
-          forbidden=['"open":','"high":','"low":','"close":','"volume":','"price":','"basis":']
+          # Exact market-value field names are prohibited in the persisted source receipt.
+          forbidden=['"open":','"high":','"low":','"close":','"volume":','"price":','"basis":','"return":','"spread":']
           bad=[k for k in forbidden if k in raw]
           if bad:
               raise SystemExit('Forbidden market-value keys found: '+repr(bad))
-          assert d['safety']['prices_logged'] is False
-          assert d['safety']['ohlcv_logged'] is False
-          assert d['safety']['volumes_logged'] is False
-          assert d['safety']['basis_logged'] is False
+          assert d['outcome_access']=='NONE'
+          assert d['safety']['historical_values_logged'] is False
+          assert d['safety']['ohlcv_values_logged'] is False
+          assert d['safety']['spreads_logged'] is False
           print('SAFETY_ASSERT_PASS')
           PY
 
-      - name: Upload source-gate receipt
+      - name: Upload V0.1.1 source-gate receipt
         uses: actions/upload-artifact@v4
         with:
-          name: ctrrb-v01-source-gate-receipt
-          path: |
-            ctrrb_v01_source_gate_report.json
-            ctrrb_transfer_census_diag.json
+          name: ctrrb-v011-source-gate-receipt
+          path: ctrrb_v011_source_gate_report.json
           retention-days: 30
