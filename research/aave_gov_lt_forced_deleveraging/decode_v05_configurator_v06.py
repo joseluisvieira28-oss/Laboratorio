@@ -64,7 +64,7 @@ receipt={
  "input_terminal":checkpoint["receipt"]["terminal"],
  "input_unique_logs":len(rows),
  "decoded_event_count":sum(decoded_counts.values()),
- "unknown_topic_count":sum(unknown.values()),
+ "unknown_topic_count":sum(unknown.values()),\n "unknown_topics":dict(sorted(unknown.items())),
  "event_counts":dict(sorted(decoded_counts.items())),
  "collateral_configuration_rows_2025":len(base_rows),
  "base_lt_decreases_2025":len(base_decreases),
@@ -76,7 +76,7 @@ receipt={
  "prior_independent_episodes_2023_2024":prior["independent_24h_episode_count"],
  "independent_fully_source_gated_shocks":0,
  "defensible_independent_shock_universe":"UNKNOWN",
- "unresolved":["pre-2025 eMode category state/history","governance approved/queued lineage for all candidates","upgrade semantic boundaries","complete borrower exposure reconstruction"],
+ "unresolved":["ABI/upgrade identity for unknown event topics","pre-2025 eMode category state/history","governance approved/queued lineage for all candidates","upgrade semantic boundaries","complete borrower exposure reconstruction"],
  "economic_outcomes_opened":0,"development_runs":0,"outcomes_2026_opened":False
 }
 assert receipt["input_terminal"]==24136052 and receipt["input_unique_logs"]==1386
