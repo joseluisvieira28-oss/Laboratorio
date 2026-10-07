@@ -1,0 +1,25 @@
+name: Multi-Stable Operator Scout
+
+on:
+  push:
+    branches:
+      - "multistable-operator-scout-2026-10-07"
+    paths:
+      - "research/mexc_multistable_basis/operator_scout_v01.py"
+      - ".github/workflows/multistable-operator-scout.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  scout:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python research/mexc_multistable_basis/operator_scout_v01.py > operator_scout_result.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: multistable-operator-scout
+          path: operator_scout_result.json
+          retention-days: 7
