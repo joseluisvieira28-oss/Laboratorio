@@ -1,0 +1,42 @@
+name: BFIRS V0.4 Prospective Source Watch
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 4 * * *'
+
+permissions:
+  contents: read
+
+jobs:
+  source-watch:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: binance-funding-interval-regime-shock-v0.4-prospective-2026-10-07
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests beautifulsoup4
+      - run: python -m py_compile research/binance_funding_interval_regime_shock/prospective_source_watch_v04.py
+      - run: python research/binance_funding_interval_regime_shock/prospective_source_watch_v04.py
+      - name: Assert source-only safety
+        run: |
+          python - <<'PY'
+          import json
+          d=json.load(open('bfirs_v04_prospective_source_report.json',encoding='utf-8'))
+          assert d['verdict'] in {'PROSPECTIVE_ACCUMULATING','PROSPECTIVE_SOURCE_READY','PROSPECTIVE_SOURCE_BLOCKED'}
+          assert all(v is False for v in d['safety'].values())
+          print('VERDICT='+d['verdict'])
+          print('EVENTS='+str(d['eligible_asset_events']))
+          print('CLUSTERS='+str(d['independent_clusters']))
+          print('UNIQUE_CONTRACTS='+str(d['unique_contracts']))
+          print('SAMPLE_GATES='+json.dumps(d['sample_gates'],sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bfirs-v04-prospective-source-receipt
+          path: bfirs_v04_prospective_source_report.json
+          retention-days: 30
