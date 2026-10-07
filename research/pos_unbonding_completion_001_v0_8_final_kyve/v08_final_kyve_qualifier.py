@@ -9,7 +9,8 @@ KYVE="https://api.kyve.network"
 STORAGE={"1":"https://arweave.net","2":"https://arweave.net","3":"https://storage.kyve.network","4":"https://arweave.net"}
 CHAIN_REGISTRY_COMMIT="c9d65b60bc0229c06d49ded805ba528f316bd9c7"
 SOURCE_REGISTRY_COMMIT="7cb8e3abd7fb5788b299c270380f1ea36715e2a0"
-FREEZE_DOCUMENT_BLOB_SHA="eaf6e5e211c7302561f6d2ba4437c06a52a06d1a"\nPARENT_V07_CLOSEOUT_COMMIT="f1a5a563054563f16605c468fd14dc93d4a71334"
+FREEZE_DOCUMENT_BLOB_SHA="eaf6e5e211c7302561f6d2ba4437c06a52a06d1a"
+PARENT_V07_CLOSEOUT_COMMIT="f1a5a563054563f16605c468fd14dc93d4a71334"
 
 # Archway/Axelar were already tested under the immediately preceding V0.7 freeze and
 # are inherited as frozen failures. V0.8 tests the previously untested members of
