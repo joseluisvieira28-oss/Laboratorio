@@ -1,0 +1,83 @@
+name: MEXC Overshoot Shadow V0.2.4 Self-Test
+
+on:
+  push:
+    branches:
+      - mexc-globalasset-intraday-overshoot-shadow-v0.2.4-ws-remediation-2026-10-07
+    paths:
+      - 'research/mexc_global_assets/mexc_globalasset_intraday_overshoot_shadow_v024.py'
+      - 'research/mexc_global_assets/mexc_globalasset_intraday_overshoot_shadow_aggregate_v024.py'
+      - '.github/workflows/mexc-globalasset-intraday-overshoot-v024-selftest.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  selftest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install requests websockets
+      - name: Compile
+        run: |
+          python -m py_compile research/mexc_global_assets/mexc_globalasset_intraday_overshoot_shadow_v024.py
+          python -m py_compile research/mexc_global_assets/mexc_globalasset_intraday_overshoot_shadow_aggregate_v024.py
+      - name: Authority invariants and cache construction
+        run: |
+          python - <<'PY'
+          import sys
+          sys.path.insert(0,'research/mexc_global_assets')
+          import mexc_globalasset_intraday_overshoot_shadow_v024 as m
+          assert len(m.B['candidates']) == 35
+          assert m.R['lookback_min'] == 5
+          assert m.R['forward_horizon_min'] == 5
+          assert m.R['trigger']['max_external_leader_dispersion_bps'] == 10
+          assert m.R['trigger']['abs_mexc_5m_return_gte_bps'] == 40
+          assert m.R['trigger']['abs_mexc_excess_gte_bps'] == 35
+          assert m.NOTIONALS == [10.0,25.0,50.0,100.0]
+          assert 16.0 in m.FEES
+          mx=m.MexcKlineCache(m.B['candidates'])
+          bg=m.BitgetKlineCache(m.B['candidates'])
+          bn=m.base.BinanceKlineCache(m.B['candidates'])
+          assert len(mx.symbols)==35 and len(bg.symbols)==35 and len(bn.symbols)==35
+          print({'authority':'PASS','mexc_symbols':len(mx.symbols),'bitget_symbols':len(bg.symbols),'binance_symbols':len(bn.symbols)})
+          PY
+      - name: Closed-minute mapping invariant
+        run: |
+          python - <<'PY'
+          import sys, datetime
+          sys.path.insert(0,'research/mexc_global_assets')
+          import mexc_globalasset_intraday_overshoot_shadow_v024 as m
+          c=m.MexcKlineCache(m.B['candidates'])
+          s=c.symbols[0]
+          c._store_update(s,1000,10.0,{'x':1},1050)
+          assert 1060 not in c.data[s]
+          c._store_update(s,1060,11.0,{'x':2},1061)
+          assert c.data[s][1060]['close']==10.0
+          print({'closed_minute_mapping':'PASS'})
+          PY
+      - name: Same-contract fill invariant
+        run: |
+          python - <<'PY'
+          import sys
+          sys.path.insert(0,'research/mexc_global_assets')
+          import mexc_globalasset_intraday_overshoot_shadow_v024 as m
+          book={'asks':[(100.0,1000.0),(101.0,1000.0)],'bids':[(99.0,1000.0),(98.0,1000.0)]}
+          meta={'contract_size':0.01,'vol_unit':1.0,'min_vol':1.0,'max_vol':100000.0}
+          e=m.base.entry_fill(book,'BUY',25.0,meta)
+          x=m.base.fill_contracts(book,'SELL',e['contracts'],meta['contract_size'])
+          assert e['fillable'] and x['fillable'] and abs(x['contracts']-e['contracts'])<1e-12
+          print({'same_contract_fill':'PASS','contracts':e['contracts']})
+          PY
+      - name: Empty clean epoch remains underpowered
+        run: |
+          mkdir -p /tmp/empty-v024
+          python research/mexc_global_assets/mexc_globalasset_intraday_overshoot_shadow_aggregate_v024.py --root /tmp/empty-v024 --out /tmp/a.json
+          grep -q '"overall_verdict": "EXECUTION_SHADOW_UNDERPOWERED"' /tmp/a.json
+          grep -q '"epoch": "V0.2.4_CLEAN_PROSPECTIVE"' /tmp/a.json
+      - name: Live public transport proof without economic scoring
+        run: python research/mexc_global_assets/mexc_globalasset_intraday_overshoot_transport_probe_v024.py
