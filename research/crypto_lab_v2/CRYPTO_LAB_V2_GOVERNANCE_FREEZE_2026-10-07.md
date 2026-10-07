@@ -120,26 +120,32 @@ Required freeze fields:
 - dependence/clustering unit;
 - nuisance variance source;
 - N_eff estimate;
-- power_at_H;
+- design_alternative_theta, with design_alternative_theta strictly beyond H in the tested direction;
+- power_at_design_alt;
 - method.
 
 Preferred method:
 - simulation / block bootstrap using non-outcome placebo, pre-period, or otherwise outcome-blind nuisance estimates.
 
-Analytical MDE may be used as a planning approximation:
-MDE ≈ (z_alpha + z_beta) × sigma / sqrt(N_eff)
-but heavy tails, clustering and autocorrelation should be modeled where material.
+Power cannot be defined at the superiority boundary H itself: if H0 is theta <= H, power at theta = H is alpha by construction. Therefore each family must freeze a scientifically/economically justified design alternative theta_design beyond H. For a positive edge, theta_design > H; for a negative edge, theta_design < -H.
+
+Analytical planning approximation for a positive superiority test:
+N_eff ≈ [((z_alpha + z_beta) × sigma) / (theta_design - H)]^2
+where theta_design - H is the detectable margin beyond the economic hurdle. Heavy tails, clustering and autocorrelation should be modeled where material.
 
 There is NO universal minimum N and NO universal “100 shocks” rule.
 
 Power outcomes:
-- TEST_AUTHORIZED: power_at_H >= target and prior gates PASS.
+- TEST_AUTHORIZED: power_at_design_alt >= target and prior gates PASS.
 - UNDERPOWERED_PRE: do not open outcomes.
 - UNDERPOWERED_BANKED: accumulate genuinely new forward data under the unchanged spec.
 - DESIGN_INVALID_PRE: proposed experiment cannot answer the claim.
 
 Power must never be recomputed from the observed effect (“observed power”).
 Blind re-estimation of nuisance quantities such as N_eff, attrition, ICC or residual variance is allowed if the protocol froze that possibility.
+
+## 6.1 Power-vs-evidence firewall
+The design alternative theta_design is for sample-size planning only. It is not a second promotion hurdle, cannot be changed after outcomes, and must never be chosen from the observed effect. Result adjudication still uses the frozen economic hurdle H.
 
 ## 7. Result adjudication
 ### 7.1 Positive directional edge
