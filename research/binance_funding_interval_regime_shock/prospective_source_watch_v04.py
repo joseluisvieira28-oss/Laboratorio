@@ -101,7 +101,7 @@ def list_universe():
         pages.append({"page":p,"count":len(rows),"min_release_ms":min(dates),"max_release_ms":max(dates),
                       "sha256":hashlib.sha256(chosen.content).hexdigest()})
         for x in rows:
-            if START_MS<=x["release_ms"]<=END_MS: articles[x["code"]]=x
+            if START_MS<x["release_ms"]<=END_MS: articles[x["code"]]=x
         if min(dates)<START_MS:
             crossed=True; break
         time.sleep(0.25)
@@ -137,8 +137,8 @@ def body_plain(raw):
     return BeautifulSoup(render_body_json(raw),"html.parser").get_text(" ",strip=True)
 
 DATE_PATTERNS=[
- re.compile(r"(20\\d{2})[-/](\d{1,2})[-/](\d{1,2})\s+(?:at\s+)?(\d{1,2}):(\d{2})\s*(?:\(UTC\)|UTC)",re.I),
- re.compile(r"(20\\d{2})[-/](\d{1,2})[-/](\d{1,2})[^0-9]{0,20}(\d{1,2}):(\d{2})\s*(?:\(UTC\)|UTC)",re.I),
+ re.compile(r"(20\d{2})[-/](\d{1,2})[-/](\d{1,2})\s+(?:at\s+)?(\d{1,2}):(\d{2})\s*(?:\(UTC\)|UTC)",re.I),
+ re.compile(r"(20\d{2})[-/](\d{1,2})[-/](\d{1,2})[^0-9]{0,20}(\d{1,2}):(\d{2})\s*(?:\(UTC\)|UTC)",re.I),
 ]
 def times_in_text(txt):
     out=[]
