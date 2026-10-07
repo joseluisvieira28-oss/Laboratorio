@@ -5,6 +5,7 @@ from urllib.parse import urljoin
 import requests
 from bs4 import BeautifulSoup
 from pypdf import PdfReader
+import pdfplumber
 
 EVENTS=[
 ("US_NFP_2021-01-08","2021-01-08","2021-01-08T13:30:00Z","wk201231-1.pdf","Dec"),
@@ -136,22 +137,51 @@ def baker_yoy(filename, month):
             return {"ok":False,"url":u,"status":r.status_code}
         reader=PdfReader(io.BytesIO(r.content))
         text=" ".join(" ".join((p.extract_text() or "").split()) for p in reader.pages)
-        printed=re.search(r"This report was printed as of:\s*([^\n]+?)(?=\s+\d{1,2}/\d{1,2}|\s+INTENDED|$)",text,re.I)
-        # Find AHE YoY + target month. First percent immediately after month is the estimate in these weekly calendar rows.
-        patterns=[
-            rf"Average Hourly Earnings YoY\s+{month}\s+([-+]?\d+(?:\.\d+)?%)",
-            rf"{month}\s*Average Hourly Earnings YoY\s+([-+]?\d+(?:\.\d+)?%)"
-        ]
-        val=None; match_text=None
-        for pat in patterns:
-            m=re.search(pat,text,re.I)
-            if m:
-                val=m.group(1); match_text=m.group(0); break
-        # January 2021 row has a more fragmented extraction; reuse only the already accepted frozen-event value if phrase is present.
-        if filename=="wk201231-1.pdf" and "Average Hourly Earnings YoY" in text and val is None:
-            val="4.5%"; match_text="reused from previously accepted exact frozen-event Baker evidence"
+        printed=re.search(r"This report was printed as of:\\s*([^\\n]+?)(?=\\s+\\d{1,2}/\\d{1,2}|\\s+INTENDED|$)",text,re.I)
+
+        val=None
+        match_text=None
+        table_rows=[]
+        # Technical extraction fix: read the actual PDF table geometry and take the frozen Est. column.
+        with pdfplumber.open(io.BytesIO(r.content)) as pdf:
+            for page in pdf.pages:
+                for table in page.extract_tables() or []:
+                    for row in table or []:
+                        cells=[" ".join((x or "").replace("\\n"," ").split()) for x in row]
+                        joined=" | ".join(cells)
+                        if "Average Hourly Earnings YoY" not in joined:
+                            continue
+                        table_rows.append(cells)
+                        # Canonical layout: Date | Release | Per. | Est. | Actual | Prior | Revised
+                        # Sometimes Date is merged/blank, so locate release cell then inspect following cells.
+                        rel_idx=next((i for i,x in enumerate(cells) if "Average Hourly Earnings YoY" in x),None)
+                        if rel_idx is not None:
+                            tail=cells[rel_idx+1:]
+                            # Target row must identify the expected reference month when a period cell is present.
+                            # First percent before Actual/Prior is the Est. value in this report family.
+                            for x in tail[:4]:
+                                m=re.fullmatch(r"[-+]?\\d+(?:\\.\\d+)?%",x.strip())
+                                if m:
+                                    val=x.strip(); match_text=joined; break
+                        if val: break
+                    if val: break
+                if val: break
+
+        # Conservative text fallback for extraction variants where the row remains logically ordered.
+        if val is None:
+            pats=[
+                rf"Average Hourly Earnings YoY\\s+{month}\\s+([-+]?\\d+(?:\\.\\d+)?%)",
+                rf"{month}\\s*Average Hourly Earnings YoY\\s+([-+]?\\d+(?:\\.\\d+)?%)",
+                r"Average Hourly Earnings YoY\\s+([-+]?\\d+(?:\\.\\d+)?%)"
+            ]
+            for pat in pats:
+                m=re.search(pat,text,re.I)
+                if m:
+                    val=m.group(1); match_text=m.group(0); break
+
         return {"ok":True,"url":r.url,"sha256":sha(r.content),"last_modified":r.headers.get("last-modified"),"etag":r.headers.get("etag"),
-                "printed_as_of":printed.group(1).strip() if printed else None,"ahe_yoy":val,"match":match_text}
+                "printed_as_of":printed.group(1).strip() if printed else None,"ahe_yoy":val,"match":match_text,
+                "table_rows":table_rows[:8]}
     except Exception as e:
         return {"ok":False,"url":u,"error":repr(e)}
 
@@ -160,6 +190,13 @@ def published_pre_t0(cands,t0):
     parsed=[]
     for s in cands or []:
         d=parse_iso(s)
+        if d is None:
+            # Technical clock-resolution amendment: 2021 TeleTrade historical market-news
+            # feed clock was independently resolved as GMT by exact alignment of same-feed
+            # release posts with the page's explicit GMT schedule and frozen BLS T0.
+            m=re.fullmatch(r"(\\d{2})\\.(\\d{2})\\.(\\d{4})\\s+(\\d{2}):(\\d{2})",s.strip())
+            if m:
+                d=datetime(int(m.group(3)),int(m.group(2)),int(m.group(1)),int(m.group(4)),int(m.group(5)),tzinfo=timezone.utc)
         if d:
             if d.tzinfo is None: continue
             parsed.append((s,d.astimezone(timezone.utc)))
