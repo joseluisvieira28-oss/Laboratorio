@@ -1,0 +1,14 @@
+{
+  "amendment_id": "NEWS-SHOCK-V03-MIXED-NFP-PARSER-CORRECTION-002",
+  "date": "2026-10-07",
+  "scope": "TECHNICAL_ONLY",
+  "scientific_rules_changed": false,
+  "finding": "pdfplumber returned the Baker Weekly Economic Calendar as seven column-cells containing newline-separated row values, not one row-array per release. The prior technical extractor therefore failed to align Release with Est.",
+  "correction": [
+    "Split Date/Release/Per./Est./Actual/Prior/Revised column-cells on line breaks.",
+    "Locate Average Hourly Earnings YoY by row index in the Release column.",
+    "Read the same row index from the Est. column.",
+    "Use a simple literal printed-as-of timestamp regex rather than a lookahead dependent on flattened text ordering."
+  ],
+  "forbidden": ["manual consensus injection","source substitution","gate change","fallback addition","outcome access"]
+}
