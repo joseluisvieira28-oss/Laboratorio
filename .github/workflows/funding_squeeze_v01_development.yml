@@ -1,0 +1,42 @@
+name: Funding Squeeze V0.1 Development
+on:
+  push:
+    branches:
+      - funding-squeeze-v0.1-development-2026-10-07
+    paths:
+      - .github/workflows/funding_squeeze_v01_development.yml
+      - research/funding_squeeze/**
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  development:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install numpy pandas
+      - run: python -m py_compile research/funding_squeeze/development_v01.py
+      - run: python research/funding_squeeze/development_v01.py
+      - name: Assert protected years closed
+        run: |
+          python - <<'PY'
+          import json
+          d=json.load(open('funding_squeeze_v01_development_report.json'))
+          assert d['governance']['year_2025_opened'] is False
+          assert d['governance']['year_2026_opened'] is False
+          assert d['verdict'] in {'DEVELOPMENT_CANDIDATE_SELECTED','NO_VIABLE_CONFIRMATORY_SPEC'}
+          print('VERDICT='+d['verdict'])
+          print('SELECTED='+json.dumps(d['selected'],sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: funding-squeeze-v01-development-receipt
+          path: |
+            funding_squeeze_v01_development_report.json
+            funding_squeeze_v01_selected_dev_trades.csv
+          if-no-files-found: ignore
+          retention-days: 30
