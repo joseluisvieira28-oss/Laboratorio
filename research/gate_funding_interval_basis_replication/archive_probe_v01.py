@@ -88,3 +88,24 @@ if nd and nd.string:
     ld=pp.get("listData")
     print("CATEGORIES",json.dumps(cats,ensure_ascii=False)[:12000])
     print("LISTDATA",json.dumps(ld,ensure_ascii=False)[:12000])
+
+print("=== LIST ENDPOINT PROBE ===")
+ep="https://miniapp.gate.com/api/web/v1/portal/announcement/list_article"
+payloads=[
+ {"cate":"fee","page":2,"page_size":15,"cate_level":1},
+ {"cate":"fees-precision","page":2,"page_size":15,"cate_level":1},
+ {"category":"fee","page":2,"page_size":15,"cate_level":1},
+ {"cate":"fee","page":2,"pageSize":15,"cate_level":1},
+ {"cate":"fee","page":2,"page_size":15,"cate_level":2},
+]
+for p in payloads:
+    for mode in ("json","form","get"):
+        try:
+            if mode=="json": rr=s.post(ep,json=p,timeout=20)
+            elif mode=="form": rr=s.post(ep,data=p,timeout=20)
+            else: rr=s.get(ep,params=p,timeout=20)
+            sample=rr.text[:600].replace("\n"," ")
+            ids=re.findall(r'"id"\s*:\s*(\d+)',rr.text)
+            print("EP_PROBE",mode,json.dumps(p,sort_keys=True),"STATUS",rr.status_code,"IDS",ids[:5],"SAMPLE",sample)
+        except Exception as e:
+            print("EP_ERR",mode,json.dumps(p,sort_keys=True),type(e).__name__,str(e))
