@@ -1,0 +1,54 @@
+name: Unbonding V0.4 bounded index-free census
+on:
+  push:
+    branches: [pos-unbonding-completion-001-source-remediation-v0.4-index-free-census-2026-10-07]
+    paths: [.github/workflows/unbonding-v04-index-free.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: unbonding-v04-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  shards:
+    if: github.repository == 'joseluisvieira28-oss/Laboratorio' && github.event.repository.private == false && github.ref == 'refs/heads/pos-unbonding-completion-001-source-remediation-v0.4-index-free-census-2026-10-07'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        include:
+          - {chain: ATOM, provider: citizenweb3, lo: 13482775, hi: 13483030}
+          - {chain: ATOM, provider: cryptocrew, lo: 13482775, hi: 13483030}
+          - {chain: OSMO, provider: foundation, lo: 7593432, hi: 7593687}
+          - {chain: OSMO, provider: validatus, lo: 7593432, hi: 7593687}
+          - {chain: KAVA, provider: kavalabs, lo: 2991536, hi: 2991551}
+          - {chain: KAVA, provider: chainstack, lo: 2991536, hi: 2991551}
+          - {chain: TIA, provider: kjnodes, lo: 1, hi: 256}
+          - {chain: TIA, provider: numia, lo: 1, hi: 256}
+          - {chain: DYDX, provider: kingnodes, lo: 1, hi: 256}
+          - {chain: DYDX, provider: polkachu, lo: 1, hi: 256}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Restore resumable checkpoint
+        uses: actions/cache@v4
+        with:
+          path: research/pos_unbonding_completion_001_v0_4_index_free_census/checkpoints
+          key: unbonding-v04-${{ matrix.chain }}-${{ matrix.provider }}-${{ matrix.lo }}-${{ matrix.hi }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            unbonding-v04-${{ matrix.chain }}-${{ matrix.provider }}-${{ matrix.lo }}-${{ matrix.hi }}-
+      - name: Scan bounded shard without indexes or market data
+        run: >-
+          python research/pos_unbonding_completion_001_v0_4_index_free_census/census.py scan
+          --chain ${{ matrix.chain }} --provider ${{ matrix.provider }}
+          --lo ${{ matrix.lo }} --hi ${{ matrix.hi }} --seconds 330
+          --out research/pos_unbonding_completion_001_v0_4_index_free_census/checkpoints/${{ matrix.chain }}-${{ matrix.provider }}-${{ matrix.lo }}-${{ matrix.hi }}.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v04-${{ matrix.chain }}-${{ matrix.provider }}-${{ matrix.lo }}-${{ matrix.hi }}
+          path: research/pos_unbonding_completion_001_v0_4_index_free_census/checkpoints/*.json
+          retention-days: 30
