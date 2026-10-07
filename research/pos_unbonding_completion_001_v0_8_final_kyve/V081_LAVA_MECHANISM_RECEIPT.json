@@ -1,0 +1,43 @@
+{
+  "family": "POS-UNBONDING-COMPLETION-SUPPLY-RELEASE-001",
+  "freeze_commit": "cec145e2f9040198f95f88f1532ec783646544c0",
+  "chain": "lava-mainnet-1",
+  "token": "LAVA",
+  "source_repo": "lavanet/lava",
+  "pinned_release": "v3.1.0",
+  "pinned_commit": "200972c00b75a819a10385e47e64e199633480f0",
+  "files": {
+    "go.mod": {
+      "blob_sha": "67e086b80a8c8df8f2edbc0fd5c1f3af6efb7513",
+      "evidence": [
+        "github.com/cosmos/cosmos-sdk v0.47.13",
+        "replace github.com/cosmos/cosmos-sdk => github.com/lavanet/cosmos-sdk v0.47.13-lava-cosmos",
+        "github.com/cometbft/cometbft v0.37.5"
+      ]
+    },
+    "app/app.go": {
+      "blob_sha": "7297ef3b99a6ed3e28e7f80cf7d97057064b153a",
+      "evidence": [
+        "imports github.com/cosmos/cosmos-sdk/x/staking",
+        "app.StakingKeeper = stakingkeeper.NewKeeper(...)",
+        "staking.NewAppModule(...) is instantiated",
+        "app.StakingKeeper.SetHooks(...) is configured"
+      ]
+    },
+    "x/dualstaking/keeper/msg_server_unbond.go": {
+      "blob_sha": "d195fbf80eb74bfdda6f0c6defea2e1e24236e59",
+      "evidence": [
+        "Unbond delegates to Keeper.UnbondFull",
+        "UnbondFull calls stakingKeeper.ValidateUnbondAmount",
+        "UnbondFull validates stakingKeeper.BondDenom",
+        "UnbondFull calls stakingKeeper.Undelegate(ctx, delegatorAddress, addr, shares)"
+      ]
+    }
+  },
+  "criterion_1_native_staking_lifecycle_pass": true,
+  "interpretation": "Lava's public unbond route is behaviorally anchored to the native Cosmos x/staking Undelegate lifecycle through a version-pinned Lava Cosmos-SDK fork.",
+  "event_counts_opened": false,
+  "materiality_counts_opened": false,
+  "market_values_stored": false,
+  "market_outcomes_opened": false
+}
