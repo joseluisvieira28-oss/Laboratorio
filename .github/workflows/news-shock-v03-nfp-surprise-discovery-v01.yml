@@ -1,0 +1,31 @@
+name: News Shock V0.3 NFP surprise discovery V0.1
+
+on:
+  push:
+    branches:
+      - news-shock-v03-nfp-surprise-discovery-v0.1
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/NEWS_SHOCK_LAB_V03_NFP_SURPRISE_PRE_OUTCOME_FREEZE_V0.1.json'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/news_shock_lab_v03_nfp_surprise_discovery_v01.py'
+      - '.github/workflows/news-shock-v03-nfp-surprise-discovery-v01.yml'
+      - '.github/news-shock-v03-nfp-surprise.trigger'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  discovery:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Run frozen NFP surprise discovery
+        run: python Dream-Account-OS-v2.3-PARTIAL/research/news_shock_lab_v03_nfp_surprise_discovery_v01.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: news-shock-v03-nfp-surprise-discovery-v01
+          path: nfp_surprise_discovery_v01/
+          retention-days: 90
