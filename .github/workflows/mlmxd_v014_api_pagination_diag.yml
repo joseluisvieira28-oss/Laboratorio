@@ -1,0 +1,42 @@
+name: MLMXD V0.1.4 API Pagination Diagnostic
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - mexc-launchpool-mx-demand-v0.1-source-2026-10-07
+    paths:
+      - '.github/workflows/mlmxd_v014_api_pagination_diag.yml'
+permissions:
+  contents: read
+jobs:
+  diag:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install ccxt
+      - name: Probe pagination parameters
+        run: |
+          python - <<'PY'
+          import ccxt,json
+          ex=ccxt.mexc({"enableRateLimit":True})
+          tests=[
+            {},
+            {"pageNum":2},
+            {"page":2},
+            {"pageNum":2,"pageSize":20},
+            {"page":2,"pageSize":20},
+            {"pageNum":2,"limit":20},
+            {"page":2,"limit":20},
+          ]
+          for p in tests:
+            try:
+              x=ex.spot_public_get_announcements(p)
+              box=x["data"][0]
+              ds=box["details"]
+              print(json.dumps({"params":p,"first":ds[0] if ds else None,"last":ds[-1] if ds else None,"n":len(ds),"totalPage":box.get("totalPage")},ensure_ascii=False))
+            except Exception as e:
+              print(json.dumps({"params":p,"error":repr(e)}))
+          PY
