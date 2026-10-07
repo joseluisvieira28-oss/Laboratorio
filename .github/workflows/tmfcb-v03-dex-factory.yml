@@ -1,0 +1,28 @@
+name: TMFCB V0.3 DEX Factory Metadata Probe
+
+on:
+  push:
+    branches:
+      - token-migration-forced-conversion-basis-001-v0.3-machine-provenance-2026-10-07
+    paths:
+      - "research/token_migration_forced_conversion_basis/tools/tmfcb_v03_dex_factory_probe.py"
+      - ".github/workflows/tmfcb-v03-dex-factory.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dex-metadata:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run price-blind DEX factory metadata probe
+        run: |
+          mkdir -p research/token_migration_forced_conversion_basis/evidence/v03
+          python research/token_migration_forced_conversion_basis/tools/tmfcb_v03_dex_factory_probe.py | tee research/token_migration_forced_conversion_basis/evidence/v03/dex_factory_probe.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tmfcb-v03-dex-factory
+          path: research/token_migration_forced_conversion_basis/evidence/v03/dex_factory_probe.json
