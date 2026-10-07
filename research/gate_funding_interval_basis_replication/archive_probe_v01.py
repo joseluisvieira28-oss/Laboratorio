@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import json,re,requests
+import json,re,requests,datetime
 from bs4 import BeautifulSoup
 URLS=[
  "https://www.gate.com/announcements/fee",
@@ -185,3 +185,44 @@ for u in ["https://miniapp.gate.com/announcements/fee","https://miniapp.gate.com
         src=sc.get("src","")
         if "announcements" in src or "_next/static/chunks/pages/announcements" in src:
             print("SCRIPT_SRC",src)
+
+print("=== LIGHTWEIGHT OFFICIAL FEE CENSUS ===")
+r=s.get("https://miniapp.gate.com/announcements/fee",timeout=30)
+sp=BeautifulSoup(r.text,"html.parser")
+nd=sp.find("script",id="__NEXT_DATA__")
+obj=json.loads(nd.string)
+pp=((obj.get("props") or {}).get("pageProps") or {})
+ld=pp.get("listData") or {}
+total=int(ld.get("total") or 0)
+allrows=list(ld.get("list") or [])
+for pg in range(2,30):
+    p={"cate_name":"fee","page":pg,"size":15,"tags":"","timer":"","cate_level":2}
+    rr=s.post(ep,json=p,timeout=30)
+    j=rr.json(); d=j.get("data") or {}; rows=d.get("list") or []
+    allrows.extend(rows)
+    if len({int(x["id"]):x for x in allrows if x.get("id") is not None})>=total:
+        break
+    if not rows:
+        break
+dd={int(x["id"]):x for x in allrows if x.get("id") is not None}
+rows=list(dd.values())
+def is_candidate(x):
+    z=((x.get("title") or "")+" "+(x.get("brief") or "")).lower()
+    return "funding" in z and ("interval" in z or "frequency" in z or "settlement" in z) and ("adjust" in z or "change" in z or "frequency" in z)
+win=[]
+for x in rows:
+    ts=int(x.get("release_timestamp") or 0)
+    if not ts: continue
+    y=datetime.datetime.fromtimestamp(ts,datetime.timezone.utc).year
+    if 2023<=y<=2025:
+        win.append(x)
+cand=[x for x in win if is_candidate(x)]
+print("CENSUS_TOTAL_EXPECTED",total)
+print("CENSUS_ENUMERATED",len(rows))
+print("CENSUS_IN_WINDOW",len(win))
+print("CENSUS_CANDIDATES",len(cand))
+print("CENSUS_CANDIDATE_YEARS",json.dumps(sorted({datetime.datetime.fromtimestamp(int(x["release_timestamp"]),datetime.timezone.utc).year for x in cand})))
+print("CENSUS_CANDIDATE_ROWS",json.dumps([
+  {"id":x.get("id"),"date":x.get("release_time"),"cate_id":x.get("cate_id"),"title":x.get("title"),"brief":x.get("brief")}
+  for x in sorted(cand,key=lambda q:int(q.get("release_timestamp") or 0))
+],ensure_ascii=False))
