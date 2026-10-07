@@ -81,8 +81,14 @@ def validate(path: pathlib.Path) -> None:
         fail("NEGATIVE power design alternative must be < -H")
     if direction == "TWO_SIDED" and not (abs(theta_design) > H):
         fail("TWO_SIDED power design alternative magnitude must exceed H")
-    if not isinstance(n_eff, (int,float)) or n_eff <= 0:
-        fail("power_gate.n_eff_estimate must be > 0; there is deliberately no universal minimum N")
+    if not isinstance(n_eff, (int,float)) or n_eff < 0:
+        fail("power_gate.n_eff_estimate must be >= 0; there is deliberately no universal minimum N")
+    planned_n = p.get("planned_n_eff")
+    planned_power = p.get("planned_power_at_design_alt")
+    if planned_n is not None and (not isinstance(planned_n, (int,float)) or planned_n <= 0):
+        fail("power_gate.planned_n_eff must be > 0 when provided")
+    if planned_power is not None and (not isinstance(planned_power, (int,float)) or not (0 <= planned_power <= 1)):
+        fail("power_gate.planned_power_at_design_alt must be in [0,1] when provided")
 
     mult = data["multiplicity"]
     for k in ("economic_hypothesis_id","primary_claim_id","policy"):
@@ -98,6 +104,8 @@ def validate(path: pathlib.Path) -> None:
 
     decision = data["decision"]
     if decision == "TEST_AUTHORIZED":
+        if n_eff <= 0:
+            fail("TEST_AUTHORIZED requires positive n_eff_estimate")
         if mech.get("status") != "MECHANISM_PASS":
             fail("TEST_AUTHORIZED requires MECHANISM_PASS")
         if acc.get("status") != "ACCESSIBLE_PASS":
