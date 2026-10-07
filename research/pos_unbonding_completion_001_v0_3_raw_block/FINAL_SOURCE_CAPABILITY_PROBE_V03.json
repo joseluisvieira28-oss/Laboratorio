@@ -1,30 +1,30 @@
 {
   "freeze_commit": "93e0c6abff72d1d645c709382d8f06ccc558a34e",
-  "generated_utc": "2026-10-07T12:20:41.607701+00:00",
+  "generated_utc": "2026-10-07T12:21:43.387660+00:00",
   "kava_second_source": {
     "candidates": [
       {
         "attempts": [
           {
-            "error": "RuntimeError: HTTP 500: {\"jsonrpc\":\"2.0\",\"id\":-1,\"error\":{\"code\":-32603,\"message\":\"Internal error\",\"data\":\"height 9500000 is not available, lowest height is 21914842\"}}\n",
+            "error": "RuntimeError: HTTP 500: {\"jsonrpc\":\"2.0\",\"id\":-1,\"error\":{\"code\":-32603,\"message\":\"Internal error\",\"data\":\"height 9500000 is not available, lowest height is 21914857\"}}\n",
             "transport": "GET"
           },
           {
             "noncanonical_response": {
               "block_http": 200,
-              "block_sha256": "d7e76107bcf831526a3339850dcf6e6dcf75bea9fb2cd99c4345709090197f16",
+              "block_sha256": "a30ef545b272badb059591c4998545bdaae1e0105d1f9c684750eed1c6d31dee",
               "results": {
                 "rpc_error": {
                   "code": -32603,
-                  "data": "height 9500000 is not available, lowest height is 21914842",
+                  "data": "height 9500000 is not available, lowest height is 21914857",
                   "message": "Internal error"
                 }
               },
               "results_http": 200,
-              "results_sha256": "d7e76107bcf831526a3339850dcf6e6dcf75bea9fb2cd99c4345709090197f16",
+              "results_sha256": "a30ef545b272badb059591c4998545bdaae1e0105d1f9c684750eed1c6d31dee",
               "rpc_error": {
                 "code": -32603,
-                "data": "height 9500000 is not available, lowest height is 21914842",
+                "data": "height 9500000 is not available, lowest height is 21914857",
                 "message": "Internal error"
               },
               "transport": "JSON_RPC_POST"
@@ -78,7 +78,7 @@
           {
             "noncanonical_response": {
               "block_http": 200,
-              "block_sha256": "97c8090fc4d650c11273286e03921d726910ae98c0c1ab48a79bb2b1cae232bb",
+              "block_sha256": "a30ef545b272badb059591c4998545bdaae1e0105d1f9c684750eed1c6d31dee",
               "results": {
                 "rpc_error": {
                   "code": -32603,
@@ -90,7 +90,7 @@
               "results_sha256": "255dd3c9a3d61e9227ecc509a2523be35e1a459ec3819a2fde9a94a2e5d1a00a",
               "rpc_error": {
                 "code": -32603,
-                "data": "height 9500000 is not available, lowest height is 21914843",
+                "data": "height 9500000 is not available, lowest height is 21914857",
                 "message": "Internal error"
               },
               "transport": "JSON_RPC_POST"
@@ -230,24 +230,65 @@
           "base": "https://rest.cosmoshub-main.ccvalidators.com",
           "provider": "cryptocrew_archive",
           "result": {
-            "error": "RuntimeError: HTTP 500: {\"code\":13, \"message\":\"query cannot be empty\", \"details\":[]}",
-            "url": "https://rest.cosmoshub-main.ccvalidators.com/cosmos/tx/v1beta1/txs?events=message.action%3D%27begin_unbonding%27&events=tx.height%3E%3D19950000&events=tx.height%3C%3D20050000&pagination.limit=5&order_by=ORDER_BY_ASC"
+            "attempts": [
+              {
+                "http": 200,
+                "mode": "query_v050",
+                "pagination_total": null,
+                "sample": [],
+                "sha256": "0d1f3794ffc071e66f49bb483978209ebca8ccffbc68f0585fa245feb21aca87",
+                "tx_count": 0,
+                "url": "https://rest.cosmoshub-main.ccvalidators.com/cosmos/tx/v1beta1/txs?query=message.action%3D%27begin_unbonding%27+AND+tx.height+%3E%3D+19950000+AND+tx.height+%3C%3D+20050000&page=1&limit=5&order_by=ORDER_BY_ASC"
+              },
+              {
+                "error": "RuntimeError: HTTP 429: <html>\r\n<head><title>429 Too Many Requests</title></head>\r\n<body>\r\n<center><h1>429 Too Many Requests</h1></center>\r\n<hr><center>nginx</center>\r\n</body>\r\n</html>\r\n",
+                "mode": "events_legacy",
+                "url": "https://rest.cosmoshub-main.ccvalidators.com/cosmos/tx/v1beta1/txs?events=message.action%3D%27begin_unbonding%27&events=tx.height%3E%3D19950000&events=tx.height%3C%3D20050000&pagination.limit=5&order_by=ORDER_BY_ASC"
+              }
+            ],
+            "status": "ZERO_OR_UNINDEXED"
           }
         },
         {
           "base": "https://rest.lavenderfive.com/cosmoshub",
           "provider": "lavenderfive",
           "result": {
-            "error": "RuntimeError: HTTP 500: {\"code\":13, \"message\":\"query cannot be empty\", \"details\":[]}",
-            "url": "https://rest.lavenderfive.com/cosmoshub/cosmos/tx/v1beta1/txs?events=message.action%3D%27begin_unbonding%27&events=tx.height%3E%3D19950000&events=tx.height%3C%3D20050000&pagination.limit=5&order_by=ORDER_BY_ASC"
+            "attempts": [
+              {
+                "http": 200,
+                "mode": "query_v050",
+                "pagination_total": null,
+                "sample": [],
+                "sha256": "0d1f3794ffc071e66f49bb483978209ebca8ccffbc68f0585fa245feb21aca87",
+                "tx_count": 0,
+                "url": "https://rest.lavenderfive.com/cosmoshub/cosmos/tx/v1beta1/txs?query=message.action%3D%27begin_unbonding%27+AND+tx.height+%3E%3D+19950000+AND+tx.height+%3C%3D+20050000&page=1&limit=5&order_by=ORDER_BY_ASC"
+              },
+              {
+                "error": "RuntimeError: HTTP 500: {\"code\":13, \"message\":\"query cannot be empty\", \"details\":[]}",
+                "mode": "events_legacy",
+                "url": "https://rest.lavenderfive.com/cosmoshub/cosmos/tx/v1beta1/txs?events=message.action%3D%27begin_unbonding%27&events=tx.height%3E%3D19950000&events=tx.height%3C%3D20050000&pagination.limit=5&order_by=ORDER_BY_ASC"
+              }
+            ],
+            "status": "ZERO_OR_UNINDEXED"
           }
         },
         {
           "base": "https://cosmos-rest.staketab.org",
           "provider": "staketab",
           "result": {
-            "error": "TimeoutError: The read operation timed out",
-            "url": "https://cosmos-rest.staketab.org/cosmos/tx/v1beta1/txs?events=message.action%3D%27begin_unbonding%27&events=tx.height%3E%3D19950000&events=tx.height%3C%3D20050000&pagination.limit=5&order_by=ORDER_BY_ASC"
+            "attempts": [
+              {
+                "error": "TimeoutError: The read operation timed out",
+                "mode": "query_v050",
+                "url": "https://cosmos-rest.staketab.org/cosmos/tx/v1beta1/txs?query=message.action%3D%27begin_unbonding%27+AND+tx.height+%3E%3D+19950000+AND+tx.height+%3C%3D+20050000&page=1&limit=5&order_by=ORDER_BY_ASC"
+              },
+              {
+                "error": "TimeoutError: The read operation timed out",
+                "mode": "events_legacy",
+                "url": "https://cosmos-rest.staketab.org/cosmos/tx/v1beta1/txs?events=message.action%3D%27begin_unbonding%27&events=tx.height%3E%3D19950000&events=tx.height%3C%3D20050000&pagination.limit=5&order_by=ORDER_BY_ASC"
+              }
+            ],
+            "status": "UNAVAILABLE"
           }
         }
       ]
@@ -263,24 +304,65 @@
           "base": "https://lcd.osmosis.zone",
           "provider": "foundation",
           "result": {
-            "error": "RuntimeError: HTTP 500: {\"code\":13,\"message\":\"query cannot be empty\",\"details\":[]}",
-            "url": "https://lcd.osmosis.zone/cosmos/tx/v1beta1/txs?events=message.action%3D%27begin_unbonding%27&events=tx.height%3E%3D14950000&events=tx.height%3C%3D15050000&pagination.limit=5&order_by=ORDER_BY_ASC"
+            "attempts": [
+              {
+                "http": 200,
+                "mode": "query_v050",
+                "pagination_total": null,
+                "sample": [],
+                "sha256": "0d1f3794ffc071e66f49bb483978209ebca8ccffbc68f0585fa245feb21aca87",
+                "tx_count": 0,
+                "url": "https://lcd.osmosis.zone/cosmos/tx/v1beta1/txs?query=message.action%3D%27begin_unbonding%27+AND+tx.height+%3E%3D+14950000+AND+tx.height+%3C%3D+15050000&page=1&limit=5&order_by=ORDER_BY_ASC"
+              },
+              {
+                "error": "RuntimeError: HTTP 500: {\"code\":13,\"message\":\"query cannot be empty\",\"details\":[]}",
+                "mode": "events_legacy",
+                "url": "https://lcd.osmosis.zone/cosmos/tx/v1beta1/txs?events=message.action%3D%27begin_unbonding%27&events=tx.height%3E%3D14950000&events=tx.height%3C%3D15050000&pagination.limit=5&order_by=ORDER_BY_ASC"
+              }
+            ],
+            "status": "ZERO_OR_UNINDEXED"
           }
         },
         {
           "base": "https://osmosis-api.polkachu.com",
           "provider": "polkachu",
           "result": {
-            "error": "RuntimeError: HTTP 500: {\"code\":13,\"message\":\"query cannot be empty\",\"details\":[]}",
-            "url": "https://osmosis-api.polkachu.com/cosmos/tx/v1beta1/txs?events=message.action%3D%27begin_unbonding%27&events=tx.height%3E%3D14950000&events=tx.height%3C%3D15050000&pagination.limit=5&order_by=ORDER_BY_ASC"
+            "attempts": [
+              {
+                "http": 200,
+                "mode": "query_v050",
+                "pagination_total": null,
+                "sample": [],
+                "sha256": "0d1f3794ffc071e66f49bb483978209ebca8ccffbc68f0585fa245feb21aca87",
+                "tx_count": 0,
+                "url": "https://osmosis-api.polkachu.com/cosmos/tx/v1beta1/txs?query=message.action%3D%27begin_unbonding%27+AND+tx.height+%3E%3D+14950000+AND+tx.height+%3C%3D+15050000&page=1&limit=5&order_by=ORDER_BY_ASC"
+              },
+              {
+                "error": "RuntimeError: HTTP 500: {\"code\":13,\"message\":\"query cannot be empty\",\"details\":[]}",
+                "mode": "events_legacy",
+                "url": "https://osmosis-api.polkachu.com/cosmos/tx/v1beta1/txs?events=message.action%3D%27begin_unbonding%27&events=tx.height%3E%3D14950000&events=tx.height%3C%3D15050000&pagination.limit=5&order_by=ORDER_BY_ASC"
+              }
+            ],
+            "status": "ZERO_OR_UNINDEXED"
           }
         },
         {
           "base": "https://osmosis-rest.publicnode.com",
           "provider": "publicnode",
           "result": {
-            "error": "RuntimeError: HTTP 500: {\"code\":13,\"message\":\"query cannot be empty\",\"details\":[]}\n",
-            "url": "https://osmosis-rest.publicnode.com/cosmos/tx/v1beta1/txs?events=message.action%3D%27begin_unbonding%27&events=tx.height%3E%3D14950000&events=tx.height%3C%3D15050000&pagination.limit=5&order_by=ORDER_BY_ASC"
+            "attempts": [
+              {
+                "error": "RuntimeError: HTTP 400: {\"error\" : \"Please specify tx.height with strict equality. Thank you for understanding.\"}\n",
+                "mode": "query_v050",
+                "url": "https://osmosis-rest.publicnode.com/cosmos/tx/v1beta1/txs?query=message.action%3D%27begin_unbonding%27+AND+tx.height+%3E%3D+14950000+AND+tx.height+%3C%3D+15050000&page=1&limit=5&order_by=ORDER_BY_ASC"
+              },
+              {
+                "error": "RuntimeError: HTTP 500: {\"code\":13,\"message\":\"query cannot be empty\",\"details\":[]}\n",
+                "mode": "events_legacy",
+                "url": "https://osmosis-rest.publicnode.com/cosmos/tx/v1beta1/txs?events=message.action%3D%27begin_unbonding%27&events=tx.height%3E%3D14950000&events=tx.height%3C%3D15050000&pagination.limit=5&order_by=ORDER_BY_ASC"
+              }
+            ],
+            "status": "UNAVAILABLE"
           }
         }
       ]
@@ -296,36 +378,69 @@
           "base": "https://api.data.kava.io",
           "provider": "kava_labs",
           "result": {
-            "http": 200,
-            "pagination_total": null,
-            "sample": [],
-            "sha256": "0d1f3794ffc071e66f49bb483978209ebca8ccffbc68f0585fa245feb21aca87",
-            "tx_count": 0,
-            "url": "https://api.data.kava.io/cosmos/tx/v1beta1/txs?events=message.action%3D%27begin_unbonding%27&events=tx.height%3E%3D9450000&events=tx.height%3C%3D9550000&pagination.limit=5&order_by=ORDER_BY_ASC"
+            "attempts": [
+              {
+                "error": "RuntimeError: HTTP 400: {\"code\":3,\"message\":\"must declare at least one event to search\",\"details\":[]}",
+                "mode": "query_v050",
+                "url": "https://api.data.kava.io/cosmos/tx/v1beta1/txs?query=message.action%3D%27begin_unbonding%27+AND+tx.height+%3E%3D+9450000+AND+tx.height+%3C%3D+9550000&page=1&limit=5&order_by=ORDER_BY_ASC"
+              },
+              {
+                "http": 200,
+                "mode": "events_legacy",
+                "pagination_total": null,
+                "sample": [],
+                "sha256": "0d1f3794ffc071e66f49bb483978209ebca8ccffbc68f0585fa245feb21aca87",
+                "tx_count": 0,
+                "url": "https://api.data.kava.io/cosmos/tx/v1beta1/txs?events=message.action%3D%27begin_unbonding%27&events=tx.height%3E%3D9450000&events=tx.height%3C%3D9550000&pagination.limit=5&order_by=ORDER_BY_ASC"
+              }
+            ],
+            "status": "ZERO_OR_UNINDEXED"
           }
         },
         {
           "base": "https://kava-api.polkachu.com",
           "provider": "polkachu",
           "result": {
-            "http": 200,
-            "pagination_total": null,
-            "sample": [],
-            "sha256": "0d1f3794ffc071e66f49bb483978209ebca8ccffbc68f0585fa245feb21aca87",
-            "tx_count": 0,
-            "url": "https://kava-api.polkachu.com/cosmos/tx/v1beta1/txs?events=message.action%3D%27begin_unbonding%27&events=tx.height%3E%3D9450000&events=tx.height%3C%3D9550000&pagination.limit=5&order_by=ORDER_BY_ASC"
+            "attempts": [
+              {
+                "error": "RuntimeError: HTTP 400: {\"code\":3, \"message\":\"must declare at least one event to search\", \"details\":[]}",
+                "mode": "query_v050",
+                "url": "https://kava-api.polkachu.com/cosmos/tx/v1beta1/txs?query=message.action%3D%27begin_unbonding%27+AND+tx.height+%3E%3D+9450000+AND+tx.height+%3C%3D+9550000&page=1&limit=5&order_by=ORDER_BY_ASC"
+              },
+              {
+                "http": 200,
+                "mode": "events_legacy",
+                "pagination_total": null,
+                "sample": [],
+                "sha256": "0d1f3794ffc071e66f49bb483978209ebca8ccffbc68f0585fa245feb21aca87",
+                "tx_count": 0,
+                "url": "https://kava-api.polkachu.com/cosmos/tx/v1beta1/txs?events=message.action%3D%27begin_unbonding%27&events=tx.height%3E%3D9450000&events=tx.height%3C%3D9550000&pagination.limit=5&order_by=ORDER_BY_ASC"
+              }
+            ],
+            "status": "ZERO_OR_UNINDEXED"
           }
         },
         {
           "base": "https://kava-rest.publicnode.com",
           "provider": "publicnode",
           "result": {
-            "http": 200,
-            "pagination_total": null,
-            "sample": [],
-            "sha256": "0d1f3794ffc071e66f49bb483978209ebca8ccffbc68f0585fa245feb21aca87",
-            "tx_count": 0,
-            "url": "https://kava-rest.publicnode.com/cosmos/tx/v1beta1/txs?events=message.action%3D%27begin_unbonding%27&events=tx.height%3E%3D9450000&events=tx.height%3C%3D9550000&pagination.limit=5&order_by=ORDER_BY_ASC"
+            "attempts": [
+              {
+                "error": "RuntimeError: HTTP 400: {\"error\" : \"Please specify tx.height with strict equality. Thank you for understanding.\"}\n",
+                "mode": "query_v050",
+                "url": "https://kava-rest.publicnode.com/cosmos/tx/v1beta1/txs?query=message.action%3D%27begin_unbonding%27+AND+tx.height+%3E%3D+9450000+AND+tx.height+%3C%3D+9550000&page=1&limit=5&order_by=ORDER_BY_ASC"
+              },
+              {
+                "http": 200,
+                "mode": "events_legacy",
+                "pagination_total": null,
+                "sample": [],
+                "sha256": "0d1f3794ffc071e66f49bb483978209ebca8ccffbc68f0585fa245feb21aca87",
+                "tx_count": 0,
+                "url": "https://kava-rest.publicnode.com/cosmos/tx/v1beta1/txs?events=message.action%3D%27begin_unbonding%27&events=tx.height%3E%3D9450000&events=tx.height%3C%3D9550000&pagination.limit=5&order_by=ORDER_BY_ASC"
+              }
+            ],
+            "status": "ZERO_OR_UNINDEXED"
           }
         }
       ]
@@ -341,24 +456,65 @@
           "base": "https://public-celestia-lcd.numia.xyz",
           "provider": "numia",
           "result": {
-            "error": "RuntimeError: HTTP 500: {\"code\":13,\"message\":\"query cannot be empty\",\"details\":[]}",
-            "url": "https://public-celestia-lcd.numia.xyz/cosmos/tx/v1beta1/txs?events=message.action%3D%27begin_unbonding%27&events=tx.height%3E%3D2450000&events=tx.height%3C%3D2550000&pagination.limit=5&order_by=ORDER_BY_ASC"
+            "attempts": [
+              {
+                "http": 200,
+                "mode": "query_v050",
+                "pagination_total": null,
+                "sample": [],
+                "sha256": "0d1f3794ffc071e66f49bb483978209ebca8ccffbc68f0585fa245feb21aca87",
+                "tx_count": 0,
+                "url": "https://public-celestia-lcd.numia.xyz/cosmos/tx/v1beta1/txs?query=message.action%3D%27begin_unbonding%27+AND+tx.height+%3E%3D+2450000+AND+tx.height+%3C%3D+2550000&page=1&limit=5&order_by=ORDER_BY_ASC"
+              },
+              {
+                "error": "RuntimeError: HTTP 500: {\"code\":13,\"message\":\"query cannot be empty\",\"details\":[]}",
+                "mode": "events_legacy",
+                "url": "https://public-celestia-lcd.numia.xyz/cosmos/tx/v1beta1/txs?events=message.action%3D%27begin_unbonding%27&events=tx.height%3E%3D2450000&events=tx.height%3C%3D2550000&pagination.limit=5&order_by=ORDER_BY_ASC"
+              }
+            ],
+            "status": "ZERO_OR_UNINDEXED"
           }
         },
         {
           "base": "https://rest.lavenderfive.com/celestia",
           "provider": "lavenderfive",
           "result": {
-            "error": "RuntimeError: HTTP 500: {\"code\":13, \"message\":\"query cannot be empty\", \"details\":[]}",
-            "url": "https://rest.lavenderfive.com/celestia/cosmos/tx/v1beta1/txs?events=message.action%3D%27begin_unbonding%27&events=tx.height%3E%3D2450000&events=tx.height%3C%3D2550000&pagination.limit=5&order_by=ORDER_BY_ASC"
+            "attempts": [
+              {
+                "http": 200,
+                "mode": "query_v050",
+                "pagination_total": null,
+                "sample": [],
+                "sha256": "0d1f3794ffc071e66f49bb483978209ebca8ccffbc68f0585fa245feb21aca87",
+                "tx_count": 0,
+                "url": "https://rest.lavenderfive.com/celestia/cosmos/tx/v1beta1/txs?query=message.action%3D%27begin_unbonding%27+AND+tx.height+%3E%3D+2450000+AND+tx.height+%3C%3D+2550000&page=1&limit=5&order_by=ORDER_BY_ASC"
+              },
+              {
+                "error": "RuntimeError: HTTP 500: {\"code\":13, \"message\":\"query cannot be empty\", \"details\":[]}",
+                "mode": "events_legacy",
+                "url": "https://rest.lavenderfive.com/celestia/cosmos/tx/v1beta1/txs?events=message.action%3D%27begin_unbonding%27&events=tx.height%3E%3D2450000&events=tx.height%3C%3D2550000&pagination.limit=5&order_by=ORDER_BY_ASC"
+              }
+            ],
+            "status": "ZERO_OR_UNINDEXED"
           }
         },
         {
           "base": "https://celestia-rest.publicnode.com",
           "provider": "publicnode",
           "result": {
-            "error": "RuntimeError: HTTP 500: {\"code\":13, \"message\":\"query cannot be empty\", \"details\":[]}\n",
-            "url": "https://celestia-rest.publicnode.com/cosmos/tx/v1beta1/txs?events=message.action%3D%27begin_unbonding%27&events=tx.height%3E%3D2450000&events=tx.height%3C%3D2550000&pagination.limit=5&order_by=ORDER_BY_ASC"
+            "attempts": [
+              {
+                "error": "RuntimeError: HTTP 400: {\"error\" : \"Please specify tx.height with strict equality. Thank you for understanding.\"}\n",
+                "mode": "query_v050",
+                "url": "https://celestia-rest.publicnode.com/cosmos/tx/v1beta1/txs?query=message.action%3D%27begin_unbonding%27+AND+tx.height+%3E%3D+2450000+AND+tx.height+%3C%3D+2550000&page=1&limit=5&order_by=ORDER_BY_ASC"
+              },
+              {
+                "error": "RuntimeError: HTTP 500: {\"code\":13, \"message\":\"query cannot be empty\", \"details\":[]}\n",
+                "mode": "events_legacy",
+                "url": "https://celestia-rest.publicnode.com/cosmos/tx/v1beta1/txs?events=message.action%3D%27begin_unbonding%27&events=tx.height%3E%3D2450000&events=tx.height%3C%3D2550000&pagination.limit=5&order_by=ORDER_BY_ASC"
+              }
+            ],
+            "status": "UNAVAILABLE"
           }
         }
       ]
@@ -374,24 +530,69 @@
           "base": "https://dydx-rest.kingnodes.com",
           "provider": "kingnodes",
           "result": {
-            "error": "RuntimeError: HTTP 500: {\"code\":13, \"message\":\"query cannot be empty\", \"details\":[]}",
-            "url": "https://dydx-rest.kingnodes.com/cosmos/tx/v1beta1/txs?events=message.action%3D%27begin_unbonding%27&events=tx.height%3E%3D14950000&events=tx.height%3C%3D15050000&pagination.limit=5&order_by=ORDER_BY_ASC"
+            "attempts": [
+              {
+                "http": 200,
+                "mode": "query_v050",
+                "pagination_total": null,
+                "sample": [],
+                "sha256": "0d1f3794ffc071e66f49bb483978209ebca8ccffbc68f0585fa245feb21aca87",
+                "tx_count": 0,
+                "url": "https://dydx-rest.kingnodes.com/cosmos/tx/v1beta1/txs?query=message.action%3D%27begin_unbonding%27+AND+tx.height+%3E%3D+14950000+AND+tx.height+%3C%3D+15050000&page=1&limit=5&order_by=ORDER_BY_ASC"
+              },
+              {
+                "error": "RuntimeError: HTTP 500: {\"code\":13, \"message\":\"query cannot be empty\", \"details\":[]}",
+                "mode": "events_legacy",
+                "url": "https://dydx-rest.kingnodes.com/cosmos/tx/v1beta1/txs?events=message.action%3D%27begin_unbonding%27&events=tx.height%3E%3D14950000&events=tx.height%3C%3D15050000&pagination.limit=5&order_by=ORDER_BY_ASC"
+              }
+            ],
+            "status": "ZERO_OR_UNINDEXED"
           }
         },
         {
           "base": "https://rest.lavenderfive.com/dydx",
           "provider": "lavenderfive",
           "result": {
-            "error": "RuntimeError: HTTP 500: {\"code\":13, \"message\":\"query cannot be empty\", \"details\":[]}",
-            "url": "https://rest.lavenderfive.com/dydx/cosmos/tx/v1beta1/txs?events=message.action%3D%27begin_unbonding%27&events=tx.height%3E%3D14950000&events=tx.height%3C%3D15050000&pagination.limit=5&order_by=ORDER_BY_ASC"
+            "attempts": [
+              {
+                "http": 200,
+                "mode": "query_v050",
+                "pagination_total": null,
+                "sample": [],
+                "sha256": "0d1f3794ffc071e66f49bb483978209ebca8ccffbc68f0585fa245feb21aca87",
+                "tx_count": 0,
+                "url": "https://rest.lavenderfive.com/dydx/cosmos/tx/v1beta1/txs?query=message.action%3D%27begin_unbonding%27+AND+tx.height+%3E%3D+14950000+AND+tx.height+%3C%3D+15050000&page=1&limit=5&order_by=ORDER_BY_ASC"
+              },
+              {
+                "error": "RuntimeError: HTTP 500: {\"code\":13, \"message\":\"query cannot be empty\", \"details\":[]}",
+                "mode": "events_legacy",
+                "url": "https://rest.lavenderfive.com/dydx/cosmos/tx/v1beta1/txs?events=message.action%3D%27begin_unbonding%27&events=tx.height%3E%3D14950000&events=tx.height%3C%3D15050000&pagination.limit=5&order_by=ORDER_BY_ASC"
+              }
+            ],
+            "status": "ZERO_OR_UNINDEXED"
           }
         },
         {
           "base": "https://dydx-api.polkachu.com",
           "provider": "polkachu",
           "result": {
-            "error": "RuntimeError: HTTP 500: {\"code\":13, \"message\":\"query cannot be empty\", \"details\":[]}",
-            "url": "https://dydx-api.polkachu.com/cosmos/tx/v1beta1/txs?events=message.action%3D%27begin_unbonding%27&events=tx.height%3E%3D14950000&events=tx.height%3C%3D15050000&pagination.limit=5&order_by=ORDER_BY_ASC"
+            "attempts": [
+              {
+                "http": 200,
+                "mode": "query_v050",
+                "pagination_total": null,
+                "sample": [],
+                "sha256": "0d1f3794ffc071e66f49bb483978209ebca8ccffbc68f0585fa245feb21aca87",
+                "tx_count": 0,
+                "url": "https://dydx-api.polkachu.com/cosmos/tx/v1beta1/txs?query=message.action%3D%27begin_unbonding%27+AND+tx.height+%3E%3D+14950000+AND+tx.height+%3C%3D+15050000&page=1&limit=5&order_by=ORDER_BY_ASC"
+              },
+              {
+                "error": "RuntimeError: HTTP 500: {\"code\":13, \"message\":\"query cannot be empty\", \"details\":[]}",
+                "mode": "events_legacy",
+                "url": "https://dydx-api.polkachu.com/cosmos/tx/v1beta1/txs?events=message.action%3D%27begin_unbonding%27&events=tx.height%3E%3D14950000&events=tx.height%3C%3D15050000&pagination.limit=5&order_by=ORDER_BY_ASC"
+              }
+            ],
+            "status": "ZERO_OR_UNINDEXED"
           }
         }
       ]
