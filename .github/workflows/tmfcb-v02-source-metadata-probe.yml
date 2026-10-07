@@ -1,0 +1,22 @@
+name: TMFCB V0.2 Source Metadata Probe
+
+on:
+  push:
+    branches:
+      - token-migration-forced-conversion-basis-001-v0.2-source-remediation-2026-10-07
+    paths:
+      - "research/token_migration_forced_conversion_basis/tools/tmfcb_v02_metadata_probe.py"
+      - ".github/workflows/tmfcb-v02-source-metadata-probe.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  metadata-only:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact branch commit
+        uses: actions/checkout@v4
+      - name: Run metadata-only resolver
+        run: python research/token_migration_forced_conversion_basis/tools/tmfcb_v02_metadata_probe.py
