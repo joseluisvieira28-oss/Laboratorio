@@ -1,1 +1,1 @@
-trigger mixed NFP source-only census 2026-10-07 v2
+trigger mixed NFP source-only census technical-fix v3 2026-10-07
