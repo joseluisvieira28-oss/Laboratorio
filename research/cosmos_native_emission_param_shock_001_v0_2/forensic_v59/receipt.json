@@ -1,0 +1,80 @@
+{
+  "scope": "SOURCE_ONLY_NO_MARKET_DATA",
+  "rows": [
+    {
+      "id": "secret3_archive_redirect",
+      "url": "https://docs.scrt.network/operators/archive",
+      "method": "GET",
+      "retrieved_utc": "2026-10-07T17:46:18.898084+00:00",
+      "status": 308,
+      "content_type": null,
+      "location": "/operators/archive/",
+      "truncated": false,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "raw": "raw/secret3_archive_redirect.bin",
+      "discovery_lines": [],
+      "classification": "ACCESS_BLOCKED_OR_ABSENT"
+    },
+    {
+      "id": "secret3_rpc_lcd_redirect",
+      "url": "https://docs.scrt.network/operators/rpc-lcd",
+      "method": "GET",
+      "retrieved_utc": "2026-10-07T17:46:18.898084+00:00",
+      "status": 308,
+      "content_type": null,
+      "location": "/operators/rpc-lcd/",
+      "truncated": false,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "raw": "raw/secret3_rpc_lcd_redirect.bin",
+      "discovery_lines": [],
+      "classification": "ACCESS_BLOCKED_OR_ABSENT"
+    },
+    {
+      "id": "secret3_archive_docs",
+      "url": "https://docs.scrt.network/operators/archive/",
+      "method": "GET",
+      "retrieved_utc": "2026-10-07T17:46:19.031602+00:00",
+      "status": 200,
+      "content_type": "text/html; charset=utf-8",
+      "location": null,
+      "truncated": false,
+      "sha256": "08cb04c299f1da4eade178e7345affd2f193c3bf411f9b1841dd7d624aa9433a",
+      "bytes": 71842,
+      "raw": "raw/secret3_archive_docs.bin",
+      "discovery_lines": [
+        "<p>Set <code>pruning = \"nothing\"</code> before you serve an ABCI, LCD, or gRPC query at an old height with header <code>x-cosmos-block-height</code>. If the version is gone, <code>GetImmutable</code> returns <code>version does not exist. Version has either been pruned, or is for a future block height</code>. A latest-height query, a <code>/block</code> for a height still in the blockstore, <code>/tx</code> when the index exists, and <code>/block_results</code> when ABCI responses were kept do not need <code>pruning = \"nothing\"</code> by themselves. Staking <code>historical_entries</code> <code>10000</code> is a ring in module state. It does not replace an old IAVL version.</p>",
+        "<p>Once versions are deleted, they stay deleted. Switching a live node to <code>nothing</code> keeps versions still on disk and every version committed after the restart. It does not rebuild deleted versions. The switch also does not bring back blocks you never downloaded, blocks already pruned because <code>min-retain-blocks</code> was non-zero, ABCI responses discarded while <code>discard_abci_responses = true</code>, tx index entries never written or deleted with <code>data/</code>, ecall records for heights where <code>store-sgx-data</code> was false, or any height the pruned tarball never contained. A pruned-snapshot join starts at the snapshot height.</p>",
+        "<li>If that height is below the published snapshot, do not start from the Secret\u00b3 tarball. Replay from the first height in range.</li>",
+        "<li>Restart <code>secret-node</code>. Query a height older than 362880 blocks, using a height the blockstore actually has.</li>"
+      ],
+      "classification": "DISCOVERY_ONLY"
+    },
+    {
+      "id": "secret3_rpc_lcd_docs",
+      "url": "https://docs.scrt.network/operators/rpc-lcd/",
+      "method": "GET",
+      "retrieved_utc": "2026-10-07T17:46:19.052596+00:00",
+      "status": 200,
+      "content_type": "text/html; charset=utf-8",
+      "location": null,
+      "truncated": false,
+      "sha256": "13c3564023f5169cb902f8189dd1ce158c3e2ada7f871dddb4b50d7c92d6cde7",
+      "bytes": 91747,
+      "raw": "raw/secret3_rpc_lcd_docs.bin",
+      "discovery_lines": [
+        "<li>Read <code>http://127.0.0.1:26657/status</code>. Require <code>catching_up</code> false and network <code>secret-4</code>. Use <code>trinity-b</code> only if that is the chain this home is on.</li>",
+        "<span class=\"line\"><span class=\"nb-shiki-1t8gfj\">secretcli</span><span class=\"nb-shiki-mdbnqw\"> config</span><span class=\"nb-shiki-mdbnqw\"> set</span><span class=\"nb-shiki-mdbnqw\"> client</span><span class=\"nb-shiki-mdbnqw\"> chain-id</span><span class=\"nb-shiki-mdbnqw\"> secret-4</span></span>",
+        "<span class=\"line\"><span class=\"nb-shiki-1t8gfj\">secretcli</span><span class=\"nb-shiki-mdbnqw\"> config</span><span class=\"nb-shiki-mdbnqw\"> set</span><span class=\"nb-shiki-mdbnqw\"> client</span><span class=\"nb-shiki-mdbnqw\"> chain-id</span><span class=\"nb-shiki-mdbnqw\"> secret-4</span></span></code></pre></figure>",
+        "<figure class=\"nb-code-figure\" data-nb-lang=\"js\"><pre class=\"astro-code astro-code-themes github-light github-dark nb-shiki-c6xiwz\" tabindex=\"0\" data-language=\"js\" data-nb-lang=\"js\"><code><span class=\"line\"><span class=\"nb-shiki-1itgoe\">import</span><span class=\"nb-shiki-140thh\"> { SecretNetworkClient } </span><span class=\"nb-shiki-1itgoe\">from</span><span class=\"nb-shiki-mdbnqw\"> \"secretjs\"</span><span class=\"nb-shiki-140thh\">;</span></span>",
+        "<span class=\"line\"><span class=\"nb-shiki-1itgoe\">const</span><span class=\"nb-shiki-dzsirb\"> secretjs</span><span class=\"nb-shiki-1itgoe\"> =</span><span class=\"nb-shiki-1itgoe\"> new</span><span class=\"nb-shiki-1t8gfj\"> SecretNetworkClient</span><span class=\"nb-shiki-140thh\">({</span></span>",
+        "<span class=\"line\"><span class=\"nb-shiki-140thh\">  chainId: </span><span class=\"nb-shiki-mdbnqw\">\"secret-4\"</span><span class=\"nb-shiki-140thh\">,</span></span>"
+      ],
+      "classification": "DISCOVERY_ONLY"
+    }
+  ],
+  "H": null,
+  "T0": null,
+  "exhaustion": false
+}

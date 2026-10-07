@@ -1,0 +1,26 @@
+name: SCRT287 public forensic metadata V54-V59
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source-only:
+    if: github.ref == 'refs/heads/cosmos-native-emission-param-shock-001-v0.2-t0-remediation-2026-10-07'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Public source metadata only
+        working-directory: research/cosmos_native_emission_param_shock_001_v0_2
+        run: |
+          for version in 54 55 56 57 58 59; do
+            python3 "forensic_scrt287_v${version}.py"
+          done
+          python3 verify_forensic_receipts_v54_v59.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: scrt287-forensic-public-v54-v59
+          path: |
+            research/cosmos_native_emission_param_shock_001_v0_2/forensic_v5*/
+            research/cosmos_native_emission_param_shock_001_v0_2/SCRT287_FORENSIC_INTEGRITY_V54_V59.json
+          retention-days: 90
