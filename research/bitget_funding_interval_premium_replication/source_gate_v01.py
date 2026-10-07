@@ -112,21 +112,33 @@ def candidate_text(txt):
 
 def parse_effective(txt):
     vals=[]
-    for m in ISO_EFF_RE.finditer(txt):
+    # Primary modern format: explicit Adjustment time field.
+    rx_adj=re.compile(
+        r"Adjustment\s+time\s*:\s*(20\\d{2})-(\\d{2})-(\\d{2})\\s+(\\d{1,2}):(\\d{2})\\s*[（(]?UTC\\s*([+-])\\s*(\\d{1,2})[）)]?",
+        re.I
+    )
+    for m in rx_adj.finditer(txt):
         y,mo,d,h,mi=int(m.group(1)),int(m.group(2)),int(m.group(3)),int(m.group(4)),int(m.group(5))
         off=int(m.group(7)); off=off if m.group(6)=="+" else -off
         try:
-            local=datetime(y,mo,d,h,mi,tzinfo=timezone(timedelta(hours=off)))
-            vals.append(local.astimezone(timezone.utc))
+            vals.append(datetime(y,mo,d,h,mi,tzinfo=timezone(timedelta(hours=off))).astimezone(timezone.utc))
         except: pass
-    for m in TEXT_EFF_RE.finditer(txt):
+    if vals:
+        return sorted({x.isoformat():x for x in vals}.values())
+
+    # Older prose format: "... adjust ... on April 29, 2025, at 20:00 (UTC+8)".
+    rx_old=re.compile(
+        r"adjust.{0,220}?on\\s+([A-Z][a-z]+)\\s+(\\d{1,2}),?\\s+(20\\d{2}).{0,45}?"
+        r"(\\d{1,2}):(\\d{2})\\s*[（(]?UTC\\s*([+-])\\s*(\\d{1,2})[）)]?",
+        re.I|re.S
+    )
+    for m in rx_old.finditer(txt):
         mon=MONTHS.get(m.group(1).title())
         if not mon: continue
         d,y,h,mi=int(m.group(2)),int(m.group(3)),int(m.group(4)),int(m.group(5))
         off=int(m.group(7)); off=off if m.group(6)=="+" else -off
         try:
-            local=datetime(y,mon,d,h,mi,tzinfo=timezone(timedelta(hours=off)))
-            vals.append(local.astimezone(timezone.utc))
+            vals.append(datetime(y,mon,d,h,mi,tzinfo=timezone(timedelta(hours=off))).astimezone(timezone.utc))
         except: pass
     return sorted({x.isoformat():x for x in vals}.values())
 
@@ -138,25 +150,42 @@ def parse_symbols(txt,title):
     # remove obvious non-pair references if any
     return sorted(vals)
 
+def article_body_text(soup,title):
+    h1=soup.find("h1")
+    if not h1:
+        return ""
+    parts=[]
+    # Consume visible text after the article heading until related-content/footer.
+    for node in h1.find_all_next(string=True):
+        z=" ".join(str(node).split())
+        if not z: continue
+        if z in {"Related articles","About Bitget"}:
+            break
+        parts.append(z)
+    body=" ".join(parts)
+    # The first title may be repeated; harmless for parsing.
+    return body
+
 def fetch_article(meta):
     r=get(meta["url"])
     soup=BeautifulSoup(r.text,"html.parser")
-    txt=" ".join(soup.get_text(" ",strip=True).split())
-    title=meta["title"] or (soup.find("h1").get_text(" ",strip=True) if soup.find("h1") else "")
+    h1=soup.find("h1")
+    title=" ".join(h1.get_text(" ",strip=True).split()) if h1 else meta["title"]
+    body=article_body_text(soup,title)
     pub=datetime.fromisoformat(meta["listed_utc"].replace("Z","+00:00")) if meta.get("listed_utc") else None
-    cand=candidate_text(title+" "+txt)
-    launch=bool(re.search(r"\b(listing|will list|launch)\b",title,re.I))
-    delist=bool(re.search(r"delist|automatic settlement",title+" "+txt,re.I))
-    effs=parse_effective(txt)
-    trans=parse_intervals(txt)
-    syms=parse_symbols(txt,title)
+    cand=candidate_text(title+" "+body)
+    launch=bool(re.search(r"\\b(listing|will list|launch)\\b",title,re.I))
+    delist=bool(re.search(r"delist|automatic settlement",title+" "+body,re.I))
+    effs=parse_effective(body)
+    trans=parse_intervals(body)
+    syms=parse_symbols(body,title)
     return {
-      **meta,"source_sha256":hashlib.sha256(r.content).hexdigest(),
+      **meta,"title":title,"source_sha256":hashlib.sha256(r.content).hexdigest(),
       "candidate":cand,"launch":launch,"delist":delist,
       "effective_candidates":[x.isoformat().replace("+00:00","Z") for x in effs],
       "interval_transitions":[list(x) for x in trans],
       "symbols":syms,
-      "text_sample":txt[:1200],
+      "text_sample":body[:1600],
       "_pub":pub
     }
 
