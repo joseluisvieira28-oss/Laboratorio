@@ -137,7 +137,7 @@ def baker_yoy(filename, month):
             return {"ok":False,"url":u,"status":r.status_code}
         reader=PdfReader(io.BytesIO(r.content))
         text=" ".join(" ".join((p.extract_text() or "").split()) for p in reader.pages)
-        printed=re.search(r"This report was printed as of:\\s*([0-9]{1,2}/[0-9]{1,2}/[0-9]{4}\\s+[0-9]{1,2}:[0-9]{2}(?:AM|PM))",text,re.I)
+        printed=re.search(r"This report was printed as of:\s*([0-9]{1,2}/[0-9]{1,2}/[0-9]{4}\s+[0-9]{1,2}:[0-9]{2}\s*(?:AM|PM))",text,re.I)
 
         val=None
         match_text=None
@@ -162,7 +162,7 @@ def baker_yoy(filename, month):
                             est=ests[i] if i < len(ests) else None
                             per=periods[i] if i < len(periods) else None
                             table_evidence.append({"row_index":i,"release":rel,"period":per,"est":est})
-                            if est and re.fullmatch(r"[-+]?\\d+(?:\\.\\d+)?%",est):
+                            if est and re.fullmatch(r"[-+]?\d+(?:\.\d+)?%",est):
                                 val=est
                                 match_text=f"{rel} | {per} | Est={est}"
                                 break
@@ -176,9 +176,9 @@ def baker_yoy(filename, month):
         # Conservative fallback only when table geometry is unavailable.
         if val is None:
             pats=[
-                rf"Average Hourly Earnings YoY\\s+{month}\\s+([-+]?\\d+(?:\\.\\d+)?%)",
-                rf"{month}\\s*Average Hourly Earnings YoY\\s+([-+]?\\d+(?:\\.\\d+)?%)",
-                r"Average Hourly Earnings YoY\\s+([-+]?\\d+(?:\\.\\d+)?%)"
+                rf"Average Hourly Earnings YoY\s+{month}\s+([-+]?\d+(?:\.\d+)?%)",
+                rf"{month}\s*Average Hourly Earnings YoY\s+([-+]?\d+(?:\.\d+)?%)",
+                r"Average Hourly Earnings YoY\s+([-+]?\d+(?:\.\d+)?%)"
             ]
             for pat in pats:
                 m=re.search(pat,text,re.I)
@@ -200,7 +200,7 @@ def published_pre_t0(cands,t0):
             # Technical clock-resolution amendment: 2021 TeleTrade historical market-news
             # feed clock was independently resolved as GMT by exact alignment of same-feed
             # release posts with the page's explicit GMT schedule and frozen BLS T0.
-            m=re.fullmatch(r"(\\d{2})\\.(\\d{2})\\.(\\d{4})\\s+(\\d{2}):(\\d{2})",s.strip())
+            m=re.fullmatch(r"(\d{2})\.(\d{2})\.(\d{4})\s+(\d{2}):(\d{2})",s.strip())
             if m:
                 d=datetime(int(m.group(3)),int(m.group(2)),int(m.group(1)),int(m.group(4)),int(m.group(5)),tzinfo=timezone.utc)
         if d:
