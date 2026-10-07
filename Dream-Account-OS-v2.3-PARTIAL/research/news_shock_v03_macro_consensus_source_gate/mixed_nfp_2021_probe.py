@@ -25,7 +25,7 @@ HEADERS={"User-Agent":"Mozilla/5.0 (compatible; CryptoLabSourceAudit/1.0)"}
 BAKER="https://creditunions.com/wp-content/uploads/2022/04/"
 LOCALES=["uk","vi","sr","en"]
 
-def get(url, timeout=30):
+def get(url, timeout=6):
     r=requests.get(url,headers=HEADERS,timeout=timeout,allow_redirects=True)
     return r
 
