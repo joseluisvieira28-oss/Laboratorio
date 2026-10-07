@@ -68,7 +68,10 @@ def lowest_from_error(s):
   return int(m.group(1)) if m else None
 
 def find_target(base):
-  latest=block(base)
+  try:
+    latest=block(base)
+  except Exception as e:
+    return {"status":"UNAVAILABLE","error":type(e).__name__+": "+str(e)}
   hi=latest["height"]; lo=1
   # Discover retained floor if provider reports pruning.
   try:
