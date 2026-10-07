@@ -1,0 +1,3 @@
+# OPTIONS-SPOTPERP-001 V2.1 checkpoint 2026-10-07
+
+Public Deribit schema PASS: nine trades, zero invalid IV/index rows in the bounded five-minute probe. Canonical public runtime reports OK through signal day 2026-10-06: 18 signal days, 17 valid/directional, 16 resolved forward trades; integrity gates pass with zero duplicate keys and zero orphan resolutions. Operational 10-trade milestone reached; scientific first-50 gate not mature. FORWARD_EVIDENCE_ACCUMULATING_TIER1_GATE_FROZEN. Partial economic values returned by the existing metrics endpoint are not a scientific verdict and did not guide any rule change. No source backfill, intent recreation, runtime mutation, capital or Tier promotion. Existing shadow collector remains running.
