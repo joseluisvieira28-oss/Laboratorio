@@ -1,0 +1,39 @@
+name: Unbonding V0.4 Kava Source-B Probe
+
+on:
+  push:
+    branches:
+      - pos-unbonding-v04-kava-sourceb-probe-2026-10-07
+    paths:
+      - "research/pos_unbonding_completion_001_v0_4_index_free/v04_kava_valopers_sourceb_probe.py"
+      - ".github/workflows/unbonding-v04-kava-sourceb.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pos-unbonding-v04-kava-sourceb-probe-2026-10-07
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Probe independent Kava explorer
+        run: python research/pos_unbonding_completion_001_v0_4_index_free/v04_kava_valopers_sourceb_probe.py
+      - name: Commit receipt
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/pos_unbonding_completion_001_v0_4_index_free/KAVA_VALOPERS_SOURCEB_PROBE_V04.json
+          if git diff --cached --quiet; then
+            echo "No receipt changes"
+          else
+            git commit -m "Record Kava Valopers source-B probe"
+            git push origin HEAD:pos-unbonding-v04-kava-sourceb-probe-2026-10-07
+          fi
