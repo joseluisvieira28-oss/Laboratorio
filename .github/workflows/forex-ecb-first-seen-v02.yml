@@ -1,0 +1,48 @@
+name: FOREX ECB First-Seen Watch V0.2
+
+on:
+  push:
+    branches:
+      - forex-ecb-fwd-v02-2026-10-07
+    paths:
+      - 'research/forex_macro_shock/ecb_trigger_v02/**'
+
+permissions:
+  contents: read
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install requests
+      - id: trigger
+        shell: bash
+        run: |
+          P=$(git diff-tree --no-commit-id --name-only -r HEAD | grep '^research/forex_macro_shock/ecb_trigger_v02/' | tail -1)
+          test -n "$P"
+          export P
+          python - <<'PY'
+          import json,os
+          j=json.load(open(os.environ['P']))
+          with open(os.environ['GITHUB_OUTPUT'],'a') as f:
+              for k in ('start','end','segment'):
+                  f.write(f"{k}={j[k]}\n")
+          PY
+      - name: Watch official ECB publication
+        run: |
+          python research/forex_macro_shock/ecb_first_seen_watcher_v02.py \
+            --start "${{ steps.trigger.outputs.start }}" \
+            --end "${{ steps.trigger.outputs.end }}" \
+            --interval-sec 2 \
+            --out "artifacts/forex_macro_shock/ecb_v02/ecb_first_seen_${{ steps.trigger.outputs.segment }}.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: forex-ecb-first-seen-v02-${{ github.run_id }}
+          path: artifacts/forex_macro_shock/ecb_v02
