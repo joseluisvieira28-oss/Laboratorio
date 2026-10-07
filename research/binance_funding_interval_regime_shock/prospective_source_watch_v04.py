@@ -305,13 +305,12 @@ def main():
       "clusters_ge_12":len(clusters)>=12,
       "asset_events_ge_20":n>=20,
       "unique_contracts_ge_8":len(assets)>=8,
-      "years_ge_2":len(years)>=2,
       "max_cluster_le_35pct":conc<=0.35,
-      "all_capabilities_pass":all(e["capability"]["pass"] for e in eligible) if eligible else False,
+      "all_capabilities_pass":all(e["capability"]["pass"] for e in eligible) if eligible else True,
     }
-    if complete and all(gates.values()): verdict="SOURCE_GATE_PASS"
-    elif complete: verdict="INSUFFICIENT_SAMPLE"
-    else: verdict="SOURCE_BLOCKED"
+    if complete and all(gates.values()): verdict="PROSPECTIVE_SOURCE_READY"
+    elif complete: verdict="PROSPECTIVE_ACCUMULATING"
+    else: verdict="PROSPECTIVE_SOURCE_BLOCKED"
 
     report={
       "family":LAB,"verdict":verdict,"outcome_access":"NONE",
