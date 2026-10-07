@@ -20,8 +20,10 @@ jobs:
       - uses: actions/checkout@v4
       - name: Validate V2 pre-outcome gate
         run: python research/crypto_lab_v2/validate_preoutcome_gate_v2.py research/btc_options_vrp_v2/PREOUTCOME_GATE_V2.json
-      - name: Compile collector
-        run: python -m py_compile labs/BTC_OPTIONS_VRP_001/forward_bbo_collector_v01.py
+      - name: Compile collectors
+        run: |
+          python -m py_compile labs/BTC_OPTIONS_VRP_001/forward_bbo_collector_v01.py
+          python -m py_compile labs/BTC_OPTIONS_VRP_001/forward_weekly_source_v2.py
       - name: Capture current public source snapshot only
         run: |
           mkdir -p artifacts/btc_options_vrp_v2_source_health
