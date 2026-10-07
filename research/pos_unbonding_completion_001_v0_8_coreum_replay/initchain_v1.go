@@ -40,9 +40,21 @@ type receipt struct {
 	TopLevelGenesisValidators int    `json:"top_level_genesis_validators"`
 }
 
+func configureMainnet() {
+	for _, network := range coreumconfig.Networks() {
+		if string(network.ChainID()) == "coreum-mainnet-1" {
+			network.SetSDKConfig()
+			coreumapp.ChosenNetwork = network
+			return
+		}
+	}
+	panic("coreum-mainnet-1 network config not found")
+}
+
 func hx(b []byte) string { return fmt.Sprintf("%X", b) }
 
 func main() {
+	configureMainnet()
 	if len(os.Args) != 3 {
 		fmt.Fprintln(os.Stderr, "usage: initchain_v1 <genesis.json> <block_1.json>")
 		os.Exit(2)
