@@ -37,6 +37,17 @@ type receipt struct {
 	AppHashOffsetPass       bool   `json:"app_hash_offset_pass"`
 }
 
+func configureMainnet() {
+	for _, network := range coreumconfig.Networks() {
+		if string(network.ChainID()) == "coreum-mainnet-1" {
+			network.SetSDKConfig()
+			coreumapp.ChosenNetwork = network
+			return
+		}
+	}
+	panic("coreum-mainnet-1 network config not found")
+}
+
 func hx(b []byte) string { return fmt.Sprintf("%X", b) }
 
 func readBlock(path string) *tmtypes.Block {
@@ -49,6 +60,7 @@ func readBlock(path string) *tmtypes.Block {
 }
 
 func main() {
+	configureMainnet()
 	if len(os.Args) != 4 {
 		fmt.Fprintln(os.Stderr, "usage: execute_block1_v1 <genesis.json> <block_1.json> <block_2.json>")
 		os.Exit(2)
