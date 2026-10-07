@@ -1,0 +1,28 @@
+name: MEXC Overshoot Shadow V0.2.4 Transport Probe
+
+on:
+  push:
+    branches:
+      - mexc-globalasset-intraday-overshoot-shadow-v0.2.4-ws-remediation-2026-10-07
+    paths:
+      - 'research/mexc_global_assets/mexc_globalasset_intraday_overshoot_transport_probe_v024.py'
+      - 'research/mexc_global_assets/MEXC_GLOBALASSET_INTRADAY_OVERSHOOT_SHADOW_AMENDMENT_V0.2.4.md'
+      - '.github/workflows/mexc-globalasset-intraday-overshoot-v024-transport-probe.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install websockets
+      - name: Compile
+        run: python -m py_compile research/mexc_global_assets/mexc_globalasset_intraday_overshoot_transport_probe_v024.py
+      - name: Outcome-blind public websocket probe
+        run: python research/mexc_global_assets/mexc_globalasset_intraday_overshoot_transport_probe_v024.py
