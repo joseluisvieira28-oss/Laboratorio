@@ -223,7 +223,7 @@ def parse_rows_for_events(soup,title):
             c=parse_clock(txt) or ctx_clock
             events.append({
                 "symbols":syms,"old_hours":old,"new_hours":new,
-                "row_text":txt,"row_date":row_date,
+                "row_text":txt,"row_plain":" ".join(row),"row_date":row_date,
                 "hour":c[0] if c else None,"minute":c[1] if c else None,
                 "date_source":"row_or_nearest_table_context" if row_date else None
             })
@@ -237,15 +237,46 @@ def article_detail(meta):
     pub=exact_publish(r.text,soup,meta.get("listing_date"))
     events=parse_rows_for_events(soup,title)
 
-    # Conservative single-event fallback: only use an article-level effective
-    # datetime when exactly one post-publication date+UTC-time candidate exists.
+    # Deterministic full-text ordering fallback. OKX sometimes serializes
+    # tables such that DOM ancestry loses the section heading, while visible
+    # article text retains: [adjustment date heading] -> [table row].
+    date_marks=[]
+    for m in DATE_TEXT_RE.finditer(full):
+        d=parse_date_text(m.group(0))
+        if d and START<=d<=END:
+            frag=full[max(0,m.start()-25):m.end()+25]
+            if "Published on" not in frag:
+                date_marks.append((m.start(),d))
+    for e in events:
+        if e["row_date"] is not None and e["hour"] is not None:
+            continue
+        needle=e.get("row_plain") or ""
+        pos=full.find(needle) if needle else -1
+        if pos<0 and e["symbols"]:
+            # Search after the title occurrence where possible.
+            token=e["symbols"][0]+"USDT"
+            occurrences=[m.start() for m in re.finditer(re.escape(token),full,re.I)]
+            if occurrences:
+                pos=occurrences[-1]
+        if e["row_date"] is None and pos>=0:
+            prior=[d for p,d in date_marks if p<pos]
+            if prior:
+                e["row_date"]=prior[-1]
+                e["date_source"]="nearest_preceding_visible_official_date"
+        if e["hour"] is None:
+            c=parse_clock(e.get("row_text",""))
+            if c:
+                e["hour"],e["minute"]=c
+    # Conservative article-level fallback only when exactly one unambiguous
+    # post-publication effective datetime exists in the official article.
     unresolved=[e for e in events if e["row_date"] is None or e["hour"] is None]
     if unresolved and pub:
         cands=article_effective_candidates(full,pub)
         if len(cands)==1:
             z=cands[0]
             for e in unresolved:
-                if e["row_date"] is None: e["row_date"]=z.replace(hour=0,minute=0,second=0,microsecond=0)
+                if e["row_date"] is None:
+                    e["row_date"]=z.replace(hour=0,minute=0,second=0,microsecond=0)
                 if e["hour"] is None:
                     e["hour"]=z.hour; e["minute"]=z.minute
                 e["date_source"]="unique_article_level_effective_datetime"
