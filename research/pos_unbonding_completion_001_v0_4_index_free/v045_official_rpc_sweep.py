@@ -23,7 +23,7 @@ SPECS=[
   "anchors":{
     "fixed":{"height":3554500,"time":"2024-03-04T14:19:15.221993843Z","hash":"34A783870D4D4292B8D54A37A02CA1BCA868E274F949265E0B9BE299B99B6A14","app_hash":"9562F5DF73EE58E8612FC4FBD0A57460538C7E3EFC749246493EBD1437AB859A"}
   },
-  "authority":null,
+  "authority":None,
   "extras":[
     "https://archway-mainnet-archive.allthatnode.com:26657",
     "http://148.251.124.58:26657"
