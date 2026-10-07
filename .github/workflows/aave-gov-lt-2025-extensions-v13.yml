@@ -1,0 +1,32 @@
+name: Aave Gov LT 2025 Extensions V13
+on:
+  push:
+    branches: [aave-gov-lt-forced-deleveraging-v0.1]
+    paths:
+      - '.github/workflows/aave-gov-lt-2025-extensions-v13.yml'
+      - 'research/aave_gov_lt_forced_deleveraging/chain_2025_extension_v13.py'
+permissions:
+  contents: read
+jobs:
+  source:
+    strategy:
+      fail-fast: false
+      matrix:
+        chain: [polygon, avalanche, arbitrum]
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    env:
+      CHAIN: ${{ matrix.chain }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install pycryptodome==3.23.0
+      - run: python research/aave_gov_lt_forced_deleveraging/chain_2025_extension_v13.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: aave-gov-lt-${{ matrix.chain }}-2025-v13
+          path: out/aave_${{ matrix.chain }}_2025_v13
+          retention-days: 30
