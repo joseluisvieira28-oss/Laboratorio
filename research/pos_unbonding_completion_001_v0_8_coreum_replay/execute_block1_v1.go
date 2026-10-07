@@ -92,9 +92,13 @@ func main() {
 		InitialHeight: gen.InitialHeight,
 	})
 
+	protoHeader := b1.Header.ToProto()
+	if protoHeader == nil {
+		panic("nil block1 proto header")
+	}
 	app.BeginBlock(abci.RequestBeginBlock{
-		Hash: b1.Hash(),
-		Header: b1.Header.ToProto(),
+		Hash:   b1.Hash(),
+		Header: *protoHeader,
 	})
 
 	allOK := true
