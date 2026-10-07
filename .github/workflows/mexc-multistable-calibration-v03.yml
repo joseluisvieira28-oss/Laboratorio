@@ -1,0 +1,32 @@
+name: MEXC Multi-Stable Predictor Calibration V0.3
+
+on:
+  push:
+    branches:
+      - mexc-multistable-basis-v0.3-prospective-2026-10-07
+    paths:
+      - 'research/mexc_multistable_basis/calibrate_predictor_v03.py'
+      - 'research/mexc_multistable_basis/PROSPECTIVE_PREOUTCOME_FREEZE_V0.3.md'
+      - '.github/workflows/mexc-multistable-calibration-v03.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  calibrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install requests
+      - name: Compile
+        run: python -m py_compile research/mexc_multistable_basis/calibrate_predictor_v03.py
+      - name: Run predictor-only calibration
+        run: python research/mexc_multistable_basis/calibrate_predictor_v03.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mexc-multistable-calibration-v03-${{ github.run_id }}
+          path: artifacts/mexc_multistable_basis/calibration_v03/threshold_receipt.json
