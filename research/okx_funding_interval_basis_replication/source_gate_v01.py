@@ -100,7 +100,7 @@ def article_links_from_listing(html):
 def enumerate_archive():
     articles={}; pages=[]; crossed=False; empty_streak=0
     for page in range(1,81):
-        url=BASE+ARCHIVE if page==1 else f"{BASE}{ARCHIVE}/page/{page}"
+        url=ARCHIVE_ORIGIN+ARCHIVE if page==1 else f"{ARCHIVE_ORIGIN}{ARCHIVE}/page/{page}"
         r=req(url)
         rows=article_links_from_listing(r.text)
         dates=[datetime.fromisoformat(x["listing_date"]) for x in rows if x["listing_date"]]
