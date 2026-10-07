@@ -306,6 +306,12 @@ def main():
         rec={**meta,"title":title,"source_sha256":hashlib.sha256(r.content).hexdigest(),
              "exact_publish_utc":pub.isoformat().replace("+00:00","Z") if pub else None,
              "launch":launch,"delist":delist,"parsed_rows":len(parsed),"eligible_events":0}
+        if ("API3USDT" in title or "certain perpetual futures" in title) and parsed:
+            print("SOURCE_DIAG_TITLE="+title)
+            print("SOURCE_DIAG_PARSED="+json.dumps([
+                {k:(v.isoformat() if hasattr(v,"isoformat") else v) for k,v in e.items()}
+                for e in parsed[:8]
+            ],sort_keys=True))
         if not launch and not delist and pub and START<=pub<=END:
             for e in parsed:
                 # Exact effective date+time is mandatory; unresolved rows are excluded.
