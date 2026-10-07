@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import base64, hashlib, json, ssl, urllib.request, urllib.error, time
+import base64, hashlib, json, ssl, urllib.request, urllib.error, time, os
 from datetime import datetime, timezone
 
 UA={"User-Agent":"CryptoLab-Unbonding-V03/0.1"}
@@ -297,9 +297,13 @@ def scan_chain(name,cfg):
 
 report={"generated_at":datetime.now(timezone.utc).isoformat(),"market_outcomes_opened":False,"chains":{}}
 for name,cfg in CHAINS.items():
+    only=os.environ.get("ONLY_CHAIN")
+    if only and name != only:
+        continue
     try: report["chains"][name]=scan_chain(name,cfg)
     except Exception as e: report["chains"][name]={"chain":name,"verdict":"SCRIPT_EXCEPTION","error":f"{type(e).__name__}: {e}"}
 
 print("===UNBONDING_V03_CAPABILITY_JSON===")
 print(json.dumps(report,indent=2,sort_keys=True))
-with open("unbonding_v03_capability.json","w") as f:json.dump(report,f,indent=2,sort_keys=True)
+outfile="unbonding_v03_capability_" + os.environ.get("ONLY_CHAIN","all") + ".json"
+with open(outfile,"w") as f:json.dump(report,f,indent=2,sort_keys=True)
