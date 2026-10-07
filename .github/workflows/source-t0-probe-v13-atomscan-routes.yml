@@ -1,0 +1,52 @@
+name: source-t0-probe-v13-atomscan-routes
+
+on:
+  push:
+    branches:
+      - cosmos-native-emission-param-shock-001-v0.2-t0-remediation-2026-10-07
+    paths:
+      - .github/workflows/source-t0-probe-v13-atomscan-routes.yml
+
+permissions:
+  contents: read
+
+jobs:
+  atomscan-routes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Extract Secret config and indexer routes
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import re,json,urllib.request,ssl
+          U="https://atomscan.com/js/app.10c96008.js"
+          q=urllib.request.Request(U,headers={"User-Agent":"Mozilla/5.0 CryptoLab-source-only"})
+          with urllib.request.urlopen(q,timeout=25,context=ssl._create_unverified_context()) as r:
+            js=r.read().decode("utf-8","replace")
+          out={"scope":"SOURCE_ONLY_NO_MARKET_DATA","length":len(js)}
+          def contexts(needle,limit=30,before=2500,after=5000):
+            a=[];p=0
+            while len(a)<limit:
+              p=js.lower().find(needle.lower(),p)
+              if p<0:break
+              a.append(js[max(0,p-before):p+after])
+              p+=len(needle)
+            return a
+          out["secret_network_ctx"]=contexts("secret-network",40)
+          out["secretnetwork_ctx"]=contexts("secretnetwork",40)
+          out["indexer_ctx"]=contexts("VUE_APP_INDEXER_URL",30)
+          out["influxer_ctx"]=contexts("influxer.server.atomscan.com",30)
+          out["get_blocks_minmax_ctx"]=contexts("getBlocksMinMax",20)
+          out["blockchain_route_ctx"]=contexts("blockchain?minHeight=",20)
+          # compact all URL-ish strings involving secret or atomscan infrastructure
+          urls=re.findall(r'https?://[^"\'\\ ]+',js)
+          out["urls_secret"]=[u for u in dict.fromkeys(urls) if "secret" in u.lower()][:500]
+          out["urls_atomscan"]=[u for u in dict.fromkeys(urls) if "atomscan" in u.lower()][:500]
+          # module route-like strings with likely indexer usage
+          strings=re.findall(r'["\']([^"\']{1,300})["\']',js)
+          out["route_strings"]=[s for s in dict.fromkeys(strings) if any(k in s.lower() for k in ["influx","indexer","blockchain?","/blocks","blocks/","chainstats","volume"])][:1000]
+          print("ATOMSCAN_ROUTES_V13_BEGIN")
+          print(json.dumps(out,indent=2,sort_keys=True)[:850000])
+          print("ATOMSCAN_ROUTES_V13_END")
+          PY
