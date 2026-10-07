@@ -1,0 +1,71 @@
+name: MEXC Multi-Stable Adjudicator V0.3 Self-Test
+
+on:
+  push:
+    branches:
+      - mexc-multistable-basis-v0.3-prospective-2026-10-07
+    paths:
+      - 'research/mexc_multistable_basis/adjudicate_forward_v03.py'
+      - '.github/workflows/mexc-multistable-adjudicator-v03-selftest.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  selftest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compile
+        run: python -m py_compile research/mexc_multistable_basis/adjudicate_forward_v03.py
+      - name: Empty epoch stays sealed and accumulating
+        run: |
+          mkdir -p /tmp/ms-empty /tmp/ms-triggers
+          python research/mexc_multistable_basis/adjudicate_forward_v03.py \
+            --root /tmp/ms-empty \
+            --trigger-dir /tmp/ms-triggers \
+            --out /tmp/empty.json
+          python - <<'PY'
+          import json
+          j=json.load(open('/tmp/empty.json'))
+          assert j['verdict']=='PROSPECTIVE_ACCUMULATING'
+          assert j['economic_metrics_opened'] is False
+          assert j['admitted_event_baskets']==0
+          print({'empty_epoch_seal':'PASS'})
+          PY
+      - name: Underpowered synthetic receipt never opens economics
+        run: |
+          mkdir -p /tmp/ms-under/one /tmp/ms-trigger2
+          cat > /tmp/ms-trigger2/test.json <<'JSON'
+          {"start":"2026-10-08T00:00:00Z","end":"2026-10-08T00:01:00Z","segment":"synthetic_underpowered"}
+          JSON
+          cat > /tmp/ms-under/one/receipt_test.json <<'JSON'
+          {
+            "family_id":"MEXC-MULTI-STABLE-BASIS-001",
+            "forward_version":"0.3",
+            "threshold_receipt_commit":"289fddb48ffbe34421914d2356eb5fa7f7f20ea7",
+            "segment":"synthetic_underpowered",
+            "expected_scan_minutes":2,
+            "scan_records":[
+              {"signal_close_utc":"2026-10-08T00:00:00+00:00","complete":true,"triggered_assets":[]},
+              {"signal_close_utc":"2026-10-08T00:01:00+00:00","complete":true,"triggered_assets":[]}
+            ],
+            "events":[]
+          }
+          JSON
+          python research/mexc_multistable_basis/adjudicate_forward_v03.py \
+            --root /tmp/ms-under \
+            --trigger-dir /tmp/ms-trigger2 \
+            --out /tmp/under.json
+          python - <<'PY'
+          import json
+          j=json.load(open('/tmp/under.json'))
+          assert j['verdict']=='PROSPECTIVE_ACCUMULATING'
+          assert j['economic_metrics_opened'] is False
+          assert j['scan_completeness']==1.0
+          print({'underpowered_outcome_seal':'PASS'})
+          PY
