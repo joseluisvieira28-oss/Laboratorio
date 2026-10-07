@@ -1,0 +1,43 @@
+name: MLMXD V0.1.5 API Launchpool Filter Diagnostic
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - mexc-launchpool-mx-demand-v0.1-source-2026-10-07
+    paths:
+      - '.github/workflows/mlmxd_v015_api_filter_diag.yml'
+permissions:
+  contents: read
+jobs:
+  diag:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install ccxt
+      - name: Probe public filters
+        run: |
+          python - <<'PY'
+          import ccxt,json
+          ex=ccxt.mexc({"enableRateLimit":True})
+          tests=[
+            {"keyword":"Launchpool"},
+            {"search":"Launchpool"},
+            {"query":"Launchpool"},
+            {"title":"Launchpool"},
+            {"tag":"Launchpool"},
+            {"category":"Launchpool"},
+            {"type":"Launchpool"},
+            {"keyword":"launchpool","page":1},
+          ]
+          for p in tests:
+            try:
+              x=ex.spot_public_get_announcements(p)
+              box=x["data"][0]; ds=box["details"]
+              titles=[d.get("title") for d in ds[:5]]
+              print(json.dumps({"params":p,"totalPage":box.get("totalPage"),"n":len(ds),"titles":titles},ensure_ascii=False))
+            except Exception as e:
+              print(json.dumps({"params":p,"error":repr(e)}))
+          PY
