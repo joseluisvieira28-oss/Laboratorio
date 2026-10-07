@@ -1,0 +1,213 @@
+name: SCRT287 forensic V61 uncovered IBC clients
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - cosmos-native-emission-param-shock-001-v0.2-t0-remediation-2026-10-07
+    paths:
+      - .github/workflows/scrt287-forensic-v61-ibc-uncovered-clients.yml
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: cosmos-native-emission-param-shock-001-v0.2-t0-remediation-2026-10-07
+
+      - name: Probe uncovered historical IBC clients and consensus-height-only index
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import concurrent.futures,datetime,hashlib,json,os,ssl,urllib.error,urllib.request
+
+          OUT="research/cosmos_native_emission_param_shock_001_v0_2/SCRT287_IBC_UNCOVERED_CLIENTS_V61.json"
+          TARGET="2023-12-07T02:54:58.930543213Z"
+          HEIGHTS=[11880918,11880919,11880920,11880921]
+          UA={"User-Agent":"CryptoLab-SCRT287-source-only-v61","Content-Type":"application/json"}
+
+          carriers=[
+            ("akash","07-tendermint-102",[
+              "https://rpc.akash.forbole.com:443",
+              "https://rpc-akash.ecostake.com:443",
+              "https://akash-rpc.lavenderfive.com:443",
+              "https://akash-rpc.polkachu.com",
+              "https://rpc-akash.cosmos-spaces.cloud",
+              "https://rpc-akash-ia.cosmosia.notional.ventures:443",
+              "http://akash.c29r3.xyz:80/rpc",
+              "https://akash-rpc.publicnode.com",
+              "https://rpc.cosmos.directory/akash",
+            ]),
+            ("composable","07-tendermint-52",[
+              "https://rpc-composable-ia.cosmosia.notional.ventures",
+              "https://rpc.composable.nodestake.top",
+              "https://composable-mainnet-rpc.autostake.com:443",
+              "https://composable-rpc.cogwheel.zone:443",
+              "https://rpc-centauri.cosmos-spaces.cloud",
+              "https://composable-rpc.lavenderfive.com:443",
+              "https://rpc-composable.whispernode.com:443",
+              "https://rpc.cosmos.directory/composable",
+            ]),
+            ("axelar-secondary","07-tendermint-103",[
+              "https://rpc-axelar.imperator.co:443",
+              "https://axelar-rpc.quickapi.com:443",
+              "https://axelar-rpc.chainode.tech:443",
+              "https://rpc-axelar.cosmos-spaces.cloud",
+              "https://rpc-axelar-ia.cosmosia.notional.ventures/",
+              "https://axelar-rpc.polkachu.com",
+              "https://rpc-axelar.whispernode.com:443",
+              "https://axelar-rpc.publicnode.com",
+              "https://rpc.cosmos.directory/axelar",
+            ]),
+          ]
+
+          def varint(b,i):
+              x=0;s=0
+              while True:
+                  if i>=len(b): raise ValueError("truncated varint")
+                  c=b[i];i+=1;x|=(c&127)<<s
+                  if not c&128:return x,i
+                  s+=7
+          def fields(b):
+              i=0;o=[]
+              while i<len(b):
+                  try:k,i=varint(b,i)
+                  except:break
+                  n,w=k>>3,k&7
+                  if w==0:v,i=varint(b,i);o.append((n,w,v))
+                  elif w==1:
+                      if i+8>len(b):break
+                      o.append((n,w,b[i:i+8]));i+=8
+                  elif w==2:
+                      ln,i=varint(b,i)
+                      if i+ln>len(b):break
+                      o.append((n,w,b[i:i+ln]));i+=ln
+                  elif w==5:
+                      if i+4>len(b):break
+                      o.append((n,w,b[i:i+4]));i+=4
+                  else:break
+              return o
+          def fget(fs,n,w=None):
+              for a,b,c in fs:
+                  if a==n and (w is None or b==w): return c
+              return None
+          def decode_header_hex(hx):
+              raw=bytes.fromhex(hx)
+              af=fields(raw); v=fget(af,2,2)
+              if not v: raise ValueError("Any.value missing")
+              hf=fields(v); sh=fget(hf,1,2)
+              if not sh: raise ValueError("signed_header missing")
+              sf=fields(sh); hd=fget(sf,1,2)
+              if not hd: raise ValueError("header missing")
+              tf=fields(hd)
+              chain=fget(tf,2,2).decode()
+              height=int(fget(tf,3,0))
+              tm=fget(tf,4,2); tfs=fields(tm)
+              sec=int(fget(tfs,1,0)); nano=int(fget(tfs,2,0) or 0)
+              dt=datetime.datetime.fromtimestamp(sec,tz=datetime.timezone.utc)
+              ts=dt.strftime("%Y-%m-%dT%H:%M:%S")+("."+(f"{nano:09d}").rstrip("0") if nano else "")+"Z"
+              # Tendermint header hash itself is not trivially the block_id hash here; retain full header-byte hash.
+              return {"chain_id":chain,"height":height,"time":ts,"time_ns":sec*10**9+nano,
+                      "ibc_header_bytes_sha256":hashlib.sha256(raw).hexdigest()}
+
+          def post_rpc(base,query):
+              p={"jsonrpc":"2.0","id":1,"method":"tx_search",
+                 "params":{"query":query,"prove":False,"page":"1","per_page":"100","order_by":"asc"}}
+              try:
+                  req=urllib.request.Request(base,data=json.dumps(p).encode(),headers=UA,method="POST")
+                  with urllib.request.urlopen(req,timeout=10,context=ssl._create_unverified_context()) as z:
+                      b=z.read(3_000_000)
+                      return True,z.status,b,None,hashlib.sha256(b).hexdigest()
+              except urllib.error.HTTPError as e:
+                  try:b=e.read(300000)
+                  except:b=b""
+                  return False,e.code,b,str(e),hashlib.sha256(b).hexdigest() if b else None
+              except Exception as e:
+                  return False,None,b"",repr(e),None
+
+          def one(job):
+              carrier,cid,base,h,mode=job
+              if mode=="client_height":
+                  q=f"update_client.client_id='{cid}' AND update_client.consensus_height='4-{h}'"
+              else:
+                  q=f"update_client.consensus_height='4-{h}'"
+              ok,status,b,err,sha=post_rpc(base,q)
+              rec={"carrier":carrier,"expected_client":cid,"endpoint":base,"height":h,"mode":mode,
+                   "query":q,"ok":ok,"status":status,"error":err,"response_sha256":sha,"hits":[]}
+              if not ok:return rec
+              try:d=json.loads(b);txs=(d.get("result") or {}).get("txs") or []
+              except Exception as e:
+                  rec["parse_error"]=repr(e);return rec
+              rec["tx_count"]=len(txs)
+              for tx in txs:
+                  for ev in (tx.get("tx_result") or {}).get("events") or []:
+                      if ev.get("type")!="update_client":continue
+                      aa={a.get("key"):a.get("value") for a in ev.get("attributes") or []}
+                      if aa.get("consensus_height")!=f"4-{h}":continue
+                      hx=aa.get("header") or ""
+                      dh=None;de=None
+                      if hx:
+                          try:dh=decode_header_hex(hx)
+                          except Exception as e:de=repr(e)
+                      rec["hits"].append({
+                        "carrier_height":int(tx["height"]),"tx_hash":tx.get("hash"),
+                        "client_id":aa.get("client_id"),"consensus_height":aa.get("consensus_height"),
+                        "decoded_header":dh,"decode_error":de,
+                        "header_hex_len":len(hx),
+                        "header_hex_sha256":hashlib.sha256(bytes.fromhex(hx)).hexdigest() if hx else None,
+                      })
+              return rec
+
+          jobs=[]
+          for n,c,eps in carriers:
+              for e in eps:
+                  for h in HEIGHTS:
+                      jobs.append((n,c,e,h,"client_height"))
+                      jobs.append((n,c,e,h,"height_only"))
+          with concurrent.futures.ThreadPoolExecutor(max_workers=64) as ex:
+              rows=list(ex.map(one,jobs))
+
+          secret_hits=[]
+          for r in rows:
+              for hit in r["hits"]:
+                  dh=hit.get("decoded_header")
+                  if dh and dh.get("chain_id")=="secret-4" and dh.get("height")==r["height"]:
+                      secret_hits.append({**{k:r[k] for k in ["carrier","endpoint","height","mode","response_sha256"]},"hit":hit})
+
+          out={"scope":"SOURCE_ONLY_NO_MARKET_DATA","target_voting_end":TARGET,
+               "historical_registry_ref":"cosmos/chain-registry@1e09e733c20edd5b6a76d42e2abdfc2f085382df (2023-10-24)",
+               "historically_uncovered_clients":{
+                 "akash":"07-tendermint-102",
+                 "composable":"07-tendermint-52",
+                 "axelar_secondary":"07-tendermint-103"
+               },
+               "tested_utc":datetime.datetime.now(datetime.timezone.utc).isoformat(),
+               "rows":rows,"secret_exact_height_hits":secret_hits,
+               "H":None,"T0":None,
+               "gate":"SOURCE_HISTORICAL_EXECUTION_BOUNDARY_BLOCKED",
+               "forensic_phase":"OPEN_NOT_EXHAUSTED"}
+          os.makedirs(os.path.dirname(OUT),exist_ok=True)
+          open(OUT,"w").write(json.dumps(out,indent=2)+"\n")
+          print("V61",json.dumps({
+            "jobs":len(rows),
+            "secret_hits":[{"carrier":x["carrier"],"endpoint":x["endpoint"],"height":x["height"],
+                            "client_id":x["hit"]["client_id"],"time":x["hit"]["decoded_header"]["time"]} for x in secret_hits],
+            "nonempty":[{"carrier":x["carrier"],"endpoint":x["endpoint"],"height":x["height"],"mode":x["mode"],
+                         "hits":len(x["hits"])} for x in rows if x["hits"]]
+          }))
+          PY
+
+      - name: Persist V61
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/cosmos_native_emission_param_shock_001_v0_2/SCRT287_IBC_UNCOVERED_CLIENTS_V61.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "SCRT287: persist uncovered historical IBC client probe V61"
+          git pull --rebase origin cosmos-native-emission-param-shock-001-v0.2-t0-remediation-2026-10-07
+          git push origin HEAD:cosmos-native-emission-param-shock-001-v0.2-t0-remediation-2026-10-07
