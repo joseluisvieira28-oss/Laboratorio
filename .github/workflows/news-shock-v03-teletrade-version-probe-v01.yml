@@ -1,0 +1,66 @@
+name: NEWS SHOCK V0.3 TeleTrade version probe
+on:
+  push:
+    branches: [news-shock-v03-public-source-recovery-v0.1]
+    paths:
+      - ".github/workflows/news-shock-v03-teletrade-version-probe-v01.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe TeleTrade historical article metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          urls=(
+            "https://www.teletrade.org/vi/analytics/market-analysis/market-news/3655582"
+            "https://www.teletrade.org/uk/analytics/market-analysis/market-news/3655582"
+            "https://www.teletrade.org/sr/analytics/market-analysis/market-news/3655582"
+          )
+          i=0
+          for u in "${urls[@]}"; do
+            i=$((i+1))
+            curl --fail --location --retry 3 --user-agent 'Mozilla/5.0 CryptoLabSourceAudit/1.0'               -D "evidence/headers_${i}.txt" "$u" -o "evidence/article_${i}.html"
+            sha256sum "evidence/article_${i}.html" | tee "evidence/hash_${i}.txt"
+            {
+              echo "URL=$u"
+              grep -Eai '^(last-modified|etag|date|age|cache-control|expires|content-location|location):' "evidence/headers_${i}.txt" || true
+              echo "=== HTML TIME/VERSION MARKERS ==="
+              grep -Eio '.{0,100}(datePublished|dateModified|published_time|modified_time|08\.01\.2021|07:33|3655582).{0,180}' "evidence/article_${i}.html" | head -80 || true
+              echo "=== CONTENT MARKERS ==="
+              grep -Eio '.{0,120}(Consensus currently sits at 68k|average hourly earnings rising 0\.2%|4\.5% YoY pace).{0,220}' "evidence/article_${i}.html" | head -40 || true
+            } | tee "evidence/markers_${i}.txt"
+          done
+          python - <<'PY'
+          from pathlib import Path
+          import hashlib, json, re
+          out={"probe_id":"NEWS-SHOCK-V03-TELETRADE-VERSION-001","articles":[]}
+          for i in (1,2,3):
+              b=Path(f"evidence/article_{i}.html").read_bytes()
+              h=Path(f"evidence/headers_{i}.txt").read_text(errors="ignore")
+              s=b.decode("utf-8","ignore")
+              out["articles"].append({
+                "index":i,
+                "sha256":hashlib.sha256(b).hexdigest(),
+                "bytes":len(b),
+                "http_last_modified": next((x.split(":",1)[1].strip() for x in h.splitlines() if x.lower().startswith("last-modified:")),None),
+                "http_etag": next((x.split(":",1)[1].strip() for x in h.splitlines() if x.lower().startswith("etag:")),None),
+                "has_0733": "07:33" in s,
+                "has_68k": "68k" in s,
+                "has_ahe_45": ("4.5%" in s or "4.5% YoY" in s),
+                "date_published_markers": re.findall(r'.{0,80}datePublished.{0,160}',s,re.I)[:10],
+                "date_modified_markers": re.findall(r'.{0,80}dateModified.{0,160}',s,re.I)[:10],
+              })
+          Path("evidence/receipt.json").write_text(json.dumps(out,indent=2)+"\n")
+          print(json.dumps(out,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: NEWS_SHOCK_V03_TELETRADE_VERSION_PROBE_V01
+          path: evidence/
+          retention-days: 90
