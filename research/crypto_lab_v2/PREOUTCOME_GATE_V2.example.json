@@ -17,7 +17,7 @@
     "execution_access": "public API",
     "capacity_constraint": "Frozen per-family before outcomes.",
     "estimand": "net_return_bps",
-    "hurdle_h": 12.0,
+    "hurdle_h": 12,
     "hurdle_units": "bps_per_observation",
     "hurdle_rationale": "Minimum net effect required after modeled costs and risk/capital charge.",
     "cost_model": "Fees, spread, slippage and carry estimated from pre-outcome data.",
@@ -29,20 +29,23 @@
     "timestamp_rule": "Signal timestamp must be provably available before the outcome boundary.",
     "treatment_binding": "Treatment is defined without price/outcome-derived inclusion.",
     "outcome_derived_inclusion": false,
-    "sources": ["PRIMARY_SOURCE_PLACEHOLDER"],
+    "sources": [
+      "PRIMARY_SOURCE_PLACEHOLDER"
+    ],
     "status": "SOURCE_PASS"
   },
   "power_gate": {
     "direction": "POSITIVE",
     "alpha": 0.05,
-    "power_target": 0.80,
+    "power_target": 0.8,
     "method": "BLOCK_BOOTSTRAP",
     "nuisance_source": "Outcome-blind placebo/pre-period residuals.",
     "dependence_unit": "Frozen cluster unit appropriate to the mechanism.",
     "n_eff_estimate": 80,
-    "power_at_h": 0.84,
     "outcomes_opened": false,
-    "status": "TEST_AUTHORIZED"
+    "status": "TEST_AUTHORIZED",
+    "design_alternative_theta": 24,
+    "power_at_design_alt": 0.84
   },
   "multiplicity": {
     "economic_hypothesis_id": "RT-EXAMPLE",
