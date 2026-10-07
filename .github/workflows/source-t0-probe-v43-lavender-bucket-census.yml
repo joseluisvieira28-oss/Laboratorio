@@ -1,0 +1,107 @@
+name: source-t0-probe-v43-lavender-bucket-census
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - cosmos-native-emission-param-shock-001-v0.2-t0-remediation-2026-10-07
+    paths:
+      - .github/workflows/source-t0-probe-v43-lavender-bucket-census.yml
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: cosmos-native-emission-param-shock-001-v0.2-t0-remediation-2026-10-07
+      - name: Enumerate Lavender snapshot bucket prefixes and Secret-like keys
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json,urllib.request,urllib.error,ssl,hashlib,os,datetime,xml.etree.ElementTree as ET,urllib.parse
+          OUT="research/cosmos_native_emission_param_shock_001_v0_2/SCRT287_LAVENDER_BUCKET_CENSUS_V43.json"
+          UA={"User-Agent":"CryptoLab-source-only-secret-v43","Accept":"application/xml,*/*"}
+          root="https://snapshots.lavenderfive.com/snapshots"
+
+          def get(u,to=20):
+              try:
+                  q=urllib.request.Request(u,headers=UA)
+                  with urllib.request.urlopen(q,timeout=to,context=ssl._create_unverified_context()) as r:
+                      b=r.read()
+                      return {"ok":True,"status":getattr(r,"status",200),"url":r.geturl(),
+                              "sha256":hashlib.sha256(b).hexdigest(),"body":b.decode("utf-8","replace")[:4000000]}
+              except urllib.error.HTTPError as e:
+                  try:b=e.read()
+                  except:b=b""
+                  return {"ok":False,"status":e.code,"url":u,"error":str(e),
+                          "sha256":hashlib.sha256(b).hexdigest() if b else None,
+                          "body":b.decode("utf-8","replace")[:100000]}
+              except Exception as e:return {"ok":False,"status":None,"url":u,"error":repr(e),"body":""}
+
+          # First, top-level prefixes.
+          u=root+"?list-type=2&delimiter=%2F&max-keys=1000"
+          r=get(u)
+          prefixes=[]
+          if r["ok"]:
+              try:
+                  x=ET.fromstring(r["body"])
+                  prefixes=[e.text for e in x.findall(".//{*}CommonPrefixes/{*}Prefix") if e.text]
+              except: pass
+
+          # Then enumerate pages of entire bucket (metadata only), capped defensively.
+          all_keys=[]; token=None; pages=[]
+          for _ in range(50):
+              q={"list-type":"2","max-keys":"1000"}
+              if token:q["continuation-token"]=token
+              url=root+"?"+urllib.parse.urlencode(q)
+              rr=get(url,25)
+              pages.append({"url":url,"ok":rr["ok"],"status":rr.get("status"),"error":rr.get("error"),"sha256":rr.get("sha256")})
+              if not rr["ok"]:break
+              try:
+                  x=ET.fromstring(rr["body"])
+                  for c in x.findall(".//{*}Contents"):
+                      key=c.findtext("{*}Key"); size=c.findtext("{*}Size"); lm=c.findtext("{*}LastModified"); et=c.findtext("{*}ETag")
+                      if key:all_keys.append({"key":key,"size":size,"last_modified":lm,"etag":et})
+                  trunc=(x.findtext("{*}IsTruncated") or "").lower()=="true"
+                  token=x.findtext("{*}NextContinuationToken")
+              except Exception as e:
+                  pages[-1]["parse_error"]=repr(e);break
+              if not trunc or not token:break
+
+          needles=("secret","scrt","secretnetwork","secret-4","archive")
+          matches=[x for x in all_keys if any(n in x["key"].lower() for n in needles)]
+
+          # For every top-level prefix containing likely chain identifiers, list recursively.
+          likely_prefixes=[p for p in prefixes if any(n in p.lower() for n in needles)]
+          recursive=[]
+          for p in likely_prefixes:
+              url=root+"?"+urllib.parse.urlencode({"list-type":"2","prefix":p,"max-keys":"1000"})
+              rr=get(url,20)
+              recursive.append({"prefix":p,"url":url,"ok":rr["ok"],"status":rr.get("status"),
+                                "error":rr.get("error"),"body_excerpt":rr.get("body","")[:200000]})
+
+          out={"scope":"SOURCE_ONLY_NO_MARKET_DATA","candidate":"SCRT Proposal 287",
+               "tested_utc":datetime.datetime.now(datetime.timezone.utc).isoformat(),
+               "top_level_request":{"url":u,"ok":r["ok"],"status":r.get("status"),"error":r.get("error"),"sha256":r.get("sha256")},
+               "top_level_prefixes":prefixes,
+               "page_count":len(pages),"pages":pages,"key_count":len(all_keys),
+               "secret_archive_matches":matches,
+               "likely_prefixes":likely_prefixes,"recursive":recursive}
+          os.makedirs(os.path.dirname(OUT),exist_ok=True)
+          with open(OUT,"w") as f:json.dump(out,f,indent=2)
+          print("V43",json.dumps({"prefixes":prefixes,"key_count":len(all_keys),"matches":matches[:200]}))
+          PY
+      - name: Persist
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/cosmos_native_emission_param_shock_001_v0_2/SCRT287_LAVENDER_BUCKET_CENSUS_V43.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "SCRT287: persist Lavender bucket census v43"
+          git pull --rebase origin cosmos-native-emission-param-shock-001-v0.2-t0-remediation-2026-10-07
+          git push origin HEAD:cosmos-native-emission-param-shock-001-v0.2-t0-remediation-2026-10-07
