@@ -25,3 +25,21 @@ for u in URLS:
         print("PAGE_HINTS",json.dumps(sorted(set(re.findall(r'page[^\"\']{0,25}',r.text,re.I)))[:40]))
     except Exception as e:
         print("ERR",u,type(e).__name__,str(e))
+
+print("=== NEXT/API DIAG ===")
+r=s.get("https://miniapp.gate.com/announcements/fee",timeout=30)
+html=r.text
+for pat in [
+    r'https?://[^"\\s]+',
+    r'[^"'\\s]{0,100}(?:announcement|article|category|pageSize|currentPage|list)[^"'\\s]{0,160}',
+]:
+    vals=[]
+    for m in re.finditer(pat,html,re.I):
+        v=m.group(0)
+        if any(k in v.lower() for k in ("api","announcement","page","category")):
+            vals.append(v[:320])
+    seen=[]
+    for v in vals:
+        if v not in seen: seen.append(v)
+    print("PATTERN",pat)
+    print(json.dumps(seen[:120],ensure_ascii=False))
