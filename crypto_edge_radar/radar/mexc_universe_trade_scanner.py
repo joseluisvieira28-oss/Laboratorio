@@ -73,7 +73,9 @@ def candles(symbol,interval,secs,count=120):
         if not isinstance(arr,list):raise RuntimeError(f"kline {k} bad {symbol}")
         fields[k]=arr
     rows=[]
-    m=min(len(v) for v in fields.values())
+    lengths={len(v) for v in fields.values()}
+    if len(lengths)!=1:raise RuntimeError("unequal candle arrays")
+    m=len(fields["time"])
     for i in range(m):
         try:
             t=int(fields["time"][i])
@@ -83,14 +85,32 @@ def candles(symbol,interval,secs,count=120):
                 "high":float(fields["high"][i]),"low":float(fields["low"][i]),"vol":float(fields["vol"][i])
             })
         except Exception:
-            continue
+            raise RuntimeError("invalid candle row") from None
     rows.sort(key=lambda x:x["time"])
     if len(rows)<60:raise RuntimeError(f"insufficient candles {symbol} {interval}: {len(rows)}")
     if rows[-1]["time"]!=last_open:raise RuntimeError(f"latest closed candle missing {symbol} {interval}")
+    times=[x["time"] for x in rows]
+    if any(t % secs for t in times) or any(b-a!=secs for a,b in zip(times,times[1:])):
+        raise RuntimeError("candle gaps or duplicates")
+    for row in rows:
+        if not all(math.isfinite(row[k]) for k in ("open","close","high","low","vol")):
+            raise RuntimeError("nonfinite candle")
+        if not 0 < row["low"] <= min(row["open"],row["close"]) <= max(row["open"],row["close"]) <= row["high"] or row["vol"]<0:
+            raise RuntimeError("invalid OHLCV")
     return rows
 
+def fresh_timestamp(value, max_age=60):
+    stamp=float(value)/1000
+    now=time.time()
+    if not math.isfinite(stamp) or not -5 <= now-stamp <= max_age:
+        raise RuntimeError("missing, stale or future source timestamp")
+    return stamp
+
 def parse_level(row):
-    return float(row[0]),float(row[1])
+    px,qty=float(row[0]),float(row[1])
+    if not math.isfinite(px) or not math.isfinite(qty) or px<=0 or qty<0:
+        raise RuntimeError("invalid depth level")
+    return px,qty
 
 def visible_fill(rows,contracts,contract_size,side):
     lvls=[parse_level(x) for x in rows]
@@ -150,29 +170,39 @@ def signal(f15,f60):
         return "SHORT","TREND_RETEST",vol_ratio
     return None,None,vol_ratio
 
-def main():
+def scan():
     observed=datetime.now(timezone.utc)
     tickers=req("/ticker")
     details=req("/detail")
     if isinstance(tickers,dict):tickers=[tickers]
     if isinstance(details,dict):details=[details]
+    if not isinstance(tickers,list) or not tickers or not isinstance(details,list) or not details:
+        raise RuntimeError("empty universe source")
     detail={str(x.get("symbol")):x for x in details if isinstance(x,dict)}
     universe=[]
+    universe_source_errors=0
+    source_error_counts={}
     for t in tickers:
         try:
+            stage="UNIVERSE_DETAIL_JOIN"
             s=str(t["symbol"]); d=detail[s]
-            if d.get("quoteCoin")!="USDT" or d.get("state")!=0 or d.get("futureType")!=1 or d.get("apiAllowed") is False:continue
+            if d.get("quoteCoin")!="USDT" or d.get("state")!=0 or d.get("futureType")!=1 or d.get("apiAllowed") is not True:continue
+            stage="UNIVERSE_TICKER_SCHEMA"
             amount=float(t.get("amount24") or 0)
             bid=float(t["bid1"]); ask=float(t["ask1"]); last=float(t["lastPrice"])
+            if not all(math.isfinite(x) for x in (amount,bid,ask,last)):raise RuntimeError("invalid ticker")
             if amount<MIN_AMOUNT24 or not(0<bid<=ask and last>0):continue
+            stage="UNIVERSE_TICKER_TIMESTAMP"
+            fresh_timestamp(t.get("timestamp"))
             spread=(ask-bid)/((ask+bid)/2)*10000
             if spread>MAX_SPREAD_BPS:continue
             universe.append((amount,s,t,d,spread))
         except Exception:
-            continue
+            universe_source_errors+=1
+            source_error_counts[stage]=source_error_counts.get(stage,0)+1
     universe.sort(reverse=True,key=lambda x:x[0])
     universe=universe[:TOP_N]
-    rejects={}; passes=[]; scanned=[]
+    rejects={"UNIVERSE_SOURCE":universe_source_errors} if universe_source_errors else {}; passes=[]; scanned=[]
     for amount,s,t,d,spread in universe:
         rec={"symbol":s,"amount24":amount,"spread_bps":spread}
         try:
@@ -185,16 +215,23 @@ def main():
             funding=req(f"/funding_rate/{s}")
             fr=float(funding["fundingRate"]); next_settle=int(funding["nextSettleTime"])/1000
             now=time.time()
+            fresh_timestamp(funding.get("timestamp"))
+            if not math.isfinite(fr) or next_settle<=now:raise RuntimeError("invalid funding")
             funding_favorable=(side=="LONG" and fr<0) or (side=="SHORT" and fr>0)
             if abs(fr)>MAX_ABS_FUNDING and not funding_favorable:
                 rejects["FUNDING_EXTREME"]=rejects.get("FUNDING_EXTREME",0)+1; scanned.append(rec); continue
             if now<next_settle<=now+FUNDING_BLOCK_SEC:
                 rejects["FUNDING_WINDOW"]=rejects.get("FUNDING_WINDOW",0)+1; scanned.append(rec); continue
             book=req(f"/depth/{s}",{"limit":20})
+            book_timestamp=fresh_timestamp(book.get("timestamp"))
             asks=book.get("asks") or []; bids=book.get("bids") or []
             if not asks or not bids:raise RuntimeError("empty book")
+            book_bid=max(parse_level(x)[0] for x in bids); book_ask=min(parse_level(x)[0] for x in asks)
+            spread=(book_ask-book_bid)/((book_ask+book_bid)/2)*10000
+            if spread<0 or spread>MAX_SPREAD_BPS:
+                rejects["SPREAD"]=rejects.get("SPREAD",0)+1; scanned.append(rec); continue
             cs=float(d["contractSize"]); vu=float(d["volUnit"]); mv=float(d["minVol"]); mx=float(d.get("maxVol") or 1e18)
-            entry_top=float(asks[0][0] if side=="LONG" else bids[0][0])
+            entry_top=book_ask if side=="LONG" else book_bid
             contracts=quantize_contracts(TARGET_USDT,entry_top,cs,vu,mv,mx)
             if contracts is None:raise RuntimeError("size quantization")
             fill=visible_fill(asks if side=="LONG" else bids,contracts,cs,"BUY" if side=="LONG" else "SELL")
@@ -229,7 +266,11 @@ def main():
                 return round(round(x/tick)*tick,10)
             candidate={
               "symbol":s,"side":side,"signal_family":family,
-              "observed_at_utc":observed.isoformat(),
+              "observed_at_utc":datetime.now(timezone.utc).isoformat(),
+              "signal_candle_open":f15["last_time"],
+              "confirmation_candle_open":f60["last_time"],
+              "source_book_timestamp":book_timestamp,
+              "expires_at_epoch":book_timestamp+60,
               "entry":qpx(entry),"stop":qpx(stop),"tp1":qpx(tp1),"tp2":qpx(tp2),
               "contracts":contracts,"contract_size":cs,"quantity_base":contracts*cs,
               "notional_usdt":contracts*cs*entry,"leverage":3,"margin_mode":"ISOLATED",
@@ -248,13 +289,16 @@ def main():
             }
             passes.append(candidate); scanned.append({**rec,"candidate":candidate})
         except Exception as exc:
-            rec["error"]=f"{type(exc).__name__}: {exc}"
+            rec["error"]=type(exc).__name__
             rejects["SOURCE_OR_SCHEMA"]=rejects.get("SOURCE_OR_SCHEMA",0)+1
             scanned.append(rec)
     family_rank={"BREAKOUT":0,"TREND_RETEST":1}
     passes.sort(key=lambda x:(family_rank.get(x["signal_family"],9),-x["net_rr_tp2"],-x["amount24_usdt"],x["observable_friction_bps"]))
-    top=passes[:3]
+    blocked=bool(rejects.get("SOURCE_OR_SCHEMA") or universe_source_errors)
+    top=[] if blocked else passes[:3]
     result={
+      "source_error_counts":source_error_counts,
+      "source_health":"BLOCKED" if blocked else "OK",
       "verdict":"TRADE" if top else "NO_TRADE",
       "classification":"TRADEABLE_CANDIDATE" if top else "RADAR_EMPTY",
       "observed_at_utc":observed.isoformat(),
@@ -263,9 +307,13 @@ def main():
       "candidate_count":len(passes),
       "reject_counts":rejects,
       "scanned_symbols":[x["symbol"] for x in scanned],
-      "fee_authority":"MEXC API taker 8 bps/fill, 16 bps roundtrip",
+      "fee_authority":"Inherited V0.1 assumption: taker 8 bps/fill, 16 bps roundtrip; account fee unverified",
       "orders_created":False,"account_reads":False,"authenticated":False,"exchange_mutation":False
     }
+    return result
+
+def main():
+    result=scan()
     Path("mexc_universe_trade_radar_result.json").write_text(json.dumps(result,indent=2,sort_keys=True)+"\n")
     print(json.dumps(result,sort_keys=True))
 

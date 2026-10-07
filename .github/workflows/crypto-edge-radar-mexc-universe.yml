@@ -1,0 +1,69 @@
+name: Crypto Edge Radar MEXC Universe Read-only
+on:
+  push:
+    branches: [integration/mexc-radar-recurring-20261007]
+    paths:
+      - 'crypto_edge_radar/radar/mexc_universe*.py'
+      - 'crypto_edge_radar/tests/test_mexc_universe_runtime.py'
+      - '.github/workflows/crypto-edge-radar-mexc-universe.yml'
+  workflow_dispatch:
+  schedule:
+    - cron: '2,17,32,47 * * * *'
+permissions:
+  contents: write
+concurrency:
+  group: mexc-universe-readonly-state
+  cancel-in-progress: false
+jobs:
+  radar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    env:
+      STATE_BRANCH: integration/mexc-radar-recurring-20261007
+      RUN_ID: gha-${{ github.run_id }}-${{ github.run_attempt }}
+      RADAR_CODE_SHA: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: integration/mexc-radar-recurring-20261007
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Dependencies and self-tests
+        working-directory: crypto_edge_radar
+        run: |
+          python -m pip install requests
+          python -m unittest discover -s tests -p test_mexc_universe_runtime.py -v
+      - name: Record actual checkout identity
+        run: echo "RADAR_CODE_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+      - name: Public scan and reserve signal IDs
+        working-directory: crypto_edge_radar
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python -m radar.mexc_universe_runtime scan --run-id "$RUN_ID"
+      - name: Persist Radar truth before any notification
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add crypto_edge_radar/runtime/mexc_universe
+          git commit -m "radar: append public MEXC run $RUN_ID"
+          git push origin "HEAD:$STATE_BRANCH"
+      - name: Optional Telegram notifier
+        working-directory: crypto_edge_radar
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python -m radar.mexc_universe_runtime notify --run-id "$RUN_ID"
+      - name: Persist notification outcomes
+        run: |
+          git add crypto_edge_radar/runtime/mexc_universe
+          git commit -m "radar: append notifier outcome $RUN_ID"
+          git push origin "HEAD:$STATE_BRANCH"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mexc-radar-${{ github.run_id }}-${{ github.run_attempt }}
+          path: crypto_edge_radar/runtime/mexc_universe/
+          retention-days: 30

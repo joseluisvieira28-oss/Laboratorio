@@ -111,7 +111,7 @@ def public_isolated_risk_receipt(equity: float) -> dict:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="CRYPTO EDGE RADAR V0.9 — promoted-candidate shadow operations"
+        description="CRYPTO EDGE RADAR V0.9 â€” promoted-candidate shadow operations"
     )
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("once", help="run one public-data observation cycle")
@@ -163,7 +163,19 @@ def main(argv: list[str] | None = None) -> int:
     )
     isolated.add_argument("--equity", type=float, required=True)
 
+    universe = sub.add_parser("mexc-universe", help="read-only MEXC universe scan, notifier or status")
+    universe.add_argument("phase", choices=("scan", "notify", "status"))
+    universe.add_argument("--state-dir", default="runtime/mexc_universe")
+    universe.add_argument("--run-id")
+
     args = parser.parse_args(argv)
+
+    if args.command == "mexc-universe":
+        from .mexc_universe_runtime import main as universe_main
+        flags = [args.phase, "--state-dir", args.state_dir]
+        if args.run_id:
+            flags += ["--run-id", args.run_id]
+        return universe_main(flags)
 
     if args.command == "web-service":
         try:
