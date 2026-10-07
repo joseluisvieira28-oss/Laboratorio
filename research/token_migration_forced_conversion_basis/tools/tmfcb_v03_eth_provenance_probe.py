@@ -12,10 +12,12 @@ No eth_call, no balances, no logs containing swaps, no market endpoints.
 import json, sys, urllib.request, time
 
 RPCS = [
+    "https://eth.llamarpc.com",
+    "https://1rpc.io/eth",
+    "https://rpc.flashbots.net",
     "https://ethereum-rpc.publicnode.com",
     "https://cloudflare-eth.com",
 ]
-UPPER_BLOCK = 24000000
 
 CONTRACTS = {
     "OGV_OLD": "0x9c354503C38481a7A7a51629142963F98eCC12D0",
@@ -83,14 +85,20 @@ def rpc(method, params):
             last=e
     raise RuntimeError(f"RPC_FAIL {method}: {type(last).__name__}: {last}")
 
-def code_at(addr, block):
-    return rpc("eth_getCode", [addr, hex(block)]) not in (None, "0x", "0x0")
+def latest_block_number():
+    b=rpc("eth_getBlockByNumber", ["latest", False])
+    if not b or not b.get("number"):
+        raise RuntimeError("LATEST_BLOCK_UNAVAILABLE")
+    return int(b["number"],16)
 
-def first_code_block(addr):
-    # Fail closed if contract absent at frozen upper bound.
-    if not code_at(addr, UPPER_BLOCK):
+def code_at(addr, block):
+    tag = hex(block) if isinstance(block,int) else block
+    return rpc("eth_getCode", [addr, tag]) not in (None, "0x", "0x0")
+
+def first_code_block(addr, upper):
+    if not code_at(addr, upper):
         return None
-    lo, hi = 0, UPPER_BLOCK
+    lo, hi = 0, upper
     while lo < hi:
         mid = (lo + hi) // 2
         if code_at(addr, mid):
@@ -123,10 +131,11 @@ def receipt_meta(tx):
         "blockMeta": block_meta(block),
     }
 
+UPPER_BLOCK=latest_block_number()
 result={"probe_version":"TMFCB_V0.3","upper_block":UPPER_BLOCK,"contracts":{},"preidentified_receipts":{}}
 for label,addr in CONTRACTS.items():
     try:
-        fb=first_code_block(addr)
+        fb=first_code_block(addr, UPPER_BLOCK)
         result["contracts"][label]={
             "address":addr,
             "first_code_block":fb,
