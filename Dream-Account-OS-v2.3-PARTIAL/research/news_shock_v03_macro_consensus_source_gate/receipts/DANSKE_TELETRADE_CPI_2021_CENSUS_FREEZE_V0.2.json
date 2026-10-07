@@ -1,0 +1,27 @@
+{
+  "freeze_id":"NEWS-SHOCK-V03-DANSKE-TELETRADE-CPI-CENSUS-2021-002",
+  "created_date":"2026-10-07",
+  "branch":"news-shock-v03-public-source-recovery-v0.1",
+  "status":"FROZEN_BEFORE_CPI_TELETRADE_FALLBACK_CENSUS",
+  "scope":"SOURCE_ONLY",
+  "universe":"All 12 frozen 2021 CPI releases from the existing BLS manifest.",
+  "source_hierarchy":[
+    {"priority":1,"source_family":"Danske Bank issue-specific static research PDF","rule":"Use existing qualifying 4/4 record from the latest pre-T0 issue when available."},
+    {"priority":2,"source_family":"TeleTrade historical daily Schedule for today","rule":"Only when priority-1 is unavailable/incomplete. Use the schedule article published strictly before T0 and require all four CPI forecast rows from that same article."}
+  ],
+  "teletrade_required_fields":{
+    "headline_mom":"U.S. CPI, m/m",
+    "headline_yoy":"U.S. CPI, Y/Y",
+    "core_mom":"U.S. CPI excluding food and energy, m/m",
+    "core_yoy":"U.S. CPI excluding food and energy, Y/Y"
+  },
+  "teletrade_clock_rule":"Use the already-adjudicated 2021 TeleTrade historical market-news clock as GMT, established by same-feed release-time alignment in the NFP technical amendment.",
+  "timestamp_rule":"TeleTrade article publication clock must be strictly before the frozen BLS T0. Equality fails.",
+  "version_rule":"Preserve stable article identity, URL, publication timestamp, retrieval time and content hash.",
+  "fallback_beyond_priority_2":"NONE",
+  "conflict_rule":"No averaging. Higher-priority qualifying source wins. Lower-priority evidence may be logged but cannot replace a complete priority-1 record.",
+  "missing_rule":"Any missing one of the four required fields leaves the event incomplete.",
+  "gate":{"minimum_complete_cpi":10,"required_provenance_rate":1.0},
+  "prohibited":["BTC/ETH prices or returns","Treasury yield outcomes","taker flow","continuation/reversal","PnL","post-outcome tuning","2025/2026 protected outcomes","merge to main","trading or exchange mutation"],
+  "note":"Frozen after the Reuters fallback attempt failed to establish enough field-complete pre-T0 coverage and before running a TeleTrade CPI census."
+}
