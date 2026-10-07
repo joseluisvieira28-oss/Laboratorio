@@ -1,0 +1,42 @@
+name: Funding Squeeze V0.3 Binance 2025 Confirmatory
+on:
+  push:
+    branches:
+      - funding-squeeze-v0.3-binance-lowcost-confirmatory-2026-10-07
+    paths:
+      - .github/workflows/funding_squeeze_v03_binance_2025.yml
+      - research/funding_squeeze/binance_2025_confirmatory_v03.py
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  confirmatory:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install numpy pandas
+      - run: python -m py_compile research/funding_squeeze/binance_2025_confirmatory_v03.py
+      - run: python research/funding_squeeze/binance_2025_confirmatory_v03.py
+      - name: governance assert
+        run: |
+          python - <<'PY'
+          import json
+          d=json.load(open('funding_squeeze_v03_report.json'))
+          assert d['governance']['outcomes_2026_opened'] is False
+          assert d['verdict'] in {'SOURCE_BLOCKED','INSUFFICIENT_SAMPLE_2025','NO_EDGE_LOWCOST_V03','SURVIVES_2025_CONFIRMATORY_LOWCOST'}
+          print('VERDICT='+d['verdict'])
+          print(json.dumps(d,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: funding-squeeze-v03-binance-2025-receipt
+          path: |
+            funding_squeeze_v03_report.json
+            funding_squeeze_v03_source_manifest.json
+            funding_squeeze_v03_trades.csv
+          if-no-files-found: ignore
+          retention-days: 30
