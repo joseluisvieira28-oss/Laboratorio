@@ -1,0 +1,164 @@
+name: SCRT287 forensic V62 IBC consensus-state recovery
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - cosmos-native-emission-param-shock-001-v0.2-t0-remediation-2026-10-07
+    paths:
+      - .github/workflows/scrt287-forensic-v62-ibc-consensus-state.yml
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: cosmos-native-emission-param-shock-001-v0.2-t0-remediation-2026-10-07
+      - name: Query exact IBC consensus states for Secret heights
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import concurrent.futures,datetime,hashlib,json,os,ssl,urllib.error,urllib.parse,urllib.request
+
+          OUT="research/cosmos_native_emission_param_shock_001_v0_2/SCRT287_IBC_CONSENSUS_STATE_V62.json"
+          H=[11880918,11880919,11880920,11880921]
+          TARGET="2023-12-07T02:54:58.930543213Z"
+          UA={"User-Agent":"CryptoLab-SCRT287-source-only-v62/1.0","Accept":"application/json"}
+
+          # Historical carrier-side client IDs from chain-registry@1e09e733 (2023-10-24).
+          carriers=[
+            ("osmosis","07-tendermint-1588",[
+              "https://lcd.osmosis.zone",
+              "https://rest.cosmos.directory/osmosis",
+              "https://osmosis-api.polkachu.com",
+            ],[12666268,12666277]),
+            ("cosmoshub","07-tendermint-492",[
+              "https://rest.cosmos.directory/cosmoshub",
+              "https://cosmos-rest.publicnode.com",
+              "https://cosmoshub-api.polkachu.com",
+            ],[18171158,18171159,18171160]),
+            ("juno","07-tendermint-108",[
+              "https://rest.cosmos.directory/juno",
+              "https://juno-rest.publicnode.com",
+              "https://juno-api.polkachu.com",
+            ],[]),
+            ("axelar-primary","07-tendermint-40",[
+              "https://rest.cosmos.directory/axelar",
+              "https://axelar-api.polkachu.com",
+            ],[]),
+            ("axelar-secondary","07-tendermint-103",[
+              "https://rest.cosmos.directory/axelar",
+              "https://axelar-api.polkachu.com",
+            ],[]),
+            ("akash","07-tendermint-102",[
+              "https://rest.cosmos.directory/akash",
+              "https://akash-rest.publicnode.com",
+              "https://akash-api.polkachu.com",
+            ],[]),
+            ("composable","07-tendermint-52",[
+              "https://rest.cosmos.directory/composable",
+              "https://composable-api.lavenderfive.com:443",
+            ],[]),
+            ("stride","07-tendermint-37",[
+              "https://rest.cosmos.directory/stride",
+              "https://stride-api.polkachu.com",
+            ],[]),
+            ("stargaze","07-tendermint-177",[
+              "https://rest.cosmos.directory/stargaze",
+              "https://stargaze-rest.publicnode.com",
+              "https://stargaze-api.polkachu.com",
+            ],[]),
+            ("kujira","07-tendermint-12",[
+              "https://rest.cosmos.directory/kujira",
+              "https://kujira-api.polkachu.com",
+            ],[]),
+          ]
+
+          def fetch(url,headers=None):
+              hh=dict(UA);hh.update(headers or {})
+              try:
+                  q=urllib.request.Request(url,headers=hh)
+                  with urllib.request.urlopen(q,timeout=10,context=ssl._create_unverified_context()) as r:
+                      b=r.read(1000000)
+                      return True,r.status,b,None,dict(r.headers),hashlib.sha256(b).hexdigest()
+              except urllib.error.HTTPError as e:
+                  try:b=e.read(200000)
+                  except:b=b""
+                  return False,e.code,b,str(e),dict(e.headers or {}),hashlib.sha256(b).hexdigest() if b else None
+              except Exception as e:
+                  return False,None,b"",repr(e),{},None
+
+          def parse_ts(b):
+              try:d=json.loads(b)
+              except:return None
+              def walk(x):
+                  if isinstance(x,dict):
+                      # Tendermint consensus state JSON commonly exposes timestamp directly.
+                      if "timestamp" in x and isinstance(x["timestamp"],str) and x["timestamp"].startswith("2023-"):
+                          return x["timestamp"]
+                      for v in x.values():
+                          z=walk(v)
+                          if z:return z
+                  elif isinstance(x,list):
+                      for v in x:
+                          z=walk(v)
+                          if z:return z
+                  return None
+              return walk(d)
+
+          def one(job):
+              name,cid,base,h,requested_carrier_height=job
+              route=f"/ibc/core/client/v1/consensus_states/{urllib.parse.quote(cid,safe='')}/revision/4/height/{h}"
+              headers={}
+              mode="current"
+              if requested_carrier_height:
+                  headers["x-cosmos-block-height"]=str(requested_carrier_height)
+                  mode=f"historical_carrier_{requested_carrier_height}"
+              ok,status,b,err,rh,sha=fetch(base.rstrip("/")+route,headers)
+              ts=parse_ts(b) if b else None
+              return {"carrier":name,"client_id":cid,"base":base,"secret_height":h,"mode":mode,
+                      "requested_carrier_height":requested_carrier_height,"ok":ok,"status":status,
+                      "timestamp":ts,
+                      "response_carrier_height":rh.get("x-cosmos-block-height") or rh.get("X-Cosmos-Block-Height"),
+                      "sha256":sha,"error":err,"excerpt":b.decode("utf-8","replace")[:3500]}
+
+          jobs=[]
+          for name,cid,bases,historical_carrier_heights in carriers:
+              for base in bases:
+                  for h in H:
+                      jobs.append((name,cid,base,h,None))
+                      for ch in historical_carrier_heights:
+                          jobs.append((name,cid,base,h,ch))
+
+          with concurrent.futures.ThreadPoolExecutor(max_workers=64) as ex:
+              rows=list(ex.map(one,jobs))
+
+          hits=[r for r in rows if r.get("timestamp")]
+          out={"scope":"SOURCE_ONLY_NO_MARKET_DATA","target_voting_end":TARGET,
+               "historical_registry_ref":"cosmos/chain-registry@1e09e733c20edd5b6a76d42e2abdfc2f085382df",
+               "tested_utc":datetime.datetime.now(datetime.timezone.utc).isoformat(),
+               "rows":rows,"timestamp_hits":hits,
+               "H":None,"T0":None,"gate":"SOURCE_HISTORICAL_EXECUTION_BOUNDARY_BLOCKED",
+               "forensic_phase":"OPEN_NOT_EXHAUSTED"}
+          os.makedirs(os.path.dirname(OUT),exist_ok=True)
+          open(OUT,"w").write(json.dumps(out,indent=2)+"\n")
+          print("V62",json.dumps({
+            "hits":[{"carrier":x["carrier"],"client":x["client_id"],"height":x["secret_height"],
+                     "timestamp":x["timestamp"],"mode":x["mode"],"base":x["base"]} for x in hits],
+            "status_counts":{str(s):sum(1 for x in rows if x["status"]==s) for s in sorted({x["status"] for x in rows},key=lambda v:(v is None,str(v)))}
+          }))
+          PY
+      - name: Persist V62
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/cosmos_native_emission_param_shock_001_v0_2/SCRT287_IBC_CONSENSUS_STATE_V62.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "SCRT287: persist IBC consensus-state recovery V62"
+          git pull --rebase origin cosmos-native-emission-param-shock-001-v0.2-t0-remediation-2026-10-07
+          git push origin HEAD:cosmos-native-emission-param-shock-001-v0.2-t0-remediation-2026-10-07
