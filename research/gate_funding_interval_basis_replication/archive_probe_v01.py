@@ -43,3 +43,21 @@ for pat in [
         if v not in seen: seen.append(v)
     print("PATTERN",pat)
     print(json.dumps(seen[:120],ensure_ascii=False))
+
+print("=== CATEGORY CHUNK DIAG ===")
+soup=BeautifulSoup(html,"html.parser")
+srcs=[x.get("src") for x in soup.find_all("script",src=True) if "announcements" in x.get("src","") and "category" in x.get("src","")]
+print("CATEGORY_SCRIPTS",json.dumps(srcs))
+for src in srcs:
+    u=src if src.startswith("http") else "https://miniapp.gate.com"+src
+    rr=s.get(u,timeout=30)
+    print("CHUNK",u,rr.status_code,len(rr.text))
+    vals=[]
+    for m in re.finditer(r'.{0,140}(?:api|announcement|article|category|pageSize|page_size|limit|offset).{0,220}',rr.text,re.I):
+        v=m.group(0)
+        if any(k in v.lower() for k in ("announcement","article","api/","category")):
+            vals.append(v)
+    seen=[]
+    for v in vals:
+        if v not in seen: seen.append(v)
+    print("CHUNK_HINTS",json.dumps(seen[:160],ensure_ascii=False))
