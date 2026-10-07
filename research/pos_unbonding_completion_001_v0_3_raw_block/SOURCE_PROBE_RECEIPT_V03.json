@@ -1,6 +1,6 @@
 {
   "freeze_commit": "93e0c6abff72d1d645c709382d8f06ccc558a34e",
-  "generated_utc": "2026-10-07T12:02:27.121812+00:00",
+  "generated_utc": "2026-10-07T12:04:52.972803+00:00",
   "probes": [
     {
       "chain": "dydx",
@@ -8,8 +8,19 @@
       "independent_reconciliation": {
         "app_hash_match": true,
         "block_hash_match": true,
+        "successful_source_names": [
+          "kingnodes",
+          "polkachu"
+        ],
         "successful_sources": 2,
         "time_match": true
+      },
+      "raw_staking_scan": {
+        "center": 15000000,
+        "radius": 250,
+        "request_errors": 0,
+        "requests_attempted": 501,
+        "status": "NOT_FOUND_IN_BOUNDED_WINDOW"
       },
       "sources": {
         "kingnodes": {
@@ -40,9 +51,13 @@
           },
           "block_results_http": 200,
           "block_results_sha256": "440b25445cbe097fa60fffc1a5b292520ff66dcbf8a55db53ac1d255daf70aa3",
-          "block_search_probe": {
+          "block_search_complete_unbonding": {
             "error": "HTTPError: HTTP Error 500: Internal Server Error",
             "query": "complete_unbonding.amount EXISTS AND block.height >= 14950000 AND block.height <= 15050000"
+          },
+          "block_search_exact_height": {
+            "error": "HTTPError: HTTP Error 500: Internal Server Error",
+            "query": "block.height = 15000000"
           },
           "block_sha256": "f47fd7198ba747cb00c58631185abcce7ae0a2729e31a13b649abd62293d38e6",
           "decoded_staking_txs": []
@@ -75,9 +90,13 @@
           },
           "block_results_http": 200,
           "block_results_sha256": "440b25445cbe097fa60fffc1a5b292520ff66dcbf8a55db53ac1d255daf70aa3",
-          "block_search_probe": {
+          "block_search_complete_unbonding": {
             "error": "HTTPError: HTTP Error 500: Internal Server Error",
             "query": "complete_unbonding.amount EXISTS AND block.height >= 14950000 AND block.height <= 15050000"
+          },
+          "block_search_exact_height": {
+            "error": "HTTPError: HTTP Error 500: Internal Server Error",
+            "query": "block.height = 15000000"
           },
           "block_sha256": "f47fd7198ba747cb00c58631185abcce7ae0a2729e31a13b649abd62293d38e6",
           "decoded_staking_txs": []
@@ -90,13 +109,62 @@
       "independent_reconciliation": {
         "app_hash_match": false,
         "block_hash_match": false,
-        "successful_sources": 0,
+        "successful_source_names": [
+          "kj_archive_2"
+        ],
+        "successful_sources": 1,
         "time_match": false
       },
       "sources": {
         "dteam": {
           "base": "https://rpc.archive.celestia.mainnet.dteam.tech",
           "error": "HTTPError: HTTP Error 500: Internal Server Error"
+        },
+        "itrocket": {
+          "base": "https://celestia-mainnet-rpc.itrocket.net",
+          "error": "HTTPError: HTTP Error 500: Internal Server Error"
+        },
+        "kj_archive_1": {
+          "base": "http://157.180.10.38:40657",
+          "error": "HTTPError: HTTP Error 500: Internal Server Error"
+        },
+        "kj_archive_2": {
+          "base": "http://136.243.94.113:26667",
+          "block": {
+            "app_hash": "327CCEBAB73158CEA1A4397DED49EEF7FA0D95281D4F098D0355E65AF6F2A432",
+            "block_hash": "02F5FF93FBF197FFB271496D98E2F524CE15C12696C161E42D20955311F6E0F6",
+            "chain_id": "celestia",
+            "height": "2500000",
+            "time": "2024-10-06T00:47:34.967040066Z",
+            "tx_count": 4
+          },
+          "block_http": 200,
+          "block_results": {
+            "complete_unbonding": {
+              "begin_block_events": [],
+              "end_block_events": [],
+              "finalize_block_events": []
+            },
+            "height": "2500000",
+            "tx_codes": [
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          "block_results_http": 200,
+          "block_results_sha256": "a892c7a648dc608995234f008502017e5a502dafba642e1a0cab60aea08694d2",
+          "block_search_complete_unbonding": {
+            "error": "HTTPError: HTTP Error 500: Internal Server Error",
+            "query": "complete_unbonding.amount EXISTS AND block.height >= 2450000 AND block.height <= 2550000"
+          },
+          "block_search_exact_height": {
+            "error": "HTTPError: HTTP Error 500: Internal Server Error",
+            "query": "block.height = 2500000"
+          },
+          "block_sha256": "f78b3f3e8cf0eb2f4a1907d3b8c5c24d135b33db94a78ed68f8f97c7440db895",
+          "decoded_staking_txs": []
         },
         "validatus": {
           "base": "https://rpc.archive.celestia.validatus.com",
