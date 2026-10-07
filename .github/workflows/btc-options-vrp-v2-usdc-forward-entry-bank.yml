@@ -1,0 +1,34 @@
+name: BTC Options VRP V2 — USDC Forward Entry Source Bank
+
+on:
+  push:
+    branches:
+      - "btc-options-vrp-v2-forward-2026-10-07"
+    paths:
+      - "research/btc_options_vrp_v2/TRIGGER_WEEKLY_CAPTURE.txt"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: btc-options-vrp-usdc-forward-entry-bank
+  cancel-in-progress: false
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: btc-options-vrp-v2-forward-2026-10-07
+          fetch-depth: 1
+      - run: python -m py_compile labs/BTC_OPTIONS_VRP_001/usdc_forward_entry_bank_v01.py
+      - name: Source-only capture
+        run: python labs/BTC_OPTIONS_VRP_001/usdc_forward_entry_bank_v01.py
+      - name: Commit append-only evidence
+        run: |
+          git config user.name "crypto-lab-source-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/vrp_usdc_forward/entry_source_bank.jsonl receipts/vrp_usdc_forward/
+          git commit -m "vrp-v2: append BTC_USDC forward entry source $(date -u +%F)"
+          git push origin HEAD:btc-options-vrp-v2-forward-2026-10-07
