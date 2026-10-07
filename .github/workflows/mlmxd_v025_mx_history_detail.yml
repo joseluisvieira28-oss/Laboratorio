@@ -1,0 +1,56 @@
+name: MLMXD V0.2.5 MXUSDT Historical Detail Diagnostic
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - mexc-launchpool-mx-demand-v0.2-activation-pilot-2026-10-07
+    paths:
+      - '.github/workflows/mlmxd_v025_mx_history_detail.yml'
+permissions:
+  contents: read
+jobs:
+  diag:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests
+      - name: Inspect MX USDT historical detail frontend
+        run: |
+          python - <<'PY'
+          import requests,re,json
+          from urllib.parse import urljoin
+          urls=[
+            "https://www.mexc.com/en-GB/market-data-download/MX?type=kline&interval=daily&pair=MX%2FUSDT",
+            "https://www.mexc.com/en-GB/market-data-download/MX?type=kline&interval=monthly&pair=MX%2FUSDT",
+          ]
+          for U in urls:
+            print("\n=====PAGE",U,"=====")
+            h=requests.get(U,headers={"User-Agent":"Mozilla/5.0"},timeout=30).text
+            print("STATUSLEN",len(h))
+            for needle in ["2025","MX/USDT","downloadUrl","fileUrl","kline","daily","monthly","market-data"]:
+              if needle.lower() in h.lower():
+                print("HTML_HAS",needle)
+            scripts=re.findall(r'<script[^>]+src=["\']([^"\']+)["\']',h,re.I)
+            print("SCRIPTCOUNT",len(scripts))
+            for s in scripts:
+              try:
+                su=urljoin(U,s); t=requests.get(su,headers={"User-Agent":"Mozilla/5.0"},timeout=30).text
+              except Exception:
+                continue
+              low=t.lower()
+              if not any(x in low for x in ["market-data-download","historical","download","kline"]):
+                continue
+              for needle in ["market-data-download","historical","download","kline","data-download","fileurl"]:
+                pos=0
+                while True:
+                  i=low.find(needle,pos)
+                  if i<0: break
+                  ctx=t[max(0,i-900):min(len(t),i+1800)]
+                  if "/api/" in ctx or "fetch(" in ctx or "request" in ctx or "download" in needle:
+                    print("\nCTX",needle,su,i)
+                    print(ctx.replace("\n"," ")[:2700])
+                  pos=i+len(needle)
+          PY
