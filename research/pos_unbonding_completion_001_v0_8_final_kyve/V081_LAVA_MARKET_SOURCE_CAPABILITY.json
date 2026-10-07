@@ -1,0 +1,51 @@
+{
+  "family": "POS-UNBONDING-COMPLETION-SUPPLY-RELEASE-001",
+  "freeze_commit": "cec145e2f9040198f95f88f1532ec783646544c0",
+  "chain": "lava-mainnet-1",
+  "asset": "LAVA",
+  "criterion_7_market_source_capability_pass": true,
+  "chosen_market_source": {
+    "type": "public on-chain Uniswap V3 Swap event history on Arbitrum One",
+    "pool": "0xc6D8Aa297C937ab78308BaeA341C0a24577C2616",
+    "token_lava": "0x11e969e9B3f89cB16D686a03Cd8508C9fC0361AF",
+    "token_quote": "WETH",
+    "quote_contract": "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1"
+  },
+  "capability_metadata": {
+    "launch_and_dex_live_date_utc": "2024-07-30",
+    "pool_creation_date_utc": "2024-07-30",
+    "later_pre_2026_swap_observation_date_utc": "2025-10-26",
+    "pre_2026_span_days": 453,
+    "at_least_12_consecutive_months_capability": true,
+    "rationale": "The same immutable Uniswap V3 pool exists from 2024-07-30 and has an on-chain Swap observation on 2025-10-26, a 453-day pre-2026 span. Address-scoped Arbitrum log history is the market-data source; future outcome extraction can reconstruct pool price from Swap state without a proprietary historical API."
+  },
+  "provenance": [
+    {
+      "source": "Lava Network launch announcement mirror",
+      "url": "https://threadreaderapp.com/thread/1818245277175972226.html",
+      "metadata_only": "2024-07-30 launch; Dex-first on Uniswap v3, Arbitrum, live"
+    },
+    {
+      "source": "WhatToFarm pair metadata",
+      "url": "https://whattofarm.io/fil/pairs/arbitrum-uniswapv-lava-weth-created-2024-07-30",
+      "metadata_only": "LAVA/WETH pool address and 2024-07-30 creation date"
+    },
+    {
+      "source": "Arbiscan immutable transaction/log record",
+      "url": "https://arbiscan.io/tx/0x02915cd8eefc223ca9f2cdc9e62a01f8d93b7a02ff35f724e6f746f2f3d01f73",
+      "metadata_only": "2025-10-26 UTC transaction contains Swap event emitted by the same pool address"
+    },
+    {
+      "source": "Uniswap/v3-core v1.0.0",
+      "tag_commit": "e3589b192d0be27e100cd0daaf6c97204fdb1899",
+      "file": "contracts/interfaces/pool/IUniswapV3PoolEvents.sol",
+      "blob_sha": "9d915dde934fc7a0430195f29bb2172c47783a3d",
+      "metadata_only": "Swap event schema exposes amount0, amount1 and sqrtPriceX96; numerical values were not stored or used in this source gate"
+    }
+  ],
+  "numerical_market_values_stored": false,
+  "event_aligned_market_outcomes_opened": false,
+  "returns_opened": false,
+  "pnl_opened": false,
+  "completion_counts_opened": false
+}
