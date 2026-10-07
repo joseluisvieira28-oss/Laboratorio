@@ -1,0 +1,176 @@
+name: POS Unbonding Coreum Replay V0.8 Probe
+
+on:
+  push:
+    branches:
+      - pos-unbonding-v08-coreum-replay-2026-10-07
+    paths:
+      - "research/pos_unbonding_completion_001_v0_8_coreum_replay/**"
+      - ".github/workflows/pos_unbonding_coreum_replay_v08.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deterministic-probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      V08: research/pos_unbonding_completion_001_v0_8_coreum_replay
+      V07: research/pos_unbonding_completion_001_v0_7_independent_replay
+      GENESIS_SHA256: 5be3b3e0fee69842c4c73eb5f54eb64684420736473f0f5cef0ba6b81d44f253
+      V1_COMMIT: 40759d9d8a37e998f6e01229311b2ce3ac19ff63
+      V2_COMMIT: dc41e552ebf9dd7b1e42e4727679bbd74c19e5c6
+      V3_COMMIT: 14454e7001e9f0d1d703e1dd6fbff4ac09a04cfe
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify frozen genesis bytes
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s  %s\n' "$GENESIS_SHA256" "$V07/receipts/source_392071c0048a.raw" | sha256sum -c -
+
+      - name: Acquire frozen sparse Source-A transport
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 "$V08/fetch_sparse_coreum.py" --out /tmp/coreum_sparse | tee /tmp/sparse_summary.stdout.json
+          python3 - <<'PY'
+          import json
+          j=json.load(open('/tmp/coreum_sparse/summary.json'))
+          expected={
+            "5000000":"D8A6B584C70FE38CD7D160A7F5151974E595AD9E241700F80D45AF15F53B0FF9",
+            "10000000":"227EE3C00731C6544D88478F9022100214767E0DF8779C66433BF5C0BB810F47",
+            "15000000":"DE285C3282D4EAC0EA6AF0FDAB0EF3F45273D5BB96289A76EA501CEDB52B1516",
+          }
+          for h,want in expected.items():
+              got=j["heights"][h]["hash"]
+              assert got==want,(h,got,want)
+              assert j["heights"][h]["chain_id"]=="coreum-mainnet-1"
+          assert j["block_results_requested"] is False
+          PY
+
+      - name: Set Go 1.18 for Coreum v1
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.18.10"
+          cache: false
+
+      - name: Checkout pinned Coreum v1 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --quiet --filter=blob:none https://github.com/CoreumFoundation/coreum.git /tmp/coreum-v1
+          git -C /tmp/coreum-v1 checkout --quiet --detach "$V1_COMMIT"
+          test "$(git -C /tmp/coreum-v1 rev-parse HEAD)" = "$V1_COMMIT"
+
+      - name: Verify v1 typed block and commit at H5M
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/coreum-v1/replayprobe
+          cp "$V08/blockprobe_tendermint.go" /tmp/coreum-v1/replayprobe/main.go
+          (
+            cd /tmp/coreum-v1
+            go run ./replayprobe               /tmp/coreum_sparse/block_5000000.json               /tmp/coreum_sparse/commit_5000000.json               /tmp/coreum_sparse/validators_5000000_merged.json               /tmp/coreum_sparse/validators_5000001_merged.json
+          ) | tee /tmp/probe_v1_h5m.json
+
+      - name: Execute exact v1 InitChain validator linkage
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/coreum-v1/replayprobe
+          mkdir -p /tmp/coreum-v1/replayprobe
+          cp "$V08/initchain_v1.go" /tmp/coreum-v1/replayprobe/main.go
+          (
+            cd /tmp/coreum-v1
+            go run ./replayprobe               "$GITHUB_WORKSPACE/$V07/receipts/source_392071c0048a.raw"               /tmp/coreum_sparse/block_1.json
+          ) | tee /tmp/initchain_v1.json
+
+      - name: Execute Coreum v1 canonical block 1 and verify H2 AppHash
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/coreum-v1/replayprobe
+          mkdir -p /tmp/coreum-v1/replayprobe
+          cp "$V08/execute_block1_v1.go" /tmp/coreum-v1/replayprobe/main.go
+          (
+            cd /tmp/coreum-v1
+            go run ./replayprobe               "$GITHUB_WORKSPACE/$V07/receipts/source_392071c0048a.raw"               /tmp/coreum_sparse/block_1.json               /tmp/coreum_sparse/block_2.json
+          ) | tee /tmp/execute_block1_v1.json
+
+      - name: Set Go 1.18 for Coreum v2
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.18.10"
+          cache: false
+
+      - name: Verify v2 typed block and commit at H10M
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --quiet --filter=blob:none https://github.com/CoreumFoundation/coreum.git /tmp/coreum-v2
+          git -C /tmp/coreum-v2 checkout --quiet --detach "$V2_COMMIT"
+          test "$(git -C /tmp/coreum-v2 rev-parse HEAD)" = "$V2_COMMIT"
+          mkdir -p /tmp/coreum-v2/replayprobe
+          cp "$V08/blockprobe_tendermint.go" /tmp/coreum-v2/replayprobe/main.go
+          (
+            cd /tmp/coreum-v2
+            go run ./replayprobe               /tmp/coreum_sparse/block_10000000.json               /tmp/coreum_sparse/commit_10000000.json               /tmp/coreum_sparse/validators_10000000_merged.json               /tmp/coreum_sparse/validators_10000001_merged.json
+          ) | tee /tmp/probe_v2_h10m.json
+
+      - name: Set Go 1.20 for Coreum v3
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.20.14"
+          cache: false
+
+      - name: Verify v3 typed block and commit at H15M
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --quiet --filter=blob:none https://github.com/CoreumFoundation/coreum.git /tmp/coreum-v3
+          git -C /tmp/coreum-v3 checkout --quiet --detach "$V3_COMMIT"
+          test "$(git -C /tmp/coreum-v3 rev-parse HEAD)" = "$V3_COMMIT"
+          mkdir -p /tmp/coreum-v3/replayprobe
+          cp "$V08/blockprobe_comet037.go" /tmp/coreum-v3/replayprobe/main.go
+          (
+            cd /tmp/coreum-v3
+            go run ./replayprobe               /tmp/coreum_sparse/block_15000000.json               /tmp/coreum_sparse/commit_15000000.json               /tmp/coreum_sparse/validators_15000000_merged.json               /tmp/coreum_sparse/validators_15000001_merged.json
+          ) | tee /tmp/probe_v3_h15m.json
+
+      - name: Emit deterministic receipt to job log
+        if: always()
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,platform
+          paths=[
+            "/tmp/coreum_sparse/manifest.json",
+            "/tmp/probe_v1_h5m.json",
+            "/tmp/initchain_v1.json",
+            "/tmp/execute_block1_v1.json",
+            "/tmp/probe_v2_h10m.json",
+            "/tmp/probe_v3_h15m.json",
+          ]
+          out={
+            "freeze_commit":"d5071409be8dde758ef1089c55d8018c95ebaa75",
+            "github_sha":os.getenv("GITHUB_SHA"),
+            "runner_os":os.getenv("RUNNER_OS"),
+            "runner_arch":os.getenv("RUNNER_ARCH"),
+            "block_results_requested":False,
+            "census_executed":False,
+            "market_outcomes_opened":False,
+            "files":[],
+          }
+          for s in paths:
+              p=pathlib.Path(s)
+              if p.exists():
+                  b=p.read_bytes()
+                  out["files"].append({"path":s,"sha256":hashlib.sha256(b).hexdigest(),"bytes":len(b)})
+          print("BEGIN_V08_RECEIPT")
+          print(json.dumps(out,indent=2,sort_keys=True))
+          print("END_V08_RECEIPT")
+          PY
