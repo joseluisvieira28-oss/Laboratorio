@@ -1,0 +1,41 @@
+name: source-t0-probe-v15-atomscan-chainmap
+
+on:
+  push:
+    branches:
+      - cosmos-native-emission-param-shock-001-v0.2-t0-remediation-2026-10-07
+    paths:
+      - .github/workflows/source-t0-probe-v15-atomscan-chainmap.yml
+
+permissions:
+  contents: read
+
+jobs:
+  chainmap:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Extract Akash and Secret chain config only
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json,urllib.request,ssl
+          u="https://proxy.atomscan.com/chains.json"
+          q=urllib.request.Request(u,headers={"User-Agent":"CryptoLab-source-only/1.5"})
+          with urllib.request.urlopen(q,timeout=20,context=ssl._create_unverified_context()) as r:
+            d=json.loads(r.read().decode())
+          rows=[]
+          pools=[]
+          if isinstance(d,dict):
+            for k,v in d.items():
+              if isinstance(v,list):
+                pools += v
+          elif isinstance(d,list): pools=d
+          for x in pools:
+            s=json.dumps(x,sort_keys=True).lower()
+            if any(z in s for z in ["secret","scrt","akash"]):
+              rows.append(x)
+          print("ATOMSCAN_CHAINMAP_V15_BEGIN")
+          print(json.dumps({"scope":"SOURCE_ONLY_NO_MARKET_DATA","matches":rows},indent=2,sort_keys=True))
+          print("ATOMSCAN_CHAINMAP_V15_END")
+          PY
