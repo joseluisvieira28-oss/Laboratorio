@@ -1,0 +1,498 @@
+{
+  "scope": "SOURCE_ONLY_NO_MARKET_DATA",
+  "target_voting_end": "2023-12-07T02:54:58.930543213Z",
+  "api_base": "https://api.valopers.com",
+  "tested_utc": "2026-10-07T14:35:35.571118+00:00",
+  "rule": "No estimated height may be promoted. PASS requires immutable H-1/H/H+1 block metadata around voting_end.",
+  "docs_probes": [
+    {
+      "path": "/",
+      "ok": true,
+      "status": 200,
+      "url": "https://api.valopers.com/",
+      "content_type": "application/json; charset=utf-8",
+      "sha256": "26fb69b62b62a3ff4f349ab8f5264c4c24374176f41085e0fe84a7cfc02d24be",
+      "error": null,
+      "body_excerpt": "{\n  \"ok\": true,\n  \"service\": \"valopers-general-api\",\n  \"chainsFile\": \"/opt/apps/valopers_env/prod/general-api/chains.json\"\n}"
+    },
+    {
+      "path": "/docs",
+      "ok": false,
+      "status": 404,
+      "url": "https://api.valopers.com/docs",
+      "content_type": null,
+      "sha256": "02c1a0904271571347f24896e8361482e0b74e8094630f044be391a71d7401c6",
+      "error": "HTTP Error 404: Not Found",
+      "body_excerpt": "{\n  \"error\": \"not_found\"\n}"
+    },
+    {
+      "path": "/redoc",
+      "ok": false,
+      "status": 404,
+      "url": "https://api.valopers.com/redoc",
+      "content_type": null,
+      "sha256": "02c1a0904271571347f24896e8361482e0b74e8094630f044be391a71d7401c6",
+      "error": "HTTP Error 404: Not Found",
+      "body_excerpt": "{\n  \"error\": \"not_found\"\n}"
+    },
+    {
+      "path": "/openapi.json",
+      "ok": false,
+      "status": 404,
+      "url": "https://api.valopers.com/openapi.json",
+      "content_type": null,
+      "sha256": "02c1a0904271571347f24896e8361482e0b74e8094630f044be391a71d7401c6",
+      "error": "HTTP Error 404: Not Found",
+      "body_excerpt": "{\n  \"error\": \"not_found\"\n}"
+    },
+    {
+      "path": "/swagger.json",
+      "ok": false,
+      "status": 404,
+      "url": "https://api.valopers.com/swagger.json",
+      "content_type": null,
+      "sha256": "02c1a0904271571347f24896e8361482e0b74e8094630f044be391a71d7401c6",
+      "error": "HTTP Error 404: Not Found",
+      "body_excerpt": "{\n  \"error\": \"not_found\"\n}"
+    },
+    {
+      "path": "/api/openapi.json",
+      "ok": false,
+      "status": 404,
+      "url": "https://api.valopers.com/api/openapi.json",
+      "content_type": null,
+      "sha256": "02c1a0904271571347f24896e8361482e0b74e8094630f044be391a71d7401c6",
+      "error": "HTTP Error 404: Not Found",
+      "body_excerpt": "{\n  \"error\": \"not_found\"\n}"
+    },
+    {
+      "path": "/api/swagger.json",
+      "ok": false,
+      "status": 404,
+      "url": "https://api.valopers.com/api/swagger.json",
+      "content_type": null,
+      "sha256": "02c1a0904271571347f24896e8361482e0b74e8094630f044be391a71d7401c6",
+      "error": "HTTP Error 404: Not Found",
+      "body_excerpt": "{\n  \"error\": \"not_found\"\n}"
+    },
+    {
+      "path": "/v1/openapi.json",
+      "ok": false,
+      "status": 404,
+      "url": "https://api.valopers.com/v1/openapi.json",
+      "content_type": null,
+      "sha256": "02c1a0904271571347f24896e8361482e0b74e8094630f044be391a71d7401c6",
+      "error": "HTTP Error 404: Not Found",
+      "body_excerpt": "{\n  \"error\": \"not_found\"\n}"
+    }
+  ],
+  "frontend_refs": [
+    "https://secret.valopers.com/_next/static/chunks/993-c06cf719d3d99644.js",
+    "https://secret.valopers.com/_next/static/chunks/main-app-07081f1c617f0d9e.js",
+    "https://secret.valopers.com/_next/static/chunks/app/layout-829450a212229605.js",
+    "https://secret.valopers.com/_next/static/chunks/500-e22d08860aac6c97.js",
+    "https://secret.valopers.com/_next/static/chunks/593-78e55d3977dd4b56.js",
+    "https://secret.valopers.com/_next/static/chunks/app/not-found-54ce530551341ee2.js",
+    "https://secret.valopers.com/_next/static/chunks/app/page-eb2b616e3f4f358f.js",
+    "https://secret.valopers.com/_next/static/chunks/polyfills-42372ed130431b0a.js",
+    "https://secret.valopers.com/_next/static/chunks/webpack-c9bddbe8543f1bca.js",
+    "https://secret.valopers.com/_next/static/css/b71ad0e81a1d2f60.css",
+    "https://secret.valopers.com/_next/static/css/8691669c0e3ed7a8.css",
+    "https://secret.valopers.com/_next/static/css/5c9107d8f87130b8.css",
+    "https://secret.valopers.com/_next/static/css/9ec92b181a197b7e.css"
+  ],
+  "bundle_discovery": [
+    {
+      "url": "https://secret.valopers.com/_next/static/chunks/993-c06cf719d3d99644.js",
+      "ok": true,
+      "status": 200,
+      "sha256": "cc7700d3d39771c83ff272f64c9853488bab20b89e6d777597d7e8fd3c28cf25",
+      "contexts": [
+        {
+          "needle": "fetch(",
+          "excerpt": "SegmentRequestKeyPart)(r),o=pe(n,(0,d.appendSegmentRequestKeyPart)(t,e,l),f,s,a);null===m?m={[e]:o}:m[e]=o}return{requestKey:t,segment:c,refreshState:i,varyPath:h,isPage:p,slots:m,prefetchHints:e[4]??0}}function he(e){const t={};if(null!==e.slots)for(const n in e.slots)t[n]=he(e.slots[n]);return[e.segment,t,null,null]}async function me(e,t){const n=t.pathname,o=t.search,s=t.nextUrl,d=\"/_tree\",h={[a.RSC_HEADER]:\"1\",[a.NEXT_ROUTER_PREFETCH_HEADER]:\"1\",[a.NEXT_ROUTER_SEGMENT_PREFETCH_HEADER]:d};null!==s&&(h[a.NEXT_URL]=s),ke(h);try{const t=new URL(n+o,location.origin);let m,y;if(T){const n=await fetch(t,{method:\"HEAD\"});if(n.status<200||n.status>=400)return ue(e,Date.now()+1e4),null;y=n.redirected?new URL(n.url):t,m=await we(Te(y,d),h)}else m=await we(t,h),y=null!==m&&m.redirected?new URL(m.url):t;if(!m||!m.ok||204===m.status||!m.body)return ue(e,Date.now()+1e4),null;const w=(0,i.createHrefFromUrl)(y),R=m.headers.get(\"vary\"),O=null!==R&&R.includes(a.NEXT_URL),C=(0,v.createPromiseWithResolvers)(),N=\"2\"===m.headers.get(a.NEXT_DID_POSTPONE_HEADER)||T;if(N){const{stream:t,size:r}=await Re(m.body);C.resolve(),(0,f.setSizeInCacheMap)(e,r);const a=await(0,l.createFromNextReadableStream)(t,h,{allowPartialStream:!0});if((m.headers.get(P.NEXT_NAV_DEPLOYMENT_ID_HEADER)??a.buildId)!==(0,E.getNavigationBuildId)())return ue(e,Date.now()+1e4),null;const o=(0,c.getRenderedPathname)(m),u=(0,c.getRenderedSearch)(m),i={metadataVaryPath:null},d=se(a,o,u,i),p=i.metadataVaryPath;if(null===p)return ue(e,Date.now()+1e4),null;(0,_.discoverKnownRoute)(Date.now(),n,s,e,d,p,O,w,N,!1)}else{const{stream:t,size:o}=await Re(m.body);C.resolve(),(0,f.setSizeInCacheMap)(e,o);const u=await(0,l.createFromNextReadableStream)(t,h,{allowPartialStream:!0});if((m.headers.get(P.NEXT_NAV_DEPLOYMENT_ID_HEADER)??u.b)!==(0,E.getNavigationBuildId)())return ue(e,Date.now()+1e4),null;const i=u.h,d=null!==i?(0,r.readVaryParams)(i):null;!function(e,t,n,r,l,o,u,i,s,f,d){const h=(0,c.getRenderedSearch)(n),m=(0,p.normalizeFlightData)(r.f);if(\"string\"==typeof m||1!==m.length)return void ue(l,e+1e4);const y=m[0];if(!y.isRootRender)return void ue(l,e+1e4);const g=y.tree,v=\"1\"===n.headers.get(a.NEXT_DID_POSTPONE_HEADER),E={metadataVaryPath:null},w=fe(g,h,E),R=E.metadataVaryPath;if(null===R)return void ue(l,e+1e4);(0,_.discoverKnownRoute)(e,f,d,l,w,R,o,u,i,!1);const T=(0,S.convertServerPatchToFullTree)(e,g,m,h,b.Unknown"
+        },
+        {
+          "needle": "fetch(",
+          "excerpt": "(e,t){const{resolve:n,reject:p}=t,x=(e.previousNextUrl||e.nextUrl)&&(0,f.hasInterceptionRouteInCurrentTree)(e.tree)?e.previousNextUrl||e.nextUrl:null;return async function(e,t,{actionId:n,actionArgs:i}){const c=(0,u.createTemporaryReferenceSet)(),f=(0,y.extractInfoFromServerReferenceId)(n),p=(0,y.omitUnusedArgs)(i,f),h=await(0,u.encodeReply)(p,{temporaryReferences:c}),m={Accept:l.RSC_CONTENT_TYPE_HEADER,[l.ACTION_HEADER]:n,[l.NEXT_ROUTER_STATE_TREE_HEADER]:(0,d.prepareFlightRouterStateForRequest)(e.tree)},g=(0,b.getDeploymentId)();g&&(m[\"x-deployment-id\"]=g),t&&(m[l.NEXT_URL]=t);const v=await fetch(e.canonicalUrl,{method:\"POST\",headers:m,body:h});if(\"1\"===v.headers.get(l.NEXT_ACTION_NOT_FOUND_HEADER))throw Object.defineProperty(new o.UnrecognizedActionError(`Server Action \"${n}\" was not found on the server. \\nRead more: https://nextjs.org/docs/messages/failed-to-find-server-action`),\"__NEXT_ERROR_CODE\",{value:\"E715\",enumerable:!1,configurable:!0});const E=v.headers.get(\"x-action-redirect\"),[P,R]=E?.split(\";\")||[];let T;switch(R){case\"push\":T=\"push\";break;case\"replace\":T=\"replace\";break;default:T=void 0}const k=!!v.headers.get(l.NEXT_IS_PRERENDER_HEADER);let x=w.ActionDidNotRevalidate;try{const e=v.headers.get(\"x-action-revalidated\");if(e){const t=JSON.parse(e);t!==w.ActionDidRevalidateStaticAndDynamic&&t!==w.ActionDidRevalidateDynamicOnly||(x=t)}}catch{}const j=P?(0,s.assignLocation)(P,new URL(e.canonicalUrl,window.location.href)):void 0,A=v.headers.get(\"content-type\"),M=!(!A||!A.startsWith(l.RSC_CONTENT_TYPE_HEADER));if(!M&&!j){const e=v.status>=400&&\"text/plain\"===A?await v.text():\"An unexpected response was received from the server.\";throw Object.defineProperty(new Error(e),\"__NEXT_ERROR_CODE\",{value:\"E394\",enumerable:!1,configurable:!0})}let D,I,L,F=!1;if(M){const e=j?(0,O.processFetch)(v).then(({response:e})=>e):Promise.resolve(v),t=await C(e,{callServer:r.callServer,findSourceMapURL:a.findSourceMapURL,temporaryReferences:c,debugChannel:N&&N(m)});D=j?void 0:t.a,F=t.i;const n=v.headers.get(S.NEXT_NAV_DEPLOYMENT_ID_HEADER)??t.b;if(void 0!==n&&n!==(0,_.getNavigationBuildId)());else{const e=(0,d.normalizeFlightData)(t.f);\"\"!==e&&(I=e,L=t.q)}}else D=void 0,I=void 0,L=void 0;return{actionResult:D,actionFlightData:I,actionFlightDataRenderedSearch:L,redirectLocation:j,redirectType:T,revalidationKind:x,isPrerender:k,couldBeIntercepted:F}}(e,x,t).then(async({reva"
+        },
+        {
+          "needle": "fetch(",
+          "excerpt": "async function E(e,t,n){return w(function(e,t){const n=e.getReader();let r=t;return new ReadableStream({async pull(e){if(r<=0)return n.cancel(),void e.close();const{done:t,value:a}=await n.read();t?e.close():a.byteLength<=r?(e.enqueue(a),r-=a.byteLength):(e.enqueue(a.subarray(0,r)),r=0,n.cancel(),e.close())},cancel(){n.cancel()}})}(e,await t),n,{allowPartialStream:!0})}async function P(e,t,n,r,u){const s=(0,c.getDeploymentId)();s&&(t[\"x-deployment-id\"]=s);const f={credentials:\"same-origin\",headers:t,priority:n||void 0,signal:u};let d=new URL(e);await(0,i.setCacheBustingSearchParam)(d,t);let p=fetch(d,f).then(_),h=p.then(({response:e})=>e),g=r?(v=t,m(h,{callServer:l.callServer,findSourceMapURL:o.findSourceMapURL,debugChannel:y&&y(v)})):null;var v;let b=await h,S=b.redirected;const E=new URL(b.url,d);E.searchParams.delete(a.NEXT_RSC_UNION_QUERY);return{url:E.href,redirected:S,ok:b.ok,headers:b.headers,body:b.body,status:b.status,flightResponsePromise:g,cacheData:p.then(({cacheData:e})=>e)}}function w(e,t,n){return h(e,{callServer:l.callServer,findSourceMapURL:o.findSourceMapURL,debugChannel:y&&y(t),unstable_allowPartialStream:n?.allowPartialStream})}window.addEventListener(\"pagehide\",()=>{v=!0}),window.addEventListener(\"pageshow\",()=>{v=!1}),(\"function\"==typeof t.default||\"object\"==typeof t.default&&null!==t.default)&&void 0===t.default.__esModule&&(Object.defineProperty(t.default,\"__esModule\",{value:!0}),Object.assign(t.default,t),e.exports=t.default)},8854:(e,t)=>{\"use strict\";function n(e){return e.then(r),\"fulfilled\"!==e.status?null:e.value}Object.defineProperty(t,\"__esModule\",{value:!0}),Object.defineProperty(t,\"readVaryParams\",{enumerable:!0,get:function(){return n}});const r=()=>{}},8904:(e,t,n)=>{\"use strict\";Object.defineProperty(t,\"__esModule\",{value:!0}),Object.defineProperty(t,\"isNextRouterError\",{enumerable:!0,get:function(){return l}});const r=n(7016),a=n(7080);function l(e){return(0,a.isRedirectError)(e)||(0,r.isHTTPAccessFallbackError)(e)}(\"function\"==typeof t.default||\"object\"==typeof t.default&&null!==t.default)&&void 0===t.default.__esModule&&(Object.defineProperty(t.default,\"__esModule\",{value:!0}),Object.assign(t.default,t),e.exports=t.default)},9062:(e,t,n)=>{\"use strict\";var r=n(7650),a={stream:!0},l=Object.prototype.hasOwnProperty;var o=new Map;function u(e){var t=n(e);return\"function\"!=typeof t.then||\"fulfilled\"===t.status?null:(t.then"
+        }
+      ],
+      "error": null
+    },
+    {
+      "url": "https://secret.valopers.com/_next/static/chunks/main-app-07081f1c617f0d9e.js",
+      "ok": true,
+      "status": 200,
+      "sha256": "ad6e30e28564301e966a3bdfeda438dd2c2fcb8dfb9135ba6fc43a20f113144c",
+      "contexts": [],
+      "error": null
+    },
+    {
+      "url": "https://secret.valopers.com/_next/static/chunks/app/layout-829450a212229605.js",
+      "ok": true,
+      "status": 200,
+      "sha256": "d6621df6e01bafd68c9abbb2a58925f9b99f5e12e9f8d1780ef512327cd56078",
+      "contexts": [],
+      "error": null
+    },
+    {
+      "url": "https://secret.valopers.com/_next/static/chunks/500-e22d08860aac6c97.js",
+      "ok": true,
+      "status": 200,
+      "sha256": "c3618e793bd282c279f45142f87e0833ca43092fda2bcbc2e1fec0dd0c74c124",
+      "contexts": [],
+      "error": null
+    },
+    {
+      "url": "https://secret.valopers.com/_next/static/chunks/593-78e55d3977dd4b56.js",
+      "ok": true,
+      "status": 200,
+      "sha256": "00430f9e78329da40ea45e4aeecbfc9cad31bb5d5a40f9b7ad6e595239323f42",
+      "contexts": [],
+      "error": null
+    },
+    {
+      "url": "https://secret.valopers.com/_next/static/chunks/app/not-found-54ce530551341ee2.js",
+      "ok": true,
+      "status": 200,
+      "sha256": "6ddfd0f29a8ea2e35030ea5e7d5bdf20bac62624475dfef633d3dbc2eee4a001",
+      "contexts": [],
+      "error": null
+    },
+    {
+      "url": "https://secret.valopers.com/_next/static/chunks/app/page-eb2b616e3f4f358f.js",
+      "ok": true,
+      "status": 200,
+      "sha256": "7357472371eab3574444c6e559e71cbcfaf86d130e5375ed07c7a2e0660a3bf9",
+      "contexts": [
+        {
+          "needle": "api.valopers.com",
+          "excerpt": "kash\",\"althea\",\"archway\",\"arkeo\",\"atom\",\"atomone\",\"babylon\",\"band\",\"bitcanna\",\"dora\",\"dydx\",\"dymension\",\"fetch\",\"haqq\",\"injective\",\"iris\",\"juno\",\"kava\",\"milkyway\",\"nibiru\",\"omniflix\",\"osmosis\",\"persistence\",\"quicksilver\",\"regen\",\"sei\",\"stargaze\",\"stride\",\"terra\",\"ux\",\"xrplevm\",\"zeta\"]),_=(e,a)=>{if(\"color\"===a)return!0;if(\"monochrome\"===a)return!1;if(!e)return!1;const t=(e=>e?((()=>{try{return new URL(e,\"https://valopers.local\").pathname}catch{return e}})().split(\"/\").pop()||\"\").replace(/\\.(svg|png|webp)$/i,\"\"):\"\")(e);if(d.has(t))return!0;try{const a=new URL(e,\"https://valopers.local\");return\"api.valopers.com\"!==a.hostname&&\"valopers.local\"!==a.hostname}catch{return!1}},m=(e,a,t,s,n,i=\"\")=>_(e,n)?s:a?t:i,u=e=>{if(!Number.isFinite(e))return\"—\";const a=Math.abs(e);return a>=1e9?`$${(e/1e9).toFixed(2)}B`:a>=1e6?`$${(e/1e6).toFixed(2)}M`:a>=1e4?`$${(e/1e3).toFixed(1)}K`:a>=1e3?`$${e.toLocaleString(\"en-US\",{maximumFractionDigits:0})}`:a>=1?`$${e.toFixed(2)}`:`$${e.toFixed(a<.01?6:4)}`},g=e=>!Number.isFinite(e)||e<=0?\"—\":e<=.7?`$${Number(e.toFixed(5))}`:`$${e.toLocaleString(\"en-US\",{maximumFractionDigits:2})}`,p=e=>Number.isFinite(e)?e>=1e3?e.toLocaleString(\"en-US\",{maximumFractionDigits:0}):String(Number(e>=1?e.toFixed(2):e.toFixed(4))):\"0\",x=n.createContext({}),b=!0;function v({baseColor:e,highlightColor:a,width:t,height:s,borderRadius:n,circle:i,direction:r,duration:l,enableAnimation:c=true,customHighlightBackground:o}){const h={};return\"rtl\"===r&&(h[\"--animation-direction\"]=\"reverse\"),\"number\"==typeof l&&(h[\"--animation-duration\"]=`${l}s`),c||(h[\"--pseudo-element-display\"]=\"none\"),\"string\"!=typeof t&&\"number\"!=typeof t||(h.width=t),\"string\"!=typeof s&&\"number\"!=typeof s||(h.height=s),\"string\"!=typeof n&&\"number\"!=typeof n||(h.borderRadius=n),i&&(h.borderRadius=\"50%\"),void 0!==e&&(h[\"--base-color\"]=e),void 0!==a&&(h[\"--highlight-color\"]=a),\"string\"==typeof o&&(h[\"--custom-highlight-background\"]=o),h}function C({count:e=1,wrapper:a,className:t,containerClassName:s,containerTestId:i,circle:r=!1,style:l,...c}){var o,h,d;const _=n.useContext(x),m={...c};for(const[e,a]of Object.entries(c))void 0===a&&delete m[e];const u={..._,...m,circle:r},g={...l,...v(u)};let p=\"react-loading-skeleton\";t&&(p+=` ${t}`);const C=null!==(o=u.inline)&&void 0!==o&&o,j=[],N=Math.ceil(e);for(let a=0;a<N;a++){let t=g;if(N>e&&a===N-1){const a=null!==(h=t.width)&&void 0!==h?h:\"100%\",s=e%1,n="
+        },
+        {
+          "needle": "networks",
+          "excerpt": "]}):(0,s.jsx)(\"span\",{className:y().dash,children:\"—\"})}),(0,s.jsx)(\"td\",{className:y().sparkCell,children:!l&&n?.spark_7d&&null!==o?(0,s.jsx)(N,{points:n.spark_7d,positive:o>=0}):\"—\"}),(0,s.jsx)(\"td\",{className:y().num,children:!l&&Number(n?.market_cap)>0?u(Number(n?.market_cap)):\"—\"}),(0,s.jsx)(\"td\",{className:y().num,children:!l&&Number(n?.volume_24h)>0?u(Number(n?.volume_24h)):\"—\"}),(0,s.jsx)(\"td\",{className:`${y().num} ${y().fees}`,children:null===h||l?null!==d?`${p(d)} ${n?.fees_day?.native_symbol||\"\"}`:\"—\":`≈ ${u(h)}`})]},e.chain_id)})})]})})};var P=t(405),B=t.n(P);const T=({text:e=\"No networks found\",className:a})=>(0,s.jsx)(\"p\",{className:`${B().text} ${a}`,children:e});var L=t(5327);const F=()=>{const e=window?.matchMedia(\"(prefers-color-scheme: dark)\").matches;let a;a=e?\"/images/favicon-light.ico\":\"/images/favicon-dark.ico\";const t=document.querySelector(\"link[rel~='icon']\");t&&t.setAttribute(\"href\",a)};var I=t(5069);const S=\"valopers_favorite_chains\",D=\"valopers_view_mode\",A=(e,a)=>{try{document.cookie=`${e}=${encodeURIComponent(a)}; path=/; max-age=31536000; samesite=lax`}catch{}},E=[\"cosmoshub-4\",\"osmosis-1\",\"celestia\",\"axelar-dojo-1\"],U=({initialChains:e=[],initialMarkets:a=null,initialView:t,initialFavorites:i})=>{const o=(0,n.useMemo)(()=>{const e=new Map;for(const t of a?.chains||[])t?.chain_id&&e.set(t.chain_id,t);return e},[a]),[h,d]=(0,n.useState)(i??E),[_,m]=(0,n.useState)(t??\"grid\");(0,n.useEffect)(()=>{try{if(void 0===i){const e=window.localStorage.getItem(S);if(e){const a=JSON.parse(e);if(Array.isArray(a)){const e=a.filter(e=>\"string\"==typeof e);d(e),A(S,JSON.stringify(e))}}}if(void 0===t){const e=window.localStorage.getItem(D);\"table\"!==e&&\"grid\"!==e||(m(e),A(D,e))}}catch{}},[i,t]);const g=(0,n.useCallback)(e=>{m(e),A(D,e);try{window.localStorage.setItem(D,e)}catch{}},[]),p=(0,n.useCallback)(e=>{d(a=>{const t=a.includes(e)?a.filter(a=>a!==e):[...a,e];A(S,JSON.stringify(t));try{window.localStorage.setItem(S,JSON.stringify(t))}catch{}return t})},[]),x=(0,n.useMemo)(()=>{const a=new Map(h.map((e,a)=>[e,a]));return[...e].sort((e,t)=>{const s=a.get(e.chain_id),n=a.get(t.chain_id);return void 0!==s&&void 0!==n?s-n:void 0!==s?-1:void 0!==n?1:e.name.localeCompare(t.name)})},[e,h]),b=(0,n.useMemo)(()=>((e=[])=>e.reduce((e,a)=>(\"mainnet\"===a.type?e.mainnet.push(a):\"testnet\"===a.type&&e.testnet.push(a),e),{mainnet:[],testnet:[]}))(x),[x]),v=(0"
+        },
+        {
+          "needle": "networks",
+          "excerpt": "ncludes(a))},[b,C,N]),P=(0,n.useMemo)(()=>0===$.length?(0,s.jsx)(T,{}):$.map(y),[$,y]),B=e.length,U=B>0;return(0,s.jsxs)(s.Fragment,{children:[(0,s.jsx)(L.Y,{}),(0,s.jsx)(\"main\",{className:`main ${r().main}`,children:(0,s.jsxs)(\"div\",{className:\"container\",children:[(0,s.jsxs)(\"section\",{className:r().hero,children:[(0,s.jsxs)(\"div\",{className:r().titleBlock,children:[(0,s.jsx)(\"p\",{className:r().label,children:\"Valopers by bitszn\"}),(0,s.jsx)(\"h1\",{className:r().title,children:\"Blockchain Explorers & Analytics\"}),(0,s.jsx)(\"h2\",{className:r().subtitle,children:\"Explore and analyze interchain networks — validators, prices, fees, governance.\"})]}),(0,s.jsxs)(\"div\",{className:r().stats,children:[(0,s.jsxs)(\"div\",{className:r().stat,children:[(0,s.jsx)(\"span\",{className:r().statValue,children:b.mainnet.length}),(0,s.jsx)(\"span\",{className:r().statLabel,children:\"Mainnets\"})]}),(0,s.jsxs)(\"div\",{className:r().stat,children:[(0,s.jsx)(\"span\",{className:r().statValue,children:b.testnet.length}),(0,s.jsx)(\"span\",{className:r().statLabel,children:\"Testnets\"})]}),(0,s.jsxs)(\"div\",{className:r().stat,children:[(0,s.jsx)(\"span\",{className:r().statValue,children:B}),(0,s.jsx)(\"span\",{className:r().statLabel,children:\"Networks\"})]})]})]}),v&&(0,s.jsxs)(\"div\",{className:r().pulse,children:[v.feesDayUsd?(0,s.jsxs)(\"div\",{className:r().pulseItem,children:[\"Fees collected / day\",(0,s.jsxs)(\"b\",{children:[\"≈ \",u(v.feesDayUsd)]})]}):null,v.gainer&&(0,s.jsxs)(\"div\",{className:r().pulseItem,children:[\"24h best\",(0,s.jsxs)(\"b\",{className:r().pulseUp,children:[v.gainer.name,\" +\",v.gainer.change.toFixed(1),\"%\"]})]}),v.loser&&v.loser.change<0&&(0,s.jsxs)(\"div\",{className:r().pulseItem,children:[\"24h worst\",(0,s.jsxs)(\"b\",{className:r().pulseDown,children:[v.loser.name,\" \",v.loser.change.toFixed(1),\"%\"]})]})]}),(0,s.jsxs)(\"div\",{className:r().searchBlock,children:[(0,s.jsx)(c.WI,{className:r().searchIcon}),(0,s.jsx)(\"label\",{className:r().searchLabel,htmlFor:\"network-search\",children:\"Search networks\"}),(0,s.jsx)(\"input\",{id:\"network-search\",type:\"text\",className:r().input,placeholder:\"Search by network, ticker, or chain ID\",value:N,onChange:e=>{f(e.target.value)}}),(0,s.jsxs)(\"div\",{className:r().filterBlock,children:[(0,s.jsxs)(\"button\",{className:`${r().filterBtn} ${\"mainnet\"===C?r().filterBtn__active:\"\"}`,onClick:()=>w(\"mainnet\"),children:[\"Mainnets\",\" \",(0,s.jsx)(\"span\",{classNa"
+        },
+        {
+          "needle": "networks",
+          "excerpt": "ices, fees, governance.\"})]}),(0,s.jsxs)(\"div\",{className:r().stats,children:[(0,s.jsxs)(\"div\",{className:r().stat,children:[(0,s.jsx)(\"span\",{className:r().statValue,children:b.mainnet.length}),(0,s.jsx)(\"span\",{className:r().statLabel,children:\"Mainnets\"})]}),(0,s.jsxs)(\"div\",{className:r().stat,children:[(0,s.jsx)(\"span\",{className:r().statValue,children:b.testnet.length}),(0,s.jsx)(\"span\",{className:r().statLabel,children:\"Testnets\"})]}),(0,s.jsxs)(\"div\",{className:r().stat,children:[(0,s.jsx)(\"span\",{className:r().statValue,children:B}),(0,s.jsx)(\"span\",{className:r().statLabel,children:\"Networks\"})]})]})]}),v&&(0,s.jsxs)(\"div\",{className:r().pulse,children:[v.feesDayUsd?(0,s.jsxs)(\"div\",{className:r().pulseItem,children:[\"Fees collected / day\",(0,s.jsxs)(\"b\",{children:[\"≈ \",u(v.feesDayUsd)]})]}):null,v.gainer&&(0,s.jsxs)(\"div\",{className:r().pulseItem,children:[\"24h best\",(0,s.jsxs)(\"b\",{className:r().pulseUp,children:[v.gainer.name,\" +\",v.gainer.change.toFixed(1),\"%\"]})]}),v.loser&&v.loser.change<0&&(0,s.jsxs)(\"div\",{className:r().pulseItem,children:[\"24h worst\",(0,s.jsxs)(\"b\",{className:r().pulseDown,children:[v.loser.name,\" \",v.loser.change.toFixed(1),\"%\"]})]})]}),(0,s.jsxs)(\"div\",{className:r().searchBlock,children:[(0,s.jsx)(c.WI,{className:r().searchIcon}),(0,s.jsx)(\"label\",{className:r().searchLabel,htmlFor:\"network-search\",children:\"Search networks\"}),(0,s.jsx)(\"input\",{id:\"network-search\",type:\"text\",className:r().input,placeholder:\"Search by network, ticker, or chain ID\",value:N,onChange:e=>{f(e.target.value)}}),(0,s.jsxs)(\"div\",{className:r().filterBlock,children:[(0,s.jsxs)(\"button\",{className:`${r().filterBtn} ${\"mainnet\"===C?r().filterBtn__active:\"\"}`,onClick:()=>w(\"mainnet\"),children:[\"Mainnets\",\" \",(0,s.jsx)(\"span\",{className:r().chainCount,children:b.mainnet.length})]}),(0,s.jsxs)(\"button\",{className:`${r().filterBtn} ${\"testnet\"===C?r().filterBtn__active:\"\"}`,onClick:()=>w(\"testnet\"),children:[\"Testnets\",\" \",(0,s.jsx)(\"span\",{className:r().chainCount,children:b.testnet.length})]}),(0,s.jsx)(\"span\",{className:r().viewDivider,\"aria-hidden\":\"true\"}),(0,s.jsx)(\"button\",{className:`${r().viewBtn} ${\"grid\"===_?r().filterBtn__active:\"\"}`,onClick:()=>g(\"grid\"),\"aria-label\":\"Card view\",title:\"Card view\",children:(0,s.jsxs)(\"svg\",{viewBox:\"0 0 16 16\",width:\"15\",height:\"15\",\"aria-hidden\":\"true\",children:[(0,s.jsx)(\"rect\",{x:\"1.5\",y:\"1.5\",width:\""
+        },
+        {
+          "needle": "networks",
+          "excerpt": "children:[\"≈ \",u(v.feesDayUsd)]})]}):null,v.gainer&&(0,s.jsxs)(\"div\",{className:r().pulseItem,children:[\"24h best\",(0,s.jsxs)(\"b\",{className:r().pulseUp,children:[v.gainer.name,\" +\",v.gainer.change.toFixed(1),\"%\"]})]}),v.loser&&v.loser.change<0&&(0,s.jsxs)(\"div\",{className:r().pulseItem,children:[\"24h worst\",(0,s.jsxs)(\"b\",{className:r().pulseDown,children:[v.loser.name,\" \",v.loser.change.toFixed(1),\"%\"]})]})]}),(0,s.jsxs)(\"div\",{className:r().searchBlock,children:[(0,s.jsx)(c.WI,{className:r().searchIcon}),(0,s.jsx)(\"label\",{className:r().searchLabel,htmlFor:\"network-search\",children:\"Search networks\"}),(0,s.jsx)(\"input\",{id:\"network-search\",type:\"text\",className:r().input,placeholder:\"Search by network, ticker, or chain ID\",value:N,onChange:e=>{f(e.target.value)}}),(0,s.jsxs)(\"div\",{className:r().filterBlock,children:[(0,s.jsxs)(\"button\",{className:`${r().filterBtn} ${\"mainnet\"===C?r().filterBtn__active:\"\"}`,onClick:()=>w(\"mainnet\"),children:[\"Mainnets\",\" \",(0,s.jsx)(\"span\",{className:r().chainCount,children:b.mainnet.length})]}),(0,s.jsxs)(\"button\",{className:`${r().filterBtn} ${\"testnet\"===C?r().filterBtn__active:\"\"}`,onClick:()=>w(\"testnet\"),children:[\"Testnets\",\" \",(0,s.jsx)(\"span\",{className:r().chainCount,children:b.testnet.length})]}),(0,s.jsx)(\"span\",{className:r().viewDivider,\"aria-hidden\":\"true\"}),(0,s.jsx)(\"button\",{className:`${r().viewBtn} ${\"grid\"===_?r().filterBtn__active:\"\"}`,onClick:()=>g(\"grid\"),\"aria-label\":\"Card view\",title:\"Card view\",children:(0,s.jsxs)(\"svg\",{viewBox:\"0 0 16 16\",width:\"15\",height:\"15\",\"aria-hidden\":\"true\",children:[(0,s.jsx)(\"rect\",{x:\"1.5\",y:\"1.5\",width:\"5.4\",height:\"5.4\",rx:\"1.2\",fill:\"currentColor\"}),(0,s.jsx)(\"rect\",{x:\"9.1\",y:\"1.5\",width:\"5.4\",height:\"5.4\",rx:\"1.2\",fill:\"currentColor\"}),(0,s.jsx)(\"rect\",{x:\"1.5\",y:\"9.1\",width:\"5.4\",height:\"5.4\",rx:\"1.2\",fill:\"currentColor\"}),(0,s.jsx)(\"rect\",{x:\"9.1\",y:\"9.1\",width:\"5.4\",height:\"5.4\",rx:\"1.2\",fill:\"currentColor\"})]})}),(0,s.jsx)(\"button\",{className:`${r().viewBtn} ${\"table\"===_?r().filterBtn__active:\"\"}`,onClick:()=>g(\"table\"),\"aria-label\":\"Table view\",title:\"Table view\",children:(0,s.jsxs)(\"svg\",{viewBox:\"0 0 16 16\",width:\"15\",height:\"15\",\"aria-hidden\":\"true\",children:[(0,s.jsx)(\"rect\",{x:\"1.5\",y:\"2.2\",width:\"13\",height:\"2.2\",rx:\"1.1\",fill:\"currentColor\"}),(0,s.jsx)(\"rect\",{x:\"1.5\",y:\"6.9\",width:\"13\",height:\"2.2\",rx:\"1.1\",fill:\"currentColor\"}),(0,s.jsx)(\"rect\",{"
+        },
+        {
+          "needle": "chains",
+          "excerpt": "\"MainPage_stats__shgfE\",stat:\"MainPage_stat__4sMhC\",statValue:\"MainPage_statValue__aJioa\",statLabel:\"MainPage_statLabel__kX5v5\",searchLabel:\"MainPage_searchLabel__jkHQi\",catalogHeader:\"MainPage_catalogHeader__pgqUn\",catalogTitle:\"MainPage_catalogTitle__rssaq\",filterBtn__active:\"MainPage_filterBtn__active__EU7dQ\",chainCount:\"MainPage_chainCount__xb5LS\",searchBlock:\"MainPage_searchBlock__72QrE\",searchIcon:\"MainPage_searchIcon__uXaaz\",input:\"MainPage_input__B_gM0\",filterBlock:\"MainPage_filterBlock__ydXHU\",filterMobileBlock:\"MainPage_filterMobileBlock__ZpsKa\",filterBtn:\"MainPage_filterBtn__vaLU_\",chains:\"MainPage_chains__y2civ\",pulse:\"MainPage_pulse__MtKDK\",pulseItem:\"MainPage_pulseItem__EnHZ6\",pulseUp:\"MainPage_pulseUp__xtdfp\",pulseDown:\"MainPage_pulseDown__peE4G\",listedPanel:\"MainPage_listedPanel__Kvv21\",listedCopy:\"MainPage_listedCopy__FI9B5\",listedLabel:\"MainPage_listedLabel__Ivzwp\",listedActions:\"MainPage_listedActions__IsDD6\",listedCta:\"MainPage_listedCta__77tQG\",listedCtaSecondary:\"MainPage_listedCtaSecondary__Bgcug\",listedPoints:\"MainPage_listedPoints__MoSyb\",viewDivider:\"MainPage_viewDivider__jatXX\",viewBtn:\"MainPage_viewBtn__oWoHK\"}},7143:(e,a,t)=>{\"use strict\";t.d(a,{MainPage:()=>U});var s=t(5155),n=t(2115),i=t(5897),r=t.n(i),l=t(7475),c=t(1071),o=t(1952),h=t.n(o);const d=new Set([\"agoric\",\"akash\",\"althea\",\"archway\",\"arkeo\",\"atom\",\"atomone\",\"babylon\",\"band\",\"bitcanna\",\"dora\",\"dydx\",\"dymension\",\"fetch\",\"haqq\",\"injective\",\"iris\",\"juno\",\"kava\",\"milkyway\",\"nibiru\",\"omniflix\",\"osmosis\",\"persistence\",\"quicksilver\",\"regen\",\"sei\",\"stargaze\",\"stride\",\"terra\",\"ux\",\"xrplevm\",\"zeta\"]),_=(e,a)=>{if(\"color\"===a)return!0;if(\"monochrome\"===a)return!1;if(!e)return!1;const t=(e=>e?((()=>{try{return new URL(e,\"https://valopers.local\").pathname}catch{return e}})().split(\"/\").pop()||\"\").replace(/\\.(svg|png|webp)$/i,\"\"):\"\")(e);if(d.has(t))return!0;try{const a=new URL(e,\"https://valopers.local\");return\"api.valopers.com\"!==a.hostname&&\"valopers.local\"!==a.hostname}catch{return!1}},m=(e,a,t,s,n,i=\"\")=>_(e,n)?s:a?t:i,u=e=>{if(!Number.isFinite(e))return\"—\";const a=Math.abs(e);return a>=1e9?`$${(e/1e9).toFixed(2)}B`:a>=1e6?`$${(e/1e6).toFixed(2)}M`:a>=1e4?`$${(e/1e3).toFixed(1)}K`:a>=1e3?`$${e.toLocaleString(\"en-US\",{maximumFractionDigits:0})}`:a>=1?`$${e.toFixed(2)}`:`$${e.toFixed(a<.01?6:4)}`},g=e=>!Number.isFinite(e)||e<=0?\"—\":e<=.7?`$${Number(e.toFixed(5))}`:`$${e.toLocaleSt"
+        },
+        {
+          "needle": "chains",
+          "excerpt": "shgfE\",stat:\"MainPage_stat__4sMhC\",statValue:\"MainPage_statValue__aJioa\",statLabel:\"MainPage_statLabel__kX5v5\",searchLabel:\"MainPage_searchLabel__jkHQi\",catalogHeader:\"MainPage_catalogHeader__pgqUn\",catalogTitle:\"MainPage_catalogTitle__rssaq\",filterBtn__active:\"MainPage_filterBtn__active__EU7dQ\",chainCount:\"MainPage_chainCount__xb5LS\",searchBlock:\"MainPage_searchBlock__72QrE\",searchIcon:\"MainPage_searchIcon__uXaaz\",input:\"MainPage_input__B_gM0\",filterBlock:\"MainPage_filterBlock__ydXHU\",filterMobileBlock:\"MainPage_filterMobileBlock__ZpsKa\",filterBtn:\"MainPage_filterBtn__vaLU_\",chains:\"MainPage_chains__y2civ\",pulse:\"MainPage_pulse__MtKDK\",pulseItem:\"MainPage_pulseItem__EnHZ6\",pulseUp:\"MainPage_pulseUp__xtdfp\",pulseDown:\"MainPage_pulseDown__peE4G\",listedPanel:\"MainPage_listedPanel__Kvv21\",listedCopy:\"MainPage_listedCopy__FI9B5\",listedLabel:\"MainPage_listedLabel__Ivzwp\",listedActions:\"MainPage_listedActions__IsDD6\",listedCta:\"MainPage_listedCta__77tQG\",listedCtaSecondary:\"MainPage_listedCtaSecondary__Bgcug\",listedPoints:\"MainPage_listedPoints__MoSyb\",viewDivider:\"MainPage_viewDivider__jatXX\",viewBtn:\"MainPage_viewBtn__oWoHK\"}},7143:(e,a,t)=>{\"use strict\";t.d(a,{MainPage:()=>U});var s=t(5155),n=t(2115),i=t(5897),r=t.n(i),l=t(7475),c=t(1071),o=t(1952),h=t.n(o);const d=new Set([\"agoric\",\"akash\",\"althea\",\"archway\",\"arkeo\",\"atom\",\"atomone\",\"babylon\",\"band\",\"bitcanna\",\"dora\",\"dydx\",\"dymension\",\"fetch\",\"haqq\",\"injective\",\"iris\",\"juno\",\"kava\",\"milkyway\",\"nibiru\",\"omniflix\",\"osmosis\",\"persistence\",\"quicksilver\",\"regen\",\"sei\",\"stargaze\",\"stride\",\"terra\",\"ux\",\"xrplevm\",\"zeta\"]),_=(e,a)=>{if(\"color\"===a)return!0;if(\"monochrome\"===a)return!1;if(!e)return!1;const t=(e=>e?((()=>{try{return new URL(e,\"https://valopers.local\").pathname}catch{return e}})().split(\"/\").pop()||\"\").replace(/\\.(svg|png|webp)$/i,\"\"):\"\")(e);if(d.has(t))return!0;try{const a=new URL(e,\"https://valopers.local\");return\"api.valopers.com\"!==a.hostname&&\"valopers.local\"!==a.hostname}catch{return!1}},m=(e,a,t,s,n,i=\"\")=>_(e,n)?s:a?t:i,u=e=>{if(!Number.isFinite(e))return\"—\";const a=Math.abs(e);return a>=1e9?`$${(e/1e9).toFixed(2)}B`:a>=1e6?`$${(e/1e6).toFixed(2)}M`:a>=1e4?`$${(e/1e3).toFixed(1)}K`:a>=1e3?`$${e.toLocaleString(\"en-US\",{maximumFractionDigits:0})}`:a>=1?`$${e.toFixed(2)}`:`$${e.toFixed(a<.01?6:4)}`},g=e=>!Number.isFinite(e)||e<=0?\"—\":e<=.7?`$${Number(e.toFixed(5))}`:`$${e.toLocaleString(\"en-US\",{max"
+        },
+        {
+          "needle": "chains",
+          "excerpt": "ve_symbol||\"\"}`:`≈ ${u(b)}`})]}),a?.spark_7d&&null!==x&&(0,s.jsx)(N,{className:h().spark,points:a.spark_7d,positive:x>=0})]})]})]})]})};var w=t(5582),y=t.n(w);const $=(e,a,t)=>{if(!a)return null;switch(e){case\"price\":return!t&&Number(a.price)>0?Number(a.price):null;case\"change\":return!t&&Number.isFinite(Number(a.change_24h))?Number(a.change_24h):null;case\"market_cap\":return!t&&Number(a.market_cap)>0?Number(a.market_cap):null;case\"volume\":return!t&&Number(a.volume_24h)>0?Number(a.volume_24h):null;case\"fees\":return Number(a.fees_day?.usd)>0?Number(a.fees_day?.usd):null;default:return null}},M=({chains:e,markets:a,favorites:t,onToggleFavorite:i})=>{const{isLight:r}=(0,f.D)(),l=r?y().light:\"\",[c,o]=(0,n.useState)(null),[h,d]=(0,n.useState)(\"desc\"),_=(0,n.useMemo)(()=>{if(!c)return e;const t=\"asc\"===h?1:-1;return[...e].sort((e,s)=>{const n=$(c,a.get(e.chain_id),\"testnet\"===e.type),i=$(c,a.get(s.chain_id),\"testnet\"===s.type);return null===n&&null===i?e.name.localeCompare(s.name):null===n?1:null===i?-1:(n-i)*t})},[e,a,c,h]),x=(e,a)=>(0,s.jsxs)(\"th\",{className:`${y().sortable} ${c===e?y().active:\"\"}`,onClick:()=>(e=>{c!==e?(o(e),d(\"desc\")):\"desc\"===h?d(\"asc\"):(o(null),d(\"desc\"))})(e),children:[a,c===e&&(0,s.jsx)(\"span\",{className:y().caret,children:\"desc\"===h?\"▼\":\"▲\"})]});return(0,s.jsx)(\"div\",{className:`${y().tableWrap} ${l}`,children:(0,s.jsxs)(\"table\",{className:y().table,children:[(0,s.jsx)(\"thead\",{children:(0,s.jsxs)(\"tr\",{children:[(0,s.jsx)(\"th\",{\"aria-label\":\"Favorite\"}),(0,s.jsx)(\"th\",{children:\"Network\"}),x(\"price\",\"Price\"),x(\"change\",\"24h\"),(0,s.jsx)(\"th\",{children:\"7d\"}),x(\"market_cap\",\"Market cap\"),x(\"volume\",\"Vol 24h\"),x(\"fees\",\"Fees / day\")]})}),(0,s.jsx)(\"tbody\",{children:_.map(e=>{const n=a.get(e.chain_id),l=\"testnet\"===e.type,c=!l&&Number(n?.price)>0?Number(n?.price):null,o=!l&&Number.isFinite(Number(n?.change_24h))?Number(n?.change_24h):null,h=Number(n?.fees_day?.usd)>0?Number(n?.fees_day?.usd):null,d=Number(n?.fees_day?.native_amount)>0?Number(n?.fees_day?.native_amount):null,_=t.includes(e.chain_id),x=m(e.logo,r,y().light,y().noInvert,e.logo_tone,y().monochromeDark);return(0,s.jsxs)(\"tr\",{className:y().row,onClick:()=>window.open(e.url,\"_blank\",\"noopener\"),children:[(0,s.jsx)(\"td\",{className:y().starCell,children:(0,s.jsx)(\"button\",{type:\"button\",className:`${y().star} ${_?y().starActive:\"\"}`,\"aria-label\":_?`Remove ${e.name} from favorites`:`A"
+        },
+        {
+          "needle": "chains",
+          "excerpt": "?.volume_24h)):\"—\"}),(0,s.jsx)(\"td\",{className:`${y().num} ${y().fees}`,children:null===h||l?null!==d?`${p(d)} ${n?.fees_day?.native_symbol||\"\"}`:\"—\":`≈ ${u(h)}`})]},e.chain_id)})})]})})};var P=t(405),B=t.n(P);const T=({text:e=\"No networks found\",className:a})=>(0,s.jsx)(\"p\",{className:`${B().text} ${a}`,children:e});var L=t(5327);const F=()=>{const e=window?.matchMedia(\"(prefers-color-scheme: dark)\").matches;let a;a=e?\"/images/favicon-light.ico\":\"/images/favicon-dark.ico\";const t=document.querySelector(\"link[rel~='icon']\");t&&t.setAttribute(\"href\",a)};var I=t(5069);const S=\"valopers_favorite_chains\",D=\"valopers_view_mode\",A=(e,a)=>{try{document.cookie=`${e}=${encodeURIComponent(a)}; path=/; max-age=31536000; samesite=lax`}catch{}},E=[\"cosmoshub-4\",\"osmosis-1\",\"celestia\",\"axelar-dojo-1\"],U=({initialChains:e=[],initialMarkets:a=null,initialView:t,initialFavorites:i})=>{const o=(0,n.useMemo)(()=>{const e=new Map;for(const t of a?.chains||[])t?.chain_id&&e.set(t.chain_id,t);return e},[a]),[h,d]=(0,n.useState)(i??E),[_,m]=(0,n.useState)(t??\"grid\");(0,n.useEffect)(()=>{try{if(void 0===i){const e=window.localStorage.getItem(S);if(e){const a=JSON.parse(e);if(Array.isArray(a)){const e=a.filter(e=>\"string\"==typeof e);d(e),A(S,JSON.stringify(e))}}}if(void 0===t){const e=window.localStorage.getItem(D);\"table\"!==e&&\"grid\"!==e||(m(e),A(D,e))}}catch{}},[i,t]);const g=(0,n.useCallback)(e=>{m(e),A(D,e);try{window.localStorage.setItem(D,e)}catch{}},[]),p=(0,n.useCallback)(e=>{d(a=>{const t=a.includes(e)?a.filter(a=>a!==e):[...a,e];A(S,JSON.stringify(t));try{window.localStorage.setItem(S,JSON.stringify(t))}catch{}return t})},[]),x=(0,n.useMemo)(()=>{const a=new Map(h.map((e,a)=>[e,a]));return[...e].sort((e,t)=>{const s=a.get(e.chain_id),n=a.get(t.chain_id);return void 0!==s&&void 0!==n?s-n:void 0!==s?-1:void 0!==n?1:e.name.localeCompare(t.name)})},[e,h]),b=(0,n.useMemo)(()=>((e=[])=>e.reduce((e,a)=>(\"mainnet\"===a.type?e.mainnet.push(a):\"testnet\"===a.type&&e.testnet.push(a),e),{mainnet:[],testnet:[]}))(x),[x]),v=(0,n.useMemo)(()=>{const t=a?.pulse;if(!t)return null;const s=a=>e.find(e=>e.chain_id===a)?.name||null,n=s(t.top_gainer?.chain_id),i=s(t.top_loser?.chain_id);return t.fees_day_usd_total||n||i?{feesDayUsd:t.fees_day_usd_total,gainer:n&&t.top_gainer?{name:n,change:t.top_gainer.change_24h}:null,loser:i&&t.top_loser?{name:i,change:t.top_loser.change_24h}:null}:null},[e,a])"
+        },
+        {
+          "needle": "chains",
+          "excerpt": "const T=({text:e=\"No networks found\",className:a})=>(0,s.jsx)(\"p\",{className:`${B().text} ${a}`,children:e});var L=t(5327);const F=()=>{const e=window?.matchMedia(\"(prefers-color-scheme: dark)\").matches;let a;a=e?\"/images/favicon-light.ico\":\"/images/favicon-dark.ico\";const t=document.querySelector(\"link[rel~='icon']\");t&&t.setAttribute(\"href\",a)};var I=t(5069);const S=\"valopers_favorite_chains\",D=\"valopers_view_mode\",A=(e,a)=>{try{document.cookie=`${e}=${encodeURIComponent(a)}; path=/; max-age=31536000; samesite=lax`}catch{}},E=[\"cosmoshub-4\",\"osmosis-1\",\"celestia\",\"axelar-dojo-1\"],U=({initialChains:e=[],initialMarkets:a=null,initialView:t,initialFavorites:i})=>{const o=(0,n.useMemo)(()=>{const e=new Map;for(const t of a?.chains||[])t?.chain_id&&e.set(t.chain_id,t);return e},[a]),[h,d]=(0,n.useState)(i??E),[_,m]=(0,n.useState)(t??\"grid\");(0,n.useEffect)(()=>{try{if(void 0===i){const e=window.localStorage.getItem(S);if(e){const a=JSON.parse(e);if(Array.isArray(a)){const e=a.filter(e=>\"string\"==typeof e);d(e),A(S,JSON.stringify(e))}}}if(void 0===t){const e=window.localStorage.getItem(D);\"table\"!==e&&\"grid\"!==e||(m(e),A(D,e))}}catch{}},[i,t]);const g=(0,n.useCallback)(e=>{m(e),A(D,e);try{window.localStorage.setItem(D,e)}catch{}},[]),p=(0,n.useCallback)(e=>{d(a=>{const t=a.includes(e)?a.filter(a=>a!==e):[...a,e];A(S,JSON.stringify(t));try{window.localStorage.setItem(S,JSON.stringify(t))}catch{}return t})},[]),x=(0,n.useMemo)(()=>{const a=new Map(h.map((e,a)=>[e,a]));return[...e].sort((e,t)=>{const s=a.get(e.chain_id),n=a.get(t.chain_id);return void 0!==s&&void 0!==n?s-n:void 0!==s?-1:void 0!==n?1:e.name.localeCompare(t.name)})},[e,h]),b=(0,n.useMemo)(()=>((e=[])=>e.reduce((e,a)=>(\"mainnet\"===a.type?e.mainnet.push(a):\"testnet\"===a.type&&e.testnet.push(a),e),{mainnet:[],testnet:[]}))(x),[x]),v=(0,n.useMemo)(()=>{const t=a?.pulse;if(!t)return null;const s=a=>e.find(e=>e.chain_id===a)?.name||null,n=s(t.top_gainer?.chain_id),i=s(t.top_loser?.chain_id);return t.fees_day_usd_total||n||i?{feesDayUsd:t.fees_day_usd_total,gainer:n&&t.top_gainer?{name:n,change:t.top_gainer.change_24h}:null,loser:i&&t.top_loser?{name:i,change:t.top_loser.change_24h}:null}:null},[e,a]);(0,n.useEffect)(()=>{F();const e=window.matchMedia(\"(prefers-color-scheme: dark)\"),a=()=>F();return e.addEventListener(\"change\",a),()=>e.removeEventListener(\"change\",a)},[]);const[C,j]=(0,n.useState)(\"mainnet\""
+        },
+        {
+          "needle": "chains",
+          "excerpt": ")=>{const e=window?.matchMedia(\"(prefers-color-scheme: dark)\").matches;let a;a=e?\"/images/favicon-light.ico\":\"/images/favicon-dark.ico\";const t=document.querySelector(\"link[rel~='icon']\");t&&t.setAttribute(\"href\",a)};var I=t(5069);const S=\"valopers_favorite_chains\",D=\"valopers_view_mode\",A=(e,a)=>{try{document.cookie=`${e}=${encodeURIComponent(a)}; path=/; max-age=31536000; samesite=lax`}catch{}},E=[\"cosmoshub-4\",\"osmosis-1\",\"celestia\",\"axelar-dojo-1\"],U=({initialChains:e=[],initialMarkets:a=null,initialView:t,initialFavorites:i})=>{const o=(0,n.useMemo)(()=>{const e=new Map;for(const t of a?.chains||[])t?.chain_id&&e.set(t.chain_id,t);return e},[a]),[h,d]=(0,n.useState)(i??E),[_,m]=(0,n.useState)(t??\"grid\");(0,n.useEffect)(()=>{try{if(void 0===i){const e=window.localStorage.getItem(S);if(e){const a=JSON.parse(e);if(Array.isArray(a)){const e=a.filter(e=>\"string\"==typeof e);d(e),A(S,JSON.stringify(e))}}}if(void 0===t){const e=window.localStorage.getItem(D);\"table\"!==e&&\"grid\"!==e||(m(e),A(D,e))}}catch{}},[i,t]);const g=(0,n.useCallback)(e=>{m(e),A(D,e);try{window.localStorage.setItem(D,e)}catch{}},[]),p=(0,n.useCallback)(e=>{d(a=>{const t=a.includes(e)?a.filter(a=>a!==e):[...a,e];A(S,JSON.stringify(t));try{window.localStorage.setItem(S,JSON.stringify(t))}catch{}return t})},[]),x=(0,n.useMemo)(()=>{const a=new Map(h.map((e,a)=>[e,a]));return[...e].sort((e,t)=>{const s=a.get(e.chain_id),n=a.get(t.chain_id);return void 0!==s&&void 0!==n?s-n:void 0!==s?-1:void 0!==n?1:e.name.localeCompare(t.name)})},[e,h]),b=(0,n.useMemo)(()=>((e=[])=>e.reduce((e,a)=>(\"mainnet\"===a.type?e.mainnet.push(a):\"testnet\"===a.type&&e.testnet.push(a),e),{mainnet:[],testnet:[]}))(x),[x]),v=(0,n.useMemo)(()=>{const t=a?.pulse;if(!t)return null;const s=a=>e.find(e=>e.chain_id===a)?.name||null,n=s(t.top_gainer?.chain_id),i=s(t.top_loser?.chain_id);return t.fees_day_usd_total||n||i?{feesDayUsd:t.fees_day_usd_total,gainer:n&&t.top_gainer?{name:n,change:t.top_gainer.change_24h}:null,loser:i&&t.top_loser?{name:i,change:t.top_loser.change_24h}:null}:null},[e,a]);(0,n.useEffect)(()=>{F();const e=window.matchMedia(\"(prefers-color-scheme: dark)\"),a=()=>F();return e.addEventListener(\"change\",a),()=>e.removeEventListener(\"change\",a)},[]);const[C,j]=(0,n.useState)(\"mainnet\"),[N,f]=(0,n.useState)(\"\"),w=e=>{C!==e&&j(e)},y=(0,n.useCallback)((e,a)=>(0,s.jsx)(k,{data:e,market:o.get(e.chain_id),isFavorite:h.i"
+        },
+        {
+          "needle": "chains",
+          "excerpt": ")(\"button\",{className:`${r().filterBtn} ${\"mainnet\"===C?r().filterBtn__active:\"\"}`,onClick:()=>w(\"mainnet\"),children:[\"Mainnets\",\" \",(0,s.jsx)(\"span\",{className:r().chainCount,children:b.mainnet.length})]}),(0,s.jsxs)(\"button\",{className:`${r().filterBtn} ${\"testnet\"===C?r().filterBtn__active:\"\"}`,onClick:()=>w(\"testnet\"),children:[\"Testnets\",\" \",(0,s.jsx)(\"span\",{className:r().chainCount,children:b.testnet.length})]})]}),(0,s.jsx)(\"div\",{className:r().catalogHeader,children:(0,s.jsx)(\"h3\",{className:r().catalogTitle,children:\"mainnet\"===C?\"Mainnets\":\"Testnets\"})}),\"table\"===_&&U?(0,s.jsx)(M,{chains:$,markets:o,favorites:h,onToggleFavorite:p}):(0,s.jsx)(\"div\",{className:r().chains,children:U?P:(0,s.jsx)(T,{})}),(0,s.jsxs)(\"section\",{className:r().listedPanel,children:[(0,s.jsxs)(\"div\",{className:r().listedCopy,children:[(0,s.jsx)(\"span\",{className:r().listedLabel,children:\"Get listed\"}),(0,s.jsx)(\"h2\",{children:\"Want your network on Valopers?\"}),(0,s.jsx)(\"p\",{children:\"We run the full stack for every listed chain: explorer, validators, governance, uptime, daily fee analytics and asset prices. Mainnets and testnets are both welcome.\"}),(0,s.jsxs)(\"div\",{className:r().listedActions,children:[(0,s.jsx)(\"a\",{href:`mailto:${I.dB}?subject=${encodeURIComponent(\"Get listed on Valopers\")}`,className:r().listedCta,children:\"Get listed\"}),(0,s.jsx)(\"a\",{href:I.B7,className:`${r().listedCta} ${r().listedCtaSecondary}`,target:\"_blank\",rel:\"noreferrer\",children:\"Contact on Telegram\"})]})]}),(0,s.jsxs)(\"ul\",{className:r().listedPoints,children:[(0,s.jsxs)(\"li\",{children:[(0,s.jsx)(\"strong\",{children:\"Explorer\"}),(0,s.jsx)(\"span\",{children:\"blocks, txs, validators, governance, IBC, wasm\"})]}),(0,s.jsxs)(\"li\",{children:[(0,s.jsx)(\"strong\",{children:\"Analytics\"}),(0,s.jsx)(\"span\",{children:\"daily fee income in USD, APR, uptime history\"})]}),(0,s.jsxs)(\"li\",{children:[(0,s.jsx)(\"strong\",{children:\"Operations\"}),(0,s.jsx)(\"span\",{children:\"own infrastructure, dev → production rollout\"})]})]})]})]})}),(0,s.jsx)(l.w,{})]})}}},e=>{e.O(0,[722,710,173,500,593,993,358],()=>{return a=2897,e(e.s=a);var a});var a=e.O();_N_E=a}]);"
+        },
+        {
+          "needle": "chains",
+          "excerpt": "onClick:()=>w(\"mainnet\"),children:[\"Mainnets\",\" \",(0,s.jsx)(\"span\",{className:r().chainCount,children:b.mainnet.length})]}),(0,s.jsxs)(\"button\",{className:`${r().filterBtn} ${\"testnet\"===C?r().filterBtn__active:\"\"}`,onClick:()=>w(\"testnet\"),children:[\"Testnets\",\" \",(0,s.jsx)(\"span\",{className:r().chainCount,children:b.testnet.length})]})]}),(0,s.jsx)(\"div\",{className:r().catalogHeader,children:(0,s.jsx)(\"h3\",{className:r().catalogTitle,children:\"mainnet\"===C?\"Mainnets\":\"Testnets\"})}),\"table\"===_&&U?(0,s.jsx)(M,{chains:$,markets:o,favorites:h,onToggleFavorite:p}):(0,s.jsx)(\"div\",{className:r().chains,children:U?P:(0,s.jsx)(T,{})}),(0,s.jsxs)(\"section\",{className:r().listedPanel,children:[(0,s.jsxs)(\"div\",{className:r().listedCopy,children:[(0,s.jsx)(\"span\",{className:r().listedLabel,children:\"Get listed\"}),(0,s.jsx)(\"h2\",{children:\"Want your network on Valopers?\"}),(0,s.jsx)(\"p\",{children:\"We run the full stack for every listed chain: explorer, validators, governance, uptime, daily fee analytics and asset prices. Mainnets and testnets are both welcome.\"}),(0,s.jsxs)(\"div\",{className:r().listedActions,children:[(0,s.jsx)(\"a\",{href:`mailto:${I.dB}?subject=${encodeURIComponent(\"Get listed on Valopers\")}`,className:r().listedCta,children:\"Get listed\"}),(0,s.jsx)(\"a\",{href:I.B7,className:`${r().listedCta} ${r().listedCtaSecondary}`,target:\"_blank\",rel:\"noreferrer\",children:\"Contact on Telegram\"})]})]}),(0,s.jsxs)(\"ul\",{className:r().listedPoints,children:[(0,s.jsxs)(\"li\",{children:[(0,s.jsx)(\"strong\",{children:\"Explorer\"}),(0,s.jsx)(\"span\",{children:\"blocks, txs, validators, governance, IBC, wasm\"})]}),(0,s.jsxs)(\"li\",{children:[(0,s.jsx)(\"strong\",{children:\"Analytics\"}),(0,s.jsx)(\"span\",{children:\"daily fee income in USD, APR, uptime history\"})]}),(0,s.jsxs)(\"li\",{children:[(0,s.jsx)(\"strong\",{children:\"Operations\"}),(0,s.jsx)(\"span\",{children:\"own infrastructure, dev → production rollout\"})]})]})]})]})}),(0,s.jsx)(l.w,{})]})}}},e=>{e.O(0,[722,710,173,500,593,993,358],()=>{return a=2897,e(e.s=a);var a});var a=e.O();_N_E=a}]);"
+        }
+      ],
+      "error": null
+    },
+    {
+      "url": "https://secret.valopers.com/_next/static/chunks/polyfills-42372ed130431b0a.js",
+      "ok": true,
+      "status": 200,
+      "sha256": "0973c1d64c88adc8e3c950410cb58b288f72118d5965b78049438deb8f2f9683",
+      "contexts": [],
+      "error": null
+    },
+    {
+      "url": "https://secret.valopers.com/_next/static/chunks/webpack-c9bddbe8543f1bca.js",
+      "ok": true,
+      "status": 200,
+      "sha256": "e64c5fd6ab8553ec67f1b48121c369a580c1bd5032a331c0ebfd4ac4f9276b57",
+      "contexts": [],
+      "error": null
+    },
+    {
+      "url": "https://secret.valopers.com/_next/static/css/b71ad0e81a1d2f60.css",
+      "ok": true,
+      "status": 200,
+      "sha256": "1082a201baca2963d1ae68e2c6558acc515746f7870b60abb7055159f42957d7",
+      "contexts": [],
+      "error": null
+    },
+    {
+      "url": "https://secret.valopers.com/_next/static/css/8691669c0e3ed7a8.css",
+      "ok": true,
+      "status": 200,
+      "sha256": "692b9944135447ebdf5095b0cfcecc9b23290faa0e3047ce8286ee3ba19923d5",
+      "contexts": [
+        {
+          "needle": "chains",
+          "excerpt": "inPage_filterMobileBlock__ZpsKa{display:none;gap:8px;border:1px solid rgba(217,217,217,.3019607843);border-radius:20px;align-self:center;align-items:center;margin-bottom:28px}@media(max-width: 767.98px){.MainPage_filterMobileBlock__ZpsKa{display:flex}}.MainPage_filterBtn__vaLU_{padding:11px 24px;border-radius:16px;background:rgba(0,0,0,0);font-size:14px;line-height:18.2px;color:#fff;text-align:center;transition:.3s;display:flex;align-items:center;gap:4px}@media(max-width: 767.98px){.MainPage_filterBtn__vaLU_{width:50%;justify-content:center}}.MainPage_chainCount__xb5LS{color:#00b2ff}.MainPage_chains__y2civ{width:100%;display:grid;grid-template-columns:repeat(4, minmax(0, 1fr));gap:16px;margin-bottom:84px}@media(max-width: 1439.98px){.MainPage_chains__y2civ{grid-template-columns:repeat(3, minmax(0, 1fr))}}@media(max-width: 1023.98px){.MainPage_chains__y2civ{grid-template-columns:repeat(2, minmax(0, 1fr))}}@media(max-width: 767.98px){.MainPage_chains__y2civ{grid-template-columns:1fr;margin-bottom:80px}}html.light .MainPage_hero__ToYHS .MainPage_subtitle__tAd0O{color:#566174}html.light .MainPage_stat__4sMhC{border-color:#dde3ee;background:hsla(0,0%,100%,.72);box-shadow:0 14px 32px rgba(35,50,78,.06)}html.light .MainPage_statLabel__kX5v5{color:#657084}html.light .MainPage_searchBlock__72QrE,html.light .MainPage_filterMobileBlock__ZpsKa{border-color:#dde3ee;background:hsla(0,0%,100%,.76);box-shadow:0 14px 32px rgba(35,50,78,.05)}html.light .MainPage_searchIcon__uXaaz{color:#566174}html.light .MainPage_input__B_gM0{color:#20232c}html.light .MainPage_input__B_gM0::placeholder{color:#7d8798}html.light .MainPage_filterBtn__vaLU_{color:#20232c}html.light .MainPage_filterBtn__active__EU7dQ{background:#e7ecf5}html.light .MainPage_filterBtn__active__EU7dQ .MainPage_chainCount__xb5LS{color:#20232c}html.light .MainPage_chainCount__xb5LS{color:#00b2ff}.MainPage_pulse__MtKDK{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:22px}.MainPage_pulseItem__EnHZ6{display:flex;align-items:center;gap:8px;padding:9px 15px;border:1px solid rgba(217,217,217,.1803921569);border-radius:999px;background:rgba(217,217,217,.04);font-size:12.5px;line-height:17px;color:rgba(217,217,217,.62)}.MainPage_pulseItem__EnHZ6 b{color:#fff;font-weight:500}.MainPage_pulseUp__xtdfp{color:#3fa66d !important}.MainPage_pulseDown__peE4G{color:#c0392b !important}html.light .MainPage_pulseItem__EnHZ6{border-colo"
+        },
+        {
+          "needle": "chains",
+          "excerpt": "er;margin-bottom:28px}@media(max-width: 767.98px){.MainPage_filterMobileBlock__ZpsKa{display:flex}}.MainPage_filterBtn__vaLU_{padding:11px 24px;border-radius:16px;background:rgba(0,0,0,0);font-size:14px;line-height:18.2px;color:#fff;text-align:center;transition:.3s;display:flex;align-items:center;gap:4px}@media(max-width: 767.98px){.MainPage_filterBtn__vaLU_{width:50%;justify-content:center}}.MainPage_chainCount__xb5LS{color:#00b2ff}.MainPage_chains__y2civ{width:100%;display:grid;grid-template-columns:repeat(4, minmax(0, 1fr));gap:16px;margin-bottom:84px}@media(max-width: 1439.98px){.MainPage_chains__y2civ{grid-template-columns:repeat(3, minmax(0, 1fr))}}@media(max-width: 1023.98px){.MainPage_chains__y2civ{grid-template-columns:repeat(2, minmax(0, 1fr))}}@media(max-width: 767.98px){.MainPage_chains__y2civ{grid-template-columns:1fr;margin-bottom:80px}}html.light .MainPage_hero__ToYHS .MainPage_subtitle__tAd0O{color:#566174}html.light .MainPage_stat__4sMhC{border-color:#dde3ee;background:hsla(0,0%,100%,.72);box-shadow:0 14px 32px rgba(35,50,78,.06)}html.light .MainPage_statLabel__kX5v5{color:#657084}html.light .MainPage_searchBlock__72QrE,html.light .MainPage_filterMobileBlock__ZpsKa{border-color:#dde3ee;background:hsla(0,0%,100%,.76);box-shadow:0 14px 32px rgba(35,50,78,.05)}html.light .MainPage_searchIcon__uXaaz{color:#566174}html.light .MainPage_input__B_gM0{color:#20232c}html.light .MainPage_input__B_gM0::placeholder{color:#7d8798}html.light .MainPage_filterBtn__vaLU_{color:#20232c}html.light .MainPage_filterBtn__active__EU7dQ{background:#e7ecf5}html.light .MainPage_filterBtn__active__EU7dQ .MainPage_chainCount__xb5LS{color:#20232c}html.light .MainPage_chainCount__xb5LS{color:#00b2ff}.MainPage_pulse__MtKDK{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:22px}.MainPage_pulseItem__EnHZ6{display:flex;align-items:center;gap:8px;padding:9px 15px;border:1px solid rgba(217,217,217,.1803921569);border-radius:999px;background:rgba(217,217,217,.04);font-size:12.5px;line-height:17px;color:rgba(217,217,217,.62)}.MainPage_pulseItem__EnHZ6 b{color:#fff;font-weight:500}.MainPage_pulseUp__xtdfp{color:#3fa66d !important}.MainPage_pulseDown__peE4G{color:#c0392b !important}html.light .MainPage_pulseItem__EnHZ6{border-color:#dde3ee;background:hsla(0,0%,100%,.78);color:#657084}html.light .MainPage_pulseItem__EnHZ6 b{color:#20232c}html.light .MainPage_pulseUp__xtdfp{color:#2"
+        },
+        {
+          "needle": "chains",
+          "excerpt": "inPage_filterBtn__vaLU_{padding:11px 24px;border-radius:16px;background:rgba(0,0,0,0);font-size:14px;line-height:18.2px;color:#fff;text-align:center;transition:.3s;display:flex;align-items:center;gap:4px}@media(max-width: 767.98px){.MainPage_filterBtn__vaLU_{width:50%;justify-content:center}}.MainPage_chainCount__xb5LS{color:#00b2ff}.MainPage_chains__y2civ{width:100%;display:grid;grid-template-columns:repeat(4, minmax(0, 1fr));gap:16px;margin-bottom:84px}@media(max-width: 1439.98px){.MainPage_chains__y2civ{grid-template-columns:repeat(3, minmax(0, 1fr))}}@media(max-width: 1023.98px){.MainPage_chains__y2civ{grid-template-columns:repeat(2, minmax(0, 1fr))}}@media(max-width: 767.98px){.MainPage_chains__y2civ{grid-template-columns:1fr;margin-bottom:80px}}html.light .MainPage_hero__ToYHS .MainPage_subtitle__tAd0O{color:#566174}html.light .MainPage_stat__4sMhC{border-color:#dde3ee;background:hsla(0,0%,100%,.72);box-shadow:0 14px 32px rgba(35,50,78,.06)}html.light .MainPage_statLabel__kX5v5{color:#657084}html.light .MainPage_searchBlock__72QrE,html.light .MainPage_filterMobileBlock__ZpsKa{border-color:#dde3ee;background:hsla(0,0%,100%,.76);box-shadow:0 14px 32px rgba(35,50,78,.05)}html.light .MainPage_searchIcon__uXaaz{color:#566174}html.light .MainPage_input__B_gM0{color:#20232c}html.light .MainPage_input__B_gM0::placeholder{color:#7d8798}html.light .MainPage_filterBtn__vaLU_{color:#20232c}html.light .MainPage_filterBtn__active__EU7dQ{background:#e7ecf5}html.light .MainPage_filterBtn__active__EU7dQ .MainPage_chainCount__xb5LS{color:#20232c}html.light .MainPage_chainCount__xb5LS{color:#00b2ff}.MainPage_pulse__MtKDK{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:22px}.MainPage_pulseItem__EnHZ6{display:flex;align-items:center;gap:8px;padding:9px 15px;border:1px solid rgba(217,217,217,.1803921569);border-radius:999px;background:rgba(217,217,217,.04);font-size:12.5px;line-height:17px;color:rgba(217,217,217,.62)}.MainPage_pulseItem__EnHZ6 b{color:#fff;font-weight:500}.MainPage_pulseUp__xtdfp{color:#3fa66d !important}.MainPage_pulseDown__peE4G{color:#c0392b !important}html.light .MainPage_pulseItem__EnHZ6{border-color:#dde3ee;background:hsla(0,0%,100%,.78);color:#657084}html.light .MainPage_pulseItem__EnHZ6 b{color:#20232c}html.light .MainPage_pulseUp__xtdfp{color:#277a4e !important}.MainPage_listedPanel__Kvv21{position:relative;display:grid;grid-template-columns:min"
+        },
+        {
+          "needle": "chains",
+          "excerpt": "line-height:18.2px;color:#fff;text-align:center;transition:.3s;display:flex;align-items:center;gap:4px}@media(max-width: 767.98px){.MainPage_filterBtn__vaLU_{width:50%;justify-content:center}}.MainPage_chainCount__xb5LS{color:#00b2ff}.MainPage_chains__y2civ{width:100%;display:grid;grid-template-columns:repeat(4, minmax(0, 1fr));gap:16px;margin-bottom:84px}@media(max-width: 1439.98px){.MainPage_chains__y2civ{grid-template-columns:repeat(3, minmax(0, 1fr))}}@media(max-width: 1023.98px){.MainPage_chains__y2civ{grid-template-columns:repeat(2, minmax(0, 1fr))}}@media(max-width: 767.98px){.MainPage_chains__y2civ{grid-template-columns:1fr;margin-bottom:80px}}html.light .MainPage_hero__ToYHS .MainPage_subtitle__tAd0O{color:#566174}html.light .MainPage_stat__4sMhC{border-color:#dde3ee;background:hsla(0,0%,100%,.72);box-shadow:0 14px 32px rgba(35,50,78,.06)}html.light .MainPage_statLabel__kX5v5{color:#657084}html.light .MainPage_searchBlock__72QrE,html.light .MainPage_filterMobileBlock__ZpsKa{border-color:#dde3ee;background:hsla(0,0%,100%,.76);box-shadow:0 14px 32px rgba(35,50,78,.05)}html.light .MainPage_searchIcon__uXaaz{color:#566174}html.light .MainPage_input__B_gM0{color:#20232c}html.light .MainPage_input__B_gM0::placeholder{color:#7d8798}html.light .MainPage_filterBtn__vaLU_{color:#20232c}html.light .MainPage_filterBtn__active__EU7dQ{background:#e7ecf5}html.light .MainPage_filterBtn__active__EU7dQ .MainPage_chainCount__xb5LS{color:#20232c}html.light .MainPage_chainCount__xb5LS{color:#00b2ff}.MainPage_pulse__MtKDK{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:22px}.MainPage_pulseItem__EnHZ6{display:flex;align-items:center;gap:8px;padding:9px 15px;border:1px solid rgba(217,217,217,.1803921569);border-radius:999px;background:rgba(217,217,217,.04);font-size:12.5px;line-height:17px;color:rgba(217,217,217,.62)}.MainPage_pulseItem__EnHZ6 b{color:#fff;font-weight:500}.MainPage_pulseUp__xtdfp{color:#3fa66d !important}.MainPage_pulseDown__peE4G{color:#c0392b !important}html.light .MainPage_pulseItem__EnHZ6{border-color:#dde3ee;background:hsla(0,0%,100%,.78);color:#657084}html.light .MainPage_pulseItem__EnHZ6 b{color:#20232c}html.light .MainPage_pulseUp__xtdfp{color:#277a4e !important}.MainPage_listedPanel__Kvv21{position:relative;display:grid;grid-template-columns:minmax(0, 1.1fr) minmax(280px, 0.9fr);gap:24px;overflow:hidden;border:1px solid rgba(92,182,255,.18);bor"
+        }
+      ],
+      "error": null
+    },
+    {
+      "url": "https://secret.valopers.com/_next/static/css/5c9107d8f87130b8.css",
+      "ok": true,
+      "status": 200,
+      "sha256": "afad3a7aee14d8cdbdb3b07bba3f291566559be5a76b59affc80c13b03b0dbe5",
+      "contexts": [],
+      "error": null
+    },
+    {
+      "url": "https://secret.valopers.com/_next/static/css/9ec92b181a197b7e.css",
+      "ok": true,
+      "status": 200,
+      "sha256": "8268b81d46829a60cac1d89fdbf10bfe4c2cc3e09085f9b3d73ee0597e084223",
+      "contexts": [],
+      "error": null
+    }
+  ],
+  "route_literals": [],
+  "route_tests": [
+    {
+      "template": "/secret/blocks/{h}",
+      "url": "https://api.valopers.com/secret/blocks/11752974",
+      "ok": false,
+      "status": 404,
+      "parsed": null,
+      "sha256": "02c1a0904271571347f24896e8361482e0b74e8094630f044be391a71d7401c6",
+      "error": "HTTP Error 404: Not Found",
+      "body_excerpt": "{\n  \"error\": \"not_found\"\n}"
+    },
+    {
+      "template": "/secret/block/{h}",
+      "url": "https://api.valopers.com/secret/block/11752974",
+      "ok": false,
+      "status": 404,
+      "parsed": null,
+      "sha256": "02c1a0904271571347f24896e8361482e0b74e8094630f044be391a71d7401c6",
+      "error": "HTTP Error 404: Not Found",
+      "body_excerpt": "{\n  \"error\": \"not_found\"\n}"
+    },
+    {
+      "template": "/secretnetwork/blocks/{h}",
+      "url": "https://api.valopers.com/secretnetwork/blocks/11752974",
+      "ok": false,
+      "status": 404,
+      "parsed": null,
+      "sha256": "02c1a0904271571347f24896e8361482e0b74e8094630f044be391a71d7401c6",
+      "error": "HTTP Error 404: Not Found",
+      "body_excerpt": "{\n  \"error\": \"not_found\"\n}"
+    },
+    {
+      "template": "/secretnetwork/block/{h}",
+      "url": "https://api.valopers.com/secretnetwork/block/11752974",
+      "ok": false,
+      "status": 404,
+      "parsed": null,
+      "sha256": "02c1a0904271571347f24896e8361482e0b74e8094630f044be391a71d7401c6",
+      "error": "HTTP Error 404: Not Found",
+      "body_excerpt": "{\n  \"error\": \"not_found\"\n}"
+    },
+    {
+      "template": "/secret-network/blocks/{h}",
+      "url": "https://api.valopers.com/secret-network/blocks/11752974",
+      "ok": false,
+      "status": 404,
+      "parsed": null,
+      "sha256": "02c1a0904271571347f24896e8361482e0b74e8094630f044be391a71d7401c6",
+      "error": "HTTP Error 404: Not Found",
+      "body_excerpt": "{\n  \"error\": \"not_found\"\n}"
+    },
+    {
+      "template": "/secret-network/block/{h}",
+      "url": "https://api.valopers.com/secret-network/block/11752974",
+      "ok": false,
+      "status": 404,
+      "parsed": null,
+      "sha256": "02c1a0904271571347f24896e8361482e0b74e8094630f044be391a71d7401c6",
+      "error": "HTTP Error 404: Not Found",
+      "body_excerpt": "{\n  \"error\": \"not_found\"\n}"
+    },
+    {
+      "template": "/chains/secret/blocks/{h}",
+      "url": "https://api.valopers.com/chains/secret/blocks/11752974",
+      "ok": false,
+      "status": 404,
+      "parsed": null,
+      "sha256": "02c1a0904271571347f24896e8361482e0b74e8094630f044be391a71d7401c6",
+      "error": "HTTP Error 404: Not Found",
+      "body_excerpt": "{\n  \"error\": \"not_found\"\n}"
+    },
+    {
+      "template": "/chains/secret/block/{h}",
+      "url": "https://api.valopers.com/chains/secret/block/11752974",
+      "ok": false,
+      "status": 404,
+      "parsed": null,
+      "sha256": "02c1a0904271571347f24896e8361482e0b74e8094630f044be391a71d7401c6",
+      "error": "HTTP Error 404: Not Found",
+      "body_excerpt": "{\n  \"error\": \"not_found\"\n}"
+    },
+    {
+      "template": "/chains/secretnetwork/blocks/{h}",
+      "url": "https://api.valopers.com/chains/secretnetwork/blocks/11752974",
+      "ok": false,
+      "status": 404,
+      "parsed": null,
+      "sha256": "02c1a0904271571347f24896e8361482e0b74e8094630f044be391a71d7401c6",
+      "error": "HTTP Error 404: Not Found",
+      "body_excerpt": "{\n  \"error\": \"not_found\"\n}"
+    },
+    {
+      "template": "/chains/secretnetwork/block/{h}",
+      "url": "https://api.valopers.com/chains/secretnetwork/block/11752974",
+      "ok": false,
+      "status": 404,
+      "parsed": null,
+      "sha256": "02c1a0904271571347f24896e8361482e0b74e8094630f044be391a71d7401c6",
+      "error": "HTTP Error 404: Not Found",
+      "body_excerpt": "{\n  \"error\": \"not_found\"\n}"
+    },
+    {
+      "template": "/v1/secret/blocks/{h}",
+      "url": "https://api.valopers.com/v1/secret/blocks/11752974",
+      "ok": false,
+      "status": 404,
+      "parsed": null,
+      "sha256": "02c1a0904271571347f24896e8361482e0b74e8094630f044be391a71d7401c6",
+      "error": "HTTP Error 404: Not Found",
+      "body_excerpt": "{\n  \"error\": \"not_found\"\n}"
+    },
+    {
+      "template": "/v1/secret/block/{h}",
+      "url": "https://api.valopers.com/v1/secret/block/11752974",
+      "ok": false,
+      "status": 404,
+      "parsed": null,
+      "sha256": "02c1a0904271571347f24896e8361482e0b74e8094630f044be391a71d7401c6",
+      "error": "HTTP Error 404: Not Found",
+      "body_excerpt": "{\n  \"error\": \"not_found\"\n}"
+    },
+    {
+      "template": "/v1/secretnetwork/blocks/{h}",
+      "url": "https://api.valopers.com/v1/secretnetwork/blocks/11752974",
+      "ok": false,
+      "status": 404,
+      "parsed": null,
+      "sha256": "02c1a0904271571347f24896e8361482e0b74e8094630f044be391a71d7401c6",
+      "error": "HTTP Error 404: Not Found",
+      "body_excerpt": "{\n  \"error\": \"not_found\"\n}"
+    },
+    {
+      "template": "/v1/secretnetwork/block/{h}",
+      "url": "https://api.valopers.com/v1/secretnetwork/block/11752974",
+      "ok": false,
+      "status": 404,
+      "parsed": null,
+      "sha256": "02c1a0904271571347f24896e8361482e0b74e8094630f044be391a71d7401c6",
+      "error": "HTTP Error 404: Not Found",
+      "body_excerpt": "{\n  \"error\": \"not_found\"\n}"
+    },
+    {
+      "template": "/api/secret/blocks/{h}",
+      "url": "https://api.valopers.com/api/secret/blocks/11752974",
+      "ok": false,
+      "status": 404,
+      "parsed": null,
+      "sha256": "02c1a0904271571347f24896e8361482e0b74e8094630f044be391a71d7401c6",
+      "error": "HTTP Error 404: Not Found",
+      "body_excerpt": "{\n  \"error\": \"not_found\"\n}"
+    },
+    {
+      "template": "/api/secret/block/{h}",
+      "url": "https://api.valopers.com/api/secret/block/11752974",
+      "ok": false,
+      "status": 404,
+      "parsed": null,
+      "sha256": "02c1a0904271571347f24896e8361482e0b74e8094630f044be391a71d7401c6",
+      "error": "HTTP Error 404: Not Found",
+      "body_excerpt": "{\n  \"error\": \"not_found\"\n}"
+    },
+    {
+      "template": "/blocks/secret/{h}",
+      "url": "https://api.valopers.com/blocks/secret/11752974",
+      "ok": false,
+      "status": 404,
+      "parsed": null,
+      "sha256": "02c1a0904271571347f24896e8361482e0b74e8094630f044be391a71d7401c6",
+      "error": "HTTP Error 404: Not Found",
+      "body_excerpt": "{\n  \"error\": \"not_found\"\n}"
+    },
+    {
+      "template": "/block/secret/{h}",
+      "url": "https://api.valopers.com/block/secret/11752974",
+      "ok": false,
+      "status": 404,
+      "parsed": null,
+      "sha256": "02c1a0904271571347f24896e8361482e0b74e8094630f044be391a71d7401c6",
+      "error": "HTTP Error 404: Not Found",
+      "body_excerpt": "{\n  \"error\": \"not_found\"\n}"
+    },
+    {
+      "template": "/blocks/secretnetwork/{h}",
+      "url": "https://api.valopers.com/blocks/secretnetwork/11752974",
+      "ok": false,
+      "status": 404,
+      "parsed": null,
+      "sha256": "02c1a0904271571347f24896e8361482e0b74e8094630f044be391a71d7401c6",
+      "error": "HTTP Error 404: Not Found",
+      "body_excerpt": "{\n  \"error\": \"not_found\"\n}"
+    },
+    {
+      "template": "/block/secretnetwork/{h}",
+      "url": "https://api.valopers.com/block/secretnetwork/11752974",
+      "ok": false,
+      "status": 404,
+      "parsed": null,
+      "sha256": "02c1a0904271571347f24896e8361482e0b74e8094630f044be391a71d7401c6",
+      "error": "HTTP Error 404: Not Found",
+      "body_excerpt": "{\n  \"error\": \"not_found\"\n}"
+    }
+  ],
+  "winners": [],
+  "exact": {}
+}
