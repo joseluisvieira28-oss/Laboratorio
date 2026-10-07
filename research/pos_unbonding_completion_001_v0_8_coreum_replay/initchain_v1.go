@@ -82,7 +82,7 @@ func main() {
 		tmlog.NewNopLogger(),
 		dbm.NewMemDB(),
 		nil,
-		false,
+		true,
 		map[int64]bool{},
 		home,
 		0,
