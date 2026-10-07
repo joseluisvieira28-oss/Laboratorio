@@ -60,6 +60,9 @@ class LinkParser(HTMLParser):
             self.text=[]
 
 def get(url):
+    # AEM archive hrefs contain literal spaces. Browsers percent-encode them;
+    # urllib rejects such URLs unless we do the same explicitly.
+    url=url.replace(" ", "%20")
     req=urllib.request.Request(url,headers={"User-Agent":"Mozilla/5.0 CryptoLabSourceAudit/1.0"})
     with urllib.request.urlopen(req,timeout=30) as r:
         return r.read(), dict(r.headers)
@@ -179,5 +182,9 @@ audit={
  "archive_2021_pdf_links":len(links),
  "events":summary
 }
+download_errors=[{k:v.get(k) for k in ("date","url","error")} for v in cache.values() if not v.get("download_ok")]
+audit["unique_candidate_docs_attempted"]=len(cache)
+audit["unique_candidate_docs_downloaded"]=sum(1 for v in cache.values() if v.get("download_ok"))
+audit["download_errors"]=download_errors[:20]
 (OUT/"probe_receipt.json").write_text(json.dumps(audit,indent=2)+"\n")
 print(json.dumps(audit,indent=2))
