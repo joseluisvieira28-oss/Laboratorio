@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Crypto Lab V2 Pre-Outcome Gate",
+  "type": "object",
+  "required": [
+    "schema_version","family_id","economic_class","stage","mechanism",
+    "accessibility","source_gate","power_gate","multiplicity","freeze","decision"
+  ],
+  "properties": {
+    "schema_version": {"const": "2.0"},
+    "family_id": {"type": "string", "minLength": 3},
+    "economic_class": {"type": "string", "minLength": 3},
+    "stage": {"const": "PRE_OUTCOME"},
+    "mechanism": {
+      "type": "object",
+      "required": ["service","risk","persistence_friction","bilateral_rationale","competition_barrier","status"],
+      "properties": {
+        "service": {"type": "string", "minLength": 10},
+        "risk": {"type": "string", "minLength": 5},
+        "persistence_friction": {"type": "string", "minLength": 10},
+        "bilateral_rationale": {"type": "string", "minLength": 10},
+        "competition_barrier": {"type": "string", "minLength": 10},
+        "status": {"enum": ["MECHANISM_PASS","MECHANISM_UNSUPPORTED","ACCESSIBILITY_UNRESOLVED"]}
+      }
+    },
+    "accessibility": {
+      "type": "object",
+      "required": ["capture_path","data_access","execution_access","capacity_constraint","estimand","hurdle_h","hurdle_units","hurdle_rationale","status"],
+      "properties": {
+        "capture_path": {"type": "string", "minLength": 10},
+        "data_access": {"type": "string", "minLength": 3},
+        "execution_access": {"type": "string", "minLength": 3},
+        "capacity_constraint": {"type": "string", "minLength": 3},
+        "estimand": {"type": "string", "minLength": 3},
+        "hurdle_h": {"type": "number"},
+        "hurdle_units": {"type": "string", "minLength": 1},
+        "hurdle_rationale": {"type": "string", "minLength": 10},
+        "cost_model": {"type": "string"},
+        "cost_uncertainty": {"type": "string"},
+        "status": {"enum": ["ACCESSIBLE_PASS","EDGE_EXISTS_BUT_INACCESSIBLE","ACCESSIBILITY_UNRESOLVED"]}
+      }
+    },
+    "source_gate": {
+      "type": "object",
+      "required": ["enumerability_rule","timestamp_rule","treatment_binding","outcome_derived_inclusion","sources","status"],
+      "properties": {
+        "enumerability_rule": {"type": "string", "minLength": 10},
+        "timestamp_rule": {"type": "string", "minLength": 10},
+        "treatment_binding": {"type": "string", "minLength": 10},
+        "outcome_derived_inclusion": {"const": false},
+        "sources": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 5}},
+        "status": {"enum": ["SOURCE_PASS","SOURCE_BLOCKED","DESIGN_INVALID_PRE"]}
+      }
+    },
+    "power_gate": {
+      "type": "object",
+      "required": ["direction","alpha","power_target","method","nuisance_source","dependence_unit","n_eff_estimate","power_at_h","outcomes_opened","status"],
+      "properties": {
+        "direction": {"enum": ["POSITIVE","NEGATIVE","TWO_SIDED"]},
+        "alpha": {"type": "number", "exclusiveMinimum": 0, "maximum": 0.2},
+        "power_target": {"type": "number", "minimum": 0.5, "maximum": 0.99},
+        "method": {"enum": ["SIMULATION","BLOCK_BOOTSTRAP","ANALYTICAL_APPROX","OTHER_PREDECLARED"]},
+        "nuisance_source": {"type": "string", "minLength": 5},
+        "dependence_unit": {"type": "string", "minLength": 3},
+        "n_eff_estimate": {"type": "number", "exclusiveMinimum": 0},
+        "power_at_h": {"type": "number", "minimum": 0, "maximum": 1},
+        "outcomes_opened": {"const": false},
+        "status": {"enum": ["TEST_AUTHORIZED","UNDERPOWERED_PRE","DESIGN_INVALID_PRE"]}
+      }
+    },
+    "multiplicity": {
+      "type": "object",
+      "required": ["economic_hypothesis_id","primary_claim_id","trial_index","policy"],
+      "properties": {
+        "economic_hypothesis_id": {"type": "string", "minLength": 3},
+        "primary_claim_id": {"type": "string", "minLength": 3},
+        "trial_index": {"type": "integer", "minimum": 1},
+        "policy": {"type": "string", "minLength": 5},
+        "prior_variants_count": {"type": "integer", "minimum": 0}
+      }
+    },
+    "freeze": {
+      "type": "object",
+      "required": ["frozen_at_utc","outcome_boundary","single_shot","no_rescue"],
+      "properties": {
+        "frozen_at_utc": {"type": "string", "minLength": 10},
+        "outcome_boundary": {"type": "string", "minLength": 5},
+        "single_shot": {"const": true},
+        "no_rescue": {"const": true}
+      }
+    },
+    "decision": {"enum": ["TEST_AUTHORIZED","UNDERPOWERED_PRE","SOURCE_BLOCKED","KILL_PRE","EDGE_EXISTS_BUT_INACCESSIBLE"]}
+  }
+}
