@@ -9,8 +9,8 @@ def post(q):
 def main():
  rec={"generated_utc":datetime.now(timezone.utc).isoformat(),"event_counts_opened":False,"url":URL}
  try:
-  o=post("{__schema{queryType{fields{name args{name type{kind name ofType{kind name}}}}}}}")
-  rec["status"]="PASS";rec["query_fields"]=o.get("data",{}).get("__schema",{}).get("queryType",{}).get("fields",[])
+  o=post("{__type(name:\"block\"){fields{name type{kind name ofType{kind name}}}}}")
+  rec["status"]="PASS";rec["block_fields"]=o.get("data",{}).get("__type",{}).get("fields",[])
  except Exception as e:rec["status"]="FAIL";rec["error"]=type(e).__name__+": "+str(e)[:1000]
  os.makedirs(os.path.dirname(OUT),exist_ok=True)
  with open(OUT,"w") as f:json.dump(rec,f,indent=2,sort_keys=True);f.write("\n")
