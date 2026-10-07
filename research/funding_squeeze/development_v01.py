@@ -75,8 +75,13 @@ def load_all():
     common=[r["month"] for r in coverage if r.get("funding") and r.get("perp") and r.get("spot")]
     if len(common)<46: raise RuntimeError(f"coverage_fail:{len(common)}")
     f=pd.concat(fs,ignore_index=True); p=pd.concat(ps,ignore_index=True); s=pd.concat(ss,ignore_index=True)
-    f["ts"]=ptime(f["calc_time"]); f["rate"]=pd.to_numeric(f["last_funding_rate"],errors="coerce")
-    f=f[f.ts.notna()&f.rate.notna()].sort_values("ts").drop_duplicates("ts",keep="last")
+    f["ts_raw"]=ptime(f["calc_time"]); f["rate"]=pd.to_numeric(f["last_funding_rate"],errors="coerce")
+    f=f[f.ts_raw.notna()&f.rate.notna()].copy()
+    f["ts"]=f["ts_raw"].dt.round("h")
+    delta=(f["ts_raw"]-f["ts"]).abs().dt.total_seconds()
+    if float(delta.max())>5.0:
+        raise RuntimeError(f"funding_timestamp_alignment_exceeds_5s:{float(delta.max())}")
+    f=f.sort_values("ts").drop_duplicates("ts",keep="last")
     f=f[(f.ts>=pd.Timestamp("2021-01-01",tz="UTC"))&(f.ts<CUTOFF)]
     for d in (p,s):
         d["ts"]=ptime(d["open_time"]); d["open"]=pd.to_numeric(d["open"],errors="coerce")
