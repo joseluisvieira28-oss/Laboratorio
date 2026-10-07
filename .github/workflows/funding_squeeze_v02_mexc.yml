@@ -1,0 +1,41 @@
+name: Funding Squeeze V0.2 MEXC Low-Cost Confirmatory
+on:
+  push:
+    branches:
+      - funding-squeeze-v0.2-mexc-lowcost-confirmatory-2026-10-07
+    paths:
+      - .github/workflows/funding_squeeze_v02_mexc.yml
+      - research/funding_squeeze/mexc_v02.py
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  confirmatory:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests numpy pandas
+      - run: python -m py_compile research/funding_squeeze/mexc_v02.py
+      - run: python research/funding_squeeze/mexc_v02.py
+      - name: governance assert
+        run: |
+          python - <<'PY'
+          import json
+          d=json.load(open('funding_squeeze_v02_mexc_report.json'))
+          assert d['governance']['outcomes_2026_opened'] is False
+          assert d['verdict'] in {'SOURCE_BLOCKED','LOW_COST_REPLICATION_FAIL','SURVIVES_LOW_COST_REPLICATION'}
+          print('VERDICT='+d['verdict'])
+          print(json.dumps(d,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: funding-squeeze-v02-mexc-receipt
+          path: |
+            funding_squeeze_v02_mexc_report.json
+            funding_squeeze_v02_mexc_trades.csv
+          if-no-files-found: ignore
+          retention-days: 30
