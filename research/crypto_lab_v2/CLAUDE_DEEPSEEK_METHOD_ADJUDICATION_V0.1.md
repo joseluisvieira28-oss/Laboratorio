@@ -26,6 +26,7 @@ Decision owner: Crypto Lab governance, not either challenger.
 - TOST is reserved for true two-sided equivalence. Directional edge detection/exclusion uses the appropriate one-sided hurdle test/CI logic.
 - H is parametrized per family. It is not universally 2× costs or costs+10 bps.
 - Target power defaults to 80% as a policy choice, with pre-outcome justification required for deviations.
+- Power is computed at a frozen design alternative theta_design beyond H; computing “power at H” for a superiority test is rejected because H is the null boundary and power there is alpha.
 - Multiple testing is handled by a frozen policy suited to the task (FWER/alpha spending, FDR, selection-aware tests), not one universal Bonferroni rule.
 - Ensemble size has no magic maximum; complexity must be frozen and paid for in selection/multiplicity.
 - Search stopping separates “we stop spending research budget” from “we proved the space empty”.
