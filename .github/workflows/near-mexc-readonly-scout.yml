@@ -1,0 +1,23 @@
+name: NEAR MEXC public read-only scout
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  observe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Public MEXC observation only
+        working-directory: crypto_edge_radar
+        run: python -m radar.near_mexc_scout --output ../receipts/near-mexc-current
+      - uses: actions/upload-artifact@v4
+        with:
+          name: near-mexc-readonly-receipt
+          path: receipts/near-mexc-current/
