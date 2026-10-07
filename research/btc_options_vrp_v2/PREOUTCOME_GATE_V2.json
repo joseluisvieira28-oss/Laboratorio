@@ -1,0 +1,69 @@
+{
+  "schema_version": "2.0",
+  "family_id": "BTC-OPTIONS-VRP-001-FWD-V2",
+  "economic_class": "risk_transfer_volatility_premium",
+  "stage": "PRE_OUTCOME",
+  "mechanism": {
+    "service": "Sell BTC option convexity/insurance to participants who value crash protection or convex exposure.",
+    "risk": "Short-volatility tail risk, jump risk, inventory/hedge basis risk and adverse execution during stress.",
+    "persistence_friction": "Tail-risk aversion, capital/margin constraints and risk-bearing capacity prevent complete elimination of the premium.",
+    "bilateral_rationale": "Option buyers rationally pay for convex protection or mandated hedging; sellers accept tail risk in exchange for premium.",
+    "competition_barrier": "Professional market makers compete aggressively, but risk-capital limits and crash exposure mean the premium need not be arbitraged to zero.",
+    "status": "MECHANISM_PASS"
+  },
+  "accessibility": {
+    "capture_path": "Unauthenticated Deribit public BBO/order-book API for source building; any later execution would use venue-valid 0.1 BTC option size plus BTC perpetual hedge.",
+    "data_access": "Public current Deribit API; no paid historical source required for prospective build.",
+    "execution_access": "Public venue mechanics are compatible with the frozen 0.1 option-contract size; live account/margin eligibility remains a separate pre-live gate.",
+    "capacity_constraint": "Study is defined on 0.1 BTC option contracts and 1 BTC return denominator; capacity and margin are not inferred from historical PnL.",
+    "estimand": "stress_net_return_on_1BTC_collateral_per_7d_episode",
+    "hurdle_h": 0.0018295380282136176,
+    "hurdle_units": "fraction_of_1BTC_collateral_per_7d_episode",
+    "hurdle_rationale": "Economic hurdle equals a 10% annual compounded return requirement converted to seven days. Tail-risk gates remain separate and mandatory.",
+    "cost_model": "Measured executable option BBO entry/exit, Deribit BTC option fees, measured BTC-PERPETUAL BBO hedge entry/exit, perpetual fees/funding, plus the frozen adverse-tick/slippage stress.",
+    "cost_uncertainty": "Performance is not authorized until measured forward BBO exists. Official fee schedule is checked separately; no midpoint or modeled spread substitution.",
+    "status": "ACCESSIBLE_PASS"
+  },
+  "source_gate": {
+    "enumerability_rule": "One non-overlapping weekly cohort at the frozen Thursday 08:00 UTC anchor; all source-valid cohorts count and no outcome-based exclusions are allowed.",
+    "timestamp_rule": "Entry and exit BBO must be contemporaneous public Deribit snapshots with source timestamps and no future information; stale/missing required BBO makes the cohort source-incomplete.",
+    "treatment_binding": "At entry, choose same-expiry same-strike BTC call+put with 25-35 DTE, target 30 DTE and minimum absolute log-moneyness using only point-in-time index/chain data; hold exactly seven days with static initial BTC perpetual delta hedge.",
+    "outcome_derived_inclusion": false,
+    "sources": [
+      "Deribit public/get_index_price",
+      "Deribit public/get_instruments",
+      "Deribit public/get_order_book",
+      "legacy source-health run 35458192591 (112 instruments, 0 failures)"
+    ],
+    "status": "SOURCE_PASS"
+  },
+  "power_gate": {
+    "direction": "POSITIVE",
+    "alpha": 0.05,
+    "power_target": 0.8,
+    "method": "ANALYTICAL_APPROX",
+    "nuisance_source": "Legacy trade-print execution artifact run 35069743562 is used ONLY for nuisance dispersion planning: n=19, stress-return sample sd=0.0022938068056527205. Dispersion is conservatively inflated 25% to sigma=0.0028672585070659006; legacy mean is not used for confirmation.",
+    "dependence_unit": "Non-overlapping weekly 7-day cohort; final inference preserves four-observation block bootstrap and may blindly reduce effective N for missingness/dependence.",
+    "n_eff_estimate": 0,
+    "design_alternative_theta": 0.0035026979608143716,
+    "power_at_design_alt": 0,
+    "planned_n_eff": 20,
+    "planned_power_at_design_alt": 0.832681619349894,
+    "outcomes_opened": false,
+    "status": "UNDERPOWERED_PRE"
+  },
+  "multiplicity": {
+    "economic_hypothesis_id": "BTC-VRP-RISKTRANSFER",
+    "primary_claim_id": "OVRP-FWD-V2-STRESSMEAN-GT-H",
+    "trial_index": 3,
+    "policy": "One primary positive superiority claim on stress net mean above H. No regime, strike, cadence, hold-period, direction or cost rescue. Legacy discovery and prior execution MVEs remain separate trials.",
+    "prior_variants_count": 2
+  },
+  "freeze": {
+    "frozen_at_utc": "2026-10-07T17:30:00Z",
+    "outcome_boundary": "No forward strategy return, PnL, expectancy, realized post-entry outcome or performance statistic may be computed/opened until the V2 collection target is met and a separate activation receipt confirms blind power/source integrity.",
+    "single_shot": true,
+    "no_rescue": true
+  },
+  "decision": "UNDERPOWERED_PRE"
+}
