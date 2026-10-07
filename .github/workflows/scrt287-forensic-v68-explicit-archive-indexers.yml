@@ -1,0 +1,142 @@
+name: SCRT287 forensic V68 explicit archive indexers
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - cosmos-native-emission-param-shock-001-v0.2-t0-remediation-2026-10-07
+    paths:
+      - .github/workflows/scrt287-forensic-v68-explicit-archive-indexers.yml
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: cosmos-native-emission-param-shock-001-v0.2-t0-remediation-2026-10-07
+
+      - name: Query explicitly archival carrier indexers for exact missing Secret heights
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import concurrent.futures,datetime,hashlib,json,os,re,ssl,urllib.error,urllib.parse,urllib.request
+
+          OUT="research/cosmos_native_emission_param_shock_001_v0_2/SCRT287_EXPLICIT_ARCHIVE_INDEXERS_V68.json"
+          H=[11880919,11880920,11880921]
+          UA={"User-Agent":"CryptoLab-SCRT287-source-only-v68/1.0","Accept":"application/json"}
+          rpc_targets=[
+            ("terra2-delight-archive","07-tendermint-4","http://15.204.43.42:26657"),
+            ("archway-archive-guess","07-tendermint-24","http://148.251.124.58:26657"),
+          ]
+          rest_targets=[
+            ("terra2-polkachu-archive-rest","07-tendermint-4","https://terra-api.polkachu.com"),
+            ("terra2-delight-archive-rest","07-tendermint-4","http://15.204.43.42:1317"),
+            ("persistence-highstakes-archive-rest","07-tendermint-106","https://persistence-api.highstakes.ch:443"),
+            ("persistence-audit-archive-rest","07-tendermint-106","https://rest.persistence.audit.one"),
+            ("archway-delight-archive-rest","07-tendermint-24","http://148.251.124.58:1317"),
+          ]
+
+          def req(url,method="GET",data=None,headers=None,to=12):
+              hh=dict(UA);hh.update(headers or {})
+              try:
+                  q=urllib.request.Request(url,data=data,headers=hh,method=method)
+                  with urllib.request.urlopen(q,timeout=to,context=ssl._create_unverified_context()) as r:
+                      b=r.read(3_000_000)
+                      return {"ok":True,"status":r.status,"raw":b,"sha256":hashlib.sha256(b).hexdigest(),"final_url":r.geturl()}
+              except urllib.error.HTTPError as e:
+                  try:b=e.read(300000)
+                  except:b=b""
+                  return {"ok":False,"status":e.code,"raw":b,"error":str(e),
+                          "sha256":hashlib.sha256(b).hexdigest() if b else None,"final_url":url}
+              except Exception as e:return {"ok":False,"status":None,"raw":b"","error":repr(e),"sha256":None,"final_url":url}
+
+          def event_headers(obj,cid,h):
+              out=[]
+              def walk(x):
+                  if isinstance(x,dict):
+                      if x.get("type")=="update_client" and isinstance(x.get("attributes"),list):
+                          attrs={a.get("key"):a.get("value") for a in x.get("attributes") or []}
+                          if attrs.get("client_id")==cid and attrs.get("consensus_height")==f"4-{h}":
+                              out.append(attrs)
+                      for v in x.values():walk(v)
+                  elif isinstance(x,list):
+                      for v in x:walk(v)
+              walk(obj);return out
+
+          def rpc_one(job):
+              name,cid,base,h=job
+              query=f"update_client.client_id='{cid}' AND update_client.consensus_height='4-{h}'"
+              payload={"jsonrpc":"2.0","id":1,"method":"tx_search",
+                       "params":{"query":query,"prove":False,"page":"1","per_page":"100","order_by":"asc"}}
+              r=req(base,"POST",json.dumps(payload).encode(),{"Content-Type":"application/json"})
+              hits=[];total=None
+              if r["ok"]:
+                  try:
+                      d=json.loads(r["raw"]);res=d.get("result") or {};total=res.get("total_count");txs=res.get("txs") or []
+                      for tx in txs:
+                          for a in event_headers(tx,cid,h):
+                              hits.append({"carrier_height":int(tx["height"]),"tx_hash":tx.get("hash"),"attrs":a})
+                  except Exception as e:r["parse_error"]=repr(e)
+              return {"kind":"rpc","name":name,"client_id":cid,"base":base,"secret_height":h,
+                      "query":query,"ok":r["ok"],"status":r.get("status"),"error":r.get("error"),
+                      "response_sha256":r.get("sha256"),"total_count":total,"hits":hits,
+                      "excerpt":r["raw"].decode("utf-8","replace")[:3500] if (hits or not r["ok"]) else None}
+
+          def rest_one(job):
+              name,cid,base,h=job
+              events=[f"update_client.client_id='{cid}'",f"update_client.consensus_height='4-{h}'"]
+              q=urllib.parse.urlencode([("events",x) for x in events]+[("pagination.limit","100"),("order_by","ORDER_BY_ASC")])
+              url=base.rstrip("/")+"/cosmos/tx/v1beta1/txs?"+q
+              r=req(url)
+              hits=[];count=None
+              if r["ok"]:
+                  try:
+                      d=json.loads(r["raw"]);txr=d.get("tx_responses") or [];count=len(txr)
+                      for tx in txr:
+                          for a in event_headers(tx,cid,h):
+                              hits.append({"carrier_height":int(tx.get("height") or 0),"tx_hash":tx.get("txhash"),"attrs":a})
+                  except Exception as e:r["parse_error"]=repr(e)
+              return {"kind":"rest","name":name,"client_id":cid,"base":base,"secret_height":h,
+                      "url":url,"ok":r["ok"],"status":r.get("status"),"error":r.get("error"),
+                      "response_sha256":r.get("sha256"),"tx_response_count":count,"hits":hits,
+                      "excerpt":r["raw"].decode("utf-8","replace")[:3500] if (hits or not r["ok"]) else None}
+
+          jobs_rpc=[(n,c,b,h) for n,c,b in rpc_targets for h in H]
+          jobs_rest=[(n,c,b,h) for n,c,b in rest_targets for h in H]
+          with concurrent.futures.ThreadPoolExecutor(max_workers=24) as ex:
+              rr=list(ex.map(rpc_one,jobs_rpc))
+              rs=list(ex.map(rest_one,jobs_rest))
+          rows=rr+rs
+          hits=[x for x in rows if x["hits"]]
+          out={"scope":"SOURCE_ONLY_NO_MARKET_DATA","secret_heights_sought":H,
+               "tested_utc":datetime.datetime.now(datetime.timezone.utc).isoformat(),
+               "source_authority":{
+                 "terra2":"CosmoWiz current monitor marks 15.204.43.42 RPC/REST archive + indexer on and terra-api.polkachu.com REST archive.",
+                 "persistence":"CosmoWiz marks persistence-api.highstakes.ch REST archive; official Persistence docs list AUDIT.one archival endpoints.",
+                 "archway":"CosmoWiz marks 148.251.124.58:1317 archive; matching RPC port 26657 is discovery-only guess and not assumed authoritative unless it returns chain data."
+               },
+               "rows":rows,"exact_hits":hits,
+               "H":None,"T0":None,"gate":"SOURCE_HISTORICAL_EXECUTION_BOUNDARY_BLOCKED","forensic_phase":"OPEN_NOT_EXHAUSTED"}
+          os.makedirs(os.path.dirname(OUT),exist_ok=True)
+          open(OUT,"w").write(json.dumps(out,indent=2)+"\n")
+          print("V68",json.dumps({
+            "hits":[{"name":x["name"],"height":x["secret_height"],"hits":x["hits"]} for x in hits],
+            "rows":[{"name":x["name"],"kind":x["kind"],"height":x["secret_height"],"status":x["status"],
+                     "ok":x["ok"],"total":x.get("total_count"),"tx_count":x.get("tx_response_count"),"error":x.get("error")} for x in rows]
+          }))
+          PY
+
+      - name: Persist V68
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/cosmos_native_emission_param_shock_001_v0_2/SCRT287_EXPLICIT_ARCHIVE_INDEXERS_V68.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "SCRT287: persist explicit archive indexer sweep V68"
+          git pull --rebase origin cosmos-native-emission-param-shock-001-v0.2-t0-remediation-2026-10-07
+          git push origin HEAD:cosmos-native-emission-param-shock-001-v0.2-t0-remediation-2026-10-07
