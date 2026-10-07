@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import json, hashlib, math, os, urllib.parse, urllib.request, urllib.error
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 
 OUT="research/pos_unbonding_completion_001_v0_4_index_free/BLOCK_INDEX_CAPABILITY_V042.json"
@@ -76,15 +77,20 @@ def main():
       except Exception as e: se["completion_index_error"]=type(e).__name__+": "+str(e)
       ce["sources"][name]=se
 
-    # Raw 512-block audit on primary only.
+    # Raw 512-block audit on primary only. Same frozen heights, parallel transport only.
     pname,pbase=spec["sources"][0]
     raw_events=[]; failures=[]
-    for h in range(spec["anchor"],spec["anchor"]+512):
-      try:
-        rr=block_results(pbase,h)
-        if rr["events"]: raw_events.append({"height":h,"events":rr["events"],"sha256":rr["sha256"]})
-      except Exception as e:
-        failures.append({"height":h,"error":type(e).__name__+": "+str(e)})
+    heights=list(range(spec["anchor"],spec["anchor"]+512))
+    with ThreadPoolExecutor(max_workers=32) as ex:
+      futs={ex.submit(block_results,pbase,h):h for h in heights}
+      for fut in as_completed(futs):
+        h=futs[fut]
+        try:
+          rr=fut.result()
+          if rr["events"]: raw_events.append({"height":h,"events":rr["events"],"sha256":rr["sha256"]})
+        except Exception as e:
+          failures.append({"height":h,"error":type(e).__name__+": "+str(e)})
+    raw_events.sort(key=lambda x:x["height"]); failures.sort(key=lambda x:x["height"])
     ce["raw_audit"]={"provider":pname,"range":[spec["anchor"],spec["anchor"]+511],
                      "event_blocks":raw_events,"failures":failures}
     # Reconcile index outputs.
