@@ -149,9 +149,58 @@ def hnum(s):
     s=s.strip().lower()
     return HOUR_WORDS.get(s,int(s) if s.isdigit() else None)
 
+def parse_clock(txt):
+    m=re.search(r"(\d{1,2}):(\d{2})\s*(am|pm)?\s*(?:\(UTC\)|UTC)",txt or "",re.I)
+    if not m: return None
+    h=int(m.group(1)); mi=int(m.group(2)); ap=(m.group(3) or "").lower()
+    if ap=="pm" and h<12: h+=12
+    if ap=="am" and h==12: h=0
+    if h>23 or mi>59: return None
+    return h,mi
+
+def nearby_table_date(table):
+    # OKX commonly places "July 18, 2024:" or an adjustment sentence
+    # immediately before the corresponding table.
+    for tag in table.find_all_previous(["h1","h2","h3","h4","h5","p","strong","div"],limit=35):
+        txt=" ".join(tag.get_text(" ",strip=True).split())
+        if not txt or "Published on" in txt: continue
+        d=parse_date_text(txt)
+        if not d: continue
+        if len(txt)<=140 or re.search(r"adjust|effective|starting|from",txt,re.I):
+            return d
+    return None
+
+def nearby_table_clock(table):
+    for tag in table.find_all_previous(["h1","h2","h3","h4","h5","p","strong","div"],limit=25):
+        txt=" ".join(tag.get_text(" ",strip=True).split())
+        if "Published on" in txt: continue
+        c=parse_clock(txt)
+        if c and (len(txt)<=240 or re.search(r"adjust|effective|starting|from",txt,re.I)):
+            return c
+    return None
+
+def article_effective_candidates(full,pub):
+    out=[]
+    # Date then UTC clock within a short official sentence.
+    rx1=re.compile(
+        r"([A-Z][a-z]{2,8}\s+\d{1,2},?\s+20\d{2}|\d{1,2}\s+[A-Z][a-z]{2,8}\s+20\d{2})"
+        r".{0,140}?(\d{1,2}:\d{2}\s*(?:am|pm)?\s*(?:\(UTC\)|UTC))",re.I)
+    # Clock then date.
+    rx2=re.compile(
+        r"(\d{1,2}:\d{2}\s*(?:am|pm)?\s*(?:\(UTC\)|UTC))"
+        r".{0,140}?([A-Z][a-z]{2,8}\s+\d{1,2},?\s+20\d{2}|\d{1,2}\s+[A-Z][a-z]{2,8}\s+20\d{2})",re.I)
+    for rx,di,ti in ((rx1,1,2),(rx2,2,1)):
+        for m in rx.finditer(full):
+            d=parse_date_text(m.group(di)); c=parse_clock(m.group(ti))
+            if not d or not c: continue
+            z=d.replace(hour=c[0],minute=c[1])
+            if pub and z<=pub: continue
+            if START<=z<=END:
+                out.append(z)
+    return sorted({x.isoformat():x for x in out}.values())
+
 def parse_rows_for_events(soup,title):
     events=[]
-    # Prefer structured tables.
     for table in soup.find_all("table"):
         rows=[]
         for tr in table.find_all("tr"):
@@ -160,6 +209,8 @@ def parse_rows_for_events(soup,title):
         if len(rows)<2: continue
         header=" | ".join(rows[0]).lower()
         if "funding" not in header or "interval" not in header: continue
+        ctx_date=nearby_table_date(table)
+        ctx_clock=nearby_table_clock(table)
         for row in rows[1:]:
             txt=" | ".join(row)
             syms=sorted(set(re.findall(r"\b([A-Z0-9]{2,30})USDT\b",txt.upper())))
@@ -168,16 +219,14 @@ def parse_rows_for_events(soup,title):
             if not syms or len(ints)<2: continue
             old,new=ints[0],ints[1]
             if new>=old: continue
-            # Date + UTC time may be in this row or inherited from nearby section text.
-            row_date=parse_date_text(txt)
-            tm=re.search(r"(\d{1,2}):(\d{2})\s*(?:am|pm)?\s*(?:\(UTC\)|UTC)",txt,re.I)
-            hour=minute=None
-            if tm:
-                hour=int(tm.group(1)); minute=int(tm.group(2))
-                if re.search(r"pm",tm.group(0),re.I) and hour<12: hour+=12
-                if re.search(r"am",tm.group(0),re.I) and hour==12: hour=0
-            events.append({"symbols":syms,"old_hours":old,"new_hours":new,
-                           "row_text":txt,"row_date":row_date,"hour":hour,"minute":minute})
+            row_date=parse_date_text(txt) or ctx_date
+            c=parse_clock(txt) or ctx_clock
+            events.append({
+                "symbols":syms,"old_hours":old,"new_hours":new,
+                "row_text":txt,"row_date":row_date,
+                "hour":c[0] if c else None,"minute":c[1] if c else None,
+                "date_source":"row_or_nearest_table_context" if row_date else None
+            })
     return events
 
 def article_detail(meta):
@@ -188,20 +237,18 @@ def article_detail(meta):
     pub=exact_publish(r.text,soup,meta.get("listing_date"))
     events=parse_rows_for_events(soup,title)
 
-    # Fallback for the known common prose/table pattern where dates are section headings
-    # and the row itself carries contract + before/after + adjustment time.
-    if events:
-        # Gather article-level date candidates in order.
-        date_candidates=[]
-        for m in DATE_TEXT_RE.finditer(full):
-            d=parse_date_text(m.group(0))
-            if d and START<=d<=END: date_candidates.append((m.start(),d))
-        for e in events:
-            if e["row_date"] is None:
-                # We cannot safely map a table row to a date without structure.
-                # Leave unresolved; provenance gate will reject.
-                pass
-
+    # Conservative single-event fallback: only use an article-level effective
+    # datetime when exactly one post-publication date+UTC-time candidate exists.
+    unresolved=[e for e in events if e["row_date"] is None or e["hour"] is None]
+    if unresolved and pub:
+        cands=article_effective_candidates(full,pub)
+        if len(cands)==1:
+            z=cands[0]
+            for e in unresolved:
+                if e["row_date"] is None: e["row_date"]=z.replace(hour=0,minute=0,second=0,microsecond=0)
+                if e["hour"] is None:
+                    e["hour"]=z.hour; e["minute"]=z.minute
+                e["date_source"]="unique_article_level_effective_datetime"
     return r,soup,title,full,pub,events
 
 def candidate_title(title):
