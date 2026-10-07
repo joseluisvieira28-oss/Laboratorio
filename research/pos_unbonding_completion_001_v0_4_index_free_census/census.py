@@ -5,6 +5,8 @@ from datetime import datetime, timezone
 
 ROOT = pathlib.Path(__file__).resolve().parent
 FREEZE = 'aeb1fe6bb2e730d2424d7d96929d8522a7dfe3af'
+ENGINE_REVISION = 'v04-r2-authz-strict-protobuf'
+LAST_COMPLETION_HEIGHT = {'ATOM':23763458,'OSMO':26771085,'KAVA':13333699,'TIA':3314015,'DYDX':33826953}
 START, END = '2023-01-01T00:00:00Z', '2025-01-01T00:00:00Z'
 CHAINS = {
  'ATOM': {'id':'cosmoshub-4','genesis':5200791,'anchor':20000000,'upper':24000000,'sources':{'citizenweb3':'https://rpc.cosmoshub-4-archive.citizenweb3.com','cryptocrew':'https://rpc.cosmoshub-main.ccvalidators.com'}},
@@ -98,15 +100,21 @@ def messages(raw):
  body=first(raw,1)
  if not isinstance(body,bytes):raise ValueError('TxRaw body absent')
  out=[]
- for idx,anybuf in enumerate(v for n,w,v in fields(body) if n==1 and w==2):
+ def walk(anybuf,indices,depth=0):
+  if depth>8:raise ValueError('nested message depth cap')
   typ=textf(anybuf,1)
-  if typ not in ('/cosmos.staking.v1beta1.MsgUndelegate','/cosmos.staking.v1beta1.MsgCancelUnbondingDelegation'):continue
+  if typ=='/cosmos.authz.v1beta1.MsgExec':
+   value=first(anybuf,2,b'')
+   for j,child in enumerate(v for n,w,v in fields(value) if n==2 and w==2):walk(child,indices+[j],depth+1)
+   return
+  if typ not in ('/cosmos.staking.v1beta1.MsgUndelegate','/cosmos.staking.v1beta1.MsgCancelUnbondingDelegation'):return
   value=first(anybuf,2,b''); coin=first(value,3,b'')
-  msg={'message_index':idx,'type':typ,'delegator':textf(value,1),'validator':textf(value,2),'amount':textf(coin,2),'denom':textf(coin,1)}
+  msg={'message_index':indices[0],'message_path':indices,'type':typ,'delegator':textf(value,1),'validator':textf(value,2),'amount':textf(coin,2),'denom':textf(coin,1)}
   if not all(msg[k] for k in ('delegator','validator','amount','denom')):raise ValueError('missing staking fields')
   if not msg['amount'].isdigit():raise ValueError('invalid amount')
   if 'Cancel' in typ:msg['creation_height']=first(value,4,0)
   out.append(msg)
+ for idx,anybuf in enumerate(v for n,w,v in fields(body) if n==1 and w==2):walk(anybuf,[idx])
  return out
 def attrs(e):
  out={}
@@ -123,11 +131,12 @@ def attrs(e):
 def scan(chain,provider,lo,hi,out,max_seconds=240):
  """Coverage checkpoint: only contiguous successful block+results; failures never empty rows."""
  if hi<lo or hi-lo>=10000:raise ValueError('shard max 10000 blocks')
+ if lo<CHAINS[chain]['genesis'] or hi>LAST_COMPLETION_HEIGHT[chain]:raise ValueError('shard outside frozen historical height bounds')
  path=pathlib.Path(out); rpc=RPC(chain,provider); started=time.monotonic()
- manifest={'freeze':FREEZE,'chain':chain,'provider':provider,'lo':lo,'hi':hi,'rows':[],'attempts':[],'complete':False,'ledger_certified':False}
+ manifest={'freeze':FREEZE,'engine_revision':ENGINE_REVISION,'chain':chain,'provider':provider,'lo':lo,'hi':hi,'rows':[],'attempts':[],'complete':False,'ledger_certified':False}
  if path.exists():
   manifest=json.loads(path.read_text(encoding='utf-8'))
-  if any(manifest[k]!=v for k,v in [('freeze',FREEZE),('chain',chain),('provider',provider),('lo',lo),('hi',hi)]):raise ValueError('checkpoint identity mismatch')
+  if any(manifest.get(k)!=v for k,v in [('freeze',FREEZE),('engine_revision',ENGINE_REVISION),('chain',chain),('provider',provider),('lo',lo),('hi',hi)]):raise ValueError('checkpoint identity or decoder revision mismatch; old receipt preserved, new scan required')
  next_h=lo+len(manifest['rows'])
  for h in range(next_h,hi+1):
   if time.monotonic()-started>max_seconds:break

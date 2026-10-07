@@ -37,9 +37,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: research/pos_unbonding_completion_001_v0_4_index_free_census/checkpoints
-          key: unbonding-v04-${{ matrix.chain }}-${{ matrix.provider }}-${{ matrix.lo }}-${{ matrix.hi }}-${{ github.run_id }}-${{ github.run_attempt }}
+          key: unbonding-v04-r2-${{ matrix.chain }}-${{ matrix.provider }}-${{ matrix.lo }}-${{ matrix.hi }}-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
-            unbonding-v04-${{ matrix.chain }}-${{ matrix.provider }}-${{ matrix.lo }}-${{ matrix.hi }}-
+            unbonding-v04-r2-${{ matrix.chain }}-${{ matrix.provider }}-${{ matrix.lo }}-${{ matrix.hi }}-
       - name: Scan bounded shard without indexes or market data
         run: >-
           python research/pos_unbonding_completion_001_v0_4_index_free_census/census.py scan
@@ -52,3 +52,46 @@ jobs:
           name: v04-${{ matrix.chain }}-${{ matrix.provider }}-${{ matrix.lo }}-${{ matrix.hi }}
           path: research/pos_unbonding_completion_001_v0_4_index_free_census/checkpoints/*.json
           retention-days: 30
+  proofs:
+    if: github.repository == 'joseluisvieira28-oss/Laboratorio' && github.event.repository.private == false && github.ref == 'refs/heads/pos-unbonding-completion-001-source-remediation-v0.4-index-free-census-2026-10-07'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: {go-version: '1.23', cache: false}
+      - name: Verify historical IAVL successor proofs and app-root binding
+        working-directory: research/pos_unbonding_completion_001_v0_4_index_free_census/proofcheck
+        run: |
+          go mod tidy
+          go run . ../receipts
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v04-proof-verification
+          path: research/pos_unbonding_completion_001_v0_4_index_free_census/receipts/proof-verification.json
+          retention-days: 30
+  persist:
+    needs: [shards, proofs]
+    if: always() && github.repository == 'joseluisvieira28-oss/Laboratorio' && github.ref == 'refs/heads/pos-unbonding-completion-001-source-remediation-v0.4-index-free-census-2026-10-07'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pos-unbonding-completion-001-source-remediation-v0.4-index-free-census-2026-10-07
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: v04-*
+          merge-multiple: true
+          path: research/pos_unbonding_completion_001_v0_4_index_free_census/checkpoints
+      - name: Persist minimal checkpoints only on V0.4 branch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add research/pos_unbonding_completion_001_v0_4_index_free_census/checkpoints
+          if ! git diff --cached --quiet; then
+            git commit -m 'Persist V0.4 bounded raw-block shard checkpoints'
+            git push origin HEAD:pos-unbonding-completion-001-source-remediation-v0.4-index-free-census-2026-10-07
+          fi

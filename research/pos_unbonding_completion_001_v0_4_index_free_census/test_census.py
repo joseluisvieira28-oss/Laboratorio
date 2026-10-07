@@ -19,6 +19,11 @@ class ScientificFirewall(unittest.TestCase):
   anymsg=wire(1,b'/cosmos.staking.v1beta1.MsgUndelegate')+wire(2,msg)
   rows=census.messages(wire(1,wire(1,anymsg)))
   self.assertEqual(rows[0]['amount'],'1234');self.assertEqual(rows[0]['message_index'],0)
+ def test_authz_undelegate_retained(self):
+  msg=wire(1,b'del')+wire(2,b'val')+wire(3,wire(1,b'uatom')+wire(2,b'1234'))
+  child=wire(1,b'/cosmos.staking.v1beta1.MsgUndelegate')+wire(2,msg)
+  parent=wire(1,b'/cosmos.authz.v1beta1.MsgExec')+wire(2,wire(1,b'grantee')+wire(2,child))
+  rows=census.messages(wire(1,wire(1,parent)));self.assertEqual(rows[0]['message_path'],[0,0])
  def test_missing_execution_code_blocks_checkpoint(self):
   import base64
   raw=wire(1,wire(1,wire(1,b'/other')+wire(2,b'')))
