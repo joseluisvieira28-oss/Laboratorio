@@ -24,18 +24,28 @@ def req(method,url,**kwargs):
     for i in range(7):
         try:
             r=S.request(method,url,timeout=40,**kwargs)
-            if r.status_code==429:
-                last=RuntimeError("429"); time.sleep(min(30,2**(i+1))); continue
-            if 400 <= r.status_code < 500:
-                raise RuntimeError(f"http_{r.status_code}")
-            if r.status_code>=500:
-                last=RuntimeError(f"http_{r.status_code}"); time.sleep(min(20,2**i)); continue
-            r.raise_for_status(); return r
         except Exception as e:
-            if str(e).startswith("http_4"):
-                raise
             last=e
-            if i<6: time.sleep(min(20,2**i))
+            if i<6:
+                time.sleep(min(20,2**i))
+                continue
+            raise RuntimeError(str(last))
+        if r.status_code==429:
+            last=RuntimeError("429")
+            if i<6:
+                time.sleep(min(30,2**(i+1)))
+                continue
+            raise RuntimeError("429")
+        if 400 <= r.status_code < 500:
+            raise RuntimeError(f"http_{r.status_code}")
+        if r.status_code>=500:
+            last=RuntimeError(f"http_{r.status_code}")
+            if i<6:
+                time.sleep(min(20,2**i))
+                continue
+            raise RuntimeError(str(last))
+        r.raise_for_status()
+        return r
     raise RuntimeError(str(last))
 
 def enumerate_fee():
