@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import json, urllib.request, urllib.error, ssl, time, hashlib
+import json, urllib.request, urllib.error, ssl, time, hashlib, os
 from datetime import datetime, timezone
 
 UA = {"User-Agent": "CryptoLab-Source-Remediation/0.2"}
@@ -190,6 +190,9 @@ def event_evidence(rpc, center, needles):
 report={"generated_at":datetime.now(timezone.utc).isoformat(),"events":{}}
 
 for name,cfg in EVENTS.items():
+    only=os.environ.get("ONLY_EVENT")
+    if only and name != only:
+        continue
     row={"config":cfg}
     if name!="KAVA":
         prop,trail=find_proposal(cfg["api"],cfg.get("proposal_id"),cfg.get("title_contains"))
@@ -224,5 +227,6 @@ for name,cfg in EVENTS.items():
 
 print("===EMISSION_T0_RECOVERY_JSON===")
 print(json.dumps(report,indent=2,sort_keys=True))
-with open("emission_t0_recovery_v02.json","w") as f:
+outfile = "emission_t0_recovery_" + (os.environ.get("ONLY_EVENT","ALL").lower()) + "_v02.json"
+with open(outfile,"w") as f:
     json.dump(report,f,indent=2,sort_keys=True)
