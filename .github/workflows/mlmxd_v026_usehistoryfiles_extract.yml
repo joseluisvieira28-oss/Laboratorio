@@ -1,0 +1,38 @@
+name: MLMXD V0.2.6 useHistoryFiles Extraction
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - mexc-launchpool-mx-demand-v0.2-activation-pilot-2026-10-07
+    paths:
+      - '.github/workflows/mlmxd_v026_usehistoryfiles_extract.yml'
+permissions:
+  contents: read
+jobs:
+  diag:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests
+      - name: Extract useHistoryFiles implementation
+        run: |
+          python - <<'PY'
+          import requests,re
+          U="https://static.mocortech.com/production/web-v4-home-seo/65/_next/static/chunks/2uqzhk5-1nu0f.js"
+          t=requests.get(U,timeout=30).text
+          for needle in ["useHistoryFiles","maskedUrl","SPOT2/","historyFiles","HistoryFiles"]:
+            pos=0
+            print("\n### NEEDLE",needle)
+            count=0
+            while True:
+              i=t.find(needle,pos)
+              if i<0: break
+              print("\nPOS",i)
+              print(t[max(0,i-3000):min(len(t),i+5000)].replace("\n"," "))
+              count+=1
+              if count>=8: break
+              pos=i+len(needle)
+          PY
