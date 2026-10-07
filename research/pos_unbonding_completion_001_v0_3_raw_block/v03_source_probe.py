@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-import base64, hashlib, json, os, sys, urllib.parse, urllib.request
+import base64, hashlib, json, os, urllib.parse, urllib.request
 from datetime import datetime, timezone
 
 OUT = "research/pos_unbonding_completion_001_v0_3_raw_block/SOURCE_PROBE_RECEIPT_V03.json"
+UA = "CryptoLab-Unbonding-V03-SourceProbe/1.1"
 
 PROBES = [
     {
@@ -13,6 +14,7 @@ PROBES = [
             "polkachu": "https://dydx-dao-archive-rpc.polkachu.com",
         },
         "event_probe_range": [14950000, 15050000],
+        "raw_scan": {"primary": "kingnodes", "secondary": "polkachu", "center": 15000000, "radius": 250},
     },
     {
         "chain": "celestia",
@@ -20,12 +22,13 @@ PROBES = [
         "sources": {
             "dteam": "https://rpc.archive.celestia.mainnet.dteam.tech",
             "validatus": "https://rpc.archive.celestia.validatus.com",
+            "itrocket": "https://celestia-mainnet-rpc.itrocket.net",
+            "kj_archive_1": "http://157.180.10.38:40657",
+            "kj_archive_2": "http://136.243.94.113:26667",
         },
         "event_probe_range": [2450000, 2550000],
     },
 ]
-
-UA = "CryptoLab-Unbonding-V03-SourceProbe/1.0"
 
 def get(url, timeout=30):
     req = urllib.request.Request(url, headers={"User-Agent": UA, "Accept": "application/json"})
@@ -41,8 +44,7 @@ def parse_json(raw):
     return json.loads(raw.decode("utf-8"))
 
 def read_varint(buf, i):
-    shift = 0
-    out = 0
+    shift = out = 0
     while True:
         if i >= len(buf):
             raise ValueError("truncated varint")
@@ -75,23 +77,23 @@ def fields(buf):
         else:
             raise ValueError(f"unsupported wire={wire}")
 
-def first_len(buf, field_no):
-    for n,w,v in fields(buf):
-        if n == field_no and w == 2:
+def first_len(buf, n):
+    for fn,w,v in fields(buf):
+        if fn == n and w == 2:
             return v
     return None
 
-def all_len(buf, field_no):
-    return [v for n,w,v in fields(buf) if n == field_no and w == 2]
+def all_len(buf, n):
+    return [v for fn,w,v in fields(buf) if fn == n and w == 2]
 
-def first_varint(buf, field_no):
-    for n,w,v in fields(buf):
-        if n == field_no and w == 0:
+def first_varint(buf, n):
+    for fn,w,v in fields(buf):
+        if fn == n and w == 0:
             return v
     return None
 
-def text_field(buf, field_no):
-    v = first_len(buf, field_no)
+def text_field(buf, n):
+    v = first_len(buf, n)
     return v.decode("utf-8", "replace") if v is not None else None
 
 def decode_coin(buf):
@@ -99,7 +101,7 @@ def decode_coin(buf):
         return None
     return {"denom": text_field(buf,1), "amount": text_field(buf,2)}
 
-def decode_staking_any(anybuf):
+def decode_any(anybuf):
     type_url = text_field(anybuf,1)
     value = first_len(anybuf,2) or b""
     out = {"type_url": type_url}
@@ -123,13 +125,17 @@ def decode_txraw(b64):
     body = first_len(raw,1)
     if body is None:
         return []
-    return [decode_staking_any(x) for x in all_len(body,1)]
+    return [decode_any(x) for x in all_len(body,1)]
 
-def block_summary(raw):
+def block_obj(raw):
     j = parse_json(raw)
     r = j.get("result",{})
     b = r.get("block",{})
     h = b.get("header",{})
+    return r, b, h
+
+def block_summary(raw):
+    r,b,h = block_obj(raw)
     txs = ((b.get("data") or {}).get("txs") or [])
     return {
         "height": h.get("height"),
@@ -146,36 +152,33 @@ def results_summary(raw):
     r = j.get("result",{})
     phases = {}
     for key in ("begin_block_events","end_block_events","finalize_block_events"):
-        evs = r.get(key) or []
-        phases[key] = [
-            {
-                "type": e.get("type"),
-                "attributes": [
-                    {"key": a.get("key"), "value": a.get("value"), "index": a.get("index")}
-                    for a in (e.get("attributes") or [])
-                ],
-            }
-            for e in evs
-            if e.get("type") == "complete_unbonding"
-        ]
-    codes = []
-    for x in (r.get("txs_results") or []):
-        codes.append(x.get("code",0))
-    return {"height": r.get("height"), "complete_unbonding": phases, "tx_codes": codes}
+        phases[key] = []
+        for e in (r.get(key) or []):
+            if e.get("type") == "complete_unbonding":
+                phases[key].append({
+                    "type": e.get("type"),
+                    "attributes": [
+                        {"key": a.get("key"), "value": a.get("value"), "index": a.get("index")}
+                        for a in (e.get("attributes") or [])
+                    ],
+                })
+    return {
+        "height": r.get("height"),
+        "complete_unbonding": phases,
+        "tx_codes": [x.get("code",0) for x in (r.get("txs_results") or [])],
+    }
 
-def search_complete_unbonding(base, lo, hi):
-    q = f"complete_unbonding.amount EXISTS AND block.height >= {lo} AND block.height <= {hi}"
+def block_search(base, query):
     url = base + "/block_search?" + urllib.parse.urlencode({
-        "query": q, "page": "1", "per_page": "10", "order_by": "asc"
+        "query": query, "page": "1", "per_page": "10", "order_by": "asc"
     })
     try:
         status, raw = get(url, timeout=45)
-        j = parse_json(raw)
-        result = j.get("result",{})
+        result = parse_json(raw).get("result",{})
         return {
             "status": status,
             "sha256": sha256(raw),
-            "query": q,
+            "query": query,
             "total_count": result.get("total_count"),
             "returned_blocks": [
                 {
@@ -187,7 +190,60 @@ def search_complete_unbonding(base, lo, hi):
             ],
         }
     except Exception as e:
-        return {"error": type(e).__name__ + ": " + str(e), "query": q}
+        return {"error": type(e).__name__ + ": " + str(e), "query": query}
+
+def scan_raw_for_staking(base, secondary, center, radius):
+    order = [center]
+    for d in range(1, radius+1):
+        order.extend([center-d, center+d])
+    attempted = 0
+    errors = 0
+    for h in order:
+        attempted += 1
+        try:
+            _, raw = get(f"{base}/block?height={h}", timeout=20)
+            b = block_summary(raw)
+            for i,t in enumerate(b["txs"]):
+                try:
+                    msgs = decode_txraw(t)
+                except Exception:
+                    continue
+                target = [m for m in msgs if m.get("type_url") in (
+                    "/cosmos.staking.v1beta1.MsgUndelegate",
+                    "/cosmos.staking.v1beta1.MsgCancelUnbondingDelegation",
+                )]
+                if not target:
+                    continue
+                _, rrraw = get(f"{base}/block_results?height={h}", timeout=20)
+                rr = results_summary(rrraw)
+                code = rr["tx_codes"][i] if i < len(rr["tx_codes"]) else None
+                if code not in (None,0):
+                    continue
+                corroboration = None
+                try:
+                    _, sraw = get(f"{secondary}/block?height={h}", timeout=20)
+                    sb = block_summary(sraw)
+                    corroboration = {
+                        "block_hash_match": sb.get("block_hash") == b.get("block_hash"),
+                        "time_match": sb.get("time") == b.get("time"),
+                        "secondary_block_hash": sb.get("block_hash"),
+                    }
+                except Exception as e:
+                    corroboration = {"error": type(e).__name__ + ": " + str(e)}
+                return {
+                    "status": "FOUND",
+                    "requests_attempted": attempted,
+                    "height": h,
+                    "time": b.get("time"),
+                    "block_hash": b.get("block_hash"),
+                    "tx_index": i,
+                    "tx_code": code,
+                    "messages": target,
+                    "corroboration": corroboration,
+                }
+        except Exception:
+            errors += 1
+    return {"status":"NOT_FOUND_IN_BOUNDED_WINDOW","requests_attempted":attempted,"request_errors":errors,"center":center,"radius":radius}
 
 def main():
     receipt = {
@@ -207,16 +263,15 @@ def main():
                 rs, rraw = get(f"{base}/block_results?height={spec['height']}")
                 b = block_summary(braw)
                 rr = results_summary(rraw)
+                txs = b.pop("txs")
                 decoded = []
-                tx_codes = rr["tx_codes"]
-                for i, t in enumerate(b.pop("txs")):
+                for i,t in enumerate(txs):
                     try:
-                        msgs = decode_txraw(t)
-                        staking = [m for m in msgs if m.get("type_url","").startswith("/cosmos.staking.")]
+                        staking = [m for m in decode_txraw(t) if m.get("type_url","").startswith("/cosmos.staking.")]
                         if staking:
-                            decoded.append({"tx_index": i, "code": tx_codes[i] if i < len(tx_codes) else None, "staking_messages": staking})
+                            decoded.append({"tx_index":i,"code":rr["tx_codes"][i] if i < len(rr["tx_codes"]) else None,"staking_messages":staking})
                     except Exception as de:
-                        decoded.append({"tx_index": i, "decode_error": str(de)})
+                        decoded.append({"tx_index":i,"decode_error":str(de)})
                 src.update({
                     "block_http": bs,
                     "block_sha256": sha256(braw),
@@ -225,9 +280,13 @@ def main():
                     "block_results_sha256": sha256(rraw),
                     "block_results": rr,
                     "decoded_staking_txs": decoded,
-                    "block_search_probe": search_complete_unbonding(base, *spec["event_probe_range"]),
+                    "block_search_exact_height": block_search(base, f"block.height = {spec['height']}"),
+                    "block_search_complete_unbonding": block_search(
+                        base,
+                        f"complete_unbonding.amount EXISTS AND block.height >= {spec['event_probe_range'][0]} AND block.height <= {spec['event_probe_range'][1]}"
+                    ),
                 })
-                canonical.append((name, b.get("block_hash"), b.get("time"), b.get("app_hash")))
+                canonical.append((name,b.get("block_hash"),b.get("time"),b.get("app_hash")))
             except Exception as e:
                 src["error"] = type(e).__name__ + ": " + str(e)
             entry["sources"][name] = src
@@ -238,7 +297,16 @@ def main():
             "block_hash_match": len(ok) >= 2 and len({x[1] for x in ok}) == 1,
             "time_match": len(ok) >= 2 and len({x[2] for x in ok}) == 1,
             "app_hash_match": len(ok) >= 2 and len({x[3] for x in ok}) == 1,
+            "successful_source_names": [x[0] for x in ok],
         }
+        if spec.get("raw_scan"):
+            rspec = spec["raw_scan"]
+            entry["raw_staking_scan"] = scan_raw_for_staking(
+                spec["sources"][rspec["primary"]],
+                spec["sources"][rspec["secondary"]],
+                rspec["center"],
+                rspec["radius"],
+            )
         receipt["probes"].append(entry)
 
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
