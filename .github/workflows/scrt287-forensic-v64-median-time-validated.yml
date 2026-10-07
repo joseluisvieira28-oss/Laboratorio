@@ -1,4 +1,5 @@
 name: SCRT287 forensic V64 validated Tendermint median-time derivation
+# decoder-fix: signed protobuf Timestamp seconds; science unchanged
 
 on:
   workflow_dispatch:
@@ -76,7 +77,13 @@ jobs:
               xs=allf(fs,n,w);return xs[0] if xs else None
           def timestamp(b):
               fs=fields(b);sec=int(onef(fs,1,0) or 0);nano=int(onef(fs,2,0) or 0)
-              d=datetime.datetime.fromtimestamp(sec,tz=datetime.timezone.utc)
+              # google.protobuf.Timestamp.seconds is int64, encoded as a protobuf varint.
+              # Decode two's-complement signed values correctly (e.g. Go's zero time year 0001).
+              if sec >= (1<<63):
+                  sec -= (1<<64)
+              # Avoid platform time_t limitations; epoch + timedelta handles the protobuf range we encounter.
+              epoch=datetime.datetime(1970,1,1,tzinfo=datetime.timezone.utc)
+              d=epoch+datetime.timedelta(seconds=sec,microseconds=nano/1000)
               s=d.strftime("%Y-%m-%dT%H:%M:%S")
               if nano:s+="."+(f"{nano:09d}").rstrip("0")
               return s+"Z",sec*1_000_000_000+nano
@@ -97,7 +104,9 @@ jobs:
                   sf=fields(sb);flag=int(onef(sf,1,0) or 0)
                   addr=(onef(sf,2,2) or b"").hex().upper()
                   tm=onef(sf,3,2);ts,tns=(None,None)
-                  if tm:ts,tns=timestamp(tm)
+                  # BlockIDFlagAbsent carries no meaningful vote timestamp; don't interpret zero Go time.
+                  if tm and flag != 1:
+                      ts,tns=timestamp(tm)
                   sigs.append({"flag":flag,"address":addr,"time":ts,"time_ns":tns})
               vf=fields(valset);vals=[]
               for vb in allf(vf,1,2):
