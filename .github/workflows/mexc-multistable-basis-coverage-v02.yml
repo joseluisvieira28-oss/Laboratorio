@@ -1,0 +1,32 @@
+name: MEXC Multi-Stable Historical Coverage V0.2
+
+on:
+  push:
+    branches:
+      - mexc-multistable-basis-v0.1-source-gate-2026-10-07
+    paths:
+      - 'research/mexc_multistable_basis/historical_coverage_v02.py'
+      - 'research/mexc_multistable_basis/HISTORICAL_COVERAGE_CHARTER_V0.2.md'
+      - '.github/workflows/mexc-multistable-basis-coverage-v02.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install requests
+      - name: Compile
+        run: python -m py_compile research/mexc_multistable_basis/historical_coverage_v02.py
+      - name: Run source-only historical coverage probe
+        run: python research/mexc_multistable_basis/historical_coverage_v02.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mexc-multistable-coverage-v02-${{ github.run_id }}
+          path: artifacts/mexc_multistable_basis/coverage_v02/report.json
