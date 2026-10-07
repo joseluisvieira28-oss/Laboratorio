@@ -1,0 +1,54 @@
+name: MLMXD V0.2.4 Historical Download JS Endpoint Extraction
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - mexc-launchpool-mx-demand-v0.2-activation-pilot-2026-10-07
+    paths:
+      - '.github/workflows/mlmxd_v024_history_js_extract.yml'
+permissions:
+  contents: read
+jobs:
+  diag:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests
+      - name: Extract market-data backend candidates
+        run: |
+          python - <<'PY'
+          import requests,re,json
+          from urllib.parse import urljoin
+          U="https://www.mexc.com/en-GB/market-data-download"
+          h=requests.get(U,headers={"User-Agent":"Mozilla/5.0"},timeout=30).text
+          scripts=re.findall(r'<script[^>]+src=["\']([^"\']+)["\']',h,re.I)
+          needles=["market-data-download","marketData","historical","kline","KLINE","spot-chart","downloadFile","monthly","daily"]
+          found=0
+          for s in scripts:
+            try:
+              u=urljoin(U,s)
+              t=requests.get(u,headers={"User-Agent":"Mozilla/5.0"},timeout=30).text
+            except Exception:
+              continue
+            if not any(n.lower() in t.lower() for n in needles):
+              continue
+            for n in needles:
+              start=0
+              low=t.lower()
+              nn=n.lower()
+              while True:
+                i=low.find(nn,start)
+                if i<0: break
+                ctx=t[max(0,i-600):min(len(t),i+1200)]
+                if "/api/" in ctx or "download" in nn or "market-data" in nn:
+                  print("\n===CTX",n,u,"POS",i,"===")
+                  print(ctx.replace("\n"," ")[:1800])
+                  found+=1
+                  if found>=120:
+                    raise SystemExit
+                start=i+len(nn)
+          print("TOTAL_CONTEXTS",found)
+          PY
