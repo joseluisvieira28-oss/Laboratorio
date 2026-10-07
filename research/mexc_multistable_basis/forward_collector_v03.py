@@ -344,7 +344,7 @@ def main():
             else:
                 raw_assets=[]
                 for asset in scan["triggered_assets"]:
-                    z=sigs[asset]
+                    z={**sigs[asset],"underlying":asset}
                     try:raw_assets.append(capture_entry(z,t,meta))
                     except Exception as exc:raw_assets.append({**z,"eligible":False,"entry_error":str(exc)})
                 eligible=[x for x in raw_assets if x.get("eligible")]
