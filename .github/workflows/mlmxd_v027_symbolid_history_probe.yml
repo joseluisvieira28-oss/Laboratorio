@@ -1,0 +1,46 @@
+name: MLMXD V0.2.7 Symbol ID + History Catalog Probe
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - mexc-launchpool-mx-demand-v0.2-activation-pilot-2026-10-07
+    paths:
+      - '.github/workflows/mlmxd_v027_symbolid_history_probe.yml'
+permissions:
+  contents: read
+jobs:
+  diag:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests
+      - name: Find internal symbol IDs and probe history catalog
+        run: |
+          python - <<'PY'
+          import requests,re,json
+          U="https://www.mexc.com/en-GB/market-data-download/MX?type=kline&interval=daily&pair=MX%2FUSDT"
+          S=requests.Session(); S.headers.update({"User-Agent":"Mozilla/5.0"})
+          h=S.get(U,timeout=30).text
+          print("HTML_LEN",len(h))
+          for token in ["MX_USDT","BTC_USDT","MX/USDT","BTC/USDT"]:
+            print("\nTOKEN",token)
+            for m in list(re.finditer(re.escape(token),h))[:12]:
+              print(h[max(0,m.start()-700):m.end()+900].replace("\n"," "))
+          # Try public/static symbol configuration endpoints visible in page scripts / common likely routes
+          candidates=[
+            "https://www.mexc.com/api/platform/spot/market-v2/web/symbols",
+            "https://www.mexc.com/api/platform/spot/market-v2/web/symbols?symbol=MX_USDT",
+            "https://www.mexc.com/api/platform/spot/market-v2/web/hidden/symbols",
+            "https://www.mexc.com/api/platform/spot/market/symbols",
+            "https://www.mexc.com/api/platform/spot/market/symbols?symbol=MX_USDT",
+          ]
+          for u in candidates:
+            try:
+              r=S.get(u,timeout=20)
+              print("\nENDPOINT",u,"HTTP",r.status_code,"CT",r.headers.get("content-type"),"TEXT",r.text[:1500])
+            except Exception as e:
+              print("ERR",u,repr(e))
+          PY
