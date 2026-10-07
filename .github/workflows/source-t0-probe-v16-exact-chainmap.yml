@@ -1,0 +1,40 @@
+name: source-t0-probe-v16-exact-chainmap
+
+on:
+  push:
+    branches:
+      - cosmos-native-emission-param-shock-001-v0.2-t0-remediation-2026-10-07
+    paths:
+      - .github/workflows/source-t0-probe-v16-exact-chainmap.yml
+
+permissions:
+  contents: read
+
+jobs:
+  exact-chainmap:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Extract exact Akash and Secret configs
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json,urllib.request,ssl
+          q=urllib.request.Request("https://proxy.atomscan.com/chains.json",headers={"User-Agent":"CryptoLab-source-only/1.6"})
+          with urllib.request.urlopen(q,timeout=20,context=ssl._create_unverified_context()) as r:d=json.loads(r.read().decode())
+          pools=[]
+          if isinstance(d,dict):
+            for _,v in d.items():
+              if isinstance(v,list):pools.extend(v)
+          elif isinstance(d,list):pools=d
+          out=[]
+          for x in pools:
+            if not isinstance(x,dict):continue
+            fields={k:x.get(k) for k in ["chain_name","pretty_name","chain_id","bech32_prefix","name","Name","blockchain","Blockchain"] if k in x}
+            identity=" ".join(str(v).lower() for v in fields.values())
+            if any(z in identity for z in ["akash","secret","scrt","pulsar"]):
+              out.append({"identity":fields,"apis":x.get("apis"),"explorers":x.get("explorers"),"status":x.get("status"),"network_type":x.get("network_type")})
+          print("EXACT_CHAINMAP_V16_BEGIN")
+          print(json.dumps({"scope":"SOURCE_ONLY_NO_MARKET_DATA","matches":out},indent=2,sort_keys=True))
+          print("EXACT_CHAINMAP_V16_END")
+          PY
