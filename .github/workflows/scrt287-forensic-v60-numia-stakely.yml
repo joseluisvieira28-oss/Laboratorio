@@ -1,0 +1,167 @@
+name: SCRT287 forensic V60 Numia + Stakely
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - cosmos-native-emission-param-shock-001-v0.2-t0-remediation-2026-10-07
+    paths:
+      - .github/workflows/scrt287-forensic-v60-numia-stakely.yml
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: cosmos-native-emission-param-shock-001-v0.2-t0-remediation-2026-10-07
+
+      - name: Probe public Numia and Stakely source surfaces
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import concurrent.futures, datetime, hashlib, json, os, pathlib, re, ssl, urllib.error, urllib.parse, urllib.request
+
+          ROOT=pathlib.Path("research/cosmos_native_emission_param_shock_001_v0_2/forensic_v60")
+          RAW=ROOT/"raw"
+          RAW.mkdir(parents=True,exist_ok=True)
+          TARGET="2023-12-07T02:54:58.930543213Z"
+          HEIGHTS=[11880917,11880918,11880919,11880920,11880921,11880922]
+          UA={"User-Agent":"CryptoLab-SCRT287-source-only-v60/1.0","Accept":"application/json,text/plain,*/*"}
+
+          def fetch(item):
+              ident,url,method,headers=item
+              h=dict(UA); h.update(headers or {})
+              req=urllib.request.Request(url,headers=h,method=method)
+              rec={"id":ident,"url":url,"method":method,"headers_sent":{k:v for k,v in h.items() if k.lower()!="authorization"},
+                   "retrieved_utc":datetime.datetime.now(datetime.timezone.utc).isoformat()}
+              try:
+                  with urllib.request.urlopen(req,timeout=12,context=ssl._create_unverified_context()) as r:
+                      b=r.read(2_000_000)
+                      rec.update(ok=True,status=getattr(r,"status",200),final_url=r.geturl(),
+                                 response_headers=dict(r.headers),bytes=len(b),sha256=hashlib.sha256(b).hexdigest())
+              except urllib.error.HTTPError as e:
+                  try:b=e.read(500_000)
+                  except Exception:b=b""
+                  rec.update(ok=False,status=e.code,final_url=url,error=str(e),
+                             response_headers=dict(e.headers or {}),bytes=len(b),sha256=hashlib.sha256(b).hexdigest() if b else None)
+              except Exception as e:
+                  b=b""
+                  rec.update(ok=False,status=None,final_url=url,error=repr(e),response_headers={},bytes=0,sha256=None)
+              if b:
+                  p=RAW/(re.sub(r"[^A-Za-z0-9_.-]+","_",ident)+".bin")
+                  p.write_bytes(b); rec["raw"]=str(p.relative_to(ROOT.parent))
+                  rec["excerpt"]=b.decode("utf-8","replace")[:5000]
+              return rec
+
+          jobs=[]
+
+          # 1) Numia documented historical-block URL shape, public/legacy aliases, no credentials.
+          slugs=["secret","secretnetwork","secret-network","secret4","secret-4"]
+          hosts=[]
+          for s in slugs:
+              hosts += [
+                  f"https://{s}-lcd.numia.xyz",
+                  f"https://public-{s}-lcd.numia.xyz",
+                  f"https://{s}-rpc.numia.xyz",
+                  f"https://public-{s}-rpc.numia.xyz",
+              ]
+          for base in sorted(set(hosts)):
+              # Use the central likely heights only; enough to discover whether alias is alive.
+              for h in [11880919,11880920]:
+                  if "-lcd." in base:
+                      jobs.append((f"numia_{base}_{h}",base+f"/blocks/{h}","GET",{}))
+                      jobs.append((f"numia_tm_{base}_{h}",base+f"/cosmos/base/tendermint/v1beta1/blocks/{h}","GET",{}))
+                  else:
+                      jobs.append((f"numia_rpc_{base}_{h}",base+f"/block?height={h}","GET",{}))
+
+          # 2) Numia current/legacy BigQuery public metadata candidates, anonymous only.
+          bqbase="https://bigquery.googleapis.com/bigquery/v2/projects/numia-data"
+          datasets=["secret_4","secret","secretnetwork","secret_mainnet"]
+          for d in datasets:
+              jobs.append((f"bq_dataset_{d}",f"{bqbase}/datasets/{d}","GET",{}))
+              for t in ["raw_block_results","blocks","block_results"]:
+                  jobs.append((f"bq_table_{d}_{t}",f"{bqbase}/datasets/{d}/tables/{t}","GET",{}))
+                  jobs.append((f"bq_data_{d}_{t}",f"{bqbase}/datasets/{d}/tables/{t}/data?maxResults=1","GET",{}))
+
+          # 3) Stakely current public load balancer, plus block metadata routes.
+          srpc="https://secretnetwork-rpc.stakely.io"
+          slcd="https://secretnetwork-lcd.stakely.io"
+          for h in HEIGHTS:
+              jobs += [
+                  (f"stakely_block_{h}",srpc+f"/block?height={h}","GET",{}),
+                  (f"stakely_commit_{h}",srpc+f"/commit?height={h}","GET",{}),
+                  (f"stakely_blockchain_{h}",srpc+f"/blockchain?minHeight={h}&maxHeight={h}","GET",{}),
+                  (f"stakely_lcd_{h}",slcd+f"/cosmos/base/tendermint/v1beta1/blocks/{h}","GET",{}),
+              ]
+
+          with concurrent.futures.ThreadPoolExecutor(max_workers=32) as ex:
+              rows=list(ex.map(fetch,jobs))
+
+          def walk(x):
+              if isinstance(x,dict):
+                  yield x
+                  for v in x.values(): yield from walk(v)
+              elif isinstance(x,list):
+                  for v in x: yield from walk(v)
+
+          def pairs(rec):
+              if not rec.get("raw"): return []
+              b=(ROOT.parent/rec["raw"]).read_bytes()
+              try:d=json.loads(b)
+              except Exception:return []
+              out=[]
+              for x in walk(d):
+                  if not isinstance(x,dict): continue
+                  hh=x.get("height"); tt=x.get("time")
+                  if hh is None or tt is None: continue
+                  try:hh=int(hh)
+                  except:continue
+                  if hh not in HEIGHTS: continue
+                  if not str(tt).startswith("2023-"): continue
+                  z={"height":hh,"time":str(tt),"hash":x.get("hash")}
+                  if z not in out: out.append(z)
+              return out
+
+          for r in rows:
+              r["height_time_pairs"]=pairs(r)
+
+          exact=[r for r in rows if r["height_time_pairs"]]
+
+          receipt={
+              "scope":"SOURCE_ONLY_NO_MARKET_DATA",
+              "candidate":"SCRT Proposal 287",
+              "target_voting_end":TARGET,
+              "tested_heights":HEIGHTS,
+              "tested_utc":datetime.datetime.now(datetime.timezone.utc).isoformat(),
+              "authority":"No credentials, no account/private endpoints, no market/outcome data.",
+              "rows":rows,
+              "machine_readable_height_time_hits":exact,
+              "H":None,
+              "T0":None,
+              "gate":"SOURCE_HISTORICAL_EXECUTION_BOUNDARY_BLOCKED",
+              "forensic_phase":"OPEN_NOT_EXHAUSTED",
+          }
+          (ROOT/"receipt.json").write_text(json.dumps(receipt,indent=2,ensure_ascii=False)+"\n",encoding="utf-8")
+          print(json.dumps({
+              "jobs":len(rows),
+              "http_statuses":{str(k):sum(1 for x in rows if x.get("status")==k) for k in sorted({x.get("status") for x in rows},key=lambda v:(v is None,str(v)))},
+              "hits":[{"id":x["id"],"url":x["url"],"pairs":x["height_time_pairs"]} for x in exact],
+              "interesting":[{"id":x["id"],"status":x.get("status"),"url":x["url"],"excerpt":x.get("excerpt","")[:600]} for x in rows if x.get("status") not in (None,404,500,502,503)]
+          },ensure_ascii=False))
+          PY
+
+      - name: Persist V60 receipt
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/cosmos_native_emission_param_shock_001_v0_2/forensic_v60
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "SCRT287: persist Numia and Stakely forensic probe V60"
+          git pull --rebase origin cosmos-native-emission-param-shock-001-v0.2-t0-remediation-2026-10-07
+          git push origin HEAD:cosmos-native-emission-param-shock-001-v0.2-t0-remediation-2026-10-07
