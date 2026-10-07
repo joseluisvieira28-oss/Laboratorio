@@ -102,12 +102,24 @@ def nfp_probe(event_id,t0,issue_date,filename):
         ]
         hits=[ln for ln in lines if any(re.search(k,ln,re.I) for k in keys)]
         printed=[ln for ln in lines if re.search(r"printed\s+as\s+of",ln,re.I)]
-        # Conservative completeness: require recognizable payroll, unemployment, and at least two AHE-related rows.
-        payroll=any(re.search(r"non.?farm.*payroll",x,re.I) for x in hits)
-        unemp=any(re.search(r"unemployment\s+rate",x,re.I) for x in hits)
-        ahe=[x for x in hits if re.search(r"(average|avg\.?).*hourly.*earnings",x,re.I)]
-        complete=payroll and unemp and len(ahe)>=2
-        best=base|{"pages":pages,"issue_date":issue_date,"hits":hits[:20],"printed_as_of":printed[:8]}
+        flat=" ".join(text.split())
+        keyword_snippets=[]
+        seen=set()
+        for pat in [r"hourly", r"earnings", r"non.?farm", r"unemployment"]:
+            for m in re.finditer(pat,flat,re.I):
+                a=max(0,m.start()-220); b=min(len(flat),m.end()+320)
+                sn=flat[a:b]
+                if sn not in seen:
+                    seen.add(sn); keyword_snippets.append(sn)
+                if len(keyword_snippets)>=20: break
+        # Conservative completeness remains unchanged in this diagnostic run.
+        payroll=bool(re.search(r"non.?farm.{0,120}payroll",flat,re.I))
+        unemp=bool(re.search(r"unemployment.{0,80}rate",flat,re.I))
+        ahe_mom=bool(re.search(r"(average|avg\.?).{0,40}hourly.{0,40}earnings.{0,120}(m/m|mom)",flat,re.I))
+        ahe_yoy=bool(re.search(r"(average|avg\.?).{0,40}hourly.{0,40}earnings.{0,120}(y/y|yoy)",flat,re.I))
+        complete=payroll and unemp and ahe_mom and ahe_yoy
+        best=base|{"pages":pages,"issue_date":issue_date,"hits":hits[:20],"keyword_snippets":keyword_snippets[:20],"printed_as_of":printed[:8],
+                   "diagnostic_flags":{"payroll":payroll,"unemployment":unemp,"ahe_mom":ahe_mom,"ahe_yoy":ahe_yoy}}
     return {"event_id":event_id,"family":"NFP","t0_utc":t0,"source_family":"The Baker Group weekly report","attempts":[base],"selected":best,"candidate_complete":complete}
 
 def main():
@@ -151,6 +163,8 @@ def main():
         s=r.get("selected")
         if s:
             for h in s.get("hits",[]): print("  ",h)
+            for h in s.get("keyword_snippets",[]): print("  SNIP",h)
+            if s.get("diagnostic_flags"): print("  FLAGS",s.get("diagnostic_flags"))
             for h in s.get("printed_as_of",[]): print("  PRINTED",h)
 
 if __name__=="__main__":
