@@ -1,0 +1,27 @@
+name: BTC Options VRP V2 — BTC USDC Trade Tape Source Probe
+
+on:
+  push:
+    branches:
+      - "btc-options-vrp-v2-forward-2026-10-07"
+    paths:
+      - "research/btc_options_vrp_v2/USDC_TRADE_TAPE_SOURCE_FREEZE_V0.1.md"
+      - "labs/BTC_OPTIONS_VRP_001/usdc_trade_tape_source_probe_v01.py"
+      - ".github/workflows/btc-options-vrp-v2-usdc-tape-probe.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python -m py_compile labs/BTC_OPTIONS_VRP_001/usdc_trade_tape_source_probe_v01.py
+      - run: python labs/BTC_OPTIONS_VRP_001/usdc_trade_tape_source_probe_v01.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: btc-options-vrp-v2-usdc-tape-source
+          path: artifacts/btc_options_vrp_usdc_tape_source_v01/
+          retention-days: 30
