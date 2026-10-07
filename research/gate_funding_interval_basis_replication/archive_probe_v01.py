@@ -248,3 +248,44 @@ for contract,eff in [
             print("FUND_BENCH_TS",contract,"COUNT",len(ts),"FIRST",ts[:4],"LAST",ts[-4:],"GAPS",gaps[:12])
     except Exception as e:
         print("FUND_BENCH_ERR",contract,type(e).__name__,str(e))
+
+print("=== GATE BATCH FUNDING TIMESTAMP RETENTION ===")
+batch="https://api.gateio.ws/api/v4/futures/usdt/funding_rates"
+for contracts in [["LPT_USDT"],["RARE_USDT"],["LPT_USDT","RARE_USDT"]]:
+    try:
+        rr=s.post(batch,json={"contracts":contracts},timeout=30)
+        print("BATCH_HTTP",json.dumps(contracts),rr.status_code,"LEN",len(rr.content),
+              "ERRBODY",(rr.text[:300] if rr.status_code!=200 else ""))
+        if rr.status_code==200:
+            obj=rr.json()
+            recs=[]
+            def walk(x):
+                if isinstance(x,dict):
+                    if "contract" in x and isinstance(x.get("data"),list):
+                        ts=sorted({int(z["t"]) for z in x["data"] if isinstance(z,dict) and str(z.get("t","")).isdigit()})
+                        recs.append({"contract":x.get("contract"),"count":len(ts),
+                                     "min_t":min(ts) if ts else None,"max_t":max(ts) if ts else None})
+                    for v in x.values(): walk(v)
+                elif isinstance(x,list):
+                    for v in x: walk(v)
+            walk(obj)
+            print("BATCH_TS_META",json.dumps(recs,sort_keys=True))
+    except Exception as e:
+        print("BATCH_ERR",json.dumps(contracts),type(e).__name__,str(e))
+
+print("=== HISTORICAL ARTICLE CATEGORY PROBE ===")
+u="https://miniapp.gate.com/announcements/article/31699"
+try:
+    rr=s.get(u,timeout=30)
+    sp=BeautifulSoup(rr.text,"html.parser")
+    nd=sp.find("script",id="__NEXT_DATA__")
+    print("HIST_ARTICLE_HTTP",rr.status_code,"LEN",len(rr.text))
+    if nd and nd.string:
+        obj=json.loads(nd.string)
+        pp=((obj.get("props") or {}).get("pageProps") or {})
+        print("HIST_PAGEPROPS_KEYS",json.dumps(sorted(pp.keys())))
+        for key in ["detail","article","categories","relatedList","query"]:
+            if key in pp:
+                print("HIST_"+key.upper(),json.dumps(pp.get(key),ensure_ascii=False)[:12000])
+except Exception as e:
+    print("HIST_ARTICLE_ERR",type(e).__name__,str(e))
