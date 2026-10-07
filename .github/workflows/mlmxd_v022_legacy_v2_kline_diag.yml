@@ -1,0 +1,33 @@
+name: MLMXD V0.2.2 Legacy V2 Kline Coverage Diagnostic
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - mexc-launchpool-mx-demand-v0.2-activation-pilot-2026-10-07
+    paths:
+      - '.github/workflows/mlmxd_v022_legacy_v2_kline_diag.yml'
+permissions:
+  contents: read
+jobs:
+  diag:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe legacy official MEXC V2 kline history
+        run: |
+          python - <<'PY'
+          import requests, json, datetime
+          base="https://www.mexc.com/open/api/v2/market/kline"
+          tests=["2025-01-23T10:00:00Z","2025-08-04T10:00:00Z","2026-05-20T13:00:00Z"]
+          for ts in tests:
+            dt=datetime.datetime.fromisoformat(ts.replace("Z","+00:00"))
+            st=int((dt-datetime.timedelta(hours=1)).timestamp())
+            for sym in ["MX_USDT","BTC_USDT"]:
+              try:
+                r=requests.get(base,params={"symbol":sym,"interval":"15m","start_time":st,"limit":120},timeout=30)
+                payload=r.json()
+                data=payload.get("data") if isinstance(payload,dict) else None
+                print(json.dumps({"ts":ts,"symbol":sym,"http":r.status_code,"code":payload.get("code") if isinstance(payload,dict) else None,"n":len(data) if isinstance(data,list) else None,"first":data[0][0] if isinstance(data,list) and data else None,"last":data[-1][0] if isinstance(data,list) and data else None},ensure_ascii=False))
+              except Exception as e:
+                print(json.dumps({"ts":ts,"symbol":sym,"error":repr(e)}))
+          PY
