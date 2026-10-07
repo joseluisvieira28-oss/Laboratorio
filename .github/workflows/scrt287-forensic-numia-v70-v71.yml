@@ -1,0 +1,28 @@
+name: SCRT287 Numia documentary probes V70 V71
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  public-source-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Reproduce unauthenticated probes in isolated output
+        run: |
+          mkdir -p "$RUNNER_TEMP/numia-probes"
+          cp research/cosmos_native_emission_param_shock_001_v0_2/forensic_scrt287_v54.py "$RUNNER_TEMP/numia-probes/"
+          cp research/cosmos_native_emission_param_shock_001_v0_2/forensic_scrt287_numia_v7*.py "$RUNNER_TEMP/numia-probes/"
+          cp research/cosmos_native_emission_param_shock_001_v0_2/verify_scrt287_numia_v70_v71.py "$RUNNER_TEMP/numia-probes/"
+          python "$RUNNER_TEMP/numia-probes/forensic_scrt287_numia_v70.py"
+          python "$RUNNER_TEMP/numia-probes/forensic_scrt287_numia_v71.py"
+          python "$RUNNER_TEMP/numia-probes/verify_scrt287_numia_v70_v71.py"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: SCRT287-numia-source-only-v70-v71
+          path: ${{ runner.temp }}/numia-probes/
