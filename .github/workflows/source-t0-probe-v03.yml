@@ -1,0 +1,205 @@
+name: source-t0-probe-v03
+
+on:
+  push:
+    branches:
+      - cosmos-native-emission-param-shock-001-v0.2-t0-remediation-2026-10-07
+    paths:
+      - .github/workflows/source-t0-probe-v03.yml
+
+permissions:
+  contents: read
+
+jobs:
+  source-only-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Probe public historical sources only
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, urllib.request, urllib.parse, ssl, time
+          from datetime import datetime, timezone
+
+          UA = {"User-Agent":"CryptoLab-source-t0-probe/0.3"}
+          out = {"scope":"SOURCE_ONLY_NO_MARKET_DATA","akash":{},"scrt":{}}
+
+          def get(url, headers=None, timeout=15):
+              h=dict(UA); h.update(headers or {})
+              try:
+                  req=urllib.request.Request(url,headers=h)
+                  with urllib.request.urlopen(req,timeout=timeout,context=ssl.create_default_context()) as r:
+                      body=r.read().decode("utf-8","replace")
+                      try: data=json.loads(body)
+                      except Exception: data=body[:12000]
+                      return {"ok":True,"status":r.status,"url":url,"data":data}
+              except Exception as e:
+                  return {"ok":False,"url":url,"error":repr(e)}
+
+          def dt_ts(s):
+              return datetime.fromisoformat(s.replace("Z","+00:00")).timestamp()
+
+          # -------- AKASH: public indexed blocks -> exact first block at/after voting_end --------
+          base="https://console-api.akash.network"
+          targets={
+            "265":{"voting_end":"2024-08-08T16:13:48.243802688Z","unix":1723133628},
+            "283":{"voting_end":"2025-03-14T13:25:56.642245036Z","unix":1741958756},
+          }
+
+          def ak_block(h):
+              r=get(f"{base}/v1/blocks/{h}")
+              if not r["ok"] or not isinstance(r.get("data"),dict): return None,r
+              d=r["data"]
+              if "height" not in d or "datetime" not in d: return None,r
+              return d,r
+
+          for pid,t in targets.items():
+              rec={"target":t}
+              pred=get(f"{base}/v1/predicted-date-height/{t['unix']}?blockWindow=10000")
+              rec["prediction"]=pred
+              ph=None
+              if pred["ok"] and isinstance(pred.get("data"),dict):
+                  ph=pred["data"].get("predictedHeight")
+              if isinstance(ph,(int,float)):
+                  ph=int(ph)
+                  rec["predicted_height"]=ph
+                  # Find bracket of valid indexed blocks around prediction.
+                  lo=max(1,ph-30000); hi=ph+30000
+                  blo,_=ak_block(lo); bhi,_=ak_block(hi)
+                  rec["bracket_probe"]={"lo":blo,"hi":bhi}
+                  if blo and bhi:
+                      target_ts=dt_ts(t["voting_end"])
+                      # Require bracket to contain target time; widen deterministically if needed.
+                      for _ in range(3):
+                          if dt_ts(blo["datetime"]) <= target_ts <= dt_ts(bhi["datetime"]): break
+                          if target_ts < dt_ts(blo["datetime"]):
+                              hi=lo; bhi=blo; lo=max(1,lo-60000); blo,_=ak_block(lo)
+                          else:
+                              lo=hi; blo=bhi; hi=hi+60000; bhi,_=ak_block(hi)
+                          if not blo or not bhi: break
+                      rec["final_bracket"]={"lo":blo,"hi":bhi}
+                      if blo and bhi and dt_ts(blo["datetime"]) <= target_ts <= dt_ts(bhi["datetime"]):
+                          L=int(blo["height"]); R=int(bhi["height"])
+                          while L < R:
+                              m=(L+R)//2
+                              bm,raw=ak_block(m)
+                              if not bm:
+                                  rec.setdefault("binary_errors",[]).append(raw)
+                                  break
+                              if dt_ts(bm["datetime"]) >= target_ts: R=m
+                              else: L=m+1
+                          H=L
+                          neigh={}
+                          for hh in range(H-2,H+3):
+                              b,raw=ak_block(hh)
+                              neigh[str(hh)]=b if b else raw
+                          rec["first_block_at_or_after_vote_end"]=H
+                          rec["neighbors"]=neigh
+
+              out["akash"][pid]=rec
+
+          # -------- RPC block_search for governance execution events --------
+          ak_rpcs=[
+            "https://akash.rpc.uquad.org",
+            "https://rpc-akash.ecostake.com",
+            "https://akash-rpc.kleomedes.network",
+            "https://akash-mainnet-rpc.cosmonautstakes.com",
+            "https://akash-rpc.publicnode.com",
+            "https://akash.rpc.arcturian.tech",
+            "https://akash-rpc.polkachu.com",
+            "https://akash-mainnet-rpc.crouton.digital",
+          ]
+          scrt_rpcs=[
+            "https://rpc.archive.scrt.marionode.com",
+            "https://scrt.public-rpc.com",
+            "https://rpc.lavenderfive.com/secretnetwork",
+            "https://1rpc.io/scrt-rpc",
+            "https://rpc.mainnet.secretsaturn.net",
+            "https://rpc-secret.01node.com",
+            "https://public.stakewolle.com/cosmos/secretnetwork/rpc",
+          ]
+
+          def block_searches(rpcs,pid):
+              rows=[]
+              queries=[
+                f"active_proposal.proposal_id='{pid}'",
+                f"proposal_id='{pid}'",
+                f"proposal_vote.proposal_id='{pid}'",
+              ]
+              for rpc in rpcs:
+                  for q in queries:
+                      url=rpc.rstrip("/")+"/block_search?"+urllib.parse.urlencode({"query":q,"page":"1","per_page":"10","order_by":"asc"})
+                      rr=get(url,timeout=12)
+                      # keep compact
+                      rows.append({"rpc":rpc,"query":q,"response":rr})
+              return rows
+
+          out["akash"]["265"]["block_search"]=block_searches(ak_rpcs,"265")
+          out["akash"]["283"]["block_search"]=block_searches(ak_rpcs,"283")
+          out["scrt"]["287"]={
+            "voting_end":"2023-12-07T02:54:58.930543213Z",
+            "block_search":block_searches(scrt_rpcs,"287")
+          }
+
+          # Query exact Akash candidate H and H+1 via RPC block/block_results and historical REST mint.
+          ak_rests=[
+            "https://rest-akash.ecostake.com",
+            "https://akash-api.polkachu.com",
+            "https://akash-api.kleomedes.network",
+            "https://akash-mainnet-rest.cosmonautstakes.com",
+            "https://akash-rest.publicnode.com",
+            "https://akash-api.validatornode.com",
+            "https://akash.api.arcturian.tech",
+            "https://akash-mainnet-api.crouton.digital",
+          ]
+          for pid in ("265","283"):
+              H=out["akash"][pid].get("first_block_at_or_after_vote_end")
+              if H:
+                  probes=[]
+                  for hh in (H-1,H,H+1,H+2):
+                      for rpc in ak_rpcs:
+                          for ep in ("block","block_results"):
+                              probes.append(get(rpc.rstrip("/")+f"/{ep}?height={hh}",timeout=10))
+                      for rest in ak_rests:
+                          for path in ("/cosmos/mint/v1beta1/inflation","/cosmos/mint/v1beta1/params"):
+                              probes.append(get(rest.rstrip("/")+path,headers={"x-cosmos-block-height":str(hh)},timeout=10))
+                  out["akash"][pid]["historical_probes"]=probes
+
+          # Secret: probe governance and mint around any height returned by block_search.
+          # Do not infer a height from voting_end alone.
+          secret_hits=[]
+          for item in out["scrt"]["287"]["block_search"]:
+              rr=item["response"]
+              d=rr.get("data") if rr.get("ok") else None
+              try:
+                  blocks=d.get("result",{}).get("blocks",[]) if isinstance(d,dict) else []
+                  for b in blocks:
+                      h=int(b.get("block",{}).get("header",{}).get("height"))
+                      secret_hits.append(h)
+              except Exception:
+                  pass
+          out["scrt"]["287"]["candidate_heights"]=sorted(set(secret_hits))
+
+          scrt_rests=[
+            "https://rest.lavenderfive.com/secretnetwork",
+            "https://lcd.mainnet.secretsaturn.net",
+            "https://rest-secret.01node.com",
+            "https://public.stakewolle.com/cosmos/secretnetwork/rest",
+          ]
+          if secret_hits:
+              probes=[]
+              for H in sorted(set(secret_hits)):
+                  for hh in (H-1,H,H+1,H+2):
+                      for rpc in scrt_rpcs:
+                          for ep in ("block","block_results"):
+                              probes.append(get(rpc.rstrip("/")+f"/{ep}?height={hh}",timeout=10))
+                      for rest in scrt_rests:
+                          for path in ("/cosmos/mint/v1beta1/inflation","/cosmos/mint/v1beta1/params"):
+                              probes.append(get(rest.rstrip("/")+path,headers={"x-cosmos-block-height":str(hh)},timeout=10))
+              out["scrt"]["287"]["historical_probes"]=probes
+
+          print("SOURCE_T0_PROBE_JSON_BEGIN")
+          print(json.dumps(out,indent=2,sort_keys=True)[:900000])
+          print("SOURCE_T0_PROBE_JSON_END")
+          PY
