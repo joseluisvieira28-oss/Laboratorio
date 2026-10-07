@@ -1,0 +1,70 @@
+name: NEWS SHOCK V0.3 static-source evidence probe
+on:
+  push:
+    branches:
+      - news-shock-v03-public-source-recovery-v0.1
+    paths:
+      - ".github/workflows/news-shock-v03-static-source-evidence-v01.yml"
+      - "Dream-Account-OS-v2.3-PARTIAL/research/news_shock_v03_macro_consensus_source_gate/static_source_probe/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PDF tools
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils
+      - name: Fetch and inspect source documents
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          curl --fail --location --retry 3 --user-agent 'Mozilla/5.0 CryptoLabSourceAudit/1.0'             'https://research.danskebank.com/link/WeeklyFocus080120/%24file/WeeklyFocus_080120.pdf'             -o evidence/danske_weekly_20210108.pdf
+          curl --fail --location --retry 3 --user-agent 'Mozilla/5.0 CryptoLabSourceAudit/1.0'             'https://www.gbm.scotiabank.com/content/dam/gbm/market-insights/2021/january/daily-fx/FX-Daily-1-8.pdf'             -o evidence/scotia_fx_daily_20210108.pdf
+
+          sha256sum evidence/*.pdf | tee evidence/SHA256SUMS.txt
+          pdfinfo evidence/danske_weekly_20210108.pdf | tee evidence/danske_pdfinfo.txt
+          pdfinfo evidence/scotia_fx_daily_20210108.pdf | tee evidence/scotia_pdfinfo.txt
+          pdftotext -layout evidence/danske_weekly_20210108.pdf evidence/danske.txt
+          pdftotext -layout evidence/scotia_fx_daily_20210108.pdf evidence/scotia.txt
+
+          {
+            echo '=== DANSKE CPI LINES ==='
+            grep -Ei 'CPI headline|CPI core' evidence/danske.txt || true
+            echo
+            echo '=== SCOTIA NFP LINES ==='
+            grep -Ei 'Nonfarm Payrolls|Unemployment Rate|Average Hourly Earnings' evidence/scotia.txt || true
+          } | tee evidence/extracted_fields.txt
+
+          python - <<'PY'
+          from pathlib import Path
+          import json, re, hashlib
+
+          files = {
+              "danske": Path("evidence/danske_weekly_20210108.pdf"),
+              "scotia": Path("evidence/scotia_fx_daily_20210108.pdf"),
+          }
+          out = {"probe_id":"NEWS-SHOCK-V03-STATIC-SOURCE-EVIDENCE-001","source_only":True,"files":{}}
+          for k,p in files.items():
+              b=p.read_bytes()
+              out["files"][k]={"bytes":len(b),"sha256":hashlib.sha256(b).hexdigest()}
+          out["checks"]={
+              "danske_cpi_headline_present": bool(re.search(r"CPI headline", Path("evidence/danske.txt").read_text(errors="ignore"), re.I)),
+              "danske_cpi_core_present": bool(re.search(r"CPI core", Path("evidence/danske.txt").read_text(errors="ignore"), re.I)),
+              "scotia_nfp_present": bool(re.search(r"Nonfarm Payrolls", Path("evidence/scotia.txt").read_text(errors="ignore"), re.I)),
+              "scotia_unemployment_present": bool(re.search(r"Unemployment Rate", Path("evidence/scotia.txt").read_text(errors="ignore"), re.I)),
+              "scotia_ahe_mom_present": bool(re.search(r"Average Hourly Earnings MoM", Path("evidence/scotia.txt").read_text(errors="ignore"), re.I)),
+          }
+          Path("evidence/receipt.json").write_text(json.dumps(out,indent=2)+"\n")
+          print(json.dumps(out,indent=2))
+          PY
+      - name: Upload evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: NEWS_SHOCK_V03_STATIC_SOURCE_EVIDENCE_V01
+          path: evidence/
+          retention-days: 90
