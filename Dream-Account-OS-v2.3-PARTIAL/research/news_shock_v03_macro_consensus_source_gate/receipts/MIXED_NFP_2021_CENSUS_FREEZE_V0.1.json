@@ -1,0 +1,48 @@
+{
+  "freeze_id": "NEWS-SHOCK-V03-MIXED-NFP-CENSUS-2021-001",
+  "created_date": "2026-10-07",
+  "branch": "news-shock-v03-public-source-recovery-v0.1",
+  "status": "FROZEN_BEFORE_MIXED_NFP_CENSUS",
+  "scope": "SOURCE_ONLY",
+  "universe": "All 12 frozen 2021 Employment Situation/NFP releases from the existing BLS manifest.",
+  "field_source_rules": {
+    "nfp_change_k": {
+      "primary": "TeleTrade daily Schedule for today page published before T0",
+      "field": "U.S. Nonfarm Payrolls forecast"
+    },
+    "unemployment_rate": {
+      "primary": "TeleTrade daily Schedule for today page published before T0",
+      "field": "U.S. Unemployment Rate forecast"
+    },
+    "ahe_mom": {
+      "primary": "TeleTrade daily Schedule for today page published before T0",
+      "field": "U.S. Average hourly earnings forecast (monthly change)"
+    },
+    "ahe_yoy": {
+      "primary": "The Baker Group weekly report / Lunch with Lester",
+      "field": "Average Hourly Earnings YoY estimate"
+    }
+  },
+  "fallback": "NONE",
+  "mixed_source_rule": "Mixed-source event records are explicitly permitted by inherited POINT_IN_TIME_RULES; each field carries its own source identity, publication timestamp/audit trail and hash.",
+  "timestamp_rule": "Every field source must be strictly pre-T0. TeleTrade same-day schedule requires an explicit page timestamp before 12:30/13:30 UTC. Baker issue must have internal printed-as-of before T0.",
+  "version_rule": "TeleTrade must expose stable article identity/date-time; Baker must expose static PDF identity and printed-as-of.",
+  "conflict_rule": "No averaging. The frozen field source wins for its field; conflicting values are recorded but do not trigger substitution.",
+  "missing_rule": "Any missing one of the four required fields makes that event incomplete.",
+  "gate": {
+    "minimum_complete_nfp": 10,
+    "required_provenance_rate": 1.0
+  },
+  "prohibited": [
+    "BTC/ETH prices or returns",
+    "Treasury yield outcomes",
+    "taker flow",
+    "continuation/reversal",
+    "PnL",
+    "post-outcome tuning",
+    "2025/2026 protected outcomes",
+    "merge to main",
+    "trading or exchange mutation"
+  ],
+  "note": "Frozen after the Baker-only route failed coverage and before running the full 12-event mixed-source census."
+}
