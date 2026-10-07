@@ -1,0 +1,224 @@
+name: SCRT287 forensic V66 raw carrier block-results recovery
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - cosmos-native-emission-param-shock-001-v0.2-t0-remediation-2026-10-07
+    paths:
+      - .github/workflows/scrt287-forensic-v66-carrier-raw-block-results.yml
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: cosmos-native-emission-param-shock-001-v0.2-t0-remediation-2026-10-07
+
+      - name: Locate 2023 carrier blocks and scan raw block_results for missing Secret IBC headers
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import base64,concurrent.futures,datetime,hashlib,json,os,re,ssl,urllib.error,urllib.parse,urllib.request
+
+          OUT="research/cosmos_native_emission_param_shock_001_v0_2/SCRT287_CARRIER_RAW_BLOCK_RESULTS_V66.json"
+          TARGET="2023-12-07T02:54:58.930543213Z"
+          TARGET_HEIGHTS=[11880919,11880920,11880921]
+          carriers=[
+            ("juno","07-tendermint-108","https://juno-rpc.publicnode.com"),
+            ("axelar-primary","07-tendermint-40","https://axelar-rpc.publicnode.com"),
+            ("akash","07-tendermint-102","https://akash-rpc.publicnode.com"),
+            ("stride","07-tendermint-37","https://rpc.stride.citizenweb3.com"),
+            ("persistence","07-tendermint-106","https://rpc.cosmos.directory/persistence"),
+            ("agoric","07-tendermint-17","https://rpc.cosmos.directory/agoric"),
+            ("stargaze","07-tendermint-177","https://stargaze-rpc.publicnode.com"),
+            ("injective","07-tendermint-97","https://injective-rpc.publicnode.com"),
+            ("quicksilver","07-tendermint-28","https://rpc.cosmos.directory/quicksilver"),
+            ("composable","07-tendermint-52","https://rpc.cosmos.directory/composable"),
+          ]
+          UA={"User-Agent":"CryptoLab-SCRT287-source-only-v66/1.0","Accept":"application/json"}
+
+          def ns(s):
+              m=re.fullmatch(r"(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.(\d+))?(?:Z|\+00:00)",str(s))
+              if not m:raise ValueError(s)
+              d=datetime.datetime.strptime(m.group(1),"%Y-%m-%dT%H:%M:%S").replace(tzinfo=datetime.timezone.utc)
+              return int(d.timestamp())*10**9+int(((m.group(2) or "")+"000000000")[:9])
+          TT=ns(TARGET)
+
+          def get(url,to=8):
+              try:
+                  q=urllib.request.Request(url,headers=UA)
+                  with urllib.request.urlopen(q,timeout=to,context=ssl._create_unverified_context()) as r:
+                      b=r.read(3_000_000)
+                      return {"ok":True,"status":r.status,"raw":b,"sha256":hashlib.sha256(b).hexdigest(),"url":r.geturl()}
+              except urllib.error.HTTPError as e:
+                  try:b=e.read(200000)
+                  except:b=b""
+                  return {"ok":False,"status":e.code,"raw":b,"error":str(e),
+                          "sha256":hashlib.sha256(b).hexdigest() if b else None,"url":url}
+              except Exception as e:return {"ok":False,"status":None,"raw":b"","error":repr(e),"sha256":None,"url":url}
+
+          def status(base):
+              r=get(base.rstrip("/")+"/status")
+              if not r["ok"]:return r,None
+              try:
+                  d=json.loads(r["raw"]);s=(d.get("result") or {}).get("sync_info") or {}
+                  return r,{"latest_height":int(s["latest_block_height"]),"latest_time":s["latest_block_time"]}
+              except Exception as e:
+                  r["parse_error"]=repr(e);return r,None
+
+          def block(base,h):
+              r=get(base.rstrip("/")+"/block?"+urllib.parse.urlencode({"height":str(h)}))
+              if not r["ok"]:
+                  txt=r["raw"].decode("utf-8","replace")
+                  low=None
+                  for pat in [r"lowest height is\s+(\d+)",r"base is\s+(\d+)",r"min(?:imum)?(?: available)? height[^0-9]*(\d+)"]:
+                      m=re.search(pat,txt,re.I)
+                      if m:low=int(m.group(1));break
+                  return {"ok":False,"height":h,"status":r.get("status"),"error":r.get("error"),
+                          "lowest_hint":low,"excerpt":txt[:1200],"sha256":r.get("sha256")}
+              try:
+                  d=json.loads(r["raw"]);res=d.get("result") or {};hdr=(res.get("block") or {}).get("header") or {}
+                  return {"ok":True,"height":int(hdr["height"]),"time":hdr["time"],
+                          "block_hash":(res.get("block_id") or {}).get("hash"),"sha256":r["sha256"]}
+              except Exception as e:
+                  return {"ok":False,"height":h,"status":r.get("status"),"error":"parse:"+repr(e),
+                          "excerpt":r["raw"].decode("utf-8","replace")[:1200],"sha256":r.get("sha256")}
+
+          def locate(name,cid,base):
+              sr,st=status(base)
+              rec={"carrier":name,"client_id":cid,"base":base,
+                   "status_probe":{"ok":sr["ok"],"status":sr.get("status"),"error":sr.get("error"),"sha256":sr.get("sha256")},
+                   "latest":st,"availability_trace":[],"time_trace":[],"target_carrier_height":None}
+              if not st:return rec
+              latest=st["latest_height"]
+              # Find lowest available block. Most blockstores expose a contiguous [base, latest].
+              b1=block(base,1);rec["availability_trace"].append(b1)
+              if b1["ok"]:
+                  loh=1;lob=b1
+              elif b1.get("lowest_hint"):
+                  loh=b1["lowest_hint"];lob=block(base,loh);rec["availability_trace"].append(lob)
+                  if not lob["ok"]:return rec
+              else:
+                  # Binary search first successful height by availability.
+                  L=1;R=latest
+                  for _ in range(32):
+                      if L>=R:break
+                      M=(L+R)//2;z=block(base,M);rec["availability_trace"].append(z)
+                      if z["ok"]:R=M
+                      else:L=M+1
+                  loh=L;lob=block(base,loh);rec["availability_trace"].append(lob)
+                  if not lob["ok"]:return rec
+              rec["lowest_available"]={"height":loh,"time":lob["time"],"hash":lob.get("block_hash"),"sha256":lob.get("sha256")}
+              try:lot=ns(lob["time"]);lat=ns(st["latest_time"])
+              except:return rec
+              if lot>TT or lat<TT:
+                  rec["coverage"]="TARGET_OUTSIDE_AVAILABLE_BLOCKSTORE";return rec
+              # Binary search first carrier block time >= target.
+              L=loh;R=latest
+              for _ in range(35):
+                  if L>=R:break
+                  M=(L+R)//2;z=block(base,M);rec["time_trace"].append(z)
+                  if not z["ok"]:
+                      # Since M is >= lowest available, a hole makes this endpoint unsafe for search.
+                      rec["coverage"]="NONCONTIGUOUS_OR_FAILED_BLOCKSTORE";return rec
+                  if ns(z["time"])<TT:L=M+1
+                  else:R=M
+              zh=block(base,L);rec["time_trace"].append(zh)
+              if zh["ok"]:
+                  rec["target_carrier_height"]=L
+                  rec["target_carrier_block"]=zh
+                  rec["coverage"]="TARGET_LOCATED"
+              return rec
+
+          with concurrent.futures.ThreadPoolExecutor(max_workers=len(carriers)) as ex:
+              locs=list(ex.map(lambda x:locate(*x),carriers))
+
+          # Decode only event attributes from historical block_results. This bypasses tx_search index pruning.
+          def b64maybe(s):
+              out=[s]
+              try:
+                  if isinstance(s,str) and len(s)%4==0 and re.fullmatch(r"[A-Za-z0-9+/=]+",s):
+                      x=base64.b64decode(s,validate=True).decode("utf-8","replace")
+                      if x not in out:out.append(x)
+              except:pass
+              return out
+          def event_hits(raw,cid):
+              try:d=json.loads(raw)
+              except:return []
+              events=[]
+              def walk(x):
+                  if isinstance(x,dict):
+                      if x.get("type")=="update_client" and isinstance(x.get("attributes"),list):
+                          events.append(x)
+                      for v in x.values():walk(v)
+                  elif isinstance(x,list):
+                      for v in x:walk(v)
+              walk(d)
+              hits=[]
+              for ev in events:
+                  attrs={}
+                  for a in ev.get("attributes") or []:
+                      ks=b64maybe(a.get("key",""));vs=b64maybe(a.get("value",""))
+                      for k in ks:
+                          for v in vs:
+                              if k in ("client_id","consensus_height","header"):
+                                  attrs[k]=v
+                  if attrs.get("client_id")!=cid:continue
+                  ch=attrs.get("consensus_height","")
+                  if ch not in [f"4-{h}" for h in TARGET_HEIGHTS]:continue
+                  hits.append(attrs)
+              return hits
+
+          def scan_one(job):
+              name,cid,base,h=job
+              url=base.rstrip("/")+"/block_results?"+urllib.parse.urlencode({"height":str(h)})
+              r=get(url,10)
+              hits=event_hits(r["raw"],cid) if r["ok"] else []
+              return {"carrier":name,"client_id":cid,"base":base,"carrier_height":h,
+                      "ok":r["ok"],"status":r.get("status"),"sha256":r.get("sha256"),"error":r.get("error"),
+                      "hits":hits,"excerpt":r["raw"].decode("utf-8","replace")[:1800] if (hits or not r["ok"]) else None}
+
+          jobs=[]
+          byname={(x[0],x[1],x[2]) for x in carriers}
+          for loc in locs:
+              h=loc.get("target_carrier_height")
+              if not h:continue
+              # Headers cannot be relayed before they exist. Scan target block through +180 carrier blocks (~15-20 min on many Cosmos chains).
+              for hh in range(h,h+181):
+                  jobs.append((loc["carrier"],loc["client_id"],loc["base"],hh))
+          with concurrent.futures.ThreadPoolExecutor(max_workers=96) as ex:
+              scans=list(ex.map(scan_one,jobs))
+
+          hits=[x for x in scans if x["hits"]]
+          out={"scope":"SOURCE_ONLY_NO_MARKET_DATA","target_voting_end":TARGET,
+               "secret_heights_sought":TARGET_HEIGHTS,
+               "historical_client_basis":"cosmos/chain-registry@1e09e733c20edd5b6a76d42e2abdfc2f085382df",
+               "tested_utc":datetime.datetime.now(datetime.timezone.utc).isoformat(),
+               "locators":locs,"scan_count":len(scans),"scan_hits":hits,
+               "H":None,"T0":None,"gate":"SOURCE_HISTORICAL_EXECUTION_BOUNDARY_BLOCKED",
+               "forensic_phase":"OPEN_NOT_EXHAUSTED"}
+          os.makedirs(os.path.dirname(OUT),exist_ok=True)
+          open(OUT,"w").write(json.dumps(out,indent=2)+"\n")
+          print("V66",json.dumps({
+              "located":[{"carrier":x["carrier"],"h":x.get("target_carrier_height"),
+                          "block":x.get("target_carrier_block"),"lowest":x.get("lowest_available"),"coverage":x.get("coverage")} for x in locs],
+              "scan_count":len(scans),
+              "hits":[{"carrier":x["carrier"],"carrier_height":x["carrier_height"],"hits":x["hits"]} for x in hits]
+          }))
+          PY
+
+      - name: Persist V66
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/cosmos_native_emission_param_shock_001_v0_2/SCRT287_CARRIER_RAW_BLOCK_RESULTS_V66.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "SCRT287: persist raw carrier block-results recovery V66"
+          git pull --rebase origin cosmos-native-emission-param-shock-001-v0.2-t0-remediation-2026-10-07
+          git push origin HEAD:cosmos-native-emission-param-shock-001-v0.2-t0-remediation-2026-10-07
