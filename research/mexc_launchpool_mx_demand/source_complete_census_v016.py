@@ -22,7 +22,15 @@ pages=[]
 page=1
 while True:
     resp=ex.spot_public_get_announcements({"page":page})
-    box=resp.get("data") or resp
+    raw=resp.get("data") if isinstance(resp,dict) else resp
+    if isinstance(raw,list) and raw and isinstance(raw[0],dict) and ("details" in raw[0] or "totalPage" in raw[0]):
+        box=raw[0]
+    elif isinstance(raw,dict):
+        box=raw
+    elif isinstance(resp,dict):
+        box=resp
+    else:
+        raise RuntimeError(f"UNSUPPORTED_ANNOUNCEMENT_SCHEMA:{type(resp).__name__}:{type(raw).__name__}")
     details=box.get("details") or []
     total_page=int(box.get("totalPage") or page)
     parsed=[]
