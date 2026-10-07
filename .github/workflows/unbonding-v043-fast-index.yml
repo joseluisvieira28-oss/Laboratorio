@@ -24,4 +24,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add research/pos_unbonding_completion_001_v0_4_index_free/BLOCK_INDEX_CAPABILITY_V043.json
-          git diff --cached --quiet || (git commit -m "Record V0.4.3 fast block-index capability" && git push origin HEAD:pos-unbonding-completion-001-v0.4-index-free-census-2026-10-07)
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Record strict V0.4.3 block-index capability"
+          git pull --rebase origin pos-unbonding-completion-001-v0.4-index-free-census-2026-10-07
+          git push origin HEAD:pos-unbonding-completion-001-v0.4-index-free-census-2026-10-07
