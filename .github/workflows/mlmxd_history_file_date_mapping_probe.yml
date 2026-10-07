@@ -1,0 +1,20 @@
+name: MLMXD History File Date Mapping Probe
+on:
+  push:
+    branches: [mexc-launchpool-mx-demand-v0.1-source-2026-10-07]
+    paths:
+      - 'research/mexc_launchpool_mx_demand/history_file_date_mapping_probe.py'
+      - '.github/workflows/mlmxd_history_file_date_mapping_probe.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests
+      - run: python research/mexc_launchpool_mx_demand/history_file_date_mapping_probe.py
