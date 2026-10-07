@@ -1,0 +1,67 @@
+{
+  "receipt_id": "NEWS-SHOCK-V03-PUBLIC-SOURCE-ROUTE-PASS-004",
+  "date": "2026-10-07",
+  "branch": "news-shock-v03-public-source-recovery-v0.1",
+  "parent_closeout": "NEWS_SHOCK_V03_SOURCE_BLOCKED_CLOSEOUT.md",
+  "parent_closeout_sha": "fb1dff5d40ea8b5efbd0a9489e59bf40cb81f670",
+  "verdict": "SOURCE_ROUTE_FEASIBLE_PASS",
+  "scope": "SOURCE_ONLY",
+  "outcomes_opened": false,
+  "acceptance_rule_changed": false,
+  "acceptance_rule_applied": "immutable version OR auditable version history",
+  "events": [
+    {
+      "event_id": "US_CPI_2021-01-13",
+      "t0_utc": "2021-01-13T13:30:00Z",
+      "source": "Danske Bank Weekly Focus — 8 January 2021",
+      "source_url": "https://research.danskebank.com/link/WeeklyFocus080120/$file/WeeklyFocus_080120.pdf",
+      "required_fields": {
+        "headline_mom": "0.4%",
+        "headline_yoy": "1.3%",
+        "core_mom": "0.1%",
+        "core_yoy": "1.6%"
+      },
+      "field_coverage": "4/4",
+      "pre_t0": true,
+      "audit_trail": [
+        "Original publisher domain.",
+        "Static issue-specific PDF.",
+        "Report date 2021-01-08 repeated in document footer/header.",
+        "Issue-specific URL and filename encode the 08-01-2021 edition.",
+        "Calendar identifies Wednesday 2021-01-13 and contains consensus/previous before the release.",
+        "Adjacent Weekly Focus editions are preserved separately (e.g. 2020-12-18 and 2021-01-15), demonstrating edition-level versioning rather than a single mutable historical calendar row."
+      ],
+      "version_requirement": "PASS_BY_AUDIT_TRAIL"
+    },
+    {
+      "event_id": "US_NFP_2021-01-08",
+      "t0_utc": "2021-01-08T13:30:00Z",
+      "source": "The Baker Group — Lunch with Lester — 31 December 2020",
+      "source_url": "https://creditunions.com/wp-content/uploads/2022/04/wk201231-1.pdf",
+      "required_fields": {
+        "payrolls": "68k",
+        "unemployment_rate": "6.8%",
+        "ahe_mom": "0.2%",
+        "ahe_yoy": "4.5%"
+      },
+      "field_coverage": "4/4",
+      "pre_t0": true,
+      "audit_trail": [
+        "Static branded institutional PDF.",
+        "Document date 2020-12-31.",
+        "Internal generation statement: 'This report was printed as of: 12/31/2020 9:31 AM'.",
+        "Future 2021-01-08 release rows contain estimates while Actual cells remain '--', internally distinguishing the contemporary forecast state from later realized data.",
+        "Economic-indicator source is identified in the report as Bloomberg, LP."
+      ],
+      "version_requirement": "PASS_BY_AUDIT_TRAIL"
+    }
+  ],
+  "important_limitations": [
+    "This PASS proves source capability for the two exact frozen reopening events only.",
+    "It does not prove full 2021-2024 coverage.",
+    "It does not authorize surprise calculations or market outcomes.",
+    "Reuters/Bloomberg/Danske/Baker snapshots must never be silently averaged or mixed.",
+    "Consensus is time-varying; the next census must freeze publisher family and snapshot timing before collection."
+  ],
+  "next_authorized_step": "Prospectively freeze and run a consecutive source-only census with deterministic per-family source/snapshot rules. No market outcomes until that census passes and a separate pre-outcome activation freeze exists."
+}
