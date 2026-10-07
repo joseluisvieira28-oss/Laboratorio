@@ -1,0 +1,30 @@
+name: News Shock V0.3 static consensus 2021 census
+
+on:
+  push:
+    branches:
+      - news-shock-v03-public-source-recovery-v0.1
+    paths:
+      - '.github/news-shock-v03-static-census.trigger'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-census:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install requests pypdf
+      - name: Run source-only static consensus census probe
+        run: python Dream-Account-OS-v2.3-PARTIAL/research/news_shock_v03_macro_consensus_source_gate/static_consensus_2021_probe.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: news-shock-v03-static-consensus-2021-probe
+          path: |
+            static_consensus_2021_probe.json
+            static_consensus_2021_probe.md
