@@ -67,9 +67,9 @@ jobs:
                   "chain_name":r.get("chain_name"),"chain_id":r.get("chain_id"),
                   "name":r.get("name"),"pretty_name":r.get("pretty_name"),
                   "bech32_prefix":r.get("bech32_prefix"),
-                  "rpc":[x.get("address") for x in apis.get("rpc",[]) if isinstance(x,dict) and x.get("address")][:30],
-                  "rest":[x.get("address") for x in apis.get("rest",[]) if isinstance(x,dict) and x.get("address")][:30],
-                  "grpc":[x.get("address") for x in apis.get("grpc",[]) if isinstance(x,dict) and x.get("address")][:20]
+                  "rpc":[x.get("address") for x in (apis.get("rpc") or []) if isinstance(x,dict) and x.get("address")][:30],
+                  "rest":[x.get("address") for x in (apis.get("rest") or []) if isinstance(x,dict) and x.get("address")][:30],
+                  "grpc":[x.get("address") for x in (apis.get("grpc") or []) if isinstance(x,dict) and x.get("address")][:20]
               }
 
           out={"scope":"SOURCE_ONLY_NO_MARKET_DATA",
