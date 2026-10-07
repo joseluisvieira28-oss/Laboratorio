@@ -67,7 +67,7 @@ def j(raw): return json.loads(raw.decode("utf-8"))
 
 def tx_query(base,lo,hi,expr):
   q=f"{expr} AND tx.height >= {lo} AND tx.height <= {hi}"
-  url=base.rstrip("/")+"/tx_search?"+urllib.parse.urlencode({"query":q,"prove":"false","page":"1","per_page":"10","order_by":"asc"})
+  url=base.rstrip("/")+"/tx_search?"+urllib.parse.urlencode({"query":json.dumps(q),"prove":"false","page":"1","per_page":"10","order_by":json.dumps("asc")})
   try:
     st,raw=get(url,35); obj=j(raw); rr=obj.get("result",{})
     txs=[]
