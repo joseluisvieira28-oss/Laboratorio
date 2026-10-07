@@ -1,0 +1,21 @@
+name: OSMO Exact Epoch T0 V0.2
+on:
+  push:
+    branches: [cosmos-native-emission-param-shock-001-source-remediation-v0.2-2026-10-07]
+    paths:
+      - 'research/cosmos_native_emission_param_shock_001_v0_2_source_remediation/probe_osmo_epoch_t0_v02.py'
+      - '.github/workflows/osmo_exact_epoch_t0_v02.yml'
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 research/cosmos_native_emission_param_shock_001_v0_2_source_remediation/probe_osmo_epoch_t0_v02.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: osmo-exact-epoch-t0-v02
+          path: osmo_epoch_t0_v02.json
+          if-no-files-found: error
