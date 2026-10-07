@@ -1,0 +1,80 @@
+{
+  "document_type": "NEWS_SHOCK_LAB_V03_NFP_SURPRISE_DISCOVERY_CLOSEOUT_V0.1",
+  "lab_id": "NEWS_SHOCK_LAB_V03_NFP_SURPRISE",
+  "closed_at_utc_date": "2026-10-07",
+  "decision": "NO_EDGE_STOP_UNDER_2021_NFP_SIGN_VOTE_DEFINITION",
+  "canonical_execution": {
+    "workflow_run_id": 37683873867,
+    "workflow_job_id": 113006551706,
+    "workflow_head_sha": "d0539e5f8f120bf6cb677c10417407df3f31ea1a",
+    "freeze_commit": "065eb3f67146d76e72a126e98bd7012607f6e80d",
+    "runner_commit": "1a84daa21d861303d942036476791f0c60811d84",
+    "artifact_id": 11510598139,
+    "artifact_zip_sha256": "5ea4680645819644752597f94010e5241f3b35836ea5d48643ac45ba9f112b9a",
+    "job_conclusion": "success",
+    "source_archives": 24,
+    "checksums_required": true,
+    "data_integrity": "PASS"
+  },
+  "corpus": {
+    "year": 2021,
+    "total_nfp_events": 12,
+    "directional_events": 10,
+    "neutral_events": 2,
+    "hotter": 8,
+    "cooler": 2
+  },
+  "frozen_contract": {
+    "signal": "equal sign vote across payroll surprise, inverse unemployment surprise, AHE MoM surprise, AHE YoY surprise",
+    "mapping": "HOTTER=>CRYPTO_DOWN; COOLER=>CRYPTO_UP",
+    "entry": "08:31 America/New_York 1m open",
+    "exit": "08:45 America/New_York 1m open",
+    "source": "official Binance Spot public daily 1m archives",
+    "assets": [
+      "BTCUSDT",
+      "ETHUSDT"
+    ],
+    "round_trip_cost_bps": 10,
+    "exact_permutations": 45,
+    "both_assets_required": true
+  },
+  "assets": {
+    "BTCUSDT": {
+      "observed_mean_aligned_gross_bps": "-26.48172254747920062986848176797756121785192784080",
+      "mean_aligned_net_bps": "-36.48172254747920062986848176797756121785192784080",
+      "median_aligned_gross_bps": "-9.678895362344970166723423299312976477462466766000",
+      "exact_one_sided_p_value": "0.48888888888888888888888888888888888888888888888889",
+      "hit_rate_aligned_gross_gt_zero": "0.3",
+      "minimum_leave_one_out_mean_aligned_net_bps": "-46.131569906776197522789620594422640246541087523778",
+      "criteria_passed": 0,
+      "criteria_total": 4,
+      "pass": false
+    },
+    "ETHUSDT": {
+      "observed_mean_aligned_gross_bps": "-21.80756095867251174597077540279762611192961090680",
+      "mean_aligned_net_bps": "-31.80756095867251174597077540279762611192961090680",
+      "median_aligned_gross_bps": "-4.7280130872730955499884204764759021934672869439500",
+      "exact_one_sided_p_value": "0.42222222222222222222222222222222222222222222222222",
+      "hit_rate_aligned_gross_gt_zero": "0.5",
+      "minimum_leave_one_out_mean_aligned_net_bps": "-41.195418076852938714847580496742803732958947649333",
+      "criteria_passed": 0,
+      "criteria_total": 4,
+      "pass": false
+    }
+  },
+  "interpretation": [
+    "The hypothesized hotter=>crypto-down / cooler=>crypto-up continuation from 08:31 to 08:45 is not supported in this frozen 2021 NFP definition.",
+    "Both assets have negative observed aligned mean returns before costs and more negative means after the fixed 10 bps cost.",
+    "Both assets fail exact permutation significance, median sign, mean net and leave-one-out robustness.",
+    "The failure is not marginal and provides no legitimate rescue path under the frozen no-tuning rules."
+  ],
+  "governance": {
+    "oos_extension_authorized": false,
+    "alternate_window_authorized": false,
+    "alternate_signal_weights_authorized": false,
+    "threshold_search_authorized": false,
+    "live_trading_authorized": false,
+    "exchange_mutation_authorized": false,
+    "main_merge_authorized": false
+  }
+}
