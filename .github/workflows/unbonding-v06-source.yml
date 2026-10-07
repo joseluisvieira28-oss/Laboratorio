@@ -1,0 +1,21 @@
+name: Unbonding V0.6 Source Qualification
+on:
+  push:
+    branches: [pos-unbonding-completion-001-v0.6-fifth-chain-expansion-2026-10-07]
+    paths: ["research/pos_unbonding_completion_001_v0_6_fifth_chain/v06_source_qualification.py",".github/workflows/unbonding-v06-source.yml"]
+permissions: {contents: write}
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: pos-unbonding-completion-001-v0.6-fifth-chain-expansion-2026-10-07, fetch-depth: 0}
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: python research/pos_unbonding_completion_001_v0_6_fifth_chain/v06_source_qualification.py
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/pos_unbonding_completion_001_v0_6_fifth_chain/V06_SOURCE_QUALIFICATION.json
+          git diff --cached --quiet || (git commit -m "Record V0.6 fifth-chain source qualification" && git push origin HEAD:pos-unbonding-completion-001-v0.6-fifth-chain-expansion-2026-10-07)
