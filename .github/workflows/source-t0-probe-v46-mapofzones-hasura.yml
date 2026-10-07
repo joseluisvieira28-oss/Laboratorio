@@ -1,0 +1,144 @@
+name: source-t0-probe-v46-mapofzones-hasura
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - cosmos-native-emission-param-shock-001-v0.2-t0-remediation-2026-10-07
+    paths:
+      - .github/workflows/source-t0-probe-v46-mapofzones-hasura.yml
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: cosmos-native-emission-param-shock-001-v0.2-t0-remediation-2026-10-07
+
+      - name: Query public Map of Zones Hasura for Secret historical node inventory
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json,urllib.request,urllib.error,ssl,hashlib,os,datetime,re
+          from concurrent.futures import ThreadPoolExecutor
+
+          OUT="research/cosmos_native_emission_param_shock_001_v0_2/SCRT287_MAPOFZONES_HASURA_V46.json"
+          END="https://api2.mapofzones.com/v1/graphql"
+          UA={"User-Agent":"CryptoLab-source-only-secret-v46","Content-Type":"application/json","Accept":"application/json"}
+
+          def post(query,to=20):
+              b=json.dumps({"query":query}).encode()
+              try:
+                  r=urllib.request.Request(END,data=b,headers=UA,method="POST")
+                  with urllib.request.urlopen(r,timeout=to,context=ssl._create_unverified_context()) as x:
+                      raw=x.read()
+                      return {"ok":True,"status":getattr(x,"status",200),"headers":dict(x.headers),
+                              "sha256":hashlib.sha256(raw).hexdigest(),"body":raw.decode("utf-8","replace")[:1500000]}
+              except urllib.error.HTTPError as e:
+                  try:raw=e.read()
+                  except:raw=b""
+                  return {"ok":False,"status":e.code,"error":str(e),"headers":dict(e.headers or {}),
+                          "sha256":hashlib.sha256(raw).hexdigest() if raw else None,
+                          "body":raw.decode("utf-8","replace")[:200000]}
+              except Exception as e:return {"ok":False,"status":None,"error":repr(e),"body":"","headers":{}}
+
+          queries={
+            "blocks_log": """query { blocks_log(where:{zone:{_eq:"secret-4"}}) { zone last_processed_block last_updated_at } }""",
+            "nodes_rpc_addrs": """query { nodes_rpc_addrs(where:{zone:{_eq:"secret-4"}}) {
+              rpc_addr zone ip_or_dns node_id version moniker tx_index last_block_height
+              earliest_block_height is_hidden is_prioritized is_alive response_time last_active last_checked_at
+            }}""",
+            "zone_nodes": """query { zone_nodes(where:{zone:{_eq:"secret-4"}}) {
+              zone node_id moniker last_block_height earliest_block_height is_rpc_addr_active
+            }}""",
+            "zones": """query { zones(where:{chain_id:{_eq:"secret-4"}}) { chain_id name is_mainnet } }""",
+            "schema_query_fields": """query { __schema { queryType { fields { name } } } }"""
+          }
+          results={}
+          for k,q in queries.items():
+              r=post(q)
+              rec={"ok":r["ok"],"status":r.get("status"),"sha256":r.get("sha256"),"error":r.get("error"),"body":r.get("body","")}
+              try:rec["json"]=json.loads(r.get("body",""))
+              except:pass
+              results[k]=rec
+
+          # Collect any public Secret RPC addresses returned and probe canonical historical metadata.
+          addrs=[]
+          try:
+              for x in results["nodes_rpc_addrs"]["json"]["data"]["nodes_rpc_addrs"]:
+                  a=x.get("rpc_addr")
+                  if a and isinstance(a,str) and a.startswith(("http://","https://")):
+                      addrs.append((a.rstrip("/"),x))
+          except:pass
+          addrs_unique=[]
+          seen=set()
+          for a,meta in addrs:
+              if a not in seen:seen.add(a);addrs_unique.append((a,meta))
+
+          def get(url,to=9):
+              try:
+                  q=urllib.request.Request(url,headers={"User-Agent":"CryptoLab-source-only-secret-v46","Accept":"application/json"})
+                  with urllib.request.urlopen(q,timeout=to,context=ssl._create_unverified_context()) as x:
+                      raw=x.read()
+                      return {"ok":True,"status":getattr(x,"status",200),"url":x.geturl(),
+                              "sha256":hashlib.sha256(raw).hexdigest(),"body":raw.decode("utf-8","replace")[:300000]}
+              except urllib.error.HTTPError as e:
+                  try:raw=e.read()
+                  except:raw=b""
+                  return {"ok":False,"status":e.code,"url":url,"error":str(e),
+                          "sha256":hashlib.sha256(raw).hexdigest() if raw else None,
+                          "body":raw.decode("utf-8","replace")[:30000]}
+              except Exception as e:return {"ok":False,"status":None,"url":url,"error":repr(e),"body":""}
+
+          anchor=11752974
+          jobs=[]
+          for a,meta in addrs_unique:
+              for kind,path in [
+                  ("status","/status"),
+                  ("block",f"/block?height={anchor}"),
+                  ("commit",f"/commit?height={anchor}"),
+                  ("blockchain",f"/blockchain?minHeight={anchor}&maxHeight={anchor}")
+              ]:
+                  jobs.append((a,meta,kind,a+path))
+          def one(x):
+              a,meta,kind,u=x;r=get(u)
+              return {"rpc":a,"meta":meta,"kind":kind,"url":u,"ok":r["ok"],"status":r.get("status"),
+                      "sha256":r.get("sha256"),"error":r.get("error"),"body_excerpt":r.get("body","")[:8000]}
+          with ThreadPoolExecutor(max_workers=40) as ex:
+              probes=list(ex.map(one,jobs))
+
+          out={"scope":"SOURCE_ONLY_NO_MARKET_DATA",
+               "candidate":"SCRT Proposal 287",
+               "target_voting_end":"2023-12-07T02:54:58.930543213Z",
+               "provenance":{"watcher_repo":"mapofzones/cosmos-watcher","watcher_branch":"secret",
+                             "chain_id":"secret-4","public_graphql":END},
+               "tested_utc":datetime.datetime.now(datetime.timezone.utc).isoformat(),
+               "graphql_results":results,
+               "rpc_inventory_count":len(addrs_unique),
+               "rpc_inventory":[{"rpc_addr":a,"metadata":m} for a,m in addrs_unique],
+               "historical_anchor_probes":probes,
+               "rule":"Map of Zones data may identify independent historical node sources. Exact T0 still requires canonical height/time or equivalent immutable state/event proof; source metadata alone is not enough."}
+          os.makedirs(os.path.dirname(OUT),exist_ok=True)
+          with open(OUT,"w") as f:json.dump(out,f,indent=2)
+          print("V46",json.dumps({
+              "graphql":{k:{"ok":v["ok"],"status":v["status"],"error":v.get("error")} for k,v in results.items()},
+              "rpc_count":len(addrs_unique),
+              "rpcs":[a for a,_ in addrs_unique],
+              "probe_success":[{"rpc":x["rpc"],"kind":x["kind"],"status":x["status"]} for x in probes if x["ok"]]
+          }))
+          PY
+
+      - name: Persist
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/cosmos_native_emission_param_shock_001_v0_2/SCRT287_MAPOFZONES_HASURA_V46.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "SCRT287: persist Map of Zones Hasura forensic probe v46"
+          git pull --rebase origin cosmos-native-emission-param-shock-001-v0.2-t0-remediation-2026-10-07
+          git push origin HEAD:cosmos-native-emission-param-shock-001-v0.2-t0-remediation-2026-10-07
