@@ -64,17 +64,20 @@ def maybe_text(s):
  return s
 
 def find_update(lo):
- # deterministic: first matching indexed block after target, searched in fixed 100k chunks up to 2m blocks.
+ # update_client is a transaction event; use tx_search, not block_search.
+ # deterministic: first matching tx after target in fixed 100k chunks up to 2m host blocks.
  for start in range(lo,lo+2000000,100000):
   end=start+99999
-  q=f"update_client.client_id='{CLIENT}' AND block.height >= {start} AND block.height <= {end}"
-  p={"query":json.dumps(q),"page":"1","per_page":"100","order_by":json.dumps("asc")}
-  try:r=rpc("block_search",p,45)
-  except Exception as e:continue
-  bs=r.get("blocks") or []
-  if bs:
-   h=min(int(((x.get("block") or {}).get("header") or {}).get("height")) for x in bs)
-   return {"host_height":h,"query":q,"total_count":int(r.get("total_count") or 0)}
+  q=f"update_client.client_id='{CLIENT}' AND tx.height >= {start} AND tx.height <= {end}"
+  p={"query":json.dumps(q),"prove":"false","page":"1","per_page":"100","order_by":json.dumps("asc")}
+  try:r=rpc("tx_search",p,45)
+  except Exception:
+   continue
+  txs=r.get("txs") or []
+  if txs:
+   h=min(int(x.get("height")) for x in txs)
+   return {"host_height":h,"query":q,"total_count":int(r.get("total_count") or 0),
+           "tx_hashes":[x.get("hash") for x in txs if int(x.get("height"))==h]}
  return None
 
 def consensus_height_from_results(h):
