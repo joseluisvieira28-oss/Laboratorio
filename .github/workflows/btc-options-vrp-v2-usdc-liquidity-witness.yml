@@ -1,0 +1,27 @@
+name: BTC Options VRP V2 — USDC 30D Liquidity Witness
+
+on:
+  push:
+    branches:
+      - "btc-options-vrp-v2-forward-2026-10-07"
+    paths:
+      - "research/btc_options_vrp_v2/USDC_30D_LIQUIDITY_WITNESS_FREEZE_V0.1.md"
+      - "labs/BTC_OPTIONS_VRP_001/usdc_30d_liquidity_witness_v01.py"
+      - ".github/workflows/btc-options-vrp-v2-usdc-liquidity-witness.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  witness:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python -m py_compile labs/BTC_OPTIONS_VRP_001/usdc_30d_liquidity_witness_v01.py
+      - run: python labs/BTC_OPTIONS_VRP_001/usdc_30d_liquidity_witness_v01.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: btc-options-vrp-v2-usdc-30d-liquidity-witness
+          path: artifacts/btc_options_vrp_usdc_30d_liquidity_witness_v01/
+          retention-days: 30
