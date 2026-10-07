@@ -1,0 +1,218 @@
+name: SCRT287 forensic V67 public archive carrier sweep
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - cosmos-native-emission-param-shock-001-v0.2-t0-remediation-2026-10-07
+    paths:
+      - .github/workflows/scrt287-forensic-v67-public-archive-carriers.yml
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: cosmos-native-emission-param-shock-001-v0.2-t0-remediation-2026-10-07
+
+      - name: Sweep explicitly archival/keyless carrier endpoints
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import base64,concurrent.futures,datetime,hashlib,json,os,re,ssl,urllib.error,urllib.parse,urllib.request
+
+          OUT="research/cosmos_native_emission_param_shock_001_v0_2/SCRT287_PUBLIC_ARCHIVE_CARRIERS_V67.json"
+          TARGET="2023-12-07T02:54:58.930543213Z"
+          SECRET_H=[11880919,11880920,11880921]
+          carriers=[
+            ("juno-pocket","07-tendermint-108","https://juno.api.pocket.network"),
+            ("akash-pocket","07-tendermint-102","https://akash.api.pocket.network"),
+            ("persistence-audit","07-tendermint-106","https://rpc.persistence.audit.one"),
+            ("persistence-pocket","07-tendermint-106","https://persistence.api.pocket.network"),
+            ("chihuahua-pocket","07-tendermint-70","https://chihuahua.api.pocket.network"),
+            ("osmosis-pocket","07-tendermint-1588","https://osmosis.api.pocket.network"),
+          ]
+          UA={"User-Agent":"CryptoLab-SCRT287-source-only-v67/1.0","Accept":"application/json"}
+
+          def ns(s):
+              m=re.fullmatch(r"(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.(\d+))?(?:Z|\+00:00)",str(s))
+              if not m:raise ValueError(s)
+              d=datetime.datetime.strptime(m.group(1),"%Y-%m-%dT%H:%M:%S").replace(tzinfo=datetime.timezone.utc)
+              return int(d.timestamp())*10**9+int(((m.group(2) or "")+"000000000")[:9])
+          TT=ns(TARGET)
+
+          def get(url,to=8):
+              try:
+                  q=urllib.request.Request(url,headers=UA)
+                  with urllib.request.urlopen(q,timeout=to,context=ssl._create_unverified_context()) as r:
+                      b=r.read(3_000_000)
+                      return {"ok":True,"status":r.status,"raw":b,"sha256":hashlib.sha256(b).hexdigest()}
+              except urllib.error.HTTPError as e:
+                  try:b=e.read(200000)
+                  except:b=b""
+                  return {"ok":False,"status":e.code,"raw":b,"error":str(e),
+                          "sha256":hashlib.sha256(b).hexdigest() if b else None}
+              except Exception as e:return {"ok":False,"status":None,"raw":b"","error":repr(e),"sha256":None}
+
+          def rpc(base,method,params=None,to=8):
+              try:
+                  q=urllib.request.Request(base,data=json.dumps({"jsonrpc":"2.0","id":1,"method":method,"params":params or {}}).encode(),
+                    headers={**UA,"Content-Type":"application/json"},method="POST")
+                  with urllib.request.urlopen(q,timeout=to,context=ssl._create_unverified_context()) as r:
+                      b=r.read(3_000_000)
+                      return {"ok":True,"status":r.status,"raw":b,"sha256":hashlib.sha256(b).hexdigest()}
+              except urllib.error.HTTPError as e:
+                  try:b=e.read(200000)
+                  except:b=b""
+                  return {"ok":False,"status":e.code,"raw":b,"error":str(e),"sha256":hashlib.sha256(b).hexdigest() if b else None}
+              except Exception as e:return {"ok":False,"status":None,"raw":b"","error":repr(e),"sha256":None}
+
+          def status(base):
+              # GET first; Pocket also accepts Tendermint GET.
+              r=get(base.rstrip("/")+"/status")
+              if not r["ok"]:r=rpc(base,"status")
+              if not r["ok"]:return r,None
+              try:d=json.loads(r["raw"]);s=(d.get("result") or {}).get("sync_info") or {}
+              except Exception as e:r["parse_error"]=repr(e);return r,None
+              try:return r,{"latest_height":int(s["latest_block_height"]),"latest_time":s["latest_block_time"]}
+              except:return r,None
+
+          def block(base,h):
+              r=get(base.rstrip("/")+"/block?"+urllib.parse.urlencode({"height":str(h)}))
+              if not r["ok"]:r=rpc(base,"block",{"height":str(h)})
+              txt=r["raw"].decode("utf-8","replace")
+              if not r["ok"]:
+                  low=None
+                  for pat in [r"lowest height is\s+(\d+)",r"base is\s+(\d+)",r"min(?:imum)?(?: available)? height[^0-9]*(\d+)"]:
+                      m=re.search(pat,txt,re.I)
+                      if m:low=int(m.group(1));break
+                  return {"ok":False,"height":h,"status":r.get("status"),"error":r.get("error"),
+                          "lowest_hint":low,"excerpt":txt[:1000],"sha256":r.get("sha256")}
+              try:
+                  d=json.loads(r["raw"]);res=d.get("result") or {};hdr=(res.get("block") or {}).get("header") or {}
+                  return {"ok":True,"height":int(hdr["height"]),"time":hdr["time"],
+                          "hash":(res.get("block_id") or {}).get("hash"),"sha256":r["sha256"]}
+              except Exception as e:
+                  return {"ok":False,"height":h,"status":r.get("status"),"error":"parse:"+repr(e),"excerpt":txt[:1000],"sha256":r.get("sha256")}
+
+          def locate(job):
+              name,cid,base=job
+              sr,st=status(base)
+              z={"carrier":name,"client_id":cid,"base":base,"status":{"ok":sr["ok"],"status":sr.get("status"),"error":sr.get("error"),"sha256":sr.get("sha256")},
+                 "latest":st,"trace":[]}
+              if not st:return z
+              latest=st["latest_height"]
+              b1=block(base,1);z["trace"].append(b1)
+              if b1["ok"]:L=1;lb=b1
+              elif b1.get("lowest_hint"):
+                  L=b1["lowest_hint"];lb=block(base,L);z["trace"].append(lb)
+                  if not lb["ok"]:return z
+              else:
+                  a=1;b=latest
+                  for _ in range(32):
+                      if a>=b:break
+                      m=(a+b)//2;q=block(base,m);z["trace"].append(q)
+                      if q["ok"]:b=m
+                      else:a=m+1
+                  L=a;lb=block(base,L);z["trace"].append(lb)
+                  if not lb["ok"]:return z
+              z["lowest"]={"height":L,"time":lb["time"],"hash":lb.get("hash"),"sha256":lb.get("sha256")}
+              if ns(lb["time"])>TT:
+                  z["coverage"]="TARGET_BEFORE_LOWEST";return z
+              a=L;b=latest
+              for _ in range(35):
+                  if a>=b:break
+                  m=(a+b)//2;q=block(base,m);z["trace"].append(q)
+                  if not q["ok"]:
+                      z["coverage"]="HISTORICAL_HOLE";return z
+                  if ns(q["time"])<TT:a=m+1
+                  else:b=m
+              qb=block(base,a);z["trace"].append(qb)
+              if qb["ok"]:
+                  z["target_height"]=a;z["target_block"]=qb;z["coverage"]="TARGET_LOCATED"
+              return z
+
+          with concurrent.futures.ThreadPoolExecutor(max_workers=6) as ex:
+              loc=list(ex.map(locate,carriers))
+
+          def b64s(s):
+              out=[s]
+              try:
+                  if len(s)%4==0 and re.fullmatch(r"[A-Za-z0-9+/=]+",s):
+                      y=base64.b64decode(s,validate=True).decode("utf-8","replace")
+                      if y not in out:out.append(y)
+              except:pass
+              return out
+          def hits_from(raw,cid):
+              try:d=json.loads(raw)
+              except:return []
+              events=[]
+              def walk(x):
+                  if isinstance(x,dict):
+                      if x.get("type")=="update_client" and isinstance(x.get("attributes"),list):events.append(x)
+                      for v in x.values():walk(v)
+                  elif isinstance(x,list):
+                      for v in x:walk(v)
+              walk(d);hits=[]
+              for ev in events:
+                  vals={}
+                  for a in ev.get("attributes") or []:
+                      for k in b64s(str(a.get("key",""))):
+                          for v in b64s(str(a.get("value",""))):
+                              if k in ("client_id","consensus_height","header"):vals[k]=v
+                  if vals.get("client_id")==cid and vals.get("consensus_height") in [f"4-{h}" for h in SECRET_H]:
+                      hits.append(vals)
+              return hits
+
+          def scan(job):
+              name,cid,base,h=job
+              r=get(base.rstrip("/")+"/block_results?"+urllib.parse.urlencode({"height":str(h)}),10)
+              if not r["ok"]:r=rpc(base,"block_results",{"height":str(h)},10)
+              hits=hits_from(r["raw"],cid) if r["ok"] else []
+              return {"carrier":name,"client_id":cid,"base":base,"carrier_height":h,
+                      "ok":r["ok"],"status":r.get("status"),"sha256":r.get("sha256"),"error":r.get("error"),
+                      "hits":hits,"excerpt":r["raw"].decode("utf-8","replace")[:1800] if (hits or not r["ok"]) else None}
+
+          jobs=[]
+          for z in loc:
+              if z.get("target_height"):
+                  for h in range(z["target_height"],z["target_height"]+241):
+                      jobs.append((z["carrier"],z["client_id"],z["base"],h))
+          with concurrent.futures.ThreadPoolExecutor(max_workers=96) as ex:
+              scans=list(ex.map(scan,jobs))
+          hh=[x for x in scans if x["hits"]]
+
+          out={"scope":"SOURCE_ONLY_NO_MARKET_DATA","target_voting_end":TARGET,
+               "secret_heights_sought":SECRET_H,
+               "tested_utc":datetime.datetime.now(datetime.timezone.utc).isoformat(),
+               "source_notes":{
+                 "juno-pocket":"Pocket public/keyless; third-party monitor currently labels Juno Pocket archive.",
+                 "persistence-audit":"Persistence official docs explicitly list rpc.persistence.audit.one as archival RPC.",
+                 "pocket":"Pocket public portal documents keyless access for Juno, Akash, Persistence, Chihuahua, Osmosis."
+               },
+               "locators":loc,"scan_count":len(scans),"scan_hits":hh,
+               "H":None,"T0":None,"gate":"SOURCE_HISTORICAL_EXECUTION_BOUNDARY_BLOCKED","forensic_phase":"OPEN_NOT_EXHAUSTED"}
+          os.makedirs(os.path.dirname(OUT),exist_ok=True)
+          open(OUT,"w").write(json.dumps(out,indent=2)+"\n")
+          print("V67",json.dumps({
+            "located":[{"carrier":x["carrier"],"coverage":x.get("coverage"),"lowest":x.get("lowest"),
+                        "target_height":x.get("target_height"),"target_block":x.get("target_block")} for x in loc],
+            "scan_count":len(scans),
+            "hits":[{"carrier":x["carrier"],"carrier_height":x["carrier_height"],"hits":x["hits"]} for x in hh]
+          }))
+          PY
+
+      - name: Persist V67
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/cosmos_native_emission_param_shock_001_v0_2/SCRT287_PUBLIC_ARCHIVE_CARRIERS_V67.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "SCRT287: persist public archive carrier sweep V67"
+          git pull --rebase origin cosmos-native-emission-param-shock-001-v0.2-t0-remediation-2026-10-07
+          git push origin HEAD:cosmos-native-emission-param-shock-001-v0.2-t0-remediation-2026-10-07
