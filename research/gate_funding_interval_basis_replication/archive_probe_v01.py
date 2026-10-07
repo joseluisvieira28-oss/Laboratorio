@@ -134,3 +134,16 @@ for p in [
         print("CATID_PROBE",json.dumps(p,sort_keys=True),"CODE",j.get("code"),"TOTAL",d.get("total"),"IDS",[x.get("id") for x in rows[:6]],"CATES",[x.get("cate_id") for x in rows[:6]])
     except Exception as e:
         print("CATID_ERR",json.dumps(p,sort_keys=True),type(e).__name__,str(e))
+
+print("=== STORE MODULE 80922 ===")
+for src in all_srcs[:80]:
+    u=src if src.startswith("http") else "https://miniapp.gate.com"+src
+    try:
+        rr=s.get(u,timeout=20)
+    except Exception:
+        continue
+    txt=rr.text
+    pos=txt.find("80922:function")
+    if pos>=0:
+        print("STORE_SCRIPT",u,"POS",pos,"LEN",len(txt))
+        print("STORE_SNIP",txt[pos:pos+12000])
