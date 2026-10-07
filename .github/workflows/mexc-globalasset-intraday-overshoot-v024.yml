@@ -9,6 +9,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   capture:
@@ -47,3 +48,38 @@ jobs:
         with:
           name: overshoot-shadow-v024-${{ steps.trigger.outputs.date }}-${{ steps.trigger.outputs.segment }}-${{ github.run_id }}
           path: artifacts/mexc_global_assets/intraday_overshoot_shadow_v024
+
+  readiness:
+    needs: capture
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Download all V0.2.4 capture artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p /tmp/overshoot-v024
+          gh api --paginate "repos/${GITHUB_REPOSITORY}/actions/artifacts?per_page=100" \
+            --jq '.artifacts[] | select(.expired == false) | select(.name | startswith("overshoot-shadow-v024-")) | [.id,.name] | @tsv' \
+            > /tmp/overshoot-v024/list.tsv
+          while IFS=$'\t' read -r id name; do
+            [ -n "$id" ] || continue
+            mkdir -p "/tmp/overshoot-v024/$id"
+            gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/$id/zip" > "/tmp/overshoot-v024/$id.zip"
+            unzip -oq "/tmp/overshoot-v024/$id.zip" -d "/tmp/overshoot-v024/$id"
+          done < /tmp/overshoot-v024/list.tsv
+      - name: Compile canonical V0.2.4 aggregator
+        run: python -m py_compile research/mexc_global_assets/mexc_globalasset_intraday_overshoot_shadow_aggregate_v024.py
+      - name: Aggregate frozen execution evidence
+        run: |
+          python research/mexc_global_assets/mexc_globalasset_intraday_overshoot_shadow_aggregate_v024.py \
+            --root /tmp/overshoot-v024 \
+            --out /tmp/overshoot_v024_aggregate.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: overshoot-shadow-v024-readiness-${{ github.run_id }}
+          path: /tmp/overshoot_v024_aggregate.json
