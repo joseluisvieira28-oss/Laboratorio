@@ -1,0 +1,114 @@
+name: SCRT287 forensic V69 CosmoWiz archive endpoint discovery
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - cosmos-native-emission-param-shock-001-v0.2-t0-remediation-2026-10-07
+    paths:
+      - .github/workflows/scrt287-forensic-v69-cosmowiz-archive-discovery.yml
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: cosmos-native-emission-param-shock-001-v0.2-t0-remediation-2026-10-07
+      - name: Discover archive-labelled endpoints for historical Secret IBC carriers
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import concurrent.futures,datetime,hashlib,html,json,os,re,ssl,urllib.error,urllib.request
+
+          OUT="research/cosmos_native_emission_param_shock_001_v0_2/SCRT287_COSMOWIZ_ARCHIVE_DISCOVERY_V69.json"
+          pages={
+            "juno":"juno",
+            "akash":"akashnet-2",
+            "archway":"archway-1",
+            "axelar":"axelar-dojo-1",
+            "chihuahua":"chihuahua-1",
+            "comdex":"comdex-1",
+            "cosmoshub":"cosmoshub-4",
+            "crescent":"crescent-1",
+            "evmos":"evmos_9001-2",
+            "gravitybridge":"gravity-bridge-3",
+            "injective":"injective-1",
+            "jackal":"jackal-1",
+            "kujira":"kaiyo-1",
+            "migaloo":"migaloo-1",
+            "noble":"noble-1",
+            "osmosis":"osmosis-1",
+            "persistence":"persistence",
+            "quicksilver":"quicksilver-2",
+            "sentinel":"sentinelhub-2",
+            "sifchain":"sifchain-1",
+            "stargaze":"stargaze-1",
+            "stride":"stride-1",
+            "terra2":"phoenix-1",
+            "agoric":"agoric-3",
+          }
+          UA={"User-Agent":"Mozilla/5.0 CryptoLab-SCRT287-source-only-v69"}
+          def fetch(item):
+              name,slug=item;url=f"https://cosmowiz.com/network/{slug}"
+              try:
+                  q=urllib.request.Request(url,headers=UA)
+                  with urllib.request.urlopen(q,timeout=12,context=ssl._create_unverified_context()) as r:
+                      b=r.read(2_000_000)
+                      return name,slug,{"ok":True,"status":r.status,"url":r.geturl(),"raw":b,
+                                       "sha256":hashlib.sha256(b).hexdigest()}
+              except urllib.error.HTTPError as e:
+                  try:b=e.read(200000)
+                  except:b=b""
+                  return name,slug,{"ok":False,"status":e.code,"url":url,"raw":b,"error":str(e),
+                                   "sha256":hashlib.sha256(b).hexdigest() if b else None}
+              except Exception as e:
+                  return name,slug,{"ok":False,"status":None,"url":url,"raw":b"","error":repr(e),"sha256":None}
+
+          with concurrent.futures.ThreadPoolExecutor(max_workers=24) as ex:
+              rows=list(ex.map(fetch,pages.items()))
+
+          outrows=[]
+          for name,slug,r in rows:
+              s=r["raw"].decode("utf-8","replace")
+              plain=html.unescape(re.sub(r"<[^>]+>"," ",s))
+              plain=re.sub(r"\s+"," ",plain)
+              urls=sorted(set(re.findall(r'https?://[^\s"\'<>]+',html.unescape(s))))
+              contexts=[]
+              low=plain.lower();pos=0
+              while True:
+                  pos=low.find("archive",pos)
+                  if pos<0:break
+                  contexts.append(plain[max(0,pos-900):pos+1300])
+                  pos+=7
+                  if len(contexts)>=40:break
+              archive_urls=[]
+              for u in urls:
+                  # Retain URLs if archive appears in URL or in a context that contains the URL/host.
+                  host=re.sub(r'^https?://','',u).split('/')[0]
+                  if "archive" in u.lower() or any(host in c and "archive" in c.lower() for c in contexts):
+                      archive_urls.append(u.rstrip(".,);"))
+              outrows.append({"carrier":name,"slug":slug,"page_url":r["url"],"ok":r["ok"],"status":r.get("status"),
+                              "sha256":r.get("sha256"),"error":r.get("error"),
+                              "archive_contexts":contexts[:20],"archive_urls":sorted(set(archive_urls)),
+                              "all_urls":urls[:500]})
+          result={"scope":"SOURCE_DISCOVERY_ONLY","tested_utc":datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                  "source":"cosmowiz.com network monitor pages","rows":outrows,
+                  "archive_endpoints":[{"carrier":x["carrier"],"urls":x["archive_urls"]} for x in outrows if x["archive_urls"]]}
+          os.makedirs(os.path.dirname(OUT),exist_ok=True)
+          open(OUT,"w").write(json.dumps(result,indent=2,ensure_ascii=False)+"\n")
+          print("V69",json.dumps(result["archive_endpoints"],ensure_ascii=False))
+          PY
+      - name: Persist V69
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/cosmos_native_emission_param_shock_001_v0_2/SCRT287_COSMOWIZ_ARCHIVE_DISCOVERY_V69.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "SCRT287: persist CosmoWiz archive endpoint discovery V69"
+          git pull --rebase origin cosmos-native-emission-param-shock-001-v0.2-t0-remediation-2026-10-07
+          git push origin HEAD:cosmos-native-emission-param-shock-001-v0.2-t0-remediation-2026-10-07
