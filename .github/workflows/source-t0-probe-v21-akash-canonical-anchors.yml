@@ -1,0 +1,41 @@
+name: source-t0-probe-v21-akash-canonical-anchors
+
+on:
+  push:
+    branches:
+      - cosmos-native-emission-param-shock-001-v0.2-t0-remediation-2026-10-07
+    paths:
+      - .github/workflows/source-t0-probe-v21-akash-canonical-anchors.yml
+
+permissions:
+  contents: read
+
+jobs:
+  canonical-anchors:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Capture compact canonical Akash anchors only
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json,urllib.request,ssl
+          B="https://console-api.akash.network"
+          UA={"User-Agent":"CryptoLab-source-only-v21"}
+          def get(path):
+            q=urllib.request.Request(B+path,headers=UA)
+            with urllib.request.urlopen(q,timeout=15,context=ssl.create_default_context()) as r:
+              return json.loads(r.read().decode())
+          def pcompact(p):
+            return {k:p.get(k) for k in ["id","title","status","submitTime","votingStartTime","votingEndTime","paramChanges","description","content","plan"] if k in p}
+          def bcompact(b):
+            return {k:b.get(k) for k in ["height","datetime","hash","gasUsed","gasWanted"] if k in b}
+          out={"scope":"SOURCE_ONLY_NO_MARKET_DATA","proposals":{},"blocks":{}}
+          for pid in [257,265,281,283]:
+            out["proposals"][str(pid)]=pcompact(get(f"/v1/proposals/{pid}"))
+          for pid,H in {"265":17526666,"283":20631473}.items():
+            out["blocks"][pid]={str(h):bcompact(get(f"/v1/blocks/{h}")) for h in [H-1,H,H+1,H+2]}
+          print("AKASH_CANONICAL_V21_BEGIN")
+          print(json.dumps(out,indent=2,sort_keys=True))
+          print("AKASH_CANONICAL_V21_END")
+          PY
