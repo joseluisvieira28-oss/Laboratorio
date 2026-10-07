@@ -226,3 +226,25 @@ print("CENSUS_CANDIDATE_ROWS",json.dumps([
   {"id":x.get("id"),"date":x.get("release_time"),"cate_id":x.get("cate_id"),"title":x.get("title"),"brief":x.get("brief")}
   for x in sorted(cand,key=lambda q:int(q.get("release_timestamp") or 0))
 ],ensure_ascii=False))
+
+print("=== FUNDING TIMESTAMP TRANSPORT BENCH ===")
+import time as _time
+for contract,eff in [
+ ("RARE_USDT", datetime.datetime(2024,8,19,8,0,tzinfo=datetime.timezone.utc)),
+ ("LPT_USDT", datetime.datetime(2025,5,30,12,0,tzinfo=datetime.timezone.utc)),
+]:
+    lo=int((eff-datetime.timedelta(days=5)).timestamp())
+    hi=int((eff+datetime.timedelta(days=5)).timestamp())
+    u="https://api.gateio.ws/api/v4/futures/usdt/funding_rate"
+    t0=_time.time()
+    try:
+        rr=s.get(u,params={"contract":contract,"from":lo,"to":hi},timeout=30)
+        elapsed=_time.time()-t0
+        print("FUND_BENCH_HTTP",contract,rr.status_code,"ELAPSED",round(elapsed,3),"LEN",len(rr.content))
+        if rr.status_code==200:
+            arr=rr.json()
+            ts=sorted({int(x["t"]) for x in arr if isinstance(x,dict) and str(x.get("t","")).isdigit()})
+            gaps=[round((b-a)/3600,4) for a,b in zip(ts,ts[1:])]
+            print("FUND_BENCH_TS",contract,"COUNT",len(ts),"FIRST",ts[:4],"LAST",ts[-4:],"GAPS",gaps[:12])
+    except Exception as e:
+        print("FUND_BENCH_ERR",contract,type(e).__name__,str(e))
