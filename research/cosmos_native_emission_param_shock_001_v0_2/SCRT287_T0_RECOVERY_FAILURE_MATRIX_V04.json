@@ -1,0 +1,144 @@
+{
+  "candidate": "COSMOS-NATIVE-EMISSION-PARAM-SHOCK-001 V0.2 / SCRT Proposal 287",
+  "date": "2026-10-07",
+  "branch": "cosmos-native-emission-param-shock-001-v0.2-t0-remediation-2026-10-07",
+  "scope": "SOURCE_ONLY_NO_MARKET_DATA",
+  "proposal": {
+    "id": "287",
+    "status": "PROPOSAL_STATUS_PASSED",
+    "type": "/cosmos.params.v1beta1.ParameterChangeProposal",
+    "voting_end_utc": "2023-12-07T02:54:58.930543213Z",
+    "changes": [
+      {
+        "subspace": "mint",
+        "key": "InflationMax",
+        "value": "0.090000000000000000"
+      },
+      {
+        "subspace": "mint",
+        "key": "BlocksPerYear",
+        "value": "5435774"
+      }
+    ],
+    "governance_receipt_sha256": "441036e989c4743d49936a664f81620ff867fd592a3cfdbb4ee901e2f8f2279f",
+    "governance_receipt_source": "RECOVERY_EVIDENCE_V02.json / LavenderFive REST"
+  },
+  "deterministic_semantics": {
+    "secret_release": "v1.12.0",
+    "cosmos_sdk_fork": "github.com/scrtlabs/cosmos-sdk",
+    "cosmos_sdk_commit": "ea64f27dc58d",
+    "rule": [
+      "Gov EndBlocker processes active proposals whose voting period has ended at the current block time.",
+      "A successful passed proposal handler mutates state and writes the cache in EndBlock(H).",
+      "Gov emits active_proposal with proposal_id and proposal_result=proposal_passed.",
+      "Mint runs in BeginBlock; BeginBlock(H) precedes Gov EndBlock(H).",
+      "Therefore, once exact execution block H is proven, first mint able to use the changed parameters is H+1."
+    ],
+    "missing_fact": "Exact canonical execution block H (or an equivalent immutable historical boundary proof) for Proposal 287."
+  },
+  "recovery_attempts": [
+    {
+      "id": "INHERITED_V06_V26",
+      "class": "public RPC/REST/archive/indexer historical block recovery",
+      "status": "FAILED_OR_PRUNED",
+      "evidence": "Existing workflows V06-V26 and T0_RECOVERY_CLOSEOUT_V02/T0_RECOVERY_ADDENDUM_V03",
+      "notes": "Included direct block/header/block_results routes, registry RPCs, legacy explorers, Atomscan, Mintscan legacy, archive/operator endpoints. No defensible SCRT 287 boundary recovered."
+    },
+    {
+      "id": "V27",
+      "class": "public explorer/index/archive + Wayback discovery",
+      "receipt": "SCRT287_PUBLIC_INDEX_ARCHIVE_PROBE_V27.json",
+      "receipt_blob_sha": "5fa2b5d8cc0905a9f26f85a7162405d5b5fe7983",
+      "status": "FAIL",
+      "result": "exact_candidates empty; legacy Cosmostation DNS failures; Mintscan pages were non-data HTML shell; Wayback/SecretNodes did not yield boundary evidence."
+    },
+    {
+      "id": "V29",
+      "class": "Valopers explorer/indexer frontend discovery",
+      "receipt": "SCRT287_VALOPERS_INDEXER_DISCOVERY_V29.json",
+      "receipt_blob_sha": "7eb04b71ab5d1f8a0f1722d9d6c8c2da0343bcdb",
+      "status": "FAIL",
+      "result": "0 machine-readable historical block rows; frontend bundles discovered but no boundary."
+    },
+    {
+      "id": "V30",
+      "class": "Valopers public API reverse engineering",
+      "receipt": "SCRT287_VALOPERS_API_PROBE_V30.json",
+      "receipt_blob_sha": "ba3c502a140c3f730940f4a46a460dd104e2eb06",
+      "status": "FAIL",
+      "result": "api.valopers.com root identified as valopers-general-api; no public historical block route winners; exact set empty."
+    },
+    {
+      "id": "V32",
+      "class": "Tendermint commit/blockchain metadata across public providers",
+      "receipt": "SCRT287_COMMIT_BLOCKCHAIN_MULTIPROVIDER_V32.json",
+      "receipt_blob_sha": "9ad4e5b7037b8c1965790b0621f781bec3bcdb1d",
+      "status": "FAIL",
+      "result": "winner_count=0, pass_count=0. Mario archive timed out; other providers returned connection reset, DNS, 404/500/502 or timeouts."
+    },
+    {
+      "id": "V33B",
+      "class": "direct governance EndBlock event index via block_search",
+      "receipt": "SCRT287_GOV_EVENT_BLOCK_SEARCH_V33B.json",
+      "receipt_blob_sha": "55b24e69afc7b3eb952f7e44ee00fd65e62309c1",
+      "query": "active_proposal.proposal_id='287' AND active_proposal.proposal_result='proposal_passed'",
+      "status": "FAIL",
+      "result": "0 event hits. Highstakes POST accepted block_search (HTTP 200) but returned no historical matching block; all other routes failed or returned no blocks."
+    },
+    {
+      "id": "V34",
+      "class": "current Mintscan SvelteKit/backend discovery",
+      "receipt": "SCRT287_MINTSCAN_SVELTEKIT_V34.json",
+      "receipt_blob_sha": "3cf24d97fe78e68898d0f985ee6789077f42ce51",
+      "status": "FAIL",
+      "result": "proposal/block URLs and __data.json variants returned HTML shell; zero usable API URLs and zero historical metadata endpoints."
+    },
+    {
+      "id": "V35B",
+      "class": "historical governance-state transition",
+      "receipt": "SCRT287_HISTORICAL_GOV_STATE_V35B.json",
+      "receipt_blob_sha": "33ae8b426977c96684f51def2c52a2bd453b6f83",
+      "status": "FAIL",
+      "result": "eligible height-sensitive routes=0, pass_records empty. Lavender returned PROPOSAL_STATUS_PASSED at every requested height without a response block-height, demonstrating current-state behavior rather than historical state."
+    },
+    {
+      "id": "V36",
+      "class": "historically configured 2023 Secret Express endpoints",
+      "receipt": "SCRT287_SECRET_EXPRESS_HISTORICAL_ENDPOINT_V36.json",
+      "receipt_blob_sha": "6cd04d15bb1d0faeba4afd694d92bbfd5ac0845d",
+      "status": "FAIL",
+      "result": "rpc.secret.express and lcd.secret.express no longer resolve; no block, commit, event or historical governance state could be recovered."
+    },
+    {
+      "id": "V37B",
+      "class": "Internet Archive CDX census + targeted replay of historical endpoint responses",
+      "receipt": "SCRT287_WAYBACK_ENDPOINT_ARCHIVE_V37B.json",
+      "receipt_blob_sha": "c1302a1941ee59806eaca32ea7173210b285aa7d",
+      "status": "FAIL",
+      "result": "0 targeted captures and 0 useful replays. Blockpane CDX returned 200 with zero captures; Secret Express, Trivium and other CDX probes were 503/timeout."
+    }
+  ],
+  "exhausted_distinct_route_classes": [
+    "live historical block/header/block_results RPC/REST",
+    "archive RPC/LCD",
+    "Tendermint commit and blockchain header ranges",
+    "Tendermint indexed BeginBlock/EndBlock events",
+    "historical governance application state",
+    "legacy and current explorer public APIs",
+    "frontend/backend reverse engineering for Valopers and Mintscan",
+    "historically configured Secret Express infrastructure",
+    "Internet Archive / Wayback endpoint response archives",
+    "public code/repository searches for immutable block datasets"
+  ],
+  "scientific_verdict": {
+    "t0_certified": false,
+    "certified_manifest_count": "11/12",
+    "verdict": "SOURCE_HISTORICAL_EXECUTION_BOUNDARY_BLOCKED",
+    "economic_hypothesis_status": "UNTESTED",
+    "development_authorized": false,
+    "outcomes_opened": false,
+    "estimate_promoted": false,
+    "source_gate_restored": false,
+    "pre_outcome_analysis_freeze_created": false
+  }
+}
