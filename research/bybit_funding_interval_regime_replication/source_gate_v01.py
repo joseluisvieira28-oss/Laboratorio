@@ -11,8 +11,9 @@ START=datetime(2023,1,1,tzinfo=timezone.utc)
 END=datetime(2025,12,31,23,59,59,tzinfo=timezone.utc)
 START_MS=int(START.timestamp()*1000)
 END_MS=int(END.timestamp()*1000)
-ANN="https://api.bybit.com/v5/announcements/index"
-FUND="https://api.bybit.com/v5/market/funding/history"
+HOSTS=("https://api.bytick.com","https://api.bybit.com")
+ANN="/v5/announcements/index"
+FUND="/v5/market/funding/history"
 OUT=Path("bfirr_v01_source_gate_report.json")
 SESSION=requests.Session()
 SESSION.headers.update({"User-Agent":"Mozilla/5.0 CryptoLab-BFIRR/0.1","Accept":"application/json"})
