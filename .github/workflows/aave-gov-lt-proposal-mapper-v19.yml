@@ -1,0 +1,33 @@
+name: Aave Gov LT Proposal Mapper V19
+on:
+  push:
+    branches: [aave-gov-lt-forced-deleveraging-v0.1]
+    paths:
+      - '.github/workflows/aave-gov-lt-proposal-mapper-v19.yml'
+      - 'research/aave_gov_lt_forced_deleveraging/proposal_mapper_v19.py'
+permissions:
+  contents: read
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SEATBELT_COMMIT: a6e52bca30dff5c396f8ad7b452a9890a1f0e68e
+      SEATBELT_ROOT: /tmp/seatbelt
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Pin Aave Seatbelt source
+        run: |
+          git clone --filter=blob:none --no-checkout https://github.com/aave-dao/seatbelt-gov-v3.git /tmp/seatbelt
+          git -C /tmp/seatbelt checkout a6e52bca30dff5c396f8ad7b452a9890a1f0e68e
+          test "$(git -C /tmp/seatbelt rev-parse HEAD)" = "$SEATBELT_COMMIT"
+      - run: python research/aave_gov_lt_forced_deleveraging/proposal_mapper_v19.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: aave-gov-lt-proposal-mapper-v19
+          path: out/aave_proposal_mapper_v16
+          retention-days: 30
