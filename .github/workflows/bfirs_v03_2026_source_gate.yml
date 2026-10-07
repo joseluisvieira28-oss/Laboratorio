@@ -1,0 +1,31 @@
+name: BFIRS V0.3 2026 Holdout Source Gate
+
+on:
+  push:
+    branches:
+      - binance-funding-interval-regime-shock-v0.3-confirmatory-2026-10-07
+    paths:
+      - research/binance_funding_interval_regime_shock/source_gate_v03_2026.py
+      - .github/workflows/bfirs_v03_2026_source_gate.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-gate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests beautifulsoup4
+      - run: python -m py_compile research/binance_funding_interval_regime_shock/source_gate_v03_2026.py
+      - run: python research/binance_funding_interval_regime_shock/source_gate_v03_2026.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bfirs-v03-2026-source-gate-receipt
+          path: bfirs_v03_2026_source_gate_report.json
+          retention-days: 30
