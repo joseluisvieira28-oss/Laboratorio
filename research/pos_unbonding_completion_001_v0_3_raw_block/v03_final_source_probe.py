@@ -42,17 +42,17 @@ def errbody(e):
   try:return e.read().decode("utf-8","replace")[:1600]
   except:return ""
 
-def http(req,timeout=35):
+def http(req,timeout=10):
   try:
     with urllib.request.urlopen(req,timeout=timeout) as r:
       return getattr(r,"status",200),r.read()
   except urllib.error.HTTPError as e:
     raise RuntimeError(f"HTTP {e.code}: {errbody(e)}")
 
-def get(url,timeout=35):
+def get(url,timeout=10):
   return http(urllib.request.Request(url,headers={"User-Agent":UA,"Accept":"application/json"}),timeout)
 
-def post(base,method,params,timeout=35):
+def post(base,method,params,timeout=10):
   raw=json.dumps({"jsonrpc":"2.0","id":1,"method":method,"params":params}).encode()
   req=urllib.request.Request(base,data=raw,method="POST",headers={"User-Agent":UA,"Accept":"application/json","Content-Type":"application/json"})
   return http(req,timeout)
@@ -72,7 +72,7 @@ def rest_txs(base,lo,hi):
   url=base.rstrip("/")+"/cosmos/tx/v1beta1/txs?"+urllib.parse.urlencode(params)
   out={"url":url}
   try:
-    st,raw=get(url,45); obj=parse(raw)
+    st,raw=get(url,12); obj=parse(raw)
     txrs=obj.get("tx_responses") or []
     out.update({
       "http":st,"sha256":sha(raw),
