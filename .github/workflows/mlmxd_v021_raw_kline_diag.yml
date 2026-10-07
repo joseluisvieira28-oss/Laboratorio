@@ -1,0 +1,36 @@
+name: MLMXD V0.2.1 Raw Kline Coverage Diagnostic
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - mexc-launchpool-mx-demand-v0.2-activation-pilot-2026-10-07
+    paths:
+      - '.github/workflows/mlmxd_v021_raw_kline_diag.yml'
+permissions:
+  contents: read
+jobs:
+  diag:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install ccxt
+      - name: Probe exact historical windows
+        run: |
+          python - <<'PY'
+          import ccxt,json,datetime
+          ex=ccxt.mexc({"enableRateLimit":True})
+          tests=["2025-01-23T10:00:00Z","2025-08-04T10:00:00Z","2026-05-20T13:00:00Z"]
+          for ts in tests:
+            dt=datetime.datetime.fromisoformat(ts.replace("Z","+00:00"))
+            st=int((dt-datetime.timedelta(hours=1)).timestamp()*1000)
+            en=int((dt+datetime.timedelta(hours=25)).timestamp()*1000)
+            for sym in ["MXUSDT","BTCUSDT"]:
+              try:
+                x=ex.spot_public_get_klines({"symbol":sym,"interval":"15m","startTime":st,"endTime":en,"limit":200})
+                print(json.dumps({"ts":ts,"symbol":sym,"n":len(x),"first":x[0][0] if x else None,"last":x[-1][0] if x else None}))
+              except Exception as e:
+                print(json.dumps({"ts":ts,"symbol":sym,"error":repr(e)}))
+          PY
