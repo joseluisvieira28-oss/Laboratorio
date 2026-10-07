@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   deterministic-probe:
@@ -197,3 +197,59 @@ jobs:
           print(json.dumps(out,indent=2,sort_keys=True))
           print("END_V08_RECEIPT")
           PY
+
+      - name: Persist V0.8 replay receipt
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          targets=[
+            ("/tmp/coreum_sparse/summary.json","sparse_summary"),
+            ("/tmp/probe_v1_h5m.json","probe_v1_h5m"),
+            ("/tmp/initchain_v1.json","initchain_v1"),
+            ("/tmp/execute_block1_v1.json","execute_block1_v1"),
+            ("/tmp/prefix_summary.json","prefix_summary"),
+            ("/tmp/native_prefix_v1.json","native_prefix_v1"),
+            ("/tmp/probe_v2_h10m.json","probe_v2_h10m"),
+            ("/tmp/probe_v3_h15m.json","probe_v3_h15m"),
+          ]
+          out={
+            "freeze_commit":"d5071409be8dde758ef1089c55d8018c95ebaa75",
+            "github_sha":os.getenv("GITHUB_SHA"),
+            "runner_os":os.getenv("RUNNER_OS"),
+            "runner_arch":os.getenv("RUNNER_ARCH"),
+            "census_executed":False,
+            "market_outcomes_opened":False,
+            "block_results_requested":False,
+            "artifacts":{},
+          }
+          for path,key in targets:
+              p=pathlib.Path(path)
+              if not p.exists():
+                  out["artifacts"][key]={"present":False}
+                  continue
+              raw=p.read_bytes()
+              ent={"present":True,"sha256":hashlib.sha256(raw).hexdigest(),"bytes":len(raw)}
+              try: ent["json"]=json.loads(raw.decode())
+              except Exception: pass
+              out["artifacts"][key]=ent
+          out["replay_prefix_pass"]=bool(
+              out["artifacts"].get("native_prefix_v1",{}).get("present") and
+              out["artifacts"].get("native_prefix_v1",{}).get("json",{}).get("all_app_hash_offsets_pass") is True
+          )
+          out["sparse_v1_v2_v3_typed_probes_present"]=all(
+              out["artifacts"].get(k,{}).get("present") for k in ("probe_v1_h5m","probe_v2_h10m","probe_v3_h15m")
+          )
+          dest=pathlib.Path("research/pos_unbonding_completion_001_v0_8_coreum_replay/V08_REPLAY_RUN_RECEIPT.json")
+          dest.write_text(json.dumps(out,indent=2,sort_keys=True)+"\n")
+          print(json.dumps(out,indent=2,sort_keys=True))
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/pos_unbonding_completion_001_v0_8_coreum_replay/V08_REPLAY_RUN_RECEIPT.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Record V0.8 Coreum replay probe receipt [skip ci]"
+          git pull --rebase origin pos-unbonding-v08-coreum-replay-2026-10-07
+          git push origin HEAD:pos-unbonding-v08-coreum-replay-2026-10-07
