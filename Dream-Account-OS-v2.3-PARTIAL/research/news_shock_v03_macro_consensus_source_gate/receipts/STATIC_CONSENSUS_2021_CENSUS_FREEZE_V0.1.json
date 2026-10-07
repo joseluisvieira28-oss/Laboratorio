@@ -1,0 +1,44 @@
+{
+  "freeze_id": "NEWS-SHOCK-V03-STATIC-CONSENSUS-CENSUS-2021-001",
+  "created_date": "2026-10-07",
+  "branch": "news-shock-v03-public-source-recovery-v0.1",
+  "status": "FROZEN_BEFORE_NEW_CENSUS",
+  "scope": "SOURCE_ONLY",
+  "universe": "All scheduled 2021 CPI and Employment Situation/NFP releases from the existing frozen BLS manifest; no event may be omitted for source difficulty.",
+  "source_rules": {
+    "CPI": {
+      "primary_family": "Danske Bank Weekly Focus",
+      "record": "Consensus column from the latest issue strictly published before T0 that contains the target CPI release.",
+      "fallback": "NONE in V0.1",
+      "required_fields": ["headline_mom","headline_yoy","core_mom","core_yoy"]
+    },
+    "NFP": {
+      "primary_family": "The Baker Group weekly market report / Lunch with Lester",
+      "record": "Est. column from the latest dated/printed-as-of issue strictly before T0 that contains the target Employment Situation release.",
+      "fallback": "NONE in V0.1",
+      "required_fields": ["payrolls","unemployment_rate","ahe_mom","ahe_yoy"]
+    }
+  },
+  "timestamp_rule": "The issue/report publication or printed-as-of state must be strictly before frozen BLS T0. Date-only evidence is acceptable only when the entire identified edition is from an earlier calendar date than T0; same-day date-only evidence fails.",
+  "version_rule": "Accept only issue-specific static documents with auditable edition identity; mutable historical calendar rows are excluded.",
+  "conflict_rule": "Never average or substitute another provider. A conflict within the frozen source family is SOURCE_CONFLICT.",
+  "missing_rule": "Missing fields remain null and make that event incomplete.",
+  "gate": {
+    "minimum_complete_events": 20,
+    "minimum_complete_cpi": 10,
+    "minimum_complete_nfp": 10,
+    "required_provenance_rate": 1.0
+  },
+  "prohibited": [
+    "BTC/ETH prices or returns",
+    "Treasury yield outcomes",
+    "taker flow",
+    "continuation/reversal",
+    "PnL",
+    "parameter tuning from outcomes",
+    "2025/2026 protected outcomes",
+    "merge to main",
+    "trading or exchange mutation"
+  ],
+  "note": "Thresholds and source rules are frozen before the 2021 source census. Failure to reach coverage closes this route as PARTIAL_SOURCE/COVERAGE_BLOCKED; thresholds may not be lowered afterward."
+}
