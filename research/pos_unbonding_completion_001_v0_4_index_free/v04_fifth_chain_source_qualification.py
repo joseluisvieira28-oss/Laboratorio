@@ -11,7 +11,8 @@ CANDIDATES=[
     "chain":"kava","mode":"fixed","height":9500000,
     "sources":[
       ["kava_labs","https://rpc.data.kava.io"],
-      ["chainstack","https://rpc.data.kava.chainstacklabs.com"]
+      ["chainstack","https://rpc.data.kava.chainstacklabs.com"],
+      ["ibs_team","https://kava-rpc.ibs.team"]
     ]
   },
   {
