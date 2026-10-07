@@ -1,0 +1,26 @@
+name: Aave Gov LT Optimism Governance V14.1
+on:
+  push:
+    branches: [aave-gov-lt-forced-deleveraging-v0.1]
+    paths:
+      - '.github/workflows/aave-gov-lt-optimism-governance-v141.yml'
+      - 'research/aave_gov_lt_forced_deleveraging/optimism_governance_v2_v141.py'
+permissions:
+  contents: read
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install pycryptodome==3.23.0
+      - run: python research/aave_gov_lt_forced_deleveraging/optimism_governance_v2_v141.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: aave-gov-lt-optimism-governance-v141
+          path: out/aave_optimism_gov_v141
+          retention-days: 30
