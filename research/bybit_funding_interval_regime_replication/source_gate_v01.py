@@ -18,23 +18,32 @@ SESSION=requests.Session()
 SESSION.headers.update({"User-Agent":"Mozilla/5.0 CryptoLab-BFIRR/0.1","Accept":"application/json"})
 CANON=(1,2,4,8,12,24)
 
-def req(url,params,attempts=7):
+def req(path,params,attempts=7):
     last=None
     for i in range(attempts):
-        try:
-            r=SESSION.get(url,params=params,timeout=40)
-            if r.status_code==429:
-                wait=min(45,2**(i+1)); print(f"RATE_LIMIT wait={wait}s"); time.sleep(wait); last=RuntimeError("429"); continue
-            if r.status_code>=500:
-                time.sleep(min(20,2**i)); last=RuntimeError(f"http_{r.status_code}"); continue
-            r.raise_for_status()
-            j=r.json()
-            if int(j.get("retCode",0))!=0:
-                raise RuntimeError(f"retCode={j.get('retCode')} retMsg={j.get('retMsg')}")
-            return j
-        except Exception as e:
-            last=e
-            if i+1<attempts: time.sleep(min(20,2**i))
+        for host in HOSTS:
+            try:
+                r=SESSION.get(host+path,params=params,timeout=40)
+                if r.status_code in (403,451):
+                    last=RuntimeError(f"http_{r.status_code}@{host}")
+                    continue
+                if r.status_code==429:
+                    last=RuntimeError(f"429@{host}")
+                    continue
+                if r.status_code>=500:
+                    last=RuntimeError(f"http_{r.status_code}@{host}")
+                    continue
+                r.raise_for_status()
+                j=r.json()
+                if int(j.get("retCode",0))!=0:
+                    raise RuntimeError(f"retCode={j.get('retCode')} retMsg={j.get('retMsg')} host={host}")
+                return j
+            except Exception as e:
+                last=e
+        if i+1<attempts:
+            wait=min(30,2**i)
+            print(f"TRANSPORT_RETRY wait={wait}s attempt={i+1}/{attempts} last={last}")
+            time.sleep(wait)
     raise RuntimeError(str(last))
 
 def ts_of(a):
