@@ -1,0 +1,209 @@
+name: source-t0-probe-v36-zonescan-api-reverse-fixed
+
+on:
+  push:
+    branches:
+      - cosmos-native-emission-param-shock-001-v0.2-t0-remediation-2026-10-07
+    paths:
+      - .github/workflows/source-t0-probe-v36-zonescan-api-reverse-fixed.yml
+
+permissions:
+  contents: write
+
+jobs:
+  zonescan-api-reverse-fixed:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: cosmos-native-emission-param-shock-001-v0.2-t0-remediation-2026-10-07
+
+      - name: Resolve Zonescan public block API and SCRT287 boundary
+        run: |
+          python - <<'PY'
+          import json, re, urllib.request, urllib.error, urllib.parse, hashlib, datetime, os
+          from concurrent.futures import ThreadPoolExecutor
+
+          TARGET='2023-12-07T02:54:58.930543213Z'
+          TT=datetime.datetime.fromisoformat(TARGET.replace('Z','+00:00')).timestamp()
+          UA={'User-Agent':'CryptoLab-source-only-zonescan-v36/1.0','Accept':'*/*'}
+          OUT='research/cosmos_native_emission_param_shock_001_v0_2/SCRT287_ZONESCAN_API_REVERSE_V36.json'
+
+          def get(url, timeout=15):
+              req=urllib.request.Request(url, headers=UA)
+              try:
+                  with urllib.request.urlopen(req, timeout=timeout) as r:
+                      b=r.read()
+                      return {'ok':True,'status':getattr(r,'status',200),'url':url,'content_type':r.headers.get('content-type',''),'sha256':hashlib.sha256(b).hexdigest(),'body':b.decode('utf-8','replace')}
+              except urllib.error.HTTPError as e:
+                  try: b=e.read()
+                  except Exception: b=b''
+                  return {'ok':False,'status':e.code,'url':url,'error':str(e),'content_type':e.headers.get('content-type','') if e.headers else '', 'sha256':hashlib.sha256(b).hexdigest() if b else None,'body':b.decode('utf-8','replace')}
+              except Exception as e:
+                  return {'ok':False,'url':url,'error':repr(e),'body':''}
+
+          def walk(x):
+              if isinstance(x,dict):
+                  yield x
+                  for v in x.values(): yield from walk(v)
+              elif isinstance(x,list):
+                  for v in x: yield from walk(v)
+
+          def parse_time(v):
+              s=str(v)
+              try: return datetime.datetime.fromisoformat(s.replace('Z','+00:00')).timestamp()
+              except Exception:
+                  try:
+                      f=float(s)
+                      if f>1e12: f/=1000.0
+                      return f
+                  except Exception: return None
+
+          def parse_block(resp, requested=None):
+              try: d=json.loads(resp.get('body',''))
+              except Exception: return None
+              for x in walk(d):
+                  if not isinstance(x,dict): continue
+                  h=x.get('height') or x.get('block_height') or x.get('blockHeight')
+                  t=x.get('time') or x.get('timestamp') or x.get('block_time') or x.get('blockTime') or x.get('created_at')
+                  hs=x.get('hash') or x.get('block_hash') or x.get('blockHash')
+                  if h is None or t is None: continue
+                  try: hi=int(str(h).replace(',',''))
+                  except Exception: continue
+                  if requested is not None and hi!=requested: continue
+                  if parse_time(t) is None: continue
+                  return {'height':hi,'time':str(t),'hash':hs}
+              return None
+
+          seed=11885000
+          page=get(f'https://zonescan.io/secret/blocks/{seed}',20)
+          scripts=[]
+          for src in re.findall(r'<script[^>]+src=["\']([^"\']+)',page.get('body',''),re.I):
+              scripts.append(urllib.parse.urljoin('https://zonescan.io',src))
+          scripts=list(dict.fromkeys(scripts))
+
+          assets=[]; abs_urls=set(); route_literals=set(); snippets=[]
+          for u in scripts:
+              rr=get(u,30); body=rr.get('body','')
+              assets.append({'url':u,'ok':rr.get('ok'),'status':rr.get('status'),'sha256':rr.get('sha256'),'length':len(body),'error':rr.get('error')})
+              for x in re.findall(r"https?://[^\"'\s<>]+",body):
+                  if any(k in x.lower() for k in ['zonescan','api','cosmos']): abs_urls.add(x[:1000])
+              for x in re.findall(r'''["'](/[^"']{1,240})["']''',body):
+                  lx=x.lower()
+                  if any(k in lx for k in ['api','block','graphql','chain','rpc']): route_literals.add(x)
+              low=body.lower()
+              for kw in ['/api/','graphql','blocks/','block?','getblock','height','timestamp']:
+                  pos=0
+                  while len(snippets)<1600:
+                      j=low.find(kw,pos)
+                      if j<0: break
+                      snippets.append(body[max(0,j-220):j+500])
+                      pos=j+len(kw)
+
+          bases={'https://zonescan.io'}
+          for u in abs_urls:
+              try:
+                  p=urllib.parse.urlparse(u)
+                  if p.scheme in ('http','https') and p.netloc and ('zonescan' in p.netloc.lower() or 'api' in p.netloc.lower()):
+                      bases.add(f'{p.scheme}://{p.netloc}')
+              except Exception: pass
+
+          path_templates={
+            '/api/secret/blocks/{h}','/api/secret/block/{h}','/api/v1/secret/blocks/{h}','/api/v1/secret/block/{h}',
+            '/api/chains/secret/blocks/{h}','/api/chains/secret/block/{h}','/api/blockchains/secret/blocks/{h}','/api/blockchains/secret/block/{h}',
+            '/api/blocks/secret/{h}','/api/block/secret/{h}','/secret/api/blocks/{h}','/secret/api/block/{h}',
+            '/api/blocks/{h}?chain=secret','/api/block/{h}?chain=secret','/api/blocks/{h}?network=secret','/api/block/{h}?network=secret'
+          }
+          for x in route_literals:
+              y=re.sub(r'\$\{[^}]+\}','{h}',x)
+              y=re.sub(r':[A-Za-z_][A-Za-z0-9_]*','{h}',y)
+              if 'block' in y.lower() and '{h}' in y: path_templates.add(y)
+
+          tests=[]
+          with ThreadPoolExecutor(max_workers=24) as ex:
+              futs=[]
+              for b in sorted(bases):
+                  for tpl in sorted(path_templates):
+                      if '{h}' not in tpl: continue
+                      u=b.rstrip('/')+tpl.format(h=seed)
+                      futs.append((b,tpl,u,ex.submit(get,u,15)))
+              for b,tpl,u,f in futs:
+                  rr=f.result(); z=parse_block(rr,seed)
+                  tests.append({'base':b,'template':tpl,'url':u,'ok':rr.get('ok'),'status':rr.get('status'),'content_type':rr.get('content_type'),
+                                'parsed':z,'sha256':rr.get('sha256'),'error':rr.get('error'),'body_excerpt':rr.get('body','')[:1800]})
+
+          winners=[x for x in tests if x.get('parsed')]
+          exact={}
+          broad=[11752974,11800000,11840000,11860000,11875000,11880000,11885000,11890000,11900000,11920000]
+          for w in winners:
+              b=w['base']; tpl=w['template']; pts=[]
+              for h in broad:
+                  rr=get(b.rstrip('/')+tpl.format(h=h),15); z=parse_block(rr,h)
+                  if not z: continue
+                  tv=parse_time(z['time'])
+                  if tv is not None: pts.append((h,tv,z,rr.get('sha256'),rr.get('url')))
+              pts=sorted(pts)
+              br=None
+              for a,c in zip(pts,pts[1:]):
+                  if a[1] < TT <= c[1]: br=(a,c); break
+              rec={'points':pts,'bracket':br}
+              if br:
+                  L,R=br[0][0],br[1][0]; err=None
+                  while L<R:
+                      M=(L+R)//2
+                      rr=get(b.rstrip('/')+tpl.format(h=M),15); z=parse_block(rr,M)
+                      if not z:
+                          err={'height':M,'status':rr.get('status'),'error':rr.get('error'),'url':rr.get('url'),'body_excerpt':rr.get('body','')[:900]}; break
+                      tv=parse_time(z['time'])
+                      if tv is None:
+                          err={'height':M,'bad_time':z['time']}; break
+                      if tv<TT: L=M+1
+                      else: R=M
+                  rec['error']=err
+                  if err is None:
+                      H=L; ns=[]
+                      for hh in [H-1,H,H+1]:
+                          rr=get(b.rstrip('/')+tpl.format(h=hh),20); z=parse_block(rr,hh)
+                          ns.append({'height':hh,'parsed':z,'url':rr.get('url'),'status':rr.get('status'),'sha256':rr.get('sha256'),'body_excerpt':rr.get('body','')[:2600]})
+                      rec['H_vote_end_block']=H; rec['neighbors']=ns
+              exact[b+tpl]=rec
+
+          certified=None
+          for source,v in exact.items():
+              H=v.get('H_vote_end_block'); ns=v.get('neighbors') or []
+              if H is not None and len(ns)==3 and all(x.get('parsed') for x in ns):
+                  if parse_time(ns[0]['parsed']['time']) < TT <= parse_time(ns[1]['parsed']['time']):
+                      certified={'source':source,'H':H,'neighbors':ns,'canonical_T0_height':H+1,'canonical_T0_time':ns[2]['parsed']['time']}
+                      break
+
+          verdict='H_BOUNDARY_RECOVERED' if certified else 'ZONESCAN_API_NOT_RESOLVED'
+          out={
+            'scope':'SOURCE_ONLY_NO_MARKET_DATA',
+            'scientific_rules_changed':False,
+            'target_voting_end':TARGET,
+            'seed_height':seed,
+            'page':{'ok':page.get('ok'),'status':page.get('status'),'sha256':page.get('sha256'),'scripts':scripts,'body_excerpt':page.get('body','')[:5000]},
+            'assets':assets,
+            'absolute_urls':sorted(abs_urls),
+            'route_literals':sorted(route_literals),
+            'relevant_bundle_fragments':snippets,
+            'api_tests':tests,
+            'winners':winners,
+            'exact_resolution':exact,
+            'certified_candidate':certified,
+            'verdict':verdict,
+            'tested_utc':datetime.datetime.now(datetime.timezone.utc).isoformat()
+          }
+          os.makedirs(os.path.dirname(OUT),exist_ok=True)
+          with open(OUT,'w',encoding='utf-8') as f: json.dump(out,f,indent=2,ensure_ascii=False)
+          print(json.dumps({'verdict':verdict,'scripts':scripts,'bases':sorted(bases),'routes':len(path_templates),'winners':len(winners),'certified_candidate':certified},indent=2))
+          PY
+
+      - name: Persist source-only Zonescan reverse-engineering receipt
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/cosmos_native_emission_param_shock_001_v0_2/SCRT287_ZONESCAN_API_REVERSE_V36.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "SCRT287: persist Zonescan API reverse probe v36"
+          git push origin HEAD:cosmos-native-emission-param-shock-001-v0.2-t0-remediation-2026-10-07
