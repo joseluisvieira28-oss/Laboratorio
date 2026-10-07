@@ -158,6 +158,16 @@ def parse_clock(txt):
     if h>23 or mi>59: return None
     return h,mi
 
+def parse_table_clock(txt):
+    # Used only when the official table header itself declares UTC.
+    m=re.search(r"(\d{1,2}):(\d{2})\s*(am|pm)?",txt or "",re.I)
+    if not m: return None
+    h=int(m.group(1)); mi=int(m.group(2)); ap=(m.group(3) or "").lower()
+    if ap=="pm" and h<12: h+=12
+    if ap=="am" and h==12: h=0
+    if h>23 or mi>59: return None
+    return h,mi
+
 def nearby_table_date(table):
     # OKX commonly places "July 18, 2024:" or an adjustment sentence
     # immediately before the corresponding table.
@@ -220,7 +230,12 @@ def parse_rows_for_events(soup,title):
             old,new=ints[0],ints[1]
             if new>=old: continue
             row_date=parse_date_text(txt) or ctx_date
-            c=parse_clock(txt) or ctx_clock
+            # If the official table header declares UTC, a bare clock in the row
+            # inherits that timezone unambiguously.
+            c=parse_clock(txt)
+            if c is None and "utc" in header:
+                c=parse_table_clock(txt)
+            c=c or ctx_clock
             events.append({
                 "symbols":syms,"old_hours":old,"new_hours":new,
                 "row_text":txt,"row_plain":" ".join(row),"row_date":row_date,
