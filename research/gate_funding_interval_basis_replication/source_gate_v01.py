@@ -35,19 +35,44 @@ def req(method,url,**kwargs):
     raise RuntimeError(str(last))
 
 def enumerate_fee():
-    rows=[]; total=None; pages=[]
-    for page in range(1,50):
+    # Page 1 / total from official Next.js SSR. Page 2+ from the same
+    # public list_article endpoint used by the Gate client.
+    r=req("GET","https://miniapp.gate.com/announcements/fee")
+    soup=BeautifulSoup(r.text,"html.parser")
+    nd=soup.find("script",id="__NEXT_DATA__")
+    if not nd or not nd.string:
+        raise RuntimeError("missing_next_data")
+    obj=json.loads(nd.string)
+    pp=((obj.get("props") or {}).get("pageProps") or {})
+    ld=pp.get("listData") or {}
+    total=int(ld.get("total") or 0)
+    first=ld.get("list") or []
+    if total<1 or not first:
+        raise RuntimeError("invalid_ssr_listdata")
+    if not all(int(x.get("cate_id") or 0)==55 for x in first):
+        raise RuntimeError("ssr_not_fee_category")
+    rows=list(first)
+    pages=[{"page":1,"source":"SSR","count":len(first),"ids":[x.get("id") for x in first]}]
+    for page in range(2,100):
         p={"cate_name":"fee","page":page,"size":15,"tags":"","timer":"","cate_level":2}
         j=req("POST",LIST,json=p).json()
-        if j.get("code")!=0: raise RuntimeError(f"list_code:{j.get('code')}")
+        if j.get("code")!=0:
+            raise RuntimeError(f"list_code:{j.get('code')}")
         d=j.get("data") or {}; rr=d.get("list") or []
-        total=d.get("total") if total is None else total
-        pages.append({"page":page,"count":len(rr),"ids":[x.get("id") for x in rr]})
+        if rr and not all(int(x.get("cate_id") or 0)==55 for x in rr):
+            raise RuntimeError(f"non_fee_rows_page_{page}")
+        pages.append({"page":page,"source":"API","count":len(rr),"ids":[x.get("id") for x in rr]})
         rows.extend(rr)
-        if not rr or len(rows)>=int(total or 0): break
+        dd={int(x["id"]):x for x in rows if x.get("id") is not None}
+        if len(dd)>=total:
+            rows=list(dd.values()); break
+        if not rr:
+            raise RuntimeError(f"archive_ended_before_total:{len(dd)}/{total}")
         time.sleep(0.15)
     dd={int(x["id"]):x for x in rows if x.get("id") is not None}
     rows=list(dd.values())
+    if len(rows)!=total:
+        raise RuntimeError(f"enumerated_total_mismatch:{len(rows)}/{total}")
     return sorted(rows,key=lambda x:int(x.get("release_timestamp") or 0),reverse=True),total,pages
 
 def candidate(x):
