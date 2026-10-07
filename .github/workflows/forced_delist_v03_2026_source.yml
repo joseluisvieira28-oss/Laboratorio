@@ -1,0 +1,22 @@
+name: Forced Delist V0.3 2026 Source Gate
+on:
+  push:
+    branches:
+      - binance-forced-delist-convergence-v0.3-2026-replication-2026-10-07
+    paths:
+      - research/binance_futures_delist_forced_convergence/V03_2026_REPLICATION_SOURCE_FREEZE_2026-10-07.md
+      - research/binance_futures_delist_forced_convergence/v03_2026_source_gate.py
+      - .github/workflows/forced_delist_v03_2026_source.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python research/binance_futures_delist_forced_convergence/v03_2026_source_gate.py
