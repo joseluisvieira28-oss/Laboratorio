@@ -11,30 +11,33 @@ import (
 	coreumconfig "github.com/CoreumFoundation/coreum/pkg/config"
 	servertypes "github.com/cosmos/cosmos-sdk/server/types"
 	abci "github.com/tendermint/tendermint/abci/types"
+	tmjson "github.com/tendermint/tendermint/libs/json"
 	tmlog "github.com/tendermint/tendermint/libs/log"
 	tmtypes "github.com/tendermint/tendermint/types"
 	dbm "github.com/tendermint/tm-db"
 )
 
 type opts map[string]interface{}
+
 var _ servertypes.AppOptions = opts{}
+
 func (o opts) Get(k string) interface{} { return o[k] }
 
 type blockEnvelope struct {
 	Result struct {
 		BlockID tmtypes.BlockID `json:"block_id"`
-		Block *tmtypes.Block `json:"block"`
+		Block   *tmtypes.Block  `json:"block"`
 	} `json:"result"`
 }
 
 type receipt struct {
-	ChainID                    string `json:"chain_id"`
-	InitialHeight              int64  `json:"initial_height"`
-	InitChainValidatorUpdates  int    `json:"init_chain_validator_updates"`
-	InitChainValidatorsHash    string `json:"init_chain_validators_hash"`
-	Header1ValidatorsHash      string `json:"header_1_validators_hash"`
-	GenesisValidatorLinkPass   bool   `json:"genesis_validator_link_pass"`
-	TopLevelGenesisValidators  int    `json:"top_level_genesis_validators"`
+	ChainID                   string `json:"chain_id"`
+	InitialHeight             int64  `json:"initial_height"`
+	InitChainValidatorUpdates int    `json:"init_chain_validator_updates"`
+	InitChainValidatorsHash   string `json:"init_chain_validators_hash"`
+	Header1ValidatorsHash     string `json:"header_1_validators_hash"`
+	GenesisValidatorLinkPass  bool   `json:"genesis_validator_link_pass"`
+	TopLevelGenesisValidators int    `json:"top_level_genesis_validators"`
 }
 
 func hx(b []byte) string { return fmt.Sprintf("%X", b) }
@@ -45,24 +48,34 @@ func main() {
 		os.Exit(2)
 	}
 	genRaw, err := os.ReadFile(os.Args[1])
-	if err != nil { panic(err) }
+	if err != nil {
+		panic(err)
+	}
 	gen, err := tmtypes.GenesisDocFromJSON(genRaw)
-	if err != nil { panic(err) }
+	if err != nil {
+		panic(err)
+	}
+
 	var block1 blockEnvelope
 	blockRaw, err := os.ReadFile(os.Args[2])
-	if err != nil { panic(err) }
-	if err := tmtypes.ModuleCdc.UnmarshalJSON(blockRaw, &block1); err != nil {
-		// ModuleCdc is not guaranteed to cover RPC wrappers; fall back to stdlib for the envelope.
-		if err2 := json.Unmarshal(blockRaw, &block1); err2 != nil {
-			panic(fmt.Errorf("decode block1: tm=%v json=%v", err, err2))
-		}
+	if err != nil {
+		panic(err)
 	}
-	if block1.Result.Block == nil { panic("nil block1") }
+	if err := tmjson.Unmarshal(blockRaw, &block1); err != nil {
+		panic(fmt.Errorf("decode block1: %w", err))
+	}
+	if block1.Result.Block == nil {
+		panic("nil block1")
+	}
 
 	home, err := os.MkdirTemp("", "coreum-v1-initchain-")
-	if err != nil { panic(err) }
+	if err != nil {
+		panic(err)
+	}
 	defer os.RemoveAll(home)
-	if err := os.MkdirAll(filepath.Join(home, "data"), 0o755); err != nil { panic(err) }
+	if err := os.MkdirAll(filepath.Join(home, "data"), 0o755); err != nil {
+		panic(err)
+	}
 
 	encoding := coreumconfig.NewEncodingConfig(coreumapp.ModuleBasics)
 	application := coreumapp.New(
@@ -78,27 +91,31 @@ func main() {
 	)
 
 	req := abci.RequestInitChain{
-		Time: gen.GenesisTime,
-		ChainId: gen.ChainID,
+		Time:            gen.GenesisTime,
+		ChainId:         gen.ChainID,
 		ConsensusParams: tmtypes.TM2PB.ConsensusParams(gen.ConsensusParams),
-		AppStateBytes: gen.AppState,
-		InitialHeight: gen.InitialHeight,
+		AppStateBytes:   gen.AppState,
+		InitialHeight:   gen.InitialHeight,
 	}
 	resp := application.InitChain(req)
 	vals, err := tmtypes.PB2TM.ValidatorUpdates(resp.Validators)
-	if err != nil { panic(err) }
+	if err != nil {
+		panic(err)
+	}
 	vs := tmtypes.NewValidatorSet(vals)
 	headerHash := block1.Result.Block.Header.ValidatorsHash
 	out := receipt{
-		ChainID: gen.ChainID,
-		InitialHeight: gen.InitialHeight,
+		ChainID:                   gen.ChainID,
+		InitialHeight:             gen.InitialHeight,
 		InitChainValidatorUpdates: len(resp.Validators),
-		InitChainValidatorsHash: hx(vs.Hash()),
-		Header1ValidatorsHash: hx(headerHash),
-		GenesisValidatorLinkPass: bytes.Equal(vs.Hash(), headerHash),
+		InitChainValidatorsHash:   hx(vs.Hash()),
+		Header1ValidatorsHash:     hx(headerHash),
+		GenesisValidatorLinkPass:  bytes.Equal(vs.Hash(), headerHash),
 		TopLevelGenesisValidators: len(gen.Validators),
 	}
 	b, _ := json.MarshalIndent(out, "", "  ")
 	fmt.Println(string(b))
-	if !out.GenesisValidatorLinkPass { os.Exit(1) }
+	if !out.GenesisValidatorLinkPass {
+		os.Exit(1)
+	}
 }
