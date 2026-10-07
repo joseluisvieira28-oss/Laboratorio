@@ -114,7 +114,7 @@ def parse_effective(txt):
     vals=[]
     # Primary modern format: explicit Adjustment time field.
     rx_adj=re.compile(
-        r"Adjustment\s+time\s*:\s*(20\\d{2})-(\\d{2})-(\\d{2})\\s+(\\d{1,2}):(\\d{2})\\s*[（(]?UTC\\s*([+-])\\s*(\\d{1,2})[）)]?",
+        r"Adjustment\s+time\s*:\s*(20\d{2})-(\d{2})-(\d{2})\s+(\d{1,2}):(\d{2})\s*[（(]?UTC\s*([+-])\s*(\d{1,2})[）)]?",
         re.I
     )
     for m in rx_adj.finditer(txt):
@@ -128,8 +128,8 @@ def parse_effective(txt):
 
     # Older prose format: "... adjust ... on April 29, 2025, at 20:00 (UTC+8)".
     rx_old=re.compile(
-        r"adjust.{0,220}?on\\s+([A-Z][a-z]+)\\s+(\\d{1,2}),?\\s+(20\\d{2}).{0,45}?"
-        r"(\\d{1,2}):(\\d{2})\\s*[（(]?UTC\\s*([+-])\\s*(\\d{1,2})[）)]?",
+        r"adjust.{0,220}?on\s+([A-Z][a-z]+)\s+(\d{1,2}),?\s+(20\d{2}).{0,45}?"
+        r"(\d{1,2}):(\d{2})\s*[（(]?UTC\s*([+-])\s*(\d{1,2})[）)]?",
         re.I|re.S
     )
     for m in rx_old.finditer(txt):
@@ -174,7 +174,7 @@ def fetch_article(meta):
     body=article_body_text(soup,title)
     pub=datetime.fromisoformat(meta["listed_utc"].replace("Z","+00:00")) if meta.get("listed_utc") else None
     cand=candidate_text(title+" "+body)
-    launch=bool(re.search(r"\\b(listing|will list|launch)\\b",title,re.I))
+    launch=bool(re.search(r"\b(listing|will list|launch)\b",title,re.I))
     delist=bool(re.search(r"delist|automatic settlement",title+" "+body,re.I))
     effs=parse_effective(body)
     trans=parse_intervals(body)
