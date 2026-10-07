@@ -49,8 +49,17 @@ def enumerate_fee():
     first=ld.get("list") or []
     if total<1 or not first:
         raise RuntimeError("invalid_ssr_listdata")
-    if not all(int(x.get("cate_id") or 0)==55 for x in first):
-        raise RuntimeError("ssr_not_fee_category")
+    route_query=obj.get("query") or pp.get("query") or {}
+    route_category=route_query.get("category") if isinstance(route_query,dict) else None
+    def has_fee_id55(xs):
+        for c in xs or []:
+            if str(c.get("cate","")).lower()=="fee" and int(c.get("id") or 0)==55:
+                return True
+            if has_fee_id55(c.get("children") or []):
+                return True
+        return False
+    if route_category!="fee" or not has_fee_id55(pp.get("categories") or []):
+        raise RuntimeError(f"ssr_fee_identity_unresolved:{route_category}")
     rows=list(first)
     pages=[{"page":1,"source":"SSR","count":len(first),"ids":[x.get("id") for x in first]}]
     for page in range(2,100):
