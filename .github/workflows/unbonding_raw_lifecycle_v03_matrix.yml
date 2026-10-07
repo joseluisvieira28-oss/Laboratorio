@@ -1,0 +1,33 @@
+name: Unbonding Raw Lifecycle V0.3 Matrix
+
+on:
+  push:
+    branches:
+      - pos-unbonding-completion-001-source-remediation-v0.3-2026-10-07
+    paths:
+      - 'research/pos_unbonding_completion_001_v0_3_source_remediation/probe_raw_lifecycle_v03.py'
+      - '.github/workflows/unbonding_raw_lifecycle_v03_matrix.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    strategy:
+      fail-fast: false
+      matrix:
+        chain: [cosmoshub, osmosis, kava, dydx, secret, akash]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe frozen chain
+        env:
+          ONLY_CHAIN: ${{ matrix.chain }}
+        run: python3 research/pos_unbonding_completion_001_v0_3_source_remediation/probe_raw_lifecycle_v03.py
+      - name: Upload capability receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: unbonding-${{ matrix.chain }}-v03
+          path: unbonding_v03_capability_*.json
+          if-no-files-found: error
