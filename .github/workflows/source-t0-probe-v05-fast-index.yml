@@ -1,0 +1,56 @@
+name: source-t0-probe-v05-fast-index
+
+on:
+  push:
+    branches:
+      - cosmos-native-emission-param-shock-001-v0.2-t0-remediation-2026-10-07
+    paths:
+      - .github/workflows/source-t0-probe-v05-fast-index.yml
+
+permissions:
+  contents: read
+
+jobs:
+  exact-index-boundary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Exact historical block-time binary search
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, urllib.request, ssl
+          from datetime import datetime
+          BASE="https://console-api.akash.network"
+          UA={"User-Agent":"CryptoLab-source-t0-fast/0.5"}
+          def getb(h):
+              req=urllib.request.Request(f"{BASE}/v1/blocks/{h}",headers=UA)
+              with urllib.request.urlopen(req,timeout=8,context=ssl.create_default_context()) as r:
+                  d=json.loads(r.read().decode())
+              return d
+          def t(s): return datetime.fromisoformat(s.replace("Z","+00:00")).timestamp()
+          cases={
+            "265":("2024-08-08T16:13:48.243802688Z",17516882,17672834),
+            "283":("2025-03-14T13:25:56.642245036Z",20625016,20635016)
+          }
+          out={}
+          for pid,(target,lo,hi) in cases.items():
+              a=getb(lo); b=getb(hi); target_ts=t(target)
+              rec={"target":target,"lo":a,"hi":b}
+              if not (t(a["datetime"]) < target_ts <= t(b["datetime"])):
+                  rec["verdict"]="BAD_BRACKET"
+              else:
+                  L,R=lo,hi
+                  while L<R:
+                      m=(L+R)//2
+                      x=getb(m)
+                      if t(x["datetime"])>=target_ts:R=m
+                      else:L=m+1
+                  H=L
+                  rec["H_vote_end_block"]=H
+                  rec["neighbors"]={str(h):getb(h) for h in range(H-2,H+3)}
+              out[pid]=rec
+          print("FAST_T0_INDEX_BEGIN")
+          print(json.dumps(out,indent=2,sort_keys=True))
+          print("FAST_T0_INDEX_END")
+          PY
