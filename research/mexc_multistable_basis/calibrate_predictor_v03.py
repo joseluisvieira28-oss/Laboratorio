@@ -62,8 +62,8 @@ def spot_chunk(symbol,start_dt,minutes):
 
 def spot_day(symbol,day):
     out={}; evidence=[]; ok=True
-    for offset in (0,720):
-        d,ev,good=spot_chunk(symbol,day+timedelta(minutes=offset),720)
+    for offset in (0,480,960):
+        d,ev,good=spot_chunk(symbol,day+timedelta(minutes=offset),480)
         out.update(d); evidence.append(ev); ok=ok and good
     return out,evidence,ok
 
