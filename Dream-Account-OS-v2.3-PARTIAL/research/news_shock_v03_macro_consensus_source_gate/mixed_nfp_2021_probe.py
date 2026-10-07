@@ -137,37 +137,43 @@ def baker_yoy(filename, month):
             return {"ok":False,"url":u,"status":r.status_code}
         reader=PdfReader(io.BytesIO(r.content))
         text=" ".join(" ".join((p.extract_text() or "").split()) for p in reader.pages)
-        printed=re.search(r"This report was printed as of:\\s*([^\\n]+?)(?=\\s+\\d{1,2}/\\d{1,2}|\\s+INTENDED|$)",text,re.I)
+        printed=re.search(r"This report was printed as of:\\s*([0-9]{1,2}/[0-9]{1,2}/[0-9]{4}\\s+[0-9]{1,2}:[0-9]{2}(?:AM|PM))",text,re.I)
 
         val=None
         match_text=None
-        table_rows=[]
-        # Technical extraction fix: read the actual PDF table geometry and take the frozen Est. column.
+        table_evidence=[]
         with pdfplumber.open(io.BytesIO(r.content)) as pdf:
             for page in pdf.pages:
                 for table in page.extract_tables() or []:
-                    for row in table or []:
-                        cells=[" ".join((x or "").replace("\\n"," ").split()) for x in row]
-                        joined=" | ".join(cells)
-                        if "Average Hourly Earnings YoY" not in joined:
+                    for block in table or []:
+                        if len(block) < 4:
                             continue
-                        table_rows.append(cells)
-                        # Canonical layout: Date | Release | Per. | Est. | Actual | Prior | Revised
-                        # Sometimes Date is merged/blank, so locate release cell then inspect following cells.
-                        rel_idx=next((i for i,x in enumerate(cells) if "Average Hourly Earnings YoY" in x),None)
-                        if rel_idx is not None:
-                            tail=cells[rel_idx+1:]
-                            # Target row must identify the expected reference month when a period cell is present.
-                            # First percent before Actual/Prior is the Est. value in this report family.
-                            for x in tail[:4]:
-                                m=re.fullmatch(r"[-+]?\\d+(?:\\.\\d+)?%",x.strip())
-                                if m:
-                                    val=x.strip(); match_text=joined; break
-                        if val: break
-                    if val: break
-                if val: break
+                        # Baker table is often returned as a single block whose cells are whole columns:
+                        # Date | Release | Per. | Est. | Actual | Prior | Revised.
+                        cols=[[(z or "").strip() for z in (cell or "").splitlines() if (z or "").strip()] for cell in block]
+                        if len(cols) < 4:
+                            continue
+                        releases=cols[1]
+                        ests=cols[3]
+                        periods=cols[2] if len(cols)>2 else []
+                        for i,rel in enumerate(releases):
+                            if "Average Hourly Earnings YoY" not in rel:
+                                continue
+                            est=ests[i] if i < len(ests) else None
+                            per=periods[i] if i < len(periods) else None
+                            table_evidence.append({"row_index":i,"release":rel,"period":per,"est":est})
+                            if est and re.fullmatch(r"[-+]?\\d+(?:\\.\\d+)?%",est):
+                                val=est
+                                match_text=f"{rel} | {per} | Est={est}"
+                                break
+                        if val:
+                            break
+                    if val:
+                        break
+                if val:
+                    break
 
-        # Conservative text fallback for extraction variants where the row remains logically ordered.
+        # Conservative fallback only when table geometry is unavailable.
         if val is None:
             pats=[
                 rf"Average Hourly Earnings YoY\\s+{month}\\s+([-+]?\\d+(?:\\.\\d+)?%)",
@@ -181,7 +187,7 @@ def baker_yoy(filename, month):
 
         return {"ok":True,"url":r.url,"sha256":sha(r.content),"last_modified":r.headers.get("last-modified"),"etag":r.headers.get("etag"),
                 "printed_as_of":printed.group(1).strip() if printed else None,"ahe_yoy":val,"match":match_text,
-                "table_rows":table_rows[:8]}
+                "table_evidence":table_evidence[:8]}
     except Exception as e:
         return {"ok":False,"url":u,"error":repr(e)}
 
