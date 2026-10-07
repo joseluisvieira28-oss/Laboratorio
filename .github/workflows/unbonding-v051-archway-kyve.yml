@@ -1,0 +1,43 @@
+name: Unbonding V0.5.1 Archway KYVE REST Qualification
+
+on:
+  push:
+    branches:
+      - pos-unbonding-completion-001-v0.5-fifth-chain-remediation-2026-10-07
+    paths:
+      - "research/pos_unbonding_completion_001_v0_5_fifth_chain/v051_archway_kyve_rest_probe.py"
+      - ".github/workflows/unbonding-v051-archway-kyve.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pos-unbonding-completion-001-v0.5-fifth-chain-remediation-2026-10-07
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run Archway KYVE + archive qualification
+        run: python research/pos_unbonding_completion_001_v0_5_fifth_chain/v051_archway_kyve_rest_probe.py
+      - name: Commit receipt safely
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          cp research/pos_unbonding_completion_001_v0_5_fifth_chain/ARCHWAY_KYVE_REST_QUALIFICATION_V051.json /tmp/v051.json
+          git fetch origin pos-unbonding-completion-001-v0.5-fifth-chain-remediation-2026-10-07
+          git reset --hard origin/pos-unbonding-completion-001-v0.5-fifth-chain-remediation-2026-10-07
+          cp /tmp/v051.json research/pos_unbonding_completion_001_v0_5_fifth_chain/ARCHWAY_KYVE_REST_QUALIFICATION_V051.json
+          git add research/pos_unbonding_completion_001_v0_5_fifth_chain/ARCHWAY_KYVE_REST_QUALIFICATION_V051.json
+          if git diff --cached --quiet; then
+            echo "No changes"
+          else
+            git commit -m "Record V0.5.1 Archway KYVE archive qualification"
+            git push origin HEAD:pos-unbonding-completion-001-v0.5-fifth-chain-remediation-2026-10-07
+          fi
