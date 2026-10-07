@@ -61,3 +61,19 @@ for src in srcs:
     for v in vals:
         if v not in seen: seen.append(v)
     print("CHUNK_HINTS",json.dumps(seen[:160],ensure_ascii=False))
+
+print("=== ALL SCRIPT API DIAG ===")
+all_srcs=[x.get("src") for x in soup.find_all("script",src=True)]
+for src in all_srcs[:80]:
+    u=src if src.startswith("http") else "https://miniapp.gate.com"+src
+    try:
+        rr=s.get(u,timeout=20)
+    except Exception:
+        continue
+    txt=rr.text
+    if "75418:" in txt or ("announcement" in txt.lower() and ("/api/" in txt.lower() or "article" in txt.lower())):
+        hints=[]
+        for m in re.finditer(r'.{0,180}(?:75418:|/api/|announcement|article).{0,280}',txt,re.I):
+            hints.append(m.group(0))
+        print("SCRIPT_HIT",u,"LEN",len(txt),"MODULE75418",("75418:" in txt))
+        print("SCRIPT_HINTS",json.dumps(hints[:80],ensure_ascii=False))
