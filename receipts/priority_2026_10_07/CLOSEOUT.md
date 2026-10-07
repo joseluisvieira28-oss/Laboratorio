@@ -1,0 +1,5 @@
+# LIQUIDATION-FLOW-FWD-001 reconciliation 2026-10-07
+
+The stale partial-source closeout on a sibling branch is superseded operationally by the real ETH source completion and successful A-D calibration. Verified all raw manifests, non-overlap and canonical artifact digests, then ran the frozen merge: 720 healthy bins per symbol; BTC 35 nonzero, ETH 23; zero conflicts. CALIBRATION_INCOMPLETE / ACCUMULATING. Thresholds remain null; no MEXC/outcomes/activation.
+
+New bounded E-H continuation uses the unchanged collector, ACK/heartbeat/grace and bin rules, 180 future minutes each, sequential dependencies, strictly after prior last minute and this commit. Gaps between canonical chunks remain missing and are never backfilled. Collection stops before 2026-10-10T00:00:00Z, conservatively inside the original seven-calendar-day extension. Each receipt retains raw manifest and health gaps. Final merged 1440 healthy / 100 nonzero per symbol gates remain mandatory. No automatic numeric activation or outcome opening.

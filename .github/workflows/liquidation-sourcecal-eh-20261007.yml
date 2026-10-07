@@ -1,0 +1,229 @@
+name: Liquidation Source Calibration E-H 2026-10-07
+on:
+  push:
+    branches: [mexc-event-futures-v013-source-completion-2026-10-03]
+    paths: [.github/workflows/liquidation-sourcecal-eh-20261007.yml]
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: liquidation-calibration-continuation
+  cancel-in-progress: false
+jobs:
+  chunk-e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 190
+    outputs:
+      last_minute_ms: ${{ steps.state.outputs.last_minute_ms }}
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: python -m pip install websockets==15.0.1
+      - name: Frozen safety and continuity preflight
+        env:
+          PRIOR_LAST: 1791184980000
+        run: |
+          python research/mexc_event_futures/liquidation_flow_calibration_chunk_v0131.py --self-test
+          python - <<'PY'
+          import time,os,datetime
+          first=((time.time_ns()//1_000_000)//60000+1)*60000
+          assert first>int(os.environ['PRIOR_LAST'])
+          deadline=int(datetime.datetime(2026,10,10,tzinfo=datetime.timezone.utc).timestamp()*1000)
+          assert first+180*60000+5000<deadline
+          PY
+      - name: Collect source only
+        run: python research/mexc_event_futures/liquidation_flow_calibration_chunk_v0131.py --minutes 180 --gate-anchor "run=37100077597;prior_A_D_manifest=receipts/priority_2026_10_07/source_manifest.json;continuation=2026-10-07" --output evidence/liquidation-calibration-chunk-e-20261007
+      - id: state
+        run: |
+          python - <<'PY'
+          import json,os,pathlib
+          p=pathlib.Path('evidence/liquidation-calibration-chunk-e-20261007/calibration_bins.jsonl')
+          rows=[json.loads(x) for x in p.read_text().splitlines() if x.strip()]
+          last=max(r['minute_start_ms'] for r in rows)
+          receipt=json.loads(p.with_name('receipt.json').read_text())
+          assert all(not e for e in receipt['errors'].values()),receipt['errors']
+          assert receipt['research_outcomes_opened']==0 and receipt['mexc_subscriptions']==0
+          with open(os.environ['GITHUB_OUTPUT'],'a') as f:f.write(f'last_minute_ms={last}\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: liquidation-sourcecal-e-20261007
+          path: evidence/liquidation-calibration-chunk-e-20261007/
+          if-no-files-found: error
+          retention-days: 90
+  chunk-f:
+    needs: chunk-e
+    runs-on: ubuntu-latest
+    timeout-minutes: 190
+    outputs:
+      last_minute_ms: ${{ steps.state.outputs.last_minute_ms }}
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: python -m pip install websockets==15.0.1
+      - name: Frozen safety and continuity preflight
+        env:
+          PRIOR_LAST: ${{ needs.chunk-e.outputs.last_minute_ms }}
+        run: |
+          python research/mexc_event_futures/liquidation_flow_calibration_chunk_v0131.py --self-test
+          python - <<'PY'
+          import time,os,datetime
+          first=((time.time_ns()//1_000_000)//60000+1)*60000
+          assert first>int(os.environ['PRIOR_LAST'])
+          deadline=int(datetime.datetime(2026,10,10,tzinfo=datetime.timezone.utc).timestamp()*1000)
+          assert first+180*60000+5000<deadline
+          PY
+      - name: Collect source only
+        run: python research/mexc_event_futures/liquidation_flow_calibration_chunk_v0131.py --minutes 180 --gate-anchor "run=37100077597;prior_A_D_manifest=receipts/priority_2026_10_07/source_manifest.json;continuation=2026-10-07" --output evidence/liquidation-calibration-chunk-f-20261007
+      - id: state
+        run: |
+          python - <<'PY'
+          import json,os,pathlib
+          p=pathlib.Path('evidence/liquidation-calibration-chunk-f-20261007/calibration_bins.jsonl')
+          rows=[json.loads(x) for x in p.read_text().splitlines() if x.strip()]
+          last=max(r['minute_start_ms'] for r in rows)
+          receipt=json.loads(p.with_name('receipt.json').read_text())
+          assert all(not e for e in receipt['errors'].values()),receipt['errors']
+          assert receipt['research_outcomes_opened']==0 and receipt['mexc_subscriptions']==0
+          with open(os.environ['GITHUB_OUTPUT'],'a') as f:f.write(f'last_minute_ms={last}\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: liquidation-sourcecal-f-20261007
+          path: evidence/liquidation-calibration-chunk-f-20261007/
+          if-no-files-found: error
+          retention-days: 90
+  chunk-g:
+    needs: chunk-f
+    runs-on: ubuntu-latest
+    timeout-minutes: 190
+    outputs:
+      last_minute_ms: ${{ steps.state.outputs.last_minute_ms }}
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: python -m pip install websockets==15.0.1
+      - name: Frozen safety and continuity preflight
+        env:
+          PRIOR_LAST: ${{ needs.chunk-f.outputs.last_minute_ms }}
+        run: |
+          python research/mexc_event_futures/liquidation_flow_calibration_chunk_v0131.py --self-test
+          python - <<'PY'
+          import time,os,datetime
+          first=((time.time_ns()//1_000_000)//60000+1)*60000
+          assert first>int(os.environ['PRIOR_LAST'])
+          deadline=int(datetime.datetime(2026,10,10,tzinfo=datetime.timezone.utc).timestamp()*1000)
+          assert first+180*60000+5000<deadline
+          PY
+      - name: Collect source only
+        run: python research/mexc_event_futures/liquidation_flow_calibration_chunk_v0131.py --minutes 180 --gate-anchor "run=37100077597;prior_A_D_manifest=receipts/priority_2026_10_07/source_manifest.json;continuation=2026-10-07" --output evidence/liquidation-calibration-chunk-g-20261007
+      - id: state
+        run: |
+          python - <<'PY'
+          import json,os,pathlib
+          p=pathlib.Path('evidence/liquidation-calibration-chunk-g-20261007/calibration_bins.jsonl')
+          rows=[json.loads(x) for x in p.read_text().splitlines() if x.strip()]
+          last=max(r['minute_start_ms'] for r in rows)
+          receipt=json.loads(p.with_name('receipt.json').read_text())
+          assert all(not e for e in receipt['errors'].values()),receipt['errors']
+          assert receipt['research_outcomes_opened']==0 and receipt['mexc_subscriptions']==0
+          with open(os.environ['GITHUB_OUTPUT'],'a') as f:f.write(f'last_minute_ms={last}\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: liquidation-sourcecal-g-20261007
+          path: evidence/liquidation-calibration-chunk-g-20261007/
+          if-no-files-found: error
+          retention-days: 90
+  chunk-h:
+    needs: chunk-g
+    runs-on: ubuntu-latest
+    timeout-minutes: 190
+    outputs:
+      last_minute_ms: ${{ steps.state.outputs.last_minute_ms }}
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: python -m pip install websockets==15.0.1
+      - name: Frozen safety and continuity preflight
+        env:
+          PRIOR_LAST: ${{ needs.chunk-g.outputs.last_minute_ms }}
+        run: |
+          python research/mexc_event_futures/liquidation_flow_calibration_chunk_v0131.py --self-test
+          python - <<'PY'
+          import time,os,datetime
+          first=((time.time_ns()//1_000_000)//60000+1)*60000
+          assert first>int(os.environ['PRIOR_LAST'])
+          deadline=int(datetime.datetime(2026,10,10,tzinfo=datetime.timezone.utc).timestamp()*1000)
+          assert first+180*60000+5000<deadline
+          PY
+      - name: Collect source only
+        run: python research/mexc_event_futures/liquidation_flow_calibration_chunk_v0131.py --minutes 180 --gate-anchor "run=37100077597;prior_A_D_manifest=receipts/priority_2026_10_07/source_manifest.json;continuation=2026-10-07" --output evidence/liquidation-calibration-chunk-h-20261007
+      - id: state
+        run: |
+          python - <<'PY'
+          import json,os,pathlib
+          p=pathlib.Path('evidence/liquidation-calibration-chunk-h-20261007/calibration_bins.jsonl')
+          rows=[json.loads(x) for x in p.read_text().splitlines() if x.strip()]
+          last=max(r['minute_start_ms'] for r in rows)
+          receipt=json.loads(p.with_name('receipt.json').read_text())
+          assert all(not e for e in receipt['errors'].values()),receipt['errors']
+          assert receipt['research_outcomes_opened']==0 and receipt['mexc_subscriptions']==0
+          with open(os.environ['GITHUB_OUTPUT'],'a') as f:f.write(f'last_minute_ms={last}\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: liquidation-sourcecal-h-20261007
+          path: evidence/liquidation-calibration-chunk-h-20261007/
+          if-no-files-found: error
+          retention-days: 90
+  final-source-merge:
+    needs: chunk-h
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: liquidation-sourcecal-*-20261007
+          path: inputs
+      - name: Download canonical A-D ledgers
+        run: |
+          mkdir -p inputs/prior-a inputs/prior-b inputs/prior-c inputs/prior-d
+          gh run download 37123311409 -n v0131-liquidation-calibration-chunk-a -D inputs/prior-a
+          gh run download 37148068387 -n v0131-liquidation-calibration-chunk-b -D inputs/prior-b
+          gh run download 37193951437 -n v0131-liquidation-calibration-chunk-c -D inputs/prior-c
+          gh run download 37263305847 -n v0131-liquidation-calibration-chunk-d -D inputs/prior-d
+      - name: Frozen merge and source readiness only
+        run: |
+          python - <<'PY'
+          import pathlib,importlib.util
+          p=pathlib.Path('research/mexc_event_futures/liquidation_flow_calibration_merge_v0131.py')
+          spec=importlib.util.spec_from_file_location('merge',p);m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
+          ledgers=sorted(pathlib.Path('inputs').glob('*/calibration_bins.jsonl'))
+          assert len(ledgers)==8
+          pathlib.Path('evidence/merged').mkdir(parents=True,exist_ok=True)
+          m.merge([str(x) for x in ledgers],'evidence/merged/result.json')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: liquidation-sourcecal-merged-20261007
+          path: evidence/merged/
+          retention-days: 90
