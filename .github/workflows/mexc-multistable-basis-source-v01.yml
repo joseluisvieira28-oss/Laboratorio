@@ -1,0 +1,32 @@
+name: MEXC Multi-Stable Basis Source Gate V0.1
+
+on:
+  push:
+    branches:
+      - mexc-multistable-basis-v0.1-source-gate-2026-10-07
+    paths:
+      - 'research/mexc_multistable_basis/source_gate_v01.py'
+      - 'research/mexc_multistable_basis/MEXC_MULTISTABLE_BASIS_SOURCE_CHARTER_V0.1.md'
+      - '.github/workflows/mexc-multistable-basis-source-v01.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  source-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install requests
+      - name: Compile source-only probe
+        run: python -m py_compile research/mexc_multistable_basis/source_gate_v01.py
+      - name: Run source-only probe
+        run: python research/mexc_multistable_basis/source_gate_v01.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mexc-multistable-basis-source-v01-${{ github.run_id }}
+          path: artifacts/mexc_multistable_basis/source_gate_v01/report.json
