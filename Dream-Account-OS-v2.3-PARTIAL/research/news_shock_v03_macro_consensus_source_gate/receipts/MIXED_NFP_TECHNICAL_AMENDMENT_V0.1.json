@@ -1,0 +1,37 @@
+{
+  "amendment_id": "NEWS-SHOCK-V03-MIXED-NFP-TECHNICAL-AMENDMENT-001",
+  "date": "2026-10-07",
+  "branch": "news-shock-v03-public-source-recovery-v0.1",
+  "scope": "TECHNICAL_ONLY",
+  "scientific_rules_changed": false,
+  "source_rules_changed": false,
+  "gate_changed": false,
+  "reason": [
+    "First mixed-source run recovered TeleTrade NFP/unemployment/AHE-MoM values but rejected all TeleTrade timestamps because visible feed timestamps lacked an explicit offset.",
+    "Baker AHE-YoY rows were present in the PDFs but pypdf flattened-text ordering prevented reliable extraction for several months."
+  ],
+  "teletrade_clock_resolution": {
+    "decision": "RESOLVED_AS_GMT_FOR_2021_HISTORICAL_MARKET_NEWS_FEED",
+    "basis": [
+      "The same TeleTrade daily feed labels scheduled macro-event times explicitly as GMT.",
+      "On 2021-03-05 the feed posts U.S. NFP release entries at 13:30, matching the same page's 13:30 GMT schedule and frozen BLS T0.",
+      "On 2021-10-08 the feed posts U.S. NFP release entries at 12:30, matching the same page's 12:30 GMT schedule and frozen BLS DST-aware T0.",
+      "Therefore the historical feed article clock is independently resolved against known GMT event clocks for the exact source family/year."
+    ],
+    "allowed_interpretation": "Visible TeleTrade historical feed timestamp DD.MM.YYYY HH:MM is interpreted as GMT for this 2021 source census.",
+    "consensus_values_from_post_release_pages": false
+  },
+  "baker_parser_correction": {
+    "decision": "USE_TABLE_GEOMETRY_INSTEAD_OF_FLATTENED_TEXT_REGEX",
+    "basis": "Baker PDFs expose a Weekly Economic Calendar with columns Date, Release, Per., Est., Actual, Prior, Revised. The frozen field is the Est. value on the Average Hourly Earnings YoY row.",
+    "no_manual_value_injection": true
+  },
+  "prohibited": [
+    "Changing field definitions",
+    "Changing source families",
+    "Adding fallback sources",
+    "Lowering >=10/12 NFP gate",
+    "Opening BTC/ETH or yield outcomes",
+    "Post-outcome tuning"
+  ]
+}
