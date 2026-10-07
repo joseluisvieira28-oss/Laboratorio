@@ -1,0 +1,67 @@
+name: source-t0-probe-v31-summarize-v29
+
+on:
+  push:
+    branches:
+      - cosmos-native-emission-param-shock-001-v0.2-t0-remediation-2026-10-07
+    paths:
+      - .github/workflows/source-t0-probe-v31-summarize-v29.yml
+
+permissions:
+  contents: write
+
+jobs:
+  summarize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: cosmos-native-emission-param-shock-001-v0.2-t0-remediation-2026-10-07
+      - name: Summarize V29 receipt without changing science
+        run: |
+          python - <<'PY'
+          import json, collections, os, datetime
+          src="research/cosmos_native_emission_param_shock_001_v0_2/SCRT287_EVENT_INDEX_PROBE_V29.json"
+          out="research/cosmos_native_emission_param_shock_001_v0_2/SCRT287_EVENT_INDEX_PROBE_V29_SUMMARY.json"
+          with open(src,encoding="utf-8") as f:d=json.load(f)
+          rows=d.get("rows",[])
+          c=d.get("candidates",[])
+          by_provider={}
+          for r in rows:
+              p=r.get("provider","?")
+              z=by_provider.setdefault(p,{"requests":0,"http_ok":0,"rpc_result_blocks":0,"errors":collections.Counter()})
+              z["requests"]+=1
+              if r.get("ok"): z["http_ok"]+=1
+              j=r.get("json")
+              if isinstance(j,dict) and isinstance(j.get("result"),dict):
+                  blocks=j["result"].get("blocks")
+                  if isinstance(blocks,list): z["rpc_result_blocks"]+=len(blocks)
+              err=r.get("error")
+              if err:z["errors"][str(err)[:300]]+=1
+              if isinstance(j,dict) and isinstance(j.get("error"),dict):
+                  e=j["error"]; z["errors"][f"RPC {e.get('code')}: {e.get('message')} | {str(e.get('data'))[:240]}"]+=1
+          for z in by_provider.values():z["errors"]=dict(z["errors"])
+          summary={
+            "scope":"SOURCE_ONLY_NO_MARKET_DATA",
+            "source_receipt":src,
+            "target_voting_end":d.get("target_voting_end"),
+            "technical_correction":True,
+            "scientific_rules_changed":False,
+            "row_count":len(rows),
+            "candidate_count":len(c),
+            "candidates":c,
+            "providers":by_provider,
+            "verdict":"EVENT_INDEX_CANDIDATE_FOUND" if c else "EVENT_INDEX_NO_HISTORICAL_CANDIDATE",
+            "summarized_utc":datetime.datetime.now(datetime.timezone.utc).isoformat()
+          }
+          with open(out,"w",encoding="utf-8") as f:json.dump(summary,f,indent=2,ensure_ascii=False)
+          print(json.dumps(summary,indent=2,ensure_ascii=False))
+          PY
+      - name: Persist V29 summary
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/cosmos_native_emission_param_shock_001_v0_2/SCRT287_EVENT_INDEX_PROBE_V29_SUMMARY.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "SCRT287: summarize corrected event-index probe v29"
+          git push origin HEAD:cosmos-native-emission-param-shock-001-v0.2-t0-remediation-2026-10-07
