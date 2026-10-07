@@ -39,7 +39,7 @@ def post(body):
 def rpc(method,params):
  for attempt in range(10):
   d,h,status,headers=post({"jsonrpc":"2.0","id":1,"method":method,"params":params})
-  if status==200 and isinstance(d,dict) and "result" in d: return d["result"],h
+  if status==200 and isinstance(d,dict) and d.get("result") is not None: return d["result"],h
   err=d.get("error",{}) if isinstance(d,dict) else {}
   if status not in {0,429,500,502,503,504,529} and err.get("code") not in {None,429,-32005,-32603}: raise RuntimeError("NON_RETRYABLE_"+json.dumps(d))
   try: delay=float(headers.get("retry-after",headers.get("Retry-After",min(45,2**attempt))))
