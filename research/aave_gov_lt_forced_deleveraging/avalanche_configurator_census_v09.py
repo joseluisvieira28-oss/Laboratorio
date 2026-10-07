@@ -5,7 +5,7 @@ from pathlib import Path
 from Crypto.Hash import keccak
 
 OUT=Path("out/aave_avalanche_v09"); OUT.mkdir(parents=True,exist_ok=True)
-URL="https://avalanche-c-chain-rpc.publicnode.com"
+URL="https://api.avax.network/ext/bc/C/rpc"
 CONFIG="0x8145edddf43f50276641b55bd3ad95944510021e"
 END_TS=1735689599
 last_request=0
@@ -37,7 +37,7 @@ def post(body):
  return parsed,h,status,headers
 
 def rpc(method,params):
- for attempt in range(10):
+ for attempt in range(14):
   d,h,status,headers=post({"jsonrpc":"2.0","id":1,"method":method,"params":params})
   if status==200 and isinstance(d,dict) and d.get("result") is not None: return d["result"],h
   err=d.get("error",{}) if isinstance(d,dict) else {}
