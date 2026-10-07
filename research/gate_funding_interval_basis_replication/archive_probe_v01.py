@@ -147,3 +147,12 @@ for src in all_srcs[:80]:
     if pos>=0:
         print("STORE_SCRIPT",u,"POS",pos,"LEN",len(txt))
         print("STORE_SNIP",txt[pos:pos+12000])
+
+print("=== EXACT STORE PAYLOAD ===")
+p={"cate_name":"fee","page":2,"size":15,"tags":"","timer":"","cate_level":2}
+rr=s.post(ep,json=p,timeout=20)
+j=rr.json(); d=j.get("data") or {}; rows=d.get("list") or []
+print("EXACT_PAYLOAD_RESULT","CODE",j.get("code"),"TOTAL",d.get("total"),
+      "IDS",[x.get("id") for x in rows],
+      "CATES",[x.get("cate_id") for x in rows],
+      "DATES",[x.get("release_time") for x in rows])
