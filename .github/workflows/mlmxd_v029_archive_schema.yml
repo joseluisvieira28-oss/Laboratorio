@@ -1,0 +1,31 @@
+name: MLMXD V0.2.9 Official Archive Schema Probe
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - mexc-launchpool-mx-demand-v0.2-activation-pilot-2026-10-07
+    paths:
+      - '.github/workflows/mlmxd_v029_archive_schema.yml'
+permissions:
+  contents: read
+jobs:
+  diag:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests
+      - name: Inspect official CSV schema
+        run: |
+          python - <<'PY'
+          import requests
+          urls=[
+          "https://d2s4an60yebwep.cloudfront.net/SPOT2/kline/7fb2a8ab8a5e4eb699ac34ee340489f8/monthly/Min15/MX_USDT-Min15-2025-01-01.csv",
+          "https://d2s4an60yebwep.cloudfront.net/SPOT2/kline/2fb942154ef44a4ab2ef98c8afb6a4a7/monthly/Min15/BTC_USDT-Min15-2025-01-01.csv"]
+          for u in urls:
+            r=requests.get(u,timeout=30)
+            print("URL",u,"HTTP",r.status_code,"LEN",len(r.content))
+            print("\n".join(r.text.splitlines()[:6]))
+          PY
