@@ -240,7 +240,7 @@ for contract,eff in [
     try:
         rr=s.get(u,params={"contract":contract,"from":lo,"to":hi},timeout=30)
         elapsed=_time.time()-t0
-        print("FUND_BENCH_HTTP",contract,rr.status_code,"ELAPSED",round(elapsed,3),"LEN",len(rr.content))
+        print("FUND_BENCH_HTTP",contract,rr.status_code,"ELAPSED",round(elapsed,3),"LEN",len(rr.content),"ERRBODY",(rr.text[:300] if rr.status_code!=200 else ""))
         if rr.status_code==200:
             arr=rr.json()
             ts=sorted({int(x["t"]) for x in arr if isinstance(x,dict) and str(x.get("t","")).isdigit()})
