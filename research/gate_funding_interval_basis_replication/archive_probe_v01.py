@@ -31,7 +31,7 @@ r=s.get("https://miniapp.gate.com/announcements/fee",timeout=30)
 html=r.text
 for pat in [
     r'https?://[^"\\s]+',
-    r'[^"'\\s]{0,100}(?:announcement|article|category|pageSize|currentPage|list)[^"'\\s]{0,160}',
+    r"[^\\\"'\\s]{0,100}(?:announcement|article|category|pageSize|currentPage|list)[^\\\"'\\s]{0,160}",
 ]:
     vals=[]
     for m in re.finditer(pat,html,re.I):
