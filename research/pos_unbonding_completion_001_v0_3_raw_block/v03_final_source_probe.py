@@ -61,28 +61,40 @@ def sha(b):return hashlib.sha256(b).hexdigest()
 def parse(b):return json.loads(b.decode("utf-8"))
 
 def rest_txs(base,lo,hi):
-  # Cosmos gRPC-gateway transaction endpoint. Keep all event filters explicitly historical.
-  params=[
-    ("events","message.action='begin_unbonding'"),
-    ("events",f"tx.height>={lo}"),
-    ("events",f"tx.height<={hi}"),
-    ("pagination.limit","5"),
-    ("order_by","ORDER_BY_ASC")
+  # v0.50+ uses query=; pre-v0.50 uses repeated events=. Probe both, always bounded to historical heights.
+  q=f"message.action='begin_unbonding' AND tx.height >= {lo} AND tx.height <= {hi}"
+  variants=[
+    ("query_v050", [("query",q),("page","1"),("limit","5"),("order_by","ORDER_BY_ASC")]),
+    ("events_legacy", [
+      ("events","message.action='begin_unbonding'"),
+      ("events",f"tx.height>={lo}"),
+      ("events",f"tx.height<={hi}"),
+      ("pagination.limit","5"),
+      ("order_by","ORDER_BY_ASC")
+    ])
   ]
-  url=base.rstrip("/")+"/cosmos/tx/v1beta1/txs?"+urllib.parse.urlencode(params)
-  out={"url":url}
-  try:
-    st,raw=get(url,12); obj=parse(raw)
-    txrs=obj.get("tx_responses") or []
-    out.update({
-      "http":st,"sha256":sha(raw),
-      "tx_count":len(txrs),
-      "pagination_total":((obj.get("pagination") or {}).get("total")),
-      "sample":[{"height":x.get("height"),"txhash":x.get("txhash"),"code":x.get("code"),"timestamp":x.get("timestamp")} for x in txrs[:5]]
-    })
-  except Exception as e:
-    out["error"]=type(e).__name__+": "+str(e)
-  return out
+  attempts=[]
+  for mode,params in variants:
+    url=base.rstrip("/")+"/cosmos/tx/v1beta1/txs?"+urllib.parse.urlencode(params)
+    out={"mode":mode,"url":url}
+    try:
+      st,raw=get(url,12); obj=parse(raw)
+      txrs=obj.get("tx_responses") or []
+      out.update({
+        "http":st,"sha256":sha(raw),
+        "tx_count":len(txrs),
+        "pagination_total":((obj.get("pagination") or {}).get("total")),
+        "sample":[{"height":x.get("height"),"txhash":x.get("txhash"),"code":x.get("code"),"timestamp":x.get("timestamp")} for x in txrs[:5]]
+      })
+      attempts.append(out)
+      if txrs:
+        return {"status":"NONZERO","attempts":attempts}
+    except Exception as e:
+      out["error"]=type(e).__name__+": "+str(e)
+      attempts.append(out)
+  # A successful zero is distinct from transport/query failure.
+  any_success=any("http" in a for a in attempts)
+  return {"status":"ZERO_OR_UNINDEXED" if any_success else "UNAVAILABLE","attempts":attempts}
 
 def block_summary(raw):
   obj=parse(raw); r=obj.get("result",{})
