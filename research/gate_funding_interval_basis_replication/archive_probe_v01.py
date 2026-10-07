@@ -77,3 +77,14 @@ for src in all_srcs[:80]:
             hints.append(m.group(0))
         print("SCRIPT_HIT",u,"LEN",len(txt),"MODULE75418",("75418:" in txt))
         print("SCRIPT_HINTS",json.dumps(hints[:80],ensure_ascii=False))
+
+print("=== NEXT DATA ===")
+nd=soup.find("script",id="__NEXT_DATA__")
+if nd and nd.string:
+    obj=json.loads(nd.string)
+    pp=(obj.get("props") or {}).get("pageProps") or {}
+    print("PAGEPROPS_KEYS",json.dumps(sorted(pp.keys())))
+    cats=pp.get("categories")
+    ld=pp.get("listData")
+    print("CATEGORIES",json.dumps(cats,ensure_ascii=False)[:12000])
+    print("LISTDATA",json.dumps(ld,ensure_ascii=False)[:12000])
