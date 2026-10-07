@@ -10,6 +10,7 @@ from bs4 import BeautifulSoup
 
 LAB="OKX-FUNDING-INTERVAL-BASIS-REPLICATION-001"
 BASE="https://www.okx.com"
+ARCHIVE_ORIGIN="https://www.okx.com/en-gb"
 ARCHIVE="/help/section/announcements-trading-updates"
 START=datetime(2023,1,1,tzinfo=timezone.utc)
 END=datetime(2025,12,31,23,59,59,tzinfo=timezone.utc)
