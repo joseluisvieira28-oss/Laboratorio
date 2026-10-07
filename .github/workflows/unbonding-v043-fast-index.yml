@@ -1,0 +1,27 @@
+name: Unbonding V0.4.3 Fast Index Capability
+on:
+  push:
+    branches: [pos-unbonding-completion-001-v0.4-index-free-census-2026-10-07]
+    paths:
+      - "research/pos_unbonding_completion_001_v0_4_index_free/v043_fast_block_index_capability.py"
+      - ".github/workflows/unbonding-v043-fast-index.yml"
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pos-unbonding-completion-001-v0.4-index-free-census-2026-10-07
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: python research/pos_unbonding_completion_001_v0_4_index_free/v043_fast_block_index_capability.py
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/pos_unbonding_completion_001_v0_4_index_free/BLOCK_INDEX_CAPABILITY_V043.json
+          git diff --cached --quiet || (git commit -m "Record V0.4.3 fast block-index capability" && git push origin HEAD:pos-unbonding-completion-001-v0.4-index-free-census-2026-10-07)
