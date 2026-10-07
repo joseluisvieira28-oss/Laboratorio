@@ -1,0 +1,81 @@
+{
+  "document_type": "NEWS_SHOCK_V03_2021_PUBLIC_SOURCE_RECOVERY_CENSUS_FREEZE",
+  "version": "0.1",
+  "created_date": "2026-10-07",
+  "branch": "news-shock-v03-public-source-recovery-v0.1",
+  "parent_two_event_gate": "PUBLIC_SOURCE_RECOVERY_TWO_EVENT_GATE_V0.2.md",
+  "parent_universe_freeze": "receipts/2021_CENSUS_UNIVERSE_FREEZE.json",
+  "frozen_before_additional_event_research": true,
+  "universe": {
+    "year": 2021,
+    "selection": "exact existing frozen universe: all 12 CPI and all 12 Employment Situation releases",
+    "total_events": 24,
+    "event_manifest": "2021_EVENT_MANIFEST.csv"
+  },
+  "mission": "Measure defensible public point-in-time consensus coverage only. Do not compute surprises or market outcomes.",
+  "required_consensus_fields": {
+    "CPI": ["headline_cpi_mom", "headline_cpi_yoy", "core_cpi_mom", "core_cpi_yoy"],
+    "EMPLOYMENT_SITUATION": ["nfp_change_k", "unemployment_rate", "ahe_mom", "ahe_yoy"]
+  },
+  "revision_context": "Prior payroll revisions remain BLS first-release fields already preserved by the parent census and are not consensus-source fields.",
+  "accepted_source_classes": [
+    {
+      "rank": "A",
+      "class": "STATIC_PUBLISHER_DOCUMENT_PRE_T0",
+      "requirements": "Publisher-hosted PDF/document; explicit event/fields; creation/modification or publication metadata provably before T0; provenance retained; current bytes hashed where retrievable."
+    },
+    {
+      "rank": "B",
+      "class": "TIMESTAMPED_WIRE_ARCHIVE_PRE_T0",
+      "requirements": "Named wire/survey; explicit published time before T0; modification time or sequential pre-T0 wire history sufficient for auditability; event and field values explicit. Normalized evidence is allowed when provider raw GET is transport-blocked, but must be labelled normalized and hashed separately."
+    },
+    {
+      "rank": "C",
+      "class": "PRE_T0_ARCHIVE_SNAPSHOT",
+      "requirements": "Snapshot/capture timestamp strictly before T0; content contains explicit event/field values and identifiable publisher/source."
+    },
+    {
+      "rank": "D",
+      "class": "AUDITABLE_INSTITUTIONAL_PUBLICATION_PRE_T0",
+      "requirements": "Institutional article/research with exact publication timestamp and version/modification trail strictly before T0; explicit fields and source identity."
+    }
+  ],
+  "rejected_source_classes": [
+    "current mutable historical calendar without forecast vintage",
+    "post-release article recollecting expectations",
+    "same-day date-only publication without trusted pre-T0 capture",
+    "search snippet without source-page chronology",
+    "inferred/reconstructed forecast",
+    "later revision substituted for contemporaneous consensus"
+  ],
+  "collection_rules": [
+    "Process every frozen event; no omission based on source difficulty.",
+    "Preserve every qualifying consensus snapshot found; do not select the numerically convenient one.",
+    "Never average conflicting vendors or conflicting snapshots.",
+    "Store provider/vendor, publication timestamp, modification timestamp when available, T0, lead seconds, values, URL/document identity, evidence class and evidence hash/normalized hash.",
+    "If the same vendor changes consensus across pre-T0 snapshots, preserve each version and label SOURCE_CONFLICT or VERSION_SEQUENCE; do not decide which snapshot is canonical in this source census.",
+    "An event is source-complete if all four consensus fields are defensibly covered by one source snapshot or by explicitly labelled COMPLETE_MIXED_SOURCE evidence allowed under inherited rules.",
+    "Missing fields remain null."
+  ],
+  "adjudication_outputs": [
+    "COMPLETE_SINGLE_SOURCE",
+    "COMPLETE_MIXED_SOURCE",
+    "CONSENSUS_PROVENANCE_INCOMPLETE",
+    "PUBLICATION_TIME_UNRESOLVED",
+    "SOURCE_CONFLICT",
+    "SOURCE_VERSION_DRIFT_BLOCKED",
+    "SOURCE_UNAVAILABLE"
+  ],
+  "outcome_boundary": {
+    "btc_eth_prices": "FORBIDDEN",
+    "returns": "FORBIDDEN",
+    "taker_flow": "FORBIDDEN",
+    "treasury_yield_response": "FORBIDDEN",
+    "continuation_reversal": "FORBIDDEN",
+    "pnl": "FORBIDDEN",
+    "2025": "FORBIDDEN",
+    "2026": "FORBIDDEN",
+    "post_outcome_tuning": "FORBIDDEN"
+  },
+  "next_gate": "After all 24 events are adjudicated, issue source-coverage closeout. Any directional V0.3 test requires a separate pre-outcome activation freeze defining vendor/snapshot-selection semantics before opening outcomes."
+}
