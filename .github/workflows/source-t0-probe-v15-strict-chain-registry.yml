@@ -1,0 +1,186 @@
+name: source-t0-probe-v15-strict-chain-registry
+
+on:
+  push:
+    branches:
+      - cosmos-native-emission-param-shock-001-v0.2-t0-remediation-2026-10-07
+    paths:
+      - .github/workflows/source-t0-probe-v15-strict-chain-registry.yml
+
+permissions:
+  contents: read
+
+jobs:
+  strict-chain-registry:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Strictly identify Akash and Secret endpoints and probe canonical boundaries
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, urllib.request, ssl
+          from datetime import datetime
+
+          UA={"User-Agent":"CryptoLab-source-only-v15"}
+          def get(url,headers=None,timeout=12):
+              h=dict(UA); h.update(headers or {})
+              try:
+                  q=urllib.request.Request(url,headers=h)
+                  with urllib.request.urlopen(q,timeout=timeout,context=ssl._create_unverified_context()) as r:
+                      raw=r.read().decode("utf-8","replace")
+                      try:d=json.loads(raw)
+                      except:d=raw[:4000]
+                      return {"ok":True,"status":r.status,"url":r.geturl(),"data":d}
+              except Exception as e:
+                  return {"ok":False,"url":url,"error":repr(e)}
+
+          raw=get("https://proxy.atomscan.com/chains.json",timeout=20)
+          data=raw.get("data")
+          records=[]
+          if isinstance(data,dict):
+              for k,v in data.items():
+                  if isinstance(v,list) and all(isinstance(x,dict) for x in v[:3]):
+                      records.extend(v)
+          elif isinstance(data,list):
+              records=data
+
+          def ids(r):
+              vals=[]
+              for k in ("chain_name","chain_id","name","pretty_name","path","blockchain","id"):
+                  v=r.get(k)
+                  if isinstance(v,str): vals.append(v.lower())
+              return vals
+
+          targets={"akash":[],"secret":[]}
+          for r in records:
+              v=ids(r)
+              joined="|".join(v)
+              if any(x in joined for x in ("akashnet-2","akash","akash-network")):
+                  targets["akash"].append(r)
+              if any(x in joined for x in ("secret-4","secretnetwork","secret-network")):
+                  targets["secret"].append(r)
+
+          def compact_entry(r):
+              apis=r.get("apis") if isinstance(r.get("apis"),dict) else {}
+              return {
+                  "chain_name":r.get("chain_name"),"chain_id":r.get("chain_id"),
+                  "name":r.get("name"),"pretty_name":r.get("pretty_name"),
+                  "bech32_prefix":r.get("bech32_prefix"),
+                  "rpc":[x.get("address") for x in apis.get("rpc",[]) if isinstance(x,dict) and x.get("address")][:30],
+                  "rest":[x.get("address") for x in apis.get("rest",[]) if isinstance(x,dict) and x.get("address")][:30],
+                  "grpc":[x.get("address") for x in apis.get("grpc",[]) if isinstance(x,dict) and x.get("address")][:20]
+              }
+
+          out={"scope":"SOURCE_ONLY_NO_MARKET_DATA",
+               "registry_fetch":{"ok":raw["ok"],"status":raw.get("status")},
+               "targets":{k:[compact_entry(x) for x in v] for k,v in targets.items()},
+               "akash":{},"secret":{}}
+
+          # Collect unique endpoints from strictly matched entries.
+          eps={}
+          for chain in ("akash","secret"):
+              rest=[];rpc=[]
+              for e in out["targets"][chain]:
+                  rest += e["rest"]; rpc += e["rpc"]
+              eps[chain]={"rest":list(dict.fromkeys(rest)),"rpc":list(dict.fromkeys(rpc))}
+          out["endpoints"]=eps
+
+          # Akash exact first block after vote end already independently indexed.
+          cases={"265":17526666,"283":20631473}
+          for pid,H in cases.items():
+              rows=[]
+              for hh in range(H-1,H+3):
+                  for base in eps["akash"]["rest"][:20]:
+                      b=get(base.rstrip("/")+f"/cosmos/base/tendermint/v1beta1/blocks/{hh}",timeout=8)
+                      inf=get(base.rstrip("/")+"/cosmos/mint/v1beta1/inflation",
+                              headers={"x-cosmos-block-height":str(hh)},timeout=8)
+                      par=get(base.rstrip("/")+"/cosmos/mint/v1beta1/params",
+                              headers={"x-cosmos-block-height":str(hh)},timeout=8)
+                      if b["ok"] or inf["ok"] or par["ok"]:
+                          rows.append({"height":hh,"provider":base,
+                                       "block":b if b["ok"] else {"ok":False,"error":b.get("error")},
+                                       "inflation":inf if inf["ok"] else {"ok":False,"error":inf.get("error")},
+                                       "params":par if par["ok"] else {"ok":False,"error":par.get("error")}})
+                  # RPC block_results can prove gov execution without historical app-state query.
+                  for base in eps["akash"]["rpc"][:20]:
+                      br=get(base.rstrip("/")+f"/block_results?height={hh}",timeout=8)
+                      if br["ok"]:
+                          rows.append({"height":hh,"provider":base,"block_results":br})
+              out["akash"][pid]=rows
+
+          # Secret: first find historical blocks bracketing voting end using strict endpoints.
+          target="2023-12-07T02:54:58.930543213Z"
+          TT=datetime.fromisoformat(target.replace("Z","+00:00")).timestamp()
+          grid=[11752974,11800000,11840000,11880000,11920000]
+          candidates=[]
+          def parse_block_response(x):
+              d=x.get("data")
+              try:
+                  hd=d["block"]["header"]
+                  return int(hd["height"]),hd["time"]
+              except: pass
+              try:
+                  hd=d["result"]["block"]["header"]
+                  return int(hd["height"]),hd["time"]
+              except:return None
+
+          for base in eps["secret"]["rest"][:20]:
+              pts=[]
+              for h in grid:
+                  x=get(base.rstrip("/")+f"/cosmos/base/tendermint/v1beta1/blocks/{h}",timeout=8)
+                  z=parse_block_response(x)
+                  if z: pts.append(z)
+              pts.sort()
+              for a,b in zip(pts,pts[1:]):
+                  ta=datetime.fromisoformat(a[1].replace("Z","+00:00")).timestamp()
+                  tb=datetime.fromisoformat(b[1].replace("Z","+00:00")).timestamp()
+                  if ta<TT<=tb:
+                      candidates.append({"kind":"rest","base":base,"lo":a[0],"hi":b[0]});break
+
+          for base in eps["secret"]["rpc"][:20]:
+              pts=[]
+              for h in grid:
+                  x=get(base.rstrip("/")+f"/block?height={h}",timeout=8)
+                  z=parse_block_response(x)
+                  if z: pts.append(z)
+              pts.sort()
+              for a,b in zip(pts,pts[1:]):
+                  ta=datetime.fromisoformat(a[1].replace("Z","+00:00")).timestamp()
+                  tb=datetime.fromisoformat(b[1].replace("Z","+00:00")).timestamp()
+                  if ta<TT<=tb:
+                      candidates.append({"kind":"rpc","base":base,"lo":a[0],"hi":b[0]});break
+
+          out["secret"]["brackets"]=candidates
+          exact=[]
+          for c in candidates[:6]:
+              L,R=c["lo"],c["hi"];base=c["base"];kind=c["kind"];err=None
+              while L<R:
+                  M=(L+R)//2
+                  url=(base.rstrip("/")+f"/block?height={M}") if kind=="rpc" else (base.rstrip("/")+f"/cosmos/base/tendermint/v1beta1/blocks/{M}")
+                  x=get(url,timeout=8);z=parse_block_response(x)
+                  if not z:
+                      err={"height":M,"error":x.get("error")};break
+                  ts=datetime.fromisoformat(z[1].replace("Z","+00:00")).timestamp()
+                  if ts>=TT:R=M
+                  else:L=M+1
+              rec={"provider":base,"kind":kind,"error":err}
+              if err is None:
+                  H=L;rec["H_vote_end_block"]=H;rec["rows"]=[]
+                  for hh in range(H-1,H+3):
+                      if kind=="rpc":
+                          b=get(base.rstrip("/")+f"/block?height={hh}",timeout=8)
+                          br=get(base.rstrip("/")+f"/block_results?height={hh}",timeout=8)
+                          rec["rows"].append({"height":hh,"block":b,"block_results":br})
+                      else:
+                          b=get(base.rstrip("/")+f"/cosmos/base/tendermint/v1beta1/blocks/{hh}",timeout=8)
+                          inf=get(base.rstrip("/")+"/cosmos/mint/v1beta1/inflation",headers={"x-cosmos-block-height":str(hh)},timeout=8)
+                          par=get(base.rstrip("/")+"/cosmos/mint/v1beta1/params",headers={"x-cosmos-block-height":str(hh)},timeout=8)
+                          rec["rows"].append({"height":hh,"block":b,"inflation":inf,"params":par})
+              exact.append(rec)
+          out["secret"]["exact"]=exact
+
+          print("STRICT_V15_BEGIN")
+          print(json.dumps(out,indent=2,sort_keys=True)[:850000])
+          print("STRICT_V15_END")
+          PY
