@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import json, hashlib, gzip, urllib.request, urllib.error, os
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 
 OUT="research/pos_unbonding_completion_001_v0_5_fifth_chain/ARCHWAY_KYVE_REST_QUALIFICATION_V051.json"
@@ -12,13 +13,62 @@ REST_SOURCES=[
  ("cosmowiz_archive_rest","http://148.251.124.58:1317"),
  ("allthatnode_archive_rest","https://archway-mainnet-archive.allthatnode.com:1317"),
  ("foundation_rest","https://api.mainnet.archway.io"),
+ ("w3coins_rest","https://archway-api.w3coins.io"),
+ ("noders_team_rest","http://archway.api.nodersteam.com:1317"),
+ ("utsa_rest","https://m-archway.api.utsa.tech"),
+ ("nodesguru_rest","https://api-1.archway.nodes.guru"),
+ ("kjnodes_rest","https://archway.api.kjnodes.com"),
+ ("cosmos_spaces_rest","https://api-archway.cosmos-spaces.cloud"),
+ ("cryptech_rest","https://api-archway.cryptech.com.ua"),
+ ("nodestake_rest","https://api.archway.nodestake.top"),
+ ("am_solutions_rest","https://rest-archway.theamsolutions.info"),
+ ("whispernode_rest","https://lcd-archway.whispernode.com:443"),
+ ("lavenderfive_rest","https://archway-api.lavenderfive.com:443"),
+ ("mms_rest","https://api-archway.mms.team"),
+ ("mzonder_rest","https://api-archway.mzonder.com"),
+ ("luganodes_rest","https://rest.archway.lgns.net"),
+ ("staketown_rest","https://archway-api.stake-town.com:443"),
+ ("huginn_rest","https://archway-lcd.huginn.tech"),
+ ("zerobase_rest","https://archway-rest.0base.dev"),
+ ("l0vd_rest","https://archway-mainnet.api.l0vd.com"),
+ ("openbitlab_rest","https://archway-api.openbitlab.com"),
+ ("validatrium_rest","https://api-archway.mainnet.validatrium.club"),
+ ("stakeup_rest","https://api.archway.stakeup.tech"),
+ ("architect_rest","https://rest-archway.architectnodes.com"),
+ ("chainroot_rest","https://archway-api.chainroot.io")
 ]
 RPC_SOURCES=[
  ("cosmowiz_archive_rpc_guess","http://148.251.124.58:26657"),
- ("allthatnode_archive_rpc","https://archway-mainnet-archive.allthatnode.com:26657")
+ ("allthatnode_archive_rpc","https://archway-mainnet-archive.allthatnode.com:26657"),
+ ("foundation_rpc","https://rpc.mainnet.archway.io"),
+ ("cosmos_spaces_rpc","https://rpc-archway.cosmos-spaces.cloud"),
+ ("noders_team_rpc","http://archway.rpc.nodersteam.com:26657"),
+ ("utsa_rpc","https://m-archway.rpc.utsa.tech"),
+ ("nodesguru_rpc","https://rpc-1.archway.nodes.guru"),
+ ("kjnodes_rpc","https://archway.rpc.kjnodes.com"),
+ ("cryptech_rpc","https://rpc-archway.cryptech.com.ua"),
+ ("nodestake_rpc","https://rpc.archway.nodestake.top"),
+ ("am_solutions_rpc","https://rpc-archway.theamsolutions.info"),
+ ("whispernode_rpc","https://rpc-archway.whispernode.com:443"),
+ ("w3coins_rpc","https://archway-rpc.w3coins.io"),
+ ("lavenderfive_rpc","https://archway-rpc.lavenderfive.com:443"),
+ ("mms_rpc","https://rpc-archway.mms.team"),
+ ("mzonder_rpc","https://rpc-archway.mzonder.com"),
+ ("luganodes_rpc","https://rpc.archway.lgns.net"),
+ ("staketown_rpc","https://archway-rpc.stake-town.com"),
+ ("huginn_rpc","https://archway-rpc.huginn.tech"),
+ ("zerobase_rpc","https://archway-rpc.0base.dev"),
+ ("l0vd_rpc","https://archway-mainnet.rpc.l0vd.com"),
+ ("openbitlab_rpc","https://archway-rpc.openbitlab.com"),
+ ("validatrium_rpc","https://rpc-archway.mainnet.validatrium.club"),
+ ("stakeup_rpc","https://rpc.archway.stakeup.tech"),
+ ("architect_rpc","https://rpc-archway.architectnodes.com"),
+ ("stakeandrelax_rpc","https://archway-rpc.stakeandrelax.net"),
+ ("globalstake_rpc","https://rpc-archway.luckyfriday.io"),
+ ("chainroot_rpc","https://archway-rpc.chainroot.io")
 ]
 
-def get(url,timeout=30):
+def get(url,timeout=12):
   req=urllib.request.Request(url,headers={"User-Agent":UA,"Accept":"application/json"})
   try:
     with urllib.request.urlopen(req,timeout=timeout) as r:return r.read()
@@ -107,8 +157,18 @@ def main():
     rec["kyve"]=kyve_block();rec["kyve"]["status"]="PASS"
   except Exception as e:
     rec["kyve"]={"status":"FAIL","error":type(e).__name__+": "+str(e)}
-  for n,b in REST_SOURCES:rec["independent_sources"].append(rest_block(n,b))
-  for n,b in RPC_SOURCES:rec["independent_sources"].append(rpc_block(n,b))
+  jobs=[("REST",n,b) for n,b in REST_SOURCES]+[("RPC",n,b) for n,b in RPC_SOURCES]
+  by={}
+  with ThreadPoolExecutor(max_workers=24) as ex:
+    futs={}
+    for kind,n,b in jobs:
+      fut=ex.submit(rest_block if kind=="REST" else rpc_block,n,b)
+      futs[fut]=(kind,n)
+    for fut in as_completed(futs):
+      kind,n=futs[fut]
+      try: by[(kind,n)]=fut.result()
+      except Exception as e: by[(kind,n)]={"provider":n,"transport":kind,"status":"FAIL","error":type(e).__name__+": "+str(e)}
+  rec["independent_sources"]=[by[(kind,n)] for kind,n,b in jobs]
   kh=(rec.get("kyve") or {}).get("header")
   matches=[]
   if kh:
