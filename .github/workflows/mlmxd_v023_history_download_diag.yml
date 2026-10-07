@@ -1,0 +1,46 @@
+name: MLMXD V0.2.3 Historical Download Endpoint Diagnostic
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - mexc-launchpool-mx-demand-v0.2-activation-pilot-2026-10-07
+    paths:
+      - '.github/workflows/mlmxd_v023_history_download_diag.yml'
+permissions:
+  contents: read
+jobs:
+  diag:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests
+      - name: Inspect official market data download frontend
+        run: |
+          python - <<'PY'
+          import requests,re,json
+          from urllib.parse import urljoin
+          U="https://www.mexc.com/en-GB/market-data-download"
+          h=requests.get(U,headers={"User-Agent":"Mozilla/5.0"},timeout=30).text
+          print("HTML_LEN",len(h))
+          scripts=re.findall(r'<script[^>]+src=["\']([^"\']+)["\']',h,re.I)
+          print("SCRIPTS",json.dumps(scripts[-30:]))
+          pats=[r'https?://[^"\' ]+',r'/api/[^"\' ]+',r'market-data[^"\' ]+',r'download[^"\' ]+']
+          hits=set()
+          for s in scripts[-40:]:
+            try:
+              u=urljoin(U,s)
+              t=requests.get(u,headers={"User-Agent":"Mozilla/5.0"},timeout=30).text
+              if "market-data-download" in t or "marketData" in t or "download" in t.lower():
+                print("SCRIPT_MATCH",u,"LEN",len(t))
+                for token in re.findall(r'["\']([^"\']{4,250})["\']',t):
+                  lo=token.lower()
+                  if ("market" in lo and "data" in lo) or "download" in lo or "/api/" in lo:
+                    if token not in hits:
+                      hits.add(token)
+                      print("HIT",token[:250])
+            except Exception as e:
+              print("SCRIPT_ERR",s,repr(e))
+          PY
