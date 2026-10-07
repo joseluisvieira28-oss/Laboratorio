@@ -1,0 +1,62 @@
+name: Unbonding V0.4.2 Matrix Probe
+
+on:
+  push:
+    branches:
+      - pos-unbonding-v042-matrix-probe-2026-10-07
+    paths:
+      - "research/pos_unbonding_completion_001_v0_4_index_free/v042_matrix_probe.py"
+      - ".github/workflows/unbonding-v042-matrix.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    strategy:
+      fail-fast: false
+      matrix:
+        chain: [cosmoshub, osmosis, celestia, dydx]
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pos-unbonding-v042-matrix-probe-2026-10-07
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run frozen chain probe
+        run: python research/pos_unbonding_completion_001_v0_4_index_free/v042_matrix_probe.py ${{ matrix.chain }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v042-${{ matrix.chain }}
+          path: research/pos_unbonding_completion_001_v0_4_index_free/V042_MATRIX_*.json
+
+  aggregate:
+    needs: probe
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pos-unbonding-v042-matrix-probe-2026-10-07
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: v042-*
+          path: /tmp/v042
+          merge-multiple: true
+      - name: Commit receipts
+        run: |
+          cp /tmp/v042/V042_MATRIX_*.json research/pos_unbonding_completion_001_v0_4_index_free/
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/pos_unbonding_completion_001_v0_4_index_free/V042_MATRIX_*.json
+          if git diff --cached --quiet; then
+            echo "No receipt changes"
+          else
+            git commit -m "Record V0.4.2 chain-parallel matrix receipts"
+            git push origin HEAD:pos-unbonding-v042-matrix-probe-2026-10-07
+          fi
