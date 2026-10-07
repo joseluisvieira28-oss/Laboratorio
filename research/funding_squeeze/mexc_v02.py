@@ -53,7 +53,7 @@ def chunks(start,end,days=30):
 def fetch_spot():
     out=[]
     for a,b in chunks(START,END,30):
-        j=get_json(BASE+"/api/v3/klines",{"symbol":"BTCUSDT","interval":"1h","startTime":int(a.timestamp()*1000),"endTime":int((b-pd.Timedelta(milliseconds=1)).timestamp()*1000),"limit":1000})
+        j=get_json(BASE+"/api/v3/klines",{"symbol":"BTCUSDT","interval":"60m","startTime":int(a.timestamp()*1000),"endTime":int((b-pd.Timedelta(milliseconds=1)).timestamp()*1000),"limit":1000})
         if not isinstance(j,list): raise RuntimeError("spot_schema:"+str(j)[:200])
         for x in j:
             if isinstance(x,list) and len(x)>=2: out.append((pd.to_datetime(int(x[0]),unit="ms",utc=True),float(x[1])))
