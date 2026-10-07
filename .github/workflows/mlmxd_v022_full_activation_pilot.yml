@@ -1,0 +1,44 @@
+name: MLMXD V0.2.2 Full Frozen Activation Pilot
+
+on:
+  push:
+    branches:
+      - mexc-launchpool-mx-demand-v0.2-activation-pilot-2026-10-07
+    paths:
+      - 'research/mexc_launchpool_mx_demand/activation_pilot_archive_v022.py'
+      - '.github/workflows/mlmxd_v022_full_activation_pilot.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pilot:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests ccxt
+      - name: Execute frozen 14-event pilot with official archive remediation
+        run: python research/mexc_launchpool_mx_demand/activation_pilot_archive_v022.py
+      - name: Verify immutable rules
+        run: |
+          python - <<'PY'
+          import json
+          p=json.load(open('artifacts/mexc_launchpool_mx_demand_v022_full_pilot/pilot_summary.json'))
+          assert p['event_count_frozen']==14
+          assert p['science_changed'] is False
+          assert p['event_set_changed'] is False
+          assert p['horizon_changed'] is False
+          assert p['authenticated'] is False
+          assert p['orders'] is False
+          assert p['promotion_credit']==0
+          print(json.dumps(p,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mlmxd-v022-full-activation-pilot
+          path: artifacts/mexc_launchpool_mx_demand_v022_full_pilot/
+          retention-days: 90
