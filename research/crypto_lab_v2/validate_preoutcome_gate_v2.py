@@ -63,14 +63,24 @@ def validate(path: pathlib.Path) -> None:
         fail("power_gate.outcomes_opened must be false")
     alpha = p.get("alpha")
     target = p.get("power_target")
-    power = p.get("power_at_h")
+    power = p.get("power_at_design_alt")
+    theta_design = p.get("design_alternative_theta")
     n_eff = p.get("n_eff_estimate")
     if not isinstance(alpha, (int,float)) or not (0 < alpha <= 0.2):
         fail("power_gate.alpha must be in (0, 0.2]")
     if not isinstance(target, (int,float)) or not (0.5 <= target <= 0.99):
         fail("power_gate.power_target must be in [0.5, 0.99]")
     if not isinstance(power, (int,float)) or not (0 <= power <= 1):
-        fail("power_gate.power_at_h must be in [0,1]")
+        fail("power_gate.power_at_design_alt must be in [0,1]")
+    if not isinstance(theta_design, (int,float)):
+        fail("power_gate.design_alternative_theta must be numeric")
+    direction = p.get("direction")
+    if direction == "POSITIVE" and not (theta_design > H):
+        fail("POSITIVE power design alternative must be > economic hurdle H")
+    if direction == "NEGATIVE" and not (theta_design < -H):
+        fail("NEGATIVE power design alternative must be < -H")
+    if direction == "TWO_SIDED" and not (abs(theta_design) > H):
+        fail("TWO_SIDED power design alternative magnitude must exceed H")
     if not isinstance(n_eff, (int,float)) or n_eff <= 0:
         fail("power_gate.n_eff_estimate must be > 0; there is deliberately no universal minimum N")
 
@@ -97,10 +107,10 @@ def validate(path: pathlib.Path) -> None:
         if p.get("status") != "TEST_AUTHORIZED":
             fail("TEST_AUTHORIZED requires power_gate.status TEST_AUTHORIZED")
         if power < target:
-            fail(f"TEST_AUTHORIZED forbidden: power_at_h {power} < target {target}")
+            fail(f"TEST_AUTHORIZED forbidden: power_at_design_alt {power} < target {target}")
     elif decision == "UNDERPOWERED_PRE":
         if power >= target:
-            fail("UNDERPOWERED_PRE inconsistent with power_at_h >= target")
+            fail("UNDERPOWERED_PRE inconsistent with power_at_design_alt >= target")
     elif decision == "SOURCE_BLOCKED":
         if src.get("status") != "SOURCE_BLOCKED":
             fail("SOURCE_BLOCKED decision requires source_gate.status SOURCE_BLOCKED")
