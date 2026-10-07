@@ -156,3 +156,32 @@ print("EXACT_PAYLOAD_RESULT","CODE",j.get("code"),"TOTAL",d.get("total"),
       "IDS",[x.get("id") for x in rows],
       "CATES",[x.get("cate_id") for x in rows],
       "DATES",[x.get("release_time") for x in rows])
+
+print("=== DEEP MINIAPP DIAG ===")
+for u in ["https://miniapp.gate.com/announcements/fee","https://miniapp.gate.com/announcements/fee?page=2"]:
+    r=s.get(u,timeout=30,allow_redirects=True)
+    soup=BeautifulSoup(r.text,"html.parser")
+    rows=[]
+    for a in soup.find_all("a",href=True):
+        href=a.get("href","")
+        if "/announcements/article/" in href:
+            rows.append((href," ".join(a.get_text(" ",strip=True).split())[:120]))
+    print("DEEP_URL",u)
+    print("DEEP_LINKS",json.dumps(rows,ensure_ascii=False))
+    nd=soup.find("script",id="__NEXT_DATA__")
+    if nd:
+        txt=nd.string or nd.get_text()
+        print("NEXT_DATA_LEN",len(txt))
+        print("NEXT_DATA_HEAD",txt[:1200])
+        for pat in ["announcements","category","fee","pageSize","pageNum","total","list"]:
+            if pat.lower() in txt.lower():
+                print("NEXT_HAS",pat)
+        # print compact snippets around likely API/path markers
+        for m in re.finditer(r'(?i)(api[^"\\]{0,180}|announcement[^"\\]{0,220}|pageSize[^,}]{0,80}|pageNum[^,}]{0,80})',txt):
+            z=m.group(0)
+            if len(z)>20:
+                print("NEXT_SNIP",z[:260])
+    for sc in soup.find_all("script",src=True):
+        src=sc.get("src","")
+        if "announcements" in src or "_next/static/chunks/pages/announcements" in src:
+            print("SCRIPT_SRC",src)
