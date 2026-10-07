@@ -1,0 +1,38 @@
+name: MLMXD Activation Pilot V0.1.5 UTC8 History Files
+on:
+  push:
+    branches: [mexc-launchpool-mx-demand-v0.1-source-2026-10-07]
+    paths:
+      - 'research/mexc_launchpool_mx_demand/activation_pilot_v015.py'
+      - '.github/workflows/mlmxd_activation_pilot_v015.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  pilot:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests numpy
+      - run: python research/mexc_launchpool_mx_demand/activation_pilot_v015.py
+      - name: Verify governance
+        run: |
+          python - <<'PY'
+          import json
+          p=json.load(open('artifacts/mexc_launchpool_mx_demand_activation_pilot_v015/summary.json'))
+          assert p['authenticated'] is False
+          assert p['orders'] is False
+          assert p['exchange_mutation'] is False
+          assert p['science_changed'] is False
+          assert p['promotion_credit']=='ZERO'
+          print(json.dumps(p,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mlmxd-activation-pilot-v015
+          path: artifacts/mexc_launchpool_mx_demand_activation_pilot_v015/
+          retention-days: 90
