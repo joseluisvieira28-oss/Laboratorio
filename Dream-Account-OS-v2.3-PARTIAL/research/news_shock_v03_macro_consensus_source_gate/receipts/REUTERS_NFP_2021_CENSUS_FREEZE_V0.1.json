@@ -1,0 +1,34 @@
+{
+  "freeze_id": "NEWS-SHOCK-V03-REUTERS-NFP-CENSUS-2021-001",
+  "created_date": "2026-10-07",
+  "branch": "news-shock-v03-public-source-recovery-v0.1",
+  "status": "FROZEN_BEFORE_REUTERS_NFP_CENSUS",
+  "scope": "SOURCE_ONLY",
+  "purpose": "Test a new NFP source family after preserving the Baker route failure. CPI route is not re-optimized here.",
+  "universe": "All 12 frozen 2021 Employment Situation/NFP release events from the existing BLS manifest.",
+  "source_family": "Reuters pre-release poll/reporting, including verbatim Reuters syndication on public mirrors when the Reuters byline/body and publication timestamp are preserved.",
+  "snapshot_rule": "For each event, use the latest qualifying Reuters publication timestamped strictly before BLS T0 that explicitly reports Reuters poll consensus. No post-release Reuters article may qualify.",
+  "cutoff_rule": "publication_timestamp_utc < T0; equality fails. Same-day evidence requires explicit timestamp/timezone or an independently resolvable publisher clock.",
+  "required_fields": ["nfp_change_k","unemployment_rate","ahe_mom","ahe_yoy"],
+  "field_rule": "All four fields must be explicit in the qualifying Reuters text. No inference, no conversion from another source, no averaging, no substitution.",
+  "fallback": "NONE",
+  "version_rule": "Preserve URL/article identity, publication timestamp, Reuters attribution, retrieval time and content hash/normalized evidence hash. If a mirror exposes only a mutable undated current page, it fails.",
+  "conflict_rule": "If multiple qualifying Reuters snapshots before T0 disagree, select the latest qualifying timestamp per the frozen rule; preserve earlier snapshots as version history. Never average.",
+  "missing_rule": "Missing required fields remain null and the event is incomplete.",
+  "gate": {
+    "minimum_complete_nfp": 10,
+    "required_provenance_rate": 1.0
+  },
+  "prohibited": [
+    "BTC/ETH prices or returns",
+    "Treasury yield outcomes",
+    "taker flow",
+    "continuation/reversal",
+    "PnL",
+    "post-outcome tuning",
+    "2025/2026 protected outcomes",
+    "merge to main",
+    "trading or exchange mutation"
+  ],
+  "note": "This is a new source route, not a rewrite of the failed Baker census. It was frozen before the full 12-event Reuters census."
+}
