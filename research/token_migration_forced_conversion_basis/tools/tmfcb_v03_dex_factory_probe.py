@@ -7,8 +7,7 @@ Swap events, balances, prices, TVL, amounts, or implied prices.
 """
 import json, urllib.request, time
 
-RPCS=["https://ethereum-rpc.publicnode.com","https://cloudflare-eth.com"]
-UPPER=24000000
+RPCS=["https://eth.llamarpc.com","https://1rpc.io/eth","https://rpc.flashbots.net","https://ethereum-rpc.publicnode.com","https://cloudflare-eth.com"]
 FACTORY="0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f"
 PAIR_CREATED="0x0d3648bd0f6ba80134a33ba9275ac585d9d315f0ad8355cddefde31afa28d0e9"
 QUOTES={
@@ -52,12 +51,17 @@ def rpc(method,params):
 
 def pad(a): return "0x"+"0"*24+a.lower().replace("0x","")
 
-def code_at(a,b):
-    return rpc("eth_getCode",[a,hex(b)]) not in (None,"0x","0x0")
+def latest_block_number():
+    b=rpc("eth_getBlockByNumber",["latest",False])
+    if not b or not b.get("number"): raise RuntimeError("LATEST_BLOCK_UNAVAILABLE")
+    return int(b["number"],16)
 
-def first_code(a):
-    if not code_at(a,UPPER): return None
-    lo,hi=0,UPPER
+def code_at(a,b):
+    return rpc("eth_getCode",[a,hex(b) if isinstance(b,int) else b]) not in (None,"0x","0x0")
+
+def first_code(a,upper):
+    if not code_at(a,upper): return None
+    lo,hi=0,upper
     while lo<hi:
         m=(lo+hi)//2
         if code_at(a,m): hi=m
@@ -89,10 +93,11 @@ def query_pair(token,quote,start):
         time.sleep(0.02)
     return {"status":"NOT_FOUND"}
 
+UPPER=latest_block_number()
 out={"probe":"TMFCB_V0.3_UNISWAP_V2_FACTORY_METADATA","upper_block":UPPER,"tokens":{}}
 for label,token in TOKENS.items():
     try:
-        fb=first_code(token)
+        fb=first_code(token,UPPER)
         rec={"address":token,"first_code_block":fb,"first_code_meta":block_meta(fb) if fb is not None else None,"common_quote_pairs":{}}
         if fb is not None:
             for ql,qa in QUOTES.items():
