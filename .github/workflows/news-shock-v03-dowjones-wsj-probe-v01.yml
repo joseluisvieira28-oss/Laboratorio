@@ -1,0 +1,107 @@
+name: NEWS SHOCK V0.3 Dow Jones WSJ consensus probe
+on:
+  push:
+    branches: [news-shock-v03-public-source-recovery-v0.1]
+    paths:
+      - ".github/workflows/news-shock-v03-dowjones-wsj-probe-v01.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch and verify pre-T0 Dow Jones/WSJ survey mirrors
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          urls=(
+            "https://in.marketscreener.com/news/latest/Unemployment-Rate-Seen-Ticking-Up-Data-Week-Ahead-32141097/"
+            "https://sa.marketscreener.com/news/latest/U-S-Trade-Deficit-Seen-Widening-Data-Week-Ahead-Update-32118432/"
+          )
+          i=0
+          for u in "${urls[@]}"; do
+            i=$((i+1))
+            curl --fail --location --retry 3 --retry-all-errors               --user-agent 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/155 Safari/537.36 CryptoLabSourceAudit/1.0'               -D "evidence/headers_${i}.txt" "$u" -o "evidence/page_${i}.html"
+            sha256sum "evidence/page_${i}.html" | tee "evidence/hash_${i}.txt"
+          done
+
+          python - <<'PY'
+          from pathlib import Path
+          import hashlib, json, re, html
+
+          urls = [
+            "https://in.marketscreener.com/news/latest/Unemployment-Rate-Seen-Ticking-Up-Data-Week-Ahead-32141097/",
+            "https://sa.marketscreener.com/news/latest/U-S-Trade-Deficit-Seen-Widening-Data-Week-Ahead-Update-32118432/",
+          ]
+          out = {
+            "probe_id": "NEWS-SHOCK-V03-DOWJONES-WSJ-001",
+            "target_event": "US_NFP_2021-01-08",
+            "t0_utc": "2021-01-08T13:30:00Z",
+            "source_only": True,
+            "pages": []
+          }
+
+          def clean(s):
+              s = re.sub(r'<script\b[^>]*>.*?</script>', ' ', s, flags=re.I|re.S)
+              s = re.sub(r'<style\b[^>]*>.*?</style>', ' ', s, flags=re.I|re.S)
+              s = re.sub(r'<[^>]+>', ' ', s)
+              s = html.unescape(s)
+              return re.sub(r'\s+', ' ', s)
+
+          for i,u in enumerate(urls, 1):
+              b = Path(f"evidence/page_{i}.html").read_bytes()
+              raw = b.decode("utf-8","ignore")
+              txt = clean(raw)
+              markers = {
+                "dow_jones": bool(re.search(r'Dow Jones', txt, re.I)),
+                "wsj_survey": bool(re.search(r'survey compiled by The Wall Street Journal', txt, re.I)),
+                "last_updated_monday": bool(re.search(r'Forecasts were last updated Monday afternoon', txt, re.I)),
+                "payroll_50k": bool(re.search(r'Nonfarm Payrolls.{0,120}\+?50K', txt, re.I)),
+                "unemployment_6_8": bool(re.search(r'Unemployment Rate.{0,120}6\.8%', txt, re.I)),
+                "ahe_mom_0_2": bool(re.search(r'(Avg\.? Hourly Wages M/M|Average Hourly).{0,160}\+?0\.2%', txt, re.I)),
+                "ahe_yoy_4_5": bool(re.search(r'(Avg\.? Hourly Wages Y/Y|Average Hourly).{0,160}\+?4\.5%', txt, re.I)),
+                "wire_20210107_1014et": bool(re.search(r'01-07-21\s+1014ET', txt, re.I)),
+                "wire_20210104_1412et": bool(re.search(r'01-04-21\s+1412ET', txt, re.I)),
+              }
+              pub = re.findall(r'Published.{0,180}', txt, re.I)[:5]
+              mod = re.findall(r'Modified.{0,180}', txt, re.I)[:5]
+              out["pages"].append({
+                "index": i,
+                "url": u,
+                "bytes": len(b),
+                "sha256": hashlib.sha256(b).hexdigest(),
+                "markers": markers,
+                "published_markers": pub,
+                "modified_markers": mod,
+              })
+
+          all_fields = all(
+              p["markers"]["payroll_50k"] and
+              p["markers"]["unemployment_6_8"] and
+              p["markers"]["ahe_mom_0_2"] and
+              p["markers"]["ahe_yoy_4_5"]
+              for p in out["pages"]
+          )
+          out["all_pages_field_complete"] = all_fields
+          out["wire_timestamp_evidence_present"] = (
+              out["pages"][0]["markers"]["wire_20210107_1014et"] or
+              out["pages"][1]["markers"]["wire_20210104_1412et"]
+          )
+          Path("evidence/receipt.json").write_text(json.dumps(out, indent=2)+"\n")
+          print(json.dumps(out, indent=2))
+          if not all_fields:
+              raise SystemExit("FAIL: expected 4/4 NFP consensus fields not found on every frozen mirror")
+          if not out["wire_timestamp_evidence_present"]:
+              raise SystemExit("FAIL: Dow Jones wire timestamp marker missing")
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: NEWS_SHOCK_V03_DOWJONES_WSJ_PROBE_V01
+          path: evidence/
+          retention-days: 90
