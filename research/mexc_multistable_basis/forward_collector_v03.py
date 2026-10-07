@@ -339,22 +339,29 @@ def main():
             scans.append(scan);atomic_json(path,receipt(a,meta_ev,scans,events,pending,errors,started));minute+=timedelta(minutes=1);continue
         if scan["triggered_assets"]:
             t=int(minute.timestamp())
-            if last_admitted is not None and t-last_admitted<COOLDOWN_SEC:
-                scan["cooldown_suppressed"]=True
-            else:
-                raw_assets=[]
-                for asset in scan["triggered_assets"]:
-                    z={**sigs[asset],"underlying":asset}
-                    try:raw_assets.append(capture_entry(z,t,meta))
-                    except Exception as exc:raw_assets.append({**z,"eligible":False,"entry_error":str(exc)})
-                eligible=[x for x in raw_assets if x.get("eligible")]
-                if eligible:
-                    last_admitted=t
-                    event={"timestamp":t,"signal_close_utc":minute.isoformat(),"assets":raw_assets}
-                    pending.append({"due":minute+timedelta(seconds=HORIZON_SEC),"event":event})
-                    scan["event_admitted"]=True
-                else:
+            raw_assets=[]
+            for asset in scan["triggered_assets"]:
+                z={**sigs[asset],"underlying":asset}
+                try:raw_assets.append(capture_entry(z,t,meta))
+                except Exception as exc:raw_assets.append({**z,"eligible":False,"entry_error":str(exc)})
+            funding_eligible=[x for x in raw_assets if x.get("eligible")]
+            suppressed=bool(last_admitted is not None and t-last_admitted<COOLDOWN_SEC)
+            scan["cooldown_suppressed"]=suppressed
+            if funding_eligible:
+                event={
+                    "timestamp":t,
+                    "signal_close_utc":minute.isoformat(),
+                    "cooldown_suppressed":suppressed,
+                    "assets":raw_assets,
+                }
+                pending.append({"due":minute+timedelta(seconds=HORIZON_SEC),"event":event})
+                if suppressed:
                     scan["event_admitted"]=False
+                else:
+                    last_admitted=t
+                    scan["event_admitted"]=True
+            else:
+                scan["event_admitted"]=False
         scans.append(scan)
         atomic_json(path,receipt(a,meta_ev,scans,events,pending,errors,started))
         minute+=timedelta(minutes=1)
@@ -374,7 +381,7 @@ def main():
         "expected_scan_minutes":final["expected_scan_minutes"],
         "complete_scan_minutes":sum(1 for x in scans if x.get("complete")),
         "raw_trigger_minutes":sum(1 for x in scans if x.get("triggered_assets")),
-        "admitted_events":len(events),
+        "admitted_events":sum(1 for x in events if not x.get("cooldown_suppressed")),\n        "cooldown_suppressed_events":sum(1 for x in events if x.get("cooldown_suppressed")),
         "errors":len(errors),
         "orders":False,
         "path":str(path),
