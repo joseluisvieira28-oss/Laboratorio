@@ -1,0 +1,71 @@
+name: source-t0-probe-v18-parallel-critical
+
+on:
+  push:
+    branches:
+      - cosmos-native-emission-param-shock-001-v0.2-t0-remediation-2026-10-07
+    paths:
+      - .github/workflows/source-t0-probe-v18-parallel-critical.yml
+
+permissions:
+  contents: read
+
+jobs:
+  critical:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Parallel critical historical probes
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json,urllib.request,ssl,concurrent.futures
+          UA={"User-Agent":"CryptoLab-source-only/1.8"}
+          def get(item):
+            tag,url,hdr=item
+            try:
+              q=urllib.request.Request(url,headers={**UA,**hdr})
+              with urllib.request.urlopen(q,timeout=6,context=ssl._create_unverified_context()) as r:
+                raw=r.read().decode("utf-8","replace")
+                try:d=json.loads(raw)
+                except:d=raw[:1500]
+                return {"tag":tag,"ok":True,"status":r.status,"url":r.geturl(),"data":d}
+            except Exception as e:
+              return {"tag":tag,"ok":False,"url":url,"error":repr(e)}
+          jobs=[]
+          ak_bases=[
+            "https://akash.c29r3.xyz:443/api",
+            "https://akash.api.pocket.network",
+            "https://akash.rpc.uquad.org:443",
+            "https://akash.api.arcturian.tech",
+            "https://akash-mainnet-api.crouton.digital",
+            "https://proxy.atomscan.com/akash-lcd"
+          ]
+          for pid,H in {"265":17526666,"283":20631473}.items():
+            for base in ak_bases:
+              for hh in [H-1,H,H+1]:
+                jobs.append((f"AK{pid}:{base}:block:{hh}",base.rstrip("/") + f"/cosmos/base/tendermint/v1beta1/blocks/{hh}",{}))
+                jobs.append((f"AK{pid}:{base}:params:{hh}",base.rstrip("/") + "/cosmos/mint/v1beta1/params",{"x-cosmos-block-height":str(hh)}))
+                jobs.append((f"AK{pid}:{base}:inflation:{hh}",base.rstrip("/") + "/cosmos/mint/v1beta1/inflation",{"x-cosmos-block-height":str(hh)}))
+          sec_bases=[
+            "https://rest.lavenderfive.com:443/secretnetwork",
+            "https://1rpc.io/scrt-lcd",
+            "https://lcd.mainnet.secretsaturn.net",
+            "https://rest-secret.01node.com",
+            "https://public.stakewolle.com/cosmos/secretnetwork/rest",
+            "https://proxy.atomscan.com/secretnetwork-lcd"
+          ]
+          for base in sec_bases:
+            for hh in [11752974,11840000,11920000]:
+              jobs.append((f"SCRT:{base}:block:{hh}",base.rstrip("/") + f"/cosmos/base/tendermint/v1beta1/blocks/{hh}",{}))
+          with concurrent.futures.ThreadPoolExecutor(max_workers=30) as ex:
+            rows=list(ex.map(get,jobs))
+          # retain all successes and informative failures
+          out=[]
+          for x in rows:
+            if x["ok"] or not any(z in x.get("error","").lower() for z in ["404","prun"]):
+              out.append(x)
+          print("CRITICAL_V18_BEGIN")
+          print(json.dumps({"scope":"SOURCE_ONLY_NO_MARKET_DATA","results":out},indent=2,sort_keys=True)[:700000])
+          print("CRITICAL_V18_END")
+          PY
