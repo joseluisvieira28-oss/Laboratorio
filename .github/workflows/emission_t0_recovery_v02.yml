@@ -1,0 +1,28 @@
+name: Emission T0 Recovery V0.2
+
+on:
+  push:
+    branches:
+      - cosmos-native-emission-param-shock-001-source-remediation-v0.2-2026-10-07
+    paths:
+      - 'research/cosmos_native_emission_param_shock_001_v0_2_source_remediation/**'
+      - '.github/workflows/emission_t0_recovery_v02.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run bounded source-only T0 recovery
+        run: |
+          python3 research/cosmos_native_emission_param_shock_001_v0_2_source_remediation/probe_emission_t0_v02.py
+      - name: Upload source receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: emission-t0-recovery-v02
+          path: emission_t0_recovery_v02.json
+          if-no-files-found: error
