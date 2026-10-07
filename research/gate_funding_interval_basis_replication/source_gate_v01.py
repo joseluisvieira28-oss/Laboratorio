@@ -32,6 +32,8 @@ def req(method,url,**kwargs):
                 last=RuntimeError(f"http_{r.status_code}"); time.sleep(min(20,2**i)); continue
             r.raise_for_status(); return r
         except Exception as e:
+            if str(e).startswith("http_4"):
+                raise
             last=e
             if i<6: time.sleep(min(20,2**i))
     raise RuntimeError(str(last))
