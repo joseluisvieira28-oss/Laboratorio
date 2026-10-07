@@ -1,0 +1,45 @@
+name: BGFIPR V0.1 External Source Gate
+
+on:
+  push:
+    branches:
+      - bitget-funding-interval-premium-replication-v0.1-source-2026-10-07
+    paths:
+      - research/bitget_funding_interval_premium_replication/source_gate_v01.py
+      - .github/workflows/bgfipr_v01_source_gate.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-gate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests beautifulsoup4
+      - run: python -m py_compile research/bitget_funding_interval_premium_replication/source_gate_v01.py
+      - run: python research/bitget_funding_interval_premium_replication/source_gate_v01.py
+      - name: Assert source-only safety
+        run: |
+          python - <<'PY'
+          import json
+          d=json.load(open('bgfipr_v01_source_gate_report.json',encoding='utf-8'))
+          assert d['verdict'] in {'EXTERNAL_SOURCE_PASS','EXTERNAL_INSUFFICIENT_SAMPLE','EXTERNAL_SOURCE_BLOCKED'}
+          assert all(v is False for v in d['safety'].values())
+          print('VERDICT='+d['verdict'])
+          print('EVENTS='+str(d['eligible_asset_events']))
+          print('CLUSTERS='+str(d['independent_clusters']))
+          print('UNIQUE_CONTRACTS='+str(d['unique_contracts']))
+          print('YEARS='+str(d['years']))
+          print('SAMPLE_GATES='+json.dumps(d['sample_gates'],sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bgfipr-v01-source-gate-receipt
+          path: bgfipr_v01_source_gate_report.json
+          retention-days: 30
