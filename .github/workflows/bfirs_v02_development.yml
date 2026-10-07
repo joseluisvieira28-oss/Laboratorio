@@ -1,0 +1,88 @@
+name: BFIRS V0.2 One-Shot Development
+
+on:
+  push:
+    branches:
+      - binance-funding-interval-regime-shock-v0.2-development-2026-10-07
+    paths:
+      - .github/workflows/bfirs_v02_development.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  development:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Verify frozen analysis identity
+        run: |
+          FILE='research/binance_funding_interval_regime_shock/BFIRS_V02_PRE_OUTCOME_ANALYSIS_FREEZE_2026-10-07.md'
+          ACTUAL="$(git hash-object "$FILE")"
+          echo "FREEZE_BLOB_SHA=$ACTUAL"
+          test "$ACTUAL" = '716715c253dcd34d27d9869403adb20844d5d29a'
+
+      - run: pip install requests
+
+      - name: Compile before any market outcome access
+        run: python -m py_compile research/binance_funding_interval_regime_shock/development_v02.py
+
+      - name: Download exact frozen source receipt
+        uses: actions/download-artifact@v4
+        with:
+          name: bfirs-v01-source-gate-receipt
+          path: source_receipt
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: '37570814145'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify pinned source receipt
+        run: |
+          python - <<'PY'
+          import json
+          d=json.load(open('source_receipt/bfirs_v01_source_gate_report.json',encoding='utf-8'))
+          assert d['family']=='BINANCE-FUNDING-INTERVAL-REGIME-SHOCK-001'
+          assert d['verdict']=='SOURCE_GATE_PASS'
+          assert d['outcome_access']=='NONE'
+          assert d['eligible_asset_events']==35
+          assert d['independent_clusters']==30
+          assert d['unique_contracts']==27
+          assert d['years']==[2023,2024,2025]
+          print('PINNED_SOURCE_RECEIPT_PASS')
+          PY
+
+      - name: Run ONE-SHOT V0.2 Development
+        run: python research/binance_funding_interval_regime_shock/development_v02.py
+
+      - name: Assert verdict governance
+        run: |
+          python - <<'PY'
+          import json
+          d=json.load(open('bfirs_v02_development_report.json',encoding='utf-8'))
+          assert d['verdict'] in {'NO_EDGE_DISCOVERY','SURVIVES_FUNDING_INTERVAL_DISCOVERY'}
+          g=d['governance']
+          assert g['year_2026_opened'] is False
+          assert g['authenticated_endpoint_used'] is False
+          assert g['private_endpoint_used'] is False
+          assert g['trading_or_order_mutation'] is False
+          assert g['main_modified'] is False
+          assert g['post_outcome_tuning'] is False
+          print('VERDICT='+d['verdict'])
+          print('PRIMARY_METRICS='+json.dumps(d['primary_metrics'],sort_keys=True))
+          print('SAMPLE_GATES='+json.dumps(d['sample_gates'],sort_keys=True))
+          print('PRIMARY_GATES='+json.dumps(d['primary_gates'],sort_keys=True))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bfirs-v02-development-receipt
+          path: bfirs_v02_development_report.json
+          retention-days: 30
