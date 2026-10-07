@@ -107,6 +107,8 @@ def normalize_book(inst: dict, book: dict, snapshot_time: str, snapshot_hour: st
         "ask_amount": ask_amount,
         "mark_price": book.get("mark_price"),
         "mark_iv": book.get("mark_iv"),
+        "bid_iv": book.get("bid_iv"),
+        "ask_iv": book.get("ask_iv"),
         "index_price": book.get("index_price"),
         "underlying_price": book.get("underlying_price"),
         "open_interest": book.get("open_interest"),
