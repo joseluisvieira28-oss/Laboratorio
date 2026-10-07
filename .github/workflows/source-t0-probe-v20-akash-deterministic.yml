@@ -1,0 +1,45 @@
+name: source-t0-probe-v20-akash-deterministic
+
+on:
+  push:
+    branches:
+      - cosmos-native-emission-param-shock-001-v0.2-t0-remediation-2026-10-07
+    paths:
+      - .github/workflows/source-t0-probe-v20-akash-deterministic.yml
+
+permissions:
+  contents: read
+
+jobs:
+  akash-deterministic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Fetch source-only Akash proposal and block anchors
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json,urllib.request,ssl
+          UA={"User-Agent":"CryptoLab-source-only-v20"}
+          B="https://console-api.akash.network"
+          def get(path):
+            try:
+              q=urllib.request.Request(B+path,headers=UA)
+              with urllib.request.urlopen(q,timeout=15,context=ssl.create_default_context()) as r:
+                return json.loads(r.read().decode())
+            except Exception as e:return {"error":repr(e)}
+          out={"scope":"SOURCE_ONLY_NO_MARKET_DATA","proposals":{},"blocks":{},"upgrade_candidates":[]}
+          for pid in (265,283):
+            out["proposals"][str(pid)]=get(f"/v1/proposals/{pid}")
+          for label,H in {"265":17526666,"283":20631473}.items():
+            out["blocks"][label]={str(h):get(f"/v1/blocks/{h}") for h in (H-1,H,H+1,H+2)}
+          lst=get("/v1/proposals")
+          seq=lst if isinstance(lst,list) else (lst.get("proposals",[]) if isinstance(lst,dict) else [])
+          for p in seq:
+            s=json.dumps(p,sort_keys=True).lower()
+            if any(x in s for x in ("v0.36.0","v0.38.0","mainnet 13","mainnet upgrade")):
+              out["upgrade_candidates"].append(p)
+          print("AKASH_DETERMINISTIC_V20_BEGIN")
+          print(json.dumps(out,indent=2,sort_keys=True)[:500000])
+          print("AKASH_DETERMINISTIC_V20_END")
+          PY
