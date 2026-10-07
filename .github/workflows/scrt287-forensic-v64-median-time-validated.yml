@@ -1,0 +1,231 @@
+name: SCRT287 forensic V64 validated Tendermint median-time derivation
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - cosmos-native-emission-param-shock-001-v0.2-t0-remediation-2026-10-07
+    paths:
+      - .github/workflows/scrt287-forensic-v64-median-time-validated.yml
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: cosmos-native-emission-param-shock-001-v0.2-t0-remediation-2026-10-07
+
+      - name: Validate MedianTime on a consecutive IBC pair and derive target next block
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import datetime,hashlib,json,os,ssl,urllib.error,urllib.request
+
+          OUT="research/cosmos_native_emission_param_shock_001_v0_2/SCRT287_MEDIAN_TIME_VALIDATED_V64.json"
+          CLIENT="07-tendermint-1588"
+          ENDPOINTS=["https://rpc.archive.osmosis.zone","https://rpc.cosmos.directory/osmosis"]
+          TARGET="2023-12-07T02:54:58.930543213Z"
+          CONTROL_SEED=11880605
+          CONTROL_NEXT_TIME="2023-12-07T02:24:24.21367561Z"
+          TARGET_SEED=11880917
+          KNOWN_TARGET_SEED_TIME="2023-12-07T02:54:47.127200661Z"
+          UA={"User-Agent":"CryptoLab-SCRT287-source-only-v64/1.0","Content-Type":"application/json"}
+
+          def iso_ns(s):
+              import re
+              m=re.fullmatch(r"(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.(\d+))?Z",s)
+              if not m: raise ValueError(s)
+              d=datetime.datetime.strptime(m.group(1),"%Y-%m-%dT%H:%M:%S").replace(tzinfo=datetime.timezone.utc)
+              return int(d.timestamp())*1_000_000_000+int(((m.group(2) or "")+"000000000")[:9])
+
+          def varint(b,i):
+              x=0;s=0
+              while True:
+                  if i>=len(b):raise ValueError("truncated varint")
+                  c=b[i];i+=1;x|=(c&127)<<s
+                  if not c&128:return x,i
+                  s+=7
+                  if s>70:raise ValueError("varint overflow")
+          def fields(b):
+              i=0;o=[]
+              while i<len(b):
+                  try:k,i=varint(b,i)
+                  except:break
+                  n,w=k>>3,k&7
+                  if w==0:
+                      v,i=varint(b,i);o.append((n,w,v))
+                  elif w==1:
+                      if i+8>len(b):break
+                      o.append((n,w,b[i:i+8]));i+=8
+                  elif w==2:
+                      ln,i=varint(b,i)
+                      if i+ln>len(b):break
+                      o.append((n,w,b[i:i+ln]));i+=ln
+                  elif w==5:
+                      if i+4>len(b):break
+                      o.append((n,w,b[i:i+4]));i+=4
+                  else:break
+              return o
+          def allf(fs,n,w=None):return [c for a,b,c in fs if a==n and (w is None or b==w)]
+          def onef(fs,n,w=None):
+              xs=allf(fs,n,w);return xs[0] if xs else None
+          def timestamp(b):
+              fs=fields(b);sec=int(onef(fs,1,0) or 0);nano=int(onef(fs,2,0) or 0)
+              d=datetime.datetime.fromtimestamp(sec,tz=datetime.timezone.utc)
+              s=d.strftime("%Y-%m-%dT%H:%M:%S")
+              if nano:s+="."+(f"{nano:09d}").rstrip("0")
+              return s+"Z",sec*1_000_000_000+nano
+
+          def decode_full(hx):
+              raw=bytes.fromhex(hx)
+              af=fields(raw); val=onef(af,2,2)
+              hf=fields(val)
+              signed=onef(hf,1,2);valset=onef(hf,2,2)
+              if not signed or not valset:raise ValueError("missing signed_header or validator_set")
+              sh=fields(signed); hb=onef(sh,1,2);cb=onef(sh,2,2)
+              hh=fields(hb)
+              chain=(onef(hh,2,2) or b"").decode()
+              height=int(onef(hh,3,0));ht,htns=timestamp(onef(hh,4,2))
+              cf=fields(cb);ch=int(onef(cf,1,0));cr=int(onef(cf,2,0) or 0)
+              sigs=[]
+              for sb in allf(cf,4,2):
+                  sf=fields(sb);flag=int(onef(sf,1,0) or 0)
+                  addr=(onef(sf,2,2) or b"").hex().upper()
+                  tm=onef(sf,3,2);ts,tns=(None,None)
+                  if tm:ts,tns=timestamp(tm)
+                  sigs.append({"flag":flag,"address":addr,"time":ts,"time_ns":tns})
+              vf=fields(valset);vals=[]
+              for vb in allf(vf,1,2):
+                  x=fields(vb)
+                  vals.append({"address":(onef(x,1,2) or b"").hex().upper(),
+                               "voting_power":int(onef(x,3,0) or 0)})
+              return {"raw_sha256":hashlib.sha256(raw).hexdigest(),"chain_id":chain,"height":height,
+                      "time":ht,"time_ns":htns,"commit_height":ch,"commit_round":cr,
+                      "signatures":sigs,"validators":vals}
+
+          def rpc(base,p):
+              try:
+                  q=urllib.request.Request(base,data=json.dumps(p).encode(),headers=UA,method="POST")
+                  with urllib.request.urlopen(q,timeout=15,context=ssl._create_unverified_context()) as r:
+                      b=r.read(4_000_000)
+                      return {"ok":True,"status":r.status,"raw":b,"sha256":hashlib.sha256(b).hexdigest()}
+              except urllib.error.HTTPError as e:
+                  try:b=e.read(300000)
+                  except:b=b""
+                  return {"ok":False,"status":e.code,"raw":b,"error":str(e),
+                          "sha256":hashlib.sha256(b).hexdigest() if b else None}
+              except Exception as e:return {"ok":False,"status":None,"raw":b"","error":repr(e),"sha256":None}
+
+          def recover(height):
+              query=f"update_client.client_id='{CLIENT}' AND update_client.consensus_height='4-{height}'"
+              attempts=[]
+              for base in ENDPOINTS:
+                  p={"jsonrpc":"2.0","id":1,"method":"tx_search",
+                     "params":{"query":query,"prove":False,"page":"1","per_page":"100","order_by":"asc"}}
+                  r=rpc(base,p)
+                  rec={"endpoint":base,"status":r.get("status"),"ok":r["ok"],"sha256":r.get("sha256"),"error":r.get("error")}
+                  attempts.append(rec)
+                  if not r["ok"]:continue
+                  try:d=json.loads(r["raw"]);txs=(d.get("result") or {}).get("txs") or []
+                  except Exception as e:
+                      rec["parse_error"]=repr(e);continue
+                  rec["tx_count"]=len(txs)
+                  for tx in txs:
+                      for ev in (tx.get("tx_result") or {}).get("events") or []:
+                          if ev.get("type")!="update_client":continue
+                          aa={a.get("key"):a.get("value") for a in ev.get("attributes") or []}
+                          if aa.get("client_id")!=CLIENT or aa.get("consensus_height")!=f"4-{height}":continue
+                          hx=aa.get("header")
+                          if not hx:continue
+                          dec=decode_full(hx)
+                          if dec["chain_id"]=="secret-4" and dec["height"]==height:
+                              return {"endpoint":base,"carrier_height":int(tx["height"]),"carrier_tx_hash":tx.get("hash"),
+                                      "response_sha256":r.get("sha256"),"header_hex_sha256":hashlib.sha256(bytes.fromhex(hx)).hexdigest(),
+                                      "decoded":dec,"attempts":attempts}
+              return {"attempts":attempts}
+
+          def derive(src):
+              d=src["decoded"];power={v["address"]:v["voting_power"] for v in d["validators"]}
+              weighted=[];unmatched=[];total=0
+              for s in d["signatures"]:
+                  if s["flag"]==1:continue # absent
+                  p=power.get(s["address"])
+                  if p is None or s["time_ns"] is None:
+                      unmatched.append(s);continue
+                  total+=p;weighted.append({"address":s["address"],"flag":s["flag"],"time":s["time"],
+                                            "time_ns":s["time_ns"],"weight":p})
+              weighted.sort(key=lambda x:x["time_ns"])
+              rem=total//2;chosen=None
+              for w in weighted:
+                  if rem<=w["weight"]:
+                      chosen=w;break
+                  rem-=w["weight"]
+              if not chosen:raise RuntimeError("no weighted median")
+              return {"seed_height":d["height"],"seed_time":d["time"],"commit_height":d["commit_height"],
+                      "validator_count":len(d["validators"]),"signature_count":len(d["signatures"]),
+                      "weighted_signature_count":len(weighted),"unmatched_count":len(unmatched),
+                      "participating_total_voting_power":total,"median_threshold_floor":total//2,
+                      "next_height":d["height"]+1,"next_time":chosen["time"],"next_time_ns":chosen["time_ns"],
+                      "median_validator":chosen,"weighted_times":weighted,"unmatched":unmatched}
+
+          control_src=recover(CONTROL_SEED)
+          target_src=recover(TARGET_SEED)
+          control_der=derive(control_src) if control_src.get("decoded") else None
+          target_der=derive(target_src) if target_src.get("decoded") else None
+          control_pass=bool(control_der and iso_ns(control_der["next_time"])==iso_ns(CONTROL_NEXT_TIME)
+                            and control_src["decoded"]["time"]=="2023-12-07T02:24:18.306812433Z")
+          target_seed_match=bool(target_src.get("decoded") and target_src["decoded"]["time"]==KNOWN_TARGET_SEED_TIME)
+          target_ns=iso_ns(TARGET)
+
+          result={"scope":"SOURCE_ONLY_NO_MARKET_DATA","target_voting_end":TARGET,
+                  "authority":{
+                    "secret_release":"scrtlabs/SecretNetwork@v1.12.0",
+                    "tendermint_ref":"scrtlabs/tendermint@d62916253d52",
+                    "rule":"state.MakeBlock uses timestamp=MedianTime(commit,state.LastValidators); MedianTime uses non-absent commit signature times weighted by validator voting power; WeightedMedian uses total participating voting power / 2."
+                  },
+                  "tested_utc":datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                  "control":{"seed_source":control_src,"derived":control_der,"expected_next_time":CONTROL_NEXT_TIME,
+                             "exact_reproduction":control_pass},
+                  "target":{"seed_source":target_src,"derived":target_der,"seed_time_matches_prior_receipt":target_seed_match},
+                  "accepted_target_derivation":bool(control_pass and target_seed_match and target_der),
+                  "boundary_update":None,"H":None,"T0":None,
+                  "gate":"SOURCE_HISTORICAL_EXECUTION_BOUNDARY_BLOCKED",
+                  "forensic_phase":"OPEN_NOT_EXHAUSTED"}
+
+          if result["accepted_target_derivation"]:
+              nt=target_der["next_time_ns"]
+              ge=nt>=target_ns
+              result["boundary_update"]={"derived_height":target_der["next_height"],"derived_time":target_der["next_time"],
+                                         "derived_time_ge_voting_end":ge}
+              if ge:
+                  result["H"]=target_der["next_height"];result["T0"]=target_der["next_height"]+1
+                  result["gate"]="SOURCE_GATE_RESTORABLE_PENDING_FINAL_EVIDENCE_PACKAGING"
+                  result["forensic_phase"]="BOUNDARY_RECOVERED"
+              else:
+                  result["forensic_phase"]="OPEN_NARROWED_H_IN_11880919_11880922"
+
+          os.makedirs(os.path.dirname(OUT),exist_ok=True)
+          open(OUT,"w").write(json.dumps(result,indent=2)+"\n")
+          print("V64",json.dumps({
+            "control_source":bool(control_src.get("decoded")),"control_pass":control_pass,
+            "target_source":bool(target_src.get("decoded")),"target_seed_match":target_seed_match,
+            "target_next":target_der and {"height":target_der["next_height"],"time":target_der["next_time"],
+                                         "ge_target":target_der["next_time_ns"]>=target_ns},
+            "H":result["H"],"T0":result["T0"],"phase":result["forensic_phase"]
+          }))
+          PY
+
+      - name: Persist V64
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/cosmos_native_emission_param_shock_001_v0_2/SCRT287_MEDIAN_TIME_VALIDATED_V64.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "SCRT287: validate and apply Tendermint median-time derivation V64"
+          git pull --rebase origin cosmos-native-emission-param-shock-001-v0.2-t0-remediation-2026-10-07
+          git push origin HEAD:cosmos-native-emission-param-shock-001-v0.2-t0-remediation-2026-10-07
