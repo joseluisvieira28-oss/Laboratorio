@@ -58,7 +58,7 @@ terminal_header,_=rpc("eth_getBlockByNumber",[hex(LAST),False])
 assert int(first_header["number"],16)==FIRST and int(terminal_header["number"],16)==LAST
 
 cursor=FIRST; coverage=[]; rows=[]; started=time.monotonic()
-receipt={"classification":"SOURCE_GATE_PENDING","scope":"OPTIMISM_V3_CONFIGURATOR_SOURCE_ONLY_THROUGH_2024","source_gate_pass":False,"hypothesis_status":"NOT_TESTED","chain":"base","rpc_public_unauthenticated":URL,"configurator":CONFIG,"first_code_block":FIRST,"terminal":LAST,"terminal_timestamp":int(terminal_header["timestamp"],16),"topics":TOPICS,"economic_outcomes_opened":0,"development_runs":0,"outcomes_2026_opened":False}
+receipt={"classification":"SOURCE_GATE_PENDING","scope":"BASE_V3_CONFIGURATOR_SOURCE_ONLY_THROUGH_2024","source_gate_pass":False,"hypothesis_status":"NOT_TESTED","chain":"base","rpc_public_unauthenticated":URL,"configurator":CONFIG,"first_code_block":FIRST,"terminal":LAST,"terminal_timestamp":int(terminal_header["timestamp"],16),"topics":TOPICS,"economic_outcomes_opened":0,"development_runs":0,"outcomes_2026_opened":False}
 def save():
  receipt.update(contiguous_frontier=cursor-1,coverage_complete=cursor>LAST,intervals=len(coverage),event_count=len(rows))
  (OUT/"checkpoint.json").write_text(json.dumps({"receipt":receipt,"first_header":first_header,"terminal_header":terminal_header,"coverage":coverage,"rows":rows},indent=2))
