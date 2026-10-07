@@ -68,7 +68,7 @@ func main() {
 
 	encoding := coreumconfig.NewEncodingConfig(coreumapp.ModuleBasics)
 	app := coreumapp.New(
-		tmlog.NewNopLogger(), dbm.NewMemDB(), nil, false,
+		tmlog.NewNopLogger(), dbm.NewMemDB(), nil, true,
 		map[int64]bool{}, home, 0, encoding, opts{},
 	)
 
