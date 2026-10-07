@@ -1,0 +1,39 @@
+name: Unbonding V0.4.3 Fifth Chain Extension
+
+on:
+  push:
+    branches:
+      - pos-unbonding-completion-001-v0.4-index-free-census-2026-10-07
+    paths:
+      - "research/pos_unbonding_completion_001_v0_4_index_free/v043_fifth_chain_extension_qual.py"
+      - ".github/workflows/unbonding-v043-fifth-chain.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  qualify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pos-unbonding-completion-001-v0.4-index-free-census-2026-10-07
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Qualify frozen fifth-chain extension
+        run: python research/pos_unbonding_completion_001_v0_4_index_free/v043_fifth_chain_extension_qual.py
+      - name: Commit receipt
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/pos_unbonding_completion_001_v0_4_index_free/FIFTH_CHAIN_EXTENSION_QUALIFICATION_V043.json
+          if git diff --cached --quiet; then
+            echo "No changes"
+          else
+            git commit -m "Record V0.4.3 fifth-chain extension qualification"
+            git push origin HEAD:pos-unbonding-completion-001-v0.4-index-free-census-2026-10-07
+          fi
