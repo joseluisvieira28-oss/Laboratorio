@@ -9,7 +9,8 @@ RPC="https://lava.tendermintrpc.lava.build"
 KYVE="https://api.kyve.network"
 STORAGE={"1":"https://arweave.net","2":"https://arweave.net","3":"https://storage.kyve.network","4":"https://arweave.net"}
 BOUNDARY="2025-01-01T00:00:00Z"
-FREEZE_COMMIT="cec145e2f9040198f95f88f1532ec783646544c0"\nCORRECTION_COMMIT="11161fb1c305b8c4e85a155642636e67642d969d"
+FREEZE_COMMIT="cec145e2f9040198f95f88f1532ec783646544c0"
+CORRECTION_COMMIT="11161fb1c305b8c4e85a155642636e67642d969d"
 UA="CryptoLab-Unbonding-V081/1.0"
 
 def req(url, timeout=35):
