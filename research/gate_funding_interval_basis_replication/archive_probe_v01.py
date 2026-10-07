@@ -109,3 +109,28 @@ for p in payloads:
             print("EP_PROBE",mode,json.dumps(p,sort_keys=True),"STATUS",rr.status_code,"IDS",ids[:5],"SAMPLE",sample)
         except Exception as e:
             print("EP_ERR",mode,json.dumps(p,sort_keys=True),type(e).__name__,str(e))
+
+print("=== CATEGORY ID + PAYLOAD PROBE ===")
+matches=[]
+def walkcats(xs):
+    for x in xs or []:
+        if "fee" in str(x.get("cate","")).lower() or "fee" in str(x.get("name","")).lower() or int(x.get("id",0) or 0) in (54,55):
+            matches.append(x)
+        walkcats(x.get("children") or [])
+walkcats(cats)
+print("FEE_CATEGORY_MATCHES",json.dumps(matches,ensure_ascii=False))
+for p in [
+ {"cate_id":55,"page":2,"page_size":15,"cate_level":1},
+ {"category_id":55,"page":2,"page_size":15,"cate_level":1},
+ {"cate":55,"page":2,"page_size":15,"cate_level":1},
+ {"id":55,"page":2,"page_size":15,"cate_level":1},
+ {"cate_id":54,"page":2,"page_size":15,"cate_level":1},
+]:
+    try:
+        rr=s.post(ep,json=p,timeout=20)
+        j=rr.json()
+        d=j.get("data") or {}
+        rows=d.get("list") or []
+        print("CATID_PROBE",json.dumps(p,sort_keys=True),"CODE",j.get("code"),"TOTAL",d.get("total"),"IDS",[x.get("id") for x in rows[:6]],"CATES",[x.get("cate_id") for x in rows[:6]])
+    except Exception as e:
+        print("CATID_ERR",json.dumps(p,sort_keys=True),type(e).__name__,str(e))
