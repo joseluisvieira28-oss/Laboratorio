@@ -1,0 +1,91 @@
+name: source-t0-probe-v32-summarize-v29-proposal-id
+
+on:
+  push:
+    branches:
+      - cosmos-native-emission-param-shock-001-v0.2-t0-remediation-2026-10-07
+    paths:
+      - .github/workflows/source-t0-probe-v32-summarize-v29-proposal-id.yml
+
+permissions:
+  contents: write
+
+jobs:
+  summarize-proposal-id:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: cosmos-native-emission-param-shock-001-v0.2-t0-remediation-2026-10-07
+      - name: Summarize only Proposal 287 event-index queries
+        run: |
+          python - <<'PY'
+          import json, os, datetime
+          src="research/cosmos_native_emission_param_shock_001_v0_2/SCRT287_EVENT_INDEX_PROBE_V29.json"
+          out="research/cosmos_native_emission_param_shock_001_v0_2/SCRT287_EVENT_INDEX_PROBE_V29_PROPOSAL_ID_SUMMARY.json"
+          with open(src,encoding="utf-8") as f:d=json.load(f)
+          rows=d.get("rows",[])
+          relevant_rows=[]
+          for r in rows:
+              q=str(r.get("query") or "")
+              if "proposal_id" not in q or "287" not in q:
+                  continue
+              j=r.get("json")
+              rpc_error=None
+              blocks=[]
+              total_count=None
+              if isinstance(j,dict):
+                  if isinstance(j.get("error"),dict):
+                      e=j["error"]
+                      rpc_error={"code":e.get("code"),"message":e.get("message"),"data":e.get("data")}
+                  res=j.get("result")
+                  if isinstance(res,dict):
+                      blocks=res.get("blocks") if isinstance(res.get("blocks"),list) else []
+                      total_count=res.get("total_count")
+              parsed=[]
+              for b in blocks:
+                  hdr=((b.get("block") or {}).get("header") or {})
+                  h=hdr.get("height"); t=hdr.get("time")
+                  if h and t:
+                      parsed.append({"height":int(h),"time":t,"hash":((b.get("block_id") or {}).get("hash"))})
+              relevant_rows.append({
+                  "mode":r.get("mode"),
+                  "provider":r.get("provider"),
+                  "query":q,
+                  "http_ok":r.get("ok"),
+                  "status":r.get("status"),
+                  "rpc_error":rpc_error,
+                  "total_count":total_count,
+                  "block_count":len(parsed),
+                  "blocks":parsed,
+                  "transport_error":r.get("error"),
+              })
+          candidates=[]
+          for r in relevant_rows:
+              for b in r["blocks"]:
+                  candidates.append({"provider":r["provider"],"mode":r["mode"],"query":r["query"],**b})
+          summary={
+            "scope":"SOURCE_ONLY_NO_MARKET_DATA",
+            "source_receipt":src,
+            "target_voting_end":d.get("target_voting_end"),
+            "technical_summary_correction_of":"V31 broad-query false positive",
+            "scientific_rules_changed":False,
+            "proposal_id_query_row_count":len(relevant_rows),
+            "proposal_287_candidate_count":len(candidates),
+            "proposal_287_candidates":candidates,
+            "rows":relevant_rows,
+            "verdict":"EVENT_INDEX_PROPOSAL_287_RECOVERED" if candidates else "EVENT_INDEX_PROPOSAL_287_NOT_RECOVERED",
+            "summarized_utc":datetime.datetime.now(datetime.timezone.utc).isoformat()
+          }
+          os.makedirs(os.path.dirname(out),exist_ok=True)
+          with open(out,"w",encoding="utf-8") as f:json.dump(summary,f,indent=2,ensure_ascii=False)
+          print(json.dumps(summary,indent=2,ensure_ascii=False))
+          PY
+      - name: Persist Proposal 287 event-index summary
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/cosmos_native_emission_param_shock_001_v0_2/SCRT287_EVENT_INDEX_PROBE_V29_PROPOSAL_ID_SUMMARY.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "SCRT287: correct event-index summary to proposal-id scope"
+          git push origin HEAD:cosmos-native-emission-param-shock-001-v0.2-t0-remediation-2026-10-07
