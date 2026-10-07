@@ -30,7 +30,7 @@ var _ servertypes.AppOptions = opts{}
 func (o opts) Get(k string) interface{} { return o[k] }
 
 type blockEnvelope struct {
-	Result coretypes.ResultBlock
+	Result coretypes.ResultBlock `json:"result"`
 }
 
 func hx(b []byte) string { return fmt.Sprintf("%X", b) }
