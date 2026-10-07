@@ -1,0 +1,28 @@
+name: FOREX EUR ECB V0.2 Forward Source Probe
+
+on:
+  push:
+    branches:
+      - forex-ecb-fwd-v02-2026-10-07
+    paths:
+      - 'research/forex_macro_shock/forward_source_probe_v02.py'
+      - 'research/forex_macro_shock/FORWARD_SOURCE_FREEZE_V02.md'
+      - '.github/workflows/forex-ecb-fwd-v02-source-probe.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install requests websockets
+      - name: Compile
+        run: python -m py_compile research/forex_macro_shock/forward_source_probe_v02.py
+      - name: Outcome-blind source probe
+        run: python research/forex_macro_shock/forward_source_probe_v02.py
