@@ -1,0 +1,15 @@
+name: Coreum V07 saved receipt integrity only
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  saved-receipt-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Verify committed evidence bytes; no replay or census
+        run: python3 research/pos_unbonding_completion_001_v0_7_independent_replay/audit_receipts.py
+      - name: State boundary
+        run: echo 'Receipt integrity only. SOURCE_HISTORICAL_REPLAY_BLOCKED. No replay pass.'
