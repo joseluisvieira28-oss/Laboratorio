@@ -25,15 +25,16 @@
     "status": "ACCESSIBLE_PASS"
   },
   "source_gate": {
-    "enumerability_rule": "One non-overlapping weekly cohort at the frozen Thursday 08:00 UTC anchor; all source-valid cohorts count and no outcome-based exclusions are allowed.",
-    "timestamp_rule": "Entry and exit BBO must be contemporaneous public Deribit snapshots with source timestamps and no future information; stale/missing required BBO makes the cohort source-incomplete.",
-    "treatment_binding": "At entry, choose same-expiry same-strike BTC call+put with 25-35 DTE, target 30 DTE and minimum absolute log-moneyness using only point-in-time index/chain data; hold exactly seven days with static initial BTC perpetual delta hedge.",
+    "enumerability_rule": "One non-overlapping weekly cohort at Thursday 08:00 UTC. At each anchor choose the AVAILABLE expiry nearest 30 DTE within the pre-frozen 14-60 DTE envelope, then choose the same-expiry same-strike call+put nearest ATM. Every source-valid cohort counts; no outcome-based exclusions.",
+    "timestamp_rule": "Each option/perpetual BBO records per-request local request/receive timestamps plus Deribit source timestamp. Contemporaneous freshness requires absolute source-clock difference at receive <=30 seconds; missing/stale required BBO makes the cohort source-incomplete.",
+    "treatment_binding": "At entry, among active BTC option expiries 14-60 DTE choose expiry minimizing |DTE-30| with deterministic tie-break; within that expiry choose same-strike call+put minimizing absolute log-moneyness to point-in-time index. Hold exactly seven days with static initial BTC perpetual delta hedge. Rule frozen after source-only geometry audit, before any forward outcome.",
     "outcome_derived_inclusion": false,
     "sources": [
       "Deribit public/get_index_price",
       "Deribit public/get_instruments",
       "Deribit public/get_order_book",
-      "legacy source-health run 35458192591 (112 instruments, 0 failures)"
+      "V2 current source-health run 37659393449 / artifact 11499987991: 74 instruments, 0 failures, no returns/PnL",
+      "legacy source-health run 35458192591: 112 instruments, 0 failures"
     ],
     "status": "SOURCE_PASS"
   },
@@ -42,13 +43,13 @@
     "alpha": 0.05,
     "power_target": 0.8,
     "method": "ANALYTICAL_APPROX",
-    "nuisance_source": "Legacy trade-print execution artifact run 35069743562 is used ONLY for nuisance dispersion planning: n=19, stress-return sample sd=0.0022938068056527205. Dispersion is conservatively inflated 25% to sigma=0.0028672585070659006; legacy mean is not used for confirmation.",
+    "nuisance_source": "Legacy trade-print execution artifact run 35069743562 is used ONLY for nuisance dispersion planning: n=19, stress-return sample sd=0.0022938068056527205. Because the V2 expiry rule broadens source geometry, dispersion is conservatively inflated 50% to sigma=0.0034407102084790808. Legacy mean is not used for confirmation.",
     "dependence_unit": "Non-overlapping weekly 7-day cohort; final inference preserves four-observation block bootstrap and may blindly reduce effective N for missingness/dependence.",
     "n_eff_estimate": 0,
     "design_alternative_theta": 0.0035026979608143716,
     "power_at_design_alt": 0,
-    "planned_n_eff": 20,
-    "planned_power_at_design_alt": 0.832681619349894,
+    "planned_n_eff": 30,
+    "planned_power_at_design_alt": 0.8458106075820769,
     "outcomes_opened": false,
     "status": "UNDERPOWERED_PRE"
   },
@@ -61,7 +62,7 @@
   },
   "freeze": {
     "frozen_at_utc": "2026-10-07T17:30:00Z",
-    "outcome_boundary": "No forward strategy return, PnL, expectancy, realized post-entry outcome or performance statistic may be computed/opened until the V2 collection target is met and a separate activation receipt confirms blind power/source integrity.",
+    "outcome_boundary": "No forward strategy return, PnL, expectancy, realized post-entry outcome or performance statistic may be computed/opened until at least 36 raw complete weekly cohorts exist and a separate activation receipt blindly verifies source integrity, N_eff>=30 and power>=80% under the unchanged V2 freeze.",
     "single_shot": true,
     "no_rescue": true
   },
