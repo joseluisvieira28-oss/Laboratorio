@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# V0.8 execution trigger: workflow already present before this push.
 import concurrent.futures, gzip, hashlib, json, os, ssl, urllib.request, urllib.error
 from datetime import datetime, timezone
 
