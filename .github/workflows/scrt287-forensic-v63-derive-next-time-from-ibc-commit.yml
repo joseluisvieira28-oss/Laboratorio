@@ -1,0 +1,252 @@
+name: SCRT287 forensic V63 derive next Secret block time from IBC commit
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - cosmos-native-emission-param-shock-001-v0.2-t0-remediation-2026-10-07
+    paths:
+      - .github/workflows/scrt287-forensic-v63-derive-next-time-from-ibc-commit.yml
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: cosmos-native-emission-param-shock-001-v0.2-t0-remediation-2026-10-07
+
+      - name: Recover IBC header bytes and reproduce Secret Tendermint MedianTime
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import datetime,hashlib,json,os,ssl,urllib.error,urllib.request
+
+          OUT="research/cosmos_native_emission_param_shock_001_v0_2/SCRT287_DERIVED_NEXT_BLOCK_TIME_V63.json"
+          TARGET="2023-12-07T02:54:58.930543213Z"
+          TX="A6C41AB15E9B2CA4A9ADB690B1E1FC4C98858D449F769DBD1247D73FF6B5E660"
+          EXPECTED_HEIGHT=11880917
+          EXPECTED_TIME="2023-12-07T02:54:47.127200661Z"
+          ENDPOINTS=["https://rpc.archive.osmosis.zone","https://rpc.cosmos.directory/osmosis"]
+          UA={"User-Agent":"CryptoLab-SCRT287-source-only-v63/1.0","Accept":"application/json"}
+
+          def post(base,payload):
+              try:
+                  req=urllib.request.Request(base,data=json.dumps(payload).encode(),
+                    headers={**UA,"Content-Type":"application/json"},method="POST")
+                  with urllib.request.urlopen(req,timeout=15,context=ssl._create_unverified_context()) as r:
+                      b=r.read(4_000_000)
+                      return {"ok":True,"status":r.status,"body":b,"sha256":hashlib.sha256(b).hexdigest()}
+              except urllib.error.HTTPError as e:
+                  try:b=e.read(200000)
+                  except:b=b""
+                  return {"ok":False,"status":e.code,"body":b,"error":str(e),
+                          "sha256":hashlib.sha256(b).hexdigest() if b else None}
+              except Exception as e:
+                  return {"ok":False,"status":None,"body":b"","error":repr(e),"sha256":None}
+
+          def varint(b,i):
+              x=0;s=0
+              while True:
+                  if i>=len(b): raise ValueError("truncated varint")
+                  c=b[i];i+=1;x|=(c&127)<<s
+                  if not c&128:return x,i
+                  s+=7
+                  if s>70:raise ValueError("varint overflow")
+          def fields(b):
+              i=0;o=[]
+              while i<len(b):
+                  try:k,i=varint(b,i)
+                  except:break
+                  n,w=k>>3,k&7
+                  if w==0:
+                      v,i=varint(b,i);o.append((n,w,v))
+                  elif w==1:
+                      if i+8>len(b):break
+                      o.append((n,w,b[i:i+8]));i+=8
+                  elif w==2:
+                      ln,i=varint(b,i)
+                      if i+ln>len(b):break
+                      o.append((n,w,b[i:i+ln]));i+=ln
+                  elif w==5:
+                      if i+4>len(b):break
+                      o.append((n,w,b[i:i+4]));i+=4
+                  else:break
+              return o
+          def allf(fs,n,w=None):
+              return [c for a,b,c in fs if a==n and (w is None or b==w)]
+          def onef(fs,n,w=None):
+              xs=allf(fs,n,w);return xs[0] if xs else None
+          def ts_from_msg(b):
+              fs=fields(b);sec=int(onef(fs,1,0) or 0);nano=int(onef(fs,2,0) or 0)
+              dt=datetime.datetime.fromtimestamp(sec,tz=datetime.timezone.utc)
+              text=dt.strftime("%Y-%m-%dT%H:%M:%S")
+              if nano:text+="."+(f"{nano:09d}").rstrip("0")
+              return text+"Z",sec*1_000_000_000+nano
+
+          def decode_ibc_header(hx):
+              raw=bytes.fromhex(hx)
+              af=fields(raw)
+              type_url=(onef(af,1,2) or b"").decode("utf-8","replace")
+              value=onef(af,2,2)
+              hf=fields(value)
+              signed=onef(hf,1,2); valset=onef(hf,2,2)
+              if not signed or not valset: raise ValueError("IBC header missing signed_header/validator_set")
+
+              shf=fields(signed)
+              header_b=onef(shf,1,2); commit_b=onef(shf,2,2)
+              hfs=fields(header_b)
+              chain=(onef(hfs,2,2) or b"").decode()
+              height=int(onef(hfs,3,0))
+              header_time,header_time_ns=ts_from_msg(onef(hfs,4,2))
+
+              cf=fields(commit_b)
+              commit_height=int(onef(cf,1,0)); commit_round=int(onef(cf,2,0) or 0)
+              sigs=[]
+              for sb in allf(cf,4,2):
+                  sf=fields(sb)
+                  flag=int(onef(sf,1,0) or 0)
+                  addr=onef(sf,2,2) or b""
+                  tmsg=onef(sf,3,2)
+                  sigtime,sigtime_ns=(None,None)
+                  if tmsg: sigtime,sigtime_ns=ts_from_msg(tmsg)
+                  sigs.append({"flag":flag,"validator_address":addr.hex().upper(),
+                               "timestamp":sigtime,"timestamp_ns":sigtime_ns})
+
+              vf=fields(valset)
+              validators=[]
+              for vb in allf(vf,1,2):
+                  x=fields(vb)
+                  addr=onef(x,1,2) or b""
+                  power=int(onef(x,3,0) or 0)
+                  validators.append({"address":addr.hex().upper(),"voting_power":power})
+              total_field=onef(vf,3,0)
+              total_power_field=int(total_field) if total_field is not None else None
+              return {"type_url":type_url,"raw_sha256":hashlib.sha256(raw).hexdigest(),
+                      "chain_id":chain,"height":height,"time":header_time,"time_ns":header_time_ns,
+                      "commit_height":commit_height,"commit_round":commit_round,
+                      "commit_signatures":sigs,"validators":validators,
+                      "validator_set_total_voting_power_field":total_power_field}
+
+          # Recover the exact update_client event containing the already-certified height 11880917 header.
+          source=None;attempts=[]
+          for base in ENDPOINTS:
+              p={"jsonrpc":"2.0","id":1,"method":"tx","params":{"hash":"0x"+TX,"prove":False}}
+              r=post(base,p)
+              rec={"endpoint":base,"ok":r["ok"],"status":r.get("status"),"error":r.get("error"),"sha256":r.get("sha256")}
+              attempts.append(rec)
+              if not r["ok"]:continue
+              try:d=json.loads(r["body"]);res=d.get("result") or {}
+              except:continue
+              for ev in (res.get("tx_result") or {}).get("events") or []:
+                  if ev.get("type")!="update_client":continue
+                  aa={a.get("key"):a.get("value") for a in ev.get("attributes") or []}
+                  hx=aa.get("header") or ""
+                  if aa.get("consensus_height")==f"4-{EXPECTED_HEIGHT}" and hx:
+                      try:dec=decode_ibc_header(hx)
+                      except Exception as e:
+                          rec["decode_error"]=repr(e);continue
+                      if dec["chain_id"]=="secret-4" and dec["height"]==EXPECTED_HEIGHT:
+                          source={"endpoint":base,"response_sha256":r.get("sha256"),
+                                  "carrier_tx_hash":TX,"carrier_height":int(res.get("height") or 0),
+                                  "client_id":aa.get("client_id"),"consensus_height":aa.get("consensus_height"),
+                                  "header_hex_sha256":hashlib.sha256(bytes.fromhex(hx)).hexdigest(),
+                                  "decoded":dec}
+                          break
+              if source:break
+
+          result={"scope":"SOURCE_ONLY_NO_MARKET_DATA","target_voting_end":TARGET,
+                  "secret_tendermint_ref":"scrtlabs/tendermint@d62916253d52",
+                  "algorithm_authority":{
+                    "secret_release":"scrtlabs/SecretNetwork v1.12.0",
+                    "state_makeblock":"For non-genesis heights, state.MakeBlock sets timestamp = MedianTime(commit, state.LastValidators).",
+                    "median_time":"MedianTime includes every non-absent commit signature, looks up the validator voting power by address, and calls cmttime.WeightedMedian.",
+                    "weighted_median":"median = totalVotingPower/2; timestamps sorted ascending; first timestamp whose weight reaches/exceeds remaining median is returned."
+                  },
+                  "tested_utc":datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                  "source_attempts":attempts,"source_header":source,
+                  "derived":None,"H":None,"T0":None,
+                  "gate":"SOURCE_HISTORICAL_EXECUTION_BOUNDARY_BLOCKED",
+                  "forensic_phase":"OPEN_NOT_EXHAUSTED"}
+
+          if source:
+              dec=source["decoded"]
+              valpower={v["address"]:v["voting_power"] for v in dec["validators"]}
+              weighted=[]
+              unmatched=[]
+              total=0
+              for s in dec["commit_signatures"]:
+                  if s["flag"]==1: # absent
+                      continue
+                  p=valpower.get(s["validator_address"])
+                  if p is None:
+                      unmatched.append(s)
+                      continue
+                  if s["timestamp_ns"] is None:
+                      unmatched.append(s)
+                      continue
+                  total+=p
+                  weighted.append({"timestamp":s["timestamp"],"timestamp_ns":s["timestamp_ns"],
+                                   "weight":p,"validator_address":s["validator_address"],"flag":s["flag"]})
+              weighted.sort(key=lambda x:x["timestamp_ns"])
+              median=total//2;remaining=median;chosen=None
+              for w in weighted:
+                  if remaining<=w["weight"]:
+                      chosen=w;break
+                  remaining-=w["weight"]
+              if chosen is None: raise RuntimeError("weighted median not found")
+              derived_time=chosen["timestamp"]; derived_ns=chosen["timestamp_ns"]
+              target_dt=datetime.datetime.fromisoformat(TARGET.replace("Z","+00:00"))
+              target_ns=int(target_dt.timestamp())*1_000_000_000+930543213
+              result["derived"]={
+                "input_header_height":dec["height"],
+                "input_header_time":dec["time"],
+                "input_commit_height":dec["commit_height"],
+                "validator_count":len(dec["validators"]),
+                "signature_count":len(dec["commit_signatures"]),
+                "weighted_signature_count":len(weighted),
+                "unmatched_signature_count":len(unmatched),
+                "validator_set_total_voting_power_field":dec["validator_set_total_voting_power_field"],
+                "participating_total_voting_power":total,
+                "median_threshold_floor":median,
+                "derived_next_height":EXPECTED_HEIGHT+1,
+                "derived_next_time":derived_time,
+                "derived_next_time_ns":derived_ns,
+                "target_time_ns":target_ns,
+                "derived_next_time_ge_target":derived_ns>=target_ns,
+                "weighted_times":weighted,
+                "unmatched":unmatched,
+              }
+              # This alone certifies H only if the derived next block already crosses the voting end.
+              if derived_ns>=target_ns:
+                  result["H"]=EXPECTED_HEIGHT+1
+                  result["T0"]=EXPECTED_HEIGHT+2
+                  result["gate"]="SOURCE_GATE_RESTORABLE_PENDING_H_MINUS_1_H_H_PLUS_1_PACKAGING"
+                  result["forensic_phase"]="BOUNDARY_RECOVERED_BY_CONSENSUS_TIME_DERIVATION"
+              else:
+                  result["forensic_phase"]="OPEN_NARROWED_H_IN_11880919_11880922"
+
+          os.makedirs(os.path.dirname(OUT),exist_ok=True)
+          open(OUT,"w").write(json.dumps(result,indent=2)+"\n")
+          print("V63",json.dumps({
+              "source_found":source is not None,
+              "derived":result.get("derived") and {k:result["derived"][k] for k in [
+                "derived_next_height","derived_next_time","derived_next_time_ge_target",
+                "weighted_signature_count","participating_total_voting_power"]},
+              "H":result["H"],"T0":result["T0"],"phase":result["forensic_phase"]
+          }))
+          PY
+
+      - name: Persist V63
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/cosmos_native_emission_param_shock_001_v0_2/SCRT287_DERIVED_NEXT_BLOCK_TIME_V63.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "SCRT287: derive next block time from preserved IBC commit V63"
+          git pull --rebase origin cosmos-native-emission-param-shock-001-v0.2-t0-remediation-2026-10-07
+          git push origin HEAD:cosmos-native-emission-param-shock-001-v0.2-t0-remediation-2026-10-07
