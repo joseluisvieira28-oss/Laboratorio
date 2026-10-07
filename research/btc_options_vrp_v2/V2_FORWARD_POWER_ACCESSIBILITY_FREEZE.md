@@ -37,7 +37,9 @@ digest `sha256:b5687c1dcf9aa38e478b0ca875b48e53ef3f315a177cab8ce6d796cd9eb9c465`
 These old outcomes are used ONLY as nuisance-variance planning evidence.
 The mean, hit rate and apparent profitability are not used to promote the forward design.
 
-Conservative planning sigma = stress SD × 1.25 = **0.0028672585071**.
+Source-only geometry audit on 2026-10-07 found no active expiry in the old 25–35 DTE band at the current observation time; the only captured expiry in the 20–45 envelope was ~22.6 DTE. No performance outcome was opened. Therefore a NEW V2 forward MVE freezes expiry selection as the available expiry nearest 30 DTE within 14–60 DTE. This is a pre-outcome source-design correction, not rescue of the old historical MVE.
+
+Because that geometry differs from the legacy 25–35 DTE episodes, conservative planning sigma = stress SD × 1.50 = **0.0034407102085**.
 
 ## Analytical planning
 For one-sided superiority:
@@ -49,11 +51,11 @@ Power is evaluated at `theta_design > H`, never at H itself.
 Approximation:
 `N_eff ≈ [((z_0.95 + z_0.80) * sigma) / (theta_design-H)]^2`
 
-This gives approximately **18.2 effective observations**.
+This gives approximately **26.1 effective observations**.
 Freeze target:
-- minimum effective N before activation: **20**
-- planned power at N_eff=20: **0.8327**
-- raw complete-cohort collection target: **24**, providing attrition/dependence buffer.
+- minimum effective N before activation: **30**
+- planned power at N_eff=30: **0.8458**
+- raw complete-cohort collection target: **36**, providing attrition/dependence buffer.
 
 A blind re-estimation may reduce N_eff for missingness/dependence using only source integrity and nuisance quantities. It may NOT use the observed forward mean.
 
@@ -61,7 +63,7 @@ A blind re-estimation may reduce N_eff for missingness/dependence using only sou
 - one cohort per Thursday 08:00 UTC;
 - point-in-time Deribit public chain/BBO only;
 - same expiry + strike call/put;
-- 25–35 DTE, target 30;
+- active expiry nearest 30 DTE inside a fixed 14–60 DTE envelope;
 - closest absolute log-moneyness;
 - 0.1 option amount per leg;
 - seven-day hold;
@@ -79,7 +81,7 @@ This is NOT SURVIVES.
 The family is authorized to build prospective source evidence only.
 No performance outcome may be opened until a separate activation receipt proves:
 1. source integrity;
-2. at least 24 raw complete cohorts;
-3. blind N_eff >= 20;
+2. at least 36 raw complete cohorts;
+3. blind N_eff >= 30;
 4. power at the frozen design alternative >= 80%;
 5. all V2 freeze hashes unchanged.
