@@ -1,0 +1,149 @@
+name: source-t0-probe-v14-atomscan-proxy
+
+on:
+  push:
+    branches:
+      - cosmos-native-emission-param-shock-001-v0.2-t0-remediation-2026-10-07
+    paths:
+      - .github/workflows/source-t0-probe-v14-atomscan-proxy.yml
+
+permissions:
+  contents: read
+
+jobs:
+  atomscan-proxy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Probe ATOMScan chain config and historical LCD only
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, urllib.request, urllib.parse, ssl
+          from datetime import datetime
+          UA={"User-Agent":"CryptoLab-source-only/1.4"}
+          OUT={"scope":"SOURCE_ONLY_NO_MARKET_DATA","chains":[],"probes":{}}
+          def get(url,headers=None,timeout=15):
+              h=dict(UA); h.update(headers or {})
+              try:
+                  q=urllib.request.Request(url,headers=h)
+                  with urllib.request.urlopen(q,timeout=timeout,context=ssl._create_unverified_context()) as r:
+                      raw=r.read().decode("utf-8","replace")
+                      try:d=json.loads(raw)
+                      except:d=raw[:20000]
+                      return {"ok":True,"status":r.status,"url":r.geturl(),"data":d}
+              except Exception as e:
+                  return {"ok":False,"url":url,"error":repr(e)}
+          chains=get("https://proxy.atomscan.com/chains.json",timeout=20)
+          OUT["chains_fetch"]={"ok":chains["ok"],"status":chains.get("status"),"error":chains.get("error")}
+          data=chains.get("data")
+          records=[]
+          if isinstance(data,dict):
+              for k in ("Chains","chains","TestChains","testChains"):
+                  if isinstance(data.get(k),list):
+                      records += data[k]
+          elif isinstance(data,list):
+              records=data
+          def flat(x):
+              try:return json.dumps(x,sort_keys=True).lower()
+              except:return str(x).lower()
+          matches=[]
+          for r in records:
+              s=flat(r)
+              if any(k in s for k in ["secret","scrt","akash"]):
+                  matches.append(r)
+          OUT["chains"]=matches
+          # Derive likely blockchain keys from config plus conservative fallbacks.
+          keys={"secret":["secret-network","secretnetwork","secret","scrt"],"akash":["akash","akashnet"]}
+          for r in matches:
+              s=flat(r)
+              target="secret" if ("secret" in s or "scrt" in s) else ("akash" if "akash" in s else None)
+              if not target: continue
+              for fld in ["blockchain","Blockchain","name","Name","id","chain","chainId","chain_id"]:
+                  v=r.get(fld) if isinstance(r,dict) else None
+                  if isinstance(v,str) and v and v.lower() not in keys[target]:
+                      keys[target].insert(0,v.lower())
+          OUT["derived_keys"]=keys
+
+          # Akash: exact first block at/after vote-end already recovered by source-only index.
+          # Probe H-1..H+2 through ATOMScan LCD proxy and historical mint state.
+          ak_cases={"265":17526666,"283":20631473}
+          for pid,H in ak_cases.items():
+              rec=[]
+              for key in keys["akash"][:8]:
+                  base=f"https://proxy.atomscan.com/{key}-lcd"
+                  for hh in range(H-1,H+3):
+                      b=get(base+f"/cosmos/base/tendermint/v1beta1/blocks/{hh}",timeout=10)
+                      inf=get(base+"/cosmos/mint/v1beta1/inflation",headers={"x-cosmos-block-height":str(hh)},timeout=10)
+                      par=get(base+"/cosmos/mint/v1beta1/params",headers={"x-cosmos-block-height":str(hh)},timeout=10)
+                      if b["ok"] or inf["ok"] or par["ok"]:
+                          rec.append({"key":key,"height":hh,"block":b,"inflation":inf,"params":par})
+              OUT["probes"][f"akash_{pid}"]=rec
+
+          # Secret: first establish historical block support on broad grid around the vote end.
+          sec_grid=[11752974,11800000,11840000,11880000,11920000]
+          sec=[]
+          for key in keys["secret"][:10]:
+              base=f"https://proxy.atomscan.com/{key}-lcd"
+              rows=[]
+              for hh in sec_grid:
+                  b=get(base+f"/cosmos/base/tendermint/v1beta1/blocks/{hh}",timeout=10)
+                  if b["ok"]:
+                      rows.append({"height":hh,"block":b})
+              if rows:
+                  sec.append({"key":key,"rows":rows})
+          OUT["probes"]["secret_grid"]=sec
+
+          # If a Secret key brackets the voting-end timestamp, binary search first block >= target,
+          # then probe historical mint params/inflation H-1..H+2.
+          target="2023-12-07T02:54:58.930543213Z"
+          TT=datetime.fromisoformat(target.replace("Z","+00:00")).timestamp()
+          def block_header(resp):
+              d=resp.get("data")
+              try:
+                  hd=d["block"]["header"]
+                  return int(hd["height"]),hd["time"]
+              except: pass
+              try:
+                  hd=d["sdk_block"]["header"]
+                  return int(hd["height"]),hd["time"]
+              except:return None
+          found=[]
+          for group in sec:
+              key=group["key"]; pts=[]
+              for row in group["rows"]:
+                  z=block_header(row["block"])
+                  if z:
+                      pts.append((z[0],datetime.fromisoformat(z[1].replace("Z","+00:00")).timestamp()))
+              pts.sort()
+              bracket=None
+              for a,b in zip(pts,pts[1:]):
+                  if a[1] < TT <= b[1]:
+                      bracket=(a[0],b[0]); break
+              if not bracket: continue
+              base=f"https://proxy.atomscan.com/{key}-lcd"
+              L,R=bracket
+              err=None
+              while L<R:
+                  M=(L+R)//2
+                  rr=get(base+f"/cosmos/base/tendermint/v1beta1/blocks/{M}",timeout=10)
+                  z=block_header(rr)
+                  if not z:
+                      err={"height":M,"response":rr};break
+                  ts=datetime.fromisoformat(z[1].replace("Z","+00:00")).timestamp()
+                  if ts>=TT:R=M
+                  else:L=M+1
+              rec={"key":key,"target":target,"bracket":bracket,"error":err}
+              if err is None:
+                  H=L;rec["H_vote_end_block"]=H;rec["neighbors"]=[]
+                  for hh in range(H-2,H+3):
+                      b=get(base+f"/cosmos/base/tendermint/v1beta1/blocks/{hh}",timeout=10)
+                      inf=get(base+"/cosmos/mint/v1beta1/inflation",headers={"x-cosmos-block-height":str(hh)},timeout=10)
+                      par=get(base+"/cosmos/mint/v1beta1/params",headers={"x-cosmos-block-height":str(hh)},timeout=10)
+                      rec["neighbors"].append({"height":hh,"block":b,"inflation":inf,"params":par})
+              found.append(rec)
+          OUT["probes"]["secret_exact"]=found
+          print("ATOMSCAN_PROXY_V14_BEGIN")
+          print(json.dumps(OUT,indent=2,sort_keys=True)[:900000])
+          print("ATOMSCAN_PROXY_V14_END")
+          PY
