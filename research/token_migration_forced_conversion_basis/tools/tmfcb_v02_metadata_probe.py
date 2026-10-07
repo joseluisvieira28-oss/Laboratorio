@@ -3,7 +3,7 @@
 Never requests market_data or historical price endpoints.
 Outputs only id/symbol/name metadata.
 """
-import json, urllib.request, sys, time
+import json, urllib.request, sys
 
 URL = "https://api.coingecko.com/api/v3/coins/list"
 TARGETS = [
@@ -14,8 +14,6 @@ TARGETS = [
     {"label":"LBR","symbols":["lbr"],"names":["Lybra Finance"]},
     {"label":"MPL","symbols":["mpl"],"names":["Maple"]},
     {"label":"SYRUP","symbols":["syrup"],"names":["Syrup"]},
-    {"label":"ANT","symbols":["ant"],"names":["Aragon"]},
-    {"label":"ETH","symbols":["eth"],"names":["Ethereum"]},
     {"label":"CUDOS","symbols":["cudos"],"names":["Cudos"]},
     {"label":"FET","symbols":["fet"],"names":["Artificial Superintelligence Alliance","Fetch.ai"]},
     {"label":"RAINI","symbols":["raini"],"names":["Raini","Rainicorn"]},
@@ -26,6 +24,21 @@ TARGETS = [
     {"label":"MNT","symbols":["mnt"],"names":["Mantle"]},
     {"label":"GAL","symbols":["gal"],"names":["Galxe"]},
     {"label":"G","symbols":["g"],"names":["Gravity"]},
+    {"label":"PLA","symbols":["pla"],"names":["PlayDapp"]},
+    {"label":"PDA","symbols":["pda"],"names":["PlayDapp"]},
+    {"label":"CQT","symbols":["cqt"],"names":["Covalent Query Token","Covalent"]},
+    {"label":"CXT","symbols":["cxt"],"names":["Covalent X Token"]},
+    {"label":"MATIC","symbols":["matic"],"names":["Polygon"]},
+    {"label":"POL","symbols":["pol"],"names":["POL (ex-MATIC)","POL"]},
+    {"label":"RNDR","symbols":["rndr"],"names":["Render Token"]},
+    {"label":"RENDER","symbols":["render"],"names":["Render"]},
+    {"label":"KEEP","symbols":["keep"],"names":["Keep Network"]},
+    {"label":"NU","symbols":["nu"],"names":["NuCypher"]},
+    {"label":"T","symbols":["t"],"names":["Threshold Network"]},
+    {"label":"TBTC_V1","symbols":["tbtc"],"names":["tBTC"]},
+    {"label":"TBTC_V2","symbols":["tbtc"],"names":["tBTC"]},
+    {"label":"ANT","symbols":["ant"],"names":["Aragon"]},
+    {"label":"ETH","symbols":["eth"],"names":["Ethereum"]},
     {"label":"GRO","symbols":["gro"],"names":["Gro DAO Token","GRO"]},
     {"label":"USDC","symbols":["usdc"],"names":["USDC","USD Coin"]},
     {"label":"FEI","symbols":["fei"],"names":["Fei USD"]},
