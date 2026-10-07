@@ -9,6 +9,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   capture:
@@ -45,3 +46,39 @@ jobs:
         with:
           name: mexc-multistable-forward-v03-${{ steps.trigger.outputs.segment }}-${{ github.run_id }}
           path: artifacts/mexc_multistable_basis/forward_v03
+
+  readiness:
+    needs: capture
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Download all V0.3 forward artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p /tmp/msart
+          gh api --paginate "repos/${GITHUB_REPOSITORY}/actions/artifacts?per_page=100" \
+            --jq '.artifacts[] | select(.expired == false) | select(.name | startswith("mexc-multistable-forward-v03-")) | [.id,.name] | @tsv' \
+            > /tmp/msart/list.tsv
+          while IFS=$'\t' read -r id name; do
+            [ -n "$id" ] || continue
+            mkdir -p "/tmp/msart/$id"
+            gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/$id/zip" > "/tmp/msart/$id.zip"
+            unzip -oq "/tmp/msart/$id.zip" -d "/tmp/msart/$id"
+          done < /tmp/msart/list.tsv
+      - name: Compile adjudicator
+        run: python -m py_compile research/mexc_multistable_basis/adjudicate_forward_v03.py
+      - name: Frozen readiness / one-shot adjudication
+        run: |
+          python research/mexc_multistable_basis/adjudicate_forward_v03.py \
+            --root /tmp/msart \
+            --trigger-dir research/mexc_multistable_basis/forward_trigger_v03 \
+            --out /tmp/multistable_v03_readiness.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mexc-multistable-readiness-v03-${{ github.run_id }}
+          path: /tmp/multistable_v03_readiness.json
