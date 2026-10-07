@@ -1,0 +1,75 @@
+name: MEXC Multi-Stable Forward V0.3 Self-Test
+
+on:
+  push:
+    branches:
+      - mexc-multistable-basis-v0.3-prospective-2026-10-07
+    paths:
+      - 'research/mexc_multistable_basis/forward_collector_v03.py'
+      - 'research/mexc_multistable_basis/PROSPECTIVE_PREOUTCOME_FREEZE_V0.3.md'
+      - 'research/mexc_multistable_basis/CALIBRATION_THRESHOLD_RECEIPT_V0.3.md'
+      - '.github/workflows/mexc-multistable-forward-v03-selftest.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  selftest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install requests
+      - name: Compile
+        run: python -m py_compile research/mexc_multistable_basis/forward_collector_v03.py
+      - name: Frozen authority invariants
+        run: |
+          python - <<'PY'
+          import importlib.util
+          p='research/mexc_multistable_basis/forward_collector_v03.py'
+          s=importlib.util.spec_from_file_location('fwd',p)
+          m=importlib.util.module_from_spec(s); s.loader.exec_module(m)
+          assert m.THRESHOLDS['BTC']==7.464945216995034
+          assert m.THRESHOLDS['ETH']==9.80929964899957
+          assert m.NOTIONALS==[10.0,25.0,50.0,100.0]
+          assert m.PRIMARY_FEE_BPS_PER_EXEC==8.0
+          assert m.STRESS_FEE_BPS_PER_EXEC==12.0
+          assert m.COOLDOWN_SEC==900
+          assert m.HORIZON_SEC==900
+          assert len({s for x in m.ASSETS.values() for s in x.values()})==6
+          print({'authority_invariants':'PASS'})
+          PY
+      - name: Same-contract pair fill invariant
+        run: |
+          python - <<'PY'
+          import importlib.util
+          p='research/mexc_multistable_basis/forward_collector_v03.py'
+          s=importlib.util.spec_from_file_location('fwd',p)
+          m=importlib.util.module_from_spec(s); s.loader.exec_module(m)
+          book={'asks':[(100.0,1000.0),(101.0,1000.0)],'bids':[(99.0,1000.0),(98.0,1000.0)]}
+          meta={'contract_size':0.01,'vol_unit':1.0,'min_vol':1.0,'max_vol':100000.0}
+          e=m.entry_fill(book,'BUY',25.0,1.0,meta)
+          x=m.fill_contracts(book,'SELL',e['contracts'],meta['contract_size'])
+          assert e['fillable'] and x['fillable']
+          assert abs(e['contracts']-x['contracts'])<1e-12
+          print({'same_contract_fill':'PASS','contracts':e['contracts']})
+          PY
+      - name: Boundary fail-closed
+        run: |
+          python - <<'PY'
+          import importlib.util, types
+          p='research/mexc_multistable_basis/forward_collector_v03.py'
+          s=importlib.util.spec_from_file_location('fwd',p)
+          m=importlib.util.module_from_spec(s); s.loader.exec_module(m)
+          a=types.SimpleNamespace(start='2026-10-07T15:44:00Z',end='2026-10-07T15:46:00Z')
+          try:
+              m.validate_args(a)
+          except SystemExit as e:
+              assert 'PRE_THRESHOLD_BOUNDARY' in str(e)
+              print({'boundary':'PASS'})
+          else:
+              raise AssertionError('boundary did not fail closed')
+          PY
