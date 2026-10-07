@@ -1,0 +1,31 @@
+name: BFIRR V0.1 External Source Gate
+
+on:
+  push:
+    branches:
+      - bybit-funding-interval-regime-replication-v0.1-source-2026-10-07
+    paths:
+      - research/bybit_funding_interval_regime_replication/**
+      - .github/workflows/bfirr_v01_source_gate.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-gate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests
+      - run: python -m py_compile research/bybit_funding_interval_regime_replication/source_gate_v01.py
+      - run: python research/bybit_funding_interval_regime_replication/source_gate_v01.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bfirr-v01-source-gate-receipt
+          path: bfirr_v01_source_gate_report.json
+          retention-days: 30
