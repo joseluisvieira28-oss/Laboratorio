@@ -1,0 +1,35 @@
+name: MLMXD V0.1.7 Complete Source Census
+on:
+  push:
+    branches: [mexc-launchpool-mx-demand-v0.1-source-2026-10-07]
+    paths:
+      - 'research/mexc_launchpool_mx_demand/source_complete_census_v017.py'
+      - '.github/workflows/mlmxd_v017_complete_source.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  census:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install ccxt requests beautifulsoup4
+      - run: python research/mexc_launchpool_mx_demand/source_complete_census_v017.py
+      - name: Verify source-only boundary
+        run: |
+          python - <<'PY'
+          import json
+          p=json.load(open('artifacts/mexc_launchpool_mx_demand_v017_complete_source/summary.json'))
+          assert p['authenticated'] is False
+          assert p['additional_market_outcomes_opened'] is False
+          print(json.dumps(p,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mlmxd-v017-complete-source
+          path: artifacts/mexc_launchpool_mx_demand_v017_complete_source/
+          retention-days: 90
