@@ -14,15 +14,15 @@
   "accessibility": {
     "capture_path": "Unauthenticated Deribit public BBO/order-book API for source building; any later execution would use venue-valid 0.1 BTC option size plus BTC perpetual hedge.",
     "data_access": "Public current Deribit API; no paid historical source required for prospective build.",
-    "execution_access": "Public venue mechanics are compatible with the frozen 0.1 option-contract size; live account/margin eligibility remains a separate pre-live gate.",
-    "capacity_constraint": "Study is defined on 0.1 BTC option contracts and 1 BTC return denominator; capacity and margin are not inferred from historical PnL.",
-    "estimand": "stress_net_return_on_1BTC_collateral_per_7d_episode",
+    "execution_access": "Public Deribit market/API mechanics are available, but operator-level execution accessibility is not yet proven. BTC inverse options have 1 BTC contract size and 0.1-contract minimum order; short option margin plus hedge capital must be feasible at the operator account before any promotion.",
+    "capacity_constraint": "Current public snapshot and Standard Margin formulas imply roughly 0.0365 BTC initial margin for the 0.1 call + 0.1 put short option pair before adding the small static perpetual hedge margin. Actual account margin mode/equity and future mark-price-dependent margin remain unverified.",
+    "estimand": "stress_net_return_on_required_standard_margin_capital_per_7d_episode",
     "hurdle_h": 0.0018295380282136176,
     "hurdle_units": "fraction_of_1BTC_collateral_per_7d_episode",
-    "hurdle_rationale": "Economic hurdle equals a 10% annual compounded return requirement converted to seven days. Tail-risk gates remain separate and mandatory.",
-    "cost_model": "Measured executable option BBO entry/exit, Deribit BTC option fees, measured BTC-PERPETUAL BBO hedge entry/exit, perpetual fees/funding, plus the frozen adverse-tick/slippage stress.",
-    "cost_uncertainty": "Performance is not authorized until measured forward BBO exists. Official fee schedule is checked separately; no midpoint or modeled spread substitution.",
-    "status": "ACCESSIBLE_PASS"
+    "hurdle_rationale": "Economic hurdle remains a 10% annual compounded return requirement, but must be applied to the contemporaneous causally-computed required risk capital, not an arbitrary 1 BTC denominator. Final capital-normalized power design remains unresolved until the capital denominator is frozen and validated.",
+    "cost_model": "Deribit Standard fee tier frozen from official schedule dated 2026-09-25: BTC options 3 bps of underlying per contract per trade capped at 12.5% of option premium; BTC perpetual/futures taker 3.5 bps (maker 1.5 bps). Measured BBO spread/slippage and funding remain explicit.",
+    "cost_uncertainty": "Fees may change prospectively. This V2 MVE freezes the 2026-09-25 Standard tier for scientific comparability; any future fee-schedule change is a separate source/economic regime note, not a post-outcome rescue.",
+    "status": "ACCESSIBILITY_UNRESOLVED"
   },
   "source_gate": {
     "enumerability_rule": "One non-overlapping weekly cohort at Thursday 08:00 UTC. At each anchor choose the AVAILABLE expiry nearest 30 DTE within the pre-frozen 14-60 DTE envelope, then choose the same-expiry same-strike call+put nearest ATM. Every source-valid cohort counts; no outcome-based exclusions.",
@@ -43,13 +43,13 @@
     "alpha": 0.05,
     "power_target": 0.8,
     "method": "ANALYTICAL_APPROX",
-    "nuisance_source": "Legacy trade-print execution artifact run 35069743562 is used ONLY for nuisance dispersion planning: n=19, stress-return sample sd=0.0022938068056527205. Because the V2 expiry rule broadens source geometry, dispersion is conservatively inflated 50% to sigma=0.0034407102084790808. Legacy mean is not used for confirmation.",
+    "nuisance_source": "Legacy execution artifact run 35069743562: n=19, stress PnL sample SD=0.0022938068056527205 BTC. Current public Standard Margin snapshot implies about 0.0365 BTC option IM for the 0.1+0.1 ATM short straddle before hedge; this makes the previously planned N=30 power calculation on a 1 BTC denominator non-economic. No forward outcome has been opened.",
     "dependence_unit": "Non-overlapping weekly 7-day cohort; final inference preserves four-observation block bootstrap and may blindly reduce effective N for missingness/dependence.",
     "n_eff_estimate": 0,
     "design_alternative_theta": 0.0035026979608143716,
     "power_at_design_alt": 0,
-    "planned_n_eff": 30,
-    "planned_power_at_design_alt": 0.8458106075820769,
+    "planned_n_eff": 8617,
+    "planned_power_at_design_alt": 0.8,
     "outcomes_opened": false,
     "status": "UNDERPOWERED_PRE"
   },
@@ -62,7 +62,7 @@
   },
   "freeze": {
     "frozen_at_utc": "2026-10-07T17:30:00Z",
-    "outcome_boundary": "No forward strategy return, PnL, expectancy, realized post-entry outcome or performance statistic may be computed/opened until at least 36 raw complete weekly cohorts exist and a separate activation receipt blindly verifies source integrity, N_eff>=30 and power>=80% under the unchanged V2 freeze.",
+    "outcome_boundary": "No forward performance outcome may be opened. V2 must first freeze a capital-normalized execution estimand and a feasible power design. Source-only BBO collection/health may continue, but no N=36 activation claim is valid under the superseded 1-BTC-normalized power plan.",
     "single_shot": true,
     "no_rescue": true
   },
