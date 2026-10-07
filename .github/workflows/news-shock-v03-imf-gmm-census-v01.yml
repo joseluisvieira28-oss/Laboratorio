@@ -1,0 +1,27 @@
+name: NEWS SHOCK V0.3 IMF GMM pre-T0 census
+on:
+  push:
+    branches: [news-shock-v03-public-source-recovery-v0.1]
+    paths:
+      - ".github/workflows/news-shock-v03-imf-gmm-census-v01.yml"
+      - "Dream-Account-OS-v2.3-PARTIAL/research/news_shock_v03_macro_consensus_source_gate/imf_gmm_pre_t0_census_v01.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  census:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PDF tools
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils
+      - name: Run source-only GMM pre-T0 census
+        run: python "Dream-Account-OS-v2.3-PARTIAL/research/news_shock_v03_macro_consensus_source_gate/imf_gmm_pre_t0_census_v01.py"
+      - name: Upload source evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: NEWS_SHOCK_V03_IMF_GMM_PRET0_CENSUS_V01
+          path: gmm_probe/
+          retention-days: 90
