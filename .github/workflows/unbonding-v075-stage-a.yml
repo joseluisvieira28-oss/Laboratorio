@@ -1,0 +1,24 @@
+name: Unbonding V0.7.5 Stage A Index Counts
+on:
+  push:
+    branches: [unbonding-v075-census-freeze-7d2ee458-2026-10-07]
+    paths:
+      - "research/pos_unbonding_completion_001_v0_7_source_b/v075_stage_a.py"
+      - ".github/workflows/unbonding-v075-stage-a.yml"
+  workflow_dispatch:
+permissions: {contents: write}
+jobs:
+  stage-a:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: unbonding-v075-census-freeze-7d2ee458-2026-10-07, fetch-depth: 0}
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: python research/pos_unbonding_completion_001_v0_7_source_b/v075_stage_a.py
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/pos_unbonding_completion_001_v0_7_source_b/V075_STAGE_A_INDEX_COUNTS.json
+          git diff --cached --quiet || (git commit -m "Record V0.7.5 Stage-A completion index counts" && git push origin HEAD:unbonding-v075-census-freeze-7d2ee458-2026-10-07)
