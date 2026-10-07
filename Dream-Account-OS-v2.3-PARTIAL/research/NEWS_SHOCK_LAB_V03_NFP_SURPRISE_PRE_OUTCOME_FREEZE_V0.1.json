@@ -1,0 +1,203 @@
+{
+  "document_type": "NEWS_SHOCK_LAB_V03_NFP_SURPRISE_PRE_OUTCOME_FREEZE_V0.1",
+  "lab_id": "NEWS_SHOCK_LAB_V03_NFP_SURPRISE",
+  "version": "0.1",
+  "frozen_at_utc_date": "2026-10-07",
+  "status": "FROZEN_PRE_MARKET_OUTCOME",
+  "authority_chain": {
+    "source_branch": "news-shock-v03-public-source-recovery-v0.1",
+    "nfp_source_pass_path": "Dream-Account-OS-v2.3-PARTIAL/research/news_shock_v03_macro_consensus_source_gate/receipts/MIXED_NFP_2021_PASS_V0.1.json",
+    "nfp_source_pass_canonical_run_id": 37682361249,
+    "nfp_source_pass_artifact_id": 11510330785,
+    "nfp_source_pass_artifact_sha256": "a5488e0951fc9ed8b19644dd85b31d63c3d0301fbf2f743086aa8a6129ff483d",
+    "official_actuals_path": "Dream-Account-OS-v2.3-PARTIAL/research/news_shock_v03_macro_consensus_source_gate/2021_CONSENSUS_CENSUS.csv"
+  },
+  "source_corpus": {
+    "year": 2021,
+    "total_events": 12,
+    "consensus_complete": 12,
+    "actual_authority": "BLS archived first-release Employment Situation",
+    "consensus_field_sources": {
+      "nfp_change_k": "TeleTrade pre-T0 Schedule for today",
+      "unemployment_rate": "TeleTrade pre-T0 Schedule for today",
+      "ahe_mom": "TeleTrade pre-T0 Schedule for today",
+      "ahe_yoy": "The Baker Group pre-T0 weekly report / Lunch with Lester"
+    }
+  },
+  "signal": {
+    "fields_in_fixed_order": [
+      "nfp_change_k",
+      "unemployment_rate",
+      "ahe_mom",
+      "ahe_yoy"
+    ],
+    "component_rules": {
+      "nfp_change_k": "sign(actual - consensus)",
+      "unemployment_rate": "sign(consensus - actual)",
+      "ahe_mom": "sign(actual - consensus)",
+      "ahe_yoy": "sign(actual - consensus)"
+    },
+    "score_formula": "sum(four component signs), each component in {-1,0,+1}",
+    "label_rule": {
+      "positive": "HOTTER",
+      "negative": "COOLER",
+      "zero": "NEUTRAL"
+    },
+    "directional_mapping": {
+      "HOTTER": "CRYPTO_DOWN",
+      "COOLER": "CRYPTO_UP",
+      "NEUTRAL": "NO_DIRECTIONAL_TEST"
+    },
+    "magnitude_threshold": "NONE",
+    "standardization": "NONE",
+    "weights": "EQUAL_SIGN_VOTE_ONLY",
+    "prior_payroll_revisions": "SECONDARY_DIAGNOSTIC_ONLY; MUST NOT ALTER PRIMARY LABEL",
+    "frozen_event_labels": {
+      "US_NFP_2021-01-08": {
+        "score": 1,
+        "label": "HOTTER",
+        "shock_sign": 1
+      },
+      "US_NFP_2021-02-05": {
+        "score": 2,
+        "label": "HOTTER",
+        "shock_sign": 1
+      },
+      "US_NFP_2021-03-05": {
+        "score": 2,
+        "label": "HOTTER",
+        "shock_sign": 1
+      },
+      "US_NFP_2021-04-02": {
+        "score": 0,
+        "label": "NEUTRAL",
+        "shock_sign": 0
+      },
+      "US_NFP_2021-05-07": {
+        "score": 0,
+        "label": "NEUTRAL",
+        "shock_sign": 0
+      },
+      "US_NFP_2021-06-04": {
+        "score": 2,
+        "label": "HOTTER",
+        "shock_sign": 1
+      },
+      "US_NFP_2021-07-02": {
+        "score": -1,
+        "label": "COOLER",
+        "shock_sign": -1
+      },
+      "US_NFP_2021-08-06": {
+        "score": 4,
+        "label": "HOTTER",
+        "shock_sign": 1
+      },
+      "US_NFP_2021-09-03": {
+        "score": 1,
+        "label": "HOTTER",
+        "shock_sign": 1
+      },
+      "US_NFP_2021-10-08": {
+        "score": 1,
+        "label": "HOTTER",
+        "shock_sign": 1
+      },
+      "US_NFP_2021-11-05": {
+        "score": 2,
+        "label": "HOTTER",
+        "shock_sign": 1
+      },
+      "US_NFP_2021-12-03": {
+        "score": -2,
+        "label": "COOLER",
+        "shock_sign": -1
+      }
+    },
+    "counts": {
+      "HOTTER": 8,
+      "COOLER": 2,
+      "NEUTRAL": 2,
+      "directional": 10,
+      "total": 12
+    }
+  },
+  "market_outcome_contract": {
+    "release_time": "08:30:00 America/New_York",
+    "release_candle": "08:30:00_TO_08:30:59.999",
+    "pre_entry_use_of_release_candle": "FORBIDDEN",
+    "entry": "OPEN_OF_08:31_AMERICA_NEW_YORK_1M_CANDLE",
+    "exit": "OPEN_OF_08:45_AMERICA_NEW_YORK_1M_CANDLE",
+    "source": "OFFICIAL_BINANCE_PUBLIC_DATA_ONLY",
+    "market_type": "SPOT",
+    "timeframe": "1m",
+    "symbols": [
+      "BTCUSDT",
+      "ETHUSDT"
+    ],
+    "checksum_required": true,
+    "no_interpolation": true,
+    "no_synthetic_candles": true
+  },
+  "return_and_cost_contract": {
+    "gross_return_bps": "10000 * (exit_price / entry_price - 1)",
+    "aligned_gross_bps": "-shock_sign * gross_return_bps",
+    "fixed_round_trip_cost_bps": "10",
+    "aligned_net_bps": "aligned_gross_bps - 10",
+    "leverage": "NONE",
+    "stop_loss": "NONE",
+    "take_profit": "NONE"
+  },
+  "primary_test": {
+    "directional_event_count": 10,
+    "preserve_label_counts": {
+      "HOTTER": 8,
+      "COOLER": 2
+    },
+    "exact_unique_assignments": 45,
+    "test": "EXACT_FIXED_COUNT_LABEL_PERMUTATION",
+    "statistic": "MEAN_ALIGNED_GROSS_BPS",
+    "alternative": "GREATER_THAN_ZERO",
+    "p_value_definition": "fraction of all 45 fixed-count label assignments with statistic >= observed",
+    "alpha": "0.05",
+    "assets": [
+      "BTCUSDT",
+      "ETHUSDT"
+    ],
+    "multiple_testing_policy": "BOTH PRE-SPECIFIED ASSETS MUST PASS; NO ASSET SELECTION"
+  },
+  "survival_criteria": {
+    "per_asset": [
+      "exact_one_sided_p_value <= 0.05",
+      "mean_aligned_net_bps > 0",
+      "median_aligned_gross_bps > 0",
+      "every_leave_one_out_mean_aligned_net_bps > 0"
+    ],
+    "both_assets_required": true,
+    "pass": "DISCOVERY_SURVIVES_LOW_N_ELIGIBLE_ONLY_FOR_SEPARATELY_FROZEN_OOS_SOURCE_EXTENSION",
+    "fail": "NO_EDGE_STOP_UNDER_2021_NFP_SIGN_VOTE_DEFINITION"
+  },
+  "no_rescue_rules": [
+    "NO_ALTERNATE_SIGNAL_WEIGHTS",
+    "NO_DROP_OR_ADD_PRIMARY_FIELDS",
+    "NO_REVISION_BASED_RESCUE",
+    "NO_MAGNITUDE_THRESHOLDING",
+    "NO_TOP_SURPRISE_SUBSET",
+    "NO_ALTERNATE_HORIZONS",
+    "NO_ALTERNATE_ENTRY_DELAY",
+    "NO_SUBPERIOD_OR_REGIME_SPLIT",
+    "NO_OUTLIER_DELETION_OR_WINSORIZATION",
+    "NO_BEST_SYMBOL_SELECTION",
+    "NO_COST_CHANGE",
+    "NO_DIRECTIONAL_USE_OF_NEUTRAL_EVENTS"
+  ],
+  "governance": {
+    "research_only": true,
+    "market_outcomes_accessed_at_freeze": false,
+    "live_trading_authorized": false,
+    "exchange_mutation_authorized": false,
+    "main_merge_authorized": false,
+    "post_outcome_tuning_authorized": false,
+    "fail_closed": true
+  }
+}
