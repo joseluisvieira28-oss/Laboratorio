@@ -1,0 +1,67 @@
+name: MEXC Overshoot V0.2.4 Aggregator Equivalence
+
+on:
+  push:
+    branches:
+      - mexc-globalasset-intraday-overshoot-shadow-v0.2.4-ws-remediation-2026-10-07
+    paths:
+      - 'research/mexc_global_assets/mexc_globalasset_intraday_overshoot_shadow_aggregate_v024.py'
+      - '.github/workflows/mexc-overshoot-v024-aggregator-equivalence.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  equivalence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compile both aggregators
+        run: |
+          python -m py_compile research/mexc_global_assets/mexc_globalasset_intraday_overshoot_shadow_aggregate_v022.py
+          python -m py_compile research/mexc_global_assets/mexc_globalasset_intraday_overshoot_shadow_aggregate_v024.py
+      - name: Compare frozen outputs on identical synthetic economics
+        run: |
+          mkdir -p /tmp/v022/2026-10-08/a /tmp/v024/2026-10-08/a
+          python - <<'PY'
+          import json
+          fills={}
+          for k,n in [('10',10),('25',25),('50',50),('100',100)]:
+              fills[k]={'fillable':True,'quote_notional':float(n)}
+          exits={}
+          for k,n in [('10',10),('25',25),('50',50),('100',100)]:
+              exits[k]={'fillable':True,'quote_notional':float(n)*1.003}
+          asset={
+              'target':'SYNTH_USDT','side':1,
+              'entry_timing_valid':True,'exit_timing_valid':True,
+              'entry_fills':fills,'exit_fills':exits,
+              'source_evidence':{'synthetic':'same'}
+          }
+          base={
+              'date':'2026-10-08',
+              'pending_events':[],
+              'errors':[],
+              'events':[{'timestamp':1791439200,'assets':[asset]}]
+          }
+          a=dict(base); a['shadow_version']='0.2.2'
+          b=dict(base); b['shadow_version']='0.2.4'; b['epoch']='V0.2.4_CLEAN_PROSPECTIVE'
+          json.dump(a,open('/tmp/v022/2026-10-08/a/shadow_a.json','w'))
+          json.dump(b,open('/tmp/v024/2026-10-08/a/shadow_a.json','w'))
+          PY
+          python research/mexc_global_assets/mexc_globalasset_intraday_overshoot_shadow_aggregate_v022.py --root /tmp/v022 --out /tmp/a22.json >/dev/null
+          python research/mexc_global_assets/mexc_globalasset_intraday_overshoot_shadow_aggregate_v024.py --root /tmp/v024 --out /tmp/a24.json >/dev/null
+          python - <<'PY'
+          import json
+          a=json.load(open('/tmp/a22.json')); b=json.load(open('/tmp/a24.json'))
+          assert a['overall_verdict']==b['overall_verdict']
+          assert a['admitted_event_baskets']==b['admitted_event_baskets']
+          assert a['distinct_session_dates']==b['distinct_session_dates']
+          assert a['source_errors']==b['source_errors']
+          assert a['duplicate_conflicts']==b['duplicate_conflicts']
+          assert a['by_notional_usdt']==b['by_notional_usdt']
+          print({'v022_v024_scientific_equivalence':'PASS'})
+          PY
