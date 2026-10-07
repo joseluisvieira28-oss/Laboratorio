@@ -1,0 +1,42 @@
+name: MLMXD V0.2.8 History Catalog Resolution
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - mexc-launchpool-mx-demand-v0.2-activation-pilot-2026-10-07
+    paths:
+      - '.github/workflows/mlmxd_v028_history_catalog.yml'
+permissions:
+  contents: read
+jobs:
+  diag:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests
+      - name: Resolve symbol IDs and list official 15m history files
+        run: |
+          python - <<'PY'
+          import requests,json
+          S=requests.Session(); S.headers.update({"User-Agent":"Mozilla/5.0","Accept":"application/json"})
+          u="https://www.mexc.com/api/platform/spot/market-v2/web/symbols"
+          x=S.get(u,timeout=30).json()
+          data=x.get("data",{})
+          found={}
+          for market,rows in data.items():
+            if not isinstance(rows,list): continue
+            for r in rows:
+              vn=str(r.get("vn",""))
+              if market=="USDT" and vn in ("MX","BTC"):
+                found[vn]={"id":r.get("id"),"vn":vn,"market":market,"raw":r}
+          print("FOUND",json.dumps(found,ensure_ascii=False))
+          for vn,rec in found.items():
+            sid=rec["id"]
+            for bucket in ["daily","monthly"]:
+              fp=f"SPOT2/kline/{sid}/{bucket}/Min15/"
+              r=S.get("https://www.mexc.com/file-svc/history/download",params={"filePath":fp},timeout=30)
+              print("CATALOG",vn,bucket,"PATH",fp,"HTTP",r.status_code,"BODY",r.text[:12000])
+          PY
