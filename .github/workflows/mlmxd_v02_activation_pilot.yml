@@ -1,0 +1,40 @@
+name: MLMXD V0.2 Activation Pilot
+
+on:
+  push:
+    branches:
+      - mexc-launchpool-mx-demand-v0.2-activation-pilot-2026-10-07
+    paths:
+      - 'research/mexc_launchpool_mx_demand/activation_pilot_v01.py'
+      - '.github/workflows/mlmxd_v02_activation_pilot.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pilot:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install ccxt
+      - name: Execute frozen 14-event activation pilot
+        run: python research/mexc_launchpool_mx_demand/activation_pilot_v01.py
+      - name: Verify research-only
+        run: |
+          python - <<'PY'
+          import json
+          p=json.load(open('artifacts/mexc_launchpool_mx_demand_v02_pilot/pilot_summary.json'))
+          assert p['authenticated'] is False
+          assert p['orders'] is False
+          assert p['promotion_credit']==0
+          print(json.dumps(p,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mlmxd-v02-activation-pilot
+          path: artifacts/mexc_launchpool_mx_demand_v02_pilot/
+          retention-days: 90
