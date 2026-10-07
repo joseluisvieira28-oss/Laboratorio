@@ -1,0 +1,30 @@
+{
+  "freeze_id":"NEWS-SHOCK-V03-MIXED-CPI-CENSUS-2021-001",
+  "created_date":"2026-10-07",
+  "branch":"news-shock-v03-public-source-recovery-v0.1",
+  "status":"FROZEN_BEFORE_MIXED_CPI_CENSUS",
+  "scope":"SOURCE_ONLY",
+  "universe":"All 12 frozen 2021 CPI releases from the existing BLS manifest.",
+  "event_source_hierarchy":[
+    {
+      "priority":1,
+      "source_family":"Danske Bank Weekly Focus / issue-specific static Danske research PDF",
+      "rule":"Use the latest qualifying issue strictly before T0 that contains all four required CPI consensus fields."
+    },
+    {
+      "priority":2,
+      "source_family":"Reuters pre-release poll/reporting, including verbatim Reuters syndication on public mirrors",
+      "rule":"Only when no qualifying priority-1 record exists. Use the latest qualifying Reuters publication strictly before T0 that explicitly contains all four required CPI consensus fields."
+    }
+  ],
+  "required_fields":["headline_mom","headline_yoy","core_mom","core_yoy"],
+  "fallback_beyond_priority_2":"NONE",
+  "snapshot_rule":"Within a source family, latest qualifying pre-T0 publication wins. Earlier qualifying versions are preserved but never averaged.",
+  "timestamp_rule":"publication_timestamp_utc < T0; same-day evidence requires explicit/resolvable clock. Earlier-date issue-specific static PDFs may pass through auditable edition identity.",
+  "version_rule":"Preserve URL/article or issue identity, publication date/time, retrieval time and content/normalized-evidence hash. Mutable historical calendar rows do not qualify.",
+  "conflict_rule":"No averaging. Higher-priority qualifying source wins prospectively. Conflict is recorded, never used to source-shop.",
+  "missing_rule":"Any missing one of the four fields leaves the event incomplete.",
+  "gate":{"minimum_complete_cpi":10,"required_provenance_rate":1.0},
+  "prohibited":["BTC/ETH prices or returns","Treasury yield outcomes","taker flow","continuation/reversal","PnL","post-outcome tuning","2025/2026 protected outcomes","merge to main","trading or exchange mutation"],
+  "note":"Frozen after preserving the Danske-only 7/12 coverage failure and before researching Reuters coverage for the missing CPI events."
+}
