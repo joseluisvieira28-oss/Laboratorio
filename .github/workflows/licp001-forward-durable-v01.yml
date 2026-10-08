@@ -1,0 +1,117 @@
+name: licp001-forward-durable-v01
+
+on:
+  push:
+    branches:
+      - liquidation-cascade-propagation-v0.1
+    paths:
+      - '.github/workflows/licp001-forward-durable-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: licp001-forward-durable-v01
+  cancel-in-progress: false
+
+jobs:
+  forward-shard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PYTHONPATH: .
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install public transport
+        run: python -m pip install 'websockets>=13,<16'
+      - name: Frozen stack and durable-ledger preflight
+        run: |
+          python -m py_compile             research/liquidation_cascade/licp001_forward_observation_v01.py             research/liquidation_cascade/licp001_forward_verdict_v01.py             research/liquidation_cascade/licp001_forward_durable_ledger_v01.py
+          python research/liquidation_cascade/licp001_forward_durable_ledger_v01.py --self-test
+          python - <<'PY'
+          import json, hashlib, pathlib
+          p=pathlib.Path("research/liquidation_cascade/LICP_001_TRIGGER_CONFIG_V0_1.json")
+          cfg=json.loads(p.read_text())
+          assert cfg["status"]=="FROZEN"
+          assert cfg["version"]=="LICP-001-TRIGGER-V0.1"
+          print("FROZEN_TRIGGER_CONFIG_SHA256",hashlib.sha256(p.read_bytes()).hexdigest())
+          print("SCIENCE_CHANGED=0")
+          print("LIVE_TRADING=0")
+          PY
+      - name: Restore prior durable forward artifacts
+        run: |
+          mkdir -p prior current durable_ledger
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs?branch=$GITHUB_REF_NAME&per_page=100" > /tmp/runs.json
+          python - <<'PY' >/tmp/prior_ids.txt
+          import json, os
+          x=json.load(open("/tmp/runs.json"))
+          current=int(os.environ["GITHUB_RUN_ID"])
+          path=".github/workflows/licp001-forward-durable-v01.yml"
+          ids=[]
+          for r in x.get("workflow_runs",[]):
+              if int(r["id"])==current: continue
+              if r.get("path")!=path: continue
+              if r.get("status")!="completed": continue
+              if r.get("conclusion")!="success": continue
+              ids.append(int(r["id"]))
+          for i in sorted(ids):
+              print(i)
+          PY
+          while read -r rid; do
+            [ -z "$rid" ] && continue
+            mkdir -p "prior/$rid"
+            gh run download "$rid" -D "prior/$rid" || {
+              echo "PRIOR_ARTIFACT_RESTORE_FAILED=$rid"
+              exit 1
+            }
+          done </tmp/prior_ids.txt
+          echo "PRIOR_RECEIPTS=$(find prior -type f -name licp001_forward_observation_v01.json | wc -l)"
+      - name: Observe 600-second canonical forward shard
+        env:
+          LICP_OBSERVE_SECONDS: '600'
+        run: |
+          python research/liquidation_cascade/licp001_forward_observation_v01.py
+          cp research/liquidation_cascade/receipts/licp001_forward_observation_v01.json              current/licp001_forward_observation_v01.json
+      - name: Build durable ledger and frozen verdict
+        run: |
+          mkdir -p all_receipts
+          find prior current -type f -name licp001_forward_observation_v01.json -print0 |             while IFS= read -r -d '' f; do
+              h=$(sha256sum "$f" | awk '{print $1}')
+              cp "$f" "all_receipts/$h.json"
+            done
+          python research/liquidation_cascade/licp001_forward_durable_ledger_v01.py             --root all_receipts             --outdir durable_ledger
+          python research/liquidation_cascade/licp001_forward_verdict_v01.py             durable_ledger/receipts             --out durable_ledger/frozen_verdict.json
+          echo '--- CURRENT SHARD ---'
+          python - <<'PY'
+          import json
+          x=json.load(open("current/licp001_forward_observation_v01.json"))
+          print(json.dumps({
+            "status":x["status"],
+            "seconds":x["seconds"],
+            "record_count":x["record_count"],
+            "health":x["health"],
+            "github_run_id":x.get("github_run_id")
+          },indent=2))
+          PY
+          echo '--- DURABLE LEDGER ---'
+          cat durable_ledger/ledger_summary.json
+          echo '--- FROZEN VERDICT ---'
+          cat durable_ledger/frozen_verdict.json
+      - name: Upload immutable durable forward evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: licp001-forward-durable-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            current/
+            durable_ledger/
+          retention-days: 90
+          if-no-files-found: error
