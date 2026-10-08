@@ -1,5 +1,6 @@
 # CRYPTO LAB — ADVERSARIAL AUDIT: POWER / PREMIA / ENSEMBLE / CEMETERY / STOP
-Date: 2026-10-08
+
+> **SUPERSEDED 2026-10-08 — SECOND-ROUND CORRECTION:** Section 2 proposed CS-FUNDING-RISK-PREMIUM-001 is WITHDRAWN, OVERLAP_RISK=HIGH (funding-dispersion delta-neutral / funding-conditioned divergence in the Context Pack). Do not activate it. Section 3's primary ensemble including dead strategies as traded members is INVALID; dead strategies count toward multiplicity/DSR only. Section 5's 46-test stop rule is a hypothetical with no observed qualifying completed-test rate. See SECOND_ROUND_CORRECTIONS_2026-10-08.md and SECOND_ROUND_LEGACY_CENSUS_36_ROWS_2026-10-08.csv. The historical analysis below is retained for audit traceability.\n\nDate: 2026-10-08
 Scope: document-only retrospective triage and prospective design. NO new outcomes, trading, main merge, or legacy verdict mutations.
 Authority: V2 governance on `crypto-lab-v2-governance-2026-10-07` is DRAFT, not automatically binding on legacy families.
 
