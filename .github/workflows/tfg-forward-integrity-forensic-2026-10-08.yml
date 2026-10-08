@@ -1,0 +1,24 @@
+name: TFG Forward Integrity Forensic (Research Only)
+on:
+  push:
+    branches:
+      - audit/tfg-forward-causality-closeout-2026-10-08
+    paths:
+      - 'audits/tfg_forward_integrity_audit.py'
+      - 'audits/test_tfg_forward_integrity_audit.py'
+      - '.github/workflows/tfg-forward-integrity-forensic-2026-10-08.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  forensic:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Read-only deterministic integrity regressions
+        run: python -m unittest audits.test_tfg_forward_integrity_audit -v
