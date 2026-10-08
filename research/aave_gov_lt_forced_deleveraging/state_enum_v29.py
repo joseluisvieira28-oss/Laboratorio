@@ -9,7 +9,8 @@ import gzip,hashlib,json,time,urllib.error,urllib.request
 from pathlib import Path
 from Crypto.Hash import keccak
 OUT=Path("out/aave_state_enum_v29");OUT.mkdir(parents=True,exist_ok=True)
-URLS=["https://mainnet.optimism.io","https://optimism.drpc.org","https://1rpc.io/op"]\nendpoint_i=0
+URLS=["https://mainnet.optimism.io","https://optimism.drpc.org","https://1rpc.io/op"]
+endpoint_i=0
 POOL="0x794a61358d6845594f94dc1db02a252b5b4814ad"
 ASSET="0x8c6f28f2f1a3c87f0f938b96d27520d9751ec8d9"
 SIGNAL_TS=1717599515
