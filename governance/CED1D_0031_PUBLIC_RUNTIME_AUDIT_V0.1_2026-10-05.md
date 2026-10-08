@@ -22,3 +22,7 @@ This audit must NOT:
 - enable live trading.
 
 The frozen prospective requirement remains 60 completed events AND 8 complete UTC signal weeks. No early adjudication is allowed.
+
+
+## Read-only refresh marker — 2026-10-08
+Operator-authorized telemetry refresh only. Science and runtime authority unchanged.
