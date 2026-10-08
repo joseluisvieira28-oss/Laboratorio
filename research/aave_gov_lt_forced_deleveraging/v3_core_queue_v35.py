@@ -71,8 +71,11 @@ if not cr or int(cr["status"],16)!=1:raise RuntimeError("P388_BAD_CREATION_RECEI
 start=int(cr["blockNumber"],16); topic_pid="0x"+format(388,"064x")
 found=[]
 # 200k Ethereum blocks comfortably covers proposal voting/queuing after creation.
-for a in range(start,start+200001,5000):
- b=a+4999
+# Public RPCs reject/timeout on larger historical log windows. Use a fixed
+# 500-block scan; this changes only transport granularity, not the searched
+# interval, topic filter, proposal id, or acceptance rule.
+for a in range(start,start+200001,500):
+ b=min(a+499,start+200000)
  lg,lgh,lgurl=post({"jsonrpc":"2.0","id":388,"method":"eth_getLogs","params":[{"address":GOV,"fromBlock":hex(a),"toBlock":hex(b),"topics":[TOPIC,topic_pid]}]})
  if isinstance(lg,list):found.extend(lg)
 if len(found)!=1:raise RuntimeError("P388_QUEUE_LOG_COUNT_"+str(len(found)))
