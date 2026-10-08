@@ -1,0 +1,77 @@
+name: HTF DH03 12H — 2025 One-Shot OOS Evaluation
+
+on:
+  push:
+    branches:
+      - htf-dh03-12h-2025-one-shot-oos-v0.1
+    paths:
+      - '.github/workflows/htf-dh03-12h-2025-oos-eval-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  one-shot-oos:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify frozen OOS authority before source download
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=Path('research/htf_diamond_hunt')
+          f=json.loads((r/'HTF_DH03_12H_2025_ONE_SHOT_OOS_FREEZE_V0.1.json').read_text())
+          b=json.loads((r/'HTF_DH03_12H_2025_SOURCE_BINDING_V0.1.json').read_text())
+          assert f['status']=='FROZEN_BEFORE_ANY_EXACT_DH03_2025_SOURCE_OR_OUTCOME_ACCESS'
+          assert f['dataset']['allowed_source_years']==[2025]
+          assert f['dataset']['forbidden_source_years']==[2026]
+          assert f['rule']['timeframe']=='12H_UTC'
+          assert f['rule']['donchian_lookback_complete_bars']==40
+          assert f['rule']['atr_length']==28
+          assert f['rule']['target_r']==3.0
+          assert f['rule']['max_hold_bars']==80
+          assert f['costs']=={'base_round_trip_pct':0.20,'stress_round_trip_pct':0.30}
+          assert f['annual_oos_gates']['minimum_resolved_trades']==60
+          assert b['status']=='FROZEN_EXACT_2025_SOURCE_BEFORE_ANY_OOS_OUTCOME'
+          assert b['source_run_id']==37730638628
+          assert b['artifact_id']==11528829916
+          assert b['artifact_digest']=='sha256:1235526af446c232d06bef9b952e4c51c715fd34d5790fd62315c78a41a8976a'
+          assert b['source_fingerprint']=='40947e686516be7023548961636c02e8fc4b4281684e07d2b9714a5ad6b9c226'
+          assert b['outcome_evaluation_performed'] is False
+          assert b['access_2026_performed'] is False
+          print('DH03_2025_AUTHORITY_GATE_PASS')
+          PY
+      - name: Compile exact evaluator
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: |
+          python -m py_compile             research/htf_diamond_hunt/htf_dh03_2025_source_gate_v01.py             research/htf_diamond_hunt/htf_dh03_2025_oos_v01.py
+      - name: Download exact frozen source artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: htf-dh03-12h-2025-oos-source
+          path: Dream-Account-OS-v2.3-PARTIAL/research/local_data/htf_dh03_2025_source_v01
+          github-token: ${{ github.token }}
+          run-id: 37730638628
+      - name: Open 2025 once and run exact DH03 OOS
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        env:
+          PYTHONPATH: ${{ github.workspace }}/Dream-Account-OS-v2.3-PARTIAL
+        run: |
+          python research/htf_diamond_hunt/htf_dh03_2025_oos_v01.py             research/local_data/htf_dh03_2025_source_v01
+      - name: Upload immutable OOS result
+        uses: actions/upload-artifact@v4
+        with:
+          name: htf-dh03-12h-2025-oos-result
+          path: Dream-Account-OS-v2.3-PARTIAL/research/local_data/htf_dh03_2025_oos_v01/
+          if-no-files-found: error
+          retention-days: 90
