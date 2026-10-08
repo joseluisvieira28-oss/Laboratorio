@@ -30,7 +30,7 @@ PROPOSALS=[2,13,19,55,71,87,100,114,173,260]
 
 def sha(b):return hashlib.sha256(b).hexdigest()
 def parse_num(s):
- m=re.search(r"\[(\d+)\]",s)
+ m=re.search(r"\\[\\s*(\\d+)\\s*(?:,|\\])",s)
  if m:return int(m.group(1))
  m=re.search(r"(?<![A-Za-z0-9])(\d{2,5})(?![A-Za-z0-9])",s)
  return int(m.group(1)) if m else None
