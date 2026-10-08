@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - triple-fishing-operator-v0.3-2026-09-30
+      - fix/triple-v03-launcher-observability-2026-10-08
     paths:
       - 'crypto_edge_radar/radar/operator_risk_v02.py'
       - 'crypto_edge_radar/radar/global_slot_reservation_v03.py'
@@ -38,6 +39,7 @@ on:
       - 'crypto_edge_radar/tests/test_dh03_operator_source_v03.py'
       - 'crypto_edge_radar/tests/test_mexc_triple_fishing_operator_v03.py'
       - 'crypto_edge_radar/tests/test_mexc_triple_fishing_ready_v03.py'
+      - 'crypto_edge_radar/tests/test_triple_launcher_v03_offline.ps1'
       - '.github/workflows/build-triple-fishing-v03-windows.yml'
 
 permissions:
@@ -92,6 +94,12 @@ jobs:
           tests.test_mexc_triple_fishing_ready_v03
           -v
 
+      - name: Run inert Windows launcher failure-path probes
+        shell: pwsh
+        run: |
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File tests/test_triple_launcher_v03_offline.ps1
+          if ($LASTEXITCODE -ne 0) { throw "Inert launcher probes failed with exit $LASTEXITCODE" }
+
       - name: Build Triple Fishing supervisor EXE
         run: |
           pyinstaller --clean --onefile --name MEXCTripleFishingOperatorV03 --paths . scripts/mexc_triple_fishing_operator_v03.py
@@ -125,6 +133,7 @@ jobs:
           Copy-Item "dist\BuildOptionsCorrectionOverlayV01.exe" $bundle
 
           Copy-Item "windows\Run_MEXC_Triple_Fishing_V03.ps1" $bundle
+          Copy-Item "windows\Inspect_MEXC_Triple_Fishing_V03_READONLY.ps1" $bundle
           Copy-Item "windows\Install_MEXC_Triple_Fishing_V03.ps1" $bundle
           Copy-Item "windows\Ready_And_Arm_MEXC_Triple_Fishing_V03.ps1" $bundle
           Copy-Item "windows\Switch_From_BNB_To_Triple_V03.ps1" $bundle
