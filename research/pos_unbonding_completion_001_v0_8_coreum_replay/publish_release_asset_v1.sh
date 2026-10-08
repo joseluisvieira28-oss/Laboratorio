@@ -24,7 +24,7 @@ if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
   gh release create "$TAG"     --repo "$GITHUB_REPOSITORY"     --target "$GITHUB_SHA"     --title "Coreum V0.8 replay data $TAG"     --notes "Frozen V0.8 replay transport/checkpoint storage. Source/science unchanged."
 fi
 
-gh release upload "$TAG" "$PACKAGE" "$RECEIPT" --repo "$GITHUB_REPOSITORY"
+gh release upload "$TAG" "$PACKAGE" "$RECEIPT" --repo "$GITHUB_REPOSITORY" --clobber
 
 RELEASE_JSON="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG")"
 export RELEASE_JSON PACKAGE_NAME="$(basename "$PACKAGE")" RECEIPT_NAME="$(basename "$RECEIPT")" PKG_SHA PKG_SIZE REC_SHA
