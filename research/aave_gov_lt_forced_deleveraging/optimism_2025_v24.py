@@ -4,7 +4,7 @@ import gzip,hashlib,json,time,urllib.error,urllib.request
 from pathlib import Path
 from Crypto.Hash import keccak
 OUT=Path("out/aave_optimism_2025_v24");OUT.mkdir(parents=True,exist_ok=True)
-URLS=["https://mainnet.optimism.io","https://optimism-rpc.publicnode.com","https://optimism.drpc.org"]
+URLS=["https://mainnet.optimism.io"]
 CONFIG="0x8145edddf43f50276641b55bd3ad95944510021e"
 FIRST=130045412
 END_TS=1767225599
@@ -68,7 +68,9 @@ save()
 try:
  while cursor<=LAST:
   if time.monotonic()-started>18000:raise RuntimeError("5_HOUR_BUDGET_CHECKPOINT_SAVED")
-  target=min(cursor+99999,LAST)
+  # V11 acquisition empirically established stable historical log windows
+  # around 10k-20k blocks on the canonical public Optimism RPC.
+  target=min(cursor+9999,LAST)
   for a,b,logs,hashes,url in scan(cursor,target):
    assert a==cursor
    for x in logs:assert a<=int(x["blockNumber"],16)<=b and x["address"].lower()==CONFIG and x["topics"][0] in TOPICS and not x.get("removed",False)
