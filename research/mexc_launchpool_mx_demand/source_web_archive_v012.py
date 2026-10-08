@@ -60,7 +60,7 @@ for i,url in enumerate(article_urls):
             "url":url,
             "title":title,
             "date":date_txt,
-            "date_iso":dt.isoformat() if dt else None,
+            "date_iso":dt.isoformat() if dt else None,\n            "timestamp_precision":timestamp_precision,
             "is_launchpool":is_launch,
             "has_mx":has_mx,
             "explicit_mx_eligibility":explicit_mx_pool,
@@ -109,7 +109,7 @@ summary={
    "events_ge_20":len(eligible)>=20,
    "clusters_ge_12":len(clusters)>=12,
    "years_ge_2":len(years)>=2,
-   "timestamps_complete":all(x.get("date_iso") for x in eligible),
+   "timestamps_complete":all(x.get("date_iso") and x.get("timestamp_precision")=="exact" for x in eligible),
  },
 }
 summary["classification"]="SOURCE_GATE_PASS" if all(summary["source_gate"].values()) else "SOURCE_INSUFFICIENT_SAMPLE"
