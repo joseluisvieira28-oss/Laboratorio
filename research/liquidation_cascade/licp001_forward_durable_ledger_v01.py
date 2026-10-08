@@ -33,6 +33,10 @@ def derive_episode_id(cfg_version,r):
         ignition_ts=int(r["meta"]["ignition"]["ignition_venue_ts"])
         pressure=str(r["pressure"])
     except Exception:
+        # Secondary legacy rows have no ignition; preserve them using content identity.
+        # Primary rows still require their frozen ignition timestamp.
+        if r.get("family") != "BTC_CONFIRMED":
+            return hashlib.sha256(cfg_version.encode()+b"|legacy-secondary|"+canonical(r)).hexdigest()[:24]
         return None
     raw=(cfg_version+"|"+str(ignition_ts)+"|"+pressure).encode("utf-8")
     return hashlib.sha256(raw).hexdigest()[:24]
@@ -98,7 +102,7 @@ def build(root,outdir):
         attempt=j.get("github_run_attempt") or "1"
         (rdir/(f"{idx:04d}-{rid}-{attempt}.json")).write_text(json.dumps(j,indent=2,sort_keys=True)+"\n")
 
-    status="BLOCKED_INTEGRITY_CONFLICT" if conflicts else "LEDGER_OK"
+    status="BLOCKED_INTEGRITY_CONFLICT" if conflicts else ("BLOCKED_RECEIPT_INTEGRITY" if rejected else "LEDGER_OK")
     summary={
       "schema":"licp001.forward_durable_ledger.v1",
       "status":status,
