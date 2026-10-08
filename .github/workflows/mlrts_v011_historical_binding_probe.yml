@@ -1,0 +1,28 @@
+name: MLRTS V0.1.1 Historical Binding Probe
+
+on:
+  push:
+    branches: [mexc-launchpool-reward-token-sellpressure-v0.1-2026-10-08]
+    paths:
+      - 'research/mexc_launchpool_reward_token_sellpressure/historical_binding_probe_v011.py'
+      - '.github/workflows/mlrts_v011_historical_binding_probe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests
+      - run: python research/mexc_launchpool_reward_token_sellpressure/historical_binding_probe_v011.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mlrts-v011-historical-binding-probe
+          path: artifacts/mlrts_v011_historical_binding_probe/
+          retention-days: 90
