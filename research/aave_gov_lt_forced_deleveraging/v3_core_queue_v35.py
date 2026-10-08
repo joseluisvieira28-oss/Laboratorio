@@ -62,6 +62,27 @@ for pid,tx,expected_ts in ROWS:
  rows.append({"proposal_id":pid,"queue_tx":tx,"queue_block":bn,"queue_timestamp":ts,"expected_timestamp":expected_ts,
               "receipt_response_sha256":h,"receipt_source":url,"header_response_sha256":bh,"header_source":burl,
               "governance_core":GOV,"proposal_queued_log_count":len(exact),"status":status,"log":exact[0] if len(exact)==1 else None})
+# Proposal 388 was frozen from the completed Polygon-2025 census, but its
+# pinned report predates a Seatbelt proposal report. Recover the Core queue directly
+# from the V3 GovernanceCore log using its canonical proposal-creation tx as lower bound.
+P388_CREATE_TX="0x86f73be6007454b4339164184125b686bdab684a145e726338d4acbd485dc44b"
+cr,crh,crurl=post({"jsonrpc":"2.0","id":388,"method":"eth_getTransactionReceipt","params":[P388_CREATE_TX]})
+if not cr or int(cr["status"],16)!=1:raise RuntimeError("P388_BAD_CREATION_RECEIPT")
+start=int(cr["blockNumber"],16); topic_pid="0x"+format(388,"064x")
+found=[]
+# 200k Ethereum blocks comfortably covers proposal voting/queuing after creation.
+for a in range(start,start+200001,5000):
+ b=a+4999
+ lg,lgh,lgurl=post({"jsonrpc":"2.0","id":388,"method":"eth_getLogs","params":[{"address":GOV,"fromBlock":hex(a),"toBlock":hex(b),"topics":[TOPIC,topic_pid]}]})
+ if isinstance(lg,list):found.extend(lg)
+if len(found)!=1:raise RuntimeError("P388_QUEUE_LOG_COUNT_"+str(len(found)))
+q=found[0];qbn=int(q["blockNumber"],16);qb,qbh,qburl=post({"jsonrpc":"2.0","id":388,"method":"eth_getBlockByNumber","params":[hex(qbn),False]})
+qts=int(qb["timestamp"],16)
+rows.append({"proposal_id":388,"queue_tx":q["transactionHash"].lower(),"queue_block":qbn,"queue_timestamp":qts,"expected_timestamp":None,
+             "receipt_response_sha256":None,"receipt_source":"ETH_GETLOGS_SCAN","header_response_sha256":qbh,"header_source":qburl,
+             "governance_core":GOV,"proposal_queued_log_count":1,"status":"PASS","log":q,
+             "creation_tx":P388_CREATE_TX,"creation_receipt_sha256":crh,"creation_receipt_source":crurl})
+
 receipt={"lab_id":"AAVE-GOV-LT-FORCED-DELEVERAGING-001","phase":"V35_V3_CORE_QUEUE_ONCHAIN_SOURCE_ONLY",
          "candidate_count":len(rows),"pass_count":sum(x["status"]=="PASS" for x in rows),
          "all_pass":all(x["status"]=="PASS" for x in rows),"rows":rows,
