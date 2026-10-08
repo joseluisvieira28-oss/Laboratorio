@@ -90,7 +90,7 @@ func main() {
 
 	isGenesis := startHeight == 1
 	app := coreumapp.New(
-		tmlog.NewNopLogger(), appDB, nil, !isGenesis,
+		tmlog.NewNopLogger(), appDB, nil, true,
 		map[int64]bool{}, home, 0, encoding, opts{},
 	)
 
@@ -129,6 +129,9 @@ func main() {
 		state, err = stateStore.Load(); if err != nil { panic(err) }
 		if state.LastBlockHeight != startHeight-1 {
 			panic(fmt.Sprintf("resume height mismatch state=%d start=%d", state.LastBlockHeight, startHeight))
+		}
+		if app.LastBlockHeight() != startHeight-1 {
+			panic(fmt.Sprintf("application height mismatch app=%d start=%d", app.LastBlockHeight(), startHeight))
 		}
 	}
 
