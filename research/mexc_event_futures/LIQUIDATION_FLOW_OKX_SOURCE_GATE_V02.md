@@ -102,3 +102,8 @@ A separate pre-calibration freeze must define:
 - future activation boundary.
 
 No login, API keys, account reads, wallets, orders, exchange mutation, main merge or live trading.
+
+
+## Execution marker — 2026-10-08
+
+Operator authorized a fresh execution of the already-frozen V0.2 source gate. No scientific rule, threshold, duration, symbol set, source, or outcome boundary changes.
