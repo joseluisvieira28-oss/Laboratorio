@@ -101,6 +101,15 @@ def word(data,i):
     return int(data[2+i*64:2+(i+1)*64],16)
 def call(to,selector,arg,block):
     return rpc("eth_call",[{"to":to,"data":selector+arg},hex(block)])[0]
+def decode_emode(data):
+    # getEModeCategoryData(uint8) returns one tuple containing a string, so the
+    # ABI top-level word is an offset to the tuple head.
+    base=word(data,0)//32
+    if base<1 or base>16:
+        raise RuntimeError("INVALID_EMODE_TUPLE_OFFSET_"+str(base))
+    return {"ltv_bps":word(data,base),"lt_bps":word(data,base+1),
+            "bonus_bps":word(data,base+2),
+            "price_source":"0x"+format(word(data,base+3),"040x")}
 def block_before(ts):
     latest=int(rpc("eth_blockNumber",[])[0],16); lo,hi=0,latest
     while lo<hi:
@@ -189,8 +198,8 @@ for ch in BASE_CHANGES:
     old_state_checks.append({"kind":"BASE_LT","asset":ch["asset"].lower(),"expected_old_lt":ch["old_lt"],"observed_old_lt":r["lt_bps"],"pass":r["lt_bps"]==ch["old_lt"]})
 for ch in EMODE_CHANGES:
     raw=call(POOL,SEL_EMODE_DATA,format(int(ch["category_id"]),"064x"),SNAP)
-    obs=word(raw,1)
-    old_state_checks.append({"kind":"EMODE_LT","category_id":ch["category_id"],"expected_old_lt":ch["old_lt"],"observed_old_lt":obs,"pass":obs==ch["old_lt"],"emode_data_abi_sha256":sha(raw.encode())})
+    dec=decode_emode(raw); obs=dec["lt_bps"]
+    old_state_checks.append({"kind":"EMODE_LT","category_id":ch["category_id"],"expected_old_lt":ch["old_lt"],"observed_old_lt":obs,"pass":obs==ch["old_lt"],"emode_data":dec,"emode_data_abi_sha256":sha(raw.encode())})
 if not all(x["pass"] for x in old_state_checks):
     raise RuntimeError("OLD_LT_SIGNAL_MINUS_ONE_MISMATCH:"+json.dumps(old_state_checks))
 
@@ -286,7 +295,7 @@ for u in sorted(candidate_users):
     emode_data=None
     if em:
         raw=call(POOL,SEL_EMODE_DATA,format(em,"064x"),SNAP)
-        emode_data={"category_id":em,"ltv_bps":word(raw,0),"lt_bps":word(raw,1),"bonus_bps":word(raw,2),"price_source":"0x"+format(word(raw,3),"040x"),"abi_sha256":sha(raw.encode())}
+        emode_data={"category_id":em,**decode_emode(raw),"abi_sha256":sha(raw.encode())}
     row={
       "user":u,"account_data_raw":[str(x) for x in av],"user_configuration_raw":str(cfg),"emode_category":em,
       "affected_exposure":affected,"isolation_mode_active":bool(isolation_collateral),"isolation_collateral_assets":isolation_collateral,
