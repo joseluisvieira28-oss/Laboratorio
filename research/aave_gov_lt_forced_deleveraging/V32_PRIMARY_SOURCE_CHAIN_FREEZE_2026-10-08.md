@@ -5,7 +5,7 @@ Status: SOURCE ONLY / PRE-OUTCOME / HYPOTHESIS NOT TESTED / 2026 CLOSED
 
 ## Purpose
 
-Freeze the primary historical-state witness chain for every candidate before any cross-chain
+Freeze the primary historical-state witness chain for every candidate in the frozen source universe before any cross-chain
 source choice can be influenced by borrower/economic results. This does not change the V01
 mechanism, V26 minimum set, V31 extension, or the >=12 fully source-gated shock requirement.
 
@@ -31,6 +31,7 @@ a borrower-state witness because V25 did not accept its public historical state.
 | V2 AIP-233 | Optimism | coordinated V2 shock; Optimism execution candidate already identified; V25 archive-capable |
 | V2 AIP-288 | Polygon | exact CRV Polygon action-set evidence frozen in V26; V25 archive-capable |
 | V3 Proposal 256 | Optimism | V31 pre-borrower extension; only qualifying 2025 Optimism effect; V25 archive-capable |
+| V3 Proposal 388 | Polygon | pre-borrower Polygon 2025 extension; pinned payload 132 and exact DPI LT decrease; V25 archive-capable |
 
 A multi-chain proposal remains one economic shock. Alternate chain members may be used only as
 source corroboration or documented technical fallback if the primary public source becomes
