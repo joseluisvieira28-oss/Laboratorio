@@ -16,6 +16,9 @@ MAX_RETRIES = 4
 def utc_now():
     return dt.datetime.now(dt.timezone.utc).isoformat().replace("+00:00", "Z")
 
+def parse_utc(s):
+    return dt.datetime.fromisoformat(s.replace("Z", "+00:00"))
+
 def fetch_one(h):
     url = f"{BASE}/block?height={h}"
     attempts = []
@@ -132,7 +135,7 @@ def main():
         row = got[h]
         if previous_hash is not None and row["last_hash"] != previous_hash:
             raise RuntimeError(f"silent predecessor gap H={h}: last={row['last_hash']} want={previous_hash}")
-        if previous_time is not None and row["block_time"] < previous_time:
+        if previous_time is not None and parse_utc(row["block_time"]) < parse_utc(previous_time):
             raise RuntimeError(f"non-monotonic block time H={h}")
 
         p = root / f"block_{h}.json"
