@@ -122,6 +122,48 @@ jobs:
               512
           ) | tee /tmp/native_prefix_v1.json
 
+      - name: Acquire bounded persistent-resume pilot H1-H2049
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 "$V08/fetch_range_coreum.py" --out /tmp/coreum_resume_range --start 1 --end 2048 --workers 16 | tee /tmp/resume_range_summary.json
+
+      - name: Execute persistent Coreum v1 chunk H1-H1024
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/coreum-v1/replayprobe /tmp/coreum_resume_db /tmp/coreum_resume_home
+          mkdir -p /tmp/coreum-v1/replayprobe
+          cp "$V08/native_chunk_v1.go" /tmp/coreum-v1/replayprobe/main.go
+          (
+            cd /tmp/coreum-v1
+            go run ./replayprobe \
+              "$GITHUB_WORKSPACE/$V07/receipts/source_392071c0048a.raw" \
+              /tmp/coreum_resume_range \
+              /tmp/coreum_resume_db \
+              /tmp/coreum_resume_home \
+              1 \
+              1024
+          ) | tee /tmp/native_chunk1_v1.json
+
+      - name: Resume persistent Coreum v1 chunk H1025-H2048
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/coreum-v1/replayprobe
+          mkdir -p /tmp/coreum-v1/replayprobe
+          cp "$V08/native_chunk_v1.go" /tmp/coreum-v1/replayprobe/main.go
+          (
+            cd /tmp/coreum-v1
+            go run ./replayprobe \
+              "$GITHUB_WORKSPACE/$V07/receipts/source_392071c0048a.raw" \
+              /tmp/coreum_resume_range \
+              /tmp/coreum_resume_db \
+              /tmp/coreum_resume_home \
+              1025 \
+              2048
+          ) | tee /tmp/native_chunk2_v1.json
+
       - name: Set Go 1.18 for Coreum v2
         uses: actions/setup-go@v5
         with:
@@ -175,6 +217,9 @@ jobs:
             "/tmp/execute_block1_v1.json",
             "/tmp/coreum_prefix/manifest.json",
             "/tmp/native_prefix_v1.json",
+            "/tmp/resume_range_summary.json",
+            "/tmp/native_chunk1_v1.json",
+            "/tmp/native_chunk2_v1.json",
             "/tmp/probe_v2_h10m.json",
             "/tmp/probe_v3_h15m.json",
           ]
@@ -212,6 +257,9 @@ jobs:
             ("/tmp/execute_block1_v1.json","execute_block1_v1"),
             ("/tmp/prefix_summary.json","prefix_summary"),
             ("/tmp/native_prefix_v1.json","native_prefix_v1"),
+            ("/tmp/resume_range_summary.json","resume_range_summary"),
+            ("/tmp/native_chunk1_v1.json","native_chunk1_v1"),
+            ("/tmp/native_chunk2_v1.json","native_chunk2_v1"),
             ("/tmp/probe_v2_h10m.json","probe_v2_h10m"),
             ("/tmp/probe_v3_h15m.json","probe_v3_h15m"),
           ]
@@ -238,6 +286,12 @@ jobs:
           out["replay_prefix_pass"]=bool(
               out["artifacts"].get("native_prefix_v1",{}).get("present") and
               out["artifacts"].get("native_prefix_v1",{}).get("json",{}).get("all_app_hash_offsets_pass") is True
+          )
+          out["persistent_resume_pass"]=bool(
+              out["artifacts"].get("native_chunk1_v1",{}).get("json",{}).get("all_app_hash_offsets_pass") is True and
+              out["artifacts"].get("native_chunk2_v1",{}).get("json",{}).get("all_app_hash_offsets_pass") is True and
+              out["artifacts"].get("native_chunk2_v1",{}).get("json",{}).get("start_height") == 1025 and
+              out["artifacts"].get("native_chunk2_v1",{}).get("json",{}).get("end_height") == 2048
           )
           out["sparse_v1_v2_v3_typed_probes_present"]=all(
               out["artifacts"].get(k,{}).get("present") for k in ("probe_v1_h5m","probe_v2_h10m","probe_v3_h15m")
