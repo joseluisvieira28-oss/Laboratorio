@@ -1,0 +1,114 @@
+{
+  "anti_selection": {
+    "2026_rescue": false,
+    "asset_selection_after_outcomes": false,
+    "cost_reduction_after_outcomes": false,
+    "parameter_tuning_after_outcomes": false,
+    "partial_period_rescue": false,
+    "timeframe_substitution_after_outcomes": false
+  },
+  "costs": {
+    "BASE_round_trip_pct": 0.2,
+    "STRESS_round_trip_pct": 0.3,
+    "unchanged_from_parent": true
+  },
+  "decision_rule": {
+    "base_net_expectancy_r_must_be_gt": 0.0,
+    "base_profit_factor_must_be_gt": 1.0,
+    "bootstrap_95_lower_bound": "REPORT_DIAGNOSTIC_NOT_HARD_GATE",
+    "classification_if_all_hard_gates_pass": "OOS_CONFIRMATION_SURVIVES_SHADOW_ELIGIBLE",
+    "classification_if_economics_fail_with_adequate_sample": "OOS_CONFIRMATION_FAIL",
+    "classification_if_sample_below_minimum": "INSUFFICIENT_OOS_SAMPLE",
+    "classification_if_source_or_technical_gate_fails": "BLOCKED_NON_SCIENTIFIC",
+    "execution_path_unresolved_count_must_equal": 0,
+    "leave_one_asset_out": "REPORT_FRAGILITY_NOT_HARD_GATE",
+    "max_single_symbol_positive_net_r_share_lte": 0.7,
+    "minimum_resolved_oos_trades": 30,
+    "source_rule_deviation_count_must_equal": 0,
+    "stress_net_expectancy_r_must_be_gt": 0.0,
+    "stress_profit_factor_must_be_gt": 1.0,
+    "win_rate": "REPORT_DIAGNOSTIC_NOT_HARD_GATE"
+  },
+  "document_type": "PRE_OUTCOME_OOS_CONFIRMATION_FREEZE",
+  "experiment_id": "TFG-DONCHIAN-1D-001-OOS2025-V0.1",
+  "fingerprint": "006707c233257c4066cce9a84a51d255b3f4ef800f7b7cf9929a7acb2f085c56",
+  "freeze_date_utc": "2026-09-16",
+  "frozen_rule": {
+    "atr_length": 14,
+    "concurrency": "one active trade per symbol",
+    "donchian_lookback_complete_days": 20,
+    "entry": "next complete daily open",
+    "max_holding_bars": 40,
+    "overlap_policy": "skip same-symbol entry while prior position active",
+    "same_bar_stop_target_policy": "STOP_FIRST_CONSERVATIVE",
+    "signal": "signal_close > max(high of previous 20 complete daily bars)",
+    "stop": "signal_low - 0.25 * ATR14_signal",
+    "target": "entry + 3.0 * (entry - stop)",
+    "target_r": 3.0,
+    "time_exit": "next daily open after 40 held bars"
+  },
+  "governance": {
+    "2025_oos_access_authorized_by_user": true,
+    "2026_historical_outcome_access": false,
+    "authenticated_exchange_api": false,
+    "exchange_mutation": false,
+    "live_trading": false,
+    "merge_to_main": false,
+    "orders": false,
+    "post_outcome_tuning": false,
+    "render_deployment": false,
+    "research_only": true
+  },
+  "lineage": {
+    "historical_parent_verdict_immutable": true,
+    "no_parent_rescue_or_relabel": true,
+    "parent_closeout_commit": "62422965b23e91671f6720b818bb26686b9d5bd2",
+    "parent_discovery_classification": "INSUFFICIENT_SAMPLE",
+    "parent_failure_reason": "98_RESOLVED_BELOW_FROZEN_MINIMUM_100"
+  },
+  "market": {
+    "direction": "LONG_ONLY",
+    "signal_timeframe": "1D_UTC",
+    "source_timeframe": "15m_CANONICAL_OR_PROSPECTIVELY_EQUIVALENCE_VERIFIED_OFFICIAL_MEXC_SPOT",
+    "universe": [
+      "BTCUSDT",
+      "ETHUSDT",
+      "SOLUSDT",
+      "BNBUSDT",
+      "XRPUSDT",
+      "DOGEUSDT"
+    ],
+    "venue": "MEXC_SPOT"
+  },
+  "oos_window": {
+    "2026_market_outcomes_access": false,
+    "protected_data_end_utc_exclusive": "2026-01-01T00:00:00.000Z",
+    "right_edge_rule": "Only signals whose entry plus the full frozen 40-day maximum-hold path is observable before 2026-01-01 are OOS-eligible; later signals are RIGHT_CENSORED and excluded from economics.",
+    "signal_entry_start_utc_inclusive": "2025-01-01T00:00:00.000Z",
+    "warmup_before_2025_allowed": true,
+    "warmup_is_not_oos_outcome": true,
+    "warmup_min_start_utc": "2024-12-01T00:00:00.000Z"
+  },
+  "parent_experiment_id": "TFG-DONCHIAN-1D-001",
+  "post_oos_route": {
+    "if_fails": "Close tested implementation. No shadow promotion and no rescue.",
+    "if_survives": "Create a separate prospective PAPER/SHADOW freeze. Forward observations only after that freeze; no retroactive 2026 scoring.",
+    "live_trading_authorized": false
+  },
+  "source_equivalence_gate": {
+    "allowed_fallback_delivery": "PUBLIC_OFFICIAL_MEXC_SPOT_API_READ_ONLY",
+    "api_interval": "1d_or_15m",
+    "cross_exchange_backfill_allowed": false,
+    "fallback_endpoint": "GET /api/v3/klines",
+    "if_equivalence_fails": "BLOCK_BEFORE_2025_OUTCOME_EVALUATION",
+    "interpolation_allowed": false,
+    "overlap_reference": "parent canonical MEXC Spot artifact 10419067320",
+    "overlap_reference_period": "2024-12",
+    "pre_2025_overlap_check_required": true,
+    "preferred_source": "OFFICIAL_MEXC_SPOT_HISTORICAL",
+    "required_ohlc_equivalence": "EXACT_NUMERIC_AFTER_CANONICAL_NORMALIZATION",
+    "synthetic_history_allowed": false
+  },
+  "status": "FROZEN_BEFORE_2025_OUTCOME_ACCESS",
+  "version": "0.1"
+}
