@@ -14,7 +14,7 @@ SHARD=int(os.environ["SHARD"]); TOTAL=int(os.environ.get("TOTAL_SHARDS","16"))
 DEPLOY_BLOCK=2357134
 END_TS=1767225599
 CONFIG="0x5731a04b1e775f0fdd454bf70f3335886e9a96be"
-URLS=["https://base-rpc.publicnode.com","https://mainnet.base.org","https://base.drpc.org","https://1rpc.io/base"]
+URLS=["https://mainnet.base.org"]
 OUT=Path(f"out/aave_base_correct_v23_shard_{SHARD}");OUT.mkdir(parents=True,exist_ok=True)
 last_request=0.0; endpoint_i=0
 
@@ -95,7 +95,9 @@ save()
 try:
  while cursor<=SHARD_LAST:
   if time.monotonic()-started>18000:raise RuntimeError("5_HOUR_BUDGET_CHECKPOINT_SAVED")
-  target=min(cursor+99999,SHARD_LAST)
+  # Empirically validated public Base RPC historical log window from prior
+  # acquisition: ~300 blocks. Use it directly instead of retry/bisect churn.
+  target=min(cursor+299,SHARD_LAST)
   parts=scan(cursor,target)
   for a,b,logs,hashes,url in parts:
    assert a==cursor;coverage.append({"from":a,"to":b,"response_sha256s":hashes,"source_url":url});rows.extend(logs);cursor=b+1
