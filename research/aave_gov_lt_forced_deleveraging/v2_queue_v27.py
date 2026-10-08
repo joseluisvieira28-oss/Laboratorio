@@ -11,6 +11,7 @@ last=0.;idx=0
 def sig(s):
  k=keccak.new(digest_bits=256);k.update(s.encode());return "0x"+k.hexdigest()
 TOP=sig("ProposalQueued(uint256,uint256,address)")
+TOP_EXEC=sig("ProposalExecuted(uint256,address)")
 def sha(b):return hashlib.sha256(b).hexdigest()
 def post(body):
  global last,idx
@@ -67,7 +68,16 @@ for pid,approx in TARGETS.items():
    if proposal_id==pid:
     et=int(data[66:130],16);bh=rpc("eth_getBlockByNumber",[hex(bn),False])
     found.append({"proposal_id":pid,"queue_block":bn,"queue_timestamp":int(bh["timestamp"],16),"execution_time":et,"derived_queue_timestamp":queue_ts,"executor":executor,"executor_delay":delay,"queue_tx":l["transactionHash"],"log_index":int(l["logIndex"],16),"log":l})
- row={"proposal_id":pid,"status":"PASS" if len(found)==1 and found[0]["queue_timestamp"]==queue_ts and found[0]["execution_time"]==execution_time else "SOURCE_BLOCKED","matches":found}
- rows.append(row);print(json.dumps({k:v for k,v in row.items() if k!="matches"}),flush=True)
+ executed=[]
+ exec_center=block_at(execution_time)
+ for bn in range(max(0,exec_center-3),exec_center+1500):
+  logs=rpc("eth_getLogs",[{"address":GOV,"fromBlock":hex(bn),"toBlock":hex(bn),"topics":[TOP_EXEC]}])
+  for l in logs:
+   if int(l["data"][2:66],16)==pid:
+    bh=rpc("eth_getBlockByNumber",[hex(bn),False])
+    executed.append({"proposal_id":pid,"execution_block":bn,"execution_timestamp":int(bh["timestamp"],16),"execution_tx":l["transactionHash"],"log_index":int(l["logIndex"],16),"log":l})
+  if executed: break
+ row={"proposal_id":pid,"status":"PASS" if len(found)==1 and found[0]["queue_timestamp"]==queue_ts and found[0]["execution_time"]==execution_time and len(executed)==1 else "SOURCE_BLOCKED","matches":found,"executions":executed}
+ rows.append(row);print(json.dumps({k:v for k,v in row.items() if k not in {"matches","executions"}}),flush=True)
 receipt={"phase":"V2_PROPOSAL_QUEUE_SOURCE_ONLY","rows":rows,"all_unique":all(r["status"]=="PASS" for r in rows),"source_gate_pass":False,"hypothesis_status":"NOT_TESTED","economic_outcomes_opened":0,"development_runs":0}
 (OUT/"RECEIPT.json").write_text(json.dumps(receipt,indent=2)+"\n")
