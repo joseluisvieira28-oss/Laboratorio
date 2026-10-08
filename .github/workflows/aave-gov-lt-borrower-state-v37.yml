@@ -1,0 +1,47 @@
+name: Aave Gov LT Borrower State V37
+on:
+  push:
+    branches: [aave-gov-lt-forced-deleveraging-v0.1]
+    paths:
+      - '.github/workflows/aave-gov-lt-borrower-state-v37.yml'
+      - 'research/aave_gov_lt_forced_deleveraging/borrower_state_v37.py'
+      - 'research/aave_gov_lt_forced_deleveraging/V36_SOURCE_CANDIDATE_MANIFEST_2026-10-08.json'
+permissions:
+  contents: read
+jobs:
+  source:
+    strategy:
+      fail-fast: false
+      max-parallel: 6
+      matrix:
+        shock_id:
+          - V3-2
+          - V3-13
+          - V3-19
+          - V3-55
+          - V3-71
+          - V3-87
+          - V3-100
+          - V3-114
+          - V3-173
+          - V3-256
+          - V3-260
+          - V2-233
+          - V2-288
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    env:
+      SHOCK_ID: ${{ matrix.shock_id }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install pycryptodome==3.23.0
+      - run: python research/aave_gov_lt_forced_deleveraging/borrower_state_v37.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: aave-gov-lt-borrower-state-v37-${{ matrix.shock_id }}
+          path: out/aave_borrower_state_v37_*
+          retention-days: 30
