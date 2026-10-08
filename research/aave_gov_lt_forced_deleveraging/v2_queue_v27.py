@@ -43,23 +43,31 @@ def block_at(ts):
   else:hi=m
  return lo
 rows=[]
+SEL_GET=sig("getProposalById(uint256)")[:10]
+SEL_DELAY=sig("getDelay()")[:10]
+def word(data,i):return int(data[2+i*64:2+(i+1)*64],16)
 for pid,approx in TARGETS.items():
- center=block_at(approx);found=[]
- # Scan +/- ~2 days in 100-block chunks; never accept provider error as absence.
- a=max(0,center-15000);z=center+15000
- while a<=z:
-  b=min(a+99,z)
-  q={"address":GOV,"fromBlock":hex(a),"toBlock":hex(b),"topics":[TOP]}
-  try:logs=rpc("eth_getLogs",[q])
-  except Exception:a=b+1;continue
+ found=[]
+ # Read immutable completed proposal metadata. ABI return is a dynamic tuple:
+ # top-level word0 points to ProposalWithoutVotes; executionTime is tuple word10.
+ pdata=rpc("eth_call",[{"to":GOV,"data":SEL_GET+format(pid,"064x")},"latest"])
+ start=word(pdata,0)//32
+ if start>32: raise RuntimeError("UNEXPECTED_PROPOSAL_TUPLE_OFFSET")
+ executor="0x"+format(word(pdata,start+2),"040x")
+ execution_time=word(pdata,start+10)
+ delay_data=rpc("eth_call",[{"to":executor,"data":SEL_DELAY},"latest"])
+ delay=word(delay_data,0)
+ queue_ts=execution_time-delay
+ center=block_at(queue_ts)
+ for bn in range(max(0,center-3),center+4):
+  q={"address":GOV,"fromBlock":hex(bn),"toBlock":hex(bn),"topics":[TOP]}
+  logs=rpc("eth_getLogs",[q])
   for l in logs:
    data=l["data"];proposal_id=int(data[2:66],16)
    if proposal_id==pid:
-    execution_time=int(data[66:130],16)
-    bn=int(l["blockNumber"],16);bh=rpc("eth_getBlockByNumber",[hex(bn),False])
-    found.append({"proposal_id":pid,"queue_block":bn,"queue_timestamp":int(bh["timestamp"],16),"execution_time":execution_time,"queue_tx":l["transactionHash"],"log_index":int(l["logIndex"],16),"log":l})
-  a=b+1
- row={"proposal_id":pid,"status":"PASS" if len(found)==1 else "SOURCE_BLOCKED","matches":found}
+    et=int(data[66:130],16);bh=rpc("eth_getBlockByNumber",[hex(bn),False])
+    found.append({"proposal_id":pid,"queue_block":bn,"queue_timestamp":int(bh["timestamp"],16),"execution_time":et,"derived_queue_timestamp":queue_ts,"executor":executor,"executor_delay":delay,"queue_tx":l["transactionHash"],"log_index":int(l["logIndex"],16),"log":l})
+ row={"proposal_id":pid,"status":"PASS" if len(found)==1 and found[0]["queue_timestamp"]==queue_ts and found[0]["execution_time"]==execution_time else "SOURCE_BLOCKED","matches":found}
  rows.append(row);print(json.dumps({k:v for k,v in row.items() if k!="matches"}),flush=True)
 receipt={"phase":"V2_PROPOSAL_QUEUE_SOURCE_ONLY","rows":rows,"all_unique":all(r["status"]=="PASS" for r in rows),"source_gate_pass":False,"hypothesis_status":"NOT_TESTED","economic_outcomes_opened":0,"development_runs":0}
 (OUT/"RECEIPT.json").write_text(json.dumps(receipt,indent=2)+"\n")
