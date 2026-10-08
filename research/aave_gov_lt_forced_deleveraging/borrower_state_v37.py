@@ -12,7 +12,7 @@ from pathlib import Path
 from Crypto.Hash import keccak
 
 ROOT=Path(__file__).resolve().parent
-MANIFEST=json.loads((ROOT/"V36_SOURCE_CANDIDATE_MANIFEST_2026-10-08.json").read_text())
+MANIFEST=json.loads((ROOT/"V39_SOURCE_CANDIDATE_MANIFEST_2026-10-08.json").read_text())
 SHOCK_ID=os.environ["SHOCK_ID"]
 SHOCK=next((x for x in MANIFEST["candidates"] if x["id"]==SHOCK_ID),None)
 if not SHOCK:
@@ -21,7 +21,7 @@ if not SHOCK.get("signal_ts"):
     raise SystemExit(f"NO_FROZEN_SIGNAL_TS:{SHOCK_ID}")
 CHAIN=SHOCK["primary_chain"]
 
-POOL="0x794a61358d6845594f94dc1db02a252b5b4814ad"
+DEFAULT_POOL="0x794a61358d6845594f94dc1db02a252b5b4814ad"
 CHAINS={
  "optimism":{
    "urls":["https://mainnet.optimism.io","https://optimism-rpc.publicnode.com","https://optimism.drpc.org","https://1rpc.io/op"],
@@ -38,10 +38,16 @@ CHAINS={
    "oracle":"0xb023e699f5a33916ea823a16485e259257ca8bd1",
    "chunk":500000,
  },
+ "base":{
+   "urls":["https://base-rpc.publicnode.com","https://mainnet.base.org","https://base.drpc.org"],
+   "pool":"0xA238Dd80C259a72e81d7e4664a9801593F98d1c5",
+   "oracle":"0x2Cc0Fc26eD4563A5ce5e8bdcfe1A2878676Ae156",
+   "chunk":500000,
+ },
 }
 if CHAIN not in CHAINS:
     raise SystemExit(f"UNSUPPORTED_PRIMARY_CHAIN:{CHAIN}")
-CFG=CHAINS[CHAIN]; URLS=CFG["urls"]; ORACLE=CFG["oracle"]
+CFG=CHAINS[CHAIN]; URLS=CFG["urls"]; ORACLE=CFG["oracle"]; POOL=CFG.get("pool",DEFAULT_POOL)
 OUT=Path(f"out/aave_borrower_state_v37_{SHOCK_ID.lower().replace('-','_')}");OUT.mkdir(parents=True,exist_ok=True)
 WINDOW_START_TS=1640995200
 SIGNAL_TS=int(SHOCK["signal_ts"])
@@ -63,6 +69,10 @@ SEL_EMODE=sig("getUserEMode(address)")[:10]
 SEL_BAL=sig("balanceOf(address)")[:10]
 SEL_PRICE=sig("getAssetPrice(address)")[:10]
 SEL_EMODE_DATA=sig("getEModeCategoryData(uint8)")[:10]
+SEL_EMODE_COLL_BITMAP=sig("getEModeCategoryCollateralBitmap(uint8)")[:10]
+SEL_EMODE_BORROW_BITMAP=sig("getEModeCategoryBorrowableBitmap(uint8)")[:10]
+SEL_EMODE_LTVZERO_BITMAP=sig("getEModeCategoryLtvzeroBitmap(uint8)")[:10]
+SEL_EMODE_ISOLATED=sig("getIsEModeCategoryIsolated(uint8)")[:10]
 BORROW_MASK=int("55"*32,16)
 
 def post(body):
@@ -110,6 +120,16 @@ def decode_emode(data):
     return {"ltv_bps":word(data,base),"lt_bps":word(data,base+1),
             "bonus_bps":word(data,base+2),
             "price_source":"0x"+format(word(data,base+3),"040x")}
+def call_capability(to,selector,arg,block):
+    # Capability probe across every frozen public endpoint. A valid result from
+    # any endpoint is accepted; total absence means the historical Pool version
+    # does not expose that getter (or source capability is unavailable).
+    body={"jsonrpc":"2.0","id":1,"method":"eth_call","params":[{"to":to,"data":selector+arg},hex(block)]}
+    for _ in range(len(URLS)*2):
+        d,status,h,url=post(body)
+        if status==200 and isinstance(d,dict) and isinstance(d.get("result"),str) and d["result"]!="0x":
+            return d["result"]
+    return None
 def block_before(ts):
     latest=int(rpc("eth_blockNumber",[])[0],16); lo,hi=0,latest
     while lo<hi:
@@ -184,7 +204,9 @@ def reserve(asset):
           "paused":(cfg>>60)&1,"borrowable_in_isolation":(cfg>>61)&1,"siloed_borrowing":(cfg>>62)&1,
           "flashloan_enabled":(cfg>>63)&1,"emode_category":(cfg>>168)&0xff,
           "debt_ceiling_raw":str((cfg>>212)&((1<<40)-1)),
-          "liquidity_index":str(word(d,1)),"variable_borrow_index":str(word(d,3)),
+          "liquidity_index":str(word(d,1)),"current_liquidity_rate":str(word(d,2)),
+          "variable_borrow_index":str(word(d,3)),"current_variable_borrow_rate":str(word(d,4)),
+          "current_stable_borrow_rate":str(word(d,5)),
           "last_update_timestamp":word(d,6),"reserve_id":word(d,7),
           "aToken":"0x"+format(word(d,8),"040x"),"stableDebt":"0x"+format(word(d,9),"040x"),
           "variableDebt":"0x"+format(word(d,10),"040x"),
@@ -221,13 +243,33 @@ if EMODE_CHANGES:
     for l in em_logs:
         user="0x"+l["topics"][1][-40:].lower(); emode_active[user]=word(l["data"],0)
 
-cat_reserves={}
+cat_reserves={}; emode_membership_proof={}
 for ch in EMODE_CHANGES:
-    cat=int(ch["category_id"]); arr=[]
-    for asset in RESERVES:
-        r=reserve(asset)
-        if r["emode_category"]==cat and r["lt_bps"]>0:
-            arr.append(r)
+    cat=int(ch["category_id"]); arr=[]; arg=format(cat,"064x")
+    bitmap_raw=call_capability(POOL,SEL_EMODE_COLL_BITMAP,arg,SNAP)
+    if bitmap_raw is not None:
+        bitmap=word(bitmap_raw,0)
+        for asset in RESERVES:
+            r=reserve(asset)
+            if bitmap & (1<<r["reserve_id"]):
+                arr.append(r)
+        borrow_raw=call_capability(POOL,SEL_EMODE_BORROW_BITMAP,arg,SNAP)
+        ltvzero_raw=call_capability(POOL,SEL_EMODE_LTVZERO_BITMAP,arg,SNAP)
+        isolated_raw=call_capability(POOL,SEL_EMODE_ISOLATED,arg,SNAP)
+        emode_membership_proof[cat]={
+          "mode":"BITMAP_GETTER","collateral_bitmap":str(bitmap),
+          "borrowable_bitmap":str(word(borrow_raw,0)) if borrow_raw else None,
+          "ltvzero_bitmap":str(word(ltvzero_raw,0)) if ltvzero_raw else None,
+          "isolated":bool(word(isolated_raw,0)) if isolated_raw else None,
+        }
+    else:
+        for asset in RESERVES:
+            r=reserve(asset)
+            if r["emode_category"]==cat and r["lt_bps"]>0:
+                arr.append(r)
+        if not arr:
+            raise RuntimeError("EMODE_MEMBERSHIP_UNRESOLVED_"+str(cat))
+        emode_membership_proof[cat]={"mode":"LEGACY_RESERVE_CONFIGURATION_CATEGORY"}
     cat_reserves[cat]=arr
 
 candidate_users=set()
@@ -317,7 +359,8 @@ receipt={
  "emode_event_coverage_complete":em_complete,"emode_transition_logs":len(em_logs),"emode_intervals":len(em_cov),
  "candidate_users":len(candidate_users),"qualified_borrower_count":len(qualified),
  "borrower_state_source_pass":bool(base_complete and em_complete and all(x["pass"] for x in old_state_checks)),
- "oracle":ORACLE,"reserve_count":len(RESERVES),"source_gate_pass":False,"hypothesis_status":"NOT_TESTED",
+ "oracle":ORACLE,"pool":POOL,"reserve_count":len(RESERVES),"emode_membership_proof":emode_membership_proof,
+ "source_gate_pass":False,"hypothesis_status":"NOT_TESTED",
  "economic_outcomes_opened":0,"development_runs":0,"outcomes_2026_opened":False,
 }
 (OUT/"RECEIPT.json").write_text(json.dumps(receipt,indent=2)+"\n")
