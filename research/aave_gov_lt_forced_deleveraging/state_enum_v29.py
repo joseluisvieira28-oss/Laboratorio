@@ -11,7 +11,7 @@ from Crypto.Hash import keccak
 OUT=Path("out/aave_state_enum_v29");OUT.mkdir(parents=True,exist_ok=True)
 URL="https://mainnet.optimism.io"
 POOL="0x794a61358d6845594f94dc1db02a252b5b4814ad"
-ASSET="0x8c6f28f2f1a3c87f0f938b96d27520d9751ec8d"
+ASSET="0x8c6f28f2f1a3c87f0f938b96d27520d9751ec8d9"
 SIGNAL_TS=1717599515
 last=0.0
 def sig(s):

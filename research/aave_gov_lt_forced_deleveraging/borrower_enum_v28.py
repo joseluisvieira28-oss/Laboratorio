@@ -12,7 +12,7 @@ from Crypto.Hash import keccak
 OUT=Path("out/aave_borrower_enum_v28");OUT.mkdir(parents=True,exist_ok=True)
 URL="https://mainnet.optimism.io"
 POOL="0x794a61358d6845594f94dc1db02a252b5b4814ad"
-ASSET="0x8c6f28f2f1a3c87f0f938b96d27520d9751ec8d" # sUSD
+ASSET="0x8c6f28f2f1a3c87f0f938b96d27520d9751ec8d9" # sUSD
 SIGNAL_TS=1717599515 # Proposal 114 core queuedAt
 last_request=0.0
 def sig(s):
