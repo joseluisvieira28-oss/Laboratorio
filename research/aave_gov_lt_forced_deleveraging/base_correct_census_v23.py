@@ -45,8 +45,10 @@ def rpc(method,params):
  for attempt in range(20):
   d,h,status,headers,url=post({"jsonrpc":"2.0","id":1,"method":method,"params":params});last=(d,status,url)
   if status==200 and isinstance(d,dict) and d.get("result") is not None:return d["result"],h,url
-  err=d.get("error",{}) if isinstance(d,dict) else {}
-  if status not in {0,400,403,429,500,502,503,504,529} and err.get("code") not in {None,429,-32005,-32603,-32000}:raise RuntimeError("NON_RETRYABLE_"+json.dumps(last))
+  # Public RPCs have heterogeneous archive windows. Any JSON-RPC error or null
+  # result from one endpoint is provider-local evidence, not chain absence.
+  # Preserve it in requests.jsonl, rotate endpoint, and fail only after all
+  # bounded attempts are exhausted.
   time.sleep(min(10,.5*(attempt+1)))
  raise RuntimeError("RPC_EXHAUSTED_"+method+"_"+json.dumps(last))
 
@@ -77,10 +79,10 @@ def get_logs(a,b):
    logs=d["result"]
    for x in logs:assert a<=int(x["blockNumber"],16)<=b and x["address"].lower()==CONFIG and x["topics"][0] in TOPICS and not x.get("removed",False)
    return logs,[h],url
-  err=d.get("error",{}) if isinstance(d,dict) else {}
-  if b>a and (status in {0,400,403,413,429,500,502,503,504,529} or err):return None,[h],url
-  if status in {0,400,403,413,429,500,502,503,504,529}:time.sleep(min(10,.5*(attempt+1)));continue
-  raise RuntimeError("NON_RETRYABLE_LOG_"+json.dumps(last))
+  # Rotate across public endpoints first. A "pruned history" or provider
+  # range-limit error is not accepted as absence and must not poison the shard.
+  time.sleep(min(10,.5*(attempt+1)))
+ if b>a:return None,[last[3]],last[2]
  raise RuntimeError("LOG_EXHAUSTED_"+json.dumps(last))
 def scan(a,b):
  logs,hashes,url=get_logs(a,b)
