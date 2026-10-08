@@ -1,0 +1,26 @@
+name: Aave Gov LT V3 Core Queue V35
+on:
+  push:
+    branches: [aave-gov-lt-forced-deleveraging-v0.1]
+    paths:
+      - '.github/workflows/aave-gov-lt-v3-core-queue-v35.yml'
+      - 'research/aave_gov_lt_forced_deleveraging/v3_core_queue_v35.py'
+permissions:
+  contents: read
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install pycryptodome==3.23.0
+      - run: python research/aave_gov_lt_forced_deleveraging/v3_core_queue_v35.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: aave-gov-lt-v3-core-queue-v35
+          path: out/aave_v3_core_queue_v35
+          retention-days: 30
