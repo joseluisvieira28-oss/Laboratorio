@@ -1,0 +1,93 @@
+{
+  "mission": "AAVE-GOV-LT-FORCED-DELEVERAGING-001",
+  "audit_version": "V46",
+  "date_utc": "2026-10-08",
+  "boundary": "SOURCE_ONLY",
+  "status": "SOURCE_GATE_PENDING_PARTIAL_BORROWER_STATE_PROOFS",
+  "decoder_repair": {
+    "commit": "0b5c6f1de57b27f1a7ff131c220f8e3edc70756a",
+    "change": "Correct ABI decoding of dynamic eMode tuple returned by getEModeCategoryData(uint8).",
+    "effect": "Prior V45 mismatches for V3-256 and V2-233 were decoder artifacts and are resolved by independent successful jobs. V3-114 and V3-260 still lack completed post-repair terminal receipts."
+  },
+  "fully_completed_unique_proposal_proofs": [
+    {
+      "proposal": "V3-2",
+      "qualified_borrowers": 552,
+      "reserves": 12
+    },
+    {
+      "proposal": "V3-13",
+      "qualified_borrowers": 265,
+      "reserves": 12,
+      "artifact_id": 11553406868,
+      "sha256": "37c26c2df8add9715798b26e638fab7da9a786167db4b5ca9e680e27d7db57be"
+    },
+    {
+      "proposal": "V3-19",
+      "qualified_borrowers": 2,
+      "reserves": 14
+    },
+    {
+      "proposal": "V3-55",
+      "qualified_borrowers": 271,
+      "reserves": 12,
+      "artifact_id": 11554370255,
+      "sha256": "8b71c29401070fb808a9de2d6e675910fe16ffd553d807fa54dc9449a639a7f4"
+    },
+    {
+      "proposal": "V3-256",
+      "qualified_borrowers": 460,
+      "reserves": 14,
+      "artifact_id": 11569440587,
+      "sha256": "734dda917eae7f4c06cfbdb56efb27c089078cd84391d9957181c036222c0bdf"
+    },
+    {
+      "proposal": "V2-233",
+      "qualified_borrowers": 478,
+      "reserves": 12,
+      "artifact_id": 11569870761,
+      "sha256": "24d8fbe6c9f1c4103ba561f822079fec4aa76443f893878a7d03411b73a7df69"
+    }
+  ],
+  "proof_count_unique_proposals": 6,
+  "unresolved_source_integrity": [
+    {
+      "proposal": "V3-264",
+      "issue": "At signal-minus-one, decoded eMode category 4 LT is 0, not frozen expected 9450. Candidate chronology/creation boundary is not proven.",
+      "artifact_id": 11563273841,
+      "sha256": "6f76db582ab37576783e20c4b539b323a35fbe26ad8468ce9e4b36387749edc7"
+    },
+    {
+      "proposals": [
+        "V3-114",
+        "V3-260"
+      ],
+      "issue": "Post-decoder-repair runs were cancelled before terminal receipts; large partial artifacts preserved but do not prove complete enumeration."
+    }
+  ],
+  "interrupted_runs": [
+    {
+      "run_id": 37792596306,
+      "workflow": "State Enum V29",
+      "conclusion": "cancelled",
+      "artifact_id": 11580735147,
+      "sha256": "6ebda9675b9ba994d33f9f8c3fd9fbce426844c848cbd8c34779fadfcb3d6ac6"
+    },
+    {
+      "run_id": 37747052401,
+      "workflow": "Borrower State V37",
+      "conclusion": "failure"
+    },
+    {
+      "run_id": 37746325140,
+      "workflow": "Borrower State V37",
+      "conclusion": "cancelled"
+    }
+  ],
+  "source_gate_pass": false,
+  "fully_defensible_independent_shock_count": null,
+  "development_runs": 0,
+  "outcomes_opened": false,
+  "terminal_verdict": null,
+  "next_step": "Audit partial artifacts without duplicating acquisition; reconstruct V3-264 category-4 creation and governance chronology; obtain terminal post-repair proofs for remaining candidates. Keep outcomes sealed."
+}
