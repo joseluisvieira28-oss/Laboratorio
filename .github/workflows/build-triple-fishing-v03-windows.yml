@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - triple-fishing-operator-v0.3-2026-09-30
+      - fix/triple-v03-launcher-observability-2026-10-08
     paths:
       - 'crypto_edge_radar/radar/operator_risk_v02.py'
       - 'crypto_edge_radar/radar/global_slot_reservation_v03.py'
@@ -38,6 +39,9 @@ on:
       - 'crypto_edge_radar/tests/test_dh03_operator_source_v03.py'
       - 'crypto_edge_radar/tests/test_mexc_triple_fishing_operator_v03.py'
       - 'crypto_edge_radar/tests/test_mexc_triple_fishing_ready_v03.py'
+      - 'crypto_edge_radar/tests/test_triple_launcher_v03_offline.ps1'
+      - 'crypto_edge_radar/tests/test_triple_supervisor_fatal_v03.py'
+      - 'crypto_edge_radar/windows/Verify_MEXC_Triple_Fishing_V03_Bundle_READONLY.ps1'
       - '.github/workflows/build-triple-fishing-v03-windows.yml'
 
 permissions:
@@ -90,7 +94,14 @@ jobs:
           tests.test_dh03_operator_source_v03
           tests.test_mexc_triple_fishing_operator_v03
           tests.test_mexc_triple_fishing_ready_v03
+          tests.test_triple_supervisor_fatal_v03
           -v
+
+      - name: Run inert Windows launcher failure-path probes
+        shell: pwsh
+        run: |
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File tests/test_triple_launcher_v03_offline.ps1
+          if ($LASTEXITCODE -ne 0) { throw "Inert launcher probes failed with exit $LASTEXITCODE" }
 
       - name: Build Triple Fishing supervisor EXE
         run: |
@@ -125,6 +136,8 @@ jobs:
           Copy-Item "dist\BuildOptionsCorrectionOverlayV01.exe" $bundle
 
           Copy-Item "windows\Run_MEXC_Triple_Fishing_V03.ps1" $bundle
+          Copy-Item "windows\Inspect_MEXC_Triple_Fishing_V03_READONLY.ps1" $bundle
+          Copy-Item "windows\Verify_MEXC_Triple_Fishing_V03_Bundle_READONLY.ps1" $bundle
           Copy-Item "windows\Install_MEXC_Triple_Fishing_V03.ps1" $bundle
           Copy-Item "windows\Ready_And_Arm_MEXC_Triple_Fishing_V03.ps1" $bundle
           Copy-Item "windows\Switch_From_BNB_To_Triple_V03.ps1" $bundle
@@ -162,6 +175,12 @@ jobs:
 
           Get-ChildItem $bundle | Select-Object Name,Length
           Get-Content $hashFile
+
+      - name: Verify whole Windows bundle SHA256 and build identity offline
+        shell: pwsh
+        run: |
+          & .\dist\triple_fishing_v03_bundle\Verify_MEXC_Triple_Fishing_V03_Bundle_READONLY.ps1 -BundleRoot .\dist\triple_fishing_v03_bundle
+          if ($LASTEXITCODE -and $LASTEXITCODE -ne 0) { throw "Bundle verification failed" }
 
       - name: Upload flat Triple Fishing V0.3 bundle
         uses: actions/upload-artifact@v4

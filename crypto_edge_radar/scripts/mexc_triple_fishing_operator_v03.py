@@ -291,31 +291,56 @@ def main()->int:
     ap.add_argument("--dh03-state",required=True)
     args=ap.parse_args()
 
-    credentials=MEXCCredentials.from_env()
-    engine=OperatorFuturesEngineV02(
-        credentials=credentials,
-        receipt_root=args.receipt_root,
-        armed_path=args.armed_path,
-        kill_switch_path=args.kill_switch,
-        status_path=args.status_path,
-        global_slot_path=args.global_slot_path,
-    )
-    supervisor=TripleFishingOperatorV03(
-        engine=engine,
-        bnb_source=BNBOperatorSourceV03(state_path=args.bnb_state),
-        options_source=OptionsV21OperatorSourceV03(
-            db_path=args.options_db,
-            state_path=args.options_state,
-        ),
-        dh03_source=DH03OperatorSourceV03(
-            data_db=args.dh03_market_db,
-            evidence_db=args.dh03_evidence_db,
-            state_path=args.dh03_state,
-        ),
-        state_path=args.supervisor_state,
-    )
-    supervisor.run_forever()
-    return 0
+    # Sanitized, append-independent fatal evidence. Never save exception messages,
+    # credentials, network replies or stack traces to the evidence file.
+    stage="LOAD_CREDENTIALS"
+    try:
+        credentials=MEXCCredentials.from_env()
+        stage="CONSTRUCT_ENGINE"
+        engine=OperatorFuturesEngineV02(
+            credentials=credentials,
+            receipt_root=args.receipt_root,
+            armed_path=args.armed_path,
+            kill_switch_path=args.kill_switch,
+            status_path=args.status_path,
+            global_slot_path=args.global_slot_path,
+        )
+        stage="CONSTRUCT_SOURCES"
+        supervisor=TripleFishingOperatorV03(
+            engine=engine,
+            bnb_source=BNBOperatorSourceV03(state_path=args.bnb_state),
+            options_source=OptionsV21OperatorSourceV03(
+                db_path=args.options_db,
+                state_path=args.options_state,
+            ),
+            dh03_source=DH03OperatorSourceV03(
+                data_db=args.dh03_market_db,
+                evidence_db=args.dh03_evidence_db,
+                state_path=args.dh03_state,
+            ),
+            state_path=args.supervisor_state,
+        )
+        stage="RUN_LOOP"
+        supervisor.run_forever()
+        return 0
+    except Exception as exc:
+        # Keep original heartbeat, receipts and global slot intact.
+        try:
+            _atomic_write(
+                str(args.supervisor_state)+".fatal.json",
+                {
+                    "schema":"TRIPLE_SUPERVISOR_FATAL_V0.1",
+                    "checked_at_utc":datetime.now(timezone.utc).isoformat().replace("+00:00","Z"),
+                    "stage":stage,
+                    "error_type":type(exc).__name__,
+                    "result":"FAIL_CLOSED",
+                    "exit_code":61,
+                    "exchange_mutation_performed_by_diagnostic":False,
+                },
+            )
+        except Exception:
+            pass  # Failure to persist diagnostics must never resume execution.
+        return 61
 
 
 if __name__=="__main__":
