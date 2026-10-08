@@ -19,3 +19,6 @@ This audit opens no market outcomes and does not measure PnL.
 It only enumerates source-eligible prospective events.
 
 No authenticated exchange API, account read, wallet, order, exchange mutation, deployment, Render change or live trading.
+
+## Read-only scientific source refresh — 2026-10-08
+Operator-requested fresh public source census. Eligibility/freeze/market outcomes unchanged; NO EXECUTION.
