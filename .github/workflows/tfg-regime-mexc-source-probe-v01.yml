@@ -1,0 +1,43 @@
+name: TFG Regime Frozen MEXC Source-Only Probe V0.1
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - ops/tfg-regime-source-gate-2026-10-08
+    paths:
+      - 'research/tfg_simplicity/**'
+      - '.github/workflows/tfg-regime-mexc-source-probe-v01.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  source_only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile original source-only probe
+        run: python -m py_compile research/tfg_simplicity/tfg_mexc_source_only_probe_v01.py
+      - name: Deterministic parsing and frozen-universe check
+        run: python research/tfg_simplicity/tfg_mexc_source_only_probe_v01.py --self-test
+      - name: Public MEXC spot frozen-source reachability and window coverage
+        id: live
+        continue-on-error: true
+        run: python research/tfg_simplicity/tfg_mexc_source_only_probe_v01.py --live --output research/tfg_simplicity/receipt_source_only.json
+      - name: Publish diagnostic receipt without modifying main or production
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfg-regime-source-only-probe-v01
+          path: research/tfg_simplicity/receipt_source_only.json
+          if-no-files-found: warn
+      - name: Preserve fail-closed status
+        if: steps.live.outcome == 'failure'
+        run: |
+          echo 'SOURCE_BLOCKED: no forward trading readyness credit'
+          exit 1
