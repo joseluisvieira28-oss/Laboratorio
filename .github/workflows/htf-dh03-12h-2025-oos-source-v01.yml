@@ -1,0 +1,62 @@
+name: HTF DH03 12H — 2025 One-Shot OOS Source Gate
+
+on:
+  push:
+    branches:
+      - htf-dh03-12h-2025-one-shot-oos-v0.1
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/htf_diamond_hunt/HTF_DH03_12H_2025_ONE_SHOT_OOS_FREEZE_V0.1.json'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/htf_diamond_hunt/htf_dh03_2025_source_gate_v01.py'
+      - '.github/workflows/htf-dh03-12h-2025-oos-source-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Governance preflight
+        run: |
+          test "$GITHUB_REF_NAME" = "htf-dh03-12h-2025-one-shot-oos-v0.1"
+          python -m py_compile Dream-Account-OS-v2.3-PARTIAL/research/htf_diamond_hunt/htf_dh03_2025_source_gate_v01.py
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path("Dream-Account-OS-v2.3-PARTIAL/research/htf_diamond_hunt/HTF_DH03_12H_2025_ONE_SHOT_OOS_FREEZE_V0.1.json")
+          x=json.loads(p.read_text())
+          assert x["status"]=="FROZEN_BEFORE_ANY_EXACT_DH03_2025_SOURCE_OR_OUTCOME_ACCESS"
+          assert x["dataset"]["allowed_source_years"]==[2025]
+          assert x["dataset"]["forbidden_source_years"]==[2026]
+          print("DH03_2025_PREOUTCOME_FREEZE_PASS")
+          PY
+      - name: Acquire and verify 2025 source only
+        run: python Dream-Account-OS-v2.3-PARTIAL/research/htf_diamond_hunt/htf_dh03_2025_source_gate_v01.py
+      - name: Verify no outcomes were opened
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path("Dream-Account-OS-v2.3-PARTIAL/research/local_data/htf_dh03_2025_source_v01/HTF_DH03_12H_2025_SOURCE_GATE_V0.1.json")
+          x=json.loads(p.read_text())
+          assert x["status"]=="SOURCE_DATA_PASS", x
+          assert x["signal_calculation_performed"] is False
+          assert x["return_calculation_performed"] is False
+          assert x["outcome_evaluation_performed"] is False
+          assert x["access_2026_performed"] is False
+          print("SOURCE_ONLY_FIREWALL_PASS",x["source_fingerprint"])
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: htf-dh03-12h-2025-oos-source
+          path: Dream-Account-OS-v2.3-PARTIAL/research/local_data/htf_dh03_2025_source_v01/
+          if-no-files-found: error
+          retention-days: 90
