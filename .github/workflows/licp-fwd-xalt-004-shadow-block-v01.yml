@@ -37,7 +37,7 @@ jobs:
           mkdir -p /tmp/xalt004
           gh api --paginate "/repos/${GITHUB_REPOSITORY}/actions/artifacts?per_page=100" > /tmp/xalt-artifacts.json
           python - <<'PY'
-          import json,pathlib,subprocess
+          import json,pathlib,subprocess,os
           raw=pathlib.Path("/tmp/xalt-artifacts.json").read_text()
           dec=json.JSONDecoder();pos=0;arts=[]
           while pos<len(raw):
@@ -51,7 +51,8 @@ jobs:
           a=max(xs,key=lambda x:x["created_at"])
           z=pathlib.Path("/tmp/xalt-prev.zip")
           with z.open("wb") as f:
-              subprocess.check_call(["gh","api",f"/repos/${GITHUB_REPOSITORY}/actions/artifacts/{a['id']}/zip"],stdout=f)
+              repo=os.environ["GITHUB_REPOSITORY"]
+              subprocess.check_call(["gh","api",f"/repos/{repo}/actions/artifacts/{a['id']}/zip"],stdout=f)
           subprocess.check_call(["unzip","-q",str(z),"-d","/tmp/xalt-prev"])
           hits=list(pathlib.Path("/tmp/xalt-prev").rglob("state.json"))
           if hits:
