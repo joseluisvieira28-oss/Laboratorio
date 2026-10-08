@@ -1,0 +1,39 @@
+name: MLMXD V0.1.2 Official Web Source Gate
+
+on:
+  push:
+    branches:
+      - mexc-launchpool-mx-demand-v0.1-source-2026-10-07
+    paths:
+      - 'research/mexc_launchpool_mx_demand/source_web_archive_v012.py'
+      - '.github/workflows/mlmxd_v012_web_source_gate.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-gate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests beautifulsoup4
+      - name: Run official MEXC Launchpool source census
+        run: python research/mexc_launchpool_mx_demand/source_web_archive_v012.py
+      - name: Verify source-only boundary
+        run: |
+          python - <<'PY'
+          import json
+          p=json.load(open('artifacts/mexc_launchpool_mx_demand_v012_web_source/source_summary.json'))
+          assert p['authenticated'] is False
+          assert p['market_prices_opened'] is False
+          print(json.dumps(p,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mlmxd-v012-official-web-source-gate
+          path: artifacts/mexc_launchpool_mx_demand_v012_web_source/
+          retention-days: 90
