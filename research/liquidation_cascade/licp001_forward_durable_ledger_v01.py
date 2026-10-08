@@ -30,7 +30,9 @@ def load_candidates(root):
 
 def derive_episode_id(cfg_version,r):
     try:
-        ignition_ts=int(r["meta"]["ignition"]["ignition_venue_ts"])
+        meta=r["meta"]
+        root=meta.get("btc_episode",meta)
+        ignition_ts=int(root["ignition"]["ignition_venue_ts"])
         pressure=str(r["pressure"])
     except Exception:
         return None
@@ -80,7 +82,7 @@ def build(root,outdir):
         for r in j.get("records",[]):
             total_records+=1
             legacy_ids+=int(bool(r.get("episode_id_reconstructed_legacy")))
-            eid=r["episode_id"];blob=sha256_bytes(canonical(r))
+            eid=(r["episode_id"],r.get("family"),r.get("propagation_asset"));blob=sha256_bytes(canonical(r))
             if eid in seen and seen[eid]["sha256"]!=blob:
                 conflicts.append({"episode_id":eid,"first":seen[eid],"conflict":{"path":str(p),"sha256":blob}})
             else:
@@ -98,7 +100,7 @@ def build(root,outdir):
         attempt=j.get("github_run_attempt") or "1"
         (rdir/(f"{idx:04d}-{rid}-{attempt}.json")).write_text(json.dumps(j,indent=2,sort_keys=True)+"\n")
 
-    status="BLOCKED_INTEGRITY_CONFLICT" if conflicts else "LEDGER_OK"
+    status="BLOCKED_INTEGRITY_CONFLICT" if conflicts else ("BLOCKED_REJECTED_RECEIPTS" if rejected else "LEDGER_OK")
     summary={
       "schema":"licp001.forward_durable_ledger.v1",
       "status":status,
@@ -107,7 +109,8 @@ def build(root,outdir):
       "accepted_receipts":len(accepted),
       "rejected_receipts":rejected,
       "raw_record_count":total_records,
-      "unique_episode_ids":len(seen),
+      "unique_episode_ids":len({key[0] for key in seen}),
+      "unique_record_keys":len(seen),
       "legacy_episode_ids_reconstructed":legacy_ids,
       "conflicts":conflicts,
       "observation_gaps":gaps,

@@ -1,0 +1,68 @@
+name: licp001-forward-recovery-v04
+on:
+  push:
+    branches: [licp-canonical-continuation-2026-10-08]
+    paths: ['.github/workflows/licp001-forward-recovery-v04.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: licp001-forward-durable-v01
+  cancel-in-progress: false
+jobs:
+  forward:
+    runs-on: ubuntu-latest
+    timeout-minutes: 320
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PYTHONPATH: .
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install 'websockets>=13,<16'
+      - name: Regression preflight
+        run: python -m unittest research.liquidation_cascade.test_licp001_durable_recovery research.liquidation_cascade.test_licp001_execution_math_v01 research.liquidation_cascade.test_licp001_trigger_engine_v01
+      - name: Recover immutable canonical baseline and V03 shard
+        run: |
+          mkdir -p prior/baseline prior/v03 current durable_ledger
+          gh run download 37311668666 -n licp001-forward-outcome-37311668666-1 -D prior/baseline
+          gh run download 37733650222 -n licp001-forward-durable-v03-37733650222-1 -D prior/v03
+          python research/liquidation_cascade/licp001_forward_durable_ledger_v01.py --root prior --outdir durable_ledger
+          python - <<'PY'
+          import json
+          s=json.load(open('durable_ledger/ledger_summary.json'))
+          assert s['status']=='LEDGER_OK'
+          assert s['unique_episode_ids']==6
+          assert not s['rejected_receipts']
+          PY
+      - name: Observe five real hours with immutable ten-minute receipts
+        env:
+          LICP_OBSERVE_SECONDS: '600'
+        run: |
+          for shard in $(seq -w 1 30); do
+            python research/liquidation_cascade/licp001_forward_observation_v01.py
+            cp research/liquidation_cascade/receipts/licp001_forward_observation_v01.json "current/shard-$shard.json"
+          done
+      - name: Aggregate at frozen checkpoint only
+        if: always()
+        run: |
+          mkdir -p inputs
+          cp prior/baseline/licp001_forward_observation_v01.json inputs/baseline.json
+          find prior/v03 -type f -path '*/current/licp001_forward_observation_v01.json' -exec cp '{}' inputs/v03.json \;
+          cp current/*.json inputs/ 2>/dev/null || true
+          python research/liquidation_cascade/licp001_forward_durable_ledger_v01.py --root inputs --outdir durable_ledger
+          python research/liquidation_cascade/licp001_forward_verdict_v01.py durable_ledger/receipts --out durable_ledger/frozen_verdict.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: licp001-recovery-v04-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            current/
+            durable_ledger/
+          retention-days: 90
+          if-no-files-found: error
