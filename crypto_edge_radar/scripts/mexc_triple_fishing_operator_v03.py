@@ -46,6 +46,37 @@ def _utc(value: Any) -> datetime:
     return dt.astimezone(timezone.utc)
 
 
+def _write_fatal_receipt(state_path: str | Path, phase: str, error_class: str) -> None:
+    """Best-effort, fixed-schema fatal record with no private exception messages.
+
+    Never changes receipts, slot, ARMED or exchange state.
+    """
+    allowed_phases = {"CREDENTIALS", "ENGINE_INIT", "SOURCE_INIT", "SUPERVISOR_LOOP"}
+    if phase not in allowed_phases:
+        phase = "UNKNOWN"
+    # Error class is diagnostic only. Never persist exception __str__ / repr.
+    sanitized_class = error_class if error_class in {
+        "RuntimeError", "ValueError", "TypeError", "KeyError", "OSError",
+        "PermissionError", "FileNotFoundError", "JSONDecodeError",
+        "OperationalError", "IntegrityError", "AttributeError",
+    } else "OTHER_EXCEPTION"
+    try:
+        path = Path(state_path).parent / "TRIPLE_V03_FATAL_LAST.json"
+        _atomic_write(path, {
+            "schema": "TRIPLE_V03_FATAL_DIAGNOSTIC_V01",
+            "checked_at_utc": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            "status": "FATAL_PROCESS_TERMINATION",
+            "phase": phase,
+            "exception_class": sanitized_class,
+            "exit_code": 71,
+            "contains_secrets": False,
+            "orders_created_by_diagnostic": False,
+        })
+    except Exception:
+        # Even a broken disk must not trigger any entry or erase safety state.
+        pass
+
+
 class TripleFishingOperatorV03:
     """Single-process owner for BNB, OPTIONS and DH03 operator lanes.
 
@@ -291,30 +322,38 @@ def main()->int:
     ap.add_argument("--dh03-state",required=True)
     args=ap.parse_args()
 
-    credentials=MEXCCredentials.from_env()
-    engine=OperatorFuturesEngineV02(
-        credentials=credentials,
-        receipt_root=args.receipt_root,
-        armed_path=args.armed_path,
-        kill_switch_path=args.kill_switch,
-        status_path=args.status_path,
-        global_slot_path=args.global_slot_path,
-    )
-    supervisor=TripleFishingOperatorV03(
-        engine=engine,
-        bnb_source=BNBOperatorSourceV03(state_path=args.bnb_state),
-        options_source=OptionsV21OperatorSourceV03(
-            db_path=args.options_db,
-            state_path=args.options_state,
-        ),
-        dh03_source=DH03OperatorSourceV03(
-            data_db=args.dh03_market_db,
-            evidence_db=args.dh03_evidence_db,
-            state_path=args.dh03_state,
-        ),
-        state_path=args.supervisor_state,
-    )
-    supervisor.run_forever()
+    phase = "CREDENTIALS"
+    try:
+        credentials = MEXCCredentials.from_env()
+        phase = "ENGINE_INIT"
+        engine = OperatorFuturesEngineV02(
+            credentials=credentials,
+            receipt_root=args.receipt_root,
+            armed_path=args.armed_path,
+            kill_switch_path=args.kill_switch,
+            status_path=args.status_path,
+            global_slot_path=args.global_slot_path,
+        )
+        phase = "SOURCE_INIT"
+        supervisor = TripleFishingOperatorV03(
+            engine=engine,
+            bnb_source=BNBOperatorSourceV03(state_path=args.bnb_state),
+            options_source=OptionsV21OperatorSourceV03(
+                db_path=args.options_db,
+                state_path=args.options_state,
+            ),
+            dh03_source=DH03OperatorSourceV03(
+                data_db=args.dh03_market_db,
+                evidence_db=args.dh03_evidence_db,
+                state_path=args.dh03_state,
+            ),
+            state_path=args.supervisor_state,
+        )
+        phase = "SUPERVISOR_LOOP"
+        supervisor.run_forever()
+    except Exception as exc:
+        _write_fatal_receipt(args.supervisor_state, phase, type(exc).__name__)
+        return 71
     return 0
 
 
