@@ -1,0 +1,41 @@
+name: TFG Regime Public Canary Status Audit V0.1
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - ops/tfg-regime-source-gate-2026-10-08
+    paths:
+      - 'research/tfg_simplicity/tfg_public_runtime_probe_v01.py'
+      - '.github/workflows/tfg-regime-canary-status-v01.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  public_status_only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Syntax check
+        run: python -m py_compile research/tfg_simplicity/tfg_public_runtime_probe_v01.py
+      - name: Public GET health; report only sanitized TFG operational fields
+        id: probe
+        continue-on-error: true
+        run: python research/tfg_simplicity/tfg_public_runtime_probe_v01.py
+      - name: Upload source- and evidence-only runtime diagnostic
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfg-regime-public-runtime-diagnostic-v01
+          path: research/tfg_simplicity/receipt_public_runtime_only.json
+          if-no-files-found: warn
+      - name: Preserve fail-closed operational gate
+        if: steps.probe.outcome == 'failure'
+        run: |
+          echo 'TFG runtime/source operational evidence BLOCKED; no science promotion'
+          exit 1
