@@ -106,7 +106,7 @@ func main() {
 	if !bytes.Equal(first.Block.Header.ValidatorsHash,state.Validators.Hash()) { panic("validator hash mismatch at start") }
 
 	cc:=proxy.NewLocalClientCreator(app)
-	proxyApp:=proxy.NewAppConns(cc)
+	proxyApp:=proxy.NewAppConns(cc,proxy.NopMetrics())
 	if err:=proxyApp.Start(); err!=nil { panic(err) }
 	defer proxyApp.Stop()
 	blockExec:=sm.NewBlockExecutor(stateStore,cmtlog.NewNopLogger(),proxyApp.Consensus(),emptyMempool{},sm.EmptyEvidencePool{})
