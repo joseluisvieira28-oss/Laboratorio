@@ -26,3 +26,6 @@ The frozen prospective requirement remains 60 completed events AND 8 complete UT
 
 ## Read-only refresh marker — 2026-10-08
 Operator-authorized telemetry refresh only. Science and runtime authority unchanged.
+
+## Additional read-only scientific progress refresh — 2026-10-08
+Operator-requested fresh public CED1D telemetry only. Frozen 60-event/8-week gate, data rules and collector unchanged.
