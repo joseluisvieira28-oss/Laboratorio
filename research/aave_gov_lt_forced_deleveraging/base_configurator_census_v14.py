@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""SOURCE-ONLY Base V3 configurator census continuation through 2024-12-31; begins after audited V13 frontier."""
+"""SOURCE-ONLY Base V3 configurator census continuation through 2024-12-31; begins exactly after audited V13 frontier 17,659,999."""
 import gzip,hashlib,json,time,urllib.error,urllib.request
 from pathlib import Path
 from Crypto.Hash import keccak
