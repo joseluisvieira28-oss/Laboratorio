@@ -9,7 +9,7 @@ import gzip,hashlib,json,time,urllib.error,urllib.request
 from pathlib import Path
 from Crypto.Hash import keccak
 OUT=Path("out/aave_state_enum_v29");OUT.mkdir(parents=True,exist_ok=True)
-URL="https://mainnet.optimism.io"
+URLS=["https://mainnet.optimism.io","https://optimism.drpc.org","https://1rpc.io/op"]\nendpoint_i=0
 POOL="0x794a61358d6845594f94dc1db02a252b5b4814ad"
 ASSET="0x8c6f28f2f1a3c87f0f938b96d27520d9751ec8d9"
 SIGNAL_TS=1717599515
@@ -21,15 +21,16 @@ DIS=sig("ReserveUsedAsCollateralDisabled(address,address)")
 EM=sig("UserEModeSet(address,uint8)")
 def sha(b):return hashlib.sha256(b).hexdigest()
 def post(body):
- global last
+ global last,endpoint_i
  time.sleep(max(0,.10-(time.monotonic()-last)));last=time.monotonic()
+ url=URLS[endpoint_i%len(URLS)];endpoint_i+=1
  raw=json.dumps(body,sort_keys=True).encode();rec={"request":body,"request_sha256":sha(raw),"observed_at":time.time()}
  try:
-  req=urllib.request.Request(URL,data=raw,headers={"Content-Type":"application/json","User-Agent":"Aave-source-audit/1.0"})
+  req=urllib.request.Request(url,data=raw,headers={"Content-Type":"application/json","User-Agent":"Aave-source-audit/1.0"})
   with urllib.request.urlopen(req,timeout=45) as res:data=res.read();status=res.status;headers=dict(res.headers)
  except urllib.error.HTTPError as e:data=e.read();status=e.code;headers=dict(e.headers)
  except Exception as e:data=str(e).encode();status=0;headers={}
- h=sha(data);(OUT/(h+".gz")).write_bytes(gzip.compress(data,mtime=0));rec.update(http_status=status,response_sha256=h,headers=headers)
+ h=sha(data);(OUT/(h+".gz")).write_bytes(gzip.compress(data,mtime=0));rec.update(http_status=status,response_sha256=h,headers=headers,source_url=url)
  with (OUT/"requests.jsonl").open("a") as f:f.write(json.dumps(rec)+"\n")
  try:d=json.loads(data)
  except Exception:d={"transport_body":data.decode(errors="replace")}
@@ -60,9 +61,13 @@ DEPLOY=lo
 asset_topic="0x"+"0"*24+ASSET[2:]
 coverage=[]
 def getlogs(a,b,topics):
- d,status,h=post({"jsonrpc":"2.0","id":a,"method":"eth_getLogs","params":[{"address":POOL,"fromBlock":hex(a),"toBlock":hex(b),"topics":topics}]})
- if status==200 and isinstance(d,dict) and isinstance(d.get("result"),list):return d["result"],h
- return None,h
+ last_h=None
+ for _ in range(len(URLS)*4):
+  d,status,h=post({"jsonrpc":"2.0","id":a,"method":"eth_getLogs","params":[{"address":POOL,"fromBlock":hex(a),"toBlock":hex(b),"topics":topics}]})
+  last_h=h
+  if status==200 and isinstance(d,dict) and isinstance(d.get("result"),list):return d["result"],h
+  time.sleep(.25)
+ return None,last_h
 def scan(a,b,topics):
  logs,h=getlogs(a,b,topics)
  if logs is not None:return [(a,b,logs,h)]
