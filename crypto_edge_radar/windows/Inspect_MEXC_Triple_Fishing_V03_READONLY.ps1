@@ -5,6 +5,7 @@ $runtime = Join-Path $env:LOCALAPPDATA "CryptoLab\TripleFishingV03"
 $stateDir = Join-Path $runtime "live_state"
 $statusPath = Join-Path $stateDir "triple_fishing_operator_v03.json"
 $logPath = Join-Path $stateDir "launcher_events_v03.jsonl"
+$fatalPath = Join-Path $stateDir "triple_fishing_operator_v03.json.fatal.json"
 $taskName = "CryptoLab-Triple-Fishing-Operator-V03"
 $proc = @(Get-Process -Name 'MEXCTripleFishingOperatorV03' -ErrorAction SilentlyContinue)
 $task = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
@@ -19,6 +20,17 @@ if (Test-Path -LiteralPath $statusPath -PathType Leaf) {
         $heartbeatAge = [math]::Round(([DateTime]::UtcNow - $ts).TotalSeconds,3)
         $jsonValid = $true
     } catch { $jsonValid = $false }
+}
+$fatalStage = $null
+$fatalErrorType = $null
+if (Test-Path -LiteralPath $fatalPath -PathType Leaf) {
+    try {
+        $fatal = Get-Content -LiteralPath $fatalPath -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
+        if ($fatal.schema -eq 'TRIPLE_SUPERVISOR_FATAL_V0.1') {
+            $fatalStage = [string]$fatal.stage
+            $fatalErrorType = [string]$fatal.error_type
+        }
+    } catch { }
 }
 $latestStage = $null
 $latestResult = $null
@@ -53,6 +65,8 @@ if (Test-Path -LiteralPath $logPath -PathType Leaf) {
     LastLauncherStage = $latestStage
     LastLauncherResult = $latestResult
     LastLauncherCode = $latestCode
+    LastFatalStage = $fatalStage
+    LastFatalErrorType = $fatalErrorType
     AccountPositionsVerified = 'NOT_CHECKED'
     AccountOrdersVerified = 'NOT_CHECKED'
 }
