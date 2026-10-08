@@ -1,0 +1,38 @@
+name: MLRTS V0.1 Source Gate
+
+on:
+  push:
+    branches: [mexc-launchpool-reward-token-sellpressure-v0.1-2026-10-08]
+    paths:
+      - 'research/mexc_launchpool_reward_token_sellpressure/source_census_v01.py'
+      - '.github/workflows/mlrts_v01_source_gate.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-gate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install ccxt requests beautifulsoup4
+      - run: python research/mexc_launchpool_reward_token_sellpressure/source_census_v01.py
+      - name: Verify outcome quarantine
+        run: |
+          python - <<'PY'
+          import json
+          p=json.load(open('artifacts/mexc_launchpool_reward_token_sellpressure_v01_source/summary.json'))
+          assert p['authenticated'] is False
+          assert p['reward_token_market_outcomes_opened'] is False
+          assert p['btc_outcomes_opened'] is False
+          print(json.dumps(p,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mlrts-v01-source-gate
+          path: artifacts/mexc_launchpool_reward_token_sellpressure_v01_source/
+          retention-days: 90
