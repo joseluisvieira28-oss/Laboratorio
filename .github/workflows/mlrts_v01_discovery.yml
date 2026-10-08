@@ -1,0 +1,29 @@
+name: MLRTS V0.1 Frozen Discovery
+
+on:
+  push:
+    branches: [mexc-launchpool-reward-token-sellpressure-v0.1-2026-10-08]
+    paths:
+      - 'research/mexc_launchpool_reward_token_sellpressure/discovery_v01.py'
+      - '.github/workflows/mlrts_v01_discovery.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  discovery:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests numpy
+      - name: Evaluate frozen Discovery once
+        run: python research/mexc_launchpool_reward_token_sellpressure/discovery_v01.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mlrts-v01-frozen-discovery
+          path: artifacts/mexc_launchpool_reward_token_sellpressure_v01_discovery/
+          retention-days: 90
