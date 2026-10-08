@@ -79,3 +79,4 @@ No new outcome can be opened under this source/quote-only freeze.
 ## Boundaries
 Research-only. No main merge, live trading, exchange-authentication, account reads, credentials, wallets,
 paid services, production Render mutation or post-outcome tuning.
+
