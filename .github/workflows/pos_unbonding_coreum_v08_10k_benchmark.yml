@@ -1,0 +1,168 @@
+name: POS Unbonding Coreum V0.8 10K Benchmark
+
+on:
+  push:
+    branches:
+      - pos-unbonding-v08-coreum-10k-benchmark-2026-10-08
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    env:
+      V08: research/pos_unbonding_completion_001_v0_8_coreum_replay
+      V07: research/pos_unbonding_completion_001_v0_7_independent_replay
+      V1_COMMIT: 40759d9d8a37e998f6e01229311b2ce3ac19ff63
+      GENESIS_SHA256: 5be3b3e0fee69842c4c73eb5f54eb64684420736473f0f5cef0ba6b81d44f253
+      RELEASE_TAG: pos-unbonding-coreum-v08-data-000000001-001000000
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify frozen inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s  %s\n' "$GENESIS_SHA256" "$V07/receipts/source_392071c0048a.raw" | sha256sum -c -
+          grep -q 'H1 through H10,000' "$V08/V08_10K_REPLAY_BENCHMARK_FREEZE.md"
+          grep -q 'GitHub Release assets' "$V08/V08_DURABLE_STORAGE_EXTENSION_FREEZE.md"
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.18.10"
+          cache: false
+
+      - name: Checkout exact Coreum v1
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --quiet --filter=blob:none https://github.com/CoreumFoundation/coreum.git /tmp/coreum-v1
+          git -C /tmp/coreum-v1 checkout --quiet --detach "$V1_COMMIT"
+          test "$(git -C /tmp/coreum-v1 rev-parse HEAD)" = "$V1_COMMIT"
+
+      - name: Acquire H1-H10001 with receipt-complete fetcher
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 "$V08/fetch_range_coreum_v3.py"             --out /tmp/coreum_raw             --start 1 --end 10000 --workers 24             | tee /tmp/fetch_10k.json
+
+      - name: Replay H1-H5000
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/coreum-v1/replayprobe /tmp/coreum_db /tmp/coreum_home
+          mkdir -p /tmp/coreum-v1/replayprobe
+          cp "$V08/native_chunk_v1.go" /tmp/coreum-v1/replayprobe/main.go
+          (
+            cd /tmp/coreum-v1
+            go run ./replayprobe               "$GITHUB_WORKSPACE/$V07/receipts/source_392071c0048a.raw"               /tmp/coreum_raw /tmp/coreum_db /tmp/coreum_home 1 5000
+          ) | tee /tmp/replay_1_5000.json
+
+      - name: Replay resume H5001-H10000
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/coreum-v1/replayprobe
+          mkdir -p /tmp/coreum-v1/replayprobe
+          cp "$V08/native_chunk_v1.go" /tmp/coreum-v1/replayprobe/main.go
+          (
+            cd /tmp/coreum-v1
+            go run ./replayprobe               "$GITHUB_WORKSPACE/$V07/receipts/source_392071c0048a.raw"               /tmp/coreum_raw /tmp/coreum_db /tmp/coreum_home 5001 10000
+          ) | tee /tmp/replay_5001_10000.json
+
+      - name: Export and verified-prune local ABCI results
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/coreum_abci /tmp/coreum-v1/replayprobe
+          cp "$V08/export_prune_abci_v1.go" /tmp/coreum-v1/replayprobe/main.go
+          (
+            cd /tmp/coreum-v1
+            go run ./replayprobe /tmp/coreum_db /tmp/coreum_abci 1 10000
+          ) | tee /tmp/abci_export_prune.json
+
+      - name: Package raw and ABCI evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 "$V08/package_raw_range_v1.py"             --range-dir /tmp/coreum_raw             --out /tmp/raw_1_10000.tar.gz             | tee /tmp/raw_package.json
+          python3 "$V08/package_abci_export_v1.py"             --export-dir /tmp/coreum_abci             --manifest /tmp/coreum_abci/abci_1_10000.manifest.json             --out /tmp/abci_1_10000.tar.gz             | tee /tmp/abci_package.json
+
+      - name: Build deterministic checkpoint manifest and package
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 "$V08/checkpoint_manifest_v1.py"             --db-dir /tmp/coreum_db             --home-dir /tmp/coreum_home             --chunk-receipt /tmp/replay_5001_10000.json             --out /tmp/checkpoint_10000.manifest.json             --source-commit "$V1_COMMIT"             --genesis-sha256 "$GENESIS_SHA256"             | tee /tmp/checkpoint_manifest_summary.json
+          python3 "$V08/package_checkpoint_v1.py"             --db-dir /tmp/coreum_db             --home-dir /tmp/coreum_home             --checkpoint-manifest /tmp/checkpoint_10000.manifest.json             --out-prefix /tmp/checkpoint_10000             | tee /tmp/checkpoint_package.json
+
+      - name: Enforce release asset size ceiling
+        shell: bash
+        run: |
+          set -euo pipefail
+          ceiling=$((1900*1024*1024))
+          for f in /tmp/raw_1_10000.tar.gz /tmp/abci_1_10000.tar.gz /tmp/checkpoint_10000.tar.gz; do
+            size="$(stat -c %s "$f")"
+            test "$size" -lt "$ceiling"
+          done
+
+      - name: Publish and remote-digest verify durable packages
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          bash "$V08/publish_release_asset_v1.sh" "$RELEASE_TAG"             /tmp/raw_1_10000.tar.gz /tmp/raw_1_10000.tar.gz.receipt.json             | tee /tmp/remote_raw.json
+          bash "$V08/publish_release_asset_v1.sh" "$RELEASE_TAG"             /tmp/abci_1_10000.tar.gz /tmp/abci_1_10000.tar.gz.receipt.json             | tee /tmp/remote_abci.json
+          bash "$V08/publish_release_asset_v1.sh" "$RELEASE_TAG"             /tmp/checkpoint_10000.tar.gz /tmp/checkpoint_10000.receipt.json             | tee /tmp/remote_checkpoint.json
+
+      - name: Persist benchmark receipt
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          def load(p): return json.loads(pathlib.Path(p).read_text())
+          def h(p):
+              b=pathlib.Path(p).read_bytes()
+              return {"path":p,"bytes":len(b),"sha256":hashlib.sha256(b).hexdigest()}
+          out={
+            "schema":"coreum-v08-10k-benchmark-receipt-v1",
+            "github_sha":os.environ["GITHUB_SHA"],
+            "freeze":"V08_10K_REPLAY_BENCHMARK_FREEZE.md",
+            "source_commit":os.environ["V1_COMMIT"],
+            "genesis_sha256":os.environ["GENESIS_SHA256"],
+            "fetch":load("/tmp/fetch_10k.json"),
+            "chunk_a":load("/tmp/replay_1_5000.json"),
+            "chunk_b":load("/tmp/replay_5001_10000.json"),
+            "abci_export_prune":load("/tmp/abci_export_prune.json"),
+            "remote_raw":load("/tmp/remote_raw.json"),
+            "remote_abci":load("/tmp/remote_abci.json"),
+            "remote_checkpoint":load("/tmp/remote_checkpoint.json"),
+            "artifacts":[
+              h("/tmp/raw_1_10000.tar.gz.receipt.json"),
+              h("/tmp/abci_1_10000.tar.gz.receipt.json"),
+              h("/tmp/checkpoint_10000.manifest.json"),
+              h("/tmp/checkpoint_10000.receipt.json"),
+            ],
+            "block_results_consumed_from_rpc":False,
+            "census_executed":False,
+            "market_outcomes_opened":False,
+          }
+          assert out["chunk_a"]["all_app_hash_offsets_pass"] is True
+          assert out["chunk_b"]["all_app_hash_offsets_pass"] is True
+          assert out["chunk_b"]["start_height"]==5001 and out["chunk_b"]["end_height"]==10000
+          assert out["abci_export_prune"]["pass"] is True
+          assert all(out[k]["remote_digest_verification_pass"] for k in ("remote_raw","remote_abci","remote_checkpoint"))
+          p=pathlib.Path(os.environ["V08"])/"V08_10K_BENCHMARK_RUN_RECEIPT.json"
+          p.write_text(json.dumps(out,indent=2,sort_keys=True)+"\n")
+          print(json.dumps(out,indent=2,sort_keys=True))
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$V08/V08_10K_BENCHMARK_RUN_RECEIPT.json"
+          git commit -m "Record Coreum V0.8 10k benchmark receipt [skip ci]"
+          git pull --rebase origin pos-unbonding-v08-coreum-10k-benchmark-2026-10-08
+          git push origin HEAD:pos-unbonding-v08-coreum-10k-benchmark-2026-10-08
