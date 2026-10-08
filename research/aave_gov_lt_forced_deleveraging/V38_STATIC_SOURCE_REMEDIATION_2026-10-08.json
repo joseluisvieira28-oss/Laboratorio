@@ -1,0 +1,95 @@
+{
+  "lab_id": "AAVE-GOV-LT-FORCED-DELEVERAGING-001",
+  "version": "V38_STATIC_SOURCE_REMEDIATION",
+  "date_utc": "2026-10-08",
+  "status": "SOURCE_ONLY_PRE_OUTCOME",
+  "pinned_seatbelt": {
+    "repo": "aave-dao/seatbelt-gov-v3",
+    "commit": "a6e52bca30dff5c396f8ad7b452a9890a1f0e68e"
+  },
+  "parameter_remediation": [
+    {
+      "proposal_id": 173,
+      "status": "PASS",
+      "payload_path": "reports/payloads/10/0x0E1a3Af1f9cC76A62eD31eDedca291E63632e7c4/50.md",
+      "blob_sha": "3bb3646d8ef53d36fd4d1ddb3186471dc946fe4d",
+      "qualifying_decreases": [
+        {
+          "asset": "0x1f32b1c2345538c0c6f582fcb022739c4a194ebb",
+          "old_lt": 8000,
+          "new_lt": 7900
+        },
+        {
+          "asset": "0x350a791bfc2c21f9ed5d10980dad2e2638ffa7f6",
+          "old_lt": 7500,
+          "new_lt": 7100
+        },
+        {
+          "asset": "0x7f5c764cbc14f9669b88837ca1490cca17c31607",
+          "old_lt": 8000,
+          "new_lt": 7850
+        }
+      ],
+      "nonqualifying_direction_changes": [
+        {
+          "asset": "0x4200000000000000000000000000000000000006",
+          "old_lt": 8250,
+          "new_lt": 8300
+        },
+        {
+          "asset": "0x76fb31fb4af56892a25e32cfc43de717950c9278",
+          "old_lt": 6500,
+          "new_lt": 7000
+        }
+      ]
+    },
+    {
+      "proposal_id": 260,
+      "status": "PASS",
+      "payload_path": "reports/payloads/137/0x401B5D0294E23637c18fcc38b1Bca814CDa2637C/102.md",
+      "blob_sha": "1bbbd8ced7069eb98fc658ff53552666262895df",
+      "qualifying_decreases": [
+        {
+          "kind": "EMODE_LT",
+          "category_id": 1,
+          "old_lt": 9500,
+          "new_lt": 9425
+        }
+      ]
+    }
+  ],
+  "base_cross_chain_duplicate": {
+    "effect_block": 14328424,
+    "effect_tx": "0xe0321d6c16a8104b8744161f1e0fd8e91f9c524f877e1c2fe408ff479224d023",
+    "payload_id": 19,
+    "payload_controller": "0x2DC219E716793fb4b21548C0f009Ba3Af753ab01",
+    "payload_path": "reports/payloads/8453/0x2DC219E716793fb4b21548C0f009Ba3Af753ab01/19.md",
+    "payload_blob_sha": "a8f37481d4f61a28affa4739aed0fe45cca04906",
+    "payload_queue_tx": "0x2678e5d66fe73e1a5b5420d2b85489a5f78e8a5ffeb504f555368c8187ffd13e",
+    "changes": [
+      {
+        "asset": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+        "old_lt": 7900,
+        "new_lt": 7800
+      },
+      {
+        "asset": "0xd9aaec86b65d86f6a7b5b1b0c42ffa531710b6ca",
+        "old_lt": 7900,
+        "new_lt": 7800
+      }
+    ],
+    "core_proposal_id": 100,
+    "core_proposal_path": "reports/proposals/100.md",
+    "core_queue_tx": "0x729a25004a2438496983bdb50e71a0354baa7615fb8ace3a9996121efec75b5c",
+    "classification": "DUPLICATE_CROSS_CHAIN_MEMBER_OF_EXISTING_INDEPENDENT_SHOCK_V3_100",
+    "independent_shock_increment": 0
+  },
+  "constraints": {
+    "source_gate_pass": false,
+    "hypothesis_status": "NOT_TESTED",
+    "economic_outcomes_opened": 0,
+    "development_runs": 0,
+    "outcomes_2026_opened": false
+  },
+  "note": "Remediates the V30 parser-induced false blocks for proposals 173/260 using pinned state diffs, and prevents double-counting the Base Proposal 100 execution."
+}
