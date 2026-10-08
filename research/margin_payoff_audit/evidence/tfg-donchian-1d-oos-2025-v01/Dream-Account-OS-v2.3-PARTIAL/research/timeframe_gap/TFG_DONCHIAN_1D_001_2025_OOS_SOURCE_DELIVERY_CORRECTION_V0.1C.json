@@ -1,0 +1,45 @@
+{
+  "correction_id": "TFG-DONCHIAN-1D-001-OOS2025-V0.1C-SOURCE-DELIVERY",
+  "date_utc": "2026-09-16",
+  "document_type": "PRE_OUTCOME_TECHNICAL_SOURCE_DELIVERY_CORRECTION",
+  "experiment_id": "TFG-DONCHIAN-1D-001-OOS2025-V0.1",
+  "prior_source_attempts": [
+    {
+      "run_id": 35099968106,
+      "delivery": "MEXC_PUBLIC_1D_API",
+      "status": "BLOCKED_NON_SCIENTIFIC",
+      "outcomes_evaluated": false,
+      "reason": "Daily OHLC source equivalence failed on three ETHUSDT closes."
+    },
+    {
+      "run_id": 35100536233,
+      "delivery": "MEXC_PUBLIC_15M_API",
+      "status": "BLOCKED_NON_SCIENTIFIC",
+      "outcomes_evaluated": false,
+      "reason": "Historical Dec-2024 15m API returned zero bars at the source-equivalence gate."
+    }
+  ],
+  "correction": {
+    "to_delivery": "OFFICIAL_MEXC_SPOT_PUBLIC_READ_ONLY_API_1H",
+    "validation": "Before any 2025 fetch/outcome evaluation, derive 1H bars from the exact parent 15m Dec-2024 corpus and require exact numeric OHLC equivalence against official MEXC 1H API. Only after this passes may 2025 1H data be fetched and aggregated to UTC 1D.",
+    "rationale": "This changes only transport/granularity of the official source, not the frozen daily signal. Exact pre-OOS equivalence is mandatory and fail-closed.",
+    "scientific_signal_changed": false,
+    "assets_changed": false,
+    "costs_changed": false,
+    "entry_exit_changed": false,
+    "decision_gates_changed": false,
+    "oos_window_changed": false
+  },
+  "governance": {
+    "2025_outcomes_accessed_before_correction": false,
+    "2026_historical_outcomes": false,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "orders": false,
+    "authenticated_exchange_api": false,
+    "post_outcome_tuning": false,
+    "merge_to_main": false
+  },
+  "status": "FROZEN_BEFORE_2025_OUTCOME_EVALUATION",
+  "fingerprint": "b6bbaf86ee19a5234f84a906230f70233a2b3ba12c8a0093e198429957ab7571"
+}
