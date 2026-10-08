@@ -44,7 +44,9 @@ A durable ledger may aggregate prior shard artifacts only when:
 - `live_trading == false`;
 - trigger-config version and SHA-256 match the current frozen config;
 - the receipt began after the canonical economic-verdict freeze;
-- every record has a deterministic `episode_id`.
+- every record has a deterministic `episode_id`, OR is a legacy eligible receipt whose ID can be reconstructed exactly from the already-frozen tuple `config_version | ignition_venue_ts | pressure` using the same SHA-256 formula later embedded in the observer.
+
+Legacy compatibility is mandatory, not discretionary: canonical run `37311668666` started after the economic-verdict freeze but predates the code field `episode_id`; it remains part of the frozen first-20 sequence. Its ID is reconstructed mechanically from pre-existing trigger fields and is not selected from outcomes.
 
 Deduplication:
 - identical duplicate episode IDs are retained once;
