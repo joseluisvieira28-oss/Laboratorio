@@ -82,7 +82,12 @@ try {
         if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
             throw [System.InvalidOperationException]::new("DPAPI secret missing")
         }
-        $cipher = Get-Content -Raw -LiteralPath $Path
+        # Set-Content appends a record terminator; it is not part of the
+        # DPAPI hex payload. Strip only terminal CR/LF, never internal data.
+        $cipher = (Get-Content -Raw -LiteralPath $Path -ErrorAction Stop).TrimEnd([char[]]"`r`n")
+        if ([string]::IsNullOrEmpty($cipher) -or $cipher -notmatch '\A(?:[0-9a-fA-F]{2})+\z') {
+            throw [System.InvalidOperationException]::new("DPAPI payload invalid")
+        }
         $secure = ConvertTo-SecureString $cipher -ErrorAction Stop
         $cred = New-Object System.Management.Automation.PSCredential("local", $secure)
         return $cred.GetNetworkCredential().Password

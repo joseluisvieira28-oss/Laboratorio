@@ -102,10 +102,21 @@ public class TripleLauncherTestStub {
     Test-Case -ExpectedExit 41 -Stage 'RUN_SUPERVISOR' -Result 'CHILD_NONZERO'
     if (-not (Test-Path (Join-Path $env:LOCALAPPDATA 'TRIPLE_STUB_MAIN_CALLED'))) { throw 'Inert test child was not reached' }
 
+    # 5. A canonical payload without a record terminator also reaches the stub.
+    [IO.File]::WriteAllText((Join-Path $secretDir 'mexc_api_key.dpapi'),$fake)
+    [IO.File]::WriteAllText((Join-Path $secretDir 'mexc_api_secret.dpapi'),$fake)
+    Test-Case -ExpectedExit 41 -Stage 'RUN_SUPERVISOR' -Result 'CHILD_NONZERO'
+
+    # 6. Corruption must still fail closed before executing the main child.
+    Remove-Item -LiteralPath (Join-Path $env:LOCALAPPDATA 'TRIPLE_STUB_MAIN_CALLED')
+    [IO.File]::WriteAllText((Join-Path $secretDir 'mexc_api_secret.dpapi'),($fake + 'INVALID'))
+    Test-Case -ExpectedExit 31 -Stage 'LOAD_DPAPI' -Result 'FAIL_CLOSED'
+    if (Test-Path (Join-Path $env:LOCALAPPDATA 'TRIPLE_STUB_MAIN_CALLED')) { throw 'Main started with corrupt DPAPI' }
+
     if ([IO.File]::ReadAllText($slot) -ne $slotContent -or -not (Test-Path $marker) -or -not (Test-Path $kill)) {
         throw 'Runner changed a persisted slot or protective marker'
     }
-    Write-Output "TRIPLE_LAUNCHER_OFFLINE_INERT_TESTS_PASS: $testPasses / 4"
+    Write-Output "TRIPLE_LAUNCHER_OFFLINE_INERT_TESTS_PASS: $testPasses / 6"
 } finally {
     $env:LOCALAPPDATA = $originalLocalAppData
     $env:TRIPLE_TEST_OVERLAY_EXIT = $originalStubExit
