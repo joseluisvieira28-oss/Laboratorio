@@ -1,0 +1,93 @@
+{
+  "mission": "AAVE-GOV-LT-FORCED-DELEVERAGING-001",
+  "audit_version": "V45",
+  "date_utc": "2026-10-08",
+  "boundary": "SOURCE_ONLY",
+  "run_id": 37745324009,
+  "run_commit": "f1d8d89a00202457474f9cbec87073362738fc15",
+  "run_conclusion": "failure",
+  "borrower_state_pass": [
+    {
+      "proposal": "V3-2",
+      "qualified_borrowers": 552,
+      "reserves": 12,
+      "base_event_coverage_complete": true,
+      "emode_event_coverage_complete": true,
+      "artifact_id": 11546007211,
+      "sha256": "8cccd47076749e0d2c62dbbbd5d2b111727f0f405cbfa1653088b60bc3e425b1"
+    },
+    {
+      "proposal": "V3-13",
+      "qualified_borrowers": 265,
+      "reserves": 12,
+      "base_event_coverage_complete": true,
+      "emode_event_coverage_complete": true,
+      "artifact_id": 11552109213,
+      "sha256": "3a7953b340f986d38ed79471e10393710f26a7713f893d6c3338eb5878b59394"
+    },
+    {
+      "proposal": "V3-19",
+      "qualified_borrowers": 2,
+      "reserves": 14,
+      "base_event_coverage_complete": true,
+      "emode_event_coverage_complete": true,
+      "artifact_id": 11544748315,
+      "sha256": "e02ade4ee8c1491f680c56f5df51e55a26322df5616000b8add00c684f0f5c4a"
+    }
+  ],
+  "source_integrity_conflicts": [
+    {
+      "proposal": "V3-260",
+      "kind": "EMODE_LT",
+      "category_id": 1,
+      "expected_old_lt": 9500,
+      "observed_signal_minus_one_lt": 9300,
+      "artifact_id": 11552814755,
+      "sha256": "06da8b77391b7273420a4146bdf6068b270cebfa8133d872bfdcda81588037b9"
+    },
+    {
+      "proposal": "V2-233",
+      "kind": "EMODE_LT",
+      "category_id": 1,
+      "expected_old_lt": 9750,
+      "observed_signal_minus_one_lt": 9700,
+      "artifact_id": 11553841164,
+      "sha256": "c14f53d577221f90ee18651f61bc1083f30719b98f7fe51108c18731f27d931c"
+    },
+    {
+      "proposal": "V3-114",
+      "kind": "EMODE_LT",
+      "category_id": 1,
+      "expected_old_lt": 9500,
+      "observed_signal_minus_one_lt": 9300,
+      "base_lt_check": "7500==7500 PASS",
+      "artifact_id": 11547204422,
+      "sha256": "bbf0c60da3fd0ce08fb854310952b3bbe1c7f2d567f7484033b46cd5ab7c8964"
+    },
+    {
+      "proposal": "V3-256",
+      "kind": "EMODE_LT",
+      "category_id": 1,
+      "expected_old_lt": 9300,
+      "observed_signal_minus_one_lt": 9000,
+      "artifact_id": 11553123265,
+      "sha256": "9e9c5f5cb1634bb277234ecf25b2c42ac413681765d15e4fee52388ee7fb5c83"
+    }
+  ],
+  "incomplete_jobs": [
+    "V3-87 cancelled",
+    "V3-173 cancelled",
+    "V3-100 cancelled",
+    "V3-71 cancelled",
+    "V2-288 cancelled",
+    "V3-55 anomalous incomplete step metadata"
+  ],
+  "interpretation": "Three proposal-level pre-signal borrower-state source proofs passed. Four proposal definitions conflict with on-chain signal-minus-one eMode LT; these candidates cannot be counted or used until lineage/parameter chronology is reconciled. Cancelled artifacts are preserved but are not coverage proofs.",
+  "source_gate_pass": false,
+  "fully_defensible_independent_shock_count": null,
+  "development_runs": 0,
+  "outcomes_opened": false,
+  "terminal_verdict": null,
+  "status": "SOURCE_GATE_PENDING_WITH_SOURCE_INTEGRITY_CONFLICT",
+  "next_step": "Reconcile the four eMode LT histories against decoded category-change chronology and exact governance signal/effect lineage; audit partial cancelled artifacts; await active V29/V37 jobs. Do not open outcomes or rerun duplicate acquisition."
+}
