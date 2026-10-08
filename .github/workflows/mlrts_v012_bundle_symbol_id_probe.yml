@@ -1,0 +1,28 @@
+name: MLRTS V0.1.2 Bundle Symbol ID Probe
+
+on:
+  push:
+    branches: [mexc-launchpool-reward-token-sellpressure-v0.1-2026-10-08]
+    paths:
+      - 'research/mexc_launchpool_reward_token_sellpressure/bundle_symbol_id_probe_v012.py'
+      - '.github/workflows/mlrts_v012_bundle_symbol_id_probe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests
+      - run: python research/mexc_launchpool_reward_token_sellpressure/bundle_symbol_id_probe_v012.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mlrts-v012-bundle-symbol-id-probe
+          path: artifacts/mlrts_v012_bundle_symbol_id_probe/
+          retention-days: 90
