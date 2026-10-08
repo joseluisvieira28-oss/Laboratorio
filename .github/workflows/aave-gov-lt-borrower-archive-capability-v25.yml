@@ -1,0 +1,26 @@
+name: Aave Gov LT Borrower Archive Capability V25
+on:
+  push:
+    branches: [aave-gov-lt-forced-deleveraging-v0.1]
+    paths:
+      - '.github/workflows/aave-gov-lt-borrower-archive-capability-v25.yml'
+      - 'research/aave_gov_lt_forced_deleveraging/borrower_archive_capability_v25.py'
+permissions:
+  contents: read
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install pycryptodome==3.23.0
+      - run: python research/aave_gov_lt_forced_deleveraging/borrower_archive_capability_v25.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: aave-gov-lt-borrower-archive-capability-v25
+          path: out/aave_borrower_archive_capability_v25
+          retention-days: 30
