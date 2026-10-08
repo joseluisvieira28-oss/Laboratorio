@@ -1,0 +1,46 @@
+name: MEXC V0.13 Binance Liquidation Source Gate V0.3
+
+on:
+  push:
+    branches:
+      - mexc-event-futures-liquidation-binance-v0.3-source-gate-2026-10-08
+    paths:
+      - 'research/mexc_event_futures/LIQUIDATION_FLOW_BINANCE_SOURCE_GATE_V03.md'
+      - 'research/mexc_event_futures/liquidation_binance_source_gate_v03.py'
+      - '.github/workflows/mexc-v013-liquidation-binance-source-v03.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install public websocket dependency
+        run: python -m pip install --disable-pip-version-check websockets==15.0.1
+      - name: Governance preflight
+        run: |
+          test "$GITHUB_REF_NAME" = "mexc-event-futures-liquidation-binance-v0.3-source-gate-2026-10-08"
+          python -m py_compile research/mexc_event_futures/liquidation_binance_source_gate_v03.py
+          grep -q 'SOURCE-ONLY' research/mexc_event_futures/LIQUIDATION_FLOW_BINANCE_SOURCE_GATE_V03.md
+          grep -q 'Research outcomes opened must remain exactly 0' research/mexc_event_futures/LIQUIDATION_FLOW_BINANCE_SOURCE_GATE_V03.md
+          echo BINANCE_LIQUIDATION_PREOUTCOME_PASS
+      - name: Observe public Binance forceOrder source for 600 seconds
+        run: python research/mexc_event_futures/liquidation_binance_source_gate_v03.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v013-binance-liquidation-source-v03-${{ github.run_id }}-${{ github.run_attempt }}
+          path: evidence/liquidation-binance-source-v03
+          if-no-files-found: error
+          retention-days: 90
+      - name: Governance closeout
+        run: |
+          echo SOURCE_ONLY
+          echo NO_MEXC_OUTCOMES
+          echo NO_AUTH_NO_ORDER_NO_MUTATION
