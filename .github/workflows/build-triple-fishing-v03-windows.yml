@@ -41,6 +41,7 @@ on:
       - 'crypto_edge_radar/tests/test_mexc_triple_fishing_ready_v03.py'
       - 'crypto_edge_radar/tests/test_triple_launcher_v03_offline.ps1'
       - 'crypto_edge_radar/tests/test_triple_supervisor_fatal_v03.py'
+      - 'crypto_edge_radar/windows/Verify_MEXC_Triple_Fishing_V03_Bundle_READONLY.ps1'
       - '.github/workflows/build-triple-fishing-v03-windows.yml'
 
 permissions:
@@ -136,6 +137,7 @@ jobs:
 
           Copy-Item "windows\Run_MEXC_Triple_Fishing_V03.ps1" $bundle
           Copy-Item "windows\Inspect_MEXC_Triple_Fishing_V03_READONLY.ps1" $bundle
+          Copy-Item "windows\Verify_MEXC_Triple_Fishing_V03_Bundle_READONLY.ps1" $bundle
           Copy-Item "windows\Install_MEXC_Triple_Fishing_V03.ps1" $bundle
           Copy-Item "windows\Ready_And_Arm_MEXC_Triple_Fishing_V03.ps1" $bundle
           Copy-Item "windows\Switch_From_BNB_To_Triple_V03.ps1" $bundle
@@ -173,6 +175,12 @@ jobs:
 
           Get-ChildItem $bundle | Select-Object Name,Length
           Get-Content $hashFile
+
+      - name: Verify whole Windows bundle SHA256 and build identity offline
+        shell: pwsh
+        run: |
+          & .\dist\triple_fishing_v03_bundle\Verify_MEXC_Triple_Fishing_V03_Bundle_READONLY.ps1 -BundleRoot .\dist\triple_fishing_v03_bundle
+          if ($LASTEXITCODE -and $LASTEXITCODE -ne 0) { throw "Bundle verification failed" }
 
       - name: Upload flat Triple Fishing V0.3 bundle
         uses: actions/upload-artifact@v4
