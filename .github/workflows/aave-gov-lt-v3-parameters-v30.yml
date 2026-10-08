@@ -1,0 +1,34 @@
+name: Aave Gov LT V3 Parameters V30
+on:
+  push:
+    branches: [aave-gov-lt-forced-deleveraging-v0.1]
+    paths:
+      - '.github/workflows/aave-gov-lt-v3-parameters-v30.yml'
+      - 'research/aave_gov_lt_forced_deleveraging/v3_parameter_semantics_v30.py'
+permissions:
+  contents: read
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      SEATBELT_ROOT: seatbelt
+      SEATBELT_COMMIT: a6e52bca30dff5c396f8ad7b452a9890a1f0e68e
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: aave-dao/seatbelt-gov-v3
+          ref: a6e52bca30dff5c396f8ad7b452a9890a1f0e68e
+          path: seatbelt
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install pycryptodome==3.23.0
+      - run: python research/aave_gov_lt_forced_deleveraging/v3_parameter_semantics_v30.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: aave-gov-lt-v3-parameters-v30
+          path: out/aave_v3_parameter_semantics_v30
+          retention-days: 30
