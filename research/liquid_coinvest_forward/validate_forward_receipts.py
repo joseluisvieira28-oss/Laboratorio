@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import json
 import math
+from source_snapshot import tiers_equal
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -43,6 +44,8 @@ for path in files:
     if payload.get("outcome_opened") is not False:
         fail(f"{path.name}: outcome must remain unopened during cadence calibration")
 
+    if payload.get("freeze_commit") != "2229026ef30d41d9556e8b2f6e71188b2aa12df0":
+        fail(f"{path.name}: wrong freeze commit")
     observed_at = parse_iso(payload["observed_at_utc"])
 
     obs_rows = payload.get("observations") or []
@@ -104,19 +107,18 @@ for path in files:
         prev = previous.get(symbol)
         tag = row.get("cadence_tag") or row.get("freshness_tag")
         if prev is not None:
-            prev_source, prev_fingerprint = prev
-            fingerprint = json.dumps(tiers, sort_keys=True, separators=(",", ":"))
-            if source_at == prev_source and fingerprint == prev_fingerprint:
-                if tag not in {"DUPLICATE_SOURCE_SNAPSHOT", "FRESHNESS_UNKNOWN"}:
-                    fail(f"{oid}: unchanged source must be tagged duplicate/unknown")
-            elif source_at > prev_source:
-                cadence_deltas[symbol].append((source_at - prev_source).total_seconds())
-                if tag not in {"ADVANCED_SOURCE_SNAPSHOT", "FRESHNESS_UNKNOWN"}:
-                    fail(f"{oid}: advanced source must be tagged advanced/unknown")
-            elif source_at < prev_source:
+            prev_source, prev_tiers = prev
+            same = tiers_equal(tiers, prev_tiers)
+            if source_at < prev_source:
                 fail(f"{oid}: source timestamp regressed")
-        fingerprint = json.dumps(tiers, sort_keys=True, separators=(",", ":"))
-        previous[symbol] = (source_at, fingerprint)
+            if source_at == prev_source and not same:
+                fail(f"{oid}: SOURCE_INTEGRITY_CONFLICT")
+            expected_tag = "DUPLICATE_SOURCE_SNAPSHOT" if source_at == prev_source and same else "ADVANCED_SOURCE_SNAPSHOT"
+            if tag not in {expected_tag, "FRESHNESS_UNKNOWN"}:
+                fail(f"{oid}: expected {expected_tag}")
+            if source_at > prev_source:
+                cadence_deltas[symbol].append((source_at - prev_source).total_seconds())
+        previous[symbol] = (source_at, tiers)
 
 print(f"PASS: {len(files)} receipt files, {rows} observations, {len(seen_ids)} unique IDs")
 for symbol in sorted(ALLOWED):

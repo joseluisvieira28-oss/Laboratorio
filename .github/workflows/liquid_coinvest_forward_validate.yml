@@ -25,6 +25,9 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Verify immutable durable baseline
+        run: python research/liquid_coinvest_forward/validate_persistence.py
+
       - name: Validate append-only forward receipts
         run: python research/liquid_coinvest_forward/validate_forward_receipts.py
 
