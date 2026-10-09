@@ -29,6 +29,8 @@ jobs:
           python -m unittest -v test_rle_engine_v01.py
       - name: Verify archive metadata only — NO prices or outcomes
         run: python rle_engine_v01.py --mode source
+      - name: Print exact source SHA256 pins before outcomes
+        run: sha256sum rle_engine_v01.py test_rle_engine_v01.py LOR_RLE_001_PREOUTCOME_FREEZE_V0_1.json
       - name: Upload source-only provenance receipt
         if: always()
         uses: actions/upload-artifact@v4
