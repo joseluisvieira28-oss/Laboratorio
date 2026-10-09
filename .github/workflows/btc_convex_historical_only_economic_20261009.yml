@@ -40,6 +40,22 @@ jobs:
       - name: Independently rederive historical trade-level economics and gates
         run: |
           python research/historical_only_convex_20261009/historical_ledger_audit.py --first prior/first --expansion prior/expansion --h2 prior/h2
+      - name: Report historical realized payoff and top-three-winner concentration
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path("research/historical_only_convex_20261009/HISTORICAL_LEDGER_REPRO_RESULT_V01.json")
+          d=json.loads(p.read_text())
+          for asset,modes in d["asset_metrics"].items():
+              t=modes["PARENT"]["BASE"]
+              print(json.dumps({"asset":asset,"trades":t["trades"],"net_pct":t["net_pct"],
+                  "payoff_winner_over_abs_loser":t["payoff_winner_over_abs_loser"],
+                  "win_rate_pct":t["win_rate_pct"],"net_without_top3_usdt":t["net_without_top3_usdt"],
+                  "positive_years_2021_2025":t["positive_years"],
+                  "worst_trade_usdt":t["worst_trade_usdt"],
+                  "mtm_max_dd_pct_from_original":t["mtm_max_dd_pct_FROM_ORIGINAL_BAR_SIM"]}))
+          PY
       - name: Upload historical receipt even on failures
         if: always()
         uses: actions/upload-artifact@v4
