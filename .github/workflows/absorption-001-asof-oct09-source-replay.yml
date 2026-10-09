@@ -32,7 +32,7 @@ jobs:
       - name: Frozen classifier's original synthetic tests; compile replay
         run: |
           python -m py_compile absorption_failed_auction/asof_oct09_source_only_classifier_v01.py
-          cd absorption_failed_auction && python -m unittest -v test_engine.py
+          python -m unittest -v absorption_failed_auction/test_engine.py
       - name: Source-only current-day Binance spot aggTrades bounded to Oct09 11UTC
         run: |
           FEATURES="$(find /tmp/verified_spot_archives -name 'SOURCE_ONLY_CANONICAL_SPOT_AGGTRADES_5M_2026-10-02_TO_08.jsonl' -print -quit)"
