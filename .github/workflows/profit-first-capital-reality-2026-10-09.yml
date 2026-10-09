@@ -1,0 +1,21 @@
+name: Profit First Capital Reality Audit (Research Only)
+on:
+  push:
+    branches:
+      - audit/profit-first-capital-reality-2026-10-09
+    paths:
+      - 'audits/test_profit_first_capital_reality_2026_10_09.py'
+      - '.github/workflows/profit-first-capital-reality-2026-10-09.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  forensic:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Reconcile observed risk; no exchange or accounts
+        run: python -m unittest audits.test_profit_first_capital_reality_2026_10_09 -v
