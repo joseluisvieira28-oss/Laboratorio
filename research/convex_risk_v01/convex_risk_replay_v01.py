@@ -68,9 +68,8 @@ def get_raw_trades(docs):
      if entry<last_end or entry<=last_entry or key in seen:
       raise ValueError("SOURCE_OVERLAP_DUPLICATE:"+sym)
      last_entry=entry;last_end=end;seen.add(key)
-     n=finite(t["qty"])*finite(t["entry"])
-     if n<=0:raise ValueError("NONPOSITIVE_TRADE_NOTIONAL")
-     _=finite(t["net_pnl"])/n
+     runit=finite(t["return_pct"])/100.0
+     if finite(t["net_pnl"])*runit<0:raise ValueError("NET_PNL_RETURN_SIGN_DISAGREEMENT")
      for f in ("commission","funding","slippage_cost"):
       finite(t[f])
    for b,s in zip(base[sym],stress[sym]):
@@ -93,8 +92,7 @@ def events_for(symbols,original_base,layer_trades,extra_bps,remove_top3):
    suppressed={i for i in biggest[:3] if finite(b[i]["net_pnl"])>0}
   for i,t in enumerate(tr):
    if i in suppressed:continue
-   nom=finite(t["qty"])*finite(t["entry"])
-   unit_return=finite(t["net_pnl"])/nom-extra_bps/10000
+   unit_return=finite(t["return_pct"])/100.0-extra_bps/10000
    if not math.isfinite(unit_return):raise ValueError("INVALID_UNIT_RETURN")
    entry=int(t["entry_t"]);end=int(t["exit_t"])
    ident=(sym,entry,end,i)
@@ -185,7 +183,7 @@ def self_test():
  def t(i,a,b,p):
   # hard-wired nominal $1000, known deterministic PnL
   return {"entry_t":DATE_MIN+i*3600000,"exit_t":DATE_MIN+(i+1)*3600000,"qty":1.0,
-          "entry":1000.0,"net_pnl":p,"funding":0,"commission":2,"slippage_cost":0.4}
+          "entry":1000.0,"net_pnl":p,"return_pct":p/10.0,"funding":0,"commission":2,"slippage_cost":0.4}
  z=[t(0,0,1,50),t(2,2,3,-30),t(4,4,5,10),t(6,6,7,20)]
  for r in (0.0025,0.005):
   ev=events_for((sym,),{sym:z},{sym:z},0,False)
