@@ -1,0 +1,92 @@
+name: BTC-CONVEX V0.2 Read-Only Forward Verification 2026-10-09
+
+on:
+  push:
+    branches:
+      - ops/btc-convex-v02-readonly-verdict-2026-10-09
+    paths:
+      - '.github/workflows/btc_convex_v02_readonly_verdict_2026_10_09.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Rebuild existing frozen V0.2 public-data shadow snapshot only
+        run: python labs/btc-convex-trend-capture-001/prospective_shadow_snapshot_v0_2_aggressive.py
+      - name: Original frozen evidence validator
+        run: python labs/btc-convex-trend-capture-001/validate_prospective_shadow_v0_2.py
+      - name: Independent signal/entry/overlap forensic checks (research only)
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json, datetime
+          from pathlib import Path
+          p=Path('labs/btc-convex-trend-capture-001/evidence/PROSPECTIVE_SHADOW_SNAPSHOT_V0.2_AGGRESSIVE.json')
+          x=json.loads(p.read_text())
+          report={'type':'BTC_CONVEX_V02_FORWARD_REPLAY_READONLY_FORENSIC',
+                  'source_snapshot_utc':x['snapshot_time_utc'],
+                  'forward_provenance':'OHLCV_RETROSPECTIVE_REPLAY_AS_OF_SNAPSHOT_NOT_INDEPENDENT_SIGNAL_T0_PROOF',
+                  'actual_bid_ask_execution':'NOT_PROVEN',
+                  'capital_authority':'NONE',
+                  'symbols':{},
+                  'errors':[]}
+          assert x['authority']=='PROSPECTIVE_SHADOW_AUTHORITY_V0.2_AGGRESSIVE'
+          assert list(x['symbols'])==['BTCUSDT','ETHUSDT','SOLUSDT','BNBUSDT']
+          start=1790233200000
+          total=0
+          for sym,node in x['symbols'].items():
+              if node['source_status']!='PASS':
+                  report['errors'].append(sym+':SOURCE_BLOCKED')
+                  continue
+              r=node['result']; signals=r['signals']; trades=r['trades']; total+=len(trades)
+              if r['signal_count']!=len(signals) or r['closed_trades']!=len(trades):
+                  report['errors'].append(sym+':COUNT_MISMATCH')
+              decisions=[z['decision_bar_open_t'] for z in signals]
+              if any(z<start for z in decisions) or len(decisions)!=len(set(decisions)):
+                  report['errors'].append(sym+':DUPLICATE_OR_PREBOUNDARY_SIGNAL')
+              if any(z['decision_bar_close_t']!=z['decision_bar_open_t']+3599999 for z in signals):
+                  report['errors'].append(sym+':BAR_CLOCK_MISMATCH')
+              entries=[z['entry_t'] for z in trades]
+              prior_exit=-1
+              for z in trades:
+                  if z['entry_t']<prior_exit or z['exit_t']<z['entry_t']:
+                      report['errors'].append(sym+':OVERLAP_OR_NEGATIVE_HOLD')
+                  prior_exit=z['exit_t']
+              if r['open_position']:
+                  if r['open_position']['entry_t']<prior_exit:
+                      report['errors'].append(sym+':OPEN_POSITION_OVERLAP')
+                  entries.append(r['open_position']['entry_t'])
+              if len(signals)!=len(entries)+int(bool(r['pending_entry'])):
+                  report['errors'].append(sym+':UNMATCHED_ENTRY_SIGNAL')
+              if any(i>=len(decisions) or e!=decisions[i]+3600000 for i,e in enumerate(entries)):
+                  report['errors'].append(sym+':NON_NEXT_HOUR_ENTRY')
+              report['symbols'][sym]={'signals':len(signals),'closed_trades':len(trades),'open':bool(r['open_position']),
+                  'marked_return':r['marked_return']}
+          if x['family']['closed_trades_total']!=total:
+              report['errors'].append('FAMILY_TOTAL_MISMATCH')
+          report['resolved']=total
+          report['classification']='REPLAY_INTEGRITY_FAIL' if report['errors'] else 'REPLAY_ONLY_INTEGRITY_PASS'
+          report['economic_verdict']='FORWARD_INSUFFICIENT' if total<50 else 'AWAIT_FROZEN_DISTRIBUTION_GATE_AND_INDEPENDENT_PROVENANCE'
+          dest=Path('labs/btc-convex-trend-capture-001/evidence/V02_OCT09_READONLY_FORENSIC.json')
+          dest.write_text(json.dumps(report,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(report,indent=2))
+          if report['errors']: raise SystemExit('FAIL_CLOSED_REPLAY_INTEGRITY')
+          PY
+      - name: Upload replay plus scientific caution receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: btc-convex-v02-readonly-verdict-2026-10-09
+          path: |
+            labs/btc-convex-trend-capture-001/evidence/PROSPECTIVE_SHADOW_SNAPSHOT_V0.2_AGGRESSIVE.json
+            labs/btc-convex-trend-capture-001/evidence/V02_OCT09_READONLY_FORENSIC.json
+          if-no-files-found: warn
