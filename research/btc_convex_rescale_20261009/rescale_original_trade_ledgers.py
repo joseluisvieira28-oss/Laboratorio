@@ -29,6 +29,27 @@ def scalar(x,key):
     if not math.isfinite(r): raise ValueError(f"NONFINITE:{key}")
     return r
 
+def original_trade_notional_return(t):
+    # Archived original trade serialization omits qty but persists return_pct.
+    # Verify return_pct against commission-reconstructed qty and net_pnl.
+    if "qty" in t:
+        qty=scalar(t["qty"],"qty")
+    else:
+        commission=scalar(t["commission"],"commission")
+        entry=scalar(t["entry"],"entry")
+        exitprice=scalar(t["exit"],"exit")
+        qty=commission/(ENTRY_FEE*(entry+exitprice))
+    if qty<=0: raise ValueError("ZERO_OR_NEGATIVE_RECOVERED_QTY")
+    notional=qty*scalar(t["entry"],"entry")
+    if notional<=0: raise ValueError("ZERO_OR_NEGATIVE_NOTIONAL")
+    inferred=scalar(t["net_pnl"],"net_pnl")/notional
+    if "return_pct" in t:
+        supplied=scalar(t["return_pct"],"return_pct")/100
+        if not math.isclose(inferred,supplied,rel_tol=1e-8,abs_tol=1e-9):
+            raise ValueError("ORIGINAL_TRADE_NOTIONAL_RETURN_RECONCILIATION_FAILED")
+        return supplied
+    return inferred
+
 def core(trades,fraction,top_missing=None,plus_fee_bps=0):
     if not 0<fraction<=1:raise ValueError("INVALID_NOTIONAL_FRACTION")
     top_missing=set(top_missing or ())
@@ -45,9 +66,7 @@ def core(trades,fraction,top_missing=None,plus_fee_bps=0):
         start=int(t["entry_t"]);end=int(t["exit_t"])
         if start<last_exit or end<start:raise ValueError(f"OUT_OF_ORDER_TRADE:{i}")
         last_exit=end
-        notional=scalar(t["qty"],"qty")*scalar(t["entry"],"entry")
-        if notional<=0:raise ValueError(f"INVALID_NOTIONAL:{i}")
-        rawret=scalar(t["net_pnl"],"net_pnl")/notional
+        rawret=original_trade_notional_return(t)
         realized_ret=0.0 if i in top_missing else rawret-(plus_fee_bps/10000.0)
         pnl=eq*fraction*realized_ret
         if eq+pnl<=0:raise ValueError(f"EXHAUSTED_EQUITY:{i}")
@@ -156,7 +175,7 @@ def run(args):
                     raise ValueError(f"PARENT_BASELINE_NOT_REPRODUCED:{symbol}:{layer}:{reproduced}:{expected}")
             scored=sorted(
                 range(len(trades["BASE"])),
-                key=lambda i:scalar(trades["BASE"][i]["net_pnl"],"net_pnl")/(scalar(trades["BASE"][i]["qty"],"qty")*scalar(trades["BASE"][i]["entry"],"entry")),
+                key=lambda i:original_trade_notional_return(trades["BASE"][i]),
                 reverse=True,
             )
             top3=scored[:3]
