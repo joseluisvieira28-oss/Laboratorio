@@ -1,0 +1,40 @@
+name: BTC Convex V0.3 Public USD-M Quote Source Gate
+on:
+  push:
+    branches:
+      - research/btc-convex-v03-quote-source-2026-10-09
+    paths:
+      - '.github/workflows/btc_convex_v03_quote_source_gate.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: btc-convex-v03-quote-source-preflight
+  cancel-in-progress: false
+jobs:
+  source_only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Confirm existing pre-run source freeze and no main
+        shell: bash
+        run: |
+          test -s research/btc_convex_quote_v03/V03_QUOTE_SOURCE_PREFREEZE_2026_10_09.md
+          test "$GITHUB_REF_NAME" = "research/btc-convex-v03-quote-source-2026-10-09"
+      - name: Compile read-only source gate
+        run: python -m py_compile research/btc_convex_quote_v03/public_depth_source_gate_v03.py
+      - name: Fail-closed deterministic synthetic source tests
+        run: python research/btc_convex_quote_v03/public_depth_source_gate_v03.py --self-test
+      - name: Public market depth and exchange filters (GET only; no trades)
+        run: python research/btc_convex_quote_v03/public_depth_source_gate_v03.py --live
+      - name: Upload source-only evidence even if blocked
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: btc-convex-v03-quote-source-gate-2026-10-09
+          path: research/btc_convex_quote_v03/V03_QUOTE_SOURCE_GATE_RECEIPT.json
+          if-no-files-found: warn
