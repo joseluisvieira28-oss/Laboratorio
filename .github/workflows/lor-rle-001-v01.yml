@@ -1,0 +1,82 @@
+name: LOR-RLE-001 source and scientific discovery (no trading)
+on:
+  push:
+    branches:
+      - research/lorenz-rle-001-science-2026-10-09
+    paths:
+      - research/lorenz_rle_001/**
+      - .github/workflows/lor-rle-001-v01.yml
+permissions:
+  contents: read
+concurrency:
+  group: lor-rle-001-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  source-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: research/lorenz_rle_001
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Python compile and synthetic research regressions
+        run: |
+          python -m py_compile rle_engine_v01.py test_rle_engine_v01.py
+          python -m unittest -v test_rle_engine_v01.py
+      - name: Verify archive metadata only — NO prices or outcomes
+        run: python rle_engine_v01.py --mode source
+      - name: Upload source-only provenance receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lor-rle-001-source-only
+          path: |
+            research/lorenz_rle_001/LOR_RLE_001_SOURCE_METADATA_RECEIPT.json
+            research/lorenz_rle_001/LOR_RLE_001_PREOUTCOME_FREEZE_V0_1.json
+            research/lorenz_rle_001/rle_engine_v01.py
+            research/lorenz_rle_001/test_rle_engine_v01.py
+          if-no-files-found: warn
+          retention-days: 90
+
+  discovery:
+    needs: source-only
+    if: ${{ contains(github.event.head_commit.message, '[RLE-001-OPEN-DISCOVERY]') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    defaults:
+      run:
+        working-directory: research/lorenz_rle_001
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Check source SHA and immutable pre-outcome policy
+        run: |
+          python -m unittest -q test_rle_engine_v01.py
+          python - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          d=json.loads(Path('LOR_RLE_001_DISCOVERY_AUTHORIZATION.json').read_text())
+          assert d['trigger']=='ONE_TIME_2022_2024_DISCOVERY'
+          assert d['oos_2025_access'] is False and d['holdout_2026_access'] is False
+          for key,path in [('frozen_engine_sha256','rle_engine_v01.py'),('frozen_tests_sha256','test_rle_engine_v01.py'),('frozen_freeze_sha256','LOR_RLE_001_PREOUTCOME_FREEZE_V0_1.json')]:
+              assert hashlib.sha256(Path(path).read_bytes()).hexdigest()==d[key],key
+          print('SHA_MATCH / OUTCOME_OPEN_RULE_VALID / NO_PRIVATE_API', flush=True)
+          PY
+      - name: Discovery 2022–2024 public Binance archive only
+        run: python rle_engine_v01.py --mode discovery
+      - name: Preserve economic verdict and checksum evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lor-rle-001-discovery-2022-2024
+          path: |
+            research/lorenz_rle_001/LOR_RLE_001_DISCOVERY_RECEIPT.json
+            research/lorenz_rle_001/LOR_RLE_001_DISCOVERY_AUTHORIZATION.json
+            research/lorenz_rle_001/LOR_RLE_001_PREOUTCOME_FREEZE_V0_1.json
+          if-no-files-found: warn
+          retention-days: 90
