@@ -108,7 +108,7 @@ class RLETests(unittest.TestCase):
     def test_rle_synthetic_ignition_and_compression(self):
         arr=[]
         for i in range(230):
-            p=100+i*.1
+            p=100+i*.1 if i<222 else 121.8
             arr.append(bar(T+i*s.MS_H,p,p+.2,p-.2,p+.05))
         p=123
         arr.append(bar(T+230*s.MS_H,p,130.5,122.9,130))
