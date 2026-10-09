@@ -1,0 +1,116 @@
+name: TVFP Render logs daily archival — isolated research branch
+on:
+  push:
+    branches:
+      - ops/tvfp-daily-archive-v01-2026-10-09
+    paths:
+      - tradingview_evidence_vault/render_daily_export_v01.py
+      - tradingview_evidence_vault/test_render_daily_export_v01.py
+      - .github/workflows/tvfp-render-daily-export-v01.yml
+      - tradingview_evidence_vault/ARCHIVE_RUN_REQUEST_V01.md
+  workflow_dispatch:
+    inputs:
+      utc_day:
+        description: Completed UTC day YYYY-MM-DD; leave empty for yesterday
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Validate original Vault and exporter (no network)
+        run: |
+          python -m py_compile tradingview_evidence_vault/render_daily_export_v01.py tradingview_evidence_vault/test_render_daily_export_v01.py
+          python -m unittest -v tradingview_evidence_vault/test_vault.py tradingview_evidence_vault/test_render_daily_export_v01.py
+      - name: Display source sha256
+        run: sha256sum tradingview_evidence_vault/render_daily_export_v01.py tradingview_evidence_vault/test_render_daily_export_v01.py
+
+  archive:
+    needs: synthetic
+    if: ${{ github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[TVFP-ARCHIVE-PREVIOUS-UTC-DAY]') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    permissions:
+      contents: write
+    concurrency:
+      group: tvfp-vault-daily-archive
+      cancel-in-progress: false
+    env:
+      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ops/tvfp-daily-archive-v01-2026-10-09
+          path: exporter
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: tv-evidence-vault-v0.1
+          path: vault
+          persist-credentials: true
+      - name: Require existing Render API credential (never print)
+        run: |
+          if [ -z "$RENDER_API_KEY" ]; then
+            echo "SOURCE_BLOCKED: missing RENDER_API_KEY repository secret"
+            exit 2
+          fi
+      - name: Resolve only a finished UTC day
+        env:
+          REQUESTED_DAY: ${{ inputs.utc_day }}
+        run: |
+          DAY=$(python - <<'PY'
+          import os
+          from datetime import datetime,timezone,timedelta
+          d=os.getenv('REQUESTED_DAY','').strip()
+          print(d or (datetime.now(timezone.utc).date()-timedelta(days=1)).isoformat())
+          PY
+          )
+          echo "DAY=$DAY" >> "$GITHUB_ENV"
+          echo "Attempting strict source-only UTC daily archival for $DAY"
+      - name: Restore authentic Render app receipts and validate full 288-bar day
+        run: |
+          python exporter/tradingview_evidence_vault/render_daily_export_v01.py \
+            --day "$DAY" \
+            --vault-root vault/tradingview_evidence_vault \
+            --receipt-out /tmp/TVFP_EXPORT_GATE_RECEIPT.json
+      - name: Validate immutable source chain using original frozen vault tool
+        run: |
+          DATE="$DAY"
+          python vault/tradingview_evidence_vault/vault.py \
+            "vault/tradingview_evidence_vault/staging/$DATE.raw.jsonl" \
+            --outdir "vault/tradingview_evidence_vault/archive/$DATE" \
+            --snapshot-id "$DATE"
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          day=os.environ['DAY']
+          m=json.loads((Path('vault/tradingview_evidence_vault/archive')/day/(day+'.manifest.json')).read_text())
+          assert m['unique_receipts']==288 and m['expected_slots']==288 and m['missing_slots']==0
+          assert m['trading_authority']=='NONE'
+          print('FULL_UTC_DAY_ARCHIVAL_READY',day)
+          PY
+      - name: Append new immutable UTC snapshot to Vault branch only
+        working-directory: vault
+        run: |
+          git config user.name crypto-lab-source-bot
+          git config user.email actions@users.noreply.github.com
+          git add "tradingview_evidence_vault/staging/$DAY.raw.jsonl" "tradingview_evidence_vault/archive/$DAY"
+          git diff --cached --quiet && { echo "NO_CHANGE"; exit 0; }
+          git commit -m "vault: automatically archive verified TVFP $DAY UTC; 288/288"
+          git push origin HEAD:tv-evidence-vault-v0.1
+      - name: Publish read-only transport receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tvfp-render-daily-export-transport-receipt
+          path: /tmp/TVFP_EXPORT_GATE_RECEIPT.json
+          if-no-files-found: warn
+          retention-days: 90
