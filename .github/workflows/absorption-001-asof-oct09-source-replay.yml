@@ -1,0 +1,51 @@
+name: ABSORPTION-001 Oct09 11UTC source-only 2036-bar replay
+on:
+  push:
+    branches:
+      - audit/absorption-sensor-freshness-2026-10-09
+    paths:
+      - absorption_failed_auction/asof_oct09_source_only_classifier_v01.py
+      - .github/workflows/absorption-001-asof-oct09-source-replay.yml
+permissions:
+  contents: read
+  actions: read
+jobs:
+  frozen-event-labels:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: tv-evidence-vault-v0.1
+          path: vault_read
+          persist-credentials: false
+      - name: Restore preceding official full-SHA Binance 5m feature artifact
+        run: |
+          mkdir -p /tmp/verified_spot_archives
+          gh run download 37922287209 -R "$GITHUB_REPOSITORY" -n absorption-001-verified-spot-aggtrades-source-20261002-08 -D /tmp/verified_spot_archives
+          find /tmp/verified_spot_archives -name 'SOURCE_ONLY_CANONICAL_SPOT_AGGTRADES_5M_2026-10-02_TO_08.jsonl' -size +0c | grep -q .
+      - name: Frozen classifier's original synthetic tests; compile replay
+        run: |
+          python -m py_compile absorption_failed_auction/asof_oct09_source_only_classifier_v01.py
+          python -m unittest -v absorption_failed_auction/test_engine.py
+      - name: Source-only current-day Binance spot aggTrades bounded to Oct09 11UTC
+        run: |
+          FEATURES="$(find /tmp/verified_spot_archives -name 'SOURCE_ONLY_CANONICAL_SPOT_AGGTRADES_5M_2026-10-02_TO_08.jsonl' -print -quit)"
+          test -n "$FEATURES"
+          python absorption_failed_auction/asof_oct09_source_only_classifier_v01.py \
+            --source-feature-file "$FEATURES" \
+            --vault-root vault_read/tradingview_evidence_vault \
+            --outdir absorption_failed_auction/source_asof_receipt
+      - name: Preserve research-only classification and source receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: absorption-001-2036-source-only-frozen-classification-asof1100
+          path: absorption_failed_auction/source_asof_receipt/
+          if-no-files-found: warn
+          retention-days: 90
