@@ -1,0 +1,40 @@
+name: MEXC Convex V0.1 Causal Signal Quote Gateway
+on:
+  push:
+    branches:
+      - research/mexc-convex-v01-causal-gateway-2026-10-09
+    paths:
+      - '.github/workflows/mexc_convex_v01_causal_gateway.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: mexc-convex-v01-quote-gateway
+  cancel-in-progress: false
+jobs:
+  one_shot_public_research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Fail-closed branch identity and immutable pre-run contract
+        run: |
+          test "$GITHUB_REF_NAME" = "research/mexc-convex-v01-causal-gateway-2026-10-09"
+          test -s research/mexc_convex_gateway_v01/MEXC_CONVEX_V01_CAUSAL_GATEWAY_PREFREEZE_2026_10_09.md
+          test -s research/mexc_convex_gateway_v01/mexc_causal_gateway.py
+      - name: Offline causal and source synthetic regressions
+        run: |
+          python -m py_compile research/mexc_convex_gateway_v01/mexc_causal_gateway.py
+          python research/mexc_convex_gateway_v01/mexc_causal_gateway.py --self-test
+      - name: Public read-only MEXC 1H closed signal and POST decision quote gateway
+        run: python research/mexc_convex_gateway_v01/mexc_causal_gateway.py --live
+      - name: Preserve immutable one-shot evidence even on blocked source
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mexc-convex-v01-causal-gateway-2026-10-09
+          path: research/mexc_convex_gateway_v01/MEXC_CONVEX_V01_GATEWAY_OBSERVATION.json
+          if-no-files-found: warn
