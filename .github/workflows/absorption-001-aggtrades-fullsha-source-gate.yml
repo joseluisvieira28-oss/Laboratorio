@@ -1,0 +1,41 @@
+name: ABSORPTION-001 official spot aggTrades ZIP SHA + 5m source-only gate
+on:
+  push:
+    branches:
+      - audit/absorption-sensor-freshness-2026-10-09
+    paths:
+      - absorption_failed_auction/spot_aggtrades_archive_5m_gate_v01.py
+      - absorption_failed_auction/test_spot_aggtrades_archive_5m_gate_v01.py
+      - .github/workflows/absorption-001-aggtrades-fullsha-source-gate.yml
+permissions:
+  contents: read
+jobs:
+  full-archive-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: tv-evidence-vault-v0.1
+          path: vault_read
+          persist-credentials: false
+      - name: Python compile and 10 synthetic source invariants
+        run: |
+          python -m py_compile absorption_failed_auction/spot_aggtrades_archive_5m_gate_v01.py
+          cd absorption_failed_auction && python -m unittest -v test_spot_aggtrades_archive_5m_gate_v01.py
+      - name: Verify full official ZIP SHA256 and 1903 genuine Vault source bars
+        run: |
+          python absorption_failed_auction/spot_aggtrades_archive_5m_gate_v01.py \
+            --vault-root vault_read/tradingview_evidence_vault \
+            --outdir absorption_failed_auction/source_receipts
+      - name: Preserve complete source-only proof / 5m source features
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: absorption-001-verified-spot-aggtrades-source-20261002-08
+          path: absorption_failed_auction/source_receipts/
+          if-no-files-found: warn
+          retention-days: 90
