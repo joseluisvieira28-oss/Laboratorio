@@ -1,0 +1,40 @@
+name: BTC Convex MEXC Public Min Contract Capital Gate V01
+on:
+  push:
+    branches:
+      - research/convex-venue-execution-source-gate-2026-10-09
+    paths:
+      - '.github/workflows/convex_mexc_min_contract_gate_20261009.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  public_contract_sizing:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify public-only pre-freeze and calculations source
+        run: |
+          test "$GITHUB_REF_NAME" = "research/convex-venue-execution-source-gate-2026-10-09"
+          test -s research/convex_venue_gate_20261009/PRE_PUBLIC_MIN_NOTIONAL_GATE_V01.md
+          python -m py_compile research/convex_venue_gate_20261009/mexc_public_min_contract_capital_feasibility_v01.py
+      - name: Restore source verified MEXC depth and contract metadata
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh run download 37919451421 --repo "$GITHUB_REPOSITORY" --name btc-convex-venue-source-gate-20261009 --dir research/convex_venue_gate_20261009
+          test -s research/convex_venue_gate_20261009/VENUE_SOURCE_GATE_RESULT_2026_10_09.json
+      - name: Risk model current min size calculation without trading
+        run: python research/convex_venue_gate_20261009/mexc_public_min_contract_capital_feasibility_v01.py
+      - name: Preserve exact min size public calculation receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: btc-convex-mexc-public-min-contract-capital-v01
+          path: research/convex_venue_gate_20261009/MEXC_MIN_CONTRACT_CAPITAL_FEASIBILITY_RESULT_V01.json
+          if-no-files-found: warn
