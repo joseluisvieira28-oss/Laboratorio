@@ -1,0 +1,25 @@
+name: Source-first sample ceiling governance (no trading)
+on:
+  push:
+    branches:
+      - governance/source-first-sample-gate-2026-10-09
+    paths:
+      - governance/source_first_sample_gate_v01.py
+      - governance/test_source_first_sample_gate_v01.py
+      - .github/workflows/source-first-sample-gate-v01.yml
+permissions:
+  contents: read
+jobs:
+  synthetic-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify code compiles and all count-only fixtures
+        run: |
+          python -m py_compile governance/source_first_sample_gate_v01.py governance/test_source_first_sample_gate_v01.py
+          PYTHONPATH=governance python -m unittest -v governance/test_source_first_sample_gate_v01.py
+      - name: Preserve source SHA256
+        run: sha256sum governance/source_first_sample_gate_v01.py governance/test_source_first_sample_gate_v01.py
