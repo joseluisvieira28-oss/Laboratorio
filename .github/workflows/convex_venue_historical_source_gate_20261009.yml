@@ -1,0 +1,43 @@
+name: BTC Convex Venue MEXC-Binance Historical Source Gate V01
+on:
+  push:
+    branches:
+      - research/convex-venue-execution-source-gate-2026-10-09
+    paths:
+      - .github/workflows/convex_venue_historical_source_gate_20261009.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  unauthenticated_venue_source_gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Freeze and syntax protection
+        run: |
+          test "$GITHUB_REF_NAME" = "research/convex-venue-execution-source-gate-2026-10-09"
+          test -s research/convex_venue_gate_20261009/PRE_SOURCE_GATE_FREEZE_V01.md
+          python -m py_compile research/convex_venue_gate_20261009/venue_historical_public_source_probe.py
+          python - <<'PY'
+          from pathlib import Path
+          s=Path("research/convex_venue_gate_20261009/venue_historical_public_source_probe.py").read_text()
+          assert 'private/' not in s and 'POST' not in s
+          assert 'depth_commits' not in s
+          assert '2021-01-02' in s and '2025-12-01' in s
+          print('PUBLIC_ONLY_SOURCE_BOUNDARY_PASS')
+          PY
+      - name: Probe MEXC public current contracts/funding and Binance historic bid/ask archive
+        run: python research/convex_venue_gate_20261009/venue_historical_public_source_probe.py
+      - name: Preserve immutable probe receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: btc-convex-venue-source-gate-20261009
+          path: research/convex_venue_gate_20261009/VENUE_SOURCE_GATE_RESULT_2026_10_09.json
+          if-no-files-found: warn
