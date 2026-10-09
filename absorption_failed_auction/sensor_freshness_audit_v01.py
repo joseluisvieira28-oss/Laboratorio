@@ -44,7 +44,7 @@ def intake_stats(path):
                 closed = int(row["bar_close_ms"])
             except (ValueError, TypeError, KeyError) as e:
                 raise FreshnessError("INTAKE_TIMESTAMP_INVALID") from e
-            if opened in seen or opened % BAR_MS or closed != opened + BAR_MS - 1:
+            if opened in seen or opened % BAR_MS or closed != opened + BAR_MS:
                 raise FreshnessError("INTAKE_DUPLICATE_OR_ALIGNMENT_INVALID")
             seen.add(opened)
             times.append(closed)
