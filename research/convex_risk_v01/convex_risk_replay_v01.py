@@ -76,6 +76,8 @@ def get_raw_trades(docs):
      "original_parent_pct_net":100*finite(data["BASE"]["net_return"]),
      "original_trade_count":len(base[sym]),
      "stress_trade_count":len(stress[sym]),
+     "base_samebar_entry_stop_count":sum(t["entry_t"]==t["exit_t"] for t in base[sym]),
+     "stress_samebar_entry_stop_count":sum(t["entry_t"]==t["exit_t"] for t in stress[sym]),
      "layer_paths_identical":len(base[sym])==len(stress[sym]) and all((b["entry_t"],b["exit_t"])==(t["entry_t"],t["exit_t"]) for b,t in zip(base[sym],stress[sym]))}
  return base,stress,descriptive
 
@@ -95,7 +97,7 @@ def events_for(symbols,original_base,layer_trades,extra_bps,remove_top3):
    entry=int(t["entry_t"]);end=int(t["exit_t"])
    ident=(sym,entry,end,i)
    ev.append((entry,1,sym,ident,unit_return))
-   ev.append((end,0,sym,ident,unit_return))
+   ev.append((end,2 if end==entry else 0,sym,ident,unit_return))
  # Exits before entries at matching millisecond; stable alphabetical symbol order.
  ev.sort(key=lambda a:(a[0],a[1],a[2],a[3][3]))
  return ev
@@ -106,7 +108,7 @@ def replay(events,risk):
  reservations=0.0;gross_wins=gross_losses=0.0;win_count=loss_count=0
  losing_streak=max_losing_streak=0;calendar=defaultdict(float)
  for ts,etype,sym,ident,unit_return in events:
-  if etype==0:
+  if etype!=1:
    if ident not in opened:continue
    order=opened.pop(ident);reservations-=order["planned_risk"]
    # The per-notional return is NET of original recorded funding, commission, slip.
