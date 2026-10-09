@@ -39,6 +39,9 @@ jobs:
           git add research/rw_hl_exitflow/intake/
           test -n "$(git diff --cached --name-only)"
           git commit -m "source: preserve 3 genuine public Hyperliquid prospective snapshots; no outcomes"
+          # Transport-only: concurrent audit commits must not discard genuine source receipts.
+          git fetch origin research/rw-hl-exitflow-source-first-2026-10-09
+          git rebase origin/research/rw-hl-exitflow-source-first-2026-10-09
           git push origin HEAD:research/rw-hl-exitflow-source-first-2026-10-09
       - name: Mirror source snapshots and hash receipt as immutable artifact
         if: always()
