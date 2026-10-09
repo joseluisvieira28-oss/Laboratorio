@@ -1,0 +1,49 @@
+name: Crypto Lab BTC Convex Final Venue and Economic Gate 20261009
+on:
+  push:
+    branches:
+      - audit/convex-final-venue-economic-decision-2026-10-09
+    paths:
+      - '.github/workflows/convex_final_venue_economics_20261009.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  archived_economic_decision:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Enforce frozen retrospective ethics and compilation
+        run: |
+          test "$GITHUB_REF_NAME" = "audit/convex-final-venue-economic-decision-2026-10-09"
+          test -s research/convex_final_decision_20261009/PRE_FINAL_VENUE_AND_ECONOMIC_FREEZE_V01.md
+          python -m py_compile research/convex_final_decision_20261009/final_historical_cost_materiality_v01.py
+          python -m py_compile research/convex_final_decision_20261009/kraken_derivatives_public_source_probe_v01.py
+          python -m py_compile research/convex_risk_v01/convex_risk_replay_v01.py
+      - name: Restore original canonical historical ETH SOL BNB trades fees funding
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p original
+          gh run download 35918769969 --repo "$GITHUB_REPOSITORY" --name BTC-CONVEX-001-FINAL-CROSS-ASSET-VALIDATION-V007 --dir original
+          test -s original/CROSS_ASSET_COST_VALIDATION_V0.1.json
+      - name: Quantify frozen historical income materiality and cost breaking points
+        run: |
+          python research/convex_final_decision_20261009/final_historical_cost_materiality_v01.py --archive-root original
+      - name: Independently probe Kraken Derivatives historical market sources
+        run: |
+          python research/convex_final_decision_20261009/kraken_derivatives_public_source_probe_v01.py
+      - name: Preserve both independent receipts whether science passes or blocks
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: btc-convex-final-venue-economic-decision-v01
+          path: |
+            research/convex_final_decision_20261009/FINAL_COST_ELASTICITY_MATERIALITY_RECEIPT_V01.json
+            research/convex_final_decision_20261009/KRAKEN_PUBLIC_VENUE_SOURCE_GATE_RECEIPT_V01.json
+          if-no-files-found: warn
