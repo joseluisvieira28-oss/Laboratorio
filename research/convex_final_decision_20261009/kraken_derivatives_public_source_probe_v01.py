@@ -66,10 +66,14 @@ def candle(sym,date):
     timestamps.append(t)
    except Exception:continue
   target={beginning*1000+i*3600000 for i in range(24)}
+  inside=[t for t in timestamps if beginning*1000<=t<end*1000]
+  matches=set(inside)==target and len(inside)==24
   r.update({"body_elements":len(candidates),"in_requested_day":valid,
     "timestamps_unique":len(set(timestamps)),"column_keys":sorted(schema_set)[:25],
-    "matches_exact_24_UTC_hours":set(timestamps)==target})
-  r["status"]="EXACT_DAY_CANDLES_PASS" if set(timestamps)==target else "DAY_BARS_PARTIAL_OR_INVALID"
+    "extra_outside_day_candles":len(timestamps)-len(inside),
+    "inside_day_unique_timestamps":len(set(inside)),
+    "matches_exact_24_UTC_hours":matches})
+  r["status"]="EXACT_DAY_CANDLES_PASS" if matches else "DAY_BARS_PARTIAL_OR_INVALID"
  elif isinstance(j,list):
   r["status"]="UNEXPECTED_LIST_BODY";r["len"]=len(j)
  else:r["status"]="CANDLE_SOURCE_NOT_ACCESSIBLE"
