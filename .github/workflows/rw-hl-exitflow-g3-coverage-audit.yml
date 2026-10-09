@@ -1,0 +1,36 @@
+name: RW-HL-EXITFLOW-001 G3 frozen 14-day source coverage auditor
+on:
+  push:
+    branches:
+      - research/rw-hl-exitflow-source-first-2026-10-09
+    paths:
+      - research/rw_hl_exitflow/rw_hl_g3_coverage_adjudicator_v01.py
+      - research/rw_hl_exitflow/test_rw_hl_g3_coverage_adjudicator_v01.py
+      - research/rw_hl_exitflow/RW_HL_EXITFLOW_001_G3_SCHEDULER_ACTIVATION_2026-10-09.json
+      - .github/workflows/rw-hl-exitflow-g3-coverage-audit.yml
+permissions:
+  contents: read
+jobs:
+  source-only-g3:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify 14 synthetic source-only integrity and sample floor tests
+        run: |
+          cd research/rw_hl_exitflow
+          python -m py_compile rw_hl_g3_coverage_adjudicator_v01.py test_rw_hl_g3_coverage_adjudicator_v01.py
+          python -m unittest -v test_rw_hl_g3_coverage_adjudicator_v01.py
+          sha256sum RW_HL_EXITFLOW_001_G3_SCHEDULER_ACTIVATION_2026-10-09.json
+      - name: G3 exact prospective source-hour receipts and progress (not PnL)
+        run: python research/rw_hl_exitflow/rw_hl_g3_coverage_adjudicator_v01.py
+      - name: Preserve immutable source-only readiness classification
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rw-hl-exitflow-g3-14day-source-readiness
+          path: research/rw_hl_exitflow/source_receipts/G3_HOURLY_COVERAGE_STATUS.json
+          if-no-files-found: warn
+          retention-days: 90
