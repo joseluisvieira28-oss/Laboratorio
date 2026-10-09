@@ -137,46 +137,46 @@ def main():
     "market_source_months":len(data["receipts"]),
     "month_source_receipts":data["receipts"],
    }
- # fixed original risk-engine replay of MEXC-native price-only trades
- prior=runpy.run_path(str(HERE.parent/"convex_risk_v01"/"convex_risk_replay_v01.py"),run_name="import_source_only_replay")
- events_for=prior["events_for"];replay=prior["replay"]
- output={}
- for layer in ("BASE","STRESS"):
-  output[layer]={}
-  for risk in (.0025,.005):
-   events=events_for(SYMS,ledgers["BASE"],ledgers[layer],0,False)
-   t=replay(events,risk)
-   output[layer][str(risk)]={
-    "price_only_shared_portfolio_return_pct":t["net_return_pct"],
-    "closed_only_dd_pct":t["realized_only_dd_pct"],
-    "n_trades":t["trades"],"skipped":t["skipped_concurrent_or_budget"],
-    "year_realized_price_only_pnl":t["year_net_usdt"],
-    "funding_excluded":True,"MEXC_actual_2021_2025_execution_spread_excluded":True}
- result={
-   "status":"MEXC_NATIVE_FULL_1H_2021_2025_SOURCE_PASS__PRICE_TRANSFER_DIAGNOSTIC_ONLY",
-   "evidence_type":"RETROSPECTIVE_PRICE_ONLY_WITH_FEE_SLIP_PROXY_EXCLUDING_MEXC_FUNDING",
-   "scientific_credit":"NO_NEW_OOS__NOT_FULL_ECONOMIC_NET",
-   "symbols":SYMS,"month_count_per_symbol":61,
-   "original_pinned_source_sha":SOURCE_SHA,
-   "source_manifests":summ,
-   "independent_symbol_PRICE_ONLY":results,
-   "shared_capital_PRICE_ONLY":output,
-   "MEXC_historic_funding_2021_2025_complete":False,
-   "MEXC_historic_bidask_execution_complete":False,
-   "taker_fee_model_proven_historic_account":False,
-   "live_go":False,"main_unmodified":True,
-   "warnings":[
-     "Zero MEXC funding data were modeled for 2021-25; positive or negative price-only results are not economic after all true costs.",
-     "Original strategy signals and trade outcomes previously observed on Binance; this is retrospective source transfer not independently untouched OOS.",
-     "Retains original 10bps fee per side and 2/5bps fixed slippage per side as research assumptions, NOT exact historic MEXC account fee or quote fill proof.",
-     "MEXC 1h OHLCV data prove candle coverage, not earliest exact bid/ask or depth at each stop or open; true quote-level execution may be worse.",
-   ]
- }
- out.write_text(json.dumps(result,indent=2,sort_keys=True)+"\n")
- print("MEXC_NATIVE_PRICE_TRANSFER_FINAL",json.dumps({
-  "status":result["status"],"price_only_per_symbol":results,"price_only_shared":output,
-  "warning":"ALL FUNDING EXCLUDED NOT TRUE ECONOMIC NET"
- },sort_keys=True),flush=True)
+  # fixed original risk-engine replay of MEXC-native price-only trades
+  prior=runpy.run_path(str(HERE.parent/"convex_risk_v01"/"convex_risk_replay_v01.py"),run_name="import_source_only_replay")
+  events_for=prior["events_for"];replay=prior["replay"]
+  output={}
+  for layer in ("BASE","STRESS"):
+   output[layer]={}
+   for risk in (.0025,.005):
+    events=events_for(SYMS,ledgers["BASE"],ledgers[layer],0,False)
+    t=replay(events,risk)
+    output[layer][str(risk)]={
+     "price_only_shared_portfolio_return_pct":t["net_return_pct"],
+     "closed_only_dd_pct":t["realized_only_dd_pct"],
+     "n_trades":t["trades"],"skipped":t["skipped_concurrent_or_budget"],
+     "year_realized_price_only_pnl":t["year_net_usdt"],
+     "funding_excluded":True,"MEXC_actual_2021_2025_execution_spread_excluded":True}
+  result={
+    "status":"MEXC_NATIVE_FULL_1H_2021_2025_SOURCE_PASS__PRICE_TRANSFER_DIAGNOSTIC_ONLY",
+    "evidence_type":"RETROSPECTIVE_PRICE_ONLY_WITH_FEE_SLIP_PROXY_EXCLUDING_MEXC_FUNDING",
+    "scientific_credit":"NO_NEW_OOS__NOT_FULL_ECONOMIC_NET",
+    "symbols":SYMS,"month_count_per_symbol":61,
+    "original_pinned_source_sha":SOURCE_SHA,
+    "source_manifests":summ,
+    "independent_symbol_PRICE_ONLY":results,
+    "shared_capital_PRICE_ONLY":output,
+    "MEXC_historic_funding_2021_2025_complete":False,
+    "MEXC_historic_bidask_execution_complete":False,
+    "taker_fee_model_proven_historic_account":False,
+    "live_go":False,"main_unmodified":True,
+    "warnings":[
+      "Zero MEXC funding data were modeled for 2021-25; positive or negative price-only results are not economic after all true costs.",
+      "Original strategy signals and trade outcomes previously observed on Binance; this is retrospective source transfer not independently untouched OOS.",
+      "Retains original 10bps fee per side and 2/5bps fixed slippage per side as research assumptions, NOT exact historic MEXC account fee or quote fill proof.",
+      "MEXC 1h OHLCV data prove candle coverage, not earliest exact bid/ask or depth at each stop or open; true quote-level execution may be worse.",
+    ]
+  }
+  out.write_text(json.dumps(result,indent=2,sort_keys=True)+"\n")
+  print("MEXC_NATIVE_PRICE_TRANSFER_FINAL",json.dumps({
+   "status":result["status"],"price_only_per_symbol":results,"price_only_shared":output,
+   "warning":"ALL FUNDING EXCLUDED NOT TRUE ECONOMIC NET"
+  },sort_keys=True),flush=True)
  except Exception as e:
   out.write_text(json.dumps({"status":"MEXC_NATIVE_PRICE_TRANSFER_SOURCE_OR_TECHNICAL_BLOCKED",
     "reason":repr(e),"economic_credit":"ZERO","live_go":False},indent=2)+"\n")
