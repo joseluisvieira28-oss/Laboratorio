@@ -1,0 +1,37 @@
+name: RW-HL-EXITFLOW-001 G2 source-only OI/funding variation census
+on:
+  push:
+    branches:
+      - research/rw-hl-exitflow-source-first-2026-10-09
+    paths:
+      - research/rw_hl_exitflow/rw_hl_g2_source_variation_census_v01.py
+      - research/rw_hl_exitflow/test_rw_hl_g2_source_variation_census_v01.py
+      - .github/workflows/rw-hl-exitflow-g2-source-variation.yml
+permissions:
+  contents: read
+jobs:
+  source-only-census:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Check frozen 3-snapshot authority and run synthetic tests
+        run: |
+          cd research/rw_hl_exitflow
+          python -m py_compile rw_hl_g2_source_variation_census_v01.py test_rw_hl_g2_source_variation_census_v01.py
+          python -m unittest -v test_verify_first_public_source_artifact_v01.py test_rw_hl_g2_source_variation_census_v01.py
+          sha256sum RW_HL_EXITFLOW_001_G2_SOURCE_VARIATION_FREEZE_2026-10-09.json
+      - name: Verify original source bytes and count source variation ONLY
+        run: python research/rw_hl_exitflow/rw_hl_g2_source_variation_census_v01.py
+      - name: Preserve result and unchanged frozen gate
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rw-hl-exitflow-001-g2-source-variation-no-outcomes
+          path: |
+            research/rw_hl_exitflow/source_receipts/G2_SOURCE_VARIATION_RECEIPT.json
+            research/rw_hl_exitflow/RW_HL_EXITFLOW_001_G2_SOURCE_VARIATION_FREEZE_2026-10-09.json
+          if-no-files-found: warn
+          retention-days: 90
