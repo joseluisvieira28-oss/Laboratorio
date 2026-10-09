@@ -58,7 +58,6 @@ def get_raw_trades(docs):
   for sym in symbols:
    data=docs[family]["symbols"][sym]["results"]["PARENT"]
    base[sym]=data["BASE"]["trades"];stress[sym]=data["STRESS"]["trades"]
-   if len(base[sym])!=len(stress[sym]):raise ValueError("LAYER_LENGTH_MISMATCH:"+sym)
    for layer,trades in (("BASE",base[sym]),("STRESS",stress[sym])):
     seen=set();last_end=-1;last_entry=-1
     for t in trades:
@@ -72,13 +71,12 @@ def get_raw_trades(docs):
      if finite(t["net_pnl"])*runit<0:raise ValueError("NET_PNL_RETURN_SIGN_DISAGREEMENT")
      for f in ("commission","funding","slippage_cost"):
       finite(t[f])
-   for b,s in zip(base[sym],stress[sym]):
-    if (b["entry_t"],b["exit_t"])!=(s["entry_t"],s["exit_t"]):
-     raise ValueError("LAYER_ENTRY_EXIT_ID_MISMATCH:"+sym)
    descriptive[sym]={
      "original_parent_mtm_dd_pct":100*finite(data["BASE"]["max_mark_to_market_drawdown"]),
      "original_parent_pct_net":100*finite(data["BASE"]["net_return"]),
-     "original_trade_count":len(base[sym])}
+     "original_trade_count":len(base[sym]),
+     "stress_trade_count":len(stress[sym]),
+     "layer_paths_identical":len(base[sym])==len(stress[sym]) and all((b["entry_t"],b["exit_t"])==(t["entry_t"],t["exit_t"]) for b,t in zip(base[sym],stress[sym]))}
  return base,stress,descriptive
 
 def events_for(symbols,original_base,layer_trades,extra_bps,remove_top3):
@@ -173,6 +171,9 @@ def complete_run(root):
     plus=20 if stressname=="BASE_PLUS_20BPS_ROUNDTRIP" else 0
     out["output"][name][k][stressname]={}
     for suffix,remove in (("FULL",False),("DROP_TOP3_PER_ASSET",True)):
+     if stressname=="STRESS" and remove:
+      out["output"][name][k][stressname][suffix]={"status":"NOT_COMPARABLE_CROSS_LAYER_SIGNAL_PATH"}
+      continue
      ev=events_for(symbols,base,trades,plus,remove)
      out["output"][name][k][stressname][suffix]=replay(ev,risk)
  out["verdict"]="SCENARIOS_COMPUTED_ONLY__HISTORICAL_PROFITABILITY_GENERALIZATION_UNCHANGED"
