@@ -1,0 +1,43 @@
+name: BTC Convex Historical Binance BBO Actual Bytes Gate V02
+on:
+  push:
+    branches:
+      - research/convex-venue-execution-source-gate-2026-10-09
+    paths:
+      - .github/workflows/convex_binance_bbo_payload_gate_20261009.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  six_archive_source_probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    env:
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify frozen source and synthetic Python compilation
+        run: |
+          test "$GITHUB_REF_NAME" = "research/convex-venue-execution-source-gate-2026-10-09"
+          test -s research/convex_venue_gate_20261009/PRE_RAW_BBO_PAYLOAD_V02_FREEZE.md
+          python -m py_compile research/convex_venue_gate_20261009/venue_historical_public_source_probe.py
+          python -m py_compile research/convex_venue_gate_20261009/binance_bbo_actual_payload_probe_v02.py
+      - name: Restore immutable V01 source presence gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh run download 37919451421 --repo "$GITHUB_REPOSITORY" --name btc-convex-venue-source-gate-20261009 --dir research/convex_venue_gate_20261009/
+          test -s research/convex_venue_gate_20261009/VENUE_SOURCE_GATE_RESULT_2026_10_09.json
+      - name: Source-only download and audit exactly six Binance 2023/2024 BBO ZIPs
+        run: python research/convex_venue_gate_20261009/binance_bbo_actual_payload_probe_v02.py
+      - name: Preserve complete source gate receipt even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: btc-convex-binance-2023-2024-actual-bbo-source-gate-v02
+          path: research/convex_venue_gate_20261009/BINANCE_RAW_2023_2024_BBO_SAMPLE_V02_RESULT.json
+          if-no-files-found: warn
