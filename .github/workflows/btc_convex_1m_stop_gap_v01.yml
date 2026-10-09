@@ -1,0 +1,48 @@
+name: BTC Convex Official 1m Stop Touch and Gap Feasibility
+on:
+  push:
+    branches:
+      - research/btc-convex-raw-ohlcv-mtm-audit-2026-10-09
+    paths:
+      - '.github/workflows/btc_convex_1m_stop_gap_v01.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  archive_minute_stop_gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    env:
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Enforce frozen historical authority and Python syntax
+        run: |
+          test "$GITHUB_REF_NAME" = "research/btc-convex-raw-ohlcv-mtm-audit-2026-10-09"
+          test -s research/convex_raw_mtm_v01/PRE_1M_STOP_GAP_SOURCE_FREEZE_2026_10_09.md
+          test -s research/convex_raw_mtm_v01/RAW_OHLCV_HOURLY_MTM_EXECUTION_CLOSEOUT_2026_10_09.md
+          python -m py_compile research/convex_raw_mtm_v01/one_minute_stop_gap_audit.py
+          python -m py_compile research/convex_risk_v01/convex_risk_replay_v01.py
+      - name: Restore exact original ETH SOL BNB Parent historic trade receipt
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p canonical
+          gh run download 35918769969 --repo "$GITHUB_REPOSITORY" --name BTC-CONVEX-001-FINAL-CROSS-ASSET-VALIDATION-V007 --dir canonical
+          test -s canonical/CROSS_ASSET_COST_VALIDATION_V0.1.json
+      - name: Download official 1m exit hours and audit all historical stop crossings
+        shell: bash
+        run: |
+          python research/convex_raw_mtm_v01/one_minute_stop_gap_audit.py --original-archive canonical
+      - name: Preserve 1m source gate even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: btc-convex-official-1minute-stop-gap-v01
+          path: research/convex_raw_mtm_v01/ONE_MINUTE_STOP_GAP_RESULT_2026_10_09.json
+          if-no-files-found: warn
