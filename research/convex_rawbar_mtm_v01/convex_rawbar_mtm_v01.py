@@ -104,6 +104,51 @@ def recover_bars(first):
                 "original_monthly_archive_count":monthly,"daily_gapfill_archive_count":daily,
                 "observed_hours":{s:len(rows) for s,rows in values.items()}}
 
+def check_raw_fills(bars,base,stress):
+ audit={}
+ for symbol in SYMS:
+  audit[symbol]={}
+  for layer,trades in (("BASE",base[symbol]),("STRESS",stress[symbol])):
+   slip=.0002 if layer=="BASE" else .0005
+   count={"STOP":0,"FORCED_END":0}
+   max_entry_error_bps=0.0
+   max_exit_candle_error_bps=0.0
+   for t in trades:
+    entry=int(t["entry_t"]);end=int(t["exit_t"])
+    if entry not in bars[symbol] or end not in bars[symbol]:
+     raise ValueError("ENTRY_OR_EXIT_SOURCE_BAR_MISSING:"+symbol)
+    start_ohlc=bars[symbol][entry];exit_ohlc=bars[symbol][end]
+    actual_entry=float(t["entry"])
+    theoretical_entry=start_ohlc[0]*(1+slip)
+    d=abs(actual_entry/theoretical_entry-1)*10000
+    max_entry_error_bps=max(max_entry_error_bps,d)
+    if d>0.00001:raise ValueError("ORIGINAL_ENTRY_OPEN_PRICE_MISMATCH:"+symbol)
+    reason=t.get("reason")
+    if reason not in count:raise ValueError("UNKNOWN_EXIT_REASON:"+str(reason))
+    count[reason]+=1
+    exec_exit=float(t["exit"])
+    raw_exit=exec_exit/(1-slip)
+    lo,hi=exit_ohlc[2],exit_ohlc[1]
+    if reason=="FORCED_END":
+     d=abs(raw_exit/exit_ohlc[3]-1)*10000
+     max_exit_candle_error_bps=max(max_exit_candle_error_bps,d)
+     if d>0.00001:raise ValueError("FORCED_EXIT_ORIGINAL_CLOSE_MISMATCH")
+    else:
+     # Existing original trailing/stop fill, after reversing frozen slippage,
+     # must be within same verified hourly candle high-low envelope.
+     d=max(0.0,lo-raw_exit,raw_exit-hi)/max(1.0,abs(raw_exit))*10000
+     max_exit_candle_error_bps=max(max_exit_candle_error_bps,d)
+     if d>0.00001:raise ValueError("ORIGINAL_STOP_OUTSIDE_HOURLY_CANDLE:"+symbol)
+   audit[symbol][layer]={
+    "trades_matched":len(trades),
+    "stop_count":count["STOP"],
+    "forced_close_count":count["FORCED_END"],
+    "max_entry_price_error_bps":round(max_entry_error_bps,10),
+    "max_exit_hilo_or_close_violation_bps":round(max_exit_candle_error_bps,10),
+    "verdict":"BAR_CANDLE_COHERENCE_PASS_NOT_EXCHANGE_EXECUTION"
+   }
+ return audit
+
 def audit_loss_overshoot(base,stress):
  d={}
  for s in SYMS:
@@ -242,6 +287,7 @@ def main():
     "risk_v01_original_artifact":11600701586,
     "raw_archive_check":source_check,
     "losses_beyond_planned_stop_risk":audit_loss_overshoot(base,stress),
+    "raw_entry_exit_candle_integrity":check_raw_fills(candles,base,stress),
     "no_new_historical_oos":True,"execution_market_quote_or_order_proven":False,
     "run_commit":os.environ.get("GITHUB_SHA","LOCAL"),"scenarios":{}}
   for level in RISK_LEVELS:
@@ -254,6 +300,7 @@ def main():
    for label,m in v.items():
     print("RISK_MTM_RESULT",json.dumps({"risk":k,"layer":label,**m},sort_keys=True))
   print("STOP_OVERSHOOT",json.dumps(data["losses_beyond_planned_stop_risk"],sort_keys=True))
+  print("RAWBAR_ENTRY_EXIT_INTEGRITY",json.dumps(data["raw_entry_exit_candle_integrity"],sort_keys=True))
   print("RAWBAR_MTM_FINAL_STATUS",data["status"])
  except Exception as e:
   OUT.write_text(json.dumps({"status":"SOURCE_OR_MTM_BLOCKED",
