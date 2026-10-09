@@ -82,7 +82,7 @@ class RLETests(unittest.TestCase):
         trade,t,state=s.simulate_one(short_sig(),a)
         self.assertEqual(state,"EXIT")
         self.assertEqual(trade.reason,"TARGET")
-        self.assertAlmostEqual(trade.gross_bps,400)
+        self.assertAlmostEqual(trade.gross_bps,40000/99,places=4)
     def test_simulation_long_adverse_stop_gap(self):
         start=T+s.MS_H
         a=FakeArchive({start:bar(start,100,101.5,99.9,101),
