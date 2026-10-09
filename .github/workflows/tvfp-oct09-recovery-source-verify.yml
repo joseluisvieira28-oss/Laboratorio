@@ -1,0 +1,31 @@
+name: TV Evidence Vault Oct09 recovery integrity (source only)
+on:
+  push:
+    branches:
+      - tv-evidence-vault-v0.1
+    paths:
+      - tradingview_evidence_vault/recovery/**
+      - tradingview_evidence_vault/verify_recovered_source_oct09.py
+      - .github/workflows/tvfp-oct09-recovery-source-verify.yml
+permissions:
+  contents: read
+jobs:
+  verify-recovered-raw:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Validate vault utilities
+        run: python -m unittest tradingview_evidence_vault/test_vault.py
+      - name: Verify 2026-10-02 partial + 6 full days + 2026-10-09 as-of evidence
+        run: python tradingview_evidence_vault/verify_recovered_source_oct09.py
+      - name: Persist outcome-locked source audit receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tvfp-oct09-restored-source-2016-gate
+          path: tradingview_evidence_vault/recovery/TVFP_RESTORED_2026-10-02_TO_09_SOURCE_ONLY_RECEIPT.json
+          if-no-files-found: warn
+          retention-days: 90
