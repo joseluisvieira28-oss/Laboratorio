@@ -1,0 +1,70 @@
+name: MRCR H02 Official T0 Live Smoke V0.2
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - market-reveal-confirmation-reaction-v0.1
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/market_reveal_confirmation_reaction_v01/official_event_t0_live_smoke_v02.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/market_reveal_confirmation_reaction_v01/official_event_t0_extractor_v02.py'
+      - '.github/workflows/mrcr-h02-official-t0-live-smoke-v02.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  live-official-source-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: market-reveal-confirmation-reaction-v0.1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Read official BLS/Federal Reserve sources and extract T0
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE="Dream-Account-OS-v2.3-PARTIAL/research/market_reveal_confirmation_reaction_v01"
+          python "$BASE/official_event_t0_live_smoke_v02.py"             | tee mrcr_official_t0_live_smoke_v02.json
+
+      - name: Verify no target/outcome/order authority
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          row=json.loads(
+              Path("mrcr_official_t0_live_smoke_v02.json")
+              .read_text(encoding="utf-8")
+          )
+          assert row["status"] == "PASS"
+          assert row["target_observation_authorized"] is False
+          assert row["outcomes_authorized"] is False
+          assert row["orders_enabled"] is False
+          hashes = [
+              row["bls"]["schedule_text_sha256"],
+              row["bls"]["policy_text_sha256"],
+              row["fomc"]["announcement_text_sha256"],
+              row["fomc"]["preceding_minutes_text_sha256"],
+          ]
+          assert all(
+              isinstance(value, str)
+              and len(value) == 64
+              and all(ch in "0123456789abcdef" for ch in value.lower())
+              for value in hashes
+          ), "OFFICIAL SOURCE HASHES INVALID"
+          PY
+
+      - name: Upload live smoke receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: mrcr-h02-official-t0-live-smoke-v02
+          path: mrcr_official_t0_live_smoke_v02.json
+          if-no-files-found: error
+          retention-days: 30
