@@ -203,7 +203,7 @@ def synthetic_tests():
          "asks": [["10.1", "100"], ["10.2", "100"]]}
     assert validate_book(b, t, "BTCUSDT", f)["status"] == "SOURCE_SAMPLE_PASS"
     for key, altered in (
-        ("STALE_OR_FUTURE_EVENT", {**b, "E": ts - 2500}),
+        ("STALE_OR_FUTURE_EVENT", {**b, "E": ts - 2500, "T": ts - 2500}),
         ("TRANSACTION_AFTER_EVENT", {**b, "T": ts}),
         ("CROSSED_OR_LOCKED_MARKET", {**b, "bids": [["10.1", "100"]]}),
         ("BID_NOT_DESCENDING", {**b, "bids": [["9", "100"], ["10", "100"]]}),
