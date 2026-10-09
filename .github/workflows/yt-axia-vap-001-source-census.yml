@@ -1,0 +1,40 @@
+name: YT-AXIA-VAP-001 source-only 3day raw-trade profile census
+on:
+  push:
+    branches:
+      - research/youtube-edge-mine-source-gate-2026-10-09
+    paths:
+      - "research/youtube_edge_mine/yt_axia_vap_001_source_census_v01.py"
+      - "research/youtube_edge_mine/test_yt_axia_vap_001_source_census_v01.py"
+      - "research/youtube_edge_mine/YT_AXIA_VAP_001_SOURCE_CENSUS_FREEZE.json"
+      - ".github/workflows/yt-axia-vap-001-source-census.yml"
+permissions:
+  contents: read
+jobs:
+  source-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: research/youtube_edge_mine
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify freezer, source SHA, code and 18 synthetic outcome locks
+        run: |
+          python -m py_compile yt_axia_vap_001_source_census_v01.py test_yt_axia_vap_001_source_census_v01.py
+          python -m unittest -v test_yt_axia_vap_001_source_census_v01.py
+          sha256sum YT_AXIA_VAP_001_SOURCE_CENSUS_FREEZE.json yt_axia_vap_001_source_census_v01.py test_yt_axia_vap_001_source_census_v01.py
+      - name: Download EXACT 3 frozen official spot ZIPs, verify SHA, emit shape count ONLY
+        run: python yt_axia_vap_001_source_census_v01.py
+      - name: Persist source-only shape count and provenance, never outcomes
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: yt-axia-vap-001-spot3day-source-shape-census
+          path: |
+            research/youtube_edge_mine/YT_AXIA_VAP_001_SOURCE_CENSUS_RECEIPT.json
+            research/youtube_edge_mine/YT_AXIA_VAP_001_SOURCE_CENSUS_FREEZE.json
+          if-no-files-found: warn
+          retention-days: 90
