@@ -187,7 +187,7 @@ def moving_means(close):
     return ema,sma21,sma200
 
 def detect_signals(series):
-    if len(series)<340:
+    if len(series)<201:
         return [],Counter()
     closes=[c.c for c in series]
     ema,sma21,sma200=moving_means(closes)
