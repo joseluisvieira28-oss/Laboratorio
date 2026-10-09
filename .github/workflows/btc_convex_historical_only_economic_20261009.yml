@@ -1,0 +1,49 @@
+name: BTC Convex 2021-2025 Historical Trade-Ledger Economic Reproduction
+on:
+  push:
+    branches:
+      - research/historical-only-convex-economic-verdict-2026-10-09
+    paths:
+      - '.github/workflows/btc_convex_historical_only_economic_20261009.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  historical_economic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Confirm frozen original code and historical-only research boundary
+        run: |
+          test "$GITHUB_REF_NAME" = "research/historical-only-convex-economic-verdict-2026-10-09"
+          test -s research/historical_only_convex_20261009/HISTORICAL_ONLY_ECONOMIC_FREEZE_V01.md
+          test -s research/historical_only_convex_20261009/historical_ledger_audit.py
+      - name: Compile and test historical ledger invariants with synthetic cases
+        run: |
+          python -m py_compile research/historical_only_convex_20261009/historical_ledger_audit.py
+          python research/historical_only_convex_20261009/historical_ledger_audit.py --self-test
+      - name: Restore exactly the three original canonical 2021-2025 trade-ledger artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          mkdir -p prior/first prior/expansion prior/h2
+          gh run download 35918769969 --repo "$GITHUB_REPOSITORY" --name BTC-CONVEX-001-FINAL-CROSS-ASSET-VALIDATION-V007 --dir prior/first
+          gh run download 35921780080 --repo "$GITHUB_REPOSITORY" --name BTC-CONVEX-001-FINAL-EXPANSION-VALIDATION-V01 --dir prior/expansion
+          gh run download 35956632021 --repo "$GITHUB_REPOSITORY" --name BTC-CONVEX-001-FINAL-H2-THIRD-BASKET-V01 --dir prior/h2
+          find prior -type f -name '*.json' | sort
+      - name: Independently rederive historical trade-level economics and gates
+        run: |
+          python research/historical_only_convex_20261009/historical_ledger_audit.py --first prior/first --expansion prior/expansion --h2 prior/h2
+      - name: Upload historical receipt even on failures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: btc-convex-historical-only-economic-verdict-2026-10-09
+          path: research/historical_only_convex_20261009/HISTORICAL_LEDGER_REPRO_RESULT_V01.json
+          if-no-files-found: warn
