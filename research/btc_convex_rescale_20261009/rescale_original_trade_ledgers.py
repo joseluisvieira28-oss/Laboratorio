@@ -162,11 +162,9 @@ def run(args):
         for symbol,node in doc["symbols"].items():
             ref=node["results"]["PARENT"]
             trades={layer:ref[layer]["trades"] for layer in ("BASE","STRESS")}
-            if len(trades["BASE"])!=len(trades["STRESS"]):
-                raise ValueError("TRADE_COUNT_DIFFERS_BETWEEN_COSTS:"+symbol)
-            for a,b in zip(trades["BASE"],trades["STRESS"]):
-                if int(a["entry_t"])!=int(b["entry_t"]) or int(a["exit_t"])!=int(b["exit_t"]):
-                    raise ValueError("TRADE_PATH_DIFFERS_BETWEEN_COSTS:"+symbol)
+            # The original frozen BASE and STRESS simulations can produce different
+            # stop/exit paths because the execution price and stop thresholds differ.
+            # Audit each tape independently; never zip per-trade outcomes across layers.
             # Baseline historical replay must match actual reported ending original equity.
             for layer in ("BASE","STRESS"):
                 reproduced=core(trades[layer],REFERENCE_FRACTION)["ending_equity_usdt"]
