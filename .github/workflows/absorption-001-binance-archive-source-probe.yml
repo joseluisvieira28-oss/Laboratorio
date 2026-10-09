@@ -1,0 +1,30 @@
+name: ABSORPTION-001 official spot aggTrades archive source-only gate
+on:
+  push:
+    branches:
+      - audit/absorption-sensor-freshness-2026-10-09
+    paths:
+      - absorption_failed_auction/binance_spot_archive_source_probe_v01.py
+      - .github/workflows/absorption-001-binance-archive-source-probe.yml
+permissions:
+  contents: read
+jobs:
+  source-metadata:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify source probe Python
+        run: python -m py_compile absorption_failed_auction/binance_spot_archive_source_probe_v01.py
+      - name: Official BTCUSDT spot archive HEAD + CHECKSUM 2026-10-02..08 only
+        run: python absorption_failed_auction/binance_spot_archive_source_probe_v01.py
+      - name: Preserve read-only feasibility receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: absorption-001-binance-spot-archive-head-checksums
+          path: absorption_failed_auction/BINANCE_SPOT_AGGTRADES_ARCHIVE_SOURCE_PROBE_2026-10-09.json
+          if-no-files-found: warn
+          retention-days: 90
