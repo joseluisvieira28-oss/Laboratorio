@@ -29,7 +29,7 @@ jobs:
         run: |
           git fetch --depth=1 origin tv-evidence-vault-v0.1:refs/remotes/origin/tv-evidence-vault-v0.1
           git ls-tree -r --name-only refs/remotes/origin/tv-evidence-vault-v0.1 tradingview_evidence_vault/archive |
-            grep -E '/[0-9]{4}-[0-9]{2}-[0-9]{2}\\.manifest\\.json$' |
+            grep -E '/[0-9]{4}-[0-9]{2}-[0-9]{2}\.manifest\.json$' |
             sort | tail -1 > /tmp/latest_vault_path
           test -s /tmp/latest_vault_path
           git show "refs/remotes/origin/tv-evidence-vault-v0.1:$(cat /tmp/latest_vault_path)" > /tmp/latest_vault_manifest.json
@@ -37,11 +37,11 @@ jobs:
         shell: bash
         run: |
           set +e
-          python absorption_failed_auction/sensor_freshness_audit_v01.py \\
-            --trigger absorption_failed_auction/COLLECT_TRIGGER.json \\
-            --forward absorption_failed_auction/forward/COLLECTOR_STATE.json \\
-            --intake absorption_failed_auction/intake/TVFP_2026-10-01.csv \\
-            --vault-manifest /tmp/latest_vault_manifest.json \\
+          python absorption_failed_auction/sensor_freshness_audit_v01.py \
+            --trigger absorption_failed_auction/COLLECT_TRIGGER.json \
+            --forward absorption_failed_auction/forward/COLLECTOR_STATE.json \
+            --intake absorption_failed_auction/intake/TVFP_2026-10-01.csv \
+            --vault-manifest /tmp/latest_vault_manifest.json \
             --output absorption_failed_auction/forward/SENSOR_FRESHNESS_AUDIT.json
           status=$?
           set -e
