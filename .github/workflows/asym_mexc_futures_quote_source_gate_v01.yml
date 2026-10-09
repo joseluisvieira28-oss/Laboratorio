@@ -1,0 +1,36 @@
+name: Asymmetric Payoff MEXC Futures Public Quote Source Gate V0.1
+on:
+  push:
+    branches:
+      - research/asym-mexc-futures-quote-gate-2026-10-09
+    paths:
+      - '.github/workflows/asym_mexc_futures_quote_source_gate_v01.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Confirm isolated research branch and prior source freeze
+        run: |
+          test "$GITHUB_REF_NAME" = "research/asym-mexc-futures-quote-gate-2026-10-09"
+          test -s research/asym_mexc_quote_v01/MEXC_PUBLIC_SOURCE_PREFREEZE_2026_10_09.md
+      - name: Compile and execute synthetic fail-closed tests
+        run: |
+          python -m py_compile research/asym_mexc_quote_v01/mexc_public_quote_probe.py
+          python research/asym_mexc_quote_v01/mexc_public_quote_probe.py --self-test
+      - name: Live public GET sources only (no account, no orders)
+        run: python research/asym_mexc_quote_v01/mexc_public_quote_probe.py --live
+      - name: Upload sample even if blocked
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mexc-futures-public-quote-source-gate-2026-10-09
+          path: research/asym_mexc_quote_v01/MEXC_PUBLIC_QUOTE_SAMPLE_RECEIPT.json
+          if-no-files-found: warn
