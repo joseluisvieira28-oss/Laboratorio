@@ -1,0 +1,46 @@
+name: BTC Convex Native MEXC Full 2021-2025 Price Transfer (Funding Excluded)
+on:
+  push:
+    branches:
+      - research/convex-venue-execution-source-gate-2026-10-09
+    paths:
+      - '.github/workflows/convex_mexc_native_5y_price_only_20261009.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  mexc_native_price_only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Enforce fixed original 2021-25 historical price transfer authority
+        run: |
+          test "$GITHUB_REF_NAME" = "research/convex-venue-execution-source-gate-2026-10-09"
+          test -s research/convex_venue_gate_20261009/PRE_MEXC_NATIVE_5Y_PRICE_TRANSFER_FREEZE_V01.md
+          python -m py_compile research/convex_venue_gate_20261009/mexc_native_price_only_replay_v01.py
+          python -m py_compile research/convex_risk_v01/convex_risk_replay_v01.py
+      - name: Restore exactly pinned BTC Convex original executable code
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p canonical_original
+          gh api "repos/$GITHUB_REPOSITORY/contents/labs/btc-convex-trend-capture-001/cross_asset_cost_validation_v0_1.py?ref=8832eb8e8fe95e7914d3fe8628b0398d9695ad4a" --jq '.content' | base64 -d > canonical_original/cross_asset_cost_validation_v0_1.py
+          test "$(git hash-object canonical_original/cross_asset_cost_validation_v0_1.py)" = "49e2bafd2e487352db24f2a812e936372a2cb1ff"
+      - name: Ingest official MEXC-native 61-month 1H candles and replay frozen PriceOnly experiment
+        run: |
+          python research/convex_venue_gate_20261009/mexc_native_price_only_replay_v01.py --pinned-original canonical_original/cross_asset_cost_validation_v0_1.py
+      - name: Preserve complete price-only source/finance receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: btc-convex-mexc-native-5years-1h-price-only-transfer-v01
+          path: research/convex_venue_gate_20261009/MEXC_NATIVE_5Y_PRICE_ONLY_TRANSFER_RESULT_2026_10_09.json
+          if-no-files-found: warn
