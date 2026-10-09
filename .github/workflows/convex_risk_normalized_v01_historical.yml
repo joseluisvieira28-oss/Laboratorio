@@ -1,0 +1,47 @@
+name: Convex V01 Low-Risk Historical Economics 13 Assets
+on:
+  push:
+    branches:
+      - research/convex-risk-normalized-all-baskets-2026-10-09
+    paths:
+      - '.github/workflows/convex_risk_normalized_v01_historical.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  economic_scenarios:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Confirm operator new freeze & protected research mode
+        run: |
+          test "$GITHUB_REF_NAME" = "research/convex-risk-normalized-all-baskets-2026-10-09"
+          test -s research/convex_risk_v01/RISK_NORMALIZED_PRE_REPLAY_FREEZE_2026_10_09.md
+      - name: Synthetics and Python correctness before historic outcome retrieval
+        run: |
+          python -m py_compile research/convex_risk_v01/convex_risk_replay_v01.py
+          python research/convex_risk_v01/convex_risk_replay_v01.py --self-test
+      - name: Restore frozen historical artifacts only
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          mkdir -p original/first original/second original/third
+          gh run download 35918769969 --repo "$GITHUB_REPOSITORY" --name BTC-CONVEX-001-FINAL-CROSS-ASSET-VALIDATION-V007 --dir original/first
+          gh run download 35921780080 --repo "$GITHUB_REPOSITORY" --name BTC-CONVEX-001-FINAL-EXPANSION-VALIDATION-V01 --dir original/second
+          gh run download 35956632021 --repo "$GITHUB_REPOSITORY" --name BTC-CONVEX-001-FINAL-H2-THIRD-BASKET-V01 --dir original/third
+      - name: Historical net economics / risk / extreme-tail analysis
+        run: |
+          python research/convex_risk_v01/convex_risk_replay_v01.py --archive-root original
+      - name: Preserve numeric proof, including on failed science
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: convex-risk-v01-13-assets-economic-replay
+          path: research/convex_risk_v01/RISK_NORMALIZED_ALL_BASKETS_RESULT_V01.json
+          if-no-files-found: warn
