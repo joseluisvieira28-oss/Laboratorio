@@ -1,0 +1,46 @@
+name: BTC Convex Retrospective Fractional-Sizing Stress V0.1
+on:
+  push:
+    branches:
+      - research/btc-convex-size-risk-stress-2026-10-09
+    paths:
+      - '.github/workflows/btc_convex_rescale_risk_stress_v01.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  historical_rescale_only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify pre-computation scope and branch
+        run: |
+          test "$GITHUB_REF_NAME" = "research/btc-convex-size-risk-stress-2026-10-09"
+          test -s research/btc_convex_rescale_20261009/PRE_COMPUTATION_RESCALE_FREEZE_V01.md
+      - name: Check Python and synthetic invariants before opening archived ledgers
+        run: |
+          python -m py_compile research/btc_convex_rescale_20261009/rescale_original_trade_ledgers.py
+          python research/btc_convex_rescale_20261009/rescale_original_trade_ledgers.py --self-test
+      - name: Fetch three historical immutable Parent-ledger artifacts ONLY
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p prior/first prior/expansion prior/h2
+          gh run download 35918769969 --repo "$GITHUB_REPOSITORY" --name BTC-CONVEX-001-FINAL-CROSS-ASSET-VALIDATION-V007 --dir prior/first
+          gh run download 35921780080 --repo "$GITHUB_REPOSITORY" --name BTC-CONVEX-001-FINAL-EXPANSION-VALIDATION-V01 --dir prior/expansion
+          gh run download 35956632021 --repo "$GITHUB_REPOSITORY" --name BTC-CONVEX-001-FINAL-H2-THIRD-BASKET-V01 --dir prior/h2
+      - name: Replay original risk 95pct then 0.25 0.50 1pct nominal risk and stress
+        run: |
+          python research/btc_convex_rescale_20261009/rescale_original_trade_ledgers.py --first prior/first --expansion prior/expansion --h2 prior/h2
+      - name: Preserve receipt even if analysis blocks
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: btc-convex-rescale-risk-stress-v01-${{ github.run_id }}
+          path: research/btc_convex_rescale_20261009/FIXED_FRACTION_RESCALE_RECEIPT_V01.json
+          if-no-files-found: warn
