@@ -1,0 +1,111 @@
+{
+  "lab_id": "LOR-RLE-001",
+  "version": "V0.1",
+  "status": "FROZEN_BEFORE_ANY_RLE_OUTCOME_ACCESS",
+  "date_utc": "2026-10-09",
+  "authority": "RESEARCH_ONLY_NO_LIVE",
+  "kind": "price_compression_plus_ignition_conditional_breakout",
+  "source_authority": {
+    "venue": "BINANCE_USDM_PUBLIC_KLINES",
+    "instrument": "BTCUSDT",
+    "signal_interval": "1h",
+    "execution_interval": "1m",
+    "source": "data.binance.vision/data/futures/um/monthly/klines/BTCUSDT",
+    "verify": "OFFICIAL_ZIP_SHA256_CHECKSUM_EXACT",
+    "timezone": "UTC",
+    "warmup_month": "2021-12",
+    "development_start_inclusive": "2022-01-01T00:00:00Z",
+    "development_end_exclusive": "2025-01-01T00:00:00Z",
+    "signal_last_eligible": "2024-12-28T00:00:00Z",
+    "oos_2025": "SEALED",
+    "holdout_2026": "SEALED"
+  },
+  "source_provenance": {
+    "official_lesson": "https://lorenzfabricio.com.br/epa-tp-a/",
+    "third_party_transcription": "https://pt.scribd.com/document/874836582/Estrategias",
+    "reference": "RLE: >=8 narrow candles, strong closed ignition candle, EMA9/SMA21 favorable, SMA200 not in way, signal-bar stop-entry opposite stop, 2R target",
+    "authenticity_note": "Third-party transcript not independently verified against original premium video; quantified definitions below are Crypto Lab adaptations."
+  },
+  "mechanical_signal": {
+    "lookback_range_bars": 8,
+    "compression_quantile": 0.25,
+    "compression_reference_8bar_envelopes": 120,
+    "compression_reference_scope": "120 eight-candle envelope widths ending before the 8-candle candidate range; nearest-rank q25",
+    "force_candle_body_fraction_min": 0.8,
+    "force_candle_range_rule": "strictly greater than max of the preceding 20 completed 1h high-low ranges",
+    "breakout_rule": "closed ignition bar closes strictly beyond the maximum high/minimum low of preceding 8 completed 1h candles",
+    "direction": "long on bullish ignition, short on bearish ignition",
+    "favorable_trend": "long iff EMA9 > SMA21 AND close > SMA200; short iff EMA9 < SMA21 AND close < SMA200; indicators include closed ignition candle",
+    "ema9_length": 9,
+    "sma21_length": 21,
+    "sma200_length": 200,
+    "main_group": "RLE iff previous 8bar high-low envelope <= q25 of causal 120 historical 8bar envelope widths",
+    "control_group": "Same ignition, trend, breakout, entry/exits/costs, but preceding 8bar envelope > causal q25 (non-narrow)",
+    "quantification_origin": "LAB_DEFINED_EX_ANTE_NOT_EXACT_LORENZ"
+  },
+  "execution": {
+    "tick_usdt": 0.1,
+    "entry": "strictly following completed ignition 1h bar: stop entry at candle high + tick for long, low - tick for short",
+    "stop": "ignition candle low - tick for long, high + tick for short",
+    "target_r_multiple": 2,
+    "pending_expiry_hours": 3,
+    "max_hold_minutes": 1440,
+    "include_signal_hour_minute": false,
+    "full_1m_resolution_required": true,
+    "fill_gap": "adverse entry gap to 1m open; adverse stop gap to 1m open; favorable target gap capped at target",
+    "same_minute_collision": "STOP_WINS_AFTER_ENTRY; pending signal + invalidation same minute assumes entry followed by stop",
+    "pending_invalidation": "if stop touched before entry, cancel",
+    "time_exit": "1m OPEN at first minute >= entry time+1440m",
+    "one_pending_or_position_per_group": true,
+    "intergroup_runs": "independent; only differential in compression gating",
+    "no_leverage": true
+  },
+  "economic": {
+    "cost_break_even": "report mean gross bps",
+    "fee_floor_roundtrip_bps": 16,
+    "primary_roundtrip_bps": 26,
+    "stress_roundtrip_bps": 40,
+    "cost_comment": "26/40 bps are route-agnostic research haircuts from prior MEXC lab practice; NOT independently certified fills for this experiment. Cannot claim executable micro-live without separate venue-specific orderbook receipts."
+  },
+  "design": {
+    "discovery_years": [
+      2022,
+      2023,
+      2024
+    ],
+    "oos_years_sealed": [
+      2025
+    ],
+    "holdout_years_sealed": [
+      2026
+    ],
+    "min_rle_trades": 100,
+    "min_control_trades": 100,
+    "min_rle_dates": 70,
+    "min_control_dates": 70,
+    "min_rle_weeks": 24,
+    "bootstrap": "ISO_UTC_WEEK_CLUSTERED_RESAMPLE_WITH_REPLACEMENT",
+    "bootstrap_replications": 3000,
+    "bootstrap_seed_rle": 20261009,
+    "bootstrap_seed_delta": 20261010,
+    "primary_gates_all": true,
+    "gates": [
+      "RLE mean primary net26 >0",
+      "RLE mean stress net40 >0",
+      "RLE 95% week-block bootstrap lower bound net26 >0",
+      "RLE net26 PF>=1.15",
+      "RLE positive net26 mean in at least 2 of 3 years",
+      "RLE minus non-narrow control mean primary net26 >=5bps",
+      "paired ISO-week bootstrap 95% lower bound for RLE minus control mean primary net26 >0",
+      "largest ISO-week contribution <=25% of all positive RLE primary-net pnl"
+    ]
+  },
+  "interpretation": "Research novelty is compression-conditioned strong 8bar breakout vs equally strong noncompressed breakout, not a new profit claim; no claim of causal stops/forced-flow without flow evidence.",
+  "prevent": "DO_NOT_CHANGE_AFTER_OUTCOME; DO_NOT_REUSE_CLOSED_DONCHIAN_OR_RF_RESULTS; DO_NOT_OPEN_2025_OR_2026; DO_NOT_MERGE_MAIN; NO_TRADING_NO_WALLETS_NO_PRIVATE_API_NO_EXCHANGE_MUTATION_NO_RENDER",
+  "allowed_terminal_states": [
+    "SOURCE_BLOCKED",
+    "SIGNAL_SAMPLE_INSUFFICIENT",
+    "NO_EDGE_DISCOVERY",
+    "DISCOVERY_SURVIVES_REQUIRE_SEPARATE_OOS_AUTHORIZATION"
+  ]
+}
