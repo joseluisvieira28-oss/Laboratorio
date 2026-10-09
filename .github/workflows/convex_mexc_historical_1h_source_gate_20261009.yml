@@ -1,0 +1,33 @@
+name: BTC Convex MEXC Public 2021-2025 Historical One-Hour Price Source Probe
+on:
+  push:
+    branches:
+      - research/convex-venue-execution-source-gate-2026-10-09
+    paths:
+      - '.github/workflows/convex_mexc_historical_1h_source_gate_20261009.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  nine_frozen_historical_day_probes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify authoritative frozen public price source study
+        run: |
+          test "$GITHUB_REF_NAME" = "research/convex-venue-execution-source-gate-2026-10-09"
+          test -s research/convex_venue_gate_20261009/PRE_MEXC_HISTORICAL_1H_KLINE_SOURCE_PROBE_FREEZE_V01.md
+          python -m py_compile research/convex_venue_gate_20261009/mexc_public_1h_historical_source_probe_v01.py
+      - name: Test fixed 9 historical public MEXC candle day identities
+        run: python research/convex_venue_gate_20261009/mexc_public_1h_historical_source_probe_v01.py
+      - name: Preserve exact source gate
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: btc-convex-mexc-1h-2021-2025-nine-days-source-gate-v01
+          path: research/convex_venue_gate_20261009/MEXC_HISTORICAL_1H_SAMPLE_GATE_V01.json
+          if-no-files-found: warn
