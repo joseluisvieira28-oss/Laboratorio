@@ -127,7 +127,8 @@ def live():
         skew=int(tm)-(t["received_at_ms"]+t["request_at_ms"])//2
         result["clock_skew_ms"]=skew
         if abs(skew)>1000 or t["latency_ms"]>MAX_MS: raise ValueError("CLOCK_OR_NETWORK_INVALID")
-        for symbol in SYMBOLS:
+        for index, symbol in enumerate(SYMBOLS):
+            if index: time.sleep(5.3)  # MEXC /contract/detail documented 1 request / 5 seconds
             try:
                 d,dr=get("/api/v1/contract/detail",{"symbol":symbol});result["source_receipts"].append(dr)
                 contract=getinfo(d,symbol)
