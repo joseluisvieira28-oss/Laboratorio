@@ -1,0 +1,49 @@
+name: BTC Convex Original Raw-Bar MTM Audit 2021-25
+on:
+  push:
+    branches:
+      - research/convex-rawbar-mtm-stress-2026-10-09
+    paths:
+      - '.github/workflows/convex_rawbar_mtm_v01_historical.yml'
+      - 'research/convex_rawbar_mtm_v01/convex_rawbar_mtm_v01.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  rawbar_history:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Require research-only historical freeze and source verifier
+        run: |
+          test "$GITHUB_REF_NAME" = "research/convex-rawbar-mtm-stress-2026-10-09"
+          test -s research/convex_rawbar_mtm_v01/RAWBAR_MTM_PREPROBE_FREEZE_2026_10_09.md
+          python -m py_compile research/convex_rawbar_mtm_v01/convex_rawbar_mtm_v01.py
+          python -m py_compile research/convex_risk_v01/convex_risk_replay_v01.py
+          PYTHONPATH=. python research/convex_rawbar_mtm_v01/convex_rawbar_mtm_v01.py --self-test
+          PYTHONPATH=. python research/convex_risk_v01/convex_risk_replay_v01.py --self-test
+      - name: Restore prior frozen original 2021-2025 canonical archived trade ledgers
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p prior/first prior/second prior/third
+          gh run download 35918769969 --repo "$GITHUB_REPOSITORY" --name BTC-CONVEX-001-FINAL-CROSS-ASSET-VALIDATION-V007 --dir prior/first
+          gh run download 35921780080 --repo "$GITHUB_REPOSITORY" --name BTC-CONVEX-001-FINAL-EXPANSION-VALIDATION-V01 --dir prior/second
+          gh run download 35956632021 --repo "$GITHUB_REPOSITORY" --name BTC-CONVEX-001-FINAL-H2-THIRD-BASKET-V01 --dir prior/third
+      - name: Restore SHA-checked original source candles and reconstruct low-risk open MTM
+        env:
+          PYTHONPATH: .
+        run: |
+          python research/convex_rawbar_mtm_v01/convex_rawbar_mtm_v01.py --archive-root prior
+      - name: Archive MTM/source integrity receipt even on scientific source block
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: convex-rawbar-mtm-risk-v01-2026-10-09
+          path: research/convex_rawbar_mtm_v01/RAWBAR_MTM_RISK_RECEIPT_V01.json
+          if-no-files-found: warn
