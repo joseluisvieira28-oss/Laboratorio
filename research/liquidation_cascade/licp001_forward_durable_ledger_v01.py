@@ -85,10 +85,12 @@ def build(root,outdir):
             total_records+=1
             legacy_ids+=int(bool(r.get("episode_id_reconstructed_legacy")))
             eid=r["episode_id"];blob=sha256_bytes(canonical(r))
-            if eid in seen and seen[eid]["sha256"]!=blob:
-                conflicts.append({"episode_id":eid,"first":seen[eid],"conflict":{"path":str(p),"sha256":blob}})
+            # Primary and secondary rows share the cascade ID by design.
+            key=(r.get("family"),eid)
+            if key in seen and seen[key]["sha256"]!=blob:
+                conflicts.append({"episode_id":eid,"family":r.get("family"),"first":seen[key],"conflict":{"path":str(p),"sha256":blob}})
             else:
-                seen.setdefault(eid,{"path":str(p),"sha256":blob})
+                seen.setdefault(key,{"path":str(p),"sha256":blob})
 
     gaps=[]
     for (_,a),(_,b) in zip(accepted,accepted[1:]):
