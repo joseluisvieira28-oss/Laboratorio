@@ -1,0 +1,38 @@
+name: YT-AXIA-VAP-001 independent source-only profile geometry robustness
+on:
+  push:
+    branches:
+      - research/youtube-edge-mine-source-gate-2026-10-09
+    paths:
+      - "research/youtube_edge_mine/yt_axia_vap_001_g3_independent_geometry_v01.py"
+      - "research/youtube_edge_mine/test_yt_axia_vap_001_g3_independent_geometry_v01.py"
+      - "research/youtube_edge_mine/YT_AXIA_VAP_001_G3_GEOMETRY_ROBUSTNESS_FREEZE.json"
+      - ".github/workflows/yt-axia-vap-001-g3-independent-source.yml"
+permissions:
+  contents: read
+jobs:
+  source-robustness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: research/youtube_edge_mine
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Freeze hashes and strictly synthetic geometry tests
+        run: |
+          python -m py_compile yt_axia_vap_001_g3_independent_geometry_v01.py test_yt_axia_vap_001_g3_independent_geometry_v01.py
+          python -m unittest -v test_yt_axia_vap_001_g3_independent_geometry_v01.py
+          sha256sum YT_AXIA_VAP_001_G3_GEOMETRY_ROBUSTNESS_FREEZE.json yt_axia_vap_001_g3_independent_geometry_v01.py
+      - name: Three INDEPENDENT predetermined 2022/2023/2024 source-only ZIP verification
+        run: python yt_axia_vap_001_g3_independent_geometry_v01.py
+      - name: Preserve non-economic signal stability and placebo counts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: yt-axia-vap-001-independent-source-geometry-receipt
+          path: research/youtube_edge_mine/YT_AXIA_VAP_001_G3_GEOMETRY_ROBUSTNESS_RECEIPT.json
+          if-no-files-found: warn
+          retention-days: 90
