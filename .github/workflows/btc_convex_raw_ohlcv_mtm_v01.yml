@@ -1,0 +1,49 @@
+name: BTC Convex Raw OHLCV Funding and Hourly MTM Audit V01
+on:
+  push:
+    branches:
+      - research/btc-convex-raw-ohlcv-mtm-audit-2026-10-09
+    paths:
+      - '.github/workflows/btc_convex_raw_ohlcv_mtm_v01.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  raw_reproduction:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    env:
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify isolated authority and local synthetic invariants
+        run: |
+          test "$GITHUB_REF_NAME" = "research/btc-convex-raw-ohlcv-mtm-audit-2026-10-09"
+          test -s research/convex_raw_mtm_v01/PRE_RAW_REPLAY_FREEZE_2026_10_09.md
+          python -m py_compile research/convex_raw_mtm_v01/raw_mtm_reproducer.py
+          python research/convex_raw_mtm_v01/raw_mtm_reproducer.py --self-test
+      - name: Restore canonical historical results and exact original executable source
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          mkdir -p canonical original_pinned
+          gh run download 35918769969 --repo "$GITHUB_REPOSITORY" --name BTC-CONVEX-001-FINAL-CROSS-ASSET-VALIDATION-V007 --dir canonical
+          gh api "repos/$GITHUB_REPOSITORY/contents/labs/btc-convex-trend-capture-001/cross_asset_cost_validation_v0_1.py?ref=8832eb8e8fe95e7914d3fe8628b0398d9695ad4a" --jq '.content' | base64 -d > original_pinned/cross_asset_cost_validation_v0_1.py
+          test "$(git hash-object original_pinned/cross_asset_cost_validation_v0_1.py)" = "49e2bafd2e487352db24f2a812e936372a2cb1ff"
+          test -s canonical/CROSS_ASSET_COST_VALIDATION_V0.1.json
+      - name: Download official historical raw 1h data and funding, rebuild fills and marked risk
+        shell: bash
+        run: |
+          python research/convex_raw_mtm_v01/raw_mtm_reproducer.py --original-source original_pinned/cross_asset_cost_validation_v0_1.py --archived canonical
+      - name: Preserve fail-closed source/MTM status artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: btc-convex-raw-ohlcv-mtm-economic-v01
+          path: research/convex_raw_mtm_v01/RAW_REPLAY_AND_HOURLY_MTM_RESULT_2026_10_09.json
+          if-no-files-found: warn
