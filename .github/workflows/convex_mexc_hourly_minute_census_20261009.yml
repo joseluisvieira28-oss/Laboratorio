@@ -1,0 +1,35 @@
+name: BTC Convex MEXC Native 1H Census and Official Exact 1m Gap Proof
+on:
+  push:
+    branches:
+      - research/convex-venue-execution-source-gate-2026-10-09
+    paths:
+      - '.github/workflows/convex_mexc_hourly_minute_census_20261009.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  official_historical_price_source_census:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    env:
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify frozen public source census, no trading or economic outcomes
+        run: |
+          test "$GITHUB_REF_NAME" = "research/convex-venue-execution-source-gate-2026-10-09"
+          test -s research/convex_venue_gate_20261009/PRE_MEXC_OFFICIAL_MIN1_GAPFILL_CENSUS_FREEZE_V01.md
+          python -m py_compile research/convex_venue_gate_20261009/mexc_minute_gap_source_census_v01.py
+      - name: Audit all 183 official 1h monthly sources and exact official 1m missing hours only
+        run: python research/convex_venue_gate_20261009/mexc_minute_gap_source_census_v01.py
+      - name: Preserve source provenance even when blocked
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: btc-convex-mexc-hourly-minute-gap-census-v01
+          path: research/convex_venue_gate_20261009/MEXC_HOURLY_MINUTE_SOURCE_CENSUS_V01.json
+          if-no-files-found: warn
