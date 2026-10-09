@@ -1,0 +1,44 @@
+{
+  "lab_id": "RW-HL-EXITFLOW-001",
+  "stage": "G2_PROSPECTIVE_SOURCE_VARIABILITY_ONLY",
+  "frozen_at_utc": "2026-10-09",
+  "source_run_id": 37939142048,
+  "source_date_utc": "2026-10-09",
+  "source_receipt_path": "research/rw_hl_exitflow/intake/2026-10-09/2026-10-09T13-45-40_212358Z_37939142048",
+  "source_terminal_chain_sha256": "3c9d8c54d00d20be035f8add10123a75002d42b87d32006ed757e701b7fa2c31",
+  "source_timestamp_order": [
+    "2026-10-09T13:45:40.212504Z",
+    "2026-10-09T13:46:40.518616Z",
+    "2026-10-09T13:47:40.697753Z"
+  ],
+  "expected_snapshots": 3,
+  "market_scope": "PERP_UNIVERSE_FROM_UNAUTHENTICATED_HL_META_AND_ASSET_CTXS_CURRENT",
+  "expected_market_count_from_prior_schema_gate": 178,
+  "comparison": "INTERSECTION_OF_ASSET_NAMES_ACROSS_THREE_RECEIVED_SNAPSHOTS",
+  "measurements": [
+    "source_market_identity_continuity",
+    "oi_positive_and_varying_between_first_last",
+    "negative_funding_last_snapshot",
+    "oi_up_and_negative_funding_last_snapshot",
+    "funding_sign_changed_first_last"
+  ],
+  "source_gate_preregistered": {
+    "min_common_market_fraction": 0.95,
+    "min_positive_OI_mark_funding_triples_per_snapshot": 100,
+    "min_assets_negative_funding_last": 5,
+    "min_assets_OI_changing_first_last": 10,
+    "min_assets_OI_rising_with_negative_funding_last": 1,
+    "require_sha256_and_time_order": true
+  },
+  "computed_future_price_returns": false,
+  "use_mark_price_for_source_validity_only": true,
+  "apply_liquidity_rules": false,
+  "trigger_or_trading_strategy_frozen": false,
+  "count_only": true,
+  "reject_without_rescue": "Do not change thresholds, symbols, exchange, source time, sampling interval or exact source snapshots after opening first-last OI/funding values.",
+  "forward_requirements": "Even if source passes, 2min is not enough for persistent selling or future returns. Formal forward study requires durable independent signed-price and OI hourly sampling before outcome, new signal and economic freezes, same-event comparators, fees, funding and slippage.",
+  "no_private_api": true,
+  "no_2025_2026_holdout_open": true,
+  "no_trading": true,
+  "no_main_merge": true
+}
