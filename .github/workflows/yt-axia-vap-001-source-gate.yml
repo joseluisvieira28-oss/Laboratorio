@@ -1,0 +1,36 @@
+name: YT-AXIA-VAP-001 source metadata ONLY (no trade outcomes)
+on:
+  push:
+    branches:
+      - research/youtube-edge-mine-source-gate-2026-10-09
+    paths:
+      - "research/youtube_edge_mine/yt_axia_source_metadata_gate_v01.py"
+      - "research/youtube_edge_mine/test_yt_axia_source_metadata_gate_v01.py"
+      - ".github/workflows/yt-axia-vap-001-source-gate.yml"
+permissions:
+  contents: read
+jobs:
+  source-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    defaults:
+      run:
+        working-directory: research/youtube_edge_mine
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Pre-outcome compile and synthetic source tests
+        run: |
+          python -m py_compile yt_axia_source_metadata_gate_v01.py test_yt_axia_source_metadata_gate_v01.py
+          python -m unittest -v test_yt_axia_source_metadata_gate_v01.py
+      - name: HEAD and official checksum metadata only — no market ZIP bodies
+        run: python yt_axia_source_metadata_gate_v01.py
+      - name: Preserve source feasibility audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: yt-axia-vap-001-spot-source-metadata
+          path: research/youtube_edge_mine/YT_AXIA_VAP_001_SPOT_SOURCE_METADATA_RECEIPT.json
+          if-no-files-found: warn
+          retention-days: 90
