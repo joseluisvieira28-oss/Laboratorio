@@ -51,6 +51,10 @@ jobs:
           mkdir -p prior/baseline-37311668666
           gh run download 37311668666             -n licp001-forward-outcome-37311668666-1             -D prior/baseline-37311668666
           test -f prior/baseline-37311668666/licp001_forward_observation_v01.json
+          # Observation succeeded; only family identity bookkeeping failed.
+          mkdir -p prior/recovered-37789379322
+          gh run download 37789379322 -n licp001-forward-durable-v03-37789379322-1 -D prior/recovered-37789379322
+          test -f prior/recovered-37789379322/current/licp001_forward_observation_v01.json
 
           gh api "repos/$GITHUB_REPOSITORY/actions/runs?branch=$GITHUB_REF_NAME&per_page=100" > /tmp/runs.json
           python - <<'PY' >/tmp/prior_v03_ids.txt
