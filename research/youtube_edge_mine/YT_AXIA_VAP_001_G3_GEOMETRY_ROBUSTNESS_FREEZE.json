@@ -1,0 +1,43 @@
+{
+  "lab_id": "YT-AXIA-VAP-001",
+  "stage": "G3_INDEPENDENT_SOURCE_GEOMETRY_ROBUSTNESS",
+  "freeze_date": "2026-10-09",
+  "independent_source_days": [
+    "2022-06-16",
+    "2023-12-15",
+    "2024-04-19"
+  ],
+  "preceding_discovery_days_excluded": [
+    "2022-01-12",
+    "2023-07-20",
+    "2024-08-08"
+  ],
+  "classification_parameters_immutable_from_G2B": {
+    "minimum_aggtrades_per_5m": 100,
+    "minimum_occupied_bins": 8,
+    "price_grid_one_bp_anchored_first_trade": true,
+    "minimum_peak_share": 0.08,
+    "minimum_peak_separation_bins": 3,
+    "valley_at_most_35_percent_of_smaller_peak": true
+  },
+  "independent_data_probe": {
+    "original_and_shifted_price_grid": "1bp 0bp phase, 1bp +0.5bp phase; all else identical",
+    "minimum_jaccard_of_signal_bars": 0.7,
+    "minimum_signal_bars_across_3_days": 20,
+    "minimum_days_with_signal": 2,
+    "minimum_control_bars": 100,
+    "matching_strata": "POC position tercile x aggression sign x 5m profile range <20 or >=20 bins",
+    "minimum_matched_strata_with_at_least_10_of_each_group": 6,
+    "placebo": "8 deterministic permutations of per-bin traded volume across occupied bins, preserving bin set and total, descriptive only; not performance evidence",
+    "rng_seed": 20261009
+  },
+  "hard_rules": {
+    "full_official_zip_sha256": true,
+    "only_same_completed_bar_features": true,
+    "no_future_prices_or_markouts": true,
+    "no_trade_execution": true,
+    "no_2025_2026": true,
+    "no_claim_of_exact_Axia_rules": true
+  },
+  "interpretation": "Independent source-only robustness sample, NOT economic OOS. Quantities lab-defined; any source failure is not rescued by tuning; future returns remain sealed."
+}
