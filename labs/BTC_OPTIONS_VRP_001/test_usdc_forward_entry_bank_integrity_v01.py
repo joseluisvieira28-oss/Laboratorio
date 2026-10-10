@@ -56,6 +56,7 @@ def test_main_pair(tmp,invalid=False):
         if invalid:
             case("invalid_option_is_fail_closed",raises(bank.main))
         else:bank.main()
+        case("duplicate_date_prevents_second_capture",raises(bank.main))
     rows=[json.loads(z) for z in bank.OUT.read_text().splitlines()]
     case("one_append_only_row",len(rows)==1)
     r=rows[0]
@@ -65,7 +66,6 @@ def test_main_pair(tmp,invalid=False):
     case("sealed_prospective_outcomes",all(r[x] is False for x in
        ("settlement_fetched","future_path_fetched","returns_computed","pnl_computed","expectancy_computed","authenticated","orders","wallets")))
     case("index_and_instruments_only_public",calls==["public/get_index_price","public/get_instruments"])
-    case("append_only_date_reject",raises(bank.main))
 def main():
     case("valid_unlocked_two_sided",bank.valid_book_source(good(),.01))
     case("missing_bid_fail",not bank.valid_book_source(good(b=False),.01))
