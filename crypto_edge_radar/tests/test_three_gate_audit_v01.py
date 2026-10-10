@@ -1,7 +1,7 @@
 """Offline evidence-only regression checks; no exchange calls."""
 import unittest
 
-from radar.three_gate_audit_v01 import audit_three_gates
+from radar.three_gate_audit_v01 import audit_three_gates, classify_public_shadow_health
 
 
 class ThreeGateAuditTest(unittest.TestCase):
@@ -36,6 +36,30 @@ class ThreeGateAuditTest(unittest.TestCase):
             evidence = {"candidate_id": "EXAMPLE", "economics": {
                 "independent_forward_net_expectancy_bps": bad}}
             self.assertEqual(audit_three_gates("EXAMPLE", evidence)["gates"]["economics"], "BLOCKED")
+
+
+    def test_health_remains_degraded_after_source_failure(self):
+        result = classify_public_shadow_health(
+            cycle_errors={}, ced1d_status="FAIL_CLOSED", persisted_gap_receipts=17)
+        self.assertEqual(result["status"], "DEGRADED_FAIL_CLOSED")
+        self.assertIn("CED1D_COLLECTOR_FAIL_CLOSED", result["reasons"])
+        self.assertIn("HISTORICAL_LIVENESS_GAP_RECEIPTS_REQUIRE_REVIEW", result["reasons"])
+
+    def test_gap_not_cleared_by_new_heartbeat(self):
+        result = classify_public_shadow_health(
+            cycle_errors={}, ced1d_status="OK", persisted_gap_receipts=1)
+        self.assertTrue(result["operational_attention_required"])
+
+    def test_unknown_history_is_not_pass(self):
+        result = classify_public_shadow_health(
+            cycle_errors={}, ced1d_status="OK", persisted_gap_receipts=None)
+        self.assertEqual(result["status"], "DEGRADED_FAIL_CLOSED")
+
+    def test_clean_synthetic_health_not_trade_authority(self):
+        result = classify_public_shadow_health(
+            cycle_errors={}, ced1d_status="OK", persisted_gap_receipts=0)
+        self.assertEqual(result["status"], "OK")
+        self.assertFalse(result["automatic_live_authorization"])
 
 
 if __name__ == "__main__":
