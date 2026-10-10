@@ -1,0 +1,37 @@
+name: RW-HL-EXITFLOW-001 public source-first G1 (no trading, no outcomes)
+on:
+  push:
+    branches:
+      - research/rw-hl-exitflow-source-first-2026-10-09
+    paths:
+      - "research/rw_hl_exitflow/rw_hl_public_source_gate_v01.py"
+      - "research/rw_hl_exitflow/test_rw_hl_public_source_gate_v01.py"
+      - ".github/workflows/rw-hl-exitflow-g1-public-source.yml"
+permissions:
+  contents: read
+jobs:
+  source-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    defaults:
+      run:
+        working-directory: research/rw_hl_exitflow
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Compile and run 14 synthetic tests BEFORE contacting any API
+        run: |
+          python -m py_compile rw_hl_public_source_gate_v01.py test_rw_hl_public_source_gate_v01.py
+          python -m unittest -v test_rw_hl_public_source_gate_v01.py
+          sha256sum RW_HL_EXITFLOW_001_PREOBS_SOURCE_AUTHORITY_2026-10-09.md rw_hl_public_source_gate_v01.py
+      - name: Two public live data snapshots and bounded 2024 funding metadata
+        run: python rw_hl_public_source_gate_v01.py
+      - name: Immutable 2-source snapshot + count-only receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rw-hl-exitflow-001-public-source-g1
+          path: research/rw_hl_exitflow/source_receipts/
+          if-no-files-found: warn
+          retention-days: 90

@@ -1,0 +1,72 @@
+name: RW-HL first three public snapshots — artifact recovery (no new market reads)
+on:
+  push:
+    branches:
+      - research/rw-hl-exitflow-source-first-2026-10-09
+    paths:
+      - "research/rw_hl_exitflow/verify_first_public_source_artifact_v01.py"
+      - "research/rw_hl_exitflow/test_verify_first_public_source_artifact_v01.py"
+      - ".github/workflows/rw-hl-first-source-artifact-recovery.yml"
+
+permissions:
+  actions: read
+  contents: write
+
+concurrency:
+  group: rw-hl-exitflow-first-source-artifact-recovery
+  cancel-in-progress: false
+
+jobs:
+  recover-existing-evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: research/rw-hl-exitflow-source-first-2026-10-09
+          persist-credentials: true
+      - name: Verify immutable artifact recovery code and synthetic tampering tests
+        run: |
+          cd research/rw_hl_exitflow
+          python -m py_compile verify_first_public_source_artifact_v01.py test_verify_first_public_source_artifact_v01.py
+          python -m unittest -v test_verify_first_public_source_artifact_v01.py
+      - name: Download EXACT prior source-only artifact (no API market calls)
+        run: |
+          gh run download 37939142048 --repo "$GITHUB_REPOSITORY" \
+            --name rw-hl-exitflow-001-first-prospective-source-intake \
+            --dir /tmp/rw_hl_source_recovery
+          find /tmp/rw_hl_source_recovery -name CAPTURE_RECEIPT.json -type f | head -5
+      - name: Bind complete, SHA-verified source artifact to its original run
+        run: |
+          set -euo pipefail
+          RECEIPT=$(find /tmp/rw_hl_source_recovery -name CAPTURE_RECEIPT.json -type f -print -quit)
+          test -n "$RECEIPT"
+          SOURCE_DIR=$(dirname "$RECEIPT")
+          python research/rw_hl_exitflow/verify_first_public_source_artifact_v01.py "$SOURCE_DIR"
+          SOURCE_NAME=$(basename "$SOURCE_DIR")
+          DEST="research/rw_hl_exitflow/intake/2026-10-09"
+          mkdir -p "$DEST"
+          test ! -e "$DEST/$SOURCE_NAME"
+          cp -a "$SOURCE_DIR" "$DEST/$SOURCE_NAME"
+          python research/rw_hl_exitflow/verify_first_public_source_artifact_v01.py "$DEST/$SOURCE_NAME"
+      - name: Append only three pre-existing public-source snapshots to research branch
+        run: |
+          set -euo pipefail
+          git config user.name crypto-lab-source-bot
+          git config user.email actions@users.noreply.github.com
+          git add research/rw_hl_exitflow/intake/2026-10-09/
+          test -n "$(git diff --cached --name-only)"
+          git commit -m "source: recover canonical 2026-10-09 3-snapshot public Hyperliquid evidence from run 37939142048"
+          git fetch origin research/rw-hl-exitflow-source-first-2026-10-09
+          git rebase origin/research/rw-hl-exitflow-source-first-2026-10-09
+          git push origin HEAD:research/rw-hl-exitflow-source-first-2026-10-09
+      - name: Preserve tamper-safe source retrieval receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rw-hl-exitflow-001-source-artifact-recovery-log
+          path: research/rw_hl_exitflow/intake/2026-10-09/
+          if-no-files-found: warn
+          retention-days: 90

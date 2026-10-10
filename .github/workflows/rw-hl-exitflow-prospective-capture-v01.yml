@@ -1,0 +1,53 @@
+name: RW-HL-EXITFLOW-001 3-snapshot durable prospective public source
+on:
+  push:
+    branches:
+      - research/rw-hl-exitflow-source-first-2026-10-09
+    paths:
+      - "research/rw_hl_exitflow/rw_hl_forward_source_capture_v01.py"
+      - "research/rw_hl_exitflow/test_rw_hl_forward_source_capture_v01.py"
+      - ".github/workflows/rw-hl-exitflow-prospective-capture-v01.yml"
+permissions:
+  contents: write
+concurrency:
+  group: rw-hl-exitflow-first-prospective-capture
+  cancel-in-progress: false
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: research/rw-hl-exitflow-source-first-2026-10-09
+          persist-credentials: true
+      - name: Pre-network tests and freeze fingerprint
+        run: |
+          cd research/rw_hl_exitflow
+          python -m py_compile rw_hl_forward_source_capture_v01.py test_rw_hl_forward_source_capture_v01.py
+          python -m unittest -v test_rw_hl_public_source_gate_v01.py test_rw_hl_forward_source_capture_v01.py
+          sha256sum RW_HL_EXITFLOW_001_PREOBS_SOURCE_AUTHORITY_2026-10-09.md RW_HL_EXITFLOW_001_FIRST_PROSPECTIVE_SOURCE_CAPTURE_FREEZE_2026-10-09.md
+      - name: Exactly three source-only snapshots, one minute apart
+        run: |
+          cd research/rw_hl_exitflow
+          python rw_hl_forward_source_capture_v01.py
+      - name: Durable append-only GitHub research branch capture
+        run: |
+          set -euo pipefail
+          git config user.name crypto-lab-source-bot
+          git config user.email actions@users.noreply.github.com
+          git add research/rw_hl_exitflow/intake/
+          test -n "$(git diff --cached --name-only)"
+          git commit -m "source: preserve 3 genuine public Hyperliquid prospective snapshots; no outcomes"
+          # Transport-only: concurrent audit commits must not discard genuine source receipts.
+          git fetch origin research/rw-hl-exitflow-source-first-2026-10-09
+          git rebase origin/research/rw-hl-exitflow-source-first-2026-10-09
+          git push origin HEAD:research/rw-hl-exitflow-source-first-2026-10-09
+      - name: Mirror source snapshots and hash receipt as immutable artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rw-hl-exitflow-001-first-prospective-source-intake
+          path: research/rw_hl_exitflow/intake/
+          if-no-files-found: warn
+          retention-days: 90
