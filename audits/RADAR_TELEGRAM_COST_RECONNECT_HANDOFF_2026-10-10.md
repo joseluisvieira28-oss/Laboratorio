@@ -64,3 +64,9 @@
 - Tested code now has one-shot sender removed. Existing workflow QA shows success after clean-up. 
 - **AUTOMATED_SCHEDULE_NOT_ACTIVE**: GitHub `schedule` events run only on default branch; PR #174 remains draft/unmerged. Do not claim hourly/eight-minute Telegram monitoring is active.
 - **PAID_SERVICE_DEPLOY_RISK**: Render `srv-dafgofv40ujc73b7o6og` tracks `main`, `autoDeploy=yes`, plan `0.5c-512mb`. A merge to `main` must not proceed until independent deploy-filter/plan risk review and explicit scoped owner authorization to alter main. This is separate from `crypto-edge-radar-v05-canary`, which tracks `crypto-edge-radar-postgres-v0.5` and `autoDeploy=no`.
+
+## Render auto-deploy filter verification
+- Read-only `get_service` confirmed the paid Render service `Laboratorio` tracks `main`, `rootDir=Dream-Account-OS-v2.3-PARTIAL`, auto-deploy on commit.
+- Official Render docs: **when a root directory is set, changes outside that directory do not trigger automatic deployments** (https://render.com/docs/monorepo-support). This substantially reduces the concern that a PR modifying only `.github/**` and `audits/**` would trigger this paid service. Do not claim a production no-deploy guarantee without post-merge event verification. Render Blueprint files `render.yaml`, if touched, have special handling; this PR does not touch one.
+- `compare_commits(main...feature)`: five changed files, all in `.github/**` or `audits/**`, **zero** changed files under `Dream-Account-OS-v2.3-PARTIAL`.
+- Scheduled GitHub Actions run from **default branch**. Until main changes are independently approved, the previously confirmed bot test does NOT amount to ongoing monitoring.
