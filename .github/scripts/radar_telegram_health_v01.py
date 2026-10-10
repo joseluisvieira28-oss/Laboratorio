@@ -194,7 +194,7 @@ def main() -> int:
     print("TELEGRAM_DELIVERY_" + outcome)
     if args.action == "send" and os.getenv("GITHUB_OUTPUT"):
         with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as fh:
-            fh.write("sent=" + ("true" if outcome == "SENT" else "false") + "\\n")
+            fh.write("sent=" + ("true" if outcome == "SENT" else "false") + "\n")
     return 0 if outcome in ("SENT", "NOT_CONFIGURED") else 2
 
 
