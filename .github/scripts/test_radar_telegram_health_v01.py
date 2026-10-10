@@ -120,7 +120,7 @@ class TelegramHealthTests(unittest.TestCase):
                                                 "reason_codes": ["NO_VALID_JSON_STATE"]}))
             self.assertEqual(req.get_method(), "POST")
             return FakeResponse(b'{"ok":true}')
-        with patch.dict(os.environ, {"TELEGRAM_BOT_TOKEN": token, "TELEGRAM_CHAT_ID": "-5064052358"}):
+        with patch.dict(os.environ, {"TELEGRAM_BOT_TOKEN": token, "TELEGRAM_CHAT_ID": "-1001234567890"}):
             self.assertEqual(send_telegram({"utc_date": "2026-10-10",
                                             "status": "DEGRADED",
                                             "reason_codes": ["NO_VALID_JSON_STATE"]},
@@ -130,7 +130,7 @@ class TelegramHealthTests(unittest.TestCase):
         token = "123456789:" + "A" * 32
         def opener(req, timeout):
             raise HTTPError(req.full_url, 403, "Forbidden", {}, None)
-        with patch.dict(os.environ, {"TELEGRAM_BOT_TOKEN": token, "TELEGRAM_CHAT_ID": "-5064052358"}):
+        with patch.dict(os.environ, {"TELEGRAM_BOT_TOKEN": token, "TELEGRAM_CHAT_ID": "-1001234567890"}):
             status = send_telegram({"utc_date": "2026-10-10"}, opener=opener)
             self.assertEqual(status, "HTTP_403")
             self.assertNotIn(token, status)
