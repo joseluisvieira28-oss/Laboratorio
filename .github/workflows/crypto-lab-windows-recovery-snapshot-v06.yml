@@ -1,0 +1,36 @@
+name: Windows Radar V06 Snapshot Hermetic QA
+on:
+  push:
+    branches:
+      - ops/windows-radar-evidence-snapshot-v06-2026-10-10
+permissions:
+  contents: read
+jobs:
+  windows_read_only:
+    runs-on: windows-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Windows PowerShell 5.1 creates only local evidence snapshot
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $root = Join-Path $env:RUNNER_TEMP 'radar_fixture_v06'
+          New-Item -ItemType Directory -Force (Join-Path $root 'logs') | Out-Null
+          New-Item -ItemType Directory -Force (Join-Path $root 'data') | Out-Null
+          New-Item -ItemType Directory -Force (Join-Path $root 'CryptoEdgeRadarNode') | Out-Null
+          Set-Content -LiteralPath (Join-Path $root 'CryptoEdgeRadarNode\CryptoEdgeRadarNode.exe') -Value 'fixture bytes only'
+          Set-Content -LiteralPath (Join-Path $root 'logs\radar_stdout.log') -Value 'original log must not change'
+          Set-Content -LiteralPath (Join-Path $root 'data\radar_status.json') -Value '{"health":"OK"}'
+          $before = (Get-FileHash -LiteralPath (Join-Path $root 'logs\radar_stdout.log') -Algorithm SHA256).Hash
+          $receipt = Join-Path $env:RUNNER_TEMP 'radar_prep_v06.json'
+          & powershell.exe -NoProfile -File crypto_edge_radar/operator_windows/CryptoLab_Radar_Recovery_Snapshot_V06.ps1 -RootDirectory $root -OutputPath $receipt -CreateSnapshot
+          if ($LASTEXITCODE -ne 0) { throw 'PS5.1 snapshot failed' }
+          $r=Get-Content -LiteralPath $receipt -Raw | ConvertFrom-Json
+          if ($r.schema -ne 'CRYPTO_LAB_RADAR_LOCAL_RECOVERY_PREP_V0.6' -or $r.snapshot_complete -ne $true -or $r.snapshot_file_count -ne 2) { throw 'unexpected snapshot report' }
+          if ($r.executable_launched -ne $false -or $r.existing_data_modified -ne $false -or $r.mexc_account_read_or_mutated -ne $false) { throw 'safety flag mismatch' }
+          $after = (Get-FileHash -LiteralPath (Join-Path $root 'logs\radar_stdout.log') -Algorithm SHA256).Hash
+          if ($before -ne $after) { throw 'original log was modified' }
+          Write-Host "V06_SNAPSHOT_SAFE_PASS"
