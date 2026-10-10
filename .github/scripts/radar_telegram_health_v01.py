@@ -46,7 +46,7 @@ def classify_snapshot(snapshot: object, *, now: datetime, fetch_error: str | Non
         reasons.append("SOURCE_STATE_TIMESTAMP_MISSING")
 
     ced = snapshot.get("ced1d_render_shadow") or {}
-    if not isinstance(ced, dict) or ced.get("status") in {"FAIL_CLOSED", "SOURCE_BLOCKED", "ERROR"}:
+    if not isinstance(ced, dict) or ced.get("status") in {"FAIL_CLOSED", "SOURCE_BLOCKED", "ERROR", None}:
         reasons.append("CED1D_COLLECTOR_FAIL_CLOSED_OR_UNVERIFIED")
 
     gaps = snapshot.get("runtime_gap_history") or {}
@@ -105,6 +105,8 @@ def inspect_remote(*, url: str, timeout: int, now: datetime) -> dict:
         if exc.code != 503:
             return classify_snapshot(None, now=now, fetch_error=f"HTTP_{exc.code}")
         body = exc.read(MAX_RESPONSE_BYTES + 1)
+        if len(body) > MAX_RESPONSE_BYTES:
+            return classify_snapshot(None, now=now, fetch_error="OVERSIZE_BODY")
     except (URLError, TimeoutError, OSError, ValueError) as exc:
         return classify_snapshot(None, now=now, fetch_error=type(exc).__name__.upper())
     try:
@@ -190,6 +192,9 @@ def main() -> int:
         outcome = send_telegram({"utc_date": datetime.now(timezone.utc).date().isoformat()},
                                 test=True)
     print("TELEGRAM_DELIVERY_" + outcome)
+    if args.action == "send" and os.getenv("GITHUB_OUTPUT"):
+        with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as fh:
+            fh.write("sent=" + ("true" if outcome == "SENT" else "false") + "\\n")
     return 0 if outcome in ("SENT", "NOT_CONFIGURED") else 2
 
 
