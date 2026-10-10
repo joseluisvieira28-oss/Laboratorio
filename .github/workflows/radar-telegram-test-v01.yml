@@ -1,0 +1,30 @@
+name: Radar Telegram Alert Safety Tests (offline)
+
+on:
+  push:
+    branches:
+      - feat/radar-telegram-keepalive-cost-v01-2026-10-10
+    paths:
+      - .github/scripts/radar_telegram_health_v01.py
+      - .github/scripts/test_radar_telegram_health_v01.py
+      - .github/workflows/radar-v09-keepalive.yml
+      - .github/workflows/radar-telegram-test-v01.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Syntax check, no external services
+        run: |
+          python -m py_compile .github/scripts/radar_telegram_health_v01.py
+          python -m py_compile .github/scripts/test_radar_telegram_health_v01.py
+      - name: Offline fail-closed Telegram regression tests
+        run: python -m unittest discover -s .github/scripts -p 'test_radar_telegram_health_v01.py' -v
