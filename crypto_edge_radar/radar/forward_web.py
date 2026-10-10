@@ -57,6 +57,7 @@ from .target_connection_preflight import target_connection_preflight
 from .supabase_pooler_probe import probe_from_env as supabase_pooler_probe_from_env
 from .deploy_drift import deployment_drift_receipt
 from .diamond_board import build_diamond_board
+from .three_gate_audit_v01 import classify_public_shadow_health
 
 
 RUNTIME_LIVENESS_EVENT = "RADAR_RUNTIME_LIVENESS"
@@ -881,8 +882,22 @@ class ForwardShadowRuntime:
             cutover_complete=bool(persistence_watchdog.get("cutover_complete")),
         )
 
+        # A later CONTINUOUS bucket does not adjudicate earlier missed windows.
+        # Read-only historical evidence inspection; no source, signal or order change.
+        try:
+            historical_gap_count = len(self.store.read_payloads(RUNTIME_GAP_EVENT))
+        except Exception as exc:
+            historical_gap_count = None
+            errors["runtime_gap_history"] = f"{type(exc).__name__}:{exc}"
+        health_guard = classify_public_shadow_health(
+            cycle_errors=errors,
+            ced1d_status=str(ced1d_render_shadow.get("status") or ""),
+            persisted_gap_receipts=historical_gap_count,
+        )
+
         state = {
-            "health": "OK" if not errors else "DEGRADED_FAIL_CLOSED",
+            "health": health_guard["status"],
+            "runtime_gap_history": health_guard,
             "mode": "PUBLIC_SHADOW_ONLY",
             "checked_at_utc": checked,
             "version": "0.9",
@@ -913,7 +928,8 @@ class ForwardShadowRuntime:
             "external_collectors": external_freshness,
             "deployment_drift": deploy_drift,
             "operational_attention_required": (
-                deploy_drift.get("classification")
+                health_guard["operational_attention_required"]
+                or deploy_drift.get("classification")
                 in {"STALE_RUNTIME", "UNAVAILABLE_FAIL_CLOSED"}
             ),
             "errors": errors,
