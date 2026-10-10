@@ -1,0 +1,33 @@
+name: Crypto Lab PC Existing Worker Reconciliation V0.3 (read-only)
+on:
+  push:
+    branches:
+      - ops/windows-existing-worker-reconciliation-v03-2026-10-10
+    paths:
+      - crypto_edge_radar/operator_windows/CryptoLab_PC_Worker_Reconciliation_V03.ps1
+      - .github/workflows/crypto-lab-pc-worker-reconcile-v03.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows_readonly:
+    runs-on: windows-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Hermetic Windows PowerShell 5.1 task and port audit
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          $file = Join-Path $env:RUNNER_TEMP 'CryptoLab_PC_Worker_Reconciliation_V03.json'
+          & powershell.exe -NoProfile -File crypto_edge_radar/operator_windows/CryptoLab_PC_Worker_Reconciliation_V03.ps1 -OutputPath $file
+          if ($LASTEXITCODE -ne 0) { throw 'PC V03 failed' }
+          $r=Get-Content -LiteralPath $file -Raw | ConvertFrom-Json
+          if ($r.schema -ne 'CRYPTO_LAB_PC_WORKER_RECONCILIATION_V0.3') { throw 'schema mismatch' }
+          if ($r.scheduled_tasks.Count -ne 6) { throw 'expected six exact task names' }
+          if ($r.unique_scientific_writer_proven -ne $false -or $r.any_task_or_process_started_stopped_or_modified -ne $false -or $r.exchange_mutation_performed -ne $false) { throw 'unsafe readiness claim' }
+          if ($r.task_actions_arguments_or_credentials_inspected -ne $false -or $r.database_connection_or_secret_accessed -ne $false -or $r.network_requests_made -ne $false) { throw 'unsafe diagnostic action' }
+          if (@($r.scheduled_tasks | Where-Object { $_.task_name -notmatch '^(CryptoLab-|CryptoEdgeRadar)' }).Count -ne 0) { throw 'unexpected tasks' }
+          Write-Host "V03_READ_ONLY_PASS; task metadata and localhost :8787 only; no exchange or DB access"
