@@ -1,0 +1,40 @@
+name: Windows Radar Log Forensic V05 - Offline QA
+on:
+  push:
+    branches:
+      - ops/windows-radar-stdout-forensic-v05-2026-10-10
+permissions:
+  contents: read
+jobs:
+  smoke:
+    runs-on: windows-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Offline PowerShell 5.1 synthetic stdout and statuses
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = Join-Path $env:RUNNER_TEMP 'fake_radar'
+          New-Item -ItemType Directory -Force (Join-Path $root 'logs') | Out-Null
+          New-Item -ItemType Directory -Force (Join-Path $root 'data') | Out-Null
+          @(
+              '{"checked_at_utc":"2026-10-08T20:00:00Z","health":"DEGRADED_FAIL_CLOSED","errors":{},"orders_created":false}',
+              '{"checked_at_utc":"2026-10-08T20:01:00Z","health":"OK","errors":{},"orders_created":false}',
+              'not structured json'
+          ) | Set-Content -Encoding UTF8 (Join-Path $root 'logs\radar_stdout.log')
+          '{"status":"FAIL_CLOSED","build_id":"test-1","error":"secret that must never appear"}' | Set-Content -Encoding UTF8 (Join-Path $root 'data\dh03_local_status.json')
+          $receipt = Join-Path $env:RUNNER_TEMP 'receipt.json'
+          & powershell.exe -NoProfile -File crypto_edge_radar/operator_windows/CryptoLab_Radar_Stdout_Forensic_V05.ps1 -RootDirectory $root -OutputPath $receipt
+          if ($LASTEXITCODE -ne 0) { throw 'PS 5.1 script failed' }
+          $x = Get-Content -Raw $receipt | ConvertFrom-Json
+          if ($x.schema -ne 'CRYPTO_LAB_LOCAL_RADAR_LOG_FORENSIC_V0.5') { throw 'invalid schema' }
+          if ($x.stdout_summary.parsed_json_lines -ne 2) { throw 'cannot parse 2 JSON events' }
+          if ($x.stdout_summary.non_json_lines -ne 1) { throw 'cannot detect 1 unstructured row' }
+          if ($x.stdout_last_json_states[0].error_fields_count -ne 0) { throw 'empty error collection must not become a failure' }
+          if (@($x.stdout_last_json_states | Where-Object { $_.health -eq 'OK' }).Count -ne 1) { throw 'expected OK record missing' }
+          if ($x.raw_log_lines_disclosed -ne $false -or $x.trading_account_access -ne $false -or $x.task_or_process_mutation -ne $false) { throw 'safety invariant' }
+          if ((Get-Content -Raw $receipt) -match 'secret that must never appear') { throw 'secret leak' }
+          Write-Host 'WINDOWS_V05_READ_ONLY_PASS'
