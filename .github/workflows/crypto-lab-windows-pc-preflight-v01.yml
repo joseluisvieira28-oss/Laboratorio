@@ -1,0 +1,29 @@
+name: Windows Crypto Lab Continuity Read-only PC QA
+on:
+  push:
+    branches:
+      - ops/windows-continuity-readonly-preflight-2026-10-10
+    paths:
+      - crypto_edge_radar/operator_windows/CryptoLab_PC_Continuity_Readonly_Preflight_V01.ps1
+      - .github/workflows/crypto-lab-windows-pc-preflight-v01.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows-readonly:
+    runs-on: windows-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Run PowerShell 5.1 on hosted Windows (no secrets, no installs)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          & powershell.exe -NoProfile -File crypto_edge_radar/operator_windows/CryptoLab_PC_Continuity_Readonly_Preflight_V01.ps1 -OutputPath "$env:RUNNER_TEMP\CryptoLab_PC_readonly.json"
+          if ($LASTEXITCODE -ne 0) { throw "Windows PowerShell preflight failed" }
+          $j = Get-Content -Raw "$env:RUNNER_TEMP\CryptoLab_PC_readonly.json" | ConvertFrom-Json
+          if ($j.schema -ne 'CRYPTO_LAB_WINDOWS_CONTINUITY_PREFLIGHT_V0.1') { throw 'Missing schema' }
+          if ($j.secrets_collected -ne $false -or $j.orders_created -ne $false -or $j.single_writer_reconciliation_pass -ne $false) { throw 'Read-only contract broken' }
+          Write-Host 'PC_PREFLIGHT_READONLY_PASS; no activation or network credentials'
