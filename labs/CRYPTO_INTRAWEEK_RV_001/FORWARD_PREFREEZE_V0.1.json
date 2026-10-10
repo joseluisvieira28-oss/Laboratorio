@@ -1,0 +1,72 @@
+{
+  "lab_id": "CRYPTO-INTRAWEEK-RV-001",
+  "forward_id": "CIRV-BTCETH-FORWARD-001",
+  "version": "0.1",
+  "date_frozen": "2026-09-20",
+  "branch": "crypto-intraweek-rv-forward-v0.1",
+  "status": "FROZEN_FORWARD_NOT_YET_RESOLVED",
+  "parent": {
+    "mve_id": "CIRV-HAR-DOW-BTCETH-001",
+    "verdict": "SURVIVES_2025_HOLDOUT",
+    "canonical_run": 35500049139,
+    "maturity": "L5 OOS/HOLDOUT"
+  },
+  "boundary": {
+    "freeze_date_utc": "2026-09-20",
+    "preboundary_target_dates_forbidden": true,
+    "first_eligible_clean_target_date": "2026-09-21",
+    "rule": "A target-day forecast must be generated only after the full previous UTC day is available and before any target-day realized variance is used."
+  },
+  "assets": [
+    "BTCUSDT",
+    "ETHUSDT"
+  ],
+  "exact_model": {
+    "realized_variance": "sum squared 5m close-to-close log returns on UTC day; accepted day >=270 returns",
+    "baseline": "HAR logRV1/logRV5/logRV22",
+    "challenger": "same HAR plus target-day Tue-Sun dummies, Monday base",
+    "rolling_training_rows": 730,
+    "minimum_training_rows": 500,
+    "no_parameter_changes": true
+  },
+  "forward_record": {
+    "per_target": [
+      "target_date",
+      "asset",
+      "forecast_har_rv",
+      "forecast_har_dow_rv",
+      "model_training_end_date",
+      "source_digest"
+    ],
+    "after_resolution": [
+      "realized_rv",
+      "qlike_har",
+      "qlike_har_dow",
+      "logmse_har",
+      "logmse_har_dow",
+      "loss_differentials"
+    ],
+    "append_only": true
+  },
+  "forward_resolution": {
+    "minimum_days_before_interim_review": 30,
+    "preferred_days_before_primary_review": 90,
+    "primary_metric": "cumulative mean QLIKE differential baseline minus HAR-DOW",
+    "supportive": "positive mean QLIKE differential on both BTC and ETH",
+    "negative": "negative mean QLIKE differential on either asset at primary review",
+    "insufficient": "fewer than 90 clean resolved target days at primary review"
+  },
+  "forbidden": [
+    "No pre-2026-09-21 target outcomes may enter the forward ledger.",
+    "No tuning of weekday dummies, HAR lags, day boundary, sampling interval or rolling window.",
+    "No PnL/trading decisions are authorized by this watcher.",
+    "No merge to main."
+  ],
+  "safety": {
+    "cash_spend_usd": 0,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "wallet_access": false,
+    "merge_to_main": false
+  }
+}

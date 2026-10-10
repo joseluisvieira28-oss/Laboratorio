@@ -1,0 +1,47 @@
+name: CIRV BTC ETH Prospective Forward V0.2
+on:
+  schedule:
+    - cron: "25 0 * * *"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: cirv-btceth-forward-v02
+  cancel-in-progress: false
+jobs:
+  forecast:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: crypto-intraweek-rv-forward-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install --disable-pip-version-check -q pandas numpy
+      - name: Compile frozen watcher
+        run: python -m py_compile labs/CRYPTO_INTRAWEEK_RV_001/forward_watcher_v01.py
+      - name: Derive first safe target
+        id: target
+        shell: bash
+        run: |
+          TARGET="$(date -u +%F)"
+          if [[ "$TARGET" < "2026-09-21" ]]; then
+            echo "Forward boundary not open yet: $TARGET"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "target=$TARGET" >> "$GITHUB_OUTPUT"
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Generate prospective forecast
+        if: steps.target.outputs.skip == 'false'
+        run: python labs/CRYPTO_INTRAWEEK_RV_001/forward_watcher_v01.py "${{ steps.target.outputs.target }}"
+      - name: Upload immutable run evidence
+        if: steps.target.outputs.skip == 'false'
+        uses: actions/upload-artifact@v4
+        with:
+          name: CIRV_FORWARD_${{ steps.target.outputs.target }}_${{ github.run_id }}
+          path: cirv_forward_forecast_${{ steps.target.outputs.target }}.json
+          if-no-files-found: error
+          retention-days: 90

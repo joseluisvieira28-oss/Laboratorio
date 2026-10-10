@@ -1,0 +1,62 @@
+name: CIRV Binance Futures Endpoint Probe V0.1
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/cirv-binance-futures-endpoint-probe-v01.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Probe read-only USD-M market-data endpoints
+        run: |
+          python - <<'PY'
+          import json, urllib.request, urllib.error
+          from datetime import datetime, timezone
+          endpoints = [
+              "https://fapi.binance.com",
+              "https://fapi1.binance.com",
+              "https://fapi2.binance.com",
+              "https://fapi3.binance.com",
+              "https://fapi4.binance.com",
+          ]
+          q="/fapi/v1/klines?symbol=BTCUSDT&interval=5m&startTime=1790035200000&endTime=1790035499999&limit=1"
+          rows=[]
+          for base in endpoints:
+              url=base+q
+              try:
+                  req=urllib.request.Request(url,headers={"User-Agent":"CryptoLab-CIRV-Transport-Probe/0.1"})
+                  with urllib.request.urlopen(req,timeout=15) as r:
+                      raw=r.read()
+                      data=json.loads(raw)
+                      rows.append({"base":base,"http":r.status,"ok":isinstance(data,list) and len(data)>=1,
+                                   "rows":len(data) if isinstance(data,list) else None,
+                                   "first_open_time":data[0][0] if isinstance(data,list) and data else None})
+              except urllib.error.HTTPError as e:
+                  rows.append({"base":base,"http":e.code,"ok":False,"error":"HTTPError"})
+              except Exception as e:
+                  rows.append({"base":base,"http":None,"ok":False,"error":type(e).__name__+":"+str(e)[:160]})
+          out={"probe_id":"CIRV-BINANCE-FUTURES-ENDPOINT-PROBE-V0.1",
+               "generated_at_utc":datetime.now(timezone.utc).isoformat(),
+               "market_outcomes_opened":False,
+               "rows":rows}
+          print("CIRV_ENDPOINT_PROBE_JSON="+json.dumps(out,sort_keys=True))
+          open("cirv_binance_endpoint_probe_v01.json","w").write(json.dumps(out,indent=2,sort_keys=True)+"\n")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: CIRV_BINANCE_FUTURES_ENDPOINT_PROBE_V01
+          path: cirv_binance_endpoint_probe_v01.json
+          if-no-files-found: warn
+          retention-days: 30
