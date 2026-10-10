@@ -1,0 +1,28 @@
+name: HYPE Buyback 001 — Public Export Client Contract V033
+on:
+  push:
+    branches:
+      - research/hype-buyback-flow-001-free-90d-probe-2026-10-10
+    paths:
+      - research/hype_buyback_flow_001/exporter_client_contract_v033.py
+      - .github/workflows/hype-export-client-contract-v033.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  static-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Parse public static exported bundle without running API jobs
+        run: python3 research/hype_buyback_flow_001/exporter_client_contract_v033.py
+      - name: Archive immutable contract receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: hype-export-client-contract-${{ github.run_id }}
+          path: research/hype_buyback_flow_001/receipts/export_client_contract_v033/
+          retention-days: 60
+          if-no-files-found: error
