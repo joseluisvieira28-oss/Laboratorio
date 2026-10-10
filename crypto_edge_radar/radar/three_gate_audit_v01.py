@@ -120,18 +120,27 @@ def classify_public_shadow_health(*, cycle_errors: Mapping[str, Any],
                                   ced1d_status: str | None,
                                   persisted_gap_receipts: int | None) -> dict[str, Any]:
     """Pure visibility classifier; does not modify scientific timing or signals."""
-    reasons: list[str] = []
+    degraded: list[str] = []
+    attention: list[str] = []
     if cycle_errors:
-        reasons.append("CURRENT_CYCLE_ERRORS")
+        degraded.append("CURRENT_CYCLE_ERRORS")
     if ced1d_status in {"FAIL_CLOSED", "SOURCE_BLOCKED", "ERROR"}:
-        reasons.append("CED1D_COLLECTOR_FAIL_CLOSED")
+        degraded.append("CED1D_COLLECTOR_FAIL_CLOSED")
     if persisted_gap_receipts is None:
-        reasons.append("GAP_HISTORY_UNVERIFIED")
+        degraded.append("GAP_HISTORY_UNVERIFIED")
     elif persisted_gap_receipts > 0:
-        reasons.append("HISTORICAL_LIVENESS_GAP_RECEIPTS_REQUIRE_REVIEW")
+        # Historical gaps are immutable audit evidence, not a reason to force a
+        # permanently failed HTTP health endpoint. Keep explicit attention.
+        attention.append("HISTORICAL_LIVENESS_GAP_RECEIPTS_REQUIRE_REVIEW")
+    reasons = degraded + attention
     return {
-        "status": "OK" if not reasons else "DEGRADED_FAIL_CLOSED",
+        "status": "OK" if not degraded else "DEGRADED_FAIL_CLOSED",
         "operational_attention_required": bool(reasons),
+        "continuity_review_status": (
+            "UNVERIFIED" if persisted_gap_receipts is None
+            else "HISTORICAL_GAPS_REVIEW_REQUIRED" if persisted_gap_receipts > 0
+            else "NO_PERSISTED_GAPS"
+        ),
         "reasons": reasons,
         "persisted_gap_receipts": persisted_gap_receipts,
         "automatic_live_authorization": False,
