@@ -1,3 +1,4 @@
+# 2026-10-10 authority: one additional 600s public observation and exact recovered 37937441095 artifact. No science changes.
 # Operational continuation 2026-10-09T13:00:21Z: verified 13 receipts, 10 BTC primary episodes on 2 UTC dates; science unchanged.
 # Operational continuation following independently reviewed run 37919982538: 12 receipts, 10 independent BTC episodes, 2 UTC dates; science unchanged.
 # Operational single-shard continuation 2026-10-09: last authority 10/20 BTC episodes, 2/3 UTC dates; trigger science unchanged. See LICP_001_FORWARD_CONTINUATION_AUTHORITY_2026-10-09.md.
@@ -59,6 +60,12 @@ jobs:
           mkdir -p prior/recovered-37789379322
           gh run download 37789379322 -n licp001-forward-durable-v03-37789379322-1 -D prior/recovered-37789379322
           test -f prior/recovered-37789379322/current/licp001_forward_observation_v01.json
+          # Oct10 independently proven original same-ignition ALT ETH/SOL sibling fix.
+          # This recovered failed V03 artifact contains 2 additional frozen BTC episodes
+          # and is immutable; provenance verified by offline run 38036431594.
+          mkdir -p prior/recovered-37937441095
+          gh run download 37937441095 -n licp001-forward-durable-v03-37937441095-1 -D prior/recovered-37937441095
+          test -f prior/recovered-37937441095/current/licp001_forward_observation_v01.json
 
           gh api "repos/$GITHUB_REPOSITORY/actions/runs?branch=$GITHUB_REF_NAME&per_page=100" > /tmp/runs.json
           python - <<'PY' >/tmp/prior_v03_ids.txt
