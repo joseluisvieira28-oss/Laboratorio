@@ -14,7 +14,7 @@ Authoritative supersession: this report corrects the *incorrect-address source i
 - First full no-cost source census run `38042801061`, head `6aff40371e664646b5b74210889bb7f5c92bab4d`, archived evidence 5 full 24-hour slices: 5,250 fills / 123,467.42 HYPE / 10,965,550.56925 USDC; day6/7 capped at 2,000.
 - Pre-source spot market context correction frozen commit `8cd95d055e63058114edd48cd8e7bd682a4252d1`. Prior context `dayNtlVlm=0` was MISMAPPED to @105 not target @107.
 - Confirmatory mapping-only public run `38042924300`: `@107` pair market.index 107 vs `universe` array offset 105, contexts[107].coin exactly @107, one unique explicit match; matched public 24h HYPE/USDC spot volume 39,498,374.1664000005 USDC. Mapping raw SHA256 `565abbd779c6faf3e4cb8ca9097d841666b71a32644ecc70bfd12e3f5ae6596c`.
-- Latest full corrected science run `38042996024`, head `03c96f11458e373e66d2ed336e1d8660a1284e68`, 5/5 synthetic regressions PASS. Retained archive artifact hash and ID to be attached in this document below.
+- Latest full corrected science run `38042996024`, head `03c96f11458e373e66d2ed336e1d8660a1284e68`, 5/5 synthetic regressions PASS. Immutable Actions artifact 11666149099, archive SHA256 `c72ec2eaf8ba5efa2ecda2b7e365fdb4a58606a3423837d1b7208f85947f3bfe`, 795,932 bytes, see `https://github.com/joseluisvieira28-oss/Laboratorio/actions/runs/38042996024/artifacts/11666149099`.
 - Operational clean-up: push trigger restricted to `research/hype_buyback_flow_001/*.py` and workflow itself in commit `3b85291573cc88efeaf421730d8934ea0019d6c7` to prevent documentation-only duplicate probes.
 - All other historical economic closeouts untouched. `main` untouched.
 
