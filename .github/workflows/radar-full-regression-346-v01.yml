@@ -1,0 +1,35 @@
+name: Radar Full 346 Regression Suite — No Trading
+on:
+  push:
+    branches:
+      - fix/radar-http-only-thread-invariant-2026-10-10
+    paths:
+      - crypto_edge_radar/tests/test_persistence_worker_gate.py
+      - crypto_edge_radar/radar/forward_web.py
+      - .github/workflows/radar-full-regression-346-v01.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  full:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: crypto_edge_radar
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Full unit regression (offline, no secrets)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m compileall -q radar tests
+          python -m unittest discover -s tests -v > /tmp/radar-full-regressions.log 2>&1 || {
+            tail -n 100 /tmp/radar-full-regressions.log
+            exit 1
+          }
+          tail -n 10 /tmp/radar-full-regressions.log
