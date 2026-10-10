@@ -63,14 +63,21 @@ def market_binding(payload):
     if not isinstance(meta,dict) or not isinstance(ctxs,list) or not isinstance(meta.get("universe"),list):
         raise ValueError("bad_spot_metadata")
     tokens = {t.get("name"):t.get("index") for t in meta.get("tokens",[]) if isinstance(t,dict)}
-    for i,pair in enumerate(meta["universe"]):
-        if pair.get("tokens")==[tokens.get("HYPE"),tokens.get("USDC")] and pair.get("name")=="@107":
-            if i >= len(ctxs):
-                raise ValueError("missing_exact_pair_context")
-            return {"coin":pair["name"],"universe_index":i,"tokens":pair["tokens"],
-                    "dayNtlVlm":ctxs[i].get("dayNtlVlm"),
-                    "prevDayPx":ctxs[i].get("prevDayPx")}
-    raise ValueError("HYPE_USDC_not_exactly_bound")
+    matches = [(i,pair) for i,pair in enumerate(meta["universe"])
+               if pair.get("tokens")==[tokens.get("HYPE"),tokens.get("USDC")] and pair.get("name")=="@107"]
+    if len(matches) != 1:
+        raise ValueError("HYPE_USDC_not_exactly_bound")
+    i, pair = matches[0]
+    market_index = pair.get("index")
+    if not isinstance(market_index,int) or market_index < 0 or market_index >= len(ctxs):
+        raise ValueError("spot_market_index_not_valid")
+    ctx = ctxs[market_index]
+    exact_coin_matches = [j for j,x in enumerate(ctxs) if isinstance(x,dict) and x.get("coin")==pair["name"]]
+    if exact_coin_matches != [market_index] or not isinstance(ctx,dict) or ctx.get("coin")!=pair["name"]:
+        raise ValueError("spot_ctx_coin_market_index_identity_mismatch")
+    return {"coin":pair["name"],"universe_index":i,"spot_market_index":market_index,
+            "tokens":pair["tokens"],"dayNtlVlm":ctx.get("dayNtlVlm"),
+            "prevDayPx":ctx.get("prevDayPx")}
 
 
 def slice_audit(fills, coin, start, stop):
