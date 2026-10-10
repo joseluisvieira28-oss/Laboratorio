@@ -21,6 +21,12 @@ jobs:
         run: python3 -m unittest discover -s research/hype_buyback_flow_001 -p 'test_source_gate_v01.py' -v
       - name: Official public Hyperliquid source probe; no private endpoints
         run: python3 research/hype_buyback_flow_001/source_gate_v01.py
+      - name: Show bounded public HTTP error diagnostics, if any
+        if: always()
+        run: |
+          if [ -f research/hype_buyback_flow_001/receipts/source_only_one_shot/af_recent_http_error.json ]; then
+            cat research/hype_buyback_flow_001/receipts/source_only_one_shot/af_recent_http_error.json
+          fi
       - name: Preserve raw public responses and immutable receipt
         if: always()
         uses: actions/upload-artifact@v4
