@@ -1,0 +1,38 @@
+name: AMM-LVR-CROSSVENUE-001 Frozen Source Revalidation
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Revalidate one-day sample source gate
+        run: python labs/amm-lvr-crossvenue-001/source_gate.py
+      - name: Revalidate historical-free vs forward-free source routes
+        run: python labs/amm-lvr-crossvenue-001/source_attack_v0_2.py
+      - name: Revalidate archival Ethereum replay
+        run: python labs/amm-lvr-crossvenue-001/historical_onchain_replay_probe_v0_1.py
+      - name: Revalidate no-key archive RPC matrix
+        run: python labs/amm-lvr-crossvenue-001/archive_rpc_matrix_v0_1.py
+      - name: Revalidate Uniswap executable quote routes
+        run: python labs/amm-lvr-crossvenue-001/uniswap_quoter_source_probe_v0_1.py
+      - name: Revalidate 120-second frozen-registry observability
+        run: python labs/amm-lvr-crossvenue-001/forward_observability_v0_2.py
+      - name: Smoke-test forward shadow collector
+        run: python labs/amm-lvr-crossvenue-001/forward_shadow_collector_v0_1.py --seconds 120 --poll 2
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: AMM-LVR-CROSSVENUE-001-SOURCE-REVALIDATION
+          path: |
+            labs/amm-lvr-crossvenue-001/evidence/
+            labs/amm-lvr-crossvenue-001/forward_data/

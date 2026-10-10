@@ -1,0 +1,28 @@
+name: AMM-LVR-CROSSVENUE-001 Non-Adjudicating Forward Economic V0.2
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  causal-engineering-sweep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install WebSocket client
+        run: python -m pip install --disable-pip-version-check 'websockets==15.0.1'
+      - name: Execute quarantined causal engineering diagnostic
+        run: python labs/amm-lvr-crossvenue-001/forward_economic_engine_v0_2.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: AMM-LVR-CROSSVENUE-001-FORWARD-ECONOMIC-V02-DIAGNOSTIC
+          path: |
+            labs/amm-lvr-crossvenue-001/evidence/forward_economic_sweep_v0_2.json
+            labs/amm-lvr-crossvenue-001/evidence/forward_economic_sweep_v0_2_summary.json

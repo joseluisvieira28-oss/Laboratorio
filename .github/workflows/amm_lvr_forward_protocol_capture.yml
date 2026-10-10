@@ -1,0 +1,66 @@
+name: AMM-LVR-CROSSVENUE-001 Forward Protocol + Headroom Daily
+
+on:
+  push:
+    branches:
+      - amm-lvr-crossvenue-001-v0.1
+    paths:
+      - 'labs/amm-lvr-crossvenue-001/DAILY_CAPTURE_TRIGGER.txt'
+  workflow_dispatch:
+
+concurrency:
+  group: amm-lvr-crossvenue-001-forward-capture
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  capture-and-headroom:
+    if: github.ref_name == 'amm-lvr-crossvenue-001-v0.1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: amm-lvr-crossvenue-001-v0.1
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install websocket client
+        run: python -m pip install --disable-pip-version-check websockets==15.0.1
+      - name: Capture 240 seconds of protocol-compliant raw forward evidence
+        run: python labs/amm-lvr-crossvenue-001/forward_protocol_capture_v0_1.py
+      - name: Evaluate frozen pre-inclusion headroom
+        run: python labs/amm-lvr-crossvenue-001/evaluate_headroom_v0_1.py
+      - name: Build immutable compact ledger snapshot
+        run: python labs/amm-lvr-crossvenue-001/build_forward_ledger_snapshot_v0_1.py
+      - name: Aggregate deduplicated forward ledger
+        run: python labs/amm-lvr-crossvenue-001/aggregate_forward_ledger_v0_1.py
+      - name: Persist ledger snapshot on research branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "crypto-lab-forward-bot"
+          git config user.email "crypto-lab-forward-bot@users.noreply.github.com"
+          git add labs/amm-lvr-crossvenue-001/forward_ledger/
+          if git diff --cached --quiet; then
+            echo "No new ledger snapshot to persist"
+            exit 0
+          fi
+          git commit -m "AMM-LVR-001: persist forward ledger snapshot run ${GITHUB_RUN_ID}"
+          git pull --rebase origin amm-lvr-crossvenue-001-v0.1
+          git push origin HEAD:amm-lvr-crossvenue-001-v0.1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: AMM-LVR-CROSSVENUE-001-FORWARD-PROTOCOL-HEADROOM
+          path: |
+            labs/amm-lvr-crossvenue-001/evidence/forward_protocol_capture_v0_1.json
+            labs/amm-lvr-crossvenue-001/evidence/forward_protocol_capture_v0_1_receipt.json
+            labs/amm-lvr-crossvenue-001/evidence/headroom_evaluation_v0_1.json
+            labs/amm-lvr-crossvenue-001/evidence/headroom_evaluation_v0_1_summary.json
+            labs/amm-lvr-crossvenue-001/evidence/headroom_evaluation_v0_1_errors.json
+            labs/amm-lvr-crossvenue-001/evidence/forward_ledger_snapshot_v0_1.json
+            labs/amm-lvr-crossvenue-001/evidence/forward_ledger_rollup_v0_1.json
