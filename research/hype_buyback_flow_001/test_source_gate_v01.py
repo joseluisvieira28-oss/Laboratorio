@@ -6,9 +6,32 @@ source = Path(__file__).with_name("source_gate_v01.py")
 spec = importlib.util.spec_from_file_location("source_gate_v01", source)
 m = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(m)
+ctx_source = Path(__file__).with_name("source_retention_liquidity_v013.py")
+ctx_spec = importlib.util.spec_from_file_location("source_retention_liquidity_v013", ctx_source)
+ctx_m = importlib.util.module_from_spec(ctx_spec)
+ctx_spec.loader.exec_module(ctx_m)
 
 
 class SourceOnlyGateTests(unittest.TestCase):
+    def test_official_af_address_length_contract(self):
+        self.assertEqual(len(m.AF), 42)
+        self.assertEqual(m.AF, ctx_m.AF)
+        self.assertEqual(m.AF, "0x" + "fe" * 20)
+
+    def test_spot_context_uses_explicit_market_index_not_universe_offset(self):
+        ctx = [{"coin": "@"+str(i), "dayNtlVlm": "0.0"} for i in range(108)]
+        ctx[107]["dayNtlVlm"] = "39000000.0"
+        meta = {"tokens": [{"name":"HYPE","index":150}, {"name":"USDC","index":0}],
+                "universe":[{"name":"@105","tokens":[15,0],"index":105},
+                            {"name":"@107","tokens":[150,0],"index":107}]}
+        verified = ctx_m.market_binding([meta, ctx])
+        self.assertEqual(verified["universe_index"], 1)
+        self.assertEqual(verified["spot_market_index"], 107)
+        self.assertEqual(verified["dayNtlVlm"], "39000000.0")
+        ctx[107]["coin"] = "@106"
+        with self.assertRaises(ValueError):
+            ctx_m.market_binding([meta, ctx])
+
     def test_market_binding_cannot_be_guessed(self):
         meta = {"tokens": [{"name": "HYPE", "index": 150}, {"name": "USDC", "index": 0}],
                 "universe": [{"name": "SOMETHING", "tokens": [12, 0]},
