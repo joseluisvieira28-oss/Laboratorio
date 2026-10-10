@@ -1,0 +1,45 @@
+name: BTC Options VRP 0.01 USDC Paired Quote and Capital SOURCE GATE V01
+on:
+  push:
+    branches:
+      - research/btc-vrp-usdc-paired-quote-capital-source-2026-10-10
+    paths:
+      - '.github/workflows/btc_vrp_usdc_paired_capital_gate_20261010.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source_only_one_shot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate immutable new source-only authority
+        run: |
+          test "$GITHUB_REF_NAME" = "research/btc-vrp-usdc-paired-quote-capital-source-2026-10-10"
+          test -s research/btc_options_vrp_v2/VRP_USDC_001_ONE_SHOT_QUOTE_AND_CAPITAL_PRE_SOURCE_FREEZE_2026_10_10.md
+          python -m py_compile research/btc_options_vrp_v2/vrp_usdc_paired_quote_capital_source_probe_v01.py
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('research/btc_options_vrp_v2/vrp_usdc_paired_quote_capital_source_probe_v01.py').read_text()
+          assert 'private/' not in s and 'auth/' not in s
+          assert 'AMOUNT=.01' in s and 'TARGET_DTE=30.' in s
+          assert 'get_order_book' in s and '0.0003' in s and '.125' in s
+          assert 'pnl_computed' in s and 'no_future_path' in s
+          print('VRP_PUBLIC_SOURCE_NO_OUTCOME_BOUNDARY_PASS')
+          PY
+      - name: Only Deribit public index/instruments/paired bidask plus perpetual quote and margin proxy
+        run: |
+          python research/btc_options_vrp_v2/vrp_usdc_paired_quote_capital_source_probe_v01.py
+      - name: Preserve pre-outcome source receipt even on blocked route
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: btc-vrp-usdc-001-current-public-pair-source-v01
+          path: research/btc_options_vrp_v2/VRP_USDC_001_PAIRED_SOURCE_RESULT_2026_10_10.json
+          if-no-files-found: error
