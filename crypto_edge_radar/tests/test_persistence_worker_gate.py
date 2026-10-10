@@ -43,12 +43,15 @@ class FakeServer:
         self.served = True
         return
 
+    def shutdown(self):
+        return
+
     def server_close(self):
         return
 
 
 class PersistenceWorkerGateTests(unittest.TestCase):
-    def test_fail_closed_persistence_state_starts_no_worker_threads(self):
+    def test_fail_closed_persistence_state_starts_only_non_scientific_http_thread(self):
         settings = MagicMock()
         settings.http_timeout = 10
 
@@ -88,7 +91,14 @@ class PersistenceWorkerGateTests(unittest.TestCase):
         )
         runtime.run_loop.assert_not_called()
         runtime.etf_cme_exact_scheduler.run_loop.assert_not_called()
-        thread_cls.assert_not_called()
+        # The transport-only HTTP reader can start early to expose a truthful
+        # FAIL_CLOSED state. Scientific workers still MUST NOT start.
+        thread_cls.assert_called_once()
+        self.assertEqual(
+            thread_cls.call_args.kwargs["name"],
+            "radar-public-status-http",
+        )
+        self.assertTrue(thread_cls.call_args.kwargs["daemon"])
 
 
 if __name__ == "__main__":
