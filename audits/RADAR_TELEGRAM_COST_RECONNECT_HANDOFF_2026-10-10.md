@@ -57,3 +57,10 @@
 - App source examined against canonical `forward_web.py`: `/api/state` is an existing public read-only endpoint; `checked_at_utc`, `mode`, `runtime_identity.service_id`, `ced1d_render_shadow`, and all four safety booleans are top-level fields. Current Render public shadow does NOT yet have `runtime_gap_history` which is proposed in distinct **draft PR #173**; notifier will consequently classify historical continuity as UNVERIFIED until that is reviewed/deployed.
 - **State distinctions:** TELEGRAM_PRIVATE_TEST_SENT ✅; AUTO_RADAR_ALERTS_ON_DEFAULT_BRANCH ❌; VERIFIED_ALWAYS_ON_24_7 ❌; LIVE_TRADING_PERMISSION ❌.
 - Controlled deployment still needs approval and guard for paid Render `Laboratorio` auto-deploy on `main`. No such merge/deploy occurred.
+
+## 2026-10-10 15:06 Switzerland — Operator confirmed private Telegram receipt
+- Operator supplied an authenticated UI screenshot showing the **Crypto Lab Fishing Bot** smoke-test message in **Crypto Lab - Fishing Room**, date October 10 at 15:06 Europe/Zurich (time shown in Telegram).
+- This closes **DELIVERY_CONFIRMED** beyond the prior GitHub `TELEGRAM_DELIVERY_SENT` API acknowledgment; does **NOT** grant trading authority.
+- Tested code now has one-shot sender removed. Existing workflow QA shows success after clean-up. 
+- **AUTOMATED_SCHEDULE_NOT_ACTIVE**: GitHub `schedule` events run only on default branch; PR #174 remains draft/unmerged. Do not claim hourly/eight-minute Telegram monitoring is active.
+- **PAID_SERVICE_DEPLOY_RISK**: Render `srv-dafgofv40ujc73b7o6og` tracks `main`, `autoDeploy=yes`, plan `0.5c-512mb`. A merge to `main` must not proceed until independent deploy-filter/plan risk review and explicit scoped owner authorization to alter main. This is separate from `crypto-edge-radar-v05-canary`, which tracks `crypto-edge-radar-postgres-v0.5` and `autoDeploy=no`.
