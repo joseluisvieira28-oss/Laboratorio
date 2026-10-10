@@ -1,0 +1,28 @@
+name: HYPE Buyback 001 — Public Exporter Frontend Source Map V031
+on:
+  push:
+    branches:
+      - research/hype-buyback-flow-001-free-90d-probe-2026-10-10
+    paths:
+      - research/hype_buyback_flow_001/exporter_frontend_source_map_v031.py
+      - .github/workflows/hype-exporter-frontend-source-v031.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  public-static-no-wallet-export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Inspect only public static JS; no address export/auth/cost
+        run: python3 research/hype_buyback_flow_001/exporter_frontend_source_map_v031.py
+      - name: Preserve source receipts
+        uses: actions/upload-artifact@v4
+        with:
+          name: hype-exporter-static-v031-${{ github.run_id }}-${{ github.run_attempt }}
+          path: research/hype_buyback_flow_001/receipts/exporter_static_v031/
+          retention-days: 60
+          if-no-files-found: error
