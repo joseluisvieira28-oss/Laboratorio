@@ -36,14 +36,3 @@ jobs:
         run: |
           if [ -n "$BOT_TOKEN" ]; then echo 'TELEGRAM_BOT_TOKEN=PRESENT'; else echo 'TELEGRAM_BOT_TOKEN=MISSING'; fi
           if [ -n "$BOT_CHAT" ]; then echo 'TELEGRAM_CHAT_ID=PRESENT'; else echo 'TELEGRAM_CHAT_ID=MISSING'; fi
-
-      - name: Operator-authorized ONE-TIME private Telegram sendMessage (read-only test)
-        if: >-
-          github.event_name == 'push' && github.event.head_commit.message == 'test(telegram): one-shot private connectivity smoke 2026-10-10'
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          python .github/scripts/radar_telegram_health_v01.py test
