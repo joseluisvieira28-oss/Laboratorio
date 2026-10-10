@@ -1,0 +1,29 @@
+name: HYPE Buyback 001 — Free 90-Day Archive Source Probe V03
+on:
+  push:
+    branches:
+      - research/hype-buyback-flow-001-free-90d-probe-2026-10-10
+    paths:
+      - research/hype_buyback_flow_001/free_90d_source_probe_v03.py
+      - .github/workflows/hype-buyback-free-90d-source-v03.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source-only-public-GET:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Zero-cost source transport/eligibility probes only
+        run: python3 research/hype_buyback_flow_001/free_90d_source_probe_v03.py
+      - name: Upload immutable HTTP source receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hype-free-90d-source-v03-${{ github.run_id }}-${{ github.run_attempt }}
+          path: research/hype_buyback_flow_001/receipts/free_90d_v03/
+          retention-days: 60
+          if-no-files-found: error
