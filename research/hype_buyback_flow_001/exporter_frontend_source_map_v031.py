@@ -71,8 +71,8 @@ if html:
         return 0 if "page" in p or "app" in p or "index" in p else 1
     assets=sorted(assets,key=score)
     rec["same_origin_script_count"]=len(assets)
-    rec["selected_script_paths"]=[urlparse(a).path for a in assets[:3]]
-    for k,u in enumerate(assets[:3]):
+    rec["selected_script_paths"]=[urlparse(a).path for a in assets[:10]]
+    for k,u in enumerate(assets[:10]):
         meta,body=fetch(u,f"public_static_js_{k+1}")
         if body:
             s=body.decode("utf-8","replace")
@@ -81,6 +81,7 @@ if html:
                 "literal_api_paths":sorted(set(re.findall(r"""(?:/api/[a-zA-Z0-9_./-]+|/export/[a-zA-Z0-9_./-]+|/download/[a-zA-Z0-9_./-]+)""",s)))[:30],
             }
             meta["only_static_strings"]=patterns
+            meta["source_clue_counts"]={q: s.lower().count(q) for q in ("hypedexer","api/","export","download","history","csv","gzip")}
             meta["mentions_csv_gz"]=(".csv.gz" in s)
             meta["mentions_export"]=("export" in s.lower())
             meta["mentions_auth"]=any(z in s.lower() for z in ("authorization","apikey","api_key"))
