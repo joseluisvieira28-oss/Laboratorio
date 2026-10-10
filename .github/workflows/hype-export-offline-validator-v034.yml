@@ -1,0 +1,22 @@
+name: HYPE Buyback 001 — Offline Export Integrity Regressions V034
+on:
+  push:
+    branches:
+      - research/hype-buyback-flow-001-free-90d-probe-2026-10-10
+    paths:
+      - research/hype_buyback_flow_001/validate_export_offline_v034.py
+      - research/hype_buyback_flow_001/test_validate_export_offline_v034.py
+      - .github/workflows/hype-export-offline-validator-v034.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  no-network-synthetic-source-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Offline CSV JSON contract synthetic regressions only
+        run: python3 -m unittest discover -s research/hype_buyback_flow_001 -p 'test_validate_export_offline_v034.py' -v
