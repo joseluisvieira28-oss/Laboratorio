@@ -1,0 +1,34 @@
+name: Radar Three-Gate Evidence Truth V0.1 (no trading)
+
+on:
+  push:
+    branches:
+      - fix/radar-triple-gate-truth-v01-2026-10-10
+    paths:
+      - crypto_edge_radar/radar/three_gate_audit_v01.py
+      - crypto_edge_radar/radar/forward_web.py
+      - crypto_edge_radar/tests/test_three_gate_audit_v01.py
+      - .github/workflows/radar-three-gate-evidence-v01.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fail-closed-safety:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Compile reviewed files
+        run: |
+          python -m py_compile crypto_edge_radar/radar/three_gate_audit_v01.py
+          python -m py_compile crypto_edge_radar/radar/forward_web.py
+          python -m py_compile crypto_edge_radar/tests/test_three_gate_audit_v01.py
+      - name: Run hermetic unit tests (offline, no exchange credentials)
+        working-directory: crypto_edge_radar
+        run: python -m unittest -v tests.test_three_gate_audit_v01
+      - name: Report immutable code identity
+        run: sha256sum crypto_edge_radar/radar/three_gate_audit_v01.py crypto_edge_radar/radar/forward_web.py crypto_edge_radar/tests/test_three_gate_audit_v01.py
