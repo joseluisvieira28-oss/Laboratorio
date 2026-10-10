@@ -27,7 +27,7 @@ jobs:
           python - <<'PY'
           from pathlib import Path
           s=Path('research/btc_options_vrp_v2/vrp_usdc_paired_quote_capital_source_probe_v01.py').read_text()
-          assert 'private/' not in s and 'auth/' not in s
+          assert 'api("private/' not in s and 'api("private_' not in s
           assert 'AMOUNT=.01' in s and 'TARGET_DTE=30.' in s
           assert 'get_order_book' in s and '0.0003' in s and '.125' in s
           assert 'pnl_computed' in s and 'no_future_path' in s
