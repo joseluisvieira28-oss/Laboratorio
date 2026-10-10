@@ -1,0 +1,25 @@
+name: Windows Continuity Read Only V04
+on:
+  push:
+    branches:
+      - ops/windows-scheduler-process-proof-v04-2026-10-10
+permissions:
+  contents: read
+jobs:
+  offline:
+    runs-on: windows-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Windows diagnostic smoke test
+        shell: pwsh
+        run: |
+          $out = Join-Path $env:RUNNER_TEMP 'CL_v04.json'
+          & powershell.exe -NoProfile -File crypto_edge_radar/operator_windows/CryptoLab_PC_Task_Process_Proof_V04.ps1 -OutputPath $out
+          if ($LASTEXITCODE -ne 0) { throw 'failed' }
+          $r = Get-Content -Raw $out | ConvertFrom-Json
+          if ($r.schema -ne 'CRYPTO_LAB_PC_TASK_PROCESS_PROOF_V0.4') { throw 'bad schema' }
+          if ($r.no_duplicate_writer_proven -ne $false) { throw 'unexpected authority claim' }
+          Write-Host 'V04_READ_ONLY_PASS'
