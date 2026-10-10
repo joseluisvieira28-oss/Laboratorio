@@ -49,3 +49,16 @@ To unlock next:
 4. Only after gate PASS, preregister ONE economic hypothesis, signal, horizon, control, fees/spread/slippage/capacity and minimum sample **BEFORE** price outcomes. Protected 2026 outcomes remain sealed.
 
 No background action has been scheduled in this source hunt, and no future export completion is promised.
+
+
+## Offline import readiness V0.3.4
+- Built deterministic offline-only CSV/JSON (+gzip) import auditor `research/hype_buyback_flow_001/validate_export_offline_v034.py`; no web/network, no market outcomes or trading hooks.
+- Enforces official `@107` spot-market binding, positive sizes/prices, side direction, strong `(hash,tid)` IDs, dedupe, UTC date bounds, daily counts, SHA256 and maximum file/row caps.
+- Provider-export docs show `hash` but not explicitly `tid` in the CSV field list. A CSV lacking a strong per-fill ID **fails the identity gate**, even if it contains >=90 calendar dates.
+- Does not trust inferred AF attribution without a verifiable source binding. `SOURCE_PASS` hardwired false until independent official overlap checks, complete coverage and PIT first-seen latency are proven.
+- Synthetic CI `38047469985` SUCCESS with three regressions; commit `d83d6a9f6a1669894d6e9cb27391e331c432ce3e`.
+- No user/export file acquired: synthetic PASS is NOT historical source PASS.
+
+## User-interaction dependency (no private keys)
+Official docs-referenced public exporter front end: `https://trade-export.hypedexer.com/`. Input ONLY public system address `0x` + `fe`×20, UTC 2026-07-10 to 2026-10-10, JSON/CSV, and complete normal Turnstile UI challenge. Do not provide a wallet signature, API trading key, AWS credentials or payment details. If website asks for those, STOP.
+Never bypass Turnstile, vendor quota, or auth. If no zero-dollar direct export is legitimately accessible, source stays SOURCE_BLOCKED and only new forward collector work may qualify.
