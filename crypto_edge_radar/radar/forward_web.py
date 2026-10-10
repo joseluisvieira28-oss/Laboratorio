@@ -1185,14 +1185,18 @@ def serve_forward_shadow(*, port: int, interval: float) -> int:
     # Bind the public, non-executable status endpoint BEFORE the potentially slow
     # first collector run. In particular CED1D archive I/O can take minutes.
     # STARTING must never be treated as evidence freshness or trading authority.
-    handler = type("ForwardShadowHandler", (_Handler,), {"runtime": runtime})
-    server = ThreadingHTTPServer(("0.0.0.0", int(port)), handler)
-    http_thread = threading.Thread(
-        target=server.serve_forever,
-        name="radar-public-status-http",
-        daemon=True,
-    )
-    http_thread.start()
+    # Quiesced maintenance retains its original synchronous no-worker path.
+    server = None
+    http_thread = None
+    if not quiesced:
+        handler = type("ForwardShadowHandler", (_Handler,), {"runtime": runtime})
+        server = ThreadingHTTPServer(("0.0.0.0", int(port)), handler)
+        http_thread = threading.Thread(
+            target=server.serve_forever,
+            name="radar-public-status-http",
+            daemon=True,
+        )
+        http_thread.start()
     try:
         initial_state: dict[str, Any] | None = None
 
@@ -1282,11 +1286,18 @@ def serve_forward_shadow(*, port: int, interval: float) -> int:
 
         # Preserve the old single-writer bootstrap ordering: independent worker
         # loops are started only AFTER the initial persistence preflight result.
-        http_thread.join()
+        if quiesced:
+            handler = type("ForwardShadowHandler", (_Handler,), {"runtime": runtime})
+            server = ThreadingHTTPServer(("0.0.0.0", int(port)), handler)
+            server.serve_forever()
+        else:
+            http_thread.join()
     except KeyboardInterrupt:
         return 0
     finally:
-        server.shutdown()
-        http_thread.join(timeout=5)
-        server.server_close()
+        if http_thread is not None:
+            server.shutdown()
+            http_thread.join(timeout=5)
+        if server is not None:
+            server.server_close()
     return 0
