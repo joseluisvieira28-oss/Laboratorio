@@ -1,0 +1,30 @@
+name: BTC Options VRP V2 — Linear USDC Accessibility Probe
+
+on:
+  push:
+    branches:
+      - "btc-options-vrp-v2-forward-2026-10-07"
+    paths:
+      - "research/btc_options_vrp_v2/LINEAR_USDC_ACCESSIBILITY_SOURCE_FREEZE_V0.1.md"
+      - "labs/BTC_OPTIONS_VRP_001/linear_usdc_accessibility_probe_v01.py"
+      - ".github/workflows/btc-options-vrp-v2-linear-usdc-probe.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile source-only probe
+        run: python -m py_compile labs/BTC_OPTIONS_VRP_001/linear_usdc_accessibility_probe_v01.py
+      - name: Run public source-only probe
+        run: python labs/BTC_OPTIONS_VRP_001/linear_usdc_accessibility_probe_v01.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: btc-options-vrp-v2-linear-usdc-accessibility
+          path: artifacts/btc_options_vrp_linear_usdc_probe/
+          retention-days: 30

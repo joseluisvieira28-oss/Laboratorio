@@ -1,0 +1,36 @@
+name: BTC Options VRP V2 Canonical USDC Forward Bank Offline Integrity 20261010
+on:
+  push:
+    branches:
+      - btc-options-vrp-v2-forward-2026-10-07
+    paths:
+      - '.github/workflows/vrp_usdc_forward_bank_canonical_integrity_20261010.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline_source_integrity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      PYTHONPATH: .
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify immutable source-only science and compile correction
+        run: |
+          test "$GITHUB_REF_NAME" = "btc-options-vrp-v2-forward-2026-10-07"
+          test -s research/btc_options_vrp_v2/USDC_BANK_CANONICAL_INTEGRITY_TECH_PATCH_2026_10_10.md
+          test -s research/btc_options_vrp_v2/LINEAR_USDC_FORWARD_ENTRY_SOURCE_BANK_V0.1.md
+          python -m py_compile labs/BTC_OPTIONS_VRP_001/usdc_forward_entry_bank_v01.py
+          python -m py_compile labs/BTC_OPTIONS_VRP_001/test_usdc_forward_entry_bank_integrity_v01.py
+      - name: Outcome-blind synthetic source / append-only regression suite
+        run: |
+          python labs/BTC_OPTIONS_VRP_001/test_usdc_forward_entry_bank_integrity_v01.py
+      - name: Verify no source bank materialized during Saturday QA
+        run: |
+          test ! -e data/vrp_usdc_forward/entry_source_bank.jsonl
+          test ! -e receipts/vrp_usdc_forward
+          echo 'VRP_SATURDAY_SOURCE_BANK_NOT_TOUCHED_PASS'

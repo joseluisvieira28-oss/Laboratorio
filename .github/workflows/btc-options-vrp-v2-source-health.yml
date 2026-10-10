@@ -1,0 +1,56 @@
+name: BTC Options VRP V2 — Public Forward Source Health
+
+on:
+  push:
+    branches:
+      - "btc-options-vrp-v2-forward-2026-10-07"
+    paths:
+      - "research/btc_options_vrp_v2/**"
+      - "research/crypto_lab_v2/**"
+      - ".github/workflows/btc-options-vrp-v2-source-health.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-health:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate V2 pre-outcome gate
+        run: python research/crypto_lab_v2/validate_preoutcome_gate_v2.py research/btc_options_vrp_v2/PREOUTCOME_GATE_V2.json
+      - name: Compile collectors
+        run: |
+          python -m py_compile labs/BTC_OPTIONS_VRP_001/forward_bbo_collector_v01.py
+          python -m py_compile labs/BTC_OPTIONS_VRP_001/forward_weekly_source_v2.py
+      - name: Capture current public source snapshot only
+        run: |
+          mkdir -p artifacts/btc_options_vrp_v2_source_health
+          python labs/BTC_OPTIONS_VRP_001/forward_bbo_collector_v01.py --stdout-only > artifacts/btc_options_vrp_v2_source_health/current_bbo.json
+          python - <<'PY'
+          import json, pathlib, hashlib
+          p=pathlib.Path("artifacts/btc_options_vrp_v2_source_health/current_bbo.json")
+          d=json.loads(p.read_text())
+          summary={
+            "schema_version":"BTC_OPTIONS_VRP_V2_SOURCE_HEALTH_0.1",
+            "captured_instrument_count":d["captured_instrument_count"],
+            "selected_instrument_count":d["selected_instrument_count"],
+            "failure_count":d["failure_count"],
+            "snapshot_time_utc":d["snapshot_time_utc"],
+            "snapshot_sha256":hashlib.sha256(p.read_bytes()).hexdigest(),
+            "returns_computed":False,
+            "pnl_computed":False,
+            "orders":False,
+            "authenticated":False
+          }
+          pathlib.Path("artifacts/btc_options_vrp_v2_source_health/summary.json").write_text(json.dumps(summary,indent=2,sort_keys=True)+"\n")
+          print(json.dumps(summary,sort_keys=True))
+          if d["captured_instrument_count"] <= 0 or d["failure_count"] != 0:
+              raise SystemExit("SOURCE_HEALTH_FAIL")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: btc-options-vrp-v2-source-health
+          path: artifacts/btc_options_vrp_v2_source_health/
+          retention-days: 30

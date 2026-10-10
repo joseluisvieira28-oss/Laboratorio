@@ -1,0 +1,70 @@
+{
+  "schema_version": "2.0",
+  "family_id": "BTC-OPTIONS-VRP-001-FWD-V2",
+  "economic_class": "risk_transfer_volatility_premium",
+  "stage": "PRE_OUTCOME",
+  "mechanism": {
+    "service": "Sell BTC option convexity/insurance to participants who value crash protection or convex exposure.",
+    "risk": "Short-volatility tail risk, jump risk, inventory/hedge basis risk and adverse execution during stress.",
+    "persistence_friction": "Tail-risk aversion, capital/margin constraints and risk-bearing capacity prevent complete elimination of the premium.",
+    "bilateral_rationale": "Option buyers rationally pay for convex protection or mandated hedging; sellers accept tail risk in exchange for premium.",
+    "competition_barrier": "Professional market makers compete aggressively, but risk-capital limits and crash exposure mean the premium need not be arbitraged to zero.",
+    "status": "MECHANISM_PASS"
+  },
+  "accessibility": {
+    "capture_path": "Unauthenticated Deribit public BBO/order-book API for source building; any later execution would use venue-valid 0.1 BTC option size plus BTC perpetual hedge.",
+    "data_access": "Public current Deribit API; no paid historical source required for prospective build.",
+    "execution_access": "Public Deribit market/API mechanics are available, but operator-level execution accessibility is not yet proven. BTC inverse options have 1 BTC contract size and 0.1-contract minimum order; short option margin plus hedge capital must be feasible at the operator account before any promotion.",
+    "capacity_constraint": "Current public snapshot and Standard Margin formulas imply roughly 0.0365 BTC initial margin for the 0.1 call + 0.1 put short option pair before adding the small static perpetual hedge margin. Actual account margin mode/equity and future mark-price-dependent margin remain unverified.",
+    "estimand": "stress_net_return_on_required_standard_margin_capital_per_7d_episode",
+    "hurdle_h": 0.0018295380282136176,
+    "hurdle_units": "fraction_of_1BTC_collateral_per_7d_episode",
+    "hurdle_rationale": "Economic hurdle remains a 10% annual compounded return requirement, but must be applied to the contemporaneous causally-computed required risk capital, not an arbitrary 1 BTC denominator. Final capital-normalized power design remains unresolved until the capital denominator is frozen and validated.",
+    "cost_model": "Deribit Standard fee tier frozen from official schedule dated 2026-09-25: BTC options 3 bps of underlying per contract per trade capped at 12.5% of option premium; BTC perpetual/futures taker 3.5 bps (maker 1.5 bps). Measured BBO spread/slippage and funding remain explicit.",
+    "cost_uncertainty": "Fees may change prospectively. This V2 MVE freezes the 2026-09-25 Standard tier for scientific comparability; any future fee-schedule change is a separate source/economic regime note, not a post-outcome rescue.",
+    "status": "ACCESSIBILITY_UNRESOLVED"
+  },
+  "source_gate": {
+    "enumerability_rule": "One non-overlapping weekly cohort at Thursday 08:00 UTC. At each anchor choose the AVAILABLE expiry nearest 30 DTE within the pre-frozen 14-60 DTE envelope, then choose the same-expiry same-strike call+put nearest ATM. Every source-valid cohort counts; no outcome-based exclusions.",
+    "timestamp_rule": "Each option/perpetual BBO records per-request local request/receive timestamps plus Deribit source timestamp. Contemporaneous freshness requires absolute source-clock difference at receive <=30 seconds; missing/stale required BBO makes the cohort source-incomplete.",
+    "treatment_binding": "At entry, among active BTC option expiries 14-60 DTE choose expiry minimizing |DTE-30| with deterministic tie-break; within that expiry choose same-strike call+put minimizing absolute log-moneyness to point-in-time index. Hold exactly seven days with static initial BTC perpetual delta hedge. Rule frozen after source-only geometry audit, before any forward outcome.",
+    "outcome_derived_inclusion": false,
+    "sources": [
+      "Deribit public/get_index_price",
+      "Deribit public/get_instruments",
+      "Deribit public/get_order_book",
+      "V2 current source-health run 37659393449 / artifact 11499987991: 74 instruments, 0 failures, no returns/PnL",
+      "legacy source-health run 35458192591: 112 instruments, 0 failures"
+    ],
+    "status": "SOURCE_PASS"
+  },
+  "power_gate": {
+    "direction": "POSITIVE",
+    "alpha": 0.05,
+    "power_target": 0.8,
+    "method": "ANALYTICAL_APPROX",
+    "nuisance_source": "Legacy execution artifact run 35069743562: n=19, stress PnL sample SD=0.0022938068056527205 BTC. Current public Standard Margin snapshot implies about 0.0365 BTC option IM for the 0.1+0.1 ATM short straddle before hedge; this makes the previously planned N=30 power calculation on a 1 BTC denominator non-economic. No forward outcome has been opened.",
+    "dependence_unit": "Non-overlapping weekly 7-day cohort; final inference preserves four-observation block bootstrap and may blindly reduce effective N for missingness/dependence.",
+    "n_eff_estimate": 0,
+    "design_alternative_theta": 0.0035026979608143716,
+    "power_at_design_alt": 0,
+    "planned_n_eff": 8617,
+    "planned_power_at_design_alt": 0.8,
+    "outcomes_opened": false,
+    "status": "UNDERPOWERED_PRE"
+  },
+  "multiplicity": {
+    "economic_hypothesis_id": "BTC-VRP-RISKTRANSFER",
+    "primary_claim_id": "OVRP-FWD-V2-STRESSMEAN-GT-H",
+    "trial_index": 3,
+    "policy": "One primary positive superiority claim on stress net mean above H. No regime, strike, cadence, hold-period, direction or cost rescue. Legacy discovery and prior execution MVEs remain separate trials.",
+    "prior_variants_count": 2
+  },
+  "freeze": {
+    "frozen_at_utc": "2026-10-07T17:30:00Z",
+    "outcome_boundary": "No forward performance outcome may be opened. V2 must first freeze a capital-normalized execution estimand and a feasible power design. Source-only BBO collection/health may continue, but no N=36 activation claim is valid under the superseded 1-BTC-normalized power plan.",
+    "single_shot": true,
+    "no_rescue": true
+  },
+  "decision": "UNDERPOWERED_PRE"
+}

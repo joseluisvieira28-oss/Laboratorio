@@ -1,0 +1,41 @@
+name: BTC Options VRP V2 — Weekly Forward Source Capture
+
+on:
+  push:
+    branches:
+      - "btc-options-vrp-v2-forward-2026-10-07"
+    paths:
+      - "research/btc_options_vrp_v2/TRIGGER_WEEKLY_CAPTURE.txt"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: btc-options-vrp-v2-weekly-source
+  cancel-in-progress: false
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: btc-options-vrp-v2-forward-2026-10-07
+          fetch-depth: 1
+      - name: Validate frozen V2 gate
+        run: python research/crypto_lab_v2/validate_preoutcome_gate_v2.py research/btc_options_vrp_v2/PREOUTCOME_GATE_V2.json
+      - name: Compile source collector
+        run: python -m py_compile labs/BTC_OPTIONS_VRP_001/forward_weekly_source_v2.py
+      - name: Capture source only
+        run: python labs/BTC_OPTIONS_VRP_001/forward_weekly_source_v2.py
+      - name: Commit source evidence to isolated branch
+        run: |
+          git config user.name "crypto-lab-source-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/vrp_forward_v2/source_events.jsonl receipts/vrp_forward_v2/
+          if git diff --cached --quiet; then
+            echo "No source changes to commit"
+            exit 0
+          fi
+          git commit -m "vrp-v2: append weekly public source evidence"
+          git push origin HEAD:btc-options-vrp-v2-forward-2026-10-07
