@@ -31,23 +31,36 @@ def attributes(r):
     "ignition_venue_ts":ignition.get("ignition_venue_ts"),
     "full_row_sha256":hashlib.sha256(canonical(r)).hexdigest(),
     "targets_present":sorted(r.get("targets",{}).keys())}
-def duplicate_diagnosis(d):
- rows=d.get("records",[]);groups=defaultdict(list)
- for i,r in enumerate(rows):
-  t=attributes(r);t["index"]=i
-  groups[(t["family"],t["episode_id"])].append(t)
+def duplicate_diagnosis(receipt_files):
+ groups=defaultdict(list)
+ raw_count=0;btc=alt=0
+ for p in receipt_files:
+  d=json.loads(Path(p).read_text())
+  if d.get("status")!="FORWARD_OBSERVATION":
+   raise ValueError("NON_CANONICAL_ACCEPTED_RECEIPT")
+  for i,r in enumerate(d.get("records",[])):
+   t=attributes(r);t["index"]=i
+   t["source_receipt_run"]=str(d.get("github_run_id"))
+   t["source_receipt_sha256"]=hashlib.sha256(Path(p).read_bytes()).hexdigest()
+   raw_count+=1;btc+=int(t["family"]==BTC);alt+=int(t["family"]==ALT)
+   groups[(t["family"],t["episode_id"])].append(t)
  dup=[]
  for (family,eid),vals in groups.items():
-  if len(vals)<2:continue
+  differing={x["full_row_sha256"] for x in vals}
+  if len(differing)<=1:continue # byte-identical repeat is idempotent
   asset_set={x["asset"] for x in vals}
-  same_asset=len(asset_set)<len(vals)
-  verdict=("ALT_DISTINCT_ASSET_SIBLINGS" if family==ALT and not same_asset and
-       asset_set<={"ETHUSDT","SOLUSDT"} else "GENUINE_POSSIBLE_SAME_ID_CONFLICT")
-  dup.append({"family":family,"episode_id":eid,"status":verdict,
-      "rows":vals,"asset_set":sorted(str(x) for x in asset_set)})
- return {"raw_count":len(rows),"btc_primary_count":sum(r.get("family")==BTC for r in rows),
-  "ALT_secondary_count":sum(r.get("family")==ALT for r in rows),
-  "intra_receipt_original_key_collisions":dup}
+  hashes_by_asset=defaultdict(set)
+  for x in vals:hashes_by_asset[x["asset"]].add(x["full_row_sha256"])
+  same_asset_variation=any(len(h)>1 for h in hashes_by_asset.values())
+  legit=(family==ALT and asset_set=={"ETHUSDT","SOLUSDT"} and not same_asset_variation)
+  dup.append({"family":family,"episode_id":eid,
+    "status":"ALT_DISTINCT_ASSET_SIBLINGS" if legit else "GENUINE_POSSIBLE_SAME_ID_CONFLICT",
+    "rows":vals,"asset_set":sorted(str(x) for x in asset_set),
+    "record_count":len(vals)})
+ return {"raw_count":raw_count,"btc_primary_count":btc,
+  "ALT_secondary_count":alt,
+  "restored_ledger_original_key_divergences":dup}
+
 def main():
  p=argparse.ArgumentParser()
  for name in EXPECTED_RUNS:p.add_argument(f"--{name}",required=True)
@@ -58,14 +71,14 @@ def main():
   for name,run in EXPECTED_RUNS.items():
    folder=Path(getattr(args,name))
    cur,rawsha,receipts=verified_receipts(folder,run)
-   diag=duplicate_diagnosis(cur)
+   diag=duplicate_diagnosis(receipts)
    results[name]={"run":run,"original_receipt_sha256":rawsha,
      "source_git_commit":cur.get("github_sha"),
      "archived_accepted_receipt_files":len(receipts),
      "source_started_ms":cur.get("started_wall_ms"),
      "source_ended_ms":cur.get("ended_wall_ms"),**diag}
-  latest=results["latest"]["intra_receipt_original_key_collisions"]
-  old=results["old"]["intra_receipt_original_key_collisions"]
+  latest=results["latest"]["restored_ledger_original_key_divergences"]
+  old=results["old"]["restored_ledger_original_key_divergences"]
   if not latest or not old:raise RuntimeError("EXPECTED_BOTH_FAILED_RUN_COLLISION_GROUPS_MISSING")
   if any(x["status"]!="ALT_DISTINCT_ASSET_SIBLINGS" for x in latest+old):
    diagnosis="GENUINE_CONFLICT__DO_NOT_REPAIR_AUTOMATICALLY"
@@ -83,7 +96,7 @@ def main():
   print("LICP_ALT_SIBLING_FORENSIC",json.dumps({
    "status":diagnosis,"per_run":[{"run":d["run"],"btc":d["btc_primary_count"],
        "alt":d["ALT_secondary_count"],
-       "collisions":d["intra_receipt_original_key_collisions"]} for d in results.values()]
+       "collisions":d["restored_ledger_original_key_divergences"]} for d in results.values()]
   },sort_keys=True),flush=True)
   if diagnosis!="ALT_SIBLING_STRUCTURAL_KEY_COLLISION_CONFIRMED":sys.exit(2)
  except Exception as e:
