@@ -1,0 +1,51 @@
+name: LICP-FWD-XALT-004 2026-10-09 immutable prior state preflight
+on:
+  push:
+    branches:
+      - liquidation-cascade-propagation-v0.1
+    paths:
+      - "research/liquidation_cascade/LICP_FWD_XALT_004_2026_10_09_NEXT_PROSPECTIVE_SHARD_AUTHORITY.md"
+      - "research/liquidation_cascade/licp_xalt004_authoritative_artifact_preflight_v01.py"
+      - "research/liquidation_cascade/test_licp_xalt004_authoritative_artifact_preflight_v01.py"
+      - ".github/workflows/licp-xalt004-oct09-preflight-v01.yml"
+permissions:
+  actions: read
+  contents: read
+jobs:
+  source-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Freeze unchanged + run synthetic state integrity tests
+        run: |
+          set -euo pipefail
+          python -m py_compile research/liquidation_cascade/licp_xalt004_authoritative_artifact_preflight_v01.py
+          cd research/liquidation_cascade
+          python -m unittest -v test_licp_xalt004_authoritative_artifact_preflight_v01.py
+      - name: Download EXACT authoritative 2026-10-08 artifact (NO public market reads)
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/xalt004-last
+          gh api "/repos/${GITHUB_REPOSITORY}/actions/artifacts/11548718087/zip" > /tmp/xalt004-last.zip
+          sha256sum /tmp/xalt004-last.zip
+          unzip -q /tmp/xalt004-last.zip -d /tmp/xalt004-last
+          test -s /tmp/xalt004-last/state.json
+      - name: Verify official source artifact SHA and original frozen 4-complete / 2-expired state
+        run: |
+          python research/liquidation_cascade/licp_xalt004_authoritative_artifact_preflight_v01.py \
+            --artifact-zip /tmp/xalt004-last.zip \
+            --state-json /tmp/xalt004-last/state.json \
+            --receipt /tmp/xalt004-last/PREFLIGHT_GOVERNANCE_RECEIPT.json
+      - name: Archive original-state-only preflight proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: licp-xalt004-oct09-preflight-source-receipt
+          path: /tmp/xalt004-last/PREFLIGHT_GOVERNANCE_RECEIPT.json
+          if-no-files-found: warn
+          retention-days: 90

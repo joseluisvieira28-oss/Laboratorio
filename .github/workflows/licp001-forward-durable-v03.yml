@@ -1,0 +1,116 @@
+# 2026-10-10 authority: one additional 600s public observation and exact recovered 37937441095 artifact. No science changes.
+# Operational continuation 2026-10-09T13:00:21Z: verified 13 receipts, 10 BTC primary episodes on 2 UTC dates; science unchanged.
+# Operational continuation following independently reviewed run 37919982538: 12 receipts, 10 independent BTC episodes, 2 UTC dates; science unchanged.
+# Operational single-shard continuation 2026-10-09: last authority 10/20 BTC episodes, 2/3 UTC dates; trigger science unchanged. See LICP_001_FORWARD_CONTINUATION_AUTHORITY_2026-10-09.md.
+# Operational continuation 2026-10-09T07:27:16Z; 10 receipts accepted, 10 independent primary episodes, 2 UTC dates; science unchanged.
+# Operational continuation 2026-10-08T14:00:52Z; verified 8 receipts and 8 independent primary episodes across 2 UTC dates.
+# Operational continuation 2026-10-08T13:00:51Z; prior ledger accepts 7 receipts, 7 independent BTC episodes across 2 UTC dates.
+# Operational continuation after run 37771089861: 7 primary episodes across 2 UTC dates; science unchanged.
+# Operational continuation 2026-10-08T11:30:49Z; verified 5 receipts, 6 primary episodes; science unchanged.
+# Operational continuation requested 2026-10-08T11:00:49Z; prior V03 ledger accepted 4 receipts, 6 primary episodes.
+# Operational continuation: preserve mandatory baseline with legacy secondary IDs.
+name: licp001-forward-durable-v03
+
+on:
+  push:
+    branches:
+      - liquidation-cascade-propagation-v0.1
+    paths:
+      - '.github/workflows/licp001-forward-durable-v03.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: licp001-forward-durable-v01
+  cancel-in-progress: false
+
+jobs:
+  forward-shard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PYTHONPATH: .
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install 'websockets>=13,<16'
+
+      - name: Frozen stack preflight
+        run: |
+          python -m py_compile research/liquidation_cascade/licp001_forward_observation_v01.py
+          python -m py_compile research/liquidation_cascade/licp001_forward_verdict_v01.py
+          python -m py_compile research/liquidation_cascade/licp001_forward_durable_ledger_v01.py
+          python research/liquidation_cascade/licp001_forward_durable_ledger_v01.py --self-test
+
+      - name: Restore mandatory baseline and prior authoritative V03 receipts only
+        run: |
+          mkdir -p prior current durable_ledger all_receipts
+          mkdir -p prior/baseline-37311668666
+          gh run download 37311668666             -n licp001-forward-outcome-37311668666-1             -D prior/baseline-37311668666
+          test -f prior/baseline-37311668666/licp001_forward_observation_v01.json
+          # Observation succeeded; only family identity bookkeeping failed.
+          mkdir -p prior/recovered-37789379322
+          gh run download 37789379322 -n licp001-forward-durable-v03-37789379322-1 -D prior/recovered-37789379322
+          test -f prior/recovered-37789379322/current/licp001_forward_observation_v01.json
+          # Oct10 independently proven original same-ignition ALT ETH/SOL sibling fix.
+          # This recovered failed V03 artifact contains 2 additional frozen BTC episodes
+          # and is immutable; provenance verified by offline run 38036431594.
+          mkdir -p prior/recovered-37937441095
+          gh run download 37937441095 -n licp001-forward-durable-v03-37937441095-1 -D prior/recovered-37937441095
+          test -f prior/recovered-37937441095/current/licp001_forward_observation_v01.json
+
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs?branch=$GITHUB_REF_NAME&per_page=100" > /tmp/runs.json
+          python - <<'PY' >/tmp/prior_v03_ids.txt
+          import json, os
+          x=json.load(open("/tmp/runs.json"))
+          current=int(os.environ["GITHUB_RUN_ID"])
+          target=".github/workflows/licp001-forward-durable-v03.yml"
+          for r in sorted(x.get("workflow_runs",[]),key=lambda z:int(z["id"])):
+              if int(r["id"])==current: continue
+              if r.get("path")!=target: continue
+              if r.get("status")!="completed" or r.get("conclusion")!="success": continue
+              print(int(r["id"]))
+          PY
+          while read -r rid; do
+            [ -z "$rid" ] && continue
+            mkdir -p "prior/v03-$rid"
+            gh run download "$rid" -D "prior/v03-$rid" || exit 1
+          done </tmp/prior_v03_ids.txt
+
+      - name: Observe 600-second canonical future shard
+        env:
+          LICP_OBSERVE_SECONDS: '600'
+        run: |
+          python research/liquidation_cascade/licp001_forward_observation_v01.py
+          cp research/liquidation_cascade/receipts/licp001_forward_observation_v01.json              current/licp001_forward_observation_v01.json
+
+      - name: Build authoritative V03 durable ledger and frozen verdict
+        run: |
+          find prior current -type f -name licp001_forward_observation_v01.json -print0 |             while IFS= read -r -d '' f; do
+              h=$(sha256sum "$f" | awk '{print $1}')
+              cp "$f" "all_receipts/$h.json"
+            done
+          python research/liquidation_cascade/licp001_forward_durable_ledger_v01.py             --root all_receipts             --outdir durable_ledger
+          python research/liquidation_cascade/licp001_forward_verdict_v01.py             durable_ledger/receipts             --out durable_ledger/frozen_verdict.json
+          echo '--- V03 DURABLE LEDGER ---'
+          cat durable_ledger/ledger_summary.json
+          echo '--- V03 FROZEN VERDICT ---'
+          cat durable_ledger/frozen_verdict.json
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: licp001-forward-durable-v03-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            current/
+            durable_ledger/
+          retention-days: 90
+          if-no-files-found: error
