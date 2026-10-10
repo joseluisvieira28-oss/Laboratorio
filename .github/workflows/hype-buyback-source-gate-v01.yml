@@ -21,6 +21,8 @@ jobs:
         run: python3 -m unittest discover -s research/hype_buyback_flow_001 -p 'test_source_gate_v01.py' -v
       - name: Official public Hyperliquid source probe; no private endpoints
         run: python3 research/hype_buyback_flow_001/source_gate_v01.py
+      - name: Predeclared transport-only public fill / market trade alternatives
+        run: python3 research/hype_buyback_flow_001/transport_diag_v011.py
       - name: Show bounded public HTTP error diagnostics, if any
         if: always()
         run: |
@@ -32,6 +34,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: hype-buyback-source-only-receipt-${{ github.run_id }}-${{ github.run_attempt }}
-          path: research/hype_buyback_flow_001/receipts/source_only_one_shot/
+          path: research/hype_buyback_flow_001/receipts/
           retention-days: 30
           if-no-files-found: warn
