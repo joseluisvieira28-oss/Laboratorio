@@ -41,3 +41,9 @@
 - Existing scheduler: `.github/workflows/radar-v09-keepalive.yml` (edited in feature branch only).
 - QA: `.github/workflows/radar-telegram-test-v01.yml` (push branch, offline).
 - Allowed mutation in this work: new isolated GitHub branch and draft PR only. No main merge, real alert dispatch, live trading, account access, wallet, Render plan upgrades, Telegram token reads, scientific retuning or capital spend.
+
+## Render cost inventory / avoid accidental spend
+- Read-only Render inventory at 2026-10-10: **8** services under `Laboratorio` workspace, **7 Free**, **1 paid plan `0.5c-512mb`**, the separate `Laboratorio` service (not the canonical public-shadow Radar).
+- The paid `Laboratorio` service points at `main` with `autoDeploy=yes` and `rootDir=Dream-Account-OS-v2.3-PARTIAL`. A merge to main may provoke an unintended build/deploy of this independent service depending on deploy filters; no merge was attempted.
+- The seven Free web services may use shared Free instance hours when awake; presence is **not proof of actual charges** or of simultaneous compute consumption. Do not suspend canaries until owner/purpose and forward coverage have been independently reconciled.
+- Render publicly documents idle spindown after 15 minutes and a workspace Free-hours quota; moving Telegram from separate infrastructure to existing Github Actions alerts can save *notification* infrastructure but **never** makes the free compute always-on.
