@@ -1,0 +1,84 @@
+name: LICP Primary-Safe ALT Sibling Forensics and Durable Replay V01
+on:
+  push:
+    branches:
+      - audit/licp001-alt-sibling-identity-forensics-2026-10-10
+    paths:
+      - '.github/workflows/licp001_alt_sibling_forensics_v01.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  forensic_no_observation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PYTHONPATH: .
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify source forensics freeze and regression code
+        run: |
+          test "$GITHUB_REF_NAME" = "audit/licp001-alt-sibling-identity-forensics-2026-10-10"
+          test -s research/liquidation_cascade/LICP001_ALT_SIBLING_FORENSIC_PRE_EVIDENCE_FREEZE_2026_10_10.md
+          python -m py_compile research/liquidation_cascade/licp_alt_sibling_forensic_v01.py
+          python -m py_compile research/liquidation_cascade/licp001_forward_durable_ledger_v01.py
+          python -m py_compile research/liquidation_cascade/test_licp_alt_sibling_identity_v01.py
+          python research/liquidation_cascade/licp001_forward_durable_ledger_v01.py --self-test
+          python research/liquidation_cascade/test_licp_alt_sibling_identity_v01.py
+      - name: Download EXACT 3 original immutable canonical V03 GitHub artifacts
+        run: |
+          mkdir -p original/old original/green original/latest results
+          gh run download 37789379322 --repo "$GITHUB_REPOSITORY" -n licp001-forward-durable-v03-37789379322-1 -D original/old
+          gh run download 37930397916 --repo "$GITHUB_REPOSITORY" -n licp001-forward-durable-v03-37930397916-1 -D original/green
+          gh run download 37937441095 --repo "$GITHUB_REPOSITORY" -n licp001-forward-durable-v03-37937441095-1 -D original/latest
+          for name in old green latest; do
+            test -s "original/$name/current/licp001_forward_observation_v01.json"
+            test -d "original/$name/durable_ledger/receipts"
+          done
+      - name: Verify collided original rows are genuinely ETH and SOL siblings
+        run: |
+          python research/liquidation_cascade/licp_alt_sibling_forensic_v01.py \
+            --old original/old --green original/green --latest original/latest \
+            --out results/ORIGINAL_ALT_SIBLING_FORENSIC.json
+      - name: Reproduce all historical immutable receipts with only technical identity patch
+        run: |
+          for name in old green latest; do
+            python research/liquidation_cascade/licp001_forward_durable_ledger_v01.py \
+              --root "original/$name/durable_ledger/receipts" \
+              --outdir "results/$name"
+            python research/liquidation_cascade/licp001_forward_verdict_v01.py \
+              "results/$name/receipts" --out "results/$name/frozen_verdict.json"
+          done
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          b=Path('results')
+          ver={n:json.loads((b/n/'frozen_verdict.json').read_text()) for n in ('old','green','latest')}
+          led={n:json.loads((b/n/'ledger_summary.json').read_text()) for n in ('old','green','latest')}
+          assert ver['green']['state']=='FORWARD_INSUFFICIENT'
+          assert ver['green']['independent_episodes']==10
+          assert len(ver['green']['distinct_utc_dates_first20'])==2
+          assert all(led[n]['status']=='LEDGER_OK' for n in led)
+          assert all(not led[n]['conflicts'] for n in led)
+          assert ver['latest']['independent_episodes']>=10
+          assert ver['latest']['state']=='FORWARD_INSUFFICIENT'
+          assert ver['old']['state']=='FORWARD_INSUFFICIENT'
+          print('LICP_PRIMARY_10_BASELINE_AND_ALT_FORENSIC_REPLAY_PASS', {
+            'green_primary':ver['green']['independent_episodes'],
+            'latest_primary':ver['latest']['independent_episodes'],
+            'old_primary':ver['old']['independent_episodes'],
+            'same_frozen_science':True
+          })
+          PY
+      - name: Preserve appendix-only forensic proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: licp-primary-safe-alt-sibling-forensic-v01
+          path: results/
+          if-no-files-found: warn
