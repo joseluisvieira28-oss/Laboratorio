@@ -1,0 +1,37 @@
+name: Windows Manual Radar Local Recovery V07 - QA
+on:
+  push:
+    branches:
+      - ops/windows-radar-controlled-restart-v07-2026-10-10
+permissions:
+  contents: read
+jobs:
+  hermetic_windows:
+    runs-on: windows-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Windows PowerShell 5.1 guarded audit and failed selftest
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = Join-Path $env:RUNNER_TEMP 'radar_local_v07'
+          New-Item -Force -ItemType Directory (Join-Path $root 'logs') | Out-Null
+          New-Item -Force -ItemType Directory (Join-Path $root 'data') | Out-Null
+          New-Item -Force -ItemType Directory (Join-Path $root 'CryptoEdgeRadarNode') | Out-Null
+          Copy-Item -LiteralPath "$env:WINDIR\System32\where.exe" -Destination (Join-Path $root 'CryptoEdgeRadarNode\CryptoEdgeRadarNode.exe')
+          'old log must remain intact' | Set-Content (Join-Path $root 'logs\radar_stdout.log')
+          $h = (Get-FileHash (Join-Path $root 'CryptoEdgeRadarNode\CryptoEdgeRadarNode.exe') -Algorithm SHA256).Hash
+          $old = (Get-FileHash (Join-Path $root 'logs\radar_stdout.log') -Algorithm SHA256).Hash
+          $receipt = Join-Path $env:RUNNER_TEMP 'v07.json'
+          & powershell.exe -NoProfile -File crypto_edge_radar/operator_windows/CryptoLab_Radar_Manual_LocalShadow_Recovery_V07.ps1 -RootDirectory $root -ExpectedExeSha256 $h -ReceiptPath $receipt
+          if ($LASTEXITCODE -ne 0) { throw 'Audit invocation failed' }
+          $r=Get-Content -LiteralPath $receipt -Raw | ConvertFrom-Json
+          if ($r.schema -ne 'CRYPTO_LAB_WINDOWS_MANUAL_LOCAL_SHADOW_RECOVERY_V0.7') { throw 'schema mismatch' }
+          if ($r.mode -ne 'READ_ONLY_PRECHECK') { throw 'must default to no start' }
+          if ($r.launched_node_pid -ne $null -or $r.scheduled_task_mutated -ne $false -or $r.render_supabase_writer_touched -ne $false) { throw 'unexpected mutation' }
+          $now = (Get-FileHash (Join-Path $root 'logs\radar_stdout.log') -Algorithm SHA256).Hash
+          if ($now -ne $old) { throw 'original logs changed' }
+          Write-Host 'V07_SAFE_DEFAULT_AUDIT_PASS'
