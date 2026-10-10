@@ -1182,98 +1182,122 @@ def serve_forward_shadow(*, port: int, interval: float) -> int:
     runtime = ForwardShadowRuntime(settings=settings)
     quiesced = os.getenv("RADAR_EVIDENCE_WRITES_QUIESCED", "").lower() == "true"
 
-    initial_state: dict[str, Any] | None = None
-
-    if quiesced:
-        chain_ok, chain_detail = runtime.store.verify_chain()
-        state = {
-            "health": "OK" if chain_ok else "DEGRADED_FAIL_CLOSED",
-            "mode": "EVIDENCE_WRITES_QUIESCED",
-            "checked_at_utc": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
-            "version": "0.9",
-            "runtime_identity": _runtime_identity(),
-            "evidence_backend": runtime.store.backend,
-            "database_target_mode": runtime.settings.database_target_mode,
-            "evidence_chain_ok": chain_ok,
-            "evidence_chain_detail": chain_detail,
-            "maintenance_quiesce": True,
-            "authenticated_exchange_api_used": False,
-            "orders_created": False,
-            "exchange_mutation_performed": False,
-            "live_capital_enabled": False,
-        }
-        runtime._set_state(state)
-        print(json.dumps(state, sort_keys=True), flush=True)
-    else:
-        initial_state = runtime.run_cycle()
-
-    if os.getenv("RADAR_BACKUP_LOG_EMIT_ON_START", "").lower() == "true":
-        emit_snapshot_log_chunks(runtime.store)
-    if os.getenv("RADAR_BACKUP_JSON_LOG_EMIT_ON_START", "").lower() == "true":
-        emit_snapshot_json_chunks(runtime.store)
-
-    if os.getenv("RADAR_SUPABASE_POOLER_PROBE_ON_START", "").lower() == "true":
-        try:
-            pooler_probe = supabase_pooler_probe_from_env()
-        except Exception as exc:
-            pooler_probe = {
-                "classification": "POOLER_PROBE_FAIL_CLOSED",
-                "error": f"{type(exc).__name__}:{exc}",
-                "database_mutation": False,
-                "secret_value_exposed": False,
-                "final_cutover_authorized": False,
-            }
-        print(
-            "RADAR_SUPABASE_POOLER_PROBE "
-            + json.dumps(pooler_probe, sort_keys=True),
-            flush=True,
-        )
-
-    persistence_writes_allowed = bool(
-        initial_state is None
-        or (initial_state.get("persistence_watchdog") or {}).get(
-            "writes_allowed",
-            True,
-        )
-    )
-
-    if not quiesced and persistence_writes_allowed:
-        exact_etf_worker = threading.Thread(
-            target=runtime.etf_cme_exact_scheduler.run_loop,
-            name="etf-cme-exact-timing-scheduler",
+    # Bind the public, non-executable status endpoint BEFORE the potentially slow
+    # first collector run. In particular CED1D archive I/O can take minutes.
+    # STARTING must never be treated as evidence freshness or trading authority.
+    # Quiesced maintenance retains its original synchronous no-worker path.
+    server = None
+    http_thread = None
+    if not quiesced:
+        handler = type("ForwardShadowHandler", (_Handler,), {"runtime": runtime})
+        server = ThreadingHTTPServer(("0.0.0.0", int(port)), handler)
+        http_thread = threading.Thread(
+            target=server.serve_forever,
+            name="radar-public-status-http",
             daemon=True,
         )
-        exact_etf_worker.start()
-
-        worker = threading.Thread(
-            target=runtime.run_loop,
-            kwargs={"interval_seconds": interval},
-            name="forward-shadow-watchers",
-            daemon=True,
-        )
-        worker.start()
-
-    if (
-        not quiesced
-        and persistence_writes_allowed
-        and os.getenv("RADAR_EMA6H_RENDER_SOURCE_PROBE_ON_START", "").lower() == "true"
-        and os.getenv("RENDER", "").lower() == "true"
-        and os.getenv("RENDER_SERVICE_ID") == EMA6H_PROBE_CANONICAL_SERVICE_ID
-    ):
-        probe_thread = threading.Thread(
-            target=emit_ema6h_render_source_probe,
-            kwargs={"timeout": min(int(settings.http_timeout), 5)},
-            name="ema6h-render-source-probe-v01",
-            daemon=True,
-        )
-        probe_thread.start()
-
-    handler = type("ForwardShadowHandler", (_Handler,), {"runtime": runtime})
-    server = ThreadingHTTPServer(("0.0.0.0", int(port)), handler)
+        http_thread.start()
     try:
-        server.serve_forever()
+        initial_state: dict[str, Any] | None = None
+
+        if quiesced:
+            chain_ok, chain_detail = runtime.store.verify_chain()
+            state = {
+                "health": "OK" if chain_ok else "DEGRADED_FAIL_CLOSED",
+                "mode": "EVIDENCE_WRITES_QUIESCED",
+                "checked_at_utc": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+                "version": "0.9",
+                "runtime_identity": _runtime_identity(),
+                "evidence_backend": runtime.store.backend,
+                "database_target_mode": runtime.settings.database_target_mode,
+                "evidence_chain_ok": chain_ok,
+                "evidence_chain_detail": chain_detail,
+                "maintenance_quiesce": True,
+                "authenticated_exchange_api_used": False,
+                "orders_created": False,
+                "exchange_mutation_performed": False,
+                "live_capital_enabled": False,
+            }
+            runtime._set_state(state)
+            print(json.dumps(state, sort_keys=True), flush=True)
+        else:
+            initial_state = runtime.run_cycle()
+
+        if os.getenv("RADAR_BACKUP_LOG_EMIT_ON_START", "").lower() == "true":
+            emit_snapshot_log_chunks(runtime.store)
+        if os.getenv("RADAR_BACKUP_JSON_LOG_EMIT_ON_START", "").lower() == "true":
+            emit_snapshot_json_chunks(runtime.store)
+
+        if os.getenv("RADAR_SUPABASE_POOLER_PROBE_ON_START", "").lower() == "true":
+            try:
+                pooler_probe = supabase_pooler_probe_from_env()
+            except Exception as exc:
+                pooler_probe = {
+                    "classification": "POOLER_PROBE_FAIL_CLOSED",
+                    "error": f"{type(exc).__name__}:{exc}",
+                    "database_mutation": False,
+                    "secret_value_exposed": False,
+                    "final_cutover_authorized": False,
+                }
+            print(
+                "RADAR_SUPABASE_POOLER_PROBE "
+                + json.dumps(pooler_probe, sort_keys=True),
+                flush=True,
+            )
+
+        persistence_writes_allowed = bool(
+            initial_state is None
+            or (initial_state.get("persistence_watchdog") or {}).get(
+                "writes_allowed",
+                True,
+            )
+        )
+
+        if not quiesced and persistence_writes_allowed:
+            exact_etf_worker = threading.Thread(
+                target=runtime.etf_cme_exact_scheduler.run_loop,
+                name="etf-cme-exact-timing-scheduler",
+                daemon=True,
+            )
+            exact_etf_worker.start()
+
+            worker = threading.Thread(
+                target=runtime.run_loop,
+                kwargs={"interval_seconds": interval},
+                name="forward-shadow-watchers",
+                daemon=True,
+            )
+            worker.start()
+
+        if (
+            not quiesced
+            and persistence_writes_allowed
+            and os.getenv("RADAR_EMA6H_RENDER_SOURCE_PROBE_ON_START", "").lower() == "true"
+            and os.getenv("RENDER", "").lower() == "true"
+            and os.getenv("RENDER_SERVICE_ID") == EMA6H_PROBE_CANONICAL_SERVICE_ID
+        ):
+            probe_thread = threading.Thread(
+                target=emit_ema6h_render_source_probe,
+                kwargs={"timeout": min(int(settings.http_timeout), 5)},
+                name="ema6h-render-source-probe-v01",
+                daemon=True,
+            )
+            probe_thread.start()
+
+        # Preserve the old single-writer bootstrap ordering: independent worker
+        # loops are started only AFTER the initial persistence preflight result.
+        if quiesced:
+            handler = type("ForwardShadowHandler", (_Handler,), {"runtime": runtime})
+            server = ThreadingHTTPServer(("0.0.0.0", int(port)), handler)
+            server.serve_forever()
+        else:
+            http_thread.join()
     except KeyboardInterrupt:
         return 0
     finally:
-        server.server_close()
+        if http_thread is not None:
+            server.shutdown()
+            http_thread.join(timeout=5)
+        if server is not None:
+            server.server_close()
     return 0
