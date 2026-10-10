@@ -1,0 +1,31 @@
+name: Radar HTTP-First Bootstrap QA (shadow only)
+on:
+  push:
+    branches:
+      - fix/radar-http-first-startup-2026-10-10
+    paths:
+      - crypto_edge_radar/radar/forward_web.py
+      - crypto_edge_radar/tests/test_forward_web_http_first_bootstrap_v01.py
+      - .github/workflows/radar-http-first-bootstrap-v01-qa.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  isolated:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    defaults:
+      run:
+        working-directory: crypto_edge_radar
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Compile static source
+        run: python -m compileall -q radar/forward_web.py tests/test_forward_web_http_first_bootstrap_v01.py
+      - name: Offline startup port-first test
+        run: python -m unittest discover -s tests -p 'test_forward_web_http_first_bootstrap_v01.py' -v
+      - name: Existing startup and dashboard regressions
+        run: python -m unittest discover -s tests -p 'test_forward_web*.py' -v
