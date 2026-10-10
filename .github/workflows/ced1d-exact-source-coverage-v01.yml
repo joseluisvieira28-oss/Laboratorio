@@ -1,0 +1,31 @@
+name: CED1D Exact Binance Vision Source Coverage (SOURCE ONLY)
+on:
+  push:
+    branches:
+      - source/ced1d-archive-exact-coverage-2026-10-10
+    paths:
+      - crypto_edge_radar/research/ced1d_exact_archive_source_probe_v01.py
+      - .github/workflows/ced1d-exact-source-coverage-v01.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  public-source-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Compile frozen source-only probe
+        run: python -m py_compile crypto_edge_radar/research/ced1d_exact_archive_source_probe_v01.py
+      - name: Read exact Oct04–09 archive HEAD and checksum URLs (no outcomes)
+        run: python crypto_edge_radar/research/ced1d_exact_archive_source_probe_v01.py
+      - name: Attach immutable result to this run
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ced1d-exact-public-source-coverage-2026-10-10
+          path: /tmp/ced1d-source-coverage.json
+          if-no-files-found: warn
+          retention-days: 30
