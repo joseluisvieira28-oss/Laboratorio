@@ -28,3 +28,11 @@ jobs:
           python -m py_compile .github/scripts/test_radar_telegram_health_v01.py
       - name: Offline fail-closed Telegram regression tests
         run: python -m unittest discover -s .github/scripts -p 'test_radar_telegram_health_v01.py' -v
+      - name: Check bot configuration presence only (never print secrets)
+        env:
+          BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          BOT_CHAT: ${{ secrets.TELEGRAM_CHAT_ID }}
+        shell: bash
+        run: |
+          if [ -n "$BOT_TOKEN" ]; then echo 'TELEGRAM_BOT_TOKEN=PRESENT'; else echo 'TELEGRAM_BOT_TOKEN=MISSING'; fi
+          if [ -n "$BOT_CHAT" ]; then echo 'TELEGRAM_CHAT_ID=PRESENT'; else echo 'TELEGRAM_CHAT_ID=MISSING'; fi
