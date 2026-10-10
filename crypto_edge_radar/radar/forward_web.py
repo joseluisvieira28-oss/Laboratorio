@@ -999,7 +999,10 @@ h1{margin:0 0 6px;font-size:28px}.sub{color:#9aa4b2;margin-bottom:22px}
 <div class="row"><span>Mode</span><span id="mode">—</span></div>
 <div class="row"><span>Evidence</span><span id="evidence">—</span></div>
 <div class="row"><span>Chain</span><span id="chain">—</span></div>
-<div class="row"><span>Checked</span><span id="checked">—</span></div></section>
+<div class="row"><span>Checked</span><span id="checked">—</span></div>
+<div class="row"><span>Gap review</span><span id="gapReview">—</span></div>
+<div class="row"><span>Historical gap receipts</span><span id="gapCount">—</span></div>
+<div class="row"><span>CED1D shadow collector</span><span id="cedCollector">—</span></div></section>
 
 <section class="card"><div class="k">Persistence</div><div id="persistStatus" class="v">—</div>
 <div class="row"><span>Target mode</span><span id="persistTarget">—</span></div>
@@ -1076,6 +1079,10 @@ async function refresh(){
     $("mode").textContent=val(s.mode); $("evidence").textContent=val(s.evidence_backend);
     $("chain").textContent=(s.evidence_chain_ok?"OK · ":"FAIL · ")+val(s.evidence_chain_detail);
     $("checked").textContent=val(s.checked_at_utc);
+    const gh=s.runtime_gap_history||{}, cs=s.ced1d_render_shadow||{};
+    $("gapReview").textContent=val(gh.continuity_review_status);
+    $("gapCount").textContent=val(gh.persisted_gap_receipts);
+    $("cedCollector").textContent=val(cs.status);
     const pw=s.persistence_watchdog||{}, pp=pw.integrity_proof||{}, pe=s.persistence_expiry||{};
     paint("persistStatus",pw.classification,pw.pass===true);
     $("persistTarget").textContent=val(s.database_target_mode);
