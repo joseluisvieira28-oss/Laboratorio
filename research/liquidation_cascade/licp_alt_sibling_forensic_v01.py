@@ -79,7 +79,13 @@ def main():
      "source_ended_ms":cur.get("ended_wall_ms"),**diag}
   latest=results["latest"]["restored_ledger_original_key_divergences"]
   old=results["old"]["restored_ledger_original_key_divergences"]
-  if not latest or not old:raise RuntimeError("EXPECTED_BOTH_FAILED_RUN_COLLISION_GROUPS_MISSING")
+  print("ARCHIVED_COLLISION_GROUP_CENSUS",json.dumps({name:{
+   "restored_receipts":results[name]["archived_accepted_receipt_files"],
+   "raw_count":results[name]["raw_count"],
+   "collision_groups":len(results[name]["restored_ledger_original_key_divergences"]),
+   "alt_groups":[{"id":g["episode_id"],"assets":g["asset_set"],"status":g["status"]}
+    for g in results[name]["restored_ledger_original_key_divergences"]]} for name in results},sort_keys=True),flush=True)
+  if not latest and not old:raise RuntimeError("ORIGINAL_FAILED_V03_ARCHIVES_HAVE_NO_DIFFERING_KEY_ROWS")
   if any(x["status"]!="ALT_DISTINCT_ASSET_SIBLINGS" for x in latest+old):
    diagnosis="GENUINE_CONFLICT__DO_NOT_REPAIR_AUTOMATICALLY"
   else:diagnosis="ALT_SIBLING_STRUCTURAL_KEY_COLLISION_CONFIRMED"
