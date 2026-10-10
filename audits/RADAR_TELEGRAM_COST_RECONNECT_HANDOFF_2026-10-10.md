@@ -47,3 +47,13 @@
 - The paid `Laboratorio` service points at `main` with `autoDeploy=yes` and `rootDir=Dream-Account-OS-v2.3-PARTIAL`. A merge to main may provoke an unintended build/deploy of this independent service depending on deploy filters; no merge was attempted.
 - The seven Free web services may use shared Free instance hours when awake; presence is **not proof of actual charges** or of simultaneous compute consumption. Do not suspend canaries until owner/purpose and forward coverage have been independently reconciled.
 - Render publicly documents idle spindown after 15 minutes and a workspace Free-hours quota; moving Telegram from separate infrastructure to existing Github Actions alerts can save *notification* infrastructure but **never** makes the free compute always-on.
+
+## 2026-10-10 13:06 UTC — Telegram delivery VERIFIED
+- User manually added the two previously missing GitHub Actions **repository secrets**: `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`. Their values were never fetched or printed.
+- Isolated one-shot push/QA run: [Actions #38054434640](https://github.com/joseluisvieira28-oss/Laboratorio/actions/runs/38054434640), commit `edc194c6eca596b0105d0de3aea6b4edd8f4fdfe`.
+- GitHub presence-only receipt: `TELEGRAM_BOT_TOKEN=PRESENT`, `TELEGRAM_CHAT_ID=PRESENT`.
+- 12/12 hermetic tests PASS. One actual Telegram Bot API `sendMessage` call returned `TELEGRAM_DELIVERY_SENT`, step SUCCESS. This confirms Telegram API accepted test message to configured destination; human-read receipt was not separately verified.
+- Ephemeral push-triggered test sender **removed immediately** in commit `b5b122423da96ebd93968024b8137497e9410140`. Regular QA workflow is back to safe offline-only + secret-presence checks.
+- App source examined against canonical `forward_web.py`: `/api/state` is an existing public read-only endpoint; `checked_at_utc`, `mode`, `runtime_identity.service_id`, `ced1d_render_shadow`, and all four safety booleans are top-level fields. Current Render public shadow does NOT yet have `runtime_gap_history` which is proposed in distinct **draft PR #173**; notifier will consequently classify historical continuity as UNVERIFIED until that is reviewed/deployed.
+- **State distinctions:** TELEGRAM_PRIVATE_TEST_SENT ✅; AUTO_RADAR_ALERTS_ON_DEFAULT_BRANCH ❌; VERIFIED_ALWAYS_ON_24_7 ❌; LIVE_TRADING_PERMISSION ❌.
+- Controlled deployment still needs approval and guard for paid Render `Laboratorio` auto-deploy on `main`. No such merge/deploy occurred.
