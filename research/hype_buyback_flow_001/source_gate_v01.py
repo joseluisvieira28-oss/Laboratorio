@@ -50,6 +50,15 @@ def info(kind, payload, out):
             requested_at_utc=started, received_at_utc=dt.datetime.now(dt.timezone.utc).isoformat(),
             latency_ms=round((time.monotonic() - t0) * 1000, 2), bytes=len(raw)
         )
+    except urllib.error.HTTPError as exc:
+        body = exc.read(1200)
+        # Public exchange diagnostics only; no credentials or private account payloads.
+        out.mkdir(parents=True, exist_ok=True)
+        (out / (kind + "_http_error.json")).write_bytes(canonical({
+            "http_status": exc.code, "body_sha256": digest(body),
+            "public_error_body_excerpt": body.decode("utf-8", errors="replace")[:600],
+        }) + b"\n")
+        raise RuntimeError(kind + ":HTTP_" + str(exc.code)) from exc
     except (urllib.error.URLError, ValueError, TimeoutError, json.JSONDecodeError) as exc:
         raise RuntimeError(kind + ":" + type(exc).__name__) from exc
 
