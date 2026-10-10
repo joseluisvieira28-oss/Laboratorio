@@ -1,0 +1,31 @@
+name: HYPE Buyback Flow 001 — Public SOURCE-ONLY Gate V0.1
+on:
+  push:
+    branches:
+      - research/hype-buyback-flow-001-source-gate-2026-10-10
+    paths:
+      - research/hype_buyback_flow_001/**
+      - .github/workflows/hype-buyback-source-gate-v01.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  hype-source-only-one-shot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - name: Synthetic integrity regressions; zero external dependencies
+        run: python3 -m unittest discover -s research/hype_buyback_flow_001 -p 'test_source_gate_v01.py' -v
+      - name: Official public Hyperliquid source probe; no private endpoints
+        run: python3 research/hype_buyback_flow_001/source_gate_v01.py
+      - name: Preserve raw public responses and immutable receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hype-buyback-source-only-receipt-${{ github.run_id }}-${{ github.run_attempt }}
+          path: research/hype_buyback_flow_001/receipts/source_only_one_shot/
+          retention-days: 30
+          if-no-files-found: warn
