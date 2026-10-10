@@ -85,8 +85,19 @@ def build(root,outdir):
             total_records+=1
             legacy_ids+=int(bool(r.get("episode_id_reconstructed_legacy")))
             eid=r["episode_id"];blob=sha256_bytes(canonical(r))
-            # Primary and secondary rows share the cascade ID by design.
-            key=(r.get("family"),eid)
+            # Primary BTC episode identity is unchanged. ALT second-wave may
+            # have TWO different propagation assets on the same ignition ID;
+            # they are siblings, not duplicate economic observations.
+            family=r.get("family")
+            if family=="ALT_SECOND_WAVE":
+                asset=r.get("propagation_asset")
+                if asset not in ("ETHUSDT","SOLUSDT"):
+                    conflicts.append({"episode_id":eid,"family":family,
+                        "error":"ALT_PROPAGATION_ASSET_MISSING_OR_INVALID","path":str(p)})
+                    continue
+                key=(family,eid,asset)
+            else:
+                key=(family,eid)
             if key in seen and seen[key]["sha256"]!=blob:
                 conflicts.append({"episode_id":eid,"family":r.get("family"),"first":seen[key],"conflict":{"path":str(p),"sha256":blob}})
             else:
