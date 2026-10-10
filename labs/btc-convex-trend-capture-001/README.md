@@ -1,5 +1,8 @@
 # BTC-CONVEX-TREND-CAPTURE-001
 
+> **Archive status update · 2026-10-10:** `ARCHIVED_RESEARCH_ONLY / HISTORICAL_LOCAL_PASS_SCOPE_LIMITED / 13_ASSET_GENERALIZATION_FAIL / EXECUTION_UNVERIFIED / LIVE_GO_NO`. The initial opening-era status below (e.g. “source missing”) is **superseded** by later verified code recovery, archived OHLCV/funding and 1-minute-stop reproduction. Read the [permanent science archive](../../research/archived_mines/BTC_CONVEX_PARENT_V5_ARCHIVED_2026_10_10.md) and [final frozen economic decision](../../research/convex_final_decision_20261009/FINAL_ECONOMIC_CAPITAL_ALLOCATION_VERDICT_2026_10_09.md). Historical seed assertions below remain preserved for provenance. No main merge or orders.
+
+
 **Opened:** 2026-09-23  
 **Status:** RETROSPECTIVE_SEED_ONLY / EDGE_UNPROVEN / SOURCE_CODE_MISSING  
 **Mode:** research-only, fail-closed  
