@@ -1,0 +1,30 @@
+name: Crypto Lab Windows Continuity V0.2 QA — No Trading
+on:
+  push:
+    branches:
+      - ops/windows-continuity-readonly-preflight-v02-2026-10-10
+    paths:
+      - crypto_edge_radar/operator_windows/CryptoLab_PC_Continuity_Readonly_Preflight_V02.ps1
+      - .github/workflows/crypto-lab-windows-preflight-v02.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  hermetic-windows:
+    runs-on: windows-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Windows PowerShell 5.1, no credentials or external services
+        shell: pwsh
+        run: |
+          & powershell.exe -NoProfile -File crypto_edge_radar/operator_windows/CryptoLab_PC_Continuity_Readonly_Preflight_V02.ps1 -OutputPath "$env:RUNNER_TEMP\CryptoLab_PC_Continuity_V02.json"
+          if ($LASTEXITCODE -ne 0) { throw 'V0.2 script failed' }
+          $receipt = Get-Content -Raw "$env:RUNNER_TEMP\CryptoLab_PC_Continuity_V02.json" | ConvertFrom-Json
+          if ($receipt.schema -ne 'CRYPTO_LAB_WINDOWS_CONTINUITY_V0.2') { throw 'wrong schema' }
+          if ($receipt.unique_scientific_writer_verified -ne $false) { throw 'unjustified single-writer claim' }
+          if ($receipt.external_telemetry_sent -ne $false -or $receipt.api_tokens_read -ne $false -or $receipt.task_actions_or_arguments_read -ne $false) { throw 'unsafe diagnostic' }
+          if ($receipt.power.sleep_idle_ac.ac_result -notin @('DISABLED_CURRENT_PLAN', 'ENABLED_CURRENT_PLAN', 'UNVERIFIED')) { throw 'invalid power classification' }
+          Write-Host "V02_READ_ONLY_PASS"
