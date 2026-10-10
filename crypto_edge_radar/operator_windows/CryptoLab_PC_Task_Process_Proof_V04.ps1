@@ -1,5 +1,5 @@
 <#
-Crypto Lab PC Evidence V0.4 — READ ONLY, no trade or collector activation.
+Crypto Lab PC Evidence V0.4 - READ ONLY, no trade or collector activation.
 Safe for existing MEXC operators. Inspects exact six task labels provided by
 the operator, task ACTION EXECUTABLE *CLASS* only (never paths/arguments),
 allowed process names' PID/start/memory, localhost Radar listener port 8787.
@@ -158,7 +158,7 @@ if ([string]::IsNullOrWhiteSpace($parent) -or -not (Test-Path -LiteralPath $pare
     $OutputPath, (($report | ConvertTo-Json -Depth 12) + [Environment]::NewLine),
     (New-Object System.Text.UTF8Encoding($false))
 )
-Write-Host "CRYPTO LAB PC V0.4 — READ-ONLY FINISHED" -ForegroundColor Green
+Write-Host "CRYPTO LAB PC V0.4 - READ-ONLY FINISHED" -ForegroundColor Green
 Write-Host ("Receipt: " + $OutputPath)
 Write-Host ("Known task labels: " + @($taskProof).Count + "; allowed processes: " + @($processProof).Count + "; port 8787 listeners: " + @($listeners).Count)
 Write-Host "NO task commands, API keys, orders, database passwords, or settings accessed."
