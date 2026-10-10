@@ -1,0 +1,28 @@
+name: LCOD-001 source capability probe
+on:
+  push:
+    branches:
+      - liquidation-convexity-oracle-distance-001-source-gate-v0.1
+    paths:
+      - 'research/liquidation_convexity_oracle_distance_001/source_capability_probe.py'
+      - '.github/workflows/lcod001-source-capability.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run outcome-blind source capability probe
+        run: python research/liquidation_convexity_oracle_distance_001/source_capability_probe.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lcod001-source-capability-receipt
+          path: research/liquidation_convexity_oracle_distance_001/runtime/source_capability_receipt.json

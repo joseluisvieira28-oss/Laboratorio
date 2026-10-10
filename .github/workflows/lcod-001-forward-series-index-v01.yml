@@ -1,0 +1,49 @@
+name: LCOD-001 forward series index V0.1
+
+on:
+  push:
+    branches:
+      - liquidation-convexity-oracle-distance-001-source-gate-v0.1
+    paths:
+      - 'research/liquidation_convexity_oracle_distance_001/forward_snapshots/*.json'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: lcod-001-forward-series-index-v01
+  cancel-in-progress: false
+
+jobs:
+  index:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: liquidation-convexity-oracle-distance-001-source-gate-v0.1
+      - name: Rebuild fail-closed forward series index
+        run: python research/liquidation_convexity_oracle_distance_001/lcod_forward_series_index_v01.py
+      - name: Persist series index
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/liquidation_convexity_oracle_distance_001/LCOD_FORWARD_SERIES_INDEX_V0.1.json
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "LCOD-001: update prospective forward series index [skip ci]"
+          for attempt in 1 2 3; do
+            git fetch origin liquidation-convexity-oracle-distance-001-source-gate-v0.1
+            git rebase origin/liquidation-convexity-oracle-distance-001-source-gate-v0.1
+            if git push origin HEAD:liquidation-convexity-oracle-distance-001-source-gate-v0.1; then
+              exit 0
+            fi
+            sleep $((attempt * 5))
+          done
+          exit 1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lcod-forward-series-index-v01
+          path: research/liquidation_convexity_oracle_distance_001/LCOD_FORWARD_SERIES_INDEX_V0.1.json
+          if-no-files-found: warn
