@@ -11,7 +11,8 @@ import urllib.error
 import urllib.request
 
 URL = "https://api.hyperliquid.xyz/info"
-AF = "0xfefefefefefefefefefefefefefefefefe"
+AF = "0xfefefefefefefefefefefefefefefefefefefefe"
+assert len(AF) == 42 and AF.startswith("0x") and all(c in "0123456789abcdef" for c in AF[2:]), "invalid_OFFICIAL_ASSISTANCE_FUND_ADDRESS"
 MS_DAY = 86_400_000
 OUT = Path("research/hype_buyback_flow_001/receipts/source_only_one_shot")
 MAX_BYTES = 8_000_000
