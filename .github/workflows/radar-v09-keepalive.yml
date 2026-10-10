@@ -1,47 +1,81 @@
-name: Radar V0.9 Keepalive
+name: Radar V0.9 Keepalive + Telegram private alarms
 
+# Reuses the existing scheduler; no extra scheduled job or paid resource.
 on:
-  push:
-    paths:
-      - ".github/workflows/radar-v09-keepalive.yml"
   schedule:
     - cron: "*/8 * * * *"
   workflow_dispatch:
+    inputs:
+      telegram_test:
+        description: "Send ONE private connectivity test to previously configured chat"
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 concurrency:
   group: radar-v09-keepalive
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   ping:
     runs-on: ubuntu-slim
-    timeout-minutes: 3
+    timeout-minutes: 4
     steps:
-      - name: Keep public shadow radar awake
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Probe canonical public Radar once (cold-start bounded)
+        id: inspect
         shell: bash
         run: |
           set -euo pipefail
-          URL="https://crypto-edge-radar-v05-canary.onrender.com/health"
-          echo "GET $URL"
-          curl             --fail             --show-error             --silent             --location             --retry 2             --retry-delay 5             --max-time 90             "$URL" >/tmp/radar-health.json
-          python - <<'PY'
-          import json
-          from pathlib import Path
-          p = Path("/tmp/radar-health.json")
-          text = p.read_text(encoding="utf-8", errors="replace")
-          try:
-              state = json.loads(text)
-          except Exception:
-              print("Radar responded but payload was not JSON.")
-              raise SystemExit(0)
-          print(json.dumps({
-              "health": state.get("health"),
-              "mode": state.get("mode"),
-              "checked_at_utc": state.get("checked_at_utc"),
-              "orders_created": state.get("orders_created"),
-              "live_capital_enabled": state.get("live_capital_enabled"),
-          }, sort_keys=True))
-          PY
+          python .github/scripts/radar_telegram_health_v01.py inspect --timeout 105 --out /tmp/radar-telegram-health.json
+
+      - name: Restore incident suppression receipt
+        id: dedup
+        if: steps.inspect.outputs.notify == 'true'
+        uses: actions/cache/restore@v4
+        with:
+          path: /tmp/radar-telegram-sent.receipt
+          key: ${{ steps.inspect.outputs.incident_key }}
+
+      - name: Alert private Telegram on NEW degraded incident (no orders)
+        id: delivery
+        if: steps.inspect.outputs.notify == 'true' && steps.dedup.outputs.cache-hit != 'true'
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python .github/scripts/radar_telegram_health_v01.py send --out /tmp/radar-telegram-health.json
+
+      - name: Save dedup receipt ONLY after Telegram confirms success
+        if: steps.delivery.outputs.sent == 'true'
+        shell: bash
+        run: |
+          printf '%s\n' "sent" > /tmp/radar-telegram-sent.receipt
+
+      - name: Cache this confirmed incident (best effort, 1 alert/day/class)
+        if: steps.delivery.outputs.sent == 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: /tmp/radar-telegram-sent.receipt
+          key: ${{ steps.inspect.outputs.incident_key }}
+
+      - name: Optional operator-triggered private Telegram smoke test
+        if: github.event_name == 'workflow_dispatch' && inputs.telegram_test == true
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python .github/scripts/radar_telegram_health_v01.py test
+
+      - name: Keep monitor failure visible in GitHub Actions
+        if: steps.inspect.outputs.status != 'OK'
+        shell: bash
+        run: |
+          echo "RADAR_NOT_OK: read-only alarm; no exchange action."
+          exit 1
