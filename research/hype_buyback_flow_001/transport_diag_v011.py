@@ -10,7 +10,8 @@ import urllib.request
 from pathlib import Path
 
 URL = "https://api.hyperliquid.xyz/info"
-AF = "0xfefefefefefefefefefefefefefefefefefefe"
+AF = "0xfefefefefefefefefefefefefefefefefefefefe"
+assert len(AF) == 42 and AF.startswith("0x") and all(c in "0123456789abcdef" for c in AF[2:]), "invalid_OFFICIAL_ASSISTANCE_FUND_ADDRESS"
 OUT = Path("research/hype_buyback_flow_001/receipts/transport_v011")
 OUT.mkdir(parents=True, exist_ok=True)
 now_ms = int(time.time() * 1000)
