@@ -2,6 +2,13 @@ name: Radar V0.9 Keepalive + Telegram private alarms
 
 # Reuses the existing scheduler; no extra scheduled job or paid resource.
 on:
+  # Run a single true full-stack post-merge smoke probe only when this
+  # monitor is changed in main. Reuses the identical read-only job and secrets.
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/radar-v09-keepalive.yml"
   schedule:
     - cron: "*/8 * * * *"
   workflow_dispatch:
