@@ -24,7 +24,31 @@ def api(method,params):
 def top(book,side):
     rows=book.get(side) or []
     if not rows:return None,None
-    return float(rows[0][0]),float(rows[0][1])
+    try:
+        price=float(rows[0][0]);amount=float(rows[0][1])
+        if not all(math.isfinite(x) and x>0 for x in (price,amount)):
+            return None,None
+        return price,amount
+    except (TypeError,ValueError,IndexError,KeyError):
+        return None,None
+
+def valid_book_source(book,minimum_size):
+    fields=("bid_price","ask_price","bid_amount","ask_amount")
+    try:
+        q=[float(book.get(k)) for k in fields]
+        good=(all(math.isfinite(x) and x>0 for x in q)
+              and q[0]<q[1] and q[2]>=minimum_size and q[3]>=minimum_size
+              and book.get("fresh_30s") is True)
+        return bool(good)
+    except (ValueError,TypeError):
+        return False
+
+def valid_option_minimum(instrument):
+    try:
+        size=float(instrument.get("min_trade_amount"))
+        return bool(math.isfinite(size) and 0<size<=AMOUNT)
+    except (TypeError,ValueError):
+        return False
 
 def capture_book(name):
     b,t0,t1=api("public/get_order_book",{"instrument_name":name,"depth":1})
@@ -33,7 +57,7 @@ def capture_book(name):
     return {
       "instrument_name":name,
       "request_start_ms":t0,"response_received_ms":t1,"source_timestamp_ms":src,
-      "fresh_30s":src is not None and abs(t1-int(src))<=FRESH_MS,
+      "fresh_30s":src is not None and t0<=t1 and 0<=t1-int(src)<=FRESH_MS,
       "bid_price":bid,"bid_amount":bids,"ask_price":ask,"ask_amount":asks,
       "bid_iv":b.get("bid_iv"),"ask_iv":b.get("ask_iv"),"mark_iv":b.get("mark_iv"),
       "mark_price":b.get("mark_price"),"index_price":b.get("index_price"),
@@ -44,9 +68,25 @@ def capture_book(name):
 def existing_dates():
     if not OUT.exists():return set()
     dates=set()
-    for line in OUT.read_text(encoding="utf-8").splitlines():
-        if not line.strip():continue
-        x=json.loads(line); dates.add(x["capture_date_utc"])
+    for n,line in enumerate(OUT.read_text(encoding="utf-8").splitlines(),1):
+        if not line.strip():
+            raise RuntimeError(f"EMPTY_SOURCE_LEDGER_ROW:{n}")
+        x=json.loads(line)
+        if not isinstance(x,dict) or x.get("schema_version")!="BTC_VRP_USDC_FORWARD_ENTRY_SOURCE_V0.1":
+            raise RuntimeError(f"INVALID_SOURCE_LEDGER_SCHEMA:{n}")
+        day=x.get("capture_date_utc")
+        if not isinstance(day,str) or dt.date.fromisoformat(day).isoformat()!=day:
+            raise RuntimeError(f"INVALID_SOURCE_CAPTURE_DATE:{n}")
+        if day in dates: raise RuntimeError(f"DUPLICATE_EXISTING_SOURCE_DATE:{day}")
+        if type(x.get("source_valid")) is not bool:
+            raise RuntimeError(f"INVALID_SOURCE_RECEIPT_STATUS:{day}")
+        if any(x.get(k) is not False for k in ("settlement_fetched","future_path_fetched",
+                                              "returns_computed","pnl_computed","expectancy_computed",
+                                              "authenticated","orders","wallets")):
+            raise RuntimeError(f"SOURCE_ONLY_OUTCOME_SEAL_BROKEN:{day}")
+        if not (RECEIPT_DIR/f"{day}.json").is_file():
+            raise RuntimeError(f"SOURCE_LEDGER_RECEIPT_MISSING:{day}")
+        dates.add(day)
     return dates
 
 def main():
@@ -82,10 +122,9 @@ def main():
     put=capture_book(legs["put"]["instrument_name"])
     perp=capture_book("BTC_USDC-PERPETUAL")
     valid=all([
-      call["fresh_30s"],put["fresh_30s"],perp["fresh_30s"],
-      call["bid_price"] is not None,put["bid_price"] is not None,
-      call["bid_amount"] is not None and call["bid_amount"]>=AMOUNT,
-      put["bid_amount"] is not None and put["bid_amount"]>=AMOUNT,
+      valid_option_minimum(legs["call"]),valid_option_minimum(legs["put"]),
+      valid_book_source(call,AMOUNT),valid_book_source(put,AMOUNT),
+      valid_book_source(perp,0.0),
     ])
     rec={
       "schema_version":"BTC_VRP_USDC_FORWARD_ENTRY_SOURCE_V0.1",
