@@ -1,0 +1,29 @@
+name: HYPE Buyback 001 — 92d Export Official Overlap V04
+on:
+  push:
+    branches:
+      - research/hype-buyback-flow-001-export-reconcile-2026-10-11
+    paths:
+      - research/hype_buyback_flow_001/official_overlap_export_v04.py
+      - .github/workflows/hype-buyback-export-official-overlap-v04.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  official-api-exact-3day-sample:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Fixed 3 UTC day exact official fill-source match versus frozen CSV export hashes
+        run: python3 research/hype_buyback_flow_001/official_overlap_export_v04.py
+      - name: Preserve official 3-day raw bytes and SHA256 receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hype-export-official-overlap-${{ github.run_id }}-${{ github.run_attempt }}
+          path: research/hype_buyback_flow_001/receipts/export_overlap_v04/
+          retention-days: 60
+          if-no-files-found: error
