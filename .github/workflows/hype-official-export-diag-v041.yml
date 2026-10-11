@@ -1,0 +1,28 @@
+name: HYPE Buyback 001 — Fixed-Day Identity Diagnostic V041
+on:
+  push:
+    branches: [research/hype-buyback-flow-001-export-reconcile-2026-10-11]
+    paths:
+      - research/hype_buyback_flow_001/official_export_identity_diag_v041.py
+      - .github/workflows/hype-official-export-diag-v041.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  single-day-public-source-diagnostic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Diagnose official 10-Oct source row identity, no prices after fill
+        run: python3 research/hype_buyback_flow_001/official_export_identity_diag_v041.py
+      - name: Keep official source diagnosis immutable
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hype-official-export-diag-${{ github.run_id }}
+          path: research/hype_buyback_flow_001/receipts/official_diag_v041/
+          retention-days: 60
+          if-no-files-found: error
