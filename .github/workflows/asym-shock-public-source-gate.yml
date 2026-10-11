@@ -36,6 +36,7 @@ jobs:
           python -m py_compile research/asymmetric_shock_breakout/economic_hurdle.py
           python -m py_compile research/asymmetric_shock_breakout/public_bbo_probe.py
           python -m py_compile research/asymmetric_shock_breakout/bbo_continuity_probe.py
+          python -m py_compile research/asymmetric_shock_breakout/contract_meta_probe.py
           python -m unittest discover -s research/asymmetric_shock_breakout -p 'test_*.py' -v
       - name: One-time public MEXC BTC/SOL BBO source probe (no authentication)
         run: |
@@ -43,6 +44,9 @@ jobs:
       - name: Bounded 75-second public BTC/SOL BBO continuity observation (no orders)
         run: |
           python research/asymmetric_shock_breakout/bbo_continuity_probe.py --duration-s 75 --interval-s 5 --out research/asymmetric_shock_breakout/receipts/public_bbo_continuity.json
+      - name: One-time public contract metadata and time/fee discrepancy check
+        run: |
+          python research/asymmetric_shock_breakout/contract_meta_probe.py --out research/asymmetric_shock_breakout/receipts/contract_meta_source_gate.json
       - name: Preserve immutable source receipt
         if: always()
         uses: actions/upload-artifact@v4
