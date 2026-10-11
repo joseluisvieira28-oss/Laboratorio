@@ -1,0 +1,44 @@
+# One-shot activation uses research-branch push trigger, not GitHub cron.
+name: CPI 2026-10-14 PUBLIC BBO SOURCE ONLY
+on:
+  push:
+    branches:
+      - research/asymmetric-shock-breakout-2026-10-11
+    paths:
+      - research/asymmetric_shock_breakout/CPI_2026_10_14_ACTIVATION.txt
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cpi-20261014-source-only
+  cancel-in-progress: false
+
+jobs:
+  cpi-public-observation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Freeze and activation guard
+        run: |
+          test -f research/asymmetric_shock_breakout/CPI_2026_10_14_PRE_EVENT_SOURCE_FREEZE_V01.md
+          grep -q '^CPI_2026_10_14_SOURCE_ONLY_ACTIVATION=YES$' research/asymmetric_shock_breakout/CPI_2026_10_14_ACTIVATION.txt
+          python -m unittest discover -s research/asymmetric_shock_breakout -p 'test_cpi_public_source_capture.py' -v
+          python -m py_compile research/asymmetric_shock_breakout/cpi_public_source_capture.py
+      - name: Observe exact CPI public market source only, no signals or trading
+        run: |
+          python research/asymmetric_shock_breakout/cpi_public_source_capture.py --out research/asymmetric_shock_breakout/cpi_2026_10_14_receipts/source_only_capture.json
+      - name: Archive immutable source evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CPI-20261014-SOURCE-ONLY-${{ github.run_id }}-${{ github.run_attempt }}
+          path: research/asymmetric_shock_breakout/cpi_2026_10_14_receipts/
+          if-no-files-found: warn
+          retention-days: 90

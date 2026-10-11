@@ -1,0 +1,58 @@
+# One bounded rerun after operational identity-test fix; no trading, no threshold or outcome change.
+name: asym-shock-public-source-gate
+on:
+  push:
+    branches:
+      - research/asymmetric-shock-breakout-2026-10-11
+    paths:
+      - 'research/asymmetric_shock_breakout/**'
+      - '.github/workflows/asym-shock-public-source-gate.yml'
+  pull_request:
+    branches:
+      - audit/science-only-all-fronts-2026-10-08
+    paths:
+      - 'research/asymmetric_shock_breakout/**'
+      - '.github/workflows/asym-shock-public-source-gate.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: asym-shock-public-source-gate
+  cancel-in-progress: false
+
+jobs:
+  synthetic-tests-and-one-public-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Python syntax + synthetic integrity regressions
+        run: |
+          python -m py_compile research/asymmetric_shock_breakout/economic_hurdle.py
+          python -m py_compile research/asymmetric_shock_breakout/public_bbo_probe.py
+          python -m py_compile research/asymmetric_shock_breakout/bbo_continuity_probe.py
+          python -m py_compile research/asymmetric_shock_breakout/contract_meta_probe.py
+          python -m unittest discover -s research/asymmetric_shock_breakout -p 'test_*.py' -v
+      - name: One-time public MEXC BTC/SOL BBO source probe (no authentication)
+        run: |
+          python research/asymmetric_shock_breakout/public_bbo_probe.py --out research/asymmetric_shock_breakout/receipts/public_bbo_source_gate.json
+      - name: Bounded 75-second public BTC/SOL BBO continuity observation (no orders)
+        run: |
+          python research/asymmetric_shock_breakout/bbo_continuity_probe.py --duration-s 75 --interval-s 5 --out research/asymmetric_shock_breakout/receipts/public_bbo_continuity.json
+      - name: One-time public contract metadata and time/fee discrepancy check
+        run: |
+          python research/asymmetric_shock_breakout/contract_meta_probe.py --out research/asymmetric_shock_breakout/receipts/contract_meta_source_gate.json
+      - name: Preserve immutable source receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: asymmetric-shock-public-bbo-source-gate-${{ github.run_id }}-${{ github.run_attempt }}
+          path: research/asymmetric_shock_breakout/receipts/
+          if-no-files-found: warn
+          retention-days: 30
