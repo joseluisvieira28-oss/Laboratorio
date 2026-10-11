@@ -59,4 +59,30 @@ jobs:
           & powershell.exe -NoProfile -File $file -RootDirectory $root -ReceiptPath $receipt -EnableAutoRecover
           if ($LASTEXITCODE -eq 0) { throw "AutoRecovery without Watch must be rejected" }
           Write-Host 'V08_REFUSE_UNAUTHORIZED_AUTO_RECOVERY_PASS'
+          $watchdogScript = Join-Path $root 'windows\RUN_RADAR_24X7_V0144.ps1'
+          New-Item -ItemType Directory -Path (Split-Path -Parent $watchdogScript) -Force | Out-Null
+          Set-Content -LiteralPath $watchdogScript -Value 'CI STUB NEVER EXECUTE'
+          $task = 'CryptoEdgeRadarV0144'
+          $fakeAct = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument ('-NoProfile -ExecutionPolicy Bypass -File "'+$watchdogScript+'"')
+          $fakeTrigger = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
+          Register-ScheduledTask -TaskName $task -Action $fakeAct -Trigger $fakeTrigger -Force | Out-Null
+          try {
+            $installer = 'crypto_edge_radar/operator_windows/CryptoLab_Radar_Guardian_V08_Install.ps1'
+            $instReceipt = Join-Path $env:RUNNER_TEMP 'guardian_install_v08.json'
+            & powershell.exe -NoProfile -File $installer -GuardianSource $file -ReceiptPath $instReceipt
+            if ($LASTEXITCODE -ne 0) { throw "Installer dry run execution failed" }
+            $ir=Get-Content -LiteralPath $instReceipt -Raw | ConvertFrom-Json
+            if ($ir.phase -ne 'INSTALL_PRECHECK_ONLY' -or $ir.precheck_pass -ne $false) { throw 'No local Radar means precheck must refuse installation' }
+            if (-not (Get-ScheduledTask -TaskName $task).Settings.Enabled) { throw 'Dryrun must not alter old task' }
+            if (Get-ScheduledTask -TaskName 'CryptoEdgeRadarSafeWatchV08' -ErrorAction SilentlyContinue) { throw 'Dryrun cannot create guardian task' }
+            & powershell.exe -NoProfile -File $installer -GuardianSource $file -ReceiptPath $instReceipt -Install
+            if ($LASTEXITCODE -ne 3) { throw 'Installer must refuse unsafe install with exit 3' }
+            $ir=Get-Content -LiteralPath $instReceipt -Raw | ConvertFrom-Json
+            if ($ir.phase -ne 'INSTALL_REFUSED_PRECHECK_FAILED') { throw 'Installer fail closed missing' }
+            if (-not (Get-ScheduledTask -TaskName $task).Settings.Enabled) { throw 'Failed install modified old task' }
+            Write-Host 'V08_INSTALLER_DRYRUN_AND_REFUSAL_PASS'
+          } finally {
+            Unregister-ScheduledTask -TaskName $task -Confirm:$false -ErrorAction SilentlyContinue
+          }
+          exit 0
           exit 0
