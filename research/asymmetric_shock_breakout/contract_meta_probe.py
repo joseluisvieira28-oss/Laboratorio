@@ -41,7 +41,7 @@ def normalize_contract(data,symbol):
         if len(matches)!=1: raise ValueError("CONTRACT_NOT_UNIQUE")
         obj=matches[0]
     elif isinstance(data,dict):
-        if data.get("symbol")==symbol:
+        if "symbol" in data:
             obj=data
         elif isinstance(data.get("list"),list):
             return normalize_contract(data["list"],symbol)
