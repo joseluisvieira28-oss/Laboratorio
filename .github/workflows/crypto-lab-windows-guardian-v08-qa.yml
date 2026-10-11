@@ -1,0 +1,88 @@
+name: Windows Radar Guardian V08 - Offline QA
+on:
+  push:
+    branches: [ops/windows-radar-watchdog-guarded-v08-20261011]
+permissions:
+  contents: read
+jobs:
+  ps51_synthetic:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Parse V08 Windows PS5.1 and prove monitor-only guards
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $file = 'crypto_edge_radar/operator_windows/CryptoLab_Radar_Guardian_V08.ps1'
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $file),[ref]$tokens,[ref]$errors) | Out-Null
+          if ($errors.Count -gt 0) { throw "PowerShell parse errors: $($errors.Count)" }
+          $root = Join-Path $env:RUNNER_TEMP 'fake_radarnode_v08'
+          New-Item -ItemType Directory -Path (Join-Path $root 'logs') -Force | Out-Null
+          New-Item -ItemType Directory -Path (Join-Path $root 'data') -Force | Out-Null
+          New-Item -ItemType Directory -Path (Join-Path $root 'CryptoEdgeRadarNode') -Force | Out-Null
+          Set-Content -LiteralPath (Join-Path $root 'CryptoEdgeRadarNode\CryptoEdgeRadarNode.exe') -Value 'FAKE CAN NEVER RUN'
+          Set-Content -LiteralPath (Join-Path $root 'logs\radar_stdout.log') -Value 'IMMUTABLE HISTORIC LOG'
+          $oldSha=(Get-FileHash -LiteralPath (Join-Path $root 'logs\radar_stdout.log') -Algorithm SHA256).Hash
+          $receipt = Join-Path $env:RUNNER_TEMP 'v08_receipt.json'
+          & powershell.exe -NoProfile -File $file -RootDirectory $root -ReceiptPath $receipt
+          if ($LASTEXITCODE -ne 0) { throw "PS5 default audit failed" }
+          $r=Get-Content -LiteralPath $receipt -Raw | ConvertFrom-Json
+          if ($r.mode -ne 'ONCE_READ_ONLY') { throw "V08 must default to read only" }
+          if ($r.local.state -ne 'MISSING_BOTH') { throw "Expected missing fake Radar on fresh runner" }
+          if ($r.auto_recovery_result -ne 'NOT_REQUESTED') { throw "No implicit recovery" }
+          if ($r.old_stdout_or_stderr_erased -ne $false -or $r.canonical_postgres_writer_modified -ne $false -or $r.mexc_account_access -ne $false) { throw "Unsafe forensic receipt" }
+          if ($oldSha -ne (Get-FileHash -LiteralPath (Join-Path $root 'logs\radar_stdout.log') -Algorithm SHA256).Hash) { throw "Old logs modified" }
+          if (@(Get-ChildItem -LiteralPath (Join-Path $root 'data') -File).Count -ne 0) { throw "Unexpected data writer" }
+          $installer = 'crypto_edge_radar/operator_windows/CryptoLab_Radar_Guardian_V08_Install.ps1'
+          $installerErrors = $null
+          $installerTokens = $null
+          [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $installer),[ref]$installerTokens,[ref]$installerErrors) | Out-Null
+          if ($installerErrors.Count -ne 0) { throw "V08 installer parse failure" }
+          $ins = Get-Content -LiteralPath $installer -Raw
+          if ($ins -match '\bStop-Process\b|\bStop-ScheduledTask\b') { throw "V08 installer cannot stop user processes/tasks" }
+          if ($ins -notmatch 'Disable-ScheduledTask -TaskName \$LegacyTask') { throw "V08 installer must retire only legacy watchdog" }
+          if ($ins -notmatch 'live\.pid' -and $ins -notmatch 'stillLive\.pid') { throw "V08 installer lacks PID adoption gate" }
+          Write-Host 'V08_INSTALLER_PS51_PARSED_AND_RESTRICTED_PASS'
+          Write-Host 'V08_DEFAULT_READONLY_PASS'
+          & powershell.exe -NoProfile -File $file -RootDirectory $root -ReceiptPath $receipt -Watch -MaxIterations 1
+          if ($LASTEXITCODE -ne 0) { throw "Bounded monitor failed" }
+          $r2=Get-Content -LiteralPath $receipt -Raw | ConvertFrom-Json
+          if ($r2.mode -ne 'WATCH_OBSERVE_ONLY' -or $r2.auto_recovery_result -ne 'NOT_REQUESTED') { throw "Monitor must not restart" }
+          if (-not (Test-Path -LiteralPath (Join-Path $root 'logs\CryptoLab_Guardian_V08.jsonl'))) { throw 'Expected V08 own monitor log absent' }
+          if ($oldSha -ne (Get-FileHash -LiteralPath (Join-Path $root 'logs\radar_stdout.log') -Algorithm SHA256).Hash) { throw "Legacy log touched in monitor" }
+          Write-Host 'V08_WATCH_OBSERVE_ONLY_PASS'
+          & powershell.exe -NoProfile -File $file -RootDirectory $root -ReceiptPath $receipt -EnableAutoRecover
+          if ($LASTEXITCODE -eq 0) { throw "AutoRecovery without Watch must be rejected" }
+          Write-Host 'V08_REFUSE_UNAUTHORIZED_AUTO_RECOVERY_PASS'
+          $watchdogScript = Join-Path $root 'windows\RUN_RADAR_24X7_V0144.ps1'
+          New-Item -ItemType Directory -Path (Split-Path -Parent $watchdogScript) -Force | Out-Null
+          Set-Content -LiteralPath $watchdogScript -Value 'CI STUB NEVER EXECUTE'
+          $task = 'CryptoEdgeRadarV0144'
+          $fakeAct = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument ('-NoProfile -ExecutionPolicy Bypass -File "'+$watchdogScript+'"')
+          $fakeTrigger = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
+          Register-ScheduledTask -TaskName $task -Action $fakeAct -Trigger $fakeTrigger -Force | Out-Null
+          try {
+            $installer = 'crypto_edge_radar/operator_windows/CryptoLab_Radar_Guardian_V08_Install.ps1'
+            $instReceipt = Join-Path $env:RUNNER_TEMP 'guardian_install_v08.json'
+            & powershell.exe -NoProfile -File $installer -GuardianSource $file -ReceiptPath $instReceipt
+            if ($LASTEXITCODE -ne 0) { throw "Installer dry run execution failed" }
+            $ir=Get-Content -LiteralPath $instReceipt -Raw | ConvertFrom-Json
+            if ($ir.phase -ne 'INSTALL_PRECHECK_ONLY' -or $ir.precheck_pass -ne $false) { throw 'No local Radar means precheck must refuse installation' }
+            if (-not (Get-ScheduledTask -TaskName $task).Settings.Enabled) { throw 'Dryrun must not alter old task' }
+            if (Get-ScheduledTask -TaskName 'CryptoEdgeRadarSafeWatchV08' -ErrorAction SilentlyContinue) { throw 'Dryrun cannot create guardian task' }
+            & powershell.exe -NoProfile -File $installer -GuardianSource $file -ReceiptPath $instReceipt -Install
+            if ($LASTEXITCODE -ne 3) { throw 'Installer must refuse unsafe install with exit 3' }
+            $ir=Get-Content -LiteralPath $instReceipt -Raw | ConvertFrom-Json
+            if ($ir.phase -ne 'INSTALL_REFUSED_PRECHECK_FAILED') { throw 'Installer fail closed missing' }
+            if (-not (Get-ScheduledTask -TaskName $task).Settings.Enabled) { throw 'Failed install modified old task' }
+            Write-Host 'V08_INSTALLER_DRYRUN_AND_REFUSAL_PASS'
+          } finally {
+            Unregister-ScheduledTask -TaskName $task -Confirm:$false -ErrorAction SilentlyContinue
+          }
+          exit 0
+          exit 0
