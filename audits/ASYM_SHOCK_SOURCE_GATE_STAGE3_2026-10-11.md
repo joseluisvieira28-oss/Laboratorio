@@ -53,3 +53,23 @@ https://www.mexc.com/en-GB/announcements/article/updates-to-api-futures-trading-
 - Preserve original LICP forward SOL family and ETF Q4 2026 locks.
 - NO external spending, paid market data, orders, accounts, wallet access,
   live trading, main merge, post-outcome tuning or CI-green=>EDGE promotion.
+
+## Actual CI feedback / bounded repair
+
+GitHub Actions run 38137116005 completed FAILURE before source fetch.
+26/27 synthetic tests passed; 1 mismatch unit test rejected the
+operational classifier: a mismatched source symbol produced
+CONTRACT_SCHEMA_UNEXPECTED instead of CONTRACT_IDENTITY_FAIL.
+This is a purely technical taxonomy defect, NOT an economic outcome
+or source-availability result. No metadata receipt was generated.
+
+Repair commit 7b643d2276d9c4800ad5eaf8079f5f757cafc68e:
+a single contract metadata dictionary carrying a symbol is now accepted
+for identity validation; mismatching symbol is rejected with the correct
+CONTRACT_IDENTITY_FAIL; no scientific assumptions changed.
+New GitHub Actions run 38137239747 admitted but PENDING at this audit;
+do not claim tests passed or gate succeeded until completed and receipt
+has been read.
+
+SOURCE_GATE_STATE = AWAITING_CORRECTED_CI_AND_ACTUAL_PUBLIC_RECEIPT.
+ECONOMIC_VERDICT = UNTESTED.
