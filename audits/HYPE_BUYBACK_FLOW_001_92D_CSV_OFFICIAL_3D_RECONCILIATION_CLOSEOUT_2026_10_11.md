@@ -15,7 +15,7 @@ Free archive source hunt closeout `audits/HYPE_BUYBACK_FLOW_001_FREE_90D_SOURCE_
 - Around 683 HYPE spot source `sz` cells have binary float render tails (e.g. `7.9399999999999995`) deviating by <= 5e-16 from exact cent lots. The archive is a third-party retrospective export, not a real-time tape with causal visibility proven.
 
 ## Original preregistered official fixed-day crosscheck: status and rigorous preservation
-Official public `POST https://api.hyperliquid.xyz/info`, `userFillsByTime` for exact 42-char AF system address, UTC full days **2026-10-08 / 09 / 10**, `aggregateByTime:false`, fixed PRIOR csv-count and multiset hashes. GitHub Actions **38021995440?** CORRECT RUN **38121995440**, commit `286533969a154cd153c6fa2b3828c7ef6dfd8d69`. All official responses HTTP200, none reached 2000 cap; artifact **11694999308**, archived ZIP SHA256 `3277d5f7e09271a9aea85436e6219f1dc62cd2f89f665092785af7d1bb7b0968`.
+Official public `POST https://api.hyperliquid.xyz/info`, `userFillsByTime` for exact 42-char AF system address, UTC full days **2026-10-08 / 09 / 10**, `aggregateByTime:false`, fixed PRIOR csv-count and multiset hashes. GitHub Actions **38121995440**, commit `286533969a154cd153c6fa2b3828c7ef6dfd8d69`. All official responses HTTP200, none reached 2000 cap; artifact **11694999308**, archived ZIP SHA256 `3277d5f7e09271a9aea85436e6219f1dc62cd2f89f665092785af7d1bb7b0968`.
 - Day 08/10: CSV 1422 / official 1422 / zero-hash 130 / original frozen *strict* SHA mismatched.
 - Day 09/10: CSV 583 / official 583 / zero-hash 34 / original frozen strict SHA mismatched.
 - Day 10/10: CSV 420 / official 420 / zero-hash 47 / original frozen strict SHA mismatched.
