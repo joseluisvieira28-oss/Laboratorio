@@ -38,6 +38,16 @@ jobs:
           if ($r.old_stdout_or_stderr_erased -ne $false -or $r.canonical_postgres_writer_modified -ne $false -or $r.mexc_account_access -ne $false) { throw "Unsafe forensic receipt" }
           if ($oldSha -ne (Get-FileHash -LiteralPath (Join-Path $root 'logs\radar_stdout.log') -Algorithm SHA256).Hash) { throw "Old logs modified" }
           if (@(Get-ChildItem -LiteralPath (Join-Path $root 'data') -File).Count -ne 0) { throw "Unexpected data writer" }
+          $installer = 'crypto_edge_radar/operator_windows/CryptoLab_Radar_Guardian_V08_Install.ps1'
+          $installerErrors = $null
+          $installerTokens = $null
+          [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $installer),[ref]$installerTokens,[ref]$installerErrors) | Out-Null
+          if ($installerErrors.Count -ne 0) { throw "V08 installer parse failure" }
+          $ins = Get-Content -LiteralPath $installer -Raw
+          if ($ins -match '\bStop-Process\b|\bStop-ScheduledTask\b') { throw "V08 installer cannot stop user processes/tasks" }
+          if ($ins -notmatch 'Disable-ScheduledTask -TaskName \$LegacyTask') { throw "V08 installer must retire only legacy watchdog" }
+          if ($ins -notmatch 'live\.pid' -and $ins -notmatch 'stillLive\.pid') { throw "V08 installer lacks PID adoption gate" }
+          Write-Host 'V08_INSTALLER_PS51_PARSED_AND_RESTRICTED_PASS'
           Write-Host 'V08_DEFAULT_READONLY_PASS'
           & powershell.exe -NoProfile -File $file -RootDirectory $root -ReceiptPath $receipt -Watch -MaxIterations 1
           if ($LASTEXITCODE -ne 0) { throw "Bounded monitor failed" }
