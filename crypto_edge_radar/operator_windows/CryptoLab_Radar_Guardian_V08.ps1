@@ -281,8 +281,8 @@ function Append-GuardianLog($Record) {
     if (-not (Test-Path -LiteralPath $LogDir -PathType Container)) { throw "Log directory missing" }
     if (Test-Path -LiteralPath $GuardianLog -PathType Leaf) {
         if ((Get-Item -LiteralPath $GuardianLog).Length -gt 1048576) {
-            $archive=Join-Path $LogDir "CryptoLab_Guardian_V08_previous.jsonl"
-            if (Test-Path -LiteralPath $archive) { Remove-Item -LiteralPath $archive -Force }
+            $archive=Join-Path $LogDir ("CryptoLab_Guardian_V08_archive_"+[datetimeoffset]::UtcNow.ToString("yyyyMMddTHHmmssfffZ")+".jsonl")
+            if (Test-Path -LiteralPath $archive) { throw "V08 archive collision; refusing to overwrite existing evidence" }
             Move-Item -LiteralPath $GuardianLog -Destination $archive
         }
     }
