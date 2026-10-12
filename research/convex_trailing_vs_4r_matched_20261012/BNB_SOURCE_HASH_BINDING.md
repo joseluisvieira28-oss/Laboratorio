@@ -1,0 +1,2 @@
+# Pre-replay BNB source manifest SHA256 binding
+From independent audit already published in first basket ref `97b4f0dd114b23687fc556c4214510b157e3d69f`, path `research/convex_firstbasket_4r_hist_20261012/INDEPENDENT_AUDIT.json`, field `source.BNBUSDT.manifest_sha256` = `c8b8c13265109e9acfc84b28f6b1b7a4383167685beb0722939236e0519a5452`. No new trailing outcome has been opened. This supplements the freeze as the mandated third source lock.
