@@ -1,0 +1,27 @@
+name: Overshoot original V024 source coverage audit
+on:
+  push:
+    branches: ["ops/overshoot-coverage-source-recovery-2026-10-12"]
+    paths: ["ops/recovery/**", ".github/workflows/ops-overshoot-original-coverage.yml"]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  immutable-coverage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.11"}
+      - run: pip install requests
+      - run: python ops/recovery/overshoot_original_coverage.py
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: overshoot-original-source-matrix-${{ github.run_id }}
+          path: evidence/
+          retention-days: 90
+          if-no-files-found: error
