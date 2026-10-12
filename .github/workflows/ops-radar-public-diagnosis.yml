@@ -1,0 +1,28 @@
+name: Operational Radar public transport diagnosis
+on:
+  push:
+    branches: ["ops/radar-public-health-diagnosis-2026-10-12"]
+    paths: ["ops/recovery/**", ".github/workflows/ops-radar-public-diagnosis.yml"]
+permissions:
+  contents: read
+concurrency:
+  group: ops-radar-public-transport
+  cancel-in-progress: false
+jobs:
+  read-only-diagnosis:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.11"}
+      - run: python ops/recovery/radar_public_transport.py
+      - run: python .github/scripts/radar_telegram_health_v01.py inspect --timeout 105 --out evidence/radar_public_health.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: radar-readonly-diagnostic-${{ github.run_id }}
+          path: evidence/
+          retention-days: 90
+          if-no-files-found: error
