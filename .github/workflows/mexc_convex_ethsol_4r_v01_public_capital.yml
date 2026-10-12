@@ -1,0 +1,30 @@
+name: MEXC Convex ETH SOL 4R Public Source Capital Gate
+on:
+  push:
+    branches:
+      - research/mexc-convex-eth-sol-4r-v01-2026-10-12
+    paths:
+      - '.github/workflows/mexc_convex_ethsol_4r_v01_public_capital.yml'
+permissions:
+  contents: read
+concurrency:
+  group: mexc-convex-ethsol-4r-one-shot-public-capital
+  cancel-in-progress: false
+jobs:
+  public-get-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile source-only probe
+        run: python3 -m py_compile research/mexc_convex_ethsol_4r_v01/quote_capital_probe.py
+      - name: Observe public MEXC contract and depth only
+        run: python3 -m research.mexc_convex_ethsol_4r_v01.quote_capital_probe
+      - name: Preserve immutable per-source receipt including failures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mexc-convex-ethsol-4r-v01-public-source-capital
+          path: research/mexc_convex_ethsol_4r_v01/SOURCE_CAPITAL_RECEIPT.json
+          if-no-files-found: warn
+          retention-days: 90
