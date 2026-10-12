@@ -1,0 +1,35 @@
+name: CONVEX TRAILING VS 4R MATCHED HIST 001
+on:
+  push:
+    branches: ['research/convex-trailing-vs-4r-matched-2026-10-12']
+    paths:
+      - 'research/convex_trailing_vs_4r_matched_20261012/compare.py'
+      - 'research/convex_trailing_vs_4r_matched_20261012/test_compare.py'
+      - '.github/workflows/convex_trailing_vs_4r_matched_hist_20261012.yml'
+permissions:
+  contents: read
+jobs:
+  historical:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Checkout SHA and baseline unchanged source identity
+        shell: bash
+        run: |
+          git rev-parse HEAD
+          sha256sum research/convex_firstbasket_4r_hist_20261012/replay.py
+          sha256sum research/convex_trailing_vs_4r_matched_20261012/compare.py
+      - name: Run nonlatched trailing and cost/capital invariants
+        run: python -m unittest discover -s research/convex_trailing_vs_4r_matched_20261012 -p test_compare.py -v
+      - name: Full historical source and both exits, freeze invariant parity required
+        run: python research/convex_trailing_vs_4r_matched_20261012/compare.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: CONVEX-TRAILING-VS-4R-MATCHED-HIST-001
+          path: research/convex_trailing_vs_4r_matched_20261012/receipts/
+          retention-days: 90
