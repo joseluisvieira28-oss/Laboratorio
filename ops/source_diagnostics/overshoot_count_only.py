@@ -14,8 +14,8 @@ for venue,c in caches.items():
     with c.lock:
         rows=[]
         for sym in c.symbols:
-            keys=sorted(c.data.get(sym,{}))
-            pending=sorted(getattr(c,"pending",{}).get(sym,{}))
+            keys=sorted(c.data.get(sym.upper(),{}))
+            pending=sorted(getattr(c,"pending",{}).get(sym.upper(),{}))
             rows.append({"symbol":sym,"closed_points":len(keys),"closed_timestamps":keys,"pending_points":len(pending),"pending_timestamps":pending})
     result["venues"][venue]={"connected":c.connected,"connection_errors":c.connection_errors,"symbols":rows,"symbols_with_closed_points":sum(x["closed_points"]>0 for x in rows)}
 for c in caches.values():c.stop()
