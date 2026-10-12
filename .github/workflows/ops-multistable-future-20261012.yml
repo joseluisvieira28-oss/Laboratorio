@@ -1,0 +1,26 @@
+name: MultiStable frozen-source preflight and future-only segment
+on:
+  push:
+    branches: ["ops/multistable-original-evidence-recovery-2026-10-12"]
+    paths: [".github/workflows/ops-multistable-future-20261012.yml"]
+permissions: {contents: read}
+concurrency: {group: multistable-ops-future-20261012, cancel-in-progress: false}
+jobs:
+  preflight-and-future:
+    runs-on: ubuntu-latest
+    timeout-minutes: 220
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.11"}
+      - run: pip install requests
+      - run: python ops/source_preflight/multistable_future.py --collect-future
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: multistable-future-original-${{ github.run_id }}
+          path: |
+            evidence/
+            artifacts/mexc_multistable_basis/forward_v03/
+          retention-days: 90
+          if-no-files-found: error
