@@ -1,0 +1,111 @@
+{
+  "document_type": "PHASE_B_P00_DISCOVERY_CLOSEOUT",
+  "version": "0.1",
+  "status": "CLOSED_NO_EDGE",
+  "closed_utc_date": "2026-09-11",
+  "branch": "dream-account-phase-b-signal-research-v0.1",
+  "profile_id": "P00_PRIMARY",
+  "setup_id": "PBR01_BREAKOUT_RETEST_LONG",
+  "stage": "DISCOVERY",
+  "classification": "NO_EDGE",
+  "decision_fingerprint": "6ac3c7d3b9368768e04bcd42b6d5073f3c048e0c5fe6fb7b8bc9d32d05180541",
+  "run_fingerprint": "86623a08f833b2de6610f65832560d52370a420c31b248cf5e129bb5d7743096",
+  "effective_discovery_window": {
+    "start_utc_inclusive": "2023-02-01T00:00:00.000Z",
+    "end_utc_exclusive": "2024-12-31T16:00:00.000Z"
+  },
+  "universe": [
+    "BTCUSDT",
+    "ETHUSDT",
+    "SOLUSDT",
+    "BNBUSDT",
+    "XRPUSDT",
+    "DOGEUSDT"
+  ],
+  "data_receipt": {
+    "source_start_month": "2023-02",
+    "source_end_month": "2024-12",
+    "total_source_rows": 403098,
+    "total_effective_candles": 402906,
+    "total_detected_gap_count": 36,
+    "total_missing_candle_count": 102,
+    "all_symbol_corpus_status": "PASS_CORPUS_AUDIT_ONLY_WITH_GAPS",
+    "effective_candle_count_per_symbol": 67151,
+    "source_row_count_per_symbol": 67183
+  },
+  "base_metrics": {
+    "cost_scenario": "BASE_SENSITIVITY",
+    "raw_geometry_count": 1206,
+    "net_rr_rejected_count": 815,
+    "selected_trade_count": 344,
+    "resolved_trade_count": 344,
+    "unresolved_trade_count": 0,
+    "overlap_skipped_count": 47,
+    "net_expectancy_r": -0.19586645662739394,
+    "median_net_r": -1.0,
+    "profit_factor_r": 0.7368044489069394,
+    "win_rate": 0.2558139534883721,
+    "loss_rate": 0.7441860465116279,
+    "tp1_reach_rate": 0.4331395348837209,
+    "time_exit_rate": 0.02616279069767442,
+    "stop_gap_rate": 0.0,
+    "same_bar_ambiguity_rate": 0.0,
+    "signal_frequency_per_30d": 14.749880895664603,
+    "symbol_distribution": {
+      "BNBUSDT": 31,
+      "BTCUSDT": 39,
+      "DOGEUSDT": 71,
+      "ETHUSDT": 37,
+      "SOLUSDT": 112,
+      "XRPUSDT": 54
+    }
+  },
+  "bootstrap": {
+    "method": "UTC_CALENDAR_DAY_BLOCK_BOOTSTRAP",
+    "repetitions": 5000,
+    "seed": 230911,
+    "confidence": 0.95,
+    "sample_days": 212,
+    "lower": -0.3404688474590967,
+    "point_estimate": -0.19586645662739394,
+    "upper": -0.057548857811540864
+  },
+  "fixed_cohort_stress_metrics": {
+    "cost_scenario": "STRESS",
+    "cohort_source": "BASE_SENSITIVITY_SELECTED_P00_TRADES",
+    "selected_trade_count": 344,
+    "resolved_trade_count": 344,
+    "net_expectancy_r": -0.260025121006459,
+    "median_net_r": -1.0,
+    "profit_factor_r": 0.6506751264892777,
+    "net_rr_below_minimum_count": 169,
+    "net_rr_violation_rate": 0.49127906976744184
+  },
+  "failed_survival_conditions": [
+    "base_net_expectancy_not_positive",
+    "base_profit_factor_not_above_1",
+    "base_bootstrap_lower_95_not_positive",
+    "fixed_cohort_stress_expectancy_not_positive"
+  ],
+  "governance_closeout": {
+    "sample_threshold_met": true,
+    "next_stage_unlocked": false,
+    "validation_2025_unlock_eligible": false,
+    "validation_2025_access_performed": false,
+    "holdout_2026_access_performed": false,
+    "network_access_performed": false,
+    "exchange_mutation_performed": false,
+    "submitted_to_exchange": false,
+    "live_authorized": false,
+    "p00_may_be_retuned_and_reclassified_as_same_hypothesis": false,
+    "sensitivity_profile_may_rescue_p00": false,
+    "opportunistic_sample_extension_allowed": false,
+    "2025_may_be_used_to_rescue_p00": false,
+    "2026_may_be_opened": false,
+    "new_research_allowed_only_as_separately_preregistered_hypothesis": true,
+    "descriptive_postmortem_on_already_open_discovery_data_allowed": true,
+    "reproducibility_rerun_with_identical_frozen_inputs_allowed": true
+  },
+  "interpretation": "P00_PRIMARY failed Discovery with sufficient sample. The negative BASE expectancy, profit factor below one, entirely negative 95% bootstrap interval, and more-negative fixed-cohort STRESS expectancy jointly establish NO_EDGE under the frozen prospective contract. P00 is closed and cannot unlock 2025 validation.",
+  "final_rule": "DO_NOT_TUNE_P00_AFTER_OUTCOME_INSPECTION. DO_NOT_OPEN_2025_OR_2026. Any next trading hypothesis must receive a new identifier and be frozen prospectively before its outcomes are evaluated."
+}

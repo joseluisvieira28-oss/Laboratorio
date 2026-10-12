@@ -1,0 +1,113 @@
+{
+  "document_type": "TIMEFRAME_GAP_DISCOVERY_CLOSEOUT",
+  "experiment_id": "TFG-DONCHIAN-1D-001",
+  "version": "0.1",
+  "closeout_date": "2026-09-16",
+  "classification": "INSUFFICIENT_SAMPLE",
+  "scientific_status": "CLOSED_DISCOVERY_VALIDATION_NOT_UNLOCKED",
+  "lineage": {
+    "historical_reference": "SIMPLE_TRADING_LAB_V0.1_DONCHIAN_BREAKOUT",
+    "historical_exact_rule_recovery": "SOURCE_RULE_RECOVERY_BLOCKED",
+    "historical_verdict_changed": false,
+    "this_experiment_is_historical_replication": false,
+    "this_experiment_identity": "NEW_PROSPECTIVE_1D_HYPOTHESIS",
+    "historical_positive_diagnostic_assets_not_selected": ["DOGE_4H", "BNB_4H", "SOL_4H", "XRP_4H"]
+  },
+  "source_identity": {
+    "exact_parent_corpus_identity_gate": "PASS",
+    "source_artifact_id": 10419067320,
+    "source_artifact_digest": "sha256:7b2562af14983d0344c9a28e81e9c1866f2e5e9dfafe94203da9a4ca1ffa36cb",
+    "source_rows_per_symbol": 67183,
+    "effective_15m_candles_per_symbol": 67151,
+    "derived_1d_bars_per_symbol": 697,
+    "total_incomplete_1d_buckets": 18
+  },
+  "discovery_execution": {
+    "successful_run_id": 35029074047,
+    "result_artifact_id": 10420986457,
+    "result_artifact_digest": "sha256:bca509c3f687a65c429353b6bce456f2382e3b34907978ac2737d4e65de927a3",
+    "outcome_evaluation_performed": true,
+    "validation_2025_access_performed": false,
+    "holdout_2026_access_performed": false
+  },
+  "frozen_rule_summary": {
+    "timeframe": "1D_UTC",
+    "donchian_lookback": 20,
+    "breakout": "signal_close > maximum high of previous 20 complete 1D bars",
+    "atr_length": 14,
+    "entry": "next 1D open",
+    "stop": "signal low - 0.25 ATR14",
+    "target": "3R",
+    "max_hold_bars": 40,
+    "base_round_trip_cost_pct": 0.20,
+    "stress_round_trip_cost_pct": 0.30,
+    "minimum_resolved_trades": 100
+  },
+  "base_metrics": {
+    "raw_trigger_count": 241,
+    "pre_entry_cancelled_count": 0,
+    "selected_trade_count": 101,
+    "resolved_trade_count": 98,
+    "unresolved_trade_count": 3,
+    "overlap_skipped_count": 140,
+    "net_expectancy_r": 0.6629358490691737,
+    "median_net_r": -1.0,
+    "win_rate": 0.47959183673469385,
+    "loss_rate": 0.5204081632653061,
+    "profit_factor_r": 2.2880897841073122,
+    "target_reach_rate": 0.3673469387755102,
+    "same_bar_ambiguity_rate": 0.0,
+    "time_exit_rate": 0.12244897959183673,
+    "stop_gap_rate": 0.0,
+    "signal_frequency_per_30d": 4.334763948497854,
+    "symbol_distribution": {
+      "BNBUSDT": 15,
+      "BTCUSDT": 18,
+      "DOGEUSDT": 14,
+      "ETHUSDT": 17,
+      "SOLUSDT": 18,
+      "XRPUSDT": 16
+    }
+  },
+  "bootstrap": {
+    "method": "UTC_CALENDAR_DAY_BLOCK_BOOTSTRAP",
+    "repetitions": 5000,
+    "seed": 230911,
+    "confidence": 0.95,
+    "sample_days": 73,
+    "lower": 0.2810515228391663,
+    "point_estimate": 0.6629358490691737,
+    "upper": 1.0574049672782933
+  },
+  "fixed_cohort_stress_metrics": {
+    "selected_trade_count": 101,
+    "resolved_trade_count": 98,
+    "unresolved_trade_count": 3,
+    "net_expectancy_r": 0.6394559366106116,
+    "median_net_r": -0.9999999999999999,
+    "profit_factor_r": 2.242392093427036
+  },
+  "decision": {
+    "minimum_required_trades": 100,
+    "resolved_trade_count": 98,
+    "failed_conditions": ["resolved_trade_count_below_100"],
+    "decision_fingerprint": "8422848efc328249c31254a3e90a506b38d9f76e8a8cb0a73120c790d0f74f38",
+    "receipt_fingerprint": "dd4e08f7ce6ef1f18e4005cf5a8fe794def995f18b18949ee017c742825d3ccb",
+    "validation_unlock_eligible": false,
+    "live_authorized": false
+  },
+  "counterfactual_gate_note": "If sample size were ignored, all frozen non-sample Discovery gates observed here are positive: BASE expectancy > 0, BASE PF > 1, bootstrap lower 95% > 0, and fixed-cohort STRESS expectancy > 0. This is descriptive only and does not waive the prospectively frozen minimum sample gate.",
+  "interpretation_guardrail": "The exact experiment remains INSUFFICIENT_SAMPLE because 98 resolved trades is below the prospectively frozen minimum of 100. Do not promote, validate, extend the Discovery window by two trades, count unresolved trades as resolved, lower the sample threshold, select assets, or tune lookback/ATR/target/hold/cost rules from these outcomes.",
+  "governance": {
+    "open_2025": false,
+    "open_2026": false,
+    "post_outcome_tuning": false,
+    "opportunistic_extension": false,
+    "asset_selection": false,
+    "sample_threshold_reduction": false,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "merge_to_main": false,
+    "render_deploy": false
+  }
+}

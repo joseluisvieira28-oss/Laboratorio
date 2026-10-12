@@ -1,0 +1,31 @@
+{
+  "amendment_id": "AMENDMENT-01-FLAT-START-SOURCE-NORMALIZATION",
+  "base_freeze_fingerprint": "006707c233257c4066cce9a84a51d255b3f4ef800f7b7cf9929a7acb2f085c56",
+  "clarifications": {
+    "api_delivery_normalization": "If the official MEXC public read-only API fallback is used, its bar close-time field is not relied upon; each accepted 1D bar is normalized to [open_time, open, high, low, close, volume] with canonical UTC day close=open_time+86400000-1.",
+    "equivalence_fields": [
+      "open_time",
+      "open",
+      "high",
+      "low",
+      "close"
+    ],
+    "equivalence_tolerance": "numeric equality at <=1e-12 relative/absolute tolerance after decimal-to-float normalization",
+    "oos_start_position_state": "FLAT_PER_SYMBOL_AT_2025-01-01; pre-2025 signals are warmup-only and do not create carry-in positions.",
+    "right_censoring": "An OOS signal is eligible only if entry_open_time + 40*DAY_MS < 2026-01-01T00:00:00Z; later signals are recorded as right-censored and do not affect overlap state or economics."
+  },
+  "date_utc": "2026-09-16",
+  "document_type": "PRE_OUTCOME_FREEZE_AMENDMENT",
+  "experiment_id": "TFG-DONCHIAN-1D-001-OOS2025-V0.1",
+  "fingerprint": "5429502880fb20bfa47be5509c4f13642e4ee690612bfee371fe2ab8f95f053c",
+  "governance": {
+    "2026_historical_outcomes": false,
+    "exchange_mutation": false,
+    "live_trading": false,
+    "orders": false,
+    "post_outcome_tuning": false
+  },
+  "market_outcomes_accessed_before_amendment": false,
+  "scientific_rules_changed": false,
+  "status": "FROZEN_BEFORE_2025_OUTCOME_ACCESS"
+}

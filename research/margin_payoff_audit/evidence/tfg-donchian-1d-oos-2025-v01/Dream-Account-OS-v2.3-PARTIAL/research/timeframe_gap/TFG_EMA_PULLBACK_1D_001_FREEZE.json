@@ -1,0 +1,120 @@
+{
+  "document_type": "TIMEFRAME_GAP_NEW_HYPOTHESIS_FREEZE",
+  "experiment_id": "TFG-EMA-PULLBACK-1D-001",
+  "version": "0.1",
+  "created_utc_date": "2026-09-15",
+  "status": "FROZEN_BEFORE_ANY_EXPERIMENT_OUTCOME_EVALUATION",
+  "lineage": {
+    "historical_family": "SIMPLE_TRADING_LAB_V0.1_EMA_PULLBACK",
+    "historical_timeframes": ["1H", "4H"],
+    "historical_verdict": "0_SURVIVORS_HISTORICAL_VERDICT_IMMUTABLE",
+    "historical_exact_rule_recovery": "SOURCE_RULE_RECOVERY_BLOCKED",
+    "this_experiment_is_historical_replication": false,
+    "this_experiment_policy": "NEW_PROSPECTIVE_1D_HYPOTHESIS_NOT_A_RECONSTRUCTION",
+    "historical_positive_cells_not_used_for_asset_selection": ["SOL_4H", "DOGE_4H"]
+  },
+  "scientific_question": "Does a simple prospectively defined daily EMA20/EMA50 trend pullback-and-reclaim pattern exhibit positive net expectancy after realistic fixed costs across the full six-asset frozen universe?",
+  "market": {
+    "provider": "MEXC",
+    "market_type": "SPOT",
+    "direction": "LONG_ONLY",
+    "symbols": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "DOGEUSDT"],
+    "timezone": "UTC",
+    "source_interval": "15m",
+    "target_timeframe": "1D",
+    "source_candles_per_target_bar": 96,
+    "complete_bucket_required": true,
+    "incomplete_or_gapped_bucket": "DROP_WHOLE_1D_BUCKET_AND_SPLIT_CONTINUITY",
+    "cross_exchange_backfill_allowed": false,
+    "synthetic_history_allowed": false,
+    "interpolation_allowed": false
+  },
+  "indicator_definition": {
+    "ema_fast_length": 20,
+    "ema_slow_length": 50,
+    "ema_formula": "alpha=2/(length+1); seed at first available length-bar point with SMA(length), then recursive EMA on each subsequent close",
+    "atr_length": 14,
+    "atr_formula": "WILDER_TRUE_RANGE; first ATR is arithmetic mean of first 14 true ranges with true range=max(high-low,abs(high-prev_close),abs(low-prev_close)); subsequent ATR=((prior_ATR*13)+TR)/14"
+  },
+  "signal_rules": {
+    "evaluation_time": "AFTER_SIGNAL_1D_CANDLE_CLOSE_ONLY",
+    "trend": "EMA20_signal > EMA50_signal",
+    "prior_position": "previous_1D_close > previous_1D_EMA20",
+    "pullback_touch": "signal_low <= EMA20_signal",
+    "reclaim": "signal_close >= EMA20_signal",
+    "bullish_signal_body": "signal_close > signal_open",
+    "entry": "NEXT_1D_CANDLE_OPEN",
+    "pre_entry_cancel": "cancel if next open <= frozen stop; no other entry filter",
+    "stop": "signal_low - 0.25 * ATR14_signal",
+    "target": "entry + 2.0 * (entry - stop)",
+    "no_lookahead": true
+  },
+  "execution_semantics": {
+    "one_active_research_trade_per_symbol": true,
+    "new_same_symbol_signal_while_active": "IGNORE",
+    "adverse_gap_through_stop": "EXIT_AT_CANDLE_OPEN",
+    "favorable_gap_above_target": "CAP_EXIT_AT_TARGET",
+    "same_bar_stop_and_target": "STOP_FIRST_CONSERVATIVE",
+    "max_holding_bars": 20,
+    "time_exit": "AFTER_20_COMPLETED_HELD_1D_BARS_EXIT_AT_NEXT_1D_BAR_OPEN",
+    "missing_next_bar_for_time_exit": "UNRESOLVED_END_OF_DATA"
+  },
+  "costs": {
+    "BASE_round_trip_pct": 0.20,
+    "STRESS_round_trip_pct": 0.30,
+    "SEVERE_informational_round_trip_pct": 0.50,
+    "net_r_definition": "(gross_return_fraction - round_trip_cost_fraction) / (initial_stop_risk_fraction + round_trip_cost_fraction)",
+    "cohort_selection": "BASE",
+    "stress_policy": "REPRICE_THE_EXACT_BASE_SELECTED_COHORT_WITH_NO_RESELECTION"
+  },
+  "discovery": {
+    "start_utc_inclusive": "2023-02-01T00:00:00.000Z",
+    "end_utc_exclusive": "2024-12-31T16:00:00.000Z",
+    "daily_aggregation": "ONLY_COMPLETE_UTC_DAYS_FROM_EXACT_AUDITED_PARENT_MEXC_CORPUS",
+    "minimum_resolved_trades": 100,
+    "opportunistic_extension_allowed": false
+  },
+  "uncertainty": {
+    "method": "UTC_CALENDAR_DAY_BLOCK_BOOTSTRAP",
+    "repetitions": 5000,
+    "seed": 230911,
+    "confidence": 0.95
+  },
+  "discovery_survival_gate": [
+    "BASE resolved_trade_count >= 100",
+    "BASE net_expectancy_R > 0",
+    "BASE profit_factor_R > 1",
+    "95% day-block-bootstrap lower bound for BASE net_expectancy_R > 0",
+    "fixed-cohort STRESS net_expectancy_R > 0"
+  ],
+  "protected_data": {
+    "validation_2025": "LOCKED_REQUIRES_DISCOVERY_SURVIVES_AND_SEPARATE_EXPLICIT_AUTHORIZATION",
+    "holdout_2026": "LOCKED_REQUIRES_SEPARATE_EXPLICIT_AUTHORIZATION"
+  },
+  "degrees_of_freedom_lock": {
+    "parameter_tuning_after_outcomes": false,
+    "asset_selection_after_outcomes": false,
+    "sample_threshold_reduction_after_outcomes": false,
+    "extra_indicator_filter_after_outcomes": false,
+    "session_filter": null,
+    "volume_filter": null,
+    "rsi_filter": null,
+    "ema_slope_filter": null,
+    "short_side": false
+  },
+  "governance": {
+    "research_only": true,
+    "fail_closed": true,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "orders": false,
+    "alerts_webhooks": false,
+    "merge_to_main": false,
+    "render_deploy": false,
+    "post_outcome_tuning": false,
+    "cherry_picking": false,
+    "2025_access": false,
+    "2026_access": false,
+    "outcome_computation_authorized_by_this_file": false
+  }
+}
