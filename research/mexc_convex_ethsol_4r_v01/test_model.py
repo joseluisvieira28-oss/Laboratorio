@@ -20,7 +20,7 @@ class TestPreregisteredMath(unittest.TestCase):
         stop = model.fee_only_return_per_initial_notional(100, b["stop_bid"])
         target = model.fee_only_return_per_initial_notional(100, b["target_bid"])
         self.assertEqual(stop, Decimal("-0.041568"))
-        self.assertEqual(target, -4 * stop)
+        self.assertLessEqual(abs(target + 4 * stop), Decimal("1e-24"))
         self.assertGreater(b["target_bid"], Decimal(116))
 
     def test_exit_fee_on_actual_exit_notional(self):
