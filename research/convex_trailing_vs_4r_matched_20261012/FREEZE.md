@@ -1,0 +1,33 @@
+# CONVEX-TRAILING-VS-4R-MATCHED-HIST-001 — SCIENTIFIC DESIGN FREEZE — 2026-10-12
+
+## Scope and honesty
+PRE-REPLAY amendment for a controlled retrospective comparison, NOT unexposed OOS. The family, 2021–2025 and ETH/SOL/BNB baskets have already been studied, including the profitable fixed 4R result. This test cannot establish a new independently discovered edge or live authority. Freeze BEFORE implementing the new trailing arm or looking at that arm's replay outcome.
+
+Base repository commit: `97b4f0dd114b23687fc556c4214510b157e3d69f`; unchanged 4R study `research/convex_firstbasket_4r_hist_20261012`, its preceding design freeze `48d174edd94bc8ede3fe96c9b1d5b65312ebdb0b`, execution run 38294457980. The Parent reference is `labs/btc-convex-trend-capture-001/SOURCE_RECOVERED_V0.1.pine` and immutable recovered Parent helper `h2_third_basket_validation_v0_1.py`.
+
+## Frozen common economy (identical arms)
+- Assets fixed ETHUSDT, SOLUSDT, BNBUSDT, in that priority order. All 3 or source blocked. Official Binance USD-M public 1h kline, exact daily gap fill; public funding and exact mark (original frozen source hierarchy, with archive zip CHECKSUM). Historical proxy, NOT MEXC fills.
+- UTC economic window 2021-01-01 00:00 through 2025-12-31 23:00, 43,824 consecutive hourly bars each, December 2020 warmup >=400h. No 2026 sources/outcomes.
+- Use the identical frozen Parent PINE score predicate (RSI<30, z<-2, close<BB lower, vol>SMA20 vol; >=3 and close>SMA200). Signal only on completed bar; enter next bar open, one position per symbol. No future information in decision or exit.
+- Shared 500 USDT, initial 1x full-collateral model, no deposits, fixed baseline planned entry risk .25% of equity and aggregate .50%; diagnostic .50%/1.00% and 1.00%/2.00%; freeze full stop risk denominator `LOSS=.04*(1-.0008)+2*.0008=.041568`. Fractional research quantities. No leverage. Positions not resized after entry. Aggregate allocation, signal priority, fees, funding at opening boundary, positive/negative gap treatment and mark-to-market/equity conservation use UNMODIFIED `research/convex_firstbasket_4r_hist_20261012/replay.py` model.
+- Fees 8bps each actual leg; BASE adverse slippage 2bps per entry/exit and STRESS 5bps; actual archived funding cashflows for positions carried into exact funding timestamp; no synthetic zero funding. Shared OHLC open/close assumptions, conservative stop fill (open gap at worse open), at exact-hour open process existing exits before simultaneous new entries; intrabar stop applies to pre-known order. Terminal final bar close forces exit. Both arms pay same modelled costs.
+- Primary STRICT MATCHED HORIZON both strategies exit any still-open position at next candle open after 1440 hours (60 days), before intrabar. This horizon is the inherited 4R administrative timer. This gives common horizon but means the trailing arm is NOT an exact replay of original no-timer Parent.
+- Extra reference arm TRAILING_PARENT_NO_TIMER preserves original Parent *absence* of timer; same other portfolio conditions. This secondary arm is NOT the primary apples-to-apples benchmark.
+
+## The sole primary treatment: exit algorithm
+**CONTROL — FIXED_4R_60D**: immutable `run()` and `barrier()` from 2026-10-12 first-basket 4R code, no edits/copies of economic core. Initial stop = entry*.96, target multiplier = `1+(4*(.04*(1-.0008)+2*.0008)+2*.0008)/(1-.0008)`; same-bar stop-first; 1440h timeout.
+
+**TREATMENT — NONLATCHED_TRAIL_60D**: initially long stop = entry*.96. On each bar, first execute existing active stop decided *at prior confirmed close*; check opening gap first then hourly low. If alive at confirmed close, peak = max(all observed high since entry, initial entry), and set NEXT bar active stop to max(initial_stop, peak*.88) IF (confirmed close-entry)/entry >=.05, otherwise *REVERT active stop to initial stop*. Activation is NOT sticky. Stop may loosen after deactivation exactly as Parent PINE expresses; peak does not reset. Never test the current bar low against a stop just calculated from the current bar high/close. Newly filled entry uses only initial stop on its first bar. No profit target. Same 1440h timeout and forced end.
+
+**REFERENCE — NONLATCHED_TRAIL_NO_TIMER**: exactly treatment except no 1440h forced timeout (Parent timing). Not a second candidate to promote opportunistically.
+
+## Mandatory checks
+- Confirm 4R control recalculates existing official receipt: BASE ending 532.591965 / 459 trades; STRESS 515.952360 / 462 trades; absolute ending tolerance <=0.02 USDT, trade count exact, and ideally same full per-asset and yearly ledger. Fail comparison closed if control parity/source fails.
+- For data repeatability, compare all 3 source manifest SHA256 from prior independent audit: ETH `67442d3abd255de1fab33507ebc83eb00d6905a6f50ab46e011498ce715d508b`; SOL `04bfcdaa8ef0f6f05619f4b351cb7924900b75a74da9c588efc318c273f723d4`; BNB source manifest read from prior published independent audit before running. If drift, SOURCE_DRIFT_BLOCKED and no cherry-picking.
+- Tests: synthetic trail activation, NO sticky effect, trailing future-bar order timing, first-bar initial stop, gaps, timer and funding accounting, shared account, exact baseline 4R expected parity. Archive trade ledgers, downloaded bytes, checksum, SHA256 URL manifest, source gate receipts, code hash, run id and checkout SHA.
+- Mandatory report BASE/STRESS per exit: equity, net %, PF, realized payoff, win%, count, drawdown, fees, funding, slip, worst streak, annual PnL, ETH/SOL/BNB attribution, concentration excluding top1/3; comparator delta. Difference in subsequent eligible entries is PART of the exit-policy treatment and must not be represented as paired identical fills.
+- **Precommitted verdict**: `TRAILING_OUTPERFORMS_4R` iff matched 60D trailing BASE and STRESS each have strictly higher net USDT and PF than same-model 4R and each have positive net and PF>1 and net after dropping largest winner >0. `4R_OUTPERFORMS_TRAILING` symmetrical strict rule. Otherwise `MIXED_OR_BOTH_FAIL`. This is a *relative historical diagnostic*, never a newly proven independent economic edge. Also state raw numerical best arm without changing gates. No 4R realized-payoff >=4 gate imported into different trailing algorithm.
+- No post-outcome changing stop size, trailing activation, distance, timer, fees, capital/risk, cost layer, assets, dates or source. Technical bug fixes only with explicit evidence before rescore; retain failed attempts.
+
+## Safety
+Research-only. No live trading/orders/exchange mutations/account/API-private reads, no real funding, no wallets, Render, costs, merges to main, protected 2026 OOS unsealing, or post-outcome tuning.
