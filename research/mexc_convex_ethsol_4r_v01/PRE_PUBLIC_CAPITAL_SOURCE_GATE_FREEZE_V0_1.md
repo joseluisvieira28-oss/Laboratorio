@@ -1,0 +1,13 @@
+# SOURCE-ONLY CAPITAL FEASIBILITY PROBE FREEZE — MEXC-CONVEX-ETHSOL-4R-001
+Date 2026-10-12. Pre-first-quote source freeze. NO trading / orders / authenticated calls / outcome scoring.
+Existing engine design: DESIGN_FREEZE_V0_1.md + ENGINE_CONSTANTS_V0_1.md.
+
+## Fixed one-shot public observation
+Environment: GitHub Actions Ubuntu runner on research branch only, one run after workflow commit; no cron or live executor.
+Allowed public source EXACT: https://contract.mexc.com/api/v1/contract/ping, /api/v1/contract/detail?symbol=ETH_USDT or SOL_USDT, /api/v1/contract/depth/<symbol>?limit=20. Use inherited `mexc_causal_gateway.py` public-only GET validator and its raw payload SHA256. Do not access kline/candles, trade/account/balance/private or other venue, nor ingest future returns.
+Frozen instruments: exactly ETH_USDT and SOL_USDT; failure of either means `SOURCE_CAPITAL_GATE_BLOCKED`; NEVER drop symbol after observing source.
+Frozen simulated user input: cash equity 500 USDT (NOT actual balance), planned per position <=0.25%=1.25 USDT, aggregated planned risk <=0.50%=2.50 USDT. Fixed hypothetical no-leverage increase. Stop price 4%, taker fee 0.08% per side; denominator 0.041568 initial notional; planned max notional = 1.25/0.041568 ~= 30.07169 USDT before contract rounding. Fees from public contract metadata cannot override the frozen higher tariff.
+Public detail must say active perpetual USDT-settled, contractSize/minVol/volUnit/maxVol finite and positive, apiAllowed true. Order book max 2,000ms observed age, HTTP <=2,000ms. Clock offset <=1,000ms. No crossed/stale book. Sizing via downward round only and contract minVol/maxVol. Require inherited independent 50-USDT size depth quote PASS for each; this is a conservative liquidity probe for <=30.07169 notional, NOT hypothetical fill proof.
+Return `SOURCE_CAPITAL_GATE_PASS_DIAGNOSTIC` only when both instruments' source, size and conservative 50-USDT quote checks pass. A single error => `SOURCE_CAPITAL_GATE_BLOCKED`. Source PASS does not prove that actual simulated account balance, fees, liquidation/maintenance, funding history, investor jurisdiction, fills or economic outcomes are feasible.
+Persist one JSON per run in a GitHub Actions immutable artifact containing per-symbol public source hashes, exchange timestamps, receipt timestamps, contract metadata, fee source conflict caveat, calculated quantity and max notional, and explicit no-trading fields. Never put secrets, user account IDs, or balances.
+Zero prospective signal observations and zero scored PnL. This is an engineering SOURCE gate only; no activation freeze.
