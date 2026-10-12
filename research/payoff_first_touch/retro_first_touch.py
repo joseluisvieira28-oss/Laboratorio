@@ -31,7 +31,7 @@ def load_seed():
     return fields,rows
 
 def price_from_source(row):
-    for key in ("entry_price","entry_px","price_entry"):
+    for key in ("entry","entry_price","entry_px","price_entry"):
         if row.get(key):
             return float(row[key]),key
     for key in ("qty","quantity"):
@@ -105,6 +105,7 @@ def main():
             if r.get("open","").lower()=="true":skip["open"]+=1;continue
             first,last=date(r["entry_dt"]),date(r["exit_dt"])
             if first>=END or last>=END:skip["excluded_2026"]+=1;continue
+            if first<datetime(2020,1,1,tzinfo=timezone.utc):skip["SOURCE_BLOCKED_2019"]+=1;continue
             if first>=last:skip["invalid_window"]+=1;continue
             selected.append((r,first,last))
         out["excluded"]=dict(skip)
