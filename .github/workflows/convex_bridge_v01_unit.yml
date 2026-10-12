@@ -1,0 +1,26 @@
+name: CONVEX TRAILING MEXC BRIDGE V01 REGRESSION
+on:
+  push:
+    branches: ['radar/convex-trailing-ethsolbnb-intake-2026-10-12']
+    paths:
+      - 'crypto_edge_radar/convex_trailing_ethsolbnb/bridge/**'
+      - '.github/workflows/convex_bridge_v01_unit.yml'
+permissions:
+  contents: read
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile without account network or orders
+        run: |
+          cd crypto_edge_radar/convex_trailing_ethsolbnb/bridge
+          python -m compileall -q convex_core.py mexc_futures.py supervisor.py test_bridge.py
+      - name: Test only pure and mocked MEXC contract behavior
+        run: |
+          cd crypto_edge_radar/convex_trailing_ethsolbnb/bridge
+          python -m unittest -v test_bridge
