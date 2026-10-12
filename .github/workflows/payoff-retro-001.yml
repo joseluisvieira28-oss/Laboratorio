@@ -22,6 +22,21 @@ jobs:
         run: |
           python --version
           python -m unittest discover -s research/payoff_first_touch -p 'test_first_touch.py' -v
+      - name: Diagnose public archive availability only
+        shell: bash
+        run: |
+          python - <<'PY'
+          import urllib.request, urllib.error
+          base="https://data.binance.vision/data/futures/um/monthly/klines/BTCUSDT/1h/"
+          for month in ("2019-10","2020-01","2021-01","2024-01","2025-01"):
+              for suffix in (".zip",".zip.CHECKSUM"):
+                  url=base+"BTCUSDT-1h-"+month+suffix
+                  try:
+                      req=urllib.request.Request(url,method="HEAD")
+                      with urllib.request.urlopen(req,timeout=15) as r:
+                          print("ARCHIVE_PROBE",month,suffix,r.status,r.headers.get("Content-Length"))
+                  except Exception as e: print("ARCHIVE_PROBE",month,suffix,"ERROR",repr(e))
+          PY
       - name: Official archive source and first-touch chronological diagnostic
         shell: bash
         run: |
