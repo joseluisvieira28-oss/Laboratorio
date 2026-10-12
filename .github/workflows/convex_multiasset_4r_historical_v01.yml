@@ -1,0 +1,28 @@
+name: CONVEX MULTIASSET 4R HIST 001
+on:
+  push:
+    branches: ['research/convex-multiasset-4r-historical-v01-2026-10-12']
+    paths: ['research/convex_multiasset_4r_v01/replay.py', 'research/convex_multiasset_4r_v01/test_replay.py', '.github/workflows/convex_multiasset_4r_historical_v01.yml']
+permissions:
+  contents: read
+jobs:
+  historical:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Record execution identity and test invariants
+        run: |
+          git rev-parse HEAD
+          python -m unittest discover -s research/convex_multiasset_4r_v01 -p test_replay.py -v
+      - name: Source gate all five then frozen replay
+        run: python research/convex_multiasset_4r_v01/replay.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: CONVEX-MULTIASSET-4R-HIST-001
+          path: research/convex_multiasset_4r_v01/receipts/
+          retention-days: 90
