@@ -1,0 +1,23 @@
+name: Overshoot unchanged-cache source counts only
+on:
+  push:
+    branches: ["ops/overshoot-coverage-source-recovery-2026-10-12"]
+    paths: ["ops/source_diagnostics/**", ".github/workflows/ops-overshoot-source-counts.yml"]
+permissions: {contents: read}
+jobs:
+  count-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.11"}
+      - run: pip install requests websockets
+      - run: python ops/source_diagnostics/overshoot_count_only.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: overshoot-source-counts-${{ github.run_id }}
+          path: evidence/
+          retention-days: 90
+          if-no-files-found: error
