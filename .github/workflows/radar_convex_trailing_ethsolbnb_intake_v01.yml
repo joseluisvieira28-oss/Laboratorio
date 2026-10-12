@@ -1,0 +1,37 @@
+name: RADAR CONVEX TRAILING ETH SOL BNB INTAKE V01
+on:
+  push:
+    branches: ['radar/convex-trailing-ethsolbnb-intake-2026-10-12']
+    paths:
+      - 'crypto_edge_radar/convex_trailing_ethsolbnb/**'
+      - 'crypto_edge_radar/deployment_registry_v1.json'
+      - '.github/workflows/radar_convex_trailing_ethsolbnb_intake_v01.yml'
+permissions:
+  contents: read
+jobs:
+  source-intake:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify checkout and immutable candidate identity
+        run: |
+          git rev-parse HEAD
+          python -m compileall -q crypto_edge_radar/convex_trailing_ethsolbnb
+      - name: Standalone source and trailing-state safety tests
+        run: python -m unittest discover -s crypto_edge_radar/convex_trailing_ethsolbnb -p 'test_intake.py' -v
+      - name: Legacy seven-motor registry invariants
+        run: |
+          cd crypto_edge_radar
+          python -m unittest discover -s tests -p 'test_registry_partition.py' -v
+      - name: Public-only MEXC three-asset exact 1H source probe
+        run: python crypto_edge_radar/convex_trailing_ethsolbnb/source_probe.py --live
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RADAR-CONVEX-TRAILING-ETHSOLBNB-INTEGRATION-SOURCE-V01
+          path: crypto_edge_radar/convex_trailing_ethsolbnb/RADAR_CONVEX_TRAILING_ETHSOLBNB_SOURCE_PROBE.json
+          retention-days: 90
