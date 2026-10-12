@@ -1,0 +1,57 @@
+name: PAYOFF-RETRO-001 frozen BTC first-touch probe
+on:
+  push:
+    branches:
+      - research/payoff-first-touch-identifiability-2026-10-12
+    paths:
+      - ".github/workflows/payoff-retro-001.yml"
+      - "research/payoff_first_touch/retro_first_touch.py"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  descriptive_only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Python and synthetic-only unit tests
+        run: |
+          python --version
+          python -m unittest discover -s research/payoff_first_touch -p 'test_first_touch.py' -v
+      - name: Diagnose public archive availability only
+        shell: bash
+        run: |
+          python - <<'PY'
+          import urllib.request, urllib.error
+          base="https://data.binance.vision/data/futures/um/monthly/klines/BTCUSDT/1h/"
+          for month in ("2019-10","2020-01","2021-01","2024-01","2025-01"):
+              for suffix in (".zip",".zip.CHECKSUM"):
+                  url=base+"BTCUSDT-1h-"+month+suffix
+                  try:
+                      req=urllib.request.Request(url,method="HEAD")
+                      with urllib.request.urlopen(req,timeout=15) as r:
+                          print("ARCHIVE_PROBE",month,suffix,r.status,r.headers.get("Content-Length"))
+                  except Exception as e: print("ARCHIVE_PROBE",month,suffix,"ERROR",repr(e))
+          PY
+      - name: Official archive source and first-touch chronological diagnostic
+        shell: bash
+        run: |
+          set -o pipefail
+          python research/payoff_first_touch/retro_first_touch.py | tee payoff_run.log
+          sha256sum research/payoff_first_touch/retro_verdict.json research/payoff_first_touch/retro_events.json
+      - name: Publish forensic receipts, never source or exchange secrets
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: payoff-retro-001-frozen-source-receipts
+          retention-days: 14
+          if-no-files-found: warn
+          path: |
+            research/payoff_first_touch/retro_verdict.json
+            research/payoff_first_touch/retro_events.json
+            payoff_run.log
