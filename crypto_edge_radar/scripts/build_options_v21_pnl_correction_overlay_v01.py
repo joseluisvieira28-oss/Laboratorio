@@ -6,6 +6,7 @@ import json
 import math
 from pathlib import Path
 from typing import Any
+from radar.mexc_accounting import reconcile_session
 
 
 class CorrectionOverlayError(RuntimeError):
@@ -89,7 +90,23 @@ def build_overlay(*,catalog_path:Path,receipt_root:Path)->dict[str,Any]:
             raise CorrectionOverlayError(f"{signal}: exit order identity mismatch")
 
         raw=path.read_bytes()
+        # A hash-bound catalog is provenance, not independent proof of fees,
+        # final funding or exchange net PnL. Missing originals fail closed.
+        try:
+            verified = reconcile_session(session)
+        except Exception as exc:
+            raise CorrectionOverlayError(f"{signal}: exchange accounting unverified: {exc}") from exc
+        catalog_net = _finite(expected.get("corrected_realized_net_pnl_usdt"), "catalog corrected net")
+        if abs(verified["realized_net_pnl_usdt"] - catalog_net) > 1e-8:
+            raise CorrectionOverlayError(f"{signal}: catalog/exchange net mismatch")
+        for field in ("entry_fee_usdt", "exit_fee_usdt"):
+            if abs(_finite(expected.get(field), field) - verified[field]) > 1e-8:
+                raise CorrectionOverlayError(f"{signal}: catalog/execution {field} mismatch")
+        actual_ids = {item["order_id"] for item in verified["execution_fee_evidence"]}
+        if not {str(expected["entry_order_id"]), str(expected["exit_order_id"])} <= actual_ids:
+            raise CorrectionOverlayError(f"{signal}: catalog/execution order identity mismatch")
         out.append({
+            "accounting_verified": True,
             "signal_identity":signal,
             "original_receipt_path":str(path),
             "original_receipt_sha256":hashlib.sha256(raw).hexdigest(),

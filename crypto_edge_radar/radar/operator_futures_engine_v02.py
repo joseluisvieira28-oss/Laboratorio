@@ -10,6 +10,7 @@ from pathlib import Path
 import time
 from typing import Any
 
+from .mexc_accounting import order_fee, reconcile_position
 from .market import MEXCFuturesPublicFeed
 from .mexc_auth_readonly import MEXCCredentials, MEXCFuturesAuthenticatedReadOnlyClient
 from .global_slot_reservation_v03 import (
@@ -143,25 +144,7 @@ def protective_prices(
 
 
 def order_fee_usdt(order: dict[str, Any]) -> float:
-    """MEXC may expose totalFee=0 while takerFee is non-zero."""
-    total_fee: float | None = None
-    if order.get("totalFee") is not None:
-        try:
-            total_fee = abs(float(order["totalFee"]))
-            if total_fee > 0:
-                return total_fee
-        except (TypeError, ValueError):
-            total_fee = None
-
-    component_total = 0.0
-    for key in ("takerFee", "makerFee"):
-        try:
-            component_total += abs(float(order.get(key, 0) or 0))
-        except (TypeError, ValueError):
-            pass
-    if component_total > 0:
-        return component_total
-    return total_fee or 0.0
+    return float(order_fee(order))
 
 
 def timing_state(
@@ -1358,7 +1341,19 @@ class OperatorFuturesEngineV02:
                 session_dir=str(session),
             )
 
-        entry_fee = order_fee_usdt(order)
+        _atomic_write(session / "FILL_RECEIPT.json", {
+            "receipt_type": "FILL_RECEIPT", "order": order,
+            "accounting_verified": False,
+        })
+        try:
+            entry_fee = order_fee_usdt(order)
+        except ValueError as exc:
+            return self._status(
+                "ENTRY_RECONCILIATION_REQUIRED",
+                reason=f"ENTRY_FEE_UNVERIFIED:{exc}",
+                signal_identity=signal_key, blind_resend_allowed=False,
+                global_slot_reserved=True, session_dir=str(session),
+            )
         fill_price = float(order.get("dealAvgPrice") or position.get("openAvgPrice"))
         if not math.isfinite(entry_fee) or not math.isfinite(fill_price) or fill_price <= 0:
             return self._status(
@@ -1625,17 +1620,31 @@ class OperatorFuturesEngineV02:
                 session_dir=str(session),
             )
 
-        exit_fee = sum(order_fee_usdt(order) for order in exit_orders)
-        gross = sum(float(order.get("profit", 0) or 0) for order in exit_orders)
-        num = sum(
-            float(order.get("dealAvgPrice", 0) or 0)
-            * float(order.get("dealVol", 0) or 0)
-            for order in exit_orders
-        )
-        den = sum(float(order.get("dealVol", 0) or 0) for order in exit_orders)
-        exit_price = num / den if den > 0 else None
-        entry_fee = float(active.get("entry_fee_usdt", 0) or 0)
-        net = gross + hold_fee - entry_fee - exit_fee
+        _atomic_write(session / "EXIT_FILL_RECEIPT.json", {
+            "receipt_type": "EXIT_FILL_RECEIPT", "orders": exit_orders,
+            "position_closed_verified": True, "reason": reason,
+        })
+        try:
+            history = self._historical_position(active=active, now=datetime.now(timezone.utc))
+            _atomic_write(session / "FINAL_POSITION_HISTORY.json", {"history": history})
+            entry_payload = _load(session / "FILL_RECEIPT.json")
+            accounting = reconcile_position(
+                active=active, entry_orders=[entry_payload["order"]],
+                exit_orders=exit_orders, history=history,
+            )
+        except Exception as exc:
+            return self._status(
+                "EXIT_RECONCILIATION_REQUIRED",
+                reason=f"ACCOUNTING_UNVERIFIED:{type(exc).__name__}:{exc}",
+                signal_identity=signal_key, session_dir=str(session),
+            )
+        exit_fee = accounting["exit_fee_usdt"]
+        entry_fee = accounting["entry_fee_usdt"]
+        gross = accounting["gross_close_profit_usdt"]
+        hold_fee = accounting["funding_hold_fee_usdt"]
+        net = accounting["realized_net_pnl_usdt"]
+        den = sum(float(order["dealVol"]) for order in exit_orders)
+        exit_price = sum(float(order["dealAvgPrice"]) * float(order["dealVol"]) for order in exit_orders) / den
         closed = datetime.now(timezone.utc)
         target = _utc(active["exit_target_utc"])
         late = max(0.0, (closed - target).total_seconds())
@@ -1675,6 +1684,7 @@ class OperatorFuturesEngineV02:
             "execution_failure": execution_failure,
             "open_position_after_reconciliation": False,
         }
+        reconciliation.update(accounting)
         _atomic_write(session / "POST_TRADE_RECONCILIATION.json", reconciliation)
         active["state"] = "CLOSED"
         active["closed_at_utc"] = reconciliation["closed_at_utc"]

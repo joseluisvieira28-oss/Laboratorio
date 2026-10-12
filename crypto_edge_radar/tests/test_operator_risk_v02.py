@@ -177,7 +177,7 @@ class OperatorRiskV02Tests(unittest.TestCase):
             self.assertEqual(loss["daily_realized_loss_usdt"], 3.0)
 
 
-    def test_hash_bound_correction_overlay_changes_loss_without_mutating_receipt(self):
+    def test_catalog_only_options_overlay_fails_closed_without_mutating_receipt(self):
         import os
         from unittest.mock import patch
         with tempfile.TemporaryDirectory() as td:
@@ -205,7 +205,7 @@ class OperatorRiskV02Tests(unittest.TestCase):
                     root,
                     now=datetime(2026, 9, 30, 12, 0, tzinfo=timezone.utc),
                 )
-            self.assertAlmostEqual(loss["daily_realized_loss_usdt"], 0.03032779)
+            self.assertTrue(loss["invalid_reconciliations"])
             self.assertEqual(receipt.read_bytes(), before)
 
     def test_correction_overlay_hash_mismatch_fails_closed(self):

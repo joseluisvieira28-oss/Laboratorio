@@ -81,6 +81,16 @@ def _pnl_with_overlay(
     overlay: dict[str, dict[str, Any]],
 ) -> float:
     signal = str(row.get("signal_identity") or "")
+    if signal.startswith("OPTIONS-SPOTPERP-001:V2.1:"):
+        from .mexc_accounting import reconcile_session
+        verified = reconcile_session(path.parent)
+        # Legacy receipts and overlays cannot authorize new risk from rounded
+        # pre-close funding or a catalog-only fee correction.
+        correction = overlay.get(signal)
+        claimed = (correction["corrected_realized_net_pnl_usdt"]
+                   if correction is not None else row.get("realized_net_pnl_usdt"))
+        if abs(_finite_float(claimed, field="claimed net") - verified["realized_net_pnl_usdt"]) > 1e-8:
+            raise ValueError("OPTIONS exchange reconciliation mismatch")
     correction = overlay.get(signal)
     if correction is None:
         return _receipt_pnl(row)

@@ -47,18 +47,13 @@ class BuildOptionsCorrectionOverlayTests(unittest.TestCase):
         catalog_path.write_text(json.dumps(catalog),encoding="utf-8")
         return catalog_path, session/"POST_TRADE_RECONCILIATION.json"
 
-    def test_overlay_is_bound_to_receipt_hash_and_order_identity(self):
+    def test_catalog_hash_and_order_ids_without_exchange_evidence_fail_closed(self):
         with tempfile.TemporaryDirectory() as td:
             root=Path(td)
             catalog,recon=self.fixture(root)
             before=recon.read_bytes()
-            out=build_overlay(catalog_path=catalog,receipt_root=root)
-            self.assertEqual(out["entry_count"],1)
-            row=out["entries"][0]
-            self.assertEqual(row["entry_order_id"],"111")
-            self.assertEqual(row["exit_order_id"],"222")
-            self.assertEqual(len(row["original_receipt_sha256"]),64)
-            self.assertAlmostEqual(row["corrected_realized_net_pnl_usdt"],-0.03032779)
+            with self.assertRaises(CorrectionOverlayError):
+                build_overlay(catalog_path=catalog,receipt_root=root)
             self.assertEqual(recon.read_bytes(),before)
 
     def test_wrong_exit_identity_fails_closed(self):
