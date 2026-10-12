@@ -49,3 +49,9 @@ Multi-Stable run 38233695509 remains in_progress; no new segment or duplicate wr
 ## Follow-up — 2026-10-12 12:05 UTC
 
 Exitflow actual hour 11 receipt verified from successful run38240470389,178 markets,economic_outcomes_opened=false. Hour12 absent/no active branch job before tick commit7c2d6199f5d34a211dc631135ca97640a5dddfe4; successful run38246839699 now produced hour12 with178 markets,economic_outcomes_opened=false. No backfill or G3 threshold/date changes. LICP run38243678634 frozen verdict remains13/20 FORWARD_INSUFFICIENT. Multi-Stable38233695509 remains in_progress; do not retrigger, preflight/artifact not yet certified. USOPEN at08:05 NY (DST) is outside its09/11 windows; Aave Oct12 already captured and not repeated. No new legitimate terminal or economic verdict. Existing heartbeat stays active, quiet while these accumulating states persist.
+
+## Follow-up — 2026-10-12 13:05 UTC / 09:05 NY (DST)
+
+USOPEN eligible Monday/non-holiday entry window: original collector identity7fb57c214b4e8dd250bbb24337d48f4afedf439a reverified; no existing runtime date or active branch job before wakeup. Tick commitf0e335b69b5b88b0370f7708ce0fc63936f941a8 launched run38253251101 SUCCESS. First actual ENTRY_CAPTURED at13:05:27.001431 UTC /09:05:27-04:00, receiptblob681a163d1e8dcfedffc0bad1cff904f8875a5560, BTC-23OCT26-83000-C/P. Public shadow observation only, no orders, no FORCE_PHASE. Exit remains pending15:00–15:10 UTC; this is not a complete economic observation or verdict. Do not repeat entry.
+
+Exitflow run38253252305 SUCCESS appended only actual hour13,178 markets,economic_outcomes_opened=false after absence/no-job checks. No historical backfill. Multi-Stable38233695509 still in_progress, no repeated segment or opened economics; inspect final artifact after completion. Aave Oct12 not repeated. Heartbeat stays active; no new scientific terminal.
