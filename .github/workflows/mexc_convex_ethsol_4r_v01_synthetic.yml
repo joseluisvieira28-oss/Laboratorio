@@ -1,0 +1,28 @@
+name: MEXC Convex ETH SOL 4R Research Invariants
+on:
+  push:
+    branches:
+      - research/mexc-convex-eth-sol-4r-v01-2026-10-12
+    paths:
+      - 'research/mexc_convex_ethsol_4r_v01/**'
+      - '.github/workflows/mexc_convex_ethsol_4r_v01_synthetic.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: mexc-convex-ethsol-4r-research-only
+  cancel-in-progress: false
+jobs:
+  pure-math-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile research-only module
+        run: python3 -m py_compile research/mexc_convex_ethsol_4r_v01/model.py research/mexc_convex_ethsol_4r_v01/test_model.py
+      - name: Test deterministic model (NO network, NO orders)
+        run: python3 -m unittest discover -s research/mexc_convex_ethsol_4r_v01 -p 'test_model.py' -v
+      - name: Assert no activation in research branch
+        run: |
+          test ! -e research/mexc_convex_ethsol_4r_v01/ACTIVATION_FREEZE_V0_1.md
+          echo 'SCIENCE_DESIGN_ONLY__NO_PROSPECTIVE_OUTCOMES__NO_ORDERS'
