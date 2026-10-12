@@ -1,0 +1,30 @@
+name: MEXC ETH SOL 4R Public Fair Funding Source Gate
+on:
+  push:
+    branches:
+      - research/mexc-convex-eth-sol-4r-v01-2026-10-12
+    paths:
+      - '.github/workflows/mexc_convex_ethsol_4r_v01_fair_funding.yml'
+permissions:
+  contents: read
+concurrency:
+  group: mexc-convex-ethsol-4r-fair-funding-one-shot
+  cancel-in-progress: false
+jobs:
+  public-source-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile public-only source probe
+        run: python3 -m py_compile research/mexc_convex_ethsol_4r_v01/public_fair_funding_probe.py
+      - name: Public MEXC fair price/funding GET (NO ACCOUNT, NO TRADE)
+        run: python3 -m research.mexc_convex_ethsol_4r_v01.public_fair_funding_probe
+      - name: Preserve unmodified source-only receipt for success OR blocker
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mexc-convex-ethsol-4r-v01-fair-funding-source
+          path: research/mexc_convex_ethsol_4r_v01/PUBLIC_FAIR_FUNDING_SOURCE_RECEIPT.json
+          if-no-files-found: warn
+          retention-days: 90
