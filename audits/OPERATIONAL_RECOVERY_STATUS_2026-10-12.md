@@ -39,3 +39,9 @@ Public diagnostic run 38224423382: HTTP 503 text/html, body 243 bytes, no JSON. 
 Last original Render log snapshot reviewed: checked_at_utc 2026-10-11T01:46:13.535Z, deployment d645891a588c594b69f41938263cc4066652aa9b, immutable event count 2723 as reported by runtime. OPTIONS 20/50, base descriptive -26.5982494 bps, stress -36.5800472 bps; CED 14/60 and 1/8 weeks, WAITING_SOURCE_ARCHIVE. These are historical runtime-reported values, not current account PnL or independently recalculated database results. Q4 ETF economic outcomes remain sealed.
 
 Main rechecked unchanged at 75fb36c8337c3221b7551c513e049cd472dad231. Scientific collector/protocol files unchanged in recovery comparisons. No claim that every candidate is operationally recovered.
+
+## Follow-up — 2026-10-12 11:05 UTC
+
+The suspension statement above describes the earlier diagnostic and is superseded: Render resumed at 09:36:26 UTC. Current evidence and limits are in audits/CRYPTO_LAB_FULL_OPERATIONAL_RECOVERY_2026-10-12.md and the Radar post-billing report on its operational branch. HEALTH remains DEGRADED_FAIL_CLOSED; no infrastructure action authorized by this update.
+
+Multi-Stable run 38233695509 remains in_progress; no new segment or duplicate writer launched. Its final preflight/capture artifact remains pending. LICP original run 38237327479 succeeded with frozen FORWARD_INSUFFICIENT, still 13/20 independent episodes; no new terminal verdict. At 11:05 UTC (07:05 America/New_York, DST), USOPEN is outside both capture windows. Aave Oct12 snapshot already exists and must not repeat. Exitflow 11 UTC was absent and no branch run active, so only the current-hour TICK was updated in commit e7a163618dca9dd4b8521a5c1ecb46ab002770f8; final source receipt pending. No historical gaps filled, no economics opened. Heartbeat remains active; routine unchanged/accumulating states require no notification.
