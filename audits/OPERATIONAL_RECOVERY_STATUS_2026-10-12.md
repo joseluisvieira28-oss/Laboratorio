@@ -22,3 +22,20 @@ USOPEN: first 30 completed eligible dates plus original PF/bootstrap/month/conce
 Pending further diagnosis: Overshoot exact-point coverage; Radar public health and source archive failure; Aave governance partial proofs; Options/liquidation/RR calibrations. DLS 2025 and INDEX are terminal/closed and will not be resurrected. TVFP terminal PASS_STRONG remains a measurement-only result. Triple verified build remains unarmed by this work.
 
 Quiet while unchanged; notify only meaningful operational change, terminal scientific result, failure or required user intervention. This status is a progress receipt, not a declaration that all candidates recovered or that any economic survivor exists.
+
+## Confirmed follow-up and Radar root cause
+
+Hourly heartbeat `crypto-recupera-o-at-veredito` is ACTIVE on this chat, at minute 01. It keeps no-change periods quiet and stops after the first new legitimate scientific terminal verdict. USOPEN still needs actual entry/exit captures; a passing NOOP transport test does not meet its sample gate.
+
+Draft PRs, unmerged and targeting original scientific branches:
+- USOPEN: https://github.com/joseluisvieira28-oss/Laboratorio/pull/190
+- Aave HF: https://github.com/joseluisvieira28-oss/Laboratorio/pull/191
+- Exitflow: https://github.com/joseluisvieira28-oss/Laboratorio/pull/192
+
+User explicitly confirmed Render workspace Laboratorio / tea-daffqvgu01pc73a9sad0 on 12/10. Read-only service and event evidence confirms **billing suspension**, 2026-10-11T02:35:41.415974Z; suspender_added event evt-db5fbvbm8hqs73c55cp0 (actor Billing), service_suspended evt-db5fbvbm8hqs73c55cpg. Service remains plan free / suspended; no billing balance or exact quota reason inferred. No paid upgrade, extra service, redeploy or second writer permitted as a workaround.
+
+Public diagnostic run 38224423382: HTTP 503 text/html, body 243 bytes, no JSON. Original health classifier remains DEGRADED; diagnostic SUCCESS is not runtime health PASS. Full proof on branch ops/radar-public-health-diagnosis-2026-10-12 at audits/RADAR_BILLING_SUSPENSION_ROOT_CAUSE_2026-10-12.md.
+
+Last original Render log snapshot reviewed: checked_at_utc 2026-10-11T01:46:13.535Z, deployment d645891a588c594b69f41938263cc4066652aa9b, immutable event count 2723 as reported by runtime. OPTIONS 20/50, base descriptive -26.5982494 bps, stress -36.5800472 bps; CED 14/60 and 1/8 weeks, WAITING_SOURCE_ARCHIVE. These are historical runtime-reported values, not current account PnL or independently recalculated database results. Q4 ETF economic outcomes remain sealed.
+
+Main rechecked unchanged at 75fb36c8337c3221b7551c513e049cd472dad231. Scientific collector/protocol files unchanged in recovery comparisons. No claim that every candidate is operationally recovered.
