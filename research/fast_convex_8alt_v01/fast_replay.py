@@ -85,7 +85,8 @@ def run_arm(five,funding,signals,tf_ms,max_hold_ms,slip_bps):
 
         if open_pos is not None:
             p=open_pos
-            # Open-time deadline precedes any OHLC extremes in that 5m candle.
+            # Open-time deadline and gaps are resolved at OPEN. 5m intrabar
+            # stop/target hit occurs AFTER open; stop-first ambiguity survives.
             if t>=p["entry_t"]+max_hold_ms:
                 raw=b["open"];reason="MAX_HOLD_OPEN"
             elif b["open"]<=p["stop"]:
@@ -99,9 +100,11 @@ def run_arm(five,funding,signals,tf_ms,max_hold_ms,slip_bps):
             else:
                 raw=None;reason=None
 
-            # Funding settled at bar open only if position held into that open.
-            # New opens + simultaneous closes at same t do not get invented event.
-            if not new_pos and raw is None and t in funding:
+            # Charge funding if position existed on arrival at settlement
+            # bar OPEN. This includes a later same-candle intrabar stop/TP.
+            # Entries exactly at funding instant / exits at OPEN are excluded.
+            open_exit=reason in ("MAX_HOLD_OPEN","STOP_OPEN_GAP","TARGET_OPEN_GAP")
+            if not new_pos and not open_exit and t in funding:
                 rate=funding[t]
                 cf=-p["qty"]*b["open"]*rate
                 cash+=cf
@@ -117,12 +120,12 @@ def run_arm(five,funding,signals,tf_ms,max_hold_ms,slip_bps):
                 y=annual_year(t+old.M5)
                 yearly[y]+=net
                 yearly_trades[y]+=1
-                record={"entry_t":p["entry_t"],"exit_t":t if reason.endswith("OPEN") else t+old.M5,
+                record={"entry_t":p["entry_t"],"exit_t":t if open_exit else t+old.M5,
                         "year":int(y),"reason":reason,"entry":p["entry"],
                         "exit":exit_price,"qty":p["qty"],"entry_fee":p["entry_fee"],
                         "exit_fee":exit_fee,"price_pnl":realized_price,
                         "funding":p["funding"],"net_pnl":net,
-                        "hold_hours":((t if reason.endswith("OPEN") else t+old.M5)-p["entry_t"])/old.HOUR,
+                        "hold_hours":((t if open_exit else t+old.M5)-p["entry_t"])/old.HOUR,
                         "notional_return_pct":100*net/(p["entry"]*p["qty"])}
                 trades.append(record)
                 exit_counts[reason]+=1
