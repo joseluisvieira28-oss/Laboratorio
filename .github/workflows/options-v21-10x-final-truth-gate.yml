@@ -1,0 +1,42 @@
+name: OPTIONS V21 10X FINAL VERDICT — OFFLINE
+
+on:
+  push:
+    branches:
+      - audit/options-v21-10x-final-truth-gate-2026-10-13
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  final-verdict:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: crypto_edge_radar
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Dependencies
+        run: python -m pip install -e .
+      - name: Compile Python
+        run: python -m compileall -q radar scripts tests
+      - name: Reproduce historical economics and safety closeout
+        run: python -m unittest tests.test_options_v21_10x_final_truth_gate -v
+      - name: Recheck 10x mock-only execution invariants
+        run: |
+          python -m unittest tests.test_options_v21_futures_execution_signal -v
+          python -m unittest tests.test_options_v21_futures_autolive_engine -v
+          python -m unittest tests.test_mexc_auth_trade_options_v02 -v
+      - name: Generate machine-verifiable NO-GO receipt
+        run: python scripts/options_v21_10x_final_truth_gate.py --out OPTIONS_V21_10X_FINAL_NO_GO.json
+      - name: Save final safety/economic verdict
+        uses: actions/upload-artifact@v4
+        with:
+          name: options-v21-10x-offline-final-no-go
+          path: crypto_edge_radar/OPTIONS_V21_10X_FINAL_NO_GO.json
+          if-no-files-found: error
+          retention-days: 30
