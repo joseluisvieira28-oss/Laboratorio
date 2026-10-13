@@ -23,14 +23,16 @@ class MatrixSyntheticTest(unittest.TestCase):
         for label,tf in m.TFS:
             with self.subTest(tf=label):
                 src=minute_5_bars(m.PRE,tf//m.M5*2)
-                rs=m.resample(src,tf)
+                with patch.object(m,"END",m.PRE+2*tf):
+                    rs=m.resample(src,tf)
                 self.assertEqual(len(rs),2)
                 self.assertEqual(rs[0]["volume"],10*tf//m.M5)
                 self.assertEqual(rs[1]["t"]-rs[0]["t"],tf)
 
     def test_parity_with_official_source(self):
         src=minute_5_bars(m.PRE,12)
-        a=m.resample(src,m.HOUR)
+        with patch.object(m,"END",m.PRE+m.HOUR):
+            a=m.resample(src,m.HOUR)
         self.assertEqual(m.verify_one_hour_parity(a,{a[0]["t"]:dict(a[0])})["status"],"PASS")
         b=dict(a[0]);b["volume"]+=0.2
         with self.assertRaisesRegex(ValueError,"PARITY_MISMATCH"):
