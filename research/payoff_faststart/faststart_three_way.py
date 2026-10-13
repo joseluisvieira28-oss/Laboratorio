@@ -29,7 +29,7 @@ def validate(s):
     times=[int(x["t"]) for x in b]
     if times[0]!=BOUNDARY-200*H or times[200]!=BOUNDARY:
         raise ValueError("WARMUP_NOT_IMMEDIATELY_BEFORE_BOUNDARY")
-    if any(t%H or v-u!=H for u,v in zip(times,times[1:])):
+    if any(u%H or v-u!=H for u,v in zip(times,times[1:])):
         raise ValueError("UNVERIFIED_HOURLY_CONTIGUITY")
     if digest(b[:200])!=s.get("warmup_sha256"):
         raise ValueError("WARMUP_DATA_DIGEST_MISMATCH")
