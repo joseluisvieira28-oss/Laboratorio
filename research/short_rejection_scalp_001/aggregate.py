@@ -87,6 +87,14 @@ def aggregate(source):
             "stress_net_pct":s["cumulative_net_pct"],
             "delayed_placebo_base_net_pct":n["cumulative_net_pct"],
             "base_minus_placebo_net_pct_points":b["cumulative_net_pct"]-n["cumulative_net_pct"],
+            "base_closed_trades":b["closed_trades"],
+            "base_profit_factor":b["profit_factor"],
+            "base_closed_winrate_pct":b["win_rate_pct"],
+            "base_model_fees_usdt":b["fees_closed_usdt"],
+            "base_model_funding_usdt":b["funding_closed_usdt"],
+            "base_price_pnl_after_slippage_before_fees_usdt":b["closed_price_pnl_usdt"],
+            "base_model_closed_net_usdt":b["closed_net_pnl_usdt"],
+            "base_static_closed_net_if_fees_zero_usdt":b["closed_price_pnl_usdt"]+b["funding_closed_usdt"],
             "positive_base_stress_pf":(b["cumulative_net_pct"]>0 and s["cumulative_net_pct"]>0 and
                                       (b["profit_factor"] or 0)>1 and (s["profit_factor"] or 0)>1),
             "model_only_not_statistically_proven":True})
