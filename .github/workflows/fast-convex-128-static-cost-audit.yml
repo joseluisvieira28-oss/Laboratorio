@@ -1,0 +1,42 @@
+name: FAST-CONVEX 128 Arms Source-Frozen Fee and Funding Accounting Audit
+on:
+  push:
+    branches:
+      - research/fast-convex-8alt-2023-25-v01-2026-10-13
+    paths:
+      - 'research/fast_convex_cost_audit_20261013/**'
+      - '.github/workflows/fast-convex-128-static-cost-audit.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  immutable-trade-ledger-accounting-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Read only finished original frozen source receipts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p research/fast_convex_cost_audit_20261013/immutable_source
+          gh run download 38446416504 --repo joseluisvieira28-oss/Laboratorio \
+            --pattern 'FAST-CONVEX-V1-*-16-ARMS-NO-OOS' \
+            --dir research/fast_convex_cost_audit_20261013/immutable_source
+      - name: Compute price versus fee/funding static journal-only sensitivity for all 128
+        run: |
+          python -m research.fast_convex_cost_audit_20261013.static_accounting \
+            --source-dir research/fast_convex_cost_audit_20261013/immutable_source \
+            --output-dir research/fast_convex_cost_audit_20261013/receipts
+      - name: Publish exhaustive non-dynamic cashflow accounting, zero alpha promotion
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: FAST-CONVEX-V1-128-STATIC-COST-ATTRIBUTION-NO-OOS
+          path: research/fast_convex_cost_audit_20261013/receipts/**
+          if-no-files-found: warn
+          retention-days: 30

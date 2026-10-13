@@ -1,0 +1,44 @@
+name: FAST-CONVEX V1 Consolidate 128 Frozen Historical Arms
+on:
+  push:
+    branches:
+      - research/fast-convex-8alt-2023-25-v01-2026-10-13
+    paths:
+      - 'research/fast_convex_8alt_v01/master_128.py'
+      - '.github/workflows/fast-convex-master-128-2023-25.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  immutable-source-consolidation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Fetch all eight original frozen 128-arm source artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p research/fast_convex_8alt_v01/immutable_original
+          gh run download 38446416504 --repo joseluisvieira28-oss/Laboratorio \
+            --pattern 'FAST-CONVEX-V1-*-16-ARMS-NO-OOS' \
+            --dir research/fast_convex_8alt_v01/immutable_original
+      - name: Aggregate exactly 128 modeled source outcomes and six strict financial-frequency gates
+        run: |
+          python -m research.fast_convex_master_final_20261013.master \
+            --source-dir research/fast_convex_8alt_v01/immutable_original \
+            --output-dir research/fast_convex_8alt_v01/master_receipts
+      - name: Archive full 128-case results CSV JSON even if gate failed
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: FAST-CONVEX-128-CASE-MASTER-SCIENCE-RESEARCH-ONLY
+          path: research/fast_convex_8alt_v01/master_receipts/**
+          retention-days: 30
+          if-no-files-found: warn
+
+# Aggregate only after immutable original run 38446416504 completed SUCCESS (no new backtests).
