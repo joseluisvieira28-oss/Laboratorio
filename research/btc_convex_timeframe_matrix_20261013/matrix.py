@@ -82,39 +82,45 @@ def resample(market5,tf):
     return out
 
 def verify_one_hour_parity(resampled,official):
-    """Source amendment 001: hard-block on price divergence, audit EVERY volume mismatch.
+    """V02 source discrepancy CENSUS, never used for outcome selection.
 
-    The official Binance 1h and its canonical 5m archive have been observed to
-    disagree on base-volume for a historical bar despite checksummed archives.
-    No economic outcomes were opened before this source-only repair.
+    OFFICIAL 5m is the sole canonical strategy market tape, official 1h is
+    independent comparison and must not be represented as equivalent.
     """
-    if len(resampled)!=len(official):raise ValueError("ONE_HOUR_PARITY_COUNT")
-    vol_mismatch=0
-    max_abs_vol=0.0
-    max_rel_vol=0.0
-    first=[]
+    if len(resampled)!=len(official):raise ValueError("OFFICIAL_1H_SOURCE_COVERAGE_MISMATCH")
+    keys=("open","high","low","close","volume")
+    mismatch_count={k:0 for k in keys}
+    max_abs={k:0. for k in keys}
+    max_rel={k:0. for k in keys}
+    bars_mismatching=0
+    examples=[]
     for bar in resampled:
         expected=official.get(bar["t"])
-        if expected is None:raise ValueError("ONE_HOUR_PARITY_TIME")
-        for key in ("open","high","low","close"):
-            observed,reference=bar[key],expected[key]
-            if not math.isclose(observed,reference,rel_tol=0.000001,abs_tol=0.000001):
-                raise ValueError(f"ONE_HOUR_PRICE_PARITY_MISMATCH:{bar['t']}:{key}:{observed}:{reference}")
-        observed,reference=bar["volume"],expected["volume"]
-        if not math.isclose(observed,reference,rel_tol=0.000001,abs_tol=0.000001):
-            vol_mismatch+=1
-            diff=abs(observed-reference)
-            max_abs_vol=max(max_abs_vol,diff)
-            max_rel_vol=max(max_rel_vol,diff/max(abs(reference),1e-12))
-            if len(first)<10:
-                first.append({"t":bar["t"],"aggregated_5m_volume":observed,
-                              "official_1h_volume":reference,"difference":diff})
-    return {"checked":len(resampled),"price_status":"PASS_ALL_OHLC",
-            "volume_mismatch_count":vol_mismatch,
-            "max_abs_volume_mismatch":max_abs_vol,
-            "max_relative_volume_mismatch":max_rel_vol,
-            "first_10_mismatches":first,
-            "status":"PRICE_PARITY_PASS_VOLUME_DIFFERENCES_RECORDED" if vol_mismatch else "PASS_ALL_FIELDS"}
+        if expected is None:raise ValueError("OFFICIAL_1H_SOURCE_TIME_MISMATCH")
+        mismatches=[]
+        for k in keys:
+            v,w=bar[k],expected[k]
+            if not math.isclose(v,w,rel_tol=1e-6,abs_tol=1e-6):
+                mismatch_count[k]+=1
+                diff=abs(v-w)
+                max_abs[k]=max(max_abs[k],diff)
+                max_rel[k]=max(max_rel[k],diff/max(abs(w),1e-12))
+                mismatches.append(k)
+        if mismatches:
+            bars_mismatching+=1
+            if len(examples)<10:
+                examples.append({"t":bar["t"],"fields":mismatches,
+                                 "canonical_5m":{k:bar[k] for k in mismatches},
+                                 "independent_1h":{k:expected[k] for k in mismatches}})
+    return {"checked":len(resampled),
+            "official_1h_bar_mismatch_count":bars_mismatching,
+            "per_field_mismatch_count":mismatch_count,
+            "max_abs_by_field":max_abs,
+            "max_relative_by_field":max_rel,
+            "first_10_conflicts":examples,
+            "canonical":"OFFICIAL_CONSECUTIVE_5M_ALL_FOUR_TFS",
+            "independent_1h_parity_claim":False,
+            "status":"SOURCE_CONFLICTS_RECORDED_NOT_PARITY" if bars_mismatching else "SOURCE_FULL_PARITY"}
 
 def simulate(timeframe,bars_tf,market5,funding,slipbps,*,include_trades=False):
     """All 5m bars are closed before TF trailing decisions; stop cannot peek at TF high."""
@@ -257,12 +263,13 @@ def simulate(timeframe,bars_tf,market5,funding,slipbps,*,include_trades=False):
 
 def main():
     OUT.mkdir(parents=True,exist_ok=True)
-    result={"protocol":"PRE_OUTCOME_PROTOCOL.md",
+    result={"protocol":"NEW_SOURCE_FAMILY_V02_PREOUTCOME_FREEZE.md",
             "period":"2021-01-01/2026-01-01 UTC, 2020-11/12 source-only warmup",
             "status":"SOURCE_BLOCKED",
             "comparable_timeframes":["15m","30m","1h","4h"],
             "simulator":"Recovered Parent signal / Parent V5 4% initial + 12% nonlatched trail activated on TF close >=5%; 5m execution proxy",
             "alpha_credit":"NONE_ALREADY_KNOWN_HISTORY",
+            "official_1h_source_equivalence":"NOT_ASSUMED; SOURCE_CONFLICT_CENSUS_MANDATORY",
             "live_trading":False}
     try:
         five,one,funding,manifest=fetch_sources()
@@ -298,12 +305,12 @@ def main():
                         writer.writeheader();writer.writerows(tr)
                 print("MODEL",key,"closed",model["closed_trades"],"net",round(model["marked_return_pct"],4),
                       "PF",round(model["profit_factor"],4) if model["profit_factor"] else None,flush=True)
-        result["status"]="HISTORICAL_TIMEFRAME_MATRIX_COMPLETED_NO_OOS_CREDIT"
+        result["status"]="HISTORICAL_5M_CANONICAL_COMPLETED_NO_OOS_CREDIT"
     except Exception as exc:
         result["reason"]=type(exc).__name__+":"+str(exc)
     (OUT/"MATRIX_RESULTS.json").write_text(json.dumps(result,indent=2,sort_keys=True)+"\n",encoding="utf8")
-    print("SUMMARY",json.dumps({k:v for k,v in result.items() if k in ("status","reason","source_counts","one_hour_parity","aggregated_bars","models")},sort_keys=True))
-    if result["status"]!="HISTORICAL_TIMEFRAME_MATRIX_COMPLETED_NO_OOS_CREDIT":
+    print("SUMMARY",json.dumps({k:v for k,v in result.items() if k in ("status","reason","source_counts","one_hour_parity","signal_source_parity","aggregated_bars","models")},sort_keys=True))
+    if result["status"]!="HISTORICAL_5M_CANONICAL_COMPLETED_NO_OOS_CREDIT":
         raise SystemExit(2)
 
 if __name__=="__main__":

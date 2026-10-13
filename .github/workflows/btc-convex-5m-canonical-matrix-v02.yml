@@ -1,0 +1,34 @@
+name: BTC-CONVEX Canonical 5m TF Matrix V02 Descriptive Only
+on:
+  push:
+    branches:
+      - research/btc-convex-5m-canonical-matrix-v02-2026-10-13
+    paths:
+      - 'research/btc_convex_timeframe_matrix_20261013/**'
+      - '.github/workflows/btc-convex-5m-canonical-matrix-v02.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  descriptive-only-matrix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 24
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Synthetic causal/source discrepancy QA (no public outcomes opened)
+        run: |
+          python -m unittest discover -s research/btc_convex_timeframe_matrix_20261013 -p 'test_*.py' -v
+          python -m py_compile research/btc_convex_timeframe_matrix_20261013/matrix.py
+      - name: Reconstruct historical 2021-2025 four-TF SOURCE 5m CANONICAL ONLY
+        run: python -m research.btc_convex_timeframe_matrix_20261013.matrix
+      - name: Save source disagreement census and eight ledgers
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: BTC-CONVEX-5M-CANONICAL-4TF-V02-DESCRIPTIVE-NO-OOS
+          path: research/btc_convex_timeframe_matrix_20261013/receipts/**
+          if-no-files-found: warn
+          retention-days: 30
