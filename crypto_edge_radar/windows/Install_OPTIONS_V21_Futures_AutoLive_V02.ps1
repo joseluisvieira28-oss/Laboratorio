@@ -15,6 +15,10 @@ if (-not (Test-Path $keyPath) -or -not (Test-Path $secretPath)) {
     throw "Existing MEXC DPAPI credentials were not found under LOCALAPPDATA."
 }
 
+if (Test-Path (Join-Path $root "AUTO_MICROLIVE_FUTURES_ARMED.json")) {
+    throw "LEGACY_ARM_RECEIPT_PRESENT: refusing installer changes. Audit active orders/positions separately."
+}
+
 Get-ChildItem $root -Recurse -File | Unblock-File -ErrorAction SilentlyContinue
 
 $legacy = Get-ScheduledTask -TaskName $legacyTaskName -ErrorAction SilentlyContinue
@@ -33,22 +37,9 @@ if ($current) {
 New-Item -ItemType Directory -Force -Path (Join-Path $root "data") | Out-Null
 New-Item -ItemType Directory -Force -Path (Join-Path $root "live_receipts\options_v21_futures") | Out-Null
 
-$armed = [ordered]@{
-    authority = "TIER2-AUTO-MICROLIVE-POLICY-V2.0-FROZEN-2026-09-25"
-    execution_contract = "OPTIONS-SPOTPERP-001-V2.1-FUTURES-ONLY-AUTOLIVE-V0.2.1-SOURCE-HOTFIX"
-    strategy_id = "OPTIONS-SPOTPERP-001-V2.1"
-    execution_fork = "FUTURES_ONLY"
-    symbol = "BTC_USDT"
-    long_enabled = $true
-    short_enabled = $true
-    max_notional_usdt = 10
-    leverage = 1
-    margin_mode = "ISOLATED"
-    maximum_concurrent_positions = 1
-    installed_by_windows_user = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
-    armed_at_utc = (Get-Date).ToUniversalTime().ToString("o")
-}
-$armed | ConvertTo-Json -Depth 5 | Set-Content -Path (Join-Path $root "AUTO_MICROLIVE_FUTURES_ARMED.json") -Encoding UTF8
+# Installation is not trading authorization. Never create an armed receipt here.
+# Refuse to rewrite existing schedules when an older armed receipt is present.
+# The operator must verify and migrate that state with a separate audited procedure.
 
 $actionArgs = '-NoProfile -ExecutionPolicy Bypass -File "' + $runner + '"'
 $action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument $actionArgs -WorkingDirectory $root
@@ -57,7 +48,7 @@ $principal = New-ScheduledTaskPrincipal -UserId ([System.Security.Principal.Wind
 $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -WakeToRun -RestartCount 999 -RestartInterval (New-TimeSpan -Minutes 1) -ExecutionTimeLimit ([TimeSpan]::Zero) -MultipleInstances IgnoreNew
 
 Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Force | Out-Null
-Start-ScheduledTask -TaskName $taskName
+Disable-ScheduledTask -TaskName $taskName | Out-Null
 Start-Sleep -Seconds 3
 
 $task = Get-ScheduledTask -TaskName $taskName
@@ -68,10 +59,10 @@ Write-Host "========== OPTIONS V2.1 FUTURES-ONLY AUTO-MICROLIVE V0.2.1 =========
 Write-Host "Task                 : $taskName"
 Write-Host "Task state           : $($task.State)"
 Write-Host "Last task result     : $($info.LastTaskResult)"
-Write-Host "Armed                : YES"
+Write-Host "Armed                : NO (installer never grants authority)"
 Write-Host "Instrument           : BTC_USDT PERPETUAL ONLY"
-Write-Host "LONG                 : ENABLED"
-Write-Host "SHORT                : ENABLED"
+Write-Host "LONG                 : NOT ARMED"
+Write-Host "SHORT                : NOT ARMED"
 Write-Host "Spot orders          : DISABLED / NOT INCLUDED"
 Write-Host "Max live notional    : 10 USDT cap, scaled down by frozen parent weight"
 Write-Host "Leverage             : exactly 1x"
