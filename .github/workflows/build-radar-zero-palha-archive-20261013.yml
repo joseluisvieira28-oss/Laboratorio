@@ -28,6 +28,15 @@ jobs:
         run: |
           python -m compileall -q radar windows_node_entry.py tests
           python -m unittest tests.test_registry_partition tests.test_dashboard tests.test_windows_resilient_bootstrap -v
+      - name: PowerShell cutover script syntax (no execution)
+        shell: pwsh
+        run: |
+          $err=$null
+          [void][System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path "windows/RADAR_ZERO_PALHA_WINDOWS_CUTOVER_V01.ps1"),
+            [ref]$null,[ref]$err
+          )
+          if ($err.Count -gt 0) { $err | Format-List; throw "cutover script syntax invalid" }
       - name: Build zero-watcher Windows diagnostic node
         run: |
           pyinstaller --clean --onefile --name CryptoEdgeRadarNode --paths . --add-data "deployment_registry_v1.json;." windows_node_entry.py
@@ -63,5 +72,6 @@ jobs:
             crypto_edge_radar/dist/CryptoEdgeRadarNode.exe.sha256.txt
             crypto_edge_radar/deployment_registry_v1.json
             crypto_edge_radar/archive_registry_v1.json
+            crypto_edge_radar/windows/RADAR_ZERO_PALHA_WINDOWS_CUTOVER_V01.ps1
           retention-days: 21
           if-no-files-found: error
