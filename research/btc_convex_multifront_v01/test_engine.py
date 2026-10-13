@@ -120,5 +120,24 @@ class FrozenContracts(unittest.TestCase):
         self.assertEqual(validate_signal(p),"PASS")
 
 
+
+class EconomicsHurdle(unittest.TestCase):
+    def test_fixed_barrier_hurdle_after_fee_and_slip(self):
+        from economic_hurdle import ideal_net_outcomes
+        b=ideal_net_outcomes(2)
+        s=ideal_net_outcomes(5)
+        self.assertTrue(0 < b["win_fraction"] < 0.0075)
+        self.assertLess(b["loss_fraction"], -0.0035)
+        self.assertTrue(0.45 < b["break_even_win_rate"] < 0.55)
+        self.assertGreater(s["break_even_win_rate"], b["break_even_win_rate"])
+        self.assertLess(s["win_fraction"],b["win_fraction"])
+
+    def test_two_barrier_identity_is_zero_at_threshold(self):
+        from economic_hurdle import ideal_net_outcomes
+        d=ideal_net_outcomes(2)
+        p=d["break_even_win_rate"]
+        expected=p*d["win_fraction"]+(1-p)*d["loss_fraction"]
+        self.assertAlmostEqual(expected,0,places=12)
+
 if __name__ == "__main__":
     unittest.main()
