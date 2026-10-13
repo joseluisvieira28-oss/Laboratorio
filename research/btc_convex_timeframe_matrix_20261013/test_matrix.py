@@ -29,19 +29,21 @@ class MatrixSyntheticTest(unittest.TestCase):
                 self.assertEqual(rs[0]["volume"],10*tf//m.M5)
                 self.assertEqual(rs[1]["t"]-rs[0]["t"],tf)
 
-    def test_parity_with_official_source(self):
+    def test_official_1h_conflicts_are_counted_never_selected(self):
         src=minute_5_bars(m.PRE,12)
         with patch.object(m,"END",m.PRE+m.HOUR):
             a=m.resample(src,m.HOUR)
-        self.assertEqual(m.verify_one_hour_parity(a,{a[0]["t"]:dict(a[0])})["status"],"PASS_ALL_FIELDS")
-        b=dict(a[0]);b["volume"]+=0.2
+        aligned=m.verify_one_hour_parity(a,{a[0]["t"]:dict(a[0])})
+        self.assertEqual(aligned["status"],"SOURCE_FULL_PARITY")
+        self.assertEqual(aligned["official_1h_bar_mismatch_count"],0)
+        b=dict(a[0]);b["volume"]+=0.2;b["high"]+=0.2
         audit=m.verify_one_hour_parity(a,{a[0]["t"]:b})
-        self.assertEqual(audit["volume_mismatch_count"],1)
-        self.assertEqual(audit["price_status"],"PASS_ALL_OHLC")
-        self.assertEqual(audit["status"],"PRICE_PARITY_PASS_VOLUME_DIFFERENCES_RECORDED")
-        b=dict(a[0]); b["high"]+=0.2
-        with self.assertRaisesRegex(ValueError,"PRICE_PARITY_MISMATCH"):
-            m.verify_one_hour_parity(a,{a[0]["t"]:b})
+        self.assertEqual(audit["status"],"SOURCE_CONFLICTS_RECORDED_NOT_PARITY")
+        self.assertEqual(audit["official_1h_bar_mismatch_count"],1)
+        self.assertEqual(audit["per_field_mismatch_count"]["high"],1)
+        self.assertEqual(audit["per_field_mismatch_count"]["volume"],1)
+        self.assertFalse(audit["independent_1h_parity_claim"])
+        self.assertEqual(audit["first_10_conflicts"][0]["t"],m.PRE)
 
     def test_entry_after_closed_bar_for_four_tfs(self):
         for _,tf in m.TFS:
