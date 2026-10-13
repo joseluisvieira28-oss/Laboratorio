@@ -1,0 +1,55 @@
+name: CONVEX SHORT 8 Alt 5 TF Master Audit (Historical Only)
+on:
+  push:
+    branches:
+      - audit/convex-short-mirror-8alt-5tf-2026-10-13
+    paths:
+      - '.github/workflows/convex-short-80-master.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  immutable-80-arm-consolidation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 13
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Wait only for original frozen public-market modeling run to finish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for attempt in $(seq 1 35); do
+            st=$(gh run view 38437548175 --repo joseluisvieira28-oss/Laboratorio --json status --jq .status)
+            if [[ "$st" == "completed" ]]; then
+              outcome=$(gh run view 38437548175 --repo joseluisvieira28-oss/Laboratorio --json conclusion --jq .conclusion)
+              [[ "$outcome" == "success" ]] || { echo "ORIGINAL_PRODUCER_FAILED_$outcome"; exit 1; }
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "SOURCE_INCOMPLETE_AFTER_35_CHECKS"; exit 2
+      - name: Download 8 existing original unmodified historical producer artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p research/convex_short_mirror_8alt_5tf_20261013/source
+          gh run download 38437548175 --repo joseluisvieira28-oss/Laboratorio \
+            --pattern 'CONVEX-SHORT-8ALT-5TF-2023-25-*' \
+            --dir research/convex_short_mirror_8alt_5tf_20261013/source
+      - name: Validate source checksums, all 80 study arms and original exit ledgers
+        run: |
+          python -m research.convex_short_mirror_8alt_5tf_20261013.aggregate \
+            --source-dir research/convex_short_mirror_8alt_5tf_20261013/source \
+            --output-dir research/convex_short_mirror_8alt_5tf_20261013/aggregate_receipts
+      - name: Retain auditable 80-cell historic matrix (including failures)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CONVEX-SHORT-80-CELLS-FINAL-MASTER-2023-25
+          path: research/convex_short_mirror_8alt_5tf_20261013/aggregate_receipts/**
+          retention-days: 30
+          if-no-files-found: warn
