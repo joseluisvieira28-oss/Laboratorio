@@ -191,6 +191,8 @@ def build_control_room_state(
 ) -> dict[str, Any]:
     selected_registry = Path(registry_path) if registry_path else DEFAULT_REGISTRY
     registry = _read_json(selected_registry, {"candidates": []})
+    zero_retirement = ((registry.get("operator_retirement") or {}).get("mode")
+                       == "ZERO_ACTIVE_FISHING_CANDIDATES")
     service_status_path = Path(status_path)
     service = _read_json(service_status_path, {"health": "UNKNOWN"})
     events = _read_jsonl_tail(Path(notification_path))
@@ -212,14 +214,17 @@ def build_control_room_state(
     )
 
     candidates = registry.get("candidates") or []
-    focus_ids = registry.get("focus_strategy_ids") or [
-        "ETF-CME-INSTFLOW-001",
-        "BNB-LAUNCHPOOL-DEMAND-001",
-        "OPTIONS-SPOTPERP-001-V2.1",
-        "TFG-DONCHIAN-REGIME-ADAPTATION-V1",
-        "HTF-DH03-12H-STANDALONE-FORWARD-V1",
-    ]
+    # Do not resurrect retired motors from the old five-motor fallback.
+    focus_ids = registry.get("focus_strategy_ids")
+    if focus_ids is None:
+        focus_ids = [str(c.get("strategy_id")) for c in candidates if isinstance(c, dict)]
     focus_id_set = {str(x) for x in focus_ids}
+    retired_registry_clean = (not candidates and not focus_ids) if zero_retirement else True
+    if zero_retirement and not retired_registry_clean:
+        # Never display a mismatched active list under a retired authority.
+        candidates = []
+        focus_ids = []
+        focus_id_set = set()
 
     bots: list[dict[str, Any]] = []
     for candidate in candidates:
@@ -350,7 +355,16 @@ def build_control_room_state(
         key: sum(1 for bot in focus if bot["operating_state"] == key)
         for key in ("ARMED", "SHADOW", "GATED", "BLOCKED")
     }
-    registry_ok = bool(registry.get("registry_version")) and len(focus) == len(focus_id_set)
+    registry_ok = (bool(registry.get("registry_version"))
+                   and len(focus) == len(focus_id_set)
+                   and retired_registry_clean)
+    if zero_retirement:
+        # A cached/legacy standing authority can remain on disk. Do not
+        # misrepresent it as a new operational capability of this radar.
+        mexc["standing_operator_authority"]["radar_scope"] = "RETIRED_EXCLUSIONS_ONLY"
+        mexc["standing_operator_authority"]["active"] = False
+        mexc["standing_operator_authority"]["routes"] = {}
+        mexc["standing_operator_authority"]["status"] = "NOT_APPLICABLE_TO_RETIRED_RADAR"
     service_health = str(service.get("health", "UNKNOWN"))
 
     # Local V0.14.1 control-plane health is independent of one legacy market
@@ -364,6 +378,8 @@ def build_control_room_state(
     cirv_runtime = str(cirv_status.get("status") or "MISSING").upper()
     if not registry_ok:
         effective_health = "REGISTRY_DESYNC"
+    elif zero_retirement:
+        effective_health = "NO_ACTIVE_CANDIDATES"
     elif (
         forward_supervisor == "FAIL_CLOSED"
         or forward_health == "DEGRADED_FAIL_CLOSED"
@@ -382,7 +398,7 @@ def build_control_room_state(
         "build_id": os.getenv("RADAR_BUILD_ID", "UNKNOWN"),
         "system": {
             "name": "CRYPTO EDGE RADAR",
-            "mode": "AGGRESSIVE_FAIL_CLOSED",
+            "mode": "ZERO_PALHA_OPERATOR_RETIREMENT" if zero_retirement else "AGGRESSIVE_FAIL_CLOSED",
             "market_provider": service.get("provider", "UNKNOWN"),
             "health": effective_health,
             "market_health": service_health,
@@ -399,6 +415,8 @@ def build_control_room_state(
             "focus_expected": len(focus_id_set),
             "focus_loaded": len(focus),
             "focus_strategy_ids": list(focus_ids),
+            "operator_retirement_active": zero_retirement,
+            "retired_registry_clean": retired_registry_clean,
         },
         "local_runtime": {
             "dh03_status_path": str(dh03_status_path),
@@ -438,13 +456,13 @@ HTML = r"""<!doctype html>
 :root{--bg:#07090d;--panel:#10141b;--line:#252c37;--text:#f4f7fb;--muted:#9099a8;--ok:#59e19a;--warn:#ffd166;--bad:#ff6b6b;--cyan:#55d7ff}
 *{box-sizing:border-box}body{margin:0;background:#07090d;color:var(--text);font-family:Inter,system-ui,sans-serif}.wrap{max-width:1400px;margin:auto;padding:28px}.top{display:flex;justify-content:space-between;gap:20px;margin-bottom:22px}.eyebrow{font-size:12px;letter-spacing:.18em;color:var(--cyan);font-weight:800}.title{font-size:34px;font-weight:850;margin-top:5px}.sub{color:var(--muted);margin-top:6px}.health,.metric,.card,.feed,.cell{border:1px solid var(--line);background:var(--panel);border-radius:15px}.health{padding:13px 16px;min-width:260px}.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:8px;background:var(--warn)}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}.metric{padding:17px}.metric .n{font-size:28px;font-weight:850}.metric .k{font-size:11px;color:var(--muted);letter-spacing:.1em}.bots{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}.card{padding:20px}.row{display:flex;justify-content:space-between;gap:12px}.id{font-size:17px;font-weight:800}.badge{font-size:11px;font-weight:850;padding:6px 9px;border-radius:999px;border:1px solid var(--line)}.ARMED{color:var(--ok)}.SHADOW{color:var(--cyan)}.GATED{color:var(--warn)}.BLOCKED{color:var(--bad)}.meta,.risk{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px}.meta{grid-template-columns:1fr 1fr}.cell{padding:11px}.cell b{display:block;font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:5px}.blockers{font-size:12px;color:#c1c8d4;line-height:1.5;margin-top:13px}.section{margin-top:20px}.section h2{font-size:13px;color:var(--muted);letter-spacing:.09em}.feed{padding:14px;max-height:250px;overflow:auto;font:11px ui-monospace,monospace}.event{padding:7px;border-bottom:1px solid #1a202b}.footer{font-size:11px;color:#667080;margin-top:16px;text-align:right}.diag{font-size:11px;color:var(--muted);margin-top:6px}@media(max-width:850px){.grid,.risk,.bots{grid-template-columns:1fr}.top{flex-direction:column}.health{width:100%}}
 </style></head><body><div class="wrap">
-<div class="top"><div><div class="eyebrow">AGGRESSIVE MODE · SCIENCE FROZEN · V3 AUTHORITY</div><div class="title">Crypto Edge Radar — Control Room</div><div class="sub">Prospective observation · fail-closed deployment gates · no discretionary rescue · 🎣 eight-motor fishing watch</div></div><div class="health"><div><span id="dot" class="dot"></span><strong id="health">LOADING</strong></div><div class="sub" id="provider"></div><div class="diag" id="diag"></div></div></div>
+<div class="top"><div><div class="eyebrow">AGGRESSIVE MODE · SCIENCE FROZEN · V3 AUTHORITY</div><div class="title">Crypto Edge Radar — Control Room</div><div class="sub">Prospective observation · fail-closed deployment gates · no discretionary rescue · No active fishing strategies · retired 2026-10-13</div></div><div class="health"><div><span id="dot" class="dot"></span><strong id="health">LOADING</strong></div><div class="sub" id="provider"></div><div class="diag" id="diag"></div></div></div>
 <div class="grid"><div class="metric"><div class="n" id="armed">0</div><div class="k">🐟 HOOKED · ARMED</div></div><div class="metric"><div class="n" id="shadow">0</div><div class="k">🎣 LINES IN WATER</div></div><div class="metric"><div class="n" id="gated">0</div><div class="k">🪝 WAITING GATE</div></div><div class="metric"><div class="n" id="blocked">0</div><div class="k">⛔ BLOCKED</div></div></div>
 <div class="section"><h2>MEXC EXECUTION CONTROL PLANE</h2><div class="risk" id="mexc"></div></div><div class="bots" id="bots"></div><div class="section"><h2>FROZEN RISK POLICY</h2><div class="risk" id="risk"></div></div><div class="section"><h2>RECENT MACHINE EVENTS</h2><div class="feed" id="events"></div></div><div class="footer" id="stamp"></div></div>
 <script>
 const esc=s=>String(s??'').replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const fishingLabel=s=>({ARMED:'🐟 HOOKED · ARMED',SHADOW:'🎣 FISHING',GATED:'🪝 WAITING',BLOCKED:'⛔ BLOCKED'}[s]||s);
-async function refresh(){try{const r=await fetch('/api/state',{cache:'no-store'}),d=await r.json(),s=d.system||{},rg=d.registry||{},mx=d.mexc_execution||{},ex=mx.exchange_authenticated_preflight||{},rf=mx.account_risk_firewall||{},sa=mx.standing_operator_authority||{};document.getElementById('health').textContent=s.health||'UNKNOWN';document.getElementById('provider').textContent=(s.market_provider||'UNKNOWN')+' · '+(s.universe||[]).join(' / ');document.getElementById('dot').style.background=s.health==='OK'?'var(--ok)':'var(--bad)';document.getElementById('diag').textContent=(d.build_id||'UNKNOWN')+' · registry '+(d.registry_version||'NULL')+' · '+(rg.focus_loaded??0)+'/'+(rg.focus_expected??0)+' focus loaded';for(const k of ['armed','shadow','gated','blocked'])document.getElementById(k).textContent=(d.focus_counts||{})[k.toUpperCase()]||0;document.getElementById('mexc').innerHTML=[['MEXC auth',ex.status],['Receipt age',ex.age_seconds==null?'N/A':Math.round(ex.age_seconds)+'s'],['Risk firewall',rf.status],['Standing authority',sa.status]].map(x=>`<div class="cell"><b>${esc(x[0])}</b>${esc(x[1]??'MISSING')}</div>`).join('');document.getElementById('bots').innerHTML=(d.bots||[]).map(b=>{const x=b.execution||{},o=b.runtime_observability||{};return `<div class="card"><div class="row"><div class="id">${esc(b.strategy_id)}</div><div class="badge ${esc(b.operating_state)}">${esc(fishingLabel(b.operating_state))}</div></div><div class="meta"><div class="cell"><b>Tier</b>${esc(b.tier)}</div><div class="cell"><b>Deployment baseline (historical)</b>${esc(b.deployment_baseline)}</div><div class="cell"><b>Collector / watcher</b>${o.collector_alive?'ALIVE':'NOT PROVEN'}<br><span class="diag">${esc(b.runtime_status||'MISSING')}</span></div><div class="cell"><b>Last successful cycle</b>${esc(o.last_successful_cycle_utc||'NOT PROVEN')}</div><div class="cell"><b>MEXC auth</b>${esc(x.exchange_preflight)}</div><div class="cell"><b>Risk firewall</b>${esc(x.risk_firewall)}</div><div class="cell"><b>Capital</b>${esc(x.capital_feasibility)}</div><div class="cell"><b>Standing auth</b>${x.standing_authority?'ACTIVE':'INACTIVE / N/A'}</div><div class="cell"><b>Signal</b>${esc(x.signal_state)}</div><div class="cell"><b>Micro-live</b>${esc(x.micro_live_readiness)}</div></div><div class="blockers"><b>Why not armed:</b> ${esc((x.readiness_blockers||[]).join(' · ')||'NONE')}<br>${(b.blockers||[]).length?'<b>Registry/runtime gates:</b> '+b.blockers.map(esc).join(' · '):esc(b.reason||'No active blocker text')}</div></div>`}).join('')||'<div class="card BLOCKED">REGISTRY DESYNC — no focus bots loaded.</div>';const rp=d.risk_policy||{};document.getElementById('risk').innerHTML=[['Trade',rp.planned_risk_per_trade_pct],['Concurrent',rp.max_concurrent_risk_pct],['Daily stop',rp.daily_stop_pct],['Weekly stop',rp.weekly_stop_pct]].map(x=>`<div class="cell"><b>${x[0]}</b>${Number(x[1]||0).toFixed(2)}%</div>`).join('');const ev=(d.recent_events||[]).slice().reverse();document.getElementById('events').innerHTML=ev.length?ev.map(e=>`<div class="event">${esc(e.ts_utc||'')} · <b>${esc(e.event_type||'EVENT')}</b> · ${esc(JSON.stringify(e.payload||{}))}</div>`).join(''):'No machine events yet.';document.getElementById('stamp').textContent='Updated '+(d.generated_at_utc||'');}catch(e){document.getElementById('health').textContent='DASHBOARD ERROR';document.getElementById('dot').style.background='var(--bad)';}}
+async function refresh(){try{const r=await fetch('/api/state',{cache:'no-store'}),d=await r.json(),s=d.system||{},rg=d.registry||{},mx=d.mexc_execution||{},ex=mx.exchange_authenticated_preflight||{},rf=mx.account_risk_firewall||{},sa=mx.standing_operator_authority||{};document.getElementById('health').textContent=s.health||'UNKNOWN';document.getElementById('provider').textContent=(s.market_provider||'UNKNOWN')+' · '+(s.universe||[]).join(' / ');document.getElementById('dot').style.background=s.health==='OK'?'var(--ok)':'var(--bad)';document.getElementById('diag').textContent=(d.build_id||'UNKNOWN')+' · registry '+(d.registry_version||'NULL')+' · '+(rg.focus_loaded??0)+'/'+(rg.focus_expected??0)+' focus loaded';for(const k of ['armed','shadow','gated','blocked'])document.getElementById(k).textContent=(d.focus_counts||{})[k.toUpperCase()]||0;document.getElementById('mexc').innerHTML=[['MEXC auth',ex.status],['Receipt age',ex.age_seconds==null?'N/A':Math.round(ex.age_seconds)+'s'],['Risk firewall',rf.status],['Standing authority',sa.status]].map(x=>`<div class="cell"><b>${esc(x[0])}</b>${esc(x[1]??'MISSING')}</div>`).join('');document.getElementById('bots').innerHTML=(d.bots||[]).map(b=>{const x=b.execution||{},o=b.runtime_observability||{};return `<div class="card"><div class="row"><div class="id">${esc(b.strategy_id)}</div><div class="badge ${esc(b.operating_state)}">${esc(fishingLabel(b.operating_state))}</div></div><div class="meta"><div class="cell"><b>Tier</b>${esc(b.tier)}</div><div class="cell"><b>Deployment baseline (historical)</b>${esc(b.deployment_baseline)}</div><div class="cell"><b>Collector / watcher</b>${o.collector_alive?'ALIVE':'NOT PROVEN'}<br><span class="diag">${esc(b.runtime_status||'MISSING')}</span></div><div class="cell"><b>Last successful cycle</b>${esc(o.last_successful_cycle_utc||'NOT PROVEN')}</div><div class="cell"><b>MEXC auth</b>${esc(x.exchange_preflight)}</div><div class="cell"><b>Risk firewall</b>${esc(x.risk_firewall)}</div><div class="cell"><b>Capital</b>${esc(x.capital_feasibility)}</div><div class="cell"><b>Standing auth</b>${x.standing_authority?'ACTIVE':'INACTIVE / N/A'}</div><div class="cell"><b>Signal</b>${esc(x.signal_state)}</div><div class="cell"><b>Micro-live</b>${esc(x.micro_live_readiness)}</div></div><div class="blockers"><b>Why not armed:</b> ${esc((x.readiness_blockers||[]).join(' · ')||'NONE')}<br>${(b.blockers||[]).length?'<b>Registry/runtime gates:</b> '+b.blockers.map(esc).join(' · '):esc(b.reason||'No active blocker text')}</div></div>`}).join('')||'<div class="card BLOCKED">'+(rg.operator_retirement_active?'ZERO ACTIVE STRATEGIES — operator retired all previous motors. Evidence remains archived.':'REGISTRY DESYNC — no focus bots loaded.')+'</div>';const rp=d.risk_policy||{};document.getElementById('risk').innerHTML=[['Trade',rp.planned_risk_per_trade_pct],['Concurrent',rp.max_concurrent_risk_pct],['Daily stop',rp.daily_stop_pct],['Weekly stop',rp.weekly_stop_pct]].map(x=>`<div class="cell"><b>${x[0]}</b>${Number(x[1]||0).toFixed(2)}%</div>`).join('');const ev=(d.recent_events||[]).slice().reverse();document.getElementById('events').innerHTML=ev.length?ev.map(e=>`<div class="event">${esc(e.ts_utc||'')} · <b>${esc(e.event_type||'EVENT')}</b> · ${esc(JSON.stringify(e.payload||{}))}</div>`).join(''):'No machine events yet.';document.getElementById('stamp').textContent='Updated '+(d.generated_at_utc||'');}catch(e){document.getElementById('health').textContent='DASHBOARD ERROR';document.getElementById('dot').style.background='var(--bad)';}}
 refresh();setInterval(refresh,3000);
 </script></body></html>"""
 
