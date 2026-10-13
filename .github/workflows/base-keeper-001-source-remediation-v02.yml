@@ -1,0 +1,43 @@
+name: BASE KEEPER 001 V02 — ONE-SHOT PUBLICNODE REMEDIATION
+
+on:
+  push:
+    branches:
+      - research/base-keeper-source-remediation-v02-2026-10-13
+    paths:
+      - '.github/workflows/base-keeper-001-source-remediation-v02.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  v02-source-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate ABI/event decoders on synthetic fixture only
+        run: python -m unittest research.base_keeper.test_base_keeper_source_gate_v01 -v
+      - name: One PublicNode source attempt, no trading
+        run: python -m research.base_keeper.base_keeper_source_gate_v02
+      - name: Verify classification is not misrepresented
+        run: |
+          python - <<'PY'
+          import json
+          x=json.load(open("BASE_KEEPER_001_V02_SOURCE_RECEIPT.json"))
+          assert x["source_verdict"] in ("SOURCE_PASS","SOURCE_EMPTY","SOURCE_BLOCKED")
+          assert x["economic_verdict"]=="UNPROVEN_NOT_A_LIVE_EDGE"
+          assert x.get("net_profit_usd") is None
+          assert x["source_revision"]=="SOURCE_REMEDIATION_V0.2_SINGLE_ATTEMPT"
+          print("SOURCE_VERDICT", x["source_verdict"], "NO_TRADING",True)
+          PY
+      - name: Store source receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: base-keeper-001-v02-source-remediation
+          path: BASE_KEEPER_001_V02_SOURCE_RECEIPT.json
+          retention-days: 30
+          if-no-files-found: error
