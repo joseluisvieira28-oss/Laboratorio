@@ -1,0 +1,42 @@
+name: CONVEX MultiAlt Consolidate Verified Historical Receipts
+on:
+  push:
+    branches:
+      - research/convex-multialt-4tf-2026-10-13
+    paths:
+      - 'research/convex_multialt_aggregate_20261013/**'
+      - '.github/workflows/convex-multialt-aggregate-2026-10-13.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  read-existing-source-artifacts-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Read exactly original eight public-source modeling receipts from immutable run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p research/convex_multialt_aggregate_20261013/sources
+          gh run download 38430847396 --repo joseluisvieira28-oss/Laboratorio \
+            --pattern 'CONVEX-MULTIALT-2021-25-*' \
+            --dir research/convex_multialt_aggregate_20261013/sources
+      - name: Assert all 8 source artifacts and retain blocked status separately
+        run: |
+          python -m research.convex_multialt_aggregate_20261013.aggregate \
+            --source-dir research/convex_multialt_aggregate_20261013/sources \
+            --output-dir research/convex_multialt_aggregate_20261013/receipts
+      - name: Upload audited 64-row master matrix and source hashes
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CONVEX-MULTIALT-MASTER-64-ROW-AUDIT
+          path: research/convex_multialt_aggregate_20261013/receipts/**
+          retention-days: 30
+          if-no-files-found: warn
