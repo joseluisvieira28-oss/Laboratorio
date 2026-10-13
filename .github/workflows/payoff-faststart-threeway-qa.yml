@@ -1,0 +1,27 @@
+name: PAYOFF Fast Start source-only 3-way QA (ZERO ORDERS)
+on:
+  push:
+    branches:
+      - research/payoff-faststart-shadow-2026-10-13
+    paths:
+      - ".github/workflows/payoff-faststart-threeway-qa.yml"
+      - "research/payoff_faststart/faststart_three_way.py"
+      - "research/payoff_faststart/test_faststart_three_way.py"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  purely_synthetic_fast_start:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Same three unchanged engines; test 200 past hours + just 2 new hours
+        run: python -m unittest discover -s research/payoff_faststart -p 'test_faststart_three_way.py' -v

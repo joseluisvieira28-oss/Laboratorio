@@ -1,0 +1,33 @@
+name: PAYOFF fast-start Parent V02 warmup evidence (NO ORDERS)
+on:
+  push:
+    branches:
+      - research/payoff-faststart-shadow-2026-10-13
+    paths:
+      - ".github/workflows/payoff-faststart-source-probe.yml"
+      - "research/payoff_faststart/parent_v02_warmup_source_probe.py"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  parent_authorized_public_source_only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Parent V0.2 public BTC 1h 200-bar indicator warmup only
+        run: python research/payoff_faststart/parent_v02_warmup_source_probe.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: payoff-faststart-parent-v02-public-warmup-source-only
+          retention-days: 14
+          if-no-files-found: warn
+          path: research/payoff_faststart/data/PARENT_V02_WARMUP_PUBLIC_SOURCE.json
