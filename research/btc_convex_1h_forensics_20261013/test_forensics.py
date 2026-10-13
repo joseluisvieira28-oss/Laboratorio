@@ -68,6 +68,7 @@ class ForensicsSyntheticTests(unittest.TestCase):
         m,rows=fixture()
         rows[0]["entry_fees"]="0.0"
         rows[0]["net_pnl"]=str(float(rows[0]["net_pnl"])+.16)
+        rows[0]["notional_return_pct"]=str(float(rows[0]["net_pnl"])/200*100)
         with self.assertRaisesRegex(ValueError,"ENTRY_FEE_ASSUMPTION_MISMATCH"):
             f.analyze_arm(m,rows)
 
