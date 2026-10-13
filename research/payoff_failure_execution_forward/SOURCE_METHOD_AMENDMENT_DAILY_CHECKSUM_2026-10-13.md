@@ -1,0 +1,10 @@
+# SOURCE-ONLY AMENDMENT — daily checksum-first forward intake (2026-10-13)
+
+Pre-outcome, before any permitted post-2026-10-14 market outcome is read. This amends **source provenance only**, never the 4R/Parent signals, price barriers, cost model, capital policy, time exit or evaluation criteria.
+
+- Prefer the public Binance Vision **daily** USD-M BTCUSDT 1h `klines` and `markPriceKlines` ZIP/CHECKSUM pair for each complete UTC calendar day starting **2026-10-14 UTC**; strict SHA256 equality, 24 hours/day, exact 1h continuity, no fabrication/backfill of unapproved earlier 2026 history. This is a deterministic provenance improvement over the separately prepared REST source collector.
+- Funding from Binance public `GET /fapi/v1/fundingRate` only, bounded by exactly the same new post-boundary dates; require settlement-edge coverage and timestamp normalization limits; fail closed if lagging.
+- Daily archives for a day need not become available the next day: delayed publication is `SOURCE_BLOCKED`, never auto substitute another source because a model's economic results look better. The existing REST collector is **a separate provisional observational tool**, and cannot be silently mixed into the authoritative daily-archive rollup without a new availability-only freeze before outcome access.
+- With daily-only full-candle collection and 200h exclusively post-boundary warmup, the first eligible complete-day intake is **on/after 2026-10-23 UTC**, conditional on availability of Oct 22 archive and enough funding data. There is no legitimate 2026 prospective result today, October 13.
+- The new daily source module and synthetic checksum/gap/funding tests on this research branch are nontrading research tools. GH Action synthetic QA run [38358778991](https://github.com/joseluisvieira28-oss/Laboratorio/actions/runs/38358778991) SUCCESS. No actual daily source collection or 2026 outcomes opened.
+- No 24x7 collector installed, no default-branch merge, no Render mutation, no trading authority, no exchange account or order.
