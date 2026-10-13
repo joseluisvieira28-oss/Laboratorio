@@ -35,7 +35,7 @@ class MirrorShortTests(unittest.TestCase):
         globals()["sma"]=real.__globals__["sma"]
         globals()["stdev"]=real.__globals__["stdev"]
         def fake_parent(bars):
-            return [False]*len(bars),[{"rsi":81,"z":3.1,"vol_flag":True} for _ in bars]
+            return [False]*len(bars),[{"rsi":81,"z":3.1,"vol_flag":False} for _ in bars]
         with patch.object(old.src,"load_parent",return_value=fake_parent):
             signals=m.mirror_short_signals(bars)
         self.assertTrue(signals[-1])
