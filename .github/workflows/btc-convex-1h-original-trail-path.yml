@@ -1,0 +1,46 @@
+name: BTC-CONVEX 1H Parent Trailing Path Provenance Audit
+on:
+  push:
+    branches:
+      - research/btc-convex-1h-economic-forensics-v01-2026-10-13
+    paths:
+      - 'research/btc_convex_1h_protection_20261013/**'
+      - '.github/workflows/btc-convex-1h-original-trail-path.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  parent-stop-path-forensics-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Synthetic 5m -> 1h stop activation, weakening and stop-first regression tests
+        run: |
+          python -m unittest discover -s research/btc_convex_1h_protection_20261013 -p 'test_*.py' -v
+          python -m py_compile research/btc_convex_1h_protection_20261013/trail_path_forensics.py
+      - name: Fetch only frozen prior run trade ledgers, no new outcomes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p research/btc_convex_1h_protection_20261013/original_artifact
+          gh run download 38426153613 --repo joseluisvieira28-oss/Laboratorio \
+            --name BTC-CONVEX-5M-CANONICAL-4TF-V02-DESCRIPTIVE-NO-OOS \
+            --dir research/btc_convex_1h_protection_20261013/original_artifact
+      - name: SHA256 parity of original historical source and exact stop path audit
+        run: |
+          python -m research.btc_convex_1h_protection_20261013.trail_path_forensics \
+            --source-dir research/btc_convex_1h_protection_20261013/original_artifact \
+            --output-dir research/btc_convex_1h_protection_20261013/receipts
+      - name: Archive immutable original Parent stop chronology receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: BTC-CONVEX-1H-TRAIL-RESET-GIVEBACK-FORENSICS
+          path: research/btc_convex_1h_protection_20261013/receipts/**
+          retention-days: 30
+          if-no-files-found: warn
