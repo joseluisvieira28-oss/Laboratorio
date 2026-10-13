@@ -1,0 +1,47 @@
+name: BTC-CONVEX 1H Frozen Ledger Forensics (No Trading)
+on:
+  push:
+    branches:
+      - research/btc-convex-1h-economic-forensics-v01-2026-10-13
+    paths:
+      - 'research/btc_convex_1h_forensics_20261013/**'
+      - '.github/workflows/btc-convex-1h-frozen-ledger-forensics.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  forensic-immutable-existing-ledger:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Test synthetic cashflow and fail-closed contracts
+        run: |
+          python -m unittest discover -s research/btc_convex_1h_forensics_20261013 -p 'test_*.py' -v
+          python -m py_compile research/btc_convex_1h_forensics_20261013/forensics.py
+      - name: Download exact pre-existing completed 1H ledger archive only
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p research/btc_convex_1h_forensics_20261013/original_artifact
+          gh run download 38426153613 --repo joseluisvieira28-oss/Laboratorio \
+            --name BTC-CONVEX-5M-CANONICAL-4TF-V02-DESCRIPTIVE-NO-OOS \
+            --dir research/btc_convex_1h_forensics_20261013/original_artifact
+          test -f research/btc_convex_1h_forensics_20261013/original_artifact/MATRIX_RESULTS.json
+      - name: Validate 1h BASE and STRESS original ledgers and calculate cost forensic
+        run: |
+          python -m research.btc_convex_1h_forensics_20261013.forensics \
+            --source-dir research/btc_convex_1h_forensics_20261013/original_artifact \
+            --output-dir research/btc_convex_1h_forensics_20261013/receipts
+      - name: Retain independently auditable forensic receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: BTC-CONVEX-1H-FROZEN-LEDGER-COST-FUNDING-FORENSICS
+          path: research/btc_convex_1h_forensics_20261013/receipts/**
+          retention-days: 30
+          if-no-files-found: warn
