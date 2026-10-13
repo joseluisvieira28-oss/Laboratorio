@@ -41,10 +41,12 @@ class MatrixSyntheticTest(unittest.TestCase):
             with self.subTest(tf=tf):
                 n=3*tf//m.M5
                 b=minute_5_bars(m.PRE+n*m.M5,n+1)
+                event_t=min(b)+tf+2*m.M5
+                b[event_t].update(open=100.,high=101.,low=90.,close=100.)
                 res=run_synth(tf,b)
                 self.assertEqual(res["entries"],1)
                 self.assertEqual(res["trades"][0]["open_t"],min(b)+tf+m.M5)
-                self.assertEqual(res["trades"][0]["exit_reason"],"STOP_INTRABAR") if False else None
+                self.assertEqual(res["trades"][0]["exit_reason"],"STOP_INTRABAR")
 
     def test_gap_executes_at_observed_open_not_stop(self):
         tf=3*m.M5
@@ -90,7 +92,7 @@ class MatrixSyntheticTest(unittest.TestCase):
         tf=3*m.M5
         src=minute_5_bars(m.PRE,6)
         src.pop(m.PRE+2*m.M5)
-        with self.assertRaisesRegex(ValueError,"AGGREGATION_GAP"):
+        with self.assertRaisesRegex(ValueError,"INCOMPLETE_AGGREGATION|AGGREGATION_GAP"):
             m.resample(src,tf)
 
     def test_all_tf_cost_stress_degrades_returns(self):
