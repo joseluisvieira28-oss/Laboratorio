@@ -57,15 +57,15 @@ class EngineSafetyV02Tests(unittest.TestCase):
     @staticmethod
     def _valid_arm():
         return {
-            "authority": "TIER2-AUTO-MICROLIVE-POLICY-V2.0-FROZEN-2026-09-25",
-            "execution_contract": "OPTIONS-SPOTPERP-001-V2.1-FUTURES-ONLY-AUTOLIVE-V0.2.1-SOURCE-HOTFIX",
+            "authority": "OPTIONS_V21_FUTURES_10X_PROSPECTIVE_V0.1_NOT_LIVE",
+            "execution_contract": "OPTIONS-SPOTPERP-001-V2.1-FUTURES-10X-PROTECTED-PROSPECTIVE-V0.1",
             "strategy_id": "OPTIONS-SPOTPERP-001-V2.1",
             "execution_fork": "FUTURES_ONLY",
             "symbol": "BTC_USDT",
             "long_enabled": True,
             "short_enabled": True,
             "max_notional_usdt": 10,
-            "leverage": 1,
+            "leverage": 10,
             "margin_mode": "ISOLATED",
             "maximum_concurrent_positions": 1,
             "installed_by_windows_user": "test\\operator",
@@ -97,7 +97,7 @@ class EngineSafetyV02Tests(unittest.TestCase):
             ("execution_contract", "INVALID"),
             ("symbol", "ETH_USDT"),
             ("long_enabled", "true"),
-            ("leverage", 10),
+            ("leverage", 1),
             ("max_notional_usdt", 100),
         ):
             with self.subTest(key=key), tempfile.TemporaryDirectory() as td:
