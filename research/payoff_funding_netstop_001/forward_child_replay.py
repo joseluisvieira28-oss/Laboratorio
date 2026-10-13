@@ -24,7 +24,7 @@ def replay_forward_child(b, funding, marks, fee, slip, begin, end, *,
     signal_override is synthetic QA-only and never used by forward orchestrator.
     """
     core.check_bars(b, begin, end)
-    if begin < 1791950400000:  # 2026-10-14 00:00:00 UTC, no old outcomes
+    if begin < 1791936000000:  # 2026-10-14 00:00:00 UTC, no old outcomes
         raise ValueError("PRE_BOUNDARY_ECONOMIC_REPLAY_FORBIDDEN")
     if end <= begin or not (0 <= fee <= .01 and 0 <= slip <= .01):
         raise ValueError("INVALID_FORWARD_RANGE_OR_COST")
