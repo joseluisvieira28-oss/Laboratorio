@@ -9,6 +9,7 @@ import unittest
 from radar.mexc_auth_readonly import MEXCCredentials
 from radar.options_v21_futures_autolive_engine import (
     OptionsV21FuturesAutoLiveEngine,
+    OptionsFuturesAutoLiveError,
     _direction_meta,
     _exclusive_write,
     _floor_step,
@@ -18,6 +19,7 @@ from radar.options_v21_futures_autolive_engine import (
 class NoPositionRO:
     def open_positions(self, symbol=None): return []
     def open_orders(self, symbol=None): return []
+    def stop_orders(self, symbol=None): return []
 
 
 class EngineSafetyV02Tests(unittest.TestCase):
@@ -113,6 +115,57 @@ class EngineSafetyV02Tests(unittest.TestCase):
             (root / "ARMED.json").write_text(json.dumps(self._valid_arm()), encoding="utf-8-sig")
             gate = self._engine(root)._global_gate(datetime(2026, 9, 26, tzinfo=timezone.utc))
             self.assertTrue(gate["pass"], gate["blockers"])
+
+    def test_corrupt_local_active_state_cannot_be_ignored(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            bad = root / "receipts" / "session-a" / "ACTIVE_TRADE_STATE.json"
+            bad.parent.mkdir(parents=True)
+            bad.write_text("{corrupt")
+            e = self._engine(root)
+            with self.assertRaisesRegex(OptionsFuturesAutoLiveError, "UNREADABLE_ACTIVE_TRADE_RECEIPT"):
+                e._global_gate(datetime(2026, 9, 26, tzinfo=timezone.utc))
+
+    def test_corrupt_realized_pnl_cannot_reset_loss_cap(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            bad = root / "receipts" / "session-b" / "POST_TRADE_RECONCILIATION.json"
+            bad.parent.mkdir(parents=True)
+            bad.write_text("{corrupt")
+            e = self._engine(root)
+            with self.assertRaisesRegex(OptionsFuturesAutoLiveError, "UNREADABLE_REALIZED_LOSS_RECEIPT"):
+                e._global_gate(datetime(2026, 9, 26, tzinfo=timezone.utc))
+
+    def test_broker_stop_must_match_exact_position_direction_volume_price(self):
+        with tempfile.TemporaryDirectory() as td:
+            e = self._engine(Path(td))
+            pos = {"positionId": 123, "holdVol": 4}
+            live = {
+                "symbol": "BTC_USDT", "positionId": 123, "positionType": 1,
+                "vol": 4, "stopLossPrice": 59000.0, "state": 1, "isFinished": 0,
+            }
+            class StopRO(NoPositionRO):
+                def __init__(self, row):
+                    self.row = row
+                def stop_orders(self, symbol):
+                    return [self.row]
+            e.futures_ro = StopRO(live)
+            self.assertTrue(e._broker_stop_proven(position=pos, direction="LONG", expected_stop=59000.0))
+            for change in (
+                {"positionId": 222},
+                {"positionType": 2},
+                {"vol": 3},
+                {"stopLossPrice": 61000.0},
+                {"state": 2},
+                {"isFinished": 1},
+            ):
+                with self.subTest(change=change):
+                    e.futures_ro = StopRO({**live, **change})
+                    self.assertFalse(e._broker_stop_proven(position=pos, direction="LONG", expected_stop=59000.0))
+            e.futures_ro = StopRO({
+                **live, "positionType": 2, "stopLossPrice": 61000.0,
+            })
+            self.assertTrue(e._broker_stop_proven(position=pos, direction="SHORT", expected_stop=61000.0))
 
     def test_kill_switch_fails_closed(self):
         with tempfile.TemporaryDirectory() as td:

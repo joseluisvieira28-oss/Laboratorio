@@ -78,7 +78,7 @@ class TradeTransportTests(unittest.TestCase):
         )
         ack=c.submit_market_order(
             symbol="BTC_USDT",volume_contracts=1,side=3,
-            external_oid="lab-test-id",position_mode=1
+            external_oid="lab-test-id",position_mode=1,stop_loss_price=61000.0
         )
         self.assertEqual(ack["orderId"],"12345")
         req=op.requests[0]
@@ -89,6 +89,7 @@ class TradeTransportTests(unittest.TestCase):
         self.assertEqual(body["positionMode"],1)
         self.assertEqual(body["leverage"],1)
         self.assertEqual(body["side"],3)
+        self.assertEqual(body["stopLossPrice"],61000.0)
         self.assertNotIn("positionId",body)
 
     def test_close_short_requires_position_id(self):

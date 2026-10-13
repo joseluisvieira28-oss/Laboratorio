@@ -24,6 +24,7 @@ _PRIVATE_EXACT_PATHS = {
     "/api/v1/private/account/risk_limit",
     "/api/v1/private/account/tiered_fee_rate/v2",
     "/api/v1/private/order/list/open_orders",
+    "/api/v1/private/stoporder/list/orders",
 }
 _PRIVATE_PREFIX_PATHS = (
     "/api/v1/private/order/external/",
@@ -203,6 +204,25 @@ class MEXCFuturesAuthenticatedReadOnlyClient:
             wanted = _contract(symbol)
             return [row for row in rows if str(row.get("symbol", "")).upper() == wanted]
         return rows
+
+    def stop_orders(self, symbol: str = "BTC_USDT") -> list[dict[str, Any]]:
+        """Read only: obtain non-final exchange TP/SL orders for a contract."""
+        symbol = _contract(symbol)
+        data = self._get_json(
+            "/api/v1/private/stoporder/list/orders",
+            {"symbol": symbol, "is_finished": 0, "page_num": 1, "page_size": 100},
+        )
+        if isinstance(data, dict):
+            rows = data.get("resultList")
+        else:
+            rows = data
+        if not isinstance(rows, list):
+            raise MEXCAuthenticatedReadError("TP/SL stop orders payload missing list")
+        if len(rows) >= 100:
+            raise MEXCAuthenticatedReadError("TP/SL stop order pagination not proven")
+        if any(not isinstance(row, dict) for row in rows):
+            raise MEXCAuthenticatedReadError("TP/SL stop order row invalid")
+        return [row for row in rows if str(row.get("symbol", "")).upper() == symbol]
 
     def fee_details(self, symbol: str = "BTC_USDT") -> dict[str, Any]:
         data = self._get_json(

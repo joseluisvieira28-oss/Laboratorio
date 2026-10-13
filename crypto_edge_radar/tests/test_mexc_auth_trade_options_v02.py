@@ -40,12 +40,15 @@ class OptionsFuturesTransportV02Tests(unittest.TestCase):
         c, op = self._client()
         c.submit_market_order(
             symbol="BTC_USDT", volume_contracts=1, side=1,
-            external_oid="open-long-1", position_mode=1
+            external_oid="open-long-1", position_mode=1,
+            stop_loss_price=59000.0
         )
         body = json.loads(op.requests[0].data.decode())
         self.assertEqual(body["side"], 1)
         self.assertEqual(body["leverage"], 1)
         self.assertEqual(body["openType"], 1)
+        self.assertEqual(body["stopLossPrice"], 59000.0)
+        self.assertEqual(body["lossTrend"], 2)
         self.assertNotIn("positionId", body)
 
     def test_close_long_side_4_requires_position_id(self):
@@ -67,7 +70,8 @@ class OptionsFuturesTransportV02Tests(unittest.TestCase):
         c, op = self._client()
         c.submit_market_order(
             symbol="BTC_USDT", volume_contracts=1, side=3,
-            external_oid="open-short-1", position_mode=1
+            external_oid="open-short-1", position_mode=1,
+            stop_loss_price=61000.0
         )
         c.submit_market_order(
             symbol="BTC_USDT", volume_contracts=1, side=2,
@@ -75,6 +79,26 @@ class OptionsFuturesTransportV02Tests(unittest.TestCase):
         )
         self.assertEqual(json.loads(op.requests[0].data.decode())["side"], 3)
         self.assertEqual(json.loads(op.requests[1].data.decode())["side"], 2)
+
+    def test_open_requires_stop_even_when_other_fields_valid(self):
+        c, op = self._client()
+        for stop in (None, 0, -1, float("nan"), float("inf"), True):
+            with self.subTest(stop=stop):
+                with self.assertRaisesRegex(MEXCTradeTransportError, "OPEN_REQUIRES_PRECOMMITTED_STOP_LOSS"):
+                    c.submit_market_order(
+                        symbol="BTC_USDT", volume_contracts=1, side=1,
+                        external_oid="no-stop", position_mode=1, stop_loss_price=stop,
+                    )
+        self.assertEqual(op.requests, [])
+
+    def test_close_cannot_place_another_stop(self):
+        c, op = self._client()
+        with self.assertRaisesRegex(MEXCTradeTransportError, "close order must not install"):
+            c.submit_market_order(
+                symbol="BTC_USDT", volume_contracts=1, side=4, position_id=17,
+                external_oid="close-with-stop", stop_loss_price=59000.0,
+            )
+        self.assertEqual(op.requests, [])
 
     def test_still_btc_only_and_no_wallet_mutation(self):
         c, op = self._client()
