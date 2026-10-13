@@ -1,0 +1,60 @@
+name: FAST CONVEX V1 Eight Altcoins 128 Frozen Short-Hold Arms
+on:
+  push:
+    branches:
+      - research/fast-convex-8alt-2023-25-v01-2026-10-13
+    paths:
+      - 'research/fast_convex_8alt_v01/**'
+      - '.github/workflows/fast-convex-8alt-128-2023-25.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  frozen-synthetic-risk-source-gates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: No-outcome chronology and fee/funding synthetic proofs
+        run: |
+          python -m unittest discover -s research/fast_convex_8alt_v01 -p 'test_*.py' -v
+          python -m py_compile research/fast_convex_8alt_v01/fast_replay.py
+      - name: Verify model source is research-only and 2026 protected holdout untouched
+        run: |
+          python - <<'PY'
+          from research.fast_convex_8alt_v01 import fast_replay as f
+          assert len(f.ASSETS)*len(f.TIMEFRAMES)*len(f.HORIZONS)*len(f.COSTS)==128
+          assert f.PERIOD_END < 1800000000000
+          assert f.MIN_TRADES_PER_CAL_YEAR==52
+          print("PASS 128 preregistered retrospective model outcomes, no execution API")
+          PY
+  eight_alt_fast_matrix:
+    needs: frozen-synthetic-risk-source-gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 23
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        symbol: [ETHUSDT, BNBUSDT, SOLUSDT, XRPUSDT, DOGEUSDT, ADAUSDT, LINKUSDT, AVAXUSDT]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: SHA256 publisher verified 5m 2023-25, 16 models per altcoin
+        run: |
+          python -m research.fast_convex_8alt_v01.fast_replay \
+            --symbol ${{ matrix.symbol }} \
+            --output-dir research/fast_convex_8alt_v01/receipts/${{ matrix.symbol }}
+      - name: Upload even failed source-gate receipts, all full ledgers and manifests
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: FAST-CONVEX-V1-${{ matrix.symbol }}-16-ARMS-NO-OOS
+          path: research/fast_convex_8alt_v01/receipts/${{ matrix.symbol }}/**
+          if-no-files-found: warn
+          retention-days: 30
