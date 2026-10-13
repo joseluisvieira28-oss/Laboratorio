@@ -29,20 +29,20 @@ class Opener:
 
 
 class TradeTransportTests(unittest.TestCase):
-    def test_only_1x_isolated_leverage_configuration_allowed(self):
+    def test_only_10x_isolated_leverage_configuration_allowed(self):
         op=Opener()
         c=MEXCFuturesMutationTransport(
             MEXCCredentials("KEY","SECRET"),
             clock_ms=lambda:1700000000000,
             opener=op,
         )
-        c.configure_isolated_leverage(symbol="BTC_USDT",position_type=2,leverage=1)
+        c.configure_isolated_leverage(symbol="BTC_USDT",position_type=2,leverage=10)
         req=op.requests[0]
         self.assertEqual(req.get_method(),"POST")
         self.assertEqual(urlparse(req.full_url).path,"/api/v1/private/position/change_leverage")
         body=json.loads(req.data.decode())
         self.assertEqual(body["openType"],1)
-        self.assertEqual(body["leverage"],1)
+        self.assertEqual(body["leverage"],10)
         with self.assertRaises(MEXCTradeTransportError):
             c.configure_isolated_leverage(symbol="BTC_USDT",position_type=2,leverage=2)
 
@@ -69,7 +69,7 @@ class TradeTransportTests(unittest.TestCase):
             c._post_json("/api/v1/private/account/transfer",{})
         self.assertEqual(op.requests,[])
 
-    def test_market_order_uses_current_order_create_and_isolated_1x(self):
+    def test_market_order_uses_current_order_create_and_isolated_10x(self):
         op=Opener()
         c=MEXCFuturesMutationTransport(
             MEXCCredentials("KEY","SECRET"),
@@ -87,7 +87,7 @@ class TradeTransportTests(unittest.TestCase):
         self.assertEqual(body["type"],5)
         self.assertEqual(body["openType"],1)
         self.assertEqual(body["positionMode"],1)
-        self.assertEqual(body["leverage"],1)
+        self.assertEqual(body["leverage"],10)
         self.assertEqual(body["side"],3)
         self.assertEqual(body["stopLossPrice"],61000.0)
         self.assertNotIn("positionId",body)
