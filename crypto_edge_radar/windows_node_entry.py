@@ -14,7 +14,7 @@ from radar.cirv_local import CIRVLocalWatcher
 from radar.render_sentinel import RenderSentinel
 
 
-BUILD_ID = "v0.14.4-win-cirv-eight-motor"
+BUILD_ID = "v0.14.4-win-zero-palha-retired-2026-10-13"
 
 _INSTANCE_MUTEX_HANDLE = None
 _INSTANCE_MUTEX_NAME = r"Local\CryptoEdgeRadarV0144Node"
@@ -89,6 +89,24 @@ def _verify_registry_file(registry_path: str) -> tuple[dict, dict]:
         for item in candidates
         if isinstance(item, dict) and item.get("strategy_id")
     }
+    retired = (payload.get("operator_retirement") or {}).get("mode") == "ZERO_ACTIVE_FISHING_CANDIDATES"
+    if retired:
+        if candidates or payload.get("focus_strategy_ids") != []:
+            raise RuntimeError("retired radar contains active strategies or focus IDs")
+        return payload, {
+            "status": "PASS",
+            "build_id": BUILD_ID,
+            "registry_version": payload.get("registry_version"),
+            "candidate_count": 0,
+            "focus_strategy_count": 0,
+            "retirement_active": True,
+            "live_trading_authority": "NONE",
+            "required_strategy_present": False,
+            "dh03_strategy_present": False,
+            "ced1d_strategy_present": False,
+            "ema6h_strategy_present": False,
+            "cirv_strategy_present": False,
+        }
     required = "ETF-CME-INSTFLOW-001"
     if required not in ids:
         raise RuntimeError(f"deployment registry missing required strategy: {required}")
@@ -369,10 +387,16 @@ def run() -> int:
     bundled_registry = _resource_path("deployment_registry_v1.json")
     try:
         payload, package_state = _verify_registry_file(bundled_registry)
-        authority_state = _verify_standing_authority_file(
-            _resource_path("MEXC_FUTURES_STANDING_MICROLIVE_OPERATOR_AUTHORITY_V0.1.json")
-        )
-        package_state.update(authority_state)
+        if package_state.get("retirement_active"):
+            package_state.update({
+                "standing_authority_present": False,
+                "standing_authority_status": "NOT_LOADED_OPERATOR_RETIRED",
+            })
+        else:
+            authority_state = _verify_standing_authority_file(
+                _resource_path("MEXC_FUTURES_STANDING_MICROLIVE_OPERATOR_AUTHORITY_V0.1.json")
+            )
+            package_state.update(authority_state)
         runtime_registry = _materialize_registry(payload)
         _, runtime_state = _verify_registry_file(runtime_registry)
         package_state["runtime_registry_materialized"] = True
@@ -407,6 +431,27 @@ def run() -> int:
         "exchange_mutation_performed": False,
         "live_capital_enabled": False,
     })
+
+    # Operator retired ALL active engines. Keep the diagnostic dashboard only:
+    # no DH03, OPTIONS/BNB/TFG/ETF/EMA forward, CIRV or Render background watchers.
+    if package_state.get("retirement_active"):
+        _write_json_atomic(Path("data") / "radar_status.json", {
+            "health": "NO_ACTIVE_CANDIDATES",
+            "provider": "NONE_RETIREMENT_DIAGNOSTIC_ONLY",
+            "cycle": 0,
+            "universe": [],
+            "build_id": BUILD_ID,
+            "mode": "ZERO_PALHA_OPERATIONAL_RETIREMENT",
+            "authenticated_exchange_api_used": False,
+            "orders_created": False,
+            "exchange_mutation_performed": False,
+            "live_capital_enabled": False,
+        })
+        try:
+            return main(["dashboard", "--port", "8787", "--registry", runtime_registry])
+        finally:
+            if lock_acquired:
+                _release_single_instance_lock()
 
     # DH03 activation_ms is a prospective scientific boundary. Validate the
     # Binance public clock before the collector can persist that boundary.
