@@ -1,0 +1,46 @@
+name: PMR 001 — PUBLIC REWARDS ONE-SHOT / NO TRADING
+
+on:
+  push:
+    branches:
+      - research/poly-maker-rewards-microcapital-source-v01-2026-10-13
+    paths:
+      - '.github/workflows/pmr001-maker-incentive-one-shot.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  source-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Offline proof tests
+        run: |
+          python -m compileall -q research/poly_maker_incentive
+          python -m unittest research.poly_maker_incentive.test_pmr001_source_gate -v
+      - name: One shot public Gamma metadata (no auth/trading)
+        run: python -m research.poly_maker_incentive.pmr001_source_gate
+      - name: Assert absence of capital or fabricated profit
+        run: |
+          python - <<'PY'
+          import json
+          x=json.load(open("PMR001_SOURCE_RECEIPT.json"))
+          assert x["source_verdict"] in {"SOURCE_BLOCKED","SAMPLE_ZERO_ACTIVE_REWARDS","SOURCE_PASS_REWARDS_EXIST_BUT_EDGE_UNPROVEN"}
+          assert x["profitability_verdict"] == "UNPROVEN"
+          assert x["orders_created"] is False
+          assert x["trading_authority"] == "NONE"
+          assert x["user_net_income_usdc"] is None
+          print("SOURCE_VERDICT:",x["source_verdict"])
+          PY
+      - name: Preserve read-only source receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: PMR001_ONE_SHOT_20261013
+          path: PMR001_SOURCE_RECEIPT.json
+          if-no-files-found: error
+          retention-days: 30
