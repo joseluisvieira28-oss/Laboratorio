@@ -1,0 +1,61 @@
+name: PAYOFF 2R 3R 4R 5R EXPLORATORY historical sweep (NO ORDERS)
+on:
+  push:
+    branches:
+      - research/payoff-ratio-sweep-2r-3r-4r-5r-2026-10-13
+    paths:
+      - ".github/workflows/payoff-ratio-exploratory-2026-10-13.yml"
+      - "research/payoff_ratio_sweep/**"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  historical_exploratory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Verify original 4R engine has not changed and test frozen ratio mathematics
+        run: |
+          python -m unittest discover -s research/payoff_40_10_btc_001 -p "test_engine.py" -v
+          python -m unittest discover -s research/payoff_ratio_sweep -p "test_exploratory_sweep.py" -v
+      - name: Retrieve SAME original checksum-verified public BTC 2020-2025 source
+        run: |
+          python research/payoff_40_10_btc_001/sources.py --output research/payoff_ratio_sweep/data/source.json
+      - name: Recalculate all entries and exits for each target (4R receipt regression lock)
+        run: |
+          python research/payoff_ratio_sweep/exploratory_sweep.py --source research/payoff_ratio_sweep/data/source.json --output research/payoff_ratio_sweep/data/full_diagnostic.json --markdown research/payoff_ratio_sweep/data/HISTORICAL_SWEEP_REPORT.md
+      - name: Publish source-only fingerprints without reuploading entire bars
+        if: always()
+        run: |
+          python - <<'PY'
+          import json,pathlib,hashlib
+          d=pathlib.Path("research/payoff_ratio_sweep/data")
+          d.mkdir(parents=True,exist_ok=True)
+          p=d/"source.json"
+          if p.exists():
+              data=json.loads(p.read_text())
+              receipt={k:v for k,v in data.items() if k not in ("bars","funding","marks")}
+              receipt["source_sha256"]=hashlib.sha256(p.read_bytes()).hexdigest()
+              (d/"source_receipt.json").write_text(json.dumps(receipt,indent=2))
+          for name in ("full_diagnostic.json","HISTORICAL_SWEEP_REPORT.md"):
+              f=d/name
+              if f.exists():print("SHA256",name,hashlib.sha256(f.read_bytes()).hexdigest())
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: payoff-ratio-2r-3r-4r-5r-historical-descriptive
+          retention-days: 14
+          if-no-files-found: warn
+          path: |
+            research/payoff_ratio_sweep/data/source_receipt.json
+            research/payoff_ratio_sweep/data/full_diagnostic.json
+            research/payoff_ratio_sweep/data/HISTORICAL_SWEEP_REPORT.md
