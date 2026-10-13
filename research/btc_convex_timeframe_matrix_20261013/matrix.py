@@ -124,7 +124,7 @@ def verify_one_hour_parity(resampled,official):
 
 def simulate(timeframe,bars_tf,market5,funding,slipbps,*,include_trades=False):
     """All 5m bars are closed before TF trailing decisions; stop cannot peek at TF high."""
-    if timeframe%M5 or timeframe<3*M5:raise ValueError("TF_NOT_AUTHORIZED")
+    if timeframe%M5 or timeframe<M5:raise ValueError("TF_NOT_AUTHORIZED")
     if not (slipbps>=0 and math.isfinite(slipbps)):raise ValueError("BAD_SLIP")
     sig,_=src.load_parent()(bars_tf)
     decisions={b["t"]+timeframe for b,s in zip(bars_tf,sig)
