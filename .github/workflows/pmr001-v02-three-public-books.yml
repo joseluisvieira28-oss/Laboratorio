@@ -1,0 +1,52 @@
+name: PMR001 V02 — FROZEN THREE PUBLIC CLOB BOOKS / NO ORDERS
+
+on:
+  push:
+    branches:
+      - research/pmr001-three-books-microcap-v02-2026-10-13
+    paths:
+      - '.github/workflows/pmr001-v02-three-public-books.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  prospectively-frozen-public-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Code and synthetic regression checks
+        run: |
+          python -m compileall -q research/poly_maker_incentive
+          python -m unittest research.poly_maker_incentive.test_pmr001_source_gate research.poly_maker_incentive.test_pmr001_three_books_v02 -v
+      - name: Exactly three prospective public book batches, no order paths
+        run: |
+          python -m research.poly_maker_incentive.pmr001_three_books_v02
+      - name: Verify no invented rewards, fills or capital authority
+        run: |
+          python - <<'PY'
+          import json
+          r=json.load(open("PMR001_V02_ORDERBOOK_RECEIPT.json"))
+          assert r["status"] in {
+              "SOURCE_BLOCKED",
+              "INSUFFICIENT_MICROCAP_MARKET_SAMPLE",
+              "BOOK_COMPETITION_VISIBLE_NET_UNPROVEN",
+              "CLOB_BOOK_ACCESS_OR_IDENTITY_BLOCKED",
+          }
+          assert r["profitability_verdict"]=="UNPROVEN"
+          assert r["trading_authority"]=="NONE" and r["orders_created"] is False
+          assert r["user_net_pnl_usdc"] is None and r["individual_reward_usdc"] is None
+          assert len(r["selected"]) <=3 and len(r["snapshots"]) <=3
+          print("SCIENCE_STATUS",r["status"])
+          PY
+      - name: Preserve capped public-data receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: PMR001_V02_THREE_PUBLIC_BOOKS_20261013
+          path: PMR001_V02_ORDERBOOK_RECEIPT.json
+          if-no-files-found: error
+          retention-days: 30
