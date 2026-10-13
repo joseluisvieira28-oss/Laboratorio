@@ -1,0 +1,59 @@
+name: SHORT-REJECTION-SCALP-001 — Frozen 1h/5m/1m Economic Test
+on:
+  push:
+    branches:
+      - research/short-rejection-scalp-001-2026-10-13
+    paths:
+      - 'research/short_rejection_scalp_001/**'
+      - '.github/workflows/short-rejection-scalp-001.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  preoutcome-synthetic-gates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: 1h context 5m setup 1m fills strict stop-first 90m funding and placebo
+        run: |
+          python -m unittest discover -s research/short_rejection_scalp_001 -p 'test_*.py' -v
+          python -m py_compile research/short_rejection_scalp_001/engine.py
+      - name: No live-account/order/wallet private network actions in research code
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          data=Path('research/short_rejection_scalp_001/engine.py').read_text().lower()
+          assert not any(s in data for s in ('create_order(', 'place_order(', 'private_endpoint(', 'api_key =', 'wallet_key =', 'mexc_login('))
+          print('PASS: no order/action/live-account code paths')
+          PY
+  eight-independent-retrospective-arms:
+    needs: preoutcome-synthetic-gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 27
+    strategy:
+      fail-fast: false
+      max-parallel: 6
+      matrix:
+        symbol: [ETHUSDT, BNBUSDT, SOLUSDT, XRPUSDT, DOGEUSDT, ADAUSDT, LINKUSDT, AVAXUSDT]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Official checksum-verified 1h and 5m signal sources, actual 1m source OHLC proxy
+        run: |
+          python -m research.short_rejection_scalp_001.engine \
+            --symbol ${{ matrix.symbol }} \
+            --output-dir research/short_rejection_scalp_001/receipts/${{ matrix.symbol }}
+      - name: Archive full per-asset three-arm result, monthly market SHA256 and trade CSV
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: SHORT-REJECTION-SCALP-001-${{ matrix.symbol }}-2023-25
+          path: research/short_rejection_scalp_001/receipts/${{ matrix.symbol }}/**
+          if-no-files-found: warn
+          retention-days: 30
