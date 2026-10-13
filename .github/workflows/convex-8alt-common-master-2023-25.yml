@@ -1,0 +1,42 @@
+name: CONVEX Eight Altcoins Common 2023-25 Master Consolidation
+on:
+  push:
+    branches:
+      - research/convex-8alt-common-2023-25-2026-10-13
+    paths:
+      - 'research/convex_8alt_common_3yr_master_20261013/**'
+      - '.github/workflows/convex-8alt-common-master-2023-25.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  exact-original-eight-source-artifacts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Read eight source-model artifacts, no market replay
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p research/convex_8alt_common_3yr_master_20261013/source
+          gh run download 38432883246 --repo joseluisvieira28-oss/Laboratorio \
+            --pattern 'CONVEX-8ALT-COMMON-3YEAR-*' \
+            --dir research/convex_8alt_common_3yr_master_20261013/source
+      - name: Verify all 8 publisher source manifests and 64 cases, no cherry-picking
+        run: |
+          python -m research.convex_8alt_common_3yr_master_20261013.aggregate \
+            --source-dir research/convex_8alt_common_3yr_master_20261013/source \
+            --output-dir research/convex_8alt_common_3yr_master_20261013/receipts
+      - name: Archive full 64-cell decision ledger for scientific review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CONVEX-COMMON-2023-25-EIGHT-ALTS-64-CELLS
+          path: research/convex_8alt_common_3yr_master_20261013/receipts/**
+          retention-days: 30
+          if-no-files-found: warn
