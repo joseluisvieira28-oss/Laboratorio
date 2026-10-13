@@ -9,7 +9,7 @@ import argparse,csv,hashlib,io,json,math,urllib.request,zipfile
 from datetime import datetime,timezone
 from pathlib import Path
 
-BASE="https://data.binance.vision/data/futures/um/monthly/"
+BASE="https://data.binance.vision/data/futures/um/"
 SYMBOL="BTCUSDT"
 HOUR=3_600_000
 MAX_BYTES=4_000_000
@@ -21,13 +21,15 @@ def months():
         m+=1
         if m==13:y,m=y+1,1
 
-def archive(kind,month):
+def archive(kind,month,scope="monthly"):
+    if scope not in ("monthly","daily") or (scope=="daily" and kind!="markPriceKlines"):
+        raise ValueError("FORBIDDEN_ARCHIVE_SCOPE")
     if kind in ("klines","markPriceKlines"):
         name=f"{kind}/{SYMBOL}/1h/{SYMBOL}-1h-{month}.zip"
     elif kind=="fundingRate":
         name=f"{kind}/{SYMBOL}/{SYMBOL}-fundingRate-{month}.zip"
     else:raise ValueError("UNAUTHORIZED_SOURCE")
-    url=BASE+name
+    url=BASE+scope+"/"+name
     def request(url,limit):
         req=urllib.request.Request(url,headers={"User-Agent":"CryptoLab-PAYOFF-ResearchOnly/0.1"})
         with urllib.request.urlopen(req,timeout=45) as r:data=r.read(limit+1)
@@ -41,7 +43,7 @@ def archive(kind,month):
         members=[p for p in z.namelist() if p.endswith(".csv")]
         if len(members)!=1:raise ValueError("ZIP_MEMBER_INVARIANT "+url)
         contents=z.read(members[0]).decode("utf-8-sig")
-    return contents,dict(kind=kind,month=month,sha256=sha,bytes=len(data),url=url)
+    return contents,dict(kind=kind,month=month,scope=scope,sha256=sha,bytes=len(data),url=url)
 
 def timestamp(v):
     ts=int(v)
@@ -94,6 +96,27 @@ def collect():
                 dest[t]=v
     start=int(datetime(2020,2,1,tzinfo=timezone.utc).timestamp()*1000)
     end=int(datetime(2025,12,31,23,tzinfo=timezone.utc).timestamp()*1000)
+    # PRE-OUTCOME SOURCE AMENDMENT 001: fill exact missing mark-price hours
+    # using only checksum-matched official daily markPriceKlines. The policy is
+    # source-availability-based, never conditioned on strategy PnL.
+    missing_mark_hours=[t for t in range(start,end+HOUR,HOUR) if t not in marks]
+    missing_dates=sorted(set(datetime.fromtimestamp(t/1000,tz=timezone.utc).strftime("%Y-%m-%d")
+                             for t in missing_mark_hours))
+    if len(missing_dates)>120:
+        raise ValueError("MARK_GAPFILL_SCOPE_TOO_LARGE:"+str(len(missing_dates)))
+    gapfill_hours=0
+    for day in missing_dates:
+        raw,receipt=archive("markPriceKlines",day,scope="daily")
+        part=parse_ohlc(raw,False)
+        for t,point in part.items():
+            if not (start<=t<=end):continue
+            if t in marks:
+                if marks[t]!=point:
+                    raise ValueError("MONTHLY_DAILY_MARK_CONFLICT:"+str(t))
+            else:
+                marks[t]=point
+                gapfill_hours+=1
+        manifest.append(receipt)
     span=(end-start)//HOUR+1
     for kind,src in (("market",market),("mark",marks)):
         gaps=[t for t in range(start,end+HOUR,HOUR) if t not in src]
@@ -110,7 +133,7 @@ def collect():
             "bars":[market[t] for t in sorted(market) if start<=t<=end],
             "marks":{str(t):marks[t] for t in marks if start<=t<=end},
             "funding":{str(t):v for t,v in funding.items() if start<=t<=end},
-            "counts":{"market":span,"mark":span,"funding":len(funding)}}
+            "counts":{"market":span,"mark":span,"funding":len(funding),"daily_mark_gapfill_dates":len(missing_dates),"daily_mark_gapfill_hours":gapfill_hours}}
 
 def main():
     p=argparse.ArgumentParser();p.add_argument("--output",type=Path,required=True);a=p.parse_args()
