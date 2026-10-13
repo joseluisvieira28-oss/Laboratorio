@@ -9,7 +9,7 @@ No selection or retuning after outcomes.
 - Authoritative GitHub Actions: https://github.com/joseluisvieira28-oss/Laboratorio/actions/runs/38421864088 — SUCCESS
 - Artifact: https://github.com/joseluisvieira28-oss/Laboratorio/actions/runs/38421864088/artifacts/11826863803 (ledger CSV for 4 arms, historical result JSON including official source SHA256 manifests)
 - Job log: 20/20 offline regression tests PASS (15 prior engine + 5 historical). Source/data+replay success.
-- Archived market: 2021-01..2025-12 UTC full contiguous Binance USD-M BTCUSDT **525,888 5m bars**, **44,568 1h bars including December 2020 warmup**, **5,478 public funding records**, 60 consecutive fully checked economic months, 181 signed monthly ZIPs (each matched the publisher CHECKSUM; 1 warmup + 60 x 3 market/funding).
+- Archived market: 2021-01..2025-12 UTC full contiguous Binance USD-M BTCUSDT **525,888 5m bars**, **44,568 1h bars including December 2020 warmup**, **5,478 public funding records**, 60 consecutive fully checked economic months, 181 publisher-checksum-verified monthly ZIPs (each matched the publisher CHECKSUM; 1 warmup + 60 x 3 market/funding).
 - Original recovered Quant Trailing V5 RSI/SMA/zscore signal code imported from the preserved Parent branch; first 5m entry strictly after completed 1h signal witness, one slot, max 4h. Fee 8bps per side, BASE 2bps slip side, STRESS 5bps slip side; historical funding rate with 5m market-price *proxy* for funding mark; 20% initial paper equity notional 1x, initial 10,000 USDT. This is modeled Binance historical, not MEXC fill/quote or account proof.
 
 ## Exact historical models 2021–2025, all five annual PnL intervals loss-making
