@@ -91,3 +91,9 @@ Real clock crossed10UTC; hour10 receipt absent,no active Exitflowbranch job befo
 ## Follow-up — 2026-10-13 11:07 UTC / 07:07 NY (DST)
 
 Exitflow hour10run38380415409 SUCCESS previously verified178markets,economic_outcomes_opened=false. Hour11 absent/no active branch job before tick80246cd260c75e29a7905614ff87dcaf82d73f1b;run38387915056 submitted for actual-hour source only,receipt verification pending. No prior gaps filled. LICP canonicalrun38385887323/job115257454605 frozen16/20 FORWARD_INSUFFICIENT at10:59:32UTC; no duplicate shard or scientific terminal. AaveOct13 valid,no repeat. USOPEN outsidefrozen09/11NY windows,Oct12 incomplete remains excluded from complete economic cohort. Multi original completed artifact pending fullreceipt inspection,no rerun or unsealing. Heartbeat remains active; no material change requiring notification.
+
+## Follow-up — 2026-10-13 13:02 UTC /09:02 NY DST
+
+USOPEN originalcollector7fb57c214b4e8dd250bbb24337d48f4afedf439a verified,eligibleTuesday/nonholiday,Oct13 receipt absent/no activejob beforetick66de8bbe37b9c2dc05eba74e970708fcf4e2a65b. ENTRY_CAPTURED at13:01:35.641718UTC/09:01:35-04:00,receiptblobe97c126022c4da98ace33b9f0650707432627402,originalBTC-23OCT26-83000-C/P. Publicshadowonly,noorders. Exit due15:00–15:10UTC; do not repeatentry or treatas complete economicday. Oct12missedexit remains incomplete.
+
+Exitflow actualhour13 run38401704208 verified178markets,economic_outcomes_opened=false after absence/no-jobchecks andtick76c26d5a8bdcb6df54d8b71c45b1221b71f95f12. Hour12 andothermissedhoursnotbackfilled. AaveOct13 alreadyvalid,norepeat. Multiartifactnotretriggered,economicssealed. No newscientificterminal; existingheartbeatremainsactive,quietonroutineaccumulation.
