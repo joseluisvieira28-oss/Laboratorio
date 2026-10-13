@@ -1,0 +1,22 @@
+# PAYOFF-40-10-BTC-001 — Engine execution protocol, frozen 2026-10-13
+**Authority**: research-only; BTCUSDT Binance USD-M price/funding proxy; no real orders, no account, no micro-live, no main merge, no 2026 sealed outcome access. Based on `research/payoff_risk_budget_001/VEREDITO_E_FREEZE_2026-10-13.md` and original Quant Trailing v5 source. All 2020–2025 observations are historical *diagnostics* (seen markets); zero scientific promotion credit.
+
+## Frozen experimental comparison
+- Exact 1h causal LONG signal at bar close: RSI Wilder14<30; z-score SMA20/population sigma<-2; close<SMA20−2sigma; volume>SMA20(volume); total score >=3; close>SMA200(close). Entry next hour opening; one active position. Parent: initial stop -4% entry, historical non-latched 12% peak trailing selected if most recently completed close gain>=5%. No foreknowledge/reentry within current unfinished bar.
+- **PAYOFF frozen**: entry margin 10% of current equity, 2× isolated hypothetical position =20% notional/equity; no top-ups. Target *entry-fill* ×1.20176140912730184, stop ×0.95156124899919936, exactly frozen fee 0.08%/side before slippage/funding. *Same barriers in BASE and STRESS* (do not move stops when fee changes). First next available hourly open at or after 60 calendar days from entry = time exit. Gap-stop fills at open (more adverse than barrier); simultaneous stop+target 1h OHLC = STOP_FIRST conservative.
+- **Parent comparator**: original causal rule with same 20% equity notional as PAYOFF to isolate exit differences. This is NOT original parent 95%-notional equity curve; retain original published 95% comparator separately.
+- Baseline fee 0.08% notional each side + 2bps adverse slippage/side, stress fee 0.10% each side + 5bps/side. No exchange-personal fees are claimed. Long funding cashflow = -qty*funding mark-open*rate, only for positions open *before* settlement timestamp (never entry same timestamp); time exit and opening gaps precede timestamp funding. USD-M funding monthly archive data + markPriceKlines 1h; the mark hourly OPEN is proxy for exact settlement mark. Cannot infer actual personal fills or MEXC economics.
+- Risk screening: markPrice hourly low below illustrative liquidation threshold (2×, assumed maintenance .5%+fee) ⇒ explicit LIQUIDATION_UNCERTAIN; not an actual exchange clearing-engine formula. No historical min size/tick or BBO proof; these remain BLOCKED. End-of-history still-open trade = OPEN_UNRESOLVED, NOT win/loss. Do not download 2026.
+- Data: official Binance Vision 2020-02 through 2025-12 monthly `klines/BTCUSDT/1h`, `markPriceKlines/BTCUSDT/1h`, and `fundingRate/BTCUSDT`, each ZIP SHA256 validated against its matching publisher CHECKSUM. Exact UTC 1h paths, no interpolated gaps, no schema invention. Fail closed on missing chunks, timestamps, files, funding, or mark. Coverage through 2025-12-31T23:00Z. 2020-02 is warmup.
+- Source-date and economic comparisons require the same 2020-03-01 .. 2025-12-31 event boundary for Parent and PAYOFF. Frozen new time exit (60 days) and payoff levels were chosen after historical inspection. Results are not OOS even if backtest works. Report all yearly outcomes, unresolved holdings, PF, expectancy, drawdown, costs, funding, capital tied up and tail sensitivity. No parameter sweeps.
+- NO economic LIVE GO can be awarded: historical quote/book liquidity, MEXC venue feasibility, robust margin tier/tick/lot and liquidation mechanics unknown; all such gaps keep `ALL_COSTS_UNPROVEN`. Use completely future fresh forward (after original freeze boundary Oct 14, 2026 UTC), if and only if it does not violate existing 2026 holdout. Any automatic collector must be read-only.
+- Source and application changes after seeing this experiment’s history may only correct pure bugs, with corrections identified, no post-outcome science tuning.
+
+## Exit-adjudication priority
+1. Pre-existing scheduled 60-day time-exit on next hourly open.
+2. Pre-existing stop/target gap at hourly open; downside stop priority.
+3. Funding at settlement timestamp for positions carried from earlier hour (entry same timestamp excluded).
+4. Intra-hour low/high; if both bounds crossed, classify conservative STOP_FIRST and log ambiguity.
+5. At bar close, update parent trailing/signal for next bar.
+
+**No result may be reported as real trading net profit.** Public OHLC proxy, modeled fixed slippage, assumed fees, coarse 1h first-touch order, mark/liquidation uncertainty and historical observation are material limitations.

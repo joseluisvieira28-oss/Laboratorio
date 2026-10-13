@@ -1,0 +1,69 @@
+name: PAYOFF-40-10-BTC-001 frozen research (NO ORDERS)
+on:
+  push:
+    branches:
+      - research/payoff-40-10-btc-engine-2026-10-13
+    paths:
+      - ".github/workflows/payoff-40-10-btc-001.yml"
+      - "research/payoff_40_10_btc_001/**"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  frozen-historical-replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Verify synthetic invariants before reading historical archive
+        run: python -m unittest discover -s research/payoff_40_10_btc_001 -p 'test_engine.py' -v
+      - name: Fetch public official historical bars, mark and funding, with SHA256 verification
+        run: python research/payoff_40_10_btc_001/sources.py --output research/payoff_40_10_btc_001/data/source.json
+      - name: Causal 2020-2025 diagnostic; immutable BASE/STRESS, Parent versus PAYOFF
+        run: python research/payoff_40_10_btc_001/engine.py --source research/payoff_40_10_btc_001/data/source.json --output research/payoff_40_10_btc_001/data/diagnostic.json
+      - name: Print compact yearly and cost verdict and checksums
+        if: always()
+        run: |
+          python - <<'PY'
+          import hashlib,json,pathlib
+          base=pathlib.Path("research/payoff_40_10_btc_001/data")
+          for filename in ("source.json","diagnostic.json"):
+              path=base/filename
+              if path.exists():
+                  print("SOURCE_SHA",filename,hashlib.sha256(path.read_bytes()).hexdigest())
+          source=base/"source.json"
+          if source.exists():
+              d=json.loads(source.read_text())
+              for key in ("bars","marks","funding"):d.pop(key,None)
+              (base/"source_receipt.json").write_text(json.dumps(d,indent=2))
+          result=base/"diagnostic.json"
+          if result.exists():
+              o=json.loads(result.read_text())
+              for cost,comparators in o["scenarios"].items():
+                  for mode,v in comparators.items():
+                      print("CAUSAL_DIAGNOSTIC",cost,mode,
+                            "N",v["trades_closed"],"wins",v["wins"],"losses",v["losses"],
+                            "PF",v["profit_factor"],"equity_return",v["closed_equity_return"],
+                            "DD_closed",v["closed_equity_max_dd"],"DD_MTM",v["approx_mtm_max_dd"],
+                            "funding",v["funding_cash_total"],
+                            "unresolved",len(v["unresolved_at_cutoff"]),
+                            "mark_liq_warning",v["mark_liquidation_warning_hours"],
+                            "years",v["historical_year_cash_returns"])
+          PY
+      - name: Forensic source receipts and retrospective evidence
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: payoff-40-10-btc-001-historical-diagnostic-only
+          retention-days: 14
+          if-no-files-found: warn
+          path: |
+            research/payoff_40_10_btc_001/data/source_receipt.json
+            research/payoff_40_10_btc_001/data/diagnostic.json
