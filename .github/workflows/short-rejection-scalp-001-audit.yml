@@ -1,0 +1,56 @@
+name: SHORT-REJECTION-SCALP-001 — Original 24 Arm Receipt Audit
+on:
+  push:
+    branches:
+      - audit/short-rejection-scalp-001-2026-10-13
+    paths:
+      - '.github/workflows/short-rejection-scalp-001-audit.yml'
+      - 'research/short_rejection_scalp_001/aggregate.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  reproduce-nothing-read-only-original-receipts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 24
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Wait until exact original producer is done, no new outcomes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for attempt in $(seq 1 75); do
+            status=$(gh run view 38446411938 --repo joseluisvieira28-oss/Laboratorio --json status --jq .status)
+            if [[ "$status" == "completed" ]]; then
+              conclusion=$(gh run view 38446411938 --repo joseluisvieira28-oss/Laboratorio --json conclusion --jq .conclusion)
+              [[ "$conclusion" == "success" ]] || { echo "ORIGINAL_MODEL_RUN_NOT_PASS_$conclusion"; exit 1; }
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "INCOMPLETE_ORIGINAL_MARKET_RUN"; exit 2
+      - name: Download exactly eight original source-verified historical artifact receipts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p research/short_rejection_scalp_001/source
+          gh run download 38446411938 --repo joseluisvieira28-oss/Laboratorio \
+            --pattern 'SHORT-REJECTION-SCALP-001-*-2023-25' \
+            --dir research/short_rejection_scalp_001/source
+      - name: Reconcile all original sources, 24 PnLs, fees and delayed placebo
+        run: |
+          python -m research.short_rejection_scalp_001.aggregate \
+            --source-dir research/short_rejection_scalp_001/source \
+            --output-dir research/short_rejection_scalp_001/master_receipts
+      - name: Archive complete original historical 24-arm JSON + CSV
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: SHORT-REJECTION-SCALP-001-24-ARM-AUDITED-MASTER
+          path: research/short_rejection_scalp_001/master_receipts/**
+          retention-days: 30
+          if-no-files-found: warn
