@@ -78,10 +78,10 @@ def adjudicate(pages: list[list[dict]], today: date) -> dict:
         rate = valid_reward_rate(m, today)
         if rate <= 0:
             continue
-        minsize = positive_decimal(m.get("rewardsMinSize"), strict=True)
-        maxspread = positive_decimal(m.get("rewardsMaxSpread"), strict=True)
+        minsize = positive_decimal(m.get("rewardsMinSize"), strict=False)
+        maxspread = positive_decimal(m.get("rewardsMaxSpread"), strict=False)
         liquidity = positive_decimal(m.get("liquidityNum", m.get("liquidity", 0)))
-        if not (maxspread > 0 and liquidity > 0):
+        if not (minsize > 0 and maxspread > 0 and liquidity > 0):
             continue
         candidates.append({
             "id": ident,
