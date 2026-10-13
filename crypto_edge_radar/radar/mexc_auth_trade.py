@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import math
 import re
 import time
 from typing import Any, Callable
@@ -204,6 +205,7 @@ class MEXCFuturesMutationTransport:
         external_oid: str,
         position_mode: int = 1,
         position_id: int | None = None,
+        stop_loss_price: float | None = None,
     ) -> dict[str, Any]:
         if symbol != "BTC_USDT":
             raise MEXCTradeTransportError("only BTC_USDT is allowlisted in V0.2")
@@ -221,6 +223,17 @@ class MEXCFuturesMutationTransport:
             raise MEXCTradeTransportError("close order requires a positive position_id")
         if side in (1, 3) and position_id is not None:
             raise MEXCTradeTransportError("open order must not supply position_id")
+        # A new exposure must carry a broker-side stop in its opening request.
+        # Do not infer a default stop from a backtest or a live market price.
+        if side in (1, 3):
+            if (
+                type(stop_loss_price) not in (float, int)
+                or not math.isfinite(stop_loss_price)
+                or stop_loss_price <= 0
+            ):
+                raise MEXCTradeTransportError("OPEN_REQUIRES_PRECOMMITTED_STOP_LOSS")
+        elif stop_loss_price is not None:
+            raise MEXCTradeTransportError("close order must not install a new stop")
 
         payload: dict[str, Any] = {
             "symbol": symbol,
@@ -235,6 +248,9 @@ class MEXCFuturesMutationTransport:
         }
         if position_id is not None:
             payload["positionId"] = position_id
+        if side in (1, 3):
+            payload["stopLossPrice"] = stop_loss_price
+            payload["lossTrend"] = 2  # MEXC fair price reference
 
         data = self._post_json("/api/v1/private/order/create", payload)
         if not isinstance(data, dict) or not data.get("orderId"):
