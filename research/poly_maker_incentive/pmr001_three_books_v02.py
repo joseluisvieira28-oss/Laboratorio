@@ -205,10 +205,11 @@ def run():
             result["status"]="INSUFFICIENT_MICROCAP_MARKET_SAMPLE"
             return result
         tokens=[tok for m in picked for tok in m["tokens"]]
+        capture_started=time.monotonic()
         for index,second in enumerate(SNAPSHOT_OFFSETS_SECONDS):
             if time.monotonic()-started>MAX_SECONDS:
                 raise SourceBlocked("CAPTURE_MAX_SECONDS_EXCEEDED")
-            wait=max(0,started+second-time.monotonic())
+            wait=max(0,capture_started+second-time.monotonic())
             if wait:
                 time.sleep(wait)
             try:
