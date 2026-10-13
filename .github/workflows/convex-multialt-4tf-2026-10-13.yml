@@ -1,0 +1,57 @@
+name: BTC-CONVEX V5 Eight Altcoins x Four Timeframes 2021-25
+on:
+  push:
+    branches:
+      - research/convex-multialt-4tf-2026-10-13
+    paths:
+      - 'research/convex_multialt_4tf_20261013/**'
+      - '.github/workflows/convex-multialt-4tf-2026-10-13.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  frozen-synthetic-invariants:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Source/symbol/fee/funding/gap invariants, zero market outcomes
+        run: |
+          python -m unittest discover -s research/convex_multialt_4tf_20261013 -p 'test_*.py' -v
+          python -m py_compile research/convex_multialt_4tf_20261013/multialt_matrix.py
+          python - <<'PY'
+          from pathlib import Path
+          p=Path("research/convex_multialt_4tf_20261013/multialt_matrix.py").read_text().lower()
+          assert not any(s in p for s in ("create_order","place_order","api_key","wallet","private/account"))
+          print("PASS: public price-source fetch only, no exchange private mutation")
+          PY
+  eight-independent-symbol-ledgers:
+    needs: frozen-synthetic-invariants
+    runs-on: ubuntu-latest
+    timeout-minutes: 24
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        symbol: [ETHUSDT, BNBUSDT, SOLUSDT, XRPUSDT, DOGEUSDT, ADAUSDT, LINKUSDT, AVAXUSDT]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Verify full-month official Binance futures prices/funding and run 8 arms
+        run: |
+          python -m research.convex_multialt_4tf_20261013.multialt_matrix \
+            --symbol ${{ matrix.symbol }} \
+            --output-dir research/convex_multialt_4tf_20261013/receipts/${{ matrix.symbol }}
+      - name: Preserve complete verified source receipt and all trade ledgers, even blocked
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CONVEX-MULTIALT-2021-25-${{ matrix.symbol }}-RESEARCH-ONLY
+          path: research/convex_multialt_4tf_20261013/receipts/${{ matrix.symbol }}/**
+          if-no-files-found: warn
+          retention-days: 30
