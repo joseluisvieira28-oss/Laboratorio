@@ -12,13 +12,13 @@ def daily_mark(symbol,date):
     if not re.fullmatch(r"2023-02-\d{2}",date):raise ValueError("DATE_SCOPE_INVALID")
     url=f"https://data.binance.vision/data/futures/um/daily/markPriceKlines/{symbol}/1m/{symbol}-1m-{date}.zip"
     data=src.fetch(url,10_000_000)
-    check=src.fetch(url+".CHECKSUM",1000).decode("utf8-sig").strip().split()[0].lower()
+    check=src.fetch(url+".CHECKSUM",1000).decode("utf-8-sig").strip().split()[0].lower()
     got=hashlib.sha256(data).hexdigest()
     if got!=check:raise ValueError("DAILY_MARK_PUBLISHER_CHECKSUM_MISMATCH")
     with zipfile.ZipFile(io.BytesIO(data)) as z:
         csvs=[s for s in z.namelist() if s.lower().endswith(".csv")]
         if len(csvs)!=1:raise ValueError("DAILY_MARK_MEMBER_COUNT_INVALID")
-        rows=list(csv.reader(io.StringIO(z.read(csvs[0]).decode("utf8-sig"))))
+        rows=list(csv.reader(io.StringIO(z.read(csvs[0]).decode("utf-8-sig"))))
     result={}
     for r in rows:
         if not r or not r[0].strip().isdigit():continue
