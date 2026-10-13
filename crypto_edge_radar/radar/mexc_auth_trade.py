@@ -51,12 +51,12 @@ class MEXCFuturesMutationTransport:
     """Tiny mutation surface for candidate-authorized BTC_USDT micro-live.
 
     Deliberately allowlisted to:
-    - set a direction to isolated 1x before entry;
+    - set a direction to isolated 10x before entry (experimental fork only);
     - create a BTC_USDT market order;
     - disable Auto-Add Margin on an existing isolated position.
 
     It has no transfer, withdrawal, generic account mutation, batch order,
-    cancel-all, leverage >1x or cross-margin method.
+    cancel-all, leverage other than 10x or cross-margin method.
     """
 
     base_url = MEXC_FUTURES_BASE_URL
@@ -141,19 +141,19 @@ class MEXCFuturesMutationTransport:
         *,
         symbol: str,
         position_type: int,
-        leverage: int = 1,
+        leverage: int = 10,
     ) -> Any:
         if symbol != "BTC_USDT":
             raise MEXCTradeTransportError("only BTC_USDT is allowlisted")
         if position_type not in (1, 2):
             raise MEXCTradeTransportError("position_type must be 1 long or 2 short")
-        if leverage != 1:
-            raise MEXCTradeTransportError("only exactly 1x leverage is permitted")
+        if leverage != 10:
+            raise MEXCTradeTransportError("only exactly 10x leverage is permitted for isolated 10x experimental fork")
         return self._post_json(
             "/api/v1/private/position/change_leverage",
             {
                 "openType": 1,
-                "leverage": 1,
+                "leverage": 10,
                 "symbol": symbol,
                 "positionType": position_type,
             },
@@ -239,7 +239,7 @@ class MEXCFuturesMutationTransport:
             "symbol": symbol,
             "price": 0,
             "vol": volume_contracts,
-            "leverage": 1,
+            "leverage": 10,
             "side": side,
             "type": 5,
             "openType": 1,

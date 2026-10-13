@@ -45,7 +45,7 @@ class OptionsFuturesTransportV02Tests(unittest.TestCase):
         )
         body = json.loads(op.requests[0].data.decode())
         self.assertEqual(body["side"], 1)
-        self.assertEqual(body["leverage"], 1)
+        self.assertEqual(body["leverage"], 10)
         self.assertEqual(body["openType"], 1)
         self.assertEqual(body["stopLossPrice"], 59000.0)
         self.assertEqual(body["lossTrend"], 2)

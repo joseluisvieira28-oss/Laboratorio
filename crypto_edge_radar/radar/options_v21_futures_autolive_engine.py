@@ -226,8 +226,8 @@ class OptionsV21FuturesAutoLiveEngine:
             return ["AUTO_MICROLIVE_ARM_RECEIPT_INVALID_SCHEMA"]
 
         frozen = {
-            "authority": "TIER2-AUTO-MICROLIVE-POLICY-V2.0-FROZEN-2026-09-25",
-            "execution_contract": "OPTIONS-SPOTPERP-001-V2.1-FUTURES-ONLY-AUTOLIVE-V0.2.1-SOURCE-HOTFIX",
+            "authority": "OPTIONS_V21_FUTURES_10X_PROSPECTIVE_V0.1_NOT_LIVE",
+            "execution_contract": "OPTIONS-SPOTPERP-001-V2.1-FUTURES-10X-PROTECTED-PROSPECTIVE-V0.1",
             "strategy_id": "OPTIONS-SPOTPERP-001-V2.1",
             "execution_fork": "FUTURES_ONLY",
             "symbol": "BTC_USDT",
@@ -239,7 +239,7 @@ class OptionsV21FuturesAutoLiveEngine:
         for key in ("long_enabled", "short_enabled"):
             if type(row.get(key)) is not bool or row[key] is not True:
                 return [f"AUTO_MICROLIVE_ARM_RECEIPT_MISMATCH:{key}"]
-        for key, expected in (("leverage", 1), ("maximum_concurrent_positions", 1)):
+        for key, expected in (("leverage", 10), ("maximum_concurrent_positions", 1)):
             if type(row.get(key)) is not int or row[key] != expected:
                 return [f"AUTO_MICROLIVE_ARM_RECEIPT_MISMATCH:{key}"]
         notional = row.get("max_notional_usdt")
@@ -369,7 +369,7 @@ class OptionsV21FuturesAutoLiveEngine:
             blockers.append("EXECUTION_FORK_ROUTE_MISMATCH")
         if signal.get("symbol") != "BTC_USDT":
             blockers.append("SYMBOL_MISMATCH")
-        if int(signal.get("leverage") or 0) != 1:
+        if int(signal.get("leverage") or 0) != 10:
             blockers.append("LEVERAGE_MISMATCH")
         if signal.get("margin_mode") != "ISOLATED":
             blockers.append("MARGIN_MODE_MISMATCH")
@@ -637,7 +637,7 @@ class OptionsV21FuturesAutoLiveEngine:
         self.futures_mut.configure_isolated_leverage(
             symbol="BTC_USDT",
             position_type=int(meta["position_type"]),
-            leverage=1,
+            leverage=10,
         )
         _atomic_write(
             session / "MARGIN_CONFIG_RECEIPT.json",
@@ -645,7 +645,7 @@ class OptionsV21FuturesAutoLiveEngine:
                 "symbol": "BTC_USDT",
                 "direction": direction,
                 "isolated": True,
-                "leverage": 1,
+                "leverage": 10,
                 "position_type": int(meta["position_type"]),
             },
         )
@@ -716,7 +716,7 @@ class OptionsV21FuturesAutoLiveEngine:
                 position = self._position(direction) or position
             if (
                 int(position.get("openType", 0) or 0) != 1
-                or int(position.get("leverage", 0) or 0) != 1
+                or int(position.get("leverage", 0) or 0) != 10
                 or position.get("autoAddIm") is not False
             ):
                 raise OptionsFuturesAutoLiveError("POST_FILL_MARGIN_PROTECTION_NOT_VERIFIED")
