@@ -1,0 +1,19 @@
+# PRE-ANALYSIS FREEZE — BTC PAYOFF Failure Modes, Execution, Forward (2026-10-13)
+
+## Authority
+Research-only. Parent: PR #195, artifact 11792728776 from run 38356035850 (source: Binance BTCUSDT public 2020-02 through 2025-12). Do not touch sealed 2026 outcomes, existing 4R parameters or the 2R/3R/4R/5R historical rankings. No live orders, exchange private/account reads, wallet, spending, Render, merge main, post-outcome retuning.
+
+## Fixed descriptive questions BEFORE this audit of trade-level ledger
+1. **2022 and 2025 loss attribution:** extract complete trade ledgers for **both BTC-CONVEX PARENT and PAYOFF 4R**, BASE and STRESS. Group by UTC entry year and separately exit year, with chronological closed-equity attribution, number of wins/losers, count of exits by reason, median and max duration, max consecutive losses, average realized R, annual nominal fee cash, modeled funding cash, dollars of gross-price PnL, mark liquidation warning flags, and months with zero trades. Cross-year holdings accounted explicitly; do not call losses a causal explanation until feature data establishes a preregistered link.
+2. **Pre-entry regime descriptors without selection:** if official archive bars can be checksum-verified, sample indicators at the completed signal bar (not hindsight): (a) SMA200 distance, (b) 20h return, (c) 20h realised stddev of hourly close-to-close log returns, and (d) RSI14; bin only for descriptive distributions and continuous correlation, report all trades, unknown/missing values, and 2022/2025 vs other years. No after-the-fact magic threshold / no filter application to synthetic equity.
+3. **Cost & execution decomposition:** for each closed long: gross close cash = quantity*(synthetic exit fill - synthetic entry fill); modeled entry fee=qty*entry_fill*fee; modeled exit fee=qty*exit_fill*fee; funding from trade ledger, so net = gross - fees + funding. Distinguish fees, market movement and funding; slippage is embedded in entry/exit fills and cannot be separated without raw-bar replays. Compare BASE vs STRESS sensitivity. Number, size and severity of gap-stop events; any unresolved 2025 end position stays OPEN. Mark liquidation warnings only heuristic.
+4. **Capital survival:** consecutive losses, equity/monthly risk, top-3 winner concentration, capital tied up in years 2022 and 2025. Reject any proposed filter/target change based on the same already-seen years.
+5. **Forward read-only implementation readiness:** explicitly freeze independent evaluator to start at UTC >= 2026-10-14T00:00:00Z. **No 2026 before this boundary is permitted**, even as indicator warmup; 200 FULL consecutive 1h bars must accrue after start before a signal can be considered. Two unchanged comparison models, one position/model, next-hour causal signals, isolated 2x, 10% equity margin only for PAYOFF, normalized Parent notional 20%, BASE/STRESS from original protocol. Pending maturity and scheduling remain explicit; GitHub Action schedule on branch alone is NOT functioning cron. No automatic process may be claimed before verified deployed runner. No private exchange URLs or side effects. Outcomes new forward to be observed ONLY after code freeze.
+
+## Honest decision language
+- `RETRO_FAILURE_DIAGNOSTIC_ONLY`: historic narrative, zero sample-independent validation.
+- `EXECUTION_COST_PARTIAL`: market data + modeled fees/funding only, unknown BBO/min-lot/fill/mark maintenance.
+- `FORWARD_SOURCE_ARMABLE_NOT_RUNNING`: explicit forward configuration and tests but no proven collector.
+- `NO_LIVE_GO`: until genuine forward, robust execution and sizing receipts.
+
+The preferred next experiment is **not** to optimize ratio or choose a 2022/2025 regime filter after seeing this ledger. Document any concrete *mechanism* hypothesis as fresh research only, freeze before outcomes, never relabel this audit OOS.

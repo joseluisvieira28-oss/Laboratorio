@@ -1,0 +1,106 @@
+name: PAYOFF BTC failure modes + forward boundary QA (research-only)
+on:
+  push:
+    branches:
+      - research/payoff-4r-failure-execution-forward-2026-10-13
+    paths:
+      - ".github/workflows/payoff-failure-forward-research.yml"
+      - "research/payoff_failure_execution_forward/**"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  cost_attribution:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Synthetic boundary and economic accounting QA only
+        run: |
+          python -m unittest discover -s research/payoff_failure_execution_forward -p "test_failure_forward.py" -v
+      - name: Download frozen PR195 historical ledger artifact (no exchange access)
+        uses: actions/download-artifact@v4
+        with:
+          name: payoff-ratio-2r-3r-4r-5r-historical-descriptive
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: 38356035850
+          github-token: ${{ github.token }}
+          path: research/payoff_failure_execution_forward/data/input
+      - name: Reconcile full ledgers 2022/2025 and publish negative results too
+        run: |
+          python research/payoff_failure_execution_forward/audit_failure_modes.py \
+            --diagnostic research/payoff_failure_execution_forward/data/input/full_diagnostic.json \
+            --output research/payoff_failure_execution_forward/data/FAILURE_AUDIT.json \
+            --report research/payoff_failure_execution_forward/data/FAILURE_AUDIT.md
+      - name: Publish immutable forensic receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: payoff-loss-attribution-2022-2025
+          retention-days: 14
+          if-no-files-found: warn
+          path: |
+            research/payoff_failure_execution_forward/data/FAILURE_AUDIT.json
+            research/payoff_failure_execution_forward/data/FAILURE_AUDIT.md
+
+  preentry_regime_description:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Retrieve pre-existing historical artifact without altering source
+        uses: actions/download-artifact@v4
+        with:
+          name: payoff-ratio-2r-3r-4r-5r-historical-descriptive
+          repository: joseluisvieira28-oss/Laboratorio
+          run-id: 38356035850
+          github-token: ${{ github.token }}
+          path: research/payoff_failure_execution_forward/data/input
+      - name: Re-fetch checksum-verified 2020-2025 PUBLIC sources (no 2026)
+        run: |
+          python research/payoff_40_10_btc_001/sources.py \
+            --output research/payoff_failure_execution_forward/data/SOURCE_ONLY.json
+      - name: Extract only features available at each prior CLOSED signal bar
+        run: |
+          python research/payoff_failure_execution_forward/preentry_regime.py \
+            --source research/payoff_failure_execution_forward/data/SOURCE_ONLY.json \
+            --diagnostic research/payoff_failure_execution_forward/data/input/full_diagnostic.json \
+            --output research/payoff_failure_execution_forward/data/PREENTRY_DESCRIPTIVE_ONLY.json
+      - name: Artifact hashed provenance and features, no raw archive re-upload
+        if: always()
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json,hashlib
+          d=Path('research/payoff_failure_execution_forward/data')
+          p=d/'SOURCE_ONLY.json'
+          if p.exists():
+              s=json.loads(p.read_text())
+              report={'source_status':s.get('status'),'counts':s.get('counts'),
+                      'manifests':s.get('manifests'),
+                      'sha256_source_receipt':hashlib.sha256(p.read_bytes()).hexdigest(),
+                      'prohibition':'NO_2026_NO_TUNING'}
+              (d/'SOURCE_MANIFEST.json').write_text(json.dumps(report,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: payoff-preentry-regime-2022-2025
+          retention-days: 14
+          if-no-files-found: warn
+          path: |
+            research/payoff_failure_execution_forward/data/PREENTRY_DESCRIPTIVE_ONLY.json
+            research/payoff_failure_execution_forward/data/SOURCE_MANIFEST.json

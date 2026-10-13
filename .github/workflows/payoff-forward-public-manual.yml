@@ -1,0 +1,66 @@
+name: PAYOFF 4R vs PARENT FUTURE SHADOW — MANUAL READ-ONLY
+# Nondefault-branch read-only push trigger: a NEW control/run-*.txt file is
+# needed AFTER the forward warmup. No unattended schedule and NO live orders.
+on:
+  push:
+    branches:
+      - research/payoff-4r-failure-execution-forward-2026-10-13
+    paths:
+      - "research/payoff_failure_execution_forward/control/run-*.txt"
+  workflow_dispatch: {}
+permissions:
+  contents: read
+
+jobs:
+  public-source-shadow:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Enforce synthetic-only forward boundary/source tests
+        run: |
+          python -m unittest discover -s research/payoff_failure_execution_forward -p "test_failure_forward.py" -v
+          python -m unittest discover -s research/payoff_failure_execution_forward -p "test_public_future_source.py" -v
+      - name: Read only 2026-10-14+ public BTC market/mark/funding records; fail until 200h warmup
+        run: |
+          python research/payoff_failure_execution_forward/public_future_source.py \
+            --output research/payoff_failure_execution_forward/data/FUTURE_SOURCE.json
+      - name: Recalculate unchanged 4R and Parent in strict forward-only shadow
+        run: |
+          python research/payoff_failure_execution_forward/forward_boundary_gate.py \
+            --source research/payoff_failure_execution_forward/data/FUTURE_SOURCE.json \
+            --output research/payoff_failure_execution_forward/data/FORWARD_SHADOW_DIAGNOSTIC.json
+      - name: Reproducible receipts and no orders/accounts
+        if: always()
+        run: |
+          python - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          d=Path('research/payoff_failure_execution_forward/data')
+          p=d/'FUTURE_SOURCE.json'
+          if p.exists():
+              raw=p.read_bytes();s=json.loads(raw)
+              receipt={'authority':s.get('authority'),'boundary':s.get('forward_boundary_utc'),
+                       'symbol':s.get('symbol'),'venue':s.get('venue'),
+                       'market_rows':len(s.get('bars',[])),
+                       'mark_rows':len(s.get('marks',{})),
+                       'funding_records':len(s.get('funding',{})),
+                       'public_request_sha256_manifests':s.get('request_manifests',[]),
+                       'source_sha256':hashlib.sha256(raw).hexdigest(),
+                       'trading_authority':'NONE'}
+              (d/'FUTURE_RECEIPT.json').write_text(json.dumps(receipt,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: payoff-4r-vs-parent-public-future-shadow-no-orders
+          retention-days: 14
+          if-no-files-found: warn
+          path: |
+            research/payoff_failure_execution_forward/data/FUTURE_RECEIPT.json
+            research/payoff_failure_execution_forward/data/FORWARD_SHADOW_DIAGNOSTIC.json
