@@ -101,3 +101,9 @@ Exitflow actualhour13 run38401704208 verified178markets,economic_outcomes_opened
 ## Follow-up — 2026-10-13 14:04 UTC /10:04 NY DST
 
 LICP originalrun38408008308/job115332606954 frozen verdict17/20 independentepisodes at13:59:31UTC,FORWARD_INSUFFICIENT. Count increased legitimately but all finalgates stillapply; no terminal,duplicate shard or writer created. Exitflowhour14 absent/no activejob beforetick1aa9b073b537f44843c06a657ace6b452f0e6bd2;run38410145547 submitted,current-hour-only,receiptpending. No missedhoursbackfilled. USOPENOct13 entry alreadycaptured;10:04NY outsidebothwindows,do not repeat;exit due15:00–15:10UTC. AaveOct13valid,norepeat. Multifullreceiptinspectionpending,no rerun/aggregation/economicopening. Existingheartbeatactive,quietonroutineaccumulation; no new scientificterminal.
+
+## Follow-up — 2026-10-13 15:01 UTC /11:01 NY DST
+
+USOPEN originalblob7fb57c214b4e8dd250bbb24337d48f4afedf439a reverified;Oct13entryexists,exitabsent,noactivejob,eligibleTuesday. Exitwindowtickfa47e3e8fd3f94e2f25d18e32fbb5e757d172e93/run38418301130 SUCCESS. Exitcaptured15:00:36.687646UTC,originaldayreceiptCOMPLETE,blob4727ed80cfa75e6f1be829a00d2ebf935b572f2e;ledgerblob8417815801228f9c7dc35f1a37584b033687e46b,completed_dates1,FORWARD_SHADOW_COLLECTING. Frozen bid-entry/ask-exit plusfees0.00012BTC yields descriptivebase_net−0.00027BTC,stress_net−0.00047BTC,orders=false,live_execution=false. One simulatedday is not profit or a terminalNO_EDGE verdict; original30dates andothergatesstillapply. Oct12missedexit remains excluded. Do not repeatexit.
+
+Exitflowactual15UTC receiptverified,economic_outcomes_opened=false;tick55351d5215e2da8d64e18a8baf1bd49f20a20f53,nomissedhoursbackfilled. AaveOct13valid,norepeat;Multiartifactnotretriggered,economicssealed. No new legitimate terminal; heartbeat remainsactive.
