@@ -1,0 +1,14 @@
+# SOURCE-ONLY AMENDMENT 001 — BTC-CONVEX FOUR TIMEFRAMES
+**Dated 2026-10-13, BEFORE any 4-timeframe economic outcomes were calculated.**
+Parent protocol: PRE_OUTCOME_PROTOCOL.md commit e58716da046959390978272753676f83b051f9ee.
+Early first attempt job: https://github.com/joseluisvieira28-oss/Laboratorio/actions/runs/38423990069
+Result before any profit computation: SOURCE_BLOCKED at 1h independent archive parity, specifically 2022-06-23 19:00 UTC = 1656010800000: sum of twelve official 5m base-volumes 51536.155 vs published official 1h base-volume 51615.158 (different by 79.003 BTC, approx 0.153% of published 1h), despite each publisher ZIP matching its checksum. Script was designed fail-closed and never reached economic simulation or outcome.
+
+## Justified prospective source repair (NOT a profit-driven strategy change)
+The sole authority for computing **all 15m/30m/1h/4h strategy OHLCV** shall be **the unfiltered complete official Binance 5m archive**, including summed 5m VOLUME consistently for all four timeframes. This avoids mixing different market aggregation revisions within one comparison. All daily/weekly/year regimes and trading rule parameters unchanged.
+Independently downloaded 1h official archive is retained as a **source audit**, not silently chosen as a profitable alternate signal. Compare all 1h price OHLC fields vs aggregation within absolute 1e-6 or relative 1e-6; any PRICE mismatch => SOURCE_BLOCKED before evaluating trading performance. Compare all 1h volume sums exactly under the same tolerance, count and publish **all** volume mismatch totals, maximum absolute/relative deviation and first 10 timestamps; DO NOT delete mismatching periods or symbols. Compare indicator signal booleans between 1h official and 5m-aggregated 1h and publish disagreement count; if nonzero, economic evidence receives explicit SIGNAL_SOURCE_DIVERGENCE qualifier, not promotion.
+These observations must be written before the eight strategy simulations; mismatch audit status allowed is PRICE_PARITY_PASS_VOLUME_DIFFERENCES_RECORDED, not dishonest ALL_FIELDS_MATCH.
+Economic outcomes for all eight frozen arms only after this repaired source gate passes; sample 2021-2025, 20% notional, Original Parent V5 signal/trail, stop4%, trail12%, +5% close activation, fees/slip/funding remain EXACTLY identical. No target or timeframes changed. Outcome is still contaminated existing BTC history; zero OOS/execution proof.
+If an OHLC price mismatch occurs, halt and perform source analysis separately; do not automatically switch venue, period, parameter or price feed.
+This amendment supersedes only the absolute 1h VOLUME parity rejection condition in the original freeze because the initial source check found incompatible publisher aggregates, before any PnL observation.
+No protected 2026 holdout, private exchange, live trade, main merge, spend, wallets, Render, post-outcome tuning.
