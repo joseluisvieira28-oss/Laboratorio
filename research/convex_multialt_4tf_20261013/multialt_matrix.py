@@ -3,7 +3,7 @@
 
 Identical original recovered signal, 5m canonical SOURCE design, one asset
 and eight scenarios PER Actions matrix job. Official Binance Vision public
-archive; no private endpoints, orders, accounts, wallet, protected 2026.
+archive; no private endpoints, orders or account access; protected 2026 untouched.
 """
 from __future__ import annotations
 
