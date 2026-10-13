@@ -1,0 +1,47 @@
+name: PMR001 V03 — REAL CASH TRUTH / NO TRADING
+
+on:
+  push:
+    branches:
+      - research/pmr001-real-cash-pnl-falsification-2026-10-13
+    paths:
+      - '.github/workflows/pmr001-v03-real-cash-truth.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  arithmetic-source-truth:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test real-world negative PnL arithmetic and false-profit firewall
+        run: |
+          python -m compileall -q research/poly_maker_incentive
+          python -m unittest research.poly_maker_incentive.test_pmr001_real_cash_truth -v
+      - name: Produce exact-source external-cases and microcapital break-even data
+        run: python -m research.poly_maker_incentive.pmr001_real_cash_truth
+      - name: Assert real-money negative observations are not passed as our profit
+        run: |
+          python - <<'PY'
+          import json
+          o=json.load(open("PMR001_V03_REAL_CASH_TRUTH.json"))
+          assert o["verdict"] == "NO_VERIFIED_PROFIT_EVIDENCE_FOR_PMR001_OR_OUR_ACCOUNT"
+          assert o["decision"] == "NO_AUTOMATED_TRADING_OR_RADAR_PROMOTION"
+          assert o["trading_authority"] == "NONE" and o["orders_created"] is False
+          assert o["claimed_profit_usd"] is None
+          assert o["operator_cases_independently_audited"] == 0
+          assert {v["net_reward_plus_inventory_usd"] for v in o["operator_claims"]} == {"-129.90","-10.81"}
+          print("NO VERIFIED POSITIVE NET PNL; zero account/order/wallet access")
+          PY
+      - name: Upload small arithmetic proof only
+        uses: actions/upload-artifact@v4
+        with:
+          name: PMR001_V03_REAL_CASH_TRUTH_20261013
+          path: PMR001_V03_REAL_CASH_TRUTH.json
+          retention-days: 30
+          if-no-files-found: error
