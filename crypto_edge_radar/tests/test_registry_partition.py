@@ -19,12 +19,22 @@ class RegistryPartitionTests(unittest.TestCase):
         z={x["strategy_id"] for x in archive["candidates"]}
         p={x["research_id"] for x in protected["entries"]}
 
-        self.assertEqual(len(a),8)
-        self.assertEqual(len(z),44)
+        self.assertEqual(len(a),0)
+        self.assertEqual(len(z),52)
         self.assertEqual(len(p),5)
         self.assertFalse(a & z)
         self.assertFalse(a & p)
         self.assertFalse(z & p)
+        self.assertEqual(active["operator_retirement"]["mode"], "ZERO_ACTIVE_FISHING_CANDIDATES")
+        retired={x["strategy_id"] for x in archive["candidates"]
+                 if x.get("operator_retirement_date")=="2026-10-13"}
+        self.assertEqual(len(retired),8)
+        self.assertIn("OPTIONS-SPOTPERP-001-V2.1",retired)
+        for row in archive["candidates"]:
+            if row["strategy_id"] in retired:
+                self.assertFalse(row["shadow_allowed"])
+                self.assertFalse(row["micro_live_allowed_now"])
+                self.assertTrue(row["scientific_closeout_preserved"])
 
     def test_operational_summary_counts_match_partition_files(self):
         active=self._load("deployment_registry_v1.json")
