@@ -1,0 +1,37 @@
+name: BTC PAYOFF prospective public-source QA (NO LIVE ORDERS)
+on:
+  push:
+    branches:
+      - research/payoff-4r-failure-execution-forward-2026-10-13
+    paths:
+      - ".github/workflows/payoff-forward-source-qa.yml"
+      - "research/payoff_failure_execution_forward/forward_public_daily_source.py"
+      - "research/payoff_failure_execution_forward/test_forward_public_daily_source.py"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  offline_synthetic_source_validation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Synthetic source and cutoff QA only - NO NETWORK REQUESTS
+        run: |
+          python -m unittest discover -s research/payoff_failure_execution_forward -p "test_forward_public_daily_source.py" -v
+      - name: Assert no command-side mutation
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          s=Path("research/payoff_failure_execution_forward/forward_public_daily_source.py").read_text()
+          for forbidden in ('/fapi/v1/order','/fapi/v2/account','/fapi/v3/account','/fapi/v1/leverage','/fapi/v1/marginType'):
+              if forbidden in s:raise SystemExit("FORBIDDEN_ACCOUNT_OR_ORDER_CODE")
+          print("RESEARCH_ONLY_PUBLIC_SOURCE_GUARD_PASS")
+          PY
