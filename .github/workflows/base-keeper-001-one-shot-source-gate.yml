@@ -1,0 +1,47 @@
+name: BASE KEEPER 001 — ONE SHOT READ-ONLY AAVE LIQUIDATION CENSUS
+
+on:
+  push:
+    branches:
+      - research/base-aave-liquidation-keeper-economic-source-v01-2026-10-13
+    paths:
+      - 'research/base_keeper/**'
+      - '.github/workflows/base-keeper-001-one-shot-source-gate.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  source-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Offline tests
+        run: |
+          python -m compileall -q research/base_keeper
+          python -m unittest research.base_keeper.test_base_keeper_source_gate_v01 -v
+      - name: One-shot public RPC census, zero mutations
+        env:
+          BASE_KEEPER_RECEIPT_PATH: BASE_KEEPER_001_SOURCE_RECEIPT.json
+        run: python research/base_keeper/base_keeper_source_gate_v01.py
+      - name: Verify honest source adjudication
+        run: |
+          python - <<'PY'
+          import json
+          r=json.load(open("BASE_KEEPER_001_SOURCE_RECEIPT.json"))
+          assert r["source_verdict"] in ("SOURCE_PASS","SOURCE_EMPTY","SOURCE_BLOCKED")
+          assert r["economic_verdict"]=="UNPROVEN_NOT_A_LIVE_EDGE"
+          assert r.get("net_profit_usd") is None
+          print("SCIENTIFIC_GATE_CLASSIFIED:",r["source_verdict"])
+          PY
+      - name: Persist source/economic verdict only
+        uses: actions/upload-artifact@v4
+        with:
+          name: base-keeper-001-20261013-source-gate
+          path: BASE_KEEPER_001_SOURCE_RECEIPT.json
+          if-no-files-found: error
+          retention-days: 30
