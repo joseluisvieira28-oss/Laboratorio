@@ -1,0 +1,51 @@
+name: CONVEX SHORT MIRROR Eight Alts Five Timeframes 2023-25
+on:
+  push:
+    branches:
+      - research/convex-short-mirror-8alt-5tf-2026-10-13
+    paths:
+      - 'research/convex_short_mirror_8alt_5tf_20261013/**'
+      - '.github/workflows/convex-short-8alt-5tf-2023-25.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  short-mirror-synthetic-gates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Verify SHORT inversion, +4% stop, trailing reset, next 5m latency and funding sign before outcomes
+        run: |
+          python -m unittest discover -s research/convex_short_mirror_8alt_5tf_20261013 -p 'test_*.py' -v
+          python -m py_compile research/convex_short_mirror_8alt_5tf_20261013/short_mirror.py
+  eight-public-historical-shorts:
+    needs: short-mirror-synthetic-gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 24
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix:
+        symbol: [ETHUSDT, BNBUSDT, SOLUSDT, XRPUSDT, DOGEUSDT, ADAUSDT, LINKUSDT, AVAXUSDT]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Publisher-checksummed 2022-11 through 2025-12 SHORT mirror on 5/15/30m 1/4h
+        run: |
+          python -m research.convex_short_mirror_8alt_5tf_20261013.short_mirror \
+            --symbol ${{ matrix.symbol }} \
+            --output-dir research/convex_short_mirror_8alt_5tf_20261013/receipts/${{ matrix.symbol }}
+      - name: Preserve all ten case metrics, source archive manifest and trade ledgers
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CONVEX-SHORT-8ALT-5TF-2023-25-${{ matrix.symbol }}
+          path: research/convex_short_mirror_8alt_5tf_20261013/receipts/${{ matrix.symbol }}/**
+          retention-days: 30
+          if-no-files-found: warn
