@@ -1,0 +1,34 @@
+name: BTC-CONVEX Multifront V01 Synthetic QA
+on:
+  push:
+    branches:
+      - research/btc-convex-multifront-v01-2026-10-13
+    paths:
+      - 'research/btc_convex_multifront_v01/**'
+      - '.github/workflows/btc-convex-multifront-v01-ci.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  synthetic-contracts-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Exact research QA, no external dependency
+        run: python -m unittest discover -s research/btc_convex_multifront_v01 -p 'test_*.py' -v
+      - name: Python syntax integrity
+        run: python -m py_compile research/btc_convex_multifront_v01/engine.py
+      - name: Static no-trading/no-network check
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          f=Path("research/btc_convex_multifront_v01/engine.py").read_text()
+          forbidden=["urllib", "requests", "httpx", "ccxt", "subprocess", "os.system", "create_order", "place_order", "private/account", "api_key", "wallet"]
+          bad=[x for x in forbidden if x in f.lower()]
+          assert not bad, f"Forbidden capabilities: {bad}"
+          print("PASS: offline-only, no network or exchange side-effects")
+          PY
