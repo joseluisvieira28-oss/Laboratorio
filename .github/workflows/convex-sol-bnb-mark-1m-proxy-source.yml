@@ -1,0 +1,61 @@
+name: SOL1H BNB4H Binance Public 1m Mark Proxy Source Sensitivity
+on:
+  push:
+    branches:
+      - research/convex-sol1h-bnb4h-economic-source-gates-2026-10-13
+    paths:
+      - 'research/convex_sol_bnb_gates_v01/mark_1m_proxy_sensitivity.py'
+      - 'research/convex_sol_bnb_gates_v01/test_mark1m.py'
+      - '.github/workflows/convex-sol-bnb-mark-1m-proxy-source.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  offline-source-integrity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Synthetic 1m source ZIP SHA256 and exact-mark non-equivalence safeguards
+        run: |
+          python -m unittest discover -s research/convex_sol_bnb_gates_v01 -p 'test_mark1m.py' -v
+          python -m py_compile research/convex_sol_bnb_gates_v01/mark_1m_proxy_sensitivity.py
+  source-only-monthly-mark-price:
+    needs: offline-source-integrity
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    strategy:
+      fail-fast: false
+      matrix:
+        symbol: [SOLUSDT, BNBUSDT]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Reuse exact prior 2023-25 V5 source fingerprints
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p research/convex_sol_bnb_gates_v01/parent/${{ matrix.symbol }}
+          gh run download 38432883246 --repo joseluisvieira28-oss/Laboratorio \
+            --name CONVEX-8ALT-COMMON-3YEAR-${{ matrix.symbol }}-RESEARCH \
+            --dir research/convex_sol_bnb_gates_v01/parent/${{ matrix.symbol }}
+      - name: Checksum-verify all 36 monthly official mark1m archives and replay unchanged original model
+        run: |
+          python -m research.convex_sol_bnb_gates_v01.mark_1m_proxy_sensitivity \
+            --symbol ${{ matrix.symbol }} \
+            --prior-artifact research/convex_sol_bnb_gates_v01/parent/${{ matrix.symbol }} \
+            --output-dir research/convex_sol_bnb_gates_v01/receipts/proxy/${{ matrix.symbol }}
+      - name: Preserve exact SOURCE_BLOCKED or SOURCE_PASS descriptive results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CONVEX-PUBLIC-1M-MARK-PROXY-${{ matrix.symbol }}
+          path: research/convex_sol_bnb_gates_v01/receipts/proxy/${{ matrix.symbol }}/**
+          retention-days: 30
+          if-no-files-found: warn

@@ -1,0 +1,105 @@
+name: SOL1H BNB4H Public Funding and Venue Source Gates V01
+on:
+  push:
+    branches:
+      - research/convex-sol1h-bnb4h-economic-source-gates-2026-10-13
+    paths:
+      - 'research/convex_sol_bnb_gates_v01/exact_funding_mark.py'
+      - 'research/convex_sol_bnb_gates_v01/mexc_public_feasibility.py'
+      - 'research/convex_sol_bnb_gates_v01/forward_custody_gate.py'
+      - 'research/convex_sol_bnb_gates_v01/test_funding.py'
+      - 'research/convex_sol_bnb_gates_v01/test_venue.py'
+      - 'research/convex_sol_bnb_gates_v01/test_forward.py'
+      - '.github/workflows/convex-sol-bnb-public-economic-gates-v01.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  synthetic-nontrading-gates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Offline complete regression and compile before market source access
+        run: |
+          python -m unittest discover -s research/convex_sol_bnb_gates_v01 -p 'test_*.py' -v
+          python -m compileall -q research/convex_sol_bnb_gates_v01
+      - name: Hard guarantee no private exchange endpoints or mutation patterns
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          for name in ("exact_funding_mark.py","mexc_public_feasibility.py","forward_custody_gate.py"):
+              code=Path("research/convex_sol_bnb_gates_v01",name).read_text().lower()
+              bad=("create_order", "place_order", "/private/", "secret_key", "api_key", "wallet", "post_request", "http_post")
+              assert not any(x in code for x in bad), f"Forbidden API capability in {name}"
+          print("PASS public GET and offline fail-closed research only")
+          PY
+  exact-historical-funding-marks:
+    needs: synthetic-nontrading-gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 24
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        include:
+          - symbol: SOLUSDT
+          - symbol: BNBUSDT
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Acquire original untouched prior source/artifact fingerprints only
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p research/convex_sol_bnb_gates_v01/prior/${{ matrix.symbol }}
+          gh run download 38432883246 --repo joseluisvieira28-oss/Laboratorio \
+            --name CONVEX-8ALT-COMMON-3YEAR-${{ matrix.symbol }}-RESEARCH \
+            --dir research/convex_sol_bnb_gates_v01/prior/${{ matrix.symbol }}
+          test -f research/convex_sol_bnb_gates_v01/prior/${{ matrix.symbol }}/RESULT.json
+      - name: Verify exact official public settlement marks/rates, source hashes and unchanged Parent V5
+        run: |
+          python -m research.convex_sol_bnb_gates_v01.exact_funding_mark \
+            --symbol ${{ matrix.symbol }} \
+            --prior-artifact research/convex_sol_bnb_gates_v01/prior/${{ matrix.symbol }} \
+            --output-dir research/convex_sol_bnb_gates_v01/receipts/funding/${{ matrix.symbol }}
+      - name: Preserve source-blocked or passed provenance receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CONVEX-EXACT-MARK-SOURCE-${{ matrix.symbol }}
+          path: research/convex_sol_bnb_gates_v01/receipts/funding/${{ matrix.symbol }}/**
+          if-no-files-found: warn
+          retention-days: 30
+  mexc-public-contract-and-book:
+    needs: synthetic-nontrading-gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        symbol: [SOL_USDT, BNB_USDT]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: GET-only MEXC public contract/depth/funding source; no account or order
+        run: |
+          python -m research.convex_sol_bnb_gates_v01.mexc_public_feasibility \
+            --symbol ${{ matrix.symbol }} \
+            --output-dir research/convex_sol_bnb_gates_v01/receipts/venue/${{ matrix.symbol }}
+      - name: Retain even public source error as auditable missing-evidence receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CONVEX-MEXC-PUBLIC-ONLY-${{ matrix.symbol }}
+          path: research/convex_sol_bnb_gates_v01/receipts/venue/${{ matrix.symbol }}/**
+          if-no-files-found: warn
+          retention-days: 30

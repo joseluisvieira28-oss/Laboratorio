@@ -1,0 +1,61 @@
+name: SOL1H BNB4H Repaired Official Monthly Daily Mark Proxy Full Replay
+on:
+  push:
+    branches:
+      - research/convex-sol1h-bnb4h-economic-source-gates-2026-10-13
+    paths:
+      - 'research/convex_sol_bnb_gates_v01/repaired_mark_1m_proxy_replay.py'
+      - 'research/convex_sol_bnb_gates_v01/test_repairedmark.py'
+      - '.github/workflows/convex-sol-bnb-f1c-repaired-mark-source.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  exact-repair-before-economic-outcomes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Synthetic proof original missing daily 1440 bars alone can be sourced
+        run: |
+          python -m unittest discover -s research/convex_sol_bnb_gates_v01 -p 'test_repairedmark.py' -v
+          python -m py_compile research/convex_sol_bnb_gates_v01/repaired_mark_1m_proxy_replay.py
+  frozen-source-model-replay:
+    needs: exact-repair-before-economic-outcomes
+    runs-on: ubuntu-latest
+    timeout-minutes: 23
+    strategy:
+      fail-fast: false
+      matrix:
+        symbol: [SOLUSDT, BNBUSDT]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Immutable first original V5 historical model 2023-25 fingerprints
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p research/convex_sol_bnb_gates_v01/prior_repaired/${{ matrix.symbol }}
+          gh run download 38432883246 --repo joseluisvieira28-oss/Laboratorio \
+            --name CONVEX-8ALT-COMMON-3YEAR-${{ matrix.symbol }}-RESEARCH \
+            --dir research/convex_sol_bnb_gates_v01/prior_repaired/${{ matrix.symbol }}
+      - name: Official 36 months one-minute mark + strict daily Feb24 repair + unchanged SOL1h BNB4h economics
+        run: |
+          python -m research.convex_sol_bnb_gates_v01.repaired_mark_1m_proxy_replay \
+            --symbol ${{ matrix.symbol }} \
+            --prior-artifact research/convex_sol_bnb_gates_v01/prior_repaired/${{ matrix.symbol }} \
+            --output-dir research/convex_sol_bnb_gates_v01/receipts/repaired/${{ matrix.symbol }}
+      - name: Archive original hash and repaired official source-only economics receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CONVEX-F1C-REPAIRED-MARK-1M-OPEN-PROXY-${{ matrix.symbol }}
+          path: research/convex_sol_bnb_gates_v01/receipts/repaired/${{ matrix.symbol }}/**
+          retention-days: 30
+          if-no-files-found: warn
