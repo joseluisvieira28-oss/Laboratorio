@@ -1,0 +1,37 @@
+name: SOL BNB February 2023 Official Daily Mark Minute Gap Audit
+on:
+  push:
+    branches:
+      - research/convex-sol1h-bnb4h-economic-source-gates-2026-10-13
+    paths:
+      - 'research/convex_sol_bnb_gates_v01/daily_mark_gap_probe.py'
+      - '.github/workflows/convex-sol-bnb-daily-mark-gap-source.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  only_frozen_three_missing_funding_minutes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    strategy:
+      fail-fast: false
+      matrix:
+        symbol: [SOLUSDT, BNBUSDT]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Check official February 2023 monthly vs daily publisher mark for missing funding minutes
+        run: |
+          python -m research.convex_sol_bnb_gates_v01.daily_mark_gap_probe \
+            --symbol ${{ matrix.symbol }} \
+            --output-dir research/convex_sol_bnb_gates_v01/receipts/daily/${{ matrix.symbol }}
+      - name: Retain precise source-only coverage and official archive hashes
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CONVEX-OFFICIAL-DAILY-FUNDING-MARK-GAP-${{ matrix.symbol }}
+          path: research/convex_sol_bnb_gates_v01/receipts/daily/${{ matrix.symbol }}/**
+          retention-days: 30
+          if-no-files-found: warn
