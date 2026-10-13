@@ -205,10 +205,51 @@ class OptionsV21FuturesAutoLiveEngine:
             raise OptionsFuturesAutoLiveError(f"MULTIPLE_{direction}_POSITIONS_PRESENT")
         return matches[0] if matches else None
 
-    def _global_gate(self, now: datetime) -> dict[str, Any]:
-        blockers: list[str] = []
+    def _arm_receipt_blockers(self, now: datetime) -> list[str]:
+        """Validate the frozen Futures-only authority; file existence is not authority."""
         if not self.armed_path.exists():
-            blockers.append("AUTO_MICROLIVE_FUTURES_NOT_ARMED")
+            return ["AUTO_MICROLIVE_FUTURES_NOT_ARMED"]
+        try:
+            # Windows PowerShell 5.1 Set-Content -Encoding UTF8 adds a BOM.
+            row = json.loads(self.armed_path.read_text(encoding="utf-8-sig"))
+        except (OSError, ValueError, UnicodeError):
+            return ["AUTO_MICROLIVE_ARM_RECEIPT_INVALID_JSON"]
+        if not isinstance(row, dict):
+            return ["AUTO_MICROLIVE_ARM_RECEIPT_INVALID_SCHEMA"]
+
+        frozen = {
+            "authority": "TIER2-AUTO-MICROLIVE-POLICY-V2.0-FROZEN-2026-09-25",
+            "execution_contract": "OPTIONS-SPOTPERP-001-V2.1-FUTURES-ONLY-AUTOLIVE-V0.2.1-SOURCE-HOTFIX",
+            "strategy_id": "OPTIONS-SPOTPERP-001-V2.1",
+            "execution_fork": "FUTURES_ONLY",
+            "symbol": "BTC_USDT",
+            "margin_mode": "ISOLATED",
+        }
+        for key, expected in frozen.items():
+            if not isinstance(row.get(key), str) or row[key] != expected:
+                return [f"AUTO_MICROLIVE_ARM_RECEIPT_MISMATCH:{key}"]
+        for key in ("long_enabled", "short_enabled"):
+            if type(row.get(key)) is not bool or row[key] is not True:
+                return [f"AUTO_MICROLIVE_ARM_RECEIPT_MISMATCH:{key}"]
+        for key, expected in (("leverage", 1), ("maximum_concurrent_positions", 1)):
+            if type(row.get(key)) is not int or row[key] != expected:
+                return [f"AUTO_MICROLIVE_ARM_RECEIPT_MISMATCH:{key}"]
+        notional = row.get("max_notional_usdt")
+        if type(notional) not in (int, float) or float(notional) != MAX_NOTIONAL_USDT:
+            return ["AUTO_MICROLIVE_ARM_RECEIPT_MISMATCH:max_notional_usdt"]
+        operator = row.get("installed_by_windows_user")
+        if not isinstance(operator, str) or not operator.strip():
+            return ["AUTO_MICROLIVE_ARM_RECEIPT_INVALID_OPERATOR"]
+        try:
+            armed_at = _utc(str(row["armed_at_utc"]))
+        except (KeyError, ValueError, TypeError, OptionsFuturesAutoLiveError):
+            return ["AUTO_MICROLIVE_ARM_RECEIPT_INVALID_TIMESTAMP"]
+        if armed_at > now + timedelta(minutes=5):
+            return ["AUTO_MICROLIVE_ARM_RECEIPT_FUTURE_TIMESTAMP"]
+        return []
+
+    def _global_gate(self, now: datetime) -> dict[str, Any]:
+        blockers: list[str] = self._arm_receipt_blockers(now)
         if self.kill_switch_path.exists():
             blockers.append("KILL_SWITCH_PRESENT")
 
