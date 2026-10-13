@@ -1,0 +1,51 @@
+name: CONVEX Eight Altcoins Four TF Common 2023-25 Source-Gap-Protected
+on:
+  push:
+    branches:
+      - research/convex-8alt-common-2023-25-2026-10-13
+    paths:
+      - 'research/convex_8alt_common_2023_25/**'
+      - '.github/workflows/convex-8alt-common-2023-25.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  frozen-window-and-V5-invariants:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Confirm exact 2023-25 source window and unchanged 4%/12% V5 economics
+        run: |
+          python -m unittest discover -s research/convex_8alt_common_2023_25 -p 'test_*.py' -v
+          python -m py_compile research/convex_8alt_common_2023_25/common_3yr.py
+  eight_altcoins_replay:
+    needs: frozen-window-and-V5-invariants
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        symbol: [ETHUSDT, BNBUSDT, SOLUSDT, XRPUSDT, DOGEUSDT, ADAUSDT, LINKUSDT, AVAXUSDT]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Publisher-SHA-verified 2022-11 warmup through 2025-12, all eight frozen models
+        run: |
+          python -m research.convex_8alt_common_2023_25.common_3yr \
+            --symbol ${{ matrix.symbol }} \
+            --output-dir research/convex_8alt_common_2023_25/receipts/${{ matrix.symbol }}
+      - name: Preserve complete source ledger and negative outcomes as-is
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CONVEX-8ALT-COMMON-3YEAR-${{ matrix.symbol }}-RESEARCH
+          path: research/convex_8alt_common_2023_25/receipts/${{ matrix.symbol }}/**
+          retention-days: 30
+          if-no-files-found: warn
