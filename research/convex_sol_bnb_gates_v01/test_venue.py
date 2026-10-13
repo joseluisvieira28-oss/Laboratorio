@@ -8,12 +8,12 @@ def spec():
             "minVol":Decimal("1"),"maxVol":Decimal("10000"),
             "volUnit":Decimal("1"),"priceUnit":Decimal(".01")}
 
-def depth(ts=10_000):
+def depth(ts=1_800_000_000_000):
     return {"asks":[["100.10",23,12],["100.20",14,22]],
             "bids":[["100.00",30,45],["99.90",40,30]],
             "timestamp":ts}
 
-def receipt(ts=10_000):
+def receipt(ts=1_800_000_000_000):
     return {"local_received_ms":ts+200,"request_latency_ms":500}
 
 class PublicMEXC(unittest.TestCase):
@@ -33,14 +33,14 @@ class PublicMEXC(unittest.TestCase):
 
     def test_book_depth_order_and_latency_fail_closed(self):
         r=receipt()
-        for x in ({"asks":[[100,1],],"bids":[[99,1,2]],"timestamp":10_000},
+        for x in ({"asks":[[100,1],],"bids":[[99,1,2]],"timestamp":1_800_000_000_000},
                   {"asks":[[100,10,1]],"bids":[[101,10,1]],"timestamp":10_000}):
             with self.assertRaises(ValueError):
                 p.analyze_book(x,r,"SOL_USDT",spec())
         with self.assertRaisesRegex(ValueError,"STALE_OR_CLOCK_SKEW"):
-            p.analyze_book(depth(),{"local_received_ms":13_000,"request_latency_ms":500},"SOL_USDT",spec())
+            p.analyze_book(depth(),{"local_received_ms":1_800_000_003_000,"request_latency_ms":500},"SOL_USDT",spec())
         with self.assertRaisesRegex(ValueError,"LATENCY_EXCESSIVE"):
-            p.analyze_book(depth(),{"local_received_ms":10_100,"request_latency_ms":4000},"SOL_USDT",spec())
+            p.analyze_book(depth(),{"local_received_ms":1_800_000_000_100,"request_latency_ms":4000},"SOL_USDT",spec())
 
     def test_detail_fails_without_contract_size(self):
         item={"symbol":"SOL_USDT","minVol":1,"volUnit":1,"maxVol":1000,"priceUnit":".01"}
