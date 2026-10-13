@@ -1,0 +1,27 @@
+name: ConvexRadar RC1 source snapshot for RC2 safety patch (NO ORDERS)
+on:
+  push:
+    branches:
+      - fix/convexradar-windows-rc2-10x-safety-2026-10-13
+    paths:
+      - ".github/workflows/convex_rc2_source_snapshot.yml"
+  workflow_dispatch: {}
+permissions:
+  contents: read
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: RC1 source-only archive
+        run: |
+          test -f crypto_edge_radar/convex_trailing_ethsolbnb/windows_executor_rc1/app/engine.py
+          python -m unittest discover -s crypto_edge_radar/convex_trailing_ethsolbnb/windows_executor_rc1/tests -v
+      - uses: actions/upload-artifact@v4
+        with:
+          name: convexradar-rc1-source-for-audited-rc2
+          retention-days: 5
+          path: crypto_edge_radar/convex_trailing_ethsolbnb/windows_executor_rc1
