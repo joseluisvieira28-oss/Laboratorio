@@ -1,0 +1,49 @@
+name: PAYOFF 3-way prospective shadow integrity QA (NO ORDERS)
+on:
+  push:
+    branches:
+      - research/payoff-funding-aware-netstop-v01-2026-10-13
+    paths:
+      - ".github/workflows/payoff-forward-3way-integrity.yml"
+      - "research/payoff_funding_netstop_001/**"
+      - "research/payoff_failure_execution_forward/forward_boundary_gate.py"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  three_way_offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Baseline frozen PAYOFF 4R synthetic invariants
+        run: python -m unittest discover -s research/payoff_40_10_btc_001 -p "test_engine.py" -v
+      - name: Forward historic-isolation and public-source tests
+        run: |
+          python -m unittest discover -s research/payoff_failure_execution_forward -p "test_failure_forward.py" -v
+          python -m unittest discover -s research/payoff_failure_execution_forward -p "test_forward_public_daily_source.py" -v
+      - name: Net-loss-stop and causal 3-way path synthetic tests
+        run: |
+          python -m unittest discover -s research/payoff_funding_netstop_001 -p "test_net_risk_stop.py" -v
+          python -m unittest discover -s research/payoff_funding_netstop_001 -p "test_forward_three_way.py" -v
+      - name: Require research-only source and no trade execution imports
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          child=Path('research/payoff_funding_netstop_001/forward_child_replay.py').read_text()
+          compare=Path('research/payoff_funding_netstop_001/forward_three_way.py').read_text()
+          for txt in (child,compare):
+              for forbidden in ('/fapi/v1/order','create_order(','place_order(','ccxt.','requests.post(','mcp__MEXC','login('):
+                  assert forbidden not in txt,forbidden
+          assert '1791936000000' in child
+          assert 'gate.run(source)' in compare
+          assert 'trading_authority' in compare
+          print('3-WAY_RESEARCH_AUTHORITY_PASS')
+          PY
