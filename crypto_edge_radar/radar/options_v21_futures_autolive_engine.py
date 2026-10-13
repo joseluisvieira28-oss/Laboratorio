@@ -26,6 +26,10 @@ ROLLING_7D_LOSS_KILL_USDT = 5.0
 MAX_CLOCK_OFFSET_MS = 500.0
 STATUS_VERSION = "OPTIONS_FUTURES_ONLY_AUTO_MICROLIVE_V0.2.1"
 OFFICIAL_API_TAKER_FLOOR = 0.0008
+# Safety envelope for a distinct prospective stop-protected execution fork.
+# This is NOT scientific evidence of profitability or authority to trade.
+MAX_PROTECTIVE_STOP_DISTANCE_BPS = 200.0
+PROTECTIVE_STOP_POLICY_ID = "OPTIONS_V21_STOP_PROTECTED_PROSPECTIVE_V0.1"
 
 
 class OptionsFuturesAutoLiveError(RuntimeError):
@@ -164,11 +168,14 @@ class OptionsV21FuturesAutoLiveEngine:
         if not self.receipt_root.exists():
             return out
         for path in self.receipt_root.rglob("ACTIVE_TRADE_STATE.json"):
+            if (path.parent / "POST_TRADE_RECONCILIATION.json").exists():
+                continue
             try:
                 row = _load(path)
-            except Exception:
-                continue
-            if row.get("state") in {"FILLED", "EXIT_PENDING"} and not (path.parent / "POST_TRADE_RECONCILIATION.json").exists():
+            except Exception as exc:
+                # Unknown exposure is NOT equivalent to no exposure.
+                raise OptionsFuturesAutoLiveError("UNREADABLE_ACTIVE_TRADE_RECEIPT") from exc
+            if row.get("state") in {"FILLED", "EXIT_PENDING"}:
                 out.append((path, row))
         return out
 
@@ -184,8 +191,9 @@ class OptionsV21FuturesAutoLiveEngine:
                 row = _load(path)
                 closed = _utc(str(row["closed_at_utc"]))
                 pnl = float(row["realized_net_pnl_usdt"])
-            except Exception:
-                continue
+            except Exception as exc:
+                # An unreadable P&L receipt must not reset the daily loss budget.
+                raise OptionsFuturesAutoLiveError("UNREADABLE_REALIZED_LOSS_RECEIPT") from exc
             loss = max(0.0, -pnl)
             if closed >= rolling_start:
                 rolling += loss
@@ -308,6 +316,14 @@ class OptionsV21FuturesAutoLiveEngine:
         blockers.extend(global_gate["blockers"])
 
         direction = str(signal.get("signal_direction") or "")
+        stop_policy = str(signal.get("protective_stop_policy_id") or "")
+        stop_price = 0.0
+        try:
+            stop_price = float(signal.get("protective_stop_loss_price") or 0)
+        except (TypeError, ValueError):
+            pass
+        if stop_policy != PROTECTIVE_STOP_POLICY_ID or not (0 < stop_price < float("inf")):
+            blockers.append("PROTECTIVE_STOP_NOT_PRECOMMITTED")
         if direction not in {"LONG", "SHORT"}:
             blockers.append("INVALID_SIGNAL_DIRECTION")
         if not signal.get("source_healthy"):
@@ -376,6 +392,20 @@ class OptionsV21FuturesAutoLiveEngine:
                 blockers.append("FUTURES_NOTIONAL_EXCEEDS_CAP")
             mid = (bid + ask) / 2.0
             spread_bps = ((ask - bid) / mid) * 10000.0 if mid > 0 else 999999.0
+            if stop_price > 0 and direction in {"LONG", "SHORT"}:
+                ref_price = bid if direction == "LONG" else ask
+                distance_bps = (
+                    ((ref_price - stop_price) / ref_price) * 10000.0
+                    if direction == "LONG" else
+                    ((stop_price - ref_price) / ref_price) * 10000.0
+                ) if ref_price > 0 else -1.0
+                if not 0 < distance_bps <= MAX_PROTECTIVE_STOP_DISTANCE_BPS:
+                    blockers.append("PROTECTIVE_STOP_DIRECTION_OR_RISK_LIMIT_INVALID")
+                price_tick = float(contract.get("priceUnit") or 0)
+                if price_tick <= 0:
+                    blockers.append("PROTECTIVE_STOP_CONTRACT_TICK_UNKNOWN")
+                elif abs(stop_price / price_tick - round(stop_price / price_tick)) > 1e-6:
+                    blockers.append("PROTECTIVE_STOP_NOT_TICK_ALIGNED")
         except Exception as exc:
             target = float(signal.get("planned_notional_usdt", 0) or 0)
             contract_size = None
@@ -413,6 +443,8 @@ class OptionsV21FuturesAutoLiveEngine:
         return {
             "route": "MEXC_USDT_PERP_BTC_USDT",
             "direction": direction,
+            "protective_stop_loss_price": stop_price,
+            "protective_stop_policy_id": stop_policy,
             "pass": not blockers,
             "blockers": blockers,
             "global_gate": global_gate,
@@ -541,6 +573,8 @@ class OptionsV21FuturesAutoLiveEngine:
             "symbol": "BTC_USDT",
             "volume_contracts": int(gate["volume_contracts"]),
             "planned_notional_usdt": gate["estimated_notional_usdt"],
+            "protective_stop_loss_price": gate["protective_stop_loss_price"],
+            "protective_stop_policy_id": gate["protective_stop_policy_id"],
             "external_oid": ext,
             "entry_side": int(meta["entry_side"]),
             "entry_side_semantics": meta["entry_semantics"],
@@ -597,6 +631,7 @@ class OptionsV21FuturesAutoLiveEngine:
                 side=int(meta["entry_side"]),
                 external_oid=ext,
                 position_mode=1,
+                stop_loss_price=float(gate["protective_stop_loss_price"]),
             )
             _atomic_write(
                 session / "EXCHANGE_ACK.json",
