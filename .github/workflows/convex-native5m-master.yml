@@ -1,0 +1,42 @@
+name: CONVEX Native 5m Altcoins Source Receipt Consolidation
+on:
+  push:
+    branches:
+      - audit/convex-8alt-native-5m-results-2026-10-13
+    paths:
+      - '.github/workflows/convex-native5m-master.yml'
+      - 'research/convex_8alt_5m_common_20261013/aggregate.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  read-only-historical-ledgers:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Download EXACT first frozen V5 historical run (all 8 immutable symbol artifacts)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p research/convex_8alt_5m_common_20261013/source
+          gh run download 38435206427 --repo joseluisvieira28-oss/Laboratorio \
+            --pattern 'CONVEX-NATIVE-5M-2023-25-*' \
+            --dir research/convex_8alt_5m_common_20261013/source
+      - name: Fail closed if any of 8 symbols/16 cases or official provenance is missing
+        run: |
+          python -m research.convex_8alt_5m_common_20261013.aggregate \
+            --source-dir research/convex_8alt_5m_common_20261013/source \
+            --output-dir research/convex_8alt_5m_common_20261013/aggregate_receipts
+      - name: Preserve complete loss-inclusive JSON/CSV matrix
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CONVEX-NATIVE-5M-EIGHT-ALT-MASTER-16-CELLS
+          path: research/convex_8alt_5m_common_20261013/aggregate_receipts/**
+          if-no-files-found: warn
+          retention-days: 30
