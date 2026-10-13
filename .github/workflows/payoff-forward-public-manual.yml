@@ -1,7 +1,12 @@
 name: PAYOFF 4R vs PARENT FUTURE SHADOW — MANUAL READ-ONLY
-# On research branch workflow_dispatch only: schedule on nondefault branches
-# would be inert. No unattended collector and absolutely no live orders.
+# Nondefault-branch read-only push trigger: a NEW control/run-*.txt file is
+# needed AFTER the forward warmup. No unattended schedule and NO live orders.
 on:
+  push:
+    branches:
+      - research/payoff-4r-failure-execution-forward-2026-10-13
+    paths:
+      - "research/payoff_failure_execution_forward/control/run-*.txt"
   workflow_dispatch: {}
 permissions:
   contents: read
