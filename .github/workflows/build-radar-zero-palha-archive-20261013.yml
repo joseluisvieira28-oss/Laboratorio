@@ -1,0 +1,77 @@
+name: BUILD RADAR ZERO PALHA — RETIRED NO WATCHERS
+
+on:
+  push:
+    branches:
+      - cleanup/radar-zero-palha-retire-all-eight-2026-10-13
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  archive-and-build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: crypto_edge_radar
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install packager
+        run: |
+          python -m pip install -e .
+          python -m pip install "pyinstaller>=6,<7"
+      - name: Compile and test zero strategy regression
+        run: |
+          python -m compileall -q radar windows_node_entry.py tests
+          python -m unittest tests.test_registry_partition tests.test_dashboard tests.test_windows_resilient_bootstrap -v
+      - name: PowerShell cutover script syntax (no execution)
+        shell: pwsh
+        run: |
+          $err=$null
+          [void][System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path "windows/RADAR_ZERO_PALHA_WINDOWS_CUTOVER_V01.ps1"),
+            [ref]$null,[ref]$err
+          )
+          if ($err.Count -gt 0) { $err | Format-List; throw "cutover script syntax invalid" }
+      - name: Build zero-watcher Windows diagnostic node
+        run: |
+          pyinstaller --clean --onefile --name CryptoEdgeRadarNode --paths . --add-data "deployment_registry_v1.json;." windows_node_entry.py
+      - name: Verify executable resource and zero-watcher identity
+        shell: pwsh
+        run: |
+          $env:RADAR_PACKAGING_SELFTEST = "1"
+          $o = & .\dist\CryptoEdgeRadarNode.exe
+          Write-Host $o
+          if ($LASTEXITCODE -ne 0) { throw "packaging selftest failed" }
+          $s = $o | ConvertFrom-Json
+          if ($s.status -ne "PASS") { throw "unverified selftest" }
+          if ($s.build_id -ne "v0.14.4-win-zero-palha-retired-2026-10-13") { throw "old build ID" }
+          if ($s.registry_version -ne "3.8") { throw "old active registry" }
+          if ($s.retirement_active -ne $true) { throw "no retirement" }
+          if ([int]$s.candidate_count -ne 0) { throw "old candidates active" }
+          if ([int]$s.focus_strategy_count -ne 0) { throw "old focus active" }
+          if ($s.standing_authority_status -ne "NOT_LOADED_OPERATOR_RETIRED") { throw "legacy authority loaded" }
+          if ($s.live_trading_authority -ne "NONE") { throw "live authority leaked" }
+          if ($s.runtime_registry_materialized -ne $true) { throw "registry not materialized" }
+          if ([int]$s.runtime_candidate_count -ne 0) { throw "runtime active strategies" }
+      - name: Fingerprint binary
+        shell: pwsh
+        run: |
+          $hash=(Get-FileHash "dist\CryptoEdgeRadarNode.exe" -Algorithm SHA256).Hash.ToLower()
+          "sha256=$hash" | Out-File "dist\CryptoEdgeRadarNode.exe.sha256.txt" -Encoding ascii
+      - name: Upload zero-palha package only
+        uses: actions/upload-artifact@v4
+        with:
+          name: crypto-edge-radar-zero-palha-v0144-no-watchers
+          path: |
+            crypto_edge_radar/dist/CryptoEdgeRadarNode.exe
+            crypto_edge_radar/dist/CryptoEdgeRadarNode.exe.sha256.txt
+            crypto_edge_radar/deployment_registry_v1.json
+            crypto_edge_radar/archive_registry_v1.json
+            crypto_edge_radar/windows/RADAR_ZERO_PALHA_WINDOWS_CUTOVER_V01.ps1
+          retention-days: 21
+          if-no-files-found: error
