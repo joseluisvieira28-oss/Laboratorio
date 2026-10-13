@@ -82,18 +82,39 @@ def resample(market5,tf):
     return out
 
 def verify_one_hour_parity(resampled,official):
+    """Source amendment 001: hard-block on price divergence, audit EVERY volume mismatch.
+
+    The official Binance 1h and its canonical 5m archive have been observed to
+    disagree on base-volume for a historical bar despite checksummed archives.
+    No economic outcomes were opened before this source-only repair.
+    """
     if len(resampled)!=len(official):raise ValueError("ONE_HOUR_PARITY_COUNT")
-    maxdiff=0.0
+    vol_mismatch=0
+    max_abs_vol=0.0
+    max_rel_vol=0.0
+    first=[]
     for bar in resampled:
         expected=official.get(bar["t"])
         if expected is None:raise ValueError("ONE_HOUR_PARITY_TIME")
-        for key in ("open","high","low","close","volume"):
+        for key in ("open","high","low","close"):
             observed,reference=bar[key],expected[key]
-            delta=abs(observed-reference)
-            maxdiff=max(maxdiff,delta)
             if not math.isclose(observed,reference,rel_tol=0.000001,abs_tol=0.000001):
-                raise ValueError(f"ONE_HOUR_PARITY_MISMATCH:{bar['t']}:{key}:{observed}:{reference}")
-    return {"checked":len(resampled),"max_abs_difference":maxdiff,"status":"PASS"}
+                raise ValueError(f"ONE_HOUR_PRICE_PARITY_MISMATCH:{bar['t']}:{key}:{observed}:{reference}")
+        observed,reference=bar["volume"],expected["volume"]
+        if not math.isclose(observed,reference,rel_tol=0.000001,abs_tol=0.000001):
+            vol_mismatch+=1
+            diff=abs(observed-reference)
+            max_abs_vol=max(max_abs_vol,diff)
+            max_rel_vol=max(max_rel_vol,diff/max(abs(reference),1e-12))
+            if len(first)<10:
+                first.append({"t":bar["t"],"aggregated_5m_volume":observed,
+                              "official_1h_volume":reference,"difference":diff})
+    return {"checked":len(resampled),"price_status":"PASS_ALL_OHLC",
+            "volume_mismatch_count":vol_mismatch,
+            "max_abs_volume_mismatch":max_abs_vol,
+            "max_relative_volume_mismatch":max_rel_vol,
+            "first_10_mismatches":first,
+            "status":"PRICE_PARITY_PASS_VOLUME_DIFFERENCES_RECORDED" if vol_mismatch else "PASS_ALL_FIELDS"}
 
 def simulate(timeframe,bars_tf,market5,funding,slipbps,*,include_trades=False):
     """All 5m bars are closed before TF trailing decisions; stop cannot peek at TF high."""
@@ -249,6 +270,20 @@ def main():
         result["source_counts"]={"5m":len(five),"1h":len(one),"funding":len(funding)}
         tf_bars={label:resample(five,size) for label,size in TFS}
         result["one_hour_parity"]=verify_one_hour_parity(tf_bars["1h"],one)
+        # Show how publisher volume discrepancies translate into exact Parent
+        # signal disagreements; never choose signals post hoc by profitability.
+        build=src.load_parent()
+        canonical,_=build(tf_bars["1h"])
+        official_1h=[one[t] for t in sorted(one)]
+        official_signals,_=build(official_1h)
+        disagreement=[tf_bars["1h"][i]["t"] for i,(a,b) in enumerate(zip(canonical,official_signals))
+                      if a!=b and tf_bars["1h"][i]["t"]>=START]
+        result["signal_source_parity"]={
+            "compared":len(canonical),
+            "one_hour_2021_25_disagreements":len(disagreement),
+            "first_10_disagreements":disagreement[:10],
+            "canonical_source":"CONSECUTIVE_5M_BARS_ALL_TFS",
+            "official_1h_alternative_used_for_backtest":False}
         result["aggregated_bars"]={name:len(bars) for name,bars in tf_bars.items()}
         result["models"]={}
         for label,size in TFS:
