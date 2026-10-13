@@ -26,6 +26,8 @@ class FuturesSignalForkTests(unittest.TestCase):
         self.assertEqual(s["signal_direction"], "LONG")
         self.assertEqual(s["route"], "MEXC_USDT_PERP_BTC_USDT")
         self.assertEqual(s["symbol"], "BTC_USDT")
+        self.assertEqual(s["leverage"], 10)
+        self.assertIn("10X-PROTECTED", s["execution_fork_id"])
         self.assertEqual(s["instrument_type"], "USDT_PERPETUAL")
         self.assertEqual(s["planned_notional_usdt"], 7.0)
         self.assertFalse(s["promotion_credit_to_spot_parent"])
