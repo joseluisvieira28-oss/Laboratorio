@@ -10,7 +10,7 @@ import re
 
 H = 3_600_000
 FIVE = 300_000
-BOUNDARY = 1_760_486_400_000  # 2026-10-15T00:00:00Z
+BOUNDARY = 1_792_022_400_000  # 2026-10-15T00:00:00Z
 MAX_WITNESS_LAG = 600_000
 BASE_FEE = 0.0008
 TP = 0.0075
@@ -137,7 +137,7 @@ def observed_quote_pair(witness_ms, quotes, *, notional_usdt=100.0):
     Quote MUST be contemporaneous, immutable witness supplied elsewhere.
     In absence of source/size evidence: BLOCK instead of guessed fills.
     """
-    if not isinstance(witness_ms, int) or not _finite(notional_usdt) or notional_usdt > 0:
+    if not isinstance(witness_ms, int) or not _finite(notional_usdt) or notional_usdt <= 0:
         return {"status": "BAD_INPUT"}
     def first_at(t):
         eligible = [q for q in quotes
