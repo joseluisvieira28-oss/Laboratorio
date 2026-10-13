@@ -25,63 +25,45 @@ class WindowsResilientBootstrapTests(unittest.TestCase):
             return cls._authority_path()
         raise AssertionError(f"unexpected packaged resource requested in test: {name}")
 
-    def test_dh03_clock_failure_blocks_only_dh03_and_still_serves_dashboard(self):
+    def test_retired_eight_motor_bundle_serves_dashboard_without_collectors(self):
         with tempfile.TemporaryDirectory() as td:
             old = os.getcwd()
             os.chdir(td)
             try:
                 with (
                     patch.object(entry, "_resource_path", side_effect=self._resource),
-                    patch.object(entry, "require_dh03_clock_preflight", side_effect=RuntimeError("synthetic clock fail")),
-                    patch.object(entry, "_start_dh03_thread") as start_dh03,
-                    patch.object(entry, "_start_forward_thread") as start_forward,
-                    patch.object(entry, "_start_cirv_thread") as start_cirv,
-                    patch.object(entry, "_start_render_sentinel_thread") as start_sentinel,
-                    patch.object(entry, "main", return_value=0) as main,
+                    patch.object(entry, "require_dh03_clock_preflight") as clock,
+                    patch.object(entry, "_start_dh03_thread") as dh03,
+                    patch.object(entry, "_start_forward_thread") as forward,
+                    patch.object(entry, "_start_cirv_thread") as cirv,
+                    patch.object(entry, "_start_render_sentinel_thread") as sentinel,
+                    patch.object(entry, "main", return_value=0) as dashboard,
                 ):
-                    rc = entry.run()
-                self.assertEqual(rc, 0)
-                start_dh03.assert_not_called()
-                start_forward.assert_called_once()
-                start_cirv.assert_called_once()
-                start_sentinel.assert_called_once()
-                args = main.call_args.args[0]
-                self.assertEqual(args[0], "dashboard")
-                self.assertNotIn("local-node", args)
-                dh = json.loads(Path("data/dh03_local_status.json").read_text(encoding="utf-8"))
-                self.assertEqual(dh["status"], "FAIL_CLOSED")
-                self.assertEqual(dh["reason"], "DH03_NOT_STARTED_CLOCK_PREFLIGHT_FAILED")
-                status = json.loads(Path("data/radar_status.json").read_text(encoding="utf-8"))
-                self.assertEqual(status["health"], "OK")
+                    result = entry.run()
+                self.assertEqual(result, 0)
+                clock.assert_not_called()
+                dh03.assert_not_called()
+                forward.assert_not_called()
+                cirv.assert_not_called()
+                sentinel.assert_not_called()
+                self.assertEqual(dashboard.call_args.args[0][0], "dashboard")
+                status=json.loads(Path("data/radar_status.json").read_text(encoding="utf-8"))
+                self.assertEqual(status["health"], "NO_ACTIVE_CANDIDATES")
+                self.assertEqual(status["mode"], "ZERO_PALHA_OPERATIONAL_RETIREMENT")
                 self.assertFalse(status["orders_created"])
+                registry=json.loads(Path("data/deployment_registry_v1.json").read_text(encoding="utf-8"))
+                self.assertEqual(registry["candidates"], [])
+                self.assertEqual(registry["focus_strategy_ids"], [])
             finally:
                 os.chdir(old)
 
-    def test_dh03_clock_pass_starts_collector_and_dashboard(self):
-        with tempfile.TemporaryDirectory() as td:
-            old = os.getcwd()
-            os.chdir(td)
-            try:
-                with (
-                    patch.object(entry, "_resource_path", side_effect=self._resource),
-                    patch.object(entry, "require_dh03_clock_preflight", return_value={"pass": True}),
-                    patch.object(entry, "_start_dh03_thread") as start_dh03,
-                    patch.object(entry, "_start_forward_thread") as start_forward,
-                    patch.object(entry, "_start_cirv_thread") as start_cirv,
-                    patch.object(entry, "_start_render_sentinel_thread") as start_sentinel,
-                    patch.object(entry, "main", return_value=0) as main,
-                ):
-                    rc = entry.run()
-                self.assertEqual(rc, 0)
-                start_dh03.assert_called_once()
-                start_forward.assert_called_once()
-                start_cirv.assert_called_once()
-                start_sentinel.assert_called_once()
-                self.assertEqual(main.call_args.args[0][0], "dashboard")
-                clock = json.loads(Path("data/dh03_clock_preflight.json").read_text(encoding="utf-8"))
-                self.assertTrue(clock["pass"])
-            finally:
-                os.chdir(old)
+    def test_registry_selftest_intentional_zero(self):
+        payload, state = entry._verify_registry_file(self._registry_path())
+        self.assertTrue(state["retirement_active"])
+        self.assertEqual(state["candidate_count"], 0)
+        self.assertEqual(state["focus_strategy_count"], 0)
+        self.assertFalse(state["required_strategy_present"])
+        self.assertEqual(payload["operator_retirement"]["live_trading_authority"], "NONE")
 
     def test_duplicate_node_is_rejected_before_any_collector_or_dashboard(self):
         with (
