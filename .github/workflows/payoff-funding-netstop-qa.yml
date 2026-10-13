@@ -1,0 +1,36 @@
+name: PAYOFF funding-aware net stop synthetic QA (RESEARCH ONLY)
+on:
+  push:
+    branches:
+      - research/payoff-funding-aware-netstop-v01-2026-10-13
+    paths:
+      - ".github/workflows/payoff-funding-netstop-qa.yml"
+      - "research/payoff_funding_netstop_001/**"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic_math_only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: No-network unit testing of net-risk stop, gap and error invariants
+        run: |
+          python -m unittest discover -s research/payoff_funding_netstop_001 -p 'test_net_risk_stop.py' -v
+      - name: Verify pure risk code contains no exchange/order clients
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          code=Path('research/payoff_funding_netstop_001/net_risk_stop.py').read_text()
+          for token in ('urllib','requests','socket','ccxt','exchangeInfo','api_key','order('):
+              assert token not in code, token
+          print('NO_NETWORK_NO_EXCHANGE_ACTIONS_PASS')
+          PY
