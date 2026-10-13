@@ -1,0 +1,33 @@
+name: BTC-CONVEX 2021-25 Historical Scalp Diagnostic (NO OOS)
+on:
+  push:
+    branches:
+      - research/btc-convex-multifront-v01-2026-10-13
+    paths:
+      - 'research/btc_convex_multifront_v01/retrospective_diagnostic.py'
+      - 'research/btc_convex_multifront_v01/test_historical.py'
+      - '.github/workflows/btc-convex-historical-diagnostic.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  historical-only-2021-25:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Run offline synthetic regression controls
+        run: python -m unittest discover -s research/btc_convex_multifront_v01 -p 'test_*.py' -v
+      - name: Fetch publisher-checksummed Binance BTC 1h/5m/funding and replay full historical range
+        run: python research/btc_convex_multifront_v01/retrospective_diagnostic.py
+      - name: Archive public-source and economic receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: BTC-CONVEX-RETROSPECTIVE-DIAGNOSTIC-ONLY-NO-OOS
+          path: research/btc_convex_multifront_v01/historical_receipts/**
+          if-no-files-found: warn
+          retention-days: 30
