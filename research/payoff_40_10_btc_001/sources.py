@@ -13,6 +13,7 @@ BASE="https://data.binance.vision/data/futures/um/"
 SYMBOL="BTCUSDT"
 HOUR=3_600_000
 MAX_BYTES=4_000_000
+FUNDING_TIMESTAMP_STATS={"normalized_count":0,"max_abs_offset_ms":0,"deduplicated_equal":0}
 
 def months():
     y,m=2020,2
@@ -78,9 +79,19 @@ def parse_funding(raw):
     for r in rows[1:]:
         if not r:continue
         if len(r)<=max(ti,ri):raise ValueError("FUNDING_SCHEMA")
-        t=timestamp(r[ti]);rate=float(r[ri])
-        if not math.isfinite(rate) or t<=0 or t in out:raise ValueError("INVALID_FUNDING")
-        out[t]=rate
+        raw_t=timestamp(r[ti]);rate=float(r[ri])
+        nearest=((raw_t+HOUR//2)//HOUR)*HOUR
+        offset=abs(raw_t-nearest)
+        if offset>1000:raise ValueError("FUNDING_TIME_OUTSIDE_1S:"+str(raw_t))
+        if not math.isfinite(rate) or raw_t<=0:raise ValueError("INVALID_FUNDING")
+        if offset:
+            FUNDING_TIMESTAMP_STATS["normalized_count"]+=1
+            FUNDING_TIMESTAMP_STATS["max_abs_offset_ms"]=max(FUNDING_TIMESTAMP_STATS["max_abs_offset_ms"],offset)
+        if nearest in out:
+            if out[nearest]!=rate:raise ValueError("CONFLICTING_FUNDING_AT_NORMALIZED_HOUR")
+            FUNDING_TIMESTAMP_STATS["deduplicated_equal"]+=1
+            continue
+        out[nearest]=rate
     if not out:raise ValueError("NO_FUNDING_RECORDS")
     return out
 
@@ -124,8 +135,6 @@ def collect():
         if len([t for t in src if start<=t<=end])!=span:
             raise ValueError("COVERAGE_COUNT_MISMATCH")
     if not funding:raise ValueError("NO_FUNDING")
-    offgrid=[t for t in funding if t%HOUR!=0]
-    if offgrid:raise ValueError("OFFGRID_FUNDING_TIMESTAMP:"+str(offgrid[:4]))
     unmapped=[t for t in funding if start<=t<=end and t not in marks]
     if unmapped:raise ValueError("FUNDING_MARK_MISSING:"+str(unmapped[:4]))
     return {"status":"SOURCE_OK","venue":"Binance USD-M proxy, not historical MEXC fills",
@@ -133,7 +142,7 @@ def collect():
             "bars":[market[t] for t in sorted(market) if start<=t<=end],
             "marks":{str(t):marks[t] for t in marks if start<=t<=end},
             "funding":{str(t):v for t,v in funding.items() if start<=t<=end},
-            "counts":{"market":span,"mark":span,"funding":len(funding),"daily_mark_gapfill_dates":len(missing_dates),"daily_mark_gapfill_hours":gapfill_hours}}
+            "counts":{"market":span,"mark":span,"funding":len(funding),"daily_mark_gapfill_dates":len(missing_dates),"daily_mark_gapfill_hours":gapfill_hours,"funding_timestamp_audit":FUNDING_TIMESTAMP_STATS}}
 
 def main():
     p=argparse.ArgumentParser();p.add_argument("--output",type=Path,required=True);a=p.parse_args()
