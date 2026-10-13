@@ -305,11 +305,11 @@ def main():
                         writer.writeheader();writer.writerows(tr)
                 print("MODEL",key,"closed",model["closed_trades"],"net",round(model["marked_return_pct"],4),
                       "PF",round(model["profit_factor"],4) if model["profit_factor"] else None,flush=True)
-        result["status"]="HISTORICAL_TIMEFRAME_MATRIX_COMPLETED_NO_OOS_CREDIT"
+        result["status"]="HISTORICAL_5M_CANONICAL_COMPLETED_NO_OOS_CREDIT"
     except Exception as exc:
         result["reason"]=type(exc).__name__+":"+str(exc)
     (OUT/"MATRIX_RESULTS.json").write_text(json.dumps(result,indent=2,sort_keys=True)+"\n",encoding="utf8")
-    print("SUMMARY",json.dumps({k:v for k,v in result.items() if k in ("status","reason","source_counts","one_hour_parity","aggregated_bars","models")},sort_keys=True))
+    print("SUMMARY",json.dumps({k:v for k,v in result.items() if k in ("status","reason","source_counts","one_hour_parity","signal_source_parity","aggregated_bars","models")},sort_keys=True))
     if result["status"]!="HISTORICAL_5M_CANONICAL_COMPLETED_NO_OOS_CREDIT":
         raise SystemExit(2)
 
