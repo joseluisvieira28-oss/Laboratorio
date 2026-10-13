@@ -1,0 +1,52 @@
+name: CONVEX V5 Eight Altcoins Native 5m Common 2023-25
+on:
+  push:
+    branches:
+      - research/convex-8alt-5m-common-2023-25-2026-10-13
+    paths:
+      - 'research/convex_8alt_5m_common_20261013/**'
+      - 'research/btc_convex_timeframe_matrix_20261013/matrix.py'
+      - '.github/workflows/convex-8alt-native-5m-2023-25.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  frozen-offline-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Check exact 5m latency, funding, frozen risk and fees before outcomes
+        run: |
+          python -m unittest discover -s research/convex_8alt_5m_common_20261013 -p 'test_*.py' -v
+          python -m py_compile research/convex_8alt_5m_common_20261013/native5m.py
+  eight-public-sources:
+    needs: frozen-offline-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 24
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix:
+        symbol: [ETHUSDT, BNBUSDT, SOLUSDT, XRPUSDT, DOGEUSDT, ADAUSDT, LINKUSDT, AVAXUSDT]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Replay all official publisher SHA-verified 5m history and funding rates
+        run: |
+          python -m research.convex_8alt_5m_common_20261013.native5m \
+            --symbol ${{ matrix.symbol }} \
+            --output-dir research/convex_8alt_5m_common_20261013/receipts/${{ matrix.symbol }}
+      - name: Preserve original trading receipts incl. losing cases and source failures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CONVEX-NATIVE-5M-2023-25-${{ matrix.symbol }}
+          path: research/convex_8alt_5m_common_20261013/receipts/${{ matrix.symbol }}/**
+          retention-days: 30
+          if-no-files-found: warn
