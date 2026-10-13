@@ -19,6 +19,7 @@ from radar.options_v21_futures_autolive_engine import (
 class NoPositionRO:
     def open_positions(self, symbol=None): return []
     def open_orders(self, symbol=None): return []
+    def stop_orders(self, symbol=None): return []
 
 
 class EngineSafetyV02Tests(unittest.TestCase):
