@@ -44,6 +44,46 @@ class DashboardTests(unittest.TestCase):
         )
         return registry, status, events
 
+    def test_empty_retired_registry_is_intentional_and_standing_scope_not_active(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td)
+            registry,status,events=self._paths(root)
+            registry.write_text(json.dumps({
+                "registry_version":"3.8",
+                "operator_retirement":{"mode":"ZERO_ACTIVE_FISHING_CANDIDATES"},
+                "focus_strategy_ids":[],
+                "candidates":[],
+            }),encoding="utf-8")
+            state=build_control_room_state(
+                status_path=str(status),notification_path=str(events),registry_path=str(registry)
+            )
+            self.assertEqual(state["registry"]["focus_loaded"],0)
+            self.assertEqual(state["registry"]["focus_expected"],0)
+            self.assertEqual(state["registry"]["candidate_count"],0)
+            self.assertTrue(state["registry"]["operator_retirement_active"])
+            self.assertTrue(state["registry"]["ok"])
+            self.assertEqual(state["system"]["health"],"NO_ACTIVE_CANDIDATES")
+            self.assertEqual(state["bots"],[])
+            self.assertEqual(state["mexc_execution"]["standing_operator_authority"]["active"],False)
+            self.assertEqual(state["mexc_execution"]["standing_operator_authority"]["routes"],{})
+
+    def test_retirement_rejects_stale_candidates_in_same_registry(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td)
+            registry,status,events=self._paths(root)
+            registry.write_text(json.dumps({
+                "registry_version":"3.8",
+                "operator_retirement":{"mode":"ZERO_ACTIVE_FISHING_CANDIDATES"},
+                "focus_strategy_ids":["OPTIONS-SPOTPERP-001-V2.1"],
+                "candidates":[{"strategy_id":"OPTIONS-SPOTPERP-001-V2.1"}],
+            }),encoding="utf-8")
+            state=build_control_room_state(
+                status_path=str(status),notification_path=str(events),registry_path=str(registry)
+            )
+            self.assertEqual(state["system"]["health"],"REGISTRY_DESYNC")
+            self.assertFalse(state["registry"]["ok"])
+            self.assertEqual(state["bots"],[])
+
     def test_active_registry_focus_excludes_archived_stones_and_keeps_gated_candidate(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
