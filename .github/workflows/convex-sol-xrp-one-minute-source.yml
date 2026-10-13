@@ -1,0 +1,37 @@
+name: SOL XRP Official 1m Recovery Feasibility (SOURCE ONLY)
+on:
+  push:
+    branches:
+      - audit/convex-sol-xrp-source-coverage-2026-10-13
+    paths:
+      - 'research/convex_multialt_one_minute_gap_probe_20261013/**'
+      - '.github/workflows/convex-sol-xrp-one-minute-source.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  frozen-one-minute-source-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    strategy:
+      fail-fast: false
+      matrix:
+        symbol: [SOLUSDT, XRPUSDT]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Check official immutable one-minute source for 2022-02 and 2022-04
+        run: |
+          python -m research.convex_multialt_one_minute_gap_probe_20261013.probe \
+            --symbol ${{ matrix.symbol }} \
+            --output-dir research/convex_multialt_one_minute_gap_probe_20261013/receipts/${{ matrix.symbol }}
+      - name: Archive only verified source feasibility, no trading or price replay
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CONVEX-SOL-XRP-1MINUTE-SOURCE-${{ matrix.symbol }}
+          path: research/convex_multialt_one_minute_gap_probe_20261013/receipts/${{ matrix.symbol }}/**
+          retention-days: 30
+          if-no-files-found: warn
