@@ -27,8 +27,8 @@ Important: **155 reset events are NOT 155 avoidable losses or stops altered**. O
 **Counterfactual not measured**: removing resets/sticking protection could alter exit timing, future entries, funding accrual, competition for a slot, and most importantly destroy 2024 rare right-tail winners; do not convert giveback MFE into savable PnL. The original nonlatched V5 exit itself is mechanically authentic in the exact same historical source.
 
 ## Top 3 original net winners (all exit year 2024)
-- Highest winner BASE **+1,134.1032 USDT**, MFE proxy +74.8717%, slip-adjusted exit +53.8563% from entry price, proxy giveback **21.0154 percentage points**; 16 deactivation events, 9 stop-weakening events, 110+ days holding exposure.
-- Second BASE **+993.5341 USDT**, MFE +73.7839%, exit +52.8992%, giveback **20.8847 pp**; 5 activation resets but ZERO actual protective-stop weakening events.
+- Highest winner BASE **+1,134.1032 USDT**, MFE proxy +74.8717%, slip-adjusted exit +53.8563% from entry price, proxy giveback **21.0154 percentage points**; 16 deactivation events, 9 stop-weakening events, 81.18 days holding exposure.
+- Second BASE **+993.5341 USDT**, MFE +73.7839%, exit +52.8992%, giveback **20.8847 pp**; 5 activation resets but ZERO actual protective-stop weakening events; this trade held 110.00 days.
 - Third BASE **+967.7878 USDT**, MFE +65.8121%, exit +45.8854%, giveback **19.9266 pp**, zero deactivations and zero weakening.
 These winner exits are not a mechanical proof of failure: with a trail 12% below a price peak, a 20 percentage-point gain giveback from high price appreciation can be entirely consistent with the frozen design. A tighter trailing stop would need matched OOS causal testing and could cut these winners very early.
 
