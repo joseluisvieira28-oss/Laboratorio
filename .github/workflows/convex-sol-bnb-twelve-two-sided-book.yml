@@ -1,0 +1,51 @@
+name: SOL BNB 12 Two-sided MEXC Public Book Snapshots
+on:
+  push:
+    branches:
+      - research/convex-sol1h-bnb4h-economic-source-gates-2026-10-13
+    paths:
+      - 'research/convex_sol_bnb_gates_v01/two_sided_book_12.py'
+      - 'research/convex_sol_bnb_gates_v01/test_two_sided.py'
+      - '.github/workflows/convex-sol-bnb-twelve-two-sided-book.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  synthetic-two-sided-book-guards:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Verify only contract quantities third book-array field are sized
+        run: |
+          python -m unittest discover -s research/convex_sol_bnb_gates_v01 -p 'test_two_sided.py' -v
+          python -m py_compile research/convex_sol_bnb_gates_v01/two_sided_book_12.py
+  twelve_snapshot_pairs:
+    needs: synthetic-two-sided-book-guards
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        symbol: [SOL_USDT, BNB_USDT]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Source-only 12 spaced public bid and ask books with SHA256 and timestamps
+        run: |
+          python -m research.convex_sol_bnb_gates_v01.two_sided_book_12 \
+            --symbol ${{ matrix.symbol }} \
+            --output-dir research/convex_sol_bnb_gates_v01/receipts/twosided/${{ matrix.symbol }}
+      - name: Archive all 12 depth receipts even on SOURCE_INCOMPLETE
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CONVEX-SOL-BNB-12-PUBLIC-TWO-SIDED-${{ matrix.symbol }}
+          path: research/convex_sol_bnb_gates_v01/receipts/twosided/${{ matrix.symbol }}/**
+          retention-days: 30
+          if-no-files-found: warn
