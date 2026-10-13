@@ -1,0 +1,33 @@
+name: OPTIONS V21 10X PROSPECTIVE OFFLINE SAFETY TESTS
+
+on:
+  push:
+    branches:
+      - experiment/options-v21-10x-protected-prospective-2026-10-13
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-only:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: crypto_edge_radar
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install source dependencies
+        run: python -m pip install -e .
+      - name: Compile modified Python code
+        run: python -m compileall -q radar/mexc_auth_trade.py radar/mexc_auth_readonly.py radar/options_v21_futures_autolive_engine.py radar/options_v21_futures_execution_signal.py tests
+      - name: Offline transport and recovery tests
+        run: |
+          python -m unittest tests.test_mexc_auth_readonly tests.test_mexc_auth_trade tests.test_mexc_auth_trade_options_v02 -v
+          python -m unittest tests.test_options_v21_futures_execution_signal tests.test_options_v21_futures_autolive_engine -v
+      - name: Explicit no-live economic gate
+        run: |
+          python -c "from radar.options_v21_futures_execution_signal import build_futures_execution_signal; from radar.options_v21_futures_autolive_engine import PROTECTIVE_STOP_POLICY_ID; assert PROTECTIVE_STOP_POLICY_ID; import inspect; s=inspect.getsource(build_futures_execution_signal); assert 'protective_stop_loss_price' not in s, 'This branch is not authorized to generate a live stop price'; print('NO_LIVE_AUTHORITY_NO_STOP_SIGNAL')"
