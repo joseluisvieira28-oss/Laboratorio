@@ -12,7 +12,7 @@ from .options_v21_execution_signal import (
 )
 
 ENTRY_TTL_SECONDS = 300.0
-EXECUTION_FORK_ID = "OPTIONS-SPOTPERP-001-V2.1-FUTURES-EXECUTION-FORK-V0.2"
+EXECUTION_FORK_ID = "OPTIONS-SPOTPERP-001-V2.1-FUTURES-10X-PROTECTED-PROSPECTIVE-V0.1"
 
 
 class OptionsV21FuturesExecutionSignalError(RuntimeError):
@@ -68,7 +68,7 @@ def build_futures_execution_signal(
         "route": "MEXC_USDT_PERP_BTC_USDT",
         "symbol": "BTC_USDT",
         "instrument_type": "USDT_PERPETUAL",
-        "leverage": 1,
+        "leverage": 10,
         "margin_mode": "ISOLATED",
         "position_mode": "HEDGE",
         "maximum_program_notional_usdt": MAX_NOTIONAL_USDT,
