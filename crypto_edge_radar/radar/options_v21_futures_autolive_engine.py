@@ -287,6 +287,14 @@ class OptionsV21FuturesAutoLiveEngine:
             orders = []
             blockers.append(f"FUTURES_ORDER_READ_FAILED:{type(exc).__name__}")
 
+        try:
+            stops = self.futures_ro.stop_orders("BTC_USDT")
+            if stops:
+                blockers.append("PREEXISTING_BTC_FUTURES_STOP_ORDER_PRESENT")
+        except Exception as exc:
+            stops = []
+            blockers.append(f"FUTURES_STOP_ORDER_READ_FAILED:{type(exc).__name__}")
+
         return {
             "pass": not blockers,
             "blockers": blockers,
@@ -295,6 +303,7 @@ class OptionsV21FuturesAutoLiveEngine:
             "active_local_trades": len(active),
             "open_futures_positions": len(positions),
             "open_futures_orders": len(orders),
+            "open_futures_stop_orders": len(stops),
         }
 
     def _broker_stop_proven(
