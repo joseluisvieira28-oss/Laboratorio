@@ -79,6 +79,16 @@ class BTCProfitHistoricalTests(unittest.TestCase):
         self.assertTrue(all(l["exit_t"]>START+2*H for l in partial))
         self.assertTrue(all(l["exit_t"]>=START+5*H for l in partial))
 
+    def test_prepartial_parent_reset_cannot_weaken_child_stop(self):
+        # Hour3 activates original nonlatched trail at +5%, but next OPEN
+        # is too low for +0.25R realized profit. Hour4 falls under +5%.
+        # In child, higher original protected stop must be retained.
+        a=historical({3:(100,110,99,105.2),
+                      4:(100,105,99,102),
+                      5:(96.5,98,95,97)})
+        self.assertEqual(a["partial_50pct_count"],0)
+        self.assertEqual(a["exit_counts"].get("STOP_GAP"),1)
+
     def test_profit_factor_and_cash_reconciliation(self):
         a=historical()
         legnet=sum(l["net"] for l in a["closed_leg_ledger"])
