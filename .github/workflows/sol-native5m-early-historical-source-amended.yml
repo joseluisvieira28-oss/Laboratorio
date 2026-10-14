@@ -1,0 +1,65 @@
+name: SOL5M SOL4H native-original SOURCE-AMENDED early-harvest historical
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/sol-native5m-early-historical-source-amended.yml
+permissions:
+  contents: read
+concurrency:
+  group: sol-native5m-first-canonical-history
+  cancel-in-progress: false
+jobs:
+  frozen-sol-native5m-source-replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Checkout original NATIVE5M scientific parent at exact official published SHA
+        uses: actions/checkout@v4
+        with:
+          ref: af82deefd5634a77a7b49e7acec61ca21eb44a49
+          path: historical_parent
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Source-only guard that native Parent actually permits 5m and is pinned
+        run: |
+          test "$(git -C historical_parent rev-parse HEAD)" = af82deefd5634a77a7b49e7acec61ca21eb44a49
+          grep -F 'timeframe<M5' historical_parent/research/btc_convex_timeframe_matrix_20261013/matrix.py
+          python3 -m py_compile research/operator_risk/next_five_historical.py
+      - name: Offline pre-outcome synthetic causal and original 3yr tests
+        run: |
+          cd research/operator_risk
+          python3 -m unittest -v test_next_five_historical test_sol_bnb_early_profit_historical test_monotonic_protection
+      - name: SOL original original 2023-25 official publisher SHA source, native5m & 4h matched parent and complete early child
+        run: |
+          mkdir -p next_five_results/SOLUSDT
+          python3 research/operator_risk/next_five_historical.py --symbol SOLUSDT --outdir next_five_results/SOLUSDT
+      - name: Sole canonical SOL 5m / SOL 4H source and profit receipts
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import json,hashlib,pathlib
+          p=pathlib.Path('next_five_results/SOLUSDT/REPORT.json')
+          if not p.exists():
+              print('SOL_SOURCE_BLOCKED_NO_REPORT')
+          else:
+              raw=p.read_bytes();d=json.loads(raw)
+              print('SOL_NATIVE_FROZEN',d['state'],'sha',hashlib.sha256(raw).hexdigest(),'source',d['original_source_git_sha'],'counts',d.get('source_counts'),'block',d.get('block_reason'))
+              for cid,scenarios in d.get('scenarios',{}).items():
+                  for mode,x in scenarios.items():
+                      print('SOL_NATIVE_HIST_ECONOMIC',cid,mode,json.dumps({'parent':x['parent']['marked_return_pct'],'child':x['child']['marked_return_pct'],'delta_pp':x['delta_terminal_marked_pp'],'original_trades':x['parent']['closed_trades'],'child_trades':x['child']['closed_trades'],'partials':x['child']['partially_realized_positions'],'parent_pf':x['parent']['profit_factor'],'child_pf':x['child']['closed_profit_factor'],'original_low_dd':x['parent']['max_5m_low_stress_dd_pct'],'child_low_dd':x['child']['5m_low_mtm_max_dd_pct']},sort_keys=True))
+          PY
+      - name: Keep only historical scientific receipts (no live exchange)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: SOL5M-SOL4H-ORIGINAL-NATIVE-SOURCE-AMENDED-HISTORICAL
+          path: next_five_results/SOLUSDT/
+          if-no-files-found: warn
+          retention-days: 30
