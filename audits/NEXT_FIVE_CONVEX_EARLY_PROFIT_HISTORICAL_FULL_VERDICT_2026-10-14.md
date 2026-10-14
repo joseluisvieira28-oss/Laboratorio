@@ -45,3 +45,6 @@ Historical risk tradeoff: every candidate improves *modeled* drawdown but gives 
 - BNB-LAUNCHPOOL-DEMAND and BTC-liquidation→SOL SHORT historical event economics are NOT candidates for truthful +1R testing because their original event-ledger policy does not contain a scientifically frozen/verified initial stop or viable interval venue execution path. **Event stop-source feasibility** next, no inventing stops backwards from favorable already-viewed price movements.
 
 **VERDICT:** FIVE_FROZEN_HISTORICAL_AFTERCOST_SOURCE_PASS / FIVE POSITIVE BUT FIVE UNDERPERFORM ORIGINAL / NO OOS / NO EXECUTION AUTHORITY / ORIGINAL STRATEGIES PRESERVED.
+
+## Unintended duplicate workflow caused by PR path-filter semantics
+GitHub automatically scheduled **extra run 38598698486** while the original PR was being updated. It repeated BNB, ETH and DOGE SUCCESS and the original uncorrected 4TF SOL source failure, all on the SAME already-seen data; **NOT additional independent evidence**. No economic parameter optimization from these repeats. The original SOURCE-CORRECTED SOL native run #38598698871 remains the sole canonical SOL child result. Workflows are now `workflow_dispatch` only to prevent additional automatic historical replays. No reclassification or survivor promotion from redundant replay.
