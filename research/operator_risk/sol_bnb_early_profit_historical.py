@@ -40,7 +40,8 @@ def run_child(symbol,tf, bars_tf, market5, funding, slip_bps, source):
     """Causal exit-policy replay from raw confirmed 5m closes and next 5m opens.
     Exact Parent signals/scheduler/entry only, child dynamic stops NEVER loosen.
     """
-    start=source.START
+    # common_3yr.apply_locked_3year_window() sets historical END and START.
+    start=int(datetime(2023,1,1,tzinfo=timezone.utc).timestamp()*1000)
     slip=slip_bps/10000.
     build=source.load_parent()
     signals,_=build(bars_tf)
@@ -253,6 +254,8 @@ def main():
         _=base.verify_one_hour_parity(base.resample(price5,3_600_000),price1)
         record["source_counts"]={"5m":len(price5),"1h":len(price1),
                                   "funding":len(fd)}
+        if record["source_counts"]!={"5m":333216,"1h":27768,"funding":3288}:
+            raise ValueError("SOURCE_COUNTS_DO_NOT_MATCH_PREDECLARED")
         record["public_verified_sha_manifest"]=manifest
         rows={}
         for name,slip in (("BASE",2),("STRESS",5)):
