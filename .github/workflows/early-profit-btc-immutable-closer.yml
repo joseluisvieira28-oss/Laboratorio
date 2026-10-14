@@ -1,0 +1,38 @@
+name: Early Profit BTC immutable canonical-artifact detail only
+on:
+  push:
+    branches:
+      - research/monotonic-futures-protection-v01-2026-10-14
+    paths:
+      - .github/workflows/early-profit-btc-immutable-closer.yml
+permissions:
+  contents: read
+  actions: read
+jobs:
+  read-only-original-artifact:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - name: Read ONLY canonical historical already-viewed report; no source or replay
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p original
+          gh run download 38581197237 -R joseluisvieira28-oss/Laboratorio -n early-profit-btc-v01-retrospective-signed-source-receipt -D original
+          python3 - <<'PY'
+          import json,pathlib
+          root=pathlib.Path('original')
+          results=list(root.rglob('comparison.json'))
+          hashes=list(root.rglob('sha256_receipt.json'))
+          if len(results)!=1 or len(hashes)!=1:raise SystemExit('CANONICAL_ARTIFACT_INVALID')
+          d=json.loads(results[0].read_text()); h=json.loads(hashes[0].read_text())
+          print('CANONICAL_RUN=38581197237; ARTIFACT_ID=11903820922; NO_NEW_REPLAY')
+          print('MANIFEST',json.dumps(h,sort_keys=True))
+          for cost,row in d['scenarios'].items():
+              par=row['parent_control']; ch=row['child']
+              pfields=['trades_closed','wins','losses','profit_factor','closed_equity_return','approx_mtm_max_dd','historical_year_cash_returns','funding_cash_total','exit_counts','unresolved_at_cutoff']
+              cfields=['return_pct','terminal_return_pct','closed_positions','entries','profitable_closed_positions','partial_50pct_count','candidate_qualified_1h_close_count','exit_leg_count','closed_position_net_profit_factor','closed_positions_net','top3_net_winners','closed_net_excluding_top3_static','paid_opening_fees','paid_closing_fees','funding_total','hourly_close_mtm_max_dd_pct','years_cash_return_proxy','exit_counts','open_position']
+              print('PARENT',cost,json.dumps({k:par.get(k) for k in pfields},sort_keys=True))
+              print('EARLY_CHILD',cost,json.dumps({k:ch.get(k) for k in cfields},sort_keys=True))
+              print('DELTA_PP',cost,row['child_minus_parent_closed_equity_pct_points'])
+          PY
