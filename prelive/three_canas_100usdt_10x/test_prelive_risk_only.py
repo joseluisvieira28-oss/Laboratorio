@@ -98,7 +98,7 @@ class Prelive100DollarSafety(unittest.TestCase):
             {"symbol":"SOL_USDT","risk_usdt":".50"},
             {"symbol":"BNB_USDT","risk_usdt":".50"}])
         self.assertEqual(d["combined_risk_usdt"],"1.00")
-        self.assertEqual(d["combined_SOL_risk_usdt"],".50")
+        self.assertEqual(d["combined_SOL_risk_usdt"],"0.50")
 
     def test_over_budget_or_nonfinite_rejected(self):
         with self.assertRaises(Blocked):
