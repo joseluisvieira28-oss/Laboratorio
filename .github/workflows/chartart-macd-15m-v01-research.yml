@@ -1,0 +1,48 @@
+name: ChartArt MACD 15m frozen research-only
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/chartart-macd-15m-v01-research.yml
+      - research/chartart_macd_sma200_15m_v01/**
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: chartart-macd-15m-v01-canonical-2026-10-14
+  cancel-in-progress: false
+jobs:
+  synthetic-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Synthetic-only unit tests before seeing market prices
+        run: |
+          cd research/chartart_macd_sma200_15m_v01
+          python3 -m unittest -v test_engine
+  public-source-historical:
+    needs: synthetic-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify public publisher 2021-2025 archive SHAs and replay original vs protected on 2022-2025
+        env:
+          CHARTART_OUT: chartart_research_outputs
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: |
+          python3 research/chartart_macd_sma200_15m_v01/engine.py
+      - name: Preserve complete source receipts or fail-closed reason
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chartart-15m-immutable-research
+          path: chartart_research_outputs/
+          retention-days: 30
+          if-no-files-found: error
