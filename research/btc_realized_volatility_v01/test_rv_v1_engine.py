@@ -61,6 +61,15 @@ class RVFrozenTests(unittest.TestCase):
         self.assertGreater(r["funding_total"],0)
         self.assertTrue(r["open_position"])
 
+    def test_stop_is_live_in_same_entry_hour(self):
+        h=[(START,100,101,90,95)]
+        d={START:{"signals":{"EMA50_BENCH":True,"EMA50_RV_FILTER":False,
+                               "RV_EXPANSION_ENTRY":False},"close_below":False}}
+        r,trades=replay(h,{},d,"EMA50_BENCH",.0002)
+        self.assertEqual(r["closed"],1)
+        self.assertEqual(trades[0]["reason"],"STOP_SAME_HOUR")
+        self.assertFalse(r["open_position"])
+
     def test_ema_exit_at_next_open(self):
         h=[(START,100,101,99,100),(START+HOUR,104,105,103,104)]
         d={START:{"signals":{"EMA50_BENCH":True,"EMA50_RV_FILTER":False,
