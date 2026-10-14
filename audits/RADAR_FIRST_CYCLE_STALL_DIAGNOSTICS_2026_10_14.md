@@ -35,3 +35,12 @@
 - Existing HTTP-first start and \`test_forward_web*.py\` regressions must pass in isolated branch CI.
 - No test uses real market feeds, accounts, Render mutation, or credentials.
 - A green CI test is NOT a successful Render fix, and this branch should remain UNDEPLOYED until separately reviewed and explicitly authorized.
+
+
+## Isolated CI receipt — final outcome
+- [Branch-only GitHub Actions run 38627039126](https://github.com/joseluisvieira28-oss/Laboratorio/actions/runs/38627039126): **SUCCESS** on code commit \`a4a3302672eb51b3bc716263bea11ab3366c0afd\`.
+- Python compilation: PASS.
+- New hermetic first-cycle tests: **8/8 PASS**.
+- Existing HTTP-first single-writer startup regression: **1/1 PASS**.
+- Scope comparison to deployed base: 5 commits; 5 changed paths, four added; the only existing production source \`forward_web.py\` changed by **two added lines and one removed line**. No strategy definitions, costs, order routes, credentials, database schema, scheduled tasks, or Render configuration touched.
+- This CI proves code-level test behavior only, **not** that the current Render \`STARTING\` incident is fixed. The trace is not deployed.
