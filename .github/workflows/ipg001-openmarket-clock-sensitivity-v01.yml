@@ -1,0 +1,41 @@
+name: IPG-001 OpenMarket clock sensitivity V0.1
+on:
+  push:
+    branches: [information-propagation-graph-001-source-gate-v0.1]
+    paths:
+      - 'research/information_propagation_graph_001/OPENMARKET_CLOCK_SENSITIVITY_FREEZE_V0.1.md'
+      - 'research/information_propagation_graph_001/openmarket_clock_sensitivity_v01.py'
+      - '.github/workflows/ipg001-openmarket-clock-sensitivity-v01.yml'
+      - 'research/information_propagation_graph_001/OPENMARKET_CLOCK_SENSITIVITY_TRIGGER.txt'
+permissions:
+  contents: write
+jobs:
+  sensitivity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: information-propagation-graph-001-source-gate-v0.1}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: python -m pip install --disable-pip-version-check --quiet huggingface_hub pyarrow numpy
+      - run: python research/information_propagation_graph_001/openmarket_clock_sensitivity_v01.py
+      - name: Persist receipt
+        if: always()
+        run: |
+          if [ -f artifacts/ipg001_openmarket_clock_sensitivity_v01.json ]; then
+            cp artifacts/ipg001_openmarket_clock_sensitivity_v01.json research/information_propagation_graph_001/OPENMARKET_CLOCK_SENSITIVITY_RECEIPT.json
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add research/information_propagation_graph_001/OPENMARKET_CLOCK_SENSITIVITY_RECEIPT.json
+            if ! git diff --cached --quiet; then
+              git commit -m "IPG-001: record OpenMarket clock sensitivity [skip ci]"
+              git push origin HEAD:information-propagation-graph-001-source-gate-v0.1
+            fi
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ipg001-openmarket-clock-sensitivity-v01
+          path: artifacts/ipg001_openmarket_clock_sensitivity_v01.json
+          if-no-files-found: error

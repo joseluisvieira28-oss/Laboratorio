@@ -1,0 +1,35 @@
+name: IPG-001 OpenMarket HF revision pin
+on:
+  push:
+    branches: [information-propagation-graph-001-source-gate-v0.1]
+    paths:
+      - 'research/information_propagation_graph_001/openmarket_hf_revision_pin.py'
+      - '.github/workflows/ipg001-openmarket-hf-revision-pin.yml'
+      - 'research/information_propagation_graph_001/OPENMARKET_HF_REVISION_TRIGGER.txt'
+permissions:
+  contents: write
+jobs:
+  pin:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: information-propagation-graph-001-source-gate-v0.1}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: python -m pip install --disable-pip-version-check --quiet huggingface_hub
+      - run: python research/information_propagation_graph_001/openmarket_hf_revision_pin.py
+      - name: Persist receipt
+        run: |
+          cp artifacts/ipg001_openmarket_hf_revision_pin.json research/information_propagation_graph_001/OPENMARKET_HF_REVISION_PIN_RECEIPT.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/information_propagation_graph_001/OPENMARKET_HF_REVISION_PIN_RECEIPT.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "IPG-001: pin exact OpenMarket Hugging Face revision [skip ci]"
+          git push origin HEAD:information-propagation-graph-001-source-gate-v0.1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ipg001-openmarket-hf-revision-pin
+          path: artifacts/ipg001_openmarket_hf_revision_pin.json
+          if-no-files-found: error
