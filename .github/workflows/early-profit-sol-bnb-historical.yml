@@ -1,0 +1,72 @@
+name: SOL1H BNB4H Early Profit frozen 2023-25 historical diagnostic
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/early-profit-sol-bnb-historical.yml
+permissions:
+  contents: read
+concurrency:
+  group: early-profit-sol-bnb-historical-original-single
+  cancel-in-progress: false
+jobs:
+  public-venue-source-and-causal-replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        symbol: [SOLUSDT, BNBUSDT]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Read-only exact SHA original 2023-25 V5 8-alt source/code
+        uses: actions/checkout@v4
+        with:
+          ref: 42d6748864dd78b911b5f1fc775ff1950b556d2b
+          path: historical_parent
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Freeze and synthetic source/lookahead/early exit invariants
+        run: |
+          python3 -m py_compile research/operator_risk/sol_bnb_early_profit_historical.py
+          cd research/operator_risk
+          python3 -m unittest -v test_sol_bnb_early_profit_historical test_monotonic_protection test_early_profit_harvest
+      - name: Original 2023-25 window/science invariant QA before data
+        run: |
+          cd historical_parent
+          python3 -m unittest discover -s research/convex_8alt_common_2023_25 -p 'test_*.py' -v
+      - name: Source original 38 months Binance USD-M 5m/1h/funding; SHA every ZIP
+        run: |
+          mkdir -p alt_early_results/${{ matrix.symbol }}
+          python3 research/operator_risk/sol_bnb_early_profit_historical.py --symbol ${{ matrix.symbol }} --outdir alt_early_results/${{ matrix.symbol }}
+      - name: Show compact signed receipt (if available) no private account or order reads
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import pathlib,json,hashlib
+          s='${{ matrix.symbol }}'
+          p=pathlib.Path('alt_early_results')/s/'REPORT.json'
+          p.parent.mkdir(parents=True,exist_ok=True)
+          if not p.exists():
+              print('NO_REPORT_FAIL_CLOSED',s)
+          else:
+              h=hashlib.sha256(p.read_bytes()).hexdigest()
+              d=json.loads(p.read_text())
+              print('ALT_CANONICAL_RESULT',s,'REPORT_SHA256',h,'STATUS',d['state'],'COUNTS',d.get('source_counts'),'BLOCK',d.get('block'))
+              for name,a in d.get('models',{}).items():
+                  print('ALT_AFTER_COST',s,name,json.dumps({'parent_marked_pct':a['parent']['marked_return_pct'],'child_marked_pct':a['child']['marked_return_pct'],'delta_pp':a['delta_marked_pct_points'],'parent_pf':a['parent']['profit_factor'],'child_pf':a['child']['closed_profit_factor'],'parent_closed':a['parent']['closed_trades'],'child_closed':a['child']['closed_trades'],'partials':a['child']['partially_realized_positions'],'child_5m_low_dd_pct':a['child']['5m_low_mtm_max_dd_pct']},sort_keys=True))
+          PY
+      - name: Preserve public source provenance and full model ledgers, no raw price ZIP
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ALTPROFIT-${{ matrix.symbol }}-ORIGINAL-PARENT-AND-CHILD-HISTORY
+          path: alt_early_results/${{ matrix.symbol }}/
+          if-no-files-found: warn
+          retention-days: 30
