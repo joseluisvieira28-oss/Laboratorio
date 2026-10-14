@@ -1,3 +1,4 @@
+# CANONICAL POST TECHNICAL MONOTONIC-STOP FIX / first run #38580448164 INVALID
 name: Early Profit V1 BTC Parent historical 2020-25 full replay
 on:
   pull_request:
@@ -32,6 +33,10 @@ jobs:
         run: |
           cd research/operator_risk
           python3 -m unittest -v test_monotonic_protection test_early_profit_harvest test_btc_parent_early_profit_historical
+      - name: Assert monotonic child safety correction in checkout
+        run: |
+          grep -F 'p["stop"]=max(p["stop"],parent_stop)' research/operator_risk/btc_parent_early_profit_historical.py
+          python3 -m py_compile research/operator_risk/btc_parent_early_profit_historical.py
       - name: Original parent synthetic regression
         run: python3 -m unittest discover -s historical_parent/research/payoff_40_10_btc_001 -p 'test_engine.py' -v
       - name: Download ONLY official historical Binance BTC futures OHLC mark and funding with publisher SHA256
