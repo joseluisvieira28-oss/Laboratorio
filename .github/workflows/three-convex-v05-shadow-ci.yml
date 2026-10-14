@@ -41,20 +41,27 @@ jobs:
             echo "IMMUTABILITY FAIL: overwrite succeeded"
             exit 1
           fi
-      - name: Package source and synthetic QA report
+      - name: Package FLAT Windows source and synthetic QA report (single outer Actions ZIP)
         if: matrix.os == 'windows-latest'
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force -Path v05_package | Out-Null
-          Copy-Item -Recurse engine/three_convex_v05 v05_package/three_convex_v05
+          New-Item -ItemType Directory -Force -Path v05_package/engine | Out-Null
+          Copy-Item -Recurse engine/three_convex_v05 v05_package/engine/three_convex_v05
           Copy-Item -Recurse v05_output/synthetic_receipts v05_package/synthetic_receipts
-          Compress-Archive -Path v05_package/* -DestinationPath Three_CONVEX_V05_SHADOW_NO_LIVE_GO.zip -Force
-          $sha=(Get-FileHash Three_CONVEX_V05_SHADOW_NO_LIVE_GO.zip -Algorithm SHA256).Hash.ToLower()
-          Write-Output "SHADOW_ZIP_SHA256=$sha"
-      - name: Publish no-trade Windows QA package
+          Copy-Item engine/three_convex_v05/RUN_V05_SHADOW_QA.ps1 v05_package/RUN_V05_SHADOW_QA.ps1
+          Copy-Item engine/three_convex_v05/README.md v05_package/README_V05_NO_LIVE_GO.md
+          $root = (Resolve-Path v05_package).Path
+          $list = Get-ChildItem v05_package -Recurse -File | Sort-Object FullName | ForEach-Object {
+            $relative = $_.FullName.Substring($root.Length + 1).Replace('\\','/')
+            $sha = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLower()
+            "$sha  $relative"
+          }
+          $list | Set-Content v05_package/SHA256_FILES.txt -Encoding UTF8
+          Write-Output "READY: Single-level GitHub artifact V05_SHADOW_NO_LIVE_GO, not a live trader"
+      - name: Publish FLAT no-trade Windows QA package
         if: matrix.os == 'windows-latest'
         uses: actions/upload-artifact@v4
         with:
           name: Three_CONVEX_V05_SHADOW_NO_LIVE_GO
-          path: Three_CONVEX_V05_SHADOW_NO_LIVE_GO.zip
+          path: v05_package/
           if-no-files-found: error
