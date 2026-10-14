@@ -1,0 +1,50 @@
+name: Operational usopen frozen-source recovery
+on:
+  push:
+    branches: ["ops/usopen-window-recovery-2026-10-12"]
+    paths:
+      - "ops/recovery/**"
+      - ".github/workflows/operational-usopen-recovery.yml"
+permissions:
+  contents: write
+concurrency:
+  group: operational-usopen-source-recovery
+  cancel-in-progress: false
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Offline UTC/New York frozen-window tests
+        run: |
+          cd ops/recovery
+          python -m unittest -v test_source_window_recovery.py
+      - name: Execute unchanged public-source collector within its authority
+        run: python ops/recovery/source_window_recovery.py --mode usopen
+      - name: Preserve original source receipt bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: usopen-original-source-${{ github.run_id }}-${{ github.run_attempt }}
+          path: Dream-Account-OS-v2.3-PARTIAL/runtime/usopen_shortvol_fwd_001
+          retention-days: 90
+          if-no-files-found: warn
+      - name: Append source state on this recovery branch only
+        run: |
+          set -euo pipefail
+          git config user.name crypto-lab-source-recovery
+          git config user.email actions@users.noreply.github.com
+          if [ ! -d "Dream-Account-OS-v2.3-PARTIAL/runtime/usopen_shortvol_fwd_001" ]; then echo "NO_SOURCE_CAPTURE_NO_COMMIT"; exit 0; fi
+          git add "Dream-Account-OS-v2.3-PARTIAL/runtime/usopen_shortvol_fwd_001"
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Source recovery: append actual received usopen evidence without changing science"
+          git fetch origin "${{ github.ref_name }}"
+          git rebase "origin/${{ github.ref_name }}"
+          git push origin "HEAD:${{ github.ref_name }}"
