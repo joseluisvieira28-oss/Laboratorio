@@ -71,7 +71,13 @@ class BTCProfitHistoricalTests(unittest.TestCase):
     def test_no_future_signal_or_same_bar_entry(self):
         a=historical({2:(100,105,99,105),3:(100,101,99,100)})
         partial=[l for l in a["closed_leg_ledger"] if l["reason"]=="EARLY_HALF"]
-        self.assertEqual(partial,[])
+        # Entry after signal at idx1 must only occur idx2.
+        self.assertEqual(a["entries"],1)
+        self.assertTrue(all(l["entry_t"]==START+2*H for l in a["closed_leg_ledger"]))
+        # An intrabar entry-hour high is not a fill; later completed
+        # signal in bar idx4 is allowed to trigger a partial at idx5.
+        self.assertTrue(all(l["exit_t"]>START+2*H for l in partial))
+        self.assertTrue(all(l["exit_t"]>=START+5*H for l in partial))
 
     def test_profit_factor_and_cash_reconciliation(self):
         a=historical()
