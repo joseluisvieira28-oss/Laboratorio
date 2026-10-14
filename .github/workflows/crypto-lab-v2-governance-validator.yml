@@ -1,0 +1,20 @@
+name: crypto-lab-v2-governance-validator
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "research/**/PREOUTCOME_GATE_V2.json"
+      - "research/crypto_lab_v2/**"
+      - ".github/workflows/crypto-lab-v2-governance-validator.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate V2 pre-outcome receipts
+        run: python research/crypto_lab_v2/validate_preoutcome_gate_v2.py
