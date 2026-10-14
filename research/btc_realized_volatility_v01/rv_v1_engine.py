@@ -226,6 +226,22 @@ def replay(hours, funding, decisions, arm, slip):
                 costtot["entry_fee"] += fee
                 position = {"opened":t,"entry":buy,"stop":buy*.96,
                             "quantity":quantity,"entry_fee":fee,"funding":0.0}
+        # Newly opened position is STOP-protected immediately in its first 1h candle.
+        # We already witnessed the OPEN, but never use a future bar to choose entry.
+        if position is not None and position["opened"] == t and lo <= position["stop"]:
+            raw = min(op, position["stop"])
+            sell = raw*(1-slip)
+            fee = position["quantity"]*sell*FEE
+            proceeds = position["quantity"]*(sell-position["entry"])
+            net = proceeds-fee-position["entry_fee"]
+            equity += proceeds-fee
+            costtot["exit_fee"] += fee
+            trades.append({"arm":arm,"time":t,"opened":position["opened"],"reason":"STOP_SAME_HOUR",
+                           "entry":position["entry"],"exit":sell,"quantity":position["quantity"],
+                           "entry_fee":position["entry_fee"],"exit_fee":fee,
+                           "funding":0.0,"net":net})
+            yearly[str(dt.datetime.fromtimestamp(t/1000,UTC).year)] += net
+            position = None
         # Hourly conservative MTM (no hypothetical exit close fee; terminal flag explicit)
         mtm = equity+(position["quantity"]*(cl-position["entry"]) if position else 0.0)
         peak = max(peak,mtm)
