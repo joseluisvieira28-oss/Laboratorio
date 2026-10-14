@@ -87,6 +87,8 @@ class StopReceipt:
     status: str
     acknowledged_ms: int
     source: str
+    submit_acknowledged_ms: int = 0
+    readback_at_ms: int = 0
 
 
 def validate_filled_stop(position: PositionReceipt, stop: StopReceipt, now_ms: int):
@@ -106,12 +108,16 @@ def validate_filled_stop(position: PositionReceipt, stop: StopReceipt, now_ms: i
         type(stop.protected_volume_contracts) is not int or
         stop.protected_volume_contracts!=position.volume_contracts):
         raise BrokerGateRejected("BROKER_STOP_DOES_NOT_COVER_FILL_VOLUME")
-    if stop.trigger_type!="MARK_PRICE" or stop.reduce_only is not True or stop.status!="ACCEPTED":
+    if stop.trigger_type!="MARK_PRICE" or stop.reduce_only is not True or stop.status!="ACTIVE_UNTRIGGERED":
         raise BrokerGateRejected("BROKER_STOP_NOT_ACCEPTED_PROTECTIVE")
     if (not isinstance(now_ms,int) or
         now_ms-position.acknowledged_ms not in range(0,5001) or
-        now_ms-stop.acknowledged_ms not in range(0,5001)):
+        now_ms-stop.readback_at_ms not in range(0,5001)):
         raise BrokerGateRejected("STALE_POSITION_OR_STOP_ACK")
+    if (stop.submit_acknowledged_ms<=0 or
+        stop.readback_at_ms<=stop.submit_acknowledged_ms or
+        stop.readback_at_ms<position.acknowledged_ms):
+        raise BrokerGateRejected("MISSING_INDEPENDENT_POST_ACK_STOP_READBACK")
     ep=D(position.entry_price); sp=D(stop.stop_price)
     if ep<=0 or sp<=0 or sp>=ep:
         raise BrokerGateRejected("BAD_LONG_STOP_PRICE")
