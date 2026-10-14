@@ -34,7 +34,7 @@ def signal(lane, symbol, close, tf=5):
 
 class PinnedSource(unittest.TestCase):
     def test_parent_blob_identity_exact(self):
-        self.assertEqual(git_blob_sha(PARENT_PATH.read_bytes()),PARENT_GIT_BLOB)
+        self.assertEqual(git_blob_sha(PARENT_PATH.read_bytes().replace(b"\r\n",b"\n")),PARENT_GIT_BLOB)
 
     def test_parent_is_callable_and_requires_200_history(self):
         fn=parent_signal_function()
