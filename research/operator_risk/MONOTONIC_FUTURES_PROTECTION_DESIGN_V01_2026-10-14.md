@@ -1,0 +1,28 @@
+# Crypto Lab — Monotonic Futures Protection V0.1 (research only)
+14 Oct 2026. Documentation and future offline simulator only. NO trading authority, main merge, account/exchange access, Windows/Render mutation, order placement or change to current executable bots.
+
+## Cemetery already contains positive but non-executable leads
+- Crypto Lab V2 PR #162 has LEGACY_CEMETERY_READJUDICATION_PROTOCOL_V0.1: SOURCE_BLOCKED, UNDERPOWERED, EXECUTION_BLOCKED and genuine NO_EDGE are different; old outcomes cannot be retroactively promoted.
+- Edge Primitive Map PR #141 lists BNB-LAUNCHPOOL-DEMAND-001, ETF-CME-INSTFLOW-001, OPTIONS-SPOTPERP-001-V2.1, CED1D-0031 as historical Tier 2/economic clues; plus TFG-PBR01-4H insufficient and ETH-BLOCKSPACE as policy-closed. These are NOT 3-5 independently executable profitable strategies.
+- SOL-CONVEX 1H / BNB-CONVEX 4H: retrospective positive 2023-25 BASE (+59.3886% / +27.3782%), yet no independent new forward or authenticated cross-venue executable fees/mark funding, PR #216.
+- LICP-HIST-XALT-003 BTC ignition to SOL short: 35 historic holdout events 2025 Nov-Dec, gross mean +25.07bps; +9.07bps after fixed 16bps hurdle, not MEXC executable net PnL; live source transfer still unresolved, PR #107.
+- OPTIONS V2.1 existing STOP ENGINEERING PR #200: rejects naked entry and demands policy/stop in signal, validates broker stop on fill, fails closed on missing coverage, but live MEXC stop acceptance and modification still unproven. Original signal lacks stop policy, so no GO.
+- BTC-CONVEX original V5 1h trailing PR #213: 27/77 activated; 22/77 later deactivated; 9 trades had PROTECTIVE STOP WEAKENED with 72 actual weakening events. This is exactly the non-monotonic behavior this proposal must prevent. Removing it may also cut rare large winners: no profit claims without independent matched forward.
+
+## Risk budget must be in dollars of account EQUITY, not nominal margin ROI
+- Operator defines accepted planned dollar risk BEFORE every entry. Select initial stop from strategy market invalidation / volatility and tick constraints, never select an arbitrarily very tight stop just to make nominal risk look small.
+- PAPER EXAMPLE POLICY ONLY, NOT LIVE PARAMETERS: per position risk 0.5% of measured equity, sum of open worst modeled stop risks at most 1.5%, separate daily realised+reserved kill, isolated leverage ceiling e.g. 5x. Three slots are NOT necessarily three eligible trades. Volatile correlated exposures require additional common-shock cap.
+- Model per-unit loss includes adverse entry/stop execution, both trading fees, estimated spread/slippage, already accrued funding and reserve. Round quantity DOWN to exact contract size. If exchange min notional/lot exceeds safe size, SKIP trade, never enlarge risk or omit stop.
+- Stop must be exchange-side and COVER ALL position volume. After fill, require receipt mapping position ID, correct side, correct market, trigger type, stop price, remaining volume and active status. If missing, block new entries and attempt bounded reconciliation/emergency exit; do not assume emergency exit fills.
+- Broker mark liquidation can precede last-price stop; reject any configuration with stop too near estimated liquidation and unknown venue margin behavior. No cross margin, no auto-margin-add, no martingale, no blind resend or pyramiding.
+- IMPORTANT: no stop order guarantees a hard maximum loss. Gaps, fast markets, slippage, funding updates, outages and exchange rejection can cause losses larger than planned, potentially full allocated margin or worse. Any phrase 'bank always safe' is false.
+
+## Monotonic dynamic stop protocol for a separate PROSPECTIVE strategy child
+- The original stop persists until an OBSERVED favorable movement after actual entry fill. For LONG the next acknowledged stop MUST be >= previous acknowledged stop; for SHORT it MUST be <= previous acknowledged stop. If signal deactivates, NEVER move the stop backwards. Existing order must remain protective while amendments are requested.
+- Example rule (illustrative, not fitted): after +1R favoring price, aim for COST-AND-FUNDING-ADJUSTED breakeven, not nominal entry; thereafter a candidate completed-bar chandelier formula for LONG max(oldstop, highest_confirmed - k*ATR_confirmed), SHORT min(oldstop, lowest_confirmed + k*ATR_confirmed). Reference bar closure, R trigger and k must be fixed independently before future outcomes. No use of intrabar high as if it proved executable price fill.
+- Stop updates must be transmitted as broker AMEND/atomic-replace only if empirical exchange API coverage verified. Never cancel an acknowledged old stop to create a naked interval. If non-atomic venue forces it, safe state remains NO_GO pending alternative guaranteed protection or explicitly proven containment.
+- If new tighter stop would have already been crossed at current fresh BBO, cannot claim a stop fill at historic hypothetical stop price: mark as adverse exit/reconcile. When ack unknown, HALT_NEW_ENTRIES. Old stop remains floor of protection only if independently verified active.
+- Need compare old exit policy and trail policy on same genuinely fresh prospective observations with complete causal re-entries, exchange BBO, funding, paid fees, position min size, tail impact and drawdown. Trailing MAY IMPROVE RISK while REDUCING TOTAL ALPHA by cutting winners.
+- These are future research invariants, NOT an amendment to already tested BTC-CONVEX, OPTIONS, LICP or SOL historical science. No protected 2026 holdout opening.
+
+STATE: CEMETERY_HAS_REAL_HISTORICAL_LEADS / MONOTONIC_TRAIL_SAFETY_DESIGN_ONLY / REAL_STOP_ACCEPTANCE_NOT_PROVEN / NO_LIVE_GO.

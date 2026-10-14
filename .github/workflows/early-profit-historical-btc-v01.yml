@@ -1,0 +1,88 @@
+# CANONICAL POST TECHNICAL MONOTONIC-STOP FIX / first run #38580448164 INVALID
+name: Early Profit V1 BTC Parent historical 2020-25 full replay
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: early-profit-historical-btc-v01-single-run
+  cancel-in-progress: false
+jobs:
+  canonical-historical-replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - name: Checkout isolated child branch
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Checkout exact original comparator code SHA; no parent changes
+        uses: actions/checkout@v4
+        with:
+          ref: 2e68dbce5705e4d285f6805933768878fb34dea1
+          path: historical_parent
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Child synthetic integrity before historical source
+        run: |
+          cd research/operator_risk
+          python3 -m unittest -v test_monotonic_protection test_early_profit_harvest test_btc_parent_early_profit_historical
+      - name: Assert monotonic child safety correction in checkout
+        run: |
+          grep -F 'p["stop"]=max(p["stop"],parent_stop)' research/operator_risk/btc_parent_early_profit_historical.py
+          python3 -m py_compile research/operator_risk/btc_parent_early_profit_historical.py
+      - name: Original parent synthetic regression
+        run: python3 -m unittest discover -s historical_parent/research/payoff_40_10_btc_001 -p 'test_engine.py' -v
+      - name: Download ONLY official historical Binance BTC futures OHLC mark and funding with publisher SHA256
+        run: |
+          mkdir -p hist_exit_v01
+          python3 historical_parent/research/payoff_40_10_btc_001/sources.py --output hist_exit_v01/source.json
+      - name: Recreate canonical unchanged parent results first
+        run: python3 historical_parent/research/payoff_40_10_btc_001/engine.py --source hist_exit_v01/source.json --output hist_exit_v01/original_diagnostic.json
+      - name: NEW early profit child FULL 2020-25 historical replay, NO BBO certification
+        run: python3 research/operator_risk/btc_parent_early_profit_historical.py --source hist_exit_v01/source.json --output hist_exit_v01/comparison.json
+      - name: Hash and print public-source economic receipts
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import hashlib,json,pathlib
+          root=pathlib.Path('hist_exit_v01'); root.mkdir(exist_ok=True)
+          files=['source.json','original_diagnostic.json','comparison.json','BASE_child_legs.json','STRESS_child_legs.json']
+          hashes={f:hashlib.sha256((root/f).read_bytes()).hexdigest() for f in files if (root/f).exists()}
+          (root/'sha256_receipt.json').write_text(json.dumps({'run':'EARLY_PROFIT_BTC_HIST_2020_25','files':hashes,'independent_OOS':False,'live_execution':False},indent=2))
+          p=root/'source.json'
+          if p.exists():
+              s=json.loads(p.read_text())
+              for field in ('bars','marks','funding'):s.pop(field,None)
+              (root/'public_source_manifest.json').write_text(json.dumps(s,indent=2))
+          c=root/'comparison.json'
+          if c.exists():
+              result=json.loads(c.read_text())
+              for mode,v in result['scenarios'].items():
+                  print('HISTORICAL_EARLY_HARVEST',mode,json.dumps({
+                      'original_closed_eq_pct':v['parent_control']['closed_equity_return']*100,
+                      'child_closed_eq_pct':v['child']['return_pct'],
+                      'delta_pp':v['child_minus_parent_closed_equity_pct_points'],
+                      'child_partials':v['child']['partial_50pct_count'],
+                      'child_closed':v['child']['closed_positions'],
+                      'child_net_pf':v['child']['closed_position_net_profit_factor'],
+                      'source':'1H_NEXT_OPEN_BAR_PROXY_NOT_EXECUTABLE_BBO',
+                      'OOS':False,
+                  },sort_keys=True))
+          PY
+      - name: Preserve source receipts, original and counterfactual ledgers only (never raw market dataset)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: early-profit-btc-v01-retrospective-signed-source-receipt
+          path: |
+            hist_exit_v01/sha256_receipt.json
+            hist_exit_v01/public_source_manifest.json
+            hist_exit_v01/original_diagnostic.json
+            hist_exit_v01/comparison.json
+            hist_exit_v01/BASE_child_legs.json
+            hist_exit_v01/STRESS_child_legs.json
+          if-no-files-found: warn
+          retention-days: 30
