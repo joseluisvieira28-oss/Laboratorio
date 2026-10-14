@@ -1,0 +1,39 @@
+name: Radar First-Cycle Stall Diagnostics QA (read-only)
+
+on:
+  push:
+    branches:
+      - ops/radar-first-cycle-stall-diagnostics-2026-10-14
+    paths:
+      - crypto_edge_radar/radar/first_cycle_diagnostics.py
+      - crypto_edge_radar/radar/forward_web.py
+      - crypto_edge_radar/tests/test_first_cycle_diagnostics_v01.py
+      - crypto_edge_radar/tests/test_forward_web_http_first_bootstrap_v01.py
+      - .github/workflows/radar-first-cycle-stall-diagnostics-qa.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  isolated-hermetic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: crypto_edge_radar
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install code dependencies only
+        run: python -m pip install -e .
+      - name: Compile modified sources
+        run: python -m compileall -q radar/first_cycle_diagnostics.py radar/forward_web.py tests/test_first_cycle_diagnostics_v01.py tests/test_forward_web_http_first_bootstrap_v01.py
+      - name: Run hermetic observer tests
+        run: python -m unittest discover -s tests -p 'test_first_cycle_diagnostics_v01.py' -v
+      - name: Run existing HTTP-first single-writer regression
+        run: python -m unittest discover -s tests -p 'test_forward_web_http_first_bootstrap_v01.py' -v
