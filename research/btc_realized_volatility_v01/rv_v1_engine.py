@@ -81,6 +81,8 @@ def load_public():
     receipts = []
     hours = []
     funding = {}
+    normalized_funding_events = 0
+    maximum_jitter_ms = 0
     for y, m in months(2020, 2025):
         filename = f"BTCUSDT-1h-{y}-{m:02}.zip"
         rows = verified_rows("klines/BTCUSDT/1h", filename, receipts)
@@ -119,10 +121,17 @@ def load_public():
         for row in rows[1:] if is_header else rows:
             if not row or not row[ti].strip().isdigit():
                 continue
-            t = ts_ms(row[ti])
+            raw_t = ts_ms(row[ti])
+            jitter = raw_t % HOUR
+            if jitter >= 1000:
+                raise SourceBlocked("funding outside frozen <1000ms jitter " + filename)
+            t = raw_t - jitter
+            if jitter:
+                normalized_funding_events += 1
+                maximum_jitter_ms = max(maximum_jitter_ms, jitter)
             rate = float(row[ri])
             mark = float(row[mi]) if mi >= 0 and row[mi] else None
-            if t % HOUR != 0 or not math.isfinite(rate) or abs(rate) > 0.1:
+            if not math.isfinite(rate) or abs(rate) > 0.1:
                 raise SourceBlocked("malformed funding record " + filename)
             if mark is not None and (not math.isfinite(mark) or mark <= 0):
                 raise SourceBlocked("invalid funding mark " + filename)
@@ -133,6 +142,9 @@ def load_public():
         raise SourceBlocked("funding source implausibly incomplete " + str(len(funding)))
     receipt = {"market_rows": len(hours), "funding_events": len(funding),
                "funding_exact_mark_events": sum(v[1] is not None for v in funding.values()),
+               "funding_timestamp_normalized_events": normalized_funding_events,
+               "funding_max_positive_jitter_ms": maximum_jitter_ms,
+               "funding_timestamp_semantics": "NORMALIZED_<1000MS_SOURCE_AMENDMENT_SEQUENCE_PROXY",
                "publisher_files": receipts,
                "market_start_ms": WARM, "market_end_exclusive_ms": END}
     return hours, funding, receipt
