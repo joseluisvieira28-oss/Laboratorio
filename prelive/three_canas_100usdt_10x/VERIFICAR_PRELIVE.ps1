@@ -3,7 +3,7 @@
 # Run inside extracted archive: .\VERIFICAR_PRELIVE.ps1
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
-Write-Host "CRYPTO LAB — 3 CANAS / 100 USDT / 10X — SEM ORDENS" -ForegroundColor Cyan
+Write-Host "CRYPTO LAB - 3 CANAS / 100 USDT / 10X - SEM ORDENS" -ForegroundColor Cyan
 $python = Get-Command "py" -ErrorAction SilentlyContinue
 if ($null -ne $python) {
     & py -3 "$root\preflight_risk_only.py" --config "$root\prelive_100usdt_configuration.json" --synthetic-only
@@ -17,4 +17,4 @@ if ($null -ne $python) {
 if ($LASTEXITCODE -ne 0) {
     throw "RISK_PREFLIGHT_FAILED: consulta as mensagens acima"
 }
-Write-Host "RESULTADO: NO_LIVE_GO / SEM ORDENS — diagnostico apenas." -ForegroundColor Yellow
+Write-Host "RESULTADO: NO_LIVE_GO / SEM ORDENS - diagnostico apenas." -ForegroundColor Yellow
