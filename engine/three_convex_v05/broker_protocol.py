@@ -104,7 +104,7 @@ def validate_filled_stop(position: PositionReceipt, stop: StopReceipt, now_ms: i
         raise BrokerGateRejected("BROKER_STOP_DOES_NOT_MATCH_POSITION")
     if (type(position.volume_contracts) is not int or position.volume_contracts<1 or
         type(stop.protected_volume_contracts) is not int or
-        stop.protected_volume_contracts<position.volume_contracts):
+        stop.protected_volume_contracts!=position.volume_contracts):
         raise BrokerGateRejected("BROKER_STOP_DOES_NOT_COVER_FILL_VOLUME")
     if stop.trigger_type!="MARK_PRICE" or stop.reduce_only is not True or stop.status!="ACCEPTED":
         raise BrokerGateRejected("BROKER_STOP_NOT_ACCEPTED_PROTECTIVE")
