@@ -11,13 +11,13 @@ Three operator screenshots show Binance BTCUSDT 1H chart with Pine parameters: s
 ## Operator CSV SHA256 and coverage (raw bytes; entry/exit pair validation)
 | TF inferred | CSV suffix | Raw SHA256 | Closed trades | OPEN as-of-export | Earliest closed trade ENTRY to last closed EXIT |
 |---|---|---|---:|---:|---|
-| 5m | 297a0 | b143cbeae33fce [see full SHA below] | 58 | 1 | 2026-08-03 17:00 through 2026-10-13 06:05 |
-| 15m | 2ada7 | e096b70542cf57 | 65 | 1 | 2026-03-04 15:45 through 2026-10-12 19:45 |
-| 30m | 83f08 | 823a8205afe0f1 | 91 | 1 | 2025-01-06 15:30 through 2026-10-13 02:00 |
-| 1H | 87bf1 | 62bfad9b0c7abe | 72 | 1 | 2024-01-11 22:00 through 2026-10-14 08:00 |
-| 2H | 41da9 | 783331e37d3c96 | 57 | 1 | 2022-01-20 02:00 through 2026-09-30 22:00 |
-| 4H | 2db09 | 429de38c97c70f | 58 | 1 | 2017-10-13 00:00 through 2026-08-09 04:00 |
-Full SHA values must be verified/entered from original operator file receipt; shown prefixes only here rather than inventing full hashes. In all exports each completed trade matches quantity×entry/exit price differential within 0.015 USDT, unit position 1 BTC, 0 commissions, paired entry+exit duplicate accounting rows. Every TF contains one additional reported OPEN line: it is **not** a realized exit. On 2H and 4H, a minority of duration/time elapsed ratios deviate from exactly 120/240m; requires exchange/archive/calendar explanation rather than assuming perfect candle continuity.
+| 5m | 297a0 | b143cbeae33fce6e917131412d2488323074f58aa6705a54ec9cca75669cf9c9 | 58 | 1 | 2026-08-03 17:00 through 2026-10-13 06:05 |
+| 15m | 2ada7 | e096b70542cf571c80688b5e34e875ec95122c5b6e33cb0b14c4f409a484e812 | 65 | 1 | 2026-03-04 15:45 through 2026-10-12 19:45 |
+| 30m | 83f08 | 823a8205afe0f1125565e119dd9e92766d60b3ec452e2665759aa56208cfa079 | 91 | 1 | 2025-01-06 15:30 through 2026-10-13 02:00 |
+| 1H | 87bf1 | 62bfad9b0c7abe65a548bc723cda96d4eb57afdbf3e31e7284dc5d9d97ff6dd6 | 72 | 1 | 2024-01-11 22:00 through 2026-10-14 08:00 |
+| 2H | 41da9 | 783331e37d3c968ef93869b6aceda87bb7ec680e99260053a1cd800498ece4d8 | 57 | 1 | 2022-01-20 02:00 through 2026-09-30 22:00 |
+| 4H | 2db09 | 429de38c97c70fb73228d87e0d9de01df17f72934dc7ab5707c88a1ec372c2f6 | 58 | 1 | 2017-10-13 00:00 through 2026-08-09 04:00 |
+All full SHA256 digests above were computed from exact operator CSV bytes in current session. In all exports each completed trade matches quantity×entry/exit price differential within 0.015 USDT, unit position 1 BTC, 0 commissions, paired entry+exit duplicate accounting rows. Every TF contains one additional reported OPEN line: it is **not** a realized exit. On 2H and 4H, a minority of duration/time elapsed ratios deviate from exactly 120/240m; requires exchange/archive/calendar explanation rather than assuming perfect candle continuity.
 
 ## Frozen-row static accounting — NOT new dynamic market/backtest replay
 Apply to each closed trade two exchanged legs \`notional = abs(q×entry_price)+abs(q×exit_price)\`; commission/slippage excluded from the original CSV. BASE = (8bps fee +2bps adverse slip) PER LEG, STRESS = (8+5bps) PER LEG. No real authenticated fee tier, funding, liquidation, spread history, order book or fill policy; costs alter possible future path and equity if replayed causally. Original baseline virtual equity 100,000 USDT with 1 BTC contract units per trade.
