@@ -111,17 +111,18 @@ def size_with_stop(
         slip_entry_bps, slip_exit_bps, funding_reserve_bps
     )
     quantity = round_step_down(budget/unitloss, unit_step)
-    # Available margin must bound modeled initial margin, not just stop-distance risk.
-    quantity = min(quantity, round_step_down(margin*lev/e, unit_step))
+    # Conservative margin notional includes possible adverse entry execution.
+    entry_execution_upper_bound = e*(ONE+fraction_bps(slip_entry_bps))
+    quantity = min(quantity, round_step_down(margin*lev/entry_execution_upper_bound, unit_step))
     if quantity <= ZERO:
         raise RiskRejected("STEP_EXCEEDS_BUDGET")
     notional = quantity * e
     if notional < min_n:
         raise RiskRejected("EXCHANGE_MIN_NOTIONAL_EXCEEDS_SAFE_SIZE")
     modeled_loss = quantity*unitloss
-    if modeled_loss > budget or quantity*e/lev > margin:
+    if modeled_loss > budget or quantity*entry_execution_upper_bound/lev > margin:
         raise RiskRejected("INTERNAL_SIZING_BREACH")
-    return Sizing(quantity, modeled_loss, notional, notional/lev, budget)
+    return Sizing(quantity, modeled_loss, notional, quantity*entry_execution_upper_bound/lev, budget)
 
 
 def cost_adjusted_breakeven(
