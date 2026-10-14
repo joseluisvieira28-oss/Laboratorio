@@ -1,0 +1,73 @@
+name: BTC PAYOFF 4R + Early 50 percent frozen historical test
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: early-profit-btc-4r-canonical
+  cancel-in-progress: false
+jobs:
+  source-and-causal-historical-replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 2e68dbce5705e4d285f6805933768878fb34dea1
+          path: historical_parent
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test PRICE-first and NO-LOOKAHEAD synthetic 4R split
+        run: |
+          cd research/operator_risk
+          python3 -m unittest -v test_btc_payoff_4r_early_historical test_monotonic_protection test_early_profit_harvest
+      - name: Original immutable PAYOFF synthetic suite
+        run: python3 -m unittest discover -s historical_parent/research/payoff_40_10_btc_001 -p 'test_engine.py' -v
+      - name: Fetch and SHA verify original 2020-25 monthly public Binance source
+        run: |
+          mkdir -p history_payoff_4r
+          python3 historical_parent/research/payoff_40_10_btc_001/sources.py --output history_payoff_4r/source.json
+      - name: Matched original PAYOFF and EARLY HALF full causal historical exit and reentry
+        run: |
+          python3 research/operator_risk/btc_payoff_4r_early_historical.py --source history_payoff_4r/source.json --output history_payoff_4r/payoff_comparison.json
+      - name: Preserve original publisher SHA hashes and print fixed model results
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import hashlib,json,pathlib
+          base=pathlib.Path('history_payoff_4r');base.mkdir(exist_ok=True)
+          paths=('source.json','payoff_comparison.json','BASE_exit_legs.json','STRESS_exit_legs.json')
+          manifest={x:hashlib.sha256((base/x).read_bytes()).hexdigest() for x in paths if (base/x).exists()}
+          (base/'immutable_digests.json').write_text(json.dumps({'files_sha256':manifest,'historical_only':True,'no_2026':True,'real_execution':False},indent=2))
+          sf=base/'source.json'
+          if sf.exists():
+              s=json.loads(sf.read_text());
+              for field in ('bars','marks','funding'): s.pop(field,None)
+              (base/'source_manifest.json').write_text(json.dumps(s,indent=2))
+          p=base/'payoff_comparison.json'
+          if p.exists():
+              a=json.loads(p.read_text());
+              print('PAYOFF_EARLY_TEST_STATUS',a['status'],'BLOCK',a.get('block'))
+              for cost,v in a.get('scenarios',{}).items():
+                  print('PAYOFF_EARLY_TEST_ECONOMIC',cost,json.dumps({'parent_pct':100*v['parent']['closed_equity_return'],'early_pct':v['child']['closed_equity_return_pct'],'delta_pp':v['delta_closed_eq_pp'],'parent_closed':v['parent']['trades_closed'],'child_closed':v['child']['closed_positions'],'partial_count':v['child']['realized_50pct_count'],'child_pf':v['child']['closed_net_profit_factor'],'dd':v['child']['max_hourly_close_mtm_dd_pct']},sort_keys=True))
+          PY
+      - name: Retain model ledgers and source receipts only; never source market dump
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: BTC-PAYOFF-4R-EARLYHALF-RETROSPECTIVE-ONLY
+          path: |
+            history_payoff_4r/immutable_digests.json
+            history_payoff_4r/source_manifest.json
+            history_payoff_4r/payoff_comparison.json
+            history_payoff_4r/BASE_exit_legs.json
+            history_payoff_4r/STRESS_exit_legs.json
+            history_payoff_4r/BASE_finished_trades.json
+            history_payoff_4r/STRESS_finished_trades.json
+          retention-days: 30
+          if-no-files-found: warn

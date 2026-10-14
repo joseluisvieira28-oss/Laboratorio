@@ -1,0 +1,66 @@
+name: FIVE CONVEX EARLY HARVEST 2023-25 HISTORICAL REPLAY FROZEN
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: next-five-frozen-original-historical-one
+  cancel-in-progress: false
+jobs:
+  source-proof-and-full-retrospective:
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        symbol: [SOLUSDT, BNBUSDT, ETHUSDT, DOGEUSDT]
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Pin immutable original common-period CONVEX parent (read-only)
+        uses: actions/checkout@v4
+        with:
+          ref: 42d6748864dd78b911b5f1fc775ff1950b556d2b
+          path: historical_parent
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Pre-outcome tests of original risk layer and the exact five fixed arms
+        run: |
+          cd research/operator_risk
+          python3 -m unittest -v test_monotonic_protection test_early_profit_harvest test_sol_bnb_early_profit_historical test_next_five_historical
+      - name: Run parent repository's source and signal causal synthetic regressions
+        run: |
+          cd historical_parent
+          python3 -m unittest discover -s research/convex_8alt_common_2023_25 -p 'test_*.py' -v
+      - name: Fetch only original fully publisher SHA256-verified public 2023-25 history and match parent before child
+        run: |
+          mkdir -p next_five_results/${{ matrix.symbol }}
+          python3 research/operator_risk/next_five_historical.py --symbol ${{ matrix.symbol }} --outdir next_five_results/${{ matrix.symbol }}
+      - name: Print precise fail-closed/source/cost receipts
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import hashlib,json,pathlib
+          s='${{ matrix.symbol }}'
+          path=pathlib.Path('next_five_results')/s/'REPORT.json'
+          if not path.exists():
+              print('NO_REPORT_FAIL_CLOSED',s)
+          else:
+              raw=path.read_bytes();d=json.loads(raw)
+              print('NEXTFIVE_RECEIPT',s,'REPORT_SHA256',hashlib.sha256(raw).hexdigest(),'state',d['state'],'counts',d.get('source_counts'),'blocked',d.get('block_reason'))
+              for candidate,cases in d.get('scenarios',{}).items():
+                  for scenario,x in cases.items():
+                      print('NEXTFIVE_VERDICT',candidate,scenario,json.dumps({'original':x['parent']['marked_return_pct'],'early_policy':x['child']['marked_return_pct'],'delta_pp':x['delta_terminal_marked_pp'],'parent_pf':x['parent']['profit_factor'],'child_pf':x['child']['closed_profit_factor'],'parent_closed':x['parent']['closed_trades'],'child_closed':x['child']['closed_trades'],'partial_count':x['child']['partially_realized_positions'],'child_5m_low_dd':x['child']['5m_low_mtm_max_dd_pct']},sort_keys=True))
+          PY
+      - name: Preserve receipts & all five child ledgers, not raw price archives
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: early-five-${{ matrix.symbol }}-frozen-history
+          path: next_five_results/${{ matrix.symbol }}/
+          if-no-files-found: warn
+          retention-days: 30
