@@ -30,8 +30,20 @@ jobs:
         run: |
           cd research/btc_realized_volatility_v01
           python3 -m unittest -v test_rv_v1_engine
-  market-research:
+  funding-source-schema:
     needs: synthetic-qa
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Reproduce funding source column/clock schema only without market outcomes
+        run: |
+          cd research/btc_realized_volatility_v01
+          python3 funding_schema_source_only.py
+  market-research:
+    needs: funding-source-schema
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
