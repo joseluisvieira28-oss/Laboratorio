@@ -1,0 +1,52 @@
+name: Operational Exitflow genuine current-hour recovery
+on:
+  push:
+    branches:
+      - ops/exitflow-actual-hour-recovery-2026-10-12
+    paths:
+      - ops/recovery/EXITFLOW_TICK.txt
+      - research/rw_hl_exitflow/rw_hl_g3_hourly_source_capture_v01.py
+      - research/rw_hl_exitflow/test_rw_hl_g3_hourly_source_capture_v01.py
+      - .github/workflows/ops-exitflow-source-recovery.yml
+permissions:
+  contents: write
+concurrency:
+  group: ops-exitflow-g3-actual-hour-recovery
+  cancel-in-progress: false
+jobs:
+  source-only-current-hour:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ops/exitflow-actual-hour-recovery-2026-10-12
+          persist-credentials: true
+      - name: Verify no-economic-authority source freeze and 13 synthetic tests
+        run: |
+          cd research/rw_hl_exitflow
+          python -m py_compile rw_hl_g3_hourly_source_capture_v01.py test_rw_hl_g3_hourly_source_capture_v01.py
+          python -m unittest -v test_rw_hl_g3_hourly_source_capture_v01.py
+          sha256sum RW_HL_EXITFLOW_001_G3_HOURLY_SOURCE_PREACTIVATION_FREEZE_2026-10-09.md
+      - name: Record precisely ONE market-only snapshot in true UTC receive hour
+        run: |
+          python research/rw_hl_exitflow/rw_hl_g3_hourly_source_capture_v01.py
+      - name: Persist source hourly snapshot without overwriting or changing main
+        run: |
+          set -euo pipefail
+          git config user.name crypto-lab-source-bot
+          git config user.email actions@users.noreply.github.com
+          git add research/rw_hl_exitflow/forward_source/hourly/
+          if git diff --cached --quiet; then echo "IDEMPOTENT_NO_SOURCE_CHANGE"; exit 0; fi
+          git commit -m "g3 source: append 1 true received UTC-hour public OI/funding snapshot"
+          git fetch origin ops/exitflow-actual-hour-recovery-2026-10-12
+          git rebase origin/ops/exitflow-actual-hour-recovery-2026-10-12
+          git push origin HEAD:ops/exitflow-actual-hour-recovery-2026-10-12
+      - name: Mirror genuine source receipt as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rw-hl-exitflow-g3-hourly-public-source
+          path: research/rw_hl_exitflow/forward_source/hourly/
+          if-no-files-found: warn
+          retention-days: 90
