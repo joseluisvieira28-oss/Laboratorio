@@ -48,7 +48,7 @@ class BTCProfitHistoricalTests(unittest.TestCase):
         self.assertEqual(a["exit_counts"].get("STOP_GAP"),1)
 
     def test_high_only_without_confirmed_close_does_not_trigger(self):
-        a=historical({3:(100,110,99,103)})
+        a=historical({3:(100,110,99,103),4:(103,106,102,103)})
         self.assertEqual(a["partial_50pct_count"],0)
 
     def test_net_half_profit_gate_can_block_fill(self):
@@ -78,8 +78,7 @@ class BTCProfitHistoricalTests(unittest.TestCase):
         legnet=sum(l["net"] for l in a["closed_leg_ledger"])
         self.assertAlmostEqual(a["closed_positions_net"],legnet,places=6)
         self.assertEqual(a["full_exit_count"],a["closed_positions"])
-        self.assertAlmostEqual(a["closed_equity"],
-            a["capital"] + legnet +
-            (0 if not a["open_position"] else -1e100),delta=20)  # no open in this fixture
+        self.assertFalse(a["open_position"])
+        self.assertAlmostEqual(a["closed_equity"],a["capital"] + legnet,places=6)
 
 if __name__=="__main__": unittest.main()
