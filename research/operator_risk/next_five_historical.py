@@ -20,6 +20,7 @@ CANDIDATES={
     "DOGE4H": ("DOGEUSDT", 14_400_000, {"BASE":15.66, "STRESS":15.26}, 44),
 }
 PARENT_COMMIT="42d6748864dd78b911b5f1fc775ff1950b556d2b"
+NATIVE5M_ORIGINAL_COMMIT="af82deefd5634a77a7b49e7acec61ca21eb44a49"
 COUNTS={"5m":333216,"1h":27768,"funding":3288}
 
 def main():
@@ -31,7 +32,7 @@ def main():
     report={
         "state":"SOURCE_OR_PARENT_PARITY_BLOCKED",
         "symbol":opt.symbol,"frozen_policy":"b3c93b8163e5ab4b0c13a550a048812f52018b62",
-        "original_source_git_sha":PARENT_COMMIT,"independent_oos":False,
+        "original_source_git_sha":(NATIVE5M_ORIGINAL_COMMIT if opt.symbol=="SOLUSDT" else PARENT_COMMIT),"independent_oos":False,
         "live_trading_authority":False,
         "period":"2023-01-01..2025-12-31 UTC, 2022-11 warmup",
         "actual_exchange_fills":False,
