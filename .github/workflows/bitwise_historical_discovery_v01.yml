@@ -1,0 +1,48 @@
+name: Bitwise Historical Discovery V0.1
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'research/crypto_index_rebalance_flow/FINAL_PRE_DISCOVERY_AUTHORITY_V0.1.md'
+      - 'research/crypto_index_rebalance_flow/historical_discovery_v0_1.py'
+      - 'research/crypto_index_rebalance_flow/event_normalization.py'
+      - '.github/workflows/bitwise_historical_discovery_v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  discovery:
+    if: github.head_ref == 'crypto-index-rebalance-flow-v0.1' || github.ref_name == 'crypto-index-rebalance-flow-v0.1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Execute single frozen 2022-2024 Discovery
+        run: python research/crypto_index_rebalance_flow/historical_discovery_v0_1.py
+      - name: Enforce protected-period and execution firewall
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          x=json.loads(Path("artifacts/crypto_index_rebalance_flow/historical_discovery_v0.1.json").read_text())
+          assert x["2025_market_data_opened"] is False
+          assert x["2026_market_data_opened"] is False
+          assert x["pnl_computed"] is False
+          assert x["cost_tuning_performed"] is False
+          assert all("/2025-" not in m["url"] and "/2026-" not in m["url"] for m in x["file_manifest"])
+          print("PROTECTED_PERIOD_FIREWALL_PASS")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: BITWISE_HISTORICAL_DISCOVERY_V0.1
+          path: |
+            artifacts/crypto_index_rebalance_flow/historical_discovery_v0.1.json
+            artifacts/crypto_index_rebalance_flow/event_normalization_v0.1.json
+          if-no-files-found: error

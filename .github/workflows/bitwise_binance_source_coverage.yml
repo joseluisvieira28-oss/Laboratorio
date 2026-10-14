@@ -1,0 +1,49 @@
+name: Bitwise Binance Source Coverage
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'research/crypto_index_rebalance_flow/BINANCE_SOURCE_COVERAGE_AUTHORITY_V0.1.md'
+      - 'research/crypto_index_rebalance_flow/binance_source_coverage.py'
+      - 'research/crypto_index_rebalance_flow/event_normalization.py'
+      - '.github/workflows/bitwise_binance_source_coverage.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  coverage:
+    if: github.head_ref == 'crypto-index-rebalance-flow-v0.1' || github.ref_name == 'crypto-index-rebalance-flow-v0.1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run HEAD-only source coverage
+        run: python research/crypto_index_rebalance_flow/binance_source_coverage.py
+      - name: Enforce outcome/holdout firewall
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          x=json.loads(Path("artifacts/crypto_index_rebalance_flow/binance_source_coverage_v0.1.json").read_text())
+          assert x["market_response_body_bytes_read"] == 0
+          assert x["requested_2025_market_data"] is False
+          assert x["prices_read"] is False
+          assert x["returns_computed"] is False
+          assert x["pnl_computed"] is False
+          print("HEAD_ONLY_OUTCOME_FIREWALL_PASS")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: BITWISE_BINANCE_SOURCE_COVERAGE_V0.1
+          path: |
+            artifacts/crypto_index_rebalance_flow/binance_source_coverage_v0.1.json
+            artifacts/crypto_index_rebalance_flow/event_normalization_v0.1.json
+          if-no-files-found: error
