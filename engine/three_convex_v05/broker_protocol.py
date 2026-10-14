@@ -115,10 +115,11 @@ def validate_filled_stop(position: PositionReceipt, stop: StopReceipt, now_ms: i
     ep=D(position.entry_price); sp=D(stop.stop_price)
     if ep<=0 or sp<=0 or sp>=ep:
         raise BrokerGateRejected("BAD_LONG_STOP_PRICE")
-    # Original stop trigger is 4% below filled entry; price tick may require
-    # downward rounding. This checks a safety ceiling, NOT tick validity.
-    if sp > ep*D(".96"):
-        raise BrokerGateRejected("UNFROZEN_OR_TOO_TIGHT_STOP")
+    # Exact 4% original stop required until authenticated tick-size and
+    # post-rounding budget are separately demonstrated. A looser/lower stop
+    # silently enlarges downside; a tighter stop changes original science.
+    if sp != ep*D(".96"):
+        raise BrokerGateRejected("STOP_PRICE_NOT_ORIGINAL_EXACT_FOUR_PERCENT")
     return {"state":"STRUCTURAL_STOP_RECEIPT_MATCH_ONLY",
             "source_assumed_not_independently_authenticated":True,
             "live_authority":"NONE"}
@@ -135,6 +136,8 @@ class DurableIntent:
         self.directory.mkdir(parents=True,exist_ok=True)
         fname=hashlib.sha256(signal_id.encode("utf-8")).hexdigest()+".json"
         path=self.directory/fname
+        if not isinstance(body,dict) or set(body)-{"symbol","lane","risk_usdt"}:
+            raise BrokerGateRejected("INTENT_BODY_FIELDS_NOT_ALLOWLISTED")
         payload=dict(signal_id=signal_id,body=body,status="RESERVED_NO_ORDER",
                      no_exchange_transport=True)
         try:
