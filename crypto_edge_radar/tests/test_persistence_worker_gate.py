@@ -91,14 +91,15 @@ class PersistenceWorkerGateTests(unittest.TestCase):
         )
         runtime.run_loop.assert_not_called()
         runtime.etf_cme_exact_scheduler.run_loop.assert_not_called()
-        # The transport-only HTTP reader can start early to expose a truthful
-        # FAIL_CLOSED state. Scientific workers still MUST NOT start.
-        thread_cls.assert_called_once()
+        # HTTP reader and read-only startup diagnostician are allowed.
+        # Neither may spawn the scientific forward writer or ETF scheduler
+        # while the persistence watchdog is FAIL_CLOSED.
+        self.assertEqual(thread_cls.call_count, 2)
         self.assertEqual(
-            thread_cls.call_args.kwargs["name"],
-            "radar-public-status-http",
+            {c.kwargs["name"] for c in thread_cls.call_args_list},
+            {"radar-public-status-http", "radar-first-cycle-stall-observer"},
         )
-        self.assertTrue(thread_cls.call_args.kwargs["daemon"])
+        self.assertTrue(all(c.kwargs["daemon"] for c in thread_cls.call_args_list))
 
 
 if __name__ == "__main__":
