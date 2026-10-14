@@ -15,6 +15,7 @@ from .bnb_launchpool_watcher import (
 )
 from .bnb_diamond_v02 import BNBDiamondV02Sidecar, BinanceSpotOneMinuteFeed
 from .config import Settings
+from .first_cycle_diagnostics import run_with_first_cycle_diagnostics
 from .ced1d_source_probe import ced1d_render_source_probe
 from .ced1d_render_shadow_runtime import CED1DRenderShadowRunner
 from .evidence import build_evidence_store
@@ -1221,7 +1222,7 @@ def serve_forward_shadow(*, port: int, interval: float) -> int:
             runtime._set_state(state)
             print(json.dumps(state, sort_keys=True), flush=True)
         else:
-            initial_state = runtime.run_cycle()
+            initial_state = run_with_first_cycle_diagnostics(runtime.run_cycle)
 
         if os.getenv("RADAR_BACKUP_LOG_EMIT_ON_START", "").lower() == "true":
             emit_snapshot_log_chunks(runtime.store)
