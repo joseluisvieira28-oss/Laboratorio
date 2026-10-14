@@ -179,7 +179,10 @@ def replay_child(b, funding, marks, fee, slip, parent):
                     else:
                         p["stop"]=new_stop
                 else:
-                    p["stop"]=parent_stop
+                    # Operator stop invariant applies even BEFORE partial:
+                    # never allow Parent's activation/deactivation reset
+                    # to weaken an already-tightened CHILD protective stop.
+                    p["stop"]=max(p["stop"],parent_stop)
                     if k["close"]-p["fill"]>=p["fill"]-p["initial_stop"]:
                         p["pending_take"]=True
                         pending_take_count+=1
