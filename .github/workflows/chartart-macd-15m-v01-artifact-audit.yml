@@ -1,0 +1,43 @@
+name: ChartArt 15m canonical artifact-only detail audit
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/chartart-macd-15m-v01-artifact-audit.yml
+permissions:
+  contents: read
+  actions: read
+jobs:
+  audit-original-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Download canonical immutable outcome artifact (no market replay)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p receipt
+          gh run download 38598789132 -R joseluisvieira28-oss/Laboratorio -n chartart-15m-immutable-research -D receipt
+      - name: Report year breakdown, costs, venue source manifest and all frozen gates
+        run: |
+          python3 - <<'PY'
+          import json,pathlib
+          root=pathlib.Path("receipt")
+          result=json.loads((root/"chartart_protected_child_results.json").read_text())
+          sources=json.loads((root/"source_sha256_receipt.json").read_text())
+          assert result["state"]=="HISTORICAL_RESEARCH_COMPLETE"
+          assert result["live_authority"]=="NONE"
+          print("CANONICAL_RUN_ID=38598789132 ARTIFACT=11912551562")
+          print("SOURCE_MANIFEST="+json.dumps({k:v for k,v in sources.items() if k!="source_receipts"},sort_keys=True))
+          print("SOURCE_SHA256_COUNT="+str(len(sources["source_receipts"])))
+          for scenario,variants in result["models"].items():
+            for arm,obj in variants.items():
+              fields=("signal_count","closed","wins","losses","pf",
+                "closed_realized_net","terminal_equity","terminal_return_pct",
+                "max_15m_mtm_dd_pct","funding_total","fees_paid",
+                "open_position","open_mark_net","top3_net_winners",
+                "net_excluding_top3_static","stop_gap_worse_fills","years","sides")
+              print("DETAIL "+scenario+" "+arm+" "+json.dumps({k:obj[k] for k in fields},sort_keys=True))
+          print("EXACT_GATE="+json.dumps(result["economic_verdict"],sort_keys=True))
+          PY
