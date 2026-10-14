@@ -1,0 +1,47 @@
+name: BTC RV V1 immutable-result economic closeout
+on:
+  push:
+    branches:
+      - research/btc-realized-volatility-v01-2026-10-14
+    paths:
+      - .github/workflows/btc-rv-v1-immutable-audit.yml
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/btc-rv-v1-immutable-audit.yml
+permissions:
+  actions: read
+  contents: read
+jobs:
+  original-artifact-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Download only the original completed frozen run artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p original
+          gh run download 38554979658 -R joseluisvieira28-oss/Laboratorio -n btc-rv-v1-frozen-public-research -D original
+      - name: Source and economic ledger closeout without model/outcome recomputation
+        run: |
+          python3 - <<'PY'
+          import json, pathlib
+          root=pathlib.Path("original")
+          paths=list(root.rglob("rv_v1_results.json"))
+          if len(paths)!=1: raise SystemExit("FAIL_CLOSED: authoritative original JSON not unique")
+          p=json.loads(paths[0].read_text())
+          receipts=list(root.rglob("publisher_source_receipt.json"))
+          if len(receipts)!=1: raise SystemExit("FAIL_CLOSED: original publisher receipt missing")
+          s=json.loads(receipts[0].read_text())
+          assert p["science_authority"]=="RESEARCH_ONLY" and p["live_trading"]=="NO_GO"
+          print("ORIGINAL_RUN=38554979658; ARTIFACT=11890275593; NO_MARKET_REPLAY")
+          print("SOURCE",json.dumps({k:s[k] for k in ["market_rows","funding_events","funding_exact_mark_events","funding_timestamp_normalized_events","funding_max_positive_jitter_ms"]},sort_keys=True))
+          for scenario,arms in p["model_outputs"].items():
+              for arm,v in arms.items():
+                  fields=["closed","wins","losses","pf","closed_net","terminal_equity","terminal_return_pct","hourly_mtm_max_drawdown_pct","yearly_closed_net","top3_winner_net","static_closed_net_minus_top3","funding_total","entry_fee_total","exit_fee_total","open_position"]
+                  print("ECONOMIC",scenario,arm,json.dumps({k:v.get(k) for k in fields},sort_keys=True))
+          for arm,v in p["candidacy"].items():
+              print("GATES",arm,json.dumps(v,sort_keys=True))
+          PY

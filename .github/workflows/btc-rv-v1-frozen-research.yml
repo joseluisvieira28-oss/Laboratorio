@@ -1,0 +1,55 @@
+# Frozen completed canonical original run 38554979658; no automatic rerun or duplicate OOS credit.
+name: BTC RV V1 frozen science-only historical probe
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: btc-rv-v1-freeze-source-only
+  cancel-in-progress: false
+jobs:
+  synthetic-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Frozen deterministic unit regression (no internet)
+        run: |
+          cd research/btc_realized_volatility_v01
+          python3 -m unittest -v test_rv_v1_engine
+  funding-source-schema:
+    needs: synthetic-qa
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Reproduce funding source column/clock schema only without market outcomes
+        run: |
+          cd research/btc_realized_volatility_v01
+          python3 funding_schema_source_only.py
+  market-research:
+    needs: funding-source-schema
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Fetch verified PUBLIC official 2020-25 source and replay frozen E0 E1 E2
+        env:
+          RV_OUT: rv_research_output
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: |
+          python3 research/btc_realized_volatility_v01/rv_v1_engine.py
+      - name: Preserve source or fail-closed receipts, no private data
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: btc-rv-v1-frozen-public-research
+          path: rv_research_output/
+          if-no-files-found: error
+          retention-days: 30
