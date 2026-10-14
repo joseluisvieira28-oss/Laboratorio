@@ -24,8 +24,8 @@ def position():
 
 def stop():
     return StopReceipt("SOL_USDT","LONG","test:123",1,
-                       "96","MARK_PRICE","test:stop123",True,"ACCEPTED",
-                       10_002,"AUTHENTICATED_EXCHANGE_READ")
+                       "96","MARK_PRICE","test:stop123",True,"ACTIVE_UNTRIGGERED",
+                       10_002,"AUTHENTICATED_EXCHANGE_READ",10_001,10_003)
 
 
 class TestAccountGate(unittest.TestCase):
@@ -75,6 +75,10 @@ class TestStopAck(unittest.TestCase):
         r=validate_filled_stop(position(),stop(),10_004)
         self.assertEqual(r["live_authority"],"NONE")
         self.assertTrue(r["source_assumed_not_independently_authenticated"])
+
+    def test_initial_ack_without_later_broker_readback_is_not_protection(self):
+        with self.assertRaisesRegex(BrokerGateRejected,"MISSING_INDEPENDENT"):
+            validate_filled_stop(position(),replace(stop(),readback_at_ms=10_001),10_004)
 
     def test_wrong_position_identity(self):
         with self.assertRaisesRegex(BrokerGateRejected,"DOES_NOT_MATCH"):
