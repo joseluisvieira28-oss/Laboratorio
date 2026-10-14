@@ -1,0 +1,61 @@
+name: Three Canas 100 USDT 10x Windows offline risk-only preflight
+on:
+  pull_request:
+    branches:
+      - research/monotonic-futures-protection-v01-2026-10-14
+    paths:
+      - prelive/three_canas_100usdt_10x/**
+      - .github/workflows/three-canas-100usdt-offline-windows.yml
+permissions:
+  contents: read
+jobs:
+  windows-prelive-no-order-verification:
+    runs-on: windows-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Prove pure risk-gate offline synthetic invariants
+        shell: pwsh
+        run: |
+          Push-Location prelive/three_canas_100usdt_10x
+          python -m unittest -v test_prelive_risk_only.py
+          if ($LASTEXITCODE -ne 0) { throw 'SYNTHETIC_RISK_QA_FAILED' }
+          Pop-Location
+      - name: Verify no network, credentials, key lookup or order transport in shipping script
+        shell: pwsh
+        run: |
+          $source = Get-Content -Raw prelive/three_canas_100usdt_10x/preflight_risk_only.py
+          foreach ($forbidden in @('requests.', 'urllib.', 'socket.', 'os.environ', 'subprocess.', 'mexc_auth_trade', 'order.submit', 'position.open')) {
+            if ($source.Contains($forbidden)) { throw "FORBIDDEN_TRANSPORT_FOUND: $forbidden" }
+          }
+          $state = Get-Content -Raw prelive/three_canas_100usdt_10x/prelive_100usdt_configuration.json | ConvertFrom-Json
+          if ($state.status -ne 'NO_LIVE_GO' -or $state.armed -ne $false -or $state.can_send_orders -ne $false) { throw 'ARMING_BLOCKED' }
+      - name: Flatten 4 human-auditable files into one Windows offline ZIP
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path dist -Force | Out-Null
+          foreach ($filename in @('VERIFICAR_PRELIVE.ps1', 'preflight_risk_only.py', 'prelive_100usdt_configuration.json', 'README_PORTUGUES.md')) {
+            Copy-Item "prelive/three_canas_100usdt_10x/$filename" "dist/$filename"
+          }
+          $files = Get-ChildItem dist -File | Sort-Object Name
+          $lines = foreach($f in $files){ $sha = (Get-FileHash $f.FullName -Algorithm SHA256).Hash.ToLower(); "$sha  $($f.Name)" }
+          $lines | Set-Content 'dist/SHA256_FILES.txt' -Encoding utf8
+          & powershell -NoProfile -ExecutionPolicy Bypass -File dist/VERIFICAR_PRELIVE.ps1 *> report.txt
+          if ($LASTEXITCODE -ne 0) { throw 'PORTABLE_PACKAGE_PREFLIGHT_FAILED' }
+          if (-not (Select-String -Path report.txt -Pattern 'NO_LIVE_GO' -Quiet)) { throw 'NO_LIVE_GO_TEXT_NOT_PRESENT' }
+          Compress-Archive -Path dist/* -DestinationPath 'CryptoLab_3Canas_100USDT_10x_OFFLINE_PRELIVE.zip' -Force
+          Write-Output "ZIP_SHA256=$((Get-FileHash 'CryptoLab_3Canas_100USDT_10x_OFFLINE_PRELIVE.zip' -Algorithm SHA256).Hash.ToLower())"
+      - name: Publish Windows-only package with exact file checksums
+        uses: actions/upload-artifact@v4
+        with:
+          name: ThreeCanas_100USDT_10x_OFFLINE_PRELIVE
+          path: |
+            CryptoLab_3Canas_100USDT_10x_OFFLINE_PRELIVE.zip
+            report.txt
+          if-no-files-found: error
+          retention-days: 30
