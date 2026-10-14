@@ -1,0 +1,66 @@
+{
+  "schema": "CRYPTO_LAB_THREE_CANAS_RISK_ONLY_V01",
+  "as_of": "2026-10-14",
+  "status": "NO_LIVE_GO",
+  "armed": false,
+  "can_send_orders": false,
+  "uses_api_key": false,
+  "operator_declared_equity_usdt": "100",
+  "operator_declared_open_positions": 0,
+  "account_state_independently_verified": false,
+  "leverage_requested": 10,
+  "margin_mode_requested": "ISOLATED",
+  "max_modeled_risk_per_trade_usdt": "0.50",
+  "max_aggregate_modeled_risk_usdt": "1.50",
+  "max_sol_modeled_risk_usdt": "1.00",
+  "sol_collision_policy": "ONE_PHYSICAL_SOL_POSITION_AT_A_TIME_UNTIL_BROKER_NETTING_VERIFIED",
+  "cost_model_illustrative": {
+    "taker_bps_per_side": "8",
+    "adverse_slippage_bps_per_side": "2",
+    "funding_debit_reserve_bps": "5"
+  },
+  "strategy_slots": [
+    {
+      "id": "SOL_CONVEX_NATIVE_5M",
+      "symbol": "SOL_USDT",
+      "tf_minutes": 5,
+      "parent_sha": "af82deefd5634a77a7b49e7acec61ca21eb44a49",
+      "direction": "LONG",
+      "original_stop_price_fraction": "0.04",
+      "original_exit_policy_preserved": true
+    },
+    {
+      "id": "SOL_CONVEX_1H",
+      "symbol": "SOL_USDT",
+      "tf_minutes": 60,
+      "parent_sha": "42d6748864dd78b911b5f1fc775ff1950b556d2b",
+      "direction": "LONG",
+      "original_stop_price_fraction": "0.04",
+      "original_exit_policy_preserved": true
+    },
+    {
+      "id": "BNB_CONVEX_4H",
+      "symbol": "BNB_USDT",
+      "tf_minutes": 240,
+      "parent_sha": "42d6748864dd78b911b5f1fc775ff1950b556d2b",
+      "direction": "LONG",
+      "original_stop_price_fraction": "0.04",
+      "original_exit_policy_preserved": true
+    }
+  ],
+  "verified_live_gates": {
+    "signal_source_and_parity": false,
+    "fresh_mexc_quotes_specs": false,
+    "authenticated_fee_schedule": false,
+    "account_equity_and_positions_readonly_reconciliation": false,
+    "matching_broker_side_stop_ack": false,
+    "stop_amend_and_quantity_reconciliation": false,
+    "liquidation_mark_trigger_buffer": false,
+    "crash_recovery": false,
+    "costed_forward_shadow": false,
+    "operator_final_signoff": false
+  },
+  "operator_declared_position_mode": "HEDGE",
+  "account_position_mode_independently_verified": false,
+  "hedge_mode_does_not_isolate_two_sol_longs": true
+}
