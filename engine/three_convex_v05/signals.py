@@ -65,6 +65,9 @@ def git_blob_sha(raw):
 
 def parent_signal_function(source_path=PARENT_PATH):
     raw = Path(source_path).read_bytes()
+    # Windows Git checkout may expand LF to CRLF. Normalize only transport
+    # line endings to the canonical Git blob before strict provenance check.
+    raw = raw.replace(b"\r\n", b"\n")
     if git_blob_sha(raw) != PARENT_GIT_BLOB:
         raise Halt("V5_PARENT_BLOB_IDENTITY_MISMATCH")
     tree = ast.parse(raw, filename=str(source_path))
