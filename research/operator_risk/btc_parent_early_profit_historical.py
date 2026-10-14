@@ -13,7 +13,7 @@ from pathlib import Path
 
 def load_parent():
     import sys
-    root = Path(__file__).resolve().parents[3] / "historical_parent" / "research" / "payoff_40_10_btc_001"
+    root = Path(__file__).resolve().parents[2] / "historical_parent" / "research" / "payoff_40_10_btc_001"
     if not root.exists():
         raise RuntimeError("PINNED_PARENT_CHECKOUT_MISSING")
     sys.path.insert(0,str(root))
@@ -110,7 +110,7 @@ def replay_child(b, funding, marks, fee, slip, parent):
                "initial_qty":qty,"initial_stop":fill*.96,"stop":fill*.96,
                "peak":fill,"funding_cash":0.,"remaining_entry_fee":fee_cash,
                "net_realized":0.,"took_half":False,"pending_take":False,
-               "first_partial_t":None}
+               "first_partial_t":None,"force_exit_next_open":False}
             stop_price=fill*.96
             unit_r=(fill-stop_price*(1-slip))+(fill*fee)+(stop_price*(1-slip)*fee)+(fill*.0005)
             p["original_r_cash"]=qty*unit_r
@@ -118,10 +118,12 @@ def replay_child(b, funding, marks, fee, slip, parent):
 
         # Original Parent gap stop precedes funding. Do not pretend exit at stop
         # if the bar opens below it. No partial action when stop already crossed.
-        gap_exited=False
         if p and k["open"]<=p["stop"]:
             exit_lot(t,k["open"],"STOP_GAP",p["qty"],True)
-            gap_exited=True
+        elif p and p["force_exit_next_open"]:
+            # A stop already crossed at the LAST completed close cannot get
+            # an imaginary fill at that historic close; sell NEXT hour open.
+            exit_lot(t,k["open"],"BREAKEVEN_CROSSED_NEXT_OPEN",p["qty"],True)
 
         # Partial fills may only be proposed at the NEXT 1h OPEN after a
         # qualifying PREVIOUS 1h CLOSE. The prior stop remains until next bar.
@@ -169,10 +171,11 @@ def replay_child(b, funding, marks, fee, slip, parent):
                     modeled_be=(q*p["fill"]+p["remaining_entry_fee"]-p["funding_cash"]) \
                               / (q*(1-fee)*(1-slip))
                     new_stop=max(p["stop"],parent_stop,modeled_be)
-                    # If already above close, must conservatively mark adverse
-                    # market exit at close (cannot fill earlier protected stop).
+                    # Break-even candidate not executable at past completed
+                    # close. If already crossed, schedule NEXT-hour market exit
+                    # with observed next-open gap; preserve original broker stop.
                     if new_stop>=k["close"]:
-                        exit_lot(t,k["close"],"BE_ALREADY_CROSSED_PROXY_CLOSE",p["qty"],True)
+                        p["force_exit_next_open"]=True
                     else:
                         p["stop"]=new_stop
                 else:
