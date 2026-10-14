@@ -52,7 +52,7 @@ jobs:
           Copy-Item engine/three_convex_v05/README.md v05_package/README_V05_NO_LIVE_GO.md
           $root = (Resolve-Path v05_package).Path
           $list = Get-ChildItem v05_package -Recurse -File | Sort-Object FullName | ForEach-Object {
-            $relative = $_.FullName.Substring($root.Length + 1).Replace('\\','/')
+            $relative = $_.FullName.Substring($root.Length + 1).Replace([IO.Path]::DirectorySeparatorChar,'/')
             $sha = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLower()
             "$sha  $relative"
           }
