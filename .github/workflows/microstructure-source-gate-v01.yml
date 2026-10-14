@@ -1,0 +1,30 @@
+name: microstructure-source-gate-v01
+
+on:
+  push:
+    branches:
+      - microstructure-scalping-lab-v0.1
+    paths:
+      - 'research/microstructure_scalping/probe_sources_v01.py'
+      - 'research/microstructure_scalping/SOURCE_GATE_V0_1_INITIAL_AUDIT.md'
+      - 'research/microstructure_scalping/SOURCE_MATRIX_V0_2.md'
+      - '.github/workflows/microstructure-source-gate-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run source probe
+        run: python research/microstructure_scalping/probe_sources_v01.py
+      - name: Print receipt
+        if: always()
+        run: cat research/microstructure_scalping/receipts/source_probe_v01.json || true

@@ -1,0 +1,33 @@
+name: sweep-cont-003-fresh-discovery-v01
+
+on:
+  push:
+    branches:
+      - microstructure-scalping-lab-v0.1
+    paths:
+      - 'research/microstructure_scalping/sweep_features_v01.py'
+      - 'research/microstructure_scalping/test_sweep_features_v01.py'
+      - 'research/microstructure_scalping/SWEEP_CONT_003_FREEZE_V0_1.md'
+      - 'research/microstructure_scalping/sweep_cont_003_ceiling_v01.py'
+      - '.github/workflows/sweep-cont-003-fresh-discovery-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sweep-cont-003:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Causality unit tests
+        run: python -m unittest research.microstructure_scalping.test_sweep_features_v01 -v
+      - name: Run frozen SWEEP-CONT-003 fresh Discovery ceiling
+        run: python -m research.microstructure_scalping.sweep_cont_003_ceiling_v01
+      - name: Print receipt
+        if: always()
+        run: cat research/microstructure_scalping/receipts/sweep_cont_003_ceiling_v01.json || true

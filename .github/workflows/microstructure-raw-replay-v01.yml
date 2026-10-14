@@ -1,0 +1,28 @@
+name: microstructure-raw-replay-v01
+
+on:
+  push:
+    branches:
+      - microstructure-scalping-lab-v0.1
+    paths:
+      - 'research/microstructure_scalping/probe_bybit_archive_replay_v01.py'
+      - '.github/workflows/microstructure-raw-replay-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  raw-replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download and validate one pre-holdout Bybit L2 archive
+        run: python research/microstructure_scalping/probe_bybit_archive_replay_v01.py
+      - name: Print replay receipt
+        if: always()
+        run: cat research/microstructure_scalping/receipts/bybit_raw_replay_v01.json || true

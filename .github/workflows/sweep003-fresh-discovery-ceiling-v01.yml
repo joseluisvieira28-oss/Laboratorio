@@ -1,0 +1,29 @@
+name: sweep003-fresh-discovery-ceiling-v01
+
+on:
+  push:
+    branches:
+      - microstructure-scalping-lab-v0.1
+    paths:
+      - 'research/microstructure_scalping/sweep003_fresh_discovery_ceiling_v01.py'
+      - 'research/microstructure_scalping/SWEEP_003_FRESH_DISCOVERY_FREEZE_V0_1.md'
+      - '.github/workflows/sweep003-fresh-discovery-ceiling-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sweep003:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run frozen SWEEP-003 fresh Discovery ceiling
+        run: python -m research.microstructure_scalping.sweep003_fresh_discovery_ceiling_v01
+      - name: Print receipt
+        if: always()
+        run: cat research/microstructure_scalping/receipts/sweep003_fresh_discovery_ceiling_v01.json || true
