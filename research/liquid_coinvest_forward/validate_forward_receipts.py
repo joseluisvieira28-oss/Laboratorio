@@ -113,8 +113,20 @@ for path in files:
                 fail(f"{oid}: source timestamp regressed")
             if source_at == prev_source and not same:
                 fail(f"{oid}: SOURCE_INTEGRITY_CONFLICT")
-            expected_tag = "DUPLICATE_SOURCE_SNAPSHOT" if source_at == prev_source and same else "ADVANCED_SOURCE_SNAPSHOT"
-            if tag not in {expected_tag, "FRESHNESS_UNKNOWN"}:
+            # Canonicalization Amendment V0.1: classify source-version events
+            # by BOTH proprietary timestamp and semantically compared tiers.
+            # Legacy ADVANCED_SOURCE_SNAPSHOT receipts remain immutable; they
+            # are accepted as historical labels, never credited by this validator.
+            if source_at == prev_source:
+                expected_tag = "DUPLICATE_SOURCE_SNAPSHOT"
+            elif same:
+                expected_tag = "SOURCE_TIMESTAMP_ONLY"
+            else:
+                expected_tag = "EVENT_ELIGIBLE"
+            allowed_tags = {expected_tag, "FRESHNESS_UNKNOWN"}
+            if tag == "ADVANCED_SOURCE_SNAPSHOT" and expected_tag in {"EVENT_ELIGIBLE", "SOURCE_TIMESTAMP_ONLY"}:
+                allowed_tags.add("ADVANCED_SOURCE_SNAPSHOT")
+            if tag not in allowed_tags:
                 fail(f"{oid}: expected {expected_tag}")
             if source_at > prev_source:
                 cadence_deltas[symbol].append((source_at - prev_source).total_seconds())
