@@ -1,0 +1,60 @@
+name: Three CONVEX V05 no-trade shadow core CI
+on:
+  pull_request:
+    paths:
+      - 'engine/three_convex_v05/**'
+      - '.github/workflows/three-convex-v05-shadow-ci.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  cross-platform-offline:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Strict original source blob SHA
+        shell: bash
+        run: |
+          actual="$(git hash-object engine/three_convex_v05/vendor/V5_PARENT_PINNED_SOURCE.py.txt)"
+          echo "V5_PARENT_BLOB=$actual"
+          test "$actual" = "19c8b8e2363f253458db42111b6701f3a3ef1f4b"
+      - name: Unit and safety regression tests
+        shell: bash
+        run: python -m unittest engine.three_convex_v05.test_engine_v05 -v
+      - name: Synthetic QA — no orders
+        shell: bash
+        run: |
+          python -m engine.three_convex_v05.run_offline --synthetic-qa --output-dir v05_output/synthetic_receipts
+          python -c "import json,pathlib; d=json.loads(pathlib.Path('v05_output/synthetic_receipts/SHADOW_REPORT.json').read_text()); assert d['status']=='OFFLINE_SHADOW_ENGINE_COMPLETE_NO_LIVE_GO'; assert d['execution_authority']=='NONE' and d['trading_enabled'] is False and d['realized_live_trade_count']==0 and d['broker_transport_present'] is False"
+      - name: Reject output overwrite — receipt immutability
+        shell: bash
+        run: |
+          if python -m engine.three_convex_v05.run_offline --synthetic-qa --output-dir v05_output/synthetic_receipts; then
+            echo "IMMUTABILITY FAIL: overwrite succeeded"
+            exit 1
+          fi
+      - name: Package source and synthetic QA report
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path v05_package | Out-Null
+          Copy-Item -Recurse engine/three_convex_v05 v05_package/three_convex_v05
+          Copy-Item -Recurse v05_output/synthetic_receipts v05_package/synthetic_receipts
+          Compress-Archive -Path v05_package/* -DestinationPath Three_CONVEX_V05_SHADOW_NO_LIVE_GO.zip -Force
+          $sha=(Get-FileHash Three_CONVEX_V05_SHADOW_NO_LIVE_GO.zip -Algorithm SHA256).Hash.ToLower()
+          Write-Output "SHADOW_ZIP_SHA256=$sha"
+      - name: Publish no-trade Windows QA package
+        if: matrix.os == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Three_CONVEX_V05_SHADOW_NO_LIVE_GO
+          path: Three_CONVEX_V05_SHADOW_NO_LIVE_GO.zip
+          if-no-files-found: error
