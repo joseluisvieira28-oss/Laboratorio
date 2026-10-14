@@ -28,7 +28,7 @@ jobs:
           test "$actual" = "19c8b8e2363f253458db42111b6701f3a3ef1f4b"
       - name: Unit and safety regression tests
         shell: bash
-        run: python -m unittest engine.three_convex_v05.test_engine_v05 -v
+        run: python -m unittest discover -s engine/three_convex_v05 -p "test_*.py" -v
       - name: Synthetic QA — no orders
         shell: bash
         run: |
