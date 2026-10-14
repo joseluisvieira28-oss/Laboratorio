@@ -1,0 +1,30 @@
+name: LIQUIDATION-PRESSURE-002 Funding Schedule Source
+
+on:
+  pull_request:
+    paths:
+      - 'labs/LIQUIDATION_PRESSURE_002_FORWARD/funding_schedule_source_probe_v0_1.py'
+      - '.github/workflows/liquidation_pressure_002_funding_source.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  funding-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pinned websocket client
+        run: pip install websockets==15.0.1
+      - name: Probe public Bybit funding schedule metadata
+        run: python labs/LIQUIDATION_PRESSURE_002_FORWARD/funding_schedule_source_probe_v0_1.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: LIQUIDATION-PRESSURE-002-FUNDING-SOURCE
+          path: labs/LIQUIDATION_PRESSURE_002_FORWARD/evidence/funding_schedule_source_probe_v0_1.json
