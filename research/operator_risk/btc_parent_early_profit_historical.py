@@ -269,11 +269,8 @@ def main():
         out["scenarios"][name]={
             "parent_control":{k:v for k,v in baseline.items() if k!="trade_ledger"},
             "child":{k:v for k,v in kid.items() if k!="closed_leg_ledger"},
-            "child_minus_parent_equity_pct_points":kid["return_pct"]-baseline["closed_equity_return"]*100,
-            "child_minus_parent_terminal_pct_points":kid["terminal_return_pct"]-(
-                (baseline["closed_equity"]+
-                 (baseline["unresolved_at_cutoff"][0]["unrealized_net_if_liquidated_at_last_close"]
-                  if baseline["unresolved_at_cutoff"] else 0))/parent.EQUITY0-1)*100,
+            "child_minus_parent_closed_equity_pct_points":kid["return_pct"]-baseline["closed_equity_return"]*100,
+            "exact_terminal_net_comparison":"UNRESOLVED_DIFFERENT_END_POSITIONS_NO_FAKE_MARK_PARITY",
         }
         (args.output.parent/(name+"_child_legs.json")).write_text(
             json.dumps(kid["closed_leg_ledger"],sort_keys=True))
@@ -286,7 +283,7 @@ def main():
             "child_partials":kid["partial_50pct_count"],
             "parent_pf":baseline["profit_factor"],
             "child_pf":kid["closed_position_net_profit_factor"],
-            "delta_pp":out["scenarios"][name]["child_minus_parent_equity_pct_points"],
+            "closed_eq_delta_pp":out["scenarios"][name]["child_minus_parent_closed_equity_pct_points"],
         },sort_keys=True),flush=True)
     args.output.parent.mkdir(parents=True,exist_ok=True)
     args.output.write_text(json.dumps(out,indent=2,sort_keys=True)+"\n")
