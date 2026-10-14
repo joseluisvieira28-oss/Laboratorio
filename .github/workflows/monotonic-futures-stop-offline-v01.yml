@@ -1,0 +1,28 @@
+name: MONOTONIC-FUTURES-STOP-V01 offline safety invariants
+on:
+  push:
+    branches:
+      - research/monotonic-futures-protection-v01-2026-10-14
+    paths:
+      - research/operator_risk/**
+      - .github/workflows/monotonic-futures-stop-offline-v01.yml
+  pull_request:
+    branches:
+      - main
+    paths:
+      - research/operator_risk/**
+      - .github/workflows/monotonic-futures-stop-offline-v01.yml
+permissions:
+  contents: read
+jobs:
+  synthetic-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Test hypothetical risk sizing and monotonic stops (NO market/exchange)
+        run: |
+          cd research/operator_risk
+          python3 -m unittest -v test_monotonic_protection
