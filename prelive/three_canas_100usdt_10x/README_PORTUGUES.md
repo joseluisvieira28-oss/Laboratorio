@@ -45,3 +45,6 @@ Procurar `result: NO_LIVE_GO`, `execution_authority: NONE`. Exemplos de quantida
 
 ## Repositório e prova
 Repo `joseluisvieira28-oss/Laboratorio`; branch `prelive/three-canas-100usdt-10x-risk-gate-2026-10-14`. Research-only, sem alterações a `main`, sem keys, sem ordens, sem deployment ou tarefas automáticas. Testes em CI são apenas unitários/sintéticos. Qualquer API privada ou alteração real à conta continua bloqueada.
+
+## Confirmacao de modo de posicoes pelo operador (14 outubro 2026)
+O operador confirmou manualmente **HEDGE MODE** na interface MEXC Futures. Esta observacao nao foi comprovada atraves da API da conta. Hedge permite LONG e SHORT separados do mesmo simbolo, mas nao cria automaticamente uma posicao LONG independente para a estrategia SOL 5m e outra LONG independente para SOL 1h. Ambas podem partilhar a perna LONG SOL_USDT. Continua obrigatorio bloquear a segunda entrada SOL simultanea ate prova da cobertura de stop, reconcilicao de fills e modo real por leitura autorizada. Nao ha ordens nem autorizacao de LIVE GO.
