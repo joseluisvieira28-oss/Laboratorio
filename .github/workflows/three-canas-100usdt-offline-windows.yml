@@ -45,8 +45,11 @@ jobs:
           $files = Get-ChildItem dist -File | Sort-Object Name
           $lines = foreach($f in $files){ $sha = (Get-FileHash $f.FullName -Algorithm SHA256).Hash.ToLower(); "$sha  $($f.Name)" }
           $lines | Set-Content 'dist/SHA256_FILES.txt' -Encoding utf8
-          & powershell -NoProfile -ExecutionPolicy Bypass -File dist/VERIFICAR_PRELIVE.ps1 *> report.txt
-          if ($LASTEXITCODE -ne 0) { throw 'PORTABLE_PACKAGE_PREFLIGHT_FAILED' }
+          $preflight = & powershell -NoProfile -ExecutionPolicy Bypass -File ./dist/VERIFICAR_PRELIVE.ps1 2>&1
+          $exitCode = $LASTEXITCODE
+          $preflight | Out-File -FilePath report.txt -Encoding utf8
+          $preflight | ForEach-Object { Write-Host $_ }
+          if ($exitCode -ne 0) { throw "PORTABLE_PACKAGE_PREFLIGHT_FAILED: exit=$exitCode" }
           if (-not (Select-String -Path report.txt -Pattern 'NO_LIVE_GO' -Quiet)) { throw 'NO_LIVE_GO_TEXT_NOT_PRESENT' }
           Compress-Archive -Path dist/* -DestinationPath 'CryptoLab_3Canas_100USDT_10x_OFFLINE_PRELIVE.zip' -Force
           Write-Output "ZIP_SHA256=$((Get-FileHash 'CryptoLab_3Canas_100USDT_10x_OFFLINE_PRELIVE.zip' -Algorithm SHA256).Hash.ToLower())"
