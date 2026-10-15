@@ -62,8 +62,28 @@ function Assert-TaskAndFiles {
     if (-not (Test-Path -LiteralPath (Join-Path $root 'data') -PathType Container)) {throw 'INSTALLED_DATA_DIRECTORY_MISSING'}
     return $t
 }
+# Windows ScheduledTask Stop can leave PyInstaller one-file parent/child running.
+# We MUST NOT copy EXEs/SQLite while these processes still exist, nor start twins.
+# Identity is pinned to an exact installed EXE path, PID and CreationDate.
+function Get-VersionProcesses {
+    return @(Get-CimInstance -ClassName Win32_Process -Filter ("Name='"+$identity.Target+"'") -ErrorAction Stop)
+}
 function Get-VersionProcessCount {
-    return @(Get-Process -Name ([IO.Path]::GetFileNameWithoutExtension($identity.Target)) -ErrorAction SilentlyContinue).Count
+    return @(Get-VersionProcesses).Count
+}
+function Assert-VerifiedProcesses([object[]]$procs) {
+    if ($procs.Count -ne 2) {throw 'EXPECTED_TWO_PYINSTALLER_PROCESSES_NO_CHANGES'}
+    $expectedPath=[IO.Path]::GetFullPath($target)
+    foreach($p in $procs) {
+        if (-not $p.ExecutablePath -or
+            -not [string]::Equals([string]$p.ExecutablePath,$expectedPath,[StringComparison]::OrdinalIgnoreCase)) {
+            throw 'EXE_PROCESS_PATH_MISMATCH_DO_NOT_KILL'
+        }
+        if (-not $p.CreationDate) {throw 'PROCESS_CREATION_DATE_UNAVAILABLE_DO_NOT_KILL'}
+    }
+}
+function ProcessFingerprint([object]$p) {
+    return ([string]$p.ProcessId+':'+([datetime]$p.CreationDate).ToUniversalTime().Ticks)
 }
 function Wait-Exit {
     $deadline=[datetime]::UtcNow.AddSeconds(45)
@@ -74,8 +94,46 @@ function Wait-Exit {
     throw 'EXE_STILL_RUNNING_ABORT_DO_NOT_OVERWRITE'
 }
 function Stop-OnlyThisTask {
-    Stop-ScheduledTask -TaskName $taskName -ErrorAction Stop
+    # Identity must be checked BEFORE stop, not after an unknown process appears.
+    $previous=@(Get-VersionProcesses)
+    if ($previous.Count -gt 0) {Assert-VerifiedProcesses $previous}
+    $fingerprints=@($previous|ForEach-Object{ProcessFingerprint $_}|Sort-Object)
+    $state=[string](Get-ScheduledTask -TaskName $taskName -ErrorAction Stop).State
+    if($state -eq 'Running') {
+        Stop-ScheduledTask -TaskName $taskName -ErrorAction Stop
+    } elseif($state -ne 'Ready') {
+        throw 'UNEXPECTED_STATE_FOR_OBSERVER_STOP'
+    }
+    # Wait for the scheduler to acknowledge stopping before touching children.
+    $deadline=[datetime]::UtcNow.AddSeconds(15)
+    do {
+        $state=[string](Get-ScheduledTask -TaskName $taskName -ErrorAction Stop).State
+        if($state -eq 'Ready') {break}
+        Start-Sleep -Seconds 1
+    } while([datetime]::UtcNow -lt $deadline)
+    if($state -ne 'Ready') {throw 'SCHEDULED_TASK_NOT_READY_ABORT_NO_PROCESS_KILL'}
+    $current=@(Get-VersionProcesses)
+    if ($current.Count -gt 0) {
+        Assert-VerifiedProcesses $current
+        $actual=@($current|ForEach-Object{ProcessFingerprint $_}|Sort-Object)
+        if (($actual -join ',') -cne ($fingerprints -join ',')) {
+            throw 'PROCESS_IDENTITY_CHANGED_ABORT_NO_KILL'
+        }
+        # One final identity comparison for the same two PIDs, then kill only
+        # the verified old observer EXEs; no powershell.exe / unrelated PIDs.
+        $repeat=@(Get-VersionProcesses)
+        if ((@($repeat|ForEach-Object{ProcessFingerprint $_}|Sort-Object) -join ',') -cne ($fingerprints -join ',')) {
+            throw 'PROCESS_RACE_CHANGED_ABORT_NO_KILL'
+        }
+        Assert-VerifiedProcesses $repeat
+        foreach($p in $repeat) {
+            Stop-Process -Id ([int]$p.ProcessId) -Force -ErrorAction Stop
+        }
+    }
     Wait-Exit
+    if ([string](Get-ScheduledTask -TaskName $taskName -ErrorAction Stop).State -ne 'Ready') {
+        throw 'SCHEDULER_CHANGED_AFTER_STOP_NO_COPY'
+    }
 }
 function Health-After-Start([datetime]$startedUtc) {
     $deadline=[datetime]::UtcNow.AddSeconds($ProbeSeconds)
@@ -160,8 +218,7 @@ try {
     $recovery='NO_BACKUP_AVAILABLE'
     if ($backupReady -and $binarySwapped) {
         try {
-            Stop-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
-            Wait-Exit
+            Stop-OnlyThisTask
             Copy-Item -LiteralPath (Join-Path $backup 'original.exe') -Destination $target -Force -ErrorAction Stop
             Copy-Item -LiteralPath (Join-Path $backup 'original_runner.ps1') -Destination $runner -Force -ErrorAction Stop
             if ((Get-FileHash -LiteralPath $target -Algorithm SHA256).Hash.ToLowerInvariant() -ne $beforeHash) {throw 'ROLLBACK_BINARY_HASH_MISMATCH'}
