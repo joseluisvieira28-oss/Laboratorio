@@ -1,0 +1,102 @@
+name: CONVEX V07 Telegram and MEXC watcher — No Orders
+on:
+  pull_request:
+    paths:
+      - 'engine/three_convex_v07/**'
+      - '.github/workflows/three-convex-v07-telegram.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  v07-cross-platform:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: V05 immutable V5 parent Git object
+        shell: bash
+        run: |
+          actual="$(git hash-object engine/three_convex_v05/vendor/V5_PARENT_PINNED_SOURCE.py.txt)"
+          echo "PINNED_V5_PARENT_GIT_BLOB=$actual"
+          test "$actual" = "19c8b8e2363f253458db42111b6701f3a3ef1f4b"
+      - name: V07 Telegram, account and public feed mocked unit tests
+        shell: bash
+        run: python -m unittest discover -s engine/three_convex_v07 -p 'test_*.py' -v
+      - name: V06 broker protocol and authorization regression suite
+        shell: bash
+        run: python -m unittest discover -s engine/three_convex_v06 -p 'test_*.py' -v
+      - name: V05 pinned parent, risk and stop baseline regression suite
+        shell: bash
+        run: python -m unittest discover -s engine/three_convex_v05 -p 'test_*.py' -v
+      - name: Existing Telegram bot setup compatibility — mock real sendMessage no getUpdates
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $file='engine/three_convex_v07/windows/CONFIGURAR_TELEGRAM.ps1'
+          $tokens=$null
+          $errors=$null
+          [void][System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $file).Path,[ref]$tokens,[ref]$errors)
+          if ($errors.Count -ne 0) { throw "POWERSHELL_PARSE_ERRORS" }
+          $env:LOCALAPPDATA=Join-Path $env:RUNNER_TEMP 'V07_existing_bot_regression'
+          $legacy=Join-Path $env:LOCALAPPDATA 'CryptoEdgeRadar/secrets'
+          New-Item -ItemType Directory -Force -Path $legacy | Out-Null
+          $fakeToken="12345678:" + ("A"*35)
+          $cipher=ConvertTo-SecureString -String $fakeToken -AsPlainText -Force | ConvertFrom-SecureString
+          [IO.File]::WriteAllText((Join-Path $legacy 'telegram_bot_token.dpapi'),$cipher,[Text.Encoding]::UTF8)
+          [IO.File]::WriteAllText((Join-Path $legacy 'telegram_chat_id.txt'),'1234567890',[Text.Encoding]::UTF8)
+          $global:MockRequests=0
+          function global:Invoke-RestMethod {
+            [CmdletBinding()]
+            param([string]$Uri,[string]$Method,[int]$TimeoutSec,[string]$ContentType,[byte[]]$Body)
+            if ($Uri -notlike 'https://api.telegram.org/bot*/sendMessage') { throw 'ILLEGAL_TELEGRAM_API_CALL' }
+            if ($Method -ne 'Post') { throw 'NON_POST_TELEGRAM_TEST' }
+            $decoded=[Text.Encoding]::UTF8.GetString($Body) | ConvertFrom-Json
+            if ([string]$decoded.chat_id -ne '1234567890') { throw 'WRONG_EXISTING_CHAT_ID' }
+            $global:MockRequests += 1
+            return [PSCustomObject]@{ok=$true;result=[PSCustomObject]@{message_id=123456}}
+          }
+          & $file
+          if ($global:MockRequests -ne 1) { throw 'MUST_SEND_EXACTLY_ONE_TEST_MESSAGE' }
+          $target=Join-Path $env:LOCALAPPDATA 'CryptoLab/ThreeConvexV07/secrets'
+          $stored=(Get-Content -LiteralPath (Join-Path $target 'telegram_chat_id.txt') -Raw).Trim()
+          if ($stored -ne '1234567890') { throw 'FAILED_TO_REUSE_OLD_CHAT_ID' }
+          $sec=ConvertTo-SecureString -String (Get-Content -LiteralPath (Join-Path $target 'telegram_bot_token.dpapi') -Raw).Trim() 
+          $decodedToken=([PSCredential]::new('local',$sec)).GetNetworkCredential().Password
+          if ($decodedToken -ne $fakeToken) { throw 'TOKEN_DPAPI_ROUNDTRIP_FAILED' }
+          Write-Output 'EXISTING_ACTIVE_BOT_REUSE_TEST_PASS_NO_GETUPDATES_NO_WEBHOOK_CHANGE'
+      - name: Build standalone V07 Windows watcher NO LIVE ORDERS
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          python -m pip install --disable-pip-version-check pyinstaller==6.16.0
+          if ($LASTEXITCODE -ne 0) { throw "PYINSTALLER_INSTALL_FAILED" }
+          python -m PyInstaller --clean --noconfirm --onefile --name V07_Telegram_MEXC_Watcher --paths . --add-data "engine/three_convex_v05/vendor/V5_PARENT_PINNED_SOURCE.py.txt;engine/three_convex_v05/vendor" engine/three_convex_v07/watch.py
+          if ($LASTEXITCODE -ne 0) { throw "WINDOWS_BUILD_FAILED" }
+          & ./dist/V07_Telegram_MEXC_Watcher.exe --help
+          if ($LASTEXITCODE -ne 0) { throw "EXE_HELP_FAILED" }
+          # Must fail closed on missing local encrypted credentials, no HTTP.
+          & ./dist/V07_Telegram_MEXC_Watcher.exe --data-dir ./v07_test_missing_secrets --once
+          if ($LASTEXITCODE -eq 0) { throw "UNSAFE_EXE_ACCEPTED_MISSING_SECRETS" }
+          New-Item -ItemType Directory -Force -Path v07_release | Out-Null
+          Copy-Item dist/V07_Telegram_MEXC_Watcher.exe v07_release/
+          Copy-Item engine/three_convex_v07/windows/*.ps1 v07_release/
+          Copy-Item engine/three_convex_v07/README_PORTUGUES.md v07_release/LEIA_PRIMEIRO_V07.md
+          $hash=(Get-FileHash v07_release/V07_Telegram_MEXC_Watcher.exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          Set-Content v07_release/SHA256_EXE.txt ("SHA256_EXE="+$hash) -Encoding ascii
+          Write-Output "V07_READONLY_TELEGRAM_WATCHER_ZIP_FLAT_READY"
+          exit 0 # Expected missing-credentials negative test deliberately exits nonzero
+      - name: Publish one-layer Windows V07
+        if: matrix.os == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: CryptoLab_V07_Telegram_MEXC_Windows_NO_LIVE_GO
+          path: v07_release/
+          if-no-files-found: error
