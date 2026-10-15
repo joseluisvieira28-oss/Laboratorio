@@ -1,6 +1,9 @@
 name: CONVEX V11 Experimental Signal Unit Tests
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - 'feature/convex-v11-experimental-three-lanes-2026-10-15'
   pull_request:
     paths:
       - 'engine/three_convex_v11/**'
@@ -36,7 +39,7 @@ jobs:
         shell: pwsh
         run: |
           python -m pip install --disable-pip-version-check pyinstaller==6.16.0
-          python -m PyInstaller --noconfirm --clean --onefile --name V11_Experimental_Signals --paths . engine/three_convex_v11/watcher.py
+          python -m PyInstaller --noconfirm --clean --onefile --name V11_Experimental_Signals --paths . --add-data 'engine/three_convex_v05/vendor/V5_PARENT_PINNED_SOURCE.py.txt;engine/three_convex_v05/vendor' engine/three_convex_v11/watcher.py
           (Get-FileHash dist/V11_Experimental_Signals.exe -Algorithm SHA256).Hash.ToLowerInvariant() | Set-Content dist/SHA256_EXE.txt
           Copy-Item engine/three_convex_v11/windows/*.ps1 dist/
           Compress-Archive -Path dist/V11_Experimental_Signals.exe,dist/SHA256_EXE.txt,dist/*.ps1 -DestinationPath CONVEX_V11_EXPERIMENTAL_WINDOWS.zip -Force
