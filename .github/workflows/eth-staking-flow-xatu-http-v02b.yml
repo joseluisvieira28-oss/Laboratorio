@@ -1,0 +1,36 @@
+name: ETH Staking Flow 001 — Xatu HTTP Transport V0.2B
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - eth-staking-flow-v0.1
+    paths:
+      - '.github/workflows/eth-staking-flow-xatu-http-v02b.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  xatu-http-transport:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependency
+        run: pip install --disable-pip-version-check requests
+      - name: Static compile
+        run: python -m py_compile research/eth_staking_flow/xatu_http_transport_v02b.py
+      - name: Execute exact HTTP transport probe
+        run: python research/eth_staking_flow/xatu_http_transport_v02b.py
+      - name: Upload receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ETH_STAKING_FLOW_001_XATU_HTTP_TRANSPORT_V0_2B
+          path: xatu_http_transport_v02b_output/ETH_STAKING_FLOW_001_XATU_HTTP_TRANSPORT_V0_2B.json
+          if-no-files-found: warn
+          retention-days: 30

@@ -1,0 +1,41 @@
+name: ETH Staking Flow 001 — Xatu Source Feasibility V0.2
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - eth-staking-flow-v0.1
+    paths:
+      - '.github/workflows/eth-staking-flow-xatu-source-feas-v02.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  xatu-source-feasibility:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install source-probe dependencies
+        run: pip install --disable-pip-version-check requests duckdb
+
+      - name: Static compile
+        run: python -m py_compile research/eth_staking_flow/xatu_source_feasibility_v02.py
+
+      - name: Execute protected-safe Xatu feasibility probe
+        run: python research/eth_staking_flow/xatu_source_feasibility_v02.py
+
+      - name: Upload source-feasibility receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ETH_STAKING_FLOW_001_XATU_SOURCE_FEASIBILITY_V0_2
+          path: xatu_source_feas_v02_output/ETH_STAKING_FLOW_001_XATU_SOURCE_FEASIBILITY_V0_2.json
+          if-no-files-found: warn
+          retention-days: 30
