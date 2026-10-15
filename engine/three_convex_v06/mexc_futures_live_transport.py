@@ -95,7 +95,11 @@ class FuturesV06Transport:
                 and path.removeprefix("/api/v1/private/order/get/").isdigit()
                 and len(path.removeprefix("/api/v1/private/order/get/"))<=24
             )
-            if path not in GET_PATHS and not is_order_by_id:
+            is_external_order = bool(re.fullmatch(
+                r"/api/v1/private/order/external/(SOL_USDT|BNB_USDT)/CL8[0-9a-f]{28}",
+                path
+            ))
+            if path not in GET_PATHS and not is_order_by_id and not is_external_order:
                 raise MEXCTransportHalt("GET_ENDPOINT_NOT_ALLOWLISTED")
             if ticket is not None:
                 raise MEXCTransportHalt("GET_MUST_NOT_REQUIRE_MUTATION_TICKET")
@@ -227,6 +231,24 @@ class FuturesV06Transport:
         data=self._exchange("GET","/api/v1/private/order/get/"+str(order_id))
         if not isinstance(data,dict) or str(data.get("orderId"))!=str(order_id):
             raise MEXCTransportHalt("ORDER_ID_READBACK_MISMATCH")
+        return data
+
+    def get_order_by_external_oid(self,symbol,external_oid):
+        """Authenticated GET lookup for ambiguous earlier POST outcome.
+
+        A missing result is *never* confirmation that the order was not
+        accepted. No automatic resubmission is enabled in V08.
+        """
+        if symbol not in SYMBOLS or not re.fullmatch(r"CL8[0-9a-f]{28}",external_oid or ""):
+            raise MEXCTransportHalt("EXTERNAL_OID_LOOKUP_INPUT_INVALID")
+        path="/api/v1/private/order/external/"+symbol+"/"+external_oid
+        data=self._exchange("GET",path)
+        if not isinstance(data,dict):
+            raise MEXCTransportHalt("EXTERNAL_ORDER_READBACK_MISSING_OR_UNKNOWN")
+        if data.get("symbol")!=symbol or data.get("externalOid")!=external_oid:
+            raise MEXCTransportHalt("EXTERNAL_ORDER_IDENTITY_MISMATCH")
+        if str(data.get("orderId","")).isdigit() is not True:
+            raise MEXCTransportHalt("EXTERNAL_ORDER_ID_ABSENT")
         return data
 
     def get_positions_by_symbol(self,symbol):

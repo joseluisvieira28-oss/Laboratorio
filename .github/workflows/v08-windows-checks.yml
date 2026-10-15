@@ -1,0 +1,57 @@
+name: V08 Futures Safety Tests and Windows EXE
+on:
+  pull_request:
+    paths:
+      - engine/three_convex_v08/**
+      - .github/workflows/v08-windows-checks.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Tests V08
+        shell: bash
+        run: python -m unittest discover -s engine/three_convex_v08 -p "test_*.py" -v
+      - name: Tests V05 V06 V07
+        shell: bash
+        run: |
+          python -m unittest discover -s engine/three_convex_v05 -p 'test_*.py' -q
+          python -m unittest discover -s engine/three_convex_v06 -p 'test_*.py' -q
+          python -m unittest discover -s engine/three_convex_v07 -p 'test_*.py' -q
+      - name: Windows EXE
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          python -m pip install pyinstaller==6.16.0
+          python -m PyInstaller --clean --noconfirm --onefile --name CryptoLab_V08_Futures_Executor_PreLive --paths . engine/three_convex_v08/readiness.py
+          if ($LASTEXITCODE -ne 0) { throw 'EXE_BUILD_FAILED' }
+          & ./dist/CryptoLab_V08_Futures_Executor_PreLive.exe --synthetic-proof --data-dir ./test_v08
+          if ($LASTEXITCODE -ne 0) { throw 'SYNTHETIC_PROOF_FAILED' }
+          & ./dist/CryptoLab_V08_Futures_Executor_PreLive.exe --once --data-dir ./test_v08
+          if ($LASTEXITCODE -eq 0) { throw 'MISSING_CREDENTIALS_WERE_ACCEPTED' }
+          New-Item -ItemType Directory -Force -Path release | Out-Null
+          Copy-Item dist/CryptoLab_V08_Futures_Executor_PreLive.exe release/
+          Copy-Item engine/three_convex_v08/windows/*.ps1 release/
+          Copy-Item engine/three_convex_v08/README_PORTUGUES.md release/LEIA_PRIMEIRO.md
+          $hash=(Get-FileHash release/CryptoLab_V08_Futures_Executor_PreLive.exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          Set-Content release/SHA256_EXE.txt ("SHA256_EXE="+$hash) -Encoding ascii
+          & ./release/INSTALAR_V08.ps1
+          if ($LASTEXITCODE -ne 0) { throw 'INSTALL_FAILED' }
+          exit 0
+      - name: Upload Windows bundle
+        if: matrix.os == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: CryptoLab_V08_EXECUTOR_WINDOWS_PRELIVE_NO_ORDERS
+          path: release/
+          if-no-files-found: error
