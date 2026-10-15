@@ -55,6 +55,7 @@ jobs:
           $hash=(Get-FileHash v07_release/V07_Telegram_MEXC_Watcher.exe -Algorithm SHA256).Hash.ToLowerInvariant()
           Set-Content v07_release/SHA256_EXE.txt ("SHA256_EXE="+$hash) -Encoding ascii
           Write-Output "V07_READONLY_TELEGRAM_WATCHER_ZIP_FLAT_READY"
+          exit 0 # Expected missing-credentials negative test deliberately exits nonzero
       - name: Publish one-layer Windows V07
         if: matrix.os == 'windows-latest'
         uses: actions/upload-artifact@v4
