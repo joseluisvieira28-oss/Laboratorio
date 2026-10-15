@@ -1,0 +1,65 @@
+{
+  "receipt_type": "RADAR_SUPABASE_CUTOVER_CLOSEOUT",
+  "date_utc": "2026-09-23",
+  "classification": "INFRASTRUCTURE_PASS__SUPABASE_CUTOVER_COMPLETE__CHAIN_CONTINUITY_VERIFIED",
+  "source_cutover_snapshot": {
+    "event_count": 570,
+    "key_count": 492,
+    "chain_head_sha256": "db11ee59a0862ceb59f74fb8c6fcbc3b841f15d9207d7b38998dfff93af8316c",
+    "canonical_snapshot_sha256": "f77403125522474ae3563bfbb24c35a0188a8cd3e20babc4acfea9f62ea7b517",
+    "raw_json_sha256": "7a2c4b76781563083741a8d0fbb402d871c6425f30ed9fd4d0e423529f40b875",
+    "payload_hashes_verified": 570,
+    "chain_links_verified": 570,
+    "event_key_refs_verified": 492
+  },
+  "target": {
+    "provider": "Supabase",
+    "project_ref": "jqzdvgjeuveiktftyrlz",
+    "region": "eu-central-1",
+    "postgres_version": "17.6",
+    "restore_exact_reverify": "PASS"
+  },
+  "render_cutover": {
+    "service_id": "srv-dalqkpu1egvs73fhiehg",
+    "service_name": "crypto-edge-radar-v05-canary",
+    "deploy_id": "dep-dapqgh142hec73dr7dg0",
+    "deploy_status": "live",
+    "deployed_commit": "f449f587bcc0da48c451dbad0f65c8273c5d8463",
+    "quiesce_before_cutover": true,
+    "quiesce_released_after_verification": true,
+    "backup_emitters_disabled": true
+  },
+  "post_cutover": {
+    "event_count_observed": 573,
+    "max_id": 573,
+    "chain_head_sha256": "8185c0931158b2d27ba41b12e331fb4362d28618941e4d888375603380518322",
+    "first_new_event_id": 571,
+    "first_new_event_type": "RADAR_RUNTIME_LIVENESS",
+    "first_new_event_prev_chain_sha256": "db11ee59a0862ceb59f74fb8c6fcbc3b841f15d9207d7b38998dfff93af8316c",
+    "source_event_570_chain_sha256": "db11ee59a0862ceb59f74fb8c6fcbc3b841f15d9207d7b38998dfff93af8316c",
+    "chain_continuity": "PASS",
+    "runtime_chain_detail": "verified 573 events via postgres",
+    "runtime_health": "OK",
+    "runtime_operational_attention_required": false,
+    "old_render_postgres_active_connections_after_cutover": 0,
+    "maintenance_gap_receipt": {
+      "status": "RECOVERED_GAP_REVIEW_REQUIRED",
+      "explanation": "Expected consequence of deliberate evidence-write quiesce during controlled migration; preserved, not erased or backfilled."
+    }
+  },
+  "governance": {
+    "science_changes": false,
+    "thresholds_changes": false,
+    "trading_changes": false,
+    "exchange_mutation": false,
+    "live_capital_enabled": false,
+    "orders_created": false,
+    "main_merge": false,
+    "secrets_exposed": false
+  },
+  "residual_cleanup": [
+    "Legacy persistence-expiry runtime metadata still references the old Render Postgres expiry horizon and should be hardened so the now-retired source does not create misleading future alerts.",
+    "Keep independent off-site evidence backups because Supabase Free does not provide the same backup guarantees as a paid database plan.",
+    "Do not delete the old Render Postgres until a later retirement gate confirms sustained Supabase operation and another fresh independent backup."
+  ]
+}
