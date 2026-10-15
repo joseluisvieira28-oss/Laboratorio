@@ -161,6 +161,57 @@ class TransportTests(unittest.TestCase):
         with self.assertRaisesRegex(MEXCTransportHalt,"BROKER_REJECTED"):
             c.account_assets()
 
+    def test_actual_order_id_readback_get_signed(self):
+        class OrderReader:
+            def __call__(self,req,timeout):
+                self.request=req
+                return MockReply({"success":True,"data":{"orderId":"12345","dealVol":1}})
+        fake=OrderReader()
+        c=FuturesV06Transport(PrivateKey("KEY","SECRET"),opener=fake,
+                             clock_ms=lambda:10000)
+        row=c.get_order_by_id("12345")
+        self.assertEqual(row["dealVol"],1)
+        self.assertEqual(fake.request.get_method(),"GET")
+        self.assertTrue(fake.request.full_url.endswith("/api/v1/private/order/get/12345"))
+
+    def test_unsafe_order_id_injection_fails_before_network(self):
+        c,f=fixture()
+        with self.assertRaisesRegex(MEXCTransportHalt,"ORDER_ID_INVALID"):
+            c.get_order_by_id("123/../../withdraw")
+        self.assertEqual(f.requests,[])
+
+    def test_native_stop_history_readback_with_symbol(self):
+        class Stops:
+            def __call__(self,req,timeout):
+                self.request=req
+                return MockReply({"success":True,"data":[{
+                    "id":123,"symbol":"SOL_USDT","positionId":42,"state":1,
+                    "isFinished":0,"vol":1,"stopLossPrice":98.63
+                }]})
+        fake=Stops()
+        c=FuturesV06Transport(PrivateKey("KEY","SECRET"),opener=fake,
+                             clock_ms=lambda:10000)
+        rows=c.get_unfinished_stops("SOL_USDT")
+        self.assertEqual(rows[0]["id"],123)
+        self.assertEqual(fake.request.get_method(),"GET")
+        self.assertIn("is_finished=0",fake.request.full_url)
+        self.assertIn("page_size=100",fake.request.full_url)
+
+    def test_unverified_stop_page_100_halts(self):
+        class Stops:
+            def __call__(self,req,timeout):
+                return MockReply({"success":True,"data":[
+                    {"id":i,"symbol":"SOL_USDT"} for i in range(100)]})
+        c=FuturesV06Transport(PrivateKey("KEY","SECRET"),opener=Stops(),
+                             clock_ms=lambda:10000)
+        with self.assertRaisesRegex(MEXCTransportHalt,"PAGINATION_UNKNOWN"):
+            c.get_unfinished_stops("SOL_USDT")
+
+    def test_readback_position_shape_requires_list(self):
+        c,f=fixture()
+        with self.assertRaisesRegex(MEXCTransportHalt,"POSITION_READBACK_SHAPE_BAD"):
+            c.get_positions_by_symbol("SOL_USDT")
+
     def test_private_key_not_represented_in_transport_exceptions(self):
         c,f=fixture()
         try:
