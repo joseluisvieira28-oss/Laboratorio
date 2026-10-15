@@ -39,3 +39,9 @@ Para efetivamente executar testes do **motor instalado**, é preciso receber/exa
 
 ## Outros sistemas
 O Radar Render Public Shadow, PR #230 e Telegram PR #229 são sistemas distintos; este pacote não toca neles. O motor 3-CONVEX V08/V09 é uma implementação distinta e permanece NO_LIVE_GO. Nunca transferir PASS entre motores.
+
+
+## CI verificado
+- [GitHub Actions #38731349731](https://github.com/joseluisvieira28-oss/Laboratorio/actions/runs/38731349731) — commit \`5a0e1dd58f54d3e835bffb177253bcf674252f81\`.
+- **23/23 testes sintéticos PASS**; compilação PASS; input negativo sem motor Windows PASS e \`live_go=false\`.
+- Teste nenhum invoca engine instalado, MEXC, autenticado GET, POST nem chave API. Logo estes PASS são **apenas preparação**, não certificação de stop ou prova de fills.
