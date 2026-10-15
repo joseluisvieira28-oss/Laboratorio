@@ -128,8 +128,8 @@ $binarySwapped=$false
 $backupReady=$false
 try {
     # First stop the ONE OBSERVER and wait for both PyInstaller processes to exit.
-    Stop-OnlyThisTask
     $taskWasStopped=$true
+    Stop-OnlyThisTask
     New-Item -ItemType Directory -Force -Path $backup | Out-Null
     Copy-Item -LiteralPath $target -Destination (Join-Path $backup 'original.exe') -ErrorAction Stop
     Copy-Item -LiteralPath $runner -Destination (Join-Path $backup 'original_runner.ps1') -ErrorAction Stop
@@ -142,8 +142,8 @@ try {
     } | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $backup 'UPGRADE_RECEIPT.json') -Encoding UTF8
     $backupReady=$true
     # Replace exactly the executable; the existing DPAPI loader remains untouched.
-    Copy-Item -LiteralPath $source -Destination $target -Force -ErrorAction Stop
     $binarySwapped=$true
+    Copy-Item -LiteralPath $source -Destination $target -Force -ErrorAction Stop
     if ($Version -eq 'V12') {
         # New V12 runner file is bundled and pinned to same release directory.
         Copy-Item -LiteralPath (Join-Path $package 'RUN_V12.ps1') -Destination $runner -Force -ErrorAction Stop
@@ -175,8 +175,18 @@ try {
         }
     } elseif ($taskWasStopped) {
         try {
-            Start-ScheduledTask -TaskName $taskName -ErrorAction Stop
-            $recovery='ORIGINAL_TASK_RESTART_REQUESTED'
+            # Stop-ScheduledTask can return with a still-running child EXE.
+            # Do not restart while old child processes are present: never create twins.
+            $remaining=(Get-VersionProcessCount)
+            $state=[string](Get-ScheduledTask -TaskName $taskName -ErrorAction Stop).State
+            if ($remaining -gt 0) {
+                $recovery='CHILD_EXE_STILL_PRESENT_NO_RESTART_TO_AVOID_TWIN_OBSERVERS'
+            } elseif ($state -eq 'Running') {
+                $recovery='ORIGINAL_TASK_ALREADY_RUNNING_VERIFY_HEALTH'
+            } else {
+                Start-ScheduledTask -TaskName $taskName -ErrorAction Stop
+                $recovery='ORIGINAL_TASK_RESTART_REQUESTED'
+            }
         } catch {
             $recovery='ORIGINAL_TASK_RESTART_FAILED_OPERATOR_ACTION_REQUIRED'
         }
