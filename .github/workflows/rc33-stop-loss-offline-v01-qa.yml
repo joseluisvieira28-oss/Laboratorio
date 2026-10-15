@@ -1,0 +1,46 @@
+name: RC33 Stop Loss Offline Preflight (NO TRADING)
+
+on:
+  push:
+    branches:
+      - ops/rc33-stop-offline-preflight-2026-10-15
+    paths:
+      - audits/rc33_stop_preflight_v01/**
+      - .github/workflows/rc33-stop-loss-offline-v01-qa.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  hermetic-no-account:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    defaults:
+      run:
+        working-directory: audits/rc33_stop_preflight_v01
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Compile static no-trading sources
+        run: python -m compileall -q rc33_local_source_preflight.py synthetic_stop_contract.py test_rc33_stop_offline_v01.py
+      - name: Run hermetic stop-risk contract and input tests
+        env:
+          MEXC_API_KEY: ""
+          MEXC_API_SECRET: ""
+        run: python -m unittest discover -s . -p 'test_rc33_stop_offline_v01.py' -v
+      - name: Read-only source-inspection negative gate without Windows files
+        run: |
+          python rc33_local_source_preflight.py > report.json
+          python - <<'PY'
+          import json
+          r=json.load(open("report.json",encoding="utf-8"))
+          assert r["installation_certification"] == "NOT_CERTIFIED"
+          assert r["live_go"] is False
+          assert r["broker_account"] == "NOT_QUERIED"
+          assert r["native_stop_roundtrip"] == "NOT_EXECUTED"
+          PY
