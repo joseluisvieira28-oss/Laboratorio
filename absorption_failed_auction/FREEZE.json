@@ -1,0 +1,41 @@
+{
+  "lab_id": "ABSORPTION-FAILED-AUCTION-001",
+  "version": "V0.1.1-PRE-OUTCOME-HARDENING",
+  "state": "FROZEN_OUTCOME_BLIND",
+  "supersedes": "V0.1 PRE-OUTCOME ONLY",
+  "parent_sensor_lab": "TV-FOOTPRINT-CALIBRATION-001",
+  "required_parent_state": "PASS_STRONG",
+  "event_start_rule": "FIRST_FULL_5M_BAR_AFTER_PARENT_PASS_STRONG_RECEIPT",
+  "economic_outcome_open_rule": "MINIMUM_SAMPLE_AND_COVERAGE_ONLY",
+  "symbol": "BINANCE:BTCUSDT",
+  "timeframe_minutes": 5,
+  "baseline_bars": 2016,
+  "baseline_scope": "PRIOR_VALID_FORWARD_BARS_ONLY",
+  "quantiles": {
+    "extreme_aggression_abs_delta_pct": 0.95,
+    "minimum_participation_agg_base_volume": 0.75,
+    "low_path_efficiency": 0.25,
+    "high_path_efficiency": 0.75,
+    "low_abs_bar_return": 0.25
+  },
+  "cooldown_minutes": 60,
+  "outcome_horizons_minutes": [
+    5,
+    15,
+    30,
+    60,
+    240
+  ],
+  "primary_horizon_minutes": 60,
+  "minimum_events_per_primary_group": 100,
+  "minimum_distinct_utc_dates": 30,
+  "minimum_primary_outcome_coverage": 0.99,
+  "minimum_transport_coverage": 0.99,
+  "bootstrap_confidence": 0.95,
+  "bootstrap_resamples": 10000,
+  "flow_authority": "BINANCE_SPOT_AGGTRADES",
+  "tv_structure_authority": "MM-V1_AFTER_PASS_STRONG_ONLY",
+  "pnl_in_scope": false,
+  "live_trading_authority": false,
+  "post_outcome_tuning": false
+}

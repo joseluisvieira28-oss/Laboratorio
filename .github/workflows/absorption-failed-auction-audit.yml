@@ -1,0 +1,76 @@
+name: Absorption Failed Auction V0.1.1 audit
+
+on:
+  push:
+    branches:
+      - absorption-failed-auction-v0.1
+  pull_request:
+    paths:
+      - "absorption_failed_auction/**"
+      - ".github/workflows/absorption-failed-auction-audit.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Unit tests
+        run: python -m unittest absorption_failed_auction/test_engine.py
+
+      - name: Freeze consistency + outcome lock
+        shell: python
+        run: |
+          import json
+          from pathlib import Path
+          import importlib.util
+
+          freeze = json.loads(Path("absorption_failed_auction/FREEZE.json").read_text())
+          gate = json.loads(Path("absorption_failed_auction/PARENT_AUTHORITY.json").read_text())
+
+          spec = importlib.util.spec_from_file_location(
+              "m", "absorption_failed_auction/engine.py"
+          )
+          m = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(m)
+
+          assert freeze["state"] == "FROZEN_OUTCOME_BLIND"
+          assert freeze["required_parent_state"] == "PASS_STRONG"
+          assert freeze["baseline_bars"] == m.BASELINE == 2016
+          assert freeze["quantiles"]["extreme_aggression_abs_delta_pct"] == m.Q_EXTREME == 0.95
+          assert freeze["quantiles"]["minimum_participation_agg_base_volume"] == m.Q_VOLUME == 0.75
+          assert freeze["quantiles"]["low_path_efficiency"] == m.Q_LOW == 0.25
+          assert freeze["quantiles"]["high_path_efficiency"] == m.Q_HIGH == 0.75
+          assert freeze["cooldown_minutes"] == m.COOLDOWN_BARS * 5 == 60
+          assert freeze["minimum_primary_outcome_coverage"] == m.MIN_COVERAGE == 0.99
+          assert freeze["live_trading_authority"] is False
+
+          # Until a committed PASS_STRONG authority receipt exists, outcomes
+          # must remain hard locked.
+          if gate["parent_classification"] != "PASS_STRONG":
+              assert gate["economic_outcomes_unlocked"] is False
+              assert gate["event_collection_open"] is False
+              assert gate["event_open_boundary_ms"] is None
+
+          src = Path("absorption_failed_auction/engine.py").read_text().lower()
+          for forbidden in [
+              "requests", "httpx", "ccxt", "create_order", "place_order",
+              "set_leverage", "withdraw", "strategy."
+          ]:
+              assert forbidden not in src, forbidden
+
+          # This branch must not contain terminal result artifacts while locked.
+          result_paths = list(Path("absorption_failed_auction").glob("RESULT*"))
+          if not gate["economic_outcomes_unlocked"]:
+              assert not result_paths, f"outcome artifact present while locked: {result_paths}"
+
+          print("PASS: V0.1.1 freeze matches engine constants")
+          print("PASS: parent authority lock enforced")
+          print("PASS: no exchange/live execution surface")

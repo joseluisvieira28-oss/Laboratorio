@@ -1,0 +1,46 @@
+name: Absorption Failed Auction V0.1 legacy supersession guard
+on:
+  push:
+    branches: [absorption-failed-auction-v0.1]
+  pull_request:
+    paths:
+      - "absorption_failed_auction/**"
+      - ".github/workflows/absorption-failed-auction-freeze.yml"
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - name: Verify pre-outcome supersession and current authority
+        shell: python
+        run: |
+          import json
+          from pathlib import Path
+
+          freeze=json.loads(Path("absorption_failed_auction/FREEZE.json").read_text())
+          gate=json.loads(Path("absorption_failed_auction/PARENT_AUTHORITY.json").read_text())
+          receipt=Path("absorption_failed_auction/PRE_OUTCOME_HARDENING_RECEIPT_V0.1.1.md").read_text()
+
+          assert freeze["version"] == "V0.1.1-PRE-OUTCOME-HARDENING"
+          assert freeze["supersedes"] == "V0.1 PRE-OUTCOME ONLY"
+          assert freeze["state"] == "FROZEN_OUTCOME_BLIND"
+          assert freeze["required_parent_state"] == "PASS_STRONG"
+          assert gate["economic_outcomes_unlocked"] is False
+          assert gate["trading_authority"] == "NONE"
+          assert "No future price outcomes for this lab were opened" in receipt
+
+          if gate["parent_classification"] == "PASS_STRONG":
+              assert gate["event_collection_open"] is True
+              assert isinstance(gate["event_open_boundary_ms"], int)
+              assert gate["event_open_boundary_ms"] > 0
+              assert gate["parent_receipt_commit"]
+              assert gate["evidence_vault_state"] == "PASS"
+              print("PASS: V0.1.1 supersession preserved; PASS_STRONG opens collection only")
+          else:
+              assert gate["event_collection_open"] is False
+              assert gate["event_open_boundary_ms"] is None
+              print("PASS: V0.1.1 remains outcome-blind and collection-locked")
