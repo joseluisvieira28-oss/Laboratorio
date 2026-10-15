@@ -1,0 +1,43 @@
+name: Compound Inventory Timing Source V0.1
+
+on:
+  push:
+    branches:
+      - pressure-mining-program-v0.1
+    paths:
+      - "pressure_mining_v0_1/compound_inventory_timing.py"
+      - ".github/workflows/compound-inventory-timing-source-v0.1.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "pressure_mining_v0_1/compound_inventory_timing.py"
+      - ".github/workflows/compound-inventory-timing-source-v0.1.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-timing:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile
+        run: python -m py_compile pressure_mining_v0_1/compound_inventory_timing.py
+      - name: Run source-only timing diagnostic
+        run: python pressure_mining_v0_1/compound_inventory_timing.py
+      - name: Verify receipt
+        run: test -s pressure_mining_v0_1/receipts/COMPOUND_INVENTORY_TIMING_SOURCE_DIAGNOSTIC_V0.1.json
+      - name: Upload immutable receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: compound-inventory-timing-source-v01
+          path: pressure_mining_v0_1/receipts/COMPOUND_INVENTORY_TIMING_SOURCE_DIAGNOSTIC_V0.1.json
+          if-no-files-found: error

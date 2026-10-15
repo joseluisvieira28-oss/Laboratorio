@@ -1,0 +1,42 @@
+name: Compound Inventory Persistence Discovery V0.1
+
+on:
+  push:
+    branches:
+      - pressure-mining-program-v0.1
+    paths:
+      - "pressure_mining_v0_1/compound_inventory_persistence_discovery.py"
+      - "pressure_mining_v0_1/labs/COMPOUND_INVENTORY_PERSISTENCE_001_DISCOVERY_FREEZE_V0.1.md"
+      - ".github/workflows/compound-inventory-persistence-discovery-v0.1.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "pressure_mining_v0_1/compound_inventory_persistence_discovery.py"
+      - "pressure_mining_v0_1/labs/COMPOUND_INVENTORY_PERSISTENCE_001_DISCOVERY_FREEZE_V0.1.md"
+      - ".github/workflows/compound-inventory-persistence-discovery-v0.1.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  discovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile
+        run: python -m py_compile pressure_mining_v0_1/compound_inventory_persistence_discovery.py
+      - name: Run frozen 2023-2024 Discovery
+        run: python pressure_mining_v0_1/compound_inventory_persistence_discovery.py
+      - name: Verify receipt
+        run: test -s pressure_mining_v0_1/receipts/COMPOUND_INVENTORY_PERSISTENCE_DISCOVERY_RECEIPT_V0.1.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: compound-inventory-persistence-discovery-v01
+          path: pressure_mining_v0_1/receipts/COMPOUND_INVENTORY_PERSISTENCE_DISCOVERY_RECEIPT_V0.1.json
+          if-no-files-found: error
