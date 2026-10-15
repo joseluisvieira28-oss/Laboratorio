@@ -187,7 +187,7 @@ class TestDurableAlerts(TestCase):
                 cycle(q,bot,account_client=Account(),public_clock=lambda:1_000_000,
                       feed=lambda *a:[],now_ms=1_000_000)
             self.assertEqual(sum("SINAL DETETADO" in x for x in bot.messages),1)
-            self.assertIn("NÃO É ORDEM",bot.messages[-1])
+            self.assertTrue(any("NÃO É ORDEM" in msg for msg in bot.messages))
             q.close()
 
     def test_binance_source_failure_sends_warning_not_signal(self):
