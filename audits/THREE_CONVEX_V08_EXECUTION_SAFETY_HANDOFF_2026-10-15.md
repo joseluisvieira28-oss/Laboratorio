@@ -1,0 +1,13 @@
+# CRYPTO LAB V08 — EXECUTION SAFETY WINDOWS HANDOFF 2026-10-15
+
+**Result:** V08 PRELIVE installed and executable on a clean Windows GitHub hosted runner. Cross-platform [GitHub Actions run 38722446333](https://github.com/joseluisvieira28-oss/Laboratorio/actions/runs/38722446333): 21 V08, 50 V05, 75 V06, 22 V07 tests = **168 PASS per OS** (Ubuntu and Windows). Windows PyInstaller build, synthetic broker-stop execution, expected missing-credentials negative test, package installer and SHA256 pass. Artifact ID 11966536991; SHA256 EXE `27a988375e4233eef3682b63d3c3f6e3cd10f03a870c9b6d6d150c3acb12033e`. User PC not yet installed.
+
+**What is built:** durable SQLite execution reservation/ACK/uncertainty lifecycle, two physical symbol max, one shared SOL slot across SOL5m/SOL1h, immutable external OID per signal, crash/loss-safe ambiguous order hard-stop, synthetic full entry→filled GET→MEXC position-ID→native stop POST→ACK→fresh stop readback proof. The Windows EXE can only run this synthetic proof or inspect real private GET account/market data via the user's existing encrypted DPAPI on their own machine. The prelive package has NO real order path and no automatic account mutation.
+
+**Stop gap:** official `POST /api/v1/private/stoporder/place` is a separate order with asynchronous update behavior; a market entry cannot yet be claimed atomically protected. `POST /api/v1/private/planorder/place/v2` accepts `stopLossPrice` on a conditional order, but equivalence and atomic native broker protection are unproven. V06's OneUseMutationTicket digest only checks 64-character format, not authenticated policy issuance. Proper authority must not be based on this class. Also missing: full true 10x isolated post-fill custody with robust partial fills, native stop modifications / nonlatched original trailing, account-wide restart reconciliation across 2 symbols, independent profitable after-fees forward / source parity, and scoped approval after these gates.
+
+**Unchanged:** user's installed working Telegram V07, legacy operator tasks, repository main, all actual MEXC exchange state. Zero orders submitted and no MEXC mutation.
+
+**Windows instruction:** extract `CryptoLab_V08_MEXC_EXECUTOR_WINDOWS_PRELIVE.zip` to a clean folder; run `powershell -NoProfile -ExecutionPolicy Bypass -File .\INSTALAR_V08.ps1`, `...VERIFICAR_V08.ps1`, `...ESTADO_V08.ps1`. Returned `NO_LIVE_GO` is correct and honest. Ask user to paste only sanitized readiness and blockers, never tokens or raw private order payload.
+
+**Verdict:** PRELIVE_EXECUTION_SAFETY_AND_WINDOWS_BUILD_PASS / REAL_ORDER_ATOMIC_PROTECTION_NOT_PROVEN / NO_LIVE_GO. No financial expectancy or loss limit guaranteed.
