@@ -105,7 +105,7 @@ class DurableLedger:
             if not row:raise LedgerHalt("INTENT_ABSENT")
             before,created,stored_order,stored_pos,stored_stop=row
             allowed=PATH.get(before)
-            if new_state!="HALTED" and new_state!=allowed:
+            if new_state!="HALTED" and new_state!=allowed and not (before=="HALTED" and new_state=="CLOSED"):
                 raise LedgerHalt("ILLEGAL_TRANSITION")
             if new_state=="HALTED" and before=="CLOSED":
                 raise LedgerHalt("CANNOT_HALT_CLOSED")
