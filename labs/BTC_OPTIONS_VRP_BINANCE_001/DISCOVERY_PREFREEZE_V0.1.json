@@ -1,0 +1,140 @@
+{
+  "lab_id": "BTC-OPTIONS-VRP-BINANCE-001",
+  "mve_id": "BOVRP-ATM30-24H-STRADDLE-CARRY-001",
+  "version": "0.1",
+  "date_frozen": "2026-09-19",
+  "branch": "btc-options-vrp-binance-eoh-source-v0.1",
+  "status": "FROZEN_PENDING_INDEX_SOURCE_PASS",
+  "research_only": true,
+  "economic_question": "Does a one-day executable short ATM BTCUSDT straddle, selected from the Binance 15-31 DTE surface near 30 DTE, earn positive net premium carry after contemporaneous BBO execution and the regular-user 2023 Binance Options trading fee?",
+  "interpretation_boundary": "This is an executable short-vol/option-carry test consistent with a volatility-risk-premium mechanism. It is not a direct constant-maturity variance-swap VRP estimate and must not be described as one.",
+  "source_dependencies": {
+    "options_source_gate": "BINANCE_EOH_SOURCE_FEASIBLE",
+    "geometry_gate": "PREDISCOVERY_GEOMETRY_PASS",
+    "spot_source_gate": "BINANCE_SPOT1M_SOURCE_FEASIBLE",
+    "index_source_gate_required": "BINANCE_INDEX1M_SOURCE_FEASIBLE"
+  },
+  "period": {
+    "start_date": "2023-05-18",
+    "end_date": "2023-10-23",
+    "protected_2025": false,
+    "protected_2026": false
+  },
+  "observation_rule": {
+    "decision_time_utc": "08:00",
+    "hold_hours": 24,
+    "consecutive_source_days_required": true,
+    "primary_dte_min_inclusive": 15,
+    "primary_dte_max_exclusive": 31,
+    "target_dte_days": 30,
+    "primary_reason": "Closest available free-source stratum to the already-established 30-day Deribit VRP phenomenon; chosen before any Binance economic outcome is opened.",
+    "minimum_primary_n": 80
+  },
+  "deterministic_contract_selection": {
+    "step_1": "At each eligible 08:00 UTC date, enumerate same-expiry same-strike call+put pairs with complete positive entry and next-day exit BBO prices and sizes.",
+    "step_2": "Restrict to 15 <= entry DTE < 31.",
+    "step_3": "Choose expiry minimizing absolute(entry_DTE - 30). Tie-break: smaller DTE.",
+    "step_4": "Read Binance BTCUSDT index price at exactly 08:00 UTC from the bound 1m index source.",
+    "step_5": "Within chosen expiry, choose strike minimizing abs(log(strike/index_price)). Tie-break: lower strike.",
+    "step_6": "Require bid>0, ask>0, size>0 and ask>=bid for both legs at entry and exit. Otherwise skip the date; no substitution to second-best expiry/strike after a selected pair fails.",
+    "option_quantity_each_leg": 1
+  },
+  "execution_semantics": {
+    "position": "short one call + short one put",
+    "entry_call_price": "best_bid_price at t",
+    "entry_put_price": "best_bid_price at t",
+    "exit_call_price": "best_ask_price at t+24h",
+    "exit_put_price": "best_ask_price at t+24h",
+    "no_mid_prices": true,
+    "no_mark_price_execution": true,
+    "no_intra_day_rehedge": true,
+    "delta_hedge": false,
+    "exercise_expected": false
+  },
+  "cost_model": {
+    "account_tier": "regular user",
+    "historical_fee_window_source": "Binance Options VIP Program effective 2023-04-01 through 2024-02-23",
+    "trading_fee_rate": 0.0003,
+    "maker_taker_same_for_regular_user": true,
+    "fee_formula": "min(trading_fee_rate * index_price * contract_unit, 0.10 * option_trade_price) * option_size per leg per transaction",
+    "contract_unit_btc": 1,
+    "fee_transactions": "two option legs at entry plus two option legs at exit",
+    "exercise_fee": "not applicable because primary contracts are closed after 24h while entry DTE >=15",
+    "fee_source_urls": [
+      "https://www.binance.com/en/support/announcement/detail/0f01a2c0b5e54572817b06e42b93bddd",
+      "https://www.binance.com/en/support/faq/detail/5326e5de61c34fed98abe28d2f175a23",
+      "https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-options/api/rest-api/market-data"
+    ]
+  },
+  "primary_endpoint": {
+    "entry_credit": "entry_call_bid + entry_put_bid",
+    "exit_debit": "exit_call_ask + exit_put_ask",
+    "gross_pnl": "entry_credit - exit_debit",
+    "total_fees": "sum of four frozen per-leg trading fees",
+    "net_pnl": "gross_pnl - total_fees",
+    "net_premium_return": "net_pnl / entry_credit",
+    "note": "Premium-normalized research return; not margin return, ROE, or recommended capital sizing."
+  },
+  "statistics": {
+    "bootstrap_replications": 10000,
+    "bootstrap_block_observations": 5,
+    "bootstrap_seed": 230911,
+    "ci": 0.95,
+    "monthly_concentration_report": true,
+    "leave_one_month_out_report": true,
+    "report": [
+      "N",
+      "mean_net_premium_return",
+      "median_net_premium_return",
+      "positive_fraction",
+      "profit_factor_on_net_pnl",
+      "bootstrap_95_ci_mean",
+      "worst_trade",
+      "best_trade",
+      "CVaR_5pct",
+      "skew",
+      "max_losing_streak",
+      "monthly_means",
+      "leave_one_month_out_means"
+    ]
+  },
+  "discovery_pass_gates": {
+    "primary_n_gte": 80,
+    "mean_net_premium_return_gt": 0,
+    "median_net_premium_return_gt": 0,
+    "profit_factor_gt": 1,
+    "bootstrap_95_lower_mean_gt": 0,
+    "positive_months_gte": 4,
+    "leave_one_month_out_positive_count_gte": 5
+  },
+  "secondary_non_rescuing_strata": [
+    {
+      "dte_min_inclusive": 8,
+      "dte_max_exclusive": 15,
+      "geometry_n": 114,
+      "role": "predeclared term-structure diagnostic only; cannot promote if primary fails"
+    },
+    {
+      "dte_min_inclusive": 2,
+      "dte_max_exclusive": 4,
+      "geometry_n": 90,
+      "role": "predeclared term-structure diagnostic only; cannot promote if primary fails"
+    }
+  ],
+  "terminal_verdicts": [
+    "DISCOVERY_PASS_SHORT_VOL_CARRY_SIGNAL",
+    "DISCOVERY_FAIL_NO_PROMOTION",
+    "INSUFFICIENT_EXECUTABLE_SAMPLE",
+    "BLOCKED_SOURCE_OR_PROVENANCE"
+  ],
+  "post_rule": "No rescue by changing decision hour, hold length, primary DTE bucket, target DTE, strike selection, BBO side, fee rate, fee cap, normalization, bootstrap block, month gates, secondary bucket, sign, hedge, or sample after economic outcomes are opened.",
+  "safety": {
+    "discovery_outcomes_authorized_only_after_index_source_pass": true,
+    "live_trading_authorized": false,
+    "exchange_mutation_authorized": false,
+    "wallet_access_authorized": false,
+    "access_2025_authorized": false,
+    "access_2026_authorized": false,
+    "merge_to_main_authorized": false
+  }
+}

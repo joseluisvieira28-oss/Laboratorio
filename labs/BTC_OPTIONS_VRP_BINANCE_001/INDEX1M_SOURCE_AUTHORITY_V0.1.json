@@ -1,0 +1,45 @@
+{
+  "lab_id": "BTC-OPTIONS-VRP-BINANCE-001",
+  "source_probe_id": "BOVRP-BINANCE-INDEX1M-SOURCE-001",
+  "version": "0.1",
+  "date_frozen": "2026-09-19",
+  "status": "FROZEN_SOURCE_ONLY_OUTCOME_BLIND",
+  "purpose": "Verify a zero-cost Binance BTCUSDT index-price 1m archive for point-in-time option fee/index calculations in a later economic Discovery. No returns or outcomes.",
+  "source": {
+    "provider": "Binance public data portal",
+    "market": "USD-M futures public index-price archive",
+    "symbol": "BTCUSDT",
+    "interval": "1m",
+    "base_path": "https://data.binance.vision/data/futures/um/daily/indexPriceKlines/BTCUSDT/1m/",
+    "file_pattern": "BTCUSDT-1m-YYYY-MM-DD.zip",
+    "authentication": "none",
+    "cash_cost_usd": 0
+  },
+  "fixed_sample_dates": [
+    "2023-05-18",
+    "2023-07-01",
+    "2023-10-23"
+  ],
+  "pass_rule": {
+    "all_three_downloadable": true,
+    "all_three_parseable": true,
+    "minimum_rows_each": 1430,
+    "contains_08utc_bar": true,
+    "strictly_increasing_timestamps": true,
+    "terminal_pass_classification": "BINANCE_INDEX1M_SOURCE_FEASIBLE"
+  },
+  "safety": {
+    "price_values_emitted": false,
+    "returns_authorized": false,
+    "realized_variance_authorized": false,
+    "vrp_authorized": false,
+    "pnl_authorized": false,
+    "fee_outcomes_authorized": false,
+    "tuning_authorized": false,
+    "access_2025_authorized": false,
+    "access_2026_authorized": false,
+    "live_trading_authorized": false,
+    "exchange_mutation_authorized": false,
+    "merge_to_main_authorized": false
+  }
+}
