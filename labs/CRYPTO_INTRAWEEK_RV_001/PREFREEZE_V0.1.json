@@ -1,0 +1,141 @@
+{
+  "lab_id": "CRYPTO-INTRAWEEK-RV-001",
+  "mve_id": "CIRV-HAR-DOW-BTCETH-001",
+  "version": "0.1",
+  "date_frozen": "2026-09-20",
+  "branch": "crypto-intraweek-rv-v0.1",
+  "status": "FROZEN_BEFORE_DISCOVERY_OUTCOMES",
+  "economic_family": "VOLATILITY / INTRAWEEK_STRUCTURE",
+  "purpose": "Test whether explicitly modeling known day-of-week structure improves one-day-ahead realized-variance forecasts for BTC and ETH relative to a plain HAR benchmark.",
+  "literature_anchors": [
+    {
+      "title": "Intraweek Periodicity in Cryptocurrency Realized Variance Forecasting",
+      "posted": "2026-09-15",
+      "public_claim": "Weekday periodicity adjustment lowers MSE and QLIKE for matched BTC and ETH specifications in 2023-2025 OOS tests.",
+      "boundary": "Mechanism inspiration only; this lab uses an independently specified HAR-DOW implementation."
+    },
+    {
+      "title": "HAR-RS-DOW Variance Forecasting for Bitcoin: Statistical Dominance and Applications in Risk Management and Option Pricing",
+      "posted": "2026-06-02",
+      "public_claim": "Day-of-week augmented HAR-family models improve realized-variance forecasting, with cross-asset evidence on ETH and SOL.",
+      "boundary": "No option-pricing or trading claims are imported."
+    }
+  ],
+  "anti_duplication": {
+    "repo_search_terms": [
+      "intraweek",
+      "weekday",
+      "day-of-week",
+      "har-rv",
+      "har-rs",
+      "realized-variance",
+      "realized-volatility",
+      "volatility-forecast",
+      "rv-forecast"
+    ],
+    "result_at_freeze": "No prior matching branch found.",
+    "nearest_existing_families": [
+      "options VRP",
+      "PCU leverage crowding",
+      "illiquidity premium"
+    ],
+    "material_difference": "Forecasting the conditional variance process itself, not directional returns, carry, leverage unwind or liquidity compensation."
+  },
+  "assets": [
+    "BTCUSDT",
+    "ETHUSDT"
+  ],
+  "venue": "Binance USD-M Futures",
+  "realized_variance_source": {
+    "route": "https://data.binance.vision/data/futures/um/monthly/klines/{SYMBOL}/5m/{SYMBOL}-5m-YYYY-MM.zip",
+    "sampling": "5-minute close-to-close log returns",
+    "day": "UTC calendar day",
+    "rv": "sum of squared 5-minute log returns",
+    "daily_min_valid_returns": 270,
+    "expected_returns_per_full_day": 288
+  },
+  "chronology": {
+    "warmup_source": [
+      "2021-01-01",
+      "2022-12-31"
+    ],
+    "discovery_target_dates": [
+      "2023-01-01",
+      "2024-12-31"
+    ],
+    "holdout_2025": "LOCKED unless Discovery gate passes",
+    "year_2026_locked": true
+  },
+  "models": {
+    "baseline_HAR": {
+      "target": "log(RV[t+1])",
+      "predictors": [
+        "intercept",
+        "log(RV[t])",
+        "log(mean RV[t-4:t])",
+        "log(mean RV[t-21:t])"
+      ]
+    },
+    "HAR_DOW": {
+      "target": "log(RV[t+1])",
+      "predictors": [
+        "all baseline HAR predictors",
+        "target-day Tue/Wed/Thu/Fri/Sat/Sun dummies; Monday base"
+      ]
+    },
+    "estimation": "OLS, rolling previous 730 valid feature rows, minimum 500 rows, re-estimated daily",
+    "no_semivariance": true,
+    "no_jump_filter": true,
+    "no_regime_filter": true,
+    "no_parameter_tuning": true
+  },
+  "forecast_scoring": {
+    "qlike_level": "log(forecast_RV) + realized_RV / forecast_RV",
+    "log_mse": "(log(realized_RV)-forecast_log_RV)^2",
+    "level_forecast": "exp(predicted log RV)",
+    "paired_dm": "Newey-West t-statistic of daily loss differential baseline minus HAR-DOW, lag 7"
+  },
+  "discovery_gate": {
+    "per_asset_min_N": 650,
+    "qlike_improvement_positive_both_assets": true,
+    "log_mse_improvement_positive_both_assets": true,
+    "pooled_qlike_reduction_gte": 0.01,
+    "dm_t_gte_1_645_at_least_one_asset": true,
+    "dm_t_positive_both_assets": true
+  },
+  "holdout_gate": {
+    "per_asset_min_N": 330,
+    "qlike_improvement_positive_both_assets": true,
+    "log_mse_improvement_positive_both_assets": true,
+    "pooled_qlike_reduction_gt_0": true,
+    "dm_t_positive_both_assets": true
+  },
+  "terminal_classes": [
+    "DISCOVERY_FAIL_NO_PROMOTION",
+    "DISCOVERY_PASS_HOLDOUT_FAIL",
+    "SURVIVES_2025_HOLDOUT",
+    "INSUFFICIENT_SAMPLE",
+    "BLOCKED_SOURCE"
+  ],
+  "interpretation_boundary": [
+    "A SURVIVES verdict means forecast improvement, not a profitable trading strategy.",
+    "Any options, sizing, variance-trading or regime-selection application requires a separately frozen translation layer.",
+    "No PnL is computed in this lab."
+  ],
+  "no_rescue": [
+    "Do not change 5-minute sampling after outcomes.",
+    "Do not change 730/500 rolling estimation window.",
+    "Do not add semivariance, jumps, regimes or ML after outcomes.",
+    "Do not change the day boundary from UTC.",
+    "Do not drop either BTC or ETH after outcomes.",
+    "Do not open 2025 if Discovery fails.",
+    "Do not open 2026."
+  ],
+  "safety": {
+    "cash_spend_usd": 0,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "wallet_access": false,
+    "merge_to_main": false
+  }
+}
