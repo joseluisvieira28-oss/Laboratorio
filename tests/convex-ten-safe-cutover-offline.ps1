@@ -1,6 +1,6 @@
 # Offline-only static assurance for scripts; never touches scheduled tasks or any secrets.
 $ErrorActionPreference='Stop'
-$root=Join-Path $PSScriptRoot 'engine/convex_ten_governance'
+$root=Join-Path (Split-Path -Parent $PSScriptRoot) 'engine/convex_ten_governance'
 $names=@('ATUALIZAR_UMA_CANA_READONLY.ps1','ESTADO_10_CANAS_READONLY.ps1','RECUPERAR_UMA_CANA_READONLY.ps1')
 foreach($name in $names) {
     $path=Join-Path $root $name
