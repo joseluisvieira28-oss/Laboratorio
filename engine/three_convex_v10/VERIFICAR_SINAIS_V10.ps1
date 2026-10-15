@@ -21,7 +21,15 @@ if (-not (Test-Path -LiteralPath $statusPath -PathType Leaf)) {
 }
 try {
     $s = Get-Content -LiteralPath $statusPath -Raw -Encoding UTF8 | ConvertFrom-Json
-    $utc = [datetimeoffset]::Parse([string]$s.checked_at_utc, [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::AssumeUniversal)
+    # V07 writes "yyyy-MM-dd HH:mm:ss UTC", not an ISO-8601 offset string.
+    # Parse exactly as UTC; never use host-local timezone for snapshot freshness.
+    $stamp = [string]$s.checked_at_utc
+    $utc = [datetimeoffset]::ParseExact(
+        $stamp,
+        "yyyy-MM-dd HH:mm:ss 'UTC'",
+        [Globalization.CultureInfo]::InvariantCulture,
+        [Globalization.DateTimeStyles]::AssumeUniversal
+    )
     $age = ([datetimeoffset]::UtcNow - $utc).TotalMinutes
     Write-Output ('SNAPSHOT_UTC: ' + $utc.UtcDateTime.ToString('o'))
     Write-Output ('AGE_MINUTES: ' + [math]::Round($age,1))
@@ -37,6 +45,7 @@ try {
     Write-Output 'SIGNAL_DELIVERY_READINESS: MONITOR_RUNNING_NOT_PROOF_OF_SIGNAL_DELIVERY'
     exit 0
 } catch {
+    Write-Output ('DIAGNOSTIC_REASON_TYPE: ' + $_.Exception.GetType().Name)
     Write-Output 'SIGNAL_DELIVERY_READINESS: INVALID_OR_STALE_RECEIPT'
     exit 2
 }
