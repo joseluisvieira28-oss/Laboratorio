@@ -52,7 +52,7 @@ jobs:
           $cipher=ConvertTo-SecureString -String $fakeToken -AsPlainText -Force | ConvertFrom-SecureString
           [IO.File]::WriteAllText((Join-Path $legacy 'telegram_bot_token.dpapi'),$cipher,[Text.Encoding]::UTF8)
           [IO.File]::WriteAllText((Join-Path $legacy 'telegram_chat_id.txt'),'1234567890',[Text.Encoding]::UTF8)
-          $script:MockRequests=0
+          $global:MockRequests=0
           function global:Invoke-RestMethod {
             [CmdletBinding()]
             param([string]$Uri,[string]$Method,[int]$TimeoutSec,[string]$ContentType,[byte[]]$Body)
@@ -60,11 +60,11 @@ jobs:
             if ($Method -ne 'Post') { throw 'NON_POST_TELEGRAM_TEST' }
             $decoded=[Text.Encoding]::UTF8.GetString($Body) | ConvertFrom-Json
             if ([string]$decoded.chat_id -ne '1234567890') { throw 'WRONG_EXISTING_CHAT_ID' }
-            $script:MockRequests += 1
+            $global:MockRequests += 1
             return [PSCustomObject]@{ok=$true;result=[PSCustomObject]@{message_id=123456}}
           }
           & $file
-          if ($script:MockRequests -ne 1) { throw 'MUST_SEND_EXACTLY_ONE_TEST_MESSAGE' }
+          if ($global:MockRequests -ne 1) { throw 'MUST_SEND_EXACTLY_ONE_TEST_MESSAGE' }
           $target=Join-Path $env:LOCALAPPDATA 'CryptoLab/ThreeConvexV07/secrets'
           $stored=(Get-Content -LiteralPath (Join-Path $target 'telegram_chat_id.txt') -Raw).Trim()
           if ($stored -ne '1234567890') { throw 'FAILED_TO_REUSE_OLD_CHAT_ID' }
