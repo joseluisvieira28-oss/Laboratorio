@@ -30,3 +30,22 @@ Não iniciar estes previews sobre as SQLite ativas. Primeiro comparar o receipt 
 - SQLite modificada apenas em fixtures locais/CI. Instalação real, lifecycle DPAPI/Task, hashes instalados e sinal real→ACK Telegram continuam NÃO VERIFICADOS neste trabalho.
 
 **Veredito: a garantia universal continua NÃO. O preview corrigido tem mais cobertura auditável e testes, mas não está instalado no PC e não constitui GO operacional/económico.**
+
+## Receipt final V2
+
+- Código: `d31a4be82c8eed8d08cd9fba54567573b9153391`.
+- [CI 38754922098](https://github.com/joseluisvieira28-oss/Laboratorio/actions/runs/38754922098): Windows job `116490702076` e Linux job `116490702246` SUCCESS. Logs lidos: **180 testes por OS**. Os dois EXEs passaram `--self-test`; verificador do pacote também passou em Windows CI. Nenhum secret, request MEXC ou envio Telegram real usado.
+- [Pacote V2 11983865584](https://github.com/joseluisvieira28-oss/Laboratorio/actions/runs/38754922098/artifacts/11983865584): descarregado independentemente; hashes de ambos EXEs, scripts e README conferidos com manifesto. [Receipt](evidence/convex-v07-v11-2026-10-15/V2_ARTIFACT_HASH_VERIFIED.json).
+- SHA256 ZIP: `c32017479528fd2b73899567f51fb4e7f096a3a8ca4222db64b5e83538663c27`.
+- V07 preview EXE SHA256: `99d06384268d649b2224a10fa9d231ad8ce78fb6ced8aaee4389f12d86e12e84`.
+- V11 preview EXE SHA256: `8143e21de4cefb59c896fbb706d59def525ff9d459cdb36e182bf0bdd33db3bc`.
+- Prova local adicional: simulação de TelegramHalt no loop V07 confirmou saída 2 e substituição de OLD_SUCCESS por NO_TRADE_MONITOR_BLOCKED com checked_at_utc. Sem rede.
+
+Para verificar no PC, extrair o pacote numa pasta nova e executar nessa pasta:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\VERIFICAR_PACOTE.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\WINDOWS_READONLY_RECEIPT.ps1
+```
+
+Primeiro comando valida apenas pacote e fixtures temporárias. Segundo lê os monitores atuais. Nenhum instala, pára tarefas, altera secrets ou envia Telegram. A saída sanitizada do segundo é a prova pendente para comparar hashes/estado local; não é necessário fornecer qualquer token ou chave.
