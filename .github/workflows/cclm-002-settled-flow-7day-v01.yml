@@ -1,0 +1,40 @@
+name: CCLM-002 settled-flow 7-day source scale V0.1
+on:
+  push:
+    branches: [crosschain-liquidity-migration-001-source-gate-v0.1]
+    paths:
+      - 'research/crosschain_liquidity_migration_001/CCLM_SETTLED_FLOW_7DAY_SCALE_FREEZE_V0.1.md'
+      - 'research/crosschain_liquidity_migration_001/cctp_settled_flow_002_week_v01.py'
+      - '.github/workflows/cclm-002-settled-flow-7day-v01.yml'
+      - 'research/crosschain_liquidity_migration_001/CCLM_SETTLED_FLOW_7DAY_TRIGGER.txt'
+permissions:
+  contents: write
+jobs:
+  scale:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: crosschain-liquidity-migration-001-source-gate-v0.1}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: python research/crosschain_liquidity_migration_001/cctp_settled_flow_002_week_v01.py
+      - name: Persist receipt
+        if: always()
+        run: |
+          if [ -f artifacts/cclm_cctp_settled_flow_002_week_v01.json ]; then
+            cp artifacts/cclm_cctp_settled_flow_002_week_v01.json research/crosschain_liquidity_migration_001/CCLM_CCTP_SETTLED_FLOW_002_7DAY_RECEIPT.json
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add research/crosschain_liquidity_migration_001/CCLM_CCTP_SETTLED_FLOW_002_7DAY_RECEIPT.json
+            if ! git diff --cached --quiet; then
+              git commit -m "CCLM-002: record 7-day settled-flow source scale [skip ci]"
+              git push origin HEAD:crosschain-liquidity-migration-001-source-gate-v0.1
+            fi
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cclm-002-settled-flow-7day-v01
+          path: artifacts/cclm_cctp_settled_flow_002_week_v01.json
+          if-no-files-found: error

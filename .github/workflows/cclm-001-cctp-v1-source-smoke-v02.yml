@@ -1,0 +1,35 @@
+name: CCLM-001 CCTP V1 hybrid source smoke V0.2
+on:
+  push:
+    branches: [crosschain-liquidity-migration-001-source-gate-v0.1]
+    paths:
+      - 'research/crosschain_liquidity_migration_001/cctp_v1_source_smoke_v02.py'
+      - '.github/workflows/cclm-001-cctp-v1-source-smoke-v02.yml'
+      - 'research/crosschain_liquidity_migration_001/CCLM_SOURCE_SMOKE_V02_TRIGGER.txt'
+permissions:
+  contents: write
+jobs:
+  source-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: crosschain-liquidity-migration-001-source-gate-v0.1}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Hybrid source smoke
+        run: python research/crosschain_liquidity_migration_001/cctp_v1_source_smoke_v02.py
+      - name: Persist receipt
+        run: |
+          cp artifacts/cclm_cctp_v1_source_smoke_v02.json research/crosschain_liquidity_migration_001/CCTP_V1_SOURCE_SMOKE_V02_RECEIPT.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/crosschain_liquidity_migration_001/CCTP_V1_SOURCE_SMOKE_V02_RECEIPT.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "CCLM-001: record hybrid source smoke V0.2 [skip ci]"
+          git push origin HEAD:crosschain-liquidity-migration-001-source-gate-v0.1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cclm-001-cctp-v1-source-smoke-v02
+          path: artifacts/cclm_cctp_v1_source_smoke_v02.json
+          if-no-files-found: error
