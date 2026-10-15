@@ -127,7 +127,17 @@ function Stop-OnlyThisTask {
         }
         Assert-VerifiedProcesses $repeat
         foreach($p in $repeat) {
-            Stop-Process -Id ([int]$p.ProcessId) -Force -ErrorAction Stop
+            # A terminating PyInstaller parent can also terminate its child.
+            # Re-read EACH pid immediately before Stop-Process to avoid stale/reused PIDs.
+            $pidValue=[int]$p.ProcessId
+            $live=@(Get-CimInstance -ClassName Win32_Process -Filter ("ProcessId="+[string]$pidValue) -ErrorAction Stop)
+            if($live.Count -gt 1){throw 'PID_LOOKUP_NOT_UNIQUE_ABORT'}
+            if($live.Count -eq 0){continue}
+            if (-not [string]::Equals([string]$live[0].ExecutablePath,[IO.Path]::GetFullPath($target),[StringComparison]::OrdinalIgnoreCase) -or
+                (ProcessFingerprint $live[0]) -cne (ProcessFingerprint $p)) {
+                throw 'PID_REUSED_ABORT_NO_KILL'
+            }
+            Stop-Process -Id $pidValue -Force -ErrorAction Stop
         }
     }
     Wait-Exit
