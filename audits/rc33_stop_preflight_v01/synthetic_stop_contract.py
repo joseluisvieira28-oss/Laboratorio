@@ -5,6 +5,7 @@ or local execution side effect. An accepted MOCK never certifies real protection
 """
 from __future__ import annotations
 from dataclasses import dataclass
+import math
 from typing import Any, Mapping, Sequence
 
 
@@ -43,8 +44,9 @@ def reconcile_mock_snapshot(
         return fail("BROKER_SNAPSHOT_STALE")
     if partial_fill:
         return fail("PARTIAL_FILL_REQUIRES_EXPLICIT_COVERAGE_RECONCILIATION")
-    if (position is None or expected_volume <= 0 or expected_stop_price <= 0
-            or price_unit <= 0 or position_id <= 0):
+    if (position is None or not all(math.isfinite(x) and x > 0 for x in
+            (float(expected_volume), float(expected_stop_price), float(price_unit)))
+            or position_id <= 0):
         return fail("UNVERIFIED_POSITION_OR_GEOMETRY")
     if position.get("symbol") != symbol or position.get("positionId") != position_id:
         return fail("BROKER_POSITION_IDENTITY_MISMATCH")
@@ -54,7 +56,7 @@ def reconcile_mock_snapshot(
         hold = float(position.get("holdVol", 0))
     except (ValueError, TypeError):
         return fail("POSITION_VOLUME_INVALID")
-    if hold <= 0 or abs(hold - expected_volume) > 1e-9:
+    if not math.isfinite(hold) or hold <= 0 or abs(hold - expected_volume) > 1e-9:
         return fail("POSITION_VOLUME_MISMATCH")
     matching = [s for s in stops if s.get("positionId") == position_id
                 and s.get("symbol") == symbol and s.get("isFinished") == 0]
@@ -66,6 +68,8 @@ def reconcile_mock_snapshot(
         price = float(st.get("stopLossPrice", 0))
         tp = float(st.get("takeProfitPrice", 0) or 0)
     except (ValueError, TypeError):
+        return fail("STOP_FIELDS_INVALID")
+    if not all(math.isfinite(x) for x in (vol, price, tp)):
         return fail("STOP_FIELDS_INVALID")
     if vol < hold:
         return fail("STOP_NOT_COVERING_FULL_POSITION")
