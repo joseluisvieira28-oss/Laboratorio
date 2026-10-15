@@ -1,0 +1,52 @@
+name: MEXC V06 Real API Transport — No Orders CI
+on:
+  pull_request:
+    paths:
+      - 'engine/three_convex_v06/**'
+      - '.github/workflows/three-convex-v06-mexc-private-transport.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  real-api-transport-offline-tests:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Fake HTTP only, no MEXC and no live orders
+        shell: bash
+        run: python -m unittest discover -s engine/three_convex_v06 -p "test_*.py" -v
+      - name: Build Windows standalone V06 signed transport preflight EXE
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          python -m pip install --disable-pip-version-check pyinstaller==6.16.0
+          python -m PyInstaller --noconfirm --clean --onefile --name MEXC_V06_Account_Preflight --paths . engine/three_convex_v06/status_app.py
+          if ($LASTEXITCODE -ne 0) { throw "PYINSTALLER_FAILED" }
+          $p = "dist/MEXC_V06_Account_Preflight.exe"
+          & $p --help
+          if ($LASTEXITCODE -ne 0) { throw "EXE_HELP_FAILED" }
+          & $p --account-check
+          if ($LASTEXITCODE -eq 0) { throw "EXE_ACCEPTED_MISSING_SECRETS" }
+          New-Item -ItemType Directory -Force -Path v06_release | Out-Null
+          Copy-Item $p v06_release/MEXC_V06_Account_Preflight.exe
+          Copy-Item engine/three_convex_v06/CHECK_MEXC_V06_READONLY.ps1 v06_release/
+          Copy-Item engine/three_convex_v06/README.md v06_release/LEIA_V06_ANTES.txt
+          $hash = (Get-FileHash v06_release/MEXC_V06_Account_Preflight.exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          "SHA256_EXE=$hash" | Out-File v06_release/SHA256_EXE.txt -Encoding ascii
+          Write-Output "V06_REAL_MEXC_POST_TRANSPORT_LIBRARY_PRESENT_BUT_NOT_ARMABLE"
+          exit 0 # Account-check deliberately returned nonzero without local DPAPI keys
+      - name: Upload Windows V06 executable, single outer ZIP
+        if: matrix.os == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Three_CONVEX_V06_MEXC_REAL_API_UNARMED
+          path: v06_release/
+          if-no-files-found: error
