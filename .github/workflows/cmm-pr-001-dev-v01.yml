@@ -1,0 +1,52 @@
+name: CMM-PR-001 Price Residual Development V0.1
+
+on:
+  push:
+    branches:
+      - cross-market-price-residual-001-dev-v0.1
+    paths:
+      - "cmm001/CMM_PR_001_DEV_AUTHORITY_V01.md"
+      - "cmm001/cmm_pr_001_dev_v01.py"
+      - ".github/workflows/cmm-pr-001-dev-v01.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cmm-pr-001-dev-v01
+  cancel-in-progress: false
+
+jobs:
+  development:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout isolated branch
+        uses: actions/checkout@v4
+        with:
+          ref: cross-market-price-residual-001-dev-v0.1
+
+      - name: Run frozen development mechanism
+        id: dev
+        continue-on-error: true
+        run: |
+          python3 cmm001/cmm_pr_001_dev_v01.py
+
+      - name: Preserve development evidence
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add cmm001/pr001_results/
+          if ! git diff --cached --quiet; then
+            git commit -m "cmm-pr-001: record development evidence v0.1 [skip ci]"
+            git pull --rebase origin cross-market-price-residual-001-dev-v0.1
+            git push origin HEAD:cross-market-price-residual-001-dev-v0.1
+          fi
+
+      - name: Fail closed on technical/source failure
+        if: steps.dev.outcome != 'success'
+        run: |
+          echo "CMM-PR-001 development did not complete cleanly."
+          exit 1

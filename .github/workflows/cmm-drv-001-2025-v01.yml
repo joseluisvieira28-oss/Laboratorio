@@ -1,0 +1,53 @@
+name: CMM-DRV-001 2025 One-Shot OOS V0.1
+
+on:
+  push:
+    branches:
+      - cross-market-dynamic-resolution-001-2025-oos-v0.1
+    paths:
+      - "cmm001/CMM_DRV_001_2025_OOS_AUTHORITY_V01.md"
+      - "cmm001/CMM_DRV_001_TECHNICAL_INPUT_BINDING_V01.md"
+      - "cmm001/cmm_drv_001_2025_runner_v01.py"
+      - ".github/workflows/cmm-drv-001-2025-v01.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cmm-drv-001-2025-v01
+  cancel-in-progress: false
+
+jobs:
+  oos-2025:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout isolated branch
+        uses: actions/checkout@v4
+        with:
+          ref: cross-market-dynamic-resolution-001-2025-oos-v0.1
+
+      - name: Run frozen 2025 one-shot
+        id: run
+        continue-on-error: true
+        run: |
+          python3 cmm001/cmm_drv_001_2025_runner_v01.py
+
+      - name: Preserve evidence
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add cmm001/drv001_results/
+          if ! git diff --cached --quiet; then
+            git commit -m "cmm-drv-001: record 2025 one-shot evidence [skip ci]"
+            git pull --rebase origin cross-market-dynamic-resolution-001-2025-oos-v0.1
+            git push origin HEAD:cross-market-dynamic-resolution-001-2025-oos-v0.1
+          fi
+
+      - name: Fail closed on source or runner failure
+        if: steps.run.outcome != 'success'
+        run: |
+          echo "CMM-DRV-001 2025 one-shot did not complete cleanly. See preserved evidence."
+          exit 1
