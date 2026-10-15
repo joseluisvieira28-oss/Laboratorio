@@ -22,7 +22,7 @@ foreach($token in @(
     'Start-ScheduledTask -TaskName $taskName',
     'ORIGINAL_EXE_RESTART_REQUESTED_CURRENT_OUTBOX_PRESERVED',
     'SOURCE_EXE_NOT_AUDITED_V2',
-    'V12_EXE_HASH_MISMATCH',
+    'V12_EXE_NOT_AUDITED_PR239',
     'matches'
 )) {
     if ($token -eq 'matches') {continue}
