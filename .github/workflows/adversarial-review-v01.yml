@@ -1,0 +1,53 @@
+name: Adversarial Review V0.1
+
+on:
+  pull_request:
+    paths:
+      - "adversarial_review/**"
+      - ".github/workflows/adversarial-review-v01.yml"
+
+concurrency:
+  group: adversarial-review-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  validate-policy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Compile validator
+        run: python -m py_compile adversarial_review/tools/validate_review_bundle.py
+
+      - name: Run policy regression tests
+        run: python -m unittest discover -s adversarial_review/tests -p "test_*.py" -v
+
+      - name: Validate JSON assets
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          for p in [
+              Path("adversarial_review/adversarial_matrix_v0_1.json"),
+              Path("adversarial_review/review_bundle_schema_v0_1.json"),
+              Path("adversarial_review/pilots/BNB-LAUNCHPOOL-DEMAND-001/pilot_manifest_v0_1.json"),
+              Path("adversarial_review/pilots/BNB-LAUNCHPOOL-DEMAND-001/red_attack_plan_v0_1.json"),
+              Path("adversarial_review/pilots/BNB-LAUNCHPOOL-DEMAND-001/review_bundle_phase_a_v0_1.json"),
+          ]:
+              json.loads(p.read_text(encoding="utf-8"))
+              print("PASS", p)
+          PY
+
+      - name: Validate BNB Phase A review bundle
+        run: |
+          python adversarial_review/tools/validate_review_bundle.py \
+            adversarial_review/pilots/BNB-LAUNCHPOOL-DEMAND-001/review_bundle_phase_a_v0_1.json

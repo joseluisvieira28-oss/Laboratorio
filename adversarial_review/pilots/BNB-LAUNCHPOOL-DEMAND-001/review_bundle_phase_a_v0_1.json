@@ -1,0 +1,231 @@
+{
+  "schema_version": "0.1",
+  "candidate": {
+    "id": "BNB-LAUNCHPOOL-DEMAND-001",
+    "version": "DIAMOND-V0.2"
+  },
+  "freeze": {
+    "complete": true,
+    "mechanism": "Official Binance Launchpool announcement with explicit BNB utility; LONG BNBBTC",
+    "failure_mode": "lack of repeatable positive economics/causal fingerprint, concentration/temporal instability, integrity failure",
+    "controlling_authority": "ND-PROMOTION-POLICY-V3.0-FROZEN + DIAMOND-TEST-V1-FROZEN-2026-09-24 + BNB-LAUNCHPOOL-DIAMOND-V0.2-2026-09-24",
+    "source_manifest": {
+      "event": "official Binance Support/CMS",
+      "market": "Binance Spot/Data Vision historical archives"
+    },
+    "code_commit": "8346c0716edd661e13b063276bfe13bb5e08b955",
+    "parameters": {
+      "side": "LONG_BNBBTC",
+      "entry": "first 15m open strictly after signal",
+      "hold_hours": 24,
+      "cluster_minutes_lte": 60
+    },
+    "entry_exit_rules": {
+      "entry": "strictly after canonical publication",
+      "exit": "24h later"
+    },
+    "cost_model": {
+      "base_round_trip_bps": 20,
+      "stress_round_trip_bps": 30
+    },
+    "protected_periods": [
+      "prospective post-2026-09-16 boundary; Diamond final first 25 only"
+    ],
+    "promotion_gates": [
+      "existing V3 Tier2 historical state preserved",
+      "Diamond V0.2 all-required first-25 parent+causal gates"
+    ],
+    "scientific_identity_changed_after_outcome_access": false
+  },
+  "blue": {
+    "verdict": "PASS",
+    "checks": [
+      {
+        "id": "BT-001",
+        "result": "PASS"
+      },
+      {
+        "id": "BT-002",
+        "result": "PASS"
+      },
+      {
+        "id": "BT-003",
+        "result": "PASS"
+      },
+      {
+        "id": "BT-004",
+        "result": "PASS"
+      },
+      {
+        "id": "BT-005",
+        "result": "PASS"
+      },
+      {
+        "id": "BT-006",
+        "result": "PASS_WITH_FRAGILITY"
+      },
+      {
+        "id": "BT-007",
+        "result": "MATERIAL_FRAGILITY"
+      },
+      {
+        "id": "BT-008",
+        "result": "INCOMPLETE_FOR_CAPITAL"
+      },
+      {
+        "id": "BT-009",
+        "result": "PASS_ARCHITECTURE_FORWARD_PENDING"
+      },
+      {
+        "id": "BT-010",
+        "result": "PASS"
+      }
+    ]
+  },
+  "red": {
+    "verdict": "CHALLENGED",
+    "attack_plan_prepared_before_blue_conclusion_review": true,
+    "attacks": [
+      {
+        "id": "RT-001",
+        "result": "PASS",
+        "evidence_ref": "runner blobs 648b3a5/e7a1390/e633d18",
+        "hits_frozen_failure_gate": false
+      },
+      {
+        "id": "RT-002",
+        "result": "PASS",
+        "evidence_ref": "source authority blob 3deee5c + ledger/source manifests",
+        "hits_frozen_failure_gate": false
+      },
+      {
+        "id": "RT-003",
+        "result": "PASS",
+        "evidence_ref": "discovery runner blob 648b3a5 lines enforcing open-only parsing",
+        "hits_frozen_failure_gate": false
+      },
+      {
+        "id": "RT-004",
+        "result": "BLOCKED",
+        "reason": "canonical raw market archive bytes not available in current review branch/runtime"
+      },
+      {
+        "id": "RT-005",
+        "result": "BLOCKED",
+        "reason": "canonical raw market archive bytes not available in current review branch/runtime"
+      },
+      {
+        "id": "RT-006",
+        "result": "BLOCKED",
+        "reason": "no pre-frozen matched historical placebo asset universe for this exact candidate"
+      },
+      {
+        "id": "RT-007",
+        "result": "BLOCKED",
+        "reason": "requires canonical raw history; diagnostic cannot alter current candidate"
+      },
+      {
+        "id": "RT-008",
+        "result": "PASS",
+        "evidence_ref": "recomputed immutable 66-trade ledgers: 40bps mean +60.1639378203, PF 1.4685505783",
+        "hits_frozen_failure_gate": false
+      },
+      {
+        "id": "RT-010",
+        "result": "CHALLENGE",
+        "evidence_ref": "historical fixed-cost model lacks direct depth/capacity receipt",
+        "hits_frozen_failure_gate": false
+      },
+      {
+        "id": "RT-011",
+        "result": "CHALLENGE",
+        "evidence_ref": "immutable ledgers: 2020 -89.1787043/PF0.5991 vs 2021 +213.0541885/PF2.0689",
+        "hits_frozen_failure_gate": false
+      },
+      {
+        "id": "RT-012",
+        "result": "CHALLENGE",
+        "evidence_ref": "three historical blocks positive but materially heterogeneous and concentrated",
+        "hits_frozen_failure_gate": false
+      },
+      {
+        "id": "RT-013",
+        "result": "PASS",
+        "evidence_ref": "recomputed immutable ledgers: remove-best1 mean +26.9877499571, PF1.2230251698",
+        "hits_frozen_failure_gate": false
+      },
+      {
+        "id": "RT-014",
+        "result": "CHALLENGE",
+        "evidence_ref": "recomputed immutable ledgers: remove-best5 mean -17.0459589100, PF0.8678019295",
+        "hits_frozen_failure_gate": false
+      },
+      {
+        "id": "RT-015",
+        "result": "CHALLENGE",
+        "evidence_ref": "frozen bootstrap lower bounds: discovery -11.1865; OOS2025 -54.1406; presample -202.7111",
+        "hits_frozen_failure_gate": false
+      },
+      {
+        "id": "RT-016",
+        "result": "PASS",
+        "evidence_ref": "frozen primary instrument is BNBBTC relative pair; no broader factor claim",
+        "hits_frozen_failure_gate": false
+      },
+      {
+        "id": "RT-017",
+        "result": "BLOCKED",
+        "reason": "no pre-frozen volatility-matched control in current immutable inputs"
+      },
+      {
+        "id": "RT-018",
+        "result": "CHALLENGE",
+        "evidence_ref": "candidate lineage frozen; complete global multiplicity ledger not established by current review",
+        "hits_frozen_failure_gate": false
+      },
+      {
+        "id": "RT-019",
+        "result": "CHALLENGE",
+        "evidence_ref": "timestamp semantics and costs frozen, but historical depth/slippage/capacity not proven",
+        "hits_frozen_failure_gate": false
+      },
+      {
+        "id": "RT-020",
+        "result": "NOT_APPLICABLE",
+        "reason": "first-25 prospective Diamond gate has not matured; early final verdict is forbidden"
+      },
+      {
+        "id": "RT-022",
+        "result": "PASS",
+        "evidence_ref": "forward freeze blob 3f540c4 and historical runner/ledger lineage",
+        "hits_frozen_failure_gate": false
+      },
+      {
+        "id": "RT-024",
+        "result": "PASS",
+        "evidence_ref": "forward freeze commit 34d35904 + Diamond freeze 083b7196 + sidecar 8346c071",
+        "hits_frozen_failure_gate": false
+      }
+    ]
+  },
+  "referee": {
+    "verdict": "BLOCKED",
+    "higher_precedence_authority_reconciled": true,
+    "rationale": "Mandatory adversarial placebo/control attacks remain blocked by unavailable canonical raw historical market archives in the current review runtime. This is not a scientific negative verdict."
+  },
+  "boundaries": {
+    "live_trading_authorized": false,
+    "main_merge_authorized": false,
+    "exchange_mutation_authorized": false,
+    "sealed_holdout_open_authorized": false
+  },
+  "evidence": [
+    "commit:705e53aa0ba4584e8987c451064e64d132cbbe17",
+    "commit:34d35904bc097bd3ab5c420f97f0c12c62a802f8",
+    "commit:083b7196b0c064622182a3f1ed087b1082168428",
+    "commit:8346c0716edd661e13b063276bfe13bb5e08b955",
+    "blob:96dfb271b4b954260e7acffe251eae044910afec",
+    "blob:80e17074a907c25ff5fb8746118dd40dac5ee2b6",
+    "blob:fd4ee99d324a04c97a4246879617461c314e739c"
+  ]
+}

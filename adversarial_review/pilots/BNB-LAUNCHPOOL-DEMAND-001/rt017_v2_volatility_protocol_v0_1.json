@@ -1,0 +1,31 @@
+{
+  "protocol_id": "BNB-RT017-V2-VOLATILITY-NEAREST5-V0.1",
+  "status": "FROZEN_BEFORE_RESULT",
+  "relation_to_rt017_v1": "RT017 V1 remains BLOCKED and is not rewritten. V2 is an additional adversarial test because V1 produced no market verdict; its fixed ±20% matching rule had insufficient control availability.",
+  "evidentiary_role": "ADDITIONAL_RED_DIAGNOSTIC_NO_PROMOTION_CREDIT",
+  "candidate": "BNB-LAUNCHPOOL-DEMAND-001",
+  "historical_raw_only": true,
+  "method": {
+    "event_prevol": "Population standard deviation of 15m log-close returns in the 24h strictly before the event entry.",
+    "control_pool": "Same YYYY-MM and same UTC entry quarter-hour; exclude actual date ±1 UTC day; require complete pre24h and post24h windows.",
+    "matching": "Exactly five controls with smallest absolute prevol difference; deterministic timestamp tie-break.",
+    "minimum_event_coverage_fraction": 0.9,
+    "placebo_replications": 10000,
+    "seed": 20260927,
+    "overlap": "Reject/redraw portfolios with overlapping 24h post windows inside a historical block.",
+    "statistic": "post24h BASE20 pooled mean",
+    "report": [
+      "coverage",
+      "actual common-cohort mean/PF",
+      "placebo distribution",
+      "fraction placebo >= actual",
+      "volatility match-error distribution"
+    ]
+  },
+  "guards": {
+    "no_2026": true,
+    "no_rule_change": true,
+    "no_live_trading": true,
+    "no_rescue": true
+  }
+}
