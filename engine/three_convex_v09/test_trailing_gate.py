@@ -41,5 +41,5 @@ class TrailTests(unittest.TestCase):
         z=calc_v5_trail(actual_fill=101.03,completed_tf_close=107,
             peak_5m_high_so_far=113.03,previous_broker_stop=96.98,
             price_tick=".10",closed_tf_confirmed=True)
-        self.assertEqual(z["proposed_broker_stop_tick_floor"],"99.4")
+        self.assertEqual(z["proposed_broker_stop_tick_floor"],"99.40")
 if __name__=="__main__": unittest.main()
