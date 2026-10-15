@@ -1,0 +1,21 @@
+name: CBBTC-001 MEV Blocker span crosscheck V0.1Q
+on:
+  push:
+    branches:
+      - cbbtc-eth-mint-burn-flow-001-source-gate-v01
+    paths:
+      - 'research/cbbtc_eth_mint_burn_flow_001/cbbtc_rpc_mevblocker_span_crosscheck_v01q.mjs'
+      - '.github/workflows/cbbtc-rpc-mevblocker-span-crosscheck-v01q.yml'
+  workflow_dispatch:
+jobs:
+  crosscheck:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node research/cbbtc_eth_mint_burn_flow_001/cbbtc_rpc_mevblocker_span_crosscheck_v01q.mjs

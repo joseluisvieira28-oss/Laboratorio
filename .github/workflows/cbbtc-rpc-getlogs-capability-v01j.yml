@@ -1,0 +1,30 @@
+name: CBBTC-001 RPC getLogs capability V0.1J
+
+on:
+  push:
+    branches:
+      - cbbtc-eth-mint-burn-flow-001-source-gate-v01
+    paths:
+      - 'research/cbbtc_eth_mint_burn_flow_001/cbbtc_rpc_getlogs_capability_v01j.mjs'
+      - '.github/workflows/cbbtc-rpc-getlogs-capability-v01j.yml'
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Probe public/keyless eth_getLogs transport only
+        run: node research/cbbtc_eth_mint_burn_flow_001/cbbtc_rpc_getlogs_capability_v01j.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cbbtc-rpc-getlogs-capability-v01j
+          path: artifacts/CBBTC_RPC_GETLOGS_CAPABILITY_V0.1J.json
+          if-no-files-found: error
