@@ -154,6 +154,45 @@ class FuturesV06Transport:
             raise MEXCTransportHalt("BROKER_REJECTED_OR_MALFORMED_RESPONSE")
         return obj.get("data")
 
+    def public_market(self, path, symbol):
+        """Real MEXC PUBLIC GET only. No signature, credentials, or POST."""
+        if symbol not in SYMBOLS or path not in (
+            "/api/v1/contract/detail/country",
+            "/api/v1/contract/ticker",
+        ):
+            raise MEXCTransportHalt("PUBLIC_MARKET_PATH_OR_SYMBOL_BLOCKED")
+        url=BASE+path+"?"+urlencode({"symbol":symbol})
+        parsed=urlparse(url)
+        if parsed.scheme!="https" or parsed.netloc!="api.mexc.com":
+            raise MEXCTransportHalt("PUBLIC_MARKET_HOST_MISMATCH")
+        req=Request(url,method="GET",headers={
+            "Accept":"application/json",
+            "User-Agent":"CryptoLab-MEXC-Futures-V06/0.1-public",
+        })
+        try:
+            with self.opener(req,timeout=self.timeout) as res:
+                if getattr(res,"status",200)!=200:
+                    raise MEXCTransportHalt("PUBLIC_MARKET_HTTP_NON200")
+                raw=res.read(2_000_000)
+        except Exception as exc:
+            raise MEXCTransportHalt("PUBLIC_MARKET_UNKNOWN_"+type(exc).__name__) from None
+        try:
+            response=json.loads(raw)
+        except (ValueError,TypeError):
+            raise MEXCTransportHalt("PUBLIC_MARKET_RESPONSE_NOT_JSON")
+        if not isinstance(response,dict) or response.get("success") is not True:
+            raise MEXCTransportHalt("PUBLIC_MARKET_REJECTED_OR_MALFORMED")
+        result=response.get("data")
+        if not isinstance(result,dict) or result.get("symbol") != symbol:
+            raise MEXCTransportHalt("PUBLIC_MARKET_SYMBOL_MISMATCH")
+        return result
+
+    def contract_metadata(self,symbol):
+        return self.public_market("/api/v1/contract/detail/country",symbol)
+
+    def public_ticker(self,symbol):
+        return self.public_market("/api/v1/contract/ticker",symbol)
+
     def account_assets(self):
         return self._exchange("GET","/api/v1/private/account/assets")
 
