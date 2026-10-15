@@ -6,7 +6,7 @@
 - V07, V11, V12 anteriormente **Running com relatórios frescos**. Há interrupção V07 documentada anteriormente, recuperada pelo operador.
 - V07 instalado SHA256 `6c1173cdb678629552424c5074035b44f81be2af6331084fb7742f4381b7004c`; V11 `057812c1cb3164347bdf7afe01b419dd3fcbfe921b5013ba5bce219e938426e9`.
 - PR237 corrigido V2 tem SHA EXE V07 `99d06384268d649b2224a10fa9d231ad8ce78fb6ced8aaee4389f12d86e12e84` e V11 `8143e21de4cefb59c896fbb706d59def525ff9d459cdb36e182bf0bdd33db3bc`. V2 pacote manifest commit `d31a4be82c8eed8d08cd9fba54567573b9153391`. O operador passou `VERIFICAR_PACOTE.ps1`, ambas EXE --self-test PASS. **Instalação V2 ainda não feita.**
-- PR239 V12 source-isolation + clock correction CI 14 tests Windows/Linux + standalone build PASS. Usar APENAS [artefacto corrigido PR239 #12000715498](https://github.com/joseluisvieira28-oss/Laboratorio/actions/runs/38792104517/artifacts/12000715498), NÃO a primeira versão V12 original.
+- PR239 V12 source-isolation + clock correction CI 14 tests Windows/Linux + standalone build PASS. SHA256 EXE corrigido auditado: `0aa45a022de9c5e642316c757db72996c8bf126a3b6aed0247691852b6713bfe` (extraído do artefacto #12000715498). Usar APENAS [artefacto corrigido PR239 #12000715498](https://github.com/joseluisvieira28-oss/Laboratorio/actions/runs/38792104517/artifacts/12000715498), NÃO a primeira versão V12 original.
 - OPTIONS watcher antigo `CryptoLab-OPTIONS-V21-Telegram-Watcher` foi desativado pelo operador. Não alterar MEXC Futures executores/stop supervision.
 - Saúde, zero pendientes e Running NÃO provam sinal real→ Telegram.
 
@@ -57,7 +57,7 @@ Verificar `all_three_monitors_healthy: true`, V07/V11 `matches_audit_v2: true` e
 Ainda faltará uma prova REAL `signal_id→Telegram message_id→mensagem visível`, sem sintetizar sinais em produção.
 
 ## Fallo e rollback
-`CUTOVER_FAIL_CLOSED` informa `Recovery`. O script tenta repor executável e runner originais e reiniciar apenas a tarefa escolhida, conservando SQLite atual para não reabrir sinais enviados. Se `Recovery` não confirmar `ORIGINAL_EXE_RESTART_REQUESTED...`, interromper operações e investigar; **não tentar Apply repetidamente**.
+`CUTOVER_FAIL_CLOSED` informa `Recovery`. O script tenta repor executável e runner originais e reiniciar apenas a tarefa escolhida, conservando SQLite atual para não reabrir sinais enviados. Para recuperar MANUALMENTE mais tarde um backup identificado: `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\RECUPERAR_UMA_CANA_READONLY.ps1 -Version V07 -BackupDir 'C:\CAMINHO\BACKUP\V07\UTC' -Approval CONFIRMO_ROLLBACK_UMA_CANA` (trocar versão/caminho com os dados do receipt). Também preserva a SQLite atual; validar health após o restart. Se `Recovery` não confirmar `ORIGINAL_EXE_RESTART_REQUESTED...`, interromper operações e investigar; **não tentar Apply repetidamente**.
 O backup da pasta data é para recuperação manual orientada, nunca restaurá-lo automaticamente após envio. Se for necessária recuperação manual, auditar primeiro outbox/ACK/estado dos três monitores.
 
 ## Limitação
