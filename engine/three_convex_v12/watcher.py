@@ -110,23 +110,43 @@ class Outbox:
     def close(self):
         self.db.close()
 
-def cycle(box,send,*,now_ms,server_ms,market_fetch=fetch):
+def cycle(box,send,*,now_ms,server_ms,market_fetch=fetch,fresh_clock=None):
     if type(now_ms) is not int or type(server_ms) is not int or abs(now_ms-server_ms)>5000:
         raise FeedHalt("V12_CLOCK_MISMATCH")
     activation=box.activation(now_ms)
-    found=[]
-    # All asset source pages must validate before accepting ANY new signals.
+    sources={}
+    histories=[]
+    # Each source is independent: an invalid DOGE feed must NOT erase a
+    # previously verified SOL/BNB observation or block queued Telegram.
     for symbol in SYMBOLS:
-        bars=market_fetch(symbol,server_ms,box.folder/"market_cache")
-        found.extend(decide(symbol,bars,server_ms,activation))
+        try:
+            bars=market_fetch(symbol,server_ms,box.folder/"market_cache")
+            histories.append((symbol,bars))
+            sources[symbol]="OK"
+        except (FeedHalt,Halt,ValueError,TypeError,OSError) as exc:
+            sources[symbol]="BLOCKED:"+type(exc).__name__
+    # In production, refresh the trusted Binance clock after ALL downloads.
+    # Never use a clock from before slow HTTP pagination to claim a fresh alert.
+    evaluated_ms=fresh_clock() if fresh_clock is not None else now_ms
+    if type(evaluated_ms) is not int or evaluated_ms<server_ms:
+        raise FeedHalt("V12_EVALUATION_CLOCK_INVALID")
+    found=[]
+    for symbol,bars in histories:
+        try:
+            found.extend(decide(symbol,bars,evaluated_ms,activation))
+        except (FeedHalt,Halt,ValueError,TypeError,OSError) as exc:
+            sources[symbol]="BLOCKED:"+type(exc).__name__
     if len(found)>4 or any(s["lane"] not in LANES for s in found):
         raise Halt("V12_INVALID_SIGNAL_SET")
     for s in found:box.enqueue(s)
-    sent,expired=box.drain(send,now_ms)
+    # Previously durable outbox drains even while any live source is blocked.
+    sent,expired=box.drain(send,evaluated_ms)
+    healthy=all(v=="OK" for v in sources.values()) and len(sources)==len(SYMBOLS)
     return {
-        "status":"V12_EXPERIMENTAL_READONLY",
-        "checked_at_utc":datetime.fromtimestamp(now_ms/1000,timezone.utc).isoformat(),
-        "sources_ok":True,"new_lanes":len(LANES),"total_inventory":10,
+        "status":"V12_EXPERIMENTAL_READONLY" if healthy else "V12_DEGRADED_READONLY",
+        "checked_at_utc":datetime.fromtimestamp(evaluated_ms/1000,timezone.utc).isoformat(),
+        "source_status":sources,
+        "sources_ok":healthy,"new_lanes":len(LANES),"total_inventory":10,
         "signal_events":len(found),"telegram_sent_this_cycle":sent,
         "telegram_pending":box.pending(),"stale_signals_suppressed_this_cycle":expired,
         "exchange_private_access":False,"orders_enabled":False,"telegram_outbound_only":True
@@ -145,7 +165,7 @@ def main(argv=None):
             while True:
                 now=int(time.time()*1000)
                 try:
-                    report=cycle(box,bot.send,now_ms=now,server_ms=clock_ms())
+                    report=cycle(box,bot.send,now_ms=now,server_ms=clock_ms(),fresh_clock=clock_ms)
                 except (FeedHalt,Halt,TelegramHalt,sqlite3.Error,ValueError,TypeError,OSError) as exc:
                     report={
                         "status":"V12_FAIL_CLOSED","error_type":type(exc).__name__,
