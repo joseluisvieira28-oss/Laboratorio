@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from math import floor, isfinite
 from statistics import median
 
 from .config import Settings
@@ -86,9 +87,87 @@ def position_size(balance: float, risk_pct: float, entry: float, stop: float, ma
     if not stop_pct:
         raise ValueError("stop must differ from entry")
     theoretical = risk_chf / stop_pct
-    capital = min(theoretical, max_notional if max_notional is not None else balance)
+    capital = min(theoretical, balance, max_notional if max_notional is not None else balance)
     actual_risk = capital * stop_pct
     return {"risk_chf_target": risk_chf, "position_notional_chf": capital, "actual_risk_chf": actual_risk, "stop_distance_pct": stop_pct * 100}
+
+
+def total_risk_position_size(
+    balance: float,
+    risk_pct: float,
+    entry: float,
+    stop: float,
+    projected_round_trip_cost_pct: float | None,
+    max_notional: float | None = None,
+) -> dict[str, float | bool]:
+    values = (balance, risk_pct, entry, stop)
+    if any(not isinstance(value, (int, float)) or not isfinite(value) for value in values):
+        raise ValueError("risk sizing inputs must be finite numbers")
+    if projected_round_trip_cost_pct is None or not isinstance(projected_round_trip_cost_pct, (int, float)):
+        raise ValueError("projected cost is required")
+    if not isfinite(projected_round_trip_cost_pct) or projected_round_trip_cost_pct < 0:
+        raise ValueError("projected cost must be a finite non-negative percentage")
+    if balance <= 0 or risk_pct <= 0 or entry <= 0:
+        raise ValueError("balance, risk_pct and entry must be positive")
+    if max_notional is not None and (
+        not isinstance(max_notional, (int, float)) or not isfinite(max_notional) or max_notional <= 0
+    ):
+        raise ValueError("max_notional must be a finite positive number")
+
+    stop_fraction = abs(entry - stop) / entry
+    if stop_fraction <= 0:
+        raise ValueError("stop must differ from entry")
+    cost_fraction = projected_round_trip_cost_pct / 100
+    total_fraction = stop_fraction + cost_fraction
+    target_total_risk = balance * risk_pct / 100
+    theoretical = target_total_risk / total_fraction
+    capital_limit = min(balance, max_notional) if max_notional is not None else balance
+    notional = min(theoretical, capital_limit)
+    price_risk = notional * stop_fraction
+    estimated_cost = notional * cost_fraction
+    actual_total_risk = price_risk + estimated_cost
+    tolerance = max(1e-12, target_total_risk * 1e-12)
+    if actual_total_risk > target_total_risk + tolerance:
+        raise ValueError("projected total risk exceeds risk budget")
+    return {
+        "target_total_risk_chf": target_total_risk,
+        "theoretical_notional_chf": theoretical,
+        "position_notional_chf": notional,
+        "price_risk_chf": price_risk,
+        "estimated_cost_chf": estimated_cost,
+        "actual_total_risk_chf": actual_total_risk,
+        "stop_distance_pct": stop_fraction * 100,
+        "projected_cost_pct": projected_round_trip_cost_pct,
+        "capital_capped": theoretical > capital_limit,
+    }
+
+
+def exchange_feasible_quantity(
+    sizing: dict[str, float | bool],
+    *,
+    entry: float | None,
+    min_quantity: float | None,
+    min_notional: float | None,
+    quantity_step: float | None,
+    tick_size: float | None,
+) -> dict[str, float]:
+    required = (entry, min_quantity, min_notional, quantity_step, tick_size)
+    if any(value is None or not isinstance(value, (int, float)) or not isfinite(value) or value <= 0 for value in required):
+        raise ValueError("verified exchange minimum and precision inputs are required")
+    assert entry is not None and min_quantity is not None and min_notional is not None
+    assert quantity_step is not None and tick_size is not None
+    tick_units = entry / tick_size
+    if abs(tick_units - round(tick_units)) > 1e-9:
+        raise ValueError("entry violates tick size")
+    safe_notional = float(sizing["position_notional_chf"])
+    raw_quantity = safe_notional / entry
+    quantity = floor((raw_quantity + 1e-12) / quantity_step) * quantity_step
+    notional = quantity * entry
+    if quantity <= 0 or quantity < min_quantity or notional < min_notional:
+        raise ValueError("NO_TRADE: safely sized order is below exchange minimum")
+    if notional > safe_notional + max(1e-12, safe_notional * 1e-12):
+        raise ValueError("NO_TRADE: precision would exceed safe sizing")
+    return {"quantity": quantity, "position_notional_chf": notional}
 
 
 def pump_risk(candidate: Candidate) -> float:

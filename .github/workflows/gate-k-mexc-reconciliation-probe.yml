@@ -1,0 +1,104 @@
+name: Gate K MEXC read-only reconciliation probe
+
+on:
+  push:
+    branches:
+      - dream-account-gate-k-execution-layer-v0.1
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gate-k-mexc-reconciliation-probe
+  cancel-in-progress: false
+
+jobs:
+  reconcile:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      contains(github.event.head_commit.message, '[mexc-readonly-reconcile]')
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+    env:
+      MEXC_READONLY_SCOPE_ATTESTED: '1'
+      MEXC_READONLY_RECONCILE_ENABLE: '1'
+      MEXC_READONLY_ACCESS_KEY: ${{ secrets.MEXC_READONLY_ACCESS_KEY }}
+      MEXC_READONLY_SECRET_KEY: ${{ secrets.MEXC_READONLY_SECRET_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install Gate K branch
+        run: python -m pip install -e .
+      - name: Re-prove GET-only network boundary
+        run: |
+          python - <<'PY'
+          import ast
+          from pathlib import Path
+
+          files = sorted(Path('src/dream_account').glob('execution*.py'))
+          forbidden_call_attrs = {'post', 'put', 'patch', 'delete'}
+          hits = []
+          for path in files:
+              tree = ast.parse(path.read_text(encoding='utf-8'), filename=str(path))
+              for node in ast.walk(tree):
+                  if not isinstance(node, ast.Call):
+                      continue
+                  func = node.func
+                  if isinstance(func, ast.Attribute) and func.attr.lower() in forbidden_call_attrs:
+                      hits.append(f'{path}:{node.lineno}:{func.attr}')
+                  name = func.id if isinstance(func, ast.Name) else (
+                      func.attr if isinstance(func, ast.Attribute) else ''
+                  )
+                  if name == 'Request':
+                      method_kw = next((kw.value for kw in node.keywords if kw.arg == 'method'), None)
+                      if not (
+                          isinstance(method_kw, ast.Constant)
+                          and isinstance(method_kw.value, str)
+                          and method_kw.value.upper() == 'GET'
+                      ):
+                          hits.append(f'{path}:{node.lineno}:non-GET urllib Request')
+          if hits:
+              raise SystemExit('BLOCKED: network mutation primitive detected: ' + '; '.join(hits))
+          print(f'PASS: {len(files)} Gate K execution modules are GET-only')
+          PY
+      - name: Require read-only secrets without revealing them
+        shell: bash
+        run: |
+          test -n "$MEXC_READONLY_ACCESS_KEY" || { echo 'BLOCKED: access-key secret missing'; exit 2; }
+          test -n "$MEXC_READONLY_SECRET_KEY" || { echo 'BLOCKED: secret-key secret missing'; exit 2; }
+          echo 'PASS: both repository secrets are present (values not printed)'
+      - name: Run one-shot sanitized reconciliation
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m dream_account.execution_mexc_reconciliation_probe > /tmp/mexc-reconciliation.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          payload = json.loads(Path('/tmp/mexc-reconciliation.json').read_text(encoding='utf-8'))
+          allowed = {
+              'status', 'account_type', 'clock_skew_ms', 'symbols_queried',
+              'balance_rows', 'nonzero_balance_rows', 'open_order_count',
+              'recent_trade_count', 'daos_open_order_count',
+              'daos_recent_trade_count', 'trade_query_limit_per_symbol',
+              'exchange_mutation_routes', 'note', 'fingerprint'
+          }
+          unexpected = sorted(set(payload) - allowed)
+          if unexpected:
+              raise SystemExit(f'BLOCKED: unexpected report fields: {unexpected}')
+          if payload.get('status') != 'PASS_CLEAN':
+              raise SystemExit('BLOCKED: read-only reconciliation was not clean')
+          if payload.get('exchange_mutation_routes') != 0:
+              raise SystemExit('BLOCKED: mutation-route invariant failed')
+          print(json.dumps(payload, sort_keys=True))
+          PY
+      - name: Final safety statement
+        run: |
+          echo 'PASS: authenticated reconciliation completed with sanitized counts only.'
+          echo 'No order, cancel, amend, transfer, withdraw, or other exchange mutation is authorized or implemented.'

@@ -1,0 +1,101 @@
+name: Gate K MEXC authenticated read-only probe
+
+on:
+  push:
+    branches:
+      - dream-account-gate-k-execution-layer-v0.1
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gate-k-mexc-readonly-probe
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    # Push runs execute the real probe only on an explicit marker commit.
+    # workflow_dispatch is also allowed once this workflow is reachable from GitHub UI.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      contains(github.event.head_commit.message, '[mexc-readonly-probe]')
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+    env:
+      MEXC_READONLY_SCOPE_ATTESTED: '1'
+      MEXC_READONLY_PROBE_ENABLE: '1'
+      MEXC_READONLY_ACCESS_KEY: ${{ secrets.MEXC_READONLY_ACCESS_KEY }}
+      MEXC_READONLY_SECRET_KEY: ${{ secrets.MEXC_READONLY_SECRET_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install Gate K branch
+        run: python -m pip install -e .
+      - name: Re-prove network mutation boundary before credentials are used
+        run: |
+          python - <<'PY'
+          import ast
+          from pathlib import Path
+
+          files = sorted(Path('src/dream_account').glob('execution*.py'))
+          forbidden_call_attrs = {'post', 'put', 'patch', 'delete'}
+          hits = []
+          for path in files:
+              tree = ast.parse(path.read_text(encoding='utf-8'), filename=str(path))
+              for node in ast.walk(tree):
+                  if isinstance(node, ast.Call):
+                      func = node.func
+                      if isinstance(func, ast.Attribute) and func.attr.lower() in forbidden_call_attrs:
+                          hits.append(f'{path}:{node.lineno}:{func.attr}')
+                      name = func.id if isinstance(func, ast.Name) else (
+                          func.attr if isinstance(func, ast.Attribute) else ''
+                      )
+                      if name == 'Request':
+                          method_kw = next((kw.value for kw in node.keywords if kw.arg == 'method'), None)
+                          if not (
+                              isinstance(method_kw, ast.Constant)
+                              and isinstance(method_kw.value, str)
+                              and method_kw.value.upper() == 'GET'
+                          ):
+                              hits.append(f'{path}:{node.lineno}:non-GET urllib Request')
+          if hits:
+              raise SystemExit('BLOCKED: network-mutation primitive detected: ' + '; '.join(hits))
+          print(f'PASS: {len(files)} Gate K execution modules are GET-only at the network boundary')
+          PY
+      - name: Require repository secrets without revealing them
+        shell: bash
+        run: |
+          test -n "$MEXC_READONLY_ACCESS_KEY" || { echo 'BLOCKED: MEXC_READONLY_ACCESS_KEY secret is missing'; exit 2; }
+          test -n "$MEXC_READONLY_SECRET_KEY" || { echo 'BLOCKED: MEXC_READONLY_SECRET_KEY secret is missing'; exit 2; }
+          echo 'PASS: both read-only credential secrets are present (values not printed)'
+      - name: Run exactly one authenticated Spot account probe
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m dream_account.execution_mexc_probe > /tmp/mexc-readonly-probe.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          payload = json.loads(Path('/tmp/mexc-readonly-probe.json').read_text(encoding='utf-8'))
+          if payload.get('status') != 'PASS':
+              raise SystemExit('BLOCKED: authenticated read-only probe did not PASS')
+          allowed = {
+              'status', 'account_type', 'clock_skew_ms', 'balance_rows',
+              'nonzero_balance_rows', 'account_can_trade_flag',
+              'account_can_withdraw_flag', 'account_can_deposit_flag',
+              'note', 'fingerprint'
+          }
+          unexpected = sorted(set(payload) - allowed)
+          if unexpected:
+              raise SystemExit(f'BLOCKED: unexpected report fields: {unexpected}')
+          print(json.dumps(payload, sort_keys=True))
+          PY
+      - name: Final safety statement
+        run: |
+          echo 'PASS: one-shot MEXC authenticated read-only probe completed.'
+          echo 'No order, cancel, amend, withdraw, transfer, or other exchange mutation route exists in this Gate K workflow.'
