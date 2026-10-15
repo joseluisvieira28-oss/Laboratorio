@@ -126,6 +126,11 @@ def classify_public_shadow_health(*, cycle_errors: Mapping[str, Any],
         degraded.append("CURRENT_CYCLE_ERRORS")
     if ced1d_status in {"FAIL_CLOSED", "SOURCE_BLOCKED", "ERROR"}:
         degraded.append("CED1D_COLLECTOR_FAIL_CLOSED")
+    if ced1d_status == "WAITING_SOURCE_ARCHIVE":
+        # A newer unpublished archive can mask an older unresolved source gap.
+        # Preserved progress is not current evidence. This changes visibility
+        # only: the frozen collector, retry cadence and ledger stay untouched.
+        degraded.append("CED1D_SOURCE_ARCHIVE_PENDING")
     if persisted_gap_receipts is None:
         degraded.append("GAP_HISTORY_UNVERIFIED")
     elif persisted_gap_receipts > 0:

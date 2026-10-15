@@ -50,6 +50,15 @@ class ThreeGateAuditTest(unittest.TestCase):
             cycle_errors={}, ced1d_status="OK", persisted_gap_receipts=1)
         self.assertTrue(result["operational_attention_required"])
 
+    def test_pending_archive_never_becomes_healthy_on_empty_cycle_errors(self):
+        for gaps in (0, 45):
+            result = classify_public_shadow_health(
+                cycle_errors={}, ced1d_status="WAITING_SOURCE_ARCHIVE",
+                persisted_gap_receipts=gaps)
+            self.assertEqual(result["status"], "DEGRADED_FAIL_CLOSED")
+            self.assertIn("CED1D_SOURCE_ARCHIVE_PENDING", result["reasons"])
+            self.assertFalse(result["automatic_live_authorization"])
+
     def test_unknown_history_is_not_pass(self):
         result = classify_public_shadow_health(
             cycle_errors={}, ced1d_status="OK", persisted_gap_receipts=None)

@@ -332,9 +332,16 @@ class ForwardShadowRuntime:
         self._state: dict[str, Any] = {
             "health": "STARTING",
             "mode": "PUBLIC_SHADOW_ONLY",
+            "runtime_identity": _runtime_identity(),
+            "bootstrap_status": "FIRST_CYCLE_NOT_COMPLETED",
+            "runtime_liveness": {"status": "STARTING"},
+            "operational_attention_required": True,
             "evidence_backend": self.store.backend,
             "database_target_mode": self.settings.database_target_mode,
             "orders_created": False,
+            "authenticated_exchange_api_used": False,
+            "exchange_mutation_performed": False,
+            "live_capital_enabled": False,
         }
         self._last_tfg_due: int | None = None
         self._last_ema6h_due: int | None = None
